@@ -1,0 +1,36 @@
+repos:
+    - repo: https://github.com/pre-commit/pre-commit-hooks
+      rev: v5.0.0
+      hooks:
+          - id: check-yaml
+            args: ['--allow-multiple-documents']
+          - id: check-json
+            exclude: "tsconfig.*\\.json|package-lock\\.json|biome\\.jsonc"
+          - id: check-toml
+          - id: end-of-file-fixer
+            exclude: "package-lock\\.json|\\.idea/"
+          - id: trailing-whitespace
+            exclude: "package-lock\\.json|\\.idea/"
+          - id: check-added-large-files
+            args: ['--maxkb=1000']
+          - id: check-case-conflict
+          - id: check-merge-conflict
+          - id: detect-private-key
+          - id: mixed-line-ending
+            args: ['--fix=lf']
+
+    - repo: local
+      hooks:
+          - id: biome
+            name: biome
+            entry: npx @biomejs/biome format --write
+            language: system
+            types: [file]
+            files: \.(json|jsonc)$
+
+          - id: eslint
+            name: eslint
+            entry: npx eslint --fix
+            language: system
+            files: \.(ts|mjs|cjs)$
+            types: [file]

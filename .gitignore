@@ -1,0 +1,24 @@
+# dependencies
+/node_modules
+
+# testing
+/coverage
+
+# production
+/dist
+
+# misc
+.DS_Store
+.env.local
+JUSTFILE_BRANCH
+
+npm-debug.log*
+
+.envrc
+eslint_report.json
+
+# Local documentation and context
+.llm/
+/.claude/*
+!/.claude/commands/
+/.claude/settings.local.json

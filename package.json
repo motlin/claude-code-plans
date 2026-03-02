@@ -1,0 +1,38 @@
+{
+	"name": "claude-code-plans",
+	"version": "1.0.0",
+	"description": "Persistent HTTP server that serves Claude Code plans with syntax highlighting and real-time updates",
+	"type": "module",
+	"scripts": {
+		"dev": "tsx src/server.ts",
+		"start": "node dist/server.js",
+		"build": "tsc",
+		"eslint": "eslint . --fix",
+		"eslint:ci": "eslint . --format json --output-file eslint_report.json",
+		"biome": "npx biome format --write .",
+		"biome:ci": "npx biome format .",
+		"typecheck": "tsc --noEmit -p tsconfig.check.json",
+		"test": "vitest",
+		"test:run": "vitest run"
+	},
+	"dependencies": {
+		"@shikijs/markdown-it": "^3.5.0",
+		"chokidar": "^4.0.3",
+		"markdown-it": "^14.1.0",
+		"shiki": "^3.5.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.4.4",
+		"@eslint/js": "^9.39.3",
+		"@types/markdown-it": "^14.1.2",
+		"@types/node": "^22.15.0",
+		"@typescript-eslint/eslint-plugin": "^8.56.0",
+		"@typescript-eslint/parser": "^8.56.0",
+		"eslint": "^9.39.3",
+		"globals": "^17.3.0",
+		"jiti": "^2.6.1",
+		"tsx": "^4.19.0",
+		"typescript": "^5.9.3",
+		"vitest": "^4.0.18"
+	}
+}

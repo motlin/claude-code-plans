@@ -1,0 +1,10 @@
+# Biome ignore file
+.llm/
+coverage/
+package-lock.json
+
+# Ignore build output
+dist/
+
+# Ignore dependencies
+node_modules/

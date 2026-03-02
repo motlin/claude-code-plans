@@ -1,0 +1,38 @@
+version: 2
+updates:
+    - package-ecosystem: 'npm'
+      directory: '/'
+      schedule:
+          interval: 'daily'
+          time: '07:00'
+          timezone: 'America/New_York'
+      open-pull-requests-limit: 25
+      labels:
+          - 'dependencies'
+      groups:
+          typescript-ecosystem:
+              patterns:
+                  - 'typescript'
+                  - '@typescript-eslint/*'
+          testing:
+              patterns:
+                  - 'vitest'
+                  - '@vitest/*'
+      commit-message:
+          prefix: 'dependabot'
+          include: 'scope'
+
+    - package-ecosystem: 'github-actions'
+      directory: '/'
+      schedule:
+          interval: 'daily'
+          time: '07:00'
+          timezone: 'America/New_York'
+      open-pull-requests-limit: 25
+      labels:
+          - 'dependencies'
+      ignore:
+          - dependency-name: 'ataylorme/eslint-annotate-action'
+      commit-message:
+          prefix: 'dependabot'
+          include: 'scope'
