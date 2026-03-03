@@ -17,7 +17,7 @@
 	},
 	"dependencies": {
 		"@shikijs/markdown-it": "^3.5.0",
-		"chokidar": "^4.0.3",
+		"chokidar": "^5.0.0",
 		"markdown-it": "^14.1.0",
 		"shiki": "^3.5.0"
 	},
