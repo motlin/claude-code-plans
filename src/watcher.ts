@@ -8,7 +8,7 @@ let watcher: FSWatcher | null = null;
 
 export function broadcast(): void {
 	for (const client of clients) {
-		client.write('event: plans-updated\ndata: {}\n\n');
+		client.write('event: content-updated\ndata: {}\n\n');
 	}
 }
 
@@ -27,8 +27,8 @@ export function getClientCount(): number {
 	return clients.size;
 }
 
-export function createWatcher(plansDir: string): FSWatcher {
-	watcher = watch(plansDir, {
+export function createWatcher(dirs: string[]): FSWatcher {
+	watcher = watch(dirs, {
 		ignoreInitial: true,
 		awaitWriteFinish: {stabilityThreshold: 300, pollInterval: 100},
 	});

@@ -1,5 +1,30 @@
 import type {PlanEntry} from '../src/plans.js';
-import {renderIndexPage, renderPlanPage, render404Page} from '../src/html.js';
+import type {ProjectGroup} from '../src/memory.js';
+import {
+	renderIndexPage,
+	renderPlanPage,
+	render404Page,
+	renderLandingPage,
+	renderMemoryIndexPage,
+	renderMemoryPage,
+} from '../src/html.js';
+
+describe('renderLandingPage', () => {
+	it('renders landing page with links to plans and memories', () => {
+		const html = renderLandingPage();
+		expect(html).toContain('<!DOCTYPE html>');
+		expect(html).toContain('href="/plans"');
+		expect(html).toContain('href="/memories"');
+		expect(html).toContain('Plans');
+		expect(html).toContain('Memories');
+	});
+
+	it('includes SSE auto-refresh', () => {
+		const html = renderLandingPage();
+		expect(html).toContain('EventSource');
+		expect(html).toContain('content-updated');
+	});
+});
 
 describe('renderIndexPage', () => {
 	it('renders page with plan entries', () => {
@@ -51,6 +76,11 @@ describe('renderIndexPage', () => {
 		expect(html).toContain('NEW');
 		expect(html).toContain('new-marker');
 	});
+
+	it('includes home link', () => {
+		const html = renderIndexPage([]);
+		expect(html).toContain('href="/"');
+	});
 });
 
 describe('renderPlanPage', () => {
@@ -62,9 +92,9 @@ describe('renderPlanPage', () => {
 		expect(html).toContain('All Plans');
 	});
 
-	it('includes back link', () => {
+	it('includes back link to /plans', () => {
 		const html = renderPlanPage('Test', '<p>body</p>');
-		expect(html).toContain('href="/"');
+		expect(html).toContain('href="/plans"');
 		expect(html).toContain('&larr;');
 	});
 
@@ -75,11 +105,84 @@ describe('renderPlanPage', () => {
 	});
 });
 
+describe('renderMemoryIndexPage', () => {
+	it('renders memory index with project groups', () => {
+		const groups: ProjectGroup[] = [
+			{
+				project: '-Users-craig-projects-app',
+				projectName: 'app',
+				memories: [
+					{
+						filename: 'MEMORY.md',
+						title: 'Memory',
+						mtime: new Date(),
+						project: '-Users-craig-projects-app',
+						projectName: 'app',
+					},
+				],
+			},
+		];
+		const html = renderMemoryIndexPage(groups);
+		expect(html).toContain('<!DOCTYPE html>');
+		expect(html).toContain('app');
+		expect(html).toContain('MEMORY.md');
+		expect(html).toContain('/memory/-Users-craig-projects-app/MEMORY.md');
+	});
+
+	it('renders empty state', () => {
+		const html = renderMemoryIndexPage([]);
+		expect(html).toContain('No memory files found');
+	});
+
+	it('includes home link', () => {
+		const html = renderMemoryIndexPage([]);
+		expect(html).toContain('href="/"');
+	});
+
+	it('includes SSE auto-refresh', () => {
+		const html = renderMemoryIndexPage([]);
+		expect(html).toContain('EventSource');
+		expect(html).toContain('content-updated');
+	});
+});
+
+describe('renderMemoryPage', () => {
+	it('renders memory page with title and body', () => {
+		const html = renderMemoryPage('app', 'Memory', '<h1>Memory</h1><p>Content</p>');
+		expect(html).toContain('<!DOCTYPE html>');
+		expect(html).toContain('<title>Memory</title>');
+		expect(html).toContain('<h1>Memory</h1><p>Content</p>');
+	});
+
+	it('includes back link to /memories', () => {
+		const html = renderMemoryPage('app', 'Memory', '<p>body</p>');
+		expect(html).toContain('href="/memories"');
+		expect(html).toContain('&larr;');
+	});
+
+	it('shows project name context', () => {
+		const html = renderMemoryPage('my-project', 'Memory', '<p>body</p>');
+		expect(html).toContain('my-project');
+	});
+
+	it('includes SSE auto-refresh', () => {
+		const html = renderMemoryPage('app', 'Memory', '<p>body</p>');
+		expect(html).toContain('EventSource');
+		expect(html).toContain('content-updated');
+	});
+});
+
 describe('render404Page', () => {
 	it('renders 404 page', () => {
 		const html = render404Page();
 		expect(html).toContain('404');
 		expect(html).toContain('Not Found');
 		expect(html).toContain('href="/"');
+	});
+
+	it('uses generic page wording', () => {
+		const html = render404Page();
+		expect(html).toContain('page');
+		expect(html).not.toContain('The requested plan');
 	});
 });

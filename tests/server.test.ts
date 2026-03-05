@@ -6,15 +6,22 @@ import type {Server} from 'node:http';
 import {createRequestHandler} from '../src/server.js';
 
 const testDir = join(tmpdir(), 'claude-plans-server-test-' + process.pid);
+const plansDir = join(testDir, 'plans');
+const projectsDir = join(testDir, 'projects');
 
 let server: Server;
 let baseUrl: string;
 
 beforeEach(async () => {
-	mkdirSync(testDir, {recursive: true});
-	writeFileSync(join(testDir, 'test-plan.md'), '# Test Plan\n\nSome content here.');
+	mkdirSync(plansDir, {recursive: true});
+	mkdirSync(projectsDir, {recursive: true});
+	writeFileSync(join(plansDir, 'test-plan.md'), '# Test Plan\n\nSome content here.');
 
-	const handler = await createRequestHandler(testDir);
+	const memDir = join(projectsDir, '-Users-craig-projects-app', 'memory');
+	mkdirSync(memDir, {recursive: true});
+	writeFileSync(join(memDir, 'MEMORY.md'), '# App Memory\n\nSome memory notes.');
+
+	const handler = await createRequestHandler(plansDir, projectsDir);
 	server = createServer(handler);
 
 	await new Promise<void>((resolve) => {
@@ -36,8 +43,19 @@ afterEach(async () => {
 });
 
 describe('GET /', () => {
-	it('returns index page with plans', async () => {
+	it('returns landing page with links to plans and memories', async () => {
 		const res = await fetch(`${baseUrl}/`);
+		expect(res.status).toBe(200);
+		expect(res.headers.get('content-type')).toContain('text/html');
+		const body = await res.text();
+		expect(body).toContain('href="/plans"');
+		expect(body).toContain('href="/memories"');
+	});
+});
+
+describe('GET /plans', () => {
+	it('returns plans index page', async () => {
+		const res = await fetch(`${baseUrl}/plans`);
 		expect(res.status).toBe(200);
 		expect(res.headers.get('content-type')).toContain('text/html');
 		const body = await res.text();
@@ -62,6 +80,43 @@ describe('GET /plan/:filename', () => {
 
 	it('rejects path traversal', async () => {
 		const res = await fetch(`${baseUrl}/plan/../../../etc/passwd`);
+		expect(res.status).toBe(404);
+	});
+});
+
+describe('GET /memories', () => {
+	it('returns memories index page grouped by project', async () => {
+		const res = await fetch(`${baseUrl}/memories`);
+		expect(res.status).toBe(200);
+		expect(res.headers.get('content-type')).toContain('text/html');
+		const body = await res.text();
+		expect(body).toContain('Claude Memories');
+		expect(body).toContain('app');
+		expect(body).toContain('MEMORY.md');
+	});
+});
+
+describe('GET /memory/:project/:filename', () => {
+	it('returns rendered memory page', async () => {
+		const res = await fetch(`${baseUrl}/memory/-Users-craig-projects-app/MEMORY.md`);
+		expect(res.status).toBe(200);
+		const body = await res.text();
+		expect(body).toContain('App Memory');
+		expect(body).toContain('Some memory notes');
+	});
+
+	it('returns 404 for non-existent memory', async () => {
+		const res = await fetch(`${baseUrl}/memory/-Users-craig-projects-app/nope.md`);
+		expect(res.status).toBe(404);
+	});
+
+	it('returns 404 for missing project', async () => {
+		const res = await fetch(`${baseUrl}/memory/-Users-craig-projects-nope/MEMORY.md`);
+		expect(res.status).toBe(404);
+	});
+
+	it('returns 404 when no filename in path', async () => {
+		const res = await fetch(`${baseUrl}/memory/justproject`);
 		expect(res.status).toBe(404);
 	});
 });
