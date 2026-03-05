@@ -172,6 +172,21 @@ describe('renderMemoryPage', () => {
 	});
 });
 
+describe('dark mode', () => {
+	it('includes prefers-color-scheme: dark media query in all pages', () => {
+		const landing = renderLandingPage();
+		const index = renderIndexPage([]);
+		const plan = renderPlanPage('Test', '<p>body</p>');
+		const memoryIndex = renderMemoryIndexPage([]);
+		const memory = renderMemoryPage('app', 'Test', '<p>body</p>');
+		const notFound = render404Page();
+
+		for (const html of [landing, index, plan, memoryIndex, memory, notFound]) {
+			expect(html).toContain('prefers-color-scheme: dark');
+		}
+	});
+});
+
 describe('render404Page', () => {
 	it('renders 404 page', () => {
 		const html = render404Page();

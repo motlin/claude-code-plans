@@ -16,12 +16,32 @@ function formatDate(date: Date): string {
 	});
 }
 
+const DARK_STYLE = `
+@media (prefers-color-scheme: dark) {
+body { background: #0d1117; color: #e6edf3; }
+h1, h2 { border-color: #30363d; }
+a { color: #58a6ff; }
+code { background: #161b22; }
+pre { background: #161b22; border-color: #30363d; }
+th, td { border-color: #30363d; }
+th { background: #161b22; }
+.plan-item, .memory-item { border-color: #30363d; }
+.plan-item:hover, .memory-item:hover { background: #161b22; }
+.plan-date, .memory-date, .plan-count, .memory-count, .project-label { color: #8b949e; }
+.card { border-color: #30363d; }
+.card:hover { background: #161b22; }
+.card p { color: #8b949e; }
+.new-marker { background: #1a3a2a; color: #3fb950; }
+.shiki, .shiki span { color: var(--shiki-dark) !important; background-color: var(--shiki-dark-bg) !important; font-style: var(--shiki-dark-font-style) !important; font-weight: var(--shiki-dark-font-weight) !important; }
+}
+`;
+
 const BASE_STYLE = `
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; color: #1a1a1a; line-height: 1.6; }
 h1 { border-bottom: 2px solid #e1e4e8; padding-bottom: 0.3em; }
 a { color: #0969da; text-decoration: none; }
 a:hover { text-decoration: underline; }
-`;
+${DARK_STYLE}`;
 
 const DETAIL_STYLE = `${BASE_STYLE}
 h2 { border-bottom: 1px solid #e1e4e8; padding-bottom: 0.3em; margin-top: 2em; }

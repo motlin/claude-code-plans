@@ -8,7 +8,10 @@ async function getMd(): Promise<MarkdownIt> {
 	md = MarkdownIt({html: true});
 	md.use(
 		await Shiki({
-			theme: 'github-light',
+			themes: {
+				light: 'github-light',
+				dark: 'github-dark',
+			},
 		}),
 	);
 	return md;

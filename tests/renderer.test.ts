@@ -60,4 +60,10 @@ describe('renderMarkdown', () => {
 		expect(result).toContain('<ol>');
 		expect(result).toContain('<li>');
 	});
+
+	it('renders code blocks with dual theme shiki variables', async () => {
+		const input = '```typescript\nconst x = 1;\n```';
+		const result = await renderMarkdown(input);
+		expect(result).toContain('--shiki-dark');
+	});
 });
