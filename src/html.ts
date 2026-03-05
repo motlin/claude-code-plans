@@ -78,6 +78,9 @@ const LANDING_STYLE = `${BASE_STYLE}
 .card p { margin: 0; color: #656d76; }
 `;
 
+const FAVICON =
+	"<link rel=\"icon\" type=\"image/svg+xml\" href=\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23C87B3A'/%3E%3Cpath d='M16 5L17.5 13.5L26 16L17.5 18.5L16 27L14.5 18.5L6 16L14.5 13.5Z' fill='white' opacity='0.95'/%3E%3C/svg%3E\">";
+
 const SSE_SCRIPT = `
 <script>
 const es = new EventSource('/api/events');
@@ -92,6 +95,7 @@ export function renderLandingPage(): string {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Claude Code Viewer</title>
+${FAVICON}
 <style>${LANDING_STYLE}</style>
 ${SSE_SCRIPT}
 </head>
@@ -132,6 +136,7 @@ export function renderIndexPage(plans: PlanEntry[]): string {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Claude Plans</title>
+${FAVICON}
 <style>${INDEX_STYLE}</style>
 ${SSE_SCRIPT}
 </head>
@@ -153,6 +158,7 @@ export function renderPlanPage(title: string, bodyHtml: string): string {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${escapeHtml(title)}</title>
+${FAVICON}
 <style>${DETAIL_STYLE}</style>
 ${SSE_SCRIPT}
 </head>
@@ -191,6 +197,7 @@ export function renderMemoryIndexPage(groups: ProjectGroup[]): string {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Claude Memories</title>
+${FAVICON}
 <style>${INDEX_STYLE}</style>
 ${SSE_SCRIPT}
 </head>
@@ -209,6 +216,7 @@ export function renderMemoryPage(projectName: string, title: string, bodyHtml: s
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${escapeHtml(title)}</title>
+${FAVICON}
 <style>${DETAIL_STYLE}</style>
 ${SSE_SCRIPT}
 </head>
@@ -227,6 +235,7 @@ export function render404Page(): string {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>404 — Not Found</title>
+${FAVICON}
 <style>${DETAIL_STYLE}</style>
 </head>
 <body>

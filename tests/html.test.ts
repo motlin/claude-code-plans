@@ -187,6 +187,22 @@ describe('dark mode', () => {
 	});
 });
 
+describe('favicon', () => {
+	it('includes inline SVG favicon in all pages', () => {
+		const landing = renderLandingPage();
+		const index = renderIndexPage([]);
+		const plan = renderPlanPage('Test', '<p>body</p>');
+		const memoryIndex = renderMemoryIndexPage([]);
+		const memory = renderMemoryPage('app', 'Test', '<p>body</p>');
+		const notFound = render404Page();
+
+		for (const html of [landing, index, plan, memoryIndex, memory, notFound]) {
+			expect(html).toContain('rel="icon"');
+			expect(html).toContain('image/svg+xml');
+		}
+	});
+});
+
 describe('render404Page', () => {
 	it('renders 404 page', () => {
 		const html = render404Page();
