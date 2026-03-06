@@ -16,24 +16,37 @@ function formatDate(date: Date): string {
 	});
 }
 
+const D = 'html[data-theme="dark"]';
 const DARK_STYLE = `
-@media (prefers-color-scheme: dark) {
-body { background: #0d1117; color: #e6edf3; }
-h1, h2 { border-color: #30363d; }
-a { color: #58a6ff; }
-code { background: #161b22; }
-pre { background: #161b22; border-color: #30363d; }
-th, td { border-color: #30363d; }
-th { background: #161b22; }
-.plan-item, .memory-item { border-color: #30363d; }
-.plan-item:hover, .memory-item:hover { background: #161b22; }
-.plan-date, .memory-date, .plan-count, .memory-count, .project-label { color: #8b949e; }
-.card { border-color: #30363d; }
-.card:hover { background: #161b22; }
-.card p { color: #8b949e; }
-.new-marker { background: #1a3a2a; color: #3fb950; }
-.shiki, .shiki span { color: var(--shiki-dark) !important; background-color: var(--shiki-dark-bg) !important; font-style: var(--shiki-dark-font-style) !important; font-weight: var(--shiki-dark-font-weight) !important; }
-}
+${D} body { background: #0d1117; color: #e6edf3; }
+${D} h1, ${D} h2 { border-color: #30363d; }
+${D} a { color: #58a6ff; }
+${D} code { background: #161b22; color: #e6edf3; }
+${D} pre { background: #161b22; border-color: #30363d; }
+${D} pre code { background: none; color: inherit; }
+${D} th, ${D} td { border-color: #30363d; }
+${D} th { background: #161b22; }
+${D} strong { color: #e6edf3; }
+${D} ::selection { background: #264f78; color: #e6edf3; }
+${D} .plan-item, ${D} .memory-item { border-color: #30363d; }
+${D} .plan-item:hover, ${D} .memory-item:hover { background: #161b22; }
+${D} .plan-date, ${D} .memory-date, ${D} .plan-count, ${D} .memory-count, ${D} .project-label { color: #8b949e; }
+${D} .card { border-color: #30363d; }
+${D} .card:hover { background: #161b22; }
+${D} .card p { color: #8b949e; }
+${D} .new-marker { background: #1a3a2a; color: #3fb950; }
+${D} .shiki, ${D} .shiki span { color: var(--shiki-dark) !important; background-color: var(--shiki-dark-bg) !important; font-style: var(--shiki-dark-font-style) !important; font-weight: var(--shiki-dark-font-weight) !important; }
+${D} .theme-toggle { border-color: #30363d; }
+${D} .theme-toggle button { color: #8b949e; }
+${D} .theme-toggle button:hover { background: #161b22; color: #e6edf3; }
+${D} .theme-toggle button.active { background: #161b22; color: #e6edf3; }
+`;
+
+const THEME_TOGGLE_STYLE = `
+.theme-toggle { position: fixed; top: 12px; right: 20px; display: inline-flex; border: 1px solid #e1e4e8; border-radius: 6px; overflow: hidden; font-size: 0.8em; z-index: 100; }
+.theme-toggle button { background: none; border: none; padding: 4px 10px; cursor: pointer; color: #656d76; font-family: inherit; }
+.theme-toggle button:hover { background: #f6f8fa; color: #1a1a1a; }
+.theme-toggle button.active { background: #f6f8fa; color: #1a1a1a; font-weight: 600; }
 `;
 
 const BASE_STYLE = `
@@ -41,6 +54,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Ar
 h1 { border-bottom: 2px solid #e1e4e8; padding-bottom: 0.3em; }
 a { color: #0969da; text-decoration: none; }
 a:hover { text-decoration: underline; }
+${THEME_TOGGLE_STYLE}
 ${DARK_STYLE}`;
 
 const DETAIL_STYLE = `${BASE_STYLE}
@@ -81,6 +95,46 @@ const LANDING_STYLE = `${BASE_STYLE}
 const FAVICON =
 	"<link rel=\"icon\" type=\"image/svg+xml\" href=\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23C87B3A'/%3E%3Cpath d='M16 5L17.5 13.5L26 16L17.5 18.5L16 27L14.5 18.5L6 16L14.5 13.5Z' fill='white' opacity='0.95'/%3E%3C/svg%3E\">";
 
+const THEME_INIT_SCRIPT = `
+<script>
+(function(){
+  var s = localStorage.getItem('theme') || 'auto';
+  var dark = s === 'dark' || (s === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  if (dark) document.documentElement.setAttribute('data-theme', 'dark');
+})();
+</script>
+`;
+
+const THEME_TOGGLE_SCRIPT = `
+<script>
+(function(){
+  var pref = localStorage.getItem('theme') || 'auto';
+  function apply(mode) {
+    pref = mode;
+    localStorage.setItem('theme', mode);
+    var dark = mode === 'dark' || (mode === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    document.querySelectorAll('.theme-toggle button').forEach(function(b) {
+      b.classList.toggle('active', b.dataset.theme === mode);
+    });
+  }
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function() {
+    if (pref === 'auto') apply('auto');
+  });
+  document.addEventListener('DOMContentLoaded', function() {
+    var toggle = document.createElement('div');
+    toggle.className = 'theme-toggle';
+    toggle.innerHTML = '<button data-theme="light">Light</button><button data-theme="auto">Auto</button><button data-theme="dark">Dark</button>';
+    document.body.appendChild(toggle);
+    toggle.querySelectorAll('button').forEach(function(b) {
+      b.addEventListener('click', function() { apply(b.dataset.theme); });
+    });
+    apply(pref);
+  });
+})();
+</script>
+`;
+
 const SSE_SCRIPT = `
 <script>
 const es = new EventSource('/api/events');
@@ -97,7 +151,9 @@ export function renderLandingPage(): string {
 <title>Claude Code Viewer</title>
 ${FAVICON}
 <style>${LANDING_STYLE}</style>
+${THEME_INIT_SCRIPT}
 ${SSE_SCRIPT}
+${THEME_TOGGLE_SCRIPT}
 </head>
 <body>
 <h1>Claude Code Viewer</h1>
@@ -138,7 +194,9 @@ export function renderIndexPage(plans: PlanEntry[]): string {
 <title>Claude Plans</title>
 ${FAVICON}
 <style>${INDEX_STYLE}</style>
+${THEME_INIT_SCRIPT}
 ${SSE_SCRIPT}
+${THEME_TOGGLE_SCRIPT}
 </head>
 <body>
 <a class="home" href="/">&larr; Home</a>
@@ -160,7 +218,9 @@ export function renderPlanPage(title: string, bodyHtml: string): string {
 <title>${escapeHtml(title)}</title>
 ${FAVICON}
 <style>${DETAIL_STYLE}</style>
+${THEME_INIT_SCRIPT}
 ${SSE_SCRIPT}
+${THEME_TOGGLE_SCRIPT}
 </head>
 <body>
 <a class="back" href="/plans">&larr; All Plans</a>
@@ -199,7 +259,9 @@ export function renderMemoryIndexPage(groups: ProjectGroup[]): string {
 <title>Claude Memories</title>
 ${FAVICON}
 <style>${INDEX_STYLE}</style>
+${THEME_INIT_SCRIPT}
 ${SSE_SCRIPT}
+${THEME_TOGGLE_SCRIPT}
 </head>
 <body>
 <a class="home" href="/">&larr; Home</a>
@@ -218,7 +280,9 @@ export function renderMemoryPage(projectName: string, title: string, bodyHtml: s
 <title>${escapeHtml(title)}</title>
 ${FAVICON}
 <style>${DETAIL_STYLE}</style>
+${THEME_INIT_SCRIPT}
 ${SSE_SCRIPT}
+${THEME_TOGGLE_SCRIPT}
 </head>
 <body>
 <a class="back" href="/memories">&larr; All Memories</a>
@@ -237,6 +301,8 @@ export function render404Page(): string {
 <title>404 — Not Found</title>
 ${FAVICON}
 <style>${DETAIL_STYLE}</style>
+${THEME_INIT_SCRIPT}
+${THEME_TOGGLE_SCRIPT}
 </head>
 <body>
 <h1>404 — Not Found</h1>

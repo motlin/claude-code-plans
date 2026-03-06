@@ -173,7 +173,7 @@ describe('renderMemoryPage', () => {
 });
 
 describe('dark mode', () => {
-	it('includes prefers-color-scheme: dark media query in all pages', () => {
+	it('includes dark theme CSS and toggle in all pages', () => {
 		const landing = renderLandingPage();
 		const index = renderIndexPage([]);
 		const plan = renderPlanPage('Test', '<p>body</p>');
@@ -182,7 +182,9 @@ describe('dark mode', () => {
 		const notFound = render404Page();
 
 		for (const html of [landing, index, plan, memoryIndex, memory, notFound]) {
-			expect(html).toContain('prefers-color-scheme: dark');
+			expect(html).toContain('data-theme="dark"');
+			expect(html).toContain('theme-toggle');
+			expect(html).toContain('localStorage');
 		}
 	});
 });
