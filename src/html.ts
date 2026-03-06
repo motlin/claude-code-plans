@@ -18,35 +18,30 @@ function formatDate(date: Date): string {
 
 const D = 'html[data-theme="dark"]';
 const DARK_STYLE = `
-${D} body { background: #0d1117; color: #e6edf3; }
-${D} h1, ${D} h2 { border-color: #30363d; }
-${D} a { color: #58a6ff; }
-${D} code { background: #161b22; color: #e6edf3; }
-${D} pre { background: #161b22; border-color: #30363d; }
-${D} pre code { background: none; color: inherit; }
-${D} th, ${D} td { border-color: #30363d; }
-${D} th { background: #161b22; }
-${D} strong { color: #e6edf3; }
-${D} ::selection { background: #264f78; color: #e6edf3; }
-${D} .plan-item, ${D} .memory-item { border-color: #30363d; }
-${D} .plan-item:hover, ${D} .memory-item:hover { background: #161b22; }
-${D} .plan-date, ${D} .memory-date, ${D} .plan-count, ${D} .memory-count, ${D} .project-label { color: #8b949e; }
-${D} .card { border-color: #30363d; }
-${D} .card:hover { background: #161b22; }
-${D} .card p { color: #8b949e; }
+${D} body { background: #0d1117; color: #f0f6fc; }
+${D} h1, ${D} h2 { border-color: #3d444d; }
+${D} a { color: #4493f8; }
+${D} ::selection { background: #264f78; color: #f0f6fc; }
+${D} .plan-item, ${D} .memory-item { border-color: #3d444d; }
+${D} .plan-item:hover, ${D} .memory-item:hover { background: #151b23; }
+${D} .plan-date, ${D} .memory-date, ${D} .plan-count, ${D} .memory-count, ${D} .project-label { color: #9198a1; }
+${D} .card { border-color: #3d444d; }
+${D} .card:hover { background: #151b23; }
+${D} .card p { color: #9198a1; }
 ${D} .new-marker { background: #1a3a2a; color: #3fb950; }
 ${D} .shiki, ${D} .shiki span { color: var(--shiki-dark) !important; background-color: var(--shiki-dark-bg) !important; font-style: var(--shiki-dark-font-style) !important; font-weight: var(--shiki-dark-font-weight) !important; }
-${D} .theme-toggle { border-color: #30363d; }
-${D} .theme-toggle button { color: #8b949e; }
-${D} .theme-toggle button:hover { background: #161b22; color: #e6edf3; }
-${D} .theme-toggle button.active { background: #161b22; color: #e6edf3; }
+${D} .theme-toggle { border-color: #3d444d; background: rgba(13,17,23,0.8); }
+${D} .theme-toggle button { color: #9198a1; }
+${D} .theme-toggle button:hover { color: #f0f6fc; background: rgba(255,255,255,0.08); }
+${D} .theme-toggle button.active { color: #f0f6fc; background: #21262d; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
 `;
 
 const THEME_TOGGLE_STYLE = `
-.theme-toggle { position: fixed; top: 12px; right: 20px; display: inline-flex; border: 1px solid #e1e4e8; border-radius: 6px; overflow: hidden; font-size: 0.8em; z-index: 100; }
-.theme-toggle button { background: none; border: none; padding: 4px 10px; cursor: pointer; color: #656d76; font-family: inherit; }
-.theme-toggle button:hover { background: #f6f8fa; color: #1a1a1a; }
-.theme-toggle button.active { background: #f6f8fa; color: #1a1a1a; font-weight: 600; }
+.theme-toggle { position: fixed; top: 12px; right: 20px; display: inline-flex; gap: 2px; border: 1px solid #e1e4e8; border-radius: 8px; padding: 3px; z-index: 100; background: rgba(255,255,255,0.8); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.theme-toggle button { background: none; border: none; padding: 5px 7px; cursor: pointer; color: #656d76; border-radius: 5px; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; }
+.theme-toggle button:hover { color: #1a1a1a; background: rgba(0,0,0,0.06); }
+.theme-toggle button.active { color: #1a1a1a; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+.theme-toggle svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 `;
 
 const BASE_STYLE = `
@@ -57,17 +52,9 @@ a:hover { text-decoration: underline; }
 ${THEME_TOGGLE_STYLE}
 ${DARK_STYLE}`;
 
+const GITHUB_CSS_LINK = '<link rel="stylesheet" href="/css/github-markdown.css">';
+
 const DETAIL_STYLE = `${BASE_STYLE}
-h2 { border-bottom: 1px solid #e1e4e8; padding-bottom: 0.3em; margin-top: 2em; }
-h3 { margin-top: 1.5em; }
-code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
-pre { background: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 6px; padding: 16px; overflow-x: auto; }
-pre code { background: none; padding: 0; }
-table { border-collapse: collapse; width: 100%; margin: 1em 0; }
-th, td { border: 1px solid #d0d7de; padding: 8px 12px; text-align: left; }
-th { background: #f6f8fa; font-weight: 600; }
-ul, ol { padding-left: 2em; }
-li { margin: 0.3em 0; }
 .back { display: inline-block; margin-bottom: 1em; font-size: 0.9em; }
 .project-label { color: #656d76; font-size: 0.85em; margin-left: 8px; }
 `;
@@ -124,7 +111,7 @@ const THEME_TOGGLE_SCRIPT = `
   document.addEventListener('DOMContentLoaded', function() {
     var toggle = document.createElement('div');
     toggle.className = 'theme-toggle';
-    toggle.innerHTML = '<button data-theme="light">Light</button><button data-theme="auto">Auto</button><button data-theme="dark">Dark</button>';
+    toggle.innerHTML = '<button data-theme="light" title="Light"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></button><button data-theme="auto" title="System"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></button><button data-theme="dark" title="Dark"><svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg></button>';
     document.body.appendChild(toggle);
     toggle.querySelectorAll('button').forEach(function(b) {
       b.addEventListener('click', function() { apply(b.dataset.theme); });
@@ -217,6 +204,7 @@ export function renderPlanPage(title: string, bodyHtml: string): string {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${escapeHtml(title)}</title>
 ${FAVICON}
+${GITHUB_CSS_LINK}
 <style>${DETAIL_STYLE}</style>
 ${THEME_INIT_SCRIPT}
 ${SSE_SCRIPT}
@@ -224,7 +212,9 @@ ${THEME_TOGGLE_SCRIPT}
 </head>
 <body>
 <a class="back" href="/plans">&larr; All Plans</a>
+<article class="markdown-body">
 ${bodyHtml}
+</article>
 </body>
 </html>`;
 }
@@ -279,6 +269,7 @@ export function renderMemoryPage(projectName: string, title: string, bodyHtml: s
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${escapeHtml(title)}</title>
 ${FAVICON}
+${GITHUB_CSS_LINK}
 <style>${DETAIL_STYLE}</style>
 ${THEME_INIT_SCRIPT}
 ${SSE_SCRIPT}
@@ -287,7 +278,9 @@ ${THEME_TOGGLE_SCRIPT}
 <body>
 <a class="back" href="/memories">&larr; All Memories</a>
 <span class="project-label">${escapeHtml(projectName)}</span>
+<article class="markdown-body">
 ${bodyHtml}
+</article>
 </body>
 </html>`;
 }

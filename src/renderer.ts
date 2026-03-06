@@ -17,6 +17,10 @@ async function getMd(): Promise<MarkdownIt> {
 	return md;
 }
 
+export async function warmup(): Promise<void> {
+	await getMd();
+}
+
 export async function renderMarkdown(markdown: string): Promise<string> {
 	if (!markdown.trim()) return '';
 	const instance = await getMd();

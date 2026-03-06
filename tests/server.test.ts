@@ -53,6 +53,17 @@ describe('GET /', () => {
 	});
 });
 
+describe('GET /css/github-markdown.css', () => {
+	it('returns github markdown CSS with caching', async () => {
+		const res = await fetch(`${baseUrl}/css/github-markdown.css`);
+		expect(res.status).toBe(200);
+		expect(res.headers.get('content-type')).toContain('text/css');
+		expect(res.headers.get('cache-control')).toContain('max-age=86400');
+		const body = await res.text();
+		expect(body).toContain('.markdown-body');
+	});
+});
+
 describe('GET /plans', () => {
 	it('returns plans index page', async () => {
 		const res = await fetch(`${baseUrl}/plans`);

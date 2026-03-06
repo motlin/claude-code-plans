@@ -2,9 +2,10 @@ import {createServer} from 'node:http';
 import type {IncomingMessage, ServerResponse, RequestListener} from 'node:http';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
+import {readFile} from 'node:fs/promises';
 import {listPlans, readPlan} from './plans.js';
 import {listMemories, readMemory, decodeProjectDir} from './memory.js';
-import {renderMarkdown} from './renderer.js';
+import {renderMarkdown, warmup} from './renderer.js';
 import {extractTitleFromContent} from './markdown-utils.js';
 import {
 	renderLandingPage,
@@ -19,6 +20,26 @@ import {addClient, broadcast, createWatcher, closeWatcher} from './watcher.js';
 const PORT = Number(process.env['PORT'] ?? 8899);
 const PLANS_DIR = process.env['PLANS_DIR'] ?? join(homedir(), '.claude', 'plans');
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
+
+async function loadGithubCss(): Promise<string> {
+	const lightPath = join(
+		import.meta.dirname!,
+		'..',
+		'node_modules',
+		'github-markdown-css',
+		'github-markdown-light.css',
+	);
+	const darkPath = join(
+		import.meta.dirname!,
+		'..',
+		'node_modules',
+		'github-markdown-css',
+		'github-markdown-dark.css',
+	);
+	const [light, dark] = await Promise.all([readFile(lightPath, 'utf-8'), readFile(darkPath, 'utf-8')]);
+	const darkScoped = dark.replace(/^\.markdown-body/gm, 'html[data-theme="dark"] .markdown-body');
+	return light + '\n' + darkScoped;
+}
 
 function sendHtml(res: ServerResponse, statusCode: number, html: string): void {
 	res.writeHead(statusCode, {
@@ -37,10 +58,20 @@ function sendJson(res: ServerResponse, statusCode: number, data: unknown): void 
 }
 
 export async function createRequestHandler(plansDir: string, projectsDir: string): Promise<RequestListener> {
+	const githubCss = await loadGithubCss();
 	return async (req: IncomingMessage, res: ServerResponse) => {
 		const url = new URL(req.url ?? '/', `http://${req.headers['host'] ?? 'localhost'}`);
 		const path = decodeURIComponent(url.pathname);
 		const method = req.method ?? 'GET';
+
+		if (method === 'GET' && path === '/css/github-markdown.css') {
+			res.writeHead(200, {
+				'Content-Type': 'text/css; charset=utf-8',
+				'Cache-Control': 'public, max-age=86400',
+			});
+			res.end(githubCss);
+			return;
+		}
 
 		if (method === 'GET' && (path === '/' || path === '/index.html')) {
 			sendHtml(res, 200, renderLandingPage());
@@ -129,7 +160,7 @@ export async function createRequestHandler(plansDir: string, projectsDir: string
 }
 
 async function main(): Promise<void> {
-	const handler = await createRequestHandler(PLANS_DIR, PROJECTS_DIR);
+	const [handler] = await Promise.all([createRequestHandler(PLANS_DIR, PROJECTS_DIR), warmup()]);
 	const server = createServer(handler);
 
 	createWatcher([PLANS_DIR, PROJECTS_DIR]);
