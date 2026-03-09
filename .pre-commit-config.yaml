@@ -32,5 +32,6 @@ repos:
             name: eslint
             entry: npx eslint --fix
             language: system
-            files: \.(ts|mjs|cjs)$
+            files: \.(ts|tsx|mjs|cjs)$
+            exclude: routeTree\.gen\.ts$
             types: [file]

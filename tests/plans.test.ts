@@ -1,7 +1,7 @@
 import {writeFileSync, mkdirSync, rmSync, utimesSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {listPlans, readPlan} from '../src/plans.js';
+import {listPlans, readPlan} from '../src/lib/plans.js';
 
 const testDir = join(tmpdir(), 'claude-plans-test-' + process.pid);
 

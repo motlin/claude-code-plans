@@ -1,26 +1,28 @@
 import {watch} from 'chokidar';
-import type {ServerResponse} from 'node:http';
 import type {FSWatcher} from 'chokidar';
 
-const clients = new Set<ServerResponse>();
+const clients = new Set<ReadableStreamDefaultController>();
+const encoder = new TextEncoder();
 
 let watcher: FSWatcher | null = null;
 
 export function broadcast(): void {
+	const data = encoder.encode('event: content-updated\ndata: {}\n\n');
 	for (const client of clients) {
-		client.write('event: content-updated\ndata: {}\n\n');
+		try {
+			client.enqueue(data);
+		} catch {
+			clients.delete(client);
+		}
 	}
 }
 
-export function addClient(res: ServerResponse): void {
-	clients.add(res);
-	res.on('close', () => {
-		clients.delete(res);
-	});
+export function addClient(controller: ReadableStreamDefaultController): void {
+	clients.add(controller);
 }
 
-export function removeClient(res: ServerResponse): void {
-	clients.delete(res);
+export function removeClient(controller: ReadableStreamDefaultController): void {
+	clients.delete(controller);
 }
 
 export function getClientCount(): number {
@@ -52,7 +54,11 @@ export async function closeWatcher(): Promise<void> {
 		watcher = null;
 	}
 	for (const client of clients) {
-		client.end();
+		try {
+			client.close();
+		} catch {
+			// already closed
+		}
 	}
 	clients.clear();
 }

@@ -1,7 +1,7 @@
 import {writeFileSync, mkdirSync, rmSync, utimesSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir, homedir} from 'node:os';
-import {decodeProjectDir, listMemories, readMemory, getProjectsDir} from '../src/memory.js';
+import {decodeProjectDir, listMemories, readMemory, getProjectsDir} from '../src/lib/memory.js';
 
 const testDir = join(tmpdir(), 'claude-memory-test-' + process.pid);
 

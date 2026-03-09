@@ -1,4 +1,8 @@
-import {renderMarkdown} from '../src/renderer.js';
+import {renderMarkdown, warmup} from '../src/lib/renderer.js';
+
+beforeAll(async () => {
+	await warmup();
+});
 
 describe('renderMarkdown', () => {
 	it('renders headings', async () => {
