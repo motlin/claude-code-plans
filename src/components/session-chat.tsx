@@ -4,6 +4,7 @@ import {MarkdownArticle} from './markdown-article';
 interface ToolCallItem {
 	name: string;
 	param: string;
+	resultHtml?: string;
 }
 
 interface ChatMessage {
@@ -172,6 +173,11 @@ function ToolCallSummary({calls, summary}: {calls: ToolCallItem[]; summary: stri
 						>
 							<span className="font-medium">{call.name}</span>
 							{call.param && <span className="ml-1.5 opacity-70">{call.param}</span>}
+							{call.resultHtml && (
+								<div className="mt-1 mb-2 overflow-x-auto text-xs text-foreground">
+									<div dangerouslySetInnerHTML={{__html: call.resultHtml}} />
+								</div>
+							)}
 						</div>
 					))}
 				</div>

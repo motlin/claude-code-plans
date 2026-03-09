@@ -68,53 +68,53 @@ describe('summarizeToolCalls', () => {
 	});
 
 	it('single Read', () => {
-		expect(summarizeToolCalls([{name: 'Read', input: {file_path: '/foo'}}])).toBe('read a file');
+		expect(summarizeToolCalls([{id: 'tc1', name: 'Read', input: {file_path: '/foo'}}])).toBe('read a file');
 	});
 
 	it('multiple Reads', () => {
 		expect(
 			summarizeToolCalls([
-				{name: 'Read', input: {file_path: '/a'}},
-				{name: 'Read', input: {file_path: '/b'}},
+				{id: 'tc1', name: 'Read', input: {file_path: '/a'}},
+				{id: 'tc2', name: 'Read', input: {file_path: '/b'}},
 			]),
 		).toBe('read 2 files');
 	});
 
 	it('mixed tools', () => {
 		const calls = [
-			{name: 'Edit', input: {}},
-			{name: 'Edit', input: {}},
-			{name: 'Edit', input: {}},
-			{name: 'Read', input: {}},
-			{name: 'Bash', input: {}},
-			{name: 'Bash', input: {}},
+			{id: 'tc1', name: 'Edit', input: {}},
+			{id: 'tc2', name: 'Edit', input: {}},
+			{id: 'tc3', name: 'Edit', input: {}},
+			{id: 'tc4', name: 'Read', input: {}},
+			{id: 'tc5', name: 'Bash', input: {}},
+			{id: 'tc6', name: 'Bash', input: {}},
 		];
 		expect(summarizeToolCalls(calls)).toBe('edited 3 files, read a file, ran 2 commands');
 	});
 
 	it('groups Edit and Write together', () => {
 		const calls = [
-			{name: 'Edit', input: {}},
-			{name: 'Write', input: {}},
+			{id: 'tc1', name: 'Edit', input: {}},
+			{id: 'tc2', name: 'Write', input: {}},
 		];
 		expect(summarizeToolCalls(calls)).toBe('edited 2 files');
 	});
 
 	it('single Grep', () => {
-		expect(summarizeToolCalls([{name: 'Grep', input: {}}])).toBe('searched code');
+		expect(summarizeToolCalls([{id: 'tc1', name: 'Grep', input: {}}])).toBe('searched code');
 	});
 
 	it('agents', () => {
 		const calls = [
-			{name: 'Agent', input: {}},
-			{name: 'Agent', input: {}},
-			{name: 'Agent', input: {}},
+			{id: 'tc1', name: 'Agent', input: {}},
+			{id: 'tc2', name: 'Agent', input: {}},
+			{id: 'tc3', name: 'Agent', input: {}},
 		];
 		expect(summarizeToolCalls(calls)).toBe('ran 3 agents');
 	});
 
 	it('unknown tool', () => {
-		expect(summarizeToolCalls([{name: 'CustomTool', input: {}}])).toBe('used CustomTool');
+		expect(summarizeToolCalls([{id: 'tc1', name: 'CustomTool', input: {}}])).toBe('used CustomTool');
 	});
 });
 
@@ -217,7 +217,9 @@ describe('readSession', () => {
 
 		expect(detail!.messages[1]!.role).toBe('assistant');
 		expect(detail!.messages[1]!.textBlocks).toEqual(['Hi there!']);
-		expect(detail!.messages[1]!.toolCalls).toEqual([{name: 'Read', input: {file_path: '/src/index.ts'}}]);
+		expect(detail!.messages[1]!.toolCalls).toEqual([
+			{id: 'tool1', name: 'Read', input: {file_path: '/src/index.ts'}},
+		]);
 	});
 
 	it('returns null for non-existent session', async () => {
@@ -298,5 +300,203 @@ describe('readSession', () => {
 		const detail = await readSession(testDir, 'coalesce');
 		expect(detail!.messages).toHaveLength(2);
 		expect(detail!.messages[0]!.textBlocks).toEqual(['Part 1', 'Part 2']);
+	});
+
+	it('extracts tool_result and attaches to correct ToolCallInfo by id', async () => {
+		const projDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projDir, {recursive: true});
+		writeFileSync(
+			join(projDir, 'tool-result.jsonl'),
+			jsonl(
+				userMessage('Read a file'),
+				assistantMessage([
+					{type: 'tool_use', id: 'tu_1', name: 'Read', input: {file_path: '/src/index.ts'}},
+					{type: 'tool_use', id: 'tu_2', name: 'Bash', input: {command: 'ls'}},
+				]),
+				userMessageArray([
+					{type: 'tool_result', tool_use_id: 'tu_1', content: '     1\tconst x = 1;'},
+					{type: 'tool_result', tool_use_id: 'tu_2', content: 'file1.ts\nfile2.ts'},
+				]),
+			),
+		);
+
+		const detail = await readSession(testDir, 'tool-result');
+		expect(detail).not.toBeNull();
+		const assistantMsg = detail!.messages[1]!;
+		expect(assistantMsg.toolCalls).toHaveLength(2);
+		expect(assistantMsg.toolCalls[0]!.id).toBe('tu_1');
+		expect(assistantMsg.toolCalls[0]!.result).toBe('     1\tconst x = 1;');
+		expect(assistantMsg.toolCalls[1]!.id).toBe('tu_2');
+		expect(assistantMsg.toolCalls[1]!.result).toBe('file1.ts\nfile2.ts');
+	});
+
+	it('handles array-format tool_result content', async () => {
+		const projDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projDir, {recursive: true});
+		writeFileSync(
+			join(projDir, 'arr-result.jsonl'),
+			jsonl(
+				userMessage('Do something'),
+				assistantMessage([{type: 'tool_use', id: 'tu_a', name: 'Read', input: {file_path: '/foo'}}]),
+				userMessageArray([
+					{
+						type: 'tool_result',
+						tool_use_id: 'tu_a',
+						content: [
+							{type: 'text', text: 'line 1'},
+							{type: 'text', text: 'line 2'},
+						],
+					},
+				]),
+			),
+		);
+
+		const detail = await readSession(testDir, 'arr-result');
+		const tc = detail!.messages[1]!.toolCalls[0]!;
+		expect(tc.result).toBe('line 1\nline 2');
+	});
+
+	it('captures is_error from tool_result', async () => {
+		const projDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projDir, {recursive: true});
+		writeFileSync(
+			join(projDir, 'error-result.jsonl'),
+			jsonl(
+				userMessage('Try something'),
+				assistantMessage([{type: 'tool_use', id: 'tu_err', name: 'Bash', input: {command: 'bad-cmd'}}]),
+				userMessageArray([
+					{type: 'tool_result', tool_use_id: 'tu_err', content: 'command not found', is_error: true},
+				]),
+			),
+		);
+
+		const detail = await readSession(testDir, 'error-result');
+		const tc = detail!.messages[1]!.toolCalls[0]!;
+		expect(tc.isError).toBe(true);
+		expect(tc.result).toBe('command not found');
+	});
+
+	it('truncates results over 150 lines', async () => {
+		const projDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projDir, {recursive: true});
+		const longResult = Array.from({length: 200}, (_, i) => `line ${i + 1}`).join('\n');
+		writeFileSync(
+			join(projDir, 'long-result.jsonl'),
+			jsonl(
+				userMessage('Read big file'),
+				assistantMessage([{type: 'tool_use', id: 'tu_long', name: 'Read', input: {file_path: '/big'}}]),
+				userMessageArray([{type: 'tool_result', tool_use_id: 'tu_long', content: longResult}]),
+			),
+		);
+
+		const detail = await readSession(testDir, 'long-result');
+		const tc = detail!.messages[1]!.toolCalls[0]!;
+		const lines = tc.result!.split('\n');
+		expect(lines.length).toBe(151); // 150 lines + truncation indicator
+		expect(lines[150]).toBe('... (50 more lines)');
+	});
+
+	it('handles empty string tool_result content', async () => {
+		const projDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projDir, {recursive: true});
+		writeFileSync(
+			join(projDir, 'empty-result.jsonl'),
+			jsonl(
+				userMessage('Go'),
+				assistantMessage([{type: 'tool_use', id: 'tu_e', name: 'Write', input: {file_path: '/f.ts'}}]),
+				userMessageArray([{type: 'tool_result', tool_use_id: 'tu_e', content: '', is_error: false}]),
+			),
+		);
+
+		const detail = await readSession(testDir, 'empty-result');
+		const tc = detail!.messages[1]!.toolCalls[0]!;
+		expect(tc.result).toBe('');
+		expect(tc.isError).toBeUndefined();
+	});
+
+	it('strips <tool_use_error> tags from error results', async () => {
+		const projDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projDir, {recursive: true});
+		writeFileSync(
+			join(projDir, 'tool-error-tags.jsonl'),
+			jsonl(
+				userMessage('Edit'),
+				assistantMessage([{type: 'tool_use', id: 'tu_te', name: 'Edit', input: {file_path: '/f.ts'}}]),
+				userMessageArray([
+					{
+						type: 'tool_result',
+						tool_use_id: 'tu_te',
+						content: '<tool_use_error>Found 2 matches of the string</tool_use_error>',
+						is_error: true,
+					},
+				]),
+			),
+		);
+
+		const detail = await readSession(testDir, 'tool-error-tags');
+		const tc = detail!.messages[1]!.toolCalls[0]!;
+		expect(tc.result).toBe('Found 2 matches of the string');
+		expect(tc.result).not.toContain('<tool_use_error>');
+		expect(tc.isError).toBe(true);
+	});
+
+	it('handles orphan tool_use without matching tool_result', async () => {
+		const projDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projDir, {recursive: true});
+		writeFileSync(
+			join(projDir, 'orphan.jsonl'),
+			jsonl(
+				userMessage('Go'),
+				assistantMessage([{type: 'tool_use', id: 'tu_orphan', name: 'Read', input: {file_path: '/f'}}]),
+			),
+		);
+
+		const detail = await readSession(testDir, 'orphan');
+		const tc = detail!.messages[1]!.toolCalls[0]!;
+		expect(tc.result).toBeUndefined();
+		expect(tc.isError).toBeUndefined();
+	});
+
+	it('handles <persisted-output> wrapper in tool results', async () => {
+		const projDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projDir, {recursive: true});
+		const content =
+			'<persisted-output>\nOutput too large (180.3KB). Full output saved to: /tmp/result.txt\n\nPreview (first 2KB):\nsome preview content\n</persisted-output>';
+		writeFileSync(
+			join(projDir, 'persisted.jsonl'),
+			jsonl(
+				userMessage('Run'),
+				assistantMessage([{type: 'tool_use', id: 'tu_p', name: 'Bash', input: {command: 'cat big.log'}}]),
+				userMessageArray([{type: 'tool_result', tool_use_id: 'tu_p', content}]),
+			),
+		);
+
+		const detail = await readSession(testDir, 'persisted');
+		const tc = detail!.messages[1]!.toolCalls[0]!;
+		expect(tc.result).toContain('Output too large');
+		expect(tc.result).not.toContain('<persisted-output>');
+		expect(tc.result).not.toContain('</persisted-output>');
+	});
+
+	it('tool_result blocks do not leak into user textBlocks', async () => {
+		const projDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projDir, {recursive: true});
+		writeFileSync(
+			join(projDir, 'no-leak.jsonl'),
+			jsonl(
+				userMessage('Go'),
+				assistantMessage([{type: 'tool_use', id: 'tu_x', name: 'Read', input: {file_path: '/x'}}]),
+				userMessageArray([
+					{type: 'tool_result', tool_use_id: 'tu_x', content: 'file content here'},
+					{type: 'text', text: 'Follow-up question'},
+				]),
+			),
+		);
+
+		const detail = await readSession(testDir, 'no-leak');
+		// The user message with tool_result + text should only have the text in textBlocks
+		const userMsg = detail!.messages.find((m) => m.role === 'user' && m.textBlocks.includes('Follow-up question'));
+		expect(userMsg).toBeDefined();
+		expect(userMsg!.textBlocks).not.toContain('file content here');
 	});
 });
