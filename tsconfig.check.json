@@ -1,8 +1,7 @@
 {
 	"extends": "./tsconfig.json",
 	"compilerOptions": {
-		"rootDir": ".",
 		"noEmit": true
 	},
-	"include": ["src/**/*", "tests/**/*", "vitest.config.ts", "eslint.config.ts"]
+	"include": ["src/**/*", "tests/**/*", "vitest.config.ts", "vite.config.ts", "eslint.config.ts"]
 }

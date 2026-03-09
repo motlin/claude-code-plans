@@ -4,7 +4,7 @@ import tsparser from '@typescript-eslint/parser';
 import type {Linter} from 'eslint';
 
 const config: Linter.Config[] = [
-	{ignores: ['dist', 'coverage', '.llm/**']},
+	{ignores: ['dist', 'coverage', '.llm/**', '.output/**', '.vinxi/**', 'src/routeTree.gen.ts']},
 	{
 		files: ['vitest.config.ts'],
 		languageOptions: {

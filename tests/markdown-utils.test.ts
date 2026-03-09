@@ -1,7 +1,7 @@
 import {writeFileSync, mkdirSync, rmSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {humanizeFilename, extractTitleFromContent, extractTitle} from '../src/markdown-utils.js';
+import {humanizeFilename, extractTitleFromContent, extractTitle} from '../src/lib/markdown-utils.js';
 
 const testDir = join(tmpdir(), 'claude-md-utils-test-' + process.pid);
 

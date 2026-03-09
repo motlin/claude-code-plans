@@ -1,15 +1,20 @@
 import MarkdownIt from 'markdown-it';
 import Shiki from '@shikijs/markdown-it';
+import taskLists from 'markdown-it-task-lists';
+import footnote from 'markdown-it-footnote';
+import {claudeLight} from './claude-light-theme';
 
 let md: MarkdownIt | null = null;
 
 async function getMd(): Promise<MarkdownIt> {
 	if (md) return md;
-	md = MarkdownIt({html: true});
+	md = MarkdownIt({html: true, linkify: true});
+	md.use(taskLists);
+	md.use(footnote);
 	md.use(
 		await Shiki({
 			themes: {
-				light: 'github-light',
+				light: claudeLight,
 				dark: 'github-dark',
 			},
 		}),

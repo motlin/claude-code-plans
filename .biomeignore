@@ -5,6 +5,11 @@ package-lock.json
 
 # Ignore build output
 dist/
+.output/
+.vinxi/
+
+# Generated files
+src/routeTree.gen.ts
 
 # Ignore dependencies
 node_modules/

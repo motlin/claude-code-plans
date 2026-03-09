@@ -11,7 +11,7 @@ _ci := if ci != "" { ":ci" } else { "" }
 install:
     {{ if ci != "" { "npm ci" } else { "npm install" } }}
 
-# Run dev server with tsx
+# Run dev server with Vite
 dev *args: install
     npm run dev {{args}}
 
@@ -44,7 +44,7 @@ build: install
 
 # Run all pre-commit checks
 [arg("quick", long, value="true", help="Skip tests")]
-precommit quick="": eslint format typecheck build
+precommit quick="": eslint format build typecheck
     {{ if quick != "true" { "just test" } else { "true" } }}
     @echo "All pre-commit checks passed!"
 

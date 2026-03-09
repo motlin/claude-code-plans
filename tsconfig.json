@@ -1,9 +1,10 @@
 {
 	"compilerOptions": {
 		"target": "ES2022",
-		"module": "NodeNext",
-		"moduleResolution": "NodeNext",
-		"lib": ["ES2022"],
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		"lib": ["ES2022", "DOM", "DOM.Iterable"],
+		"jsx": "react-jsx",
 		"strict": true,
 		"esModuleInterop": true,
 		"skipLibCheck": true,
@@ -25,11 +26,9 @@
 		"declarationMap": true,
 		"sourceMap": true,
 		"inlineSources": true,
-		"outDir": "./dist",
-		"rootDir": "./src",
 		"newLine": "lf",
 		"types": ["node", "vitest/globals"]
 	},
 	"include": ["src/**/*"],
-	"exclude": ["node_modules", "dist", "coverage"]
+	"exclude": ["node_modules", "dist", "coverage", ".output"]
 }
