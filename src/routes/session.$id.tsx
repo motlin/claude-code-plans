@@ -3,7 +3,7 @@ import {createServerFn} from '@tanstack/react-start';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {readSession, summarizeToolCalls} from '../lib/sessions';
-import {renderMarkdown} from '../lib/renderer';
+import {renderMarkdown, renderToolResultHtml} from '../lib/renderer';
 import {SessionChat} from '../components/session-chat';
 
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
@@ -32,10 +32,21 @@ const getSession = createServerFn({method: 'GET'})
 
 		const messages = await Promise.all(
 			detail.messages.map(async (msg) => {
-				const toolCalls = msg.toolCalls.map((tc) => ({
-					name: tc.name,
-					param: getToolParam(tc),
-				}));
+				const toolCalls = await Promise.all(
+					msg.toolCalls.map(async (tc) => {
+						const resultHtml = tc.result
+							? await renderToolResultHtml(tc.name, tc.input, tc.result, tc.isError ?? false)
+							: undefined;
+						const call: {name: string; param: string; resultHtml?: string} = {
+							name: tc.name,
+							param: getToolParam(tc),
+						};
+						if (resultHtml !== undefined) {
+							call.resultHtml = resultHtml;
+						}
+						return call;
+					}),
+				);
 				const toolSummary = summarizeToolCalls(msg.toolCalls);
 				if (msg.role === 'assistant') {
 					const htmlBlocks = await Promise.all(msg.textBlocks.map((text) => renderMarkdown(text)));

@@ -20,8 +20,11 @@ export interface SessionProjectGroup {
 }
 
 export interface ToolCallInfo {
+	id: string;
 	name: string;
 	input: Record<string, unknown>;
+	result?: string;
+	isError?: boolean;
 }
 
 export interface SessionMessage {
@@ -119,6 +122,7 @@ interface ContentBlock {
 	input?: Record<string, unknown>;
 	tool_use_id?: string;
 	content?: unknown;
+	is_error?: boolean;
 }
 
 function extractFirstUserText(line: string): string | null {
@@ -213,6 +217,40 @@ export async function listSessions(projectsDir: string): Promise<SessionProjectG
 	return groups;
 }
 
+function extractToolResultContent(content: unknown): string | undefined {
+	if (typeof content === 'string') return content;
+	if (Array.isArray(content)) {
+		const texts: string[] = [];
+		for (const item of content) {
+			if (typeof item === 'object' && item !== null && 'type' in item && 'text' in item) {
+				const block = item as {type: string; text: string};
+				if (block.type === 'text' && typeof block.text === 'string') {
+					texts.push(block.text);
+				}
+			}
+		}
+		return texts.length > 0 ? texts.join('\n') : undefined;
+	}
+	return undefined;
+}
+
+function stripResultTags(text: string): string {
+	let result = text;
+	result = result.replace(/<\/?tool_use_error>/g, '');
+	result = result.replace(/<\/?persisted-output>/g, '');
+	// Only trim if tags were actually removed (avoid stripping meaningful whitespace)
+	if (result !== text) result = result.trim();
+	return result;
+}
+
+function truncateResult(text: string, maxLines: number): string {
+	const lines = text.split('\n');
+	if (lines.length <= maxLines) return text;
+	const truncated = lines.slice(0, maxLines);
+	truncated.push(`... (${lines.length - maxLines} more lines)`);
+	return truncated.join('\n');
+}
+
 const SESSION_ID_RE = /^[a-z0-9-]+$/;
 
 export async function readSession(projectsDir: string, sessionId: string): Promise<SessionDetail | null> {
@@ -247,6 +285,7 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 	const projectName = decodeProjectDir(project);
 	const messages: SessionMessage[] = [];
 	let title = sessionId;
+	const toolCallMap = new Map<string, ToolCallInfo>();
 
 	const rl = createInterface({
 		input: createReadStream(filePath, {encoding: 'utf-8'}),
@@ -284,6 +323,14 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 						if (block.type === 'text' && typeof block.text === 'string') {
 							const cleaned = stripCommandTags(block.text);
 							if (cleaned) textBlocks.push(cleaned);
+						} else if (block.type === 'tool_result' && block.tool_use_id) {
+							const rawResult = extractToolResultContent(block.content);
+							const info = toolCallMap.get(block.tool_use_id);
+							if (info && rawResult !== undefined) {
+								const resultText = stripResultTags(rawResult);
+								info.result = truncateResult(resultText, 150);
+								if (block.is_error) info.isError = true;
+							}
 						}
 					}
 				}
@@ -293,10 +340,13 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 						if (block.type === 'text' && typeof block.text === 'string') {
 							textBlocks.push(block.text);
 						} else if (block.type === 'tool_use') {
-							toolCalls.push({
+							const tc: ToolCallInfo = {
+								id: block.id ?? '',
 								name: block.name as string,
 								input: block.input ?? {},
-							});
+							};
+							toolCalls.push(tc);
+							if (tc.id) toolCallMap.set(tc.id, tc);
 						}
 					}
 				}
