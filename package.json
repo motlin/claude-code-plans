@@ -16,7 +16,7 @@
 		"test:run": "vitest run"
 	},
 	"dependencies": {
-		"@shikijs/markdown-it": "^4.0.1",
+		"@shikijs/markdown-it": "^4.0.2",
 		"chokidar": "^5.0.0",
 		"github-markdown-css": "^5.9.0",
 		"markdown-it": "^14.1.0",
