@@ -48,11 +48,11 @@ const getSession = createServerFn({method: 'GET'})
 					}),
 				);
 				const toolSummary = summarizeToolCalls(msg.toolCalls);
+				const htmlBlocks = await Promise.all(msg.textBlocks.map((text) => renderMarkdown(text)));
 				if (msg.role === 'assistant') {
-					const htmlBlocks = await Promise.all(msg.textBlocks.map((text) => renderMarkdown(text)));
 					return {role: 'assistant' as const, htmlBlocks, toolCalls, toolSummary};
 				}
-				return {role: 'user' as const, htmlBlocks: msg.textBlocks, toolCalls, toolSummary};
+				return {role: 'user' as const, htmlBlocks, toolCalls, toolSummary};
 			}),
 		);
 

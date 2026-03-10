@@ -1,7 +1,13 @@
 import {writeFileSync, mkdirSync, rmSync, utimesSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {extractSessionTitle, summarizeToolCalls, listSessions, readSession} from '../src/lib/sessions';
+import {
+	extractSessionTitle,
+	summarizeToolCalls,
+	listSessions,
+	readSession,
+	parseCommandBlock,
+} from '../src/lib/sessions';
 
 const testDir = join(tmpdir(), 'claude-sessions-test-' + process.pid);
 
@@ -59,6 +65,33 @@ describe('extractSessionTitle', () => {
 		expect(result.length).toBeLessThanOrEqual(83); // 80 + '...'
 		expect(result.endsWith('...')).toBe(true);
 		expect(result).not.toContain('boundary');
+	});
+});
+
+describe('parseCommandBlock', () => {
+	it('returns null for plain text', () => {
+		expect(parseCommandBlock('Hello world')).toBeNull();
+	});
+
+	it('extracts command name', () => {
+		const text = '<command-message>git:commit</command-message>\n<command-name>/git:commit</command-name>';
+		expect(parseCommandBlock(text)).toEqual({name: '/git:commit'});
+	});
+
+	it('extracts command name and args', () => {
+		const text =
+			'<command-message>git:commit</command-message>\n<command-name>/git:commit</command-name>\n<command-args>--amend</command-args>';
+		expect(parseCommandBlock(text)).toEqual({name: '/git:commit', args: '--amend'});
+	});
+
+	it('trims whitespace from args', () => {
+		const text = '<command-name>/test</command-name>\n<command-args>  some args  </command-args>';
+		expect(parseCommandBlock(text)).toEqual({name: '/test', args: 'some args'});
+	});
+
+	it('returns undefined args when args tag is empty', () => {
+		const text = '<command-name>/test</command-name>\n<command-args></command-args>';
+		expect(parseCommandBlock(text)).toEqual({name: '/test'});
 	});
 });
 
@@ -455,6 +488,104 @@ describe('readSession', () => {
 		const tc = detail!.messages[1]!.toolCalls[0]!;
 		expect(tc.result).toBeUndefined();
 		expect(tc.isError).toBeUndefined();
+	});
+
+	it('renders slash commands as command pills and hides expanded prompt', async () => {
+		const projDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projDir, {recursive: true});
+		writeFileSync(
+			join(projDir, 'cmd-session.jsonl'),
+			jsonl(
+				userMessage(
+					'<command-message>git:commit</command-message>\n<command-name>/git:commit</command-name>\n<command-args>fix bug</command-args>',
+				),
+				userMessage('ALWAYS use the `code:cli` skill.\n\n## Context\nThis is the expanded prompt...'),
+				assistantMessage([{type: 'text', text: 'Done!'}]),
+			),
+		);
+
+		const detail = await readSession(testDir, 'cmd-session');
+		expect(detail).not.toBeNull();
+		expect(detail!.messages).toHaveLength(2);
+		const cmdMsg = detail!.messages[0]!;
+		expect(cmdMsg.role).toBe('user');
+		expect(cmdMsg.isCommand).toBe(true);
+		expect(cmdMsg.textBlocks).toEqual(['/git:commit fix bug']);
+		// The expanded prompt should be completely hidden
+		expect(cmdMsg.textBlocks).not.toContain('ALWAYS use the `code:cli` skill.');
+	});
+
+	it('renders slash commands without args', async () => {
+		const projDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projDir, {recursive: true});
+		writeFileSync(
+			join(projDir, 'cmd-noargs.jsonl'),
+			jsonl(
+				userMessage('<command-message>git:commit</command-message>\n<command-name>/git:commit</command-name>'),
+				userMessage('Expanded prompt text here'),
+				assistantMessage([{type: 'text', text: 'Ok'}]),
+			),
+		);
+
+		const detail = await readSession(testDir, 'cmd-noargs');
+		const cmdMsg = detail!.messages[0]!;
+		expect(cmdMsg.isCommand).toBe(true);
+		expect(cmdMsg.textBlocks).toEqual(['/git:commit']);
+	});
+
+	it('filters out local-command-caveat blocks', async () => {
+		const projDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projDir, {recursive: true});
+		writeFileSync(
+			join(projDir, 'caveat.jsonl'),
+			jsonl(
+				userMessageArray([
+					{type: 'text', text: '<command-name>/git:commit</command-name>'},
+					{type: 'text', text: '<local-command-caveat>This command runs locally</local-command-caveat>'},
+				]),
+				assistantMessage([{type: 'text', text: 'Ok'}]),
+			),
+		);
+
+		const detail = await readSession(testDir, 'caveat');
+		const cmdMsg = detail!.messages[0]!;
+		expect(cmdMsg.isCommand).toBe(true);
+		expect(cmdMsg.textBlocks).toEqual(['/git:commit']);
+	});
+
+	it('still processes tool_results when coalescing onto command messages', async () => {
+		const projDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projDir, {recursive: true});
+		writeFileSync(
+			join(projDir, 'cmd-tools.jsonl'),
+			jsonl(
+				userMessage('<command-name>/git:commit</command-name>'),
+				assistantMessage([
+					{type: 'text', text: 'Working...'},
+					{type: 'tool_use', id: 'tu_cmd', name: 'Bash', input: {command: 'git commit'}},
+				]),
+				userMessageArray([
+					{type: 'tool_result', tool_use_id: 'tu_cmd', content: 'committed'},
+					{type: 'text', text: 'Expanded prompt follow-up'},
+				]),
+			),
+		);
+
+		const detail = await readSession(testDir, 'cmd-tools');
+		const assistantMsg = detail!.messages[1]!;
+		expect(assistantMsg.toolCalls[0]!.result).toBe('committed');
+	});
+
+	it('regular user messages are not marked as commands', async () => {
+		const projDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projDir, {recursive: true});
+		writeFileSync(
+			join(projDir, 'regular.jsonl'),
+			jsonl(userMessage('Fix the bug'), assistantMessage([{type: 'text', text: 'Ok'}])),
+		);
+
+		const detail = await readSession(testDir, 'regular');
+		expect(detail!.messages[0]!.isCommand).toBeUndefined();
 	});
 
 	it('handles <persisted-output> wrapper in tool results', async () => {
