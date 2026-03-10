@@ -32,6 +32,7 @@ export interface SessionMessage {
 	textBlocks: string[];
 	toolCalls: ToolCallInfo[];
 	timestamp: string;
+	isCommand?: boolean;
 }
 
 export interface SessionDetail {
@@ -46,6 +47,16 @@ const COMMAND_TAG_RE =
 
 export function stripCommandTags(text: string): string {
 	return text.replace(COMMAND_TAG_RE, '').trim();
+}
+
+export function parseCommandBlock(text: string): {name: string; args?: string} | null {
+	const nameMatch = text.match(/<command-name>(.*?)<\/command-name>/);
+	if (!nameMatch) return null;
+	const argsMatch = text.match(/<command-args>(.*?)<\/command-args>/s);
+	const args = argsMatch?.[1]?.trim();
+	const result: {name: string; args?: string} = {name: nameMatch[1]!};
+	if (args) result.args = args;
+	return result;
 }
 
 export function extractSessionTitle(text: string, fallback?: string): string {
@@ -313,16 +324,29 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 			const textBlocks: string[] = [];
 			const toolCalls: ToolCallInfo[] = [];
 			const content = message.content;
+			let isCommand = false;
 
 			if (type === 'user') {
-				if (typeof content === 'string') {
-					const cleaned = stripCommandTags(content);
+				const processUserText = (text: string) => {
+					const cmd = parseCommandBlock(text);
+					if (cmd) {
+						isCommand = true;
+						const label = cmd.args ? `${cmd.name} ${cmd.args}` : cmd.name;
+						textBlocks.push(label);
+						return;
+					}
+					// Filter out local-command-caveat blocks entirely
+					if (/<local-command-caveat>/.test(text)) return;
+					const cleaned = stripCommandTags(text);
 					if (cleaned) textBlocks.push(cleaned);
+				};
+
+				if (typeof content === 'string') {
+					processUserText(content);
 				} else if (Array.isArray(content)) {
 					for (const block of content) {
 						if (block.type === 'text' && typeof block.text === 'string') {
-							const cleaned = stripCommandTags(block.text);
-							if (cleaned) textBlocks.push(cleaned);
+							processUserText(block.text);
 						} else if (block.type === 'tool_result' && block.tool_use_id) {
 							const rawResult = extractToolResultContent(block.content);
 							const info = toolCallMap.get(block.tool_use_id);
@@ -362,10 +386,18 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 			// Coalesce consecutive same-role messages
 			const last = messages[messages.length - 1];
 			if (last && last.role === type) {
-				last.textBlocks.push(...textBlocks);
-				last.toolCalls.push(...toolCalls);
+				if (last.isCommand) {
+					// When coalescing onto a command message, skip text blocks
+					// (they're the expanded prompt) but keep tool results
+					last.toolCalls.push(...toolCalls);
+				} else {
+					last.textBlocks.push(...textBlocks);
+					last.toolCalls.push(...toolCalls);
+				}
 			} else {
-				messages.push({role: type as 'user' | 'assistant', textBlocks, toolCalls, timestamp});
+				const msg: SessionMessage = {role: type as 'user' | 'assistant', textBlocks, toolCalls, timestamp};
+				if (isCommand) msg.isCommand = true;
+				messages.push(msg);
 			}
 		}
 	} finally {

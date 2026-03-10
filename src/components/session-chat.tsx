@@ -34,7 +34,7 @@ export function SessionChat({messages}: {messages: ChatMessage[]}) {
 						className={isNewTurn ? 'pb-4' : ''}
 					>
 						{msg.role === 'user' ? (
-							<UserMessage texts={msg.htmlBlocks} />
+							<UserMessage htmlBlocks={msg.htmlBlocks} />
 						) : (
 							<AssistantMessage
 								htmlBlocks={msg.htmlBlocks}
@@ -51,16 +51,16 @@ export function SessionChat({messages}: {messages: ChatMessage[]}) {
 	);
 }
 
-function UserMessage({texts}: {texts: string[]}) {
+function UserMessage({htmlBlocks}: {htmlBlocks: string[]}) {
 	return (
 		<div className="flex flex-col items-end gap-2 ml-auto max-w-[85%] w-fit">
-			{texts.map((text, i) => (
+			{htmlBlocks.map((html, i) => (
 				<div
 					key={i}
-					className="whitespace-pre-wrap rounded-lg px-3 py-2 break-words min-w-0 overflow-hidden bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)]"
+					className="rounded-lg px-3 py-2 break-words min-w-0 overflow-hidden bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)]"
 					style={{fontSize: '14px', fontWeight: 430, lineHeight: '19.6px'}}
 				>
-					{text}
+					<MarkdownArticle html={html} />
 				</div>
 			))}
 		</div>
