@@ -1,7 +1,7 @@
-import {writeFileSync, mkdirSync, rmSync, utimesSync} from 'node:fs';
+import {writeFileSync, mkdirSync, rmSync, utimesSync, readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir, homedir} from 'node:os';
-import {decodeProjectDir, listMemories, readMemory, getProjectsDir} from '../src/lib/memory.js';
+import {decodeProjectDir, listMemories, readMemory, writeMemory, getProjectsDir} from '../src/lib/memory.js';
 
 const testDir = join(tmpdir(), 'claude-memory-test-' + process.pid);
 
@@ -153,6 +153,54 @@ describe('readMemory', () => {
 	it('rejects slash in project param', async () => {
 		const content = await readMemory(testDir, 'foo/bar', 'MEMORY.md');
 		expect(content).toBeNull();
+	});
+});
+
+describe('writeMemory', () => {
+	it('writes content to a memory file', async () => {
+		const memDir = join(testDir, '-Users-craig-projects-app', 'memory');
+		mkdirSync(memDir, {recursive: true});
+
+		const ok = await writeMemory(testDir, '-Users-craig-projects-app', 'notes.md', '# Notes\n\nContent');
+		expect(ok).toBe(true);
+		const written = readFileSync(join(memDir, 'notes.md'), 'utf-8');
+		expect(written).toBe('# Notes\n\nContent');
+	});
+
+	it('overwrites an existing memory file', async () => {
+		const memDir = join(testDir, '-Users-craig-projects-app', 'memory');
+		mkdirSync(memDir, {recursive: true});
+		writeFileSync(join(memDir, 'MEMORY.md'), '# Old');
+
+		const ok = await writeMemory(testDir, '-Users-craig-projects-app', 'MEMORY.md', '# Updated');
+		expect(ok).toBe(true);
+		const written = readFileSync(join(memDir, 'MEMORY.md'), 'utf-8');
+		expect(written).toBe('# Updated');
+	});
+
+	it('rejects path traversal in project param', async () => {
+		const ok = await writeMemory(testDir, '../etc', 'file.md', 'bad');
+		expect(ok).toBe(false);
+	});
+
+	it('rejects path traversal in filename param', async () => {
+		const ok = await writeMemory(testDir, '-Users-craig-projects-app', '../../../etc/passwd.md', 'bad');
+		expect(ok).toBe(false);
+	});
+
+	it('rejects slash in project param', async () => {
+		const ok = await writeMemory(testDir, 'foo/bar', 'file.md', 'bad');
+		expect(ok).toBe(false);
+	});
+
+	it('rejects slash in filename', async () => {
+		const ok = await writeMemory(testDir, '-Users-craig-projects-app', 'sub/file.md', 'bad');
+		expect(ok).toBe(false);
+	});
+
+	it('rejects non-md extension', async () => {
+		const ok = await writeMemory(testDir, '-Users-craig-projects-app', 'file.txt', 'bad');
+		expect(ok).toBe(false);
 	});
 });
 

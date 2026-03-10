@@ -1,4 +1,4 @@
-import {readdir, readFile, stat} from 'node:fs/promises';
+import {readdir, readFile, stat, writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {extractTitle} from './markdown-utils.js';
 
@@ -46,4 +46,10 @@ export async function readPlan(plansDir: string, filename: string): Promise<stri
 	} catch {
 		return null;
 	}
+}
+
+export async function writePlan(plansDir: string, filename: string, content: string): Promise<boolean> {
+	if (filename.includes('..') || filename.includes('/') || !filename.endsWith('.md')) return false;
+	await writeFile(join(plansDir, filename), content, 'utf-8');
+	return true;
 }

@@ -28,7 +28,9 @@ export const Route = createFileRoute('/plan/$filename')({
 });
 
 function PlanPage() {
-	const data = Route.useLoaderData();
+	const loaderData = Route.useLoaderData();
+	const state = Route.useMatch({select: (m) => (m as unknown as {state?: {html?: string; title?: string}}).state});
+	const data = state?.html ? {html: state.html, title: state.title ?? loaderData?.title ?? ''} : loaderData;
 
 	if (!data) {
 		return (
@@ -47,12 +49,21 @@ function PlanPage() {
 
 	return (
 		<div>
-			<Link
-				to="/plans"
-				className="text-sm text-primary hover:underline"
-			>
-				&larr; All Plans
-			</Link>
+			<div className="flex items-center gap-4">
+				<Link
+					to="/plans"
+					className="text-sm text-primary hover:underline"
+				>
+					&larr; All Plans
+				</Link>
+				<Link
+					to="/plan/$filename/edit"
+					params={{filename: Route.useParams().filename}}
+					className="text-sm text-primary hover:underline"
+				>
+					Edit
+				</Link>
+			</div>
 			<div className="mt-4">
 				<MarkdownArticle html={data.html} />
 			</div>
