@@ -1,11 +1,22 @@
 import {Link, useMatches} from '@tanstack/react-router';
 import {FileText, Brain, MessageSquare} from 'lucide-react';
+import {useEffect, useState} from 'react';
+import {getPlans, getMemories, getSessions} from '../lib/server-fns';
 
 const navItems = [
-	{to: '/plans', label: 'Plans', icon: FileText},
-	{to: '/memories', label: 'Memories', icon: Brain},
-	{to: '/sessions', label: 'Sessions', icon: MessageSquare},
-] as const;
+	{to: '/plans', label: 'Plans', icon: FileText, section: 'plans' as const},
+	{to: '/memories', label: 'Memories', icon: Brain, section: 'memories' as const},
+	{to: '/sessions', label: 'Sessions', icon: MessageSquare, section: 'sessions' as const},
+];
+
+type Section = 'plans' | 'memories' | 'sessions';
+
+interface SubItem {
+	id: string;
+	label: string;
+	to: string;
+	params: Record<string, string>;
+}
 
 function SidebarToggleIcon() {
 	return (
@@ -19,9 +30,155 @@ function SidebarToggleIcon() {
 	);
 }
 
-export function Sidebar({collapsed, onToggle}: {collapsed: boolean; onToggle: () => void}) {
+function useActiveSection(matches: ReturnType<typeof useMatches>): {
+	section: Section | null;
+	activeItemId: string | null;
+} {
+	const lastMatch = matches[matches.length - 1];
+	const path = lastMatch?.fullPath ?? '/';
+	const params = lastMatch?.params as Record<string, string> | undefined;
+
+	if (path.startsWith('/plan') || path === '/plans') {
+		return {
+			section: 'plans',
+			activeItemId: params?.['filename'] ?? null,
+		};
+	}
+	if (path.startsWith('/memor') || path === '/memories') {
+		return {
+			section: 'memories',
+			activeItemId:
+				params?.['project'] && params?.['filename'] ? `${params['project']}/${params['filename']}` : null,
+		};
+	}
+	if (path.startsWith('/session') || path === '/sessions') {
+		return {
+			section: 'sessions',
+			activeItemId: params?.['id'] ?? null,
+		};
+	}
+	return {section: null, activeItemId: null};
+}
+
+function LoadingBars() {
+	return (
+		<div className="space-y-1.5 py-1">
+			<div className="h-3 w-3/4 animate-pulse rounded bg-black/5 dark:bg-white/5" />
+			<div className="h-3 w-1/2 animate-pulse rounded bg-black/5 dark:bg-white/5" />
+			<div className="h-3 w-2/3 animate-pulse rounded bg-black/5 dark:bg-white/5" />
+		</div>
+	);
+}
+
+function SubList({
+	section,
+	activeItemId,
+	refreshKey,
+}: {
+	section: Section;
+	activeItemId: string | null;
+	refreshKey: number;
+}) {
+	const [items, setItems] = useState<SubItem[] | null>(null);
+
+	useEffect(() => {
+		let cancelled = false;
+
+		async function fetchItems() {
+			let result: SubItem[] = [];
+
+			if (section === 'plans') {
+				const plans = await getPlans();
+				result = plans.map((p) => ({
+					id: p.filename,
+					label: p.title,
+					to: '/plan/$filename',
+					params: {filename: p.filename},
+				}));
+			} else if (section === 'memories') {
+				const groups = await getMemories();
+				const all = groups
+					.flatMap((g) => g.memories)
+					.sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime())
+					.slice(0, 20);
+				result = all.map((m) => ({
+					id: `${m.project}/${m.filename}`,
+					label: m.title,
+					to: '/memory/$project/$filename',
+					params: {project: m.project, filename: m.filename},
+				}));
+			} else if (section === 'sessions') {
+				const groups = await getSessions();
+				const all = groups
+					.flatMap((g) => g.sessions)
+					.sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime())
+					.slice(0, 20);
+				result = all.map((s) => ({
+					id: s.id,
+					label: s.title,
+					to: '/session/$id',
+					params: {id: s.id},
+				}));
+			}
+
+			if (!cancelled) {
+				setItems(result);
+			}
+		}
+
+		fetchItems();
+		return () => {
+			cancelled = true;
+		};
+	}, [section, refreshKey]);
+
+	if (items === null) {
+		return (
+			<div className="pl-10">
+				<LoadingBars />
+			</div>
+		);
+	}
+
+	if (items.length === 0) {
+		return null;
+	}
+
+	return (
+		<div className="pl-10">
+			{items.map((item) => {
+				const isActive = item.id === activeItemId;
+				return (
+					<Link
+						key={item.id}
+						to={item.to as string}
+						params={item.params}
+						className={`mb-px block truncate rounded-[4px] px-2 py-1 text-xs no-underline transition-colors ${
+							isActive
+								? 'bg-black/5 font-medium text-[rgb(20,20,19)] dark:bg-white/10 dark:text-[rgb(235,235,230)]'
+								: 'text-[rgb(115,114,108)] hover:bg-black/5 hover:text-[rgb(61,61,58)] dark:text-[rgb(150,150,145)] dark:hover:bg-white/5 dark:hover:text-[rgb(200,200,195)]'
+						}`}
+					>
+						{item.label}
+					</Link>
+				);
+			})}
+		</div>
+	);
+}
+
+export function Sidebar({
+	collapsed,
+	onToggle,
+	refreshKey,
+}: {
+	collapsed: boolean;
+	onToggle: () => void;
+	refreshKey: number;
+}) {
 	const matches = useMatches();
 	const currentPath = matches[matches.length - 1]?.fullPath ?? '/';
+	const {section: activeSection, activeItemId} = useActiveSection(matches);
 
 	if (collapsed) {
 		return (
@@ -80,19 +237,27 @@ export function Sidebar({collapsed, onToggle}: {collapsed: boolean; onToggle: ()
 					const isActive = currentPath.startsWith(item.to);
 					const Icon = item.icon;
 					return (
-						<Link
-							key={item.to}
-							to={item.to}
-							className={`mb-0.5 flex h-8 items-center gap-2 rounded-[6px] px-4 py-1.5 text-xs no-underline transition-colors ${
-								isActive
-									? 'bg-black/5 font-medium text-[rgb(20,20,19)] dark:bg-white/10 dark:text-[rgb(235,235,230)]'
-									: 'text-[rgb(61,61,58)] hover:bg-black/5 dark:text-[rgb(180,180,175)] dark:hover:bg-white/10'
-							}`}
-							style={{fontWeight: isActive ? 500 : 430, lineHeight: '16px'}}
-						>
-							<Icon className="h-4 w-4 shrink-0" />
-							{item.label}
-						</Link>
+						<div key={item.to}>
+							<Link
+								to={item.to}
+								className={`mb-0.5 flex h-8 items-center gap-2 rounded-[6px] px-4 py-1.5 text-xs no-underline transition-colors ${
+									isActive
+										? 'bg-black/5 font-medium text-[rgb(20,20,19)] dark:bg-white/10 dark:text-[rgb(235,235,230)]'
+										: 'text-[rgb(61,61,58)] hover:bg-black/5 dark:text-[rgb(180,180,175)] dark:hover:bg-white/10'
+								}`}
+								style={{fontWeight: isActive ? 500 : 430, lineHeight: '16px'}}
+							>
+								<Icon className="h-4 w-4 shrink-0" />
+								{item.label}
+							</Link>
+							{activeSection === item.section && (
+								<SubList
+									section={item.section}
+									activeItemId={activeItemId}
+									refreshKey={refreshKey}
+								/>
+							)}
+						</div>
 					);
 				})}
 			</div>

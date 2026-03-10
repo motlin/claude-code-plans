@@ -1,25 +1,5 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {createServerFn} from '@tanstack/react-start';
-import {homedir} from 'node:os';
-import {join} from 'node:path';
-import {listSessions} from '../lib/sessions';
-
-const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
-
-const getSessions = createServerFn({method: 'GET'}).handler(async () => {
-	const groups = await listSessions(PROJECTS_DIR);
-	return groups.map((g) => ({
-		project: g.project,
-		projectName: g.projectName,
-		sessions: g.sessions.map((s) => ({
-			id: s.id,
-			title: s.title,
-			mtime: s.mtime.toISOString(),
-			project: s.project,
-			projectName: s.projectName,
-		})),
-	}));
-});
+import {getSessions} from '../lib/server-fns';
 
 export const Route = createFileRoute('/sessions')({
 	component: SessionsPage,

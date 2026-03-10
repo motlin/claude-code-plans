@@ -1,19 +1,5 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {createServerFn} from '@tanstack/react-start';
-import {homedir} from 'node:os';
-import {join} from 'node:path';
-import {listPlans} from '../lib/plans';
-
-const PLANS_DIR = process.env['PLANS_DIR'] ?? join(homedir(), '.claude', 'plans');
-
-const getPlans = createServerFn({method: 'GET'}).handler(async () => {
-	const plans = await listPlans(PLANS_DIR);
-	return plans.map((p) => ({
-		filename: p.filename,
-		title: p.title,
-		mtime: p.mtime.toISOString(),
-	}));
-});
+import {getPlans} from '../lib/server-fns';
 
 export const Route = createFileRoute('/plans')({
 	component: PlansPage,

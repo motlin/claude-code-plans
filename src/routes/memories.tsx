@@ -1,24 +1,5 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {createServerFn} from '@tanstack/react-start';
-import {homedir} from 'node:os';
-import {join} from 'node:path';
-import {listMemories} from '../lib/memory';
-
-const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
-
-const getMemories = createServerFn({method: 'GET'}).handler(async () => {
-	const groups = await listMemories(PROJECTS_DIR);
-	return groups.map((g) => ({
-		project: g.project,
-		projectName: g.projectName,
-		memories: g.memories.map((m) => ({
-			filename: m.filename,
-			title: m.title,
-			mtime: m.mtime.toISOString(),
-			project: m.project,
-		})),
-	}));
-});
+import {getMemories} from '../lib/server-fns';
 
 export const Route = createFileRoute('/memories')({
 	component: MemoriesPage,
