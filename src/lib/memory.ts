@@ -1,4 +1,4 @@
-import {readdir, readFile, stat} from 'node:fs/promises';
+import {readdir, readFile, stat, writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {homedir} from 'node:os';
 import {extractTitle} from './markdown-utils.js';
@@ -82,6 +82,18 @@ export async function readMemory(projectsDir: string, project: string, filename:
 	} catch {
 		return null;
 	}
+}
+
+export async function writeMemory(
+	projectsDir: string,
+	project: string,
+	filename: string,
+	content: string,
+): Promise<boolean> {
+	if (project.includes('..') || project.includes('/')) return false;
+	if (filename.includes('..') || filename.includes('/') || !filename.endsWith('.md')) return false;
+	await writeFile(join(projectsDir, project, 'memory', filename), content, 'utf-8');
+	return true;
 }
 
 export function getProjectsDir(): string {

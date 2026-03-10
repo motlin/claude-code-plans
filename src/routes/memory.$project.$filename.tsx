@@ -29,7 +29,17 @@ export const Route = createFileRoute('/memory/$project/$filename')({
 });
 
 function MemoryPage() {
-	const data = Route.useLoaderData();
+	const loaderData = Route.useLoaderData();
+	const state = Route.useMatch({
+		select: (m) => (m as unknown as {state?: {html?: string; title?: string; projectName?: string}}).state,
+	});
+	const data = state?.html
+		? {
+				html: state.html,
+				title: state.title ?? loaderData?.title ?? '',
+				projectName: state.projectName ?? loaderData?.projectName ?? '',
+			}
+		: loaderData;
 
 	if (!data) {
 		return (
@@ -56,6 +66,13 @@ function MemoryPage() {
 					&larr; All Memories
 				</Link>
 				<span className="text-xs text-muted-foreground">{data.projectName}</span>
+				<Link
+					to="/memory/$project/$filename/edit"
+					params={Route.useParams()}
+					className="text-sm text-primary hover:underline"
+				>
+					Edit
+				</Link>
 			</div>
 			<div className="mt-4">
 				<MarkdownArticle html={data.html} />

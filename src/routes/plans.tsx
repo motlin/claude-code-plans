@@ -49,13 +49,14 @@ function PlansPage() {
 				<p className="mt-4 text-muted-foreground">No plans found.</p>
 			) : (
 				<ul className="mt-4 space-y-2">
-					{plans.map((plan) => {
+					{plans.map((plan, index) => {
 						const ageHours = (now - new Date(plan.mtime).getTime()) / 3600000;
 						return (
 							<li key={plan.filename}>
 								<Link
 									to="/plan/$filename"
 									params={{filename: plan.filename}}
+									preload={index < 2 ? 'render' : 'intent'}
 									className="flex items-center justify-between rounded-md border border-border px-4 py-3 transition-colors hover:bg-muted/50"
 								>
 									<span className="flex items-center gap-2 text-sm font-medium">

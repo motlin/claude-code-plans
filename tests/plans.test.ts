@@ -1,7 +1,7 @@
-import {writeFileSync, mkdirSync, rmSync, utimesSync} from 'node:fs';
+import {writeFileSync, mkdirSync, rmSync, utimesSync, readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {listPlans, readPlan} from '../src/lib/plans.js';
+import {listPlans, readPlan, writePlan} from '../src/lib/plans.js';
 
 const testDir = join(tmpdir(), 'claude-plans-test-' + process.pid);
 
@@ -92,5 +92,37 @@ describe('readPlan', () => {
 	it('rejects filenames with slashes', async () => {
 		const content = await readPlan(testDir, 'subdir/plan.md');
 		expect(content).toBeNull();
+	});
+});
+
+describe('writePlan', () => {
+	it('writes content to a plan file', async () => {
+		const ok = await writePlan(testDir, 'new-plan.md', '# New Plan\n\nContent');
+		expect(ok).toBe(true);
+		const written = readFileSync(join(testDir, 'new-plan.md'), 'utf-8');
+		expect(written).toBe('# New Plan\n\nContent');
+	});
+
+	it('overwrites an existing plan file', async () => {
+		writeFileSync(join(testDir, 'existing.md'), '# Old');
+		const ok = await writePlan(testDir, 'existing.md', '# Updated');
+		expect(ok).toBe(true);
+		const written = readFileSync(join(testDir, 'existing.md'), 'utf-8');
+		expect(written).toBe('# Updated');
+	});
+
+	it('rejects path traversal with ..', async () => {
+		const ok = await writePlan(testDir, '../evil.md', 'bad');
+		expect(ok).toBe(false);
+	});
+
+	it('rejects filenames with slashes', async () => {
+		const ok = await writePlan(testDir, 'sub/file.md', 'bad');
+		expect(ok).toBe(false);
+	});
+
+	it('rejects non-md extension', async () => {
+		const ok = await writePlan(testDir, 'file.txt', 'bad');
+		expect(ok).toBe(false);
 	});
 });
