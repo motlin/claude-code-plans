@@ -29,6 +29,7 @@ export const Route = createRootRoute({
 
 function RootComponent() {
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+	const [refreshKey, setRefreshKey] = useState(0);
 
 	return (
 		<RootDocument>
@@ -37,6 +38,7 @@ function RootComponent() {
 					<Sidebar
 						collapsed={sidebarCollapsed}
 						onToggle={() => setSidebarCollapsed((c) => !c)}
+						refreshKey={refreshKey}
 					/>
 					<main className="flex-1 overflow-y-auto bg-white dark:bg-[hsl(220_13%_10%)]">
 						<div className="flex items-center justify-end p-3">
@@ -47,22 +49,23 @@ function RootComponent() {
 						</div>
 					</main>
 				</div>
-				<SseListener />
+				<SseListener onContentUpdated={() => setRefreshKey((k) => k + 1)} />
 			</ThemeProvider>
 		</RootDocument>
 	);
 }
 
-function SseListener() {
+function SseListener({onContentUpdated}: {onContentUpdated: () => void}) {
 	const router = useRouter();
 
 	useEffect(() => {
 		const es = new EventSource('/api/events');
 		es.addEventListener('content-updated', () => {
 			router.invalidate();
+			onContentUpdated();
 		});
 		return () => es.close();
-	}, [router]);
+	}, [router, onContentUpdated]);
 
 	return null;
 }
