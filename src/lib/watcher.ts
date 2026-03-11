@@ -1,10 +1,13 @@
 import {watch} from 'chokidar';
 import type {FSWatcher} from 'chokidar';
+import {getDb} from './db';
+import {indexFile} from './db/indexer';
 
 const clients = new Set<ReadableStreamDefaultController>();
 const encoder = new TextEncoder();
 
 let watcher: FSWatcher | null = null;
+let projectsDir = '';
 
 export function broadcast(): void {
 	const data = encoder.encode('event: content-updated\ndata: {}\n\n');
@@ -40,18 +43,34 @@ function handleFileChange(path: string): void {
 
 	if (ext === '.jsonl') {
 		if (jsonlDebounceTimer) clearTimeout(jsonlDebounceTimer);
-		jsonlDebounceTimer = setTimeout(() => {
+		jsonlDebounceTimer = setTimeout(async () => {
+			try {
+				const {index} = getDb();
+				await indexFile(index, path, projectsDir);
+			} catch {
+				// indexing error, still broadcast for UI refresh
+			}
 			broadcast();
 			jsonlDebounceTimer = null;
 		}, JSONL_DEBOUNCE_MS);
 	} else if (ext === '.json' && path.endsWith('sessions-index.json')) {
-		broadcast();
+		(async () => {
+			try {
+				const {index} = getDb();
+				await indexFile(index, path, projectsDir);
+			} catch {
+				// indexing error
+			}
+			broadcast();
+		})();
 	} else if (ext === '.md') {
 		broadcast();
 	}
 }
 
-export function createWatcher(dirs: string[]): FSWatcher {
+export function createWatcher(dirs: string[], projDir?: string): FSWatcher {
+	if (projDir) projectsDir = projDir;
+
 	watcher = watch(dirs, {
 		ignoreInitial: true,
 		awaitWriteFinish: {stabilityThreshold: 300, pollInterval: 100},

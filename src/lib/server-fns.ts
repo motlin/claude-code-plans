@@ -1,12 +1,12 @@
 import {createServerFn} from '@tanstack/react-start';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
+import {readdir, stat} from 'node:fs/promises';
 import {listPlans} from './plans';
 import {listMemories} from './memory';
-import {listSessions} from './sessions';
-import {listProjects, getProjectDetail} from './projects';
-import {scanPlanLinks} from './plan-links';
 import {extractTitle} from './markdown-utils';
+import {getDb} from './db';
+import {listProjectsFromDb, listSessionsFromDb, getProjectDetailFromDb, getPlanLinksFromDb} from './db/queries';
 
 const PLANS_DIR = process.env['PLANS_DIR'] ?? join(homedir(), '.claude', 'plans');
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
@@ -35,7 +35,8 @@ export const getMemories = createServerFn({method: 'GET'}).handler(async () => {
 });
 
 export const getSessions = createServerFn({method: 'GET'}).handler(async () => {
-	const groups = await listSessions(PROJECTS_DIR);
+	const {index} = getDb();
+	const groups = listSessionsFromDb(index);
 	return groups.map((g) => ({
 		project: g.project,
 		projectName: g.projectName,
@@ -54,23 +55,65 @@ export const getSessions = createServerFn({method: 'GET'}).handler(async () => {
 });
 
 export const getProjects = createServerFn({method: 'GET'}).handler(async () => {
-	const projects = await listProjects(PROJECTS_DIR);
-	return projects.map((p) => ({
-		id: p.id,
-		name: p.name,
-		projectPath: p.projectPath,
-		sessionCount: p.sessionCount,
-		memoryCount: p.memoryCount,
-		lastActivity: p.lastActivity.toISOString(),
-		gitBranch: p.gitBranch,
-	}));
+	const {index} = getDb();
+	const projects = listProjectsFromDb(index);
+
+	// Enrich with memory counts (still from filesystem)
+	const enriched = await Promise.all(
+		projects.map(async (p) => {
+			let memoryCount = 0;
+			try {
+				const memDir = join(PROJECTS_DIR, p.id, 'memory');
+				const files = await readdir(memDir);
+				memoryCount = files.filter((f) => f.endsWith('.md')).length;
+			} catch {
+				// no memory dir
+			}
+			return {
+				id: p.id,
+				name: p.name,
+				projectPath: p.projectPath,
+				sessionCount: p.sessionCount,
+				memoryCount,
+				lastActivity: new Date(p.lastActivity).toISOString(),
+			};
+		}),
+	);
+
+	return enriched;
 });
 
 export const getProject = createServerFn({method: 'GET'})
 	.inputValidator((d: string) => d)
 	.handler(async ({data: projectId}) => {
-		const detail = await getProjectDetail(PROJECTS_DIR, projectId);
+		const {index} = getDb();
+		const detail = getProjectDetailFromDb(index, projectId);
 		if (!detail) return null;
+
+		// Get memories from filesystem (still user-editable .md files)
+		const memDir = join(PROJECTS_DIR, projectId, 'memory');
+		const memories: Array<{filename: string; title: string; mtime: string; project: string}> = [];
+		try {
+			const files = await readdir(memDir);
+			const mdFiles = files.filter((f) => f.endsWith('.md'));
+			for (const filename of mdFiles) {
+				try {
+					const fileStat = await stat(join(memDir, filename));
+					memories.push({
+						filename,
+						title: filename.replace(/\.md$/, ''),
+						mtime: fileStat.mtime.toISOString(),
+						project: projectId,
+					});
+				} catch {
+					// skip
+				}
+			}
+			memories.sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime());
+		} catch {
+			// no memory dir
+		}
+
 		return {
 			id: detail.id,
 			name: detail.name,
@@ -84,14 +127,9 @@ export const getProject = createServerFn({method: 'GET'})
 				messageCount: s.messageCount,
 				gitBranch: s.gitBranch,
 			})),
-			memories: detail.memories.map((m) => ({
-				filename: m.filename,
-				title: m.title,
-				mtime: m.mtime.toISOString(),
-				project: m.project,
-			})),
+			memories,
 			plans: await Promise.all(
-				[...new Map(detail.plans.map((p) => [p.planFilename, p])).values()].map(async (p) => {
+				[...new Map(detail.planLinks.map((p) => [p.planFilename, p])).values()].map(async (p) => {
 					const planPath = join(PLANS_DIR, p.planFilename);
 					const title = await extractTitle(planPath, p.planFilename);
 					return {
@@ -108,12 +146,11 @@ export const getProject = createServerFn({method: 'GET'})
 export const getPlanLinks = createServerFn({method: 'GET'})
 	.inputValidator((d: string) => d)
 	.handler(async ({data: filename}) => {
-		const links = await scanPlanLinks(PROJECTS_DIR);
-		return links
-			.filter((l) => l.planFilename === filename)
-			.map((l) => ({
-				sessionId: l.sessionId,
-				project: l.project,
-				projectName: l.projectName,
-			}));
+		const {index} = getDb();
+		const links = getPlanLinksFromDb(index, filename);
+		return links.map((l) => ({
+			sessionId: l.sessionId,
+			project: l.projectId,
+			projectName: l.projectName,
+		}));
 	});
