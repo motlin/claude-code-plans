@@ -6,6 +6,7 @@ import {readPlan} from '../lib/plans';
 import {renderMarkdown} from '../lib/renderer';
 import {extractTitleFromContent} from '../lib/markdown-utils';
 import {MarkdownArticle} from '../components/markdown-article';
+import {getPlanLinks} from '../lib/server-fns';
 
 const PLANS_DIR = process.env['PLANS_DIR'] ?? join(homedir(), '.claude', 'plans');
 
@@ -16,7 +17,8 @@ const getPlan = createServerFn({method: 'GET'})
 		if (!content) return null;
 		const html = await renderMarkdown(content);
 		const title = extractTitleFromContent(content, filename);
-		return {html, title};
+		const links = await getPlanLinks({data: filename});
+		return {html, title, links};
 	});
 
 export const Route = createFileRoute('/plan/$filename')({
@@ -30,7 +32,9 @@ export const Route = createFileRoute('/plan/$filename')({
 function PlanPage() {
 	const loaderData = Route.useLoaderData();
 	const state = Route.useMatch({select: (m) => (m as unknown as {state?: {html?: string; title?: string}}).state});
-	const data = state?.html ? {html: state.html, title: state.title ?? loaderData?.title ?? ''} : loaderData;
+	const data = state?.html
+		? {html: state.html, title: state.title ?? loaderData?.title ?? '', links: loaderData?.links ?? []}
+		: loaderData;
 
 	if (!data) {
 		return (
@@ -67,6 +71,27 @@ function PlanPage() {
 			<div className="mt-4">
 				<MarkdownArticle html={data.html} />
 			</div>
+
+			{data.links.length > 0 && (
+				<section className="mt-8 border-t border-border pt-4">
+					<h2 className="text-sm font-semibold">Sessions that used this plan</h2>
+					<ul className="mt-2 space-y-1">
+						{data.links.map((link) => (
+							<li key={link.sessionId}>
+								<Link
+									to="/session/$id"
+									params={{id: link.sessionId}}
+									className="block rounded-md p-2 text-sm transition-colors hover:bg-muted/50"
+								>
+									<span className="text-muted-foreground">{link.projectName}</span>
+									<span className="mx-1.5 text-muted-foreground">&middot;</span>
+									<span className="font-mono text-xs">{link.sessionId.slice(0, 8)}</span>
+								</Link>
+							</li>
+						))}
+					</ul>
+				</section>
+			)}
 		</div>
 	);
 }
