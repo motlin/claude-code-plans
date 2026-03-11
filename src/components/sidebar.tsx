@@ -1,5 +1,5 @@
 import {Link, useMatches} from '@tanstack/react-router';
-import {FileText, Brain, MessageSquare} from 'lucide-react';
+import {FileText, Brain, MessageSquare, ChevronRight} from 'lucide-react';
 import {useEffect, useState} from 'react';
 import {getPlans, getMemories, getSessions} from '../lib/server-fns';
 
@@ -179,6 +179,30 @@ export function Sidebar({
 	const matches = useMatches();
 	const currentPath = matches[matches.length - 1]?.fullPath ?? '/';
 	const {section: activeSection, activeItemId} = useActiveSection(matches);
+	const [collapsedSections, setCollapsedSections] = useState<Set<Section>>(new Set());
+
+	function toggleSection(section: Section) {
+		setCollapsedSections((prev) => {
+			const next = new Set(prev);
+			if (next.has(section)) {
+				next.delete(section);
+			} else {
+				next.add(section);
+			}
+			return next;
+		});
+	}
+
+	// Auto-expand the active section when navigation changes
+	useEffect(() => {
+		if (activeSection && collapsedSections.has(activeSection)) {
+			setCollapsedSections((prev) => {
+				const next = new Set(prev);
+				next.delete(activeSection);
+				return next;
+			});
+		}
+	}, [activeSection]);
 
 	if (collapsed) {
 		return (
@@ -236,21 +260,35 @@ export function Sidebar({
 				{navItems.map((item) => {
 					const isActive = currentPath.startsWith(item.to);
 					const Icon = item.icon;
+					const isExpanded = !collapsedSections.has(item.section);
 					return (
 						<div key={item.to}>
-							<Link
-								to={item.to}
-								className={`mb-0.5 flex h-8 items-center gap-2 rounded-[6px] px-4 py-1.5 text-xs no-underline transition-colors ${
-									isActive
-										? 'bg-black/5 font-medium text-[rgb(20,20,19)] dark:bg-white/10 dark:text-[rgb(235,235,230)]'
-										: 'text-[rgb(61,61,58)] hover:bg-black/5 dark:text-[rgb(180,180,175)] dark:hover:bg-white/10'
-								}`}
-								style={{fontWeight: isActive ? 500 : 430, lineHeight: '16px'}}
-							>
-								<Icon className="h-4 w-4 shrink-0" />
-								{item.label}
-							</Link>
-							{activeSection === item.section && (
+							<div className="flex items-center">
+								<button
+									type="button"
+									onClick={() => toggleSection(item.section)}
+									className="flex h-8 w-6 shrink-0 items-center justify-center text-[rgb(115,114,108)] transition-colors hover:text-[rgb(61,61,58)] dark:text-[rgb(150,150,145)] dark:hover:text-[rgb(200,200,195)]"
+									title={isExpanded ? `Collapse ${item.label}` : `Expand ${item.label}`}
+								>
+									<ChevronRight
+										className="h-3 w-3 transition-transform duration-200"
+										style={{transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'}}
+									/>
+								</button>
+								<Link
+									to={item.to}
+									className={`mb-0.5 flex h-8 flex-1 items-center gap-2 rounded-[6px] px-2 py-1.5 text-xs no-underline transition-colors ${
+										isActive
+											? 'bg-black/5 font-medium text-[rgb(20,20,19)] dark:bg-white/10 dark:text-[rgb(235,235,230)]'
+											: 'text-[rgb(61,61,58)] hover:bg-black/5 dark:text-[rgb(180,180,175)] dark:hover:bg-white/10'
+									}`}
+									style={{fontWeight: isActive ? 500 : 430, lineHeight: '16px'}}
+								>
+									<Icon className="h-4 w-4 shrink-0" />
+									{item.label}
+								</Link>
+							</div>
+							{isExpanded && (
 								<SubList
 									section={item.section}
 									activeItemId={activeItemId}
