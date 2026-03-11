@@ -1,5 +1,5 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {FileText, Brain, MessageSquare} from 'lucide-react';
+import {FileText, Brain, MessageSquare, FolderOpen} from 'lucide-react';
 
 export const Route = createFileRoute('/')({
 	component: Home,
@@ -9,6 +9,12 @@ export const Route = createFileRoute('/')({
 });
 
 const cards = [
+	{
+		to: '/projects',
+		label: 'Projects',
+		description: 'View sessions, memories, and plans by project',
+		icon: FolderOpen,
+	},
 	{to: '/plans', label: 'Plans', description: 'Browse Claude Code plan files', icon: FileText},
 	{to: '/memories', label: 'Memories', description: 'Browse Claude Code memory files by project', icon: Brain},
 	{to: '/sessions', label: 'Sessions', description: 'Browse Claude Code session files', icon: MessageSquare},
