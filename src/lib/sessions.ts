@@ -1,16 +1,25 @@
 import {createReadStream} from 'node:fs';
-import {readdir, stat} from 'node:fs/promises';
+import {readdir, readFile, stat} from 'node:fs/promises';
 import {join} from 'node:path';
 import {createInterface} from 'node:readline';
 import {homedir} from 'node:os';
-import {decodeProjectDir} from './memory';
+import {decodeProjectDir, resolveProjectName} from './memory';
+import {SessionsIndexSchema, CustomTitleRecordSchema} from './schemas';
 
 export interface SessionEntry {
 	id: string;
 	title: string;
+	firstPrompt?: string | undefined;
+	summary?: string | undefined;
+	customTitle?: string | undefined;
 	mtime: Date;
+	created: Date;
 	project: string;
 	projectName: string;
+	projectPath?: string | undefined;
+	messageCount: number;
+	gitBranch?: string | undefined;
+	isSidechain: boolean;
 }
 
 export interface SessionProjectGroup {
@@ -118,6 +127,8 @@ export function summarizeToolCalls(calls: ToolCallInfo[]): string {
 interface JsonlEntry {
 	type: string;
 	timestamp?: string;
+	customTitle?: string;
+	sessionId?: string;
 	message?: {
 		role?: string;
 		content?: string | ContentBlock[];
@@ -177,6 +188,150 @@ async function readFirstUserMessage(filePath: string): Promise<string | null> {
 	return null;
 }
 
+function resolveTitle(entry: {
+	customTitle?: string | undefined;
+	summary?: string | undefined;
+	firstPrompt?: string | undefined;
+	sessionId: string;
+}): string {
+	if (entry.customTitle) return entry.customTitle;
+	if (entry.summary) return entry.summary;
+	if (entry.firstPrompt) return extractSessionTitle(entry.firstPrompt, entry.sessionId);
+	return entry.sessionId;
+}
+
+export async function listSessionsForProject(projectsDir: string, project: string): Promise<SessionEntry[] | null> {
+	const projectDir = join(projectsDir, project);
+	const indexPath = join(projectDir, 'sessions-index.json');
+	let raw: string;
+	try {
+		raw = await readFile(indexPath, 'utf-8');
+	} catch {
+		return null;
+	}
+
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(raw);
+	} catch {
+		return null;
+	}
+
+	const result = SessionsIndexSchema.safeParse(parsed);
+	if (!result.success) {
+		return null;
+	}
+
+	const firstProjectPath = result.data.entries[0]?.projectPath;
+	const projectName = decodeProjectDir(project, firstProjectPath);
+	const sessions: SessionEntry[] = [];
+	const indexedIds = new Set<string>();
+
+	for (const entry of result.data.entries) {
+		indexedIds.add(entry.sessionId);
+		if (entry.isSidechain) continue;
+
+		const title = resolveTitle({
+			summary: entry.summary,
+			firstPrompt: entry.firstPrompt,
+			sessionId: entry.sessionId,
+		});
+
+		sessions.push({
+			id: entry.sessionId,
+			title,
+			firstPrompt: entry.firstPrompt,
+			summary: entry.summary,
+			mtime: new Date(entry.fileMtime),
+			created: entry.created ? new Date(entry.created) : new Date(entry.fileMtime),
+			project,
+			projectName,
+			projectPath: entry.projectPath,
+			messageCount: entry.messageCount ?? 0,
+			gitBranch: entry.gitBranch,
+			isSidechain: entry.isSidechain ?? false,
+		});
+	}
+
+	// Pick up JSONL files not in the index (created after index was last rebuilt)
+	let files: string[];
+	try {
+		files = await readdir(projectDir);
+	} catch {
+		return sessions;
+	}
+
+	for (const file of files) {
+		if (!file.endsWith('.jsonl')) continue;
+		const id = file.replace(/\.jsonl$/, '');
+		if (indexedIds.has(id)) continue;
+
+		const filePath = join(projectDir, file);
+		try {
+			const fileStat = await stat(filePath);
+			const text = await readFirstUserMessage(filePath);
+			const title = extractSessionTitle(text ?? '', id);
+			sessions.push({
+				id,
+				title,
+				firstPrompt: text ?? undefined,
+				mtime: fileStat.mtime,
+				created: fileStat.birthtime,
+				project,
+				projectName,
+				projectPath: firstProjectPath,
+				messageCount: 0,
+				isSidechain: false,
+			});
+		} catch {
+			// skip
+		}
+	}
+
+	return sessions;
+}
+
+export async function listSessionsFromJsonl(projectsDir: string, project: string): Promise<SessionEntry[]> {
+	const projectPath = join(projectsDir, project);
+	let files: string[];
+	try {
+		files = await readdir(projectPath);
+	} catch {
+		return [];
+	}
+
+	const jsonlFiles = files.filter((f) => f.endsWith('.jsonl'));
+	if (jsonlFiles.length === 0) return [];
+
+	const projectName = await resolveProjectName(project);
+	const sessions: SessionEntry[] = [];
+
+	for (const file of jsonlFiles) {
+		const filePath = join(projectPath, file);
+		try {
+			const fileStat = await stat(filePath);
+			const id = file.replace(/\.jsonl$/, '');
+			const text = await readFirstUserMessage(filePath);
+			const title = extractSessionTitle(text ?? '', id);
+			sessions.push({
+				id,
+				title,
+				firstPrompt: text ?? undefined,
+				mtime: fileStat.mtime,
+				created: fileStat.birthtime,
+				project,
+				projectName,
+				messageCount: 0,
+				isSidechain: false,
+			});
+		} catch {
+			// skip unreadable files
+		}
+	}
+
+	return sessions;
+}
+
 export async function listSessions(projectsDir: string): Promise<SessionProjectGroup[]> {
 	let projectDirs: string[];
 	try {
@@ -189,36 +344,21 @@ export async function listSessions(projectsDir: string): Promise<SessionProjectG
 
 	for (const project of projectDirs) {
 		const projectPath = join(projectsDir, project);
-		let files: string[];
 		try {
 			const dirStat = await stat(projectPath);
 			if (!dirStat.isDirectory()) continue;
-			files = await readdir(projectPath);
 		} catch {
 			continue;
 		}
 
-		const jsonlFiles = files.filter((f) => f.endsWith('.jsonl'));
-		if (jsonlFiles.length === 0) continue;
-
-		const projectName = decodeProjectDir(project);
-		const sessions: SessionEntry[] = [];
-
-		for (const file of jsonlFiles) {
-			const filePath = join(projectPath, file);
-			try {
-				const fileStat = await stat(filePath);
-				const id = file.replace(/\.jsonl$/, '');
-				const text = await readFirstUserMessage(filePath);
-				const title = extractSessionTitle(text ?? '', id);
-				sessions.push({id, title, mtime: fileStat.mtime, project, projectName});
-			} catch {
-				// skip unreadable files
-			}
+		let sessions = await listSessionsForProject(projectsDir, project);
+		if (!sessions) {
+			sessions = await listSessionsFromJsonl(projectsDir, project);
 		}
 
 		if (sessions.length === 0) continue;
 		sessions.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
+		const projectName = sessions[0]?.projectName ?? (await resolveProjectName(project));
 		groups.push({project, projectName, sessions});
 	}
 
@@ -249,7 +389,6 @@ function stripResultTags(text: string): string {
 	let result = text;
 	result = result.replace(/<\/?tool_use_error>/g, '');
 	result = result.replace(/<\/?persisted-output>/g, '');
-	// Only trim if tags were actually removed (avoid stripping meaningful whitespace)
 	if (result !== text) result = result.trim();
 	return result;
 }
@@ -293,9 +432,10 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 
 	if (!filePath) return null;
 
-	const projectName = decodeProjectDir(project);
+	const projectName = await resolveProjectName(project);
 	const messages: SessionMessage[] = [];
 	let title = sessionId;
+	let customTitle: string | undefined;
 	const toolCallMap = new Map<string, ToolCallInfo>();
 
 	const rl = createInterface({
@@ -311,6 +451,14 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 			try {
 				obj = JSON.parse(line) as JsonlEntry;
 			} catch {
+				continue;
+			}
+
+			if (obj.type === 'custom-title') {
+				const parsed = CustomTitleRecordSchema.safeParse(obj);
+				if (parsed.success) {
+					customTitle = parsed.data.customTitle;
+				}
 				continue;
 			}
 
@@ -335,7 +483,6 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 						textBlocks.push(label);
 						return;
 					}
-					// Filter out local-command-caveat blocks entirely
 					if (/<local-command-caveat>/.test(text)) return;
 					const cleaned = stripCommandTags(text);
 					if (cleaned) textBlocks.push(cleaned);
@@ -378,17 +525,13 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 
 			if (textBlocks.length === 0 && toolCalls.length === 0) continue;
 
-			// Set title from first user text
 			if (type === 'user' && textBlocks.length > 0 && title === sessionId) {
 				title = extractSessionTitle(textBlocks[0]!, sessionId);
 			}
 
-			// Coalesce consecutive same-role messages
 			const last = messages[messages.length - 1];
 			if (last && last.role === type) {
 				if (last.isCommand) {
-					// When coalescing onto a command message, skip text blocks
-					// (they're the expanded prompt) but keep tool results
 					last.toolCalls.push(...toolCalls);
 				} else {
 					last.textBlocks.push(...textBlocks);
@@ -403,6 +546,8 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 	} finally {
 		rl.close();
 	}
+
+	if (customTitle) title = customTitle;
 
 	return {id: sessionId, title, projectName, messages};
 }
