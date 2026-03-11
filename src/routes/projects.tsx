@@ -52,14 +52,6 @@ function ProjectsPage() {
 								<span>{project.memoryCount} memories</span>
 								<span>&middot;</span>
 								<span>{formatDate(project.lastActivity)}</span>
-								{project.gitBranch && (
-									<>
-										<span>&middot;</span>
-										<span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">
-											{project.gitBranch}
-										</span>
-									</>
-								)}
 							</div>
 						</Link>
 					))}
