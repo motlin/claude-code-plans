@@ -96,6 +96,7 @@ function SessionPage() {
 				</Link>
 				<span className="text-xs text-muted-foreground">{data.projectName}</span>
 			</div>
+			<h1 className="mt-2 text-lg font-semibold">{data.title}</h1>
 			<SessionChat messages={data.messages} />
 		</div>
 	);
