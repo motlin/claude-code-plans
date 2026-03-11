@@ -1,15 +1,16 @@
 import {Link, useMatches} from '@tanstack/react-router';
-import {FileText, Brain, MessageSquare, ChevronRight} from 'lucide-react';
+import {FileText, Brain, MessageSquare, FolderOpen, ChevronRight} from 'lucide-react';
 import {useEffect, useState} from 'react';
-import {getPlans, getMemories, getSessions} from '../lib/server-fns';
+import {getPlans, getMemories, getSessions, getProjects} from '../lib/server-fns';
 
 const navItems = [
+	{to: '/projects', label: 'Projects', icon: FolderOpen, section: 'projects' as const},
 	{to: '/plans', label: 'Plans', icon: FileText, section: 'plans' as const},
 	{to: '/memories', label: 'Memories', icon: Brain, section: 'memories' as const},
 	{to: '/sessions', label: 'Sessions', icon: MessageSquare, section: 'sessions' as const},
 ];
 
-type Section = 'plans' | 'memories' | 'sessions';
+type Section = 'projects' | 'plans' | 'memories' | 'sessions';
 
 interface SubItem {
 	id: string;
@@ -38,6 +39,18 @@ function useActiveSection(matches: ReturnType<typeof useMatches>): {
 	const path = lastMatch?.fullPath ?? '/';
 	const params = lastMatch?.params as Record<string, string> | undefined;
 
+	if (path.startsWith('/project') && !path.startsWith('/projects')) {
+		return {
+			section: 'projects',
+			activeItemId: params?.['id'] ?? null,
+		};
+	}
+	if (path === '/projects') {
+		return {
+			section: 'projects',
+			activeItemId: null,
+		};
+	}
 	if (path.startsWith('/plan') || path === '/plans') {
 		return {
 			section: 'plans',
@@ -87,7 +100,15 @@ function SubList({
 		async function fetchItems() {
 			let result: SubItem[] = [];
 
-			if (section === 'plans') {
+			if (section === 'projects') {
+				const projects = await getProjects();
+				result = projects.map((p) => ({
+					id: p.id,
+					label: p.name,
+					to: '/project/$id',
+					params: {id: p.id},
+				}));
+			} else if (section === 'plans') {
 				const plans = await getPlans();
 				result = plans.map((p) => ({
 					id: p.filename,
