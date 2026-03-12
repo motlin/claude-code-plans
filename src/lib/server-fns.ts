@@ -6,7 +6,13 @@ import {listPlans} from './plans';
 import {listMemories} from './memory';
 import {extractTitle} from './markdown-utils';
 import {getDb} from './db';
-import {listProjectsFromDb, listSessionsFromDb, getProjectDetailFromDb, getPlanLinksFromDb} from './db/queries';
+import {
+	listProjectsFromDb,
+	listSessionsFromDb,
+	getProjectDetailFromDb,
+	getPlanLinksFromDb,
+	getSubagentsForSession,
+} from './db/queries';
 
 const PLANS_DIR = process.env['PLANS_DIR'] ?? join(homedir(), '.claude', 'plans');
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
@@ -126,6 +132,11 @@ export const getProject = createServerFn({method: 'GET'})
 				created: s.created.toISOString(),
 				messageCount: s.messageCount,
 				gitBranch: s.gitBranch,
+				subagents: getSubagentsForSession(index, s.id).map((a) => ({
+					id: a.id,
+					agentType: a.agentType,
+					slug: a.slug,
+				})),
 			})),
 			memories,
 			plans: await Promise.all(

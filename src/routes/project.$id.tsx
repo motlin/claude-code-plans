@@ -19,6 +19,11 @@ function formatDate(iso: string): string {
 	});
 }
 
+const AGENT_TYPE_COLORS: Record<string, string> = {
+	Explore: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+	Plan: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+};
+
 function ProjectPage() {
 	const data = Route.useLoaderData();
 
@@ -77,6 +82,15 @@ function ProjectPage() {
 												<span>{sess.messageCount} msgs</span>
 											</>
 										)}
+										{sess.subagents.length > 0 && (
+											<>
+												<span>&middot;</span>
+												<span>
+													{sess.subagents.length} subagent
+													{sess.subagents.length !== 1 ? 's' : ''}
+												</span>
+											</>
+										)}
 										{sess.gitBranch && (
 											<>
 												<span>&middot;</span>
@@ -92,6 +106,25 @@ function ProjectPage() {
 										</div>
 									)}
 								</Link>
+								{sess.subagents.length > 0 && (
+									<div className="ml-6 mt-0.5 flex flex-wrap gap-1.5 pb-1">
+										{sess.subagents.map((agent) => (
+											<span
+												key={agent.id}
+												className="inline-flex items-center gap-1 rounded border border-border/50 px-1.5 py-0.5 text-[11px] text-muted-foreground"
+											>
+												{agent.agentType && (
+													<span
+														className={`rounded px-1 py-px text-[9px] font-medium ${AGENT_TYPE_COLORS[agent.agentType] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}
+													>
+														{agent.agentType}
+													</span>
+												)}
+												{agent.slug ?? agent.id}
+											</span>
+										))}
+									</div>
+								)}
 							</li>
 						))}
 					</ul>
