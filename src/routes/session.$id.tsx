@@ -159,9 +159,11 @@ function SessionPage() {
 					</h2>
 					<div className="mt-1 flex flex-wrap gap-2">
 						{data.subagents.map((agent) => (
-							<span
+							<Link
 								key={agent.id}
-								className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs"
+								to="/session/$id"
+								params={{id: agent.id}}
+								className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs transition-colors hover:bg-muted/50"
 							>
 								{agent.agentType && (
 									<span
@@ -171,7 +173,7 @@ function SessionPage() {
 									</span>
 								)}
 								<span className="text-muted-foreground">{agent.slug ?? agent.id}</span>
-							</span>
+							</Link>
 						))}
 					</div>
 				</div>

@@ -109,9 +109,11 @@ function ProjectPage() {
 								{sess.subagents.length > 0 && (
 									<div className="ml-6 mt-0.5 flex flex-wrap gap-1.5 pb-1">
 										{sess.subagents.map((agent) => (
-											<span
+											<Link
 												key={agent.id}
-												className="inline-flex items-center gap-1 rounded border border-border/50 px-1.5 py-0.5 text-[11px] text-muted-foreground"
+												to="/session/$id"
+												params={{id: agent.id}}
+												className="inline-flex items-center gap-1 rounded border border-border/50 px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted/50"
 											>
 												{agent.agentType && (
 													<span
@@ -121,7 +123,7 @@ function ProjectPage() {
 													</span>
 												)}
 												{agent.slug ?? agent.id}
-											</span>
+											</Link>
 										))}
 									</div>
 								)}
