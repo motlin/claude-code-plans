@@ -11,6 +11,7 @@ import {
 	getProjectDetailFromDb,
 	searchSessionsFromDb,
 	getSubagentsForSession,
+	getPlanProjectMappings,
 } from '../src/lib/db/queries';
 import * as schema from '../src/lib/db/schema';
 import {eq} from 'drizzle-orm';
@@ -356,6 +357,26 @@ describe('queries', () => {
 
 	it('getProjectDetailFromDb returns null for non-existent project', () => {
 		expect(getProjectDetailFromDb(db.index, 'nonexistent')).toBeNull();
+	});
+
+	it('getPlanProjectMappings returns distinct plan-to-project mappings', () => {
+		const mappings = getPlanProjectMappings(db.index);
+		expect(mappings).toHaveLength(1); // plan-a.md -> proj-a (deduplicated)
+		expect(mappings[0]!.planFilename).toBe('plan-a.md');
+		expect(mappings[0]!.projectId).toBe('proj-a');
+		expect(mappings[0]!.projectName).toBe('Alpha');
+	});
+
+	it('getPlanProjectMappings returns mappings across multiple projects', () => {
+		db.index
+			.insert(schema.planSessions)
+			.values({planFilename: 'plan-b.md', sessionId: 'sess-3', projectId: 'proj-b'})
+			.run();
+
+		const mappings = getPlanProjectMappings(db.index);
+		expect(mappings).toHaveLength(2);
+		const filenames = mappings.map((m) => m.planFilename).sort();
+		expect(filenames).toEqual(['plan-a.md', 'plan-b.md']);
 	});
 
 	it('searchSessionsFromDb finds sessions by title', () => {

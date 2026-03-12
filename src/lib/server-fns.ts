@@ -13,6 +13,7 @@ import {
 	getPlanLinksFromDb,
 	searchSessionsFromDb,
 	getSubagentsForSession,
+	getPlanProjectMappings,
 } from './db/queries';
 import {getSummary, generateSummary} from './summaries';
 
@@ -25,6 +26,59 @@ export const getPlans = createServerFn({method: 'GET'}).handler(async () => {
 		filename: p.filename,
 		title: p.title,
 		mtime: p.mtime.toISOString(),
+	}));
+});
+
+export const getPlansGrouped = createServerFn({method: 'GET'}).handler(async () => {
+	const plans = await listPlans(PLANS_DIR);
+	const {index} = getDb();
+	const mappings = getPlanProjectMappings(index);
+
+	// Build a map from planFilename -> {projectId, projectName}[]
+	const planProjects = new Map<string, {projectId: string; projectName: string}[]>();
+	for (const m of mappings) {
+		const list = planProjects.get(m.planFilename);
+		if (list) {
+			list.push({projectId: m.projectId, projectName: m.projectName});
+		} else {
+			planProjects.set(m.planFilename, [{projectId: m.projectId, projectName: m.projectName}]);
+		}
+	}
+
+	// Group plans by project. A plan linked to multiple projects appears in each.
+	// Plans with no links go into "Unlinked".
+	const groups = new Map<string, {projectName: string; plans: typeof serialized}>();
+	const serialized = plans.map((p) => ({
+		filename: p.filename,
+		title: p.title,
+		mtime: p.mtime.toISOString(),
+	}));
+
+	for (const plan of serialized) {
+		const projects = planProjects.get(plan.filename);
+		if (!projects || projects.length === 0) {
+			const group = groups.get('__unlinked__');
+			if (group) {
+				group.plans.push(plan);
+			} else {
+				groups.set('__unlinked__', {projectName: 'Unlinked', plans: [plan]});
+			}
+		} else {
+			for (const proj of projects) {
+				const group = groups.get(proj.projectId);
+				if (group) {
+					group.plans.push(plan);
+				} else {
+					groups.set(proj.projectId, {projectName: proj.projectName, plans: [plan]});
+				}
+			}
+		}
+	}
+
+	return Array.from(groups.entries()).map(([projectId, group]) => ({
+		projectId,
+		projectName: group.projectName,
+		plans: group.plans,
 	}));
 });
 
