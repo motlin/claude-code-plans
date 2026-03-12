@@ -76,7 +76,7 @@ function PlanPage() {
 				<section className="mt-8 border-t border-border pt-4">
 					<h2 className="text-sm font-semibold">Sessions that used this plan</h2>
 					<ul className="mt-2 space-y-1">
-						{data.links.map((link) => (
+						{data.links.map((link: {sessionId: string; project: string; projectName: string}) => (
 							<li key={link.sessionId}>
 								<Link
 									to="/session/$id"
