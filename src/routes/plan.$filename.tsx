@@ -74,22 +74,60 @@ function PlanPage() {
 
 			{data.links.length > 0 && (
 				<section className="mt-8 border-t border-border pt-4">
-					<h2 className="text-sm font-semibold">Sessions that used this plan</h2>
-					<ul className="mt-2 space-y-1">
-						{data.links.map((link: {sessionId: string; project: string; projectName: string}) => (
-							<li key={link.sessionId}>
-								<Link
-									to="/session/$id"
-									params={{id: link.sessionId}}
-									className="block rounded-md p-2 text-sm transition-colors hover:bg-muted/50"
-								>
-									<span className="text-muted-foreground">{link.projectName}</span>
-									<span className="mx-1.5 text-muted-foreground">&middot;</span>
-									<span className="font-mono text-xs">{link.sessionId.slice(0, 8)}</span>
-								</Link>
-							</li>
-						))}
-					</ul>
+					<h2 className="text-sm font-semibold">Projects</h2>
+					{(() => {
+						const byProject = new Map<string, {projectName: string; sessions: typeof data.links}>();
+						for (const link of data.links) {
+							const key = link.project;
+							if (!byProject.has(key)) {
+								byProject.set(key, {projectName: link.projectName, sessions: []});
+							}
+							byProject.get(key)!.sessions.push(link);
+						}
+						return [...byProject.entries()].map(([projectId, group]) => (
+							<div
+								key={projectId}
+								className="mt-4"
+							>
+								<div className="flex items-center gap-2">
+									<Link
+										to="/project/$id"
+										params={{id: projectId}}
+										className="text-sm font-medium text-primary hover:underline"
+									>
+										{group.projectName}
+									</Link>
+									<span className="text-xs text-muted-foreground">
+										{group.sessions.length} {group.sessions.length === 1 ? 'session' : 'sessions'}
+									</span>
+								</div>
+								<ul className="mt-1 space-y-1">
+									{group.sessions.map((link) => (
+										<li key={link.sessionId}>
+											<Link
+												to="/session/$id"
+												params={{id: link.sessionId}}
+												className="block rounded-md p-2 pl-4 text-sm transition-colors hover:bg-muted/50"
+											>
+												{link.sessionTitle ? (
+													<>
+														<span>{link.sessionTitle}</span>
+														<span className="ml-2 font-mono text-xs text-muted-foreground">
+															{link.sessionId.slice(0, 8)}
+														</span>
+													</>
+												) : (
+													<span className="font-mono text-xs">
+														{link.sessionId.slice(0, 8)}
+													</span>
+												)}
+											</Link>
+										</li>
+									))}
+								</ul>
+							</div>
+						));
+					})()}
 				</section>
 			)}
 		</div>
