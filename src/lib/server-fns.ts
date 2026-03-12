@@ -177,6 +177,7 @@ export const getPlanLinks = createServerFn({method: 'GET'})
 			sessionId: l.sessionId,
 			project: l.projectId,
 			projectName: l.projectName,
+			sessionTitle: l.sessionTitle,
 		}));
 	});
 

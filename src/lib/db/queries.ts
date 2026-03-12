@@ -123,6 +123,7 @@ export interface DbPlanSessionLink {
 	sessionId: string;
 	projectId: string;
 	projectName: string;
+	sessionTitle: string | null;
 }
 
 export function getPlanLinksFromDb(db: IndexDb, planFilename?: string): DbPlanSessionLink[] {
@@ -136,12 +137,20 @@ export function getPlanLinksFromDb(db: IndexDb, planFilename?: string): DbPlanSe
 		rows = db.select().from(schema.planSessions).all();
 	}
 
-	return rows.map((row) => ({
-		planFilename: row.planFilename,
-		sessionId: row.sessionId,
-		projectId: row.projectId,
-		projectName: projectNames.get(row.projectId) ?? row.projectId,
-	}));
+	return rows.map((row) => {
+		const session = db
+			.select({title: schema.sessions.title})
+			.from(schema.sessions)
+			.where(eq(schema.sessions.id, row.sessionId))
+			.get();
+		return {
+			planFilename: row.planFilename,
+			sessionId: row.sessionId,
+			projectId: row.projectId,
+			projectName: projectNames.get(row.projectId) ?? row.projectId,
+			sessionTitle: session?.title ?? null,
+		};
+	});
 }
 
 export interface DbProjectDetail {
@@ -183,12 +192,16 @@ function getPlanLinksForProjectFromDb(db: IndexDb, projectId: string): DbPlanSes
 
 	const rows = db.select().from(schema.planSessions).where(eq(schema.planSessions.projectId, projectId)).all();
 
-	return rows.map((row) => ({
-		planFilename: row.planFilename,
-		sessionId: row.sessionId,
-		projectId: row.projectId,
-		projectName,
-	}));
+	return rows.map((row) => {
+		const session = db.select().from(schema.sessions).where(eq(schema.sessions.id, row.sessionId)).get();
+		return {
+			planFilename: row.planFilename,
+			sessionId: row.sessionId,
+			projectId: row.projectId,
+			projectName,
+			sessionTitle: session?.title ?? null,
+		};
+	});
 }
 
 export interface DbSearchResult {

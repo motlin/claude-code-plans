@@ -333,10 +333,12 @@ describe('queries', () => {
 		expect(sessions[1]!.id).toBe('sess-2');
 	});
 
-	it('getPlanLinksFromDb returns links for a plan', () => {
+	it('getPlanLinksFromDb returns links for a plan with session titles', () => {
 		const links = getPlanLinksFromDb(db.index, 'plan-a.md');
 		expect(links).toHaveLength(2);
 		expect(links[0]!.projectName).toBe('Alpha');
+		expect(links[0]!.sessionTitle).toBe('Fix login');
+		expect(links[1]!.sessionTitle).toBe('Add tests');
 	});
 
 	it('getPlanLinksFromDb returns all links when no filename given', () => {
