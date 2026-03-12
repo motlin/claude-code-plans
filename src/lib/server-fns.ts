@@ -11,8 +11,10 @@ import {
 	listSessionsFromDb,
 	getProjectDetailFromDb,
 	getPlanLinksFromDb,
+	searchSessionsFromDb,
 	getSubagentsForSession,
 } from './db/queries';
+import {getSummary, generateSummary} from './summaries';
 
 const PLANS_DIR = process.env['PLANS_DIR'] ?? join(homedir(), '.claude', 'plans');
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
@@ -120,10 +122,26 @@ export const getProject = createServerFn({method: 'GET'})
 			// no memory dir
 		}
 
+		// Get subagents per session
+		const subagentsBySession = new Map<
+			string,
+			Array<{id: string; agentType: string | null; slug: string | null}>
+		>();
+		for (const sess of detail.sessions) {
+			const agents = getSubagentsForSession(index, sess.id);
+			if (agents.length > 0) {
+				subagentsBySession.set(
+					sess.id,
+					agents.map((a) => ({id: a.id, agentType: a.agentType, slug: a.slug})),
+				);
+			}
+		}
+
 		return {
 			id: detail.id,
 			name: detail.name,
 			projectPath: detail.projectPath,
+			subagentCount: detail.subagentCount,
 			sessions: detail.sessions.map((s) => ({
 				id: s.id,
 				title: s.title,
@@ -132,11 +150,7 @@ export const getProject = createServerFn({method: 'GET'})
 				created: s.created.toISOString(),
 				messageCount: s.messageCount,
 				gitBranch: s.gitBranch,
-				subagents: getSubagentsForSession(index, s.id).map((a) => ({
-					id: a.id,
-					agentType: a.agentType,
-					slug: a.slug,
-				})),
+				subagents: subagentsBySession.get(s.id) ?? [],
 			})),
 			memories,
 			plans: await Promise.all(
@@ -164,4 +178,33 @@ export const getPlanLinks = createServerFn({method: 'GET'})
 			project: l.projectId,
 			projectName: l.projectName,
 		}));
+	});
+
+export const getSubagents = createServerFn({method: 'GET'})
+	.inputValidator((d: string) => d)
+	.handler(async ({data: sessionId}) => {
+		const {index} = getDb();
+		return getSubagentsForSession(index, sessionId);
+	});
+
+export const searchSessions = createServerFn({method: 'GET'})
+	.inputValidator((d: string) => d)
+	.handler(async ({data: query}) => {
+		const {index} = getDb();
+		return searchSessionsFromDb(index, query);
+	});
+
+export const getSessionSummary = createServerFn({method: 'GET'})
+	.inputValidator((d: string) => d)
+	.handler(async ({data: sessionId}) => {
+		const {summaries} = getDb();
+		return {summary: getSummary(summaries, sessionId)};
+	});
+
+export const requestSummary = createServerFn({method: 'POST'})
+	.inputValidator((d: string) => d)
+	.handler(async ({data: sessionId}) => {
+		const {summaries} = getDb();
+		const summary = await generateSummary(summaries, sessionId);
+		return {summary};
 	});

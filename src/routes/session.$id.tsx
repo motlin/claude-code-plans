@@ -2,9 +2,14 @@ import {createFileRoute, Link} from '@tanstack/react-router';
 import {createServerFn} from '@tanstack/react-start';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
+import {useState} from 'react';
 import {readSession, summarizeToolCalls} from '../lib/sessions';
 import {renderMarkdown, renderToolResultHtml} from '../lib/renderer';
 import {SessionChat} from '../components/session-chat';
+import {getSubagents, getSessionSummary, requestSummary} from '../lib/server-fns';
+import {getDb} from '../lib/db';
+import {sessions} from '../lib/db/schema';
+import {eq} from 'drizzle-orm';
 
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
@@ -56,7 +61,21 @@ const getSession = createServerFn({method: 'GET'})
 			}),
 		);
 
-		return {title: detail.title, projectName: detail.projectName, messages};
+		const [subagents, summaryResult] = await Promise.all([getSubagents({data: id}), getSessionSummary({data: id})]);
+
+		// Check if this session already has a summary or custom title from the index
+		const {index} = getDb();
+		const sessionRow = index.select().from(sessions).where(eq(sessions.id, id)).get();
+		const hasSummary = !!(sessionRow?.summary || sessionRow?.customTitle);
+
+		return {
+			title: detail.title,
+			projectName: detail.projectName,
+			messages,
+			subagents,
+			aiSummary: summaryResult.summary,
+			hasSummary,
+		};
 	});
 
 export const Route = createFileRoute('/session/$id')({
@@ -67,8 +86,16 @@ export const Route = createFileRoute('/session/$id')({
 	}),
 });
 
+const AGENT_TYPE_COLORS: Record<string, string> = {
+	Explore: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+	Plan: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+};
+
 function SessionPage() {
 	const data = Route.useLoaderData();
+	const params = Route.useParams();
+	const [aiSummary, setAiSummary] = useState<string | null>(data?.aiSummary ?? null);
+	const [generating, setGenerating] = useState(false);
 
 	if (!data) {
 		return (
@@ -85,6 +112,18 @@ function SessionPage() {
 		);
 	}
 
+	async function handleGenerateSummary() {
+		setGenerating(true);
+		try {
+			const result = await requestSummary({data: params.id});
+			if (result.summary) {
+				setAiSummary(result.summary);
+			}
+		} finally {
+			setGenerating(false);
+		}
+	}
+
 	return (
 		<div>
 			<div className="flex items-center gap-2">
@@ -97,6 +136,47 @@ function SessionPage() {
 				<span className="text-xs text-muted-foreground">{data.projectName}</span>
 			</div>
 			<h1 className="mt-2 text-lg font-semibold">{data.title}</h1>
+
+			{aiSummary ? (
+				<p className="mt-1 text-sm text-muted-foreground italic">{aiSummary}</p>
+			) : (
+				!data.hasSummary && (
+					<button
+						type="button"
+						onClick={handleGenerateSummary}
+						disabled={generating}
+						className="mt-1 text-xs text-primary hover:underline disabled:opacity-50 disabled:no-underline"
+					>
+						{generating ? 'Generating summary...' : 'Generate AI summary'}
+					</button>
+				)
+			)}
+
+			{data.subagents.length > 0 && (
+				<div className="mt-3">
+					<h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+						Subagents ({data.subagents.length})
+					</h2>
+					<div className="mt-1 flex flex-wrap gap-2">
+						{data.subagents.map((agent) => (
+							<span
+								key={agent.id}
+								className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs"
+							>
+								{agent.agentType && (
+									<span
+										className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${AGENT_TYPE_COLORS[agent.agentType] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'}`}
+									>
+										{agent.agentType}
+									</span>
+								)}
+								<span className="text-muted-foreground">{agent.slug ?? agent.id}</span>
+							</span>
+						))}
+					</div>
+				</div>
+			)}
+
 			<SessionChat messages={data.messages} />
 		</div>
 	);
