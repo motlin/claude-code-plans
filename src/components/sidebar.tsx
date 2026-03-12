@@ -1,7 +1,7 @@
 import {Link, useMatches, useNavigate} from '@tanstack/react-router';
 import {FileText, Brain, MessageSquare, FolderOpen, ChevronRight, Search} from 'lucide-react';
 import {useEffect, useState} from 'react';
-import {getPlans, getPlansGrouped, getMemories, getSessions, getProjects} from '../lib/server-fns';
+import {getPlans, getPlansGrouped, getMemories, getSessions, getProjects, getProject} from '../lib/server-fns';
 
 const navItems = [
 	{to: '/projects', label: 'Projects', icon: FolderOpen, section: 'projects' as const},
@@ -306,6 +306,204 @@ function PlansSubList({activeItemId, refreshKey}: {activeItemId: string | null; 
 	);
 }
 
+interface ProjectDetail {
+	sessions: Array<{id: string; title: string}>;
+	plans: Array<{filename: string; title: string}>;
+	memories: Array<{filename: string; title: string; project: string}>;
+}
+
+function ProjectsSubList({activeItemId, refreshKey}: {activeItemId: string | null; refreshKey: number}) {
+	const [projects, setProjects] = useState<Array<{
+		id: string;
+		name: string;
+		sessionCount: number;
+		memoryCount: number;
+	}> | null>(null);
+	const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+	const [projectDetails, setProjectDetails] = useState<Map<string, ProjectDetail>>(new Map());
+	const [loadingDetails, setLoadingDetails] = useState<Set<string>>(new Set());
+
+	useEffect(() => {
+		let cancelled = false;
+		async function fetchProjects() {
+			const result = await getProjects();
+			if (!cancelled) {
+				setProjects(result);
+			}
+		}
+		fetchProjects();
+		return () => {
+			cancelled = true;
+		};
+	}, [refreshKey]);
+
+	async function toggleProject(projectId: string) {
+		if (expandedProjects.has(projectId)) {
+			setExpandedProjects((prev) => {
+				const next = new Set(prev);
+				next.delete(projectId);
+				return next;
+			});
+			return;
+		}
+
+		setExpandedProjects((prev) => new Set(prev).add(projectId));
+
+		if (!projectDetails.has(projectId)) {
+			setLoadingDetails((prev) => new Set(prev).add(projectId));
+			const detail = await getProject({data: projectId});
+			if (detail) {
+				setProjectDetails((prev) => {
+					const next = new Map(prev);
+					next.set(projectId, {
+						sessions: detail.sessions.map((s) => ({id: s.id, title: s.title})),
+						plans: detail.plans.map((p) => ({filename: p.filename, title: p.title})),
+						memories: detail.memories.map((m) => ({
+							filename: m.filename,
+							title: m.title,
+							project: m.project,
+						})),
+					});
+					return next;
+				});
+			}
+			setLoadingDetails((prev) => {
+				const next = new Set(prev);
+				next.delete(projectId);
+				return next;
+			});
+		}
+	}
+
+	if (projects === null) {
+		return (
+			<div className="pl-10">
+				<LoadingBars />
+			</div>
+		);
+	}
+
+	if (projects.length === 0) {
+		return null;
+	}
+
+	const linkClass = (isActive: boolean) =>
+		`mb-px block truncate rounded-[4px] px-2 py-1 text-xs no-underline transition-colors ${
+			isActive
+				? 'bg-black/5 font-medium text-[rgb(20,20,19)] dark:bg-white/10 dark:text-[rgb(235,235,230)]'
+				: 'text-[rgb(115,114,108)] hover:bg-black/5 hover:text-[rgb(61,61,58)] dark:text-[rgb(150,150,145)] dark:hover:bg-white/5 dark:hover:text-[rgb(200,200,195)]'
+		}`;
+
+	const labelClass =
+		'mb-px flex w-full items-center gap-1 rounded-[4px] px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[rgb(155,154,148)] dark:text-[rgb(120,120,115)]';
+
+	return (
+		<div className="pl-10">
+			{projects.map((project) => {
+				const isActive = project.id === activeItemId;
+				const isExpanded = expandedProjects.has(project.id);
+				const detail = projectDetails.get(project.id);
+				const isLoading = loadingDetails.has(project.id);
+
+				return (
+					<div key={project.id}>
+						<div className="flex items-center">
+							<button
+								type="button"
+								onClick={() => toggleProject(project.id)}
+								className="flex h-5 w-4 shrink-0 items-center justify-center text-[rgb(115,114,108)] transition-colors hover:text-[rgb(61,61,58)] dark:text-[rgb(150,150,145)] dark:hover:text-[rgb(200,200,195)]"
+							>
+								<ChevronRight
+									className="h-2.5 w-2.5 transition-transform duration-200"
+									style={{transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'}}
+								/>
+							</button>
+							<Link
+								to="/project/$id"
+								params={{id: project.id}}
+								className={linkClass(isActive)}
+								style={{flex: 1, minWidth: 0}}
+							>
+								{project.name}
+							</Link>
+						</div>
+						{isExpanded && (
+							<div className="pl-4">
+								{isLoading && <LoadingBars />}
+								{detail && (
+									<>
+										{detail.sessions.length > 0 && (
+											<div>
+												<div className={labelClass}>Sessions</div>
+												{detail.sessions.slice(0, 10).map((sess) => (
+													<Link
+														key={sess.id}
+														to="/session/$id"
+														params={{id: sess.id}}
+														className={linkClass(false)}
+													>
+														{sess.title}
+													</Link>
+												))}
+												{detail.sessions.length > 10 && (
+													<Link
+														to="/project/$id"
+														params={{id: project.id}}
+														className="mb-px block truncate rounded-[4px] px-2 py-1 text-[10px] italic text-[rgb(155,154,148)] no-underline hover:text-[rgb(115,114,108)] dark:text-[rgb(120,120,115)] dark:hover:text-[rgb(150,150,145)]"
+													>
+														+{detail.sessions.length - 10} more...
+													</Link>
+												)}
+											</div>
+										)}
+										{detail.plans.length > 0 && (
+											<div>
+												<div className={labelClass}>Plans</div>
+												{detail.plans.map((plan) => (
+													<Link
+														key={plan.filename}
+														to="/plan/$filename"
+														params={{filename: plan.filename}}
+														className={linkClass(false)}
+													>
+														{plan.title}
+													</Link>
+												))}
+											</div>
+										)}
+										{detail.memories.length > 0 && (
+											<div>
+												<div className={labelClass}>Memories</div>
+												{detail.memories.map((mem) => (
+													<Link
+														key={mem.filename}
+														to="/memory/$project/$filename"
+														params={{project: mem.project, filename: mem.filename}}
+														className={linkClass(false)}
+													>
+														{mem.title}
+													</Link>
+												))}
+											</div>
+										)}
+										{detail.sessions.length === 0 &&
+											detail.plans.length === 0 &&
+											detail.memories.length === 0 && (
+												<div className="px-2 py-1 text-[10px] italic text-[rgb(155,154,148)] dark:text-[rgb(120,120,115)]">
+													No items
+												</div>
+											)}
+									</>
+								)}
+							</div>
+						)}
+					</div>
+				);
+			})}
+		</div>
+	);
+}
+
 function SearchInput() {
 	const [query, setQuery] = useState('');
 	const navigate = useNavigate();
@@ -460,7 +658,12 @@ export function Sidebar({
 								</Link>
 							</div>
 							{isExpanded &&
-								(item.section === 'plans' ? (
+								(item.section === 'projects' ? (
+									<ProjectsSubList
+										activeItemId={activeItemId}
+										refreshKey={refreshKey}
+									/>
+								) : item.section === 'plans' ? (
 									<PlansSubList
 										activeItemId={activeItemId}
 										refreshKey={refreshKey}
