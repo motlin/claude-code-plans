@@ -196,6 +196,7 @@ export interface DbSearchResult {
 	title: string;
 	firstPrompt: string | null;
 	summary: string | null;
+	snippet: string;
 	projectId: string;
 	projectName: string;
 	rank: number;
@@ -206,20 +207,34 @@ export function searchSessionsFromDb(db: IndexDb, query: string): DbSearchResult
 	const projectNames = new Map(projectRows.map((p) => [p.id, p.name]));
 
 	const rows = db.all(
-		sql`SELECT session_id, title, first_prompt, summary, rank
+		sql`SELECT session_id, title, first_prompt, summary, rank,
+				snippet(sessions_fts, 1, '<mark>', '</mark>', '...', 32) AS title_snippet,
+				snippet(sessions_fts, 2, '<mark>', '</mark>', '...', 32) AS prompt_snippet,
+				snippet(sessions_fts, 3, '<mark>', '</mark>', '...', 32) AS summary_snippet
 			FROM sessions_fts
 			WHERE sessions_fts MATCH ${query}
 			ORDER BY rank
 			LIMIT 50`,
-	) as Array<{session_id: string; title: string; first_prompt: string; summary: string; rank: number}>;
+	) as Array<{
+		session_id: string;
+		title: string;
+		first_prompt: string;
+		summary: string;
+		rank: number;
+		title_snippet: string;
+		prompt_snippet: string;
+		summary_snippet: string;
+	}>;
 
 	return rows.map((row) => {
 		const session = db.select().from(schema.sessions).where(eq(schema.sessions.id, row.session_id)).get();
+		const snippet = row.title_snippet || row.summary_snippet || row.prompt_snippet || '';
 		return {
 			sessionId: row.session_id,
 			title: row.title,
 			firstPrompt: row.first_prompt || null,
 			summary: row.summary || null,
+			snippet,
 			projectId: session?.projectId ?? '',
 			projectName: session ? (projectNames.get(session.projectId) ?? session.projectId) : '',
 			rank: row.rank,
