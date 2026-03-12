@@ -166,46 +166,48 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 	const existing = db.select().from(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).get();
 	if (existing && existing.mtimeMs === fileStat.mtimeMs) return;
 
-	let content: string;
-	try {
-		content = await readFile(filePath, 'utf-8');
-	} catch {
-		return;
-	}
-
 	const sessionId = basename(filePath, '.jsonl');
 	const planFilenames = new Set<string>();
 	let customTitle: string | undefined;
 
-	for (const line of content.split('\n')) {
-		if (!line.trim()) continue;
+	// Stream the file line-by-line to avoid loading entire JSONL into memory
+	const rl = createInterface({
+		input: createReadStream(filePath, {encoding: 'utf-8'}),
+		crlfDelay: Infinity,
+	});
+	try {
+		for await (const line of rl) {
+			if (!line.trim()) continue;
 
-		if (line.includes('file-history-snapshot')) {
-			try {
-				const parsed = JSON.parse(line);
-				const result = FileHistorySnapshotSchema.safeParse(parsed);
-				if (result.success) {
-					for (const key of Object.keys(result.data.snapshot.trackedFileBackups)) {
-						const match = PLAN_PATH_RE.exec(key);
-						if (match?.[1]) planFilenames.add(match[1]);
+			if (line.includes('file-history-snapshot')) {
+				try {
+					const parsed = JSON.parse(line);
+					const result = FileHistorySnapshotSchema.safeParse(parsed);
+					if (result.success) {
+						for (const key of Object.keys(result.data.snapshot.trackedFileBackups)) {
+							const match = PLAN_PATH_RE.exec(key);
+							if (match?.[1]) planFilenames.add(match[1]);
+						}
 					}
+				} catch {
+					// skip
 				}
-			} catch {
-				// skip
 			}
-		}
 
-		if (line.includes('custom-title')) {
-			try {
-				const parsed = JSON.parse(line);
-				const result = CustomTitleRecordSchema.safeParse(parsed);
-				if (result.success) {
-					customTitle = result.data.customTitle;
+			if (line.includes('custom-title')) {
+				try {
+					const parsed = JSON.parse(line);
+					const result = CustomTitleRecordSchema.safeParse(parsed);
+					if (result.success) {
+						customTitle = result.data.customTitle;
+					}
+				} catch {
+					// skip
 				}
-			} catch {
-				// skip
 			}
 		}
+	} finally {
+		rl.close();
 	}
 
 	// Upsert plan links
