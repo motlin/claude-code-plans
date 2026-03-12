@@ -1,5 +1,5 @@
-import {Link, useMatches} from '@tanstack/react-router';
-import {FileText, Brain, MessageSquare, FolderOpen, ChevronRight} from 'lucide-react';
+import {Link, useMatches, useNavigate} from '@tanstack/react-router';
+import {FileText, Brain, MessageSquare, FolderOpen, ChevronRight, Search} from 'lucide-react';
 import {useEffect, useState} from 'react';
 import {getPlans, getMemories, getSessions, getProjects} from '../lib/server-fns';
 
@@ -188,6 +188,36 @@ function SubList({
 	);
 }
 
+function SearchInput() {
+	const [query, setQuery] = useState('');
+	const navigate = useNavigate();
+
+	function handleSubmit(e: React.FormEvent) {
+		e.preventDefault();
+		if (!query.trim()) return;
+		navigate({to: '/search', search: {q: query.trim()}});
+		setQuery('');
+	}
+
+	return (
+		<form
+			onSubmit={handleSubmit}
+			className="px-4 pb-2"
+		>
+			<div className="relative">
+				<Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[rgb(115,114,108)] dark:text-[rgb(150,150,145)]" />
+				<input
+					type="text"
+					value={query}
+					onChange={(e) => setQuery(e.target.value)}
+					placeholder="Search..."
+					className="w-full rounded-md border border-[rgba(31,30,29,0.1)] bg-white/50 py-1.5 pl-7 pr-2 text-xs outline-none placeholder:text-[rgb(115,114,108)] focus:border-[rgba(31,30,29,0.3)] dark:border-[rgba(255,255,255,0.1)] dark:bg-white/5 dark:placeholder:text-[rgb(150,150,145)] dark:focus:border-[rgba(255,255,255,0.2)]"
+				/>
+			</div>
+		</form>
+	);
+}
+
 export function Sidebar({
 	collapsed,
 	onToggle,
@@ -276,6 +306,8 @@ export function Sidebar({
 					Claude Code Viewer
 				</Link>
 			</div>
+
+			<SearchInput />
 
 			<div className="flex-1 overflow-y-auto px-2">
 				{navItems.map((item) => {
