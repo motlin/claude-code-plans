@@ -1,7 +1,7 @@
 import {Link, useMatches, useNavigate} from '@tanstack/react-router';
 import {FileText, Brain, MessageSquare, FolderOpen, ChevronRight, Search} from 'lucide-react';
 import {useEffect, useState} from 'react';
-import {getPlans, getMemories, getSessions, getProjects} from '../lib/server-fns';
+import {getPlans, getPlansGrouped, getMemories, getSessions, getProjects} from '../lib/server-fns';
 
 const navItems = [
 	{to: '/projects', label: 'Projects', icon: FolderOpen, section: 'projects' as const},
@@ -188,6 +188,124 @@ function SubList({
 	);
 }
 
+interface PlanGroup {
+	projectId: string;
+	projectName: string;
+	plans: Array<{filename: string; title: string; mtime: string}>;
+}
+
+function PlansSubList({activeItemId, refreshKey}: {activeItemId: string | null; refreshKey: number}) {
+	const [groups, setGroups] = useState<PlanGroup[] | null>(null);
+	const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+	useEffect(() => {
+		let cancelled = false;
+
+		async function fetchPlans() {
+			const result = await getPlansGrouped();
+			if (!cancelled) {
+				setGroups(result);
+			}
+		}
+
+		fetchPlans();
+		return () => {
+			cancelled = true;
+		};
+	}, [refreshKey]);
+
+	function toggleGroup(projectId: string) {
+		setCollapsedGroups((prev) => {
+			const next = new Set(prev);
+			if (next.has(projectId)) {
+				next.delete(projectId);
+			} else {
+				next.add(projectId);
+			}
+			return next;
+		});
+	}
+
+	if (groups === null) {
+		return (
+			<div className="pl-10">
+				<LoadingBars />
+			</div>
+		);
+	}
+
+	if (groups.length === 0) {
+		return null;
+	}
+
+	// If there's only one group, render flat (no nesting needed)
+	if (groups.length === 1 && groups[0]) {
+		return (
+			<div className="pl-10">
+				{groups[0].plans.map((plan) => {
+					const isActive = plan.filename === activeItemId;
+					return (
+						<Link
+							key={plan.filename}
+							to="/plan/$filename"
+							params={{filename: plan.filename}}
+							className={`mb-px block truncate rounded-[4px] px-2 py-1 text-xs no-underline transition-colors ${
+								isActive
+									? 'bg-black/5 font-medium text-[rgb(20,20,19)] dark:bg-white/10 dark:text-[rgb(235,235,230)]'
+									: 'text-[rgb(115,114,108)] hover:bg-black/5 hover:text-[rgb(61,61,58)] dark:text-[rgb(150,150,145)] dark:hover:bg-white/5 dark:hover:text-[rgb(200,200,195)]'
+							}`}
+						>
+							{plan.title}
+						</Link>
+					);
+				})}
+			</div>
+		);
+	}
+
+	return (
+		<div className="pl-10">
+			{groups.map((group) => {
+				const isExpanded = !collapsedGroups.has(group.projectId);
+				return (
+					<div key={group.projectId}>
+						<button
+							type="button"
+							onClick={() => toggleGroup(group.projectId)}
+							className="mb-px flex w-full items-center gap-1 rounded-[4px] px-2 py-1 text-xs text-[rgb(115,114,108)] transition-colors hover:bg-black/5 hover:text-[rgb(61,61,58)] dark:text-[rgb(150,150,145)] dark:hover:bg-white/5 dark:hover:text-[rgb(200,200,195)]"
+						>
+							<ChevronRight
+								className="h-2.5 w-2.5 shrink-0 transition-transform duration-200"
+								style={{transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'}}
+							/>
+							<span className="truncate font-medium">{group.projectName}</span>
+							<span className="ml-auto shrink-0 text-[10px] opacity-60">{group.plans.length}</span>
+						</button>
+						{isExpanded &&
+							group.plans.map((plan) => {
+								const isActive = plan.filename === activeItemId;
+								return (
+									<Link
+										key={plan.filename}
+										to="/plan/$filename"
+										params={{filename: plan.filename}}
+										className={`mb-px block truncate rounded-[4px] py-1 pl-5 pr-2 text-xs no-underline transition-colors ${
+											isActive
+												? 'bg-black/5 font-medium text-[rgb(20,20,19)] dark:bg-white/10 dark:text-[rgb(235,235,230)]'
+												: 'text-[rgb(115,114,108)] hover:bg-black/5 hover:text-[rgb(61,61,58)] dark:text-[rgb(150,150,145)] dark:hover:bg-white/5 dark:hover:text-[rgb(200,200,195)]'
+										}`}
+									>
+										{plan.title}
+									</Link>
+								);
+							})}
+					</div>
+				);
+			})}
+		</div>
+	);
+}
+
 function SearchInput() {
 	const [query, setQuery] = useState('');
 	const navigate = useNavigate();
@@ -341,13 +459,19 @@ export function Sidebar({
 									{item.label}
 								</Link>
 							</div>
-							{isExpanded && (
-								<SubList
-									section={item.section}
-									activeItemId={activeItemId}
-									refreshKey={refreshKey}
-								/>
-							)}
+							{isExpanded &&
+								(item.section === 'plans' ? (
+									<PlansSubList
+										activeItemId={activeItemId}
+										refreshKey={refreshKey}
+									/>
+								) : (
+									<SubList
+										section={item.section}
+										activeItemId={activeItemId}
+										refreshKey={refreshKey}
+									/>
+								))}
 						</div>
 					);
 				})}

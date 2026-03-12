@@ -268,3 +268,28 @@ export interface DbSubagent {
 export function getSubagentsForSession(db: IndexDb, sessionId: string): DbSubagent[] {
 	return db.select().from(schema.subagents).where(eq(schema.subagents.sessionId, sessionId)).all();
 }
+
+export interface DbPlanProjectMapping {
+	planFilename: string;
+	projectId: string;
+	projectName: string;
+}
+
+export function getPlanProjectMappings(db: IndexDb): DbPlanProjectMapping[] {
+	const projectRows = db.select().from(schema.projects).all();
+	const projectNames = new Map(projectRows.map((p) => [p.id, p.name]));
+
+	const rows = db
+		.selectDistinct({
+			planFilename: schema.planSessions.planFilename,
+			projectId: schema.planSessions.projectId,
+		})
+		.from(schema.planSessions)
+		.all();
+
+	return rows.map((row) => ({
+		planFilename: row.planFilename,
+		projectId: row.projectId,
+		projectName: projectNames.get(row.projectId) ?? row.projectId,
+	}));
+}
