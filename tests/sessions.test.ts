@@ -46,6 +46,20 @@ describe('extractSessionTitle', () => {
 		);
 	});
 
+	it('removes command-name content to avoid slash command duplication', () => {
+		expect(
+			extractSessionTitle('<command-message>/init</command-message><command-name>slash:init</command-name>'),
+		).toBe('/init');
+	});
+
+	it('removes command-args content', () => {
+		expect(
+			extractSessionTitle(
+				'<command-message>/plan</command-message><command-name>slash:plan</command-name><command-args>my plan</command-args>',
+			),
+		).toBe('/plan');
+	});
+
 	it('strips local-command-caveat tags', () => {
 		expect(extractSessionTitle('<local-command-caveat>note</local-command-caveat> do stuff')).toBe('note do stuff');
 	});

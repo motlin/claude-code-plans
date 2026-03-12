@@ -51,11 +51,34 @@ export interface SessionDetail {
 	messages: SessionMessage[];
 }
 
-const COMMAND_TAG_RE =
-	/<\/?(?:command-message|command-name|local-command-caveat|command-args|command|local-command-stdout)[^>]*>/g;
+/** Match a complete command-message block and capture its inner content. */
+const COMMAND_MESSAGE_RE = /<command-message[^>]*>([\s\S]*?)<\/command-message>/;
+
+/** Strip entire blocks whose content is internal metadata (not user-facing). */
+const STRIP_BLOCK_RE =
+	/<(?:command-name|command-args|local-command-stdout)[^>]*>[\s\S]*?<\/(?:command-name|command-args|local-command-stdout)>/g;
+
+/** Strip only opening/closing tags, keeping inner content (for tags that wrap user text). */
+const STRIP_TAG_RE =
+	/<\/?(?:command-message|command-name|command-args|command|local-command-caveat|local-command-stdout)[^>]*>/g;
+
+/**
+ * Clean command markup from text for display.
+ * If a command-message block is present, extracts its inner content (stripping nested tags)
+ * to avoid duplication from sibling command-name/command-args blocks.
+ */
+function cleanCommandText(text: string): string {
+	const msgMatch = text.match(COMMAND_MESSAGE_RE);
+	if (msgMatch) {
+		// Use the command-message inner text, stripping any nested tags
+		return msgMatch[1]!.replace(STRIP_TAG_RE, '').trim();
+	}
+	// No command-message wrapper: strip metadata blocks then remaining tags
+	return text.replace(STRIP_BLOCK_RE, '').replace(STRIP_TAG_RE, '').trim();
+}
 
 export function stripCommandTags(text: string): string {
-	return text.replace(COMMAND_TAG_RE, '').trim();
+	return cleanCommandText(text);
 }
 
 export function parseCommandBlock(text: string): {name: string; args?: string} | null {
@@ -69,7 +92,7 @@ export function parseCommandBlock(text: string): {name: string; args?: string} |
 }
 
 export function extractSessionTitle(text: string, fallback?: string): string {
-	const cleaned = text.replace(COMMAND_TAG_RE, '').trim();
+	const cleaned = cleanCommandText(text);
 	if (!cleaned) return fallback ?? 'Untitled Session';
 
 	if (cleaned.length <= 80) return cleaned;
