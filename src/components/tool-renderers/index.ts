@@ -13,6 +13,7 @@ import {TaskUpdateRenderer} from './task-update-renderer';
 import {ExitPlanModeRenderer} from './exit-plan-mode-renderer';
 import {SkillRenderer} from './skill-renderer';
 import {McpRenderer} from './mcp-renderer';
+import {WebFetchRenderer} from './webfetch-renderer';
 import {FallbackRenderer} from './fallback-renderer';
 
 const registry: Record<string, ComponentType<ToolRendererProps>> = {
@@ -29,6 +30,7 @@ const registry: Record<string, ComponentType<ToolRendererProps>> = {
 	TaskUpdate: TaskUpdateRenderer,
 	ExitPlanMode: ExitPlanModeRenderer,
 	Skill: SkillRenderer,
+	WebFetch: WebFetchRenderer,
 	__mcp__: McpRenderer,
 	__fallback__: FallbackRenderer,
 };
