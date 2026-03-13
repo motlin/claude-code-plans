@@ -1,17 +1,17 @@
 import {useEffect, useRef, useState} from 'react';
 import {MarkdownArticle} from './markdown-article';
-
-interface ToolCallItem {
-	name: string;
-	param: string;
-	resultHtml?: string;
-}
+import {getToolRenderer} from './tool-renderers';
+import type {ClientToolCall} from './tool-renderers';
+import {DurationBadge} from './tool-renderers/shared';
 
 interface ChatMessage {
 	role: 'user' | 'assistant';
 	htmlBlocks: string[];
-	toolCalls: ToolCallItem[];
+	thinkingBlocks: string[];
+	imageBlocks: Array<{mediaType: string; data: string}>;
+	toolCalls: ClientToolCall[];
 	toolSummary: string;
+	command?: {name: string; args?: string};
 }
 
 export function SessionChat({messages}: {messages: ChatMessage[]}) {
@@ -34,12 +34,10 @@ export function SessionChat({messages}: {messages: ChatMessage[]}) {
 						className={isNewTurn ? 'pb-4' : ''}
 					>
 						{msg.role === 'user' ? (
-							<UserMessage htmlBlocks={msg.htmlBlocks} />
+							<UserMessage msg={msg} />
 						) : (
 							<AssistantMessage
-								htmlBlocks={msg.htmlBlocks}
-								toolCalls={msg.toolCalls}
-								toolSummary={msg.toolSummary}
+								msg={msg}
 								isFirst={i === 0 || messages[i - 1]!.role !== 'assistant'}
 							/>
 						)}
@@ -51,10 +49,23 @@ export function SessionChat({messages}: {messages: ChatMessage[]}) {
 	);
 }
 
-function UserMessage({htmlBlocks}: {htmlBlocks: string[]}) {
+function UserMessage({msg}: {msg: ChatMessage}) {
+	if (msg.command) {
+		return (
+			<div className="flex flex-col items-end gap-2 ml-auto max-w-[85%] w-fit">
+				<div className="rounded-lg px-3 py-2 bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)]">
+					<span className="bg-muted rounded-full px-2 py-0.5 text-xs font-mono">/{msg.command.name}</span>
+					{msg.command.args && (
+						<span className="text-xs text-muted-foreground ml-1.5">{msg.command.args}</span>
+					)}
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<div className="flex flex-col items-end gap-2 ml-auto max-w-[85%] w-fit">
-			{htmlBlocks.map((html, i) => (
+			{msg.htmlBlocks.map((html, i) => (
 				<div
 					key={i}
 					className="rounded-lg px-3 py-2 break-words min-w-0 overflow-hidden bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)]"
@@ -91,36 +102,81 @@ function ClaudeIcon() {
 	);
 }
 
-function AssistantMessage({
-	htmlBlocks,
-	toolCalls,
-	toolSummary,
-	isFirst,
-}: {
-	htmlBlocks: string[];
-	toolCalls: ToolCallItem[];
-	toolSummary: string;
-	isFirst: boolean;
-}) {
+function ThinkingBlock({thinking}: {thinking: string}) {
+	const [open, setOpen] = useState(false);
+
+	return (
+		<div className="border-l-2 border-amber-400 pl-3 my-1">
+			<button
+				type="button"
+				onClick={() => setOpen(!open)}
+				className="text-xs text-amber-600 dark:text-amber-400 cursor-pointer flex items-center gap-1"
+			>
+				<svg
+					width="12"
+					height="12"
+					viewBox="0 0 20 20"
+					fill="none"
+					className="shrink-0 transition-transform duration-200"
+					style={{transform: open ? 'rotate(0deg)' : 'rotate(-90deg)'}}
+				>
+					<path
+						d="M14.128 7.165a.625.625 0 0 1 .707-.038l.128.098a.625.625 0 0 1 .037.844l-4.5 5-.157.131a.625.625 0 0 1-.686 0L9.5 13.069l-4.5-5-.07-.107a.625.625 0 0 1 .07-.737l.107-.098a.625.625 0 0 1 .765.038L10 11.585l4.128-4.42Z"
+						fill="currentColor"
+					/>
+				</svg>
+				Thinking...
+			</button>
+			{open && (
+				<div className="mt-1 text-xs italic text-muted-foreground whitespace-pre-wrap bg-amber-50/50 dark:bg-amber-950/20 rounded p-2 max-h-64 overflow-auto">
+					{thinking}
+				</div>
+			)}
+		</div>
+	);
+}
+
+function AssistantMessage({msg, isFirst}: {msg: ChatMessage; isFirst: boolean}) {
+	const thinkingText = msg.thinkingBlocks.length > 0 ? msg.thinkingBlocks.join('\n\n---\n\n') : null;
+
 	return (
 		<div className="flex flex-col gap-1.5 min-w-0">
-			{htmlBlocks.map((html, i) => (
+			{thinkingText && (
+				<div className="flex items-start gap-1">
+					{isFirst ? <ClaudeIcon /> : <div className="w-4 shrink-0" />}
+					<ThinkingBlock thinking={thinkingText} />
+				</div>
+			)}
+			{msg.htmlBlocks.map((html, i) => (
 				<div
 					key={`text-${i}`}
 					className="flex items-start gap-1 max-w-full min-w-0 text-sm"
 				>
-					{isFirst && i === 0 ? <ClaudeIcon /> : <div className="w-4 shrink-0" />}
+					{isFirst && i === 0 && !thinkingText ? <ClaudeIcon /> : <div className="w-4 shrink-0" />}
 					<div className="min-w-0 flex-1 text-sm text-foreground">
 						<MarkdownArticle html={html} />
 					</div>
 				</div>
 			))}
-			{toolCalls.length > 0 && (
+			{msg.imageBlocks.map((img, i) => (
+				<div
+					key={`img-${i}`}
+					className="flex items-start gap-1"
+				>
+					<div className="w-4 shrink-0" />
+					<img
+						src={`data:${img.mediaType};base64,${img.data}`}
+						alt="Session image"
+						className="max-w-full max-h-96 rounded-lg border border-border shadow-sm"
+					/>
+				</div>
+			))}
+			{msg.toolCalls.length > 0 && (
 				<div className="flex items-start gap-1">
 					<div className="w-4 shrink-0" />
 					<ToolCallSummary
-						calls={toolCalls}
-						summary={toolSummary}
+						calls={msg.toolCalls}
+						summary={msg.toolSummary}
 					/>
 				</div>
 			)}
@@ -149,7 +205,7 @@ function ChevronIcon({expanded}: {expanded: boolean}) {
 	);
 }
 
-function ToolCallSummary({calls, summary}: {calls: ToolCallItem[]; summary: string}) {
+function ToolCallSummary({calls, summary}: {calls: ClientToolCall[]; summary: string}) {
 	const [expanded, setExpanded] = useState(false);
 
 	return (
@@ -165,21 +221,25 @@ function ToolCallSummary({calls, summary}: {calls: ToolCallItem[]; summary: stri
 			</button>
 			{expanded && (
 				<div className="ml-2 border-l border-border/40 pl-3">
-					{calls.map((call, i) => (
-						<div
-							key={i}
-							className="py-0.5 text-sm"
-							style={{color: 'rgb(115, 114, 108)'}}
-						>
-							<span className="font-medium">{call.name}</span>
-							{call.param && <span className="ml-1.5 opacity-70">{call.param}</span>}
-							{call.resultHtml && (
-								<div className="mt-1 mb-2 overflow-x-auto text-xs text-foreground">
-									<div dangerouslySetInnerHTML={{__html: call.resultHtml}} />
+					{calls.map((call, i) => {
+						const Renderer = getToolRenderer(call.name);
+						return (
+							<div
+								key={i}
+								className="py-0.5 text-sm"
+								style={{color: 'rgb(115, 114, 108)'}}
+							>
+								<div className="flex items-center">
+									<span className="font-medium">{call.name}</span>
+									{call.param && <span className="ml-1.5 opacity-70">{call.param}</span>}
+									{call.duration !== undefined && <DurationBadge duration={call.duration} />}
 								</div>
-							)}
-						</div>
-					))}
+								<div className="mt-1 mb-2 text-xs text-foreground">
+									<Renderer toolCall={call} />
+								</div>
+							</div>
+						);
+					})}
 				</div>
 			)}
 		</div>

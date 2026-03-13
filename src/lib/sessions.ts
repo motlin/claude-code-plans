@@ -34,11 +34,22 @@ export interface ToolCallInfo {
 	input: Record<string, unknown>;
 	result?: string;
 	isError?: boolean;
+	startedAt?: string;
+	duration?: number;
 }
+
+export type MessageContent =
+	| {type: 'text'; text: string}
+	| {type: 'thinking'; thinking: string}
+	| {type: 'image'; mediaType: string; data: string}
+	| {type: 'tool_use'; id: string; name: string; input: Record<string, unknown>}
+	| {type: 'tool_result'; toolUseId: string; content: string; isError: boolean}
+	| {type: 'command'; name: string; args?: string};
 
 export interface SessionMessage {
 	role: 'user' | 'assistant';
 	textBlocks: string[];
+	content: MessageContent[];
 	toolCalls: ToolCallInfo[];
 	timestamp: string;
 	isCommand?: boolean;
@@ -460,6 +471,7 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 	let title = sessionId;
 	let customTitle: string | undefined;
 	const toolCallMap = new Map<string, ToolCallInfo>();
+	const toolStartTimes = new Map<string, number>();
 
 	const rl = createInterface({
 		input: createReadStream(filePath, {encoding: 'utf-8'}),
@@ -493,6 +505,7 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 
 			const timestamp = obj.timestamp ?? '';
 			const textBlocks: string[] = [];
+			const contentBlocks: MessageContent[] = [];
 			const toolCalls: ToolCallInfo[] = [];
 			const content = message.content;
 			let isCommand = false;
@@ -504,11 +517,17 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 						isCommand = true;
 						const label = cmd.args ? `${cmd.name} ${cmd.args}` : cmd.name;
 						textBlocks.push(label);
+						const cmdContent = {type: 'command', name: cmd.name} as MessageContent & {type: 'command'};
+						if (cmd.args) cmdContent.args = cmd.args;
+						contentBlocks.push(cmdContent);
 						return;
 					}
 					if (/<local-command-caveat>/.test(text)) return;
 					const cleaned = stripCommandTags(text);
-					if (cleaned) textBlocks.push(cleaned);
+					if (cleaned) {
+						textBlocks.push(cleaned);
+						contentBlocks.push({type: 'text', text: cleaned});
+					}
 				};
 
 				if (typeof content === 'string') {
@@ -524,6 +543,13 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 								const resultText = stripResultTags(rawResult);
 								info.result = truncateResult(resultText, 150);
 								if (block.is_error) info.isError = true;
+								const startTime = toolStartTimes.get(block.tool_use_id);
+								if (startTime && timestamp) {
+									const resultTime = new Date(timestamp).getTime();
+									if (!isNaN(resultTime) && resultTime > startTime) {
+										info.duration = resultTime - startTime;
+									}
+								}
 							}
 						}
 					}
@@ -533,20 +559,31 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 					for (const block of content) {
 						if (block.type === 'text' && typeof block.text === 'string') {
 							textBlocks.push(block.text);
+							contentBlocks.push({type: 'text', text: block.text});
+						} else if (block.type === 'thinking' && typeof block.thinking === 'string') {
+							contentBlocks.push({type: 'thinking', thinking: block.thinking});
 						} else if (block.type === 'tool_use') {
 							const tc: ToolCallInfo = {
 								id: block.id ?? '',
 								name: block.name as string,
 								input: block.input ?? {},
 							};
+							if (timestamp) tc.startedAt = timestamp;
 							toolCalls.push(tc);
-							if (tc.id) toolCallMap.set(tc.id, tc);
+							if (tc.id) {
+								toolCallMap.set(tc.id, tc);
+								if (timestamp) {
+									const t = new Date(timestamp).getTime();
+									if (!isNaN(t)) toolStartTimes.set(tc.id, t);
+								}
+							}
+							contentBlocks.push({type: 'tool_use', id: tc.id, name: tc.name, input: tc.input});
 						}
 					}
 				}
 			}
 
-			if (textBlocks.length === 0 && toolCalls.length === 0) continue;
+			if (textBlocks.length === 0 && toolCalls.length === 0 && contentBlocks.length === 0) continue;
 
 			if (type === 'user' && textBlocks.length > 0 && title === sessionId) {
 				title = extractSessionTitle(textBlocks[0]!, sessionId);
@@ -556,12 +593,20 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 			if (last && last.role === type) {
 				if (last.isCommand) {
 					last.toolCalls.push(...toolCalls);
+					last.content.push(...contentBlocks);
 				} else {
 					last.textBlocks.push(...textBlocks);
 					last.toolCalls.push(...toolCalls);
+					last.content.push(...contentBlocks);
 				}
 			} else {
-				const msg: SessionMessage = {role: type as 'user' | 'assistant', textBlocks, toolCalls, timestamp};
+				const msg: SessionMessage = {
+					role: type as 'user' | 'assistant',
+					textBlocks,
+					content: contentBlocks,
+					toolCalls,
+					timestamp,
+				};
 				if (isCommand) msg.isCommand = true;
 				messages.push(msg);
 			}

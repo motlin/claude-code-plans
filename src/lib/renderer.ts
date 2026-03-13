@@ -67,28 +67,25 @@ const EXT_LANG: Record<string, string> = {
 	svelte: 'svelte',
 };
 
-function detectLanguage(filePath: string): string {
+export function detectLanguage(filePath: string): string {
 	const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
 	return EXT_LANG[ext] ?? '';
 }
 
-function stripLineNumberPrefixes(text: string): string {
+export function stripLineNumberPrefixes(text: string): string {
 	return text
 		.split('\n')
 		.map((line) => line.replace(/^\s*\d+[→\t]/, ''))
 		.join('\n');
 }
 
-function escapeHtml(text: string): string {
-	return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
+export type DiffOp = readonly ['equal', string] | readonly ['remove', string] | readonly ['add', string];
 
-function countLines(text: string): number {
-	if (!text) return 0;
-	return text.split('\n').length;
+export interface DiffData {
+	ops: DiffOp[];
+	added: number;
+	removed: number;
 }
-
-type DiffOp = ['equal', string] | ['remove', string] | ['add', string];
 
 function computeDiff(oldLines: string[], newLines: string[]): DiffOp[] {
 	const m = oldLines.length;
@@ -127,31 +124,7 @@ function computeDiff(oldLines: string[], newLines: string[]): DiffOp[] {
 	return ops;
 }
 
-function buildDiffHtml(oldStr: string, newStr: string): string {
-	const oldLines = oldStr.split('\n');
-	const newLines = newStr.split('\n');
-	const ops = computeDiff(oldLines, newLines);
-	const rows: string[] = [];
-
-	for (const [type, line] of ops) {
-		if (type === 'equal') {
-			rows.push(
-				`<div class="tool-diff-context"><span class="tool-diff-marker"> </span><span class="tool-diff-code">${escapeHtml(line)}</span></div>`,
-			);
-		} else if (type === 'remove') {
-			rows.push(
-				`<div class="tool-diff-removed"><span class="tool-diff-marker">-</span><span class="tool-diff-code">${escapeHtml(line)}</span></div>`,
-			);
-		} else {
-			rows.push(
-				`<div class="tool-diff-added"><span class="tool-diff-marker">+</span><span class="tool-diff-code">${escapeHtml(line)}</span></div>`,
-			);
-		}
-	}
-	return `<div class="tool-diff">${rows.join('')}</div>`;
-}
-
-function diffStats(oldStr: string, newStr: string): string {
+export function computeDiffData(oldStr: string, newStr: string): DiffData {
 	const ops = computeDiff(oldStr.split('\n'), newStr.split('\n'));
 	let added = 0;
 	let removed = 0;
@@ -159,67 +132,5 @@ function diffStats(oldStr: string, newStr: string): string {
 		if (type === 'add') added++;
 		else if (type === 'remove') removed++;
 	}
-	const parts: string[] = [];
-	if (added > 0) parts.push(`<span class="tool-diff-stat-added">+${added}</span>`);
-	if (removed > 0) parts.push(`<span class="tool-diff-stat-removed">-${removed}</span>`);
-	return parts.join(' ');
-}
-
-export async function renderToolResultHtml(
-	name: string,
-	input: Record<string, unknown>,
-	result: string,
-	isError: boolean,
-): Promise<string> {
-	const errorClass = isError ? ' tool-result-error' : '';
-	const wrap = (body: string) => `<div class="tool-result${errorClass}">${body}</div>`;
-
-	switch (name) {
-		case 'Read': {
-			const filePath = (input['file_path'] as string) ?? '';
-			const lineCount = countLines(result);
-			const lang = detectLanguage(filePath);
-			const code = stripLineNumberPrefixes(result);
-			const fence = lang ? `\`\`\`${lang}\n${code}\n\`\`\`` : `\`\`\`\n${code}\n\`\`\``;
-			const rendered = await renderMarkdown(fence);
-			return wrap(
-				`<div class="tool-result-meta">Read ${lineCount} lines</div>` +
-					`<div class="tool-result-content">${rendered}</div>`,
-			);
-		}
-		case 'Edit':
-		case 'MultiEdit': {
-			const oldStr = (input['old_string'] as string) ?? '';
-			const newStr = (input['new_string'] as string) ?? '';
-			const stats = diffStats(oldStr, newStr);
-			const diff = buildDiffHtml(oldStr, newStr);
-			return wrap(
-				`<div class="tool-result-summary"><span class="tool-diff-stats">${stats}</span></div>` +
-					`<div class="tool-result-content">${diff}</div>`,
-			);
-		}
-		case 'Write': {
-			return wrap(`<div class="tool-result-meta">${escapeHtml(result)}</div>`);
-		}
-		case 'Bash': {
-			const fence = `\`\`\`\n${result}\n\`\`\``;
-			const rendered = await renderMarkdown(fence);
-			return wrap(`<div class="tool-result-content">${rendered}</div>`);
-		}
-		case 'Glob': {
-			const fileCount = result.trim() ? result.trim().split('\n').length : 0;
-			return wrap(
-				`<div class="tool-result-meta">${fileCount} files</div>` +
-					`<pre class="tool-result-pre">${escapeHtml(result)}</pre>`,
-			);
-		}
-		case 'Grep': {
-			const fence = `\`\`\`\n${result}\n\`\`\``;
-			const rendered = await renderMarkdown(fence);
-			return wrap(`<div class="tool-result-content">${rendered}</div>`);
-		}
-		default: {
-			return wrap(`<pre class="tool-result-pre">${escapeHtml(result)}</pre>`);
-		}
-	}
+	return {ops, added, removed};
 }

@@ -4,12 +4,13 @@ import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {useState} from 'react';
 import {readSession, summarizeToolCalls} from '../lib/sessions';
-import {renderMarkdown, renderToolResultHtml} from '../lib/renderer';
+import {renderMarkdown, computeDiffData} from '../lib/renderer';
 import {SessionChat} from '../components/session-chat';
 import {getSubagents, getSessionSummary, requestSummary} from '../lib/server-fns';
 import {getDb} from '../lib/db';
 import {sessions} from '../lib/db/schema';
 import {eq} from 'drizzle-orm';
+import type {ClientToolCall, ToolInput} from '../components/tool-renderers';
 
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
@@ -37,33 +38,67 @@ const getSession = createServerFn({method: 'GET'})
 
 		const messages = await Promise.all(
 			detail.messages.map(async (msg) => {
-				const toolCalls = await Promise.all(
-					msg.toolCalls.map(async (tc) => {
-						const resultHtml = tc.result
-							? await renderToolResultHtml(tc.name, tc.input, tc.result, tc.isError ?? false)
-							: undefined;
-						const call: {name: string; param: string; resultHtml?: string} = {
-							name: tc.name,
-							param: getToolParam(tc),
-						};
-						if (resultHtml !== undefined) {
-							call.resultHtml = resultHtml;
-						}
-						return call;
-					}),
-				);
+				const toolCalls: ClientToolCall[] = msg.toolCalls.map((tc) => {
+					const call: ClientToolCall = {
+						id: tc.id,
+						name: tc.name,
+						input: tc.input as ToolInput,
+						param: getToolParam(tc),
+					};
+					if (tc.result !== undefined) call.result = tc.result;
+					if (tc.isError !== undefined) call.isError = tc.isError;
+					if (tc.duration !== undefined) call.duration = tc.duration;
+
+					if ((tc.name === 'Edit' || tc.name === 'MultiEdit') && tc.input['old_string'] !== undefined) {
+						const oldStr = (tc.input['old_string'] as string) ?? '';
+						const newStr = (tc.input['new_string'] as string) ?? '';
+						call.diffData = computeDiffData(oldStr, newStr);
+					}
+
+					return call;
+				});
+
 				const toolSummary = summarizeToolCalls(msg.toolCalls);
 				const htmlBlocks = await Promise.all(msg.textBlocks.map((text) => renderMarkdown(text)));
-				if (msg.role === 'assistant') {
-					return {role: 'assistant' as const, htmlBlocks, toolCalls, toolSummary};
+
+				const thinkingBlocks: string[] = [];
+				const imageBlocks: Array<{mediaType: string; data: string}> = [];
+				let command: {name: string; args?: string} | undefined;
+
+				for (const block of msg.content) {
+					if (block.type === 'thinking') {
+						thinkingBlocks.push(block.thinking);
+					} else if (block.type === 'image') {
+						imageBlocks.push({mediaType: block.mediaType, data: block.data});
+					} else if (block.type === 'command') {
+						command = {name: block.name};
+						if (block.args) (command as {name: string; args: string}).args = block.args;
+					}
 				}
-				return {role: 'user' as const, htmlBlocks, toolCalls, toolSummary};
+
+				const result: {
+					role: 'user' | 'assistant';
+					htmlBlocks: string[];
+					thinkingBlocks: string[];
+					imageBlocks: Array<{mediaType: string; data: string}>;
+					toolCalls: ClientToolCall[];
+					toolSummary: string;
+					command?: {name: string; args?: string};
+				} = {
+					role: msg.role,
+					htmlBlocks,
+					thinkingBlocks,
+					imageBlocks,
+					toolCalls,
+					toolSummary,
+				};
+				if (command) result.command = command;
+				return result;
 			}),
 		);
 
 		const [subagents, summaryResult] = await Promise.all([getSubagents({data: id}), getSessionSummary({data: id})]);
 
-		// Check if this session already has a summary or custom title from the index
 		const {index} = getDb();
 		const sessionRow = index.select().from(sessions).where(eq(sessions.id, id)).get();
 		const hasSummary = !!(sessionRow?.summary || sessionRow?.customTitle);

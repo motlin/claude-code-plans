@@ -1,0 +1,57 @@
+import {Link} from '@tanstack/react-router';
+import {Bot} from 'lucide-react';
+import type {ToolRendererProps} from './types';
+import {CollapsibleSection} from './shared';
+
+const AGENT_TYPE_COLORS: Record<string, string> = {
+	Explore: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+	Plan: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+};
+
+export function AgentRenderer({toolCall}: ToolRendererProps) {
+	const prompt = (toolCall.input['prompt'] as string) ?? '';
+	const agentType = (toolCall.input['subagent_type'] as string) ?? '';
+	const description = (toolCall.input['description'] as string) ?? '';
+	const {result} = toolCall;
+
+	const agentIdMatch = result?.match(/agentId:\s*(\S+)/);
+	const agentId = agentIdMatch?.[1];
+	const displayResult = agentId ? result!.replace(/agentId:\s*\S+\n?/, '').trim() : result;
+
+	const colorClass = AGENT_TYPE_COLORS[agentType] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+
+	return (
+		<div>
+			<div className="flex items-center gap-2 flex-wrap">
+				{agentType && (
+					<span className={`rounded px-1.5 py-0.5 text-xs font-medium ${colorClass}`}>{agentType}</span>
+				)}
+				{description && <span className="text-xs text-muted-foreground line-clamp-2">{description}</span>}
+				{agentId && (
+					<Link
+						to="/session/$id"
+						params={{id: `agent-${agentId}`}}
+						className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+					>
+						<Bot size={12} />
+						View session
+					</Link>
+				)}
+			</div>
+			{prompt && (
+				<CollapsibleSection label="Prompt">
+					<pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-all max-h-48 overflow-auto">
+						{prompt}
+					</pre>
+				</CollapsibleSection>
+			)}
+			{displayResult && (
+				<CollapsibleSection label="Output">
+					<pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-all max-h-48 overflow-auto">
+						{displayResult}
+					</pre>
+				</CollapsibleSection>
+			)}
+		</div>
+	);
+}
