@@ -81,7 +81,7 @@ function UserMessage({msg}: {msg: ChatMessage}) {
 		return (
 			<div className="flex items-start gap-1 flex-row-reverse">
 				<UserAvatar />
-				<div className="flex flex-col items-end gap-2 ml-auto max-w-[85%] w-fit">
+				<div className="flex flex-col items-end gap-2 ml-auto max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] w-fit">
 					<div>
 						<div className="rounded-lg px-3 py-2 bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)]">
 							<span className="bg-muted rounded-full px-2 py-0.5 text-xs font-mono">
@@ -109,7 +109,7 @@ function UserMessage({msg}: {msg: ChatMessage}) {
 				>
 					<UserAvatar />
 					<div
-						className="rounded-lg px-3 py-2 break-words min-w-0 overflow-hidden bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)] ml-auto max-w-[85%]"
+						className="rounded-lg px-3 py-2 break-words min-w-0 overflow-hidden bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)] ml-auto max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%]"
 						style={{fontSize: '14px', fontWeight: 430, lineHeight: '19.6px'}}
 					>
 						<MarkdownArticle html={html} />
@@ -122,7 +122,7 @@ function UserMessage({msg}: {msg: ChatMessage}) {
 					className="flex items-start gap-1 flex-row-reverse"
 				>
 					<UserAvatar />
-					<div className="rounded-lg px-3 py-2 bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)] flex items-center gap-1.5 ml-auto max-w-[85%]">
+					<div className="rounded-lg px-3 py-2 bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)] flex items-center gap-1.5 ml-auto max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%]">
 						<svg
 							width="16"
 							height="16"
