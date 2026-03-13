@@ -54,7 +54,7 @@ function UserMessage({msg}: {msg: ChatMessage}) {
 		return (
 			<div className="flex flex-col items-end gap-2 ml-auto max-w-[85%] w-fit">
 				<div className="rounded-lg px-3 py-2 bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)]">
-					<span className="bg-muted rounded-full px-2 py-0.5 text-xs font-mono">/{msg.command.name}</span>
+					<span className="bg-muted rounded-full px-2 py-0.5 text-xs font-mono">{msg.command.name}</span>
 					{msg.command.args && (
 						<span className="text-xs text-muted-foreground ml-1.5">{msg.command.args}</span>
 					)}
