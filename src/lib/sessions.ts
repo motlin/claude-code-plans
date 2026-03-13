@@ -180,6 +180,7 @@ interface ContentBlock {
 	tool_use_id?: string;
 	content?: unknown;
 	is_error?: boolean;
+	source?: {type: string; media_type: string; data: string};
 }
 
 function extractFirstUserText(line: string): string | null {
@@ -566,6 +567,12 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 					for (const block of content) {
 						if (block.type === 'text' && typeof block.text === 'string') {
 							processUserText(block.text);
+						} else if (block.type === 'image' && block.source) {
+							contentBlocks.push({
+								type: 'image',
+								mediaType: block.source.media_type,
+								data: block.source.data,
+							});
 						} else if (block.type === 'tool_result' && block.tool_use_id) {
 							const rawResult = extractToolResultContent(block.content);
 							const info = toolCallMap.get(block.tool_use_id);

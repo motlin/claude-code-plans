@@ -319,6 +319,38 @@ describe('readSession', () => {
 		expect(detail!.messages[0]!.textBlocks).toEqual(['Check this']);
 	});
 
+	it('extracts image blocks from user content arrays', async () => {
+		const projDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projDir, {recursive: true});
+		const base64Data =
+			'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+		writeFileSync(
+			join(projDir, 'image-user.jsonl'),
+			jsonl(
+				userMessageArray([
+					{type: 'text', text: 'Here is a screenshot'},
+					{
+						type: 'image',
+						source: {
+							type: 'base64',
+							media_type: 'image/png',
+							data: base64Data,
+						},
+					},
+				]),
+			),
+		);
+
+		const detail = await readSession(testDir, 'image-user');
+		expect(detail!.messages).toHaveLength(1);
+		expect(detail!.messages[0]!.textBlocks).toEqual(['Here is a screenshot']);
+		expect(detail!.messages[0]!.content).toContainEqual({
+			type: 'image',
+			mediaType: 'image/png',
+			data: base64Data,
+		});
+	});
+
 	it('skips thinking blocks from assistant', async () => {
 		const projDir = join(testDir, '-Users-craig-projects-app');
 		mkdirSync(projDir, {recursive: true});
