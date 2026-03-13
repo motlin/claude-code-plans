@@ -42,6 +42,7 @@ export type MessageContent =
 	| {type: 'text'; text: string}
 	| {type: 'thinking'; thinking: string}
 	| {type: 'image'; mediaType: string; data: string}
+	| {type: 'document'; mediaType: string; data: string}
 	| {type: 'tool_use'; id: string; name: string; input: Record<string, unknown>}
 	| {type: 'tool_result'; toolUseId: string; content: string; isError: boolean}
 	| {type: 'command'; name: string; args?: string};
@@ -570,6 +571,12 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 						} else if (block.type === 'image' && block.source) {
 							contentBlocks.push({
 								type: 'image',
+								mediaType: block.source.media_type,
+								data: block.source.data,
+							});
+						} else if (block.type === 'document' && block.source) {
+							contentBlocks.push({
+								type: 'document',
 								mediaType: block.source.media_type,
 								data: block.source.data,
 							});

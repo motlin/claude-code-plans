@@ -351,6 +351,38 @@ describe('readSession', () => {
 		});
 	});
 
+	it('extracts document blocks from user content arrays', async () => {
+		const projDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projDir, {recursive: true});
+		const pdfData =
+			'JVBERi0xLjQKJeLjz9MNCiXi48zTDQoxIDAgb2JqDTw8L1R5cGUvQ2F0YWxvZy9QYWdlcyAyIDAgUj4+DWVuZG9iDTIgMCBvYmo8PC9UeXBlL1BhZ2VzL0tpZHNbMyAwIFJdL0NvdW50IDE+Pg1lbmRvYg0zIDAgb2JqDTw8L1R5cGUvUGFnZS9QYXJlbnQgMiAwIFIvUmVzb3VyY2VzPDwvRm9udDw8L0YxIDQgMCBSPj4+Pi9NZWRpYUJveFswIDAgNjEyIDc5Ml0vQ29udGVudHMgNSAwIFI+Pg1lbmRvYg0';
+		writeFileSync(
+			join(projDir, 'doc-user.jsonl'),
+			jsonl(
+				userMessageArray([
+					{type: 'text', text: 'Please review this PDF'},
+					{
+						type: 'document',
+						source: {
+							type: 'base64',
+							media_type: 'application/pdf',
+							data: pdfData,
+						},
+					},
+				]),
+			),
+		);
+
+		const detail = await readSession(testDir, 'doc-user');
+		expect(detail!.messages).toHaveLength(1);
+		expect(detail!.messages[0]!.textBlocks).toEqual(['Please review this PDF']);
+		expect(detail!.messages[0]!.content).toContainEqual({
+			type: 'document',
+			mediaType: 'application/pdf',
+			data: pdfData,
+		});
+	});
+
 	it('skips thinking blocks from assistant', async () => {
 		const projDir = join(testDir, '-Users-craig-projects-app');
 		mkdirSync(projDir, {recursive: true});
