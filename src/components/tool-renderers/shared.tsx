@@ -232,20 +232,28 @@ export function FilePath({path}: {path: string}) {
 }
 
 export function DiffLine({type, line}: {type: 'equal' | 'add' | 'remove'; line: string}) {
-	const styles = {
-		equal: 'border-l-3 border-transparent',
-		add: 'bg-green-50 dark:bg-green-950/30 border-l-3 border-green-500',
-		remove: 'bg-red-50 dark:bg-red-950/30 border-l-3 border-red-500',
+	const markerColors = {
+		equal: 'bg-transparent text-muted-foreground',
+		add: 'bg-green-500 text-green-50',
+		remove: 'bg-red-500 text-red-50',
 	};
 	const markers = {equal: ' ', add: '+', remove: '-'};
-	const markerColors = {equal: 'text-muted-foreground', add: 'text-green-600', remove: 'text-red-600'};
+	const lineBackground = {
+		equal: '',
+		add: 'bg-green-50 dark:bg-green-950/30',
+		remove: 'bg-red-50 dark:bg-red-950/30',
+	};
 
 	return (
-		<div className={`flex font-mono text-xs leading-relaxed ${styles[type]}`}>
-			<span className={`inline-flex w-5 shrink-0 items-center justify-center select-none ${markerColors[type]}`}>
+		<div className={`grid grid-cols-[auto_auto_1fr] font-mono text-xs leading-relaxed ${lineBackground[type]}`}>
+			{/* Gutter column: line numbers (currently empty, can be populated with line numbers) */}
+			<div className="w-8 px-1 text-right text-muted-foreground select-none" />
+			{/* Marker column: +/- indicator with colored background */}
+			<div className={`w-6 flex items-center justify-center select-none font-semibold ${markerColors[type]}`}>
 				{markers[type]}
-			</span>
-			<span className="whitespace-pre-wrap break-all px-1">{line}</span>
+			</div>
+			{/* Code content column */}
+			<span className="whitespace-pre-wrap break-all px-2">{line}</span>
 		</div>
 	);
 }
