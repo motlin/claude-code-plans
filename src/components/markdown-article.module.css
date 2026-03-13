@@ -109,6 +109,8 @@
 
 :global(.dark) .markdown code {
 	background: hsl(220 13% 15% / 0.5);
+	color: rgb(220, 140, 140);
+	border-color: rgba(255, 255, 255, 0.1);
 }
 
 .markdown pre code {
