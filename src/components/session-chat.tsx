@@ -49,14 +49,14 @@ export function SessionChat({messages}: {messages: ChatMessage[]}) {
 	}, []);
 
 	return (
-		<div className="mx-auto w-full max-w-3xl px-8 pt-4">
+		<div className="mx-auto w-full max-w-3xl px-8 pt-4 pb-4">
 			{messages.map((msg, i) => {
 				const prevRole = i > 0 ? messages[i - 1]!.role : null;
 				const isNewTurn = prevRole !== null && prevRole !== msg.role;
 				return (
 					<div
 						key={i}
-						className={isNewTurn ? 'pb-4' : ''}
+						className={isNewTurn ? 'pb-6' : ''}
 					>
 						{msg.role === 'user' ? (
 							<UserMessage msg={msg} />
@@ -92,7 +92,9 @@ function UserMessage({msg}: {msg: ChatMessage}) {
 							)}
 						</div>
 						{timestampText && (
-							<div className="mt-1 text-right text-xs text-muted-foreground">{timestampText}</div>
+							<div className="mt-1 text-right text-xs text-muted-foreground leading-tight">
+								{timestampText}
+							</div>
 						)}
 					</div>
 				</div>
@@ -108,10 +110,7 @@ function UserMessage({msg}: {msg: ChatMessage}) {
 					className="flex items-start gap-1 flex-row-reverse"
 				>
 					<UserAvatar />
-					<div
-						className="rounded-lg px-3 py-2 break-words min-w-0 overflow-hidden bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)] ml-auto max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%]"
-						style={{fontSize: '14px', fontWeight: 430, lineHeight: '19.6px'}}
-					>
+					<div className="rounded-lg px-3 py-2 break-words min-w-0 overflow-hidden bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)] ml-auto max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] text-sm leading-relaxed">
 						<MarkdownArticle html={html} />
 					</div>
 				</div>
@@ -142,7 +141,7 @@ function UserMessage({msg}: {msg: ChatMessage}) {
 			{timestampText && (
 				<div className="flex items-start gap-1 flex-row-reverse">
 					<div className="w-4 shrink-0" />
-					<div className="text-xs text-muted-foreground text-right">{timestampText}</div>
+					<div className="text-xs text-muted-foreground text-right leading-tight">{timestampText}</div>
 				</div>
 			)}
 		</div>
@@ -208,7 +207,7 @@ function ThinkingBlock({thinking}: {thinking: string}) {
 			<button
 				type="button"
 				onClick={() => setOpen(!open)}
-				className="text-xs text-amber-600 dark:text-amber-400 cursor-pointer flex items-center gap-1"
+				className="text-xs text-amber-600 dark:text-amber-400 cursor-pointer flex items-center gap-1 leading-tight"
 			>
 				<svg
 					width="12"
@@ -226,7 +225,7 @@ function ThinkingBlock({thinking}: {thinking: string}) {
 				Thinking...
 			</button>
 			{open && (
-				<div className="mt-1 text-xs italic text-muted-foreground whitespace-pre-wrap bg-amber-50/50 dark:bg-amber-950/20 rounded p-2 max-h-64 overflow-auto">
+				<div className="mt-1 text-xs italic text-muted-foreground whitespace-pre-wrap bg-amber-50/50 dark:bg-amber-950/20 rounded p-2 max-h-64 overflow-auto leading-relaxed">
 					{thinking}
 				</div>
 			)}
@@ -256,13 +255,13 @@ function AssistantMessage({msg, isFirst}: {msg: ChatMessage; isFirst: boolean}) 
 			{msg.htmlBlocks.map((html, i) => (
 				<div
 					key={`text-${i}`}
-					className="grid gap-1 max-w-full min-w-0 text-sm"
+					className="grid gap-1 max-w-full min-w-0"
 					style={{gridTemplateColumns: '16px 1fr'}}
 				>
 					<div className="flex items-start justify-center">
 						{isFirst && i === 0 && !thinkingText ? <ClaudeIcon /> : <div className="w-4 shrink-0" />}
 					</div>
-					<div className="min-w-0 flex-1 text-sm text-foreground">
+					<div className="min-w-0 flex-1 text-sm leading-relaxed text-foreground">
 						<MarkdownArticle html={html} />
 					</div>
 				</div>
@@ -305,7 +304,7 @@ function AssistantMessage({msg, isFirst}: {msg: ChatMessage; isFirst: boolean}) 
 					<div className="flex items-start justify-center">
 						<div className="w-4 shrink-0" />
 					</div>
-					<div className="text-xs text-muted-foreground">{timestampText}</div>
+					<div className="text-xs text-muted-foreground leading-tight">{timestampText}</div>
 				</div>
 			)}
 		</div>
@@ -341,7 +340,7 @@ function ToolCallSummary({calls, summary}: {calls: ClientToolCall[]; summary: st
 			<button
 				type="button"
 				onClick={() => setExpanded(!expanded)}
-				className="flex items-center gap-2 py-1 text-sm transition-colors cursor-pointer w-full text-left"
+				className="flex items-center gap-2 py-1 text-sm leading-relaxed transition-colors cursor-pointer w-full text-left"
 				style={{color: 'rgb(115, 114, 108)'}}
 			>
 				<ChevronIcon expanded={expanded} />
@@ -354,15 +353,15 @@ function ToolCallSummary({calls, summary}: {calls: ClientToolCall[]; summary: st
 						return (
 							<div
 								key={i}
-								className="py-0.5 text-sm"
+								className="py-0.5 text-sm leading-relaxed"
 								style={{color: 'rgb(115, 114, 108)'}}
 							>
 								<div className="flex items-center">
-									<span className="font-medium">{call.name}</span>
-									{call.param && <span className="ml-1.5 opacity-70">{call.param}</span>}
+									<span className="font-medium text-sm">{call.name}</span>
+									{call.param && <span className="ml-1.5 text-xs opacity-70">{call.param}</span>}
 									{call.duration !== undefined && <DurationBadge duration={call.duration} />}
 								</div>
-								<div className="mt-1 mb-2 text-xs text-foreground">
+								<div className="mt-1 mb-2 text-xs text-foreground leading-relaxed">
 									<Renderer toolCall={call} />
 								</div>
 							</div>
