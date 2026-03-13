@@ -241,17 +241,27 @@ function AssistantMessage({msg, isFirst}: {msg: ChatMessage; isFirst: boolean}) 
 	return (
 		<div className="flex flex-col gap-1.5 min-w-0">
 			{thinkingText && (
-				<div className="flex items-start gap-1">
-					{isFirst ? <ClaudeIcon /> : <div className="w-4 shrink-0" />}
-					<ThinkingBlock thinking={thinkingText} />
+				<div
+					className="grid gap-1 min-w-0"
+					style={{gridTemplateColumns: '16px 1fr'}}
+				>
+					<div className="flex items-start justify-center">
+						{isFirst ? <ClaudeIcon /> : <div className="w-4 shrink-0" />}
+					</div>
+					<div className="min-w-0">
+						<ThinkingBlock thinking={thinkingText} />
+					</div>
 				</div>
 			)}
 			{msg.htmlBlocks.map((html, i) => (
 				<div
 					key={`text-${i}`}
-					className="flex items-start gap-1 max-w-full min-w-0 text-sm"
+					className="grid gap-1 max-w-full min-w-0 text-sm"
+					style={{gridTemplateColumns: '16px 1fr'}}
 				>
-					{isFirst && i === 0 && !thinkingText ? <ClaudeIcon /> : <div className="w-4 shrink-0" />}
+					<div className="flex items-start justify-center">
+						{isFirst && i === 0 && !thinkingText ? <ClaudeIcon /> : <div className="w-4 shrink-0" />}
+					</div>
 					<div className="min-w-0 flex-1 text-sm text-foreground">
 						<MarkdownArticle html={html} />
 					</div>
@@ -260,9 +270,12 @@ function AssistantMessage({msg, isFirst}: {msg: ChatMessage; isFirst: boolean}) 
 			{msg.imageBlocks.map((img, i) => (
 				<div
 					key={`img-${i}`}
-					className="flex items-start gap-1"
+					className="grid gap-1"
+					style={{gridTemplateColumns: '16px 1fr'}}
 				>
-					<div className="w-4 shrink-0" />
+					<div className="flex items-start justify-center">
+						<div className="w-4 shrink-0" />
+					</div>
 					<img
 						src={`data:${img.mediaType};base64,${img.data}`}
 						alt="Session image"
@@ -271,8 +284,13 @@ function AssistantMessage({msg, isFirst}: {msg: ChatMessage; isFirst: boolean}) 
 				</div>
 			))}
 			{msg.toolCalls.length > 0 && (
-				<div className="flex items-start gap-1">
-					<div className="w-4 shrink-0" />
+				<div
+					className="grid gap-1"
+					style={{gridTemplateColumns: '16px 1fr'}}
+				>
+					<div className="flex items-start justify-center">
+						<div className="w-4 shrink-0" />
+					</div>
 					<ToolCallSummary
 						calls={msg.toolCalls}
 						summary={msg.toolSummary}
@@ -280,8 +298,13 @@ function AssistantMessage({msg, isFirst}: {msg: ChatMessage; isFirst: boolean}) 
 				</div>
 			)}
 			{timestampText && (
-				<div className="flex items-start gap-1">
-					<div className="w-4 shrink-0" />
+				<div
+					className="grid gap-1"
+					style={{gridTemplateColumns: '16px 1fr'}}
+				>
+					<div className="flex items-start justify-center">
+						<div className="w-4 shrink-0" />
+					</div>
 					<div className="text-xs text-muted-foreground">{timestampText}</div>
 				</div>
 			)}
