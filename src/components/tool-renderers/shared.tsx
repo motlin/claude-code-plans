@@ -39,7 +39,7 @@ const BG_COLORS: Record<number, string> = {
 	107: '#ffffff',
 };
 
-interface StyledPart {
+export interface StyledPart {
 	text: string;
 	fg?: string;
 	bg?: string;
@@ -49,7 +49,7 @@ interface StyledPart {
 	underline?: boolean;
 }
 
-function parseAnsiCodes(text: string): StyledPart[] {
+export function parseAnsiCodes(text: string): StyledPart[] {
 	const parts: StyledPart[] = [];
 
 	// Current style state
