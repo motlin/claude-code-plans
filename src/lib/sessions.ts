@@ -453,6 +453,7 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 	let filePath: string | null = null;
 	let project = '';
 
+	// First, try to find the session as a regular top-level file
 	for (const dir of projectDirs) {
 		const candidate = join(projectsDir, dir, filename);
 		try {
@@ -462,6 +463,34 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 			break;
 		} catch {
 			// not in this dir
+		}
+	}
+
+	// If not found and sessionId starts with 'agent-', try looking in subagent directories
+	if (!filePath && sessionId.startsWith('agent-')) {
+		for (const dir of projectDirs) {
+			// Look for the agent file in nested session subagent directories
+			const subagentsDir = join(projectsDir, dir);
+			let sessionDirs: string[];
+			try {
+				sessionDirs = await readdir(subagentsDir);
+			} catch {
+				continue;
+			}
+
+			for (const sessionDir of sessionDirs) {
+				const candidate = join(projectsDir, dir, sessionDir, 'subagents', filename);
+				try {
+					await stat(candidate);
+					filePath = candidate;
+					project = dir;
+					break;
+				} catch {
+					// not in this subagent dir
+				}
+			}
+
+			if (filePath) break;
 		}
 	}
 
