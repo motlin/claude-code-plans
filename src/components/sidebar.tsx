@@ -515,6 +515,7 @@ function ProjectsSubList({activeItemId, refreshKey}: {activeItemId: string | nul
 														to="/session/$id"
 														params={{id: sess.id}}
 														className={linkClass(false)}
+														style={{paddingLeft: '1.5rem'}}
 													>
 														{sess.title}
 													</Link>
@@ -523,7 +524,8 @@ function ProjectsSubList({activeItemId, refreshKey}: {activeItemId: string | nul
 													<Link
 														to="/project/$id"
 														params={{id: project.id}}
-														className="mb-px block truncate rounded-[4px] px-2 py-1 text-[10px] italic text-[rgb(155,154,148)] no-underline hover:text-[rgb(115,114,108)] dark:text-[rgb(120,120,115)] dark:hover:text-[rgb(150,150,145)]"
+														className="mb-px block truncate rounded-[4px] py-1 text-[10px] italic text-[rgb(155,154,148)] no-underline hover:text-[rgb(115,114,108)] dark:text-[rgb(120,120,115)] dark:hover:text-[rgb(150,150,145)]"
+														style={{paddingLeft: '1.5rem', paddingRight: '0.5rem'}}
 													>
 														+{detail.sessions.length - 10} more...
 													</Link>
@@ -539,6 +541,7 @@ function ProjectsSubList({activeItemId, refreshKey}: {activeItemId: string | nul
 														to="/plan/$filename"
 														params={{filename: plan.filename}}
 														className={linkClass(false)}
+														style={{paddingLeft: '1.5rem'}}
 													>
 														{plan.title}
 													</Link>
@@ -554,6 +557,7 @@ function ProjectsSubList({activeItemId, refreshKey}: {activeItemId: string | nul
 														to="/memory/$project/$filename"
 														params={{project: mem.project, filename: mem.filename}}
 														className={linkClass(false)}
+														style={{paddingLeft: '1.5rem'}}
 													>
 														{mem.title}
 													</Link>
