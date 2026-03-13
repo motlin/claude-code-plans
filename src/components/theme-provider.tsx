@@ -33,12 +33,18 @@ export function ThemeProvider({
 		root.classList.remove('light', 'dark');
 
 		if (theme === 'system') {
-			const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-			root.classList.add(systemTheme);
-			return;
+			const mql = window.matchMedia('(prefers-color-scheme: dark)');
+			const handler = (e: MediaQueryListEvent) => {
+				root.classList.remove('light', 'dark');
+				root.classList.add(e.matches ? 'dark' : 'light');
+			};
+			root.classList.add(mql.matches ? 'dark' : 'light');
+			mql.addEventListener('change', handler);
+			return () => mql.removeEventListener('change', handler);
 		}
 
 		root.classList.add(theme);
+		return undefined;
 	}, [theme]);
 
 	return (
