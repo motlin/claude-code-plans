@@ -261,12 +261,25 @@ export function DiffStats({added, removed}: {added: number; removed: number}) {
 
 export function TerminalOutput({content, maxLines = 100}: {content: string; maxLines?: number}) {
 	const [showAll, setShowAll] = useState(false);
-	const lines = content.split('\n');
+
+	// Extract exit code if present at the start of the content
+	const exitCodeMatch = content.match(/^Exit code (\d+)\n?/);
+	const exitCode = exitCodeMatch?.[1] ? parseInt(exitCodeMatch[1], 10) : null;
+	const contentWithoutExitCode = exitCodeMatch ? content.replace(/^Exit code \d+\n?/, '') : content;
+
+	const lines = contentWithoutExitCode.split('\n');
 	const truncated = !showAll && lines.length > maxLines;
-	const displayed = truncated ? lines.slice(0, maxLines).join('\n') : content;
+	const displayed = truncated ? lines.slice(0, maxLines).join('\n') : contentWithoutExitCode;
 
 	return (
 		<div className="relative">
+			{exitCode !== null && (
+				<div className="mb-2 flex items-center gap-2">
+					<span className="inline-flex items-center gap-1.5 bg-red-900 text-red-100 px-2.5 py-1 rounded text-xs font-bold">
+						Exit code <span className="font-mono">{exitCode}</span>
+					</span>
+				</div>
+			)}
 			<pre className="bg-gray-900 text-gray-100 rounded text-xs leading-relaxed p-2 overflow-x-auto whitespace-pre-wrap break-all">
 				<AnsiText content={displayed} />
 			</pre>
