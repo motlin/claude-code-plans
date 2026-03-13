@@ -89,6 +89,7 @@ const getSession = createServerFn({method: 'GET'})
 
 				const result: {
 					role: 'user' | 'assistant';
+					timestamp?: string;
 					htmlBlocks: string[];
 					thinkingBlocks: string[];
 					imageBlocks: Array<{mediaType: string; data: string}>;
@@ -105,6 +106,7 @@ const getSession = createServerFn({method: 'GET'})
 					toolCalls,
 					toolSummary,
 				};
+				if (msg.timestamp) result.timestamp = msg.timestamp;
 				if (command) result.command = command;
 				return result;
 			}),
