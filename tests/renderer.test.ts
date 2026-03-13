@@ -1,10 +1,53 @@
-import {renderMarkdown, computeDiffData, warmup} from '../src/lib/renderer.js';
+import {renderMarkdown, computeDiffData, warmup, extractLineNumbers} from '../src/lib/renderer.js';
 
 beforeAll(async () => {
 	await warmup();
-});
+}, 30000);
 
 describe('renderMarkdown', () => {
+	it('renders code blocks with line numbers from Read tool prefixes', async () => {
+		const input = '```typescript\n1→const x = 1;\n2→const y = 2;\n```';
+		const result = await renderMarkdown(input);
+		// Should render as code block
+		expect(result).toContain('<pre');
+		expect(result).toContain('shiki');
+		// Should contain the code content without the arrow prefixes
+		expect(result).toContain('const');
+		expect(result).toContain('x');
+		expect(result).toContain('y');
+		// Should NOT contain the arrow prefix in the rendered output
+		expect(result).not.toContain('1→');
+		expect(result).not.toContain('2→');
+		// Should contain line number gutters with shiki-line-number class
+		expect(result).toContain('shiki-line-number');
+		expect(result).toContain('data-line="1"');
+		expect(result).toContain('data-line="2"');
+	});
+
+	it('renders code blocks starting from non-1 line numbers', async () => {
+		const input = '```typescript\n42→const x = 1;\n43→const y = 2;\n```';
+		const result = await renderMarkdown(input);
+		// Should render as code block with line numbers starting from 42
+		expect(result).toContain('shiki-line-number');
+		expect(result).toContain('data-line="42"');
+		expect(result).toContain('data-line="43"');
+		// Should NOT contain the arrow prefix
+		expect(result).not.toContain('42→');
+		expect(result).not.toContain('43→');
+	});
+
+	it('does not add line numbers to code blocks without Read tool prefixes', async () => {
+		const input = '```typescript\nconst x = 1;\nconst y = 2;\n```';
+		const result = await renderMarkdown(input);
+		// Should render as code block
+		expect(result).toContain('<pre');
+		expect(result).toContain('shiki');
+		// Should contain the code content
+		expect(result).toContain('const');
+		// Should NOT contain line number gutters (no Read tool prefixes)
+		expect(result).not.toContain('shiki-line-number');
+	});
+
 	it('renders headings', async () => {
 		const result = await renderMarkdown('# Hello World');
 		expect(result).toContain('<h1>Hello World</h1>');
@@ -130,5 +173,49 @@ describe('computeDiffData', () => {
 		expect(result.ops[0]).toEqual(['equal', 'a']);
 		expect(result.ops[1]).toEqual(['remove', 'b']);
 		expect(result.ops[2]).toEqual(['add', 'c']);
+	});
+});
+
+describe('extractLineNumbers', () => {
+	it('extracts line numbers from arrow prefix', () => {
+		const result = extractLineNumbers('1→const x = 1;\n2→const y = 2;');
+		expect(result.text).toBe('const x = 1;\nconst y = 2;');
+		expect(result.startLine).toBe(1);
+	});
+
+	it('preserves startLine when starting from non-1', () => {
+		const result = extractLineNumbers('42→line 42\n43→line 43');
+		expect(result.text).toBe('line 42\nline 43');
+		expect(result.startLine).toBe(42);
+	});
+
+	it('handles tab separator between line number and content', () => {
+		const result = extractLineNumbers('1\tconst x = 1;\n2\tconst y = 2;');
+		expect(result.text).toBe('const x = 1;\nconst y = 2;');
+		expect(result.startLine).toBe(1);
+	});
+
+	it('handles mixed whitespace before line number', () => {
+		const result = extractLineNumbers('  1→content\n  2→more content');
+		expect(result.text).toBe('content\nmore content');
+		expect(result.startLine).toBe(1);
+	});
+
+	it('returns startLine 1 when no line numbers found', () => {
+		const result = extractLineNumbers('no line number\nhere either');
+		expect(result.text).toBe('no line number\nhere either');
+		expect(result.startLine).toBe(1);
+	});
+
+	it('handles text with line numbers in the middle', () => {
+		const result = extractLineNumbers('regular line\n5→numbered line\n6→another numbered');
+		expect(result.text).toBe('regular line\nnumbered line\nanother numbered');
+		expect(result.startLine).toBe(1); // starts with non-numbered line
+	});
+
+	it('handles empty input', () => {
+		const result = extractLineNumbers('');
+		expect(result.text).toBe('');
+		expect(result.startLine).toBe(1);
 	});
 });
