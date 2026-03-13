@@ -709,4 +709,25 @@ describe('readSession', () => {
 		expect(userMsg).toBeDefined();
 		expect(userMsg!.textBlocks).not.toContain('file content here');
 	});
+
+	it('reads subagent JSONL files from nested directory', async () => {
+		const projDir = join(testDir, '-Users-craig-projects-app');
+		const sessionDir = join(projDir, 'parent-session-id');
+		const subagentsDir = join(sessionDir, 'subagents');
+		mkdirSync(subagentsDir, {recursive: true});
+
+		writeFileSync(
+			join(subagentsDir, 'agent-abc123.jsonl'),
+			jsonl(userMessage('Start subagent work'), assistantMessage([{type: 'text', text: 'Subagent response'}])),
+		);
+
+		const detail = await readSession(testDir, 'agent-abc123');
+		expect(detail).not.toBeNull();
+		expect(detail!.id).toBe('agent-abc123');
+		expect(detail!.title).toBe('Start subagent work');
+		expect(detail!.projectId).toBe('-Users-craig-projects-app');
+		expect(detail!.messages).toHaveLength(2);
+		expect(detail!.messages[0]!.role).toBe('user');
+		expect(detail!.messages[1]!.role).toBe('assistant');
+	});
 });
