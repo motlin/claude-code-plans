@@ -1,7 +1,7 @@
 import {Link} from '@tanstack/react-router';
 import {FileText} from 'lucide-react';
 import type {ToolRendererProps} from './types';
-import {CollapsibleSection, FilePath, ToolMeta} from './shared';
+import {CollapsibleSection, ToolMeta} from './shared';
 
 const PLAN_RE = /\.claude\/plans\/([^/]+)\.md$/;
 
@@ -14,8 +14,10 @@ export function WriteRenderer({toolCall}: ToolRendererProps) {
 
 	return (
 		<div>
-			<div className="flex items-center gap-2">
-				<FilePath path={filePath} />
+			<div className="bg-muted rounded px-2 py-1.5 mb-2 border border-border">
+				<code className="text-xs font-mono break-all text-foreground">{filePath}</code>
+			</div>
+			<div className="flex items-center gap-2 mb-2">
 				{planMatch && (
 					<Link
 						to="/plan/$filename"
@@ -28,8 +30,8 @@ export function WriteRenderer({toolCall}: ToolRendererProps) {
 				)}
 				{content && <ToolMeta>{lineCount} lines</ToolMeta>}
 			</div>
-			{content && lineCount <= 100 && (
-				<CollapsibleSection label="Show content">
+			{content && (
+				<CollapsibleSection label={lineCount > 100 ? `Show content (${lineCount} lines)` : 'Show content'}>
 					<pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-all max-h-64 overflow-auto">
 						{content}
 					</pre>
