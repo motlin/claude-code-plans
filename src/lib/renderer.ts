@@ -19,7 +19,51 @@ async function getMd(): Promise<MarkdownIt> {
 			},
 		}),
 	);
+
+	// Wrap the highlight function to extract line numbers from Read tool prefixes
+	// and enable line number rendering in the output
+	const originalHighlight = md.options.highlight;
+	md.options.highlight = (code: string, lang: string, attrs: string) => {
+		// Extract line numbers from Read tool prefixes
+		const {text: cleanCode, startLine, hasLineNumbers} = extractLineNumbers(code);
+
+		// Call original highlight function with clean code
+		if (originalHighlight) {
+			const result = originalHighlight(cleanCode, lang, attrs);
+
+			// If line numbers were detected in the original code,
+			// enhance the output to include line numbers as a gutter.
+			if (hasLineNumbers) {
+				// Post-process the HTML to add line numbers before each line
+				return enhanceWithLineNumbers(result, startLine);
+			}
+
+			return result;
+		}
+		// Fallback if no highlight function
+		return code;
+	};
+
 	return md;
+}
+
+/**
+ * Enhances Shiki-generated HTML with line number gutters.
+ * Finds each <span class="line">...</span> and prepends a line number.
+ */
+function enhanceWithLineNumbers(html: string, startLine: number): string {
+	// Pattern to match individual line spans
+	const linePattern = /(<span class="line">)/g;
+	let lineNum = startLine;
+
+	const enhanced = html.replace(linePattern, () => {
+		const lineNumberHtml = `<span class="shiki-line-number" data-line="${lineNum}" style="display: inline-block; width: 3em; margin-right: 0.5em; text-align: right; color: #999; user-select: none;">${lineNum}</span>`;
+		const result = lineNumberHtml + `<span class="line">`;
+		lineNum++;
+		return result;
+	});
+
+	return enhanced;
 }
 
 export async function warmup(): Promise<void> {
@@ -72,11 +116,47 @@ export function detectLanguage(filePath: string): string {
 	return EXT_LANG[ext] ?? '';
 }
 
+/**
+ * Extracts line numbers from Read tool prefixes (e.g., "1→content" -> {content: "content", lineNumber: 1})
+ * and removes the prefix from the line.
+ * Returns {text, startLine, hasLineNumbers} where:
+ * - text: the code without line number prefixes
+ * - startLine: the starting line number (or 1 if not found)
+ * - hasLineNumbers: whether line numbers were detected in the original text
+ */
+export function extractLineNumbers(text: string): {text: string; startLine: number; hasLineNumbers: boolean} {
+	const lines = text.split('\n');
+	let startLine = 1;
+	let hasLineNumbers = false;
+
+	const processedLines = lines.map((line, index) => {
+		// Match line number prefix patterns: "  1→" or "1→" or "1\t"
+		const match = line.match(/^\s*(\d+)[→\t]/);
+		if (match) {
+			hasLineNumbers = true;
+			if (index === 0) {
+				startLine = parseInt(match[1]!, 10);
+			}
+			// Remove the prefix and preserve the rest of the line
+			return line.replace(/^\s*\d+[→\t]/, '');
+		}
+		return line;
+	});
+
+	return {
+		text: processedLines.join('\n'),
+		startLine: hasLineNumbers ? startLine : 1,
+		hasLineNumbers,
+	};
+}
+
+/**
+ * Legacy function for backwards compatibility.
+ * Strips line number prefixes without preserving line number information.
+ */
 export function stripLineNumberPrefixes(text: string): string {
-	return text
-		.split('\n')
-		.map((line) => line.replace(/^\s*\d+[→\t]/, ''))
-		.join('\n');
+	const {text: cleanText} = extractLineNumbers(text);
+	return cleanText;
 }
 
 export type DiffOp = readonly ['equal', string] | readonly ['remove', string] | readonly ['add', string];
