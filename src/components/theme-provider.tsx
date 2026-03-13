@@ -40,7 +40,9 @@ export function ThemeProvider({
 			};
 			root.classList.add(mql.matches ? 'dark' : 'light');
 			mql.addEventListener('change', handler);
-			return () => mql.removeEventListener('change', handler);
+			return () => {
+				mql.removeEventListener('change', handler);
+			};
 		}
 
 		root.classList.add(theme);

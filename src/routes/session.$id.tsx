@@ -118,6 +118,7 @@ const getSession = createServerFn({method: 'GET'})
 		return {
 			title: detail.title,
 			projectName: detail.projectName,
+			projectId: detail.projectId,
 			messages,
 			subagents,
 			aiSummary: summaryResult.summary,
