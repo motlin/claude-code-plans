@@ -4,8 +4,32 @@ import {getToolRenderer} from './tool-renderers';
 import type {ClientToolCall} from './tool-renderers';
 import {DurationBadge} from './tool-renderers/shared';
 
+function formatTimestamp(timestamp?: string): string | null {
+	if (!timestamp) return null;
+	try {
+		const date = new Date(timestamp);
+		if (isNaN(date.getTime())) return null;
+
+		const now = new Date();
+		const isToday = date.toDateString() === now.toDateString();
+
+		if (isToday) {
+			return date.toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', hour12: true});
+		} else {
+			return (
+				date.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) +
+				' ' +
+				date.toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', hour12: true})
+			);
+		}
+	} catch {
+		return null;
+	}
+}
+
 interface ChatMessage {
 	role: 'user' | 'assistant';
+	timestamp?: string;
 	htmlBlocks: string[];
 	thinkingBlocks: string[];
 	imageBlocks: Array<{mediaType: string; data: string}>;
@@ -51,13 +75,20 @@ export function SessionChat({messages}: {messages: ChatMessage[]}) {
 }
 
 function UserMessage({msg}: {msg: ChatMessage}) {
+	const timestampText = formatTimestamp(msg.timestamp);
+
 	if (msg.command) {
 		return (
 			<div className="flex flex-col items-end gap-2 ml-auto max-w-[85%] w-fit">
-				<div className="rounded-lg px-3 py-2 bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)]">
-					<span className="bg-muted rounded-full px-2 py-0.5 text-xs font-mono">{msg.command.name}</span>
-					{msg.command.args && (
-						<span className="text-xs text-muted-foreground ml-1.5">{msg.command.args}</span>
+				<div>
+					<div className="rounded-lg px-3 py-2 bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)]">
+						<span className="bg-muted rounded-full px-2 py-0.5 text-xs font-mono">{msg.command.name}</span>
+						{msg.command.args && (
+							<span className="text-xs text-muted-foreground ml-1.5">{msg.command.args}</span>
+						)}
+					</div>
+					{timestampText && (
+						<div className="mt-1 text-right text-xs text-muted-foreground">{timestampText}</div>
 					)}
 				</div>
 			</div>
@@ -66,35 +97,38 @@ function UserMessage({msg}: {msg: ChatMessage}) {
 
 	return (
 		<div className="flex flex-col items-end gap-2 ml-auto max-w-[85%] w-fit">
-			{msg.htmlBlocks.map((html, i) => (
-				<div
-					key={i}
-					className="rounded-lg px-3 py-2 break-words min-w-0 overflow-hidden bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)]"
-					style={{fontSize: '14px', fontWeight: 430, lineHeight: '19.6px'}}
-				>
-					<MarkdownArticle html={html} />
-				</div>
-			))}
-			{msg.documentBlocks.map((_, i) => (
-				<div
-					key={i}
-					className="rounded-lg px-3 py-2 bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)] flex items-center gap-1.5"
-				>
-					<svg
-						width="16"
-						height="16"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						strokeWidth="2"
-						className="shrink-0"
+			<div>
+				{msg.htmlBlocks.map((html, i) => (
+					<div
+						key={i}
+						className="rounded-lg px-3 py-2 break-words min-w-0 overflow-hidden bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)]"
+						style={{fontSize: '14px', fontWeight: 430, lineHeight: '19.6px'}}
 					>
-						<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
-						<polyline points="13 2 13 9 20 9" />
-					</svg>
-					<span className="text-sm">PDF attached</span>
-				</div>
-			))}
+						<MarkdownArticle html={html} />
+					</div>
+				))}
+				{msg.documentBlocks.map((_, i) => (
+					<div
+						key={i}
+						className="rounded-lg px-3 py-2 bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)] flex items-center gap-1.5"
+					>
+						<svg
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="2"
+							className="shrink-0"
+						>
+							<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+							<polyline points="13 2 13 9 20 9" />
+						</svg>
+						<span className="text-sm">PDF attached</span>
+					</div>
+				))}
+				{timestampText && <div className="mt-1 text-right text-xs text-muted-foreground">{timestampText}</div>}
+			</div>
 		</div>
 	);
 }
@@ -159,6 +193,7 @@ function ThinkingBlock({thinking}: {thinking: string}) {
 
 function AssistantMessage({msg, isFirst}: {msg: ChatMessage; isFirst: boolean}) {
 	const thinkingText = msg.thinkingBlocks.length > 0 ? msg.thinkingBlocks.join('\n\n---\n\n') : null;
+	const timestampText = formatTimestamp(msg.timestamp);
 
 	return (
 		<div className="flex flex-col gap-1.5 min-w-0">
@@ -199,6 +234,12 @@ function AssistantMessage({msg, isFirst}: {msg: ChatMessage; isFirst: boolean}) 
 						calls={msg.toolCalls}
 						summary={msg.toolSummary}
 					/>
+				</div>
+			)}
+			{timestampText && (
+				<div className="flex items-start gap-1">
+					<div className="w-4 shrink-0" />
+					<div className="text-xs text-muted-foreground">{timestampText}</div>
 				</div>
 			)}
 		</div>
