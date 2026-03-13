@@ -15,7 +15,17 @@ export function BashRenderer({toolCall}: ToolRendererProps) {
 					<span className="text-green-400">{command}</span>
 				</div>
 			</div>
-			{result && <TerminalOutput content={result} />}
+			{result && (
+				<div>
+					<div className="bg-gray-900 rounded px-2 py-1 mb-1">
+						<div className="font-mono text-xs">
+							<span className="text-gray-500">$ </span>
+							<span className="text-green-400">{command}</span>
+						</div>
+					</div>
+					<TerminalOutput content={result} />
+				</div>
+			)}
 		</div>
 	);
 }
