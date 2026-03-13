@@ -1,9 +1,12 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {getSessions} from '../lib/server-fns';
+import {getSessions, getActiveSessions} from '../lib/server-fns';
 
 export const Route = createFileRoute('/sessions')({
 	component: SessionsPage,
-	loader: () => getSessions(),
+	loader: async () => {
+		const [groups, active] = await Promise.all([getSessions(), getActiveSessions()]);
+		return {groups, activeIds: new Set(active.map((a) => a.sessionId))};
+	},
 	head: () => ({
 		meta: [{title: 'Claude Sessions'}],
 	}),
@@ -23,7 +26,7 @@ const RECENT_LIMIT = 20;
 const PER_PROJECT_LIMIT = 10;
 
 function SessionsPage() {
-	const groups = Route.useLoaderData();
+	const {groups, activeIds} = Route.useLoaderData();
 
 	const allSessions = groups
 		.flatMap((g) => g.sessions)
@@ -45,6 +48,7 @@ function SessionsPage() {
 								<SessionItem
 									key={sess.id}
 									session={sess}
+									isActive={activeIds.has(sess.id)}
 								/>
 							))}
 						</ul>
@@ -75,6 +79,7 @@ function SessionsPage() {
 											<SessionItem
 												key={sess.id}
 												session={sess}
+												isActive={activeIds.has(sess.id)}
 											/>
 										))}
 									</ul>
@@ -99,6 +104,7 @@ function SessionsPage() {
 
 function SessionItem({
 	session,
+	isActive,
 }: {
 	session: {
 		id: string;
@@ -109,6 +115,7 @@ function SessionItem({
 		messageCount: number;
 		gitBranch?: string | undefined;
 	};
+	isActive?: boolean;
 }) {
 	return (
 		<li>
@@ -118,10 +125,16 @@ function SessionItem({
 				className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-muted/50"
 			>
 				<div
-					className="truncate"
+					className="flex items-center gap-1.5 truncate"
 					style={{fontSize: '14px', fontWeight: 430}}
 				>
-					{session.title}
+					{isActive && (
+						<span
+							className="inline-block h-2 w-2 shrink-0 rounded-full bg-green-500"
+							title="Active"
+						/>
+					)}
+					<span className="truncate">{session.title}</span>
 				</div>
 				<div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
 					<span>{session.projectName}</span>

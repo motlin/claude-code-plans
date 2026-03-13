@@ -1,13 +1,21 @@
 import {createFileRoute, Link, useNavigate} from '@tanstack/react-router';
 import {useState} from 'react';
-import {searchSessions} from '../lib/server-fns';
+import {searchSessions, searchMessageContent} from '../lib/server-fns';
 
-type SearchResult = Awaited<ReturnType<typeof searchSessions>>[number];
+type TitleResult = Awaited<ReturnType<typeof searchSessions>>[number];
+type ContentResult = Awaited<ReturnType<typeof searchMessageContent>>[number];
+type SearchResult = (TitleResult | ContentResult) & {
+	sessionId: string;
+	title: string;
+	snippet: string;
+	projectName: string;
+};
 
 export const Route = createFileRoute('/search')({
 	component: SearchPage,
 	validateSearch: (search: Record<string, unknown>) => ({
 		q: (search['q'] as string) ?? '',
+		mode: (search['mode'] as string) === 'conversations' ? ('conversations' as const) : ('titles' as const),
 	}),
 	head: () => ({
 		meta: [{title: 'Search'}],
@@ -15,23 +23,30 @@ export const Route = createFileRoute('/search')({
 });
 
 function SearchPage() {
-	const {q} = Route.useSearch();
+	const {q, mode: initialMode} = Route.useSearch();
 	const navigate = useNavigate();
 	const [query, setQuery] = useState(q);
+	const [mode, setMode] = useState<'titles' | 'conversations'>(initialMode);
 	const [results, setResults] = useState<SearchResult[]>([]);
 	const [searched, setSearched] = useState(false);
 	const [loading, setLoading] = useState(false);
 
-	async function handleSearch(searchQuery?: string) {
+	async function handleSearch(searchQuery?: string, searchMode?: 'titles' | 'conversations') {
 		const q = searchQuery ?? query;
+		const m = searchMode ?? mode;
 		if (!q.trim()) return;
 
 		setLoading(true);
 		try {
-			const data = await searchSessions({data: q.trim()});
+			let data: SearchResult[];
+			if (m === 'conversations') {
+				data = await searchMessageContent({data: q.trim()});
+			} else {
+				data = await searchSessions({data: q.trim()});
+			}
 			setResults(data);
 			setSearched(true);
-			navigate({to: '/search', search: {q: q.trim()}, replace: true});
+			navigate({to: '/search', search: {q: q.trim(), mode: m}, replace: true});
 		} finally {
 			setLoading(false);
 		}
@@ -39,7 +54,7 @@ function SearchPage() {
 
 	// Auto-search on mount if query param present
 	if (q && !searched && !loading) {
-		handleSearch(q);
+		handleSearch(q, mode);
 	}
 
 	return (
@@ -57,7 +72,7 @@ function SearchPage() {
 					type="text"
 					value={query}
 					onChange={(e) => setQuery(e.target.value)}
-					placeholder="Search sessions..."
+					placeholder={mode === 'conversations' ? 'Search conversations...' : 'Search session titles...'}
 					className="flex-1 rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary"
 					autoFocus
 				/>
@@ -69,6 +84,37 @@ function SearchPage() {
 					{loading ? 'Searching...' : 'Search'}
 				</button>
 			</form>
+
+			<div className="mt-3 flex gap-1">
+				<button
+					type="button"
+					onClick={() => {
+						setMode('titles');
+						if (searched && query.trim()) handleSearch(query, 'titles');
+					}}
+					className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+						mode === 'titles'
+							? 'bg-primary text-primary-foreground'
+							: 'bg-muted text-muted-foreground hover:bg-muted/80'
+					}`}
+				>
+					Search titles
+				</button>
+				<button
+					type="button"
+					onClick={() => {
+						setMode('conversations');
+						if (searched && query.trim()) handleSearch(query, 'conversations');
+					}}
+					className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+						mode === 'conversations'
+							? 'bg-primary text-primary-foreground'
+							: 'bg-muted text-muted-foreground hover:bg-muted/80'
+					}`}
+				>
+					Search conversations
+				</button>
+			</div>
 
 			{searched && results.length === 0 && (
 				<p className="mt-6 text-sm text-muted-foreground">No results found for &ldquo;{q}&rdquo;</p>
