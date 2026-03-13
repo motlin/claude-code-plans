@@ -1,5 +1,5 @@
 import type {ToolRendererProps} from './types';
-import {CollapsibleSection, FilePath, ToolMeta} from './shared';
+import {CollapsibleSection, ToolMeta} from './shared';
 
 export function ReadRenderer({toolCall}: ToolRendererProps) {
 	const filePath = (toolCall.input['file_path'] as string) ?? '';
@@ -17,8 +17,10 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 
 	return (
 		<div>
-			<div className="flex items-center gap-2">
-				<FilePath path={filePath} />
+			<div className="bg-muted rounded px-2 py-1.5 mb-2 border border-border">
+				<code className="text-xs font-mono break-all text-foreground">{filePath}</code>
+			</div>
+			<div className="text-xs text-muted-foreground mb-2">
 				<ToolMeta>{rangeInfo}</ToolMeta>
 			</div>
 			{result && (
