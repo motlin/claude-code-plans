@@ -1,5 +1,5 @@
 import type {ToolRendererProps} from './types';
-import {DiffLine, DiffStats, FilePath} from './shared';
+import {DiffLine, DiffStats} from './shared';
 
 export function EditRenderer({toolCall}: ToolRendererProps) {
 	const filePath = (toolCall.input['file_path'] as string) ?? '';
@@ -11,8 +11,10 @@ export function EditRenderer({toolCall}: ToolRendererProps) {
 
 	return (
 		<div>
-			<div className="flex items-center gap-2 mb-1">
-				<FilePath path={filePath} />
+			<div className="bg-muted rounded px-2 py-1.5 mb-2 border border-border">
+				<code className="text-xs font-mono break-all text-foreground">{filePath}</code>
+			</div>
+			<div className="flex items-center gap-2 mb-2">
 				<DiffStats
 					added={diffData.added}
 					removed={diffData.removed}
