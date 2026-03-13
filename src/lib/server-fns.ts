@@ -14,8 +14,13 @@ import {
 	searchSessionsFromDb,
 	getSubagentsForSession,
 	getPlanProjectMappings,
+	toggleStar as toggleStarInDb,
+	getStarredSessions as getStarredSessionsFromDb,
+	isSessionStarred as isSessionStarredInDb,
+	searchMessageContent as searchMessageContentFromDb,
 } from './db/queries';
 import {getSummary, generateSummary} from './summaries';
+import {getActiveSessions as getActiveSessionsList} from './active-sessions';
 
 const PLANS_DIR = process.env['PLANS_DIR'] ?? join(homedir(), '.claude', 'plans');
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
@@ -247,6 +252,48 @@ export const searchSessions = createServerFn({method: 'GET'})
 	.handler(async ({data: query}) => {
 		const {index} = getDb();
 		return searchSessionsFromDb(index, query);
+	});
+
+export const toggleSessionStar = createServerFn({method: 'POST'})
+	.inputValidator((d: string) => d)
+	.handler(async ({data: sessionId}) => {
+		const {index} = getDb();
+		const starred = toggleStarInDb(index, sessionId);
+		return {starred};
+	});
+
+export const getStarredSessionList = createServerFn({method: 'GET'}).handler(async () => {
+	const {index} = getDb();
+	const sessions = getStarredSessionsFromDb(index);
+	return sessions.map((s) => ({
+		id: s.id,
+		title: s.title,
+		summary: s.summary,
+		mtime: s.mtime.toISOString(),
+		created: s.created.toISOString(),
+		project: s.project,
+		projectName: s.projectName,
+		messageCount: s.messageCount,
+		gitBranch: s.gitBranch,
+	}));
+});
+
+export const isStarred = createServerFn({method: 'GET'})
+	.inputValidator((d: string) => d)
+	.handler(async ({data: sessionId}) => {
+		const {index} = getDb();
+		return {starred: isSessionStarredInDb(index, sessionId)};
+	});
+
+export const getActiveSessions = createServerFn({method: 'GET'}).handler(async () => {
+	return getActiveSessionsList();
+});
+
+export const searchMessageContent = createServerFn({method: 'GET'})
+	.inputValidator((d: string) => d)
+	.handler(async ({data: query}) => {
+		const {index} = getDb();
+		return searchMessageContentFromDb(index, query);
 	});
 
 export const getSessionSummary = createServerFn({method: 'GET'})

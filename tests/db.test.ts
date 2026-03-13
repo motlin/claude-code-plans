@@ -12,6 +12,11 @@ import {
 	searchSessionsFromDb,
 	getSubagentsForSession,
 	getPlanProjectMappings,
+	isSessionStarred,
+	toggleStar,
+	getStarredSessionIds,
+	getStarredSessions,
+	searchMessageContent,
 } from '../src/lib/db/queries';
 import * as schema from '../src/lib/db/schema';
 import {eq} from 'drizzle-orm';
@@ -426,5 +431,136 @@ describe('subagents', () => {
 
 	it('returns empty array for session with no subagents', () => {
 		expect(getSubagentsForSession(db.index, 'nonexistent')).toEqual([]);
+	});
+});
+
+describe('starred sessions', () => {
+	beforeEach(() => {
+		db.index
+			.insert(schema.projects)
+			.values({id: 'proj-a', name: 'Alpha', projectPath: '/projects/alpha', updatedAt: 2000})
+			.run();
+		db.index
+			.insert(schema.sessions)
+			.values([
+				{
+					id: 'sess-1',
+					projectId: 'proj-a',
+					title: 'Fix login',
+					messageCount: 5,
+					isSidechain: 0,
+					createdAt: 1000,
+					mtimeMs: 3000,
+					filePath: '/path/sess-1.jsonl',
+				},
+				{
+					id: 'sess-2',
+					projectId: 'proj-a',
+					title: 'Add tests',
+					messageCount: 3,
+					isSidechain: 0,
+					createdAt: 500,
+					mtimeMs: 2000,
+					filePath: '/path/sess-2.jsonl',
+				},
+			])
+			.run();
+	});
+
+	it('isSessionStarred returns false for unstarred session', () => {
+		expect(isSessionStarred(db.index, 'sess-1')).toBe(false);
+	});
+
+	it('toggleStar stars and unstars a session', () => {
+		const starred = toggleStar(db.index, 'sess-1');
+		expect(starred).toBe(true);
+		expect(isSessionStarred(db.index, 'sess-1')).toBe(true);
+
+		const unstarred = toggleStar(db.index, 'sess-1');
+		expect(unstarred).toBe(false);
+		expect(isSessionStarred(db.index, 'sess-1')).toBe(false);
+	});
+
+	it('getStarredSessionIds returns set of starred IDs', () => {
+		toggleStar(db.index, 'sess-1');
+		toggleStar(db.index, 'sess-2');
+
+		const ids = getStarredSessionIds(db.index);
+		expect(ids.size).toBe(2);
+		expect(ids.has('sess-1')).toBe(true);
+		expect(ids.has('sess-2')).toBe(true);
+	});
+
+	it('getStarredSessions returns full session entries', () => {
+		toggleStar(db.index, 'sess-1');
+
+		const sessions = getStarredSessions(db.index);
+		expect(sessions).toHaveLength(1);
+		expect(sessions[0]!.id).toBe('sess-1');
+		expect(sessions[0]!.title).toBe('Fix login');
+		expect(sessions[0]!.projectName).toBe('Alpha');
+	});
+
+	it('getStarredSessions returns empty array when none starred', () => {
+		expect(getStarredSessions(db.index)).toEqual([]);
+	});
+});
+
+describe('message content FTS', () => {
+	beforeEach(async () => {
+		const projectDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projectDir, {recursive: true});
+
+		writeFileSync(
+			join(projectDir, 'sessions-index.json'),
+			makeSessionsIndex([
+				{
+					sessionId: 'fts-sess-1',
+					fullPath: join(projectDir, 'fts-sess-1.jsonl'),
+					fileMtime: Date.now(),
+					firstPrompt: 'Hello',
+					messageCount: 2,
+				},
+			]),
+		);
+		await indexSessionsIndex(db.index, projectDir, '-Users-craig-projects-app');
+
+		writeFileSync(
+			join(projectDir, 'fts-sess-1.jsonl'),
+			jsonl(
+				{type: 'user', message: {role: 'user', content: 'Fix the authentication bug in the login form'}},
+				{
+					type: 'assistant',
+					message: {
+						role: 'assistant',
+						content: [{type: 'text', text: 'I found the issue in the session middleware'}],
+					},
+				},
+			),
+		);
+		await indexJsonlFile(db.index, join(projectDir, 'fts-sess-1.jsonl'), '-Users-craig-projects-app');
+	});
+
+	it('indexes and searches message content', () => {
+		const results = searchMessageContent(db.index, 'authentication');
+		expect(results.length).toBe(1);
+		expect(results[0]!.sessionId).toBe('fts-sess-1');
+	});
+
+	it('finds assistant message content', () => {
+		const results = searchMessageContent(db.index, 'middleware');
+		expect(results.length).toBe(1);
+		expect(results[0]!.sessionId).toBe('fts-sess-1');
+	});
+
+	it('returns snippet with highlight marks', () => {
+		const results = searchMessageContent(db.index, 'login');
+		expect(results.length).toBe(1);
+		expect(results[0]!.snippet).toContain('<mark>');
+	});
+
+	it('returns empty for non-matching query', () => {
+		const results = searchMessageContent(db.index, 'nonexistent');
+		expect(results.length).toBe(0);
 	});
 });

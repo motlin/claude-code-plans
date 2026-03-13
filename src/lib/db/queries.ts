@@ -265,8 +265,101 @@ export interface DbSubagent {
 	mtimeMs: number;
 }
 
+export interface DbMessageSearchResult {
+	sessionId: string;
+	title: string;
+	snippet: string;
+	projectId: string;
+	projectName: string;
+	rank: number;
+}
+
+export function searchMessageContent(db: IndexDb, query: string, limit = 50): DbMessageSearchResult[] {
+	const projectRows = db.select().from(schema.projects).all();
+	const projectNames = new Map(projectRows.map((p) => [p.id, p.name]));
+
+	const rows = db.all(
+		sql`SELECT session_id, rank,
+				snippet(message_content_fts, 1, '<mark>', '</mark>', '...', 48) AS snippet
+			FROM message_content_fts
+			WHERE message_content_fts MATCH ${query}
+			ORDER BY rank
+			LIMIT ${limit}`,
+	) as Array<{
+		session_id: string;
+		rank: number;
+		snippet: string;
+	}>;
+
+	return rows.map((row) => {
+		const session = db.select().from(schema.sessions).where(eq(schema.sessions.id, row.session_id)).get();
+		return {
+			sessionId: row.session_id,
+			title: session?.title ?? row.session_id,
+			snippet: row.snippet,
+			projectId: session?.projectId ?? '',
+			projectName: session ? (projectNames.get(session.projectId) ?? session.projectId) : '',
+			rank: row.rank,
+		};
+	});
+}
+
 export function getSubagentsForSession(db: IndexDb, sessionId: string): DbSubagent[] {
 	return db.select().from(schema.subagents).where(eq(schema.subagents.sessionId, sessionId)).all();
+}
+
+export function isSessionStarred(db: IndexDb, sessionId: string): boolean {
+	const row = db.select().from(schema.starredSessions).where(eq(schema.starredSessions.sessionId, sessionId)).get();
+	return !!row;
+}
+
+export function toggleStar(db: IndexDb, sessionId: string): boolean {
+	const existing = db
+		.select()
+		.from(schema.starredSessions)
+		.where(eq(schema.starredSessions.sessionId, sessionId))
+		.get();
+	if (existing) {
+		db.delete(schema.starredSessions).where(eq(schema.starredSessions.sessionId, sessionId)).run();
+		return false;
+	}
+	db.insert(schema.starredSessions).values({sessionId, starredAt: Date.now()}).run();
+	return true;
+}
+
+export function getStarredSessionIds(db: IndexDb): Set<string> {
+	const rows = db.select({sessionId: schema.starredSessions.sessionId}).from(schema.starredSessions).all();
+	return new Set(rows.map((r) => r.sessionId));
+}
+
+export function getStarredSessions(db: IndexDb): SessionEntry[] {
+	const projectRows = db.select().from(schema.projects).all();
+	const projectNames = new Map(projectRows.map((p) => [p.id, p.name]));
+
+	const rows = db
+		.select({
+			session: schema.sessions,
+			starredAt: schema.starredSessions.starredAt,
+		})
+		.from(schema.starredSessions)
+		.innerJoin(schema.sessions, eq(schema.sessions.id, schema.starredSessions.sessionId))
+		.orderBy(desc(schema.starredSessions.starredAt))
+		.all();
+
+	return rows.map((row) => ({
+		id: row.session.id,
+		title: row.session.title,
+		firstPrompt: row.session.firstPrompt ?? undefined,
+		summary: row.session.summary ?? undefined,
+		customTitle: row.session.customTitle ?? undefined,
+		mtime: new Date(row.session.mtimeMs),
+		created: new Date(row.session.createdAt),
+		project: row.session.projectId,
+		projectName: projectNames.get(row.session.projectId) ?? row.session.projectId,
+		messageCount: row.session.messageCount,
+		gitBranch: row.session.gitBranch ?? undefined,
+		isSidechain: row.session.isSidechain === 1,
+	}));
 }
 
 export interface DbPlanProjectMapping {

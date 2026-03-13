@@ -1,16 +1,17 @@
 import {Link, useMatches, useNavigate} from '@tanstack/react-router';
-import {FileText, Brain, MessageSquare, FolderOpen, ChevronRight, Search} from 'lucide-react';
+import {FileText, Brain, MessageSquare, FolderOpen, ChevronRight, Search, Star} from 'lucide-react';
 import {useEffect, useState} from 'react';
 import {getPlans, getPlansGrouped, getMemories, getSessions, getProjects, getProject} from '../lib/server-fns';
 
 const navItems = [
+	{to: '/starred', label: 'Starred', icon: Star, section: 'starred' as const},
 	{to: '/projects', label: 'Projects', icon: FolderOpen, section: 'projects' as const},
 	{to: '/plans', label: 'Plans', icon: FileText, section: 'plans' as const},
 	{to: '/memories', label: 'Memories', icon: Brain, section: 'memories' as const},
 	{to: '/sessions', label: 'Sessions', icon: MessageSquare, section: 'sessions' as const},
 ];
 
-type Section = 'projects' | 'plans' | 'memories' | 'sessions';
+type Section = 'starred' | 'projects' | 'plans' | 'memories' | 'sessions';
 
 interface SubItem {
 	id: string;
@@ -39,6 +40,9 @@ function useActiveSection(matches: ReturnType<typeof useMatches>): {
 	const path = lastMatch?.fullPath ?? '/';
 	const params = lastMatch?.params as Record<string, string> | undefined;
 
+	if (path.startsWith('/starred')) {
+		return {section: 'starred', activeItemId: null};
+	}
 	if (path.startsWith('/project') && !path.startsWith('/projects')) {
 		return {
 			section: 'projects',
@@ -511,7 +515,7 @@ function SearchInput() {
 	function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
 		if (!query.trim()) return;
-		navigate({to: '/search', search: {q: query.trim()}});
+		navigate({to: '/search', search: {q: query.trim(), mode: 'titles' as const}});
 		setQuery('');
 	}
 
@@ -658,6 +662,7 @@ export function Sidebar({
 								</Link>
 							</div>
 							{isExpanded &&
+								item.section !== 'starred' &&
 								(item.section === 'projects' ? (
 									<ProjectsSubList
 										activeItemId={activeItemId}

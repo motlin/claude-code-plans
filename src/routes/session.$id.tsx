@@ -2,11 +2,18 @@ import {createFileRoute, Link} from '@tanstack/react-router';
 import {createServerFn} from '@tanstack/react-start';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import {readSession, summarizeToolCalls} from '../lib/sessions';
 import {renderMarkdown, computeDiffData} from '../lib/renderer';
 import {SessionChat} from '../components/session-chat';
-import {getSubagents, getSessionSummary, requestSummary} from '../lib/server-fns';
+import {
+	getSubagents,
+	getSessionSummary,
+	requestSummary,
+	isStarred,
+	toggleSessionStar,
+	getActiveSessions,
+} from '../lib/server-fns';
 import {getDb} from '../lib/db';
 import {sessions} from '../lib/db/schema';
 import {eq} from 'drizzle-orm';
@@ -97,7 +104,12 @@ const getSession = createServerFn({method: 'GET'})
 			}),
 		);
 
-		const [subagents, summaryResult] = await Promise.all([getSubagents({data: id}), getSessionSummary({data: id})]);
+		const [subagents, summaryResult, starResult, activeSessions] = await Promise.all([
+			getSubagents({data: id}),
+			getSessionSummary({data: id}),
+			isStarred({data: id}),
+			getActiveSessions(),
+		]);
 
 		const {index} = getDb();
 		const sessionRow = index.select().from(sessions).where(eq(sessions.id, id)).get();
@@ -109,6 +121,8 @@ const getSession = createServerFn({method: 'GET'})
 			messages,
 			subagents,
 			aiSummary: summaryResult.summary,
+			starred: starResult.starred,
+			isActive: activeSessions.some((a) => a.sessionId === id),
 			hasSummary,
 		};
 	});
@@ -130,7 +144,18 @@ function SessionPage() {
 	const data = Route.useLoaderData();
 	const params = Route.useParams();
 	const [aiSummary, setAiSummary] = useState<string | null>(data?.aiSummary ?? null);
+	const [starred, setStarred] = useState(data?.starred ?? false);
+	const [isActive, setIsActive] = useState(data?.isActive ?? false);
 	const [generating, setGenerating] = useState(false);
+
+	useEffect(() => {
+		if (!isActive) return;
+		const interval = setInterval(async () => {
+			const active = await getActiveSessions();
+			setIsActive(active.some((a) => a.sessionId === params.id));
+		}, 5000);
+		return () => clearInterval(interval);
+	}, [isActive, params.id]);
 
 	if (!data) {
 		return (
@@ -170,7 +195,35 @@ function SessionPage() {
 				</Link>
 				<span className="text-xs text-muted-foreground">{data.projectName}</span>
 			</div>
-			<h1 className="mt-2 text-lg font-semibold">{data.title}</h1>
+			<div className="mt-2 flex items-center gap-2">
+				<h1 className="text-lg font-semibold">{data.title}</h1>
+				{isActive && (
+					<span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-300">
+						<span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+						Active
+					</span>
+				)}
+				<button
+					type="button"
+					onClick={async () => {
+						const result = await toggleSessionStar({data: params.id});
+						setStarred(result.starred);
+					}}
+					className="shrink-0 cursor-pointer text-muted-foreground transition-colors hover:text-yellow-500"
+					title={starred ? 'Unstar session' : 'Star session'}
+				>
+					<svg
+						viewBox="0 0 24 24"
+						className="h-5 w-5"
+						fill={starred ? 'currentColor' : 'none'}
+						stroke="currentColor"
+						strokeWidth="2"
+						style={{color: starred ? 'rgb(234, 179, 8)' : undefined}}
+					>
+						<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+					</svg>
+				</button>
+			</div>
 
 			{aiSummary ? (
 				<p className="mt-1 text-sm text-muted-foreground italic">{aiSummary}</p>

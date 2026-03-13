@@ -2,7 +2,7 @@ import {readdir, readFile, stat} from 'node:fs/promises';
 import {createReadStream} from 'node:fs';
 import {join, basename} from 'node:path';
 import {createInterface} from 'node:readline';
-import {eq} from 'drizzle-orm';
+import {eq, sql} from 'drizzle-orm';
 import type {BetterSQLite3Database} from 'drizzle-orm/better-sqlite3';
 import {SessionsIndexSchema, FileHistorySnapshotSchema, CustomTitleRecordSchema} from '../schemas';
 import {decodeProjectDir} from '../memory';
@@ -169,6 +169,7 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 	const sessionId = basename(filePath, '.jsonl');
 	const planFilenames = new Set<string>();
 	let customTitle: string | undefined;
+	const textChunks: string[] = [];
 
 	// Stream the file line-by-line to avoid loading entire JSONL into memory
 	const rl = createInterface({
@@ -204,6 +205,28 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 				} catch {
 					// skip
 				}
+			}
+
+			// Extract text content for FTS indexing
+			try {
+				const obj = JSON.parse(line) as {
+					type?: string;
+					message?: {content?: string | Array<{type?: string; text?: string}>};
+				};
+				if (obj.type === 'user' || obj.type === 'assistant') {
+					const content = obj.message?.content;
+					if (typeof content === 'string') {
+						textChunks.push(content);
+					} else if (Array.isArray(content)) {
+						for (const block of content) {
+							if (block.type === 'text' && typeof block.text === 'string') {
+								textChunks.push(block.text);
+							}
+						}
+					}
+				}
+			} catch {
+				// skip malformed lines
 			}
 		}
 	} finally {
@@ -261,6 +284,13 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 				filePath,
 			})
 			.run();
+	}
+
+	// Update message content FTS
+	if (textChunks.length > 0) {
+		const content = textChunks.join('\n');
+		db.run(sql`DELETE FROM message_content_fts WHERE session_id = ${sessionId}`);
+		db.run(sql`INSERT INTO message_content_fts(session_id, content) VALUES (${sessionId}, ${content})`);
 	}
 
 	// Update indexed_files

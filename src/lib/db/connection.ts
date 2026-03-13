@@ -67,6 +67,11 @@ CREATE TABLE IF NOT EXISTS subagents (
   mtime_ms INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS subagents_session_idx ON subagents(session_id);
+
+CREATE TABLE IF NOT EXISTS starred_sessions (
+  session_id TEXT PRIMARY KEY,
+  starred_at INTEGER NOT NULL
+);
 `;
 
 const CREATE_FTS_SQL = `
@@ -91,6 +96,12 @@ END;
 CREATE TRIGGER IF NOT EXISTS sessions_fts_delete AFTER DELETE ON sessions BEGIN
   DELETE FROM sessions_fts WHERE session_id = OLD.id;
 END;
+
+CREATE VIRTUAL TABLE IF NOT EXISTS message_content_fts USING fts5(
+  session_id UNINDEXED,
+  content,
+  tokenize='porter unicode61'
+);
 `;
 
 const CREATE_SUMMARIES_SQL = `
@@ -114,6 +125,8 @@ function initIndexDb(sqlite: Database.Database): void {
 	if (row && row.value !== schema.SCHEMA_VERSION) {
 		// Schema version mismatch — drop and rebuild
 		sqlite.exec('DROP TABLE IF EXISTS sessions_fts');
+		sqlite.exec('DROP TABLE IF EXISTS message_content_fts');
+		sqlite.exec('DROP TABLE IF EXISTS starred_sessions');
 		sqlite.exec('DROP TABLE IF EXISTS subagents');
 		sqlite.exec('DROP TABLE IF EXISTS plan_sessions');
 		sqlite.exec('DROP TABLE IF EXISTS sessions');
