@@ -79,39 +79,50 @@ function UserMessage({msg}: {msg: ChatMessage}) {
 
 	if (msg.command) {
 		return (
-			<div className="flex flex-col items-end gap-2 ml-auto max-w-[85%] w-fit">
-				<div>
-					<div className="rounded-lg px-3 py-2 bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)]">
-						<span className="bg-muted rounded-full px-2 py-0.5 text-xs font-mono">{msg.command.name}</span>
-						{msg.command.args && (
-							<span className="text-xs text-muted-foreground ml-1.5">{msg.command.args}</span>
+			<div className="flex items-start gap-1 flex-row-reverse">
+				<UserAvatar />
+				<div className="flex flex-col items-end gap-2 ml-auto max-w-[85%] w-fit">
+					<div>
+						<div className="rounded-lg px-3 py-2 bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)]">
+							<span className="bg-muted rounded-full px-2 py-0.5 text-xs font-mono">
+								{msg.command.name}
+							</span>
+							{msg.command.args && (
+								<span className="text-xs text-muted-foreground ml-1.5">{msg.command.args}</span>
+							)}
+						</div>
+						{timestampText && (
+							<div className="mt-1 text-right text-xs text-muted-foreground">{timestampText}</div>
 						)}
 					</div>
-					{timestampText && (
-						<div className="mt-1 text-right text-xs text-muted-foreground">{timestampText}</div>
-					)}
 				</div>
 			</div>
 		);
 	}
 
 	return (
-		<div className="flex flex-col items-end gap-2 ml-auto max-w-[85%] w-fit">
-			<div>
-				{msg.htmlBlocks.map((html, i) => (
+		<div className="flex flex-col gap-1.5">
+			{msg.htmlBlocks.map((html, i) => (
+				<div
+					key={i}
+					className="flex items-start gap-1 flex-row-reverse"
+				>
+					<UserAvatar />
 					<div
-						key={i}
-						className="rounded-lg px-3 py-2 break-words min-w-0 overflow-hidden bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)]"
+						className="rounded-lg px-3 py-2 break-words min-w-0 overflow-hidden bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)] ml-auto max-w-[85%]"
 						style={{fontSize: '14px', fontWeight: 430, lineHeight: '19.6px'}}
 					>
 						<MarkdownArticle html={html} />
 					</div>
-				))}
-				{msg.documentBlocks.map((_, i) => (
-					<div
-						key={i}
-						className="rounded-lg px-3 py-2 bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)] flex items-center gap-1.5"
-					>
+				</div>
+			))}
+			{msg.documentBlocks.map((_, i) => (
+				<div
+					key={i}
+					className="flex items-start gap-1 flex-row-reverse"
+				>
+					<UserAvatar />
+					<div className="rounded-lg px-3 py-2 bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)] flex items-center gap-1.5 ml-auto max-w-[85%]">
 						<svg
 							width="16"
 							height="16"
@@ -126,10 +137,42 @@ function UserMessage({msg}: {msg: ChatMessage}) {
 						</svg>
 						<span className="text-sm">PDF attached</span>
 					</div>
-				))}
-				{timestampText && <div className="mt-1 text-right text-xs text-muted-foreground">{timestampText}</div>}
-			</div>
+				</div>
+			))}
+			{timestampText && (
+				<div className="flex items-start gap-1 flex-row-reverse">
+					<div className="w-4 shrink-0" />
+					<div className="text-xs text-muted-foreground text-right">{timestampText}</div>
+				</div>
+			)}
 		</div>
+	);
+}
+
+function UserAvatar() {
+	return (
+		<svg
+			width="16"
+			height="16"
+			viewBox="0 0 32 32"
+			fill="none"
+			className="mt-0.5 shrink-0"
+		>
+			<circle
+				cx="16"
+				cy="10"
+				r="5"
+				fill="currentColor"
+				opacity="0.7"
+			/>
+			<path
+				d="M8 24c0-4.418 3.582-8 8-8s8 3.582 8 8"
+				stroke="currentColor"
+				strokeWidth="2"
+				strokeLinecap="round"
+				opacity="0.7"
+			/>
+		</svg>
 	);
 }
 
