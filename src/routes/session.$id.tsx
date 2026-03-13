@@ -30,6 +30,7 @@ function getToolParam(tc: {input: Record<string, unknown>}): string {
 	}
 	if (typeof input['pattern'] === 'string') return input['pattern'];
 	if (typeof input['query'] === 'string') return input['query'];
+	if (typeof input['url'] === 'string') return input['url'];
 	if (typeof input['prompt'] === 'string') {
 		const p = input['prompt'];
 		return p.length > 60 ? p.slice(0, 60) + '...' : p;
