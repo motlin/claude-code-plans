@@ -71,6 +71,7 @@ const getSession = createServerFn({method: 'GET'})
 
 				const thinkingBlocks: string[] = [];
 				const imageBlocks: Array<{mediaType: string; data: string}> = [];
+				const documentBlocks: Array<{mediaType: string; data: string}> = [];
 				let command: {name: string; args?: string} | undefined;
 
 				for (const block of msg.content) {
@@ -78,6 +79,8 @@ const getSession = createServerFn({method: 'GET'})
 						thinkingBlocks.push(block.thinking);
 					} else if (block.type === 'image') {
 						imageBlocks.push({mediaType: block.mediaType, data: block.data});
+					} else if (block.type === 'document') {
+						documentBlocks.push({mediaType: block.mediaType, data: block.data});
 					} else if (block.type === 'command') {
 						command = {name: block.name};
 						if (block.args) (command as {name: string; args: string}).args = block.args;
@@ -89,6 +92,7 @@ const getSession = createServerFn({method: 'GET'})
 					htmlBlocks: string[];
 					thinkingBlocks: string[];
 					imageBlocks: Array<{mediaType: string; data: string}>;
+					documentBlocks: Array<{mediaType: string; data: string}>;
 					toolCalls: ClientToolCall[];
 					toolSummary: string;
 					command?: {name: string; args?: string};
@@ -97,6 +101,7 @@ const getSession = createServerFn({method: 'GET'})
 					htmlBlocks,
 					thinkingBlocks,
 					imageBlocks,
+					documentBlocks,
 					toolCalls,
 					toolSummary,
 				};

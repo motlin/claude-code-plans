@@ -9,6 +9,7 @@ interface ChatMessage {
 	htmlBlocks: string[];
 	thinkingBlocks: string[];
 	imageBlocks: Array<{mediaType: string; data: string}>;
+	documentBlocks: Array<{mediaType: string; data: string}>;
 	toolCalls: ClientToolCall[];
 	toolSummary: string;
 	command?: {name: string; args?: string};
@@ -72,6 +73,26 @@ function UserMessage({msg}: {msg: ChatMessage}) {
 					style={{fontSize: '14px', fontWeight: 430, lineHeight: '19.6px'}}
 				>
 					<MarkdownArticle html={html} />
+				</div>
+			))}
+			{msg.documentBlocks.map((_, i) => (
+				<div
+					key={i}
+					className="rounded-lg px-3 py-2 bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)] flex items-center gap-1.5"
+				>
+					<svg
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						strokeWidth="2"
+						className="shrink-0"
+					>
+						<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+						<polyline points="13 2 13 9 20 9" />
+					</svg>
+					<span className="text-sm">PDF attached</span>
 				</div>
 			))}
 		</div>
