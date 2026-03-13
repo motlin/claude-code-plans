@@ -35,30 +35,34 @@ function SidebarToggleIcon() {
 function useActiveSection(matches: ReturnType<typeof useMatches>): {
 	section: Section | null;
 	activeItemId: string | null;
+	projectId: string | null;
 } {
 	const lastMatch = matches[matches.length - 1];
 	const path = lastMatch?.fullPath ?? '/';
 	const params = lastMatch?.params as Record<string, string> | undefined;
 
 	if (path.startsWith('/starred')) {
-		return {section: 'starred', activeItemId: null};
+		return {section: 'starred', activeItemId: null, projectId: null};
 	}
 	if (path.startsWith('/project') && !path.startsWith('/projects')) {
 		return {
 			section: 'projects',
 			activeItemId: params?.['id'] ?? null,
+			projectId: params?.['id'] ?? null,
 		};
 	}
 	if (path === '/projects') {
 		return {
 			section: 'projects',
 			activeItemId: null,
+			projectId: null,
 		};
 	}
 	if (path.startsWith('/plan') || path === '/plans') {
 		return {
 			section: 'plans',
 			activeItemId: params?.['filename'] ?? null,
+			projectId: null,
 		};
 	}
 	if (path.startsWith('/memor') || path === '/memories') {
@@ -66,15 +70,17 @@ function useActiveSection(matches: ReturnType<typeof useMatches>): {
 			section: 'memories',
 			activeItemId:
 				params?.['project'] && params?.['filename'] ? `${params['project']}/${params['filename']}` : null,
+			projectId: params?.['project'] ?? null,
 		};
 	}
 	if (path.startsWith('/session') || path === '/sessions') {
 		return {
 			section: 'sessions',
 			activeItemId: params?.['id'] ?? null,
+			projectId: null,
 		};
 	}
-	return {section: null, activeItemId: null};
+	return {section: null, activeItemId: null, projectId: null};
 }
 
 function LoadingBars() {
@@ -218,6 +224,30 @@ function PlansSubList({activeItemId, refreshKey}: {activeItemId: string | null; 
 		};
 	}, [refreshKey]);
 
+	// Auto-expand/collapse groups based on active plan
+	useEffect(() => {
+		if (!groups || !activeItemId) return;
+
+		setCollapsedGroups((prev) => {
+			const next = new Set(prev);
+			const activeGroupId = groups.find((g) => g.plans.some((p) => p.filename === activeItemId))?.projectId;
+
+			// Expand the group containing the active plan
+			if (activeGroupId) {
+				next.delete(activeGroupId);
+			}
+
+			// Collapse all other groups
+			for (const group of groups) {
+				if (group.projectId !== activeGroupId) {
+					next.add(group.projectId);
+				}
+			}
+
+			return next;
+		});
+	}, [activeItemId, groups]);
+
 	function toggleGroup(projectId: string) {
 		setCollapsedGroups((prev) => {
 			const next = new Set(prev);
@@ -340,6 +370,46 @@ function ProjectsSubList({activeItemId, refreshKey}: {activeItemId: string | nul
 			cancelled = true;
 		};
 	}, [refreshKey]);
+
+	// Auto-expand/collapse projects based on active project
+	useEffect(() => {
+		if (!projects || !activeItemId) return;
+
+		const activeProject = projects.find((p) => p.id === activeItemId);
+
+		if (activeProject) {
+			// Ensure the active project is expanded
+			setExpandedProjects((prev) => new Set(prev).add(activeProject.id));
+
+			// Auto-load details if not already loaded
+			if (!projectDetails.has(activeProject.id)) {
+				(async () => {
+					setLoadingDetails((prev) => new Set(prev).add(activeProject.id));
+					const detail = await getProject({data: activeProject.id});
+					if (detail) {
+						setProjectDetails((prev) => {
+							const next = new Map(prev);
+							next.set(activeProject.id, {
+								sessions: detail.sessions.map((s) => ({id: s.id, title: s.title})),
+								plans: detail.plans.map((p) => ({filename: p.filename, title: p.title})),
+								memories: detail.memories.map((m) => ({
+									filename: m.filename,
+									title: m.title,
+									project: m.project,
+								})),
+							});
+							return next;
+						});
+					}
+					setLoadingDetails((prev) => {
+						const next = new Set(prev);
+						next.delete(activeProject.id);
+						return next;
+					});
+				})();
+			}
+		}
+	}, [activeItemId, projects, projectDetails]);
 
 	async function toggleProject(projectId: string) {
 		if (expandedProjects.has(projectId)) {
@@ -564,16 +634,29 @@ export function Sidebar({
 		});
 	}
 
-	// Auto-expand the active section when navigation changes
+	// Auto-expand the active section and auto-collapse irrelevant sections when navigation changes
 	useEffect(() => {
-		if (activeSection && collapsedSections.has(activeSection)) {
-			setCollapsedSections((prev) => {
-				const next = new Set(prev);
-				next.delete(activeSection);
-				return next;
-			});
-		}
-	}, [activeSection]);
+		if (!activeSection) return;
+
+		setCollapsedSections((prev) => {
+			const next = new Set(prev);
+
+			// Expand the active section
+			next.delete(activeSection);
+
+			// Collapse sections that don't contain the current view
+			// But only collapse if there's an active item (navigated to a specific item)
+			if (activeItemId) {
+				for (const item of navItems) {
+					if (item.section !== activeSection && item.section !== 'starred') {
+						next.add(item.section);
+					}
+				}
+			}
+
+			return next;
+		});
+	}, [activeSection, activeItemId]);
 
 	if (collapsed) {
 		return (

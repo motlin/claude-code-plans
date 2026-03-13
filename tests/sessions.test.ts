@@ -257,6 +257,7 @@ describe('readSession', () => {
 		expect(detail).not.toBeNull();
 		expect(detail!.title).toBe('Hello');
 		expect(detail!.projectName).toBe('app');
+		expect(detail!.projectId).toBe('-Users-craig-projects-app');
 		expect(detail!.messages).toHaveLength(2);
 
 		expect(detail!.messages[0]!.role).toBe('user');

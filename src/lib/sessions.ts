@@ -59,6 +59,7 @@ export interface SessionDetail {
 	id: string;
 	title: string;
 	projectName: string;
+	projectId: string;
 	messages: SessionMessage[];
 }
 
@@ -617,7 +618,7 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 
 	if (customTitle) title = customTitle;
 
-	return {id: sessionId, title, projectName, messages};
+	return {id: sessionId, title, projectName, projectId: project, messages};
 }
 
 export function getSessionsDir(): string {
