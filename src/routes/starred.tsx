@@ -34,7 +34,7 @@ function StarredPage() {
 			<h1 className="text-lg font-semibold">Starred Sessions</h1>
 
 			{sessions.length === 0 ? (
-				<p className="mt-4 text-sm text-muted-foreground">
+				<p className="mt-4 text-sm text-text-500">
 					No starred sessions yet. Star a session from its detail page.
 				</p>
 			) : (
@@ -47,7 +47,7 @@ function StarredPage() {
 							<Link
 								to="/session/$id"
 								params={{id: session.id}}
-								className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-muted/50"
+								className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-bg-200/50"
 							>
 								<div
 									className="truncate pr-8"
@@ -55,7 +55,7 @@ function StarredPage() {
 								>
 									{session.title}
 								</div>
-								<div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+								<div className="mt-0.5 flex items-center gap-2 text-xs text-text-500">
 									<span>{session.projectName}</span>
 									<span>&middot;</span>
 									<span>{formatDate(session.mtime)}</span>
@@ -67,7 +67,7 @@ function StarredPage() {
 									)}
 								</div>
 								{session.summary && session.summary !== session.title && (
-									<div className="mt-0.5 truncate text-xs text-muted-foreground italic">
+									<div className="mt-0.5 truncate text-xs text-text-500 italic">
 										{session.summary}
 									</div>
 								)}

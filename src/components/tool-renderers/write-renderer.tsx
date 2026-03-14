@@ -14,8 +14,8 @@ export function WriteRenderer({toolCall}: ToolRendererProps) {
 
 	return (
 		<div>
-			<div className="bg-muted rounded px-2 py-1.5 mb-2 border border-border">
-				<code className="text-xs font-mono break-all text-foreground">{filePath}</code>
+			<div className="bg-bg-200 rounded px-2 py-1.5 mb-2 border border-border-300/15">
+				<code className="text-xs font-mono break-all text-text-100">{filePath}</code>
 			</div>
 			<div className="flex items-center gap-2 mb-2">
 				{planMatch && (
@@ -32,12 +32,12 @@ export function WriteRenderer({toolCall}: ToolRendererProps) {
 			</div>
 			{content && (
 				<CollapsibleSection label={lineCount > 100 ? `Show content (${lineCount} lines)` : 'Show content'}>
-					<pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-all max-h-64 overflow-auto">
+					<pre className="text-xs font-mono text-text-500 whitespace-pre-wrap break-all max-h-64 overflow-auto">
 						{content}
 					</pre>
 				</CollapsibleSection>
 			)}
-			{result && <div className="text-xs text-muted-foreground mt-1">{result}</div>}
+			{result && <div className="text-xs text-text-500 mt-1">{result}</div>}
 		</div>
 	);
 }

@@ -25,7 +25,7 @@ function ProjectsPage() {
 			<h1 className="text-lg font-semibold">Projects</h1>
 
 			{projects.length === 0 ? (
-				<p className="mt-4 text-muted-foreground">No projects found.</p>
+				<p className="mt-4 text-text-500">No projects found.</p>
 			) : (
 				<div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 					{projects.map((project) => (
@@ -33,7 +33,7 @@ function ProjectsPage() {
 							key={project.id}
 							to="/project/$id"
 							params={{id: project.id}}
-							className="group block rounded-lg border border-border p-4 transition-colors hover:bg-muted/50"
+							className="group block rounded-lg border border-border-300/15 p-4 transition-colors hover:bg-bg-200/50"
 						>
 							<div
 								className="truncate font-medium"
@@ -42,11 +42,9 @@ function ProjectsPage() {
 								{project.name}
 							</div>
 							{project.projectPath && (
-								<div className="mt-0.5 truncate text-xs text-muted-foreground">
-									{project.projectPath}
-								</div>
+								<div className="mt-0.5 truncate text-xs text-text-500">{project.projectPath}</div>
 							)}
-							<div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+							<div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-text-500">
 								<span>{project.sessionCount} sessions</span>
 								<span>&middot;</span>
 								<span>{project.memoryCount} memories</span>

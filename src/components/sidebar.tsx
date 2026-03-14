@@ -86,9 +86,9 @@ function useActiveSection(matches: ReturnType<typeof useMatches>): {
 function LoadingBars() {
 	return (
 		<div className="space-y-1.5 py-1">
-			<div className="h-3 w-3/4 animate-pulse rounded bg-black/5 dark:bg-white/5" />
-			<div className="h-3 w-1/2 animate-pulse rounded bg-black/5 dark:bg-white/5" />
-			<div className="h-3 w-2/3 animate-pulse rounded bg-black/5 dark:bg-white/5" />
+			<div className="h-3 w-3/4 animate-pulse rounded bg-bg-300/50" />
+			<div className="h-3 w-1/2 animate-pulse rounded bg-bg-300/50" />
+			<div className="h-3 w-2/3 animate-pulse rounded bg-bg-300/50" />
 		</div>
 	);
 }
@@ -186,8 +186,8 @@ function SubList({
 						params={item.params}
 						className={`mb-px block truncate rounded-[4px] px-2 py-1 text-xs no-underline transition-colors ${
 							isActive
-								? 'bg-black/5 font-medium text-[rgb(20,20,19)] dark:bg-white/10 dark:text-[rgb(235,235,230)]'
-								: 'text-[rgb(115,114,108)] hover:bg-black/5 hover:text-[rgb(61,61,58)] dark:text-[rgb(150,150,145)] dark:hover:bg-white/5 dark:hover:text-[rgb(200,200,195)]'
+								? 'bg-bg-300/50 font-medium text-text-000'
+								: 'text-text-500 hover:bg-bg-300/50 hover:text-text-200'
 						}`}
 					>
 						{item.label}
@@ -285,8 +285,8 @@ function PlansSubList({activeItemId, refreshKey}: {activeItemId: string | null; 
 							params={{filename: plan.filename}}
 							className={`mb-px block truncate rounded-[4px] px-2 py-1 text-xs no-underline transition-colors ${
 								isActive
-									? 'bg-black/5 font-medium text-[rgb(20,20,19)] dark:bg-white/10 dark:text-[rgb(235,235,230)]'
-									: 'text-[rgb(115,114,108)] hover:bg-black/5 hover:text-[rgb(61,61,58)] dark:text-[rgb(150,150,145)] dark:hover:bg-white/5 dark:hover:text-[rgb(200,200,195)]'
+									? 'bg-bg-300/50 font-medium text-text-000'
+									: 'text-text-500 hover:bg-bg-300/50 hover:text-text-200'
 							}`}
 						>
 							{plan.title}
@@ -306,7 +306,7 @@ function PlansSubList({activeItemId, refreshKey}: {activeItemId: string | null; 
 						<button
 							type="button"
 							onClick={() => toggleGroup(group.projectId)}
-							className="mb-px flex w-full items-center gap-1 rounded-[4px] px-2 py-1 text-xs text-[rgb(115,114,108)] transition-colors hover:bg-black/5 hover:text-[rgb(61,61,58)] dark:text-[rgb(150,150,145)] dark:hover:bg-white/5 dark:hover:text-[rgb(200,200,195)]"
+							className="mb-px flex w-full items-center gap-1 rounded-[4px] px-2 py-1 text-xs text-text-500 transition-colors hover:bg-bg-300/50 hover:text-text-200"
 						>
 							<ChevronRight
 								className="h-2.5 w-2.5 shrink-0 transition-transform duration-200"
@@ -325,8 +325,8 @@ function PlansSubList({activeItemId, refreshKey}: {activeItemId: string | null; 
 										params={{filename: plan.filename}}
 										className={`mb-px block truncate rounded-[4px] py-1 pl-5 pr-2 text-xs no-underline transition-colors ${
 											isActive
-												? 'bg-black/5 font-medium text-[rgb(20,20,19)] dark:bg-white/10 dark:text-[rgb(235,235,230)]'
-												: 'text-[rgb(115,114,108)] hover:bg-black/5 hover:text-[rgb(61,61,58)] dark:text-[rgb(150,150,145)] dark:hover:bg-white/5 dark:hover:text-[rgb(200,200,195)]'
+												? 'bg-bg-300/50 font-medium text-text-000'
+												: 'text-text-500 hover:bg-bg-300/50 hover:text-text-200'
 										}`}
 									>
 										{plan.title}
@@ -463,13 +463,11 @@ function ProjectsSubList({activeItemId, refreshKey}: {activeItemId: string | nul
 
 	const linkClass = (isActive: boolean) =>
 		`mb-px block truncate rounded-[4px] px-2 py-1 text-xs no-underline transition-colors ${
-			isActive
-				? 'bg-black/5 font-medium text-[rgb(20,20,19)] dark:bg-white/10 dark:text-[rgb(235,235,230)]'
-				: 'text-[rgb(115,114,108)] hover:bg-black/5 hover:text-[rgb(61,61,58)] dark:text-[rgb(150,150,145)] dark:hover:bg-white/5 dark:hover:text-[rgb(200,200,195)]'
+			isActive ? 'bg-bg-300/50 font-medium text-text-000' : 'text-text-500 hover:bg-bg-300/50 hover:text-text-200'
 		}`;
 
 	const labelClass =
-		'mb-px flex w-full items-center gap-1 rounded-[4px] px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[rgb(155,154,148)] dark:text-[rgb(120,120,115)]';
+		'mb-px flex w-full items-center gap-1 rounded-[4px] px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-text-400';
 
 	return (
 		<div className="pl-10">
@@ -485,7 +483,7 @@ function ProjectsSubList({activeItemId, refreshKey}: {activeItemId: string | nul
 							<button
 								type="button"
 								onClick={() => toggleProject(project.id)}
-								className="flex h-5 w-4 shrink-0 items-center justify-center text-[rgb(115,114,108)] transition-colors hover:text-[rgb(61,61,58)] dark:text-[rgb(150,150,145)] dark:hover:text-[rgb(200,200,195)]"
+								className="flex h-5 w-4 shrink-0 items-center justify-center text-text-500 transition-colors hover:text-text-200"
 							>
 								<ChevronRight
 									className="h-2.5 w-2.5 transition-transform duration-200"
@@ -524,7 +522,7 @@ function ProjectsSubList({activeItemId, refreshKey}: {activeItemId: string | nul
 													<Link
 														to="/project/$id"
 														params={{id: project.id}}
-														className="mb-px block truncate rounded-[4px] py-1 text-[10px] italic text-[rgb(155,154,148)] no-underline hover:text-[rgb(115,114,108)] dark:text-[rgb(120,120,115)] dark:hover:text-[rgb(150,150,145)]"
+														className="mb-px block truncate rounded-[4px] py-1 text-[10px] italic text-text-400 no-underline hover:text-text-500"
 														style={{paddingLeft: '1.5rem', paddingRight: '0.5rem'}}
 													>
 														+{detail.sessions.length - 10} more...
@@ -567,7 +565,7 @@ function ProjectsSubList({activeItemId, refreshKey}: {activeItemId: string | nul
 										{detail.sessions.length === 0 &&
 											detail.plans.length === 0 &&
 											detail.memories.length === 0 && (
-												<div className="px-2 py-1 text-[10px] italic text-[rgb(155,154,148)] dark:text-[rgb(120,120,115)]">
+												<div className="px-2 py-1 text-[10px] italic text-text-400">
 													No items
 												</div>
 											)}
@@ -599,13 +597,13 @@ function SearchInput() {
 			className="px-4 pb-2"
 		>
 			<div className="relative">
-				<Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[rgb(115,114,108)] dark:text-[rgb(150,150,145)]" />
+				<Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-500" />
 				<input
 					type="text"
 					value={query}
 					onChange={(e) => setQuery(e.target.value)}
 					placeholder="Search..."
-					className="w-full rounded-md border border-[rgba(31,30,29,0.1)] bg-white/50 py-1.5 pl-7 pr-2 text-xs outline-none placeholder:text-[rgb(115,114,108)] focus:border-[rgba(31,30,29,0.3)] dark:border-[rgba(255,255,255,0.1)] dark:bg-white/5 dark:placeholder:text-[rgb(150,150,145)] dark:focus:border-[rgba(255,255,255,0.2)]"
+					className="w-full rounded-md border border-border-300/10 bg-bg-000/50 py-1.5 pl-7 pr-2 text-xs outline-none placeholder:text-text-500 focus:border-border-300/30"
 				/>
 			</div>
 		</form>
@@ -667,7 +665,7 @@ export function Sidebar({
 			<button
 				type="button"
 				onClick={onToggle}
-				className="absolute left-2 top-2 z-10 hidden h-8 w-8 items-center justify-center rounded-[6px] text-[rgb(20,20,19)] transition-colors hover:bg-black/5 dark:text-[rgb(235,235,230)] dark:hover:bg-white/10 md:flex"
+				className="absolute left-2 top-2 z-10 hidden h-8 w-8 items-center justify-center rounded-[6px] text-text-000 transition-colors hover:bg-bg-300/50 md:flex"
 				title="Open sidebar"
 			>
 				<SidebarToggleIcon />
@@ -676,17 +674,12 @@ export function Sidebar({
 	}
 
 	return (
-		<nav
-			className="relative hidden h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-[rgba(31,30,29,0.15)] bg-[rgb(250,249,245)] md:flex dark:border-[rgba(255,255,255,0.1)] dark:bg-[hsl(220_13%_12%)]"
-			style={{
-				backgroundImage: 'linear-gradient(to top, rgba(245, 244, 237, 0.05), rgba(245, 244, 237, 0.3))',
-			}}
-		>
+		<nav className="relative hidden h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border-300/15 bg-bg-200 md:flex">
 			<div className="absolute right-2 top-2">
 				<button
 					type="button"
 					onClick={onToggle}
-					className="flex h-8 w-8 items-center justify-center rounded-[6px] text-[rgb(20,20,19)] transition-colors hover:bg-black/5 dark:text-[rgb(235,235,230)] dark:hover:bg-white/10"
+					className="flex h-8 w-8 items-center justify-center rounded-[6px] text-text-000 transition-colors hover:bg-bg-300/50"
 					title="Close sidebar"
 				>
 					<SidebarToggleIcon />
@@ -696,7 +689,7 @@ export function Sidebar({
 			<div className="px-4 pt-12">
 				<Link
 					to="/"
-					className="mb-4 flex items-center gap-2 text-sm font-semibold text-[rgb(20,20,19)] no-underline dark:text-[rgb(235,235,230)]"
+					className="mb-4 flex items-center gap-2 text-sm font-semibold text-text-000 no-underline"
 				>
 					<span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-[#C87B3A]">
 						<svg
@@ -727,7 +720,7 @@ export function Sidebar({
 								<button
 									type="button"
 									onClick={() => toggleSection(item.section)}
-									className="flex h-8 w-6 shrink-0 items-center justify-center text-[rgb(115,114,108)] transition-colors hover:text-[rgb(61,61,58)] dark:text-[rgb(150,150,145)] dark:hover:text-[rgb(200,200,195)]"
+									className="flex h-8 w-6 shrink-0 items-center justify-center text-text-500 transition-colors hover:text-text-200"
 									title={isExpanded ? `Collapse ${item.label}` : `Expand ${item.label}`}
 								>
 									<ChevronRight
@@ -739,8 +732,8 @@ export function Sidebar({
 									to={item.to}
 									className={`mb-0.5 flex h-8 flex-1 items-center gap-2 rounded-[6px] px-2 py-1.5 text-xs no-underline transition-colors ${
 										isActive
-											? 'bg-black/5 font-medium text-[rgb(20,20,19)] dark:bg-white/10 dark:text-[rgb(235,235,230)]'
-											: 'text-[rgb(61,61,58)] hover:bg-black/5 dark:text-[rgb(180,180,175)] dark:hover:bg-white/10'
+											? 'bg-bg-300/50 font-medium text-text-000'
+											: 'text-text-200 hover:bg-bg-300/50'
 									}`}
 									style={{fontWeight: isActive ? 500 : 430, lineHeight: '16px'}}
 								>

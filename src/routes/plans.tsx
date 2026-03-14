@@ -29,10 +29,10 @@ function PlansPage() {
 	return (
 		<div>
 			<h1 className="text-lg font-semibold">Claude Plans</h1>
-			<p className="mt-1 text-sm text-muted-foreground">{countLabel}</p>
+			<p className="mt-1 text-sm text-text-500">{countLabel}</p>
 
 			{count === 0 ? (
-				<p className="mt-4 text-muted-foreground">No plans found.</p>
+				<p className="mt-4 text-text-500">No plans found.</p>
 			) : (
 				<ul className="mt-4 space-y-2">
 					{plans.map((plan, index) => {
@@ -43,7 +43,7 @@ function PlansPage() {
 									to="/plan/$filename"
 									params={{filename: plan.filename}}
 									preload={index < 2 ? 'render' : 'intent'}
-									className="flex items-center justify-between rounded-md border border-border px-4 py-3 transition-colors hover:bg-muted/50"
+									className="flex items-center justify-between rounded-md border border-border-300/15 px-4 py-3 transition-colors hover:bg-bg-200/50"
 								>
 									<span className="flex items-center gap-2 text-sm font-medium">
 										{plan.title}
@@ -53,7 +53,7 @@ function PlansPage() {
 											</span>
 										)}
 									</span>
-									<span className="ml-4 shrink-0 text-xs text-muted-foreground">
+									<span className="ml-4 shrink-0 text-xs text-text-500">
 										{formatDate(plan.mtime)}
 									</span>
 								</Link>

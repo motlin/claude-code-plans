@@ -20,7 +20,7 @@ export function TaskUpdateRenderer({toolCall}: ToolRendererProps) {
 				className={`${config.color} ${config.spin ? 'animate-spin' : ''}`}
 			/>
 			<span className="text-xs">
-				Task #{taskId} <span className="text-muted-foreground">{status}</span>
+				Task #{taskId} <span className="text-text-500">{status}</span>
 			</span>
 		</div>
 	);

@@ -10,7 +10,7 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 		return (
 			<div>
 				<p className="text-sm font-medium">{question}</p>
-				{result && <p className="text-sm text-muted-foreground mt-1">{result}</p>}
+				{result && <p className="text-sm text-text-500 mt-1">{result}</p>}
 			</div>
 		);
 	}
@@ -39,7 +39,7 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 								)}
 								<span className="font-medium">{opt.label}</span>
 							</div>
-							{opt.description && <p className="text-muted-foreground mt-0.5">{opt.description}</p>}
+							{opt.description && <p className="text-text-500 mt-0.5">{opt.description}</p>}
 						</div>
 					);
 				})}

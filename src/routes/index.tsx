@@ -31,13 +31,13 @@ function Home() {
 						<Link
 							key={card.to}
 							to={card.to}
-							className="group rounded-lg border border-border p-6 transition-colors hover:bg-muted/50"
+							className="group rounded-lg border border-border-300/15 p-6 transition-colors hover:bg-bg-200/50"
 						>
 							<div className="flex items-center gap-3">
-								<Icon className="h-5 w-5 text-muted-foreground group-hover:text-foreground" />
+								<Icon className="h-5 w-5 text-text-500 group-hover:text-text-100" />
 								<h2 className="font-semibold">{card.label}</h2>
 							</div>
-							<p className="mt-2 text-sm text-muted-foreground">{card.description}</p>
+							<p className="mt-2 text-sm text-text-500">{card.description}</p>
 						</Link>
 					);
 				})}

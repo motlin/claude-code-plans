@@ -228,12 +228,12 @@ export function AnsiText({content}: {content: string}) {
 }
 
 export function FilePath({path}: {path: string}) {
-	return <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded truncate">{path}</code>;
+	return <code className="text-xs font-mono bg-bg-200 px-1.5 py-0.5 rounded truncate">{path}</code>;
 }
 
 export function DiffLine({type, line}: {type: 'equal' | 'add' | 'remove'; line: string}) {
 	const markerColors = {
-		equal: 'bg-transparent text-muted-foreground',
+		equal: 'bg-transparent text-text-500',
 		add: 'bg-green-500 text-green-50',
 		remove: 'bg-red-500 text-red-50',
 	};
@@ -247,7 +247,7 @@ export function DiffLine({type, line}: {type: 'equal' | 'add' | 'remove'; line: 
 	return (
 		<div className={`grid grid-cols-[auto_auto_1fr] font-mono text-xs leading-relaxed ${lineBackground[type]}`}>
 			{/* Gutter column: line numbers (currently empty, can be populated with line numbers) */}
-			<div className="w-8 px-1 text-right text-muted-foreground select-none" />
+			<div className="w-8 px-1 text-right text-text-500 select-none" />
 			{/* Marker column: +/- indicator with colored background */}
 			<div className={`w-6 flex items-center justify-center select-none font-semibold ${markerColors[type]}`}>
 				{markers[type]}
@@ -288,7 +288,7 @@ export function TerminalOutput({content, maxLines = 100}: {content: string; maxL
 					</span>
 				</div>
 			)}
-			<pre className="bg-muted text-foreground rounded text-xs leading-relaxed p-2 overflow-x-auto whitespace-pre-wrap break-all">
+			<pre className="bg-bg-200 text-text-100 rounded text-xs leading-relaxed p-2 overflow-x-auto whitespace-pre-wrap break-all">
 				<AnsiText content={displayed} />
 			</pre>
 			{truncated && (
@@ -320,7 +320,7 @@ export function CollapsibleSection({
 			<button
 				type="button"
 				onClick={() => setOpen(!open)}
-				className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+				className="flex items-center gap-1 text-xs text-text-500 hover:text-text-100 cursor-pointer"
 			>
 				<svg
 					width="14"
@@ -343,7 +343,7 @@ export function CollapsibleSection({
 }
 
 export function ToolMeta({children}: {children: ReactNode}) {
-	return <span className="text-xs text-muted-foreground">{children}</span>;
+	return <span className="text-xs text-text-500">{children}</span>;
 }
 
 export function formatDuration(ms: number): string {
@@ -355,5 +355,5 @@ export function formatDuration(ms: number): string {
 }
 
 export function DurationBadge({duration}: {duration: number}) {
-	return <span className="text-xs text-muted-foreground ml-1.5">{formatDuration(duration)}</span>;
+	return <span className="text-xs text-text-500 ml-1.5">{formatDuration(duration)}</span>;
 }

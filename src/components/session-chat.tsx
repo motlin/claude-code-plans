@@ -83,18 +83,16 @@ function UserMessage({msg}: {msg: ChatMessage}) {
 				<UserAvatar />
 				<div className="flex flex-col items-end gap-2 ml-auto max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] w-fit">
 					<div>
-						<div className="rounded-lg px-3 py-2 bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)]">
-							<span className="bg-muted rounded-full px-2 py-0.5 text-xs font-mono">
+						<div className="rounded-lg px-3 py-2 bg-bg-100 text-text-000">
+							<span className="bg-bg-200 rounded-full px-2 py-0.5 text-xs font-mono">
 								{msg.command.name}
 							</span>
 							{msg.command.args && (
-								<span className="text-xs text-muted-foreground ml-1.5">{msg.command.args}</span>
+								<span className="text-xs text-text-500 ml-1.5">{msg.command.args}</span>
 							)}
 						</div>
 						{timestampText && (
-							<div className="mt-1 text-right text-xs text-muted-foreground leading-tight">
-								{timestampText}
-							</div>
+							<div className="mt-1 text-right text-xs text-text-500 leading-tight">{timestampText}</div>
 						)}
 					</div>
 				</div>
@@ -110,7 +108,7 @@ function UserMessage({msg}: {msg: ChatMessage}) {
 					className="flex items-start gap-1 flex-row-reverse"
 				>
 					<UserAvatar />
-					<div className="rounded-lg px-3 py-2 break-words min-w-0 overflow-hidden bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)] ml-auto max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] text-sm leading-relaxed">
+					<div className="rounded-lg px-3 py-2 break-words min-w-0 overflow-hidden bg-bg-100 text-text-000 ml-auto max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] text-sm leading-relaxed">
 						<MarkdownArticle html={html} />
 					</div>
 				</div>
@@ -121,7 +119,7 @@ function UserMessage({msg}: {msg: ChatMessage}) {
 					className="flex items-start gap-1 flex-row-reverse"
 				>
 					<UserAvatar />
-					<div className="rounded-lg px-3 py-2 bg-[rgb(245,244,237)] text-[rgb(20,20,19)] dark:bg-[hsl(220,13%,18%)] dark:text-[hsl(210,40%,98%)] flex items-center gap-1.5 ml-auto max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%]">
+					<div className="rounded-lg px-3 py-2 bg-bg-100 text-text-000 flex items-center gap-1.5 ml-auto max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%]">
 						<svg
 							width="16"
 							height="16"
@@ -141,7 +139,7 @@ function UserMessage({msg}: {msg: ChatMessage}) {
 			{timestampText && (
 				<div className="flex items-start gap-1 flex-row-reverse">
 					<div className="w-4 shrink-0" />
-					<div className="text-xs text-muted-foreground text-right leading-tight">{timestampText}</div>
+					<div className="text-xs text-text-500 text-right leading-tight">{timestampText}</div>
 				</div>
 			)}
 		</div>
@@ -203,11 +201,11 @@ function ThinkingBlock({thinking}: {thinking: string}) {
 	const [open, setOpen] = useState(false);
 
 	return (
-		<div className="border-l-2 border-amber-400 pl-3 my-1">
+		<div className="border-l-2 border-warning-100 pl-3 my-1">
 			<button
 				type="button"
 				onClick={() => setOpen(!open)}
-				className="text-xs text-amber-600 dark:text-amber-400 cursor-pointer flex items-center gap-1 leading-tight"
+				className="text-xs text-warning-100 cursor-pointer flex items-center gap-1 leading-tight"
 			>
 				<svg
 					width="12"
@@ -225,7 +223,7 @@ function ThinkingBlock({thinking}: {thinking: string}) {
 				Thinking...
 			</button>
 			{open && (
-				<div className="mt-1 text-xs italic text-muted-foreground whitespace-pre-wrap bg-amber-50/50 dark:bg-amber-950/20 rounded p-2 max-h-64 overflow-auto leading-relaxed">
+				<div className="mt-1 text-xs italic text-text-500 whitespace-pre-wrap bg-bg-200/50 rounded p-2 max-h-64 overflow-auto leading-relaxed">
 					{thinking}
 				</div>
 			)}
@@ -261,7 +259,7 @@ function AssistantMessage({msg, isFirst}: {msg: ChatMessage; isFirst: boolean}) 
 					<div className="flex items-start justify-center">
 						{isFirst && i === 0 && !thinkingText ? <ClaudeIcon /> : <div className="w-4 shrink-0" />}
 					</div>
-					<div className="min-w-0 flex-1 text-sm leading-relaxed text-foreground">
+					<div className="min-w-0 flex-1 text-sm leading-relaxed text-text-100">
 						<MarkdownArticle html={html} />
 					</div>
 				</div>
@@ -278,7 +276,7 @@ function AssistantMessage({msg, isFirst}: {msg: ChatMessage; isFirst: boolean}) 
 					<img
 						src={`data:${img.mediaType};base64,${img.data}`}
 						alt="Session image"
-						className="max-w-full max-h-96 rounded-lg border border-border shadow-sm"
+						className="max-w-full max-h-96 rounded-lg border border-border-300/15 shadow-sm"
 					/>
 				</div>
 			))}
@@ -304,7 +302,7 @@ function AssistantMessage({msg, isFirst}: {msg: ChatMessage; isFirst: boolean}) 
 					<div className="flex items-start justify-center">
 						<div className="w-4 shrink-0" />
 					</div>
-					<div className="text-xs text-muted-foreground leading-tight">{timestampText}</div>
+					<div className="text-xs text-text-500 leading-tight">{timestampText}</div>
 				</div>
 			)}
 		</div>
@@ -340,28 +338,26 @@ function ToolCallSummary({calls, summary}: {calls: ClientToolCall[]; summary: st
 			<button
 				type="button"
 				onClick={() => setExpanded(!expanded)}
-				className="flex items-center gap-2 py-1 text-sm leading-relaxed transition-colors cursor-pointer w-full text-left"
-				style={{color: 'rgb(115, 114, 108)'}}
+				className="flex items-center gap-2 py-1 text-sm leading-relaxed transition-colors cursor-pointer w-full text-left text-text-500"
 			>
 				<ChevronIcon expanded={expanded} />
 				<span>{summary}</span>
 			</button>
 			{expanded && (
-				<div className="ml-2 border-l border-border/40 pl-3">
+				<div className="ml-2 border-l border-border-300/10 pl-3">
 					{calls.map((call, i) => {
 						const Renderer = getToolRenderer(call.name);
 						return (
 							<div
 								key={i}
-								className="py-0.5 text-sm leading-relaxed"
-								style={{color: 'rgb(115, 114, 108)'}}
+								className="py-0.5 text-sm leading-relaxed text-text-500"
 							>
 								<div className="flex items-center">
 									<span className="font-medium text-sm">{call.name}</span>
 									{call.param && <span className="ml-1.5 text-xs opacity-70">{call.param}</span>}
 									{call.duration !== undefined && <DurationBadge duration={call.duration} />}
 								</div>
-								<div className="mt-1 mb-2 text-xs text-foreground leading-relaxed">
+								<div className="mt-1 mb-2 text-xs text-text-100 leading-relaxed">
 									<Renderer toolCall={call} />
 								</div>
 							</div>

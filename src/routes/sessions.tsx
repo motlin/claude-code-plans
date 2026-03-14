@@ -38,11 +38,11 @@ function SessionsPage() {
 			<h1 className="text-lg font-semibold">Claude Sessions</h1>
 
 			{groups.length === 0 ? (
-				<p className="mt-4 text-muted-foreground">No session files found.</p>
+				<p className="mt-4 text-text-500">No session files found.</p>
 			) : (
 				<>
 					<div className="mt-6">
-						<h2 className="border-b border-border pb-1 text-sm font-semibold">Recent</h2>
+						<h2 className="border-b border-border-300/15 pb-1 text-sm font-semibold">Recent</h2>
 						<ul className="mt-2 space-y-1">
 							{allSessions.map((sess) => (
 								<SessionItem
@@ -55,7 +55,7 @@ function SessionsPage() {
 					</div>
 
 					<div className="mt-8">
-						<h2 className="border-b border-border pb-1 text-sm font-semibold">By Project</h2>
+						<h2 className="border-b border-border-300/15 pb-1 text-sm font-semibold">By Project</h2>
 						{groups.map((group) => {
 							const shown = group.sessions.slice(0, PER_PROJECT_LIMIT);
 							const remaining = group.sessions.length - shown.length;
@@ -64,7 +64,7 @@ function SessionsPage() {
 									key={group.project}
 									className="mt-4"
 								>
-									<h3 className="text-sm font-medium text-muted-foreground">
+									<h3 className="text-sm font-medium text-text-500">
 										<Link
 											to="/project/$id"
 											params={{id: group.project}}
@@ -87,7 +87,7 @@ function SessionsPage() {
 										<Link
 											to="/project/$id"
 											params={{id: group.project}}
-											className="mt-1 block px-2 text-xs text-primary hover:underline"
+											className="mt-1 block px-2 text-xs text-accent-100 hover:underline"
 										>
 											{remaining} more sessions &rarr;
 										</Link>
@@ -122,7 +122,7 @@ function SessionItem({
 			<Link
 				to="/session/$id"
 				params={{id: session.id}}
-				className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-muted/50"
+				className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-bg-200/50"
 			>
 				<div
 					className="flex items-center gap-1.5 truncate"
@@ -136,7 +136,7 @@ function SessionItem({
 					)}
 					<span className="truncate">{session.title}</span>
 				</div>
-				<div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+				<div className="mt-0.5 flex items-center gap-2 text-xs text-text-500">
 					<span>{session.projectName}</span>
 					<span>&middot;</span>
 					<span>{formatDate(session.mtime)}</span>
@@ -149,14 +149,14 @@ function SessionItem({
 					{session.gitBranch && (
 						<>
 							<span>&middot;</span>
-							<span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">
+							<span className="rounded bg-bg-200 px-1.5 py-0.5 font-mono text-[10px]">
 								{session.gitBranch}
 							</span>
 						</>
 					)}
 				</div>
 				{session.summary && session.summary !== session.title && (
-					<div className="mt-0.5 truncate text-xs text-muted-foreground italic">{session.summary}</div>
+					<div className="mt-0.5 truncate text-xs text-text-500 italic">{session.summary}</div>
 				)}
 			</Link>
 		</li>

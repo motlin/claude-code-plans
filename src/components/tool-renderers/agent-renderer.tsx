@@ -26,12 +26,12 @@ export function AgentRenderer({toolCall}: ToolRendererProps) {
 				{agentType && (
 					<span className={`rounded px-1.5 py-0.5 text-xs font-medium ${colorClass}`}>{agentType}</span>
 				)}
-				{description && <span className="text-xs text-muted-foreground line-clamp-2">{description}</span>}
+				{description && <span className="text-xs text-text-500 line-clamp-2">{description}</span>}
 				{agentId && (
 					<Link
 						to="/session/$id"
 						params={{id: `agent-${agentId}`}}
-						className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+						className="inline-flex items-center gap-1 text-xs text-accent-100 hover:underline"
 					>
 						<Bot size={12} />
 						View session
@@ -40,14 +40,14 @@ export function AgentRenderer({toolCall}: ToolRendererProps) {
 			</div>
 			{prompt && (
 				<CollapsibleSection label="Prompt">
-					<pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-all max-h-48 overflow-auto">
+					<pre className="text-xs font-mono text-text-500 whitespace-pre-wrap break-all max-h-48 overflow-auto">
 						{prompt}
 					</pre>
 				</CollapsibleSection>
 			)}
 			{displayResult && (
 				<CollapsibleSection label="Output">
-					<pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-all max-h-48 overflow-auto">
+					<pre className="text-xs font-mono text-text-500 whitespace-pre-wrap break-all max-h-48 overflow-auto">
 						{displayResult}
 					</pre>
 				</CollapsibleSection>

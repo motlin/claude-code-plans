@@ -10,12 +10,12 @@ export function WebFetchRenderer({toolCall}: ToolRendererProps) {
 		<div className={isError ? 'border-l-2 border-red-500 pl-2' : ''}>
 			<div className="flex flex-col gap-1.5">
 				<div className="flex items-center gap-2">
-					<span className="text-xs text-muted-foreground">URL:</span>
+					<span className="text-xs text-text-500">URL:</span>
 					<a
 						href={url}
 						target="_blank"
 						rel="noopener noreferrer"
-						className="text-xs text-primary hover:underline break-all"
+						className="text-xs text-accent-100 hover:underline break-all"
 						title={url}
 					>
 						{url}
@@ -23,7 +23,7 @@ export function WebFetchRenderer({toolCall}: ToolRendererProps) {
 				</div>
 
 				{prompt && (
-					<div className="text-xs text-muted-foreground">
+					<div className="text-xs text-text-500">
 						<ToolMeta>Prompt: {prompt.length > 100 ? prompt.slice(0, 100) + '...' : prompt}</ToolMeta>
 					</div>
 				)}
