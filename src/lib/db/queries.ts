@@ -368,6 +368,16 @@ export interface DbPlanProjectMapping {
 	projectName: string;
 }
 
+export function getSessionProjectPath(db: IndexDb, sessionId: string): string | null {
+	const row = db
+		.select({projectPath: schema.projects.projectPath})
+		.from(schema.sessions)
+		.innerJoin(schema.projects, eq(schema.projects.id, schema.sessions.projectId))
+		.where(eq(schema.sessions.id, sessionId))
+		.get();
+	return row?.projectPath ?? null;
+}
+
 export function getPlanProjectMappings(db: IndexDb): DbPlanProjectMapping[] {
 	const projectRows = db.select().from(schema.projects).all();
 	const projectNames = new Map(projectRows.map((p) => [p.id, p.name]));

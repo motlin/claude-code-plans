@@ -6,6 +6,9 @@ import {useEffect, useState} from 'react';
 import {readSession, summarizeToolCalls} from '../lib/sessions';
 import {renderMarkdown, computeDiffData, detectLanguage, highlightCode, extractLineNumbers} from '../lib/renderer';
 import {SessionChat} from '../components/session-chat';
+import {ChatInput} from '../components/chat-input';
+import {StreamingMessage} from '../components/streaming-message';
+import {useChatStream} from '../hooks/use-chat-stream';
 import {
 	getSubagents,
 	getSessionSummary,
@@ -17,6 +20,7 @@ import {
 import {getDb} from '../lib/db';
 import {sessions} from '../lib/db/schema';
 import {eq} from 'drizzle-orm';
+import {getSessionProjectPath} from '../lib/db/queries';
 import type {ClientToolCall, ToolInput} from '../components/tool-renderers';
 
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
@@ -133,6 +137,7 @@ const getSession = createServerFn({method: 'GET'})
 		const {index} = getDb();
 		const sessionRow = index.select().from(sessions).where(eq(sessions.id, id)).get();
 		const hasSummary = !!(sessionRow?.summary || sessionRow?.customTitle);
+		const projectPath = getSessionProjectPath(index, id);
 
 		return {
 			title: detail.title,
@@ -144,6 +149,7 @@ const getSession = createServerFn({method: 'GET'})
 			starred: starResult.starred,
 			isActive: activeSessions.some((a) => a.sessionId === id),
 			hasSummary,
+			projectPath,
 		};
 	});
 
@@ -167,6 +173,7 @@ function SessionPage() {
 	const [starred, setStarred] = useState(data?.starred ?? false);
 	const [isActive, setIsActive] = useState(data?.isActive ?? false);
 	const [generating, setGenerating] = useState(false);
+	const chatStream = useChatStream();
 
 	useEffect(() => {
 		if (!isActive) return;
@@ -288,6 +295,27 @@ function SessionPage() {
 			)}
 
 			<SessionChat messages={data.messages} />
+
+			{(chatStream.state.isStreaming || chatStream.state.isComplete) && (
+				<StreamingMessage
+					text={chatStream.state.text}
+					isComplete={chatStream.state.isComplete}
+					{...(chatStream.state.error !== undefined ? {error: chatStream.state.error} : {})}
+					{...(chatStream.state.forkedSessionId !== undefined
+						? {forkedSessionId: chatStream.state.forkedSessionId}
+						: {})}
+				/>
+			)}
+
+			{data.projectPath && (
+				<ChatInput
+					onSend={(prompt) => chatStream.send(params.id, prompt)}
+					onCancel={chatStream.cancel}
+					isStreaming={chatStream.state.isStreaming}
+					disabled={isActive}
+					projectPath={data.projectPath}
+				/>
+			)}
 		</div>
 	);
 }
