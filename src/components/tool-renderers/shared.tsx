@@ -283,19 +283,19 @@ export function TerminalOutput({content, maxLines = 100}: {content: string; maxL
 		<div className="relative">
 			{exitCode !== null && (
 				<div className="mb-2 flex items-center gap-2">
-					<span className="inline-flex items-center gap-1.5 bg-red-900 text-red-100 px-2.5 py-1 rounded text-xs font-bold">
+					<span className="inline-flex items-center gap-1.5 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100 px-2.5 py-1 rounded text-xs font-bold">
 						Exit code <span className="font-mono">{exitCode}</span>
 					</span>
 				</div>
 			)}
-			<pre className="bg-gray-900 text-gray-100 rounded text-xs leading-relaxed p-2 overflow-x-auto whitespace-pre-wrap break-all">
+			<pre className="bg-muted text-foreground rounded text-xs leading-relaxed p-2 overflow-x-auto whitespace-pre-wrap break-all">
 				<AnsiText content={displayed} />
 			</pre>
 			{truncated && (
 				<button
 					type="button"
 					onClick={() => setShowAll(true)}
-					className="text-xs text-blue-400 hover:text-blue-300 mt-1"
+					className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 mt-1"
 				>
 					Show all {lines.length} lines
 				</button>

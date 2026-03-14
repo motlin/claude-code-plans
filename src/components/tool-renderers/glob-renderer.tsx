@@ -19,7 +19,7 @@ export function GlobRenderer({toolCall}: ToolRendererProps) {
 				<ToolMeta>{files.length} files</ToolMeta>
 			</div>
 			{files.length > 0 && (
-				<pre className="bg-gray-900 text-cyan-300 rounded text-xs leading-relaxed p-2 overflow-x-auto whitespace-pre-wrap break-all max-h-48 overflow-y-auto">
+				<pre className="bg-muted text-foreground rounded text-xs leading-relaxed p-2 overflow-x-auto whitespace-pre-wrap break-all max-h-48 overflow-y-auto">
 					{displayed.join('\n')}
 					{truncated && `\n... and ${files.length - 50} more files`}
 				</pre>
