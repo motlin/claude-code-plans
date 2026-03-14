@@ -1,6 +1,14 @@
 import type {ToolRendererProps} from './types';
 import {TerminalOutput} from './shared';
 
+function stripCommandPrefix(content: string, command: string): string {
+	const prefix = `$ ${command}\n`;
+	if (content.startsWith(prefix)) {
+		return content.slice(prefix.length);
+	}
+	return content;
+}
+
 export function BashRenderer({toolCall}: ToolRendererProps) {
 	const command = (toolCall.input['command'] as string) ?? '';
 	const description = toolCall.input['description'] as string | undefined;
@@ -15,17 +23,7 @@ export function BashRenderer({toolCall}: ToolRendererProps) {
 					<span className="text-green-700 dark:text-green-400">{command}</span>
 				</div>
 			</div>
-			{result && (
-				<div>
-					<div className="bg-muted rounded px-2 py-1 mb-1">
-						<div className="font-mono text-xs">
-							<span className="text-muted-foreground">$ </span>
-							<span className="text-green-700 dark:text-green-400">{command}</span>
-						</div>
-					</div>
-					<TerminalOutput content={result} />
-				</div>
-			)}
+			{result && <TerminalOutput content={stripCommandPrefix(result, command)} />}
 		</div>
 	);
 }
