@@ -1,5 +1,5 @@
 import {Outlet, createRootRoute, HeadContent, Scripts, useRouter} from '@tanstack/react-router';
-import {useEffect, useState, type ReactNode} from 'react';
+import {useCallback, useEffect, useState, type ReactNode} from 'react';
 import {ThemeProvider} from '../components/theme-provider';
 import {ModeToggle} from '../components/mode-toggle';
 import {Sidebar} from '../components/sidebar';
@@ -49,7 +49,7 @@ function RootComponent() {
 						</div>
 					</main>
 				</div>
-				<SseListener onContentUpdated={() => setRefreshKey((k) => k + 1)} />
+				<SseListener onContentUpdated={useCallback(() => setRefreshKey((k) => k + 1), [])} />
 			</ThemeProvider>
 		</RootDocument>
 	);
