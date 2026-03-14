@@ -426,6 +426,7 @@ function stripResultTags(text: string): string {
 	let result = text;
 	result = result.replace(/<\/?tool_use_error>/g, '');
 	result = result.replace(/<\/?persisted-output>/g, '');
+	result = result.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '');
 	if (result !== text) result = result.trim();
 	return result;
 }

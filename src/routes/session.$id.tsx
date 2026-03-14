@@ -4,7 +4,7 @@ import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {useEffect, useState} from 'react';
 import {readSession, summarizeToolCalls} from '../lib/sessions';
-import {renderMarkdown, computeDiffData} from '../lib/renderer';
+import {renderMarkdown, computeDiffData, detectLanguage, highlightCode, extractLineNumbers} from '../lib/renderer';
 import {SessionChat} from '../components/session-chat';
 import {
 	getSubagents,
@@ -46,25 +46,36 @@ const getSession = createServerFn({method: 'GET'})
 
 		const messages = await Promise.all(
 			detail.messages.map(async (msg) => {
-				const toolCalls: ClientToolCall[] = msg.toolCalls.map((tc) => {
-					const call: ClientToolCall = {
-						id: tc.id,
-						name: tc.name,
-						input: tc.input as ToolInput,
-						param: getToolParam(tc),
-					};
-					if (tc.result !== undefined) call.result = tc.result;
-					if (tc.isError !== undefined) call.isError = tc.isError;
-					if (tc.duration !== undefined) call.duration = tc.duration;
+				const toolCalls = await Promise.all(
+					msg.toolCalls.map(async (tc): Promise<ClientToolCall> => {
+						const call: ClientToolCall = {
+							id: tc.id,
+							name: tc.name,
+							input: tc.input as ToolInput,
+							param: getToolParam(tc),
+						};
+						if (tc.result !== undefined) call.result = tc.result;
+						if (tc.isError !== undefined) call.isError = tc.isError;
+						if (tc.duration !== undefined) call.duration = tc.duration;
 
-					if ((tc.name === 'Edit' || tc.name === 'MultiEdit') && tc.input['old_string'] !== undefined) {
-						const oldStr = (tc.input['old_string'] as string) ?? '';
-						const newStr = (tc.input['new_string'] as string) ?? '';
-						call.diffData = computeDiffData(oldStr, newStr);
-					}
+						if ((tc.name === 'Edit' || tc.name === 'MultiEdit') && tc.input['old_string'] !== undefined) {
+							const oldStr = (tc.input['old_string'] as string) ?? '';
+							const newStr = (tc.input['new_string'] as string) ?? '';
+							call.diffData = computeDiffData(oldStr, newStr);
+						}
 
-					return call;
-				});
+						if (tc.name === 'Read' && tc.result) {
+							const filePath = (tc.input['file_path'] as string) ?? '';
+							const lang = detectLanguage(filePath);
+							if (lang) {
+								const {text: cleanCode} = extractLineNumbers(tc.result);
+								call.highlightedHtml = await highlightCode(cleanCode, lang);
+							}
+						}
+
+						return call;
+					}),
+				);
 
 				const toolSummary = summarizeToolCalls(msg.toolCalls);
 				const htmlBlocks = await Promise.all(msg.textBlocks.map((text) => renderMarkdown(text)));

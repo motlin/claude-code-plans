@@ -12,7 +12,6 @@ function parseLineNumbers(content: string): Array<{lineNum: string | null; conte
 				content: match[3] ?? '',
 			};
 		}
-		// No line number found, return null for lineNum and full line as content
 		return {
 			lineNum: null,
 			content: line,
@@ -24,7 +23,7 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 	const filePath = (toolCall.input['file_path'] as string) ?? '';
 	const offset = toolCall.input['offset'] as number | undefined;
 	const limit = toolCall.input['limit'] as number | undefined;
-	const {result} = toolCall;
+	const {result, highlightedHtml} = toolCall;
 	const lineCount = result ? result.split('\n').length : 0;
 
 	const rangeInfo =
@@ -46,32 +45,37 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 			</div>
 			{result && (
 				<CollapsibleSection label="Show content">
-					<div className="max-h-64 overflow-auto rounded border border-border">
-						<div className="flex font-mono text-xs text-muted-foreground">
-							{/* Line number gutter */}
-							<div className="bg-muted/50 border-r border-border px-3 py-2 select-none text-right min-w-fit">
-								{parsedLines.map((line, i) => (
-									<div
-										key={i}
-										className="h-5 flex items-center justify-end"
-									>
-										{line.lineNum || ''}
-									</div>
-								))}
-							</div>
-							{/* Code content */}
-							<div className="flex-1 px-3 py-2 whitespace-pre-wrap break-all">
-								{parsedLines.map((line, i) => (
-									<div
-										key={i}
-										className="h-5 flex items-center"
-									>
-										{line.content}
-									</div>
-								))}
+					{highlightedHtml ? (
+						<div
+							className="max-h-96 overflow-auto rounded border border-border text-xs [&_pre]:p-3 [&_pre]:m-0 [&_pre]:rounded-none"
+							dangerouslySetInnerHTML={{__html: highlightedHtml}}
+						/>
+					) : (
+						<div className="max-h-64 overflow-auto rounded border border-border">
+							<div className="flex font-mono text-xs text-muted-foreground">
+								<div className="bg-muted/50 border-r border-border px-3 py-2 select-none text-right min-w-fit">
+									{parsedLines.map((line, i) => (
+										<div
+											key={i}
+											className="h-5 flex items-center justify-end"
+										>
+											{line.lineNum || ''}
+										</div>
+									))}
+								</div>
+								<div className="flex-1 px-3 py-2 whitespace-pre-wrap break-all">
+									{parsedLines.map((line, i) => (
+										<div
+											key={i}
+											className="h-5 flex items-center"
+										>
+											{line.content}
+										</div>
+									))}
+								</div>
 							</div>
 						</div>
-					</div>
+					)}
 				</CollapsibleSection>
 			)}
 		</div>
