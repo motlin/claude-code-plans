@@ -159,6 +159,16 @@ export function stripLineNumberPrefixes(text: string): string {
 	return cleanText;
 }
 
+export async function highlightCode(code: string, lang: string): Promise<string> {
+	if (!lang) {
+		const escaped = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+		return `<pre class="shiki" style="overflow-x:auto"><code>${escaped}</code></pre>`;
+	}
+	const fence = '```' + lang + '\n' + code + '\n```';
+	const instance = await getMd();
+	return instance.render(fence);
+}
+
 export type DiffOp = readonly ['equal', string] | readonly ['remove', string] | readonly ['add', string];
 
 export interface DiffData {

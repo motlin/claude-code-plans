@@ -11,6 +11,7 @@ export interface ClientToolCall {
 	result?: string | undefined;
 	isError?: boolean | undefined;
 	diffData?: DiffData | undefined;
+	highlightedHtml?: string | undefined;
 	duration?: number | undefined;
 }
 
