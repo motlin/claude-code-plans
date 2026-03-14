@@ -8,19 +8,19 @@ export function BashRenderer({toolCall}: ToolRendererProps) {
 
 	return (
 		<div className={isError ? 'border-l-2 border-red-500 pl-2' : ''}>
-			<div className="bg-gray-900 rounded px-2 py-1.5 mb-1">
-				{description && <div className="text-xs text-gray-400 mb-0.5">{description}</div>}
+			<div className="bg-muted rounded px-2 py-1.5 mb-1">
+				{description && <div className="text-xs text-muted-foreground mb-0.5">{description}</div>}
 				<div className="font-mono text-xs">
-					<span className="text-gray-500">$ </span>
-					<span className="text-green-400">{command}</span>
+					<span className="text-muted-foreground">$ </span>
+					<span className="text-green-700 dark:text-green-400">{command}</span>
 				</div>
 			</div>
 			{result && (
 				<div>
-					<div className="bg-gray-900 rounded px-2 py-1 mb-1">
+					<div className="bg-muted rounded px-2 py-1 mb-1">
 						<div className="font-mono text-xs">
-							<span className="text-gray-500">$ </span>
-							<span className="text-green-400">{command}</span>
+							<span className="text-muted-foreground">$ </span>
+							<span className="text-green-700 dark:text-green-400">{command}</span>
 						</div>
 					</div>
 					<TerminalOutput content={result} />
