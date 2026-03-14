@@ -12,6 +12,7 @@ import {
 	searchSessionsFromDb,
 	getSubagentsForSession,
 	getPlanProjectMappings,
+	getSessionProjectPath,
 	isSessionStarred,
 	toggleStar,
 	getStarredSessionIds,
@@ -394,6 +395,21 @@ describe('queries', () => {
 		const results = searchSessionsFromDb(db.index, 'unit tests');
 		expect(results.length).toBeGreaterThan(0);
 		expect(results[0]!.sessionId).toBe('sess-2');
+	});
+
+	it('getSessionProjectPath returns project path for a session', () => {
+		const path = getSessionProjectPath(db.index, 'sess-1');
+		expect(path).toBe('/projects/alpha');
+	});
+
+	it('getSessionProjectPath returns null for non-existent session', () => {
+		const path = getSessionProjectPath(db.index, 'nonexistent');
+		expect(path).toBeNull();
+	});
+
+	it('getSessionProjectPath returns project path for session in different project', () => {
+		const path = getSessionProjectPath(db.index, 'sess-3');
+		expect(path).toBe('/projects/beta');
 	});
 });
 
