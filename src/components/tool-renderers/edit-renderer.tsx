@@ -6,13 +6,13 @@ export function EditRenderer({toolCall}: ToolRendererProps) {
 	const {diffData, result} = toolCall;
 
 	if (!diffData) {
-		return <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap">{result}</pre>;
+		return <pre className="text-xs font-mono text-text-500 whitespace-pre-wrap">{result}</pre>;
 	}
 
 	return (
 		<div>
-			<div className="bg-muted rounded px-2 py-1.5 mb-2 border border-border">
-				<code className="text-xs font-mono break-all text-foreground">{filePath}</code>
+			<div className="bg-bg-200 rounded px-2 py-1.5 mb-2 border border-border-300/15">
+				<code className="text-xs font-mono break-all text-text-100">{filePath}</code>
 			</div>
 			<div className="flex items-center gap-2 mb-2">
 				<DiffStats
@@ -20,7 +20,7 @@ export function EditRenderer({toolCall}: ToolRendererProps) {
 					removed={diffData.removed}
 				/>
 			</div>
-			<div className="max-h-64 overflow-auto rounded border border-border font-mono text-xs">
+			<div className="max-h-64 overflow-auto rounded border border-border-300/15 font-mono text-xs">
 				{diffData.ops.map(([type, line], i) => (
 					<DiffLine
 						key={i}

@@ -16,10 +16,10 @@ export function BashRenderer({toolCall}: ToolRendererProps) {
 
 	return (
 		<div className={isError ? 'border-l-2 border-red-500 pl-2' : ''}>
-			<div className="bg-muted rounded px-2 py-1.5 mb-1">
-				{description && <div className="text-xs text-muted-foreground mb-0.5">{description}</div>}
+			<div className="bg-bg-200 rounded px-2 py-1.5 mb-1">
+				{description && <div className="text-xs text-text-500 mb-0.5">{description}</div>}
 				<div className="font-mono text-xs">
-					<span className="text-muted-foreground">$ </span>
+					<span className="text-text-500">$ </span>
 					<span className="text-green-700 dark:text-green-400">{command}</span>
 				</div>
 			</div>

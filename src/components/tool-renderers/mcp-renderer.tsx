@@ -29,11 +29,11 @@ export function McpRenderer({toolCall}: ToolRendererProps) {
 				<span className="rounded px-1.5 py-0.5 text-xs font-medium bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300">
 					{server}
 				</span>
-				<span className="text-xs text-muted-foreground">{tool}</span>
+				<span className="text-xs text-text-500">{tool}</span>
 			</div>
 			{hasInput && (
 				<CollapsibleSection label="Input">
-					<pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-all max-h-48 overflow-auto">
+					<pre className="text-xs font-mono text-text-500 whitespace-pre-wrap break-all max-h-48 overflow-auto">
 						{JSON.stringify(input, null, 2)}
 					</pre>
 				</CollapsibleSection>
@@ -43,7 +43,7 @@ export function McpRenderer({toolCall}: ToolRendererProps) {
 					label="Output"
 					defaultOpen
 				>
-					<pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-all max-h-64 overflow-auto">
+					<pre className="text-xs font-mono text-text-500 whitespace-pre-wrap break-all max-h-64 overflow-auto">
 						{tryFormatJson(result)}
 					</pre>
 				</CollapsibleSection>

@@ -40,7 +40,7 @@ function RootComponent() {
 						onToggle={() => setSidebarCollapsed((c) => !c)}
 						refreshKey={refreshKey}
 					/>
-					<main className="flex-1 overflow-y-auto bg-white dark:bg-[hsl(220_13%_10%)]">
+					<main className="flex-1 overflow-y-auto bg-bg-000">
 						<div className="flex items-center justify-end p-3">
 							<ModeToggle />
 						</div>
@@ -74,7 +74,7 @@ function NotFound() {
 	return (
 		<div className="p-8">
 			<h1 className="text-lg font-semibold">404 &mdash; Not Found</h1>
-			<p className="mt-2 text-muted-foreground">The requested page was not found.</p>
+			<p className="mt-2 text-text-500">The requested page was not found.</p>
 		</div>
 	);
 }

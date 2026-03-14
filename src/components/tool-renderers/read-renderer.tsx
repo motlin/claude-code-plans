@@ -37,23 +37,23 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 
 	return (
 		<div>
-			<div className="bg-muted rounded px-2 py-1.5 mb-2 border border-border">
-				<code className="text-xs font-mono break-all text-foreground">{filePath}</code>
+			<div className="bg-bg-200 rounded px-2 py-1.5 mb-2 border border-border-300/15">
+				<code className="text-xs font-mono break-all text-text-100">{filePath}</code>
 			</div>
-			<div className="text-xs text-muted-foreground mb-2">
+			<div className="text-xs text-text-500 mb-2">
 				<ToolMeta>{rangeInfo}</ToolMeta>
 			</div>
 			{result && (
 				<CollapsibleSection label="Show content">
 					{highlightedHtml ? (
 						<div
-							className="max-h-96 overflow-auto rounded border border-border text-xs [&_pre]:p-3 [&_pre]:m-0 [&_pre]:rounded-none"
+							className="max-h-96 overflow-auto rounded border border-border-300/15 text-xs [&_pre]:p-3 [&_pre]:m-0 [&_pre]:rounded-none"
 							dangerouslySetInnerHTML={{__html: highlightedHtml}}
 						/>
 					) : (
-						<div className="max-h-64 overflow-auto rounded border border-border">
-							<div className="flex font-mono text-xs text-muted-foreground">
-								<div className="bg-muted/50 border-r border-border px-3 py-2 select-none text-right min-w-fit">
+						<div className="max-h-64 overflow-auto rounded border border-border-300/15">
+							<div className="flex font-mono text-xs text-text-500">
+								<div className="bg-bg-200/50 border-r border-border-300/15 px-3 py-2 select-none text-right min-w-fit">
 									{parsedLines.map((line, i) => (
 										<div
 											key={i}

@@ -13,7 +13,7 @@ export function GrepRenderer({toolCall}: ToolRendererProps) {
 	return (
 		<div>
 			<div className="flex items-center gap-2 flex-wrap">
-				<code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{pattern}</code>
+				<code className="text-xs font-mono bg-bg-200 px-1.5 py-0.5 rounded">{pattern}</code>
 				{glob && (
 					<span className="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">glob: {glob}</span>
 				)}

@@ -182,12 +182,12 @@ function SessionPage() {
 			<div>
 				<Link
 					to="/sessions"
-					className="text-sm text-primary hover:underline"
+					className="text-sm text-accent-100 hover:underline"
 				>
 					&larr; All Sessions
 				</Link>
 				<h1 className="mt-4 text-lg font-semibold">Session Not Found</h1>
-				<p className="mt-2 text-muted-foreground">This session could not be found.</p>
+				<p className="mt-2 text-text-500">This session could not be found.</p>
 			</div>
 		);
 	}
@@ -209,11 +209,11 @@ function SessionPage() {
 			<div className="flex items-center gap-2">
 				<Link
 					to="/sessions"
-					className="text-sm text-primary hover:underline"
+					className="text-sm text-accent-100 hover:underline"
 				>
 					&larr; All Sessions
 				</Link>
-				<span className="text-xs text-muted-foreground">{data.projectName}</span>
+				<span className="text-xs text-text-500">{data.projectName}</span>
 			</div>
 			<div className="mt-2 flex items-center gap-2">
 				<h1 className="text-lg font-semibold">{data.title}</h1>
@@ -229,7 +229,7 @@ function SessionPage() {
 						const result = await toggleSessionStar({data: params.id});
 						setStarred(result.starred);
 					}}
-					className="shrink-0 cursor-pointer text-muted-foreground transition-colors hover:text-yellow-500"
+					className="shrink-0 cursor-pointer text-text-500 transition-colors hover:text-yellow-500"
 					title={starred ? 'Unstar session' : 'Star session'}
 				>
 					<svg
@@ -246,14 +246,14 @@ function SessionPage() {
 			</div>
 
 			{aiSummary ? (
-				<p className="mt-1 text-sm text-muted-foreground italic">{aiSummary}</p>
+				<p className="mt-1 text-sm text-text-500 italic">{aiSummary}</p>
 			) : (
 				!data.hasSummary && (
 					<button
 						type="button"
 						onClick={handleGenerateSummary}
 						disabled={generating}
-						className="mt-1 text-xs text-primary hover:underline disabled:opacity-50 disabled:no-underline"
+						className="mt-1 text-xs text-accent-100 hover:underline disabled:opacity-50 disabled:no-underline"
 					>
 						{generating ? 'Generating summary...' : 'Generate AI summary'}
 					</button>
@@ -262,7 +262,7 @@ function SessionPage() {
 
 			{data.subagents.length > 0 && (
 				<div className="mt-3">
-					<h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+					<h2 className="text-xs font-semibold text-text-500 uppercase tracking-wide">
 						Subagents ({data.subagents.length})
 					</h2>
 					<div className="mt-1 flex flex-wrap gap-2">
@@ -271,7 +271,7 @@ function SessionPage() {
 								key={agent.id}
 								to="/session/$id"
 								params={{id: agent.id}}
-								className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs transition-colors hover:bg-muted/50"
+								className="inline-flex items-center gap-1.5 rounded-md border border-border-300/15 px-2 py-1 text-xs transition-colors hover:bg-bg-200/50"
 							>
 								{agent.agentType && (
 									<span
@@ -280,7 +280,7 @@ function SessionPage() {
 										{agent.agentType}
 									</span>
 								)}
-								<span className="text-muted-foreground">{agent.slug ?? agent.id}</span>
+								<span className="text-text-500">{agent.slug ?? agent.id}</span>
 							</Link>
 						))}
 					</div>

@@ -96,7 +96,7 @@ function MemoryEditPage() {
 			<div>
 				<Link
 					to="/memories"
-					className="text-sm text-primary hover:underline"
+					className="text-sm text-accent-100 hover:underline"
 				>
 					&larr; All Memories
 				</Link>
@@ -110,23 +110,23 @@ function MemoryEditPage() {
 			<div className="flex items-center gap-4">
 				<Link
 					to="/memories"
-					className="text-sm text-primary hover:underline"
+					className="text-sm text-accent-100 hover:underline"
 				>
 					&larr; All Memories
 				</Link>
 				<button
 					type="button"
 					onClick={handlePreview}
-					className="text-sm text-primary hover:underline"
+					className="text-sm text-accent-100 hover:underline"
 				>
 					Preview
 				</button>
-				<span className="text-xs text-muted-foreground">{data.projectName}</span>
+				<span className="text-xs text-text-500">{data.projectName}</span>
 				<button
 					type="button"
 					onClick={handleSave}
 					disabled={saving}
-					className="rounded bg-primary px-3 py-1 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+					className="rounded bg-accent-100 px-3 py-1 text-sm text-bg-000 hover:bg-accent-100/90 disabled:opacity-50"
 				>
 					{saving ? 'Saving...' : 'Save'}
 				</button>
@@ -136,8 +136,8 @@ function MemoryEditPage() {
 					</span>
 				)}
 			</div>
-			<ClientOnly fallback={<div className="text-muted-foreground text-sm">Loading editor...</div>}>
-				<Suspense fallback={<div className="text-muted-foreground text-sm">Loading editor...</div>}>
+			<ClientOnly fallback={<div className="text-text-500 text-sm">Loading editor...</div>}>
+				<Suspense fallback={<div className="text-text-500 text-sm">Loading editor...</div>}>
 					<MarkdownEditor
 						key={initialMarkdown}
 						markdown={initialMarkdown}

@@ -46,12 +46,12 @@ function MemoryPage() {
 			<div>
 				<Link
 					to="/memories"
-					className="text-sm text-primary hover:underline"
+					className="text-sm text-accent-100 hover:underline"
 				>
 					&larr; All Memories
 				</Link>
 				<h1 className="mt-4 text-lg font-semibold">Memory Not Found</h1>
-				<p className="mt-2 text-muted-foreground">This memory file could not be found.</p>
+				<p className="mt-2 text-text-500">This memory file could not be found.</p>
 			</div>
 		);
 	}
@@ -61,15 +61,15 @@ function MemoryPage() {
 			<div className="flex items-center gap-2">
 				<Link
 					to="/memories"
-					className="text-sm text-primary hover:underline"
+					className="text-sm text-accent-100 hover:underline"
 				>
 					&larr; All Memories
 				</Link>
-				<span className="text-xs text-muted-foreground">{data.projectName}</span>
+				<span className="text-xs text-text-500">{data.projectName}</span>
 				<Link
 					to="/memory/$project/$filename/edit"
 					params={Route.useParams()}
-					className="text-sm text-primary hover:underline"
+					className="text-sm text-accent-100 hover:underline"
 				>
 					Edit
 				</Link>

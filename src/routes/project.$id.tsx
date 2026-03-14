@@ -32,12 +32,12 @@ function ProjectPage() {
 			<div>
 				<Link
 					to="/projects"
-					className="text-sm text-primary hover:underline"
+					className="text-sm text-accent-100 hover:underline"
 				>
 					&larr; All Projects
 				</Link>
 				<h1 className="mt-4 text-lg font-semibold">Project Not Found</h1>
-				<p className="mt-2 text-muted-foreground">This project could not be found.</p>
+				<p className="mt-2 text-text-500">This project could not be found.</p>
 			</div>
 		);
 	}
@@ -46,19 +46,21 @@ function ProjectPage() {
 		<div>
 			<Link
 				to="/projects"
-				className="text-sm text-primary hover:underline"
+				className="text-sm text-accent-100 hover:underline"
 			>
 				&larr; All Projects
 			</Link>
 
 			<h1 className="mt-4 text-lg font-semibold">{data.name}</h1>
-			{data.projectPath && <p className="mt-0.5 text-xs text-muted-foreground">{data.projectPath}</p>}
+			{data.projectPath && <p className="mt-0.5 text-xs text-text-500">{data.projectPath}</p>}
 
 			{/* Sessions */}
 			<section className="mt-8">
-				<h2 className="border-b border-border pb-1 text-sm font-semibold">Sessions ({data.sessions.length})</h2>
+				<h2 className="border-b border-border-300/15 pb-1 text-sm font-semibold">
+					Sessions ({data.sessions.length})
+				</h2>
 				{data.sessions.length === 0 ? (
-					<p className="mt-2 text-sm text-muted-foreground">No sessions.</p>
+					<p className="mt-2 text-sm text-text-500">No sessions.</p>
 				) : (
 					<ul className="mt-2 space-y-1">
 						{data.sessions.map((sess) => (
@@ -66,7 +68,7 @@ function ProjectPage() {
 								<Link
 									to="/session/$id"
 									params={{id: sess.id}}
-									className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-muted/50"
+									className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-bg-200/50"
 								>
 									<div
 										className="truncate"
@@ -74,7 +76,7 @@ function ProjectPage() {
 									>
 										{sess.title}
 									</div>
-									<div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+									<div className="mt-0.5 flex items-center gap-2 text-xs text-text-500">
 										<span>{formatDate(sess.mtime)}</span>
 										{sess.messageCount > 0 && (
 											<>
@@ -94,14 +96,14 @@ function ProjectPage() {
 										{sess.gitBranch && (
 											<>
 												<span>&middot;</span>
-												<span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">
+												<span className="rounded bg-bg-200 px-1.5 py-0.5 font-mono text-[10px]">
 													{sess.gitBranch}
 												</span>
 											</>
 										)}
 									</div>
 									{sess.summary && sess.summary !== sess.title && (
-										<div className="mt-0.5 truncate text-xs text-muted-foreground italic">
+										<div className="mt-0.5 truncate text-xs text-text-500 italic">
 											{sess.summary}
 										</div>
 									)}
@@ -113,7 +115,7 @@ function ProjectPage() {
 												key={agent.id}
 												to="/session/$id"
 												params={{id: agent.id}}
-												className="inline-flex items-center gap-1 rounded border border-border/50 px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted/50"
+												className="inline-flex items-center gap-1 rounded border border-border-300/10 px-1.5 py-0.5 text-[11px] text-text-500 transition-colors hover:bg-bg-200/50"
 											>
 												{agent.agentType && (
 													<span
@@ -135,9 +137,11 @@ function ProjectPage() {
 
 			{/* Memories */}
 			<section className="mt-8">
-				<h2 className="border-b border-border pb-1 text-sm font-semibold">Memories ({data.memories.length})</h2>
+				<h2 className="border-b border-border-300/15 pb-1 text-sm font-semibold">
+					Memories ({data.memories.length})
+				</h2>
 				{data.memories.length === 0 ? (
-					<p className="mt-2 text-sm text-muted-foreground">No memories.</p>
+					<p className="mt-2 text-sm text-text-500">No memories.</p>
 				) : (
 					<ul className="mt-2 space-y-1">
 						{data.memories.map((mem) => (
@@ -145,7 +149,7 @@ function ProjectPage() {
 								<Link
 									to="/memory/$project/$filename"
 									params={{project: mem.project, filename: mem.filename}}
-									className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-muted/50"
+									className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-bg-200/50"
 								>
 									<div
 										className="truncate"
@@ -153,7 +157,7 @@ function ProjectPage() {
 									>
 										{mem.title}
 									</div>
-									<div className="mt-0.5 text-xs text-muted-foreground">{formatDate(mem.mtime)}</div>
+									<div className="mt-0.5 text-xs text-text-500">{formatDate(mem.mtime)}</div>
 								</Link>
 							</li>
 						))}
@@ -164,7 +168,7 @@ function ProjectPage() {
 			{/* Linked Plans */}
 			{data.plans.length > 0 && (
 				<section className="mt-8">
-					<h2 className="border-b border-border pb-1 text-sm font-semibold">
+					<h2 className="border-b border-border-300/15 pb-1 text-sm font-semibold">
 						Linked Plans ({data.plans.length})
 					</h2>
 					<ul className="mt-2 space-y-1">
@@ -173,7 +177,7 @@ function ProjectPage() {
 								<Link
 									to="/plan/$filename"
 									params={{filename: plan.filename}}
-									className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-muted/50"
+									className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-bg-200/50"
 								>
 									<div
 										className="truncate"

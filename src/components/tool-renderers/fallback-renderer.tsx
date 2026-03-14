@@ -6,7 +6,7 @@ export function FallbackRenderer({toolCall}: ToolRendererProps) {
 
 	return (
 		<div>
-			<span className="text-xs text-muted-foreground font-medium">{name}</span>
+			<span className="text-xs text-text-500 font-medium">{name}</span>
 			{entries.length > 0 && (
 				<dl className="text-xs mt-1">
 					{entries.map(([key, value]) => (
@@ -14,8 +14,8 @@ export function FallbackRenderer({toolCall}: ToolRendererProps) {
 							key={key}
 							className="flex gap-2"
 						>
-							<dt className="text-muted-foreground font-mono shrink-0">{key}:</dt>
-							<dd className="text-foreground truncate">
+							<dt className="text-text-500 font-mono shrink-0">{key}:</dt>
+							<dd className="text-text-100 truncate">
 								{typeof value === 'string' ? value : JSON.stringify(value)}
 							</dd>
 						</div>
@@ -23,7 +23,7 @@ export function FallbackRenderer({toolCall}: ToolRendererProps) {
 				</dl>
 			)}
 			{result && (
-				<pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-all mt-1 max-h-48 overflow-auto">
+				<pre className="text-xs font-mono text-text-500 whitespace-pre-wrap break-all mt-1 max-h-48 overflow-auto">
 					{result}
 				</pre>
 			)}

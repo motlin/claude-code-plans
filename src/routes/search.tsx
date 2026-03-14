@@ -73,13 +73,13 @@ function SearchPage() {
 					value={query}
 					onChange={(e) => setQuery(e.target.value)}
 					placeholder={mode === 'conversations' ? 'Search conversations...' : 'Search session titles...'}
-					className="flex-1 rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary"
+					className="flex-1 rounded-md border border-border-300/15 bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent-100"
 					autoFocus
 				/>
 				<button
 					type="submit"
 					disabled={loading || !query.trim()}
-					className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+					className="rounded-md bg-accent-100 px-4 py-2 text-sm font-medium text-bg-000 disabled:opacity-50"
 				>
 					{loading ? 'Searching...' : 'Search'}
 				</button>
@@ -93,9 +93,7 @@ function SearchPage() {
 						if (searched && query.trim()) handleSearch(query, 'titles');
 					}}
 					className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-						mode === 'titles'
-							? 'bg-primary text-primary-foreground'
-							: 'bg-muted text-muted-foreground hover:bg-muted/80'
+						mode === 'titles' ? 'bg-accent-100 text-bg-000' : 'bg-bg-200 text-text-500 hover:bg-bg-200/80'
 					}`}
 				>
 					Search titles
@@ -108,8 +106,8 @@ function SearchPage() {
 					}}
 					className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
 						mode === 'conversations'
-							? 'bg-primary text-primary-foreground'
-							: 'bg-muted text-muted-foreground hover:bg-muted/80'
+							? 'bg-accent-100 text-bg-000'
+							: 'bg-bg-200 text-text-500 hover:bg-bg-200/80'
 					}`}
 				>
 					Search conversations
@@ -117,7 +115,7 @@ function SearchPage() {
 			</div>
 
 			{searched && results.length === 0 && (
-				<p className="mt-6 text-sm text-muted-foreground">No results found for &ldquo;{q}&rdquo;</p>
+				<p className="mt-6 text-sm text-text-500">No results found for &ldquo;{q}&rdquo;</p>
 			)}
 
 			{results.length > 0 && (
@@ -127,7 +125,7 @@ function SearchPage() {
 							<Link
 								to="/session/$id"
 								params={{id: result.sessionId}}
-								className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-muted/50"
+								className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-bg-200/50"
 							>
 								<div
 									className="truncate"
@@ -135,10 +133,10 @@ function SearchPage() {
 								>
 									{result.title}
 								</div>
-								<div className="mt-0.5 text-xs text-muted-foreground">{result.projectName}</div>
+								<div className="mt-0.5 text-xs text-text-500">{result.projectName}</div>
 								{result.snippet && (
 									<div
-										className="mt-0.5 truncate text-xs text-muted-foreground [&_mark]:rounded-sm [&_mark]:bg-yellow-200/70 [&_mark]:px-0.5 [&_mark]:text-foreground dark:[&_mark]:bg-yellow-700/40"
+										className="mt-0.5 truncate text-xs text-text-500 [&_mark]:rounded-sm [&_mark]:bg-yellow-200/70 [&_mark]:px-0.5 [&_mark]:text-text-100 dark:[&_mark]:bg-yellow-700/40"
 										dangerouslySetInnerHTML={{__html: result.snippet}}
 									/>
 								)}
