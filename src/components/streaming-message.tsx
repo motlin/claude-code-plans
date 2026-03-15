@@ -1,32 +1,45 @@
-import {useEffect, useRef} from 'react';
+import {useEffect, useRef, useMemo} from 'react';
+import MarkdownIt from 'markdown-it';
+import styles from './markdown-article.module.css';
+
+const md = MarkdownIt({html: true, linkify: true});
 
 interface StreamingMessageProps {
 	text: string;
 	isComplete: boolean;
-	error?: string;
-	forkedSessionId?: string;
+	error?: string | undefined;
+	forkedSessionId?: string | undefined;
+	sentPrompt?: string | undefined;
 }
 
-export function StreamingMessage({text, isComplete, error, forkedSessionId}: StreamingMessageProps) {
+export function StreamingMessage({text, isComplete, error, forkedSessionId, sentPrompt}: StreamingMessageProps) {
 	const endRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
 		endRef.current?.scrollIntoView({behavior: 'smooth', block: 'end'});
 	}, [text]);
 
-	if (error) {
-		return (
-			<div className="mx-auto w-full max-w-3xl px-8 py-4">
+	const renderedHtml = useMemo(() => {
+		if (!text) return '';
+		return md.render(text);
+	}, [text]);
+
+	return (
+		<div className="mx-auto w-full max-w-3xl px-8 py-4">
+			{sentPrompt && (
+				<div className="flex items-start gap-1 flex-row-reverse mb-6">
+					<UserAvatarSmall />
+					<div className="rounded-lg px-3 py-2 break-words min-w-0 overflow-hidden bg-bg-100 text-text-000 ml-auto max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] text-sm leading-relaxed whitespace-pre-wrap">
+						{sentPrompt}
+					</div>
+				</div>
+			)}
+
+			{error ? (
 				<div className="rounded-lg border border-red-300/30 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800/30 dark:bg-red-950/30 dark:text-red-300">
 					{error}
 				</div>
-			</div>
-		);
-	}
-
-	if (!text && !isComplete) {
-		return (
-			<div className="mx-auto w-full max-w-3xl px-8 py-4">
+			) : (
 				<div
 					className="grid gap-1 min-w-0"
 					style={{gridTemplateColumns: '16px 1fr'}}
@@ -34,29 +47,27 @@ export function StreamingMessage({text, isComplete, error, forkedSessionId}: Str
 					<div className="flex items-start justify-center">
 						<ClaudeStreamingIcon />
 					</div>
-					<div className="flex items-center gap-2 text-sm text-text-500">
-						<span className="inline-block h-2 w-2 animate-pulse rounded-full bg-accent-100" />
-						Thinking...
-					</div>
+					{!text && !isComplete ? (
+						<div className="flex items-center gap-2 text-sm text-text-500">
+							<span className="inline-block h-2 w-2 animate-pulse rounded-full bg-accent-100" />
+							Thinking...
+						</div>
+					) : (
+						<div className="min-w-0 flex-1 text-sm leading-relaxed text-text-100">
+							{renderedHtml ? (
+								<article
+									className={styles['markdown']}
+									dangerouslySetInnerHTML={{__html: renderedHtml}}
+								/>
+							) : null}
+							{!isComplete && (
+								<span className="inline-block h-3 w-0.5 animate-pulse bg-text-500 ml-0.5" />
+							)}
+						</div>
+					)}
 				</div>
-			</div>
-		);
-	}
+			)}
 
-	return (
-		<div className="mx-auto w-full max-w-3xl px-8 py-4">
-			<div
-				className="grid gap-1 min-w-0"
-				style={{gridTemplateColumns: '16px 1fr'}}
-			>
-				<div className="flex items-start justify-center">
-					<ClaudeStreamingIcon />
-				</div>
-				<div className="min-w-0 flex-1 text-sm leading-relaxed text-text-100">
-					{text ? <div className="whitespace-pre-wrap break-words">{text}</div> : null}
-					{!isComplete && <span className="inline-block h-3 w-0.5 animate-pulse bg-text-500 ml-0.5" />}
-				</div>
-			</div>
 			{isComplete && forkedSessionId && (
 				<div
 					className="mt-3 grid gap-1"
@@ -83,6 +94,33 @@ export function StreamingMessage({text, isComplete, error, forkedSessionId}: Str
 			)}
 			<div ref={endRef} />
 		</div>
+	);
+}
+
+function UserAvatarSmall() {
+	return (
+		<svg
+			width="16"
+			height="16"
+			viewBox="0 0 32 32"
+			fill="none"
+			className="mt-0.5 shrink-0"
+		>
+			<circle
+				cx="16"
+				cy="10"
+				r="5"
+				fill="currentColor"
+				opacity="0.7"
+			/>
+			<path
+				d="M8 24c0-4.418 3.582-8 8-8s8 3.582 8 8"
+				stroke="currentColor"
+				strokeWidth="2"
+				strokeLinecap="round"
+				opacity="0.7"
+			/>
+		</svg>
 	);
 }
 

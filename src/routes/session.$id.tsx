@@ -176,6 +176,10 @@ function SessionPage() {
 	const chatStream = useChatStream();
 
 	useEffect(() => {
+		chatStream.reset();
+	}, [params.id]);
+
+	useEffect(() => {
 		if (!isActive) return;
 		const interval = setInterval(async () => {
 			const active = await getActiveSessions();
@@ -300,10 +304,9 @@ function SessionPage() {
 				<StreamingMessage
 					text={chatStream.state.text}
 					isComplete={chatStream.state.isComplete}
-					{...(chatStream.state.error !== undefined ? {error: chatStream.state.error} : {})}
-					{...(chatStream.state.forkedSessionId !== undefined
-						? {forkedSessionId: chatStream.state.forkedSessionId}
-						: {})}
+					error={chatStream.state.error}
+					forkedSessionId={chatStream.state.forkedSessionId}
+					sentPrompt={chatStream.state.sentPrompt}
 				/>
 			)}
 

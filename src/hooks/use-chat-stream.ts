@@ -3,9 +3,10 @@ import {useState, useCallback, useRef} from 'react';
 interface ChatStreamState {
 	isStreaming: boolean;
 	text: string;
-	error?: string;
-	forkedSessionId?: string;
+	error?: string | undefined;
+	forkedSessionId?: string | undefined;
 	isComplete: boolean;
+	sentPrompt?: string | undefined;
 }
 
 interface StreamEvent {
@@ -34,7 +35,7 @@ export function useChatStream() {
 	const abortRef = useRef<AbortController | null>(null);
 
 	const send = useCallback(async (sessionId: string, prompt: string) => {
-		setState({isStreaming: true, text: '', isComplete: false});
+		setState({isStreaming: true, text: '', isComplete: false, sentPrompt: prompt});
 
 		const abortController = new AbortController();
 		abortRef.current = abortController;

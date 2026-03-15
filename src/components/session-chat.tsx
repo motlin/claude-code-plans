@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {MarkdownArticle} from './markdown-article';
 import {getToolRenderer} from './tool-renderers';
 import type {ClientToolCall} from './tool-renderers';
@@ -39,7 +39,7 @@ interface ChatMessage {
 	command?: {name: string; args?: string};
 }
 
-export function SessionChat({messages}: {messages: ChatMessage[]}) {
+export const SessionChat = React.memo(function SessionChat({messages}: {messages: ChatMessage[]}) {
 	const endRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -72,7 +72,7 @@ export function SessionChat({messages}: {messages: ChatMessage[]}) {
 			<div ref={endRef} />
 		</div>
 	);
-}
+});
 
 function UserMessage({msg}: {msg: ChatMessage}) {
 	const timestampText = formatTimestamp(msg.timestamp);
