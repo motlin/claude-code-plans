@@ -28,7 +28,7 @@ function QuestionBlock({question, options, result}: QuestionData & {result?: str
 							key={opt.label}
 							className={`rounded border px-2.5 py-1.5 text-xs ${
 								selected
-									? 'bg-blue-50 border-blue-300 dark:bg-blue-950/30 dark:border-blue-600 border-l-2 border-l-blue-500'
+									? 'bg-accent-900 border-accent-100/30 border-l-2 border-l-accent-100'
 									: 'border-border-300/15 opacity-60'
 							}`}
 						>
@@ -36,7 +36,7 @@ function QuestionBlock({question, options, result}: QuestionData & {result?: str
 								{selected ? (
 									<Check
 										size={14}
-										className="text-blue-600 shrink-0"
+										className="text-accent-100 shrink-0"
 									/>
 								) : (
 									<Circle
@@ -51,11 +51,11 @@ function QuestionBlock({question, options, result}: QuestionData & {result?: str
 					);
 				})}
 				{isOther && (
-					<div className="rounded border border-amber-300 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1.5 text-xs border-l-2 border-l-amber-500">
+					<div className="rounded border border-warning-000/30 bg-warning-100/10 px-2.5 py-1.5 text-xs border-l-2 border-l-warning-000">
 						<div className="flex items-center gap-1.5">
 							<Check
 								size={14}
-								className="text-amber-600 shrink-0"
+								className="text-warning-000 shrink-0"
 							/>
 							<span className="font-medium">Other</span>
 						</div>

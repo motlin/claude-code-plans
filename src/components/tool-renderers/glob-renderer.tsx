@@ -15,7 +15,7 @@ export function GlobRenderer({toolCall}: ToolRendererProps) {
 		<ErrorBorder isError={isError}>
 			<div className="flex items-center gap-2 flex-wrap">
 				<code className="text-xs font-mono bg-bg-200 px-1.5 py-0.5 rounded">{pattern}</code>
-				{path && <span className="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">in {path}</span>}
+				{path && <span className="text-xs bg-bg-200 px-1.5 py-0.5 rounded">in {path}</span>}
 				<ToolMeta>{files.length} files</ToolMeta>
 			</div>
 			{files.length > 0 && (
