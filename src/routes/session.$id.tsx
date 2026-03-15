@@ -248,8 +248,8 @@ function SessionPage() {
 			<div className="mt-2 flex items-center gap-2">
 				<h1 className="text-lg font-semibold">{data.title}</h1>
 				{isActive && (
-					<span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-300">
-						<span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+					<span className="inline-flex items-center gap-1 rounded-full bg-success-900 px-2 py-0.5 text-xs font-medium text-success-000">
+						<span className="h-1.5 w-1.5 rounded-full bg-success-000 animate-pulse" />
 						Active
 					</span>
 				)}
@@ -259,7 +259,7 @@ function SessionPage() {
 						const result = await toggleSessionStar({data: params.id});
 						setStarred(result.starred);
 					}}
-					className="shrink-0 cursor-pointer text-text-500 transition-colors hover:text-yellow-500"
+					className="shrink-0 cursor-pointer text-text-500 transition-colors hover:text-warning-000"
 					title={starred ? 'Unstar session' : 'Star session'}
 				>
 					<svg

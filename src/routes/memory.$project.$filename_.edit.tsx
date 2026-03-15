@@ -131,7 +131,7 @@ function MemoryEditPage() {
 					{saving ? 'Saving...' : 'Save'}
 				</button>
 				{feedback && (
-					<span className={`text-sm ${feedback === 'Saved' ? 'text-green-500' : 'text-red-500'}`}>
+					<span className={`text-sm ${feedback === 'Saved' ? 'text-success-000' : 'text-danger-000'}`}>
 						{feedback}
 					</span>
 				)}

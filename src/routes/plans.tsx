@@ -48,7 +48,7 @@ function PlansPage() {
 									<span className="flex items-center gap-2 text-sm font-medium">
 										{plan.title}
 										{ageHours < 1 && (
-											<span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">
+											<span className="rounded-full bg-success-900 px-2 py-0.5 text-xs font-semibold text-success-000">
 												NEW
 											</span>
 										)}

@@ -78,7 +78,7 @@ function StarredPage() {
 									e.preventDefault();
 									handleUnstar(session.id);
 								}}
-								className="absolute right-2 top-3 cursor-pointer text-yellow-500 opacity-0 transition-opacity group-hover:opacity-100"
+								className="absolute right-2 top-3 cursor-pointer text-warning-000 opacity-0 transition-opacity group-hover:opacity-100"
 								title="Unstar"
 							>
 								<svg

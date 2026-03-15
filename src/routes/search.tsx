@@ -136,7 +136,7 @@ function SearchPage() {
 								<div className="mt-0.5 text-xs text-text-500">{result.projectName}</div>
 								{result.snippet && (
 									<div
-										className="mt-0.5 truncate text-xs text-text-500 [&_mark]:rounded-sm [&_mark]:bg-yellow-200/70 [&_mark]:px-0.5 [&_mark]:text-text-100 dark:[&_mark]:bg-yellow-700/40"
+										className="mt-0.5 truncate text-xs text-text-500 [&_mark]:rounded-sm [&_mark]:bg-warning-100/30 [&_mark]:px-0.5 [&_mark]:text-text-100"
 										dangerouslySetInnerHTML={{__html: result.snippet}}
 									/>
 								)}

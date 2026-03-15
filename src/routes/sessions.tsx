@@ -130,7 +130,7 @@ function SessionItem({
 				>
 					{isActive && (
 						<span
-							className="inline-block h-2 w-2 shrink-0 rounded-full bg-green-500"
+							className="inline-block h-2 w-2 shrink-0 rounded-full bg-success-000"
 							title="Active"
 						/>
 					)}
