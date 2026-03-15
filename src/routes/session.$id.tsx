@@ -2,7 +2,7 @@ import {createFileRoute, Link} from '@tanstack/react-router';
 import {createServerFn} from '@tanstack/react-start';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
-import {useEffect, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {readSession, summarizeToolCalls} from '../lib/sessions';
 import {renderMarkdown, computeDiffData, detectLanguage, highlightCode, extractLineNumbers} from '../lib/renderer';
 import {SessionChat} from '../components/session-chat';
@@ -174,9 +174,13 @@ function SessionPage() {
 	const [isActive, setIsActive] = useState(data?.isActive ?? false);
 	const [generating, setGenerating] = useState(false);
 	const chatStream = useChatStream();
+	const prevSessionIdRef = useRef(params.id);
 
 	useEffect(() => {
-		chatStream.reset();
+		if (prevSessionIdRef.current !== params.id) {
+			prevSessionIdRef.current = params.id;
+			chatStream.reset();
+		}
 	}, [params.id]);
 
 	useEffect(() => {
