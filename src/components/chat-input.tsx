@@ -72,7 +72,7 @@ export function ChatInput({onSend, onCancel, isStreaming, disabled, projectPath}
 					<button
 						type="button"
 						onClick={onCancel}
-						className="shrink-0 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
+						className="shrink-0 rounded-lg bg-danger-100 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-danger-000"
 					>
 						Cancel
 					</button>
