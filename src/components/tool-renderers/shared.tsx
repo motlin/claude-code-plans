@@ -267,8 +267,21 @@ export function DiffStats({added, removed}: {added: number; removed: number}) {
 	);
 }
 
-export function TerminalOutput({content, maxLines = 100}: {content: string; maxLines?: number}) {
-	const [showAll, setShowAll] = useState(false);
+export function ErrorBorder({isError, children}: {isError?: boolean | undefined; children: ReactNode}) {
+	if (!isError) return <>{children}</>;
+	return <div className="border-l-2 border-danger-100 pl-2">{children}</div>;
+}
+
+export function TerminalOutput({
+	content,
+	maxLines = 200,
+	previewLines = 5,
+}: {
+	content: string;
+	maxLines?: number;
+	previewLines?: number;
+}) {
+	const [expanded, setExpanded] = useState(false);
 
 	// Extract exit code if present at the start of the content
 	const exitCodeMatch = content.match(/^Exit code (\d+)\n?/);
@@ -276,8 +289,14 @@ export function TerminalOutput({content, maxLines = 100}: {content: string; maxL
 	const contentWithoutExitCode = exitCodeMatch ? content.replace(/^Exit code \d+\n?/, '') : content;
 
 	const lines = contentWithoutExitCode.split('\n');
-	const truncated = !showAll && lines.length > maxLines;
-	const displayed = truncated ? lines.slice(0, maxLines).join('\n') : contentWithoutExitCode;
+	const needsPreview = !expanded && lines.length > previewLines;
+	const needsTruncation = expanded && lines.length > maxLines;
+	const displayed = needsPreview
+		? lines.slice(0, previewLines).join('\n')
+		: needsTruncation
+			? lines.slice(0, maxLines).join('\n')
+			: contentWithoutExitCode;
+	const remainingCount = needsPreview ? lines.length - previewLines : needsTruncation ? lines.length - maxLines : 0;
 
 	return (
 		<div className="relative">
@@ -291,13 +310,13 @@ export function TerminalOutput({content, maxLines = 100}: {content: string; maxL
 			<pre className="bg-bg-200 text-text-100 rounded text-xs leading-relaxed p-2 overflow-x-auto whitespace-pre-wrap break-all">
 				<AnsiText content={displayed} />
 			</pre>
-			{truncated && (
+			{remainingCount > 0 && (
 				<button
 					type="button"
-					onClick={() => setShowAll(true)}
-					className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 mt-1"
+					onClick={() => setExpanded(true)}
+					className="pt-1 text-xs text-text-500/80 hover:text-text-100 transition cursor-pointer"
 				>
-					Show all {lines.length} lines
+					+{remainingCount} more lines
 				</button>
 			)}
 		</div>

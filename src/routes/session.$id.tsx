@@ -4,7 +4,14 @@ import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {useEffect, useRef, useState} from 'react';
 import {readSession, summarizeToolCalls} from '../lib/sessions';
-import {renderMarkdown, computeDiffData, detectLanguage, highlightCode, extractLineNumbers} from '../lib/renderer';
+import {
+	renderMarkdown,
+	computeDiffData,
+	detectLanguage,
+	highlightCode,
+	extractLineNumbers,
+	looksLikeMarkdown,
+} from '../lib/renderer';
 import {SessionChat} from '../components/session-chat';
 import {ChatInput} from '../components/chat-input';
 import {StreamingMessage} from '../components/streaming-message';
@@ -75,6 +82,14 @@ const getSession = createServerFn({method: 'GET'})
 								const {text: cleanCode} = extractLineNumbers(tc.result);
 								call.highlightedHtml = await highlightCode(cleanCode, lang);
 							}
+						}
+
+						if (
+							(tc.name === 'Agent' || tc.name.startsWith('mcp__') || tc.name === 'WebFetch') &&
+							tc.result &&
+							looksLikeMarkdown(tc.result)
+						) {
+							call.resultHtml = await renderMarkdown(tc.result);
 						}
 
 						return call;

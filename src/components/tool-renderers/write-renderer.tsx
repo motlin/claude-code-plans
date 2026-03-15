@@ -1,19 +1,19 @@
 import {Link} from '@tanstack/react-router';
 import {FileText} from 'lucide-react';
 import type {ToolRendererProps} from './types';
-import {CollapsibleSection, ToolMeta} from './shared';
+import {CollapsibleSection, ErrorBorder, ToolMeta} from './shared';
 
 const PLAN_RE = /\.claude\/plans\/([^/]+)\.md$/;
 
 export function WriteRenderer({toolCall}: ToolRendererProps) {
 	const filePath = (toolCall.input['file_path'] as string) ?? '';
 	const content = toolCall.input['content'] as string | undefined;
-	const {result} = toolCall;
+	const {result, isError} = toolCall;
 	const planMatch = filePath.match(PLAN_RE);
 	const lineCount = content ? content.split('\n').length : 0;
 
 	return (
-		<div>
+		<ErrorBorder isError={isError}>
 			<div className="bg-bg-200 rounded px-2 py-1.5 mb-2 border border-border-300/15">
 				<code className="text-xs font-mono break-all text-text-100">{filePath}</code>
 			</div>
@@ -38,6 +38,6 @@ export function WriteRenderer({toolCall}: ToolRendererProps) {
 				</CollapsibleSection>
 			)}
 			{result && <div className="text-xs text-text-500 mt-1">{result}</div>}
-		</div>
+		</ErrorBorder>
 	);
 }

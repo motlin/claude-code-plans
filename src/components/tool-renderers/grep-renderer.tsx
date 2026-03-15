@@ -1,5 +1,6 @@
+import {useState} from 'react';
 import type {ToolRendererProps} from './types';
-import {TerminalOutput, ToolMeta} from './shared';
+import {ErrorBorder, TerminalOutput, ToolMeta} from './shared';
 
 export function GrepRenderer({toolCall}: ToolRendererProps) {
 	const pattern = (toolCall.input['pattern'] as string) ?? '';
@@ -7,11 +8,12 @@ export function GrepRenderer({toolCall}: ToolRendererProps) {
 	const glob = toolCall.input['glob'] as string | undefined;
 	const fileType = toolCall.input['type'] as string | undefined;
 	const caseInsensitive = toolCall.input['-i'] as boolean | undefined;
-	const {result} = toolCall;
+	const {result, isError} = toolCall;
 	const matchCount = result?.trim() ? result.trim().split('\n').length : 0;
+	const [showResults, setShowResults] = useState(!!isError);
 
 	return (
-		<div>
+		<ErrorBorder isError={isError}>
 			<div className="flex items-center gap-2 flex-wrap">
 				<code className="text-xs font-mono bg-bg-200 px-1.5 py-0.5 rounded">{pattern}</code>
 				{glob && (
@@ -28,14 +30,24 @@ export function GrepRenderer({toolCall}: ToolRendererProps) {
 				)}
 				<ToolMeta>{matchCount} matches</ToolMeta>
 			</div>
-			{result && (
+			{result && !showResults && (
+				<button
+					type="button"
+					onClick={() => setShowResults(true)}
+					className="text-[13px] text-text-500 hover:text-text-300 cursor-pointer transition-colors mt-1"
+				>
+					Show results
+				</button>
+			)}
+			{result && showResults && (
 				<div className="mt-1">
 					<TerminalOutput
 						content={result}
 						maxLines={50}
+						previewLines={10}
 					/>
 				</div>
 			)}
-		</div>
+		</ErrorBorder>
 	);
 }
