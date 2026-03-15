@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {MarkdownArticle} from './markdown-article';
 import {getToolRenderer} from './tool-renderers';
 import type {ClientToolCall} from './tool-renderers';
@@ -67,6 +67,49 @@ export const SessionChat = React.memo(function SessionChat({messages}: {messages
 	);
 });
 
+function TruncatedContent({children}: {children: React.ReactNode}) {
+	const contentRef = useRef<HTMLDivElement>(null);
+	const [isTruncated, setIsTruncated] = useState(false);
+	const [showFull, setShowFull] = useState(false);
+
+	const measureRef = useCallback((node: HTMLDivElement | null) => {
+		if (node) {
+			contentRef.current = node;
+			setIsTruncated(node.scrollHeight > 200);
+		}
+	}, []);
+
+	if (showFull) {
+		return <div>{children}</div>;
+	}
+
+	return (
+		<div className="relative">
+			<div
+				ref={measureRef}
+				className={isTruncated ? 'max-h-[200px] overflow-hidden' : ''}
+			>
+				{children}
+			</div>
+			{isTruncated && (
+				<>
+					<div
+						className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
+						style={{background: 'linear-gradient(to bottom, transparent, var(--bg-100))'}}
+					/>
+					<button
+						type="button"
+						onClick={() => setShowFull(true)}
+						className="text-xs text-accent-100 hover:underline cursor-pointer mt-1"
+					>
+						Show more
+					</button>
+				</>
+			)}
+		</div>
+	);
+}
+
 function UserMessage({msg}: {msg: ChatMessage}) {
 	const timestampText = formatTimestamp(msg.timestamp);
 
@@ -89,7 +132,9 @@ function UserMessage({msg}: {msg: ChatMessage}) {
 					key={i}
 					className="rounded-lg px-3 py-2 break-words min-w-0 overflow-hidden bg-bg-100 text-text-000 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] text-sm leading-relaxed"
 				>
-					<MarkdownArticle html={html} />
+					<TruncatedContent>
+						<MarkdownArticle html={html} />
+					</TruncatedContent>
 				</div>
 			))}
 			{msg.documentBlocks.map((_, i) => (
@@ -142,11 +187,13 @@ function ThinkingBlock({thinking}: {thinking: string}) {
 				</svg>
 				Thinking...
 			</button>
-			{open && (
-				<div className="mt-1 text-xs italic text-text-500 whitespace-pre-wrap bg-bg-200/50 rounded p-2 max-h-64 overflow-auto leading-relaxed">
-					{thinking}
+			<div className={`grid ${open ? 'grid-rows-expand' : 'grid-rows-collapse'}`}>
+				<div className="overflow-hidden">
+					<div className="mt-1 text-xs italic text-text-500 whitespace-pre-wrap bg-bg-200/50 rounded p-2 max-h-64 overflow-auto leading-relaxed">
+						{thinking}
+					</div>
 				</div>
-			)}
+			</div>
 		</div>
 	);
 }
@@ -224,37 +271,64 @@ function ToolCallSummary({calls, summary}: {calls: ClientToolCall[]; summary: st
 				<ChevronIcon expanded={expanded} />
 				<span>{summary}</span>
 			</button>
-			{expanded && (
-				<div className="ml-2 border-l border-border-300/10 pl-3">
-					{visibleCalls.map((call, i) => {
-						const Renderer = getToolRenderer(call.name);
-						return (
-							<div
-								key={i}
-								className="py-0.5 text-sm leading-relaxed text-text-500"
-							>
-								<div className="flex items-center">
-									<span className="font-medium text-sm">{call.name}</span>
-									{call.param && <span className="ml-1.5 text-xs opacity-70">{call.param}</span>}
-									{call.duration !== undefined && <DurationBadge duration={call.duration} />}
+			<div className={`grid ${expanded ? 'grid-rows-expand' : 'grid-rows-collapse'}`}>
+				<div className="overflow-hidden">
+					<div className="ml-2 pl-0">
+						{visibleCalls.map((call, i) => {
+							const Renderer = getToolRenderer(call.name);
+							const isLast = i === visibleCalls.length - 1 && (showAll || hiddenCount <= 0);
+							return (
+								<div
+									key={i}
+									className="flex"
+								>
+									<div className="flex flex-col items-center w-4 shrink-0">
+										<div
+											className={`w-px flex-1 ${i === 0 ? 'bg-transparent' : 'bg-border-300/15'}`}
+										/>
+										<div className="w-full h-px bg-border-300/15" />
+										<div
+											className={`w-px flex-1 ${isLast ? 'bg-transparent' : 'bg-border-300/15'}`}
+										/>
+									</div>
+									<div className="flex-1 min-w-0 pl-2 py-0.5 text-sm leading-relaxed text-text-500">
+										<div className="flex items-center">
+											<span className="font-medium text-[13px]">{call.name}</span>
+											{call.param && (
+												<span className="ml-1.5 font-mono text-[11px] bg-bg-100 px-1 py-px rounded opacity-70">
+													{call.param}
+												</span>
+											)}
+											{call.duration !== undefined && <DurationBadge duration={call.duration} />}
+										</div>
+										<div className="mt-1 mb-2 text-xs text-text-100 leading-relaxed">
+											<Renderer toolCall={call} />
+										</div>
+									</div>
 								</div>
-								<div className="mt-1 mb-2 text-xs text-text-100 leading-relaxed">
-									<Renderer toolCall={call} />
+							);
+						})}
+						{!showAll && hiddenCount > 0 && (
+							<div className="flex">
+								<div className="flex flex-col items-center w-4 shrink-0">
+									<div className="w-px flex-1 bg-border-300/15" />
+									<div className="w-full h-px bg-border-300/15" />
+									<div className="w-px flex-1 bg-transparent" />
+								</div>
+								<div className="flex-1 min-w-0 pl-2">
+									<button
+										type="button"
+										onClick={() => setShowAll(true)}
+										className="text-[13px] text-text-500 hover:text-text-300 cursor-pointer transition-colors py-1"
+									>
+										Show {hiddenCount} more
+									</button>
 								</div>
 							</div>
-						);
-					})}
-					{!showAll && hiddenCount > 0 && (
-						<button
-							type="button"
-							onClick={() => setShowAll(true)}
-							className="text-[13px] text-text-500 hover:text-text-300 cursor-pointer transition-colors py-1"
-						>
-							Show {hiddenCount} more
-						</button>
-					)}
+						)}
+					</div>
 				</div>
-			)}
+			</div>
 		</div>
 	);
 }
