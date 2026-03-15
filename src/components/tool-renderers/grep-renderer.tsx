@@ -16,18 +16,10 @@ export function GrepRenderer({toolCall}: ToolRendererProps) {
 		<ErrorBorder isError={isError}>
 			<div className="flex items-center gap-2 flex-wrap">
 				<code className="text-xs font-mono bg-bg-200 px-1.5 py-0.5 rounded">{pattern}</code>
-				{glob && (
-					<span className="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">glob: {glob}</span>
-				)}
-				{fileType && (
-					<span className="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">type: {fileType}</span>
-				)}
-				{path && (
-					<span className="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">path: {path}</span>
-				)}
-				{caseInsensitive && (
-					<span className="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">case-insensitive</span>
-				)}
+				{glob && <span className="text-xs bg-bg-200 px-1.5 py-0.5 rounded">glob: {glob}</span>}
+				{fileType && <span className="text-xs bg-bg-200 px-1.5 py-0.5 rounded">type: {fileType}</span>}
+				{path && <span className="text-xs bg-bg-200 px-1.5 py-0.5 rounded">path: {path}</span>}
+				{caseInsensitive && <span className="text-xs bg-bg-200 px-1.5 py-0.5 rounded">case-insensitive</span>}
 				<ToolMeta>{matchCount} matches</ToolMeta>
 			</div>
 			{result && !showResults && (

@@ -2,9 +2,9 @@ import {CheckCircle, Circle, Loader} from 'lucide-react';
 import type {ToolRendererProps} from './types';
 
 const STATUS_CONFIG: Record<string, {icon: typeof Circle; color: string; spin?: boolean}> = {
-	pending: {icon: Circle, color: 'text-gray-400'},
-	in_progress: {icon: Loader, color: 'text-blue-500', spin: true},
-	completed: {icon: CheckCircle, color: 'text-green-500'},
+	pending: {icon: Circle, color: 'text-text-500'},
+	in_progress: {icon: Loader, color: 'text-accent-100', spin: true},
+	completed: {icon: CheckCircle, color: 'text-success-000'},
 };
 
 export function TaskUpdateRenderer({toolCall}: ToolRendererProps) {

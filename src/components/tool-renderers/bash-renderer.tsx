@@ -24,7 +24,7 @@ export function BashRenderer({toolCall}: ToolRendererProps) {
 				{description && <div className="text-xs text-text-500 mb-0.5">{description}</div>}
 				<div className="font-mono text-xs">
 					<span className="text-text-500">$ </span>
-					<span className="text-green-700 dark:text-green-400">{command}</span>
+					<span className="text-success-000">{command}</span>
 				</div>
 			</div>
 			{resultContent && !showResult && (
