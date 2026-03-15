@@ -126,6 +126,17 @@
 	--accent-900: hsl(210 55.9% 24.6%);
 }
 
+@layer utilities {
+	.grid-rows-collapse {
+		grid-template-rows: 0fr;
+		transition: grid-template-rows 200ms ease-out;
+	}
+	.grid-rows-expand {
+		grid-template-rows: 1fr;
+		transition: grid-template-rows 200ms ease-out;
+	}
+}
+
 @layer base {
 	* {
 		@apply border-border-300/15;
