@@ -234,14 +234,14 @@ export function FilePath({path}: {path: string}) {
 export function DiffLine({type, line}: {type: 'equal' | 'add' | 'remove'; line: string}) {
 	const markerColors = {
 		equal: 'bg-transparent text-text-500',
-		add: 'bg-green-500 text-green-50',
-		remove: 'bg-red-500 text-red-50',
+		add: 'bg-success-100 text-white',
+		remove: 'bg-danger-100 text-white',
 	};
 	const markers = {equal: ' ', add: '+', remove: '-'};
 	const lineBackground = {
 		equal: '',
-		add: 'bg-green-50 dark:bg-green-950/30',
-		remove: 'bg-red-50 dark:bg-red-950/30',
+		add: 'bg-success-900/30',
+		remove: 'bg-danger-900/30',
 	};
 
 	return (
@@ -261,8 +261,8 @@ export function DiffLine({type, line}: {type: 'equal' | 'add' | 'remove'; line: 
 export function DiffStats({added, removed}: {added: number; removed: number}) {
 	return (
 		<span className="inline-flex gap-1 font-mono text-xs shrink-0">
-			{added > 0 && <span className="text-green-600">+{added}</span>}
-			{removed > 0 && <span className="text-red-600">-{removed}</span>}
+			{added > 0 && <span className="text-success-000">+{added}</span>}
+			{removed > 0 && <span className="text-danger-000">-{removed}</span>}
 		</span>
 	);
 }
@@ -302,7 +302,7 @@ export function TerminalOutput({
 		<div className="relative">
 			{exitCode !== null && (
 				<div className="mb-2 flex items-center gap-2">
-					<span className="inline-flex items-center gap-1.5 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100 px-2.5 py-1 rounded text-xs font-bold">
+					<span className="inline-flex items-center gap-1.5 bg-danger-900 text-danger-000 px-2.5 py-1 rounded text-xs font-bold">
 						Exit code <span className="font-mono">{exitCode}</span>
 					</span>
 				</div>
@@ -356,7 +356,11 @@ export function CollapsibleSection({
 				</svg>
 				{label}
 			</button>
-			{open && <div className="mt-1">{children}</div>}
+			<div className={`grid ${open ? 'grid-rows-expand' : 'grid-rows-collapse'}`}>
+				<div className="overflow-hidden">
+					<div className="mt-1">{children}</div>
+				</div>
+			</div>
 		</div>
 	);
 }
