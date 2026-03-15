@@ -1,5 +1,5 @@
 import type {ToolRendererProps} from './types';
-import {CollapsibleSection, ToolMeta} from './shared';
+import {CollapsibleSection, ErrorBorder, ToolMeta} from './shared';
 
 function parseLineNumbers(content: string): Array<{lineNum: string | null; content: string}> {
 	const lines = content.split('\n');
@@ -23,7 +23,7 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 	const filePath = (toolCall.input['file_path'] as string) ?? '';
 	const offset = toolCall.input['offset'] as number | undefined;
 	const limit = toolCall.input['limit'] as number | undefined;
-	const {result, highlightedHtml} = toolCall;
+	const {result, highlightedHtml, isError} = toolCall;
 	const lineCount = result ? result.split('\n').length : 0;
 
 	const rangeInfo =
@@ -36,11 +36,11 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 	const parsedLines = result ? parseLineNumbers(result) : [];
 
 	return (
-		<div>
-			<div className="bg-bg-200 rounded px-2 py-1.5 mb-2 border border-border-300/15">
-				<code className="text-xs font-mono break-all text-text-100">{filePath}</code>
-			</div>
-			<div className="text-xs text-text-500 mb-2">
+		<ErrorBorder isError={isError}>
+			<div className="flex items-center gap-2 flex-wrap">
+				<code className="text-xs font-mono text-text-500 bg-bg-100 px-1 py-0.5 rounded truncate">
+					{filePath}
+				</code>
 				<ToolMeta>{rangeInfo}</ToolMeta>
 			</div>
 			{result && (
@@ -78,6 +78,6 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 					)}
 				</CollapsibleSection>
 			)}
-		</div>
+		</ErrorBorder>
 	);
 }

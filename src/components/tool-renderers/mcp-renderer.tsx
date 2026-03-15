@@ -1,5 +1,6 @@
+import {MarkdownArticle} from '../markdown-article';
 import type {ToolRendererProps} from './types';
-import {CollapsibleSection} from './shared';
+import {CollapsibleSection, ErrorBorder} from './shared';
 
 function parseMcpName(name: string): {server: string; tool: string} {
 	const stripped = name.replace(/^mcp__/, '');
@@ -23,8 +24,10 @@ export function McpRenderer({toolCall}: ToolRendererProps) {
 	const {input, result} = toolCall;
 	const hasInput = Object.keys(input).length > 0;
 
+	const {isError} = toolCall;
+
 	return (
-		<div>
+		<ErrorBorder isError={isError}>
 			<div className="flex items-center gap-2">
 				<span className="rounded px-1.5 py-0.5 text-xs font-medium bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300">
 					{server}
@@ -41,13 +44,19 @@ export function McpRenderer({toolCall}: ToolRendererProps) {
 			{result && (
 				<CollapsibleSection
 					label="Output"
-					defaultOpen
+					defaultOpen={!!isError}
 				>
-					<pre className="text-xs font-mono text-text-500 whitespace-pre-wrap break-all max-h-64 overflow-auto">
-						{tryFormatJson(result)}
-					</pre>
+					{toolCall.resultHtml ? (
+						<div className="text-xs text-text-100 leading-relaxed max-h-64 overflow-auto">
+							<MarkdownArticle html={toolCall.resultHtml} />
+						</div>
+					) : (
+						<pre className="text-xs font-mono text-text-500 whitespace-pre-wrap break-all max-h-64 overflow-auto">
+							{tryFormatJson(result)}
+						</pre>
+					)}
 				</CollapsibleSection>
 			)}
-		</div>
+		</ErrorBorder>
 	);
 }
