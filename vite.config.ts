@@ -5,6 +5,11 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-	server: {port: 8899, host: true, allowedHosts: ['macbook-pro-m4-max.tail589ec3.ts.net']},
+	server: {
+		port: 8899,
+		host: true,
+		allowedHosts: ['macbook-pro-m4-max.tail589ec3.ts.net'],
+		watch: {ignored: ['**/routeTree.gen.ts']},
+	},
 	plugins: [tailwindcss(), tsconfigPaths(), tanstackStart(), viteReact()],
 });
