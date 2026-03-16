@@ -1,4 +1,5 @@
-import {createFileRoute, Link} from '@tanstack/react-router';
+import {createFileRoute, Link, useRouter} from '@tanstack/react-router';
+import type {ErrorComponentProps} from '@tanstack/react-router';
 import {createServerFn} from '@tanstack/react-start';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
@@ -171,10 +172,41 @@ const getSession = createServerFn({method: 'GET'})
 export const Route = createFileRoute('/session/$id')({
 	component: SessionPage,
 	loader: ({params}) => getSession({data: {id: params.id}}),
+	errorComponent: SessionErrorComponent,
 	head: ({loaderData}) => ({
 		meta: [{title: loaderData?.title ?? 'Session Not Found'}],
 	}),
 });
+
+function SessionErrorComponent({error, reset}: ErrorComponentProps) {
+	const router = useRouter();
+	const message = error instanceof Error ? error.message : 'Failed to load session';
+
+	return (
+		<div className="p-8">
+			<h1 className="text-lg font-semibold text-red-600 dark:text-red-400">Failed to load session</h1>
+			<pre className="mt-3 max-w-2xl overflow-auto rounded-md border border-border-300/15 bg-bg-200 p-3 font-mono text-sm text-text-500">
+				{message}
+			</pre>
+			<div className="mt-4 flex gap-2">
+				<button
+					type="button"
+					onClick={reset}
+					className="rounded-md bg-accent-100 px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-100/80"
+				>
+					Retry
+				</button>
+				<button
+					type="button"
+					onClick={() => router.navigate({to: '/sessions'})}
+					className="rounded-md border border-border-300/15 px-3 py-1.5 text-sm font-medium text-text-300 hover:bg-bg-200"
+				>
+					Back to sessions
+				</button>
+			</div>
+		</div>
+	);
+}
 
 const AGENT_TYPE_COLORS: Record<string, string> = {
 	Explore: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
