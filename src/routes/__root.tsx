@@ -4,6 +4,8 @@ import {useCallback, useEffect, useState, type ReactNode} from 'react';
 import {ThemeProvider} from '../components/theme-provider';
 import {ModeToggle} from '../components/mode-toggle';
 import {Sidebar} from '../components/sidebar';
+import {CommandPalette} from '../components/command-palette';
+import {useCommandPalette} from '../hooks/use-command-palette';
 import appCss from '../styles/globals.css?url';
 
 export const Route = createRootRoute({
@@ -32,6 +34,7 @@ export const Route = createRootRoute({
 function RootComponent() {
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const [refreshKey, setRefreshKey] = useState(0);
+	const commandPalette = useCommandPalette();
 
 	return (
 		<RootDocument>
@@ -51,6 +54,10 @@ function RootComponent() {
 						</div>
 					</main>
 				</div>
+				<CommandPalette
+					open={commandPalette.open}
+					onOpenChange={commandPalette.setOpen}
+				/>
 				<SseListener onContentUpdated={useCallback(() => setRefreshKey((k) => k + 1), [])} />
 			</ThemeProvider>
 		</RootDocument>
