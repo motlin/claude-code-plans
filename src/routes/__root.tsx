@@ -1,4 +1,5 @@
 import {Outlet, createRootRoute, HeadContent, Scripts, useRouter} from '@tanstack/react-router';
+import type {ErrorComponentProps} from '@tanstack/react-router';
 import {useCallback, useEffect, useState, type ReactNode} from 'react';
 import {ThemeProvider} from '../components/theme-provider';
 import {ModeToggle} from '../components/mode-toggle';
@@ -25,6 +26,7 @@ export const Route = createRootRoute({
 	}),
 	component: RootComponent,
 	notFoundComponent: NotFound,
+	errorComponent: RootErrorComponent,
 });
 
 function RootComponent() {
@@ -75,6 +77,26 @@ function NotFound() {
 		<div className="p-8">
 			<h1 className="text-lg font-semibold">404 &mdash; Not Found</h1>
 			<p className="mt-2 text-text-500">The requested page was not found.</p>
+		</div>
+	);
+}
+
+function RootErrorComponent({error, reset}: ErrorComponentProps) {
+	const message = error instanceof Error ? error.message : 'An unexpected error occurred';
+
+	return (
+		<div className="p-8">
+			<h1 className="text-lg font-semibold text-red-600 dark:text-red-400">Something went wrong</h1>
+			<pre className="mt-3 max-w-2xl overflow-auto rounded-md border border-border-300/15 bg-bg-200 p-3 font-mono text-sm text-text-500">
+				{message}
+			</pre>
+			<button
+				type="button"
+				onClick={reset}
+				className="mt-4 rounded-md bg-accent-100 px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-100/80"
+			>
+				Try again
+			</button>
 		</div>
 	);
 }
