@@ -108,6 +108,8 @@ function RootErrorComponent({error, reset}: ErrorComponentProps) {
 	);
 }
 
+const themeScript = `(function(){try{var t=localStorage.getItem('theme');var d=document.documentElement;if(t==='dark')d.classList.add('dark');else if(t==='light')d.classList.add('light');else{d.classList.add(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light')}}catch(e){}})()`;
+
 function RootDocument({children}: Readonly<{children: ReactNode}>) {
 	return (
 		<html
@@ -115,6 +117,7 @@ function RootDocument({children}: Readonly<{children: ReactNode}>) {
 			suppressHydrationWarning
 		>
 			<head>
+				<script dangerouslySetInnerHTML={{__html: themeScript}} />
 				<HeadContent />
 			</head>
 			<body>
