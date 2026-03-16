@@ -1,5 +1,6 @@
 import {createFileRoute, Link, useNavigate} from '@tanstack/react-router';
 import {createServerFn} from '@tanstack/react-start';
+import {z} from 'zod';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {readMemory, writeMemory, decodeProjectDir} from '../lib/memory';
@@ -18,7 +19,7 @@ function ClientOnly({children, fallback}: {children: React.ReactNode; fallback: 
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
 const getMemoryRaw = createServerFn({method: 'GET'})
-	.inputValidator((d: {project: string; filename: string}) => d)
+	.inputValidator(z.object({project: z.string(), filename: z.string()}))
 	.handler(async ({data: {project, filename}}) => {
 		const content = await readMemory(PROJECTS_DIR, project, filename);
 		if (!content) return null;
@@ -28,7 +29,7 @@ const getMemoryRaw = createServerFn({method: 'GET'})
 	});
 
 const saveMemory = createServerFn({method: 'POST'})
-	.inputValidator((d: {project: string; filename: string; content: string}) => d)
+	.inputValidator(z.object({project: z.string(), filename: z.string(), content: z.string()}))
 	.handler(async ({data: {project, filename, content}}) => {
 		const ok = await writeMemory(PROJECTS_DIR, project, filename, content);
 		if (!ok) return null;

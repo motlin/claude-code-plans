@@ -1,5 +1,6 @@
 import {createFileRoute, Link, useNavigate} from '@tanstack/react-router';
 import {createServerFn} from '@tanstack/react-start';
+import {z} from 'zod';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {readPlan, writePlan} from '../lib/plans';
@@ -18,7 +19,7 @@ function ClientOnly({children, fallback}: {children: React.ReactNode; fallback: 
 const PLANS_DIR = process.env['PLANS_DIR'] ?? join(homedir(), '.claude', 'plans');
 
 const getPlanRaw = createServerFn({method: 'GET'})
-	.inputValidator((d: string) => d)
+	.inputValidator(z.string())
 	.handler(async ({data: filename}) => {
 		const content = await readPlan(PLANS_DIR, filename);
 		if (!content) return null;
@@ -27,7 +28,7 @@ const getPlanRaw = createServerFn({method: 'GET'})
 	});
 
 const savePlan = createServerFn({method: 'POST'})
-	.inputValidator((d: {filename: string; content: string}) => d)
+	.inputValidator(z.object({filename: z.string(), content: z.string()}))
 	.handler(async ({data: {filename, content}}) => {
 		const ok = await writePlan(PLANS_DIR, filename, content);
 		if (!ok) return null;
