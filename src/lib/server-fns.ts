@@ -1,4 +1,5 @@
 import {createServerFn} from '@tanstack/react-start';
+import {z} from 'zod';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {readdir, stat} from 'node:fs/promises';
@@ -151,7 +152,7 @@ export const getProjects = createServerFn({method: 'GET'}).handler(async () => {
 });
 
 export const getProject = createServerFn({method: 'GET'})
-	.inputValidator((d: string) => d)
+	.inputValidator(z.string())
 	.handler(async ({data: projectId}) => {
 		const {index} = getDb();
 		const detail = getProjectDetailFromDb(index, projectId);
@@ -228,7 +229,7 @@ export const getProject = createServerFn({method: 'GET'})
 	});
 
 export const getPlanLinks = createServerFn({method: 'GET'})
-	.inputValidator((d: string) => d)
+	.inputValidator(z.string())
 	.handler(async ({data: filename}) => {
 		const {index} = getDb();
 		const links = getPlanLinksFromDb(index, filename);
@@ -241,21 +242,21 @@ export const getPlanLinks = createServerFn({method: 'GET'})
 	});
 
 export const getSubagents = createServerFn({method: 'GET'})
-	.inputValidator((d: string) => d)
+	.inputValidator(z.string())
 	.handler(async ({data: sessionId}) => {
 		const {index} = getDb();
 		return getSubagentsForSession(index, sessionId);
 	});
 
 export const searchSessions = createServerFn({method: 'GET'})
-	.inputValidator((d: string) => d)
+	.inputValidator(z.string())
 	.handler(async ({data: query}) => {
 		const {index} = getDb();
 		return searchSessionsFromDb(index, query);
 	});
 
 export const toggleSessionStar = createServerFn({method: 'POST'})
-	.inputValidator((d: string) => d)
+	.inputValidator(z.string())
 	.handler(async ({data: sessionId}) => {
 		const {index} = getDb();
 		const starred = toggleStarInDb(index, sessionId);
@@ -279,7 +280,7 @@ export const getStarredSessionList = createServerFn({method: 'GET'}).handler(asy
 });
 
 export const isStarred = createServerFn({method: 'GET'})
-	.inputValidator((d: string) => d)
+	.inputValidator(z.string())
 	.handler(async ({data: sessionId}) => {
 		const {index} = getDb();
 		return {starred: isSessionStarredInDb(index, sessionId)};
@@ -290,21 +291,21 @@ export const getActiveSessions = createServerFn({method: 'GET'}).handler(async (
 });
 
 export const searchMessageContent = createServerFn({method: 'GET'})
-	.inputValidator((d: string) => d)
+	.inputValidator(z.string())
 	.handler(async ({data: query}) => {
 		const {index} = getDb();
 		return searchMessageContentFromDb(index, query);
 	});
 
 export const getSessionSummary = createServerFn({method: 'GET'})
-	.inputValidator((d: string) => d)
+	.inputValidator(z.string())
 	.handler(async ({data: sessionId}) => {
 		const {summaries} = getDb();
 		return {summary: getSummary(summaries, sessionId)};
 	});
 
 export const requestSummary = createServerFn({method: 'POST'})
-	.inputValidator((d: string) => d)
+	.inputValidator(z.string())
 	.handler(async ({data: sessionId}) => {
 		const {summaries} = getDb();
 		const summary = await generateSummary(summaries, sessionId);

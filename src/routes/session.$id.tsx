@@ -1,6 +1,7 @@
 import {createFileRoute, Link, useRouter} from '@tanstack/react-router';
 import type {ErrorComponentProps} from '@tanstack/react-router';
 import {createServerFn} from '@tanstack/react-start';
+import {z} from 'zod';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {useEffect, useRef, useState} from 'react';
@@ -51,7 +52,7 @@ function getToolParam(tc: {input: Record<string, unknown>}): string {
 }
 
 const getSession = createServerFn({method: 'GET'})
-	.inputValidator((d: {id: string}) => d)
+	.inputValidator(z.object({id: z.string()}))
 	.handler(async ({data: {id}}) => {
 		const detail = await readSession(PROJECTS_DIR, id);
 		if (!detail) return null;
