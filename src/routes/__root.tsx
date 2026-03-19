@@ -6,6 +6,7 @@ import {ModeToggle} from '../components/mode-toggle';
 import {Sidebar} from '../components/sidebar';
 import {CommandPalette} from '../components/command-palette';
 import {useCommandPalette} from '../hooks/use-command-palette';
+import {IndexingBanner} from '../components/indexing-banner';
 import appCss from '../styles/globals.css?url';
 
 export const Route = createRootRoute({
@@ -49,6 +50,7 @@ function RootComponent() {
 						<div className="flex items-center justify-end p-3">
 							<ModeToggle />
 						</div>
+						<IndexingBanner />
 						<div className="px-4 pb-8 sm:px-8">
 							<Outlet />
 						</div>
