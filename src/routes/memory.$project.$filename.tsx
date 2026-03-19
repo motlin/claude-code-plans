@@ -6,6 +6,8 @@ import {readMemory, decodeProjectDir} from '../lib/memory';
 import {renderMarkdown} from '../lib/renderer';
 import {extractTitleFromContent} from '../lib/markdown-utils';
 import {MarkdownArticle} from '../components/markdown-article';
+import {ArrowLeft, Pencil} from 'lucide-react';
+import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
@@ -44,12 +46,15 @@ function MemoryPage() {
 	if (!data) {
 		return (
 			<div>
-				<Link
-					to="/memories"
-					className="text-sm text-accent-100 hover:underline"
-				>
-					&larr; All Memories
-				</Link>
+				<DetailTopBar>
+					<Link
+						to="/memories"
+						className={pillStyles.primary}
+					>
+						<ArrowLeft className="h-3.5 w-3.5" />
+						All Memories
+					</Link>
+				</DetailTopBar>
 				<h1 className="mt-4 text-lg font-semibold">Memory Not Found</h1>
 				<p className="mt-2 text-text-500">This memory file could not be found.</p>
 			</div>
@@ -58,22 +63,24 @@ function MemoryPage() {
 
 	return (
 		<div>
-			<div className="flex items-center gap-2">
+			<DetailTopBar>
 				<Link
 					to="/memories"
-					className="text-sm text-accent-100 hover:underline"
+					className={pillStyles.primary}
 				>
-					&larr; All Memories
+					<ArrowLeft className="h-3.5 w-3.5" />
+					All Memories
 				</Link>
 				<span className="text-xs text-text-500">{data.projectName}</span>
 				<Link
 					to="/memory/$project/$filename/edit"
 					params={Route.useParams()}
-					className="text-sm text-accent-100 hover:underline"
+					className={pillStyles.outline}
 				>
+					<Pencil className="h-3 w-3" />
 					Edit
 				</Link>
-			</div>
+			</DetailTopBar>
 			<div className="mt-4">
 				<MarkdownArticle html={data.html} />
 			</div>

@@ -31,6 +31,8 @@ import {sessions} from '../lib/db/schema';
 import {eq} from 'drizzle-orm';
 import {getSessionProjectPath} from '../lib/db/queries';
 import type {ClientToolCall, ToolInput} from '../components/tool-renderers';
+import {ArrowLeft} from 'lucide-react';
+import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
@@ -243,12 +245,15 @@ function SessionPage() {
 	if (!data) {
 		return (
 			<div>
-				<Link
-					to="/sessions"
-					className="text-sm text-accent-100 hover:underline"
-				>
-					&larr; All Sessions
-				</Link>
+				<DetailTopBar>
+					<Link
+						to="/sessions"
+						className={pillStyles.primary}
+					>
+						<ArrowLeft className="h-3.5 w-3.5" />
+						All Sessions
+					</Link>
+				</DetailTopBar>
 				<h1 className="mt-4 text-lg font-semibold">Session Not Found</h1>
 				<p className="mt-2 text-text-500">This session could not be found.</p>
 			</div>
@@ -269,17 +274,15 @@ function SessionPage() {
 
 	return (
 		<div>
-			<div className="flex items-center gap-2">
+			<DetailTopBar>
 				<Link
 					to="/sessions"
-					className="text-sm text-accent-100 hover:underline"
+					className={pillStyles.primary}
 				>
-					&larr; All Sessions
+					<ArrowLeft className="h-3.5 w-3.5" />
+					All Sessions
 				</Link>
 				<span className="text-xs text-text-500">{data.projectName}</span>
-			</div>
-			<div className="mt-2 flex items-center gap-2">
-				<h1 className="text-lg font-semibold">{data.title}</h1>
 				{isActive && (
 					<span className="inline-flex items-center gap-1 rounded-full bg-success-900 px-2 py-0.5 text-xs font-medium text-success-000">
 						<span className="h-1.5 w-1.5 rounded-full bg-success-000 animate-pulse" />
@@ -306,7 +309,8 @@ function SessionPage() {
 						<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
 					</svg>
 				</button>
-			</div>
+			</DetailTopBar>
+			<h1 className="text-lg font-semibold">{data.title}</h1>
 
 			{aiSummary ? (
 				<p className="mt-1 text-sm text-text-500 italic">{aiSummary}</p>

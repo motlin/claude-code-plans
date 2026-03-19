@@ -1,5 +1,7 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
+import {ArrowLeft} from 'lucide-react';
 import {getProject} from '../lib/server-fns';
+import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 
 export const Route = createFileRoute('/project/$id')({
 	component: ProjectPage,
@@ -30,12 +32,15 @@ function ProjectPage() {
 	if (!data) {
 		return (
 			<div>
-				<Link
-					to="/projects"
-					className="text-sm text-accent-100 hover:underline"
-				>
-					&larr; All Projects
-				</Link>
+				<DetailTopBar>
+					<Link
+						to="/projects"
+						className={pillStyles.primary}
+					>
+						<ArrowLeft className="h-3.5 w-3.5" />
+						All Projects
+					</Link>
+				</DetailTopBar>
 				<h1 className="mt-4 text-lg font-semibold">Project Not Found</h1>
 				<p className="mt-2 text-text-500">This project could not be found.</p>
 			</div>
@@ -44,14 +49,17 @@ function ProjectPage() {
 
 	return (
 		<div>
-			<Link
-				to="/projects"
-				className="text-sm text-accent-100 hover:underline"
-			>
-				&larr; All Projects
-			</Link>
+			<DetailTopBar>
+				<Link
+					to="/projects"
+					className={pillStyles.primary}
+				>
+					<ArrowLeft className="h-3.5 w-3.5" />
+					All Projects
+				</Link>
+			</DetailTopBar>
 
-			<h1 className="mt-4 text-lg font-semibold">{data.name}</h1>
+			<h1 className="text-lg font-semibold">{data.name}</h1>
 			{data.projectPath && <p className="mt-0.5 text-xs text-text-500">{data.projectPath}</p>}
 
 			{/* Sessions */}

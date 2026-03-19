@@ -8,6 +8,7 @@ import {extractTitleFromContent} from '../lib/markdown-utils';
 import {MarkdownArticle} from '../components/markdown-article';
 import {getPlanLinks} from '../lib/server-fns';
 import {ArrowLeft, Pencil, FolderOpen, MessageSquare} from 'lucide-react';
+import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 
 const PLANS_DIR = process.env['PLANS_DIR'] ?? join(homedir(), '.claude', 'plans');
 
@@ -37,19 +38,18 @@ function PlanPage() {
 		? {html: state.html, title: state.title ?? loaderData?.title ?? '', links: loaderData?.links ?? []}
 		: loaderData;
 
-	const buttonBase =
-		'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors no-underline';
-
 	if (!data) {
 		return (
 			<div>
-				<Link
-					to="/plans"
-					className={`${buttonBase} bg-bg-200 text-text-200 hover:bg-bg-300/70`}
-				>
-					<ArrowLeft className="h-3.5 w-3.5" />
-					All Plans
-				</Link>
+				<DetailTopBar>
+					<Link
+						to="/plans"
+						className={pillStyles.primary}
+					>
+						<ArrowLeft className="h-3.5 w-3.5" />
+						All Plans
+					</Link>
+				</DetailTopBar>
 				<h1 className="mt-4 text-lg font-semibold">Plan Not Found</h1>
 				<p className="mt-2 text-text-500">This plan could not be found.</p>
 			</div>
@@ -58,10 +58,10 @@ function PlanPage() {
 
 	return (
 		<div>
-			<div className="flex items-center gap-2">
+			<DetailTopBar>
 				<Link
 					to="/plans"
-					className={`${buttonBase} bg-bg-200 text-text-200 hover:bg-bg-300/70`}
+					className={pillStyles.primary}
 				>
 					<ArrowLeft className="h-3.5 w-3.5" />
 					All Plans
@@ -69,12 +69,12 @@ function PlanPage() {
 				<Link
 					to="/plan/$filename/edit"
 					params={{filename: Route.useParams().filename}}
-					className={`${buttonBase} border border-border-300/20 text-text-200 hover:bg-bg-200`}
+					className={pillStyles.outline}
 				>
 					<Pencil className="h-3 w-3" />
 					Edit
 				</Link>
-			</div>
+			</DetailTopBar>
 			<div className="mt-4">
 				<MarkdownArticle html={data.html} />
 			</div>
