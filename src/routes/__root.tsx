@@ -47,10 +47,10 @@ function RootComponent() {
 						refreshKey={refreshKey}
 					/>
 					<main className="flex-1 overflow-y-auto bg-bg-000">
-						<div className="flex items-center justify-end p-3">
+						<IndexingBanner />
+						<div className="flex min-h-9 items-center justify-end px-4 pt-3 sm:px-8">
 							<ModeToggle />
 						</div>
-						<IndexingBanner />
 						<div className="px-4 pb-8 sm:px-8">
 							<Outlet />
 						</div>
