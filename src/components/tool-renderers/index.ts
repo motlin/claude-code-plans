@@ -16,6 +16,7 @@ import {McpRenderer} from './mcp-renderer';
 import {WebFetchRenderer} from './webfetch-renderer';
 import {FallbackRenderer} from './fallback-renderer';
 import {ChromeDevtoolsRenderer} from './chrome-devtools-renderer';
+import {GithubRenderer} from './github-renderer';
 
 const registry: Record<string, ComponentType<ToolRendererProps>> = {
 	Edit: EditRenderer,
@@ -38,6 +39,7 @@ const registry: Record<string, ComponentType<ToolRendererProps>> = {
 
 const mcpRegistry: Record<string, ComponentType<ToolRendererProps>> = {
 	'chrome-devtools': ChromeDevtoolsRenderer,
+	plugin_github_github: GithubRenderer,
 };
 
 export function getToolRenderer(name: string): ComponentType<ToolRendererProps> {
