@@ -11,6 +11,7 @@ import {
 	computeDiffData,
 	detectLanguage,
 	highlightCode,
+	highlightDiffOps,
 	extractLineNumbers,
 	looksLikeMarkdown,
 } from '../lib/renderer';
@@ -76,7 +77,13 @@ const getSession = createServerFn({method: 'GET'})
 						if ((tc.name === 'Edit' || tc.name === 'MultiEdit') && tc.input['old_string'] !== undefined) {
 							const oldStr = (tc.input['old_string'] as string) ?? '';
 							const newStr = (tc.input['new_string'] as string) ?? '';
-							call.diffData = computeDiffData(oldStr, newStr);
+							const filePath = (tc.input['file_path'] as string) ?? '';
+							const diffData = computeDiffData(oldStr, newStr);
+							const lang = detectLanguage(filePath);
+							if (lang) {
+								diffData.highlightedLines = await highlightDiffOps(diffData.ops, lang);
+							}
+							call.diffData = diffData;
 						}
 
 						if (tc.name === 'Read' && tc.result) {

@@ -181,10 +181,47 @@ export async function highlightCode(code: string, lang: string): Promise<string>
 
 export type DiffOp = readonly ['equal', string] | readonly ['remove', string] | readonly ['add', string];
 
+/**
+ * Highlights diff ops using Shiki syntax highlighting.
+ * Combines all lines into a single code block for correct tokenization,
+ * then splits the result back into per-line HTML strings.
+ * Returns an array of HTML strings (one per op), containing only the
+ * inner token spans (no wrapping pre/code tags).
+ */
+export async function highlightDiffOps(ops: readonly DiffOp[], lang: string): Promise<string[]> {
+	if (ops.length === 0) return [];
+
+	const lines = ops.map(([, line]) => line);
+	const combined = lines.join('\n');
+
+	if (!lang) {
+		// Return plain escaped HTML per line
+		return lines.map((line) => line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+	}
+
+	const highlighted = await highlightCode(combined, lang);
+
+	// Extract the inner content of <span class="line">...</span> elements
+	const lineRegex = /<span class="line">(.*?)<\/span>/g;
+	const htmlLines: string[] = [];
+	let match: RegExpExecArray | null;
+	while ((match = lineRegex.exec(highlighted)) !== null) {
+		htmlLines.push(match[1] ?? '');
+	}
+
+	// If extraction failed or counts don't match, fall back to plain escaped text
+	if (htmlLines.length !== ops.length) {
+		return lines.map((line) => line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+	}
+
+	return htmlLines;
+}
+
 export interface DiffData {
 	ops: DiffOp[];
 	added: number;
 	removed: number;
+	highlightedLines?: string[] | undefined;
 }
 
 function computeDiff(oldLines: string[], newLines: string[]): DiffOp[] {
