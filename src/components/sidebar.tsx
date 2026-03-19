@@ -679,23 +679,12 @@ export function Sidebar({
 
 	return (
 		<nav className="relative hidden h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border-300/15 bg-bg-200 md:flex">
-			<div className="absolute right-2 top-2">
-				<button
-					type="button"
-					onClick={onToggle}
-					className="flex h-8 w-8 items-center justify-center rounded-[6px] text-text-000 transition-colors hover:bg-bg-300/50"
-					title="Close sidebar"
-				>
-					<SidebarToggleIcon />
-				</button>
-			</div>
-
-			<div className="px-4 pt-12">
+			<div className="flex items-center justify-between px-4 pt-3 pb-3">
 				<Link
 					to="/"
-					className="mb-4 flex items-center gap-2 text-sm font-semibold text-text-000 no-underline"
+					className="flex items-center gap-2.5 text-base font-bold text-text-000 no-underline"
 				>
-					<span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-[#C87B3A]">
+					<span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#C87B3A]">
 						<svg
 							viewBox="0 0 32 32"
 							className="h-4 w-4"
@@ -709,6 +698,14 @@ export function Sidebar({
 					</span>
 					Claude Code Viewer
 				</Link>
+				<button
+					type="button"
+					onClick={onToggle}
+					className="flex h-8 w-8 items-center justify-center rounded-[6px] text-text-000 transition-colors hover:bg-bg-300/50"
+					title="Close sidebar"
+				>
+					<SidebarToggleIcon />
+				</button>
 			</div>
 
 			<SearchInput />
