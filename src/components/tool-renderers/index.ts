@@ -18,6 +18,7 @@ import {FallbackRenderer} from './fallback-renderer';
 import {ChromeDevtoolsRenderer} from './chrome-devtools-renderer';
 import {GithubRenderer} from './github-renderer';
 import {PlaywrightRenderer} from './playwright-renderer';
+import {ClaudeInChromeRenderer} from './claude-in-chrome-renderer';
 
 const registry: Record<string, ComponentType<ToolRendererProps>> = {
 	Edit: EditRenderer,
@@ -42,6 +43,7 @@ const mcpRegistry: Record<string, ComponentType<ToolRendererProps>> = {
 	'chrome-devtools': ChromeDevtoolsRenderer,
 	plugin_github_github: GithubRenderer,
 	plugin_playwright_playwright: PlaywrightRenderer,
+	'claude-in-chrome': ClaudeInChromeRenderer,
 };
 
 export function getToolRenderer(name: string): ComponentType<ToolRendererProps> {
