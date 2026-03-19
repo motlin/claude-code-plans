@@ -1,9 +1,10 @@
 import {Link, useMatches, useNavigate} from '@tanstack/react-router';
-import {FileText, Brain, MessageSquare, FolderOpen, ChevronRight, Search, Star} from 'lucide-react';
+import {FileText, Brain, MessageSquare, FolderOpen, ChevronRight, Search, Star, Radio} from 'lucide-react';
 import {useEffect, useState} from 'react';
 import {getPlans, getPlansGrouped, getMemories, getSessions, getProjects, getProject} from '../lib/server-fns';
 
 const navItems = [
+	{to: '/active', label: 'Active', icon: Radio, section: 'active' as const},
 	{to: '/starred', label: 'Starred', icon: Star, section: 'starred' as const},
 	{to: '/projects', label: 'Projects', icon: FolderOpen, section: 'projects' as const},
 	{to: '/plans', label: 'Plans', icon: FileText, section: 'plans' as const},
@@ -11,7 +12,7 @@ const navItems = [
 	{to: '/sessions', label: 'Sessions', icon: MessageSquare, section: 'sessions' as const},
 ];
 
-type Section = 'starred' | 'projects' | 'plans' | 'memories' | 'sessions';
+type Section = 'active' | 'starred' | 'projects' | 'plans' | 'memories' | 'sessions';
 
 interface SubItem {
 	id: string;
@@ -41,6 +42,9 @@ function useActiveSection(matches: ReturnType<typeof useMatches>): {
 	const path = lastMatch?.fullPath ?? '/';
 	const params = lastMatch?.params as Record<string, string> | undefined;
 
+	if (path.startsWith('/active')) {
+		return {section: 'active', activeItemId: null, projectId: null};
+	}
 	if (path.startsWith('/starred')) {
 		return {section: 'starred', activeItemId: null, projectId: null};
 	}
@@ -742,6 +746,7 @@ export function Sidebar({
 								</Link>
 							</div>
 							{isExpanded &&
+								item.section !== 'active' &&
 								item.section !== 'starred' &&
 								(item.section === 'projects' ? (
 									<ProjectsSubList
