@@ -3,6 +3,7 @@ import {MarkdownArticle} from './markdown-article';
 import {getToolRenderer} from './tool-renderers';
 import type {ClientToolCall} from './tool-renderers';
 import {DurationBadge} from './tool-renderers/shared';
+import {TasksView} from './tasks-view';
 
 function formatTimestamp(timestamp?: string): string | null {
 	if (!timestamp) return null;
@@ -254,12 +255,17 @@ function ChevronIcon({expanded}: {expanded: boolean}) {
 }
 
 const INITIAL_TOOL_COUNT = 3;
+const TASK_TOOLS = new Set(['TaskCreate', 'TaskUpdate', 'TaskList']);
 
 function ToolCallSummary({calls, summary}: {calls: ClientToolCall[]; summary: string}) {
 	const [expanded, setExpanded] = useState(false);
 	const [showAll, setShowAll] = useState(false);
-	const visibleCalls = showAll ? calls : calls.slice(0, INITIAL_TOOL_COUNT);
-	const hiddenCount = calls.length - INITIAL_TOOL_COUNT;
+
+	const taskCalls = calls.filter((c) => TASK_TOOLS.has(c.name));
+	const hasTasksView = taskCalls.length >= 3;
+	const displayCalls = hasTasksView ? calls.filter((c) => !TASK_TOOLS.has(c.name)) : calls;
+	const visibleCalls = showAll ? displayCalls : displayCalls.slice(0, INITIAL_TOOL_COUNT);
+	const hiddenCount = displayCalls.length - INITIAL_TOOL_COUNT;
 
 	return (
 		<div className="min-w-0 py-1">
@@ -273,6 +279,11 @@ function ToolCallSummary({calls, summary}: {calls: ClientToolCall[]; summary: st
 			</button>
 			<div className={`grid ${expanded ? 'grid-rows-expand' : 'grid-rows-collapse'}`}>
 				<div className="overflow-hidden">
+					{hasTasksView && (
+						<div className="ml-2 mb-2">
+							<TasksView toolCalls={calls} />
+						</div>
+					)}
 					<div className="ml-2 pl-0">
 						{visibleCalls.map((call, i) => {
 							const Renderer = getToolRenderer(call.name);
