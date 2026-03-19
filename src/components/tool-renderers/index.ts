@@ -15,6 +15,7 @@ import {SkillRenderer} from './skill-renderer';
 import {McpRenderer} from './mcp-renderer';
 import {WebFetchRenderer} from './webfetch-renderer';
 import {FallbackRenderer} from './fallback-renderer';
+import {ChromeDevtoolsRenderer} from './chrome-devtools-renderer';
 
 const registry: Record<string, ComponentType<ToolRendererProps>> = {
 	Edit: EditRenderer,
@@ -35,8 +36,16 @@ const registry: Record<string, ComponentType<ToolRendererProps>> = {
 	__fallback__: FallbackRenderer,
 };
 
+const mcpRegistry: Record<string, ComponentType<ToolRendererProps>> = {
+	'chrome-devtools': ChromeDevtoolsRenderer,
+};
+
 export function getToolRenderer(name: string): ComponentType<ToolRendererProps> {
-	if (name.startsWith('mcp__')) return registry['__mcp__'] ?? registry['__fallback__']!;
+	if (name.startsWith('mcp__')) {
+		const server = name.slice(5).split('__')[0];
+		if (server && mcpRegistry[server]) return mcpRegistry[server];
+		return registry['__mcp__'] ?? registry['__fallback__']!;
+	}
 	return registry[name] ?? registry['__fallback__']!;
 }
 
