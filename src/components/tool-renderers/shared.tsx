@@ -231,7 +231,15 @@ export function FilePath({path}: {path: string}) {
 	return <code className="text-xs font-mono bg-bg-200 px-1.5 py-0.5 rounded truncate">{path}</code>;
 }
 
-export function DiffLine({type, line}: {type: 'equal' | 'add' | 'remove'; line: string}) {
+export function DiffLine({
+	type,
+	line,
+	highlightedHtml,
+}: {
+	type: 'equal' | 'add' | 'remove';
+	line: string;
+	highlightedHtml?: string | undefined;
+}) {
 	const markerColors = {
 		equal: 'bg-transparent text-text-500',
 		add: 'bg-success-100 text-white',
@@ -253,7 +261,14 @@ export function DiffLine({type, line}: {type: 'equal' | 'add' | 'remove'; line: 
 				{markers[type]}
 			</div>
 			{/* Code content column */}
-			<span className="whitespace-pre-wrap break-all px-2">{line}</span>
+			{highlightedHtml ? (
+				<span
+					className="whitespace-pre-wrap break-all px-2 [&_span]:!bg-transparent"
+					dangerouslySetInnerHTML={{__html: highlightedHtml}}
+				/>
+			) : (
+				<span className="whitespace-pre-wrap break-all px-2">{line}</span>
+			)}
 		</div>
 	);
 }

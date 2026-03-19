@@ -42,6 +42,7 @@ export function EditRenderer({toolCall}: ToolRendererProps) {
 							key={i}
 							type={type}
 							line={line}
+							highlightedHtml={diffData.highlightedLines?.[i]}
 						/>
 					))}
 				</div>
