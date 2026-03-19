@@ -7,6 +7,7 @@ import {renderMarkdown} from '../lib/renderer';
 import {extractTitleFromContent} from '../lib/markdown-utils';
 import {MarkdownArticle} from '../components/markdown-article';
 import {getPlanLinks} from '../lib/server-fns';
+import {ArrowLeft, Pencil, FolderOpen, MessageSquare} from 'lucide-react';
 
 const PLANS_DIR = process.env['PLANS_DIR'] ?? join(homedir(), '.claude', 'plans');
 
@@ -36,14 +37,18 @@ function PlanPage() {
 		? {html: state.html, title: state.title ?? loaderData?.title ?? '', links: loaderData?.links ?? []}
 		: loaderData;
 
+	const buttonBase =
+		'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors no-underline';
+
 	if (!data) {
 		return (
 			<div>
 				<Link
 					to="/plans"
-					className="text-sm text-accent-100 hover:underline"
+					className={`${buttonBase} bg-bg-200 text-text-200 hover:bg-bg-300/70`}
 				>
-					&larr; All Plans
+					<ArrowLeft className="h-3.5 w-3.5" />
+					All Plans
 				</Link>
 				<h1 className="mt-4 text-lg font-semibold">Plan Not Found</h1>
 				<p className="mt-2 text-text-500">This plan could not be found.</p>
@@ -53,18 +58,20 @@ function PlanPage() {
 
 	return (
 		<div>
-			<div className="flex items-center gap-4">
+			<div className="flex items-center gap-2">
 				<Link
 					to="/plans"
-					className="text-sm text-accent-100 hover:underline"
+					className={`${buttonBase} bg-bg-200 text-text-200 hover:bg-bg-300/70`}
 				>
-					&larr; All Plans
+					<ArrowLeft className="h-3.5 w-3.5" />
+					All Plans
 				</Link>
 				<Link
 					to="/plan/$filename/edit"
 					params={{filename: Route.useParams().filename}}
-					className="text-sm text-accent-100 hover:underline"
+					className={`${buttonBase} border border-border-300/20 text-text-200 hover:bg-bg-200`}
 				>
+					<Pencil className="h-3 w-3" />
 					Edit
 				</Link>
 			</div>
@@ -73,8 +80,10 @@ function PlanPage() {
 			</div>
 
 			{data.links.length > 0 && (
-				<section className="mt-8 border-t border-border-300/15 pt-4">
-					<h2 className="text-sm font-semibold">Projects</h2>
+				<section className="mt-8 border-t border-border-300/15 pt-6">
+					<h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-400">
+						Related Sessions
+					</h2>
 					{(() => {
 						const byProject = new Map<string, {projectName: string; sessions: typeof data.links}>();
 						for (const link of data.links) {
@@ -87,44 +96,32 @@ function PlanPage() {
 						return [...byProject.entries()].map(([projectId, group]) => (
 							<div
 								key={projectId}
-								className="mt-4"
+								className="mt-3"
 							>
-								<div className="flex items-center gap-2">
-									<Link
-										to="/project/$id"
-										params={{id: projectId}}
-										className="text-sm font-medium text-accent-100 hover:underline"
-									>
-										{group.projectName}
-									</Link>
-									<span className="text-xs text-text-500">
+								<Link
+									to="/project/$id"
+									params={{id: projectId}}
+									className="mb-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium text-text-200 no-underline transition-colors hover:bg-bg-200/50"
+								>
+									<FolderOpen className="h-3.5 w-3.5 shrink-0 text-text-400" />
+									{group.projectName}
+									<span className="ml-auto text-[10px] text-text-500">
 										{group.sessions.length} {group.sessions.length === 1 ? 'session' : 'sessions'}
 									</span>
-								</div>
-								<ul className="mt-1 space-y-1">
+								</Link>
+								<div className="space-y-px pl-4">
 									{group.sessions.map((link) => (
-										<li key={link.sessionId}>
-											<Link
-												to="/session/$id"
-												params={{id: link.sessionId}}
-												className="block rounded-md p-2 pl-4 text-sm transition-colors hover:bg-bg-200/50"
-											>
-												{link.sessionTitle ? (
-													<>
-														<span>{link.sessionTitle}</span>
-														<span className="ml-2 font-mono text-xs text-text-500">
-															{link.sessionId.slice(0, 8)}
-														</span>
-													</>
-												) : (
-													<span className="font-mono text-xs">
-														{link.sessionId.slice(0, 8)}
-													</span>
-												)}
-											</Link>
-										</li>
+										<Link
+											key={link.sessionId}
+											to="/session/$id"
+											params={{id: link.sessionId}}
+											className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-300 no-underline transition-colors hover:bg-bg-200/50 hover:text-text-100"
+										>
+											<MessageSquare className="h-3 w-3 shrink-0 text-text-500" />
+											<span className="truncate">{link.sessionTitle || 'Untitled session'}</span>
+										</Link>
 									))}
-								</ul>
+								</div>
 							</div>
 						));
 					})()}
