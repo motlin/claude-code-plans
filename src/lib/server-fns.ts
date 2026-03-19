@@ -290,6 +290,11 @@ export const getActiveSessions = createServerFn({method: 'GET'}).handler(async (
 	return getActiveSessionsList();
 });
 
+export const getIndexingStatus = createServerFn({method: 'GET'}).handler(async () => {
+	const {isCurrentlyIndexing} = await import('./db/indexer');
+	return {isIndexing: isCurrentlyIndexing()};
+});
+
 export const searchMessageContent = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: query}) => {
