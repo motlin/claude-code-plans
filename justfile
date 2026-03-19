@@ -34,8 +34,8 @@ format: biome
 test *args: install
     npm run test:run {{args}}
 
-# Type-check the project
-typecheck: install
+# Type-check the project (build first to generate routeTree.gen.ts)
+typecheck: install build
     npm run typecheck
 
 # Build the project
