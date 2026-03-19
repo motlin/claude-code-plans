@@ -379,55 +379,65 @@ export async function indexSubagentFile(
 		.run();
 }
 
+let indexingInProgress = false;
+export function isCurrentlyIndexing(): boolean {
+	return indexingInProgress;
+}
+
 export async function fullScan(db: IndexDb, projectsDir: string): Promise<void> {
-	let projectDirs: string[];
+	indexingInProgress = true;
 	try {
-		projectDirs = await readdir(projectsDir);
-	} catch {
-		return;
-	}
-
-	for (const project of projectDirs) {
-		const projectPath = join(projectsDir, project);
+		let projectDirs: string[];
 		try {
-			const dirStat = await stat(projectPath);
-			if (!dirStat.isDirectory()) continue;
+			projectDirs = await readdir(projectsDir);
 		} catch {
-			continue;
+			return;
 		}
 
-		// Index sessions-index.json
-		await indexSessionsIndex(db, projectPath, project);
-
-		// Index JSONL files
-		let files: string[];
-		try {
-			files = await readdir(projectPath);
-		} catch {
-			continue;
-		}
-
-		for (const file of files) {
-			if (!file.endsWith('.jsonl')) continue;
-			await indexJsonlFile(db, join(projectPath, file), project);
-		}
-
-		// Index subagents
-		for (const file of files) {
-			if (!file.endsWith('.jsonl')) continue;
-			const sessionId = file.replace(/\.jsonl$/, '');
-			const subagentsDir = join(projectPath, sessionId, 'subagents');
-			let subFiles: string[];
+		for (const project of projectDirs) {
+			const projectPath = join(projectsDir, project);
 			try {
-				subFiles = await readdir(subagentsDir);
+				const dirStat = await stat(projectPath);
+				if (!dirStat.isDirectory()) continue;
 			} catch {
 				continue;
 			}
-			for (const sf of subFiles) {
-				if (!sf.startsWith('agent-') || !sf.endsWith('.jsonl')) continue;
-				await indexSubagentFile(db, join(subagentsDir, sf), sessionId, project);
+
+			// Index sessions-index.json
+			await indexSessionsIndex(db, projectPath, project);
+
+			// Index JSONL files
+			let files: string[];
+			try {
+				files = await readdir(projectPath);
+			} catch {
+				continue;
+			}
+
+			for (const file of files) {
+				if (!file.endsWith('.jsonl')) continue;
+				await indexJsonlFile(db, join(projectPath, file), project);
+			}
+
+			// Index subagents
+			for (const file of files) {
+				if (!file.endsWith('.jsonl')) continue;
+				const sessionId = file.replace(/\.jsonl$/, '');
+				const subagentsDir = join(projectPath, sessionId, 'subagents');
+				let subFiles: string[];
+				try {
+					subFiles = await readdir(subagentsDir);
+				} catch {
+					continue;
+				}
+				for (const sf of subFiles) {
+					if (!sf.startsWith('agent-') || !sf.endsWith('.jsonl')) continue;
+					await indexSubagentFile(db, join(subagentsDir, sf), sessionId, project);
+				}
 			}
 		}
+	} finally {
+		indexingInProgress = false;
 	}
 }
 
