@@ -50,32 +50,25 @@ function ActivePage() {
 			) : (
 				<div className="mt-4 space-y-1">
 					{sessions.map((session) => (
-						<div
+						<Link
 							key={session.sessionId}
-							className="rounded-md border border-border-300/15 p-3 hover:bg-bg-200/50 transition-colors"
+							to="/session/$id"
+							params={{id: session.sessionId}}
+							className="block rounded-md border border-border-300/15 p-3 no-underline transition-colors hover:bg-bg-200/50"
 						>
 							<div className="flex items-center gap-2">
 								<span className="relative flex h-2.5 w-2.5">
-									<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-									<span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+									<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+									<span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
 								</span>
-								<span className="text-sm text-text-000 font-medium truncate">
+								<span className="truncate text-sm font-medium text-text-000">
 									{decodeProjectName(session.projectDir)}
 								</span>
-								<span className="text-xs text-text-500 ml-auto">
+								<span className="ml-auto text-xs text-text-500">
 									{formatRelativeTime(session.lastModified)}
 								</span>
 							</div>
-							<div className="mt-1.5 flex items-center gap-2">
-								<Link
-									to="/session/$id"
-									params={{id: session.sessionId}}
-									className="text-xs font-mono text-accent-100 hover:underline"
-								>
-									{session.sessionId.slice(0, 8)}...
-								</Link>
-							</div>
-						</div>
+						</Link>
 					))}
 				</div>
 			)}
