@@ -8,7 +8,7 @@ export default defineConfig({
 	server: {
 		port: 8899,
 		host: true,
-		allowedHosts: ['REDACTED_HOST'],
+		allowedHosts: process.env['VITE_ALLOWED_HOSTS']?.split(',').filter(Boolean) ?? [],
 		watch: {ignored: ['**/routeTree.gen.ts']},
 	},
 	plugins: [tailwindcss(), tsconfigPaths(), tanstackStart(), viteReact()],
