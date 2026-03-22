@@ -6,6 +6,13 @@ import {readdir, stat} from 'node:fs/promises';
 import {listPlans} from './plans';
 import {listMemories} from './memory';
 import {extractTitle} from './markdown-utils';
+import {
+	listPlugins,
+	listUserCommands,
+	readPluginFileContent,
+	readUserCommandContent,
+	parseFrontmatter,
+} from './plugins';
 import {getDb} from './db';
 import {
 	listProjectsFromDb,
@@ -315,4 +322,44 @@ export const requestSummary = createServerFn({method: 'POST'})
 		const {summaries} = getDb();
 		const summary = await generateSummary(summaries, sessionId);
 		return {summary};
+	});
+
+export const getPluginsList = createServerFn({method: 'GET'}).handler(async () => {
+	return listPlugins();
+});
+
+export const getUserCommandsList = createServerFn({method: 'GET'}).handler(async () => {
+	return listUserCommands();
+});
+
+export const getPluginFileRendered = createServerFn({method: 'GET'})
+	.inputValidator(z.object({pluginId: z.string(), pathSegments: z.array(z.string())}))
+	.handler(async ({data: {pluginId, pathSegments}}) => {
+		const plugins = await listPlugins();
+		const plugin = plugins.find((p) => p.id === pluginId);
+		if (!plugin) return null;
+
+		const content = await readPluginFileContent(plugin.installPath, ...pathSegments);
+		if (!content) return null;
+
+		const {renderMarkdown} = await import('./renderer');
+		const {frontmatter, body} = parseFrontmatter(content);
+		const html = await renderMarkdown(body);
+		const {extractTitleFromContent} = await import('./markdown-utils');
+		const title = frontmatter['name'] || extractTitleFromContent(body, pathSegments[pathSegments.length - 1] || '');
+		return {html, title, frontmatter};
+	});
+
+export const getUserCommandRendered = createServerFn({method: 'GET'})
+	.inputValidator(z.object({source: z.string(), filename: z.string()}))
+	.handler(async ({data: {source, filename}}) => {
+		const content = await readUserCommandContent(source, filename);
+		if (!content) return null;
+
+		const {renderMarkdown} = await import('./renderer');
+		const html = await renderMarkdown(content);
+		const {extractTitleFromContent} = await import('./markdown-utils');
+		const title = extractTitleFromContent(content, filename);
+		const sourceName = source === 'global' ? 'Global' : (await import('./memory')).decodeProjectDir(source);
+		return {html, title, sourceName};
 	});
