@@ -6,12 +6,14 @@ import {initDb} from './lib/db';
 
 const PLANS_DIR = process.env['PLANS_DIR'] ?? join(homedir(), '.claude', 'plans');
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
+const COMMANDS_DIR = join(homedir(), '.claude', 'commands');
+const PLUGINS_DIR = join(homedir(), '.claude', 'plugins', 'cache');
 
 initDb().catch((err) => {
 	console.error('Failed to initialize database:', err);
 });
 
-createWatcher([PLANS_DIR, PROJECTS_DIR], PROJECTS_DIR);
+createWatcher([PLANS_DIR, PROJECTS_DIR, COMMANDS_DIR, PLUGINS_DIR], PROJECTS_DIR);
 
 export default createServerEntry({
 	fetch(request) {
