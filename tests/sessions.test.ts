@@ -182,7 +182,7 @@ describe('listSessions', () => {
 		const groups = await listSessions(testDir);
 		expect(groups).toHaveLength(1);
 		expect(groups[0]!.project).toBe('-Users-craig-projects-app');
-		expect(groups[0]!.projectName).toBe('app');
+		expect(groups[0]!.projectName).toBe('/Users/craig/projects/app');
 		expect(groups[0]!.sessions).toHaveLength(1);
 		expect(groups[0]!.sessions[0]!.title).toBe('Fix the login bug');
 	});
@@ -256,7 +256,7 @@ describe('readSession', () => {
 		const detail = await readSession(testDir, 'test-session');
 		expect(detail).not.toBeNull();
 		expect(detail!.title).toBe('Hello');
-		expect(detail!.projectName).toBe('app');
+		expect(detail!.projectName).toBe('/Users/craig/projects/app');
 		expect(detail!.projectId).toBe('-Users-craig-projects-app');
 		expect(detail!.messages).toHaveLength(2);
 

@@ -1,11 +1,14 @@
 import {Link} from '@tanstack/react-router';
 import {useEffect, useState} from 'react';
 import {getActiveSessions} from '../../../lib/server-fns';
-import {decodeProjectName} from '../utils';
 import {LoadingBars} from '../primitives/LoadingBars';
 
 export function ActiveSubList({refreshKey}: {refreshKey: number}) {
-	const [sessions, setSessions] = useState<Array<{sessionId: string; projectDir: string}> | null>(null);
+	const [sessions, setSessions] = useState<Array<{
+		sessionId: string;
+		projectDir: string;
+		projectName: string;
+	}> | null>(null);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -50,7 +53,7 @@ export function ActiveSubList({refreshKey}: {refreshKey: number}) {
 						<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
 						<span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
 					</span>
-					<span className="truncate">{decodeProjectName(session.projectDir)}</span>
+					<span className="truncate">{session.projectName}</span>
 				</Link>
 			))}
 		</div>
