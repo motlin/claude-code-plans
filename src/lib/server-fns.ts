@@ -15,6 +15,7 @@ import {
 	readPluginFileContent,
 	readUserCommandContent,
 	parseFrontmatter,
+	scanPluginTree,
 } from './plugins';
 import {getDb} from './db';
 import {
@@ -77,7 +78,10 @@ export const getPlansGrouped = createServerFn({method: 'GET'}).handler(async () 
 			if (group) {
 				group.plans.push(plan);
 			} else {
-				groups.set('__unlinked__', {projectName: 'Unlinked', plans: [plan]});
+				groups.set('__unlinked__', {
+					projectName: 'Unlinked',
+					plans: [plan],
+				});
 			}
 		} else {
 			for (const proj of projects) {
@@ -85,7 +89,10 @@ export const getPlansGrouped = createServerFn({method: 'GET'}).handler(async () 
 				if (group) {
 					group.plans.push(plan);
 				} else {
-					groups.set(proj.projectId, {projectName: proj.projectName, plans: [plan]});
+					groups.set(proj.projectId, {
+						projectName: proj.projectName,
+						plans: [plan],
+					});
 				}
 			}
 		}
@@ -170,7 +177,12 @@ export const getProject = createServerFn({method: 'GET'})
 
 		// Get memories from filesystem (still user-editable .md files)
 		const memDir = join(PROJECTS_DIR, projectId, 'memory');
-		const memories: Array<{filename: string; title: string; mtime: string; project: string}> = [];
+		const memories: Array<{
+			filename: string;
+			title: string;
+			mtime: string;
+			project: string;
+		}> = [];
 		try {
 			const files = await readdir(memDir);
 			const mdFiles = files.filter((f) => f.endsWith('.md'));
@@ -202,7 +214,11 @@ export const getProject = createServerFn({method: 'GET'})
 			if (agents.length > 0) {
 				subagentsBySession.set(
 					sess.id,
-					agents.map((a) => ({id: a.id, agentType: a.agentType, slug: a.slug})),
+					agents.map((a) => ({
+						id: a.id,
+						agentType: a.agentType,
+						slug: a.slug,
+					})),
 				);
 			}
 		}
@@ -347,6 +363,15 @@ export const getPluginGroups = createServerFn({method: 'GET'}).handler(async () 
 export const getUserCommandsList = createServerFn({method: 'GET'}).handler(async () => {
 	return listUserCommands();
 });
+
+export const getPluginTree = createServerFn({method: 'GET'})
+	.inputValidator(z.object({pluginId: z.string()}))
+	.handler(async ({data: {pluginId}}) => {
+		const plugins = await listPlugins();
+		const plugin = plugins.find((p) => p.id === pluginId);
+		if (!plugin) return null;
+		return scanPluginTree(plugin.installPath);
+	});
 
 export const getPluginFileRendered = createServerFn({method: 'GET'})
 	.inputValidator(z.object({pluginId: z.string(), pathSegments: z.array(z.string())}))

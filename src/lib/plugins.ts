@@ -4,6 +4,13 @@ import {homedir} from 'node:os';
 import {extractTitle} from './markdown-utils.js';
 import {resolveProjectName} from './memory.js';
 
+export interface FileTreeNode {
+	name: string;
+	path: string;
+	type: 'file' | 'directory';
+	children?: FileTreeNode[];
+}
+
 export interface PluginFile {
 	filename: string;
 	name: string;
@@ -51,7 +58,10 @@ export interface UserCommandGroup {
 	commands: PluginFile[];
 }
 
-export function parseFrontmatter(content: string): {frontmatter: Record<string, string>; body: string} {
+export function parseFrontmatter(content: string): {
+	frontmatter: Record<string, string>;
+	body: string;
+} {
 	const frontmatter: Record<string, string> = {};
 	if (!content.startsWith('---')) return {frontmatter, body: content};
 
@@ -138,7 +148,14 @@ async function scanSkills(skillsDir: string): Promise<PluginSkill[]> {
 		const references = await readMdFiles(join(skillPath, 'references'), 'reference');
 		const examples = await readMdFiles(join(skillPath, 'examples'), 'example');
 
-		skills.push({dirname, name, description, skillFile, references, examples});
+		skills.push({
+			dirname,
+			name,
+			description,
+			skillFile,
+			references,
+			examples,
+		});
 	}
 
 	return skills;
@@ -214,7 +231,9 @@ export function isOfficialMarketplace(marketplaceId: string): boolean {
 
 export async function listPlugins(): Promise<PluginInfo[]> {
 	const registryPath = join(homedir(), '.claude', 'plugins', 'installed_plugins.json');
-	let registry: {plugins: Record<string, Array<{installPath: string; version: string}>>};
+	let registry: {
+		plugins: Record<string, Array<{installPath: string; version: string}>>;
+	};
 	try {
 		const raw = await readFile(registryPath, 'utf-8');
 		registry = JSON.parse(raw);
@@ -228,7 +247,12 @@ export async function listPlugins(): Promise<PluginInfo[]> {
 		const install = installs[0];
 		if (!install) continue;
 
-		let pluginJson: {name?: string; version?: string; description?: string; author?: {name?: string}} = {};
+		let pluginJson: {
+			name?: string;
+			version?: string;
+			description?: string;
+			author?: {name?: string};
+		} = {};
 		try {
 			const raw = await readFile(join(install.installPath, '.claude-plugin', 'plugin.json'), 'utf-8');
 			pluginJson = JSON.parse(raw);
@@ -264,7 +288,11 @@ export async function listUserCommands(): Promise<UserCommandGroup[]> {
 
 	const groups: UserCommandGroup[] = [];
 	if (globalCmds.length > 0) {
-		groups.push({source: 'global', sourceName: 'Global', commands: globalCmds});
+		groups.push({
+			source: 'global',
+			sourceName: 'Global',
+			commands: globalCmds,
+		});
 	}
 
 	const projectsDir = join(homedir(), '.claude', 'projects');
@@ -320,4 +348,46 @@ export async function readUserCommandContent(source: string, filename: string): 
 
 export function getPluginInstallPath(plugins: PluginInfo[], pluginId: string): string | undefined {
 	return plugins.find((p) => p.id === pluginId)?.installPath;
+}
+
+const EXCLUDED_DIRS = new Set(['node_modules', '.git', '__pycache__', '.venv']);
+
+export async function scanPluginTree(rootPath: string, relativePath = ''): Promise<FileTreeNode | null> {
+	let entries: string[];
+	try {
+		entries = await readdir(rootPath);
+	} catch {
+		return null;
+	}
+
+	const children: FileTreeNode[] = [];
+
+	for (const entry of entries) {
+		const entryPath = join(rootPath, entry);
+		const entryRelative = relativePath ? `${relativePath}/${entry}` : entry;
+
+		try {
+			const s = await stat(entryPath);
+			if (s.isDirectory()) {
+				if (EXCLUDED_DIRS.has(entry)) continue;
+				const subtree = await scanPluginTree(entryPath, entryRelative);
+				if (subtree) {
+					children.push(subtree);
+				}
+			} else {
+				children.push({name: entry, path: entryRelative, type: 'file'});
+			}
+		} catch {
+			// skip unreadable entries
+		}
+	}
+
+	// Sort: directories first, then files, alphabetically within each group
+	children.sort((a, b) => {
+		if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+		return a.name.localeCompare(b.name);
+	});
+
+	const name = relativePath ? relativePath.split('/').pop()! : rootPath.split('/').pop()!;
+	return {name, path: relativePath, type: 'directory', children};
 }

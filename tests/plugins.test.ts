@@ -9,6 +9,7 @@ import {
 	formatMarketplaceName,
 	groupPluginsByMarketplace,
 	isOfficialMarketplace,
+	scanPluginTree,
 } from '../src/lib/plugins.js';
 import type {PluginInfo, MarketplaceInfo} from '../src/lib/plugins.js';
 
@@ -235,5 +236,77 @@ describe('groupPluginsByMarketplace', () => {
 			'aaa-marketplace',
 			'zzz-marketplace',
 		]);
+	});
+});
+
+describe('scanPluginTree', () => {
+	it('returns a tree of files and directories', async () => {
+		mkdirSync(join(testDir, 'agents'), {recursive: true});
+		mkdirSync(join(testDir, 'commands'), {recursive: true});
+		writeFileSync(join(testDir, 'README.md'), '# Hello');
+		writeFileSync(join(testDir, 'agents', 'bot.md'), '# Bot');
+		writeFileSync(join(testDir, 'commands', 'run.md'), '# Run');
+
+		const tree = await scanPluginTree(testDir);
+		expect(tree).not.toBeNull();
+
+		// Root should have children
+		const names = tree!.children!.map((c) => c.name).sort();
+		expect(names).toContain('README.md');
+		expect(names).toContain('agents');
+		expect(names).toContain('commands');
+
+		// Directories should have children
+		const agentsNode = tree!.children!.find((c) => c.name === 'agents');
+		expect(agentsNode?.type).toBe('directory');
+		expect(agentsNode?.children).toHaveLength(1);
+		expect(agentsNode?.children![0]!.name).toBe('bot.md');
+		expect(agentsNode?.children![0]!.type).toBe('file');
+	});
+
+	it('returns null for non-existent directory', async () => {
+		const tree = await scanPluginTree(join(testDir, 'nonexistent'));
+		expect(tree).toBeNull();
+	});
+
+	it('excludes node_modules and .git directories', async () => {
+		mkdirSync(join(testDir, 'node_modules', 'dep'), {recursive: true});
+		mkdirSync(join(testDir, '.git', 'objects'), {recursive: true});
+		mkdirSync(join(testDir, 'src'), {recursive: true});
+		writeFileSync(join(testDir, 'node_modules', 'dep', 'index.js'), '');
+		writeFileSync(join(testDir, '.git', 'objects', 'abc'), '');
+		writeFileSync(join(testDir, 'src', 'main.ts'), '');
+
+		const tree = await scanPluginTree(testDir);
+		const names = tree!.children!.map((c) => c.name);
+		expect(names).not.toContain('node_modules');
+		expect(names).not.toContain('.git');
+		expect(names).toContain('src');
+	});
+
+	it('sorts directories before files, then alphabetically', async () => {
+		mkdirSync(join(testDir, 'beta'), {recursive: true});
+		mkdirSync(join(testDir, 'alpha'), {recursive: true});
+		writeFileSync(join(testDir, 'zebra.md'), '');
+		writeFileSync(join(testDir, 'aardvark.md'), '');
+
+		const tree = await scanPluginTree(testDir);
+		const names = tree!.children!.map((c) => c.name);
+		// Directories first (alphabetically), then files (alphabetically)
+		expect(names).toEqual(['alpha', 'beta', 'aardvark.md', 'zebra.md']);
+	});
+
+	it('includes relative path for each node', async () => {
+		mkdirSync(join(testDir, 'skills', 'my-skill'), {recursive: true});
+		writeFileSync(join(testDir, 'skills', 'my-skill', 'SKILL.md'), '');
+
+		const tree = await scanPluginTree(testDir);
+		const skillsNode = tree!.children!.find((c) => c.name === 'skills');
+		const mySkillNode = skillsNode!.children!.find((c) => c.name === 'my-skill');
+		const skillMd = mySkillNode!.children!.find((c) => c.name === 'SKILL.md');
+
+		expect(skillsNode!.path).toBe('skills');
+		expect(mySkillNode!.path).toBe('skills/my-skill');
+		expect(skillMd!.path).toBe('skills/my-skill/SKILL.md');
 	});
 });
