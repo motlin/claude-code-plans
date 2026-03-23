@@ -1,7 +1,16 @@
 import {writeFileSync, mkdirSync, rmSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {parseFrontmatter, readPluginFileContent, readUserCommandContent} from '../src/lib/plugins.js';
+import {
+	parseFrontmatter,
+	readPluginFileContent,
+	readUserCommandContent,
+	extractMarketplace,
+	formatMarketplaceName,
+	groupPluginsByMarketplace,
+	isOfficialMarketplace,
+} from '../src/lib/plugins.js';
+import type {PluginInfo, MarketplaceInfo} from '../src/lib/plugins.js';
 
 const testDir = join(tmpdir(), 'claude-plugins-test-' + process.pid);
 
@@ -109,5 +118,122 @@ describe('readUserCommandContent', () => {
 	it('rejects path traversal in source', async () => {
 		const content = await readUserCommandContent('../evil', 'test.md');
 		expect(content).toBeNull();
+	});
+});
+
+describe('extractMarketplace', () => {
+	it('extracts marketplace from plugin ID', () => {
+		expect(extractMarketplace('hookify@claude-code-plugins')).toBe('claude-code-plugins');
+	});
+
+	it('returns unknown when no @ separator', () => {
+		expect(extractMarketplace('standalone-plugin')).toBe('unknown');
+	});
+
+	it('handles IDs with multiple @ signs', () => {
+		expect(extractMarketplace('plugin@scope@marketplace')).toBe('scope@marketplace');
+	});
+});
+
+describe('formatMarketplaceName', () => {
+	it('title-cases hyphenated names', () => {
+		expect(formatMarketplaceName('claude-code-plugins')).toBe('Claude Code Plugins');
+	});
+
+	it('handles single word', () => {
+		expect(formatMarketplaceName('unknown')).toBe('Unknown');
+	});
+
+	it('handles anthropic-agent-skills', () => {
+		expect(formatMarketplaceName('anthropic-agent-skills')).toBe('Anthropic Agent Skills');
+	});
+});
+
+describe('isOfficialMarketplace', () => {
+	it('identifies claude-plugins-official', () => {
+		expect(isOfficialMarketplace('claude-plugins-official')).toBe(true);
+	});
+
+	it('identifies anthropic-agent-skills', () => {
+		expect(isOfficialMarketplace('anthropic-agent-skills')).toBe(true);
+	});
+
+	it('returns false for third-party', () => {
+		expect(isOfficialMarketplace('claude-code-plugins')).toBe(false);
+	});
+});
+
+describe('groupPluginsByMarketplace', () => {
+	function makePlugin(id: string, name: string): PluginInfo {
+		return {
+			id,
+			name,
+			version: '1.0.0',
+			description: '',
+			author: '',
+			marketplace: extractMarketplace(id),
+			installPath: '/tmp/test',
+			agents: [],
+			commands: [],
+			skills: [],
+		};
+	}
+
+	const marketplaces: Record<string, MarketplaceInfo> = {
+		'claude-plugins-official': {
+			id: 'claude-plugins-official',
+			displayName: 'Claude Plugins Official',
+			source: {source: 'github', repo: 'anthropics/claude-plugins-official'},
+		},
+		'claude-code-plugins': {
+			id: 'claude-code-plugins',
+			displayName: 'Claude Code Plugins',
+			source: {source: 'github', repo: 'anthropics/claude-code-plugins'},
+		},
+	};
+
+	it('groups plugins by marketplace', () => {
+		const plugins = [
+			makePlugin('hookify@claude-code-plugins', 'hookify'),
+			makePlugin('playwright@claude-plugins-official', 'playwright'),
+			makePlugin('feature-dev@claude-code-plugins', 'feature-dev'),
+		];
+
+		const groups = groupPluginsByMarketplace(plugins, marketplaces);
+		expect(groups).toHaveLength(2);
+		// Official first
+		expect(groups[0]!.marketplace.id).toBe('claude-plugins-official');
+		expect(groups[0]!.plugins).toHaveLength(1);
+		expect(groups[1]!.marketplace.id).toBe('claude-code-plugins');
+		expect(groups[1]!.plugins).toHaveLength(2);
+	});
+
+	it('handles unknown marketplace gracefully', () => {
+		const plugins = [makePlugin('my-plugin@custom-marketplace', 'my-plugin')];
+		const groups = groupPluginsByMarketplace(plugins, marketplaces);
+		expect(groups).toHaveLength(1);
+		expect(groups[0]!.marketplace.displayName).toBe('Custom Marketplace');
+	});
+
+	it('returns empty array for no plugins', () => {
+		expect(groupPluginsByMarketplace([], marketplaces)).toEqual([]);
+	});
+
+	it('sorts official marketplaces before third-party', () => {
+		const plugins = [
+			makePlugin('a@zzz-marketplace', 'a'),
+			makePlugin('b@anthropic-agent-skills', 'b'),
+			makePlugin('c@claude-plugins-official', 'c'),
+			makePlugin('d@aaa-marketplace', 'd'),
+		];
+		const groups = groupPluginsByMarketplace(plugins, {});
+		const ids = groups.map((g) => g.marketplace.id);
+		// Both official first (alphabetically among themselves), then third-party alphabetically
+		expect(ids).toEqual([
+			'anthropic-agent-skills',
+			'claude-plugins-official',
+			'aaa-marketplace',
+			'zzz-marketplace',
+		]);
 	});
 });

@@ -8,6 +8,9 @@ import {listMemories} from './memory';
 import {extractTitle} from './markdown-utils';
 import {
 	listPlugins,
+	listMarketplaces,
+	groupPluginsByMarketplace,
+	isOfficialMarketplace,
 	listUserCommands,
 	readPluginFileContent,
 	readUserCommandContent,
@@ -326,6 +329,19 @@ export const requestSummary = createServerFn({method: 'POST'})
 
 export const getPluginsList = createServerFn({method: 'GET'}).handler(async () => {
 	return listPlugins();
+});
+
+export const getMarketplacesList = createServerFn({method: 'GET'}).handler(async () => {
+	return listMarketplaces();
+});
+
+export const getPluginGroups = createServerFn({method: 'GET'}).handler(async () => {
+	const [plugins, marketplaces] = await Promise.all([listPlugins(), listMarketplaces()]);
+	const groups = groupPluginsByMarketplace(plugins, marketplaces);
+	return groups.map((g) => ({
+		...g,
+		isOfficial: isOfficialMarketplace(g.marketplace.id),
+	}));
 });
 
 export const getUserCommandsList = createServerFn({method: 'GET'}).handler(async () => {

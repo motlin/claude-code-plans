@@ -1,19 +1,61 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {getPluginsList, getUserCommandsList} from '../lib/server-fns';
-import {ChevronRight, Blocks, Terminal, Bot, Sparkles, BookOpen} from 'lucide-react';
+import {getPluginGroups, getUserCommandsList} from '../lib/server-fns';
+import {ChevronRight, ChevronDown, Blocks, Terminal, Bot, Sparkles, BookOpen, Store} from 'lucide-react';
 import {useState} from 'react';
-import type {PluginInfo, UserCommandGroup} from '../lib/plugins';
+import type {PluginInfo, PluginGroup, UserCommandGroup} from '../lib/plugins';
+
+type PluginGroupWithOfficial = PluginGroup & {isOfficial: boolean};
 
 export const Route = createFileRoute('/plugins')({
 	component: PluginsPage,
 	loader: async () => {
-		const [plugins, userCommands] = await Promise.all([getPluginsList(), getUserCommandsList()]);
-		return {plugins, userCommands};
+		const [groups, userCommands] = await Promise.all([getPluginGroups(), getUserCommandsList()]);
+		const pluginCount = groups.reduce((n, g) => n + g.plugins.length, 0);
+		return {pluginCount, groups, userCommands};
 	},
 	head: () => ({
 		meta: [{title: 'Claude Plugins'}],
 	}),
 });
+
+function MarketplaceGroup({group, defaultExpanded}: {group: PluginGroupWithOfficial; defaultExpanded: boolean}) {
+	const [expanded, setExpanded] = useState(defaultExpanded);
+	const pluginCount = group.plugins.length;
+
+	return (
+		<div className="rounded-lg border border-border-300/15">
+			<button
+				type="button"
+				onClick={() => setExpanded(!expanded)}
+				className="flex w-full items-center gap-3 px-4 py-3 text-left"
+			>
+				<Store className="h-4 w-4 shrink-0 text-text-500" />
+				<div className="min-w-0 flex-1">
+					<span className="font-semibold text-sm">{group.marketplace.displayName}</span>
+					<span className="ml-2 text-xs text-text-500">
+						{pluginCount} plugin{pluginCount !== 1 && 's'}
+					</span>
+				</div>
+				{expanded ? (
+					<ChevronDown className="h-4 w-4 shrink-0 text-text-500" />
+				) : (
+					<ChevronRight className="h-4 w-4 shrink-0 text-text-500" />
+				)}
+			</button>
+
+			{expanded && (
+				<div className="border-t border-border-300/10 px-3 pb-3 pt-2 space-y-2">
+					{group.plugins.map((plugin) => (
+						<PluginCard
+							key={plugin.id}
+							plugin={plugin}
+						/>
+					))}
+				</div>
+			)}
+		</div>
+	);
+}
 
 function PluginCard({plugin}: {plugin: PluginInfo}) {
 	const [expanded, setExpanded] = useState(false);
@@ -176,8 +218,7 @@ function ContentSection({
 }
 
 function PluginsPage() {
-	const {plugins, userCommands} = Route.useLoaderData();
-	const pluginCount = plugins.length;
+	const {pluginCount, groups, userCommands} = Route.useLoaderData();
 	const commandGroupCount = userCommands.length;
 
 	return (
@@ -185,16 +226,19 @@ function PluginsPage() {
 			<h1 className="text-lg font-semibold">Plugins</h1>
 			<p className="mt-1 text-sm text-text-500">
 				{pluginCount} installed plugin{pluginCount !== 1 && 's'}
+				{' across '}
+				{groups.length} marketplace{groups.length !== 1 && 's'}
 				{commandGroupCount > 0 &&
 					`, ${userCommands.reduce((n: number, g: UserCommandGroup) => n + g.commands.length, 0)} user command${userCommands.reduce((n: number, g: UserCommandGroup) => n + g.commands.length, 0) !== 1 ? 's' : ''}`}
 			</p>
 
-			{pluginCount > 0 && (
-				<div className="mt-6 space-y-3">
-					{plugins.map((plugin: PluginInfo) => (
-						<PluginCard
-							key={plugin.id}
-							plugin={plugin}
+			{groups.length > 0 && (
+				<div className="mt-6 space-y-4">
+					{groups.map((group: PluginGroupWithOfficial) => (
+						<MarketplaceGroup
+							key={group.marketplace.id}
+							group={group}
+							defaultExpanded={!group.isOfficial}
 						/>
 					))}
 				</div>
