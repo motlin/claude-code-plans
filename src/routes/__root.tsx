@@ -3,7 +3,7 @@ import type {ErrorComponentProps} from '@tanstack/react-router';
 import {useCallback, useEffect, useState, type ReactNode} from 'react';
 import {ThemeProvider} from '../components/theme-provider';
 import {ModeToggle} from '../components/mode-toggle';
-import {Sidebar} from '../components/sidebar';
+import {Sidebar} from '../components/sidebar/index';
 import {CommandPalette} from '../components/command-palette';
 import {useCommandPalette} from '../hooks/use-command-palette';
 import {IndexingBanner} from '../components/indexing-banner';
