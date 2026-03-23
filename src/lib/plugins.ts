@@ -27,10 +27,22 @@ export interface PluginInfo {
 	version: string;
 	description: string;
 	author: string;
+	marketplace: string;
 	installPath: string;
 	agents: PluginFile[];
 	commands: PluginFile[];
 	skills: PluginSkill[];
+}
+
+export interface MarketplaceInfo {
+	id: string;
+	displayName: string;
+	source: {source: string; repo?: string; path?: string};
+}
+
+export interface PluginGroup {
+	marketplace: MarketplaceInfo;
+	plugins: PluginInfo[];
 }
 
 export interface UserCommandGroup {
@@ -132,6 +144,74 @@ async function scanSkills(skillsDir: string): Promise<PluginSkill[]> {
 	return skills;
 }
 
+export function extractMarketplace(pluginId: string): string {
+	const atIdx = pluginId.indexOf('@');
+	if (atIdx === -1) return 'unknown';
+	return pluginId.slice(atIdx + 1);
+}
+
+export async function listMarketplaces(): Promise<Record<string, MarketplaceInfo>> {
+	const marketplacesPath = join(homedir(), '.claude', 'plugins', 'known_marketplaces.json');
+	try {
+		const raw = await readFile(marketplacesPath, 'utf-8');
+		const data = JSON.parse(raw) as Record<string, {source: {source: string; repo?: string; path?: string}}>;
+		const result: Record<string, MarketplaceInfo> = {};
+		for (const [id, info] of Object.entries(data)) {
+			result[id] = {
+				id,
+				displayName: formatMarketplaceName(id),
+				source: info.source,
+			};
+		}
+
+		return result;
+	} catch {
+		return {};
+	}
+}
+
+export function formatMarketplaceName(id: string): string {
+	return id
+		.split('-')
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+		.join(' ');
+}
+
+export function groupPluginsByMarketplace(
+	plugins: PluginInfo[],
+	marketplaces: Record<string, MarketplaceInfo>,
+): PluginGroup[] {
+	const groups = new Map<string, PluginGroup>();
+
+	for (const plugin of plugins) {
+		const marketplaceId = plugin.marketplace;
+		if (!groups.has(marketplaceId)) {
+			const info = marketplaces[marketplaceId] || {
+				id: marketplaceId,
+				displayName: formatMarketplaceName(marketplaceId),
+				source: {source: 'unknown'},
+			};
+			groups.set(marketplaceId, {marketplace: info, plugins: []});
+		}
+
+		groups.get(marketplaceId)!.plugins.push(plugin);
+	}
+
+	// Sort groups: official first, then alphabetically
+	const sorted = [...groups.values()].sort((a, b) => {
+		const aOfficial = isOfficialMarketplace(a.marketplace.id);
+		const bOfficial = isOfficialMarketplace(b.marketplace.id);
+		if (aOfficial !== bOfficial) return aOfficial ? -1 : 1;
+		return a.marketplace.displayName.localeCompare(b.marketplace.displayName);
+	});
+
+	return sorted;
+}
+
+export function isOfficialMarketplace(marketplaceId: string): boolean {
+	return marketplaceId === 'claude-plugins-official' || marketplaceId === 'anthropic-agent-skills';
+}
+
 export async function listPlugins(): Promise<PluginInfo[]> {
 	const registryPath = join(homedir(), '.claude', 'plugins', 'installed_plugins.json');
 	let registry: {plugins: Record<string, Array<{installPath: string; version: string}>>};
@@ -166,6 +246,7 @@ export async function listPlugins(): Promise<PluginInfo[]> {
 			version: pluginJson.version || install.version,
 			description: pluginJson.description || '',
 			author: pluginJson.author?.name || '',
+			marketplace: extractMarketplace(id),
 			installPath: install.installPath,
 			agents,
 			commands,
