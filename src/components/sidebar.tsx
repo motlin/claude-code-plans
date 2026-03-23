@@ -760,10 +760,12 @@ export function Sidebar({
 	collapsed,
 	onToggle,
 	refreshKey,
+	mobile,
 }: {
 	collapsed: boolean;
 	onToggle: () => void;
 	refreshKey: number;
+	mobile?: boolean;
 }) {
 	const matches = useMatches();
 	const currentPath = matches[matches.length - 1]?.fullPath ?? '/';
@@ -806,7 +808,7 @@ export function Sidebar({
 		});
 	}, [activeSection, activeItemId]);
 
-	if (collapsed) {
+	if (collapsed && !mobile) {
 		return (
 			<button
 				type="button"
@@ -820,7 +822,13 @@ export function Sidebar({
 	}
 
 	return (
-		<nav className="relative hidden h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border-300/15 bg-bg-200 md:flex">
+		<nav
+			className={
+				mobile
+					? 'relative flex h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border-300/15 bg-bg-200'
+					: 'relative hidden h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border-300/15 bg-bg-200 md:flex'
+			}
+		>
 			<div className="flex items-center justify-between px-4 pt-3 pb-3">
 				<Link
 					to="/"

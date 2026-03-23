@@ -32,8 +32,53 @@ export const Route = createRootRoute({
 	errorComponent: RootErrorComponent,
 });
 
+function HamburgerIcon() {
+	return (
+		<svg
+			viewBox="0 0 20 20"
+			fill="currentColor"
+			className="h-5 w-5"
+		>
+			<path
+				fillRule="evenodd"
+				d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 5A.75.75 0 012.75 9h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 9.75zm0 5a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75a.75.75 0 01-.75-.75z"
+				clipRule="evenodd"
+			/>
+		</svg>
+	);
+}
+
+function MobileSidebar({open, onClose, refreshKey}: {open: boolean; onClose: () => void; refreshKey: number}) {
+	const router = useRouter();
+
+	// Close on route change
+	useEffect(() => {
+		if (!open) return;
+		return router.subscribe('onBeforeNavigate', onClose);
+	}, [open, onClose, router]);
+
+	if (!open) return null;
+
+	return (
+		<div className="fixed inset-0 z-50 md:hidden">
+			{/* biome-ignore lint/a11y/useKeyWithClickEvents: backdrop dismiss */}
+			<div
+				className="absolute inset-0 bg-black/50"
+				onClick={onClose}
+			/>
+			<Sidebar
+				collapsed={false}
+				onToggle={onClose}
+				refreshKey={refreshKey}
+				mobile
+			/>
+		</div>
+	);
+}
+
 function RootComponent() {
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+	const [mobileOpen, setMobileOpen] = useState(false);
 	const [refreshKey, setRefreshKey] = useState(0);
 	const commandPalette = useCommandPalette();
 
@@ -48,7 +93,15 @@ function RootComponent() {
 					/>
 					<main className="flex-1 overflow-y-auto bg-bg-000">
 						<IndexingBanner />
-						<div className="flex min-h-9 items-center justify-end px-4 pt-3 sm:px-8">
+						<div className="flex min-h-9 items-center justify-between px-4 pt-3 sm:px-8">
+							<button
+								type="button"
+								onClick={() => setMobileOpen(true)}
+								className="flex h-8 w-8 items-center justify-center rounded-[6px] text-text-200 transition-colors hover:bg-bg-300/50 md:hidden"
+								title="Open menu"
+							>
+								<HamburgerIcon />
+							</button>
 							<ModeToggle />
 						</div>
 						<div className="px-4 pb-8 sm:px-8">
@@ -56,6 +109,11 @@ function RootComponent() {
 						</div>
 					</main>
 				</div>
+				<MobileSidebar
+					open={mobileOpen}
+					onClose={() => setMobileOpen(false)}
+					refreshKey={refreshKey}
+				/>
 				<CommandPalette
 					open={commandPalette.open}
 					onOpenChange={commandPalette.setOpen}
