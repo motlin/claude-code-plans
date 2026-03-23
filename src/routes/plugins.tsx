@@ -70,8 +70,8 @@ function PluginCard({plugin}: {plugin: PluginInfo}) {
 							icon={<Bot className="h-3 w-3" />}
 							items={plugin.agents.map((a) => ({
 								label: a.name,
-								to: '/plugin/$id/$type/$path',
-								params: {id: plugin.id, type: 'agents', path: a.filename},
+								to: '/plugin/$id/$type/$',
+								params: {id: plugin.id, type: 'agents', _splat: a.filename},
 							}))}
 						/>
 					)}
@@ -81,8 +81,8 @@ function PluginCard({plugin}: {plugin: PluginInfo}) {
 							icon={<Terminal className="h-3 w-3" />}
 							items={plugin.commands.map((c) => ({
 								label: c.name,
-								to: '/plugin/$id/$type/$path',
-								params: {id: plugin.id, type: 'commands', path: c.filename},
+								to: '/plugin/$id/$type/$',
+								params: {id: plugin.id, type: 'commands', _splat: c.filename},
 							}))}
 						/>
 					)}
@@ -92,25 +92,25 @@ function PluginCard({plugin}: {plugin: PluginInfo}) {
 							icon={<Sparkles className="h-3 w-3" />}
 							items={plugin.skills.map((s) => ({
 								label: s.name,
-								to: '/plugin/$id/$type/$path',
-								params: {id: plugin.id, type: 'skills', path: `${s.dirname}/SKILL.md`},
+								to: '/plugin/$id/$type/$',
+								params: {id: plugin.id, type: 'skills', _splat: `${s.dirname}/SKILL.md`},
 								children: [
 									...s.references.map((r) => ({
 										label: r.name,
-										to: '/plugin/$id/$type/$path' as const,
+										to: '/plugin/$id/$type/$' as const,
 										params: {
 											id: plugin.id,
 											type: 'skills',
-											path: `${s.dirname}/references/${r.filename}`,
+											_splat: `${s.dirname}/references/${r.filename}`,
 										},
 									})),
 									...s.examples.map((e) => ({
 										label: e.name,
-										to: '/plugin/$id/$type/$path' as const,
+										to: '/plugin/$id/$type/$' as const,
 										params: {
 											id: plugin.id,
 											type: 'skills',
-											path: `${s.dirname}/examples/${e.filename}`,
+											_splat: `${s.dirname}/examples/${e.filename}`,
 										},
 									})),
 								],
@@ -145,7 +145,7 @@ function ContentSection({
 			</div>
 			<div className="mt-1 space-y-px">
 				{items.map((item) => (
-					<div key={item.params['path'] || item.label}>
+					<div key={item.params['_splat'] || item.label}>
 						<Link
 							to={item.to as string}
 							params={item.params}
@@ -157,7 +157,7 @@ function ContentSection({
 							<div className="pl-4">
 								{item.children.map((child) => (
 									<Link
-										key={child.params['path'] || child.label}
+										key={child.params['_splat'] || child.label}
 										to={child.to as string}
 										params={child.params}
 										className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-text-400 no-underline transition-colors hover:bg-bg-200/50 hover:text-text-200"

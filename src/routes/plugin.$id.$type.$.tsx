@@ -6,10 +6,10 @@ import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 
 const getFile = getPluginFileRendered;
 
-export const Route = createFileRoute('/plugin/$id/$type/$path')({
+export const Route = createFileRoute('/plugin/$id/$type/$')({
 	component: PluginFilePage,
 	loader: ({params}) =>
-		getFile({data: {pluginId: params.id, pathSegments: [params.type, ...params.path.split('/')]}}),
+		getFile({data: {pluginId: params.id, pathSegments: [params.type, ...(params._splat ?? '').split('/')]}}),
 	head: ({loaderData}) => ({
 		meta: [{title: loaderData?.title ?? 'Plugin File'}],
 	}),
