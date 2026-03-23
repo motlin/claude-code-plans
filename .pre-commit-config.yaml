@@ -23,15 +23,12 @@ repos:
       hooks:
           - id: biome
             name: biome
-            entry: npx @biomejs/biome format --write
+            entry: npx @biomejs/biome format --write --no-errors-on-unmatched
             language: system
             types: [file]
-            files: \.(json|jsonc)$
 
           - id: eslint
             name: eslint
             entry: npx eslint --fix
             language: system
-            files: \.(ts|tsx|mjs|cjs)$
-            exclude: routeTree\.gen\.ts$
             types: [file]
