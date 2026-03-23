@@ -1,7 +1,14 @@
-import {writeFileSync, mkdirSync, rmSync, utimesSync, readFileSync} from 'node:fs';
+import {writeFileSync, mkdirSync, rmSync, utimesSync, readFileSync, existsSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir, homedir} from 'node:os';
-import {decodeProjectDir, listMemories, readMemory, writeMemory, getProjectsDir} from '../src/lib/memory.js';
+import {
+	decodeProjectDir,
+	listMemories,
+	readMemory,
+	writeMemory,
+	deleteMemory,
+	getProjectsDir,
+} from '../src/lib/memory.js';
 
 const testDir = join(tmpdir(), 'claude-memory-test-' + process.pid);
 
@@ -199,6 +206,51 @@ describe('writeMemory', () => {
 
 	it('rejects non-md extension', async () => {
 		const ok = await writeMemory(testDir, '-Users-craig-projects-app', 'file.txt', 'bad');
+		expect(ok).toBe(false);
+	});
+});
+
+describe('deleteMemory', () => {
+	it('deletes an existing memory file', async () => {
+		const memDir = join(testDir, '-Users-craig-projects-app', 'memory');
+		mkdirSync(memDir, {recursive: true});
+		writeFileSync(join(memDir, 'notes.md'), '# Notes\n\nContent');
+
+		const ok = await deleteMemory(testDir, '-Users-craig-projects-app', 'notes.md');
+		expect(ok).toBe(true);
+		expect(existsSync(join(memDir, 'notes.md'))).toBe(false);
+	});
+
+	it('returns false for non-existent file', async () => {
+		const memDir = join(testDir, '-Users-craig-projects-app', 'memory');
+		mkdirSync(memDir, {recursive: true});
+
+		const ok = await deleteMemory(testDir, '-Users-craig-projects-app', 'nope.md');
+		expect(ok).toBe(false);
+	});
+
+	it('rejects path traversal in project param', async () => {
+		const ok = await deleteMemory(testDir, '../etc', 'file.md');
+		expect(ok).toBe(false);
+	});
+
+	it('rejects path traversal in filename param', async () => {
+		const ok = await deleteMemory(testDir, '-Users-craig-projects-app', '../../../etc/passwd.md');
+		expect(ok).toBe(false);
+	});
+
+	it('rejects slash in project param', async () => {
+		const ok = await deleteMemory(testDir, 'foo/bar', 'file.md');
+		expect(ok).toBe(false);
+	});
+
+	it('rejects slash in filename', async () => {
+		const ok = await deleteMemory(testDir, '-Users-craig-projects-app', 'sub/file.md');
+		expect(ok).toBe(false);
+	});
+
+	it('rejects non-md extension', async () => {
+		const ok = await deleteMemory(testDir, '-Users-craig-projects-app', 'file.txt');
 		expect(ok).toBe(false);
 	});
 });
