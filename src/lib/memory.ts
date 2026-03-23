@@ -23,8 +23,10 @@ export function decodeProjectDir(encoded: string, projectPath?: string | undefin
 		const last = segments[segments.length - 1];
 		if (last) return last;
 	}
-	const parts = encoded.replace(/^-/, '/').replace(/-/g, '/').split('/');
-	return parts[parts.length - 1]!;
+	// Return full decoded path — we can't reliably determine the last segment
+	// because hyphens are ambiguous (path separator vs part of dir name).
+	// Use resolveProjectName() for accurate short names.
+	return encoded.replace(/^-/, '/').replace(/-/g, '/');
 }
 
 const resolvedProjectNames = new Map<string, string>();
@@ -42,7 +44,8 @@ export async function resolveProjectName(encoded: string, projectPath?: string |
 	// The encoded dir name is the full path with / replaced by -.
 	// e.g. "-Users-craig-projects-claude-code-plans" -> "/Users/craig/projects/claude-code-plans"
 	// We need to find which hyphens are path separators vs part of dir names.
-	// Strategy: try stat-ing candidate paths from right to left to find the real directory.
+	// Strategy: try stat-ing candidate paths from right to left to find the real directory,
+	// then return the last segment of the real path (preserving hyphens in dir names).
 	const chars = encoded.slice(1); // remove leading -
 	const hyphenPositions: number[] = [];
 	for (let i = 0; i < chars.length; i++) {
@@ -66,7 +69,7 @@ export async function resolveProjectName(encoded: string, projectPath?: string |
 		}
 	}
 
-	// Fallback: last segment of naive decode
+	// Fallback: full decoded path (hyphens are ambiguous without filesystem)
 	const name = decodeProjectDir(encoded);
 	resolvedProjectNames.set(encoded, name);
 	return name;

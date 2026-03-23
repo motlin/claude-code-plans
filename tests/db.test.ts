@@ -240,7 +240,7 @@ describe('indexer', () => {
 
 		const projects = listProjectsFromDb(db.index);
 		expect(projects).toHaveLength(1);
-		expect(projects[0]!.name).toBe('app');
+		expect(projects[0]!.name).toBe('/Users/craig/projects/app');
 
 		const sessions = db.index.select().from(schema.sessions).all();
 		expect(sessions).toHaveLength(2);

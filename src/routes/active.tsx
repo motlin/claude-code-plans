@@ -20,11 +20,6 @@ function formatRelativeTime(lastModified: number): string {
 	return `modified ${minutes}m ago`;
 }
 
-function decodeProjectName(encoded: string): string {
-	const parts = encoded.replace(/^-/, '/').replace(/-/g, '/').split('/');
-	return parts[parts.length - 1]!;
-}
-
 function ActivePage() {
 	const initialSessions = Route.useLoaderData();
 	const [sessions, setSessions] = useState<ActiveSession[]>(initialSessions);
@@ -62,7 +57,7 @@ function ActivePage() {
 									<span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
 								</span>
 								<span className="truncate text-sm font-medium text-text-000">
-									{decodeProjectName(session.projectDir)}
+									{session.projectName}
 								</span>
 								<span className="ml-auto text-xs text-text-500">
 									{formatRelativeTime(session.lastModified)}

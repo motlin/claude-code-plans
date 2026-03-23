@@ -1,19 +1,21 @@
 import {readdirSync, statSync} from 'node:fs';
 import {join} from 'node:path';
 import {homedir} from 'node:os';
+import {resolveProjectName} from './memory';
 
 export interface ActiveSession {
 	sessionId: string;
 	projectDir: string;
+	projectName: string;
 	lastModified: number;
 }
 
 const ACTIVE_THRESHOLD_MS = 60_000;
 
-export function getActiveSessions(): ActiveSession[] {
+export async function getActiveSessions(): Promise<ActiveSession[]> {
 	const projectsDir = join(homedir(), '.claude', 'projects');
 	const now = Date.now();
-	const active: ActiveSession[] = [];
+	const active: Array<Omit<ActiveSession, 'projectName'> & {projectDir: string}> = [];
 
 	let projectDirs: string[];
 	try {
@@ -50,5 +52,16 @@ export function getActiveSessions(): ActiveSession[] {
 	}
 
 	active.sort((a, b) => b.lastModified - a.lastModified);
-	return active;
+
+	const nameCache = new Map<string, string>();
+	const result: ActiveSession[] = [];
+	for (const s of active) {
+		let name = nameCache.get(s.projectDir);
+		if (!name) {
+			name = await resolveProjectName(s.projectDir);
+			nameCache.set(s.projectDir, name);
+		}
+		result.push({...s, projectName: name});
+	}
+	return result;
 }

@@ -14,17 +14,16 @@ afterEach(() => {
 });
 
 describe('decodeProjectDir', () => {
-	it('decodes a simple project path', () => {
-		// Encoding is ambiguous for dirs with hyphens — best-effort extracts last segment
-		expect(decodeProjectDir('-Users-craig-projects-myapp')).toBe('myapp');
+	it('returns full decoded path when no projectPath given', () => {
+		expect(decodeProjectDir('-Users-craig-projects-myapp')).toBe('/Users/craig/projects/myapp');
 	});
 
-	it('extracts last path component', () => {
-		expect(decodeProjectDir('-Users-craig-deep-nested-project')).toBe('project');
+	it('returns full decoded path (hyphens are ambiguous without filesystem)', () => {
+		expect(decodeProjectDir('-Users-craig-deep-nested-project')).toBe('/Users/craig/deep/nested/project');
 	});
 
-	it('handles single-segment name', () => {
-		expect(decodeProjectDir('-home-user-code')).toBe('code');
+	it('uses last segment of projectPath when provided', () => {
+		expect(decodeProjectDir('-Users-craig-projects-my-app', '/Users/craig/projects/my-app')).toBe('my-app');
 	});
 });
 
@@ -49,7 +48,7 @@ describe('listMemories', () => {
 		const groups = await listMemories(testDir);
 		expect(groups).toHaveLength(1);
 		expect(groups[0]!.project).toBe('-Users-craig-projects-app');
-		expect(groups[0]!.projectName).toBe('app');
+		expect(groups[0]!.projectName).toBe('/Users/craig/projects/app');
 		expect(groups[0]!.memories).toHaveLength(2);
 	});
 
