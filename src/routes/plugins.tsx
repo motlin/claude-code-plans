@@ -1,8 +1,9 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {getPluginGroups, getUserCommandsList} from '../lib/server-fns';
-import {ChevronRight, ChevronDown, Blocks, Terminal, Bot, Sparkles, BookOpen, Store} from 'lucide-react';
+import {getPluginGroups, getUserCommandsList, getPluginTree} from '../lib/server-fns';
+import {ChevronRight, ChevronDown, Blocks, Terminal, Bot, Sparkles, BookOpen, Store, FolderTree} from 'lucide-react';
 import {useState} from 'react';
-import type {PluginInfo, PluginGroup, UserCommandGroup} from '../lib/plugins';
+import type {PluginInfo, PluginGroup, UserCommandGroup, FileTreeNode} from '../lib/plugins';
+import {FileTree} from '../components/file-tree';
 
 type PluginGroupWithOfficial = PluginGroup & {isOfficial: boolean};
 
@@ -57,9 +58,31 @@ function MarketplaceGroup({group, defaultExpanded}: {group: PluginGroupWithOffic
 	);
 }
 
+type PluginTab = 'contents' | 'files';
+
 function PluginCard({plugin}: {plugin: PluginInfo}) {
 	const [expanded, setExpanded] = useState(false);
+	const [activeTab, setActiveTab] = useState<PluginTab>('contents');
+	const [fileTree, setFileTree] = useState<FileTreeNode | null>(null);
+	const [treeLoading, setTreeLoading] = useState(false);
+	const [treeLoaded, setTreeLoaded] = useState(false);
 	const totalItems = plugin.agents.length + plugin.commands.length + plugin.skills.length;
+
+	async function loadFileTree() {
+		if (treeLoaded) return;
+		setTreeLoading(true);
+		const tree = await getPluginTree({data: {pluginId: plugin.id}});
+		setFileTree(tree);
+		setTreeLoaded(true);
+		setTreeLoading(false);
+	}
+
+	function switchTab(tab: PluginTab) {
+		setActiveTab(tab);
+		if (tab === 'files') {
+			loadFileTree();
+		}
+	}
 
 	return (
 		<div className="rounded-lg border border-border-300/15 transition-colors hover:bg-bg-200/30">
@@ -87,7 +110,8 @@ function PluginCard({plugin}: {plugin: PluginInfo}) {
 						{plugin.commands.length > 0 && (
 							<span className="flex items-center gap-1">
 								<Terminal className="h-3 w-3" />
-								{plugin.commands.length} command{plugin.commands.length !== 1 && 's'}
+								{plugin.commands.length} command
+								{plugin.commands.length !== 1 && 's'}
 							</span>
 						)}
 						{plugin.skills.length > 0 && (
@@ -104,60 +128,123 @@ function PluginCard({plugin}: {plugin: PluginInfo}) {
 				/>
 			</button>
 
-			{expanded && totalItems > 0 && (
+			{expanded && (
 				<div className="border-t border-border-300/10 px-4 pb-3 pt-2">
-					{plugin.agents.length > 0 && (
-						<ContentSection
-							label="Agents"
-							icon={<Bot className="h-3 w-3" />}
-							items={plugin.agents.map((a) => ({
-								label: a.name,
-								to: '/plugin/$id/$type/$',
-								params: {id: plugin.id, type: 'agents', _splat: a.filename},
-							}))}
-						/>
-					)}
-					{plugin.commands.length > 0 && (
-						<ContentSection
-							label="Commands"
-							icon={<Terminal className="h-3 w-3" />}
-							items={plugin.commands.map((c) => ({
-								label: c.name,
-								to: '/plugin/$id/$type/$',
-								params: {id: plugin.id, type: 'commands', _splat: c.filename},
-							}))}
-						/>
-					)}
-					{plugin.skills.length > 0 && (
-						<ContentSection
-							label="Skills"
-							icon={<Sparkles className="h-3 w-3" />}
-							items={plugin.skills.map((s) => ({
-								label: s.name,
-								to: '/plugin/$id/$type/$',
-								params: {id: plugin.id, type: 'skills', _splat: `${s.dirname}/SKILL.md`},
-								children: [
-									...s.references.map((r) => ({
-										label: r.name,
-										to: '/plugin/$id/$type/$' as const,
+					<div className="mb-2 flex gap-1">
+						<button
+							type="button"
+							onClick={() => switchTab('contents')}
+							className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+								activeTab === 'contents'
+									? 'bg-bg-300/60 text-text-100'
+									: 'text-text-500 hover:bg-bg-200/50 hover:text-text-300'
+							}`}
+						>
+							<Blocks className="h-3 w-3" />
+							Contents
+						</button>
+						<button
+							type="button"
+							onClick={() => switchTab('files')}
+							className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+								activeTab === 'files'
+									? 'bg-bg-300/60 text-text-100'
+									: 'text-text-500 hover:bg-bg-200/50 hover:text-text-300'
+							}`}
+						>
+							<FolderTree className="h-3 w-3" />
+							Files
+						</button>
+					</div>
+
+					{activeTab === 'contents' && totalItems > 0 && (
+						<>
+							{plugin.agents.length > 0 && (
+								<ContentSection
+									label="Agents"
+									icon={<Bot className="h-3 w-3" />}
+									items={plugin.agents.map((a) => ({
+										label: a.name,
+										to: '/plugin/$id/$type/$',
+										params: {id: plugin.id, type: 'agents', _splat: a.filename},
+									}))}
+								/>
+							)}
+							{plugin.commands.length > 0 && (
+								<ContentSection
+									label="Commands"
+									icon={<Terminal className="h-3 w-3" />}
+									items={plugin.commands.map((c) => ({
+										label: c.name,
+										to: '/plugin/$id/$type/$',
+										params: {
+											id: plugin.id,
+											type: 'commands',
+											_splat: c.filename,
+										},
+									}))}
+								/>
+							)}
+							{plugin.skills.length > 0 && (
+								<ContentSection
+									label="Skills"
+									icon={<Sparkles className="h-3 w-3" />}
+									items={plugin.skills.map((s) => ({
+										label: s.name,
+										to: '/plugin/$id/$type/$',
 										params: {
 											id: plugin.id,
 											type: 'skills',
-											_splat: `${s.dirname}/references/${r.filename}`,
+											_splat: `${s.dirname}/SKILL.md`,
 										},
-									})),
-									...s.examples.map((e) => ({
-										label: e.name,
-										to: '/plugin/$id/$type/$' as const,
-										params: {
-											id: plugin.id,
-											type: 'skills',
-											_splat: `${s.dirname}/examples/${e.filename}`,
-										},
-									})),
-								],
-							}))}
-						/>
+										children: [
+											...s.references.map((r) => ({
+												label: r.name,
+												to: '/plugin/$id/$type/$' as const,
+												params: {
+													id: plugin.id,
+													type: 'skills',
+													_splat: `${s.dirname}/references/${r.filename}`,
+												},
+											})),
+											...s.examples.map((e) => ({
+												label: e.name,
+												to: '/plugin/$id/$type/$' as const,
+												params: {
+													id: plugin.id,
+													type: 'skills',
+													_splat: `${s.dirname}/examples/${e.filename}`,
+												},
+											})),
+										],
+									}))}
+								/>
+							)}
+						</>
+					)}
+					{activeTab === 'contents' && totalItems === 0 && (
+						<p className="py-2 text-xs text-text-500">No agents, commands, or skills found.</p>
+					)}
+
+					{activeTab === 'files' && (
+						<div className="mt-1">
+							{treeLoading && (
+								<div className="space-y-1.5 py-2">
+									<div className="h-3 w-3/4 animate-pulse rounded bg-bg-300/50" />
+									<div className="h-3 w-1/2 animate-pulse rounded bg-bg-300/50" />
+									<div className="h-3 w-2/3 animate-pulse rounded bg-bg-300/50" />
+								</div>
+							)}
+							{!treeLoading && fileTree && (
+								<FileTree
+									tree={fileTree}
+									pluginId={plugin.id}
+								/>
+							)}
+							{!treeLoading && !fileTree && treeLoaded && (
+								<p className="py-2 text-xs text-text-500">Could not read plugin directory.</p>
+							)}
+						</div>
 					)}
 				</div>
 			)}
@@ -176,7 +263,11 @@ function ContentSection({
 		label: string;
 		to: string;
 		params: Record<string, string>;
-		children?: Array<{label: string; to: string; params: Record<string, string>}>;
+		children?: Array<{
+			label: string;
+			to: string;
+			params: Record<string, string>;
+		}>;
 	}>;
 }) {
 	return (
