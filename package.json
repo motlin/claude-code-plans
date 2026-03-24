@@ -18,7 +18,7 @@
 	"dependencies": {
 		"@mdxeditor/editor": "^3.53.1",
 		"@shikijs/markdown-it": "^4.0.2",
-		"@tanstack/react-router": "^1.167.5",
+		"@tanstack/react-router": "^1.168.3",
 		"@tanstack/react-start": "^1.167.3",
 		"better-sqlite3": "^12.8.0",
 		"chokidar": "^5.0.0",
