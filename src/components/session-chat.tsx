@@ -1,4 +1,5 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
+import {Copy, Link2} from 'lucide-react';
 import {MarkdownArticle} from './markdown-article';
 import {getToolRenderer} from './tool-renderers';
 import type {ClientToolCall} from './tool-renderers';
@@ -40,7 +41,79 @@ interface ChatMessage {
 	command?: {name: string; args?: string};
 }
 
-export const SessionChat = React.memo(function SessionChat({messages}: {messages: ChatMessage[]}) {
+interface SessionChatProps {
+	messages: ChatMessage[];
+	showThinking?: boolean;
+	showTools?: boolean;
+}
+
+function extractPlainText(html: string): string {
+	if (typeof document === 'undefined') return html.replace(/<[^>]+>/g, '');
+	const div = document.createElement('div');
+	div.innerHTML = html;
+	return div.textContent ?? '';
+}
+
+function CopyToast({visible}: {visible: boolean}) {
+	return (
+		<span
+			className={`absolute -top-6 left-1/2 -translate-x-1/2 rounded bg-bg-200 px-1.5 py-0.5 text-[10px] text-text-300 shadow-sm transition-opacity whitespace-nowrap ${visible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+		>
+			Copied!
+		</span>
+	);
+}
+
+function MessageToolbar({msg, index}: {msg: ChatMessage; index: number}) {
+	const [copied, setCopied] = useState<'text' | 'link' | null>(null);
+
+	function copyText() {
+		const text = msg.htmlBlocks.map(extractPlainText).join('\n\n');
+		navigator.clipboard.writeText(text);
+		setCopied('text');
+		setTimeout(() => setCopied(null), 1500);
+	}
+
+	function copyLink() {
+		const url = `${window.location.origin}${window.location.pathname}#msg-${index}`;
+		navigator.clipboard.writeText(url);
+		setCopied('link');
+		setTimeout(() => setCopied(null), 1500);
+	}
+
+	return (
+		<div className="absolute -top-3 right-0 hidden group-hover:flex items-center gap-1 bg-bg-000 border border-border-300/15 rounded-md shadow-sm px-1 py-0.5 z-10">
+			<div className="relative">
+				<button
+					type="button"
+					title="Copy message"
+					onClick={copyText}
+					className="p-1 text-text-500 hover:text-text-000 cursor-pointer"
+				>
+					<Copy className="h-3 w-3" />
+				</button>
+				<CopyToast visible={copied === 'text'} />
+			</div>
+			<div className="relative">
+				<button
+					type="button"
+					title="Copy link"
+					onClick={copyLink}
+					className="p-1 text-text-500 hover:text-text-000 cursor-pointer"
+				>
+					<Link2 className="h-3 w-3" />
+				</button>
+				<CopyToast visible={copied === 'link'} />
+			</div>
+		</div>
+	);
+}
+
+export const SessionChat = React.memo(function SessionChat({
+	messages,
+	showThinking = true,
+	showTools = true,
+}: SessionChatProps) {
 	const endRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -57,9 +130,22 @@ export const SessionChat = React.memo(function SessionChat({messages}: {messages
 				return (
 					<div
 						key={i}
-						className={isNewTurn ? 'pb-6' : ''}
+						id={`msg-${i}`}
+						className={`group relative ${isNewTurn ? 'pb-6' : ''}`}
 					>
-						{msg.role === 'user' ? <UserMessage msg={msg} /> : <AssistantMessage msg={msg} />}
+						<MessageToolbar
+							msg={msg}
+							index={i}
+						/>
+						{msg.role === 'user' ? (
+							<UserMessage msg={msg} />
+						) : (
+							<AssistantMessage
+								msg={msg}
+								showThinking={showThinking}
+								showTools={showTools}
+							/>
+						)}
 					</div>
 				);
 			})}
@@ -199,13 +285,21 @@ function ThinkingBlock({thinking}: {thinking: string}) {
 	);
 }
 
-function AssistantMessage({msg}: {msg: ChatMessage}) {
+function AssistantMessage({
+	msg,
+	showThinking = true,
+	showTools = true,
+}: {
+	msg: ChatMessage;
+	showThinking?: boolean;
+	showTools?: boolean;
+}) {
 	const thinkingText = msg.thinkingBlocks.length > 0 ? msg.thinkingBlocks.join('\n\n---\n\n') : null;
 	const timestampText = formatTimestamp(msg.timestamp);
 
 	return (
 		<div className="flex flex-col gap-1.5 min-w-0">
-			{thinkingText && <ThinkingBlock thinking={thinkingText} />}
+			{showThinking && thinkingText && <ThinkingBlock thinking={thinkingText} />}
 			{msg.htmlBlocks.map((html, i) => (
 				<div
 					key={`text-${i}`}
@@ -222,7 +316,7 @@ function AssistantMessage({msg}: {msg: ChatMessage}) {
 					className="max-w-full max-h-96 rounded-lg border border-border-300/15 shadow-sm"
 				/>
 			))}
-			{msg.toolCalls.length > 0 && (
+			{showTools && msg.toolCalls.length > 0 && (
 				<ToolCallSummary
 					calls={msg.toolCalls}
 					summary={msg.toolSummary}

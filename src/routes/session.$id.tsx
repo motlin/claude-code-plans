@@ -32,7 +32,7 @@ import {sessions} from '../lib/db/schema';
 import {eq} from 'drizzle-orm';
 import {getSessionProjectPath} from '../lib/db/queries';
 import type {ClientToolCall, ToolInput} from '../components/tool-renderers';
-import {ArrowLeft} from 'lucide-react';
+import {ArrowLeft, ArrowUp, ArrowDown, Copy, Terminal, GitFork, Download} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
@@ -223,6 +223,106 @@ const AGENT_TYPE_COLORS: Record<string, string> = {
 	Plan: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
 };
 
+function useScrollButtons() {
+	const [showUp, setShowUp] = useState(false);
+	const [showDown, setShowDown] = useState(false);
+
+	useEffect(() => {
+		function check() {
+			const scrollTop = window.scrollY;
+			const scrollHeight = document.documentElement.scrollHeight;
+			const clientHeight = window.innerHeight;
+			setShowUp(scrollTop > 300);
+			setShowDown(scrollTop + clientHeight < scrollHeight - 300);
+		}
+		check();
+		window.addEventListener('scroll', check, {passive: true});
+		window.addEventListener('resize', check, {passive: true});
+		return () => {
+			window.removeEventListener('scroll', check);
+			window.removeEventListener('resize', check);
+		};
+	}, []);
+
+	return {showUp, showDown};
+}
+
+function FloatingScrollButtons() {
+	const {showUp, showDown} = useScrollButtons();
+
+	return (
+		<div className="fixed bottom-6 right-6 flex flex-col gap-2 z-20">
+			<button
+				type="button"
+				onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}
+				className="h-9 w-9 rounded-full bg-bg-200 border border-border-300/15 shadow-md flex items-center justify-center text-text-500 hover:text-text-000 hover:bg-bg-200/80 transition-all cursor-pointer"
+				style={{opacity: showUp ? 1 : 0, pointerEvents: showUp ? 'auto' : 'none'}}
+				title="Scroll to top"
+			>
+				<ArrowUp className="h-4 w-4" />
+			</button>
+			<button
+				type="button"
+				onClick={() => window.scrollTo({top: document.documentElement.scrollHeight, behavior: 'smooth'})}
+				className="h-9 w-9 rounded-full bg-bg-200 border border-border-300/15 shadow-md flex items-center justify-center text-text-500 hover:text-text-000 hover:bg-bg-200/80 transition-all cursor-pointer"
+				style={{opacity: showDown ? 1 : 0, pointerEvents: showDown ? 'auto' : 'none'}}
+				title="Scroll to bottom"
+			>
+				<ArrowDown className="h-4 w-4" />
+			</button>
+		</div>
+	);
+}
+
+function CopyButton({
+	title,
+	text,
+	icon: Icon,
+}: {
+	title: string;
+	text: string;
+	icon: React.ComponentType<{className?: string}>;
+}) {
+	const [copied, setCopied] = useState(false);
+
+	return (
+		<div className="relative">
+			<button
+				type="button"
+				title={title}
+				onClick={() => {
+					navigator.clipboard.writeText(text);
+					setCopied(true);
+					setTimeout(() => setCopied(false), 1500);
+				}}
+				className="text-text-500 hover:text-text-000 transition-colors cursor-pointer"
+			>
+				<Icon className="h-3.5 w-3.5" />
+			</button>
+			<span
+				className={`absolute -bottom-6 left-1/2 -translate-x-1/2 rounded bg-bg-200 px-1.5 py-0.5 text-[10px] text-text-300 shadow-sm transition-opacity whitespace-nowrap ${copied ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+			>
+				Copied!
+			</span>
+		</div>
+	);
+}
+
+function useDisplayToggle(key: string, defaultValue: boolean): [boolean, (v: boolean) => void] {
+	const [value, setValue] = useState(() => {
+		if (typeof window === 'undefined') return defaultValue;
+		const stored = localStorage.getItem(key);
+		return stored !== null ? stored === 'true' : defaultValue;
+	});
+
+	function setAndPersist(v: boolean) {
+		setValue(v);
+		localStorage.setItem(key, String(v));
+	}
+
+	return [value, setAndPersist];
+}
+
 function SessionPage() {
 	const data = Route.useLoaderData();
 	const params = Route.useParams();
@@ -230,6 +330,8 @@ function SessionPage() {
 	const [starred, setStarred] = useState(data?.starred ?? false);
 	const [isActive, setIsActive] = useState(data?.isActive ?? false);
 	const [generating, setGenerating] = useState(false);
+	const [showThinking, setShowThinking] = useDisplayToggle('ccp-show-thinking', true);
+	const [showTools, setShowTools] = useDisplayToggle('ccp-show-tools', true);
 	const chatStream = useChatStream();
 	const prevSessionIdRef = useRef(params.id);
 
@@ -296,6 +398,29 @@ function SessionPage() {
 						Active
 					</span>
 				)}
+				<CopyButton
+					title="Copy session ID"
+					text={params.id}
+					icon={Copy}
+				/>
+				<CopyButton
+					title="Copy resume command"
+					text={`claude -r ${params.id}`}
+					icon={Terminal}
+				/>
+				<CopyButton
+					title="Copy fork command"
+					text={`claude -r ${params.id} --fork-session`}
+					icon={GitFork}
+				/>
+				<a
+					href={`/api/raw?sessionId=${params.id}`}
+					download
+					className="text-text-500 hover:text-text-000 transition-colors"
+					title="Download raw JSONL"
+				>
+					<Download className="h-3.5 w-3.5" />
+				</a>
 				<button
 					type="button"
 					onClick={async () => {
@@ -361,7 +486,32 @@ function SessionPage() {
 				</div>
 			)}
 
-			<SessionChat messages={data.messages} />
+			<div className="flex items-center gap-3 mt-2 text-xs text-text-500">
+				<label className="flex items-center gap-1 cursor-pointer select-none">
+					<input
+						type="checkbox"
+						checked={showThinking}
+						onChange={(e) => setShowThinking(e.target.checked)}
+						className="accent-accent-000"
+					/>
+					Thinking
+				</label>
+				<label className="flex items-center gap-1 cursor-pointer select-none">
+					<input
+						type="checkbox"
+						checked={showTools}
+						onChange={(e) => setShowTools(e.target.checked)}
+						className="accent-accent-000"
+					/>
+					Tools
+				</label>
+			</div>
+
+			<SessionChat
+				messages={data.messages}
+				showThinking={showThinking}
+				showTools={showTools}
+			/>
 
 			{(chatStream.state.isStreaming || chatStream.state.isComplete) && (
 				<StreamingMessage
@@ -382,6 +532,8 @@ function SessionPage() {
 					projectPath={data.projectPath}
 				/>
 			)}
+
+			<FloatingScrollButtons />
 		</div>
 	);
 }

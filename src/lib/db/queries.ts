@@ -212,6 +212,8 @@ export interface DbSearchResult {
 	snippet: string;
 	projectId: string;
 	projectName: string;
+	mtime: string;
+	messageCount: number;
 	rank: number;
 }
 
@@ -250,6 +252,8 @@ export function searchSessionsFromDb(db: IndexDb, query: string): DbSearchResult
 			snippet,
 			projectId: session?.projectId ?? '',
 			projectName: session ? (projectNames.get(session.projectId) ?? session.projectId) : '',
+			mtime: session ? new Date(session.mtimeMs).toISOString() : '',
+			messageCount: session?.messageCount ?? 0,
 			rank: row.rank,
 		};
 	});
@@ -271,6 +275,8 @@ export interface DbMessageSearchResult {
 	snippet: string;
 	projectId: string;
 	projectName: string;
+	mtime: string;
+	messageCount: number;
 	rank: number;
 }
 
@@ -299,6 +305,8 @@ export function searchMessageContent(db: IndexDb, query: string, limit = 50): Db
 			snippet: row.snippet,
 			projectId: session?.projectId ?? '',
 			projectName: session ? (projectNames.get(session.projectId) ?? session.projectId) : '',
+			mtime: session ? new Date(session.mtimeMs).toISOString() : '',
+			messageCount: session?.messageCount ?? 0,
 			rank: row.rank,
 		};
 	});

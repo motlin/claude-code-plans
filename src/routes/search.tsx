@@ -9,7 +9,18 @@ type SearchResult = (TitleResult | ContentResult) & {
 	title: string;
 	snippet: string;
 	projectName: string;
+	mtime: string;
+	messageCount: number;
 };
+
+function formatDate(iso: string): string {
+	if (!iso) return '';
+	return new Date(iso).toLocaleDateString('en-US', {
+		month: 'short',
+		day: 'numeric',
+		year: 'numeric',
+	});
+}
 
 export const Route = createFileRoute('/search')({
 	component: SearchPage,
@@ -118,8 +129,12 @@ function SearchPage() {
 				<p className="mt-6 text-sm text-text-500">No results found for &ldquo;{q}&rdquo;</p>
 			)}
 
+			{searched && results.length > 0 && (
+				<div className="mt-4 text-xs text-text-500">{results.length} results</div>
+			)}
+
 			{results.length > 0 && (
-				<ul className="mt-4 space-y-1">
+				<ul className="mt-2 space-y-1">
 					{results.map((result) => (
 						<li key={result.sessionId}>
 							<Link
@@ -133,7 +148,21 @@ function SearchPage() {
 								>
 									{result.title}
 								</div>
-								<div className="mt-0.5 text-xs text-text-500">{result.projectName}</div>
+								<div className="mt-0.5 flex items-center gap-2 text-xs text-text-500">
+									<span>{result.projectName}</span>
+									{result.mtime && (
+										<>
+											<span>&middot;</span>
+											<span>{formatDate(result.mtime)}</span>
+										</>
+									)}
+									{result.messageCount > 0 && (
+										<>
+											<span>&middot;</span>
+											<span>{result.messageCount} msgs</span>
+										</>
+									)}
+								</div>
 								{result.snippet && (
 									<div
 										className="mt-0.5 truncate text-xs text-text-500 [&_mark]:rounded-sm [&_mark]:bg-warning-100/30 [&_mark]:px-0.5 [&_mark]:text-text-100"

@@ -1,4 +1,5 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
+import {useState} from 'react';
 import {getSessions, getActiveSessions} from '../lib/server-fns';
 
 export const Route = createFileRoute('/sessions')({
@@ -22,16 +23,52 @@ function formatDate(iso: string): string {
 	});
 }
 
-const RECENT_LIMIT = 20;
+function getTimePeriod(mtime: string): string {
+	const date = new Date(mtime);
+	const now = new Date();
+	const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+	const diffMs = startOfToday.getTime() - new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+	const diffDays = Math.floor(diffMs / 86_400_000);
+
+	if (diffDays <= 0) return 'Today';
+	if (diffDays === 1) return 'Yesterday';
+	if (diffDays <= 7) return 'Last 7 days';
+	if (diffDays <= 30) return 'Last 30 days';
+	return date.toLocaleDateString('en-US', {month: 'long', year: 'numeric'});
+}
+
+const INITIAL_SHOW = 50;
 const PER_PROJECT_LIMIT = 10;
 
 function SessionsPage() {
 	const {groups, activeIds} = Route.useLoaderData();
+	const [showAll, setShowAll] = useState(false);
 
 	const allSessions = groups
 		.flatMap((g) => g.sessions)
-		.sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime())
-		.slice(0, RECENT_LIMIT);
+		.sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime());
+
+	const timePeriodGroups: Array<{period: string; sessions: typeof allSessions}> = [];
+	for (const sess of allSessions) {
+		const period = getTimePeriod(sess.mtime);
+		const last = timePeriodGroups[timePeriodGroups.length - 1];
+		if (last && last.period === period) {
+			last.sessions.push(sess);
+		} else {
+			timePeriodGroups.push({period, sessions: [sess]});
+		}
+	}
+
+	const hiddenCount = allSessions.length - INITIAL_SHOW;
+
+	const visibleTimePeriodGroups: Array<{period: string; sessions: typeof allSessions}> = [];
+	let remaining = showAll ? Infinity : INITIAL_SHOW;
+	for (const group of timePeriodGroups) {
+		if (remaining <= 0) break;
+		const slice = group.sessions.slice(0, remaining);
+		visibleTimePeriodGroups.push({period: group.period, sessions: slice});
+		remaining -= slice.length;
+	}
 
 	return (
 		<div>
@@ -42,16 +79,31 @@ function SessionsPage() {
 			) : (
 				<>
 					<div className="mt-6">
-						<h2 className="border-b border-border-300/15 pb-1 text-sm font-semibold">Recent</h2>
-						<ul className="mt-2 space-y-1">
-							{allSessions.map((sess) => (
-								<SessionItem
-									key={sess.id}
-									session={sess}
-									isActive={activeIds.has(sess.id)}
-								/>
-							))}
-						</ul>
+						{visibleTimePeriodGroups.map((group) => (
+							<div key={group.period}>
+								<h2 className="sticky top-0 z-10 bg-bg-000 border-b border-border-300/15 pb-1 pt-2 text-sm font-semibold text-text-500">
+									{group.period}
+								</h2>
+								<ul className="mt-2 mb-4 space-y-1">
+									{group.sessions.map((sess) => (
+										<SessionItem
+											key={sess.id}
+											session={sess}
+											isActive={activeIds.has(sess.id)}
+										/>
+									))}
+								</ul>
+							</div>
+						))}
+						{!showAll && hiddenCount > 0 && (
+							<button
+								type="button"
+								onClick={() => setShowAll(true)}
+								className="mt-2 text-sm text-accent-100 hover:underline cursor-pointer"
+							>
+								Show {hiddenCount} more sessions
+							</button>
+						)}
 					</div>
 
 					<div className="mt-8">
