@@ -160,6 +160,24 @@ export const getProjects = createServerFn({method: 'GET'}).handler(async () => {
 	const {index} = getDb();
 	const projects = listProjectsFromDb(index);
 
+	// Get active sessions, plan counts, and task counts
+	const activeSessions = await getActiveSessionsList();
+	const activeByProject = new Map<string, number>();
+	for (const a of activeSessions) {
+		activeByProject.set(a.projectDir, (activeByProject.get(a.projectDir) ?? 0) + 1);
+	}
+
+	const allPlanLinks = getPlanProjectMappings(index);
+	const planCountByProject = new Map<string, Set<string>>();
+	for (const link of allPlanLinks) {
+		let set = planCountByProject.get(link.projectId);
+		if (!set) {
+			set = new Set();
+			planCountByProject.set(link.projectId, set);
+		}
+		set.add(link.planFilename);
+	}
+
 	// Enrich with memory counts (still from filesystem)
 	const enriched = await Promise.all(
 		projects.map(async (p) => {
@@ -171,12 +189,18 @@ export const getProjects = createServerFn({method: 'GET'}).handler(async () => {
 			} catch {
 				// no memory dir
 			}
+
+			const taskCounts = getTaskCountsForProject(index, p.name);
+
 			return {
 				id: p.id,
 				name: p.name,
 				projectPath: p.projectPath,
 				sessionCount: p.sessionCount,
 				memoryCount,
+				planCount: planCountByProject.get(p.id)?.size ?? 0,
+				taskCount: taskCounts.pending + taskCounts.inProgress,
+				activeCount: activeByProject.get(p.id) ?? 0,
 				lastActivity: new Date(p.lastActivity).toISOString(),
 			};
 		}),
@@ -240,8 +264,16 @@ export const getProject = createServerFn({method: 'GET'})
 			}
 		}
 
-		const todos = getTasksForProject(index, detail.name);
+		const rawTodos = getTasksForProject(index, detail.name);
 		const todoCounts = getTaskCountsForProject(index, detail.name);
+		const {renderInlineMarkdown} = await import('./renderer');
+		const todos = await Promise.all(
+			rawTodos.map(async (task) => ({
+				...task,
+				subjectHtml: await renderInlineMarkdown(task.subject),
+				descriptionHtml: await renderInlineMarkdown(task.description),
+			})),
+		);
 
 		return {
 			id: detail.id,
@@ -562,12 +594,35 @@ export const uninstallHooks = createServerFn({method: 'POST'})
 
 export const getTasks = createServerFn({method: 'GET'}).handler(async () => {
 	const {index} = getDb();
-	return getIncompleteTasksGroupedByProject(index);
+	const groups = getIncompleteTasksGroupedByProject(index);
+	const {renderInlineMarkdown} = await import('./renderer');
+
+	return Promise.all(
+		groups.map(async (group) => ({
+			...group,
+			tasks: await Promise.all(
+				group.tasks.map(async (task) => ({
+					...task,
+					subjectHtml: await renderInlineMarkdown(task.subject),
+					descriptionHtml: await renderInlineMarkdown(task.description),
+				})),
+			),
+		})),
+	);
 });
 
 export const getProjectTasks = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: projectDir}) => {
 		const {index} = getDb();
-		return getTasksForProject(index, projectDir);
+		const tasks = getTasksForProject(index, projectDir);
+		const {renderInlineMarkdown} = await import('./renderer');
+
+		return Promise.all(
+			tasks.map(async (task) => ({
+				...task,
+				subjectHtml: await renderInlineMarkdown(task.subject),
+				descriptionHtml: await renderInlineMarkdown(task.description),
+			})),
+		);
 	});

@@ -174,7 +174,7 @@ function ProjectPage() {
 								)}
 								<div className="min-w-0 flex-1">
 									<div className="text-sm text-text-100">
-										#{task.taskId} {task.subject}
+										#{task.taskId} <span dangerouslySetInnerHTML={{__html: task.subjectHtml}} />
 									</div>
 									{task.blockedBy.length > 0 && (
 										<div className="mt-0.5 text-[10px] text-orange-500">

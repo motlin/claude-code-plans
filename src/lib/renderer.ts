@@ -91,6 +91,12 @@ export async function renderMarkdown(markdown: string): Promise<string> {
 	return instance.render(markdown);
 }
 
+export async function renderInlineMarkdown(text: string): Promise<string> {
+	if (!text.trim()) return '';
+	const instance = await getMd();
+	return instance.renderInline(text);
+}
+
 const EXT_LANG: Record<string, string> = {
 	ts: 'typescript',
 	tsx: 'tsx',

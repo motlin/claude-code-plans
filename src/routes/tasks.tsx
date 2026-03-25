@@ -90,12 +90,14 @@ function TasksPage() {
 												)}
 												<div className="min-w-0 flex-1">
 													<div className="text-sm text-text-100">
-														#{task.taskId} {task.subject}
+														#{task.taskId}{' '}
+														<span dangerouslySetInnerHTML={{__html: task.subjectHtml}} />
 													</div>
 													{task.description && task.description !== task.subject && (
-														<div className="mt-0.5 text-xs text-text-500">
-															{task.description}
-														</div>
+														<div
+															className="mt-0.5 text-xs text-text-500"
+															dangerouslySetInnerHTML={{__html: task.descriptionHtml}}
+														/>
 													)}
 													<div className="mt-0.5 flex items-center gap-2">
 														<span

@@ -44,10 +44,35 @@ function ProjectsPage() {
 							{project.projectPath && (
 								<div className="mt-0.5 truncate text-xs text-text-500">{project.projectPath}</div>
 							)}
-							<div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-text-500">
+							<div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-text-500">
+								{project.activeCount > 0 && (
+									<>
+										<span className="flex items-center gap-1 text-green-500">
+											<span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
+											{project.activeCount} active
+										</span>
+										<span>&middot;</span>
+									</>
+								)}
 								<span>{project.sessionCount} sessions</span>
-								<span>&middot;</span>
-								<span>{project.memoryCount} memories</span>
+								{project.planCount > 0 && (
+									<>
+										<span>&middot;</span>
+										<span>{project.planCount} plans</span>
+									</>
+								)}
+								{project.memoryCount > 0 && (
+									<>
+										<span>&middot;</span>
+										<span>{project.memoryCount} memories</span>
+									</>
+								)}
+								{project.taskCount > 0 && (
+									<>
+										<span>&middot;</span>
+										<span>{project.taskCount} tasks</span>
+									</>
+								)}
 								<span>&middot;</span>
 								<span>{formatDate(project.lastActivity)}</span>
 							</div>
