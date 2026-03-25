@@ -1,6 +1,7 @@
 import {createFileRoute} from '@tanstack/react-router';
 import {useState} from 'react';
 import {ChevronRight, CheckCircle, Circle, Ban} from 'lucide-react';
+import styles from '../components/markdown-article.module.css';
 import {getTasks} from '../lib/server-fns';
 
 export const Route = createFileRoute('/tasks')({
@@ -95,7 +96,7 @@ function TasksPage() {
 													</div>
 													{task.description && task.description !== task.subject && (
 														<div
-															className="mt-0.5 text-xs text-text-500"
+															className={`mt-0.5 text-xs text-text-500 ${styles['markdown']}`}
 															dangerouslySetInnerHTML={{__html: task.descriptionHtml}}
 														/>
 													)}

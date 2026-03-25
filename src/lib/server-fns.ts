@@ -266,12 +266,12 @@ export const getProject = createServerFn({method: 'GET'})
 
 		const rawTodos = getTasksForProject(index, detail.name);
 		const todoCounts = getTaskCountsForProject(index, detail.name);
-		const {renderInlineMarkdown} = await import('./renderer');
+		const {renderInlineMarkdown, renderMarkdown} = await import('./renderer');
 		const todos = await Promise.all(
 			rawTodos.map(async (task) => ({
 				...task,
 				subjectHtml: await renderInlineMarkdown(task.subject),
-				descriptionHtml: await renderInlineMarkdown(task.description),
+				descriptionHtml: await renderMarkdown(task.description),
 			})),
 		);
 
@@ -595,7 +595,7 @@ export const uninstallHooks = createServerFn({method: 'POST'})
 export const getTasks = createServerFn({method: 'GET'}).handler(async () => {
 	const {index} = getDb();
 	const groups = getIncompleteTasksGroupedByProject(index);
-	const {renderInlineMarkdown} = await import('./renderer');
+	const {renderInlineMarkdown, renderMarkdown} = await import('./renderer');
 
 	return Promise.all(
 		groups.map(async (group) => ({
@@ -604,7 +604,7 @@ export const getTasks = createServerFn({method: 'GET'}).handler(async () => {
 				group.tasks.map(async (task) => ({
 					...task,
 					subjectHtml: await renderInlineMarkdown(task.subject),
-					descriptionHtml: await renderInlineMarkdown(task.description),
+					descriptionHtml: await renderMarkdown(task.description),
 				})),
 			),
 		})),
@@ -616,13 +616,13 @@ export const getProjectTasks = createServerFn({method: 'GET'})
 	.handler(async ({data: projectDir}) => {
 		const {index} = getDb();
 		const tasks = getTasksForProject(index, projectDir);
-		const {renderInlineMarkdown} = await import('./renderer');
+		const {renderInlineMarkdown, renderMarkdown} = await import('./renderer');
 
 		return Promise.all(
 			tasks.map(async (task) => ({
 				...task,
 				subjectHtml: await renderInlineMarkdown(task.subject),
-				descriptionHtml: await renderInlineMarkdown(task.description),
+				descriptionHtml: await renderMarkdown(task.description),
 			})),
 		);
 	});
