@@ -444,3 +444,135 @@ export function getPlanProjectMappings(db: IndexDb): DbPlanProjectMapping[] {
 		projectName: projectNames.get(row.projectId) ?? row.projectId,
 	}));
 }
+
+// ---------------------------------------------------------------------------
+// Tasks
+// ---------------------------------------------------------------------------
+
+export interface TaskRow {
+	taskId: string;
+	projectDir: string;
+	subject: string;
+	description: string;
+	status: string;
+	activeForm: string | null;
+	blocks: string[];
+	blockedBy: string[];
+}
+
+export interface TaskProjectGroup {
+	projectDir: string;
+	tasks: TaskRow[];
+	totalPending: number;
+	totalInProgress: number;
+}
+
+function parseTaskRow(row: {
+	taskId: string;
+	projectDir: string;
+	subject: string;
+	description: string;
+	status: string;
+	activeForm: string | null;
+	blocksJson: string;
+	blockedByJson: string;
+}): TaskRow {
+	return {
+		taskId: row.taskId,
+		projectDir: row.projectDir,
+		subject: row.subject,
+		description: row.description,
+		status: row.status,
+		activeForm: row.activeForm,
+		blocks: JSON.parse(row.blocksJson) as string[],
+		blockedBy: JSON.parse(row.blockedByJson) as string[],
+	};
+}
+
+export function getTasksForProject(db: IndexDb, projectDir: string): TaskRow[] {
+	const rows = db
+		.select({
+			taskId: schema.tasks.taskId,
+			projectDir: schema.tasks.projectDir,
+			subject: schema.tasks.subject,
+			description: schema.tasks.description,
+			status: schema.tasks.status,
+			activeForm: schema.tasks.activeForm,
+			blocksJson: schema.tasks.blocksJson,
+			blockedByJson: schema.tasks.blockedByJson,
+		})
+		.from(schema.tasks)
+		.where(eq(schema.tasks.projectDir, projectDir))
+		.all();
+
+	return rows.map(parseTaskRow);
+}
+
+export function getIncompleteTasksGroupedByProject(db: IndexDb): TaskProjectGroup[] {
+	const rows = db
+		.select({
+			taskId: schema.tasks.taskId,
+			projectDir: schema.tasks.projectDir,
+			subject: schema.tasks.subject,
+			description: schema.tasks.description,
+			status: schema.tasks.status,
+			activeForm: schema.tasks.activeForm,
+			blocksJson: schema.tasks.blocksJson,
+			blockedByJson: schema.tasks.blockedByJson,
+		})
+		.from(schema.tasks)
+		.where(sql`${schema.tasks.status} IN ('pending', 'in_progress')`)
+		.all();
+
+	const projectMap = new Map<string, TaskRow[]>();
+	for (const row of rows) {
+		const task = parseTaskRow(row);
+		let list = projectMap.get(row.projectDir);
+		if (!list) {
+			list = [];
+			projectMap.set(row.projectDir, list);
+		}
+		list.push(task);
+	}
+
+	const result: TaskProjectGroup[] = [];
+	for (const [projectDir, tasks] of projectMap) {
+		let totalPending = 0;
+		let totalInProgress = 0;
+		for (const t of tasks) {
+			if (t.status === 'pending') totalPending++;
+			if (t.status === 'in_progress') totalInProgress++;
+		}
+		result.push({projectDir, tasks, totalPending, totalInProgress});
+	}
+
+	return result;
+}
+
+export function getTaskCountsForProject(
+	db: IndexDb,
+	projectDir: string,
+): {total: number; pending: number; inProgress: number; completed: number} {
+	const rows = db
+		.select({
+			status: schema.tasks.status,
+			count: sql<number>`count(*)`,
+		})
+		.from(schema.tasks)
+		.where(eq(schema.tasks.projectDir, projectDir))
+		.groupBy(schema.tasks.status)
+		.all();
+
+	let total = 0;
+	let pending = 0;
+	let inProgress = 0;
+	let completed = 0;
+	for (const row of rows) {
+		total += row.count;
+		if (row.status === 'pending') pending = row.count;
+		else if (row.status === 'in_progress') inProgress = row.count;
+		else if (row.status === 'completed') completed = row.count;
+	}
+
+	return {total, pending, inProgress, completed};
+}

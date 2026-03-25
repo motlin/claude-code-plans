@@ -4,7 +4,7 @@ import {join, basename} from 'node:path';
 import {createInterface} from 'node:readline';
 import {eq, sql} from 'drizzle-orm';
 import type {BetterSQLite3Database} from 'drizzle-orm/better-sqlite3';
-import {SessionsIndexSchema, FileHistorySnapshotSchema, CustomTitleRecordSchema} from '../schemas';
+import {SessionsIndexSchema, FileHistorySnapshotSchema, CustomTitleRecordSchema, TaskFileSchema} from '../schemas';
 import {decodeProjectDir, resolveProjectPath} from '../memory';
 import {extractSessionTitle} from '../sessions';
 import * as schema from './schema';
@@ -380,12 +380,123 @@ export async function indexSubagentFile(
 		.run();
 }
 
+export async function indexTaskFile(db: IndexDb, filePath: string, projectDir: string): Promise<void> {
+	let fileStat: Awaited<ReturnType<typeof stat>>;
+	try {
+		fileStat = await stat(filePath);
+	} catch {
+		return;
+	}
+
+	const existing = db.select().from(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).get();
+	if (existing && existing.mtimeMs === fileStat.mtimeMs) return;
+
+	let raw: string;
+	try {
+		raw = await readFile(filePath, 'utf-8');
+	} catch {
+		return;
+	}
+
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(raw);
+	} catch {
+		return;
+	}
+
+	const result = TaskFileSchema.safeParse(parsed);
+	if (!result.success) return;
+
+	const task = result.data;
+
+	db.insert(schema.tasks)
+		.values({
+			filePath,
+			taskId: task.id,
+			projectDir,
+			subject: task.subject,
+			description: task.description,
+			status: task.status,
+			activeForm: task.activeForm ?? null,
+			blocksJson: JSON.stringify(task.blocks),
+			blockedByJson: JSON.stringify(task.blockedBy),
+			mtimeMs: fileStat.mtimeMs,
+		})
+		.onConflictDoUpdate({
+			target: schema.tasks.filePath,
+			set: {
+				taskId: task.id,
+				subject: task.subject,
+				description: task.description,
+				status: task.status,
+				activeForm: task.activeForm ?? null,
+				blocksJson: JSON.stringify(task.blocks),
+				blockedByJson: JSON.stringify(task.blockedBy),
+				mtimeMs: fileStat.mtimeMs,
+			},
+		})
+		.run();
+
+	db.insert(schema.indexedFiles)
+		.values({path: filePath, mtimeMs: fileStat.mtimeMs, sizeBytes: fileStat.size, indexedAt: Date.now()})
+		.onConflictDoUpdate({
+			target: schema.indexedFiles.path,
+			set: {mtimeMs: fileStat.mtimeMs, sizeBytes: fileStat.size, indexedAt: Date.now()},
+		})
+		.run();
+}
+
+export async function scanTasksDir(db: IndexDb, tasksDir: string): Promise<void> {
+	let projectDirs: string[];
+	try {
+		projectDirs = await readdir(tasksDir);
+	} catch {
+		return;
+	}
+
+	const indexedPaths = new Set<string>();
+
+	for (const projectDir of projectDirs) {
+		const projectPath = join(tasksDir, projectDir);
+		try {
+			const dirStat = await stat(projectPath);
+			if (!dirStat.isDirectory()) continue;
+		} catch {
+			continue;
+		}
+
+		let files: string[];
+		try {
+			files = await readdir(projectPath);
+		} catch {
+			continue;
+		}
+
+		for (const file of files) {
+			if (!file.endsWith('.json')) continue;
+			const filePath = join(projectPath, file);
+			indexedPaths.add(filePath);
+			await indexTaskFile(db, filePath, projectDir);
+		}
+	}
+
+	// Clean up deleted files
+	const allTasks = db.select({filePath: schema.tasks.filePath}).from(schema.tasks).all();
+	for (const row of allTasks) {
+		if (!indexedPaths.has(row.filePath)) {
+			db.delete(schema.tasks).where(eq(schema.tasks.filePath, row.filePath)).run();
+			db.delete(schema.indexedFiles).where(eq(schema.indexedFiles.path, row.filePath)).run();
+		}
+	}
+}
+
 let indexingInProgress = false;
 export function isCurrentlyIndexing(): boolean {
 	return indexingInProgress;
 }
 
-export async function fullScan(db: IndexDb, projectsDir: string): Promise<void> {
+export async function fullScan(db: IndexDb, projectsDir: string, tasksDir?: string): Promise<void> {
 	indexingInProgress = true;
 	try {
 		let projectDirs: string[];
@@ -437,12 +548,28 @@ export async function fullScan(db: IndexDb, projectsDir: string): Promise<void> 
 				}
 			}
 		}
+
+		// Index tasks
+		if (tasksDir) {
+			await scanTasksDir(db, tasksDir);
+		}
 	} finally {
 		indexingInProgress = false;
 	}
 }
 
 export async function indexFile(db: IndexDb, filePath: string, projectsDir: string): Promise<void> {
+	// Task file: ~/.claude/tasks/{projectDir}/{id}.json
+	if (filePath.includes('/tasks/') && filePath.endsWith('.json')) {
+		const parts = filePath.split('/');
+		const tasksIdx = parts.lastIndexOf('tasks');
+		const projectDir = parts[tasksIdx + 1];
+		if (projectDir) {
+			await indexTaskFile(db, filePath, projectDir);
+		}
+		return;
+	}
+
 	// Determine what kind of file changed and index accordingly
 	if (filePath.endsWith('sessions-index.json')) {
 		const parts = filePath.split('/');

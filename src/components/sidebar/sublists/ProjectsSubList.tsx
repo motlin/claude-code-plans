@@ -66,6 +66,7 @@ export function ProjectsSubList({activeItemId}: {activeItemId: string | null}) {
 									title: m.title,
 									project: m.project,
 								})),
+								todoCounts: detail.todoCounts,
 							});
 							return next;
 						});
@@ -106,6 +107,7 @@ export function ProjectsSubList({activeItemId}: {activeItemId: string | null}) {
 							title: m.title,
 							project: m.project,
 						})),
+						todoCounts: detail.todoCounts,
 					});
 					return next;
 				});
@@ -231,9 +233,29 @@ export function ProjectsSubList({activeItemId}: {activeItemId: string | null}) {
 												))}
 											</div>
 										)}
+										{(detail.todoCounts.pending > 0 || detail.todoCounts.inProgress > 0) && (
+											<div>
+												<div className={labelClass}>Tasks</div>
+												<Link
+													to="/project/$id"
+													params={{id: project.id}}
+													className={linkClass(false)}
+													style={{paddingLeft: '1.5rem'}}
+												>
+													{detail.todoCounts.pending > 0 &&
+														`${detail.todoCounts.pending} pending`}
+													{detail.todoCounts.pending > 0 &&
+														detail.todoCounts.inProgress > 0 &&
+														', '}
+													{detail.todoCounts.inProgress > 0 &&
+														`${detail.todoCounts.inProgress} in progress`}
+												</Link>
+											</div>
+										)}
 										{detail.sessions.length === 0 &&
 											detail.plans.length === 0 &&
-											detail.memories.length === 0 && (
+											detail.memories.length === 0 &&
+											detail.todoCounts.total === 0 && (
 												<div className="px-2 py-1 text-[10px] italic text-text-400">
 													No items
 												</div>

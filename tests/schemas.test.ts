@@ -1,3 +1,6 @@
+import {readFileSync, readdirSync, statSync} from 'node:fs';
+import {join} from 'node:path';
+import {homedir} from 'node:os';
 import {
 	SessionIndexEntrySchema,
 	SessionsIndexSchema,
@@ -15,6 +18,7 @@ import {
 	ToolResultBlockSchema,
 	JsonlRecordSchema,
 	parseJsonlRecord,
+	TaskFileSchema,
 } from '../src/lib/schemas';
 
 describe('SessionIndexEntrySchema', () => {
@@ -514,5 +518,139 @@ describe('parseJsonlRecord', () => {
 		const result = parseJsonlRecord(line);
 		expect(result).not.toBeNull();
 		expect(result!.type).toBe('unknown-future-type');
+	});
+});
+
+describe('TaskFileSchema', () => {
+	it('parses a valid task', () => {
+		const task = {
+			id: '1',
+			subject: 'Fix the login bug',
+			description: 'Auth is broken',
+			status: 'pending',
+			blocks: [],
+			blockedBy: [],
+		};
+		const result = TaskFileSchema.safeParse(task);
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.subject).toBe('Fix the login bug');
+			expect(result.data.status).toBe('pending');
+		}
+	});
+
+	it('parses a task with dependencies', () => {
+		const task = {
+			id: '2',
+			subject: 'Write tests',
+			description: 'Add test coverage',
+			status: 'pending',
+			blocks: ['3'],
+			blockedBy: ['1'],
+			activeForm: 'Writing tests',
+		};
+		const result = TaskFileSchema.safeParse(task);
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.blocks).toEqual(['3']);
+			expect(result.data.blockedBy).toEqual(['1']);
+			expect(result.data.activeForm).toBe('Writing tests');
+		}
+	});
+
+	it('accepts all valid status values', () => {
+		for (const status of ['pending', 'in_progress', 'completed']) {
+			const result = TaskFileSchema.safeParse({
+				id: '1',
+				subject: 'task',
+				description: 'desc',
+				status,
+				blocks: [],
+				blockedBy: [],
+			});
+			expect(result.success).toBe(true);
+		}
+	});
+
+	it('rejects invalid status', () => {
+		const result = TaskFileSchema.safeParse({
+			id: '1',
+			subject: 'task',
+			description: 'desc',
+			status: 'done',
+			blocks: [],
+			blockedBy: [],
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('passes through unknown fields', () => {
+		const result = TaskFileSchema.safeParse({
+			id: '1',
+			subject: 'task',
+			description: 'desc',
+			status: 'pending',
+			blocks: [],
+			blockedBy: [],
+			owner: 'agent-1',
+			metadata: {priority: 'high'},
+		});
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data['owner']).toBe('agent-1');
+		}
+	});
+});
+
+describe('TaskFileSchema against disk', () => {
+	const tasksDir = join(homedir(), '.claude', 'tasks');
+
+	it('validates all task files on disk', () => {
+		let projectDirs: string[];
+		try {
+			projectDirs = readdirSync(tasksDir);
+		} catch {
+			return;
+		}
+
+		let validated = 0;
+		const failures: string[] = [];
+
+		for (const projectDir of projectDirs) {
+			const projectPath = join(tasksDir, projectDir);
+			let st: ReturnType<typeof statSync>;
+			try {
+				st = statSync(projectPath);
+			} catch {
+				continue;
+			}
+			if (!st.isDirectory()) continue;
+
+			const files = readdirSync(projectPath).filter((f) => f.endsWith('.json'));
+			for (const file of files) {
+				const filePath = join(projectPath, file);
+				const raw = readFileSync(filePath, 'utf-8');
+				let parsed: unknown;
+				try {
+					parsed = JSON.parse(raw);
+				} catch {
+					failures.push(`${projectDir}/${file}: invalid JSON`);
+					continue;
+				}
+
+				const result = TaskFileSchema.safeParse(parsed);
+				if (!result.success) {
+					failures.push(`${projectDir}/${file}: ${result.error.issues.map((i) => i.message).join(', ')}`);
+				} else {
+					validated++;
+				}
+			}
+		}
+
+		if (failures.length > 0) {
+			throw new Error(`${failures.length} task files failed validation:\n${failures.join('\n')}`);
+		}
+
+		expect(validated).toBeGreaterThan(0);
 	});
 });

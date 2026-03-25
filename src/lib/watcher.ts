@@ -65,6 +65,16 @@ function handleFileChange(path: string): void {
 			broadcastEvent(event);
 			jsonlDebounceTimer = null;
 		}, JSONL_DEBOUNCE_MS);
+	} else if (ext === '.json' && path.includes('/tasks/')) {
+		(async () => {
+			try {
+				const {index} = getDb();
+				await indexFile(index, path, projectsDir);
+			} catch {
+				// indexing error
+			}
+			broadcast();
+		})();
 	} else if (ext === '.json' && path.endsWith('sessions-index.json')) {
 		(async () => {
 			try {

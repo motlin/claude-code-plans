@@ -1,6 +1,6 @@
 import {sqliteTable, text, integer, index, primaryKey} from 'drizzle-orm/sqlite-core';
 
-export const SCHEMA_VERSION = '3';
+export const SCHEMA_VERSION = '4';
 
 export const metadata = sqliteTable('metadata', {
 	key: text('key').primaryKey(),
@@ -69,6 +69,23 @@ export const subagents = sqliteTable(
 		mtimeMs: integer('mtime_ms').notNull(),
 	},
 	(table) => [index('subagents_session_idx').on(table.sessionId)],
+);
+
+export const tasks = sqliteTable(
+	'tasks',
+	{
+		filePath: text('file_path').primaryKey(),
+		taskId: text('task_id').notNull(),
+		projectDir: text('project_dir').notNull(),
+		subject: text('subject').notNull(),
+		description: text('description').notNull(),
+		status: text('status').notNull(),
+		activeForm: text('active_form'),
+		blocksJson: text('blocks_json').notNull().default('[]'),
+		blockedByJson: text('blocked_by_json').notNull().default('[]'),
+		mtimeMs: integer('mtime_ms').notNull(),
+	},
+	(table) => [index('tasks_project_dir_idx').on(table.projectDir), index('tasks_status_idx').on(table.status)],
 );
 
 export const starredSessions = sqliteTable('starred_sessions', {

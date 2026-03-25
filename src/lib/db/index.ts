@@ -6,6 +6,7 @@ import {join} from 'node:path';
 let _appDb: AppDb | null = null;
 
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
+const TASKS_DIR = join(homedir(), '.claude', 'tasks');
 
 export function getDb(): AppDb {
 	if (!_appDb) {
@@ -16,7 +17,7 @@ export function getDb(): AppDb {
 
 export async function initDb(): Promise<AppDb> {
 	const db = getDb();
-	await fullScan(db.index, PROJECTS_DIR);
+	await fullScan(db.index, PROJECTS_DIR, TASKS_DIR);
 	return db;
 }
 

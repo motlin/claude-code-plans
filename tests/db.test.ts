@@ -2,7 +2,7 @@ import {writeFileSync, mkdirSync, rmSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {openTestDb, type AppDb} from '../src/lib/db/connection';
-import {fullScan, indexJsonlFile, indexSessionsIndex} from '../src/lib/db/indexer';
+import {fullScan, indexJsonlFile, indexSessionsIndex, indexTaskFile, scanTasksDir} from '../src/lib/db/indexer';
 import {
 	listProjectsFromDb,
 	listSessionsFromDb,
@@ -18,6 +18,9 @@ import {
 	getStarredSessionIds,
 	getStarredSessions,
 	searchMessageContent,
+	getTasksForProject,
+	getIncompleteTasksGroupedByProject,
+	getTaskCountsForProject,
 } from '../src/lib/db/queries';
 import * as schema from '../src/lib/db/schema';
 import {eq} from 'drizzle-orm';
@@ -578,5 +581,273 @@ describe('message content FTS', () => {
 	it('returns empty for non-matching query', () => {
 		const results = searchMessageContent(db.index, 'nonexistent');
 		expect(results.length).toBe(0);
+	});
+});
+
+describe('task indexer', () => {
+	function makeTaskFile(task: Record<string, unknown>): string {
+		return JSON.stringify({
+			id: '1',
+			subject: 'Test task',
+			description: 'Test description',
+			status: 'pending',
+			blocks: [],
+			blockedBy: [],
+			...task,
+		});
+	}
+
+	it('indexes a task file', async () => {
+		const tasksDir = join(testDir, 'tasks', 'my-project');
+		mkdirSync(tasksDir, {recursive: true});
+
+		const filePath = join(tasksDir, '1.json');
+		writeFileSync(filePath, makeTaskFile({id: '1', subject: 'Fix bug', status: 'completed'}));
+
+		await indexTaskFile(db.index, filePath, 'my-project');
+
+		const tasks = db.index.select().from(schema.tasks).all();
+		expect(tasks).toHaveLength(1);
+		expect(tasks[0]!.taskId).toBe('1');
+		expect(tasks[0]!.projectDir).toBe('my-project');
+		expect(tasks[0]!.subject).toBe('Fix bug');
+		expect(tasks[0]!.status).toBe('completed');
+	});
+
+	it('stores blocks and blockedBy as JSON', async () => {
+		const tasksDir = join(testDir, 'tasks', 'my-project');
+		mkdirSync(tasksDir, {recursive: true});
+
+		const filePath = join(tasksDir, '2.json');
+		writeFileSync(filePath, makeTaskFile({id: '2', blocks: ['3'], blockedBy: ['1']}));
+
+		await indexTaskFile(db.index, filePath, 'my-project');
+
+		const tasks = db.index.select().from(schema.tasks).all();
+		expect(tasks).toHaveLength(1);
+		expect(JSON.parse(tasks[0]!.blocksJson)).toEqual(['3']);
+		expect(JSON.parse(tasks[0]!.blockedByJson)).toEqual(['1']);
+	});
+
+	it('skips re-indexing when mtime unchanged', async () => {
+		const tasksDir = join(testDir, 'tasks', 'my-project');
+		mkdirSync(tasksDir, {recursive: true});
+
+		const filePath = join(tasksDir, '1.json');
+		writeFileSync(filePath, makeTaskFile({}));
+
+		await indexTaskFile(db.index, filePath, 'my-project');
+		const firstIndexed = db.index
+			.select()
+			.from(schema.indexedFiles)
+			.where(eq(schema.indexedFiles.path, filePath))
+			.get();
+
+		await indexTaskFile(db.index, filePath, 'my-project');
+		const secondIndexed = db.index
+			.select()
+			.from(schema.indexedFiles)
+			.where(eq(schema.indexedFiles.path, filePath))
+			.get();
+
+		expect(secondIndexed!.indexedAt).toBe(firstIndexed!.indexedAt);
+	});
+
+	it('re-indexes when file changes', async () => {
+		const tasksDir = join(testDir, 'tasks', 'my-project');
+		mkdirSync(tasksDir, {recursive: true});
+
+		const filePath = join(tasksDir, '1.json');
+		writeFileSync(filePath, makeTaskFile({status: 'pending'}));
+
+		await indexTaskFile(db.index, filePath, 'my-project');
+		expect(db.index.select().from(schema.tasks).all()[0]!.status).toBe('pending');
+
+		await new Promise((r) => setTimeout(r, 50));
+
+		writeFileSync(filePath, makeTaskFile({status: 'completed'}));
+		await indexTaskFile(db.index, filePath, 'my-project');
+		expect(db.index.select().from(schema.tasks).all()[0]!.status).toBe('completed');
+	});
+});
+
+describe('scanTasksDir', () => {
+	it('indexes task files across project directories', async () => {
+		const tasksDir = join(testDir, 'tasks');
+		const proj1 = join(tasksDir, 'project-a');
+		const proj2 = join(tasksDir, 'project-b');
+		mkdirSync(proj1, {recursive: true});
+		mkdirSync(proj2, {recursive: true});
+
+		writeFileSync(
+			join(proj1, '1.json'),
+			JSON.stringify({
+				id: '1',
+				subject: 'Task A',
+				description: 'desc',
+				status: 'pending',
+				blocks: [],
+				blockedBy: [],
+			}),
+		);
+		writeFileSync(
+			join(proj2, '2.json'),
+			JSON.stringify({
+				id: '2',
+				subject: 'Task B',
+				description: 'desc',
+				status: 'completed',
+				blocks: [],
+				blockedBy: [],
+			}),
+		);
+
+		await scanTasksDir(db.index, tasksDir);
+
+		const tasks = db.index.select().from(schema.tasks).all();
+		expect(tasks).toHaveLength(2);
+		expect(tasks.map((t) => t.projectDir).sort()).toEqual(['project-a', 'project-b']);
+	});
+
+	it('cleans up deleted files', async () => {
+		const tasksDir = join(testDir, 'tasks');
+		const proj = join(tasksDir, 'my-proj');
+		mkdirSync(proj, {recursive: true});
+
+		const filePath = join(proj, '1.json');
+		writeFileSync(
+			filePath,
+			JSON.stringify({
+				id: '1',
+				subject: 'Task',
+				description: 'desc',
+				status: 'pending',
+				blocks: [],
+				blockedBy: [],
+			}),
+		);
+
+		await scanTasksDir(db.index, tasksDir);
+		expect(db.index.select().from(schema.tasks).all()).toHaveLength(1);
+
+		rmSync(filePath);
+		await scanTasksDir(db.index, tasksDir);
+		expect(db.index.select().from(schema.tasks).all()).toHaveLength(0);
+	});
+});
+
+describe('task queries', () => {
+	beforeEach(async () => {
+		const tasksDir = join(testDir, 'tasks', 'app');
+		mkdirSync(tasksDir, {recursive: true});
+
+		writeFileSync(
+			join(tasksDir, '1.json'),
+			JSON.stringify({
+				id: '1',
+				subject: 'Fix bug',
+				description: 'Fix it',
+				status: 'completed',
+				blocks: ['2'],
+				blockedBy: [],
+			}),
+		);
+		writeFileSync(
+			join(tasksDir, '2.json'),
+			JSON.stringify({
+				id: '2',
+				subject: 'Write tests',
+				description: 'Test it',
+				status: 'pending',
+				blocks: [],
+				blockedBy: ['1'],
+			}),
+		);
+		writeFileSync(
+			join(tasksDir, '3.json'),
+			JSON.stringify({
+				id: '3',
+				subject: 'Deploy',
+				description: 'Ship it',
+				status: 'in_progress',
+				blocks: [],
+				blockedBy: [],
+				activeForm: 'Deploying',
+			}),
+		);
+		await scanTasksDir(db.index, join(testDir, 'tasks'));
+	});
+
+	it('getTasksForProject returns all tasks for a project', () => {
+		const tasks = getTasksForProject(db.index, 'app');
+		expect(tasks).toHaveLength(3);
+		expect(tasks.map((t) => t.subject).sort()).toEqual(['Deploy', 'Fix bug', 'Write tests']);
+	});
+
+	it('getTasksForProject parses blocks/blockedBy', () => {
+		const tasks = getTasksForProject(db.index, 'app');
+		const task1 = tasks.find((t) => t.taskId === '1');
+		expect(task1!.blocks).toEqual(['2']);
+		expect(task1!.blockedBy).toEqual([]);
+
+		const task2 = tasks.find((t) => t.taskId === '2');
+		expect(task2!.blockedBy).toEqual(['1']);
+	});
+
+	it('getTasksForProject returns empty for unknown project', () => {
+		expect(getTasksForProject(db.index, 'nonexistent')).toEqual([]);
+	});
+
+	it('getTaskCountsForProject aggregates correctly', () => {
+		const counts = getTaskCountsForProject(db.index, 'app');
+		expect(counts.total).toBe(3);
+		expect(counts.completed).toBe(1);
+		expect(counts.pending).toBe(1);
+		expect(counts.inProgress).toBe(1);
+	});
+
+	it('getTaskCountsForProject returns zeros for unknown project', () => {
+		const counts = getTaskCountsForProject(db.index, 'nonexistent');
+		expect(counts).toEqual({total: 0, pending: 0, inProgress: 0, completed: 0});
+	});
+
+	it('getIncompleteTasksGroupedByProject groups correctly', () => {
+		const groups = getIncompleteTasksGroupedByProject(db.index);
+		expect(groups).toHaveLength(1);
+		expect(groups[0]!.projectDir).toBe('app');
+		expect(groups[0]!.totalPending).toBe(1);
+		expect(groups[0]!.totalInProgress).toBe(1);
+		expect(groups[0]!.tasks).toHaveLength(2);
+	});
+
+	it('getIncompleteTasksGroupedByProject returns empty when all completed', async () => {
+		const tasksDir = join(testDir, 'tasks', 'app');
+		await new Promise((r) => setTimeout(r, 50));
+		writeFileSync(
+			join(tasksDir, '2.json'),
+			JSON.stringify({
+				id: '2',
+				subject: 'Write tests',
+				description: 'Test it',
+				status: 'completed',
+				blocks: [],
+				blockedBy: ['1'],
+			}),
+		);
+		writeFileSync(
+			join(tasksDir, '3.json'),
+			JSON.stringify({
+				id: '3',
+				subject: 'Deploy',
+				description: 'Ship it',
+				status: 'completed',
+				blocks: [],
+				blockedBy: [],
+			}),
+		);
+		await scanTasksDir(db.index, join(testDir, 'tasks'));
+
+		const groups = getIncompleteTasksGroupedByProject(db.index);
+		expect(groups).toEqual([]);
 	});
 });

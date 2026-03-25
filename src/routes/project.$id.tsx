@@ -1,5 +1,5 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {ArrowLeft} from 'lucide-react';
+import {ArrowLeft, CheckCircle, Circle} from 'lucide-react';
 import {getProject} from '../lib/server-fns';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 
@@ -142,6 +142,51 @@ function ProjectPage() {
 					</ul>
 				)}
 			</section>
+
+			{/* Tasks */}
+			{data.todos.length > 0 && (
+				<section className="mt-8">
+					<h2 className="border-b border-border-300/15 pb-1 text-sm font-semibold">
+						Tasks ({data.todoCounts.total})
+						{data.todoCounts.pending > 0 && (
+							<span className="ml-2 text-xs font-normal text-text-500">
+								{data.todoCounts.pending} pending
+							</span>
+						)}
+						{data.todoCounts.inProgress > 0 && (
+							<span className="ml-2 text-xs font-normal text-blue-500">
+								{data.todoCounts.inProgress} in progress
+							</span>
+						)}
+					</h2>
+					<div className="mt-2 space-y-1">
+						{data.todos.map((task) => (
+							<div
+								key={task.taskId}
+								className="flex items-start gap-2 rounded-md p-2"
+							>
+								{task.status === 'completed' ? (
+									<CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
+								) : (
+									<Circle
+										className={`mt-0.5 h-4 w-4 shrink-0 ${task.status === 'in_progress' ? 'text-blue-500' : 'text-text-500'}`}
+									/>
+								)}
+								<div className="min-w-0 flex-1">
+									<div className="text-sm text-text-100">
+										#{task.taskId} {task.subject}
+									</div>
+									{task.blockedBy.length > 0 && (
+										<div className="mt-0.5 text-[10px] text-orange-500">
+											blocked by #{task.blockedBy.join(', #')}
+										</div>
+									)}
+								</div>
+							</div>
+						))}
+					</div>
+				</section>
+			)}
 
 			{/* Memories */}
 			<section className="mt-8">

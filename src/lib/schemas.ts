@@ -200,6 +200,24 @@ export const JsonlRecordSchema = z.union([
 ]);
 
 // ---------------------------------------------------------------------------
+// Task Files (~/.claude/tasks/{project}/{id}.json)
+// ---------------------------------------------------------------------------
+
+export const TaskStatusSchema = z.enum(['pending', 'in_progress', 'completed']);
+
+export const TaskFileSchema = z
+	.object({
+		id: z.string(),
+		subject: z.string(),
+		description: z.string(),
+		status: TaskStatusSchema,
+		blocks: z.array(z.string()),
+		blockedBy: z.array(z.string()),
+		activeForm: z.string().optional(),
+	})
+	.passthrough();
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -219,6 +237,8 @@ export type SystemRecord = z.infer<typeof SystemRecordSchema>;
 export type LastPromptRecord = z.infer<typeof LastPromptRecordSchema>;
 export type QueueOperationRecord = z.infer<typeof QueueOperationRecordSchema>;
 export type JsonlRecord = z.infer<typeof JsonlRecordSchema>;
+export type TaskStatus = z.infer<typeof TaskStatusSchema>;
+export type TaskFile = z.infer<typeof TaskFileSchema>;
 
 // ---------------------------------------------------------------------------
 // Utility

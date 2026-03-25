@@ -68,6 +68,21 @@ CREATE TABLE IF NOT EXISTS subagents (
 );
 CREATE INDEX IF NOT EXISTS subagents_session_idx ON subagents(session_id);
 
+CREATE TABLE IF NOT EXISTS tasks (
+  file_path TEXT PRIMARY KEY,
+  task_id TEXT NOT NULL,
+  project_dir TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  description TEXT NOT NULL,
+  status TEXT NOT NULL,
+  active_form TEXT,
+  blocks_json TEXT NOT NULL DEFAULT '[]',
+  blocked_by_json TEXT NOT NULL DEFAULT '[]',
+  mtime_ms INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS tasks_project_dir_idx ON tasks(project_dir);
+CREATE INDEX IF NOT EXISTS tasks_status_idx ON tasks(status);
+
 CREATE TABLE IF NOT EXISTS starred_sessions (
   session_id TEXT PRIMARY KEY,
   starred_at INTEGER NOT NULL
@@ -126,6 +141,9 @@ function initIndexDb(sqlite: Database.Database): void {
 		// Schema version mismatch — drop and rebuild
 		sqlite.exec('DROP TABLE IF EXISTS sessions_fts');
 		sqlite.exec('DROP TABLE IF EXISTS message_content_fts');
+		sqlite.exec('DROP TABLE IF EXISTS tasks');
+		sqlite.exec('DROP TABLE IF EXISTS todo_tasks');
+		sqlite.exec('DROP TABLE IF EXISTS todo_files');
 		sqlite.exec('DROP TABLE IF EXISTS starred_sessions');
 		sqlite.exec('DROP TABLE IF EXISTS subagents');
 		sqlite.exec('DROP TABLE IF EXISTS plan_sessions');

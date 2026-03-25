@@ -30,6 +30,9 @@ import {
 	getStarredSessions as getStarredSessionsFromDb,
 	isSessionStarred as isSessionStarredInDb,
 	searchMessageContent as searchMessageContentFromDb,
+	getIncompleteTasksGroupedByProject,
+	getTasksForProject,
+	getTaskCountsForProject,
 } from './db/queries';
 import {getSummary, generateSummary} from './summaries';
 import {getActiveSessions as getActiveSessionsList} from './active-sessions';
@@ -237,6 +240,9 @@ export const getProject = createServerFn({method: 'GET'})
 			}
 		}
 
+		const todos = getTasksForProject(index, detail.name);
+		const todoCounts = getTaskCountsForProject(index, detail.name);
+
 		return {
 			id: detail.id,
 			name: detail.name,
@@ -253,6 +259,8 @@ export const getProject = createServerFn({method: 'GET'})
 				subagents: subagentsBySession.get(s.id) ?? [],
 			})),
 			memories,
+			todos,
+			todoCounts,
 			plans: await Promise.all(
 				[...new Map(detail.planLinks.map((p) => [p.planFilename, p])).values()].map(async (p) => {
 					const planPath = join(PLANS_DIR, p.planFilename);
@@ -546,4 +554,20 @@ export const uninstallHooks = createServerFn({method: 'POST'})
 
 		await writeFile(settingsPath, JSON.stringify(existing, null, 2) + '\n', 'utf-8');
 		return {ok: true, settingsPath};
+	});
+
+// ---------------------------------------------------------------------------
+// Task management
+// ---------------------------------------------------------------------------
+
+export const getTasks = createServerFn({method: 'GET'}).handler(async () => {
+	const {index} = getDb();
+	return getIncompleteTasksGroupedByProject(index);
+});
+
+export const getProjectTasks = createServerFn({method: 'GET'})
+	.inputValidator(z.string())
+	.handler(async ({data: projectDir}) => {
+		const {index} = getDb();
+		return getTasksForProject(index, projectDir);
 	});
