@@ -102,7 +102,7 @@ function RootLayout() {
 				/>
 				<main className="flex-1 overflow-y-auto bg-bg-000">
 					<IndexingBanner />
-					<div className="flex min-h-9 items-center justify-between px-4 pt-3 sm:px-8">
+					<div className="flex min-h-9 items-center px-4 pt-3 sm:px-8">
 						<button
 							type="button"
 							onClick={() => setMobileOpen(true)}
@@ -111,7 +111,9 @@ function RootLayout() {
 						>
 							<HamburgerIcon />
 						</button>
-						<ModeToggle />
+						<div className="ml-auto">
+							<ModeToggle />
+						</div>
 					</div>
 					<div className="px-4 pb-8 sm:px-8">
 						<Outlet />
