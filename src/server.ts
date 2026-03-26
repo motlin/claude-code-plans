@@ -3,6 +3,7 @@ import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {createWatcher} from './lib/watcher';
 import {initDb} from './lib/db';
+import {startSweep} from './lib/active-session-store';
 
 const PLANS_DIR = process.env['PLANS_DIR'] ?? join(homedir(), '.claude', 'plans');
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
@@ -15,6 +16,7 @@ initDb().catch((err) => {
 });
 
 createWatcher([PLANS_DIR, PROJECTS_DIR, COMMANDS_DIR, PLUGINS_DIR, TASKS_DIR], PROJECTS_DIR, PLANS_DIR);
+startSweep();
 
 export default createServerEntry({
 	fetch(request) {
