@@ -129,6 +129,68 @@ export function useLastEventTimestamp(): number {
 }
 
 // ---------------------------------------------------------------------------
+// Selective route invalidation
+// ---------------------------------------------------------------------------
+
+/**
+ * Determine whether a router invalidation is needed for the given SSE event
+ * type based on the currently active route pathname. This avoids needless
+ * loader re-runs for events that are irrelevant to the visible page.
+ */
+export function shouldInvalidateRoute(eventType: string, data: Record<string, unknown>, pathname: string): boolean {
+	switch (eventType) {
+		case SSE_EVENTS.SESSION_START:
+		case SSE_EVENTS.SESSION_END:
+			return (
+				pathname === '/' ||
+				pathname === '/active' ||
+				pathname === '/sessions' ||
+				pathname.startsWith('/session/')
+			);
+
+		case SSE_EVENTS.SESSION_UPDATE: {
+			if (pathname === '/active' || pathname === '/sessions' || pathname === '/') return true;
+			// Only invalidate a specific session detail page if the IDs match
+			if (pathname.startsWith('/session/')) {
+				const viewedId = pathname.slice('/session/'.length);
+				const eventSessionId = typeof data['sessionId'] === 'string' ? data['sessionId'] : '';
+				return viewedId === eventSessionId;
+			}
+			return false;
+		}
+
+		case SSE_EVENTS.SESSIONS_REINDEXED:
+			return (
+				pathname === '/' ||
+				pathname === '/sessions' ||
+				pathname === '/projects' ||
+				pathname === '/search' ||
+				pathname === '/starred' ||
+				pathname.startsWith('/session/') ||
+				pathname.startsWith('/project/')
+			);
+
+		case SSE_EVENTS.TASK_UPDATED:
+		case SSE_EVENTS.TASK_COMPLETED:
+			return pathname.startsWith('/project/') || pathname === '/';
+
+		case SSE_EVENTS.PLAN_UPDATED:
+			return pathname === '/plans' || pathname.startsWith('/plan/');
+
+		case SSE_EVENTS.MEMORY_UPDATED:
+			return pathname === '/memories' || pathname.startsWith('/memory/');
+
+		case SSE_EVENTS.WORKTREE_CREATED:
+			return pathname.startsWith('/project/') || pathname === '/projects';
+
+		case SSE_EVENTS.CONTENT_UPDATED:
+		default:
+			// Catch-all and unknown events always invalidate
+			return true;
+	}
+}
+
+// ---------------------------------------------------------------------------
 // SSE event types we listen for
 // ---------------------------------------------------------------------------
 
@@ -163,7 +225,11 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 				data,
 				timestamp: Date.now(),
 			});
-			router.invalidate();
+
+			const pathname = router.state.location.pathname;
+			if (shouldInvalidateRoute(e.type, data, pathname)) {
+				router.invalidate();
+			}
 		}
 
 		for (const eventType of ALL_SSE_EVENT_TYPES) {
