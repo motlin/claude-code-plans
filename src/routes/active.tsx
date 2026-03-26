@@ -1,6 +1,6 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {useEffect, useState} from 'react';
 import {getActiveSessions} from '../lib/server-fns';
+import {useClaudeEvents} from '../hooks/use-claude-events';
 
 type ActiveSession = Awaited<ReturnType<typeof getActiveSessions>>[number];
 
@@ -21,23 +21,25 @@ function formatRelativeTime(lastModified: number): string {
 }
 
 function ActivePage() {
-	const initialSessions = Route.useLoaderData();
-	const [sessions, setSessions] = useState<ActiveSession[]>(initialSessions);
+	const loaderSessions = Route.useLoaderData();
+	const {activeSessions} = useClaudeEvents();
 
-	useEffect(() => {
-		const interval = setInterval(async () => {
-			const data = await getActiveSessions();
-			setSessions(data);
-		}, 5000);
-		return () => clearInterval(interval);
-	}, []);
+	// Merge: loader data provides full info (projectName, projectDir),
+	// context provides real-time push updates for lastActivity timestamps.
+	const sessions: ActiveSession[] = loaderSessions.map((s) => {
+		const pushed = activeSessions.get(s.sessionId);
+		if (pushed) {
+			return {...s, lastModified: pushed.lastActivity};
+		}
+		return s;
+	});
 
 	return (
 		<div>
 			<div className="flex items-center gap-3">
 				<h1 className="text-lg font-semibold">Active Sessions</h1>
 				<span className="text-sm text-text-500">{sessions.length} sessions</span>
-				<span className="text-xs text-text-500">(auto-refresh 5s)</span>
+				<span className="text-xs text-text-500">(live updates via SSE)</span>
 			</div>
 
 			{sessions.length === 0 ? (

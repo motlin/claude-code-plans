@@ -19,14 +19,8 @@ import {SessionChat} from '../components/session-chat';
 import {ChatInput} from '../components/chat-input';
 import {StreamingMessage} from '../components/streaming-message';
 import {useChatStream} from '../hooks/use-chat-stream';
-import {
-	getSubagents,
-	getSessionSummary,
-	requestSummary,
-	isStarred,
-	toggleSessionStar,
-	getActiveSessions,
-} from '../lib/server-fns';
+import {getSubagents, getSessionSummary, requestSummary, isStarred, toggleSessionStar} from '../lib/server-fns';
+import {useIsSessionActive} from '../hooks/use-claude-events';
 import {getDb} from '../lib/db';
 import {sessions} from '../lib/db/schema';
 import {eq} from 'drizzle-orm';
@@ -153,11 +147,10 @@ const getSession = createServerFn({method: 'GET'})
 			}),
 		);
 
-		const [subagents, summaryResult, starResult, activeSessions] = await Promise.all([
+		const [subagents, summaryResult, starResult] = await Promise.all([
 			getSubagents({data: id}),
 			getSessionSummary({data: id}),
 			isStarred({data: id}),
-			getActiveSessions(),
 		]);
 
 		const {index} = getDb();
@@ -173,7 +166,6 @@ const getSession = createServerFn({method: 'GET'})
 			subagents,
 			aiSummary: summaryResult.summary,
 			starred: starResult.starred,
-			isActive: activeSessions.some((a) => a.sessionId === id),
 			hasSummary,
 			projectPath,
 		};
@@ -328,7 +320,7 @@ function SessionPage() {
 	const params = Route.useParams();
 	const [aiSummary, setAiSummary] = useState<string | null>(data?.aiSummary ?? null);
 	const [starred, setStarred] = useState(data?.starred ?? false);
-	const [isActive, setIsActive] = useState(data?.isActive ?? false);
+	const isActive = useIsSessionActive(params.id);
 	const [generating, setGenerating] = useState(false);
 	const [showThinking, setShowThinking] = useDisplayToggle('ccp-show-thinking', true);
 	const [showTools, setShowTools] = useDisplayToggle('ccp-show-tools', true);
@@ -341,15 +333,6 @@ function SessionPage() {
 			chatStream.reset();
 		}
 	}, [params.id]);
-
-	useEffect(() => {
-		if (!isActive) return;
-		const interval = setInterval(async () => {
-			const active = await getActiveSessions();
-			setIsActive(active.some((a) => a.sessionId === params.id));
-		}, 5000);
-		return () => clearInterval(interval);
-	}, [isActive, params.id]);
 
 	if (!data) {
 		return (

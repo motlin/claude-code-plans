@@ -1,12 +1,13 @@
 import {Outlet, createRootRoute, HeadContent, Scripts, useRouter} from '@tanstack/react-router';
 import type {ErrorComponentProps} from '@tanstack/react-router';
-import {useCallback, useEffect, useState, type ReactNode} from 'react';
+import {useEffect, useState, type ReactNode} from 'react';
 import {ThemeProvider} from '../components/theme-provider';
 import {ModeToggle} from '../components/mode-toggle';
 import {Sidebar} from '../components/sidebar/index';
 import {CommandPalette} from '../components/command-palette';
 import {useCommandPalette} from '../hooks/use-command-palette';
 import {IndexingBanner} from '../components/indexing-banner';
+import {ClaudeEventsProvider, useLastEventTimestamp} from '../hooks/use-claude-events';
 import appCss from '../styles/globals.css?url';
 
 export const Route = createRootRoute({
@@ -77,82 +78,60 @@ function MobileSidebar({open, onClose, refreshKey}: {open: boolean; onClose: () 
 }
 
 function RootComponent() {
-	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-	const [mobileOpen, setMobileOpen] = useState(false);
-	const [refreshKey, setRefreshKey] = useState(0);
-	const commandPalette = useCommandPalette();
-
 	return (
 		<RootDocument>
 			<ThemeProvider>
-				<div className="flex h-screen">
-					<Sidebar
-						collapsed={sidebarCollapsed}
-						onToggle={() => setSidebarCollapsed((c) => !c)}
-						refreshKey={refreshKey}
-					/>
-					<main className="flex-1 overflow-y-auto bg-bg-000">
-						<IndexingBanner />
-						<div className="flex min-h-9 items-center justify-between px-4 pt-3 sm:px-8">
-							<button
-								type="button"
-								onClick={() => setMobileOpen(true)}
-								className="flex h-8 w-8 items-center justify-center rounded-[6px] text-text-200 transition-colors hover:bg-bg-300/50 md:hidden"
-								title="Open menu"
-							>
-								<HamburgerIcon />
-							</button>
-							<ModeToggle />
-						</div>
-						<div className="px-4 pb-8 sm:px-8">
-							<Outlet />
-						</div>
-					</main>
-				</div>
-				<MobileSidebar
-					open={mobileOpen}
-					onClose={() => setMobileOpen(false)}
-					refreshKey={refreshKey}
-				/>
-				<CommandPalette
-					open={commandPalette.open}
-					onOpenChange={commandPalette.setOpen}
-				/>
-				<SseListener onContentUpdated={useCallback(() => setRefreshKey((k) => k + 1), [])} />
+				<ClaudeEventsProvider>
+					<RootLayout />
+				</ClaudeEventsProvider>
 			</ThemeProvider>
 		</RootDocument>
 	);
 }
 
-const SSE_EVENT_TYPES = [
-	'session:start',
-	'session:end',
-	'session:update',
-	'sessions:reindexed',
-	'task:updated',
-	'task:completed',
-	'plan:updated',
-	'memory:updated',
-	'worktree:created',
-	'content:updated',
-];
+function RootLayout() {
+	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+	const [mobileOpen, setMobileOpen] = useState(false);
+	const refreshKey = useLastEventTimestamp();
+	const commandPalette = useCommandPalette();
 
-function SseListener({onContentUpdated}: {onContentUpdated: () => void}) {
-	const router = useRouter();
-
-	useEffect(() => {
-		const es = new EventSource('/api/events');
-		const handler = () => {
-			router.invalidate();
-			onContentUpdated();
-		};
-		for (const eventType of SSE_EVENT_TYPES) {
-			es.addEventListener(eventType, handler);
-		}
-		return () => es.close();
-	}, [router, onContentUpdated]);
-
-	return null;
+	return (
+		<>
+			<div className="flex h-screen">
+				<Sidebar
+					collapsed={sidebarCollapsed}
+					onToggle={() => setSidebarCollapsed((c) => !c)}
+					refreshKey={refreshKey}
+				/>
+				<main className="flex-1 overflow-y-auto bg-bg-000">
+					<IndexingBanner />
+					<div className="flex min-h-9 items-center justify-between px-4 pt-3 sm:px-8">
+						<button
+							type="button"
+							onClick={() => setMobileOpen(true)}
+							className="flex h-8 w-8 items-center justify-center rounded-[6px] text-text-200 transition-colors hover:bg-bg-300/50 md:hidden"
+							title="Open menu"
+						>
+							<HamburgerIcon />
+						</button>
+						<ModeToggle />
+					</div>
+					<div className="px-4 pb-8 sm:px-8">
+						<Outlet />
+					</div>
+				</main>
+			</div>
+			<MobileSidebar
+				open={mobileOpen}
+				onClose={() => setMobileOpen(false)}
+				refreshKey={refreshKey}
+			/>
+			<CommandPalette
+				open={commandPalette.open}
+				onOpenChange={commandPalette.setOpen}
+			/>
+		</>
+	);
 }
 
 function NotFound() {

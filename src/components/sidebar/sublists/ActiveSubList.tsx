@@ -1,15 +1,17 @@
 import {Link} from '@tanstack/react-router';
 import {useEffect, useState} from 'react';
 import {getActiveSessions} from '../../../lib/server-fns';
+import {useClaudeEvents} from '../../../hooks/use-claude-events';
 import {LoadingBars} from '../primitives/LoadingBars';
 
-export function ActiveSubList({refreshKey}: {refreshKey: number}) {
-	const [sessions, setSessions] = useState<Array<{
-		sessionId: string;
-		projectDir: string;
-		projectName: string;
-	}> | null>(null);
+type SidebarActiveSession = {sessionId: string; projectDir: string; projectName: string};
 
+export function ActiveSubList({refreshKey}: {refreshKey: number}) {
+	const {activeSessions: pushedSessions} = useClaudeEvents();
+	const [sessions, setSessions] = useState<SidebarActiveSession[] | null>(null);
+
+	// Fetch full session info from server (includes projectName, projectDir).
+	// Re-fetch when refreshKey changes (SSE events trigger router invalidation).
 	useEffect(() => {
 		let cancelled = false;
 
@@ -21,12 +23,10 @@ export function ActiveSubList({refreshKey}: {refreshKey: number}) {
 		}
 
 		fetchActive();
-		const interval = setInterval(fetchActive, 5000);
 		return () => {
 			cancelled = true;
-			clearInterval(interval);
 		};
-	}, [refreshKey]);
+	}, [refreshKey, pushedSessions.size]);
 
 	if (sessions === null) {
 		return (

@@ -1,13 +1,11 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
 import {useState} from 'react';
-import {getSessions, getActiveSessions} from '../lib/server-fns';
+import {getSessions} from '../lib/server-fns';
+import {useClaudeEvents} from '../hooks/use-claude-events';
 
 export const Route = createFileRoute('/sessions')({
 	component: SessionsPage,
-	loader: async () => {
-		const [groups, active] = await Promise.all([getSessions(), getActiveSessions()]);
-		return {groups, activeIds: new Set(active.map((a) => a.sessionId))};
-	},
+	loader: () => getSessions(),
 	head: () => ({
 		meta: [{title: 'Claude Sessions'}],
 	}),
@@ -41,7 +39,9 @@ const INITIAL_SHOW = 50;
 const PER_PROJECT_LIMIT = 10;
 
 function SessionsPage() {
-	const {groups, activeIds} = Route.useLoaderData();
+	const groups = Route.useLoaderData();
+	const {activeSessions} = useClaudeEvents();
+	const activeIds = new Set(activeSessions.keys());
 	const [showAll, setShowAll] = useState(false);
 
 	const allSessions = groups
