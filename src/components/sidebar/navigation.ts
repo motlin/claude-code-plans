@@ -1,4 +1,4 @@
-import {FileText, Brain, MessageSquare, FolderOpen, Star, Radio, Blocks} from 'lucide-react';
+import {FileText, Brain, MessageSquare, FolderOpen, Star, Radio, Blocks, Settings} from 'lucide-react';
 import type {Section} from './types';
 
 export const navItems = [
@@ -9,4 +9,5 @@ export const navItems = [
 	{to: '/memories', label: 'Memories', icon: Brain, section: 'memories' as Section},
 	{to: '/sessions', label: 'Sessions', icon: MessageSquare, section: 'sessions' as Section},
 	{to: '/plugins', label: 'Plugins', icon: Blocks, section: 'plugins' as Section},
+	{to: '/setup', label: 'Setup', icon: Settings, section: 'setup' as Section},
 ];

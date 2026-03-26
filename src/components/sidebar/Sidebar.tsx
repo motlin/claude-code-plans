@@ -145,6 +145,7 @@ export function Sidebar({
 							</div>
 							{isExpanded &&
 								item.section !== 'starred' &&
+								item.section !== 'setup' &&
 								(item.section === 'active' ? (
 									<ActiveSubList refreshKey={refreshKey} />
 								) : item.section === 'projects' ? (

@@ -1,4 +1,4 @@
-export type Section = 'active' | 'starred' | 'projects' | 'plans' | 'memories' | 'sessions' | 'plugins';
+export type Section = 'active' | 'starred' | 'projects' | 'plans' | 'memories' | 'sessions' | 'plugins' | 'setup';
 
 export interface SubItem {
 	id: string;
