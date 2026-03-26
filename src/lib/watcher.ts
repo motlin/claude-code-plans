@@ -2,22 +2,32 @@ import {watch} from 'chokidar';
 import type {FSWatcher} from 'chokidar';
 import {getDb} from './db';
 import {indexFile} from './db/indexer';
+import {SSE_EVENTS, deriveEventFromPath, type SseEvent} from './hook-events';
 
 const clients = new Set<ReadableStreamDefaultController>();
 const encoder = new TextEncoder();
 
 let watcher: FSWatcher | null = null;
 let projectsDir = '';
+let plansDir = '';
 
-export function broadcast(): void {
-	const data = encoder.encode('event: content-updated\ndata: {}\n\n');
+export function broadcastTyped(type: string, data: Record<string, unknown>): void {
+	const payload = encoder.encode(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
 	for (const client of clients) {
 		try {
-			client.enqueue(data);
+			client.enqueue(payload);
 		} catch {
 			clients.delete(client);
 		}
 	}
+}
+
+export function broadcastEvent(event: SseEvent): void {
+	broadcastTyped(event.type, event.data);
+}
+
+export function broadcast(): void {
+	broadcastTyped(SSE_EVENTS.CONTENT_UPDATED, {});
 }
 
 export function addClient(controller: ReadableStreamDefaultController): void {
@@ -41,6 +51,8 @@ function handleFileChange(path: string): void {
 	const ext = path.slice(path.lastIndexOf('.'));
 	if (!WATCHED_EXTENSIONS.has(ext)) return;
 
+	const event = deriveEventFromPath(path, plansDir, projectsDir);
+
 	if (ext === '.jsonl') {
 		if (jsonlDebounceTimer) clearTimeout(jsonlDebounceTimer);
 		jsonlDebounceTimer = setTimeout(async () => {
@@ -50,7 +62,7 @@ function handleFileChange(path: string): void {
 			} catch {
 				// indexing error, still broadcast for UI refresh
 			}
-			broadcast();
+			broadcastEvent(event);
 			jsonlDebounceTimer = null;
 		}, JSONL_DEBOUNCE_MS);
 	} else if (ext === '.json' && path.endsWith('sessions-index.json')) {
@@ -61,15 +73,18 @@ function handleFileChange(path: string): void {
 			} catch {
 				// indexing error
 			}
-			broadcast();
+			broadcastEvent(event);
 		})();
+	} else if (ext === '.json') {
+		broadcastEvent(event);
 	} else if (ext === '.md') {
-		broadcast();
+		broadcastEvent(event);
 	}
 }
 
-export function createWatcher(dirs: string[], projDir?: string): FSWatcher {
+export function createWatcher(dirs: string[], projDir?: string, plDir?: string): FSWatcher {
 	if (projDir) projectsDir = projDir;
+	if (plDir) plansDir = plDir;
 
 	watcher = watch(dirs, {
 		ignoreInitial: true,

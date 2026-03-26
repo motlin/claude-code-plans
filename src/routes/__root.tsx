@@ -124,15 +124,31 @@ function RootComponent() {
 	);
 }
 
+const SSE_EVENT_TYPES = [
+	'session:start',
+	'session:end',
+	'session:update',
+	'sessions:reindexed',
+	'task:updated',
+	'task:completed',
+	'plan:updated',
+	'memory:updated',
+	'worktree:created',
+	'content:updated',
+];
+
 function SseListener({onContentUpdated}: {onContentUpdated: () => void}) {
 	const router = useRouter();
 
 	useEffect(() => {
 		const es = new EventSource('/api/events');
-		es.addEventListener('content-updated', () => {
+		const handler = () => {
 			router.invalidate();
 			onContentUpdated();
-		});
+		};
+		for (const eventType of SSE_EVENT_TYPES) {
+			es.addEventListener(eventType, handler);
+		}
 		return () => es.close();
 	}, [router, onContentUpdated]);
 
