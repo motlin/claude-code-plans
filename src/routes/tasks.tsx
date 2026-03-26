@@ -1,8 +1,9 @@
 import {createFileRoute} from '@tanstack/react-router';
 import {useState} from 'react';
-import {ChevronRight, CheckCircle, Circle, Ban} from 'lucide-react';
+import {ChevronRight, CheckCircle, Circle, Ban, List, GitBranch} from 'lucide-react';
 import styles from '../components/markdown-article.module.css';
 import {getTasks} from '../lib/server-fns';
+import {TaskDependencyGraph} from '../components/task-dependency-graph';
 
 export const Route = createFileRoute('/tasks')({
 	component: TasksPage,
@@ -24,9 +25,12 @@ const statusLabel: Record<string, string> = {
 	completed: 'Completed',
 };
 
+type View = 'list' | 'graph';
+
 function TasksPage() {
 	const groups = Route.useLoaderData();
 	const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+	const [view, setView] = useState<View>('list');
 
 	function toggleGroup(projectDir: string) {
 		setCollapsed((prev) => {
@@ -42,10 +46,32 @@ function TasksPage() {
 
 	return (
 		<div>
-			<h1 className="text-lg font-semibold">Tasks</h1>
+			<div className="flex items-center justify-between">
+				<h1 className="text-lg font-semibold">Tasks</h1>
+				<div className="flex items-center gap-1 rounded-md border border-border-300/30 p-0.5">
+					<button
+						type="button"
+						onClick={() => setView('list')}
+						className={`rounded px-2 py-1 text-xs transition-colors ${view === 'list' ? 'bg-bg-200 text-text-100' : 'text-text-500 hover:text-text-300'}`}
+						title="List view"
+					>
+						<List className="h-3.5 w-3.5" />
+					</button>
+					<button
+						type="button"
+						onClick={() => setView('graph')}
+						className={`rounded px-2 py-1 text-xs transition-colors ${view === 'graph' ? 'bg-bg-200 text-text-100' : 'text-text-500 hover:text-text-300'}`}
+						title="Dependency graph"
+					>
+						<GitBranch className="h-3.5 w-3.5" />
+					</button>
+				</div>
+			</div>
 
 			{groups.length === 0 ? (
 				<p className="mt-4 text-text-500">No incomplete tasks across any projects.</p>
+			) : view === 'graph' ? (
+				<TaskDependencyGraph groups={groups} />
 			) : (
 				<div className="mt-6 space-y-4">
 					{groups.map((group) => {
