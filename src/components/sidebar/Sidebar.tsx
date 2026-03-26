@@ -49,7 +49,7 @@ export function Sidebar({
 			// But only collapse if there's an active item (navigated to a specific item)
 			if (activeItemId) {
 				for (const item of navItems) {
-					if (item.section !== activeSection && item.section !== 'starred') {
+					if (item.section !== activeSection && item.section !== 'starred' && item.section !== 'active') {
 						next.add(item.section);
 					}
 				}
