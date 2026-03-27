@@ -1,24 +1,30 @@
 import {Link} from '@tanstack/react-router';
 import {useEffect, useState} from 'react';
 import {getActiveSessions} from '../../../lib/server-fns';
-import {useClaudeEvents} from '../../../hooks/use-claude-events';
+import {useClaudeEvents, useSectionRefreshKey} from '../../../hooks/use-claude-events';
+import {getCached, setCache} from '../../../lib/sidebar-cache';
 import {LoadingBars} from '../primitives/LoadingBars';
 
 type SidebarActiveSession = {sessionId: string; projectDir: string; projectName: string};
 
-export function ActiveSubList({refreshKey}: {refreshKey: number}) {
+export function ActiveSubList() {
 	const {activeSessions: pushedSessions} = useClaudeEvents();
+	const refreshKey = useSectionRefreshKey('active');
 	const [sessions, setSessions] = useState<SidebarActiveSession[] | null>(null);
 
-	// Fetch full session info from server (includes projectName, projectDir).
-	// Re-fetch when refreshKey changes (SSE events trigger router invalidation).
 	useEffect(() => {
 		let cancelled = false;
 
 		async function fetchActive() {
+			const cached = getCached<SidebarActiveSession[]>('sidebar:active');
+			if (cached) {
+				if (!cancelled) setSessions(cached);
+				return;
+			}
 			const result = await getActiveSessions();
 			if (!cancelled) {
 				setSessions(result);
+				setCache('sidebar:active', result);
 			}
 		}
 

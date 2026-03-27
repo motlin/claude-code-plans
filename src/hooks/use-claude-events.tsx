@@ -1,6 +1,7 @@
 import {createContext, useContext, useEffect, useReducer, type ReactNode} from 'react';
 import {useRouter} from '@tanstack/react-router';
 import {SSE_EVENTS, type SseEventType} from '../lib/hook-events';
+import type {Section} from '../components/sidebar/types';
 
 // ---------------------------------------------------------------------------
 // State types
@@ -126,6 +127,45 @@ export function useIsSessionActive(sessionId: string): boolean {
  */
 export function useLastEventTimestamp(): number {
 	return useClaudeEvents().lastEventTimestamp;
+}
+
+// ---------------------------------------------------------------------------
+// Per-section refresh keys
+// ---------------------------------------------------------------------------
+
+const SECTION_EVENTS: Record<Section, readonly SseEventType[]> = {
+	active: [SSE_EVENTS.SESSION_START, SSE_EVENTS.SESSION_END, SSE_EVENTS.SESSION_UPDATE],
+	sessions: [SSE_EVENTS.SESSION_START, SSE_EVENTS.SESSION_END, SSE_EVENTS.SESSIONS_REINDEXED],
+	projects: [SSE_EVENTS.SESSIONS_REINDEXED, SSE_EVENTS.WORKTREE_CREATED],
+	plans: [SSE_EVENTS.PLAN_UPDATED],
+	memories: [SSE_EVENTS.MEMORY_UPDATED],
+	plugins: [SSE_EVENTS.CONTENT_UPDATED],
+	starred: [SSE_EVENTS.SESSIONS_REINDEXED],
+	setup: [],
+};
+
+/**
+ * Pure function: compute the refresh key for a sidebar section from the
+ * lastEventByType map. Only events relevant to the section are considered.
+ */
+export function getSectionRefreshKey(lastEventByType: Map<string, number>, section: Section): number {
+	const events = SECTION_EVENTS[section];
+	let max = 0;
+	for (const e of events) {
+		const ts = lastEventByType.get(e);
+		if (ts !== undefined && ts > max) max = ts;
+	}
+	return max;
+}
+
+/**
+ * Hook: returns a refresh key that only changes when SSE events relevant to
+ * the given sidebar section are received. Prevents unrelated events from
+ * causing re-fetches in other sections.
+ */
+export function useSectionRefreshKey(section: Section): number {
+	const {lastEventByType} = useClaudeEvents();
+	return getSectionRefreshKey(lastEventByType, section);
 }
 
 // ---------------------------------------------------------------------------

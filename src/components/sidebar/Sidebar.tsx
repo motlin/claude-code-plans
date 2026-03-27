@@ -7,17 +7,7 @@ import {navItems} from './navigation';
 import {SidebarToggleIcon, SearchInput} from './primitives';
 import {ActiveSubList, PlansSubList, ProjectsSubList, PluginsSubList, SubList} from './sublists';
 
-export function Sidebar({
-	collapsed,
-	onToggle,
-	refreshKey,
-	mobile,
-}: {
-	collapsed: boolean;
-	onToggle: () => void;
-	refreshKey: number;
-	mobile?: boolean;
-}) {
+export function Sidebar({collapsed, onToggle, mobile}: {collapsed: boolean; onToggle: () => void; mobile?: boolean}) {
 	const matches = useMatches();
 	const currentPath = matches[matches.length - 1]?.fullPath ?? '/';
 	const {section: activeSection, activeItemId} = useActiveSection(matches);
@@ -147,24 +137,17 @@ export function Sidebar({
 								item.section !== 'starred' &&
 								item.section !== 'setup' &&
 								(item.section === 'active' ? (
-									<ActiveSubList refreshKey={refreshKey} />
+									<ActiveSubList />
 								) : item.section === 'projects' ? (
-									<ProjectsSubList
-										activeItemId={activeItemId}
-										refreshKey={refreshKey}
-									/>
+									<ProjectsSubList activeItemId={activeItemId} />
 								) : item.section === 'plans' ? (
-									<PlansSubList
-										activeItemId={activeItemId}
-										refreshKey={refreshKey}
-									/>
+									<PlansSubList activeItemId={activeItemId} />
 								) : item.section === 'plugins' ? (
-									<PluginsSubList refreshKey={refreshKey} />
+									<PluginsSubList />
 								) : (
 									<SubList
 										section={item.section}
 										activeItemId={activeItemId}
-										refreshKey={refreshKey}
 									/>
 								))}
 						</div>

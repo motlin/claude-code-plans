@@ -46,7 +46,19 @@ export const getPlans = createServerFn({method: 'GET'}).handler(async () => {
 	}));
 });
 
+type PlanGroupResult = {
+	projectId: string;
+	projectName: string;
+	plans: Array<{filename: string; title: string; mtime: string}>;
+};
+let plansGroupedCache: {data: PlanGroupResult[]; timestamp: number} | null = null;
+const PLANS_TTL_MS = 10_000;
+
 export const getPlansGrouped = createServerFn({method: 'GET'}).handler(async () => {
+	if (plansGroupedCache && Date.now() - plansGroupedCache.timestamp < PLANS_TTL_MS) {
+		return plansGroupedCache.data;
+	}
+
 	const plans = await listPlans(PLANS_DIR);
 	const {index} = getDb();
 	const mappings = getPlanProjectMappings(index);
@@ -98,11 +110,13 @@ export const getPlansGrouped = createServerFn({method: 'GET'}).handler(async () 
 		}
 	}
 
-	return Array.from(groups.entries()).map(([projectId, group]) => ({
+	const result: PlanGroupResult[] = Array.from(groups.entries()).map(([projectId, group]) => ({
 		projectId,
 		projectName: group.projectName,
 		plans: group.plans,
 	}));
+	plansGroupedCache = {data: result, timestamp: Date.now()};
+	return result;
 });
 
 export const getMemories = createServerFn({method: 'GET'}).handler(async () => {

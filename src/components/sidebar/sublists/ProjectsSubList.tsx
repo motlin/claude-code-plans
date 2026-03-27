@@ -2,10 +2,13 @@ import {Link} from '@tanstack/react-router';
 import {ChevronRight} from 'lucide-react';
 import {useEffect, useState} from 'react';
 import {getProjects, getProject} from '../../../lib/server-fns';
+import {useSectionRefreshKey} from '../../../hooks/use-claude-events';
+import {getCached, setCache} from '../../../lib/sidebar-cache';
 import type {ProjectDetail} from '../types';
 import {LoadingBars} from '../primitives/LoadingBars';
 
-export function ProjectsSubList({activeItemId, refreshKey}: {activeItemId: string | null; refreshKey: number}) {
+export function ProjectsSubList({activeItemId}: {activeItemId: string | null}) {
+	const refreshKey = useSectionRefreshKey('projects');
 	const [projects, setProjects] = useState<Array<{
 		id: string;
 		name: string;
@@ -19,9 +22,16 @@ export function ProjectsSubList({activeItemId, refreshKey}: {activeItemId: strin
 	useEffect(() => {
 		let cancelled = false;
 		async function fetchProjects() {
+			type ProjectList = typeof projects;
+			const cached = getCached<NonNullable<ProjectList>>('sidebar:projects');
+			if (cached) {
+				if (!cancelled) setProjects(cached);
+				return;
+			}
 			const result = await getProjects();
 			if (!cancelled) {
 				setProjects(result);
+				setCache('sidebar:projects', result);
 			}
 		}
 		fetchProjects();

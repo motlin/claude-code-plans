@@ -1,24 +1,25 @@
 import {Link} from '@tanstack/react-router';
 import {useEffect, useState} from 'react';
 import {getPlans, getMemories, getSessions, getProjects} from '../../../lib/server-fns';
+import {useSectionRefreshKey} from '../../../hooks/use-claude-events';
+import {getCached, setCache} from '../../../lib/sidebar-cache';
 import type {Section, SubItem} from '../types';
 import {LoadingBars} from '../primitives/LoadingBars';
 
-export function SubList({
-	section,
-	activeItemId,
-	refreshKey,
-}: {
-	section: Section;
-	activeItemId: string | null;
-	refreshKey: number;
-}) {
+export function SubList({section, activeItemId}: {section: Section; activeItemId: string | null}) {
+	const refreshKey = useSectionRefreshKey(section);
 	const [items, setItems] = useState<SubItem[] | null>(null);
 
 	useEffect(() => {
 		let cancelled = false;
 
 		async function fetchItems() {
+			const cached = getCached<SubItem[]>(`sidebar:${section}`);
+			if (cached) {
+				if (!cancelled) setItems(cached);
+				return;
+			}
+
 			let result: SubItem[] = [];
 
 			if (section === 'projects') {
@@ -65,6 +66,7 @@ export function SubList({
 
 			if (!cancelled) {
 				setItems(result);
+				setCache(`sidebar:${section}`, result);
 			}
 		}
 

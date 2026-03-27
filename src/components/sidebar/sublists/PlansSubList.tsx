@@ -2,6 +2,8 @@ import {Link} from '@tanstack/react-router';
 import {ChevronRight} from 'lucide-react';
 import {useEffect, useState} from 'react';
 import {getPlansGrouped} from '../../../lib/server-fns';
+import {useSectionRefreshKey} from '../../../hooks/use-claude-events';
+import {getCached, setCache} from '../../../lib/sidebar-cache';
 import {LoadingBars} from '../primitives/LoadingBars';
 
 interface PlanGroup {
@@ -10,7 +12,8 @@ interface PlanGroup {
 	plans: Array<{filename: string; title: string; mtime: string}>;
 }
 
-export function PlansSubList({activeItemId, refreshKey}: {activeItemId: string | null; refreshKey: number}) {
+export function PlansSubList({activeItemId}: {activeItemId: string | null}) {
+	const refreshKey = useSectionRefreshKey('plans');
 	const [groups, setGroups] = useState<PlanGroup[] | null>(null);
 	const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
@@ -18,9 +21,15 @@ export function PlansSubList({activeItemId, refreshKey}: {activeItemId: string |
 		let cancelled = false;
 
 		async function fetchPlans() {
+			const cached = getCached<PlanGroup[]>('sidebar:plans');
+			if (cached) {
+				if (!cancelled) setGroups(cached);
+				return;
+			}
 			const result = await getPlansGrouped();
 			if (!cancelled) {
 				setGroups(result);
+				setCache('sidebar:plans', result);
 			}
 		}
 

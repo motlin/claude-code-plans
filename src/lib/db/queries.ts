@@ -1,9 +1,50 @@
-import {eq, desc, sql, and} from 'drizzle-orm';
+import {eq, desc, sql, and, inArray} from 'drizzle-orm';
 import type {BetterSQLite3Database} from 'drizzle-orm/better-sqlite3';
 import * as schema from './schema';
 import type {SessionEntry, SessionProjectGroup} from '../sessions';
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
+
+// ---------------------------------------------------------------------------
+// Cached project name map (avoids 6+ redundant full-table scans per request)
+// ---------------------------------------------------------------------------
+
+let cachedProjectNames: {map: Map<string, string>; timestamp: number} | null = null;
+const PROJECT_NAMES_TTL_MS = 10_000;
+
+function getProjectNameMap(db: IndexDb): Map<string, string> {
+	if (cachedProjectNames && Date.now() - cachedProjectNames.timestamp < PROJECT_NAMES_TTL_MS) {
+		return cachedProjectNames.map;
+	}
+	const rows = db.select({id: schema.projects.id, name: schema.projects.name}).from(schema.projects).all();
+	const map = new Map(rows.map((r) => [r.id, r.name]));
+	cachedProjectNames = {map, timestamp: Date.now()};
+	return map;
+}
+
+// ---------------------------------------------------------------------------
+// Batch session lookup helper
+// ---------------------------------------------------------------------------
+
+function batchFetchSessionTitles(db: IndexDb, sessionIds: string[]): Map<string, string | null> {
+	const map = new Map<string, string | null>();
+	if (sessionIds.length === 0) return map;
+	const rows = db
+		.select({id: schema.sessions.id, title: schema.sessions.title})
+		.from(schema.sessions)
+		.where(inArray(schema.sessions.id, sessionIds))
+		.all();
+	for (const r of rows) {
+		map.set(r.id, r.title);
+	}
+	return map;
+}
+
+function batchFetchSessions(db: IndexDb, sessionIds: string[]) {
+	if (sessionIds.length === 0) return new Map<string, typeof schema.sessions.$inferSelect>();
+	const rows = db.select().from(schema.sessions).where(inArray(schema.sessions.id, sessionIds)).all();
+	return new Map(rows.map((r) => [r.id, r]));
+}
 
 export interface DbProjectSummary {
 	id: string;
@@ -40,13 +81,7 @@ export function listSessionsFromDb(db: IndexDb): SessionProjectGroup[] {
 		.all();
 
 	const projectMap = new Map<string, SessionEntry[]>();
-	const projectNames = new Map<string, string>();
-
-	// Get project names
-	const projectRows = db.select().from(schema.projects).all();
-	for (const p of projectRows) {
-		projectNames.set(p.id, p.name);
-	}
+	const projectNames = getProjectNameMap(db);
 
 	for (const row of rows) {
 		const entry: SessionEntry = {
@@ -127,8 +162,7 @@ export interface DbPlanSessionLink {
 }
 
 export function getPlanLinksFromDb(db: IndexDb, planFilename?: string): DbPlanSessionLink[] {
-	const projectRows = db.select().from(schema.projects).all();
-	const projectNames = new Map(projectRows.map((p) => [p.id, p.name]));
+	const projectNames = getProjectNameMap(db);
 
 	let rows;
 	if (planFilename) {
@@ -137,20 +171,18 @@ export function getPlanLinksFromDb(db: IndexDb, planFilename?: string): DbPlanSe
 		rows = db.select().from(schema.planSessions).all();
 	}
 
-	return rows.map((row) => {
-		const session = db
-			.select({title: schema.sessions.title})
-			.from(schema.sessions)
-			.where(eq(schema.sessions.id, row.sessionId))
-			.get();
-		return {
-			planFilename: row.planFilename,
-			sessionId: row.sessionId,
-			projectId: row.projectId,
-			projectName: projectNames.get(row.projectId) ?? row.projectId,
-			sessionTitle: session?.title ?? null,
-		};
-	});
+	const sessionTitles = batchFetchSessionTitles(
+		db,
+		rows.map((r) => r.sessionId),
+	);
+
+	return rows.map((row) => ({
+		planFilename: row.planFilename,
+		sessionId: row.sessionId,
+		projectId: row.projectId,
+		projectName: projectNames.get(row.projectId) ?? row.projectId,
+		sessionTitle: sessionTitles.get(row.sessionId) ?? null,
+	}));
 }
 
 export interface DbProjectDetail {
@@ -187,21 +219,23 @@ export function getProjectDetailFromDb(db: IndexDb, projectId: string): DbProjec
 }
 
 function getPlanLinksForProjectFromDb(db: IndexDb, projectId: string): DbPlanSessionLink[] {
-	const projectRow = db.select().from(schema.projects).where(eq(schema.projects.id, projectId)).get();
-	const projectName = projectRow?.name ?? projectId;
+	const projectNames = getProjectNameMap(db);
+	const projectName = projectNames.get(projectId) ?? projectId;
 
 	const rows = db.select().from(schema.planSessions).where(eq(schema.planSessions.projectId, projectId)).all();
 
-	return rows.map((row) => {
-		const session = db.select().from(schema.sessions).where(eq(schema.sessions.id, row.sessionId)).get();
-		return {
-			planFilename: row.planFilename,
-			sessionId: row.sessionId,
-			projectId: row.projectId,
-			projectName,
-			sessionTitle: session?.title ?? null,
-		};
-	});
+	const sessionTitles = batchFetchSessionTitles(
+		db,
+		rows.map((r) => r.sessionId),
+	);
+
+	return rows.map((row) => ({
+		planFilename: row.planFilename,
+		sessionId: row.sessionId,
+		projectId: row.projectId,
+		projectName,
+		sessionTitle: sessionTitles.get(row.sessionId) ?? null,
+	}));
 }
 
 export interface DbSearchResult {
@@ -218,8 +252,7 @@ export interface DbSearchResult {
 }
 
 export function searchSessionsFromDb(db: IndexDb, query: string): DbSearchResult[] {
-	const projectRows = db.select().from(schema.projects).all();
-	const projectNames = new Map(projectRows.map((p) => [p.id, p.name]));
+	const projectNames = getProjectNameMap(db);
 
 	const rows = db.all(
 		sql`SELECT session_id, title, first_prompt, summary, rank,
@@ -241,8 +274,13 @@ export function searchSessionsFromDb(db: IndexDb, query: string): DbSearchResult
 		summary_snippet: string;
 	}>;
 
+	const sessionMap = batchFetchSessions(
+		db,
+		rows.map((r) => r.session_id),
+	);
+
 	return rows.map((row) => {
-		const session = db.select().from(schema.sessions).where(eq(schema.sessions.id, row.session_id)).get();
+		const session = sessionMap.get(row.session_id);
 		const snippet = row.title_snippet || row.summary_snippet || row.prompt_snippet || '';
 		return {
 			sessionId: row.session_id,
@@ -281,8 +319,7 @@ export interface DbMessageSearchResult {
 }
 
 export function searchMessageContent(db: IndexDb, query: string, limit = 50): DbMessageSearchResult[] {
-	const projectRows = db.select().from(schema.projects).all();
-	const projectNames = new Map(projectRows.map((p) => [p.id, p.name]));
+	const projectNames = getProjectNameMap(db);
 
 	const rows = db.all(
 		sql`SELECT session_id, rank,
@@ -297,8 +334,13 @@ export function searchMessageContent(db: IndexDb, query: string, limit = 50): Db
 		snippet: string;
 	}>;
 
+	const sessionMap = batchFetchSessions(
+		db,
+		rows.map((r) => r.session_id),
+	);
+
 	return rows.map((row) => {
-		const session = db.select().from(schema.sessions).where(eq(schema.sessions.id, row.session_id)).get();
+		const session = sessionMap.get(row.session_id);
 		return {
 			sessionId: row.session_id,
 			title: session?.title ?? row.session_id,
@@ -341,8 +383,7 @@ export function getStarredSessionIds(db: IndexDb): Set<string> {
 }
 
 export function getStarredSessions(db: IndexDb): SessionEntry[] {
-	const projectRows = db.select().from(schema.projects).all();
-	const projectNames = new Map(projectRows.map((p) => [p.id, p.name]));
+	const projectNames = getProjectNameMap(db);
 
 	const rows = db
 		.select({
@@ -387,8 +428,7 @@ export function getSessionProjectPath(db: IndexDb, sessionId: string): string | 
 }
 
 export function getPlanProjectMappings(db: IndexDb): DbPlanProjectMapping[] {
-	const projectRows = db.select().from(schema.projects).all();
-	const projectNames = new Map(projectRows.map((p) => [p.id, p.name]));
+	const projectNames = getProjectNameMap(db);
 
 	const rows = db
 		.selectDistinct({

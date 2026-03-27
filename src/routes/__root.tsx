@@ -7,7 +7,7 @@ import {Sidebar} from '../components/sidebar/index';
 import {CommandPalette} from '../components/command-palette';
 import {useCommandPalette} from '../hooks/use-command-palette';
 import {IndexingBanner} from '../components/indexing-banner';
-import {ClaudeEventsProvider, useLastEventTimestamp} from '../hooks/use-claude-events';
+import {ClaudeEventsProvider} from '../hooks/use-claude-events';
 import appCss from '../styles/globals.css?url';
 
 export const Route = createRootRoute({
@@ -49,7 +49,7 @@ function HamburgerIcon() {
 	);
 }
 
-function MobileSidebar({open, onClose, refreshKey}: {open: boolean; onClose: () => void; refreshKey: number}) {
+function MobileSidebar({open, onClose}: {open: boolean; onClose: () => void}) {
 	const router = useRouter();
 
 	// Close on route change
@@ -70,7 +70,6 @@ function MobileSidebar({open, onClose, refreshKey}: {open: boolean; onClose: () 
 			<Sidebar
 				collapsed={false}
 				onToggle={onClose}
-				refreshKey={refreshKey}
 				mobile
 			/>
 		</div>
@@ -92,7 +91,6 @@ function RootComponent() {
 function RootLayout() {
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const [mobileOpen, setMobileOpen] = useState(false);
-	const refreshKey = useLastEventTimestamp();
 	const commandPalette = useCommandPalette();
 
 	return (
@@ -101,7 +99,6 @@ function RootLayout() {
 				<Sidebar
 					collapsed={sidebarCollapsed}
 					onToggle={() => setSidebarCollapsed((c) => !c)}
-					refreshKey={refreshKey}
 				/>
 				<main className="flex-1 overflow-y-auto bg-bg-000">
 					<IndexingBanner />
@@ -124,7 +121,6 @@ function RootLayout() {
 			<MobileSidebar
 				open={mobileOpen}
 				onClose={() => setMobileOpen(false)}
-				refreshKey={refreshKey}
 			/>
 			<CommandPalette
 				open={commandPalette.open}

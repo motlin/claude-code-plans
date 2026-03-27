@@ -22,8 +22,6 @@ import {useChatStream} from '../hooks/use-chat-stream';
 import {getSubagents, getSessionSummary, requestSummary, isStarred, toggleSessionStar} from '../lib/server-fns';
 import {useIsSessionActive} from '../hooks/use-claude-events';
 import {getDb} from '../lib/db';
-import {sessions} from '../lib/db/schema';
-import {eq} from 'drizzle-orm';
 import {getSessionProjectPath} from '../lib/db/queries';
 import type {ClientToolCall, ToolInput} from '../components/tool-renderers';
 import {ArrowLeft, ArrowUp, ArrowDown, Copy, Terminal, GitFork, Download} from 'lucide-react';
@@ -147,15 +145,9 @@ const getSession = createServerFn({method: 'GET'})
 			}),
 		);
 
-		const [subagents, summaryResult, starResult] = await Promise.all([
-			getSubagents({data: id}),
-			getSessionSummary({data: id}),
-			isStarred({data: id}),
-		]);
+		const [subagents, starResult] = await Promise.all([getSubagents({data: id}), isStarred({data: id})]);
 
 		const {index} = getDb();
-		const sessionRow = index.select().from(sessions).where(eq(sessions.id, id)).get();
-		const hasSummary = !!(sessionRow?.summary || sessionRow?.customTitle);
 		const projectPath = getSessionProjectPath(index, id);
 
 		return {
@@ -164,9 +156,7 @@ const getSession = createServerFn({method: 'GET'})
 			projectId: detail.projectId,
 			messages,
 			subagents,
-			aiSummary: summaryResult.summary,
 			starred: starResult.starred,
-			hasSummary,
 			projectPath,
 		};
 	});
@@ -318,7 +308,8 @@ function useDisplayToggle(key: string, defaultValue: boolean): [boolean, (v: boo
 function SessionPage() {
 	const data = Route.useLoaderData();
 	const params = Route.useParams();
-	const [aiSummary, setAiSummary] = useState<string | null>(data?.aiSummary ?? null);
+	const [aiSummary, setAiSummary] = useState<string | null>(null);
+	const [summaryLoaded, setSummaryLoaded] = useState(false);
 	const [starred, setStarred] = useState(data?.starred ?? false);
 	const isActive = useIsSessionActive(params.id);
 	const [generating, setGenerating] = useState(false);
@@ -332,6 +323,25 @@ function SessionPage() {
 			prevSessionIdRef.current = params.id;
 			chatStream.reset();
 		}
+	}, [params.id]);
+
+	useEffect(() => {
+		let cancelled = false;
+		setSummaryLoaded(false);
+		setAiSummary(null);
+		getSessionSummary({data: params.id})
+			.then((r) => {
+				if (!cancelled) {
+					setAiSummary(r.summary);
+					setSummaryLoaded(true);
+				}
+			})
+			.catch(() => {
+				if (!cancelled) setSummaryLoaded(true);
+			});
+		return () => {
+			cancelled = true;
+		};
 	}, [params.id]);
 
 	if (!data) {
@@ -430,7 +440,7 @@ function SessionPage() {
 			{aiSummary ? (
 				<p className="mt-1 text-sm text-text-500 italic">{aiSummary}</p>
 			) : (
-				!data.hasSummary && (
+				summaryLoaded && (
 					<button
 						type="button"
 						onClick={handleGenerateSummary}

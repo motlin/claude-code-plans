@@ -1,9 +1,12 @@
 import {Link} from '@tanstack/react-router';
 import {useEffect, useState} from 'react';
 import {getPluginsList, getUserCommandsList} from '../../../lib/server-fns';
+import {useSectionRefreshKey} from '../../../hooks/use-claude-events';
+import {getCached, setCache} from '../../../lib/sidebar-cache';
 import {LoadingBars} from '../primitives/LoadingBars';
 
-export function PluginsSubList({refreshKey}: {refreshKey: number}) {
+export function PluginsSubList() {
+	const refreshKey = useSectionRefreshKey('plugins');
 	const [items, setItems] = useState<Array<
 		{type: 'plugin'; id: string; label: string} | {type: 'command'; source: string; filename: string; label: string}
 	> | null>(null);
@@ -11,8 +14,13 @@ export function PluginsSubList({refreshKey}: {refreshKey: number}) {
 	useEffect(() => {
 		let cancelled = false;
 		async function fetch() {
+			const cached = getCached<NonNullable<typeof items>>('sidebar:plugins');
+			if (cached) {
+				if (!cancelled) setItems(cached);
+				return;
+			}
 			const [plugins, commands] = await Promise.all([getPluginsList(), getUserCommandsList()]);
-			const result: typeof items = [];
+			const result: NonNullable<typeof items> = [];
 			for (const p of plugins) {
 				result.push({type: 'plugin', id: p.id, label: p.name});
 			}
@@ -21,7 +29,10 @@ export function PluginsSubList({refreshKey}: {refreshKey: number}) {
 					result.push({type: 'command', source: g.source, filename: c.filename, label: c.name});
 				}
 			}
-			if (!cancelled) setItems(result);
+			if (!cancelled) {
+				setItems(result);
+				setCache('sidebar:plugins', result);
+			}
 		}
 		fetch();
 		return () => {
