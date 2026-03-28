@@ -29,19 +29,24 @@ async function getMd(): Promise<MarkdownIt> {
 
 		// Call original highlight function with clean code
 		if (originalHighlight) {
-			const result = originalHighlight(cleanCode, lang, attrs);
+			try {
+				const result = originalHighlight(cleanCode, lang, attrs);
 
-			// If line numbers were detected in the original code,
-			// enhance the output to include line numbers as a gutter.
-			if (hasLineNumbers) {
-				// Post-process the HTML to add line numbers before each line
-				return enhanceWithLineNumbers(result, startLine);
+				// If line numbers were detected in the original code,
+				// enhance the output to include line numbers as a gutter.
+				if (hasLineNumbers) {
+					// Post-process the HTML to add line numbers before each line
+					return enhanceWithLineNumbers(result, startLine);
+				}
+
+				return result;
+			} catch {
+				// Language not supported by Shiki — fall through to plain text
 			}
-
-			return result;
 		}
-		// Fallback if no highlight function
-		return code;
+		// Fallback: plain escaped text
+		const escaped = cleanCode.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+		return `<pre class="shiki" style="overflow-x:auto"><code>${escaped}</code></pre>`;
 	};
 
 	return md;
@@ -170,13 +175,17 @@ export function stripLineNumberPrefixes(text: string): string {
 }
 
 export async function highlightCode(code: string, lang: string): Promise<string> {
+	const escaped = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 	if (!lang) {
-		const escaped = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 		return `<pre class="shiki" style="overflow-x:auto"><code>${escaped}</code></pre>`;
 	}
-	const fence = '```' + lang + '\n' + code + '\n```';
-	const instance = await getMd();
-	return instance.render(fence);
+	try {
+		const fence = '```' + lang + '\n' + code + '\n```';
+		const instance = await getMd();
+		return instance.render(fence);
+	} catch {
+		return `<pre class="shiki" style="overflow-x:auto"><code>${escaped}</code></pre>`;
+	}
 }
 
 export type DiffOp = readonly ['equal', string] | readonly ['remove', string] | readonly ['add', string];

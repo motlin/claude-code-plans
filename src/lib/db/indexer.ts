@@ -5,7 +5,7 @@ import {createInterface} from 'node:readline';
 import {eq, sql} from 'drizzle-orm';
 import type {BetterSQLite3Database} from 'drizzle-orm/better-sqlite3';
 import {SessionsIndexSchema, FileHistorySnapshotSchema, CustomTitleRecordSchema} from '../schemas';
-import {decodeProjectDir} from '../memory';
+import {decodeProjectDir, resolveProjectPath} from '../memory';
 import {extractSessionTitle} from '../sessions';
 import * as schema from './schema';
 
@@ -258,13 +258,14 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 		const firstMsg = await readFirstUserMessage(filePath);
 		const title = customTitle ?? extractSessionTitle(firstMsg ?? '', sessionId);
 		const projectName = decodeProjectDir(project);
+		const projectPath = await resolveProjectPath(project);
 
 		// Ensure project exists
 		db.insert(schema.projects)
-			.values({id: project, name: projectName, projectPath: null, updatedAt: fileStat.mtimeMs})
+			.values({id: project, name: projectName, projectPath, updatedAt: fileStat.mtimeMs})
 			.onConflictDoUpdate({
 				target: schema.projects.id,
-				set: {updatedAt: fileStat.mtimeMs},
+				set: {name: projectName, projectPath, updatedAt: fileStat.mtimeMs},
 			})
 			.run();
 

@@ -75,6 +75,42 @@ export async function resolveProjectName(encoded: string, projectPath?: string |
 	return name;
 }
 
+const resolvedProjectPaths = new Map<string, string | null>();
+
+/**
+ * Resolve the filesystem path for a Claude project directory name.
+ * e.g. "-Users-craig-projects-claude-code-plans" -> "/Users/craig/projects/claude-code-plans"
+ */
+export async function resolveProjectPath(encoded: string): Promise<string | null> {
+	const cached = resolvedProjectPaths.get(encoded);
+	if (cached !== undefined) return cached;
+
+	const chars = encoded.slice(1); // remove leading -
+	const hyphenPositions: number[] = [];
+	for (let i = 0; i < chars.length; i++) {
+		if (chars[i] === '-') hyphenPositions.push(i);
+	}
+
+	for (let i = hyphenPositions.length - 1; i >= 0; i--) {
+		const pos = hyphenPositions[i]!;
+		const pathPart = '/' + chars.slice(0, pos).replace(/-/g, '/');
+		const namePart = chars.slice(pos + 1);
+		const candidate = pathPart + '/' + namePart;
+		try {
+			const s = await stat(candidate);
+			if (s.isDirectory()) {
+				resolvedProjectPaths.set(encoded, candidate);
+				return candidate;
+			}
+		} catch {
+			// not a valid path, try next
+		}
+	}
+
+	resolvedProjectPaths.set(encoded, null);
+	return null;
+}
+
 async function processProject(projectsDir: string, project: string): Promise<ProjectGroup | null> {
 	const memDir = join(projectsDir, project, 'memory');
 	let files: string[];
