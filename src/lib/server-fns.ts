@@ -418,3 +418,132 @@ export const getUserCommandRendered = createServerFn({method: 'GET'})
 		const sourceName = source === 'global' ? 'Global' : (await import('./memory')).decodeProjectDir(source);
 		return {html, title, sourceName};
 	});
+
+// ---------------------------------------------------------------------------
+// Hook installation
+// ---------------------------------------------------------------------------
+
+export const getHookStatus = createServerFn({method: 'GET'}).handler(async () => {
+	const {generateHooksConfig, HOOK_EVENT_NAMES} = await import('./hook-config');
+	const settingsPath = join(homedir(), '.claude', 'settings.json');
+	const {readFile} = await import('node:fs/promises');
+
+	let existing: Record<string, unknown> = {};
+	try {
+		const raw = await readFile(settingsPath, 'utf-8');
+		existing = JSON.parse(raw) as Record<string, unknown>;
+	} catch {
+		return {installed: false, partial: false, settingsPath};
+	}
+
+	const hooks = existing['hooks'] as Record<string, unknown[]> | undefined;
+	if (!hooks) return {installed: false, partial: false, settingsPath};
+
+	const desired = generateHooksConfig();
+	const installedCount = HOOK_EVENT_NAMES.filter((name) => {
+		const entries = hooks[name];
+		if (!Array.isArray(entries)) return false;
+		const desiredCmd = (desired.hooks[name]?.[0]?.hooks[0] as {command: string} | undefined)?.command;
+		return entries.some((e) => {
+			const entryHooks = (e as {hooks?: Array<{command?: string}>}).hooks;
+			return entryHooks?.some((h) => h.command === desiredCmd);
+		});
+	}).length;
+
+	return {
+		installed: installedCount === HOOK_EVENT_NAMES.length,
+		partial: installedCount > 0 && installedCount < HOOK_EVENT_NAMES.length,
+		installedCount,
+		totalCount: HOOK_EVENT_NAMES.length,
+		settingsPath,
+	};
+});
+
+export const installHooks = createServerFn({method: 'POST'})
+	.inputValidator((input: unknown) => z.object({port: z.number().optional()}).parse(input))
+	.handler(async ({data}) => {
+		const {generateHooksConfig} = await import('./hook-config');
+		const {readFile, writeFile, mkdir} = await import('node:fs/promises');
+		const settingsPath = join(homedir(), '.claude', 'settings.json');
+		const config = generateHooksConfig(data.port !== undefined ? {port: data.port} : undefined);
+
+		// Ensure ~/.claude/ exists
+		await mkdir(join(homedir(), '.claude'), {recursive: true});
+
+		// Read existing settings
+		let existing: Record<string, unknown> = {};
+		try {
+			const raw = await readFile(settingsPath, 'utf-8');
+			existing = JSON.parse(raw) as Record<string, unknown>;
+		} catch {
+			// File doesn't exist or is invalid — start fresh
+		}
+
+		// Merge hooks: for each event, replace any existing entry with matching command prefix
+		const existingHooks = (existing['hooks'] ?? {}) as Record<string, unknown[]>;
+		for (const [eventName, matchers] of Object.entries(config.hooks)) {
+			const desiredCmd = matchers[0]?.hooks[0]?.command;
+			if (!desiredCmd) continue;
+
+			const cmdPrefix = desiredCmd.slice(0, desiredCmd.indexOf('/api/hook'));
+			const eventEntries = Array.isArray(existingHooks[eventName]) ? [...existingHooks[eventName]] : [];
+
+			// Remove any existing entry that posts to our server
+			const filtered = eventEntries.filter((e) => {
+				const entryHooks = (e as {hooks?: Array<{command?: string}>}).hooks;
+				return !entryHooks?.some((h) => h.command?.includes(cmdPrefix + '/api/hook'));
+			});
+
+			// Add our entry
+			filtered.push(...matchers);
+			existingHooks[eventName] = filtered;
+		}
+
+		existing['hooks'] = existingHooks;
+
+		await writeFile(settingsPath, JSON.stringify(existing, null, 2) + '\n', 'utf-8');
+		return {ok: true, settingsPath};
+	});
+
+export const uninstallHooks = createServerFn({method: 'POST'})
+	.inputValidator((input: unknown) => z.object({port: z.number().optional()}).parse(input))
+	.handler(async ({data}) => {
+		const {generateHooksConfig} = await import('./hook-config');
+		const {readFile, writeFile} = await import('node:fs/promises');
+		const settingsPath = join(homedir(), '.claude', 'settings.json');
+		const config = generateHooksConfig(data.port !== undefined ? {port: data.port} : undefined);
+
+		let existing: Record<string, unknown>;
+		try {
+			const raw = await readFile(settingsPath, 'utf-8');
+			existing = JSON.parse(raw) as Record<string, unknown>;
+		} catch {
+			return {ok: true, settingsPath};
+		}
+
+		const existingHooks = (existing['hooks'] ?? {}) as Record<string, unknown[]>;
+		for (const [eventName, matchers] of Object.entries(config.hooks)) {
+			const desiredCmd = matchers[0]?.hooks[0]?.command;
+			if (!desiredCmd) continue;
+
+			const cmdPrefix = desiredCmd.slice(0, desiredCmd.indexOf('/api/hook'));
+			const eventEntries = existingHooks[eventName];
+			if (!Array.isArray(eventEntries)) continue;
+
+			existingHooks[eventName] = eventEntries.filter((e) => {
+				const entryHooks = (e as {hooks?: Array<{command?: string}>}).hooks;
+				return !entryHooks?.some((h) => h.command?.includes(cmdPrefix + '/api/hook'));
+			});
+
+			if ((existingHooks[eventName] as unknown[]).length === 0) {
+				delete existingHooks[eventName];
+			}
+		}
+
+		if (Object.keys(existingHooks).length === 0) {
+			delete existing['hooks'];
+		}
+
+		await writeFile(settingsPath, JSON.stringify(existing, null, 2) + '\n', 'utf-8');
+		return {ok: true, settingsPath};
+	});
