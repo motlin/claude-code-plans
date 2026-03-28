@@ -39,7 +39,7 @@ function ProjectsPage() {
 								className="truncate font-medium"
 								style={{fontSize: '14px', fontWeight: 500}}
 							>
-								{project.name}
+								{project.projectPath ? project.projectPath.split('/').pop() : project.name}
 							</div>
 							{project.projectPath && (
 								<div className="mt-0.5 truncate text-xs text-text-500">{project.projectPath}</div>

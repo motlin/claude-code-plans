@@ -257,8 +257,8 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 	if (!sessionExists) {
 		const firstMsg = await readFirstUserMessage(filePath);
 		const title = customTitle ?? extractSessionTitle(firstMsg ?? '', sessionId);
-		const projectName = decodeProjectDir(project);
 		const projectPath = await resolveProjectPath(project);
+		const projectName = projectPath ? projectPath.split('/').pop()! : decodeProjectDir(project);
 
 		// Ensure project exists
 		db.insert(schema.projects)
