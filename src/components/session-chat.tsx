@@ -32,6 +32,7 @@ function formatTimestamp(timestamp?: string): string | null {
 interface ChatMessage {
 	role: 'user' | 'assistant';
 	timestamp?: string;
+	textBlocks: string[];
 	htmlBlocks: string[];
 	thinkingBlocks: string[];
 	imageBlocks: Array<{mediaType: string; data: string}>;
@@ -45,13 +46,6 @@ interface SessionChatProps {
 	messages: ChatMessage[];
 	showThinking?: boolean;
 	showTools?: boolean;
-}
-
-function extractPlainText(html: string): string {
-	if (typeof document === 'undefined') return html.replace(/<[^>]+>/g, '');
-	const div = document.createElement('div');
-	div.innerHTML = html;
-	return div.textContent ?? '';
 }
 
 function CopyToast({visible}: {visible: boolean}) {
@@ -68,7 +62,7 @@ function MessageToolbar({msg, index}: {msg: ChatMessage; index: number}) {
 	const [copied, setCopied] = useState<'text' | 'link' | null>(null);
 
 	function copyText() {
-		const text = msg.htmlBlocks.map(extractPlainText).join('\n\n');
+		const text = msg.textBlocks.join('\n\n');
 		navigator.clipboard.writeText(text);
 		setCopied('text');
 		setTimeout(() => setCopied(null), 1500);

@@ -100,7 +100,8 @@ const getSession = createServerFn({method: 'GET'})
 				);
 
 				const toolSummary = summarizeToolCalls(msg.toolCalls);
-				const htmlBlocks = await Promise.all(msg.textBlocks.map((text) => renderMarkdown(text)));
+				const textBlocks = msg.textBlocks;
+				const htmlBlocks = await Promise.all(textBlocks.map((text) => renderMarkdown(text)));
 
 				const thinkingBlocks: string[] = [];
 				const imageBlocks: Array<{mediaType: string; data: string}> = [];
@@ -123,6 +124,7 @@ const getSession = createServerFn({method: 'GET'})
 				const result: {
 					role: 'user' | 'assistant';
 					timestamp?: string;
+					textBlocks: string[];
 					htmlBlocks: string[];
 					thinkingBlocks: string[];
 					imageBlocks: Array<{mediaType: string; data: string}>;
@@ -132,6 +134,7 @@ const getSession = createServerFn({method: 'GET'})
 					command?: {name: string; args?: string};
 				} = {
 					role: msg.role,
+					textBlocks,
 					htmlBlocks,
 					thinkingBlocks,
 					imageBlocks,
