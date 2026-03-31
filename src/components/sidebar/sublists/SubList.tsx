@@ -22,46 +22,54 @@ export function SubList({section, activeItemId}: {section: Section; activeItemId
 
 			let result: SubItem[] = [];
 
-			if (section === 'projects') {
-				const projects = await getProjects();
-				result = projects.map((p) => ({
-					id: p.id,
-					label: p.name,
-					to: '/project/$id',
-					params: {id: p.id},
-				}));
-			} else if (section === 'plans') {
-				const plans = await getPlans();
-				result = plans.map((p) => ({
-					id: p.filename,
-					label: p.title,
-					to: '/plan/$filename',
-					params: {filename: p.filename},
-				}));
-			} else if (section === 'memories') {
-				const groups = await getMemories();
-				const all = groups
-					.flatMap((g) => g.memories)
-					.sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime())
-					.slice(0, 20);
-				result = all.map((m) => ({
-					id: `${m.project}/${m.filename}`,
-					label: m.title,
-					to: '/memory/$project/$filename',
-					params: {project: m.project, filename: m.filename},
-				}));
-			} else if (section === 'sessions') {
-				const groups = await getSessions();
-				const all = groups
-					.flatMap((g) => g.sessions)
-					.sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime())
-					.slice(0, 20);
-				result = all.map((s) => ({
-					id: s.id,
-					label: s.title,
-					to: '/session/$id',
-					params: {id: s.id},
-				}));
+			try {
+				if (section === 'projects') {
+					const projects = await getProjects();
+					if (!projects) return;
+					result = projects.map((p) => ({
+						id: p.id,
+						label: p.name,
+						to: '/project/$id',
+						params: {id: p.id},
+					}));
+				} else if (section === 'plans') {
+					const plans = await getPlans();
+					if (!plans) return;
+					result = plans.map((p) => ({
+						id: p.filename,
+						label: p.title,
+						to: '/plan/$filename',
+						params: {filename: p.filename},
+					}));
+				} else if (section === 'memories') {
+					const groups = await getMemories();
+					if (!groups) return;
+					const all = groups
+						.flatMap((g) => g.memories)
+						.sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime())
+						.slice(0, 20);
+					result = all.map((m) => ({
+						id: `${m.project}/${m.filename}`,
+						label: m.title,
+						to: '/memory/$project/$filename',
+						params: {project: m.project, filename: m.filename},
+					}));
+				} else if (section === 'sessions') {
+					const groups = await getSessions();
+					if (!groups) return;
+					const all = groups
+						.flatMap((g) => g.sessions)
+						.sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime())
+						.slice(0, 20);
+					result = all.map((s) => ({
+						id: s.id,
+						label: s.title,
+						to: '/session/$id',
+						params: {id: s.id},
+					}));
+				}
+			} catch {
+				return;
 			}
 
 			if (!cancelled) {

@@ -10,8 +10,12 @@ export function IndexingBanner() {
 		let cancelled = false;
 
 		async function poll() {
-			const {isIndexing: status} = await getIndexingStatus();
-			if (!cancelled) setIsIndexing(status);
+			try {
+				const result = await getIndexingStatus();
+				if (!cancelled && result) setIsIndexing(result.isIndexing);
+			} catch {
+				// Server function unavailable during HMR
+			}
 		}
 
 		poll();
