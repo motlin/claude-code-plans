@@ -1,5 +1,5 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {FileText, Brain, MessageSquare, FolderOpen, Blocks} from 'lucide-react';
+import {FileText, Brain, MessageSquare, FolderOpen, Blocks, Radio, Star, ListTodo, Settings} from 'lucide-react';
 
 export const Route = createFileRoute('/')({
 	component: Home,
@@ -9,6 +9,9 @@ export const Route = createFileRoute('/')({
 });
 
 const cards = [
+	{to: '/active', label: 'Active', description: 'Live sessions currently running', icon: Radio},
+	{to: '/starred', label: 'Starred', description: 'Sessions you have starred for quick access', icon: Star},
+	{to: '/tasks', label: 'Tasks', description: 'Built-in tasks across all projects', icon: ListTodo},
 	{
 		to: '/projects',
 		label: 'Projects',
@@ -24,6 +27,7 @@ const cards = [
 		description: 'Browse installed plugins, skills, agents, and commands',
 		icon: Blocks,
 	},
+	{to: '/setup', label: 'Setup', description: 'Configure hooks for live session tracking', icon: Settings},
 ] as const;
 
 function Home() {
