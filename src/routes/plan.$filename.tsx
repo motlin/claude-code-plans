@@ -2,12 +2,12 @@ import {createFileRoute, Link} from '@tanstack/react-router';
 import {createServerFn} from '@tanstack/react-start';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
-import {readPlan} from '../lib/plans';
+import {readPlan, getPlanMtime} from '../lib/plans';
 import {renderMarkdown} from '../lib/renderer';
 import {extractTitleFromContent} from '../lib/markdown-utils';
 import {MarkdownArticle} from '../components/markdown-article';
 import {getPlanLinks} from '../lib/server-fns';
-import {ArrowLeft, Pencil, FolderOpen, MessageSquare} from 'lucide-react';
+import {ArrowLeft, Pencil, FolderOpen, MessageSquare, Clock} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 
 const PLANS_DIR = process.env['PLANS_DIR'] ?? join(homedir(), '.claude', 'plans');
@@ -20,8 +20,20 @@ const getPlan = createServerFn({method: 'GET'})
 		const html = await renderMarkdown(content);
 		const title = extractTitleFromContent(content, filename);
 		const links = await getPlanLinks({data: filename});
-		return {html, title, links};
+		const mtime = await getPlanMtime(PLANS_DIR, filename);
+		return {html, title, links, mtime: mtime?.toISOString() ?? null};
 	});
+
+function formatDate(iso: string): string {
+	return new Date(iso).toLocaleDateString('en-US', {
+		month: 'short',
+		day: 'numeric',
+		year: 'numeric',
+		hour: '2-digit',
+		minute: '2-digit',
+		timeZone: 'UTC',
+	});
+}
 
 export const Route = createFileRoute('/plan/$filename')({
 	component: PlanPage,
@@ -35,7 +47,12 @@ function PlanPage() {
 	const loaderData = Route.useLoaderData();
 	const state = Route.useMatch({select: (m) => (m as unknown as {state?: {html?: string; title?: string}}).state});
 	const data = state?.html
-		? {html: state.html, title: state.title ?? loaderData?.title ?? '', links: loaderData?.links ?? []}
+		? {
+				html: state.html,
+				title: state.title ?? loaderData?.title ?? '',
+				links: loaderData?.links ?? [],
+				mtime: loaderData?.mtime ?? null,
+			}
 		: loaderData;
 
 	if (!data) {
@@ -75,6 +92,12 @@ function PlanPage() {
 					Edit
 				</Link>
 			</DetailTopBar>
+			{data.mtime && (
+				<div className="mt-3 flex items-center gap-1.5 text-xs text-text-500">
+					<Clock className="h-3 w-3" />
+					Last modified {formatDate(data.mtime)}
+				</div>
+			)}
 			<div className="mt-4">
 				<MarkdownArticle html={data.html} />
 			</div>

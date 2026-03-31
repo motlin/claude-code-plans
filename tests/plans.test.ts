@@ -1,7 +1,7 @@
 import {writeFileSync, mkdirSync, rmSync, utimesSync, readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {listPlans, readPlan, writePlan} from '../src/lib/plans.js';
+import {listPlans, readPlan, writePlan, getPlanMtime} from '../src/lib/plans.js';
 
 const testDir = join(tmpdir(), 'claude-plans-test-' + process.pid);
 
@@ -124,5 +124,40 @@ describe('writePlan', () => {
 	it('rejects non-md extension', async () => {
 		const ok = await writePlan(testDir, 'file.txt', 'bad');
 		expect(ok).toBe(false);
+	});
+});
+
+describe('getPlanMtime', () => {
+	it('returns mtime for an existing plan file', async () => {
+		const before = new Date();
+		writeFileSync(join(testDir, 'test.md'), '# Test');
+		const mtime = await getPlanMtime(testDir, 'test.md');
+		expect(mtime).toBeInstanceOf(Date);
+		expect(mtime!.getTime()).toBeGreaterThanOrEqual(before.getTime() - 1000);
+	});
+
+	it('returns mtime matching file stat', async () => {
+		const filePath = join(testDir, 'stamped.md');
+		writeFileSync(filePath, '# Stamped');
+		const fixedTime = new Date('2025-06-15T12:00:00Z');
+		utimesSync(filePath, fixedTime, fixedTime);
+		const mtime = await getPlanMtime(testDir, 'stamped.md');
+		expect(mtime!.getTime()).toBe(fixedTime.getTime());
+	});
+
+	it('returns null for non-existent file', async () => {
+		const mtime = await getPlanMtime(testDir, 'nope.md');
+		expect(mtime).toBeNull();
+	});
+
+	it('rejects path traversal', async () => {
+		const mtime = await getPlanMtime(testDir, '../etc/passwd');
+		expect(mtime).toBeNull();
+	});
+
+	it('rejects non-md files', async () => {
+		writeFileSync(join(testDir, 'secret.txt'), 'secret');
+		const mtime = await getPlanMtime(testDir, 'secret.txt');
+		expect(mtime).toBeNull();
 	});
 });

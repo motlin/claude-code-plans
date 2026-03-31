@@ -48,6 +48,20 @@ export async function readPlan(plansDir: string, filename: string): Promise<stri
 	}
 }
 
+export async function getPlanMtime(plansDir: string, filename: string): Promise<Date | null> {
+	if (filename.includes('..') || filename.includes('/') || filename.startsWith('/') || !filename.endsWith('.md')) {
+		return null;
+	}
+
+	try {
+		const filePath = join(plansDir, filename);
+		const fileStat = await stat(filePath);
+		return fileStat.mtime;
+	} catch {
+		return null;
+	}
+}
+
 export async function writePlan(plansDir: string, filename: string, content: string): Promise<boolean> {
 	if (filename.includes('..') || filename.includes('/') || !filename.endsWith('.md')) return false;
 	await writeFile(join(plansDir, filename), content, 'utf-8');
