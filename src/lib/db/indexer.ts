@@ -241,23 +241,15 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 			.run();
 	}
 
-	// Update custom title if found
-	if (customTitle) {
-		const existingSession = db.select().from(schema.sessions).where(eq(schema.sessions.id, sessionId)).get();
-		if (existingSession) {
-			db.update(schema.sessions)
-				.set({customTitle, title: customTitle})
-				.where(eq(schema.sessions.id, sessionId))
-				.run();
+	const existingSession = db.select().from(schema.sessions).where(eq(schema.sessions.id, sessionId)).get();
+	if (existingSession) {
+		const updates: Record<string, unknown> = {mtimeMs: fileStat.mtimeMs};
+		if (customTitle) {
+			updates['customTitle'] = customTitle;
+			updates['title'] = customTitle;
 		}
-	}
-
-	// Always update mtime for existing sessions so sort order reflects latest activity
-	db.update(schema.sessions).set({mtimeMs: fileStat.mtimeMs}).where(eq(schema.sessions.id, sessionId)).run();
-
-	// If session not in DB (no sessions-index.json existed), create from JSONL
-	const sessionExists = db.select().from(schema.sessions).where(eq(schema.sessions.id, sessionId)).get();
-	if (!sessionExists) {
+		db.update(schema.sessions).set(updates).where(eq(schema.sessions.id, sessionId)).run();
+	} else {
 		const firstMsg = await readFirstUserMessage(filePath);
 		const title = customTitle ?? extractSessionTitle(firstMsg ?? '', sessionId);
 		const projectPath = await resolveProjectPath(project);
