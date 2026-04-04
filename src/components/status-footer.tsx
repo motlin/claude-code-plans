@@ -41,8 +41,13 @@ function formatDuration(ms: number): string {
 
 function formatCost(usd: number): string {
 	if (usd < 0.01) return `$${usd.toFixed(4)}`;
-	if (usd < 1) return `$${usd.toFixed(2)}`;
 	return `$${usd.toFixed(2)}`;
+}
+
+function formatTokens(n: number): string {
+	if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+	if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+	return String(n);
 }
 
 function getNestedNumber(obj: Record<string, unknown>, ...keys: string[]): number | undefined {
@@ -65,36 +70,35 @@ function getNestedString(obj: Record<string, unknown>, ...keys: string[]): strin
 
 interface StatusFooterProps {
 	data: Record<string, unknown>;
+	gitBranch: string | null;
+	messageCount: number;
 }
 
-export function StatusFooter({data}: StatusFooterProps) {
+export function StatusFooter({data, gitBranch, messageCount}: StatusFooterProps) {
 	const [expanded, setExpanded] = useState(false);
 
-	const segments: Array<{label: string; color: {bg: string; fg: string}}> = [];
+	const segments: Array<{key: string; label: string; color: {bg: string; fg: string}}> = [];
 
 	// Directory (basename of cwd)
 	const cwd = (data['cwd'] as string) ?? getNestedString(data, 'workspace', 'current_dir');
 	if (cwd) {
 		const basename = cwd.split('/').pop() ?? cwd;
-		segments.push({label: basename, color: SEGMENT_COLORS.directory});
+		segments.push({key: 'dir', label: basename, color: SEGMENT_COLORS.directory});
 	}
 
 	// Version
 	const version = data['version'];
 	if (typeof version === 'string') {
-		segments.push({label: `v${version}`, color: SEGMENT_COLORS.version});
+		segments.push({key: 'ver', label: `v${version}`, color: SEGMENT_COLORS.version});
 	}
 
-	// Model
-	const modelName = getNestedString(data, 'model', 'display_name') ?? getNestedString(data, 'model', 'id');
-	if (modelName) {
-		segments.push({label: modelName, color: SEGMENT_COLORS.version});
-	}
-
-	// Duration
+	// Duration + message count
 	const durationMs = getNestedNumber(data, 'cost', 'total_duration_ms');
 	if (durationMs !== undefined) {
-		segments.push({label: formatDuration(durationMs), color: SEGMENT_COLORS.metrics});
+		const durationLabel = `${formatDuration(durationMs)} · ${messageCount} msgs`;
+		segments.push({key: 'dur', label: durationLabel, color: SEGMENT_COLORS.metrics});
+	} else if (messageCount > 0) {
+		segments.push({key: 'msgs', label: `${messageCount} msgs`, color: SEGMENT_COLORS.metrics});
 	}
 
 	// Lines added/removed
@@ -105,14 +109,31 @@ export function StatusFooter({data}: StatusFooterProps) {
 		if (linesAdded !== undefined && linesAdded > 0) parts.push(`+${linesAdded}`);
 		if (linesRemoved !== undefined && linesRemoved > 0) parts.push(`-${linesRemoved}`);
 		if (parts.length > 0) {
-			segments.push({label: parts.join(' '), color: SEGMENT_COLORS.metrics});
+			segments.push({key: 'lines', label: parts.join(' '), color: SEGMENT_COLORS.metrics});
 		}
 	}
 
-	// Context window percentage
+	// Context window: tokens + percentage
 	const contextPct = getNestedNumber(data, 'context_window', 'used_percentage');
+	const totalInput = getNestedNumber(data, 'context_window', 'total_input_tokens') ?? 0;
+	const totalOutput = getNestedNumber(data, 'context_window', 'total_output_tokens') ?? 0;
+	const totalTokens = totalInput + totalOutput;
+	const windowSize = getNestedNumber(data, 'context_window', 'context_window_size');
 	if (contextPct !== undefined) {
-		segments.push({label: `ctx ${Math.round(contextPct)}%`, color: SEGMENT_COLORS.context});
+		let label = `${formatTokens(totalTokens)} (${Math.round(contextPct)}%)`;
+		if (windowSize) label += ` / ${formatTokens(windowSize)}`;
+		segments.push({key: 'ctx', label, color: SEGMENT_COLORS.context});
+	}
+
+	// Git branch
+	if (gitBranch) {
+		segments.push({key: 'git', label: `⎇ ${gitBranch}`, color: SEGMENT_COLORS.git});
+	}
+
+	// Model
+	const modelName = getNestedString(data, 'model', 'display_name') ?? getNestedString(data, 'model', 'id');
+	if (modelName) {
+		segments.push({key: 'model', label: modelName, color: SEGMENT_COLORS.version});
 	}
 
 	// Rate limits
@@ -122,13 +143,13 @@ export function StatusFooter({data}: StatusFooterProps) {
 		const parts: string[] = [];
 		if (rate5h !== undefined) parts.push(`5h:${Math.round(rate5h)}%`);
 		if (rate7d !== undefined) parts.push(`7d:${Math.round(rate7d)}%`);
-		segments.push({label: parts.join(' '), color: SEGMENT_COLORS.rate});
+		segments.push({key: 'rate', label: parts.join(' '), color: SEGMENT_COLORS.rate});
 	}
 
 	// Cost
 	const costUsd = getNestedNumber(data, 'cost', 'total_cost_usd');
 	if (costUsd !== undefined) {
-		segments.push({label: formatCost(costUsd), color: SEGMENT_COLORS.cost});
+		segments.push({key: 'cost', label: formatCost(costUsd), color: SEGMENT_COLORS.cost});
 	}
 
 	if (segments.length === 0) return null;
@@ -138,7 +159,7 @@ export function StatusFooter({data}: StatusFooterProps) {
 			<div className="flex items-center gap-1.5 px-4 py-2 overflow-x-auto">
 				{segments.map((seg) => (
 					<Segment
-						key={seg.label}
+						key={seg.key}
 						label={seg.label}
 						color={seg.color}
 					/>

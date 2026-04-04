@@ -23,7 +23,7 @@ import {getSubagents, getSessionSummary, requestSummary, isStarred, toggleSessio
 import {useIsSessionActive, useStatusline} from '../hooks/use-claude-events';
 import {StatusFooter} from '../components/status-footer';
 import {getDb} from '../lib/db';
-import {getSessionProjectPath} from '../lib/db/queries';
+import {getSessionProjectPath, getSessionMeta} from '../lib/db/queries';
 import type {ClientToolCall, ToolInput} from '../components/tool-renderers';
 import {ArrowLeft, ArrowUp, ArrowDown, Copy, Terminal, GitFork, Download} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
@@ -153,6 +153,7 @@ const getSession = createServerFn({method: 'GET'})
 
 		const {index} = getDb();
 		const projectPath = getSessionProjectPath(index, id);
+		const sessionMeta = getSessionMeta(index, id);
 
 		return {
 			title: detail.title,
@@ -162,6 +163,8 @@ const getSession = createServerFn({method: 'GET'})
 			subagents,
 			starred: starResult.starred,
 			projectPath,
+			gitBranch: sessionMeta?.gitBranch ?? null,
+			messageCount: sessionMeta?.messageCount ?? messages.length,
 		};
 	});
 
@@ -532,7 +535,13 @@ function SessionPage() {
 			)}
 
 			<FloatingScrollButtons />
-			{statusline && <StatusFooter data={statusline} />}
+			{statusline && (
+				<StatusFooter
+					data={statusline}
+					gitBranch={data.gitBranch}
+					messageCount={data.messageCount}
+				/>
+			)}
 		</div>
 	);
 }
