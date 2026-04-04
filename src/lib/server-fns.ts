@@ -2,7 +2,7 @@ import {createServerFn} from '@tanstack/react-start';
 import {z} from 'zod';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
-import {readdir, stat} from 'node:fs/promises';
+import {readdir, readFile, stat} from 'node:fs/promises';
 import {listPlans} from './plans';
 import {listMemories} from './memory';
 import {extractTitle} from './markdown-utils';
@@ -36,6 +36,7 @@ import {
 } from './db/queries';
 import {getSummary, generateSummary} from './summaries';
 import {getActiveSessions as getActiveSessionsList} from './active-sessions';
+import {getCacheDir} from './db/connection';
 
 const PLANS_DIR = process.env['PLANS_DIR'] ?? join(homedir(), '.claude', 'plans');
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
@@ -626,3 +627,17 @@ export const getProjectTasks = createServerFn({method: 'GET'})
 			})),
 		);
 	});
+
+export const getStatusline = createServerFn({method: 'GET'})
+	.inputValidator(z.object({sessionId: z.string()}))
+	.handler(async ({data: {sessionId}}) => {
+		const filePath = join(getCacheDir(), 'statusline', `${sessionId}.json`);
+		try {
+			const raw = await readFile(filePath, 'utf-8');
+			return JSON.parse(raw) as Record<string, JsonValue>;
+		} catch {
+			return null;
+		}
+	});
+
+type JsonValue = string | number | boolean | null | JsonValue[] | {[key: string]: JsonValue};

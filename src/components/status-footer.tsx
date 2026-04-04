@@ -1,0 +1,164 @@
+import {useState} from 'react';
+import {ChevronDown, ChevronUp} from 'lucide-react';
+
+// Tokyo Night–inspired segment colors from claude-powerline.json
+const SEGMENT_COLORS = {
+	directory: {bg: '#2a2a2a', fg: '#e0e0e0'},
+	git: {bg: '#3a3a3a', fg: '#d0d0d0'},
+	version: {bg: '#7a7a7a', fg: '#f0f0f0'},
+	metrics: {bg: '#565656', fg: '#e5e5e5'},
+	context: {bg: '#6a6a6a', fg: '#ffffff'},
+	rate: {bg: '#4a4a4a', fg: '#c0c0c0'},
+	cost: {bg: '#5a5a5a', fg: '#b0b0b0'},
+} as const;
+
+interface SegmentProps {
+	label: string;
+	color: {bg: string; fg: string};
+}
+
+function Segment({label, color}: SegmentProps) {
+	return (
+		<span
+			className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap"
+			style={{backgroundColor: color.bg, color: color.fg}}
+		>
+			{label}
+		</span>
+	);
+}
+
+function formatDuration(ms: number): string {
+	const seconds = Math.floor(ms / 1000);
+	if (seconds < 60) return `${seconds}s`;
+	const minutes = Math.floor(seconds / 60);
+	const remainingSeconds = seconds % 60;
+	if (minutes < 60) return `${minutes}m ${remainingSeconds}s`;
+	const hours = Math.floor(minutes / 60);
+	const remainingMinutes = minutes % 60;
+	return `${hours}h ${remainingMinutes}m`;
+}
+
+function formatCost(usd: number): string {
+	if (usd < 0.01) return `$${usd.toFixed(4)}`;
+	if (usd < 1) return `$${usd.toFixed(2)}`;
+	return `$${usd.toFixed(2)}`;
+}
+
+function getNestedNumber(obj: Record<string, unknown>, ...keys: string[]): number | undefined {
+	let current: unknown = obj;
+	for (const key of keys) {
+		if (current === null || typeof current !== 'object') return undefined;
+		current = (current as Record<string, unknown>)[key];
+	}
+	return typeof current === 'number' ? current : undefined;
+}
+
+function getNestedString(obj: Record<string, unknown>, ...keys: string[]): string | undefined {
+	let current: unknown = obj;
+	for (const key of keys) {
+		if (current === null || typeof current !== 'object') return undefined;
+		current = (current as Record<string, unknown>)[key];
+	}
+	return typeof current === 'string' ? current : undefined;
+}
+
+interface StatusFooterProps {
+	data: Record<string, unknown>;
+}
+
+export function StatusFooter({data}: StatusFooterProps) {
+	const [expanded, setExpanded] = useState(false);
+
+	const segments: Array<{label: string; color: {bg: string; fg: string}}> = [];
+
+	// Directory (basename of cwd)
+	const cwd = (data['cwd'] as string) ?? getNestedString(data, 'workspace', 'current_dir');
+	if (cwd) {
+		const basename = cwd.split('/').pop() ?? cwd;
+		segments.push({label: basename, color: SEGMENT_COLORS.directory});
+	}
+
+	// Version
+	const version = data['version'];
+	if (typeof version === 'string') {
+		segments.push({label: `v${version}`, color: SEGMENT_COLORS.version});
+	}
+
+	// Model
+	const modelName = getNestedString(data, 'model', 'display_name') ?? getNestedString(data, 'model', 'id');
+	if (modelName) {
+		segments.push({label: modelName, color: SEGMENT_COLORS.version});
+	}
+
+	// Duration
+	const durationMs = getNestedNumber(data, 'cost', 'total_duration_ms');
+	if (durationMs !== undefined) {
+		segments.push({label: formatDuration(durationMs), color: SEGMENT_COLORS.metrics});
+	}
+
+	// Lines added/removed
+	const linesAdded = getNestedNumber(data, 'cost', 'total_lines_added');
+	const linesRemoved = getNestedNumber(data, 'cost', 'total_lines_removed');
+	if (linesAdded !== undefined || linesRemoved !== undefined) {
+		const parts: string[] = [];
+		if (linesAdded !== undefined && linesAdded > 0) parts.push(`+${linesAdded}`);
+		if (linesRemoved !== undefined && linesRemoved > 0) parts.push(`-${linesRemoved}`);
+		if (parts.length > 0) {
+			segments.push({label: parts.join(' '), color: SEGMENT_COLORS.metrics});
+		}
+	}
+
+	// Context window percentage
+	const contextPct = getNestedNumber(data, 'context_window', 'used_percentage');
+	if (contextPct !== undefined) {
+		segments.push({label: `ctx ${Math.round(contextPct)}%`, color: SEGMENT_COLORS.context});
+	}
+
+	// Rate limits
+	const rate5h = getNestedNumber(data, 'rate_limits', 'five_hour', 'used_percentage');
+	const rate7d = getNestedNumber(data, 'rate_limits', 'seven_day', 'used_percentage');
+	if (rate5h !== undefined || rate7d !== undefined) {
+		const parts: string[] = [];
+		if (rate5h !== undefined) parts.push(`5h:${Math.round(rate5h)}%`);
+		if (rate7d !== undefined) parts.push(`7d:${Math.round(rate7d)}%`);
+		segments.push({label: parts.join(' '), color: SEGMENT_COLORS.rate});
+	}
+
+	// Cost
+	const costUsd = getNestedNumber(data, 'cost', 'total_cost_usd');
+	if (costUsd !== undefined) {
+		segments.push({label: formatCost(costUsd), color: SEGMENT_COLORS.cost});
+	}
+
+	if (segments.length === 0) return null;
+
+	return (
+		<div className="sticky bottom-0 z-10 border-t border-border-300/15 bg-bg-000">
+			<div className="flex items-center gap-1.5 px-4 py-2 overflow-x-auto">
+				{segments.map((seg) => (
+					<Segment
+						key={seg.label}
+						label={seg.label}
+						color={seg.color}
+					/>
+				))}
+				<button
+					type="button"
+					onClick={() => setExpanded(!expanded)}
+					className="ml-auto shrink-0 p-1 text-text-500 hover:text-text-000 transition-colors cursor-pointer"
+					title={expanded ? 'Collapse raw JSON' : 'Expand raw JSON'}
+				>
+					{expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+				</button>
+			</div>
+			{expanded && (
+				<div className="border-t border-border-300/15 max-h-80 overflow-auto">
+					<pre className="px-4 py-3 text-xs font-mono text-text-300 leading-relaxed">
+						{JSON.stringify(data, null, 2)}
+					</pre>
+				</div>
+			)}
+		</div>
+	);
+}

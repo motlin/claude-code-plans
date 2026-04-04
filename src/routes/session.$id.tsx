@@ -20,7 +20,8 @@ import {ChatInput} from '../components/chat-input';
 import {StreamingMessage} from '../components/streaming-message';
 import {useChatStream} from '../hooks/use-chat-stream';
 import {getSubagents, getSessionSummary, requestSummary, isStarred, toggleSessionStar} from '../lib/server-fns';
-import {useIsSessionActive} from '../hooks/use-claude-events';
+import {useIsSessionActive, useStatusline} from '../hooks/use-claude-events';
+import {StatusFooter} from '../components/status-footer';
 import {getDb} from '../lib/db';
 import {getSessionProjectPath} from '../lib/db/queries';
 import type {ClientToolCall, ToolInput} from '../components/tool-renderers';
@@ -315,6 +316,7 @@ function SessionPage() {
 	const [summaryLoaded, setSummaryLoaded] = useState(false);
 	const [starred, setStarred] = useState(data?.starred ?? false);
 	const isActive = useIsSessionActive(params.id);
+	const statusline = useStatusline(params.id);
 	const [generating, setGenerating] = useState(false);
 	const [showThinking, setShowThinking] = useDisplayToggle('ccp-show-thinking', true);
 	const [showTools, setShowTools] = useDisplayToggle('ccp-show-tools', true);
@@ -530,6 +532,7 @@ function SessionPage() {
 			)}
 
 			<FloatingScrollButtons />
+			{statusline && <StatusFooter data={statusline} />}
 		</div>
 	);
 }

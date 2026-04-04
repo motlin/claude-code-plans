@@ -10,6 +10,7 @@ const encoder = new TextEncoder();
 let watcher: FSWatcher | null = null;
 let projectsDir = '';
 let plansDir = '';
+let statuslineDir = '';
 
 export function broadcastTyped(type: string, data: Record<string, unknown>): void {
 	const payload = encoder.encode(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
@@ -65,6 +66,10 @@ function handleFileChange(path: string): void {
 			broadcastEvent(event);
 			jsonlDebounceTimer = null;
 		}, JSONL_DEBOUNCE_MS);
+	} else if (ext === '.json' && statuslineDir && path.startsWith(statuslineDir)) {
+		const filename = path.split('/').pop() ?? '';
+		const sessionId = filename.replace(/\.json$/, '');
+		broadcastTyped(SSE_EVENTS.STATUSLINE_UPDATED, {sessionId});
 	} else if (ext === '.json' && path.includes('/tasks/')) {
 		(async () => {
 			try {
@@ -92,9 +97,10 @@ function handleFileChange(path: string): void {
 	}
 }
 
-export function createWatcher(dirs: string[], projDir?: string, plDir?: string): FSWatcher {
+export function createWatcher(dirs: string[], projDir?: string, plDir?: string, slDir?: string): FSWatcher {
 	if (projDir) projectsDir = projDir;
 	if (plDir) plansDir = plDir;
+	if (slDir) statuslineDir = slDir;
 
 	watcher = watch(dirs, {
 		ignoreInitial: true,

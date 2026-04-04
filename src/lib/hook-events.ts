@@ -14,6 +14,7 @@ export const SSE_EVENTS = {
 	PLAN_UPDATED: 'plan:updated',
 	MEMORY_UPDATED: 'memory:updated',
 	WORKTREE_CREATED: 'worktree:created',
+	STATUSLINE_UPDATED: 'statusline:updated',
 	CONTENT_UPDATED: 'content:updated',
 } as const;
 

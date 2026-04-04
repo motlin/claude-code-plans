@@ -1,4 +1,4 @@
-import {createContext, useContext, useEffect, useReducer, type ReactNode} from 'react';
+import {createContext, useCallback, useContext, useEffect, useReducer, useState, type ReactNode} from 'react';
 import {useRouter} from '@tanstack/react-router';
 import {SSE_EVENTS, type SseEventType} from '../lib/hook-events';
 import type {Section} from '../components/sidebar/types';
@@ -224,6 +224,10 @@ export function shouldInvalidateRoute(eventType: string, data: Record<string, un
 		case SSE_EVENTS.WORKTREE_CREATED:
 			return pathname.startsWith('/project/') || pathname === '/projects';
 
+		case SSE_EVENTS.STATUSLINE_UPDATED:
+			// Handled by useStatusline hook, no route invalidation needed
+			return false;
+
 		case SSE_EVENTS.CONTENT_UPDATED:
 		default:
 			// Catch-all and unknown events always invalidate
@@ -281,4 +285,40 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 	}, [router]);
 
 	return <ClaudeEventsContext.Provider value={state}>{children}</ClaudeEventsContext.Provider>;
+}
+
+// ---------------------------------------------------------------------------
+// Statusline hook — fetches statusline JSON and re-fetches on SSE updates
+// ---------------------------------------------------------------------------
+
+export function useStatusline(sessionId: string): Record<string, unknown> | null {
+	const [data, setData] = useState<Record<string, unknown> | null>(null);
+	const {lastEventByType} = useClaudeEvents();
+	const statuslineTimestamp = lastEventByType.get(SSE_EVENTS.STATUSLINE_UPDATED) ?? 0;
+
+	const fetchStatusline = useCallback(async () => {
+		try {
+			const {getStatusline} = await import('../lib/server-fns');
+			const result = await getStatusline({data: {sessionId}});
+			if (result) {
+				setData(result as Record<string, unknown>);
+			}
+		} catch {
+			// statusline not available
+		}
+	}, [sessionId]);
+
+	// Initial fetch
+	useEffect(() => {
+		fetchStatusline();
+	}, [fetchStatusline]);
+
+	// Re-fetch when SSE event fires
+	useEffect(() => {
+		if (statuslineTimestamp > 0) {
+			fetchStatusline();
+		}
+	}, [statuslineTimestamp, fetchStatusline]);
+
+	return data;
 }
