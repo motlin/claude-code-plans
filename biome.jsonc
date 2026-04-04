@@ -123,5 +123,11 @@
 				},
 			},
 		},
+		{
+			"includes": ["src/routeTree.gen.ts"],
+			"formatter": {
+				"enabled": false,
+			},
+		},
 	],
 }
