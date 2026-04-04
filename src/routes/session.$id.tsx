@@ -162,10 +162,13 @@ const getSession = createServerFn({method: 'GET'})
 		}
 
 		let gitSha: string | null = null;
+		let gitClean: boolean | null = null;
 		if (projectPath) {
 			try {
 				const {execSync} = await import('node:child_process');
 				gitSha = execSync('git rev-parse --short HEAD', {cwd: projectPath, encoding: 'utf-8'}).trim();
+				const status = execSync('git status --porcelain', {cwd: projectPath, encoding: 'utf-8'}).trim();
+				gitClean = status.length === 0;
 			} catch {
 				// not a git repo or git not available
 			}
@@ -181,6 +184,7 @@ const getSession = createServerFn({method: 'GET'})
 			projectPath,
 			gitBranch: sessionMeta?.gitBranch ?? null,
 			gitSha,
+			gitClean,
 			messageCount: sessionMeta?.messageCount ?? messages.length,
 			pendingTaskCount,
 		};
@@ -558,6 +562,7 @@ function SessionPage() {
 					data={statusline}
 					gitBranch={data.gitBranch}
 					gitSha={data.gitSha}
+					gitClean={data.gitClean}
 					messageCount={data.messageCount}
 					pendingTaskCount={data.pendingTaskCount}
 				/>

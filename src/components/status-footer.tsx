@@ -72,11 +72,12 @@ interface StatusFooterProps {
 	data: Record<string, unknown>;
 	gitBranch: string | null;
 	gitSha: string | null;
+	gitClean: boolean | null;
 	messageCount: number;
 	pendingTaskCount: number;
 }
 
-export function StatusFooter({data, gitBranch, gitSha, messageCount, pendingTaskCount}: StatusFooterProps) {
+export function StatusFooter({data, gitBranch, gitSha, gitClean, messageCount, pendingTaskCount}: StatusFooterProps) {
 	const [expanded, setExpanded] = useState(false);
 
 	const segments: Array<{key: string; label: string; color: {bg: string; fg: string}}> = [];
@@ -127,10 +128,12 @@ export function StatusFooter({data, gitBranch, gitSha, messageCount, pendingTask
 		segments.push({key: 'ctx', label, color: SEGMENT_COLORS.context});
 	}
 
-	// Git branch + SHA
+	// Git branch + SHA + working tree status
 	if (gitBranch) {
 		let gitLabel = `⎇ ${gitBranch}`;
 		if (gitSha) gitLabel += ` ${gitSha}`;
+		if (gitClean === true) gitLabel += ' ✓';
+		else if (gitClean === false) gitLabel += ' ✗';
 		segments.push({key: 'git', label: gitLabel, color: SEGMENT_COLORS.git});
 	}
 
