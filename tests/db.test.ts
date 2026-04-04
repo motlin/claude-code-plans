@@ -195,6 +195,40 @@ describe('indexer', () => {
 		expect(session!.title).toBe('My Custom Title');
 	});
 
+	it('updates session mtime when JSONL is re-indexed', async () => {
+		const projectDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projectDir, {recursive: true});
+
+		const oldMtime = Date.now() - 86_400_000; // 1 day ago
+
+		writeFileSync(
+			join(projectDir, 'sessions-index.json'),
+			makeSessionsIndex([
+				{
+					sessionId: 'mtime-sess',
+					fullPath: join(projectDir, 'mtime-sess.jsonl'),
+					fileMtime: oldMtime,
+					firstPrompt: 'Old prompt',
+					messageCount: 1,
+				},
+			]),
+		);
+
+		await indexSessionsIndex(db.index, projectDir, '-Users-craig-projects-app');
+
+		const before = db.index.select().from(schema.sessions).where(eq(schema.sessions.id, 'mtime-sess')).get();
+		expect(before!.mtimeMs).toBe(oldMtime);
+
+		// Write JSONL file — its filesystem mtime will be newer than oldMtime
+		const jsonlPath = join(projectDir, 'mtime-sess.jsonl');
+		writeFileSync(jsonlPath, jsonl({type: 'user', message: {role: 'user', content: 'New message'}}));
+
+		await indexJsonlFile(db.index, jsonlPath, '-Users-craig-projects-app');
+
+		const after = db.index.select().from(schema.sessions).where(eq(schema.sessions.id, 'mtime-sess')).get();
+		expect(after!.mtimeMs).toBeGreaterThan(oldMtime);
+	});
+
 	it('creates session from JSONL when not in index', async () => {
 		const projectDir = join(testDir, '-Users-craig-projects-app');
 		mkdirSync(projectDir, {recursive: true});

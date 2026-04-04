@@ -252,6 +252,9 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 		}
 	}
 
+	// Always update mtime for existing sessions so sort order reflects latest activity
+	db.update(schema.sessions).set({mtimeMs: fileStat.mtimeMs}).where(eq(schema.sessions.id, sessionId)).run();
+
 	// If session not in DB (no sessions-index.json existed), create from JSONL
 	const sessionExists = db.select().from(schema.sessions).where(eq(schema.sessions.id, sessionId)).get();
 	if (!sessionExists) {
