@@ -23,7 +23,7 @@ import {getSubagents, getSessionSummary, requestSummary, isStarred, toggleSessio
 import {useIsSessionActive, useStatusline} from '../hooks/use-claude-events';
 import {StatusFooter} from '../components/status-footer';
 import {getDb} from '../lib/db';
-import {getSessionProjectPath, getSessionMeta} from '../lib/db/queries';
+import {getSessionProjectPath, getSessionMeta, getTaskCountsForProject} from '../lib/db/queries';
 import type {ClientToolCall, ToolInput} from '../components/tool-renderers';
 import {ArrowLeft, ArrowUp, ArrowDown, Copy, Terminal, GitFork, Download} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
@@ -155,6 +155,22 @@ const getSession = createServerFn({method: 'GET'})
 		const projectPath = getSessionProjectPath(index, id);
 		const sessionMeta = getSessionMeta(index, id);
 
+		let pendingTaskCount = 0;
+		if (sessionMeta?.projectName) {
+			const taskCounts = getTaskCountsForProject(index, sessionMeta.projectName);
+			pendingTaskCount = taskCounts.pending + taskCounts.inProgress;
+		}
+
+		let gitSha: string | null = null;
+		if (projectPath) {
+			try {
+				const {execSync} = await import('node:child_process');
+				gitSha = execSync('git rev-parse --short HEAD', {cwd: projectPath, encoding: 'utf-8'}).trim();
+			} catch {
+				// not a git repo or git not available
+			}
+		}
+
 		return {
 			title: detail.title,
 			projectName: detail.projectName,
@@ -164,7 +180,9 @@ const getSession = createServerFn({method: 'GET'})
 			starred: starResult.starred,
 			projectPath,
 			gitBranch: sessionMeta?.gitBranch ?? null,
+			gitSha,
 			messageCount: sessionMeta?.messageCount ?? messages.length,
+			pendingTaskCount,
 		};
 	});
 
@@ -539,7 +557,9 @@ function SessionPage() {
 				<StatusFooter
 					data={statusline}
 					gitBranch={data.gitBranch}
+					gitSha={data.gitSha}
 					messageCount={data.messageCount}
+					pendingTaskCount={data.pendingTaskCount}
 				/>
 			)}
 		</div>

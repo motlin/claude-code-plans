@@ -71,10 +71,12 @@ function getNestedString(obj: Record<string, unknown>, ...keys: string[]): strin
 interface StatusFooterProps {
 	data: Record<string, unknown>;
 	gitBranch: string | null;
+	gitSha: string | null;
 	messageCount: number;
+	pendingTaskCount: number;
 }
 
-export function StatusFooter({data, gitBranch, messageCount}: StatusFooterProps) {
+export function StatusFooter({data, gitBranch, gitSha, messageCount, pendingTaskCount}: StatusFooterProps) {
 	const [expanded, setExpanded] = useState(false);
 
 	const segments: Array<{key: string; label: string; color: {bg: string; fg: string}}> = [];
@@ -125,9 +127,16 @@ export function StatusFooter({data, gitBranch, messageCount}: StatusFooterProps)
 		segments.push({key: 'ctx', label, color: SEGMENT_COLORS.context});
 	}
 
-	// Git branch
+	// Git branch + SHA
 	if (gitBranch) {
-		segments.push({key: 'git', label: `⎇ ${gitBranch}`, color: SEGMENT_COLORS.git});
+		let gitLabel = `⎇ ${gitBranch}`;
+		if (gitSha) gitLabel += ` ${gitSha}`;
+		segments.push({key: 'git', label: gitLabel, color: SEGMENT_COLORS.git});
+	}
+
+	// Task count
+	if (pendingTaskCount > 0) {
+		segments.push({key: 'tasks', label: `${pendingTaskCount} tasks`, color: SEGMENT_COLORS.metrics});
 	}
 
 	// Model

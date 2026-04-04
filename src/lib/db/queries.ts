@@ -430,16 +430,23 @@ export function getSessionProjectPath(db: IndexDb, sessionId: string): string | 
 export function getSessionMeta(
 	db: IndexDb,
 	sessionId: string,
-): {gitBranch: string | null; messageCount: number} | null {
+): {gitBranch: string | null; messageCount: number; projectName: string | null} | null {
 	const row = db
 		.select({
 			gitBranch: schema.sessions.gitBranch,
 			messageCount: schema.sessions.messageCount,
+			projectId: schema.sessions.projectId,
 		})
 		.from(schema.sessions)
 		.where(eq(schema.sessions.id, sessionId))
 		.get();
-	return row ?? null;
+	if (!row) return null;
+	const projectNames = getProjectNameMap(db);
+	return {
+		gitBranch: row.gitBranch,
+		messageCount: row.messageCount,
+		projectName: projectNames.get(row.projectId) ?? null,
+	};
 }
 
 export function getPlanProjectMappings(db: IndexDb): DbPlanProjectMapping[] {
