@@ -2,10 +2,7 @@ import {watch} from 'chokidar';
 import type {FSWatcher} from 'chokidar';
 import {openAppDb, type AppDb} from './db/connection';
 import {fullScan} from './db/indexer';
-import type {ActiveSessionEntry} from './active-session-store';
-
-const STALE_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
-const SWEEP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+import {type ActiveSessionEntry, SWEEP_INTERVAL_MS, sweepSessions} from './active-session-store';
 
 export interface AppContextConfig {
 	projectsDir: string;
@@ -27,7 +24,12 @@ export interface AppContext {
 
 export async function createAppContext(config: AppContextConfig): Promise<AppContext> {
 	const db = openAppDb();
-	await fullScan(db.index, config.projectsDir, config.tasksDir);
+	try {
+		await fullScan(db.index, config.projectsDir, config.tasksDir);
+	} catch (err) {
+		db.close();
+		throw err;
+	}
 
 	const sseClients = new Set<ReadableStreamDefaultController>();
 	const sessionStore = new Map<string, ActiveSessionEntry>();
@@ -49,14 +51,7 @@ export async function createAppContext(config: AppContextConfig): Promise<AppCon
 		},
 	);
 
-	const sweepTimer = setInterval(() => {
-		const now = Date.now();
-		for (const [id, entry] of sessionStore) {
-			if (now - entry.lastActivity > STALE_THRESHOLD_MS) {
-				sessionStore.delete(id);
-			}
-		}
-	}, SWEEP_INTERVAL_MS);
+	const sweepTimer = setInterval(() => sweepSessions(sessionStore), SWEEP_INTERVAL_MS);
 
 	return {db, watcher, sseClients, sessionStore, sweepTimer, config};
 }

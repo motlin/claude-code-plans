@@ -20,8 +20,8 @@ interface StoreGlobals {
 const g = globalThis as unknown as Partial<StoreGlobals>;
 if (!g.__activeSessionStore) g.__activeSessionStore = new Map();
 
-const STALE_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
-const SWEEP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+export const STALE_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
+export const SWEEP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 export function markSessionActive(sessionId: string, meta: {cwd: string; model?: string}): void {
 	const existing = g.__activeSessionStore!.get(sessionId);
@@ -74,13 +74,17 @@ export function deriveSessionIdFromPath(filePath: string): string | null {
 	return name.replace(/\.jsonl$/, '');
 }
 
-function sweep(): void {
+export function sweepSessions(store: Map<string, ActiveSessionEntry>): void {
 	const now = Date.now();
-	for (const [id, entry] of g.__activeSessionStore!) {
+	for (const [id, entry] of store) {
 		if (now - entry.lastActivity > STALE_THRESHOLD_MS) {
-			g.__activeSessionStore!.delete(id);
+			store.delete(id);
 		}
 	}
+}
+
+function sweep(): void {
+	sweepSessions(g.__activeSessionStore!);
 }
 
 export function startSweep(): void {
