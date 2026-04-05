@@ -311,7 +311,7 @@ function AssistantMessage({
 				/>
 			))}
 			{showTools && msg.toolCalls.length > 0 && (
-				<ToolCallSummary
+				<ToolCallSection
 					calls={msg.toolCalls}
 					summary={msg.toolSummary}
 				/>
@@ -342,8 +342,36 @@ function ChevronIcon({expanded}: {expanded: boolean}) {
 	);
 }
 
+const PROMINENT_TOOLS = new Set(['AskUserQuestion']);
 const INITIAL_TOOL_COUNT = 3;
 const TASK_TOOLS = new Set(['TaskCreate', 'TaskUpdate', 'TaskList']);
+
+function ToolCallSection({calls, summary}: {calls: ClientToolCall[]; summary: string}) {
+	const prominentCalls = calls.filter((c) => PROMINENT_TOOLS.has(c.name));
+	const backgroundCalls = calls.filter((c) => !PROMINENT_TOOLS.has(c.name));
+
+	return (
+		<>
+			{backgroundCalls.length > 0 && (
+				<ToolCallSummary
+					calls={backgroundCalls}
+					summary={summary}
+				/>
+			)}
+			{prominentCalls.map((call, i) => {
+				const Renderer = getToolRenderer(call.name);
+				return (
+					<div
+						key={`prominent-${i}`}
+						className="rounded-lg border border-accent-100/20 bg-accent-900/30 p-3 text-sm"
+					>
+						<Renderer toolCall={call} />
+					</div>
+				);
+			})}
+		</>
+	);
+}
 
 function ToolCallSummary({calls, summary}: {calls: ClientToolCall[]; summary: string}) {
 	const [expanded, setExpanded] = useState(false);
