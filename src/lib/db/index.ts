@@ -3,16 +3,19 @@ import {fullScan} from './indexer';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
 
-let _appDb: AppDb | null = null;
+// Store on globalThis so the singleton survives Vite HMR reloads.
+// Without this, each HMR reload creates a new module scope with _appDb = null,
+// opening new SQLite connections while the old ones leak.
+const g = globalThis as unknown as {__appDb?: AppDb};
 
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 const TASKS_DIR = join(homedir(), '.claude', 'tasks');
 
 export function getDb(): AppDb {
-	if (!_appDb) {
-		_appDb = openAppDb();
+	if (!g.__appDb) {
+		g.__appDb = openAppDb();
 	}
-	return _appDb;
+	return g.__appDb;
 }
 
 export async function initDb(): Promise<AppDb> {

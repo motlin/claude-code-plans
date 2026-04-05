@@ -6,21 +6,28 @@ export const Route = createFileRoute('/api/events')({
 		handlers: {
 			GET: async () => {
 				const encoder = new TextEncoder();
+				let keepalive: ReturnType<typeof setInterval> | null = null;
+
 				const stream = new ReadableStream({
 					start(controller) {
 						controller.enqueue(encoder.encode(':\n\n'));
 						addClient(controller);
 
-						const keepalive = setInterval(() => {
+						keepalive = setInterval(() => {
 							try {
 								controller.enqueue(encoder.encode(':\n\n'));
 							} catch {
-								clearInterval(keepalive);
+								clearInterval(keepalive!);
+								keepalive = null;
 								removeClient(controller);
 							}
 						}, 30000);
 					},
 					cancel(controller) {
+						if (keepalive) {
+							clearInterval(keepalive);
+							keepalive = null;
+						}
 						removeClient(controller as unknown as ReadableStreamDefaultController);
 					},
 				});

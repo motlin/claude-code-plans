@@ -4,21 +4,33 @@ import {getDb} from './db';
 import {indexFile} from './db/indexer';
 import {SSE_EVENTS, deriveEventFromPath, type SseEvent} from './hook-events';
 
-const clients = new Set<ReadableStreamDefaultController>();
+// Persist mutable state on globalThis so it survives Vite HMR reloads.
+// Without this, each reload creates fresh module-scoped variables while the
+// old watcher, timers, and SSE clients leak in the previous module closure.
+interface WatcherGlobals {
+	__watcherClients: Set<ReadableStreamDefaultController>;
+	__watcher: FSWatcher | null;
+	__watcherProjectsDir: string;
+	__watcherPlansDir: string;
+	__watcherStatuslineDir: string;
+	__jsonlDebounceTimer: ReturnType<typeof setTimeout> | null;
+}
+
+const g = globalThis as unknown as Partial<WatcherGlobals>;
+if (!g.__watcherClients) g.__watcherClients = new Set();
+
 const encoder = new TextEncoder();
 
-let watcher: FSWatcher | null = null;
-let projectsDir = '';
-let plansDir = '';
-let statuslineDir = '';
+const WATCHED_EXTENSIONS = new Set(['.md', '.jsonl', '.json']);
+const JSONL_DEBOUNCE_MS = 5000;
 
 export function broadcastTyped(type: string, data: Record<string, unknown>): void {
 	const payload = encoder.encode(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
-	for (const client of clients) {
+	for (const client of g.__watcherClients!) {
 		try {
 			client.enqueue(payload);
 		} catch {
-			clients.delete(client);
+			g.__watcherClients!.delete(client);
 		}
 	}
 }
@@ -32,41 +44,36 @@ export function broadcast(): void {
 }
 
 export function addClient(controller: ReadableStreamDefaultController): void {
-	clients.add(controller);
+	g.__watcherClients!.add(controller);
 }
 
 export function removeClient(controller: ReadableStreamDefaultController): void {
-	clients.delete(controller);
+	g.__watcherClients!.delete(controller);
 }
 
 export function getClientCount(): number {
-	return clients.size;
+	return g.__watcherClients!.size;
 }
-
-const WATCHED_EXTENSIONS = new Set(['.md', '.jsonl', '.json']);
-
-let jsonlDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-const JSONL_DEBOUNCE_MS = 5000;
 
 function handleFileChange(path: string): void {
 	const ext = path.slice(path.lastIndexOf('.'));
 	if (!WATCHED_EXTENSIONS.has(ext)) return;
 
-	const event = deriveEventFromPath(path, plansDir, projectsDir);
+	const event = deriveEventFromPath(path, g.__watcherPlansDir ?? '', g.__watcherProjectsDir ?? '');
 
 	if (ext === '.jsonl') {
-		if (jsonlDebounceTimer) clearTimeout(jsonlDebounceTimer);
-		jsonlDebounceTimer = setTimeout(async () => {
+		if (g.__jsonlDebounceTimer) clearTimeout(g.__jsonlDebounceTimer);
+		g.__jsonlDebounceTimer = setTimeout(async () => {
 			try {
 				const {index} = getDb();
-				await indexFile(index, path, projectsDir);
+				await indexFile(index, path, g.__watcherProjectsDir ?? '');
 			} catch {
 				// indexing error, still broadcast for UI refresh
 			}
 			broadcastEvent(event);
-			jsonlDebounceTimer = null;
+			g.__jsonlDebounceTimer = null;
 		}, JSONL_DEBOUNCE_MS);
-	} else if (ext === '.json' && statuslineDir && path.startsWith(statuslineDir)) {
+	} else if (ext === '.json' && g.__watcherStatuslineDir && path.startsWith(g.__watcherStatuslineDir)) {
 		const filename = path.split('/').pop() ?? '';
 		const sessionId = filename.replace(/\.json$/, '');
 		broadcastTyped(SSE_EVENTS.STATUSLINE_UPDATED, {sessionId});
@@ -74,7 +81,7 @@ function handleFileChange(path: string): void {
 		(async () => {
 			try {
 				const {index} = getDb();
-				await indexFile(index, path, projectsDir);
+				await indexFile(index, path, g.__watcherProjectsDir ?? '');
 			} catch {
 				// indexing error
 			}
@@ -84,7 +91,7 @@ function handleFileChange(path: string): void {
 		(async () => {
 			try {
 				const {index} = getDb();
-				await indexFile(index, path, projectsDir);
+				await indexFile(index, path, g.__watcherProjectsDir ?? '');
 			} catch {
 				// indexing error
 			}
@@ -98,39 +105,44 @@ function handleFileChange(path: string): void {
 }
 
 export function createWatcher(dirs: string[], projDir?: string, plDir?: string, slDir?: string): FSWatcher {
-	if (projDir) projectsDir = projDir;
-	if (plDir) plansDir = plDir;
-	if (slDir) statuslineDir = slDir;
+	if (projDir) g.__watcherProjectsDir = projDir;
+	if (plDir) g.__watcherPlansDir = plDir;
+	if (slDir) g.__watcherStatuslineDir = slDir;
 
-	watcher = watch(dirs, {
+	// Close previous watcher on HMR reload
+	if (g.__watcher) {
+		g.__watcher.close();
+	}
+
+	g.__watcher = watch(dirs, {
 		ignoreInitial: true,
 		awaitWriteFinish: {stabilityThreshold: 300, pollInterval: 100},
 		usePolling: true,
 		interval: 1000,
 	});
 
-	watcher.on('add', handleFileChange);
-	watcher.on('change', handleFileChange);
-	watcher.on('unlink', handleFileChange);
+	g.__watcher.on('add', handleFileChange);
+	g.__watcher.on('change', handleFileChange);
+	g.__watcher.on('unlink', handleFileChange);
 
-	return watcher;
+	return g.__watcher;
 }
 
 export async function closeWatcher(): Promise<void> {
-	if (watcher) {
-		await watcher.close();
-		watcher = null;
+	if (g.__watcher) {
+		await g.__watcher.close();
+		g.__watcher = null;
 	}
-	if (jsonlDebounceTimer) {
-		clearTimeout(jsonlDebounceTimer);
-		jsonlDebounceTimer = null;
+	if (g.__jsonlDebounceTimer) {
+		clearTimeout(g.__jsonlDebounceTimer);
+		g.__jsonlDebounceTimer = null;
 	}
-	for (const client of clients) {
+	for (const client of g.__watcherClients!) {
 		try {
 			client.close();
 		} catch {
 			// already closed
 		}
 	}
-	clients.clear();
+	g.__watcherClients!.clear();
 }
