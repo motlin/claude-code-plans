@@ -22,7 +22,9 @@ createWatcher(
 	PROJECTS_DIR,
 	PLANS_DIR,
 	STATUSLINE_DIR,
-);
+).catch((err) => {
+	console.error('Failed to create watcher:', err);
+});
 startSweep();
 
 export default createServerEntry({

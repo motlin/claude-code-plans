@@ -104,14 +104,19 @@ function handleFileChange(path: string): void {
 	}
 }
 
-export function createWatcher(dirs: string[], projDir?: string, plDir?: string, slDir?: string): FSWatcher {
+export async function createWatcher(
+	dirs: string[],
+	projDir?: string,
+	plDir?: string,
+	slDir?: string,
+): Promise<FSWatcher> {
 	if (projDir) g.__watcherProjectsDir = projDir;
 	if (plDir) g.__watcherPlansDir = plDir;
 	if (slDir) g.__watcherStatuslineDir = slDir;
 
 	// Close previous watcher on HMR reload
 	if (g.__watcher) {
-		g.__watcher.close();
+		await g.__watcher.close();
 	}
 
 	g.__watcher = watch(dirs, {
