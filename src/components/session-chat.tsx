@@ -109,12 +109,37 @@ export const SessionChat = React.memo(function SessionChat({
 	showTools = true,
 }: SessionChatProps) {
 	const endRef = useRef<HTMLDivElement>(null);
+	const messageCountRef = useRef(messages.length);
+	const isNearBottomRef = useRef(true);
 
+	// Track whether user is near the bottom of the page
+	useEffect(() => {
+		function onScroll() {
+			const scrollTop = window.scrollY;
+			const clientHeight = window.innerHeight;
+			const scrollHeight = document.documentElement.scrollHeight;
+			isNearBottomRef.current = scrollTop + clientHeight >= scrollHeight - 150;
+		}
+		window.addEventListener('scroll', onScroll, {passive: true});
+		return () => window.removeEventListener('scroll', onScroll);
+	}, []);
+
+	// Scroll to bottom on initial load
 	useEffect(() => {
 		requestAnimationFrame(() => {
 			endRef.current?.scrollIntoView({block: 'end'});
 		});
 	}, []);
+
+	// When new messages arrive, auto-scroll only if user was near the bottom
+	useEffect(() => {
+		if (messages.length > messageCountRef.current && isNearBottomRef.current) {
+			requestAnimationFrame(() => {
+				endRef.current?.scrollIntoView({block: 'end', behavior: 'smooth'});
+			});
+		}
+		messageCountRef.current = messages.length;
+	}, [messages.length]);
 
 	return (
 		<div className="mx-auto w-full max-w-3xl px-8 pt-4 pb-4">
