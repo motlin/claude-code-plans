@@ -28,6 +28,8 @@
 
 	<key>EnvironmentVariables</key>
 	<dict>
+		<key>PORT</key>
+		<string>8899</string>
 		<key>PATH</key>
 		<string>/Users/craig/.local/share/mise/installs/node/24.13.1/bin:/usr/local/bin:/usr/bin:/bin</string>
 	</dict>

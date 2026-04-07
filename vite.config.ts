@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
 	server: {
-		port: 8899,
+		port: Number(process.env['PORT'] ?? 3000),
 		host: true,
 		allowedHosts: process.env['VITE_ALLOWED_HOSTS']?.split(',').filter(Boolean) ?? [],
 		watch: {ignored: ['**/routeTree.gen.ts']},

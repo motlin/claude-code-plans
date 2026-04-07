@@ -5,6 +5,7 @@ default:
 
 ci := env("CI", "")
 _ci := if ci != "" { ":ci" } else { "" }
+port := "8899"
 
 # `npm install` or `npm ci`
 [group('setup')]
@@ -13,11 +14,11 @@ install:
 
 # Run dev server with Vite
 dev *args: install
-    npm run dev {{args}}
+    PORT={{port}} npm run dev {{args}}
 
 # Run production server
 start *args: install build
-    npm run start {{args}}
+    PORT={{port}} npm run start {{args}}
 
 # Run ESLint
 eslint: install
