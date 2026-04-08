@@ -8,7 +8,7 @@
 	<key>ProgramArguments</key>
 	<array>
 		<string>/Users/craig/.local/share/mise/installs/node/24.13.1/bin/node</string>
-		<string>dist/server.js</string>
+		<string>serve.js</string>
 	</array>
 
 	<key>WorkingDirectory</key>

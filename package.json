@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
-		"start": "node dist/server/server.js",
+		"start": "node serve.js",
 		"build": "vite build",
 		"eslint": "eslint . --fix",
 		"eslint:ci": "eslint . --format json --output-file eslint_report.json",
