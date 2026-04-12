@@ -384,7 +384,10 @@ export async function indexTaskFile(db: IndexDb, filePath: string, projectDir: s
 	}
 
 	const existing = db.select().from(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).get();
-	if (existing && existing.mtimeMs === fileStat.mtimeMs) return;
+	if (existing && existing.mtimeMs === fileStat.mtimeMs) {
+		const taskRow = db.select().from(schema.tasks).where(eq(schema.tasks.filePath, filePath)).get();
+		if (taskRow) return;
+	}
 
 	let raw: string;
 	try {

@@ -687,6 +687,27 @@ describe('task indexer', () => {
 		expect(secondIndexed!.indexedAt).toBe(firstIndexed!.indexedAt);
 	});
 
+	it('re-indexes when indexed_files entry exists but tasks row is missing', async () => {
+		const tasksDir = join(testDir, 'tasks', 'my-project');
+		mkdirSync(tasksDir, {recursive: true});
+
+		const filePath = join(tasksDir, '1.json');
+		writeFileSync(filePath, makeTaskFile({id: '1', subject: 'Fix bug'}));
+
+		await indexTaskFile(db.index, filePath, 'my-project');
+		expect(db.index.select().from(schema.tasks).all()).toHaveLength(1);
+
+		db.index.delete(schema.tasks).where(eq(schema.tasks.filePath, filePath)).run();
+		expect(db.index.select().from(schema.tasks).all()).toHaveLength(0);
+		expect(
+			db.index.select().from(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).get(),
+		).toBeTruthy();
+
+		await indexTaskFile(db.index, filePath, 'my-project');
+		expect(db.index.select().from(schema.tasks).all()).toHaveLength(1);
+		expect(db.index.select().from(schema.tasks).all()[0]!.subject).toBe('Fix bug');
+	});
+
 	it('re-indexes when file changes', async () => {
 		const tasksDir = join(testDir, 'tasks', 'my-project');
 		mkdirSync(tasksDir, {recursive: true});
