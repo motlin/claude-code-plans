@@ -6,7 +6,7 @@
  * session tracking, task completion notifications, and SSE broadcasts.
  */
 
-export const DEFAULT_HOOK_PORT = 8899;
+export const DEFAULT_HOOK_PORT = 3000;
 
 /**
  * All Claude hook event names that the server handles.

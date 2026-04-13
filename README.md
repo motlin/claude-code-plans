@@ -49,13 +49,6 @@ npm run dev
 
 The server starts at `http://localhost:3000` by default.
 
-## Configuration
-
-| Variable    | Default           | Description                     |
-| ----------- | ----------------- | ------------------------------- |
-| `PORT`      | `3000` (dev) / `8899` (prod) | Port the server listens on |
-| `PLANS_DIR` | `~/.claude/plans` | Directory containing plan files |
-
 ## Production
 
 Build and run as a persistent service:
@@ -68,9 +61,11 @@ npm run start
 Or use `just`:
 
 ```sh
-just start         # build + run production server on port 8899
+just start         # build + run production server
 just dev           # run dev server with hot reload
 ```
+
+Set `PORT` to change the port (default: `3000`).
 
 ### launchd (macOS)
 
