@@ -38,7 +38,7 @@ import {getSummary, generateSummary} from './summaries';
 import {getActiveSessions as getActiveSessionsList} from './active-sessions';
 import {getCacheDir} from './db/connection';
 
-const PLANS_DIR = process.env['PLANS_DIR'] ?? join(homedir(), '.claude', 'plans');
+const PLANS_DIR = join(homedir(), '.claude', 'plans');
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
 export const getPlans = createServerFn({method: 'GET'}).handler(async () => {

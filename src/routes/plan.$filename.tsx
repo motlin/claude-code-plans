@@ -10,7 +10,7 @@ import {getPlanLinks} from '../lib/server-fns';
 import {ArrowLeft, Pencil, FolderOpen, MessageSquare, Clock} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 
-const PLANS_DIR = process.env['PLANS_DIR'] ?? join(homedir(), '.claude', 'plans');
+const PLANS_DIR = join(homedir(), '.claude', 'plans');
 
 const getPlan = createServerFn({method: 'GET'})
 	.inputValidator((d: string) => d)

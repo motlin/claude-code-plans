@@ -3,7 +3,7 @@ import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {listPlans} from '../../lib/plans';
 
-const PLANS_DIR = process.env['PLANS_DIR'] ?? join(homedir(), '.claude', 'plans');
+const PLANS_DIR = join(homedir(), '.claude', 'plans');
 
 export const Route = createFileRoute('/api/count')({
 	server: {

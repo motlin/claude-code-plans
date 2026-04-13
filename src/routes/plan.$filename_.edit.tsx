@@ -16,7 +16,7 @@ function ClientOnly({children, fallback}: {children: React.ReactNode; fallback: 
 	return mounted ? children : fallback;
 }
 
-const PLANS_DIR = process.env['PLANS_DIR'] ?? join(homedir(), '.claude', 'plans');
+const PLANS_DIR = join(homedir(), '.claude', 'plans');
 
 const getPlanRaw = createServerFn({method: 'GET'})
 	.inputValidator(z.string())

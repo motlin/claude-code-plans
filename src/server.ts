@@ -6,7 +6,7 @@ import {initDb} from './lib/db';
 import {startSweep} from './lib/active-session-store';
 import {getCacheDir} from './lib/db/connection';
 
-const PLANS_DIR = process.env['PLANS_DIR'] ?? join(homedir(), '.claude', 'plans');
+const PLANS_DIR = join(homedir(), '.claude', 'plans');
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 const COMMANDS_DIR = join(homedir(), '.claude', 'commands');
 const PLUGINS_DIR = join(homedir(), '.claude', 'plugins', 'cache');
