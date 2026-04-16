@@ -531,6 +531,7 @@ function SessionPage() {
 			</div>
 
 			<SessionChat
+				sessionId={params.id}
 				messages={data.messages}
 				showThinking={showThinking}
 				showTools={showTools}

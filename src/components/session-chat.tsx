@@ -43,10 +43,16 @@ interface ChatMessage {
 }
 
 interface SessionChatProps {
+	sessionId: string;
 	messages: ChatMessage[];
 	showThinking?: boolean;
 	showTools?: boolean;
 }
+
+// Tracks which sessions have already been auto-scrolled during this tab's
+// lifetime. Survives component remounts from HMR, loader revalidation, etc.,
+// so the scroll only fires the first time the user views a given session.
+const autoScrolledSessions = new Set<string>();
 
 function CopyToast({visible}: {visible: boolean}) {
 	return (
@@ -104,18 +110,23 @@ function MessageToolbar({msg, index}: {msg: ChatMessage; index: number}) {
 }
 
 export const SessionChat = React.memo(function SessionChat({
+	sessionId,
 	messages,
 	showThinking = true,
 	showTools = true,
 }: SessionChatProps) {
 	const endRef = useRef<HTMLDivElement>(null);
 
-	// Scroll to bottom on initial load
+	// Scroll to bottom the first time the user opens this session.
+	// Remounts (HMR, loader revalidation) won't re-trigger because the
+	// session id is already in autoScrolledSessions.
 	useEffect(() => {
+		if (autoScrolledSessions.has(sessionId)) return;
+		autoScrolledSessions.add(sessionId);
 		requestAnimationFrame(() => {
 			endRef.current?.scrollIntoView({block: 'end'});
 		});
-	}, []);
+	}, [sessionId]);
 
 	return (
 		<div className="mx-auto w-full max-w-3xl px-8 pt-4 pb-4">
