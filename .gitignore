@@ -28,3 +28,4 @@ eslint_report.json
 /.claude/*
 !/.claude/commands/
 /.claude/settings.local.json
+mockups/
