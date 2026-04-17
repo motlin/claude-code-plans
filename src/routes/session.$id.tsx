@@ -168,8 +168,9 @@ const getSession = createServerFn({method: 'GET'})
 		if (projectPath) {
 			try {
 				const {execSync} = await import('node:child_process');
-				gitSha = execSync('git rev-parse --short HEAD', {cwd: projectPath, encoding: 'utf-8'}).trim();
-				const status = execSync('git status --porcelain', {cwd: projectPath, encoding: 'utf-8'}).trim();
+				const execOpts = {cwd: projectPath, encoding: 'utf-8', stdio: 'pipe'} as const;
+				gitSha = execSync('git rev-parse --short HEAD', execOpts).trim();
+				const status = execSync('git status --porcelain', execOpts).trim();
 				gitClean = status.length === 0;
 			} catch {
 				// not a git repo or git not available
