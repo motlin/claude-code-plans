@@ -19,9 +19,13 @@ interface StreamingMessageProps {
 export function StreamingMessage({text, isComplete, error, forkedSessionId, sentPrompt}: StreamingMessageProps) {
 	const endRef = useRef<HTMLDivElement>(null);
 
+	// Scroll the streaming widget into view once per submission, so the user
+	// can see their prompt and the incoming response. Streaming tokens after
+	// that should not yank the viewport — the user is reading.
 	useEffect(() => {
+		if (sentPrompt === undefined) return;
 		endRef.current?.scrollIntoView({behavior: 'smooth', block: 'end'});
-	}, [text]);
+	}, [sentPrompt]);
 
 	const renderedHtml = useMemo(() => {
 		if (!text) return '';
