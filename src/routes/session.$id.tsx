@@ -110,6 +110,7 @@ const getSession = createServerFn({method: 'GET'})
 				const imageBlocks: Array<{mediaType: string; data: string}> = [];
 				const documentBlocks: Array<{mediaType: string; data: string}> = [];
 				let command: {name: string; args?: string} | undefined;
+				let bash: {command: string; stdout?: string; stderr?: string} | undefined;
 
 				for (const block of msg.content) {
 					if (block.type === 'thinking') {
@@ -121,6 +122,12 @@ const getSession = createServerFn({method: 'GET'})
 					} else if (block.type === 'command') {
 						command = {name: block.name};
 						if (block.args) (command as {name: string; args: string}).args = block.args;
+					} else if (block.type === 'bash-input') {
+						bash = {command: block.command};
+					} else if (block.type === 'bash-output') {
+						const target = bash ?? (bash = {command: ''});
+						if (block.stdout) target.stdout = block.stdout;
+						if (block.stderr) target.stderr = block.stderr;
 					}
 				}
 
@@ -135,6 +142,7 @@ const getSession = createServerFn({method: 'GET'})
 					toolCalls: ClientToolCall[];
 					toolSummary: string;
 					command?: {name: string; args?: string};
+					bash?: {command: string; stdout?: string; stderr?: string};
 				} = {
 					role: msg.role,
 					textBlocks,
@@ -147,6 +155,7 @@ const getSession = createServerFn({method: 'GET'})
 				};
 				if (msg.timestamp) result.timestamp = msg.timestamp;
 				if (command) result.command = command;
+				if (bash) result.bash = bash;
 				return result;
 			}),
 		);

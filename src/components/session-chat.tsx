@@ -3,7 +3,7 @@ import {Copy, Link2} from 'lucide-react';
 import {MarkdownArticle} from './markdown-article';
 import {getToolRenderer} from './tool-renderers';
 import type {ClientToolCall} from './tool-renderers';
-import {DurationBadge} from './tool-renderers/shared';
+import {DurationBadge, TerminalOutput} from './tool-renderers/shared';
 import {TasksView} from './tasks-view';
 
 function formatTimestamp(timestamp?: string): string | null {
@@ -40,6 +40,7 @@ interface ChatMessage {
 	toolCalls: ClientToolCall[];
 	toolSummary: string;
 	command?: {name: string; args?: string};
+	bash?: {command: string; stdout?: string; stderr?: string};
 }
 
 interface SessionChatProps {
@@ -212,6 +213,30 @@ function UserMessage({msg}: {msg: ChatMessage}) {
 				<div className="rounded-lg px-3 py-2 bg-bg-100 text-text-000 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%]">
 					<span className="bg-bg-200 rounded-full px-2 py-0.5 text-xs font-mono">{msg.command.name}</span>
 					{msg.command.args && <span className="text-xs text-text-500 ml-1.5">{msg.command.args}</span>}
+				</div>
+				{timestampText && <div className="text-xs text-text-500 leading-tight">{timestampText}</div>}
+			</div>
+		);
+	}
+
+	if (msg.bash) {
+		return (
+			<div className="flex flex-col items-end gap-1">
+				<div className="rounded-lg p-2 bg-bg-100 text-text-000 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] min-w-0">
+					<div className="bg-bg-200 rounded px-2 py-1.5 font-mono text-xs">
+						<span className="text-text-500">! </span>
+						<span className="text-success-000 break-all">{msg.bash.command}</span>
+					</div>
+					{msg.bash.stdout && (
+						<div className="mt-1">
+							<TerminalOutput content={msg.bash.stdout} />
+						</div>
+					)}
+					{msg.bash.stderr && (
+						<div className="mt-1 border-l-2 border-danger-000 bg-danger-000/10 rounded-r">
+							<TerminalOutput content={msg.bash.stderr} />
+						</div>
+					)}
 				</div>
 				{timestampText && <div className="text-xs text-text-500 leading-tight">{timestampText}</div>}
 			</div>

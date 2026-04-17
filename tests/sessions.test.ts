@@ -655,6 +655,65 @@ describe('readSession', () => {
 		expect(assistantMsg.toolCalls[0]!.result).toBe('committed');
 	});
 
+	it('parses bash-input as a bash content block with the command', async () => {
+		const projDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projDir, {recursive: true});
+		writeFileSync(
+			join(projDir, 'bash-input.jsonl'),
+			jsonl(userMessage('<bash-input>git status</bash-input>'), assistantMessage([{type: 'text', text: 'Done'}])),
+		);
+
+		const detail = await readSession(testDir, 'bash-input');
+		expect(detail!.messages).toHaveLength(2);
+		const msg = detail!.messages[0]!;
+		expect(msg.role).toBe('user');
+		expect(msg.content).toEqual([{type: 'bash-input', command: 'git status'}]);
+		expect(msg.textBlocks).toEqual([]);
+	});
+
+	it('coalesces bash-input with following bash-stdout/bash-stderr', async () => {
+		const projDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projDir, {recursive: true});
+		writeFileSync(
+			join(projDir, 'bash-pair.jsonl'),
+			jsonl(
+				userMessage('<bash-input>ls</bash-input>'),
+				userMessage('<bash-stdout>foo\nbar</bash-stdout><bash-stderr></bash-stderr>'),
+				assistantMessage([{type: 'text', text: 'Done'}]),
+			),
+		);
+
+		const detail = await readSession(testDir, 'bash-pair');
+		expect(detail!.messages).toHaveLength(2);
+		const msg = detail!.messages[0]!;
+		expect(msg.content).toEqual([
+			{type: 'bash-input', command: 'ls'},
+			{type: 'bash-output', stdout: 'foo\nbar', stderr: ''},
+		]);
+		expect(msg.textBlocks).toEqual([]);
+	});
+
+	it('captures stderr content in bash-output', async () => {
+		const projDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projDir, {recursive: true});
+		writeFileSync(
+			join(projDir, 'bash-stderr.jsonl'),
+			jsonl(
+				userMessage('<bash-input>cat missing</bash-input>'),
+				userMessage('<bash-stdout></bash-stdout><bash-stderr>cat: missing: No such file</bash-stderr>'),
+				assistantMessage([{type: 'text', text: 'Done'}]),
+			),
+		);
+
+		const detail = await readSession(testDir, 'bash-stderr');
+		const msg = detail!.messages[0]!;
+		expect(msg.content).toContainEqual({
+			type: 'bash-output',
+			stdout: '',
+			stderr: 'cat: missing: No such file',
+		});
+	});
+
 	it('regular user messages are not marked as commands', async () => {
 		const projDir = join(testDir, '-Users-craig-projects-app');
 		mkdirSync(projDir, {recursive: true});

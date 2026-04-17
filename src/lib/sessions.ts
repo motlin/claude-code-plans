@@ -45,7 +45,9 @@ export type MessageContent =
 	| {type: 'document'; mediaType: string; data: string}
 	| {type: 'tool_use'; id: string; name: string; input: Record<string, unknown>}
 	| {type: 'tool_result'; toolUseId: string; content: string; isError: boolean}
-	| {type: 'command'; name: string; args?: string};
+	| {type: 'command'; name: string; args?: string}
+	| {type: 'bash-input'; command: string}
+	| {type: 'bash-output'; stdout: string; stderr: string};
 
 export interface SessionMessage {
 	role: 'user' | 'assistant';
@@ -92,6 +94,21 @@ function cleanCommandText(text: string): string {
 
 export function stripCommandTags(text: string): string {
 	return cleanCommandText(text);
+}
+
+const BASH_INPUT_RE = /^\s*<bash-input>([\s\S]*?)<\/bash-input>\s*$/;
+const BASH_OUTPUT_RE = /^\s*<bash-stdout>([\s\S]*?)<\/bash-stdout>\s*<bash-stderr>([\s\S]*?)<\/bash-stderr>\s*$/;
+
+export function parseBashInput(text: string): {command: string} | null {
+	const m = text.match(BASH_INPUT_RE);
+	if (!m) return null;
+	return {command: m[1]!};
+}
+
+export function parseBashOutput(text: string): {stdout: string; stderr: string} | null {
+	const m = text.match(BASH_OUTPUT_RE);
+	if (!m) return null;
+	return {stdout: m[1]!, stderr: m[2]!};
 }
 
 export function parseCommandBlock(text: string): {name: string; args?: string} | null {
@@ -553,6 +570,16 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 						const cmdContent = {type: 'command', name: cmd.name} as MessageContent & {type: 'command'};
 						if (cmd.args) cmdContent.args = cmd.args;
 						contentBlocks.push(cmdContent);
+						return;
+					}
+					const bashIn = parseBashInput(text);
+					if (bashIn) {
+						contentBlocks.push({type: 'bash-input', command: bashIn.command});
+						return;
+					}
+					const bashOut = parseBashOutput(text);
+					if (bashOut) {
+						contentBlocks.push({type: 'bash-output', stdout: bashOut.stdout, stderr: bashOut.stderr});
 						return;
 					}
 					if (/<local-command-caveat>/.test(text)) return;
