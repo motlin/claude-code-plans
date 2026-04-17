@@ -2,6 +2,7 @@ import {useState} from 'react';
 import {Link} from '@tanstack/react-router';
 import {Bot, ChevronDown, ChevronRight, GitFork} from 'lucide-react';
 import type {SubagentTreeEntry, SubagentTreeNode, ParallelGroup, DbSubagent} from '../lib/db/queries';
+import {formatDuration} from './tool-renderers/shared';
 
 const AGENT_TYPE_STYLES: Record<string, string> = {
 	Explore: 'bg-blue-500/15 text-blue-400',
@@ -22,16 +23,6 @@ function getShortType(agentType: string | null): string {
 	if (!agentType) return 'agent';
 	const parts = agentType.split(':');
 	return parts[parts.length - 1]!;
-}
-
-function formatDuration(ms: number): string {
-	if (ms < 1000) return `${ms}ms`;
-	const seconds = Math.round(ms / 1000);
-	if (seconds < 60) return `${seconds}s`;
-	const minutes = Math.floor(seconds / 60);
-	const secs = seconds % 60;
-	if (secs === 0) return `${minutes}m`;
-	return `${minutes}m ${secs}s`;
 }
 
 function getDurationMs(agent: DbSubagent): number | null {

@@ -20,14 +20,7 @@ import {SessionChat} from '../components/session-chat';
 import {ChatInput} from '../components/chat-input';
 import {StreamingMessage} from '../components/streaming-message';
 import {useChatStream} from '../hooks/use-chat-stream';
-import {
-	getSubagents,
-	getSubagentTree,
-	getSessionSummary,
-	requestSummary,
-	isStarred,
-	toggleSessionStar,
-} from '../lib/server-fns';
+import {getSubagentTree, getSessionSummary, requestSummary, isStarred, toggleSessionStar} from '../lib/server-fns';
 import {useIsSessionActive, useStatusline} from '../hooks/use-claude-events';
 import {StatusFooter} from '../components/status-footer';
 import {getDb} from '../lib/db';
@@ -158,11 +151,7 @@ const getSession = createServerFn({method: 'GET'})
 			}),
 		);
 
-		const [subagents, subagentTree, starResult] = await Promise.all([
-			getSubagents({data: id}),
-			getSubagentTree({data: id}),
-			isStarred({data: id}),
-		]);
+		const [subagentResult, starResult] = await Promise.all([getSubagentTree({data: id}), isStarred({data: id})]);
 
 		const {index} = getDb();
 		const projectPath = getSessionProjectPath(index, id);
@@ -192,8 +181,8 @@ const getSession = createServerFn({method: 'GET'})
 			projectName: detail.projectName,
 			projectId: detail.projectId,
 			messages,
-			subagents,
-			subagentTree,
+			subagentTree: subagentResult.tree,
+			subagentCount: subagentResult.totalCount,
 			starred: starResult.starred,
 			projectPath,
 			gitBranch: sessionMeta?.gitBranch ?? null,
@@ -498,10 +487,10 @@ function SessionPage() {
 				)
 			)}
 
-			{data.subagents.length > 0 && (
+			{data.subagentCount > 0 && (
 				<SubagentTree
 					tree={data.subagentTree}
-					totalCount={data.subagents.length}
+					totalCount={data.subagentCount}
 				/>
 			)}
 

@@ -316,19 +316,12 @@ export const getPlanLinks = createServerFn({method: 'GET'})
 		}));
 	});
 
-export const getSubagents = createServerFn({method: 'GET'})
-	.inputValidator(z.string())
-	.handler(async ({data: sessionId}) => {
-		const {index} = getDb();
-		return getSubagentsForSession(index, sessionId);
-	});
-
 export const getSubagentTree = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: sessionId}) => {
 		const {index} = getDb();
 		const agents = getSubagentsForSession(index, sessionId);
-		return buildSubagentTree(agents);
+		return {tree: buildSubagentTree(agents), totalCount: agents.length};
 	});
 
 export const searchSessions = createServerFn({method: 'GET'})

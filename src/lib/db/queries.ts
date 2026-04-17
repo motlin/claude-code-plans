@@ -301,8 +301,7 @@ export interface DbSubagent {
 
 export interface SubagentTreeNode {
 	agent: DbSubagent;
-	children: SubagentTreeNode[];
-	isParallel: boolean;
+	children: SubagentTreeEntry[];
 }
 
 export interface ParallelGroup {
@@ -354,8 +353,7 @@ export function buildSubagentTree(agents: DbSubagent[]): SubagentTreeEntry[] {
 			if (parallelGroup.length > 1) {
 				const nodes = parallelGroup.map((agent) => ({
 					agent,
-					children: buildChildren(agent.id) as SubagentTreeNode[],
-					isParallel: true,
+					children: buildChildren(agent.id),
 				}));
 				const durations = nodes.map((n) => {
 					if (!n.agent.startedAt || !n.agent.finishedAt) return 0;
@@ -369,8 +367,7 @@ export function buildSubagentTree(agents: DbSubagent[]): SubagentTreeEntry[] {
 			} else {
 				entries.push({
 					agent: current,
-					children: buildChildren(current.id) as SubagentTreeNode[],
-					isParallel: false,
+					children: buildChildren(current.id),
 				});
 			}
 			i++;
