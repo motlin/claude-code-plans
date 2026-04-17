@@ -61,8 +61,12 @@ CREATE TABLE IF NOT EXISTS subagents (
   id TEXT PRIMARY KEY,
   session_id TEXT NOT NULL,
   project_id TEXT NOT NULL,
+  parent_agent_id TEXT,
   agent_type TEXT,
   slug TEXT,
+  description TEXT,
+  started_at TEXT,
+  finished_at TEXT,
   file_path TEXT NOT NULL,
   mtime_ms INTEGER NOT NULL
 );

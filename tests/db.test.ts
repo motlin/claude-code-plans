@@ -8,6 +8,8 @@ import {
 	indexSessionsIndex,
 	indexTaskFile,
 	pruneStalePlanLinks,
+	indexSubagentFile,
+	linkSubagentParents,
 	scanTasksDir,
 } from '../src/lib/db/indexer';
 import {
@@ -28,6 +30,10 @@ import {
 	getTasksForProject,
 	getIncompleteTasksGroupedByProject,
 	getTaskCountsForProject,
+	buildSubagentTree,
+	type DbSubagent,
+	type ParallelGroup,
+	type SubagentTreeNode,
 } from '../src/lib/db/queries';
 import * as schema from '../src/lib/db/schema';
 import {eq} from 'drizzle-orm';
@@ -653,6 +659,305 @@ describe('subagents', () => {
 
 	it('returns empty array for session with no subagents', () => {
 		expect(getSubagentsForSession(db.index, 'nonexistent')).toEqual([]);
+	});
+
+	it('indexSubagentFile extracts startedAt and finishedAt from JSONL timestamps', async () => {
+		const projectDir = join(testDir, '-Users-craig-projects-app');
+		const sessionDir = join(projectDir, 'sess-1', 'subagents');
+		mkdirSync(sessionDir, {recursive: true});
+
+		const agentPath = join(sessionDir, 'agent-abc123.jsonl');
+		writeFileSync(
+			agentPath,
+			jsonl(
+				{
+					type: 'user',
+					slug: 'explore-stuff',
+					timestamp: '2026-04-05T00:28:53.989Z',
+					message: {role: 'user', content: 'Do something'},
+				},
+				{
+					type: 'assistant',
+					timestamp: '2026-04-05T00:29:05.000Z',
+					message: {role: 'assistant', content: 'Working on it'},
+				},
+				{
+					type: 'assistant',
+					timestamp: '2026-04-05T00:29:12.217Z',
+					message: {role: 'assistant', content: 'Done'},
+				},
+			),
+		);
+
+		db.index.insert(schema.projects).values({id: 'proj-app', name: 'App', updatedAt: 1000}).run();
+		await indexSubagentFile(db.index, agentPath, 'sess-1', 'proj-app');
+
+		const agent = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, 'agent-abc123')).get();
+		expect(agent).toBeDefined();
+		expect(agent!.startedAt).toBe('2026-04-05T00:28:53.989Z');
+		expect(agent!.finishedAt).toBe('2026-04-05T00:29:12.217Z');
+	});
+
+	it('linkSubagentParents sets parentAgentId from Agent tool calls in parent JSONL', async () => {
+		const projectDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projectDir, {recursive: true});
+
+		// Create parent session JSONL with Agent tool calls
+		const parentJsonl = join(projectDir, 'sess-1.jsonl');
+		writeFileSync(
+			parentJsonl,
+			jsonl(
+				{type: 'user', message: {role: 'user', content: 'Do work'}},
+				{
+					type: 'assistant',
+					timestamp: '2026-04-05T00:10:00.000Z',
+					message: {
+						role: 'assistant',
+						content: [
+							{type: 'text', text: 'Let me spawn some agents'},
+							{
+								type: 'tool_use',
+								id: 'tool-1',
+								name: 'Agent',
+								input: {prompt: 'explore', subagent_type: 'Explore', description: 'Search codebase'},
+							},
+							{
+								type: 'tool_use',
+								id: 'tool-2',
+								name: 'Agent',
+								input: {
+									prompt: 'review code',
+									subagent_type: 'general-purpose',
+									description: 'Code review',
+								},
+							},
+						],
+					},
+				},
+				{
+					type: 'user',
+					message: {
+						role: 'user',
+						content: [
+							{type: 'tool_result', tool_use_id: 'tool-1', content: 'agentId: abc123\nFound files'},
+							{type: 'tool_result', tool_use_id: 'tool-2', content: 'agentId: def456\nReview complete'},
+						],
+					},
+				},
+			),
+		);
+
+		// Insert subagent rows (as if indexSubagentFile already ran)
+		db.index.insert(schema.projects).values({id: 'proj-app', name: 'App', updatedAt: 1000}).run();
+		db.index
+			.insert(schema.subagents)
+			.values([
+				{
+					id: 'agent-abc123',
+					sessionId: 'sess-1',
+					projectId: 'proj-app',
+					filePath: '/path/agent-abc123.jsonl',
+					mtimeMs: 1000,
+				},
+				{
+					id: 'agent-def456',
+					sessionId: 'sess-1',
+					projectId: 'proj-app',
+					filePath: '/path/agent-def456.jsonl',
+					mtimeMs: 1000,
+				},
+				{
+					id: 'agent-other',
+					sessionId: 'sess-1',
+					projectId: 'proj-app',
+					filePath: '/path/agent-other.jsonl',
+					mtimeMs: 1000,
+				},
+			])
+			.run();
+
+		await linkSubagentParents(db.index, parentJsonl, null);
+
+		const abc = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, 'agent-abc123')).get();
+		expect(abc!.parentAgentId).toBeNull(); // root-spawned → null
+		expect(abc!.description).toBe('Search codebase');
+
+		const def = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, 'agent-def456')).get();
+		expect(def!.parentAgentId).toBeNull(); // root-spawned → null
+		expect(def!.description).toBe('Code review');
+
+		const other = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, 'agent-other')).get();
+		expect(other!.parentAgentId).toBeNull(); // not mentioned in JSONL, stays null
+	});
+
+	it('linkSubagentParents sets parentAgentId for nested subagents', async () => {
+		const projectDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projectDir, {recursive: true});
+
+		// Create a subagent JSONL that spawns another subagent
+		const parentAgentJsonl = join(projectDir, 'agent-parent111.jsonl');
+		writeFileSync(
+			parentAgentJsonl,
+			jsonl(
+				{type: 'user', message: {role: 'user', content: 'Research something'}},
+				{
+					type: 'assistant',
+					message: {
+						role: 'assistant',
+						content: [
+							{
+								type: 'tool_use',
+								id: 'tool-nested',
+								name: 'Agent',
+								input: {prompt: 'deep scan', subagent_type: 'Explore'},
+							},
+						],
+					},
+				},
+				{
+					type: 'user',
+					message: {
+						role: 'user',
+						content: [
+							{type: 'tool_result', tool_use_id: 'tool-nested', content: 'agentId: child222\nResults'},
+						],
+					},
+				},
+			),
+		);
+
+		db.index.insert(schema.projects).values({id: 'proj-app', name: 'App', updatedAt: 1000}).run();
+		db.index
+			.insert(schema.subagents)
+			.values([
+				{
+					id: 'agent-parent111',
+					sessionId: 'sess-1',
+					projectId: 'proj-app',
+					filePath: parentAgentJsonl,
+					mtimeMs: 1000,
+				},
+				{
+					id: 'agent-child222',
+					sessionId: 'sess-1',
+					projectId: 'proj-app',
+					filePath: '/path/agent-child222.jsonl',
+					mtimeMs: 1000,
+				},
+			])
+			.run();
+
+		await linkSubagentParents(db.index, parentAgentJsonl, 'agent-parent111');
+
+		const child = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, 'agent-child222')).get();
+		expect(child!.parentAgentId).toBe('agent-parent111');
+	});
+});
+
+describe('buildSubagentTree', () => {
+	function makeAgent(overrides: Partial<DbSubagent> & {id: string}): DbSubagent {
+		return {
+			sessionId: 'sess-1',
+			projectId: 'proj-1',
+			parentAgentId: null,
+			agentType: null,
+			slug: null,
+			description: null,
+			startedAt: null,
+			finishedAt: null,
+			filePath: `/path/${overrides.id}.jsonl`,
+			mtimeMs: 1000,
+			...overrides,
+		};
+	}
+
+	it('builds a flat list for serial agents', () => {
+		const agents = [
+			makeAgent({id: 'a', startedAt: '2026-04-05T00:00:00.000Z', finishedAt: '2026-04-05T00:00:10.000Z'}),
+			makeAgent({id: 'b', startedAt: '2026-04-05T00:00:15.000Z', finishedAt: '2026-04-05T00:00:25.000Z'}),
+			makeAgent({id: 'c', startedAt: '2026-04-05T00:00:30.000Z', finishedAt: '2026-04-05T00:00:40.000Z'}),
+		];
+
+		const tree = buildSubagentTree(agents);
+		expect(tree).toHaveLength(3);
+		expect((tree[0] as SubagentTreeNode).agent.id).toBe('a');
+		expect((tree[1] as SubagentTreeNode).agent.id).toBe('b');
+		expect((tree[2] as SubagentTreeNode).agent.id).toBe('c');
+	});
+
+	it('groups parallel agents with same start time', () => {
+		const agents = [
+			makeAgent({id: 'build', startedAt: '2026-04-05T00:00:00.000Z', finishedAt: '2026-04-05T00:00:10.000Z'}),
+			makeAgent({id: 'review1', startedAt: '2026-04-05T00:00:15.000Z', finishedAt: '2026-04-05T00:00:25.000Z'}),
+			makeAgent({id: 'review2', startedAt: '2026-04-05T00:00:15.000Z', finishedAt: '2026-04-05T00:00:30.000Z'}),
+			makeAgent({id: 'review3', startedAt: '2026-04-05T00:00:15.500Z', finishedAt: '2026-04-05T00:00:20.000Z'}),
+			makeAgent({id: 'commit', startedAt: '2026-04-05T00:00:35.000Z', finishedAt: '2026-04-05T00:00:40.000Z'}),
+		];
+
+		const tree = buildSubagentTree(agents);
+		expect(tree).toHaveLength(3);
+		expect((tree[0] as SubagentTreeNode).agent.id).toBe('build');
+
+		const group = tree[1] as ParallelGroup;
+		expect(group.type).toBe('parallel');
+		expect(group.children).toHaveLength(3);
+		expect(group.wallClockMs).toBe(15000); // review2 took longest: 15s
+
+		expect((tree[2] as SubagentTreeNode).agent.id).toBe('commit');
+	});
+
+	it('nests children under their parent', () => {
+		const agents = [
+			makeAgent({id: 'parent', startedAt: '2026-04-05T00:00:00.000Z', finishedAt: '2026-04-05T00:00:30.000Z'}),
+			makeAgent({
+				id: 'child',
+				parentAgentId: 'parent',
+				startedAt: '2026-04-05T00:00:05.000Z',
+				finishedAt: '2026-04-05T00:00:15.000Z',
+			}),
+		];
+
+		const tree = buildSubagentTree(agents);
+		expect(tree).toHaveLength(1);
+
+		const parent = tree[0] as SubagentTreeNode;
+		expect(parent.agent.id).toBe('parent');
+		expect(parent.children).toHaveLength(1);
+		expect((parent.children[0] as SubagentTreeNode).agent.id).toBe('child');
+	});
+
+	it('handles deep nesting', () => {
+		const agents = [
+			makeAgent({
+				id: 'root-agent',
+				startedAt: '2026-04-05T00:00:00.000Z',
+				finishedAt: '2026-04-05T00:01:00.000Z',
+			}),
+			makeAgent({
+				id: 'mid',
+				parentAgentId: 'root-agent',
+				startedAt: '2026-04-05T00:00:10.000Z',
+				finishedAt: '2026-04-05T00:00:40.000Z',
+			}),
+			makeAgent({
+				id: 'deep',
+				parentAgentId: 'mid',
+				startedAt: '2026-04-05T00:00:15.000Z',
+				finishedAt: '2026-04-05T00:00:25.000Z',
+			}),
+		];
+
+		const tree = buildSubagentTree(agents);
+		expect(tree).toHaveLength(1);
+		const root = tree[0] as SubagentTreeNode;
+		expect(root.children).toHaveLength(1);
+		const mid = root.children[0] as SubagentTreeNode;
+		expect(mid.children).toHaveLength(1);
+		expect((mid.children[0] as SubagentTreeNode).agent.id).toBe('deep');
+	});
+
+	it('returns empty array for no agents', () => {
+		expect(buildSubagentTree([])).toEqual([]);
 	});
 });
 

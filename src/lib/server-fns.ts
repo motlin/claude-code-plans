@@ -25,6 +25,7 @@ import {
 	getPlanLinksFromDb,
 	searchSessionsFromDb,
 	getSubagentsForSession,
+	buildSubagentTree,
 	getPlanProjectMappings,
 	toggleStar as toggleStarInDb,
 	getStarredSessions as getStarredSessionsFromDb,
@@ -320,6 +321,14 @@ export const getSubagents = createServerFn({method: 'GET'})
 	.handler(async ({data: sessionId}) => {
 		const {index} = getDb();
 		return getSubagentsForSession(index, sessionId);
+	});
+
+export const getSubagentTree = createServerFn({method: 'GET'})
+	.inputValidator(z.string())
+	.handler(async ({data: sessionId}) => {
+		const {index} = getDb();
+		const agents = getSubagentsForSession(index, sessionId);
+		return buildSubagentTree(agents);
 	});
 
 export const searchSessions = createServerFn({method: 'GET'})

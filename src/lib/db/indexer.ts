@@ -355,6 +355,8 @@ export async function indexSubagentFile(
 	}
 
 	let slug: string | null = null;
+	let startedAt: string | null = null;
+	let finishedAt: string | null = null;
 	const rl = createInterface({
 		input: createReadStream(filePath, {encoding: 'utf-8'}),
 		crlfDelay: Infinity,
@@ -363,12 +365,15 @@ export async function indexSubagentFile(
 		for await (const line of rl) {
 			if (!line.trim()) continue;
 			try {
-				const obj = JSON.parse(line) as {slug?: string};
-				if (obj.slug) slug = obj.slug;
+				const obj = JSON.parse(line) as {slug?: string; timestamp?: string};
+				if (obj.slug && !slug) slug = obj.slug;
+				if (obj.timestamp) {
+					if (!startedAt) startedAt = obj.timestamp;
+					finishedAt = obj.timestamp;
+				}
 			} catch {
 				// skip
 			}
-			break; // only first line
 		}
 	} finally {
 		rl.close();
@@ -381,12 +386,14 @@ export async function indexSubagentFile(
 			projectId: project,
 			agentType,
 			slug,
+			startedAt,
+			finishedAt,
 			filePath,
 			mtimeMs: fileStat.mtimeMs,
 		})
 		.onConflictDoUpdate({
 			target: schema.subagents.id,
-			set: {agentType, slug, mtimeMs: fileStat.mtimeMs},
+			set: {agentType, slug, startedAt, finishedAt, mtimeMs: fileStat.mtimeMs},
 		})
 		.run();
 
@@ -397,6 +404,85 @@ export async function indexSubagentFile(
 			set: {mtimeMs: fileStat.mtimeMs, sizeBytes: fileStat.size, indexedAt: Date.now()},
 		})
 		.run();
+}
+
+const AGENT_ID_RE = /agentId:\s*(\S+)/;
+
+export async function linkSubagentParents(db: IndexDb, jsonlPath: string, parentAgentId: string | null): Promise<void> {
+	const rl = createInterface({
+		input: createReadStream(jsonlPath, {encoding: 'utf-8'}),
+		crlfDelay: Infinity,
+	});
+
+	// Map tool_use id → description from the Agent call
+	const toolCallDescriptions = new Map<string, string>();
+
+	try {
+		for await (const line of rl) {
+			if (!line.trim()) continue;
+			try {
+				const obj = JSON.parse(line) as {
+					type?: string;
+					message?: {
+						content?:
+							| string
+							| Array<{
+									type?: string;
+									tool_use_id?: string;
+									content?: string | Array<{type?: string; text?: string}>;
+									name?: string;
+									id?: string;
+									input?: {description?: string; prompt?: string};
+							  }>;
+					};
+				};
+
+				const content = obj.message?.content;
+				if (!Array.isArray(content)) continue;
+
+				for (const block of content) {
+					// Track Agent tool_use calls by their id + description
+					if (block.type === 'tool_use' && block.name === 'Agent' && block.id) {
+						const desc = block.input?.description ?? '';
+						toolCallDescriptions.set(block.id, desc);
+					}
+
+					// Extract agentId from tool_result
+					if (
+						block.type === 'tool_result' &&
+						block.tool_use_id &&
+						toolCallDescriptions.has(block.tool_use_id)
+					) {
+						let resultText = '';
+						if (typeof block.content === 'string') {
+							resultText = block.content;
+						} else if (Array.isArray(block.content)) {
+							resultText = block.content
+								.filter(
+									(b): b is {type: string; text: string} =>
+										b.type === 'text' && typeof b.text === 'string',
+								)
+								.map((b) => b.text)
+								.join(' ');
+						}
+						const match = AGENT_ID_RE.exec(resultText);
+						if (match?.[1]) {
+							const agentId = `agent-${match[1]}`;
+							const description = toolCallDescriptions.get(block.tool_use_id) || null;
+							db.update(schema.subagents)
+								.set({parentAgentId, description})
+								.where(eq(schema.subagents.id, agentId))
+								.run();
+						}
+					}
+				}
+			} catch {
+				// skip malformed lines
+			}
+		}
+	} finally {
+		rl.close();
+	}
 }
 
 export async function indexTaskFile(db: IndexDb, filePath: string, projectDir: string): Promise<void> {
@@ -583,9 +669,11 @@ export async function fullScan(db: IndexDb, projectsDir: string, tasksDir?: stri
 			}
 
 			// Index subagents
+			const sessionJsonlPaths: string[] = [];
 			for (const file of files) {
 				if (!file.endsWith('.jsonl')) continue;
 				const sessionId = file.replace(/\.jsonl$/, '');
+				const sessionJsonlPath = join(projectPath, file);
 				const subagentsDir = join(projectPath, sessionId, 'subagents');
 				let subFiles: string[];
 				try {
@@ -593,10 +681,26 @@ export async function fullScan(db: IndexDb, projectsDir: string, tasksDir?: stri
 				} catch {
 					continue;
 				}
+				const subagentJsonlPaths: string[] = [];
 				for (const sf of subFiles) {
 					if (!sf.startsWith('agent-') || !sf.endsWith('.jsonl')) continue;
-					await indexSubagentFile(db, join(subagentsDir, sf), sessionId, project);
+					const sfPath = join(subagentsDir, sf);
+					await indexSubagentFile(db, sfPath, sessionId, project);
+					subagentJsonlPaths.push(sfPath);
 				}
+				if (subagentJsonlPaths.length > 0) {
+					sessionJsonlPaths.push(sessionJsonlPath);
+					// Also link from subagent JSONL files (for nesting)
+					for (const saPath of subagentJsonlPaths) {
+						const agentFilename = basename(saPath, '.jsonl');
+						await linkSubagentParents(db, saPath, agentFilename);
+					}
+				}
+			}
+
+			// Link parent-child relationships from root session JSONL files
+			for (const sjPath of sessionJsonlPaths) {
+				await linkSubagentParents(db, sjPath, null);
 			}
 		}
 

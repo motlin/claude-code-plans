@@ -1,6 +1,6 @@
 import {sqliteTable, text, integer, index, primaryKey} from 'drizzle-orm/sqlite-core';
 
-export const SCHEMA_VERSION = '5';
+export const SCHEMA_VERSION = '6';
 
 export const metadata = sqliteTable('metadata', {
 	key: text('key').primaryKey(),
@@ -63,8 +63,12 @@ export const subagents = sqliteTable(
 		id: text('id').primaryKey(),
 		sessionId: text('session_id').notNull(),
 		projectId: text('project_id').notNull(),
+		parentAgentId: text('parent_agent_id'),
 		agentType: text('agent_type'),
 		slug: text('slug'),
+		description: text('description'),
+		startedAt: text('started_at'),
+		finishedAt: text('finished_at'),
 		filePath: text('file_path').notNull(),
 		mtimeMs: integer('mtime_ms').notNull(),
 	},

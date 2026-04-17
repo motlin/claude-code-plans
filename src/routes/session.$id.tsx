@@ -20,7 +20,14 @@ import {SessionChat} from '../components/session-chat';
 import {ChatInput} from '../components/chat-input';
 import {StreamingMessage} from '../components/streaming-message';
 import {useChatStream} from '../hooks/use-chat-stream';
-import {getSubagents, getSessionSummary, requestSummary, isStarred, toggleSessionStar} from '../lib/server-fns';
+import {
+	getSubagents,
+	getSubagentTree,
+	getSessionSummary,
+	requestSummary,
+	isStarred,
+	toggleSessionStar,
+} from '../lib/server-fns';
 import {useIsSessionActive, useStatusline} from '../hooks/use-claude-events';
 import {StatusFooter} from '../components/status-footer';
 import {getDb} from '../lib/db';
@@ -28,6 +35,7 @@ import {getSessionProjectPath, getSessionMeta, getTaskCountsForProject} from '..
 import type {ClientToolCall, ToolInput} from '../components/tool-renderers';
 import {ArrowLeft, ArrowUp, ArrowDown, Copy, Terminal, GitFork, Download} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
+import {SubagentTree} from '../components/subagent-tree';
 
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
@@ -150,7 +158,11 @@ const getSession = createServerFn({method: 'GET'})
 			}),
 		);
 
-		const [subagents, starResult] = await Promise.all([getSubagents({data: id}), isStarred({data: id})]);
+		const [subagents, subagentTree, starResult] = await Promise.all([
+			getSubagents({data: id}),
+			getSubagentTree({data: id}),
+			isStarred({data: id}),
+		]);
 
 		const {index} = getDb();
 		const projectPath = getSessionProjectPath(index, id);
@@ -181,6 +193,7 @@ const getSession = createServerFn({method: 'GET'})
 			projectId: detail.projectId,
 			messages,
 			subagents,
+			subagentTree,
 			starred: starResult.starred,
 			projectPath,
 			gitBranch: sessionMeta?.gitBranch ?? null,
@@ -236,11 +249,6 @@ function SessionErrorComponent({error, reset}: ErrorComponentProps) {
 		</div>
 	);
 }
-
-const AGENT_TYPE_COLORS: Record<string, string> = {
-	Explore: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-	Plan: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-};
 
 function useScrollButtons() {
 	const [showUp, setShowUp] = useState(false);
@@ -491,30 +499,10 @@ function SessionPage() {
 			)}
 
 			{data.subagents.length > 0 && (
-				<div className="mt-3">
-					<h2 className="text-xs font-semibold text-text-500 uppercase tracking-wide">
-						Subagents ({data.subagents.length})
-					</h2>
-					<div className="mt-1 flex flex-wrap gap-2">
-						{data.subagents.map((agent) => (
-							<Link
-								key={agent.id}
-								to="/session/$id"
-								params={{id: agent.id}}
-								className="inline-flex items-center gap-1.5 rounded-md border border-border-300/15 px-2 py-1 text-xs transition-colors hover:bg-bg-200/50"
-							>
-								{agent.agentType && (
-									<span
-										className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${AGENT_TYPE_COLORS[agent.agentType] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'}`}
-									>
-										{agent.agentType}
-									</span>
-								)}
-								<span className="text-text-500">{agent.slug ?? agent.id}</span>
-							</Link>
-						))}
-					</div>
-				</div>
+				<SubagentTree
+					tree={data.subagentTree}
+					totalCount={data.subagents.length}
+				/>
 			)}
 
 			<div className="flex items-center gap-3 mt-2 text-xs text-text-500">

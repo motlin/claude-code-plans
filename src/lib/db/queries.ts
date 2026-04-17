@@ -289,10 +289,96 @@ export interface DbSubagent {
 	id: string;
 	sessionId: string;
 	projectId: string;
+	parentAgentId: string | null;
 	agentType: string | null;
 	slug: string | null;
+	description: string | null;
+	startedAt: string | null;
+	finishedAt: string | null;
 	filePath: string;
 	mtimeMs: number;
+}
+
+export interface SubagentTreeNode {
+	agent: DbSubagent;
+	children: SubagentTreeNode[];
+	isParallel: boolean;
+}
+
+export interface ParallelGroup {
+	type: 'parallel';
+	children: SubagentTreeNode[];
+	wallClockMs: number;
+}
+
+export type SubagentTreeEntry = SubagentTreeNode | ParallelGroup;
+
+export function buildSubagentTree(agents: DbSubagent[]): SubagentTreeEntry[] {
+	const byParent = new Map<string | null, DbSubagent[]>();
+	for (const agent of agents) {
+		const key = agent.parentAgentId;
+		const list = byParent.get(key) ?? [];
+		list.push(agent);
+		byParent.set(key, list);
+	}
+
+	function buildChildren(parentId: string | null): SubagentTreeEntry[] {
+		const children = byParent.get(parentId);
+		if (!children) return [];
+
+		// Sort by startedAt
+		children.sort((a, b) => {
+			if (!a.startedAt || !b.startedAt) return 0;
+			return a.startedAt.localeCompare(b.startedAt);
+		});
+
+		// Group consecutive agents with the same startedAt as parallel
+		const entries: SubagentTreeEntry[] = [];
+		let i = 0;
+		while (i < children.length) {
+			const current = children[i]!;
+			// Look ahead for agents started at the same time (within 2s)
+			const parallelGroup = [current];
+			const currentMs = current.startedAt ? new Date(current.startedAt).getTime() : 0;
+			while (i + 1 < children.length) {
+				const next = children[i + 1]!;
+				const nextMs = next.startedAt ? new Date(next.startedAt).getTime() : 0;
+				if (currentMs > 0 && nextMs > 0 && Math.abs(nextMs - currentMs) < 2000) {
+					parallelGroup.push(next);
+					i++;
+				} else {
+					break;
+				}
+			}
+
+			if (parallelGroup.length > 1) {
+				const nodes = parallelGroup.map((agent) => ({
+					agent,
+					children: buildChildren(agent.id) as SubagentTreeNode[],
+					isParallel: true,
+				}));
+				const durations = nodes.map((n) => {
+					if (!n.agent.startedAt || !n.agent.finishedAt) return 0;
+					return new Date(n.agent.finishedAt).getTime() - new Date(n.agent.startedAt).getTime();
+				});
+				entries.push({
+					type: 'parallel',
+					children: nodes,
+					wallClockMs: Math.max(...durations),
+				});
+			} else {
+				entries.push({
+					agent: current,
+					children: buildChildren(current.id) as SubagentTreeNode[],
+					isParallel: false,
+				});
+			}
+			i++;
+		}
+		return entries;
+	}
+
+	return buildChildren(null);
 }
 
 export interface DbMessageSearchResult {
