@@ -16,7 +16,7 @@
 		"test:run": "vitest run"
 	},
 	"dependencies": {
-		"@mdxeditor/editor": "^3.54.0",
+		"@mdxeditor/editor": "^3.54.1",
 		"@shikijs/markdown-it": "^4.0.2",
 		"@tanstack/react-router": "^1.167.5",
 		"@tanstack/react-start": "^1.167.41",
