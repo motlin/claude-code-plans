@@ -6,6 +6,7 @@ import {
 	summarizeToolCalls,
 	listSessions,
 	readSession,
+	readSessionRawWindow,
 	parseCommandBlock,
 } from '../src/lib/sessions';
 
@@ -31,8 +32,11 @@ function userMessageArray(blocks: Record<string, unknown>[]): Record<string, unk
 	return {type: 'user', message: {role: 'user', content: blocks}};
 }
 
-function assistantMessage(blocks: Record<string, unknown>[]): Record<string, unknown> {
-	return {type: 'assistant', message: {role: 'assistant', content: blocks}};
+function assistantMessage(
+	blocks: Record<string, unknown>[],
+	extra: Record<string, unknown> = {},
+): Record<string, unknown> {
+	return {type: 'assistant', message: {role: 'assistant', content: blocks}, ...extra};
 }
 
 describe('extractSessionTitle', () => {
@@ -115,53 +119,57 @@ describe('summarizeToolCalls', () => {
 	});
 
 	it('single Read', () => {
-		expect(summarizeToolCalls([{id: 'tc1', name: 'Read', input: {file_path: '/foo'}}])).toBe('read a file');
+		expect(summarizeToolCalls([{id: 'tc1', name: 'Read', input: {file_path: '/foo'}, sourceUuid: ''}])).toBe(
+			'read a file',
+		);
 	});
 
 	it('multiple Reads', () => {
 		expect(
 			summarizeToolCalls([
-				{id: 'tc1', name: 'Read', input: {file_path: '/a'}},
-				{id: 'tc2', name: 'Read', input: {file_path: '/b'}},
+				{id: 'tc1', name: 'Read', input: {file_path: '/a'}, sourceUuid: ''},
+				{id: 'tc2', name: 'Read', input: {file_path: '/b'}, sourceUuid: ''},
 			]),
 		).toBe('read 2 files');
 	});
 
 	it('mixed tools', () => {
 		const calls = [
-			{id: 'tc1', name: 'Edit', input: {}},
-			{id: 'tc2', name: 'Edit', input: {}},
-			{id: 'tc3', name: 'Edit', input: {}},
-			{id: 'tc4', name: 'Read', input: {}},
-			{id: 'tc5', name: 'Bash', input: {}},
-			{id: 'tc6', name: 'Bash', input: {}},
+			{id: 'tc1', name: 'Edit', input: {}, sourceUuid: ''},
+			{id: 'tc2', name: 'Edit', input: {}, sourceUuid: ''},
+			{id: 'tc3', name: 'Edit', input: {}, sourceUuid: ''},
+			{id: 'tc4', name: 'Read', input: {}, sourceUuid: ''},
+			{id: 'tc5', name: 'Bash', input: {}, sourceUuid: ''},
+			{id: 'tc6', name: 'Bash', input: {}, sourceUuid: ''},
 		];
 		expect(summarizeToolCalls(calls)).toBe('edited 3 files, read a file, ran 2 commands');
 	});
 
 	it('groups Edit and Write together', () => {
 		const calls = [
-			{id: 'tc1', name: 'Edit', input: {}},
-			{id: 'tc2', name: 'Write', input: {}},
+			{id: 'tc1', name: 'Edit', input: {}, sourceUuid: ''},
+			{id: 'tc2', name: 'Write', input: {}, sourceUuid: ''},
 		];
 		expect(summarizeToolCalls(calls)).toBe('edited 2 files');
 	});
 
 	it('single Grep', () => {
-		expect(summarizeToolCalls([{id: 'tc1', name: 'Grep', input: {}}])).toBe('searched code');
+		expect(summarizeToolCalls([{id: 'tc1', name: 'Grep', input: {}, sourceUuid: ''}])).toBe('searched code');
 	});
 
 	it('agents', () => {
 		const calls = [
-			{id: 'tc1', name: 'Agent', input: {}},
-			{id: 'tc2', name: 'Agent', input: {}},
-			{id: 'tc3', name: 'Agent', input: {}},
+			{id: 'tc1', name: 'Agent', input: {}, sourceUuid: ''},
+			{id: 'tc2', name: 'Agent', input: {}, sourceUuid: ''},
+			{id: 'tc3', name: 'Agent', input: {}, sourceUuid: ''},
 		];
 		expect(summarizeToolCalls(calls)).toBe('ran 3 agents');
 	});
 
 	it('unknown tool', () => {
-		expect(summarizeToolCalls([{id: 'tc1', name: 'CustomTool', input: {}}])).toBe('used CustomTool');
+		expect(summarizeToolCalls([{id: 'tc1', name: 'CustomTool', input: {}, sourceUuid: ''}])).toBe(
+			'used CustomTool',
+		);
 	});
 });
 
@@ -265,7 +273,7 @@ describe('readSession', () => {
 
 		expect(detail!.messages[1]!.role).toBe('assistant');
 		expect(detail!.messages[1]!.textBlocks).toEqual(['Hi there!']);
-		expect(detail!.messages[1]!.toolCalls).toEqual([
+		expect(detail!.messages[1]!.toolCalls).toMatchObject([
 			{id: 'tool1', name: 'Read', input: {file_path: '/src/index.ts'}},
 		]);
 	});
@@ -348,6 +356,7 @@ describe('readSession', () => {
 			type: 'image',
 			mediaType: 'image/png',
 			data: base64Data,
+			sourceUuid: expect.any(String),
 		});
 	});
 
@@ -380,6 +389,7 @@ describe('readSession', () => {
 			type: 'document',
 			mediaType: 'application/pdf',
 			data: pdfData,
+			sourceUuid: expect.any(String),
 		});
 	});
 
@@ -667,7 +677,7 @@ describe('readSession', () => {
 		expect(detail!.messages).toHaveLength(2);
 		const msg = detail!.messages[0]!;
 		expect(msg.role).toBe('user');
-		expect(msg.content).toEqual([{type: 'bash-input', command: 'git status'}]);
+		expect(msg.content).toMatchObject([{type: 'bash-input', command: 'git status'}]);
 		expect(msg.textBlocks).toEqual([]);
 	});
 
@@ -686,7 +696,7 @@ describe('readSession', () => {
 		const detail = await readSession(testDir, 'bash-pair');
 		expect(detail!.messages).toHaveLength(2);
 		const msg = detail!.messages[0]!;
-		expect(msg.content).toEqual([
+		expect(msg.content).toMatchObject([
 			{type: 'bash-input', command: 'ls'},
 			{type: 'bash-output', stdout: 'foo\nbar', stderr: ''},
 		]);
@@ -711,6 +721,7 @@ describe('readSession', () => {
 			type: 'bash-output',
 			stdout: '',
 			stderr: 'cat: missing: No such file',
+			sourceUuid: expect.any(String),
 		});
 	});
 
@@ -767,6 +778,163 @@ describe('readSession', () => {
 		const userMsg = detail!.messages.find((m) => m.role === 'user' && m.textBlocks.includes('Follow-up question'));
 		expect(userMsg).toBeDefined();
 		expect(userMsg!.textBlocks).not.toContain('file content here');
+	});
+
+	describe('sourceUuid tracking', () => {
+		const U1 = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+		const U2 = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+		const U3 = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+
+		it('attaches sourceUuid to text content blocks', async () => {
+			const projDir = join(testDir, '-Users-craig-projects-app');
+			mkdirSync(projDir, {recursive: true});
+			writeFileSync(
+				join(projDir, 'src-uuid.jsonl'),
+				jsonl(userMessage('hello', {uuid: U1}), assistantMessage([{type: 'text', text: 'world'}], {uuid: U2})),
+			);
+			const detail = await readSession(testDir, 'src-uuid');
+			expect(detail!.messages[0]!.content[0]).toMatchObject({type: 'text', sourceUuid: U1});
+			expect(detail!.messages[1]!.content[0]).toMatchObject({type: 'text', sourceUuid: U2});
+		});
+
+		it('preserves distinct sourceUuids when same-role messages coalesce', async () => {
+			const projDir = join(testDir, '-Users-craig-projects-app');
+			mkdirSync(projDir, {recursive: true});
+			writeFileSync(
+				join(projDir, 'coalesce-uuid.jsonl'),
+				jsonl(userMessage('part 1', {uuid: U1}), userMessage('part 2', {uuid: U2})),
+			);
+			const detail = await readSession(testDir, 'coalesce-uuid');
+			expect(detail!.messages).toHaveLength(1);
+			const blocks = detail!.messages[0]!.content;
+			expect(blocks).toHaveLength(2);
+			expect(blocks[0]).toMatchObject({type: 'text', sourceUuid: U1});
+			expect(blocks[1]).toMatchObject({type: 'text', sourceUuid: U2});
+		});
+
+		it('attaches different uuids to bash-input and bash-output', async () => {
+			const projDir = join(testDir, '-Users-craig-projects-app');
+			mkdirSync(projDir, {recursive: true});
+			writeFileSync(
+				join(projDir, 'bash-uuid.jsonl'),
+				jsonl(
+					userMessage('<bash-input>ls</bash-input>', {uuid: U1}),
+					userMessage('<bash-stdout>x</bash-stdout><bash-stderr></bash-stderr>', {uuid: U2}),
+				),
+			);
+			const detail = await readSession(testDir, 'bash-uuid');
+			const blocks = detail!.messages[0]!.content;
+			expect(blocks[0]).toMatchObject({type: 'bash-input', sourceUuid: U1});
+			expect(blocks[1]).toMatchObject({type: 'bash-output', sourceUuid: U2});
+		});
+
+		it('attaches sourceUuid + resultUuid to tool calls', async () => {
+			const projDir = join(testDir, '-Users-craig-projects-app');
+			mkdirSync(projDir, {recursive: true});
+			writeFileSync(
+				join(projDir, 'tool-uuid.jsonl'),
+				jsonl(
+					assistantMessage([{type: 'tool_use', id: 'tu_1', name: 'Read', input: {file_path: '/x'}}], {
+						uuid: U1,
+					}),
+					{
+						type: 'user',
+						uuid: U2,
+						message: {role: 'user', content: [{type: 'tool_result', tool_use_id: 'tu_1', content: 'ok'}]},
+					},
+				),
+			);
+			const detail = await readSession(testDir, 'tool-uuid');
+			const tc = detail!.messages[0]!.toolCalls[0]!;
+			expect(tc).toMatchObject({id: 'tu_1', sourceUuid: U1, resultUuid: U2});
+		});
+
+		it('returns uuidToLine map mapping uuids to file line numbers', async () => {
+			const projDir = join(testDir, '-Users-craig-projects-app');
+			mkdirSync(projDir, {recursive: true});
+			writeFileSync(
+				join(projDir, 'lines-uuid.jsonl'),
+				jsonl(
+					userMessage('a', {uuid: U1}),
+					userMessage('b', {uuid: U2}),
+					assistantMessage([{type: 'text', text: 'c'}], {uuid: U3}),
+				),
+			);
+			const detail = await readSession(testDir, 'lines-uuid');
+			expect(detail!.uuidToLine.get(U1)).toBe(0);
+			expect(detail!.uuidToLine.get(U2)).toBe(1);
+			expect(detail!.uuidToLine.get(U3)).toBe(2);
+		});
+	});
+
+	describe('readSessionRawWindow', () => {
+		const U = (n: number) => `${String(n).padStart(8, '0')}-aaaa-bbbb-cccc-dddddddddddd`;
+
+		function makeFile(sessionId: string, ...entries: Record<string, unknown>[]) {
+			const projDir = join(testDir, '-Users-craig-projects-app');
+			mkdirSync(projDir, {recursive: true});
+			writeFileSync(join(projDir, `${sessionId}.jsonl`), jsonl(...entries));
+		}
+
+		it('returns the focal entry plus before+after context', async () => {
+			makeFile(
+				'rw-mid',
+				userMessage('a', {uuid: U(0)}),
+				userMessage('b', {uuid: U(1)}),
+				userMessage('c', {uuid: U(2)}),
+				userMessage('d', {uuid: U(3)}),
+				userMessage('e', {uuid: U(4)}),
+			);
+			const result = await readSessionRawWindow(testDir, 'rw-mid', U(2), 1);
+			expect(result).not.toBeNull();
+			expect(result!.focal.lineIndex).toBe(2);
+			expect(result!.before).toHaveLength(1);
+			expect(result!.before[0]!.lineIndex).toBe(1);
+			expect(result!.after).toHaveLength(1);
+			expect(result!.after[0]!.lineIndex).toBe(3);
+		});
+
+		it('returns null when uuid not found', async () => {
+			makeFile('rw-miss', userMessage('a', {uuid: U(0)}));
+			const result = await readSessionRawWindow(testDir, 'rw-miss', U(99), 5);
+			expect(result).toBeNull();
+		});
+
+		it('handles focal at start of file with empty before window', async () => {
+			makeFile('rw-start', userMessage('a', {uuid: U(0)}), userMessage('b', {uuid: U(1)}));
+			const result = await readSessionRawWindow(testDir, 'rw-start', U(0), 5);
+			expect(result!.focal.lineIndex).toBe(0);
+			expect(result!.before).toHaveLength(0);
+			expect(result!.after).toHaveLength(1);
+		});
+
+		it('handles focal at end of file with empty after window', async () => {
+			makeFile('rw-end', userMessage('a', {uuid: U(0)}), userMessage('b', {uuid: U(1)}));
+			const result = await readSessionRawWindow(testDir, 'rw-end', U(1), 5);
+			expect(result!.focal.lineIndex).toBe(1);
+			expect(result!.before).toHaveLength(1);
+			expect(result!.after).toHaveLength(0);
+		});
+
+		it('marks malformed JSON lines as parse errors in context', async () => {
+			const projDir = join(testDir, '-Users-craig-projects-app');
+			mkdirSync(projDir, {recursive: true});
+			const lines = [
+				JSON.stringify(userMessage('a', {uuid: U(0)})),
+				'{not valid json',
+				JSON.stringify(userMessage('c', {uuid: U(2)})),
+			].join('\n');
+			writeFileSync(join(projDir, 'rw-bad.jsonl'), lines + '\n');
+			const result = await readSessionRawWindow(testDir, 'rw-bad', U(2), 2);
+			expect(result!.before.some((b) => b.parseError === true)).toBe(true);
+		});
+
+		it('returns the focal raw line and uuid', async () => {
+			makeFile('rw-parse', userMessage('a', {uuid: U(0)}));
+			const result = await readSessionRawWindow(testDir, 'rw-parse', U(0), 0);
+			expect(result!.focal.uuid).toBe(U(0));
+			expect(JSON.parse(result!.focal.raw)).toMatchObject({type: 'user', uuid: U(0)});
+		});
 	});
 
 	it('reads subagent JSONL files from nested directory', async () => {

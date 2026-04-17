@@ -36,18 +36,20 @@ export interface ToolCallInfo {
 	isError?: boolean;
 	startedAt?: string;
 	duration?: number;
+	sourceUuid: string;
+	resultUuid?: string;
 }
 
 export type MessageContent =
-	| {type: 'text'; text: string}
-	| {type: 'thinking'; thinking: string}
-	| {type: 'image'; mediaType: string; data: string}
-	| {type: 'document'; mediaType: string; data: string}
-	| {type: 'tool_use'; id: string; name: string; input: Record<string, unknown>}
-	| {type: 'tool_result'; toolUseId: string; content: string; isError: boolean}
-	| {type: 'command'; name: string; args?: string}
-	| {type: 'bash-input'; command: string}
-	| {type: 'bash-output'; stdout: string; stderr: string};
+	| {type: 'text'; text: string; sourceUuid: string}
+	| {type: 'thinking'; thinking: string; sourceUuid: string}
+	| {type: 'image'; mediaType: string; data: string; sourceUuid: string}
+	| {type: 'document'; mediaType: string; data: string; sourceUuid: string}
+	| {type: 'tool_use'; id: string; name: string; input: Record<string, unknown>; sourceUuid: string}
+	| {type: 'tool_result'; toolUseId: string; content: string; isError: boolean; sourceUuid: string}
+	| {type: 'command'; name: string; args?: string; sourceUuid: string}
+	| {type: 'bash-input'; command: string; sourceUuid: string}
+	| {type: 'bash-output'; stdout: string; stderr: string; sourceUuid: string};
 
 export interface SessionMessage {
 	role: 'user' | 'assistant';
@@ -64,6 +66,7 @@ export interface SessionDetail {
 	projectName: string;
 	projectId: string;
 	messages: SessionMessage[];
+	uuidToLine: Map<string, number>;
 }
 
 /** Match a complete command-message block and capture its inner content. */
@@ -179,6 +182,7 @@ export function summarizeToolCalls(calls: ToolCallInfo[]): string {
 
 interface JsonlEntry {
 	type: string;
+	uuid?: string;
 	timestamp?: string;
 	customTitle?: string;
 	sessionId?: string;
@@ -458,7 +462,10 @@ function truncateResult(text: string, maxLines: number): string {
 
 const SESSION_ID_RE = /^[a-z0-9-]+$/;
 
-export async function readSession(projectsDir: string, sessionId: string): Promise<SessionDetail | null> {
+async function resolveSessionFilePath(
+	projectsDir: string,
+	sessionId: string,
+): Promise<{filePath: string; project: string} | null> {
 	if (!SESSION_ID_RE.test(sessionId)) return null;
 	if (sessionId.includes('..')) return null;
 
@@ -470,26 +477,19 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 	}
 
 	const filename = `${sessionId}.jsonl`;
-	let filePath: string | null = null;
-	let project = '';
 
-	// First, try to find the session as a regular top-level file
 	for (const dir of projectDirs) {
 		const candidate = join(projectsDir, dir, filename);
 		try {
 			await stat(candidate);
-			filePath = candidate;
-			project = dir;
-			break;
+			return {filePath: candidate, project: dir};
 		} catch {
 			// not in this dir
 		}
 	}
 
-	// If not found and sessionId starts with 'agent-', try looking in subagent directories
-	if (!filePath && sessionId.startsWith('agent-')) {
+	if (sessionId.startsWith('agent-')) {
 		for (const dir of projectDirs) {
-			// Look for the agent file in nested session subagent directories
 			const subagentsDir = join(projectsDir, dir);
 			let sessionDirs: string[];
 			try {
@@ -502,19 +502,92 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 				const candidate = join(projectsDir, dir, sessionDir, 'subagents', filename);
 				try {
 					await stat(candidate);
-					filePath = candidate;
-					project = dir;
-					break;
+					return {filePath: candidate, project: dir};
 				} catch {
 					// not in this subagent dir
 				}
 			}
-
-			if (filePath) break;
 		}
 	}
 
-	if (!filePath) return null;
+	return null;
+}
+
+export interface RawJsonlLine {
+	raw: string;
+	lineIndex: number;
+	uuid?: string;
+	parseError?: boolean;
+}
+
+export interface RawWindow {
+	focal: RawJsonlLine;
+	before: RawJsonlLine[];
+	after: RawJsonlLine[];
+}
+
+function parseRawLine(raw: string, lineIndex: number): RawJsonlLine {
+	try {
+		const parsed = JSON.parse(raw) as Record<string, unknown>;
+		const uuid = typeof parsed['uuid'] === 'string' ? parsed['uuid'] : undefined;
+		const result: RawJsonlLine = {raw, lineIndex};
+		if (uuid !== undefined) result.uuid = uuid;
+		return result;
+	} catch {
+		return {raw, lineIndex, parseError: true};
+	}
+}
+
+export async function readSessionRawWindow(
+	projectsDir: string,
+	sessionId: string,
+	focalUuid: string,
+	contextN = 5,
+): Promise<RawWindow | null> {
+	const resolved = await resolveSessionFilePath(projectsDir, sessionId);
+	if (!resolved) return null;
+
+	const rl = createInterface({
+		input: createReadStream(resolved.filePath, {encoding: 'utf-8'}),
+		crlfDelay: Infinity,
+	});
+
+	const ringBuffer: RawJsonlLine[] = [];
+	let focal: RawJsonlLine | null = null;
+	const after: RawJsonlLine[] = [];
+	let lineIndex = -1;
+
+	try {
+		for await (const line of rl) {
+			lineIndex++;
+			if (!line.trim()) continue;
+			const entry = parseRawLine(line, lineIndex);
+
+			if (focal === null) {
+				if (entry.uuid === focalUuid) {
+					focal = entry;
+				} else {
+					ringBuffer.push(entry);
+					if (ringBuffer.length > contextN) ringBuffer.shift();
+				}
+			} else {
+				after.push(entry);
+				if (after.length >= contextN) break;
+			}
+		}
+	} finally {
+		rl.close();
+	}
+
+	if (!focal) return null;
+
+	return {focal, before: ringBuffer, after};
+}
+
+export async function readSession(projectsDir: string, sessionId: string): Promise<SessionDetail | null> {
+	const resolved = await resolveSessionFilePath(projectsDir, sessionId);
+	if (!resolved) return null;
+	const {filePath, project} = resolved;
 
 	const projectName = await resolveProjectName(project);
 	const messages: SessionMessage[] = [];
@@ -522,14 +595,17 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 	let customTitle: string | undefined;
 	const toolCallMap = new Map<string, ToolCallInfo>();
 	const toolStartTimes = new Map<string, number>();
+	const uuidToLine = new Map<string, number>();
 
 	const rl = createInterface({
 		input: createReadStream(filePath, {encoding: 'utf-8'}),
 		crlfDelay: Infinity,
 	});
 
+	let lineIndex = -1;
 	try {
 		for await (const line of rl) {
+			lineIndex++;
 			if (!line.trim()) continue;
 
 			let obj: JsonlEntry;
@@ -538,6 +614,9 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 			} catch {
 				continue;
 			}
+
+			const sourceUuid = typeof obj.uuid === 'string' ? obj.uuid : '';
+			if (sourceUuid) uuidToLine.set(sourceUuid, lineIndex);
 
 			if (obj.type === 'custom-title') {
 				const parsed = CustomTitleRecordSchema.safeParse(obj);
@@ -567,26 +646,33 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 						isCommand = true;
 						const label = cmd.args ? `${cmd.name} ${cmd.args}` : cmd.name;
 						textBlocks.push(label);
-						const cmdContent = {type: 'command', name: cmd.name} as MessageContent & {type: 'command'};
+						const cmdContent = {type: 'command', name: cmd.name, sourceUuid} as MessageContent & {
+							type: 'command';
+						};
 						if (cmd.args) cmdContent.args = cmd.args;
 						contentBlocks.push(cmdContent);
 						return;
 					}
 					const bashIn = parseBashInput(text);
 					if (bashIn) {
-						contentBlocks.push({type: 'bash-input', command: bashIn.command});
+						contentBlocks.push({type: 'bash-input', command: bashIn.command, sourceUuid});
 						return;
 					}
 					const bashOut = parseBashOutput(text);
 					if (bashOut) {
-						contentBlocks.push({type: 'bash-output', stdout: bashOut.stdout, stderr: bashOut.stderr});
+						contentBlocks.push({
+							type: 'bash-output',
+							stdout: bashOut.stdout,
+							stderr: bashOut.stderr,
+							sourceUuid,
+						});
 						return;
 					}
 					if (/<local-command-caveat>/.test(text)) return;
 					const cleaned = stripCommandTags(text);
 					if (cleaned) {
 						textBlocks.push(cleaned);
-						contentBlocks.push({type: 'text', text: cleaned});
+						contentBlocks.push({type: 'text', text: cleaned, sourceUuid});
 					}
 				};
 
@@ -601,12 +687,14 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 								type: 'image',
 								mediaType: block.source.media_type,
 								data: block.source.data,
+								sourceUuid,
 							});
 						} else if (block.type === 'document' && block.source) {
 							contentBlocks.push({
 								type: 'document',
 								mediaType: block.source.media_type,
 								data: block.source.data,
+								sourceUuid,
 							});
 						} else if (block.type === 'tool_result' && block.tool_use_id) {
 							const rawResult = extractToolResultContent(block.content);
@@ -615,6 +703,7 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 								const resultText = stripResultTags(rawResult);
 								info.result = truncateResult(resultText, 150);
 								if (block.is_error) info.isError = true;
+								if (sourceUuid) info.resultUuid = sourceUuid;
 								const startTime = toolStartTimes.get(block.tool_use_id);
 								if (startTime && timestamp) {
 									const resultTime = new Date(timestamp).getTime();
@@ -631,14 +720,15 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 					for (const block of content) {
 						if (block.type === 'text' && typeof block.text === 'string') {
 							textBlocks.push(block.text);
-							contentBlocks.push({type: 'text', text: block.text});
+							contentBlocks.push({type: 'text', text: block.text, sourceUuid});
 						} else if (block.type === 'thinking' && typeof block.thinking === 'string') {
-							contentBlocks.push({type: 'thinking', thinking: block.thinking});
+							contentBlocks.push({type: 'thinking', thinking: block.thinking, sourceUuid});
 						} else if (block.type === 'tool_use') {
 							const tc: ToolCallInfo = {
 								id: block.id ?? '',
 								name: block.name as string,
 								input: block.input ?? {},
+								sourceUuid,
 							};
 							if (timestamp) tc.startedAt = timestamp;
 							toolCalls.push(tc);
@@ -649,7 +739,13 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 									if (!isNaN(t)) toolStartTimes.set(tc.id, t);
 								}
 							}
-							contentBlocks.push({type: 'tool_use', id: tc.id, name: tc.name, input: tc.input});
+							contentBlocks.push({
+								type: 'tool_use',
+								id: tc.id,
+								name: tc.name,
+								input: tc.input,
+								sourceUuid,
+							});
 						}
 					}
 				}
@@ -689,7 +785,7 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 
 	if (customTitle) title = customTitle;
 
-	return {id: sessionId, title, projectName, projectId: project, messages};
+	return {id: sessionId, title, projectName, projectId: project, messages, uuidToLine};
 }
 
 export function getSessionsDir(): string {

@@ -6,7 +6,7 @@ import {z} from 'zod';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {useEffect, useRef, useState} from 'react';
-import {readSession, summarizeToolCalls} from '../lib/sessions';
+import {readSession, summarizeToolCalls, type MessageContent} from '../lib/sessions';
 import {
 	renderMarkdown,
 	computeDiffData,
@@ -64,10 +64,12 @@ const getSession = createServerFn({method: 'GET'})
 							name: tc.name,
 							input: tc.input as ToolInput,
 							param: getToolParam(tc),
+							sourceUuid: tc.sourceUuid,
 						};
 						if (tc.result !== undefined) call.result = tc.result;
 						if (tc.isError !== undefined) call.isError = tc.isError;
 						if (tc.duration !== undefined) call.duration = tc.duration;
+						if (tc.resultUuid !== undefined) call.resultUuid = tc.resultUuid;
 
 						if ((tc.name === 'Edit' || tc.name === 'MultiEdit') && tc.input['old_string'] !== undefined) {
 							const oldStr = (tc.input['old_string'] as string) ?? '';
@@ -104,30 +106,44 @@ const getSession = createServerFn({method: 'GET'})
 
 				const toolSummary = summarizeToolCalls(msg.toolCalls);
 				const textBlocks = msg.textBlocks;
-				const htmlBlocks = await Promise.all(textBlocks.map((text) => renderMarkdown(text)));
 
-				const thinkingBlocks: string[] = [];
-				const imageBlocks: Array<{mediaType: string; data: string}> = [];
-				const documentBlocks: Array<{mediaType: string; data: string}> = [];
-				let command: {name: string; args?: string} | undefined;
-				let bash: {command: string; stdout?: string; stderr?: string} | undefined;
+				const textContentBlocks = msg.content.filter(
+					(b): b is Extract<MessageContent, {type: 'text'}> => b.type === 'text',
+				);
+				const renderedTexts = await Promise.all(textContentBlocks.map((b) => renderMarkdown(b.text)));
+				const htmlBlocks: Array<{html: string; sourceUuid: string}> = textContentBlocks.map((b, i) => ({
+					html: renderedTexts[i]!,
+					sourceUuid: b.sourceUuid,
+				}));
+				const thinkingBlocks: Array<{thinking: string; sourceUuid: string}> = [];
+				const imageBlocks: Array<{mediaType: string; data: string; sourceUuid: string}> = [];
+				const documentBlocks: Array<{mediaType: string; data: string; sourceUuid: string}> = [];
+				let command: {name: string; args?: string; sourceUuid: string} | undefined;
+				let bash:
+					| {command: string; stdout?: string; stderr?: string; inputUuid: string; outputUuid?: string}
+					| undefined;
 
 				for (const block of msg.content) {
 					if (block.type === 'thinking') {
-						thinkingBlocks.push(block.thinking);
+						thinkingBlocks.push({thinking: block.thinking, sourceUuid: block.sourceUuid});
 					} else if (block.type === 'image') {
-						imageBlocks.push({mediaType: block.mediaType, data: block.data});
+						imageBlocks.push({mediaType: block.mediaType, data: block.data, sourceUuid: block.sourceUuid});
 					} else if (block.type === 'document') {
-						documentBlocks.push({mediaType: block.mediaType, data: block.data});
+						documentBlocks.push({
+							mediaType: block.mediaType,
+							data: block.data,
+							sourceUuid: block.sourceUuid,
+						});
 					} else if (block.type === 'command') {
-						command = {name: block.name};
-						if (block.args) (command as {name: string; args: string}).args = block.args;
+						command = {name: block.name, sourceUuid: block.sourceUuid};
+						if (block.args) (command as {name: string; args: string; sourceUuid: string}).args = block.args;
 					} else if (block.type === 'bash-input') {
-						bash = {command: block.command};
+						bash = {command: block.command, inputUuid: block.sourceUuid};
 					} else if (block.type === 'bash-output') {
-						const target = bash ?? (bash = {command: ''});
+						const target = bash ?? (bash = {command: '', inputUuid: ''});
 						if (block.stdout) target.stdout = block.stdout;
 						if (block.stderr) target.stderr = block.stderr;
+						target.outputUuid = block.sourceUuid;
 					}
 				}
 
@@ -135,14 +151,14 @@ const getSession = createServerFn({method: 'GET'})
 					role: 'user' | 'assistant';
 					timestamp?: string;
 					textBlocks: string[];
-					htmlBlocks: string[];
-					thinkingBlocks: string[];
-					imageBlocks: Array<{mediaType: string; data: string}>;
-					documentBlocks: Array<{mediaType: string; data: string}>;
+					htmlBlocks: Array<{html: string; sourceUuid: string}>;
+					thinkingBlocks: Array<{thinking: string; sourceUuid: string}>;
+					imageBlocks: Array<{mediaType: string; data: string; sourceUuid: string}>;
+					documentBlocks: Array<{mediaType: string; data: string; sourceUuid: string}>;
 					toolCalls: ClientToolCall[];
 					toolSummary: string;
-					command?: {name: string; args?: string};
-					bash?: {command: string; stdout?: string; stderr?: string};
+					command?: {name: string; args?: string; sourceUuid: string};
+					bash?: {command: string; stdout?: string; stderr?: string; inputUuid: string; outputUuid?: string};
 				} = {
 					role: msg.role,
 					textBlocks,

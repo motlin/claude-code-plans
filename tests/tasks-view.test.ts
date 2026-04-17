@@ -3,7 +3,7 @@ import {extractTasks} from '../src/components/tasks-view';
 import type {ClientToolCall} from '../src/components/tool-renderers/types';
 
 function makeToolCall(name: string, input: ClientToolCall['input']): ClientToolCall {
-	return {id: crypto.randomUUID(), name, input, param: '', result: ''};
+	return {id: crypto.randomUUID(), name, input, param: '', result: '', sourceUuid: ''};
 }
 
 describe('extractTasks', () => {

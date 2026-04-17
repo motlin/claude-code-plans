@@ -14,6 +14,8 @@ export interface ClientToolCall {
 	highlightedHtml?: string | undefined;
 	resultHtml?: string | undefined;
 	duration?: number | undefined;
+	sourceUuid: string;
+	resultUuid?: string | undefined;
 }
 
 export interface ToolRendererProps {

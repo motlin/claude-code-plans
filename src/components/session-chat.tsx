@@ -5,6 +5,7 @@ import {getToolRenderer} from './tool-renderers';
 import type {ClientToolCall} from './tool-renderers';
 import {DurationBadge, TerminalOutput} from './tool-renderers/shared';
 import {TasksView} from './tasks-view';
+import {DebugLink} from './debug-link';
 
 function formatTimestamp(timestamp?: string): string | null {
 	if (!timestamp) return null;
@@ -33,14 +34,14 @@ interface ChatMessage {
 	role: 'user' | 'assistant';
 	timestamp?: string;
 	textBlocks: string[];
-	htmlBlocks: string[];
-	thinkingBlocks: string[];
-	imageBlocks: Array<{mediaType: string; data: string}>;
-	documentBlocks: Array<{mediaType: string; data: string}>;
+	htmlBlocks: Array<{html: string; sourceUuid: string}>;
+	thinkingBlocks: Array<{thinking: string; sourceUuid: string}>;
+	imageBlocks: Array<{mediaType: string; data: string; sourceUuid: string}>;
+	documentBlocks: Array<{mediaType: string; data: string; sourceUuid: string}>;
 	toolCalls: ClientToolCall[];
 	toolSummary: string;
-	command?: {name: string; args?: string};
-	bash?: {command: string; stdout?: string; stderr?: string};
+	command?: {name: string; args?: string; sourceUuid: string};
+	bash?: {command: string; stdout?: string; stderr?: string; inputUuid: string; outputUuid?: string};
 }
 
 interface SessionChatProps {
@@ -145,10 +146,14 @@ export const SessionChat = React.memo(function SessionChat({
 							index={i}
 						/>
 						{msg.role === 'user' ? (
-							<UserMessage msg={msg} />
+							<UserMessage
+								msg={msg}
+								sessionId={sessionId}
+							/>
 						) : (
 							<AssistantMessage
 								msg={msg}
+								sessionId={sessionId}
 								showThinking={showThinking}
 								showTools={showTools}
 							/>
@@ -204,15 +209,20 @@ function TruncatedContent({children}: {children: React.ReactNode}) {
 	);
 }
 
-function UserMessage({msg}: {msg: ChatMessage}) {
+function UserMessage({msg, sessionId}: {msg: ChatMessage; sessionId: string}) {
 	const timestampText = formatTimestamp(msg.timestamp);
 
 	if (msg.command) {
 		return (
 			<div className="flex flex-col items-end gap-1">
-				<div className="rounded-lg px-3 py-2 bg-bg-100 text-text-000 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%]">
+				<div className="relative rounded-lg px-3 py-2 bg-bg-100 text-text-000 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%]">
 					<span className="bg-bg-200 rounded-full px-2 py-0.5 text-xs font-mono">{msg.command.name}</span>
 					{msg.command.args && <span className="text-xs text-text-500 ml-1.5">{msg.command.args}</span>}
+					<DebugLink
+						sessionId={sessionId}
+						uuid={msg.command.sourceUuid}
+						className="absolute top-1 right-1"
+					/>
 				</div>
 				{timestampText && <div className="text-xs text-text-500 leading-tight">{timestampText}</div>}
 			</div>
@@ -222,19 +232,35 @@ function UserMessage({msg}: {msg: ChatMessage}) {
 	if (msg.bash) {
 		return (
 			<div className="flex flex-col items-end gap-1">
-				<div className="rounded-lg p-2 bg-bg-100 text-text-000 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] min-w-0">
-					<div className="bg-bg-200 rounded px-2 py-1.5 font-mono text-xs">
+				<div className="relative rounded-lg p-2 bg-bg-100 text-text-000 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] min-w-0">
+					<div className="bg-bg-200 rounded px-2 py-1.5 font-mono text-xs flex items-start gap-2">
 						<span className="text-text-500">! </span>
-						<span className="text-success-000 break-all">{msg.bash.command}</span>
+						<span className="text-success-000 break-all flex-1">{msg.bash.command}</span>
+						<DebugLink
+							sessionId={sessionId}
+							uuid={msg.bash.inputUuid}
+						/>
 					</div>
 					{msg.bash.stdout && (
-						<div className="mt-1">
+						<div className="mt-1 relative">
 							<TerminalOutput content={msg.bash.stdout} />
+							<DebugLink
+								sessionId={sessionId}
+								uuid={msg.bash.outputUuid}
+								className="absolute top-1 right-1"
+							/>
 						</div>
 					)}
 					{msg.bash.stderr && (
-						<div className="mt-1 border-l-2 border-danger-000 bg-danger-000/10 rounded-r">
+						<div className="mt-1 border-l-2 border-danger-000 bg-danger-000/10 rounded-r relative">
 							<TerminalOutput content={msg.bash.stderr} />
+							{!msg.bash.stdout && (
+								<DebugLink
+									sessionId={sessionId}
+									uuid={msg.bash.outputUuid}
+									className="absolute top-1 right-1"
+								/>
+							)}
 						</div>
 					)}
 				</div>
@@ -245,20 +271,25 @@ function UserMessage({msg}: {msg: ChatMessage}) {
 
 	return (
 		<div className="flex flex-col items-end gap-1.5">
-			{msg.htmlBlocks.map((html, i) => (
+			{msg.htmlBlocks.map((block, i) => (
 				<div
 					key={i}
-					className="rounded-lg px-3 py-2 break-words min-w-0 overflow-hidden bg-bg-100 text-text-000 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] text-sm leading-relaxed"
+					className="relative rounded-lg px-3 py-2 break-words min-w-0 overflow-hidden bg-bg-100 text-text-000 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] text-sm leading-relaxed"
 				>
 					<TruncatedContent>
-						<MarkdownArticle html={html} />
+						<MarkdownArticle html={block.html} />
 					</TruncatedContent>
+					<DebugLink
+						sessionId={sessionId}
+						uuid={block.sourceUuid}
+						className="absolute top-1 right-1"
+					/>
 				</div>
 			))}
-			{msg.documentBlocks.map((_, i) => (
+			{msg.documentBlocks.map((doc, i) => (
 				<div
 					key={i}
-					className="rounded-lg px-3 py-2 bg-bg-100 text-text-000 flex items-center gap-1.5 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%]"
+					className="relative rounded-lg px-3 py-2 bg-bg-100 text-text-000 flex items-center gap-1.5 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%]"
 				>
 					<svg
 						width="16"
@@ -273,6 +304,11 @@ function UserMessage({msg}: {msg: ChatMessage}) {
 						<polyline points="13 2 13 9 20 9" />
 					</svg>
 					<span className="text-sm">PDF attached</span>
+					<DebugLink
+						sessionId={sessionId}
+						uuid={doc.sourceUuid}
+						className="absolute top-1 right-1"
+					/>
 				</div>
 			))}
 			{timestampText && <div className="text-xs text-text-500 leading-tight">{timestampText}</div>}
@@ -280,31 +316,47 @@ function UserMessage({msg}: {msg: ChatMessage}) {
 	);
 }
 
-function ThinkingBlock({thinking}: {thinking: string}) {
+function ThinkingBlock({
+	thinking,
+	sessionId,
+	sourceUuid,
+}: {
+	thinking: string;
+	sessionId?: string;
+	sourceUuid?: string | undefined;
+}) {
 	const [open, setOpen] = useState(false);
 
 	return (
 		<div className="border-l-2 border-warning-100 pl-3 my-1">
-			<button
-				type="button"
-				onClick={() => setOpen(!open)}
-				className="text-xs text-warning-100 cursor-pointer flex items-center gap-1 leading-tight"
-			>
-				<svg
-					width="12"
-					height="12"
-					viewBox="0 0 20 20"
-					fill="none"
-					className="shrink-0 transition-transform duration-200"
-					style={{transform: open ? 'rotate(0deg)' : 'rotate(-90deg)'}}
+			<div className="flex items-center gap-2">
+				<button
+					type="button"
+					onClick={() => setOpen(!open)}
+					className="text-xs text-warning-100 cursor-pointer flex items-center gap-1 leading-tight"
 				>
-					<path
-						d="M14.128 7.165a.625.625 0 0 1 .707-.038l.128.098a.625.625 0 0 1 .037.844l-4.5 5-.157.131a.625.625 0 0 1-.686 0L9.5 13.069l-4.5-5-.07-.107a.625.625 0 0 1 .07-.737l.107-.098a.625.625 0 0 1 .765.038L10 11.585l4.128-4.42Z"
-						fill="currentColor"
+					<svg
+						width="12"
+						height="12"
+						viewBox="0 0 20 20"
+						fill="none"
+						className="shrink-0 transition-transform duration-200"
+						style={{transform: open ? 'rotate(0deg)' : 'rotate(-90deg)'}}
+					>
+						<path
+							d="M14.128 7.165a.625.625 0 0 1 .707-.038l.128.098a.625.625 0 0 1 .037.844l-4.5 5-.157.131a.625.625 0 0 1-.686 0L9.5 13.069l-4.5-5-.07-.107a.625.625 0 0 1 .07-.737l.107-.098a.625.625 0 0 1 .765.038L10 11.585l4.128-4.42Z"
+							fill="currentColor"
+						/>
+					</svg>
+					Thinking...
+				</button>
+				{sessionId && (
+					<DebugLink
+						sessionId={sessionId}
+						uuid={sourceUuid}
 					/>
-				</svg>
-				Thinking...
-			</button>
+				)}
+			</div>
 			<div className={`grid ${open ? 'grid-rows-expand' : 'grid-rows-collapse'}`}>
 				<div className="overflow-hidden">
 					<div className="mt-1 text-xs italic text-text-500 whitespace-pre-wrap bg-bg-200/50 rounded p-2 max-h-64 overflow-auto leading-relaxed">
@@ -318,39 +370,64 @@ function ThinkingBlock({thinking}: {thinking: string}) {
 
 function AssistantMessage({
 	msg,
+	sessionId,
 	showThinking = true,
 	showTools = true,
 }: {
 	msg: ChatMessage;
+	sessionId: string;
 	showThinking?: boolean;
 	showTools?: boolean;
 }) {
-	const thinkingText = msg.thinkingBlocks.length > 0 ? msg.thinkingBlocks.join('\n\n---\n\n') : null;
+	const firstThinkingUuid = msg.thinkingBlocks[0]?.sourceUuid;
+	const thinkingText =
+		msg.thinkingBlocks.length > 0 ? msg.thinkingBlocks.map((b) => b.thinking).join('\n\n---\n\n') : null;
 	const timestampText = formatTimestamp(msg.timestamp);
 
 	return (
 		<div className="flex flex-col gap-1.5 min-w-0">
-			{showThinking && thinkingText && <ThinkingBlock thinking={thinkingText} />}
-			{msg.htmlBlocks.map((html, i) => (
+			{showThinking && thinkingText && (
+				<ThinkingBlock
+					thinking={thinkingText}
+					sessionId={sessionId}
+					sourceUuid={firstThinkingUuid}
+				/>
+			)}
+			{msg.htmlBlocks.map((block, i) => (
 				<div
 					key={`text-${i}`}
-					className="min-w-0 text-sm leading-relaxed text-text-100"
+					className="relative min-w-0 text-sm leading-relaxed text-text-100"
 				>
-					<MarkdownArticle html={html} />
+					<MarkdownArticle html={block.html} />
+					<DebugLink
+						sessionId={sessionId}
+						uuid={block.sourceUuid}
+						className="absolute top-0 right-0"
+					/>
 				</div>
 			))}
 			{msg.imageBlocks.map((img, i) => (
-				<img
+				<div
 					key={`img-${i}`}
-					src={`data:${img.mediaType};base64,${img.data}`}
-					alt="Session image"
-					className="max-w-full max-h-96 rounded-lg border border-border-300/15 shadow-sm"
-				/>
+					className="relative inline-block"
+				>
+					<img
+						src={`data:${img.mediaType};base64,${img.data}`}
+						alt="Session image"
+						className="max-w-full max-h-96 rounded-lg border border-border-300/15 shadow-sm"
+					/>
+					<DebugLink
+						sessionId={sessionId}
+						uuid={img.sourceUuid}
+						className="absolute top-1 right-1"
+					/>
+				</div>
 			))}
 			{showTools && msg.toolCalls.length > 0 && (
 				<ToolCallSection
 					calls={msg.toolCalls}
 					summary={msg.toolSummary}
+					sessionId={sessionId}
 				/>
 			)}
 			{timestampText && <div className="text-xs text-text-500 leading-tight">{timestampText}</div>}
@@ -383,7 +460,7 @@ const PROMINENT_TOOLS = new Set(['AskUserQuestion']);
 const INITIAL_TOOL_COUNT = 3;
 const TASK_TOOLS = new Set(['TaskCreate', 'TaskUpdate', 'TaskList']);
 
-function ToolCallSection({calls, summary}: {calls: ClientToolCall[]; summary: string}) {
+function ToolCallSection({calls, summary, sessionId}: {calls: ClientToolCall[]; summary: string; sessionId: string}) {
 	const prominentCalls = calls.filter((c) => PROMINENT_TOOLS.has(c.name));
 	const backgroundCalls = calls.filter((c) => !PROMINENT_TOOLS.has(c.name));
 
@@ -393,6 +470,7 @@ function ToolCallSection({calls, summary}: {calls: ClientToolCall[]; summary: st
 				<ToolCallSummary
 					calls={backgroundCalls}
 					summary={summary}
+					sessionId={sessionId}
 				/>
 			)}
 			{prominentCalls.map((call, i) => {
@@ -400,9 +478,14 @@ function ToolCallSection({calls, summary}: {calls: ClientToolCall[]; summary: st
 				return (
 					<div
 						key={`prominent-${i}`}
-						className="rounded-lg border border-accent-100/20 bg-accent-900/30 p-3 text-sm"
+						className="relative rounded-lg border border-accent-100/20 bg-accent-900/30 p-3 text-sm"
 					>
 						<Renderer toolCall={call} />
+						<DebugLink
+							sessionId={sessionId}
+							uuid={call.sourceUuid}
+							className="absolute top-1 right-1"
+						/>
 					</div>
 				);
 			})}
@@ -410,7 +493,7 @@ function ToolCallSection({calls, summary}: {calls: ClientToolCall[]; summary: st
 	);
 }
 
-function ToolCallSummary({calls, summary}: {calls: ClientToolCall[]; summary: string}) {
+function ToolCallSummary({calls, summary, sessionId}: {calls: ClientToolCall[]; summary: string; sessionId: string}) {
 	const [expanded, setExpanded] = useState(false);
 	const [showAll, setShowAll] = useState(false);
 
@@ -464,6 +547,11 @@ function ToolCallSummary({calls, summary}: {calls: ClientToolCall[]; summary: st
 												</span>
 											)}
 											{call.duration !== undefined && <DurationBadge duration={call.duration} />}
+											<DebugLink
+												sessionId={sessionId}
+												uuid={call.sourceUuid}
+												className="ml-1.5"
+											/>
 										</div>
 										<div className="mt-1 mb-2 text-xs text-text-100 leading-relaxed">
 											<Renderer toolCall={call} />

@@ -4,6 +4,8 @@ import {QueryClientProvider, type QueryClient} from '@tanstack/react-query';
 import {ReactQueryDevtools} from '@tanstack/react-query-devtools';
 import {useEffect, useState, type ReactNode} from 'react';
 import {ThemeProvider} from '../components/theme-provider';
+import {DebugProvider} from '../components/debug-provider';
+import {DebugToggle} from '../components/debug-toggle';
 import {ModeToggle} from '../components/mode-toggle';
 import {Sidebar} from '../components/sidebar/index';
 import {CommandPalette} from '../components/command-palette';
@@ -84,9 +86,11 @@ function RootComponent() {
 		<RootDocument>
 			<QueryClientProvider client={queryClient}>
 				<ThemeProvider>
-					<ClaudeEventsProvider>
-						<RootLayout />
-					</ClaudeEventsProvider>
+					<DebugProvider>
+						<ClaudeEventsProvider>
+							<RootLayout />
+						</ClaudeEventsProvider>
+					</DebugProvider>
 				</ThemeProvider>
 				{import.meta.env.DEV ? <ReactQueryDevtools buttonPosition="bottom-left" /> : null}
 			</QueryClientProvider>
@@ -117,7 +121,8 @@ function RootLayout() {
 						>
 							<HamburgerIcon />
 						</button>
-						<div className="ml-auto">
+						<div className="ml-auto flex items-center gap-1">
+							<DebugToggle />
 							<ModeToggle />
 						</div>
 					</div>

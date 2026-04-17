@@ -1,0 +1,297 @@
+import {createFileRoute, Link} from '@tanstack/react-router';
+import {createServerFn} from '@tanstack/react-start';
+import {useState} from 'react';
+import {z} from 'zod';
+import {homedir} from 'node:os';
+import {join} from 'node:path';
+import {readSession, readSessionRawWindow, type MessageContent, type RawJsonlLine} from '../lib/sessions';
+
+const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
+const UUID_RE = /^[a-f0-9-]{36}$/i;
+const SESSION_ID_RE = /^[a-z0-9-]+$/;
+
+const InputSchema = z.object({
+	sessionId: z.string(),
+	uuid: z.string(),
+	contextN: z.number().int().min(0).max(50).default(5),
+});
+
+export interface PairedResult {
+	resultEntry: RawJsonlLine;
+	resultLineIndex: number;
+	toolUseId: string;
+}
+
+const getSessionSource = createServerFn({method: 'GET'})
+	.inputValidator(InputSchema)
+	.handler(async ({data}) => {
+		const {sessionId, uuid, contextN} = data;
+		if (!UUID_RE.test(uuid)) return null;
+		if (!SESSION_ID_RE.test(sessionId)) return null;
+
+		const window = await readSessionRawWindow(PROJECTS_DIR, sessionId, uuid, contextN);
+		if (!window) return null;
+
+		const detail = await readSession(PROJECTS_DIR, sessionId);
+		const parsedBlocks: MessageContent[] = [];
+		if (detail) {
+			for (const msg of detail.messages) {
+				for (const block of msg.content) {
+					if (block.sourceUuid === uuid) parsedBlocks.push(block);
+				}
+			}
+		}
+
+		const paired = findPairedToolResult(window.focal.raw, window.after);
+		const sessionTitle = detail?.title ?? sessionId;
+		return {
+			window,
+			parsedBlocksJson: JSON.stringify(parsedBlocks, null, 2),
+			parsedBlocksCount: parsedBlocks.length,
+			paired,
+			sessionTitle,
+		};
+	});
+
+function safeParse(raw: string): unknown {
+	try {
+		return JSON.parse(raw);
+	} catch {
+		return undefined;
+	}
+}
+
+export function findPairedToolResult(focalRaw: string, candidates: RawJsonlLine[]): PairedResult | null {
+	const focalParsed = safeParse(focalRaw) as
+		| {type?: string; message?: {content?: Array<{type?: string; id?: string}>}}
+		| undefined;
+	if (focalParsed?.type !== 'assistant' || !Array.isArray(focalParsed.message?.content)) return null;
+
+	const toolUseIds = focalParsed
+		.message!.content.filter((c) => c?.type === 'tool_use' && typeof c.id === 'string')
+		.map((c) => c.id as string);
+	if (toolUseIds.length === 0) return null;
+
+	for (const candidate of candidates) {
+		const cParsed = safeParse(candidate.raw) as
+			| {type?: string; message?: {content?: Array<{type?: string; tool_use_id?: string}>}}
+			| undefined;
+		if (cParsed?.type !== 'user' || !Array.isArray(cParsed.message?.content)) continue;
+		const matching = cParsed.message!.content.find(
+			(c) => c?.type === 'tool_result' && typeof c.tool_use_id === 'string' && toolUseIds.includes(c.tool_use_id),
+		);
+		if (matching) {
+			return {
+				resultEntry: candidate,
+				resultLineIndex: candidate.lineIndex,
+				toolUseId: matching.tool_use_id as string,
+			};
+		}
+	}
+	return null;
+}
+
+export const Route = createFileRoute('/session/$id_/source/$uuid')({
+	component: SourceViewPage,
+	loader: ({params}) => getSessionSource({data: {sessionId: params.id, uuid: params.uuid, contextN: 5}}),
+	head: ({params}) => ({meta: [{title: `Source: ${params.uuid.slice(0, 8)}`}]}),
+});
+
+function prettyJsonl(raw: string): string {
+	try {
+		return JSON.stringify(JSON.parse(raw), null, 2);
+	} catch {
+		return raw;
+	}
+}
+
+function CodeBlock({content, max = 50_000}: {content: string; max?: number}) {
+	const truncated = content.length > max;
+	const display = truncated ? content.slice(0, max) + '\n\n... [truncated]' : content;
+	return (
+		<pre className="bg-bg-100 text-text-000 text-xs font-mono whitespace-pre-wrap break-all rounded p-3 overflow-x-auto leading-relaxed">
+			{display}
+		</pre>
+	);
+}
+
+function ContextEntry({entry, sessionId}: {entry: RawJsonlLine; sessionId: string}) {
+	const [expanded, setExpanded] = useState(entry.raw.length < 2000);
+	const display = entry.parseError ? entry.raw : prettyJsonl(entry.raw);
+	return (
+		<div className="border border-border-300/15 rounded p-2 mb-2 bg-bg-200/30">
+			<div className="flex items-center gap-2 text-xs text-text-500 mb-1">
+				<span className="font-mono">line {entry.lineIndex}</span>
+				{entry.parseError && (
+					<span className="rounded bg-danger-000/20 text-danger-000 px-1.5 py-0.5">parse error</span>
+				)}
+				{entry.uuid && (
+					<>
+						<span className="font-mono opacity-60">{entry.uuid.slice(0, 8)}</span>
+						<a
+							href={`/session/${sessionId}/source/${entry.uuid}`}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="text-accent-100 hover:underline"
+						>
+							open in new tab
+						</a>
+					</>
+				)}
+				<button
+					type="button"
+					onClick={() => setExpanded((e) => !e)}
+					className="ml-auto text-text-500 hover:text-text-100"
+				>
+					{expanded ? 'collapse' : 'expand'}
+				</button>
+			</div>
+			{expanded && (
+				<CodeBlock
+					content={display}
+					max={50_000}
+				/>
+			)}
+		</div>
+	);
+}
+
+function CopyButton({text}: {text: string}) {
+	const [copied, setCopied] = useState(false);
+	return (
+		<button
+			type="button"
+			onClick={async () => {
+				try {
+					await navigator.clipboard.writeText(text);
+					setCopied(true);
+					setTimeout(() => setCopied(false), 1500);
+				} catch {
+					// clipboard not available
+				}
+			}}
+			className="text-xs px-2 py-1 rounded bg-bg-200 hover:bg-bg-300 text-text-200"
+		>
+			{copied ? 'Copied' : 'Copy'}
+		</button>
+	);
+}
+
+function SourceViewPage() {
+	const data = Route.useLoaderData();
+	const params = Route.useParams();
+
+	if (!data) {
+		return (
+			<div className="mx-auto max-w-3xl p-6">
+				<h1 className="text-lg font-medium text-text-100 mb-2">Source not found</h1>
+				<p className="text-sm text-text-500">
+					No JSONL entry with uuid {params.uuid} in session {params.id}.
+				</p>
+				<Link
+					to="/session/$id"
+					params={{id: params.id}}
+					className="text-accent-100 text-sm hover:underline"
+				>
+					Back to session
+				</Link>
+			</div>
+		);
+	}
+
+	const {window: rawWindow, parsedBlocksJson, parsedBlocksCount, paired, sessionTitle} = data;
+	const focalRaw = prettyJsonl(rawWindow.focal.raw);
+
+	return (
+		<div className="mx-auto max-w-4xl p-6 space-y-6">
+			<div>
+				<Link
+					to="/session/$id"
+					params={{id: params.id}}
+					className="text-accent-100 text-sm hover:underline"
+				>
+					← {sessionTitle}
+				</Link>
+				<h1 className="text-lg font-medium text-text-100 mt-1">
+					JSONL source · line {rawWindow.focal.lineIndex} · {params.uuid}
+				</h1>
+			</div>
+
+			<section>
+				<div className="flex items-center justify-between mb-2">
+					<h2 className="text-sm font-medium text-text-200">Focal raw JSONL</h2>
+					<CopyButton text={focalRaw} />
+				</div>
+				<CodeBlock content={focalRaw} />
+			</section>
+
+			{paired && (
+				<section>
+					<div className="flex items-center justify-between mb-2">
+						<h2 className="text-sm font-medium text-text-200">
+							Paired tool_result · line {paired.resultLineIndex}
+						</h2>
+						{paired.resultEntry.uuid && (
+							<a
+								href={`/session/${params.id}/source/${paired.resultEntry.uuid}`}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="text-xs text-accent-100 hover:underline"
+							>
+								open in new tab
+							</a>
+						)}
+					</div>
+					<CodeBlock content={prettyJsonl(paired.resultEntry.raw)} />
+				</section>
+			)}
+
+			<section>
+				<h2 className="text-sm font-medium text-text-200 mb-2">
+					Parsed MessageContent block{parsedBlocksCount === 1 ? '' : 's'} ({parsedBlocksCount})
+				</h2>
+				{parsedBlocksCount === 0 ? (
+					<p className="text-xs text-text-500 italic">
+						No parsed block — this entry was skipped by the parser (e.g. system, file-history-snapshot).
+					</p>
+				) : (
+					<CodeBlock content={parsedBlocksJson} />
+				)}
+			</section>
+
+			<section>
+				<h2 className="text-sm font-medium text-text-200 mb-2">
+					Before context ({rawWindow.before.length} line{rawWindow.before.length === 1 ? '' : 's'})
+				</h2>
+				{rawWindow.before.length === 0 ? (
+					<p className="text-xs text-text-500 italic">No preceding lines.</p>
+				) : (
+					rawWindow.before.map((entry) => (
+						<ContextEntry
+							key={entry.lineIndex}
+							entry={entry}
+							sessionId={params.id}
+						/>
+					))
+				)}
+			</section>
+
+			<section>
+				<h2 className="text-sm font-medium text-text-200 mb-2">
+					After context ({rawWindow.after.length} line{rawWindow.after.length === 1 ? '' : 's'})
+				</h2>
+				{rawWindow.after.length === 0 ? (
+					<p className="text-xs text-text-500 italic">No following lines.</p>
+				) : (
+					rawWindow.after.map((entry) => (
+						<ContextEntry
+							key={entry.lineIndex}
+							entry={entry}
+							sessionId={params.id}
+						/>
+					))
+				)}
+			</section>
+		</div>
+	);
+}
