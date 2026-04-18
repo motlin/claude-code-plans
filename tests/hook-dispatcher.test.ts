@@ -134,7 +134,7 @@ describe('dispatchHookEvent', () => {
 		expect(added!.data).toMatchObject({session: {id: 'abc-123', messageCount: 1}});
 	});
 
-	it('Stop broadcasts both legacy SESSION_UPDATE and domain SESSION_UPDATED with enriched payload', async () => {
+	it('Stop broadcasts domain SESSION_UPDATED with enriched payload', async () => {
 		const projectDir = join(testDir, '-Users-craig-projects-app');
 		mkdirSync(projectDir, {recursive: true});
 		writeFileSync(
@@ -163,9 +163,6 @@ describe('dispatchHookEvent', () => {
 		});
 
 		expect(touchedCalls).toEqual(['abc-123']);
-		const legacy = broadcasts.find((b) => b.type === SSE_EVENTS.SESSION_UPDATE);
-		expect(legacy).toBeDefined();
-		expect(legacy!.data).toEqual({sessionId: 'abc-123'});
 		const domain = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_UPDATED);
 		expect(domain).toBeDefined();
 		expect(domain!.data).toMatchObject({
@@ -178,7 +175,7 @@ describe('dispatchHookEvent', () => {
 		});
 	});
 
-	it('Stop without an indexed session emits only the legacy event', () => {
+	it('Stop without an indexed session emits nothing on the wire', () => {
 		const broadcasts: Broadcast[] = [];
 		const {store} = makeStore();
 		dispatchHookEvent({
@@ -188,11 +185,10 @@ describe('dispatchHookEvent', () => {
 			broadcast: (type, data) => broadcasts.push({type, data}),
 		});
 
-		expect(broadcasts.some((b) => b.type === SSE_EVENTS.SESSION_UPDATE)).toBe(true);
-		expect(broadcasts.some((b) => b.type === DOMAIN_EVENTS.SESSION_UPDATED)).toBe(false);
+		expect(broadcasts).toEqual([]);
 	});
 
-	it('SessionEnd broadcasts both legacy SESSION_END and domain SESSION_ENDED', () => {
+	it('SessionEnd broadcasts both lifecycle SESSION_END and domain SESSION_ENDED', () => {
 		const broadcasts: Broadcast[] = [];
 		const {store, endedCalls} = makeStore();
 		dispatchHookEvent({
@@ -207,7 +203,7 @@ describe('dispatchHookEvent', () => {
 		expect(broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_ENDED)!.data).toEqual({sessionId: 'abc-123'});
 	});
 
-	it('TaskCompleted broadcasts legacy TASK_COMPLETED and domain TASK_COMPLETED with the same payload', () => {
+	it('TaskCompleted broadcasts the domain TASK_COMPLETED event', () => {
 		const broadcasts: Broadcast[] = [];
 		const {store, touchedCalls} = makeStore();
 		dispatchHookEvent({
@@ -223,9 +219,8 @@ describe('dispatchHookEvent', () => {
 		});
 
 		expect(touchedCalls).toEqual(['abc-123']);
-		// Both names happen to be 'task:completed' because the legacy + domain names collide
-		const completed = broadcasts.filter((b) => b.type === SSE_EVENTS.TASK_COMPLETED);
-		expect(completed.length).toBeGreaterThan(0);
+		const completed = broadcasts.filter((b) => b.type === DOMAIN_EVENTS.TASK_COMPLETED);
+		expect(completed.length).toBe(1);
 		expect(completed[0]!.data).toMatchObject({taskId: 'task-001', subject: 'Build auth'});
 	});
 });

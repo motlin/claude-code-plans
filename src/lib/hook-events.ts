@@ -5,20 +5,16 @@ import {z} from 'zod';
 // ---------------------------------------------------------------------------
 
 /**
- * Legacy file-system-level SSE event names. Preserved while the client
- * migrates to the domain-level DOMAIN_EVENTS vocabulary below. These will
- * be deleted in the final cleanup task (see plan step "Delete old event
- * infrastructure and file-level SSE events").
+ * Non-domain SSE event names that are not file-level deltas. Session lifecycle
+ * (start/end) stays here because it carries server-side state transitions, and
+ * the worktree / statusline / catch-all content events are not tied to any
+ * domain entity diff. Everything that used to be a file-system-level event
+ * (session:update, sessions:reindexed, task:updated, plan:updated,
+ * memory:updated) now lives exclusively in DOMAIN_EVENTS below.
  */
 export const SSE_EVENTS = {
 	SESSION_START: 'session:start',
 	SESSION_END: 'session:end',
-	SESSION_UPDATE: 'session:update',
-	SESSIONS_REINDEXED: 'sessions:reindexed',
-	TASK_UPDATED: 'task:updated',
-	TASK_COMPLETED: 'task:completed',
-	PLAN_UPDATED: 'plan:updated',
-	MEMORY_UPDATED: 'memory:updated',
 	WORKTREE_CREATED: 'worktree:created',
 	STATUSLINE_UPDATED: 'statusline:updated',
 	CONTENT_UPDATED: 'content:updated',
@@ -49,11 +45,6 @@ export type DomainEventType = (typeof DOMAIN_EVENTS)[keyof typeof DOMAIN_EVENTS]
 // ---------------------------------------------------------------------------
 // SSE Event Payloads (sent to client)
 // ---------------------------------------------------------------------------
-
-export interface SseEvent {
-	type: SseEventType;
-	data: Record<string, unknown>;
-}
 
 /**
  * Summary payload for a single session, matching the serialized shape
@@ -210,52 +201,3 @@ export const HookEventEnvelope = z.discriminatedUnion('hook_event_name', [
 ]);
 
 export type HookEvent = z.infer<typeof HookEventEnvelope>;
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-export function deriveEventFromPath(filePath: string, plansDir: string, projectsDir: string): SseEvent {
-	// .jsonl session files: ~/.claude/projects/{projectDir}/{sessionId}.jsonl
-	if (filePath.endsWith('.jsonl') && filePath.includes(projectsDir)) {
-		const relative = filePath.slice(projectsDir.length + 1);
-		const parts = relative.split('/');
-		const projectDir = parts[0] ?? '';
-		const filename = parts[parts.length - 1] ?? '';
-		const sessionId = filename.replace(/\.jsonl$/, '');
-		return {type: SSE_EVENTS.SESSION_UPDATE, data: {sessionId, projectDir}};
-	}
-
-	// sessions-index.json
-	if (filePath.endsWith('sessions-index.json') && filePath.includes(projectsDir)) {
-		const relative = filePath.slice(projectsDir.length + 1);
-		const projectDir = relative.split('/')[0] ?? '';
-		return {type: SSE_EVENTS.SESSIONS_REINDEXED, data: {projectDir}};
-	}
-
-	// Task files: ~/.claude/tasks/{projectName}/{taskId}.json
-	if (filePath.endsWith('.json') && filePath.includes('/tasks/')) {
-		const parts = filePath.split('/');
-		const taskFile = parts[parts.length - 1] ?? '';
-		const projectDir = parts[parts.length - 2] ?? '';
-		const taskId = taskFile.replace(/\.json$/, '');
-		return {type: SSE_EVENTS.TASK_UPDATED, data: {projectDir, taskId}};
-	}
-
-	// Plan files: ~/.claude/plans/{filename}.md
-	if (filePath.endsWith('.md') && filePath.includes(plansDir)) {
-		const filename = filePath.split('/').pop() ?? '';
-		return {type: SSE_EVENTS.PLAN_UPDATED, data: {filename}};
-	}
-
-	// Memory files: ~/.claude/projects/{projectDir}/MEMORY.md or memory files
-	if (filePath.endsWith('.md') && filePath.includes(projectsDir)) {
-		const relative = filePath.slice(projectsDir.length + 1);
-		const projectDir = relative.split('/')[0] ?? '';
-		const filename = filePath.split('/').pop() ?? '';
-		return {type: SSE_EVENTS.MEMORY_UPDATED, data: {projectDir, filename}};
-	}
-
-	// Catch-all
-	return {type: SSE_EVENTS.CONTENT_UPDATED, data: {filePath}};
-}

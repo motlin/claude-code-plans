@@ -71,12 +71,16 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 			activeSessions.delete(sessionId);
 			return {activeSessions};
 		}
-		case SSE_EVENTS.SESSION_UPDATE: {
-			if (!sessionId) return state;
-			const existing = state.activeSessions.get(sessionId);
+		case DOMAIN_EVENTS.SESSION_UPDATED: {
+			// Domain SESSION_UPDATED carries the full session summary; only the id
+			// is needed here to keep the active indicator alive.
+			const session = action.data['session'] as {id?: string} | undefined;
+			const id = session?.id ?? sessionId;
+			if (!id) return state;
+			const existing = state.activeSessions.get(id);
 			if (!existing) return state;
 			const activeSessions = new Map(state.activeSessions);
-			activeSessions.set(sessionId, {...existing, lastActivity: action.timestamp});
+			activeSessions.set(id, {...existing, lastActivity: action.timestamp});
 			return {activeSessions};
 		}
 		default:
@@ -248,7 +252,7 @@ function invalidateActiveSessions(queryClient: QueryClient): void {
 // SSE event types we subscribe to
 // ---------------------------------------------------------------------------
 
-const LIFECYCLE_EVENT_TYPES = [SSE_EVENTS.SESSION_START, SSE_EVENTS.SESSION_END, SSE_EVENTS.SESSION_UPDATE] as const;
+const LIFECYCLE_EVENT_TYPES = [SSE_EVENTS.SESSION_START, SSE_EVENTS.SESSION_END] as const;
 
 const DOMAIN_EVENT_TYPES = [
 	DOMAIN_EVENTS.SESSION_ADDED,
@@ -319,6 +323,14 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 				case DOMAIN_EVENTS.SESSION_UPDATED: {
 					const session = data['session'] as SessionSummaryPayload | undefined;
 					if (session) applySessionUpdated(queryClient, session);
+					// Also mirror into the activeSessions reducer so the "active" dot
+					// stays green while .jsonl / Stop deltas keep arriving.
+					dispatch({
+						type: 'SSE_EVENT',
+						eventType: e.type,
+						data,
+						timestamp: Date.now(),
+					});
 					break;
 				}
 				case DOMAIN_EVENTS.SESSION_STARTED:

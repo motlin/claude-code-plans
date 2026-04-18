@@ -11,10 +11,8 @@ import {resolveProjectName} from './memory';
 import {
 	DOMAIN_EVENTS,
 	SSE_EVENTS,
-	deriveEventFromPath,
 	diffEntityMaps,
 	type SessionSummaryPayload,
-	type SseEvent,
 	type TaskSummaryPayload,
 } from './hook-events';
 import {toSessionSummaryPayload} from './session-summary';
@@ -52,10 +50,6 @@ export function broadcastTyped(type: string, data: Record<string, unknown>): voi
 			g.__watcherClients!.delete(client);
 		}
 	}
-}
-
-export function broadcastEvent(event: SseEvent): void {
-	broadcastTyped(event.type, event.data);
 }
 
 export function broadcast(): void {
@@ -113,8 +107,7 @@ function tasksEqual(a: TaskSummaryPayload, b: TaskSummaryPayload): boolean {
 /**
  * Diff the current DB sessions for a project against the last-known snapshot
  * and broadcast domain-level session:added / session:removed / session:updated
- * events for each delta. Also preserves the legacy SESSIONS_REINDEXED broadcast
- * so existing client listeners keep working during the migration.
+ * events for each delta.
  */
 function diffAndBroadcastSessions(projectId: string): void {
 	const {index} = getDb();
@@ -221,24 +214,54 @@ async function broadcastMemoryChanged(filePath: string, projectsDir: string): Pr
 	});
 }
 
+/** Safely diff and broadcast sessions for a project; swallow indexing races. */
+function safeDiffSessions(projectId: string): void {
+	if (!projectId) return;
+	try {
+		diffAndBroadcastSessions(projectId);
+	} catch {
+		// transient DB error; next file event will retry
+	}
+}
+
+/** Safely diff and broadcast tasks for a project; swallow indexing races. */
+function safeDiffTasks(projectDir: string): void {
+	if (!projectDir) return;
+	try {
+		diffAndBroadcastTasks(projectDir);
+	} catch {
+		// transient DB error; next file event will retry
+	}
+}
+
+/** Extract the first path segment under projectsDir, or '' if path is outside it. */
+function projectIdFromPath(path: string, projectsDir: string): string {
+	if (!projectsDir || !path.startsWith(projectsDir)) return '';
+	const relative = path.slice(projectsDir.length + 1);
+	return relative.split('/')[0] ?? '';
+}
+
+async function indexSilently(path: string, projectsDir: string): Promise<void> {
+	try {
+		const {index} = getDb();
+		await indexFile(index, path, projectsDir);
+	} catch {
+		// indexing error — deltas below still reflect prior DB state
+	}
+}
+
 function handleFileChange(path: string): void {
 	const ext = path.slice(path.lastIndexOf('.'));
 	if (!WATCHED_EXTENSIONS.has(ext)) return;
 
 	const projectsDir = g.__watcherProjectsDir ?? '';
 	const plansDir = g.__watcherPlansDir ?? '';
-	const event = deriveEventFromPath(path, plansDir, projectsDir);
 
 	if (ext === '.jsonl') {
 		if (g.__jsonlDebounceTimer) clearTimeout(g.__jsonlDebounceTimer);
 		g.__jsonlDebounceTimer = setTimeout(async () => {
-			try {
-				const {index} = getDb();
-				await indexFile(index, path, projectsDir);
-			} catch {
-				// indexing error, still broadcast for UI refresh
-			}
-			broadcastEvent(event);
+			await indexSilently(path, projectsDir);
+			safeDiffSessions(projectIdFromPath(path, projectsDir));
 			g.__jsonlDebounceTimer = null;
 		}, JSONL_DEBOUNCE_MS);
 	} else if (ext === '.json' && g.__watcherStatuslineDir && path.startsWith(g.__watcherStatuslineDir)) {
@@ -247,47 +270,21 @@ function handleFileChange(path: string): void {
 		broadcastTyped(SSE_EVENTS.STATUSLINE_UPDATED, {sessionId});
 	} else if (ext === '.json' && path.includes('/tasks/')) {
 		(async () => {
-			try {
-				const {index} = getDb();
-				await indexFile(index, path, projectsDir);
-			} catch {
-				// indexing error
-			}
-			// Derive the projectDir from the file path: ~/.claude/tasks/{projectDir}/{taskId}.json
-			const projectDir = basename(dirname(path));
-			try {
-				diffAndBroadcastTasks(projectDir);
-			} catch {
-				// diff failure should not block the legacy broadcast
-			}
-			broadcast();
+			await indexSilently(path, projectsDir);
+			// ~/.claude/tasks/{projectDir}/{taskId}.json
+			safeDiffTasks(basename(dirname(path)));
 		})();
 	} else if (ext === '.json' && path.endsWith('sessions-index.json')) {
 		(async () => {
-			try {
-				const {index} = getDb();
-				await indexFile(index, path, projectsDir);
-			} catch {
-				// indexing error
-			}
-			// Extract projectId (the encoded dir name) from the file path.
-			const projectId = basename(dirname(path));
-			try {
-				diffAndBroadcastSessions(projectId);
-			} catch {
-				// diff failure should not block the legacy broadcast
-			}
-			broadcastEvent(event);
+			await indexSilently(path, projectsDir);
+			safeDiffSessions(basename(dirname(path)));
 		})();
-	} else if (ext === '.json') {
-		broadcastEvent(event);
 	} else if (ext === '.md') {
 		if (plansDir && path.startsWith(plansDir)) {
 			void broadcastPlanChanged(path);
 		} else if (projectsDir && path.startsWith(projectsDir)) {
 			void broadcastMemoryChanged(path, projectsDir);
 		}
-		broadcastEvent(event);
 	}
 }
 
@@ -298,15 +295,15 @@ function handleFileUnlink(path: string): void {
 	const projectsDir = g.__watcherProjectsDir ?? '';
 	const plansDir = g.__watcherPlansDir ?? '';
 
-	// Domain-level plan:removed event for deleted plans.
 	if (ext === '.md' && plansDir && path.startsWith(plansDir)) {
 		broadcastTyped(DOMAIN_EVENTS.PLAN_REMOVED, {filename: basename(path)});
+	} else if (ext === '.jsonl') {
+		safeDiffSessions(projectIdFromPath(path, projectsDir));
+	} else if (ext === '.json' && path.endsWith('sessions-index.json')) {
+		safeDiffSessions(basename(dirname(path)));
+	} else if (ext === '.json' && path.includes('/tasks/')) {
+		safeDiffTasks(basename(dirname(path)));
 	}
-
-	// Legacy behaviour: treat deletions like any other change so listeners
-	// depending on file-level events still see them.
-	const event = deriveEventFromPath(path, plansDir, projectsDir);
-	broadcastEvent(event);
 }
 
 export async function createWatcher(

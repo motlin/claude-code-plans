@@ -27,9 +27,10 @@ export interface DispatchHookEventArgs {
 
 /**
  * Route a single parsed hook event to the active-session store and SSE
- * broadcaster. During the migration each case emits both the legacy
- * file-level SSE event (consumed by the old reducer) and the enriched
- * domain-level delta (consumed by the new TanStack Query cache patcher).
+ * broadcaster. Each case emits enriched domain-level deltas that the client
+ * patches directly into the TanStack Query cache. SESSION_START / SESSION_END
+ * remain on the wire as lifecycle signals for the active-session indicator;
+ * everything else is a DOMAIN_EVENTS delta.
  */
 export function dispatchHookEvent({event, db, store, broadcast}: DispatchHookEventArgs): void {
 	switch (event.hook_event_name) {
@@ -40,7 +41,7 @@ export function dispatchHookEvent({event, db, store, broadcast}: DispatchHookEve
 			}
 			store.markSessionActive(event.session_id, meta);
 
-			// Legacy file-level event — keep until old infra is deleted
+			// Lifecycle signal for the active-session indicator.
 			broadcast(SSE_EVENTS.SESSION_START, {
 				sessionId: event.session_id,
 				cwd: event.cwd ?? '',
@@ -68,7 +69,6 @@ export function dispatchHookEvent({event, db, store, broadcast}: DispatchHookEve
 
 		case 'Stop': {
 			store.touchSession(event.session_id);
-			broadcast(SSE_EVENTS.SESSION_UPDATE, {sessionId: event.session_id});
 			const summary = buildSessionSummaryPayloadFromDb(db, event.session_id);
 			if (summary) {
 				broadcast(DOMAIN_EVENTS.SESSION_UPDATED, {session: summary});
@@ -77,21 +77,12 @@ export function dispatchHookEvent({event, db, store, broadcast}: DispatchHookEve
 		}
 
 		case 'PostToolUse': {
-			const filePath = (event.tool_input as Record<string, unknown> | undefined)?.['file_path'];
-			if (typeof filePath === 'string' && filePath.includes('/tasks/')) {
-				broadcast(SSE_EVENTS.TASK_UPDATED, {
-					sessionId: event.session_id,
-					filePath,
-				});
-			}
 			store.touchSession(event.session_id);
 			break;
 		}
 
 		case 'TaskCompleted': {
-			// Legacy and domain share the 'task:completed' wire name — one broadcast
-			// covers both consumers.
-			broadcast(SSE_EVENTS.TASK_COMPLETED, {
+			broadcast(DOMAIN_EVENTS.TASK_COMPLETED, {
 				sessionId: event.session_id,
 				taskId: event.task_id ?? '',
 				subject: event.task_subject ?? '',

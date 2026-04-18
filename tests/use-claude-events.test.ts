@@ -89,7 +89,7 @@ describe('claudeEventsReducer', () => {
 		expect(next.activeSessions.has('abc-123')).toBe(false);
 	});
 
-	it('handles session:update by touching lastActivity', () => {
+	it('handles domain session:updated by touching lastActivity via the session payload id', () => {
 		const state = makeInitialState();
 		state.activeSessions.set('abc-123', {
 			sessionId: 'abc-123',
@@ -100,8 +100,8 @@ describe('claudeEventsReducer', () => {
 		});
 		const action: ClaudeEventsAction = {
 			type: 'SSE_EVENT',
-			eventType: 'session:update',
-			data: {sessionId: 'abc-123'},
+			eventType: 'session:updated',
+			data: {session: {id: 'abc-123'}},
 			timestamp: 3000,
 		};
 		const next = claudeEventsReducer(state, action);
@@ -112,7 +112,7 @@ describe('claudeEventsReducer', () => {
 		const state = makeInitialState();
 		const action: ClaudeEventsAction = {
 			type: 'SSE_EVENT',
-			eventType: 'task:updated',
+			eventType: 'task:changed',
 			data: {taskId: 'task-1'},
 			timestamp: 5000,
 		};
@@ -133,12 +133,12 @@ describe('claudeEventsReducer', () => {
 		expect(next.activeSessions.size).toBe(1);
 	});
 
-	it('session:update for unknown session does not add it', () => {
+	it('session:updated for unknown session does not add it', () => {
 		const state = makeInitialState();
 		const action: ClaudeEventsAction = {
 			type: 'SSE_EVENT',
-			eventType: 'session:update',
-			data: {sessionId: 'unknown-id'},
+			eventType: 'session:updated',
+			data: {session: {id: 'unknown-id'}},
 			timestamp: 1000,
 		};
 		const next = claudeEventsReducer(state, action);
