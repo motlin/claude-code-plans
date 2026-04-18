@@ -1,88 +1,54 @@
 import {Link} from '@tanstack/react-router';
-import {useEffect, useState} from 'react';
-import {getPlans, getMemories, getSessions, getProjects} from '../../../lib/server-fns';
-import {useSectionRefreshKey} from '../../../hooks/use-claude-events';
-import {getCached, setCache} from '../../../lib/sidebar-cache';
+import {useQuery} from '@tanstack/react-query';
+import {memoriesQueryOptions} from '../../../queries/memories';
+import {sessionsQueryOptions} from '../../../queries/sessions';
 import type {Section, SubItem} from '../types';
 import {LoadingBars} from '../primitives/LoadingBars';
 
+// SubList is the fallback renderer for sidebar sections without a dedicated
+// component. Sidebar.tsx routes active/projects/plans/plugins to their own
+// sublists, so only `memories` and `sessions` actually reach this component.
 export function SubList({section, activeItemId}: {section: Section; activeItemId: string | null}) {
-	const refreshKey = useSectionRefreshKey(section);
-	const [items, setItems] = useState<SubItem[] | null>(null);
+	const memoriesQuery = useQuery({
+		...memoriesQueryOptions,
+		enabled: section === 'memories',
+	});
+	const sessionsQuery = useQuery({
+		...sessionsQueryOptions,
+		enabled: section === 'sessions',
+	});
 
-	useEffect(() => {
-		let cancelled = false;
+	let items: SubItem[] | null = null;
 
-		async function fetchItems() {
-			const cached = getCached<SubItem[]>(`sidebar:${section}`);
-			if (cached) {
-				if (!cancelled) setItems(cached);
-				return;
-			}
-
-			let result: SubItem[] = [];
-
-			try {
-				if (section === 'projects') {
-					const projects = await getProjects();
-					if (!projects) return;
-					result = projects.map((p) => ({
-						id: p.id,
-						label: p.name,
-						to: '/project/$id',
-						params: {id: p.id},
-					}));
-				} else if (section === 'plans') {
-					const plans = await getPlans();
-					if (!plans) return;
-					result = plans.map((p) => ({
-						id: p.filename,
-						label: p.title,
-						to: '/plan/$filename',
-						params: {filename: p.filename},
-					}));
-				} else if (section === 'memories') {
-					const groups = await getMemories();
-					if (!groups) return;
-					const all = groups
-						.flatMap((g) => g.memories)
-						.sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime())
-						.slice(0, 20);
-					result = all.map((m) => ({
-						id: `${m.project}/${m.filename}`,
-						label: m.title,
-						to: '/memory/$project/$filename',
-						params: {project: m.project, filename: m.filename},
-					}));
-				} else if (section === 'sessions') {
-					const groups = await getSessions();
-					if (!groups) return;
-					const all = groups
-						.flatMap((g) => g.sessions)
-						.sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime())
-						.slice(0, 20);
-					result = all.map((s) => ({
-						id: s.id,
-						label: s.title,
-						to: '/session/$id',
-						params: {id: s.id},
-					}));
-				}
-			} catch {
-				return;
-			}
-
-			if (!cancelled) {
-				setItems(result);
-				setCache(`sidebar:${section}`, result);
-			}
+	if (section === 'memories') {
+		if (memoriesQuery.data) {
+			items = memoriesQuery.data
+				.flatMap((g) => g.memories)
+				.sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime())
+				.slice(0, 20)
+				.map((m) => ({
+					id: `${m.project}/${m.filename}`,
+					label: m.title,
+					to: '/memory/$project/$filename',
+					params: {project: m.project, filename: m.filename},
+				}));
 		}
-
-		fetchItems();
-		return () => {
-			cancelled = true;
-		};
-	}, [section, refreshKey]);
+	} else if (section === 'sessions') {
+		if (sessionsQuery.data) {
+			items = sessionsQuery.data
+				.flatMap((g) => g.sessions)
+				.sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime())
+				.slice(0, 20)
+				.map((s) => ({
+					id: s.id,
+					label: s.title,
+					to: '/session/$id',
+					params: {id: s.id},
+				}));
+		}
+	} else {
+		items = [];
+	}
 
 	if (items === null) {
 		return (

@@ -1,40 +1,12 @@
 import {Link} from '@tanstack/react-router';
-import {useEffect, useState} from 'react';
-import {getActiveSessions} from '../../../lib/server-fns';
-import {useClaudeEvents, useSectionRefreshKey} from '../../../hooks/use-claude-events';
-import {getCached, setCache} from '../../../lib/sidebar-cache';
+import {useQuery} from '@tanstack/react-query';
+import {activeSessionsQueryOptions} from '../../../queries/active';
 import {LoadingBars} from '../primitives/LoadingBars';
 
-type SidebarActiveSession = {sessionId: string; projectDir: string; projectName: string};
-
 export function ActiveSubList() {
-	const {activeSessions: pushedSessions} = useClaudeEvents();
-	const refreshKey = useSectionRefreshKey('active');
-	const [sessions, setSessions] = useState<SidebarActiveSession[] | null>(null);
+	const {data: sessions} = useQuery(activeSessionsQueryOptions);
 
-	useEffect(() => {
-		let cancelled = false;
-
-		async function fetchActive() {
-			const cached = getCached<SidebarActiveSession[]>('sidebar:active');
-			if (cached) {
-				if (!cancelled) setSessions(cached);
-				return;
-			}
-			const result = await getActiveSessions();
-			if (!cancelled) {
-				setSessions(result);
-				setCache('sidebar:active', result);
-			}
-		}
-
-		fetchActive();
-		return () => {
-			cancelled = true;
-		};
-	}, [refreshKey, pushedSessions.size]);
-
-	if (sessions === null) {
+	if (sessions === undefined) {
 		return (
 			<div className="pl-10">
 				<LoadingBars />

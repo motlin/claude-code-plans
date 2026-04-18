@@ -1,51 +1,32 @@
 import {Link} from '@tanstack/react-router';
-import {useEffect, useState} from 'react';
-import {getPluginsList, getUserCommandsList} from '../../../lib/server-fns';
-import {useSectionRefreshKey} from '../../../hooks/use-claude-events';
-import {getCached, setCache} from '../../../lib/sidebar-cache';
+import {useQuery} from '@tanstack/react-query';
+import {pluginsQueryOptions, userCommandsQueryOptions} from '../../../queries/plugins';
 import {LoadingBars} from '../primitives/LoadingBars';
 
+type SidebarItem =
+	| {type: 'plugin'; id: string; label: string}
+	| {type: 'command'; source: string; filename: string; label: string};
+
 export function PluginsSubList() {
-	const refreshKey = useSectionRefreshKey('plugins');
-	const [items, setItems] = useState<Array<
-		{type: 'plugin'; id: string; label: string} | {type: 'command'; source: string; filename: string; label: string}
-	> | null>(null);
+	const {data: plugins} = useQuery(pluginsQueryOptions);
+	const {data: commands} = useQuery(userCommandsQueryOptions);
 
-	useEffect(() => {
-		let cancelled = false;
-		async function fetch() {
-			const cached = getCached<NonNullable<typeof items>>('sidebar:plugins');
-			if (cached) {
-				if (!cancelled) setItems(cached);
-				return;
-			}
-			const [plugins, commands] = await Promise.all([getPluginsList(), getUserCommandsList()]);
-			const result: NonNullable<typeof items> = [];
-			for (const p of plugins) {
-				result.push({type: 'plugin', id: p.id, label: p.name});
-			}
-			for (const g of commands) {
-				for (const c of g.commands) {
-					result.push({type: 'command', source: g.source, filename: c.filename, label: c.name});
-				}
-			}
-			if (!cancelled) {
-				setItems(result);
-				setCache('sidebar:plugins', result);
-			}
-		}
-		fetch();
-		return () => {
-			cancelled = true;
-		};
-	}, [refreshKey]);
-
-	if (items === null) {
+	if (plugins === undefined || commands === undefined) {
 		return (
 			<div className="pl-10">
 				<LoadingBars />
 			</div>
 		);
+	}
+
+	const items: SidebarItem[] = [];
+	for (const p of plugins) {
+		items.push({type: 'plugin', id: p.id, label: p.name});
+	}
+	for (const g of commands) {
+		for (const c of g.commands) {
+			items.push({type: 'command', source: g.source, filename: c.filename, label: c.name});
+		}
 	}
 
 	if (items.length === 0) return null;

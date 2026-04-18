@@ -1,43 +1,13 @@
 import {Link} from '@tanstack/react-router';
+import {useQuery} from '@tanstack/react-query';
 import {ChevronRight} from 'lucide-react';
 import {useEffect, useState} from 'react';
-import {getPlansGrouped} from '../../../lib/server-fns';
-import {useSectionRefreshKey} from '../../../hooks/use-claude-events';
-import {getCached, setCache} from '../../../lib/sidebar-cache';
+import {plansGroupedQueryOptions} from '../../../queries/plans';
 import {LoadingBars} from '../primitives/LoadingBars';
 
-interface PlanGroup {
-	projectId: string;
-	projectName: string;
-	plans: Array<{filename: string; title: string; mtime: string}>;
-}
-
 export function PlansSubList({activeItemId}: {activeItemId: string | null}) {
-	const refreshKey = useSectionRefreshKey('plans');
-	const [groups, setGroups] = useState<PlanGroup[] | null>(null);
+	const {data: groups} = useQuery(plansGroupedQueryOptions);
 	const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-
-	useEffect(() => {
-		let cancelled = false;
-
-		async function fetchPlans() {
-			const cached = getCached<PlanGroup[]>('sidebar:plans');
-			if (cached) {
-				if (!cancelled) setGroups(cached);
-				return;
-			}
-			const result = await getPlansGrouped();
-			if (!cancelled) {
-				setGroups(result);
-				setCache('sidebar:plans', result);
-			}
-		}
-
-		fetchPlans();
-		return () => {
-			cancelled = true;
-		};
-	}, [refreshKey]);
 
 	// Auto-expand/collapse groups based on active plan
 	useEffect(() => {
@@ -75,7 +45,7 @@ export function PlansSubList({activeItemId}: {activeItemId: string | null}) {
 		});
 	}
 
-	if (groups === null) {
+	if (groups === undefined) {
 		return (
 			<div className="pl-10">
 				<LoadingBars />
