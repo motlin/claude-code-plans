@@ -142,19 +142,29 @@ describe('summarizeToolCalls', () => {
 			{id: 'tc5', name: 'Bash', input: {}, sourceUuid: ''},
 			{id: 'tc6', name: 'Bash', input: {}, sourceUuid: ''},
 		];
-		expect(summarizeToolCalls(calls)).toBe('edited 3 files, read a file, ran 2 commands');
+		expect(summarizeToolCalls(calls)).toBe('edited 3 files, read a file, ran 2 bash commands');
 	});
 
 	it('groups Edit and Write together', () => {
 		const calls = [
 			{id: 'tc1', name: 'Edit', input: {}, sourceUuid: ''},
-			{id: 'tc2', name: 'Write', input: {}, sourceUuid: ''},
+			{id: 'tc2', name: 'Write', input: {file_path: '/some/code.ts', content: 'one\ntwo'}, sourceUuid: ''},
 		];
-		expect(summarizeToolCalls(calls)).toBe('edited 2 files');
+		expect(summarizeToolCalls(calls)).toBe('edited 2 files +2');
 	});
 
 	it('single Grep', () => {
-		expect(summarizeToolCalls([{id: 'tc1', name: 'Grep', input: {}, sourceUuid: ''}])).toBe('searched code');
+		expect(summarizeToolCalls([{id: 'tc1', name: 'Grep', input: {}, sourceUuid: ''}])).toBe(
+			'searched for a pattern',
+		);
+	});
+
+	it('multiple Greps', () => {
+		const calls = [
+			{id: 'tc1', name: 'Grep', input: {}, sourceUuid: ''},
+			{id: 'tc2', name: 'Grep', input: {}, sourceUuid: ''},
+		];
+		expect(summarizeToolCalls(calls)).toBe('searched for 2 patterns');
 	});
 
 	it('agents', () => {
@@ -166,9 +176,102 @@ describe('summarizeToolCalls', () => {
 		expect(summarizeToolCalls(calls)).toBe('ran 3 agents');
 	});
 
-	it('unknown tool', () => {
-		expect(summarizeToolCalls([{id: 'tc1', name: 'CustomTool', input: {}, sourceUuid: ''}])).toBe(
-			'used CustomTool',
+	it('groups unknown tools as called N tools', () => {
+		const calls = [
+			{id: 'tc1', name: 'CustomTool', input: {}, sourceUuid: ''},
+			{id: 'tc2', name: 'AnotherTool', input: {}, sourceUuid: ''},
+		];
+		expect(summarizeToolCalls(calls)).toBe('called 2 tools');
+	});
+
+	it('single unknown tool', () => {
+		expect(summarizeToolCalls([{id: 'tc1', name: 'CustomTool', input: {}, sourceUuid: ''}])).toBe('called a tool');
+	});
+
+	it('Edit calls include +N -N diff stats summed across calls', () => {
+		const calls = [
+			{
+				id: 'tc1',
+				name: 'Edit',
+				input: {file_path: '/a.ts', old_string: 'one\ntwo\nthree', new_string: 'ONE\nTWO\nthree\nfour'},
+				sourceUuid: '',
+			},
+			{
+				id: 'tc2',
+				name: 'Edit',
+				input: {file_path: '/b.ts', old_string: 'x', new_string: 'y\nz'},
+				sourceUuid: '',
+			},
+		];
+		// Edit 1: removed 2, added 3 (one,two -> ONE,TWO,four). Edit 2: removed 1, added 2.
+		expect(summarizeToolCalls(calls)).toBe('edited 2 files +5 -3');
+	});
+
+	it('Write of a memory file is reported as wrote a memory', () => {
+		const calls = [
+			{
+				id: 'tc1',
+				name: 'Write',
+				input: {
+					file_path: '/Users/craig/.claude/projects/-Users-craig-projects-foo/memory/MEMORY.md',
+					content: 'hello\n',
+				},
+				sourceUuid: '',
+			},
+		];
+		expect(summarizeToolCalls(calls)).toBe('wrote a memory');
+	});
+
+	it('Read of a memory file is reported as recalled a memory', () => {
+		const calls = [
+			{
+				id: 'tc1',
+				name: 'Read',
+				input: {file_path: '/Users/craig/.claude/memory/MEMORY.md'},
+				sourceUuid: '',
+			},
+		];
+		expect(summarizeToolCalls(calls)).toBe('recalled a memory');
+	});
+
+	it('rich mixed summary matching Claude Code format', () => {
+		const calls = [
+			// 9 edits with diff stats
+			...Array.from({length: 9}, (_, i) => ({
+				id: `e${i}`,
+				name: 'Edit',
+				input: {file_path: `/f${i}.ts`, old_string: 'a\nb\nc', new_string: 'A\nB\nC\nD\nE'},
+				sourceUuid: '',
+			})),
+			// 6 grep
+			...Array.from({length: 6}, (_, i) => ({id: `g${i}`, name: 'Grep', input: {}, sourceUuid: ''})),
+			// 8 reads (non-memory)
+			...Array.from({length: 8}, (_, i) => ({
+				id: `r${i}`,
+				name: 'Read',
+				input: {file_path: `/some/file${i}.ts`},
+				sourceUuid: '',
+			})),
+			// 1 unknown tool
+			{id: 'u1', name: 'CustomTool', input: {}, sourceUuid: ''},
+			// 4 bash
+			...Array.from({length: 4}, (_, i) => ({id: `b${i}`, name: 'Bash', input: {}, sourceUuid: ''})),
+			// 1 memory read
+			{id: 'mr1', name: 'Read', input: {file_path: '/Users/craig/.claude/memory/MEMORY.md'}, sourceUuid: ''},
+			// 4 memory writes
+			...Array.from({length: 4}, (_, i) => ({
+				id: `mw${i}`,
+				name: 'Write',
+				input: {
+					file_path: `/Users/craig/.claude/projects/-foo/memory/m${i}.md`,
+					content: 'hi\n',
+				},
+				sourceUuid: '',
+			})),
+		];
+		// Edits: 9 files; per edit removed 3 added 5 -> totals +45 -27.
+		expect(summarizeToolCalls(calls)).toBe(
+			'edited 9 files +45 -27, searched for 6 patterns, read 8 files, called a tool, ran 4 bash commands, recalled a memory, wrote 4 memories',
 		);
 	});
 });

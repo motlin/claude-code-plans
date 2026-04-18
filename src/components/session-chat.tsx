@@ -464,7 +464,6 @@ function ChevronIcon({expanded}: {expanded: boolean}) {
 }
 
 const PROMINENT_TOOLS = new Set(['AskUserQuestion']);
-const INITIAL_TOOL_COUNT = 3;
 const TASK_TOOLS = new Set(['TaskCreate', 'TaskUpdate', 'TaskList']);
 
 type ToolListItem = {kind: 'call'; call: ClientToolCall} | {kind: 'parallel'; key: string; calls: ClientToolCall[]};
@@ -634,14 +633,11 @@ function ParallelGroupInline({
 
 function ToolCallSummary({calls, summary, sessionId}: {calls: ClientToolCall[]; summary: string; sessionId: string}) {
 	const [expanded, setExpanded] = useState(false);
-	const [showAll, setShowAll] = useState(false);
 
 	const taskCalls = calls.filter((c) => TASK_TOOLS.has(c.name));
 	const hasTasksView = taskCalls.length >= 3;
 	const displayCalls = hasTasksView ? calls.filter((c) => !TASK_TOOLS.has(c.name)) : calls;
 	const items = groupParallelSubagents(displayCalls);
-	const visibleItems = showAll ? items : items.slice(0, INITIAL_TOOL_COUNT);
-	const hiddenCount = items.length - INITIAL_TOOL_COUNT;
 
 	return (
 		<div className="min-w-0 py-1">
@@ -661,9 +657,9 @@ function ToolCallSummary({calls, summary, sessionId}: {calls: ClientToolCall[]; 
 						</div>
 					)}
 					<div className="ml-2 pl-0">
-						{visibleItems.map((item, i) => {
+						{items.map((item, i) => {
 							const isFirst = i === 0;
-							const isLast = i === visibleItems.length - 1 && (showAll || hiddenCount <= 0);
+							const isLast = i === items.length - 1;
 							if (item.kind === 'parallel') {
 								return (
 									<ParallelGroupInline
@@ -685,24 +681,6 @@ function ToolCallSummary({calls, summary, sessionId}: {calls: ClientToolCall[]; 
 								/>
 							);
 						})}
-						{!showAll && hiddenCount > 0 && (
-							<div className="flex">
-								<div className="flex flex-col items-center w-4 shrink-0">
-									<div className="w-px flex-1 bg-border-300/15" />
-									<div className="w-full h-px bg-border-300/15" />
-									<div className="w-px flex-1 bg-transparent" />
-								</div>
-								<div className="flex-1 min-w-0 pl-2">
-									<button
-										type="button"
-										onClick={() => setShowAll(true)}
-										className="text-[13px] text-text-500 hover:text-text-300 cursor-pointer transition-colors py-1"
-									>
-										Show {hiddenCount} more
-									</button>
-								</div>
-							</div>
-						)}
 					</div>
 				</div>
 			</div>
