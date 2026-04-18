@@ -321,7 +321,7 @@ export const getSubagentTree = createServerFn({method: 'GET'})
 	.handler(async ({data: sessionId}) => {
 		const {index} = getDb();
 		const agents = getSubagentsForSession(index, sessionId);
-		return {tree: buildSubagentTree(agents), totalCount: agents.length};
+		return {tree: buildSubagentTree(agents), totalCount: agents.length, agents};
 	});
 
 export const searchSessions = createServerFn({method: 'GET'})

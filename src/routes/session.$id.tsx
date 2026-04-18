@@ -29,6 +29,7 @@ import type {ClientToolCall, ToolInput} from '../components/tool-renderers';
 import {ArrowLeft, ArrowUp, ArrowDown, Copy, Terminal, GitFork, Download} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {SubagentTree} from '../components/subagent-tree';
+import {SubagentGantt} from '../components/subagent-gantt';
 
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
@@ -209,6 +210,7 @@ const getSession = createServerFn({method: 'GET'})
 			messages,
 			subagentTree: subagentResult.tree,
 			subagentCount: subagentResult.totalCount,
+			subagents: subagentResult.agents,
 			starred: starResult.starred,
 			projectPath,
 			gitBranch: sessionMeta?.gitBranch ?? null,
@@ -376,6 +378,7 @@ function SessionPage() {
 	const [generating, setGenerating] = useState(false);
 	const [showThinking, setShowThinking] = useDisplayToggle('ccp-show-thinking', true);
 	const [showTools, setShowTools] = useDisplayToggle('ccp-show-tools', true);
+	const [subagentView, setSubagentView] = useState<'tree' | 'gantt'>('tree');
 	const chatStream = useChatStream();
 	const prevSessionIdRef = useRef(params.id);
 
@@ -514,10 +517,43 @@ function SessionPage() {
 			)}
 
 			{data.subagentCount > 0 && (
-				<SubagentTree
-					tree={data.subagentTree}
-					totalCount={data.subagentCount}
-				/>
+				<div className="mt-3">
+					<div className="flex items-center gap-2 text-[10px] text-text-500">
+						<span>View</span>
+						<button
+							type="button"
+							onClick={() => setSubagentView('tree')}
+							aria-pressed={subagentView === 'tree'}
+							className={`rounded px-1.5 py-0.5 ${
+								subagentView === 'tree'
+									? 'bg-accent-000/15 text-accent-100'
+									: 'hover:bg-bg-200/50 text-text-500'
+							}`}
+						>
+							Tree
+						</button>
+						<button
+							type="button"
+							onClick={() => setSubagentView('gantt')}
+							aria-pressed={subagentView === 'gantt'}
+							className={`rounded px-1.5 py-0.5 ${
+								subagentView === 'gantt'
+									? 'bg-accent-000/15 text-accent-100'
+									: 'hover:bg-bg-200/50 text-text-500'
+							}`}
+						>
+							Gantt
+						</button>
+					</div>
+					{subagentView === 'tree' ? (
+						<SubagentTree
+							tree={data.subagentTree}
+							totalCount={data.subagentCount}
+						/>
+					) : (
+						<SubagentGantt agents={data.subagents} />
+					)}
+				</div>
 			)}
 
 			<div className="flex items-center gap-3 mt-2 text-xs text-text-500">
