@@ -1,5 +1,11 @@
 import {describe, expect, it} from 'vitest';
-import {deriveEventFromPath, SSE_EVENTS, HookEventEnvelope} from '../src/lib/hook-events';
+import {
+	deriveEventFromPath,
+	SSE_EVENTS,
+	DOMAIN_EVENTS,
+	HookEventEnvelope,
+	diffEntityMaps,
+} from '../src/lib/hook-events';
 
 const PLANS_DIR = '/home/user/.claude/plans';
 const PROJECTS_DIR = '/home/user/.claude/projects';
@@ -87,5 +93,98 @@ describe('HookEventEnvelope', () => {
 			hook_event_name: 'Unknown',
 		});
 		expect(result.success).toBe(false);
+	});
+});
+
+describe('DOMAIN_EVENTS', () => {
+	it('exposes the new domain-level event vocabulary', () => {
+		expect(DOMAIN_EVENTS.SESSION_ADDED).toBe('session:added');
+		expect(DOMAIN_EVENTS.SESSION_REMOVED).toBe('session:removed');
+		expect(DOMAIN_EVENTS.SESSION_UPDATED).toBe('session:updated');
+		expect(DOMAIN_EVENTS.SESSION_STARTED).toBe('session:started');
+		expect(DOMAIN_EVENTS.SESSION_ENDED).toBe('session:ended');
+		expect(DOMAIN_EVENTS.PLAN_CHANGED).toBe('plan:changed');
+		expect(DOMAIN_EVENTS.PLAN_REMOVED).toBe('plan:removed');
+		expect(DOMAIN_EVENTS.MEMORY_CHANGED).toBe('memory:changed');
+		expect(DOMAIN_EVENTS.TASK_CHANGED).toBe('task:changed');
+		expect(DOMAIN_EVENTS.TASK_COMPLETED).toBe('task:completed');
+	});
+
+	it('does not collide with the legacy SSE_EVENTS namespace for new deltas', () => {
+		// The legacy SESSION_START / SESSION_END / SESSION_UPDATE values must
+		// remain distinct from the new added / removed / updated deltas so both
+		// namespaces can coexist during the migration.
+		expect(DOMAIN_EVENTS.SESSION_ADDED).not.toBe(SSE_EVENTS.SESSION_START);
+		expect(DOMAIN_EVENTS.SESSION_REMOVED).not.toBe(SSE_EVENTS.SESSION_END);
+		expect(DOMAIN_EVENTS.SESSION_UPDATED).not.toBe(SSE_EVENTS.SESSION_UPDATE);
+		expect(DOMAIN_EVENTS.PLAN_CHANGED).not.toBe(SSE_EVENTS.PLAN_UPDATED);
+		expect(DOMAIN_EVENTS.MEMORY_CHANGED).not.toBe(SSE_EVENTS.MEMORY_UPDATED);
+		expect(DOMAIN_EVENTS.TASK_CHANGED).not.toBe(SSE_EVENTS.TASK_UPDATED);
+	});
+});
+
+describe('diffEntityMaps', () => {
+	type Entity = {id: string; version: number};
+	const equals = (a: Entity, b: Entity) => a.version === b.version;
+
+	it('detects added entries present in next but not previous', () => {
+		const previous = new Map<string, Entity>();
+		const next = new Map([['a', {id: 'a', version: 1}]]);
+
+		const diff = diffEntityMaps(previous, next, equals);
+
+		expect(diff.added).toEqual([{id: 'a', version: 1}]);
+		expect(diff.removed).toEqual([]);
+		expect(diff.updated).toEqual([]);
+	});
+
+	it('detects removed entries present in previous but not next', () => {
+		const previous = new Map([['a', {id: 'a', version: 1}]]);
+		const next = new Map<string, Entity>();
+
+		const diff = diffEntityMaps(previous, next, equals);
+
+		expect(diff.added).toEqual([]);
+		expect(diff.removed).toEqual(['a']);
+		expect(diff.updated).toEqual([]);
+	});
+
+	it('detects updated entries whose value differs by the custom comparator', () => {
+		const previous = new Map([['a', {id: 'a', version: 1}]]);
+		const next = new Map([['a', {id: 'a', version: 2}]]);
+
+		const diff = diffEntityMaps(previous, next, equals);
+
+		expect(diff.added).toEqual([]);
+		expect(diff.removed).toEqual([]);
+		expect(diff.updated).toEqual([{id: 'a', version: 2}]);
+	});
+
+	it('treats equal entries as unchanged', () => {
+		const previous = new Map([['a', {id: 'a', version: 1}]]);
+		const next = new Map([['a', {id: 'a', version: 1}]]);
+
+		const diff = diffEntityMaps(previous, next, equals);
+
+		expect(diff.added).toEqual([]);
+		expect(diff.removed).toEqual([]);
+		expect(diff.updated).toEqual([]);
+	});
+
+	it('handles mixed adds, removes, and updates in a single pass', () => {
+		const previous = new Map([
+			['a', {id: 'a', version: 1}],
+			['b', {id: 'b', version: 1}],
+		]);
+		const next = new Map([
+			['b', {id: 'b', version: 2}],
+			['c', {id: 'c', version: 1}],
+		]);
+
+		const diff = diffEntityMaps(previous, next, equals);
+
+		expect(diff.added).toEqual([{id: 'c', version: 1}]);
+		expect(diff.removed).toEqual(['a']);
+		expect(diff.updated).toEqual([{id: 'b', version: 2}]);
 	});
 });

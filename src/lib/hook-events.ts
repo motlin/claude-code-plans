@@ -4,6 +4,12 @@ import {z} from 'zod';
 // SSE Event Types
 // ---------------------------------------------------------------------------
 
+/**
+ * Legacy file-system-level SSE event names. Preserved while the client
+ * migrates to the domain-level DOMAIN_EVENTS vocabulary below. These will
+ * be deleted in the final cleanup task (see plan step "Delete old event
+ * infrastructure and file-level SSE events").
+ */
 export const SSE_EVENTS = {
 	SESSION_START: 'session:start',
 	SESSION_END: 'session:end',
@@ -20,6 +26,26 @@ export const SSE_EVENTS = {
 
 export type SseEventType = (typeof SSE_EVENTS)[keyof typeof SSE_EVENTS];
 
+/**
+ * Domain-level delta events. Payloads carry the data needed to patch the
+ * TanStack Query cache client-side without a refetch. The server is
+ * responsible for diffing old vs new state and emitting these events.
+ */
+export const DOMAIN_EVENTS = {
+	SESSION_ADDED: 'session:added',
+	SESSION_REMOVED: 'session:removed',
+	SESSION_UPDATED: 'session:updated',
+	SESSION_STARTED: 'session:started',
+	SESSION_ENDED: 'session:ended',
+	PLAN_CHANGED: 'plan:changed',
+	PLAN_REMOVED: 'plan:removed',
+	MEMORY_CHANGED: 'memory:changed',
+	TASK_CHANGED: 'task:changed',
+	TASK_COMPLETED: 'task:completed',
+} as const;
+
+export type DomainEventType = (typeof DOMAIN_EVENTS)[keyof typeof DOMAIN_EVENTS];
+
 // ---------------------------------------------------------------------------
 // SSE Event Payloads (sent to client)
 // ---------------------------------------------------------------------------
@@ -27,6 +53,108 @@ export type SseEventType = (typeof SSE_EVENTS)[keyof typeof SSE_EVENTS];
 export interface SseEvent {
 	type: SseEventType;
 	data: Record<string, unknown>;
+}
+
+/**
+ * Summary payload for a single session, matching the serialized shape
+ * emitted by `getSessions` / `getStarredSessionList` server functions.
+ * Dates are ISO strings so payloads survive JSON serialization to clients.
+ */
+export interface SessionSummaryPayload {
+	id: string;
+	title: string;
+	summary: string | undefined;
+	mtime: string;
+	created: string;
+	project: string;
+	projectName: string;
+	messageCount: number;
+	gitBranch: string | undefined;
+}
+
+/** Summary payload for a single plan, matching `getPlans` output. */
+export interface PlanSummaryPayload {
+	filename: string;
+	title: string;
+	mtime: string;
+}
+
+/** Summary payload for a single memory file. */
+export interface MemorySummaryPayload {
+	filename: string;
+	title: string;
+	mtime: string;
+	project: string;
+	projectName: string;
+}
+
+/** Summary payload for a single task, matching the TaskRow shape. */
+export interface TaskSummaryPayload {
+	taskId: string;
+	projectDir: string;
+	subject: string;
+	description: string;
+	status: string;
+	activeForm: string | null;
+	blocks: string[];
+	blockedBy: string[];
+}
+
+/** Active session info for session:started — matches ActiveSession shape. */
+export interface ActiveSessionPayload {
+	sessionId: string;
+	cwd: string;
+	model: string;
+	startedAt: number;
+	lastActivity: number;
+}
+
+export interface DomainEventPayloads {
+	[DOMAIN_EVENTS.SESSION_ADDED]: {session: SessionSummaryPayload};
+	[DOMAIN_EVENTS.SESSION_REMOVED]: {sessionId: string; projectDir: string};
+	[DOMAIN_EVENTS.SESSION_UPDATED]: {session: SessionSummaryPayload};
+	[DOMAIN_EVENTS.SESSION_STARTED]: {session: ActiveSessionPayload};
+	[DOMAIN_EVENTS.SESSION_ENDED]: {sessionId: string};
+	[DOMAIN_EVENTS.PLAN_CHANGED]: {plan: PlanSummaryPayload};
+	[DOMAIN_EVENTS.PLAN_REMOVED]: {filename: string};
+	[DOMAIN_EVENTS.MEMORY_CHANGED]: {memory: MemorySummaryPayload};
+	[DOMAIN_EVENTS.TASK_CHANGED]: {task: TaskSummaryPayload};
+	[DOMAIN_EVENTS.TASK_COMPLETED]: {taskId: string; subject: string};
+}
+
+// ---------------------------------------------------------------------------
+// Diff helpers for domain-event broadcasting
+// ---------------------------------------------------------------------------
+
+/**
+ * Diff two keyed maps of entities and return the added/removed/updated sets.
+ * `equals` controls whether two entries with the same key count as "updated"
+ * — defaults to strict `===` reference equality, which is almost never what
+ * callers want; pass a value-level comparator.
+ */
+export function diffEntityMaps<T>(
+	previous: ReadonlyMap<string, T>,
+	next: ReadonlyMap<string, T>,
+	equals: (a: T, b: T) => boolean = Object.is,
+): {added: T[]; removed: string[]; updated: T[]} {
+	const added: T[] = [];
+	const removed: string[] = [];
+	const updated: T[] = [];
+
+	for (const [key, value] of next) {
+		const prior = previous.get(key);
+		if (prior === undefined) {
+			added.push(value);
+		} else if (!equals(prior, value)) {
+			updated.push(value);
+		}
+	}
+
+	for (const key of previous.keys()) {
+		if (!next.has(key)) removed.push(key);
+	}
+
+	return {added, removed, updated};
 }
 
 // ---------------------------------------------------------------------------
