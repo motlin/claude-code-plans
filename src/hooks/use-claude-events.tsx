@@ -162,7 +162,10 @@ export function applySessionRemoved(queryClient: QueryClient, sessionId: string,
 	queryClient.setQueryData<SessionSummaryPayload[]>(['starred-sessions'], (old) =>
 		old ? old.filter((s) => s.id !== sessionId) : old,
 	);
-	queryClient.removeQueries({queryKey: ['session', sessionId, 'detail']});
+	// Prefix match: evicts every sub-cache under ['session', sessionId, ...]
+	// (e.g. 'detail', 'subagents', 'summary', 'starred'). TanStack Query uses
+	// partial/prefix matching by default, so no exact flag is required.
+	queryClient.removeQueries({queryKey: ['session', sessionId]});
 	void queryClient.invalidateQueries({queryKey: ['projects']});
 	void queryClient.invalidateQueries({queryKey: ['project', projectDir]});
 }

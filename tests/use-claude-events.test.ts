@@ -262,6 +262,24 @@ describe('applySessionRemoved', () => {
 		const starred = queryClient.getQueryData<SessionSummaryPayload[]>(['starred-sessions']);
 		expect(starred?.map((s) => s.id)).toEqual(['a2']);
 	});
+
+	it('evicts every per-session sub-cache under ["session", id, ...]', () => {
+		const queryClient = new QueryClient();
+		queryClient.setQueryData(['session', 'a1', 'detail'], {id: 'a1'});
+		queryClient.setQueryData(['session', 'a1', 'subagents'], [{name: 'planner'}]);
+		queryClient.setQueryData(['session', 'a1', 'summary'], {text: 'hello'});
+		queryClient.setQueryData(['session', 'a1', 'starred'], true);
+		// Unrelated session cache should survive.
+		queryClient.setQueryData(['session', 'a2', 'detail'], {id: 'a2'});
+
+		applySessionRemoved(queryClient, 'a1', 'proj-a');
+
+		expect(queryClient.getQueryData(['session', 'a1', 'detail'])).toBeUndefined();
+		expect(queryClient.getQueryData(['session', 'a1', 'subagents'])).toBeUndefined();
+		expect(queryClient.getQueryData(['session', 'a1', 'summary'])).toBeUndefined();
+		expect(queryClient.getQueryData(['session', 'a1', 'starred'])).toBeUndefined();
+		expect(queryClient.getQueryData(['session', 'a2', 'detail'])).toEqual({id: 'a2'});
+	});
 });
 
 describe('applySessionUpdated', () => {
