@@ -1,12 +1,65 @@
-import {Check, Circle, MessageCircleQuestion} from 'lucide-react';
+import {useState} from 'react';
+import {Check, Circle, Loader2, MessageCircleQuestion, Send} from 'lucide-react';
 import type {ToolRendererProps} from './types';
+import {useAskUserQuestionContext} from '../ask-user-question-context';
+import {
+	answerForQuestion,
+	makeInitialDraft,
+	normalizeQuestions,
+	type QuestionDraft,
+	type QuestionLike,
+} from '../../lib/ask-user-question';
 
-interface QuestionData {
-	question: string;
-	options: Array<{label: string; description?: string}>;
+function ReadOnlyAnswer({label, description}: {label: string; description?: string | undefined}) {
+	return (
+		<div className="rounded border bg-accent-900 border-accent-100/30 border-l-2 border-l-accent-100 px-2.5 py-1.5 text-xs">
+			<div className="flex items-center gap-1.5">
+				<Check
+					size={14}
+					className="text-accent-100 shrink-0"
+				/>
+				<span className="font-medium">{label}</span>
+			</div>
+			{description && <p className="text-text-500 mt-0.5 ml-5">{description}</p>}
+		</div>
+	);
 }
 
-function QuestionBlock({question, options, result}: QuestionData & {result?: string | undefined}) {
+function ReadOnlyOption({label, description}: {label: string; description?: string | undefined}) {
+	return (
+		<div className="rounded border border-border-300/15 opacity-60 px-2.5 py-1.5 text-xs">
+			<div className="flex items-center gap-1.5">
+				<Circle
+					size={14}
+					className="text-text-500 shrink-0"
+				/>
+				<span className="font-medium">{label}</span>
+			</div>
+			{description && <p className="text-text-500 mt-0.5 ml-5">{description}</p>}
+		</div>
+	);
+}
+
+function ReadOnlyOtherAnswer({value}: {value: string}) {
+	return (
+		<div className="rounded border border-warning-000/30 bg-warning-100/10 border-l-2 border-l-warning-000 px-2.5 py-1.5 text-xs">
+			<div className="flex items-center gap-1.5">
+				<Check
+					size={14}
+					className="text-warning-000 shrink-0"
+				/>
+				<span className="font-medium">Other</span>
+			</div>
+			<p className="text-text-500 mt-0.5 ml-5">{value}</p>
+		</div>
+	);
+}
+
+/**
+ * Render a question after it has been answered (or when no submission UI is
+ * active). Uses `result` to figure out which option was chosen.
+ */
+function AnsweredQuestion({question, options, result}: QuestionLike & {result?: string | undefined}) {
 	const selectedLabel = result?.trim();
 	const matchesAny = options.some((opt) => opt.label === selectedLabel);
 	const isOther = selectedLabel && !matchesAny;
@@ -21,74 +74,244 @@ function QuestionBlock({question, options, result}: QuestionData & {result?: str
 				<p className="text-sm font-medium">{question}</p>
 			</div>
 			<div className="flex flex-col gap-1.5 ml-5">
-				{options.map((opt) => {
-					const selected = opt.label === selectedLabel;
-					return (
-						<div
+				{options.map((opt) =>
+					opt.label === selectedLabel ? (
+						<ReadOnlyAnswer
 							key={opt.label}
-							className={`rounded border px-2.5 py-1.5 text-xs ${
-								selected
-									? 'bg-accent-900 border-accent-100/30 border-l-2 border-l-accent-100'
-									: 'border-border-300/15 opacity-60'
-							}`}
-						>
-							<div className="flex items-center gap-1.5">
-								{selected ? (
-									<Check
-										size={14}
-										className="text-accent-100 shrink-0"
-									/>
-								) : (
-									<Circle
-										size={14}
-										className="text-text-500 shrink-0"
-									/>
-								)}
-								<span className="font-medium">{opt.label}</span>
-							</div>
-							{opt.description && <p className="text-text-500 mt-0.5 ml-5">{opt.description}</p>}
-						</div>
-					);
-				})}
-				{isOther && (
-					<div className="rounded border border-warning-000/30 bg-warning-100/10 px-2.5 py-1.5 text-xs border-l-2 border-l-warning-000">
-						<div className="flex items-center gap-1.5">
-							<Check
-								size={14}
-								className="text-warning-000 shrink-0"
-							/>
-							<span className="font-medium">Other</span>
-						</div>
-						<p className="text-text-500 mt-0.5 ml-5">{selectedLabel}</p>
-					</div>
+							label={opt.label}
+							description={opt.description}
+						/>
+					) : (
+						<ReadOnlyOption
+							key={opt.label}
+							label={opt.label}
+							description={opt.description}
+						/>
+					),
 				)}
+				{isOther && <ReadOnlyOtherAnswer value={selectedLabel} />}
+			</div>
+		</div>
+	);
+}
+
+/**
+ * Interactive answer form rendered when the session is active and the question
+ * is still pending. Renders the same options as the read-only view but lets
+ * the user pick one (or many, if multiSelect) plus a free-text 'Other' field.
+ */
+function AnswerForm({
+	questions,
+	onSubmit,
+}: {
+	questions: QuestionLike[];
+	onSubmit: (answers: Array<{question: string; answer: string}>) => Promise<void>;
+}) {
+	const [drafts, setDrafts] = useState<QuestionDraft[]>(() => questions.map(() => makeInitialDraft()));
+	const [submitting, setSubmitting] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+
+	const completed = questions.every((q, i) => answerForQuestion(q, drafts[i]!) !== null);
+
+	function updateDraft(index: number, mutator: (draft: QuestionDraft) => QuestionDraft) {
+		setDrafts((prev) => prev.map((d, i) => (i === index ? mutator(d) : d)));
+	}
+
+	function toggleOption(index: number, label: string) {
+		const question = questions[index]!;
+		updateDraft(index, (draft) => {
+			const next: QuestionDraft = {
+				selected: new Set(draft.selected),
+				otherText: draft.otherText,
+				useOther: false,
+			};
+			if (question.multiSelect) {
+				if (next.selected.has(label)) {
+					next.selected.delete(label);
+				} else {
+					next.selected.add(label);
+				}
+			} else {
+				next.selected = new Set([label]);
+			}
+			return next;
+		});
+	}
+
+	function selectOther(index: number) {
+		updateDraft(index, (draft) => ({
+			selected: new Set(),
+			otherText: draft.otherText,
+			useOther: true,
+		}));
+	}
+
+	function setOtherText(index: number, value: string) {
+		updateDraft(index, (draft) => ({
+			selected: draft.selected,
+			otherText: value,
+			useOther: true,
+		}));
+	}
+
+	async function handleSubmit() {
+		if (!completed || submitting) return;
+		setError(null);
+		setSubmitting(true);
+		try {
+			const answers = questions.map((q, i) => ({
+				question: q.question,
+				answer: answerForQuestion(q, drafts[i]!) ?? '',
+			}));
+			await onSubmit(answers);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : 'Failed to submit answer');
+			setSubmitting(false);
+		}
+	}
+
+	return (
+		<div className="flex flex-col gap-4">
+			{questions.map((q, index) => {
+				const draft = drafts[index]!;
+				const isMulti = q.multiSelect ?? false;
+				return (
+					<div key={index}>
+						<div className="flex items-start gap-1.5 mb-2">
+							<MessageCircleQuestion
+								size={14}
+								className="text-text-500 shrink-0 mt-0.5"
+							/>
+							<p className="text-sm font-medium">{q.question}</p>
+						</div>
+						<div className="flex flex-col gap-1.5 ml-5">
+							{q.options.map((opt) => {
+								const selected = draft.selected.has(opt.label) && !draft.useOther;
+								return (
+									<button
+										key={opt.label}
+										type="button"
+										onClick={() => toggleOption(index, opt.label)}
+										disabled={submitting}
+										className={`text-left rounded border px-2.5 py-1.5 text-xs cursor-pointer transition-colors ${
+											selected
+												? 'bg-accent-900 border-accent-100/30 border-l-2 border-l-accent-100'
+												: 'border-border-300/15 hover:bg-bg-200/50'
+										} disabled:cursor-not-allowed disabled:opacity-50`}
+									>
+										<div className="flex items-center gap-1.5">
+											{selected ? (
+												<Check
+													size={14}
+													className="text-accent-100 shrink-0"
+												/>
+											) : (
+												<Circle
+													size={14}
+													className="text-text-500 shrink-0"
+												/>
+											)}
+											<span className="font-medium">{opt.label}</span>
+										</div>
+										{opt.description && (
+											<p className="text-text-500 mt-0.5 ml-5">{opt.description}</p>
+										)}
+									</button>
+								);
+							})}
+							<div
+								className={`rounded border px-2.5 py-1.5 text-xs ${
+									draft.useOther
+										? 'bg-warning-100/10 border-warning-000/30 border-l-2 border-l-warning-000'
+										: 'border-border-300/15'
+								}`}
+							>
+								<div className="flex items-center gap-1.5">
+									<button
+										type="button"
+										onClick={() => selectOther(index)}
+										disabled={submitting}
+										className="cursor-pointer disabled:cursor-not-allowed"
+									>
+										{draft.useOther ? (
+											<Check
+												size={14}
+												className="text-warning-000 shrink-0"
+											/>
+										) : (
+											<Circle
+												size={14}
+												className="text-text-500 shrink-0"
+											/>
+										)}
+									</button>
+									<span className="font-medium">Other</span>
+								</div>
+								<input
+									type="text"
+									value={draft.otherText}
+									onChange={(e) => setOtherText(index, e.target.value)}
+									onFocus={() => selectOther(index)}
+									disabled={submitting}
+									placeholder="Type a custom answer..."
+									className="mt-1 ml-5 w-[calc(100%-1.25rem)] rounded border border-border-300/15 bg-bg-000 px-2 py-1 text-xs text-text-100 outline-none focus:border-accent-100/40 disabled:opacity-50"
+								/>
+							</div>
+						</div>
+						{isMulti && (
+							<p className="ml-5 mt-1 text-[10px] text-text-500 italic">Select one or more options.</p>
+						)}
+					</div>
+				);
+			})}
+			{error && (
+				<div className="rounded border border-danger-000/30 bg-danger-000/10 px-2.5 py-1.5 text-xs text-danger-000">
+					{error}
+				</div>
+			)}
+			<div className="flex items-center gap-2">
+				<button
+					type="button"
+					onClick={handleSubmit}
+					disabled={!completed || submitting}
+					className="inline-flex items-center gap-1.5 rounded-md bg-accent-100 px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-100/80 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+				>
+					{submitting ? (
+						<Loader2
+							size={12}
+							className="animate-spin"
+						/>
+					) : (
+						<Send size={12} />
+					)}
+					{submitting ? 'Sending...' : 'Send answer'}
+				</button>
+				<span className="text-[10px] text-text-500 italic">
+					Forks the session so the running CLI keeps working uninterrupted.
+				</span>
 			</div>
 		</div>
 	);
 }
 
 export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
-	const questions = toolCall.input['questions'] as QuestionData[] | undefined;
-	const singleQuestion = (toolCall.input['question'] as string) ?? '';
-	const singleOptions = toolCall.input['options'] as Array<{label: string; description?: string}> | undefined;
+	const ctx = useAskUserQuestionContext();
+	const questions = normalizeQuestions(toolCall.input);
 	const {result} = toolCall;
+	const isPending = result === undefined;
+	const canAnswer = ctx?.isSessionActive === true && isPending && questions !== null;
 
-	if (questions && questions.length > 0) {
+	if (canAnswer) {
 		return (
-			<div className="flex flex-col gap-3">
-				{questions.map((q, i) => (
-					<QuestionBlock
-						key={i}
-						question={q.question}
-						options={q.options}
-						result={result}
-					/>
-				))}
-			</div>
+			<AnswerForm
+				questions={questions}
+				onSubmit={(answers) => ctx.submitAnswer({toolUseId: toolCall.id, answers})}
+			/>
 		);
 	}
 
-	if (!singleOptions || singleOptions.length === 0) {
+	if (!questions) {
+		const singleQuestion = (toolCall.input['question'] as string) ?? '';
 		return (
 			<div>
 				<div className="flex items-start gap-1.5">
@@ -103,10 +326,26 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 		);
 	}
 
+	if (questions.length > 1) {
+		return (
+			<div className="flex flex-col gap-3">
+				{questions.map((q, i) => (
+					<AnsweredQuestion
+						key={i}
+						question={q.question}
+						options={q.options}
+						result={result}
+					/>
+				))}
+			</div>
+		);
+	}
+
+	const only = questions[0]!;
 	return (
-		<QuestionBlock
-			question={singleQuestion}
-			options={singleOptions}
+		<AnsweredQuestion
+			question={only.question}
+			options={only.options}
 			result={result}
 		/>
 	);

@@ -5,7 +5,7 @@ import {queryOptions, useSuspenseQuery} from '@tanstack/react-query';
 import {z} from 'zod';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
-import {useEffect, useRef, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {readSession, summarizeToolCalls, type MessageContent} from '../lib/sessions';
 import {
 	renderMarkdown,
@@ -20,6 +20,7 @@ import {SessionChat} from '../components/session-chat';
 import {ChatInput} from '../components/chat-input';
 import {StreamingMessage} from '../components/streaming-message';
 import {useChatStream} from '../hooks/use-chat-stream';
+import {AskUserQuestionProvider, type AskUserQuestionContextValue} from '../components/ask-user-question-context';
 import {getSubagentTree, getSessionSummary, requestSummary, isStarred, toggleSessionStar} from '../lib/server-fns';
 import {useIsSessionActive, useStatusline} from '../hooks/use-claude-events';
 import {StatusFooter} from '../components/status-footer';
@@ -481,6 +482,38 @@ function SessionPage() {
 	const isActive = useIsSessionActive(params.id);
 	const statusline = useStatusline(params.id);
 	const [generating, setGenerating] = useState(false);
+	const submitAnswer = useCallback(
+		async ({toolUseId, answers}: {toolUseId: string; answers: Array<{question: string; answer: string}>}) => {
+			const res = await fetch('/api/answer-question', {
+				method: 'POST',
+				headers: {'Content-Type': 'application/json'},
+				body: JSON.stringify({sessionId: params.id, toolUseId, answers}),
+			});
+			if (!res.ok) {
+				const body = (await res.json().catch(() => ({}))) as {error?: string};
+				throw new Error(body.error ?? `Request failed (${res.status})`);
+			}
+			// Drain the stream so the spawned `claude --resume` runs to
+			// completion in the background. The SSE watcher will refresh the
+			// session view once the new JSONL is written.
+			const reader = res.body?.getReader();
+			if (reader) {
+				try {
+					while (true) {
+						const {done} = await reader.read();
+						if (done) break;
+					}
+				} finally {
+					reader.releaseLock();
+				}
+			}
+		},
+		[params.id],
+	);
+	const askUserQuestionCtx: AskUserQuestionContextValue = useMemo(
+		() => ({isSessionActive: isActive, submitAnswer}),
+		[isActive, submitAnswer],
+	);
 	const [showThinking, setShowThinking] = useDisplayToggle('ccp-show-thinking', true);
 	const [showTools, setShowTools] = useDisplayToggle('ccp-show-tools', true);
 	const [subagentView, setSubagentView] = useState<'tree' | 'gantt' | 'sequence'>('tree');
@@ -696,12 +729,14 @@ function SessionPage() {
 				</label>
 			</div>
 
-			<SessionChat
-				sessionId={params.id}
-				messages={data.messages}
-				showThinking={showThinking}
-				showTools={showTools}
-			/>
+			<AskUserQuestionProvider value={askUserQuestionCtx}>
+				<SessionChat
+					sessionId={params.id}
+					messages={data.messages}
+					showThinking={showThinking}
+					showTools={showTools}
+				/>
+			</AskUserQuestionProvider>
 
 			{(chatStream.state.isStreaming || chatStream.state.isComplete) && (
 				<StreamingMessage
