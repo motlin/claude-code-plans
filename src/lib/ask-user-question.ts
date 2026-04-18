@@ -86,3 +86,87 @@ export function answerForQuestion(question: QuestionLike, draft: QuestionDraft):
 	if (question.multiSelect) return selected.join(', ');
 	return selected[0] ?? null;
 }
+
+export interface ParsedAnswer {
+	question: string;
+	answer: string;
+	notes: string | null;
+}
+
+const ENVELOPE_PREFIX = 'User has answered your questions: ';
+const ENVELOPE_SUFFIX = ". You can now continue with the user's answers in mind.";
+const NOTES_MARKER = ' user notes: ';
+const PAIR_SEPARATOR = ', ';
+
+/**
+ * Parse the canonical AskUserQuestion `tool_result.content` text into a
+ * structured list of {question, answer, notes} entries. Returns null when the
+ * text does not match the expected envelope or no questions were supplied.
+ *
+ * The text format mirrors what Claude Code's CLI writes back to the model:
+ *   User has answered your questions: "Q1"="A1"[ user notes: N1], "Q2"="A2"[...]. You can now continue with the user's answers in mind.
+ *
+ * Question titles are matched against the supplied `questions` array (whose
+ * text comes from the original tool_use input) so we can correctly tokenize
+ * pairs even when answers or notes contain commas.
+ */
+export function parseAnswerResult(text: string, questions: QuestionLike[]): ParsedAnswer[] | null {
+	if (questions.length === 0) return null;
+	if (!text.startsWith(ENVELOPE_PREFIX)) return null;
+	const suffixStart = text.lastIndexOf(ENVELOPE_SUFFIX);
+	if (suffixStart < 0) return null;
+	let body = text.slice(ENVELOPE_PREFIX.length, suffixStart);
+
+	const result: ParsedAnswer[] = [];
+	for (let i = 0; i < questions.length; i++) {
+		const question = questions[i]!.question;
+		const anchor = `"${escapeQuote(question)}"=`;
+		if (!body.startsWith(anchor)) return null;
+		let cursor = anchor.length;
+		const answerEnd = findClosingQuote(body, cursor + 1);
+		if (answerEnd < 0) return null;
+		const answer = unescapeQuote(body.slice(cursor + 1, answerEnd));
+		cursor = answerEnd + 1;
+
+		// Find where this question's segment ends. The next question's anchor
+		// (after a ", " separator) is the boundary; otherwise the segment runs
+		// to the end of the body.
+		let segmentEnd = body.length;
+		if (i + 1 < questions.length) {
+			const nextAnchor = `${PAIR_SEPARATOR}"${escapeQuote(questions[i + 1]!.question)}"=`;
+			const nextIdx = body.indexOf(nextAnchor, cursor);
+			if (nextIdx < 0) return null;
+			segmentEnd = nextIdx;
+		}
+
+		let notes: string | null = null;
+		const remainder = body.slice(cursor, segmentEnd);
+		if (remainder.startsWith(NOTES_MARKER)) {
+			notes = remainder.slice(NOTES_MARKER.length);
+		} else if (remainder.length !== 0) {
+			return null;
+		}
+
+		result.push({question, answer, notes});
+		body = body.slice(segmentEnd + (i + 1 < questions.length ? PAIR_SEPARATOR.length : 0));
+	}
+	if (body.length !== 0) return null;
+	return result;
+}
+
+function findClosingQuote(text: string, start: number): number {
+	let i = start;
+	while (i < text.length) {
+		if (text[i] === '\\' && i + 1 < text.length) {
+			i += 2;
+			continue;
+		}
+		if (text[i] === '"') return i;
+		i++;
+	}
+	return -1;
+}
+
+function unescapeQuote(value: string): string {
+	return value.replace(/\\"/g, '"');
+}

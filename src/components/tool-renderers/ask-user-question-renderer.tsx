@@ -6,6 +6,8 @@ import {
 	answerForQuestion,
 	makeInitialDraft,
 	normalizeQuestions,
+	parseAnswerResult,
+	type ParsedAnswer,
 	type QuestionDraft,
 	type QuestionLike,
 } from '../../lib/ask-user-question';
@@ -40,7 +42,27 @@ function ReadOnlyOption({label, description}: {label: string; description?: stri
 	);
 }
 
-function ReadOnlyOtherAnswer({value}: {value: string}) {
+function NotesLine({notes}: {notes: string}) {
+	return (
+		<p className="text-text-500 mt-1 ml-5 italic whitespace-pre-wrap text-xs">
+			<span className="text-text-300">Notes: </span>
+			{notes}
+		</p>
+	);
+}
+
+/**
+ * True when the user's note adds information beyond the answer value itself.
+ * When the user picks 'Other' and types a custom answer, Claude Code echoes
+ * the same string in both fields; suppress that redundant duplicate.
+ */
+function notesAddInformation(notes: string | null | undefined, answerValue: string): boolean {
+	if (notes === null || notes === undefined) return false;
+	const trimmed = notes.trim();
+	return trimmed !== '' && trimmed !== answerValue.trim();
+}
+
+function ReadOnlyOtherAnswer({value, notes}: {value: string; notes?: string | null}) {
 	return (
 		<div className="rounded border border-warning-000/30 bg-warning-100/10 border-l-2 border-l-warning-000 px-2.5 py-1.5 text-xs">
 			<div className="flex items-center gap-1.5">
@@ -50,19 +72,22 @@ function ReadOnlyOtherAnswer({value}: {value: string}) {
 				/>
 				<span className="font-medium">Other</span>
 			</div>
-			<p className="text-text-500 mt-0.5 ml-5">{value}</p>
+			<p className="text-text-500 mt-0.5 ml-5 whitespace-pre-wrap">{value}</p>
+			{notesAddInformation(notes, value) && <NotesLine notes={notes!} />}
 		</div>
 	);
 }
 
 /**
  * Render a question after it has been answered (or when no submission UI is
- * active). Uses `result` to figure out which option was chosen.
+ * active). Uses the parsed answer (when available) to figure out which option
+ * was chosen and whether to surface supplementary user notes.
  */
-function AnsweredQuestion({question, options, result}: QuestionLike & {result?: string | undefined}) {
-	const selectedLabel = result?.trim();
-	const matchesAny = options.some((opt) => opt.label === selectedLabel);
-	const isOther = selectedLabel && !matchesAny;
+function AnsweredQuestion({question, options, parsed}: QuestionLike & {parsed?: ParsedAnswer | undefined}) {
+	const answerValue = parsed?.answer.trim() ?? '';
+	const matchesAny = options.some((opt) => opt.label === answerValue);
+	const isOther = answerValue.length > 0 && !matchesAny;
+	const notes = parsed?.notes;
 
 	return (
 		<div>
@@ -71,25 +96,37 @@ function AnsweredQuestion({question, options, result}: QuestionLike & {result?: 
 					size={14}
 					className="text-text-500 shrink-0 mt-0.5"
 				/>
-				<p className="text-sm font-medium">{question}</p>
+				<p className="text-sm font-medium whitespace-pre-wrap">{question}</p>
 			</div>
 			<div className="flex flex-col gap-1.5 ml-5">
-				{options.map((opt) =>
-					opt.label === selectedLabel ? (
-						<ReadOnlyAnswer
-							key={opt.label}
-							label={opt.label}
-							description={opt.description}
-						/>
-					) : (
+				{options.map((opt) => {
+					if (opt.label === answerValue) {
+						return (
+							<div key={opt.label}>
+								<ReadOnlyAnswer
+									label={opt.label}
+									description={opt.description}
+								/>
+								{notes !== null && notes !== undefined && notes.trim() !== '' && (
+									<NotesLine notes={notes} />
+								)}
+							</div>
+						);
+					}
+					return (
 						<ReadOnlyOption
 							key={opt.label}
 							label={opt.label}
 							description={opt.description}
 						/>
-					),
+					);
+				})}
+				{isOther && (
+					<ReadOnlyOtherAnswer
+						value={answerValue}
+						notes={notes ?? null}
+					/>
 				)}
-				{isOther && <ReadOnlyOtherAnswer value={selectedLabel} />}
 			</div>
 		</div>
 	);
@@ -326,6 +363,19 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 		);
 	}
 
+	const parsed = result !== undefined ? parseAnswerResult(result, questions) : null;
+	const parsedByQuestion = new Map<string, ParsedAnswer>();
+	if (parsed) {
+		for (const entry of parsed) {
+			parsedByQuestion.set(entry.question, entry);
+		}
+	}
+
+	// Parsing can fail when the result text predates the canonical envelope
+	// or has an unexpected shape. Fall back to displaying the raw text so we
+	// don't silently lose information.
+	const showRawFallback = result !== undefined && parsed === null;
+
 	if (questions.length > 1) {
 		return (
 			<div className="flex flex-col gap-3">
@@ -334,19 +384,23 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 						key={i}
 						question={q.question}
 						options={q.options}
-						result={result}
+						parsed={parsedByQuestion.get(q.question)}
 					/>
 				))}
+				{showRawFallback && <p className="text-sm text-text-500 mt-1 whitespace-pre-wrap">{result}</p>}
 			</div>
 		);
 	}
 
 	const only = questions[0]!;
 	return (
-		<AnsweredQuestion
-			question={only.question}
-			options={only.options}
-			result={result}
-		/>
+		<>
+			<AnsweredQuestion
+				question={only.question}
+				options={only.options}
+				parsed={parsedByQuestion.get(only.question)}
+			/>
+			{showRawFallback && <p className="text-sm text-text-500 mt-1 ml-5 whitespace-pre-wrap">{result}</p>}
+		</>
 	);
 }
