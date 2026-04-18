@@ -6,6 +6,49 @@ import {claudeLight} from './claude-light-theme';
 
 let md: MarkdownIt | null = null;
 
+/**
+ * Simple bounded LRU cache. Content-addressable rendering caches use this:
+ * the same input always produces the same output, so we can safely memoize
+ * across requests without invalidation. We cap size to bound memory.
+ */
+class LruCache<V> {
+	private readonly map = new Map<string, V>();
+	constructor(private readonly maxEntries: number) {}
+
+	get(key: string): V | undefined {
+		const value = this.map.get(key);
+		if (value === undefined) return undefined;
+		// Refresh recency by re-inserting
+		this.map.delete(key);
+		this.map.set(key, value);
+		return value;
+	}
+
+	set(key: string, value: V): void {
+		if (this.map.has(key)) this.map.delete(key);
+		this.map.set(key, value);
+		if (this.map.size > this.maxEntries) {
+			const oldestKey = this.map.keys().next().value;
+			if (oldestKey !== undefined) this.map.delete(oldestKey);
+		}
+	}
+
+	clear(): void {
+		this.map.clear();
+	}
+}
+
+const renderMarkdownCache = new LruCache<string>(2000);
+const highlightCodeCache = new LruCache<string>(2000);
+const highlightDiffOpsCache = new LruCache<string[]>(2000);
+
+/** Exposed for tests to reset cache state. */
+export function clearRenderCaches(): void {
+	renderMarkdownCache.clear();
+	highlightCodeCache.clear();
+	highlightDiffOpsCache.clear();
+}
+
 async function getMd(): Promise<MarkdownIt> {
 	if (md) return md;
 	md = MarkdownIt({html: true, linkify: true});
@@ -87,8 +130,12 @@ export function looksLikeMarkdown(text: string): boolean {
 
 export async function renderMarkdown(markdown: string): Promise<string> {
 	if (!markdown.trim()) return '';
+	const cached = renderMarkdownCache.get(markdown);
+	if (cached !== undefined) return cached;
 	const instance = await getMd();
-	return instance.render(markdown);
+	const html = instance.render(markdown);
+	renderMarkdownCache.set(markdown, html);
+	return html;
 }
 
 export async function renderInlineMarkdown(text: string): Promise<string> {
@@ -185,10 +232,15 @@ export async function highlightCode(code: string, lang: string): Promise<string>
 	if (!lang) {
 		return `<pre class="shiki" style="overflow-x:auto"><code>${escaped}</code></pre>`;
 	}
+	const cacheKey = `${lang}\0${code}`;
+	const cached = highlightCodeCache.get(cacheKey);
+	if (cached !== undefined) return cached;
 	try {
 		const fence = '```' + lang + '\n' + code + '\n```';
 		const instance = await getMd();
-		return instance.render(fence);
+		const result = instance.render(fence);
+		highlightCodeCache.set(cacheKey, result);
+		return result;
 	} catch {
 		return `<pre class="shiki" style="overflow-x:auto"><code>${escaped}</code></pre>`;
 	}
@@ -214,6 +266,10 @@ export async function highlightDiffOps(ops: readonly DiffOp[], lang: string): Pr
 		return lines.map((line) => line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
 	}
 
+	const cacheKey = `${lang}\0${combined}`;
+	const cached = highlightDiffOpsCache.get(cacheKey);
+	if (cached !== undefined) return cached;
+
 	const highlighted = await highlightCode(combined, lang);
 
 	// Extract the inner content of <span class="line">...</span> elements
@@ -229,6 +285,7 @@ export async function highlightDiffOps(ops: readonly DiffOp[], lang: string): Pr
 		return lines.map((line) => line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
 	}
 
+	highlightDiffOpsCache.set(cacheKey, htmlLines);
 	return htmlLines;
 }
 

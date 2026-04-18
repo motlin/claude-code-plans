@@ -1,4 +1,12 @@
-import {renderMarkdown, computeDiffData, warmup, extractLineNumbers, highlightDiffOps} from '../src/lib/renderer.js';
+import {
+	renderMarkdown,
+	computeDiffData,
+	warmup,
+	extractLineNumbers,
+	highlightDiffOps,
+	highlightCode,
+	clearRenderCaches,
+} from '../src/lib/renderer.js';
 
 beforeAll(async () => {
 	await warmup();
@@ -267,5 +275,64 @@ describe('highlightDiffOps', () => {
 		];
 		const result = await highlightDiffOps(ops, 'typescript');
 		expect(result).toHaveLength(4);
+	});
+});
+
+describe('render caches', () => {
+	beforeEach(() => {
+		clearRenderCaches();
+	});
+
+	it('renderMarkdown returns identical output on repeated calls (cached)', async () => {
+		const input = '# Heading\n\nSome **bold** text and `code`.';
+		const first = await renderMarkdown(input);
+		const second = await renderMarkdown(input);
+		expect(second).toBe(first);
+	});
+
+	it('renderMarkdown is dramatically faster on a cache hit', async () => {
+		const input = '```typescript\nconst x: number = 1;\nfunction f() { return x; }\n```';
+		// Prime cache
+		await renderMarkdown(input);
+		const t0 = performance.now();
+		await renderMarkdown(input);
+		const elapsed = performance.now() - t0;
+		// Cache hits should be effectively instant (<5ms even on slow CI)
+		expect(elapsed).toBeLessThan(5);
+	});
+
+	it('highlightCode returns identical output on repeated calls (cached)', async () => {
+		const code = 'const x: number = 42;\nconsole.log(x);';
+		const first = await highlightCode(code, 'typescript');
+		const second = await highlightCode(code, 'typescript');
+		expect(second).toBe(first);
+	});
+
+	it('highlightCode keys cache by language + content', async () => {
+		const code = 'const x = 1;';
+		const ts = await highlightCode(code, 'typescript');
+		const py = await highlightCode(code, 'python');
+		// Different languages produce different highlight output
+		expect(ts).not.toBe(py);
+	});
+
+	it('highlightDiffOps returns identical output on repeated calls (cached)', async () => {
+		const ops: Array<readonly ['equal' | 'add' | 'remove', string]> = [
+			['equal', 'const x = 1;'],
+			['remove', 'const y = 2;'],
+			['add', 'const y = 3;'],
+		];
+		const first = await highlightDiffOps(ops, 'typescript');
+		const second = await highlightDiffOps(ops, 'typescript');
+		expect(second).toEqual(first);
+	});
+
+	it('clearRenderCaches forces recomputation', async () => {
+		const input = '# Test\n\nContent.';
+		await renderMarkdown(input);
+		clearRenderCaches();
+		// After clearing, the next call must still produce the same output
+		const result = await renderMarkdown(input);
+		expect(result).toContain('<h1>Test</h1>');
 	});
 });
