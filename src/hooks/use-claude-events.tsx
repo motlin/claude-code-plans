@@ -186,7 +186,7 @@ export function applySessionUpdated(queryClient: QueryClient, session: SessionSu
 
 export function applyPlanChanged(queryClient: QueryClient, plan: PlanSummaryPayload): void {
 	queryClient.setQueryData<PlanSummaryPayload[]>(['plans'], (old) => {
-		if (!old) return [plan];
+		if (!old) return old;
 		const index = old.findIndex((p) => p.filename === plan.filename);
 		return index >= 0 ? old.map((p, i) => (i === index ? plan : p)) : [plan, ...old];
 	});

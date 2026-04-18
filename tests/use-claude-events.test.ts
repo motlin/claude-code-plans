@@ -319,12 +319,12 @@ describe('applyPlanChanged', () => {
 		expect(plans?.[0]?.title).toBe('New title');
 	});
 
-	it('seeds the cache with a single plan when it was empty', () => {
+	it('leaves the cache untouched when it was empty', () => {
 		const queryClient = new QueryClient();
 		applyPlanChanged(queryClient, makePlan('first.md'));
 
 		const plans = queryClient.getQueryData<PlanSummaryPayload[]>(['plans']);
-		expect(plans).toEqual([makePlan('first.md')]);
+		expect(plans).toBeUndefined();
 	});
 });
 
