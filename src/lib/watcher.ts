@@ -6,7 +6,6 @@ import {getDb} from './db';
 import {indexFile} from './db/indexer';
 import {listSessionsForProjectFromDb, getTasksForProject} from './db/queries';
 import type {TaskRow} from './db/queries';
-import type {SessionEntry} from './sessions';
 import {extractTitle} from './markdown-utils';
 import {resolveProjectName} from './memory';
 import {
@@ -18,6 +17,7 @@ import {
 	type SseEvent,
 	type TaskSummaryPayload,
 } from './hook-events';
+import {toSessionSummaryPayload} from './session-summary';
 
 // Persist mutable state on globalThis so it survives Vite HMR reloads.
 // Without this, each reload creates fresh module-scoped variables while the
@@ -72,24 +72,6 @@ export function removeClient(controller: ReadableStreamDefaultController): void 
 
 export function getClientCount(): number {
 	return g.__watcherClients!.size;
-}
-
-/**
- * Convert a raw DB SessionEntry into the serialized SessionSummaryPayload
- * shape used by `getSessions` and the session:added/updated/removed events.
- */
-function toSessionSummaryPayload(entry: SessionEntry): SessionSummaryPayload {
-	return {
-		id: entry.id,
-		title: entry.title,
-		summary: entry.summary,
-		mtime: entry.mtime.toISOString(),
-		created: entry.created.toISOString(),
-		project: entry.project,
-		projectName: entry.projectName,
-		messageCount: entry.messageCount,
-		gitBranch: entry.gitBranch,
-	};
 }
 
 function sessionSummariesEqual(a: SessionSummaryPayload, b: SessionSummaryPayload): boolean {

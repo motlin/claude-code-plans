@@ -54,6 +54,10 @@ export function getActiveSessionEntries(): ActiveSessionEntry[] {
 	return [...g.__activeSessionStore!.values()];
 }
 
+export function getActiveSessionEntry(sessionId: string): ActiveSessionEntry | null {
+	return g.__activeSessionStore!.get(sessionId) ?? null;
+}
+
 export function isSessionActiveInStore(sessionId: string): boolean {
 	return g.__activeSessionStore!.has(sessionId);
 }

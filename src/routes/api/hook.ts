@@ -1,7 +1,9 @@
 import {createFileRoute} from '@tanstack/react-router';
-import {HookEventEnvelope, SSE_EVENTS} from '../../lib/hook-events';
+import {HookEventEnvelope} from '../../lib/hook-events';
 import {broadcastTyped} from '../../lib/watcher';
-import {markSessionActive, markSessionEnded, touchSession} from '../../lib/active-session-store';
+import {dispatchHookEvent} from '../../lib/hook-dispatcher';
+import {getActiveSessionEntry, markSessionActive, markSessionEnded, touchSession} from '../../lib/active-session-store';
+import {getDb} from '../../lib/db';
 
 export const Route = createFileRoute('/api/hook')({
 	server: {
@@ -19,67 +21,19 @@ export const Route = createFileRoute('/api/hook')({
 					return Response.json({error: 'Invalid hook event', details: result.error}, {status: 400});
 				}
 
-				const event = result.data;
+				const {index} = getDb();
 
-				switch (event.hook_event_name) {
-					case 'SessionStart': {
-						const meta: {cwd: string; model?: string} = {
-							cwd: event.cwd ?? '',
-						};
-						if (event.model !== undefined) {
-							meta.model = event.model;
-						}
-						markSessionActive(event.session_id, meta);
-						broadcastTyped(SSE_EVENTS.SESSION_START, {
-							sessionId: event.session_id,
-							cwd: event.cwd ?? '',
-							model: event.model ?? '',
-						});
-						break;
-					}
-
-					case 'SessionEnd':
-						markSessionEnded(event.session_id);
-						broadcastTyped(SSE_EVENTS.SESSION_END, {
-							sessionId: event.session_id,
-						});
-						break;
-
-					case 'Stop':
-						touchSession(event.session_id);
-						broadcastTyped(SSE_EVENTS.SESSION_UPDATE, {
-							sessionId: event.session_id,
-						});
-						break;
-
-					case 'PostToolUse': {
-						const filePath = (event.tool_input as Record<string, unknown> | undefined)?.['file_path'];
-						if (typeof filePath === 'string' && filePath.includes('/tasks/')) {
-							broadcastTyped(SSE_EVENTS.TASK_UPDATED, {
-								sessionId: event.session_id,
-								filePath,
-							});
-						}
-						touchSession(event.session_id);
-						break;
-					}
-
-					case 'TaskCompleted':
-						broadcastTyped(SSE_EVENTS.TASK_COMPLETED, {
-							sessionId: event.session_id,
-							taskId: event.task_id ?? '',
-							subject: event.task_subject ?? '',
-						});
-						touchSession(event.session_id);
-						break;
-
-					case 'WorktreeCreate':
-						broadcastTyped(SSE_EVENTS.WORKTREE_CREATED, {
-							sessionId: event.session_id,
-							name: event.name ?? '',
-						});
-						break;
-				}
+				dispatchHookEvent({
+					event: result.data,
+					db: index,
+					store: {
+						markSessionActive,
+						markSessionEnded,
+						touchSession,
+						getActiveSessionEntry,
+					},
+					broadcast: broadcastTyped,
+				});
 
 				return Response.json({ok: true});
 			},
