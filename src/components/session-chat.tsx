@@ -183,27 +183,34 @@ function TruncatedContent({children}: {children: React.ReactNode}) {
 	}
 
 	return (
-		<div className="relative">
-			<div
-				ref={measureRef}
-				className={isTruncated ? 'max-h-[200px] overflow-hidden' : ''}
-			>
-				{children}
-			</div>
-			{isTruncated && (
-				<>
-					<div
-						className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
-						style={{background: 'linear-gradient(to bottom, transparent, var(--bg-100))'}}
-					/>
+		<div>
+			<div className="relative">
+				<div
+					ref={measureRef}
+					className={isTruncated ? 'max-h-[200px] overflow-hidden' : ''}
+				>
+					{children}
+				</div>
+				{isTruncated && (
 					<button
 						type="button"
 						onClick={() => setShowFull(true)}
-						className="text-xs text-accent-100 hover:underline cursor-pointer mt-1"
+						aria-label="Show more"
+						className="absolute inset-x-0 bottom-0 h-16 cursor-pointer"
+						style={{background: 'linear-gradient(to bottom, transparent, var(--bg-100))'}}
+					/>
+				)}
+			</div>
+			{isTruncated && (
+				<div className="mt-1 flex">
+					<button
+						type="button"
+						onClick={() => setShowFull(true)}
+						className="text-xs font-medium text-accent-100 hover:text-accent-000 cursor-pointer rounded-full bg-bg-200 px-2 py-0.5"
 					>
 						Show more
 					</button>
-				</>
+				</div>
 			)}
 		</div>
 	);
