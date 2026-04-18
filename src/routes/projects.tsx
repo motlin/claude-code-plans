@@ -1,9 +1,10 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {getProjects} from '../lib/server-fns';
+import {useSuspenseQuery} from '@tanstack/react-query';
+import {projectsQueryOptions} from '../queries/projects';
 
 export const Route = createFileRoute('/projects')({
 	component: ProjectsPage,
-	loader: () => getProjects(),
+	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(projectsQueryOptions),
 	head: () => ({
 		meta: [{title: 'Projects'}],
 	}),
@@ -18,7 +19,7 @@ function formatDate(iso: string): string {
 }
 
 function ProjectsPage() {
-	const projects = Route.useLoaderData();
+	const {data: projects} = useSuspenseQuery(projectsQueryOptions);
 
 	return (
 		<div>

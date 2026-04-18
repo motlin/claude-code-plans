@@ -1,44 +1,17 @@
 import {Link} from '@tanstack/react-router';
+import {useQuery} from '@tanstack/react-query';
 import {ChevronRight} from 'lucide-react';
 import {useEffect, useState} from 'react';
-import {getProjects, getProject} from '../../../lib/server-fns';
-import {useSectionRefreshKey} from '../../../hooks/use-claude-events';
-import {getCached, setCache} from '../../../lib/sidebar-cache';
+import {getProject} from '../../../lib/server-fns';
+import {projectsQueryOptions} from '../../../queries/projects';
 import type {ProjectDetail} from '../types';
 import {LoadingBars} from '../primitives/LoadingBars';
 
 export function ProjectsSubList({activeItemId}: {activeItemId: string | null}) {
-	const refreshKey = useSectionRefreshKey('projects');
-	const [projects, setProjects] = useState<Array<{
-		id: string;
-		name: string;
-		sessionCount: number;
-		memoryCount: number;
-	}> | null>(null);
+	const {data: projects} = useQuery(projectsQueryOptions);
 	const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 	const [projectDetails, setProjectDetails] = useState<Map<string, ProjectDetail>>(new Map());
 	const [loadingDetails, setLoadingDetails] = useState<Set<string>>(new Set());
-
-	useEffect(() => {
-		let cancelled = false;
-		async function fetchProjects() {
-			type ProjectList = typeof projects;
-			const cached = getCached<NonNullable<ProjectList>>('sidebar:projects');
-			if (cached) {
-				if (!cancelled) setProjects(cached);
-				return;
-			}
-			const result = await getProjects();
-			if (!cancelled) {
-				setProjects(result);
-				setCache('sidebar:projects', result);
-			}
-		}
-		fetchProjects();
-		return () => {
-			cancelled = true;
-		};
-	}, [refreshKey]);
 
 	// Auto-expand/collapse projects based on active project
 	useEffect(() => {
@@ -120,7 +93,7 @@ export function ProjectsSubList({activeItemId}: {activeItemId: string | null}) {
 		}
 	}
 
-	if (projects === null) {
+	if (projects === undefined) {
 		return (
 			<div className="pl-10">
 				<LoadingBars />
