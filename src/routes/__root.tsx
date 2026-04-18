@@ -1,5 +1,7 @@
-import {Outlet, createRootRoute, HeadContent, Scripts, useRouter} from '@tanstack/react-router';
+import {Outlet, createRootRouteWithContext, HeadContent, Scripts, useRouter} from '@tanstack/react-router';
 import type {ErrorComponentProps} from '@tanstack/react-router';
+import {QueryClientProvider, type QueryClient} from '@tanstack/react-query';
+import {ReactQueryDevtools} from '@tanstack/react-query-devtools';
 import {useEffect, useState, type ReactNode} from 'react';
 import {ThemeProvider} from '../components/theme-provider';
 import {ModeToggle} from '../components/mode-toggle';
@@ -10,7 +12,7 @@ import {IndexingBanner} from '../components/indexing-banner';
 import {ClaudeEventsProvider} from '../hooks/use-claude-events';
 import appCss from '../styles/globals.css?url';
 
-export const Route = createRootRoute({
+export const Route = createRootRouteWithContext<{queryClient: QueryClient}>()({
 	head: () => ({
 		meta: [{charSet: 'utf-8'}, {name: 'viewport', content: 'width=device-width, initial-scale=1'}],
 		links: [
@@ -77,13 +79,17 @@ function MobileSidebar({open, onClose}: {open: boolean; onClose: () => void}) {
 }
 
 function RootComponent() {
+	const {queryClient} = Route.useRouteContext();
 	return (
 		<RootDocument>
-			<ThemeProvider>
-				<ClaudeEventsProvider>
-					<RootLayout />
-				</ClaudeEventsProvider>
-			</ThemeProvider>
+			<QueryClientProvider client={queryClient}>
+				<ThemeProvider>
+					<ClaudeEventsProvider>
+						<RootLayout />
+					</ClaudeEventsProvider>
+				</ThemeProvider>
+				{import.meta.env.DEV ? <ReactQueryDevtools buttonPosition="bottom-left" /> : null}
+			</QueryClientProvider>
 		</RootDocument>
 	);
 }
