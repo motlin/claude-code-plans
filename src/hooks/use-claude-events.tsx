@@ -1,5 +1,12 @@
 import {createContext, useCallback, useContext, useEffect, useReducer, useState, type ReactNode} from 'react';
-import {SSE_EVENTS} from '../lib/hook-events';
+import {useQueryClient, type QueryClient} from '@tanstack/react-query';
+import {
+	DOMAIN_EVENTS,
+	SSE_EVENTS,
+	type MemorySummaryPayload,
+	type PlanSummaryPayload,
+	type SessionSummaryPayload,
+} from '../lib/hook-events';
 
 // ---------------------------------------------------------------------------
 // State types
@@ -32,6 +39,10 @@ export type ClaudeEventsAction =
 
 // ---------------------------------------------------------------------------
 // Reducer (exported for testing)
+//
+// After the TanStack Query migration the reducer only tracks the activeSessions
+// Map — everything else (session lists, plans, memories, tasks) is managed by
+// the Query cache and patched directly from the SSE listener.
 // ---------------------------------------------------------------------------
 
 export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEventsAction): ClaudeEventsState {
@@ -96,10 +107,161 @@ export function useIsSessionActive(sessionId: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// SSE event types we listen for (lifecycle events feeding the reducer)
+// Cache-patching helpers (exported for testing)
+//
+// Each handler applies a single domain event to the TanStack Query cache in
+// place with setQueryData. Data shapes mirror the server functions in
+// src/lib/server-fns.ts (groups of {project, projectName, entries}).
+// ---------------------------------------------------------------------------
+
+type SessionsGroup = {project: string; projectName: string; sessions: SessionSummaryPayload[]};
+type MemoryItem = {filename: string; title: string; mtime: string; project: string};
+type MemoriesGroup = {project: string; projectName: string; memories: MemoryItem[]};
+type PlansGroup = {projectId: string; projectName: string; plans: PlanSummaryPayload[]};
+
+export function applySessionAdded(queryClient: QueryClient, session: SessionSummaryPayload): void {
+	queryClient.setQueryData<SessionsGroup[]>(['sessions'], (old) => {
+		if (!old) return old;
+		const groupIndex = old.findIndex((g) => g.project === session.project);
+		if (groupIndex === -1) {
+			return [...old, {project: session.project, projectName: session.projectName, sessions: [session]}];
+		}
+		return old.map((group, i) => {
+			if (i !== groupIndex) return group;
+			// If the session already exists, replace it; otherwise prepend (newest first).
+			const existingIndex = group.sessions.findIndex((s) => s.id === session.id);
+			if (existingIndex >= 0) {
+				return {
+					...group,
+					sessions: group.sessions.map((s, j) => (j === existingIndex ? session : s)),
+				};
+			}
+			return {...group, sessions: [session, ...group.sessions]};
+		});
+	});
+	// Project session counts changed.
+	void queryClient.invalidateQueries({queryKey: ['projects']});
+	void queryClient.invalidateQueries({queryKey: ['project', session.project]});
+}
+
+export function applySessionRemoved(queryClient: QueryClient, sessionId: string, projectDir: string): void {
+	queryClient.setQueryData<SessionsGroup[]>(['sessions'], (old) => {
+		if (!old) return old;
+		return old
+			.map((group) =>
+				group.project === projectDir
+					? {...group, sessions: group.sessions.filter((s) => s.id !== sessionId)}
+					: group,
+			)
+			.filter((group) => group.sessions.length > 0);
+	});
+	queryClient.setQueryData<SessionSummaryPayload[]>(['starred-sessions'], (old) =>
+		old ? old.filter((s) => s.id !== sessionId) : old,
+	);
+	queryClient.removeQueries({queryKey: ['session', sessionId, 'detail']});
+	void queryClient.invalidateQueries({queryKey: ['projects']});
+	void queryClient.invalidateQueries({queryKey: ['project', projectDir]});
+}
+
+export function applySessionUpdated(queryClient: QueryClient, session: SessionSummaryPayload): void {
+	queryClient.setQueryData<SessionsGroup[]>(['sessions'], (old) => {
+		if (!old) return old;
+		return old.map((group) =>
+			group.project === session.project
+				? {
+						...group,
+						sessions: group.sessions.map((s) => (s.id === session.id ? session : s)),
+					}
+				: group,
+		);
+	});
+	queryClient.setQueryData<SessionSummaryPayload[]>(['starred-sessions'], (old) =>
+		old ? old.map((s) => (s.id === session.id ? session : s)) : old,
+	);
+}
+
+export function applyPlanChanged(queryClient: QueryClient, plan: PlanSummaryPayload): void {
+	queryClient.setQueryData<PlanSummaryPayload[]>(['plans'], (old) => {
+		if (!old) return [plan];
+		const index = old.findIndex((p) => p.filename === plan.filename);
+		return index >= 0 ? old.map((p, i) => (i === index ? plan : p)) : [plan, ...old];
+	});
+	// Grouped plans have links we don't know from the event alone — invalidate.
+	void queryClient.invalidateQueries({queryKey: ['plans', 'grouped']});
+}
+
+export function applyPlanRemoved(queryClient: QueryClient, filename: string): void {
+	queryClient.setQueryData<PlanSummaryPayload[]>(['plans'], (old) =>
+		old ? old.filter((p) => p.filename !== filename) : old,
+	);
+	queryClient.setQueryData<PlansGroup[]>(['plans', 'grouped'], (old) => {
+		if (!old) return old;
+		return old
+			.map((group) => ({...group, plans: group.plans.filter((p) => p.filename !== filename)}))
+			.filter((group) => group.plans.length > 0);
+	});
+	queryClient.removeQueries({queryKey: ['plan', filename, 'links']});
+}
+
+export function applyMemoryChanged(queryClient: QueryClient, memory: MemorySummaryPayload): void {
+	queryClient.setQueryData<MemoriesGroup[]>(['memories'], (old) => {
+		if (!old) return old;
+		const summary: MemoryItem = {
+			filename: memory.filename,
+			title: memory.title,
+			mtime: memory.mtime,
+			project: memory.project,
+		};
+		const groupIndex = old.findIndex((g) => g.project === memory.project);
+		if (groupIndex === -1) {
+			return [...old, {project: memory.project, projectName: memory.projectName, memories: [summary]}];
+		}
+		return old.map((group, i) => {
+			if (i !== groupIndex) return group;
+			const existingIndex = group.memories.findIndex((m) => m.filename === memory.filename);
+			if (existingIndex >= 0) {
+				return {
+					...group,
+					memories: group.memories.map((m, j) => (j === existingIndex ? summary : m)),
+				};
+			}
+			return {...group, memories: [summary, ...group.memories]};
+		});
+	});
+}
+
+export function applyTaskChanged(queryClient: QueryClient, projectDir: string): void {
+	// Task lists include server-rendered HTML (subjectHtml, descriptionHtml) that
+	// the SSE delta does not carry — invalidate the affected queries instead of
+	// patching partial data into the cache.
+	void queryClient.invalidateQueries({queryKey: ['tasks']});
+	void queryClient.invalidateQueries({queryKey: ['tasks', 'project', projectDir]});
+}
+
+function invalidateActiveSessions(queryClient: QueryClient): void {
+	// The reducer owns activeSessions state; we only invalidate the query cache
+	// here so components using the active-sessions query pick up changes.
+	void queryClient.invalidateQueries({queryKey: ['active-sessions']});
+}
+
+// ---------------------------------------------------------------------------
+// SSE event types we subscribe to
 // ---------------------------------------------------------------------------
 
 const LIFECYCLE_EVENT_TYPES = [SSE_EVENTS.SESSION_START, SSE_EVENTS.SESSION_END, SSE_EVENTS.SESSION_UPDATE] as const;
+
+const DOMAIN_EVENT_TYPES = [
+	DOMAIN_EVENTS.SESSION_ADDED,
+	DOMAIN_EVENTS.SESSION_REMOVED,
+	DOMAIN_EVENTS.SESSION_UPDATED,
+	DOMAIN_EVENTS.SESSION_STARTED,
+	DOMAIN_EVENTS.SESSION_ENDED,
+	DOMAIN_EVENTS.PLAN_CHANGED,
+	DOMAIN_EVENTS.PLAN_REMOVED,
+	DOMAIN_EVENTS.MEMORY_CHANGED,
+	DOMAIN_EVENTS.TASK_CHANGED,
+	DOMAIN_EVENTS.TASK_COMPLETED,
+] as const;
 
 // ---------------------------------------------------------------------------
 // Provider
@@ -110,10 +272,12 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 		activeSessions: new Map<string, ActiveSessionInfo>(),
 	}));
 
+	const queryClient = useQueryClient();
+
 	useEffect(() => {
 		const es = new EventSource('/api/events');
 
-		function handleEvent(e: Event) {
+		function handleLifecycleEvent(e: Event) {
 			const me = e as MessageEvent;
 			let data: Record<string, unknown> = {};
 			try {
@@ -129,12 +293,81 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 			});
 		}
 
+		function handleDomainEvent(e: Event) {
+			const me = e as MessageEvent;
+			let data: Record<string, unknown>;
+			try {
+				data = JSON.parse(me.data) as Record<string, unknown>;
+			} catch {
+				return;
+			}
+
+			switch (e.type) {
+				case DOMAIN_EVENTS.SESSION_ADDED: {
+					const session = data['session'] as SessionSummaryPayload | undefined;
+					if (session) applySessionAdded(queryClient, session);
+					break;
+				}
+				case DOMAIN_EVENTS.SESSION_REMOVED: {
+					const sessionId = data['sessionId'];
+					const projectDir = data['projectDir'];
+					if (typeof sessionId === 'string' && typeof projectDir === 'string') {
+						applySessionRemoved(queryClient, sessionId, projectDir);
+					}
+					break;
+				}
+				case DOMAIN_EVENTS.SESSION_UPDATED: {
+					const session = data['session'] as SessionSummaryPayload | undefined;
+					if (session) applySessionUpdated(queryClient, session);
+					break;
+				}
+				case DOMAIN_EVENTS.SESSION_STARTED:
+				case DOMAIN_EVENTS.SESSION_ENDED: {
+					invalidateActiveSessions(queryClient);
+					break;
+				}
+				case DOMAIN_EVENTS.PLAN_CHANGED: {
+					const plan = data['plan'] as PlanSummaryPayload | undefined;
+					if (plan) applyPlanChanged(queryClient, plan);
+					break;
+				}
+				case DOMAIN_EVENTS.PLAN_REMOVED: {
+					const filename = data['filename'];
+					if (typeof filename === 'string') applyPlanRemoved(queryClient, filename);
+					break;
+				}
+				case DOMAIN_EVENTS.MEMORY_CHANGED: {
+					const memory = data['memory'] as MemorySummaryPayload | undefined;
+					if (memory) applyMemoryChanged(queryClient, memory);
+					break;
+				}
+				case DOMAIN_EVENTS.TASK_CHANGED: {
+					const task = data['task'] as {projectDir?: string} | undefined;
+					if (task && typeof task.projectDir === 'string') {
+						applyTaskChanged(queryClient, task.projectDir);
+					} else {
+						void queryClient.invalidateQueries({queryKey: ['tasks']});
+					}
+					break;
+				}
+				case DOMAIN_EVENTS.TASK_COMPLETED: {
+					void queryClient.invalidateQueries({queryKey: ['tasks']});
+					break;
+				}
+				default:
+					break;
+			}
+		}
+
 		for (const eventType of LIFECYCLE_EVENT_TYPES) {
-			es.addEventListener(eventType, handleEvent);
+			es.addEventListener(eventType, handleLifecycleEvent);
+		}
+		for (const eventType of DOMAIN_EVENT_TYPES) {
+			es.addEventListener(eventType, handleDomainEvent);
 		}
 
 		return () => es.close();
-	}, []);
+	}, [queryClient]);
 
 	return <ClaudeEventsContext.Provider value={state}>{children}</ClaudeEventsContext.Provider>;
 }
