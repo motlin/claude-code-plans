@@ -83,7 +83,6 @@ export function dispatchHookEvent({event, db, store, broadcast}: DispatchHookEve
 
 		case 'TaskCompleted': {
 			broadcast(DOMAIN_EVENTS.TASK_COMPLETED, {
-				sessionId: event.session_id,
 				taskId: event.task_id ?? '',
 				subject: event.task_subject ?? '',
 			});
