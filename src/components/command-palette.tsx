@@ -1,8 +1,9 @@
 import {Command} from 'cmdk';
 import {useNavigate} from '@tanstack/react-router';
-import {useEffect, useState} from 'react';
+import {useMemo} from 'react';
+import {useQuery} from '@tanstack/react-query';
 import {FileText, Brain, MessageSquare, FolderOpen, Search, Star, Home} from 'lucide-react';
-import {getSessions} from '../lib/server-fns';
+import {sessionsQueryOptions} from '../queries/sessions';
 
 interface RecentSession {
 	id: string;
@@ -26,28 +27,18 @@ function formatRelativeTime(mtime: string): string {
 
 export function CommandPalette({open, onOpenChange}: {open: boolean; onOpenChange: (open: boolean) => void}) {
 	const navigate = useNavigate();
-	const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
+	// Use the shared sessions query so the palette shares cache with routes and sidebar.
+	// `enabled: open` avoids fetching until the palette is opened.
+	const {data: groups} = useQuery({...sessionsQueryOptions, enabled: open});
 
-	useEffect(() => {
-		if (!open) return;
-
-		let cancelled = false;
-		async function loadRecent() {
-			const groups = await getSessions();
-			const all = groups
-				.flatMap((g) => g.sessions)
-				.sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime())
-				.slice(0, 8);
-			if (!cancelled) {
-				setRecentSessions(all.map((s) => ({id: s.id, title: s.title, mtime: s.mtime})));
-			}
-		}
-
-		loadRecent();
-		return () => {
-			cancelled = true;
-		};
-	}, [open]);
+	const recentSessions = useMemo<RecentSession[]>(() => {
+		if (!groups) return [];
+		return groups
+			.flatMap((g) => g.sessions)
+			.sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime())
+			.slice(0, 8)
+			.map((s) => ({id: s.id, title: s.title, mtime: s.mtime}));
+	}, [groups]);
 
 	function select(callback: () => void) {
 		onOpenChange(false);
