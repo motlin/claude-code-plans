@@ -5,7 +5,7 @@ default:
 
 ci := env("CI", "")
 _ci := if ci != "" { ":ci" } else { "" }
-port := "3000"
+port := "7526"
 
 # `npm install` or `npm ci`
 [group('setup')]

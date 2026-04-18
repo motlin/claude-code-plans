@@ -47,7 +47,7 @@ npm install
 npm run dev
 ```
 
-The server starts at `http://localhost:3000` by default.
+The server starts at `http://localhost:7526` by default (`7526` = "PLAN" on a phone dialpad).
 
 ## Production
 
@@ -65,7 +65,7 @@ just start         # build + run production server
 just dev           # run dev server with hot reload
 ```
 
-Set `PORT` to change the port (default: `3000`).
+Set `PORT` to change the port (default: `7526`).
 
 ### launchd (macOS)
 

@@ -19,7 +19,7 @@ describe('generateHooksConfig', () => {
 		expect(typeof config.hooks).toBe('object');
 	});
 
-	it('uses default port 3000', () => {
+	it('uses default port', () => {
 		const config = generateHooksConfig();
 		const json = JSON.stringify(config);
 		expect(json).toContain(`localhost:${DEFAULT_HOOK_PORT}`);
@@ -29,7 +29,7 @@ describe('generateHooksConfig', () => {
 		const config = generateHooksConfig({port: 9000});
 		const json = JSON.stringify(config);
 		expect(json).toContain('localhost:9000');
-		expect(json).not.toContain('localhost:3000');
+		expect(json).not.toContain(`localhost:${DEFAULT_HOOK_PORT}`);
 	});
 
 	it('generates a hook entry for each supported event', () => {
