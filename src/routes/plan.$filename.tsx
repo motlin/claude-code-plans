@@ -10,6 +10,7 @@ import {MarkdownArticle} from '../components/markdown-article';
 import {getPlanLinks} from '../lib/server-fns';
 import {ArrowLeft, Pencil, FolderOpen, MessageSquare, Clock} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
+import {DebugLink} from '../components/debug-link';
 
 const PLANS_DIR = join(homedir(), '.claude', 'plans');
 
@@ -100,6 +101,10 @@ function PlanPage() {
 					<Pencil className="h-3 w-3" />
 					Edit
 				</Link>
+				<DebugLink
+					kind="plan"
+					relativePath={Route.useParams().filename}
+				/>
 			</DetailTopBar>
 			{data.mtime && (
 				<div className="mt-3 flex items-center gap-1.5 text-xs text-text-500">

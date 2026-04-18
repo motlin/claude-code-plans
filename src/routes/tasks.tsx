@@ -5,6 +5,7 @@ import {ChevronRight, CheckCircle, Circle, Ban, List, GitBranch} from 'lucide-re
 import styles from '../components/markdown-article.module.css';
 import {tasksQueryOptions} from '../queries/tasks';
 import {TaskDependencyGraph} from '../components/task-dependency-graph';
+import {DebugLink} from '../components/debug-link';
 
 export const Route = createFileRoute('/tasks')({
 	component: TasksPage,
@@ -117,9 +118,17 @@ function TasksPage() {
 													/>
 												)}
 												<div className="min-w-0 flex-1">
-													<div className="text-sm text-text-100">
-														#{task.taskId}{' '}
-														<span dangerouslySetInnerHTML={{__html: task.subjectHtml}} />
+													<div className="text-sm text-text-100 flex items-center gap-1.5">
+														<span>
+															#{task.taskId}{' '}
+															<span
+																dangerouslySetInnerHTML={{__html: task.subjectHtml}}
+															/>
+														</span>
+														<DebugLink
+															kind="task"
+															relativePath={`${group.projectDir}/${task.taskId}.json`}
+														/>
 													</div>
 													{task.description && task.description !== task.subject && (
 														<div

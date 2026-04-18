@@ -9,6 +9,7 @@ import {extractTitleFromContent} from '../lib/markdown-utils';
 import {MarkdownArticle} from '../components/markdown-article';
 import {ArrowLeft, Pencil, Trash2} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
+import {DebugLink} from '../components/debug-link';
 import {useCallback, useState} from 'react';
 
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
@@ -111,6 +112,10 @@ function MemoryPage() {
 					<Pencil className="h-3 w-3" />
 					Edit
 				</Link>
+				<DebugLink
+					kind="memory"
+					relativePath={`${project}/memory/${filename}`}
+				/>
 				{confirmingDelete ? (
 					<span className="inline-flex items-center gap-1.5 text-xs">
 						<span className="text-danger-000">Delete this memory?</span>

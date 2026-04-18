@@ -1,6 +1,7 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
 import {useSuspenseQuery} from '@tanstack/react-query';
 import {plansQueryOptions} from '../queries/plans';
+import {DebugLink} from '../components/debug-link';
 
 export const Route = createFileRoute('/plans')({
 	component: PlansPage,
@@ -39,7 +40,10 @@ function PlansPage() {
 					{plans.map((plan, index) => {
 						const ageHours = (now - new Date(plan.mtime).getTime()) / 3600000;
 						return (
-							<li key={plan.filename}>
+							<li
+								key={plan.filename}
+								className="relative"
+							>
 								<Link
 									to="/plan/$filename"
 									params={{filename: plan.filename}}
@@ -58,6 +62,11 @@ function PlansPage() {
 										{formatDate(plan.mtime)}
 									</span>
 								</Link>
+								<DebugLink
+									kind="plan"
+									relativePath={plan.filename}
+									className="absolute right-1 top-1"
+								/>
 							</li>
 						);
 					})}

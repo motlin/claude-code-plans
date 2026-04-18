@@ -1,6 +1,7 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
 import {useSuspenseQuery} from '@tanstack/react-query';
 import {memoriesQueryOptions} from '../queries/memories';
+import {DebugLink} from '../components/debug-link';
 
 export const Route = createFileRoute('/memories')({
 	component: MemoriesPage,
@@ -41,7 +42,10 @@ function MemoriesPage() {
 						</h2>
 						<ul className="mt-2 space-y-2">
 							{group.memories.map((mem) => (
-								<li key={`${mem.project}/${mem.filename}`}>
+								<li
+									key={`${mem.project}/${mem.filename}`}
+									className="relative"
+								>
 									<Link
 										to="/memory/$project/$filename"
 										params={{project: mem.project, filename: mem.filename}}
@@ -52,6 +56,11 @@ function MemoriesPage() {
 											{formatDate(mem.mtime)}
 										</span>
 									</Link>
+									<DebugLink
+										kind="memory"
+										relativePath={`${mem.project}/memory/${mem.filename}`}
+										className="absolute right-1 top-1"
+									/>
 								</li>
 							))}
 						</ul>
