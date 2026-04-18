@@ -1,6 +1,17 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
 import {useSuspenseQuery} from '@tanstack/react-query';
-import {ArrowLeft, CheckCircle, Circle} from 'lucide-react';
+import {
+	ArrowLeft,
+	ArrowRight,
+	Brain,
+	Bot,
+	CheckSquare,
+	CheckCircle,
+	Circle,
+	FileText,
+	MessageSquare,
+} from 'lucide-react';
+import type {ComponentType, SVGProps} from 'react';
 import {projectQueryOptions} from '../queries/projects';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {SubagentTree} from '../components/subagent-tree';
@@ -21,6 +32,37 @@ function formatDate(iso: string): string {
 		hour: '2-digit',
 		minute: '2-digit',
 	});
+}
+
+interface NavCardProps {
+	to: string;
+	params: {id: string};
+	icon: ComponentType<SVGProps<SVGSVGElement>>;
+	label: string;
+	count: number;
+	hint?: string;
+}
+
+function NavCard({to, params, icon: Icon, label, count, hint}: NavCardProps) {
+	return (
+		<Link
+			to={to}
+			params={params}
+			className="group flex items-center justify-between rounded-md border border-border-300/15 px-4 py-3 transition-colors hover:bg-bg-200/50"
+		>
+			<div className="flex items-center gap-3">
+				<Icon className="h-4 w-4 text-text-500" />
+				<div>
+					<div className="text-sm font-medium">{label}</div>
+					{hint && <div className="text-xs text-text-500">{hint}</div>}
+				</div>
+			</div>
+			<div className="flex items-center gap-2 text-text-500">
+				<span className="text-sm">{count}</span>
+				<ArrowRight className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-100" />
+			</div>
+		</Link>
+	);
 }
 
 function ProjectPage() {
@@ -45,6 +87,16 @@ function ProjectPage() {
 		);
 	}
 
+	const planCount = new Set(data.plans.map((p) => p.filename)).size;
+	const taskHint =
+		data.todoCounts.inProgress > 0
+			? `${data.todoCounts.inProgress} in progress, ${data.todoCounts.pending} pending`
+			: data.todoCounts.pending > 0
+				? `${data.todoCounts.pending} pending`
+				: data.todoCounts.completed > 0
+					? `${data.todoCounts.completed} completed`
+					: undefined;
+
 	return (
 		<div>
 			<DetailTopBar>
@@ -59,6 +111,48 @@ function ProjectPage() {
 
 			<h1 className="text-lg font-semibold">{data.name}</h1>
 			{data.projectPath && <p className="mt-0.5 text-xs text-text-500">{data.projectPath}</p>}
+
+			{/* Sub-route nav cards */}
+			<div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
+				<NavCard
+					to="/project/$id_/sessions"
+					params={{id: data.id}}
+					icon={MessageSquare}
+					label="Sessions"
+					count={data.sessions.length}
+				/>
+				<NavCard
+					to="/project/$id_/tasks"
+					params={{id: data.id}}
+					icon={CheckSquare}
+					label="Tasks"
+					count={data.todoCounts.total}
+					{...(taskHint ? {hint: taskHint} : {})}
+				/>
+				<NavCard
+					to="/project/$id_/memories"
+					params={{id: data.id}}
+					icon={Brain}
+					label="Memories"
+					count={data.memories.length}
+				/>
+				<NavCard
+					to="/project/$id_/plans"
+					params={{id: data.id}}
+					icon={FileText}
+					label="Plans"
+					count={planCount}
+				/>
+				{data.subagentCount > 0 && (
+					<NavCard
+						to="/project/$id_/subagents"
+						params={{id: data.id}}
+						icon={Bot}
+						label="Subagents"
+						count={data.subagentCount}
+					/>
+				)}
+			</div>
 
 			{/* Sessions */}
 			<section className="mt-8">
