@@ -30,6 +30,7 @@ import {ArrowLeft, ArrowUp, ArrowDown, Copy, Terminal, GitFork, Download} from '
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {SubagentTree} from '../components/subagent-tree';
 import {SubagentGantt} from '../components/subagent-gantt';
+import {SubagentSequence} from '../components/subagent-sequence';
 
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
@@ -378,7 +379,7 @@ function SessionPage() {
 	const [generating, setGenerating] = useState(false);
 	const [showThinking, setShowThinking] = useDisplayToggle('ccp-show-thinking', true);
 	const [showTools, setShowTools] = useDisplayToggle('ccp-show-tools', true);
-	const [subagentView, setSubagentView] = useState<'tree' | 'gantt'>('tree');
+	const [subagentView, setSubagentView] = useState<'tree' | 'gantt' | 'sequence'>('tree');
 	const chatStream = useChatStream();
 	const prevSessionIdRef = useRef(params.id);
 
@@ -544,14 +545,28 @@ function SessionPage() {
 						>
 							Gantt
 						</button>
+						<button
+							type="button"
+							onClick={() => setSubagentView('sequence')}
+							aria-pressed={subagentView === 'sequence'}
+							className={`rounded px-1.5 py-0.5 ${
+								subagentView === 'sequence'
+									? 'bg-accent-000/15 text-accent-100'
+									: 'hover:bg-bg-200/50 text-text-500'
+							}`}
+						>
+							Sequence
+						</button>
 					</div>
 					{subagentView === 'tree' ? (
 						<SubagentTree
 							tree={data.subagentTree}
 							totalCount={data.subagentCount}
 						/>
-					) : (
+					) : subagentView === 'gantt' ? (
 						<SubagentGantt agents={data.subagents} />
+					) : (
+						<SubagentSequence agents={data.subagents} />
 					)}
 				</div>
 			)}
