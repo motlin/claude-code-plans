@@ -1,5 +1,6 @@
 import {createFileRoute, Link, useNavigate} from '@tanstack/react-router';
 import {createServerFn} from '@tanstack/react-start';
+import {queryOptions, useSuspenseQuery} from '@tanstack/react-query';
 import {z} from 'zod';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
@@ -39,17 +40,25 @@ const saveMemory = createServerFn({method: 'POST'})
 		return {html, title, projectName};
 	});
 
+const memoryRawQueryOptions = (project: string, filename: string) =>
+	queryOptions({
+		queryKey: ['memory', project, filename, 'raw'] as const,
+		queryFn: () => getMemoryRaw({data: {project, filename}}),
+		staleTime: 30_000,
+	});
+
 export const Route = createFileRoute('/memory/$project/$filename_/edit')({
 	component: MemoryEditPage,
-	loader: ({params}) => getMemoryRaw({data: {project: params.project, filename: params.filename}}),
+	loader: ({context: {queryClient}, params}) =>
+		queryClient.ensureQueryData(memoryRawQueryOptions(params.project, params.filename)),
 	head: ({loaderData}) => ({
 		meta: [{title: loaderData ? `Edit: ${loaderData.title}` : 'Memory Not Found'}],
 	}),
 });
 
 function MemoryEditPage() {
-	const data = Route.useLoaderData();
 	const {project, filename} = Route.useParams();
+	const {data} = useSuspenseQuery(memoryRawQueryOptions(project, filename));
 
 	const initialMarkdown = data?.markdown ?? '';
 	const draftRef = useRef(initialMarkdown);

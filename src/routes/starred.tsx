@@ -1,10 +1,12 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
+import {useSuspenseQuery} from '@tanstack/react-query';
 import {useState} from 'react';
-import {getStarredSessionList, toggleSessionStar} from '../lib/server-fns';
+import {toggleSessionStar} from '../lib/server-fns';
+import {starredSessionsQueryOptions} from '../queries/starred';
 
 export const Route = createFileRoute('/starred')({
 	component: StarredPage,
-	loader: () => getStarredSessionList(),
+	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(starredSessionsQueryOptions),
 	head: () => ({
 		meta: [{title: 'Starred Sessions'}],
 	}),
@@ -21,7 +23,7 @@ function formatDate(iso: string): string {
 }
 
 function StarredPage() {
-	const initialSessions = Route.useLoaderData();
+	const {data: initialSessions} = useSuspenseQuery(starredSessionsQueryOptions);
 	const [sessions, setSessions] = useState(initialSessions);
 
 	async function handleUnstar(sessionId: string) {

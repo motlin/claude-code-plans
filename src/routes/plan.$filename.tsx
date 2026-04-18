@@ -1,5 +1,6 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
 import {createServerFn} from '@tanstack/react-start';
+import {queryOptions, useSuspenseQuery} from '@tanstack/react-query';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {readPlan, getPlanMtime} from '../lib/plans';
@@ -35,16 +36,24 @@ function formatDate(iso: string): string {
 	});
 }
 
+const planDetailQueryOptions = (filename: string) =>
+	queryOptions({
+		queryKey: ['plan', filename, 'detail'] as const,
+		queryFn: () => getPlan({data: filename}),
+		staleTime: 30_000,
+	});
+
 export const Route = createFileRoute('/plan/$filename')({
 	component: PlanPage,
-	loader: ({params}) => getPlan({data: params.filename}),
+	loader: ({context: {queryClient}, params}) => queryClient.ensureQueryData(planDetailQueryOptions(params.filename)),
 	head: ({loaderData}) => ({
 		meta: [{title: loaderData?.title ?? 'Plan Not Found'}],
 	}),
 });
 
 function PlanPage() {
-	const loaderData = Route.useLoaderData();
+	const {filename} = Route.useParams();
+	const {data: loaderData} = useSuspenseQuery(planDetailQueryOptions(filename));
 	const state = Route.useMatch({select: (m) => (m as unknown as {state?: {html?: string; title?: string}}).state});
 	const data = state?.html
 		? {
@@ -85,7 +94,7 @@ function PlanPage() {
 				</Link>
 				<Link
 					to="/plan/$filename/edit"
-					params={{filename: Route.useParams().filename}}
+					params={{filename}}
 					className={pillStyles.outline}
 				>
 					<Pencil className="h-3 w-3" />

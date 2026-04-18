@@ -1,6 +1,7 @@
 import {createFileRoute, Link, useRouter} from '@tanstack/react-router';
 import type {ErrorComponentProps} from '@tanstack/react-router';
 import {createServerFn} from '@tanstack/react-start';
+import {queryOptions, useSuspenseQuery} from '@tanstack/react-query';
 import {z} from 'zod';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
@@ -190,9 +191,16 @@ const getSession = createServerFn({method: 'GET'})
 		};
 	});
 
+const sessionDetailQueryOptions = (id: string) =>
+	queryOptions({
+		queryKey: ['session', id, 'detail'] as const,
+		queryFn: () => getSession({data: {id}}),
+		staleTime: 30_000,
+	});
+
 export const Route = createFileRoute('/session/$id')({
 	component: SessionPage,
-	loader: ({params}) => getSession({data: {id: params.id}}),
+	loader: ({context: {queryClient}, params}) => queryClient.ensureQueryData(sessionDetailQueryOptions(params.id)),
 	errorComponent: SessionErrorComponent,
 	head: ({loaderData}) => ({
 		meta: [{title: loaderData?.title ?? 'Session Not Found'}],
@@ -335,8 +343,8 @@ function useDisplayToggle(key: string, defaultValue: boolean): [boolean, (v: boo
 }
 
 function SessionPage() {
-	const data = Route.useLoaderData();
 	const params = Route.useParams();
+	const {data} = useSuspenseQuery(sessionDetailQueryOptions(params.id));
 	const [aiSummary, setAiSummary] = useState<string | null>(null);
 	const [summaryLoaded, setSummaryLoaded] = useState(false);
 	const [starred, setStarred] = useState(data?.starred ?? false);

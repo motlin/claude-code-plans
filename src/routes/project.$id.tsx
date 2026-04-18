@@ -1,11 +1,12 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
+import {useSuspenseQuery} from '@tanstack/react-query';
 import {ArrowLeft, CheckCircle, Circle} from 'lucide-react';
-import {getProject} from '../lib/server-fns';
+import {projectQueryOptions} from '../queries/projects';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 
 export const Route = createFileRoute('/project/$id')({
 	component: ProjectPage,
-	loader: ({params}) => getProject({data: params.id}),
+	loader: ({context: {queryClient}, params}) => queryClient.ensureQueryData(projectQueryOptions(params.id)),
 	head: ({loaderData}) => ({
 		meta: [{title: loaderData?.name ?? 'Project Not Found'}],
 	}),
@@ -27,7 +28,8 @@ const AGENT_TYPE_COLORS: Record<string, string> = {
 };
 
 function ProjectPage() {
-	const data = Route.useLoaderData();
+	const {id} = Route.useParams();
+	const {data} = useSuspenseQuery(projectQueryOptions(id));
 
 	if (!data) {
 		return (

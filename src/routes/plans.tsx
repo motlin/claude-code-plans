@@ -1,9 +1,10 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {getPlans} from '../lib/server-fns';
+import {useSuspenseQuery} from '@tanstack/react-query';
+import {plansQueryOptions} from '../queries/plans';
 
 export const Route = createFileRoute('/plans')({
 	component: PlansPage,
-	loader: () => getPlans(),
+	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(plansQueryOptions),
 	head: () => ({
 		meta: [{title: 'Claude Plans'}],
 	}),
@@ -21,7 +22,7 @@ function formatDate(iso: string): string {
 }
 
 function PlansPage() {
-	const plans = Route.useLoaderData();
+	const {data: plans} = useSuspenseQuery(plansQueryOptions);
 	const now = Date.now();
 	const count = plans.length;
 	const countLabel = count === 1 ? '1 plan' : `${count} plans`;

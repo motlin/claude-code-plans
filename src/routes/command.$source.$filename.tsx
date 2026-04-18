@@ -1,19 +1,22 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {getUserCommandRendered} from '../lib/server-fns';
+import {useSuspenseQuery} from '@tanstack/react-query';
+import {userCommandRenderedQueryOptions} from '../queries/plugins';
 import {MarkdownArticle} from '../components/markdown-article';
 import {ArrowLeft} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 
 export const Route = createFileRoute('/command/$source/$filename')({
 	component: CommandPage,
-	loader: ({params}) => getUserCommandRendered({data: {source: params.source, filename: params.filename}}),
+	loader: ({context: {queryClient}, params}) =>
+		queryClient.ensureQueryData(userCommandRenderedQueryOptions(params.source, params.filename)),
 	head: ({loaderData}) => ({
 		meta: [{title: loaderData?.title ?? 'Command Not Found'}],
 	}),
 });
 
 function CommandPage() {
-	const data = Route.useLoaderData();
+	const {source, filename} = Route.useParams();
+	const {data} = useSuspenseQuery(userCommandRenderedQueryOptions(source, filename));
 
 	if (!data) {
 		return (

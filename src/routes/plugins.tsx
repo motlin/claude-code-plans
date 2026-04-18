@@ -1,5 +1,7 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {getPluginGroups, getUserCommandsList, getPluginTree} from '../lib/server-fns';
+import {useSuspenseQuery} from '@tanstack/react-query';
+import {getPluginTree} from '../lib/server-fns';
+import {pluginGroupsQueryOptions, userCommandsQueryOptions} from '../queries/plugins';
 import {ChevronRight, ChevronDown, Blocks, Terminal, Bot, Sparkles, BookOpen, Store, FolderTree} from 'lucide-react';
 import {useState} from 'react';
 import type {PluginInfo, PluginGroup, UserCommandGroup, FileTreeNode} from '../lib/plugins';
@@ -9,11 +11,11 @@ type PluginGroupWithOfficial = PluginGroup & {isOfficial: boolean};
 
 export const Route = createFileRoute('/plugins')({
 	component: PluginsPage,
-	loader: async () => {
-		const [groups, userCommands] = await Promise.all([getPluginGroups(), getUserCommandsList()]);
-		const pluginCount = groups.reduce((n, g) => n + g.plugins.length, 0);
-		return {pluginCount, groups, userCommands};
-	},
+	loader: ({context: {queryClient}}) =>
+		Promise.all([
+			queryClient.ensureQueryData(pluginGroupsQueryOptions),
+			queryClient.ensureQueryData(userCommandsQueryOptions),
+		]),
 	head: () => ({
 		meta: [{title: 'Claude Plugins'}],
 	}),
@@ -309,7 +311,9 @@ function ContentSection({
 }
 
 function PluginsPage() {
-	const {pluginCount, groups, userCommands} = Route.useLoaderData();
+	const {data: groups} = useSuspenseQuery(pluginGroupsQueryOptions);
+	const {data: userCommands} = useSuspenseQuery(userCommandsQueryOptions);
+	const pluginCount = groups.reduce((n, g) => n + g.plugins.length, 0);
 	const commandGroupCount = userCommands.length;
 
 	return (

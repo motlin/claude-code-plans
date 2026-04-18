@@ -1,5 +1,6 @@
 import {createFileRoute, Link, useNavigate} from '@tanstack/react-router';
 import {createServerFn} from '@tanstack/react-start';
+import {queryOptions, useSuspenseQuery} from '@tanstack/react-query';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {readMemory, deleteMemory, decodeProjectDir} from '../lib/memory';
@@ -29,17 +30,25 @@ const removeMemory = createServerFn({method: 'POST'})
 		return deleteMemory(PROJECTS_DIR, project, filename);
 	});
 
+const memoryDetailQueryOptions = (project: string, filename: string) =>
+	queryOptions({
+		queryKey: ['memory', project, filename, 'detail'] as const,
+		queryFn: () => getMemory({data: {project, filename}}),
+		staleTime: 30_000,
+	});
+
 export const Route = createFileRoute('/memory/$project/$filename')({
 	component: MemoryPage,
-	loader: ({params}) => getMemory({data: {project: params.project, filename: params.filename}}),
+	loader: ({context: {queryClient}, params}) =>
+		queryClient.ensureQueryData(memoryDetailQueryOptions(params.project, params.filename)),
 	head: ({loaderData}) => ({
 		meta: [{title: loaderData?.title ?? 'Memory Not Found'}],
 	}),
 });
 
 function MemoryPage() {
-	const loaderData = Route.useLoaderData();
 	const {project, filename} = Route.useParams();
+	const {data: loaderData} = useSuspenseQuery(memoryDetailQueryOptions(project, filename));
 	const navigate = useNavigate();
 	const [confirmingDelete, setConfirmingDelete] = useState(false);
 	const [deleting, setDeleting] = useState(false);

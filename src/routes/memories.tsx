@@ -1,9 +1,10 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {getMemories} from '../lib/server-fns';
+import {useSuspenseQuery} from '@tanstack/react-query';
+import {memoriesQueryOptions} from '../queries/memories';
 
 export const Route = createFileRoute('/memories')({
 	component: MemoriesPage,
-	loader: () => getMemories(),
+	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(memoriesQueryOptions),
 	head: () => ({
 		meta: [{title: 'Claude Memories'}],
 	}),
@@ -21,7 +22,7 @@ function formatDate(iso: string): string {
 }
 
 function MemoriesPage() {
-	const groups = Route.useLoaderData();
+	const {data: groups} = useSuspenseQuery(memoriesQueryOptions);
 
 	return (
 		<div>

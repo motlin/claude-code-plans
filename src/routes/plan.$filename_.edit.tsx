@@ -1,5 +1,6 @@
 import {createFileRoute, Link, useNavigate} from '@tanstack/react-router';
 import {createServerFn} from '@tanstack/react-start';
+import {queryOptions, useSuspenseQuery} from '@tanstack/react-query';
 import {z} from 'zod';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
@@ -37,17 +38,24 @@ const savePlan = createServerFn({method: 'POST'})
 		return {html, title};
 	});
 
+const planRawQueryOptions = (filename: string) =>
+	queryOptions({
+		queryKey: ['plan', filename, 'raw'] as const,
+		queryFn: () => getPlanRaw({data: filename}),
+		staleTime: 30_000,
+	});
+
 export const Route = createFileRoute('/plan/$filename_/edit')({
 	component: PlanEditPage,
-	loader: ({params}) => getPlanRaw({data: params.filename}),
+	loader: ({context: {queryClient}, params}) => queryClient.ensureQueryData(planRawQueryOptions(params.filename)),
 	head: ({loaderData}) => ({
 		meta: [{title: loaderData ? `Edit: ${loaderData.title}` : 'Plan Not Found'}],
 	}),
 });
 
 function PlanEditPage() {
-	const data = Route.useLoaderData();
 	const {filename} = Route.useParams();
+	const {data} = useSuspenseQuery(planRawQueryOptions(filename));
 
 	const initialMarkdown = data?.markdown ?? '';
 	const draftRef = useRef(initialMarkdown);

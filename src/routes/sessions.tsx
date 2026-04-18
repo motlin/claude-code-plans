@@ -1,11 +1,12 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
+import {useSuspenseQuery} from '@tanstack/react-query';
 import {useState} from 'react';
-import {getSessions} from '../lib/server-fns';
+import {sessionsQueryOptions} from '../queries/sessions';
 import {useClaudeEvents} from '../hooks/use-claude-events';
 
 export const Route = createFileRoute('/sessions')({
 	component: SessionsPage,
-	loader: () => getSessions(),
+	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(sessionsQueryOptions),
 	head: () => ({
 		meta: [{title: 'Claude Sessions'}],
 	}),
@@ -39,7 +40,7 @@ const INITIAL_SHOW = 50;
 const PER_PROJECT_LIMIT = 10;
 
 function SessionsPage() {
-	const groups = Route.useLoaderData();
+	const {data: groups} = useSuspenseQuery(sessionsQueryOptions);
 	const {activeSessions} = useClaudeEvents();
 	const activeIds = new Set(activeSessions.keys());
 	const [showAll, setShowAll] = useState(false);

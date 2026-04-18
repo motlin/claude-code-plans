@@ -1,15 +1,20 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {getPluginFileRendered} from '../lib/server-fns';
+import {useSuspenseQuery} from '@tanstack/react-query';
+import {pluginFileRenderedQueryOptions} from '../queries/plugins';
 import {MarkdownArticle} from '../components/markdown-article';
 import {ArrowLeft} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 
-const getFile = getPluginFileRendered;
+function buildPathSegments(type: string, splat: string | undefined): string[] {
+	return [type, ...(splat ?? '').split('/')];
+}
 
 export const Route = createFileRoute('/plugin/$id/$type/$')({
 	component: PluginFilePage,
-	loader: ({params}) =>
-		getFile({data: {pluginId: params.id, pathSegments: [params.type, ...(params._splat ?? '').split('/')]}}),
+	loader: ({context: {queryClient}, params}) =>
+		queryClient.ensureQueryData(
+			pluginFileRenderedQueryOptions(params.id, buildPathSegments(params.type, params._splat)),
+		),
 	head: ({loaderData}) => ({
 		meta: [{title: loaderData?.title ?? 'Plugin File'}],
 	}),
@@ -25,8 +30,8 @@ function FrontmatterBadge({label, value}: {label: string; value: string}) {
 }
 
 function PluginFilePage() {
-	const data = Route.useLoaderData();
-	const {id} = Route.useParams();
+	const {id, type, _splat} = Route.useParams();
+	const {data} = useSuspenseQuery(pluginFileRenderedQueryOptions(id, buildPathSegments(type, _splat)));
 
 	if (!data) {
 		return (

@@ -1,13 +1,14 @@
 import {createFileRoute} from '@tanstack/react-router';
+import {useSuspenseQuery} from '@tanstack/react-query';
 import {useState} from 'react';
 import {ChevronRight, CheckCircle, Circle, Ban, List, GitBranch} from 'lucide-react';
 import styles from '../components/markdown-article.module.css';
-import {getTasks} from '../lib/server-fns';
+import {tasksQueryOptions} from '../queries/tasks';
 import {TaskDependencyGraph} from '../components/task-dependency-graph';
 
 export const Route = createFileRoute('/tasks')({
 	component: TasksPage,
-	loader: () => getTasks(),
+	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(tasksQueryOptions),
 	head: () => ({
 		meta: [{title: 'Tasks'}],
 	}),
@@ -28,7 +29,7 @@ const statusLabel: Record<string, string> = {
 type View = 'list' | 'graph';
 
 function TasksPage() {
-	const groups = Route.useLoaderData();
+	const {data: groups} = useSuspenseQuery(tasksQueryOptions);
 	const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 	const [view, setView] = useState<View>('list');
 
