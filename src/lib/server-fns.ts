@@ -55,14 +55,8 @@ type PlanGroupResult = {
 	projectName: string;
 	plans: Array<{filename: string; title: string; mtime: string}>;
 };
-let plansGroupedCache: {data: PlanGroupResult[]; timestamp: number} | null = null;
-const PLANS_TTL_MS = 10_000;
 
 export const getPlansGrouped = createServerFn({method: 'GET'}).handler(async () => {
-	if (plansGroupedCache && Date.now() - plansGroupedCache.timestamp < PLANS_TTL_MS) {
-		return plansGroupedCache.data;
-	}
-
 	const plans = await listPlans(PLANS_DIR);
 	const {index} = getDb();
 	const mappings = getPlanProjectMappings(index);
@@ -119,7 +113,6 @@ export const getPlansGrouped = createServerFn({method: 'GET'}).handler(async () 
 		projectName: group.projectName,
 		plans: group.plans,
 	}));
-	plansGroupedCache = {data: result, timestamp: Date.now()};
 	return result;
 });
 

@@ -5,21 +5,9 @@ import type {SessionEntry, SessionProjectGroup} from '../sessions';
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
-// ---------------------------------------------------------------------------
-// Cached project name map (avoids 6+ redundant full-table scans per request)
-// ---------------------------------------------------------------------------
-
-let cachedProjectNames: {map: Map<string, string>; timestamp: number} | null = null;
-const PROJECT_NAMES_TTL_MS = 10_000;
-
 function getProjectNameMap(db: IndexDb): Map<string, string> {
-	if (cachedProjectNames && Date.now() - cachedProjectNames.timestamp < PROJECT_NAMES_TTL_MS) {
-		return cachedProjectNames.map;
-	}
 	const rows = db.select({id: schema.projects.id, name: schema.projects.name}).from(schema.projects).all();
-	const map = new Map(rows.map((r) => [r.id, r.name]));
-	cachedProjectNames = {map, timestamp: Date.now()};
-	return map;
+	return new Map(rows.map((r) => [r.id, r.name]));
 }
 
 // ---------------------------------------------------------------------------
