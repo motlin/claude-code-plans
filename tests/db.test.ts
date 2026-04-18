@@ -20,6 +20,7 @@ import {
 	getProjectDetailFromDb,
 	searchSessionsFromDb,
 	getSubagentsForSession,
+	getSubagentsForProject,
 	getPlanProjectMappings,
 	getSessionProjectPath,
 	isSessionStarred,
@@ -655,6 +656,50 @@ describe('subagents', () => {
 		const agents = getSubagentsForSession(db.index, 'sess-x');
 		expect(agents).toHaveLength(2);
 		expect(agents[0]!.agentType).toBe('Explore');
+	});
+
+	it('getSubagentsForProject returns subagents across all sessions in the project', () => {
+		db.index.insert(schema.projects).values({id: 'proj-y', name: 'Y', updatedAt: 1000}).run();
+		db.index
+			.insert(schema.subagents)
+			.values([
+				{
+					id: 'agent-1',
+					sessionId: 'sess-1',
+					projectId: 'proj-y',
+					agentType: 'Explore',
+					slug: null,
+					filePath: '/path/agent-1.jsonl',
+					mtimeMs: 1000,
+				},
+				{
+					id: 'agent-2',
+					sessionId: 'sess-2',
+					projectId: 'proj-y',
+					agentType: 'Plan',
+					slug: null,
+					filePath: '/path/agent-2.jsonl',
+					mtimeMs: 2000,
+				},
+				{
+					id: 'agent-3',
+					sessionId: 'sess-3',
+					projectId: 'proj-other',
+					agentType: 'Explore',
+					slug: null,
+					filePath: '/path/agent-3.jsonl',
+					mtimeMs: 3000,
+				},
+			])
+			.run();
+
+		const agents = getSubagentsForProject(db.index, 'proj-y');
+		expect(agents).toHaveLength(2);
+		expect(agents.map((a) => a.id).sort()).toEqual(['agent-1', 'agent-2']);
+	});
+
+	it('getSubagentsForProject returns empty array when project has no subagents', () => {
+		expect(getSubagentsForProject(db.index, 'nonexistent-project')).toEqual([]);
 	});
 
 	it('returns empty array for session with no subagents', () => {

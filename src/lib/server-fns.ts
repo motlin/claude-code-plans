@@ -25,6 +25,7 @@ import {
 	getPlanLinksFromDb,
 	searchSessionsFromDb,
 	getSubagentsForSession,
+	getSubagentsForProject,
 	buildSubagentTree,
 	getPlanProjectMappings,
 	toggleStar as toggleStarInDb,
@@ -240,23 +241,11 @@ export const getProject = createServerFn({method: 'GET'})
 			// no memory dir
 		}
 
-		// Get subagents per session
-		const subagentsBySession = new Map<
-			string,
-			Array<{id: string; agentType: string | null; slug: string | null}>
-		>();
-		for (const sess of detail.sessions) {
-			const agents = getSubagentsForSession(index, sess.id);
-			if (agents.length > 0) {
-				subagentsBySession.set(
-					sess.id,
-					agents.map((a) => ({
-						id: a.id,
-						agentType: a.agentType,
-						slug: a.slug,
-					})),
-				);
-			}
+		const allSubagents = getSubagentsForProject(index, projectId);
+		const subagentTree = buildSubagentTree(allSubagents);
+		const subagentCountBySession = new Map<string, number>();
+		for (const a of allSubagents) {
+			subagentCountBySession.set(a.sessionId, (subagentCountBySession.get(a.sessionId) ?? 0) + 1);
 		}
 
 		const rawTodos = getTasksForProject(index, detail.name);
@@ -275,6 +264,7 @@ export const getProject = createServerFn({method: 'GET'})
 			name: detail.name,
 			projectPath: detail.projectPath,
 			subagentCount: detail.subagentCount,
+			subagentTree,
 			sessions: detail.sessions.map((s) => ({
 				id: s.id,
 				title: s.title,
@@ -283,7 +273,7 @@ export const getProject = createServerFn({method: 'GET'})
 				created: s.created.toISOString(),
 				messageCount: s.messageCount,
 				gitBranch: s.gitBranch,
-				subagents: subagentsBySession.get(s.id) ?? [],
+				subagentCount: subagentCountBySession.get(s.id) ?? 0,
 			})),
 			memories,
 			todos,

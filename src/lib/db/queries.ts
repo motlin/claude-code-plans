@@ -429,6 +429,10 @@ export function getSubagentsForSession(db: IndexDb, sessionId: string): DbSubage
 	return db.select().from(schema.subagents).where(eq(schema.subagents.sessionId, sessionId)).all();
 }
 
+export function getSubagentsForProject(db: IndexDb, projectId: string): DbSubagent[] {
+	return db.select().from(schema.subagents).where(eq(schema.subagents.projectId, projectId)).all();
+}
+
 export function isSessionStarred(db: IndexDb, sessionId: string): boolean {
 	const row = db.select().from(schema.starredSessions).where(eq(schema.starredSessions.sessionId, sessionId)).get();
 	return !!row;

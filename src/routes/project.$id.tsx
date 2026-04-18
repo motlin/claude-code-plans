@@ -3,6 +3,7 @@ import {useSuspenseQuery} from '@tanstack/react-query';
 import {ArrowLeft, CheckCircle, Circle} from 'lucide-react';
 import {projectQueryOptions} from '../queries/projects';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
+import {SubagentTree} from '../components/subagent-tree';
 
 export const Route = createFileRoute('/project/$id')({
 	component: ProjectPage,
@@ -21,11 +22,6 @@ function formatDate(iso: string): string {
 		minute: '2-digit',
 	});
 }
-
-const AGENT_TYPE_COLORS: Record<string, string> = {
-	Explore: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-	Plan: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-};
 
 function ProjectPage() {
 	const {id} = Route.useParams();
@@ -94,12 +90,12 @@ function ProjectPage() {
 												<span>{sess.messageCount} msgs</span>
 											</>
 										)}
-										{sess.subagents.length > 0 && (
+										{sess.subagentCount > 0 && (
 											<>
 												<span>&middot;</span>
 												<span>
-													{sess.subagents.length} subagent
-													{sess.subagents.length !== 1 ? 's' : ''}
+													{sess.subagentCount} subagent
+													{sess.subagentCount !== 1 ? 's' : ''}
 												</span>
 											</>
 										)}
@@ -118,32 +114,21 @@ function ProjectPage() {
 										</div>
 									)}
 								</Link>
-								{sess.subagents.length > 0 && (
-									<div className="ml-6 mt-0.5 flex flex-wrap gap-1.5 pb-1">
-										{sess.subagents.map((agent) => (
-											<Link
-												key={agent.id}
-												to="/session/$id"
-												params={{id: agent.id}}
-												className="inline-flex items-center gap-1 rounded border border-border-300/10 px-1.5 py-0.5 text-[11px] text-text-500 transition-colors hover:bg-bg-200/50"
-											>
-												{agent.agentType && (
-													<span
-														className={`rounded px-1 py-px text-[9px] font-medium ${AGENT_TYPE_COLORS[agent.agentType] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}
-													>
-														{agent.agentType}
-													</span>
-												)}
-												{agent.slug ?? agent.id}
-											</Link>
-										))}
-									</div>
-								)}
 							</li>
 						))}
 					</ul>
 				)}
 			</section>
+
+			{/* Subagents */}
+			{data.subagentCount > 0 && (
+				<section className="mt-8">
+					<SubagentTree
+						tree={data.subagentTree}
+						totalCount={data.subagentCount}
+					/>
+				</section>
+			)}
 
 			{/* Tasks */}
 			{data.todos.length > 0 && (
