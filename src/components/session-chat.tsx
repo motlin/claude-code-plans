@@ -467,6 +467,39 @@ const PROMINENT_TOOLS = new Set(['AskUserQuestion']);
 const INITIAL_TOOL_COUNT = 3;
 const TASK_TOOLS = new Set(['TaskCreate', 'TaskUpdate', 'TaskList']);
 
+type ToolListItem = {kind: 'call'; call: ClientToolCall} | {kind: 'parallel'; key: string; calls: ClientToolCall[]};
+
+/**
+ * Group consecutive Agent tool calls that share a `parallelGroupKey` into a
+ * single "parallel × N" entry. Matches the grouping used by the top-of-page
+ * subagent tree (src/components/subagent-tree.tsx) so users see the same
+ * grouping inline at the spawn point.
+ */
+function groupParallelSubagents(calls: ClientToolCall[]): ToolListItem[] {
+	const result: ToolListItem[] = [];
+	let i = 0;
+	while (i < calls.length) {
+		const call = calls[i]!;
+		const key = call.subagentInfo?.parallelGroupKey;
+		if (key) {
+			const group: ClientToolCall[] = [call];
+			let j = i + 1;
+			while (j < calls.length && calls[j]!.subagentInfo?.parallelGroupKey === key) {
+				group.push(calls[j]!);
+				j++;
+			}
+			if (group.length > 1) {
+				result.push({kind: 'parallel', key, calls: group});
+				i = j;
+				continue;
+			}
+		}
+		result.push({kind: 'call', call});
+		i++;
+	}
+	return result;
+}
+
 function ToolCallSection({calls, summary, sessionId}: {calls: ClientToolCall[]; summary: string; sessionId: string}) {
 	const prominentCalls = calls.filter((c) => PROMINENT_TOOLS.has(c.name));
 	const backgroundCalls = calls.filter((c) => !PROMINENT_TOOLS.has(c.name));
@@ -500,6 +533,105 @@ function ToolCallSection({calls, summary, sessionId}: {calls: ClientToolCall[]; 
 	);
 }
 
+function ToolCallRow({
+	call,
+	sessionId,
+	isFirst,
+	isLast,
+}: {
+	call: ClientToolCall;
+	sessionId: string;
+	isFirst: boolean;
+	isLast: boolean;
+}) {
+	const Renderer = getToolRenderer(call.name);
+	return (
+		<div className="flex">
+			<div className="flex flex-col items-center w-4 shrink-0">
+				<div className={`w-px flex-1 ${isFirst ? 'bg-transparent' : 'bg-border-300/15'}`} />
+				<div className="w-full h-px bg-border-300/15" />
+				<div className={`w-px flex-1 ${isLast ? 'bg-transparent' : 'bg-border-300/15'}`} />
+			</div>
+			<div className="flex-1 min-w-0 pl-2 py-0.5 text-sm leading-relaxed text-text-500">
+				<div className="flex items-center">
+					<span className="font-medium text-[13px]">{call.name}</span>
+					{call.param && (
+						<span className="ml-1.5 font-mono text-[11px] bg-bg-100 px-1 py-px rounded opacity-70">
+							{call.param}
+						</span>
+					)}
+					{call.duration !== undefined && <DurationBadge duration={call.duration} />}
+					<DebugLink
+						sessionId={sessionId}
+						uuid={call.sourceUuid}
+						className="ml-1.5"
+					/>
+				</div>
+				<div className="mt-1 mb-2 text-xs text-text-100 leading-relaxed">
+					<Renderer toolCall={call} />
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function ParallelGroupInline({
+	calls,
+	sessionId,
+	isFirst,
+	isLast,
+}: {
+	calls: ClientToolCall[];
+	sessionId: string;
+	isFirst: boolean;
+	isLast: boolean;
+}) {
+	const [expanded, setExpanded] = useState(true);
+	const size = calls.length;
+
+	return (
+		<div className="flex">
+			<div className="flex flex-col items-center w-4 shrink-0">
+				<div className={`w-px flex-1 ${isFirst ? 'bg-transparent' : 'bg-border-300/15'}`} />
+				<div className="w-full h-px bg-border-300/15" />
+				<div className={`w-px flex-1 ${isLast ? 'bg-transparent' : 'bg-border-300/15'}`} />
+			</div>
+			<div className="flex-1 min-w-0 pl-2 py-0.5">
+				<button
+					type="button"
+					onClick={() => setExpanded(!expanded)}
+					className="flex items-center gap-1.5 text-[12px] text-text-500 hover:text-text-300 cursor-pointer"
+				>
+					<ChevronIcon expanded={expanded} />
+					<span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-accent-000/12 text-accent-100">
+						parallel &times;{size}
+					</span>
+					<span className="text-[11px] text-text-500">
+						{calls
+							.map((c) => (c.input['description'] as string) || (c.input['subagent_type'] as string))
+							.filter(Boolean)
+							.slice(0, 3)
+							.join(', ')}
+					</span>
+				</button>
+				{expanded && (
+					<div className="mt-1 ml-2 pl-2 border-l border-accent-000/20">
+						{calls.map((call, i) => (
+							<ToolCallRow
+								key={i}
+								call={call}
+								sessionId={sessionId}
+								isFirst={i === 0}
+								isLast={i === calls.length - 1}
+							/>
+						))}
+					</div>
+				)}
+			</div>
+		</div>
+	);
+}
+
 function ToolCallSummary({calls, summary, sessionId}: {calls: ClientToolCall[]; summary: string; sessionId: string}) {
 	const [expanded, setExpanded] = useState(false);
 	const [showAll, setShowAll] = useState(false);
@@ -507,8 +639,9 @@ function ToolCallSummary({calls, summary, sessionId}: {calls: ClientToolCall[]; 
 	const taskCalls = calls.filter((c) => TASK_TOOLS.has(c.name));
 	const hasTasksView = taskCalls.length >= 3;
 	const displayCalls = hasTasksView ? calls.filter((c) => !TASK_TOOLS.has(c.name)) : calls;
-	const visibleCalls = showAll ? displayCalls : displayCalls.slice(0, INITIAL_TOOL_COUNT);
-	const hiddenCount = displayCalls.length - INITIAL_TOOL_COUNT;
+	const items = groupParallelSubagents(displayCalls);
+	const visibleItems = showAll ? items : items.slice(0, INITIAL_TOOL_COUNT);
+	const hiddenCount = items.length - INITIAL_TOOL_COUNT;
 
 	return (
 		<div className="min-w-0 py-1">
@@ -528,43 +661,28 @@ function ToolCallSummary({calls, summary, sessionId}: {calls: ClientToolCall[]; 
 						</div>
 					)}
 					<div className="ml-2 pl-0">
-						{visibleCalls.map((call, i) => {
-							const Renderer = getToolRenderer(call.name);
-							const isLast = i === visibleCalls.length - 1 && (showAll || hiddenCount <= 0);
+						{visibleItems.map((item, i) => {
+							const isFirst = i === 0;
+							const isLast = i === visibleItems.length - 1 && (showAll || hiddenCount <= 0);
+							if (item.kind === 'parallel') {
+								return (
+									<ParallelGroupInline
+										key={`pg-${item.key}`}
+										calls={item.calls}
+										sessionId={sessionId}
+										isFirst={isFirst}
+										isLast={isLast}
+									/>
+								);
+							}
 							return (
-								<div
+								<ToolCallRow
 									key={i}
-									className="flex"
-								>
-									<div className="flex flex-col items-center w-4 shrink-0">
-										<div
-											className={`w-px flex-1 ${i === 0 ? 'bg-transparent' : 'bg-border-300/15'}`}
-										/>
-										<div className="w-full h-px bg-border-300/15" />
-										<div
-											className={`w-px flex-1 ${isLast ? 'bg-transparent' : 'bg-border-300/15'}`}
-										/>
-									</div>
-									<div className="flex-1 min-w-0 pl-2 py-0.5 text-sm leading-relaxed text-text-500">
-										<div className="flex items-center">
-											<span className="font-medium text-[13px]">{call.name}</span>
-											{call.param && (
-												<span className="ml-1.5 font-mono text-[11px] bg-bg-100 px-1 py-px rounded opacity-70">
-													{call.param}
-												</span>
-											)}
-											{call.duration !== undefined && <DurationBadge duration={call.duration} />}
-											<DebugLink
-												sessionId={sessionId}
-												uuid={call.sourceUuid}
-												className="ml-1.5"
-											/>
-										</div>
-										<div className="mt-1 mb-2 text-xs text-text-100 leading-relaxed">
-											<Renderer toolCall={call} />
-										</div>
-									</div>
-								</div>
+									call={item.call}
+									sessionId={sessionId}
+									isFirst={isFirst}
+									isLast={isLast}
+								/>
 							);
 						})}
 						{!showAll && hiddenCount > 0 && (

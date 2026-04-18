@@ -347,9 +347,11 @@ export async function indexSubagentFile(
 	const agentFilename = basename(filePath, '.jsonl');
 	const metaPath = filePath.replace(/\.jsonl$/, '.meta.json');
 	let agentType: string | null = null;
+	let metaDescription: string | null = null;
 	try {
-		const meta = JSON.parse(await readFile(metaPath, 'utf-8')) as {agentType?: string};
+		const meta = JSON.parse(await readFile(metaPath, 'utf-8')) as {agentType?: string; description?: string};
 		agentType = meta.agentType ?? null;
+		metaDescription = meta.description ?? null;
 	} catch {
 		// no meta file
 	}
@@ -386,6 +388,7 @@ export async function indexSubagentFile(
 			projectId: project,
 			agentType,
 			slug,
+			description: metaDescription,
 			startedAt,
 			finishedAt,
 			filePath,
@@ -393,7 +396,7 @@ export async function indexSubagentFile(
 		})
 		.onConflictDoUpdate({
 			target: schema.subagents.id,
-			set: {agentType, slug, startedAt, finishedAt, mtimeMs: fileStat.mtimeMs},
+			set: {agentType, slug, description: metaDescription, startedAt, finishedAt, mtimeMs: fileStat.mtimeMs},
 		})
 		.run();
 
@@ -469,10 +472,9 @@ export async function linkSubagentParents(db: IndexDb, jsonlPath: string, parent
 						if (match?.[1]) {
 							const agentId = `agent-${match[1]}`;
 							const description = toolCallDescriptions.get(block.tool_use_id) || null;
-							db.update(schema.subagents)
-								.set({parentAgentId, description})
-								.where(eq(schema.subagents.id, agentId))
-								.run();
+							const update: {parentAgentId: string | null; description?: string} = {parentAgentId};
+							if (description) update.description = description;
+							db.update(schema.subagents).set(update).where(eq(schema.subagents.id, agentId)).run();
 						}
 					}
 				}

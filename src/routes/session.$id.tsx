@@ -24,8 +24,15 @@ import {getSubagentTree, getSessionSummary, requestSummary, isStarred, toggleSes
 import {useIsSessionActive, useStatusline} from '../hooks/use-claude-events';
 import {StatusFooter} from '../components/status-footer';
 import {getDb} from '../lib/db';
-import {getSessionProjectPath, getSessionMeta, getTaskCountsForProject} from '../lib/db/queries';
-import type {ClientToolCall, ToolInput} from '../components/tool-renderers';
+import {
+	getSessionProjectPath,
+	getSessionMeta,
+	getTaskCountsForProject,
+	type SubagentTreeEntry,
+	type SubagentTreeNode,
+	type ParallelGroup,
+} from '../lib/db/queries';
+import type {ClientToolCall, ToolInput, SubagentInlineInfo} from '../components/tool-renderers';
 import {ArrowLeft, ArrowUp, ArrowDown, Copy, Terminal, GitFork, Download} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {SubagentTree} from '../components/subagent-tree';
@@ -33,6 +40,74 @@ import {SubagentGantt} from '../components/subagent-gantt';
 import {SubagentSequence} from '../components/subagent-sequence';
 
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
+
+/**
+ * Walk the subagent tree and produce a map from `agentId` (without `agent-` prefix)
+ * to its metadata plus parallel-group info. Uses the same grouping logic as the
+ * top-of-page tree so inline rendering matches the tree exactly.
+ */
+function isParallelGroup(entry: SubagentTreeEntry): entry is ParallelGroup {
+	return (entry as ParallelGroup).type === 'parallel';
+}
+
+function statusForAgent(agent: {finishedAt: string | null}): 'running' | 'done' | 'error' {
+	if (!agent.finishedAt) return 'running';
+	return 'done';
+}
+
+interface SubagentLookup {
+	byBareId: Map<string, SubagentInlineInfo>;
+	byTypeAndDescription: Map<string, SubagentInlineInfo>;
+}
+
+function lookupKey(agentType: string | null, description: string | null): string {
+	return `${agentType ?? ''}::${description ?? ''}`;
+}
+
+function buildSubagentLookup(tree: SubagentTreeEntry[]): SubagentLookup {
+	const byBareId = new Map<string, SubagentInlineInfo>();
+	const byTypeAndDescription = new Map<string, SubagentInlineInfo>();
+	let parallelCounter = 0;
+
+	function addNode(node: SubagentTreeNode, parallelKey?: string, parallelSize?: number): void {
+		const bareId = node.agent.id.replace(/^agent-/, '');
+		const entry: SubagentInlineInfo = {
+			agentId: node.agent.id,
+			agentType: node.agent.agentType,
+			slug: node.agent.slug,
+			description: node.agent.description,
+			startedAt: node.agent.startedAt,
+			finishedAt: node.agent.finishedAt,
+			status: statusForAgent(node.agent),
+		};
+		if (parallelKey !== undefined) entry.parallelGroupKey = parallelKey;
+		if (parallelSize !== undefined) entry.parallelGroupSize = parallelSize;
+		byBareId.set(bareId, entry);
+		if (node.agent.description) {
+			byTypeAndDescription.set(lookupKey(node.agent.agentType, node.agent.description), entry);
+		}
+		walk(node.children);
+	}
+
+	function walk(entries: SubagentTreeEntry[]): void {
+		for (const entry of entries) {
+			if (isParallelGroup(entry)) {
+				const key = `pg-${parallelCounter++}`;
+				const size = entry.children.length;
+				for (const child of entry.children) {
+					addNode(child, key, size);
+				}
+			} else {
+				addNode(entry);
+			}
+		}
+	}
+
+	walk(tree);
+	return {byBareId, byTypeAndDescription};
+}
+
+const AGENT_ID_RE = /agentId:\s*(\S+)/;
 
 function getToolParam(tc: {input: Record<string, unknown>}): string {
 	const input = tc.input;
@@ -54,8 +129,14 @@ function getToolParam(tc: {input: Record<string, unknown>}): string {
 const getSession = createServerFn({method: 'GET'})
 	.inputValidator(z.object({id: z.string()}))
 	.handler(async ({data: {id}}) => {
-		const detail = await readSession(PROJECTS_DIR, id);
+		const [detail, subagentResult, starResult] = await Promise.all([
+			readSession(PROJECTS_DIR, id),
+			getSubagentTree({data: id}),
+			isStarred({data: id}),
+		]);
 		if (!detail) return null;
+
+		const subagentLookup = buildSubagentLookup(subagentResult.tree);
 
 		const messages = await Promise.all(
 			detail.messages.map(async (msg) => {
@@ -100,6 +181,31 @@ const getSession = createServerFn({method: 'GET'})
 							looksLikeMarkdown(tc.result)
 						) {
 							call.resultHtml = await renderMarkdown(tc.result);
+						}
+
+						if (tc.name === 'Agent') {
+							let info: SubagentInlineInfo | undefined;
+							if (tc.result) {
+								const match = AGENT_ID_RE.exec(tc.result);
+								if (match?.[1]) {
+									info = subagentLookup.byBareId.get(match[1]);
+								}
+							}
+							if (!info) {
+								const inputAgentType = (tc.input['subagent_type'] as string) ?? null;
+								const inputDescription = (tc.input['description'] as string) ?? null;
+								if (inputDescription) {
+									info = subagentLookup.byTypeAndDescription.get(
+										lookupKey(inputAgentType, inputDescription),
+									);
+								}
+							}
+							if (info) {
+								call.subagentInfo = {
+									...info,
+									status: tc.isError ? 'error' : info.status,
+								};
+							}
 						}
 
 						return call;
@@ -177,8 +283,6 @@ const getSession = createServerFn({method: 'GET'})
 				return result;
 			}),
 		);
-
-		const [subagentResult, starResult] = await Promise.all([getSubagentTree({data: id}), isStarred({data: id})]);
 
 		const {index} = getDb();
 		const projectPath = getSessionProjectPath(index, id);

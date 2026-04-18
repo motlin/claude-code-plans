@@ -2,7 +2,7 @@ import {Link} from '@tanstack/react-router';
 import {Bot} from 'lucide-react';
 import {MarkdownArticle} from '../markdown-article';
 import type {ToolRendererProps} from './types';
-import {CollapsibleSection, DurationBadge, ErrorBorder} from './shared';
+import {CollapsibleSection, DurationBadge, ErrorBorder, formatDuration} from './shared';
 
 const AGENT_TYPE_COLORS: Record<string, string> = {
 	Explore: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
@@ -14,18 +14,56 @@ const AGENT_TYPE_COLORS: Record<string, string> = {
 	build: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
 };
 
+function statusBadge(status: 'running' | 'done' | 'error') {
+	switch (status) {
+		case 'running':
+			return (
+				<span className="inline-flex items-center gap-1 rounded bg-accent-000/12 text-accent-100 px-1.5 py-0.5 text-[10px] font-medium">
+					<span className="h-1.5 w-1.5 rounded-full bg-accent-100 animate-pulse" />
+					running
+				</span>
+			);
+		case 'error':
+			return (
+				<span className="rounded bg-danger-000/15 text-danger-000 px-1.5 py-0.5 text-[10px] font-medium">
+					error
+				</span>
+			);
+		case 'done':
+		default:
+			return (
+				<span className="rounded bg-success-900 text-success-000 px-1.5 py-0.5 text-[10px] font-medium">
+					done
+				</span>
+			);
+	}
+}
+
+function durationFromTimes(startedAt: string | null, finishedAt: string | null): number | null {
+	if (!startedAt || !finishedAt) return null;
+	const ms = new Date(finishedAt).getTime() - new Date(startedAt).getTime();
+	return Number.isFinite(ms) && ms > 0 ? ms : null;
+}
+
 export function AgentRenderer({toolCall}: ToolRendererProps) {
 	const prompt = (toolCall.input['prompt'] as string) ?? '';
 	const agentType = (toolCall.input['subagent_type'] as string) ?? '';
 	const description = (toolCall.input['description'] as string) ?? '';
-	const {result, isError} = toolCall;
+	const {result, isError, subagentInfo} = toolCall;
 
 	const agentIdMatch = result?.match(/agentId:\s*(\S+)/);
-	const agentId = agentIdMatch?.[1];
-	const displayResult = agentId ? result!.replace(/agentId:\s*\S+\n?/, '').trim() : result;
+	const fallbackAgentId = agentIdMatch?.[1];
+	const displayResult = fallbackAgentId ? result!.replace(/agentId:\s*\S+\n?/, '').trim() : result;
 	const promptPreview = prompt.split('\n')[0]?.slice(0, 80) ?? '';
 
 	const colorClass = AGENT_TYPE_COLORS[agentType] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+
+	// Subagent metadata takes precedence when available, then fall back to the
+	// raw `agent-<uuid>` id parsed out of the tool_result.
+	const linkAgentId = subagentInfo?.agentId ?? (fallbackAgentId ? `agent-${fallbackAgentId}` : null);
+	const timingDuration = subagentInfo
+		? (toolCall.duration ?? durationFromTimes(subagentInfo.startedAt, subagentInfo.finishedAt))
+		: toolCall.duration;
 
 	return (
 		<ErrorBorder isError={isError}>
@@ -37,11 +75,12 @@ export function AgentRenderer({toolCall}: ToolRendererProps) {
 				{!description && promptPreview && (
 					<span className="text-xs text-text-500 truncate">{promptPreview}</span>
 				)}
-				{toolCall.duration !== undefined && <DurationBadge duration={toolCall.duration} />}
-				{agentId && (
+				{subagentInfo && statusBadge(subagentInfo.status)}
+				{timingDuration !== undefined && timingDuration !== null && <DurationBadge duration={timingDuration} />}
+				{linkAgentId && (
 					<Link
 						to="/session/$id"
-						params={{id: `agent-${agentId}`}}
+						params={{id: linkAgentId}}
 						className="inline-flex items-center gap-1 text-xs text-accent-100 hover:underline"
 					>
 						<Bot size={12} />
@@ -49,6 +88,27 @@ export function AgentRenderer({toolCall}: ToolRendererProps) {
 					</Link>
 				)}
 			</div>
+			{subagentInfo?.startedAt && (
+				<div className="text-[10px] text-text-500 mt-0.5">
+					{new Date(subagentInfo.startedAt).toLocaleTimeString()}
+					{subagentInfo.finishedAt && (
+						<>
+							{' '}
+							→ {new Date(subagentInfo.finishedAt).toLocaleTimeString()}
+							{durationFromTimes(subagentInfo.startedAt, subagentInfo.finishedAt) !== null && (
+								<>
+									{' '}
+									(
+									{formatDuration(
+										durationFromTimes(subagentInfo.startedAt, subagentInfo.finishedAt)!,
+									)}
+									)
+								</>
+							)}
+						</>
+					)}
+				</div>
+			)}
 			{prompt && (
 				<CollapsibleSection label="Prompt">
 					<pre className="text-xs font-mono text-text-500 whitespace-pre-wrap break-all max-h-48 overflow-auto">

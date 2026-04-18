@@ -698,6 +698,35 @@ describe('subagents', () => {
 		expect(agent!.finishedAt).toBe('2026-04-05T00:29:12.217Z');
 	});
 
+	it('indexSubagentFile reads agentType and description from sibling meta.json', async () => {
+		const projectDir = join(testDir, '-Users-craig-projects-app');
+		const sessionDir = join(projectDir, 'sess-1', 'subagents');
+		mkdirSync(sessionDir, {recursive: true});
+
+		const agentPath = join(sessionDir, 'agent-meta1.jsonl');
+		writeFileSync(
+			agentPath,
+			jsonl({
+				type: 'user',
+				slug: 'lemur-1',
+				timestamp: '2026-04-05T00:28:53.000Z',
+				message: {role: 'user', content: 'go'},
+			}),
+		);
+		writeFileSync(
+			agentPath.replace(/\.jsonl$/, '.meta.json'),
+			JSON.stringify({agentType: 'Explore', description: 'Map current render pipeline'}),
+		);
+
+		db.index.insert(schema.projects).values({id: 'proj-app', name: 'App', updatedAt: 1000}).run();
+		await indexSubagentFile(db.index, agentPath, 'sess-1', 'proj-app');
+
+		const agent = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, 'agent-meta1')).get();
+		expect(agent).toBeDefined();
+		expect(agent!.agentType).toBe('Explore');
+		expect(agent!.description).toBe('Map current render pipeline');
+	});
+
 	it('linkSubagentParents sets parentAgentId from Agent tool calls in parent JSONL', async () => {
 		const projectDir = join(testDir, '-Users-craig-projects-app');
 		mkdirSync(projectDir, {recursive: true});
