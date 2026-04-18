@@ -2,9 +2,15 @@ import {readdir, readFile, stat} from 'node:fs/promises';
 import {createReadStream} from 'node:fs';
 import {join, basename} from 'node:path';
 import {createInterface} from 'node:readline';
-import {eq, sql} from 'drizzle-orm';
+import {eq, notInArray, sql} from 'drizzle-orm';
 import type {BetterSQLite3Database} from 'drizzle-orm/better-sqlite3';
-import {SessionsIndexSchema, FileHistorySnapshotSchema, CustomTitleRecordSchema, TaskFileSchema} from '../schemas';
+import {
+	SessionsIndexSchema,
+	FileHistorySnapshotSchema,
+	CustomTitleRecordSchema,
+	PlanModeAttachmentSchema,
+	TaskFileSchema,
+} from '../schemas';
 import {decodeProjectDir, resolveProjectPath} from '../memory';
 import {extractSessionTitle} from '../sessions';
 import * as schema from './schema';
@@ -187,6 +193,24 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 					if (result.success) {
 						for (const key of Object.keys(result.data.snapshot.trackedFileBackups)) {
 							const match = PLAN_PATH_RE.exec(key);
+							if (match?.[1]) planFilenames.add(match[1]);
+						}
+					}
+				} catch {
+					// skip
+				}
+			}
+
+			// plan_mode attachments link a session to its plan file even before
+			// the plan is edited (file-history-snapshot only fires after edits).
+			if (line.includes('"plan_mode"')) {
+				try {
+					const parsed = JSON.parse(line);
+					const result = PlanModeAttachmentSchema.safeParse(parsed);
+					if (result.success) {
+						const planPath = result.data.attachment.planFilePath;
+						if (planPath) {
+							const match = PLAN_PATH_RE.exec(planPath);
 							if (match?.[1]) planFilenames.add(match[1]);
 						}
 					}
@@ -489,12 +513,41 @@ export async function scanTasksDir(db: IndexDb, tasksDir: string): Promise<void>
 	}
 }
 
+/**
+ * Remove plan_sessions rows whose plan file no longer exists on disk. Returns
+ * the number of rows deleted. Leaves the table untouched when the plans
+ * directory itself is unreadable — we never want a transient fs hiccup to wipe
+ * the entire linkage table.
+ */
+export async function pruneStalePlanLinks(db: IndexDb, plansDir: string): Promise<number> {
+	let entries: string[];
+	try {
+		entries = await readdir(plansDir);
+	} catch {
+		return 0;
+	}
+
+	const existingPlans = entries.filter((f) => f.endsWith('.md'));
+
+	// notInArray with an empty list is a no-op SQL-wise, so short-circuit.
+	if (existingPlans.length === 0) {
+		const result = db.delete(schema.planSessions).run();
+		return result.changes;
+	}
+
+	const result = db
+		.delete(schema.planSessions)
+		.where(notInArray(schema.planSessions.planFilename, existingPlans))
+		.run();
+	return result.changes;
+}
+
 let indexingInProgress = false;
 export function isCurrentlyIndexing(): boolean {
 	return indexingInProgress;
 }
 
-export async function fullScan(db: IndexDb, projectsDir: string, tasksDir?: string): Promise<void> {
+export async function fullScan(db: IndexDb, projectsDir: string, tasksDir?: string, plansDir?: string): Promise<void> {
 	indexingInProgress = true;
 	try {
 		let projectDirs: string[];
@@ -547,9 +600,12 @@ export async function fullScan(db: IndexDb, projectsDir: string, tasksDir?: stri
 			}
 		}
 
-		// Index tasks
 		if (tasksDir) {
 			await scanTasksDir(db, tasksDir);
+		}
+
+		if (plansDir) {
+			await pruneStalePlanLinks(db, plansDir);
 		}
 	} finally {
 		indexingInProgress = false;

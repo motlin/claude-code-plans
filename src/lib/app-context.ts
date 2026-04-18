@@ -25,7 +25,7 @@ export interface AppContext {
 export async function createAppContext(config: AppContextConfig): Promise<AppContext> {
 	const db = openAppDb();
 	try {
-		await fullScan(db.index, config.projectsDir, config.tasksDir);
+		await fullScan(db.index, config.projectsDir, config.tasksDir, config.plansDir);
 	} catch (err) {
 		db.close();
 		throw err;

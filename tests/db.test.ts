@@ -2,7 +2,14 @@ import {writeFileSync, mkdirSync, rmSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {openTestDb, type AppDb} from '../src/lib/db/connection';
-import {fullScan, indexJsonlFile, indexSessionsIndex, indexTaskFile, scanTasksDir} from '../src/lib/db/indexer';
+import {
+	fullScan,
+	indexJsonlFile,
+	indexSessionsIndex,
+	indexTaskFile,
+	pruneStalePlanLinks,
+	scanTasksDir,
+} from '../src/lib/db/indexer';
 import {
 	listProjectsFromDb,
 	listSessionsFromDb,
@@ -160,6 +167,168 @@ describe('indexer', () => {
 		expect(links).toHaveLength(1);
 		expect(links[0]!.planFilename).toBe('my-plan.md');
 		expect(links[0]!.sessionId).toBe('sess-1');
+	});
+
+	it('extracts plan links from plan_mode attachments (before file is edited)', async () => {
+		// A session that enters plan mode emits an `attachment` record with
+		// `attachment.type === "plan_mode"` and a `planFilePath`. This fires
+		// *before* the plan file is ever edited, so it links the session even
+		// when no file-history-snapshot trackedFileBackups entry exists.
+		const projectDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projectDir, {recursive: true});
+
+		writeFileSync(
+			join(projectDir, 'sessions-index.json'),
+			makeSessionsIndex([
+				{
+					sessionId: 'sess-plan-mode',
+					fullPath: join(projectDir, 'sess-plan-mode.jsonl'),
+					fileMtime: Date.now(),
+					firstPrompt: 'Draft a plan',
+				},
+			]),
+		);
+		await indexSessionsIndex(db.index, projectDir, '-Users-craig-projects-app');
+
+		writeFileSync(
+			join(projectDir, 'sess-plan-mode.jsonl'),
+			jsonl(
+				{type: 'user', message: {role: 'user', content: 'Draft a plan'}},
+				{
+					type: 'attachment',
+					attachment: {
+						type: 'plan_mode',
+						reminderType: 'full',
+						isSubAgent: false,
+						planFilePath: '/Users/craig/.claude/plans/abstract-knitting-garden.md',
+						planExists: false,
+					},
+				},
+			),
+		);
+
+		await indexJsonlFile(db.index, join(projectDir, 'sess-plan-mode.jsonl'), '-Users-craig-projects-app');
+
+		const links = db.index.select().from(schema.planSessions).all();
+		expect(links).toHaveLength(1);
+		expect(links[0]!.planFilename).toBe('abstract-knitting-garden.md');
+		expect(links[0]!.sessionId).toBe('sess-plan-mode');
+		expect(links[0]!.projectId).toBe('-Users-craig-projects-app');
+	});
+
+	it('deduplicates plan links when both plan_mode and file-history-snapshot point to the same plan', async () => {
+		const projectDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projectDir, {recursive: true});
+
+		writeFileSync(
+			join(projectDir, 'sessions-index.json'),
+			makeSessionsIndex([
+				{
+					sessionId: 'sess-dup',
+					fullPath: join(projectDir, 'sess-dup.jsonl'),
+					fileMtime: Date.now(),
+					firstPrompt: 'Draft',
+				},
+			]),
+		);
+		await indexSessionsIndex(db.index, projectDir, '-Users-craig-projects-app');
+
+		writeFileSync(
+			join(projectDir, 'sess-dup.jsonl'),
+			jsonl(
+				{type: 'user', message: {role: 'user', content: 'Draft'}},
+				{
+					type: 'attachment',
+					attachment: {
+						type: 'plan_mode',
+						planFilePath: '/Users/craig/.claude/plans/dual-plan.md',
+					},
+				},
+				{
+					type: 'file-history-snapshot',
+					snapshot: {
+						trackedFileBackups: {
+							'/Users/craig/.claude/plans/dual-plan.md': 'backup',
+						},
+					},
+				},
+			),
+		);
+
+		await indexJsonlFile(db.index, join(projectDir, 'sess-dup.jsonl'), '-Users-craig-projects-app');
+
+		const links = db.index.select().from(schema.planSessions).all();
+		expect(links).toHaveLength(1);
+		expect(links[0]!.planFilename).toBe('dual-plan.md');
+	});
+
+	it('pruneStalePlanLinks removes plan_sessions rows whose plan file no longer exists', async () => {
+		const plansDir = join(testDir, 'plans');
+		mkdirSync(plansDir, {recursive: true});
+		writeFileSync(join(plansDir, 'still-here.md'), '# Still Here');
+
+		db.index
+			.insert(schema.planSessions)
+			.values([
+				{planFilename: 'still-here.md', sessionId: 's1', projectId: 'p1'},
+				{planFilename: 'gone.md', sessionId: 's1', projectId: 'p1'},
+				{planFilename: 'also-gone.md', sessionId: 's2', projectId: 'p1'},
+			])
+			.run();
+
+		const removed = await pruneStalePlanLinks(db.index, plansDir);
+		expect(removed).toBe(2);
+
+		const remaining = db.index.select().from(schema.planSessions).all();
+		expect(remaining).toHaveLength(1);
+		expect(remaining[0]!.planFilename).toBe('still-here.md');
+	});
+
+	it('pruneStalePlanLinks keeps all rows when plans directory is missing', async () => {
+		db.index
+			.insert(schema.planSessions)
+			.values({planFilename: 'some-plan.md', sessionId: 's1', projectId: 'p1'})
+			.run();
+
+		const removed = await pruneStalePlanLinks(db.index, join(testDir, 'nonexistent-plans-dir'));
+		expect(removed).toBe(0);
+
+		const remaining = db.index.select().from(schema.planSessions).all();
+		expect(remaining).toHaveLength(1);
+	});
+
+	it('ignores plan_mode attachments with no planFilePath', async () => {
+		const projectDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projectDir, {recursive: true});
+
+		writeFileSync(
+			join(projectDir, 'sessions-index.json'),
+			makeSessionsIndex([
+				{
+					sessionId: 'sess-no-path',
+					fullPath: join(projectDir, 'sess-no-path.jsonl'),
+					fileMtime: Date.now(),
+					firstPrompt: 'Draft',
+				},
+			]),
+		);
+		await indexSessionsIndex(db.index, projectDir, '-Users-craig-projects-app');
+
+		writeFileSync(
+			join(projectDir, 'sess-no-path.jsonl'),
+			jsonl(
+				{type: 'user', message: {role: 'user', content: 'Draft'}},
+				{
+					type: 'attachment',
+					attachment: {type: 'plan_mode', reminderType: 'full'},
+				},
+			),
+		);
+
+		await indexJsonlFile(db.index, join(projectDir, 'sess-no-path.jsonl'), '-Users-craig-projects-app');
+
+		const links = db.index.select().from(schema.planSessions).all();
+		expect(links).toHaveLength(0);
 	});
 
 	it('extracts custom-title from JSONL', async () => {

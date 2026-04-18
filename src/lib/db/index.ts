@@ -10,6 +10,7 @@ const g = globalThis as unknown as {__appDb?: AppDb};
 
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 const TASKS_DIR = join(homedir(), '.claude', 'tasks');
+const PLANS_DIR = join(homedir(), '.claude', 'plans');
 
 export function getDb(): AppDb {
 	if (!g.__appDb) {
@@ -20,7 +21,7 @@ export function getDb(): AppDb {
 
 export async function initDb(): Promise<AppDb> {
 	const db = getDb();
-	await fullScan(db.index, PROJECTS_DIR, TASKS_DIR);
+	await fullScan(db.index, PROJECTS_DIR, TASKS_DIR, PLANS_DIR);
 	return db;
 }
 

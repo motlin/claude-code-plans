@@ -142,6 +142,24 @@ export const FileHistorySnapshotSchema = z
 	})
 	.passthrough();
 
+/**
+ * Attachment record emitted when a session is in plan mode. Contains the
+ * absolute path to the plan file being drafted, which provides a direct
+ * session-to-plan linkage even before the plan has been edited (and thus
+ * before it appears in a file-history-snapshot's trackedFileBackups).
+ */
+export const PlanModeAttachmentSchema = z
+	.object({
+		type: z.literal('attachment'),
+		attachment: z
+			.object({
+				type: z.literal('plan_mode'),
+				planFilePath: z.string().optional(),
+			})
+			.passthrough(),
+	})
+	.passthrough();
+
 export const ProgressRecordSchema = z
 	.object({
 		type: z.literal('progress'),
@@ -225,6 +243,7 @@ export type SessionIndexEntry = z.infer<typeof SessionIndexEntrySchema>;
 export type SessionsIndex = z.infer<typeof SessionsIndexSchema>;
 export type CustomTitleRecord = z.infer<typeof CustomTitleRecordSchema>;
 export type FileHistorySnapshot = z.infer<typeof FileHistorySnapshotSchema>;
+export type PlanModeAttachment = z.infer<typeof PlanModeAttachmentSchema>;
 export type TextBlock = z.infer<typeof TextBlockSchema>;
 export type ToolUseBlock = z.infer<typeof ToolUseBlockSchema>;
 export type ThinkingBlock = z.infer<typeof ThinkingBlockSchema>;
