@@ -472,9 +472,12 @@ export async function linkSubagentParents(db: IndexDb, jsonlPath: string, parent
 						if (match?.[1]) {
 							const agentId = `agent-${match[1]}`;
 							const description = toolCallDescriptions.get(block.tool_use_id) || null;
-							const update: {parentAgentId: string | null; description?: string} = {parentAgentId};
-							if (description) update.description = description;
-							db.update(schema.subagents).set(update).where(eq(schema.subagents.id, agentId)).run();
+
+							// COALESCE keeps existing parentAgentId so the root-session
+							// pass doesn't overwrite nested parent links.
+							db.run(
+								sql`UPDATE subagents SET parent_agent_id = COALESCE(parent_agent_id, ${parentAgentId}), description = COALESCE(${description}, description) WHERE id = ${agentId}`,
+							);
 						}
 					}
 				}
@@ -755,6 +758,9 @@ export async function indexFile(db: IndexDb, filePath: string, projectsDir: stri
 				const project = parts[projectsEndIdx]!;
 				if (project) {
 					await indexSubagentFile(db, filePath, sessionId, project);
+					// Link nested parent-child relationships from this subagent's JSONL
+					const agentFilename = basename(filePath, '.jsonl');
+					await linkSubagentParents(db, filePath, agentFilename);
 				}
 			}
 			return;
@@ -766,6 +772,8 @@ export async function indexFile(db: IndexDb, filePath: string, projectsDir: stri
 		const project = parts[projectsDirParts.length];
 		if (project) {
 			await indexJsonlFile(db, filePath, project);
+			// Link parent-child relationships from root session JSONL
+			await linkSubagentParents(db, filePath, null);
 		}
 	}
 }
