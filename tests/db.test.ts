@@ -926,6 +926,64 @@ describe('subagents', () => {
 		const child = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, 'agent-child222')).get();
 		expect(child!.parentAgentId).toBe('agent-parent111');
 	});
+
+	it('linkSubagentParents does not overwrite existing parentAgentId with null', async () => {
+		const projectDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projectDir, {recursive: true});
+
+		// Root session JSONL that also mentions agent-child222 (e.g. via acompact replay)
+		const rootJsonl = join(projectDir, 'sess-1.jsonl');
+		writeFileSync(
+			rootJsonl,
+			jsonl(
+				{type: 'user', message: {role: 'user', content: 'Do work'}},
+				{
+					type: 'assistant',
+					message: {
+						role: 'assistant',
+						content: [
+							{
+								type: 'tool_use',
+								id: 'tool-root',
+								name: 'Agent',
+								input: {prompt: 'scan', description: 'Root agent call'},
+							},
+						],
+					},
+				},
+				{
+					type: 'user',
+					message: {
+						role: 'user',
+						content: [{type: 'tool_result', tool_use_id: 'tool-root', content: 'agentId: child222\nDone'}],
+					},
+				},
+			),
+		);
+
+		db.index.insert(schema.projects).values({id: 'proj-app', name: 'App', updatedAt: 1000}).run();
+		db.index
+			.insert(schema.subagents)
+			.values([
+				{
+					id: 'agent-child222',
+					sessionId: 'sess-1',
+					projectId: 'proj-app',
+					parentAgentId: 'agent-parent111',
+					filePath: '/path/agent-child222.jsonl',
+					mtimeMs: 1000,
+				},
+			])
+			.run();
+
+		// Root pass with parentAgentId=null should NOT overwrite the existing parent
+		await linkSubagentParents(db.index, rootJsonl, null);
+
+		const child = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, 'agent-child222')).get();
+		expect(child!.parentAgentId).toBe('agent-parent111');
+		// Description should still be updated even when parentAgentId is preserved
+		expect(child!.description).toBe('Root agent call');
+	});
 });
 
 describe('buildSubagentTree', () => {
