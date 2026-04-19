@@ -43,6 +43,14 @@ typecheck: install build
 build: install
     npm run build
 
+# Run Storybook dev server
+storybook: install
+    npm run storybook
+
+# Build static Storybook site
+build-storybook: install
+    npm run build-storybook
+
 # Run all pre-commit checks
 [arg("quick", long, value="true", help="Skip tests")]
 precommit quick="": eslint format build typecheck
