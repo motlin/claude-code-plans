@@ -53,7 +53,7 @@ function Timestamp({value}: {value: string | null}) {
 	);
 }
 
-interface SessionChatProps {
+export interface SessionChatProps {
 	sessionId: string;
 	lines: SessionLine[];
 	toolResultMap: SerializedToolResultMap;
