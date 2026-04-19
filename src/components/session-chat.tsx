@@ -918,7 +918,7 @@ function ChevronIcon({expanded}: {expanded: boolean}) {
 }
 
 const PROMINENT_TOOLS = new Set(['AskUserQuestion']);
-const TASK_TOOLS = new Set(['TaskCreate', 'TaskUpdate', 'TaskList']);
+const TASK_TOOLS = new Set(['TaskCreate', 'TaskUpdate', 'TaskGet', 'TaskList']);
 
 type ToolListItem = {kind: 'call'; call: ClientToolCall} | {kind: 'parallel'; key: string; calls: ClientToolCall[]};
 
