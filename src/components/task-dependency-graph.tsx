@@ -116,25 +116,7 @@ export function TaskDependencyGraph({groups}: {groups: TaskGroup[]}) {
 
 	const allTasks = useMemo(() => groups.flatMap((g) => g.tasks), [groups]);
 
-	// Only show tasks that have dependency relationships
-	const connectedTaskIds = useMemo(() => {
-		const ids = new Set<string>();
-		for (const t of allTasks) {
-			if (t.blocks.length > 0 || t.blockedBy.length > 0) {
-				ids.add(t.taskId);
-				for (const b of t.blocks) ids.add(b);
-				for (const b of t.blockedBy) ids.add(b);
-			}
-		}
-		return ids;
-	}, [allTasks]);
-
-	const graphTasks = useMemo(
-		() => allTasks.filter((t) => connectedTaskIds.has(t.taskId)),
-		[allTasks, connectedTaskIds],
-	);
-
-	const {nodes, width, height} = useMemo(() => layoutGraph(graphTasks), [graphTasks]);
+	const {nodes, width, height} = useMemo(() => layoutGraph(allTasks), [allTasks]);
 	const nodeMap = useMemo(() => new Map(nodes.map((n) => [n.task.taskId, n])), [nodes]);
 
 	const colors = isDark ? statusColorsDark : statusColors;
@@ -171,8 +153,8 @@ export function TaskDependencyGraph({groups}: {groups: TaskGroup[]}) {
 	const handleMouseEnter = useCallback((id: string) => setHoveredId(id), []);
 	const handleMouseLeave = useCallback(() => setHoveredId(null), []);
 
-	if (graphTasks.length === 0) {
-		return <p className="mt-4 text-text-500">No tasks with dependency relationships.</p>;
+	if (allTasks.length === 0) {
+		return <p className="mt-4 text-text-500">No tasks to display.</p>;
 	}
 
 	const edgeColor = isDark ? '#4b5563' : '#d1d5db';
