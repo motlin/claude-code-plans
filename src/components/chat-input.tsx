@@ -33,7 +33,7 @@ export function ChatInput({onSend, onCancel, isStreaming, disabled, projectPath}
 	}
 
 	return (
-		<div className="border-t border-border-300/15 bg-bg-000 px-4 py-3">
+		<div className="border-t border-border-300/15 bg-bg-000 px-4 py-3 sm:px-8">
 			{projectPath && (
 				<div className="mb-2 flex items-center gap-1.5 text-xs text-text-500">
 					<svg

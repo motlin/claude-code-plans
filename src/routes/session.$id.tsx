@@ -34,7 +34,7 @@ import {
 	type ParallelGroup,
 } from '../lib/db/queries';
 import type {ClientToolCall, ToolInput, SubagentInlineInfo} from '../components/tool-renderers';
-import {ArrowLeft, ArrowUp, ArrowDown, Copy, Terminal, GitFork, Download} from 'lucide-react';
+import {ArrowLeft, ArrowUp, ArrowDown, Copy, Terminal, GitFork, Download, Maximize2, Minimize2} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {SubagentTree} from '../components/subagent-tree';
 import {SubagentGantt} from '../components/subagent-gantt';
@@ -472,10 +472,13 @@ function useDisplayToggle(key: string, defaultValue: boolean): [boolean, (v: boo
 		if (stored !== null) setValue(stored === 'true');
 	}, [key]);
 
-	function setAndPersist(v: boolean) {
-		setValue(v);
-		localStorage.setItem(key, String(v));
-	}
+	const setAndPersist = useCallback(
+		(v: boolean) => {
+			setValue(v);
+			localStorage.setItem(key, String(v));
+		},
+		[key],
+	);
 
 	return [value, setAndPersist];
 }
@@ -489,6 +492,21 @@ function SessionPage() {
 	const isActive = useIsSessionActive(params.id);
 	const statusline = useStatusline(params.id);
 	const [generating, setGenerating] = useState(false);
+	const [chromeHidden, setChromeHidden] = useDisplayToggle('ccp-chrome-hidden', false);
+	const chromeHiddenRef = useRef(chromeHidden);
+	chromeHiddenRef.current = chromeHidden;
+
+	useEffect(() => {
+		function handleKeyDown(e: KeyboardEvent) {
+			if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'f') {
+				e.preventDefault();
+				setChromeHidden(!chromeHiddenRef.current);
+			}
+		}
+		window.addEventListener('keydown', handleKeyDown);
+		return () => window.removeEventListener('keydown', handleKeyDown);
+	}, [setChromeHidden]);
+
 	const submitAnswer = useCallback(
 		async ({toolUseId, answers}: {toolUseId: string; answers: Array<{question: string; answer: string}>}) => {
 			const res = await fetch('/api/answer-question', {
@@ -585,157 +603,186 @@ function SessionPage() {
 
 	return (
 		<div>
-			<DetailTopBar>
-				<Link
-					to="/sessions"
-					className={pillStyles.primary}
-				>
-					<ArrowLeft className="h-3.5 w-3.5" />
-					All Sessions
-				</Link>
-				<span className="text-xs text-text-500">{data.projectName}</span>
-				{isActive && (
-					<span className="inline-flex items-center gap-1 rounded-full bg-success-900 px-2 py-0.5 text-xs font-medium text-success-000">
-						<span className="h-1.5 w-1.5 rounded-full bg-success-000 animate-pulse" />
-						Active
-					</span>
-				)}
-				<CopyButton
-					title="Copy session ID"
-					text={params.id}
-					icon={Copy}
-				/>
-				<CopyButton
-					title="Copy resume command"
-					text={`claude -r ${params.id}`}
-					icon={Terminal}
-				/>
-				<CopyButton
-					title="Copy fork command"
-					text={`claude -r ${params.id} --fork-session`}
-					icon={GitFork}
-				/>
-				<a
-					href={`/api/raw?sessionId=${params.id}`}
-					download
-					className="text-text-500 hover:text-text-000 transition-colors"
-					title="Download raw JSONL"
-				>
-					<Download className="h-3.5 w-3.5" />
-				</a>
-				<button
-					type="button"
-					onClick={async () => {
-						const result = await toggleSessionStar({data: params.id});
-						setStarred(result.starred);
-					}}
-					className="shrink-0 cursor-pointer text-text-500 transition-colors hover:text-warning-000"
-					title={starred ? 'Unstar session' : 'Star session'}
-				>
-					<svg
-						viewBox="0 0 24 24"
-						className="h-5 w-5"
-						fill={starred ? 'currentColor' : 'none'}
-						stroke="currentColor"
-						strokeWidth="2"
-						style={{color: starred ? 'rgb(234, 179, 8)' : undefined}}
-					>
-						<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-					</svg>
-				</button>
-			</DetailTopBar>
-			<h1 className="text-lg font-semibold">{data.title}</h1>
-
-			{aiSummary ? (
-				<p className="mt-1 text-sm text-text-500 italic">{aiSummary}</p>
-			) : (
-				summaryLoaded && (
-					<button
-						type="button"
-						onClick={handleGenerateSummary}
-						disabled={generating}
-						className="mt-1 text-xs text-accent-100 hover:underline disabled:opacity-50 disabled:no-underline"
-					>
-						{generating ? 'Generating summary...' : 'Generate AI summary'}
-					</button>
-				)
-			)}
-
-			{data.subagentCount > 0 && (
-				<div className="mt-3">
-					<div className="flex items-center gap-2 text-[10px] text-text-500">
-						<span>View</span>
-						<button
-							type="button"
-							onClick={() => setSubagentView('tree')}
-							aria-pressed={subagentView === 'tree'}
-							className={`rounded px-1.5 py-0.5 ${
-								subagentView === 'tree'
-									? 'bg-accent-000/15 text-accent-100'
-									: 'hover:bg-bg-200/50 text-text-500'
-							}`}
+			{/* Sticky header: top bar + title + subagent views + display toggles */}
+			{!chromeHidden && (
+				<div className="sticky top-0 z-10 bg-bg-000 pb-2 -mx-4 px-4 sm:-mx-8 sm:px-8 border-b border-border-300/15">
+					<DetailTopBar>
+						<Link
+							to="/sessions"
+							className={pillStyles.primary}
 						>
-							Tree
-						</button>
-						<button
-							type="button"
-							onClick={() => setSubagentView('gantt')}
-							aria-pressed={subagentView === 'gantt'}
-							className={`rounded px-1.5 py-0.5 ${
-								subagentView === 'gantt'
-									? 'bg-accent-000/15 text-accent-100'
-									: 'hover:bg-bg-200/50 text-text-500'
-							}`}
-						>
-							Gantt
-						</button>
-						<button
-							type="button"
-							onClick={() => setSubagentView('sequence')}
-							aria-pressed={subagentView === 'sequence'}
-							className={`rounded px-1.5 py-0.5 ${
-								subagentView === 'sequence'
-									? 'bg-accent-000/15 text-accent-100'
-									: 'hover:bg-bg-200/50 text-text-500'
-							}`}
-						>
-							Sequence
-						</button>
-					</div>
-					{subagentView === 'tree' ? (
-						<SubagentTree
-							tree={data.subagentTree}
-							totalCount={data.subagentCount}
+							<ArrowLeft className="h-3.5 w-3.5" />
+							All Sessions
+						</Link>
+						<span className="text-xs text-text-500">{data.projectName}</span>
+						{isActive && (
+							<span className="inline-flex items-center gap-1 rounded-full bg-success-900 px-2 py-0.5 text-xs font-medium text-success-000">
+								<span className="h-1.5 w-1.5 rounded-full bg-success-000 animate-pulse" />
+								Active
+							</span>
+						)}
+						<CopyButton
+							title="Copy session ID"
+							text={params.id}
+							icon={Copy}
 						/>
-					) : subagentView === 'gantt' ? (
-						<SubagentGantt agents={data.subagents} />
+						<CopyButton
+							title="Copy resume command"
+							text={`claude -r ${params.id}`}
+							icon={Terminal}
+						/>
+						<CopyButton
+							title="Copy fork command"
+							text={`claude -r ${params.id} --fork-session`}
+							icon={GitFork}
+						/>
+						<a
+							href={`/api/raw?sessionId=${params.id}`}
+							download
+							className="text-text-500 hover:text-text-000 transition-colors"
+							title="Download raw JSONL"
+						>
+							<Download className="h-3.5 w-3.5" />
+						</a>
+						<button
+							type="button"
+							onClick={async () => {
+								const result = await toggleSessionStar({data: params.id});
+								setStarred(result.starred);
+							}}
+							className="shrink-0 cursor-pointer text-text-500 transition-colors hover:text-warning-000"
+							title={starred ? 'Unstar session' : 'Star session'}
+						>
+							<svg
+								viewBox="0 0 24 24"
+								className="h-5 w-5"
+								fill={starred ? 'currentColor' : 'none'}
+								stroke="currentColor"
+								strokeWidth="2"
+								style={{color: starred ? 'rgb(234, 179, 8)' : undefined}}
+							>
+								<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+							</svg>
+						</button>
+						<button
+							type="button"
+							onClick={() => setChromeHidden(true)}
+							className="ml-auto shrink-0 cursor-pointer text-text-500 transition-colors hover:text-text-000"
+							title="Expand chat (Ctrl+Shift+F)"
+						>
+							<Maximize2 className="h-3.5 w-3.5" />
+						</button>
+					</DetailTopBar>
+					<h1 className="text-lg font-semibold">{data.title}</h1>
+
+					{aiSummary ? (
+						<p className="mt-1 text-sm text-text-500 italic">{aiSummary}</p>
 					) : (
-						<SubagentSequence agents={data.subagents} />
+						summaryLoaded && (
+							<button
+								type="button"
+								onClick={handleGenerateSummary}
+								disabled={generating}
+								className="mt-1 text-xs text-accent-100 hover:underline disabled:opacity-50 disabled:no-underline"
+							>
+								{generating ? 'Generating summary...' : 'Generate AI summary'}
+							</button>
+						)
 					)}
+
+					{data.subagentCount > 0 && (
+						<div className="mt-3">
+							<div className="flex items-center gap-2 text-[10px] text-text-500">
+								<span>View</span>
+								<button
+									type="button"
+									onClick={() => setSubagentView('tree')}
+									aria-pressed={subagentView === 'tree'}
+									className={`rounded px-1.5 py-0.5 ${
+										subagentView === 'tree'
+											? 'bg-accent-000/15 text-accent-100'
+											: 'hover:bg-bg-200/50 text-text-500'
+									}`}
+								>
+									Tree
+								</button>
+								<button
+									type="button"
+									onClick={() => setSubagentView('gantt')}
+									aria-pressed={subagentView === 'gantt'}
+									className={`rounded px-1.5 py-0.5 ${
+										subagentView === 'gantt'
+											? 'bg-accent-000/15 text-accent-100'
+											: 'hover:bg-bg-200/50 text-text-500'
+									}`}
+								>
+									Gantt
+								</button>
+								<button
+									type="button"
+									onClick={() => setSubagentView('sequence')}
+									aria-pressed={subagentView === 'sequence'}
+									className={`rounded px-1.5 py-0.5 ${
+										subagentView === 'sequence'
+											? 'bg-accent-000/15 text-accent-100'
+											: 'hover:bg-bg-200/50 text-text-500'
+									}`}
+								>
+									Sequence
+								</button>
+							</div>
+							{subagentView === 'tree' ? (
+								<SubagentTree
+									tree={data.subagentTree}
+									totalCount={data.subagentCount}
+								/>
+							) : subagentView === 'gantt' ? (
+								<SubagentGantt agents={data.subagents} />
+							) : (
+								<SubagentSequence agents={data.subagents} />
+							)}
+						</div>
+					)}
+
+					<div className="flex items-center gap-3 mt-2 text-xs text-text-500">
+						<label className="flex items-center gap-1 cursor-pointer select-none">
+							<input
+								type="checkbox"
+								checked={showThinking}
+								onChange={(e) => setShowThinking(e.target.checked)}
+								className="accent-accent-000"
+							/>
+							Thinking
+						</label>
+						<label className="flex items-center gap-1 cursor-pointer select-none">
+							<input
+								type="checkbox"
+								checked={showTools}
+								onChange={(e) => setShowTools(e.target.checked)}
+								className="accent-accent-000"
+							/>
+							Tools
+						</label>
+					</div>
 				</div>
 			)}
 
-			<div className="flex items-center gap-3 mt-2 text-xs text-text-500">
-				<label className="flex items-center gap-1 cursor-pointer select-none">
-					<input
-						type="checkbox"
-						checked={showThinking}
-						onChange={(e) => setShowThinking(e.target.checked)}
-						className="accent-accent-000"
-					/>
-					Thinking
-				</label>
-				<label className="flex items-center gap-1 cursor-pointer select-none">
-					<input
-						type="checkbox"
-						checked={showTools}
-						onChange={(e) => setShowTools(e.target.checked)}
-						className="accent-accent-000"
-					/>
-					Tools
-				</label>
-			</div>
+			{/* Floating restore button when chrome is hidden */}
+			{chromeHidden && (
+				<div className="sticky top-0 z-10 flex justify-end py-1">
+					<button
+						type="button"
+						onClick={() => setChromeHidden(false)}
+						className="rounded-md bg-bg-200 border border-border-300/15 px-2 py-1 text-xs text-text-500 hover:text-text-000 hover:bg-bg-300/70 transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
+						title="Show header and footer (Ctrl+Shift+F)"
+					>
+						<Minimize2 className="h-3 w-3" />
+						Show chrome
+					</button>
+				</div>
+			)}
 
+			{/* Chat messages */}
 			<AskUserQuestionProvider value={askUserQuestionCtx}>
 				<SessionChat
 					sessionId={params.id}
@@ -755,14 +802,17 @@ function SessionPage() {
 				/>
 			)}
 
-			{data.projectPath && (
-				<ChatInput
-					onSend={(prompt) => chatStream.send(params.id, prompt)}
-					onCancel={chatStream.cancel}
-					isStreaming={chatStream.state.isStreaming}
-					disabled={isActive}
-					projectPath={data.projectPath}
-				/>
+			{/* Sticky footer: chat input + status bar */}
+			{!chromeHidden && data.projectPath && (
+				<div className="sticky bottom-0 z-10 -mx-4 sm:-mx-8">
+					<ChatInput
+						onSend={(prompt) => chatStream.send(params.id, prompt)}
+						onCancel={chatStream.cancel}
+						isStreaming={chatStream.state.isStreaming}
+						disabled={isActive}
+						projectPath={data.projectPath}
+					/>
+				</div>
 			)}
 
 			<FloatingScrollButtons />
