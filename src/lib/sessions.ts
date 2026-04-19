@@ -69,6 +69,70 @@ export interface SessionDetail {
 	uuidToLine: Map<string, number>;
 }
 
+/**
+ * A single parsed JSONL line, preserving the original structure from Claude Code.
+ * The `type` field determines which switching component renders it.
+ */
+export interface SessionLine {
+	type: string;
+	uuid?: string | undefined;
+	parentUuid?: string | undefined;
+	timestamp?: string | undefined;
+	message?:
+		| {
+				role?: string | undefined;
+				content?: string | SessionContentBlock[] | undefined;
+		  }
+		| undefined;
+	customTitle?: string | undefined;
+	sessionId?: string | undefined;
+	lineIndex: number;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- TanStack serialization narrows unknown to {}
+type SerializableValue = Record<string, {}>;
+
+/**
+ * A content block within a message, preserving the original JSONL structure.
+ */
+export interface SessionContentBlock {
+	type: string;
+	text?: string | undefined;
+	thinking?: string | undefined;
+	name?: string | undefined;
+	id?: string | undefined;
+	input?: SerializableValue | undefined;
+	tool_use_id?: string | undefined;
+	content?: string | Array<{type: string; text: string}> | undefined;
+	is_error?: boolean | undefined;
+	source?: {type: string; media_type: string; data: string} | undefined;
+}
+
+/**
+ * Information about a tool_result paired with its tool_use.
+ */
+export interface ToolResultInfo {
+	result: string;
+	isError: boolean;
+	resultUuid: string;
+	duration?: number | undefined;
+}
+
+/**
+ * Raw session data: parsed lines + lookup maps for pairing and decorations.
+ */
+export interface SessionLines {
+	id: string;
+	title: string;
+	projectName: string;
+	projectId: string;
+	lines: SessionLine[];
+	/** Maps tool_use.id to its tool_result data */
+	toolResultMap: Map<string, ToolResultInfo>;
+	/** Maps uuid to JSONL file line index */
+	uuidToLine: Map<string, number>;
+}
+
 /** Match a complete command-message block and capture its inner content. */
 const COMMAND_MESSAGE_RE = /<command-message[^>]*>([\s\S]*?)<\/command-message>/;
 
@@ -934,6 +998,141 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 	if (customTitle) title = customTitle;
 
 	return {id: sessionId, title, projectName, projectId: project, messages, uuidToLine};
+}
+
+export async function readSessionLines(projectsDir: string, sessionId: string): Promise<SessionLines | null> {
+	const resolved = await resolveSessionFilePath(projectsDir, sessionId);
+	if (!resolved) return null;
+	const {filePath, project} = resolved;
+
+	const projectName = await resolveProjectName(project);
+	const lines: SessionLine[] = [];
+	let title = sessionId;
+	let customTitle: string | undefined;
+	const uuidToLine = new Map<string, number>();
+	const toolResultMap = new Map<string, ToolResultInfo>();
+	const toolStartTimes = new Map<string, number>();
+
+	const rl = createInterface({
+		input: createReadStream(filePath, {encoding: 'utf-8'}),
+		crlfDelay: Infinity,
+	});
+
+	let lineIndex = -1;
+	try {
+		for await (const line of rl) {
+			lineIndex++;
+			if (!line.trim()) continue;
+
+			let obj: Record<string, unknown>;
+			try {
+				obj = JSON.parse(line) as Record<string, unknown>;
+			} catch {
+				continue;
+			}
+
+			const uuid = typeof obj['uuid'] === 'string' ? obj['uuid'] : undefined;
+			if (uuid) uuidToLine.set(uuid, lineIndex);
+
+			const type = obj['type'] as string;
+
+			if (type === 'custom-title') {
+				const parsed = CustomTitleRecordSchema.safeParse(obj);
+				if (parsed.success) {
+					customTitle = parsed.data.customTitle;
+				}
+				continue;
+			}
+
+			// Extract title from first user text
+			if (type === 'user' && title === sessionId) {
+				const message = obj['message'] as {content?: string | SessionContentBlock[]} | undefined;
+				if (message?.content) {
+					if (typeof message.content === 'string') {
+						const cleaned = stripCommandTags(message.content);
+						if (cleaned) title = extractSessionTitle(cleaned, sessionId);
+					} else if (Array.isArray(message.content)) {
+						for (const block of message.content) {
+							if (block.type === 'text' && typeof block.text === 'string') {
+								const cleaned = stripCommandTags(block.text);
+								if (cleaned) {
+									title = extractSessionTitle(cleaned, sessionId);
+									break;
+								}
+							}
+						}
+					}
+				}
+			}
+
+			// Build tool_use -> tool_result pairing map
+			if (type === 'assistant') {
+				const message = obj['message'] as {content?: SessionContentBlock[]} | undefined;
+				const timestamp = typeof obj['timestamp'] === 'string' ? obj['timestamp'] : undefined;
+				if (Array.isArray(message?.content)) {
+					for (const block of message.content) {
+						if (block.type === 'tool_use' && block.id) {
+							if (timestamp) {
+								const t = new Date(timestamp).getTime();
+								if (!isNaN(t)) toolStartTimes.set(block.id, t);
+							}
+						}
+					}
+				}
+			}
+
+			if (type === 'user') {
+				const message = obj['message'] as {content?: string | SessionContentBlock[]} | undefined;
+				const timestamp = typeof obj['timestamp'] === 'string' ? obj['timestamp'] : undefined;
+				if (Array.isArray(message?.content)) {
+					for (const block of message.content as SessionContentBlock[]) {
+						if (block.type === 'tool_result' && block.tool_use_id) {
+							const rawResult = extractToolResultContent(block.content);
+							if (rawResult !== undefined) {
+								const resultText = stripResultTags(rawResult);
+								const info: ToolResultInfo = {
+									result: truncateResult(resultText, 150),
+									isError: block.is_error === true,
+									resultUuid: uuid ?? '',
+								};
+								const startTime = toolStartTimes.get(block.tool_use_id);
+								if (startTime && timestamp) {
+									const resultTime = new Date(timestamp).getTime();
+									if (!isNaN(resultTime) && resultTime > startTime) {
+										info.duration = resultTime - startTime;
+									}
+								}
+								toolResultMap.set(block.tool_use_id, info);
+							}
+						}
+					}
+				}
+			}
+
+			// Only include user/assistant lines for the rendering tree
+			if (type !== 'user' && type !== 'assistant') continue;
+
+			const sessionLine: SessionLine = {
+				type,
+				lineIndex,
+			};
+			if (uuid !== undefined) sessionLine.uuid = uuid;
+			const parentUuid = obj['parentUuid'];
+			if (typeof parentUuid === 'string') sessionLine.parentUuid = parentUuid;
+			const timestamp = obj['timestamp'];
+			if (typeof timestamp === 'string') sessionLine.timestamp = timestamp;
+			const message = obj['message'] as {role?: string; content?: string | SessionContentBlock[]} | undefined;
+			if (message) sessionLine.message = message;
+
+			lines.push(sessionLine);
+		}
+	} finally {
+		rl.close();
+	}
+
+	if (customTitle) title = customTitle;
+
+	return {id: sessionId, title, projectName, projectId: project, lines, toolResultMap, uuidToLine};
 }
 
 export function getSessionsDir(): string {
