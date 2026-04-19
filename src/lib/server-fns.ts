@@ -36,6 +36,9 @@ import {
 	getIncompleteTasksGroupedByProject,
 	getTasksForProject,
 	getTaskCountsForProject,
+	listBranchesForProject,
+	listSessionsForBranch,
+	listCwdsForProject,
 } from './db/queries';
 import {getSummary, generateSummary} from './summaries';
 import {getActiveSessions as getActiveSessionsList} from './active-sessions';
@@ -726,6 +729,46 @@ export const getProjectSessionsList = createServerFn({method: 'GET'})
 				subagentCount: subagentBySession.get(s.id) ?? 0,
 			})),
 		};
+	});
+
+export const getProjectBranches = createServerFn({method: 'GET'})
+	.inputValidator(z.string())
+	.handler(async ({data: projectId}) => {
+		const {index} = getDb();
+		const branches = listBranchesForProject(index, projectId);
+		return branches.map((b) => ({
+			branch: b.branch,
+			sessionCount: b.sessionCount,
+			lastActivity: new Date(b.lastActivity).toISOString(),
+		}));
+	});
+
+export const getProjectBranchSessions = createServerFn({method: 'GET'})
+	.inputValidator(z.object({projectId: z.string(), branch: z.string()}))
+	.handler(async ({data: {projectId, branch}}) => {
+		const {index} = getDb();
+		const sessions = listSessionsForBranch(index, projectId, branch);
+		return sessions.map((s) => ({
+			id: s.id,
+			title: s.title,
+			summary: s.summary,
+			mtime: s.mtime.toISOString(),
+			created: s.created.toISOString(),
+			messageCount: s.messageCount,
+			gitBranch: s.gitBranch,
+		}));
+	});
+
+export const getProjectCwds = createServerFn({method: 'GET'})
+	.inputValidator(z.string())
+	.handler(async ({data: projectId}) => {
+		const {index} = getDb();
+		const cwds = listCwdsForProject(index, projectId);
+		return cwds.map((c) => ({
+			cwd: c.cwd,
+			sessionCount: c.sessionCount,
+			lastActivity: new Date(c.lastActivity).toISOString(),
+		}));
 	});
 
 export const getProjectSubagentTree = createServerFn({method: 'GET'})

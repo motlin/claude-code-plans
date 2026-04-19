@@ -19,6 +19,7 @@ export interface SessionEntry {
 	projectPath?: string | undefined;
 	messageCount: number;
 	gitBranch?: string | undefined;
+	cwd?: string | undefined;
 	isSidechain: boolean;
 }
 

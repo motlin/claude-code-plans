@@ -111,6 +111,7 @@ export async function indexSessionsIndex(db: IndexDb, projectDir: string, projec
 		const fp = entry.firstPrompt as string | undefined;
 		const summ = entry.summary as string | undefined;
 		const branch = entry.gitBranch as string | undefined;
+		const entryProjectPath = entry.projectPath as string | undefined;
 		const msgCount = (entry.messageCount as number | undefined) ?? 0;
 		const sidechain = entry.isSidechain as boolean | undefined;
 		const title = summ ?? (fp ? extractSessionTitle(fp, entry.sessionId) : entry.sessionId);
@@ -126,6 +127,7 @@ export async function indexSessionsIndex(db: IndexDb, projectDir: string, projec
 				customTitle: null,
 				messageCount: msgCount,
 				gitBranch: branch ?? null,
+				cwd: entryProjectPath ?? null,
 				isSidechain: sidechain ? 1 : 0,
 				createdAt,
 				mtimeMs: entry.fileMtime,
@@ -139,6 +141,7 @@ export async function indexSessionsIndex(db: IndexDb, projectDir: string, projec
 					summary: summ ?? null,
 					messageCount: msgCount,
 					gitBranch: branch ?? null,
+					cwd: entryProjectPath ?? null,
 					isSidechain: sidechain ? 1 : 0,
 					mtimeMs: entry.fileMtime,
 				},
@@ -175,6 +178,7 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 	const sessionId = basename(filePath, '.jsonl');
 	const planFilenames = new Set<string>();
 	let customTitle: string | undefined;
+	let sessionCwd: string | undefined;
 	const textChunks: string[] = [];
 
 	// Stream the file line-by-line to avoid loading entire JSONL into memory
@@ -213,6 +217,18 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 							const match = PLAN_PATH_RE.exec(planPath);
 							if (match?.[1]) planFilenames.add(match[1]);
 						}
+					}
+				} catch {
+					// skip
+				}
+			}
+
+			// Extract cwd from early lines (attachment, system, or init lines carry it)
+			if (!sessionCwd && line.includes('"cwd"')) {
+				try {
+					const parsed = JSON.parse(line) as {cwd?: string};
+					if (typeof parsed.cwd === 'string') {
+						sessionCwd = parsed.cwd;
 					}
 				} catch {
 					// skip
@@ -272,6 +288,9 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 			updates['customTitle'] = customTitle;
 			updates['title'] = customTitle;
 		}
+		if (sessionCwd) {
+			updates['cwd'] = sessionCwd;
+		}
 		db.update(schema.sessions).set(updates).where(eq(schema.sessions.id, sessionId)).run();
 	} else {
 		const firstMsg = await readFirstUserMessage(filePath);
@@ -298,6 +317,7 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 				customTitle: customTitle ?? null,
 				messageCount: 0,
 				gitBranch: null,
+				cwd: sessionCwd ?? null,
 				isSidechain: 0,
 				createdAt: fileStat.birthtimeMs,
 				mtimeMs: fileStat.mtimeMs,

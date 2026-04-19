@@ -1,11 +1,18 @@
-import {createFileRoute, Link} from '@tanstack/react-router';
-import {ArrowLeft} from 'lucide-react';
+import {createFileRoute, Link, useNavigate} from '@tanstack/react-router';
+import {ArrowLeft, GitBranch, X} from 'lucide-react';
+import {useMemo} from 'react';
+import {z} from 'zod';
 import {getProjectSessionsList} from '../lib/server-fns';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {useClaudeEvents} from '../hooks/use-claude-events';
 
+const sessionsSearchSchema = z.object({
+	branch: z.string().optional(),
+});
+
 export const Route = createFileRoute('/project/$id_/sessions')({
 	component: ProjectSessionsPage,
+	validateSearch: sessionsSearchSchema,
 	loader: ({params}) => getProjectSessionsList({data: params.id}),
 	head: ({loaderData}) => ({
 		meta: [{title: loaderData ? `${loaderData.project.name} sessions` : 'Project Not Found'}],
@@ -24,6 +31,8 @@ function formatDate(iso: string): string {
 
 function ProjectSessionsPage() {
 	const data = Route.useLoaderData();
+	const {branch} = Route.useSearch();
+	const navigate = useNavigate();
 	const {activeSessions} = useClaudeEvents();
 	const activeIds = new Set(activeSessions.keys());
 
@@ -44,7 +53,21 @@ function ProjectSessionsPage() {
 		);
 	}
 
-	const {project, sessions} = data;
+	const {project, sessions: allSessions} = data;
+	const sessions = useMemo(
+		() => (branch ? allSessions.filter((s) => s.gitBranch === branch) : allSessions),
+		[allSessions, branch],
+	);
+
+	const uniqueBranches = useMemo(() => {
+		const counts = new Map<string, number>();
+		for (const s of allSessions) {
+			if (s.gitBranch) {
+				counts.set(s.gitBranch, (counts.get(s.gitBranch) ?? 0) + 1);
+			}
+		}
+		return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+	}, [allSessions]);
 
 	return (
 		<div>
@@ -62,7 +85,37 @@ function ProjectSessionsPage() {
 			<h1 className="text-lg font-semibold">{project.name} sessions</h1>
 			<p className="mt-0.5 text-xs text-text-500">
 				{sessions.length} {sessions.length === 1 ? 'session' : 'sessions'}
+				{branch && ` on ${branch}`}
 			</p>
+
+			{uniqueBranches.length > 1 && (
+				<div className="mt-2 flex flex-wrap gap-1.5">
+					{branch && (
+						<button
+							type="button"
+							onClick={() => void navigate({to: '.', search: {}, replace: true})}
+							className="flex items-center gap-1 rounded-full bg-accent-main-100 px-2 py-0.5 text-[11px] font-medium text-oncolor-100 transition-colors hover:bg-accent-main-200"
+						>
+							<GitBranch className="h-3 w-3" />
+							{branch}
+							<X className="h-3 w-3" />
+						</button>
+					)}
+					{!branch &&
+						uniqueBranches.slice(0, 12).map(([b, count]) => (
+							<button
+								key={b}
+								type="button"
+								onClick={() => void navigate({to: '.', search: {branch: b}, replace: true})}
+								className="flex items-center gap-1 rounded-full border border-border-300 px-2 py-0.5 text-[11px] text-text-300 transition-colors hover:bg-bg-200"
+							>
+								<GitBranch className="h-3 w-3" />
+								{b}
+								<span className="text-text-400">({count})</span>
+							</button>
+						))}
+				</div>
+			)}
 
 			{sessions.length === 0 ? (
 				<p className="mt-4 text-text-500">No sessions for this project.</p>

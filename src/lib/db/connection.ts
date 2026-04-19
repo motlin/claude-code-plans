@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   custom_title TEXT,
   message_count INTEGER NOT NULL DEFAULT 0,
   git_branch TEXT,
+  cwd TEXT,
   is_sidechain INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   mtime_ms INTEGER NOT NULL,
@@ -47,6 +48,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 CREATE INDEX IF NOT EXISTS sessions_project_id_idx ON sessions(project_id);
 CREATE INDEX IF NOT EXISTS sessions_mtime_desc_idx ON sessions(mtime_ms);
+CREATE INDEX IF NOT EXISTS sessions_git_branch_idx ON sessions(git_branch);
 
 CREATE TABLE IF NOT EXISTS plan_sessions (
   plan_filename TEXT NOT NULL,

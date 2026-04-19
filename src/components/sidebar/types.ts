@@ -17,7 +17,7 @@ export interface SubItem {
 }
 
 export interface ProjectDetail {
-	sessions: Array<{id: string; title: string}>;
+	sessions: Array<{id: string; title: string; gitBranch?: string | undefined}>;
 	plans: Array<{filename: string; title: string}>;
 	memories: Array<{filename: string; title: string; project: string}>;
 	todoCounts: {total: number; pending: number; inProgress: number; completed: number};

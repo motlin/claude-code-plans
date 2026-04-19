@@ -1,8 +1,8 @@
 import {Link} from '@tanstack/react-router';
 import {useQuery, useQueryClient} from '@tanstack/react-query';
-import {ChevronRight} from 'lucide-react';
+import {ChevronRight, GitBranch} from 'lucide-react';
 import {useEffect, useMemo, useState} from 'react';
-import {projectQueryOptions, projectsQueryOptions} from '../../../queries/projects';
+import {projectQueryOptions, projectsQueryOptions, projectBranchesQueryOptions} from '../../../queries/projects';
 import type {ProjectDetail} from '../types';
 import {LoadingBars} from '../primitives/LoadingBars';
 
@@ -113,10 +113,12 @@ function ExpandedProjectDetail({
 }) {
 	const {data: raw, isFetching} = useQuery(projectQueryOptions(projectId));
 
+	const {data: branches} = useQuery(projectBranchesQueryOptions(projectId));
+
 	const detail: ProjectDetail | undefined = useMemo(() => {
 		if (!raw) return undefined;
 		return {
-			sessions: raw.sessions.map((s) => ({id: s.id, title: s.title})),
+			sessions: raw.sessions.map((s) => ({id: s.id, title: s.title, gitBranch: s.gitBranch})),
 			plans: raw.plans.map((p) => ({filename: p.filename, title: p.title})),
 			memories: raw.memories.map((m) => ({
 				filename: m.filename,
@@ -132,6 +134,39 @@ function ExpandedProjectDetail({
 			{!detail && isFetching && <LoadingBars />}
 			{detail && (
 				<>
+					{branches && branches.length > 1 && (
+						<div>
+							<div className={labelClass}>
+								<GitBranch className="h-2.5 w-2.5" />
+								Branches
+							</div>
+							{branches.slice(0, 8).map((b) => (
+								<Link
+									key={b.branch}
+									to="/project/$id/sessions"
+									params={{id: projectId}}
+									search={{branch: b.branch}}
+									className={linkClass(false)}
+									style={{paddingLeft: '1.5rem'}}
+								>
+									<span className="flex items-center gap-1.5">
+										<span className="truncate">{b.branch}</span>
+										<span className="shrink-0 text-[10px] text-text-400">({b.sessionCount})</span>
+									</span>
+								</Link>
+							))}
+							{branches.length > 8 && (
+								<Link
+									to="/project/$id"
+									params={{id: projectId}}
+									className="mb-px block truncate rounded-[4px] py-1 text-[10px] italic text-text-400 no-underline hover:text-text-500"
+									style={{paddingLeft: '1.5rem', paddingRight: '0.5rem'}}
+								>
+									+{branches.length - 8} more...
+								</Link>
+							)}
+						</div>
+					)}
 					{detail.sessions.length > 0 && (
 						<div>
 							<div className={labelClass}>Sessions</div>

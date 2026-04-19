@@ -1,6 +1,6 @@
 import {sqliteTable, text, integer, index, primaryKey} from 'drizzle-orm/sqlite-core';
 
-export const SCHEMA_VERSION = '7';
+export const SCHEMA_VERSION = '8';
 
 export const metadata = sqliteTable('metadata', {
 	key: text('key').primaryKey(),
@@ -32,6 +32,7 @@ export const sessions = sqliteTable(
 		customTitle: text('custom_title'),
 		messageCount: integer('message_count').notNull().default(0),
 		gitBranch: text('git_branch'),
+		cwd: text('cwd'),
 		isSidechain: integer('is_sidechain').notNull().default(0),
 		createdAt: integer('created_at').notNull(),
 		mtimeMs: integer('mtime_ms').notNull(),
@@ -40,6 +41,7 @@ export const sessions = sqliteTable(
 	(table) => [
 		index('sessions_project_id_idx').on(table.projectId),
 		index('sessions_mtime_desc_idx').on(table.mtimeMs),
+		index('sessions_git_branch_idx').on(table.gitBranch),
 	],
 );
 

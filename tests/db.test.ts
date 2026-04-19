@@ -32,6 +32,9 @@ import {
 	getIncompleteTasksGroupedByProject,
 	getTaskCountsForProject,
 	buildSubagentTree,
+	listBranchesForProject,
+	listSessionsForBranch,
+	listCwdsForProject,
 	type DbSubagent,
 	type ParallelGroup,
 	type SubagentTreeNode,
@@ -458,6 +461,84 @@ describe('indexer', () => {
 		const sessions = db.index.select().from(schema.sessions).all();
 		expect(sessions).toHaveLength(2);
 	});
+
+	it('extracts cwd from JSONL attachment lines', async () => {
+		const projectDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projectDir, {recursive: true});
+
+		writeFileSync(
+			join(projectDir, 'cwd-sess.jsonl'),
+			jsonl(
+				{type: 'attachment', cwd: '/Users/craig/projects/app'},
+				{type: 'user', message: {role: 'user', content: 'Hello from cwd'}},
+			),
+		);
+
+		await indexJsonlFile(db.index, join(projectDir, 'cwd-sess.jsonl'), '-Users-craig-projects-app');
+
+		const session = db.index.select().from(schema.sessions).where(eq(schema.sessions.id, 'cwd-sess')).get();
+		expect(session).toBeDefined();
+		expect(session!.cwd).toBe('/Users/craig/projects/app');
+	});
+
+	it('indexes cwd from sessions-index.json projectPath', async () => {
+		const projectDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projectDir, {recursive: true});
+		writeFileSync(
+			join(projectDir, 'sessions-index.json'),
+			makeSessionsIndex([
+				{
+					sessionId: 'idx-cwd-1',
+					fullPath: join(projectDir, 'idx-cwd-1.jsonl'),
+					fileMtime: Date.now(),
+					firstPrompt: 'Hello',
+					projectPath: '/Users/craig/projects/app',
+				},
+			]),
+		);
+
+		await indexSessionsIndex(db.index, projectDir, '-Users-craig-projects-app');
+
+		const session = db.index.select().from(schema.sessions).where(eq(schema.sessions.id, 'idx-cwd-1')).get();
+		expect(session).toBeDefined();
+		expect(session!.cwd).toBe('/Users/craig/projects/app');
+	});
+
+	it('updates cwd when re-indexing JSONL for existing session', async () => {
+		const projectDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projectDir, {recursive: true});
+
+		// Create session via index first (no cwd)
+		writeFileSync(
+			join(projectDir, 'sessions-index.json'),
+			makeSessionsIndex([
+				{
+					sessionId: 'update-cwd',
+					fullPath: join(projectDir, 'update-cwd.jsonl'),
+					fileMtime: Date.now() - 1000,
+					firstPrompt: 'Initial',
+				},
+			]),
+		);
+		await indexSessionsIndex(db.index, projectDir, '-Users-craig-projects-app');
+
+		const before = db.index.select().from(schema.sessions).where(eq(schema.sessions.id, 'update-cwd')).get();
+		expect(before!.cwd).toBeNull();
+
+		// Now write JSONL with cwd
+		writeFileSync(
+			join(projectDir, 'update-cwd.jsonl'),
+			jsonl(
+				{type: 'attachment', cwd: '/Users/craig/projects/app-worktree'},
+				{type: 'user', message: {role: 'user', content: 'Updated'}},
+			),
+		);
+
+		await indexJsonlFile(db.index, join(projectDir, 'update-cwd.jsonl'), '-Users-craig-projects-app');
+
+		const after = db.index.select().from(schema.sessions).where(eq(schema.sessions.id, 'update-cwd')).get();
+		expect(after!.cwd).toBe('/Users/craig/projects/app-worktree');
+	});
 });
 
 describe('queries', () => {
@@ -623,6 +704,114 @@ describe('queries', () => {
 	it('getSessionProjectPath returns project path for session in different project', () => {
 		const path = getSessionProjectPath(db.index, 'sess-3');
 		expect(path).toBe('/projects/beta');
+	});
+});
+
+describe('branch and cwd queries', () => {
+	beforeEach(() => {
+		db.index
+			.insert(schema.projects)
+			.values([{id: 'proj-a', name: 'Alpha', projectPath: '/projects/alpha', updatedAt: 2000}])
+			.run();
+
+		db.index
+			.insert(schema.sessions)
+			.values([
+				{
+					id: 'b-sess-1',
+					projectId: 'proj-a',
+					title: 'Feature work',
+					messageCount: 5,
+					gitBranch: 'feature-x',
+					cwd: '/projects/alpha',
+					isSidechain: 0,
+					createdAt: 1000,
+					mtimeMs: 3000,
+					filePath: '/path/b-sess-1.jsonl',
+				},
+				{
+					id: 'b-sess-2',
+					projectId: 'proj-a',
+					title: 'More feature work',
+					messageCount: 3,
+					gitBranch: 'feature-x',
+					cwd: '/projects/alpha',
+					isSidechain: 0,
+					createdAt: 500,
+					mtimeMs: 2000,
+					filePath: '/path/b-sess-2.jsonl',
+				},
+				{
+					id: 'b-sess-3',
+					projectId: 'proj-a',
+					title: 'Main work',
+					messageCount: 2,
+					gitBranch: 'main',
+					cwd: '/projects/alpha-worktree',
+					isSidechain: 0,
+					createdAt: 800,
+					mtimeMs: 1500,
+					filePath: '/path/b-sess-3.jsonl',
+				},
+				{
+					id: 'b-sess-4',
+					projectId: 'proj-a',
+					title: 'No branch',
+					messageCount: 1,
+					isSidechain: 0,
+					createdAt: 700,
+					mtimeMs: 1000,
+					filePath: '/path/b-sess-4.jsonl',
+				},
+				{
+					id: 'b-sess-side',
+					projectId: 'proj-a',
+					title: 'Sidechain',
+					messageCount: 1,
+					gitBranch: 'feature-x',
+					isSidechain: 1,
+					createdAt: 900,
+					mtimeMs: 2500,
+					filePath: '/path/b-sess-side.jsonl',
+				},
+			])
+			.run();
+	});
+
+	it('listBranchesForProject returns branches sorted by last activity', () => {
+		const branches = listBranchesForProject(db.index, 'proj-a');
+		expect(branches).toHaveLength(2);
+		expect(branches[0]!.branch).toBe('feature-x');
+		expect(branches[0]!.sessionCount).toBe(2);
+		expect(branches[1]!.branch).toBe('main');
+		expect(branches[1]!.sessionCount).toBe(1);
+	});
+
+	it('listBranchesForProject excludes sidechains', () => {
+		const branches = listBranchesForProject(db.index, 'proj-a');
+		const featureX = branches.find((b) => b.branch === 'feature-x');
+		expect(featureX!.sessionCount).toBe(2);
+	});
+
+	it('listSessionsForBranch returns sessions for a specific branch', () => {
+		const sessions = listSessionsForBranch(db.index, 'proj-a', 'feature-x');
+		expect(sessions).toHaveLength(2);
+		expect(sessions[0]!.id).toBe('b-sess-1');
+		expect(sessions[1]!.id).toBe('b-sess-2');
+	});
+
+	it('listSessionsForBranch returns empty for non-existent branch', () => {
+		const sessions = listSessionsForBranch(db.index, 'proj-a', 'nonexistent');
+		expect(sessions).toHaveLength(0);
+	});
+
+	it('listCwdsForProject returns unique cwds sorted by last activity', () => {
+		const cwds = listCwdsForProject(db.index, 'proj-a');
+		expect(cwds).toHaveLength(2);
+		expect(cwds[0]!.cwd).toBe('/projects/alpha');
+		expect(cwds[0]!.sessionCount).toBe(2);
+		expect(cwds[1]!.cwd).toBe('/projects/alpha-worktree');
+		expect(cwds[1]!.sessionCount).toBe(1);
 	});
 });
 
