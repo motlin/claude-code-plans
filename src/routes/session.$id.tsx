@@ -39,6 +39,7 @@ import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {SubagentTree} from '../components/subagent-tree';
 import {SubagentGantt} from '../components/subagent-gantt';
 import {SubagentSequence} from '../components/subagent-sequence';
+import {useDebug} from '../components/debug-provider';
 
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
@@ -541,6 +542,7 @@ function SessionPage() {
 	);
 	const [showThinking, setShowThinking] = useDisplayToggle('ccp-show-thinking', true);
 	const [showTools, setShowTools] = useDisplayToggle('ccp-show-tools', true);
+	const {enabled: showDebug, setEnabled: setShowDebug} = useDebug();
 	const [subagentView, setSubagentView] = useState<'tree' | 'gantt' | 'sequence'>('tree');
 	const chatStream = useChatStream();
 	const prevSessionIdRef = useRef(params.id);
@@ -762,6 +764,15 @@ function SessionPage() {
 								className="accent-accent-000"
 							/>
 							Tools
+						</label>
+						<label className="flex items-center gap-1 cursor-pointer select-none">
+							<input
+								type="checkbox"
+								checked={showDebug}
+								onChange={(e) => setShowDebug(e.target.checked)}
+								className="accent-accent-000"
+							/>
+							Debug JSONL
 						</label>
 					</div>
 				</div>

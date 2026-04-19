@@ -1,41 +1,31 @@
-import {createContext, useContext, useEffect, useState} from 'react';
+import {createContext, useCallback, useContext, useEffect, useState} from 'react';
 
 interface DebugProviderState {
 	enabled: boolean;
-	toggle: () => void;
+	setEnabled: (v: boolean) => void;
 }
 
 const DebugProviderContext = createContext<DebugProviderState>({
 	enabled: false,
-	toggle: () => null,
+	setEnabled: () => null,
 });
 
-const STORAGE_KEY = 'debug-mode';
+const STORAGE_KEY = 'ccp-show-debug';
 
 export function DebugProvider({children}: {children: React.ReactNode}) {
-	const [enabled, setEnabled] = useState(false);
+	const [enabled, setEnabledRaw] = useState(false);
 
 	useEffect(() => {
 		const stored = localStorage.getItem(STORAGE_KEY);
-		if (stored === '1') setEnabled(true);
+		if (stored !== null) setEnabledRaw(stored === 'true');
 	}, []);
 
-	return (
-		<DebugProviderContext.Provider
-			value={{
-				enabled,
-				toggle: () => {
-					setEnabled((prev) => {
-						const next = !prev;
-						localStorage.setItem(STORAGE_KEY, next ? '1' : '0');
-						return next;
-					});
-				},
-			}}
-		>
-			{children}
-		</DebugProviderContext.Provider>
-	);
+	const setEnabled = useCallback((v: boolean) => {
+		setEnabledRaw(v);
+		localStorage.setItem(STORAGE_KEY, String(v));
+	}, []);
+
+	return <DebugProviderContext.Provider value={{enabled, setEnabled}}>{children}</DebugProviderContext.Provider>;
 }
 
 export function useDebug() {
