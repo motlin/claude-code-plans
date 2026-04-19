@@ -185,6 +185,9 @@ export function applySessionUpdated(queryClient: QueryClient, session: SessionSu
 	queryClient.setQueryData<SessionSummaryPayload[]>(['starred-sessions'], (old) =>
 		old ? old.map((s) => (s.id === session.id ? session : s)) : old,
 	);
+	// Invalidate the session detail so the message list refetches when the
+	// .jsonl file has new content (mtime / messageCount changed on disk).
+	void queryClient.invalidateQueries({queryKey: ['session', session.id, 'detail']});
 }
 
 export function applyPlanChanged(queryClient: QueryClient, plan: PlanSummaryPayload): void {

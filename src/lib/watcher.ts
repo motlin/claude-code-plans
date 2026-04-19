@@ -27,6 +27,7 @@ interface WatcherGlobals {
 	__watcherPlansDir: string;
 	__watcherStatuslineDir: string;
 	__jsonlDebounceTimer: ReturnType<typeof setTimeout> | null;
+	__jsonlLastFired: number;
 	__lastSessionsByProject: Map<string, Map<string, SessionSummaryPayload>>;
 	__lastTasksByProject: Map<string, Map<string, TaskSummaryPayload>>;
 }
@@ -39,7 +40,7 @@ if (!g.__lastTasksByProject) g.__lastTasksByProject = new Map();
 const encoder = new TextEncoder();
 
 const WATCHED_EXTENSIONS = new Set(['.md', '.jsonl', '.json']);
-const JSONL_DEBOUNCE_MS = 5000;
+const JSONL_THROTTLE_MS = 2000;
 
 export function broadcastTyped(type: string, data: Record<string, unknown>): void {
 	const payload = encoder.encode(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
@@ -258,12 +259,29 @@ function handleFileChange(path: string): void {
 	const plansDir = g.__watcherPlansDir ?? '';
 
 	if (ext === '.jsonl') {
-		if (g.__jsonlDebounceTimer) clearTimeout(g.__jsonlDebounceTimer);
-		g.__jsonlDebounceTimer = setTimeout(async () => {
+		// Throttle: fire immediately on the first change, then at most once
+		// per JSONL_THROTTLE_MS. A trailing timer ensures the final batch of
+		// changes is always processed even after writes stop.
+		const now = Date.now();
+		const lastFired = g.__jsonlLastFired ?? 0;
+		const elapsed = now - lastFired;
+
+		const fire = async () => {
+			g.__jsonlLastFired = Date.now();
+			g.__jsonlDebounceTimer = null;
 			await indexSilently(path, projectsDir);
 			safeDiffSessions(projectIdFromPath(path, projectsDir));
-			g.__jsonlDebounceTimer = null;
-		}, JSONL_DEBOUNCE_MS);
+		};
+
+		if (g.__jsonlDebounceTimer) clearTimeout(g.__jsonlDebounceTimer);
+
+		if (elapsed >= JSONL_THROTTLE_MS) {
+			// Enough time has passed -- fire immediately.
+			void fire();
+		} else {
+			// Schedule a trailing fire for the remaining interval.
+			g.__jsonlDebounceTimer = setTimeout(() => void fire(), JSONL_THROTTLE_MS - elapsed);
+		}
 	} else if (ext === '.json' && g.__watcherStatuslineDir && path.startsWith(g.__watcherStatuslineDir)) {
 		const filename = basename(path);
 		const sessionId = filename.replace(/\.json$/, '');
