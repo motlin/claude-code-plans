@@ -125,5 +125,10 @@ function getToolParam(tc: {input: Record<string, unknown>}): string {
 		const p = input['prompt'];
 		return p.length > 60 ? p.slice(0, 60) + '...' : p;
 	}
+	if (typeof input['subject'] === 'string') {
+		const s = input['subject'];
+		return s.length > 60 ? s.slice(0, 60) + '...' : s;
+	}
+	if (typeof input['taskId'] === 'string') return `#${input['taskId']}`;
 	return '';
 }

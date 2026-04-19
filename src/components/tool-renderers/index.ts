@@ -10,6 +10,8 @@ import {AskUserQuestionRenderer} from './ask-user-question-renderer';
 import {AgentRenderer} from './agent-renderer';
 import {TaskCreateRenderer} from './task-create-renderer';
 import {TaskUpdateRenderer} from './task-update-renderer';
+import {TaskGetRenderer} from './task-get-renderer';
+import {TaskListRenderer} from './task-list-renderer';
 import {ExitPlanModeRenderer} from './exit-plan-mode-renderer';
 import {SkillRenderer} from './skill-renderer';
 import {McpRenderer} from './mcp-renderer';
@@ -33,6 +35,8 @@ const registry: Record<string, ComponentType<ToolRendererProps>> = {
 	Agent: AgentRenderer,
 	TaskCreate: TaskCreateRenderer,
 	TaskUpdate: TaskUpdateRenderer,
+	TaskGet: TaskGetRenderer,
+	TaskList: TaskListRenderer,
 	ExitPlanMode: ExitPlanModeRenderer,
 	Skill: SkillRenderer,
 	WebFetch: WebFetchRenderer,
