@@ -1,4 +1,3 @@
-import {useState} from 'react';
 import type {ToolRendererProps} from './types';
 import {ErrorBorder, TerminalOutput} from './shared';
 import {getToolRenderer} from './index';
@@ -55,11 +54,8 @@ export function BashRenderer({toolCall}: ToolRendererProps) {
 	const command = (toolCall.input['command'] as string) ?? '';
 	const description = toolCall.input['description'] as string | undefined;
 	const {result, isError} = toolCall;
-	const [showResult, setShowResult] = useState(!!isError);
 	const resultContent = result ? stripCommandPrefix(result, command) : null;
-	const lineCount = resultContent ? resultContent.split('\n').length : 0;
 
-	// Detect MCP CLI commands and route to appropriate MCP renderer
 	const mcpMatch = MCP_CLI_RE.exec(command);
 	if (mcpMatch && result) {
 		const mcpProps: Parameters<typeof McpCliBashRenderer>[0] = {
@@ -78,21 +74,7 @@ export function BashRenderer({toolCall}: ToolRendererProps) {
 	return (
 		<ErrorBorder isError={isError}>
 			<CommandHeader {...headerProps} />
-			{resultContent && !showResult && (
-				<button
-					type="button"
-					onClick={() => setShowResult(true)}
-					className="text-[13px] text-text-500 hover:text-text-300 cursor-pointer transition-colors"
-				>
-					{lineCount} lines
-				</button>
-			)}
-			{resultContent && showResult && (
-				<TerminalOutput
-					content={resultContent}
-					previewLines={5}
-				/>
-			)}
+			{resultContent && <TerminalOutput content={resultContent} />}
 		</ErrorBorder>
 	);
 }

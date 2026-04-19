@@ -1,4 +1,5 @@
 import {useMemo, useState, useCallback} from 'react';
+import {useResolvedTheme} from './theme-provider';
 
 export interface GraphTask {
 	taskId: string;
@@ -100,19 +101,7 @@ function truncate(text: string, max: number): string {
 
 export function TaskDependencyGraph({groups}: {groups: TaskGroup[]}) {
 	const [hoveredId, setHoveredId] = useState<string | null>(null);
-	const [isDark, setIsDark] = useState(
-		() => typeof document !== 'undefined' && document.documentElement.classList.contains('dark'),
-	);
-
-	// Watch for theme changes
-	useMemo(() => {
-		if (typeof document === 'undefined') return;
-		const observer = new MutationObserver(() => {
-			setIsDark(document.documentElement.classList.contains('dark'));
-		});
-		observer.observe(document.documentElement, {attributes: true, attributeFilter: ['class']});
-		return () => observer.disconnect();
-	}, []);
+	const isDark = useResolvedTheme() === 'dark';
 
 	const allTasks = useMemo(() => groups.flatMap((g) => g.tasks), [groups]);
 

@@ -10,9 +10,9 @@ import {readSession, summarizeToolCalls, type MessageContent} from '../lib/sessi
 import {
 	renderMarkdown,
 	computeDiffData,
+	buildUnifiedHunk,
 	detectLanguage,
 	highlightCode,
-	highlightDiffOps,
 	extractLineNumbers,
 	looksLikeMarkdown,
 } from '../lib/renderer';
@@ -160,10 +160,10 @@ const getSession = createServerFn({method: 'GET'})
 							const newStr = (tc.input['new_string'] as string) ?? '';
 							const filePath = (tc.input['file_path'] as string) ?? '';
 							const diffData = computeDiffData(oldStr, newStr);
-							const lang = detectLanguage(filePath);
-							if (lang) {
-								diffData.highlightedLines = await highlightDiffOps(diffData.ops, lang);
-							}
+							diffData.unifiedHunk = buildUnifiedHunk(oldStr, newStr, filePath);
+							diffData.oldContent = oldStr;
+							diffData.newContent = newStr;
+							diffData.filePath = filePath;
 							call.diffData = diffData;
 						}
 

@@ -2,7 +2,7 @@ import {Link} from '@tanstack/react-router';
 import {Bot} from 'lucide-react';
 import {MarkdownArticle} from '../markdown-article';
 import type {ToolRendererProps} from './types';
-import {CollapsibleSection, DurationBadge, ErrorBorder, formatDuration} from './shared';
+import {DurationBadge, ErrorBorder, ExpandableBlock, formatDuration} from './shared';
 
 const AGENT_TYPE_COLORS: Record<string, string> = {
 	Explore: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
@@ -54,12 +54,11 @@ export function AgentRenderer({toolCall}: ToolRendererProps) {
 	const agentIdMatch = result?.match(/agentId:\s*(\S+)/);
 	const fallbackAgentId = agentIdMatch?.[1];
 	const displayResult = fallbackAgentId ? result!.replace(/agentId:\s*\S+\n?/, '').trim() : result;
-	const promptPreview = prompt.split('\n')[0]?.slice(0, 80) ?? '';
+	const promptLineCount = prompt ? prompt.split('\n').length : 0;
+	const outputLineCount = displayResult ? displayResult.split('\n').length : 0;
 
 	const colorClass = AGENT_TYPE_COLORS[agentType] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
 
-	// Subagent metadata takes precedence when available, then fall back to the
-	// raw `agent-<uuid>` id parsed out of the tool_result.
 	const linkAgentId = subagentInfo?.agentId ?? (fallbackAgentId ? `agent-${fallbackAgentId}` : null);
 	const timingDuration = subagentInfo
 		? (toolCall.duration ?? durationFromTimes(subagentInfo.startedAt, subagentInfo.finishedAt))
@@ -72,9 +71,6 @@ export function AgentRenderer({toolCall}: ToolRendererProps) {
 					<span className={`rounded px-1.5 py-0.5 text-xs font-medium ${colorClass}`}>{agentType}</span>
 				)}
 				{description && <span className="text-xs text-text-500">{description}</span>}
-				{!description && promptPreview && (
-					<span className="text-xs text-text-500 truncate">{promptPreview}</span>
-				)}
 				{subagentInfo && statusBadge(subagentInfo.status)}
 				{timingDuration !== undefined && timingDuration !== null && <DurationBadge duration={timingDuration} />}
 				{linkAgentId && (
@@ -110,27 +106,36 @@ export function AgentRenderer({toolCall}: ToolRendererProps) {
 				</div>
 			)}
 			{prompt && (
-				<CollapsibleSection label="Prompt">
-					<pre className="text-xs font-mono text-text-500 whitespace-pre-wrap break-all max-h-48 overflow-auto">
-						{prompt}
-					</pre>
-				</CollapsibleSection>
+				<div className="mt-2">
+					<div className="text-[10px] uppercase tracking-wide text-text-500 mb-1">Prompt</div>
+					<ExpandableBlock
+						lineCount={promptLineCount}
+						maxLines={6}
+					>
+						<blockquote className="border-l-2 border-border-300/40 pl-3 text-xs text-text-300 whitespace-pre-wrap break-words">
+							{prompt}
+						</blockquote>
+					</ExpandableBlock>
+				</div>
 			)}
 			{displayResult && (
-				<CollapsibleSection
-					label="Output"
-					defaultOpen={!!isError}
-				>
-					{toolCall.resultHtml ? (
-						<div className="text-xs text-text-100 leading-relaxed max-h-48 overflow-auto">
-							<MarkdownArticle html={toolCall.resultHtml} />
-						</div>
-					) : (
-						<pre className="text-xs font-mono text-text-500 whitespace-pre-wrap break-all max-h-48 overflow-auto">
-							{displayResult}
-						</pre>
-					)}
-				</CollapsibleSection>
+				<div className="mt-3">
+					<div className="text-[10px] uppercase tracking-wide text-text-500 mb-1">Output</div>
+					<ExpandableBlock
+						lineCount={outputLineCount}
+						maxLines={20}
+					>
+						{toolCall.resultHtml ? (
+							<div className="text-xs text-text-100 leading-relaxed">
+								<MarkdownArticle html={toolCall.resultHtml} />
+							</div>
+						) : (
+							<pre className="text-xs font-mono text-text-500 whitespace-pre-wrap break-all">
+								{displayResult}
+							</pre>
+						)}
+					</ExpandableBlock>
+				</div>
 			)}
 		</ErrorBorder>
 	);
