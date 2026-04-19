@@ -597,6 +597,15 @@ export interface DbPlanProjectMapping {
 	projectName: string;
 }
 
+export function getSessionProjectId(db: IndexDb, sessionId: string): string | null {
+	const row = db
+		.select({projectId: schema.sessions.projectId})
+		.from(schema.sessions)
+		.where(eq(schema.sessions.id, sessionId))
+		.get();
+	return row?.projectId ?? null;
+}
+
 export function getSessionProjectPath(db: IndexDb, sessionId: string): string | null {
 	const row = db
 		.select({projectPath: schema.projects.projectPath})

@@ -1,10 +1,13 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
 import {createServerFn} from '@tanstack/react-start';
-import {useState} from 'react';
+import {useMemo, useState} from 'react';
 import {z} from 'zod';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {readSession, readSessionRawWindow, type MessageContent, type RawJsonlLine} from '../lib/sessions';
+import {LinkedJson, type LinkedJsonContext} from '../components/linked-json';
+import {getDb} from '../lib/db';
+import {getSessionProjectId} from '../lib/db/queries';
 
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 const UUID_RE = /^[a-f0-9-]{36}$/i;
@@ -44,12 +47,27 @@ const getSessionSource = createServerFn({method: 'GET'})
 
 		const paired = findPairedToolResult(window.focal.raw, window.after);
 		const sessionTitle = detail?.title ?? sessionId;
+
+		const allLines = [...window.before, window.focal, ...window.after];
+		const knownUuids = allLines.map((l) => l.uuid).filter((u): u is string => u != null);
+
+		let projectId: string | undefined;
+		try {
+			const db = getDb();
+			const pid = getSessionProjectId(db.index, sessionId);
+			if (pid) projectId = pid;
+		} catch {
+			// DB not available -- leave undefined
+		}
+
 		return {
 			window,
 			parsedBlocksJson: JSON.stringify(parsedBlocks, null, 2),
 			parsedBlocksCount: parsedBlocks.length,
 			paired,
 			sessionTitle,
+			knownUuids,
+			projectId,
 		};
 	});
 
@@ -115,8 +133,17 @@ function CodeBlock({content, max = 50_000}: {content: string; max?: number}) {
 	);
 }
 
-function ContextEntry({entry, sessionId}: {entry: RawJsonlLine; sessionId: string}) {
+function ContextEntry({
+	entry,
+	sessionId,
+	jsonCtx,
+}: {
+	entry: RawJsonlLine;
+	sessionId: string;
+	jsonCtx: LinkedJsonContext;
+}) {
 	const [expanded, setExpanded] = useState(entry.raw.length < 2000);
+	const parsed = entry.parseError ? undefined : safeParse(entry.raw);
 	const display = entry.parseError ? entry.raw : prettyJsonl(entry.raw);
 	return (
 		<div className="border border-border-300/15 rounded p-2 mb-2 bg-bg-200/30">
@@ -146,12 +173,18 @@ function ContextEntry({entry, sessionId}: {entry: RawJsonlLine; sessionId: strin
 					{expanded ? 'collapse' : 'expand'}
 				</button>
 			</div>
-			{expanded && (
-				<CodeBlock
-					content={display}
-					max={50_000}
-				/>
-			)}
+			{expanded &&
+				(parsed !== undefined ? (
+					<LinkedJson
+						value={parsed}
+						context={jsonCtx}
+					/>
+				) : (
+					<CodeBlock
+						content={display}
+						max={50_000}
+					/>
+				))}
 		</div>
 	);
 }
@@ -199,8 +232,20 @@ function SourceViewPage() {
 		);
 	}
 
-	const {window: rawWindow, parsedBlocksJson, parsedBlocksCount, paired, sessionTitle} = data;
+	const {window: rawWindow, parsedBlocksJson, parsedBlocksCount, paired, sessionTitle, knownUuids, projectId} = data;
 	const focalRaw = prettyJsonl(rawWindow.focal.raw);
+	const focalParsed = safeParse(rawWindow.focal.raw);
+	const pairedParsed = paired ? safeParse(paired.resultEntry.raw) : undefined;
+	const parsedBlocksParsed = safeParse(parsedBlocksJson);
+
+	const jsonCtx: LinkedJsonContext = useMemo(
+		() => ({
+			sessionId: params.id,
+			projectId,
+			knownUuids: new Set(knownUuids ?? []),
+		}),
+		[params.id, projectId, knownUuids],
+	);
 
 	return (
 		<div className="mx-auto max-w-4xl p-6 space-y-6">
@@ -222,7 +267,14 @@ function SourceViewPage() {
 					<h2 className="text-sm font-medium text-text-200">Focal raw JSONL</h2>
 					<CopyButton text={focalRaw} />
 				</div>
-				<CodeBlock content={focalRaw} />
+				{focalParsed !== undefined ? (
+					<LinkedJson
+						value={focalParsed}
+						context={jsonCtx}
+					/>
+				) : (
+					<CodeBlock content={focalRaw} />
+				)}
 			</section>
 
 			{paired && (
@@ -242,7 +294,14 @@ function SourceViewPage() {
 							</a>
 						)}
 					</div>
-					<CodeBlock content={prettyJsonl(paired.resultEntry.raw)} />
+					{pairedParsed !== undefined ? (
+						<LinkedJson
+							value={pairedParsed}
+							context={jsonCtx}
+						/>
+					) : (
+						<CodeBlock content={prettyJsonl(paired.resultEntry.raw)} />
+					)}
 				</section>
 			)}
 
@@ -254,6 +313,11 @@ function SourceViewPage() {
 					<p className="text-xs text-text-500 italic">
 						No parsed block — this entry was skipped by the parser (e.g. system, file-history-snapshot).
 					</p>
+				) : parsedBlocksParsed !== undefined ? (
+					<LinkedJson
+						value={parsedBlocksParsed}
+						context={jsonCtx}
+					/>
 				) : (
 					<CodeBlock content={parsedBlocksJson} />
 				)}
@@ -271,6 +335,7 @@ function SourceViewPage() {
 							key={entry.lineIndex}
 							entry={entry}
 							sessionId={params.id}
+							jsonCtx={jsonCtx}
 						/>
 					))
 				)}
@@ -288,6 +353,7 @@ function SourceViewPage() {
 							key={entry.lineIndex}
 							entry={entry}
 							sessionId={params.id}
+							jsonCtx={jsonCtx}
 						/>
 					))
 				)}
