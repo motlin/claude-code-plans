@@ -30,6 +30,25 @@ function formatTimestamp(timestamp?: string): string | null {
 	}
 }
 
+/**
+ * Render a formatted timestamp that is hydration-safe. `formatTimestamp` uses
+ * `new Date()` and locale-dependent APIs (`toLocaleTimeString`) whose output
+ * can differ between the Node.js SSR pass and the browser's first render (due
+ * to timezone, locale, or clock-skew). We use `suppressHydrationWarning` so
+ * React silently accepts the mismatch on the text node.
+ */
+function Timestamp({value}: {value: string | null}) {
+	if (!value) return null;
+	return (
+		<div
+			className="text-xs text-text-500 leading-tight"
+			suppressHydrationWarning
+		>
+			{value}
+		</div>
+	);
+}
+
 interface ChatMessage {
 	role: 'user' | 'assistant';
 	timestamp?: string;
@@ -231,7 +250,7 @@ function UserMessage({msg, sessionId}: {msg: ChatMessage; sessionId: string}) {
 						className="absolute top-1 right-1"
 					/>
 				</div>
-				{timestampText && <div className="text-xs text-text-500 leading-tight">{timestampText}</div>}
+				<Timestamp value={timestampText} />
 			</div>
 		);
 	}
@@ -271,7 +290,7 @@ function UserMessage({msg, sessionId}: {msg: ChatMessage; sessionId: string}) {
 						</div>
 					)}
 				</div>
-				{timestampText && <div className="text-xs text-text-500 leading-tight">{timestampText}</div>}
+				<Timestamp value={timestampText} />
 			</div>
 		);
 	}
@@ -318,7 +337,7 @@ function UserMessage({msg, sessionId}: {msg: ChatMessage; sessionId: string}) {
 					/>
 				</div>
 			))}
-			{timestampText && <div className="text-xs text-text-500 leading-tight">{timestampText}</div>}
+			<Timestamp value={timestampText} />
 		</div>
 	);
 }
@@ -437,7 +456,7 @@ function AssistantMessage({
 					sessionId={sessionId}
 				/>
 			)}
-			{timestampText && <div className="text-xs text-text-500 leading-tight">{timestampText}</div>}
+			<Timestamp value={timestampText} />
 		</div>
 	);
 }
