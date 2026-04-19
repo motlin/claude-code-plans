@@ -347,6 +347,7 @@ const getSession = createServerFn({method: 'GET'})
 			starred: starResult.starred,
 			projectPath,
 			gitBranch: sessionMeta?.gitBranch ?? null,
+			cwd: sessionMeta?.cwd ?? null,
 			gitSha,
 			gitClean,
 			messageCount: sessionMeta?.messageCount ?? detail.lines.length,

@@ -1,4 +1,4 @@
-import {eq, desc, sql, and, inArray} from 'drizzle-orm';
+import {eq, desc, sql, and, inArray, isNotNull} from 'drizzle-orm';
 import type {BetterSQLite3Database} from 'drizzle-orm/better-sqlite3';
 import * as schema from './schema';
 import type {SessionEntry, SessionProjectGroup} from '../sessions';
@@ -84,6 +84,7 @@ export function listSessionsFromDb(db: IndexDb): SessionProjectGroup[] {
 			projectName: projectNames.get(row.projectId) ?? row.projectId,
 			messageCount: row.messageCount,
 			gitBranch: row.gitBranch ?? undefined,
+			cwd: row.cwd ?? undefined,
 			isSidechain: false,
 		};
 
@@ -137,8 +138,111 @@ export function listSessionsForProjectFromDb(db: IndexDb, projectId: string): Se
 		projectName,
 		messageCount: row.messageCount,
 		gitBranch: row.gitBranch ?? undefined,
+		cwd: row.cwd ?? undefined,
 		isSidechain: false,
 	}));
+}
+
+export interface DbBranchSummary {
+	branch: string;
+	sessionCount: number;
+	lastActivity: number;
+}
+
+export function listBranchesForProject(db: IndexDb, projectId: string): DbBranchSummary[] {
+	const rows = db
+		.select({
+			branch: schema.sessions.gitBranch,
+			sessionCount: sql<number>`count(*)`,
+			lastActivity: sql<number>`max(${schema.sessions.mtimeMs})`,
+		})
+		.from(schema.sessions)
+		.where(
+			and(
+				eq(schema.sessions.projectId, projectId),
+				eq(schema.sessions.isSidechain, 0),
+				isNotNull(schema.sessions.gitBranch),
+			),
+		)
+		.groupBy(schema.sessions.gitBranch)
+		.orderBy(desc(sql`max(${schema.sessions.mtimeMs})`))
+		.all();
+
+	return rows
+		.filter((r): r is typeof r & {branch: string} => r.branch !== null)
+		.map((r) => ({
+			branch: r.branch,
+			sessionCount: r.sessionCount,
+			lastActivity: r.lastActivity,
+		}));
+}
+
+export function listSessionsForBranch(db: IndexDb, projectId: string, branch: string): SessionEntry[] {
+	const projectRow = db.select().from(schema.projects).where(eq(schema.projects.id, projectId)).get();
+	const projectName = projectRow?.name ?? projectId;
+
+	const rows = db
+		.select()
+		.from(schema.sessions)
+		.where(
+			and(
+				eq(schema.sessions.projectId, projectId),
+				eq(schema.sessions.isSidechain, 0),
+				eq(schema.sessions.gitBranch, branch),
+			),
+		)
+		.orderBy(desc(schema.sessions.mtimeMs))
+		.all();
+
+	return rows.map((row) => ({
+		id: row.id,
+		title: row.title,
+		firstPrompt: row.firstPrompt ?? undefined,
+		summary: row.summary ?? undefined,
+		customTitle: row.customTitle ?? undefined,
+		mtime: new Date(row.mtimeMs),
+		created: new Date(row.createdAt),
+		project: row.projectId,
+		projectName,
+		messageCount: row.messageCount,
+		gitBranch: row.gitBranch ?? undefined,
+		cwd: row.cwd ?? undefined,
+		isSidechain: false,
+	}));
+}
+
+export interface DbCwdSummary {
+	cwd: string;
+	sessionCount: number;
+	lastActivity: number;
+}
+
+export function listCwdsForProject(db: IndexDb, projectId: string): DbCwdSummary[] {
+	const rows = db
+		.select({
+			cwd: schema.sessions.cwd,
+			sessionCount: sql<number>`count(*)`,
+			lastActivity: sql<number>`max(${schema.sessions.mtimeMs})`,
+		})
+		.from(schema.sessions)
+		.where(
+			and(
+				eq(schema.sessions.projectId, projectId),
+				eq(schema.sessions.isSidechain, 0),
+				isNotNull(schema.sessions.cwd),
+			),
+		)
+		.groupBy(schema.sessions.cwd)
+		.orderBy(desc(sql`max(${schema.sessions.mtimeMs})`))
+		.all();
+
+	return rows
+		.filter((r): r is typeof r & {cwd: string} => r.cwd !== null)
+		.map((r) => ({
+			cwd: r.cwd,
+			sessionCount: r.sessionCount,
+			lastActivity: r.lastActivity,
+		}));
 }
 
 export interface DbPlanSessionLink {
@@ -482,6 +586,7 @@ export function getStarredSessions(db: IndexDb): SessionEntry[] {
 		projectName: projectNames.get(row.session.projectId) ?? row.session.projectId,
 		messageCount: row.session.messageCount,
 		gitBranch: row.session.gitBranch ?? undefined,
+		cwd: row.session.cwd ?? undefined,
 		isSidechain: row.session.isSidechain === 1,
 	}));
 }
@@ -505,10 +610,11 @@ export function getSessionProjectPath(db: IndexDb, sessionId: string): string | 
 export function getSessionMeta(
 	db: IndexDb,
 	sessionId: string,
-): {gitBranch: string | null; messageCount: number; projectName: string | null} | null {
+): {gitBranch: string | null; cwd: string | null; messageCount: number; projectName: string | null} | null {
 	const row = db
 		.select({
 			gitBranch: schema.sessions.gitBranch,
+			cwd: schema.sessions.cwd,
 			messageCount: schema.sessions.messageCount,
 			projectId: schema.sessions.projectId,
 		})
@@ -519,6 +625,7 @@ export function getSessionMeta(
 	const projectNames = getProjectNameMap(db);
 	return {
 		gitBranch: row.gitBranch,
+		cwd: row.cwd,
 		messageCount: row.messageCount,
 		projectName: projectNames.get(row.projectId) ?? null,
 	};
