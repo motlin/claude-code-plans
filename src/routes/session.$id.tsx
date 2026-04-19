@@ -459,11 +459,18 @@ function CopyButton({
 }
 
 function useDisplayToggle(key: string, defaultValue: boolean): [boolean, (v: boolean) => void] {
-	const [value, setValue] = useState(() => {
-		if (typeof window === 'undefined') return defaultValue;
+	// Initialize with `defaultValue` unconditionally so SSR and the first client
+	// render agree. Reading localStorage during the initial render would diverge
+	// from the server's output and trip React's hydration check. We sync from
+	// localStorage in an effect right after mount; a user with a non-default
+	// stored preference may see a brief flash of the default, which is preferable
+	// to a hydration error (and mirrors DebugProvider / ThemeProvider).
+	const [value, setValue] = useState(defaultValue);
+
+	useEffect(() => {
 		const stored = localStorage.getItem(key);
-		return stored !== null ? stored === 'true' : defaultValue;
-	});
+		if (stored !== null) setValue(stored === 'true');
+	}, [key]);
 
 	function setAndPersist(v: boolean) {
 		setValue(v);
