@@ -1,10 +1,9 @@
 import type {ToolRendererProps} from './types';
-import {CollapsibleSection, ErrorBorder, ToolMeta} from './shared';
+import {ErrorBorder, ExpandableBlock, ToolMeta} from './shared';
 
 function parseLineNumbers(content: string): Array<{lineNum: string | null; content: string}> {
 	const lines = content.split('\n');
 	return lines.map((line) => {
-		// Match line number at the start: digits followed by →
 		const match = line.match(/^(\s*)(\d+)→(.*)$/);
 		if (match) {
 			return {
@@ -37,21 +36,24 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 
 	return (
 		<ErrorBorder isError={isError}>
-			<div className="flex items-center gap-2 flex-wrap">
+			<div className="flex items-center gap-2 flex-wrap mb-1">
 				<code className="text-xs font-mono text-text-500 bg-bg-100 px-1 py-0.5 rounded truncate">
 					{filePath}
 				</code>
 				<ToolMeta>{rangeInfo}</ToolMeta>
 			</div>
 			{result && (
-				<CollapsibleSection label="Show content">
+				<ExpandableBlock
+					lineCount={lineCount}
+					maxLines={20}
+				>
 					{highlightedHtml ? (
 						<div
-							className="max-h-96 overflow-auto rounded border border-border-300/15 text-xs [&_pre]:p-3 [&_pre]:m-0 [&_pre]:rounded-none"
+							className="rounded border border-border-300/15 text-xs [&_pre]:p-3 [&_pre]:m-0 [&_pre]:rounded-none"
 							dangerouslySetInnerHTML={{__html: highlightedHtml}}
 						/>
 					) : (
-						<div className="max-h-64 overflow-auto rounded border border-border-300/15">
+						<div className="rounded border border-border-300/15">
 							<div className="flex font-mono text-xs text-text-500">
 								<div className="bg-bg-200/50 border-r border-border-300/15 px-3 py-2 select-none text-right min-w-fit">
 									{parsedLines.map((line, i) => (
@@ -76,7 +78,7 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 							</div>
 						</div>
 					)}
-				</CollapsibleSection>
+				</ExpandableBlock>
 			)}
 		</ErrorBorder>
 	);

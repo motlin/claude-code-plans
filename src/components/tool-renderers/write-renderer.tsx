@@ -1,7 +1,7 @@
 import {Link} from '@tanstack/react-router';
 import {FileText} from 'lucide-react';
 import type {ToolRendererProps} from './types';
-import {CollapsibleSection, ErrorBorder, ToolMeta} from './shared';
+import {ErrorBorder, ExpandableBlock, ToolMeta} from './shared';
 
 const PLAN_RE = /\.claude\/plans\/([^/]+)\.md$/;
 
@@ -31,11 +31,14 @@ export function WriteRenderer({toolCall}: ToolRendererProps) {
 				{content && <ToolMeta>{lineCount} lines</ToolMeta>}
 			</div>
 			{content && (
-				<CollapsibleSection label={lineCount > 100 ? `Show content (${lineCount} lines)` : 'Show content'}>
-					<pre className="text-xs font-mono text-text-500 whitespace-pre-wrap break-all max-h-64 overflow-auto">
+				<ExpandableBlock
+					lineCount={lineCount}
+					maxLines={20}
+				>
+					<pre className="text-xs font-mono text-text-500 whitespace-pre-wrap break-all bg-bg-200 p-2 rounded">
 						{content}
 					</pre>
-				</CollapsibleSection>
+				</ExpandableBlock>
 			)}
 			{result && <div className="text-xs text-text-500 mt-1">{result}</div>}
 		</ErrorBorder>

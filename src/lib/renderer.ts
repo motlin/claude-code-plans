@@ -293,7 +293,10 @@ export interface DiffData {
 	ops: DiffOp[];
 	added: number;
 	removed: number;
-	highlightedLines?: string[] | undefined;
+	unifiedHunk?: string | undefined;
+	oldContent?: string | undefined;
+	newContent?: string | undefined;
+	filePath?: string | undefined;
 }
 
 function computeDiff(oldLines: string[], newLines: string[]): DiffOp[] {
@@ -342,4 +345,32 @@ export function computeDiffData(oldStr: string, newStr: string): DiffData {
 		else if (type === 'remove') removed++;
 	}
 	return {ops, added, removed};
+}
+
+/**
+ * Synthesize a complete unified diff string from the Edit tool's
+ * `old_string` / `new_string` fragments, in the format @git-diff-view/core
+ * expects (git-style header + hunks). Line numbers are relative to the
+ * fragment (starting at 1) — not the surrounding file — because the tool
+ * payload doesn't capture the full-file context.
+ */
+export function buildUnifiedHunk(oldStr: string, newStr: string, filePath = 'file'): string {
+	const oldLines = oldStr.split('\n');
+	const newLines = newStr.split('\n');
+	const ops = computeDiff(oldLines, newLines);
+
+	const body: string[] = [];
+	for (const [type, line] of ops) {
+		if (type === 'equal') body.push(' ' + line);
+		else if (type === 'add') body.push('+' + line);
+		else body.push('-' + line);
+	}
+
+	return [
+		`diff --git a/${filePath} b/${filePath}`,
+		`--- a/${filePath}`,
+		`+++ b/${filePath}`,
+		`@@ -1,${oldLines.length} +1,${newLines.length} @@`,
+		...body,
+	].join('\n');
 }

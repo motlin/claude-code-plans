@@ -231,48 +231,6 @@ export function FilePath({path}: {path: string}) {
 	return <code className="text-xs font-mono bg-bg-200 px-1.5 py-0.5 rounded truncate">{path}</code>;
 }
 
-export function DiffLine({
-	type,
-	line,
-	highlightedHtml,
-}: {
-	type: 'equal' | 'add' | 'remove';
-	line: string;
-	highlightedHtml?: string | undefined;
-}) {
-	const markerColors = {
-		equal: 'bg-transparent text-text-500',
-		add: 'bg-success-100 text-white',
-		remove: 'bg-danger-100 text-white',
-	};
-	const markers = {equal: ' ', add: '+', remove: '-'};
-	const lineBackground = {
-		equal: '',
-		add: 'bg-success-900/30',
-		remove: 'bg-danger-900/30',
-	};
-
-	return (
-		<div className={`grid grid-cols-[auto_auto_1fr] font-mono text-xs leading-relaxed ${lineBackground[type]}`}>
-			{/* Gutter column: line numbers (currently empty, can be populated with line numbers) */}
-			<div className="w-8 px-1 text-right text-text-500 select-none" />
-			{/* Marker column: +/- indicator with colored background */}
-			<div className={`w-6 flex items-center justify-center select-none font-semibold ${markerColors[type]}`}>
-				{markers[type]}
-			</div>
-			{/* Code content column */}
-			{highlightedHtml ? (
-				<span
-					className="whitespace-pre-wrap break-all px-2 [&_span]:!bg-transparent"
-					dangerouslySetInnerHTML={{__html: highlightedHtml}}
-				/>
-			) : (
-				<span className="whitespace-pre-wrap break-all px-2">{line}</span>
-			)}
-		</div>
-	);
-}
-
 export function DiffStats({added, removed}: {added: number; removed: number}) {
 	return (
 		<span className="inline-flex gap-1 font-mono text-xs shrink-0">
@@ -287,34 +245,15 @@ export function ErrorBorder({isError, children}: {isError?: boolean | undefined;
 	return <div className="border-l-2 border-danger-100 pl-2">{children}</div>;
 }
 
-export function TerminalOutput({
-	content,
-	maxLines = 200,
-	previewLines = 5,
-}: {
-	content: string;
-	maxLines?: number;
-	previewLines?: number;
-}) {
-	const [expanded, setExpanded] = useState(false);
-
+export function TerminalOutput({content, maxLines = 20}: {content: string; maxLines?: number}) {
 	// Extract exit code if present at the start of the content
 	const exitCodeMatch = content.match(/^Exit code (\d+)\n?/);
 	const exitCode = exitCodeMatch?.[1] ? parseInt(exitCodeMatch[1], 10) : null;
 	const contentWithoutExitCode = exitCodeMatch ? content.replace(/^Exit code \d+\n?/, '') : content;
-
-	const lines = contentWithoutExitCode.split('\n');
-	const needsPreview = !expanded && lines.length > previewLines;
-	const needsTruncation = expanded && lines.length > maxLines;
-	const displayed = needsPreview
-		? lines.slice(0, previewLines).join('\n')
-		: needsTruncation
-			? lines.slice(0, maxLines).join('\n')
-			: contentWithoutExitCode;
-	const remainingCount = needsPreview ? lines.length - previewLines : needsTruncation ? lines.length - maxLines : 0;
+	const lineCount = contentWithoutExitCode.split('\n').length;
 
 	return (
-		<div className="relative">
+		<div>
 			{exitCode !== null && (
 				<div className="mb-2 flex items-center gap-2">
 					<span className="inline-flex items-center gap-1.5 bg-danger-900 text-danger-000 px-2.5 py-1 rounded text-xs font-bold">
@@ -322,18 +261,59 @@ export function TerminalOutput({
 					</span>
 				</div>
 			)}
-			<pre className="bg-bg-200 text-text-100 rounded text-xs leading-relaxed p-2 overflow-x-auto whitespace-pre-wrap break-all">
-				<AnsiText content={displayed} />
-			</pre>
-			{remainingCount > 0 && (
-				<button
-					type="button"
-					onClick={() => setExpanded(true)}
-					className="pt-1 text-xs text-text-500/80 hover:text-text-100 transition cursor-pointer"
-				>
-					+{remainingCount} more lines
-				</button>
-			)}
+			<ExpandableBlock
+				lineCount={lineCount}
+				maxLines={maxLines}
+			>
+				<pre className="bg-bg-200 text-text-100 rounded text-xs leading-relaxed p-2 whitespace-pre-wrap break-all">
+					<AnsiText content={contentWithoutExitCode} />
+				</pre>
+			</ExpandableBlock>
+		</div>
+	);
+}
+
+/**
+ * Wraps tall content in a soft cap: shows up to `maxLines` worth of height,
+ * with a gradient fade + "Show all N lines" button when overflow. Click to
+ * reveal the rest inline — no inner scrollbar.
+ */
+export function ExpandableBlock({
+	lineCount,
+	maxLines = 20,
+	children,
+}: {
+	lineCount: number;
+	maxLines?: number;
+	children: ReactNode;
+}) {
+	const [expanded, setExpanded] = useState(false);
+	const needsCap = lineCount > maxLines;
+
+	if (!needsCap || expanded) {
+		return <div>{children}</div>;
+	}
+
+	// ~1.4rem per line of text-xs leading-relaxed. Keep this tight so the
+	// fade/button appear just below the cutoff.
+	const maxHeight = `${maxLines * 1.4}rem`;
+
+	return (
+		<div>
+			<div
+				className="relative overflow-hidden"
+				style={{maxHeight}}
+			>
+				{children}
+				<div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-bg-000 to-transparent pointer-events-none" />
+			</div>
+			<button
+				type="button"
+				onClick={() => setExpanded(true)}
+				className="mt-1 text-xs text-text-500 hover:text-text-100 transition cursor-pointer"
+			>
+				Show all {lineCount} lines
+			</button>
 		</div>
 	);
 }
