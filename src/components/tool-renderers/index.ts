@@ -57,4 +57,14 @@ export function getToolRenderer(name: string): ComponentType<ToolRendererProps> 
 	return registry[name] ?? registry['__fallback__']!;
 }
 
-export type {ClientToolCall, ToolInput, ToolRendererProps, SubagentInlineInfo} from './types';
+export type {
+	ClientToolCall,
+	ToolInput,
+	ToolRendererProps,
+	SubagentInlineInfo,
+	ToolDecoration,
+	DecorationMap,
+	SerializedDecorationMap,
+	SerializedToolResultMap,
+} from './types';
+export {buildClientToolCall} from './types';

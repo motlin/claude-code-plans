@@ -1,13 +1,22 @@
-import React, {useCallback, useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Copy, Link2} from 'lucide-react';
 import {MarkdownArticle} from './markdown-article';
 import {getToolRenderer} from './tool-renderers';
-import type {ClientToolCall} from './tool-renderers';
+import {buildClientToolCall} from './tool-renderers/types';
+import type {ClientToolCall, DecorationMap, SerializedDecorationMap, SerializedToolResultMap} from './tool-renderers';
 import {DurationBadge, TerminalOutput} from './tool-renderers/shared';
 import {TasksView} from './tasks-view';
 import {DebugLink} from './debug-link';
 import {hmrSet} from '../lib/hmr-state';
 import {useHmrState} from '../hooks/use-hmr-state';
+import type {SessionLine, SessionContentBlock, ToolResultInfo} from '../lib/sessions';
+import {
+	stripCommandTags,
+	parseCommandBlock,
+	parseBashInput,
+	parseBashOutput,
+	summarizeToolCalls,
+} from '../lib/sessions';
 
 function formatTimestamp(timestamp?: string): string | null {
 	if (!timestamp) return null;
@@ -32,13 +41,6 @@ function formatTimestamp(timestamp?: string): string | null {
 	}
 }
 
-/**
- * Render a formatted timestamp that is hydration-safe. `formatTimestamp` uses
- * `new Date()` and locale-dependent APIs (`toLocaleTimeString`) whose output
- * can differ between the Node.js SSR pass and the browser's first render (due
- * to timezone, locale, or clock-skew). We use `suppressHydrationWarning` so
- * React silently accepts the mismatch on the text node.
- */
 function Timestamp({value}: {value: string | null}) {
 	if (!value) return null;
 	return (
@@ -51,30 +53,16 @@ function Timestamp({value}: {value: string | null}) {
 	);
 }
 
-interface ChatMessage {
-	role: 'user' | 'assistant';
-	timestamp?: string;
-	textBlocks: string[];
-	htmlBlocks: Array<{html: string; sourceUuid: string}>;
-	thinkingBlocks: Array<{thinking: string; sourceUuid: string}>;
-	imageBlocks: Array<{mediaType: string; data: string; sourceUuid: string}>;
-	documentBlocks: Array<{mediaType: string; data: string; sourceUuid: string}>;
-	toolCalls: ClientToolCall[];
-	toolSummary: string;
-	command?: {name: string; args?: string; sourceUuid: string};
-	bash?: {command: string; stdout?: string; stderr?: string; inputUuid: string; outputUuid?: string};
-}
-
 interface SessionChatProps {
 	sessionId: string;
-	messages: ChatMessage[];
+	lines: SessionLine[];
+	toolResultMap: SerializedToolResultMap;
+	decorations: SerializedDecorationMap;
+	textHtmlMap: Array<[string, string]>;
 	showThinking?: boolean;
 	showTools?: boolean;
 }
 
-// Tracks which sessions have already been auto-scrolled during this tab's
-// lifetime. Stored on globalThis so it survives Vite HMR reloads in addition
-// to component remounts and loader revalidation.
 const autoScrolledSessions = hmrSet<string>('autoScrolledSessions');
 
 function CopyToast({visible}: {visible: boolean}) {
@@ -87,12 +75,12 @@ function CopyToast({visible}: {visible: boolean}) {
 	);
 }
 
-function MessageToolbar({msg, index}: {msg: ChatMessage; index: number}) {
+function MessageToolbar({line, index}: {line: SessionLine; index: number}) {
 	const [copied, setCopied] = useState<'text' | 'link' | null>(null);
 
 	function copyText() {
-		const text = msg.textBlocks.join('\n\n');
-		navigator.clipboard.writeText(text);
+		const texts = extractTextFromLine(line);
+		navigator.clipboard.writeText(texts.join('\n\n'));
 		setCopied('text');
 		setTimeout(() => setCopied(null), 1500);
 	}
@@ -132,17 +120,30 @@ function MessageToolbar({msg, index}: {msg: ChatMessage; index: number}) {
 	);
 }
 
+function extractTextFromLine(line: SessionLine): string[] {
+	const content = line.message?.content;
+	if (!content) return [];
+	if (typeof content === 'string') return [stripCommandTags(content)].filter(Boolean);
+	return content
+		.filter((b): b is SessionContentBlock & {text: string} => b.type === 'text' && typeof b.text === 'string')
+		.map((b) => b.text);
+}
+
 export const SessionChat = React.memo(function SessionChat({
 	sessionId,
-	messages,
+	lines,
+	toolResultMap: serializedToolResultMap,
+	decorations: serializedDecorations,
+	textHtmlMap: serializedTextHtmlMap,
 	showThinking = true,
 	showTools = true,
 }: SessionChatProps) {
 	const endRef = useRef<HTMLDivElement>(null);
 
-	// Scroll to bottom the first time the user opens this session.
-	// Remounts (HMR, loader revalidation) won't re-trigger because the
-	// session id is already in autoScrolledSessions.
+	const toolResultMap = useMemo(() => new Map(serializedToolResultMap), [serializedToolResultMap]);
+	const decorations = useMemo(() => new Map(serializedDecorations), [serializedDecorations]);
+	const textHtmlMap = useMemo(() => new Map(serializedTextHtmlMap), [serializedTextHtmlMap]);
+
 	useEffect(() => {
 		if (autoScrolledSessions.has(sessionId)) return;
 		autoScrolledSessions.add(sessionId);
@@ -153,9 +154,63 @@ export const SessionChat = React.memo(function SessionChat({
 
 	return (
 		<div className="mx-auto w-full max-w-3xl px-8 pt-4 pb-4">
-			{messages.map((msg, i) => {
-				const prevRole = i > 0 ? messages[i - 1]!.role : null;
-				const isNewTurn = prevRole !== null && prevRole !== msg.role;
+			<SessionLineList
+				lines={lines}
+				sessionId={sessionId}
+				toolResultMap={toolResultMap}
+				decorations={decorations}
+				textHtmlMap={textHtmlMap}
+				showThinking={showThinking}
+				showTools={showTools}
+			/>
+			<div ref={endRef} />
+		</div>
+	);
+});
+
+/**
+ * Build a set of line indices that should be skipped because they've been
+ * coalesced into a preceding line (e.g., bash-output following bash-input).
+ */
+function buildSkipSet(lines: SessionLine[]): Set<number> {
+	const skip = new Set<number>();
+	for (let i = 0; i < lines.length - 1; i++) {
+		const line = lines[i]!;
+		const next = lines[i + 1]!;
+		if (line.type === 'user' && next.type === 'user' && hasBashInput(line) && hasBashOutput(next)) {
+			skip.add(i + 1);
+		}
+	}
+	return skip;
+}
+
+function SessionLineList({
+	lines,
+	sessionId,
+	toolResultMap,
+	decorations,
+	textHtmlMap,
+	showThinking,
+	showTools,
+}: {
+	lines: SessionLine[];
+	sessionId: string;
+	toolResultMap: Map<string, ToolResultInfo>;
+	decorations: DecorationMap;
+	textHtmlMap: Map<string, string>;
+	showThinking: boolean;
+	showTools: boolean;
+}) {
+	const skipSet = useMemo(() => buildSkipSet(lines), [lines]);
+
+	return (
+		<>
+			{lines.map((line, i) => {
+				if (skipSet.has(i)) return null;
+				const prevRole = i > 0 ? lines[i - 1]!.type : null;
+				const isNewTurn = prevRole !== null && prevRole !== line.type;
+				const nextLine = i + 1 < lines.length ? lines[i + 1] : undefined;
+
 				return (
 					<div
 						key={i}
@@ -163,29 +218,74 @@ export const SessionChat = React.memo(function SessionChat({
 						className={`group relative ${isNewTurn ? 'pb-6' : ''}`}
 					>
 						<MessageToolbar
-							msg={msg}
+							line={line}
 							index={i}
 						/>
-						{msg.role === 'user' ? (
-							<UserMessage
-								msg={msg}
-								sessionId={sessionId}
-							/>
-						) : (
-							<AssistantMessage
-								msg={msg}
-								sessionId={sessionId}
-								showThinking={showThinking}
-								showTools={showTools}
-							/>
-						)}
+						<SessionMessage
+							line={line}
+							sessionId={sessionId}
+							toolResultMap={toolResultMap}
+							decorations={decorations}
+							textHtmlMap={textHtmlMap}
+							showThinking={showThinking}
+							showTools={showTools}
+							nextLine={nextLine}
+						/>
 					</div>
 				);
 			})}
-			<div ref={endRef} />
-		</div>
+		</>
 	);
-});
+}
+
+/**
+ * Top-level switching component: reads line.type and delegates to
+ * per-type entry components. Every component receives the full raw line.
+ */
+function SessionMessage({
+	line,
+	sessionId,
+	toolResultMap,
+	decorations,
+	textHtmlMap,
+	showThinking,
+	showTools,
+	nextLine,
+}: {
+	line: SessionLine;
+	sessionId: string;
+	toolResultMap: Map<string, ToolResultInfo>;
+	decorations: DecorationMap;
+	textHtmlMap: Map<string, string>;
+	showThinking: boolean;
+	showTools: boolean;
+	nextLine?: SessionLine | undefined;
+}) {
+	if (line.type === 'user') {
+		return (
+			<UserEntry
+				line={line}
+				sessionId={sessionId}
+				textHtmlMap={textHtmlMap}
+				nextLine={nextLine}
+			/>
+		);
+	}
+	if (line.type === 'assistant') {
+		return (
+			<AssistantEntry
+				line={line}
+				sessionId={sessionId}
+				toolResultMap={toolResultMap}
+				decorations={decorations}
+				textHtmlMap={textHtmlMap}
+				showThinking={showThinking}
+				showTools={showTools}
+			/>
+		);
+	}
+	return null;
+}
 
 function TruncatedContent({children}: {children: React.ReactNode}) {
 	const contentRef = useRef<HTMLDivElement>(null);
@@ -237,86 +337,193 @@ function TruncatedContent({children}: {children: React.ReactNode}) {
 	);
 }
 
-function UserMessage({msg, sessionId}: {msg: ChatMessage; sessionId: string}) {
-	const timestampText = formatTimestamp(msg.timestamp);
+/**
+ * Classify a user line's content: is it a command, bash input/output, or regular text?
+ */
+function classifyUserContent(line: SessionLine): 'command' | 'bash' | 'text' | 'tool-result-only' {
+	const content = line.message?.content;
+	if (!content) return 'text';
 
-	if (msg.command) {
+	if (typeof content === 'string') {
+		if (parseCommandBlock(content)) return 'command';
+		if (parseBashInput(content)) return 'bash';
+		if (parseBashOutput(content)) return 'bash';
+		return 'text';
+	}
+
+	// Array content: check for command or bash blocks, or tool_result only
+	let hasCommand = false;
+	let hasBash = false;
+	let hasText = false;
+	let hasToolResult = false;
+	for (const block of content) {
+		if (block.type === 'text' && typeof block.text === 'string') {
+			if (parseCommandBlock(block.text)) hasCommand = true;
+			else if (parseBashInput(block.text)) hasBash = true;
+			else if (parseBashOutput(block.text)) hasBash = true;
+			else if (/<local-command-caveat>/.test(block.text)) {
+				// skip caveat blocks
+			} else {
+				const cleaned = stripCommandTags(block.text);
+				if (cleaned) hasText = true;
+			}
+		} else if (block.type === 'tool_result') {
+			hasToolResult = true;
+		} else if (block.type === 'image' || block.type === 'document') {
+			hasText = true;
+		}
+	}
+
+	if (hasCommand) return 'command';
+	if (hasBash) return 'bash';
+	if (hasText) return 'text';
+	if (hasToolResult) return 'tool-result-only';
+	return 'text';
+}
+
+function UserEntry({
+	line,
+	sessionId,
+	textHtmlMap,
+	nextLine,
+}: {
+	line: SessionLine;
+	sessionId: string;
+	textHtmlMap: Map<string, string>;
+	nextLine?: SessionLine | undefined;
+}) {
+	const timestampText = formatTimestamp(line.timestamp);
+	const kind = classifyUserContent(line);
+
+	if (kind === 'command') {
 		return (
-			<div className="flex flex-col items-end gap-1">
-				<div className="relative rounded-lg px-3 py-2 bg-bg-100 text-text-000 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%]">
-					<span className="bg-bg-200 rounded-full px-2 py-0.5 text-xs font-mono">{msg.command.name}</span>
-					{msg.command.args && <span className="text-xs text-text-500 ml-1.5">{msg.command.args}</span>}
-					<DebugLink
-						sessionId={sessionId}
-						uuid={msg.command.sourceUuid}
-						className="absolute top-1 right-1"
-					/>
-				</div>
-				<Timestamp value={timestampText} />
-			</div>
+			<CommandEntry
+				line={line}
+				sessionId={sessionId}
+				timestampText={timestampText}
+			/>
 		);
 	}
 
-	if (msg.bash) {
+	if (kind === 'bash') {
+		// If this is a bash-input and the next line is a bash-output, coalesce them.
+		// The next line is skipped by the buildSkipSet mechanism.
+		const coalesceNext = hasBashInput(line) && nextLine?.type === 'user' && hasBashOutput(nextLine);
 		return (
-			<div className="flex flex-col items-end gap-1">
-				<div className="relative rounded-lg p-2 bg-bg-100 text-text-000 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] min-w-0">
-					<div className="bg-bg-200 rounded px-2 py-1.5 font-mono text-xs flex items-start gap-2">
-						<span className="text-text-500">! </span>
-						<span className="text-success-000 break-all flex-1">{msg.bash.command}</span>
-						<DebugLink
-							sessionId={sessionId}
-							uuid={msg.bash.inputUuid}
-						/>
-					</div>
-					{msg.bash.stdout && (
-						<div className="mt-1 relative">
-							<TerminalOutput content={msg.bash.stdout} />
-							<DebugLink
-								sessionId={sessionId}
-								uuid={msg.bash.outputUuid}
-								className="absolute top-1 right-1"
-							/>
-						</div>
-					)}
-					{msg.bash.stderr && (
-						<div className="mt-1 border-l-2 border-danger-000 bg-danger-000/10 rounded-r relative">
-							<TerminalOutput content={msg.bash.stderr} />
-							{!msg.bash.stdout && (
-								<DebugLink
-									sessionId={sessionId}
-									uuid={msg.bash.outputUuid}
-									className="absolute top-1 right-1"
-								/>
-							)}
-						</div>
-					)}
-				</div>
-				<Timestamp value={timestampText} />
-			</div>
+			<BashEntry
+				line={line}
+				outputLine={coalesceNext ? nextLine : undefined}
+				sessionId={sessionId}
+				timestampText={timestampText}
+			/>
 		);
 	}
 
+	if (kind === 'tool-result-only') {
+		return null;
+	}
+
+	// Regular user text
 	return (
 		<div className="flex flex-col items-end gap-1.5">
-			{msg.htmlBlocks.map((block, i) => (
+			{renderUserContentBlocks(line, sessionId, textHtmlMap)}
+			<Timestamp value={timestampText} />
+		</div>
+	);
+}
+
+function lineMatchesBash(line: SessionLine, parser: (text: string) => unknown): boolean {
+	const content = line.message?.content;
+	if (typeof content === 'string') return parser(content) !== null;
+	if (Array.isArray(content)) {
+		return content.some((b) => b.type === 'text' && typeof b.text === 'string' && parser(b.text) !== null);
+	}
+	return false;
+}
+
+function hasBashInput(line: SessionLine): boolean {
+	return lineMatchesBash(line, parseBashInput);
+}
+
+function hasBashOutput(line: SessionLine): boolean {
+	return lineMatchesBash(line, parseBashOutput);
+}
+
+function renderUserContentBlocks(
+	line: SessionLine,
+	sessionId: string,
+	textHtmlMap: Map<string, string>,
+): React.ReactNode[] {
+	const content = line.message?.content;
+	if (!content) return [];
+
+	if (typeof content === 'string') {
+		const html = textHtmlMap.get(`${line.lineIndex}:0`);
+		if (!html) return [];
+		return [
+			<div
+				key={0}
+				className="relative rounded-lg px-3 py-2 break-words min-w-0 overflow-hidden bg-bg-100 text-text-000 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] text-sm leading-relaxed"
+			>
+				<TruncatedContent>
+					<MarkdownArticle html={html} />
+				</TruncatedContent>
+				<DebugLink
+					sessionId={sessionId}
+					uuid={line.uuid}
+					className="absolute top-1 right-1"
+				/>
+			</div>,
+		];
+	}
+
+	const nodes: React.ReactNode[] = [];
+	for (let i = 0; i < content.length; i++) {
+		const block = content[i]!;
+		if (block.type === 'text' && typeof block.text === 'string') {
+			if (/<local-command-caveat>/.test(block.text)) continue;
+			const cleaned = stripCommandTags(block.text);
+			if (!cleaned) continue;
+			const html = textHtmlMap.get(`${line.lineIndex}:${i}`);
+			if (!html) continue;
+			nodes.push(
 				<div
-					key={i}
+					key={`text-${i}`}
 					className="relative rounded-lg px-3 py-2 break-words min-w-0 overflow-hidden bg-bg-100 text-text-000 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] text-sm leading-relaxed"
 				>
 					<TruncatedContent>
-						<MarkdownArticle html={block.html} />
+						<MarkdownArticle html={html} />
 					</TruncatedContent>
 					<DebugLink
 						sessionId={sessionId}
-						uuid={block.sourceUuid}
+						uuid={line.uuid}
 						className="absolute top-1 right-1"
 					/>
-				</div>
-			))}
-			{msg.documentBlocks.map((doc, i) => (
+				</div>,
+			);
+		} else if (block.type === 'image' && block.source) {
+			// User-attached images (screenshots etc.)
+			nodes.push(
 				<div
-					key={i}
+					key={`img-${i}`}
+					className="relative inline-block"
+				>
+					<img
+						src={`data:${block.source.media_type};base64,${block.source.data}`}
+						alt="Session image"
+						className="max-w-full max-h-96 rounded-lg border border-border-300/15 shadow-sm"
+					/>
+					<DebugLink
+						sessionId={sessionId}
+						uuid={line.uuid}
+						className="absolute top-1 right-1"
+					/>
+				</div>,
+			);
+		} else if (block.type === 'document' && block.source) {
+			nodes.push(
+				<div
+					key={`doc-${i}`}
 					className="relative rounded-lg px-3 py-2 bg-bg-100 text-text-000 flex items-center gap-1.5 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%]"
 				>
 					<svg
@@ -334,11 +541,146 @@ function UserMessage({msg, sessionId}: {msg: ChatMessage; sessionId: string}) {
 					<span className="text-sm">PDF attached</span>
 					<DebugLink
 						sessionId={sessionId}
-						uuid={doc.sourceUuid}
+						uuid={line.uuid}
 						className="absolute top-1 right-1"
 					/>
-				</div>
-			))}
+				</div>,
+			);
+		}
+		// tool_result blocks are intentionally skipped in user rendering
+	}
+	return nodes;
+}
+
+function CommandEntry({
+	line,
+	sessionId,
+	timestampText,
+}: {
+	line: SessionLine;
+	sessionId: string;
+	timestampText: string | null;
+}) {
+	const content = line.message?.content;
+	let cmdName = '';
+	let cmdArgs: string | undefined;
+
+	if (typeof content === 'string') {
+		const cmd = parseCommandBlock(content);
+		if (cmd) {
+			cmdName = cmd.name;
+			cmdArgs = cmd.args;
+		}
+	} else if (Array.isArray(content)) {
+		for (const block of content) {
+			if (block.type === 'text' && typeof block.text === 'string') {
+				const cmd = parseCommandBlock(block.text);
+				if (cmd) {
+					cmdName = cmd.name;
+					cmdArgs = cmd.args;
+					break;
+				}
+			}
+		}
+	}
+
+	return (
+		<div className="flex flex-col items-end gap-1">
+			<div className="relative rounded-lg px-3 py-2 bg-bg-100 text-text-000 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%]">
+				<span className="bg-bg-200 rounded-full px-2 py-0.5 text-xs font-mono">{cmdName}</span>
+				{cmdArgs && <span className="text-xs text-text-500 ml-1.5">{cmdArgs}</span>}
+				<DebugLink
+					sessionId={sessionId}
+					uuid={line.uuid}
+					className="absolute top-1 right-1"
+				/>
+			</div>
+			<Timestamp value={timestampText} />
+		</div>
+	);
+}
+
+function BashEntry({
+	line,
+	outputLine,
+	sessionId,
+	timestampText,
+}: {
+	line: SessionLine;
+	outputLine?: SessionLine | undefined;
+	sessionId: string;
+	timestampText: string | null;
+}) {
+	let command = '';
+	let stdout: string | undefined;
+	let stderr: string | undefined;
+	const outputUuid = outputLine?.uuid;
+
+	function extractBash(content: string | SessionContentBlock[] | undefined) {
+		if (!content) return;
+		if (typeof content === 'string') {
+			const bashIn = parseBashInput(content);
+			if (bashIn) command = bashIn.command;
+			const bashOut = parseBashOutput(content);
+			if (bashOut) {
+				stdout = bashOut.stdout;
+				stderr = bashOut.stderr;
+			}
+		} else if (Array.isArray(content)) {
+			for (const block of content) {
+				if (block.type !== 'text' || typeof block.text !== 'string') continue;
+				const bashIn = parseBashInput(block.text);
+				if (bashIn) command = bashIn.command;
+				const bashOut = parseBashOutput(block.text);
+				if (bashOut) {
+					stdout = bashOut.stdout;
+					stderr = bashOut.stderr;
+				}
+			}
+		}
+	}
+
+	extractBash(line.message?.content);
+	if (outputLine) extractBash(outputLine.message?.content);
+
+	if (!command && !stdout && !stderr) return null;
+
+	return (
+		<div className="flex flex-col items-end gap-1">
+			<div className="relative rounded-lg p-2 bg-bg-100 text-text-000 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] min-w-0">
+				{command && (
+					<div className="bg-bg-200 rounded px-2 py-1.5 font-mono text-xs flex items-start gap-2">
+						<span className="text-text-500">! </span>
+						<span className="text-success-000 break-all flex-1">{command}</span>
+						<DebugLink
+							sessionId={sessionId}
+							uuid={line.uuid}
+						/>
+					</div>
+				)}
+				{stdout && (
+					<div className="mt-1 relative">
+						<TerminalOutput content={stdout} />
+						<DebugLink
+							sessionId={sessionId}
+							uuid={outputUuid ?? line.uuid}
+							className="absolute top-1 right-1"
+						/>
+					</div>
+				)}
+				{stderr && (
+					<div className="mt-1 border-l-2 border-danger-000 bg-danger-000/10 rounded-r relative">
+						<TerminalOutput content={stderr} />
+						{!stdout && (
+							<DebugLink
+								sessionId={sessionId}
+								uuid={outputUuid ?? line.uuid}
+								className="absolute top-1 right-1"
+							/>
+						)}
+					</div>
+				)}
+			</div>
 			<Timestamp value={timestampText} />
 		</div>
 	);
@@ -396,71 +738,162 @@ function ThinkingBlock({
 	);
 }
 
-function AssistantMessage({
-	msg,
+/**
+ * Renders an assistant JSONL line by iterating content blocks in original order.
+ */
+function AssistantEntry({
+	line,
 	sessionId,
-	showThinking = true,
-	showTools = true,
+	toolResultMap,
+	decorations,
+	textHtmlMap,
+	showThinking,
+	showTools,
 }: {
-	msg: ChatMessage;
+	line: SessionLine;
 	sessionId: string;
-	showThinking?: boolean;
-	showTools?: boolean;
+	toolResultMap: Map<string, ToolResultInfo>;
+	decorations: DecorationMap;
+	textHtmlMap: Map<string, string>;
+	showThinking: boolean;
+	showTools: boolean;
 }) {
-	const firstThinkingUuid = msg.thinkingBlocks[0]?.sourceUuid;
-	const thinkingText =
-		msg.thinkingBlocks.length > 0 ? msg.thinkingBlocks.map((b) => b.thinking).join('\n\n---\n\n') : null;
-	const timestampText = formatTimestamp(msg.timestamp);
+	const content = line.message?.content;
+	const timestampText = formatTimestamp(line.timestamp);
 
+	if (!Array.isArray(content) || content.length === 0) {
+		return <Timestamp value={timestampText} />;
+	}
+
+	// Collect tool_use blocks for the tool summary and section
+	const toolUseBlocks = content.filter((b) => b.type === 'tool_use');
+	const toolCalls = useMemo(
+		() => toolUseBlocks.map((block) => buildClientToolCall(block, line, toolResultMap, decorations)),
+		[line, toolResultMap, decorations],
+	);
+	const toolSummary = useMemo(() => {
+		const blocks = (line.message?.content as SessionContentBlock[]).filter((b) => b.type === 'tool_use');
+		return summarizeToolCalls(
+			blocks.map((b) => ({
+				id: b.id ?? '',
+				name: b.name ?? '',
+				input: b.input ?? {},
+				sourceUuid: line.uuid ?? '',
+			})),
+		);
+	}, [line]);
+
+	// Determine if all content is just tool_use (render as grouped tool section)
+	// vs mixed content (render in order)
+	const hasTextOrThinking = content.some((b) => b.type === 'text' || b.type === 'thinking');
+	const hasToolUse = toolUseBlocks.length > 0;
+
+	// If there's only tool_use blocks, render as a tool call section
+	if (!hasTextOrThinking && hasToolUse) {
+		return (
+			<div className="flex flex-col gap-1.5 min-w-0">
+				{showTools && toolCalls.length > 0 && (
+					<ToolCallSection
+						calls={toolCalls}
+						summary={toolSummary}
+						sessionId={sessionId}
+					/>
+				)}
+				<Timestamp value={timestampText} />
+			</div>
+		);
+	}
+
+	// Mixed content: render each block in original order
 	return (
 		<div className="flex flex-col gap-1.5 min-w-0">
-			{showThinking && thinkingText && (
-				<ThinkingBlock
-					thinking={thinkingText}
+			{content.map((block, i) => (
+				<ContentBlock
+					key={i}
+					block={block}
+					blockIndex={i}
+					line={line}
 					sessionId={sessionId}
-					sourceUuid={firstThinkingUuid}
+					textHtmlMap={textHtmlMap}
+					showThinking={showThinking}
+					showTools={showTools}
+					toolCalls={toolCalls}
+					toolSummary={toolSummary}
 				/>
-			)}
-			{msg.htmlBlocks.map((block, i) => (
-				<div
-					key={`text-${i}`}
-					className="relative min-w-0 text-sm leading-relaxed text-text-100"
-				>
-					<MarkdownArticle html={block.html} />
-					<DebugLink
-						sessionId={sessionId}
-						uuid={block.sourceUuid}
-						className="absolute top-0 right-0"
-					/>
-				</div>
 			))}
-			{msg.imageBlocks.map((img, i) => (
-				<div
-					key={`img-${i}`}
-					className="relative inline-block"
-				>
-					<img
-						src={`data:${img.mediaType};base64,${img.data}`}
-						alt="Session image"
-						className="max-w-full max-h-96 rounded-lg border border-border-300/15 shadow-sm"
-					/>
-					<DebugLink
-						sessionId={sessionId}
-						uuid={img.sourceUuid}
-						className="absolute top-1 right-1"
-					/>
-				</div>
-			))}
-			{showTools && msg.toolCalls.length > 0 && (
-				<ToolCallSection
-					calls={msg.toolCalls}
-					summary={msg.toolSummary}
-					sessionId={sessionId}
-				/>
-			)}
 			<Timestamp value={timestampText} />
 		</div>
 	);
+}
+
+/**
+ * Switching component for individual content blocks within an assistant message.
+ */
+function ContentBlock({
+	block,
+	blockIndex,
+	line,
+	sessionId,
+	textHtmlMap,
+	showThinking,
+	showTools,
+	toolCalls,
+	toolSummary,
+}: {
+	block: SessionContentBlock;
+	blockIndex: number;
+	line: SessionLine;
+	sessionId: string;
+	textHtmlMap: Map<string, string>;
+	showThinking: boolean;
+	showTools: boolean;
+	toolCalls: ClientToolCall[];
+	toolSummary: string;
+}) {
+	if (block.type === 'text' && typeof block.text === 'string') {
+		const html = textHtmlMap.get(`${line.lineIndex}:${blockIndex}`);
+		if (!html) return null;
+		return (
+			<div className="relative min-w-0 text-sm leading-relaxed text-text-100">
+				<MarkdownArticle html={html} />
+				<DebugLink
+					sessionId={sessionId}
+					uuid={line.uuid}
+					className="absolute top-0 right-0"
+				/>
+			</div>
+		);
+	}
+
+	if (block.type === 'thinking' && typeof block.thinking === 'string') {
+		if (!showThinking) return null;
+		return (
+			<ThinkingBlock
+				thinking={block.thinking}
+				sessionId={sessionId}
+				sourceUuid={line.uuid}
+			/>
+		);
+	}
+
+	if (block.type === 'tool_use') {
+		if (!showTools) return null;
+		// Render the full tool call section when we hit the first tool_use block
+		// (subsequent tool_use blocks in the same line are rendered as part of this section)
+		const firstToolUseIndex = (line.message?.content as SessionContentBlock[]).findIndex(
+			(b) => b.type === 'tool_use',
+		);
+		if (blockIndex !== firstToolUseIndex) return null;
+		return (
+			<ToolCallSection
+				calls={toolCalls}
+				summary={toolSummary}
+				sessionId={sessionId}
+			/>
+		);
+	}
+
+	return null;
 }
 
 function ChevronIcon({expanded}: {expanded: boolean}) {
@@ -489,12 +922,6 @@ const TASK_TOOLS = new Set(['TaskCreate', 'TaskUpdate', 'TaskList']);
 
 type ToolListItem = {kind: 'call'; call: ClientToolCall} | {kind: 'parallel'; key: string; calls: ClientToolCall[]};
 
-/**
- * Group consecutive Agent tool calls that share a `parallelGroupKey` into a
- * single "parallel × N" entry. Matches the grouping used by the top-of-page
- * subagent tree (src/components/subagent-tree.tsx) so users see the same
- * grouping inline at the spawn point.
- */
 function groupParallelSubagents(calls: ClientToolCall[]): ToolListItem[] {
 	const result: ToolListItem[] = [];
 	let i = 0;

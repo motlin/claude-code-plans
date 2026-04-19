@@ -6,7 +6,13 @@ import {z} from 'zod';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {readSession, summarizeToolCalls, type MessageContent} from '../lib/sessions';
+import {
+	readSessionLines,
+	stripCommandTags,
+	parseCommandBlock,
+	type SessionLine,
+	type ToolResultInfo,
+} from '../lib/sessions';
 import {
 	renderMarkdown,
 	computeDiffData,
@@ -33,7 +39,12 @@ import {
 	type SubagentTreeNode,
 	type ParallelGroup,
 } from '../lib/db/queries';
-import type {ClientToolCall, ToolInput, SubagentInlineInfo} from '../components/tool-renderers';
+import type {
+	SubagentInlineInfo,
+	ToolDecoration,
+	SerializedDecorationMap,
+	SerializedToolResultMap,
+} from '../components/tool-renderers';
 import {ArrowLeft, ArrowUp, ArrowDown, Copy, Terminal, GitFork, Download, Maximize2, Minimize2} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {SubagentTree} from '../components/subagent-tree';
@@ -111,180 +122,192 @@ function buildSubagentLookup(tree: SubagentTreeEntry[]): SubagentLookup {
 
 const AGENT_ID_RE = /agentId:\s*(\S+)/;
 
-function getToolParam(tc: {input: Record<string, unknown>}): string {
-	const input = tc.input;
-	if (typeof input['file_path'] === 'string') return input['file_path'];
-	if (typeof input['command'] === 'string') {
-		const cmd = input['command'];
-		return cmd.length > 60 ? cmd.slice(0, 60) + '...' : cmd;
+/**
+ * Extract tool_use blocks from all lines to build the decorations sidecar.
+ * Returns a list of {toolUseId, name, input, result} tuples for decoration.
+ */
+function collectToolUseBlocks(
+	lines: SessionLine[],
+	toolResultMap: Map<string, ToolResultInfo>,
+): Array<{id: string; name: string; input: Record<string, unknown>; result?: string; isError?: boolean}> {
+	const result: Array<{
+		id: string;
+		name: string;
+		input: Record<string, unknown>;
+		result?: string;
+		isError?: boolean;
+	}> = [];
+	for (const line of lines) {
+		if (line.type !== 'assistant') continue;
+		const content = line.message?.content;
+		if (!Array.isArray(content)) continue;
+		for (const block of content) {
+			if (block.type === 'tool_use' && block.id && block.name) {
+				const entry: {
+					id: string;
+					name: string;
+					input: Record<string, unknown>;
+					result?: string;
+					isError?: boolean;
+				} = {
+					id: block.id,
+					name: block.name,
+					input: block.input ?? {},
+				};
+				const resultInfo = toolResultMap.get(block.id);
+				if (resultInfo) {
+					entry.result = resultInfo.result;
+					if (resultInfo.isError) entry.isError = true;
+				}
+				result.push(entry);
+			}
+		}
 	}
-	if (typeof input['pattern'] === 'string') return input['pattern'];
-	if (typeof input['query'] === 'string') return input['query'];
-	if (typeof input['url'] === 'string') return input['url'];
-	if (typeof input['prompt'] === 'string') {
-		const p = input['prompt'];
-		return p.length > 60 ? p.slice(0, 60) + '...' : p;
+	return result;
+}
+
+/**
+ * Build server-side decorations for tool_use blocks (Shiki highlighting,
+ * diff data, markdown rendering, subagent info).
+ */
+async function buildDecorations(
+	toolUses: Array<{id: string; name: string; input: Record<string, unknown>; result?: string; isError?: boolean}>,
+	subagentLookup: SubagentLookup,
+): Promise<Map<string, ToolDecoration>> {
+	const decoMap = new Map<string, ToolDecoration>();
+
+	await Promise.all(
+		toolUses.map(async (tu) => {
+			const deco: ToolDecoration = {};
+			let hasDeco = false;
+
+			if ((tu.name === 'Edit' || tu.name === 'MultiEdit') && tu.input['old_string'] !== undefined) {
+				const oldStr = (tu.input['old_string'] as string) ?? '';
+				const newStr = (tu.input['new_string'] as string) ?? '';
+				const filePath = (tu.input['file_path'] as string) ?? '';
+				const diffData = computeDiffData(oldStr, newStr);
+				diffData.unifiedHunk = buildUnifiedHunk(oldStr, newStr, filePath);
+				diffData.oldContent = oldStr;
+				diffData.newContent = newStr;
+				diffData.filePath = filePath;
+				deco.diffData = diffData;
+				hasDeco = true;
+			}
+
+			if (tu.name === 'Read' && tu.result) {
+				const filePath = (tu.input['file_path'] as string) ?? '';
+				const lang = detectLanguage(filePath);
+				if (lang) {
+					const {text: cleanCode} = extractLineNumbers(tu.result);
+					deco.highlightedHtml = await highlightCode(cleanCode, lang);
+					hasDeco = true;
+				}
+			}
+
+			if (
+				(tu.name === 'Agent' || tu.name.startsWith('mcp__') || tu.name === 'WebFetch') &&
+				tu.result &&
+				looksLikeMarkdown(tu.result)
+			) {
+				deco.resultHtml = await renderMarkdown(tu.result);
+				hasDeco = true;
+			}
+
+			if (tu.name === 'Agent') {
+				let info: SubagentInlineInfo | undefined;
+				if (tu.result) {
+					const match = AGENT_ID_RE.exec(tu.result);
+					if (match?.[1]) {
+						info = subagentLookup.byBareId.get(match[1]);
+					}
+				}
+				if (!info) {
+					const inputAgentType = (tu.input['subagent_type'] as string) ?? null;
+					const inputDescription = (tu.input['description'] as string) ?? null;
+					if (inputDescription) {
+						info = subagentLookup.byTypeAndDescription.get(lookupKey(inputAgentType, inputDescription));
+					}
+				}
+				if (info) {
+					deco.subagentInfo = {
+						...info,
+						status: tu.isError ? 'error' : info.status,
+					};
+					hasDeco = true;
+				}
+			}
+
+			if (hasDeco) {
+				decoMap.set(tu.id, deco);
+			}
+		}),
+	);
+
+	return decoMap;
+}
+
+/**
+ * Pre-render markdown for all text blocks in the session lines.
+ * Returns a map from `${lineIndex}:${blockIndex}` to rendered HTML.
+ */
+async function buildTextHtmlMap(lines: SessionLine[]): Promise<Map<string, string>> {
+	const entries: Array<{key: string; text: string}> = [];
+	for (const line of lines) {
+		const isUser = line.type === 'user';
+		const content = line.message?.content;
+		if (!Array.isArray(content)) {
+			if (typeof content === 'string' && content.trim()) {
+				// For user messages, strip command tags; skip command blocks entirely
+				if (isUser) {
+					if (parseCommandBlock(content)) continue;
+					const cleaned = stripCommandTags(content);
+					if (cleaned) entries.push({key: `${line.lineIndex}:0`, text: cleaned});
+				} else {
+					entries.push({key: `${line.lineIndex}:0`, text: content});
+				}
+			}
+			continue;
+		}
+		for (let i = 0; i < content.length; i++) {
+			const block = content[i]!;
+			if (block.type === 'text' && typeof block.text === 'string') {
+				if (isUser) {
+					if (parseCommandBlock(block.text)) continue;
+					if (/<local-command-caveat>/.test(block.text)) continue;
+					const cleaned = stripCommandTags(block.text);
+					if (!cleaned) continue;
+					entries.push({key: `${line.lineIndex}:${i}`, text: cleaned});
+				} else {
+					entries.push({key: `${line.lineIndex}:${i}`, text: block.text});
+				}
+			}
+		}
 	}
-	return '';
+
+	const rendered = await Promise.all(entries.map((e) => renderMarkdown(e.text)));
+	const map = new Map<string, string>();
+	for (let i = 0; i < entries.length; i++) {
+		map.set(entries[i]!.key, rendered[i]!);
+	}
+	return map;
 }
 
 const getSession = createServerFn({method: 'GET'})
 	.inputValidator(z.object({id: z.string()}))
 	.handler(async ({data: {id}}) => {
 		const [detail, subagentResult, starResult] = await Promise.all([
-			readSession(PROJECTS_DIR, id),
+			readSessionLines(PROJECTS_DIR, id),
 			getSubagentTree({data: id}),
 			isStarred({data: id}),
 		]);
 		if (!detail) return null;
 
 		const subagentLookup = buildSubagentLookup(subagentResult.tree);
-
-		const messages = await Promise.all(
-			detail.messages.map(async (msg) => {
-				const toolCalls = await Promise.all(
-					msg.toolCalls.map(async (tc): Promise<ClientToolCall> => {
-						const call: ClientToolCall = {
-							id: tc.id,
-							name: tc.name,
-							input: tc.input as ToolInput,
-							param: getToolParam(tc),
-							sourceUuid: tc.sourceUuid,
-						};
-						if (tc.result !== undefined) call.result = tc.result;
-						if (tc.isError !== undefined) call.isError = tc.isError;
-						if (tc.duration !== undefined) call.duration = tc.duration;
-						if (tc.resultUuid !== undefined) call.resultUuid = tc.resultUuid;
-
-						if ((tc.name === 'Edit' || tc.name === 'MultiEdit') && tc.input['old_string'] !== undefined) {
-							const oldStr = (tc.input['old_string'] as string) ?? '';
-							const newStr = (tc.input['new_string'] as string) ?? '';
-							const filePath = (tc.input['file_path'] as string) ?? '';
-							const diffData = computeDiffData(oldStr, newStr);
-							diffData.unifiedHunk = buildUnifiedHunk(oldStr, newStr, filePath);
-							diffData.oldContent = oldStr;
-							diffData.newContent = newStr;
-							diffData.filePath = filePath;
-							call.diffData = diffData;
-						}
-
-						if (tc.name === 'Read' && tc.result) {
-							const filePath = (tc.input['file_path'] as string) ?? '';
-							const lang = detectLanguage(filePath);
-							if (lang) {
-								const {text: cleanCode} = extractLineNumbers(tc.result);
-								call.highlightedHtml = await highlightCode(cleanCode, lang);
-							}
-						}
-
-						if (
-							(tc.name === 'Agent' || tc.name.startsWith('mcp__') || tc.name === 'WebFetch') &&
-							tc.result &&
-							looksLikeMarkdown(tc.result)
-						) {
-							call.resultHtml = await renderMarkdown(tc.result);
-						}
-
-						if (tc.name === 'Agent') {
-							let info: SubagentInlineInfo | undefined;
-							if (tc.result) {
-								const match = AGENT_ID_RE.exec(tc.result);
-								if (match?.[1]) {
-									info = subagentLookup.byBareId.get(match[1]);
-								}
-							}
-							if (!info) {
-								const inputAgentType = (tc.input['subagent_type'] as string) ?? null;
-								const inputDescription = (tc.input['description'] as string) ?? null;
-								if (inputDescription) {
-									info = subagentLookup.byTypeAndDescription.get(
-										lookupKey(inputAgentType, inputDescription),
-									);
-								}
-							}
-							if (info) {
-								call.subagentInfo = {
-									...info,
-									status: tc.isError ? 'error' : info.status,
-								};
-							}
-						}
-
-						return call;
-					}),
-				);
-
-				const toolSummary = summarizeToolCalls(msg.toolCalls);
-				const textBlocks = msg.textBlocks;
-
-				const textContentBlocks = msg.content.filter(
-					(b): b is Extract<MessageContent, {type: 'text'}> => b.type === 'text',
-				);
-				const renderedTexts = await Promise.all(textContentBlocks.map((b) => renderMarkdown(b.text)));
-				const htmlBlocks: Array<{html: string; sourceUuid: string}> = textContentBlocks.map((b, i) => ({
-					html: renderedTexts[i]!,
-					sourceUuid: b.sourceUuid,
-				}));
-				const thinkingBlocks: Array<{thinking: string; sourceUuid: string}> = [];
-				const imageBlocks: Array<{mediaType: string; data: string; sourceUuid: string}> = [];
-				const documentBlocks: Array<{mediaType: string; data: string; sourceUuid: string}> = [];
-				let command: {name: string; args?: string; sourceUuid: string} | undefined;
-				let bash:
-					| {command: string; stdout?: string; stderr?: string; inputUuid: string; outputUuid?: string}
-					| undefined;
-
-				for (const block of msg.content) {
-					if (block.type === 'thinking') {
-						thinkingBlocks.push({thinking: block.thinking, sourceUuid: block.sourceUuid});
-					} else if (block.type === 'image') {
-						imageBlocks.push({mediaType: block.mediaType, data: block.data, sourceUuid: block.sourceUuid});
-					} else if (block.type === 'document') {
-						documentBlocks.push({
-							mediaType: block.mediaType,
-							data: block.data,
-							sourceUuid: block.sourceUuid,
-						});
-					} else if (block.type === 'command') {
-						command = {name: block.name, sourceUuid: block.sourceUuid};
-						if (block.args) (command as {name: string; args: string; sourceUuid: string}).args = block.args;
-					} else if (block.type === 'bash-input') {
-						bash = {command: block.command, inputUuid: block.sourceUuid};
-					} else if (block.type === 'bash-output') {
-						const target = bash ?? (bash = {command: '', inputUuid: ''});
-						if (block.stdout) target.stdout = block.stdout;
-						if (block.stderr) target.stderr = block.stderr;
-						target.outputUuid = block.sourceUuid;
-					}
-				}
-
-				const result: {
-					role: 'user' | 'assistant';
-					timestamp?: string;
-					textBlocks: string[];
-					htmlBlocks: Array<{html: string; sourceUuid: string}>;
-					thinkingBlocks: Array<{thinking: string; sourceUuid: string}>;
-					imageBlocks: Array<{mediaType: string; data: string; sourceUuid: string}>;
-					documentBlocks: Array<{mediaType: string; data: string; sourceUuid: string}>;
-					toolCalls: ClientToolCall[];
-					toolSummary: string;
-					command?: {name: string; args?: string; sourceUuid: string};
-					bash?: {command: string; stdout?: string; stderr?: string; inputUuid: string; outputUuid?: string};
-				} = {
-					role: msg.role,
-					textBlocks,
-					htmlBlocks,
-					thinkingBlocks,
-					imageBlocks,
-					documentBlocks,
-					toolCalls,
-					toolSummary,
-				};
-				if (msg.timestamp) result.timestamp = msg.timestamp;
-				if (command) result.command = command;
-				if (bash) result.bash = bash;
-				return result;
-			}),
-		);
+		const toolUses = collectToolUseBlocks(detail.lines, detail.toolResultMap);
+		const [decoMap, textHtmlMap] = await Promise.all([
+			buildDecorations(toolUses, subagentLookup),
+			buildTextHtmlMap(detail.lines),
+		]);
 
 		const {index} = getDb();
 		const projectPath = getSessionProjectPath(index, id);
@@ -314,7 +337,10 @@ const getSession = createServerFn({method: 'GET'})
 			title: detail.title,
 			projectName: detail.projectName,
 			projectId: detail.projectId,
-			messages,
+			lines: detail.lines,
+			toolResultMap: Array.from(detail.toolResultMap.entries()) as SerializedToolResultMap,
+			decorations: Array.from(decoMap.entries()) as SerializedDecorationMap,
+			textHtmlMap: Array.from(textHtmlMap.entries()),
 			subagentTree: subagentResult.tree,
 			subagentCount: subagentResult.totalCount,
 			subagents: subagentResult.agents,
@@ -323,7 +349,7 @@ const getSession = createServerFn({method: 'GET'})
 			gitBranch: sessionMeta?.gitBranch ?? null,
 			gitSha,
 			gitClean,
-			messageCount: sessionMeta?.messageCount ?? messages.length,
+			messageCount: sessionMeta?.messageCount ?? detail.lines.length,
 			pendingTaskCount,
 		};
 	});
@@ -797,7 +823,10 @@ function SessionPage() {
 			<AskUserQuestionProvider value={askUserQuestionCtx}>
 				<SessionChat
 					sessionId={params.id}
-					messages={data.messages}
+					lines={data.lines}
+					toolResultMap={data.toolResultMap}
+					decorations={data.decorations}
+					textHtmlMap={data.textHtmlMap}
 					showThinking={showThinking}
 					showTools={showTools}
 				/>
