@@ -1,8 +1,8 @@
-import {useState} from 'react';
 import {Link} from '@tanstack/react-router';
 import {Bot, ChevronDown, ChevronRight, GitFork} from 'lucide-react';
 import type {SubagentTreeEntry, SubagentTreeNode, ParallelGroup, DbSubagent} from '../lib/db/queries';
 import {formatDuration} from './tool-renderers/shared';
+import {useHmrState} from '../hooks/use-hmr-state';
 
 const AGENT_TYPE_STYLES: Record<string, string> = {
 	Explore: 'bg-blue-500/15 text-blue-400',
@@ -38,7 +38,7 @@ function formatTime(iso: string | null): string {
 
 function TreeNode({node, depth}: {node: SubagentTreeNode; depth: number}) {
 	const hasChildren = node.children.length > 0;
-	const [expanded, setExpanded] = useState(true);
+	const [expanded, setExpanded] = useHmrState('subagentTree', node.agent.id, true);
 	const durationMs = getDurationMs(node.agent);
 
 	return (
@@ -89,7 +89,8 @@ function TreeNode({node, depth}: {node: SubagentTreeNode; depth: number}) {
 }
 
 function ParallelGroupNode({group, depth}: {group: ParallelGroup; depth: number}) {
-	const [expanded, setExpanded] = useState(true);
+	const groupKey = group.children.map((c) => c.agent.id).join(':');
+	const [expanded, setExpanded] = useHmrState('subagentParallel', groupKey, true);
 
 	return (
 		<div>

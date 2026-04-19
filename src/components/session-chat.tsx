@@ -6,6 +6,8 @@ import type {ClientToolCall} from './tool-renderers';
 import {DurationBadge, TerminalOutput} from './tool-renderers/shared';
 import {TasksView} from './tasks-view';
 import {DebugLink} from './debug-link';
+import {hmrSet} from '../lib/hmr-state';
+import {useHmrState} from '../hooks/use-hmr-state';
 
 function formatTimestamp(timestamp?: string): string | null {
 	if (!timestamp) return null;
@@ -71,9 +73,9 @@ interface SessionChatProps {
 }
 
 // Tracks which sessions have already been auto-scrolled during this tab's
-// lifetime. Survives component remounts from HMR, loader revalidation, etc.,
-// so the scroll only fires the first time the user views a given session.
-const autoScrolledSessions = new Set<string>();
+// lifetime. Stored on globalThis so it survives Vite HMR reloads in addition
+// to component remounts and loader revalidation.
+const autoScrolledSessions = hmrSet<string>('autoScrolledSessions');
 
 function CopyToast({visible}: {visible: boolean}) {
 	return (
@@ -604,7 +606,7 @@ function ParallelGroupInline({
 	isFirst: boolean;
 	isLast: boolean;
 }) {
-	const [expanded, setExpanded] = useState(true);
+	const [expanded, setExpanded] = useHmrState('parallel', calls[0]?.sourceUuid ?? 'unknown', true);
 	const size = calls.length;
 
 	return (
@@ -651,7 +653,7 @@ function ParallelGroupInline({
 }
 
 function ToolCallSummary({calls, summary, sessionId}: {calls: ClientToolCall[]; summary: string; sessionId: string}) {
-	const [expanded, setExpanded] = useState(false);
+	const [expanded, setExpanded] = useHmrState('toolSummary', calls[0]?.sourceUuid ?? 'unknown', false);
 
 	const taskCalls = calls.filter((c) => TASK_TOOLS.has(c.name));
 	const hasTasksView = taskCalls.length >= 3;
