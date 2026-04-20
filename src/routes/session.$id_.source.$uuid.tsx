@@ -4,7 +4,7 @@ import {useMemo, useState} from 'react';
 import {z} from 'zod';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
-import {readSession, readSessionRawWindow, type MessageContent, type RawJsonlLine} from '../lib/sessions';
+import type {MessageContent, RawJsonlLine} from '../lib/sessions';
 import {LinkedJson, type LinkedJsonContext} from '../components/linked-json';
 import {getDb} from '../lib/db';
 import {getSessionProjectId} from '../lib/db/queries';
@@ -32,6 +32,7 @@ const getSessionSource = createServerFn({method: 'GET'})
 		if (!UUID_RE.test(uuid)) return null;
 		if (!SESSION_ID_RE.test(sessionId)) return null;
 
+		const {readSession, readSessionRawWindow} = await import('../lib/sessions');
 		const window = await readSessionRawWindow(PROJECTS_DIR, sessionId, uuid, contextN);
 		if (!window) return null;
 
