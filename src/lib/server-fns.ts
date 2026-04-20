@@ -2,22 +2,6 @@ import {createServerFn} from '@tanstack/react-start';
 import {z} from 'zod';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
-import {readdir, readFile, stat} from 'node:fs/promises';
-import {listPlans} from './plans';
-import {listMemories} from './memory';
-import {extractTitle} from './markdown-utils';
-import {
-	listPlugins,
-	listMarketplaces,
-	groupPluginsByMarketplace,
-	isOfficialMarketplace,
-	listUserCommands,
-	readPluginFileContent,
-	readUserCommandContent,
-	parseFrontmatter,
-	scanPluginTree,
-} from './plugins';
-import {getDb} from './db';
 import {
 	listProjectsFromDb,
 	listSessionsFromDb,
@@ -40,14 +24,12 @@ import {
 	listSessionsForBranch,
 	listCwdsForProject,
 } from './db/queries';
-import {getSummary, generateSummary} from './summaries';
-import {getActiveSessions as getActiveSessionsList} from './active-sessions';
-import {getCacheDir} from './db/connection';
 
 const PLANS_DIR = join(homedir(), '.claude', 'plans');
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
 export const getPlans = createServerFn({method: 'GET'}).handler(async () => {
+	const {listPlans} = await import('./plans');
 	const plans = await listPlans(PLANS_DIR);
 	return plans.map((p) => ({
 		filename: p.filename,
@@ -63,7 +45,9 @@ type PlanGroupResult = {
 };
 
 export const getPlansGrouped = createServerFn({method: 'GET'}).handler(async () => {
+	const {listPlans} = await import('./plans');
 	const plans = await listPlans(PLANS_DIR);
+	const {getDb} = await import('./db');
 	const {index} = getDb();
 	const mappings = getPlanProjectMappings(index);
 
@@ -123,6 +107,7 @@ export const getPlansGrouped = createServerFn({method: 'GET'}).handler(async () 
 });
 
 export const getMemories = createServerFn({method: 'GET'}).handler(async () => {
+	const {listMemories} = await import('./memory');
 	const groups = await listMemories(PROJECTS_DIR);
 	return groups.map((g) => ({
 		project: g.project,
@@ -137,6 +122,7 @@ export const getMemories = createServerFn({method: 'GET'}).handler(async () => {
 });
 
 export const getSessions = createServerFn({method: 'GET'}).handler(async () => {
+	const {getDb} = await import('./db');
 	const {index} = getDb();
 	const groups = listSessionsFromDb(index);
 	return groups.map((g) => ({
@@ -157,10 +143,12 @@ export const getSessions = createServerFn({method: 'GET'}).handler(async () => {
 });
 
 export const getProjects = createServerFn({method: 'GET'}).handler(async () => {
+	const {getDb} = await import('./db');
 	const {index} = getDb();
 	const projects = listProjectsFromDb(index);
 
 	// Get active sessions, plan counts, and task counts
+	const {getActiveSessions: getActiveSessionsList} = await import('./active-sessions');
 	const activeSessions = await getActiveSessionsList();
 	const activeByProject = new Map<string, number>();
 	for (const a of activeSessions) {
@@ -184,6 +172,7 @@ export const getProjects = createServerFn({method: 'GET'}).handler(async () => {
 			let memoryCount = 0;
 			try {
 				const memDir = join(PROJECTS_DIR, p.id, 'memory');
+				const {readdir} = await import('node:fs/promises');
 				const files = await readdir(memDir);
 				memoryCount = files.filter((f) => f.endsWith('.md')).length;
 			} catch {
@@ -212,6 +201,7 @@ export const getProjects = createServerFn({method: 'GET'}).handler(async () => {
 export const getProject = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: projectId}) => {
+		const {getDb} = await import('./db');
 		const {index} = getDb();
 		const detail = getProjectDetailFromDb(index, projectId);
 		if (!detail) return null;
@@ -225,6 +215,7 @@ export const getProject = createServerFn({method: 'GET'})
 			project: string;
 		}> = [];
 		try {
+			const {readdir, stat} = await import('node:fs/promises');
 			const files = await readdir(memDir);
 			const mdFiles = files.filter((f) => f.endsWith('.md'));
 			for (const filename of mdFiles) {
@@ -254,7 +245,10 @@ export const getProject = createServerFn({method: 'GET'})
 
 		const rawTodos = getTasksForProject(index, detail.name);
 		const todoCounts = getTaskCountsForProject(index, detail.name);
-		const {renderInlineMarkdown, renderMarkdown} = await import('./renderer');
+		const [{renderInlineMarkdown, renderMarkdown}, {extractTitle}] = await Promise.all([
+			import('./renderer'),
+			import('./markdown-utils'),
+		]);
 		const todos = await Promise.all(
 			rawTodos.map(async (task) => ({
 				...task,
@@ -300,6 +294,7 @@ export const getProject = createServerFn({method: 'GET'})
 export const getPlanLinks = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: filename}) => {
+		const {getDb} = await import('./db');
 		const {index} = getDb();
 		const links = getPlanLinksFromDb(index, filename);
 		return links.map((l) => ({
@@ -313,6 +308,7 @@ export const getPlanLinks = createServerFn({method: 'GET'})
 export const getSubagentTree = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: sessionId}) => {
+		const {getDb} = await import('./db');
 		const {index} = getDb();
 		const agents = getSubagentsForSession(index, sessionId);
 		return {tree: buildSubagentTree(agents), totalCount: agents.length, agents};
@@ -321,6 +317,7 @@ export const getSubagentTree = createServerFn({method: 'GET'})
 export const searchSessions = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: query}) => {
+		const {getDb} = await import('./db');
 		const {index} = getDb();
 		return searchSessionsFromDb(index, query);
 	});
@@ -328,12 +325,14 @@ export const searchSessions = createServerFn({method: 'GET'})
 export const toggleSessionStar = createServerFn({method: 'POST'})
 	.inputValidator(z.string())
 	.handler(async ({data: sessionId}) => {
+		const {getDb} = await import('./db');
 		const {index} = getDb();
 		const starred = toggleStarInDb(index, sessionId);
 		return {starred};
 	});
 
 export const getStarredSessionList = createServerFn({method: 'GET'}).handler(async () => {
+	const {getDb} = await import('./db');
 	const {index} = getDb();
 	const sessions = getStarredSessionsFromDb(index);
 	return sessions.map((s) => ({
@@ -352,12 +351,14 @@ export const getStarredSessionList = createServerFn({method: 'GET'}).handler(asy
 export const isStarred = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: sessionId}) => {
+		const {getDb} = await import('./db');
 		const {index} = getDb();
 		return {starred: isSessionStarredInDb(index, sessionId)};
 	});
 
 export const getActiveSessions = createServerFn({method: 'GET'}).handler(async () => {
-	return getActiveSessionsList();
+	const {getActiveSessions: list} = await import('./active-sessions');
+	return list();
 });
 
 export const getIndexingStatus = createServerFn({method: 'GET'}).handler(async () => {
@@ -368,6 +369,7 @@ export const getIndexingStatus = createServerFn({method: 'GET'}).handler(async (
 export const searchMessageContent = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: query}) => {
+		const {getDb} = await import('./db');
 		const {index} = getDb();
 		return searchMessageContentFromDb(index, query);
 	});
@@ -375,27 +377,34 @@ export const searchMessageContent = createServerFn({method: 'GET'})
 export const getSessionSummary = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: sessionId}) => {
+		const {getDb} = await import('./db');
 		const {summaries} = getDb();
+		const {getSummary} = await import('./summaries');
 		return {summary: getSummary(summaries, sessionId)};
 	});
 
 export const requestSummary = createServerFn({method: 'POST'})
 	.inputValidator(z.string())
 	.handler(async ({data: sessionId}) => {
+		const {getDb} = await import('./db');
 		const {summaries} = getDb();
+		const {generateSummary} = await import('./summaries');
 		const summary = await generateSummary(summaries, sessionId);
 		return {summary};
 	});
 
 export const getPluginsList = createServerFn({method: 'GET'}).handler(async () => {
+	const {listPlugins} = await import('./plugins');
 	return listPlugins();
 });
 
 export const getMarketplacesList = createServerFn({method: 'GET'}).handler(async () => {
+	const {listMarketplaces} = await import('./plugins');
 	return listMarketplaces();
 });
 
 export const getPluginGroups = createServerFn({method: 'GET'}).handler(async () => {
+	const {listPlugins, listMarketplaces, groupPluginsByMarketplace, isOfficialMarketplace} = await import('./plugins');
 	const [plugins, marketplaces] = await Promise.all([listPlugins(), listMarketplaces()]);
 	const groups = groupPluginsByMarketplace(plugins, marketplaces);
 	return groups.map((g) => ({
@@ -405,12 +414,14 @@ export const getPluginGroups = createServerFn({method: 'GET'}).handler(async () 
 });
 
 export const getUserCommandsList = createServerFn({method: 'GET'}).handler(async () => {
+	const {listUserCommands} = await import('./plugins');
 	return listUserCommands();
 });
 
 export const getPluginTree = createServerFn({method: 'GET'})
 	.inputValidator(z.object({pluginId: z.string()}))
 	.handler(async ({data: {pluginId}}) => {
+		const {listPlugins, scanPluginTree} = await import('./plugins');
 		const plugins = await listPlugins();
 		const plugin = plugins.find((p) => p.id === pluginId);
 		if (!plugin) return null;
@@ -420,6 +431,7 @@ export const getPluginTree = createServerFn({method: 'GET'})
 export const getPluginFileRendered = createServerFn({method: 'GET'})
 	.inputValidator(z.object({pluginId: z.string(), pathSegments: z.array(z.string())}))
 	.handler(async ({data: {pluginId, pathSegments}}) => {
+		const {listPlugins, readPluginFileContent, parseFrontmatter} = await import('./plugins');
 		const plugins = await listPlugins();
 		const plugin = plugins.find((p) => p.id === pluginId);
 		if (!plugin) return null;
@@ -438,6 +450,7 @@ export const getPluginFileRendered = createServerFn({method: 'GET'})
 export const getUserCommandRendered = createServerFn({method: 'GET'})
 	.inputValidator(z.object({source: z.string(), filename: z.string()}))
 	.handler(async ({data: {source, filename}}) => {
+		const {readUserCommandContent} = await import('./plugins');
 		const content = await readUserCommandContent(source, filename);
 		if (!content) return null;
 
@@ -583,6 +596,7 @@ export const uninstallHooks = createServerFn({method: 'POST'})
 // ---------------------------------------------------------------------------
 
 export const getTasks = createServerFn({method: 'GET'}).handler(async () => {
+	const {getDb} = await import('./db');
 	const {index} = getDb();
 	const groups = getIncompleteTasksGroupedByProject(index);
 	const {renderInlineMarkdown, renderMarkdown} = await import('./renderer');
@@ -604,6 +618,7 @@ export const getTasks = createServerFn({method: 'GET'}).handler(async () => {
 export const getProjectTasks = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: projectDir}) => {
+		const {getDb} = await import('./db');
 		const {index} = getDb();
 		const tasks = getTasksForProject(index, projectDir);
 		const {renderInlineMarkdown, renderMarkdown} = await import('./renderer');
@@ -634,11 +649,13 @@ function projectScopeBase(detail: NonNullable<ReturnType<typeof getProjectDetail
 export const getProjectMemoriesList = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: projectId}) => {
+		const {getDb} = await import('./db');
 		const {index} = getDb();
 		const detail = getProjectDetailFromDb(index, projectId);
 		if (!detail) return null;
 
 		const memDir = join(PROJECTS_DIR, projectId, 'memory');
+		const {readdir, stat} = await import('node:fs/promises');
 		let mdFiles: string[];
 		try {
 			const files = await readdir(memDir);
@@ -671,11 +688,14 @@ export const getProjectMemoriesList = createServerFn({method: 'GET'})
 export const getProjectPlansList = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: projectId}) => {
+		const {getDb} = await import('./db');
 		const {index} = getDb();
 		const detail = getProjectDetailFromDb(index, projectId);
 		if (!detail) return null;
 
 		const uniqueLinks = [...new Map(detail.planLinks.map((p) => [p.planFilename, p])).values()];
+		const {stat} = await import('node:fs/promises');
+		const {extractTitle} = await import('./markdown-utils');
 		const plans = await Promise.all(
 			uniqueLinks.map(async (p) => {
 				const planPath = join(PLANS_DIR, p.planFilename);
@@ -705,6 +725,7 @@ export const getProjectPlansList = createServerFn({method: 'GET'})
 export const getProjectSessionsList = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: projectId}) => {
+		const {getDb} = await import('./db');
 		const {index} = getDb();
 		const detail = getProjectDetailFromDb(index, projectId);
 		if (!detail) return null;
@@ -734,6 +755,7 @@ export const getProjectSessionsList = createServerFn({method: 'GET'})
 export const getProjectBranches = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: projectId}) => {
+		const {getDb} = await import('./db');
 		const {index} = getDb();
 		const branches = listBranchesForProject(index, projectId);
 		return branches.map((b) => ({
@@ -746,6 +768,7 @@ export const getProjectBranches = createServerFn({method: 'GET'})
 export const getProjectBranchSessions = createServerFn({method: 'GET'})
 	.inputValidator(z.object({projectId: z.string(), branch: z.string()}))
 	.handler(async ({data: {projectId, branch}}) => {
+		const {getDb} = await import('./db');
 		const {index} = getDb();
 		const sessions = listSessionsForBranch(index, projectId, branch);
 		return sessions.map((s) => ({
@@ -762,6 +785,7 @@ export const getProjectBranchSessions = createServerFn({method: 'GET'})
 export const getProjectCwds = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: projectId}) => {
+		const {getDb} = await import('./db');
 		const {index} = getDb();
 		const cwds = listCwdsForProject(index, projectId);
 		return cwds.map((c) => ({
@@ -774,6 +798,7 @@ export const getProjectCwds = createServerFn({method: 'GET'})
 export const getProjectSubagentTree = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: projectId}) => {
+		const {getDb} = await import('./db');
 		const {index} = getDb();
 		const detail = getProjectDetailFromDb(index, projectId);
 		if (!detail) return null;
@@ -791,6 +816,7 @@ export const getProjectSubagentTree = createServerFn({method: 'GET'})
 export const getProjectTasksDetailed = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: projectId}) => {
+		const {getDb} = await import('./db');
 		const {index} = getDb();
 		const detail = getProjectDetailFromDb(index, projectId);
 		if (!detail) return null;
@@ -812,8 +838,10 @@ export const getProjectTasksDetailed = createServerFn({method: 'GET'})
 export const getStatusline = createServerFn({method: 'GET'})
 	.inputValidator(z.object({sessionId: z.string()}))
 	.handler(async ({data: {sessionId}}) => {
+		const {getCacheDir} = await import('./db/connection');
 		const filePath = join(getCacheDir(), 'statusline', `${sessionId}.json`);
 		try {
+			const {readFile} = await import('node:fs/promises');
 			const raw = await readFile(filePath, 'utf-8');
 			return JSON.parse(raw) as Record<string, JsonValue>;
 		} catch {
