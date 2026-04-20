@@ -6,13 +6,7 @@ import {z} from 'zod';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {
-	readSessionLines,
-	stripCommandTags,
-	parseCommandBlock,
-	type SessionLine,
-	type ToolResultInfo,
-} from '../lib/sessions';
+import type {SessionLine, ToolResultInfo} from '../lib/sessions';
 import {
 	renderMarkdown,
 	computeDiffData,
@@ -251,13 +245,13 @@ async function buildDecorations(
  * Returns a map from `${lineIndex}:${blockIndex}` to rendered HTML.
  */
 async function buildTextHtmlMap(lines: SessionLine[]): Promise<Map<string, string>> {
+	const {stripCommandTags, parseCommandBlock} = await import('../lib/sessions');
 	const entries: Array<{key: string; text: string}> = [];
 	for (const line of lines) {
 		const isUser = line.type === 'user';
 		const content = line.message?.content;
 		if (!Array.isArray(content)) {
 			if (typeof content === 'string' && content.trim()) {
-				// For user messages, strip command tags; skip command blocks entirely
 				if (isUser) {
 					if (parseCommandBlock(content)) continue;
 					const cleaned = stripCommandTags(content);
@@ -295,6 +289,7 @@ async function buildTextHtmlMap(lines: SessionLine[]): Promise<Map<string, strin
 const getSession = createServerFn({method: 'GET'})
 	.inputValidator(z.object({id: z.string()}))
 	.handler(async ({data: {id}}) => {
+		const {readSessionLines} = await import('../lib/sessions');
 		const [detail, subagentResult, starResult] = await Promise.all([
 			readSessionLines(PROJECTS_DIR, id),
 			getSubagentTree({data: id}),
