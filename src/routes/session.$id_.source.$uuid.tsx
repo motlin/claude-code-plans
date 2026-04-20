@@ -6,8 +6,6 @@ import {homedir} from 'node:os';
 import {join} from 'node:path';
 import type {MessageContent, RawJsonlLine} from '../lib/sessions';
 import {LinkedJson, type LinkedJsonContext} from '../components/linked-json';
-import {getDb} from '../lib/db';
-import {getSessionProjectId} from '../lib/db/queries';
 
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 const UUID_RE = /^[a-f0-9-]{36}$/i;
@@ -54,6 +52,8 @@ const getSessionSource = createServerFn({method: 'GET'})
 
 		let projectId: string | undefined;
 		try {
+			const {getDb} = await import('../lib/db');
+			const {getSessionProjectId} = await import('../lib/db/queries');
 			const db = getDb();
 			const pid = getSessionProjectId(db.index, sessionId);
 			if (pid) projectId = pid;

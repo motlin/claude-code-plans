@@ -24,15 +24,7 @@ import {AskUserQuestionProvider, type AskUserQuestionContextValue} from '../comp
 import {getSubagentTree, getSessionSummary, requestSummary, isStarred, toggleSessionStar} from '../lib/server-fns';
 import {useIsSessionActive, useStatusline} from '../hooks/use-claude-events';
 import {StatusFooter} from '../components/status-footer';
-import {getDb} from '../lib/db';
-import {
-	getSessionProjectPath,
-	getSessionMeta,
-	getTaskCountsForProject,
-	type SubagentTreeEntry,
-	type SubagentTreeNode,
-	type ParallelGroup,
-} from '../lib/db/queries';
+import type {SubagentTreeEntry, SubagentTreeNode, ParallelGroup} from '../lib/db/queries';
 import type {
 	SubagentInlineInfo,
 	ToolDecoration,
@@ -304,6 +296,8 @@ const getSession = createServerFn({method: 'GET'})
 			buildTextHtmlMap(detail.lines),
 		]);
 
+		const {getDb} = await import('../lib/db');
+		const {getSessionProjectPath, getSessionMeta, getTaskCountsForProject} = await import('../lib/db/queries');
 		const {index} = getDb();
 		const projectPath = getSessionProjectPath(index, id);
 		const sessionMeta = getSessionMeta(index, id);
