@@ -19,7 +19,7 @@
 		"@mdxeditor/editor": "^3.54.1",
 		"@shikijs/markdown-it": "^4.0.2",
 		"@tanstack/react-query": "^5.99.1",
-		"@tanstack/react-query-devtools": "^5.99.1",
+		"@tanstack/react-query-devtools": "^5.99.2",
 		"@tanstack/react-router": "^1.167.5",
 		"@tanstack/react-router-ssr-query": "^1.166.11",
 		"@tanstack/react-start": "^1.167.41",
