@@ -90,6 +90,7 @@ function sweep(): void {
 }
 
 export function startSweep(): void {
+	if (sweepTimer) clearInterval(sweepTimer);
 	sweepTimer = setInterval(sweep, SWEEP_INTERVAL_MS);
 }
 
