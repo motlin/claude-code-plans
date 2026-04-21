@@ -93,7 +93,6 @@ describe('Story fixture validation against strict Zod schemas', () => {
 			for (const {storyName, toolName, input} of stories) {
 				it(`${moduleName}/${storyName} — ${toolName} input passes schema`, () => {
 					if (isMcpTool(toolName)) {
-						// MCP tool inputs vary by server; skip strict validation
 						return;
 					}
 
