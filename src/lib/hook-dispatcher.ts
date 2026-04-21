@@ -9,7 +9,7 @@ type IndexDb = BetterSQLite3Database<typeof schema>;
 /**
  * Narrow surface of the active-session store the dispatcher needs. Exposed as
  * an interface so tests can substitute a fake without loading the real
- * globalThis-backed singleton.
+ * HMR-persisted singleton.
  */
 export interface ActiveSessionStore {
 	markSessionActive(sessionId: string, meta: {cwd: string; model?: string}): void;
