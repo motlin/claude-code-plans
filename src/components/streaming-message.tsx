@@ -1,12 +1,6 @@
 import {useEffect, useRef, useMemo} from 'react';
-import MarkdownIt from 'markdown-it';
+import {renderMarkdownToHtml} from '../lib/client-markdown';
 import styles from './markdown-article.module.css';
-
-let md: MarkdownIt | null = null;
-function getMd(): MarkdownIt {
-	if (!md) md = MarkdownIt({html: true, linkify: true});
-	return md;
-}
 
 interface StreamingMessageProps {
 	text: string;
@@ -28,8 +22,7 @@ export function StreamingMessage({text, isComplete, error, forkedSessionId, sent
 	}, [sentPrompt]);
 
 	const renderedHtml = useMemo(() => {
-		if (!text) return '';
-		return getMd().render(text);
+		return renderMarkdownToHtml(text);
 	}, [text]);
 
 	return (

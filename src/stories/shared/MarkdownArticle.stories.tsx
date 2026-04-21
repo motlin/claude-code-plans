@@ -30,3 +30,16 @@ export const LongContent: Story = {
 		).join(''),
 	},
 };
+
+export const FromMarkdown: Story = {
+	args: {
+		markdown:
+			'# Hello World\n\nThis is a **bold** paragraph with a [link](#).\n\n- Item one\n- Item two\n\n```js\nconst x = 42;\n```',
+	},
+};
+
+export const MarkdownWithTaskList: Story = {
+	args: {
+		markdown: '## Tasks\n\n- [ ] Unchecked item\n- [x] Checked item\n- [ ] Another unchecked',
+	},
+};
