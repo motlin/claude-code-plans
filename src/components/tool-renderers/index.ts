@@ -13,6 +13,12 @@ import {TaskUpdateRenderer} from './task-update-renderer';
 import {TaskGetRenderer} from './task-get-renderer';
 import {TaskListRenderer} from './task-list-renderer';
 import {ExitPlanModeRenderer} from './exit-plan-mode-renderer';
+import {EnterPlanModeRenderer} from './enter-plan-mode-renderer';
+import {TodoWriteRenderer} from './todo-write-renderer';
+import {WebSearchRenderer} from './web-search-renderer';
+import {SendMessageRenderer} from './send-message-renderer';
+import {TaskStopRenderer} from './task-stop-renderer';
+import {CronCreateRenderer} from './cron-create-renderer';
 import {SkillRenderer} from './skill-renderer';
 import {McpRenderer} from './mcp-renderer';
 import {WebFetchRenderer} from './webfetch-renderer';
@@ -38,6 +44,12 @@ const registry: Record<string, ComponentType<ToolRendererProps>> = {
 	TaskGet: TaskGetRenderer,
 	TaskList: TaskListRenderer,
 	ExitPlanMode: ExitPlanModeRenderer,
+	EnterPlanMode: EnterPlanModeRenderer,
+	TodoWrite: TodoWriteRenderer,
+	WebSearch: WebSearchRenderer,
+	SendMessage: SendMessageRenderer,
+	TaskStop: TaskStopRenderer,
+	CronCreate: CronCreateRenderer,
 	Skill: SkillRenderer,
 	WebFetch: WebFetchRenderer,
 	__mcp__: McpRenderer,

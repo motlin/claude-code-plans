@@ -203,6 +203,25 @@ describe('groupAssistantMessages', () => {
 		expect((result[4] as GroupedLine).line.type).toBe('user');
 	});
 
+	it('treats attachment lines as non-assistant (breaks assistant runs)', () => {
+		const attachmentLine: SessionLine = {
+			type: 'attachment',
+			lineIndex: 2,
+			attachmentJson: JSON.stringify({type: 'date_change', newDate: '2026-04-21'}),
+		};
+		const lines = [
+			userLine(0, 'start'),
+			assistantTextLine(1, 'working...'),
+			attachmentLine,
+			assistantTextLine(3, 'more work'),
+			userLine(4, 'done'),
+		];
+		const result = groupAssistantMessages(lines);
+		// user, assistant (standalone), attachment, assistant (standalone), user
+		expect(result).toHaveLength(5);
+		expect((result[2] as GroupedLine).line.type).toBe('attachment');
+	});
+
 	it('collects tool call info from mixed content blocks', () => {
 		const lines = [
 			userLine(0, 'work'),

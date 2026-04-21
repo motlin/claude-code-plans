@@ -31,6 +31,7 @@ import {
 	AgentInputSchema,
 	toolInputSchemas,
 } from '../src/lib/tool-input-schemas';
+import {baseFields} from './fixtures/base-fields';
 
 describe('SessionIndexEntrySchema', () => {
 	it('parses a minimal entry', () => {
@@ -238,17 +239,23 @@ describe('content block schemas', () => {
 	});
 });
 
+const assistantMessageFields = {
+	role: 'assistant' as const,
+	model: 'claude-opus-4-6',
+	id: 'msg_123',
+	type: 'message',
+	stop_reason: 'end_turn',
+	stop_sequence: null,
+	usage: {input_tokens: 100, output_tokens: 50},
+	stop_details: null,
+};
+
 describe('UserRecordSchema', () => {
 	it('parses a user record with string content', () => {
 		const record = {
 			type: 'user',
-			uuid: 'uuid-123',
-			timestamp: '2026-01-01T00:00:00.000Z',
-			sessionId: 'sess-123',
-			message: {
-				role: 'user',
-				content: 'Fix the bug',
-			},
+			...baseFields,
+			message: {role: 'user', content: 'Fix the bug'},
 		};
 		const result = UserRecordSchema.safeParse(record);
 		expect(result.success).toBe(true);
@@ -257,9 +264,7 @@ describe('UserRecordSchema', () => {
 	it('parses a user record with array content', () => {
 		const record = {
 			type: 'user',
-			uuid: 'uuid-123',
-			timestamp: '2026-01-01T00:00:00.000Z',
-			sessionId: 'sess-123',
+			...baseFields,
 			message: {
 				role: 'user',
 				content: [
@@ -272,23 +277,12 @@ describe('UserRecordSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
-	it('passes through extra fields like cwd, gitBranch, slug', () => {
+	it('accepts optional fields like slug', () => {
 		const record = {
 			type: 'user',
-			uuid: 'uuid-123',
-			timestamp: '2026-01-01T00:00:00.000Z',
-			sessionId: 'sess-123',
-			cwd: '/Users/craig/projects/app',
-			gitBranch: 'main',
+			...baseFields,
 			slug: 'radiant-beaming-kay',
-			version: '2.1.71',
-			isSidechain: false,
-			userType: 'external',
-			parentUuid: 'parent-uuid',
-			message: {
-				role: 'user',
-				content: 'Hello',
-			},
+			message: {role: 'user', content: 'Hello'},
 		};
 		const result = UserRecordSchema.safeParse(record);
 		expect(result.success).toBe(true);
@@ -299,45 +293,29 @@ describe('AssistantRecordSchema', () => {
 	it('parses an assistant record with content blocks', () => {
 		const record = {
 			type: 'assistant',
-			uuid: 'uuid-456',
-			timestamp: '2026-01-01T00:00:00.000Z',
-			sessionId: 'sess-123',
+			...baseFields,
+			requestId: 'req_123',
 			message: {
-				role: 'assistant',
-				model: 'claude-opus-4-6',
-				id: 'msg_123',
-				type: 'message',
+				...assistantMessageFields,
 				content: [
 					{type: 'text', text: 'Here is my answer'},
 					{type: 'tool_use', id: 'tu_1', name: 'Read', input: {file_path: '/foo'}},
 				],
-				stop_reason: 'end_turn',
-				stop_sequence: null,
-				usage: {input_tokens: 100, output_tokens: 50},
 			},
 		};
 		const result = AssistantRecordSchema.safeParse(record);
 		expect(result.success).toBe(true);
 	});
 
-	it('passes through extra fields', () => {
+	it('accepts optional fields like slug', () => {
 		const record = {
 			type: 'assistant',
-			uuid: 'uuid-456',
-			timestamp: '2026-01-01T00:00:00.000Z',
-			sessionId: 'sess-123',
+			...baseFields,
 			requestId: 'req_123',
-			cwd: '/Users/craig/projects/app',
-			gitBranch: 'main',
 			slug: 'radiant-beaming-kay',
-			isSidechain: false,
 			message: {
-				role: 'assistant',
-				model: 'claude-opus-4-6',
-				id: 'msg_123',
-				type: 'message',
+				...assistantMessageFields,
 				content: [{type: 'text', text: 'Hi'}],
-				stop_reason: 'end_turn',
 			},
 		};
 		const result = AssistantRecordSchema.safeParse(record);
@@ -349,9 +327,7 @@ describe('ProgressRecordSchema', () => {
 	it('parses a progress record', () => {
 		const record = {
 			type: 'progress',
-			uuid: 'uuid-789',
-			timestamp: '2026-01-01T00:00:00.000Z',
-			sessionId: 'sess-123',
+			...baseFields,
 			data: {type: 'hook_progress', hookEvent: 'SessionStart'},
 		};
 		const result = ProgressRecordSchema.safeParse(record);
@@ -363,9 +339,7 @@ describe('SystemRecordSchema', () => {
 	it('parses a system record with subtype', () => {
 		const record = {
 			type: 'system',
-			uuid: 'uuid-sys',
-			timestamp: '2026-01-01T00:00:00.000Z',
-			sessionId: 'sess-123',
+			...baseFields,
 			subtype: 'turn_duration',
 			durationMs: 5000,
 		};
@@ -413,9 +387,7 @@ describe('JsonlRecordSchema', () => {
 	it('parses user records', () => {
 		const record = {
 			type: 'user',
-			uuid: 'uuid-123',
-			timestamp: '2026-01-01T00:00:00.000Z',
-			sessionId: 'sess-123',
+			...baseFields,
 			message: {role: 'user', content: 'Hello'},
 		};
 		const result = JsonlRecordSchema.safeParse(record);
@@ -425,16 +397,11 @@ describe('JsonlRecordSchema', () => {
 	it('parses assistant records', () => {
 		const record = {
 			type: 'assistant',
-			uuid: 'uuid-456',
-			timestamp: '2026-01-01T00:00:00.000Z',
-			sessionId: 'sess-123',
+			...baseFields,
+			requestId: 'req_123',
 			message: {
-				role: 'assistant',
-				model: 'claude-opus-4-6',
-				id: 'msg_123',
-				type: 'message',
+				...assistantMessageFields,
 				content: [{type: 'text', text: 'Hi'}],
-				stop_reason: 'end_turn',
 			},
 		};
 		const result = JsonlRecordSchema.safeParse(record);
@@ -453,9 +420,7 @@ describe('JsonlRecordSchema', () => {
 	it('parses progress records', () => {
 		const result = JsonlRecordSchema.safeParse({
 			type: 'progress',
-			uuid: 'uuid-789',
-			timestamp: '2026-01-01T00:00:00.000Z',
-			sessionId: 'sess-123',
+			...baseFields,
 			data: {type: 'hook_progress'},
 		});
 		expect(result.success).toBe(true);
@@ -464,9 +429,7 @@ describe('JsonlRecordSchema', () => {
 	it('parses system records', () => {
 		const result = JsonlRecordSchema.safeParse({
 			type: 'system',
-			uuid: 'uuid-sys',
-			timestamp: '2026-01-01T00:00:00.000Z',
-			sessionId: 'sess-123',
+			...baseFields,
 			subtype: 'stop_hook_summary',
 		});
 		expect(result.success).toBe(true);
@@ -475,7 +438,9 @@ describe('JsonlRecordSchema', () => {
 	it('parses file-history-snapshot records', () => {
 		const result = JsonlRecordSchema.safeParse({
 			type: 'file-history-snapshot',
-			snapshot: {trackedFileBackups: {}},
+			messageId: 'msg-123',
+			isSnapshotUpdate: false,
+			snapshot: {messageId: 'msg-123', timestamp: '2026-01-01T00:00:00.000Z', trackedFileBackups: {}},
 		});
 		expect(result.success).toBe(true);
 	});
@@ -505,9 +470,7 @@ describe('parseJsonlRecord', () => {
 	it('parses valid JSON and returns typed record', () => {
 		const line = JSON.stringify({
 			type: 'user',
-			uuid: 'uuid-1',
-			timestamp: '2026-01-01T00:00:00.000Z',
-			sessionId: 'sess-1',
+			...baseFields,
 			message: {role: 'user', content: 'Hello'},
 		});
 		const result = parseJsonlRecord(line);

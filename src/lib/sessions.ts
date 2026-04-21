@@ -142,7 +142,20 @@ interface PrLinkSessionLine {
 	lineIndex: number;
 }
 
-export type SessionLine = MessageSessionLine | AgentNameSessionLine | PermissionModeSessionLine | PrLinkSessionLine;
+export interface AttachmentSessionLine {
+	type: 'attachment';
+	/** JSON-serialized AttachmentPayload (parsed on client to avoid TanStack serialization issues with unknown[]) */
+	attachmentJson: string;
+	timestamp?: string | undefined;
+	lineIndex: number;
+}
+
+export type SessionLine =
+	| MessageSessionLine
+	| AgentNameSessionLine
+	| PermissionModeSessionLine
+	| PrLinkSessionLine
+	| AttachmentSessionLine;
 
 /**
  * Information about a tool_result paired with its tool_use.
@@ -908,6 +921,16 @@ export async function readSessionLines(projectsDir: string, sessionId: string): 
 					prUrl: record.prUrl,
 					prNumber: record.prNumber,
 					prRepository: record.prRepository,
+					timestamp: record.timestamp,
+					lineIndex,
+				});
+				continue;
+			}
+
+			if (record.type === 'attachment') {
+				lines.push({
+					type: 'attachment',
+					attachmentJson: JSON.stringify(record.attachment),
 					timestamp: record.timestamp,
 					lineIndex,
 				});

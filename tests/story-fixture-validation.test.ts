@@ -1,6 +1,6 @@
 import {describe, it, expect} from 'vitest';
 import {toolInputSchemas, isMcpTool} from '../src/lib/tool-input-schemas';
-import {ContentBlockSchema} from '../src/lib/schemas';
+import {ContentBlockSchema, AttachmentPayloadSchema} from '../src/lib/schemas';
 
 // ---------------------------------------------------------------------------
 // Tool renderer story files
@@ -20,12 +20,21 @@ import * as TaskCreateStories from '../src/stories/session-detail/tool-renderers
 import * as TaskGetStories from '../src/stories/session-detail/tool-renderers/TaskGetRenderer.stories';
 import * as TaskListStories from '../src/stories/session-detail/tool-renderers/TaskListRenderer.stories';
 import * as TaskUpdateStories from '../src/stories/session-detail/tool-renderers/TaskUpdateRenderer.stories';
+import * as EnterPlanModeStories from '../src/stories/session-detail/tool-renderers/EnterPlanModeRenderer.stories';
+import * as TodoWriteStories from '../src/stories/session-detail/tool-renderers/TodoWriteRenderer.stories';
+import * as WebSearchStories from '../src/stories/session-detail/tool-renderers/WebSearchRenderer.stories';
+import * as SendMessageStories from '../src/stories/session-detail/tool-renderers/SendMessageRenderer.stories';
+import * as TaskStopStories from '../src/stories/session-detail/tool-renderers/TaskStopRenderer.stories';
+import * as CronCreateStories from '../src/stories/session-detail/tool-renderers/CronCreateRenderer.stories';
 
 // Non-tool-renderer stories that contain ClientToolCall fixtures
 import * as TasksViewStories from '../src/stories/tasks/TasksView.stories';
 
 // SessionChat stories with content block fixtures
 import * as SessionChatStories from '../src/stories/session-detail/SessionChat.stories';
+
+// AttachmentBanner stories
+import * as AttachmentBannerStories from '../src/stories/session-detail/AttachmentBanner.stories';
 
 // MCP-based tool stories (inputs vary by server, validated as isMcpTool)
 import * as McpStories from '../src/stories/session-detail/tool-renderers/McpRenderer.stories';
@@ -82,6 +91,12 @@ const allStoryModules: Array<{moduleName: string; module: Record<string, unknown
 	{moduleName: 'TaskGetRenderer', module: TaskGetStories as Record<string, unknown>},
 	{moduleName: 'TaskListRenderer', module: TaskListStories as Record<string, unknown>},
 	{moduleName: 'TaskUpdateRenderer', module: TaskUpdateStories as Record<string, unknown>},
+	{moduleName: 'EnterPlanModeRenderer', module: EnterPlanModeStories as Record<string, unknown>},
+	{moduleName: 'TodoWriteRenderer', module: TodoWriteStories as Record<string, unknown>},
+	{moduleName: 'WebSearchRenderer', module: WebSearchStories as Record<string, unknown>},
+	{moduleName: 'SendMessageRenderer', module: SendMessageStories as Record<string, unknown>},
+	{moduleName: 'TaskStopRenderer', module: TaskStopStories as Record<string, unknown>},
+	{moduleName: 'CronCreateRenderer', module: CronCreateStories as Record<string, unknown>},
 	{moduleName: 'McpRenderer', module: McpStories as Record<string, unknown>},
 	{moduleName: 'GithubRenderer', module: GithubStories as Record<string, unknown>},
 	{moduleName: 'PlaywrightRenderer', module: PlaywrightStories as Record<string, unknown>},
@@ -154,6 +169,32 @@ describe('Story fixture validation against strict Zod schemas', () => {
 					}
 				});
 			}
+		}
+	});
+
+	describe('AttachmentBanner stories — attachmentJson passes AttachmentPayloadSchema', () => {
+		interface AttachmentStory {
+			args?: {
+				attachmentJson?: string;
+			};
+		}
+
+		for (const [storyName, value] of Object.entries(AttachmentBannerStories as Record<string, unknown>)) {
+			if (storyName === 'default') continue;
+			const story = value as AttachmentStory;
+			const json = story.args?.attachmentJson;
+			if (!json) continue;
+
+			it(`AttachmentBanner/${storyName} passes AttachmentPayloadSchema`, () => {
+				const parsed = JSON.parse(json);
+				const result = AttachmentPayloadSchema.safeParse(parsed);
+				if (!result.success) {
+					const issues = result.error.issues
+						.map((issue) => `  ${issue.path.join('.')}: ${issue.message}`)
+						.join('\n');
+					throw new Error(`AttachmentBanner/${storyName}: attachment validation failed:\n${issues}`);
+				}
+			});
 		}
 	});
 

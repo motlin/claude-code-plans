@@ -41,6 +41,7 @@ import {
 } from '../src/lib/db/queries';
 import * as schema from '../src/lib/db/schema';
 import {eq} from 'drizzle-orm';
+import {baseFields} from './fixtures/base-fields';
 
 const testDir = join(tmpdir(), 'claude-db-test-' + process.pid);
 let db: AppDb;
@@ -159,10 +160,14 @@ describe('indexer', () => {
 		writeFileSync(
 			join(projectDir, 'sess-1.jsonl'),
 			jsonl(
-				{type: 'user', message: {role: 'user', content: 'Work on feature'}},
+				{type: 'user', ...baseFields, message: {role: 'user', content: 'Work on feature'}},
 				{
 					type: 'file-history-snapshot',
+					messageId: 'msg-1',
+					isSnapshotUpdate: false,
 					snapshot: {
+						messageId: 'msg-1',
+						timestamp: '2026-01-01T00:00:00.000Z',
 						trackedFileBackups: {
 							'/Users/craig/.claude/plans/my-plan.md': 'backup-content',
 						},
@@ -203,9 +208,16 @@ describe('indexer', () => {
 		writeFileSync(
 			join(projectDir, 'sess-plan-mode.jsonl'),
 			jsonl(
-				{type: 'user', message: {role: 'user', content: 'Draft a plan'}},
+				{
+					type: 'user',
+					...baseFields,
+					sessionId: 'sess-plan-mode',
+					message: {role: 'user', content: 'Draft a plan'},
+				},
 				{
 					type: 'attachment',
+					...baseFields,
+					sessionId: 'sess-plan-mode',
 					attachment: {
 						type: 'plan_mode',
 						reminderType: 'full',
@@ -246,9 +258,11 @@ describe('indexer', () => {
 		writeFileSync(
 			join(projectDir, 'sess-dup.jsonl'),
 			jsonl(
-				{type: 'user', message: {role: 'user', content: 'Draft'}},
+				{type: 'user', ...baseFields, sessionId: 'sess-dup', message: {role: 'user', content: 'Draft'}},
 				{
 					type: 'attachment',
+					...baseFields,
+					sessionId: 'sess-dup',
 					attachment: {
 						type: 'plan_mode',
 						planFilePath: '/Users/craig/.claude/plans/dual-plan.md',
@@ -256,7 +270,11 @@ describe('indexer', () => {
 				},
 				{
 					type: 'file-history-snapshot',
+					messageId: 'msg-2',
+					isSnapshotUpdate: false,
 					snapshot: {
+						messageId: 'msg-2',
+						timestamp: '2026-01-01T00:00:00.000Z',
 						trackedFileBackups: {
 							'/Users/craig/.claude/plans/dual-plan.md': 'backup',
 						},

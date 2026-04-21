@@ -10,6 +10,7 @@ import {DebugLink} from './debug-link';
 import {hmrSet} from '../lib/hmr-state';
 import {useHmrState} from '../hooks/use-hmr-state';
 import type {MessageSessionLine, SessionLine, SessionContentBlock, ToolResultInfo} from '../lib/sessions';
+import {AttachmentBanner, Banner} from './attachment-banner';
 import {
 	stripCommandTags,
 	parseCommandBlock,
@@ -317,16 +318,6 @@ function AssistantGroupSection({
 	);
 }
 
-function MetadataBanner({icon, label, children}: {icon: string; label?: string; children?: React.ReactNode}) {
-	return (
-		<div className="flex items-center gap-2 py-1.5 px-3 text-xs text-text-500 bg-bg-100 rounded-md border border-border-300/10">
-			<span>{icon}</span>
-			{label && <span>{label}</span>}
-			{children}
-		</div>
-	);
-}
-
 /**
  * Top-level switching component: reads line.type and delegates to
  * per-type entry components. Every component receives the full raw line.
@@ -375,7 +366,7 @@ function SessionMessage({
 	}
 	if (line.type === 'agent-name') {
 		return (
-			<MetadataBanner
+			<Banner
 				icon="🤖"
 				label={line.agentName}
 			/>
@@ -383,7 +374,7 @@ function SessionMessage({
 	}
 	if (line.type === 'permission-mode') {
 		return (
-			<MetadataBanner
+			<Banner
 				icon="🔒"
 				label={`Permission mode: ${line.permissionMode}`}
 			/>
@@ -391,7 +382,7 @@ function SessionMessage({
 	}
 	if (line.type === 'pr-link') {
 		return (
-			<MetadataBanner icon="🔗">
+			<Banner icon="🔗">
 				<a
 					href={line.prUrl}
 					target="_blank"
@@ -400,8 +391,11 @@ function SessionMessage({
 				>
 					{line.prRepository}#{line.prNumber}
 				</a>
-			</MetadataBanner>
+			</Banner>
 		);
+	}
+	if (line.type === 'attachment') {
+		return <AttachmentBanner attachmentJson={line.attachmentJson} />;
 	}
 	return null;
 }

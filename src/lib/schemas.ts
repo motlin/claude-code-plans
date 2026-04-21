@@ -644,6 +644,7 @@ export type QueueOperationRecord = z.infer<typeof QueueOperationRecordSchema>;
 export type AgentNameRecord = z.infer<typeof AgentNameRecordSchema>;
 export type PermissionModeRecord = z.infer<typeof PermissionModeRecordSchema>;
 export type PrLinkRecord = z.infer<typeof PrLinkRecordSchema>;
+export type AttachmentPayload = z.infer<typeof AttachmentPayloadSchema>;
 export type JsonlRecord = z.infer<typeof JsonlRecordSchema>;
 export type TaskStatus = z.infer<typeof TaskStatusSchema>;
 export type TaskFile = z.infer<typeof TaskFileSchema>;
