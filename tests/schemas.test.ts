@@ -16,10 +16,21 @@ import {
 	ToolUseBlockSchema,
 	ThinkingBlockSchema,
 	ToolResultBlockSchema,
+	ContentBlockSchema,
 	JsonlRecordSchema,
 	parseJsonlRecord,
 	TaskFileSchema,
 } from '../src/lib/schemas';
+import {
+	BashInputSchema,
+	ReadInputSchema,
+	EditInputSchema,
+	WriteInputSchema,
+	GlobInputSchema,
+	GrepInputSchema,
+	AgentInputSchema,
+	toolInputSchemas,
+} from '../src/lib/tool-input-schemas';
 
 describe('SessionIndexEntrySchema', () => {
 	it('parses a minimal entry', () => {
@@ -651,5 +662,218 @@ describe('TaskFileSchema against disk', () => {
 		}
 
 		expect(validated).toBeGreaterThan(0);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Per-tool input schemas (Level 3)
+// ---------------------------------------------------------------------------
+
+describe('Per-tool input schemas', () => {
+	describe('BashInputSchema', () => {
+		it('accepts required command field', () => {
+			expect(BashInputSchema.safeParse({command: 'ls -la'}).success).toBe(true);
+		});
+
+		it('accepts all optional fields', () => {
+			const input = {
+				command: 'npm test',
+				description: 'Run tests',
+				timeout: 30000,
+				run_in_background: false,
+				dangerouslyDisableSandbox: true,
+			};
+			expect(BashInputSchema.safeParse(input).success).toBe(true);
+		});
+
+		it('rejects unknown fields', () => {
+			const result = BashInputSchema.safeParse({command: 'ls', extraField: true});
+			expect(result.success).toBe(false);
+		});
+
+		it('rejects missing command', () => {
+			const result = BashInputSchema.safeParse({description: 'oops'});
+			expect(result.success).toBe(false);
+		});
+	});
+
+	describe('ReadInputSchema', () => {
+		it('accepts required file_path', () => {
+			expect(ReadInputSchema.safeParse({file_path: '/foo.ts'}).success).toBe(true);
+		});
+
+		it('accepts optional offset, limit, pages', () => {
+			const input = {file_path: '/foo.ts', offset: 10, limit: 50, pages: '1-5'};
+			expect(ReadInputSchema.safeParse(input).success).toBe(true);
+		});
+
+		it('rejects unknown fields', () => {
+			const result = ReadInputSchema.safeParse({file_path: '/foo.ts', unknown: 1});
+			expect(result.success).toBe(false);
+		});
+	});
+
+	describe('EditInputSchema', () => {
+		it('accepts required fields', () => {
+			const input = {file_path: '/foo.ts', old_string: 'a', new_string: 'b'};
+			expect(EditInputSchema.safeParse(input).success).toBe(true);
+		});
+
+		it('accepts replace_all', () => {
+			const input = {file_path: '/foo.ts', old_string: 'a', new_string: 'b', replace_all: true};
+			expect(EditInputSchema.safeParse(input).success).toBe(true);
+		});
+	});
+
+	describe('WriteInputSchema', () => {
+		it('accepts required fields', () => {
+			const input = {file_path: '/foo.ts', content: 'hello'};
+			expect(WriteInputSchema.safeParse(input).success).toBe(true);
+		});
+	});
+
+	describe('GlobInputSchema', () => {
+		it('accepts pattern with optional path', () => {
+			expect(GlobInputSchema.safeParse({pattern: '**/*.ts'}).success).toBe(true);
+			expect(GlobInputSchema.safeParse({pattern: '**/*.ts', path: '/src'}).success).toBe(true);
+		});
+	});
+
+	describe('GrepInputSchema', () => {
+		it('accepts pattern with all optional fields', () => {
+			const input = {
+				pattern: 'foo',
+				path: '/src',
+				glob: '*.ts',
+				type: 'ts',
+				'-i': true,
+				output_mode: 'content',
+				'-A': 3,
+				'-B': 3,
+				'-C': 5,
+				'-n': true,
+				head_limit: 100,
+				offset: 10,
+				multiline: false,
+				context: 2,
+			};
+			expect(GrepInputSchema.safeParse(input).success).toBe(true);
+		});
+	});
+
+	describe('AgentInputSchema', () => {
+		it('accepts required prompt', () => {
+			expect(AgentInputSchema.safeParse({prompt: 'Do something'}).success).toBe(true);
+		});
+
+		it('accepts all optional fields', () => {
+			const input = {
+				prompt: 'Do something',
+				description: 'Test agent',
+				subagent_type: 'Code',
+				isolation: 'full',
+				mode: 'plan',
+				model: 'sonnet',
+				name: 'my-agent',
+				run_in_background: true,
+				team_name: 'alpha',
+			};
+			expect(AgentInputSchema.safeParse(input).success).toBe(true);
+		});
+	});
+
+	it('registry covers all known tools', () => {
+		const expectedTools = [
+			'Bash',
+			'Read',
+			'Edit',
+			'MultiEdit',
+			'Write',
+			'Glob',
+			'Grep',
+			'Agent',
+			'WebFetch',
+			'Skill',
+			'TaskCreate',
+			'TaskUpdate',
+			'TaskGet',
+			'TaskList',
+			'AskUserQuestion',
+			'ExitPlanMode',
+			'ToolSearch',
+		];
+		for (const tool of expectedTools) {
+			expect(toolInputSchemas[tool]).toBeDefined();
+		}
+	});
+});
+
+// ---------------------------------------------------------------------------
+// ContentBlockSchema superRefine validates tool inputs
+// ---------------------------------------------------------------------------
+
+describe('ContentBlockSchema tool input validation', () => {
+	it('validates known tool input via superRefine', () => {
+		const block = {
+			type: 'tool_use',
+			id: 'tu_1',
+			name: 'Read',
+			input: {file_path: '/foo.ts'},
+		};
+		const result = ContentBlockSchema.safeParse(block);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects unknown tool names', () => {
+		const block = {
+			type: 'tool_use',
+			id: 'tu_1',
+			name: 'NonExistentTool',
+			input: {},
+		};
+		const result = ContentBlockSchema.safeParse(block);
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.issues.some((i) => i.message.includes('Unknown tool name'))).toBe(true);
+		}
+	});
+
+	it('rejects invalid input for known tools', () => {
+		const block = {
+			type: 'tool_use',
+			id: 'tu_1',
+			name: 'Bash',
+			input: {notACommand: 'oops'},
+		};
+		const result = ContentBlockSchema.safeParse(block);
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects extra input fields for known tools', () => {
+		const block = {
+			type: 'tool_use',
+			id: 'tu_1',
+			name: 'Read',
+			input: {file_path: '/foo.ts', extraField: 'nope'},
+		};
+		const result = ContentBlockSchema.safeParse(block);
+		expect(result.success).toBe(false);
+	});
+
+	it('allows MCP tools without strict input validation', () => {
+		const block = {
+			type: 'tool_use',
+			id: 'tu_1',
+			name: 'mcp__plugin_github_github__list_issues',
+			input: {owner: 'foo', repo: 'bar', anythingGoes: true},
+		};
+		const result = ContentBlockSchema.safeParse(block);
+		expect(result.success).toBe(true);
+	});
+
+	it('does not validate non-tool_use blocks', () => {
+		const block = {type: 'text', text: 'hello'};
+		const result = ContentBlockSchema.safeParse(block);
+		expect(result.success).toBe(true);
 	});
 });

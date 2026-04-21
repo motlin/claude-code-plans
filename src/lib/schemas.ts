@@ -1,4 +1,5 @@
 import {z} from 'zod';
+import {isMcpTool, toolInputSchemas} from './tool-input-schemas';
 
 // ---------------------------------------------------------------------------
 // Sessions Index (sessions-index.json)
@@ -65,16 +66,35 @@ export const ToolResultBlockSchema = z
 	})
 	.strict();
 
-/**
- * Discriminated union of all known content block types.
- * Unknown block types are hard errors -- they mean we need a new schema branch.
- */
-export const ContentBlockSchema = z.discriminatedUnion('type', [
-	TextBlockSchema,
-	ToolUseBlockSchema,
-	ThinkingBlockSchema,
-	ToolResultBlockSchema,
-]);
+export const ContentBlockSchema = z
+	.discriminatedUnion('type', [TextBlockSchema, ToolUseBlockSchema, ThinkingBlockSchema, ToolResultBlockSchema])
+	.superRefine((block, ctx) => {
+		if (block.type !== 'tool_use') return;
+
+		const {name, input} = block;
+
+		if (isMcpTool(name)) return;
+
+		const schema = toolInputSchemas[name];
+		if (!schema) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: `Unknown tool name: ${name}`,
+				path: ['name'],
+			});
+			return;
+		}
+
+		const result = schema.safeParse(input);
+		if (!result.success) {
+			for (const issue of result.error.issues) {
+				ctx.addIssue({
+					...issue,
+					path: ['input', ...issue.path],
+				});
+			}
+		}
+	});
 
 // ---------------------------------------------------------------------------
 // JSONL Record Types
