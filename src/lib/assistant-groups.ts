@@ -1,4 +1,4 @@
-import type {SessionLine} from './sessions';
+import type {MessageSessionLine, SessionLine} from './sessions';
 import {summarizeToolCalls} from './session-utils';
 import type {ToolCallInfo} from './sessions';
 
@@ -11,7 +11,7 @@ export interface GroupedLine {
 
 export interface AssistantGroup {
 	kind: 'group';
-	lines: SessionLine[];
+	lines: MessageSessionLine[];
 	/** Original index of the first line in the group */
 	startIndex: number;
 	/** Human-readable summary of tool calls in this group */
@@ -25,7 +25,7 @@ export type GroupedEntry = GroupedLine | AssistantGroup;
 /**
  * Extract tool call info from an assistant line's content blocks.
  */
-function extractToolCalls(line: SessionLine): ToolCallInfo[] {
+function extractToolCalls(line: MessageSessionLine): ToolCallInfo[] {
 	const content = line.message?.content;
 	if (!Array.isArray(content)) return [];
 
@@ -53,7 +53,7 @@ export function groupAssistantMessages(lines: SessionLine[]): GroupedEntry[] {
 	if (lines.length === 0) return [];
 
 	const result: GroupedEntry[] = [];
-	let assistantRun: SessionLine[] = [];
+	let assistantRun: MessageSessionLine[] = [];
 	let assistantRunStart = 0;
 
 	function flushAssistantRun() {

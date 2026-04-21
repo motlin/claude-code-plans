@@ -9,7 +9,7 @@ import {TasksView} from './tasks-view';
 import {DebugLink} from './debug-link';
 import {hmrSet} from '../lib/hmr-state';
 import {useHmrState} from '../hooks/use-hmr-state';
-import type {SessionLine, SessionContentBlock, ToolResultInfo} from '../lib/sessions';
+import type {MessageSessionLine, SessionLine, SessionContentBlock, ToolResultInfo} from '../lib/sessions';
 import {
 	stripCommandTags,
 	parseCommandBlock,
@@ -77,7 +77,7 @@ function CopyToast({visible}: {visible: boolean}) {
 	);
 }
 
-function MessageToolbar({line, index}: {line: SessionLine; index: number}) {
+function MessageToolbar({line, index}: {line: MessageSessionLine; index: number}) {
 	const [copied, setCopied] = useState<'text' | 'link' | null>(null);
 
 	function copyText() {
@@ -122,7 +122,7 @@ function MessageToolbar({line, index}: {line: SessionLine; index: number}) {
 	);
 }
 
-function extractTextFromLine(line: SessionLine): string[] {
+function extractTextFromLine(line: MessageSessionLine): string[] {
 	const content = line.message?.content;
 	if (!content) return [];
 	if (typeof content === 'string') return [stripCommandTags(content)].filter(Boolean);
@@ -207,16 +207,19 @@ function LineEntry({
 	nextLine: SessionLine | undefined;
 	className?: string;
 }) {
+	const isMessage = line.type === 'user' || line.type === 'assistant';
 	return (
 		<div
 			key={`line-${index}`}
 			id={`msg-${index}`}
 			className={`group relative ${className ?? ''}`}
 		>
-			<MessageToolbar
-				line={line}
-				index={index}
-			/>
+			{isMessage && (
+				<MessageToolbar
+					line={line}
+					index={index}
+				/>
+			)}
 			<SessionMessage
 				line={line}
 				{...renderProps}
@@ -314,6 +317,16 @@ function AssistantGroupSection({
 	);
 }
 
+function MetadataBanner({icon, label, children}: {icon: string; label?: string; children?: React.ReactNode}) {
+	return (
+		<div className="flex items-center gap-2 py-1.5 px-3 text-xs text-text-500 bg-bg-100 rounded-md border border-border-300/10">
+			<span>{icon}</span>
+			{label && <span>{label}</span>}
+			{children}
+		</div>
+	);
+}
+
 /**
  * Top-level switching component: reads line.type and delegates to
  * per-type entry components. Every component receives the full raw line.
@@ -358,6 +371,36 @@ function SessionMessage({
 				showThinking={showThinking}
 				showTools={showTools}
 			/>
+		);
+	}
+	if (line.type === 'agent-name') {
+		return (
+			<MetadataBanner
+				icon="🤖"
+				label={line.agentName}
+			/>
+		);
+	}
+	if (line.type === 'permission-mode') {
+		return (
+			<MetadataBanner
+				icon="🔒"
+				label={`Permission mode: ${line.permissionMode}`}
+			/>
+		);
+	}
+	if (line.type === 'pr-link') {
+		return (
+			<MetadataBanner icon="🔗">
+				<a
+					href={line.prUrl}
+					target="_blank"
+					rel="noopener noreferrer"
+					className="text-accent-500 hover:underline"
+				>
+					{line.prRepository}#{line.prNumber}
+				</a>
+			</MetadataBanner>
 		);
 	}
 	return null;
@@ -416,7 +459,7 @@ function TruncatedContent({children}: {children: React.ReactNode}) {
 /**
  * Classify a user line's content: is it a command, bash input/output, or regular text?
  */
-function classifyUserContent(line: SessionLine): 'command' | 'bash' | 'text' | 'tool-result-only' {
+function classifyUserContent(line: MessageSessionLine): 'command' | 'bash' | 'text' | 'tool-result-only' {
 	const content = line.message?.content;
 	if (!content) return 'text';
 
@@ -463,7 +506,7 @@ function UserEntry({
 	textHtmlMap,
 	nextLine,
 }: {
-	line: SessionLine;
+	line: MessageSessionLine;
 	sessionId: string;
 	textHtmlMap: Map<string, string>;
 	nextLine?: SessionLine | undefined;
@@ -508,7 +551,7 @@ function UserEntry({
 	);
 }
 
-function lineMatchesBash(line: SessionLine, parser: (text: string) => unknown): boolean {
+function lineMatchesBash(line: MessageSessionLine, parser: (text: string) => unknown): boolean {
 	const content = line.message?.content;
 	if (typeof content === 'string') return parser(content) !== null;
 	if (Array.isArray(content)) {
@@ -517,16 +560,16 @@ function lineMatchesBash(line: SessionLine, parser: (text: string) => unknown): 
 	return false;
 }
 
-function hasBashInput(line: SessionLine): boolean {
+function hasBashInput(line: MessageSessionLine): boolean {
 	return lineMatchesBash(line, parseBashInput);
 }
 
-function hasBashOutput(line: SessionLine): boolean {
+function hasBashOutput(line: MessageSessionLine): boolean {
 	return lineMatchesBash(line, parseBashOutput);
 }
 
 function renderUserContentBlocks(
-	line: SessionLine,
+	line: MessageSessionLine,
 	sessionId: string,
 	textHtmlMap: Map<string, string>,
 ): React.ReactNode[] {
@@ -633,7 +676,7 @@ function CommandEntry({
 	sessionId,
 	timestampText,
 }: {
-	line: SessionLine;
+	line: MessageSessionLine;
 	sessionId: string;
 	timestampText: string | null;
 }) {
@@ -682,8 +725,8 @@ function BashEntry({
 	sessionId,
 	timestampText,
 }: {
-	line: SessionLine;
-	outputLine?: SessionLine | undefined;
+	line: MessageSessionLine;
+	outputLine?: MessageSessionLine | undefined;
 	sessionId: string;
 	timestampText: string | null;
 }) {
@@ -817,7 +860,7 @@ function AssistantEntry({
 	showThinking,
 	showTools,
 }: {
-	line: SessionLine;
+	line: MessageSessionLine;
 	sessionId: string;
 	toolResultMap: Map<string, ToolResultInfo>;
 	decorations: DecorationMap;
@@ -914,7 +957,7 @@ function ContentBlock({
 }: {
 	block: SessionContentBlock;
 	blockIndex: number;
-	line: SessionLine;
+	line: MessageSessionLine;
 	sessionId: string;
 	textHtmlMap: Map<string, string>;
 	showThinking: boolean;

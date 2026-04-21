@@ -200,6 +200,40 @@ export const WithGroupedAssistantMessages: Story = {
 	},
 };
 
+export const WithMetadataRecords: Story = {
+	args: {
+		sessionId: 'story-session-metadata',
+		lines: [
+			{type: 'agent-name', agentName: 'git-replay-automation', lineIndex: 0},
+			{type: 'permission-mode', permissionMode: 'acceptEdits', lineIndex: 1},
+			line(2, 'user', 'Fix the authentication bug', '2026-04-19T10:00:00Z'),
+			assistantBlocks(
+				3,
+				[{type: 'text', text: "I'll look into the authentication module."}],
+				'2026-04-19T10:00:05Z',
+			),
+			{
+				type: 'pr-link',
+				prUrl: 'https://github.com/example/repo/pull/42',
+				prNumber: 42,
+				prRepository: 'example/repo',
+				timestamp: '2026-04-19T10:05:00Z',
+				lineIndex: 4,
+			},
+			line(5, 'user', 'The PR looks good', '2026-04-19T10:10:00Z'),
+			assistantBlocks(6, [{type: 'text', text: 'The fix has been merged.'}], '2026-04-19T10:10:05Z'),
+		],
+		toolResultMap: [],
+		decorations: [],
+		textHtmlMap: [
+			['2:0', '<p>Fix the authentication bug</p>'],
+			['3:0', "<p>I'll look into the authentication module.</p>"],
+			['5:0', '<p>The PR looks good</p>'],
+			['6:0', '<p>The fix has been merged.</p>'],
+		],
+	},
+};
+
 // 1x1 red pixel PNG
 const tinyPngBase64 =
 	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwADhQGAWjR9awAAAABJRU5ErkJggg==';

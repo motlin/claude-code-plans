@@ -175,6 +175,34 @@ describe('groupAssistantMessages', () => {
 		expect((result[0] as AssistantGroup).lines).toHaveLength(3);
 	});
 
+	it('treats metadata record types as non-assistant (breaks assistant runs)', () => {
+		const metadataLine: SessionLine = {
+			type: 'agent-name',
+			lineIndex: 2,
+			agentName: 'git-replay-automation',
+		};
+		const lines = [
+			userLine(0, 'do it'),
+			assistantTextLine(1, 'working...'),
+			metadataLine,
+			assistantTextLine(3, 'more work'),
+			userLine(4, 'done'),
+		];
+		const result = groupAssistantMessages(lines);
+		// user, assistant (standalone), metadata, assistant (standalone), user
+		expect(result).toHaveLength(5);
+		expect(result[0]!.kind).toBe('line');
+		expect((result[0] as GroupedLine).line.type).toBe('user');
+		expect(result[1]!.kind).toBe('line');
+		expect((result[1] as GroupedLine).line.type).toBe('assistant');
+		expect(result[2]!.kind).toBe('line');
+		expect((result[2] as GroupedLine).line.type).toBe('agent-name');
+		expect(result[3]!.kind).toBe('line');
+		expect((result[3] as GroupedLine).line.type).toBe('assistant');
+		expect(result[4]!.kind).toBe('line');
+		expect((result[4] as GroupedLine).line.type).toBe('user');
+	});
+
 	it('collects tool call info from mixed content blocks', () => {
 		const lines = [
 			userLine(0, 'work'),

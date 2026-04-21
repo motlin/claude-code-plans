@@ -105,7 +105,7 @@ export type SessionContentBlock = SerializableContentBlock;
  * are included in the rendering array. The `type` field is a string literal
  * union so TypeScript narrows the message shape after checking it.
  */
-export interface SessionLine {
+export interface MessageSessionLine {
 	type: 'user' | 'assistant';
 	uuid?: string | undefined;
 	parentUuid?: string | undefined;
@@ -120,6 +120,29 @@ export interface SessionLine {
 	sessionId?: string | undefined;
 	lineIndex: number;
 }
+
+interface AgentNameSessionLine {
+	type: 'agent-name';
+	agentName: string;
+	lineIndex: number;
+}
+
+interface PermissionModeSessionLine {
+	type: 'permission-mode';
+	permissionMode: string;
+	lineIndex: number;
+}
+
+interface PrLinkSessionLine {
+	type: 'pr-link';
+	prUrl: string;
+	prNumber: number;
+	prRepository: string;
+	timestamp?: string | undefined;
+	lineIndex: number;
+}
+
+export type SessionLine = MessageSessionLine | AgentNameSessionLine | PermissionModeSessionLine | PrLinkSessionLine;
 
 /**
  * Information about a tool_result paired with its tool_use.
@@ -871,20 +894,40 @@ export async function readSessionLines(projectsDir: string, sessionId: string): 
 				}
 			}
 
+			if (record.type === 'agent-name') {
+				lines.push({type: 'agent-name', agentName: record.agentName, lineIndex});
+				continue;
+			}
+			if (record.type === 'permission-mode') {
+				lines.push({type: 'permission-mode', permissionMode: record.permissionMode, lineIndex});
+				continue;
+			}
+			if (record.type === 'pr-link') {
+				lines.push({
+					type: 'pr-link',
+					prUrl: record.prUrl,
+					prNumber: record.prNumber,
+					prRepository: record.prRepository,
+					timestamp: record.timestamp,
+					lineIndex,
+				});
+				continue;
+			}
+
 			// Only include user/assistant lines for the rendering tree
 			if (record.type !== 'user' && record.type !== 'assistant') continue;
 
-			const sessionLine: SessionLine = {
+			const sessionLine: MessageSessionLine = {
 				type: record.type,
 				lineIndex,
 			};
 			if (uuid !== undefined) sessionLine.uuid = uuid;
 			if (typeof record.parentUuid === 'string') sessionLine.parentUuid = record.parentUuid;
 			if (record.timestamp !== undefined) sessionLine.timestamp = record.timestamp;
-			// The Zod-parsed message is structurally compatible with SessionLine.message
+			// The Zod-parsed message is structurally compatible with MessageSessionLine.message
 			// but uses Record<string, unknown> for tool input vs SerializableValue.
 			// Cast is safe because the runtime data is identical.
-			sessionLine.message = record.message as SessionLine['message'];
+			sessionLine.message = record.message as MessageSessionLine['message'];
 
 			lines.push(sessionLine);
 		}

@@ -1,5 +1,5 @@
 import type {DiffData} from '../../lib/renderer';
-import type {SessionLine, SessionContentBlock, ToolResultInfo} from '../../lib/sessions';
+import type {MessageSessionLine, SessionContentBlock, ToolResultInfo} from '../../lib/sessions';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- TanStack serialization narrows unknown to {}
 export type ToolInput = Record<string, {}>;
@@ -73,7 +73,7 @@ export interface ToolRendererProps {
  */
 export function buildClientToolCall(
 	block: SessionContentBlock,
-	line: SessionLine,
+	line: MessageSessionLine,
 	toolResultMap: Map<string, ToolResultInfo>,
 	decorations: DecorationMap,
 ): ClientToolCall {

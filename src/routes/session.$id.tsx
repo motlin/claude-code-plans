@@ -236,6 +236,7 @@ async function buildTextHtmlMap(lines: SessionLine[]): Promise<Map<string, strin
 	const {stripCommandTags, parseCommandBlock} = await import('../lib/sessions');
 	const entries: Array<{key: string; text: string}> = [];
 	for (const line of lines) {
+		if (line.type !== 'user' && line.type !== 'assistant') continue;
 		const isUser = line.type === 'user';
 		const content = line.message?.content;
 		if (!Array.isArray(content)) {
