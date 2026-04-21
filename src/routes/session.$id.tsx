@@ -832,29 +832,31 @@ function SessionPage() {
 				/>
 			)}
 
-			{/* Sticky footer: chat input + status bar */}
-			{!chromeHidden && data.projectPath && (
-				<div className="sticky bottom-0 z-10 -mx-4 sm:-mx-8">
-					<ChatInput
-						onSend={(prompt) => chatStream.send(params.id, prompt)}
-						onCancel={chatStream.cancel}
-						isStreaming={chatStream.state.isStreaming}
-						disabled={isActive}
-						projectPath={data.projectPath}
-					/>
-				</div>
-			)}
-
 			<FloatingScrollButtons />
-			{statusline && (
-				<StatusFooter
-					data={statusline}
-					gitBranch={data.gitBranch}
-					gitSha={data.gitSha}
-					gitClean={data.gitClean}
-					messageCount={data.messageCount}
-					pendingTaskCount={data.pendingTaskCount}
-				/>
+
+			{/* Sticky footer: chat input + status bar */}
+			{((!chromeHidden && data.projectPath) || statusline) && (
+				<div className="sticky bottom-0 z-10 -mx-4 sm:-mx-8">
+					{!chromeHidden && data.projectPath && (
+						<ChatInput
+							onSend={(prompt) => chatStream.send(params.id, prompt)}
+							onCancel={chatStream.cancel}
+							isStreaming={chatStream.state.isStreaming}
+							disabled={isActive}
+							projectPath={data.projectPath}
+						/>
+					)}
+					{statusline && (
+						<StatusFooter
+							data={statusline}
+							gitBranch={data.gitBranch}
+							gitSha={data.gitSha}
+							gitClean={data.gitClean}
+							messageCount={data.messageCount}
+							pendingTaskCount={data.pendingTaskCount}
+						/>
+					)}
+				</div>
 			)}
 		</div>
 	);

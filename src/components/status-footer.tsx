@@ -167,7 +167,7 @@ export function StatusFooter({data, gitBranch, gitSha, gitClean, messageCount, p
 	if (segments.length === 0) return null;
 
 	return (
-		<div className="sticky bottom-0 z-10 border-t border-border-300/15 bg-bg-000">
+		<div className="border-t border-border-300/15 bg-bg-000">
 			<div className="flex items-center gap-1.5 px-4 py-2 overflow-x-auto">
 				{segments.map((seg) => (
 					<Segment
