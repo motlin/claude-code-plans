@@ -1,5 +1,6 @@
 import {describe, it, expect} from 'vitest';
 import {toolInputSchemas, isMcpTool} from '../src/lib/tool-input-schemas';
+import {ContentBlockSchema} from '../src/lib/schemas';
 
 // ---------------------------------------------------------------------------
 // Tool renderer story files
@@ -22,6 +23,9 @@ import * as TaskUpdateStories from '../src/stories/session-detail/tool-renderers
 
 // Non-tool-renderer stories that contain ClientToolCall fixtures
 import * as TasksViewStories from '../src/stories/tasks/TasksView.stories';
+
+// SessionChat stories with content block fixtures
+import * as SessionChatStories from '../src/stories/session-detail/SessionChat.stories';
 
 // MCP-based tool stories (inputs vary by server, validated as isMcpTool)
 import * as McpStories from '../src/stories/session-detail/tool-renderers/McpRenderer.stories';
@@ -149,6 +153,42 @@ describe('Story fixture validation against strict Zod schemas', () => {
 						);
 					}
 				});
+			}
+		}
+	});
+
+	describe('SessionChat stories — content blocks pass ContentBlockSchema', () => {
+		interface SessionChatStory {
+			args?: {
+				lines?: Array<{
+					message?: {
+						content?: string | Array<Record<string, unknown>>;
+					};
+				}>;
+			};
+		}
+
+		for (const [storyName, value] of Object.entries(SessionChatStories as Record<string, unknown>)) {
+			if (storyName === 'default') continue;
+			const story = value as SessionChatStory;
+			const lines = story.args?.lines ?? [];
+			for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+				const content = lines[lineIndex]?.message?.content;
+				if (!Array.isArray(content)) continue;
+				for (let blockIndex = 0; blockIndex < content.length; blockIndex++) {
+					const block = content[blockIndex]!;
+					it(`SessionChat/${storyName} line[${lineIndex}] block[${blockIndex}] (${block['type']}) passes ContentBlockSchema`, () => {
+						const result = ContentBlockSchema.safeParse(block);
+						if (!result.success) {
+							const issues = result.error.issues
+								.map((issue) => `  ${issue.path.join('.')}: ${issue.message}`)
+								.join('\n');
+							throw new Error(
+								`SessionChat/${storyName} line[${lineIndex}] block[${blockIndex}]: content block validation failed:\n${issues}`,
+							);
+						}
+					});
+				}
 			}
 		}
 	});

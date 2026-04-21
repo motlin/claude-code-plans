@@ -855,7 +855,9 @@ function AssistantEntry({
 
 	// Determine if all content is just tool_use (render as grouped tool section)
 	// vs mixed content (render in order)
-	const hasTextOrThinking = content.some((b) => b.type === 'text' || b.type === 'thinking');
+	const hasTextOrThinking = content.some(
+		(b) => b.type === 'text' || b.type === 'thinking' || b.type === 'image' || b.type === 'document',
+	);
 	const hasToolUse = toolCalls.length > 0;
 
 	// If there's only tool_use blocks, render as a tool call section
@@ -960,6 +962,48 @@ function ContentBlock({
 				summary={toolSummary}
 				sessionId={sessionId}
 			/>
+		);
+	}
+
+	if (block.type === 'image' && block.source) {
+		return (
+			<div className="relative inline-block">
+				<img
+					src={`data:${block.source.media_type};base64,${block.source.data}`}
+					alt="Session image"
+					className="max-w-full max-h-96 rounded-lg border border-border-300/15 shadow-sm"
+				/>
+				<DebugLink
+					sessionId={sessionId}
+					uuid={line.uuid}
+					className="absolute top-1 right-1"
+				/>
+			</div>
+		);
+	}
+
+	if (block.type === 'document' && block.source) {
+		return (
+			<div className="relative rounded-lg px-3 py-2 bg-bg-100 text-text-000 flex items-center gap-1.5">
+				<svg
+					width="16"
+					height="16"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					strokeWidth="2"
+					className="shrink-0"
+				>
+					<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+					<polyline points="13 2 13 9 20 9" />
+				</svg>
+				<span className="text-sm">PDF attached</span>
+				<DebugLink
+					sessionId={sessionId}
+					uuid={line.uuid}
+					className="absolute top-1 right-1"
+				/>
+			</div>
 		);
 	}
 

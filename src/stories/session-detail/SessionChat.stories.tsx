@@ -12,6 +12,16 @@ function line(index: number, type: 'user' | 'assistant', content: string, timest
 	};
 }
 
+function userBlocks(index: number, blocks: SessionContentBlock[], timestamp?: string): SessionLine {
+	return {
+		type: 'user',
+		uuid: `uuid-${index}`,
+		timestamp,
+		lineIndex: index,
+		message: {role: 'user', content: blocks},
+	};
+}
+
 function assistantBlocks(index: number, blocks: SessionContentBlock[], timestamp?: string): SessionLine {
 	return {
 		type: 'assistant',
@@ -186,6 +196,99 @@ export const WithGroupedAssistantMessages: Story = {
 			['5:0', '<p>The auth module has been refactored. All tests pass.</p>'],
 			['6:0', '<p>Looks good, thanks!</p>'],
 			['7:0', "<p>You're welcome! Let me know if you need anything else.</p>"],
+		],
+	},
+};
+
+// 1x1 red pixel PNG
+const tinyPngBase64 =
+	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwADhQGAWjR9awAAAABJRU5ErkJggg==';
+
+// Minimal PDF header
+const tinyPdfBase64 = 'JVBERi0xLjAKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyA+PgplbmRvYmoK';
+
+export const WithUserImage: Story = {
+	args: {
+		sessionId: 'story-session-user-image',
+		lines: [
+			userBlocks(
+				0,
+				[
+					{type: 'text', text: 'Here is a screenshot of the error'},
+					{
+						type: 'image',
+						source: {type: 'base64', media_type: 'image/png', data: tinyPngBase64},
+					},
+				],
+				'2026-04-19T12:00:00Z',
+			),
+			assistantBlocks(
+				1,
+				[{type: 'text', text: 'I can see the error in your screenshot. The issue is a missing import.'}],
+				'2026-04-19T12:00:05Z',
+			),
+		],
+		toolResultMap: [],
+		decorations: [],
+		textHtmlMap: [
+			['0:0', '<p>Here is a screenshot of the error</p>'],
+			['1:0', '<p>I can see the error in your screenshot. The issue is a missing import.</p>'],
+		],
+	},
+};
+
+export const WithAssistantImage: Story = {
+	args: {
+		sessionId: 'story-session-assistant-image',
+		lines: [
+			line(0, 'user', 'Take a screenshot of the page', '2026-04-19T13:00:00Z'),
+			assistantBlocks(
+				1,
+				[
+					{type: 'text', text: 'Here is the current state of the page:'},
+					{
+						type: 'image',
+						source: {type: 'base64', media_type: 'image/png', data: tinyPngBase64},
+					},
+				],
+				'2026-04-19T13:00:05Z',
+			),
+		],
+		toolResultMap: [],
+		decorations: [],
+		textHtmlMap: [
+			['0:0', '<p>Take a screenshot of the page</p>'],
+			['1:0', '<p>Here is the current state of the page:</p>'],
+		],
+	},
+};
+
+export const WithDocumentAttachment: Story = {
+	args: {
+		sessionId: 'story-session-document',
+		lines: [
+			userBlocks(
+				0,
+				[
+					{type: 'text', text: 'Please review this PDF'},
+					{
+						type: 'document',
+						source: {type: 'base64', media_type: 'application/pdf', data: tinyPdfBase64},
+					},
+				],
+				'2026-04-19T14:00:00Z',
+			),
+			assistantBlocks(
+				1,
+				[{type: 'text', text: "I've reviewed the document. Here are my findings."}],
+				'2026-04-19T14:00:10Z',
+			),
+		],
+		toolResultMap: [],
+		decorations: [],
+		textHtmlMap: [
+			['0:0', '<p>Please review this PDF</p>'],
+			['1:0', "<p>I've reviewed the document. Here are my findings.</p>"],
 		],
 	},
 };
