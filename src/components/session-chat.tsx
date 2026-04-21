@@ -7,8 +7,7 @@ import type {ClientToolCall, SerializedToolResultMap} from './tool-renderers';
 import {ChevronIcon, DurationBadge, TerminalOutput} from './tool-renderers/shared';
 import {TasksView} from './tasks-view';
 import {DebugLink} from './debug-link';
-import {hmrSet} from '../lib/hmr-state';
-import {useHmrState} from '../hooks/use-hmr-state';
+import {hmrPersist} from '../lib/hmr-persist';
 import type {MessageSessionLine, SessionLine, SessionContentBlock, ToolResultInfo} from '../lib/sessions';
 import type {SubagentTreeEntry} from '../lib/db/queries';
 import {AttachmentBanner, Banner} from './attachment-banner';
@@ -66,7 +65,7 @@ export interface SessionChatProps {
 	showTools?: boolean;
 }
 
-const autoScrolledSessions = hmrSet<string>('autoScrolledSessions');
+const autoScrolledSessions = hmrPersist('autoScrolledSessions', () => new Set<string>());
 
 function CopyToast({visible}: {visible: boolean}) {
 	return (
@@ -1141,7 +1140,7 @@ function ParallelGroupInline({
 	isFirst: boolean;
 	isLast: boolean;
 }) {
-	const [expanded, setExpanded] = useHmrState('parallel', calls[0]?.sourceUuid ?? 'unknown', true);
+	const [expanded, setExpanded] = useState(true);
 	const size = calls.length;
 
 	return (
@@ -1191,7 +1190,7 @@ function ParallelGroupInline({
 }
 
 function ToolCallSummary({calls, summary, sessionId}: {calls: ClientToolCall[]; summary: string; sessionId: string}) {
-	const [expanded, setExpanded] = useHmrState('toolSummary', calls[0]?.sourceUuid ?? 'unknown', false);
+	const [expanded, setExpanded] = useState(false);
 
 	const taskCalls = calls.filter((c) => TASK_TOOLS.has(c.name));
 	const hasTasksView = taskCalls.length >= 3;
