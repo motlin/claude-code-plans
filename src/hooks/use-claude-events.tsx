@@ -5,8 +5,12 @@ import {
 	SSE_EVENTS,
 	type MemorySummaryPayload,
 	type PlanSummaryPayload,
+	type SessionLinesAppendedPayload,
 	type SessionSummaryPayload,
 } from '../lib/hook-events';
+import {interpretJsonlLines} from '../lib/client-jsonl';
+import type {SessionLine} from '../lib/sessions';
+import type {SerializedToolResultMap} from '../components/tool-renderers';
 
 // ---------------------------------------------------------------------------
 // State types
@@ -248,6 +252,59 @@ export function applyTaskChanged(queryClient: QueryClient, projectDir: string): 
 	void queryClient.invalidateQueries({queryKey: ['tasks', 'project', projectDir]});
 }
 
+/** Shape of the session detail query cache entry (mirrors getSession return). */
+interface SessionDetailCache {
+	title: string;
+	projectName: string;
+	projectId: string;
+	lines: SessionLine[];
+	toolResultMap: SerializedToolResultMap;
+	byteOffset: number;
+	[key: string]: unknown;
+}
+
+/**
+ * Apply SESSION_LINES_APPENDED: interpret the raw JSONL lines client-side
+ * and merge them into the cached session detail data without a server refetch.
+ */
+export function applySessionLinesAppended(
+	queryClient: QueryClient,
+	sessionId: string,
+	payload: SessionLinesAppendedPayload,
+): void {
+	const queryKey = ['session', sessionId, 'detail'] as const;
+	const cached = queryClient.getQueryData<SessionDetailCache>(queryKey);
+
+	// If we have no cached data for this session, ignore the event.
+	// A full load on navigation will pick it up.
+	if (!cached) return;
+
+	const startLineIndex = cached.lines.length > 0 ? cached.lines[cached.lines.length - 1]!.lineIndex + 1 : 0;
+	const {newSessionLines, newToolResults} = interpretJsonlLines(payload.lines, startLineIndex);
+
+	if (newSessionLines.length === 0 && newToolResults.size === 0) return;
+
+	queryClient.setQueryData<SessionDetailCache>(queryKey, (old) => {
+		if (!old) return old;
+
+		const mergedToolResultMap: SerializedToolResultMap = [...old.toolResultMap];
+		for (const [toolUseId, info] of newToolResults) {
+			const existingIndex = mergedToolResultMap.findIndex(([id]) => id === toolUseId);
+			if (existingIndex >= 0) {
+				mergedToolResultMap[existingIndex] = [toolUseId, info];
+			} else {
+				mergedToolResultMap.push([toolUseId, info]);
+			}
+		}
+
+		return {
+			...old,
+			lines: [...old.lines, ...newSessionLines],
+			toolResultMap: mergedToolResultMap,
+		};
+	});
+}
+
 function invalidateActiveSessions(queryClient: QueryClient): void {
 	// The reducer owns activeSessions state; we only invalidate the query cache
 	// here so components using the active-sessions query pick up changes.
@@ -266,6 +323,7 @@ const DOMAIN_EVENT_TYPES = [
 	DOMAIN_EVENTS.SESSION_UPDATED,
 	DOMAIN_EVENTS.SESSION_STARTED,
 	DOMAIN_EVENTS.SESSION_ENDED,
+	DOMAIN_EVENTS.SESSION_LINES_APPENDED,
 	DOMAIN_EVENTS.PLAN_CHANGED,
 	DOMAIN_EVENTS.PLAN_REMOVED,
 	DOMAIN_EVENTS.MEMORY_CHANGED,
@@ -337,6 +395,17 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 						data,
 						timestamp: Date.now(),
 					});
+					break;
+				}
+				case DOMAIN_EVENTS.SESSION_LINES_APPENDED: {
+					const sessionId = data['sessionId'];
+					const lines = data['lines'];
+					if (typeof sessionId === 'string' && Array.isArray(lines)) {
+						applySessionLinesAppended(queryClient, sessionId, {
+							sessionId,
+							lines: lines as Record<string, unknown>[],
+						});
+					}
 					break;
 				}
 				case DOMAIN_EVENTS.SESSION_STARTED:

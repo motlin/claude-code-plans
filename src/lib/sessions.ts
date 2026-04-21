@@ -191,6 +191,9 @@ import {
 	parseCommandBlock,
 	extractSessionTitle,
 	summarizeToolCalls,
+	extractToolResultContent,
+	stripResultTags,
+	truncateResult,
 } from './session-utils';
 
 export {stripCommandTags, parseBashInput, parseBashOutput, parseCommandBlock, extractSessionTitle, summarizeToolCalls};
@@ -439,40 +442,6 @@ export async function listSessions(projectsDir: string): Promise<SessionProjectG
 	groups.sort((a, b) => maxMtimes.get(b.project)! - maxMtimes.get(a.project)!);
 
 	return groups;
-}
-
-function extractToolResultContent(content: unknown): string | undefined {
-	if (typeof content === 'string') return content;
-	if (Array.isArray(content)) {
-		const texts: string[] = [];
-		for (const item of content) {
-			if (typeof item === 'object' && item !== null && 'type' in item && 'text' in item) {
-				const block = item as {type: string; text: string};
-				if (block.type === 'text' && typeof block.text === 'string') {
-					texts.push(block.text);
-				}
-			}
-		}
-		return texts.length > 0 ? texts.join('\n') : undefined;
-	}
-	return undefined;
-}
-
-function stripResultTags(text: string): string {
-	let result = text;
-	result = result.replace(/<\/?tool_use_error>/g, '');
-	result = result.replace(/<\/?persisted-output>/g, '');
-	result = result.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '');
-	if (result !== text) result = result.trim();
-	return result;
-}
-
-function truncateResult(text: string, maxLines: number): string {
-	const lines = text.split('\n');
-	if (lines.length <= maxLines) return text;
-	const truncated = lines.slice(0, maxLines);
-	truncated.push(`... (${lines.length - maxLines} more lines)`);
-	return truncated.join('\n');
 }
 
 const SESSION_ID_RE = /^[a-z0-9-]+$/;

@@ -158,6 +158,50 @@ function pluralize(count: number, singular: string, plural: string): string {
 	return plural.replace('{n}', String(count));
 }
 
+/**
+ * Extract text from a tool_result content field.
+ * Content can be a plain string or an array of {type: 'text', text: string} blocks.
+ */
+export function extractToolResultContent(content: unknown): string | undefined {
+	if (typeof content === 'string') return content;
+	if (Array.isArray(content)) {
+		const texts: string[] = [];
+		for (const item of content) {
+			if (typeof item === 'object' && item !== null && 'type' in item && 'text' in item) {
+				const block = item as {type: string; text: string};
+				if (block.type === 'text' && typeof block.text === 'string') {
+					texts.push(block.text);
+				}
+			}
+		}
+		return texts.length > 0 ? texts.join('\n') : undefined;
+	}
+	return undefined;
+}
+
+/**
+ * Strip non-rendering wrapper tags from tool result text.
+ */
+export function stripResultTags(text: string): string {
+	let result = text;
+	result = result.replace(/<\/?tool_use_error>/g, '');
+	result = result.replace(/<\/?persisted-output>/g, '');
+	result = result.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '');
+	if (result !== text) result = result.trim();
+	return result;
+}
+
+/**
+ * Truncate text to a maximum number of lines, appending a count of omitted lines.
+ */
+export function truncateResult(text: string, maxLines: number): string {
+	const lines = text.split('\n');
+	if (lines.length <= maxLines) return text;
+	const truncated = lines.slice(0, maxLines);
+	truncated.push(`... (${lines.length - maxLines} more lines)`);
+	return truncated.join('\n');
+}
+
 export function summarizeToolCalls(calls: ToolCallInfo[]): string {
 	if (calls.length === 0) return '';
 

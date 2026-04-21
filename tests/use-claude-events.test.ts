@@ -5,6 +5,7 @@ import {
 	applyPlanChanged,
 	applyPlanRemoved,
 	applySessionAdded,
+	applySessionLinesAppended,
 	applySessionRemoved,
 	applySessionUpdated,
 	applyTaskChanged,
@@ -13,6 +14,8 @@ import {
 	type ClaudeEventsAction,
 } from '../src/hooks/use-claude-events';
 import type {MemorySummaryPayload, PlanSummaryPayload, SessionSummaryPayload} from '../src/lib/hook-events';
+import type {MessageSessionLine, SessionLine, ToolResultInfo} from '../src/lib/sessions';
+import type {SerializedToolResultMap} from '../src/components/tool-renderers';
 
 function makeSession(overrides: Partial<SessionSummaryPayload> & {id: string; project: string}): SessionSummaryPayload {
 	const {id, project, ...rest} = overrides;
@@ -430,5 +433,173 @@ describe('applyTaskChanged', () => {
 		const projectState = queryClient.getQueryState(['tasks', 'project', 'proj-a']);
 		expect(globalState?.isInvalidated).toBe(true);
 		expect(projectState?.isInvalidated).toBe(true);
+	});
+});
+
+// -----------------------------------------------------------------------
+// applySessionLinesAppended
+// -----------------------------------------------------------------------
+
+interface SessionDetailCache {
+	title: string;
+	projectName: string;
+	projectId: string;
+	lines: SessionLine[];
+	toolResultMap: SerializedToolResultMap;
+	byteOffset: number;
+}
+
+function makeSessionDetailCache(overrides?: Partial<SessionDetailCache>): SessionDetailCache {
+	return {
+		title: 'Test Session',
+		projectName: 'test-project',
+		projectId: 'proj-1',
+		lines: [],
+		toolResultMap: [],
+		byteOffset: 0,
+		...overrides,
+	};
+}
+
+describe('applySessionLinesAppended', () => {
+	it('ignores event when no cached data exists for the session', () => {
+		const queryClient = new QueryClient();
+		// No cached data for this session.
+		applySessionLinesAppended(queryClient, 'sess-1', {
+			sessionId: 'sess-1',
+			lines: [
+				{type: 'assistant', uuid: 'a-1', message: {role: 'assistant', content: [{type: 'text', text: 'hi'}]}},
+			],
+		});
+		// Should not throw and no data should be set.
+		expect(queryClient.getQueryData(['session', 'sess-1', 'detail'])).toBeUndefined();
+	});
+
+	it('appends new session lines to cached data', () => {
+		const queryClient = new QueryClient();
+		const existingLine: SessionLine = {
+			type: 'user',
+			uuid: 'u-1',
+			lineIndex: 0,
+			message: {role: 'user', content: 'hello'},
+		};
+		queryClient.setQueryData(
+			['session', 'sess-1', 'detail'],
+			makeSessionDetailCache({lines: [existingLine], byteOffset: 100}),
+		);
+
+		applySessionLinesAppended(queryClient, 'sess-1', {
+			sessionId: 'sess-1',
+			lines: [
+				{
+					type: 'assistant',
+					uuid: 'a-1',
+					timestamp: '2026-04-21T00:00:00Z',
+					message: {role: 'assistant', content: [{type: 'text', text: 'response'}]},
+				},
+			],
+		});
+
+		const cached = queryClient.getQueryData<SessionDetailCache>(['session', 'sess-1', 'detail'])!;
+		expect(cached.lines).toHaveLength(2);
+		expect((cached.lines[0] as MessageSessionLine).uuid).toBe('u-1');
+		expect((cached.lines[1] as MessageSessionLine).uuid).toBe('a-1');
+		expect(cached.lines[1]!.lineIndex).toBe(1);
+	});
+
+	it('merges tool results into cached toolResultMap', () => {
+		const queryClient = new QueryClient();
+		queryClient.setQueryData(['session', 'sess-1', 'detail'], makeSessionDetailCache({byteOffset: 0}));
+
+		applySessionLinesAppended(queryClient, 'sess-1', {
+			sessionId: 'sess-1',
+			lines: [
+				{
+					type: 'assistant',
+					uuid: 'a-1',
+					timestamp: '2026-04-21T00:00:00Z',
+					message: {
+						role: 'assistant',
+						content: [{type: 'tool_use', id: 'tool-1', name: 'Bash', input: {command: 'ls'}}],
+					},
+				},
+				{
+					type: 'user',
+					uuid: 'u-1',
+					timestamp: '2026-04-21T00:00:02Z',
+					message: {
+						role: 'user',
+						content: [{type: 'tool_result', tool_use_id: 'tool-1', content: 'output.txt'}],
+					},
+				},
+			],
+		});
+
+		const cached = queryClient.getQueryData<SessionDetailCache>(['session', 'sess-1', 'detail'])!;
+		expect(cached.toolResultMap).toHaveLength(1);
+		expect(cached.toolResultMap[0]![0]).toBe('tool-1');
+		expect(cached.toolResultMap[0]![1].result).toBe('output.txt');
+		expect(cached.toolResultMap[0]![1].duration).toBe(2000);
+	});
+
+	it('does not modify cache when lines contain only non-user/assistant types', () => {
+		const queryClient = new QueryClient();
+		const original = makeSessionDetailCache({byteOffset: 50});
+		queryClient.setQueryData(['session', 'sess-1', 'detail'], original);
+
+		applySessionLinesAppended(queryClient, 'sess-1', {
+			sessionId: 'sess-1',
+			lines: [
+				{type: 'progress', uuid: 'p-1'},
+				{type: 'system', uuid: 's-1'},
+			],
+		});
+
+		const cached = queryClient.getQueryData<SessionDetailCache>(['session', 'sess-1', 'detail'])!;
+		// Same reference since setQueryData was not called.
+		expect(cached).toBe(original);
+	});
+
+	it('preserves existing tool results when merging new ones', () => {
+		const queryClient = new QueryClient();
+		const existingToolResult: [string, ToolResultInfo] = [
+			'tool-0',
+			{result: 'old', isError: false, resultUuid: 'u-0'},
+		];
+		queryClient.setQueryData(
+			['session', 'sess-1', 'detail'],
+			makeSessionDetailCache({toolResultMap: [existingToolResult], byteOffset: 100}),
+		);
+
+		applySessionLinesAppended(queryClient, 'sess-1', {
+			sessionId: 'sess-1',
+			lines: [
+				{
+					type: 'assistant',
+					uuid: 'a-1',
+					timestamp: '2026-04-21T00:00:00Z',
+					message: {
+						role: 'assistant',
+						content: [{type: 'tool_use', id: 'tool-1', name: 'Read', input: {file_path: '/tmp/f'}}],
+					},
+				},
+				{
+					type: 'user',
+					uuid: 'u-1',
+					timestamp: '2026-04-21T00:00:01Z',
+					message: {
+						role: 'user',
+						content: [{type: 'tool_result', tool_use_id: 'tool-1', content: 'new data'}],
+					},
+				},
+			],
+		});
+
+		const cached = queryClient.getQueryData<SessionDetailCache>(['session', 'sess-1', 'detail'])!;
+		expect(cached.toolResultMap).toHaveLength(2);
+		expect(cached.toolResultMap[0]![0]).toBe('tool-0');
+		expect(cached.toolResultMap[0]![1].result).toBe('old');
+		expect(cached.toolResultMap[1]![0]).toBe('tool-1');
+		expect(cached.toolResultMap[1]![1].result).toBe('new data');
 	});
 });
