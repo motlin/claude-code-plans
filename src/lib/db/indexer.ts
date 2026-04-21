@@ -8,7 +8,7 @@ import {
 	SessionsIndexSchema,
 	FileHistorySnapshotSchema,
 	CustomTitleRecordSchema,
-	PlanModeAttachmentSchema,
+	AttachmentRecordSchema,
 	TaskFileSchema,
 } from '../schemas';
 import {decodeProjectDir, resolveProjectPath} from '../memory';
@@ -210,8 +210,8 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 			if (line.includes('"plan_mode"')) {
 				try {
 					const parsed = JSON.parse(line);
-					const result = PlanModeAttachmentSchema.safeParse(parsed);
-					if (result.success) {
+					const result = AttachmentRecordSchema.safeParse(parsed);
+					if (result.success && result.data.attachment.type === 'plan_mode') {
 						const planPath = result.data.attachment.planFilePath;
 						if (planPath) {
 							const match = PLAN_PATH_RE.exec(planPath);
