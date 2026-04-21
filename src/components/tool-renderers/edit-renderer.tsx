@@ -63,20 +63,21 @@ function resolveLang(filePath: string): string {
 
 export function EditRenderer({toolCall}: ToolRendererProps) {
 	const filePath = (toolCall.input['file_path'] as string) ?? '';
-	const oldStr = (toolCall.input['old_string'] as string) ?? '';
+	const rawOldStr = toolCall.input['old_string'];
+	const oldStr = (rawOldStr as string) ?? '';
 	const newStr = (toolCall.input['new_string'] as string) ?? '';
 	const {result, isError} = toolCall;
 	const theme = useResolvedTheme();
 
 	const diffData = useMemo(() => {
-		if (oldStr === undefined) return null;
+		if (rawOldStr === undefined) return null;
 		const data = computeDiffData(oldStr, newStr);
 		data.unifiedHunk = buildUnifiedHunk(oldStr, newStr, filePath);
 		data.oldContent = oldStr;
 		data.newContent = newStr;
 		data.filePath = filePath;
 		return data;
-	}, [oldStr, newStr, filePath]);
+	}, [rawOldStr, oldStr, newStr, filePath]);
 
 	const viewData = useMemo(() => {
 		if (!diffData?.unifiedHunk) return null;
