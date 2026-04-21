@@ -41,7 +41,6 @@ import {
 } from '../src/lib/db/queries';
 import * as schema from '../src/lib/db/schema';
 import {eq} from 'drizzle-orm';
-import {baseFields} from './fixtures/base-fields';
 
 const testDir = join(tmpdir(), 'claude-db-test-' + process.pid);
 let db: AppDb;
@@ -53,6 +52,19 @@ function jsonl(...lines: Record<string, unknown>[]): string {
 function makeSessionsIndex(entries: Record<string, unknown>[]): string {
 	return JSON.stringify({version: 1, entries});
 }
+
+const baseFields = {
+	uuid: 'uuid-test',
+	timestamp: '2026-01-01T00:00:00.000Z',
+	sessionId: 'sess-1',
+	parentUuid: null,
+	isSidechain: false,
+	userType: 'external',
+	cwd: '/Users/craig/projects/app',
+	gitBranch: 'main',
+	version: '2.1.71',
+	entrypoint: 'cli',
+};
 
 beforeEach(() => {
 	mkdirSync(testDir, {recursive: true});
