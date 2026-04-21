@@ -103,3 +103,89 @@ export const WithToolCalls: Story = {
 		textHtmlMap: [['0:0', '<p>Read the README</p>']],
 	},
 };
+
+export const WithGroupedAssistantMessages: Story = {
+	args: {
+		sessionId: 'story-session-grouped',
+		lines: [
+			line(0, 'user', 'Refactor the auth module', '2026-04-19T11:00:00Z'),
+			assistantBlocks(
+				1,
+				[{type: 'text', text: "I'll start by reading the current implementation."}],
+				'2026-04-19T11:00:02Z',
+			),
+			assistantBlocks(
+				2,
+				[
+					{
+						type: 'tool_use',
+						id: 'tool-g1',
+						name: 'Read',
+						input: {file_path: '/src/auth.ts'} as SessionContentBlock['input'],
+					},
+				],
+				'2026-04-19T11:00:03Z',
+			),
+			assistantBlocks(
+				3,
+				[
+					{
+						type: 'tool_use',
+						id: 'tool-g2',
+						name: 'Edit',
+						input: {
+							file_path: '/src/auth.ts',
+							old_string: 'function login()',
+							new_string: 'async function login()',
+						} as SessionContentBlock['input'],
+					},
+				],
+				'2026-04-19T11:00:05Z',
+			),
+			assistantBlocks(
+				4,
+				[
+					{
+						type: 'tool_use',
+						id: 'tool-g3',
+						name: 'Bash',
+						input: {command: 'npm test', description: 'Run auth tests'} as SessionContentBlock['input'],
+					},
+				],
+				'2026-04-19T11:00:10Z',
+			),
+			assistantBlocks(
+				5,
+				[{type: 'text', text: 'The auth module has been refactored. All tests pass.'}],
+				'2026-04-19T11:00:15Z',
+			),
+			line(6, 'user', 'Looks good, thanks!', '2026-04-19T11:01:00Z'),
+			assistantBlocks(
+				7,
+				[{type: 'text', text: "You're welcome! Let me know if you need anything else."}],
+				'2026-04-19T11:01:02Z',
+			),
+		],
+		toolResultMap: [
+			[
+				'tool-g1',
+				{
+					result: 'function login() {\n  return fetch("/api/login");\n}',
+					isError: false,
+					resultUuid: 'result-g1',
+					duration: 15,
+				},
+			],
+			['tool-g2', {result: 'OK', isError: false, resultUuid: 'result-g2', duration: 8}],
+			['tool-g3', {result: 'All 12 tests passed', isError: false, resultUuid: 'result-g3', duration: 3200}],
+		],
+		decorations: [],
+		textHtmlMap: [
+			['0:0', '<p>Refactor the auth module</p>'],
+			['1:0', "<p>I'll start by reading the current implementation.</p>"],
+			['5:0', '<p>The auth module has been refactored. All tests pass.</p>'],
+			['6:0', '<p>Looks good, thanks!</p>'],
+			['7:0', "<p>You're welcome! Let me know if you need anything else.</p>"],
+		],
+	},
+};

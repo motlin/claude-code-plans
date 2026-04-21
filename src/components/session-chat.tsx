@@ -17,6 +17,8 @@ import {
 	parseBashOutput,
 	summarizeToolCalls,
 } from '../lib/session-utils';
+import {groupAssistantMessages, type AssistantGroup} from '../lib/assistant-groups';
+import {AssistantMessageGroupHeader, useGroupExpansion} from './assistant-message-group';
 
 function formatTimestamp(timestamp?: string): string | null {
 	if (!timestamp) return null;
@@ -184,57 +186,131 @@ function buildSkipSet(lines: SessionLine[]): Set<number> {
 	return skip;
 }
 
-function SessionLineList({
-	lines,
-	sessionId,
-	toolResultMap,
-	decorations,
-	textHtmlMap,
-	showThinking,
-	showTools,
-}: {
-	lines: SessionLine[];
+interface LineRenderProps {
 	sessionId: string;
 	toolResultMap: Map<string, ToolResultInfo>;
 	decorations: DecorationMap;
 	textHtmlMap: Map<string, string>;
 	showThinking: boolean;
 	showTools: boolean;
+}
+
+function LineEntry({
+	line,
+	index,
+	nextLine,
+	className,
+	...renderProps
+}: LineRenderProps & {
+	line: SessionLine;
+	index: number;
+	nextLine: SessionLine | undefined;
+	className?: string;
+}) {
+	return (
+		<div
+			key={`line-${index}`}
+			id={`msg-${index}`}
+			className={`group relative ${className ?? ''}`}
+		>
+			<MessageToolbar
+				line={line}
+				index={index}
+			/>
+			<SessionMessage
+				line={line}
+				{...renderProps}
+				nextLine={nextLine}
+			/>
+		</div>
+	);
+}
+
+function SessionLineList({
+	lines,
+	...renderProps
+}: LineRenderProps & {
+	lines: SessionLine[];
 }) {
 	const skipSet = useMemo(() => buildSkipSet(lines), [lines]);
+	const grouped = useMemo(() => groupAssistantMessages(lines), [lines]);
 
 	return (
 		<>
-			{lines.map((line, i) => {
-				if (skipSet.has(i)) return null;
-				const prevRole = i > 0 ? lines[i - 1]!.type : null;
-				const isNewTurn = prevRole !== null && prevRole !== line.type;
-				const nextLine = i + 1 < lines.length ? lines[i + 1] : undefined;
+			{grouped.map((entry, groupIndex) => {
+				if (entry.kind === 'line') {
+					const i = entry.index;
+					if (skipSet.has(i)) return null;
+					const prevRole = i > 0 ? lines[i - 1]!.type : null;
+					const isNewTurn = prevRole !== null && prevRole !== lines[i]!.type;
+
+					return (
+						<LineEntry
+							key={`line-${i}`}
+							line={entry.line}
+							index={i}
+							nextLine={lines[i + 1]}
+							className={isNewTurn ? 'pb-6' : ''}
+							{...renderProps}
+						/>
+					);
+				}
 
 				return (
-					<div
-						key={i}
-						id={`msg-${i}`}
-						className={`group relative ${isNewTurn ? 'pb-6' : ''}`}
-					>
-						<MessageToolbar
-							line={line}
-							index={i}
-						/>
-						<SessionMessage
-							line={line}
-							sessionId={sessionId}
-							toolResultMap={toolResultMap}
-							decorations={decorations}
-							textHtmlMap={textHtmlMap}
-							showThinking={showThinking}
-							showTools={showTools}
-							nextLine={nextLine}
-						/>
-					</div>
+					<AssistantGroupSection
+						key={`group-${groupIndex}`}
+						group={entry}
+						lines={lines}
+						skipSet={skipSet}
+						{...renderProps}
+					/>
 				);
 			})}
 		</>
+	);
+}
+
+function AssistantGroupSection({
+	group,
+	lines,
+	skipSet,
+	...renderProps
+}: LineRenderProps & {
+	group: AssistantGroup;
+	lines: SessionLine[];
+	skipSet: Set<number>;
+}) {
+	const [expanded, onToggle] = useGroupExpansion(group);
+
+	return (
+		<div
+			id={`msg-${group.startIndex}`}
+			className="pb-6"
+		>
+			<AssistantMessageGroupHeader
+				group={group}
+				expanded={expanded}
+				onToggle={onToggle}
+			/>
+			<div className={`grid ${expanded ? 'grid-rows-expand' : 'grid-rows-collapse'}`}>
+				<div className="overflow-hidden">
+					{group.lines.map((line, lineOffset) => {
+						const i = group.startIndex + lineOffset;
+						if (skipSet.has(i)) return null;
+
+						return (
+							<LineEntry
+								key={`line-${i}`}
+								line={line}
+								index={i}
+								nextLine={lines[i + 1]}
+								{...renderProps}
+							/>
+						);
+					})}
+				</div>
+			</div>
+		</div>
 	);
 }
 

@@ -100,7 +100,7 @@ describe('Story fixture validation against strict Zod schemas', () => {
 					expect(schema, `No schema registered for tool "${toolName}"`).toBeDefined();
 					if (!schema) return;
 
-					const result = schema.safeParse(input);
+					const result = schema!.safeParse(input);
 					if (!result.success) {
 						const issues = result.error.issues
 							.map((issue) => `  ${issue.path.join('.')}: ${issue.message}`)
@@ -139,7 +139,7 @@ describe('Story fixture validation against strict Zod schemas', () => {
 					expect(schema, `No schema registered for tool "${toolName}"`).toBeDefined();
 					if (!schema) return;
 
-					const result = schema.safeParse(input);
+					const result = schema!.safeParse(input);
 					if (!result.success) {
 						const issues = result.error.issues
 							.map((issue) => `  ${issue.path.join('.')}: ${issue.message}`)
