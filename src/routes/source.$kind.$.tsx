@@ -2,11 +2,7 @@ import {createFileRoute, Link} from '@tanstack/react-router';
 import {createServerFn} from '@tanstack/react-start';
 import {useState} from 'react';
 import {z} from 'zod';
-import {homedir} from 'node:os';
-import {join} from 'node:path';
-import {buildSourceConfig, isValidSourceKind, readSourceFile, type SourceFile} from '../lib/source-view';
-
-const CLAUDE_HOME = join(homedir(), '.claude');
+import type {SourceFile} from '../lib/source-view';
 
 const InputSchema = z.object({
 	kind: z.string(),
@@ -16,9 +12,13 @@ const InputSchema = z.object({
 const getGenericSource = createServerFn({method: 'GET'})
 	.inputValidator(InputSchema)
 	.handler(async ({data}): Promise<SourceFile | null> => {
+		const {homedir} = await import('node:os');
+		const {join} = await import('node:path');
+		const {buildSourceConfig, isValidSourceKind, readSourceFile} = await import('../lib/source-view');
+		const claudeHome = join(homedir(), '.claude');
 		const {kind, relativePath} = data;
 		if (!isValidSourceKind(kind)) return null;
-		const config = buildSourceConfig(kind, CLAUDE_HOME);
+		const config = buildSourceConfig(kind, claudeHome);
 		if (!config) return null;
 		return readSourceFile(kind, config, relativePath);
 	});

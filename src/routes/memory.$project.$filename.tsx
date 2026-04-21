@@ -1,23 +1,22 @@
 import {createFileRoute, Link, useNavigate} from '@tanstack/react-router';
 import {createServerFn} from '@tanstack/react-start';
 import {queryOptions, useSuspenseQuery} from '@tanstack/react-query';
-import {homedir} from 'node:os';
-import {join} from 'node:path';
-import {readMemory, deleteMemory, decodeProjectDir} from '../lib/memory';
 import {renderMarkdown} from '../lib/renderer';
-import {extractTitleFromContent} from '../lib/markdown-utils';
 import {MarkdownArticle} from '../components/markdown-article';
 import {ArrowLeft, Pencil, Trash2} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {DebugLink} from '../components/debug-link';
 import {useCallback, useState} from 'react';
 
-const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
-
 const getMemory = createServerFn({method: 'GET'})
 	.inputValidator((d: {project: string; filename: string}) => d)
 	.handler(async ({data: {project, filename}}) => {
-		const content = await readMemory(PROJECTS_DIR, project, filename);
+		const {homedir} = await import('node:os');
+		const {join} = await import('node:path');
+		const {readMemory, decodeProjectDir} = await import('../lib/memory');
+		const {extractTitleFromContent} = await import('../lib/markdown-utils');
+		const projectsDir = join(homedir(), '.claude', 'projects');
+		const content = await readMemory(projectsDir, project, filename);
 		if (!content) return null;
 		const html = await renderMarkdown(content);
 		const title = extractTitleFromContent(content, filename);
@@ -28,7 +27,11 @@ const getMemory = createServerFn({method: 'GET'})
 const removeMemory = createServerFn({method: 'POST'})
 	.inputValidator((d: {project: string; filename: string}) => d)
 	.handler(async ({data: {project, filename}}) => {
-		return deleteMemory(PROJECTS_DIR, project, filename);
+		const {homedir} = await import('node:os');
+		const {join} = await import('node:path');
+		const {deleteMemory} = await import('../lib/memory');
+		const projectsDir = join(homedir(), '.claude', 'projects');
+		return deleteMemory(projectsDir, project, filename);
 	});
 
 const memoryDetailQueryOptions = (project: string, filename: string) =>
