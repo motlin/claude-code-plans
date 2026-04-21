@@ -16,28 +16,29 @@ import {
 	type TaskSummaryPayload,
 } from './hook-events';
 import {toSessionSummaryPayload} from './session-summary';
+import {hmrPersist, hmrDispose} from './hmr-persist';
 
-// Persist mutable state on globalThis so it survives Vite HMR reloads.
-// Without this, each reload creates fresh module-scoped variables while the
-// old watcher, timers, and SSE clients leak in the previous module closure.
-interface WatcherGlobals {
-	__watcherClients: Set<ReadableStreamDefaultController>;
-	__watcher: FSWatcher | null;
-	__watcherProjectsDir: string;
-	__watcherPlansDir: string;
-	__watcherStatuslineDir: string;
-	__jsonlDebounceTimer: ReturnType<typeof setTimeout> | null;
-	__jsonlLastFired: number;
-	__lastSessionsByProject: Map<string, Map<string, SessionSummaryPayload>>;
-	__lastTasksByProject: Map<string, Map<string, TaskSummaryPayload>>;
-	__jsonlOffsets: Map<string, number>;
-}
+// Persisted state: survives HMR reloads via import.meta.hot.data
+const clients = hmrPersist('watcherClients', () => new Set<ReadableStreamDefaultController>());
+const lastSessionsByProject = hmrPersist(
+	'lastSessionsByProject',
+	() => new Map<string, Map<string, SessionSummaryPayload>>(),
+);
+const lastTasksByProject = hmrPersist('lastTasksByProject', () => new Map<string, Map<string, TaskSummaryPayload>>());
+const jsonlOffsets = hmrPersist('jsonlOffsets', () => new Map<string, number>());
 
-const g = globalThis as unknown as Partial<WatcherGlobals>;
-if (!g.__watcherClients) g.__watcherClients = new Set();
-if (!g.__lastSessionsByProject) g.__lastSessionsByProject = new Map();
-if (!g.__lastTasksByProject) g.__lastTasksByProject = new Map();
-if (!g.__jsonlOffsets) g.__jsonlOffsets = new Map();
+// Transient state: module-scoped, recreated on HMR
+let watcher: FSWatcher | null = null;
+let projectsDir = '';
+let plansDir = '';
+let statuslineDir = '';
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+let lastFired = 0;
+
+hmrDispose(async () => {
+	if (watcher) await watcher.close();
+	if (debounceTimer) clearTimeout(debounceTimer);
+});
 
 const encoder = new TextEncoder();
 
@@ -46,11 +47,11 @@ const JSONL_THROTTLE_MS = 2000;
 
 export function broadcastTyped(type: string, data: Record<string, unknown>): void {
 	const payload = encoder.encode(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
-	for (const client of g.__watcherClients!) {
+	for (const client of clients) {
 		try {
 			client.enqueue(payload);
 		} catch {
-			g.__watcherClients!.delete(client);
+			clients.delete(client);
 		}
 	}
 }
@@ -60,15 +61,15 @@ export function broadcast(): void {
 }
 
 export function addClient(controller: ReadableStreamDefaultController): void {
-	g.__watcherClients!.add(controller);
+	clients.add(controller);
 }
 
 export function removeClient(controller: ReadableStreamDefaultController): void {
-	g.__watcherClients!.delete(controller);
+	clients.delete(controller);
 }
 
 export function getClientCount(): number {
-	return g.__watcherClients!.size;
+	return clients.size;
 }
 
 function sessionSummariesEqual(a: SessionSummaryPayload, b: SessionSummaryPayload): boolean {
@@ -120,7 +121,7 @@ function diffAndBroadcastSessions(projectId: string): void {
 		next.set(row.id, toSessionSummaryPayload(row));
 	}
 
-	const previous = g.__lastSessionsByProject!.get(projectId) ?? new Map();
+	const previous = lastSessionsByProject.get(projectId) ?? new Map();
 	const {added, removed, updated} = diffEntityMaps(previous, next, sessionSummariesEqual);
 
 	for (const session of added) {
@@ -133,7 +134,7 @@ function diffAndBroadcastSessions(projectId: string): void {
 		broadcastTyped(DOMAIN_EVENTS.SESSION_UPDATED, {session});
 	}
 
-	g.__lastSessionsByProject!.set(projectId, next);
+	lastSessionsByProject.set(projectId, next);
 }
 
 /**
@@ -149,7 +150,7 @@ function diffAndBroadcastTasks(projectDir: string): void {
 		next.set(row.taskId, toTaskSummaryPayload(row));
 	}
 
-	const previous = g.__lastTasksByProject!.get(projectDir) ?? new Map();
+	const previous = lastTasksByProject.get(projectDir) ?? new Map();
 	const {added, removed, updated} = diffEntityMaps(previous, next, tasksEqual);
 
 	for (const task of added) {
@@ -172,7 +173,7 @@ function diffAndBroadcastTasks(projectDir: string): void {
 		void taskId;
 	}
 
-	g.__lastTasksByProject!.set(projectDir, next);
+	lastTasksByProject.set(projectDir, next);
 }
 
 /**
@@ -262,27 +263,22 @@ function handleFileChange(path: string): void {
 	const ext = path.slice(path.lastIndexOf('.'));
 	if (!WATCHED_EXTENSIONS.has(ext)) return;
 
-	const projectsDir = g.__watcherProjectsDir ?? '';
-	const plansDir = g.__watcherPlansDir ?? '';
-
 	if (ext === '.jsonl') {
 		// Throttle: fire immediately on the first change, then at most once
 		// per JSONL_THROTTLE_MS. A trailing timer ensures the final batch of
 		// changes is always processed even after writes stop.
 		const now = Date.now();
-		const lastFired = g.__jsonlLastFired ?? 0;
 		const elapsed = now - lastFired;
 
 		const fire = async () => {
-			g.__jsonlLastFired = Date.now();
-			g.__jsonlDebounceTimer = null;
+			lastFired = Date.now();
+			debounceTimer = null;
 
-			// Read new JSONL lines since last known offset and broadcast them.
-			const fromOffset = g.__jsonlOffsets!.get(path) ?? 0;
+			const fromOffset = jsonlOffsets.get(path) ?? 0;
 			try {
 				const {readNewJsonlLines} = await import('./sessions');
 				const {lines: newLines, nextByteOffset} = await readNewJsonlLines(path, fromOffset);
-				g.__jsonlOffsets!.set(path, nextByteOffset);
+				jsonlOffsets.set(path, nextByteOffset);
 
 				if (newLines.length > 0) {
 					broadcastTyped(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {
@@ -298,16 +294,16 @@ function handleFileChange(path: string): void {
 			safeDiffSessions(projectIdFromPath(path, projectsDir));
 		};
 
-		if (g.__jsonlDebounceTimer) clearTimeout(g.__jsonlDebounceTimer);
+		if (debounceTimer) clearTimeout(debounceTimer);
 
 		if (elapsed >= JSONL_THROTTLE_MS) {
 			// Enough time has passed -- fire immediately.
 			void fire();
 		} else {
 			// Schedule a trailing fire for the remaining interval.
-			g.__jsonlDebounceTimer = setTimeout(() => void fire(), JSONL_THROTTLE_MS - elapsed);
+			debounceTimer = setTimeout(() => void fire(), JSONL_THROTTLE_MS - elapsed);
 		}
-	} else if (ext === '.json' && g.__watcherStatuslineDir && path.startsWith(g.__watcherStatuslineDir)) {
+	} else if (ext === '.json' && statuslineDir && path.startsWith(statuslineDir)) {
 		const filename = basename(path);
 		const sessionId = filename.replace(/\.json$/, '');
 		broadcastTyped(SSE_EVENTS.STATUSLINE_UPDATED, {sessionId});
@@ -335,13 +331,10 @@ function handleFileUnlink(path: string): void {
 	const ext = path.slice(path.lastIndexOf('.'));
 	if (!WATCHED_EXTENSIONS.has(ext)) return;
 
-	const projectsDir = g.__watcherProjectsDir ?? '';
-	const plansDir = g.__watcherPlansDir ?? '';
-
 	if (ext === '.md' && plansDir && path.startsWith(plansDir)) {
 		broadcastTyped(DOMAIN_EVENTS.PLAN_REMOVED, {filename: basename(path)});
 	} else if (ext === '.jsonl') {
-		g.__jsonlOffsets!.delete(path);
+		jsonlOffsets.delete(path);
 		safeDiffSessions(projectIdFromPath(path, projectsDir));
 	} else if (ext === '.json' && path.endsWith('sessions-index.json')) {
 		safeDiffSessions(basename(dirname(path)));
@@ -356,46 +349,41 @@ export async function createWatcher(
 	plDir?: string,
 	slDir?: string,
 ): Promise<FSWatcher> {
-	if (projDir) g.__watcherProjectsDir = projDir;
-	if (plDir) g.__watcherPlansDir = plDir;
-	if (slDir) g.__watcherStatuslineDir = slDir;
+	if (projDir) projectsDir = projDir;
+	if (plDir) plansDir = plDir;
+	if (slDir) statuslineDir = slDir;
 
-	// Close previous watcher on HMR reload
-	if (g.__watcher) {
-		await g.__watcher.close();
-	}
-
-	g.__watcher = watch(dirs, {
+	watcher = watch(dirs, {
 		ignoreInitial: true,
 		awaitWriteFinish: {stabilityThreshold: 300, pollInterval: 100},
 		usePolling: true,
 		interval: 1000,
 	});
 
-	g.__watcher.on('add', handleFileChange);
-	g.__watcher.on('change', handleFileChange);
-	g.__watcher.on('unlink', handleFileUnlink);
+	watcher.on('add', handleFileChange);
+	watcher.on('change', handleFileChange);
+	watcher.on('unlink', handleFileUnlink);
 
-	return g.__watcher;
+	return watcher;
 }
 
 export async function closeWatcher(): Promise<void> {
-	if (g.__watcher) {
-		await g.__watcher.close();
-		g.__watcher = null;
+	if (watcher) {
+		await watcher.close();
+		watcher = null;
 	}
-	if (g.__jsonlDebounceTimer) {
-		clearTimeout(g.__jsonlDebounceTimer);
-		g.__jsonlDebounceTimer = null;
+	if (debounceTimer) {
+		clearTimeout(debounceTimer);
+		debounceTimer = null;
 	}
-	for (const client of g.__watcherClients!) {
+	for (const client of clients) {
 		try {
 			client.close();
 		} catch {
 			// already closed
 		}
 	}
-	g.__watcherClients!.clear();
+	clients.clear();
 }
 
 // ---------------------------------------------------------------------------
