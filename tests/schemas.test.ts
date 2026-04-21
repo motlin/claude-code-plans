@@ -513,11 +513,10 @@ describe('parseJsonlRecord', () => {
 		expect(parseJsonlRecord('   ')).toBeNull();
 	});
 
-	it('returns the raw parsed object for unknown types', () => {
+	it('returns null for unknown record types (strict schema rejects them)', () => {
 		const line = JSON.stringify({type: 'unknown-future-type', data: 'stuff'});
 		const result = parseJsonlRecord(line);
-		expect(result).not.toBeNull();
-		expect(result!.type).toBe('unknown-future-type');
+		expect(result).toBeNull();
 	});
 });
 

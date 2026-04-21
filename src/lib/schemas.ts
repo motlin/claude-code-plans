@@ -99,9 +99,9 @@ export const UserRecordSchema = z
 				role: z.literal('user'),
 				content: z.union([z.string(), z.array(ContentBlockSchema)]),
 			})
-			.passthrough(),
+			.strict(),
 	})
-	.passthrough();
+	.strict();
 
 export const AssistantRecordSchema = z
 	.object({
@@ -119,9 +119,9 @@ export const AssistantRecordSchema = z
 				stop_sequence: z.union([z.string(), z.null()]).optional(),
 				usage: z.record(z.string(), z.unknown()).optional(),
 			})
-			.passthrough(),
+			.strict(),
 	})
-	.passthrough();
+	.strict();
 
 export const CustomTitleRecordSchema = z
 	.object({
@@ -129,18 +129,22 @@ export const CustomTitleRecordSchema = z
 		customTitle: z.string(),
 		sessionId: z.string(),
 	})
-	.passthrough();
+	.strict();
 
 export const FileHistorySnapshotSchema = z
 	.object({
 		type: z.literal('file-history-snapshot'),
+		messageId: z.string().optional(),
+		isSnapshotUpdate: z.boolean().optional(),
 		snapshot: z
 			.object({
+				messageId: z.string().optional(),
+				timestamp: z.string().optional(),
 				trackedFileBackups: z.record(z.string(), z.unknown()),
 			})
-			.passthrough(),
+			.strict(),
 	})
-	.passthrough();
+	.strict();
 
 /**
  * Attachment record emitted when a session is in plan mode. Contains the
@@ -155,10 +159,13 @@ export const PlanModeAttachmentSchema = z
 			.object({
 				type: z.literal('plan_mode'),
 				planFilePath: z.string().optional(),
+				reminderType: z.string().optional(),
+				isSubAgent: z.boolean().optional(),
+				planExists: z.boolean().optional(),
 			})
-			.passthrough(),
+			.strict(),
 	})
-	.passthrough();
+	.strict();
 
 export const ProgressRecordSchema = z
 	.object({
@@ -168,7 +175,7 @@ export const ProgressRecordSchema = z
 		toolUseID: z.string().optional(),
 		parentToolUseID: z.string().optional(),
 	})
-	.passthrough();
+	.strict();
 
 export const SystemRecordSchema = z
 	.object({
@@ -181,7 +188,7 @@ export const SystemRecordSchema = z
 		isMeta: z.boolean().optional(),
 		toolUseID: z.string().optional(),
 	})
-	.passthrough();
+	.strict();
 
 export const LastPromptRecordSchema = z
 	.object({
@@ -189,7 +196,7 @@ export const LastPromptRecordSchema = z
 		lastPrompt: z.string(),
 		sessionId: z.string(),
 	})
-	.passthrough();
+	.strict();
 
 export const QueueOperationRecordSchema = z
 	.object({
@@ -199,22 +206,22 @@ export const QueueOperationRecordSchema = z
 		sessionId: z.string().optional(),
 		content: z.string().optional(),
 	})
-	.passthrough();
+	.strict();
 
 /**
  * Discriminated union of all known JSONL record types.
- * Falls back to a generic { type: string } for unknown types.
+ * Unknown record types are hard errors -- they mean we need a new schema branch.
  */
-export const JsonlRecordSchema = z.union([
+export const JsonlRecordSchema = z.discriminatedUnion('type', [
 	UserRecordSchema,
 	AssistantRecordSchema,
 	CustomTitleRecordSchema,
 	FileHistorySnapshotSchema,
+	PlanModeAttachmentSchema,
 	ProgressRecordSchema,
 	SystemRecordSchema,
 	LastPromptRecordSchema,
 	QueueOperationRecordSchema,
-	z.object({type: z.string()}).passthrough(),
 ]);
 
 // ---------------------------------------------------------------------------
