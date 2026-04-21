@@ -3,8 +3,6 @@ import type {ErrorComponentProps} from '@tanstack/react-router';
 import {createServerFn} from '@tanstack/react-start';
 import {queryOptions, useSuspenseQuery} from '@tanstack/react-query';
 import {z} from 'zod';
-import {homedir} from 'node:os';
-import {join} from 'node:path';
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import type {SessionLine, ToolResultInfo} from '../lib/sessions';
 import {
@@ -37,8 +35,6 @@ import {SubagentTree} from '../components/subagent-tree';
 import {SubagentGantt} from '../components/subagent-gantt';
 import {SubagentSequence} from '../components/subagent-sequence';
 import {useDebug} from '../components/debug-provider';
-
-const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
 /**
  * Walk the subagent tree and produce a map from `agentId` (without `agent-` prefix)
@@ -281,9 +277,12 @@ async function buildTextHtmlMap(lines: SessionLine[]): Promise<Map<string, strin
 const getSession = createServerFn({method: 'GET'})
 	.inputValidator(z.object({id: z.string()}))
 	.handler(async ({data: {id}}) => {
+		const {homedir} = await import('node:os');
+		const {join} = await import('node:path');
+		const projectsDir = join(homedir(), '.claude', 'projects');
 		const {readSessionLines} = await import('../lib/sessions');
 		const [detail, subagentResult, starResult] = await Promise.all([
-			readSessionLines(PROJECTS_DIR, id),
+			readSessionLines(projectsDir, id),
 			getSubagentTree({data: id}),
 			isStarred({data: id}),
 		]);

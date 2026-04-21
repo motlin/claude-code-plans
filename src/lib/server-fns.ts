@@ -1,7 +1,5 @@
 import {createServerFn} from '@tanstack/react-start';
 import {z} from 'zod';
-import {homedir} from 'node:os';
-import {join} from 'node:path';
 import {
 	listProjectsFromDb,
 	listSessionsFromDb,
@@ -25,12 +23,22 @@ import {
 	listCwdsForProject,
 } from './db/queries';
 
-const PLANS_DIR = join(homedir(), '.claude', 'plans');
-const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
+async function claudeDirs() {
+	const {homedir} = await import('node:os');
+	const {join} = await import('node:path');
+	const home = homedir();
+	return {
+		plansDir: join(home, '.claude', 'plans'),
+		projectsDir: join(home, '.claude', 'projects'),
+		claudeHome: join(home, '.claude'),
+		join,
+	};
+}
 
 export const getPlans = createServerFn({method: 'GET'}).handler(async () => {
+	const {plansDir} = await claudeDirs();
 	const {listPlans} = await import('./plans');
-	const plans = await listPlans(PLANS_DIR);
+	const plans = await listPlans(plansDir);
 	return plans.map((p) => ({
 		filename: p.filename,
 		title: p.title,
@@ -45,8 +53,9 @@ type PlanGroupResult = {
 };
 
 export const getPlansGrouped = createServerFn({method: 'GET'}).handler(async () => {
+	const {plansDir} = await claudeDirs();
 	const {listPlans} = await import('./plans');
-	const plans = await listPlans(PLANS_DIR);
+	const plans = await listPlans(plansDir);
 	const {getDb} = await import('./db');
 	const {index} = getDb();
 	const mappings = getPlanProjectMappings(index);
@@ -107,8 +116,9 @@ export const getPlansGrouped = createServerFn({method: 'GET'}).handler(async () 
 });
 
 export const getMemories = createServerFn({method: 'GET'}).handler(async () => {
+	const {projectsDir} = await claudeDirs();
 	const {listMemories} = await import('./memory');
-	const groups = await listMemories(PROJECTS_DIR);
+	const groups = await listMemories(projectsDir);
 	return groups.map((g) => ({
 		project: g.project,
 		projectName: g.projectName,
@@ -143,6 +153,7 @@ export const getSessions = createServerFn({method: 'GET'}).handler(async () => {
 });
 
 export const getProjects = createServerFn({method: 'GET'}).handler(async () => {
+	const {projectsDir, join} = await claudeDirs();
 	const {getDb} = await import('./db');
 	const {index} = getDb();
 	const projects = listProjectsFromDb(index);
@@ -171,7 +182,7 @@ export const getProjects = createServerFn({method: 'GET'}).handler(async () => {
 		projects.map(async (p) => {
 			let memoryCount = 0;
 			try {
-				const memDir = join(PROJECTS_DIR, p.id, 'memory');
+				const memDir = join(projectsDir, p.id, 'memory');
 				const {readdir} = await import('node:fs/promises');
 				const files = await readdir(memDir);
 				memoryCount = files.filter((f) => f.endsWith('.md')).length;
@@ -201,13 +212,14 @@ export const getProjects = createServerFn({method: 'GET'}).handler(async () => {
 export const getProject = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: projectId}) => {
+		const {projectsDir, plansDir, join} = await claudeDirs();
 		const {getDb} = await import('./db');
 		const {index} = getDb();
 		const detail = getProjectDetailFromDb(index, projectId);
 		if (!detail) return null;
 
 		// Get memories from filesystem (still user-editable .md files)
-		const memDir = join(PROJECTS_DIR, projectId, 'memory');
+		const memDir = join(projectsDir, projectId, 'memory');
 		const memories: Array<{
 			filename: string;
 			title: string;
@@ -278,7 +290,7 @@ export const getProject = createServerFn({method: 'GET'})
 			todoCounts,
 			plans: await Promise.all(
 				[...new Map(detail.planLinks.map((p) => [p.planFilename, p])).values()].map(async (p) => {
-					const planPath = join(PLANS_DIR, p.planFilename);
+					const planPath = join(plansDir, p.planFilename);
 					const title = await extractTitle(planPath, p.planFilename);
 					return {
 						filename: p.planFilename,
@@ -467,8 +479,9 @@ export const getUserCommandRendered = createServerFn({method: 'GET'})
 // ---------------------------------------------------------------------------
 
 export const getHookStatus = createServerFn({method: 'GET'}).handler(async () => {
+	const {claudeHome, join} = await claudeDirs();
 	const {generateHooksConfig, HOOK_EVENT_NAMES} = await import('./hook-config');
-	const settingsPath = join(homedir(), '.claude', 'settings.json');
+	const settingsPath = join(claudeHome, 'settings.json');
 	const {readFile} = await import('node:fs/promises');
 
 	let existing: Record<string, unknown> = {};
@@ -505,13 +518,14 @@ export const getHookStatus = createServerFn({method: 'GET'}).handler(async () =>
 export const installHooks = createServerFn({method: 'POST'})
 	.inputValidator((input: unknown) => z.object({port: z.number().optional()}).parse(input))
 	.handler(async ({data}) => {
+		const {claudeHome, join} = await claudeDirs();
 		const {generateHooksConfig} = await import('./hook-config');
 		const {readFile, writeFile, mkdir} = await import('node:fs/promises');
-		const settingsPath = join(homedir(), '.claude', 'settings.json');
+		const settingsPath = join(claudeHome, 'settings.json');
 		const config = generateHooksConfig(data.port !== undefined ? {port: data.port} : undefined);
 
 		// Ensure ~/.claude/ exists
-		await mkdir(join(homedir(), '.claude'), {recursive: true});
+		await mkdir(claudeHome, {recursive: true});
 
 		// Read existing settings
 		let existing: Record<string, unknown> = {};
@@ -551,9 +565,10 @@ export const installHooks = createServerFn({method: 'POST'})
 export const uninstallHooks = createServerFn({method: 'POST'})
 	.inputValidator((input: unknown) => z.object({port: z.number().optional()}).parse(input))
 	.handler(async ({data}) => {
+		const {claudeHome, join} = await claudeDirs();
 		const {generateHooksConfig} = await import('./hook-config');
 		const {readFile, writeFile} = await import('node:fs/promises');
-		const settingsPath = join(homedir(), '.claude', 'settings.json');
+		const settingsPath = join(claudeHome, 'settings.json');
 		const config = generateHooksConfig(data.port !== undefined ? {port: data.port} : undefined);
 
 		let existing: Record<string, unknown>;
@@ -649,12 +664,13 @@ function projectScopeBase(detail: NonNullable<ReturnType<typeof getProjectDetail
 export const getProjectMemoriesList = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: projectId}) => {
+		const {projectsDir, join} = await claudeDirs();
 		const {getDb} = await import('./db');
 		const {index} = getDb();
 		const detail = getProjectDetailFromDb(index, projectId);
 		if (!detail) return null;
 
-		const memDir = join(PROJECTS_DIR, projectId, 'memory');
+		const memDir = join(projectsDir, projectId, 'memory');
 		const {readdir, stat} = await import('node:fs/promises');
 		let mdFiles: string[];
 		try {
@@ -688,6 +704,7 @@ export const getProjectMemoriesList = createServerFn({method: 'GET'})
 export const getProjectPlansList = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: projectId}) => {
+		const {plansDir, join} = await claudeDirs();
 		const {getDb} = await import('./db');
 		const {index} = getDb();
 		const detail = getProjectDetailFromDb(index, projectId);
@@ -698,7 +715,7 @@ export const getProjectPlansList = createServerFn({method: 'GET'})
 		const {extractTitle} = await import('./markdown-utils');
 		const plans = await Promise.all(
 			uniqueLinks.map(async (p) => {
-				const planPath = join(PLANS_DIR, p.planFilename);
+				const planPath = join(plansDir, p.planFilename);
 				const [statResult, title] = await Promise.all([
 					stat(planPath).catch(() => null),
 					extractTitle(planPath, p.planFilename),
@@ -838,6 +855,7 @@ export const getProjectTasksDetailed = createServerFn({method: 'GET'})
 export const getStatusline = createServerFn({method: 'GET'})
 	.inputValidator(z.object({sessionId: z.string()}))
 	.handler(async ({data: {sessionId}}) => {
+		const {join} = await claudeDirs();
 		const {getCacheDir} = await import('./db/connection');
 		const filePath = join(getCacheDir(), 'statusline', `${sessionId}.json`);
 		try {
