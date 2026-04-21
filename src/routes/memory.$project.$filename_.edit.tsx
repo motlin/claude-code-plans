@@ -2,11 +2,7 @@ import {createFileRoute, Link, useNavigate} from '@tanstack/react-router';
 import {createServerFn} from '@tanstack/react-start';
 import {queryOptions, useSuspenseQuery} from '@tanstack/react-query';
 import {z} from 'zod';
-import {homedir} from 'node:os';
-import {join} from 'node:path';
-import {readMemory, writeMemory, decodeProjectDir} from '../lib/memory';
 import {renderMarkdown} from '../lib/renderer';
-import {extractTitleFromContent} from '../lib/markdown-utils';
 import {lazy, Suspense, useCallback, useEffect, useRef, useState} from 'react';
 
 const MarkdownEditor = lazy(() => import('../components/markdown-editor').then((m) => ({default: m.MarkdownEditor})));
@@ -17,12 +13,15 @@ function ClientOnly({children, fallback}: {children: React.ReactNode; fallback: 
 	return mounted ? children : fallback;
 }
 
-const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
-
 const getMemoryRaw = createServerFn({method: 'GET'})
 	.inputValidator(z.object({project: z.string(), filename: z.string()}))
 	.handler(async ({data: {project, filename}}) => {
-		const content = await readMemory(PROJECTS_DIR, project, filename);
+		const {homedir} = await import('node:os');
+		const {join} = await import('node:path');
+		const {readMemory, decodeProjectDir} = await import('../lib/memory');
+		const {extractTitleFromContent} = await import('../lib/markdown-utils');
+		const projectsDir = join(homedir(), '.claude', 'projects');
+		const content = await readMemory(projectsDir, project, filename);
 		if (!content) return null;
 		const title = extractTitleFromContent(content, filename);
 		const projectName = decodeProjectDir(project);
@@ -32,7 +31,12 @@ const getMemoryRaw = createServerFn({method: 'GET'})
 const saveMemory = createServerFn({method: 'POST'})
 	.inputValidator(z.object({project: z.string(), filename: z.string(), content: z.string()}))
 	.handler(async ({data: {project, filename, content}}) => {
-		const ok = await writeMemory(PROJECTS_DIR, project, filename, content);
+		const {homedir} = await import('node:os');
+		const {join} = await import('node:path');
+		const {writeMemory, decodeProjectDir} = await import('../lib/memory');
+		const {extractTitleFromContent} = await import('../lib/markdown-utils');
+		const projectsDir = join(homedir(), '.claude', 'projects');
+		const ok = await writeMemory(projectsDir, project, filename, content);
 		if (!ok) return null;
 		const html = await renderMarkdown(content);
 		const title = extractTitleFromContent(content, filename);

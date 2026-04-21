@@ -2,11 +2,7 @@ import {createFileRoute, Link, useNavigate} from '@tanstack/react-router';
 import {createServerFn} from '@tanstack/react-start';
 import {queryOptions, useSuspenseQuery} from '@tanstack/react-query';
 import {z} from 'zod';
-import {homedir} from 'node:os';
-import {join} from 'node:path';
-import {readPlan, writePlan} from '../lib/plans';
 import {renderMarkdown} from '../lib/renderer';
-import {extractTitleFromContent} from '../lib/markdown-utils';
 import {lazy, Suspense, useCallback, useEffect, useRef, useState} from 'react';
 
 const MarkdownEditor = lazy(() => import('../components/markdown-editor').then((m) => ({default: m.MarkdownEditor})));
@@ -17,12 +13,15 @@ function ClientOnly({children, fallback}: {children: React.ReactNode; fallback: 
 	return mounted ? children : fallback;
 }
 
-const PLANS_DIR = join(homedir(), '.claude', 'plans');
-
 const getPlanRaw = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: filename}) => {
-		const content = await readPlan(PLANS_DIR, filename);
+		const {homedir} = await import('node:os');
+		const {join} = await import('node:path');
+		const {readPlan} = await import('../lib/plans');
+		const {extractTitleFromContent} = await import('../lib/markdown-utils');
+		const plansDir = join(homedir(), '.claude', 'plans');
+		const content = await readPlan(plansDir, filename);
 		if (!content) return null;
 		const title = extractTitleFromContent(content, filename);
 		return {markdown: content, title};
@@ -31,7 +30,12 @@ const getPlanRaw = createServerFn({method: 'GET'})
 const savePlan = createServerFn({method: 'POST'})
 	.inputValidator(z.object({filename: z.string(), content: z.string()}))
 	.handler(async ({data: {filename, content}}) => {
-		const ok = await writePlan(PLANS_DIR, filename, content);
+		const {homedir} = await import('node:os');
+		const {join} = await import('node:path');
+		const {writePlan} = await import('../lib/plans');
+		const {extractTitleFromContent} = await import('../lib/markdown-utils');
+		const plansDir = join(homedir(), '.claude', 'plans');
+		const ok = await writePlan(plansDir, filename, content);
 		if (!ok) return null;
 		const html = await renderMarkdown(content);
 		const title = extractTitleFromContent(content, filename);

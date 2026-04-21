@@ -1,28 +1,27 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
 import {createServerFn} from '@tanstack/react-start';
 import {queryOptions, useSuspenseQuery} from '@tanstack/react-query';
-import {homedir} from 'node:os';
-import {join} from 'node:path';
-import {readPlan, getPlanMtime} from '../lib/plans';
 import {renderMarkdown} from '../lib/renderer';
-import {extractTitleFromContent} from '../lib/markdown-utils';
 import {MarkdownArticle} from '../components/markdown-article';
 import {getPlanLinks} from '../lib/server-fns';
 import {ArrowLeft, Pencil, FolderOpen, MessageSquare, Clock} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {DebugLink} from '../components/debug-link';
 
-const PLANS_DIR = join(homedir(), '.claude', 'plans');
-
 const getPlan = createServerFn({method: 'GET'})
 	.inputValidator((d: string) => d)
 	.handler(async ({data: filename}) => {
-		const content = await readPlan(PLANS_DIR, filename);
+		const {homedir} = await import('node:os');
+		const {join} = await import('node:path');
+		const {readPlan, getPlanMtime} = await import('../lib/plans');
+		const {extractTitleFromContent} = await import('../lib/markdown-utils');
+		const plansDir = join(homedir(), '.claude', 'plans');
+		const content = await readPlan(plansDir, filename);
 		if (!content) return null;
 		const html = await renderMarkdown(content);
 		const title = extractTitleFromContent(content, filename);
 		const links = await getPlanLinks({data: filename});
-		const mtime = await getPlanMtime(PLANS_DIR, filename);
+		const mtime = await getPlanMtime(plansDir, filename);
 		return {html, title, links, mtime: mtime?.toISOString() ?? null};
 	});
 
