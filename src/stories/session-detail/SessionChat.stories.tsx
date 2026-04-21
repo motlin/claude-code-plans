@@ -2,7 +2,7 @@ import type {Meta, StoryObj} from '@storybook/react-vite';
 import {SessionChat} from '../../components/session-chat';
 import type {SessionLine, SessionContentBlock} from '../../lib/sessions';
 
-function line(index: number, type: string, content: string, timestamp?: string): SessionLine {
+function line(index: number, type: 'user' | 'assistant', content: string, timestamp?: string): SessionLine {
 	return {
 		type,
 		uuid: `uuid-${index}`,

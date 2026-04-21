@@ -4,7 +4,7 @@ import {join} from 'node:path';
 import {createInterface} from 'node:readline';
 import {homedir} from 'node:os';
 import {decodeProjectDir, resolveProjectName} from './memory';
-import {SessionsIndexSchema, CustomTitleRecordSchema} from './schemas';
+import {SessionsIndexSchema, CustomTitleRecordSchema, JsonlRecordSchema} from './schemas';
 
 export interface SessionEntry {
 	id: string;
@@ -70,43 +70,55 @@ export interface SessionDetail {
 	uuidToLine: Map<string, number>;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- TanStack serialization narrows unknown to {}
+type SerializableValue = Record<string, {}>;
+
 /**
- * A single parsed JSONL line, preserving the original structure from Claude Code.
- * The `type` field determines which switching component renders it.
+ * A content block serializable via TanStack. Mirrors the Zod ContentBlock
+ * discriminated union but uses SerializableValue for the tool_use input field
+ * so TanStack's serialization validation passes. The `type` field is a string
+ * literal union matching all known content block types from the Zod schema.
+ */
+export interface SerializableContentBlock {
+	type: 'text' | 'tool_use' | 'thinking' | 'tool_result' | 'image' | 'document';
+	text?: string | undefined;
+	thinking?: string | undefined;
+	signature?: string | undefined;
+	name?: string | undefined;
+	id?: string | undefined;
+	input?: SerializableValue | undefined;
+	caller?: string | SerializableValue | undefined;
+	tool_use_id?: string | undefined;
+	content?: string | Array<{type: string; text: string}> | undefined;
+	is_error?: boolean | undefined;
+	source?: {type: string; media_type: string; data: string} | undefined;
+}
+
+/**
+ * SessionContentBlock is the serializable content block type used
+ * in SessionLine and passed across the TanStack serialization boundary.
+ */
+export type SessionContentBlock = SerializableContentBlock;
+
+/**
+ * A single parsed JSONL line for rendering. Only user and assistant records
+ * are included in the rendering array. The `type` field is a string literal
+ * union so TypeScript narrows the message shape after checking it.
  */
 export interface SessionLine {
-	type: string;
+	type: 'user' | 'assistant';
 	uuid?: string | undefined;
 	parentUuid?: string | undefined;
 	timestamp?: string | undefined;
 	message?:
 		| {
 				role?: string | undefined;
-				content?: string | SessionContentBlock[] | undefined;
+				content?: string | SerializableContentBlock[] | undefined;
 		  }
 		| undefined;
 	customTitle?: string | undefined;
 	sessionId?: string | undefined;
 	lineIndex: number;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- TanStack serialization narrows unknown to {}
-type SerializableValue = Record<string, {}>;
-
-/**
- * A content block within a message, preserving the original JSONL structure.
- */
-export interface SessionContentBlock {
-	type: string;
-	text?: string | undefined;
-	thinking?: string | undefined;
-	name?: string | undefined;
-	id?: string | undefined;
-	input?: SerializableValue | undefined;
-	tool_use_id?: string | undefined;
-	content?: string | Array<{type: string; text: string}> | undefined;
-	is_error?: boolean | undefined;
-	source?: {type: string; media_type: string; data: string} | undefined;
 }
 
 /**
@@ -145,19 +157,7 @@ import {
 
 export {stripCommandTags, parseBashInput, parseBashOutput, parseCommandBlock, extractSessionTitle, summarizeToolCalls};
 
-interface JsonlEntry {
-	type: string;
-	uuid?: string;
-	timestamp?: string;
-	customTitle?: string;
-	sessionId?: string;
-	message?: {
-		role?: string;
-		content?: string | ContentBlock[];
-	};
-}
-
-interface ContentBlock {
+interface RawContentBlock {
 	type: string;
 	text?: string;
 	thinking?: string;
@@ -168,6 +168,18 @@ interface ContentBlock {
 	content?: unknown;
 	is_error?: boolean;
 	source?: {type: string; media_type: string; data: string};
+}
+
+interface JsonlEntry {
+	type: string;
+	uuid?: string;
+	timestamp?: string;
+	customTitle?: string;
+	sessionId?: string;
+	message?: {
+		role?: string;
+		content?: string | RawContentBlock[];
+	};
 }
 
 function extractFirstUserText(line: string): string | null {
@@ -773,45 +785,42 @@ export async function readSessionLines(projectsDir: string, sessionId: string): 
 
 	let lineIndex = -1;
 	try {
-		for await (const line of rl) {
+		for await (const rawLine of rl) {
 			lineIndex++;
-			if (!line.trim()) continue;
+			if (!rawLine.trim()) continue;
 
-			let obj: Record<string, unknown>;
+			let json: unknown;
 			try {
-				obj = JSON.parse(line) as Record<string, unknown>;
+				json = JSON.parse(rawLine);
 			} catch {
 				continue;
 			}
 
-			const uuid = typeof obj['uuid'] === 'string' ? obj['uuid'] : undefined;
+			const parsed = JsonlRecordSchema.safeParse(json);
+			if (!parsed.success) continue;
+			const record = parsed.data;
+
+			const uuid = 'uuid' in record && typeof record.uuid === 'string' ? record.uuid : undefined;
 			if (uuid) uuidToLine.set(uuid, lineIndex);
 
-			const type = obj['type'] as string;
-
-			if (type === 'custom-title') {
-				const parsed = CustomTitleRecordSchema.safeParse(obj);
-				if (parsed.success) {
-					customTitle = parsed.data.customTitle;
-				}
+			if (record.type === 'custom-title') {
+				customTitle = record.customTitle;
 				continue;
 			}
 
 			// Extract title from first user text
-			if (type === 'user' && title === sessionId) {
-				const message = obj['message'] as {content?: string | SessionContentBlock[]} | undefined;
-				if (message?.content) {
-					if (typeof message.content === 'string') {
-						const cleaned = stripCommandTags(message.content);
-						if (cleaned) title = extractSessionTitle(cleaned, sessionId);
-					} else if (Array.isArray(message.content)) {
-						for (const block of message.content) {
-							if (block.type === 'text' && typeof block.text === 'string') {
-								const cleaned = stripCommandTags(block.text);
-								if (cleaned) {
-									title = extractSessionTitle(cleaned, sessionId);
-									break;
-								}
+			if (record.type === 'user' && title === sessionId) {
+				const {content} = record.message;
+				if (typeof content === 'string') {
+					const cleaned = stripCommandTags(content);
+					if (cleaned) title = extractSessionTitle(cleaned, sessionId);
+				} else if (Array.isArray(content)) {
+					for (const block of content) {
+						if (block.type === 'text') {
+							const cleaned = stripCommandTags(block.text);
+							if (cleaned) {
+								title = extractSessionTitle(cleaned, sessionId);
+								break;
 							}
 						}
 					}
@@ -819,12 +828,12 @@ export async function readSessionLines(projectsDir: string, sessionId: string): 
 			}
 
 			// Build tool_use -> tool_result pairing map
-			if (type === 'assistant') {
-				const message = obj['message'] as {content?: SessionContentBlock[]} | undefined;
-				const timestamp = typeof obj['timestamp'] === 'string' ? obj['timestamp'] : undefined;
-				if (Array.isArray(message?.content)) {
-					for (const block of message.content) {
-						if (block.type === 'tool_use' && block.id) {
+			if (record.type === 'assistant') {
+				const {content} = record.message;
+				const timestamp = record.timestamp;
+				if (Array.isArray(content)) {
+					for (const block of content) {
+						if (block.type === 'tool_use') {
 							if (timestamp) {
 								const t = new Date(timestamp).getTime();
 								if (!isNaN(t)) toolStartTimes.set(block.id, t);
@@ -834,12 +843,12 @@ export async function readSessionLines(projectsDir: string, sessionId: string): 
 				}
 			}
 
-			if (type === 'user') {
-				const message = obj['message'] as {content?: string | SessionContentBlock[]} | undefined;
-				const timestamp = typeof obj['timestamp'] === 'string' ? obj['timestamp'] : undefined;
-				if (Array.isArray(message?.content)) {
-					for (const block of message.content as SessionContentBlock[]) {
-						if (block.type === 'tool_result' && block.tool_use_id) {
+			if (record.type === 'user') {
+				const {content} = record.message;
+				const timestamp = record.timestamp;
+				if (Array.isArray(content)) {
+					for (const block of content) {
+						if (block.type === 'tool_result') {
 							const rawResult = extractToolResultContent(block.content);
 							if (rawResult !== undefined) {
 								const resultText = stripResultTags(rawResult);
@@ -863,19 +872,19 @@ export async function readSessionLines(projectsDir: string, sessionId: string): 
 			}
 
 			// Only include user/assistant lines for the rendering tree
-			if (type !== 'user' && type !== 'assistant') continue;
+			if (record.type !== 'user' && record.type !== 'assistant') continue;
 
 			const sessionLine: SessionLine = {
-				type,
+				type: record.type,
 				lineIndex,
 			};
 			if (uuid !== undefined) sessionLine.uuid = uuid;
-			const parentUuid = obj['parentUuid'];
-			if (typeof parentUuid === 'string') sessionLine.parentUuid = parentUuid;
-			const timestamp = obj['timestamp'];
-			if (typeof timestamp === 'string') sessionLine.timestamp = timestamp;
-			const message = obj['message'] as {role?: string; content?: string | SessionContentBlock[]} | undefined;
-			if (message) sessionLine.message = message;
+			if (typeof record.parentUuid === 'string') sessionLine.parentUuid = record.parentUuid;
+			if (record.timestamp !== undefined) sessionLine.timestamp = record.timestamp;
+			// The Zod-parsed message is structurally compatible with SessionLine.message
+			// but uses Record<string, unknown> for tool input vs SerializableValue.
+			// Cast is safe because the runtime data is identical.
+			sessionLine.message = record.message as SessionLine['message'];
 
 			lines.push(sessionLine);
 		}

@@ -23,7 +23,7 @@ type Story = StoryObj<typeof meta>;
 export const Success: Story = {
 	args: {
 		toolCall: makeToolCall({
-			input: {command: 'ls -la src/'},
+			input: {command: 'ls -la src/', description: 'List files in src directory'},
 			result: '$ ls -la src/\ntotal 48\ndrwxr-xr-x  12 user staff  384 Apr 19 10:00 .\ndrwxr-xr-x   8 user staff  256 Apr 19 09:55 ..\n-rw-r--r--   1 user staff 1234 Apr 19 10:00 index.ts\n-rw-r--r--   1 user staff  567 Apr 19 09:50 app.tsx',
 			param: 'ls -la src/',
 		}),
@@ -33,7 +33,7 @@ export const Success: Story = {
 export const Error: Story = {
 	args: {
 		toolCall: makeToolCall({
-			input: {command: 'cat /nonexistent/file.txt'},
+			input: {command: 'cat /nonexistent/file.txt', description: 'Read nonexistent file'},
 			result: '$ cat /nonexistent/file.txt\ncat: /nonexistent/file.txt: No such file or directory',
 			isError: true,
 			param: 'cat /nonexistent/file.txt',
@@ -44,7 +44,7 @@ export const Error: Story = {
 export const AnsiEscapeCodes: Story = {
 	args: {
 		toolCall: makeToolCall({
-			input: {command: 'npm test'},
+			input: {command: 'npm test', description: 'Run the test suite'},
 			result: '$ npm test\n\x1b[32m PASS \x1b[39m src/app.test.ts\n\x1b[32m PASS \x1b[39m src/utils.test.ts\n\x1b[1m\x1b[32mAll tests passed!\x1b[39m\x1b[22m\n\x1b[31m2 failed\x1b[39m, \x1b[33m1 skipped\x1b[39m, \x1b[32m10 passed\x1b[39m',
 			param: 'npm test',
 		}),

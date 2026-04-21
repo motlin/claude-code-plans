@@ -2,7 +2,7 @@ import type {ToolRendererProps} from './types';
 import {CollapsibleSection} from './shared';
 
 export function SkillRenderer({toolCall}: ToolRendererProps) {
-	const skillName = (toolCall.input['skillName'] as string) ?? (toolCall.input['name'] as string) ?? '';
+	const skillName = (toolCall.input['skill'] as string) ?? '';
 	const {result} = toolCall;
 
 	return (

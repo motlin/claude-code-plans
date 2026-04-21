@@ -23,7 +23,7 @@ type Story = StoryObj<typeof meta>;
 export const Success: Story = {
 	args: {
 		toolCall: makeToolCall({
-			input: {skillName: 'build:precommit'},
+			input: {skill: 'build:precommit'},
 			result: 'Skill loaded successfully.',
 		}),
 	},
@@ -32,7 +32,7 @@ export const Success: Story = {
 export const Error: Story = {
 	args: {
 		toolCall: makeToolCall({
-			input: {skillName: 'nonexistent:skill'},
+			input: {skill: 'nonexistent:skill'},
 			result: 'Error: Skill "nonexistent:skill" not found. Available skills: build:precommit, code:cli, git:git-workflow',
 			isError: true,
 		}),
