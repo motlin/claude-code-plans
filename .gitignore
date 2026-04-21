@@ -30,3 +30,9 @@ eslint_report.json
 /.claude/settings.local.json
 mockups/
 tree-view-*.png
+
+# External tooling
+.agents/
+.junie/
+skills-lock.json
+skills/
