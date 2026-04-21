@@ -180,6 +180,8 @@ export interface SessionLines {
 	toolResultMap: Map<string, ToolResultInfo>;
 	/** Maps uuid to JSONL file line index */
 	uuidToLine: Map<string, number>;
+	/** Byte offset at end of file, for incremental SSE updates */
+	byteOffset: number;
 }
 
 import {
@@ -960,7 +962,55 @@ export async function readSessionLines(projectsDir: string, sessionId: string): 
 
 	if (customTitle) title = customTitle;
 
-	return {id: sessionId, title, projectName, projectId: project, lines, toolResultMap, uuidToLine};
+	const fileStat = await stat(filePath);
+	const byteOffset = fileStat.size;
+
+	return {id: sessionId, title, projectName, projectId: project, lines, toolResultMap, uuidToLine, byteOffset};
+}
+
+/**
+ * Read new JSONL lines from a file starting at a byte offset.
+ * Returns the parsed JSON objects and the next byte offset to resume from.
+ * Tracks bytes per successfully-parsed line (not stat().size) to handle
+ * partial writes: an incomplete trailing line is skipped and re-read on
+ * the next call.
+ */
+export async function readNewJsonlLines(
+	filePath: string,
+	fromByteOffset: number,
+): Promise<{lines: Record<string, unknown>[]; nextByteOffset: number}> {
+	const lines: Record<string, unknown>[] = [];
+	let bytesConsumed = 0;
+
+	const rl = createInterface({
+		input: createReadStream(filePath, {encoding: 'utf-8', start: fromByteOffset}),
+		crlfDelay: Infinity,
+	});
+
+	try {
+		for await (const line of rl) {
+			// Each line in the stream has its newline stripped by readline.
+			// Account for the line content + 1 byte for the newline character.
+			const lineByteLength = Buffer.byteLength(line, 'utf-8') + 1;
+			if (!line.trim()) {
+				bytesConsumed += lineByteLength;
+				continue;
+			}
+			try {
+				const parsed = JSON.parse(line) as Record<string, unknown>;
+				lines.push(parsed);
+				bytesConsumed += lineByteLength;
+			} catch {
+				// Partial/malformed line at the end of the file. Do not advance
+				// the byte offset past it so we re-read it on the next change.
+				break;
+			}
+		}
+	} finally {
+		rl.close();
+	}
+
+	return {lines, nextByteOffset: fromByteOffset + bytesConsumed};
 }
 
 export function getSessionsDir(): string {

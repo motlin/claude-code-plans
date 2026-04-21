@@ -33,6 +33,7 @@ export const DOMAIN_EVENTS = {
 	SESSION_UPDATED: 'session:updated',
 	SESSION_STARTED: 'session:started',
 	SESSION_ENDED: 'session:ended',
+	SESSION_LINES_APPENDED: 'session:lines-appended',
 	PLAN_CHANGED: 'plan:changed',
 	PLAN_REMOVED: 'plan:removed',
 	MEMORY_CHANGED: 'memory:changed',
@@ -100,12 +101,18 @@ export interface ActiveSessionPayload {
 	lastActivity: number;
 }
 
+export interface SessionLinesAppendedPayload {
+	sessionId: string;
+	lines: Record<string, unknown>[];
+}
+
 export interface DomainEventPayloads {
 	[DOMAIN_EVENTS.SESSION_ADDED]: {session: SessionSummaryPayload};
 	[DOMAIN_EVENTS.SESSION_REMOVED]: {sessionId: string; projectDir: string};
 	[DOMAIN_EVENTS.SESSION_UPDATED]: {session: SessionSummaryPayload};
 	[DOMAIN_EVENTS.SESSION_STARTED]: {session: ActiveSessionPayload};
 	[DOMAIN_EVENTS.SESSION_ENDED]: {sessionId: string};
+	[DOMAIN_EVENTS.SESSION_LINES_APPENDED]: SessionLinesAppendedPayload;
 	[DOMAIN_EVENTS.PLAN_CHANGED]: {plan: PlanSummaryPayload};
 	[DOMAIN_EVENTS.PLAN_REMOVED]: {filename: string};
 	[DOMAIN_EVENTS.MEMORY_CHANGED]: {memory: MemorySummaryPayload};

@@ -77,6 +77,7 @@ const getSession = createServerFn({method: 'GET'})
 			gitClean,
 			messageCount: sessionMeta?.messageCount ?? detail.lines.length,
 			pendingTaskCount,
+			byteOffset: detail.byteOffset,
 		};
 	});
 

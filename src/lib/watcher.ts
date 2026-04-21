@@ -30,12 +30,14 @@ interface WatcherGlobals {
 	__jsonlLastFired: number;
 	__lastSessionsByProject: Map<string, Map<string, SessionSummaryPayload>>;
 	__lastTasksByProject: Map<string, Map<string, TaskSummaryPayload>>;
+	__jsonlOffsets: Map<string, number>;
 }
 
 const g = globalThis as unknown as Partial<WatcherGlobals>;
 if (!g.__watcherClients) g.__watcherClients = new Set();
 if (!g.__lastSessionsByProject) g.__lastSessionsByProject = new Map();
 if (!g.__lastTasksByProject) g.__lastTasksByProject = new Map();
+if (!g.__jsonlOffsets) g.__jsonlOffsets = new Map();
 
 const encoder = new TextEncoder();
 
@@ -242,6 +244,11 @@ function projectIdFromPath(path: string, projectsDir: string): string {
 	return relative.split('/')[0] ?? '';
 }
 
+/** Extract session ID from a JSONL file path (filename minus .jsonl extension). */
+function sessionIdFromJsonlPath(path: string): string {
+	return basename(path, '.jsonl');
+}
+
 async function indexSilently(path: string, projectsDir: string): Promise<void> {
 	try {
 		const {index} = getDb();
@@ -269,6 +276,24 @@ function handleFileChange(path: string): void {
 		const fire = async () => {
 			g.__jsonlLastFired = Date.now();
 			g.__jsonlDebounceTimer = null;
+
+			// Read new JSONL lines since last known offset and broadcast them.
+			const fromOffset = g.__jsonlOffsets!.get(path) ?? 0;
+			try {
+				const {readNewJsonlLines} = await import('./sessions');
+				const {lines: newLines, nextByteOffset} = await readNewJsonlLines(path, fromOffset);
+				g.__jsonlOffsets!.set(path, nextByteOffset);
+
+				if (newLines.length > 0) {
+					broadcastTyped(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {
+						sessionId: sessionIdFromJsonlPath(path),
+						lines: newLines,
+					});
+				}
+			} catch {
+				// File may have been deleted between the watcher event and this read.
+			}
+
 			await indexSilently(path, projectsDir);
 			safeDiffSessions(projectIdFromPath(path, projectsDir));
 		};
@@ -316,6 +341,7 @@ function handleFileUnlink(path: string): void {
 	if (ext === '.md' && plansDir && path.startsWith(plansDir)) {
 		broadcastTyped(DOMAIN_EVENTS.PLAN_REMOVED, {filename: basename(path)});
 	} else if (ext === '.jsonl') {
+		g.__jsonlOffsets!.delete(path);
 		safeDiffSessions(projectIdFromPath(path, projectsDir));
 	} else if (ext === '.json' && path.endsWith('sessions-index.json')) {
 		safeDiffSessions(basename(dirname(path)));

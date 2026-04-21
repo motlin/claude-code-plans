@@ -1,4 +1,4 @@
-import {writeFileSync, mkdirSync, rmSync, utimesSync} from 'node:fs';
+import {writeFileSync, appendFileSync, mkdirSync, rmSync, utimesSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {
@@ -7,6 +7,7 @@ import {
 	listSessions,
 	readSession,
 	readSessionRawWindow,
+	readNewJsonlLines,
 	parseCommandBlock,
 } from '../src/lib/sessions';
 
@@ -1054,5 +1055,71 @@ describe('readSession', () => {
 		expect(detail.title).toBe('Start subagent work');
 		expect(detail.projectId).toBe('-Users-craig-projects-app');
 		expect(detail.messages.map((m) => m.role)).toStrictEqual(['user', 'assistant']);
+	});
+});
+
+describe('readNewJsonlLines', () => {
+	it('reads all lines from byte offset 0', async () => {
+		const filePath = join(testDir, 'delta.jsonl');
+		writeFileSync(filePath, jsonl(userMessage('Hello'), assistantMessage([{type: 'text', text: 'Hi'}])));
+
+		const result = await readNewJsonlLines(filePath, 0);
+		expect(result.lines).toHaveLength(2);
+		expect(result.lines[0]!['type']).toBe('user');
+		expect(result.lines[1]!['type']).toBe('assistant');
+		expect(result.nextByteOffset).toBeGreaterThan(0);
+	});
+
+	it('reads only new lines from a non-zero byte offset', async () => {
+		const filePath = join(testDir, 'incremental.jsonl');
+		const firstLine = JSON.stringify(userMessage('Hello')) + '\n';
+		writeFileSync(filePath, firstLine);
+
+		const firstResult = await readNewJsonlLines(filePath, 0);
+		expect(firstResult.lines).toHaveLength(1);
+
+		appendFileSync(filePath, JSON.stringify(assistantMessage([{type: 'text', text: 'Hi'}])) + '\n');
+
+		const secondResult = await readNewJsonlLines(filePath, firstResult.nextByteOffset);
+		expect(secondResult.lines).toHaveLength(1);
+		expect(secondResult.lines[0]!['type']).toBe('assistant');
+		expect(secondResult.nextByteOffset).toBeGreaterThan(firstResult.nextByteOffset);
+	});
+
+	it('skips partial/malformed trailing line without advancing offset', async () => {
+		const filePath = join(testDir, 'partial.jsonl');
+		const completeLine = JSON.stringify(userMessage('Hello')) + '\n';
+		const partialLine = '{"type":"assistant","message":{"role":"asse';
+		writeFileSync(filePath, completeLine + partialLine);
+
+		const result = await readNewJsonlLines(filePath, 0);
+		expect(result.lines).toHaveLength(1);
+		expect(result.lines[0]!['type']).toBe('user');
+		// Offset should only advance past the complete line, not the partial one
+		expect(result.nextByteOffset).toBe(Buffer.byteLength(completeLine, 'utf-8'));
+	});
+
+	it('returns empty array when offset is at end of file', async () => {
+		const filePath = join(testDir, 'at-end.jsonl');
+		writeFileSync(filePath, jsonl(userMessage('Hello')));
+
+		const firstResult = await readNewJsonlLines(filePath, 0);
+		const secondResult = await readNewJsonlLines(filePath, firstResult.nextByteOffset);
+		expect(secondResult.lines).toHaveLength(0);
+		expect(secondResult.nextByteOffset).toBe(firstResult.nextByteOffset);
+	});
+
+	it('handles empty lines in the file', async () => {
+		const filePath = join(testDir, 'blanks.jsonl');
+		writeFileSync(
+			filePath,
+			JSON.stringify(userMessage('Hello')) +
+				'\n\n' +
+				JSON.stringify(assistantMessage([{type: 'text', text: 'Hi'}])) +
+				'\n',
+		);
+
+		const result = await readNewJsonlLines(filePath, 0);
+		expect(result.lines).toHaveLength(2);
 	});
 });
