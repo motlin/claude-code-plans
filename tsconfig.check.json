@@ -3,5 +3,13 @@
 	"compilerOptions": {
 		"noEmit": true
 	},
-	"include": ["src/**/*", "tests/**/*", "vitest.config.ts", "vite.config.ts", "eslint.config.ts", ".storybook/**/*"]
+	"include": [
+		"src/**/*",
+		"tests/**/*",
+		"scripts/**/*",
+		"vitest.config.ts",
+		"vite.config.ts",
+		"eslint.config.ts",
+		".storybook/**/*"
+	]
 }
