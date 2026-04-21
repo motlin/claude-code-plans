@@ -36,7 +36,7 @@ export const TextBlockSchema = z
 		type: z.literal('text'),
 		text: z.string(),
 	})
-	.passthrough();
+	.strict();
 
 export const ToolUseBlockSchema = z
 	.object({
@@ -44,8 +44,9 @@ export const ToolUseBlockSchema = z
 		id: z.string(),
 		name: z.string(),
 		input: z.record(z.string(), z.unknown()),
+		caller: z.string().optional(),
 	})
-	.passthrough();
+	.strict();
 
 export const ThinkingBlockSchema = z
 	.object({
@@ -53,7 +54,7 @@ export const ThinkingBlockSchema = z
 		thinking: z.string(),
 		signature: z.string().optional(),
 	})
-	.passthrough();
+	.strict();
 
 export const ToolResultBlockSchema = z
 	.object({
@@ -62,14 +63,17 @@ export const ToolResultBlockSchema = z
 		content: z.union([z.string(), z.array(z.unknown())]).optional(),
 		is_error: z.boolean().optional(),
 	})
-	.passthrough();
+	.strict();
 
-export const ContentBlockSchema = z.union([
+/**
+ * Discriminated union of all known content block types.
+ * Unknown block types are hard errors -- they mean we need a new schema branch.
+ */
+export const ContentBlockSchema = z.discriminatedUnion('type', [
 	TextBlockSchema,
 	ToolUseBlockSchema,
 	ThinkingBlockSchema,
 	ToolResultBlockSchema,
-	z.object({type: z.string()}).passthrough(),
 ]);
 
 // ---------------------------------------------------------------------------
