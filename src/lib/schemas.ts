@@ -79,6 +79,19 @@ export const ImageBlockSchema = z
 	})
 	.strict();
 
+export const DocumentBlockSchema = z
+	.object({
+		type: z.literal('document'),
+		source: z
+			.object({
+				type: z.string(),
+				media_type: z.string(),
+				data: z.string(),
+			})
+			.strict(),
+	})
+	.strict();
+
 export const ContentBlockSchema = z
 	.discriminatedUnion('type', [
 		TextBlockSchema,
@@ -86,6 +99,7 @@ export const ContentBlockSchema = z
 		ThinkingBlockSchema,
 		ToolResultBlockSchema,
 		ImageBlockSchema,
+		DocumentBlockSchema,
 	])
 	.superRefine((block, ctx) => {
 		if (block.type !== 'tool_use') return;
@@ -619,6 +633,7 @@ export type ToolUseBlock = z.infer<typeof ToolUseBlockSchema>;
 export type ThinkingBlock = z.infer<typeof ThinkingBlockSchema>;
 export type ToolResultBlock = z.infer<typeof ToolResultBlockSchema>;
 export type ImageBlock = z.infer<typeof ImageBlockSchema>;
+export type DocumentBlock = z.infer<typeof DocumentBlockSchema>;
 export type ContentBlock = z.infer<typeof ContentBlockSchema>;
 export type UserRecord = z.infer<typeof UserRecordSchema>;
 export type AssistantRecord = z.infer<typeof AssistantRecordSchema>;
