@@ -1,6 +1,7 @@
 import {MarkdownArticle} from '../markdown-article';
 import type {ToolRendererProps} from './types';
 import {CollapsibleSection, ErrorBorder} from './shared';
+import {looksLikeMarkdown} from '../../lib/diff-utils';
 
 function parseMcpName(name: string): {server: string; tool: string} {
 	const stripped = name.replace(/^mcp__/, '');
@@ -46,9 +47,9 @@ export function McpRenderer({toolCall}: ToolRendererProps) {
 					label="Output"
 					defaultOpen={!!isError}
 				>
-					{toolCall.resultHtml ? (
+					{looksLikeMarkdown(result) ? (
 						<div className="text-xs text-text-100 leading-relaxed max-h-64 overflow-auto">
-							<MarkdownArticle html={toolCall.resultHtml} />
+							<MarkdownArticle markdown={result} />
 						</div>
 					) : (
 						<pre className="text-xs font-mono text-text-500 whitespace-pre-wrap break-all max-h-64 overflow-auto">

@@ -1,5 +1,5 @@
-import type {DiffData} from '../../lib/renderer';
 import type {MessageSessionLine, SessionContentBlock, ToolResultInfo} from '../../lib/sessions';
+import type {SubagentTreeEntry, SubagentTreeNode, ParallelGroup} from '../../lib/db/queries';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- TanStack serialization narrows unknown to {}
 export type ToolInput = Record<string, {}>;
@@ -21,9 +21,6 @@ export interface SubagentInlineInfo {
  * These are computed once in the route loader and looked up by renderers.
  */
 export interface ToolDecoration {
-	diffData?: DiffData | undefined;
-	highlightedHtml?: string | undefined;
-	resultHtml?: string | undefined;
 	subagentInfo?: SubagentInlineInfo | undefined;
 }
 
@@ -53,9 +50,6 @@ export interface ClientToolCall {
 	param: string;
 	result?: string | undefined;
 	isError?: boolean | undefined;
-	diffData?: DiffData | undefined;
-	highlightedHtml?: string | undefined;
-	resultHtml?: string | undefined;
 	duration?: number | undefined;
 	sourceUuid: string;
 	resultUuid?: string | undefined;
@@ -66,16 +60,111 @@ export interface ToolRendererProps {
 	toolCall: ClientToolCall;
 }
 
+const AGENT_ID_RE = /agentId:\s*(\S+)/;
+
+function isParallelGroup(entry: SubagentTreeEntry): entry is ParallelGroup {
+	return (entry as ParallelGroup).type === 'parallel';
+}
+
+function statusForAgent(agent: {finishedAt: string | null}): 'running' | 'done' | 'error' {
+	if (!agent.finishedAt) return 'running';
+	return 'done';
+}
+
+interface SubagentLookup {
+	byBareId: Map<string, SubagentInlineInfo>;
+	byTypeAndDescription: Map<string, SubagentInlineInfo>;
+}
+
+function lookupKey(agentType: string | null, description: string | null): string {
+	return `${agentType ?? ''}::${description ?? ''}`;
+}
+
+export function buildSubagentLookup(tree: SubagentTreeEntry[]): SubagentLookup {
+	const byBareId = new Map<string, SubagentInlineInfo>();
+	const byTypeAndDescription = new Map<string, SubagentInlineInfo>();
+	let parallelCounter = 0;
+
+	function addNode(node: SubagentTreeNode, parallelKey?: string, parallelSize?: number): void {
+		const bareId = node.agent.id.replace(/^agent-/, '');
+		const entry: SubagentInlineInfo = {
+			agentId: node.agent.id,
+			agentType: node.agent.agentType,
+			slug: node.agent.slug,
+			description: node.agent.description,
+			startedAt: node.agent.startedAt,
+			finishedAt: node.agent.finishedAt,
+			status: statusForAgent(node.agent),
+		};
+		if (parallelKey !== undefined) entry.parallelGroupKey = parallelKey;
+		if (parallelSize !== undefined) entry.parallelGroupSize = parallelSize;
+		byBareId.set(bareId, entry);
+		if (node.agent.description) {
+			byTypeAndDescription.set(lookupKey(node.agent.agentType, node.agent.description), entry);
+		}
+		walk(node.children);
+	}
+
+	function walk(entries: SubagentTreeEntry[]): void {
+		for (const entry of entries) {
+			if (isParallelGroup(entry)) {
+				const key = `pg-${parallelCounter++}`;
+				const size = entry.children.length;
+				for (const child of entry.children) {
+					addNode(child, key, size);
+				}
+			} else {
+				addNode(entry);
+			}
+		}
+	}
+
+	walk(tree);
+	return {byBareId, byTypeAndDescription};
+}
+
+function resolveSubagentInfo(
+	name: string,
+	input: Record<string, unknown>,
+	result: string | undefined,
+	isError: boolean | undefined,
+	subagentLookup: SubagentLookup,
+): SubagentInlineInfo | undefined {
+	if (name !== 'Agent') return undefined;
+
+	let info: SubagentInlineInfo | undefined;
+	if (result) {
+		const match = AGENT_ID_RE.exec(result);
+		if (match?.[1]) {
+			info = subagentLookup.byBareId.get(match[1]);
+		}
+	}
+	if (!info) {
+		const inputAgentType = (input['subagent_type'] as string) ?? null;
+		const inputDescription = (input['description'] as string) ?? null;
+		if (inputDescription) {
+			info = subagentLookup.byTypeAndDescription.get(lookupKey(inputAgentType, inputDescription));
+		}
+	}
+	if (info) {
+		return {
+			...info,
+			status: isError ? 'error' : info.status,
+		};
+	}
+	return undefined;
+}
+
 /**
  * Build a ClientToolCall from raw JSONL data + sidecar maps.
- * This replaces the server-side mutation that previously built ClientToolCall
- * in the route loader.
+ * Computes all decorations client-side (diff data, markdown rendering,
+ * subagent info lookup).
  */
 export function buildClientToolCall(
 	block: SessionContentBlock,
 	line: MessageSessionLine,
 	toolResultMap: Map<string, ToolResultInfo>,
-	decorations: DecorationMap,
+	subagentLookup: SubagentLookup,
 ): ClientToolCall {
 	const id = block.id ?? '';
 	const name = block.name ?? '';
@@ -99,14 +188,9 @@ export function buildClientToolCall(
 		if (resultInfo.duration !== undefined) call.duration = resultInfo.duration;
 	}
 
-	// Attach server-computed decorations
-	const deco = decorations.get(id);
-	if (deco) {
-		if (deco.diffData) call.diffData = deco.diffData;
-		if (deco.highlightedHtml) call.highlightedHtml = deco.highlightedHtml;
-		if (deco.resultHtml) call.resultHtml = deco.resultHtml;
-		if (deco.subagentInfo) call.subagentInfo = deco.subagentInfo;
-	}
+	// Resolve subagent info client-side from the subagent tree
+	const subagentInfo = resolveSubagentInfo(name, block.input ?? {}, call.result, call.isError, subagentLookup);
+	if (subagentInfo) call.subagentInfo = subagentInfo;
 
 	return call;
 }

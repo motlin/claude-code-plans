@@ -83,4 +83,4 @@ export type {
 	SerializedDecorationMap,
 	SerializedToolResultMap,
 } from './types';
-export {buildClientToolCall} from './types';
+export {buildClientToolCall, buildSubagentLookup} from './types';

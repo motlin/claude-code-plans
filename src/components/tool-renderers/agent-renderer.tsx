@@ -3,6 +3,7 @@ import {Bot} from 'lucide-react';
 import {MarkdownArticle} from '../markdown-article';
 import type {ToolRendererProps} from './types';
 import {DurationBadge, ErrorBorder, ExpandableBlock, formatDuration} from './shared';
+import {looksLikeMarkdown} from '../../lib/diff-utils';
 
 const AGENT_TYPE_COLORS: Record<string, string> = {
 	Explore: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
@@ -125,9 +126,9 @@ export function AgentRenderer({toolCall}: ToolRendererProps) {
 						lineCount={outputLineCount}
 						maxLines={20}
 					>
-						{toolCall.resultHtml ? (
+						{looksLikeMarkdown(displayResult) ? (
 							<div className="text-xs text-text-100 leading-relaxed">
-								<MarkdownArticle html={toolCall.resultHtml} />
+								<MarkdownArticle markdown={displayResult} />
 							</div>
 						) : (
 							<pre className="text-xs font-mono text-text-500 whitespace-pre-wrap break-all">

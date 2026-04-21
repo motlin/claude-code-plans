@@ -4,6 +4,7 @@ import '@git-diff-view/react/styles/diff-view.css';
 import type {ToolRendererProps} from './types';
 import {DiffStats, ErrorBorder} from './shared';
 import {useResolvedTheme} from '../theme-provider';
+import {computeDiffData, buildUnifiedHunk} from '../../lib/diff-utils';
 
 const SUPPORTED_LANGS = new Set([
 	'bash',
@@ -62,8 +63,20 @@ function resolveLang(filePath: string): string {
 
 export function EditRenderer({toolCall}: ToolRendererProps) {
 	const filePath = (toolCall.input['file_path'] as string) ?? '';
-	const {diffData, result, isError} = toolCall;
+	const oldStr = (toolCall.input['old_string'] as string) ?? '';
+	const newStr = (toolCall.input['new_string'] as string) ?? '';
+	const {result, isError} = toolCall;
 	const theme = useResolvedTheme();
+
+	const diffData = useMemo(() => {
+		if (oldStr === undefined) return null;
+		const data = computeDiffData(oldStr, newStr);
+		data.unifiedHunk = buildUnifiedHunk(oldStr, newStr, filePath);
+		data.oldContent = oldStr;
+		data.newContent = newStr;
+		data.filePath = filePath;
+		return data;
+	}, [oldStr, newStr, filePath]);
 
 	const viewData = useMemo(() => {
 		if (!diffData?.unifiedHunk) return null;

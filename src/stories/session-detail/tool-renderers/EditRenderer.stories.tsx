@@ -30,18 +30,6 @@ export const DiffView: Story = {
 			},
 			param: '/Users/craig/projects/app/src/server.ts',
 			result: 'Edit applied successfully.',
-			diffData: {
-				ops: [],
-				added: 1,
-				removed: 1,
-				oldContent:
-					'import express from "express";\n\nconst PORT = 3000;\nconst app = express();\napp.listen(PORT);',
-				newContent:
-					'import express from "express";\n\nconst PORT = process.env.PORT ?? 3000;\nconst app = express();\napp.listen(PORT);',
-				unifiedHunk:
-					'@@ -1,5 +1,5 @@\n import express from "express";\n \n-const PORT = 3000;\n+const PORT = process.env.PORT ?? 3000;\n const app = express();\n app.listen(PORT);',
-				filePath: '/Users/craig/projects/app/src/server.ts',
-			},
 		}),
 	},
 };

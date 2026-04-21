@@ -4,16 +4,6 @@ import {createServerFn} from '@tanstack/react-start';
 import {queryOptions, useSuspenseQuery} from '@tanstack/react-query';
 import {z} from 'zod';
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import type {SessionLine, ToolResultInfo} from '../lib/sessions';
-import {
-	renderMarkdown,
-	computeDiffData,
-	buildUnifiedHunk,
-	detectLanguage,
-	highlightCode,
-	extractLineNumbers,
-	looksLikeMarkdown,
-} from '../lib/renderer';
 import {SessionChat} from '../components/session-chat';
 import {ChatInput} from '../components/chat-input';
 import {StreamingMessage} from '../components/streaming-message';
@@ -22,258 +12,13 @@ import {AskUserQuestionProvider, type AskUserQuestionContextValue} from '../comp
 import {getSubagentTree, getSessionSummary, requestSummary, isStarred, toggleSessionStar} from '../lib/server-fns';
 import {useIsSessionActive, useStatusline} from '../hooks/use-claude-events';
 import {StatusFooter} from '../components/status-footer';
-import type {SubagentTreeEntry, SubagentTreeNode, ParallelGroup} from '../lib/db/queries';
-import type {
-	SubagentInlineInfo,
-	ToolDecoration,
-	SerializedDecorationMap,
-	SerializedToolResultMap,
-} from '../components/tool-renderers';
+import type {SerializedToolResultMap} from '../components/tool-renderers';
 import {ArrowLeft, ArrowUp, ArrowDown, Copy, Terminal, GitFork, Download, Maximize2, Minimize2} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {SubagentTree} from '../components/subagent-tree';
 import {SubagentGantt} from '../components/subagent-gantt';
 import {SubagentSequence} from '../components/subagent-sequence';
 import {useDebug} from '../components/debug-provider';
-
-/**
- * Walk the subagent tree and produce a map from `agentId` (without `agent-` prefix)
- * to its metadata plus parallel-group info. Uses the same grouping logic as the
- * top-of-page tree so inline rendering matches the tree exactly.
- */
-function isParallelGroup(entry: SubagentTreeEntry): entry is ParallelGroup {
-	return (entry as ParallelGroup).type === 'parallel';
-}
-
-function statusForAgent(agent: {finishedAt: string | null}): 'running' | 'done' | 'error' {
-	if (!agent.finishedAt) return 'running';
-	return 'done';
-}
-
-interface SubagentLookup {
-	byBareId: Map<string, SubagentInlineInfo>;
-	byTypeAndDescription: Map<string, SubagentInlineInfo>;
-}
-
-function lookupKey(agentType: string | null, description: string | null): string {
-	return `${agentType ?? ''}::${description ?? ''}`;
-}
-
-function buildSubagentLookup(tree: SubagentTreeEntry[]): SubagentLookup {
-	const byBareId = new Map<string, SubagentInlineInfo>();
-	const byTypeAndDescription = new Map<string, SubagentInlineInfo>();
-	let parallelCounter = 0;
-
-	function addNode(node: SubagentTreeNode, parallelKey?: string, parallelSize?: number): void {
-		const bareId = node.agent.id.replace(/^agent-/, '');
-		const entry: SubagentInlineInfo = {
-			agentId: node.agent.id,
-			agentType: node.agent.agentType,
-			slug: node.agent.slug,
-			description: node.agent.description,
-			startedAt: node.agent.startedAt,
-			finishedAt: node.agent.finishedAt,
-			status: statusForAgent(node.agent),
-		};
-		if (parallelKey !== undefined) entry.parallelGroupKey = parallelKey;
-		if (parallelSize !== undefined) entry.parallelGroupSize = parallelSize;
-		byBareId.set(bareId, entry);
-		if (node.agent.description) {
-			byTypeAndDescription.set(lookupKey(node.agent.agentType, node.agent.description), entry);
-		}
-		walk(node.children);
-	}
-
-	function walk(entries: SubagentTreeEntry[]): void {
-		for (const entry of entries) {
-			if (isParallelGroup(entry)) {
-				const key = `pg-${parallelCounter++}`;
-				const size = entry.children.length;
-				for (const child of entry.children) {
-					addNode(child, key, size);
-				}
-			} else {
-				addNode(entry);
-			}
-		}
-	}
-
-	walk(tree);
-	return {byBareId, byTypeAndDescription};
-}
-
-const AGENT_ID_RE = /agentId:\s*(\S+)/;
-
-/**
- * Extract tool_use blocks from all lines to build the decorations sidecar.
- * Returns a list of {toolUseId, name, input, result} tuples for decoration.
- */
-function collectToolUseBlocks(
-	lines: SessionLine[],
-	toolResultMap: Map<string, ToolResultInfo>,
-): Array<{id: string; name: string; input: Record<string, unknown>; result?: string; isError?: boolean}> {
-	const result: Array<{
-		id: string;
-		name: string;
-		input: Record<string, unknown>;
-		result?: string;
-		isError?: boolean;
-	}> = [];
-	for (const line of lines) {
-		if (line.type !== 'assistant') continue;
-		const content = line.message?.content;
-		if (!Array.isArray(content)) continue;
-		for (const block of content) {
-			if (block.type === 'tool_use' && block.id && block.name) {
-				const entry: {
-					id: string;
-					name: string;
-					input: Record<string, unknown>;
-					result?: string;
-					isError?: boolean;
-				} = {
-					id: block.id,
-					name: block.name,
-					input: block.input ?? {},
-				};
-				const resultInfo = toolResultMap.get(block.id);
-				if (resultInfo) {
-					entry.result = resultInfo.result;
-					if (resultInfo.isError) entry.isError = true;
-				}
-				result.push(entry);
-			}
-		}
-	}
-	return result;
-}
-
-/**
- * Build server-side decorations for tool_use blocks (Shiki highlighting,
- * diff data, markdown rendering, subagent info).
- */
-async function buildDecorations(
-	toolUses: Array<{id: string; name: string; input: Record<string, unknown>; result?: string; isError?: boolean}>,
-	subagentLookup: SubagentLookup,
-): Promise<Map<string, ToolDecoration>> {
-	const decoMap = new Map<string, ToolDecoration>();
-
-	await Promise.all(
-		toolUses.map(async (tu) => {
-			const deco: ToolDecoration = {};
-			let hasDeco = false;
-
-			if ((tu.name === 'Edit' || tu.name === 'MultiEdit') && tu.input['old_string'] !== undefined) {
-				const oldStr = (tu.input['old_string'] as string) ?? '';
-				const newStr = (tu.input['new_string'] as string) ?? '';
-				const filePath = (tu.input['file_path'] as string) ?? '';
-				const diffData = computeDiffData(oldStr, newStr);
-				diffData.unifiedHunk = buildUnifiedHunk(oldStr, newStr, filePath);
-				diffData.oldContent = oldStr;
-				diffData.newContent = newStr;
-				diffData.filePath = filePath;
-				deco.diffData = diffData;
-				hasDeco = true;
-			}
-
-			if (tu.name === 'Read' && tu.result) {
-				const filePath = (tu.input['file_path'] as string) ?? '';
-				const lang = detectLanguage(filePath);
-				if (lang) {
-					const {text: cleanCode} = extractLineNumbers(tu.result);
-					deco.highlightedHtml = await highlightCode(cleanCode, lang);
-					hasDeco = true;
-				}
-			}
-
-			if (
-				(tu.name === 'Agent' || tu.name.startsWith('mcp__') || tu.name === 'WebFetch') &&
-				tu.result &&
-				looksLikeMarkdown(tu.result)
-			) {
-				deco.resultHtml = await renderMarkdown(tu.result);
-				hasDeco = true;
-			}
-
-			if (tu.name === 'Agent') {
-				let info: SubagentInlineInfo | undefined;
-				if (tu.result) {
-					const match = AGENT_ID_RE.exec(tu.result);
-					if (match?.[1]) {
-						info = subagentLookup.byBareId.get(match[1]);
-					}
-				}
-				if (!info) {
-					const inputAgentType = (tu.input['subagent_type'] as string) ?? null;
-					const inputDescription = (tu.input['description'] as string) ?? null;
-					if (inputDescription) {
-						info = subagentLookup.byTypeAndDescription.get(lookupKey(inputAgentType, inputDescription));
-					}
-				}
-				if (info) {
-					deco.subagentInfo = {
-						...info,
-						status: tu.isError ? 'error' : info.status,
-					};
-					hasDeco = true;
-				}
-			}
-
-			if (hasDeco) {
-				decoMap.set(tu.id, deco);
-			}
-		}),
-	);
-
-	return decoMap;
-}
-
-/**
- * Pre-render markdown for all text blocks in the session lines.
- * Returns a map from `${lineIndex}:${blockIndex}` to rendered HTML.
- */
-async function buildTextHtmlMap(lines: SessionLine[]): Promise<Map<string, string>> {
-	const {stripCommandTags, parseCommandBlock} = await import('../lib/sessions');
-	const entries: Array<{key: string; text: string}> = [];
-	for (const line of lines) {
-		if (line.type !== 'user' && line.type !== 'assistant') continue;
-		const isUser = line.type === 'user';
-		const content = line.message?.content;
-		if (!Array.isArray(content)) {
-			if (typeof content === 'string' && content.trim()) {
-				if (isUser) {
-					if (parseCommandBlock(content)) continue;
-					const cleaned = stripCommandTags(content);
-					if (cleaned) entries.push({key: `${line.lineIndex}:0`, text: cleaned});
-				} else {
-					entries.push({key: `${line.lineIndex}:0`, text: content});
-				}
-			}
-			continue;
-		}
-		for (let i = 0; i < content.length; i++) {
-			const block = content[i]!;
-			if (block.type === 'text' && typeof block.text === 'string') {
-				if (isUser) {
-					if (parseCommandBlock(block.text)) continue;
-					if (/<local-command-caveat>/.test(block.text)) continue;
-					const cleaned = stripCommandTags(block.text);
-					if (!cleaned) continue;
-					entries.push({key: `${line.lineIndex}:${i}`, text: cleaned});
-				} else {
-					entries.push({key: `${line.lineIndex}:${i}`, text: block.text});
-				}
-			}
-		}
-	}
-
-	const rendered = await Promise.all(entries.map((e) => renderMarkdown(e.text)));
-	const map = new Map<string, string>();
-	for (let i = 0; i < entries.length; i++) {
-		map.set(entries[i]!.key, rendered[i]!);
-	}
-	return map;
-}
 
 const getSession = createServerFn({method: 'GET'})
 	.inputValidator(z.object({id: z.string()}))
@@ -288,13 +33,6 @@ const getSession = createServerFn({method: 'GET'})
 			isStarred({data: id}),
 		]);
 		if (!detail) return null;
-
-		const subagentLookup = buildSubagentLookup(subagentResult.tree);
-		const toolUses = collectToolUseBlocks(detail.lines, detail.toolResultMap);
-		const [decoMap, textHtmlMap] = await Promise.all([
-			buildDecorations(toolUses, subagentLookup),
-			buildTextHtmlMap(detail.lines),
-		]);
 
 		const {getDb} = await import('../lib/db');
 		const {getSessionProjectPath, getSessionMeta, getTaskCountsForProject} = await import('../lib/db/queries');
@@ -328,8 +66,6 @@ const getSession = createServerFn({method: 'GET'})
 			projectId: detail.projectId,
 			lines: detail.lines,
 			toolResultMap: Array.from(detail.toolResultMap.entries()) as SerializedToolResultMap,
-			decorations: Array.from(decoMap.entries()) as SerializedDecorationMap,
-			textHtmlMap: Array.from(textHtmlMap.entries()),
 			subagentTree: subagentResult.tree,
 			subagentCount: subagentResult.totalCount,
 			subagents: subagentResult.agents,
@@ -815,8 +551,7 @@ function SessionPage() {
 					sessionId={params.id}
 					lines={data.lines}
 					toolResultMap={data.toolResultMap}
-					decorations={data.decorations}
-					textHtmlMap={data.textHtmlMap}
+					subagentTree={data.subagentTree}
 					showThinking={showThinking}
 					showTools={showTools}
 				/>

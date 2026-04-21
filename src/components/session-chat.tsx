@@ -2,14 +2,15 @@ import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Copy, Link2} from 'lucide-react';
 import {MarkdownArticle} from './markdown-article';
 import {getToolRenderer} from './tool-renderers';
-import {buildClientToolCall} from './tool-renderers/types';
-import type {ClientToolCall, DecorationMap, SerializedDecorationMap, SerializedToolResultMap} from './tool-renderers';
+import {buildClientToolCall, buildSubagentLookup} from './tool-renderers/types';
+import type {ClientToolCall, SerializedToolResultMap} from './tool-renderers';
 import {ChevronIcon, DurationBadge, TerminalOutput} from './tool-renderers/shared';
 import {TasksView} from './tasks-view';
 import {DebugLink} from './debug-link';
 import {hmrSet} from '../lib/hmr-state';
 import {useHmrState} from '../hooks/use-hmr-state';
 import type {MessageSessionLine, SessionLine, SessionContentBlock, ToolResultInfo} from '../lib/sessions';
+import type {SubagentTreeEntry} from '../lib/db/queries';
 import {AttachmentBanner, Banner} from './attachment-banner';
 import {
 	stripCommandTags,
@@ -60,8 +61,7 @@ export interface SessionChatProps {
 	sessionId: string;
 	lines: SessionLine[];
 	toolResultMap: SerializedToolResultMap;
-	decorations: SerializedDecorationMap;
-	textHtmlMap: Array<[string, string]>;
+	subagentTree: SubagentTreeEntry[];
 	showThinking?: boolean;
 	showTools?: boolean;
 }
@@ -136,16 +136,14 @@ export const SessionChat = React.memo(function SessionChat({
 	sessionId,
 	lines,
 	toolResultMap: serializedToolResultMap,
-	decorations: serializedDecorations,
-	textHtmlMap: serializedTextHtmlMap,
+	subagentTree,
 	showThinking = true,
 	showTools = true,
 }: SessionChatProps) {
 	const endRef = useRef<HTMLDivElement>(null);
 
 	const toolResultMap = useMemo(() => new Map(serializedToolResultMap), [serializedToolResultMap]);
-	const decorations = useMemo(() => new Map(serializedDecorations), [serializedDecorations]);
-	const textHtmlMap = useMemo(() => new Map(serializedTextHtmlMap), [serializedTextHtmlMap]);
+	const subagentLookup = useMemo(() => buildSubagentLookup(subagentTree), [subagentTree]);
 
 	useEffect(() => {
 		if (autoScrolledSessions.has(sessionId)) return;
@@ -161,8 +159,7 @@ export const SessionChat = React.memo(function SessionChat({
 				lines={lines}
 				sessionId={sessionId}
 				toolResultMap={toolResultMap}
-				decorations={decorations}
-				textHtmlMap={textHtmlMap}
+				subagentLookup={subagentLookup}
 				showThinking={showThinking}
 				showTools={showTools}
 			/>
@@ -190,8 +187,7 @@ function buildSkipSet(lines: SessionLine[]): Set<number> {
 interface LineRenderProps {
 	sessionId: string;
 	toolResultMap: Map<string, ToolResultInfo>;
-	decorations: DecorationMap;
-	textHtmlMap: Map<string, string>;
+	subagentLookup: ReturnType<typeof buildSubagentLookup>;
 	showThinking: boolean;
 	showTools: boolean;
 }
@@ -326,8 +322,7 @@ function SessionMessage({
 	line,
 	sessionId,
 	toolResultMap,
-	decorations,
-	textHtmlMap,
+	subagentLookup,
 	showThinking,
 	showTools,
 	nextLine,
@@ -335,8 +330,7 @@ function SessionMessage({
 	line: SessionLine;
 	sessionId: string;
 	toolResultMap: Map<string, ToolResultInfo>;
-	decorations: DecorationMap;
-	textHtmlMap: Map<string, string>;
+	subagentLookup: ReturnType<typeof buildSubagentLookup>;
 	showThinking: boolean;
 	showTools: boolean;
 	nextLine?: SessionLine | undefined;
@@ -346,7 +340,6 @@ function SessionMessage({
 			<UserEntry
 				line={line}
 				sessionId={sessionId}
-				textHtmlMap={textHtmlMap}
 				nextLine={nextLine}
 			/>
 		);
@@ -357,8 +350,7 @@ function SessionMessage({
 				line={line}
 				sessionId={sessionId}
 				toolResultMap={toolResultMap}
-				decorations={decorations}
-				textHtmlMap={textHtmlMap}
+				subagentLookup={subagentLookup}
 				showThinking={showThinking}
 				showTools={showTools}
 			/>
@@ -497,12 +489,10 @@ function classifyUserContent(line: MessageSessionLine): 'command' | 'bash' | 'te
 function UserEntry({
 	line,
 	sessionId,
-	textHtmlMap,
 	nextLine,
 }: {
 	line: MessageSessionLine;
 	sessionId: string;
-	textHtmlMap: Map<string, string>;
 	nextLine?: SessionLine | undefined;
 }) {
 	const timestampText = formatTimestamp(line.timestamp);
@@ -539,7 +529,7 @@ function UserEntry({
 	// Regular user text
 	return (
 		<div className="flex flex-col items-end gap-1.5">
-			{renderUserContentBlocks(line, sessionId, textHtmlMap)}
+			{renderUserContentBlocks(line, sessionId)}
 			<Timestamp value={timestampText} />
 		</div>
 	);
@@ -562,24 +552,20 @@ function hasBashOutput(line: MessageSessionLine): boolean {
 	return lineMatchesBash(line, parseBashOutput);
 }
 
-function renderUserContentBlocks(
-	line: MessageSessionLine,
-	sessionId: string,
-	textHtmlMap: Map<string, string>,
-): React.ReactNode[] {
+function renderUserContentBlocks(line: MessageSessionLine, sessionId: string): React.ReactNode[] {
 	const content = line.message?.content;
 	if (!content) return [];
 
 	if (typeof content === 'string') {
-		const html = textHtmlMap.get(`${line.lineIndex}:0`);
-		if (!html) return [];
+		const cleaned = stripCommandTags(content);
+		if (!cleaned) return [];
 		return [
 			<div
 				key={0}
 				className="relative rounded-lg px-3 py-2 break-words min-w-0 overflow-hidden bg-bg-100 text-text-000 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] text-sm leading-relaxed"
 			>
 				<TruncatedContent>
-					<MarkdownArticle html={html} />
+					<MarkdownArticle markdown={cleaned} />
 				</TruncatedContent>
 				<DebugLink
 					sessionId={sessionId}
@@ -597,15 +583,13 @@ function renderUserContentBlocks(
 			if (/<local-command-caveat>/.test(block.text)) continue;
 			const cleaned = stripCommandTags(block.text);
 			if (!cleaned) continue;
-			const html = textHtmlMap.get(`${line.lineIndex}:${i}`);
-			if (!html) continue;
 			nodes.push(
 				<div
 					key={`text-${i}`}
 					className="relative rounded-lg px-3 py-2 break-words min-w-0 overflow-hidden bg-bg-100 text-text-000 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] text-sm leading-relaxed"
 				>
 					<TruncatedContent>
-						<MarkdownArticle html={html} />
+						<MarkdownArticle markdown={cleaned} />
 					</TruncatedContent>
 					<DebugLink
 						sessionId={sessionId}
@@ -849,16 +833,14 @@ function AssistantEntry({
 	line,
 	sessionId,
 	toolResultMap,
-	decorations,
-	textHtmlMap,
+	subagentLookup,
 	showThinking,
 	showTools,
 }: {
 	line: MessageSessionLine;
 	sessionId: string;
 	toolResultMap: Map<string, ToolResultInfo>;
-	decorations: DecorationMap;
-	textHtmlMap: Map<string, string>;
+	subagentLookup: ReturnType<typeof buildSubagentLookup>;
 	showThinking: boolean;
 	showTools: boolean;
 }) {
@@ -874,8 +856,8 @@ function AssistantEntry({
 		() =>
 			content
 				.filter((b) => b.type === 'tool_use')
-				.map((block) => buildClientToolCall(block, line, toolResultMap, decorations)),
-		[content, line, toolResultMap, decorations],
+				.map((block) => buildClientToolCall(block, line, toolResultMap, subagentLookup)),
+		[content, line, toolResultMap, subagentLookup],
 	);
 	const toolSummary = useMemo(
 		() =>
@@ -923,7 +905,6 @@ function AssistantEntry({
 					blockIndex={i}
 					line={line}
 					sessionId={sessionId}
-					textHtmlMap={textHtmlMap}
 					showThinking={showThinking}
 					showTools={showTools}
 					toolCalls={toolCalls}
@@ -943,7 +924,6 @@ function ContentBlock({
 	blockIndex,
 	line,
 	sessionId,
-	textHtmlMap,
 	showThinking,
 	showTools,
 	toolCalls,
@@ -953,18 +933,16 @@ function ContentBlock({
 	blockIndex: number;
 	line: MessageSessionLine;
 	sessionId: string;
-	textHtmlMap: Map<string, string>;
 	showThinking: boolean;
 	showTools: boolean;
 	toolCalls: ClientToolCall[];
 	toolSummary: string;
 }) {
 	if (block.type === 'text' && typeof block.text === 'string') {
-		const html = textHtmlMap.get(`${line.lineIndex}:${blockIndex}`);
-		if (!html) return null;
+		if (!block.text.trim()) return null;
 		return (
 			<div className="relative min-w-0 text-sm leading-relaxed text-text-100">
-				<MarkdownArticle html={html} />
+				<MarkdownArticle markdown={block.text} />
 				<DebugLink
 					sessionId={sessionId}
 					uuid={line.uuid}

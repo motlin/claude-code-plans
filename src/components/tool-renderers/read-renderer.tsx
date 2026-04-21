@@ -22,7 +22,7 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 	const filePath = (toolCall.input['file_path'] as string) ?? '';
 	const offset = toolCall.input['offset'] as number | undefined;
 	const limit = toolCall.input['limit'] as number | undefined;
-	const {result, highlightedHtml, isError} = toolCall;
+	const {result, isError} = toolCall;
 	const lineCount = result ? result.split('\n').length : 0;
 
 	const rangeInfo =
@@ -47,37 +47,30 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 					lineCount={lineCount}
 					maxLines={20}
 				>
-					{highlightedHtml ? (
-						<div
-							className="rounded border border-border-300/15 text-xs [&_pre]:p-3 [&_pre]:m-0 [&_pre]:rounded-none"
-							dangerouslySetInnerHTML={{__html: highlightedHtml}}
-						/>
-					) : (
-						<div className="rounded border border-border-300/15">
-							<div className="flex font-mono text-xs text-text-500">
-								<div className="bg-bg-200/50 border-r border-border-300/15 px-3 py-2 select-none text-right min-w-fit">
-									{parsedLines.map((line, i) => (
-										<div
-											key={i}
-											className="h-5 flex items-center justify-end"
-										>
-											{line.lineNum || ''}
-										</div>
-									))}
-								</div>
-								<div className="flex-1 px-3 py-2 whitespace-pre-wrap break-all">
-									{parsedLines.map((line, i) => (
-										<div
-											key={i}
-											className="h-5 flex items-center"
-										>
-											{line.content}
-										</div>
-									))}
-								</div>
+					<div className="rounded border border-border-300/15">
+						<div className="flex font-mono text-xs text-text-500">
+							<div className="bg-bg-200/50 border-r border-border-300/15 px-3 py-2 select-none text-right min-w-fit">
+								{parsedLines.map((line, i) => (
+									<div
+										key={i}
+										className="h-5 flex items-center justify-end"
+									>
+										{line.lineNum || ''}
+									</div>
+								))}
+							</div>
+							<div className="flex-1 px-3 py-2 whitespace-pre-wrap break-all">
+								{parsedLines.map((line, i) => (
+									<div
+										key={i}
+										className="h-5 flex items-center"
+									>
+										{line.content}
+									</div>
+								))}
 							</div>
 						</div>
-					)}
+					</div>
 				</ExpandableBlock>
 			)}
 		</ErrorBorder>

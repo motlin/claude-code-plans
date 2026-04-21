@@ -1,6 +1,7 @@
 import {MarkdownArticle} from '../markdown-article';
 import type {ToolRendererProps} from './types';
 import {CollapsibleSection, ErrorBorder, ToolMeta} from './shared';
+import {looksLikeMarkdown} from '../../lib/diff-utils';
 
 export function WebFetchRenderer({toolCall}: ToolRendererProps) {
 	const url = (toolCall.input['url'] as string) ?? '';
@@ -33,9 +34,9 @@ export function WebFetchRenderer({toolCall}: ToolRendererProps) {
 						label="Show response"
 						defaultOpen={!isError}
 					>
-						{toolCall.resultHtml ? (
+						{looksLikeMarkdown(result) ? (
 							<div className="text-xs text-text-100 leading-relaxed max-h-64 overflow-auto">
-								<MarkdownArticle html={toolCall.resultHtml} />
+								<MarkdownArticle markdown={result} />
 							</div>
 						) : (
 							<pre className="text-xs font-mono whitespace-pre-wrap break-all max-h-64 overflow-auto rounded px-2 py-1.5 bg-bg-200 text-text-100">

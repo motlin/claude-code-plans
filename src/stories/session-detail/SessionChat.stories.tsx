@@ -47,16 +47,6 @@ const simpleConversation: SessionLine[] = [
 	),
 ];
 
-const textHtmlEntries: Array<[string, string]> = [
-	['1:0', '<p>You can add Storybook to a Vite project by running <code>npx storybook@latest init</code>.</p>'],
-	[
-		'3:0',
-		'<p>For testing stories, install <code>@storybook/test-runner</code> and run <code>npx test-storybook</code>.</p>',
-	],
-	['0:0', '<p>How do I add Storybook to a Vite project?</p>'],
-	['2:0', '<p>What about testing?</p>'],
-];
-
 const meta = {
 	title: 'Session Detail/SessionChat',
 	component: SessionChat,
@@ -70,8 +60,7 @@ export const WithMessages: Story = {
 		sessionId: 'story-session-1',
 		lines: simpleConversation,
 		toolResultMap: [],
-		decorations: [],
-		textHtmlMap: textHtmlEntries,
+		subagentTree: [],
 	},
 };
 
@@ -80,8 +69,7 @@ export const EmptySession: Story = {
 		sessionId: 'story-session-empty',
 		lines: [],
 		toolResultMap: [],
-		decorations: [],
-		textHtmlMap: [],
+		subagentTree: [],
 	},
 };
 
@@ -109,8 +97,7 @@ export const WithToolCalls: Story = {
 				{result: '# My Project\nA sample project.', isError: false, resultUuid: 'result-1', duration: 42},
 			],
 		],
-		decorations: [],
-		textHtmlMap: [['0:0', '<p>Read the README</p>']],
+		subagentTree: [],
 	},
 };
 
@@ -189,14 +176,7 @@ export const WithGroupedAssistantMessages: Story = {
 			['tool-g2', {result: 'OK', isError: false, resultUuid: 'result-g2', duration: 8}],
 			['tool-g3', {result: 'All 12 tests passed', isError: false, resultUuid: 'result-g3', duration: 3200}],
 		],
-		decorations: [],
-		textHtmlMap: [
-			['0:0', '<p>Refactor the auth module</p>'],
-			['1:0', "<p>I'll start by reading the current implementation.</p>"],
-			['5:0', '<p>The auth module has been refactored. All tests pass.</p>'],
-			['6:0', '<p>Looks good, thanks!</p>'],
-			['7:0', "<p>You're welcome! Let me know if you need anything else.</p>"],
-		],
+		subagentTree: [],
 	},
 };
 
@@ -224,13 +204,7 @@ export const WithMetadataRecords: Story = {
 			assistantBlocks(6, [{type: 'text', text: 'The fix has been merged.'}], '2026-04-19T10:10:05Z'),
 		],
 		toolResultMap: [],
-		decorations: [],
-		textHtmlMap: [
-			['2:0', '<p>Fix the authentication bug</p>'],
-			['3:0', "<p>I'll look into the authentication module.</p>"],
-			['5:0', '<p>The PR looks good</p>'],
-			['6:0', '<p>The fix has been merged.</p>'],
-		],
+		subagentTree: [],
 	},
 };
 
@@ -263,11 +237,7 @@ export const WithUserImage: Story = {
 			),
 		],
 		toolResultMap: [],
-		decorations: [],
-		textHtmlMap: [
-			['0:0', '<p>Here is a screenshot of the error</p>'],
-			['1:0', '<p>I can see the error in your screenshot. The issue is a missing import.</p>'],
-		],
+		subagentTree: [],
 	},
 };
 
@@ -289,11 +259,7 @@ export const WithAssistantImage: Story = {
 			),
 		],
 		toolResultMap: [],
-		decorations: [],
-		textHtmlMap: [
-			['0:0', '<p>Take a screenshot of the page</p>'],
-			['1:0', '<p>Here is the current state of the page:</p>'],
-		],
+		subagentTree: [],
 	},
 };
 
@@ -319,10 +285,6 @@ export const WithDocumentAttachment: Story = {
 			),
 		],
 		toolResultMap: [],
-		decorations: [],
-		textHtmlMap: [
-			['0:0', '<p>Please review this PDF</p>'],
-			['1:0', "<p>I've reviewed the document. Here are my findings.</p>"],
-		],
+		subagentTree: [],
 	},
 };

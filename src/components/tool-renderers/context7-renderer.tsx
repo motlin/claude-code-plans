@@ -2,6 +2,7 @@ import {BookOpen, FileText, Search} from 'lucide-react';
 import type {ToolRendererProps} from './types';
 import {CollapsibleSection} from './shared';
 import {MarkdownArticle} from '../markdown-article';
+import {looksLikeMarkdown} from '../../lib/diff-utils';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -61,15 +62,7 @@ function ResolveLibraryRenderer({input, resultText}: {input: Record<string, unkn
 	);
 }
 
-function QueryDocsRenderer({
-	input,
-	resultText,
-	resultHtml,
-}: {
-	input: Record<string, unknown>;
-	resultText: string;
-	resultHtml?: string;
-}) {
+function QueryDocsRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
 	const libraryId = (input['libraryId'] as string) ?? '';
 	const query = (input['query'] as string) ?? '';
 	const lineCount = resultText ? resultText.split('\n').length : 0;
@@ -88,9 +81,9 @@ function QueryDocsRenderer({
 				</div>
 			)}
 			<CollapsibleSection label={`Documentation (${lineCount} lines)`}>
-				{resultHtml ? (
+				{looksLikeMarkdown(resultText) ? (
 					<div className="text-xs text-text-100 leading-relaxed max-h-64 overflow-auto">
-						<MarkdownArticle html={resultHtml} />
+						<MarkdownArticle markdown={resultText} />
 					</div>
 				) : (
 					<ResultPreview
@@ -120,16 +113,13 @@ export function Context7Renderer({toolCall}: ToolRendererProps) {
 					resultText={resultText}
 				/>
 			);
-		case 'query-docs': {
-			const queryDocsProps: {input: Record<string, unknown>; resultText: string; resultHtml?: string} = {
-				input,
-				resultText,
-			};
-			if (toolCall.resultHtml) {
-				queryDocsProps.resultHtml = toolCall.resultHtml;
-			}
-			return <QueryDocsRenderer {...queryDocsProps} />;
-		}
+		case 'query-docs':
+			return (
+				<QueryDocsRenderer
+					input={input}
+					resultText={resultText}
+				/>
+			);
 		default:
 			return <ResultPreview text={resultText} />;
 	}
