@@ -1,7 +1,7 @@
 import {MarkdownArticle} from '../markdown-article';
 import type {ToolRendererProps} from './types';
 import {CollapsibleSection, ErrorBorder} from './shared';
-import {looksLikeMarkdown} from '../../lib/diff-utils';
+import {looksLikeMarkdown} from '../../lib/client-markdown';
 
 function parseMcpName(name: string): {server: string; tool: string} {
 	const stripped = name.replace(/^mcp__/, '');

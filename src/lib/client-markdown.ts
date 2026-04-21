@@ -16,3 +16,13 @@ export function renderMarkdownToHtml(markdown: string): string {
 	if (!markdown.trim()) return '';
 	return getMarkdownIt().render(markdown);
 }
+
+export function looksLikeMarkdown(text: string): boolean {
+	let indicators = 0;
+	if (/^#{1,6}\s/m.test(text)) indicators++;
+	if (/```/.test(text)) indicators++;
+	if (/^\s*[-*]\s/m.test(text)) indicators++;
+	if (/\*\*[^*]+\*\*/.test(text)) indicators++;
+	if (/\[[^\]]+\]\([^)]+\)/.test(text)) indicators++;
+	return indicators >= 2;
+}

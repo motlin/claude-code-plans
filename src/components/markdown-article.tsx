@@ -6,7 +6,7 @@ type MarkdownArticleProps = {html: string; markdown?: never} | {html?: never; ma
 
 export function MarkdownArticle(props: MarkdownArticleProps) {
 	const rendered = useMemo(() => {
-		if ('html' in props && props.html !== undefined) return props.html;
+		if (props.html !== undefined) return props.html;
 		return renderMarkdownToHtml(props.markdown!);
 	}, [props.html, props.markdown]);
 

@@ -3,7 +3,7 @@ import {Bot} from 'lucide-react';
 import {MarkdownArticle} from '../markdown-article';
 import type {ToolRendererProps} from './types';
 import {DurationBadge, ErrorBorder, ExpandableBlock, formatDuration} from './shared';
-import {looksLikeMarkdown} from '../../lib/diff-utils';
+import {looksLikeMarkdown} from '../../lib/client-markdown';
 
 const AGENT_TYPE_COLORS: Record<string, string> = {
 	Explore: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',

@@ -287,15 +287,11 @@ export function applySessionLinesAppended(
 	queryClient.setQueryData<SessionDetailCache>(queryKey, (old) => {
 		if (!old) return old;
 
-		const mergedToolResultMap: SerializedToolResultMap = [...old.toolResultMap];
+		const mergedMap = new Map(old.toolResultMap);
 		for (const [toolUseId, info] of newToolResults) {
-			const existingIndex = mergedToolResultMap.findIndex(([id]) => id === toolUseId);
-			if (existingIndex >= 0) {
-				mergedToolResultMap[existingIndex] = [toolUseId, info];
-			} else {
-				mergedToolResultMap.push([toolUseId, info]);
-			}
+			mergedMap.set(toolUseId, info);
 		}
+		const mergedToolResultMap: SerializedToolResultMap = [...mergedMap];
 
 		return {
 			...old,

@@ -165,22 +165,3 @@ export function extractLineNumbers(text: string): {text: string; startLine: numb
 		hasLineNumbers,
 	};
 }
-
-/**
- * Legacy function for backwards compatibility.
- * Strips line number prefixes without preserving line number information.
- */
-export function stripLineNumberPrefixes(text: string): string {
-	const {text: cleanText} = extractLineNumbers(text);
-	return cleanText;
-}
-
-export function looksLikeMarkdown(text: string): boolean {
-	let indicators = 0;
-	if (/^#{1,6}\s/m.test(text)) indicators++;
-	if (/```/.test(text)) indicators++;
-	if (/^\s*[-*]\s/m.test(text)) indicators++;
-	if (/\*\*[^*]+\*\*/.test(text)) indicators++;
-	if (/\[[^\]]+\]\([^)]+\)/.test(text)) indicators++;
-	return indicators >= 2;
-}

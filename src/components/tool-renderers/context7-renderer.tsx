@@ -2,7 +2,7 @@ import {BookOpen, FileText, Search} from 'lucide-react';
 import type {ToolRendererProps} from './types';
 import {CollapsibleSection} from './shared';
 import {MarkdownArticle} from '../markdown-article';
-import {looksLikeMarkdown} from '../../lib/diff-utils';
+import {looksLikeMarkdown} from '../../lib/client-markdown';
 
 // ---------------------------------------------------------------------------
 // Helpers

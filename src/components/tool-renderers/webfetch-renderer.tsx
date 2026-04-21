@@ -1,7 +1,7 @@
 import {MarkdownArticle} from '../markdown-article';
 import type {ToolRendererProps} from './types';
 import {CollapsibleSection, ErrorBorder, ToolMeta} from './shared';
-import {looksLikeMarkdown} from '../../lib/diff-utils';
+import {looksLikeMarkdown} from '../../lib/client-markdown';
 
 export function WebFetchRenderer({toolCall}: ToolRendererProps) {
 	const url = (toolCall.input['url'] as string) ?? '';
