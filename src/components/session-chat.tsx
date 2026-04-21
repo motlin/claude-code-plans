@@ -4,7 +4,7 @@ import {MarkdownArticle} from './markdown-article';
 import {getToolRenderer} from './tool-renderers';
 import {buildClientToolCall} from './tool-renderers/types';
 import type {ClientToolCall, DecorationMap, SerializedDecorationMap, SerializedToolResultMap} from './tool-renderers';
-import {DurationBadge, TerminalOutput} from './tool-renderers/shared';
+import {ChevronIcon, DurationBadge, TerminalOutput} from './tool-renderers/shared';
 import {TasksView} from './tasks-view';
 import {DebugLink} from './debug-link';
 import {hmrSet} from '../lib/hmr-state';
@@ -16,7 +16,7 @@ import {
 	parseBashInput,
 	parseBashOutput,
 	summarizeToolCalls,
-} from '../lib/sessions';
+} from '../lib/session-utils';
 
 function formatTimestamp(timestamp?: string): string | null {
 	if (!timestamp) return null;
@@ -705,19 +705,10 @@ function ThinkingBlock({
 					onClick={() => setOpen(!open)}
 					className="text-xs text-warning-100 cursor-pointer flex items-center gap-1 leading-tight"
 				>
-					<svg
-						width="12"
-						height="12"
-						viewBox="0 0 20 20"
-						fill="none"
-						className="shrink-0 transition-transform duration-200"
-						style={{transform: open ? 'rotate(0deg)' : 'rotate(-90deg)'}}
-					>
-						<path
-							d="M14.128 7.165a.625.625 0 0 1 .707-.038l.128.098a.625.625 0 0 1 .037.844l-4.5 5-.157.131a.625.625 0 0 1-.686 0L9.5 13.069l-4.5-5-.07-.107a.625.625 0 0 1 .07-.737l.107-.098a.625.625 0 0 1 .765.038L10 11.585l4.128-4.42Z"
-							fill="currentColor"
-						/>
-					</svg>
+					<ChevronIcon
+						expanded={open}
+						size={12}
+					/>
 					Thinking...
 				</button>
 				{sessionId && (
@@ -766,27 +757,30 @@ function AssistantEntry({
 	}
 
 	// Collect tool_use blocks for the tool summary and section
-	const toolUseBlocks = content.filter((b) => b.type === 'tool_use');
 	const toolCalls = useMemo(
-		() => toolUseBlocks.map((block) => buildClientToolCall(block, line, toolResultMap, decorations)),
-		[line, toolResultMap, decorations],
+		() =>
+			content
+				.filter((b) => b.type === 'tool_use')
+				.map((block) => buildClientToolCall(block, line, toolResultMap, decorations)),
+		[content, line, toolResultMap, decorations],
 	);
-	const toolSummary = useMemo(() => {
-		const blocks = (line.message?.content as SessionContentBlock[]).filter((b) => b.type === 'tool_use');
-		return summarizeToolCalls(
-			blocks.map((b) => ({
-				id: b.id ?? '',
-				name: b.name ?? '',
-				input: b.input ?? {},
-				sourceUuid: line.uuid ?? '',
-			})),
-		);
-	}, [line]);
+	const toolSummary = useMemo(
+		() =>
+			summarizeToolCalls(
+				toolCalls.map((c) => ({
+					id: c.id,
+					name: c.name,
+					input: c.input,
+					sourceUuid: c.sourceUuid,
+				})),
+			),
+		[toolCalls],
+	);
 
 	// Determine if all content is just tool_use (render as grouped tool section)
 	// vs mixed content (render in order)
 	const hasTextOrThinking = content.some((b) => b.type === 'text' || b.type === 'thinking');
-	const hasToolUse = toolUseBlocks.length > 0;
+	const hasToolUse = toolCalls.length > 0;
 
 	// If there's only tool_use blocks, render as a tool call section
 	if (!hasTextOrThinking && hasToolUse) {
@@ -894,27 +888,6 @@ function ContentBlock({
 	}
 
 	return null;
-}
-
-function ChevronIcon({expanded}: {expanded: boolean}) {
-	return (
-		<svg
-			width="16"
-			height="16"
-			viewBox="0 0 20 20"
-			fill="none"
-			className="shrink-0 transition-transform duration-200"
-			style={{
-				transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)',
-				color: 'currentColor',
-			}}
-		>
-			<path
-				d="M14.128 7.165a.625.625 0 0 1 .707-.038l.128.098a.625.625 0 0 1 .037.844l-4.5 5-.157.131a.625.625 0 0 1-.686 0L9.5 13.069l-4.5-5-.07-.107a.625.625 0 0 1 .07-.737l.107-.098a.625.625 0 0 1 .765.038L10 11.585l4.128-4.42Z"
-				fill="currentColor"
-			/>
-		</svg>
-	);
 }
 
 const PROMINENT_TOOLS = new Set(['AskUserQuestion']);
@@ -1049,7 +1022,10 @@ function ParallelGroupInline({
 					onClick={() => setExpanded(!expanded)}
 					className="flex items-center gap-1.5 text-[12px] text-text-500 hover:text-text-300 cursor-pointer"
 				>
-					<ChevronIcon expanded={expanded} />
+					<ChevronIcon
+						expanded={expanded}
+						size={16}
+					/>
 					<span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-accent-000/12 text-accent-100">
 						parallel &times;{size}
 					</span>
@@ -1094,7 +1070,10 @@ function ToolCallSummary({calls, summary, sessionId}: {calls: ClientToolCall[]; 
 				onClick={() => setExpanded(!expanded)}
 				className="flex items-center gap-2 py-1 text-sm leading-relaxed transition-colors cursor-pointer w-full text-left text-text-500 hover:text-text-300"
 			>
-				<ChevronIcon expanded={expanded} />
+				<ChevronIcon
+					expanded={expanded}
+					size={16}
+				/>
 				<span>{summary}</span>
 			</button>
 			<div className={`grid ${expanded ? 'grid-rows-expand' : 'grid-rows-collapse'}`}>

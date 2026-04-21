@@ -318,6 +318,24 @@ export function ExpandableBlock({
 	);
 }
 
+export function ChevronIcon({expanded, size = 14}: {expanded: boolean; size?: number}) {
+	return (
+		<svg
+			width={size}
+			height={size}
+			viewBox="0 0 20 20"
+			fill="none"
+			className="shrink-0 transition-transform duration-200"
+			style={{transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)'}}
+		>
+			<path
+				d="M14.128 7.165a.625.625 0 0 1 .707-.038l.128.098a.625.625 0 0 1 .037.844l-4.5 5-.157.131a.625.625 0 0 1-.686 0L9.5 13.069l-4.5-5-.07-.107a.625.625 0 0 1 .07-.737l.107-.098a.625.625 0 0 1 .765.038L10 11.585l4.128-4.42Z"
+				fill="currentColor"
+			/>
+		</svg>
+	);
+}
+
 export function CollapsibleSection({
 	label,
 	defaultOpen = false,
@@ -336,19 +354,7 @@ export function CollapsibleSection({
 				onClick={() => setOpen(!open)}
 				className="flex items-center gap-1 text-xs text-text-500 hover:text-text-100 cursor-pointer"
 			>
-				<svg
-					width="14"
-					height="14"
-					viewBox="0 0 20 20"
-					fill="none"
-					className="shrink-0 transition-transform duration-200"
-					style={{transform: open ? 'rotate(0deg)' : 'rotate(-90deg)'}}
-				>
-					<path
-						d="M14.128 7.165a.625.625 0 0 1 .707-.038l.128.098a.625.625 0 0 1 .037.844l-4.5 5-.157.131a.625.625 0 0 1-.686 0L9.5 13.069l-4.5-5-.07-.107a.625.625 0 0 1 .07-.737l.107-.098a.625.625 0 0 1 .765.038L10 11.585l4.128-4.42Z"
-						fill="currentColor"
-					/>
-				</svg>
+				<ChevronIcon expanded={open} />
 				{label}
 			</button>
 			<div className={`grid ${open ? 'grid-rows-expand' : 'grid-rows-collapse'}`}>
