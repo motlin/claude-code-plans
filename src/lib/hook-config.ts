@@ -37,7 +37,7 @@ export interface HooksConfig {
 }
 
 function curlPost(port: number, jqExpr: string): string {
-	return `curl -sX POST http://localhost:${port}/api/hook -H 'Content-Type: application/json' -d "$(echo '{}' | jq -c '${jqExpr}')" >/dev/null 2>&1 || true`;
+	return `curl -sX POST --connect-timeout 0.1 http://localhost:${port}/api/hook -H 'Content-Type: application/json' -d "$(echo '{}' | jq -c '${jqExpr}')" >/dev/null 2>&1 || true`;
 }
 
 /**
