@@ -1,5 +1,6 @@
 import {homedir} from 'node:os';
 import {join, basename} from 'node:path';
+import {hmrPersist, hmrDispose} from './hmr-persist';
 
 export interface ActiveSessionEntry {
 	sessionId: string;
@@ -9,27 +10,24 @@ export interface ActiveSessionEntry {
 	lastActivity: number;
 }
 
-// Persist on globalThis to survive Vite HMR reloads.
-// Without this, each reload creates a new Map and setInterval
-// while the old ones leak in the previous module closure.
-interface StoreGlobals {
-	__activeSessionStore: Map<string, ActiveSessionEntry>;
-	__sweepTimer: ReturnType<typeof setInterval> | null;
-}
+const store = hmrPersist('activeSessionStore', () => new Map<string, ActiveSessionEntry>());
 
-const g = globalThis as unknown as Partial<StoreGlobals>;
-if (!g.__activeSessionStore) g.__activeSessionStore = new Map();
+let sweepTimer: ReturnType<typeof setInterval> | null = null;
+
+hmrDispose(() => {
+	if (sweepTimer) clearInterval(sweepTimer);
+});
 
 export const STALE_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
 export const SWEEP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 export function markSessionActive(sessionId: string, meta: {cwd: string; model?: string}): void {
-	const existing = g.__activeSessionStore!.get(sessionId);
+	const existing = store.get(sessionId);
 	if (existing) {
 		existing.lastActivity = Date.now();
 		existing.cwd = meta.cwd;
 	} else {
-		g.__activeSessionStore!.set(sessionId, {
+		store.set(sessionId, {
 			sessionId,
 			cwd: meta.cwd,
 			model: meta.model ?? '',
@@ -40,30 +38,30 @@ export function markSessionActive(sessionId: string, meta: {cwd: string; model?:
 }
 
 export function markSessionEnded(sessionId: string): void {
-	g.__activeSessionStore!.delete(sessionId);
+	store.delete(sessionId);
 }
 
 export function touchSession(sessionId: string): void {
-	const entry = g.__activeSessionStore!.get(sessionId);
+	const entry = store.get(sessionId);
 	if (entry) {
 		entry.lastActivity = Date.now();
 	}
 }
 
 export function getActiveSessionEntries(): ActiveSessionEntry[] {
-	return [...g.__activeSessionStore!.values()];
+	return [...store.values()];
 }
 
 export function getActiveSessionEntry(sessionId: string): ActiveSessionEntry | null {
-	return g.__activeSessionStore!.get(sessionId) ?? null;
+	return store.get(sessionId) ?? null;
 }
 
 export function isSessionActiveInStore(sessionId: string): boolean {
-	return g.__activeSessionStore!.has(sessionId);
+	return store.has(sessionId);
 }
 
 export function hasAnyActiveSessions(): boolean {
-	return g.__activeSessionStore!.size > 0;
+	return store.size > 0;
 }
 
 export function deriveProjectDir(cwd: string): string {
@@ -78,30 +76,26 @@ export function deriveSessionIdFromPath(filePath: string): string | null {
 	return name.replace(/\.jsonl$/, '');
 }
 
-export function sweepSessions(store: Map<string, ActiveSessionEntry>): void {
+export function sweepSessions(target: Map<string, ActiveSessionEntry>): void {
 	const now = Date.now();
-	for (const [id, entry] of store) {
+	for (const [id, entry] of target) {
 		if (now - entry.lastActivity > STALE_THRESHOLD_MS) {
-			store.delete(id);
+			target.delete(id);
 		}
 	}
 }
 
 function sweep(): void {
-	sweepSessions(g.__activeSessionStore!);
+	sweepSessions(store);
 }
 
 export function startSweep(): void {
-	// Clear any previous interval from a prior HMR reload
-	if (g.__sweepTimer) {
-		clearInterval(g.__sweepTimer);
-	}
-	g.__sweepTimer = setInterval(sweep, SWEEP_INTERVAL_MS);
+	sweepTimer = setInterval(sweep, SWEEP_INTERVAL_MS);
 }
 
 export function stopSweep(): void {
-	if (g.__sweepTimer) {
-		clearInterval(g.__sweepTimer);
-		g.__sweepTimer = null;
+	if (sweepTimer) {
+		clearInterval(sweepTimer);
+		sweepTimer = null;
 	}
 }
