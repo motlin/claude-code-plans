@@ -353,6 +353,8 @@ export async function createWatcher(
 	if (plDir) plansDir = plDir;
 	if (slDir) statuslineDir = slDir;
 
+	if (watcher) await watcher.close();
+
 	watcher = watch(dirs, {
 		ignoreInitial: true,
 		awaitWriteFinish: {stabilityThreshold: 300, pollInterval: 100},
