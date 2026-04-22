@@ -58,6 +58,13 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 					)}
 				</Banner>
 			);
+		case 'hook_blocking_error':
+			return (
+				<Banner
+					icon="🛑"
+					label={`Hook blocked: ${attachment.hookName}`}
+				/>
+			);
 
 		// -- File context --
 		case 'file':
@@ -88,13 +95,19 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 					label={`Edited: ${attachment.filename}`}
 				/>
 			);
-		case 'selected_lines_in_ide':
+		case 'selected_lines_in_ide': {
+			const filePart = attachment.displayPath ?? attachment.filename ?? 'file';
+			const linePart =
+				attachment.lineStart !== undefined
+					? `:${attachment.lineStart}${attachment.lineEnd !== undefined ? `-${attachment.lineEnd}` : ''}`
+					: '';
 			return (
 				<Banner
 					icon="🔍"
-					label={`Selected in ${attachment.ideName ?? 'IDE'}: ${attachment.displayPath ?? attachment.filename ?? 'file'}${attachment.lineStart !== undefined ? `:${attachment.lineStart}` : ''}${attachment.lineEnd !== undefined ? `-${attachment.lineEnd}` : ''}`}
+					label={`Selected in ${attachment.ideName ?? 'IDE'}: ${filePart}${linePart}`}
 				/>
 			);
+		}
 		case 'opened_file_in_ide':
 			return (
 				<Banner
@@ -202,19 +215,15 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 
 		// -- Reminders --
 		case 'task_reminder':
+		case 'todo_reminder': {
+			const kind = attachment.type === 'task_reminder' ? 'Task' : 'Todo';
 			return (
 				<Banner
 					icon="📌"
-					label={`Task reminder${attachment.itemCount !== undefined ? ` (${attachment.itemCount} items)` : ''}`}
+					label={`${kind} reminder${attachment.itemCount !== undefined ? ` (${attachment.itemCount} items)` : ''}`}
 				/>
 			);
-		case 'todo_reminder':
-			return (
-				<Banner
-					icon="📌"
-					label={`Todo reminder${attachment.itemCount !== undefined ? ` (${attachment.itemCount} items)` : ''}`}
-				/>
-			);
+		}
 
 		// -- Commands --
 		case 'queued_command':
@@ -249,7 +258,7 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				</Banner>
 			);
 		default:
-			return null;
+			throw new Error(`Unhandled attachment type: ${(attachment as {type: string}).type}`);
 	}
 }
 

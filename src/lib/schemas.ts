@@ -244,12 +244,17 @@ export const PlanModeExitAttachmentPayload = z
 	})
 	.strict();
 
+// Fields shared by all hook attachment payloads
+const HookBaseFields = {
+	hookName: z.string(),
+	toolUseID: z.string().optional(),
+	hookEvent: z.string(),
+};
+
 export const HookSuccessAttachmentPayload = z
 	.object({
 		type: z.literal('hook_success'),
-		hookName: z.string(),
-		toolUseID: z.string().optional(),
-		hookEvent: z.string(),
+		...HookBaseFields,
 		content: z.string().optional(),
 		stdout: z.string().optional(),
 		stderr: z.string().optional(),
@@ -262,9 +267,7 @@ export const HookSuccessAttachmentPayload = z
 export const HookNonBlockingErrorAttachmentPayload = z
 	.object({
 		type: z.literal('hook_non_blocking_error'),
-		hookName: z.string(),
-		toolUseID: z.string().optional(),
-		hookEvent: z.string(),
+		...HookBaseFields,
 		stderr: z.string().optional(),
 		stdout: z.string().optional(),
 		exitCode: z.number().optional(),
@@ -276,9 +279,7 @@ export const HookNonBlockingErrorAttachmentPayload = z
 export const HookBlockingErrorAttachmentPayload = z
 	.object({
 		type: z.literal('hook_blocking_error'),
-		hookName: z.string(),
-		toolUseID: z.string().optional(),
-		hookEvent: z.string(),
+		...HookBaseFields,
 		blockingError: z.record(z.string(), z.unknown()).optional(),
 		command: z.string().optional(),
 		durationMs: z.number().optional(),
@@ -288,9 +289,7 @@ export const HookBlockingErrorAttachmentPayload = z
 export const HookCancelledAttachmentPayload = z
 	.object({
 		type: z.literal('hook_cancelled'),
-		hookName: z.string(),
-		toolUseID: z.string().optional(),
-		hookEvent: z.string(),
+		...HookBaseFields,
 		command: z.string().optional(),
 		durationMs: z.number().optional(),
 	})
@@ -299,9 +298,7 @@ export const HookCancelledAttachmentPayload = z
 export const HookAdditionalContextAttachmentPayload = z
 	.object({
 		type: z.literal('hook_additional_context'),
-		hookName: z.string(),
-		toolUseID: z.string().optional(),
-		hookEvent: z.string(),
+		...HookBaseFields,
 		content: z.union([z.string(), z.array(z.unknown())]).optional(),
 	})
 	.strict();
@@ -333,20 +330,18 @@ export const SkillListingAttachmentPayload = z
 	})
 	.strict();
 
+// Fields shared by task/todo reminder payloads
+const ReminderBaseFields = {
+	content: z.union([z.string(), z.array(z.unknown())]).optional(),
+	itemCount: z.number().optional(),
+};
+
 export const TaskReminderAttachmentPayload = z
-	.object({
-		type: z.literal('task_reminder'),
-		content: z.union([z.string(), z.array(z.unknown())]).optional(),
-		itemCount: z.number().optional(),
-	})
+	.object({type: z.literal('task_reminder'), ...ReminderBaseFields})
 	.strict();
 
 export const TodoReminderAttachmentPayload = z
-	.object({
-		type: z.literal('todo_reminder'),
-		content: z.union([z.string(), z.array(z.unknown())]).optional(),
-		itemCount: z.number().optional(),
-	})
+	.object({type: z.literal('todo_reminder'), ...ReminderBaseFields})
 	.strict();
 
 export const EditedTextFileAttachmentPayload = z
