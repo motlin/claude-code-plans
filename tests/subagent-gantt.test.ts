@@ -73,7 +73,7 @@ describe('layoutSwimlanes', () => {
 			}),
 		];
 		const layout = layoutSwimlanes(agents);
-		expect(layout.lanes.map((l) => l.agent.id)).toEqual(['parent', 'child', 'late']);
+		expect(layout.lanes.map((l) => l.agent.id)).toStrictEqual(['parent', 'child', 'late']);
 	});
 
 	it('marks parent lane as hatched while child runs', () => {
@@ -93,7 +93,7 @@ describe('layoutSwimlanes', () => {
 		const layout = layoutSwimlanes(agents);
 		const parentLane = layout.lanes.find((l) => l.agent.id === 'parent')!;
 		expect(parentLane.waiting).toHaveLength(1);
-		expect(parentLane.waiting[0]).toEqual({
+		expect(parentLane.waiting[0]).toStrictEqual({
 			startMs: new Date('2026-04-05T00:00:10.000Z').getTime(),
 			endMs: new Date('2026-04-05T00:00:20.000Z').getTime(),
 		});
@@ -122,7 +122,7 @@ describe('layoutSwimlanes', () => {
 		const layout = layoutSwimlanes(agents);
 		const parentLane = layout.lanes.find((l) => l.agent.id === 'parent')!;
 		expect(parentLane.waiting).toHaveLength(1);
-		expect(parentLane.waiting[0]).toEqual({
+		expect(parentLane.waiting[0]).toStrictEqual({
 			startMs: new Date('2026-04-05T00:00:05.000Z').getTime(),
 			endMs: new Date('2026-04-05T00:00:20.000Z').getTime(),
 		});
@@ -191,7 +191,7 @@ describe('layoutSwimlanes', () => {
 			makeAgent({id: 'c', startedAt: '2026-04-05T00:00:15.000Z', finishedAt: '2026-04-05T00:00:25.000Z'}),
 		];
 		const layout = layoutSwimlanes(agents);
-		expect(layout.lanes.map((l) => l.agent.id)).toEqual(['a', 'c']);
+		expect(layout.lanes.map((l) => l.agent.id)).toStrictEqual(['a', 'c']);
 	});
 
 	it('produces tick marks proportional to total duration', () => {

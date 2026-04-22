@@ -93,23 +93,23 @@ describe('parseCommandBlock', () => {
 
 	it('extracts command name', () => {
 		const text = '<command-message>git:commit</command-message>\n<command-name>/git:commit</command-name>';
-		expect(parseCommandBlock(text)).toEqual({name: '/git:commit'});
+		expect(parseCommandBlock(text)).toStrictEqual({name: '/git:commit'});
 	});
 
 	it('extracts command name and args', () => {
 		const text =
 			'<command-message>git:commit</command-message>\n<command-name>/git:commit</command-name>\n<command-args>--amend</command-args>';
-		expect(parseCommandBlock(text)).toEqual({name: '/git:commit', args: '--amend'});
+		expect(parseCommandBlock(text)).toStrictEqual({name: '/git:commit', args: '--amend'});
 	});
 
 	it('trims whitespace from args', () => {
 		const text = '<command-name>/test</command-name>\n<command-args>  some args  </command-args>';
-		expect(parseCommandBlock(text)).toEqual({name: '/test', args: 'some args'});
+		expect(parseCommandBlock(text)).toStrictEqual({name: '/test', args: 'some args'});
 	});
 
 	it('returns undefined args when args tag is empty', () => {
 		const text = '<command-name>/test</command-name>\n<command-args></command-args>';
-		expect(parseCommandBlock(text)).toEqual({name: '/test'});
+		expect(parseCommandBlock(text)).toStrictEqual({name: '/test'});
 	});
 });
 
@@ -278,11 +278,11 @@ describe('summarizeToolCalls', () => {
 
 describe('listSessions', () => {
 	it('returns empty array for empty dir', async () => {
-		expect(await listSessions(testDir)).toEqual([]);
+		expect(await listSessions(testDir)).toStrictEqual([]);
 	});
 
 	it('returns empty array for non-existent dir', async () => {
-		expect(await listSessions(join(testDir, 'nonexistent'))).toEqual([]);
+		expect(await listSessions(join(testDir, 'nonexistent'))).toStrictEqual([]);
 	});
 
 	it('lists sessions grouped by project', async () => {
@@ -372,12 +372,12 @@ describe('readSession', () => {
 		expect(detail!.messages).toHaveLength(2);
 
 		expect(detail!.messages[0]!.role).toBe('user');
-		expect(detail!.messages[0]!.textBlocks).toEqual(['Hello']);
+		expect(detail!.messages[0]!.textBlocks).toStrictEqual(['Hello']);
 
 		expect(detail!.messages[1]!.role).toBe('assistant');
-		expect(detail!.messages[1]!.textBlocks).toEqual(['Hi there!']);
-		expect(detail!.messages[1]!.toolCalls).toMatchObject([
-			{id: 'tool1', name: 'Read', input: {file_path: '/src/index.ts'}},
+		expect(detail!.messages[1]!.textBlocks).toStrictEqual(['Hi there!']);
+		expect(detail!.messages[1]!.toolCalls).toStrictEqual([
+			{id: 'tool1', name: 'Read', input: {file_path: '/src/index.ts'}, sourceUuid: ''},
 		]);
 	});
 
@@ -427,7 +427,7 @@ describe('readSession', () => {
 
 		const detail = await readSession(testDir, 'arr-user');
 		expect(detail!.messages).toHaveLength(1);
-		expect(detail!.messages[0]!.textBlocks).toEqual(['Check this']);
+		expect(detail!.messages[0]!.textBlocks).toStrictEqual(['Check this']);
 	});
 
 	it('extracts image blocks from user content arrays', async () => {
@@ -454,7 +454,7 @@ describe('readSession', () => {
 
 		const detail = await readSession(testDir, 'image-user');
 		expect(detail!.messages).toHaveLength(1);
-		expect(detail!.messages[0]!.textBlocks).toEqual(['Here is a screenshot']);
+		expect(detail!.messages[0]!.textBlocks).toStrictEqual(['Here is a screenshot']);
 		expect(detail!.messages[0]!.content).toContainEqual({
 			type: 'image',
 			mediaType: 'image/png',
@@ -487,7 +487,7 @@ describe('readSession', () => {
 
 		const detail = await readSession(testDir, 'doc-user');
 		expect(detail!.messages).toHaveLength(1);
-		expect(detail!.messages[0]!.textBlocks).toEqual(['Please review this PDF']);
+		expect(detail!.messages[0]!.textBlocks).toStrictEqual(['Please review this PDF']);
 		expect(detail!.messages[0]!.content).toContainEqual({
 			type: 'document',
 			mediaType: 'application/pdf',
@@ -511,7 +511,7 @@ describe('readSession', () => {
 		);
 
 		const detail = await readSession(testDir, 'thinking');
-		expect(detail!.messages[1]!.textBlocks).toEqual(['Here is my answer']);
+		expect(detail!.messages[1]!.textBlocks).toStrictEqual(['Here is my answer']);
 	});
 
 	it('coalesces consecutive same-role messages', async () => {
@@ -524,7 +524,7 @@ describe('readSession', () => {
 
 		const detail = await readSession(testDir, 'coalesce');
 		expect(detail!.messages).toHaveLength(2);
-		expect(detail!.messages[0]!.textBlocks).toEqual(['Part 1', 'Part 2']);
+		expect(detail!.messages[0]!.textBlocks).toStrictEqual(['Part 1', 'Part 2']);
 	});
 
 	it('extracts tool_result and attaches to correct ToolCallInfo by id', async () => {
@@ -702,7 +702,7 @@ describe('readSession', () => {
 		const cmdMsg = detail!.messages[0]!;
 		expect(cmdMsg.role).toBe('user');
 		expect(cmdMsg.isCommand).toBe(true);
-		expect(cmdMsg.textBlocks).toEqual(['/git:commit fix bug']);
+		expect(cmdMsg.textBlocks).toStrictEqual(['/git:commit fix bug']);
 		// The expanded prompt should be completely hidden
 		expect(cmdMsg.textBlocks).not.toContain('ALWAYS use the `code:cli` skill.');
 	});
@@ -722,7 +722,7 @@ describe('readSession', () => {
 		const detail = await readSession(testDir, 'cmd-noargs');
 		const cmdMsg = detail!.messages[0]!;
 		expect(cmdMsg.isCommand).toBe(true);
-		expect(cmdMsg.textBlocks).toEqual(['/git:commit']);
+		expect(cmdMsg.textBlocks).toStrictEqual(['/git:commit']);
 	});
 
 	it('filters out local-command-caveat blocks', async () => {
@@ -742,7 +742,7 @@ describe('readSession', () => {
 		const detail = await readSession(testDir, 'caveat');
 		const cmdMsg = detail!.messages[0]!;
 		expect(cmdMsg.isCommand).toBe(true);
-		expect(cmdMsg.textBlocks).toEqual(['/git:commit']);
+		expect(cmdMsg.textBlocks).toStrictEqual(['/git:commit']);
 	});
 
 	it('still processes tool_results when coalescing onto command messages', async () => {
@@ -780,8 +780,8 @@ describe('readSession', () => {
 		expect(detail!.messages).toHaveLength(2);
 		const msg = detail!.messages[0]!;
 		expect(msg.role).toBe('user');
-		expect(msg.content).toMatchObject([{type: 'bash-input', command: 'git status'}]);
-		expect(msg.textBlocks).toEqual([]);
+		expect(msg.content).toStrictEqual([{type: 'bash-input', command: 'git status', sourceUuid: ''}]);
+		expect(msg.textBlocks).toStrictEqual([]);
 	});
 
 	it('coalesces bash-input with following bash-stdout/bash-stderr', async () => {
@@ -799,11 +799,11 @@ describe('readSession', () => {
 		const detail = await readSession(testDir, 'bash-pair');
 		expect(detail!.messages).toHaveLength(2);
 		const msg = detail!.messages[0]!;
-		expect(msg.content).toMatchObject([
-			{type: 'bash-input', command: 'ls'},
-			{type: 'bash-output', stdout: 'foo\nbar', stderr: ''},
+		expect(msg.content).toStrictEqual([
+			{type: 'bash-input', command: 'ls', sourceUuid: ''},
+			{type: 'bash-output', stdout: 'foo\nbar', stderr: '', sourceUuid: ''},
 		]);
-		expect(msg.textBlocks).toEqual([]);
+		expect(msg.textBlocks).toStrictEqual([]);
 	});
 
 	it('captures stderr content in bash-output', async () => {
@@ -896,8 +896,8 @@ describe('readSession', () => {
 				jsonl(userMessage('hello', {uuid: U1}), assistantMessage([{type: 'text', text: 'world'}], {uuid: U2})),
 			);
 			const detail = await readSession(testDir, 'src-uuid');
-			expect(detail!.messages[0]!.content[0]).toMatchObject({type: 'text', sourceUuid: U1});
-			expect(detail!.messages[1]!.content[0]).toMatchObject({type: 'text', sourceUuid: U2});
+			expect(detail!.messages[0]!.content[0]).toStrictEqual({type: 'text', text: 'hello', sourceUuid: U1});
+			expect(detail!.messages[1]!.content[0]).toStrictEqual({type: 'text', text: 'world', sourceUuid: U2});
 		});
 
 		it('preserves distinct sourceUuids when same-role messages coalesce', async () => {
@@ -911,8 +911,8 @@ describe('readSession', () => {
 			expect(detail!.messages).toHaveLength(1);
 			const blocks = detail!.messages[0]!.content;
 			expect(blocks).toHaveLength(2);
-			expect(blocks[0]).toMatchObject({type: 'text', sourceUuid: U1});
-			expect(blocks[1]).toMatchObject({type: 'text', sourceUuid: U2});
+			expect(blocks[0]).toStrictEqual({type: 'text', text: 'part 1', sourceUuid: U1});
+			expect(blocks[1]).toStrictEqual({type: 'text', text: 'part 2', sourceUuid: U2});
 		});
 
 		it('attaches different uuids to bash-input and bash-output', async () => {
@@ -927,8 +927,8 @@ describe('readSession', () => {
 			);
 			const detail = await readSession(testDir, 'bash-uuid');
 			const blocks = detail!.messages[0]!.content;
-			expect(blocks[0]).toMatchObject({type: 'bash-input', sourceUuid: U1});
-			expect(blocks[1]).toMatchObject({type: 'bash-output', sourceUuid: U2});
+			expect(blocks[0]).toStrictEqual({type: 'bash-input', command: 'ls', sourceUuid: U1});
+			expect(blocks[1]).toStrictEqual({type: 'bash-output', stdout: 'x', stderr: '', sourceUuid: U2});
 		});
 
 		it('attaches sourceUuid + resultUuid to tool calls', async () => {
@@ -949,7 +949,14 @@ describe('readSession', () => {
 			);
 			const detail = await readSession(testDir, 'tool-uuid');
 			const tc = detail!.messages[0]!.toolCalls[0]!;
-			expect(tc).toMatchObject({id: 'tu_1', sourceUuid: U1, resultUuid: U2});
+			expect(tc).toStrictEqual({
+				id: 'tu_1',
+				name: 'Read',
+				input: {file_path: '/x'},
+				result: 'ok',
+				sourceUuid: U1,
+				resultUuid: U2,
+			});
 		});
 
 		it('returns uuidToLine map mapping uuids to file line numbers', async () => {
@@ -1036,7 +1043,11 @@ describe('readSession', () => {
 			makeFile('rw-parse', userMessage('a', {uuid: U(0)}));
 			const result = await readSessionRawWindow(testDir, 'rw-parse', U(0), 0);
 			expect(result!.focal.uuid).toBe(U(0));
-			expect(JSON.parse(result!.focal.raw)).toMatchObject({type: 'user', uuid: U(0)});
+			expect(JSON.parse(result!.focal.raw)).toStrictEqual({
+				type: 'user',
+				message: {role: 'user', content: 'a'},
+				uuid: U(0),
+			});
 		});
 	});
 

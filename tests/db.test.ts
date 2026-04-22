@@ -676,7 +676,7 @@ describe('queries', () => {
 		const mappings = getPlanProjectMappings(db.index);
 		expect(mappings).toHaveLength(2);
 		const filenames = mappings.map((m) => m.planFilename).sort();
-		expect(filenames).toEqual(['plan-a.md', 'plan-b.md']);
+		expect(filenames).toStrictEqual(['plan-a.md', 'plan-b.md']);
 	});
 
 	it('searchSessionsFromDb finds sessions by title', () => {
@@ -884,15 +884,15 @@ describe('subagents', () => {
 
 		const agents = getSubagentsForProject(db.index, 'proj-y');
 		expect(agents).toHaveLength(2);
-		expect(agents.map((a) => a.id).sort()).toEqual(['agent-1', 'agent-2']);
+		expect(agents.map((a) => a.id).sort()).toStrictEqual(['agent-1', 'agent-2']);
 	});
 
 	it('getSubagentsForProject returns empty array when project has no subagents', () => {
-		expect(getSubagentsForProject(db.index, 'nonexistent-project')).toEqual([]);
+		expect(getSubagentsForProject(db.index, 'nonexistent-project')).toStrictEqual([]);
 	});
 
 	it('returns empty array for session with no subagents', () => {
-		expect(getSubagentsForSession(db.index, 'nonexistent')).toEqual([]);
+		expect(getSubagentsForSession(db.index, 'nonexistent')).toStrictEqual([]);
 	});
 
 	it('indexSubagentFile extracts startedAt and finishedAt from JSONL timestamps', async () => {
@@ -1278,7 +1278,7 @@ describe('buildSubagentTree', () => {
 	});
 
 	it('returns empty array for no agents', () => {
-		expect(buildSubagentTree([])).toEqual([]);
+		expect(buildSubagentTree([])).toStrictEqual([]);
 	});
 });
 
@@ -1350,7 +1350,7 @@ describe('starred sessions', () => {
 	});
 
 	it('getStarredSessions returns empty array when none starred', () => {
-		expect(getStarredSessions(db.index)).toEqual([]);
+		expect(getStarredSessions(db.index)).toStrictEqual([]);
 	});
 });
 
@@ -1454,8 +1454,8 @@ describe('task indexer', () => {
 
 		const tasks = db.index.select().from(schema.tasks).all();
 		expect(tasks).toHaveLength(1);
-		expect(JSON.parse(tasks[0]!.blocksJson)).toEqual(['3']);
-		expect(JSON.parse(tasks[0]!.blockedByJson)).toEqual(['1']);
+		expect(JSON.parse(tasks[0]!.blocksJson)).toStrictEqual(['3']);
+		expect(JSON.parse(tasks[0]!.blockedByJson)).toStrictEqual(['1']);
 	});
 
 	it('skips re-indexing when mtime unchanged', async () => {
@@ -1556,7 +1556,7 @@ describe('scanTasksDir', () => {
 
 		const tasks = db.index.select().from(schema.tasks).all();
 		expect(tasks).toHaveLength(2);
-		expect(tasks.map((t) => t.projectDir).sort()).toEqual(['project-a', 'project-b']);
+		expect(tasks.map((t) => t.projectDir).sort()).toStrictEqual(['project-a', 'project-b']);
 	});
 
 	it('cleans up deleted files', async () => {
@@ -1631,21 +1631,21 @@ describe('task queries', () => {
 	it('getTasksForProject returns all tasks for a project', () => {
 		const tasks = getTasksForProject(db.index, 'app');
 		expect(tasks).toHaveLength(3);
-		expect(tasks.map((t) => t.subject).sort()).toEqual(['Deploy', 'Fix bug', 'Write tests']);
+		expect(tasks.map((t) => t.subject).sort()).toStrictEqual(['Deploy', 'Fix bug', 'Write tests']);
 	});
 
 	it('getTasksForProject parses blocks/blockedBy', () => {
 		const tasks = getTasksForProject(db.index, 'app');
 		const task1 = tasks.find((t) => t.taskId === '1');
-		expect(task1!.blocks).toEqual(['2']);
-		expect(task1!.blockedBy).toEqual([]);
+		expect(task1!.blocks).toStrictEqual(['2']);
+		expect(task1!.blockedBy).toStrictEqual([]);
 
 		const task2 = tasks.find((t) => t.taskId === '2');
-		expect(task2!.blockedBy).toEqual(['1']);
+		expect(task2!.blockedBy).toStrictEqual(['1']);
 	});
 
 	it('getTasksForProject returns empty for unknown project', () => {
-		expect(getTasksForProject(db.index, 'nonexistent')).toEqual([]);
+		expect(getTasksForProject(db.index, 'nonexistent')).toStrictEqual([]);
 	});
 
 	it('getTaskCountsForProject aggregates correctly', () => {
@@ -1658,7 +1658,7 @@ describe('task queries', () => {
 
 	it('getTaskCountsForProject returns zeros for unknown project', () => {
 		const counts = getTaskCountsForProject(db.index, 'nonexistent');
-		expect(counts).toEqual({total: 0, pending: 0, inProgress: 0, completed: 0});
+		expect(counts).toStrictEqual({total: 0, pending: 0, inProgress: 0, completed: 0});
 	});
 
 	it('getIncompleteTasksGroupedByProject groups correctly', () => {
@@ -1698,6 +1698,6 @@ describe('task queries', () => {
 		await scanTasksDir(db.index, join(testDir, 'tasks'));
 
 		const groups = getIncompleteTasksGroupedByProject(db.index);
-		expect(groups).toEqual([]);
+		expect(groups).toStrictEqual([]);
 	});
 });

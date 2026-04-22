@@ -41,7 +41,7 @@ describe('toSessionSummaryPayload', () => {
 	it('serializes dates as ISO strings and preserves core fields', () => {
 		const payload = toSessionSummaryPayload(makeSession());
 
-		expect(payload).toEqual({
+		expect(payload).toStrictEqual({
 			id: 'sess-1',
 			title: 'Hello',
 			summary: undefined,
@@ -87,8 +87,8 @@ describe('toTaskSummaryPayload', () => {
 
 		const payload = toTaskSummaryPayload(row);
 
-		expect(payload.blocks).toEqual(['task-2']);
-		expect(payload.blockedBy).toEqual(['task-3']);
+		expect(payload.blocks).toStrictEqual(['task-2']);
+		expect(payload.blockedBy).toStrictEqual(['task-3']);
 		expect(payload.taskId).toBe('task-1');
 		expect(payload.status).toBe('pending');
 	});

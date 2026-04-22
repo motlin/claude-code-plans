@@ -61,7 +61,7 @@ describe('claudeEventsReducer', () => {
 		};
 		const next = claudeEventsReducer(state, action);
 		expect(next.activeSessions.has('abc-123')).toBe(true);
-		expect(next.activeSessions.get('abc-123')).toEqual({
+		expect(next.activeSessions.get('abc-123')).toStrictEqual({
 			sessionId: 'abc-123',
 			cwd: '/home/user/project',
 			model: 'opus',
@@ -174,7 +174,7 @@ describe('applySessionAdded', () => {
 			'sessions',
 		]);
 		expect(groups).toHaveLength(1);
-		expect(groups?.[0]?.sessions.map((s) => s.id)).toEqual(['new', 'old']);
+		expect(groups?.[0]?.sessions.map((s) => s.id)).toStrictEqual(['new', 'old']);
 	});
 
 	it('creates a new project group when the session is from a new project', () => {
@@ -189,7 +189,7 @@ describe('applySessionAdded', () => {
 		const groups = queryClient.getQueryData<Array<{project: string; sessions: SessionSummaryPayload[]}>>([
 			'sessions',
 		]);
-		expect(groups?.map((g) => g.project)).toEqual(['proj-a', 'proj-b']);
+		expect(groups?.map((g) => g.project)).toStrictEqual(['proj-a', 'proj-b']);
 	});
 
 	it('replaces an existing session in place when the id already exists', () => {
@@ -232,7 +232,7 @@ describe('applySessionRemoved', () => {
 		const groups = queryClient.getQueryData<Array<{project: string; sessions: SessionSummaryPayload[]}>>([
 			'sessions',
 		]);
-		expect(groups?.[0]?.sessions.map((s) => s.id)).toEqual(['a2']);
+		expect(groups?.[0]?.sessions.map((s) => s.id)).toStrictEqual(['a2']);
 	});
 
 	it('drops the project group when its last session is removed', () => {
@@ -247,7 +247,7 @@ describe('applySessionRemoved', () => {
 		const groups = queryClient.getQueryData<Array<{project: string; sessions: SessionSummaryPayload[]}>>([
 			'sessions',
 		]);
-		expect(groups).toEqual([]);
+		expect(groups).toStrictEqual([]);
 	});
 
 	it('also filters the starred-sessions cache', () => {
@@ -260,7 +260,7 @@ describe('applySessionRemoved', () => {
 		applySessionRemoved(queryClient, 'a1', 'proj-a');
 
 		const starred = queryClient.getQueryData<SessionSummaryPayload[]>(['starred-sessions']);
-		expect(starred?.map((s) => s.id)).toEqual(['a2']);
+		expect(starred?.map((s) => s.id)).toStrictEqual(['a2']);
 	});
 
 	it('evicts every per-session sub-cache under ["session", id, ...]', () => {
@@ -278,7 +278,7 @@ describe('applySessionRemoved', () => {
 		expect(queryClient.getQueryData(['session', 'a1', 'subagents'])).toBeUndefined();
 		expect(queryClient.getQueryData(['session', 'a1', 'summary'])).toBeUndefined();
 		expect(queryClient.getQueryData(['session', 'a1', 'starred'])).toBeUndefined();
-		expect(queryClient.getQueryData(['session', 'a2', 'detail'])).toEqual({id: 'a2'});
+		expect(queryClient.getQueryData(['session', 'a2', 'detail'])).toStrictEqual({id: 'a2'});
 	});
 });
 
@@ -323,7 +323,7 @@ describe('applyPlanChanged', () => {
 		applyPlanChanged(queryClient, makePlan('new.md'));
 
 		const plans = queryClient.getQueryData<PlanSummaryPayload[]>(['plans']);
-		expect(plans?.map((p) => p.filename)).toEqual(['new.md', 'old.md']);
+		expect(plans?.map((p) => p.filename)).toStrictEqual(['new.md', 'old.md']);
 	});
 
 	it('replaces an existing plan in place when its filename already exists', () => {
@@ -354,7 +354,7 @@ describe('applyPlanRemoved', () => {
 		applyPlanRemoved(queryClient, 'a.md');
 
 		const plans = queryClient.getQueryData<PlanSummaryPayload[]>(['plans']);
-		expect(plans?.map((p) => p.filename)).toEqual(['b.md']);
+		expect(plans?.map((p) => p.filename)).toStrictEqual(['b.md']);
 	});
 
 	it('filters the plan out of grouped caches, dropping empty groups', () => {
@@ -373,8 +373,8 @@ describe('applyPlanRemoved', () => {
 			'plans',
 			'grouped',
 		]);
-		expect(grouped?.map((g) => g.projectId)).toEqual(['p2']);
-		expect(grouped?.[0]?.plans.map((p) => p.filename)).toEqual(['b.md']);
+		expect(grouped?.map((g) => g.projectId)).toStrictEqual(['p2']);
+		expect(grouped?.[0]?.plans.map((p) => p.filename)).toStrictEqual(['b.md']);
 	});
 });
 
@@ -412,8 +412,8 @@ describe('applyMemoryChanged', () => {
 		const groups = queryClient.getQueryData<Array<{project: string; memories: Array<{filename: string}>}>>([
 			'memories',
 		]);
-		expect(groups?.map((g) => g.project)).toEqual(['proj-a', 'proj-b']);
-		expect(groups?.[1]?.memories.map((m) => m.filename)).toEqual(['MEMORY.md']);
+		expect(groups?.map((g) => g.project)).toStrictEqual(['proj-a', 'proj-b']);
+		expect(groups?.[1]?.memories.map((m) => m.filename)).toStrictEqual(['MEMORY.md']);
 	});
 });
 

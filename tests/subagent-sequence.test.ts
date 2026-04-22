@@ -40,7 +40,7 @@ describe('layoutSequence', () => {
 		];
 		const layout = layoutSequence(agents);
 		expect(layout.lifelines).toHaveLength(2);
-		expect(layout.lifelines.map((l) => l.agent.id)).toEqual(['a', 'b']);
+		expect(layout.lifelines.map((l) => l.agent.id)).toStrictEqual(['a', 'b']);
 		expect(layout.lifelines[0]!.column).toBe(0);
 		expect(layout.lifelines[1]!.column).toBe(1);
 	});
@@ -141,7 +141,7 @@ describe('layoutSequence', () => {
 		const layout = layoutSequence(agents);
 		const parent = layout.lifelines.find((l) => l.agent.id === 'parent')!;
 		expect(parent.waiting).toHaveLength(1);
-		expect(parent.waiting[0]).toEqual({
+		expect(parent.waiting[0]).toStrictEqual({
 			startMs: new Date('2026-04-05T00:00:10.000Z').getTime(),
 			endMs: new Date('2026-04-05T00:00:20.000Z').getTime(),
 		});
@@ -170,7 +170,7 @@ describe('layoutSequence', () => {
 		const layout = layoutSequence(agents);
 		const parent = layout.lifelines.find((l) => l.agent.id === 'parent')!;
 		expect(parent.waiting).toHaveLength(1);
-		expect(parent.waiting[0]).toEqual({
+		expect(parent.waiting[0]).toStrictEqual({
 			startMs: new Date('2026-04-05T00:00:05.000Z').getTime(),
 			endMs: new Date('2026-04-05T00:00:20.000Z').getTime(),
 		});
@@ -212,7 +212,7 @@ describe('layoutSequence', () => {
 			makeAgent({id: 'c', startedAt: '2026-04-05T00:00:15.000Z', finishedAt: '2026-04-05T00:00:25.000Z'}),
 		];
 		const layout = layoutSequence(agents);
-		expect(layout.lifelines.map((l) => l.agent.id)).toEqual(['a', 'c']);
+		expect(layout.lifelines.map((l) => l.agent.id)).toStrictEqual(['a', 'c']);
 	});
 
 	it('produces tick marks proportional to total duration', () => {
@@ -246,6 +246,6 @@ describe('layoutSequence', () => {
 			}),
 		];
 		const layout = layoutSequence(agents);
-		expect(layout.lifelines.map((l) => l.agent.id)).toEqual(['parent', 'p1', 'p2']);
+		expect(layout.lifelines.map((l) => l.agent.id)).toStrictEqual(['parent', 'p1', 'p2']);
 	});
 });

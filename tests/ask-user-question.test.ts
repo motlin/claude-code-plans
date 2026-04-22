@@ -56,7 +56,7 @@ describe('normalizeQuestions', () => {
 			header: 'Confirm',
 		};
 		const result = normalizeQuestions(input);
-		expect(result).toEqual([
+		expect(result).toStrictEqual([
 			{
 				question: 'Continue?',
 				options: [{label: 'Yes'}, {label: 'No'}],
@@ -94,7 +94,7 @@ describe('answerForQuestion', () => {
 		const draft = {selected: new Set(['A', 'C']), otherText: '', useOther: false};
 		const result = answerForQuestion(multi, draft);
 		expect(result).not.toBeNull();
-		expect(result!.split(', ').sort()).toEqual(['A', 'C']);
+		expect(result!.split(', ').sort()).toStrictEqual(['A', 'C']);
 	});
 
 	it('returns the trimmed Other text when useOther is true', () => {
@@ -118,7 +118,7 @@ describe('parseAnswerResult', () => {
 		const text =
 			'User has answered your questions: "Continue?"="Yes". You can now continue with the user\'s answers in mind.';
 		const result = parseAnswerResult(text, [q('Continue?', [{label: 'Yes'}, {label: 'No'}])]);
-		expect(result).toEqual([{question: 'Continue?', answer: 'Yes', notes: null}]);
+		expect(result).toStrictEqual([{question: 'Continue?', answer: 'Yes', notes: null}]);
 	});
 
 	it('parses a single Q/A pair with user notes', () => {
@@ -126,7 +126,7 @@ describe('parseAnswerResult', () => {
 			'User has answered your questions: "Continue?"="Other thing" user notes: Other thing.' +
 			" You can now continue with the user's answers in mind.";
 		const result = parseAnswerResult(text, [q('Continue?', [{label: 'Yes'}])]);
-		expect(result).toEqual([{question: 'Continue?', answer: 'Other thing', notes: 'Other thing'}]);
+		expect(result).toStrictEqual([{question: 'Continue?', answer: 'Other thing', notes: 'Other thing'}]);
 	});
 
 	it('parses multiple Q/A pairs separated by commas', () => {
@@ -134,7 +134,7 @@ describe('parseAnswerResult', () => {
 			'User has answered your questions: "Q1"="A1", "Q2"="A2".' +
 			" You can now continue with the user's answers in mind.";
 		const result = parseAnswerResult(text, [q('Q1'), q('Q2')]);
-		expect(result).toEqual([
+		expect(result).toStrictEqual([
 			{question: 'Q1', answer: 'A1', notes: null},
 			{question: 'Q2', answer: 'A2', notes: null},
 		]);
@@ -145,7 +145,7 @@ describe('parseAnswerResult', () => {
 			'User has answered your questions: "Q1"="Other" user notes: foo, bar, baz, "Q2"="A2" user notes: hello, world.' +
 			" You can now continue with the user's answers in mind.";
 		const result = parseAnswerResult(text, [q('Q1'), q('Q2')]);
-		expect(result).toEqual([
+		expect(result).toStrictEqual([
 			{question: 'Q1', answer: 'Other', notes: 'foo, bar, baz'},
 			{question: 'Q2', answer: 'A2', notes: 'hello, world'},
 		]);
@@ -156,7 +156,7 @@ describe('parseAnswerResult', () => {
 			'User has answered your questions: "Say \\"hi\\"?"="No \\"thanks\\"".' +
 			" You can now continue with the user's answers in mind.";
 		const result = parseAnswerResult(text, [q('Say "hi"?')]);
-		expect(result).toEqual([{question: 'Say "hi"?', answer: 'No "thanks"', notes: null}]);
+		expect(result).toStrictEqual([{question: 'Say "hi"?', answer: 'No "thanks"', notes: null}]);
 	});
 
 	it('handles questions containing newlines', () => {
@@ -164,7 +164,7 @@ describe('parseAnswerResult', () => {
 			'User has answered your questions: "Item 1\nDetails"="Accept", "Item 2\nMore"="Other" user notes: Other.' +
 			" You can now continue with the user's answers in mind.";
 		const result = parseAnswerResult(text, [q('Item 1\nDetails'), q('Item 2\nMore')]);
-		expect(result).toEqual([
+		expect(result).toStrictEqual([
 			{question: 'Item 1\nDetails', answer: 'Accept', notes: null},
 			{question: 'Item 2\nMore', answer: 'Other', notes: 'Other'},
 		]);

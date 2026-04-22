@@ -551,8 +551,8 @@ describe('TaskFileSchema', () => {
 		const result = TaskFileSchema.safeParse(task);
 		expect(result.success).toBe(true);
 		if (result.success) {
-			expect(result.data.blocks).toEqual(['3']);
-			expect(result.data.blockedBy).toEqual(['1']);
+			expect(result.data.blocks).toStrictEqual(['3']);
+			expect(result.data.blockedBy).toStrictEqual(['1']);
 			expect(result.data.activeForm).toBe('Writing tests');
 		}
 	});

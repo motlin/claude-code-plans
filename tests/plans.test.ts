@@ -16,7 +16,7 @@ afterEach(() => {
 describe('listPlans', () => {
 	it('returns empty array for empty directory', async () => {
 		const plans = await listPlans(testDir);
-		expect(plans).toEqual([]);
+		expect(plans).toStrictEqual([]);
 	});
 
 	it('lists plans sorted by mtime descending (newest first)', async () => {

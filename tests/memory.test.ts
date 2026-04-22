@@ -37,12 +37,12 @@ describe('decodeProjectDir', () => {
 describe('listMemories', () => {
 	it('returns empty array when no project dirs exist', async () => {
 		const groups = await listMemories(testDir);
-		expect(groups).toEqual([]);
+		expect(groups).toStrictEqual([]);
 	});
 
 	it('returns empty array when directory does not exist', async () => {
 		const groups = await listMemories(join(testDir, 'nonexistent'));
-		expect(groups).toEqual([]);
+		expect(groups).toStrictEqual([]);
 	});
 
 	it('lists memory files grouped by project', async () => {
@@ -63,7 +63,7 @@ describe('listMemories', () => {
 		mkdirSync(join(testDir, '-Users-craig-projects-no-memory'), {recursive: true});
 
 		const groups = await listMemories(testDir);
-		expect(groups).toEqual([]);
+		expect(groups).toStrictEqual([]);
 	});
 
 	it('skips non-md files in memory dirs', async () => {

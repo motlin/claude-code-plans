@@ -116,17 +116,17 @@ describe('readSourceFile', () => {
 describe('buildSourceConfig', () => {
 	it('returns plans config for kind=plan', () => {
 		const cfg = buildSourceConfig('plan', '/home/u/.claude');
-		expect(cfg).toEqual({root: '/home/u/.claude/plans', extension: '.md', language: 'markdown'});
+		expect(cfg).toStrictEqual({root: '/home/u/.claude/plans', extension: '.md', language: 'markdown'});
 	});
 
 	it('returns memory config for kind=memory', () => {
 		const cfg = buildSourceConfig('memory', '/home/u/.claude');
-		expect(cfg).toEqual({root: '/home/u/.claude/projects', extension: '.md', language: 'markdown'});
+		expect(cfg).toStrictEqual({root: '/home/u/.claude/projects', extension: '.md', language: 'markdown'});
 	});
 
 	it('returns tasks config for kind=task', () => {
 		const cfg = buildSourceConfig('task', '/home/u/.claude');
-		expect(cfg).toEqual({root: '/home/u/.claude/tasks', extension: '.json', language: 'json'});
+		expect(cfg).toStrictEqual({root: '/home/u/.claude/tasks', extension: '.json', language: 'json'});
 	});
 
 	it('returns null for kind=command', () => {

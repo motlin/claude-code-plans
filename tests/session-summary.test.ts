@@ -35,7 +35,7 @@ describe('toActiveSessionPayload', () => {
 
 		const payload = toActiveSessionPayload(entry);
 
-		expect(payload).toEqual({
+		expect(payload).toStrictEqual({
 			sessionId: 'abc-123',
 			cwd: '/home/user/project',
 			model: 'claude-sonnet-4-6',

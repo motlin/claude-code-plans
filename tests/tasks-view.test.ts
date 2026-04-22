@@ -14,8 +14,8 @@ describe('extractTasks', () => {
 		];
 		const tasks = extractTasks(calls);
 		expect(tasks).toHaveLength(2);
-		expect(tasks[0]).toEqual({id: '1', subject: 'Build auth', description: 'Add JWT', status: 'pending'});
-		expect(tasks[1]).toEqual({id: '2', subject: 'Add tests', description: '', status: 'pending'});
+		expect(tasks[0]).toStrictEqual({id: '1', subject: 'Build auth', description: 'Add JWT', status: 'pending'});
+		expect(tasks[1]).toStrictEqual({id: '2', subject: 'Add tests', description: '', status: 'pending'});
 	});
 
 	it('applies TaskUpdate status changes', () => {
@@ -40,7 +40,7 @@ describe('extractTasks', () => {
 
 	it('returns empty array when no task calls exist', () => {
 		const calls = [makeToolCall('Bash', {command: 'echo hi'}), makeToolCall('Read', {file_path: '/tmp/foo'})];
-		expect(extractTasks(calls)).toEqual([]);
+		expect(extractTasks(calls)).toStrictEqual([]);
 	});
 
 	it('ignores invalid status values in TaskUpdate', () => {

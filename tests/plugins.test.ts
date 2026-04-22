@@ -36,21 +36,21 @@ describe('parseFrontmatter', () => {
 	it('returns empty frontmatter when no delimiters', () => {
 		const content = '# Just markdown\n\nNo frontmatter here.';
 		const {frontmatter, body} = parseFrontmatter(content);
-		expect(frontmatter).toEqual({});
+		expect(frontmatter).toStrictEqual({});
 		expect(body).toBe(content);
 	});
 
 	it('returns empty frontmatter when no closing delimiter', () => {
 		const content = '---\nname: broken\nNo closing delimiter';
 		const {frontmatter, body} = parseFrontmatter(content);
-		expect(frontmatter).toEqual({});
+		expect(frontmatter).toStrictEqual({});
 		expect(body).toBe(content);
 	});
 
 	it('handles empty frontmatter block', () => {
 		const content = '---\n---\n\n# Body';
 		const {frontmatter, body} = parseFrontmatter(content);
-		expect(frontmatter).toEqual({});
+		expect(frontmatter).toStrictEqual({});
 		expect(body).toBe('# Body');
 	});
 
@@ -217,7 +217,7 @@ describe('groupPluginsByMarketplace', () => {
 	});
 
 	it('returns empty array for no plugins', () => {
-		expect(groupPluginsByMarketplace([], marketplaces)).toEqual([]);
+		expect(groupPluginsByMarketplace([], marketplaces)).toStrictEqual([]);
 	});
 
 	it('sorts official marketplaces before third-party', () => {
@@ -230,7 +230,7 @@ describe('groupPluginsByMarketplace', () => {
 		const groups = groupPluginsByMarketplace(plugins, {});
 		const ids = groups.map((g) => g.marketplace.id);
 		// Both official first (alphabetically among themselves), then third-party alphabetically
-		expect(ids).toEqual([
+		expect(ids).toStrictEqual([
 			'anthropic-agent-skills',
 			'claude-plugins-official',
 			'aaa-marketplace',
@@ -293,7 +293,7 @@ describe('scanPluginTree', () => {
 		const tree = await scanPluginTree(testDir);
 		const names = tree!.children!.map((c) => c.name);
 		// Directories first (alphabetically), then files (alphabetically)
-		expect(names).toEqual(['alpha', 'beta', 'aardvark.md', 'zebra.md']);
+		expect(names).toStrictEqual(['alpha', 'beta', 'aardvark.md', 'zebra.md']);
 	});
 
 	it('includes relative path for each node', async () => {

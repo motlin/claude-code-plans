@@ -8,7 +8,7 @@ import {
 describe('parsePageList', () => {
 	it('parses a single page', () => {
 		const result = parsePageList('0: https://example.com');
-		expect(result).toEqual([{index: 0, url: 'https://example.com', selected: false}]);
+		expect(result).toStrictEqual([{index: 0, url: 'https://example.com', selected: false}]);
 	});
 
 	it('parses multiple pages with selected indicator', () => {
@@ -16,7 +16,7 @@ describe('parsePageList', () => {
 1: https://other.com
 2: about:blank`;
 		const result = parsePageList(text);
-		expect(result).toEqual([
+		expect(result).toStrictEqual([
 			{index: 0, url: 'https://example.com', selected: true},
 			{index: 1, url: 'https://other.com', selected: false},
 			{index: 2, url: 'about:blank', selected: false},
@@ -24,7 +24,7 @@ describe('parsePageList', () => {
 	});
 
 	it('returns empty array for empty input', () => {
-		expect(parsePageList('')).toEqual([]);
+		expect(parsePageList('')).toStrictEqual([]);
 	});
 
 	it('skips lines that do not match the format', () => {
@@ -32,19 +32,19 @@ describe('parsePageList', () => {
 0: https://example.com
 not a page line`;
 		const result = parsePageList(text);
-		expect(result).toEqual([{index: 0, url: 'https://example.com', selected: false}]);
+		expect(result).toStrictEqual([{index: 0, url: 'https://example.com', selected: false}]);
 	});
 });
 
 describe('parseConsoleMessage', () => {
 	it('parses a basic log message', () => {
 		const result = parseConsoleMessage('msgid=1 [log] Hello world');
-		expect(result).toEqual({msgid: '1', level: 'log', message: 'Hello world'});
+		expect(result).toStrictEqual({msgid: '1', level: 'log', message: 'Hello world'});
 	});
 
 	it('parses a message with arg count', () => {
 		const result = parseConsoleMessage('msgid=5 [error] TypeError: undefined (3 args)');
-		expect(result).toEqual({
+		expect(result).toStrictEqual({
 			msgid: '5',
 			level: 'error',
 			message: 'TypeError: undefined',
@@ -54,7 +54,7 @@ describe('parseConsoleMessage', () => {
 
 	it('parses a message with single arg', () => {
 		const result = parseConsoleMessage('msgid=2 [warn] something bad (1 arg)');
-		expect(result).toEqual({
+		expect(result).toStrictEqual({
 			msgid: '2',
 			level: 'warn',
 			message: 'something bad',
@@ -74,7 +74,7 @@ describe('parseConsoleMessage', () => {
 describe('parseNetworkRequest', () => {
 	it('parses a GET request with status code', () => {
 		const result = parseNetworkRequest('reqid=92 GET http://127.0.0.1:3000/api [failed - 500]');
-		expect(result).toEqual({
+		expect(result).toStrictEqual({
 			reqid: '92',
 			method: 'GET',
 			url: 'http://127.0.0.1:3000/api',
@@ -85,7 +85,7 @@ describe('parseNetworkRequest', () => {
 
 	it('parses a POST request without status code', () => {
 		const result = parseNetworkRequest('reqid=10 POST https://api.example.com/data [success]');
-		expect(result).toEqual({
+		expect(result).toStrictEqual({
 			reqid: '10',
 			method: 'POST',
 			url: 'https://api.example.com/data',
@@ -110,7 +110,7 @@ describe('parseNetworkRequest', () => {
 
 	it('parses redirect status codes', () => {
 		const result = parseNetworkRequest('reqid=5 GET http://example.com [redirect - 301]');
-		expect(result).toEqual({
+		expect(result).toStrictEqual({
 			reqid: '5',
 			method: 'GET',
 			url: 'http://example.com',

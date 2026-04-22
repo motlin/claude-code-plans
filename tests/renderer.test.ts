@@ -178,9 +178,9 @@ describe('computeDiffData', () => {
 
 	it('returns ops in correct order', () => {
 		const result = computeDiffData('a\nb', 'a\nc');
-		expect(result.ops[0]).toEqual(['equal', 'a']);
-		expect(result.ops[1]).toEqual(['remove', 'b']);
-		expect(result.ops[2]).toEqual(['add', 'c']);
+		expect(result.ops[0]).toStrictEqual(['equal', 'a']);
+		expect(result.ops[1]).toStrictEqual(['remove', 'b']);
+		expect(result.ops[2]).toStrictEqual(['add', 'c']);
 	});
 });
 
@@ -324,7 +324,7 @@ describe('render caches', () => {
 		];
 		const first = await highlightDiffOps(ops, 'typescript');
 		const second = await highlightDiffOps(ops, 'typescript');
-		expect(second).toEqual(first);
+		expect(second).toStrictEqual(first);
 	});
 
 	it('clearRenderCaches forces recomputation', async () => {

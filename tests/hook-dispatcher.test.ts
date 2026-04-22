@@ -77,23 +77,25 @@ describe('dispatchHookEvent', () => {
 			broadcast: (type, data) => broadcasts.push({type, data}),
 		});
 
-		expect(activeCalls).toEqual([
+		expect(activeCalls).toStrictEqual([
 			{sessionId: 'abc-123', meta: {cwd: '/home/user/project', model: 'claude-sonnet-4-6'}},
 		]);
 		const legacy = broadcasts.find((b) => b.type === SSE_EVENTS.SESSION_START);
 		expect(legacy).toBeDefined();
-		expect(legacy!.data).toEqual({
+		expect(legacy!.data).toStrictEqual({
 			sessionId: 'abc-123',
 			cwd: '/home/user/project',
 			model: 'claude-sonnet-4-6',
 		});
 		const domain = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_STARTED);
 		expect(domain).toBeDefined();
-		expect(domain!.data).toMatchObject({
+		expect(domain!.data).toStrictEqual({
 			session: {
 				sessionId: 'abc-123',
 				cwd: '/home/user/project',
 				model: 'claude-sonnet-4-6',
+				startedAt: 1_700_000_000_000,
+				lastActivity: 1_700_000_000_000,
 			},
 		});
 	});
@@ -131,7 +133,19 @@ describe('dispatchHookEvent', () => {
 
 		const added = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_ADDED);
 		expect(added).toBeDefined();
-		expect(added!.data).toMatchObject({session: {id: 'abc-123', messageCount: 1}});
+		expect(added!.data).toStrictEqual({
+			session: {
+				id: 'abc-123',
+				title: 'Fix the login bug',
+				project: '-Users-craig-projects-app',
+				projectName: 'app',
+				messageCount: 1,
+				created: '2023-11-14T22:13:20.000Z',
+				mtime: '2023-11-14T22:13:20.000Z',
+				summary: undefined,
+				gitBranch: undefined,
+			},
+		});
 	});
 
 	it('Stop broadcasts domain SESSION_UPDATED with enriched payload', async () => {
@@ -162,15 +176,20 @@ describe('dispatchHookEvent', () => {
 			broadcast: (type, data) => broadcasts.push({type, data}),
 		});
 
-		expect(touchedCalls).toEqual(['abc-123']);
+		expect(touchedCalls).toStrictEqual(['abc-123']);
 		const domain = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_UPDATED);
 		expect(domain).toBeDefined();
-		expect(domain!.data).toMatchObject({
+		expect(domain!.data).toStrictEqual({
 			session: {
 				id: 'abc-123',
 				title: 'Shipped feature X',
-				messageCount: 12,
+				project: '-Users-craig-projects-app',
 				projectName: 'app',
+				messageCount: 12,
+				created: '2023-11-14T22:13:20.000Z',
+				mtime: '2023-11-14T22:13:20.000Z',
+				summary: 'Shipped feature X',
+				gitBranch: undefined,
 			},
 		});
 	});
@@ -185,7 +204,7 @@ describe('dispatchHookEvent', () => {
 			broadcast: (type, data) => broadcasts.push({type, data}),
 		});
 
-		expect(broadcasts).toEqual([]);
+		expect(broadcasts).toStrictEqual([]);
 	});
 
 	it('SessionEnd broadcasts both lifecycle SESSION_END and domain SESSION_ENDED', () => {
@@ -198,9 +217,11 @@ describe('dispatchHookEvent', () => {
 			broadcast: (type, data) => broadcasts.push({type, data}),
 		});
 
-		expect(endedCalls).toEqual(['abc-123']);
-		expect(broadcasts.find((b) => b.type === SSE_EVENTS.SESSION_END)!.data).toEqual({sessionId: 'abc-123'});
-		expect(broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_ENDED)!.data).toEqual({sessionId: 'abc-123'});
+		expect(endedCalls).toStrictEqual(['abc-123']);
+		expect(broadcasts.find((b) => b.type === SSE_EVENTS.SESSION_END)!.data).toStrictEqual({sessionId: 'abc-123'});
+		expect(broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_ENDED)!.data).toStrictEqual({
+			sessionId: 'abc-123',
+		});
 	});
 
 	it('TaskCompleted broadcasts the domain TASK_COMPLETED event', () => {
@@ -218,9 +239,9 @@ describe('dispatchHookEvent', () => {
 			broadcast: (type, data) => broadcasts.push({type, data}),
 		});
 
-		expect(touchedCalls).toEqual(['abc-123']);
+		expect(touchedCalls).toStrictEqual(['abc-123']);
 		const completed = broadcasts.filter((b) => b.type === DOMAIN_EVENTS.TASK_COMPLETED);
 		expect(completed.length).toBe(1);
-		expect(completed[0]!.data).toMatchObject({taskId: 'task-001', subject: 'Build auth'});
+		expect(completed[0]!.data).toStrictEqual({taskId: 'task-001', subject: 'Build auth'});
 	});
 });

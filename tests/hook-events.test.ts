@@ -76,9 +76,9 @@ describe('diffEntityMaps', () => {
 
 		const diff = diffEntityMaps(previous, next, equals);
 
-		expect(diff.added).toEqual([{id: 'a', version: 1}]);
-		expect(diff.removed).toEqual([]);
-		expect(diff.updated).toEqual([]);
+		expect(diff.added).toStrictEqual([{id: 'a', version: 1}]);
+		expect(diff.removed).toStrictEqual([]);
+		expect(diff.updated).toStrictEqual([]);
 	});
 
 	it('detects removed entries present in previous but not next', () => {
@@ -87,9 +87,9 @@ describe('diffEntityMaps', () => {
 
 		const diff = diffEntityMaps(previous, next, equals);
 
-		expect(diff.added).toEqual([]);
-		expect(diff.removed).toEqual(['a']);
-		expect(diff.updated).toEqual([]);
+		expect(diff.added).toStrictEqual([]);
+		expect(diff.removed).toStrictEqual(['a']);
+		expect(diff.updated).toStrictEqual([]);
 	});
 
 	it('detects updated entries whose value differs by the custom comparator', () => {
@@ -98,9 +98,9 @@ describe('diffEntityMaps', () => {
 
 		const diff = diffEntityMaps(previous, next, equals);
 
-		expect(diff.added).toEqual([]);
-		expect(diff.removed).toEqual([]);
-		expect(diff.updated).toEqual([{id: 'a', version: 2}]);
+		expect(diff.added).toStrictEqual([]);
+		expect(diff.removed).toStrictEqual([]);
+		expect(diff.updated).toStrictEqual([{id: 'a', version: 2}]);
 	});
 
 	it('treats equal entries as unchanged', () => {
@@ -109,9 +109,9 @@ describe('diffEntityMaps', () => {
 
 		const diff = diffEntityMaps(previous, next, equals);
 
-		expect(diff.added).toEqual([]);
-		expect(diff.removed).toEqual([]);
-		expect(diff.updated).toEqual([]);
+		expect(diff.added).toStrictEqual([]);
+		expect(diff.removed).toStrictEqual([]);
+		expect(diff.updated).toStrictEqual([]);
 	});
 
 	it('handles mixed adds, removes, and updates in a single pass', () => {
@@ -126,8 +126,8 @@ describe('diffEntityMaps', () => {
 
 		const diff = diffEntityMaps(previous, next, equals);
 
-		expect(diff.added).toEqual([{id: 'c', version: 1}]);
-		expect(diff.removed).toEqual(['a']);
-		expect(diff.updated).toEqual([{id: 'b', version: 2}]);
+		expect(diff.added).toStrictEqual([{id: 'c', version: 1}]);
+		expect(diff.removed).toStrictEqual(['a']);
+		expect(diff.updated).toStrictEqual([{id: 'b', version: 2}]);
 	});
 });
