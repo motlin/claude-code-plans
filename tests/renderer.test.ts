@@ -1,12 +1,5 @@
-import {
-	renderMarkdown,
-	computeDiffData,
-	warmup,
-	extractLineNumbers,
-	highlightDiffOps,
-	highlightCode,
-	clearRenderCaches,
-} from '../src/lib/renderer.js';
+import {renderMarkdown, warmup, clearRenderCaches} from '../src/lib/renderer.js';
+import {computeDiffData, extractLineNumbers} from '../src/lib/diff-utils.js';
 
 beforeAll(async () => {
 	await warmup();
@@ -228,56 +221,6 @@ describe('extractLineNumbers', () => {
 	});
 });
 
-describe('highlightDiffOps', () => {
-	it('returns highlighted HTML strings for each diff op', async () => {
-		const ops: Array<readonly ['equal' | 'add' | 'remove', string]> = [
-			['equal', 'const x = 1;'],
-			['remove', 'const y = 2;'],
-			['add', 'const y = 3;'],
-		];
-		const result = await highlightDiffOps(ops, 'typescript');
-		expect(result.length).toBe(3);
-		// Each line should contain Shiki-highlighted HTML with spans
-		for (const line of result) {
-			expect(line).toContain('<span');
-		}
-		// Should contain syntax-colored tokens (not just plain text)
-		expect(result[0]).toContain('const');
-	});
-
-	it('returns plain escaped HTML for unknown language', async () => {
-		const ops: Array<readonly ['equal' | 'add' | 'remove', string]> = [['equal', '<div>hello</div>']];
-		const result = await highlightDiffOps(ops, '');
-		expect(result.length).toBe(1);
-		// Should escape HTML entities
-		expect(result[0]).toContain('&lt;div&gt;');
-	});
-
-	it('handles empty ops array', async () => {
-		const result = await highlightDiffOps([], 'typescript');
-		expect(result).toStrictEqual([]);
-	});
-
-	it('includes dual-theme shiki variables for dark mode support', async () => {
-		const ops: Array<readonly ['equal' | 'add' | 'remove', string]> = [['equal', 'const x = 1;']];
-		const result = await highlightDiffOps(ops, 'typescript');
-		expect(result.length).toBe(1);
-		// Should contain dual-theme CSS variables from Shiki
-		expect(result[0]).toContain('--shiki-dark');
-	});
-
-	it('preserves correct line count with multi-line content', async () => {
-		const ops: Array<readonly ['equal' | 'add' | 'remove', string]> = [
-			['equal', 'line 1'],
-			['remove', 'line 2'],
-			['add', 'line 3'],
-			['equal', 'line 4'],
-		];
-		const result = await highlightDiffOps(ops, 'typescript');
-		expect(result.length).toBe(4);
-	});
-});
-
 describe('render caches', () => {
 	beforeEach(() => {
 		clearRenderCaches();
@@ -301,37 +244,10 @@ describe('render caches', () => {
 		expect(elapsed).toBeLessThan(5);
 	});
 
-	it('highlightCode returns identical output on repeated calls (cached)', async () => {
-		const code = 'const x: number = 42;\nconsole.log(x);';
-		const first = await highlightCode(code, 'typescript');
-		const second = await highlightCode(code, 'typescript');
-		expect(second).toBe(first);
-	});
-
-	it('highlightCode keys cache by language + content', async () => {
-		const code = 'const x = 1;';
-		const ts = await highlightCode(code, 'typescript');
-		const py = await highlightCode(code, 'python');
-		// Different languages produce different highlight output
-		expect(ts).not.toBe(py);
-	});
-
-	it('highlightDiffOps returns identical output on repeated calls (cached)', async () => {
-		const ops: Array<readonly ['equal' | 'add' | 'remove', string]> = [
-			['equal', 'const x = 1;'],
-			['remove', 'const y = 2;'],
-			['add', 'const y = 3;'],
-		];
-		const first = await highlightDiffOps(ops, 'typescript');
-		const second = await highlightDiffOps(ops, 'typescript');
-		expect(second).toStrictEqual(first);
-	});
-
 	it('clearRenderCaches forces recomputation', async () => {
 		const input = '# Test\n\nContent.';
 		await renderMarkdown(input);
 		clearRenderCaches();
-		// After clearing, the next call must still produce the same output
 		const result = await renderMarkdown(input);
 		expect(result).toContain('<h1>Test</h1>');
 	});

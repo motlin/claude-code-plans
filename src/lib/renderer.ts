@@ -10,17 +10,6 @@ import footnote from 'markdown-it-footnote';
 import {claudeLight} from './claude-light-theme';
 import {extractLineNumbers} from './diff-utils';
 
-// Re-export pure utilities so existing server-side imports keep working
-export {
-	computeDiffData,
-	buildUnifiedHunk,
-	detectLanguage,
-	extractLineNumbers,
-	stripLineNumberPrefixes,
-	looksLikeMarkdown,
-} from './diff-utils';
-export type {DiffOp, DiffData} from './diff-utils';
-
 let md: MarkdownIt | null = null;
 
 /**
@@ -56,14 +45,10 @@ class LruCache<V> {
 }
 
 const renderMarkdownCache = new LruCache<string>(2000);
-const highlightCodeCache = new LruCache<string>(2000);
-const highlightDiffOpsCache = new LruCache<string[]>(2000);
 
 /** Exposed for tests to reset cache state. */
 export function clearRenderCaches(): void {
 	renderMarkdownCache.clear();
-	highlightCodeCache.clear();
-	highlightDiffOpsCache.clear();
 }
 
 async function getMd(): Promise<MarkdownIt> {
@@ -84,18 +69,13 @@ async function getMd(): Promise<MarkdownIt> {
 	// and enable line number rendering in the output
 	const originalHighlight = md.options.highlight;
 	md.options.highlight = (code: string, lang: string, attrs: string) => {
-		// Extract line numbers from Read tool prefixes
 		const {text: cleanCode, startLine, hasLineNumbers} = extractLineNumbers(code);
 
-		// Call original highlight function with clean code
 		if (originalHighlight) {
 			try {
 				const result = originalHighlight(cleanCode, lang, attrs);
 
-				// If line numbers were detected in the original code,
-				// enhance the output to include line numbers as a gutter.
 				if (hasLineNumbers) {
-					// Post-process the HTML to add line numbers before each line
 					return enhanceWithLineNumbers(result, startLine);
 				}
 
@@ -104,7 +84,6 @@ async function getMd(): Promise<MarkdownIt> {
 				// Language not supported by Shiki -- fall through to plain text
 			}
 		}
-		// Fallback: plain escaped text
 		const escaped = cleanCode.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 		return `<pre class="shiki" style="overflow-x:auto"><code>${escaped}</code></pre>`;
 	};
@@ -117,7 +96,6 @@ async function getMd(): Promise<MarkdownIt> {
  * Finds each <span class="line">...</span> and prepends a line number.
  */
 function enhanceWithLineNumbers(html: string, startLine: number): string {
-	// Pattern to match individual line spans
 	const linePattern = /(<span class="line">)/g;
 	let lineNum = startLine;
 
@@ -149,66 +127,4 @@ export async function renderInlineMarkdown(text: string): Promise<string> {
 	if (!text.trim()) return '';
 	const instance = await getMd();
 	return instance.renderInline(text);
-}
-
-export async function highlightCode(code: string, lang: string): Promise<string> {
-	const escaped = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-	if (!lang) {
-		return `<pre class="shiki" style="overflow-x:auto"><code>${escaped}</code></pre>`;
-	}
-	const cacheKey = `${lang}\0${code}`;
-	const cached = highlightCodeCache.get(cacheKey);
-	if (cached !== undefined) return cached;
-	try {
-		const fence = '```' + lang + '\n' + code + '\n```';
-		const instance = await getMd();
-		const result = instance.render(fence);
-		highlightCodeCache.set(cacheKey, result);
-		return result;
-	} catch {
-		return `<pre class="shiki" style="overflow-x:auto"><code>${escaped}</code></pre>`;
-	}
-}
-
-import type {DiffOp} from './diff-utils';
-
-/**
- * Highlights diff ops using Shiki syntax highlighting.
- * Combines all lines into a single code block for correct tokenization,
- * then splits the result back into per-line HTML strings.
- * Returns an array of HTML strings (one per op), containing only the
- * inner token spans (no wrapping pre/code tags).
- */
-export async function highlightDiffOps(ops: readonly DiffOp[], lang: string): Promise<string[]> {
-	if (ops.length === 0) return [];
-
-	const lines = ops.map(([, line]) => line);
-	const combined = lines.join('\n');
-
-	if (!lang) {
-		// Return plain escaped HTML per line
-		return lines.map((line) => line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
-	}
-
-	const cacheKey = `${lang}\0${combined}`;
-	const cached = highlightDiffOpsCache.get(cacheKey);
-	if (cached !== undefined) return cached;
-
-	const highlighted = await highlightCode(combined, lang);
-
-	// Extract the inner content of <span class="line">...</span> elements
-	const lineRegex = /<span class="line">(.*?)<\/span>/g;
-	const htmlLines: string[] = [];
-	let match: RegExpExecArray | null;
-	while ((match = lineRegex.exec(highlighted)) !== null) {
-		htmlLines.push(match[1] ?? '');
-	}
-
-	// If extraction failed or counts don't match, fall back to plain escaped text
-	if (htmlLines.length !== ops.length) {
-		return lines.map((line) => line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
-	}
-
-	highlightDiffOpsCache.set(cacheKey, htmlLines);
-	return htmlLines;
 }

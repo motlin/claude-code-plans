@@ -17,24 +17,6 @@ export interface SubagentInlineInfo {
 }
 
 /**
- * Server-computed decoration for a single tool_use block, keyed by tool_use.id.
- * These are computed once in the route loader and looked up by renderers.
- */
-export interface ToolDecoration {
-	subagentInfo?: SubagentInlineInfo | undefined;
-}
-
-/**
- * Map from tool_use.id to its server-computed decoration.
- */
-export type DecorationMap = Map<string, ToolDecoration>;
-
-/**
- * Serializable version of DecorationMap for TanStack serialization.
- */
-export type SerializedDecorationMap = Array<[string, ToolDecoration]>;
-
-/**
  * Serializable version of ToolResultInfo map for TanStack serialization.
  */
 export type SerializedToolResultMap = Array<[string, ToolResultInfo]>;
