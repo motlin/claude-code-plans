@@ -116,16 +116,9 @@ describe('Story fixture validation against strict Zod schemas', () => {
 					}
 
 					const schema = toolInputSchemas[toolName];
-					expect(schema, `No schema registered for tool "${toolName}"`).toBeDefined();
-					if (!schema) return;
+					if (!schema) throw new Error(`No schema registered for tool "${toolName}"`);
 
-					const result = schema!.safeParse(input);
-					if (!result.success) {
-						const issues = result.error.issues
-							.map((issue) => `  ${issue.path.join('.')}: ${issue.message}`)
-							.join('\n');
-						throw new Error(`${moduleName}/${storyName}: ${toolName} input validation failed:\n${issues}`);
-					}
+					expect(schema.parse(input)).toStrictEqual(input);
 				});
 			}
 		}
@@ -155,18 +148,9 @@ describe('Story fixture validation against strict Zod schemas', () => {
 					if (isMcpTool(toolName)) return;
 
 					const schema = toolInputSchemas[toolName];
-					expect(schema, `No schema registered for tool "${toolName}"`).toBeDefined();
-					if (!schema) return;
+					if (!schema) throw new Error(`No schema registered for tool "${toolName}"`);
 
-					const result = schema!.safeParse(input);
-					if (!result.success) {
-						const issues = result.error.issues
-							.map((issue) => `  ${issue.path.join('.')}: ${issue.message}`)
-							.join('\n');
-						throw new Error(
-							`TasksView/${storyName}[${index}]: ${toolName} input validation failed:\n${issues}`,
-						);
-					}
+					expect(schema.parse(input)).toStrictEqual(input);
 				});
 			}
 		}
@@ -186,14 +170,8 @@ describe('Story fixture validation against strict Zod schemas', () => {
 			if (!json) continue;
 
 			it(`AttachmentBanner/${storyName} passes AttachmentPayloadSchema`, () => {
-				const parsed = JSON.parse(json);
-				const result = AttachmentPayloadSchema.safeParse(parsed);
-				if (!result.success) {
-					const issues = result.error.issues
-						.map((issue) => `  ${issue.path.join('.')}: ${issue.message}`)
-						.join('\n');
-					throw new Error(`AttachmentBanner/${storyName}: attachment validation failed:\n${issues}`);
-				}
+				const input = JSON.parse(json);
+				expect(AttachmentPayloadSchema.parse(input)).toStrictEqual(input);
 			});
 		}
 	});
@@ -219,15 +197,7 @@ describe('Story fixture validation against strict Zod schemas', () => {
 				for (let blockIndex = 0; blockIndex < content.length; blockIndex++) {
 					const block = content[blockIndex]!;
 					it(`SessionChat/${storyName} line[${lineIndex}] block[${blockIndex}] (${block['type']}) passes ContentBlockSchema`, () => {
-						const result = ContentBlockSchema.safeParse(block);
-						if (!result.success) {
-							const issues = result.error.issues
-								.map((issue) => `  ${issue.path.join('.')}: ${issue.message}`)
-								.join('\n');
-							throw new Error(
-								`SessionChat/${storyName} line[${lineIndex}] block[${blockIndex}]: content block validation failed:\n${issues}`,
-							);
-						}
+						expect(ContentBlockSchema.parse(block)).toStrictEqual(block);
 					});
 				}
 			}

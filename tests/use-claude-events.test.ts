@@ -173,7 +173,7 @@ describe('applySessionAdded', () => {
 		const groups = queryClient.getQueryData<Array<{project: string; sessions: SessionSummaryPayload[]}>>([
 			'sessions',
 		]);
-		expect(groups).toHaveLength(1);
+		expect(groups?.length).toBe(1);
 		expect(groups?.[0]?.sessions.map((s) => s.id)).toStrictEqual(['new', 'old']);
 	});
 
@@ -202,14 +202,14 @@ describe('applySessionAdded', () => {
 		const groups = queryClient.getQueryData<Array<{project: string; sessions: SessionSummaryPayload[]}>>([
 			'sessions',
 		]);
-		expect(groups?.[0]?.sessions).toHaveLength(1);
+		expect(groups?.[0]?.sessions.length).toBe(1);
 		expect(groups?.[0]?.sessions[0]?.title).toBe('New title');
 	});
 
 	it('is a no-op when the sessions query has never been populated', () => {
 		const queryClient = new QueryClient();
 		applySessionAdded(queryClient, makeSession({id: 'a1', project: 'proj-a'}));
-		expect(queryClient.getQueryData(['sessions'])).toBeUndefined();
+		expect(queryClient.getQueryData(['sessions'])).toBe(undefined);
 	});
 });
 
@@ -274,10 +274,10 @@ describe('applySessionRemoved', () => {
 
 		applySessionRemoved(queryClient, 'a1', 'proj-a');
 
-		expect(queryClient.getQueryData(['session', 'a1', 'detail'])).toBeUndefined();
-		expect(queryClient.getQueryData(['session', 'a1', 'subagents'])).toBeUndefined();
-		expect(queryClient.getQueryData(['session', 'a1', 'summary'])).toBeUndefined();
-		expect(queryClient.getQueryData(['session', 'a1', 'starred'])).toBeUndefined();
+		expect(queryClient.getQueryData(['session', 'a1', 'detail'])).toBe(undefined);
+		expect(queryClient.getQueryData(['session', 'a1', 'subagents'])).toBe(undefined);
+		expect(queryClient.getQueryData(['session', 'a1', 'summary'])).toBe(undefined);
+		expect(queryClient.getQueryData(['session', 'a1', 'starred'])).toBe(undefined);
 		expect(queryClient.getQueryData(['session', 'a2', 'detail'])).toStrictEqual({id: 'a2'});
 	});
 });
@@ -333,7 +333,7 @@ describe('applyPlanChanged', () => {
 		applyPlanChanged(queryClient, makePlan('a.md', 'New title'));
 
 		const plans = queryClient.getQueryData<PlanSummaryPayload[]>(['plans']);
-		expect(plans).toHaveLength(1);
+		expect(plans?.length).toBe(1);
 		expect(plans?.[0]?.title).toBe('New title');
 	});
 
@@ -342,7 +342,7 @@ describe('applyPlanChanged', () => {
 		applyPlanChanged(queryClient, makePlan('first.md'));
 
 		const plans = queryClient.getQueryData<PlanSummaryPayload[]>(['plans']);
-		expect(plans).toBeUndefined();
+		expect(plans).toBe(undefined);
 	});
 });
 
@@ -399,7 +399,7 @@ describe('applyMemoryChanged', () => {
 		const groups = queryClient.getQueryData<
 			Array<{project: string; memories: Array<{filename: string; title: string}>}>
 		>(['memories']);
-		expect(groups?.[0]?.memories).toHaveLength(1);
+		expect(groups?.[0]?.memories.length).toBe(1);
 		expect(groups?.[0]?.memories[0]?.title).toBe('New');
 	});
 

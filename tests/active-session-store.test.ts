@@ -22,7 +22,7 @@ describe('active-session-store', () => {
 		expect(hasAnyActiveSessions()).toBe(true);
 
 		const entries = getActiveSessionEntries();
-		expect(entries).toHaveLength(1);
+		if (entries.length !== 1) throw new Error(`Expected 1 entry, got ${entries.length}`);
 		expect(entries[0]!.sessionId).toBe('s1');
 		expect(entries[0]!.cwd).toBe('/projects/foo');
 		expect(entries[0]!.model).toBe('claude-sonnet-4-6');
@@ -47,17 +47,15 @@ describe('active-session-store', () => {
 	it('updates cwd when marking active again', () => {
 		markSessionActive('s1', {cwd: '/projects/foo'});
 		markSessionActive('s1', {cwd: '/projects/bar'});
-		expect(getActiveSessionEntries()).toHaveLength(1);
-		expect(getActiveSessionEntries()[0]!.cwd).toBe('/projects/bar');
+		expect(getActiveSessionEntries().map((e) => e.cwd)).toStrictEqual(['/projects/bar']);
 	});
 
 	it('tracks multiple sessions', () => {
 		markSessionActive('s1', {cwd: '/projects/foo'});
 		markSessionActive('s2', {cwd: '/projects/bar'});
-		expect(getActiveSessionEntries()).toHaveLength(2);
+		expect(getActiveSessionEntries().map((e) => e.sessionId)).toStrictEqual(['s1', 's2']);
 		markSessionEnded('s1');
-		expect(getActiveSessionEntries()).toHaveLength(1);
-		expect(getActiveSessionEntries()[0]!.sessionId).toBe('s2');
+		expect(getActiveSessionEntries().map((e) => e.sessionId)).toStrictEqual(['s2']);
 	});
 
 	it('touch on unknown session is a no-op', () => {

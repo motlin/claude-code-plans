@@ -66,7 +66,7 @@ describe('parseFrontmatter', () => {
 		const {frontmatter} = parseFrontmatter(content);
 		expect(frontmatter['name']).toBe('test');
 		expect(frontmatter['version']).toBe('1.0');
-		expect(Object.keys(frontmatter)).toHaveLength(2);
+		expect(Object.keys(frontmatter).length).toBe(2);
 	});
 });
 
@@ -82,12 +82,12 @@ describe('readPluginFileContent', () => {
 
 	it('returns null for non-existent file', async () => {
 		const content = await readPluginFileContent(testDir, 'agents', 'nope.md');
-		expect(content).toBeNull();
+		expect(content).toBe(null);
 	});
 
 	it('rejects path traversal', async () => {
 		const content = await readPluginFileContent(testDir, '..', 'etc', 'passwd');
-		expect(content).toBeNull();
+		expect(content).toBe(null);
 	});
 
 	it('reads nested skill files', async () => {
@@ -103,22 +103,22 @@ describe('readPluginFileContent', () => {
 describe('readUserCommandContent', () => {
 	it('rejects path traversal in filename', async () => {
 		const content = await readUserCommandContent('global', '../evil.md');
-		expect(content).toBeNull();
+		expect(content).toBe(null);
 	});
 
 	it('rejects filenames with slashes', async () => {
 		const content = await readUserCommandContent('global', 'sub/file.md');
-		expect(content).toBeNull();
+		expect(content).toBe(null);
 	});
 
 	it('rejects non-md extension', async () => {
 		const content = await readUserCommandContent('global', 'file.txt');
-		expect(content).toBeNull();
+		expect(content).toBe(null);
 	});
 
 	it('rejects path traversal in source', async () => {
 		const content = await readUserCommandContent('../evil', 'test.md');
-		expect(content).toBeNull();
+		expect(content).toBe(null);
 	});
 });
 
@@ -201,18 +201,15 @@ describe('groupPluginsByMarketplace', () => {
 		];
 
 		const groups = groupPluginsByMarketplace(plugins, marketplaces);
-		expect(groups).toHaveLength(2);
-		// Official first
-		expect(groups[0]!.marketplace.id).toBe('claude-plugins-official');
-		expect(groups[0]!.plugins).toHaveLength(1);
-		expect(groups[1]!.marketplace.id).toBe('claude-code-plugins');
-		expect(groups[1]!.plugins).toHaveLength(2);
+		expect(groups.map((g) => g.marketplace.id)).toStrictEqual(['claude-plugins-official', 'claude-code-plugins']);
+		expect(groups[0]!.plugins.length).toBe(1);
+		expect(groups[1]!.plugins.length).toBe(2);
 	});
 
 	it('handles unknown marketplace gracefully', () => {
 		const plugins = [makePlugin('my-plugin@custom-marketplace', 'my-plugin')];
 		const groups = groupPluginsByMarketplace(plugins, marketplaces);
-		expect(groups).toHaveLength(1);
+		expect(groups.length).toBe(1);
 		expect(groups[0]!.marketplace.displayName).toBe('Custom Marketplace');
 	});
 
@@ -248,7 +245,7 @@ describe('scanPluginTree', () => {
 		writeFileSync(join(testDir, 'commands', 'run.md'), '# Run');
 
 		const tree = await scanPluginTree(testDir);
-		expect(tree).not.toBeNull();
+		expect(tree).not.toBe(null);
 
 		// Root should have children
 		const names = tree!.children!.map((c) => c.name).sort();
@@ -259,14 +256,13 @@ describe('scanPluginTree', () => {
 		// Directories should have children
 		const agentsNode = tree!.children!.find((c) => c.name === 'agents');
 		expect(agentsNode?.type).toBe('directory');
-		expect(agentsNode?.children).toHaveLength(1);
-		expect(agentsNode?.children![0]!.name).toBe('bot.md');
-		expect(agentsNode?.children![0]!.type).toBe('file');
+		expect(agentsNode?.children?.map((c) => c.name)).toStrictEqual(['bot.md']);
+		expect(agentsNode?.children?.[0]?.type).toBe('file');
 	});
 
 	it('returns null for non-existent directory', async () => {
 		const tree = await scanPluginTree(join(testDir, 'nonexistent'));
-		expect(tree).toBeNull();
+		expect(tree).toBe(null);
 	});
 
 	it('excludes node_modules and .git directories', async () => {

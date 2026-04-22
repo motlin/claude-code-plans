@@ -22,22 +22,22 @@ describe('findPairedToolResult', () => {
 			),
 		];
 		const paired = findPairedToolResult(focalRaw, after);
-		expect(paired).not.toBeNull();
-		expect(paired!.toolUseId).toBe('tu_1');
-		expect(paired!.resultLineIndex).toBe(5);
-		expect(paired!.resultEntry.uuid).toBe('res-uuid');
+		if (!paired) throw new Error('Expected non-null paired result');
+		expect(paired.toolUseId).toBe('tu_1');
+		expect(paired.resultLineIndex).toBe(5);
+		expect(paired.resultEntry.uuid).toBe('res-uuid');
 	});
 
 	it('returns null when focal has no tool_use', () => {
 		const focalRaw = JSON.stringify({type: 'assistant', message: {content: [{type: 'text', text: 'hi'}]}});
 		const after = [rawLine({type: 'user', message: {content: [{type: 'text', text: 'reply'}]}}, 1)];
-		expect(findPairedToolResult(focalRaw, after)).toBeNull();
+		expect(findPairedToolResult(focalRaw, after)).toBe(null);
 	});
 
 	it('returns null when focal is a user record', () => {
 		const focalRaw = JSON.stringify({type: 'user', message: {content: 'hi'}});
 		const after = [rawLine({type: 'assistant'}, 1)];
-		expect(findPairedToolResult(focalRaw, after)).toBeNull();
+		expect(findPairedToolResult(focalRaw, after)).toBe(null);
 	});
 
 	it('returns null when no matching tool_result follows', () => {
@@ -48,7 +48,7 @@ describe('findPairedToolResult', () => {
 		const after = [
 			rawLine({type: 'user', message: {content: [{type: 'tool_result', tool_use_id: 'tu_OTHER'}]}}, 1),
 		];
-		expect(findPairedToolResult(focalRaw, after)).toBeNull();
+		expect(findPairedToolResult(focalRaw, after)).toBe(null);
 	});
 
 	it('skips malformed JSON candidates without crashing', () => {

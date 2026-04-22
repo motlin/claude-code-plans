@@ -8,11 +8,7 @@ import {parseAnsiCodes} from '../src/components/tool-renderers/shared';
 
 describe('parseAnsiCodes function', () => {
 	it('should handle basic text without ANSI codes', () => {
-		const result = parseAnsiCodes('Hello World');
-		expect(result).toHaveLength(1);
-		expect(result[0]?.text).toBe('Hello World');
-		expect(result[0]?.fg).toBeUndefined();
-		expect(result[0]?.bold).toBeUndefined();
+		expect(parseAnsiCodes('Hello World')).toStrictEqual([{text: 'Hello World'}]);
 	});
 
 	it('should handle red text ANSI code (31m)', () => {
@@ -41,7 +37,6 @@ describe('parseAnsiCodes function', () => {
 		const result = parseAnsiCodes('\x1b[38;5;196mRed text\x1b[0m');
 		expect(result.length).toBeGreaterThanOrEqual(1);
 		expect(result[0]?.text).toBe('Red text');
-		expect(result[0]?.fg).toBeDefined();
 		// 196 is in the 216-color cube range (16-231)
 		expect(result[0]?.fg).toMatch(/^rgb\(/);
 	});
@@ -99,11 +94,10 @@ describe('parseAnsiCodes function', () => {
 	});
 
 	it('should handle reset code (0m)', () => {
-		const result = parseAnsiCodes('\x1b[31mRed\x1b[0mNormal');
-		expect(result).toHaveLength(2);
-		expect(result[0]?.fg).toBe('#cc0000');
-		expect(result[1]?.text).toBe('Normal');
-		expect(result[1]?.fg).toBeUndefined();
+		expect(parseAnsiCodes('\x1b[31mRed\x1b[0mNormal')).toStrictEqual([
+			{text: 'Red', fg: '#cc0000'},
+			{text: 'Normal'},
+		]);
 	});
 
 	it('should handle multiple style codes in sequence', () => {
@@ -128,13 +122,11 @@ describe('parseAnsiCodes function', () => {
 
 	it('should handle 256-color background (48;5;N)', () => {
 		const result = parseAnsiCodes('\x1b[48;5;21mBlue bg\x1b[0m');
-		expect(result[0]?.bg).toBeDefined();
 		expect(result[0]?.bg).toMatch(/^rgb\(|^#/);
 	});
 
 	it('should handle grayscale 256-colors (232-255)', () => {
 		const result = parseAnsiCodes('\x1b[38;5;232mDark gray\x1b[0m');
-		expect(result[0]?.fg).toBeDefined();
 		// Grayscale range should produce rgb values
 		expect(result[0]?.fg).toMatch(/^rgb\(/);
 	});

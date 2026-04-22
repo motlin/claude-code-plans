@@ -81,15 +81,15 @@ describe('dispatchHookEvent', () => {
 			{sessionId: 'abc-123', meta: {cwd: '/home/user/project', model: 'claude-sonnet-4-6'}},
 		]);
 		const legacy = broadcasts.find((b) => b.type === SSE_EVENTS.SESSION_START);
-		expect(legacy).toBeDefined();
-		expect(legacy!.data).toStrictEqual({
+		if (!legacy) throw new Error('Expected legacy broadcast');
+		expect(legacy.data).toStrictEqual({
 			sessionId: 'abc-123',
 			cwd: '/home/user/project',
 			model: 'claude-sonnet-4-6',
 		});
 		const domain = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_STARTED);
-		expect(domain).toBeDefined();
-		expect(domain!.data).toStrictEqual({
+		if (!domain) throw new Error('Expected domain broadcast');
+		expect(domain.data).toStrictEqual({
 			session: {
 				sessionId: 'abc-123',
 				cwd: '/home/user/project',
@@ -132,17 +132,17 @@ describe('dispatchHookEvent', () => {
 		});
 
 		const added = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_ADDED);
-		expect(added).toBeDefined();
-		expect(added!.data).toStrictEqual({
+		if (!added) throw new Error('Expected session:added broadcast');
+		expect(added.data).toStrictEqual({
 			session: {
 				id: 'abc-123',
 				title: 'Fix the login bug',
+				summary: undefined,
+				mtime: '2023-11-14T22:13:20.000Z',
+				created: '2023-11-14T22:13:20.000Z',
 				project: '-Users-craig-projects-app',
 				projectName: 'app',
 				messageCount: 1,
-				created: '2023-11-14T22:13:20.000Z',
-				mtime: '2023-11-14T22:13:20.000Z',
-				summary: undefined,
 				gitBranch: undefined,
 			},
 		});
@@ -178,17 +178,17 @@ describe('dispatchHookEvent', () => {
 
 		expect(touchedCalls).toStrictEqual(['abc-123']);
 		const domain = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_UPDATED);
-		expect(domain).toBeDefined();
-		expect(domain!.data).toStrictEqual({
+		if (!domain) throw new Error('Expected session:updated broadcast');
+		expect(domain.data).toStrictEqual({
 			session: {
 				id: 'abc-123',
 				title: 'Shipped feature X',
+				summary: 'Shipped feature X',
+				mtime: '2023-11-14T22:13:20.000Z',
+				created: '2023-11-14T22:13:20.000Z',
 				project: '-Users-craig-projects-app',
 				projectName: 'app',
 				messageCount: 12,
-				created: '2023-11-14T22:13:20.000Z',
-				mtime: '2023-11-14T22:13:20.000Z',
-				summary: 'Shipped feature X',
 				gitBranch: undefined,
 			},
 		});

@@ -3,19 +3,21 @@ import {generateHooksConfig, DEFAULT_HOOK_PORT, HOOK_EVENT_NAMES} from '../src/l
 
 describe('HOOK_EVENT_NAMES', () => {
 	it('contains all expected Claude hook event names', () => {
-		expect(HOOK_EVENT_NAMES).toContain('SessionStart');
-		expect(HOOK_EVENT_NAMES).toContain('SessionEnd');
-		expect(HOOK_EVENT_NAMES).toContain('Stop');
-		expect(HOOK_EVENT_NAMES).toContain('PostToolUse');
-		expect(HOOK_EVENT_NAMES).toContain('TaskCompleted');
-		expect(HOOK_EVENT_NAMES).toContain('WorktreeCreate');
+		expect(HOOK_EVENT_NAMES).toStrictEqual([
+			'SessionStart',
+			'SessionEnd',
+			'Stop',
+			'PostToolUse',
+			'TaskCompleted',
+			'WorktreeCreate',
+		]);
 	});
 });
 
 describe('generateHooksConfig', () => {
 	it('returns valid JSON object with hooks key', () => {
 		const config = generateHooksConfig();
-		expect(config).toHaveProperty('hooks');
+		expect(Object.keys(config)).toStrictEqual(['hooks']);
 		expect(typeof config.hooks).toBe('object');
 	});
 
@@ -35,10 +37,7 @@ describe('generateHooksConfig', () => {
 	it('generates a hook entry for each supported event', () => {
 		const config = generateHooksConfig();
 		const hooks = config.hooks as Record<string, unknown>;
-
-		for (const eventName of HOOK_EVENT_NAMES) {
-			expect(hooks).toHaveProperty(eventName);
-		}
+		expect(Object.keys(hooks).sort()).toStrictEqual([...HOOK_EVENT_NAMES].sort());
 	});
 
 	it('each hook entry posts to /api/hook', () => {
@@ -53,11 +52,10 @@ describe('generateHooksConfig', () => {
 
 		for (const eventName of HOOK_EVENT_NAMES) {
 			const entries = hooks[eventName];
-			expect(entries).toBeDefined();
-			expect(entries!.length).toBeGreaterThan(0);
+			if (!entries || entries.length === 0) throw new Error(`No entries for ${eventName}`);
 
-			const hookDef = entries![0]!;
-			expect(hookDef.hooks.length).toBeGreaterThan(0);
+			const hookDef = entries[0]!;
+			if (hookDef.hooks.length === 0) throw new Error(`No hooks for ${eventName}`);
 
 			const command = hookDef.hooks[0]!.command;
 			expect(command).toContain('curl');

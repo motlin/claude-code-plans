@@ -63,11 +63,11 @@ describe('parseConsoleMessage', () => {
 	});
 
 	it('returns null for non-matching input', () => {
-		expect(parseConsoleMessage('not a console message')).toBeNull();
+		expect(parseConsoleMessage('not a console message')).toBe(null);
 	});
 
 	it('returns null for empty string', () => {
-		expect(parseConsoleMessage('')).toBeNull();
+		expect(parseConsoleMessage('')).toBe(null);
 	});
 });
 
@@ -101,11 +101,11 @@ describe('parseNetworkRequest', () => {
 	});
 
 	it('returns null for non-matching input', () => {
-		expect(parseNetworkRequest('not a network request')).toBeNull();
+		expect(parseNetworkRequest('not a network request')).toBe(null);
 	});
 
 	it('returns null for empty string', () => {
-		expect(parseNetworkRequest('')).toBeNull();
+		expect(parseNetworkRequest('')).toBe(null);
 	});
 
 	it('parses redirect status codes', () => {

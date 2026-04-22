@@ -74,44 +74,44 @@ describe('diffEntityMaps', () => {
 		const previous = new Map<string, Entity>();
 		const next = new Map([['a', {id: 'a', version: 1}]]);
 
-		const diff = diffEntityMaps(previous, next, equals);
-
-		expect(diff.added).toStrictEqual([{id: 'a', version: 1}]);
-		expect(diff.removed).toStrictEqual([]);
-		expect(diff.updated).toStrictEqual([]);
+		expect(diffEntityMaps(previous, next, equals)).toStrictEqual({
+			added: [{id: 'a', version: 1}],
+			removed: [],
+			updated: [],
+		});
 	});
 
 	it('detects removed entries present in previous but not next', () => {
 		const previous = new Map([['a', {id: 'a', version: 1}]]);
 		const next = new Map<string, Entity>();
 
-		const diff = diffEntityMaps(previous, next, equals);
-
-		expect(diff.added).toStrictEqual([]);
-		expect(diff.removed).toStrictEqual(['a']);
-		expect(diff.updated).toStrictEqual([]);
+		expect(diffEntityMaps(previous, next, equals)).toStrictEqual({
+			added: [],
+			removed: ['a'],
+			updated: [],
+		});
 	});
 
 	it('detects updated entries whose value differs by the custom comparator', () => {
 		const previous = new Map([['a', {id: 'a', version: 1}]]);
 		const next = new Map([['a', {id: 'a', version: 2}]]);
 
-		const diff = diffEntityMaps(previous, next, equals);
-
-		expect(diff.added).toStrictEqual([]);
-		expect(diff.removed).toStrictEqual([]);
-		expect(diff.updated).toStrictEqual([{id: 'a', version: 2}]);
+		expect(diffEntityMaps(previous, next, equals)).toStrictEqual({
+			added: [],
+			removed: [],
+			updated: [{id: 'a', version: 2}],
+		});
 	});
 
 	it('treats equal entries as unchanged', () => {
 		const previous = new Map([['a', {id: 'a', version: 1}]]);
 		const next = new Map([['a', {id: 'a', version: 1}]]);
 
-		const diff = diffEntityMaps(previous, next, equals);
-
-		expect(diff.added).toStrictEqual([]);
-		expect(diff.removed).toStrictEqual([]);
-		expect(diff.updated).toStrictEqual([]);
+		expect(diffEntityMaps(previous, next, equals)).toStrictEqual({
+			added: [],
+			removed: [],
+			updated: [],
+		});
 	});
 
 	it('handles mixed adds, removes, and updates in a single pass', () => {
@@ -124,10 +124,10 @@ describe('diffEntityMaps', () => {
 			['c', {id: 'c', version: 1}],
 		]);
 
-		const diff = diffEntityMaps(previous, next, equals);
-
-		expect(diff.added).toStrictEqual([{id: 'c', version: 1}]);
-		expect(diff.removed).toStrictEqual(['a']);
-		expect(diff.updated).toStrictEqual([{id: 'b', version: 2}]);
+		expect(diffEntityMaps(previous, next, equals)).toStrictEqual({
+			added: [{id: 'c', version: 1}],
+			removed: ['a'],
+			updated: [{id: 'b', version: 2}],
+		});
 	});
 });

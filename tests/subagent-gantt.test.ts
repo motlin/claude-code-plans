@@ -21,14 +21,14 @@ function makeAgent(overrides: Partial<DbSubagent> & {id: string}): DbSubagent {
 describe('layoutSwimlanes', () => {
 	it('returns empty layout when no agents have timing', () => {
 		const layout = layoutSwimlanes([makeAgent({id: 'a'})]);
-		expect(layout.lanes).toHaveLength(0);
+		expect(layout.lanes).toStrictEqual([]);
 		expect(layout.startMs).toBe(0);
 		expect(layout.endMs).toBe(0);
 	});
 
 	it('returns empty layout for empty input', () => {
 		const layout = layoutSwimlanes([]);
-		expect(layout.lanes).toHaveLength(0);
+		expect(layout.lanes).toStrictEqual([]);
 	});
 
 	it('produces one lane per agent with timing', () => {
@@ -37,9 +37,7 @@ describe('layoutSwimlanes', () => {
 			makeAgent({id: 'b', startedAt: '2026-04-05T00:00:15.000Z', finishedAt: '2026-04-05T00:00:25.000Z'}),
 		];
 		const layout = layoutSwimlanes(agents);
-		expect(layout.lanes).toHaveLength(2);
-		expect(layout.lanes[0]!.agent.id).toBe('a');
-		expect(layout.lanes[1]!.agent.id).toBe('b');
+		expect(layout.lanes.map((l) => l.agent.id)).toStrictEqual(['a', 'b']);
 	});
 
 	it('computes overall time bounds', () => {
@@ -92,11 +90,12 @@ describe('layoutSwimlanes', () => {
 		];
 		const layout = layoutSwimlanes(agents);
 		const parentLane = layout.lanes.find((l) => l.agent.id === 'parent')!;
-		expect(parentLane.waiting).toHaveLength(1);
-		expect(parentLane.waiting[0]).toStrictEqual({
-			startMs: new Date('2026-04-05T00:00:10.000Z').getTime(),
-			endMs: new Date('2026-04-05T00:00:20.000Z').getTime(),
-		});
+		expect(parentLane.waiting).toStrictEqual([
+			{
+				startMs: new Date('2026-04-05T00:00:10.000Z').getTime(),
+				endMs: new Date('2026-04-05T00:00:20.000Z').getTime(),
+			},
+		]);
 	});
 
 	it('merges overlapping waiting periods on parent', () => {
@@ -121,11 +120,12 @@ describe('layoutSwimlanes', () => {
 		];
 		const layout = layoutSwimlanes(agents);
 		const parentLane = layout.lanes.find((l) => l.agent.id === 'parent')!;
-		expect(parentLane.waiting).toHaveLength(1);
-		expect(parentLane.waiting[0]).toStrictEqual({
-			startMs: new Date('2026-04-05T00:00:05.000Z').getTime(),
-			endMs: new Date('2026-04-05T00:00:20.000Z').getTime(),
-		});
+		expect(parentLane.waiting).toStrictEqual([
+			{
+				startMs: new Date('2026-04-05T00:00:05.000Z').getTime(),
+				endMs: new Date('2026-04-05T00:00:20.000Z').getTime(),
+			},
+		]);
 	});
 
 	it('keeps parallel children at the same start position', () => {

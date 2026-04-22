@@ -88,7 +88,7 @@ describe('extractSessionTitle', () => {
 
 describe('parseCommandBlock', () => {
 	it('returns null for plain text', () => {
-		expect(parseCommandBlock('Hello world')).toBeNull();
+		expect(parseCommandBlock('Hello world')).toBe(null);
 	});
 
 	it('extracts command name', () => {
@@ -291,11 +291,10 @@ describe('listSessions', () => {
 		writeFileSync(join(projectDir, 'abc-123.jsonl'), jsonl(userMessage('Fix the login bug')));
 
 		const groups = await listSessions(testDir);
-		expect(groups).toHaveLength(1);
+		if (groups.length !== 1) throw new Error(`Expected 1 group, got ${groups.length}`);
 		expect(groups[0]!.project).toBe('-Users-craig-projects-app');
 		expect(groups[0]!.projectName).toBe('/Users/craig/projects/app');
-		expect(groups[0]!.sessions).toHaveLength(1);
-		expect(groups[0]!.sessions[0]!.title).toBe('Fix the login bug');
+		expect(groups[0]!.sessions.map((s) => s.title)).toStrictEqual(['Fix the login bug']);
 	});
 
 	it('sorts by mtime desc', async () => {
@@ -320,7 +319,7 @@ describe('listSessions', () => {
 		writeFileSync(join(projDir, 'readme.md'), '# readme');
 
 		const groups = await listSessions(testDir);
-		expect(groups[0]!.sessions).toHaveLength(1);
+		expect(groups[0]!.sessions.map((s) => s.id)).toStrictEqual(['abc']);
 	});
 
 	it('extracts title from first user message', async () => {
@@ -365,33 +364,31 @@ describe('readSession', () => {
 		);
 
 		const detail = await readSession(testDir, 'test-session');
-		expect(detail).not.toBeNull();
-		expect(detail!.title).toBe('Hello');
-		expect(detail!.projectName).toBe('/Users/craig/projects/app');
-		expect(detail!.projectId).toBe('-Users-craig-projects-app');
-		expect(detail!.messages).toHaveLength(2);
+		if (!detail) throw new Error('Expected non-null detail');
+		expect(detail.title).toBe('Hello');
+		expect(detail.projectName).toBe('/Users/craig/projects/app');
+		expect(detail.projectId).toBe('-Users-craig-projects-app');
+		expect(detail.messages.map((m) => m.role)).toStrictEqual(['user', 'assistant']);
 
-		expect(detail!.messages[0]!.role).toBe('user');
-		expect(detail!.messages[0]!.textBlocks).toStrictEqual(['Hello']);
+		expect(detail.messages[0]!.textBlocks).toStrictEqual(['Hello']);
 
-		expect(detail!.messages[1]!.role).toBe('assistant');
-		expect(detail!.messages[1]!.textBlocks).toStrictEqual(['Hi there!']);
-		expect(detail!.messages[1]!.toolCalls).toStrictEqual([
+		expect(detail.messages[1]!.textBlocks).toStrictEqual(['Hi there!']);
+		expect(detail.messages[1]!.toolCalls).toStrictEqual([
 			{id: 'tool1', name: 'Read', input: {file_path: '/src/index.ts'}, sourceUuid: ''},
 		]);
 	});
 
 	it('returns null for non-existent session', async () => {
-		expect(await readSession(testDir, 'nonexistent')).toBeNull();
+		expect(await readSession(testDir, 'nonexistent')).toBe(null);
 	});
 
 	it('returns null for path traversal', async () => {
-		expect(await readSession(testDir, '../etc/passwd')).toBeNull();
+		expect(await readSession(testDir, '../etc/passwd')).toBe(null);
 	});
 
 	it('returns null for invalid ID characters', async () => {
-		expect(await readSession(testDir, 'foo/bar')).toBeNull();
-		expect(await readSession(testDir, 'foo bar')).toBeNull();
+		expect(await readSession(testDir, 'foo/bar')).toBe(null);
+		expect(await readSession(testDir, 'foo bar')).toBe(null);
 	});
 
 	it('skips progress and file-history-snapshot entries', async () => {
@@ -409,7 +406,7 @@ describe('readSession', () => {
 		);
 
 		const detail = await readSession(testDir, 'test-sess');
-		expect(detail!.messages).toHaveLength(2);
+		expect(detail!.messages.map((m) => m.role)).toStrictEqual(['user', 'assistant']);
 	});
 
 	it('handles user content as array with text blocks', async () => {
@@ -426,7 +423,6 @@ describe('readSession', () => {
 		);
 
 		const detail = await readSession(testDir, 'arr-user');
-		expect(detail!.messages).toHaveLength(1);
 		expect(detail!.messages[0]!.textBlocks).toStrictEqual(['Check this']);
 	});
 
@@ -453,7 +449,6 @@ describe('readSession', () => {
 		);
 
 		const detail = await readSession(testDir, 'image-user');
-		expect(detail!.messages).toHaveLength(1);
 		expect(detail!.messages[0]!.textBlocks).toStrictEqual(['Here is a screenshot']);
 		expect(detail!.messages[0]!.content).toContainEqual({
 			type: 'image',
@@ -486,7 +481,6 @@ describe('readSession', () => {
 		);
 
 		const detail = await readSession(testDir, 'doc-user');
-		expect(detail!.messages).toHaveLength(1);
 		expect(detail!.messages[0]!.textBlocks).toStrictEqual(['Please review this PDF']);
 		expect(detail!.messages[0]!.content).toContainEqual({
 			type: 'document',
@@ -523,7 +517,7 @@ describe('readSession', () => {
 		);
 
 		const detail = await readSession(testDir, 'coalesce');
-		expect(detail!.messages).toHaveLength(2);
+		expect(detail!.messages.map((m) => m.role)).toStrictEqual(['user', 'assistant']);
 		expect(detail!.messages[0]!.textBlocks).toStrictEqual(['Part 1', 'Part 2']);
 	});
 
@@ -546,13 +540,12 @@ describe('readSession', () => {
 		);
 
 		const detail = await readSession(testDir, 'tool-result');
-		expect(detail).not.toBeNull();
-		const assistantMsg = detail!.messages[1]!;
-		expect(assistantMsg.toolCalls).toHaveLength(2);
-		expect(assistantMsg.toolCalls[0]!.id).toBe('tu_1');
-		expect(assistantMsg.toolCalls[0]!.result).toBe('     1\tconst x = 1;');
-		expect(assistantMsg.toolCalls[1]!.id).toBe('tu_2');
-		expect(assistantMsg.toolCalls[1]!.result).toBe('file1.ts\nfile2.ts');
+		if (!detail) throw new Error('Expected non-null detail');
+		const assistantMsg = detail.messages[1]!;
+		expect(assistantMsg.toolCalls.map((tc) => ({id: tc.id, result: tc.result}))).toStrictEqual([
+			{id: 'tu_1', result: '     1\tconst x = 1;'},
+			{id: 'tu_2', result: 'file1.ts\nfile2.ts'},
+		]);
 	});
 
 	it('handles array-format tool_result content', async () => {
@@ -636,7 +629,7 @@ describe('readSession', () => {
 		const detail = await readSession(testDir, 'empty-result');
 		const tc = detail!.messages[1]!.toolCalls[0]!;
 		expect(tc.result).toBe('');
-		expect(tc.isError).toBeUndefined();
+		expect(tc.isError).toBe(undefined);
 	});
 
 	it('strips <tool_use_error> tags from error results', async () => {
@@ -661,7 +654,6 @@ describe('readSession', () => {
 		const detail = await readSession(testDir, 'tool-error-tags');
 		const tc = detail!.messages[1]!.toolCalls[0]!;
 		expect(tc.result).toBe('Found 2 matches of the string');
-		expect(tc.result).not.toContain('<tool_use_error>');
 		expect(tc.isError).toBe(true);
 	});
 
@@ -678,8 +670,8 @@ describe('readSession', () => {
 
 		const detail = await readSession(testDir, 'orphan');
 		const tc = detail!.messages[1]!.toolCalls[0]!;
-		expect(tc.result).toBeUndefined();
-		expect(tc.isError).toBeUndefined();
+		expect(tc.result).toBe(undefined);
+		expect(tc.isError).toBe(undefined);
 	});
 
 	it('renders slash commands as command pills and hides expanded prompt', async () => {
@@ -697,14 +689,12 @@ describe('readSession', () => {
 		);
 
 		const detail = await readSession(testDir, 'cmd-session');
-		expect(detail).not.toBeNull();
-		expect(detail!.messages).toHaveLength(2);
-		const cmdMsg = detail!.messages[0]!;
+		if (!detail) throw new Error('Expected non-null detail');
+		expect(detail.messages.map((m) => m.role)).toStrictEqual(['user', 'assistant']);
+		const cmdMsg = detail.messages[0]!;
 		expect(cmdMsg.role).toBe('user');
 		expect(cmdMsg.isCommand).toBe(true);
 		expect(cmdMsg.textBlocks).toStrictEqual(['/git:commit fix bug']);
-		// The expanded prompt should be completely hidden
-		expect(cmdMsg.textBlocks).not.toContain('ALWAYS use the `code:cli` skill.');
 	});
 
 	it('renders slash commands without args', async () => {
@@ -777,9 +767,8 @@ describe('readSession', () => {
 		);
 
 		const detail = await readSession(testDir, 'bash-input');
-		expect(detail!.messages).toHaveLength(2);
+		expect(detail!.messages.map((m) => m.role)).toStrictEqual(['user', 'assistant']);
 		const msg = detail!.messages[0]!;
-		expect(msg.role).toBe('user');
 		expect(msg.content).toStrictEqual([{type: 'bash-input', command: 'git status', sourceUuid: ''}]);
 		expect(msg.textBlocks).toStrictEqual([]);
 	});
@@ -797,7 +786,7 @@ describe('readSession', () => {
 		);
 
 		const detail = await readSession(testDir, 'bash-pair');
-		expect(detail!.messages).toHaveLength(2);
+		expect(detail!.messages.map((m) => m.role)).toStrictEqual(['user', 'assistant']);
 		const msg = detail!.messages[0]!;
 		expect(msg.content).toStrictEqual([
 			{type: 'bash-input', command: 'ls', sourceUuid: ''},
@@ -837,7 +826,7 @@ describe('readSession', () => {
 		);
 
 		const detail = await readSession(testDir, 'regular');
-		expect(detail!.messages[0]!.isCommand).toBeUndefined();
+		expect(detail!.messages[0]!.isCommand).toBe(undefined);
 	});
 
 	it('handles <persisted-output> wrapper in tool results', async () => {
@@ -856,9 +845,9 @@ describe('readSession', () => {
 
 		const detail = await readSession(testDir, 'persisted');
 		const tc = detail!.messages[1]!.toolCalls[0]!;
-		expect(tc.result).toContain('Output too large');
-		expect(tc.result).not.toContain('<persisted-output>');
-		expect(tc.result).not.toContain('</persisted-output>');
+		expect(tc.result).toBe(
+			'Output too large (180.3KB). Full output saved to: /tmp/result.txt\n\nPreview (first 2KB):\nsome preview content',
+		);
 	});
 
 	it('tool_result blocks do not leak into user textBlocks', async () => {
@@ -877,10 +866,9 @@ describe('readSession', () => {
 		);
 
 		const detail = await readSession(testDir, 'no-leak');
-		// The user message with tool_result + text should only have the text in textBlocks
 		const userMsg = detail!.messages.find((m) => m.role === 'user' && m.textBlocks.includes('Follow-up question'));
-		expect(userMsg).toBeDefined();
-		expect(userMsg!.textBlocks).not.toContain('file content here');
+		if (!userMsg) throw new Error('Expected user message with follow-up');
+		expect(userMsg.textBlocks).toStrictEqual(['Follow-up question']);
 	});
 
 	describe('sourceUuid tracking', () => {
@@ -908,11 +896,11 @@ describe('readSession', () => {
 				jsonl(userMessage('part 1', {uuid: U1}), userMessage('part 2', {uuid: U2})),
 			);
 			const detail = await readSession(testDir, 'coalesce-uuid');
-			expect(detail!.messages).toHaveLength(1);
 			const blocks = detail!.messages[0]!.content;
-			expect(blocks).toHaveLength(2);
-			expect(blocks[0]).toStrictEqual({type: 'text', text: 'part 1', sourceUuid: U1});
-			expect(blocks[1]).toStrictEqual({type: 'text', text: 'part 2', sourceUuid: U2});
+			expect(blocks).toStrictEqual([
+				{type: 'text', text: 'part 1', sourceUuid: U1},
+				{type: 'text', text: 'part 2', sourceUuid: U2},
+			]);
 		});
 
 		it('attaches different uuids to bash-input and bash-output', async () => {
@@ -996,34 +984,32 @@ describe('readSession', () => {
 				userMessage('e', {uuid: U(4)}),
 			);
 			const result = await readSessionRawWindow(testDir, 'rw-mid', U(2), 1);
-			expect(result).not.toBeNull();
-			expect(result!.focal.lineIndex).toBe(2);
-			expect(result!.before).toHaveLength(1);
-			expect(result!.before[0]!.lineIndex).toBe(1);
-			expect(result!.after).toHaveLength(1);
-			expect(result!.after[0]!.lineIndex).toBe(3);
+			if (!result) throw new Error('Expected non-null result');
+			expect(result.focal.lineIndex).toBe(2);
+			expect(result.before.map((b) => b.lineIndex)).toStrictEqual([1]);
+			expect(result.after.map((a) => a.lineIndex)).toStrictEqual([3]);
 		});
 
 		it('returns null when uuid not found', async () => {
 			makeFile('rw-miss', userMessage('a', {uuid: U(0)}));
 			const result = await readSessionRawWindow(testDir, 'rw-miss', U(99), 5);
-			expect(result).toBeNull();
+			expect(result).toBe(null);
 		});
 
 		it('handles focal at start of file with empty before window', async () => {
 			makeFile('rw-start', userMessage('a', {uuid: U(0)}), userMessage('b', {uuid: U(1)}));
 			const result = await readSessionRawWindow(testDir, 'rw-start', U(0), 5);
 			expect(result!.focal.lineIndex).toBe(0);
-			expect(result!.before).toHaveLength(0);
-			expect(result!.after).toHaveLength(1);
+			expect(result!.before.map((b) => b.lineIndex)).toStrictEqual([]);
+			expect(result!.after.map((a) => a.lineIndex)).toStrictEqual([1]);
 		});
 
 		it('handles focal at end of file with empty after window', async () => {
 			makeFile('rw-end', userMessage('a', {uuid: U(0)}), userMessage('b', {uuid: U(1)}));
 			const result = await readSessionRawWindow(testDir, 'rw-end', U(1), 5);
 			expect(result!.focal.lineIndex).toBe(1);
-			expect(result!.before).toHaveLength(1);
-			expect(result!.after).toHaveLength(0);
+			expect(result!.before.map((b) => b.lineIndex)).toStrictEqual([0]);
+			expect(result!.after.map((a) => a.lineIndex)).toStrictEqual([]);
 		});
 
 		it('marks malformed JSON lines as parse errors in context', async () => {
@@ -1045,8 +1031,8 @@ describe('readSession', () => {
 			expect(result!.focal.uuid).toBe(U(0));
 			expect(JSON.parse(result!.focal.raw)).toStrictEqual({
 				type: 'user',
-				message: {role: 'user', content: 'a'},
 				uuid: U(0),
+				message: {role: 'user', content: 'a'},
 			});
 		});
 	});
@@ -1063,12 +1049,10 @@ describe('readSession', () => {
 		);
 
 		const detail = await readSession(testDir, 'agent-abc123');
-		expect(detail).not.toBeNull();
-		expect(detail!.id).toBe('agent-abc123');
-		expect(detail!.title).toBe('Start subagent work');
-		expect(detail!.projectId).toBe('-Users-craig-projects-app');
-		expect(detail!.messages).toHaveLength(2);
-		expect(detail!.messages[0]!.role).toBe('user');
-		expect(detail!.messages[1]!.role).toBe('assistant');
+		if (!detail) throw new Error('Expected non-null detail');
+		expect(detail.id).toBe('agent-abc123');
+		expect(detail.title).toBe('Start subagent work');
+		expect(detail.projectId).toBe('-Users-craig-projects-app');
+		expect(detail.messages.map((m) => m.role)).toStrictEqual(['user', 'assistant']);
 	});
 });

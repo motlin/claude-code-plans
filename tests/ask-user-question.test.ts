@@ -44,8 +44,8 @@ describe('normalizeQuestions', () => {
 			],
 		};
 		const result = normalizeQuestions(input);
-		expect(result).toHaveLength(1);
-		expect(result![0]!.question).toBe('Pick one');
+		if (!result) throw new Error('Expected result to be non-null');
+		expect(result.map((r) => r.question)).toStrictEqual(['Pick one']);
 	});
 
 	it('wraps a single-question shape into a one-element list', () => {
@@ -67,9 +67,9 @@ describe('normalizeQuestions', () => {
 	});
 
 	it('returns null when input has neither shape', () => {
-		expect(normalizeQuestions({})).toBeNull();
-		expect(normalizeQuestions({question: 'Q', options: []})).toBeNull();
-		expect(normalizeQuestions({questions: []})).toBeNull();
+		expect(normalizeQuestions({})).toBe(null);
+		expect(normalizeQuestions({question: 'Q', options: []})).toBe(null);
+		expect(normalizeQuestions({questions: []})).toBe(null);
 	});
 });
 
@@ -82,7 +82,7 @@ describe('answerForQuestion', () => {
 	};
 
 	it('returns null when nothing is selected', () => {
-		expect(answerForQuestion(single, makeInitialDraft())).toBeNull();
+		expect(answerForQuestion(single, makeInitialDraft())).toBe(null);
 	});
 
 	it('returns the single selected label for non-multi questions', () => {
@@ -93,7 +93,7 @@ describe('answerForQuestion', () => {
 	it('joins selected labels for multi-select questions', () => {
 		const draft = {selected: new Set(['A', 'C']), otherText: '', useOther: false};
 		const result = answerForQuestion(multi, draft);
-		expect(result).not.toBeNull();
+		expect(result).not.toBe(null);
 		expect(result!.split(', ').sort()).toStrictEqual(['A', 'C']);
 	});
 
@@ -104,7 +104,7 @@ describe('answerForQuestion', () => {
 
 	it('returns null when Other is selected but the text is empty', () => {
 		const draft = {selected: new Set<string>(), otherText: '   ', useOther: true};
-		expect(answerForQuestion(single, draft)).toBeNull();
+		expect(answerForQuestion(single, draft)).toBe(null);
 	});
 });
 
@@ -171,14 +171,14 @@ describe('parseAnswerResult', () => {
 	});
 
 	it('returns null when the text does not match the expected envelope', () => {
-		expect(parseAnswerResult('garbage text', [q('Q1')])).toBeNull();
-		expect(parseAnswerResult('', [q('Q1')])).toBeNull();
+		expect(parseAnswerResult('garbage text', [q('Q1')])).toBe(null);
+		expect(parseAnswerResult('', [q('Q1')])).toBe(null);
 	});
 
 	it('returns null when no questions are provided', () => {
 		const text =
 			'User has answered your questions: "Q1"="A1".' + " You can now continue with the user's answers in mind.";
-		expect(parseAnswerResult(text, [])).toBeNull();
+		expect(parseAnswerResult(text, [])).toBe(null);
 	});
 
 	it('parses the real eclipse-collections "Other" answer where notes echo the value', () => {
@@ -201,7 +201,7 @@ describe('parseAnswerResult', () => {
 			q('Which target should we focus on splitting?'),
 			q('For test sharding, how should shards be generated?'),
 		]);
-		expect(result).not.toBeNull();
+		expect(result).not.toBe(null);
 		expect(result![0]!.answer).toBe(longAnswer1);
 		expect(result![0]!.notes).toBe(longAnswer1);
 		expect(result![1]!.answer).toBe(longAnswer2);

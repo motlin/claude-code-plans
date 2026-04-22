@@ -67,20 +67,24 @@ describe('buildSessionSummaryPayloadFromDb', () => {
 
 		const payload = buildSessionSummaryPayloadFromDb(db.index, 'abc-123');
 
-		expect(payload).not.toBeNull();
-		expect(payload!.id).toBe('abc-123');
-		expect(payload!.title).toBe('Fixed auth issue');
-		expect(payload!.messageCount).toBe(5);
-		expect(payload!.project).toBe('-Users-craig-projects-app');
-		expect(payload!.projectName).toBe('app');
-		// Dates serialized as ISO strings so payloads survive JSON.stringify
-		expect(typeof payload!.mtime).toBe('string');
-		expect(typeof payload!.created).toBe('string');
+		if (!payload) throw new Error('Expected non-null payload');
+		expect(typeof payload.mtime).toBe('string');
+		expect(typeof payload.created).toBe('string');
+		const {mtime: _mtime, created: _created, ...rest} = payload;
+		expect(rest).toStrictEqual({
+			id: 'abc-123',
+			title: 'Fixed auth issue',
+			summary: 'Fixed auth issue',
+			messageCount: 5,
+			project: '-Users-craig-projects-app',
+			projectName: 'app',
+			gitBranch: undefined,
+		});
 	});
 
 	it('returns null when the session id is not in the db', () => {
 		const payload = buildSessionSummaryPayloadFromDb(db.index, 'does-not-exist');
 
-		expect(payload).toBeNull();
+		expect(payload).toBe(null);
 	});
 });

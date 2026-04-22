@@ -17,15 +17,14 @@ function makeTask(id: string, overrides: Partial<GraphTask> = {}): GraphTask {
 describe('layoutGraph', () => {
 	it('returns empty for no tasks', () => {
 		const {nodes, width, height} = layoutGraph([]);
-		expect(nodes).toHaveLength(0);
+		expect(nodes).toStrictEqual([]);
 		expect(width).toBe(300);
 		expect(height).toBe(200);
 	});
 
 	it('places a single task at layer 0', () => {
 		const {nodes} = layoutGraph([makeTask('1')]);
-		expect(nodes).toHaveLength(1);
-		expect(nodes[0]!.layer).toBe(0);
+		expect(nodes.map((n) => n.layer)).toStrictEqual([0]);
 	});
 
 	it('places independent tasks in the same layer', () => {

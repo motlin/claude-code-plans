@@ -34,13 +34,11 @@ describe('AppContext', () => {
 	it('creates and disposes without leaking handles', async () => {
 		const ctx = await createAppContext(makeTestConfig());
 
-		expect(ctx.db).toBeDefined();
-		expect(ctx.watcher).toBeDefined();
-		expect(ctx.sseClients).toBeInstanceOf(Set);
-		expect(ctx.sseClients.size).toBe(0);
-		expect(ctx.sessionStore).toBeInstanceOf(Map);
-		expect(ctx.sessionStore.size).toBe(0);
-		expect(ctx.sweepTimer).toBeDefined();
+		expect(typeof ctx.db).toBe('object');
+		expect(typeof ctx.watcher).toBe('object');
+		expect(ctx.sseClients).toStrictEqual(new Set());
+		expect(ctx.sessionStore).toStrictEqual(new Map());
+		expect(typeof ctx.sweepTimer).toBe('object');
 
 		await disposeAppContext(ctx);
 	});
@@ -61,7 +59,7 @@ describe('AppContext', () => {
 
 		await disposeAppContext(ctx);
 
-		expect(closed).toHaveLength(1);
+		expect(closed).toStrictEqual([true]);
 		expect(ctx.sseClients.size).toBe(0);
 	});
 });

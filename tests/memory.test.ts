@@ -53,10 +53,10 @@ describe('listMemories', () => {
 		writeFileSync(join(memDir, 'patterns.md'), '# Patterns\n\nSome patterns');
 
 		const groups = await listMemories(testDir);
-		expect(groups).toHaveLength(1);
+		if (groups.length !== 1) throw new Error(`Expected 1 group, got ${groups.length}`);
 		expect(groups[0]!.project).toBe('-Users-craig-projects-app');
 		expect(groups[0]!.projectName).toBe('/Users/craig/projects/app');
-		expect(groups[0]!.memories).toHaveLength(2);
+		expect(groups[0]!.memories.map((m) => m.filename).sort()).toStrictEqual(['MEMORY.md', 'patterns.md']);
 	});
 
 	it('skips projects without memory directories', async () => {
@@ -73,8 +73,7 @@ describe('listMemories', () => {
 		writeFileSync(join(memDir, 'notes.txt'), 'not markdown');
 
 		const groups = await listMemories(testDir);
-		expect(groups[0]!.memories).toHaveLength(1);
-		expect(groups[0]!.memories[0]!.filename).toBe('MEMORY.md');
+		expect(groups[0]!.memories.map((m) => m.filename)).toStrictEqual(['MEMORY.md']);
 	});
 
 	it('sorts groups by most recent mtime', async () => {
@@ -90,9 +89,10 @@ describe('listMemories', () => {
 		utimesSync(join(olderMemDir, 'MEMORY.md'), pastTime, pastTime);
 
 		const groups = await listMemories(testDir);
-		expect(groups).toHaveLength(2);
-		expect(groups[0]!.project).toBe('-Users-craig-projects-newer');
-		expect(groups[1]!.project).toBe('-Users-craig-projects-older');
+		expect(groups.map((g) => g.project)).toStrictEqual([
+			'-Users-craig-projects-newer',
+			'-Users-craig-projects-older',
+		]);
 	});
 
 	it('extracts title from # heading', async () => {
@@ -129,22 +129,22 @@ describe('readMemory', () => {
 		mkdirSync(memDir, {recursive: true});
 
 		const content = await readMemory(testDir, '-Users-craig-projects-app', 'nope.md');
-		expect(content).toBeNull();
+		expect(content).toBe(null);
 	});
 
 	it('rejects path traversal in project param', async () => {
 		const content = await readMemory(testDir, '../etc', 'passwd.md');
-		expect(content).toBeNull();
+		expect(content).toBe(null);
 	});
 
 	it('rejects path traversal in filename param', async () => {
 		const content = await readMemory(testDir, '-Users-craig-projects-app', '../../../etc/passwd');
-		expect(content).toBeNull();
+		expect(content).toBe(null);
 	});
 
 	it('rejects slash in filename', async () => {
 		const content = await readMemory(testDir, '-Users-craig-projects-app', 'sub/file.md');
-		expect(content).toBeNull();
+		expect(content).toBe(null);
 	});
 
 	it('rejects non-md extension', async () => {
@@ -153,12 +153,12 @@ describe('readMemory', () => {
 		writeFileSync(join(memDir, 'secret.txt'), 'secret');
 
 		const content = await readMemory(testDir, '-Users-craig-projects-app', 'secret.txt');
-		expect(content).toBeNull();
+		expect(content).toBe(null);
 	});
 
 	it('rejects slash in project param', async () => {
 		const content = await readMemory(testDir, 'foo/bar', 'MEMORY.md');
-		expect(content).toBeNull();
+		expect(content).toBe(null);
 	});
 });
 

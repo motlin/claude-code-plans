@@ -163,7 +163,7 @@ describe('computeDiffData', () => {
 		const result = computeDiffData('', '');
 		expect(result.added).toBe(0);
 		expect(result.removed).toBe(0);
-		expect(result.ops).toHaveLength(1); // one equal empty string
+		expect(result.ops.length).toBe(1); // one equal empty string
 	});
 
 	it('interleaves removed and added lines correctly', () => {
@@ -236,7 +236,7 @@ describe('highlightDiffOps', () => {
 			['add', 'const y = 3;'],
 		];
 		const result = await highlightDiffOps(ops, 'typescript');
-		expect(result).toHaveLength(3);
+		expect(result.length).toBe(3);
 		// Each line should contain Shiki-highlighted HTML with spans
 		for (const line of result) {
 			expect(line).toContain('<span');
@@ -248,20 +248,20 @@ describe('highlightDiffOps', () => {
 	it('returns plain escaped HTML for unknown language', async () => {
 		const ops: Array<readonly ['equal' | 'add' | 'remove', string]> = [['equal', '<div>hello</div>']];
 		const result = await highlightDiffOps(ops, '');
-		expect(result).toHaveLength(1);
+		expect(result.length).toBe(1);
 		// Should escape HTML entities
 		expect(result[0]).toContain('&lt;div&gt;');
 	});
 
 	it('handles empty ops array', async () => {
 		const result = await highlightDiffOps([], 'typescript');
-		expect(result).toHaveLength(0);
+		expect(result).toStrictEqual([]);
 	});
 
 	it('includes dual-theme shiki variables for dark mode support', async () => {
 		const ops: Array<readonly ['equal' | 'add' | 'remove', string]> = [['equal', 'const x = 1;']];
 		const result = await highlightDiffOps(ops, 'typescript');
-		expect(result).toHaveLength(1);
+		expect(result.length).toBe(1);
 		// Should contain dual-theme CSS variables from Shiki
 		expect(result[0]).toContain('--shiki-dark');
 	});
@@ -274,7 +274,7 @@ describe('highlightDiffOps', () => {
 			['equal', 'line 4'],
 		];
 		const result = await highlightDiffOps(ops, 'typescript');
-		expect(result).toHaveLength(4);
+		expect(result.length).toBe(4);
 	});
 });
 

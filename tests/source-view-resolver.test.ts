@@ -43,32 +43,32 @@ describe('resolveSourcePath', () => {
 	});
 
 	it('rejects empty string', () => {
-		expect(resolveSourcePath(mdConfig, '')).toBeNull();
+		expect(resolveSourcePath(mdConfig, '')).toBe(null);
 	});
 
 	it('rejects path traversal with ..', () => {
-		expect(resolveSourcePath(mdConfig, '../etc/passwd.md')).toBeNull();
+		expect(resolveSourcePath(mdConfig, '../etc/passwd.md')).toBe(null);
 	});
 
 	it('rejects nested path traversal', () => {
-		expect(resolveSourcePath(mdConfig, 'sub/../../etc/passwd.md')).toBeNull();
+		expect(resolveSourcePath(mdConfig, 'sub/../../etc/passwd.md')).toBe(null);
 	});
 
 	it('rejects absolute paths', () => {
-		expect(resolveSourcePath(mdConfig, '/etc/passwd.md')).toBeNull();
+		expect(resolveSourcePath(mdConfig, '/etc/passwd.md')).toBe(null);
 	});
 
 	it('rejects wrong extension', () => {
-		expect(resolveSourcePath(mdConfig, 'note.txt')).toBeNull();
-		expect(resolveSourcePath(jsonConfig, 'note.md')).toBeNull();
+		expect(resolveSourcePath(mdConfig, 'note.txt')).toBe(null);
+		expect(resolveSourcePath(jsonConfig, 'note.md')).toBe(null);
 	});
 
 	it('rejects empty path segments', () => {
-		expect(resolveSourcePath(mdConfig, 'sub//file.md')).toBeNull();
+		expect(resolveSourcePath(mdConfig, 'sub//file.md')).toBe(null);
 	});
 
 	it('rejects "." segments', () => {
-		expect(resolveSourcePath(mdConfig, './file.md')).toBeNull();
+		expect(resolveSourcePath(mdConfig, './file.md')).toBe(null);
 	});
 });
 
@@ -76,40 +76,45 @@ describe('readSourceFile', () => {
 	it('reads a markdown file', async () => {
 		writeFileSync(join(testRoot, 'plan.md'), '# Hello\n');
 		const file = await readSourceFile('plan', mdConfig, 'plan.md');
-		expect(file).not.toBeNull();
-		expect(file!.content).toBe('# Hello\n');
-		expect(file!.language).toBe('markdown');
-		expect(file!.relativePath).toBe('plan.md');
+		if (!file) throw new Error('Expected non-null file');
+		expect(file.mtime).toBeInstanceOf(Date);
+		const {mtime: _mtime, ...rest} = file;
+		expect(rest).toStrictEqual({
+			kind: 'plan',
+			absolutePath: join(testRoot, 'plan.md'),
+			content: '# Hello\n',
+			language: 'markdown',
+			relativePath: 'plan.md',
+		});
 	});
 
 	it('reads a JSON task file', async () => {
 		mkdirSync(join(testRoot, 'proj'));
 		writeFileSync(join(testRoot, 'proj', '1.json'), '{"id":"1"}');
 		const file = await readSourceFile('task', jsonConfig, 'proj/1.json');
-		expect(file!.content).toBe('{"id":"1"}');
-		expect(file!.language).toBe('json');
+		if (!file) throw new Error('Expected non-null file');
+		expect(file.mtime).toBeInstanceOf(Date);
+		const {mtime: _mtime2, ...rest} = file;
+		expect(rest).toStrictEqual({
+			kind: 'task',
+			absolutePath: join(testRoot, 'proj', '1.json'),
+			content: '{"id":"1"}',
+			language: 'json',
+			relativePath: 'proj/1.json',
+		});
 	});
 
 	it('returns null for non-existent file', async () => {
-		const file = await readSourceFile('plan', mdConfig, 'missing.md');
-		expect(file).toBeNull();
+		expect(await readSourceFile('plan', mdConfig, 'missing.md')).toBe(null);
 	});
 
 	it('returns null for traversal attempts', async () => {
-		const file = await readSourceFile('plan', mdConfig, '../etc/passwd.md');
-		expect(file).toBeNull();
+		expect(await readSourceFile('plan', mdConfig, '../etc/passwd.md')).toBe(null);
 	});
 
 	it('returns null for wrong extension', async () => {
 		writeFileSync(join(testRoot, 'evil.txt'), 'bad');
-		const file = await readSourceFile('plan', mdConfig, 'evil.txt');
-		expect(file).toBeNull();
-	});
-
-	it('exposes mtime', async () => {
-		writeFileSync(join(testRoot, 'a.md'), 'x');
-		const file = await readSourceFile('plan', mdConfig, 'a.md');
-		expect(file!.mtime).toBeInstanceOf(Date);
+		expect(await readSourceFile('plan', mdConfig, 'evil.txt')).toBe(null);
 	});
 });
 
@@ -130,7 +135,7 @@ describe('buildSourceConfig', () => {
 	});
 
 	it('returns null for kind=command', () => {
-		expect(buildSourceConfig('command', '/home/u/.claude')).toBeNull();
+		expect(buildSourceConfig('command', '/home/u/.claude')).toBe(null);
 	});
 });
 

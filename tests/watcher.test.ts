@@ -87,10 +87,16 @@ describe('toTaskSummaryPayload', () => {
 
 		const payload = toTaskSummaryPayload(row);
 
-		expect(payload.blocks).toStrictEqual(['task-2']);
-		expect(payload.blockedBy).toStrictEqual(['task-3']);
-		expect(payload.taskId).toBe('task-1');
-		expect(payload.status).toBe('pending');
+		expect(payload).toStrictEqual({
+			taskId: 'task-1',
+			projectDir: 'proj',
+			subject: 'Do a thing',
+			description: 'Details',
+			status: 'pending',
+			activeForm: null,
+			blocks: ['task-2'],
+			blockedBy: ['task-3'],
+		});
 	});
 });
 

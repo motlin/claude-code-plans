@@ -21,16 +21,16 @@ function makeAgent(overrides: Partial<DbSubagent> & {id: string}): DbSubagent {
 describe('layoutSequence', () => {
 	it('returns empty layout when no agents have timing', () => {
 		const layout = layoutSequence([makeAgent({id: 'a'})]);
-		expect(layout.lifelines).toHaveLength(0);
-		expect(layout.spawns).toHaveLength(0);
-		expect(layout.returns).toHaveLength(0);
+		expect(layout.lifelines).toStrictEqual([]);
+		expect(layout.spawns).toStrictEqual([]);
+		expect(layout.returns).toStrictEqual([]);
 		expect(layout.startMs).toBe(0);
 		expect(layout.endMs).toBe(0);
 	});
 
 	it('returns empty layout for empty input', () => {
 		const layout = layoutSequence([]);
-		expect(layout.lifelines).toHaveLength(0);
+		expect(layout.lifelines).toStrictEqual([]);
 	});
 
 	it('produces one lifeline per agent with timing, assigning columns by start time', () => {
@@ -39,7 +39,6 @@ describe('layoutSequence', () => {
 			makeAgent({id: 'a', startedAt: '2026-04-05T00:00:00.000Z', finishedAt: '2026-04-05T00:00:10.000Z'}),
 		];
 		const layout = layoutSequence(agents);
-		expect(layout.lifelines).toHaveLength(2);
 		expect(layout.lifelines.map((l) => l.agent.id)).toStrictEqual(['a', 'b']);
 		expect(layout.lifelines[0]!.column).toBe(0);
 		expect(layout.lifelines[1]!.column).toBe(1);
@@ -71,8 +70,8 @@ describe('layoutSequence', () => {
 			}),
 		];
 		const layout = layoutSequence(agents);
-		expect(layout.spawns).toHaveLength(1);
-		expect(layout.returns).toHaveLength(1);
+		expect(layout.spawns.length).toBe(1);
+		expect(layout.returns.length).toBe(1);
 
 		const spawn = layout.spawns[0]!;
 		expect(spawn.parentId).toBe('parent');
@@ -119,9 +118,9 @@ describe('layoutSequence', () => {
 			}),
 		];
 		const layout = layoutSequence(agents);
-		expect(layout.lifelines).toHaveLength(1);
-		expect(layout.spawns).toHaveLength(0);
-		expect(layout.returns).toHaveLength(0);
+		expect(layout.lifelines.map((l) => l.agent.id)).toStrictEqual(['child']);
+		expect(layout.spawns).toStrictEqual([]);
+		expect(layout.returns).toStrictEqual([]);
 	});
 
 	it('marks parent waiting range while a child runs', () => {
@@ -140,11 +139,12 @@ describe('layoutSequence', () => {
 		];
 		const layout = layoutSequence(agents);
 		const parent = layout.lifelines.find((l) => l.agent.id === 'parent')!;
-		expect(parent.waiting).toHaveLength(1);
-		expect(parent.waiting[0]).toStrictEqual({
-			startMs: new Date('2026-04-05T00:00:10.000Z').getTime(),
-			endMs: new Date('2026-04-05T00:00:20.000Z').getTime(),
-		});
+		expect(parent.waiting).toStrictEqual([
+			{
+				startMs: new Date('2026-04-05T00:00:10.000Z').getTime(),
+				endMs: new Date('2026-04-05T00:00:20.000Z').getTime(),
+			},
+		]);
 	});
 
 	it('merges overlapping waiting periods on parent', () => {
@@ -169,11 +169,12 @@ describe('layoutSequence', () => {
 		];
 		const layout = layoutSequence(agents);
 		const parent = layout.lifelines.find((l) => l.agent.id === 'parent')!;
-		expect(parent.waiting).toHaveLength(1);
-		expect(parent.waiting[0]).toStrictEqual({
-			startMs: new Date('2026-04-05T00:00:05.000Z').getTime(),
-			endMs: new Date('2026-04-05T00:00:20.000Z').getTime(),
-		});
+		expect(parent.waiting).toStrictEqual([
+			{
+				startMs: new Date('2026-04-05T00:00:05.000Z').getTime(),
+				endMs: new Date('2026-04-05T00:00:20.000Z').getTime(),
+			},
+		]);
 	});
 
 	it('records depth for nested agents', () => {

@@ -29,9 +29,7 @@ describe('listPlans', () => {
 		utimesSync(older, pastTime, pastTime);
 
 		const plans = await listPlans(testDir);
-		expect(plans).toHaveLength(2);
-		expect(plans[0]!.filename).toBe('newer-plan.md');
-		expect(plans[1]!.filename).toBe('older-plan.md');
+		expect(plans.map((p) => p.filename)).toStrictEqual(['newer-plan.md', 'older-plan.md']);
 	});
 
 	it('extracts title from # heading', async () => {
@@ -50,8 +48,7 @@ describe('listPlans', () => {
 		writeFileSync(join(testDir, 'notes.txt'), 'not a plan');
 		writeFileSync(join(testDir, 'plan.md'), '# Real Plan');
 		const plans = await listPlans(testDir);
-		expect(plans).toHaveLength(1);
-		expect(plans[0]!.filename).toBe('plan.md');
+		expect(plans.map((p) => p.filename)).toStrictEqual(['plan.md']);
 	});
 
 	it('includes mtime in entries', async () => {
@@ -70,28 +67,28 @@ describe('readPlan', () => {
 
 	it('returns null for non-existent file', async () => {
 		const content = await readPlan(testDir, 'nope.md');
-		expect(content).toBeNull();
+		expect(content).toBe(null);
 	});
 
 	it('rejects path traversal with ..', async () => {
 		const content = await readPlan(testDir, '../etc/passwd');
-		expect(content).toBeNull();
+		expect(content).toBe(null);
 	});
 
 	it('rejects files not ending in .md', async () => {
 		writeFileSync(join(testDir, 'secret.txt'), 'secret');
 		const content = await readPlan(testDir, 'secret.txt');
-		expect(content).toBeNull();
+		expect(content).toBe(null);
 	});
 
 	it('rejects absolute paths', async () => {
 		const content = await readPlan(testDir, '/etc/passwd');
-		expect(content).toBeNull();
+		expect(content).toBe(null);
 	});
 
 	it('rejects filenames with slashes', async () => {
 		const content = await readPlan(testDir, 'subdir/plan.md');
-		expect(content).toBeNull();
+		expect(content).toBe(null);
 	});
 });
 
@@ -147,17 +144,17 @@ describe('getPlanMtime', () => {
 
 	it('returns null for non-existent file', async () => {
 		const mtime = await getPlanMtime(testDir, 'nope.md');
-		expect(mtime).toBeNull();
+		expect(mtime).toBe(null);
 	});
 
 	it('rejects path traversal', async () => {
 		const mtime = await getPlanMtime(testDir, '../etc/passwd');
-		expect(mtime).toBeNull();
+		expect(mtime).toBe(null);
 	});
 
 	it('rejects non-md files', async () => {
 		writeFileSync(join(testDir, 'secret.txt'), 'secret');
 		const mtime = await getPlanMtime(testDir, 'secret.txt');
-		expect(mtime).toBeNull();
+		expect(mtime).toBe(null);
 	});
 });

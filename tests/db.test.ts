@@ -79,8 +79,8 @@ afterEach(() => {
 describe('connection', () => {
 	it('creates in-memory databases with schema', () => {
 		const row = db.index.select().from(schema.metadata).where(eq(schema.metadata.key, 'schema_version')).get();
-		expect(row).toBeDefined();
-		expect(row!.value).toBe(schema.SCHEMA_VERSION);
+		if (!row) throw new Error('Expected schema_version row');
+		expect(row.value).toBe(schema.SCHEMA_VERSION);
 	});
 });
 
@@ -113,16 +113,15 @@ describe('indexer', () => {
 		await indexSessionsIndex(db.index, projectDir, '-Users-craig-projects-app');
 
 		const projects = db.index.select().from(schema.projects).all();
-		expect(projects).toHaveLength(1);
-		expect(projects[0]!.name).toBe('app');
+		expect(projects.map((p) => p.name)).toStrictEqual(['app']);
 
 		const sessions = db.index.select().from(schema.sessions).all();
-		expect(sessions).toHaveLength(2);
+		expect(sessions.length).toBe(2);
 
 		const abc = sessions.find((s) => s.id === 'abc-123');
-		expect(abc).toBeDefined();
-		expect(abc!.title).toBe('Fixed auth issue');
-		expect(abc!.messageCount).toBe(5);
+		if (!abc) throw new Error('Expected session abc-123');
+		expect(abc.title).toBe('Fixed auth issue');
+		expect(abc.messageCount).toBe(5);
 	});
 
 	it('skips unchanged files based on mtime', async () => {
@@ -142,13 +141,13 @@ describe('indexer', () => {
 
 		await indexSessionsIndex(db.index, projectDir, '-Users-craig-projects-app');
 		const firstRun = db.index.select().from(schema.indexedFiles).all();
-		expect(firstRun).toHaveLength(1);
+		if (firstRun.length !== 1) throw new Error(`Expected 1 indexed file, got ${firstRun.length}`);
 		const firstIndexedAt = firstRun[0]!.indexedAt;
 
 		// Re-index without changing the file
 		await indexSessionsIndex(db.index, projectDir, '-Users-craig-projects-app');
 		const secondRun = db.index.select().from(schema.indexedFiles).all();
-		expect(secondRun[0]!.indexedAt).toBe(firstIndexedAt);
+		expect(secondRun[0]?.indexedAt).toBe(firstIndexedAt);
 	});
 
 	it('extracts plan links from file-history-snapshot', async () => {
@@ -191,9 +190,9 @@ describe('indexer', () => {
 		await indexJsonlFile(db.index, join(projectDir, 'sess-1.jsonl'), '-Users-craig-projects-app');
 
 		const links = db.index.select().from(schema.planSessions).all();
-		expect(links).toHaveLength(1);
-		expect(links[0]!.planFilename).toBe('my-plan.md');
-		expect(links[0]!.sessionId).toBe('sess-1');
+		expect(links.map((l) => ({planFilename: l.planFilename, sessionId: l.sessionId}))).toStrictEqual([
+			{planFilename: 'my-plan.md', sessionId: 'sess-1'},
+		]);
 	});
 
 	it('extracts plan links from plan_mode attachments (before file is edited)', async () => {
@@ -244,10 +243,15 @@ describe('indexer', () => {
 		await indexJsonlFile(db.index, join(projectDir, 'sess-plan-mode.jsonl'), '-Users-craig-projects-app');
 
 		const links = db.index.select().from(schema.planSessions).all();
-		expect(links).toHaveLength(1);
-		expect(links[0]!.planFilename).toBe('abstract-knitting-garden.md');
-		expect(links[0]!.sessionId).toBe('sess-plan-mode');
-		expect(links[0]!.projectId).toBe('-Users-craig-projects-app');
+		expect(
+			links.map((l) => ({planFilename: l.planFilename, sessionId: l.sessionId, projectId: l.projectId})),
+		).toStrictEqual([
+			{
+				planFilename: 'abstract-knitting-garden.md',
+				sessionId: 'sess-plan-mode',
+				projectId: '-Users-craig-projects-app',
+			},
+		]);
 	});
 
 	it('deduplicates plan links when both plan_mode and file-history-snapshot point to the same plan', async () => {
@@ -298,8 +302,7 @@ describe('indexer', () => {
 		await indexJsonlFile(db.index, join(projectDir, 'sess-dup.jsonl'), '-Users-craig-projects-app');
 
 		const links = db.index.select().from(schema.planSessions).all();
-		expect(links).toHaveLength(1);
-		expect(links[0]!.planFilename).toBe('dual-plan.md');
+		expect(links.map((l) => l.planFilename)).toStrictEqual(['dual-plan.md']);
 	});
 
 	it('pruneStalePlanLinks removes plan_sessions rows whose plan file no longer exists', async () => {
@@ -320,8 +323,7 @@ describe('indexer', () => {
 		expect(removed).toBe(2);
 
 		const remaining = db.index.select().from(schema.planSessions).all();
-		expect(remaining).toHaveLength(1);
-		expect(remaining[0]!.planFilename).toBe('still-here.md');
+		expect(remaining.map((r) => r.planFilename)).toStrictEqual(['still-here.md']);
 	});
 
 	it('pruneStalePlanLinks keeps all rows when plans directory is missing', async () => {
@@ -334,7 +336,7 @@ describe('indexer', () => {
 		expect(removed).toBe(0);
 
 		const remaining = db.index.select().from(schema.planSessions).all();
-		expect(remaining).toHaveLength(1);
+		expect(remaining.length).toBe(1);
 	});
 
 	it('ignores plan_mode attachments with no planFilePath', async () => {
@@ -368,7 +370,7 @@ describe('indexer', () => {
 		await indexJsonlFile(db.index, join(projectDir, 'sess-no-path.jsonl'), '-Users-craig-projects-app');
 
 		const links = db.index.select().from(schema.planSessions).all();
-		expect(links).toHaveLength(0);
+		expect(links).toStrictEqual([]);
 	});
 
 	it('extracts custom-title from JSONL', async () => {
@@ -399,9 +401,9 @@ describe('indexer', () => {
 		await indexJsonlFile(db.index, join(projectDir, 'titled-sess.jsonl'), '-Users-craig-projects-app');
 
 		const session = db.index.select().from(schema.sessions).where(eq(schema.sessions.id, 'titled-sess')).get();
-		expect(session).toBeDefined();
-		expect(session!.customTitle).toBe('My Custom Title');
-		expect(session!.title).toBe('My Custom Title');
+		if (!session) throw new Error('Expected session titled-sess');
+		expect(session.customTitle).toBe('My Custom Title');
+		expect(session.title).toBe('My Custom Title');
 	});
 
 	it('updates session mtime when JSONL is re-indexed', async () => {
@@ -426,7 +428,8 @@ describe('indexer', () => {
 		await indexSessionsIndex(db.index, projectDir, '-Users-craig-projects-app');
 
 		const before = db.index.select().from(schema.sessions).where(eq(schema.sessions.id, 'mtime-sess')).get();
-		expect(before!.mtimeMs).toBe(oldMtime);
+		if (!before) throw new Error('Expected session mtime-sess');
+		expect(before.mtimeMs).toBe(oldMtime);
 
 		// Write JSONL file — its filesystem mtime will be newer than oldMtime
 		const jsonlPath = join(projectDir, 'mtime-sess.jsonl');
@@ -435,7 +438,8 @@ describe('indexer', () => {
 		await indexJsonlFile(db.index, jsonlPath, '-Users-craig-projects-app');
 
 		const after = db.index.select().from(schema.sessions).where(eq(schema.sessions.id, 'mtime-sess')).get();
-		expect(after!.mtimeMs).toBeGreaterThan(oldMtime);
+		if (!after) throw new Error('Expected session mtime-sess after re-index');
+		expect(after.mtimeMs).toBeGreaterThan(oldMtime);
 	});
 
 	it('creates session from JSONL when not in index', async () => {
@@ -450,9 +454,9 @@ describe('indexer', () => {
 		await indexJsonlFile(db.index, join(projectDir, 'orphan-sess.jsonl'), '-Users-craig-projects-app');
 
 		const session = db.index.select().from(schema.sessions).where(eq(schema.sessions.id, 'orphan-sess')).get();
-		expect(session).toBeDefined();
-		expect(session!.title).toBe('Hello world');
-		expect(session!.firstPrompt).toBe('Hello world');
+		if (!session) throw new Error('Expected session orphan-sess');
+		expect(session.title).toBe('Hello world');
+		expect(session.firstPrompt).toBe('Hello world');
 	});
 
 	it('fullScan indexes a complete project directory', async () => {
@@ -485,11 +489,10 @@ describe('indexer', () => {
 		await fullScan(db.index, testDir);
 
 		const projects = listProjectsFromDb(db.index);
-		expect(projects).toHaveLength(1);
-		expect(projects[0]!.name).toBe('/Users/craig/projects/app');
+		expect(projects.map((p) => p.name)).toStrictEqual(['/Users/craig/projects/app']);
 
 		const sessions = db.index.select().from(schema.sessions).all();
-		expect(sessions).toHaveLength(2);
+		expect(sessions.length).toBe(2);
 	});
 
 	it('extracts cwd from JSONL attachment lines', async () => {
@@ -507,8 +510,8 @@ describe('indexer', () => {
 		await indexJsonlFile(db.index, join(projectDir, 'cwd-sess.jsonl'), '-Users-craig-projects-app');
 
 		const session = db.index.select().from(schema.sessions).where(eq(schema.sessions.id, 'cwd-sess')).get();
-		expect(session).toBeDefined();
-		expect(session!.cwd).toBe('/Users/craig/projects/app');
+		if (!session) throw new Error('Expected session cwd-sess');
+		expect(session.cwd).toBe('/Users/craig/projects/app');
 	});
 
 	it('indexes cwd from sessions-index.json projectPath', async () => {
@@ -530,8 +533,8 @@ describe('indexer', () => {
 		await indexSessionsIndex(db.index, projectDir, '-Users-craig-projects-app');
 
 		const session = db.index.select().from(schema.sessions).where(eq(schema.sessions.id, 'idx-cwd-1')).get();
-		expect(session).toBeDefined();
-		expect(session!.cwd).toBe('/Users/craig/projects/app');
+		if (!session) throw new Error('Expected session idx-cwd-1');
+		expect(session.cwd).toBe('/Users/craig/projects/app');
 	});
 
 	it('updates cwd when re-indexing JSONL for existing session', async () => {
@@ -553,7 +556,8 @@ describe('indexer', () => {
 		await indexSessionsIndex(db.index, projectDir, '-Users-craig-projects-app');
 
 		const before = db.index.select().from(schema.sessions).where(eq(schema.sessions.id, 'update-cwd')).get();
-		expect(before!.cwd).toBeNull();
+		if (!before) throw new Error('Expected session update-cwd');
+		expect(before.cwd).toBe(null);
 
 		// Now write JSONL with cwd
 		writeFileSync(
@@ -567,7 +571,8 @@ describe('indexer', () => {
 		await indexJsonlFile(db.index, join(projectDir, 'update-cwd.jsonl'), '-Users-craig-projects-app');
 
 		const after = db.index.select().from(schema.sessions).where(eq(schema.sessions.id, 'update-cwd')).get();
-		expect(after!.cwd).toBe('/Users/craig/projects/app-worktree');
+		if (!after) throw new Error('Expected session update-cwd after re-index');
+		expect(after.cwd).toBe('/Users/craig/projects/app-worktree');
 	});
 });
 
@@ -643,58 +648,52 @@ describe('queries', () => {
 
 	it('listProjectsFromDb returns projects sorted by last activity', () => {
 		const projects = listProjectsFromDb(db.index);
-		expect(projects).toHaveLength(2);
-		expect(projects[0]!.id).toBe('proj-a');
+		expect(projects.map((p) => p.id)).toStrictEqual(['proj-a', 'proj-b']);
 		expect(projects[0]!.sessionCount).toBe(2); // excludes sidechain
-		expect(projects[1]!.id).toBe('proj-b');
 	});
 
 	it('listSessionsFromDb returns grouped sessions excluding sidechains', () => {
 		const groups = listSessionsFromDb(db.index);
-		expect(groups).toHaveLength(2);
-		expect(groups[0]!.project).toBe('proj-a');
-		expect(groups[0]!.sessions).toHaveLength(2); // no sidechain
-		expect(groups[0]!.sessions[0]!.id).toBe('sess-1'); // highest mtime first
+		expect(groups.map((g) => g.project)).toStrictEqual(['proj-a', 'proj-b']);
+		expect(groups[0]!.sessions.map((s) => s.id)).toStrictEqual(['sess-1', 'sess-2']); // no sidechain, highest mtime first
 	});
 
 	it('listSessionsForProjectFromDb returns sessions for a project', () => {
 		const sessions = listSessionsForProjectFromDb(db.index, 'proj-a');
-		expect(sessions).toHaveLength(2);
-		expect(sessions[0]!.id).toBe('sess-1');
-		expect(sessions[1]!.id).toBe('sess-2');
+		expect(sessions.map((s) => s.id)).toStrictEqual(['sess-1', 'sess-2']);
 	});
 
 	it('getPlanLinksFromDb returns links for a plan with session titles', () => {
 		const links = getPlanLinksFromDb(db.index, 'plan-a.md');
-		expect(links).toHaveLength(2);
-		expect(links[0]!.projectName).toBe('Alpha');
-		expect(links[0]!.sessionTitle).toBe('Fix login');
-		expect(links[1]!.sessionTitle).toBe('Add tests');
+		expect(links.map((l) => ({projectName: l.projectName, sessionTitle: l.sessionTitle}))).toStrictEqual([
+			{projectName: 'Alpha', sessionTitle: 'Fix login'},
+			{projectName: 'Alpha', sessionTitle: 'Add tests'},
+		]);
 	});
 
 	it('getPlanLinksFromDb returns all links when no filename given', () => {
 		const links = getPlanLinksFromDb(db.index);
-		expect(links).toHaveLength(2);
+		expect(links.length).toBe(2);
 	});
 
 	it('getProjectDetailFromDb returns project with sessions and plan links', () => {
 		const detail = getProjectDetailFromDb(db.index, 'proj-a');
-		expect(detail).not.toBeNull();
-		expect(detail!.name).toBe('Alpha');
-		expect(detail!.sessions).toHaveLength(2);
-		expect(detail!.planLinks).toHaveLength(2);
+		if (!detail) throw new Error('Expected project detail for proj-a');
+		expect(detail.name).toBe('Alpha');
+		expect(detail.sessions.length).toBe(2);
+		expect(detail.planLinks.length).toBe(2);
 	});
 
 	it('getProjectDetailFromDb returns null for non-existent project', () => {
-		expect(getProjectDetailFromDb(db.index, 'nonexistent')).toBeNull();
+		expect(getProjectDetailFromDb(db.index, 'nonexistent')).toBe(null);
 	});
 
 	it('getPlanProjectMappings returns distinct plan-to-project mappings', () => {
 		const mappings = getPlanProjectMappings(db.index);
-		expect(mappings).toHaveLength(1); // plan-a.md -> proj-a (deduplicated)
-		expect(mappings[0]!.planFilename).toBe('plan-a.md');
-		expect(mappings[0]!.projectId).toBe('proj-a');
-		expect(mappings[0]!.projectName).toBe('Alpha');
+		// plan-a.md -> proj-a (deduplicated)
+		expect(
+			mappings.map((m) => ({planFilename: m.planFilename, projectId: m.projectId, projectName: m.projectName})),
+		).toStrictEqual([{planFilename: 'plan-a.md', projectId: 'proj-a', projectName: 'Alpha'}]);
 	});
 
 	it('getPlanProjectMappings returns mappings across multiple projects', () => {
@@ -704,20 +703,20 @@ describe('queries', () => {
 			.run();
 
 		const mappings = getPlanProjectMappings(db.index);
-		expect(mappings).toHaveLength(2);
+		expect(mappings.length).toBe(2);
 		const filenames = mappings.map((m) => m.planFilename).sort();
 		expect(filenames).toStrictEqual(['plan-a.md', 'plan-b.md']);
 	});
 
 	it('searchSessionsFromDb finds sessions by title', () => {
 		const results = searchSessionsFromDb(db.index, 'login');
-		expect(results.length).toBeGreaterThan(0);
+		if (results.length === 0) throw new Error('Expected at least one result');
 		expect(results[0]!.sessionId).toBe('sess-1');
 	});
 
 	it('searchSessionsFromDb finds sessions by first prompt', () => {
 		const results = searchSessionsFromDb(db.index, 'unit tests');
-		expect(results.length).toBeGreaterThan(0);
+		if (results.length === 0) throw new Error('Expected at least one result');
 		expect(results[0]!.sessionId).toBe('sess-2');
 	});
 
@@ -728,7 +727,7 @@ describe('queries', () => {
 
 	it('getSessionProjectPath returns null for non-existent session', () => {
 		const path = getSessionProjectPath(db.index, 'nonexistent');
-		expect(path).toBeNull();
+		expect(path).toBe(null);
 	});
 
 	it('getSessionProjectPath returns project path for session in different project', () => {
@@ -810,38 +809,35 @@ describe('branch and cwd queries', () => {
 
 	it('listBranchesForProject returns branches sorted by last activity', () => {
 		const branches = listBranchesForProject(db.index, 'proj-a');
-		expect(branches).toHaveLength(2);
-		expect(branches[0]!.branch).toBe('feature-x');
-		expect(branches[0]!.sessionCount).toBe(2);
-		expect(branches[1]!.branch).toBe('main');
-		expect(branches[1]!.sessionCount).toBe(1);
+		expect(branches.map((b) => ({branch: b.branch, sessionCount: b.sessionCount}))).toStrictEqual([
+			{branch: 'feature-x', sessionCount: 2},
+			{branch: 'main', sessionCount: 1},
+		]);
 	});
 
 	it('listBranchesForProject excludes sidechains', () => {
 		const branches = listBranchesForProject(db.index, 'proj-a');
 		const featureX = branches.find((b) => b.branch === 'feature-x');
-		expect(featureX!.sessionCount).toBe(2);
+		if (!featureX) throw new Error('Expected feature-x branch');
+		expect(featureX.sessionCount).toBe(2);
 	});
 
 	it('listSessionsForBranch returns sessions for a specific branch', () => {
 		const sessions = listSessionsForBranch(db.index, 'proj-a', 'feature-x');
-		expect(sessions).toHaveLength(2);
-		expect(sessions[0]!.id).toBe('b-sess-1');
-		expect(sessions[1]!.id).toBe('b-sess-2');
+		expect(sessions.map((s) => s.id)).toStrictEqual(['b-sess-1', 'b-sess-2']);
 	});
 
 	it('listSessionsForBranch returns empty for non-existent branch', () => {
 		const sessions = listSessionsForBranch(db.index, 'proj-a', 'nonexistent');
-		expect(sessions).toHaveLength(0);
+		expect(sessions).toStrictEqual([]);
 	});
 
 	it('listCwdsForProject returns unique cwds sorted by last activity', () => {
 		const cwds = listCwdsForProject(db.index, 'proj-a');
-		expect(cwds).toHaveLength(2);
-		expect(cwds[0]!.cwd).toBe('/projects/alpha');
-		expect(cwds[0]!.sessionCount).toBe(2);
-		expect(cwds[1]!.cwd).toBe('/projects/alpha-worktree');
-		expect(cwds[1]!.sessionCount).toBe(1);
+		expect(cwds.map((c) => ({cwd: c.cwd, sessionCount: c.sessionCount}))).toStrictEqual([
+			{cwd: '/projects/alpha', sessionCount: 2},
+			{cwd: '/projects/alpha-worktree', sessionCount: 1},
+		]);
 	});
 });
 
@@ -873,7 +869,7 @@ describe('subagents', () => {
 			.run();
 
 		const agents = getSubagentsForSession(db.index, 'sess-x');
-		expect(agents).toHaveLength(2);
+		expect(agents.length).toBe(2);
 		expect(agents[0]!.agentType).toBe('Explore');
 	});
 
@@ -913,7 +909,7 @@ describe('subagents', () => {
 			.run();
 
 		const agents = getSubagentsForProject(db.index, 'proj-y');
-		expect(agents).toHaveLength(2);
+		expect(agents.length).toBe(2);
 		expect(agents.map((a) => a.id).sort()).toStrictEqual(['agent-1', 'agent-2']);
 	});
 
@@ -957,9 +953,9 @@ describe('subagents', () => {
 		await indexSubagentFile(db.index, agentPath, 'sess-1', 'proj-app');
 
 		const agent = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, 'agent-abc123')).get();
-		expect(agent).toBeDefined();
-		expect(agent!.startedAt).toBe('2026-04-05T00:28:53.989Z');
-		expect(agent!.finishedAt).toBe('2026-04-05T00:29:12.217Z');
+		if (!agent) throw new Error('Expected subagent agent-abc123');
+		expect(agent.startedAt).toBe('2026-04-05T00:28:53.989Z');
+		expect(agent.finishedAt).toBe('2026-04-05T00:29:12.217Z');
 	});
 
 	it('indexSubagentFile reads agentType and description from sibling meta.json', async () => {
@@ -986,9 +982,9 @@ describe('subagents', () => {
 		await indexSubagentFile(db.index, agentPath, 'sess-1', 'proj-app');
 
 		const agent = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, 'agent-meta1')).get();
-		expect(agent).toBeDefined();
-		expect(agent!.agentType).toBe('Explore');
-		expect(agent!.description).toBe('Map current render pipeline');
+		if (!agent) throw new Error('Expected subagent agent-meta1');
+		expect(agent.agentType).toBe('Explore');
+		expect(agent.description).toBe('Map current render pipeline');
 	});
 
 	it('linkSubagentParents sets parentAgentId from Agent tool calls in parent JSONL', async () => {
@@ -1072,15 +1068,18 @@ describe('subagents', () => {
 		await linkSubagentParents(db.index, parentJsonl, null);
 
 		const abc = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, 'agent-abc123')).get();
-		expect(abc!.parentAgentId).toBeNull(); // root-spawned → null
-		expect(abc!.description).toBe('Search codebase');
+		if (!abc) throw new Error('Expected subagent agent-abc123');
+		expect(abc.parentAgentId).toBe(null); // root-spawned -> null
+		expect(abc.description).toBe('Search codebase');
 
 		const def = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, 'agent-def456')).get();
-		expect(def!.parentAgentId).toBeNull(); // root-spawned → null
-		expect(def!.description).toBe('Code review');
+		if (!def) throw new Error('Expected subagent agent-def456');
+		expect(def.parentAgentId).toBe(null); // root-spawned -> null
+		expect(def.description).toBe('Code review');
 
 		const other = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, 'agent-other')).get();
-		expect(other!.parentAgentId).toBeNull(); // not mentioned in JSONL, stays null
+		if (!other) throw new Error('Expected subagent agent-other');
+		expect(other.parentAgentId).toBe(null); // not mentioned in JSONL, stays null
 	});
 
 	it('linkSubagentParents sets parentAgentId for nested subagents', async () => {
@@ -1143,7 +1142,8 @@ describe('subagents', () => {
 		await linkSubagentParents(db.index, parentAgentJsonl, 'agent-parent111');
 
 		const child = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, 'agent-child222')).get();
-		expect(child!.parentAgentId).toBe('agent-parent111');
+		if (!child) throw new Error('Expected subagent agent-child222');
+		expect(child.parentAgentId).toBe('agent-parent111');
 	});
 
 	it('linkSubagentParents does not overwrite existing parentAgentId with null', async () => {
@@ -1199,9 +1199,10 @@ describe('subagents', () => {
 		await linkSubagentParents(db.index, rootJsonl, null);
 
 		const child = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, 'agent-child222')).get();
-		expect(child!.parentAgentId).toBe('agent-parent111');
+		if (!child) throw new Error('Expected subagent agent-child222');
+		expect(child.parentAgentId).toBe('agent-parent111');
 		// Description should still be updated even when parentAgentId is preserved
-		expect(child!.description).toBe('Root agent call');
+		expect(child.description).toBe('Root agent call');
 	});
 });
 
@@ -1230,10 +1231,7 @@ describe('buildSubagentTree', () => {
 		];
 
 		const tree = buildSubagentTree(agents);
-		expect(tree).toHaveLength(3);
-		expect((tree[0] as SubagentTreeNode).agent.id).toBe('a');
-		expect((tree[1] as SubagentTreeNode).agent.id).toBe('b');
-		expect((tree[2] as SubagentTreeNode).agent.id).toBe('c');
+		expect(tree.map((n) => (n as SubagentTreeNode).agent.id)).toStrictEqual(['a', 'b', 'c']);
 	});
 
 	it('groups parallel agents with same start time', () => {
@@ -1246,12 +1244,12 @@ describe('buildSubagentTree', () => {
 		];
 
 		const tree = buildSubagentTree(agents);
-		expect(tree).toHaveLength(3);
+		expect(tree.length).toBe(3);
 		expect((tree[0] as SubagentTreeNode).agent.id).toBe('build');
 
 		const group = tree[1] as ParallelGroup;
 		expect(group.type).toBe('parallel');
-		expect(group.children).toHaveLength(3);
+		expect(group.children.length).toBe(3);
 		expect(group.wallClockMs).toBe(15000); // review2 took longest: 15s
 
 		expect((tree[2] as SubagentTreeNode).agent.id).toBe('commit');
@@ -1269,12 +1267,11 @@ describe('buildSubagentTree', () => {
 		];
 
 		const tree = buildSubagentTree(agents);
-		expect(tree).toHaveLength(1);
+		expect(tree.length).toBe(1);
 
 		const parent = tree[0] as SubagentTreeNode;
 		expect(parent.agent.id).toBe('parent');
-		expect(parent.children).toHaveLength(1);
-		expect((parent.children[0] as SubagentTreeNode).agent.id).toBe('child');
+		expect(parent.children.map((c) => (c as SubagentTreeNode).agent.id)).toStrictEqual(['child']);
 	});
 
 	it('handles deep nesting', () => {
@@ -1299,12 +1296,11 @@ describe('buildSubagentTree', () => {
 		];
 
 		const tree = buildSubagentTree(agents);
-		expect(tree).toHaveLength(1);
+		expect(tree.length).toBe(1);
 		const root = tree[0] as SubagentTreeNode;
-		expect(root.children).toHaveLength(1);
+		expect(root.children.length).toBe(1);
 		const mid = root.children[0] as SubagentTreeNode;
-		expect(mid.children).toHaveLength(1);
-		expect((mid.children[0] as SubagentTreeNode).agent.id).toBe('deep');
+		expect(mid.children.map((c) => (c as SubagentTreeNode).agent.id)).toStrictEqual(['deep']);
 	});
 
 	it('returns empty array for no agents', () => {
@@ -1373,10 +1369,9 @@ describe('starred sessions', () => {
 		toggleStar(db.index, 'sess-1');
 
 		const sessions = getStarredSessions(db.index);
-		expect(sessions).toHaveLength(1);
-		expect(sessions[0]!.id).toBe('sess-1');
-		expect(sessions[0]!.title).toBe('Fix login');
-		expect(sessions[0]!.projectName).toBe('Alpha');
+		expect(sessions.map((s) => ({id: s.id, title: s.title, projectName: s.projectName}))).toStrictEqual([
+			{id: 'sess-1', title: 'Fix login', projectName: 'Alpha'},
+		]);
 	});
 
 	it('getStarredSessions returns empty array when none starred', () => {
@@ -1421,19 +1416,17 @@ describe('message content FTS', () => {
 
 	it('indexes and searches message content', () => {
 		const results = searchMessageContent(db.index, 'authentication');
-		expect(results.length).toBe(1);
-		expect(results[0]!.sessionId).toBe('fts-sess-1');
+		expect(results.map((r) => r.sessionId)).toStrictEqual(['fts-sess-1']);
 	});
 
 	it('finds assistant message content', () => {
 		const results = searchMessageContent(db.index, 'middleware');
-		expect(results.length).toBe(1);
-		expect(results[0]!.sessionId).toBe('fts-sess-1');
+		expect(results.map((r) => r.sessionId)).toStrictEqual(['fts-sess-1']);
 	});
 
 	it('returns snippet with highlight marks', () => {
 		const results = searchMessageContent(db.index, 'login');
-		expect(results.length).toBe(1);
+		expect(results.map((r) => r.sessionId)).toStrictEqual(['fts-sess-1']);
 		expect(results[0]!.snippet).toContain('<mark>');
 	});
 
@@ -1466,7 +1459,7 @@ describe('task indexer', () => {
 		await indexTaskFile(db.index, filePath, 'my-project');
 
 		const tasks = db.index.select().from(schema.tasks).all();
-		expect(tasks).toHaveLength(1);
+		if (tasks.length !== 1) throw new Error(`Expected 1 task, got ${tasks.length}`);
 		expect(tasks[0]!.taskId).toBe('1');
 		expect(tasks[0]!.projectDir).toBe('my-project');
 		expect(tasks[0]!.subject).toBe('Fix bug');
@@ -1483,7 +1476,7 @@ describe('task indexer', () => {
 		await indexTaskFile(db.index, filePath, 'my-project');
 
 		const tasks = db.index.select().from(schema.tasks).all();
-		expect(tasks).toHaveLength(1);
+		if (tasks.length !== 1) throw new Error(`Expected 1 task, got ${tasks.length}`);
 		expect(JSON.parse(tasks[0]!.blocksJson)).toStrictEqual(['3']);
 		expect(JSON.parse(tasks[0]!.blockedByJson)).toStrictEqual(['1']);
 	});
@@ -1509,7 +1502,9 @@ describe('task indexer', () => {
 			.where(eq(schema.indexedFiles.path, filePath))
 			.get();
 
-		expect(secondIndexed!.indexedAt).toBe(firstIndexed!.indexedAt);
+		if (!firstIndexed) throw new Error('Expected indexed_files entry after first index');
+		if (!secondIndexed) throw new Error('Expected indexed_files entry after second index');
+		expect(secondIndexed.indexedAt).toBe(firstIndexed.indexedAt);
 	});
 
 	it('re-indexes when indexed_files entry exists but tasks row is missing', async () => {
@@ -1520,17 +1515,17 @@ describe('task indexer', () => {
 		writeFileSync(filePath, makeTaskFile({id: '1', subject: 'Fix bug'}));
 
 		await indexTaskFile(db.index, filePath, 'my-project');
-		expect(db.index.select().from(schema.tasks).all()).toHaveLength(1);
+		expect(db.index.select().from(schema.tasks).all().length).toBe(1);
 
 		db.index.delete(schema.tasks).where(eq(schema.tasks.filePath, filePath)).run();
-		expect(db.index.select().from(schema.tasks).all()).toHaveLength(0);
-		expect(
-			db.index.select().from(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).get(),
-		).toBeTruthy();
+		expect(db.index.select().from(schema.tasks).all()).toStrictEqual([]);
+		if (!db.index.select().from(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).get()) {
+			throw new Error('Expected indexed_files entry to remain');
+		}
 
 		await indexTaskFile(db.index, filePath, 'my-project');
-		expect(db.index.select().from(schema.tasks).all()).toHaveLength(1);
-		expect(db.index.select().from(schema.tasks).all()[0]!.subject).toBe('Fix bug');
+		const tasksAfter = db.index.select().from(schema.tasks).all();
+		expect(tasksAfter.map((t) => t.subject)).toStrictEqual(['Fix bug']);
 	});
 
 	it('re-indexes when file changes', async () => {
@@ -1541,13 +1536,13 @@ describe('task indexer', () => {
 		writeFileSync(filePath, makeTaskFile({status: 'pending'}));
 
 		await indexTaskFile(db.index, filePath, 'my-project');
-		expect(db.index.select().from(schema.tasks).all()[0]!.status).toBe('pending');
+		expect(db.index.select().from(schema.tasks).all()[0]?.status).toBe('pending');
 
 		await new Promise((r) => setTimeout(r, 50));
 
 		writeFileSync(filePath, makeTaskFile({status: 'completed'}));
 		await indexTaskFile(db.index, filePath, 'my-project');
-		expect(db.index.select().from(schema.tasks).all()[0]!.status).toBe('completed');
+		expect(db.index.select().from(schema.tasks).all()[0]?.status).toBe('completed');
 	});
 });
 
@@ -1585,7 +1580,7 @@ describe('scanTasksDir', () => {
 		await scanTasksDir(db.index, tasksDir);
 
 		const tasks = db.index.select().from(schema.tasks).all();
-		expect(tasks).toHaveLength(2);
+		expect(tasks.length).toBe(2);
 		expect(tasks.map((t) => t.projectDir).sort()).toStrictEqual(['project-a', 'project-b']);
 	});
 
@@ -1608,11 +1603,11 @@ describe('scanTasksDir', () => {
 		);
 
 		await scanTasksDir(db.index, tasksDir);
-		expect(db.index.select().from(schema.tasks).all()).toHaveLength(1);
+		expect(db.index.select().from(schema.tasks).all().length).toBe(1);
 
 		rmSync(filePath);
 		await scanTasksDir(db.index, tasksDir);
-		expect(db.index.select().from(schema.tasks).all()).toHaveLength(0);
+		expect(db.index.select().from(schema.tasks).all()).toStrictEqual([]);
 	});
 });
 
@@ -1660,18 +1655,19 @@ describe('task queries', () => {
 
 	it('getTasksForProject returns all tasks for a project', () => {
 		const tasks = getTasksForProject(db.index, 'app');
-		expect(tasks).toHaveLength(3);
 		expect(tasks.map((t) => t.subject).sort()).toStrictEqual(['Deploy', 'Fix bug', 'Write tests']);
 	});
 
 	it('getTasksForProject parses blocks/blockedBy', () => {
 		const tasks = getTasksForProject(db.index, 'app');
 		const task1 = tasks.find((t) => t.taskId === '1');
-		expect(task1!.blocks).toStrictEqual(['2']);
-		expect(task1!.blockedBy).toStrictEqual([]);
+		if (!task1) throw new Error('Expected task with id 1');
+		expect(task1.blocks).toStrictEqual(['2']);
+		expect(task1.blockedBy).toStrictEqual([]);
 
 		const task2 = tasks.find((t) => t.taskId === '2');
-		expect(task2!.blockedBy).toStrictEqual(['1']);
+		if (!task2) throw new Error('Expected task with id 2');
+		expect(task2.blockedBy).toStrictEqual(['1']);
 	});
 
 	it('getTasksForProject returns empty for unknown project', () => {
@@ -1693,11 +1689,11 @@ describe('task queries', () => {
 
 	it('getIncompleteTasksGroupedByProject groups correctly', () => {
 		const groups = getIncompleteTasksGroupedByProject(db.index);
-		expect(groups).toHaveLength(1);
+		if (groups.length !== 1) throw new Error(`Expected 1 group, got ${groups.length}`);
 		expect(groups[0]!.projectDir).toBe('app');
 		expect(groups[0]!.totalPending).toBe(1);
 		expect(groups[0]!.totalInProgress).toBe(1);
-		expect(groups[0]!.tasks).toHaveLength(2);
+		expect(groups[0]!.tasks.length).toBe(2);
 	});
 
 	it('getIncompleteTasksGroupedByProject returns empty when all completed', async () => {

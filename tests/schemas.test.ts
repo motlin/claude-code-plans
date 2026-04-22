@@ -474,23 +474,23 @@ describe('parseJsonlRecord', () => {
 			message: {role: 'user', content: 'Hello'},
 		});
 		const result = parseJsonlRecord(line);
-		expect(result).not.toBeNull();
+		expect(result).not.toBe(null);
 		expect(result!.type).toBe('user');
 	});
 
 	it('returns null for malformed JSON', () => {
-		expect(parseJsonlRecord('not json')).toBeNull();
+		expect(parseJsonlRecord('not json')).toBe(null);
 	});
 
 	it('returns null for empty line', () => {
-		expect(parseJsonlRecord('')).toBeNull();
-		expect(parseJsonlRecord('   ')).toBeNull();
+		expect(parseJsonlRecord('')).toBe(null);
+		expect(parseJsonlRecord('   ')).toBe(null);
 	});
 
 	it('returns null for unknown record types (strict schema rejects them)', () => {
 		const line = JSON.stringify({type: 'unknown-future-type', data: 'stuff'});
 		const result = parseJsonlRecord(line);
-		expect(result).toBeNull();
+		expect(result).toBe(null);
 	});
 });
 
@@ -766,7 +766,7 @@ describe('Per-tool input schemas', () => {
 			'ToolSearch',
 		];
 		for (const tool of expectedTools) {
-			expect(toolInputSchemas[tool]).toBeDefined();
+			if (!toolInputSchemas[tool]) throw new Error(`Missing schema for tool: ${tool}`);
 		}
 	});
 });

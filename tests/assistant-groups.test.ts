@@ -61,22 +61,20 @@ function assistantMixedLine(
 
 describe('groupAssistantMessages', () => {
 	it('returns empty array for empty input', () => {
-		expect(groupAssistantMessages([])).toEqual([]);
+		expect(groupAssistantMessages([])).toStrictEqual([]);
 	});
 
 	it('wraps a single user line as a standalone entry', () => {
 		const lines = [userLine(0, 'hello')];
 		const result = groupAssistantMessages(lines);
-		expect(result).toHaveLength(1);
-		expect(result[0]!.kind).toBe('line');
+		expect(result.map((r) => r.kind)).toStrictEqual(['line']);
 		expect((result[0] as GroupedLine).line).toBe(lines[0]);
 	});
 
 	it('wraps a single assistant line as a standalone entry (not grouped)', () => {
 		const lines = [assistantTextLine(0, 'hi there')];
 		const result = groupAssistantMessages(lines);
-		expect(result).toHaveLength(1);
-		expect(result[0]!.kind).toBe('line');
+		expect(result.map((r) => r.kind)).toStrictEqual(['line']);
 	});
 
 	it('groups consecutive assistant lines between user lines', () => {
@@ -92,30 +90,19 @@ describe('groupAssistantMessages', () => {
 		];
 		const result = groupAssistantMessages(lines);
 
-		expect(result).toHaveLength(3);
-		// User line
-		expect(result[0]!.kind).toBe('line');
+		expect(result.map((r) => r.kind)).toStrictEqual(['line', 'group', 'line']);
 		expect((result[0] as GroupedLine).line.type).toBe('user');
 
-		// Assistant group with 4 lines
-		expect(result[1]!.kind).toBe('group');
 		const group = result[1] as AssistantGroup;
-		expect(group.lines).toHaveLength(4);
-		expect(group.lines[0]).toBe(lines[1]);
-		expect(group.lines[3]).toBe(lines[4]);
+		expect(group.lines).toStrictEqual([lines[1], lines[2], lines[3], lines[4]]);
 
-		// User line
-		expect(result[2]!.kind).toBe('line');
 		expect((result[2] as GroupedLine).line.type).toBe('user');
 	});
 
 	it('does not group a single assistant line between user lines', () => {
 		const lines = [userLine(0, 'hi'), assistantTextLine(1, 'hello'), userLine(2, 'bye')];
 		const result = groupAssistantMessages(lines);
-		expect(result).toHaveLength(3);
-		expect(result[0]!.kind).toBe('line');
-		expect(result[1]!.kind).toBe('line');
-		expect(result[2]!.kind).toBe('line');
+		expect(result.map((r) => r.kind)).toStrictEqual(['line', 'line', 'line']);
 	});
 
 	it('generates summary from tool calls in the group', () => {
@@ -134,9 +121,7 @@ describe('groupAssistantMessages', () => {
 		const result = groupAssistantMessages(lines);
 		const group = result[1] as AssistantGroup;
 		expect(group.kind).toBe('group');
-		expect(group.summary).toContain('edited');
-		expect(group.summary).toContain('read');
-		expect(group.summary).toContain('bash');
+		expect(group.summary).toBe('edited 2 files +2 -2, read a file, ran a bash command');
 	});
 
 	it('handles multiple groups in a conversation', () => {
@@ -151,13 +136,9 @@ describe('groupAssistantMessages', () => {
 		];
 		const result = groupAssistantMessages(lines);
 
-		expect(result).toHaveLength(4);
-		expect(result[0]!.kind).toBe('line'); // user
-		expect(result[1]!.kind).toBe('group'); // assistant group 1
-		expect(result[2]!.kind).toBe('line'); // user
-		expect(result[3]!.kind).toBe('group'); // assistant group 2
-		expect((result[1] as AssistantGroup).lines).toHaveLength(2);
-		expect((result[3] as AssistantGroup).lines).toHaveLength(3);
+		expect(result.map((r) => r.kind)).toStrictEqual(['line', 'group', 'line', 'group']);
+		expect((result[1] as AssistantGroup).lines.length).toBe(2);
+		expect((result[3] as AssistantGroup).lines.length).toBe(3);
 	});
 
 	it('includes startIndex for each group', () => {
@@ -170,9 +151,8 @@ describe('groupAssistantMessages', () => {
 	it('handles assistant-only conversations (no user messages at all)', () => {
 		const lines = [assistantTextLine(0, 'first'), assistantTextLine(1, 'second'), assistantTextLine(2, 'third')];
 		const result = groupAssistantMessages(lines);
-		expect(result).toHaveLength(1);
-		expect(result[0]!.kind).toBe('group');
-		expect((result[0] as AssistantGroup).lines).toHaveLength(3);
+		expect(result.map((r) => r.kind)).toStrictEqual(['group']);
+		expect((result[0] as AssistantGroup).lines.length).toBe(3);
 	});
 
 	it('treats metadata record types as non-assistant (breaks assistant runs)', () => {
@@ -189,18 +169,14 @@ describe('groupAssistantMessages', () => {
 			userLine(4, 'done'),
 		];
 		const result = groupAssistantMessages(lines);
-		// user, assistant (standalone), metadata, assistant (standalone), user
-		expect(result).toHaveLength(5);
-		expect(result[0]!.kind).toBe('line');
-		expect((result[0] as GroupedLine).line.type).toBe('user');
-		expect(result[1]!.kind).toBe('line');
-		expect((result[1] as GroupedLine).line.type).toBe('assistant');
-		expect(result[2]!.kind).toBe('line');
-		expect((result[2] as GroupedLine).line.type).toBe('agent-name');
-		expect(result[3]!.kind).toBe('line');
-		expect((result[3] as GroupedLine).line.type).toBe('assistant');
-		expect(result[4]!.kind).toBe('line');
-		expect((result[4] as GroupedLine).line.type).toBe('user');
+		expect(result.map((r) => r.kind)).toStrictEqual(['line', 'line', 'line', 'line', 'line']);
+		expect(result.map((r) => (r as GroupedLine).line.type)).toStrictEqual([
+			'user',
+			'assistant',
+			'agent-name',
+			'assistant',
+			'user',
+		]);
 	});
 
 	it('treats attachment lines as non-assistant (breaks assistant runs)', () => {
@@ -217,9 +193,13 @@ describe('groupAssistantMessages', () => {
 			userLine(4, 'done'),
 		];
 		const result = groupAssistantMessages(lines);
-		// user, assistant (standalone), attachment, assistant (standalone), user
-		expect(result).toHaveLength(5);
-		expect((result[2] as GroupedLine).line.type).toBe('attachment');
+		expect(result.map((r) => (r as GroupedLine).line.type)).toStrictEqual([
+			'user',
+			'assistant',
+			'attachment',
+			'assistant',
+			'user',
+		]);
 	});
 
 	it('collects tool call info from mixed content blocks', () => {
