@@ -307,7 +307,7 @@ function SessionPage() {
 		() => ({isSessionActive: isActive, submitAnswer}),
 		[isActive, submitAnswer],
 	);
-	const [showThinking, setShowThinking] = useDisplayToggle('ccp-show-thinking', true);
+	const [showThinking, setShowThinking] = useDisplayToggle('ccp-show-thinking', false);
 	const [showTools, setShowTools] = useDisplayToggle('ccp-show-tools', true);
 	const [showPassedHooks, setShowPassedHooks] = useDisplayToggle('ccp-show-passed-hooks', false);
 	const [showHookErrors, setShowHookErrors] = useDisplayToggle('ccp-show-hook-errors', false);
