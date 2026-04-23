@@ -213,6 +213,9 @@ function LineEntry({
 	nextLine: SessionLine | undefined;
 	className?: string;
 }) {
+	const content = renderSessionMessage({line, ...renderProps, nextLine});
+	if (!content) return null;
+
 	const isMessage = line.type === 'user' || line.type === 'assistant';
 	return (
 		<div
@@ -226,11 +229,7 @@ function LineEntry({
 					index={index}
 				/>
 			)}
-			<SessionMessage
-				line={line}
-				{...renderProps}
-				nextLine={nextLine}
-			/>
+			{content}
 		</div>
 	);
 }
@@ -336,6 +335,12 @@ const SYSTEM_BANNER_SUBTYPES = new Set([
 	'companion_intro',
 	'ultrathink_effort',
 	'invoked_skills',
+	'edited_text_file',
+	'file',
+	'directory',
+	'compact_file_reference',
+	'selected_lines_in_ide',
+	'opened_file_in_ide',
 ]);
 
 function getAttachmentSubtype(json: string): string | null {
@@ -365,10 +370,13 @@ function isLineVisible(
 }
 
 /**
- * Top-level switching component: reads line.type and delegates to
- * per-type entry components. Every component receives the full raw line.
+ * Top-level switching function: reads line.type and delegates to
+ * per-type entry components. Returns null when there is nothing to render
+ * (e.g. tool-only assistant turns with both showTools and showTimestamps off).
+ * Not a React component — no hooks, so it is safe to call as a plain function
+ * and inspect the return value before deciding whether to render the wrapper div.
  */
-function SessionMessage({
+function renderSessionMessage({
 	line,
 	sessionId,
 	toolResultMap,
@@ -924,9 +932,10 @@ function AssistantEntry({
 
 	// If there's only tool_use blocks, render as a tool call section
 	if (!hasVisibleNonToolContent && hasToolUse) {
+		if (!showTools && !showTimestamps) return null;
 		return (
 			<div className="flex flex-col gap-1.5 min-w-0">
-				{showTools && toolCalls.length > 0 && (
+				{showTools && (
 					<ToolCallSection
 						calls={toolCalls}
 						sessionId={sessionId}
