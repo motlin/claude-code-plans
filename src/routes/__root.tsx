@@ -3,6 +3,7 @@ import type {ErrorComponentProps} from '@tanstack/react-router';
 import {QueryClientProvider, type QueryClient} from '@tanstack/react-query';
 import {ReactQueryDevtools} from '@tanstack/react-query-devtools';
 import {useEffect, useState, type ReactNode} from 'react';
+import {Agentation} from 'agentation';
 import {ThemeProvider} from '../components/theme-provider';
 import {DebugProvider} from '../components/debug-provider';
 import {ModeToggle} from '../components/mode-toggle';
@@ -97,6 +98,7 @@ function RootComponent() {
 				</ThemeProvider>
 				{import.meta.env.DEV ? <ReactQueryDevtools buttonPosition="bottom-left" /> : null}
 			</QueryClientProvider>
+			{import.meta.env.DEV && <Agentation endpoint="http://localhost:4747" />}
 		</RootDocument>
 	);
 }
