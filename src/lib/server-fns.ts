@@ -903,3 +903,46 @@ export const getSettings = createServerFn({method: 'GET'}).handler(async () => {
 
 	return results;
 });
+
+const SETTINGS_FILENAMES = ['settings.json', 'settings.local.json'] as const;
+
+export const getSettingsRaw = createServerFn({method: 'GET'}).handler(async () => {
+	const {claudeHome, join} = await claudeDirs();
+	const {readFile} = await import('node:fs/promises');
+
+	const results: Array<{filename: string; path: string; exists: boolean; content: string}> = [];
+
+	for (const filename of SETTINGS_FILENAMES) {
+		const filePath = join(claudeHome, filename);
+		try {
+			const raw = await readFile(filePath, 'utf-8');
+			const pretty = JSON.stringify(JSON.parse(raw), null, 2);
+			results.push({filename, path: filePath, exists: true, content: pretty});
+		} catch {
+			results.push({filename, path: filePath, exists: false, content: '{}'});
+		}
+	}
+
+	return results;
+});
+
+export const saveSettingsFile = createServerFn({method: 'POST'})
+	.inputValidator(z.object({filename: z.enum(SETTINGS_FILENAMES), content: z.string()}))
+	.handler(async ({data: {filename, content}}) => {
+		const {claudeHome, join} = await claudeDirs();
+		const {writeFile, mkdir} = await import('node:fs/promises');
+
+		// Validate JSON before writing
+		const parsed = JSON.parse(content) as unknown;
+		if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+			throw new Error('Settings must be a JSON object');
+		}
+
+		const pretty = JSON.stringify(parsed, null, 2) + '\n';
+		const filePath = join(claudeHome, filename);
+
+		await mkdir(claudeHome, {recursive: true});
+		await writeFile(filePath, pretty, 'utf-8');
+
+		return {path: filePath};
+	});
