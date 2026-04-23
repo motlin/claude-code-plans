@@ -5,9 +5,7 @@ import {extractTitle} from './markdown-utils.js';
 import {resolveProjectName} from './memory.js';
 
 export interface FileTreeNode {
-	name: string;
 	path: string;
-	type: 'file' | 'directory';
 	children?: FileTreeNode[];
 }
 
@@ -375,7 +373,7 @@ export async function scanPluginTree(rootPath: string, relativePath = ''): Promi
 					children.push(subtree);
 				}
 			} else {
-				children.push({name: entry, path: entryRelative, type: 'file'});
+				children.push({path: entryRelative});
 			}
 		} catch {
 			// skip unreadable entries
@@ -384,10 +382,11 @@ export async function scanPluginTree(rootPath: string, relativePath = ''): Promi
 
 	// Sort: directories first, then files, alphabetically within each group
 	children.sort((a, b) => {
-		if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
-		return a.name.localeCompare(b.name);
+		const aDir = a.children !== undefined;
+		const bDir = b.children !== undefined;
+		if (aDir !== bDir) return aDir ? -1 : 1;
+		return a.path.localeCompare(b.path);
 	});
 
-	const name = relativePath ? relativePath.split('/').pop()! : rootPath.split('/').pop()!;
-	return {name, path: relativePath, type: 'directory', children};
+	return {path: relativePath, children};
 }

@@ -247,17 +247,15 @@ describe('scanPluginTree', () => {
 		const tree = await scanPluginTree(testDir);
 		expect(tree).not.toBe(null);
 
-		// Root should have children
-		const names = tree!.children!.map((c) => c.name).sort();
-		expect(names).toContain('README.md');
-		expect(names).toContain('agents');
-		expect(names).toContain('commands');
+		const paths = tree!.children!.map((c) => c.path).sort();
+		expect(paths).toContain('README.md');
+		expect(paths).toContain('agents');
+		expect(paths).toContain('commands');
 
-		// Directories should have children
-		const agentsNode = tree!.children!.find((c) => c.name === 'agents');
-		expect(agentsNode?.type).toBe('directory');
-		expect(agentsNode?.children?.map((c) => c.name)).toStrictEqual(['bot.md']);
-		expect(agentsNode?.children?.[0]?.type).toBe('file');
+		const agentsNode = tree!.children!.find((c) => c.path === 'agents');
+		expect(agentsNode?.children).toBeDefined();
+		expect(agentsNode?.children?.map((c) => c.path)).toStrictEqual(['agents/bot.md']);
+		expect(agentsNode?.children?.[0]?.children).toBeUndefined();
 	});
 
 	it('returns null for non-existent directory', async () => {
@@ -274,10 +272,10 @@ describe('scanPluginTree', () => {
 		writeFileSync(join(testDir, 'src', 'main.ts'), '');
 
 		const tree = await scanPluginTree(testDir);
-		const names = tree!.children!.map((c) => c.name);
-		expect(names).not.toContain('node_modules');
-		expect(names).not.toContain('.git');
-		expect(names).toContain('src');
+		const paths = tree!.children!.map((c) => c.path);
+		expect(paths).not.toContain('node_modules');
+		expect(paths).not.toContain('.git');
+		expect(paths).toContain('src');
 	});
 
 	it('sorts directories before files, then alphabetically', async () => {
@@ -287,9 +285,8 @@ describe('scanPluginTree', () => {
 		writeFileSync(join(testDir, 'aardvark.md'), '');
 
 		const tree = await scanPluginTree(testDir);
-		const names = tree!.children!.map((c) => c.name);
-		// Directories first (alphabetically), then files (alphabetically)
-		expect(names).toStrictEqual(['alpha', 'beta', 'aardvark.md', 'zebra.md']);
+		const paths = tree!.children!.map((c) => c.path);
+		expect(paths).toStrictEqual(['alpha', 'beta', 'aardvark.md', 'zebra.md']);
 	});
 
 	it('includes relative path for each node', async () => {
@@ -297,9 +294,9 @@ describe('scanPluginTree', () => {
 		writeFileSync(join(testDir, 'skills', 'my-skill', 'SKILL.md'), '');
 
 		const tree = await scanPluginTree(testDir);
-		const skillsNode = tree!.children!.find((c) => c.name === 'skills');
-		const mySkillNode = skillsNode!.children!.find((c) => c.name === 'my-skill');
-		const skillMd = mySkillNode!.children!.find((c) => c.name === 'SKILL.md');
+		const skillsNode = tree!.children!.find((c) => c.path === 'skills');
+		const mySkillNode = skillsNode!.children!.find((c) => c.path === 'skills/my-skill');
+		const skillMd = mySkillNode!.children!.find((c) => c.path === 'skills/my-skill/SKILL.md');
 
 		expect(skillsNode!.path).toBe('skills');
 		expect(mySkillNode!.path).toBe('skills/my-skill');

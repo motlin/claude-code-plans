@@ -4,47 +4,29 @@ import type {FileTreeNode} from '../../lib/plugins';
 import {withRouterAndQuery} from '../sidebar/decorators';
 
 const simpleTree: FileTreeNode = {
-	name: 'my-plugin',
 	path: '',
-	type: 'directory',
 	children: [
 		{
-			name: 'skills',
 			path: 'skills',
-			type: 'directory',
-			children: [
-				{name: 'SKILL.md', path: 'skills/SKILL.md', type: 'file'},
-				{name: 'helper.ts', path: 'skills/helper.ts', type: 'file'},
-			],
+			children: [{path: 'skills/SKILL.md'}, {path: 'skills/helper.ts'}],
 		},
-		{name: 'plugin.json', path: 'plugin.json', type: 'file'},
-		{name: 'README.md', path: 'README.md', type: 'file'},
+		{path: 'plugin.json'},
+		{path: 'README.md'},
 	],
 };
 
 const deepTree: FileTreeNode = {
-	name: 'deep-plugin',
 	path: '',
-	type: 'directory',
 	children: [
 		{
-			name: 'src',
 			path: 'src',
-			type: 'directory',
 			children: [
 				{
-					name: 'lib',
 					path: 'src/lib',
-					type: 'directory',
 					children: [
 						{
-							name: 'utils',
 							path: 'src/lib/utils',
-							type: 'directory',
-							children: [
-								{name: 'format.ts', path: 'src/lib/utils/format.ts', type: 'file'},
-								{name: 'parse.py', path: 'src/lib/utils/parse.py', type: 'file'},
-							],
+							children: [{path: 'src/lib/utils/format.ts'}, {path: 'src/lib/utils/parse.py'}],
 						},
 					],
 				},
@@ -68,7 +50,7 @@ export const WithFiles: Story = {
 
 export const EmptyTree: Story = {
 	args: {
-		tree: {name: 'empty-plugin', path: '', type: 'directory', children: []},
+		tree: {path: '', children: []},
 		pluginId: 'empty-plugin',
 	},
 };

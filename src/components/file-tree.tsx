@@ -3,6 +3,11 @@ import {Link} from '@tanstack/react-router';
 import {ChevronRight, Folder, FileText, FileCode, FileJson, File} from 'lucide-react';
 import type {FileTreeNode} from '../lib/plugins';
 
+function getName(node: FileTreeNode) {
+	const i = node.path.lastIndexOf('/');
+	return i === -1 ? node.path : node.path.slice(i + 1);
+}
+
 function getFileIcon(name: string) {
 	const ext = name.split('.').pop()?.toLowerCase();
 	switch (ext) {
@@ -24,8 +29,9 @@ function getFileIcon(name: string) {
 
 function FileTreeItem({node, pluginId, depth}: {node: FileTreeNode; pluginId: string; depth: number}) {
 	const [expanded, setExpanded] = useState(depth < 1);
+	const name = getName(node);
 
-	if (node.type === 'directory') {
+	if (node.children) {
 		return (
 			<div>
 				<button
@@ -39,9 +45,9 @@ function FileTreeItem({node, pluginId, depth}: {node: FileTreeNode; pluginId: st
 						style={{transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)'}}
 					/>
 					<Folder className="h-3.5 w-3.5 shrink-0 text-text-400" />
-					<span className="truncate">{node.name}</span>
+					<span className="truncate">{name}</span>
 				</button>
-				{expanded && node.children && (
+				{expanded && (
 					<div>
 						{node.children.map((child) => (
 							<FileTreeItem
@@ -57,15 +63,12 @@ function FileTreeItem({node, pluginId, depth}: {node: FileTreeNode; pluginId: st
 		);
 	}
 
-	// File node - link to plugin file viewer
 	const pathParts = node.path.split('/');
 	const type = pathParts[0] || '';
 	const filePath = pathParts.slice(1).join('/');
-	const Icon = getFileIcon(node.name);
+	const Icon = getFileIcon(name);
 
-	// Only link markdown files through the existing route (which renders markdown)
-	// For other files, just show them as non-clickable items
-	const isMd = node.name.endsWith('.md');
+	const isMd = name.endsWith('.md');
 
 	if (isMd && filePath) {
 		return (
@@ -77,7 +80,7 @@ function FileTreeItem({node, pluginId, depth}: {node: FileTreeNode; pluginId: st
 			>
 				<span className="w-3" />
 				<Icon className="h-3.5 w-3.5 shrink-0 text-text-500" />
-				<span className="truncate">{node.name}</span>
+				<span className="truncate">{name}</span>
 			</Link>
 		);
 	}
@@ -89,7 +92,7 @@ function FileTreeItem({node, pluginId, depth}: {node: FileTreeNode; pluginId: st
 		>
 			<span className="w-3" />
 			<Icon className="h-3.5 w-3.5 shrink-0 text-text-500" />
-			<span className="truncate">{node.name}</span>
+			<span className="truncate">{name}</span>
 		</div>
 	);
 }
