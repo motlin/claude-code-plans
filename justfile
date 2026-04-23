@@ -51,9 +51,13 @@ storybook: install
 build-storybook: install
     npm run build-storybook
 
+# Run fallow
+fallow: install
+    npm run fallow{{_ci}}
+
 # Run all pre-commit checks
 [arg("quick", long, value="true", help="Skip tests")]
-precommit quick="": eslint format build typecheck
+precommit quick="": eslint format build typecheck fallow
     {{ if quick != "true" { "just test" } else { "true" } }}
     @echo "All pre-commit checks passed!"
 
