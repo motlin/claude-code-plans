@@ -55,8 +55,8 @@ describe('SessionIndexEntrySchema', () => {
 			firstPrompt: 'Fix the bug',
 			summary: 'Fixed auth issue',
 			messageCount: 5,
-			created: '2026-01-01T00:00:00.000Z',
-			modified: '2026-01-02T00:00:00.000Z',
+			created: '1999-12-31T00:00:00.000Z',
+			modified: '2000-01-01T00:00:00.000Z',
 			gitBranch: 'main',
 			projectPath: '/Users/craig/projects/app',
 			isSidechain: false,
@@ -145,7 +145,7 @@ describe('FileHistorySnapshotSchema', () => {
 				trackedFileBackups: {
 					'/Users/craig/.claude/plans/my-plan.md': 'backup-content',
 				},
-				timestamp: '2026-01-01T00:00:00.000Z',
+				timestamp: '1999-12-31T00:00:00.000Z',
 			},
 			isSnapshotUpdate: false,
 		};
@@ -371,7 +371,7 @@ describe('QueueOperationRecordSchema', () => {
 		const record = {
 			type: 'queue-operation',
 			operation: 'enqueue',
-			timestamp: '2026-01-01T00:00:00.000Z',
+			timestamp: '1999-12-31T00:00:00.000Z',
 			sessionId: 'sess-123',
 			content: 'task notification content',
 		};
@@ -440,7 +440,7 @@ describe('JsonlRecordSchema', () => {
 			type: 'file-history-snapshot',
 			messageId: 'msg-123',
 			isSnapshotUpdate: false,
-			snapshot: {messageId: 'msg-123', timestamp: '2026-01-01T00:00:00.000Z', trackedFileBackups: {}},
+			snapshot: {messageId: 'msg-123', timestamp: '1999-12-31T00:00:00.000Z', trackedFileBackups: {}},
 		});
 		expect(result.success).toBe(true);
 	});
@@ -458,7 +458,7 @@ describe('JsonlRecordSchema', () => {
 		const result = JsonlRecordSchema.safeParse({
 			type: 'queue-operation',
 			operation: 'dequeue',
-			timestamp: '2026-01-01T00:00:00.000Z',
+			timestamp: '1999-12-31T00:00:00.000Z',
 			sessionId: 'sess-123',
 			content: 'stuff',
 		});

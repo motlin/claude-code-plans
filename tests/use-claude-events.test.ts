@@ -23,8 +23,8 @@ function makeSession(overrides: Partial<SessionSummaryPayload> & {id: string; pr
 		id,
 		title: `Session ${id}`,
 		summary: undefined,
-		mtime: '2026-04-18T00:00:00.000Z',
-		created: '2026-04-18T00:00:00.000Z',
+		mtime: '1999-12-31T00:00:00.000Z',
+		created: '1999-12-31T00:00:00.000Z',
 		project,
 		projectName: `Project ${project}`,
 		messageCount: 0,
@@ -34,14 +34,14 @@ function makeSession(overrides: Partial<SessionSummaryPayload> & {id: string; pr
 }
 
 function makePlan(filename: string, title = filename): PlanSummaryPayload {
-	return {filename, title, mtime: '2026-04-18T00:00:00.000Z'};
+	return {filename, title, mtime: '1999-12-31T00:00:00.000Z'};
 }
 
 function makeMemory(project: string, filename: string, title = filename): MemorySummaryPayload {
 	return {
 		filename,
 		title,
-		mtime: '2026-04-18T00:00:00.000Z',
+		mtime: '1999-12-31T00:00:00.000Z',
 		project,
 		projectName: `Project ${project}`,
 	};
@@ -391,7 +391,7 @@ describe('applyMemoryChanged', () => {
 					project: 'proj-a',
 					projectName: 'Project A',
 					memories: [
-						{filename: 'MEMORY.md', title: 'Old', mtime: '2026-04-17T00:00:00.000Z', project: 'proj-a'},
+						{filename: 'MEMORY.md', title: 'Old', mtime: '1999-12-30T00:00:00.000Z', project: 'proj-a'},
 					],
 				},
 			],
@@ -494,7 +494,7 @@ describe('applySessionLinesAppended', () => {
 				{
 					type: 'assistant',
 					uuid: 'a-1',
-					timestamp: '2026-04-21T00:00:00Z',
+					timestamp: '1999-12-31T00:00:00Z',
 					message: {role: 'assistant', content: [{type: 'text', text: 'response'}]},
 				},
 			],
@@ -519,7 +519,7 @@ describe('applySessionLinesAppended', () => {
 				{
 					type: 'assistant',
 					uuid: 'a-1',
-					timestamp: '2026-04-21T00:00:00Z',
+					timestamp: '1999-12-31T00:00:00Z',
 					message: {
 						role: 'assistant',
 						content: [{type: 'tool_use', id: 'tool-1', name: 'Bash', input: {command: 'ls'}}],
@@ -528,7 +528,7 @@ describe('applySessionLinesAppended', () => {
 				{
 					type: 'user',
 					uuid: 'u-1',
-					timestamp: '2026-04-21T00:00:02Z',
+					timestamp: '1999-12-31T00:00:02Z',
 					message: {
 						role: 'user',
 						content: [{type: 'tool_result', tool_use_id: 'tool-1', content: 'output.txt'}],
@@ -578,7 +578,7 @@ describe('applySessionLinesAppended', () => {
 				{
 					type: 'assistant',
 					uuid: 'a-1',
-					timestamp: '2026-04-21T00:00:00Z',
+					timestamp: '1999-12-31T00:00:00Z',
 					message: {
 						role: 'assistant',
 						content: [{type: 'tool_use', id: 'tool-1', name: 'Read', input: {file_path: '/tmp/f'}}],
@@ -587,7 +587,7 @@ describe('applySessionLinesAppended', () => {
 				{
 					type: 'user',
 					uuid: 'u-1',
-					timestamp: '2026-04-21T00:00:01Z',
+					timestamp: '1999-12-31T00:00:01Z',
 					message: {
 						role: 'user',
 						content: [{type: 'tool_result', tool_use_id: 'tool-1', content: 'new data'}],

@@ -35,8 +35,8 @@ describe('layoutSequence', () => {
 
 	it('produces one lifeline per agent with timing, assigning columns by start time', () => {
 		const agents = [
-			makeAgent({id: 'b', startedAt: '2026-04-05T00:00:15.000Z', finishedAt: '2026-04-05T00:00:25.000Z'}),
-			makeAgent({id: 'a', startedAt: '2026-04-05T00:00:00.000Z', finishedAt: '2026-04-05T00:00:10.000Z'}),
+			makeAgent({id: 'b', startedAt: '1999-12-31T00:00:15.000Z', finishedAt: '1999-12-31T00:00:25.000Z'}),
+			makeAgent({id: 'a', startedAt: '1999-12-31T00:00:00.000Z', finishedAt: '1999-12-31T00:00:10.000Z'}),
 		];
 		const layout = layoutSequence(agents);
 		expect(layout.lifelines.map((l) => l.agent.id)).toStrictEqual(['a', 'b']);
@@ -46,12 +46,12 @@ describe('layoutSequence', () => {
 
 	it('computes overall time bounds', () => {
 		const agents = [
-			makeAgent({id: 'a', startedAt: '2026-04-05T00:00:00.000Z', finishedAt: '2026-04-05T00:00:10.000Z'}),
-			makeAgent({id: 'b', startedAt: '2026-04-05T00:00:15.000Z', finishedAt: '2026-04-05T00:00:25.000Z'}),
+			makeAgent({id: 'a', startedAt: '1999-12-31T00:00:00.000Z', finishedAt: '1999-12-31T00:00:10.000Z'}),
+			makeAgent({id: 'b', startedAt: '1999-12-31T00:00:15.000Z', finishedAt: '1999-12-31T00:00:25.000Z'}),
 		];
 		const layout = layoutSequence(agents);
-		expect(layout.startMs).toBe(new Date('2026-04-05T00:00:00.000Z').getTime());
-		expect(layout.endMs).toBe(new Date('2026-04-05T00:00:25.000Z').getTime());
+		expect(layout.startMs).toBe(new Date('1999-12-31T00:00:00.000Z').getTime());
+		expect(layout.endMs).toBe(new Date('1999-12-31T00:00:25.000Z').getTime());
 		expect(layout.totalMs).toBe(25000);
 	});
 
@@ -59,14 +59,14 @@ describe('layoutSequence', () => {
 		const agents = [
 			makeAgent({
 				id: 'parent',
-				startedAt: '2026-04-05T00:00:00.000Z',
-				finishedAt: '2026-04-05T00:00:30.000Z',
+				startedAt: '1999-12-31T00:00:00.000Z',
+				finishedAt: '1999-12-31T00:00:30.000Z',
 			}),
 			makeAgent({
 				id: 'child',
 				parentAgentId: 'parent',
-				startedAt: '2026-04-05T00:00:10.000Z',
-				finishedAt: '2026-04-05T00:00:20.000Z',
+				startedAt: '1999-12-31T00:00:10.000Z',
+				finishedAt: '1999-12-31T00:00:20.000Z',
 			}),
 		];
 		const layout = layoutSequence(agents);
@@ -76,26 +76,26 @@ describe('layoutSequence', () => {
 		const spawn = layout.spawns[0]!;
 		expect(spawn.parentId).toBe('parent');
 		expect(spawn.childId).toBe('child');
-		expect(spawn.atMs).toBe(new Date('2026-04-05T00:00:10.000Z').getTime());
+		expect(spawn.atMs).toBe(new Date('1999-12-31T00:00:10.000Z').getTime());
 
 		const ret = layout.returns[0]!;
 		expect(ret.parentId).toBe('parent');
 		expect(ret.childId).toBe('child');
-		expect(ret.atMs).toBe(new Date('2026-04-05T00:00:20.000Z').getTime());
+		expect(ret.atMs).toBe(new Date('1999-12-31T00:00:20.000Z').getTime());
 	});
 
 	it('sets parent and child columns on arrows so they connect lifelines', () => {
 		const agents = [
 			makeAgent({
 				id: 'parent',
-				startedAt: '2026-04-05T00:00:00.000Z',
-				finishedAt: '2026-04-05T00:00:30.000Z',
+				startedAt: '1999-12-31T00:00:00.000Z',
+				finishedAt: '1999-12-31T00:00:30.000Z',
 			}),
 			makeAgent({
 				id: 'child',
 				parentAgentId: 'parent',
-				startedAt: '2026-04-05T00:00:10.000Z',
-				finishedAt: '2026-04-05T00:00:20.000Z',
+				startedAt: '1999-12-31T00:00:10.000Z',
+				finishedAt: '1999-12-31T00:00:20.000Z',
 			}),
 		];
 		const layout = layoutSequence(agents);
@@ -113,8 +113,8 @@ describe('layoutSequence', () => {
 			makeAgent({
 				id: 'child',
 				parentAgentId: 'orphan-parent',
-				startedAt: '2026-04-05T00:00:10.000Z',
-				finishedAt: '2026-04-05T00:00:20.000Z',
+				startedAt: '1999-12-31T00:00:10.000Z',
+				finishedAt: '1999-12-31T00:00:20.000Z',
 			}),
 		];
 		const layout = layoutSequence(agents);
@@ -127,22 +127,22 @@ describe('layoutSequence', () => {
 		const agents = [
 			makeAgent({
 				id: 'parent',
-				startedAt: '2026-04-05T00:00:00.000Z',
-				finishedAt: '2026-04-05T00:00:30.000Z',
+				startedAt: '1999-12-31T00:00:00.000Z',
+				finishedAt: '1999-12-31T00:00:30.000Z',
 			}),
 			makeAgent({
 				id: 'child',
 				parentAgentId: 'parent',
-				startedAt: '2026-04-05T00:00:10.000Z',
-				finishedAt: '2026-04-05T00:00:20.000Z',
+				startedAt: '1999-12-31T00:00:10.000Z',
+				finishedAt: '1999-12-31T00:00:20.000Z',
 			}),
 		];
 		const layout = layoutSequence(agents);
 		const parent = layout.lifelines.find((l) => l.agent.id === 'parent')!;
 		expect(parent.waiting).toStrictEqual([
 			{
-				startMs: new Date('2026-04-05T00:00:10.000Z').getTime(),
-				endMs: new Date('2026-04-05T00:00:20.000Z').getTime(),
+				startMs: new Date('1999-12-31T00:00:10.000Z').getTime(),
+				endMs: new Date('1999-12-31T00:00:20.000Z').getTime(),
 			},
 		]);
 	});
@@ -151,28 +151,28 @@ describe('layoutSequence', () => {
 		const agents = [
 			makeAgent({
 				id: 'parent',
-				startedAt: '2026-04-05T00:00:00.000Z',
-				finishedAt: '2026-04-05T00:00:30.000Z',
+				startedAt: '1999-12-31T00:00:00.000Z',
+				finishedAt: '1999-12-31T00:00:30.000Z',
 			}),
 			makeAgent({
 				id: 'c1',
 				parentAgentId: 'parent',
-				startedAt: '2026-04-05T00:00:05.000Z',
-				finishedAt: '2026-04-05T00:00:15.000Z',
+				startedAt: '1999-12-31T00:00:05.000Z',
+				finishedAt: '1999-12-31T00:00:15.000Z',
 			}),
 			makeAgent({
 				id: 'c2',
 				parentAgentId: 'parent',
-				startedAt: '2026-04-05T00:00:10.000Z',
-				finishedAt: '2026-04-05T00:00:20.000Z',
+				startedAt: '1999-12-31T00:00:10.000Z',
+				finishedAt: '1999-12-31T00:00:20.000Z',
 			}),
 		];
 		const layout = layoutSequence(agents);
 		const parent = layout.lifelines.find((l) => l.agent.id === 'parent')!;
 		expect(parent.waiting).toStrictEqual([
 			{
-				startMs: new Date('2026-04-05T00:00:05.000Z').getTime(),
-				endMs: new Date('2026-04-05T00:00:20.000Z').getTime(),
+				startMs: new Date('1999-12-31T00:00:05.000Z').getTime(),
+				endMs: new Date('1999-12-31T00:00:20.000Z').getTime(),
 			},
 		]);
 	});
@@ -181,20 +181,20 @@ describe('layoutSequence', () => {
 		const agents = [
 			makeAgent({
 				id: 'root',
-				startedAt: '2026-04-05T00:00:00.000Z',
-				finishedAt: '2026-04-05T00:01:00.000Z',
+				startedAt: '1999-12-31T00:00:00.000Z',
+				finishedAt: '1999-12-31T00:01:00.000Z',
 			}),
 			makeAgent({
 				id: 'mid',
 				parentAgentId: 'root',
-				startedAt: '2026-04-05T00:00:10.000Z',
-				finishedAt: '2026-04-05T00:00:40.000Z',
+				startedAt: '1999-12-31T00:00:10.000Z',
+				finishedAt: '1999-12-31T00:00:40.000Z',
 			}),
 			makeAgent({
 				id: 'leaf',
 				parentAgentId: 'mid',
-				startedAt: '2026-04-05T00:00:15.000Z',
-				finishedAt: '2026-04-05T00:00:25.000Z',
+				startedAt: '1999-12-31T00:00:15.000Z',
+				finishedAt: '1999-12-31T00:00:25.000Z',
 			}),
 		];
 		const layout = layoutSequence(agents);
@@ -208,9 +208,9 @@ describe('layoutSequence', () => {
 
 	it('skips agents with missing timing but keeps siblings', () => {
 		const agents = [
-			makeAgent({id: 'a', startedAt: '2026-04-05T00:00:00.000Z', finishedAt: '2026-04-05T00:00:10.000Z'}),
+			makeAgent({id: 'a', startedAt: '1999-12-31T00:00:00.000Z', finishedAt: '1999-12-31T00:00:10.000Z'}),
 			makeAgent({id: 'b'}),
-			makeAgent({id: 'c', startedAt: '2026-04-05T00:00:15.000Z', finishedAt: '2026-04-05T00:00:25.000Z'}),
+			makeAgent({id: 'c', startedAt: '1999-12-31T00:00:15.000Z', finishedAt: '1999-12-31T00:00:25.000Z'}),
 		];
 		const layout = layoutSequence(agents);
 		expect(layout.lifelines.map((l) => l.agent.id)).toStrictEqual(['a', 'c']);
@@ -218,7 +218,7 @@ describe('layoutSequence', () => {
 
 	it('produces tick marks proportional to total duration', () => {
 		const agents = [
-			makeAgent({id: 'a', startedAt: '2026-04-05T00:00:00.000Z', finishedAt: '2026-04-05T00:01:00.000Z'}),
+			makeAgent({id: 'a', startedAt: '1999-12-31T00:00:00.000Z', finishedAt: '1999-12-31T00:01:00.000Z'}),
 		];
 		const layout: SequenceLayout = layoutSequence(agents);
 		expect(layout.ticks.length).toBeGreaterThanOrEqual(2);
@@ -230,20 +230,20 @@ describe('layoutSequence', () => {
 		const agents = [
 			makeAgent({
 				id: 'parent',
-				startedAt: '2026-04-05T00:00:00.000Z',
-				finishedAt: '2026-04-05T00:00:30.000Z',
+				startedAt: '1999-12-31T00:00:00.000Z',
+				finishedAt: '1999-12-31T00:00:30.000Z',
 			}),
 			makeAgent({
 				id: 'p2',
 				parentAgentId: 'parent',
-				startedAt: '2026-04-05T00:00:10.000Z',
-				finishedAt: '2026-04-05T00:00:20.000Z',
+				startedAt: '1999-12-31T00:00:10.000Z',
+				finishedAt: '1999-12-31T00:00:20.000Z',
 			}),
 			makeAgent({
 				id: 'p1',
 				parentAgentId: 'parent',
-				startedAt: '2026-04-05T00:00:10.000Z',
-				finishedAt: '2026-04-05T00:00:25.000Z',
+				startedAt: '1999-12-31T00:00:10.000Z',
+				finishedAt: '1999-12-31T00:00:25.000Z',
 			}),
 		];
 		const layout = layoutSequence(agents);

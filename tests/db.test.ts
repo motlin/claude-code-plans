@@ -55,7 +55,7 @@ function makeSessionsIndex(entries: Record<string, unknown>[]): string {
 
 const baseFields = {
 	uuid: 'uuid-test',
-	timestamp: '2026-01-01T00:00:00.000Z',
+	timestamp: '1999-12-31T00:00:00.000Z',
 	sessionId: 'sess-1',
 	parentUuid: null,
 	isSidechain: false,
@@ -178,7 +178,7 @@ describe('indexer', () => {
 					isSnapshotUpdate: false,
 					snapshot: {
 						messageId: 'msg-1',
-						timestamp: '2026-01-01T00:00:00.000Z',
+						timestamp: '1999-12-31T00:00:00.000Z',
 						trackedFileBackups: {
 							'/Users/craig/.claude/plans/my-plan.md': 'backup-content',
 						},
@@ -290,7 +290,7 @@ describe('indexer', () => {
 					isSnapshotUpdate: false,
 					snapshot: {
 						messageId: 'msg-2',
-						timestamp: '2026-01-01T00:00:00.000Z',
+						timestamp: '1999-12-31T00:00:00.000Z',
 						trackedFileBackups: {
 							'/Users/craig/.claude/plans/dual-plan.md': 'backup',
 						},
@@ -933,17 +933,17 @@ describe('subagents', () => {
 				{
 					type: 'user',
 					slug: 'explore-stuff',
-					timestamp: '2026-04-05T00:28:53.989Z',
+					timestamp: '1999-12-31T00:28:53.989Z',
 					message: {role: 'user', content: 'Do something'},
 				},
 				{
 					type: 'assistant',
-					timestamp: '2026-04-05T00:29:05.000Z',
+					timestamp: '1999-12-31T00:29:05.000Z',
 					message: {role: 'assistant', content: 'Working on it'},
 				},
 				{
 					type: 'assistant',
-					timestamp: '2026-04-05T00:29:12.217Z',
+					timestamp: '1999-12-31T00:29:12.217Z',
 					message: {role: 'assistant', content: 'Done'},
 				},
 			),
@@ -954,8 +954,8 @@ describe('subagents', () => {
 
 		const agent = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, 'agent-abc123')).get();
 		if (!agent) throw new Error('Expected subagent agent-abc123');
-		expect(agent.startedAt).toBe('2026-04-05T00:28:53.989Z');
-		expect(agent.finishedAt).toBe('2026-04-05T00:29:12.217Z');
+		expect(agent.startedAt).toBe('1999-12-31T00:28:53.989Z');
+		expect(agent.finishedAt).toBe('1999-12-31T00:29:12.217Z');
 	});
 
 	it('indexSubagentFile reads agentType and description from sibling meta.json', async () => {
@@ -969,7 +969,7 @@ describe('subagents', () => {
 			jsonl({
 				type: 'user',
 				slug: 'lemur-1',
-				timestamp: '2026-04-05T00:28:53.000Z',
+				timestamp: '1999-12-31T00:28:53.000Z',
 				message: {role: 'user', content: 'go'},
 			}),
 		);
@@ -999,7 +999,7 @@ describe('subagents', () => {
 				{type: 'user', message: {role: 'user', content: 'Do work'}},
 				{
 					type: 'assistant',
-					timestamp: '2026-04-05T00:10:00.000Z',
+					timestamp: '1999-12-31T00:10:00.000Z',
 					message: {
 						role: 'assistant',
 						content: [
@@ -1225,9 +1225,9 @@ describe('buildSubagentTree', () => {
 
 	it('builds a flat list for serial agents', () => {
 		const agents = [
-			makeAgent({id: 'a', startedAt: '2026-04-05T00:00:00.000Z', finishedAt: '2026-04-05T00:00:10.000Z'}),
-			makeAgent({id: 'b', startedAt: '2026-04-05T00:00:15.000Z', finishedAt: '2026-04-05T00:00:25.000Z'}),
-			makeAgent({id: 'c', startedAt: '2026-04-05T00:00:30.000Z', finishedAt: '2026-04-05T00:00:40.000Z'}),
+			makeAgent({id: 'a', startedAt: '1999-12-31T00:00:00.000Z', finishedAt: '1999-12-31T00:00:10.000Z'}),
+			makeAgent({id: 'b', startedAt: '1999-12-31T00:00:15.000Z', finishedAt: '1999-12-31T00:00:25.000Z'}),
+			makeAgent({id: 'c', startedAt: '1999-12-31T00:00:30.000Z', finishedAt: '1999-12-31T00:00:40.000Z'}),
 		];
 
 		const tree = buildSubagentTree(agents);
@@ -1236,11 +1236,11 @@ describe('buildSubagentTree', () => {
 
 	it('groups parallel agents with same start time', () => {
 		const agents = [
-			makeAgent({id: 'build', startedAt: '2026-04-05T00:00:00.000Z', finishedAt: '2026-04-05T00:00:10.000Z'}),
-			makeAgent({id: 'review1', startedAt: '2026-04-05T00:00:15.000Z', finishedAt: '2026-04-05T00:00:25.000Z'}),
-			makeAgent({id: 'review2', startedAt: '2026-04-05T00:00:15.000Z', finishedAt: '2026-04-05T00:00:30.000Z'}),
-			makeAgent({id: 'review3', startedAt: '2026-04-05T00:00:15.500Z', finishedAt: '2026-04-05T00:00:20.000Z'}),
-			makeAgent({id: 'commit', startedAt: '2026-04-05T00:00:35.000Z', finishedAt: '2026-04-05T00:00:40.000Z'}),
+			makeAgent({id: 'build', startedAt: '1999-12-31T00:00:00.000Z', finishedAt: '1999-12-31T00:00:10.000Z'}),
+			makeAgent({id: 'review1', startedAt: '1999-12-31T00:00:15.000Z', finishedAt: '1999-12-31T00:00:25.000Z'}),
+			makeAgent({id: 'review2', startedAt: '1999-12-31T00:00:15.000Z', finishedAt: '1999-12-31T00:00:30.000Z'}),
+			makeAgent({id: 'review3', startedAt: '1999-12-31T00:00:15.500Z', finishedAt: '1999-12-31T00:00:20.000Z'}),
+			makeAgent({id: 'commit', startedAt: '1999-12-31T00:00:35.000Z', finishedAt: '1999-12-31T00:00:40.000Z'}),
 		];
 
 		const tree = buildSubagentTree(agents);
@@ -1257,12 +1257,12 @@ describe('buildSubagentTree', () => {
 
 	it('nests children under their parent', () => {
 		const agents = [
-			makeAgent({id: 'parent', startedAt: '2026-04-05T00:00:00.000Z', finishedAt: '2026-04-05T00:00:30.000Z'}),
+			makeAgent({id: 'parent', startedAt: '1999-12-31T00:00:00.000Z', finishedAt: '1999-12-31T00:00:30.000Z'}),
 			makeAgent({
 				id: 'child',
 				parentAgentId: 'parent',
-				startedAt: '2026-04-05T00:00:05.000Z',
-				finishedAt: '2026-04-05T00:00:15.000Z',
+				startedAt: '1999-12-31T00:00:05.000Z',
+				finishedAt: '1999-12-31T00:00:15.000Z',
 			}),
 		];
 
@@ -1278,20 +1278,20 @@ describe('buildSubagentTree', () => {
 		const agents = [
 			makeAgent({
 				id: 'root-agent',
-				startedAt: '2026-04-05T00:00:00.000Z',
-				finishedAt: '2026-04-05T00:01:00.000Z',
+				startedAt: '1999-12-31T00:00:00.000Z',
+				finishedAt: '1999-12-31T00:01:00.000Z',
 			}),
 			makeAgent({
 				id: 'mid',
 				parentAgentId: 'root-agent',
-				startedAt: '2026-04-05T00:00:10.000Z',
-				finishedAt: '2026-04-05T00:00:40.000Z',
+				startedAt: '1999-12-31T00:00:10.000Z',
+				finishedAt: '1999-12-31T00:00:40.000Z',
 			}),
 			makeAgent({
 				id: 'deep',
 				parentAgentId: 'mid',
-				startedAt: '2026-04-05T00:00:15.000Z',
-				finishedAt: '2026-04-05T00:00:25.000Z',
+				startedAt: '1999-12-31T00:00:15.000Z',
+				finishedAt: '1999-12-31T00:00:25.000Z',
 			}),
 		];
 

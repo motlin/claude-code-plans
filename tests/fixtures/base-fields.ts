@@ -1,6 +1,6 @@
 export const baseFields = {
 	uuid: 'uuid-test',
-	timestamp: '2026-01-01T00:00:00.000Z',
+	timestamp: '1999-12-31T00:00:00.000Z',
 	sessionId: 'sess-123',
 	parentUuid: null,
 	isSidechain: false,

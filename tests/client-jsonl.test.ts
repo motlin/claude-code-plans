@@ -10,7 +10,7 @@ describe('interpretJsonlLines', () => {
 
 	it('filters out non-user/assistant lines', () => {
 		const lines = [
-			{type: 'system', uuid: 'sys-1', timestamp: '2026-04-21T00:00:00Z'},
+			{type: 'system', uuid: 'sys-1', timestamp: '1999-12-31T00:00:00Z'},
 			{type: 'progress', uuid: 'prog-1'},
 			{type: 'custom-title', customTitle: 'My Title'},
 		];
@@ -23,7 +23,7 @@ describe('interpretJsonlLines', () => {
 			{
 				type: 'user',
 				uuid: 'u-1',
-				timestamp: '2026-04-21T00:00:00Z',
+				timestamp: '1999-12-31T00:00:00Z',
 				message: {role: 'user', content: [{type: 'text', text: 'Hello'}]},
 			},
 		];
@@ -32,7 +32,7 @@ describe('interpretJsonlLines', () => {
 			{
 				type: 'user',
 				uuid: 'u-1',
-				timestamp: '2026-04-21T00:00:00Z',
+				timestamp: '1999-12-31T00:00:00Z',
 				lineIndex: 5,
 				message: {role: 'user', content: [{type: 'text', text: 'Hello'}]},
 			},
@@ -44,7 +44,7 @@ describe('interpretJsonlLines', () => {
 			{
 				type: 'assistant',
 				uuid: 'a-1',
-				timestamp: '2026-04-21T00:01:00Z',
+				timestamp: '1999-12-31T00:01:00Z',
 				message: {role: 'assistant', content: [{type: 'text', text: 'Hi there'}]},
 			},
 		];
@@ -53,7 +53,7 @@ describe('interpretJsonlLines', () => {
 			{
 				type: 'assistant',
 				uuid: 'a-1',
-				timestamp: '2026-04-21T00:01:00Z',
+				timestamp: '1999-12-31T00:01:00Z',
 				lineIndex: 0,
 				message: {role: 'assistant', content: [{type: 'text', text: 'Hi there'}]},
 			},
@@ -65,7 +65,7 @@ describe('interpretJsonlLines', () => {
 			{
 				type: 'assistant',
 				uuid: 'a-1',
-				timestamp: '2026-04-21T00:00:00Z',
+				timestamp: '1999-12-31T00:00:00Z',
 				message: {
 					role: 'assistant',
 					content: [
@@ -81,7 +81,7 @@ describe('interpretJsonlLines', () => {
 			{
 				type: 'user',
 				uuid: 'u-1',
-				timestamp: '2026-04-21T00:00:05Z',
+				timestamp: '1999-12-31T00:00:05Z',
 				message: {
 					role: 'user',
 					content: [
@@ -108,8 +108,8 @@ describe('interpretJsonlLines', () => {
 	});
 
 	it('computes tool duration from timestamps', () => {
-		const startTime = '2026-04-21T00:00:00.000Z';
-		const endTime = '2026-04-21T00:00:03.000Z';
+		const startTime = '1999-12-31T00:00:00.000Z';
+		const endTime = '1999-12-31T00:00:03.000Z';
 		const lines = [
 			{
 				type: 'assistant',
@@ -139,7 +139,7 @@ describe('interpretJsonlLines', () => {
 			{
 				type: 'assistant',
 				uuid: 'a-1',
-				timestamp: '2026-04-21T00:00:00Z',
+				timestamp: '1999-12-31T00:00:00Z',
 				message: {
 					role: 'assistant',
 					content: [{type: 'tool_use', id: 'tool-1', name: 'Bash', input: {command: 'echo hi'}}],
@@ -148,7 +148,7 @@ describe('interpretJsonlLines', () => {
 			{
 				type: 'user',
 				uuid: 'u-1',
-				timestamp: '2026-04-21T00:00:01Z',
+				timestamp: '1999-12-31T00:00:01Z',
 				message: {
 					role: 'user',
 					content: [
@@ -170,7 +170,7 @@ describe('interpretJsonlLines', () => {
 			{
 				type: 'assistant',
 				uuid: 'a-1',
-				timestamp: '2026-04-21T00:00:00Z',
+				timestamp: '1999-12-31T00:00:00Z',
 				message: {
 					role: 'assistant',
 					content: [{type: 'tool_use', id: 'tool-1', name: 'Bash', input: {command: 'fail'}}],
@@ -179,7 +179,7 @@ describe('interpretJsonlLines', () => {
 			{
 				type: 'user',
 				uuid: 'u-1',
-				timestamp: '2026-04-21T00:00:01Z',
+				timestamp: '1999-12-31T00:00:01Z',
 				message: {
 					role: 'user',
 					content: [{type: 'tool_result', tool_use_id: 'tool-1', content: 'error msg', is_error: true}],
@@ -195,7 +195,7 @@ describe('interpretJsonlLines', () => {
 			{
 				type: 'assistant',
 				uuid: 'a-1',
-				timestamp: '2026-04-21T00:00:00Z',
+				timestamp: '1999-12-31T00:00:00Z',
 				message: {
 					role: 'assistant',
 					content: [{type: 'tool_use', id: 'tool-1', name: 'Read', input: {file_path: '/tmp/f'}}],
@@ -204,7 +204,7 @@ describe('interpretJsonlLines', () => {
 			{
 				type: 'user',
 				uuid: 'u-1',
-				timestamp: '2026-04-21T00:00:01Z',
+				timestamp: '1999-12-31T00:00:01Z',
 				message: {
 					role: 'user',
 					content: [
@@ -230,7 +230,7 @@ describe('interpretJsonlLines', () => {
 				type: 'assistant',
 				uuid: 'a-1',
 				parentUuid: 'u-0',
-				timestamp: '2026-04-21T00:00:00Z',
+				timestamp: '1999-12-31T00:00:00Z',
 				message: {role: 'assistant', content: [{type: 'text', text: 'response'}]},
 			},
 		];
@@ -263,7 +263,7 @@ describe('interpretJsonlLines', () => {
 			{
 				type: 'assistant',
 				uuid: 'a-1',
-				timestamp: '2026-04-21T00:00:00Z',
+				timestamp: '1999-12-31T00:00:00Z',
 				message: {
 					role: 'assistant',
 					content: [{type: 'tool_use', id: 'tool-1', name: 'Bash', input: {command: 'cat big'}}],
@@ -272,7 +272,7 @@ describe('interpretJsonlLines', () => {
 			{
 				type: 'user',
 				uuid: 'u-1',
-				timestamp: '2026-04-21T00:00:01Z',
+				timestamp: '1999-12-31T00:00:01Z',
 				message: {
 					role: 'user',
 					content: [{type: 'tool_result', tool_use_id: 'tool-1', content: longContent}],

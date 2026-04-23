@@ -33,8 +33,8 @@ describe('layoutSwimlanes', () => {
 
 	it('produces one lane per agent with timing', () => {
 		const agents = [
-			makeAgent({id: 'a', startedAt: '2026-04-05T00:00:00.000Z', finishedAt: '2026-04-05T00:00:10.000Z'}),
-			makeAgent({id: 'b', startedAt: '2026-04-05T00:00:15.000Z', finishedAt: '2026-04-05T00:00:25.000Z'}),
+			makeAgent({id: 'a', startedAt: '1999-12-31T00:00:00.000Z', finishedAt: '1999-12-31T00:00:10.000Z'}),
+			makeAgent({id: 'b', startedAt: '1999-12-31T00:00:15.000Z', finishedAt: '1999-12-31T00:00:25.000Z'}),
 		];
 		const layout = layoutSwimlanes(agents);
 		expect(layout.lanes.map((l) => l.agent.id)).toStrictEqual(['a', 'b']);
@@ -42,12 +42,12 @@ describe('layoutSwimlanes', () => {
 
 	it('computes overall time bounds', () => {
 		const agents = [
-			makeAgent({id: 'a', startedAt: '2026-04-05T00:00:00.000Z', finishedAt: '2026-04-05T00:00:10.000Z'}),
-			makeAgent({id: 'b', startedAt: '2026-04-05T00:00:15.000Z', finishedAt: '2026-04-05T00:00:25.000Z'}),
+			makeAgent({id: 'a', startedAt: '1999-12-31T00:00:00.000Z', finishedAt: '1999-12-31T00:00:10.000Z'}),
+			makeAgent({id: 'b', startedAt: '1999-12-31T00:00:15.000Z', finishedAt: '1999-12-31T00:00:25.000Z'}),
 		];
 		const layout = layoutSwimlanes(agents);
-		expect(layout.startMs).toBe(new Date('2026-04-05T00:00:00.000Z').getTime());
-		expect(layout.endMs).toBe(new Date('2026-04-05T00:00:25.000Z').getTime());
+		expect(layout.startMs).toBe(new Date('1999-12-31T00:00:00.000Z').getTime());
+		expect(layout.endMs).toBe(new Date('1999-12-31T00:00:25.000Z').getTime());
 		expect(layout.totalMs).toBe(25000);
 	});
 
@@ -55,19 +55,19 @@ describe('layoutSwimlanes', () => {
 		const agents = [
 			makeAgent({
 				id: 'parent',
-				startedAt: '2026-04-05T00:00:00.000Z',
-				finishedAt: '2026-04-05T00:00:30.000Z',
+				startedAt: '1999-12-31T00:00:00.000Z',
+				finishedAt: '1999-12-31T00:00:30.000Z',
 			}),
 			makeAgent({
 				id: 'late',
-				startedAt: '2026-04-05T00:00:20.000Z',
-				finishedAt: '2026-04-05T00:00:25.000Z',
+				startedAt: '1999-12-31T00:00:20.000Z',
+				finishedAt: '1999-12-31T00:00:25.000Z',
 			}),
 			makeAgent({
 				id: 'child',
 				parentAgentId: 'parent',
-				startedAt: '2026-04-05T00:00:05.000Z',
-				finishedAt: '2026-04-05T00:00:10.000Z',
+				startedAt: '1999-12-31T00:00:05.000Z',
+				finishedAt: '1999-12-31T00:00:10.000Z',
 			}),
 		];
 		const layout = layoutSwimlanes(agents);
@@ -78,22 +78,22 @@ describe('layoutSwimlanes', () => {
 		const agents = [
 			makeAgent({
 				id: 'parent',
-				startedAt: '2026-04-05T00:00:00.000Z',
-				finishedAt: '2026-04-05T00:00:30.000Z',
+				startedAt: '1999-12-31T00:00:00.000Z',
+				finishedAt: '1999-12-31T00:00:30.000Z',
 			}),
 			makeAgent({
 				id: 'child',
 				parentAgentId: 'parent',
-				startedAt: '2026-04-05T00:00:10.000Z',
-				finishedAt: '2026-04-05T00:00:20.000Z',
+				startedAt: '1999-12-31T00:00:10.000Z',
+				finishedAt: '1999-12-31T00:00:20.000Z',
 			}),
 		];
 		const layout = layoutSwimlanes(agents);
 		const parentLane = layout.lanes.find((l) => l.agent.id === 'parent')!;
 		expect(parentLane.waiting).toStrictEqual([
 			{
-				startMs: new Date('2026-04-05T00:00:10.000Z').getTime(),
-				endMs: new Date('2026-04-05T00:00:20.000Z').getTime(),
+				startMs: new Date('1999-12-31T00:00:10.000Z').getTime(),
+				endMs: new Date('1999-12-31T00:00:20.000Z').getTime(),
 			},
 		]);
 	});
@@ -102,28 +102,28 @@ describe('layoutSwimlanes', () => {
 		const agents = [
 			makeAgent({
 				id: 'parent',
-				startedAt: '2026-04-05T00:00:00.000Z',
-				finishedAt: '2026-04-05T00:00:30.000Z',
+				startedAt: '1999-12-31T00:00:00.000Z',
+				finishedAt: '1999-12-31T00:00:30.000Z',
 			}),
 			makeAgent({
 				id: 'c1',
 				parentAgentId: 'parent',
-				startedAt: '2026-04-05T00:00:05.000Z',
-				finishedAt: '2026-04-05T00:00:15.000Z',
+				startedAt: '1999-12-31T00:00:05.000Z',
+				finishedAt: '1999-12-31T00:00:15.000Z',
 			}),
 			makeAgent({
 				id: 'c2',
 				parentAgentId: 'parent',
-				startedAt: '2026-04-05T00:00:10.000Z',
-				finishedAt: '2026-04-05T00:00:20.000Z',
+				startedAt: '1999-12-31T00:00:10.000Z',
+				finishedAt: '1999-12-31T00:00:20.000Z',
 			}),
 		];
 		const layout = layoutSwimlanes(agents);
 		const parentLane = layout.lanes.find((l) => l.agent.id === 'parent')!;
 		expect(parentLane.waiting).toStrictEqual([
 			{
-				startMs: new Date('2026-04-05T00:00:05.000Z').getTime(),
-				endMs: new Date('2026-04-05T00:00:20.000Z').getTime(),
+				startMs: new Date('1999-12-31T00:00:05.000Z').getTime(),
+				endMs: new Date('1999-12-31T00:00:20.000Z').getTime(),
 			},
 		]);
 	});
@@ -132,20 +132,20 @@ describe('layoutSwimlanes', () => {
 		const agents = [
 			makeAgent({
 				id: 'parent',
-				startedAt: '2026-04-05T00:00:00.000Z',
-				finishedAt: '2026-04-05T00:00:30.000Z',
+				startedAt: '1999-12-31T00:00:00.000Z',
+				finishedAt: '1999-12-31T00:00:30.000Z',
 			}),
 			makeAgent({
 				id: 'p1',
 				parentAgentId: 'parent',
-				startedAt: '2026-04-05T00:00:10.000Z',
-				finishedAt: '2026-04-05T00:00:20.000Z',
+				startedAt: '1999-12-31T00:00:10.000Z',
+				finishedAt: '1999-12-31T00:00:20.000Z',
 			}),
 			makeAgent({
 				id: 'p2',
 				parentAgentId: 'parent',
-				startedAt: '2026-04-05T00:00:10.000Z',
-				finishedAt: '2026-04-05T00:00:25.000Z',
+				startedAt: '1999-12-31T00:00:10.000Z',
+				finishedAt: '1999-12-31T00:00:25.000Z',
 			}),
 		];
 		const layout = layoutSwimlanes(agents);
@@ -159,20 +159,20 @@ describe('layoutSwimlanes', () => {
 		const agents = [
 			makeAgent({
 				id: 'root',
-				startedAt: '2026-04-05T00:00:00.000Z',
-				finishedAt: '2026-04-05T00:01:00.000Z',
+				startedAt: '1999-12-31T00:00:00.000Z',
+				finishedAt: '1999-12-31T00:01:00.000Z',
 			}),
 			makeAgent({
 				id: 'mid',
 				parentAgentId: 'root',
-				startedAt: '2026-04-05T00:00:10.000Z',
-				finishedAt: '2026-04-05T00:00:40.000Z',
+				startedAt: '1999-12-31T00:00:10.000Z',
+				finishedAt: '1999-12-31T00:00:40.000Z',
 			}),
 			makeAgent({
 				id: 'leaf',
 				parentAgentId: 'mid',
-				startedAt: '2026-04-05T00:00:15.000Z',
-				finishedAt: '2026-04-05T00:00:25.000Z',
+				startedAt: '1999-12-31T00:00:15.000Z',
+				finishedAt: '1999-12-31T00:00:25.000Z',
 			}),
 		];
 		const layout = layoutSwimlanes(agents);
@@ -186,9 +186,9 @@ describe('layoutSwimlanes', () => {
 
 	it('skips agents with missing timing but keeps siblings', () => {
 		const agents = [
-			makeAgent({id: 'a', startedAt: '2026-04-05T00:00:00.000Z', finishedAt: '2026-04-05T00:00:10.000Z'}),
+			makeAgent({id: 'a', startedAt: '1999-12-31T00:00:00.000Z', finishedAt: '1999-12-31T00:00:10.000Z'}),
 			makeAgent({id: 'b'}), // no timing
-			makeAgent({id: 'c', startedAt: '2026-04-05T00:00:15.000Z', finishedAt: '2026-04-05T00:00:25.000Z'}),
+			makeAgent({id: 'c', startedAt: '1999-12-31T00:00:15.000Z', finishedAt: '1999-12-31T00:00:25.000Z'}),
 		];
 		const layout = layoutSwimlanes(agents);
 		expect(layout.lanes.map((l) => l.agent.id)).toStrictEqual(['a', 'c']);
@@ -196,7 +196,7 @@ describe('layoutSwimlanes', () => {
 
 	it('produces tick marks proportional to total duration', () => {
 		const agents = [
-			makeAgent({id: 'a', startedAt: '2026-04-05T00:00:00.000Z', finishedAt: '2026-04-05T00:01:00.000Z'}),
+			makeAgent({id: 'a', startedAt: '1999-12-31T00:00:00.000Z', finishedAt: '1999-12-31T00:01:00.000Z'}),
 		];
 		const layout: SwimlaneLayout = layoutSwimlanes(agents);
 		expect(layout.ticks.length).toBeGreaterThanOrEqual(2);

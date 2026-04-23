@@ -136,7 +136,7 @@ describe('getPlanMtime', () => {
 	it('returns mtime matching file stat', async () => {
 		const filePath = join(testDir, 'stamped.md');
 		writeFileSync(filePath, '# Stamped');
-		const fixedTime = new Date('2025-06-15T12:00:00Z');
+		const fixedTime = new Date('1999-12-31T00:00:00Z');
 		utimesSync(filePath, fixedTime, fixedTime);
 		const mtime = await getPlanMtime(testDir, 'stamped.md');
 		expect(mtime!.getTime()).toBe(fixedTime.getTime());

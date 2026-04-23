@@ -29,8 +29,8 @@ describe('toActiveSessionPayload', () => {
 			sessionId: 'abc-123',
 			cwd: '/home/user/project',
 			model: 'claude-sonnet-4-6',
-			startedAt: 1_700_000_000_000,
-			lastActivity: 1_700_000_001_000,
+			startedAt: 946_598_400_000,
+			lastActivity: 946_598_401_000,
 		};
 
 		const payload = toActiveSessionPayload(entry);
@@ -39,8 +39,8 @@ describe('toActiveSessionPayload', () => {
 			sessionId: 'abc-123',
 			cwd: '/home/user/project',
 			model: 'claude-sonnet-4-6',
-			startedAt: 1_700_000_000_000,
-			lastActivity: 1_700_000_001_000,
+			startedAt: 946_598_400_000,
+			lastActivity: 946_598_401_000,
 		});
 	});
 });
@@ -55,7 +55,7 @@ describe('buildSessionSummaryPayloadFromDb', () => {
 				{
 					sessionId: 'abc-123',
 					fullPath: join(projectDir, 'abc-123.jsonl'),
-					fileMtime: 1_700_000_000_000,
+					fileMtime: 946_598_400_000,
 					firstPrompt: 'Fix the login bug',
 					summary: 'Fixed auth issue',
 					messageCount: 5,

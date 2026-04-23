@@ -12,8 +12,8 @@ function makeSession(overrides: Partial<SessionEntry> = {}): SessionEntry {
 		firstPrompt: undefined,
 		summary: undefined,
 		customTitle: undefined,
-		mtime: new Date('2026-04-18T00:00:00.000Z'),
-		created: new Date('2026-04-17T00:00:00.000Z'),
+		mtime: new Date('1999-12-31T00:00:00.000Z'),
+		created: new Date('1999-12-30T00:00:00.000Z'),
 		project: 'project-1',
 		projectName: 'Project 1',
 		messageCount: 3,
@@ -45,8 +45,8 @@ describe('toSessionSummaryPayload', () => {
 			id: 'sess-1',
 			title: 'Hello',
 			summary: undefined,
-			mtime: '2026-04-18T00:00:00.000Z',
-			created: '2026-04-17T00:00:00.000Z',
+			mtime: '1999-12-31T00:00:00.000Z',
+			created: '1999-12-30T00:00:00.000Z',
 			project: 'project-1',
 			projectName: 'Project 1',
 			messageCount: 3,
@@ -70,7 +70,7 @@ describe('sessionSummariesEqual', () => {
 
 	it('returns false when the mtime changes', () => {
 		const a = toSessionSummaryPayload(makeSession());
-		const b = toSessionSummaryPayload(makeSession({mtime: new Date('2026-04-19T00:00:00.000Z')}));
+		const b = toSessionSummaryPayload(makeSession({mtime: new Date('2000-01-01T00:00:00.000Z')}));
 		expect(sessionSummariesEqual(a, b)).toBe(false);
 	});
 
