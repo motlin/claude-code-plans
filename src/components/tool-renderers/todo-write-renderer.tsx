@@ -13,7 +13,6 @@ export function TodoWriteRenderer({toolCall}: ToolRendererProps) {
 					size={14}
 					className="text-accent-100 shrink-0"
 				/>
-				<span className="text-xs font-medium text-accent-100">Updated TODOs</span>
 				{count > 0 && (
 					<span className="text-xs text-text-500">
 						({count} {count === 1 ? 'item' : 'items'})

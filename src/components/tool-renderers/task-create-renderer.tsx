@@ -19,7 +19,6 @@ export function TaskCreateRenderer({toolCall}: ToolRendererProps) {
 				/>
 				<div className="min-w-0">
 					<div className="flex items-center gap-2">
-						<span className="text-xs font-medium text-accent-100">New Task</span>
 						{createdId && <span className="text-xs text-text-500 font-mono">#{createdId}</span>}
 						{status !== 'pending' && (
 							<span className="text-xs text-text-500">({status.replace('_', ' ')})</span>

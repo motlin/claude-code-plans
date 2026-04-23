@@ -31,7 +31,6 @@ export function AssistantMessageGroupHeader({
 			<span className="text-[11px] font-medium bg-bg-200 rounded-full px-1.5 py-0.5 tabular-nums">
 				{lineCount} messages
 			</span>
-			{group.summary && <span className="text-text-500 truncate">{group.summary}</span>}
 		</button>
 	);
 }

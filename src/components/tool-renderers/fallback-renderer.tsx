@@ -2,12 +2,11 @@ import type {ToolRendererProps} from './types';
 import {ErrorBorder} from './shared';
 
 export function FallbackRenderer({toolCall}: ToolRendererProps) {
-	const {name, input, result, isError} = toolCall;
+	const {input, result, isError} = toolCall;
 	const entries = Object.entries(input).filter(([k]) => k !== 'type');
 
 	return (
 		<ErrorBorder isError={isError}>
-			<span className="text-xs text-text-500 font-medium">{name}</span>
 			{entries.length > 0 && (
 				<dl className="text-xs mt-1">
 					{entries.map(([key, value]) => (

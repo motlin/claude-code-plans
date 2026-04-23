@@ -177,24 +177,21 @@ export function buildClientToolCall(
 	return call;
 }
 
+function truncate(value: string, maxLength = 60): string {
+	return value.length > maxLength ? value.slice(0, maxLength) + '...' : value;
+}
+
 function getToolParam(tc: {input: Record<string, unknown>}): string {
 	const input = tc.input;
 	if (typeof input['file_path'] === 'string') return input['file_path'];
-	if (typeof input['command'] === 'string') {
-		const cmd = input['command'];
-		return cmd.length > 60 ? cmd.slice(0, 60) + '...' : cmd;
-	}
+	if (typeof input['command'] === 'string') return truncate(input['command']);
 	if (typeof input['pattern'] === 'string') return input['pattern'];
 	if (typeof input['query'] === 'string') return input['query'];
 	if (typeof input['url'] === 'string') return input['url'];
-	if (typeof input['prompt'] === 'string') {
-		const p = input['prompt'];
-		return p.length > 60 ? p.slice(0, 60) + '...' : p;
-	}
-	if (typeof input['subject'] === 'string') {
-		const s = input['subject'];
-		return s.length > 60 ? s.slice(0, 60) + '...' : s;
-	}
+	if (typeof input['prompt'] === 'string') return truncate(input['prompt']);
+	if (typeof input['skill'] === 'string') return input['skill'];
+	if (typeof input['subject'] === 'string') return truncate(input['subject']);
 	if (typeof input['taskId'] === 'string') return `#${input['taskId']}`;
+	if (typeof input['description'] === 'string') return truncate(input['description']);
 	return '';
 }

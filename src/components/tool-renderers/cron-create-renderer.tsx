@@ -15,10 +15,7 @@ export function CronCreateRenderer({toolCall}: ToolRendererProps) {
 					className="text-accent-100 mt-0.5 shrink-0"
 				/>
 				<div className="min-w-0">
-					<div className="flex items-center gap-2">
-						<span className="text-xs font-medium text-accent-100">Scheduled Job</span>
-						{recurring === false && <span className="text-xs text-text-500">(one-time)</span>}
-					</div>
+					{recurring === false && <div className="text-xs text-text-500">(one-time)</div>}
 					{cron && <div className="text-xs text-text-500 mt-0.5 font-mono">{cron}</div>}
 					{prompt && <div className="text-xs text-text-100 mt-0.5 line-clamp-3">{prompt}</div>}
 				</div>

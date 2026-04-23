@@ -19,10 +19,7 @@ export function SendMessageRenderer({toolCall}: ToolRendererProps) {
 					className="text-accent-100 mt-0.5 shrink-0"
 				/>
 				<div className="min-w-0">
-					<div className="flex items-center gap-2">
-						<span className="text-xs font-medium text-accent-100">Send Message</span>
-						{recipient && <span className="text-xs text-text-500">to {recipient}</span>}
-					</div>
+					{recipient && <div className="text-xs text-text-500">to {recipient}</div>}
 					{summary && <div className="text-xs text-text-100 mt-0.5">{summary}</div>}
 					{message && <div className="text-xs text-text-500 mt-0.5 line-clamp-3">{message}</div>}
 				</div>

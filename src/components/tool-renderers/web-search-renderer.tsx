@@ -3,7 +3,6 @@ import type {ToolRendererProps} from './types';
 import {CollapsibleSection, ErrorBorder} from './shared';
 
 export function WebSearchRenderer({toolCall}: ToolRendererProps) {
-	const query = (toolCall.input['query'] as string) ?? '';
 	const allowedDomains = toolCall.input['allowed_domains'] as string[] | undefined;
 	const {result} = toolCall;
 
@@ -15,8 +14,6 @@ export function WebSearchRenderer({toolCall}: ToolRendererProps) {
 					className="text-accent-100 mt-0.5 shrink-0"
 				/>
 				<div className="min-w-0">
-					<div className="text-xs font-medium text-accent-100">Web Search</div>
-					{query && <div className="text-xs text-text-100 mt-0.5 font-mono">{query}</div>}
 					{allowedDomains && allowedDomains.length > 0 && (
 						<div className="text-xs text-text-500 mt-0.5">Domains: {allowedDomains.join(', ')}</div>
 					)}

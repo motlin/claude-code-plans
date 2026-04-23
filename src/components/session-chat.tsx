@@ -11,13 +11,7 @@ import {hmrPersist} from '../lib/hmr-persist';
 import type {MessageSessionLine, SessionLine, SessionContentBlock, ToolResultInfo} from '../lib/sessions';
 import type {SubagentTreeEntry} from '../lib/db/queries';
 import {AttachmentBanner, Banner} from './attachment-banner';
-import {
-	stripCommandTags,
-	parseCommandBlock,
-	parseBashInput,
-	parseBashOutput,
-	summarizeToolCalls,
-} from '../lib/session-utils';
+import {stripCommandTags, parseCommandBlock, parseBashInput, parseBashOutput} from '../lib/session-utils';
 import {groupAssistantMessages, type AssistantGroup} from '../lib/assistant-groups';
 import {AssistantMessageGroupHeader, useGroupExpansion} from './assistant-message-group';
 
@@ -920,34 +914,21 @@ function AssistantEntry({
 				.map((block) => buildClientToolCall(block, line, toolResultMap, subagentLookup)),
 		[content, line, toolResultMap, subagentLookup],
 	);
-	const toolSummary = useMemo(
-		() =>
-			summarizeToolCalls(
-				toolCalls.map((c) => ({
-					id: c.id,
-					name: c.name,
-					input: c.input,
-					sourceUuid: c.sourceUuid,
-				})),
-			),
-		[toolCalls],
-	);
-
 	// Determine if all content is just tool_use (render as grouped tool section)
 	// vs mixed content (render in order)
-	const hasTextOrThinking = content.some(
-		(b) => b.type === 'text' || b.type === 'thinking' || b.type === 'image' || b.type === 'document',
+	const hasVisibleNonToolContent = content.some(
+		(b) =>
+			b.type === 'text' || (b.type === 'thinking' && showThinking) || b.type === 'image' || b.type === 'document',
 	);
 	const hasToolUse = toolCalls.length > 0;
 
 	// If there's only tool_use blocks, render as a tool call section
-	if (!hasTextOrThinking && hasToolUse) {
+	if (!hasVisibleNonToolContent && hasToolUse) {
 		return (
 			<div className="flex flex-col gap-1.5 min-w-0">
 				{showTools && toolCalls.length > 0 && (
 					<ToolCallSection
 						calls={toolCalls}
-						summary={toolSummary}
 						sessionId={sessionId}
 					/>
 				)}
@@ -969,7 +950,6 @@ function AssistantEntry({
 					showThinking={showThinking}
 					showTools={showTools}
 					toolCalls={toolCalls}
-					toolSummary={toolSummary}
 				/>
 			))}
 			{showTimestamps && <Timestamp value={timestampText} />}
@@ -988,7 +968,6 @@ function ContentBlock({
 	showThinking,
 	showTools,
 	toolCalls,
-	toolSummary,
 }: {
 	block: SessionContentBlock;
 	blockIndex: number;
@@ -997,7 +976,6 @@ function ContentBlock({
 	showThinking: boolean;
 	showTools: boolean;
 	toolCalls: ClientToolCall[];
-	toolSummary: string;
 }) {
 	if (block.type === 'text' && typeof block.text === 'string') {
 		if (!block.text.trim()) return null;
@@ -1035,7 +1013,6 @@ function ContentBlock({
 		return (
 			<ToolCallSection
 				calls={toolCalls}
-				summary={toolSummary}
 				sessionId={sessionId}
 			/>
 		);
@@ -1116,7 +1093,7 @@ function groupParallelSubagents(calls: ClientToolCall[]): ToolListItem[] {
 	return result;
 }
 
-function ToolCallSection({calls, summary, sessionId}: {calls: ClientToolCall[]; summary: string; sessionId: string}) {
+function ToolCallSection({calls, sessionId}: {calls: ClientToolCall[]; sessionId: string}) {
 	const prominentCalls = calls.filter((c) => PROMINENT_TOOLS.has(c.name));
 	const backgroundCalls = calls.filter((c) => !PROMINENT_TOOLS.has(c.name));
 
@@ -1125,7 +1102,6 @@ function ToolCallSection({calls, summary, sessionId}: {calls: ClientToolCall[]; 
 			{backgroundCalls.length > 0 && (
 				<ToolCallSummary
 					calls={backgroundCalls}
-					summary={summary}
 					sessionId={sessionId}
 				/>
 			)}
@@ -1149,150 +1125,85 @@ function ToolCallSection({calls, summary, sessionId}: {calls: ClientToolCall[]; 
 	);
 }
 
-function ToolCallRow({
-	call,
-	sessionId,
-	isFirst,
-	isLast,
-}: {
-	call: ClientToolCall;
-	sessionId: string;
-	isFirst: boolean;
-	isLast: boolean;
-}) {
+function ToolCallRow({call, sessionId}: {call: ClientToolCall; sessionId: string}) {
 	const Renderer = getToolRenderer(call.name);
 	return (
-		<div className="flex">
-			<div className="flex flex-col items-center w-4 shrink-0">
-				<div className={`w-px flex-1 ${isFirst ? 'bg-transparent' : 'bg-border-300/15'}`} />
-				<div className="w-full h-px bg-border-300/15" />
-				<div className={`w-px flex-1 ${isLast ? 'bg-transparent' : 'bg-border-300/15'}`} />
+		<div className="min-w-0 py-0.5 text-sm leading-relaxed text-text-500">
+			<div className="flex items-center">
+				<span className="font-medium text-[13px]">{call.name}</span>
+				{call.param && (
+					<span className="ml-1.5 font-mono text-[11px] bg-bg-100 px-1 py-px rounded opacity-70">
+						{call.param}
+					</span>
+				)}
+				{call.duration !== undefined && <DurationBadge duration={call.duration} />}
+				<DebugLink
+					sessionId={sessionId}
+					uuid={call.sourceUuid}
+					className="ml-1.5"
+				/>
 			</div>
-			<div className="flex-1 min-w-0 pl-2 py-0.5 text-sm leading-relaxed text-text-500">
-				<div className="flex items-center">
-					<span className="font-medium text-[13px]">{call.name}</span>
-					{call.param && (
-						<span className="ml-1.5 font-mono text-[11px] bg-bg-100 px-1 py-px rounded opacity-70">
-							{call.param}
-						</span>
-					)}
-					{call.duration !== undefined && <DurationBadge duration={call.duration} />}
-					<DebugLink
-						sessionId={sessionId}
-						uuid={call.sourceUuid}
-						className="ml-1.5"
-					/>
-				</div>
-				<div className="mt-1 mb-2 text-xs text-text-100 leading-relaxed">
-					<Renderer toolCall={call} />
-				</div>
+			<div className="mt-1 mb-2 text-xs text-text-100 leading-relaxed">
+				<Renderer toolCall={call} />
 			</div>
 		</div>
 	);
 }
 
-function ParallelGroupInline({
-	calls,
-	sessionId,
-	isFirst,
-	isLast,
-}: {
-	calls: ClientToolCall[];
-	sessionId: string;
-	isFirst: boolean;
-	isLast: boolean;
-}) {
-	const [expanded, setExpanded] = useState(true);
+function ParallelGroupInline({calls, sessionId}: {calls: ClientToolCall[]; sessionId: string}) {
 	const size = calls.length;
 
 	return (
-		<div className="flex">
-			<div className="flex flex-col items-center w-4 shrink-0">
-				<div className={`w-px flex-1 ${isFirst ? 'bg-transparent' : 'bg-border-300/15'}`} />
-				<div className="w-full h-px bg-border-300/15" />
-				<div className={`w-px flex-1 ${isLast ? 'bg-transparent' : 'bg-border-300/15'}`} />
+		<div className="min-w-0 py-0.5">
+			<div className="flex items-center gap-1.5 text-[12px] text-text-500 mb-1">
+				<span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-accent-000/12 text-accent-100">
+					parallel &times;{size}
+				</span>
 			</div>
-			<div className="flex-1 min-w-0 pl-2 py-0.5">
-				<button
-					type="button"
-					onClick={() => setExpanded(!expanded)}
-					className="flex items-center gap-1.5 text-[12px] text-text-500 hover:text-text-300 cursor-pointer"
-				>
-					<ChevronIcon
-						expanded={expanded}
-						size={16}
+			<div className="ml-2 pl-2 border-l border-accent-000/20">
+				{calls.map((call, i) => (
+					<ToolCallRow
+						key={i}
+						call={call}
+						sessionId={sessionId}
 					/>
-					<span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-accent-000/12 text-accent-100">
-						parallel &times;{size}
-					</span>
-					<span className="text-[11px] text-text-500">
-						{calls
-							.map((c) => (c.input['description'] as string) || (c.input['subagent_type'] as string))
-							.filter(Boolean)
-							.slice(0, 3)
-							.join(', ')}
-					</span>
-				</button>
-				{expanded && (
-					<div className="mt-1 ml-2 pl-2 border-l border-accent-000/20">
-						{calls.map((call, i) => (
-							<ToolCallRow
-								key={i}
-								call={call}
-								sessionId={sessionId}
-								isFirst={i === 0}
-								isLast={i === calls.length - 1}
-							/>
-						))}
-					</div>
-				)}
+				))}
 			</div>
 		</div>
 	);
 }
 
-function ToolCallSummary({calls, summary, sessionId}: {calls: ClientToolCall[]; summary: string; sessionId: string}) {
+function ToolCallSummary({calls, sessionId}: {calls: ClientToolCall[]; sessionId: string}) {
 	const taskCalls = calls.filter((c) => TASK_TOOLS.has(c.name));
 	const hasTasksView = taskCalls.length >= 3;
 	const displayCalls = hasTasksView ? calls.filter((c) => !TASK_TOOLS.has(c.name)) : calls;
 	const items = groupParallelSubagents(displayCalls);
 
 	return (
-		<div className="min-w-0 py-1">
-			<div className="flex items-center gap-2 py-1 text-sm leading-relaxed text-text-500">
-				<span>{summary}</span>
-			</div>
+		<div className="min-w-0">
 			{hasTasksView && (
-				<div className="ml-2 mb-2">
+				<div className="mb-2">
 					<TasksView toolCalls={calls} />
 				</div>
 			)}
-			<div className="ml-2 pl-0">
-				{items.map((item, i) => {
-					const isFirst = i === 0;
-					const isLast = i === items.length - 1;
-					if (item.kind === 'parallel') {
-						return (
-							<ParallelGroupInline
-								key={`pg-${item.key}`}
-								calls={item.calls}
-								sessionId={sessionId}
-								isFirst={isFirst}
-								isLast={isLast}
-							/>
-						);
-					}
+			{items.map((item, i) => {
+				if (item.kind === 'parallel') {
 					return (
-						<ToolCallRow
-							key={i}
-							call={item.call}
+						<ParallelGroupInline
+							key={`pg-${item.key}`}
+							calls={item.calls}
 							sessionId={sessionId}
-							isFirst={isFirst}
-							isLast={isLast}
 						/>
 					);
-				})}
-			</div>
+				}
+				return (
+					<ToolCallRow
+						key={i}
+						call={item.call}
+						sessionId={sessionId}
+					/>
+				);
+			})}
 		</div>
 	);
 }
