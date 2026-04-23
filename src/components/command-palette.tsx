@@ -2,7 +2,7 @@ import {Command} from 'cmdk';
 import {useNavigate} from '@tanstack/react-router';
 import {useMemo} from 'react';
 import {useQuery} from '@tanstack/react-query';
-import {FileText, Brain, MessageSquare, FolderOpen, Search, Star, Home} from 'lucide-react';
+import {FileText, Brain, MessageSquare, FolderOpen, Search, Star, Home, FileJson} from 'lucide-react';
 import {sessionsQueryOptions} from '../queries/sessions';
 
 interface RecentSession {
@@ -138,6 +138,12 @@ export function CommandPalette({open, onOpenChange}: {open: boolean; onOpenChang
 						onSelect={() => select(() => navigate({to: '/sessions'}))}
 					>
 						Sessions
+					</CommandItem>
+					<CommandItem
+						icon={<FileJson className="h-4 w-4" />}
+						onSelect={() => select(() => navigate({to: '/settings'}))}
+					>
+						Settings
 					</CommandItem>
 				</Command.Group>
 			</Command.List>

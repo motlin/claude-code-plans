@@ -135,6 +135,7 @@ export function Sidebar({collapsed, onToggle, mobile}: {collapsed: boolean; onTo
 							</div>
 							{isExpanded &&
 								item.section !== 'starred' &&
+								item.section !== 'settings' &&
 								item.section !== 'setup' &&
 								(item.section === 'active' ? (
 									<ActiveSubList />

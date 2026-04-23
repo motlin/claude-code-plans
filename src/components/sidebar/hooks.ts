@@ -62,5 +62,11 @@ export function useActiveSection(matches: ReturnType<typeof useMatches>): {
 			projectId: null,
 		};
 	}
+	if (path.startsWith('/settings')) {
+		return {section: 'settings', activeItemId: null, projectId: null};
+	}
+	if (path.startsWith('/setup')) {
+		return {section: 'setup', activeItemId: null, projectId: null};
+	}
 	return {section: null, activeItemId: null, projectId: null};
 }

@@ -7,6 +7,7 @@ export type Section =
 	| 'memories'
 	| 'sessions'
 	| 'plugins'
+	| 'settings'
 	| 'setup';
 
 export interface SubItem {
