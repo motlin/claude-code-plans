@@ -11,6 +11,8 @@
 		"eslint:ci": "eslint . --format json --output-file eslint_report.json",
 		"biome": "npx biome format --write .",
 		"biome:ci": "npx biome format .",
+		"fallow": "fallow fix",
+		"fallow:ci": "fallow",
 		"typecheck": "tsc --noEmit -p tsconfig.check.json",
 		"test": "vitest",
 		"test:run": "vitest run",
