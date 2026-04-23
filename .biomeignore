@@ -13,3 +13,6 @@ src/routeTree.gen.ts
 
 # Ignore dependencies
 node_modules/
+
+# Tool caches
+.fallow/
