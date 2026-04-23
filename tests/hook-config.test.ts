@@ -89,7 +89,8 @@ describe('generateHooksConfig', () => {
 	it('produces valid JSON when stringified', () => {
 		const config = generateHooksConfig();
 		const json = JSON.stringify(config, null, 2);
-		expect(() => JSON.parse(json)).not.toThrow();
+		const parsed: unknown = JSON.parse(json);
+		expect(parsed).toStrictEqual(config);
 	});
 
 	it('all hooks suppress errors with || true', () => {

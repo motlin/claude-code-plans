@@ -46,6 +46,6 @@ describe('hmrPersist', () => {
 describe('hmrDispose', () => {
 	it('does not throw when import.meta.hot is undefined', async () => {
 		const {hmrDispose} = await import('../src/lib/hmr-persist');
-		expect(() => hmrDispose(() => {})).not.toThrow();
+		hmrDispose(() => {});
 	});
 });
