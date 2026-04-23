@@ -1,6 +1,6 @@
 import type {ToolRendererProps} from './types';
 import {ErrorBorder, TerminalOutput} from './shared';
-import {getToolRenderer} from './index';
+import {getMcpRenderer} from './mcp-registry';
 
 const MCP_CLI_RE = /^mcp-cli\s+call\s+(\S+)\s+(\S+)/;
 
@@ -22,7 +22,7 @@ function McpCliBashRenderer({
 	tool: string;
 }) {
 	const syntheticName = `mcp__${server}__${tool}`;
-	const Renderer = getToolRenderer(syntheticName);
+	const Renderer = getMcpRenderer(server);
 
 	return (
 		<ErrorBorder isError={toolCall.isError}>

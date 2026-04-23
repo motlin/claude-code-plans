@@ -12,7 +12,7 @@
 		"biome": "npx biome format --write .",
 		"biome:ci": "npx biome format .",
 		"fallow": "fallow fix --yes",
-		"fallow:ci": "fallow",
+		"fallow:ci": "fallow dead-code",
 		"typecheck": "tsc --noEmit -p tsconfig.check.json",
 		"test": "vitest",
 		"test:run": "vitest run",

@@ -20,14 +20,9 @@ import {SendMessageRenderer} from './send-message-renderer';
 import {TaskStopRenderer} from './task-stop-renderer';
 import {CronCreateRenderer} from './cron-create-renderer';
 import {SkillRenderer} from './skill-renderer';
-import {McpRenderer} from './mcp-renderer';
 import {WebFetchRenderer} from './webfetch-renderer';
 import {FallbackRenderer} from './fallback-renderer';
-import {ChromeDevtoolsRenderer} from './chrome-devtools-renderer';
-import {GithubRenderer} from './github-renderer';
-import {PlaywrightRenderer} from './playwright-renderer';
-import {ClaudeInChromeRenderer} from './claude-in-chrome-renderer';
-import {Context7Renderer} from './context7-renderer';
+import {getMcpRenderer} from './mcp-registry';
 
 const registry: Record<string, ComponentType<ToolRendererProps>> = {
 	Edit: EditRenderer,
@@ -52,23 +47,14 @@ const registry: Record<string, ComponentType<ToolRendererProps>> = {
 	CronCreate: CronCreateRenderer,
 	Skill: SkillRenderer,
 	WebFetch: WebFetchRenderer,
-	__mcp__: McpRenderer,
 	__fallback__: FallbackRenderer,
-};
-
-const mcpRegistry: Record<string, ComponentType<ToolRendererProps>> = {
-	'chrome-devtools': ChromeDevtoolsRenderer,
-	plugin_github_github: GithubRenderer,
-	plugin_playwright_playwright: PlaywrightRenderer,
-	'claude-in-chrome': ClaudeInChromeRenderer,
-	plugin_context7_context7: Context7Renderer,
 };
 
 export function getToolRenderer(name: string): ComponentType<ToolRendererProps> {
 	if (name.startsWith('mcp__')) {
 		const server = name.slice(5).split('__')[0];
-		if (server && mcpRegistry[server]) return mcpRegistry[server];
-		return registry['__mcp__'] ?? registry['__fallback__']!;
+		if (server) return getMcpRenderer(server);
+		return registry['__fallback__']!;
 	}
 	return registry[name] ?? registry['__fallback__']!;
 }

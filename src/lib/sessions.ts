@@ -282,7 +282,7 @@ function resolveTitle(entry: {
 	return entry.sessionId;
 }
 
-export async function listSessionsForProject(projectsDir: string, project: string): Promise<SessionEntry[] | null> {
+async function listSessionsForProject(projectsDir: string, project: string): Promise<SessionEntry[] | null> {
 	const projectDir = join(projectsDir, project);
 	const indexPath = join(projectDir, 'sessions-index.json');
 	let raw: string;
@@ -373,7 +373,7 @@ export async function listSessionsForProject(projectsDir: string, project: strin
 	return sessions;
 }
 
-export async function listSessionsFromJsonl(projectsDir: string, project: string): Promise<SessionEntry[]> {
+async function listSessionsFromJsonl(projectsDir: string, project: string): Promise<SessionEntry[]> {
 	const projectPath = join(projectsDir, project);
 	let files: string[];
 	try {

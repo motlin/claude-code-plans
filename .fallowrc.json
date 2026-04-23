@@ -1,7 +1,11 @@
 {
 	"$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
-	"ignorePatterns": [".storybook/**"],
+	"ignorePatterns": [".storybook/**", "scripts/**", "src/routeTree.gen.ts"],
+	"ignoreDependencies": ["srvx"],
+	"ignoreExports": [{"file": "src/components/markdown-article.module.css", "exports": ["*"]}],
 	"rules": {
-		"unused-dependencies": "warn"
+		"unused-dependencies": "warn",
+		"unused-types": "warn",
+		"duplicate-exports": "warn"
 	}
 }

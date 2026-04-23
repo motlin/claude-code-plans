@@ -103,6 +103,44 @@ jobs:
             echo "No changes needed by Biome"
           fi
 
+  fallow-fix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: jdx/mise-action@v4
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "github-actions@github.com"
+
+      - name: Run Fallow Fix
+        run: |
+          npm ci
+          npx fallow fix --yes
+
+          if [[ -n $(git status --porcelain) ]]; then
+            FIX_BRANCH="fix-${{ github.event.pull_request.number }}-fallow"
+            git switch --create $FIX_BRANCH
+
+            git add --all
+            git commit --message "Apply fallow fixes."
+            git push --force origin $FIX_BRANCH
+
+            echo "Fallow fixes have been pushed to the $FIX_BRANCH branch."
+            exit 1
+          else
+            echo "No changes needed by fallow"
+          fi
+
   pre-commit-fix:
     runs-on: ubuntu-latest
     permissions:
