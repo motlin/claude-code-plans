@@ -140,7 +140,7 @@ export const SessionChat = React.memo(function SessionChat({
 	lines,
 	toolResultMap: serializedToolResultMap,
 	subagentTree,
-	showThinking = true,
+	showThinking = false,
 	showTools = true,
 	showPassedHooks = false,
 	showHookErrors = false,
@@ -256,6 +256,7 @@ function SessionLineList({
 				if (entry.kind === 'line') {
 					const i = entry.index;
 					if (skipSet.has(i)) return null;
+					if (!isLineVisible(entry.line, renderProps)) return null;
 					const prevRole = i > 0 ? lines[i - 1]!.type : null;
 					const isNewTurn = prevRole !== null && prevRole !== lines[i]!.type;
 
@@ -312,6 +313,7 @@ function AssistantGroupSection({
 					{group.lines.map((line, lineOffset) => {
 						const i = group.startIndex + lineOffset;
 						if (skipSet.has(i)) return null;
+						if (!isLineVisible(line, renderProps)) return null;
 
 						return (
 							<LineEntry
@@ -350,6 +352,24 @@ function getAttachmentSubtype(json: string): string | null {
 	}
 }
 
+function isLineVisible(
+	line: SessionLine,
+	{
+		showPassedHooks,
+		showHookErrors,
+		showSystemBanners,
+	}: Pick<LineRenderProps, 'showPassedHooks' | 'showHookErrors' | 'showSystemBanners'>,
+): boolean {
+	if (line.type === 'agent-name' || line.type === 'permission-mode') return showSystemBanners;
+	if (line.type === 'attachment') {
+		const subtype = getAttachmentSubtype(line.attachmentJson);
+		if (subtype === 'hook_success') return showPassedHooks;
+		if (subtype && HOOK_ERROR_SUBTYPES.has(subtype)) return showHookErrors;
+		if (subtype && SYSTEM_BANNER_SUBTYPES.has(subtype)) return showSystemBanners;
+	}
+	return true;
+}
+
 /**
  * Top-level switching component: reads line.type and delegates to
  * per-type entry components. Every component receives the full raw line.
@@ -361,22 +381,10 @@ function SessionMessage({
 	subagentLookup,
 	showThinking,
 	showTools,
-	showPassedHooks,
-	showHookErrors,
-	showSystemBanners,
 	showTimestamps,
 	nextLine,
-}: {
+}: LineRenderProps & {
 	line: SessionLine;
-	sessionId: string;
-	toolResultMap: Map<string, ToolResultInfo>;
-	subagentLookup: ReturnType<typeof buildSubagentLookup>;
-	showThinking: boolean;
-	showTools: boolean;
-	showPassedHooks: boolean;
-	showHookErrors: boolean;
-	showSystemBanners: boolean;
-	showTimestamps: boolean;
 	nextLine?: SessionLine | undefined;
 }) {
 	if (line.type === 'user') {
@@ -403,7 +411,6 @@ function SessionMessage({
 		);
 	}
 	if (line.type === 'agent-name') {
-		if (!showSystemBanners) return null;
 		return (
 			<Banner
 				icon="🤖"
@@ -412,7 +419,6 @@ function SessionMessage({
 		);
 	}
 	if (line.type === 'permission-mode') {
-		if (!showSystemBanners) return null;
 		return (
 			<Banner
 				icon="🔒"
@@ -435,10 +441,6 @@ function SessionMessage({
 		);
 	}
 	if (line.type === 'attachment') {
-		const subtype = getAttachmentSubtype(line.attachmentJson);
-		if (subtype === 'hook_success' && !showPassedHooks) return null;
-		if (subtype && HOOK_ERROR_SUBTYPES.has(subtype) && !showHookErrors) return null;
-		if (subtype && SYSTEM_BANNER_SUBTYPES.has(subtype) && !showSystemBanners) return null;
 		return <AttachmentBanner attachmentJson={line.attachmentJson} />;
 	}
 	return null;
@@ -1250,8 +1252,6 @@ function ParallelGroupInline({
 }
 
 function ToolCallSummary({calls, summary, sessionId}: {calls: ClientToolCall[]; summary: string; sessionId: string}) {
-	const [expanded, setExpanded] = useState(false);
-
 	const taskCalls = calls.filter((c) => TASK_TOOLS.has(c.name));
 	const hasTasksView = taskCalls.length >= 3;
 	const displayCalls = hasTasksView ? calls.filter((c) => !TASK_TOOLS.has(c.name)) : calls;
@@ -1259,51 +1259,39 @@ function ToolCallSummary({calls, summary, sessionId}: {calls: ClientToolCall[]; 
 
 	return (
 		<div className="min-w-0 py-1">
-			<button
-				type="button"
-				onClick={() => setExpanded(!expanded)}
-				className="flex items-center gap-2 py-1 text-sm leading-relaxed transition-colors cursor-pointer w-full text-left text-text-500 hover:text-text-300"
-			>
-				<ChevronIcon
-					expanded={expanded}
-					size={16}
-				/>
+			<div className="flex items-center gap-2 py-1 text-sm leading-relaxed text-text-500">
 				<span>{summary}</span>
-			</button>
-			<div className={`grid ${expanded ? 'grid-rows-expand' : 'grid-rows-collapse'}`}>
-				<div className="overflow-hidden">
-					{hasTasksView && (
-						<div className="ml-2 mb-2">
-							<TasksView toolCalls={calls} />
-						</div>
-					)}
-					<div className="ml-2 pl-0">
-						{items.map((item, i) => {
-							const isFirst = i === 0;
-							const isLast = i === items.length - 1;
-							if (item.kind === 'parallel') {
-								return (
-									<ParallelGroupInline
-										key={`pg-${item.key}`}
-										calls={item.calls}
-										sessionId={sessionId}
-										isFirst={isFirst}
-										isLast={isLast}
-									/>
-								);
-							}
-							return (
-								<ToolCallRow
-									key={i}
-									call={item.call}
-									sessionId={sessionId}
-									isFirst={isFirst}
-									isLast={isLast}
-								/>
-							);
-						})}
-					</div>
+			</div>
+			{hasTasksView && (
+				<div className="ml-2 mb-2">
+					<TasksView toolCalls={calls} />
 				</div>
+			)}
+			<div className="ml-2 pl-0">
+				{items.map((item, i) => {
+					const isFirst = i === 0;
+					const isLast = i === items.length - 1;
+					if (item.kind === 'parallel') {
+						return (
+							<ParallelGroupInline
+								key={`pg-${item.key}`}
+								calls={item.calls}
+								sessionId={sessionId}
+								isFirst={isFirst}
+								isLast={isLast}
+							/>
+						);
+					}
+					return (
+						<ToolCallRow
+							key={i}
+							call={item.call}
+							sessionId={sessionId}
+							isFirst={isFirst}
+							isLast={isLast}
+						/>
+					);
+				})}
 			</div>
 		</div>
 	);
