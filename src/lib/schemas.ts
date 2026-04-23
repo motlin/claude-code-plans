@@ -66,7 +66,7 @@ export const ToolResultBlockSchema = z
 	})
 	.strict();
 
-export const ImageBlockSchema = z
+const ImageBlockSchema = z
 	.object({
 		type: z.literal('image'),
 		source: z
@@ -79,7 +79,7 @@ export const ImageBlockSchema = z
 	})
 	.strict();
 
-export const DocumentBlockSchema = z
+const DocumentBlockSchema = z
 	.object({
 		type: z.literal('document'),
 		source: z
@@ -226,7 +226,7 @@ export const FileHistorySnapshotSchema = z
 // Attachment sub-types (discriminated on attachment.type)
 // ---------------------------------------------------------------------------
 
-export const PlanModeAttachmentPayload = z
+const PlanModeAttachmentPayload = z
 	.object({
 		type: z.literal('plan_mode'),
 		planFilePath: z.string().optional(),
@@ -236,7 +236,7 @@ export const PlanModeAttachmentPayload = z
 	})
 	.strict();
 
-export const PlanModeExitAttachmentPayload = z
+const PlanModeExitAttachmentPayload = z
 	.object({
 		type: z.literal('plan_mode_exit'),
 		planFilePath: z.string().optional(),
@@ -251,7 +251,7 @@ const HookBaseFields = {
 	hookEvent: z.string(),
 };
 
-export const HookSuccessAttachmentPayload = z
+const HookSuccessAttachmentPayload = z
 	.object({
 		type: z.literal('hook_success'),
 		...HookBaseFields,
@@ -264,7 +264,7 @@ export const HookSuccessAttachmentPayload = z
 	})
 	.strict();
 
-export const HookNonBlockingErrorAttachmentPayload = z
+const HookNonBlockingErrorAttachmentPayload = z
 	.object({
 		type: z.literal('hook_non_blocking_error'),
 		...HookBaseFields,
@@ -276,7 +276,7 @@ export const HookNonBlockingErrorAttachmentPayload = z
 	})
 	.strict();
 
-export const HookBlockingErrorAttachmentPayload = z
+const HookBlockingErrorAttachmentPayload = z
 	.object({
 		type: z.literal('hook_blocking_error'),
 		...HookBaseFields,
@@ -286,7 +286,7 @@ export const HookBlockingErrorAttachmentPayload = z
 	})
 	.strict();
 
-export const HookCancelledAttachmentPayload = z
+const HookCancelledAttachmentPayload = z
 	.object({
 		type: z.literal('hook_cancelled'),
 		...HookBaseFields,
@@ -295,7 +295,7 @@ export const HookCancelledAttachmentPayload = z
 	})
 	.strict();
 
-export const HookAdditionalContextAttachmentPayload = z
+const HookAdditionalContextAttachmentPayload = z
 	.object({
 		type: z.literal('hook_additional_context'),
 		...HookBaseFields,
@@ -303,7 +303,7 @@ export const HookAdditionalContextAttachmentPayload = z
 	})
 	.strict();
 
-export const DeferredToolsDeltaAttachmentPayload = z
+const DeferredToolsDeltaAttachmentPayload = z
 	.object({
 		type: z.literal('deferred_tools_delta'),
 		addedNames: z.array(z.string()).optional(),
@@ -312,7 +312,7 @@ export const DeferredToolsDeltaAttachmentPayload = z
 	})
 	.strict();
 
-export const McpInstructionsDeltaAttachmentPayload = z
+const McpInstructionsDeltaAttachmentPayload = z
 	.object({
 		type: z.literal('mcp_instructions_delta'),
 		addedNames: z.array(z.string()).optional(),
@@ -321,7 +321,7 @@ export const McpInstructionsDeltaAttachmentPayload = z
 	})
 	.strict();
 
-export const SkillListingAttachmentPayload = z
+const SkillListingAttachmentPayload = z
 	.object({
 		type: z.literal('skill_listing'),
 		content: z.string().optional(),
@@ -336,15 +336,11 @@ const ReminderBaseFields = {
 	itemCount: z.number().optional(),
 };
 
-export const TaskReminderAttachmentPayload = z
-	.object({type: z.literal('task_reminder'), ...ReminderBaseFields})
-	.strict();
+const TaskReminderAttachmentPayload = z.object({type: z.literal('task_reminder'), ...ReminderBaseFields}).strict();
 
-export const TodoReminderAttachmentPayload = z
-	.object({type: z.literal('todo_reminder'), ...ReminderBaseFields})
-	.strict();
+const TodoReminderAttachmentPayload = z.object({type: z.literal('todo_reminder'), ...ReminderBaseFields}).strict();
 
-export const EditedTextFileAttachmentPayload = z
+const EditedTextFileAttachmentPayload = z
 	.object({
 		type: z.literal('edited_text_file'),
 		filename: z.string(),
@@ -352,7 +348,7 @@ export const EditedTextFileAttachmentPayload = z
 	})
 	.strict();
 
-export const FileAttachmentPayload = z
+const FileAttachmentPayload = z
 	.object({
 		type: z.literal('file'),
 		filename: z.string(),
@@ -361,7 +357,7 @@ export const FileAttachmentPayload = z
 	})
 	.strict();
 
-export const DirectoryAttachmentPayload = z
+const DirectoryAttachmentPayload = z
 	.object({
 		type: z.literal('directory'),
 		path: z.string().optional(),
@@ -370,7 +366,7 @@ export const DirectoryAttachmentPayload = z
 	})
 	.strict();
 
-export const CompactFileReferenceAttachmentPayload = z
+const CompactFileReferenceAttachmentPayload = z
 	.object({
 		type: z.literal('compact_file_reference'),
 		filename: z.string().optional(),
@@ -378,14 +374,14 @@ export const CompactFileReferenceAttachmentPayload = z
 	})
 	.strict();
 
-export const DateChangeAttachmentPayload = z
+const DateChangeAttachmentPayload = z
 	.object({
 		type: z.literal('date_change'),
 		newDate: z.string(),
 	})
 	.strict();
 
-export const CommandPermissionsAttachmentPayload = z
+const CommandPermissionsAttachmentPayload = z
 	.object({
 		type: z.literal('command_permissions'),
 		allowedTools: z.array(z.unknown()).optional(),
@@ -393,7 +389,7 @@ export const CommandPermissionsAttachmentPayload = z
 	})
 	.strict();
 
-export const DiagnosticsAttachmentPayload = z
+const DiagnosticsAttachmentPayload = z
 	.object({
 		type: z.literal('diagnostics'),
 		files: z.array(z.unknown()).optional(),
@@ -401,7 +397,7 @@ export const DiagnosticsAttachmentPayload = z
 	})
 	.strict();
 
-export const QueuedCommandAttachmentPayload = z
+const QueuedCommandAttachmentPayload = z
 	.object({
 		type: z.literal('queued_command'),
 		prompt: z.union([z.string(), z.array(z.unknown())]).optional(),
@@ -411,7 +407,7 @@ export const QueuedCommandAttachmentPayload = z
 	})
 	.strict();
 
-export const SelectedLinesInIdeAttachmentPayload = z
+const SelectedLinesInIdeAttachmentPayload = z
 	.object({
 		type: z.literal('selected_lines_in_ide'),
 		ideName: z.string().optional(),
@@ -423,14 +419,14 @@ export const SelectedLinesInIdeAttachmentPayload = z
 	})
 	.strict();
 
-export const OpenedFileInIdeAttachmentPayload = z
+const OpenedFileInIdeAttachmentPayload = z
 	.object({
 		type: z.literal('opened_file_in_ide'),
 		filename: z.string().optional(),
 	})
 	.strict();
 
-export const CompanionIntroAttachmentPayload = z
+const CompanionIntroAttachmentPayload = z
 	.object({
 		type: z.literal('companion_intro'),
 		name: z.string().optional(),
@@ -438,14 +434,14 @@ export const CompanionIntroAttachmentPayload = z
 	})
 	.strict();
 
-export const InvokedSkillsAttachmentPayload = z
+const InvokedSkillsAttachmentPayload = z
 	.object({
 		type: z.literal('invoked_skills'),
 		skills: z.array(z.unknown()).optional(),
 	})
 	.strict();
 
-export const UltrathinkEffortAttachmentPayload = z
+const UltrathinkEffortAttachmentPayload = z
 	.object({
 		type: z.literal('ultrathink_effort'),
 		level: z.string().optional(),
@@ -550,7 +546,7 @@ export const QueueOperationRecordSchema = z
 	})
 	.strict();
 
-export const AgentNameRecordSchema = z
+const AgentNameRecordSchema = z
 	.object({
 		type: z.literal('agent-name'),
 		agentName: z.string(),
@@ -558,7 +554,7 @@ export const AgentNameRecordSchema = z
 	})
 	.strict();
 
-export const PermissionModeRecordSchema = z
+const PermissionModeRecordSchema = z
 	.object({
 		type: z.literal('permission-mode'),
 		permissionMode: z.string(),
@@ -566,7 +562,7 @@ export const PermissionModeRecordSchema = z
 	})
 	.strict();
 
-export const PrLinkRecordSchema = z
+const PrLinkRecordSchema = z
 	.object({
 		type: z.literal('pr-link'),
 		prUrl: z.string(),
@@ -577,7 +573,7 @@ export const PrLinkRecordSchema = z
 	})
 	.strict();
 
-export const AgentColorRecordSchema = z
+const AgentColorRecordSchema = z
 	.object({
 		type: z.literal('agent-color'),
 		agentColor: z.string(),
@@ -609,7 +605,7 @@ export const JsonlRecordSchema = z.discriminatedUnion('type', [
 // Task Files (~/.claude/tasks/{project}/{id}.json)
 // ---------------------------------------------------------------------------
 
-export const TaskStatusSchema = z.enum(['pending', 'in_progress', 'completed']);
+const TaskStatusSchema = z.enum(['pending', 'in_progress', 'completed']);
 
 export const TaskFileSchema = z
 	.object({

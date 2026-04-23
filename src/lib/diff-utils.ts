@@ -92,46 +92,6 @@ export function buildUnifiedHunk(oldStr: string, newStr: string, filePath = 'fil
 	].join('\n');
 }
 
-const EXT_LANG: Record<string, string> = {
-	ts: 'typescript',
-	tsx: 'tsx',
-	js: 'javascript',
-	jsx: 'jsx',
-	py: 'python',
-	rb: 'ruby',
-	rs: 'rust',
-	go: 'go',
-	java: 'java',
-	kt: 'kotlin',
-	swift: 'swift',
-	c: 'c',
-	cpp: 'cpp',
-	h: 'c',
-	hpp: 'cpp',
-	cs: 'csharp',
-	css: 'css',
-	scss: 'scss',
-	html: 'html',
-	xml: 'xml',
-	json: 'json',
-	yaml: 'yaml',
-	yml: 'yaml',
-	toml: 'toml',
-	md: 'markdown',
-	sh: 'sh',
-	bash: 'bash',
-	zsh: 'sh',
-	sql: 'sql',
-	graphql: 'graphql',
-	vue: 'vue',
-	svelte: 'svelte',
-};
-
-export function detectLanguage(filePath: string): string {
-	const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
-	return EXT_LANG[ext] ?? '';
-}
-
 /**
  * Extracts line numbers from Read tool prefixes (e.g., "1→content" -> {content: "content", lineNumber: 1})
  * and removes the prefix from the line.

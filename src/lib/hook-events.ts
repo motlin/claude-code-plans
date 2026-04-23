@@ -165,35 +165,35 @@ const BaseHookFields = z.object({
 	hook_event_name: z.string(),
 });
 
-export const SessionStartHookEvent = BaseHookFields.extend({
+const SessionStartHookEvent = BaseHookFields.extend({
 	hook_event_name: z.literal('SessionStart'),
 	source: z.string().optional(),
 	model: z.string().optional(),
 });
 
-export const SessionEndHookEvent = BaseHookFields.extend({
+const SessionEndHookEvent = BaseHookFields.extend({
 	hook_event_name: z.literal('SessionEnd'),
 });
 
-export const StopHookEvent = BaseHookFields.extend({
+const StopHookEvent = BaseHookFields.extend({
 	hook_event_name: z.literal('Stop'),
 });
 
-export const PostToolUseHookEvent = BaseHookFields.extend({
+const PostToolUseHookEvent = BaseHookFields.extend({
 	hook_event_name: z.literal('PostToolUse'),
 	tool_name: z.string(),
 	tool_input: z.record(z.string(), z.unknown()).optional(),
 	tool_response: z.record(z.string(), z.unknown()).optional(),
 });
 
-export const TaskCompletedHookEvent = BaseHookFields.extend({
+const TaskCompletedHookEvent = BaseHookFields.extend({
 	hook_event_name: z.literal('TaskCompleted'),
 	task_id: z.string().optional(),
 	task_subject: z.string().optional(),
 	task_description: z.string().optional(),
 });
 
-export const WorktreeCreateHookEvent = BaseHookFields.extend({
+const WorktreeCreateHookEvent = BaseHookFields.extend({
 	hook_event_name: z.literal('WorktreeCreate'),
 	name: z.string().optional(),
 });

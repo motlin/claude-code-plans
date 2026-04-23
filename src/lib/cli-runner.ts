@@ -98,7 +98,3 @@ export function killProcess(processId: string): boolean {
 	activeProcesses.delete(processId);
 	return true;
 }
-
-export function getActiveProcessIds(): string[] {
-	return Array.from(activeProcesses.keys());
-}

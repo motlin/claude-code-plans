@@ -74,4 +74,3 @@ export function getToolRenderer(name: string): ComponentType<ToolRendererProps> 
 }
 
 export type {ClientToolCall, ToolInput, ToolRendererProps, SubagentInlineInfo, SerializedToolResultMap} from './types';
-export {buildClientToolCall, buildSubagentLookup} from './types';

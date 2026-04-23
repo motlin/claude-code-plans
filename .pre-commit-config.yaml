@@ -32,3 +32,10 @@ repos:
             entry: npx eslint --fix
             language: system
             types: [file]
+
+          - id: fallow
+            name: fallow fix
+            entry: npx fallow fix --base HEAD --yes
+            language: system
+            pass_filenames: false
+            types: [file]

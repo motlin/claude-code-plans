@@ -2,7 +2,6 @@ import {createReadStream} from 'node:fs';
 import {readdir, readFile, stat} from 'node:fs/promises';
 import {join} from 'node:path';
 import {createInterface} from 'node:readline';
-import {homedir} from 'node:os';
 import {decodeProjectDir, resolveProjectName} from './memory';
 import {SessionsIndexSchema, CustomTitleRecordSchema, JsonlRecordSchema} from './schemas';
 
@@ -196,7 +195,7 @@ import {
 	truncateResult,
 } from './session-utils';
 
-export {stripCommandTags, parseBashInput, parseBashOutput, parseCommandBlock, extractSessionTitle, summarizeToolCalls};
+export {parseCommandBlock, extractSessionTitle, summarizeToolCalls};
 
 interface RawContentBlock {
 	type: string;
@@ -980,8 +979,4 @@ export async function readNewJsonlLines(
 	}
 
 	return {lines, nextByteOffset: fromByteOffset + bytesConsumed};
-}
-
-export function getSessionsDir(): string {
-	return join(homedir(), '.claude', 'projects');
 }

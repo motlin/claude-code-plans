@@ -1,5 +1,3 @@
-import {homedir} from 'node:os';
-import {join, basename} from 'node:path';
 import {hmrPersist, hmrDispose} from './hmr-persist';
 
 export interface ActiveSessionEntry {
@@ -18,7 +16,7 @@ hmrDispose(() => {
 	if (sweepTimer) clearInterval(sweepTimer);
 });
 
-export const STALE_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
+const STALE_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
 export const SWEEP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 export function markSessionActive(sessionId: string, meta: {cwd: string; model?: string}): void {
@@ -64,18 +62,6 @@ export function hasAnyActiveSessions(): boolean {
 	return store.size > 0;
 }
 
-export function deriveProjectDir(cwd: string): string {
-	return basename(cwd);
-}
-
-export function deriveSessionIdFromPath(filePath: string): string | null {
-	const name = basename(filePath);
-	if (!name.endsWith('.jsonl')) return null;
-	const projectsDir = join(homedir(), '.claude', 'projects');
-	if (!filePath.startsWith(projectsDir)) return null;
-	return name.replace(/\.jsonl$/, '');
-}
-
 export function sweepSessions(target: Map<string, ActiveSessionEntry>): void {
 	const now = Date.now();
 	for (const [id, entry] of target) {
@@ -92,11 +78,4 @@ function sweep(): void {
 export function startSweep(): void {
 	if (sweepTimer) clearInterval(sweepTimer);
 	sweepTimer = setInterval(sweep, SWEEP_INTERVAL_MS);
-}
-
-export function stopSweep(): void {
-	if (sweepTimer) {
-		clearInterval(sweepTimer);
-		sweepTimer = null;
-	}
 }

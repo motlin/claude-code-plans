@@ -203,7 +203,7 @@ export function parseAnsiCodes(text: string): StyledPart[] {
 	return parts;
 }
 
-export function AnsiText({content}: {content: string}) {
+function AnsiText({content}: {content: string}) {
 	const parts = parseAnsiCodes(content);
 
 	return (

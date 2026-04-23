@@ -68,10 +68,6 @@ export function removeClient(controller: ReadableStreamDefaultController): void 
 	clients.delete(controller);
 }
 
-export function getClientCount(): number {
-	return clients.size;
-}
-
 function sessionSummariesEqual(a: SessionSummaryPayload, b: SessionSummaryPayload): boolean {
 	return (
 		a.id === b.id &&
@@ -367,25 +363,6 @@ export async function createWatcher(
 	watcher.on('unlink', handleFileUnlink);
 
 	return watcher;
-}
-
-export async function closeWatcher(): Promise<void> {
-	if (watcher) {
-		await watcher.close();
-		watcher = null;
-	}
-	if (debounceTimer) {
-		clearTimeout(debounceTimer);
-		debounceTimer = null;
-	}
-	for (const client of clients) {
-		try {
-			client.close();
-		} catch {
-			// already closed
-		}
-	}
-	clients.clear();
 }
 
 // ---------------------------------------------------------------------------

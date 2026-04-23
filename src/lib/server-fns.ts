@@ -19,8 +19,6 @@ import {
 	getTasksForProject,
 	getTaskCountsForProject,
 	listBranchesForProject,
-	listSessionsForBranch,
-	listCwdsForProject,
 } from './db/queries';
 
 async function claudeDirs() {
@@ -410,11 +408,6 @@ export const getPluginsList = createServerFn({method: 'GET'}).handler(async () =
 	return listPlugins();
 });
 
-export const getMarketplacesList = createServerFn({method: 'GET'}).handler(async () => {
-	const {listMarketplaces} = await import('./plugins');
-	return listMarketplaces();
-});
-
 export const getPluginGroups = createServerFn({method: 'GET'}).handler(async () => {
 	const {listPlugins, listMarketplaces, groupPluginsByMarketplace, isOfficialMarketplace} = await import('./plugins');
 	const [plugins, marketplaces] = await Promise.all([listPlugins(), listMarketplaces()]);
@@ -630,23 +623,6 @@ export const getTasks = createServerFn({method: 'GET'}).handler(async () => {
 	);
 });
 
-export const getProjectTasks = createServerFn({method: 'GET'})
-	.inputValidator(z.string())
-	.handler(async ({data: projectDir}) => {
-		const {getDb} = await import('./db');
-		const {index} = getDb();
-		const tasks = getTasksForProject(index, projectDir);
-		const {renderInlineMarkdown, renderMarkdown} = await import('./renderer');
-
-		return Promise.all(
-			tasks.map(async (task) => ({
-				...task,
-				subjectHtml: await renderInlineMarkdown(task.subject),
-				descriptionHtml: await renderMarkdown(task.description),
-			})),
-		);
-	});
-
 // ---------------------------------------------------------------------------
 // Project-scoped sub-route data
 // ---------------------------------------------------------------------------
@@ -779,36 +755,6 @@ export const getProjectBranches = createServerFn({method: 'GET'})
 			branch: b.branch,
 			sessionCount: b.sessionCount,
 			lastActivity: new Date(b.lastActivity).toISOString(),
-		}));
-	});
-
-export const getProjectBranchSessions = createServerFn({method: 'GET'})
-	.inputValidator(z.object({projectId: z.string(), branch: z.string()}))
-	.handler(async ({data: {projectId, branch}}) => {
-		const {getDb} = await import('./db');
-		const {index} = getDb();
-		const sessions = listSessionsForBranch(index, projectId, branch);
-		return sessions.map((s) => ({
-			id: s.id,
-			title: s.title,
-			summary: s.summary,
-			mtime: s.mtime.toISOString(),
-			created: s.created.toISOString(),
-			messageCount: s.messageCount,
-			gitBranch: s.gitBranch,
-		}));
-	});
-
-export const getProjectCwds = createServerFn({method: 'GET'})
-	.inputValidator(z.string())
-	.handler(async ({data: projectId}) => {
-		const {getDb} = await import('./db');
-		const {index} = getDb();
-		const cwds = listCwdsForProject(index, projectId);
-		return cwds.map((c) => ({
-			cwd: c.cwd,
-			sessionCount: c.sessionCount,
-			lastActivity: new Date(c.lastActivity).toISOString(),
 		}));
 	});
 

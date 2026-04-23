@@ -1,10 +1,8 @@
 import {queryOptions} from '@tanstack/react-query';
 import {
-	getMarketplacesList,
 	getPluginFileRendered,
 	getPluginGroups,
 	getPluginsList,
-	getPluginTree,
 	getUserCommandRendered,
 	getUserCommandsList,
 } from '../lib/server-fns';
@@ -14,12 +12,6 @@ const PLUGINS_STALE_TIME_MS = 30_000;
 export const pluginsQueryOptions = queryOptions({
 	queryKey: ['plugins'] as const,
 	queryFn: () => getPluginsList(),
-	staleTime: PLUGINS_STALE_TIME_MS,
-});
-
-export const marketplacesQueryOptions = queryOptions({
-	queryKey: ['marketplaces'] as const,
-	queryFn: () => getMarketplacesList(),
 	staleTime: PLUGINS_STALE_TIME_MS,
 });
 
@@ -34,13 +26,6 @@ export const userCommandsQueryOptions = queryOptions({
 	queryFn: () => getUserCommandsList(),
 	staleTime: PLUGINS_STALE_TIME_MS,
 });
-
-export const pluginTreeQueryOptions = (pluginId: string) =>
-	queryOptions({
-		queryKey: ['plugin', pluginId, 'tree'] as const,
-		queryFn: () => getPluginTree({data: {pluginId}}),
-		staleTime: PLUGINS_STALE_TIME_MS,
-	});
 
 export const pluginFileRenderedQueryOptions = (pluginId: string, pathSegments: ReadonlyArray<string>) =>
 	queryOptions({

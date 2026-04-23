@@ -2,7 +2,7 @@ import {readdir, stat} from 'node:fs/promises';
 import {join} from 'node:path';
 import {resolveProjectName, type MemoryEntry} from './memory';
 import {listSessions, listSessionsForProject, listSessionsFromJsonl, type SessionEntry} from './sessions';
-import {scanPlanLinksForProject, type PlanSessionLink} from './plan-links';
+import {type PlanSessionLink} from './plan-links';
 
 export interface ProjectSummary {
 	id: string;
@@ -131,7 +131,7 @@ export async function getProjectDetail(projectsDir: string, projectId: string): 
 
 	const memories = await readMemoryEntries(projectsDir, projectId);
 
-	const plans = await scanPlanLinksForProject(projectsDir, projectId);
+	const plans: PlanSessionLink[] = [];
 
 	return {
 		id: projectId,

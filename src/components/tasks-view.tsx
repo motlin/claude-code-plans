@@ -59,7 +59,7 @@ export function extractTasks(toolCalls: ClientToolCall[]): TaskItem[] {
 	return Array.from(tasks.values());
 }
 
-export function extractAgents(toolCalls: ClientToolCall[]): AgentItem[] {
+function extractAgents(toolCalls: ClientToolCall[]): AgentItem[] {
 	const agents: AgentItem[] = [];
 	let autoId = 0;
 

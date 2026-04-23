@@ -13,7 +13,7 @@ import {broadcast} from './watcher';
  * the streaming HTTP response — is handled here.
  */
 
-export const cancelSchema = z.object({
+const cancelSchema = z.object({
 	action: z.literal('cancel'),
 	processId: z.string(),
 });

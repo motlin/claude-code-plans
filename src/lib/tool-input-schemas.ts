@@ -28,7 +28,7 @@ export const EditInputSchema = z
 	})
 	.strict();
 
-export const MultiEditInputSchema = z
+const MultiEditInputSchema = z
 	.object({
 		file_path: z.string(),
 		edits: z.array(
@@ -90,21 +90,21 @@ export const AgentInputSchema = z
 	})
 	.strict();
 
-export const WebFetchInputSchema = z
+const WebFetchInputSchema = z
 	.object({
 		url: z.string(),
 		prompt: z.string().optional(),
 	})
 	.strict();
 
-export const SkillInputSchema = z
+const SkillInputSchema = z
 	.object({
 		skill: z.string(),
 		args: z.string().optional(),
 	})
 	.strict();
 
-export const TaskCreateInputSchema = z
+const TaskCreateInputSchema = z
 	.object({
 		subject: z.string(),
 		description: z.string().optional(),
@@ -115,7 +115,7 @@ export const TaskCreateInputSchema = z
 	})
 	.strict();
 
-export const TaskUpdateInputSchema = z
+const TaskUpdateInputSchema = z
 	.object({
 		taskId: z.string(),
 		status: z.string().optional(),
@@ -126,13 +126,13 @@ export const TaskUpdateInputSchema = z
 	})
 	.strict();
 
-export const TaskGetInputSchema = z
+const TaskGetInputSchema = z
 	.object({
 		taskId: z.string(),
 	})
 	.strict();
 
-export const TaskListInputSchema = z.object({}).strict();
+const TaskListInputSchema = z.object({}).strict();
 
 const OptionSchema = z
 	.object({
@@ -142,7 +142,7 @@ const OptionSchema = z
 	})
 	.strict();
 
-export const AskUserQuestionInputSchema = z
+const AskUserQuestionInputSchema = z
 	.object({
 		question: z.string().optional(),
 		options: z.array(OptionSchema).optional(),
@@ -164,7 +164,7 @@ export const AskUserQuestionInputSchema = z
 	})
 	.strict();
 
-export const ExitPlanModeInputSchema = z
+const ExitPlanModeInputSchema = z
 	.object({
 		plan: z.string().optional(),
 		planFilePath: z.string().optional(),
@@ -172,29 +172,29 @@ export const ExitPlanModeInputSchema = z
 	})
 	.strict();
 
-export const EnterPlanModeInputSchema = z.object({}).strict();
+const EnterPlanModeInputSchema = z.object({}).strict();
 
-export const ToolSearchInputSchema = z
+const ToolSearchInputSchema = z
 	.object({
 		query: z.string(),
 		max_results: z.number().optional(),
 	})
 	.strict();
 
-export const TodoWriteInputSchema = z
+const TodoWriteInputSchema = z
 	.object({
 		todos: z.array(z.unknown()),
 	})
 	.strict();
 
-export const WebSearchInputSchema = z
+const WebSearchInputSchema = z
 	.object({
 		query: z.string(),
 		allowed_domains: z.array(z.string()).optional(),
 	})
 	.strict();
 
-export const SendMessageInputSchema = z
+const SendMessageInputSchema = z
 	.object({
 		to: z.string().optional(),
 		recipient: z.string().optional(),
@@ -206,13 +206,13 @@ export const SendMessageInputSchema = z
 	})
 	.strict();
 
-export const TaskStopInputSchema = z
+const TaskStopInputSchema = z
 	.object({
 		task_id: z.string(),
 	})
 	.strict();
 
-export const CronCreateInputSchema = z
+const CronCreateInputSchema = z
 	.object({
 		cron: z.string(),
 		prompt: z.string(),

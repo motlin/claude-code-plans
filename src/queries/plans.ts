@@ -1,5 +1,5 @@
 import {queryOptions} from '@tanstack/react-query';
-import {getPlanLinks, getPlans, getPlansGrouped} from '../lib/server-fns';
+import {getPlans, getPlansGrouped} from '../lib/server-fns';
 
 const PLANS_STALE_TIME_MS = 30_000;
 
@@ -14,10 +14,3 @@ export const plansGroupedQueryOptions = queryOptions({
 	queryFn: () => getPlansGrouped(),
 	staleTime: PLANS_STALE_TIME_MS,
 });
-
-export const planLinksQueryOptions = (filename: string) =>
-	queryOptions({
-		queryKey: ['plan', filename, 'links'] as const,
-		queryFn: () => getPlanLinks({data: filename}),
-		staleTime: PLANS_STALE_TIME_MS,
-	});

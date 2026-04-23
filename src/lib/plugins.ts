@@ -344,10 +344,6 @@ export async function readUserCommandContent(source: string, filename: string): 
 	}
 }
 
-export function getPluginInstallPath(plugins: PluginInfo[], pluginId: string): string | undefined {
-	return plugins.find((p) => p.id === pluginId)?.installPath;
-}
-
 const EXCLUDED_DIRS = new Set(['node_modules', '.git', '__pycache__', '.venv']);
 
 export async function scanPluginTree(rootPath: string, relativePath = ''): Promise<FileTreeNode | null> {
