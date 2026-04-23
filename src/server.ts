@@ -1,3 +1,12 @@
+import * as Sentry from '@sentry/node';
+
+if (import.meta.env.DEV) {
+	Sentry.init({
+		dsn: 'https://spotlight@local/0',
+		tracesSampleRate: 1.0,
+	});
+}
+
 import handler, {createServerEntry} from '@tanstack/react-start/server-entry';
 import {homedir} from 'node:os';
 import {join} from 'node:path';

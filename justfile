@@ -12,9 +12,9 @@ port := "7526"
 install:
     {{ if ci != "" { "npm ci" } else { "npm install" } }}
 
-# Run dev server with Vite
+# Run dev server with Vite (wrapped by Spotlight sidecar)
 dev *args: install
-    PORT={{port}} npm run dev {{args}}
+    PORT={{port}} npx @spotlightjs/spotlight run npm run dev {{args}}
 
 # Run production server
 start *args: install build

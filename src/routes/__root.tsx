@@ -80,10 +80,6 @@ function MobileSidebar({open, onClose}: {open: boolean; onClose: () => void}) {
 	);
 }
 
-if (import.meta.env.DEV && typeof window !== 'undefined') {
-	import('../lib/browser-log-shipper').then(({installBrowserLogShipper}) => installBrowserLogShipper());
-}
-
 function RootComponent() {
 	const {queryClient} = Route.useRouteContext();
 	return (
