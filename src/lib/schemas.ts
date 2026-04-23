@@ -554,6 +554,14 @@ const AgentNameRecordSchema = z
 	})
 	.strict();
 
+const AgentColorRecordSchema = z
+	.object({
+		type: z.literal('agent-color'),
+		agentColor: z.string(),
+		sessionId: z.string(),
+	})
+	.strict();
+
 const PermissionModeRecordSchema = z
 	.object({
 		type: z.literal('permission-mode'),
@@ -573,14 +581,6 @@ const PrLinkRecordSchema = z
 	})
 	.strict();
 
-const AgentColorRecordSchema = z
-	.object({
-		type: z.literal('agent-color'),
-		agentColor: z.string(),
-		sessionId: z.string(),
-	})
-	.strict();
-
 /**
  * Discriminated union of all known JSONL record types.
  * Unknown record types are hard errors -- they mean we need a new schema branch.
@@ -596,9 +596,9 @@ export const JsonlRecordSchema = z.discriminatedUnion('type', [
 	LastPromptRecordSchema,
 	QueueOperationRecordSchema,
 	AgentNameRecordSchema,
+	AgentColorRecordSchema,
 	PermissionModeRecordSchema,
 	PrLinkRecordSchema,
-	AgentColorRecordSchema,
 ]);
 
 // ---------------------------------------------------------------------------
@@ -642,9 +642,9 @@ export type SystemRecord = z.infer<typeof SystemRecordSchema>;
 export type LastPromptRecord = z.infer<typeof LastPromptRecordSchema>;
 export type QueueOperationRecord = z.infer<typeof QueueOperationRecordSchema>;
 export type AgentNameRecord = z.infer<typeof AgentNameRecordSchema>;
+export type AgentColorRecord = z.infer<typeof AgentColorRecordSchema>;
 export type PermissionModeRecord = z.infer<typeof PermissionModeRecordSchema>;
 export type PrLinkRecord = z.infer<typeof PrLinkRecordSchema>;
-export type AgentColorRecord = z.infer<typeof AgentColorRecordSchema>;
 export type AttachmentPayload = z.infer<typeof AttachmentPayloadSchema>;
 export type JsonlRecord = z.infer<typeof JsonlRecordSchema>;
 export type TaskStatus = z.infer<typeof TaskStatusSchema>;

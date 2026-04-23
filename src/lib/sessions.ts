@@ -126,6 +126,12 @@ interface AgentNameSessionLine {
 	lineIndex: number;
 }
 
+interface AgentColorSessionLine {
+	type: 'agent-color';
+	agentColor: string;
+	lineIndex: number;
+}
+
 interface PermissionModeSessionLine {
 	type: 'permission-mode';
 	permissionMode: string;
@@ -152,6 +158,7 @@ export interface AttachmentSessionLine {
 export type SessionLine =
 	| MessageSessionLine
 	| AgentNameSessionLine
+	| AgentColorSessionLine
 	| PermissionModeSessionLine
 	| PrLinkSessionLine
 	| AttachmentSessionLine;
@@ -879,6 +886,10 @@ export async function readSessionLines(projectsDir: string, sessionId: string): 
 
 			if (record.type === 'agent-name') {
 				lines.push({type: 'agent-name', agentName: record.agentName, lineIndex});
+				continue;
+			}
+			if (record.type === 'agent-color') {
+				lines.push({type: 'agent-color', agentColor: record.agentColor, lineIndex});
 				continue;
 			}
 			if (record.type === 'permission-mode') {

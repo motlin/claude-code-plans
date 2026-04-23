@@ -359,7 +359,8 @@ function isLineVisible(
 		showSystemBanners,
 	}: Pick<LineRenderProps, 'showPassedHooks' | 'showHookErrors' | 'showSystemBanners'>,
 ): boolean {
-	if (line.type === 'agent-name' || line.type === 'permission-mode') return showSystemBanners;
+	if (line.type === 'agent-name' || line.type === 'agent-color' || line.type === 'permission-mode')
+		return showSystemBanners;
 	if (line.type === 'attachment') {
 		const subtype = getAttachmentSubtype(line.attachmentJson);
 		if (subtype === 'hook_success') return showPassedHooks;
@@ -417,6 +418,14 @@ function renderSessionMessage({
 			<Banner
 				icon="🤖"
 				label={line.agentName}
+			/>
+		);
+	}
+	if (line.type === 'agent-color') {
+		return (
+			<Banner
+				icon="🎨"
+				label={`Agent color: ${line.agentColor}`}
 			/>
 		);
 	}
