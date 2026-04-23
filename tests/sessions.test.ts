@@ -1064,9 +1064,7 @@ describe('readNewJsonlLines', () => {
 		writeFileSync(filePath, jsonl(userMessage('Hello'), assistantMessage([{type: 'text', text: 'Hi'}])));
 
 		const result = await readNewJsonlLines(filePath, 0);
-		expect(result.lines).toHaveLength(2);
-		expect(result.lines[0]!['type']).toBe('user');
-		expect(result.lines[1]!['type']).toBe('assistant');
+		expect(result.lines.map((line) => line['type'])).toStrictEqual(['user', 'assistant']);
 		expect(result.nextByteOffset).toBeGreaterThan(0);
 	});
 
@@ -1076,13 +1074,12 @@ describe('readNewJsonlLines', () => {
 		writeFileSync(filePath, firstLine);
 
 		const firstResult = await readNewJsonlLines(filePath, 0);
-		expect(firstResult.lines).toHaveLength(1);
+		expect(firstResult.lines.map((line) => line['type'])).toStrictEqual(['user']);
 
 		appendFileSync(filePath, JSON.stringify(assistantMessage([{type: 'text', text: 'Hi'}])) + '\n');
 
 		const secondResult = await readNewJsonlLines(filePath, firstResult.nextByteOffset);
-		expect(secondResult.lines).toHaveLength(1);
-		expect(secondResult.lines[0]!['type']).toBe('assistant');
+		expect(secondResult.lines.map((line) => line['type'])).toStrictEqual(['assistant']);
 		expect(secondResult.nextByteOffset).toBeGreaterThan(firstResult.nextByteOffset);
 	});
 
@@ -1093,8 +1090,7 @@ describe('readNewJsonlLines', () => {
 		writeFileSync(filePath, completeLine + partialLine);
 
 		const result = await readNewJsonlLines(filePath, 0);
-		expect(result.lines).toHaveLength(1);
-		expect(result.lines[0]!['type']).toBe('user');
+		expect(result.lines.map((line) => line['type'])).toStrictEqual(['user']);
 		// Offset should only advance past the complete line, not the partial one
 		expect(result.nextByteOffset).toBe(Buffer.byteLength(completeLine, 'utf-8'));
 	});
@@ -1105,7 +1101,7 @@ describe('readNewJsonlLines', () => {
 
 		const firstResult = await readNewJsonlLines(filePath, 0);
 		const secondResult = await readNewJsonlLines(filePath, firstResult.nextByteOffset);
-		expect(secondResult.lines).toHaveLength(0);
+		expect(secondResult.lines).toStrictEqual([]);
 		expect(secondResult.nextByteOffset).toBe(firstResult.nextByteOffset);
 	});
 
@@ -1120,6 +1116,6 @@ describe('readNewJsonlLines', () => {
 		);
 
 		const result = await readNewJsonlLines(filePath, 0);
-		expect(result.lines).toHaveLength(2);
+		expect(result.lines.map((line) => line['type'])).toStrictEqual(['user', 'assistant']);
 	});
 });

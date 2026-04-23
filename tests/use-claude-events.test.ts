@@ -501,10 +501,12 @@ describe('applySessionLinesAppended', () => {
 		});
 
 		const cached = queryClient.getQueryData<SessionDetailCache>(['session', 'sess-1', 'detail'])!;
-		expect(cached.lines).toHaveLength(2);
-		expect((cached.lines[0] as MessageSessionLine).uuid).toBe('u-1');
-		expect((cached.lines[1] as MessageSessionLine).uuid).toBe('a-1');
-		expect(cached.lines[1]!.lineIndex).toBe(1);
+		expect(
+			cached.lines.map((line) => ({uuid: (line as MessageSessionLine).uuid, lineIndex: line.lineIndex})),
+		).toStrictEqual([
+			{uuid: 'u-1', lineIndex: 0},
+			{uuid: 'a-1', lineIndex: 1},
+		]);
 	});
 
 	it('merges tool results into cached toolResultMap', () => {
@@ -536,10 +538,9 @@ describe('applySessionLinesAppended', () => {
 		});
 
 		const cached = queryClient.getQueryData<SessionDetailCache>(['session', 'sess-1', 'detail'])!;
-		expect(cached.toolResultMap).toHaveLength(1);
-		expect(cached.toolResultMap[0]![0]).toBe('tool-1');
-		expect(cached.toolResultMap[0]![1].result).toBe('output.txt');
-		expect(cached.toolResultMap[0]![1].duration).toBe(2000);
+		expect(cached.toolResultMap).toStrictEqual([
+			['tool-1', {result: 'output.txt', isError: false, resultUuid: 'u-1', duration: 2000}],
+		]);
 	});
 
 	it('does not modify cache when lines contain only non-user/assistant types', () => {
@@ -596,10 +597,9 @@ describe('applySessionLinesAppended', () => {
 		});
 
 		const cached = queryClient.getQueryData<SessionDetailCache>(['session', 'sess-1', 'detail'])!;
-		expect(cached.toolResultMap).toHaveLength(2);
-		expect(cached.toolResultMap[0]![0]).toBe('tool-0');
-		expect(cached.toolResultMap[0]![1].result).toBe('old');
-		expect(cached.toolResultMap[1]![0]).toBe('tool-1');
-		expect(cached.toolResultMap[1]![1].result).toBe('new data');
+		expect(cached.toolResultMap).toStrictEqual([
+			['tool-0', {result: 'old', isError: false, resultUuid: 'u-0'}],
+			['tool-1', {result: 'new data', isError: false, resultUuid: 'u-1', duration: 1000}],
+		]);
 	});
 });

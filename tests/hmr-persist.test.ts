@@ -13,7 +13,7 @@ describe('hmrPersist', () => {
 		const {hmrPersist} = await import('../src/lib/hmr-persist');
 		const result = hmrPersist('testKey', () => new Set([1, 2, 3]));
 		expect(result).toBeInstanceOf(Set);
-		expect(result).toEqual(new Set([1, 2, 3]));
+		expect(result).toStrictEqual(new Set([1, 2, 3]));
 	});
 
 	it('returns the same instance on subsequent calls with the same key', async () => {

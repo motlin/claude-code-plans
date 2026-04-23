@@ -253,8 +253,8 @@ describe('scanPluginTree', () => {
 		expect(paths).toContain('commands');
 
 		const agentsNode = tree!.children!.find((c) => c.path === 'agents');
-		expect(agentsNode?.children).toBeDefined();
-		expect(agentsNode?.children?.map((c) => c.path)).toStrictEqual(['agents/bot.md']);
+		if (!agentsNode?.children) throw new Error('Expected agentsNode to have children');
+		expect(agentsNode.children.map((c) => c.path)).toStrictEqual(['agents/bot.md']);
 		expect(agentsNode?.children?.[0]?.children).toBeUndefined();
 	});
 

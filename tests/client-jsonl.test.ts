@@ -4,7 +4,7 @@ import {interpretJsonlLines} from '../src/lib/client-jsonl';
 describe('interpretJsonlLines', () => {
 	it('returns empty results for empty input', () => {
 		const result = interpretJsonlLines([], 0);
-		expect(result.newSessionLines).toEqual([]);
+		expect(result.newSessionLines).toStrictEqual([]);
 		expect(result.newToolResults.size).toBe(0);
 	});
 
@@ -15,7 +15,7 @@ describe('interpretJsonlLines', () => {
 			{type: 'custom-title', customTitle: 'My Title'},
 		];
 		const result = interpretJsonlLines(lines, 0);
-		expect(result.newSessionLines).toEqual([]);
+		expect(result.newSessionLines).toStrictEqual([]);
 	});
 
 	it('includes user lines with correct lineIndex offset', () => {
@@ -28,11 +28,15 @@ describe('interpretJsonlLines', () => {
 			},
 		];
 		const result = interpretJsonlLines(lines, 5);
-		expect(result.newSessionLines).toHaveLength(1);
-		expect(result.newSessionLines[0]!.type).toBe('user');
-		expect(result.newSessionLines[0]!.lineIndex).toBe(5);
-		expect(result.newSessionLines[0]!.uuid).toBe('u-1');
-		expect(result.newSessionLines[0]!.timestamp).toBe('2026-04-21T00:00:00Z');
+		expect(result.newSessionLines).toStrictEqual([
+			{
+				type: 'user',
+				uuid: 'u-1',
+				timestamp: '2026-04-21T00:00:00Z',
+				lineIndex: 5,
+				message: {role: 'user', content: [{type: 'text', text: 'Hello'}]},
+			},
+		]);
 	});
 
 	it('includes assistant lines', () => {
@@ -45,8 +49,15 @@ describe('interpretJsonlLines', () => {
 			},
 		];
 		const result = interpretJsonlLines(lines, 0);
-		expect(result.newSessionLines).toHaveLength(1);
-		expect(result.newSessionLines[0]!.type).toBe('assistant');
+		expect(result.newSessionLines).toStrictEqual([
+			{
+				type: 'assistant',
+				uuid: 'a-1',
+				timestamp: '2026-04-21T00:01:00Z',
+				lineIndex: 0,
+				message: {role: 'assistant', content: [{type: 'text', text: 'Hi there'}]},
+			},
+		]);
 	});
 
 	it('pairs tool_use with tool_result across assistant+user lines', () => {
@@ -87,10 +98,13 @@ describe('interpretJsonlLines', () => {
 		const result = interpretJsonlLines(lines, 0);
 		expect(result.newToolResults.size).toBe(1);
 		const toolResult = result.newToolResults.get('tool-1');
-		expect(toolResult).toBeDefined();
-		expect(toolResult!.result).toBe('file1.txt\nfile2.txt');
-		expect(toolResult!.isError).toBe(false);
-		expect(toolResult!.resultUuid).toBe('u-1');
+		if (!toolResult) throw new Error('Expected toolResult for tool-1');
+		expect(toolResult).toStrictEqual({
+			result: 'file1.txt\nfile2.txt',
+			isError: false,
+			resultUuid: 'u-1',
+			duration: 5000,
+		});
 	});
 
 	it('computes tool duration from timestamps', () => {
@@ -240,9 +254,7 @@ describe('interpretJsonlLines', () => {
 			},
 		];
 		const result = interpretJsonlLines(lines, 10);
-		expect(result.newSessionLines).toHaveLength(2);
-		expect(result.newSessionLines[0]!.lineIndex).toBe(11);
-		expect(result.newSessionLines[1]!.lineIndex).toBe(13);
+		expect(result.newSessionLines.map((line) => line.lineIndex)).toStrictEqual([11, 13]);
 	});
 
 	it('truncates long tool results', () => {
