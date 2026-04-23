@@ -63,6 +63,10 @@ export interface SessionChatProps {
 	subagentTree: SubagentTreeEntry[];
 	showThinking?: boolean;
 	showTools?: boolean;
+	showPassedHooks?: boolean;
+	showHookErrors?: boolean;
+	showSystemBanners?: boolean;
+	showTimestamps?: boolean;
 }
 
 const autoScrolledSessions = hmrPersist('autoScrolledSessions', () => new Set<string>());
@@ -138,6 +142,10 @@ export const SessionChat = React.memo(function SessionChat({
 	subagentTree,
 	showThinking = true,
 	showTools = true,
+	showPassedHooks = false,
+	showHookErrors = false,
+	showSystemBanners = false,
+	showTimestamps = false,
 }: SessionChatProps) {
 	const endRef = useRef<HTMLDivElement>(null);
 
@@ -161,6 +169,10 @@ export const SessionChat = React.memo(function SessionChat({
 				subagentLookup={subagentLookup}
 				showThinking={showThinking}
 				showTools={showTools}
+				showPassedHooks={showPassedHooks}
+				showHookErrors={showHookErrors}
+				showSystemBanners={showSystemBanners}
+				showTimestamps={showTimestamps}
 			/>
 			<div ref={endRef} />
 		</div>
@@ -189,6 +201,10 @@ interface LineRenderProps {
 	subagentLookup: ReturnType<typeof buildSubagentLookup>;
 	showThinking: boolean;
 	showTools: boolean;
+	showPassedHooks: boolean;
+	showHookErrors: boolean;
+	showSystemBanners: boolean;
+	showTimestamps: boolean;
 }
 
 function LineEntry({
@@ -313,6 +329,27 @@ function AssistantGroupSection({
 	);
 }
 
+const HOOK_ERROR_SUBTYPES = new Set(['hook_non_blocking_error', 'hook_cancelled', 'hook_additional_context']);
+const SYSTEM_BANNER_SUBTYPES = new Set([
+	'skill_listing',
+	'command_permissions',
+	'deferred_tools_delta',
+	'mcp_instructions_delta',
+	'date_change',
+	'task_reminder',
+	'companion_intro',
+	'ultrathink_effort',
+	'invoked_skills',
+]);
+
+function getAttachmentSubtype(json: string): string | null {
+	try {
+		return (JSON.parse(json) as {type?: string}).type ?? null;
+	} catch {
+		return null;
+	}
+}
+
 /**
  * Top-level switching component: reads line.type and delegates to
  * per-type entry components. Every component receives the full raw line.
@@ -324,6 +361,10 @@ function SessionMessage({
 	subagentLookup,
 	showThinking,
 	showTools,
+	showPassedHooks,
+	showHookErrors,
+	showSystemBanners,
+	showTimestamps,
 	nextLine,
 }: {
 	line: SessionLine;
@@ -332,6 +373,10 @@ function SessionMessage({
 	subagentLookup: ReturnType<typeof buildSubagentLookup>;
 	showThinking: boolean;
 	showTools: boolean;
+	showPassedHooks: boolean;
+	showHookErrors: boolean;
+	showSystemBanners: boolean;
+	showTimestamps: boolean;
 	nextLine?: SessionLine | undefined;
 }) {
 	if (line.type === 'user') {
@@ -340,6 +385,7 @@ function SessionMessage({
 				line={line}
 				sessionId={sessionId}
 				nextLine={nextLine}
+				showTimestamps={showTimestamps}
 			/>
 		);
 	}
@@ -352,10 +398,12 @@ function SessionMessage({
 				subagentLookup={subagentLookup}
 				showThinking={showThinking}
 				showTools={showTools}
+				showTimestamps={showTimestamps}
 			/>
 		);
 	}
 	if (line.type === 'agent-name') {
+		if (!showSystemBanners) return null;
 		return (
 			<Banner
 				icon="🤖"
@@ -364,6 +412,7 @@ function SessionMessage({
 		);
 	}
 	if (line.type === 'permission-mode') {
+		if (!showSystemBanners) return null;
 		return (
 			<Banner
 				icon="🔒"
@@ -386,6 +435,10 @@ function SessionMessage({
 		);
 	}
 	if (line.type === 'attachment') {
+		const subtype = getAttachmentSubtype(line.attachmentJson);
+		if (subtype === 'hook_success' && !showPassedHooks) return null;
+		if (subtype && HOOK_ERROR_SUBTYPES.has(subtype) && !showHookErrors) return null;
+		if (subtype && SYSTEM_BANNER_SUBTYPES.has(subtype) && !showSystemBanners) return null;
 		return <AttachmentBanner attachmentJson={line.attachmentJson} />;
 	}
 	return null;
@@ -489,10 +542,12 @@ function UserEntry({
 	line,
 	sessionId,
 	nextLine,
+	showTimestamps,
 }: {
 	line: MessageSessionLine;
 	sessionId: string;
 	nextLine?: SessionLine | undefined;
+	showTimestamps: boolean;
 }) {
 	const timestampText = formatTimestamp(line.timestamp);
 	const kind = classifyUserContent(line);
@@ -503,13 +558,12 @@ function UserEntry({
 				line={line}
 				sessionId={sessionId}
 				timestampText={timestampText}
+				showTimestamps={showTimestamps}
 			/>
 		);
 	}
 
 	if (kind === 'bash') {
-		// If this is a bash-input and the next line is a bash-output, coalesce them.
-		// The next line is skipped by the buildSkipSet mechanism.
 		const coalesceNext = hasBashInput(line) && nextLine?.type === 'user' && hasBashOutput(nextLine);
 		return (
 			<BashEntry
@@ -517,6 +571,7 @@ function UserEntry({
 				outputLine={coalesceNext ? nextLine : undefined}
 				sessionId={sessionId}
 				timestampText={timestampText}
+				showTimestamps={showTimestamps}
 			/>
 		);
 	}
@@ -525,11 +580,10 @@ function UserEntry({
 		return null;
 	}
 
-	// Regular user text
 	return (
 		<div className="flex flex-col items-end gap-1.5">
 			{renderUserContentBlocks(line, sessionId)}
-			<Timestamp value={timestampText} />
+			{showTimestamps && <Timestamp value={timestampText} />}
 		</div>
 	);
 }
@@ -652,10 +706,12 @@ function CommandEntry({
 	line,
 	sessionId,
 	timestampText,
+	showTimestamps,
 }: {
 	line: MessageSessionLine;
 	sessionId: string;
 	timestampText: string | null;
+	showTimestamps: boolean;
 }) {
 	const content = line.message?.content;
 	let cmdName = '';
@@ -691,7 +747,7 @@ function CommandEntry({
 					className="absolute top-1 right-1"
 				/>
 			</div>
-			<Timestamp value={timestampText} />
+			{showTimestamps && <Timestamp value={timestampText} />}
 		</div>
 	);
 }
@@ -701,11 +757,13 @@ function BashEntry({
 	outputLine,
 	sessionId,
 	timestampText,
+	showTimestamps,
 }: {
 	line: MessageSessionLine;
 	outputLine?: MessageSessionLine | undefined;
 	sessionId: string;
 	timestampText: string | null;
+	showTimestamps: boolean;
 }) {
 	let command = '';
 	let stdout: string | undefined;
@@ -777,7 +835,7 @@ function BashEntry({
 					</div>
 				)}
 			</div>
-			<Timestamp value={timestampText} />
+			{showTimestamps && <Timestamp value={timestampText} />}
 		</div>
 	);
 }
@@ -835,6 +893,7 @@ function AssistantEntry({
 	subagentLookup,
 	showThinking,
 	showTools,
+	showTimestamps,
 }: {
 	line: MessageSessionLine;
 	sessionId: string;
@@ -842,12 +901,13 @@ function AssistantEntry({
 	subagentLookup: ReturnType<typeof buildSubagentLookup>;
 	showThinking: boolean;
 	showTools: boolean;
+	showTimestamps: boolean;
 }) {
 	const content = line.message?.content;
 	const timestampText = formatTimestamp(line.timestamp);
 
 	if (!Array.isArray(content) || content.length === 0) {
-		return <Timestamp value={timestampText} />;
+		return showTimestamps ? <Timestamp value={timestampText} /> : null;
 	}
 
 	// Collect tool_use blocks for the tool summary and section
@@ -889,7 +949,7 @@ function AssistantEntry({
 						sessionId={sessionId}
 					/>
 				)}
-				<Timestamp value={timestampText} />
+				{showTimestamps && <Timestamp value={timestampText} />}
 			</div>
 		);
 	}
@@ -910,7 +970,7 @@ function AssistantEntry({
 					toolSummary={toolSummary}
 				/>
 			))}
-			<Timestamp value={timestampText} />
+			{showTimestamps && <Timestamp value={timestampText} />}
 		</div>
 	);
 }

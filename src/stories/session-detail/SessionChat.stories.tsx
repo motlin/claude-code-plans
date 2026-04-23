@@ -263,6 +263,69 @@ export const WithAssistantImage: Story = {
 	},
 };
 
+export const WithDisplayToggles: Story = {
+	args: {
+		sessionId: 'story-session-toggles',
+		lines: [
+			{type: 'agent-name', agentName: 'code-reviewer', lineIndex: 0},
+			{type: 'permission-mode', permissionMode: 'auto', lineIndex: 1},
+			line(2, 'user', 'Review the changes', '2026-04-19T10:00:00Z'),
+			{
+				type: 'attachment',
+				attachmentJson: JSON.stringify({
+					type: 'hook_success',
+					hookName: 'pre-lint',
+					hookEvent: 'PreToolUse',
+					durationMs: 38,
+				}),
+				lineIndex: 3,
+			},
+			assistantBlocks(4, [{type: 'text', text: "I'll review the diff."}], '2026-04-19T10:00:03Z'),
+			{
+				type: 'attachment',
+				attachmentJson: JSON.stringify({
+					type: 'hook_success',
+					hookName: 'post-lint',
+					hookEvent: 'PostToolUse',
+					durationMs: 12,
+				}),
+				lineIndex: 5,
+			},
+			{
+				type: 'attachment',
+				attachmentJson: JSON.stringify({
+					type: 'hook_non_blocking_error',
+					hookName: 'validator',
+					hookEvent: 'PostToolUse',
+					stderr: 'Warning: 2 issues found',
+				}),
+				lineIndex: 6,
+			},
+			{
+				type: 'attachment',
+				attachmentJson: JSON.stringify({type: 'task_reminder', content: 'You have 3 pending tasks'}),
+				lineIndex: 7,
+			},
+			{
+				type: 'attachment',
+				attachmentJson: JSON.stringify({
+					type: 'skill_listing',
+					content: 'Available skills: build, test, deploy',
+				}),
+				lineIndex: 8,
+			},
+			line(9, 'user', 'Thanks!', '2026-04-19T10:01:00Z'),
+			assistantBlocks(10, [{type: 'text', text: 'Review complete.'}], '2026-04-19T10:01:05Z'),
+		],
+		toolResultMap: [],
+		subagentTree: [],
+		showPassedHooks: false,
+		showHookErrors: false,
+		showSystemBanners: false,
+		showTimestamps: false,
+	},
+};
+
 export const WithDocumentAttachment: Story = {
 	args: {
 		sessionId: 'story-session-document',

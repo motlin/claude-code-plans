@@ -212,6 +212,20 @@ function CopyButton({
 	);
 }
 
+function ToggleCheckbox({checked, onChange, label}: {checked: boolean; onChange: (v: boolean) => void; label: string}) {
+	return (
+		<label className="flex items-center gap-1 cursor-pointer select-none">
+			<input
+				type="checkbox"
+				checked={checked}
+				onChange={(e) => onChange(e.target.checked)}
+				className="accent-accent-000"
+			/>
+			{label}
+		</label>
+	);
+}
+
 function useDisplayToggle(key: string, defaultValue: boolean): [boolean, (v: boolean) => void] {
 	// Initialize with `defaultValue` unconditionally so SSR and the first client
 	// render agree. Reading localStorage during the initial render would diverge
@@ -295,6 +309,10 @@ function SessionPage() {
 	);
 	const [showThinking, setShowThinking] = useDisplayToggle('ccp-show-thinking', true);
 	const [showTools, setShowTools] = useDisplayToggle('ccp-show-tools', true);
+	const [showPassedHooks, setShowPassedHooks] = useDisplayToggle('ccp-show-passed-hooks', false);
+	const [showHookErrors, setShowHookErrors] = useDisplayToggle('ccp-show-hook-errors', false);
+	const [showSystemBanners, setShowSystemBanners] = useDisplayToggle('ccp-show-system-banners', false);
+	const [showTimestamps, setShowTimestamps] = useDisplayToggle('ccp-show-timestamps', false);
 	const {enabled: showDebug, setEnabled: setShowDebug} = useDebug();
 	const [subagentView, setSubagentView] = useState<'tree' | 'gantt' | 'sequence'>('tree');
 	const chatStream = useChatStream();
@@ -500,33 +518,41 @@ function SessionPage() {
 					)}
 
 					<div className="flex items-center gap-3 mt-2 text-xs text-text-500">
-						<label className="flex items-center gap-1 cursor-pointer select-none">
-							<input
-								type="checkbox"
-								checked={showThinking}
-								onChange={(e) => setShowThinking(e.target.checked)}
-								className="accent-accent-000"
-							/>
-							Thinking
-						</label>
-						<label className="flex items-center gap-1 cursor-pointer select-none">
-							<input
-								type="checkbox"
-								checked={showTools}
-								onChange={(e) => setShowTools(e.target.checked)}
-								className="accent-accent-000"
-							/>
-							Tools
-						</label>
-						<label className="flex items-center gap-1 cursor-pointer select-none">
-							<input
-								type="checkbox"
-								checked={showDebug}
-								onChange={(e) => setShowDebug(e.target.checked)}
-								className="accent-accent-000"
-							/>
-							Debug JSONL
-						</label>
+						<ToggleCheckbox
+							checked={showThinking}
+							onChange={setShowThinking}
+							label="Thinking"
+						/>
+						<ToggleCheckbox
+							checked={showTools}
+							onChange={setShowTools}
+							label="Tools"
+						/>
+						<ToggleCheckbox
+							checked={showPassedHooks}
+							onChange={setShowPassedHooks}
+							label="Passed Hooks"
+						/>
+						<ToggleCheckbox
+							checked={showHookErrors}
+							onChange={setShowHookErrors}
+							label="Hook Errors"
+						/>
+						<ToggleCheckbox
+							checked={showSystemBanners}
+							onChange={setShowSystemBanners}
+							label="System Banners"
+						/>
+						<ToggleCheckbox
+							checked={showTimestamps}
+							onChange={setShowTimestamps}
+							label="Timestamps"
+						/>
+						<ToggleCheckbox
+							checked={showDebug}
+							onChange={setShowDebug}
+							label="Debug JSONL"
+						/>
 					</div>
 				</div>
 			)}
@@ -555,6 +581,10 @@ function SessionPage() {
 					subagentTree={data.subagentTree}
 					showThinking={showThinking}
 					showTools={showTools}
+					showPassedHooks={showPassedHooks}
+					showHookErrors={showHookErrors}
+					showSystemBanners={showSystemBanners}
+					showTimestamps={showTimestamps}
 				/>
 			</AskUserQuestionProvider>
 
