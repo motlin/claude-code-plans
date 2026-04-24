@@ -4,6 +4,7 @@ import {tmpdir} from 'node:os';
 import {
 	extractSessionTitle,
 	summarizeToolCalls,
+	formatToolName,
 	listSessions,
 	readSession,
 	readSessionRawWindow,
@@ -177,16 +178,55 @@ describe('summarizeToolCalls', () => {
 		expect(summarizeToolCalls(calls)).toBe('ran 3 agents');
 	});
 
-	it('groups unknown tools as called N tools', () => {
+	it('shows tool name for single unknown tool', () => {
+		expect(summarizeToolCalls([{id: 'tc1', name: 'CustomTool', input: {}, sourceUuid: ''}])).toBe(
+			'called CustomTool',
+		);
+	});
+
+	it('shows tool name with count for repeated unknown tool', () => {
+		const calls = [
+			{id: 'tc1', name: 'Skill', input: {}, sourceUuid: ''},
+			{id: 'tc2', name: 'Skill', input: {}, sourceUuid: ''},
+			{id: 'tc3', name: 'Skill', input: {}, sourceUuid: ''},
+		];
+		expect(summarizeToolCalls(calls)).toBe('called Skill 3 times');
+	});
+
+	it('shows separate entries for distinct unknown tools', () => {
 		const calls = [
 			{id: 'tc1', name: 'CustomTool', input: {}, sourceUuid: ''},
 			{id: 'tc2', name: 'AnotherTool', input: {}, sourceUuid: ''},
 		];
-		expect(summarizeToolCalls(calls)).toBe('called 2 tools');
+		expect(summarizeToolCalls(calls)).toBe('called CustomTool, called AnotherTool');
 	});
 
-	it('single unknown tool', () => {
-		expect(summarizeToolCalls([{id: 'tc1', name: 'CustomTool', input: {}, sourceUuid: ''}])).toBe('called a tool');
+	it('extracts server name from MCP tool and strips plugin_ prefix', () => {
+		const calls = [
+			{id: 'tc1', name: 'mcp__plugin_github_github__list_issues', input: {}, sourceUuid: ''},
+			{id: 'tc2', name: 'mcp__plugin_github_github__search_code', input: {}, sourceUuid: ''},
+			{id: 'tc3', name: 'mcp__plugin_github_github__get_commit', input: {}, sourceUuid: ''},
+			{id: 'tc4', name: 'mcp__plugin_github_github__list_pulls', input: {}, sourceUuid: ''},
+		];
+		expect(summarizeToolCalls(calls)).toBe('called github 4 times');
+	});
+
+	it('extracts MCP server name without plugin_ prefix', () => {
+		const calls = [
+			{id: 'tc1', name: 'mcp__chrome-devtools__click', input: {}, sourceUuid: ''},
+			{id: 'tc2', name: 'mcp__chrome-devtools__hover', input: {}, sourceUuid: ''},
+		];
+		expect(summarizeToolCalls(calls)).toBe('called chrome-devtools 2 times');
+	});
+
+	it('groups MCP tools by server with distinct non-MCP unknowns', () => {
+		const calls = [
+			{id: 'tc1', name: 'mcp__plugin_github_github__list_issues', input: {}, sourceUuid: ''},
+			{id: 'tc2', name: 'mcp__chrome-devtools__click', input: {}, sourceUuid: ''},
+			{id: 'tc3', name: 'Skill', input: {}, sourceUuid: ''},
+			{id: 'tc4', name: 'mcp__plugin_github_github__search_code', input: {}, sourceUuid: ''},
+		];
+		expect(summarizeToolCalls(calls)).toBe('called github 2 times, called chrome-devtools, called Skill');
 	});
 
 	it('Edit calls include +N -N diff stats summed across calls', () => {
@@ -272,8 +312,27 @@ describe('summarizeToolCalls', () => {
 		];
 		// Edits: 9 files; per edit removed 3 added 5 -> totals +45 -27.
 		expect(summarizeToolCalls(calls)).toBe(
-			'edited 9 files +45 -27, searched for 6 patterns, read 8 files, called a tool, ran 4 bash commands, recalled a memory, wrote 4 memories',
+			'edited 9 files +45 -27, searched for 6 patterns, read 8 files, ran 4 bash commands, recalled a memory, wrote 4 memories, called CustomTool',
 		);
+	});
+});
+
+describe('formatToolName', () => {
+	it('returns tool name as-is for non-MCP tools', () => {
+		expect(formatToolName('Skill')).toBe('Skill');
+		expect(formatToolName('SendMessage')).toBe('SendMessage');
+		expect(formatToolName('CustomTool')).toBe('CustomTool');
+	});
+
+	it('extracts server name from MCP tool', () => {
+		expect(formatToolName('mcp__chrome-devtools__click')).toBe('chrome-devtools');
+		expect(formatToolName('mcp__sentry-spotlight__search_errors')).toBe('sentry-spotlight');
+	});
+
+	it('strips plugin_ prefix and takes last segment', () => {
+		expect(formatToolName('mcp__plugin_github_github__list_issues')).toBe('github');
+		expect(formatToolName('mcp__plugin_context7_context7__query-docs')).toBe('context7');
+		expect(formatToolName('mcp__plugin_playwright_playwright__browser_click')).toBe('playwright');
 	});
 });
 

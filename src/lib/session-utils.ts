@@ -65,7 +65,6 @@ const TOOL_CATEGORIES = [
 	'webfetch',
 	'websearch',
 	'agent',
-	'unknown',
 	'bash',
 	'recall',
 	'memwrite',
@@ -135,7 +134,7 @@ function diffStatsForEditCall(call: ToolCallInfo): {added: number; removed: numb
 	return {added: 0, removed: 0};
 }
 
-function categorize(call: ToolCallInfo): ToolCategory {
+function categorize(call: ToolCallInfo): ToolCategory | null {
 	const filePath = typeof call.input['file_path'] === 'string' ? (call.input['file_path'] as string) : '';
 	if (call.name === 'Read') {
 		return isMemoryPath(filePath) ? 'recall' : 'read';
@@ -150,7 +149,20 @@ function categorize(call: ToolCallInfo): ToolCategory {
 	if (call.name === 'Agent') return 'agent';
 	if (call.name === 'WebFetch') return 'webfetch';
 	if (call.name === 'WebSearch') return 'websearch';
-	return 'unknown';
+	return null;
+}
+
+export function formatToolName(toolName: string): string {
+	if (toolName.startsWith('mcp__')) {
+		const withoutPrefix = toolName.slice('mcp__'.length);
+		const serverName = withoutPrefix.split('__')[0]!;
+		if (serverName.startsWith('plugin_')) {
+			const segments = serverName.split('_');
+			return segments[segments.length - 1]!;
+		}
+		return serverName;
+	}
+	return toolName;
 }
 
 function pluralize(count: number, singular: string, plural: string): string {
@@ -207,14 +219,20 @@ export function summarizeToolCalls(calls: ToolCallInfo[]): string {
 
 	const counts = new Map<ToolCategory, number>();
 	const editStats = {added: 0, removed: 0};
+	const unknownTools = new Map<string, number>();
 
 	for (const call of calls) {
 		const cat = categorize(call);
-		counts.set(cat, (counts.get(cat) ?? 0) + 1);
-		if (cat === 'edit') {
-			const s = diffStatsForEditCall(call);
-			editStats.added += s.added;
-			editStats.removed += s.removed;
+		if (cat === null) {
+			const displayName = formatToolName(call.name);
+			unknownTools.set(displayName, (unknownTools.get(displayName) ?? 0) + 1);
+		} else {
+			counts.set(cat, (counts.get(cat) ?? 0) + 1);
+			if (cat === 'edit') {
+				const s = diffStatsForEditCall(call);
+				editStats.added += s.added;
+				editStats.removed += s.removed;
+			}
 		}
 	}
 
@@ -250,9 +268,6 @@ export function summarizeToolCalls(calls: ToolCallInfo[]): string {
 			case 'agent':
 				parts.push(pluralize(count, 'ran an agent', 'ran {n} agents'));
 				break;
-			case 'unknown':
-				parts.push(pluralize(count, 'called a tool', 'called {n} tools'));
-				break;
 			case 'bash':
 				parts.push(pluralize(count, 'ran a bash command', 'ran {n} bash commands'));
 				break;
@@ -262,6 +277,14 @@ export function summarizeToolCalls(calls: ToolCallInfo[]): string {
 			case 'memwrite':
 				parts.push(pluralize(count, 'wrote a memory', 'wrote {n} memories'));
 				break;
+		}
+	}
+
+	for (const [displayName, count] of unknownTools) {
+		if (count === 1) {
+			parts.push(`called ${displayName}`);
+		} else {
+			parts.push(`called ${displayName} ${count} times`);
 		}
 	}
 
