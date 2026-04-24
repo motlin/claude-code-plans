@@ -5,7 +5,7 @@ import {createStoryQueryClient, StoryWrapper} from './decorators';
 
 function createSeededQueryClient() {
 	const queryClient = createStoryQueryClient();
-	queryClient.setQueryData(activeSessionsQueryOptions.queryKey, [
+	queryClient.setQueryData(activeSessionsQueryOptions().queryKey, [
 		{
 			sessionId: 'sess-1',
 			projectDir: '/home/user/claude-code-plans',

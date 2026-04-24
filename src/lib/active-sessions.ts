@@ -11,9 +11,9 @@ export interface ActiveSession {
 	lastModified: number;
 }
 
-const ACTIVE_THRESHOLD_MS = 60_000;
+const DEFAULT_ACTIVE_THRESHOLD_MS = 60_000;
 
-export async function getActiveSessions(): Promise<ActiveSession[]> {
+export async function getActiveSessions(activeTimeoutMs = DEFAULT_ACTIVE_THRESHOLD_MS): Promise<ActiveSession[]> {
 	// Check in-memory store first (populated by hook events)
 	const storeEntries = getActiveSessionEntries();
 	if (storeEntries.length > 0) {
@@ -21,7 +21,7 @@ export async function getActiveSessions(): Promise<ActiveSession[]> {
 	}
 
 	// Fallback to filesystem scan when hooks are not configured
-	return getActiveSessionsFromFilesystem();
+	return getActiveSessionsFromFilesystem(activeTimeoutMs);
 }
 
 async function getActiveSessionsFromStore(
@@ -69,7 +69,7 @@ async function findProjectDirForCwd(cwd: string): Promise<string | null> {
 	return null;
 }
 
-async function getActiveSessionsFromFilesystem(): Promise<ActiveSession[]> {
+async function getActiveSessionsFromFilesystem(activeThresholdMs: number): Promise<ActiveSession[]> {
 	const projectsDir = join(homedir(), '.claude', 'projects');
 	const now = Date.now();
 	const active: Array<Omit<ActiveSession, 'projectName'> & {projectDir: string}> = [];
@@ -95,7 +95,7 @@ async function getActiveSessionsFromFilesystem(): Promise<ActiveSession[]> {
 			const filePath = join(projectPath, file);
 			try {
 				const st = statSync(filePath);
-				if (now - st.mtimeMs < ACTIVE_THRESHOLD_MS) {
+				if (now - st.mtimeMs < activeThresholdMs) {
 					active.push({
 						sessionId: file.replace(/\.jsonl$/, ''),
 						projectDir: dir,

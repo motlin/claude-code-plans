@@ -3,12 +3,13 @@ import {useSuspenseQuery} from '@tanstack/react-query';
 import {getActiveSessions} from '../lib/server-fns';
 import {activeSessionsQueryOptions} from '../queries/active';
 import {useClaudeEvents} from '../hooks/use-claude-events';
+import {useSettings} from '../components/settings-provider';
 
 type ActiveSession = Awaited<ReturnType<typeof getActiveSessions>>[number];
 
 export const Route = createFileRoute('/active')({
 	component: ActivePage,
-	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(activeSessionsQueryOptions),
+	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(activeSessionsQueryOptions()),
 	head: () => ({
 		meta: [{title: 'Active Sessions'}],
 	}),
@@ -23,7 +24,9 @@ function formatRelativeTime(lastModified: number): string {
 }
 
 function ActivePage() {
-	const {data: loaderSessions} = useSuspenseQuery(activeSessionsQueryOptions);
+	const {settings} = useSettings();
+	const activeTimeoutMs = settings.activeTimeoutSec * 1000;
+	const {data: loaderSessions} = useSuspenseQuery(activeSessionsQueryOptions(activeTimeoutMs));
 	const {activeSessions} = useClaudeEvents();
 
 	// Merge: loader data provides full info (projectName, projectDir),

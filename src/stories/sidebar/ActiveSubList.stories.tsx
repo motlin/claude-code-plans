@@ -25,7 +25,7 @@ export const Loading: Story = {
 export const WithSessions: Story = {
 	render: () => {
 		const queryClient = createStoryQueryClient();
-		queryClient.setQueryData(activeSessionsQueryOptions.queryKey, [
+		queryClient.setQueryData(activeSessionsQueryOptions().queryKey, [
 			{
 				sessionId: 'sess-1',
 				projectDir: '/home/user/claude-code-plans',
@@ -50,7 +50,7 @@ export const WithSessions: Story = {
 export const Empty: Story = {
 	render: () => {
 		const queryClient = createStoryQueryClient();
-		queryClient.setQueryData(activeSessionsQueryOptions.queryKey, []);
+		queryClient.setQueryData(activeSessionsQueryOptions().queryKey, []);
 		return (
 			<StoryWrapper queryClient={queryClient}>
 				<ActiveSubList />

@@ -2,9 +2,12 @@ import {Link} from '@tanstack/react-router';
 import {useQuery} from '@tanstack/react-query';
 import {activeSessionsQueryOptions} from '../../../queries/active';
 import {LoadingBars} from '../primitives/LoadingBars';
+import {useSettings} from '../../settings-provider';
 
 export function ActiveSubList() {
-	const {data: sessions} = useQuery(activeSessionsQueryOptions);
+	const {settings} = useSettings();
+	const activeTimeoutMs = settings.activeTimeoutSec * 1000;
+	const {data: sessions} = useQuery(activeSessionsQueryOptions(activeTimeoutMs));
 
 	if (sessions === undefined) {
 		return (

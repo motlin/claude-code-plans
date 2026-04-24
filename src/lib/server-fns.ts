@@ -366,10 +366,12 @@ export const isStarred = createServerFn({method: 'GET'})
 		return {starred: isSessionStarredInDb(index, sessionId)};
 	});
 
-export const getActiveSessions = createServerFn({method: 'GET'}).handler(async () => {
-	const {getActiveSessions: list} = await import('./active-sessions');
-	return list();
-});
+export const getActiveSessions = createServerFn({method: 'GET'})
+	.inputValidator(z.object({activeTimeoutMs: z.number().optional()}).optional())
+	.handler(async ({data}) => {
+		const {getActiveSessions: list} = await import('./active-sessions');
+		return list(data?.activeTimeoutMs);
+	});
 
 export const getIndexingStatus = createServerFn({method: 'GET'}).handler(async () => {
 	const {isCurrentlyIndexing} = await import('./db/indexer');
