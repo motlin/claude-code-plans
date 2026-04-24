@@ -237,6 +237,8 @@ function LineEntry({
 	);
 }
 
+const BANNER_LINE_TYPES = new Set(['agent-name', 'agent-color', 'permission-mode', 'pr-link', 'attachment']);
+
 function SessionLineList({
 	lines,
 	...renderProps
@@ -245,13 +247,20 @@ function SessionLineList({
 }) {
 	const skipSet = useMemo(() => buildSkipSet(lines), [lines]);
 
+	let prevVisibleType: string | null = null;
 	return (
 		<>
 			{lines.map((line, i) => {
 				if (skipSet.has(i)) return null;
 				if (!isLineVisible(line, renderProps)) return null;
-				const prevRole = i > 0 ? lines[i - 1]!.type : null;
-				const isNewTurn = prevRole !== null && prevRole !== line.type;
+
+				const isNewTurn = prevVisibleType !== null && prevVisibleType !== line.type;
+				const isBannerAfterBanner =
+					BANNER_LINE_TYPES.has(line.type) &&
+					prevVisibleType !== null &&
+					BANNER_LINE_TYPES.has(prevVisibleType);
+
+				prevVisibleType = line.type;
 
 				return (
 					<LineEntry
@@ -259,7 +268,7 @@ function SessionLineList({
 						line={line}
 						index={i}
 						nextLine={lines[i + 1]}
-						className={isNewTurn ? 'pb-6' : ''}
+						className={`${isNewTurn ? 'pb-6' : ''} ${isBannerAfterBanner ? 'mt-1' : ''}`}
 						{...renderProps}
 					/>
 				);
