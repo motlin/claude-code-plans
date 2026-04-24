@@ -18,7 +18,7 @@ import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {SubagentTree} from '../components/subagent-tree';
 import {SubagentGantt} from '../components/subagent-gantt';
 import {SubagentSequence} from '../components/subagent-sequence';
-import {useDebug} from '../components/debug-provider';
+import {useSettings} from '../components/settings-provider';
 
 const getSession = createServerFn({method: 'GET'})
 	.inputValidator(z.object({id: z.string()}))
@@ -226,31 +226,6 @@ function ToggleCheckbox({checked, onChange, label}: {checked: boolean; onChange:
 	);
 }
 
-function useDisplayToggle(key: string, defaultValue: boolean): [boolean, (v: boolean) => void] {
-	// Initialize with `defaultValue` unconditionally so SSR and the first client
-	// render agree. Reading localStorage during the initial render would diverge
-	// from the server's output and trip React's hydration check. We sync from
-	// localStorage in an effect right after mount; a user with a non-default
-	// stored preference may see a brief flash of the default, which is preferable
-	// to a hydration error (and mirrors DebugProvider / ThemeProvider).
-	const [value, setValue] = useState(defaultValue);
-
-	useEffect(() => {
-		const stored = localStorage.getItem(key);
-		if (stored !== null) setValue(stored === 'true');
-	}, [key]);
-
-	const setAndPersist = useCallback(
-		(v: boolean) => {
-			setValue(v);
-			localStorage.setItem(key, String(v));
-		},
-		[key],
-	);
-
-	return [value, setAndPersist];
-}
-
 function SessionPage() {
 	const params = Route.useParams();
 	const {data} = useSuspenseQuery(sessionDetailQueryOptions(params.id));
@@ -260,7 +235,9 @@ function SessionPage() {
 	const isActive = useIsSessionActive(params.id);
 	const statusline = useStatusline(params.id);
 	const [generating, setGenerating] = useState(false);
-	const [chromeHidden, setChromeHidden] = useDisplayToggle('ccp-chrome-hidden', false);
+	const {settings, setSetting} = useSettings();
+	const chromeHidden = settings.chromeHidden;
+	const setChromeHidden = useCallback((v: boolean) => setSetting('chromeHidden', v), [setSetting]);
 	const chromeHiddenRef = useRef(chromeHidden);
 	chromeHiddenRef.current = chromeHidden;
 
@@ -307,14 +284,7 @@ function SessionPage() {
 		() => ({isSessionActive: isActive, submitAnswer}),
 		[isActive, submitAnswer],
 	);
-	const [showThinking, setShowThinking] = useDisplayToggle('ccp-show-thinking', false);
-	const [showTools, setShowTools] = useDisplayToggle('ccp-show-tools', true);
-	const [showPassedHooks, setShowPassedHooks] = useDisplayToggle('ccp-show-passed-hooks', false);
-	const [showHookErrors, setShowHookErrors] = useDisplayToggle('ccp-show-hook-errors', false);
-	const [showSystemBanners, setShowSystemBanners] = useDisplayToggle('ccp-show-system-banners', false);
-	const [showTimestamps, setShowTimestamps] = useDisplayToggle('ccp-show-timestamps', false);
-	const {enabled: showDebug, setEnabled: setShowDebug} = useDebug();
-	const [subagentView, setSubagentView] = useState<'tree' | 'gantt' | 'sequence'>('tree');
+	const [subagentView, setSubagentView] = useState<'tree' | 'gantt' | 'sequence'>(settings.defaultSubagentView);
 	const chatStream = useChatStream();
 	const prevSessionIdRef = useRef(params.id);
 
@@ -519,38 +489,38 @@ function SessionPage() {
 
 					<div className="flex items-center gap-3 mt-2 text-xs text-text-500">
 						<ToggleCheckbox
-							checked={showThinking}
-							onChange={setShowThinking}
+							checked={settings.showThinking}
+							onChange={(v) => setSetting('showThinking', v)}
 							label="Thinking"
 						/>
 						<ToggleCheckbox
-							checked={showTools}
-							onChange={setShowTools}
+							checked={settings.showTools}
+							onChange={(v) => setSetting('showTools', v)}
 							label="Tools"
 						/>
 						<ToggleCheckbox
-							checked={showPassedHooks}
-							onChange={setShowPassedHooks}
+							checked={settings.showPassedHooks}
+							onChange={(v) => setSetting('showPassedHooks', v)}
 							label="Passed Hooks"
 						/>
 						<ToggleCheckbox
-							checked={showHookErrors}
-							onChange={setShowHookErrors}
+							checked={settings.showHookErrors}
+							onChange={(v) => setSetting('showHookErrors', v)}
 							label="Hook Errors"
 						/>
 						<ToggleCheckbox
-							checked={showSystemBanners}
-							onChange={setShowSystemBanners}
+							checked={settings.showSystemBanners}
+							onChange={(v) => setSetting('showSystemBanners', v)}
 							label="System Banners"
 						/>
 						<ToggleCheckbox
-							checked={showTimestamps}
-							onChange={setShowTimestamps}
+							checked={settings.showTimestamps}
+							onChange={(v) => setSetting('showTimestamps', v)}
 							label="Timestamps"
 						/>
 						<ToggleCheckbox
-							checked={showDebug}
-							onChange={setShowDebug}
+							checked={settings.showDebug}
+							onChange={(v) => setSetting('showDebug', v)}
 							label="Debug JSONL"
 						/>
 					</div>
@@ -579,12 +549,12 @@ function SessionPage() {
 					lines={data.lines}
 					toolResultMap={data.toolResultMap}
 					subagentTree={data.subagentTree}
-					showThinking={showThinking}
-					showTools={showTools}
-					showPassedHooks={showPassedHooks}
-					showHookErrors={showHookErrors}
-					showSystemBanners={showSystemBanners}
-					showTimestamps={showTimestamps}
+					showThinking={settings.showThinking}
+					showTools={settings.showTools}
+					showPassedHooks={settings.showPassedHooks}
+					showHookErrors={settings.showHookErrors}
+					showSystemBanners={settings.showSystemBanners}
+					showTimestamps={settings.showTimestamps}
 				/>
 			</AskUserQuestionProvider>
 
