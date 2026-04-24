@@ -1238,10 +1238,10 @@ function ToolCallRow({call, sessionId}: {call: ClientToolCall; sessionId: string
 	const Renderer = getToolRenderer(call.name);
 	return (
 		<div className="min-w-0 py-0.5 text-sm leading-relaxed text-text-500">
-			<div className="flex items-center">
+			<div className="flex items-baseline flex-wrap gap-y-0.5">
 				<span className="font-medium text-[13px]">{call.name}</span>
 				{call.param && (
-					<span className="ml-1.5 font-mono text-[11px] bg-bg-100 px-1 py-px rounded opacity-70">
+					<span className="ml-1.5 font-mono text-[11px] bg-bg-100 px-1 py-px rounded opacity-70 break-all">
 						{call.param}
 					</span>
 				)}
