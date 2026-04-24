@@ -1,9 +1,6 @@
 import {useState} from 'react';
-import {ChevronDown, ChevronRight, Layers} from 'lucide-react';
+import {ChevronDown, ChevronRight} from 'lucide-react';
 import type {AssistantGroup} from '../lib/assistant-groups';
-
-/** Groups with more than this many lines start collapsed. */
-const COLLAPSE_THRESHOLD = 3;
 
 export function AssistantMessageGroupHeader({
 	group,
@@ -14,7 +11,7 @@ export function AssistantMessageGroupHeader({
 	expanded: boolean;
 	onToggle: () => void;
 }) {
-	const lineCount = group.lines.length;
+	if (!group.summary) return null;
 
 	return (
 		<button
@@ -27,15 +24,12 @@ export function AssistantMessageGroupHeader({
 			) : (
 				<ChevronRight className="h-3.5 w-3.5 shrink-0" />
 			)}
-			<Layers className="h-3 w-3 shrink-0 opacity-50" />
-			<span className="text-[11px] font-medium bg-bg-200 rounded-full px-1.5 py-0.5 tabular-nums">
-				{lineCount} messages
-			</span>
+			<span className="text-[11px] font-medium">{group.summary}</span>
 		</button>
 	);
 }
 
-export function useGroupExpansion(group: AssistantGroup): [boolean, () => void] {
-	const [expanded, setExpanded] = useState(group.lines.length <= COLLAPSE_THRESHOLD);
+export function useGroupExpansion(_group: AssistantGroup): [boolean, () => void] {
+	const [expanded, setExpanded] = useState(false);
 	return [expanded, () => setExpanded((previous) => !previous)];
 }
