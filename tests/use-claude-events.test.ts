@@ -316,6 +316,29 @@ describe('applySessionUpdated', () => {
 		const starred = queryClient.getQueryData<SessionSummaryPayload[]>(['starred-sessions']);
 		expect(starred?.[0]?.title).toBe('New');
 	});
+
+	it('invalidates session detail and summary queries', () => {
+		const queryClient = new QueryClient();
+		queryClient.setQueryData(
+			['sessions'],
+			[
+				{
+					project: 'proj-a',
+					projectName: 'Project A',
+					sessions: [makeSession({id: 'a1', project: 'proj-a', title: 'Old'})],
+				},
+			],
+		);
+		queryClient.setQueryData(['session', 'a1', 'detail'], {lines: []});
+		queryClient.setQueryData(['session', 'a1', 'summary'], {text: 'old summary'});
+
+		applySessionUpdated(queryClient, makeSession({id: 'a1', project: 'proj-a', title: 'New'}));
+
+		const detailState = queryClient.getQueryState(['session', 'a1', 'detail']);
+		const summaryState = queryClient.getQueryState(['session', 'a1', 'summary']);
+		expect(detailState?.isInvalidated).toBe(true);
+		expect(summaryState?.isInvalidated).toBe(true);
+	});
 });
 
 describe('applyPlanChanged', () => {
