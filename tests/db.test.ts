@@ -574,6 +574,60 @@ describe('indexer', () => {
 		if (!after) throw new Error('Expected session update-cwd after re-index');
 		expect(after.cwd).toBe('/Users/craig/projects/app-worktree');
 	});
+
+	it('extracts gitBranch from JSONL lines', async () => {
+		const projectDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projectDir, {recursive: true});
+
+		writeFileSync(
+			join(projectDir, 'branch-sess.jsonl'),
+			jsonl(
+				{type: 'attachment', gitBranch: 'feature-xyz', cwd: '/projects/app'},
+				{type: 'user', message: {role: 'user', content: 'Hello from branch'}},
+			),
+		);
+
+		await indexJsonlFile(db.index, join(projectDir, 'branch-sess.jsonl'), '-Users-craig-projects-app');
+
+		const session = db.index.select().from(schema.sessions).where(eq(schema.sessions.id, 'branch-sess')).get();
+		if (!session) throw new Error('Expected session branch-sess');
+		expect(session.gitBranch).toBe('feature-xyz');
+	});
+
+	it('updates gitBranch when re-indexing JSONL for existing session', async () => {
+		const projectDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projectDir, {recursive: true});
+
+		// Create session via index first (no gitBranch)
+		writeFileSync(
+			join(projectDir, 'sessions-index.json'),
+			makeSessionsIndex([
+				{
+					sessionId: 'update-branch',
+					fullPath: join(projectDir, 'update-branch.jsonl'),
+					fileMtime: Date.now() - 1000,
+					firstPrompt: 'Initial',
+				},
+			]),
+		);
+		await indexSessionsIndex(db.index, projectDir, '-Users-craig-projects-app');
+
+		const before = db.index.select().from(schema.sessions).where(eq(schema.sessions.id, 'update-branch')).get();
+		if (!before) throw new Error('Expected session update-branch');
+		expect(before.gitBranch).toBe(null);
+
+		// Now write JSONL with gitBranch
+		writeFileSync(
+			join(projectDir, 'update-branch.jsonl'),
+			jsonl({type: 'attachment', gitBranch: 'main'}, {type: 'user', message: {role: 'user', content: 'Updated'}}),
+		);
+
+		await indexJsonlFile(db.index, join(projectDir, 'update-branch.jsonl'), '-Users-craig-projects-app');
+
+		const after = db.index.select().from(schema.sessions).where(eq(schema.sessions.id, 'update-branch')).get();
+		if (!after) throw new Error('Expected session update-branch after re-index');
+		expect(after.gitBranch).toBe('main');
+	});
 });
 
 describe('queries', () => {

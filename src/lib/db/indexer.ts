@@ -179,6 +179,7 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 	const planFilenames = new Set<string>();
 	let customTitle: string | undefined;
 	let sessionCwd: string | undefined;
+	let sessionGitBranch: string | undefined;
 	const textChunks: string[] = [];
 
 	// Stream the file line-by-line to avoid loading entire JSONL into memory
@@ -229,6 +230,18 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 					const parsed = JSON.parse(line) as {cwd?: string};
 					if (typeof parsed.cwd === 'string') {
 						sessionCwd = parsed.cwd;
+					}
+				} catch {
+					// skip
+				}
+			}
+
+			// Extract gitBranch from early lines
+			if (!sessionGitBranch && line.includes('"gitBranch"')) {
+				try {
+					const parsed = JSON.parse(line) as {gitBranch?: string};
+					if (typeof parsed.gitBranch === 'string') {
+						sessionGitBranch = parsed.gitBranch;
 					}
 				} catch {
 					// skip
@@ -291,6 +304,9 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 		if (sessionCwd) {
 			updates['cwd'] = sessionCwd;
 		}
+		if (sessionGitBranch) {
+			updates['gitBranch'] = sessionGitBranch;
+		}
 		db.update(schema.sessions).set(updates).where(eq(schema.sessions.id, sessionId)).run();
 	} else {
 		const firstMsg = await readFirstUserMessage(filePath);
@@ -316,7 +332,7 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 				summary: null,
 				customTitle: customTitle ?? null,
 				messageCount: 0,
-				gitBranch: null,
+				gitBranch: sessionGitBranch ?? null,
 				cwd: sessionCwd ?? null,
 				isSidechain: 0,
 				createdAt: fileStat.birthtimeMs,
