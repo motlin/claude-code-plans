@@ -44,6 +44,13 @@ jobs:
 
             - run: just biome
 
+    fallow:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+            - uses: jdx/mise-action@v4
+            - run: just fallow
+
     typecheck:
         runs-on: ubuntu-latest
         steps:
@@ -65,17 +72,10 @@ jobs:
             - uses: jdx/mise-action@v4
             - run: just test
 
-    fallow:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v6
-            - uses: jdx/mise-action@v4
-            - run: just fallow
-
     all-checks:
         name: All checks
         if: ${{ !cancelled() }}
-        needs: [pre-commit, eslint, biome, typecheck, build, test, fallow]
+        needs: [pre-commit, eslint, biome, fallow, typecheck, build, test]
         runs-on: ubuntu-latest
         steps:
             - uses: re-actors/alls-green@release/v1
