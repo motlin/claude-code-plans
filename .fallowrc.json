@@ -1,6 +1,7 @@
 {
 	"$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
-	"ignorePatterns": [".storybook/**", "scripts/**", "src/routeTree.gen.ts"],
+	"entry": ["scripts/field-presence.ts"],
+	"ignorePatterns": [".storybook/**", "src/routeTree.gen.ts"],
 	"ignoreDependencies": ["@spotlightjs/spotlight", "agentation", "srvx"],
 	"ignoreExports": [
 		{"file": "src/components/markdown-article.module.css", "exports": ["*"]},

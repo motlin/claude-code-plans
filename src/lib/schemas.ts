@@ -448,6 +448,14 @@ const UltrathinkEffortAttachmentPayload = z
 	})
 	.strict();
 
+const MaxTurnsReachedAttachmentPayload = z
+	.object({
+		type: z.literal('max_turns_reached'),
+		maxTurns: z.number().optional(),
+		turnCount: z.number().optional(),
+	})
+	.strict();
+
 export const AttachmentPayloadSchema = z.discriminatedUnion('type', [
 	PlanModeAttachmentPayload,
 	PlanModeExitAttachmentPayload,
@@ -474,6 +482,7 @@ export const AttachmentPayloadSchema = z.discriminatedUnion('type', [
 	CompanionIntroAttachmentPayload,
 	InvokedSkillsAttachmentPayload,
 	UltrathinkEffortAttachmentPayload,
+	MaxTurnsReachedAttachmentPayload,
 ]);
 
 /**
