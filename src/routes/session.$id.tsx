@@ -1,7 +1,7 @@
 import {createFileRoute, Link, useRouter} from '@tanstack/react-router';
 import type {ErrorComponentProps} from '@tanstack/react-router';
 import {createServerFn} from '@tanstack/react-start';
-import {queryOptions, useSuspenseQuery} from '@tanstack/react-query';
+import {queryOptions, useSuspenseQuery, useQueryClient} from '@tanstack/react-query';
 import {z} from 'zod';
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {SessionChat} from '../components/session-chat';
@@ -228,6 +228,7 @@ function ToggleCheckbox({checked, onChange, label}: {checked: boolean; onChange:
 
 function SessionPage() {
 	const params = Route.useParams();
+	const queryClient = useQueryClient();
 	const {data} = useSuspenseQuery(sessionDetailQueryOptions(params.id));
 	const [aiSummary, setAiSummary] = useState<string | null>(null);
 	const [summaryLoaded, setSummaryLoaded] = useState(false);
@@ -392,6 +393,7 @@ function SessionPage() {
 							onClick={async () => {
 								const result = await toggleSessionStar({data: params.id});
 								setStarred(result.starred);
+								void queryClient.invalidateQueries({queryKey: ['starred-sessions']});
 							}}
 							className="shrink-0 cursor-pointer text-text-500 transition-colors hover:text-warning-000"
 							title={starred ? 'Unstar session' : 'Star session'}

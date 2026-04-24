@@ -1,5 +1,5 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {useSuspenseQuery} from '@tanstack/react-query';
+import {useSuspenseQuery, useQueryClient} from '@tanstack/react-query';
 import {useState} from 'react';
 import {toggleSessionStar} from '../lib/server-fns';
 import {starredSessionsQueryOptions} from '../queries/starred';
@@ -23,12 +23,14 @@ function formatDate(iso: string): string {
 }
 
 function StarredPage() {
+	const queryClient = useQueryClient();
 	const {data: initialSessions} = useSuspenseQuery(starredSessionsQueryOptions);
 	const [sessions, setSessions] = useState(initialSessions);
 
 	async function handleUnstar(sessionId: string) {
 		await toggleSessionStar({data: sessionId});
 		setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+		void queryClient.invalidateQueries({queryKey: ['starred-sessions']});
 	}
 
 	return (
