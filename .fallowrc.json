@@ -2,7 +2,10 @@
 	"$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
 	"ignorePatterns": [".storybook/**", "scripts/**", "src/routeTree.gen.ts"],
 	"ignoreDependencies": ["@spotlightjs/spotlight", "agentation", "srvx"],
-	"ignoreExports": [{"file": "src/components/markdown-article.module.css", "exports": ["*"]}],
+	"ignoreExports": [
+		{"file": "src/components/markdown-article.module.css", "exports": ["*"]},
+		{"file": "src/components/settings-provider.tsx", "exports": ["SettingsProvider"]}
+	],
 	"rules": {
 		"unused-dependencies": "warn",
 		"unused-types": "warn",
