@@ -246,6 +246,10 @@ export function applyMemoryChanged(queryClient: QueryClient, memory: MemorySumma
 			return {...group, memories: [summary, ...group.memories]};
 		});
 	});
+	// Invalidate detail and raw queries so the detail/edit pages reflect
+	// external edits without waiting for staleTime expiry.
+	void queryClient.invalidateQueries({queryKey: ['memory', memory.project, memory.filename, 'detail']});
+	void queryClient.invalidateQueries({queryKey: ['memory', memory.project, memory.filename, 'raw']});
 }
 
 export function applyTaskChanged(queryClient: QueryClient, projectDir: string): void {

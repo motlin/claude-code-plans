@@ -432,6 +432,20 @@ describe('applyMemoryChanged', () => {
 		expect(groups?.map((g) => g.project)).toStrictEqual(['proj-a', 'proj-b']);
 		expect(groups?.[1]?.memories.map((m) => m.filename)).toStrictEqual(['MEMORY.md']);
 	});
+
+	it('invalidates memory detail and raw queries', () => {
+		const queryClient = new QueryClient();
+		queryClient.setQueryData(['memories'], []);
+		queryClient.setQueryData(['memory', 'proj-a', 'MEMORY.md', 'detail'], {content: 'old'});
+		queryClient.setQueryData(['memory', 'proj-a', 'MEMORY.md', 'raw'], 'old raw');
+
+		applyMemoryChanged(queryClient, makeMemory('proj-a', 'MEMORY.md', 'Updated'));
+
+		const detailState = queryClient.getQueryState(['memory', 'proj-a', 'MEMORY.md', 'detail']);
+		const rawState = queryClient.getQueryState(['memory', 'proj-a', 'MEMORY.md', 'raw']);
+		expect(detailState?.isInvalidated).toBe(true);
+		expect(rawState?.isInvalidated).toBe(true);
+	});
 });
 
 describe('applyTaskChanged', () => {
