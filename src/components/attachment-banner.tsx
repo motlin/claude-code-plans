@@ -1,4 +1,5 @@
 import React, {useMemo} from 'react';
+import {Link} from '@tanstack/react-router';
 import {AttachmentPayloadSchema, type AttachmentPayload} from '../lib/schemas';
 
 /**
@@ -151,22 +152,26 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 			);
 
 		// -- Plan/mode transitions --
-		case 'plan_mode':
+		case 'plan_mode': {
+			const planFilename = attachment.planFilePath?.split('/').pop();
 			return (
 				<Banner
 					icon="📋"
 					label="Plan mode"
 				>
-					{attachment.planFilePath && (
-						<span
-							className="font-mono text-text-600 truncate max-w-xs"
+					{planFilename && (
+						<Link
+							to="/plan/$filename"
+							params={{filename: planFilename}}
+							className="font-mono text-accent-500 hover:underline truncate max-w-xs"
 							title={attachment.planFilePath}
 						>
-							{attachment.planFilePath.split('/').pop()}
-						</span>
+							{planFilename}
+						</Link>
 					)}
 				</Banner>
 			);
+		}
 		case 'plan_mode_exit':
 			return (
 				<Banner
