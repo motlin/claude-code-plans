@@ -2,6 +2,7 @@ import {describe, it, expect} from 'vitest';
 import {QueryClient} from '@tanstack/react-query';
 import {
 	applyMemoryChanged,
+	applyMemoryRemoved,
 	applyPlanChanged,
 	applyPlanRemoved,
 	applySessionAdded,
@@ -468,6 +469,85 @@ describe('applyMemoryChanged', () => {
 		const rawState = queryClient.getQueryState(['memory', 'proj-a', 'MEMORY.md', 'raw']);
 		expect(detailState?.isInvalidated).toBe(true);
 		expect(rawState?.isInvalidated).toBe(true);
+	});
+});
+
+describe('applyMemoryRemoved', () => {
+	it('removes the memory from its project group', () => {
+		const queryClient = new QueryClient();
+		queryClient.setQueryData(
+			['memories'],
+			[
+				{
+					project: 'proj-a',
+					projectName: 'Project A',
+					memories: [
+						{
+							filename: 'MEMORY.md',
+							title: 'MEMORY.md',
+							mtime: '1999-12-31T00:00:00.000Z',
+							project: 'proj-a',
+						},
+						{filename: 'other.md', title: 'other.md', mtime: '1999-12-31T00:00:00.000Z', project: 'proj-a'},
+					],
+				},
+			],
+		);
+
+		applyMemoryRemoved(queryClient, 'proj-a', 'MEMORY.md');
+
+		const groups = queryClient.getQueryData<Array<{project: string; memories: Array<{filename: string}>}>>([
+			'memories',
+		]);
+		expect(groups?.[0]?.memories.map((m) => m.filename)).toStrictEqual(['other.md']);
+	});
+
+	it('drops the project group when its last memory is removed', () => {
+		const queryClient = new QueryClient();
+		queryClient.setQueryData(
+			['memories'],
+			[
+				{
+					project: 'proj-a',
+					projectName: 'Project A',
+					memories: [
+						{
+							filename: 'MEMORY.md',
+							title: 'MEMORY.md',
+							mtime: '1999-12-31T00:00:00.000Z',
+							project: 'proj-a',
+						},
+					],
+				},
+			],
+		);
+
+		applyMemoryRemoved(queryClient, 'proj-a', 'MEMORY.md');
+
+		const groups = queryClient.getQueryData<Array<{project: string; memories: Array<{filename: string}>}>>([
+			'memories',
+		]);
+		expect(groups).toStrictEqual([]);
+	});
+
+	it('evicts per-memory sub-cache under ["memory", project, filename, ...]', () => {
+		const queryClient = new QueryClient();
+		queryClient.setQueryData(['memories'], []);
+		queryClient.setQueryData(['memory', 'proj-a', 'MEMORY.md', 'detail'], {content: 'old'});
+		queryClient.setQueryData(['memory', 'proj-a', 'MEMORY.md', 'raw'], 'old raw');
+		queryClient.setQueryData(['memory', 'proj-b', 'OTHER.md', 'detail'], {content: 'keep'});
+
+		applyMemoryRemoved(queryClient, 'proj-a', 'MEMORY.md');
+
+		expect(queryClient.getQueryData(['memory', 'proj-a', 'MEMORY.md', 'detail'])).toBeUndefined();
+		expect(queryClient.getQueryData(['memory', 'proj-a', 'MEMORY.md', 'raw'])).toBeUndefined();
+		expect(queryClient.getQueryData(['memory', 'proj-b', 'OTHER.md', 'detail'])).toStrictEqual({content: 'keep'});
+	});
+
+	it('is a no-op when the memories query has never been populated', () => {
+		const queryClient = new QueryClient();
+		applyMemoryRemoved(queryClient, 'proj-a', 'MEMORY.md');
+		expect(queryClient.getQueryData(['memories'])).toBeUndefined();
 	});
 });
 

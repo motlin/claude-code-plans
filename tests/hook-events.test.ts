@@ -52,6 +52,7 @@ describe('DOMAIN_EVENTS', () => {
 		expect(DOMAIN_EVENTS.PLAN_CHANGED).toBe('plan:changed');
 		expect(DOMAIN_EVENTS.PLAN_REMOVED).toBe('plan:removed');
 		expect(DOMAIN_EVENTS.MEMORY_CHANGED).toBe('memory:changed');
+		expect(DOMAIN_EVENTS.MEMORY_REMOVED).toBe('memory:removed');
 		expect(DOMAIN_EVENTS.TASK_CHANGED).toBe('task:changed');
 		expect(DOMAIN_EVENTS.TASK_COMPLETED).toBe('task:completed');
 	});

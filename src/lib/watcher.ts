@@ -329,6 +329,12 @@ function handleFileUnlink(path: string): void {
 
 	if (ext === '.md' && plansDir && path.startsWith(plansDir)) {
 		broadcastTyped(DOMAIN_EVENTS.PLAN_REMOVED, {filename: basename(path)});
+	} else if (ext === '.md' && projectsDir && path.startsWith(projectsDir)) {
+		const relative = path.slice(projectsDir.length + 1);
+		const project = relative.split('/')[0] ?? '';
+		if (project) {
+			broadcastTyped(DOMAIN_EVENTS.MEMORY_REMOVED, {project, filename: basename(path)});
+		}
 	} else if (ext === '.jsonl') {
 		jsonlOffsets.delete(path);
 		safeDiffSessions(projectIdFromPath(path, projectsDir));

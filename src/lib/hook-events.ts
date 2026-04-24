@@ -37,6 +37,7 @@ export const DOMAIN_EVENTS = {
 	PLAN_CHANGED: 'plan:changed',
 	PLAN_REMOVED: 'plan:removed',
 	MEMORY_CHANGED: 'memory:changed',
+	MEMORY_REMOVED: 'memory:removed',
 	TASK_CHANGED: 'task:changed',
 	TASK_COMPLETED: 'task:completed',
 } as const;
@@ -116,6 +117,7 @@ export interface DomainEventPayloads {
 	[DOMAIN_EVENTS.PLAN_CHANGED]: {plan: PlanSummaryPayload};
 	[DOMAIN_EVENTS.PLAN_REMOVED]: {filename: string};
 	[DOMAIN_EVENTS.MEMORY_CHANGED]: {memory: MemorySummaryPayload};
+	[DOMAIN_EVENTS.MEMORY_REMOVED]: {project: string; filename: string};
 	[DOMAIN_EVENTS.TASK_CHANGED]: {task: TaskSummaryPayload};
 	[DOMAIN_EVENTS.TASK_COMPLETED]: {taskId: string; subject: string};
 }

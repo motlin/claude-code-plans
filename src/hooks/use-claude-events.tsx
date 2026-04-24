@@ -253,6 +253,20 @@ export function applyMemoryChanged(queryClient: QueryClient, memory: MemorySumma
 	void queryClient.invalidateQueries({queryKey: ['memory', memory.project, memory.filename, 'raw']});
 }
 
+export function applyMemoryRemoved(queryClient: QueryClient, project: string, filename: string): void {
+	queryClient.setQueryData<MemoriesGroup[]>(['memories'], (old) => {
+		if (!old) return old;
+		return old
+			.map((group) =>
+				group.project === project
+					? {...group, memories: group.memories.filter((m) => m.filename !== filename)}
+					: group,
+			)
+			.filter((group) => group.memories.length > 0);
+	});
+	queryClient.removeQueries({queryKey: ['memory', project, filename]});
+}
+
 export function applyTaskChanged(queryClient: QueryClient, projectDir: string): void {
 	// Task lists include server-rendered HTML (subjectHtml, descriptionHtml) that
 	// the SSE delta does not carry — invalidate the affected queries instead of
@@ -332,6 +346,7 @@ const DOMAIN_EVENT_TYPES = [
 	DOMAIN_EVENTS.PLAN_CHANGED,
 	DOMAIN_EVENTS.PLAN_REMOVED,
 	DOMAIN_EVENTS.MEMORY_CHANGED,
+	DOMAIN_EVENTS.MEMORY_REMOVED,
 	DOMAIN_EVENTS.TASK_CHANGED,
 	DOMAIN_EVENTS.TASK_COMPLETED,
 ] as const;
@@ -431,6 +446,14 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 				case DOMAIN_EVENTS.MEMORY_CHANGED: {
 					const memory = data['memory'] as MemorySummaryPayload | undefined;
 					if (memory) applyMemoryChanged(queryClient, memory);
+					break;
+				}
+				case DOMAIN_EVENTS.MEMORY_REMOVED: {
+					const project = data['project'];
+					const filename = data['filename'];
+					if (typeof project === 'string' && typeof filename === 'string') {
+						applyMemoryRemoved(queryClient, project, filename);
+					}
 					break;
 				}
 				case DOMAIN_EVENTS.TASK_CHANGED: {
