@@ -476,7 +476,7 @@ function SessionPage() {
 
 			{/* Sticky footer: chat input + status bar */}
 			{((!chromeHidden && data.projectPath) || statusline) && (
-				<div className="sticky bottom-0 z-10 -mx-4 sm:-mx-8">
+				<div className="sticky bottom-0 z-10 -mx-4 -mb-8 sm:-mx-8">
 					{!chromeHidden && data.projectPath && (
 						<ChatInput
 							onSend={(prompt) => chatStream.send(params.id, prompt)}
