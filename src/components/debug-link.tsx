@@ -40,7 +40,7 @@ export function DebugLink(props: DebugLinkProps) {
 			rel="noopener noreferrer"
 			title={title}
 			onClick={(e) => e.stopPropagation()}
-			className={`inline-flex items-center justify-center text-text-500 hover:text-text-100 transition-colors ${className}`}
+			className={`inline-flex items-center justify-center text-text-500 hover:text-text-100 transition-colors z-20 ${className}`}
 		>
 			<ExternalLink className="h-3 w-3" />
 		</a>

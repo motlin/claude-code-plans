@@ -82,7 +82,7 @@ const autoScrolledSessions = hmrPersist('autoScrolledSessions', () => new Set<st
 function CopyToast({visible}: {visible: boolean}) {
 	return (
 		<span
-			className={`absolute -top-6 left-1/2 -translate-x-1/2 rounded bg-bg-200 px-1.5 py-0.5 text-[10px] text-text-300 shadow-sm transition-opacity whitespace-nowrap ${visible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+			className={`absolute -top-6 left-1/2 -translate-x-1/2 rounded bg-bg-200 px-1.5 py-0.5 text-[10px] text-text-300 shadow-sm transition-opacity whitespace-nowrap pointer-events-none ${visible ? 'opacity-100' : 'opacity-0'}`}
 		>
 			Copied!
 		</span>
