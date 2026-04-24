@@ -48,7 +48,8 @@ const memoryRawQueryOptions = (project: string, filename: string) =>
 	queryOptions({
 		queryKey: ['memory', project, filename, 'raw'] as const,
 		queryFn: () => getMemoryRaw({data: {project, filename}}),
-		staleTime: 30_000,
+		staleTime: Infinity,
+		gcTime: Infinity,
 	});
 
 export const Route = createFileRoute('/memory/$project/$filename_/edit')({

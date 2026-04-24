@@ -85,7 +85,8 @@ const sessionDetailQueryOptions = (id: string) =>
 	queryOptions({
 		queryKey: ['session', id, 'detail'] as const,
 		queryFn: () => getSession({data: {id}}),
-		staleTime: 30_000,
+		staleTime: Infinity,
+		gcTime: Infinity,
 	});
 
 export const Route = createFileRoute('/session/$id')({

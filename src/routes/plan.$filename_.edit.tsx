@@ -46,7 +46,8 @@ const planRawQueryOptions = (filename: string) =>
 	queryOptions({
 		queryKey: ['plan', filename, 'raw'] as const,
 		queryFn: () => getPlanRaw({data: filename}),
-		staleTime: 30_000,
+		staleTime: Infinity,
+		gcTime: Infinity,
 	});
 
 export const Route = createFileRoute('/plan/$filename_/edit')({

@@ -40,7 +40,8 @@ const planDetailQueryOptions = (filename: string) =>
 	queryOptions({
 		queryKey: ['plan', filename, 'detail'] as const,
 		queryFn: () => getPlan({data: filename}),
-		staleTime: 30_000,
+		staleTime: Infinity,
+		gcTime: Infinity,
 	});
 
 export const Route = createFileRoute('/plan/$filename')({

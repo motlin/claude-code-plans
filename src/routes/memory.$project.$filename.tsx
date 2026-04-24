@@ -38,7 +38,8 @@ const memoryDetailQueryOptions = (project: string, filename: string) =>
 	queryOptions({
 		queryKey: ['memory', project, filename, 'detail'] as const,
 		queryFn: () => getMemory({data: {project, filename}}),
-		staleTime: 30_000,
+		staleTime: Infinity,
+		gcTime: Infinity,
 	});
 
 export const Route = createFileRoute('/memory/$project/$filename')({
