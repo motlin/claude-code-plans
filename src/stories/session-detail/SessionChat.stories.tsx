@@ -323,7 +323,6 @@ export const WithDisplayToggles: Story = {
 		showHookWarnings: false,
 		showHookErrors: false,
 		showSystemBanners: false,
-		showTimestamps: false,
 	},
 };
 

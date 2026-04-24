@@ -141,7 +141,7 @@ function VerbositySection() {
 		{
 			value: 'verbose',
 			label: 'Verbose',
-			description: 'Show tools, thinking, hooks, system content, and timestamps',
+			description: 'Show tools, thinking, hooks, and system content',
 		},
 	];
 
@@ -253,11 +253,6 @@ function SettingsPage() {
 						label="Tools"
 						description="Show tool calls and results"
 						settingKey="showTools"
-					/>
-					<ToggleRow
-						label="Timestamps"
-						description="Show timestamps on messages"
-						settingKey="showTimestamps"
 					/>
 					<ToggleRow
 						label="Tool duration"

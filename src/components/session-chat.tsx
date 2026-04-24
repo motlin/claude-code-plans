@@ -36,30 +36,9 @@ function formatTimestamp(timestamp?: string): string | null {
 	}
 }
 
-function Timestamp({
-	value,
-	sessionId,
-	uuid,
-}: {
-	value: string | null;
-	sessionId?: string | undefined;
-	uuid?: string | undefined;
-}) {
-	if (!value) return null;
-	return (
-		<div
-			className="flex items-center gap-1.5 text-xs text-text-500 leading-tight"
-			suppressHydrationWarning
-		>
-			{value}
-			{sessionId && (
-				<DebugLink
-					sessionId={sessionId}
-					uuid={uuid}
-				/>
-			)}
-		</div>
-	);
+function getLineTimestamp(line: SessionLine): string | undefined {
+	if ('timestamp' in line) return line.timestamp;
+	return undefined;
 }
 
 // fallow-ignore-next-line unused-type
@@ -74,7 +53,6 @@ export interface SessionChatProps {
 	showHookWarnings?: boolean;
 	showHookErrors?: boolean;
 	showSystemBanners?: boolean;
-	showTimestamps?: boolean;
 }
 
 const autoScrolledSessions = hmrPersist('autoScrolledSessions', () => new Set<string>());
@@ -154,7 +132,6 @@ export const SessionChat = React.memo(function SessionChat({
 	showHookWarnings = false,
 	showHookErrors = false,
 	showSystemBanners = false,
-	showTimestamps = false,
 }: SessionChatProps) {
 	const endRef = useRef<HTMLDivElement>(null);
 
@@ -184,7 +161,6 @@ export const SessionChat = React.memo(function SessionChat({
 				showHookWarnings={showHookWarnings}
 				showHookErrors={showHookErrors}
 				showSystemBanners={showSystemBanners}
-				showTimestamps={showTimestamps}
 			/>
 			<div ref={endRef} />
 		</div>
@@ -218,7 +194,6 @@ interface LineRenderProps {
 	showHookWarnings: boolean;
 	showHookErrors: boolean;
 	showSystemBanners: boolean;
-	showTimestamps: boolean;
 }
 
 function LineEntry({
@@ -237,11 +212,13 @@ function LineEntry({
 	if (!content) return null;
 
 	const isMessage = line.type === 'user' || line.type === 'assistant';
+	const timestampTitle = formatTimestamp(getLineTimestamp(line));
 	return (
 		<div
 			key={`line-${index}`}
 			id={`msg-${index}`}
 			className={`group relative ${className ?? ''}`}
+			title={timestampTitle ?? undefined}
 		>
 			{isMessage && (
 				<MessageToolbar
@@ -346,7 +323,7 @@ function isLineVisible(
 /**
  * Top-level switching function: reads line.type and delegates to
  * per-type entry components. Returns null when there is nothing to render
- * (e.g. tool-only assistant turns with both showTools and showTimestamps off).
+ * (e.g. tool-only assistant turns with showTools off).
  * Not a React component — no hooks, so it is safe to call as a plain function
  * and inspect the return value before deciding whether to render the wrapper div.
  */
@@ -358,7 +335,6 @@ function renderSessionMessage({
 	isSubagentSession,
 	showThinking,
 	showTools,
-	showTimestamps,
 	nextLine,
 }: LineRenderProps & {
 	line: SessionLine;
@@ -371,7 +347,6 @@ function renderSessionMessage({
 				sessionId={sessionId}
 				nextLine={nextLine}
 				isSubagentSession={isSubagentSession}
-				showTimestamps={showTimestamps}
 			/>
 		);
 	}
@@ -384,7 +359,6 @@ function renderSessionMessage({
 				subagentLookup={subagentLookup}
 				showThinking={showThinking}
 				showTools={showTools}
-				showTimestamps={showTimestamps}
 			/>
 		);
 	}
@@ -537,15 +511,12 @@ function UserEntry({
 	sessionId,
 	nextLine,
 	isSubagentSession,
-	showTimestamps,
 }: {
 	line: MessageSessionLine;
 	sessionId: string;
 	nextLine?: SessionLine | undefined;
 	isSubagentSession: boolean;
-	showTimestamps: boolean;
 }) {
-	const timestampText = formatTimestamp(line.timestamp);
 	const kind = classifyUserContent(line);
 
 	if (kind === 'command') {
@@ -553,8 +524,6 @@ function UserEntry({
 			<CommandEntry
 				line={line}
 				sessionId={sessionId}
-				timestampText={timestampText}
-				showTimestamps={showTimestamps}
 			/>
 		);
 	}
@@ -566,8 +535,6 @@ function UserEntry({
 				line={line}
 				outputLine={coalesceNext ? nextLine : undefined}
 				sessionId={sessionId}
-				timestampText={timestampText}
-				showTimestamps={showTimestamps}
 			/>
 		);
 	}
@@ -581,37 +548,14 @@ function UserEntry({
 			<SubagentPromptEntry
 				line={line}
 				sessionId={sessionId}
-				timestampText={timestampText}
-				showTimestamps={showTimestamps}
 			/>
 		);
 	}
 
-	return (
-		<div className="flex flex-col items-end gap-1.5">
-			{renderUserContentBlocks(line, sessionId)}
-			{showTimestamps && (
-				<Timestamp
-					value={timestampText}
-					sessionId={sessionId}
-					uuid={line.uuid}
-				/>
-			)}
-		</div>
-	);
+	return <div className="flex flex-col items-end gap-1.5">{renderUserContentBlocks(line, sessionId)}</div>;
 }
 
-function SubagentPromptEntry({
-	line,
-	sessionId,
-	timestampText,
-	showTimestamps,
-}: {
-	line: MessageSessionLine;
-	sessionId: string;
-	timestampText: string | null;
-	showTimestamps: boolean;
-}) {
+function SubagentPromptEntry({line, sessionId}: {line: MessageSessionLine; sessionId: string}) {
 	const content = line.message?.content;
 	if (!content) return null;
 
@@ -650,13 +594,6 @@ function SubagentPromptEntry({
 					className="absolute top-0 right-0"
 				/>
 			</div>
-			{showTimestamps && (
-				<Timestamp
-					value={timestampText}
-					sessionId={sessionId}
-					uuid={line.uuid}
-				/>
-			)}
 		</div>
 	);
 }
@@ -775,17 +712,7 @@ function renderUserContentBlocks(line: MessageSessionLine, sessionId: string): R
 	return nodes;
 }
 
-function CommandEntry({
-	line,
-	sessionId,
-	timestampText,
-	showTimestamps,
-}: {
-	line: MessageSessionLine;
-	sessionId: string;
-	timestampText: string | null;
-	showTimestamps: boolean;
-}) {
+function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: string}) {
 	const content = line.message?.content;
 	let cmdName = '';
 	let cmdArgs: string | undefined;
@@ -820,13 +747,6 @@ function CommandEntry({
 					className="absolute top-1 right-1"
 				/>
 			</div>
-			{showTimestamps && (
-				<Timestamp
-					value={timestampText}
-					sessionId={sessionId}
-					uuid={line.uuid}
-				/>
-			)}
 		</div>
 	);
 }
@@ -835,14 +755,10 @@ function BashEntry({
 	line,
 	outputLine,
 	sessionId,
-	timestampText,
-	showTimestamps,
 }: {
 	line: MessageSessionLine;
 	outputLine?: MessageSessionLine | undefined;
 	sessionId: string;
-	timestampText: string | null;
-	showTimestamps: boolean;
 }) {
 	let command = '';
 	let stdout: string | undefined;
@@ -914,13 +830,6 @@ function BashEntry({
 					</div>
 				)}
 			</div>
-			{showTimestamps && (
-				<Timestamp
-					value={timestampText}
-					sessionId={sessionId}
-					uuid={line.uuid}
-				/>
-			)}
 		</div>
 	);
 }
@@ -978,7 +887,6 @@ function AssistantEntry({
 	subagentLookup,
 	showThinking,
 	showTools,
-	showTimestamps,
 }: {
 	line: MessageSessionLine;
 	sessionId: string;
@@ -986,19 +894,11 @@ function AssistantEntry({
 	subagentLookup: ReturnType<typeof buildSubagentLookup>;
 	showThinking: boolean;
 	showTools: boolean;
-	showTimestamps: boolean;
 }) {
 	const content = line.message?.content;
-	const timestampText = formatTimestamp(line.timestamp);
 
 	if (!Array.isArray(content) || content.length === 0) {
-		return showTimestamps ? (
-			<Timestamp
-				value={timestampText}
-				sessionId={sessionId}
-				uuid={line.uuid}
-			/>
-		) : null;
+		return null;
 	}
 
 	// Collect tool_use blocks for the tool summary and section
@@ -1020,23 +920,12 @@ function AssistantEntry({
 
 	// If there's only tool_use blocks, render as a tool call section
 	if (!hasVisibleNonToolContent && hasToolUse) {
-		if (!showTools && !showTimestamps) return null;
+		if (!showTools) return null;
 		return (
-			<div className="flex flex-col gap-1.5 min-w-0">
-				{showTools && (
-					<ToolCallSection
-						calls={toolCalls}
-						sessionId={sessionId}
-					/>
-				)}
-				{showTimestamps && (
-					<Timestamp
-						value={timestampText}
-						sessionId={sessionId}
-						uuid={line.uuid}
-					/>
-				)}
-			</div>
+			<ToolCallSection
+				calls={toolCalls}
+				sessionId={sessionId}
+			/>
 		);
 	}
 
@@ -1055,13 +944,6 @@ function AssistantEntry({
 					toolCalls={toolCalls}
 				/>
 			))}
-			{showTimestamps && (
-				<Timestamp
-					value={timestampText}
-					sessionId={sessionId}
-					uuid={line.uuid}
-				/>
-			)}
 		</div>
 	);
 }

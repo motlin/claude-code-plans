@@ -463,7 +463,6 @@ function SessionPage() {
 					showHookWarnings={settings.showHookWarnings}
 					showHookErrors={settings.showHookErrors}
 					showSystemBanners={settings.showSystemBanners}
-					showTimestamps={settings.showTimestamps}
 				/>
 			</AskUserQuestionProvider>
 

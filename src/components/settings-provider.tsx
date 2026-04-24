@@ -6,7 +6,6 @@ export type Verbosity = 'minimal' | 'normal' | 'verbose';
 export interface Settings {
 	showThinking: boolean;
 	showTools: boolean;
-	showTimestamps: boolean;
 	showDebug: boolean;
 	showToolDuration: boolean;
 
@@ -31,7 +30,6 @@ export interface Settings {
 const DEFAULTS: Settings = {
 	showThinking: false,
 	showTools: true,
-	showTimestamps: false,
 	showDebug: false,
 	showToolDuration: true,
 
@@ -56,7 +54,6 @@ const DEFAULTS: Settings = {
 const STORAGE_KEYS: Record<keyof Settings, string> = {
 	showThinking: 'ccp-show-thinking',
 	showTools: 'ccp-show-tools',
-	showTimestamps: 'ccp-show-timestamps',
 	showDebug: 'ccp-show-debug',
 	showToolDuration: 'ccp-show-tool-duration',
 	showPassedHooks: 'ccp-show-passed-hooks',
@@ -79,7 +76,6 @@ const VERBOSITY_PRESETS: Record<Exclude<Verbosity, 'minimal'>, Partial<Settings>
 		showHookWarnings: false,
 		showHookErrors: false,
 		showSystemBanners: false,
-		showTimestamps: false,
 		showDebug: false,
 	},
 	normal: {
@@ -89,7 +85,6 @@ const VERBOSITY_PRESETS: Record<Exclude<Verbosity, 'minimal'>, Partial<Settings>
 		showHookWarnings: false,
 		showHookErrors: false,
 		showSystemBanners: false,
-		showTimestamps: false,
 		showDebug: false,
 	},
 	verbose: {
@@ -99,7 +94,6 @@ const VERBOSITY_PRESETS: Record<Exclude<Verbosity, 'minimal'>, Partial<Settings>
 		showHookWarnings: true,
 		showHookErrors: true,
 		showSystemBanners: true,
-		showTimestamps: true,
 		showDebug: false,
 	},
 };
