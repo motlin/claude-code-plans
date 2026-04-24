@@ -5,7 +5,13 @@
 	"ignoreDependencies": ["@spotlightjs/spotlight", "agentation"],
 	"ignoreExports": [
 		{"file": "src/components/markdown-article.module.css", "exports": ["*"]},
-		{"file": "src/components/settings-provider.tsx", "exports": ["SettingsProvider"]}
+		{"file": "src/components/session-chat.tsx", "exports": ["SessionChatProps"]},
+		{"file": "src/components/settings-provider.tsx", "exports": ["SettingsProvider"]},
+		{"file": "src/lib/active-sessions.ts", "exports": ["ActiveSession"]},
+		{"file": "src/lib/db/queries.ts", "exports": ["DbSearchResult", "DbMessageSearchResult"]},
+		{"file": "src/lib/server-fns.ts", "exports": ["ProjectScopeBase"]},
+		{"file": "src/lib/sessions.ts", "exports": ["RawWindow"]},
+		{"file": "src/routes/session.$id_.source.$uuid.tsx", "exports": ["PairedResult"]}
 	],
 	"rules": {
 		"unused-dependencies": "warn",
