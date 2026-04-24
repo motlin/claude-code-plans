@@ -577,6 +577,14 @@ export const PrLinkRecordSchema = z
 	})
 	.strict();
 
+export const AgentColorRecordSchema = z
+	.object({
+		type: z.literal('agent-color'),
+		agentColor: z.string(),
+		sessionId: z.string(),
+	})
+	.strict();
+
 /**
  * Discriminated union of all known JSONL record types.
  * Unknown record types are hard errors -- they mean we need a new schema branch.
@@ -594,6 +602,7 @@ export const JsonlRecordSchema = z.discriminatedUnion('type', [
 	AgentNameRecordSchema,
 	PermissionModeRecordSchema,
 	PrLinkRecordSchema,
+	AgentColorRecordSchema,
 ]);
 
 // ---------------------------------------------------------------------------
