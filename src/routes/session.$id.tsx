@@ -507,6 +507,11 @@ function SessionPage() {
 							label="Passed Hooks"
 						/>
 						<ToggleCheckbox
+							checked={settings.showHookWarnings}
+							onChange={(v) => setSetting('showHookWarnings', v)}
+							label="Hook Warnings"
+						/>
+						<ToggleCheckbox
 							checked={settings.showHookErrors}
 							onChange={(v) => setSetting('showHookErrors', v)}
 							label="Hook Errors"
@@ -555,6 +560,7 @@ function SessionPage() {
 					showThinking={settings.showThinking}
 					showTools={settings.showTools}
 					showPassedHooks={settings.showPassedHooks}
+					showHookWarnings={settings.showHookWarnings}
 					showHookErrors={settings.showHookErrors}
 					showSystemBanners={settings.showSystemBanners}
 					showTimestamps={settings.showTimestamps}

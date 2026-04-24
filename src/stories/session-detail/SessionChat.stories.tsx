@@ -320,6 +320,7 @@ export const WithDisplayToggles: Story = {
 		toolResultMap: [],
 		subagentTree: [],
 		showPassedHooks: false,
+		showHookWarnings: false,
 		showHookErrors: false,
 		showSystemBanners: false,
 		showTimestamps: false,

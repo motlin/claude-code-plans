@@ -281,8 +281,13 @@ function SettingsPage() {
 						settingKey="showPassedHooks"
 					/>
 					<ToggleRow
+						label="Hook warnings"
+						description="Show non-blocking hook warnings and additional context"
+						settingKey="showHookWarnings"
+					/>
+					<ToggleRow
 						label="Hook errors"
-						description="Show hook error details"
+						description="Show blocking hook errors and cancellations"
 						settingKey="showHookErrors"
 					/>
 				</Section>

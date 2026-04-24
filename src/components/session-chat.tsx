@@ -59,6 +59,7 @@ export interface SessionChatProps {
 	showThinking?: boolean;
 	showTools?: boolean;
 	showPassedHooks?: boolean;
+	showHookWarnings?: boolean;
 	showHookErrors?: boolean;
 	showSystemBanners?: boolean;
 	showTimestamps?: boolean;
@@ -138,6 +139,7 @@ export const SessionChat = React.memo(function SessionChat({
 	showThinking = false,
 	showTools = true,
 	showPassedHooks = false,
+	showHookWarnings = false,
 	showHookErrors = false,
 	showSystemBanners = false,
 	showTimestamps = false,
@@ -165,6 +167,7 @@ export const SessionChat = React.memo(function SessionChat({
 				showThinking={showThinking}
 				showTools={showTools}
 				showPassedHooks={showPassedHooks}
+				showHookWarnings={showHookWarnings}
 				showHookErrors={showHookErrors}
 				showSystemBanners={showSystemBanners}
 				showTimestamps={showTimestamps}
@@ -197,6 +200,7 @@ interface LineRenderProps {
 	showThinking: boolean;
 	showTools: boolean;
 	showPassedHooks: boolean;
+	showHookWarnings: boolean;
 	showHookErrors: boolean;
 	showSystemBanners: boolean;
 	showTimestamps: boolean;
@@ -436,7 +440,8 @@ function TailTextSection({tailText, sessionId}: {tailText: TailText; sessionId: 
 	);
 }
 
-const HOOK_ERROR_SUBTYPES = new Set(['hook_non_blocking_error', 'hook_cancelled', 'hook_additional_context']);
+const HOOK_WARNING_SUBTYPES = new Set(['hook_non_blocking_error', 'hook_additional_context']);
+const HOOK_ERROR_SUBTYPES = new Set(['hook_cancelled', 'hook_blocking_error']);
 const SYSTEM_BANNER_SUBTYPES = new Set([
 	'skill_listing',
 	'command_permissions',
@@ -467,15 +472,17 @@ function isLineVisible(
 	line: SessionLine,
 	{
 		showPassedHooks,
+		showHookWarnings,
 		showHookErrors,
 		showSystemBanners,
-	}: Pick<LineRenderProps, 'showPassedHooks' | 'showHookErrors' | 'showSystemBanners'>,
+	}: Pick<LineRenderProps, 'showPassedHooks' | 'showHookWarnings' | 'showHookErrors' | 'showSystemBanners'>,
 ): boolean {
 	if (line.type === 'agent-name' || line.type === 'agent-color' || line.type === 'permission-mode')
 		return showSystemBanners;
 	if (line.type === 'attachment') {
 		const subtype = getAttachmentSubtype(line.attachmentJson);
 		if (subtype === 'hook_success') return showPassedHooks;
+		if (subtype && HOOK_WARNING_SUBTYPES.has(subtype)) return showHookWarnings;
 		if (subtype && HOOK_ERROR_SUBTYPES.has(subtype)) return showHookErrors;
 		if (subtype && SYSTEM_BANNER_SUBTYPES.has(subtype)) return showSystemBanners;
 	}

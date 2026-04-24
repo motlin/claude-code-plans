@@ -11,6 +11,7 @@ export interface Settings {
 	showToolDuration: boolean;
 
 	showPassedHooks: boolean;
+	showHookWarnings: boolean;
 	showHookErrors: boolean;
 
 	showSystemBanners: boolean;
@@ -36,6 +37,7 @@ const DEFAULTS: Settings = {
 	showToolDuration: true,
 
 	showPassedHooks: false,
+	showHookWarnings: false,
 	showHookErrors: false,
 
 	showSystemBanners: false,
@@ -60,6 +62,7 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
 	showDebug: 'ccp-show-debug',
 	showToolDuration: 'ccp-show-tool-duration',
 	showPassedHooks: 'ccp-show-passed-hooks',
+	showHookWarnings: 'ccp-show-hook-warnings',
 	showHookErrors: 'ccp-show-hook-errors',
 	showSystemBanners: 'ccp-show-system-banners',
 	defaultSubagentView: 'ccp-subagent-view',
@@ -76,6 +79,7 @@ const VERBOSITY_PRESETS: Record<Exclude<Verbosity, 'minimal'>, Partial<Settings>
 		showTools: false,
 		showThinking: false,
 		showPassedHooks: false,
+		showHookWarnings: false,
 		showHookErrors: false,
 		showSystemBanners: false,
 		showTimestamps: false,
@@ -85,6 +89,7 @@ const VERBOSITY_PRESETS: Record<Exclude<Verbosity, 'minimal'>, Partial<Settings>
 		showTools: true,
 		showThinking: false,
 		showPassedHooks: false,
+		showHookWarnings: false,
 		showHookErrors: false,
 		showSystemBanners: false,
 		showTimestamps: false,
@@ -94,6 +99,7 @@ const VERBOSITY_PRESETS: Record<Exclude<Verbosity, 'minimal'>, Partial<Settings>
 		showTools: true,
 		showThinking: true,
 		showPassedHooks: true,
+		showHookWarnings: true,
 		showHookErrors: true,
 		showSystemBanners: true,
 		showTimestamps: true,
