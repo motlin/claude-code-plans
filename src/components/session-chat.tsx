@@ -293,8 +293,6 @@ function AssistantGroupSection({
 	const hasSummary = group.summary.length > 0;
 	const {tailText} = group;
 
-	// Build a set of block indices to skip for the tail text line inside the collapsible body.
-	// The tail text's text blocks are rendered BELOW the collapse instead.
 	const tailTextSkipBlocks = useMemo(() => {
 		if (!tailText) return undefined;
 		return new Set(tailText.textBlockIndices);
@@ -321,8 +319,6 @@ function AssistantGroupSection({
 						if (skipSet.has(i)) return null;
 						if (!isLineVisible(line, renderProps)) return null;
 
-						// For the tail text line inside the collapsible body, skip its text blocks
-						// (they are rendered below the collapse)
 						const isTailTextLine = tailText && line === tailText.line;
 						if (isTailTextLine && line.type === 'assistant') {
 							return (

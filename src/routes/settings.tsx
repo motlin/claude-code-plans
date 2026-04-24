@@ -1,7 +1,7 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
 import {useState} from 'react';
 import {Eye, Gauge, GitFork, Info, Palette, Sparkles, Webhook, Wrench, FileJson} from 'lucide-react';
-import {useSettings, type Settings} from '../components/settings-provider';
+import {useSettings, type Settings, type Verbosity} from '../components/settings-provider';
 import {useTheme} from '../components/theme-provider';
 
 export const Route = createFileRoute('/settings')({
@@ -12,6 +12,7 @@ export const Route = createFileRoute('/settings')({
 });
 
 type BooleanSettingKey = {[K in keyof Settings]: Settings[K] extends boolean ? K : never}[keyof Settings];
+type NumberSettingKey = {[K in keyof Settings]: Settings[K] extends number ? K : never}[keyof Settings];
 
 interface ToggleRowProps {
 	label: string;
@@ -86,14 +87,14 @@ function SelectRow<K extends keyof Settings>({label, description, settingKey, op
 interface NumberRowProps {
 	label: string;
 	description: string;
-	settingKey: keyof Settings;
+	settingKey: NumberSettingKey;
 	min?: number;
 	max?: number;
 }
 
 function NumberRow({label, description, settingKey, min, max}: NumberRowProps) {
 	const {settings, setSetting} = useSettings();
-	const current = settings[settingKey] as number;
+	const current = settings[settingKey];
 
 	return (
 		<div className="flex items-center justify-between gap-4 py-2">
@@ -109,7 +110,7 @@ function NumberRow({label, description, settingKey, min, max}: NumberRowProps) {
 				onChange={(e) => {
 					const parsed = Number(e.target.value);
 					if (Number.isFinite(parsed)) {
-						setSetting(settingKey, parsed as Settings[typeof settingKey]);
+						setSetting(settingKey, parsed as Settings[NumberSettingKey]);
 					}
 				}}
 				className="w-20 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -129,8 +130,6 @@ function Section({icon: Icon, title, children}: {icon: React.ElementType; title:
 		</section>
 	);
 }
-
-type Verbosity = 'minimal' | 'normal' | 'verbose';
 
 function VerbositySection() {
 	const {settings, setVerbosity} = useSettings();

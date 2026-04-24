@@ -1,7 +1,7 @@
 import {createContext, useCallback, useContext, useEffect, useState} from 'react';
 
 type SubagentView = 'tree' | 'gantt' | 'sequence';
-type Verbosity = 'minimal' | 'normal' | 'verbose';
+export type Verbosity = 'minimal' | 'normal' | 'verbose';
 
 export interface Settings {
 	showThinking: boolean;
