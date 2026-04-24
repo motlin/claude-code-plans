@@ -299,6 +299,11 @@ function AssistantGroupSection({
 		return new Set(tailText.textBlockIndices);
 	}, [tailText]);
 
+	const hasVisibleLines = group.lines.some(
+		(line, lineOffset) => !skipSet.has(group.lineIndices[lineOffset]!) && isLineVisible(line, renderProps),
+	);
+	if (!hasVisibleLines && !tailText) return null;
+
 	return (
 		<div
 			id={`msg-${group.startIndex}`}
