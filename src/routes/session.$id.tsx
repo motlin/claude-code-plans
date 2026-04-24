@@ -340,7 +340,12 @@ function SessionPage() {
 							<ArrowLeft className="h-3.5 w-3.5" />
 							All Sessions
 						</Link>
-						<span className="text-xs text-text-500">{data.projectName}</span>
+						<span
+							className="text-xs text-text-500"
+							title={data.projectPath ?? undefined}
+						>
+							{data.projectName}
+						</span>
 						{isActive && (
 							<span className="inline-flex items-center gap-1 rounded-full bg-success-900 px-2 py-0.5 text-xs font-medium text-success-000">
 								<span className="h-1.5 w-1.5 rounded-full bg-success-000 animate-pulse" />
