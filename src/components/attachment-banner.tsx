@@ -264,7 +264,7 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 
 export function Banner({icon, label, children}: {icon: string; label?: string; children?: React.ReactNode}) {
 	return (
-		<div className="flex items-center gap-2 py-1.5 px-3 text-xs text-text-500 bg-bg-100 rounded-md border border-border-300/10">
+		<div className="flex flex-wrap items-center gap-2 py-1.5 px-3 text-xs text-text-500 bg-bg-100 rounded-md border border-border-300/10">
 			<span>{icon}</span>
 			{label && <span>{label}</span>}
 			{children}
@@ -274,7 +274,7 @@ export function Banner({icon, label, children}: {icon: string; label?: string; c
 
 function Pre({children}: {children: React.ReactNode}) {
 	return (
-		<pre className="mt-1 text-[10px] leading-tight text-text-600 bg-bg-200 rounded px-2 py-1 max-h-20 overflow-auto whitespace-pre-wrap break-all">
+		<pre className="w-full mt-1 text-[10px] leading-tight text-text-600 bg-bg-200 rounded px-2 py-1 whitespace-pre-wrap break-all">
 			{children}
 		</pre>
 	);
