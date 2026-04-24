@@ -160,6 +160,7 @@ export const SessionChat = React.memo(function SessionChat({
 
 	const toolResultMap = useMemo(() => new Map(serializedToolResultMap), [serializedToolResultMap]);
 	const subagentLookup = useMemo(() => buildSubagentLookup(subagentTree), [subagentTree]);
+	const isSubagentSession = sessionId.startsWith('agent-');
 
 	useEffect(() => {
 		if (autoScrolledSessions.has(sessionId)) return;
@@ -176,6 +177,7 @@ export const SessionChat = React.memo(function SessionChat({
 				sessionId={sessionId}
 				toolResultMap={toolResultMap}
 				subagentLookup={subagentLookup}
+				isSubagentSession={isSubagentSession}
 				showThinking={showThinking}
 				showTools={showTools}
 				showPassedHooks={showPassedHooks}
@@ -209,6 +211,7 @@ interface LineRenderProps {
 	sessionId: string;
 	toolResultMap: Map<string, ToolResultInfo>;
 	subagentLookup: ReturnType<typeof buildSubagentLookup>;
+	isSubagentSession: boolean;
 	showThinking: boolean;
 	showTools: boolean;
 	showPassedHooks: boolean;
@@ -352,6 +355,7 @@ function renderSessionMessage({
 	sessionId,
 	toolResultMap,
 	subagentLookup,
+	isSubagentSession,
 	showThinking,
 	showTools,
 	showTimestamps,
@@ -366,6 +370,7 @@ function renderSessionMessage({
 				line={line}
 				sessionId={sessionId}
 				nextLine={nextLine}
+				isSubagentSession={isSubagentSession}
 				showTimestamps={showTimestamps}
 			/>
 		);
@@ -531,11 +536,13 @@ function UserEntry({
 	line,
 	sessionId,
 	nextLine,
+	isSubagentSession,
 	showTimestamps,
 }: {
 	line: MessageSessionLine;
 	sessionId: string;
 	nextLine?: SessionLine | undefined;
+	isSubagentSession: boolean;
 	showTimestamps: boolean;
 }) {
 	const timestampText = formatTimestamp(line.timestamp);
@@ -569,9 +576,80 @@ function UserEntry({
 		return null;
 	}
 
+	if (isSubagentSession) {
+		return (
+			<SubagentPromptEntry
+				line={line}
+				sessionId={sessionId}
+				timestampText={timestampText}
+				showTimestamps={showTimestamps}
+			/>
+		);
+	}
+
 	return (
 		<div className="flex flex-col items-end gap-1.5">
 			{renderUserContentBlocks(line, sessionId)}
+			{showTimestamps && (
+				<Timestamp
+					value={timestampText}
+					sessionId={sessionId}
+					uuid={line.uuid}
+				/>
+			)}
+		</div>
+	);
+}
+
+function SubagentPromptEntry({
+	line,
+	sessionId,
+	timestampText,
+	showTimestamps,
+}: {
+	line: MessageSessionLine;
+	sessionId: string;
+	timestampText: string | null;
+	showTimestamps: boolean;
+}) {
+	const content = line.message?.content;
+	if (!content) return null;
+
+	const textBlocks: string[] = [];
+	if (typeof content === 'string') {
+		const cleaned = stripCommandTags(content);
+		if (cleaned) textBlocks.push(cleaned);
+	} else if (Array.isArray(content)) {
+		for (const block of content) {
+			if (block.type === 'text' && typeof block.text === 'string') {
+				if (/<local-command-caveat>/.test(block.text)) continue;
+				const cleaned = stripCommandTags(block.text);
+				if (cleaned) textBlocks.push(cleaned);
+			}
+		}
+	}
+
+	if (textBlocks.length === 0) return null;
+
+	return (
+		<div className="flex flex-col gap-1.5 min-w-0">
+			<div className="relative border-l-2 border-accent-100 pl-3">
+				<div className="flex items-center gap-1.5 mb-1">
+					<span className="text-[11px] font-medium text-accent-100 bg-accent-000/10 rounded-full px-2 py-0.5">
+						&#x2191; Parent Agent
+					</span>
+				</div>
+				<div className="text-sm leading-relaxed text-text-100">
+					<TruncatedContent>
+						<MarkdownArticle markdown={textBlocks.join('\n\n')} />
+					</TruncatedContent>
+				</div>
+				<DebugLink
+					sessionId={sessionId}
+					uuid={line.uuid}
+					className="absolute top-0 right-0"
+				/>
+			</div>
 			{showTimestamps && (
 				<Timestamp
 					value={timestampText}
