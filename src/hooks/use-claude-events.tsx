@@ -202,6 +202,10 @@ export function applyPlanChanged(queryClient: QueryClient, plan: PlanSummaryPayl
 	});
 	// Grouped plans have links we don't know from the event alone — invalidate.
 	void queryClient.invalidateQueries({queryKey: ['plans', 'grouped']});
+	// Plan detail and raw queries must also be invalidated so the detail/edit
+	// pages reflect external edits without waiting for staleTime expiry.
+	void queryClient.invalidateQueries({queryKey: ['plan', plan.filename, 'detail']});
+	void queryClient.invalidateQueries({queryKey: ['plan', plan.filename, 'raw']});
 }
 
 export function applyPlanRemoved(queryClient: QueryClient, filename: string): void {

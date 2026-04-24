@@ -347,6 +347,20 @@ describe('applyPlanChanged', () => {
 		const plans = queryClient.getQueryData<PlanSummaryPayload[]>(['plans']);
 		expect(plans).toBe(undefined);
 	});
+
+	it('invalidates plan detail and raw queries for the changed plan', () => {
+		const queryClient = new QueryClient();
+		queryClient.setQueryData(['plans'], [makePlan('a.md')]);
+		queryClient.setQueryData(['plan', 'a.md', 'detail'], {content: 'old detail'});
+		queryClient.setQueryData(['plan', 'a.md', 'raw'], 'old raw');
+
+		applyPlanChanged(queryClient, makePlan('a.md', 'Updated'));
+
+		const detailState = queryClient.getQueryState(['plan', 'a.md', 'detail']);
+		const rawState = queryClient.getQueryState(['plan', 'a.md', 'raw']);
+		expect(detailState?.isInvalidated).toBe(true);
+		expect(rawState?.isInvalidated).toBe(true);
+	});
 });
 
 describe('applyPlanRemoved', () => {
