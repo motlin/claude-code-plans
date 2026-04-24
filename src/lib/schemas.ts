@@ -197,10 +197,10 @@ export const AssistantRecordSchema = z
 			})
 			.strict(),
 		isApiErrorMessage: z.boolean().optional(),
+		apiErrorStatus: z.union([z.number(), z.string()]).optional(),
 		error: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
 		attributionSkill: z.string().optional(),
 		attributionPlugin: z.string().optional(),
-		apiErrorStatus: z.union([z.number(), z.string()]).optional(),
 		errorDetails: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
 	})
 	.strict();
