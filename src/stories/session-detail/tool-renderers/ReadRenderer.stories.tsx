@@ -30,6 +30,26 @@ export const WithLineNumbers: Story = {
 	},
 };
 
+export const PythonFile: Story = {
+	args: {
+		toolCall: makeToolCall({
+			input: {file_path: '/Users/craig/projects/app/src/main.py'},
+			param: '/Users/craig/projects/app/src/main.py',
+			result: '     1→import os\n     2→from pathlib import Path\n     3→\n     4→def main():\n     5→    root = Path(os.getcwd())\n     6→    for item in root.iterdir():\n     7→        if item.is_file():\n     8→            print(f"Found: {item.name}")\n     9→\n    10→if __name__ == "__main__":\n    11→    main()',
+		}),
+	},
+};
+
+export const JsonFile: Story = {
+	args: {
+		toolCall: makeToolCall({
+			input: {file_path: '/Users/craig/projects/app/package.json'},
+			param: '/Users/craig/projects/app/package.json',
+			result: '     1→{\n     2→  "name": "my-app",\n     3→  "version": "1.0.0",\n     4→  "dependencies": {\n     5→    "express": "^4.18.0",\n     6→    "typescript": "^5.0.0"\n     7→  },\n     8→  "scripts": {\n     9→    "start": "node dist/index.js",\n    10→    "build": "tsc"\n    11→  }\n    12→}',
+		}),
+	},
+};
+
 export const FileNotFound: Story = {
 	args: {
 		toolCall: makeToolCall({

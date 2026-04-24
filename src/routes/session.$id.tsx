@@ -15,9 +15,6 @@ import {StatusFooter} from '../components/status-footer';
 import type {SerializedToolResultMap} from '../components/tool-renderers';
 import {ArrowLeft, ArrowUp, ArrowDown, Copy, Terminal, GitFork, Download, Maximize2, Minimize2} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
-import {SubagentTree} from '../components/subagent-tree';
-import {SubagentGantt} from '../components/subagent-gantt';
-import {SubagentSequence} from '../components/subagent-sequence';
 import {useSettings} from '../components/settings-provider';
 
 const getSession = createServerFn({method: 'GET'})
@@ -68,7 +65,6 @@ const getSession = createServerFn({method: 'GET'})
 			toolResultMap: Array.from(detail.toolResultMap.entries()) as SerializedToolResultMap,
 			subagentTree: subagentResult.tree,
 			subagentCount: subagentResult.totalCount,
-			subagents: subagentResult.agents,
 			starred: starResult.starred,
 			projectPath,
 			gitBranch: sessionMeta?.gitBranch ?? null,
@@ -213,20 +209,6 @@ function CopyButton({
 	);
 }
 
-function ToggleCheckbox({checked, onChange, label}: {checked: boolean; onChange: (v: boolean) => void; label: string}) {
-	return (
-		<label className="flex items-center gap-1 cursor-pointer select-none">
-			<input
-				type="checkbox"
-				checked={checked}
-				onChange={(e) => onChange(e.target.checked)}
-				className="accent-accent-000"
-			/>
-			{label}
-		</label>
-	);
-}
-
 function SessionPage() {
 	const params = Route.useParams();
 	const queryClient = useQueryClient();
@@ -286,7 +268,6 @@ function SessionPage() {
 		() => ({isSessionActive: isActive, submitAnswer}),
 		[isActive, submitAnswer],
 	);
-	const [subagentView, setSubagentView] = useState<'tree' | 'gantt' | 'sequence'>(settings.defaultSubagentView);
 	const chatStream = useChatStream();
 	const prevSessionIdRef = useRef(params.id);
 
@@ -348,7 +329,7 @@ function SessionPage() {
 
 	return (
 		<div>
-			{/* Sticky header: top bar + title + subagent views + display toggles */}
+			{/* Sticky header: top bar + title + subagent link */}
 			{!chromeHidden && (
 				<div className="sticky top-0 z-10 bg-bg-000 pb-2 -mx-4 px-4 sm:-mx-8 sm:px-8 border-b border-border-300/15">
 					<DetailTopBar>
@@ -437,101 +418,15 @@ function SessionPage() {
 					)}
 
 					{data.subagentCount > 0 && (
-						<div className="mt-3">
-							<div className="flex items-center gap-2 text-[10px] text-text-500">
-								<span>View</span>
-								<button
-									type="button"
-									onClick={() => setSubagentView('tree')}
-									aria-pressed={subagentView === 'tree'}
-									className={`rounded px-1.5 py-0.5 ${
-										subagentView === 'tree'
-											? 'bg-accent-000/15 text-accent-100'
-											: 'hover:bg-bg-200/50 text-text-500'
-									}`}
-								>
-									Tree
-								</button>
-								<button
-									type="button"
-									onClick={() => setSubagentView('gantt')}
-									aria-pressed={subagentView === 'gantt'}
-									className={`rounded px-1.5 py-0.5 ${
-										subagentView === 'gantt'
-											? 'bg-accent-000/15 text-accent-100'
-											: 'hover:bg-bg-200/50 text-text-500'
-									}`}
-								>
-									Gantt
-								</button>
-								<button
-									type="button"
-									onClick={() => setSubagentView('sequence')}
-									aria-pressed={subagentView === 'sequence'}
-									className={`rounded px-1.5 py-0.5 ${
-										subagentView === 'sequence'
-											? 'bg-accent-000/15 text-accent-100'
-											: 'hover:bg-bg-200/50 text-text-500'
-									}`}
-								>
-									Sequence
-								</button>
-							</div>
-							{subagentView === 'tree' ? (
-								<SubagentTree
-									tree={data.subagentTree}
-									totalCount={data.subagentCount}
-								/>
-							) : subagentView === 'gantt' ? (
-								<SubagentGantt agents={data.subagents} />
-							) : (
-								<SubagentSequence agents={data.subagents} />
-							)}
-						</div>
+						<Link
+							to="/session/$id/subagents"
+							params={{id: params.id}}
+							className="mt-2 inline-flex items-center gap-1.5 text-xs text-accent-100 hover:underline"
+						>
+							<GitFork className="h-3 w-3" />
+							{data.subagentCount} subagent{data.subagentCount === 1 ? '' : 's'}
+						</Link>
 					)}
-
-					<div className="flex items-center gap-3 mt-2 text-xs text-text-500">
-						<ToggleCheckbox
-							checked={settings.showThinking}
-							onChange={(v) => setSetting('showThinking', v)}
-							label="Thinking"
-						/>
-						<ToggleCheckbox
-							checked={settings.showTools}
-							onChange={(v) => setSetting('showTools', v)}
-							label="Tools"
-						/>
-						<ToggleCheckbox
-							checked={settings.showPassedHooks}
-							onChange={(v) => setSetting('showPassedHooks', v)}
-							label="Passed Hooks"
-						/>
-						<ToggleCheckbox
-							checked={settings.showHookWarnings}
-							onChange={(v) => setSetting('showHookWarnings', v)}
-							label="Hook Warnings"
-						/>
-						<ToggleCheckbox
-							checked={settings.showHookErrors}
-							onChange={(v) => setSetting('showHookErrors', v)}
-							label="Hook Errors"
-						/>
-						<ToggleCheckbox
-							checked={settings.showSystemBanners}
-							onChange={(v) => setSetting('showSystemBanners', v)}
-							label="System Banners"
-						/>
-						<ToggleCheckbox
-							checked={settings.showTimestamps}
-							onChange={(v) => setSetting('showTimestamps', v)}
-							label="Timestamps"
-						/>
-						<ToggleCheckbox
-							checked={settings.showDebug}
-							onChange={(v) => setSetting('showDebug', v)}
-							label="Debug JSONL"
-						/>
-					</div>
 				</div>
 			)}
 

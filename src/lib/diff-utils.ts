@@ -125,3 +125,79 @@ export function extractLineNumbers(text: string): {text: string; startLine: numb
 		hasLineNumbers,
 	};
 }
+
+/**
+ * Map from file extension (without leading dot) to Shiki language identifier.
+ * Only includes languages commonly seen in Claude Code tool results.
+ */
+const EXTENSION_TO_LANGUAGE: Record<string, string> = {
+	ts: 'typescript',
+	tsx: 'tsx',
+	js: 'javascript',
+	jsx: 'jsx',
+	mjs: 'javascript',
+	cjs: 'javascript',
+	mts: 'typescript',
+	cts: 'typescript',
+	json: 'json',
+	jsonc: 'jsonc',
+	py: 'python',
+	rb: 'ruby',
+	rs: 'rust',
+	go: 'go',
+	java: 'java',
+	kt: 'kotlin',
+	swift: 'swift',
+	c: 'c',
+	cpp: 'cpp',
+	h: 'c',
+	hpp: 'cpp',
+	cs: 'csharp',
+	css: 'css',
+	scss: 'scss',
+	less: 'less',
+	html: 'html',
+	htm: 'html',
+	xml: 'xml',
+	svg: 'xml',
+	md: 'markdown',
+	mdx: 'mdx',
+	yaml: 'yaml',
+	yml: 'yaml',
+	toml: 'toml',
+	sh: 'shellscript',
+	bash: 'shellscript',
+	zsh: 'shellscript',
+	fish: 'fish',
+	sql: 'sql',
+	graphql: 'graphql',
+	gql: 'graphql',
+	dockerfile: 'dockerfile',
+	lua: 'lua',
+	r: 'r',
+	php: 'php',
+	vue: 'vue',
+	svelte: 'svelte',
+	astro: 'astro',
+	zig: 'zig',
+	elixir: 'elixir',
+	ex: 'elixir',
+	exs: 'elixir',
+	erl: 'erlang',
+	hcl: 'hcl',
+	tf: 'hcl',
+	ini: 'ini',
+	conf: 'ini',
+	env: 'dotenv',
+};
+
+/**
+ * Detect a Shiki language identifier from a file path.
+ * Returns null when the extension is unrecognized.
+ */
+export function detectLanguage(filePath: string): string | null {
+	const lastDot = filePath.lastIndexOf('.');
+	if (lastDot === -1) return null;
+	const extension = filePath.slice(lastDot + 1).toLowerCase();
+	return EXTENSION_TO_LANGUAGE[extension] ?? null;
+}

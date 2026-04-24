@@ -1,7 +1,15 @@
+import type {ThemedToken} from '@shikijs/core';
+import {extractLineNumbers, detectLanguage} from '../../lib/diff-utils';
+import {useHighlightedLines} from '../../hooks/use-shiki';
 import type {ToolRendererProps} from './types';
 import {ErrorBorder, ExpandableBlock, ToolMeta} from './shared';
 
-function parseLineNumbers(content: string): Array<{lineNum: string | null; content: string}> {
+interface ParsedLine {
+	lineNum: string | null;
+	content: string;
+}
+
+function parseLineNumbers(content: string): ParsedLine[] {
 	const lines = content.split('\n');
 	return lines.map((line) => {
 		const match = line.match(/^(\s*)(\d+)→(.*)$/);
@@ -16,6 +24,25 @@ function parseLineNumbers(content: string): Array<{lineNum: string | null; conte
 			content: line,
 		};
 	});
+}
+
+function HighlightedLine({tokens}: {tokens: ThemedToken[]}) {
+	return (
+		<>
+			{tokens.map((token, index) => (
+				<span
+					key={index}
+					style={{color: token.color}}
+				>
+					{token.content}
+				</span>
+			))}
+		</>
+	);
+}
+
+function PlainLine({content}: {content: string}) {
+	return <>{content}</>;
 }
 
 export function ReadRenderer({toolCall}: ToolRendererProps) {
@@ -34,6 +61,11 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 
 	const parsedLines = result ? parseLineNumbers(result) : [];
 
+	// Extract clean code (without line number prefixes) for highlighting.
+	const {text: cleanCode} = result ? extractLineNumbers(result) : {text: ''};
+	const language = detectLanguage(filePath);
+	const tokens = useHighlightedLines(cleanCode, language);
+
 	return (
 		<ErrorBorder isError={isError}>
 			<div className="flex items-center gap-2 flex-wrap mb-1">
@@ -50,9 +82,9 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 					<div className="rounded border border-border-300/15">
 						<div className="flex font-mono text-xs text-text-500">
 							<div className="bg-bg-200/50 border-r border-border-300/15 px-3 py-2 select-none text-right min-w-fit">
-								{parsedLines.map((line, i) => (
+								{parsedLines.map((line, index) => (
 									<div
-										key={i}
+										key={index}
 										className="h-5 flex items-center justify-end"
 									>
 										{line.lineNum || ''}
@@ -60,12 +92,16 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 								))}
 							</div>
 							<div className="flex-1 px-3 py-2 whitespace-pre-wrap break-all">
-								{parsedLines.map((line, i) => (
+								{parsedLines.map((line, index) => (
 									<div
-										key={i}
+										key={index}
 										className="h-5 flex items-center"
 									>
-										{line.content}
+										{tokens?.[index] ? (
+											<HighlightedLine tokens={tokens[index]} />
+										) : (
+											<PlainLine content={line.content} />
+										)}
 									</div>
 								))}
 							</div>
