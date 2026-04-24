@@ -36,14 +36,28 @@ function formatTimestamp(timestamp?: string): string | null {
 	}
 }
 
-function Timestamp({value}: {value: string | null}) {
+function Timestamp({
+	value,
+	sessionId,
+	uuid,
+}: {
+	value: string | null;
+	sessionId?: string | undefined;
+	uuid?: string | undefined;
+}) {
 	if (!value) return null;
 	return (
 		<div
-			className="text-xs text-text-500 leading-tight"
+			className="flex items-center gap-1.5 text-xs text-text-500 leading-tight"
 			suppressHydrationWarning
 		>
 			{value}
+			{sessionId && (
+				<DebugLink
+					sessionId={sessionId}
+					uuid={uuid}
+				/>
+			)}
 		</div>
 	);
 }
@@ -408,7 +422,13 @@ function renderSessionMessage({
 		);
 	}
 	if (line.type === 'attachment') {
-		return <AttachmentBanner attachmentJson={line.attachmentJson} />;
+		return (
+			<AttachmentBanner
+				attachmentJson={line.attachmentJson}
+				sessionId={sessionId}
+				uuid={line.uuid}
+			/>
+		);
 	}
 	return null;
 }
@@ -552,7 +572,13 @@ function UserEntry({
 	return (
 		<div className="flex flex-col items-end gap-1.5">
 			{renderUserContentBlocks(line, sessionId)}
-			{showTimestamps && <Timestamp value={timestampText} />}
+			{showTimestamps && (
+				<Timestamp
+					value={timestampText}
+					sessionId={sessionId}
+					uuid={line.uuid}
+				/>
+			)}
 		</div>
 	);
 }
@@ -716,7 +742,13 @@ function CommandEntry({
 					className="absolute top-1 right-1"
 				/>
 			</div>
-			{showTimestamps && <Timestamp value={timestampText} />}
+			{showTimestamps && (
+				<Timestamp
+					value={timestampText}
+					sessionId={sessionId}
+					uuid={line.uuid}
+				/>
+			)}
 		</div>
 	);
 }
@@ -804,7 +836,13 @@ function BashEntry({
 					</div>
 				)}
 			</div>
-			{showTimestamps && <Timestamp value={timestampText} />}
+			{showTimestamps && (
+				<Timestamp
+					value={timestampText}
+					sessionId={sessionId}
+					uuid={line.uuid}
+				/>
+			)}
 		</div>
 	);
 }
@@ -876,7 +914,13 @@ function AssistantEntry({
 	const timestampText = formatTimestamp(line.timestamp);
 
 	if (!Array.isArray(content) || content.length === 0) {
-		return showTimestamps ? <Timestamp value={timestampText} /> : null;
+		return showTimestamps ? (
+			<Timestamp
+				value={timestampText}
+				sessionId={sessionId}
+				uuid={line.uuid}
+			/>
+		) : null;
 	}
 
 	// Collect tool_use blocks for the tool summary and section
@@ -904,7 +948,13 @@ function AssistantEntry({
 						sessionId={sessionId}
 					/>
 				)}
-				{showTimestamps && <Timestamp value={timestampText} />}
+				{showTimestamps && (
+					<Timestamp
+						value={timestampText}
+						sessionId={sessionId}
+						uuid={line.uuid}
+					/>
+				)}
 			</div>
 		);
 	}
@@ -924,7 +974,13 @@ function AssistantEntry({
 					toolCalls={toolCalls}
 				/>
 			))}
-			{showTimestamps && <Timestamp value={timestampText} />}
+			{showTimestamps && (
+				<Timestamp
+					value={timestampText}
+					sessionId={sessionId}
+					uuid={line.uuid}
+				/>
+			)}
 		</div>
 	);
 }

@@ -151,6 +151,7 @@ interface AttachmentSessionLine {
 	type: 'attachment';
 	/** JSON-serialized AttachmentPayload (parsed on client to avoid TanStack serialization issues with unknown[]) */
 	attachmentJson: string;
+	uuid?: string | undefined;
 	timestamp?: string | undefined;
 	lineIndex: number;
 }
@@ -911,12 +912,14 @@ export async function readSessionLines(projectsDir: string, sessionId: string): 
 			}
 
 			if (record.type === 'attachment') {
-				lines.push({
+				const attachmentLine: AttachmentSessionLine = {
 					type: 'attachment',
 					attachmentJson: JSON.stringify(record.attachment),
-					timestamp: record.timestamp,
 					lineIndex,
-				});
+				};
+				if (uuid !== undefined) attachmentLine.uuid = uuid;
+				if (record.timestamp !== undefined) attachmentLine.timestamp = record.timestamp;
+				lines.push(attachmentLine);
 				continue;
 			}
 

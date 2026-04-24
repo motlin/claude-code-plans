@@ -1,13 +1,22 @@
 import React, {useMemo} from 'react';
 import {Link} from '@tanstack/react-router';
 import {AttachmentPayloadSchema, type AttachmentPayload} from '../lib/schemas';
+import {DebugLink} from './debug-link';
 
 /**
  * Renders a JSONL attachment record as a compact informational banner.
  * Each attachment sub-type gets a contextual icon and label.
  * Accepts JSON-serialized attachment to avoid TanStack serialization issues.
  */
-export function AttachmentBanner({attachmentJson}: {attachmentJson: string}) {
+export function AttachmentBanner({
+	attachmentJson,
+	sessionId,
+	uuid,
+}: {
+	attachmentJson: string;
+	sessionId?: string | undefined;
+	uuid?: string | undefined;
+}) {
 	const attachment = useMemo<AttachmentPayload | null>(() => {
 		const parsed = AttachmentPayloadSchema.safeParse(JSON.parse(attachmentJson));
 		return parsed.success ? parsed.data : null;
@@ -15,10 +24,24 @@ export function AttachmentBanner({attachmentJson}: {attachmentJson: string}) {
 
 	if (!attachment) return null;
 
-	return <AttachmentContent attachment={attachment} />;
+	return (
+		<AttachmentContent
+			attachment={attachment}
+			sessionId={sessionId}
+			uuid={uuid}
+		/>
+	);
 }
 
-function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
+function AttachmentContent({
+	attachment,
+	sessionId,
+	uuid,
+}: {
+	attachment: AttachmentPayload;
+	sessionId?: string | undefined;
+	uuid?: string | undefined;
+}) {
 	switch (attachment.type) {
 		// -- Hook results --
 		case 'hook_success':
@@ -26,6 +49,8 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				<Banner
 					icon="✅"
 					label={`Hook passed: ${attachment.hookName}`}
+					sessionId={sessionId}
+					uuid={uuid}
 				>
 					{attachment.durationMs !== undefined && (
 						<span className="text-text-600">{attachment.durationMs}ms</span>
@@ -37,6 +62,8 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				<Banner
 					icon="⚠️"
 					label={`Hook error (non-blocking): ${attachment.hookName}`}
+					sessionId={sessionId}
+					uuid={uuid}
 				>
 					{attachment.stderr && <Pre>{attachment.stderr}</Pre>}
 				</Banner>
@@ -46,6 +73,8 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				<Banner
 					icon="🚫"
 					label={`Hook cancelled: ${attachment.hookName}`}
+					sessionId={sessionId}
+					uuid={uuid}
 				/>
 			);
 		case 'hook_additional_context':
@@ -53,6 +82,8 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				<Banner
 					icon="📎"
 					label={`Hook context: ${attachment.hookName}`}
+					sessionId={sessionId}
+					uuid={uuid}
 				>
 					{typeof attachment.content === 'string' && attachment.content.length > 0 && (
 						<Pre>{attachment.content}</Pre>
@@ -64,6 +95,8 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				<Banner
 					icon="🛑"
 					label={`Hook blocked: ${attachment.hookName}`}
+					sessionId={sessionId}
+					uuid={uuid}
 				/>
 			);
 
@@ -73,6 +106,8 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				<Banner
 					icon="📄"
 					label={attachment.displayPath ?? attachment.filename}
+					sessionId={sessionId}
+					uuid={uuid}
 				/>
 			);
 		case 'directory':
@@ -80,6 +115,8 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				<Banner
 					icon="📁"
 					label={attachment.displayPath ?? attachment.path ?? 'directory'}
+					sessionId={sessionId}
+					uuid={uuid}
 				/>
 			);
 		case 'compact_file_reference':
@@ -87,6 +124,8 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				<Banner
 					icon="📄"
 					label={attachment.displayPath ?? attachment.filename ?? 'file reference'}
+					sessionId={sessionId}
+					uuid={uuid}
 				/>
 			);
 		case 'edited_text_file':
@@ -94,6 +133,8 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				<Banner
 					icon="✏️"
 					label={`Edited: ${attachment.filename}`}
+					sessionId={sessionId}
+					uuid={uuid}
 				/>
 			);
 		case 'selected_lines_in_ide': {
@@ -106,6 +147,8 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				<Banner
 					icon="🔍"
 					label={`Selected in ${attachment.ideName ?? 'IDE'}: ${filePart}${linePart}`}
+					sessionId={sessionId}
+					uuid={uuid}
 				/>
 			);
 		}
@@ -114,6 +157,8 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				<Banner
 					icon="📂"
 					label={`Opened in IDE: ${attachment.filename ?? 'file'}`}
+					sessionId={sessionId}
+					uuid={uuid}
 				/>
 			);
 
@@ -123,6 +168,8 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				<Banner
 					icon="📅"
 					label={attachment.newDate}
+					sessionId={sessionId}
+					uuid={uuid}
 				/>
 			);
 		case 'command_permissions':
@@ -130,6 +177,8 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				<Banner
 					icon="🔑"
 					label={`Permissions${attachment.model ? ` (${attachment.model})` : ''}`}
+					sessionId={sessionId}
+					uuid={uuid}
 				>
 					{attachment.allowedTools && attachment.allowedTools.length > 0 && (
 						<span className="text-text-600">{attachment.allowedTools.length} tools allowed</span>
@@ -141,6 +190,8 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				<Banner
 					icon="🐾"
 					label={[attachment.name, attachment.species].filter(Boolean).join(' the ') || 'Companion'}
+					sessionId={sessionId}
+					uuid={uuid}
 				/>
 			);
 		case 'ultrathink_effort':
@@ -148,6 +199,8 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				<Banner
 					icon="🧠"
 					label={`Thinking effort: ${attachment.level ?? 'unknown'}`}
+					sessionId={sessionId}
+					uuid={uuid}
 				/>
 			);
 
@@ -158,6 +211,8 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				<Banner
 					icon="📋"
 					label="Plan mode"
+					sessionId={sessionId}
+					uuid={uuid}
 				>
 					{planFilename && (
 						<Link
@@ -177,6 +232,8 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				<Banner
 					icon="📋"
 					label="Exited plan mode"
+					sessionId={sessionId}
+					uuid={uuid}
 				/>
 			);
 
@@ -189,6 +246,8 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				<Banner
 					icon="🔧"
 					label={`Deferred tools: ${parts.join(', ') || 'updated'}`}
+					sessionId={sessionId}
+					uuid={uuid}
 				/>
 			);
 		}
@@ -200,6 +259,8 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				<Banner
 					icon="🔌"
 					label={`MCP instructions: ${parts.join(', ') || 'updated'}`}
+					sessionId={sessionId}
+					uuid={uuid}
 				/>
 			);
 		}
@@ -208,6 +269,8 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				<Banner
 					icon="⚡"
 					label={`Skills${attachment.skillCount !== undefined ? ` (${attachment.skillCount})` : ''}${attachment.isInitial ? ' — initial' : ''}`}
+					sessionId={sessionId}
+					uuid={uuid}
 				/>
 			);
 		case 'invoked_skills':
@@ -215,6 +278,8 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				<Banner
 					icon="⚡"
 					label={`Invoked ${attachment.skills?.length ?? 0} skill${(attachment.skills?.length ?? 0) === 1 ? '' : 's'}`}
+					sessionId={sessionId}
+					uuid={uuid}
 				/>
 			);
 
@@ -226,6 +291,8 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				<Banner
 					icon="📌"
 					label={`${kind} reminder${attachment.itemCount !== undefined ? ` (${attachment.itemCount} items)` : ''}`}
+					sessionId={sessionId}
+					uuid={uuid}
 				/>
 			);
 		}
@@ -236,6 +303,8 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				<Banner
 					icon="⏳"
 					label="Queued command"
+					sessionId={sessionId}
+					uuid={uuid}
 				>
 					{typeof attachment.prompt === 'string' && attachment.prompt.length > 0 && (
 						<span
@@ -254,6 +323,8 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 				<Banner
 					icon="🔬"
 					label={`Diagnostics${attachment.isNew ? ' (new)' : ''}`}
+					sessionId={sessionId}
+					uuid={uuid}
 				>
 					{attachment.files && attachment.files.length > 0 && (
 						<span className="text-text-600">
@@ -267,12 +338,31 @@ function AttachmentContent({attachment}: {attachment: AttachmentPayload}) {
 	}
 }
 
-export function Banner({icon, label, children}: {icon: string; label?: string; children?: React.ReactNode}) {
+export function Banner({
+	icon,
+	label,
+	children,
+	sessionId,
+	uuid,
+}: {
+	icon: string;
+	label?: string;
+	children?: React.ReactNode;
+	sessionId?: string | undefined;
+	uuid?: string | undefined;
+}) {
 	return (
 		<div className="flex flex-wrap items-center gap-2 py-1.5 px-3 text-xs text-text-500 bg-bg-100 rounded-md border border-border-300/10">
 			<span>{icon}</span>
 			{label && <span>{label}</span>}
 			{children}
+			{sessionId && (
+				<DebugLink
+					sessionId={sessionId}
+					uuid={uuid}
+					className="ml-auto"
+				/>
+			)}
 		</div>
 	);
 }
