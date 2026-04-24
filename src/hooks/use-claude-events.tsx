@@ -150,6 +150,11 @@ export function applySessionAdded(queryClient: QueryClient, session: SessionSumm
 	// Project session counts changed.
 	void queryClient.invalidateQueries({queryKey: ['projects']});
 	void queryClient.invalidateQueries({queryKey: ['project', session.project]});
+	// Plan links are derived from session JSONL content — a new session may
+	// reference a plan, so invalidate all plan link queries.
+	void queryClient.invalidateQueries({
+		predicate: (query) => query.queryKey[0] === 'plan' && query.queryKey[2] === 'links',
+	});
 }
 
 export function applySessionRemoved(queryClient: QueryClient, sessionId: string, projectDir: string): void {
@@ -480,6 +485,21 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 		for (const eventType of DOMAIN_EVENT_TYPES) {
 			es.addEventListener(eventType, handleDomainEvent);
 		}
+
+		// SSE reconnection safety: with staleTime: Infinity, data is never
+		// "stale" so refetchOnReconnect won't refetch after a disconnect.
+		// Track errors and invalidate all queries on reconnect to catch up
+		// on events missed during the gap.
+		let hadError = false;
+		es.onerror = () => {
+			hadError = true;
+		};
+		es.addEventListener('open', () => {
+			if (hadError) {
+				hadError = false;
+				void queryClient.invalidateQueries();
+			}
+		});
 
 		return () => es.close();
 	}, [queryClient]);

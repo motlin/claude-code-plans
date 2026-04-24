@@ -215,6 +215,21 @@ describe('applySessionAdded', () => {
 		applySessionAdded(queryClient, makeSession({id: 'a1', project: 'proj-a'}));
 		expect(queryClient.getQueryData(['sessions'])).toBe(undefined);
 	});
+
+	it('invalidates all plan link queries', () => {
+		const queryClient = new QueryClient();
+		queryClient.setQueryData(['sessions'], []);
+		queryClient.setQueryData(['plan', 'plan-a.md', 'links'], [{sessionId: 's1'}]);
+		queryClient.setQueryData(['plan', 'plan-b.md', 'links'], [{sessionId: 's2'}]);
+		queryClient.setQueryData(['plan', 'plan-a.md', 'detail'], {content: 'keep'});
+
+		applySessionAdded(queryClient, makeSession({id: 'new-1', project: 'proj-a'}));
+
+		expect(queryClient.getQueryState(['plan', 'plan-a.md', 'links'])?.isInvalidated).toBe(true);
+		expect(queryClient.getQueryState(['plan', 'plan-b.md', 'links'])?.isInvalidated).toBe(true);
+		// Plan detail should not be invalidated by session addition.
+		expect(queryClient.getQueryState(['plan', 'plan-a.md', 'detail'])?.isInvalidated).toBe(false);
+	});
 });
 
 describe('applySessionRemoved', () => {
