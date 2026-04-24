@@ -1,6 +1,7 @@
 import {useState} from 'react';
 import {ChevronDown, ChevronRight} from 'lucide-react';
 import type {AssistantGroup} from '../lib/assistant-groups';
+import {useSettings} from './settings-provider';
 
 export function AssistantMessageGroupHeader({
 	group,
@@ -29,7 +30,8 @@ export function AssistantMessageGroupHeader({
 	);
 }
 
-export function useGroupExpansion(_group: AssistantGroup): [boolean, () => void] {
-	const [expanded, setExpanded] = useState(false);
+export function useGroupExpansion(group: AssistantGroup): [boolean, () => void] {
+	const {settings} = useSettings();
+	const [expanded, setExpanded] = useState(group.lines.length <= settings.collapseThreshold);
 	return [expanded, () => setExpanded((previous) => !previous)];
 }
