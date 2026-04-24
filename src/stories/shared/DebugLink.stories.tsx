@@ -1,10 +1,10 @@
 import type {Meta, StoryObj} from '@storybook/react-vite';
 import {DebugLink} from '../../components/debug-link';
-import {DebugProvider} from '../../components/debug-provider';
+import {SettingsProvider} from '../../components/settings-provider';
 
 /**
  * DebugLink is hidden unless debug mode is enabled.
- * The decorator sets localStorage so DebugProvider reads `enabled: true`.
+ * The decorator sets localStorage so SettingsProvider reads `showDebug: true`.
  *
  * Uses `render` instead of `args` because the component's discriminated union
  * props cannot be represented via Storybook's flattened args type.
@@ -16,9 +16,9 @@ const meta = {
 		(Story) => {
 			localStorage.setItem('ccp-show-debug', 'true');
 			return (
-				<DebugProvider>
+				<SettingsProvider>
 					<Story />
-				</DebugProvider>
+				</SettingsProvider>
 			);
 		},
 	],

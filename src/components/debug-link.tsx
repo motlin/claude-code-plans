@@ -1,5 +1,5 @@
 import {ExternalLink} from 'lucide-react';
-import {useDebug} from './debug-provider';
+import {useSettings} from './settings-provider';
 
 type DebugLinkProps =
 	| {
@@ -15,7 +15,8 @@ type DebugLinkProps =
 	  };
 
 export function DebugLink(props: DebugLinkProps) {
-	const {enabled} = useDebug();
+	const {settings} = useSettings();
+	const enabled = settings.showDebug;
 	const className = props.className ?? '';
 
 	if (!enabled) return null;
