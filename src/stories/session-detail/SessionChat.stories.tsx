@@ -430,9 +430,9 @@ export const WithMcpToolCalls: Story = {
 	},
 };
 
-export const WithNoTailText: Story = {
+export const WithToolCallsOnly: Story = {
 	args: {
-		sessionId: 'story-session-no-tail',
+		sessionId: 'story-session-tools-only',
 		lines: [
 			line(0, 'user', 'Read all the config files', '2026-04-19T16:00:00Z'),
 			assistantBlocks(

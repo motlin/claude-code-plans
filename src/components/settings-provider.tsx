@@ -23,7 +23,6 @@ export interface Settings {
 
 	autoGenerateSummaries: boolean;
 
-	collapseThreshold: number;
 	activeTimeoutSec: number;
 
 	verbosity: Verbosity;
@@ -49,7 +48,6 @@ const DEFAULTS: Settings = {
 
 	autoGenerateSummaries: false,
 
-	collapseThreshold: 3,
 	activeTimeoutSec: 60,
 
 	verbosity: 'normal',
@@ -69,7 +67,6 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
 	chromeHidden: 'ccp-chrome-hidden',
 	statusFooterVisible: 'ccp-status-footer',
 	autoGenerateSummaries: 'ccp-auto-summaries',
-	collapseThreshold: 'ccp-collapse-threshold',
 	activeTimeoutSec: 'ccp-active-timeout',
 	verbosity: 'ccp-verbosity',
 };

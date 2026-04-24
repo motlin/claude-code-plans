@@ -352,13 +352,6 @@ function SettingsPage() {
 					title="Advanced"
 				>
 					<NumberRow
-						label="Collapse threshold"
-						description="Number of messages before a group is auto-collapsed"
-						settingKey="collapseThreshold"
-						min={1}
-						max={100}
-					/>
-					<NumberRow
 						label="Active timeout (seconds)"
 						description="Seconds of inactivity before a session is considered idle"
 						settingKey="activeTimeoutSec"
