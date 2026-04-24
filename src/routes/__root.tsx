@@ -4,7 +4,7 @@ import {QueryClientProvider, type QueryClient} from '@tanstack/react-query';
 import {ReactQueryDevtools} from '@tanstack/react-query-devtools';
 import {useEffect, useState, type ComponentType, type ReactNode} from 'react';
 import {ThemeProvider} from '../components/theme-provider';
-import {DebugProvider} from '../components/debug-provider';
+import {SettingsProvider} from '../components/settings-provider';
 import {ModeToggle} from '../components/mode-toggle';
 import {Sidebar} from '../components/sidebar/index';
 import {CommandPalette} from '../components/command-palette';
@@ -96,11 +96,11 @@ function RootComponent() {
 		<RootDocument>
 			<QueryClientProvider client={queryClient}>
 				<ThemeProvider>
-					<DebugProvider>
+					<SettingsProvider>
 						<ClaudeEventsProvider>
 							<RootLayout />
 						</ClaudeEventsProvider>
-					</DebugProvider>
+					</SettingsProvider>
 				</ThemeProvider>
 				{import.meta.env.DEV ? <ReactQueryDevtools buttonPosition="bottom-left" /> : null}
 			</QueryClientProvider>
