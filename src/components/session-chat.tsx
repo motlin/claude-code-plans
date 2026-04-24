@@ -304,7 +304,7 @@ function AssistantGroupSection({
 			<div className={`grid ${expanded ? 'grid-rows-expand' : 'grid-rows-collapse'}`}>
 				<div className="overflow-hidden">
 					{group.lines.map((line, lineOffset) => {
-						const i = group.startIndex + lineOffset;
+						const i = group.lineIndices[lineOffset]!;
 						if (skipSet.has(i)) return null;
 						if (!isLineVisible(line, renderProps)) return null;
 
