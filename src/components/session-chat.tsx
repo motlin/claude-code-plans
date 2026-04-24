@@ -12,7 +12,7 @@ import type {MessageSessionLine, SessionLine, SessionContentBlock, ToolResultInf
 import type {SubagentTreeEntry} from '../lib/db/queries';
 import {AttachmentBanner, Banner} from './attachment-banner';
 import {stripCommandTags, parseCommandBlock, parseBashInput, parseBashOutput} from '../lib/session-utils';
-import {groupAssistantMessages, type AssistantGroup} from '../lib/assistant-groups';
+import {groupAssistantMessages, type AssistantGroup, type TailText} from '../lib/assistant-groups';
 import {AssistantMessageGroupHeader, useGroupExpansion} from './assistant-message-group';
 
 function formatTimestamp(timestamp?: string): string | null {
@@ -290,23 +290,51 @@ function AssistantGroupSection({
 	skipSet: Set<number>;
 }) {
 	const [expanded, onToggle] = useGroupExpansion(group);
+	const hasSummary = group.summary.length > 0;
+	const {tailText} = group;
+
+	// Build a set of block indices to skip for the tail text line inside the collapsible body.
+	// The tail text's text blocks are rendered BELOW the collapse instead.
+	const tailTextSkipBlocks = useMemo(() => {
+		if (!tailText) return undefined;
+		return new Set(tailText.textBlockIndices);
+	}, [tailText]);
 
 	return (
 		<div
 			id={`msg-${group.startIndex}`}
 			className="pb-6"
 		>
-			<AssistantMessageGroupHeader
-				group={group}
-				expanded={expanded}
-				onToggle={onToggle}
-			/>
-			<div className={`grid ${expanded ? 'grid-rows-expand' : 'grid-rows-collapse'}`}>
+			{hasSummary && (
+				<AssistantMessageGroupHeader
+					group={group}
+					expanded={expanded}
+					onToggle={onToggle}
+				/>
+			)}
+			<div
+				className={`grid ${hasSummary ? (expanded ? 'grid-rows-expand' : 'grid-rows-collapse') : 'grid-rows-expand'}`}
+			>
 				<div className="overflow-hidden">
 					{group.lines.map((line, lineOffset) => {
 						const i = group.lineIndices[lineOffset]!;
 						if (skipSet.has(i)) return null;
 						if (!isLineVisible(line, renderProps)) return null;
+
+						// For the tail text line inside the collapsible body, skip its text blocks
+						// (they are rendered below the collapse)
+						const isTailTextLine = tailText && line === tailText.line;
+						if (isTailTextLine && line.type === 'assistant') {
+							return (
+								<AssistantEntryLine
+									key={`line-${i}`}
+									line={line}
+									index={i}
+									skipBlockIndices={tailTextSkipBlocks}
+									{...renderProps}
+								/>
+							);
+						}
 
 						return (
 							<LineEntry
@@ -320,6 +348,88 @@ function AssistantGroupSection({
 					})}
 				</div>
 			</div>
+			{tailText && (
+				<TailTextSection
+					tailText={tailText}
+					sessionId={renderProps.sessionId}
+				/>
+			)}
+		</div>
+	);
+}
+
+/**
+ * Renders just the assistant entry portion of a line within the group,
+ * with optional block skipping for tail text extraction.
+ */
+function AssistantEntryLine({
+	line,
+	index,
+	skipBlockIndices,
+	...renderProps
+}: LineRenderProps & {
+	line: MessageSessionLine;
+	index: number;
+	skipBlockIndices: Set<number> | undefined;
+}) {
+	return (
+		<div
+			id={`msg-${index}`}
+			className="group relative"
+		>
+			<MessageToolbar
+				line={line}
+				index={index}
+			/>
+			<AssistantEntry
+				line={line}
+				sessionId={renderProps.sessionId}
+				toolResultMap={renderProps.toolResultMap}
+				subagentLookup={renderProps.subagentLookup}
+				showThinking={renderProps.showThinking}
+				showTools={renderProps.showTools}
+				showTimestamps={renderProps.showTimestamps}
+				skipBlockIndices={skipBlockIndices}
+			/>
+		</div>
+	);
+}
+
+/**
+ * Renders the tail text blocks below the collapsed section.
+ * Always visible regardless of collapse state.
+ */
+function TailTextSection({tailText, sessionId}: {tailText: TailText; sessionId: string}) {
+	const content = tailText.line.message?.content;
+	if (!Array.isArray(content)) return null;
+
+	const textBlocks = tailText.textBlockIndices
+		.map((i) => content[i])
+		.filter(
+			(block): block is SessionContentBlock & {text: string} =>
+				block !== undefined &&
+				block.type === 'text' &&
+				typeof block.text === 'string' &&
+				block.text.trim().length > 0,
+		);
+
+	if (textBlocks.length === 0) return null;
+
+	return (
+		<div className="flex flex-col gap-1.5 min-w-0 mt-1.5">
+			{textBlocks.map((block, i) => (
+				<div
+					key={`tail-${i}`}
+					className="relative min-w-0 text-sm leading-relaxed text-text-100"
+				>
+					<MarkdownArticle markdown={block.text} />
+					<DebugLink
+						sessionId={sessionId}
+						uuid={tailText.line.uuid}
+						className="absolute top-0 right-0"
+					/>
+				</div>
+			))}
 		</div>
 	);
 }
@@ -898,6 +1008,8 @@ function ThinkingBlock({
 
 /**
  * Renders an assistant JSONL line by iterating content blocks in original order.
+ * When skipBlockIndices is provided, those block indices are not rendered
+ * (used to extract tail text blocks to display outside a collapsed group).
  */
 function AssistantEntry({
 	line,
@@ -907,6 +1019,7 @@ function AssistantEntry({
 	showThinking,
 	showTools,
 	showTimestamps,
+	skipBlockIndices,
 }: {
 	line: MessageSessionLine;
 	sessionId: string;
@@ -915,6 +1028,7 @@ function AssistantEntry({
 	showThinking: boolean;
 	showTools: boolean;
 	showTimestamps: boolean;
+	skipBlockIndices?: Set<number> | undefined;
 }) {
 	const content = line.message?.content;
 	const timestampText = formatTimestamp(line.timestamp);
@@ -934,8 +1048,12 @@ function AssistantEntry({
 	// Determine if all content is just tool_use (render as grouped tool section)
 	// vs mixed content (render in order)
 	const hasVisibleNonToolContent = content.some(
-		(b) =>
-			b.type === 'text' || (b.type === 'thinking' && showThinking) || b.type === 'image' || b.type === 'document',
+		(b, i) =>
+			(!skipBlockIndices || !skipBlockIndices.has(i)) &&
+			(b.type === 'text' ||
+				(b.type === 'thinking' && showThinking) ||
+				b.type === 'image' ||
+				b.type === 'document'),
 	);
 	const hasToolUse = toolCalls.length > 0;
 
@@ -958,18 +1076,21 @@ function AssistantEntry({
 	// Mixed content: render each block in original order
 	return (
 		<div className="flex flex-col gap-1.5 min-w-0">
-			{content.map((block, i) => (
-				<ContentBlock
-					key={i}
-					block={block}
-					blockIndex={i}
-					line={line}
-					sessionId={sessionId}
-					showThinking={showThinking}
-					showTools={showTools}
-					toolCalls={toolCalls}
-				/>
-			))}
+			{content.map((block, i) => {
+				if (skipBlockIndices?.has(i)) return null;
+				return (
+					<ContentBlock
+						key={i}
+						block={block}
+						blockIndex={i}
+						line={line}
+						sessionId={sessionId}
+						showThinking={showThinking}
+						showTools={showTools}
+						toolCalls={toolCalls}
+					/>
+				);
+			})}
 			{showTimestamps && <Timestamp value={timestampText} />}
 		</div>
 	);
