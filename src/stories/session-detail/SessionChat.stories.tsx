@@ -184,9 +184,9 @@ export const WithMetadataRecords: Story = {
 	args: {
 		sessionId: 'story-session-metadata',
 		lines: [
-			{type: 'agent-name', agentName: 'git-replay-automation', lineIndex: 0},
-			{type: 'permission-mode', permissionMode: 'acceptEdits', lineIndex: 1},
-			line(2, 'user', 'Fix the authentication bug', '2026-04-19T10:00:00Z'),
+			line(0, 'user', 'Fix the authentication bug', '2026-04-19T10:00:00Z'),
+			{type: 'agent-name', agentName: 'git-replay-automation', lineIndex: 1},
+			{type: 'permission-mode', permissionMode: 'acceptEdits', lineIndex: 2},
 			assistantBlocks(
 				3,
 				[{type: 'text', text: "I'll look into the authentication module."}],
@@ -345,6 +345,164 @@ export const WithDocumentAttachment: Story = {
 				1,
 				[{type: 'text', text: "I've reviewed the document. Here are my findings."}],
 				'2026-04-19T14:00:10Z',
+			),
+		],
+		toolResultMap: [],
+		subagentTree: [],
+	},
+};
+
+export const WithMcpToolCalls: Story = {
+	args: {
+		sessionId: 'story-session-mcp',
+		lines: [
+			line(0, 'user', 'List the open issues on the repo', '2026-04-19T15:00:00Z'),
+			assistantBlocks(
+				1,
+				[
+					{
+						type: 'tool_use',
+						id: 'tool-mcp1',
+						name: 'mcp__plugin_github_github__list_issues',
+						input: {owner: 'example', repo: 'myapp', state: 'open'} as SessionContentBlock['input'],
+					},
+				],
+				'2026-04-19T15:00:02Z',
+			),
+			assistantBlocks(
+				2,
+				[
+					{
+						type: 'tool_use',
+						id: 'tool-mcp2',
+						name: 'mcp__plugin_github_github__list_issues',
+						input: {owner: 'example', repo: 'utils', state: 'open'} as SessionContentBlock['input'],
+					},
+				],
+				'2026-04-19T15:00:04Z',
+			),
+			assistantBlocks(
+				3,
+				[
+					{
+						type: 'tool_use',
+						id: 'tool-mcp3',
+						name: 'mcp__chrome-devtools__take_screenshot',
+						input: {} as SessionContentBlock['input'],
+					},
+				],
+				'2026-04-19T15:00:06Z',
+			),
+			assistantBlocks(
+				4,
+				[
+					{
+						type: 'text',
+						text: 'Found 7 open issues across both repos. The screenshot shows the current page state.',
+					},
+				],
+				'2026-04-19T15:00:08Z',
+			),
+		],
+		toolResultMap: [
+			[
+				'tool-mcp1',
+				{
+					result: '[{title: "Bug in login"}, {title: "Add dark mode"}]',
+					isError: false,
+					resultUuid: 'r-mcp1',
+					duration: 820,
+				},
+			],
+			[
+				'tool-mcp2',
+				{
+					result: '[{title: "Fix typo"}, {title: "Update deps"}]',
+					isError: false,
+					resultUuid: 'r-mcp2',
+					duration: 650,
+				},
+			],
+			['tool-mcp3', {result: 'Screenshot saved', isError: false, resultUuid: 'r-mcp3', duration: 1200}],
+		],
+		subagentTree: [],
+	},
+};
+
+export const WithNoTailText: Story = {
+	args: {
+		sessionId: 'story-session-no-tail',
+		lines: [
+			line(0, 'user', 'Read all the config files', '2026-04-19T16:00:00Z'),
+			assistantBlocks(
+				1,
+				[
+					{
+						type: 'tool_use',
+						id: 'tool-nt1',
+						name: 'Read',
+						input: {file_path: '/tsconfig.json'} as SessionContentBlock['input'],
+					},
+				],
+				'2026-04-19T16:00:02Z',
+			),
+			assistantBlocks(
+				2,
+				[
+					{
+						type: 'tool_use',
+						id: 'tool-nt2',
+						name: 'Read',
+						input: {file_path: '/package.json'} as SessionContentBlock['input'],
+					},
+				],
+				'2026-04-19T16:00:04Z',
+			),
+			assistantBlocks(
+				3,
+				[
+					{
+						type: 'tool_use',
+						id: 'tool-nt3',
+						name: 'Glob',
+						input: {pattern: '*.config.*'} as SessionContentBlock['input'],
+					},
+				],
+				'2026-04-19T16:00:06Z',
+			),
+		],
+		toolResultMap: [
+			[
+				'tool-nt1',
+				{result: '{"compilerOptions": {"strict": true}}', isError: false, resultUuid: 'r-nt1', duration: 10},
+			],
+			[
+				'tool-nt2',
+				{result: '{"name": "my-app", "version": "1.0.0"}', isError: false, resultUuid: 'r-nt2', duration: 8},
+			],
+			[
+				'tool-nt3',
+				{result: 'vite.config.ts\neslint.config.js', isError: false, resultUuid: 'r-nt3', duration: 15},
+			],
+		],
+		subagentTree: [],
+	},
+};
+
+export const WithSingleAssistantNoTools: Story = {
+	args: {
+		sessionId: 'story-session-simple-qa',
+		lines: [
+			line(0, 'user', 'What is the difference between let and const in JavaScript?', '2026-04-19T17:00:00Z'),
+			assistantBlocks(
+				1,
+				[
+					{
+						type: 'text',
+						text: '`let` declares a block-scoped variable that can be reassigned. `const` declares a block-scoped variable that cannot be reassigned after initialization. Both are hoisted but remain in the "temporal dead zone" until their declaration is evaluated.',
+					},
+				],
+				'2026-04-19T17:00:03Z',
 			),
 		],
 		toolResultMap: [],
