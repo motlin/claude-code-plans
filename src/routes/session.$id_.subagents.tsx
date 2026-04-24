@@ -1,6 +1,5 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
 import {queryOptions, useSuspenseQuery} from '@tanstack/react-query';
-import {useState} from 'react';
 import {ArrowLeft, GitFork} from 'lucide-react';
 import {getSubagentTree} from '../lib/server-fns';
 import {SubagentTree} from '../components/subagent-tree';
@@ -29,7 +28,7 @@ function SubagentsPage() {
 	const params = Route.useParams();
 	const {data} = useSuspenseQuery(subagentQueryOptions(params.id));
 	const {settings} = useSettings();
-	const [subagentView, setSubagentView] = useState<'tree' | 'gantt' | 'sequence'>(settings.defaultSubagentView);
+	const subagentView = settings.defaultSubagentView;
 
 	return (
 		<div>
@@ -53,46 +52,6 @@ function SubagentsPage() {
 				<p className="mt-4 text-sm text-text-500">No subagents for this session.</p>
 			) : (
 				<div className="mt-3">
-					<div className="flex items-center gap-2 text-xs text-text-500 mb-3">
-						<span>View</span>
-						<button
-							type="button"
-							onClick={() => setSubagentView('tree')}
-							aria-pressed={subagentView === 'tree'}
-							className={`rounded px-2 py-1 ${
-								subagentView === 'tree'
-									? 'bg-accent-000/15 text-accent-100'
-									: 'hover:bg-bg-200/50 text-text-500'
-							}`}
-						>
-							Tree
-						</button>
-						<button
-							type="button"
-							onClick={() => setSubagentView('gantt')}
-							aria-pressed={subagentView === 'gantt'}
-							className={`rounded px-2 py-1 ${
-								subagentView === 'gantt'
-									? 'bg-accent-000/15 text-accent-100'
-									: 'hover:bg-bg-200/50 text-text-500'
-							}`}
-						>
-							Gantt
-						</button>
-						<button
-							type="button"
-							onClick={() => setSubagentView('sequence')}
-							aria-pressed={subagentView === 'sequence'}
-							className={`rounded px-2 py-1 ${
-								subagentView === 'sequence'
-									? 'bg-accent-000/15 text-accent-100'
-									: 'hover:bg-bg-200/50 text-text-500'
-							}`}
-						>
-							Sequence
-						</button>
-					</div>
-
 					{subagentView === 'tree' ? (
 						<SubagentTree
 							tree={data.tree}
