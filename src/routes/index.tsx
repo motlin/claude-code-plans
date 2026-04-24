@@ -1,5 +1,16 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {FileText, Brain, MessageSquare, FolderOpen, Blocks, Radio, Star, ListTodo, Settings} from 'lucide-react';
+import {
+	FileText,
+	Brain,
+	MessageSquare,
+	FolderOpen,
+	Blocks,
+	Radio,
+	Star,
+	ListTodo,
+	SlidersHorizontal,
+	Settings,
+} from 'lucide-react';
 
 export const Route = createFileRoute('/')({
 	component: Home,
@@ -26,6 +37,12 @@ const cards = [
 		label: 'Plugins',
 		description: 'Browse installed plugins, skills, agents, and commands',
 		icon: Blocks,
+	},
+	{
+		to: '/settings',
+		label: 'Settings',
+		description: 'Configure display, appearance, and behavior',
+		icon: SlidersHorizontal,
 	},
 	{to: '/setup', label: 'Setup', description: 'Configure hooks for live session tracking', icon: Settings},
 ] as const;
