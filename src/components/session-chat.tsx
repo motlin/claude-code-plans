@@ -1011,7 +1011,10 @@ function AssistantEntry({
 	);
 	const hasVisibleNonToolContent = content.some(
 		(b) =>
-			b.type === 'text' || (b.type === 'thinking' && showThinking) || b.type === 'image' || b.type === 'document',
+			b.type === 'text' ||
+			(b.type === 'thinking' && showThinking && typeof b.thinking === 'string' && b.thinking.trim() !== '') ||
+			b.type === 'image' ||
+			b.type === 'document',
 	);
 	const hasToolUse = toolCalls.length > 0;
 
@@ -1098,7 +1101,7 @@ function ContentBlock({
 	}
 
 	if (block.type === 'thinking' && typeof block.thinking === 'string') {
-		if (!showThinking) return null;
+		if (!showThinking || !block.thinking.trim()) return null;
 		return (
 			<ThinkingBlock
 				thinking={block.thinking}
