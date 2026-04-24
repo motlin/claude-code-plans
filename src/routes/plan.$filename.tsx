@@ -112,6 +112,8 @@ function PlanPage() {
 					Last modified {formatDate(data.mtime)}
 				</div>
 			)}
+			<h1 className="text-lg font-semibold">{data.title}</h1>
+			<p className="text-xs text-text-500">{filename}</p>
 			<div className="mt-4">
 				<MarkdownArticle html={data.html} />
 			</div>
