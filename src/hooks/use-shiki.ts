@@ -5,8 +5,8 @@
  * all components. Uses the JavaScript regex engine (no WASM) for a lighter
  * client bundle.
  */
-import {useMemo, useSyncExternalStore} from 'react';
 import type {HighlighterCore, ThemedToken} from '@shikijs/core';
+import {useMemo, useSyncExternalStore} from 'react';
 import {useResolvedTheme} from '../components/theme-provider';
 
 // ---------------------------------------------------------------------------

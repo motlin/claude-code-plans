@@ -1,7 +1,9 @@
+import type {ThemedToken} from '@shikijs/core';
+import {queryOptions, useQueryClient, useSuspenseQuery} from '@tanstack/react-query';
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {queryOptions, useSuspenseQuery, useQueryClient} from '@tanstack/react-query';
-import {useCallback, useRef, useState} from 'react';
-import {Save, X, AlertCircle, Check, RotateCcw} from 'lucide-react';
+import {AlertCircle, Check, RotateCcw, Save, X} from 'lucide-react';
+import {useCallback, useEffect, useRef, useState} from 'react';
+import {useHighlightedLines} from '../hooks/use-shiki';
 import {getSettingsRaw, saveSettingsFile} from '../lib/server-fns';
 
 const settingsRawQueryOptions = queryOptions({
@@ -29,6 +31,21 @@ export const Route = createFileRoute('/settings_/edit')({
 });
 
 type Feedback = {type: 'success' | 'error'; text: string};
+
+function HighlightedLine({tokens}: {tokens: ThemedToken[]}) {
+	return (
+		<>
+			{tokens.map((token, index) => (
+				<span
+					key={index}
+					style={{color: token.color}}
+				>
+					{token.content}
+				</span>
+			))}
+		</>
+	);
+}
 
 function JsonEditor({filename, initialContent, path}: {filename: string; initialContent: string; path: string}) {
 	const draftRef = useRef(initialContent);
@@ -113,6 +130,28 @@ function JsonEditor({filename, initialContent, path}: {filename: string; initial
 	const isDirty = editorValue !== initialContent;
 	const lineCount = editorValue.split('\n').length;
 
+	const tokens = useHighlightedLines(editorValue, 'json');
+	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const highlightRef = useRef<HTMLDivElement>(null);
+
+	// Synchronize scroll position between textarea and highlight layer.
+	useEffect(() => {
+		const textarea = textareaRef.current;
+		const highlight = highlightRef.current;
+		if (!textarea || !highlight) return;
+
+		function handleScroll(): void {
+			if (highlight && textarea) {
+				highlight.scrollTop = textarea.scrollTop;
+				highlight.scrollLeft = textarea.scrollLeft;
+			}
+		}
+		textarea.addEventListener('scroll', handleScroll);
+		return () => {
+			textarea.removeEventListener('scroll', handleScroll);
+		};
+	}, []);
+
 	return (
 		<section className="space-y-3">
 			<div>
@@ -122,12 +161,33 @@ function JsonEditor({filename, initialContent, path}: {filename: string; initial
 				</p>
 			</div>
 
-			<div className="relative">
+			<div className="relative rounded-md bg-bg-100">
+				{tokens && (
+					<div
+						ref={highlightRef}
+						aria-hidden
+						className="absolute inset-0 overflow-hidden rounded-md border border-transparent p-4 font-mono text-xs leading-relaxed pointer-events-none whitespace-pre-wrap break-words"
+					>
+						{tokens.map((lineTokens, lineIndex) => (
+							<div
+								key={lineIndex}
+								className="min-h-[1.625em]"
+							>
+								<HighlightedLine tokens={lineTokens} />
+							</div>
+						))}
+					</div>
+				)}
 				<textarea
+					ref={textareaRef}
 					value={editorValue}
 					onChange={handleChange}
 					spellCheck={false}
-					className={`w-full rounded-md border bg-bg-100 p-4 font-mono text-xs leading-relaxed text-text-100 focus:outline-none focus:ring-1 resize-y ${
+					className={`relative w-full rounded-md border p-4 font-mono text-xs leading-relaxed focus:outline-none focus:ring-1 resize-y ${
+						tokens
+							? 'bg-transparent text-transparent caret-text-100 selection:bg-accent-100/30'
+							: 'bg-bg-100 text-text-100'
+					} ${
 						validationError
 							? 'border-danger-000 focus:ring-danger-000'
 							: 'border-border-300/15 focus:ring-accent-100'
