@@ -1,8 +1,8 @@
-import type {MessageSessionLine, SessionContentBlock, ToolResultInfo} from '../../lib/sessions';
+import type {MessageSessionLine, ToolResultInfo} from '../../lib/sessions';
+import type {ToolUseBlock} from '../../lib/schemas';
 import type {SubagentTreeEntry, SubagentTreeNode, ParallelGroup} from '../../lib/db/queries';
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- TanStack serialization narrows unknown to {}
-type ToolInput = Record<string, {}>;
+type ToolInput = Record<string, unknown>;
 
 interface SubagentInlineInfo {
 	agentId: string;
@@ -138,26 +138,26 @@ function resolveSubagentInfo(
 }
 
 /**
- * Build a ClientToolCall from raw JSONL data + sidecar maps.
+ * Build a ClientToolCall from a tool_use content block + sidecar maps.
  * Computes all decorations client-side (diff data, markdown rendering,
  * subagent info lookup).
  */
 export function buildClientToolCall(
-	block: SessionContentBlock,
+	block: ToolUseBlock,
 	line: MessageSessionLine,
 	toolResultMap: Map<string, ToolResultInfo>,
 	subagentLookup: SubagentLookup,
 ): ClientToolCall {
-	const id = block.id ?? '';
-	const name = block.name ?? '';
-	const input = (block.input ?? {}) as ToolInput;
+	const id = block.id;
+	const name = block.name;
+	const input = block.input as ToolInput;
 	const sourceUuid = line.uuid ?? '';
 
 	const call: ClientToolCall = {
 		id,
 		name,
 		input,
-		param: getToolParam({input: block.input ?? {}}),
+		param: getToolParam({input: block.input}),
 		sourceUuid,
 	};
 
@@ -171,7 +171,7 @@ export function buildClientToolCall(
 	}
 
 	// Resolve subagent info client-side from the subagent tree
-	const subagentInfo = resolveSubagentInfo(name, block.input ?? {}, call.result, call.isError, subagentLookup);
+	const subagentInfo = resolveSubagentInfo(name, block.input, call.result, call.isError, subagentLookup);
 	if (subagentInfo) call.subagentInfo = subagentInfo;
 
 	return call;

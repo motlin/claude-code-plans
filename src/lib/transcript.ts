@@ -8,7 +8,8 @@
  * Incremental function: processNewRecords(records, startIndex) for SSE appends.
  */
 
-import type {MessageSessionLine, SessionLine, ToolResultInfo} from './sessions';
+import type {ToolResultInfo} from './sessions';
+import type {ContentBlock} from './schemas';
 import {JsonlRecordSchema} from './schemas';
 
 // ---------------------------------------------------------------------------
@@ -98,27 +99,58 @@ export function extractSessionTitle(text: string, fallback?: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Types
+// ProcessedLine types -- derived from Zod schemas with lineIndex added
 // ---------------------------------------------------------------------------
 
-export interface ProcessedTranscript {
-	lines: SessionLine[];
-	toolResultMap: Map<string, ToolResultInfo>;
-	uuidToLine: Map<string, number>;
-	title: string;
-	customTitle: string | undefined;
+/**
+ * A user or assistant message line for rendering.
+ * The message field uses the Zod-inferred ContentBlock type directly
+ * instead of the old SerializableContentBlock intermediate shape.
+ */
+export interface MessageProcessedLine {
+	type: 'user' | 'assistant';
+	uuid?: string | undefined;
+	parentUuid?: string | undefined;
+	timestamp?: string | undefined;
+	message?:
+		| {
+				role?: string | undefined;
+				content?: string | ContentBlock[] | undefined;
+		  }
+		| undefined;
+	customTitle?: string | undefined;
+	sessionId?: string | undefined;
+	lineIndex: number;
 }
 
-interface IncrementalResult {
-	newSessionLines: SessionLine[];
-	newToolResults: Map<string, ToolResultInfo>;
+interface AgentNameProcessedLine {
+	type: 'agent-name';
+	agentName: string;
+	lineIndex: number;
 }
 
-// ---------------------------------------------------------------------------
-// Internal processing logic
-// ---------------------------------------------------------------------------
+interface AgentColorProcessedLine {
+	type: 'agent-color';
+	agentColor: string;
+	lineIndex: number;
+}
 
-interface AttachmentSessionLine {
+interface PermissionModeProcessedLine {
+	type: 'permission-mode';
+	permissionMode: string;
+	lineIndex: number;
+}
+
+interface PrLinkProcessedLine {
+	type: 'pr-link';
+	prUrl: string;
+	prNumber: number;
+	prRepository: string;
+	timestamp?: string | undefined;
+	lineIndex: number;
+}
+
+interface AttachmentProcessedLine {
 	type: 'attachment';
 	attachmentJson: string;
 	uuid?: string | undefined;
@@ -126,17 +158,55 @@ interface AttachmentSessionLine {
 	lineIndex: number;
 }
 
+/**
+ * A single processed JSONL line for rendering. Discriminated union on `type`.
+ * Derived from the Zod schema types in schemas.ts with `lineIndex` added.
+ */
+export type ProcessedLine =
+	| MessageProcessedLine
+	| AgentNameProcessedLine
+	| AgentColorProcessedLine
+	| PermissionModeProcessedLine
+	| PrLinkProcessedLine
+	| AttachmentProcessedLine;
+
+// Re-export the Zod-inferred ContentBlock for consumers that need it
+export type {ContentBlock} from './schemas';
+
+// Backwards-compatible aliases for gradual migration
+export type SessionLine = ProcessedLine;
+export type MessageSessionLine = MessageProcessedLine;
+export type SessionContentBlock = ContentBlock;
+export type AttachmentSessionLine = AttachmentProcessedLine;
+
+// ---------------------------------------------------------------------------
+// Transcript result types
+// ---------------------------------------------------------------------------
+
+export interface ProcessedTranscript {
+	lines: ProcessedLine[];
+	toolResultMap: Map<string, ToolResultInfo>;
+	uuidToLine: Map<string, number>;
+	title: string;
+	customTitle: string | undefined;
+}
+
+interface IncrementalResult {
+	newSessionLines: ProcessedLine[];
+	newToolResults: Map<string, ToolResultInfo>;
+}
+
 function processRecordBatch(
 	records: unknown[],
 	startLineIndex: number,
 	uuidToLine?: Map<string, number>,
 ): {
-	sessionLines: SessionLine[];
+	sessionLines: ProcessedLine[];
 	toolResults: Map<string, ToolResultInfo>;
 	title: string;
 	customTitle: string | undefined;
 } {
-	const sessionLines: SessionLine[] = [];
+	const sessionLines: ProcessedLine[] = [];
 	const toolResults = new Map<string, ToolResultInfo>();
 	const toolStartTimes = new Map<string, number>();
 	let title = '';
@@ -236,7 +306,7 @@ function processRecordBatch(
 			continue;
 		}
 		if (record.type === 'pr-link') {
-			const prLine: SessionLine & {type: 'pr-link'} = {
+			const prLine: PrLinkProcessedLine = {
 				type: 'pr-link',
 				prUrl: record.prUrl,
 				prNumber: record.prNumber,
@@ -249,7 +319,7 @@ function processRecordBatch(
 		}
 
 		if (record.type === 'attachment') {
-			const attachmentLine: AttachmentSessionLine = {
+			const attachmentLine: AttachmentProcessedLine = {
 				type: 'attachment',
 				attachmentJson: JSON.stringify(record.attachment),
 				lineIndex,
@@ -263,19 +333,18 @@ function processRecordBatch(
 		// Only include user/assistant lines for the rendering tree
 		if (record.type !== 'user' && record.type !== 'assistant') continue;
 
-		const sessionLine: MessageSessionLine = {
+		const processedLine: MessageProcessedLine = {
 			type: record.type,
 			lineIndex,
 		};
-		if (uuid !== undefined) sessionLine.uuid = uuid;
-		if (typeof record.parentUuid === 'string') sessionLine.parentUuid = record.parentUuid;
-		if (record.timestamp !== undefined) sessionLine.timestamp = record.timestamp;
-		// The Zod-parsed message is structurally compatible with MessageSessionLine.message
-		// but uses Record<string, unknown> for tool input vs SerializableValue.
-		// Cast is safe because the runtime data is identical.
-		sessionLine.message = record.message as MessageSessionLine['message'];
+		if (uuid !== undefined) processedLine.uuid = uuid;
+		if (typeof record.parentUuid === 'string') processedLine.parentUuid = record.parentUuid;
+		if (record.timestamp !== undefined) processedLine.timestamp = record.timestamp;
+		// The Zod-parsed message uses the ContentBlock type directly --
+		// no intermediate serialization type needed.
+		processedLine.message = record.message as MessageProcessedLine['message'];
 
-		sessionLines.push(sessionLine);
+		sessionLines.push(processedLine);
 	}
 
 	return {sessionLines, toolResults, title, customTitle};

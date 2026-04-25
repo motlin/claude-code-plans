@@ -695,6 +695,10 @@ export const TaskFileSchema = z
 // ---------------------------------------------------------------------------
 
 export type AttachmentPayload = z.infer<typeof AttachmentPayloadSchema>;
+export type ContentBlock = z.infer<typeof ContentBlockSchema>;
+export type ToolUseBlock = z.infer<typeof ToolUseBlockSchema>;
+export type UserRecord = z.infer<typeof UserRecordSchema>;
+export type AssistantRecord = z.infer<typeof AssistantRecordSchema>;
 type JsonlRecord = z.infer<typeof JsonlRecordSchema>;
 
 // ---------------------------------------------------------------------------

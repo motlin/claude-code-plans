@@ -69,100 +69,29 @@ interface SessionDetail {
 	uuidToLine: Map<string, number>;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- TanStack serialization narrows unknown to {}
-type SerializableValue = Record<string, {}>;
+// ---------------------------------------------------------------------------
+// ProcessedLine types -- canonical definitions in transcript.ts
+// Re-exported here for backwards compatibility.
+// ---------------------------------------------------------------------------
+import type {
+	SessionLine as _SessionLine,
+	MessageSessionLine as _MessageSessionLine,
+	AttachmentSessionLine as _AttachmentSessionLine,
+} from './transcript';
+export type {
+	SessionLine,
+	MessageSessionLine,
+	SessionContentBlock,
+	AttachmentSessionLine,
+	ProcessedLine,
+	MessageProcessedLine,
+	ContentBlock,
+} from './transcript';
 
-/**
- * A content block serializable via TanStack. Mirrors the Zod ContentBlock
- * discriminated union but uses SerializableValue for the tool_use input field
- * so TanStack's serialization validation passes. The `type` field is a string
- * literal union matching all known content block types from the Zod schema.
- */
-interface SerializableContentBlock {
-	type: 'text' | 'tool_use' | 'thinking' | 'tool_result' | 'image' | 'document';
-	text?: string | undefined;
-	thinking?: string | undefined;
-	signature?: string | undefined;
-	name?: string | undefined;
-	id?: string | undefined;
-	input?: SerializableValue | undefined;
-	caller?: string | SerializableValue | undefined;
-	tool_use_id?: string | undefined;
-	content?: string | Array<{type: string; text: string}> | undefined;
-	is_error?: boolean | undefined;
-	source?: {type: string; media_type: string; data: string} | undefined;
-}
-
-/**
- * SessionContentBlock is the serializable content block type used
- * in SessionLine and passed across the TanStack serialization boundary.
- */
-export type SessionContentBlock = SerializableContentBlock;
-
-/**
- * A single parsed JSONL line for rendering. Only user and assistant records
- * are included in the rendering array. The `type` field is a string literal
- * union so TypeScript narrows the message shape after checking it.
- */
-export interface MessageSessionLine {
-	type: 'user' | 'assistant';
-	uuid?: string | undefined;
-	parentUuid?: string | undefined;
-	timestamp?: string | undefined;
-	message?:
-		| {
-				role?: string | undefined;
-				content?: string | SerializableContentBlock[] | undefined;
-		  }
-		| undefined;
-	customTitle?: string | undefined;
-	sessionId?: string | undefined;
-	lineIndex: number;
-}
-
-interface AgentNameSessionLine {
-	type: 'agent-name';
-	agentName: string;
-	lineIndex: number;
-}
-
-interface AgentColorSessionLine {
-	type: 'agent-color';
-	agentColor: string;
-	lineIndex: number;
-}
-
-interface PermissionModeSessionLine {
-	type: 'permission-mode';
-	permissionMode: string;
-	lineIndex: number;
-}
-
-interface PrLinkSessionLine {
-	type: 'pr-link';
-	prUrl: string;
-	prNumber: number;
-	prRepository: string;
-	timestamp?: string | undefined;
-	lineIndex: number;
-}
-
-interface AttachmentSessionLine {
-	type: 'attachment';
-	/** JSON-serialized AttachmentPayload (parsed on client to avoid TanStack serialization issues with unknown[]) */
-	attachmentJson: string;
-	uuid?: string | undefined;
-	timestamp?: string | undefined;
-	lineIndex: number;
-}
-
-export type SessionLine =
-	| MessageSessionLine
-	| AgentNameSessionLine
-	| AgentColorSessionLine
-	| PermissionModeSessionLine
-	| PrLinkSessionLine
-	| AttachmentSessionLine;
+// Local aliases for use within this file
+type SessionLine = _SessionLine;
+type MessageSessionLine = _MessageSessionLine;
+type AttachmentSessionLine = _AttachmentSessionLine;
 
 /**
  * Information about a tool_result paired with its tool_use.
@@ -932,9 +861,7 @@ export async function readSessionLines(projectsDir: string, sessionId: string): 
 			if (uuid !== undefined) sessionLine.uuid = uuid;
 			if (typeof record.parentUuid === 'string') sessionLine.parentUuid = record.parentUuid;
 			if (record.timestamp !== undefined) sessionLine.timestamp = record.timestamp;
-			// The Zod-parsed message is structurally compatible with MessageSessionLine.message
-			// but uses Record<string, unknown> for tool input vs SerializableValue.
-			// Cast is safe because the runtime data is identical.
+			// MessageSessionLine.message uses the Zod-inferred ContentBlock type directly
 			sessionLine.message = record.message as MessageSessionLine['message'];
 
 			lines.push(sessionLine);

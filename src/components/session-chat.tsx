@@ -10,6 +10,7 @@ import {TasksView} from './tasks-view';
 import {DebugLink} from './debug-link';
 import {hmrPersist} from '../lib/hmr-persist';
 import type {MessageSessionLine, SessionLine, SessionContentBlock, ToolResultInfo} from '../lib/sessions';
+import type {ToolUseBlock} from '../lib/schemas';
 import type {SubagentTreeEntry} from '../lib/db/queries';
 import {AttachmentBanner, Banner} from './attachment-banner';
 import {stripCommandTags, parseCommandBlock, parseBashInput, parseBashOutput} from '../lib/session-utils';
@@ -1023,7 +1024,7 @@ function AssistantEntry({
 	const toolCalls = useMemo(
 		() =>
 			content
-				.filter((b) => b.type === 'tool_use')
+				.filter((b): b is ToolUseBlock => b.type === 'tool_use')
 				.map((block) => buildClientToolCall(block, line, toolResultMap, subagentLookup)),
 		[content, line, toolResultMap, subagentLookup],
 	);
