@@ -78,7 +78,7 @@ const TOOL_CATEGORIES = [
 ] as const;
 type ToolCategory = (typeof TOOL_CATEGORIES)[number];
 
-const EDIT_TOOLS = new Set(['Edit', 'MultiEdit', 'Write']);
+export const EDIT_TOOLS = new Set(['Edit', 'MultiEdit', 'Write']);
 
 function isMemoryPath(filePath: string): boolean {
 	if (!filePath.endsWith('.md')) return false;
@@ -108,7 +108,7 @@ function countDiffLines(oldStr: string, newStr: string): {added: number; removed
 	return {added, removed};
 }
 
-function diffStatsForEditCall(call: ToolCallLike): {added: number; removed: number} {
+export function diffStatsForEditCall(call: ToolCallLike): {added: number; removed: number} {
 	const input = call.input;
 	if (call.name === 'Write') {
 		const content = typeof input['content'] === 'string' ? (input['content'] as string) : '';

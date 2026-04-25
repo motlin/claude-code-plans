@@ -5,7 +5,7 @@ import {MarkdownArticle} from './markdown-article';
 import {getToolRenderer} from './tool-renderers';
 import {buildClientToolCall, buildSubagentLookup} from './tool-renderers/types';
 import type {ClientToolCall} from './tool-renderers';
-import {ChevronIcon, DurationBadge, TerminalOutput} from './tool-renderers/shared';
+import {ChevronIcon, DiffStats, DurationBadge, TerminalOutput} from './tool-renderers/shared';
 import {TasksView} from './tasks-view';
 import {DebugLink} from './debug-link';
 import {hmrPersist} from '../lib/hmr-persist';
@@ -13,7 +13,15 @@ import type {MessageSessionLine, SessionLine, SessionContentBlock, ToolResultInf
 import type {ToolUseBlock} from '../lib/schemas';
 import type {SubagentTreeEntry} from '../lib/db/queries';
 import {AttachmentBanner, Banner} from './attachment-banner';
-import {stripCommandTags, parseCommandBlock, parseBashInput, parseBashOutput} from '../lib/session-utils';
+import {
+	stripCommandTags,
+	parseCommandBlock,
+	parseBashInput,
+	parseBashOutput,
+	formatToolName,
+	diffStatsForEditCall,
+	EDIT_TOOLS,
+} from '../lib/session-utils';
 
 function formatTimestamp(timestamp?: string): string | null {
 	if (!timestamp) return null;
@@ -1171,6 +1179,20 @@ function ContentBlock({
 	return null;
 }
 
+function toolCallVerb(name: string): string {
+	if (name === 'Edit' || name === 'MultiEdit') return 'Edited';
+	if (name === 'Write') return 'Wrote';
+	if (name === 'Bash') return 'Ran';
+	if (name === 'Read') return 'Read';
+	if (name === 'Grep') return 'Searched';
+	if (name === 'Glob') return 'Globbed';
+	if (name === 'Agent') return 'Ran agent';
+	if (name === 'WebFetch') return 'Fetched';
+	if (name === 'WebSearch') return 'Searched web';
+	if (name.startsWith('mcp__')) return formatToolName(name);
+	return name;
+}
+
 const PROMINENT_TOOLS = new Set(['AskUserQuestion']);
 const TASK_TOOLS = new Set(['TaskCreate', 'TaskUpdate', 'TaskGet', 'TaskList']);
 
@@ -1234,14 +1256,37 @@ function ToolCallSection({calls, sessionId}: {calls: ClientToolCall[]; sessionId
 }
 
 function ToolCallRow({call, sessionId}: {call: ClientToolCall; sessionId: string}) {
+	const [expanded, setExpanded] = useState(false);
 	const Renderer = getToolRenderer(call.name);
+	const verb = toolCallVerb(call.name);
+	const editStats = useMemo(
+		() => (EDIT_TOOLS.has(call.name) ? diffStatsForEditCall({name: call.name, input: call.input}) : null),
+		[call.name, call.input],
+	);
+
 	return (
 		<div className="min-w-0 py-0.5 text-sm leading-relaxed text-text-500">
-			<div className="flex items-baseline flex-wrap gap-y-0.5">
-				<span className="font-medium text-[13px]">{call.name}</span>
+			<button
+				type="button"
+				onClick={() => setExpanded(!expanded)}
+				className="flex items-baseline flex-wrap gap-y-0.5 w-full text-left cursor-pointer hover:text-text-300 transition-colors"
+			>
+				<ChevronIcon
+					expanded={expanded}
+					size={12}
+				/>
+				<span className="ml-1 font-medium text-[13px]">{verb}</span>
 				{call.param && (
 					<span className="ml-1.5 font-mono text-[11px] bg-bg-100 px-1 py-px rounded opacity-70 break-all">
 						{call.param}
+					</span>
+				)}
+				{editStats && (editStats.added > 0 || editStats.removed > 0) && (
+					<span className="ml-1.5">
+						<DiffStats
+							added={editStats.added}
+							removed={editStats.removed}
+						/>
 					</span>
 				)}
 				{call.duration !== undefined && <DurationBadge duration={call.duration} />}
@@ -1250,9 +1295,13 @@ function ToolCallRow({call, sessionId}: {call: ClientToolCall; sessionId: string
 					uuid={call.sourceUuid}
 					className="ml-1.5"
 				/>
-			</div>
-			<div className="mt-1 mb-2 text-xs text-text-100 leading-relaxed">
-				<Renderer toolCall={call} />
+			</button>
+			<div className={`grid ${expanded ? 'grid-rows-expand' : 'grid-rows-collapse'}`}>
+				<div className="overflow-hidden">
+					<div className="mt-1 mb-2 text-xs text-text-100 leading-relaxed">
+						<Renderer toolCall={call} />
+					</div>
+				</div>
 			</div>
 		</div>
 	);
