@@ -15,8 +15,7 @@ import {
 	type ClaudeEventsAction,
 } from '../src/hooks/use-claude-events';
 import type {MemorySummaryPayload, PlanSummaryPayload, SessionSummaryPayload} from '../src/lib/hook-events';
-import type {MessageSessionLine, SessionLine, ToolResultInfo} from '../src/lib/sessions';
-import type {SerializedToolResultMap} from '../src/components/tool-renderers';
+import type {TranscriptData} from '../src/routes/session.$id';
 
 function makeSession(overrides: Partial<SessionSummaryPayload> & {id: string; project: string}): SessionSummaryPayload {
 	const {id, project, ...rest} = overrides;
@@ -586,22 +585,9 @@ describe('applyTaskChanged', () => {
 // applySessionLinesAppended
 // -----------------------------------------------------------------------
 
-interface SessionDetailCache {
-	title: string;
-	projectName: string;
-	projectId: string;
-	lines: SessionLine[];
-	toolResultMap: SerializedToolResultMap;
-	byteOffset: number;
-}
-
-function makeSessionDetailCache(overrides?: Partial<SessionDetailCache>): SessionDetailCache {
+function makeTranscriptCache(overrides?: Partial<TranscriptData>): TranscriptData {
 	return {
-		title: 'Test Session',
-		projectName: 'test-project',
-		projectId: 'proj-1',
-		lines: [],
-		toolResultMap: [],
+		records: [],
 		byteOffset: 0,
 		...overrides,
 	};
@@ -610,142 +596,67 @@ function makeSessionDetailCache(overrides?: Partial<SessionDetailCache>): Sessio
 describe('applySessionLinesAppended', () => {
 	it('ignores event when no cached data exists for the session', () => {
 		const queryClient = new QueryClient();
-		// No cached data for this session.
 		applySessionLinesAppended(queryClient, 'sess-1', {
 			sessionId: 'sess-1',
 			lines: [
 				{type: 'assistant', uuid: 'a-1', message: {role: 'assistant', content: [{type: 'text', text: 'hi'}]}},
 			],
 		});
-		// Should not throw and no data should be set.
-		expect(queryClient.getQueryData(['session', 'sess-1', 'detail'])).toBeUndefined();
+		expect(queryClient.getQueryData(['session', 'sess-1', 'transcript'])).toBeUndefined();
 	});
 
-	it('appends new session lines to cached data', () => {
+	it('appends new raw records to cached transcript data', () => {
 		const queryClient = new QueryClient();
-		const existingLine: SessionLine = {
-			type: 'user',
-			uuid: 'u-1',
-			lineIndex: 0,
-			message: {role: 'user', content: 'hello'},
-		};
+		const existingRecord = {type: 'user', uuid: 'u-1', message: {role: 'user', content: 'hello'}};
 		queryClient.setQueryData(
-			['session', 'sess-1', 'detail'],
-			makeSessionDetailCache({lines: [existingLine], byteOffset: 100}),
+			['session', 'sess-1', 'transcript'],
+			makeTranscriptCache({records: [existingRecord], byteOffset: 100}),
 		);
 
+		const newRecord = {
+			type: 'assistant',
+			uuid: 'a-1',
+			timestamp: '1999-12-31T00:00:00Z',
+			message: {role: 'assistant', content: [{type: 'text', text: 'response'}]},
+		};
 		applySessionLinesAppended(queryClient, 'sess-1', {
 			sessionId: 'sess-1',
-			lines: [
-				{
-					type: 'assistant',
-					uuid: 'a-1',
-					timestamp: '1999-12-31T00:00:00Z',
-					message: {role: 'assistant', content: [{type: 'text', text: 'response'}]},
-				},
-			],
+			lines: [newRecord],
 		});
 
-		const cached = queryClient.getQueryData<SessionDetailCache>(['session', 'sess-1', 'detail'])!;
-		expect(
-			cached.lines.map((line) => ({uuid: (line as MessageSessionLine).uuid, lineIndex: line.lineIndex})),
-		).toStrictEqual([
-			{uuid: 'u-1', lineIndex: 0},
-			{uuid: 'a-1', lineIndex: 1},
-		]);
+		const cached = queryClient.getQueryData<TranscriptData>(['session', 'sess-1', 'transcript'])!;
+		expect(cached.records).toStrictEqual([existingRecord, newRecord]);
+		expect(cached.byteOffset).toBe(100);
 	});
 
-	it('merges tool results into cached toolResultMap', () => {
+	it('does not modify cache when lines array is empty', () => {
 		const queryClient = new QueryClient();
-		queryClient.setQueryData(['session', 'sess-1', 'detail'], makeSessionDetailCache({byteOffset: 0}));
+		const original = makeTranscriptCache({byteOffset: 50});
+		queryClient.setQueryData(['session', 'sess-1', 'transcript'], original);
 
 		applySessionLinesAppended(queryClient, 'sess-1', {
 			sessionId: 'sess-1',
-			lines: [
-				{
-					type: 'assistant',
-					uuid: 'a-1',
-					timestamp: '1999-12-31T00:00:00Z',
-					message: {
-						role: 'assistant',
-						content: [{type: 'tool_use', id: 'tool-1', name: 'Bash', input: {command: 'ls'}}],
-					},
-				},
-				{
-					type: 'user',
-					uuid: 'u-1',
-					timestamp: '1999-12-31T00:00:02Z',
-					message: {
-						role: 'user',
-						content: [{type: 'tool_result', tool_use_id: 'tool-1', content: 'output.txt'}],
-					},
-				},
-			],
+			lines: [],
 		});
 
-		const cached = queryClient.getQueryData<SessionDetailCache>(['session', 'sess-1', 'detail'])!;
-		expect(cached.toolResultMap).toStrictEqual([
-			['tool-1', {result: 'output.txt', isError: false, resultUuid: 'u-1', duration: 2000}],
-		]);
-	});
-
-	it('does not modify cache when lines contain only non-user/assistant types', () => {
-		const queryClient = new QueryClient();
-		const original = makeSessionDetailCache({byteOffset: 50});
-		queryClient.setQueryData(['session', 'sess-1', 'detail'], original);
-
-		applySessionLinesAppended(queryClient, 'sess-1', {
-			sessionId: 'sess-1',
-			lines: [
-				{type: 'progress', uuid: 'p-1'},
-				{type: 'system', uuid: 's-1'},
-			],
-		});
-
-		const cached = queryClient.getQueryData<SessionDetailCache>(['session', 'sess-1', 'detail'])!;
-		// Same reference since setQueryData was not called.
+		const cached = queryClient.getQueryData<TranscriptData>(['session', 'sess-1', 'transcript'])!;
 		expect(cached).toBe(original);
 	});
 
-	it('preserves existing tool results when merging new ones', () => {
+	it('appends all record types including non-user/assistant', () => {
 		const queryClient = new QueryClient();
-		const existingToolResult: [string, ToolResultInfo] = [
-			'tool-0',
-			{result: 'old', isError: false, resultUuid: 'u-0'},
-		];
-		queryClient.setQueryData(
-			['session', 'sess-1', 'detail'],
-			makeSessionDetailCache({toolResultMap: [existingToolResult], byteOffset: 100}),
-		);
+		queryClient.setQueryData(['session', 'sess-1', 'transcript'], makeTranscriptCache({byteOffset: 50}));
 
+		const records = [
+			{type: 'progress', uuid: 'p-1'},
+			{type: 'assistant', uuid: 'a-1', message: {role: 'assistant', content: 'hi'}},
+		];
 		applySessionLinesAppended(queryClient, 'sess-1', {
 			sessionId: 'sess-1',
-			lines: [
-				{
-					type: 'assistant',
-					uuid: 'a-1',
-					timestamp: '1999-12-31T00:00:00Z',
-					message: {
-						role: 'assistant',
-						content: [{type: 'tool_use', id: 'tool-1', name: 'Read', input: {file_path: '/tmp/f'}}],
-					},
-				},
-				{
-					type: 'user',
-					uuid: 'u-1',
-					timestamp: '1999-12-31T00:00:01Z',
-					message: {
-						role: 'user',
-						content: [{type: 'tool_result', tool_use_id: 'tool-1', content: 'new data'}],
-					},
-				},
-			],
+			lines: records,
 		});
 
-		const cached = queryClient.getQueryData<SessionDetailCache>(['session', 'sess-1', 'detail'])!;
-		expect(cached.toolResultMap).toStrictEqual([
-			['tool-0', {result: 'old', isError: false, resultUuid: 'u-0'}],
-			['tool-1', {result: 'new data', isError: false, resultUuid: 'u-1', duration: 1000}],
-		]);
+		const cached = queryClient.getQueryData<TranscriptData>(['session', 'sess-1', 'transcript'])!;
+		expect(cached.records).toStrictEqual(records);
 	});
 });

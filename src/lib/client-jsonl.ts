@@ -1,24 +1,25 @@
 /**
  * Client-side JSONL line interpretation.
  *
- * Extracts the filtering/pairing logic from readSessionLines() so that
- * SSE-delivered raw JSONL lines can be interpreted and merged into the
- * TanStack Query cache without a server round-trip.
+ * Processes raw JSONL records into SessionLine entries and ToolResultInfo
+ * for rendering. Used both for initial transcript loading and for SSE
+ * incremental appends.
  */
 
-import type {MessageSessionLine, SessionContentBlock, ToolResultInfo} from './sessions';
+import type {MessageSessionLine, SessionContentBlock, SessionLine, ToolResultInfo} from './sessions';
 import {extractToolResultContent, stripResultTags, truncateResult} from './session-utils';
 
 interface InterpretedLines {
-	newSessionLines: MessageSessionLine[];
+	newSessionLines: SessionLine[];
 	newToolResults: Map<string, ToolResultInfo>;
 }
 
 /**
  * Interpret raw JSONL objects into SessionLines and ToolResultInfo entries.
  *
- * This mirrors the filtering/pairing logic in readSessionLines():
- * - Filters to user/assistant lines only
+ * Mirrors the filtering/pairing logic from readSessionLines():
+ * - Produces SessionLine entries for rendering-relevant record types
+ *   (user, assistant, agent-name, agent-color, permission-mode, pr-link, attachment)
  * - Pairs tool_use blocks (in assistant messages) with tool_result blocks (in user messages)
  * - Extracts timestamps and computes tool durations
  * - Strips system-reminder tags and truncates long results
@@ -27,7 +28,7 @@ interface InterpretedLines {
  * @param startLineIndex - The JSONL line index to start counting from (for appending to existing lines)
  */
 export function interpretJsonlLines(rawLines: Record<string, unknown>[], startLineIndex: number): InterpretedLines {
-	const newSessionLines: MessageSessionLine[] = [];
+	const newSessionLines: SessionLine[] = [];
 	const newToolResults = new Map<string, ToolResultInfo>();
 	const toolStartTimes = new Map<string, number>();
 
@@ -80,6 +81,60 @@ export function interpretJsonlLines(rawLines: Record<string, unknown>[], startLi
 					}
 				}
 			}
+		}
+
+		// Non-message line types
+		if (type === 'agent-name') {
+			const agentName = obj['agentName'];
+			if (typeof agentName === 'string') {
+				newSessionLines.push({type: 'agent-name', agentName, lineIndex});
+			}
+			continue;
+		}
+		if (type === 'agent-color') {
+			const agentColor = obj['agentColor'];
+			if (typeof agentColor === 'string') {
+				newSessionLines.push({type: 'agent-color', agentColor, lineIndex});
+			}
+			continue;
+		}
+		if (type === 'permission-mode') {
+			const permissionMode = obj['permissionMode'];
+			if (typeof permissionMode === 'string') {
+				newSessionLines.push({type: 'permission-mode', permissionMode, lineIndex});
+			}
+			continue;
+		}
+		if (type === 'pr-link') {
+			const prUrl = obj['prUrl'];
+			const prNumber = obj['prNumber'];
+			const prRepository = obj['prRepository'];
+			const timestamp = obj['timestamp'];
+			if (typeof prUrl === 'string' && typeof prNumber === 'number' && typeof prRepository === 'string') {
+				newSessionLines.push({
+					type: 'pr-link',
+					prUrl,
+					prNumber,
+					prRepository,
+					...(typeof timestamp === 'string' ? {timestamp} : {}),
+					lineIndex,
+				});
+			}
+			continue;
+		}
+		if (type === 'attachment') {
+			const attachment = obj['attachment'];
+			const timestamp = obj['timestamp'];
+			if (attachment !== undefined) {
+				newSessionLines.push({
+					type: 'attachment',
+					attachmentJson: JSON.stringify(attachment),
+					...(uuid !== undefined ? {uuid} : {}),
+					...(typeof timestamp === 'string' ? {timestamp} : {}),
+					lineIndex,
+				});
+			}
+			continue;
 		}
 
 		// Only include user/assistant lines for the rendering tree

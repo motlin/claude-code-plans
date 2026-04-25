@@ -10,7 +10,7 @@
 		{"file": "src/lib/active-sessions.ts", "exports": ["ActiveSession"]},
 		{"file": "src/lib/db/queries.ts", "exports": ["DbSearchResult", "DbMessageSearchResult"]},
 		{"file": "src/lib/server-fns.ts", "exports": ["ProjectScopeBase"]},
-		{"file": "src/lib/sessions.ts", "exports": ["RawWindow"]},
+		{"file": "src/lib/sessions.ts", "exports": ["RawWindow", "readSessionLines"]},
 		{"file": "src/routes/session.$id_.source.$uuid.tsx", "exports": ["PairedResult"]}
 	],
 	"rules": {

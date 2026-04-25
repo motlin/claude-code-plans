@@ -235,7 +235,11 @@ describe('interpretJsonlLines', () => {
 			},
 		];
 		const result = interpretJsonlLines(lines, 0);
-		expect(result.newSessionLines[0]!.parentUuid).toBe('u-0');
+		const line = result.newSessionLines[0]!;
+		expect(line.type).toBe('assistant');
+		if (line.type === 'assistant') {
+			expect(line.parentUuid).toBe('u-0');
+		}
 	});
 
 	it('increments lineIndex sequentially across all input lines', () => {

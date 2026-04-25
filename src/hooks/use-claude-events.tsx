@@ -8,9 +8,7 @@ import {
 	type SessionLinesAppendedPayload,
 	type SessionSummaryPayload,
 } from '../lib/hook-events';
-import {interpretJsonlLines} from '../lib/client-jsonl';
-import type {SessionLine} from '../lib/sessions';
-import type {SerializedToolResultMap} from '../components/tool-renderers';
+import type {TranscriptData} from '../routes/session.$id';
 
 // ---------------------------------------------------------------------------
 // State types
@@ -280,51 +278,28 @@ export function applyTaskChanged(queryClient: QueryClient, projectDir: string): 
 	void queryClient.invalidateQueries({queryKey: ['tasks', 'project', projectDir]});
 }
 
-/** Shape of the session detail query cache entry (mirrors getSession return). */
-interface SessionDetailCache {
-	title: string;
-	projectName: string;
-	projectId: string;
-	lines: SessionLine[];
-	toolResultMap: SerializedToolResultMap;
-	byteOffset: number;
-	[key: string]: unknown;
-}
-
 /**
- * Apply SESSION_LINES_APPENDED: interpret the raw JSONL lines client-side
- * and merge them into the cached session detail data without a server refetch.
+ * Apply SESSION_LINES_APPENDED: append raw JSONL records to the transcript
+ * cache. The component's useMemo on interpretJsonlLines() recomputes
+ * automatically when the cache updates.
  */
 export function applySessionLinesAppended(
 	queryClient: QueryClient,
 	sessionId: string,
 	payload: SessionLinesAppendedPayload,
 ): void {
-	const queryKey = ['session', sessionId, 'detail'] as const;
-	const cached = queryClient.getQueryData<SessionDetailCache>(queryKey);
+	const queryKey = ['session', sessionId, 'transcript'] as const;
+	const cached = queryClient.getQueryData<TranscriptData>(queryKey);
 
-	// If we have no cached data for this session, ignore the event.
-	// A full load on navigation will pick it up.
 	if (!cached) return;
 
-	const startLineIndex = cached.lines.length > 0 ? cached.lines[cached.lines.length - 1]!.lineIndex + 1 : 0;
-	const {newSessionLines, newToolResults} = interpretJsonlLines(payload.lines, startLineIndex);
+	if (payload.lines.length === 0) return;
 
-	if (newSessionLines.length === 0 && newToolResults.size === 0) return;
-
-	queryClient.setQueryData<SessionDetailCache>(queryKey, (old) => {
+	queryClient.setQueryData<TranscriptData>(queryKey, (old) => {
 		if (!old) return old;
-
-		const mergedMap = new Map(old.toolResultMap);
-		for (const [toolUseId, info] of newToolResults) {
-			mergedMap.set(toolUseId, info);
-		}
-		const mergedToolResultMap: SerializedToolResultMap = [...mergedMap];
-
 		return {
-			...old,
-			lines: [...old.lines, ...newSessionLines],
-			toolResultMap: mergedToolResultMap,
+			records: [...old.records, ...payload.lines],
+			byteOffset: old.byteOffset,
 		};
 	});
 }

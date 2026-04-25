@@ -13,6 +13,7 @@ import {getSubagentTree, getSessionSummary, requestSummary, isStarred, toggleSes
 import {useIsSessionActive, useStatusline} from '../hooks/use-claude-events';
 import {StatusFooter} from '../components/status-footer';
 import type {SerializedToolResultMap} from '../components/tool-renderers';
+import {interpretJsonlLines} from '../lib/client-jsonl';
 import {ArrowLeft, ArrowUp, ArrowDown, Copy, Terminal, GitFork, Download, Maximize2, Minimize2} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {useSettings} from '../components/settings-provider';
@@ -20,20 +21,25 @@ import {useSettings} from '../components/settings-provider';
 const getSession = createServerFn({method: 'GET'})
 	.inputValidator(z.object({id: z.string()}))
 	.handler(async ({data: {id}}) => {
-		const {homedir} = await import('node:os');
-		const {join} = await import('node:path');
-		const projectsDir = join(homedir(), '.claude', 'projects');
-		const {readSessionLines} = await import('../lib/sessions');
-		const [detail, subagentResult, starResult] = await Promise.all([
-			readSessionLines(projectsDir, id),
-			getSubagentTree({data: id}),
-			isStarred({data: id}),
-		]);
-		if (!detail) return null;
-
 		const {getDb} = await import('../lib/db');
 		const {getSessionProjectPath, getSessionMeta, getTaskCountsForProject} = await import('../lib/db/queries');
+		const {sessions} = await import('../lib/db/schema');
+		const {eq} = await import('drizzle-orm');
 		const {index} = getDb();
+
+		const sessionRow = index
+			.select({
+				title: sessions.title,
+				customTitle: sessions.customTitle,
+				projectId: sessions.projectId,
+			})
+			.from(sessions)
+			.where(eq(sessions.id, id))
+			.get();
+		if (!sessionRow) return null;
+
+		const [subagentResult, starResult] = await Promise.all([getSubagentTree({data: id}), isStarred({data: id})]);
+
 		const projectPath = getSessionProjectPath(index, id);
 		const sessionMeta = getSessionMeta(index, id);
 
@@ -58,11 +64,9 @@ const getSession = createServerFn({method: 'GET'})
 		}
 
 		return {
-			title: detail.title,
-			projectName: detail.projectName,
-			projectId: detail.projectId,
-			lines: detail.lines,
-			toolResultMap: Array.from(detail.toolResultMap.entries()) as SerializedToolResultMap,
+			title: sessionRow.customTitle ?? sessionRow.title,
+			projectName: sessionMeta?.projectName ?? sessionRow.projectId,
+			projectId: sessionRow.projectId,
 			subagentTree: subagentResult.tree,
 			subagentCount: subagentResult.totalCount,
 			starred: starResult.starred,
@@ -71,13 +75,12 @@ const getSession = createServerFn({method: 'GET'})
 			cwd: sessionMeta?.cwd ?? null,
 			gitSha,
 			gitClean,
-			messageCount: sessionMeta?.messageCount ?? detail.lines.length,
+			messageCount: sessionMeta?.messageCount ?? 0,
 			pendingTaskCount,
-			byteOffset: detail.byteOffset,
 		};
 	});
 
-const sessionDetailQueryOptions = (id: string) =>
+const sessionMetaQueryOptions = (id: string) =>
 	queryOptions({
 		queryKey: ['session', id, 'detail'] as const,
 		queryFn: () => getSession({data: {id}}),
@@ -85,9 +88,32 @@ const sessionDetailQueryOptions = (id: string) =>
 		gcTime: Infinity,
 	});
 
+export interface TranscriptData {
+	records: Record<string, unknown>[];
+	byteOffset: number;
+}
+
+const transcriptQueryOptions = (id: string) =>
+	queryOptions({
+		queryKey: ['session', id, 'transcript'] as const,
+		queryFn: async (): Promise<TranscriptData> => {
+			const response = await fetch(`/api/transcript?sessionId=${encodeURIComponent(id)}`);
+			if (!response.ok) throw new Error(`Transcript fetch failed (${response.status})`);
+			return response.json() as Promise<TranscriptData>;
+		},
+		staleTime: Infinity,
+		gcTime: Infinity,
+	});
+
 export const Route = createFileRoute('/session/$id')({
 	component: SessionPage,
-	loader: ({context: {queryClient}, params}) => queryClient.ensureQueryData(sessionDetailQueryOptions(params.id)),
+	loader: async ({context: {queryClient}, params}) => {
+		const [meta] = await Promise.all([
+			queryClient.ensureQueryData(sessionMetaQueryOptions(params.id)),
+			queryClient.ensureQueryData(transcriptQueryOptions(params.id)),
+		]);
+		return meta;
+	},
 	errorComponent: SessionErrorComponent,
 	head: ({loaderData}) => ({
 		meta: [{title: loaderData?.title ?? 'Session Not Found'}],
@@ -212,7 +238,14 @@ function CopyButton({
 function SessionPage() {
 	const params = Route.useParams();
 	const queryClient = useQueryClient();
-	const {data} = useSuspenseQuery(sessionDetailQueryOptions(params.id));
+	const {data} = useSuspenseQuery(sessionMetaQueryOptions(params.id));
+	const {data: transcript} = useSuspenseQuery(transcriptQueryOptions(params.id));
+
+	const {lines, toolResultMap} = useMemo(() => {
+		const {newSessionLines, newToolResults} = interpretJsonlLines(transcript.records, 0);
+		const serialized: SerializedToolResultMap = [...newToolResults];
+		return {lines: newSessionLines, toolResultMap: serialized};
+	}, [transcript.records]);
 	const [aiSummary, setAiSummary] = useState<string | null>(null);
 	const [summaryLoaded, setSummaryLoaded] = useState(false);
 	const [starred, setStarred] = useState(data?.starred ?? false);
@@ -455,8 +488,8 @@ function SessionPage() {
 			<AskUserQuestionProvider value={askUserQuestionCtx}>
 				<SessionChat
 					sessionId={params.id}
-					lines={data.lines}
-					toolResultMap={data.toolResultMap}
+					lines={lines}
+					toolResultMap={toolResultMap}
 					subagentTree={data.subagentTree}
 					showThinking={settings.showThinking}
 					showTools={settings.showTools}
