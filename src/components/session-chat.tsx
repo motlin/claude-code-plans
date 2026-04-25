@@ -21,6 +21,7 @@ import {
 	formatToolName,
 	diffStatsForEditCall,
 	EDIT_TOOLS,
+	summarizeToolCalls,
 } from '../lib/session-utils';
 
 function formatTimestamp(timestamp?: string): string | null {
@@ -1331,10 +1332,12 @@ function ParallelGroupInline({calls, sessionId}: {calls: ClientToolCall[]; sessi
 }
 
 function ToolCallSummary({calls, sessionId}: {calls: ClientToolCall[]; sessionId: string}) {
+	const [expanded, setExpanded] = useState(false);
 	const taskCalls = calls.filter((c) => TASK_TOOLS.has(c.name));
 	const hasTasksView = taskCalls.length >= 3;
 	const displayCalls = hasTasksView ? calls.filter((c) => !TASK_TOOLS.has(c.name)) : calls;
 	const items = groupParallelSubagents(displayCalls);
+	const summaryText = useMemo(() => summarizeToolCalls(displayCalls), [displayCalls]);
 
 	return (
 		<div className="min-w-0">
@@ -1343,24 +1346,45 @@ function ToolCallSummary({calls, sessionId}: {calls: ClientToolCall[]; sessionId
 					<TasksView toolCalls={calls} />
 				</div>
 			)}
-			{items.map((item, i) => {
-				if (item.kind === 'parallel') {
-					return (
-						<ParallelGroupInline
-							key={`pg-${item.key}`}
-							calls={item.calls}
-							sessionId={sessionId}
+			{displayCalls.length > 0 && (
+				<div>
+					<button
+						type="button"
+						onClick={() => setExpanded(!expanded)}
+						className="flex items-baseline gap-1 w-full text-left cursor-pointer text-sm text-text-500 hover:text-text-300 transition-colors py-0.5"
+					>
+						<ChevronIcon
+							expanded={expanded}
+							size={12}
 						/>
-					);
-				}
-				return (
-					<ToolCallRow
-						key={i}
-						call={item.call}
-						sessionId={sessionId}
-					/>
-				);
-			})}
+						<span className="font-medium text-[13px] capitalize">{summaryText}</span>
+					</button>
+					<div className={`grid ${expanded ? 'grid-rows-expand' : 'grid-rows-collapse'}`}>
+						<div className="overflow-hidden">
+							<div className="mt-1 rounded-lg bg-bg-100 px-3 py-1.5">
+								{items.map((item, i) => {
+									if (item.kind === 'parallel') {
+										return (
+											<ParallelGroupInline
+												key={`pg-${item.key}`}
+												calls={item.calls}
+												sessionId={sessionId}
+											/>
+										);
+									}
+									return (
+										<ToolCallRow
+											key={i}
+											call={item.call}
+											sessionId={sessionId}
+										/>
+									);
+								})}
+							</div>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }
