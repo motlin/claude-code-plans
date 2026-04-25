@@ -136,8 +136,8 @@ function VerbositySection() {
 	const verbosity = settings.verbosity;
 
 	const presets: Array<{value: Verbosity; label: string; description: string}> = [
-		{value: 'minimal', label: 'Minimal', description: 'Hide tools, thinking, hooks, and system content'},
 		{value: 'normal', label: 'Normal', description: 'Show tools, hook warnings, and errors (default)'},
+		{value: 'thinking', label: 'Thinking', description: 'Show tools, thinking, hook warnings, and errors'},
 		{
 			value: 'verbose',
 			label: 'Verbose',

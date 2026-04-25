@@ -1,7 +1,7 @@
 import {createContext, useCallback, useContext, useEffect, useState} from 'react';
 
 type SubagentView = 'tree' | 'gantt' | 'sequence';
-export type Verbosity = 'minimal' | 'normal' | 'verbose';
+export type Verbosity = 'normal' | 'thinking' | 'verbose';
 
 export interface Settings {
 	showThinking: boolean;
@@ -68,18 +68,18 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
 	verbosity: 'ccp-verbosity',
 };
 
-const VERBOSITY_PRESETS: Record<Exclude<Verbosity, 'minimal'>, Partial<Settings>> & {minimal: Partial<Settings>} = {
-	minimal: {
-		showTools: false,
-		showThinking: false,
-		showPassedHooks: false,
-		showHookWarnings: false,
-		showHookErrors: false,
-		showSystemBanners: false,
-	},
+const VERBOSITY_PRESETS: Record<Verbosity, Partial<Settings>> = {
 	normal: {
 		showTools: true,
 		showThinking: false,
+		showPassedHooks: false,
+		showHookWarnings: true,
+		showHookErrors: true,
+		showSystemBanners: false,
+	},
+	thinking: {
+		showTools: true,
+		showThinking: true,
 		showPassedHooks: false,
 		showHookWarnings: true,
 		showHookErrors: true,
@@ -98,7 +98,7 @@ const VERBOSITY_PRESETS: Record<Exclude<Verbosity, 'minimal'>, Partial<Settings>
 export const VERBOSITY_KEYS = Object.keys(VERBOSITY_PRESETS.normal) as Array<keyof Settings>;
 
 export function detectVerbosity(settings: Settings): Verbosity {
-	for (const preset of ['minimal', 'normal', 'verbose'] as const) {
+	for (const preset of ['normal', 'thinking', 'verbose'] as const) {
 		const values = VERBOSITY_PRESETS[preset];
 		if (VERBOSITY_KEYS.every((key) => settings[key] === values[key])) {
 			return preset;
@@ -151,6 +151,17 @@ export function SettingsProvider({children}: {children: React.ReactNode}) {
 			if (stored !== undefined) {
 				(loaded as Record<keyof Settings, Settings[keyof Settings]>)[key] = stored;
 			}
+		}
+		const rawVerbosity = localStorage.getItem(STORAGE_KEYS.verbosity);
+		if (rawVerbosity === 'minimal') {
+			const normalPreset = VERBOSITY_PRESETS.normal;
+			for (const key of Object.keys(normalPreset) as Array<keyof Settings>) {
+				(loaded as Record<keyof Settings, Settings[keyof Settings]>)[key] = normalPreset[
+					key
+				] as Settings[keyof Settings];
+				writeStoredValue(key, normalPreset[key] as Settings[keyof Settings]);
+			}
+			writeStoredValue('verbosity', 'normal');
 		}
 		loaded.verbosity = detectVerbosity(loaded);
 		setSettings(loaded);

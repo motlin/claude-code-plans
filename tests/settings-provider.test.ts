@@ -26,31 +26,45 @@ describe('settings-provider', () => {
 			expect(detectVerbosity(settings)).toBe('normal');
 		});
 
-		it('detects minimal verbosity', () => {
+		it('detects thinking verbosity', () => {
 			const settings: Settings = {
 				...DEFAULTS,
-				showTools: false,
-				showThinking: false,
+				showTools: true,
+				showThinking: true,
 				showPassedHooks: false,
-				showHookWarnings: false,
-				showHookErrors: false,
+				showHookWarnings: true,
+				showHookErrors: true,
 				showSystemBanners: false,
 			};
-			expect(detectVerbosity(settings)).toBe('minimal');
+			expect(detectVerbosity(settings)).toBe('thinking');
 		});
 
-		it('detects minimal verbosity even when showDebug is true', () => {
+		it('detects thinking verbosity even when showDebug is true', () => {
 			const settings: Settings = {
 				...DEFAULTS,
-				showTools: false,
-				showThinking: false,
+				showTools: true,
+				showThinking: true,
 				showPassedHooks: false,
-				showHookWarnings: false,
-				showHookErrors: false,
+				showHookWarnings: true,
+				showHookErrors: true,
 				showSystemBanners: false,
 				showDebug: true,
 			};
-			expect(detectVerbosity(settings)).toBe('minimal');
+			expect(detectVerbosity(settings)).toBe('thinking');
+		});
+
+		it('does not detect removed minimal preset', () => {
+			const settings: Settings = {
+				...DEFAULTS,
+				showTools: false,
+				showThinking: false,
+				showPassedHooks: false,
+				showHookWarnings: false,
+				showHookErrors: false,
+				showSystemBanners: false,
+				verbosity: 'normal',
+			};
+			expect(detectVerbosity(settings)).toBe('normal');
 		});
 
 		it('detects verbose verbosity', () => {
