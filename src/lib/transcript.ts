@@ -376,7 +376,7 @@ export function processTranscript(records: unknown[]): ProcessedTranscript {
  * Process new JSONL records incrementally for SSE appends.
  *
  * Same processing logic as processTranscript but returns data shaped for
- * merging into existing state. Replaces interpretJsonlLines() from client-jsonl.ts.
+ * merging into existing state.
  *
  * @param records - Raw JSON objects from the SSE event
  * @param startIndex - The JSONL line index to start counting from

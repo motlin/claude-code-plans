@@ -4,7 +4,7 @@ import {join} from 'node:path';
 import {createInterface} from 'node:readline';
 import {decodeProjectDir, resolveProjectName} from './memory';
 import type {JsonValue} from './hook-events';
-import {SessionsIndexSchema, CustomTitleRecordSchema, JsonlRecordSchema} from './schemas';
+import {SessionsIndexSchema, CustomTitleRecordSchema} from './schemas';
 
 export interface SessionEntry {
 	id: string;
@@ -75,15 +75,6 @@ interface SessionDetail {
 	uuidToLine: Map<string, number>;
 }
 
-// ---------------------------------------------------------------------------
-// ProcessedLine types -- canonical definitions in transcript.ts
-// Re-exported here for backwards compatibility.
-// ---------------------------------------------------------------------------
-import type {
-	SessionLine as _SessionLine,
-	MessageSessionLine as _MessageSessionLine,
-	AttachmentSessionLine as _AttachmentSessionLine,
-} from './transcript';
 export type {
 	SessionLine,
 	MessageSessionLine,
@@ -94,11 +85,6 @@ export type {
 	ContentBlock,
 } from './transcript';
 
-// Local aliases for use within this file
-type SessionLine = _SessionLine;
-type MessageSessionLine = _MessageSessionLine;
-type AttachmentSessionLine = _AttachmentSessionLine;
-
 /**
  * Information about a tool_result paired with its tool_use.
  */
@@ -107,23 +93,6 @@ export interface ToolResultInfo {
 	isError: boolean;
 	resultUuid: string;
 	duration?: number | undefined;
-}
-
-/**
- * Raw session data: parsed lines + lookup maps for pairing and decorations.
- */
-interface SessionLines {
-	id: string;
-	title: string;
-	projectName: string;
-	projectId: string;
-	lines: SessionLine[];
-	/** Maps tool_use.id to its tool_result data */
-	toolResultMap: Map<string, ToolResultInfo>;
-	/** Maps uuid to JSONL file line index */
-	uuidToLine: Map<string, number>;
-	/** Byte offset at end of file, for incremental SSE updates */
-	byteOffset: number;
 }
 
 import {
@@ -713,175 +682,6 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 	if (customTitle) title = customTitle;
 
 	return {id: sessionId, title, projectName, projectId: project, messages, uuidToLine};
-}
-
-export async function readSessionLines(projectsDir: string, sessionId: string): Promise<SessionLines | null> {
-	const resolved = await resolveSessionFilePath(projectsDir, sessionId);
-	if (!resolved) return null;
-	const {filePath, project} = resolved;
-
-	const projectName = await resolveProjectName(project);
-	const lines: SessionLine[] = [];
-	let title = sessionId;
-	let customTitle: string | undefined;
-	const uuidToLine = new Map<string, number>();
-	const toolResultMap = new Map<string, ToolResultInfo>();
-	const toolStartTimes = new Map<string, number>();
-
-	const rl = createInterface({
-		input: createReadStream(filePath, {encoding: 'utf-8'}),
-		crlfDelay: Infinity,
-	});
-
-	let lineIndex = -1;
-	try {
-		for await (const rawLine of rl) {
-			lineIndex++;
-			if (!rawLine.trim()) continue;
-
-			let json: unknown;
-			try {
-				json = JSON.parse(rawLine);
-			} catch {
-				continue;
-			}
-
-			const parsed = JsonlRecordSchema.safeParse(json);
-			if (!parsed.success) continue;
-			const record = parsed.data;
-
-			const uuid = 'uuid' in record && typeof record.uuid === 'string' ? record.uuid : undefined;
-			if (uuid) uuidToLine.set(uuid, lineIndex);
-
-			if (record.type === 'custom-title') {
-				customTitle = record.customTitle;
-				continue;
-			}
-
-			// Extract title from first user text
-			if (record.type === 'user' && title === sessionId) {
-				const {content} = record.message;
-				if (typeof content === 'string') {
-					const cleaned = stripCommandTags(content);
-					if (cleaned) title = extractSessionTitle(cleaned, sessionId);
-				} else if (Array.isArray(content)) {
-					for (const block of content) {
-						if (block.type === 'text') {
-							const cleaned = stripCommandTags(block.text);
-							if (cleaned) {
-								title = extractSessionTitle(cleaned, sessionId);
-								break;
-							}
-						}
-					}
-				}
-			}
-
-			// Build tool_use -> tool_result pairing map
-			if (record.type === 'assistant') {
-				const {content} = record.message;
-				const timestamp = record.timestamp;
-				if (Array.isArray(content)) {
-					for (const block of content) {
-						if (block.type === 'tool_use') {
-							if (timestamp) {
-								const t = new Date(timestamp).getTime();
-								if (!isNaN(t)) toolStartTimes.set(block.id, t);
-							}
-						}
-					}
-				}
-			}
-
-			if (record.type === 'user') {
-				const {content} = record.message;
-				const timestamp = record.timestamp;
-				if (Array.isArray(content)) {
-					for (const block of content) {
-						if (block.type === 'tool_result') {
-							const rawResult = extractToolResultContent(block.content);
-							if (rawResult !== undefined) {
-								const resultText = stripResultTags(rawResult);
-								const info: ToolResultInfo = {
-									result: truncateResult(resultText, 150),
-									isError: block.is_error === true,
-									resultUuid: uuid ?? '',
-								};
-								const startTime = toolStartTimes.get(block.tool_use_id);
-								if (startTime && timestamp) {
-									const resultTime = new Date(timestamp).getTime();
-									if (!isNaN(resultTime) && resultTime > startTime) {
-										info.duration = resultTime - startTime;
-									}
-								}
-								toolResultMap.set(block.tool_use_id, info);
-							}
-						}
-					}
-				}
-			}
-
-			if (record.type === 'agent-name') {
-				lines.push({type: 'agent-name', agentName: record.agentName, lineIndex});
-				continue;
-			}
-			if (record.type === 'agent-color') {
-				lines.push({type: 'agent-color', agentColor: record.agentColor, lineIndex});
-				continue;
-			}
-			if (record.type === 'permission-mode') {
-				lines.push({type: 'permission-mode', permissionMode: record.permissionMode, lineIndex});
-				continue;
-			}
-			if (record.type === 'pr-link') {
-				lines.push({
-					type: 'pr-link',
-					prUrl: record.prUrl,
-					prNumber: record.prNumber,
-					prRepository: record.prRepository,
-					timestamp: record.timestamp,
-					lineIndex,
-				});
-				continue;
-			}
-
-			if (record.type === 'attachment') {
-				const attachmentLine: AttachmentSessionLine = {
-					type: 'attachment',
-					attachmentJson: JSON.stringify(record.attachment),
-					lineIndex,
-				};
-				if (uuid !== undefined) attachmentLine.uuid = uuid;
-				if (record.timestamp !== undefined) attachmentLine.timestamp = record.timestamp;
-				lines.push(attachmentLine);
-				continue;
-			}
-
-			// Only include user/assistant lines for the rendering tree
-			if (record.type !== 'user' && record.type !== 'assistant') continue;
-
-			const sessionLine: MessageSessionLine = {
-				type: record.type,
-				lineIndex,
-			};
-			if (uuid !== undefined) sessionLine.uuid = uuid;
-			if (typeof record.parentUuid === 'string') sessionLine.parentUuid = record.parentUuid;
-			if (record.timestamp !== undefined) sessionLine.timestamp = record.timestamp;
-			// MessageSessionLine.message uses the Zod-inferred ContentBlock type directly
-			sessionLine.message = record.message as MessageSessionLine['message'];
-
-			lines.push(sessionLine);
-		}
-	} finally {
-		rl.close();
-	}
-
-	if (customTitle) title = customTitle;
-
-	const fileStat = await stat(filePath);
-	const byteOffset = fileStat.size;
-
-	return {id: sessionId, title, projectName, projectId: project, lines, toolResultMap, uuidToLine, byteOffset};
 }
 
 /**
