@@ -50,9 +50,11 @@ function HighlightedLine({tokens}: {tokens: ThemedToken[]}) {
 function JsonEditor({filename, initialContent, path}: {filename: string; initialContent: string; path: string}) {
 	const draftRef = useRef(initialContent);
 	const [editorValue, setEditorValue] = useState(initialContent);
+	const [savedContent, setSavedContent] = useState(initialContent);
 	const [saving, setSaving] = useState(false);
 	const [feedback, setFeedback] = useState<Feedback | null>(null);
 	const [validationError, setValidationError] = useState<string | null>(null);
+	const [formatFeedback, setFormatFeedback] = useState(false);
 	const queryClient = useQueryClient();
 
 	const validate = useCallback((text: string): string | null => {
@@ -97,6 +99,7 @@ function JsonEditor({filename, initialContent, path}: {filename: string; initial
 			const pretty = JSON.stringify(JSON.parse(content), null, 2);
 			draftRef.current = pretty;
 			setEditorValue(pretty);
+			setSavedContent(pretty);
 			setValidationError(null);
 			// Invalidate the viewer query so navigating back shows fresh data
 			await queryClient.invalidateQueries({queryKey: ['settings']});
@@ -108,11 +111,11 @@ function JsonEditor({filename, initialContent, path}: {filename: string; initial
 	}, [filename, validate, queryClient]);
 
 	const handleReset = useCallback(() => {
-		draftRef.current = initialContent;
-		setEditorValue(initialContent);
+		draftRef.current = savedContent;
+		setEditorValue(savedContent);
 		setValidationError(null);
 		setFeedback(null);
-	}, [initialContent]);
+	}, [savedContent]);
 
 	const handleFormat = useCallback(() => {
 		const content = draftRef.current;
@@ -125,9 +128,13 @@ function JsonEditor({filename, initialContent, path}: {filename: string; initial
 		draftRef.current = pretty;
 		setEditorValue(pretty);
 		setValidationError(null);
+		setFormatFeedback(true);
+		setTimeout(() => {
+			setFormatFeedback(false);
+		}, 1500);
 	}, [validate]);
 
-	const isDirty = editorValue !== initialContent;
+	const isDirty = editorValue !== savedContent;
 	const lineCount = editorValue.split('\n').length;
 
 	const tokens = useHighlightedLines(editorValue, 'json');
@@ -220,7 +227,7 @@ function JsonEditor({filename, initialContent, path}: {filename: string; initial
 				<button
 					type="button"
 					onClick={handleSave}
-					disabled={saving || validationError !== null}
+					disabled={saving || validationError !== null || !isDirty}
 					className="flex items-center gap-1.5 rounded-md bg-accent-100 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-100/80 disabled:opacity-50"
 				>
 					<Save className="h-3.5 w-3.5" />
@@ -230,9 +237,12 @@ function JsonEditor({filename, initialContent, path}: {filename: string; initial
 					type="button"
 					onClick={handleFormat}
 					disabled={validationError !== null}
-					className="rounded-md border border-border-300/15 px-3 py-1.5 text-sm text-text-300 transition-colors hover:bg-bg-200 disabled:opacity-50"
+					className={`flex items-center gap-1.5 rounded-md border border-border-300/15 px-3 py-1.5 text-sm transition-colors hover:bg-bg-200 disabled:opacity-50 ${
+						formatFeedback ? 'text-green-600 dark:text-green-400' : 'text-text-300'
+					}`}
 				>
-					Format
+					{formatFeedback && <Check className="h-3.5 w-3.5" />}
+					{formatFeedback ? 'Formatted' : 'Format'}
 				</button>
 				{isDirty && (
 					<button
