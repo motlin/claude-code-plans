@@ -10,6 +10,12 @@ const withInactiveSession: Decorator = (Story) => (
 	</AskUserQuestionProvider>
 );
 
+const withActiveSession: Decorator = (Story) => (
+	<AskUserQuestionProvider value={{isSessionActive: true, submitAnswer: async () => {}}}>
+		<Story />
+	</AskUserQuestionProvider>
+);
+
 function makeToolCall(overrides: Partial<ClientToolCall> & {input: ClientToolCall['input']}): ClientToolCall {
 	return {
 		id: 'tool-auq-1',
@@ -66,6 +72,38 @@ export const Error: Story = {
 			input: {question: 'How should we proceed?'},
 			result: 'User declined to answer.',
 			isError: true,
+		}),
+	},
+};
+
+export const ActiveSession: Story = {
+	decorators: [withActiveSession],
+	args: {
+		toolCall: makeToolCall({
+			input: {
+				question: 'Which testing framework should we use?',
+				options: [
+					{label: 'Vitest', description: 'Fast Vite-native test runner'},
+					{label: 'Jest', description: 'Widely adopted, large ecosystem'},
+					{label: 'Mocha', description: 'Flexible and extensible'},
+				],
+			},
+		}),
+	},
+};
+
+export const AnsweredOther: Story = {
+	args: {
+		toolCall: makeToolCall({
+			input: {
+				question: 'Which testing framework should we use?',
+				options: [
+					{label: 'Vitest', description: 'Fast Vite-native test runner'},
+					{label: 'Jest', description: 'Widely adopted, large ecosystem'},
+					{label: 'Mocha', description: 'Flexible and extensible'},
+				],
+			},
+			result: 'User has answered your questions: "Which testing framework should we use?"="bun:test". You can now continue with the user\'s answers in mind.',
 		}),
 	},
 };
