@@ -625,6 +625,7 @@ function UserEntry({
 		return (
 			<CommandEntry
 				line={line}
+				index={index}
 				sessionId={sessionId}
 			/>
 		);
@@ -838,7 +839,7 @@ function renderUserContentBlocks(line: MessageSessionLine, sessionId: string): U
 	return {textNodes, mediaNodes};
 }
 
-function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: string}) {
+function CommandEntry({line, index, sessionId}: {line: MessageSessionLine; index: number; sessionId: string}) {
 	const content = line.message?.content;
 	let cmdName = '';
 	let cmdArgs: string | undefined;
@@ -862,16 +863,22 @@ function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: s
 		}
 	}
 
+	const timestamp = 'timestamp' in line ? line.timestamp : undefined;
+	const actionsProps = {line, index, ...(timestamp ? {timestamp} : {})};
+
 	return (
-		<div className="flex flex-col items-end gap-1">
-			<div className="relative rounded-lg px-3 py-2 bg-bg-100 text-text-000 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%]">
-				<span className="bg-bg-200 rounded-full px-2 py-0.5 text-xs font-mono">{cmdName}</span>
-				{cmdArgs && <span className="text-xs text-text-500 ml-1.5">{cmdArgs}</span>}
-				<DebugLink
-					sessionId={sessionId}
-					uuid={line.uuid}
-					className="absolute top-1 right-1"
-				/>
+		<div className="group/msg flex justify-start w-full">
+			<div className="flex flex-col items-start gap-1 max-w-[75%] min-w-0">
+				<div className="user-message-bubble relative rounded-[10px] rounded-bl-[2px] bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 overflow-hidden text-[13px] leading-[20px] select-text">
+					<span className="font-mono">/{cmdName}</span>
+					{cmdArgs && <span className="ml-1.5 opacity-80">{cmdArgs}</span>}
+					<DebugLink
+						sessionId={sessionId}
+						uuid={line.uuid}
+						className="absolute top-1 right-1"
+					/>
+				</div>
+				<UserMessageActions {...actionsProps} />
 			</div>
 		</div>
 	);
