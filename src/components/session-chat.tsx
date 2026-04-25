@@ -132,6 +132,68 @@ function extractTextFromLine(line: MessageSessionLine): string[] {
 		.map((b) => b.text);
 }
 
+function UserMessageActions({line, index, timestamp}: {line: MessageSessionLine; index: number; timestamp?: string}) {
+	const [copied, setCopied] = useState<'text' | 'link' | null>(null);
+
+	function copyText() {
+		const texts = extractTextFromLine(line);
+		navigator.clipboard.writeText(texts.join('\n\n'));
+		setCopied('text');
+		setTimeout(() => setCopied(null), 1500);
+	}
+
+	function copyLink() {
+		const url = `${window.location.origin}${window.location.pathname}#msg-${index}`;
+		navigator.clipboard.writeText(url);
+		setCopied('link');
+		setTimeout(() => setCopied(null), 1500);
+	}
+
+	const absoluteTimestamp = formatTimestamp(timestamp);
+	const relativeTimestamp = formatRelativeTimestamp(timestamp);
+	const timestampTitle =
+		absoluteTimestamp && relativeTimestamp
+			? `${absoluteTimestamp} (${relativeTimestamp})`
+			: (absoluteTimestamp ?? undefined);
+
+	return (
+		<div className="flex items-center gap-2 px-1 pt-0.5 text-[11px] text-text-500 opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150">
+			<div className="relative">
+				<button
+					type="button"
+					title="Copy message"
+					onClick={copyText}
+					className="flex items-center gap-0.5 hover:text-text-000 cursor-pointer"
+				>
+					<Copy className="h-3 w-3" />
+					<span>Copy</span>
+				</button>
+				<CopyToast visible={copied === 'text'} />
+			</div>
+			<div className="relative">
+				<button
+					type="button"
+					title="Copy link"
+					onClick={copyLink}
+					className="flex items-center gap-0.5 hover:text-text-000 cursor-pointer"
+				>
+					<Link2 className="h-3 w-3" />
+					<span>Link</span>
+				</button>
+				<CopyToast visible={copied === 'link'} />
+			</div>
+			{relativeTimestamp && (
+				<span
+					className="text-text-500"
+					title={timestampTitle}
+				>
+					{relativeTimestamp}
+				</span>
+			)}
+		</div>
+	);
+}
+
 export const SessionChat = React.memo(function SessionChat({
 	sessionId,
 	lines,
@@ -219,7 +281,7 @@ function LineEntry({
 	nextLine: SessionLine | undefined;
 	className?: string;
 }) {
-	const content = renderSessionMessage({line, ...renderProps, nextLine});
+	const content = renderSessionMessage({line, index, ...renderProps, nextLine});
 	if (!content) return null;
 
 	const isMessage = line.type === 'user' || line.type === 'assistant';
@@ -344,6 +406,7 @@ function isLineVisible(
  */
 function renderSessionMessage({
 	line,
+	index,
 	sessionId,
 	toolResultMap,
 	subagentLookup,
@@ -353,12 +416,14 @@ function renderSessionMessage({
 	nextLine,
 }: LineRenderProps & {
 	line: SessionLine;
+	index: number;
 	nextLine?: SessionLine | undefined;
 }) {
 	if (line.type === 'user') {
 		return (
 			<UserEntry
 				line={line}
+				index={index}
 				sessionId={sessionId}
 				nextLine={nextLine}
 				isSubagentSession={isSubagentSession}
@@ -523,11 +588,13 @@ function classifyUserContent(line: MessageSessionLine): 'command' | 'bash' | 'te
 
 function UserEntry({
 	line,
+	index,
 	sessionId,
 	nextLine,
 	isSubagentSession,
 }: {
 	line: MessageSessionLine;
+	index: number;
 	sessionId: string;
 	nextLine?: SessionLine | undefined;
 	isSubagentSession: boolean;
@@ -567,7 +634,15 @@ function UserEntry({
 		);
 	}
 
-	return <div className="flex flex-col items-end gap-1.5">{renderUserContentBlocks(line, sessionId)}</div>;
+	const timestamp = 'timestamp' in line ? line.timestamp : undefined;
+	const actionsProps = {line, index, ...(timestamp ? {timestamp} : {})};
+
+	return (
+		<div className="group/msg flex flex-col items-end gap-1.5">
+			{renderUserContentBlocks(line, sessionId)}
+			<UserMessageActions {...actionsProps} />
+		</div>
+	);
 }
 
 function SubagentPromptEntry({line, sessionId}: {line: MessageSessionLine; sessionId: string}) {
