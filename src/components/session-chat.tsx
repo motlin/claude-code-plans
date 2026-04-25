@@ -4,7 +4,7 @@ import {Copy, Link2} from 'lucide-react';
 import {MarkdownArticle} from './markdown-article';
 import {getToolRenderer} from './tool-renderers';
 import {buildClientToolCall, buildSubagentLookup} from './tool-renderers/types';
-import type {ClientToolCall, SerializedToolResultMap} from './tool-renderers';
+import type {ClientToolCall} from './tool-renderers';
 import {ChevronIcon, DurationBadge, TerminalOutput} from './tool-renderers/shared';
 import {TasksView} from './tasks-view';
 import {DebugLink} from './debug-link';
@@ -57,7 +57,7 @@ function getLineTimestamp(line: SessionLine): string | undefined {
 export interface SessionChatProps {
 	sessionId: string;
 	lines: SessionLine[];
-	toolResultMap: SerializedToolResultMap;
+	toolResultMap: Map<string, ToolResultInfo>;
 	subagentTree: SubagentTreeEntry[];
 	showThinking?: boolean;
 	showTools?: boolean;
@@ -198,7 +198,7 @@ function UserMessageActions({line, index, timestamp}: {line: MessageSessionLine;
 export const SessionChat = React.memo(function SessionChat({
 	sessionId,
 	lines,
-	toolResultMap: serializedToolResultMap,
+	toolResultMap,
 	subagentTree,
 	showThinking = false,
 	showTools = true,
@@ -208,8 +208,6 @@ export const SessionChat = React.memo(function SessionChat({
 	showSystemBanners = false,
 }: SessionChatProps) {
 	const endRef = useRef<HTMLDivElement>(null);
-
-	const toolResultMap = useMemo(() => new Map(serializedToolResultMap), [serializedToolResultMap]);
 	const subagentLookup = useMemo(() => buildSubagentLookup(subagentTree), [subagentTree]);
 	const isSubagentSession = sessionId.startsWith('agent-');
 

@@ -282,7 +282,7 @@ export function applyTaskChanged(queryClient: QueryClient, projectDir: string): 
 
 /**
  * Apply SESSION_LINES_APPENDED: append raw JSONL records to the transcript
- * cache. The component's useMemo on interpretJsonlLines() recomputes
+ * cache. The component's useMemo on processTranscript() recomputes
  * automatically when the cache updates.
  */
 export function applySessionLinesAppended(

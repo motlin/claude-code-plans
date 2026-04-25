@@ -60,7 +60,7 @@ export const WithMessages: Story = {
 	args: {
 		sessionId: 'story-session-1',
 		lines: simpleConversation,
-		toolResultMap: [],
+		toolResultMap: new Map(),
 		subagentTree: [],
 	},
 };
@@ -69,7 +69,7 @@ export const EmptySession: Story = {
 	args: {
 		sessionId: 'story-session-empty',
 		lines: [],
-		toolResultMap: [],
+		toolResultMap: new Map(),
 		subagentTree: [],
 	},
 };
@@ -92,12 +92,12 @@ export const WithToolCalls: Story = {
 				'2026-04-19T09:00:03Z',
 			),
 		],
-		toolResultMap: [
+		toolResultMap: new Map([
 			[
 				'tool-1',
 				{result: '# My Project\nA sample project.', isError: false, resultUuid: 'result-1', duration: 42},
 			],
-		],
+		]),
 		subagentTree: [],
 	},
 };
@@ -164,7 +164,7 @@ export const WithGroupedAssistantMessages: Story = {
 				'2026-04-19T11:01:02Z',
 			),
 		],
-		toolResultMap: [
+		toolResultMap: new Map([
 			[
 				'tool-g1',
 				{
@@ -176,7 +176,7 @@ export const WithGroupedAssistantMessages: Story = {
 			],
 			['tool-g2', {result: 'OK', isError: false, resultUuid: 'result-g2', duration: 8}],
 			['tool-g3', {result: 'All 12 tests passed', isError: false, resultUuid: 'result-g3', duration: 3200}],
-		],
+		]),
 		subagentTree: [],
 	},
 };
@@ -204,7 +204,7 @@ export const WithMetadataRecords: Story = {
 			line(5, 'user', 'The PR looks good', '2026-04-19T10:10:00Z'),
 			assistantBlocks(6, [{type: 'text', text: 'The fix has been merged.'}], '2026-04-19T10:10:05Z'),
 		],
-		toolResultMap: [],
+		toolResultMap: new Map(),
 		subagentTree: [],
 	},
 };
@@ -237,7 +237,7 @@ export const WithUserImage: Story = {
 				'2026-04-19T12:00:05Z',
 			),
 		],
-		toolResultMap: [],
+		toolResultMap: new Map(),
 		subagentTree: [],
 	},
 };
@@ -259,7 +259,7 @@ export const WithAssistantImage: Story = {
 				'2026-04-19T13:00:05Z',
 			),
 		],
-		toolResultMap: [],
+		toolResultMap: new Map(),
 		subagentTree: [],
 	},
 };
@@ -318,7 +318,7 @@ export const WithDisplayToggles: Story = {
 			line(9, 'user', 'Thanks!', '2026-04-19T10:01:00Z'),
 			assistantBlocks(10, [{type: 'text', text: 'Review complete.'}], '2026-04-19T10:01:05Z'),
 		],
-		toolResultMap: [],
+		toolResultMap: new Map(),
 		subagentTree: [],
 		showPassedHooks: false,
 		showHookWarnings: false,
@@ -348,7 +348,7 @@ export const WithDocumentAttachment: Story = {
 				'2026-04-19T14:00:10Z',
 			),
 		],
-		toolResultMap: [],
+		toolResultMap: new Map(),
 		subagentTree: [],
 	},
 };
@@ -405,7 +405,7 @@ export const WithMcpToolCalls: Story = {
 				'2026-04-19T15:00:08Z',
 			),
 		],
-		toolResultMap: [
+		toolResultMap: new Map([
 			[
 				'tool-mcp1',
 				{
@@ -425,7 +425,7 @@ export const WithMcpToolCalls: Story = {
 				},
 			],
 			['tool-mcp3', {result: 'Screenshot saved', isError: false, resultUuid: 'r-mcp3', duration: 1200}],
-		],
+		]),
 		subagentTree: [],
 	},
 };
@@ -472,7 +472,7 @@ export const WithToolCallsOnly: Story = {
 				'2026-04-19T16:00:06Z',
 			),
 		],
-		toolResultMap: [
+		toolResultMap: new Map([
 			[
 				'tool-nt1',
 				{result: '{"compilerOptions": {"strict": true}}', isError: false, resultUuid: 'r-nt1', duration: 10},
@@ -485,7 +485,7 @@ export const WithToolCallsOnly: Story = {
 				'tool-nt3',
 				{result: 'vite.config.ts\neslint.config.js', isError: false, resultUuid: 'r-nt3', duration: 15},
 			],
-		],
+		]),
 		subagentTree: [],
 	},
 };
@@ -506,7 +506,7 @@ export const WithSingleAssistantNoTools: Story = {
 				'2026-04-19T17:00:03Z',
 			),
 		],
-		toolResultMap: [],
+		toolResultMap: new Map(),
 		subagentTree: [],
 	},
 };

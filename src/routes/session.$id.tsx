@@ -12,8 +12,7 @@ import {AskUserQuestionProvider, type AskUserQuestionContextValue} from '../comp
 import {getSubagentTree, getSessionSummary, requestSummary, isStarred, toggleSessionStar} from '../lib/server-fns';
 import {useIsSessionActive, useStatusline} from '../hooks/use-claude-events';
 import {StatusFooter} from '../components/status-footer';
-import type {SerializedToolResultMap} from '../components/tool-renderers';
-import {interpretJsonlLines} from '../lib/client-jsonl';
+import {processTranscript} from '../lib/transcript';
 import {ArrowLeft, ArrowUp, ArrowDown, Copy, Terminal, GitFork, Download, Maximize2, Minimize2} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {useSettings} from '../components/settings-provider';
@@ -263,11 +262,7 @@ function SessionPage() {
 	const {data} = useSuspenseQuery(sessionMetaQueryOptions(params.id));
 	const {data: transcript} = useSuspenseQuery(transcriptQueryOptions(params.id));
 
-	const {lines, toolResultMap} = useMemo(() => {
-		const {newSessionLines, newToolResults} = interpretJsonlLines(transcript.records, 0);
-		const serialized: SerializedToolResultMap = [...newToolResults];
-		return {lines: newSessionLines, toolResultMap: serialized};
-	}, [transcript.records]);
+	const processed = useMemo(() => processTranscript(transcript.records), [transcript.records]);
 	const [aiSummary, setAiSummary] = useState<string | null>(null);
 	const [summaryLoaded, setSummaryLoaded] = useState(false);
 	const [starred, setStarred] = useState(data?.starred ?? false);
@@ -510,8 +505,8 @@ function SessionPage() {
 			<AskUserQuestionProvider value={askUserQuestionCtx}>
 				<SessionChat
 					sessionId={params.id}
-					lines={lines}
-					toolResultMap={toolResultMap}
+					lines={processed.lines}
+					toolResultMap={processed.toolResultMap}
 					subagentTree={data.subagentTree}
 					showThinking={settings.showThinking}
 					showTools={settings.showTools}
