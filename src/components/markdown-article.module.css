@@ -161,6 +161,54 @@
 	border-radius: 0.5rem;
 }
 
+/* User message bubble overrides — readable on blue backgrounds */
+:global(.user-message-bubble) .markdown {
+	color: var(--user-msg-text);
+}
+
+:global(.user-message-bubble) .markdown code {
+	background: rgba(255, 255, 255, 0.15);
+	border-color: rgba(255, 255, 255, 0.2);
+	color: var(--user-msg-text);
+}
+
+:global(.user-message-bubble) .markdown pre {
+	background: rgba(0, 0, 0, 0.2);
+	border-color: rgba(255, 255, 255, 0.15);
+}
+
+:global(.user-message-bubble) .markdown pre code {
+	background: none;
+	border: none;
+	color: inherit;
+}
+
+:global(.user-message-bubble) .markdown blockquote {
+	border-left-color: rgba(255, 255, 255, 0.4);
+}
+
+:global(.user-message-bubble) .markdown th,
+:global(.user-message-bubble) .markdown td {
+	border-color: rgba(255, 255, 255, 0.25);
+}
+
+:global(.user-message-bubble) .markdown th {
+	background: rgba(0, 0, 0, 0.15);
+}
+
+:global(.user-message-bubble) .markdown a {
+	color: var(--user-msg-text);
+	text-decoration: underline;
+}
+
+:global(.user-message-bubble) .markdown hr {
+	border-top-color: rgba(255, 255, 255, 0.3);
+}
+
+:global(.user-message-bubble) .markdown :global(.task-list-item-checkbox) {
+	accent-color: var(--user-msg-text);
+}
+
 /* Shiki dual theme support:
    Light theme uses inline color/background-color directly.
    Dark theme uses --shiki-dark and --shiki-dark-bg CSS variables. */
