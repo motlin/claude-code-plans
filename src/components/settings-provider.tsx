@@ -27,7 +27,7 @@ export interface Settings {
 	verbosity: Verbosity;
 }
 
-const DEFAULTS: Settings = {
+export const DEFAULTS: Settings = {
 	showThinking: false,
 	showTools: true,
 	showDebug: false,
@@ -76,7 +76,6 @@ const VERBOSITY_PRESETS: Record<Exclude<Verbosity, 'minimal'>, Partial<Settings>
 		showHookWarnings: false,
 		showHookErrors: false,
 		showSystemBanners: false,
-		showDebug: false,
 	},
 	normal: {
 		showTools: true,
@@ -85,7 +84,6 @@ const VERBOSITY_PRESETS: Record<Exclude<Verbosity, 'minimal'>, Partial<Settings>
 		showHookWarnings: true,
 		showHookErrors: true,
 		showSystemBanners: false,
-		showDebug: false,
 	},
 	verbose: {
 		showTools: true,
@@ -94,13 +92,12 @@ const VERBOSITY_PRESETS: Record<Exclude<Verbosity, 'minimal'>, Partial<Settings>
 		showHookWarnings: true,
 		showHookErrors: true,
 		showSystemBanners: true,
-		showDebug: false,
 	},
 };
 
-const VERBOSITY_KEYS = Object.keys(VERBOSITY_PRESETS.normal) as Array<keyof Settings>;
+export const VERBOSITY_KEYS = Object.keys(VERBOSITY_PRESETS.normal) as Array<keyof Settings>;
 
-function detectVerbosity(settings: Settings): Verbosity {
+export function detectVerbosity(settings: Settings): Verbosity {
 	for (const preset of ['minimal', 'normal', 'verbose'] as const) {
 		const values = VERBOSITY_PRESETS[preset];
 		if (VERBOSITY_KEYS.every((key) => settings[key] === values[key])) {
