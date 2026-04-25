@@ -284,7 +284,7 @@ function LineEntry({
 	const content = renderSessionMessage({line, index, ...renderProps, nextLine});
 	if (!content) return null;
 
-	const isMessage = line.type === 'user' || line.type === 'assistant';
+	const isAssistant = line.type === 'assistant';
 	const rawTimestamp = getLineTimestamp(line);
 	const absoluteTimestamp = formatTimestamp(rawTimestamp);
 	const relativeTimestamp = formatRelativeTimestamp(rawTimestamp);
@@ -295,9 +295,9 @@ function LineEntry({
 			key={`line-${index}`}
 			id={`msg-${index}`}
 			className={`group relative ${className ?? ''}`}
-			title={timestampTitle ?? undefined}
+			title={line.type !== 'user' ? (timestampTitle ?? undefined) : undefined}
 		>
-			{isMessage && (
+			{isAssistant && (
 				<MessageToolbar
 					line={line}
 					index={index}
@@ -492,7 +492,15 @@ function renderSessionMessage({
 	return null;
 }
 
-function TruncatedContent({children}: {children: React.ReactNode}) {
+function TruncatedContent({
+	children,
+	fadeColor,
+	variant = 'default',
+}: {
+	children: React.ReactNode;
+	fadeColor?: string;
+	variant?: 'default' | 'user';
+}) {
 	const contentRef = useRef<HTMLDivElement>(null);
 	const [isTruncated, setIsTruncated] = useState(false);
 	const [showFull, setShowFull] = useState(false);
@@ -523,7 +531,7 @@ function TruncatedContent({children}: {children: React.ReactNode}) {
 						onClick={() => setShowFull(true)}
 						aria-label="Show more"
 						className="absolute inset-x-0 bottom-0 h-16 cursor-pointer"
-						style={{background: 'linear-gradient(to bottom, transparent, var(--bg-100))'}}
+						style={{background: `linear-gradient(to bottom, transparent, ${fadeColor ?? 'var(--bg-100)'})`}}
 					/>
 				)}
 			</div>
@@ -532,7 +540,11 @@ function TruncatedContent({children}: {children: React.ReactNode}) {
 					<button
 						type="button"
 						onClick={() => setShowFull(true)}
-						className="text-xs font-medium text-accent-100 hover:text-accent-000 cursor-pointer rounded-full bg-bg-200 px-2 py-0.5"
+						className={
+							variant === 'user'
+								? 'text-xs font-medium cursor-pointer rounded-full px-2 py-0.5 bg-white/20 text-white'
+								: 'text-xs font-medium text-accent-100 hover:text-accent-000 cursor-pointer rounded-full bg-bg-200 px-2 py-0.5'
+						}
 					>
 						Show more
 					</button>
@@ -636,11 +648,19 @@ function UserEntry({
 
 	const timestamp = 'timestamp' in line ? line.timestamp : undefined;
 	const actionsProps = {line, index, ...(timestamp ? {timestamp} : {})};
+	const {textNodes, mediaNodes} = renderUserContentBlocks(line, sessionId);
 
 	return (
-		<div className="group/msg flex flex-col items-end gap-1.5">
-			{renderUserContentBlocks(line, sessionId)}
-			<UserMessageActions {...actionsProps} />
+		<div className="group/msg flex justify-start w-full">
+			<div className="flex flex-col items-start gap-1 max-w-[75%] min-w-0">
+				{textNodes.length > 0 && (
+					<div className="user-message-bubble relative rounded-xl rounded-bl-sm bg-user-msg-bg text-user-msg-text px-3.5 py-2.5 break-words min-w-0 overflow-hidden text-sm leading-relaxed select-text">
+						{textNodes}
+					</div>
+				)}
+				{mediaNodes}
+				<UserMessageActions {...actionsProps} />
+			</div>
 		</div>
 	);
 }
@@ -705,43 +725,25 @@ function hasBashOutput(line: MessageSessionLine): boolean {
 	return lineMatchesBash(line, parseBashOutput);
 }
 
-function renderUserContentBlocks(line: MessageSessionLine, sessionId: string): React.ReactNode[] {
+interface UserContentBlocks {
+	textNodes: React.ReactNode[];
+	mediaNodes: React.ReactNode[];
+}
+
+function renderUserContentBlocks(line: MessageSessionLine, sessionId: string): UserContentBlocks {
 	const content = line.message?.content;
-	if (!content) return [];
+	if (!content) return {textNodes: [], mediaNodes: []};
 
 	if (typeof content === 'string') {
 		const cleaned = stripCommandTags(content);
-		if (!cleaned) return [];
-		return [
-			<div
-				key={0}
-				className="relative rounded-lg px-3 py-2 break-words min-w-0 overflow-hidden bg-bg-100 text-text-000 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] text-sm leading-relaxed"
-			>
-				<TruncatedContent>
-					<MarkdownArticle markdown={cleaned} />
-				</TruncatedContent>
-				<DebugLink
-					sessionId={sessionId}
-					uuid={line.uuid}
-					className="absolute top-1 right-1"
-				/>
-			</div>,
-		];
-	}
-
-	const nodes: React.ReactNode[] = [];
-	for (let i = 0; i < content.length; i++) {
-		const block = content[i]!;
-		if (block.type === 'text' && typeof block.text === 'string') {
-			if (/<local-command-caveat>/.test(block.text)) continue;
-			const cleaned = stripCommandTags(block.text);
-			if (!cleaned) continue;
-			nodes.push(
-				<div
-					key={`text-${i}`}
-					className="relative rounded-lg px-3 py-2 break-words min-w-0 overflow-hidden bg-bg-100 text-text-000 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] text-sm leading-relaxed"
-				>
-					<TruncatedContent>
+		if (!cleaned) return {textNodes: [], mediaNodes: []};
+		return {
+			textNodes: [
+				<React.Fragment key={0}>
+					<TruncatedContent
+						fadeColor="var(--user-msg-bg)"
+						variant="user"
+					>
 						<MarkdownArticle markdown={cleaned} />
 					</TruncatedContent>
 					<DebugLink
@@ -749,11 +751,37 @@ function renderUserContentBlocks(line: MessageSessionLine, sessionId: string): R
 						uuid={line.uuid}
 						className="absolute top-1 right-1"
 					/>
-				</div>,
+				</React.Fragment>,
+			],
+			mediaNodes: [],
+		};
+	}
+
+	const textNodes: React.ReactNode[] = [];
+	const mediaNodes: React.ReactNode[] = [];
+	for (let i = 0; i < content.length; i++) {
+		const block = content[i]!;
+		if (block.type === 'text' && typeof block.text === 'string') {
+			if (/<local-command-caveat>/.test(block.text)) continue;
+			const cleaned = stripCommandTags(block.text);
+			if (!cleaned) continue;
+			textNodes.push(
+				<React.Fragment key={`text-${i}`}>
+					<TruncatedContent
+						fadeColor="var(--user-msg-bg)"
+						variant="user"
+					>
+						<MarkdownArticle markdown={cleaned} />
+					</TruncatedContent>
+					<DebugLink
+						sessionId={sessionId}
+						uuid={line.uuid}
+						className="absolute top-1 right-1"
+					/>
+				</React.Fragment>,
 			);
 		} else if (block.type === 'image' && block.source) {
-			// User-attached images (screenshots etc.)
-			nodes.push(
+			mediaNodes.push(
 				<div
 					key={`img-${i}`}
 					className="relative inline-block"
@@ -771,10 +799,10 @@ function renderUserContentBlocks(line: MessageSessionLine, sessionId: string): R
 				</div>,
 			);
 		} else if (block.type === 'document' && block.source) {
-			nodes.push(
+			mediaNodes.push(
 				<div
 					key={`doc-${i}`}
-					className="relative rounded-lg px-3 py-2 bg-bg-100 text-text-000 flex items-center gap-1.5 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%]"
+					className="relative rounded-lg px-3 py-2 bg-bg-100 text-text-000 flex items-center gap-1.5"
 				>
 					<svg
 						width="16"
@@ -799,7 +827,7 @@ function renderUserContentBlocks(line: MessageSessionLine, sessionId: string): R
 		}
 		// tool_result blocks are intentionally skipped in user rendering
 	}
-	return nodes;
+	return {textNodes, mediaNodes};
 }
 
 function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: string}) {
