@@ -3,6 +3,7 @@ import {readdir, readFile, stat} from 'node:fs/promises';
 import {join} from 'node:path';
 import {createInterface} from 'node:readline';
 import {decodeProjectDir, resolveProjectName} from './memory';
+import type {JsonValue} from './hook-events';
 import {SessionsIndexSchema, CustomTitleRecordSchema, JsonlRecordSchema} from './schemas';
 
 export interface SessionEntry {
@@ -888,8 +889,8 @@ export async function readSessionLines(projectsDir: string, sessionId: string): 
 export async function readNewJsonlLines(
 	filePath: string,
 	fromByteOffset: number,
-): Promise<{lines: Record<string, unknown>[]; nextByteOffset: number}> {
-	const lines: Record<string, unknown>[] = [];
+): Promise<{lines: Record<string, JsonValue>[]; nextByteOffset: number}> {
+	const lines: Record<string, JsonValue>[] = [];
 	let bytesConsumed = 0;
 
 	const rl = createInterface({
@@ -907,7 +908,7 @@ export async function readNewJsonlLines(
 				continue;
 			}
 			try {
-				const parsed = JSON.parse(line) as Record<string, unknown>;
+				const parsed = JSON.parse(line) as Record<string, JsonValue>;
 				lines.push(parsed);
 				bytesConsumed += lineByteLength;
 			} catch {

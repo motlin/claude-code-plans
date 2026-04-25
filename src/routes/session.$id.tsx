@@ -17,6 +17,7 @@ import {interpretJsonlLines} from '../lib/client-jsonl';
 import {ArrowLeft, ArrowUp, ArrowDown, Copy, Terminal, GitFork, Download, Maximize2, Minimize2} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {useSettings} from '../components/settings-provider';
+import type {JsonValue} from '../lib/hook-events';
 
 const getSession = createServerFn({method: 'GET'})
 	.inputValidator(z.object({id: z.string()}))
@@ -89,18 +90,39 @@ const sessionMetaQueryOptions = (id: string) =>
 	});
 
 export interface TranscriptData {
-	records: Record<string, unknown>[];
+	records: Record<string, JsonValue>[];
 	byteOffset: number;
 }
+
+const getTranscript = createServerFn({method: 'GET'})
+	.inputValidator(z.object({id: z.string()}))
+	.handler(async ({data: {id}}) => {
+		const {getDb} = await import('../lib/db');
+		const {sessions} = await import('../lib/db/schema');
+		const {eq} = await import('drizzle-orm');
+		const {readFileSync, statSync} = await import('node:fs');
+
+		const {index} = getDb();
+		const row = index.select().from(sessions).where(eq(sessions.id, id)).get();
+		if (!row) return {records: [] as Record<string, JsonValue>[], byteOffset: 0};
+
+		try {
+			const fileSize = statSync(row.filePath).size;
+			const content = readFileSync(row.filePath, 'utf-8');
+			const records = content
+				.split('\n')
+				.filter((line) => line.trim())
+				.map((line) => JSON.parse(line) as Record<string, JsonValue>);
+			return {records, byteOffset: fileSize};
+		} catch {
+			return {records: [] as Record<string, JsonValue>[], byteOffset: 0};
+		}
+	});
 
 const transcriptQueryOptions = (id: string) =>
 	queryOptions({
 		queryKey: ['session', id, 'transcript'] as const,
-		queryFn: async (): Promise<TranscriptData> => {
-			const response = await fetch(`/api/transcript?sessionId=${encodeURIComponent(id)}`);
-			if (!response.ok) throw new Error(`Transcript fetch failed (${response.status})`);
-			return response.json() as Promise<TranscriptData>;
-		},
+		queryFn: (): Promise<TranscriptData> => getTranscript({data: {id}}),
 		staleTime: Infinity,
 		gcTime: Infinity,
 	});

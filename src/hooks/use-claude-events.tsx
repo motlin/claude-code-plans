@@ -3,6 +3,7 @@ import {useQueryClient, type QueryClient} from '@tanstack/react-query';
 import {
 	DOMAIN_EVENTS,
 	SSE_EVENTS,
+	type JsonValue,
 	type MemorySummaryPayload,
 	type PlanSummaryPayload,
 	type SessionLinesAppendedPayload,
@@ -196,6 +197,7 @@ export function applySessionUpdated(queryClient: QueryClient, session: SessionSu
 	// .jsonl file has new content (mtime / messageCount changed on disk).
 	void queryClient.invalidateQueries({queryKey: ['session', session.id, 'detail']});
 	void queryClient.invalidateQueries({queryKey: ['session', session.id, 'summary']});
+	void queryClient.invalidateQueries({queryKey: ['session', session.id, 'transcript']});
 }
 
 export function applyPlanChanged(queryClient: QueryClient, plan: PlanSummaryPayload): void {
@@ -403,7 +405,7 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 					if (typeof sessionId === 'string' && Array.isArray(lines)) {
 						applySessionLinesAppended(queryClient, sessionId, {
 							sessionId,
-							lines: lines as Record<string, unknown>[],
+							lines: lines as Record<string, JsonValue>[],
 						});
 					}
 					break;

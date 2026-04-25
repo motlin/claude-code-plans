@@ -98,9 +98,11 @@ export interface ActiveSessionPayload {
 	lastActivity: number;
 }
 
+export type JsonValue = string | number | boolean | null | JsonValue[] | {[key: string]: JsonValue};
+
 export interface SessionLinesAppendedPayload {
 	sessionId: string;
-	lines: Record<string, unknown>[];
+	lines: Record<string, JsonValue>[];
 }
 
 // ---------------------------------------------------------------------------
