@@ -1,5 +1,5 @@
 import {useState, type ReactNode} from 'react';
-import {Check, Circle, Loader2, MessageCircleQuestion, Send} from 'lucide-react';
+import {Check, Circle, Loader2, MessageCircleQuestion} from 'lucide-react';
 import type {ToolRendererProps} from './types';
 import {useAskUserQuestionContext} from '../ask-user-question-context';
 import {
@@ -219,6 +219,22 @@ function AnswerForm({
 		}
 	}
 
+	async function handleSkip() {
+		if (submitting) return;
+		setError(null);
+		setSubmitting(true);
+		try {
+			const answers = questions.map((q) => ({
+				question: q.question,
+				answer: '',
+			}));
+			await onSubmit(answers);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : 'Failed to skip');
+			setSubmitting(false);
+		}
+	}
+
 	return (
 		<div className="flex flex-col gap-4">
 			{questions.map((q, index) => {
@@ -226,15 +242,12 @@ function AnswerForm({
 				const isMulti = q.multiSelect ?? false;
 				return (
 					<div key={index}>
-						<div className="flex items-start gap-1.5 mb-2">
-							<MessageCircleQuestion
-								size={14}
-								className="text-text-500 shrink-0 mt-0.5"
-							/>
-							<p className="text-sm font-medium">{q.question}</p>
-						</div>
-						<div className="flex flex-col gap-1.5 ml-5">
-							{q.options.map((opt) => {
+						{q.header && (
+							<p className="text-[10px] uppercase tracking-wider text-text-500 mb-1">{q.header}</p>
+						)}
+						<p className="text-sm font-semibold mb-2">{q.question}</p>
+						<div className="flex flex-col gap-1.5">
+							{q.options.map((opt, optionIndex) => {
 								const selected = draft.selected.has(opt.label) && !draft.useOther;
 								return (
 									<button
@@ -242,73 +255,58 @@ function AnswerForm({
 										type="button"
 										onClick={() => toggleOption(index, opt.label)}
 										disabled={submitting}
-										className={`text-left rounded border px-2.5 py-1.5 text-xs cursor-pointer transition-colors ${
+										className={`text-left w-full rounded-lg px-3 py-2 text-xs cursor-pointer transition-colors ${
 											selected
-												? 'bg-accent-900 border-accent-100/30 border-l-2 border-l-accent-100'
-												: 'border-border-300/15 hover:bg-bg-200/50'
+												? 'bg-accent-900/50 ring-1 ring-accent-100/30'
+												: 'bg-bg-200 hover:bg-bg-300'
 										} disabled:cursor-not-allowed disabled:opacity-50`}
 									>
-										<div className="flex items-center gap-1.5">
-											{selected ? (
-												<Check
-													size={14}
-													className="text-accent-100 shrink-0"
-												/>
-											) : (
-												<Circle
-													size={14}
-													className="text-text-500 shrink-0"
-												/>
-											)}
-											<span className="font-medium">{opt.label}</span>
+										<div className="flex items-center gap-2">
+											<div className="flex flex-col flex-1 min-w-0">
+												<span className="font-semibold">{opt.label}</span>
+												{opt.description && (
+													<span className="text-text-500 mt-0.5">{opt.description}</span>
+												)}
+											</div>
+											<KbdBadge>{optionIndex + 1}</KbdBadge>
 										</div>
-										{opt.description && (
-											<p className="text-text-500 mt-0.5 ml-5">{opt.description}</p>
-										)}
 									</button>
 								);
 							})}
 							<div
-								className={`rounded border px-2.5 py-1.5 text-xs ${
-									draft.useOther
-										? 'bg-warning-100/10 border-warning-000/30 border-l-2 border-l-warning-000'
-										: 'border-border-300/15'
+								className={`rounded-lg px-3 py-2 text-xs transition-colors ${
+									draft.useOther ? 'bg-accent-900/50 ring-1 ring-accent-100/30' : 'bg-bg-200'
 								}`}
 							>
-								<div className="flex items-center gap-1.5">
-									<button
-										type="button"
-										onClick={() => selectOther(index)}
-										disabled={submitting}
-										className="cursor-pointer disabled:cursor-not-allowed"
-									>
-										{draft.useOther ? (
-											<Check
-												size={14}
-												className="text-warning-000 shrink-0"
-											/>
-										) : (
-											<Circle
-												size={14}
-												className="text-text-500 shrink-0"
-											/>
-										)}
-									</button>
-									<span className="font-medium">Other</span>
-								</div>
-								<input
-									type="text"
+								<button
+									type="button"
+									onClick={() => selectOther(index)}
+									disabled={submitting}
+									className="w-full text-left cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+								>
+									<div className="flex items-center gap-2">
+										<span className="font-semibold flex-1">Other</span>
+										<KbdBadge>{q.options.length + 1}</KbdBadge>
+									</div>
+								</button>
+								<textarea
 									value={draft.otherText}
 									onChange={(e) => setOtherText(index, e.target.value)}
 									onFocus={() => selectOther(index)}
+									onInput={(e) => {
+										const target = e.target as HTMLTextAreaElement;
+										target.style.height = 'auto';
+										target.style.height = `${target.scrollHeight}px`;
+									}}
 									disabled={submitting}
 									placeholder="Type a custom answer..."
-									className="mt-1 ml-5 w-[calc(100%-1.25rem)] rounded border border-border-300/15 bg-bg-000 px-2 py-1 text-xs text-text-100 outline-none focus:border-accent-100/40 disabled:opacity-50"
+									rows={1}
+									className="mt-1.5 w-full rounded border border-border-300/15 bg-bg-000 px-2 py-1.5 text-xs text-text-100 outline-none focus:border-accent-100/40 disabled:opacity-50 resize-none"
 								/>
 							</div>
 						</div>
 						{isMulti && (
-							<p className="ml-5 mt-1 text-[10px] text-text-500 italic">Select one or more options.</p>
+							<p className="mt-1 text-[10px] text-text-500 italic">Select one or more options.</p>
 						)}
 					</div>
 				);
@@ -318,7 +316,15 @@ function AnswerForm({
 					{error}
 				</div>
 			)}
-			<div className="flex items-center gap-2">
+			<div className="flex items-center justify-end gap-2">
+				<button
+					type="button"
+					onClick={handleSkip}
+					disabled={submitting}
+					className="inline-flex items-center gap-1.5 rounded-md border border-border-300/15 px-3 py-1.5 text-xs font-medium text-text-300 hover:bg-bg-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+				>
+					Skip
+				</button>
 				<button
 					type="button"
 					onClick={handleSubmit}
@@ -330,14 +336,10 @@ function AnswerForm({
 							size={12}
 							className="animate-spin"
 						/>
-					) : (
-						<Send size={12} />
-					)}
-					{submitting ? 'Sending...' : 'Send answer'}
+					) : null}
+					{submitting ? 'Submitting...' : 'Submit'}
+					{!submitting && <KbdBadge>⏎</KbdBadge>}
 				</button>
-				<span className="text-[10px] text-text-500 italic">
-					Forks the session so the running CLI keeps working uninterrupted.
-				</span>
 			</div>
 		</div>
 	);
