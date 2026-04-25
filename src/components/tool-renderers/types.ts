@@ -1,4 +1,4 @@
-import type {MessageSessionLine, ToolResultInfo} from '../../lib/sessions';
+import type {ToolResultInfo} from '../../lib/sessions';
 import type {ToolUseBlock} from '../../lib/schemas';
 import type {SubagentTreeEntry, SubagentTreeNode, ParallelGroup} from '../../lib/db/queries';
 
@@ -17,7 +17,8 @@ interface SubagentInlineInfo {
 }
 
 /**
- * Serializable version of ToolResultInfo map for TanStack serialization.
+ * Array-of-tuples representation of the ToolResultInfo map,
+ * used where Map is not directly serializable (e.g. SSE cache patching).
  */
 export type SerializedToolResultMap = Array<[string, ToolResultInfo]>;
 
@@ -144,14 +145,13 @@ function resolveSubagentInfo(
  */
 export function buildClientToolCall(
 	block: ToolUseBlock,
-	line: MessageSessionLine,
+	sourceUuid: string,
 	toolResultMap: Map<string, ToolResultInfo>,
 	subagentLookup: SubagentLookup,
 ): ClientToolCall {
 	const id = block.id;
 	const name = block.name;
 	const input = block.input as ToolInput;
-	const sourceUuid = line.uuid ?? '';
 
 	const call: ClientToolCall = {
 		id,

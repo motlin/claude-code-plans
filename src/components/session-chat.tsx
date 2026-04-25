@@ -1025,7 +1025,7 @@ function AssistantEntry({
 		() =>
 			content
 				.filter((b): b is ToolUseBlock => b.type === 'tool_use')
-				.map((block) => buildClientToolCall(block, line, toolResultMap, subagentLookup)),
+				.map((block) => buildClientToolCall(block, line.uuid ?? '', toolResultMap, subagentLookup)),
 		[content, line, toolResultMap, subagentLookup],
 	);
 	const hasVisibleNonToolContent = content.some(
