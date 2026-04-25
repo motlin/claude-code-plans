@@ -521,7 +521,7 @@ function TruncatedContent({
 	}, []);
 
 	if (showFull) {
-		return <div>{children}</div>;
+		return <div className="overflow-hidden">{children}</div>;
 	}
 
 	return (
@@ -662,7 +662,7 @@ function UserEntry({
 		<div className="group/msg flex justify-start w-full">
 			<div className="flex flex-col items-start gap-1 max-w-[75%] min-w-0">
 				{textNodes.length > 0 && (
-					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] rounded-bl-[2px] bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 overflow-hidden text-[13px] leading-[20px] select-text">
+					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] rounded-bl-[2px] bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-[13px] leading-[20px] select-text">
 						{textNodes}
 					</div>
 				)}
