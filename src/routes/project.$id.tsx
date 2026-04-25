@@ -217,10 +217,12 @@ function ProjectPage() {
 			{/* Subagents */}
 			{data.subagentCount > 0 && (
 				<section className="mt-8">
-					<SubagentTree
-						tree={data.subagentTree}
-						totalCount={data.subagentCount}
-					/>
+					<h2 className="border-b border-border-300/15 pb-1 text-sm font-semibold">
+						Subagents ({data.subagentCount})
+					</h2>
+					<div className="mt-2">
+						<SubagentTree tree={data.subagentTree} />
+					</div>
 				</section>
 			)}
 

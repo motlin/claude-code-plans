@@ -1,5 +1,5 @@
 import {Link} from '@tanstack/react-router';
-import {Bot, ChevronDown, ChevronRight, GitFork} from 'lucide-react';
+import {Bot, ChevronDown, ChevronRight} from 'lucide-react';
 import {useState} from 'react';
 import type {SubagentTreeEntry, SubagentTreeNode, ParallelGroup, DbSubagent} from '../lib/db/queries';
 import {formatDuration} from './tool-renderers/shared';
@@ -158,21 +158,13 @@ function TreeEntries({entries, depth}: {entries: SubagentTreeEntry[]; depth: num
 	);
 }
 
-export function SubagentTree({tree, totalCount}: {tree: SubagentTreeEntry[]; totalCount: number}) {
+export function SubagentTree({tree}: {tree: SubagentTreeEntry[]}) {
 	if (tree.length === 0) return null;
 
 	return (
-		<div className="mt-3">
-			<h2 className="text-xs font-semibold text-text-500 uppercase tracking-wide flex items-center gap-2">
-				<GitFork size={12} />
-				Subagents ({totalCount})
-			</h2>
-			<div className="mt-1">
-				<TreeEntries
-					entries={tree}
-					depth={0}
-				/>
-			</div>
-		</div>
+		<TreeEntries
+			entries={tree}
+			depth={0}
+		/>
 	);
 }

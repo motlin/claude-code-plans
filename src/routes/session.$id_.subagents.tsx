@@ -53,10 +53,7 @@ function SubagentsPage() {
 			) : (
 				<div className="mt-3">
 					{subagentView === 'tree' ? (
-						<SubagentTree
-							tree={data.tree}
-							totalCount={data.totalCount}
-						/>
+						<SubagentTree tree={data.tree} />
 					) : subagentView === 'gantt' ? (
 						<SubagentGantt agents={data.agents} />
 					) : (

@@ -56,10 +56,7 @@ function ProjectSubagentsPage() {
 				<p className="mt-4 text-text-500">No subagents for this project.</p>
 			) : (
 				<section className="mt-4">
-					<SubagentTree
-						tree={subagentTree}
-						totalCount={subagentCount}
-					/>
+					<SubagentTree tree={subagentTree} />
 				</section>
 			)}
 		</div>

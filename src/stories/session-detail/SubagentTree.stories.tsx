@@ -72,20 +72,17 @@ type Story = StoryObj<typeof meta>;
 export const TreeWithChildren: Story = {
 	args: {
 		tree: buildSubagentTree(flatAgents),
-		totalCount: flatAgents.length,
 	},
 };
 
 export const EmptyTree: Story = {
 	args: {
 		tree: [],
-		totalCount: 0,
 	},
 };
 
 export const DeeplyNested: Story = {
 	args: {
 		tree: buildSubagentTree(deepAgents),
-		totalCount: deepAgents.length,
 	},
 };
