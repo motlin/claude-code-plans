@@ -20,7 +20,7 @@ export interface Settings {
 	chromeHidden: boolean;
 	statusFooterVisible: boolean;
 
-	autoGenerateSummaries: boolean;
+	showSummaryButton: boolean;
 
 	activeTimeoutSec: number;
 
@@ -44,7 +44,7 @@ const DEFAULTS: Settings = {
 	chromeHidden: false,
 	statusFooterVisible: true,
 
-	autoGenerateSummaries: false,
+	showSummaryButton: true,
 
 	activeTimeoutSec: 60,
 
@@ -63,7 +63,7 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
 	defaultSubagentView: 'ccp-subagent-view',
 	chromeHidden: 'ccp-chrome-hidden',
 	statusFooterVisible: 'ccp-status-footer',
-	autoGenerateSummaries: 'ccp-auto-summaries',
+	showSummaryButton: 'ccp-show-summary-button',
 	activeTimeoutSec: 'ccp-active-timeout',
 	verbosity: 'ccp-verbosity',
 };

@@ -410,7 +410,8 @@ function SessionPage() {
 					{aiSummary ? (
 						<p className="mt-1 text-sm text-text-500 italic">{aiSummary}</p>
 					) : (
-						summaryLoaded && (
+						summaryLoaded &&
+						settings.showSummaryButton && (
 							<button
 								type="button"
 								onClick={handleGenerateSummary}

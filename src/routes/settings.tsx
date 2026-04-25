@@ -336,9 +336,9 @@ function SettingsPage() {
 					title="AI Features"
 				>
 					<ToggleRow
-						label="Auto-generate summaries"
-						description="Automatically generate AI summaries for sessions"
-						settingKey="autoGenerateSummaries"
+						label="Summary button"
+						description="Show the Generate Summary button on session detail pages"
+						settingKey="showSummaryButton"
 					/>
 				</Section>
 
