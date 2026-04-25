@@ -68,7 +68,7 @@ function TreeNode({node, depth}: {node: SubagentTreeNode; depth: number}) {
 				</span>
 				<Link
 					to="/session/$id"
-					params={{id: node.agent.id}}
+					params={{id: node.agent.sessionId}}
 					className="hidden group-hover:inline-flex items-center gap-1 text-[10px] text-accent-100 hover:underline flex-shrink-0"
 					onClick={(e) => e.stopPropagation()}
 				>
