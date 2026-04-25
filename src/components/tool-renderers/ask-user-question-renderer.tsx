@@ -1,5 +1,5 @@
 import {useState, type ReactNode} from 'react';
-import {Check, Circle, Loader2, MessageCircleQuestion} from 'lucide-react';
+import {Loader2} from 'lucide-react';
 import type {ToolRendererProps} from './types';
 import {useAskUserQuestionContext} from '../ask-user-question-context';
 import {
@@ -22,39 +22,35 @@ function KbdBadge({children}: {children: ReactNode}) {
 
 function ReadOnlyAnswer({label, description, index}: {label: string; description?: string | undefined; index: number}) {
 	return (
-		<div className="rounded border bg-accent-900 border-accent-100/30 border-l-2 border-l-accent-100 px-2.5 py-1.5 text-xs">
-			<div className="flex items-center gap-1.5">
-				<Check
-					size={14}
-					className="text-accent-100 shrink-0"
-				/>
-				<span className="font-medium flex-1">{label}</span>
+		<div className="rounded-lg bg-accent-900/50 ring-1 ring-accent-100/30 px-3 py-2 text-xs">
+			<div className="flex items-center gap-2">
+				<div className="flex flex-col flex-1 min-w-0">
+					<span className="font-semibold">{label}</span>
+					{description && <span className="text-text-500 mt-0.5">{description}</span>}
+				</div>
 				<KbdBadge>{index}</KbdBadge>
 			</div>
-			{description && <p className="text-text-500 mt-0.5 ml-5">{description}</p>}
 		</div>
 	);
 }
 
 function ReadOnlyOption({label, description, index}: {label: string; description?: string | undefined; index: number}) {
 	return (
-		<div className="rounded border border-border-300/15 opacity-60 px-2.5 py-1.5 text-xs">
-			<div className="flex items-center gap-1.5">
-				<Circle
-					size={14}
-					className="text-text-500 shrink-0"
-				/>
-				<span className="font-medium flex-1">{label}</span>
+		<div className="rounded-lg bg-bg-200 opacity-50 px-3 py-2 text-xs">
+			<div className="flex items-center gap-2">
+				<div className="flex flex-col flex-1 min-w-0">
+					<span className="font-semibold">{label}</span>
+					{description && <span className="text-text-500 mt-0.5">{description}</span>}
+				</div>
 				<KbdBadge>{index}</KbdBadge>
 			</div>
-			{description && <p className="text-text-500 mt-0.5 ml-5">{description}</p>}
 		</div>
 	);
 }
 
 function NotesLine({notes}: {notes: string}) {
 	return (
-		<p className="text-text-500 mt-1 ml-5 italic whitespace-pre-wrap text-xs">
+		<p className="text-text-500 mt-1 ml-3 italic whitespace-pre-wrap text-xs">
 			<span className="text-text-300">Notes: </span>
 			{notes}
 		</p>
@@ -74,15 +70,13 @@ function notesAddInformation(notes: string | null | undefined, answerValue: stri
 
 function ReadOnlyOtherAnswer({value, notes}: {value: string; notes?: string | null}) {
 	return (
-		<div className="rounded border border-warning-000/30 bg-warning-100/10 border-l-2 border-l-warning-000 px-2.5 py-1.5 text-xs">
-			<div className="flex items-center gap-1.5">
-				<Check
-					size={14}
-					className="text-warning-000 shrink-0"
-				/>
-				<span className="font-medium">Other</span>
+		<div className="rounded-lg bg-accent-900/50 ring-1 ring-accent-100/30 px-3 py-2 text-xs">
+			<div className="flex items-center gap-2">
+				<div className="flex flex-col flex-1 min-w-0">
+					<span className="font-semibold">Other</span>
+					<span className="text-text-500 mt-0.5 whitespace-pre-wrap">{value}</span>
+				</div>
 			</div>
-			<p className="text-text-500 mt-0.5 ml-5 whitespace-pre-wrap">{value}</p>
 			{notesAddInformation(notes, value) && <NotesLine notes={notes!} />}
 		</div>
 	);
@@ -93,7 +87,7 @@ function ReadOnlyOtherAnswer({value, notes}: {value: string; notes?: string | nu
  * active). Uses the parsed answer (when available) to figure out which option
  * was chosen and whether to surface supplementary user notes.
  */
-function AnsweredQuestion({question, options, parsed}: QuestionLike & {parsed?: ParsedAnswer | undefined}) {
+function AnsweredQuestion({question, header, options, parsed}: QuestionLike & {parsed?: ParsedAnswer | undefined}) {
 	const answerValue = parsed?.answer.trim() ?? '';
 	const matchesAny = options.some((opt) => opt.label === answerValue);
 	const isOther = answerValue.length > 0 && !matchesAny;
@@ -101,14 +95,9 @@ function AnsweredQuestion({question, options, parsed}: QuestionLike & {parsed?: 
 
 	return (
 		<div>
-			<div className="flex items-start gap-1.5 mb-2">
-				<MessageCircleQuestion
-					size={14}
-					className="text-text-500 shrink-0 mt-0.5"
-				/>
-				<p className="text-sm font-medium whitespace-pre-wrap">{question}</p>
-			</div>
-			<div className="flex flex-col gap-1.5 ml-5">
+			{header && <p className="text-[10px] uppercase tracking-wider text-text-500 mb-1">{header}</p>}
+			<p className="text-sm font-semibold mb-2 whitespace-pre-wrap">{question}</p>
+			<div className="flex flex-col gap-1.5">
 				{options.map((opt, optionIndex) => {
 					if (opt.label === answerValue) {
 						return (
@@ -365,14 +354,8 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 		const singleQuestion = (toolCall.input['question'] as string) ?? '';
 		return (
 			<div>
-				<div className="flex items-start gap-1.5">
-					<MessageCircleQuestion
-						size={14}
-						className="text-text-500 shrink-0 mt-0.5"
-					/>
-					<p className="text-sm font-medium">{singleQuestion}</p>
-				</div>
-				{result && <p className="text-sm text-text-500 mt-1 ml-5">{result}</p>}
+				<p className="text-sm font-semibold">{singleQuestion}</p>
+				{result && <p className="text-sm text-text-500 mt-1 whitespace-pre-wrap">{result}</p>}
 			</div>
 		);
 	}
@@ -397,6 +380,7 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 					<AnsweredQuestion
 						key={i}
 						question={q.question}
+						{...(q.header ? {header: q.header} : {})}
 						options={q.options}
 						parsed={parsedByQuestion.get(q.question)}
 					/>
@@ -411,10 +395,11 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 		<>
 			<AnsweredQuestion
 				question={only.question}
+				{...(only.header ? {header: only.header} : {})}
 				options={only.options}
 				parsed={parsedByQuestion.get(only.question)}
 			/>
-			{showRawFallback && <p className="text-sm text-text-500 mt-1 ml-5 whitespace-pre-wrap">{result}</p>}
+			{showRawFallback && <p className="text-sm text-text-500 mt-1 whitespace-pre-wrap">{result}</p>}
 		</>
 	);
 }
