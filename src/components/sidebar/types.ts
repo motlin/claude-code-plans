@@ -8,6 +8,7 @@ export type Section =
 	| 'sessions'
 	| 'plugins'
 	| 'settings'
+	| 'config'
 	| 'setup';
 
 export interface SubItem {

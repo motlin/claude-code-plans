@@ -103,7 +103,8 @@ export function Sidebar({collapsed, onToggle, mobile}: {collapsed: boolean; onTo
 
 			<div className="flex-1 overflow-y-auto px-2">
 				{navItems.map((item) => {
-					const isActive = currentPath.startsWith(item.to);
+					const isActive =
+						item.to === '/settings' ? currentPath === '/settings' : currentPath.startsWith(item.to);
 					const Icon = item.icon;
 					const isExpanded = !collapsedSections.has(item.section);
 					return (
@@ -136,6 +137,7 @@ export function Sidebar({collapsed, onToggle, mobile}: {collapsed: boolean; onTo
 							{isExpanded &&
 								item.section !== 'starred' &&
 								item.section !== 'settings' &&
+								item.section !== 'config' &&
 								item.section !== 'setup' &&
 								(item.section === 'active' ? (
 									<ActiveSubList />

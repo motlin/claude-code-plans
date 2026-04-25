@@ -1,6 +1,6 @@
-import {createFileRoute, Link} from '@tanstack/react-router';
+import {createFileRoute} from '@tanstack/react-router';
 import {useState} from 'react';
-import {Eye, Gauge, GitFork, Info, Palette, Sparkles, Webhook, Wrench, FileJson} from 'lucide-react';
+import {Eye, Gauge, GitFork, Info, Palette, Sparkles, Webhook, Wrench} from 'lucide-react';
 import {useSettings, type Settings, type Verbosity} from '../components/settings-provider';
 import {useTheme} from '../components/theme-provider';
 
@@ -223,18 +223,9 @@ function SettingsPage() {
 
 	return (
 		<div className="max-w-3xl">
-			<div className="flex items-center justify-between">
-				<div>
-					<h1 className="text-lg font-semibold">Settings</h1>
-					<p className="mt-1 text-sm text-text-500">Configure display, appearance, and behavior.</p>
-				</div>
-				<Link
-					to="/settings/edit"
-					className="flex items-center gap-1.5 rounded-md border border-border-300/15 px-3 py-1.5 text-sm text-text-300 transition-colors hover:bg-bg-200"
-				>
-					<FileJson className="h-3.5 w-3.5" />
-					Claude Config
-				</Link>
+			<div>
+				<h1 className="text-lg font-semibold">Settings</h1>
+				<p className="mt-1 text-sm text-text-500">Configure display, appearance, and behavior.</p>
 			</div>
 
 			<div className="mt-6 space-y-6">

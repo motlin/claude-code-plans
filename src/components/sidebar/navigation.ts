@@ -1,4 +1,5 @@
 import {
+	FileJson,
 	FileText,
 	Brain,
 	MessageSquare,
@@ -22,5 +23,6 @@ export const navItems = [
 	{to: '/sessions', label: 'Sessions', icon: MessageSquare, section: 'sessions' as Section},
 	{to: '/plugins', label: 'Plugins', icon: Blocks, section: 'plugins' as Section},
 	{to: '/settings', label: 'Settings', icon: SlidersHorizontal, section: 'settings' as Section},
+	{to: '/settings/edit', label: 'Claude Config', icon: FileJson, section: 'config' as Section},
 	{to: '/setup', label: 'Setup', icon: Settings, section: 'setup' as Section},
 ];
