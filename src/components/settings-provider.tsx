@@ -34,8 +34,8 @@ const DEFAULTS: Settings = {
 	showToolDuration: true,
 
 	showPassedHooks: false,
-	showHookWarnings: false,
-	showHookErrors: false,
+	showHookWarnings: true,
+	showHookErrors: true,
 
 	showSystemBanners: false,
 
@@ -82,8 +82,8 @@ const VERBOSITY_PRESETS: Record<Exclude<Verbosity, 'minimal'>, Partial<Settings>
 		showTools: true,
 		showThinking: false,
 		showPassedHooks: false,
-		showHookWarnings: false,
-		showHookErrors: false,
+		showHookWarnings: true,
+		showHookErrors: true,
 		showSystemBanners: false,
 		showDebug: false,
 	},
