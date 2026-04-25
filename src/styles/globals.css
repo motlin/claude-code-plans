@@ -43,6 +43,10 @@
 	--color-accent-100: var(--accent-100);
 	--color-accent-900: var(--accent-900);
 
+	/* User message bubble */
+	--color-user-msg-bg: var(--user-msg-bg);
+	--color-user-msg-text: var(--user-msg-text);
+
 	--radius-sm: calc(var(--radius) - 4px);
 	--radius-md: calc(var(--radius) - 2px);
 	--radius-lg: var(--radius);
@@ -87,6 +91,10 @@
 	--accent-000: hsl(210 73.7% 40.2%);
 	--accent-100: hsl(210 70.9% 51.6%);
 	--accent-900: hsl(211 72% 90%);
+
+	/* User message bubble */
+	--user-msg-bg: hsl(210 70.9% 51.6%);
+	--user-msg-text: hsl(0 0% 100%);
 }
 
 .dark {
@@ -124,6 +132,10 @@
 	--accent-000: hsl(210 65.5% 67.1%);
 	--accent-100: hsl(210 70.9% 51.6%);
 	--accent-900: hsl(210 55.9% 24.6%);
+
+	/* User message bubble */
+	--user-msg-bg: hsl(210 55.9% 24.6%);
+	--user-msg-text: hsl(48 33.3% 97.1%);
 }
 
 @layer utilities {
