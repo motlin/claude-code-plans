@@ -92,9 +92,9 @@
 	--accent-100: hsl(210 70.9% 51.6%);
 	--accent-900: hsl(211 72% 90%);
 
-	/* User message bubble */
-	--user-msg-bg: hsl(210 70.9% 51.6%);
-	--user-msg-text: hsl(0 0% 100%);
+	/* User message bubble — matches claude.ai/code: 7% accent tint + blue text */
+	--user-msg-bg: hsl(210 100% 45% / 0.07);
+	--user-msg-text: hsl(210 100% 40%);
 }
 
 .dark {
@@ -133,9 +133,9 @@
 	--accent-100: hsl(210 70.9% 51.6%);
 	--accent-900: hsl(210 55.9% 24.6%);
 
-	/* User message bubble */
-	--user-msg-bg: hsl(210 55.9% 24.6%);
-	--user-msg-text: hsl(48 33.3% 97.1%);
+	/* User message bubble — matches claude.ai/code: accent tint + blue text */
+	--user-msg-bg: hsl(210 100% 55% / 0.10);
+	--user-msg-text: hsl(210 80% 68%);
 }
 
 @layer utilities {

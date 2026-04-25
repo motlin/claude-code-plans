@@ -655,7 +655,7 @@ function UserEntry({
 		<div className="group/msg flex justify-start w-full">
 			<div className="flex flex-col items-start gap-1 max-w-[75%] min-w-0">
 				{textNodes.length > 0 && (
-					<div className="user-message-bubble relative rounded-xl rounded-bl-sm bg-user-msg-bg text-user-msg-text px-3.5 py-2.5 break-words min-w-0 overflow-hidden text-sm leading-relaxed select-text">
+					<div className="user-message-bubble relative rounded-[10px] rounded-bl-[2px] bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 overflow-hidden text-sm leading-relaxed select-text">
 						{textNodes}
 					</div>
 				)}
@@ -742,7 +742,7 @@ function renderUserContentBlocks(line: MessageSessionLine, sessionId: string): U
 			textNodes: [
 				<React.Fragment key={0}>
 					<TruncatedContent
-						fadeColor="var(--user-msg-bg)"
+						fadeColor="var(--bg-100)"
 						variant="user"
 					>
 						<MarkdownArticle markdown={cleaned} />
@@ -769,7 +769,7 @@ function renderUserContentBlocks(line: MessageSessionLine, sessionId: string): U
 			textNodes.push(
 				<React.Fragment key={`text-${i}`}>
 					<TruncatedContent
-						fadeColor="var(--user-msg-bg)"
+						fadeColor="var(--bg-100)"
 						variant="user"
 					>
 						<MarkdownArticle markdown={cleaned} />
