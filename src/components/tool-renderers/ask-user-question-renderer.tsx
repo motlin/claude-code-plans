@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useState, type ReactNode} from 'react';
 import {Check, Circle, Loader2, MessageCircleQuestion, Send} from 'lucide-react';
 import type {ToolRendererProps} from './types';
 import {useAskUserQuestionContext} from '../ask-user-question-context';
@@ -12,7 +12,15 @@ import {
 	type QuestionLike,
 } from '../../lib/ask-user-question';
 
-function ReadOnlyAnswer({label, description}: {label: string; description?: string | undefined}) {
+function KbdBadge({children}: {children: ReactNode}) {
+	return (
+		<kbd className="inline-flex items-center justify-center h-5 min-w-5 px-1 rounded bg-bg-300/50 border border-border-300/15 text-[10px] font-mono text-text-400 shrink-0">
+			{children}
+		</kbd>
+	);
+}
+
+function ReadOnlyAnswer({label, description, index}: {label: string; description?: string | undefined; index: number}) {
 	return (
 		<div className="rounded border bg-accent-900 border-accent-100/30 border-l-2 border-l-accent-100 px-2.5 py-1.5 text-xs">
 			<div className="flex items-center gap-1.5">
@@ -20,14 +28,15 @@ function ReadOnlyAnswer({label, description}: {label: string; description?: stri
 					size={14}
 					className="text-accent-100 shrink-0"
 				/>
-				<span className="font-medium">{label}</span>
+				<span className="font-medium flex-1">{label}</span>
+				<KbdBadge>{index}</KbdBadge>
 			</div>
 			{description && <p className="text-text-500 mt-0.5 ml-5">{description}</p>}
 		</div>
 	);
 }
 
-function ReadOnlyOption({label, description}: {label: string; description?: string | undefined}) {
+function ReadOnlyOption({label, description, index}: {label: string; description?: string | undefined; index: number}) {
 	return (
 		<div className="rounded border border-border-300/15 opacity-60 px-2.5 py-1.5 text-xs">
 			<div className="flex items-center gap-1.5">
@@ -35,7 +44,8 @@ function ReadOnlyOption({label, description}: {label: string; description?: stri
 					size={14}
 					className="text-text-500 shrink-0"
 				/>
-				<span className="font-medium">{label}</span>
+				<span className="font-medium flex-1">{label}</span>
+				<KbdBadge>{index}</KbdBadge>
 			</div>
 			{description && <p className="text-text-500 mt-0.5 ml-5">{description}</p>}
 		</div>
@@ -99,13 +109,14 @@ function AnsweredQuestion({question, options, parsed}: QuestionLike & {parsed?: 
 				<p className="text-sm font-medium whitespace-pre-wrap">{question}</p>
 			</div>
 			<div className="flex flex-col gap-1.5 ml-5">
-				{options.map((opt) => {
+				{options.map((opt, optionIndex) => {
 					if (opt.label === answerValue) {
 						return (
 							<div key={opt.label}>
 								<ReadOnlyAnswer
 									label={opt.label}
 									description={opt.description}
+									index={optionIndex + 1}
 								/>
 								{notes !== null && notes !== undefined && notes.trim() !== '' && (
 									<NotesLine notes={notes} />
@@ -118,6 +129,7 @@ function AnsweredQuestion({question, options, parsed}: QuestionLike & {parsed?: 
 							key={opt.label}
 							label={opt.label}
 							description={opt.description}
+							index={optionIndex + 1}
 						/>
 					);
 				})}
