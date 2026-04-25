@@ -1,4 +1,5 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {formatDistanceToNow} from 'date-fns';
 import {Copy, Link2} from 'lucide-react';
 import {MarkdownArticle} from './markdown-article';
 import {getToolRenderer} from './tool-renderers';
@@ -31,6 +32,17 @@ function formatTimestamp(timestamp?: string): string | null {
 				date.toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', hour12: true})
 			);
 		}
+	} catch {
+		return null;
+	}
+}
+
+function formatRelativeTimestamp(timestamp?: string): string | null {
+	if (!timestamp) return null;
+	try {
+		const date = new Date(timestamp);
+		if (isNaN(date.getTime())) return null;
+		return formatDistanceToNow(date, {addSuffix: true});
 	} catch {
 		return null;
 	}
@@ -211,7 +223,11 @@ function LineEntry({
 	if (!content) return null;
 
 	const isMessage = line.type === 'user' || line.type === 'assistant';
-	const timestampTitle = formatTimestamp(getLineTimestamp(line));
+	const rawTimestamp = getLineTimestamp(line);
+	const absoluteTimestamp = formatTimestamp(rawTimestamp);
+	const relativeTimestamp = formatRelativeTimestamp(rawTimestamp);
+	const timestampTitle =
+		absoluteTimestamp && relativeTimestamp ? `${absoluteTimestamp} (${relativeTimestamp})` : absoluteTimestamp;
 	return (
 		<div
 			key={`line-${index}`}
