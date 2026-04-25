@@ -196,6 +196,92 @@ interface IncrementalResult {
 	newToolResults: Map<string, ToolResultInfo>;
 }
 
+// ---------------------------------------------------------------------------
+// Command group deduplication
+// ---------------------------------------------------------------------------
+
+const COMMAND_NAME_RE = /<command-name>/;
+const LOCAL_COMMAND_CAVEAT_RE = /^<local-command-caveat>/;
+const LOCAL_COMMAND_STDOUT_RE = /^<local-command-stdout>/;
+
+/**
+ * Get the string content of a user message line, if it has string content.
+ */
+function getUserStringContent(line: ProcessedLine): string | undefined {
+	if (line.type !== 'user') return undefined;
+	const content = line.message?.content;
+	if (typeof content === 'string') return content;
+	return undefined;
+}
+
+/**
+ * Check whether a user message line is a slash command (contains `<command-name>`).
+ */
+function isCommandLine(line: ProcessedLine): boolean {
+	const text = getUserStringContent(line);
+	return text !== undefined && COMMAND_NAME_RE.test(text);
+}
+
+/**
+ * Check whether a user message line is a local-command-caveat.
+ */
+function isCaveatLine(line: ProcessedLine): boolean {
+	const text = getUserStringContent(line);
+	return text !== undefined && LOCAL_COMMAND_CAVEAT_RE.test(text);
+}
+
+/**
+ * Check whether a user message line is a local-command-stdout.
+ */
+function isStdoutLine(line: ProcessedLine): boolean {
+	const text = getUserStringContent(line);
+	return text !== undefined && LOCAL_COMMAND_STDOUT_RE.test(text);
+}
+
+/**
+ * Remove duplicate consecutive command groups from processed lines.
+ *
+ * A "command group" is an optional caveat line, followed by a command line,
+ * followed by an optional stdout line. When two adjacent command groups have
+ * identical command content, the second group is removed.
+ */
+function deduplicateCommandGroups(lines: ProcessedLine[]): ProcessedLine[] {
+	const indicesToRemove = new Set<number>();
+	let lastCommandContent: string | undefined;
+	let lastCommandGroupEnd = -1;
+
+	for (let i = 0; i < lines.length; i++) {
+		if (!isCommandLine(lines[i]!)) {
+			// Non-command lines that aren't part of a command group reset tracking,
+			// unless they're caveats or stdouts adjacent to a command.
+			if (!isCaveatLine(lines[i]!) && !isStdoutLine(lines[i]!)) {
+				lastCommandContent = undefined;
+				lastCommandGroupEnd = -1;
+			}
+			continue;
+		}
+
+		const commandContent = getUserStringContent(lines[i]!)!;
+
+		// Determine the boundaries of this command group
+		const groupStart = i > 0 && isCaveatLine(lines[i - 1]!) ? i - 1 : i;
+		const groupEnd = i + 1 < lines.length && isStdoutLine(lines[i + 1]!) ? i + 1 : i;
+
+		if (commandContent === lastCommandContent && groupStart <= lastCommandGroupEnd + 1) {
+			// Duplicate command group -- mark for removal
+			for (let j = groupStart; j <= groupEnd; j++) {
+				indicesToRemove.add(j);
+			}
+		} else {
+			lastCommandContent = commandContent;
+		}
+		lastCommandGroupEnd = groupEnd;
+	}
+
+	if (indicesToRemove.size === 0) return lines;
+	return lines.filter((_, index) => !indicesToRemove.has(index));
+}
+
 function processRecordBatch(
 	records: unknown[],
 	startLineIndex: number,
@@ -347,7 +433,7 @@ function processRecordBatch(
 		sessionLines.push(processedLine);
 	}
 
-	return {sessionLines, toolResults, title, customTitle};
+	return {sessionLines: deduplicateCommandGroups(sessionLines), toolResults, title, customTitle};
 }
 
 // ---------------------------------------------------------------------------
