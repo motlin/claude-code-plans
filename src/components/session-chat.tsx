@@ -1101,7 +1101,7 @@ function ToolCallSection({calls, sessionId}: {calls: ClientToolCall[]; sessionId
 				return (
 					<div
 						key={`prominent-${i}`}
-						className="relative rounded-lg border border-accent-100/20 bg-accent-900/30 p-3 text-sm"
+						className="relative rounded-lg border border-border-300/15 bg-bg-000 p-4 text-sm shadow-sm"
 					>
 						<Renderer toolCall={call} />
 						<DebugLink
