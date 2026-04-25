@@ -29,7 +29,12 @@ export interface SessionProjectGroup {
 	sessions: SessionEntry[];
 }
 
-export interface ToolCallInfo {
+/**
+ * Internal type for readSession() tool call pairing.
+ * Not exported -- consumers that need a tool call shape should use
+ * ToolCallLike from session-utils.ts instead.
+ */
+interface ToolCallInfo {
 	id: string;
 	name: string;
 	input: Record<string, unknown>;

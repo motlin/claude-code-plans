@@ -1,4 +1,11 @@
-import type {ToolCallInfo} from './sessions';
+/**
+ * Minimal shape needed by summarizeToolCalls, categorize, and diffStatsForEditCall.
+ * Satisfied by raw content blocks, readSession tool call objects, and test data alike.
+ */
+export interface ToolCallLike {
+	name: string;
+	input: Record<string, unknown>;
+}
 
 const COMMAND_MESSAGE_RE = /<command-message[^>]*>([\s\S]*?)<\/command-message>/;
 const STRIP_BLOCK_RE =
@@ -101,7 +108,7 @@ function countDiffLines(oldStr: string, newStr: string): {added: number; removed
 	return {added, removed};
 }
 
-function diffStatsForEditCall(call: ToolCallInfo): {added: number; removed: number} {
+function diffStatsForEditCall(call: ToolCallLike): {added: number; removed: number} {
 	const input = call.input;
 	if (call.name === 'Write') {
 		const content = typeof input['content'] === 'string' ? (input['content'] as string) : '';
@@ -134,7 +141,7 @@ function diffStatsForEditCall(call: ToolCallInfo): {added: number; removed: numb
 	return {added: 0, removed: 0};
 }
 
-function categorize(call: ToolCallInfo): ToolCategory | null {
+function categorize(call: ToolCallLike): ToolCategory | null {
 	const filePath = typeof call.input['file_path'] === 'string' ? (call.input['file_path'] as string) : '';
 	if (call.name === 'Read') {
 		return isMemoryPath(filePath) ? 'recall' : 'read';
@@ -214,7 +221,7 @@ export function truncateResult(text: string, maxLines: number): string {
 	return truncated.join('\n');
 }
 
-export function summarizeToolCalls(calls: ToolCallInfo[]): string {
+export function summarizeToolCalls(calls: ToolCallLike[]): string {
 	if (calls.length === 0) return '';
 
 	const counts = new Map<ToolCategory, number>();
