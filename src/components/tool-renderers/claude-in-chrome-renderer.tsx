@@ -10,10 +10,12 @@ import {
 	Info,
 	FileText,
 } from 'lucide-react';
+import type {ThemedToken} from '@shikijs/core';
 import type {ToolRendererProps} from './types';
 import {CollapsibleSection, ErrorBorder, ExpandableBlock} from './shared';
 import {MarkdownArticle} from '../markdown-article';
 import {looksLikeMarkdown} from '../../lib/client-markdown';
+import {useHighlightedLines} from '../../hooks/use-shiki';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -38,6 +40,39 @@ function formatJson(text: string): string {
 	} catch {
 		return text;
 	}
+}
+
+/**
+ * Renders JSON with Shiki syntax highlighting, falling back to plain text
+ * while the highlighter loads.
+ */
+function HighlightedJson({code}: {code: string}) {
+	const tokens = useHighlightedLines(code, 'json');
+
+	if (!tokens) {
+		return (
+			<pre className="bg-bg-200 text-text-100 rounded text-xs leading-relaxed p-2 whitespace-pre-wrap break-all font-mono">
+				{code}
+			</pre>
+		);
+	}
+
+	return (
+		<pre className="bg-bg-200 rounded text-xs leading-relaxed p-2 whitespace-pre-wrap break-all font-mono">
+			{tokens.map((line: ThemedToken[], lineIndex: number) => (
+				<div key={lineIndex}>
+					{line.map((token: ThemedToken, tokenIndex: number) => (
+						<span
+							key={tokenIndex}
+							style={{color: token.color}}
+						>
+							{token.content}
+						</span>
+					))}
+				</div>
+			))}
+		</pre>
+	);
 }
 
 /**
@@ -69,9 +104,7 @@ function SmartResultContent({text, maxLines = 20}: {text: string; maxLines?: num
 				lineCount={lineCount}
 				maxLines={maxLines}
 			>
-				<pre className="bg-bg-200 text-text-100 rounded text-xs leading-relaxed p-2 whitespace-pre-wrap break-all font-mono">
-					{formatted}
-				</pre>
+				<HighlightedJson code={formatted} />
 			</ExpandableBlock>
 		);
 	}
