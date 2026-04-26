@@ -10,6 +10,7 @@ import {computeDiffData} from '../lib/diff-utils';
 import {TasksView} from './tasks-view';
 import {DebugLink} from './debug-link';
 import {hmrPersist} from '../lib/hmr-persist';
+import {writeClipboardText} from '../lib/clipboard';
 import type {MessageSessionLine, SessionLine, SessionContentBlock, ToolResultInfo} from '../lib/sessions';
 import type {ToolUseBlock} from '../lib/schemas';
 import type {SubagentTreeEntry} from '../lib/db/queries';
@@ -97,22 +98,26 @@ function MessageToolbar({line, index, timestamp}: {line: MessageSessionLine; ind
 			? `${absoluteTimestamp} (${relativeTimestamp})`
 			: (absoluteTimestamp ?? undefined);
 
-	function copyText() {
+	async function copyText() {
 		const texts = extractTextFromLine(line);
-		navigator.clipboard.writeText(texts.join('\n\n'));
-		setCopied('text');
-		setTimeout(() => setCopied(null), 1500);
+		const ok = await writeClipboardText(texts.join('\n\n'));
+		if (ok) {
+			setCopied('text');
+			setTimeout(() => setCopied(null), 1500);
+		}
 	}
 
-	function copyLink() {
+	async function copyLink() {
 		const url = `${window.location.origin}${window.location.pathname}#msg-${index}`;
-		navigator.clipboard.writeText(url);
-		setCopied('link');
-		setTimeout(() => setCopied(null), 1500);
+		const ok = await writeClipboardText(url);
+		if (ok) {
+			setCopied('link');
+			setTimeout(() => setCopied(null), 1500);
+		}
 	}
 
 	return (
-		<div className="flex gap-g2 pt-[4px] opacity-0 pointer-events-none group-hover/msg:opacity-100 group-hover/msg:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-opacity duration-150">
+		<div className="flex gap-g2 pt-[4px] -mb-[8px] group-hover/msg:mb-0 opacity-0 pointer-events-none group-hover/msg:opacity-100 group-hover/msg:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-[opacity,margin-bottom] duration-150">
 			<div className="relative">
 				<button
 					type="button"
@@ -159,18 +164,22 @@ function extractTextFromLine(line: MessageSessionLine): string[] {
 function UserMessageActions({line, index, timestamp}: {line: MessageSessionLine; index: number; timestamp?: string}) {
 	const [copied, setCopied] = useState<'text' | 'link' | null>(null);
 
-	function copyText() {
+	async function copyText() {
 		const texts = extractTextFromLine(line);
-		navigator.clipboard.writeText(texts.join('\n\n'));
-		setCopied('text');
-		setTimeout(() => setCopied(null), 1500);
+		const ok = await writeClipboardText(texts.join('\n\n'));
+		if (ok) {
+			setCopied('text');
+			setTimeout(() => setCopied(null), 1500);
+		}
 	}
 
-	function copyLink() {
+	async function copyLink() {
 		const url = `${window.location.origin}${window.location.pathname}#msg-${index}`;
-		navigator.clipboard.writeText(url);
-		setCopied('link');
-		setTimeout(() => setCopied(null), 1500);
+		const ok = await writeClipboardText(url);
+		if (ok) {
+			setCopied('link');
+			setTimeout(() => setCopied(null), 1500);
+		}
 	}
 
 	const absoluteTimestamp = formatTimestamp(timestamp);
@@ -331,7 +340,66 @@ function LineEntry({
 	);
 }
 
+function GroupedToolCallEntry({
+	lines,
+	indices,
+	className,
+	sessionId,
+	toolResultMap,
+	subagentLookup,
+}: {
+	lines: SessionLine[];
+	indices: number[];
+	className?: string;
+	sessionId: string;
+	toolResultMap: Map<string, ToolResultInfo>;
+	subagentLookup: ReturnType<typeof buildSubagentLookup>;
+}) {
+	const allToolCalls = useMemo(
+		() =>
+			lines.flatMap((line) => {
+				if (line.type !== 'assistant') return [];
+				const content = line.message?.content;
+				if (!Array.isArray(content)) return [];
+				return content
+					.filter((b): b is ToolUseBlock => b.type === 'tool_use')
+					.map((block) => buildClientToolCall(block, line.uuid ?? '', toolResultMap, subagentLookup));
+			}),
+		[lines, toolResultMap, subagentLookup],
+	);
+
+	if (allToolCalls.length === 0) return null;
+
+	return (
+		<div
+			id={`msg-${indices[0]}`}
+			className={`group/msg flex flex-col w-full ${className ?? ''}`}
+		>
+			<ToolCallSection
+				calls={allToolCalls}
+				sessionId={sessionId}
+			/>
+		</div>
+	);
+}
+
 const BANNER_LINE_TYPES = new Set(['agent-name', 'agent-color', 'permission-mode', 'pr-link', 'attachment']);
+
+function isToolOnlyAssistantLine(line: SessionLine): boolean {
+	if (line.type !== 'assistant') return false;
+	const content = line.message?.content;
+	if (!Array.isArray(content) || content.length === 0) return false;
+	return content.every(
+		(b) => b.type === 'tool_use' || (b.type === 'text' && (typeof b.text !== 'string' || b.text.trim() === '')),
+	);
+}
+
+function isToolResultOnlyUserLine(line: SessionLine): boolean {
+	if (line.type !== 'user') return false;
+	const content = line.message?.content;
+	if (!Array.isArray(content) || content.length === 0) return false;
+	return content.every((b) => b.type === 'tool_result');
+}
 
 function SessionLineList({
 	lines,
@@ -341,34 +409,90 @@ function SessionLineList({
 }) {
 	const skipSet = useMemo(() => buildSkipSet(lines), [lines]);
 
+	const elements: React.ReactNode[] = [];
 	let prevVisibleType: string | null = null;
-	return (
-		<>
-			{lines.map((line, i) => {
-				if (skipSet.has(i)) return null;
-				if (!isLineVisible(line, renderProps)) return null;
+	let i = 0;
 
-				const isNewTurn = prevVisibleType !== null && prevVisibleType !== line.type;
-				const isBannerAfterBanner =
-					BANNER_LINE_TYPES.has(line.type) &&
-					prevVisibleType !== null &&
-					BANNER_LINE_TYPES.has(prevVisibleType);
+	while (i < lines.length) {
+		const line = lines[i]!;
 
-				prevVisibleType = line.type;
+		if (skipSet.has(i) || !isLineVisible(line, renderProps)) {
+			i++;
+			continue;
+		}
 
-				return (
+		// Group consecutive tool-only assistant lines
+		if (isToolOnlyAssistantLine(line) && renderProps.showTools) {
+			const groupStart = i;
+			const groupIndices: number[] = [i];
+			let j = i + 1;
+			while (j < lines.length) {
+				const nextLine = lines[j]!;
+				if (skipSet.has(j) || !isLineVisible(nextLine, renderProps)) {
+					j++;
+					continue;
+				}
+				if (isToolResultOnlyUserLine(nextLine)) {
+					j++;
+					continue;
+				}
+				if (isToolOnlyAssistantLine(nextLine)) {
+					groupIndices.push(j);
+					j++;
+				} else {
+					break;
+				}
+			}
+
+			const isNewTurn = prevVisibleType !== null && prevVisibleType !== 'assistant';
+			prevVisibleType = 'assistant';
+
+			if (groupIndices.length === 1) {
+				elements.push(
 					<LineEntry
-						key={`line-${i}`}
+						key={`line-${groupStart}`}
 						line={line}
-						index={i}
-						nextLine={lines[i + 1]}
-						className={`${isNewTurn ? 'pb-6' : ''} ${isBannerAfterBanner ? 'mt-1' : ''}`}
+						index={groupStart}
+						nextLine={lines[groupStart + 1]}
+						className={isNewTurn ? 'pb-6' : ''}
 						{...renderProps}
-					/>
+					/>,
 				);
-			})}
-		</>
-	);
+			} else {
+				elements.push(
+					<GroupedToolCallEntry
+						key={`group-${groupStart}`}
+						lines={groupIndices.map((idx) => lines[idx]!)}
+						indices={groupIndices}
+						className={isNewTurn ? 'pb-6' : ''}
+						{...renderProps}
+					/>,
+				);
+			}
+			i = j;
+			continue;
+		}
+
+		const isNewTurn = prevVisibleType !== null && prevVisibleType !== line.type;
+		const isBannerAfterBanner =
+			BANNER_LINE_TYPES.has(line.type) && prevVisibleType !== null && BANNER_LINE_TYPES.has(prevVisibleType);
+
+		prevVisibleType = line.type;
+
+		elements.push(
+			<LineEntry
+				key={`line-${i}`}
+				line={line}
+				index={i}
+				nextLine={lines[i + 1]}
+				className={`${isNewTurn ? 'pb-6' : ''} ${isBannerAfterBanner ? 'mt-1' : ''}`}
+				{...renderProps}
+			/>,
+		);
+		i++;
+	}
+
+	return <>{elements}</>;
 }
 
 const HOOK_WARNING_SUBTYPES = new Set(['hook_non_blocking_error', 'hook_additional_context']);
@@ -950,7 +1074,7 @@ function CommandEntry({line, index, sessionId}: {line: MessageSessionLine; index
 		<div className="group/msg flex justify-start w-full">
 			<div className="flex flex-col items-start gap-1 max-w-[75%] min-w-0">
 				<div className="user-message-bubble relative rounded-[10px] rounded-bl-[2px] bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 overflow-hidden text-[13px] leading-[20px] select-text">
-					<span className="font-mono">/{cmdName}</span>
+					<span className="font-mono">{cmdName.startsWith('/') ? cmdName : `/${cmdName}`}</span>
 					{cmdArgs && <span className="ml-1.5 opacity-80">{cmdArgs}</span>}
 					<DebugLink
 						sessionId={sessionId}
