@@ -5,7 +5,7 @@ import {MarkdownArticle} from './markdown-article';
 import {getToolRenderer} from './tool-renderers';
 import {buildClientToolCall, buildSubagentLookup} from './tool-renderers/types';
 import type {ClientToolCall} from './tool-renderers';
-import {ChevronIcon, DiffStats, DurationBadge, TerminalOutput} from './tool-renderers/shared';
+import {ChevronIcon, DiffStats, TerminalOutput} from './tool-renderers/shared';
 import {TasksView} from './tasks-view';
 import {DebugLink} from './debug-link';
 import {hmrPersist} from '../lib/hmr-persist';
@@ -1264,51 +1264,80 @@ function ToolCallSection({calls, sessionId}: {calls: ClientToolCall[]; sessionId
 	);
 }
 
+/**
+ * Tools whose param is a file path -- shown as filename-only in mono/primary style.
+ */
+const FILE_PARAM_TOOLS = new Set(['Read', 'Edit', 'MultiEdit', 'Write']);
+
+/**
+ * Extract just the filename from a path for the clickable row display.
+ */
+function filenameFromPath(path: string): string {
+	const lastSlash = path.lastIndexOf('/');
+	if (lastSlash === -1) return path;
+	return path.slice(lastSlash + 1);
+}
+
 function ToolCallRow({call, sessionId}: {call: ClientToolCall; sessionId: string}) {
 	const [expanded, setExpanded] = useState(false);
 	const Renderer = getToolRenderer(call.name);
 	const verb = toolCallVerb(call.name);
+	const isFileParam = FILE_PARAM_TOOLS.has(call.name);
 	const editStats = useMemo(
 		() => (EDIT_TOOLS.has(call.name) ? diffStatsForEditCall({name: call.name, input: call.input}) : null),
 		[call.name, call.input],
 	);
 
+	const displayParam = isFileParam ? filenameFromPath(call.param) : call.param;
+
 	return (
-		<div className="min-w-0 py-0.5 text-sm leading-relaxed text-text-500">
-			<button
-				type="button"
+		<div className="flex flex-col w-full">
+			<div
+				role="button"
+				tabIndex={0}
 				onClick={() => setExpanded(!expanded)}
-				className="flex items-baseline flex-wrap gap-y-0.5 w-full text-left cursor-pointer hover:text-text-300 transition-colors"
+				onKeyDown={(e) => {
+					if (e.key === 'Enter' || e.key === ' ') {
+						e.preventDefault();
+						setExpanded(!expanded);
+					}
+				}}
+				className="relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left cursor-pointer outline-none rounded-r3"
 			>
-				<ChevronIcon
-					expanded={expanded}
-					size={12}
-				/>
-				<span className="ml-1 font-medium text-[13px]">{verb}</span>
-				{call.param && (
-					<span className="ml-1.5 font-mono text-[11px] bg-bg-100 px-1 py-px rounded opacity-70 break-all">
-						{call.param}
+				<span className="shrink-0 text-body text-assistant-secondary">{verb}</span>
+				{displayParam && (
+					<span
+						className={`truncate min-w-0 ${isFileParam ? 'text-code text-assistant-primary' : 'text-body text-assistant-secondary'}`}
+					>
+						{displayParam}
 					</span>
 				)}
 				{editStats && (editStats.added > 0 || editStats.removed > 0) && (
-					<span className="ml-1.5">
+					<span className="inline-flex">
 						<DiffStats
 							added={editStats.added}
 							removed={editStats.removed}
 						/>
 					</span>
 				)}
-				{call.duration !== undefined && <DurationBadge duration={call.duration} />}
-				<DebugLink
-					sessionId={sessionId}
-					uuid={call.sourceUuid}
-					className="ml-1.5"
-				/>
-			</button>
+				<span className="shrink-0 text-assistant-secondary">
+					<ChevronIcon
+						expanded={expanded}
+						size={14}
+					/>
+				</span>
+			</div>
 			<div className={`grid ${expanded ? 'grid-rows-expand' : 'grid-rows-collapse'}`}>
 				<div className="overflow-hidden">
-					<div className="mt-1 mb-2 text-xs text-text-100 leading-relaxed">
-						<Renderer toolCall={call} />
+					<div className="group/body py-p6">
+						<div className="bg-t1 rounded-r6 flex flex-col relative">
+							<Renderer toolCall={call} />
+							<DebugLink
+								sessionId={sessionId}
+								uuid={call.sourceUuid}
+								className="absolute top-1 right-1"
+							/>
+						</div>
 					</div>
 				</div>
 			</div>
