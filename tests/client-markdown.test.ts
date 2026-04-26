@@ -1,4 +1,42 @@
-import {renderMarkdownToHtml} from '../src/lib/client-markdown';
+import {renderMarkdownToHtml, looksLikeMarkdown} from '../src/lib/client-markdown';
+
+describe('looksLikeMarkdown', () => {
+	it('returns true for text with 2+ markdown indicators', () => {
+		// heading + bullet list
+		expect(looksLikeMarkdown('# Title\n- item 1\n- item 2')).toBe(true);
+		// bold + link
+		expect(looksLikeMarkdown('**bold text** and [a link](http://example.com)')).toBe(true);
+		// code fence + heading
+		expect(looksLikeMarkdown('# Code\n```\nconst x = 1;\n```')).toBe(true);
+		// bullet list + bold
+		expect(looksLikeMarkdown('- **bold item**\n- another item')).toBe(true);
+	});
+
+	it('returns false for text with fewer than 2 indicators', () => {
+		// just a bullet list (1 indicator)
+		expect(looksLikeMarkdown('- item 1\n- item 2\n- item 3')).toBe(false);
+		// just a heading (1 indicator)
+		expect(looksLikeMarkdown('# Title\nSome plain text here')).toBe(false);
+		// plain text (0 indicators)
+		expect(looksLikeMarkdown('Just some regular text on multiple lines\nMore text here')).toBe(false);
+	});
+
+	it('returns false for empty or whitespace text', () => {
+		expect(looksLikeMarkdown('')).toBe(false);
+		expect(looksLikeMarkdown('   ')).toBe(false);
+	});
+
+	it('detects computer tool results with markdown formatting', () => {
+		// Typical claude-in-chrome computer tool result with markdown
+		const computerResult = `## Page Content
+
+The page shows:
+- **Navigation bar** at the top
+- A search input field
+- [Documentation link](https://docs.example.com)`;
+		expect(looksLikeMarkdown(computerResult)).toBe(true);
+	});
+});
 
 describe('renderMarkdownToHtml', () => {
 	it('renders markdown headings to HTML', () => {
