@@ -167,7 +167,17 @@ function NavigateRenderer({input, resultText}: {input: Record<string, unknown>; 
 				) : (
 					<Globe className="h-4 w-4 text-blue-500" />
 				)}
-				<span className="text-sm text-foreground">{isSuccess ? 'Navigated successfully' : 'Navigate'}</span>
+				<span className="text-sm text-foreground">{isSuccess ? 'Navigated to' : 'Navigate to'}</span>
+				{url && (
+					<a
+						href={url}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="text-sm text-accent-100 hover:underline truncate min-w-0"
+					>
+						{url}
+					</a>
+				)}
 			</div>
 			{cleanedResult && <ResultSummary resultText={cleanedResult} />}
 		</div>

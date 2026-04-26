@@ -1479,6 +1479,16 @@ function ToolCallSection({calls, sessionId}: {calls: ClientToolCall[]; sessionId
 const FILE_PARAM_TOOLS = new Set(['Read', 'Edit', 'MultiEdit', 'Write']);
 
 /**
+ * Tools whose renderer body already displays the param (e.g. URL),
+ * so we suppress it from the ToolCallRow header to avoid duplication.
+ */
+const RENDERER_HANDLES_PARAM = new Set([
+	'mcp__claude-in-chrome__navigate',
+	'mcp__chrome-devtools__navigate_page',
+	'mcp__plugin_playwright_playwright__browser_navigate',
+]);
+
+/**
  * Tools that show inline diff stats (+N -M) in the clickable row.
  */
 const EDIT_TOOLS = new Set(['Edit', 'MultiEdit']);
@@ -1531,7 +1541,11 @@ function ToolCallRow({call, sessionId}: {call: ClientToolCall; sessionId: string
 	const isFileParam = FILE_PARAM_TOOLS.has(call.name);
 	const diffStats = useEditDiffStats(call);
 
-	const displayParam = isFileParam ? filenameFromPath(call.param) : call.param;
+	const displayParam = RENDERER_HANDLES_PARAM.has(call.name)
+		? ''
+		: isFileParam
+			? filenameFromPath(call.param)
+			: call.param;
 
 	return (
 		<div className="flex flex-col w-full">

@@ -200,14 +200,25 @@ function PageList({pages}: {pages: PageInfo[]}) {
 // Sub-renderers
 // ---------------------------------------------------------------------------
 
-function NavigatePageRenderer({resultText}: {resultText: string}) {
+function NavigatePageRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
+	const url = (input['url'] as string) ?? '';
 	const pages = parsePageList(resultText);
 
 	return (
 		<div className="px-2 py-2 space-y-2">
 			<div className="flex items-center gap-2">
 				<CheckCircle className="h-4 w-4 text-green-500" />
-				<span className="text-sm text-foreground">Navigated successfully</span>
+				<span className="text-sm text-foreground">Navigated to</span>
+				{url && (
+					<a
+						href={url}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="text-sm text-accent-100 hover:underline truncate min-w-0"
+					>
+						{url}
+					</a>
+				)}
 			</div>
 			<PageList pages={pages} />
 		</div>
@@ -666,9 +677,16 @@ export function ChromeDevtoolsRenderer({toolCall}: ToolRendererProps) {
 
 	if (!resultText) return <span className="text-xs text-muted-foreground">No result</span>;
 
+	const input = toolCall.input as Record<string, unknown>;
+
 	switch (tool) {
 		case 'navigate_page':
-			return <NavigatePageRenderer resultText={resultText} />;
+			return (
+				<NavigatePageRenderer
+					input={input}
+					resultText={resultText}
+				/>
+			);
 		case 'new_page':
 			return <NewPageRenderer resultText={resultText} />;
 		case 'close_page':

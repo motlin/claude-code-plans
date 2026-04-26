@@ -102,13 +102,28 @@ function stripNavigateUrlFromResult(resultText: string, url: string): string {
 
 function NavigateRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
 	const url = extractUrl(input);
+	const isSuccess = !resultText || resultText.toLowerCase().includes('navigated to');
 	const cleanedResult = stripNavigateUrlFromResult(resultText, url);
 
 	return (
 		<div className="px-2 py-2 space-y-2">
 			<div className="flex items-center gap-2">
-				<CheckCircle className="h-4 w-4 text-green-500" />
-				<span className="text-sm text-foreground">Navigated successfully</span>
+				{isSuccess ? (
+					<CheckCircle className="h-4 w-4 text-green-500" />
+				) : (
+					<Globe className="h-4 w-4 text-blue-500" />
+				)}
+				<span className="text-sm text-foreground">{isSuccess ? 'Navigated to' : 'Navigate to'}</span>
+				{url && (
+					<a
+						href={url}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="text-sm text-accent-100 hover:underline truncate min-w-0"
+					>
+						{url}
+					</a>
+				)}
 			</div>
 			{cleanedResult && <ResultSummary resultText={cleanedResult} />}
 		</div>
