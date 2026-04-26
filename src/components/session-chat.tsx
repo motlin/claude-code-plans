@@ -696,6 +696,18 @@ function UserEntry({
 		);
 	}
 
+	const isExternal = line.userType === 'external';
+
+	if (isExternal) {
+		return (
+			<ExternalMessageEntry
+				line={line}
+				index={index}
+				sessionId={sessionId}
+			/>
+		);
+	}
+
 	const timestamp = 'timestamp' in line ? line.timestamp : undefined;
 	const actionsProps = {line, index, ...(timestamp ? {timestamp} : {})};
 	const {textNodes, mediaNodes} = renderUserContentBlocks(line, sessionId);
@@ -705,6 +717,33 @@ function UserEntry({
 			<div className="flex flex-col items-start gap-1 max-w-[75%] min-w-0">
 				{textNodes.length > 0 && (
 					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] rounded-bl-[2px] bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-[13px] leading-[20px] select-text">
+						{textNodes}
+					</div>
+				)}
+				{mediaNodes}
+				<UserMessageActions {...actionsProps} />
+			</div>
+		</div>
+	);
+}
+
+function ExternalMessageEntry({line, index, sessionId}: {line: MessageSessionLine; index: number; sessionId: string}) {
+	const timestamp = 'timestamp' in line ? line.timestamp : undefined;
+	const actionsProps = {line, index, ...(timestamp ? {timestamp} : {})};
+	const {textNodes, mediaNodes} = renderUserContentBlocks(line, sessionId);
+
+	if (textNodes.length === 0 && mediaNodes.length === 0) return null;
+
+	return (
+		<div className="group/msg flex justify-start w-full">
+			<div className="flex flex-col items-start gap-1 max-w-[85%] min-w-0">
+				<div className="flex items-center gap-1.5 px-1">
+					<span className="text-[10px] font-medium text-text-500 bg-bg-200 rounded-full px-2 py-0.5">
+						Automated
+					</span>
+				</div>
+				{textNodes.length > 0 && (
+					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] rounded-bl-[2px] bg-auto-msg-bg text-auto-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-[13px] leading-[20px] select-text">
 						{textNodes}
 					</div>
 				)}

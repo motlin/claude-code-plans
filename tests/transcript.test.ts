@@ -260,6 +260,33 @@ describe('processTranscript', () => {
 		}
 	});
 
+	it('preserves userType on message lines', () => {
+		const records = [
+			userRecord([{type: 'text', text: 'automated prompt'}], {uuid: 'u-1', userType: 'external'}),
+			assistantRecord([{type: 'text', text: 'response'}], {uuid: 'a-1'}),
+		];
+		const result = processTranscript(records);
+		const userLine = result.lines[0]!;
+		expect(userLine.type).toBe('user');
+		if (userLine.type === 'user') {
+			expect(userLine.userType).toBe('external');
+		}
+		const assistantLine = result.lines[1]!;
+		expect(assistantLine.type).toBe('assistant');
+		if (assistantLine.type === 'assistant') {
+			expect(assistantLine.userType).toBeUndefined();
+		}
+	});
+
+	it('omits userType when not present on record', () => {
+		const records = [userRecord([{type: 'text', text: 'Hello'}], {uuid: 'u-1'})];
+		const result = processTranscript(records);
+		const line = result.lines[0]!;
+		if (line.type === 'user') {
+			expect(line.userType).toBeUndefined();
+		}
+	});
+
 	it('handles user records with string content', () => {
 		const records = [userRecord('simple text', {uuid: 'u-1'})];
 		const result = processTranscript(records);

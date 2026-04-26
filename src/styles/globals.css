@@ -47,6 +47,10 @@
 	--color-user-msg-bg: var(--user-msg-bg);
 	--color-user-msg-text: var(--user-msg-text);
 
+	/* Automated (external) message bubble */
+	--color-auto-msg-bg: var(--auto-msg-bg);
+	--color-auto-msg-text: var(--auto-msg-text);
+
 	/* Upstream claude.ai/code — extended diff stat colors */
 	--color-extended-green: var(--upstream-extended-green);
 	--color-extended-pink: var(--upstream-extended-pink);
@@ -144,6 +148,10 @@
 	--user-msg-bg: hsl(210 100% 45% / 0.07);
 	--user-msg-text: hsl(210 100% 40%);
 
+	/* Automated (external) message bubble — neutral gray tint */
+	--auto-msg-bg: hsl(0 0% 50% / 0.08);
+	--auto-msg-text: hsl(0 0% 35%);
+
 	/* Upstream claude.ai/code — assistant text colors */
 	--upstream-text-assistant-primary: hsl(0 0% 4%);
 	--upstream-text-assistant-secondary: hsl(40 3% 42%);
@@ -210,6 +218,10 @@
 	/* User message bubble — matches claude.ai/code: accent tint + blue text */
 	--user-msg-bg: hsl(210 100% 55% / 0.10);
 	--user-msg-text: hsl(210 80% 68%);
+
+	/* Automated (external) message bubble — neutral gray tint */
+	--auto-msg-bg: hsl(0 0% 100% / 0.08);
+	--auto-msg-text: hsl(0 0% 70%);
 
 	/* Upstream claude.ai/code — assistant text colors (inverted gray scale) */
 	--upstream-text-assistant-primary: hsl(53 12% 87%);

@@ -112,6 +112,7 @@ export interface MessageProcessedLine {
 	uuid?: string | undefined;
 	parentUuid?: string | undefined;
 	timestamp?: string | undefined;
+	userType?: string | undefined;
 	message?:
 		| {
 				role?: string | undefined;
@@ -468,6 +469,7 @@ function processRecordBatch(
 		if (uuid !== undefined) processedLine.uuid = uuid;
 		if (typeof record.parentUuid === 'string') processedLine.parentUuid = record.parentUuid;
 		if (record.timestamp !== undefined) processedLine.timestamp = record.timestamp;
+		if (typeof record.userType === 'string') processedLine.userType = record.userType;
 		// The Zod-parsed message uses the ContentBlock type directly --
 		// no intermediate serialization type needed.
 		processedLine.message = record.message as MessageProcessedLine['message'];
