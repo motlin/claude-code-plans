@@ -4,6 +4,7 @@
 	font-weight: 430;
 	line-height: 19.6px;
 	color: var(--text-100);
+	white-space: normal;
 }
 
 .markdown h1,
