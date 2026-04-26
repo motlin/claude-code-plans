@@ -11,7 +11,7 @@ export function AgentRenderer({toolCall}: ToolRendererProps) {
 
 	const agentIdMatch = result?.match(/agentId:\s*(\S+)/);
 	const displayResult = agentIdMatch?.[1] ? result!.replace(/agentId:\s*\S+\n?/, '').trim() : result;
-	const agentSessionId = subagentInfo?.agentId ?? (agentIdMatch?.[1] ? `agent-${agentIdMatch[1]}` : null);
+	const agentSessionId = subagentInfo?.agentId ?? null;
 
 	const params: KeyValueParam[] = [];
 	if (description) params.push({key: 'description', value: description, markdown: true});
