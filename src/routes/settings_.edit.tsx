@@ -877,8 +877,491 @@ function StatusLineEditor({
 	);
 }
 
+function HooksEditor({
+	value,
+	onChange,
+}: {
+	value: Record<string, Array<{matcher?: string; hooks: Array<{type: string; command: string; timeout?: number}>}>>;
+	onChange: (key: string, value: unknown) => void;
+}) {
+	const events = Object.keys(value);
+	const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
+	const [newEventName, setNewEventName] = useState('');
+
+	const EVENT_OPTIONS = [
+		'PreToolUse',
+		'PostToolUse',
+		'Stop',
+		'SubagentStop',
+		'SessionStart',
+		'SessionEnd',
+		'UserPromptSubmit',
+		'PreCompact',
+		'Notification',
+	];
+	const availableEvents = EVENT_OPTIONS.filter((e) => !events.includes(e));
+
+	const handleAddEvent = useCallback(() => {
+		if (!newEventName) return;
+		onChange('hooks', {...value, [newEventName]: []});
+		setNewEventName('');
+		setExpandedEvent(newEventName);
+	}, [value, onChange, newEventName]);
+
+	const handleRemoveEvent = useCallback(
+		(eventName: string) => {
+			const updated = {...value};
+			delete updated[eventName];
+			onChange('hooks', updated);
+			if (expandedEvent === eventName) setExpandedEvent(null);
+		},
+		[value, onChange, expandedEvent],
+	);
+
+	const handleAddMatcher = useCallback(
+		(eventName: string) => {
+			const matchers = [...(value[eventName] ?? [])];
+			matchers.push({hooks: [{type: 'command', command: ''}]});
+			onChange('hooks', {...value, [eventName]: matchers});
+		},
+		[value, onChange],
+	);
+
+	const handleRemoveMatcher = useCallback(
+		(eventName: string, matcherIndex: number) => {
+			const matchers = (value[eventName] ?? []).filter((_, i) => i !== matcherIndex);
+			onChange('hooks', {...value, [eventName]: matchers});
+		},
+		[value, onChange],
+	);
+
+	const handleMatcherFieldChange = useCallback(
+		(eventName: string, matcherIndex: number, _field: 'matcher', fieldValue: string) => {
+			const matchers = [...(value[eventName] ?? [])];
+			const existing = matchers[matcherIndex];
+			if (!existing) return;
+			if (fieldValue) {
+				matchers[matcherIndex] = {matcher: fieldValue, hooks: existing.hooks};
+			} else {
+				matchers[matcherIndex] = {hooks: existing.hooks};
+			}
+			onChange('hooks', {...value, [eventName]: matchers});
+		},
+		[value, onChange],
+	);
+
+	const handleHookCommandChange = useCallback(
+		(eventName: string, matcherIndex: number, hookIndex: number, command: string) => {
+			const matchers = [...(value[eventName] ?? [])];
+			const existing = matchers[matcherIndex];
+			if (!existing) return;
+			const hooks = [...existing.hooks];
+			hooks[hookIndex] = {type: hooks[hookIndex]?.type ?? 'command', command};
+			if (existing.matcher) {
+				matchers[matcherIndex] = {matcher: existing.matcher, hooks};
+			} else {
+				matchers[matcherIndex] = {hooks};
+			}
+			onChange('hooks', {...value, [eventName]: matchers});
+		},
+		[value, onChange],
+	);
+
+	const handleAddHookCommand = useCallback(
+		(eventName: string, matcherIndex: number) => {
+			const matchers = [...(value[eventName] ?? [])];
+			const existing = matchers[matcherIndex];
+			if (!existing) return;
+			const hooks = [...existing.hooks, {type: 'command' as const, command: ''}];
+			if (existing.matcher) {
+				matchers[matcherIndex] = {matcher: existing.matcher, hooks};
+			} else {
+				matchers[matcherIndex] = {hooks};
+			}
+			onChange('hooks', {...value, [eventName]: matchers});
+		},
+		[value, onChange],
+	);
+
+	const handleRemoveHookCommand = useCallback(
+		(eventName: string, matcherIndex: number, hookIndex: number) => {
+			const matchers = [...(value[eventName] ?? [])];
+			const existing = matchers[matcherIndex];
+			if (!existing) return;
+			const hooks = existing.hooks.filter((_, i) => i !== hookIndex);
+			if (existing.matcher) {
+				matchers[matcherIndex] = {matcher: existing.matcher, hooks};
+			} else {
+				matchers[matcherIndex] = {hooks};
+			}
+			onChange('hooks', {...value, [eventName]: matchers});
+		},
+		[value, onChange],
+	);
+
+	return (
+		<div className="py-2">
+			<div className="mb-2">
+				<div className="text-sm font-medium text-text-100">Hooks</div>
+				<div className="text-xs text-text-500">
+					Event-driven commands that run before/after tool use and other events
+				</div>
+			</div>
+			<div className="space-y-2">
+				{events.map((eventName) => {
+					const matchers = value[eventName] ?? [];
+					const isExpanded = expandedEvent === eventName;
+					return (
+						<div
+							key={eventName}
+							className="rounded-md border border-border-300/15"
+						>
+							<div className="flex items-center justify-between px-3 py-2">
+								<button
+									type="button"
+									onClick={() => setExpandedEvent(isExpanded ? null : eventName)}
+									className="flex items-center gap-1.5 text-sm font-medium text-text-100 hover:text-accent-100"
+								>
+									{isExpanded ? (
+										<ChevronDown className="h-3.5 w-3.5" />
+									) : (
+										<ChevronRight className="h-3.5 w-3.5" />
+									)}
+									{eventName}
+									<span className="font-normal text-text-500">
+										({matchers.length} {matchers.length === 1 ? 'rule' : 'rules'})
+									</span>
+								</button>
+								<button
+									type="button"
+									onClick={() => handleRemoveEvent(eventName)}
+									className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
+									title="Remove event"
+								>
+									<Trash2 className="h-3.5 w-3.5" />
+								</button>
+							</div>
+							{isExpanded && (
+								<div className="border-t border-border-300/15 px-3 py-2 space-y-3">
+									{matchers.map((matcher, matcherIndex) => (
+										<div
+											key={matcherIndex}
+											className="rounded-md border border-border-300/10 bg-bg-100 p-2 space-y-2"
+										>
+											<div className="flex items-center justify-between gap-2">
+												<div className="flex items-center gap-2 flex-1">
+													<span className="text-xs text-text-300 shrink-0">Matcher:</span>
+													<input
+														type="text"
+														value={matcher.matcher ?? ''}
+														onChange={(event) =>
+															handleMatcherFieldChange(
+																eventName,
+																matcherIndex,
+																'matcher',
+																event.target.value,
+															)
+														}
+														className="flex-1 rounded-md border border-border-300/15 bg-bg-000 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+														placeholder="e.g. Bash (optional)"
+													/>
+												</div>
+												<button
+													type="button"
+													onClick={() => handleRemoveMatcher(eventName, matcherIndex)}
+													className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
+													title="Remove rule"
+												>
+													<Trash2 className="h-3 w-3" />
+												</button>
+											</div>
+											<div className="space-y-1">
+												<span className="text-xs text-text-300">Commands:</span>
+												{matcher.hooks.map((hook, hookIndex) => (
+													<div
+														key={hookIndex}
+														className="flex items-start gap-2"
+													>
+														<textarea
+															value={hook.command}
+															onChange={(event) =>
+																handleHookCommandChange(
+																	eventName,
+																	matcherIndex,
+																	hookIndex,
+																	event.target.value,
+																)
+															}
+															className="flex-1 rounded-md border border-border-300/15 bg-bg-000 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100 resize-y"
+															rows={Math.min(
+																Math.max(hook.command.split('\n').length, 1),
+																4,
+															)}
+															placeholder="command..."
+														/>
+														<button
+															type="button"
+															onClick={() =>
+																handleRemoveHookCommand(
+																	eventName,
+																	matcherIndex,
+																	hookIndex,
+																)
+															}
+															className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000 mt-0.5"
+															title="Remove command"
+														>
+															<X className="h-3 w-3" />
+														</button>
+													</div>
+												))}
+												<button
+													type="button"
+													onClick={() => handleAddHookCommand(eventName, matcherIndex)}
+													className="flex items-center gap-1 text-xs text-text-300 hover:text-accent-100"
+												>
+													<Plus className="h-3 w-3" />
+													Add command
+												</button>
+											</div>
+										</div>
+									))}
+									<button
+										type="button"
+										onClick={() => handleAddMatcher(eventName)}
+										className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200"
+									>
+										<Plus className="h-3 w-3" />
+										Add rule
+									</button>
+								</div>
+							)}
+						</div>
+					);
+				})}
+				{availableEvents.length > 0 && (
+					<div className="flex items-center gap-2 pt-1">
+						<select
+							value={newEventName}
+							onChange={(event) => setNewEventName(event.target.value)}
+							className="rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
+						>
+							<option value="">Select event...</option>
+							{availableEvents.map((e) => (
+								<option
+									key={e}
+									value={e}
+								>
+									{e}
+								</option>
+							))}
+						</select>
+						<button
+							type="button"
+							onClick={handleAddEvent}
+							disabled={!newEventName}
+							className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200 disabled:opacity-50"
+						>
+							<Plus className="h-3 w-3" />
+							Add event
+						</button>
+					</div>
+				)}
+			</div>
+		</div>
+	);
+}
+
+function PluginsEditor({
+	value,
+	onChange,
+}: {
+	value: Record<string, boolean>;
+	onChange: (key: string, value: unknown) => void;
+}) {
+	const entries = Object.entries(value).sort(([a], [b]) => a.localeCompare(b));
+	const [newPlugin, setNewPlugin] = useState('');
+
+	const handleToggle = useCallback(
+		(pluginName: string, enabled: boolean) => {
+			onChange('enabledPlugins', {...value, [pluginName]: enabled});
+		},
+		[value, onChange],
+	);
+
+	const handleRemove = useCallback(
+		(pluginName: string) => {
+			const updated = {...value};
+			delete updated[pluginName];
+			onChange('enabledPlugins', updated);
+		},
+		[value, onChange],
+	);
+
+	const handleAdd = useCallback(() => {
+		if (!newPlugin.trim()) return;
+		onChange('enabledPlugins', {...value, [newPlugin.trim()]: true});
+		setNewPlugin('');
+	}, [value, onChange, newPlugin]);
+
+	return (
+		<div className="py-2">
+			<div className="mb-2">
+				<div className="text-sm font-medium text-text-100">Enabled plugins</div>
+				<div className="text-xs text-text-500">Toggle marketplace plugins on or off</div>
+			</div>
+			<div className="space-y-1">
+				{entries.map(([pluginName, enabled]) => (
+					<div
+						key={pluginName}
+						className="flex items-center justify-between gap-2 py-1"
+					>
+						<span className="font-mono text-xs text-text-100 truncate">{pluginName}</span>
+						<div className="flex items-center gap-2 shrink-0">
+							<FormToggle
+								checked={enabled}
+								onChange={(checked) => handleToggle(pluginName, checked)}
+							/>
+							<button
+								type="button"
+								onClick={() => handleRemove(pluginName)}
+								className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
+								title="Remove"
+							>
+								<Trash2 className="h-3.5 w-3.5" />
+							</button>
+						</div>
+					</div>
+				))}
+				<div className="flex items-center gap-2 pt-1">
+					<input
+						type="text"
+						value={newPlugin}
+						onChange={(event) => setNewPlugin(event.target.value)}
+						onKeyDown={(event) => {
+							if (event.key === 'Enter') handleAdd();
+						}}
+						className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
+						placeholder="plugin-name@marketplace"
+					/>
+					<button
+						type="button"
+						onClick={handleAdd}
+						disabled={!newPlugin.trim()}
+						className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200 disabled:opacity-50"
+					>
+						<Plus className="h-3 w-3" />
+						Add
+					</button>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function StringListEditor({
+	label,
+	description,
+	fieldKey,
+	entries,
+	onChange,
+	placeholder,
+}: {
+	label: string;
+	description: string;
+	fieldKey: string;
+	entries: string[];
+	onChange: (key: string, value: unknown) => void;
+	placeholder?: string;
+}) {
+	const [newEntry, setNewEntry] = useState('');
+
+	const handleRemove = useCallback(
+		(index: number) => {
+			const updated = entries.filter((_, i) => i !== index);
+			onChange(fieldKey, updated);
+		},
+		[entries, onChange, fieldKey],
+	);
+
+	const handleAdd = useCallback(() => {
+		if (!newEntry.trim()) return;
+		onChange(fieldKey, [...entries, newEntry.trim()]);
+		setNewEntry('');
+	}, [entries, onChange, fieldKey, newEntry]);
+
+	const handleChange = useCallback(
+		(index: number, value: string) => {
+			const updated = [...entries];
+			updated[index] = value;
+			onChange(fieldKey, updated);
+		},
+		[entries, onChange, fieldKey],
+	);
+
+	return (
+		<div className="py-2">
+			<div className="mb-2">
+				<div className="text-sm font-medium text-text-100">{label}</div>
+				<div className="text-xs text-text-500">{description}</div>
+			</div>
+			<div className="space-y-1">
+				{entries.map((entry, index) => (
+					<div
+						key={index}
+						className="flex items-center gap-2"
+					>
+						<input
+							type="text"
+							value={entry}
+							onChange={(event) => handleChange(index, event.target.value)}
+							className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+						/>
+						<button
+							type="button"
+							onClick={() => handleRemove(index)}
+							className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
+							title="Remove"
+						>
+							<Trash2 className="h-3.5 w-3.5" />
+						</button>
+					</div>
+				))}
+				<div className="flex items-center gap-2 pt-1">
+					<input
+						type="text"
+						value={newEntry}
+						onChange={(event) => setNewEntry(event.target.value)}
+						onKeyDown={(event) => {
+							if (event.key === 'Enter') handleAdd();
+						}}
+						className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
+						placeholder={placeholder ?? 'Add entry...'}
+					/>
+					<button
+						type="button"
+						onClick={handleAdd}
+						disabled={!newEntry.trim()}
+						className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200 disabled:opacity-50"
+					>
+						<Plus className="h-3 w-3" />
+						Add
+					</button>
+				</div>
+			</div>
+		</div>
+	);
+}
+
 // Keys that have dedicated form editors (not scalar fields, not "Other")
-const DEDICATED_EDITOR_KEYS = new Set(['env', 'permissions', 'statusLine']);
+const DEDICATED_EDITOR_KEYS = new Set([
+	'env',
+	'permissions',
+	'statusLine',
+	'hooks',
+	'enabledPlugins',
+	'enabledMcpjsonServers',
+]);
 
 function ObjectSummary({label, value}: {label: string; value: unknown}) {
 	const [expanded, setExpanded] = useState(false);
@@ -936,7 +1419,18 @@ function FormEditor({filename, initialContent, path}: {filename: string; initial
 		setSaving(true);
 		setFeedback(null);
 		try {
-			const content = JSON.stringify(data, null, 2);
+			// Strip empty dedicated-editor keys so we don't write empty objects/arrays to disk
+			const cleaned = {...data};
+			for (const key of DEDICATED_EDITOR_KEYS) {
+				const val = cleaned[key];
+				if (val === undefined || val === null) continue;
+				if (Array.isArray(val) && val.length === 0) {
+					delete cleaned[key];
+				} else if (typeof val === 'object' && !Array.isArray(val) && Object.keys(val as object).length === 0) {
+					delete cleaned[key];
+				}
+			}
+			const content = JSON.stringify(cleaned, null, 2);
 			const result = await saveSettingsFile({
 				data: {filename: filename as 'settings.json' | 'settings.local.json', content},
 			});
@@ -993,45 +1487,88 @@ function FormEditor({filename, initialContent, path}: {filename: string; initial
 					);
 				})}
 
-				{data['env'] !== undefined && typeof data['env'] === 'object' && data['env'] !== null && (
-					<div>
-						<h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
-							Environment
-						</h3>
-						<EnvEditor
-							value={data['env'] as Record<string, string>}
-							onChange={handleFieldChange}
-						/>
-					</div>
-				)}
+				<div>
+					<h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">Environment</h3>
+					<EnvEditor
+						value={
+							(typeof data['env'] === 'object' && data['env'] !== null ? data['env'] : {}) as Record<
+								string,
+								string
+							>
+						}
+						onChange={handleFieldChange}
+					/>
+				</div>
 
-				{data['permissions'] !== undefined &&
-					typeof data['permissions'] === 'object' &&
-					data['permissions'] !== null && (
-						<div>
-							<h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
-								Permissions
-							</h3>
-							<PermissionsEditor
-								value={data['permissions'] as Record<string, unknown>}
-								onChange={handleFieldChange}
-							/>
-						</div>
-					)}
+				<div>
+					<h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">Permissions</h3>
+					<PermissionsEditor
+						value={
+							(typeof data['permissions'] === 'object' && data['permissions'] !== null
+								? data['permissions']
+								: {}) as Record<string, unknown>
+						}
+						onChange={handleFieldChange}
+					/>
+				</div>
 
-				{data['statusLine'] !== undefined &&
-					typeof data['statusLine'] === 'object' &&
-					data['statusLine'] !== null && (
-						<div>
-							<h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
-								Status Line
-							</h3>
-							<StatusLineEditor
-								value={data['statusLine'] as Record<string, unknown>}
-								onChange={handleFieldChange}
-							/>
-						</div>
-					)}
+				<div>
+					<h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">Status Line</h3>
+					<StatusLineEditor
+						value={
+							(typeof data['statusLine'] === 'object' && data['statusLine'] !== null
+								? data['statusLine']
+								: {}) as Record<string, unknown>
+						}
+						onChange={handleFieldChange}
+					/>
+				</div>
+
+				<div>
+					<h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">Hooks</h3>
+					<HooksEditor
+						value={
+							(typeof data['hooks'] === 'object' && data['hooks'] !== null
+								? data['hooks']
+								: {}) as Record<
+								string,
+								Array<{
+									matcher?: string;
+									hooks: Array<{type: string; command: string; timeout?: number}>;
+								}>
+							>
+						}
+						onChange={handleFieldChange}
+					/>
+				</div>
+
+				<div>
+					<h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">Plugins</h3>
+					<PluginsEditor
+						value={
+							(typeof data['enabledPlugins'] === 'object' && data['enabledPlugins'] !== null
+								? data['enabledPlugins']
+								: {}) as Record<string, boolean>
+						}
+						onChange={handleFieldChange}
+					/>
+				</div>
+
+				<div>
+					<h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">MCP Servers</h3>
+					<StringListEditor
+						label="Enabled MCP JSON servers"
+						description="MCP servers from project .mcp.json to auto-enable"
+						fieldKey="enabledMcpjsonServers"
+						entries={
+							Array.isArray(data['enabledMcpjsonServers'])
+								? (data['enabledMcpjsonServers'] as string[])
+								: []
+						}
+						onChange={handleFieldChange}
+						placeholder="server-name"
+					/>
+				</div>
 
 				{unknownKeys.length > 0 && (
 					<div>
