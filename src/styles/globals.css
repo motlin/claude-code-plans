@@ -47,10 +47,54 @@
 	--color-user-msg-bg: var(--user-msg-bg);
 	--color-user-msg-text: var(--user-msg-text);
 
+	/* Upstream claude.ai/code — assistant text colors */
+	--color-assistant-primary: var(--upstream-text-assistant-primary);
+	--color-assistant-secondary: var(--upstream-text-assistant-secondary);
+
+	/* Upstream claude.ai/code — transparency layers (bg-t1, bg-t2, etc.) */
+	--color-t0: var(--upstream-t0);
+	--color-t1: var(--upstream-t1);
+	--color-t2: var(--upstream-t2);
+	--color-t3: var(--upstream-t3);
+	--color-t4: var(--upstream-t4);
+	--color-t5: var(--upstream-t5);
+	--color-t6: var(--upstream-t6);
+	--color-t7: var(--upstream-t7);
+	--color-t8: var(--upstream-t8);
+	--color-t9: var(--upstream-t9);
+
+	/* Upstream claude.ai/code — spacing scale (gap-g3, p-p6, etc.) */
+	--spacing-g1: 2px;
+	--spacing-g2: 3px;
+	--spacing-g3: 4px;
+	--spacing-g4: 5px;
+	--spacing-g5: 6px;
+	--spacing-g6: 8px;
+	--spacing-g7: 10px;
+	--spacing-g8: 12px;
+	--spacing-p3: 4px;
+	--spacing-p4: 5px;
+	--spacing-p5: 6px;
+	--spacing-p6: 8px;
+	--spacing-p7: 10px;
+	--spacing-p8: 12px;
+
+	/* Upstream claude.ai/code — border radii (rounded-r3, rounded-r6, etc.) */
+	--radius-r3: 4px;
+	--radius-r4: 5px;
+	--radius-r5: 6px;
+	--radius-r6: 8px;
+
 	--radius-sm: calc(var(--radius) - 4px);
 	--radius-md: calc(var(--radius) - 2px);
 	--radius-lg: var(--radius);
 	--radius-xl: calc(var(--radius) + 4px);
+
+	/* Upstream claude.ai/code — typography scale */
+	--text-body: var(--upstream-text-body);
+	--text-body--line-height: var(--upstream-leading-body);
+	--text-code: var(--upstream-text-code);
+	--text-code--line-height: var(--upstream-leading-code);
 }
 
 :root {
@@ -95,6 +139,28 @@
 	/* User message bubble — matches claude.ai/code: 7% accent tint + blue text */
 	--user-msg-bg: hsl(210 100% 45% / 0.07);
 	--user-msg-text: hsl(210 100% 40%);
+
+	/* Upstream claude.ai/code — assistant text colors */
+	--upstream-text-assistant-primary: hsl(0 0% 4%);
+	--upstream-text-assistant-secondary: hsl(40 3% 42%);
+
+	/* Upstream claude.ai/code — transparency layers (gray-900 base) */
+	--upstream-t0: hsl(0 0% 4% / 0);
+	--upstream-t1: hsl(0 0% 4% / 0.04);
+	--upstream-t2: hsl(0 0% 4% / 0.06);
+	--upstream-t3: hsl(0 0% 4% / 0.10);
+	--upstream-t4: hsl(0 0% 4% / 0.16);
+	--upstream-t5: hsl(0 0% 4% / 0.25);
+	--upstream-t6: hsl(0 0% 4% / 0.50);
+	--upstream-t7: hsl(0 0% 4% / 0.80);
+	--upstream-t8: hsl(0 0% 4% / 0.90);
+	--upstream-t9: hsl(0 0% 4% / 1);
+
+	/* Upstream claude.ai/code — typography */
+	--upstream-text-body: 13px;
+	--upstream-leading-body: 20px;
+	--upstream-text-code: 12px;
+	--upstream-leading-code: 17px;
 }
 
 .dark {
@@ -136,6 +202,22 @@
 	/* User message bubble — matches claude.ai/code: accent tint + blue text */
 	--user-msg-bg: hsl(210 100% 55% / 0.10);
 	--user-msg-text: hsl(210 80% 68%);
+
+	/* Upstream claude.ai/code — assistant text colors (inverted gray scale) */
+	--upstream-text-assistant-primary: hsl(53 12% 87%);
+	--upstream-text-assistant-secondary: hsl(55 6% 63%);
+
+	/* Upstream claude.ai/code — transparency layers (white base) */
+	--upstream-t0: hsl(0 0% 100% / 0);
+	--upstream-t1: hsl(0 0% 100% / 0.04);
+	--upstream-t2: hsl(0 0% 100% / 0.08);
+	--upstream-t3: hsl(0 0% 100% / 0.12);
+	--upstream-t4: hsl(0 0% 100% / 0.16);
+	--upstream-t5: hsl(0 0% 100% / 0.25);
+	--upstream-t6: hsl(0 0% 100% / 0.40);
+	--upstream-t7: hsl(0 0% 100% / 0.70);
+	--upstream-t8: hsl(0 0% 100% / 0.80);
+	--upstream-t9: hsl(0 0% 100% / 1);
 }
 
 @layer utilities {
