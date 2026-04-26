@@ -4,6 +4,7 @@ import {tmpdir} from 'node:os';
 import {
 	extractSessionTitle,
 	summarizeToolCalls,
+	summarizeToolCallsStructured,
 	formatToolName,
 	listSessions,
 	readSession,
@@ -142,7 +143,7 @@ describe('summarizeToolCalls', () => {
 			{name: 'Bash', input: {}},
 			{name: 'Bash', input: {}},
 		];
-		expect(summarizeToolCalls(calls)).toBe('edited 3 files, read a file, ran 2 bash commands');
+		expect(summarizeToolCalls(calls)).toBe('edited 3 files, read a file, ran 2 commands');
 	});
 
 	it('groups Edit and Write together', () => {
@@ -292,8 +293,42 @@ describe('summarizeToolCalls', () => {
 		];
 		// Edits: 9 files; per edit removed 3 added 5 -> totals +45 -27.
 		expect(summarizeToolCalls(calls)).toBe(
-			'edited 9 files +45 -27, searched for 6 patterns, read 8 files, ran 4 bash commands, recalled a memory, wrote 4 memories, called CustomTool',
+			'edited 9 files +45 -27, searched for 6 patterns, read 8 files, ran 4 commands, recalled a memory, wrote 4 memories, called CustomTool',
 		);
+	});
+});
+
+describe('summarizeToolCallsStructured', () => {
+	it('returns empty array for no calls', () => {
+		expect(summarizeToolCallsStructured([])).toEqual([]);
+	});
+
+	it('single Read returns one segment with capitalized verb', () => {
+		expect(summarizeToolCallsStructured([{name: 'Read', input: {file_path: '/foo'}}])).toEqual([
+			{verb: 'Read', rest: 'a file'},
+		]);
+	});
+
+	it('mixed tools return segments in category order', () => {
+		const calls = [
+			{name: 'Edit', input: {}},
+			{name: 'Read', input: {}},
+			{name: 'Bash', input: {}},
+			{name: 'Bash', input: {}},
+		];
+		expect(summarizeToolCallsStructured(calls)).toEqual([
+			{verb: 'Edited', rest: 'a file'},
+			{verb: 'Read', rest: 'a file'},
+			{verb: 'Ran', rest: '2 commands'},
+		]);
+	});
+
+	it('unknown tools produce Called segments', () => {
+		const calls = [
+			{name: 'CustomTool', input: {}},
+			{name: 'CustomTool', input: {}},
+		];
+		expect(summarizeToolCallsStructured(calls)).toEqual([{verb: 'Called', rest: 'CustomTool 2 times'}]);
 	});
 });
 

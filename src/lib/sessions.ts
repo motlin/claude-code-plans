@@ -102,13 +102,14 @@ import {
 	parseCommandBlock,
 	extractSessionTitle,
 	summarizeToolCalls,
+	summarizeToolCallsStructured,
 	formatToolName,
 	extractToolResultContent,
 	stripResultTags,
 	truncateResult,
 } from './session-utils';
 
-export {parseCommandBlock, extractSessionTitle, summarizeToolCalls, formatToolName};
+export {parseCommandBlock, extractSessionTitle, summarizeToolCalls, summarizeToolCallsStructured, formatToolName};
 
 interface RawContentBlock {
 	type: string;

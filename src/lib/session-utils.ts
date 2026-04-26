@@ -221,9 +221,18 @@ export function truncateResult(text: string, maxLines: number): string {
 	return truncated.join('\n');
 }
 
-export function summarizeToolCalls(calls: ToolCallLike[]): string {
-	if (calls.length === 0) return '';
+/**
+ * Structured summary segment: a verb and its rest text, for span-based rendering.
+ * Upstream claude.ai/code renders each segment as:
+ *   <span class="text-body text-assistant-secondary">{verb}</span>
+ *   <span class="text-assistant-secondary"> {rest}</span>
+ */
+export interface SummarySegment {
+	verb: string;
+	rest: string;
+}
 
+function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
 	const counts = new Map<ToolCategory, number>();
 	const editStats = {added: 0, removed: 0};
 	const unknownTools = new Map<string, number>();
@@ -243,57 +252,67 @@ export function summarizeToolCalls(calls: ToolCallLike[]): string {
 		}
 	}
 
-	const parts: string[] = [];
+	const segments: SummarySegment[] = [];
 	for (const cat of TOOL_CATEGORIES) {
 		const count = counts.get(cat) ?? 0;
 		if (count === 0) continue;
 		switch (cat) {
 			case 'edit': {
-				let label = pluralize(count, 'edited a file', 'edited {n} files');
+				let rest = pluralize(count, 'a file', '{n} files');
 				const {added, removed} = editStats;
-				if (added > 0 && removed > 0) label += ` +${added} -${removed}`;
-				else if (added > 0) label += ` +${added}`;
-				else if (removed > 0) label += ` -${removed}`;
-				parts.push(label);
+				if (added > 0 && removed > 0) rest += ` +${added} -${removed}`;
+				else if (added > 0) rest += ` +${added}`;
+				else if (removed > 0) rest += ` -${removed}`;
+				segments.push({verb: 'Edited', rest});
 				break;
 			}
 			case 'grep':
-				parts.push(pluralize(count, 'searched for a pattern', 'searched for {n} patterns'));
+				segments.push({verb: 'Searched', rest: pluralize(count, 'for a pattern', 'for {n} patterns')});
 				break;
 			case 'read':
-				parts.push(pluralize(count, 'read a file', 'read {n} files'));
+				segments.push({verb: 'Read', rest: pluralize(count, 'a file', '{n} files')});
 				break;
 			case 'glob':
-				parts.push(pluralize(count, 'globbed for files', 'ran {n} glob searches'));
+				segments.push({verb: 'Found', rest: pluralize(count, 'files', 'files ({n} searches)')});
 				break;
 			case 'webfetch':
-				parts.push(pluralize(count, 'fetched a page', 'fetched {n} pages'));
+				segments.push({verb: 'Fetched', rest: pluralize(count, 'a page', '{n} pages')});
 				break;
 			case 'websearch':
-				parts.push(pluralize(count, 'searched the web', 'ran {n} web searches'));
+				segments.push({verb: 'Searched', rest: pluralize(count, 'the web', 'the web ({n} searches)')});
 				break;
 			case 'agent':
-				parts.push(pluralize(count, 'ran an agent', 'ran {n} agents'));
+				segments.push({verb: 'Ran', rest: pluralize(count, 'an agent', '{n} agents')});
 				break;
 			case 'bash':
-				parts.push(pluralize(count, 'ran a bash command', 'ran {n} bash commands'));
+				segments.push({verb: 'Ran', rest: pluralize(count, 'a command', '{n} commands')});
 				break;
 			case 'recall':
-				parts.push(pluralize(count, 'recalled a memory', 'recalled {n} memories'));
+				segments.push({verb: 'Recalled', rest: pluralize(count, 'a memory', '{n} memories')});
 				break;
 			case 'memwrite':
-				parts.push(pluralize(count, 'wrote a memory', 'wrote {n} memories'));
+				segments.push({verb: 'Wrote', rest: pluralize(count, 'a memory', '{n} memories')});
 				break;
 		}
 	}
 
 	for (const [displayName, count] of unknownTools) {
 		if (count === 1) {
-			parts.push(`called ${displayName}`);
+			segments.push({verb: 'Called', rest: displayName});
 		} else {
-			parts.push(`called ${displayName} ${count} times`);
+			segments.push({verb: 'Called', rest: `${displayName} ${count} times`});
 		}
 	}
 
-	return parts.join(', ');
+	return segments;
+}
+
+export function summarizeToolCallsStructured(calls: ToolCallLike[]): SummarySegment[] {
+	if (calls.length === 0) return [];
+	return buildSummarySegments(calls);
+}
+
+export function summarizeToolCalls(calls: ToolCallLike[]): string {
+	const segments = buildSummarySegments(calls);
+	return segments.map((s) => `${s.verb.toLowerCase()} ${s.rest}`).join(', ');
 }

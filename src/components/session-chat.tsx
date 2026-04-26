@@ -21,8 +21,9 @@ import {
 	formatToolName,
 	diffStatsForEditCall,
 	EDIT_TOOLS,
-	summarizeToolCalls,
+	summarizeToolCallsStructured,
 } from '../lib/session-utils';
+import type {SummarySegment} from '../lib/session-utils';
 
 function formatTimestamp(timestamp?: string): string | null {
 	if (!timestamp) return null;
@@ -1338,37 +1339,63 @@ function ParallelGroupInline({calls, sessionId}: {calls: ClientToolCall[]; sessi
 	);
 }
 
+/**
+ * Renders the structured summary as verb spans matching upstream claude.ai/code:
+ *   <span class="text-body text-assistant-secondary">{verb}</span>
+ *   <span class="text-assistant-secondary"> {rest}</span>
+ * with commas between segments.
+ */
+function SummarySpans({segments}: {segments: SummarySegment[]}) {
+	return (
+		<>
+			{segments.map((segment, i) => (
+				<React.Fragment key={i}>
+					{i > 0 && <span className="text-assistant-secondary">, </span>}
+					<span className="text-body text-assistant-secondary">{segment.verb}</span>
+					<span className="text-assistant-secondary"> {segment.rest}</span>
+				</React.Fragment>
+			))}
+		</>
+	);
+}
+
 function ToolCallSummary({calls, sessionId}: {calls: ClientToolCall[]; sessionId: string}) {
 	const [expanded, setExpanded] = useState(false);
 	const taskCalls = calls.filter((c) => TASK_TOOLS.has(c.name));
 	const hasTasksView = taskCalls.length >= 3;
 	const displayCalls = hasTasksView ? calls.filter((c) => !TASK_TOOLS.has(c.name)) : calls;
 	const items = groupParallelSubagents(displayCalls);
-	const summaryText = useMemo(() => summarizeToolCalls(displayCalls), [displayCalls]);
+	const segments = useMemo(() => summarizeToolCallsStructured(displayCalls), [displayCalls]);
 
 	return (
-		<div className="min-w-0">
+		<div className="flex flex-col w-full">
 			{hasTasksView && (
 				<div className="mb-2">
 					<TasksView toolCalls={calls} />
 				</div>
 			)}
 			{displayCalls.length > 0 && (
-				<div>
+				<>
 					<button
 						type="button"
 						onClick={() => setExpanded(!expanded)}
-						className="flex items-baseline gap-1 w-full text-left cursor-pointer text-sm text-text-500 hover:text-text-300 transition-colors py-0.5"
+						className="group/tool flex self-start max-w-full items-center py-0 gap-g1 text-left cursor-pointer outline-none rounded-r3"
 					>
-						<ChevronIcon
-							expanded={expanded}
-							size={12}
-						/>
-						<span className="font-medium text-[13px] capitalize">{summaryText}</span>
+						<span className="inline-flex items-center gap-g3 min-w-0">
+							<span className="text-body truncate min-w-0">
+								<SummarySpans segments={segments} />
+							</span>
+						</span>
+						<span className="shrink-0 text-assistant-secondary">
+							<ChevronIcon
+								expanded={expanded}
+								size={14}
+							/>
+						</span>
 					</button>
 					<div className={`grid ${expanded ? 'grid-rows-expand' : 'grid-rows-collapse'}`}>
 						<div className="overflow-hidden">
-							<div className="mt-1 rounded-lg bg-bg-100 px-3 py-1.5">
+							<div className="flex flex-col gap-g3 bg-t1 rounded-r6 p-p7 mt-p3">
 								{items.map((item, i) => {
 									if (item.kind === 'parallel') {
 										return (
@@ -1390,7 +1417,7 @@ function ToolCallSummary({calls, sessionId}: {calls: ClientToolCall[]; sessionId
 							</div>
 						</div>
 					</div>
-				</div>
+				</>
 			)}
 		</div>
 	);
