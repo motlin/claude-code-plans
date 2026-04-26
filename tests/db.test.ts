@@ -19,6 +19,7 @@ import {
 	getPlanLinksFromDb,
 	getProjectDetailFromDb,
 	searchSessionsFromDb,
+	getSubagentById,
 	getSubagentsForSession,
 	getSubagentsForProject,
 	getPlanProjectMappings,
@@ -973,6 +974,33 @@ describe('subagents', () => {
 
 	it('returns empty array for session with no subagents', () => {
 		expect(getSubagentsForSession(db.index, 'nonexistent')).toStrictEqual([]);
+	});
+
+	it('getSubagentById returns the subagent matching the given ID', () => {
+		db.index.insert(schema.projects).values({id: 'proj-lookup', name: 'Lookup', updatedAt: 1000}).run();
+		db.index
+			.insert(schema.subagents)
+			.values({
+				id: 'agent-lookup-1',
+				sessionId: 'sess-lookup',
+				projectId: 'proj-lookup',
+				agentType: 'Explore',
+				slug: 'explore-slug',
+				description: 'Explore files',
+				filePath: '/path/agent-lookup-1.jsonl',
+				mtimeMs: 1000,
+			})
+			.run();
+
+		const found = getSubagentById(db.index, 'agent-lookup-1');
+		expect(found).toBeDefined();
+		expect(found!.id).toBe('agent-lookup-1');
+		expect(found!.sessionId).toBe('sess-lookup');
+		expect(found!.description).toBe('Explore files');
+	});
+
+	it('getSubagentById returns undefined for a nonexistent agent', () => {
+		expect(getSubagentById(db.index, 'agent-nonexistent')).toBeUndefined();
 	});
 
 	it('indexSubagentFile extracts startedAt and finishedAt from JSONL timestamps', async () => {

@@ -22,7 +22,9 @@ const getSession = createServerFn({method: 'GET'})
 	.inputValidator(z.object({id: z.string()}))
 	.handler(async ({data: {id}}) => {
 		const {getDb} = await import('../lib/db');
-		const {getSessionProjectPath, getSessionMeta, getTaskCountsForProject} = await import('../lib/db/queries');
+		const {getSessionProjectPath, getSessionMeta, getTaskCountsForProject, getSubagentById} = await import(
+			'../lib/db/queries'
+		);
 		const {sessions} = await import('../lib/db/schema');
 		const {eq} = await import('drizzle-orm');
 		const {index} = getDb();
@@ -36,7 +38,31 @@ const getSession = createServerFn({method: 'GET'})
 			.from(sessions)
 			.where(eq(sessions.id, id))
 			.get();
-		if (!sessionRow) return null;
+
+		// Fall back to the subagents table when the ID is not a regular session
+		if (!sessionRow) {
+			const subagent = getSubagentById(index, id);
+			if (!subagent) return null;
+
+			const parentSessionProjectPath = getSessionProjectPath(index, subagent.sessionId);
+
+			return {
+				title: subagent.description ?? subagent.slug ?? id,
+				projectName: subagent.projectId,
+				projectId: subagent.projectId,
+				subagentTree: [],
+				subagentCount: 0,
+				starred: false,
+				projectPath: parentSessionProjectPath,
+				gitBranch: null as string | null,
+				cwd: null as string | null,
+				gitSha: null as string | null,
+				gitClean: null as boolean | null,
+				messageCount: 0,
+				pendingTaskCount: 0,
+				parentSessionId: subagent.sessionId,
+			};
+		}
 
 		const [subagentResult, starResult] = await Promise.all([getSubagentTree({data: id}), isStarred({data: id})]);
 
@@ -77,6 +103,7 @@ const getSession = createServerFn({method: 'GET'})
 			gitClean,
 			messageCount: sessionMeta?.messageCount ?? 0,
 			pendingTaskCount,
+			parentSessionId: undefined as string | undefined,
 		};
 	});
 
@@ -97,17 +124,27 @@ const getTranscript = createServerFn({method: 'GET'})
 	.inputValidator(z.object({id: z.string()}))
 	.handler(async ({data: {id}}) => {
 		const {getDb} = await import('../lib/db');
+		const {getSubagentById} = await import('../lib/db/queries');
 		const {sessions} = await import('../lib/db/schema');
 		const {eq} = await import('drizzle-orm');
 		const {readFileSync, statSync} = await import('node:fs');
 
 		const {index} = getDb();
 		const row = index.select().from(sessions).where(eq(sessions.id, id)).get();
-		if (!row) return {records: [] as Record<string, JsonValue>[], byteOffset: 0};
+
+		// Resolve the file path: regular session or subagent JSONL
+		let filePath: string | undefined;
+		if (row) {
+			filePath = row.filePath;
+		} else {
+			const subagent = getSubagentById(index, id);
+			if (subagent) filePath = subagent.filePath;
+		}
+		if (!filePath) return {records: [] as Record<string, JsonValue>[], byteOffset: 0};
 
 		try {
-			const fileSize = statSync(row.filePath).size;
-			const content = readFileSync(row.filePath, 'utf-8');
+			const fileSize = statSync(filePath).size;
+			const content = readFileSync(filePath, 'utf-8');
 			const records = content
 				.split('\n')
 				.filter((line) => line.trim())
@@ -383,13 +420,24 @@ function SessionPage() {
 			{!chromeHidden && (
 				<div className="sticky top-0 z-10 bg-bg-000 pb-2 -mx-4 px-4 sm:-mx-8 sm:px-8 border-b border-border-300/15">
 					<DetailTopBar>
-						<Link
-							to="/sessions"
-							className={pillStyles.primary}
-						>
-							<ArrowLeft className="h-3.5 w-3.5" />
-							All Sessions
-						</Link>
+						{data.parentSessionId ? (
+							<Link
+								to="/session/$id"
+								params={{id: data.parentSessionId}}
+								className={pillStyles.primary}
+							>
+								<ArrowLeft className="h-3.5 w-3.5" />
+								Parent Session
+							</Link>
+						) : (
+							<Link
+								to="/sessions"
+								className={pillStyles.primary}
+							>
+								<ArrowLeft className="h-3.5 w-3.5" />
+								All Sessions
+							</Link>
+						)}
 						<span
 							className="text-xs text-text-500"
 							title={data.projectPath ?? undefined}

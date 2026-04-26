@@ -529,6 +529,10 @@ export function searchMessageContentDb(db: IndexDb, query: string, limit = 50): 
 	});
 }
 
+export function getSubagentById(db: IndexDb, agentId: string): DbSubagent | undefined {
+	return db.select().from(schema.subagents).where(eq(schema.subagents.id, agentId)).get();
+}
+
 export function getSubagentsForSession(db: IndexDb, sessionId: string): DbSubagent[] {
 	return db.select().from(schema.subagents).where(eq(schema.subagents.sessionId, sessionId)).all();
 }

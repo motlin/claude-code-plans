@@ -1,3 +1,4 @@
+import {Bot} from 'lucide-react';
 import type {ToolRendererProps} from './types';
 import {ErrorBorder, KeyValueCard} from './shared';
 
@@ -5,10 +6,11 @@ export function AgentRenderer({toolCall}: ToolRendererProps) {
 	const prompt = (toolCall.input['prompt'] as string) ?? '';
 	const agentType = (toolCall.input['subagent_type'] as string) ?? '';
 	const description = (toolCall.input['description'] as string) ?? '';
-	const {result, isError} = toolCall;
+	const {result, isError, subagentInfo} = toolCall;
 
 	const agentIdMatch = result?.match(/agentId:\s*(\S+)/);
 	const displayResult = agentIdMatch?.[1] ? result!.replace(/agentId:\s*\S+\n?/, '').trim() : result;
+	const agentSessionId = subagentInfo?.agentId ?? (agentIdMatch?.[1] ? `agent-${agentIdMatch[1]}` : null);
 
 	const params: Array<{key: string; value: string}> = [];
 	if (description) params.push({key: 'description', value: description});
@@ -21,6 +23,15 @@ export function AgentRenderer({toolCall}: ToolRendererProps) {
 				params={params}
 				result={displayResult ?? undefined}
 			/>
+			{agentSessionId && (
+				<a
+					href={`/session/${agentSessionId}`}
+					className="mt-2 inline-flex items-center gap-1 text-xs text-accent-100 hover:underline"
+				>
+					<Bot className="h-3 w-3" />
+					View subagent session
+				</a>
+			)}
 		</ErrorBorder>
 	);
 }
