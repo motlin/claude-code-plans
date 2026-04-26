@@ -5,7 +5,7 @@ import {MarkdownArticle} from './markdown-article';
 import {getToolRenderer} from './tool-renderers';
 import {buildClientToolCall, buildSubagentLookup} from './tool-renderers/types';
 import type {ClientToolCall} from './tool-renderers';
-import {ChevronIcon, DiffStats, TerminalOutput} from './tool-renderers/shared';
+import {ChevronIcon, TerminalOutput} from './tool-renderers/shared';
 import {TasksView} from './tasks-view';
 import {DebugLink} from './debug-link';
 import {hmrPersist} from '../lib/hmr-persist';
@@ -19,8 +19,6 @@ import {
 	parseBashInput,
 	parseBashOutput,
 	formatToolName,
-	diffStatsForEditCall,
-	EDIT_TOOLS,
 	summarizeToolCallsStructured,
 } from '../lib/session-utils';
 import type {SummarySegment} from '../lib/session-utils';
@@ -1283,10 +1281,6 @@ function ToolCallRow({call, sessionId}: {call: ClientToolCall; sessionId: string
 	const Renderer = getToolRenderer(call.name);
 	const verb = toolCallVerb(call.name);
 	const isFileParam = FILE_PARAM_TOOLS.has(call.name);
-	const editStats = useMemo(
-		() => (EDIT_TOOLS.has(call.name) ? diffStatsForEditCall({name: call.name, input: call.input}) : null),
-		[call.name, call.input],
-	);
 
 	const displayParam = isFileParam ? filenameFromPath(call.param) : call.param;
 
@@ -1310,14 +1304,6 @@ function ToolCallRow({call, sessionId}: {call: ClientToolCall; sessionId: string
 						className={`truncate min-w-0 ${isFileParam ? 'text-code text-assistant-primary' : 'text-body text-assistant-secondary'}`}
 					>
 						{displayParam}
-					</span>
-				)}
-				{editStats && (editStats.added > 0 || editStats.removed > 0) && (
-					<span className="inline-flex">
-						<DiffStats
-							added={editStats.added}
-							removed={editStats.removed}
-						/>
 					</span>
 				)}
 				<span className="shrink-0 text-assistant-secondary">
