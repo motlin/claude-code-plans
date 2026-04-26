@@ -281,7 +281,7 @@ describe('applySessionRemoved', () => {
 		expect(starred?.map((s) => s.id)).toStrictEqual(['a2']);
 	});
 
-	it('evicts every per-session sub-cache under ["session", id, ...]', () => {
+	it('invalidates per-session sub-caches under ["session", id, ...] without removing data', () => {
 		const queryClient = new QueryClient();
 		queryClient.setQueryData(['session', 'a1', 'detail'], {id: 'a1'});
 		queryClient.setQueryData(['session', 'a1', 'subagents'], [{name: 'planner'}]);
@@ -292,10 +292,16 @@ describe('applySessionRemoved', () => {
 
 		applySessionRemoved(queryClient, 'a1', 'proj-a');
 
-		expect(queryClient.getQueryData(['session', 'a1', 'detail'])).toBe(undefined);
-		expect(queryClient.getQueryData(['session', 'a1', 'subagents'])).toBe(undefined);
-		expect(queryClient.getQueryData(['session', 'a1', 'summary'])).toBe(undefined);
-		expect(queryClient.getQueryData(['session', 'a1', 'starred'])).toBe(undefined);
+		// Data remains in cache (invalidated, not removed) to prevent
+		// useSuspenseQuery re-suspension loops.
+		expect(queryClient.getQueryData(['session', 'a1', 'detail'])).toStrictEqual({id: 'a1'});
+		expect(queryClient.getQueryData(['session', 'a1', 'subagents'])).toStrictEqual([{name: 'planner'}]);
+		expect(queryClient.getQueryData(['session', 'a1', 'summary'])).toStrictEqual({text: 'hello'});
+		expect(queryClient.getQueryData(['session', 'a1', 'starred'])).toBe(true);
+		// Queries are invalidated (marked stale)
+		const detailQuery = queryClient.getQueryCache().find({queryKey: ['session', 'a1', 'detail']});
+		expect(detailQuery?.isStale()).toBe(true);
+		// Unrelated session cache survives unchanged.
 		expect(queryClient.getQueryData(['session', 'a2', 'detail'])).toStrictEqual({id: 'a2'});
 	});
 });

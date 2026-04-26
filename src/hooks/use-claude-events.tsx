@@ -1,4 +1,14 @@
-import {createContext, useCallback, useContext, useEffect, useReducer, useState, type ReactNode} from 'react';
+import {
+	createContext,
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useReducer,
+	useRef,
+	useState,
+	type ReactNode,
+} from 'react';
 import {useQueryClient, type QueryClient} from '@tanstack/react-query';
 import {
 	DOMAIN_EVENTS,
@@ -95,14 +105,19 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 // Context
 // ---------------------------------------------------------------------------
 
-const ClaudeEventsContext = createContext<ClaudeEventsState | null>(null);
+interface ClaudeEventsContextValue {
+	state: ClaudeEventsState;
+	subscribeStatusline: (listener: (sessionId: string) => void) => () => void;
+}
+
+const ClaudeEventsContext = createContext<ClaudeEventsContextValue | null>(null);
 
 export function useClaudeEvents(): ClaudeEventsState {
 	const ctx = useContext(ClaudeEventsContext);
 	if (!ctx) {
 		throw new Error('useClaudeEvents must be used within a ClaudeEventsProvider');
 	}
-	return ctx;
+	return ctx.state;
 }
 
 /**
@@ -170,10 +185,12 @@ export function applySessionRemoved(queryClient: QueryClient, sessionId: string,
 	queryClient.setQueryData<SessionSummaryPayload[]>(['starred-sessions'], (old) =>
 		old ? old.filter((s) => s.id !== sessionId) : old,
 	);
-	// Prefix match: evicts every sub-cache under ['session', sessionId, ...]
-	// (e.g. 'detail', 'subagents', 'summary', 'starred'). TanStack Query uses
-	// partial/prefix matching by default, so no exact flag is required.
-	queryClient.removeQueries({queryKey: ['session', sessionId]});
+	// Invalidate (don't remove) the session sub-caches so that any mounted
+	// useSuspenseQuery keeps showing cached data while refetching in the
+	// background. Removing queries would cause useSuspenseQuery to re-suspend,
+	// which triggers the route loader. If the session is transiently missing
+	// (e.g. during a DB rebuild) this can create a suspend/refetch loop.
+	void queryClient.invalidateQueries({queryKey: ['session', sessionId]});
 	void queryClient.invalidateQueries({queryKey: ['projects']});
 	void queryClient.invalidateQueries({queryKey: ['project', projectDir]});
 }
@@ -193,11 +210,13 @@ export function applySessionUpdated(queryClient: QueryClient, session: SessionSu
 	queryClient.setQueryData<SessionSummaryPayload[]>(['starred-sessions'], (old) =>
 		old ? old.map((s) => (s.id === session.id ? session : s)) : old,
 	);
-	// Invalidate the session detail so the message list refetches when the
-	// .jsonl file has new content (mtime / messageCount changed on disk).
+	// Invalidate session detail (metadata like messageCount, gitBranch) and summary.
+	// The transcript is NOT invalidated here because SESSION_LINES_APPENDED handles
+	// incremental transcript updates. Invalidating the transcript would cause a
+	// redundant full refetch that races with the incremental patch, potentially
+	// triggering render loops when combined with useSuspenseQuery.
 	void queryClient.invalidateQueries({queryKey: ['session', session.id, 'detail']});
 	void queryClient.invalidateQueries({queryKey: ['session', session.id, 'summary']});
-	void queryClient.invalidateQueries({queryKey: ['session', session.id, 'transcript']});
 }
 
 export function applyPlanChanged(queryClient: QueryClient, plan: PlanSummaryPayload): void {
@@ -343,6 +362,14 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 	}));
 
 	const queryClient = useQueryClient();
+	const statuslineListenersRef = useRef(new Set<(sessionId: string) => void>());
+
+	const subscribeStatusline = useCallback((listener: (sessionId: string) => void) => {
+		statuslineListenersRef.current.add(listener);
+		return () => {
+			statuslineListenersRef.current.delete(listener);
+		};
+	}, []);
 
 	useEffect(() => {
 		const es = new EventSource('/api/events');
@@ -361,6 +388,21 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 				data,
 				timestamp: Date.now(),
 			});
+		}
+
+		function handleStatuslineEvent(e: Event) {
+			const me = e as MessageEvent;
+			try {
+				const parsed = JSON.parse(me.data) as Record<string, unknown>;
+				const sessionId = parsed['sessionId'];
+				if (typeof sessionId === 'string') {
+					for (const listener of statuslineListenersRef.current) {
+						listener(sessionId);
+					}
+				}
+			} catch {
+				// ignore
+			}
 		}
 
 		function handleDomainEvent(e: Event) {
@@ -462,6 +504,7 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 		for (const eventType of DOMAIN_EVENT_TYPES) {
 			es.addEventListener(eventType, handleDomainEvent);
 		}
+		es.addEventListener(SSE_EVENTS.STATUSLINE_UPDATED, handleStatuslineEvent);
 
 		// SSE reconnection safety: with staleTime: Infinity, data is never
 		// "stale" so refetchOnReconnect won't refetch after a disconnect.
@@ -481,14 +524,22 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 		return () => es.close();
 	}, [queryClient]);
 
-	return <ClaudeEventsContext.Provider value={state}>{children}</ClaudeEventsContext.Provider>;
+	const contextValue: ClaudeEventsContextValue = useMemo(
+		() => ({state, subscribeStatusline}),
+		[state, subscribeStatusline],
+	);
+
+	return <ClaudeEventsContext.Provider value={contextValue}>{children}</ClaudeEventsContext.Provider>;
 }
 
 // ---------------------------------------------------------------------------
 // Statusline hook — fetches statusline JSON and re-fetches on SSE updates
+// Uses the shared EventSource from ClaudeEventsProvider instead of creating
+// a separate connection (which wastes resources and can cause instability).
 // ---------------------------------------------------------------------------
 
 export function useStatusline(sessionId: string): Record<string, unknown> | null {
+	const ctx = useContext(ClaudeEventsContext);
 	const [data, setData] = useState<Record<string, unknown> | null>(null);
 
 	const fetchStatusline = useCallback(async () => {
@@ -508,23 +559,15 @@ export function useStatusline(sessionId: string): Record<string, unknown> | null
 		fetchStatusline();
 	}, [fetchStatusline]);
 
-	// Subscribe to statusline SSE updates for this session
+	// Subscribe to statusline updates via the shared provider EventSource
 	useEffect(() => {
-		const es = new EventSource('/api/events');
-		const handler = (e: Event) => {
-			const me = e as MessageEvent;
-			try {
-				const parsed = JSON.parse(me.data) as Record<string, unknown>;
-				if (parsed['sessionId'] === sessionId) {
-					fetchStatusline();
-				}
-			} catch {
-				// ignore
+		if (!ctx) return;
+		return ctx.subscribeStatusline((updatedSessionId) => {
+			if (updatedSessionId === sessionId) {
+				fetchStatusline();
 			}
-		};
-		es.addEventListener(SSE_EVENTS.STATUSLINE_UPDATED, handler);
-		return () => es.close();
-	}, [sessionId, fetchStatusline]);
+		});
+	}, [ctx, sessionId, fetchStatusline]);
 
 	return data;
 }
