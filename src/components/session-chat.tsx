@@ -384,6 +384,26 @@ function getAttachmentSubtype(json: string): string | null {
 	}
 }
 
+/**
+ * Check whether an assistant line has content that will render.
+ * Returns false when all content blocks are empty text, hidden thinking,
+ * or tool_use blocks with showTools off -- avoiding blank rows.
+ */
+function hasAssistantVisibleContent(line: SessionLine, showThinking: boolean, showTools: boolean): boolean {
+	if (line.type !== 'assistant') return true;
+	const content = line.message?.content;
+	if (!Array.isArray(content) || content.length === 0) return false;
+
+	const hasText = content.some((b) => b.type === 'text' && typeof b.text === 'string' && b.text.trim() !== '');
+	const hasThinking =
+		showThinking &&
+		content.some((b) => b.type === 'thinking' && typeof b.thinking === 'string' && b.thinking.trim() !== '');
+	const hasMedia = content.some((b) => b.type === 'image' || b.type === 'document');
+	const hasToolUse = showTools && content.some((b) => b.type === 'tool_use');
+
+	return hasText || hasThinking || hasMedia || hasToolUse;
+}
+
 function isLineVisible(
 	line: SessionLine,
 	{
@@ -391,7 +411,12 @@ function isLineVisible(
 		showHookWarnings,
 		showHookErrors,
 		showSystemBanners,
-	}: Pick<LineRenderProps, 'showPassedHooks' | 'showHookWarnings' | 'showHookErrors' | 'showSystemBanners'>,
+		showThinking,
+		showTools,
+	}: Pick<
+		LineRenderProps,
+		'showPassedHooks' | 'showHookWarnings' | 'showHookErrors' | 'showSystemBanners' | 'showThinking' | 'showTools'
+	>,
 ): boolean {
 	if (line.type === 'agent-name' || line.type === 'agent-color' || line.type === 'permission-mode')
 		return showSystemBanners;
@@ -402,6 +427,7 @@ function isLineVisible(
 		if (subtype && HOOK_ERROR_SUBTYPES.has(subtype)) return showHookErrors;
 		if (subtype && SYSTEM_BANNER_SUBTYPES.has(subtype)) return showSystemBanners;
 	}
+	if (!hasAssistantVisibleContent(line, showThinking, showTools)) return false;
 	return true;
 }
 
@@ -1044,14 +1070,19 @@ function AssistantEntry({
 	);
 	const hasVisibleNonToolContent = content.some(
 		(b) =>
-			b.type === 'text' ||
+			(b.type === 'text' && typeof b.text === 'string' && b.text.trim() !== '') ||
 			(b.type === 'thinking' && showThinking && typeof b.thinking === 'string' && b.thinking.trim() !== '') ||
 			b.type === 'image' ||
 			b.type === 'document',
 	);
 	const hasToolUse = toolCalls.length > 0;
 
-	// If there's only tool_use blocks, render as a tool call section
+	// No visible content at all -- hide the entry entirely
+	if (!hasVisibleNonToolContent && !hasToolUse) {
+		return null;
+	}
+
+	// Only tool_use blocks -- render as a tool call section
 	if (!hasVisibleNonToolContent && hasToolUse) {
 		if (!showTools) return null;
 		return (
