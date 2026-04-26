@@ -11,7 +11,8 @@
 		{"file": "src/lib/db/queries.ts", "exports": ["DbSearchResult", "DbMessageSearchResult"]},
 		{"file": "src/lib/server-fns.ts", "exports": ["ProjectScopeBase"]},
 		{"file": "src/lib/sessions.ts", "exports": ["RawWindow", "readSessionLines"]},
-		{"file": "src/routes/session.$id_.source.$uuid.tsx", "exports": ["PairedResult"]}
+		{"file": "src/routes/session.$id_.source.$uuid.tsx", "exports": ["PairedResult"]},
+		{"file": "src/components/tool-renderers/shared.tsx", "exports": ["CopyButton"]}
 	],
 	"rules": {
 		"unused-dependencies": "warn",

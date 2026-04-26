@@ -1,4 +1,4 @@
-import {type ReactNode, useState} from 'react';
+import {type ReactNode, useCallback, useState} from 'react';
 
 // ANSI color code to CSS color mapping
 const BASIC_COLORS: Record<number, string> = {
@@ -336,6 +336,72 @@ export function ChevronIcon({expanded, size = 14}: {expanded: boolean; size?: nu
 				fill="currentColor"
 			/>
 		</svg>
+	);
+}
+
+function CopyIcon() {
+	return (
+		<svg
+			width={12}
+			height={12}
+			viewBox="0 0 12 12"
+			fill="none"
+			className="shrink-0"
+		>
+			<path
+				d="M7.42584 5.08148C7.42584 4.80533 7.20199 4.58148 6.92584 4.58148H2.67584C2.3997 4.58148 2.17584 4.80534 2.17584 5.08148V9.33148C2.17584 9.60763 2.39969 9.83148 2.67584 9.83148H6.92584C7.202 9.83148 7.42584 9.60764 7.42584 9.33148V5.08148ZM8.42584 7.83636H8.92584C9.202 7.83636 9.42584 7.61252 9.42584 7.33636V3.08148C9.42584 2.80533 9.20199 2.58148 8.92584 2.58148H4.67584C4.3997 2.58148 4.17584 2.80534 4.17584 3.08148V3.58148H6.92584C7.75429 3.58148 8.42584 4.25306 8.42584 5.08148V7.83636ZM10.4258 7.33636C10.4258 8.16481 9.75428 8.83636 8.92584 8.83636H8.42584V9.33148C8.42584 10.1599 7.75428 10.8315 6.92584 10.8315H2.67584C1.84742 10.8315 1.17584 10.1599 1.17584 9.33148V5.08148C1.17584 4.25305 1.84741 3.58148 2.67584 3.58148H3.17584V3.08148C3.17584 2.25305 3.84741 1.58148 4.67584 1.58148H8.92584C9.75429 1.58148 10.4258 2.25306 10.4258 3.08148V7.33636Z"
+				fill="currentColor"
+			/>
+		</svg>
+	);
+}
+
+function CheckIcon() {
+	return (
+		<svg
+			width={12}
+			height={12}
+			viewBox="0 0 12 12"
+			fill="none"
+			className="shrink-0"
+		>
+			<path
+				d="M10 3L4.5 8.5L2 6"
+				stroke="currentColor"
+				strokeWidth={1.5}
+				strokeLinecap="round"
+				strokeLinejoin="round"
+			/>
+		</svg>
+	);
+}
+
+/**
+ * Hover-visible copy button matching upstream claude.ai/code.
+ *
+ * Requires a `group/body` ancestor for the hover reveal.
+ * Copies the provided `text` to the clipboard on click.
+ */
+export function CopyButton({text}: {text: string}) {
+	const [copied, setCopied] = useState(false);
+
+	const handleClick = useCallback(() => {
+		navigator.clipboard.writeText(text);
+		setCopied(true);
+		setTimeout(() => setCopied(false), 1500);
+	}, [text]);
+
+	return (
+		<div className="opacity-0 group-hover/body:opacity-100 focus-within:opacity-100 [transition:opacity_150ms_cubic-bezier(0.215,0.61,0.355,1)] motion-reduce:transition-none">
+			<button
+				type="button"
+				aria-label="Copy"
+				onClick={handleClick}
+				className="inline-flex items-center justify-center aspect-square border-0 cursor-default select-none rounded-r4 px-p3 text-assistant-secondary hover:text-assistant-primary hover:bg-t2 transition-colors"
+			>
+				{copied ? <CheckIcon /> : <CopyIcon />}
+			</button>
+		</div>
 	);
 }
 
