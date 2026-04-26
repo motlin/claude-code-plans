@@ -88,8 +88,14 @@ function CopyToast({visible}: {visible: boolean}) {
 	);
 }
 
-function MessageToolbar({line, index}: {line: MessageSessionLine; index: number}) {
+function MessageToolbar({line, index, timestamp}: {line: MessageSessionLine; index: number; timestamp?: string}) {
 	const [copied, setCopied] = useState<'text' | 'link' | null>(null);
+	const relativeTimestamp = formatRelativeTimestamp(timestamp);
+	const absoluteTimestamp = formatTimestamp(timestamp);
+	const timestampTitle =
+		absoluteTimestamp && relativeTimestamp
+			? `${absoluteTimestamp} (${relativeTimestamp})`
+			: (absoluteTimestamp ?? undefined);
 
 	function copyText() {
 		const texts = extractTextFromLine(line);
@@ -106,11 +112,11 @@ function MessageToolbar({line, index}: {line: MessageSessionLine; index: number}
 	}
 
 	return (
-		<div className="absolute -top-3 right-0 hidden group-hover:flex items-center gap-1 bg-bg-000 border border-border-300/15 rounded-md shadow-sm px-1 py-0.5 z-10">
+		<div className="flex gap-g2 pt-[4px] opacity-0 pointer-events-none group-hover/msg:opacity-100 group-hover/msg:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-opacity duration-150">
 			<div className="relative">
 				<button
 					type="button"
-					title="Copy message"
+					aria-label="Copy message"
 					onClick={copyText}
 					className="p-1 text-text-500 hover:text-text-000 cursor-pointer"
 				>
@@ -121,7 +127,7 @@ function MessageToolbar({line, index}: {line: MessageSessionLine; index: number}
 			<div className="relative">
 				<button
 					type="button"
-					title="Copy link"
+					aria-label="Copy link"
 					onClick={copyLink}
 					className="p-1 text-text-500 hover:text-text-000 cursor-pointer"
 				>
@@ -129,6 +135,14 @@ function MessageToolbar({line, index}: {line: MessageSessionLine; index: number}
 				</button>
 				<CopyToast visible={copied === 'link'} />
 			</div>
+			{relativeTimestamp && (
+				<span
+					className="text-[11px] text-assistant-secondary tabular-nums self-center pl-p1"
+					title={timestampTitle}
+				>
+					{relativeTimestamp}
+				</span>
+			)}
 		</div>
 	);
 }
@@ -302,16 +316,17 @@ function LineEntry({
 		<div
 			key={`line-${index}`}
 			id={`msg-${index}`}
-			className={`group relative ${className ?? ''}`}
+			className={`${isAssistant ? 'group/msg flex flex-col w-full' : 'group relative'} ${className ?? ''}`}
 			title={line.type !== 'user' ? (timestampTitle ?? undefined) : undefined}
 		>
+			{content}
 			{isAssistant && (
 				<MessageToolbar
 					line={line}
 					index={index}
+					{...(rawTimestamp ? {timestamp: rawTimestamp} : {})}
 				/>
 			)}
-			{content}
 		</div>
 	);
 }
