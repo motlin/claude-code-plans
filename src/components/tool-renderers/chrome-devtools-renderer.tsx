@@ -149,11 +149,6 @@ function statusCodeClasses(status: string, code?: number): string {
 	return 'bg-gray-100 text-gray-600';
 }
 
-function truncateUrl(url: string, max: number): string {
-	if (url.length <= max) return url;
-	return url.slice(0, max - 3) + '...';
-}
-
 function truncateUrlEnd(url: string, max: number): string {
 	if (url.length <= max) return url;
 	return '...' + url.slice(url.length - (max - 3));
@@ -206,25 +201,13 @@ function PageList({pages}: {pages: PageInfo[]}) {
 // ---------------------------------------------------------------------------
 
 function NavigatePageRenderer({resultText}: {resultText: string}) {
-	const urlMatch = /Successfully navigated to (.+)/.exec(resultText);
-	const url = urlMatch?.[1]?.trim() ?? '';
 	const pages = parsePageList(resultText);
 
 	return (
 		<div className="px-2 py-2 space-y-2">
 			<div className="flex items-center gap-2">
 				<CheckCircle className="h-4 w-4 text-green-500" />
-				<span className="text-sm text-foreground">Navigated to</span>
-				{url && (
-					<a
-						href={url}
-						target="_blank"
-						rel="noreferrer"
-						className="text-sm text-blue-600 hover:underline truncate"
-					>
-						{truncateUrl(url, 60)}
-					</a>
-				)}
+				<span className="text-sm text-foreground">Navigated successfully</span>
 			</div>
 			<PageList pages={pages} />
 		</div>

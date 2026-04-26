@@ -30,10 +30,6 @@ function truncateUrl(url: string, max: number): string {
 	return url.slice(0, max - 3) + '...';
 }
 
-function isHttpUrl(url: string): boolean {
-	return url.startsWith('http://') || url.startsWith('https://');
-}
-
 function extractUrl(input: Record<string, unknown>): string {
 	return (input['url'] as string) ?? '';
 }
@@ -88,29 +84,33 @@ function ActionResult({
 // Sub-renderers
 // ---------------------------------------------------------------------------
 
+/**
+ * Strip the URL from result text when it duplicates the input URL.
+ */
+function stripNavigateUrlFromResult(resultText: string, url: string): string {
+	if (!url || !resultText) return resultText;
+	const lines = resultText.split('\n');
+	const filtered = lines.filter((line) => {
+		const trimmed = line.trim();
+		if (trimmed === url) return false;
+		if (/^navigated to\s+/i.test(trimmed) && trimmed.toLowerCase().includes(url.toLowerCase())) return false;
+		if (/^page loaded:\s+/i.test(trimmed) && trimmed.toLowerCase().includes(url.toLowerCase())) return false;
+		return true;
+	});
+	return filtered.join('\n').trim();
+}
+
 function NavigateRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
 	const url = extractUrl(input);
+	const cleanedResult = stripNavigateUrlFromResult(resultText, url);
 
 	return (
 		<div className="px-2 py-2 space-y-2">
 			<div className="flex items-center gap-2">
 				<CheckCircle className="h-4 w-4 text-green-500" />
-				<span className="text-sm text-foreground">Navigated to</span>
-				{url &&
-					(isHttpUrl(url) ? (
-						<a
-							href={url}
-							target="_blank"
-							rel="noreferrer"
-							className="text-sm text-blue-600 hover:underline truncate"
-						>
-							{truncateUrl(url, 60)}
-						</a>
-					) : (
-						<span className="text-sm text-muted-foreground font-mono truncate">{url}</span>
-					))}
+				<span className="text-sm text-foreground">Navigated successfully</span>
 			</div>
-			<ResultSummary resultText={resultText} />
+			{cleanedResult && <ResultSummary resultText={cleanedResult} />}
 		</div>
 	);
 }

@@ -17,15 +17,6 @@ import {CollapsibleSection, ErrorBorder} from './shared';
 // Helpers
 // ---------------------------------------------------------------------------
 
-function truncateUrl(url: string, max: number): string {
-	if (url.length <= max) return url;
-	return url.slice(0, max - 3) + '...';
-}
-
-function isHttpUrl(url: string): boolean {
-	return url.startsWith('http://') || url.startsWith('https://');
-}
-
 function ResultSummary({resultText, maxLines = 10}: {resultText: string; maxLines?: number}) {
 	if (!resultText) return null;
 	const lines = resultText.split('\n');
@@ -73,9 +64,28 @@ function logLevelBadgeClasses(level: string): string {
 // Sub-renderers
 // ---------------------------------------------------------------------------
 
+/**
+ * Strip the URL from result text when it duplicates the input URL.
+ * Common result patterns: "Navigated to https://..." or "Page loaded: https://..."
+ */
+function stripNavigateUrlFromResult(resultText: string, url: string): string {
+	if (!url || !resultText) return resultText;
+	// Remove lines that are the URL or "Navigated to <url>"
+	const lines = resultText.split('\n');
+	const filtered = lines.filter((line) => {
+		const trimmed = line.trim();
+		if (trimmed === url) return false;
+		if (/^navigated to\s+/i.test(trimmed) && trimmed.toLowerCase().includes(url.toLowerCase())) return false;
+		if (/^page loaded:\s+/i.test(trimmed) && trimmed.toLowerCase().includes(url.toLowerCase())) return false;
+		return true;
+	});
+	return filtered.join('\n').trim();
+}
+
 function NavigateRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
 	const url = (input['url'] as string) ?? '';
 	const isSuccess = resultText.toLowerCase().includes('navigated to');
+	const cleanedResult = stripNavigateUrlFromResult(resultText, url);
 
 	return (
 		<div className="px-2 py-2 space-y-2">
@@ -85,22 +95,9 @@ function NavigateRenderer({input, resultText}: {input: Record<string, unknown>; 
 				) : (
 					<Globe className="h-4 w-4 text-blue-500" />
 				)}
-				<span className="text-sm text-foreground">Navigate</span>
-				{url &&
-					(isHttpUrl(url) ? (
-						<a
-							href={url}
-							target="_blank"
-							rel="noreferrer"
-							className="text-sm text-blue-600 hover:underline truncate"
-						>
-							{truncateUrl(url, 60)}
-						</a>
-					) : (
-						<span className="text-sm text-muted-foreground font-mono truncate">{url}</span>
-					))}
+				<span className="text-sm text-foreground">{isSuccess ? 'Navigated successfully' : 'Navigate'}</span>
 			</div>
-			<ResultSummary resultText={resultText} />
+			{cleanedResult && <ResultSummary resultText={cleanedResult} />}
 		</div>
 	);
 }
