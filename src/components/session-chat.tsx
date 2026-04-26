@@ -93,10 +93,7 @@ function MessageToolbar({line, index, timestamp}: {line: MessageSessionLine; ind
 	const [copied, setCopied] = useState<'text' | 'link' | null>(null);
 	const relativeTimestamp = formatRelativeTimestamp(timestamp);
 	const absoluteTimestamp = formatTimestamp(timestamp);
-	const timestampTitle =
-		absoluteTimestamp && relativeTimestamp
-			? `${absoluteTimestamp} (${relativeTimestamp})`
-			: (absoluteTimestamp ?? undefined);
+	const timestampTitle = absoluteTimestamp ?? undefined;
 
 	async function copyText() {
 		const texts = extractTextFromLine(line);
@@ -184,10 +181,7 @@ function UserMessageActions({line, index, timestamp}: {line: MessageSessionLine;
 
 	const absoluteTimestamp = formatTimestamp(timestamp);
 	const relativeTimestamp = formatRelativeTimestamp(timestamp);
-	const timestampTitle =
-		absoluteTimestamp && relativeTimestamp
-			? `${absoluteTimestamp} (${relativeTimestamp})`
-			: (absoluteTimestamp ?? undefined);
+	const timestampTitle = absoluteTimestamp ?? undefined;
 
 	return (
 		<div className="flex items-center gap-2 px-1 pt-0.5 text-[11px] text-text-500 opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150">
@@ -318,9 +312,7 @@ function LineEntry({
 	const isAssistant = line.type === 'assistant';
 	const rawTimestamp = getLineTimestamp(line);
 	const absoluteTimestamp = formatTimestamp(rawTimestamp);
-	const relativeTimestamp = formatRelativeTimestamp(rawTimestamp);
-	const timestampTitle =
-		absoluteTimestamp && relativeTimestamp ? `${absoluteTimestamp} (${relativeTimestamp})` : absoluteTimestamp;
+	const timestampTitle = absoluteTimestamp;
 	return (
 		<div
 			key={`line-${index}`}
