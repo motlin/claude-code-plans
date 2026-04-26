@@ -21,6 +21,7 @@ import {TaskStopRenderer} from './task-stop-renderer';
 import {CronCreateRenderer} from './cron-create-renderer';
 import {SkillRenderer} from './skill-renderer';
 import {WebFetchRenderer} from './webfetch-renderer';
+import {ToolSearchRenderer} from './tool-search-renderer';
 import {FallbackRenderer} from './fallback-renderer';
 import {getMcpRenderer} from './mcp-registry';
 
@@ -47,6 +48,7 @@ const registry: Record<string, ComponentType<ToolRendererProps>> = {
 	CronCreate: CronCreateRenderer,
 	Skill: SkillRenderer,
 	WebFetch: WebFetchRenderer,
+	ToolSearch: ToolSearchRenderer,
 	__fallback__: FallbackRenderer,
 };
 

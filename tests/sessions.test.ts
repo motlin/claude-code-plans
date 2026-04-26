@@ -262,6 +262,19 @@ describe('summarizeToolCalls', () => {
 		expect(summarizeToolCalls(calls)).toBe('recalled a memory');
 	});
 
+	it('single ToolSearch', () => {
+		expect(summarizeToolCalls([{name: 'ToolSearch', input: {query: 'select:Read'}}])).toBe('used ToolSearch');
+	});
+
+	it('multiple ToolSearch calls', () => {
+		const calls = [
+			{name: 'ToolSearch', input: {query: 'select:Read'}},
+			{name: 'ToolSearch', input: {query: 'select:Edit'}},
+			{name: 'ToolSearch', input: {query: 'select:Bash'}},
+		];
+		expect(summarizeToolCalls(calls)).toBe('used ToolSearch (3 searches)');
+	});
+
 	it('rich mixed summary matching Claude Code format', () => {
 		const calls = [
 			// 9 edits with diff stats
@@ -329,6 +342,20 @@ describe('summarizeToolCallsStructured', () => {
 			{name: 'CustomTool', input: {}},
 		];
 		expect(summarizeToolCallsStructured(calls)).toEqual([{verb: 'Called', rest: 'CustomTool 2 times'}]);
+	});
+
+	it('ToolSearch produces Used segment', () => {
+		expect(summarizeToolCallsStructured([{name: 'ToolSearch', input: {query: 'select:Read'}}])).toEqual([
+			{verb: 'Used', rest: 'ToolSearch'},
+		]);
+	});
+
+	it('multiple ToolSearch calls include count', () => {
+		const calls = [
+			{name: 'ToolSearch', input: {query: 'select:Read'}},
+			{name: 'ToolSearch', input: {query: 'select:Edit'}},
+		];
+		expect(summarizeToolCallsStructured(calls)).toEqual([{verb: 'Used', rest: 'ToolSearch (2 searches)'}]);
 	});
 });
 

@@ -75,6 +75,7 @@ const TOOL_CATEGORIES = [
 	'bash',
 	'recall',
 	'memwrite',
+	'toolsearch',
 ] as const;
 type ToolCategory = (typeof TOOL_CATEGORIES)[number];
 
@@ -156,6 +157,7 @@ function categorize(call: ToolCallLike): ToolCategory | null {
 	if (call.name === 'Agent') return 'agent';
 	if (call.name === 'WebFetch') return 'webfetch';
 	if (call.name === 'WebSearch') return 'websearch';
+	if (call.name === 'ToolSearch') return 'toolsearch';
 	return null;
 }
 
@@ -292,6 +294,9 @@ function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
 				break;
 			case 'memwrite':
 				segments.push({verb: 'Wrote', rest: pluralize(count, 'a memory', '{n} memories')});
+				break;
+			case 'toolsearch':
+				segments.push({verb: 'Used', rest: pluralize(count, 'ToolSearch', 'ToolSearch ({n} searches)')});
 				break;
 		}
 	}

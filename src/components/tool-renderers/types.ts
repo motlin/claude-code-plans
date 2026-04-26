@@ -157,7 +157,7 @@ export function buildClientToolCall(
 		id,
 		name,
 		input,
-		param: getToolParam({input: block.input}),
+		param: getToolParam(name, block.input),
 		sourceUuid,
 	};
 
@@ -181,8 +181,8 @@ function truncate(value: string, maxLength = 60): string {
 	return value.length > maxLength ? value.slice(0, maxLength) + '...' : value;
 }
 
-function getToolParam(tc: {input: Record<string, unknown>}): string {
-	const input = tc.input;
+function getToolParam(name: string, input: Record<string, unknown>): string {
+	if (name === 'ToolSearch') return 'ToolSearch';
 	if (typeof input['file_path'] === 'string') return input['file_path'];
 	if (typeof input['description'] === 'string') return truncate(input['description']);
 	if (typeof input['command'] === 'string') return input['command'];
