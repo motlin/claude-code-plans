@@ -2,7 +2,7 @@ import type {ThemedToken} from '@shikijs/core';
 import {extractLineNumbers, detectLanguage} from '../../lib/diff-utils';
 import {useHighlightedLines} from '../../hooks/use-shiki';
 import type {ToolRendererProps} from './types';
-import {ErrorBorder, ExpandableBlock, ToolMeta} from './shared';
+import {ErrorBorder, ExpandableBlock} from './shared';
 
 interface ParsedLine {
 	lineNum: string | null;
@@ -47,17 +47,8 @@ function PlainLine({content}: {content: string}) {
 
 export function ReadRenderer({toolCall}: ToolRendererProps) {
 	const filePath = (toolCall.input['file_path'] as string) ?? '';
-	const offset = toolCall.input['offset'] as number | undefined;
-	const limit = toolCall.input['limit'] as number | undefined;
 	const {result, isError} = toolCall;
 	const lineCount = result ? result.split('\n').length : 0;
-
-	const rangeInfo =
-		offset !== undefined && limit !== undefined
-			? `lines ${offset}-${offset + limit}`
-			: offset !== undefined
-				? `from line ${offset}`
-				: `${lineCount} lines`;
 
 	const parsedLines = result ? parseLineNumbers(result) : [];
 
@@ -68,35 +59,24 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 
 	return (
 		<ErrorBorder isError={isError}>
-			<div className="flex items-center gap-2 flex-wrap mb-1">
-				<code className="text-xs font-mono text-text-500 bg-bg-100 px-1 py-0.5 rounded truncate">
-					{filePath}
-				</code>
-				<ToolMeta>{rangeInfo}</ToolMeta>
-			</div>
-			{result && (
-				<ExpandableBlock
-					lineCount={lineCount}
-					maxLines={20}
-				>
-					<div className="rounded border border-border-300/15">
-						<div className="flex font-mono text-xs text-text-500">
-							<div className="bg-bg-200/50 border-r border-border-300/15 px-3 py-2 select-none text-right min-w-fit">
+			<div className="bg-bg-200/40 rounded-lg overflow-clip flex flex-col">
+				<div className="flex items-center gap-1 px-2 py-1.5 text-[13px] text-text-500 min-w-0">
+					<span className="truncate min-w-0">{filePath}</span>
+				</div>
+				{result && (
+					<ExpandableBlock
+						lineCount={lineCount}
+						maxLines={20}
+					>
+						<div className="grid grid-cols-[auto_1fr] font-mono text-xs leading-[17px]">
+							<div className="select-none text-right text-text-500 py-0 pl-3.5 pr-[7px]">
 								{parsedLines.map((line, index) => (
-									<div
-										key={index}
-										className="h-5 flex items-center justify-end"
-									>
-										{line.lineNum || ''}
-									</div>
+									<div key={index}>{line.lineNum || ' '}</div>
 								))}
 							</div>
-							<div className="flex-1 px-3 py-2 whitespace-pre-wrap break-all">
+							<div className="whitespace-pre-wrap break-all py-0 px-[7px]">
 								{parsedLines.map((line, index) => (
-									<div
-										key={index}
-										className="h-5 flex items-center"
-									>
+									<div key={index}>
 										{tokens?.[index] ? (
 											<HighlightedLine tokens={tokens[index]} />
 										) : (
@@ -106,9 +86,9 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 								))}
 							</div>
 						</div>
-					</div>
-				</ExpandableBlock>
-			)}
+					</ExpandableBlock>
+				)}
+			</div>
 		</ErrorBorder>
 	);
 }
