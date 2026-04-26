@@ -296,7 +296,7 @@ function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
 				segments.push({verb: 'Wrote', rest: pluralize(count, 'a memory', '{n} memories')});
 				break;
 			case 'toolsearch':
-				segments.push({verb: 'Used', rest: pluralize(count, 'ToolSearch', 'ToolSearch ({n} searches)')});
+				segments.push({verb: 'Loaded', rest: pluralize(count, 'a tool schema', '{n} tool schemas')});
 				break;
 		}
 	}

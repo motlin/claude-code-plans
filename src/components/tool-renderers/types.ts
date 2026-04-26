@@ -182,7 +182,7 @@ function truncate(value: string, maxLength = 60): string {
 }
 
 function getToolParam(name: string, input: Record<string, unknown>): string {
-	if (name === 'ToolSearch') return 'ToolSearch';
+	if (name === 'ToolSearch') return typeof input['query'] === 'string' ? truncate(input['query']) : '';
 	if (typeof input['file_path'] === 'string') return input['file_path'];
 	if (typeof input['description'] === 'string') return truncate(input['description']);
 	if (typeof input['command'] === 'string') return input['command'];

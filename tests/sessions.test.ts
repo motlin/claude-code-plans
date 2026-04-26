@@ -263,7 +263,7 @@ describe('summarizeToolCalls', () => {
 	});
 
 	it('single ToolSearch', () => {
-		expect(summarizeToolCalls([{name: 'ToolSearch', input: {query: 'select:Read'}}])).toBe('used ToolSearch');
+		expect(summarizeToolCalls([{name: 'ToolSearch', input: {query: 'select:Read'}}])).toBe('loaded a tool schema');
 	});
 
 	it('multiple ToolSearch calls', () => {
@@ -272,7 +272,7 @@ describe('summarizeToolCalls', () => {
 			{name: 'ToolSearch', input: {query: 'select:Edit'}},
 			{name: 'ToolSearch', input: {query: 'select:Bash'}},
 		];
-		expect(summarizeToolCalls(calls)).toBe('used ToolSearch (3 searches)');
+		expect(summarizeToolCalls(calls)).toBe('loaded 3 tool schemas');
 	});
 
 	it('rich mixed summary matching Claude Code format', () => {
@@ -344,9 +344,9 @@ describe('summarizeToolCallsStructured', () => {
 		expect(summarizeToolCallsStructured(calls)).toEqual([{verb: 'Called', rest: 'CustomTool 2 times'}]);
 	});
 
-	it('ToolSearch produces Used segment', () => {
+	it('ToolSearch produces Loaded segment', () => {
 		expect(summarizeToolCallsStructured([{name: 'ToolSearch', input: {query: 'select:Read'}}])).toEqual([
-			{verb: 'Used', rest: 'ToolSearch'},
+			{verb: 'Loaded', rest: 'a tool schema'},
 		]);
 	});
 
@@ -355,7 +355,7 @@ describe('summarizeToolCallsStructured', () => {
 			{name: 'ToolSearch', input: {query: 'select:Read'}},
 			{name: 'ToolSearch', input: {query: 'select:Edit'}},
 		];
-		expect(summarizeToolCallsStructured(calls)).toEqual([{verb: 'Used', rest: 'ToolSearch (2 searches)'}]);
+		expect(summarizeToolCallsStructured(calls)).toEqual([{verb: 'Loaded', rest: '2 tool schemas'}]);
 	});
 });
 

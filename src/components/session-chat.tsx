@@ -1406,7 +1406,7 @@ function toolCallVerb(name: string): string {
 	if (name === 'Agent') return 'Ran agent';
 	if (name === 'WebFetch') return 'Fetched';
 	if (name === 'WebSearch') return 'Searched web';
-	if (name === 'ToolSearch') return 'Used';
+	if (name === 'ToolSearch') return 'Loaded';
 	if (name.startsWith('mcp__')) return formatToolName(name);
 	return name;
 }
