@@ -1,4 +1,6 @@
-import {type ReactNode, useCallback, useState} from 'react';
+import {type ReactNode, useCallback, useMemo, useState} from 'react';
+import {renderMarkdownToHtml} from '../../lib/client-markdown';
+import markdownStyles from '../markdown-article.module.css';
 
 // ANSI color code to CSS color mapping
 const BASIC_COLORS: Record<number, string> = {
@@ -436,6 +438,27 @@ export function CollapsibleSection({
 }
 
 /**
+ * Inline markdown renderer for KeyValueCard param values.
+ * Memoizes the HTML output to avoid re-rendering on every parent render.
+ */
+function InlineMarkdown({text}: {text: string}) {
+	const html = useMemo(() => renderMarkdownToHtml(text), [text]);
+	return (
+		<div
+			className={markdownStyles['markdown']}
+			dangerouslySetInnerHTML={{__html: html}}
+		/>
+	);
+}
+
+export interface KeyValueParam {
+	key: string;
+	value: string;
+	/** When true, render the value as markdown instead of plain text. */
+	markdown?: boolean;
+}
+
+/**
  * Upstream-style key-value card used by Grep, Glob, Agent, WebFetch,
  * WebSearch, and most non-file tools.
  *
@@ -449,7 +472,7 @@ export function KeyValueCard({
 	result,
 	children,
 }: {
-	params: Array<{key: string; value: string}>;
+	params: KeyValueParam[];
 	result?: string | undefined;
 	children?: ReactNode;
 }) {
@@ -462,7 +485,16 @@ export function KeyValueCard({
 					<div className="text-assistant-secondary">
 						{params.map((p) => (
 							<div key={p.key}>
-								{p.key}: {p.value}
+								{p.markdown ? (
+									<>
+										<span className="font-semibold">{p.key}:</span>
+										<InlineMarkdown text={p.value} />
+									</>
+								) : (
+									<>
+										{p.key}: {p.value}
+									</>
+								)}
 							</div>
 						))}
 					</div>

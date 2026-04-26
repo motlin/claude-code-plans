@@ -1,5 +1,6 @@
 import {Bot} from 'lucide-react';
 import type {ToolRendererProps} from './types';
+import type {KeyValueParam} from './shared';
 import {ErrorBorder, KeyValueCard} from './shared';
 
 export function AgentRenderer({toolCall}: ToolRendererProps) {
@@ -12,9 +13,9 @@ export function AgentRenderer({toolCall}: ToolRendererProps) {
 	const displayResult = agentIdMatch?.[1] ? result!.replace(/agentId:\s*\S+\n?/, '').trim() : result;
 	const agentSessionId = subagentInfo?.agentId ?? (agentIdMatch?.[1] ? `agent-${agentIdMatch[1]}` : null);
 
-	const params: Array<{key: string; value: string}> = [];
-	if (description) params.push({key: 'description', value: description});
-	if (prompt) params.push({key: 'prompt', value: prompt});
+	const params: KeyValueParam[] = [];
+	if (description) params.push({key: 'description', value: description, markdown: true});
+	if (prompt) params.push({key: 'prompt', value: prompt, markdown: true});
 	if (agentType) params.push({key: 'subagent_type', value: agentType});
 
 	return (
