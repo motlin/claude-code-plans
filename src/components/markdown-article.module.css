@@ -164,7 +164,8 @@
 /* User message bubble overrides — readable on blue backgrounds */
 :global(.user-message-bubble) .markdown {
 	color: var(--user-msg-text);
-	overflow: hidden;
+	overflow-wrap: anywhere;
+	min-width: 0;
 }
 
 :global(.user-message-bubble) .markdown code {
@@ -177,6 +178,7 @@
 	background: rgba(0, 0, 0, 0.2);
 	border-color: rgba(255, 255, 255, 0.15);
 	max-width: 100%;
+	overflow-wrap: normal;
 }
 
 :global(.user-message-bubble) .markdown pre code {
