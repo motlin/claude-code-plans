@@ -435,6 +435,46 @@ export function CollapsibleSection({
 	);
 }
 
+/**
+ * Upstream-style key-value card used by Grep, Glob, Agent, WebFetch,
+ * WebSearch, and most non-file tools.
+ *
+ * Layout:
+ *   flex w-full
+ *     flex-1 content (params + result)
+ *     CopyButton (hover-visible)
+ */
+export function KeyValueCard({
+	params,
+	result,
+	children,
+}: {
+	params: Array<{key: string; value: string}>;
+	result?: string | undefined;
+	children?: ReactNode;
+}) {
+	const copyText = [...params.map((p) => `${p.key}: ${p.value}`), ...(result ? [result] : [])].join('\n');
+
+	return (
+		<div className="flex w-full">
+			<div className="flex-1 min-w-0 flex flex-col gap-g4 text-body text-assistant-secondary whitespace-pre-wrap break-words">
+				{params.length > 0 && (
+					<div className="text-assistant-secondary">
+						{params.map((p) => (
+							<div key={p.key}>
+								{p.key}: {p.value}
+							</div>
+						))}
+					</div>
+				)}
+				{result && <div>{result}</div>}
+				{children}
+			</div>
+			<CopyButton text={copyText} />
+		</div>
+	);
+}
+
 export function ToolMeta({children}: {children: ReactNode}) {
 	return <span className="text-xs text-text-500">{children}</span>;
 }

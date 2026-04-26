@@ -1,13 +1,17 @@
-import {StopCircle} from 'lucide-react';
 import type {ToolRendererProps} from './types';
-import {ErrorBorder} from './shared';
+import {ErrorBorder, KeyValueCard} from './shared';
 
 export function TaskStopRenderer({toolCall}: ToolRendererProps) {
+	const taskId = (toolCall.input['taskId'] as string) ?? (toolCall.input['task_id'] as string) ?? '';
+
+	const params: Array<{key: string; value: string}> = [];
+	if (taskId) params.push({key: 'taskId', value: `#${taskId}`});
+
 	return (
 		<ErrorBorder isError={toolCall.isError}>
-			<StopCircle
-				size={14}
-				className="text-danger-000 shrink-0"
+			<KeyValueCard
+				params={params}
+				result={toolCall.result ?? undefined}
 			/>
 		</ErrorBorder>
 	);

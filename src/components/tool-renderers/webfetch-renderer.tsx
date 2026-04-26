@@ -1,51 +1,21 @@
-import {MarkdownArticle} from '../markdown-article';
 import type {ToolRendererProps} from './types';
-import {CollapsibleSection, ErrorBorder, ToolMeta} from './shared';
-import {looksLikeMarkdown} from '../../lib/client-markdown';
+import {ErrorBorder, KeyValueCard} from './shared';
 
 export function WebFetchRenderer({toolCall}: ToolRendererProps) {
 	const url = (toolCall.input['url'] as string) ?? '';
 	const prompt = toolCall.input['prompt'] as string | undefined;
 	const {result, isError} = toolCall;
 
+	const params: Array<{key: string; value: string}> = [];
+	if (url) params.push({key: 'url', value: url});
+	if (prompt) params.push({key: 'prompt', value: prompt});
+
 	return (
 		<ErrorBorder isError={isError}>
-			<div className="flex flex-col gap-1.5">
-				<div className="flex items-center gap-2">
-					<a
-						href={url}
-						target="_blank"
-						rel="noopener noreferrer"
-						className="text-xs text-accent-100 hover:underline break-all"
-						title={url}
-					>
-						{url}
-					</a>
-				</div>
-
-				{prompt && (
-					<div className="text-xs text-text-500">
-						<ToolMeta>Prompt: {prompt.length > 100 ? prompt.slice(0, 100) + '...' : prompt}</ToolMeta>
-					</div>
-				)}
-
-				{result && (
-					<CollapsibleSection
-						label="Show response"
-						defaultOpen={!isError}
-					>
-						{looksLikeMarkdown(result) ? (
-							<div className="text-xs text-text-100 leading-relaxed max-h-64 overflow-auto">
-								<MarkdownArticle markdown={result} />
-							</div>
-						) : (
-							<pre className="text-xs font-mono whitespace-pre-wrap break-all max-h-64 overflow-auto rounded px-2 py-1.5 bg-bg-200 text-text-100">
-								{result}
-							</pre>
-						)}
-					</CollapsibleSection>
-				)}
-			</div>
+			<KeyValueCard
+				params={params}
+				result={result ?? undefined}
+			/>
 		</ErrorBorder>
 	);
 }

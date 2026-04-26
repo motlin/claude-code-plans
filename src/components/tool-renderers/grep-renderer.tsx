@@ -1,26 +1,31 @@
 import type {ToolRendererProps} from './types';
-import {ErrorBorder, TerminalOutput, ToolMeta} from './shared';
+import {ErrorBorder, KeyValueCard} from './shared';
 
 export function GrepRenderer({toolCall}: ToolRendererProps) {
 	const pattern = (toolCall.input['pattern'] as string) ?? '';
 	const path = toolCall.input['path'] as string | undefined;
 	const glob = toolCall.input['glob'] as string | undefined;
 	const fileType = toolCall.input['type'] as string | undefined;
+	const outputMode = toolCall.input['output_mode'] as string | undefined;
 	const caseInsensitive = toolCall.input['-i'] as boolean | undefined;
+	const headLimit = toolCall.input['head_limit'] as number | undefined;
 	const {result, isError} = toolCall;
-	const matchCount = result?.trim() ? result.trim().split('\n').length : 0;
+
+	const params: Array<{key: string; value: string}> = [];
+	if (pattern) params.push({key: 'pattern', value: pattern});
+	if (outputMode) params.push({key: 'output_mode', value: outputMode});
+	if (glob) params.push({key: 'glob', value: glob});
+	if (fileType) params.push({key: 'type', value: fileType});
+	if (path) params.push({key: 'path', value: path});
+	if (caseInsensitive) params.push({key: '-i', value: 'true'});
+	if (headLimit !== undefined) params.push({key: 'head_limit', value: String(headLimit)});
 
 	return (
 		<ErrorBorder isError={isError}>
-			<div className="flex items-center gap-2 flex-wrap mb-1">
-				<code className="text-xs font-mono bg-bg-200 px-1.5 py-0.5 rounded">{pattern}</code>
-				{glob && <span className="text-xs bg-bg-200 px-1.5 py-0.5 rounded">glob: {glob}</span>}
-				{fileType && <span className="text-xs bg-bg-200 px-1.5 py-0.5 rounded">type: {fileType}</span>}
-				{path && <span className="text-xs bg-bg-200 px-1.5 py-0.5 rounded">path: {path}</span>}
-				{caseInsensitive && <span className="text-xs bg-bg-200 px-1.5 py-0.5 rounded">case-insensitive</span>}
-				<ToolMeta>{matchCount} matches</ToolMeta>
-			</div>
-			{result && <TerminalOutput content={result} />}
+			<KeyValueCard
+				params={params}
+				result={result ?? undefined}
+			/>
 		</ErrorBorder>
 	);
 }

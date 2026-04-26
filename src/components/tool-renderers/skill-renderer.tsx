@@ -1,20 +1,19 @@
 import type {ToolRendererProps} from './types';
-import {CollapsibleSection} from './shared';
+import {KeyValueCard} from './shared';
 
 export function SkillRenderer({toolCall}: ToolRendererProps) {
+	const skill = (toolCall.input['skill'] as string) ?? '';
+	const args = toolCall.input['args'] as string | undefined;
 	const {result} = toolCall;
 
-	if (!result) return null;
-
-	if (result.length <= 200) {
-		return <div className="text-xs text-text-500 whitespace-pre-wrap">{result}</div>;
-	}
+	const params: Array<{key: string; value: string}> = [];
+	if (skill) params.push({key: 'skill', value: skill});
+	if (args) params.push({key: 'args', value: args});
 
 	return (
-		<CollapsibleSection label="Output">
-			<pre className="text-xs font-mono text-text-500 whitespace-pre-wrap break-all max-h-48 overflow-auto">
-				{result}
-			</pre>
-		</CollapsibleSection>
+		<KeyValueCard
+			params={params}
+			result={result ?? undefined}
+		/>
 	);
 }
