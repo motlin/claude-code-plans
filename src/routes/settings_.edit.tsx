@@ -1,7 +1,19 @@
 import type {ThemedToken} from '@shikijs/core';
 import {queryOptions, useQueryClient, useSuspenseQuery} from '@tanstack/react-query';
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {AlertCircle, Check, ChevronDown, ChevronRight, Code, RotateCcw, Save, SlidersHorizontal, X} from 'lucide-react';
+import {
+	AlertCircle,
+	Check,
+	ChevronDown,
+	ChevronRight,
+	Code,
+	Plus,
+	RotateCcw,
+	Save,
+	SlidersHorizontal,
+	Trash2,
+	X,
+} from 'lucide-react';
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {useHighlightedLines} from '../hooks/use-shiki';
 import {getSettingsRaw, saveSettingsFile} from '../lib/server-fns';
@@ -528,6 +540,346 @@ function FormField({
 	}
 }
 
+// ---------------------------------------------------------------------------
+// Dedicated form editors for complex fields
+// ---------------------------------------------------------------------------
+
+function EnvEditor({
+	value,
+	onChange,
+}: {
+	value: Record<string, string>;
+	onChange: (key: string, value: unknown) => void;
+}) {
+	const entries = Object.entries(value);
+	const [newKey, setNewKey] = useState('');
+	const [newValue, setNewValue] = useState('');
+
+	const handleEntryChange = useCallback(
+		(oldKey: string, field: 'key' | 'value', fieldValue: string) => {
+			const updated = {...value};
+			if (field === 'key') {
+				const currentValue = updated[oldKey] ?? '';
+				delete updated[oldKey];
+				if (fieldValue) {
+					updated[fieldValue] = currentValue;
+				}
+			} else {
+				updated[oldKey] = fieldValue;
+			}
+			onChange('env', updated);
+		},
+		[value, onChange],
+	);
+
+	const handleRemove = useCallback(
+		(key: string) => {
+			const updated = {...value};
+			delete updated[key];
+			onChange('env', updated);
+		},
+		[value, onChange],
+	);
+
+	const handleAdd = useCallback(() => {
+		if (!newKey.trim()) return;
+		const updated = {...value, [newKey.trim()]: newValue};
+		onChange('env', updated);
+		setNewKey('');
+		setNewValue('');
+	}, [value, onChange, newKey, newValue]);
+
+	return (
+		<div className="py-2">
+			<div className="mb-2">
+				<div className="text-sm font-medium text-text-100">Environment variables</div>
+				<div className="text-xs text-text-500">Key-value pairs injected into Claude Code's environment</div>
+			</div>
+			<div className="space-y-1.5">
+				{entries.map(([entryKey, entryValue]) => (
+					<div
+						key={entryKey}
+						className="flex items-center gap-2"
+					>
+						<input
+							type="text"
+							value={entryKey}
+							onChange={(event) => handleEntryChange(entryKey, 'key', event.target.value)}
+							className="w-48 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+							placeholder="KEY"
+						/>
+						<span className="text-text-500">=</span>
+						<input
+							type="text"
+							value={entryValue}
+							onChange={(event) => handleEntryChange(entryKey, 'value', event.target.value)}
+							className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+							placeholder="value"
+						/>
+						<button
+							type="button"
+							onClick={() => handleRemove(entryKey)}
+							className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
+							title="Remove"
+						>
+							<Trash2 className="h-3.5 w-3.5" />
+						</button>
+					</div>
+				))}
+				<div className="flex items-center gap-2 pt-1">
+					<input
+						type="text"
+						value={newKey}
+						onChange={(event) => setNewKey(event.target.value)}
+						onKeyDown={(event) => {
+							if (event.key === 'Enter') handleAdd();
+						}}
+						className="w-48 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
+						placeholder="NEW_KEY"
+					/>
+					<span className="text-text-500">=</span>
+					<input
+						type="text"
+						value={newValue}
+						onChange={(event) => setNewValue(event.target.value)}
+						onKeyDown={(event) => {
+							if (event.key === 'Enter') handleAdd();
+						}}
+						className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
+						placeholder="value"
+					/>
+					<button
+						type="button"
+						onClick={handleAdd}
+						disabled={!newKey.trim()}
+						className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200 disabled:opacity-50"
+					>
+						<Plus className="h-3 w-3" />
+						Add
+					</button>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function PermissionListEditor({
+	label,
+	description,
+	entries,
+	onUpdate,
+}: {
+	label: string;
+	description: string;
+	entries: string[];
+	onUpdate: (updated: string[]) => void;
+}) {
+	const [newEntry, setNewEntry] = useState('');
+
+	const handleRemove = useCallback(
+		(index: number) => {
+			const updated = entries.filter((_, i) => i !== index);
+			onUpdate(updated);
+		},
+		[entries, onUpdate],
+	);
+
+	const handleAdd = useCallback(() => {
+		if (!newEntry.trim()) return;
+		onUpdate([...entries, newEntry.trim()]);
+		setNewEntry('');
+	}, [entries, onUpdate, newEntry]);
+
+	const handleChange = useCallback(
+		(index: number, value: string) => {
+			const updated = [...entries];
+			updated[index] = value;
+			onUpdate(updated);
+		},
+		[entries, onUpdate],
+	);
+
+	return (
+		<div className="py-2">
+			<div className="mb-2">
+				<div className="text-sm font-medium text-text-100">{label}</div>
+				<div className="text-xs text-text-500">{description}</div>
+			</div>
+			<div className="space-y-1">
+				{entries.map((entry, index) => (
+					<div
+						key={index}
+						className="flex items-center gap-2"
+					>
+						<input
+							type="text"
+							value={entry}
+							onChange={(event) => handleChange(index, event.target.value)}
+							className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+						/>
+						<button
+							type="button"
+							onClick={() => handleRemove(index)}
+							className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
+							title="Remove"
+						>
+							<Trash2 className="h-3.5 w-3.5" />
+						</button>
+					</div>
+				))}
+				<div className="flex items-center gap-2 pt-1">
+					<input
+						type="text"
+						value={newEntry}
+						onChange={(event) => setNewEntry(event.target.value)}
+						onKeyDown={(event) => {
+							if (event.key === 'Enter') handleAdd();
+						}}
+						className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
+						placeholder="e.g. Bash(ls:*)"
+					/>
+					<button
+						type="button"
+						onClick={handleAdd}
+						disabled={!newEntry.trim()}
+						className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200 disabled:opacity-50"
+					>
+						<Plus className="h-3 w-3" />
+						Add
+					</button>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function PermissionsEditor({
+	value,
+	onChange,
+}: {
+	value: Record<string, unknown>;
+	onChange: (key: string, value: unknown) => void;
+}) {
+	const allow = Array.isArray(value['allow']) ? (value['allow'] as string[]) : [];
+	const deny = Array.isArray(value['deny']) ? (value['deny'] as string[]) : [];
+	const ask = Array.isArray(value['ask']) ? (value['ask'] as string[]) : [];
+	const defaultMode = typeof value['defaultMode'] === 'string' ? value['defaultMode'] : '';
+
+	const updateList = useCallback(
+		(listKey: string, updated: string[]) => {
+			onChange('permissions', {...value, [listKey]: updated});
+		},
+		[value, onChange],
+	);
+
+	return (
+		<div className="space-y-3">
+			<PermissionListEditor
+				label="Allow"
+				description="Tools and patterns always permitted without prompting"
+				entries={allow}
+				onUpdate={(updated) => updateList('allow', updated)}
+			/>
+			<PermissionListEditor
+				label="Deny"
+				description="Tools and patterns that are blocked"
+				entries={deny}
+				onUpdate={(updated) => updateList('deny', updated)}
+			/>
+			<PermissionListEditor
+				label="Ask"
+				description="Tools and patterns that require confirmation"
+				entries={ask}
+				onUpdate={(updated) => updateList('ask', updated)}
+			/>
+			<div className="flex items-center justify-between gap-4 py-2">
+				<div>
+					<div className="text-sm font-medium text-text-100">Default mode</div>
+					<div className="text-xs text-text-500">Permission mode when not otherwise specified</div>
+				</div>
+				<select
+					value={defaultMode}
+					onChange={(event) =>
+						onChange('permissions', {...value, defaultMode: event.target.value || undefined})
+					}
+					className="rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+				>
+					<option value="">(not set)</option>
+					<option value="plan">Plan</option>
+					<option value="auto">Auto</option>
+				</select>
+			</div>
+		</div>
+	);
+}
+
+function StatusLineEditor({
+	value,
+	onChange,
+}: {
+	value: Record<string, unknown>;
+	onChange: (key: string, value: unknown) => void;
+}) {
+	const statusType = typeof value['type'] === 'string' ? value['type'] : '';
+	const command = typeof value['command'] === 'string' ? value['command'] : '';
+	const padding = typeof value['padding'] === 'number' ? value['padding'] : 0;
+
+	const update = useCallback(
+		(field: string, fieldValue: unknown) => {
+			onChange('statusLine', {...value, [field]: fieldValue});
+		},
+		[value, onChange],
+	);
+
+	return (
+		<div className="py-2">
+			<div className="mb-2">
+				<div className="text-sm font-medium text-text-100">Status line</div>
+				<div className="text-xs text-text-500">Custom status line displayed at the bottom of the TUI</div>
+			</div>
+			<div className="space-y-2">
+				<div className="flex items-center justify-between gap-4">
+					<label className="text-xs text-text-300">Type</label>
+					<select
+						value={statusType}
+						onChange={(event) => update('type', event.target.value || undefined)}
+						className="rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+					>
+						<option value="">(not set)</option>
+						<option value="command">Command</option>
+					</select>
+				</div>
+				<div className="flex items-center justify-between gap-4">
+					<label className="text-xs text-text-300">Command</label>
+					<input
+						type="text"
+						value={command}
+						onChange={(event) => update('command', event.target.value || undefined)}
+						className="flex-1 max-w-sm rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+						placeholder="~/.claude/statusline.sh"
+					/>
+				</div>
+				<div className="flex items-center justify-between gap-4">
+					<label className="text-xs text-text-300">Padding</label>
+					<input
+						type="number"
+						value={padding}
+						min={0}
+						onChange={(event) => {
+							const parsed = Number(event.target.value);
+							if (Number.isFinite(parsed)) update('padding', parsed);
+						}}
+						className="w-20 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+					/>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+// Keys that have dedicated form editors (not scalar fields, not "Other")
+const DEDICATED_EDITOR_KEYS = new Set(['env', 'permissions', 'statusLine']);
+
 function ObjectSummary({label, value}: {label: string; value: unknown}) {
 	const [expanded, setExpanded] = useState(false);
 
@@ -605,7 +957,9 @@ function FormEditor({filename, initialContent, path}: {filename: string; initial
 
 	const sectionGroups = groupFieldsBySection();
 	const knownKeys = new Set(FIELD_DEFINITIONS.map((f) => f.key));
-	const unknownKeys = Object.keys(data).filter((k) => !knownKeys.has(k) && k !== '$schema');
+	const unknownKeys = Object.keys(data).filter(
+		(k) => !knownKeys.has(k) && !DEDICATED_EDITOR_KEYS.has(k) && k !== '$schema',
+	);
 
 	return (
 		<section className="space-y-3">
@@ -638,6 +992,46 @@ function FormEditor({filename, initialContent, path}: {filename: string; initial
 						</div>
 					);
 				})}
+
+				{data['env'] !== undefined && typeof data['env'] === 'object' && data['env'] !== null && (
+					<div>
+						<h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
+							Environment
+						</h3>
+						<EnvEditor
+							value={data['env'] as Record<string, string>}
+							onChange={handleFieldChange}
+						/>
+					</div>
+				)}
+
+				{data['permissions'] !== undefined &&
+					typeof data['permissions'] === 'object' &&
+					data['permissions'] !== null && (
+						<div>
+							<h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
+								Permissions
+							</h3>
+							<PermissionsEditor
+								value={data['permissions'] as Record<string, unknown>}
+								onChange={handleFieldChange}
+							/>
+						</div>
+					)}
+
+				{data['statusLine'] !== undefined &&
+					typeof data['statusLine'] === 'object' &&
+					data['statusLine'] !== null && (
+						<div>
+							<h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
+								Status Line
+							</h3>
+							<StatusLineEditor
+								value={data['statusLine'] as Record<string, unknown>}
+								onChange={handleFieldChange}
+							/>
+						</div>
+					)}
 
 				{unknownKeys.length > 0 && (
 					<div>

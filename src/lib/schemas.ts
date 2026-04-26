@@ -685,6 +685,87 @@ export const TaskFileSchema = z
 	.passthrough();
 
 // ---------------------------------------------------------------------------
+// Claude Code Settings (~/.claude/settings.json, settings.local.json)
+// ---------------------------------------------------------------------------
+
+const HookEntrySchema = z
+	.object({
+		type: z.literal('command'),
+		command: z.string(),
+		timeout: z.number().optional(),
+	})
+	.strict();
+
+const HookMatcherSchema = z
+	.object({
+		matcher: z.string().optional(),
+		hooks: z.array(HookEntrySchema),
+	})
+	.strict();
+
+const HooksSchema = z.record(z.string(), z.array(HookMatcherSchema));
+
+const PermissionsSchema = z
+	.object({
+		allow: z.array(z.string()).optional(),
+		deny: z.array(z.string()).optional(),
+		ask: z.array(z.string()).optional(),
+		defaultMode: z.string().optional(),
+	})
+	.strict();
+
+const StatusLineSchema = z
+	.object({
+		type: z.string().optional(),
+		command: z.string().optional(),
+		padding: z.number().optional(),
+	})
+	.strict();
+
+const MarketplaceSourceSchema = z
+	.object({
+		source: z.string(),
+		repo: z.string().optional(),
+		path: z.string().optional(),
+	})
+	.strict();
+
+const MarketplaceEntrySchema = z
+	.object({
+		source: MarketplaceSourceSchema,
+	})
+	.strict();
+
+export const ClaudeSettingsSchema = z
+	.object({
+		$schema: z.string().optional(),
+		model: z.string().optional(),
+		theme: z.string().optional(),
+		tui: z.string().optional(),
+		verbose: z.boolean().optional(),
+		includeCoAuthoredBy: z.boolean().optional(),
+		alwaysThinkingEnabled: z.boolean().optional(),
+		voiceEnabled: z.boolean().optional(),
+		cleanupPeriodDays: z.number().optional(),
+		fileCheckpointingEnabled: z.boolean().optional(),
+		autoUpdatesChannel: z.string().optional(),
+		enableAllProjectMcpServers: z.boolean().optional(),
+		enabledMcpjsonServers: z.array(z.string()).optional(),
+		skipDangerousModePermissionPrompt: z.boolean().optional(),
+		teammateMode: z.string().optional(),
+		preferredNotifChannel: z.string().optional(),
+		env: z.record(z.string(), z.string()).optional(),
+		permissions: PermissionsSchema.optional(),
+		hooks: HooksSchema.optional(),
+		statusLine: StatusLineSchema.optional(),
+		enabledPlugins: z.record(z.string(), z.boolean()).optional(),
+		extraKnownMarketplaces: z.record(z.string(), MarketplaceEntrySchema).optional(),
+	})
+	.strict();
+
+export type ClaudeSettings = z.infer<typeof ClaudeSettingsSchema>;
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
