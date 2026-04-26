@@ -2,7 +2,7 @@ import type {ThemedToken} from '@shikijs/core';
 import {extractLineNumbers, detectLanguage} from '../../lib/diff-utils';
 import {useHighlightedLines} from '../../hooks/use-shiki';
 import type {ToolRendererProps} from './types';
-import {ErrorBorder, ExpandableBlock} from './shared';
+import {CopyButton, ErrorBorder, ExpandableBlock} from './shared';
 
 interface ParsedLine {
 	lineNum: string | null;
@@ -45,6 +45,35 @@ function PlainLine({content}: {content: string}) {
 	return <>{content}</>;
 }
 
+/**
+ * Split a file path into a truncatable prefix and a non-truncatable suffix.
+ * The suffix always includes the filename and enough parent directories
+ * to land near the midpoint of the full path on a `/` boundary.
+ */
+function splitPath(filePath: string): {prefix: string; suffix: string} {
+	const lastSlash = filePath.lastIndexOf('/');
+	if (lastSlash === -1) return {prefix: '', suffix: filePath};
+
+	const midpoint = Math.floor(filePath.length / 2);
+	let splitIndex = -1;
+
+	for (let i = midpoint; i >= 0; i--) {
+		if (filePath[i] === '/') {
+			splitIndex = i;
+			break;
+		}
+	}
+
+	if (splitIndex <= 0) {
+		return {prefix: '', suffix: filePath};
+	}
+
+	return {
+		prefix: filePath.slice(0, splitIndex + 1),
+		suffix: filePath.slice(splitIndex + 1),
+	};
+}
+
 export function ReadRenderer({toolCall}: ToolRendererProps) {
 	const filePath = (toolCall.input['file_path'] as string) ?? '';
 	const {result, isError} = toolCall;
@@ -52,31 +81,51 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 
 	const parsedLines = result ? parseLineNumbers(result) : [];
 
-	// Extract clean code (without line number prefixes) for highlighting.
 	const {text: cleanCode} = result ? extractLineNumbers(result) : {text: ''};
 	const language = detectLanguage(filePath);
 	const tokens = useHighlightedLines(cleanCode, language);
+	const {prefix, suffix} = splitPath(filePath);
 
 	return (
 		<ErrorBorder isError={isError}>
-			<div className="bg-bg-200/40 rounded-lg overflow-clip flex flex-col">
-				<div className="flex items-center gap-1 px-2 py-1.5 text-[13px] text-text-500 min-w-0">
-					<span className="truncate min-w-0">{filePath}</span>
-				</div>
-				{result && (
-					<ExpandableBlock
-						lineCount={lineCount}
-						maxLines={20}
+			{/* Header: smart-truncated file path + hover copy button */}
+			<div className="flex items-center gap-g3 px-p6 py-p5">
+				<span className="flex flex-1 min-w-0 text-body text-assistant-secondary">
+					<span
+						className="contents"
+						title={filePath}
 					>
-						<div className="grid grid-cols-[auto_1fr] font-mono text-xs leading-[17px]">
-							<div className="select-none text-right text-text-500 py-0 pl-3.5 pr-[7px]">
+						<span className="truncate">{prefix}</span>
+						<span className="shrink-0">{suffix}</span>
+					</span>
+				</span>
+				<CopyButton text={result ?? filePath} />
+			</div>
+
+			{/* Body: syntax-highlighted code */}
+			{result && (
+				<ExpandableBlock
+					lineCount={lineCount}
+					maxLines={20}
+				>
+					<div className="border-t border-border-300/15">
+						<div className="flex font-mono text-code">
+							<div className="bg-t1 border-r border-border-300/15 px-3 py-2 select-none text-right min-w-fit text-assistant-secondary">
 								{parsedLines.map((line, index) => (
-									<div key={index}>{line.lineNum || ' '}</div>
+									<div
+										key={index}
+										className="h-[17px] flex items-center justify-end"
+									>
+										{line.lineNum || ''}
+									</div>
 								))}
 							</div>
-							<div className="whitespace-pre-wrap break-all py-0 px-[7px]">
+							<div className="flex-1 px-3 py-2 whitespace-pre-wrap break-all overflow-x-auto">
 								{parsedLines.map((line, index) => (
-									<div key={index}>
+									<div
+										key={index}
+										className="h-[17px] flex items-center"
+									>
 										{tokens?.[index] ? (
 											<HighlightedLine tokens={tokens[index]} />
 										) : (
@@ -86,9 +135,9 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 								))}
 							</div>
 						</div>
-					</ExpandableBlock>
-				)}
-			</div>
+					</div>
+				</ExpandableBlock>
+			)}
 		</ErrorBorder>
 	);
 }
