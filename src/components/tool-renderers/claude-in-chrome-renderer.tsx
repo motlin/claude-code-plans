@@ -11,11 +11,83 @@ import {
 	FileText,
 } from 'lucide-react';
 import type {ToolRendererProps} from './types';
-import {CollapsibleSection, ErrorBorder} from './shared';
+import {CollapsibleSection, ErrorBorder, ExpandableBlock} from './shared';
+import {MarkdownArticle} from '../markdown-article';
+import {looksLikeMarkdown} from '../../lib/client-markdown';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+function looksLikeJson(text: string): boolean {
+	const trimmed = text.trim();
+	if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+		try {
+			JSON.parse(trimmed);
+			return true;
+		} catch {
+			return false;
+		}
+	}
+	return false;
+}
+
+function formatJson(text: string): string {
+	try {
+		return JSON.stringify(JSON.parse(text.trim()), null, 2);
+	} catch {
+		return text;
+	}
+}
+
+/**
+ * Renders tool result content by detecting whether it is markdown, JSON, or
+ * plain text and choosing the appropriate rendering strategy.
+ */
+function SmartResultContent({text, maxLines = 20}: {text: string; maxLines?: number}) {
+	if (!text) return null;
+
+	if (looksLikeMarkdown(text)) {
+		const lineCount = text.split('\n').length;
+		return (
+			<ExpandableBlock
+				lineCount={lineCount}
+				maxLines={maxLines}
+			>
+				<div className="text-xs text-text-100 leading-relaxed">
+					<MarkdownArticle markdown={text} />
+				</div>
+			</ExpandableBlock>
+		);
+	}
+
+	if (looksLikeJson(text)) {
+		const formatted = formatJson(text);
+		const lineCount = formatted.split('\n').length;
+		return (
+			<ExpandableBlock
+				lineCount={lineCount}
+				maxLines={maxLines}
+			>
+				<pre className="bg-bg-200 text-text-100 rounded text-xs leading-relaxed p-2 whitespace-pre-wrap break-all font-mono">
+					{formatted}
+				</pre>
+			</ExpandableBlock>
+		);
+	}
+
+	const lines = text.split('\n');
+	return (
+		<ExpandableBlock
+			lineCount={lines.length}
+			maxLines={maxLines}
+		>
+			<pre className="bg-bg-200 text-text-100 rounded text-xs leading-relaxed p-2 whitespace-pre-wrap break-all font-mono">
+				{text}
+			</pre>
+		</ExpandableBlock>
+	);
+}
 
 function ResultSummary({resultText, maxLines = 10}: {resultText: string; maxLines?: number}) {
 	if (!resultText) return null;
@@ -108,12 +180,12 @@ function ReadPageRenderer({resultText}: {resultText: string}) {
 			<div className="flex items-center gap-2">
 				<FileText className="h-4 w-4 text-blue-500" />
 				<span className="text-sm text-foreground">Read page content</span>
-				<span className="text-xs text-muted-foreground">{resultText.split('\n').length} lines</span>
+				<span className="text-xs text-text-500">{resultText.split('\n').length} lines</span>
 			</div>
 			<CollapsibleSection label="Page content">
-				<ResultSummary
-					resultText={resultText}
-					maxLines={20}
+				<SmartResultContent
+					text={resultText}
+					maxLines={30}
 				/>
 			</CollapsibleSection>
 		</div>
@@ -136,9 +208,9 @@ function ComputerRenderer({input, resultText}: {input: Record<string, unknown>; 
 				<div className="flex items-center gap-2">
 					<MousePointer className="h-4 w-4 text-blue-500" />
 					<span className="text-sm text-foreground">Computer action</span>
-					{detail && <span className="text-xs text-muted-foreground font-mono truncate">{detail}</span>}
+					{detail && <span className="text-xs text-text-500 font-mono truncate">{detail}</span>}
 				</div>
-				<ResultSummary resultText={resultText} />
+				<SmartResultContent text={resultText} />
 			</div>
 		</ErrorBorder>
 	);
@@ -190,16 +262,14 @@ function JavaScriptToolRenderer({input, resultText}: {input: Record<string, unkn
 				<span className="text-sm text-foreground">Execute JavaScript</span>
 			</div>
 			{code && (
-				<pre className="bg-muted rounded p-2 text-xs text-muted-foreground font-mono whitespace-pre-wrap max-h-32 overflow-auto">
+				<pre className="bg-bg-200 rounded p-2 text-xs text-text-100 font-mono whitespace-pre-wrap max-h-32 overflow-auto">
 					{code}
 				</pre>
 			)}
 			{resultText && (
 				<div className="border-l-2 border-green-200 dark:border-green-800 pl-3">
-					<div className="text-xs text-muted-foreground font-medium mb-1">Result</div>
-					<pre className="bg-muted rounded p-2 text-xs text-muted-foreground font-mono whitespace-pre-wrap max-h-32 overflow-auto">
-						{resultText}
-					</pre>
+					<div className="text-xs text-text-500 font-medium mb-1">Result</div>
+					<SmartResultContent text={resultText} />
 				</div>
 			)}
 		</div>
@@ -249,12 +319,8 @@ function ReadConsoleMessagesRenderer({resultText}: {resultText: string}) {
 }
 
 function DefaultRenderer({resultText}: {resultText: string}) {
-	if (!resultText) return <span className="text-xs text-muted-foreground">Action completed</span>;
-	return (
-		<div className="bg-muted rounded p-2 max-h-48 overflow-auto">
-			<pre className="text-xs text-muted-foreground font-mono whitespace-pre-wrap">{resultText}</pre>
-		</div>
-	);
+	if (!resultText) return <span className="text-xs text-text-500">Action completed</span>;
+	return <SmartResultContent text={resultText} />;
 }
 
 // ---------------------------------------------------------------------------
