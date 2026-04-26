@@ -239,11 +239,32 @@ function isStdoutLine(line: ProcessedLine): boolean {
 }
 
 /**
+ * Check whether a line is a blank assistant message with no visible content.
+ * These are transparent for command group dedup -- they don't break adjacency.
+ */
+function isBlankAssistantLine(line: ProcessedLine): boolean {
+	if (line.type !== 'assistant') return false;
+	const content = (line as MessageProcessedLine).message?.content;
+	if (content === undefined || content === null) return true;
+	if (typeof content === 'string') return content.trim() === '';
+	if (Array.isArray(content)) {
+		if (content.length === 0) return true;
+		return content.every(
+			(block) => block.type === 'text' && (typeof block.text !== 'string' || block.text.trim() === ''),
+		);
+	}
+	return false;
+}
+
+/**
  * Remove duplicate consecutive command groups from processed lines.
  *
  * A "command group" is an optional caveat line, followed by a command line,
  * followed by an optional stdout line. When two adjacent command groups have
  * identical command content, the second group is removed.
+ *
+ * Blank assistant messages between groups are treated as transparent and
+ * removed along with the duplicate group.
  */
 function deduplicateCommandGroups(lines: ProcessedLine[]): ProcessedLine[] {
 	const indicesToRemove = new Set<number>();
@@ -253,8 +274,8 @@ function deduplicateCommandGroups(lines: ProcessedLine[]): ProcessedLine[] {
 	for (let i = 0; i < lines.length; i++) {
 		if (!isCommandLine(lines[i]!)) {
 			// Non-command lines that aren't part of a command group reset tracking,
-			// unless they're caveats or stdouts adjacent to a command.
-			if (!isCaveatLine(lines[i]!) && !isStdoutLine(lines[i]!)) {
+			// unless they're caveats, stdouts, or blank assistant messages.
+			if (!isCaveatLine(lines[i]!) && !isStdoutLine(lines[i]!) && !isBlankAssistantLine(lines[i]!)) {
 				lastCommandContent = undefined;
 				lastCommandGroupEnd = -1;
 			}
@@ -267,10 +288,31 @@ function deduplicateCommandGroups(lines: ProcessedLine[]): ProcessedLine[] {
 		const groupStart = i > 0 && isCaveatLine(lines[i - 1]!) ? i - 1 : i;
 		const groupEnd = i + 1 < lines.length && isStdoutLine(lines[i + 1]!) ? i + 1 : i;
 
-		if (commandContent === lastCommandContent && groupStart <= lastCommandGroupEnd + 1) {
+		// Check adjacency: all lines between the previous group end and this group start
+		// must be blank assistants (transparent lines) for the groups to be "adjacent".
+		const gapStart = lastCommandGroupEnd + 1;
+		const gapEnd = groupStart;
+		let adjacentToPrevious = gapStart >= gapEnd;
+		if (!adjacentToPrevious) {
+			adjacentToPrevious = true;
+			for (let j = gapStart; j < gapEnd; j++) {
+				if (!isBlankAssistantLine(lines[j]!)) {
+					adjacentToPrevious = false;
+					break;
+				}
+			}
+		}
+
+		if (commandContent === lastCommandContent && adjacentToPrevious) {
 			// Duplicate command group -- mark for removal
 			for (let j = groupStart; j <= groupEnd; j++) {
 				indicesToRemove.add(j);
+			}
+			// Also remove blank assistant messages in the gap
+			for (let j = gapStart; j < gapEnd; j++) {
+				if (isBlankAssistantLine(lines[j]!)) {
+					indicesToRemove.add(j);
+				}
 			}
 		} else {
 			lastCommandContent = commandContent;
