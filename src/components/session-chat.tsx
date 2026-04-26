@@ -117,7 +117,7 @@ function MessageToolbar({line, index, timestamp}: {line: MessageSessionLine; ind
 	}
 
 	return (
-		<div className="flex gap-g2 pt-[4px] -mb-[8px] group-hover/msg:mb-0 opacity-0 pointer-events-none group-hover/msg:opacity-100 group-hover/msg:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-[opacity,margin-bottom] duration-150">
+		<div className="flex gap-g2 pt-[4px] -mt-[8px] opacity-0 pointer-events-none group-hover/msg:opacity-100 group-hover/msg:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-opacity duration-150">
 			<div className="relative">
 				<button
 					type="button"
