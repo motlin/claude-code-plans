@@ -464,6 +464,30 @@ describe('JsonlRecordSchema', () => {
 		});
 		expect(result.success).toBe(true);
 	});
+
+	it('parses user records with agentId (subagent sessions)', () => {
+		const result = JsonlRecordSchema.safeParse({
+			type: 'user',
+			...baseFields,
+			agentId: 'agent-abc123def456',
+			message: {role: 'user', content: 'Hello from subagent'},
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('parses assistant records with agentId (subagent sessions)', () => {
+		const result = JsonlRecordSchema.safeParse({
+			type: 'assistant',
+			...baseFields,
+			agentId: 'agent-abc123def456',
+			requestId: 'req_456',
+			message: {
+				...assistantMessageFields,
+				content: [{type: 'text', text: 'Response from subagent'}],
+			},
+		});
+		expect(result.success).toBe(true);
+	});
 });
 
 describe('parseJsonlRecord', () => {
@@ -787,7 +811,7 @@ describe('ContentBlockSchema tool input validation', () => {
 		expect(result.success).toBe(true);
 	});
 
-	it('rejects unknown tool names', () => {
+	it('accepts unknown tool names without validation', () => {
 		const block = {
 			type: 'tool_use',
 			id: 'tu_1',
@@ -795,10 +819,7 @@ describe('ContentBlockSchema tool input validation', () => {
 			input: {},
 		};
 		const result = ContentBlockSchema.safeParse(block);
-		expect(result.success).toBe(false);
-		if (!result.success) {
-			expect(result.error.issues.some((i) => i.message.includes('Unknown tool name'))).toBe(true);
-		}
+		expect(result.success).toBe(true);
 	});
 
 	it('rejects invalid input for known tools', () => {

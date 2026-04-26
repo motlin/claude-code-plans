@@ -273,6 +273,38 @@ describe('processTranscript', () => {
 		expect(result.lines).toHaveLength(1);
 	});
 
+	it('parses subagent records that contain agentId field', () => {
+		const records = [
+			userRecord([{type: 'text', text: 'subagent prompt'}], {
+				uuid: 'u-1',
+				agentId: 'agent-abc123',
+			}),
+			assistantRecord([{type: 'text', text: 'subagent response'}], {
+				uuid: 'a-1',
+				agentId: 'agent-abc123',
+			}),
+		];
+		const result = processTranscript(records);
+		expect(result.lines).toHaveLength(2);
+		expect(result.title).toBe('subagent prompt');
+	});
+
+	it('parses tool_use blocks with unknown tool names', () => {
+		const records = [
+			assistantRecord([{type: 'tool_use', id: 'tool-1', name: 'bash', input: {command: 'ls'}}], {
+				uuid: 'a-1',
+				timestamp: '1999-12-31T00:00:00Z',
+			}),
+			userRecord([{type: 'tool_result', tool_use_id: 'tool-1', content: 'output'}], {
+				uuid: 'u-1',
+				timestamp: '1999-12-31T00:00:01Z',
+			}),
+		];
+		const result = processTranscript(records);
+		expect(result.lines).toHaveLength(2);
+		expect(result.toolResultMap.size).toBe(1);
+	});
+
 	it('deduplicates consecutive identical slash command messages', () => {
 		const commandContent =
 			'<command-name>/chrome</command-name>\n<command-message>chrome</command-message>\n<command-args></command-args>';

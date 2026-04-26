@@ -109,14 +109,7 @@ export const ContentBlockSchema = z
 		if (isMcpTool(name)) return;
 
 		const schema = toolInputSchemas[name];
-		if (!schema) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				message: `Unknown tool name: ${name}`,
-				path: ['name'],
-			});
-			return;
-		}
+		if (!schema) return;
 
 		const result = schema.safeParse(input);
 		if (!result.success) {
@@ -149,6 +142,7 @@ const BaseRecordFields = {
 	forkedFrom: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
 	teamName: z.string().optional(),
 	leafUuid: z.string().optional(),
+	agentId: z.string().optional(),
 };
 
 export const UserRecordSchema = z
