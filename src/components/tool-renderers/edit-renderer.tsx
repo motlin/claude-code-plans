@@ -2,7 +2,7 @@ import {useMemo} from 'react';
 import {DiffView, DiffModeEnum} from '@git-diff-view/react';
 import '@git-diff-view/react/styles/diff-view.css';
 import type {ToolRendererProps} from './types';
-import {DiffStats, ErrorBorder} from './shared';
+import {CopyButton, ErrorBorder} from './shared';
 import {useResolvedTheme} from '../theme-provider';
 import {computeDiffData, buildUnifiedHunk} from '../../lib/diff-utils';
 
@@ -61,6 +61,35 @@ function resolveLang(filePath: string): string {
 	return SUPPORTED_LANGS.has(mapped) ? mapped : 'txt';
 }
 
+/**
+ * Split a file path into a truncatable prefix and a non-truncatable suffix.
+ * The suffix always includes the filename and enough parent directories
+ * to land near the midpoint of the full path on a `/` boundary.
+ */
+function splitPath(filePath: string): {prefix: string; suffix: string} {
+	const lastSlash = filePath.lastIndexOf('/');
+	if (lastSlash === -1) return {prefix: '', suffix: filePath};
+
+	const midpoint = Math.floor(filePath.length / 2);
+	let splitIndex = -1;
+
+	for (let i = midpoint; i >= 0; i--) {
+		if (filePath[i] === '/') {
+			splitIndex = i;
+			break;
+		}
+	}
+
+	if (splitIndex <= 0) {
+		return {prefix: '', suffix: filePath};
+	}
+
+	return {
+		prefix: filePath.slice(0, splitIndex + 1),
+		suffix: filePath.slice(splitIndex + 1),
+	};
+}
+
 export function EditRenderer({toolCall}: ToolRendererProps) {
 	const filePath = (toolCall.input['file_path'] as string) ?? '';
 	const rawOldStr = toolCall.input['old_string'];
@@ -68,6 +97,7 @@ export function EditRenderer({toolCall}: ToolRendererProps) {
 	const newStr = (toolCall.input['new_string'] as string) ?? '';
 	const {result, isError} = toolCall;
 	const theme = useResolvedTheme();
+	const {prefix, suffix} = splitPath(filePath);
 
 	const diffData = useMemo(() => {
 		if (rawOldStr === undefined) return null;
@@ -97,19 +127,27 @@ export function EditRenderer({toolCall}: ToolRendererProps) {
 		);
 	}
 
+	const copyText = result ?? filePath;
+
 	return (
 		<ErrorBorder isError={isError}>
-			<div className="flex items-center gap-2 flex-wrap mb-2">
-				<code className="text-xs font-mono text-text-500 bg-bg-100 px-1 py-0.5 rounded truncate">
-					{filePath}
-				</code>
-				<DiffStats
-					added={diffData.added}
-					removed={diffData.removed}
-				/>
+			{/* Header: smart-truncated file path + hover copy button */}
+			<div className="flex items-center gap-g3 px-p6 py-p5">
+				<span className="flex flex-1 min-w-0 text-body text-assistant-secondary">
+					<span
+						className="contents"
+						title={filePath}
+					>
+						<span className="truncate">{prefix}</span>
+						<span className="shrink-0">{suffix}</span>
+					</span>
+				</span>
+				<CopyButton text={copyText} />
 			</div>
+
+			{/* Body: unified diff view */}
 			{viewData && (
-				<div className="rounded border border-border-300/15 overflow-hidden text-xs">
+				<div className="overflow-hidden text-xs">
 					<DiffView
 						data={viewData}
 						diffViewMode={DiffModeEnum.Unified}

@@ -47,6 +47,10 @@
 	--color-user-msg-bg: var(--user-msg-bg);
 	--color-user-msg-text: var(--user-msg-text);
 
+	/* Upstream claude.ai/code — extended diff stat colors */
+	--color-extended-green: var(--upstream-extended-green);
+	--color-extended-pink: var(--upstream-extended-pink);
+
 	/* Upstream claude.ai/code — assistant text colors */
 	--color-assistant-primary: var(--upstream-text-assistant-primary);
 	--color-assistant-secondary: var(--upstream-text-assistant-secondary);
@@ -144,6 +148,10 @@
 	--upstream-text-assistant-primary: hsl(0 0% 4%);
 	--upstream-text-assistant-secondary: hsl(40 3% 42%);
 
+	/* Upstream claude.ai/code — extended diff stat colors */
+	--upstream-extended-green: hsl(134 68% 37%);
+	--upstream-extended-pink: hsl(342 73% 47%);
+
 	/* Upstream claude.ai/code — transparency layers (gray-900 base) */
 	--upstream-t0: hsl(0 0% 4% / 0);
 	--upstream-t1: hsl(0 0% 4% / 0.04);
@@ -206,6 +214,10 @@
 	/* Upstream claude.ai/code — assistant text colors (inverted gray scale) */
 	--upstream-text-assistant-primary: hsl(53 12% 87%);
 	--upstream-text-assistant-secondary: hsl(55 6% 63%);
+
+	/* Upstream claude.ai/code — extended diff stat colors (dark mode) */
+	--upstream-extended-green: hsl(134 60% 52%);
+	--upstream-extended-pink: hsl(342 65% 62%);
 
 	/* Upstream claude.ai/code — transparency layers (white base) */
 	--upstream-t0: hsl(0 0% 100% / 0);

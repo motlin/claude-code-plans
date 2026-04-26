@@ -6,6 +6,7 @@ import {getToolRenderer} from './tool-renderers';
 import {buildClientToolCall, buildSubagentLookup} from './tool-renderers/types';
 import type {ClientToolCall} from './tool-renderers';
 import {ChevronIcon, TerminalOutput} from './tool-renderers/shared';
+import {computeDiffData} from '../lib/diff-utils';
 import {TasksView} from './tasks-view';
 import {DebugLink} from './debug-link';
 import {hmrPersist} from '../lib/hmr-persist';
@@ -1268,6 +1269,11 @@ function ToolCallSection({calls, sessionId}: {calls: ClientToolCall[]; sessionId
 const FILE_PARAM_TOOLS = new Set(['Read', 'Edit', 'MultiEdit', 'Write']);
 
 /**
+ * Tools that show inline diff stats (+N -M) in the clickable row.
+ */
+const EDIT_TOOLS = new Set(['Edit', 'MultiEdit']);
+
+/**
  * Extract just the filename from a path for the clickable row display.
  */
 function filenameFromPath(path: string): string {
@@ -1276,11 +1282,44 @@ function filenameFromPath(path: string): string {
 	return path.slice(lastSlash + 1);
 }
 
+/**
+ * Compute diff stats from an Edit tool call's old_string / new_string input.
+ */
+function useEditDiffStats(call: ClientToolCall): {added: number; removed: number} | null {
+	return useMemo(() => {
+		if (!EDIT_TOOLS.has(call.name)) return null;
+		const rawOldStr = call.input['old_string'];
+		if (rawOldStr === undefined) return null;
+		const oldStr = (rawOldStr as string) ?? '';
+		const newStr = (call.input['new_string'] as string) ?? '';
+		const data = computeDiffData(oldStr, newStr);
+		return {added: data.added, removed: data.removed};
+	}, [call.name, call.input]);
+}
+
+/**
+ * Inline diff stats matching upstream claude.ai/code:
+ *   span.inline-flex > span.flex.gap-g1 > span.text-extended-green "+N"
+ *                                        > span.text-extended-pink  "-M"
+ */
+function InlineDiffStats({added, removed}: {added: number; removed: number}) {
+	if (added === 0 && removed === 0) return null;
+	return (
+		<span className="inline-flex">
+			<span className="flex gap-g1 items-center text-body shrink-0">
+				{added > 0 && <span className="text-extended-green">+{added}</span>}
+				{removed > 0 && <span className="text-extended-pink">-{removed}</span>}
+			</span>
+		</span>
+	);
+}
+
 function ToolCallRow({call, sessionId}: {call: ClientToolCall; sessionId: string}) {
 	const [expanded, setExpanded] = useState(false);
 	const Renderer = getToolRenderer(call.name);
 	const verb = toolCallVerb(call.name);
 	const isFileParam = FILE_PARAM_TOOLS.has(call.name);
+	const diffStats = useEditDiffStats(call);
 
 	const displayParam = isFileParam ? filenameFromPath(call.param) : call.param;
 
@@ -1306,6 +1345,12 @@ function ToolCallRow({call, sessionId}: {call: ClientToolCall; sessionId: string
 						{displayParam}
 					</span>
 				)}
+				{diffStats && (
+					<InlineDiffStats
+						added={diffStats.added}
+						removed={diffStats.removed}
+					/>
+				)}
 				<span className="shrink-0 text-assistant-secondary">
 					<ChevronIcon
 						expanded={expanded}
@@ -1316,7 +1361,7 @@ function ToolCallRow({call, sessionId}: {call: ClientToolCall; sessionId: string
 			<div className={`grid ${expanded ? 'grid-rows-expand' : 'grid-rows-collapse'}`}>
 				<div className="overflow-hidden">
 					<div className="group/body py-p6">
-						<div className="bg-t1 rounded-r6 flex flex-col relative">
+						<div className="bg-t1 rounded-r6 overflow-clip flex flex-col relative">
 							<Renderer toolCall={call} />
 							<DebugLink
 								sessionId={sessionId}
