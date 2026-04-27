@@ -1,3 +1,5 @@
+import type {ThemedToken} from '@shikijs/core';
+import {useHighlightedLines} from '../../hooks/use-shiki';
 import type {ToolRendererProps} from './types';
 import {AnsiText, CopyButton, ErrorBorder, ExpandableBlock} from './shared';
 import {getMcpRenderer} from './mcp-registry';
@@ -42,6 +44,33 @@ function McpCliBashRenderer({
 	);
 }
 
+function HighlightedCommand({command}: {command: string}) {
+	const tokens = useHighlightedLines(command, 'shellscript');
+
+	if (!tokens) {
+		return <div className="whitespace-pre-wrap">$ {command}</div>;
+	}
+
+	return (
+		<div className="whitespace-pre-wrap">
+			<span>$ </span>
+			{tokens.map((lineTokens: ThemedToken[], lineIndex: number) => (
+				<span key={lineIndex}>
+					{lineIndex > 0 && '\n'}
+					{lineTokens.map((token: ThemedToken, tokenIndex: number) => (
+						<span
+							key={tokenIndex}
+							style={{color: token.color}}
+						>
+							{token.content}
+						</span>
+					))}
+				</span>
+			))}
+		</div>
+	);
+}
+
 export function BashRenderer({toolCall}: ToolRendererProps) {
 	const command = (toolCall.input['command'] as string) ?? '';
 	const {result, isError} = toolCall;
@@ -78,7 +107,7 @@ export function BashRenderer({toolCall}: ToolRendererProps) {
 						Exit code <span className="font-mono">{exitCode}</span>
 					</span>
 				)}
-				{command && <div className="whitespace-pre-wrap">$ {command}</div>}
+				{command && <HighlightedCommand command={command} />}
 				{outputText && (
 					<ExpandableBlock
 						lineCount={outputLineCount}
