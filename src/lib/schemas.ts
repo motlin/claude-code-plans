@@ -711,6 +711,7 @@ const PermissionsSchema = z
 		deny: z.array(z.string()).optional(),
 		ask: z.array(z.string()).optional(),
 		defaultMode: z.string().optional(),
+		additionalDirectories: z.array(z.string()).optional(),
 	})
 	.strict();
 
@@ -736,6 +737,19 @@ const MarketplaceEntrySchema = z
 	})
 	.strict();
 
+const SandboxSchema = z
+	.object({
+		enabled: z.boolean().optional(),
+		autoAllowBashIfSandboxed: z.boolean().optional(),
+	})
+	.strict();
+
+const RemoteSchema = z
+	.object({
+		defaultEnvironmentId: z.string().optional(),
+	})
+	.strict();
+
 export const ClaudeSettingsSchema = z
 	.object({
 		$schema: z.string().optional(),
@@ -754,16 +768,43 @@ export const ClaudeSettingsSchema = z
 		skipDangerousModePermissionPrompt: z.boolean().optional(),
 		teammateMode: z.string().optional(),
 		preferredNotifChannel: z.string().optional(),
+		outputStyle: z.string().optional(),
+		spinnerTipsEnabled: z.boolean().optional(),
 		env: z.record(z.string(), z.string()).optional(),
 		permissions: PermissionsSchema.optional(),
 		hooks: HooksSchema.optional(),
 		statusLine: StatusLineSchema.optional(),
+		sandbox: SandboxSchema.optional(),
+		remote: RemoteSchema.optional(),
 		enabledPlugins: z.record(z.string(), z.boolean()).optional(),
 		extraKnownMarketplaces: z.record(z.string(), MarketplaceEntrySchema).optional(),
 	})
 	.strict();
 
 export type ClaudeSettings = z.infer<typeof ClaudeSettingsSchema>;
+
+// ---------------------------------------------------------------------------
+// MCP Configuration (~/.claude/mcp.json, .mcp.json)
+// ---------------------------------------------------------------------------
+
+const McpServerEntrySchema = z
+	.object({
+		type: z.string().optional(),
+		command: z.string(),
+		args: z.array(z.string()).optional(),
+		env: z.record(z.string(), z.string()).optional(),
+		cwd: z.string().optional(),
+		url: z.string().optional(),
+	})
+	.passthrough();
+
+export const McpConfigSchema = z
+	.object({
+		mcpServers: z.record(z.string(), McpServerEntrySchema),
+	})
+	.strict();
+
+export type McpConfig = z.infer<typeof McpConfigSchema>;
 
 // ---------------------------------------------------------------------------
 // Types
