@@ -234,8 +234,22 @@ export interface SummarySegment {
 	rest: string;
 }
 
+function basenameFromPath(path: string): string {
+	const lastSlash = path.lastIndexOf('/');
+	if (lastSlash === -1) return path;
+	return path.slice(lastSlash + 1);
+}
+
+function singleFileBasename(call: ToolCallLike | undefined): string | null {
+	if (!call) return null;
+	const filePath = call.input['file_path'];
+	if (typeof filePath !== 'string' || filePath === '') return null;
+	return basenameFromPath(filePath);
+}
+
 function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
 	const counts = new Map<ToolCategory, number>();
+	const firstCall = new Map<ToolCategory, ToolCallLike>();
 	const editStats = {added: 0, removed: 0};
 	const unknownTools = new Map<string, number>();
 
@@ -245,7 +259,9 @@ function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
 			const displayName = formatToolName(call.name);
 			unknownTools.set(displayName, (unknownTools.get(displayName) ?? 0) + 1);
 		} else {
-			counts.set(cat, (counts.get(cat) ?? 0) + 1);
+			const prev = counts.get(cat) ?? 0;
+			counts.set(cat, prev + 1);
+			if (prev === 0) firstCall.set(cat, call);
 			if (cat === 'edit') {
 				const s = diffStatsForEditCall(call);
 				editStats.added += s.added;
@@ -260,7 +276,8 @@ function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
 		if (count === 0) continue;
 		switch (cat) {
 			case 'edit': {
-				let rest = pluralize(count, 'a file', '{n} files');
+				const singleFilename = count === 1 ? singleFileBasename(firstCall.get(cat)) : null;
+				let rest = singleFilename ?? pluralize(count, 'a file', '{n} files');
 				const {added, removed} = editStats;
 				if (added > 0 && removed > 0) rest += ` +${added} -${removed}`;
 				else if (added > 0) rest += ` +${added}`;
@@ -271,9 +288,11 @@ function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
 			case 'grep':
 				segments.push({verb: 'Searched', rest: pluralize(count, 'for a pattern', 'for {n} patterns')});
 				break;
-			case 'read':
-				segments.push({verb: 'Read', rest: pluralize(count, 'a file', '{n} files')});
+			case 'read': {
+				const singleFilename = count === 1 ? singleFileBasename(firstCall.get(cat)) : null;
+				segments.push({verb: 'Read', rest: singleFilename ?? pluralize(count, 'a file', '{n} files')});
 				break;
+			}
 			case 'glob':
 				segments.push({verb: 'Found', rest: pluralize(count, 'files', 'files ({n} searches)')});
 				break;

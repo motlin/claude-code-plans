@@ -121,8 +121,12 @@ describe('summarizeToolCalls', () => {
 		expect(summarizeToolCalls([])).toBe('');
 	});
 
-	it('single Read', () => {
-		expect(summarizeToolCalls([{name: 'Read', input: {file_path: '/foo'}}])).toBe('read a file');
+	it('single Read shows filename', () => {
+		expect(summarizeToolCalls([{name: 'Read', input: {file_path: '/src/lib/foo.ts'}}])).toBe('read foo.ts');
+	});
+
+	it('single Read without file_path falls back to generic', () => {
+		expect(summarizeToolCalls([{name: 'Read', input: {}}])).toBe('read a file');
 	});
 
 	it('multiple Reads', () => {
@@ -152,6 +156,18 @@ describe('summarizeToolCalls', () => {
 			{name: 'Write', input: {file_path: '/some/code.ts', content: 'one\ntwo'}},
 		];
 		expect(summarizeToolCalls(calls)).toBe('edited 2 files +2');
+	});
+
+	it('single Edit shows filename with diff stats', () => {
+		const calls = [
+			{name: 'Edit', input: {file_path: '/src/session-chat.tsx', old_string: 'a', new_string: 'b\nc'}},
+		];
+		expect(summarizeToolCalls(calls)).toBe('edited session-chat.tsx +2 -1');
+	});
+
+	it('single Write shows filename', () => {
+		const calls = [{name: 'Write', input: {file_path: '/src/new-file.ts', content: 'line1\nline2\nline3'}}];
+		expect(summarizeToolCalls(calls)).toBe('edited new-file.ts +3');
 	});
 
 	it('single Grep', () => {
@@ -316,10 +332,14 @@ describe('summarizeToolCallsStructured', () => {
 		expect(summarizeToolCallsStructured([])).toEqual([]);
 	});
 
-	it('single Read returns one segment with capitalized verb', () => {
-		expect(summarizeToolCallsStructured([{name: 'Read', input: {file_path: '/foo'}}])).toEqual([
-			{verb: 'Read', rest: 'a file'},
+	it('single Read returns one segment with filename', () => {
+		expect(summarizeToolCallsStructured([{name: 'Read', input: {file_path: '/src/lib/foo.ts'}}])).toEqual([
+			{verb: 'Read', rest: 'foo.ts'},
 		]);
+	});
+
+	it('single Read without file_path falls back to generic', () => {
+		expect(summarizeToolCallsStructured([{name: 'Read', input: {}}])).toEqual([{verb: 'Read', rest: 'a file'}]);
 	});
 
 	it('mixed tools return segments in category order', () => {
