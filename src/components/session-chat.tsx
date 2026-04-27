@@ -1439,7 +1439,13 @@ function ToolCallSection({calls, sessionId}: {calls: ClientToolCall[]; sessionId
 
 	return (
 		<>
-			{backgroundCalls.length > 0 && (
+			{backgroundCalls.length === 1 && (
+				<ToolCallRow
+					call={backgroundCalls[0]!}
+					sessionId={sessionId}
+				/>
+			)}
+			{backgroundCalls.length > 1 && (
 				<ToolCallSummary
 					calls={backgroundCalls}
 					sessionId={sessionId}
@@ -1486,15 +1492,6 @@ const RENDERER_HANDLES_PARAM = new Set([
 const EDIT_TOOLS = new Set(['Edit', 'MultiEdit']);
 
 /**
- * Extract just the filename from a path for the clickable row display.
- */
-function filenameFromPath(path: string): string {
-	const lastSlash = path.lastIndexOf('/');
-	if (lastSlash === -1) return path;
-	return path.slice(lastSlash + 1);
-}
-
-/**
  * Compute diff stats from an Edit tool call's old_string / new_string input.
  */
 function useEditDiffStats(call: ClientToolCall): {added: number; removed: number} | null {
@@ -1533,11 +1530,7 @@ function ToolCallRow({call, sessionId}: {call: ClientToolCall; sessionId: string
 	const isFileParam = FILE_PARAM_TOOLS.has(call.name);
 	const diffStats = useEditDiffStats(call);
 
-	const displayParam = RENDERER_HANDLES_PARAM.has(call.name)
-		? ''
-		: isFileParam
-			? filenameFromPath(call.param)
-			: call.param;
+	const displayParam = RENDERER_HANDLES_PARAM.has(call.name) ? '' : call.param;
 
 	return (
 		<div className="flex flex-col w-full">
