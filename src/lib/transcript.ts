@@ -8,9 +8,9 @@
  * Incremental function: processNewRecords(records, startIndex) for SSE appends.
  */
 
+import {z} from 'zod';
 import type {ToolResultInfo} from './sessions';
-import type {ContentBlock} from './schemas';
-import {JsonlRecordSchema} from './schemas';
+import {ContentBlockSchema, JsonlRecordSchema} from './schemas';
 
 // ---------------------------------------------------------------------------
 // Re-exported shared helpers (moved from session-utils.ts)
@@ -99,86 +99,88 @@ export function extractSessionTitle(text: string, fallback?: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// ProcessedLine types -- derived from Zod schemas with lineIndex added
+// Rendered line schemas -- Zod definitions for processed JSONL output.
+// Types are inferred via z.infer<> instead of manually declared interfaces.
 // ---------------------------------------------------------------------------
 
-/**
- * A user or assistant message line for rendering.
- * The message field uses the Zod-inferred ContentBlock type directly
- * instead of the old SerializableContentBlock intermediate shape.
- */
-export interface MessageProcessedLine {
-	type: 'user' | 'assistant';
-	uuid?: string | undefined;
-	parentUuid?: string | undefined;
-	timestamp?: string | undefined;
-	userType?: string | undefined;
-	message?:
-		| {
-				role?: string | undefined;
-				content?: string | ContentBlock[] | undefined;
-		  }
-		| undefined;
-	customTitle?: string | undefined;
-	sessionId?: string | undefined;
-	lineIndex: number;
-}
+const MessageLineSchema = z.object({
+	type: z.enum(['user', 'assistant']),
+	uuid: z.string().optional(),
+	parentUuid: z.string().optional(),
+	timestamp: z.string().optional(),
+	userType: z.string().optional(),
+	message: z
+		.object({
+			role: z.string().optional(),
+			content: z.union([z.string(), z.array(ContentBlockSchema)]).optional(),
+		})
+		.optional(),
+	customTitle: z.string().optional(),
+	sessionId: z.string().optional(),
+	lineIndex: z.number(),
+});
 
-interface AgentNameProcessedLine {
-	type: 'agent-name';
-	agentName: string;
-	lineIndex: number;
-}
+const AgentNameLineSchema = z.object({
+	type: z.literal('agent-name'),
+	agentName: z.string(),
+	lineIndex: z.number(),
+});
 
-interface AgentColorProcessedLine {
-	type: 'agent-color';
-	agentColor: string;
-	lineIndex: number;
-}
+const AgentColorLineSchema = z.object({
+	type: z.literal('agent-color'),
+	agentColor: z.string(),
+	lineIndex: z.number(),
+});
 
-interface PermissionModeProcessedLine {
-	type: 'permission-mode';
-	permissionMode: string;
-	lineIndex: number;
-}
+const PermissionModeLineSchema = z.object({
+	type: z.literal('permission-mode'),
+	permissionMode: z.string(),
+	lineIndex: z.number(),
+});
 
-interface PrLinkProcessedLine {
-	type: 'pr-link';
-	prUrl: string;
-	prNumber: number;
-	prRepository: string;
-	timestamp?: string | undefined;
-	lineIndex: number;
-}
+const PrLinkLineSchema = z.object({
+	type: z.literal('pr-link'),
+	prUrl: z.string(),
+	prNumber: z.number(),
+	prRepository: z.string(),
+	timestamp: z.string().optional(),
+	lineIndex: z.number(),
+});
 
-interface AttachmentProcessedLine {
-	type: 'attachment';
-	attachmentJson: string;
-	uuid?: string | undefined;
-	timestamp?: string | undefined;
-	lineIndex: number;
-}
+const AttachmentLineSchema = z.object({
+	type: z.literal('attachment'),
+	attachmentJson: z.string(),
+	uuid: z.string().optional(),
+	timestamp: z.string().optional(),
+	lineIndex: z.number(),
+});
 
 /**
- * A single processed JSONL line for rendering. Discriminated union on `type`.
- * Derived from the Zod schema types in schemas.ts with `lineIndex` added.
+ * Discriminated union of all rendered line types.
+ * Each variant corresponds to a JSONL record type that produces visible output.
  */
-export type ProcessedLine =
-	| MessageProcessedLine
-	| AgentNameProcessedLine
-	| AgentColorProcessedLine
-	| PermissionModeProcessedLine
-	| PrLinkProcessedLine
-	| AttachmentProcessedLine;
+const RenderedLineSchema = z.discriminatedUnion('type', [
+	MessageLineSchema,
+	AgentNameLineSchema,
+	AgentColorLineSchema,
+	PermissionModeLineSchema,
+	PrLinkLineSchema,
+	AttachmentLineSchema,
+]);
 
-// Re-export the Zod-inferred ContentBlock for consumers that need it
-export type {ContentBlock} from './schemas';
+// ---------------------------------------------------------------------------
+// Exported types -- all inferred from schemas above
+// ---------------------------------------------------------------------------
 
-// Backwards-compatible aliases for gradual migration
+export type MessageProcessedLine = z.infer<typeof MessageLineSchema>;
+export type ProcessedLine = z.infer<typeof RenderedLineSchema>;
+export type ContentBlock = z.infer<typeof ContentBlockSchema>;
+
+// Convenience aliases used by consumers
 export type SessionLine = ProcessedLine;
 export type MessageSessionLine = MessageProcessedLine;
 export type SessionContentBlock = ContentBlock;
-export type AttachmentSessionLine = AttachmentProcessedLine;
+export type AttachmentSessionLine = z.infer<typeof AttachmentLineSchema>;
 
 // ---------------------------------------------------------------------------
 // Transcript result types
@@ -435,7 +437,7 @@ function processRecordBatch(
 			continue;
 		}
 		if (record.type === 'pr-link') {
-			const prLine: PrLinkProcessedLine = {
+			const prLine: z.infer<typeof PrLinkLineSchema> = {
 				type: 'pr-link',
 				prUrl: record.prUrl,
 				prNumber: record.prNumber,
@@ -448,7 +450,7 @@ function processRecordBatch(
 		}
 
 		if (record.type === 'attachment') {
-			const attachmentLine: AttachmentProcessedLine = {
+			const attachmentLine: z.infer<typeof AttachmentLineSchema> = {
 				type: 'attachment',
 				attachmentJson: JSON.stringify(record.attachment),
 				lineIndex,
