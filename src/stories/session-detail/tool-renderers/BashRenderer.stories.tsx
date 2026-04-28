@@ -41,6 +41,17 @@ export const Error: Story = {
 	},
 };
 
+export const ExitCode: Story = {
+	args: {
+		toolCall: makeToolCall({
+			input: {command: 'npm run ci:typecheck', description: 'Verify TypeScript type checking'},
+			result: "$ npm run ci:typecheck\nExit code 2\n\n> animal-kingdom@0.0.0 ci:typecheck\n> tsc --noEmit\n\nsrc/app.tsx(8,34): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.",
+			isError: true,
+			param: 'npm run ci:typecheck',
+		}),
+	},
+};
+
 export const AnsiEscapeCodes: Story = {
 	args: {
 		toolCall: makeToolCall({
