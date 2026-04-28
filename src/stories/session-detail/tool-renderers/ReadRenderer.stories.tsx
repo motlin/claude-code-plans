@@ -25,7 +25,7 @@ export const WithLineNumbers: Story = {
 		toolCall: makeToolCall({
 			input: {file_path: '/Users/craig/projects/app/src/index.ts'},
 			param: '/Users/craig/projects/app/src/index.ts',
-			result: '     1\u2192import express from "express";\n     2\u2192\n     3\u2192const app = express();\n     4\u2192app.listen(3000);',
+			result: '1\timport express from "express";\n2\t\n3\tconst app = express();\n4\tapp.listen(3000);',
 		}),
 	},
 };
@@ -35,7 +35,7 @@ export const PythonFile: Story = {
 		toolCall: makeToolCall({
 			input: {file_path: '/Users/craig/projects/app/src/main.py'},
 			param: '/Users/craig/projects/app/src/main.py',
-			result: '     1→import os\n     2→from pathlib import Path\n     3→\n     4→def main():\n     5→    root = Path(os.getcwd())\n     6→    for item in root.iterdir():\n     7→        if item.is_file():\n     8→            print(f"Found: {item.name}")\n     9→\n    10→if __name__ == "__main__":\n    11→    main()',
+			result: '1\timport os\n2\tfrom pathlib import Path\n3\t\n4\tdef main():\n5\t    root = Path(os.getcwd())\n6\t    for item in root.iterdir():\n7\t        if item.is_file():\n8\t            print(f"Found: {item.name}")\n9\t\n10\tif __name__ == "__main__":\n11\t    main()',
 		}),
 	},
 };
@@ -45,7 +45,7 @@ export const JsonFile: Story = {
 		toolCall: makeToolCall({
 			input: {file_path: '/Users/craig/projects/app/package.json'},
 			param: '/Users/craig/projects/app/package.json',
-			result: '     1→{\n     2→  "name": "my-app",\n     3→  "version": "1.0.0",\n     4→  "dependencies": {\n     5→    "express": "^4.18.0",\n     6→    "typescript": "^5.0.0"\n     7→  },\n     8→  "scripts": {\n     9→    "start": "node dist/index.js",\n    10→    "build": "tsc"\n    11→  }\n    12→}',
+			result: '1\t{\n2\t  "name": "my-app",\n3\t  "version": "1.0.0",\n4\t  "dependencies": {\n5\t    "express": "^4.18.0",\n6\t    "typescript": "^5.0.0"\n7\t  },\n8\t  "scripts": {\n9\t    "start": "node dist/index.js",\n10\t    "build": "tsc"\n11\t  }\n12\t}',
 		}),
 	},
 };

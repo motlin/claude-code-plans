@@ -12,11 +12,11 @@ interface ParsedLine {
 function parseLineNumbers(content: string): ParsedLine[] {
 	const lines = content.split('\n');
 	return lines.map((line) => {
-		const match = line.match(/^(\s*)(\d+)→(.*)$/);
+		const match = line.match(/^\s*(\d+)[→\t](.*)/);
 		if (match) {
 			return {
-				lineNum: match[2] ?? null,
-				content: match[3] ?? '',
+				lineNum: match[1] ?? null,
+				content: match[2] ?? '',
 			};
 		}
 		return {
@@ -110,7 +110,7 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 				>
 					<div className="border-t border-border-300/15">
 						<div className="flex font-mono text-code">
-							<div className="bg-t1 border-r border-border-300/15 px-3 py-2 select-none text-right min-w-fit text-assistant-secondary">
+							<div className="border-r border-border-300/15 px-3 py-2 select-none text-right min-w-fit text-assistant-secondary">
 								{parsedLines.map((line, index) => (
 									<div
 										key={index}
