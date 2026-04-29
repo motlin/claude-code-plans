@@ -160,8 +160,9 @@ const EXTENSION_TO_LANGUAGE: Record<string, string> = {
 	htm: 'html',
 	xml: 'xml',
 	svg: 'xml',
-	md: 'markdown',
-	mdx: 'mdx',
+	// md/mdx intentionally excluded: Shiki's markdown grammar tokenizes
+	// checkbox syntax (- [x]) and inline markers oddly, splitting characters.
+	// Plain text rendering is more readable for raw markdown source.
 	yaml: 'yaml',
 	yml: 'yaml',
 	toml: 'toml',

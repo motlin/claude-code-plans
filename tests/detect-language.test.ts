@@ -30,8 +30,12 @@ describe('detectLanguage', () => {
 		expect(detectLanguage('/index.html')).toBe('html');
 	});
 
-	it('detects Markdown from .md extension', () => {
-		expect(detectLanguage('/README.md')).toBe('markdown');
+	it('returns null for .md files (markdown tokenization splits checkboxes oddly)', () => {
+		expect(detectLanguage('/README.md')).toBeNull();
+	});
+
+	it('returns null for .mdx files (same markdown tokenization issue)', () => {
+		expect(detectLanguage('/docs/page.mdx')).toBeNull();
 	});
 
 	it('detects YAML from .yml extension', () => {

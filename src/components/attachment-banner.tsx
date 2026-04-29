@@ -99,6 +99,19 @@ function AttachmentContent({
 					uuid={uuid}
 				/>
 			);
+		case 'hook_system_message':
+			return (
+				<Banner
+					icon="💬"
+					label={`Hook message: ${attachment.hookName}`}
+					sessionId={sessionId}
+					uuid={uuid}
+				>
+					{typeof attachment.content === 'string' && attachment.content.length > 0 && (
+						<Pre>{attachment.content}</Pre>
+					)}
+				</Banner>
+			);
 
 		// -- File context --
 		case 'file':
