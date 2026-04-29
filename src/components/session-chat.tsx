@@ -1059,15 +1059,22 @@ function CommandEntry({line, index, sessionId}: {line: MessageSessionLine; index
 		}
 	}
 
+	const displayName = cmdName.startsWith('/') ? cmdName : `/${cmdName}`;
+	const commandText = cmdArgs ? `${displayName} ${cmdArgs}` : displayName;
+
 	const timestamp = 'timestamp' in line ? line.timestamp : undefined;
 	const actionsProps = {line, index, ...(timestamp ? {timestamp} : {})};
 
 	return (
 		<div className="group/msg flex justify-start w-full">
 			<div className="flex flex-col items-start gap-1 max-w-[75%] min-w-0">
-				<div className="user-message-bubble relative rounded-[10px] rounded-bl-[2px] bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 overflow-hidden text-[13px] leading-[20px] select-text">
-					<span className="font-mono">{cmdName.startsWith('/') ? cmdName : `/${cmdName}`}</span>
-					{cmdArgs && <span className="ml-1.5 opacity-80">{cmdArgs}</span>}
+				<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] rounded-bl-[2px] bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-[13px] leading-[20px] select-text">
+					<TruncatedContent
+						fadeColor="var(--bg-100)"
+						variant="user"
+					>
+						<MarkdownArticle markdown={commandText} />
+					</TruncatedContent>
 					<DebugLink
 						sessionId={sessionId}
 						uuid={line.uuid}
