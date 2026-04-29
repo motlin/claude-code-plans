@@ -77,6 +77,7 @@ const TOOL_CATEGORIES = [
 	'memwrite',
 	'toolsearch',
 	'skill',
+	'task',
 ] as const;
 type ToolCategory = (typeof TOOL_CATEGORIES)[number];
 
@@ -160,6 +161,14 @@ function categorize(call: ToolCallLike): ToolCategory | null {
 	if (call.name === 'WebSearch') return 'websearch';
 	if (call.name === 'ToolSearch') return 'toolsearch';
 	if (call.name === 'Skill') return 'skill';
+	if (
+		call.name === 'TaskCreate' ||
+		call.name === 'TaskUpdate' ||
+		call.name === 'TaskGet' ||
+		call.name === 'TaskList' ||
+		call.name === 'TaskStop'
+	)
+		return 'task';
 	return null;
 }
 
@@ -321,6 +330,9 @@ function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
 				break;
 			case 'skill':
 				segments.push({verb: 'Used', rest: pluralize(count, 'a skill', '{n} skills')});
+				break;
+			case 'task':
+				segments.push({verb: 'Managed', rest: pluralize(count, 'a task', '{n} tasks')});
 				break;
 		}
 	}

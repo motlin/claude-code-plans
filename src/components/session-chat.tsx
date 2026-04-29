@@ -1407,12 +1407,17 @@ function toolCallVerb(name: string): string {
 	if (name === 'WebSearch') return 'Searched web';
 	if (name === 'ToolSearch') return 'Used ToolSearch';
 	if (name === 'Skill') return 'Loaded skill';
+	if (name === 'TaskCreate') return 'Created task';
+	if (name === 'TaskUpdate') return 'Updated task';
+	if (name === 'TaskGet') return 'Got task';
+	if (name === 'TaskList') return 'Listed tasks';
+	if (name === 'TaskStop') return 'Stopped task';
 	if (name.startsWith('mcp__')) return formatToolName(name);
 	return name;
 }
 
 const PROMINENT_TOOLS = new Set(['AskUserQuestion']);
-const TASK_TOOLS = new Set(['TaskCreate', 'TaskUpdate', 'TaskGet', 'TaskList']);
+const TASK_TOOLS = new Set(['TaskCreate', 'TaskUpdate', 'TaskGet', 'TaskList', 'TaskStop']);
 
 type ToolListItem = {kind: 'call'; call: ClientToolCall} | {kind: 'parallel'; key: string; calls: ClientToolCall[]};
 

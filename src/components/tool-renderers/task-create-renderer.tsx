@@ -4,12 +4,10 @@ import {ErrorBorder, KeyValueCard} from './shared';
 export function TaskCreateRenderer({toolCall}: ToolRendererProps) {
 	const subject = (toolCall.input['subject'] as string) ?? '';
 	const description = (toolCall.input['description'] as string) ?? '';
-	const status = (toolCall.input['status'] as string) ?? '';
 
 	const params: Array<{key: string; value: string}> = [];
 	if (subject) params.push({key: 'subject', value: subject});
 	if (description) params.push({key: 'description', value: description});
-	if (status && status !== 'pending') params.push({key: 'status', value: status});
 
 	return (
 		<ErrorBorder isError={toolCall.isError}>
