@@ -2,7 +2,7 @@ import {useMemo} from 'react';
 import {DiffView, DiffModeEnum} from '@git-diff-view/react';
 import '@git-diff-view/react/styles/diff-view.css';
 import type {ToolRendererProps} from './types';
-import {CopyButton, ErrorBorder} from './shared';
+import {CopyButton} from './shared';
 import {useResolvedTheme} from '../theme-provider';
 import {computeDiffData, buildUnifiedHunk} from '../../lib/diff-utils';
 
@@ -121,16 +121,20 @@ export function EditRenderer({toolCall}: ToolRendererProps) {
 
 	if (!diffData) {
 		return (
-			<ErrorBorder isError={isError}>
-				<pre className="text-xs font-mono text-text-500 whitespace-pre-wrap">{result}</pre>
-			</ErrorBorder>
+			<div className="px-p6 py-p5">
+				<pre
+					className={`text-code font-mono whitespace-pre-wrap break-all ${isError ? 'text-extended-pink' : 'text-assistant-secondary'}`}
+				>
+					{result}
+				</pre>
+			</div>
 		);
 	}
 
 	const copyText = result ?? filePath;
 
 	return (
-		<ErrorBorder isError={isError}>
+		<>
 			{/* Header: smart-truncated file path + hover copy button */}
 			<div className="flex items-center gap-g3 px-p6 py-p5">
 				<span className="flex flex-1 min-w-0 text-body text-assistant-secondary">
@@ -158,6 +162,13 @@ export function EditRenderer({toolCall}: ToolRendererProps) {
 					/>
 				</div>
 			)}
-		</ErrorBorder>
+
+			{/* Error result text (shown below diff when edit failed) */}
+			{isError && result && (
+				<div className="px-p6 pb-p8">
+					<pre className="text-code font-mono whitespace-pre-wrap break-all text-extended-pink">{result}</pre>
+				</div>
+			)}
+		</>
 	);
 }
