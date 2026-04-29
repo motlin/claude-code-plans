@@ -1,7 +1,67 @@
+import {useMemo} from 'react';
 import {Link} from '@tanstack/react-router';
 import {FileText} from 'lucide-react';
+import {DiffView, DiffModeEnum} from '@git-diff-view/react';
+import '@git-diff-view/react/styles/diff-view.css';
 import type {ToolRendererProps} from './types';
-import {CopyButton, ErrorBorder, ExpandableBlock} from './shared';
+import {CopyButton} from './shared';
+import {useResolvedTheme} from '../theme-provider';
+import {buildUnifiedHunk} from '../../lib/diff-utils';
+
+const SUPPORTED_LANGS = new Set([
+	'bash',
+	'c',
+	'cpp',
+	'cs',
+	'css',
+	'diff',
+	'docker',
+	'dockerfile',
+	'go',
+	'html',
+	'java',
+	'javascript',
+	'json',
+	'jsx',
+	'kotlin',
+	'makefile',
+	'markdown',
+	'python',
+	'rust',
+	'shell',
+	'sql',
+	'swift',
+	'tsx',
+	'txt',
+	'typescript',
+	'xml',
+	'yaml',
+]);
+
+const EXT_TO_LANG: Record<string, string> = {
+	js: 'javascript',
+	mjs: 'javascript',
+	cjs: 'javascript',
+	ts: 'typescript',
+	mts: 'typescript',
+	cts: 'typescript',
+	py: 'python',
+	rb: 'ruby',
+	rs: 'rust',
+	sh: 'bash',
+	zsh: 'bash',
+	yml: 'yaml',
+	yaml: 'yaml',
+	md: 'markdown',
+	mdx: 'markdown',
+};
+
+function resolveLang(filePath: string): string {
+	const name = filePath.split('/').pop() ?? '';
+	const ext = name.split('.').pop()?.toLowerCase() ?? '';
+	const mapped = EXT_TO_LANG[ext] ?? ext;
+	return SUPPORTED_LANGS.has(mapped) ? mapped : 'txt';
+}
 
 const PLAN_RE = /\.claude\/plans\/([^/]+)\.md$/;
 
@@ -37,12 +97,44 @@ export function WriteRenderer({toolCall}: ToolRendererProps) {
 	const content = toolCall.input['content'] as string | undefined;
 	const {result, isError} = toolCall;
 	const planMatch = filePath.match(PLAN_RE);
-	const lineCount = content ? content.split('\n').length : 0;
 	const {prefix, suffix} = splitPath(filePath);
 	const copyText = content ?? result ?? filePath;
+	const theme = useResolvedTheme();
+
+	const diffData = useMemo(() => {
+		if (content === undefined) return null;
+		return {
+			unifiedHunk: buildUnifiedHunk('', content, filePath),
+			oldContent: '',
+			newContent: content,
+			filePath,
+		};
+	}, [content, filePath]);
+
+	const viewData = useMemo(() => {
+		if (!diffData?.unifiedHunk) return null;
+		const lang = resolveLang(diffData.filePath);
+		return {
+			oldFile: {fileName: filePath, fileLang: lang, content: diffData.oldContent},
+			newFile: {fileName: filePath, fileLang: lang, content: diffData.newContent},
+			hunks: [diffData.unifiedHunk],
+		};
+	}, [diffData, filePath]);
+
+	if (!content) {
+		return (
+			<div className="px-p6 py-p5">
+				<pre
+					className={`text-code font-mono whitespace-pre-wrap break-all ${isError ? 'text-extended-pink' : 'text-assistant-secondary'}`}
+				>
+					{result}
+				</pre>
+			</div>
+		);
+	}
 
 	return (
-		<ErrorBorder isError={isError}>
+		<>
 			{/* Header: smart-truncated file path + hover copy button */}
 			<div className="flex items-center gap-g3 px-p6 py-p5">
 				<span className="flex flex-1 min-w-0 text-body text-assistant-secondary">
@@ -67,18 +159,26 @@ export function WriteRenderer({toolCall}: ToolRendererProps) {
 				<CopyButton text={copyText} />
 			</div>
 
-			{/* Body: file content */}
-			{content && (
-				<div className="flex flex-col gap-g8 px-p6 pb-p8 text-code font-mono">
-					<ExpandableBlock
-						lineCount={lineCount}
-						maxLines={20}
-					>
-						<div className="whitespace-pre-wrap break-all text-assistant-secondary">{content}</div>
-					</ExpandableBlock>
+			{/* Body: unified diff view (all additions) */}
+			{viewData && (
+				<div className="overflow-hidden text-xs">
+					<DiffView
+						data={viewData}
+						diffViewMode={DiffModeEnum.Unified}
+						diffViewTheme={theme}
+						diffViewHighlight
+						diffViewWrap
+						diffViewFontSize={12}
+					/>
 				</div>
 			)}
-			{result && !content && <div className="px-p6 pb-p8 text-body text-assistant-secondary">{result}</div>}
-		</ErrorBorder>
+
+			{/* Error result text (shown below diff when write failed) */}
+			{isError && result && (
+				<div className="px-p6 pb-p8">
+					<pre className="text-code font-mono whitespace-pre-wrap break-all text-extended-pink">{result}</pre>
+				</div>
+			)}
+		</>
 	);
 }
