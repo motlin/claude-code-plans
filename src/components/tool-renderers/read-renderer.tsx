@@ -83,7 +83,7 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 
 	const {text: cleanCode} = result ? extractLineNumbers(result) : {text: ''};
 	const language = detectLanguage(filePath);
-	const tokens = useHighlightedLines(cleanCode, language);
+	const tokens = useHighlightedLines(cleanCode, language, true);
 	const {prefix, suffix} = splitPath(filePath);
 
 	return (
@@ -102,29 +102,41 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 				<CopyButton text={result ?? filePath} />
 			</div>
 
-			{/* Body: syntax-highlighted code */}
+			{/* Body: syntax-highlighted code with dark background */}
 			{result && (
 				<ExpandableBlock
 					lineCount={lineCount}
 					maxLines={20}
+					gradientFromClass="from-[rgb(36,41,46)]"
 				>
-					<div className="border-t border-border-300/15">
-						<div className="flex font-mono text-code">
-							<div className="border-r border-border-300/15 px-3 py-2 select-none text-right min-w-fit text-assistant-secondary">
+					<pre
+						className="m-0 overflow-x-auto overflow-y-hidden font-mono text-code leading-code"
+						style={{backgroundColor: 'rgb(36, 41, 46)', color: 'rgb(225, 228, 232)'}}
+					>
+						<code
+							className="grid py-1"
+							style={{gridTemplateColumns: 'auto 1fr'}}
+						>
+							<div
+								data-gutter=""
+								className="select-none"
+							>
 								{parsedLines.map((line, index) => (
 									<div
 										key={index}
-										className="h-[17px] flex items-center justify-end"
+										className="h-[17px] text-right"
+										style={{padding: '0 7.2px 0 14.4px', color: 'rgb(153, 157, 161)'}}
 									>
 										{line.lineNum || ''}
 									</div>
 								))}
 							</div>
-							<div className="flex-1 px-3 py-2 whitespace-pre-wrap break-all overflow-x-auto">
+							<div data-content="">
 								{parsedLines.map((line, index) => (
 									<div
 										key={index}
-										className="h-[17px] flex items-center"
+										className="h-[17px] whitespace-pre-wrap break-words"
+										style={{padding: '0 7.2px', wordBreak: 'break-word'}}
 									>
 										{tokens?.[index] ? (
 											<HighlightedLine tokens={tokens[index]} />
@@ -134,8 +146,8 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 									</div>
 								))}
 							</div>
-						</div>
-					</div>
+						</code>
+					</pre>
 				</ExpandableBlock>
 			)}
 		</ErrorBorder>

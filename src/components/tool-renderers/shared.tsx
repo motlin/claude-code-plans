@@ -283,10 +283,13 @@ export function TerminalOutput({content, maxLines = 20}: {content: string; maxLi
 export function ExpandableBlock({
 	lineCount,
 	maxLines = 20,
+	gradientFromClass,
 	children,
 }: {
 	lineCount: number;
 	maxLines?: number;
+	/** Override the gradient start color class (default: from-bg-000). */
+	gradientFromClass?: string | undefined;
 	children: ReactNode;
 }) {
 	const [expanded, setExpanded] = useState(false);
@@ -307,7 +310,9 @@ export function ExpandableBlock({
 				style={{maxHeight}}
 			>
 				{children}
-				<div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-bg-000 to-transparent pointer-events-none" />
+				<div
+					className={`absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t ${gradientFromClass ?? 'from-bg-000'} to-transparent pointer-events-none`}
+				/>
 			</div>
 			<button
 				type="button"
@@ -470,10 +475,12 @@ export interface KeyValueParam {
 export function KeyValueCard({
 	params,
 	result,
+	markdownResult,
 	children,
 }: {
 	params: KeyValueParam[];
 	result?: string | undefined;
+	markdownResult?: boolean | undefined;
 	children?: ReactNode;
 }) {
 	const copyText = [...params.map((p) => `${p.key}: ${p.value}`), ...(result ? [result] : [])].join('\n');
@@ -499,7 +506,7 @@ export function KeyValueCard({
 						))}
 					</div>
 				)}
-				{result && <div>{result}</div>}
+				{result && (markdownResult ? <InlineMarkdown text={result} /> : <div>{result}</div>)}
 				{children}
 			</div>
 			<CopyButton text={copyText} />
