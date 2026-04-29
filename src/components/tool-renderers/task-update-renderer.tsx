@@ -2,7 +2,7 @@ import type {ToolRendererProps} from './types';
 import {ErrorBorder, KeyValueCard} from './shared';
 
 export function TaskUpdateRenderer({toolCall}: ToolRendererProps) {
-	const taskId = (toolCall.input['taskId'] as string) ?? (toolCall.input['task_id'] as string) ?? '';
+	const taskId = (toolCall.input['taskId'] as string) ?? '';
 	const status = (toolCall.input['status'] as string) ?? '';
 	const subject = (toolCall.input['subject'] as string) ?? '';
 	const description = (toolCall.input['description'] as string) ?? '';
