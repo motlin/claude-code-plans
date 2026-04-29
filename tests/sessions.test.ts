@@ -197,11 +197,11 @@ describe('summarizeToolCalls', () => {
 
 	it('shows tool name with count for repeated unknown tool', () => {
 		const calls = [
-			{name: 'Skill', input: {}},
-			{name: 'Skill', input: {}},
-			{name: 'Skill', input: {}},
+			{name: 'CustomRepeat', input: {}},
+			{name: 'CustomRepeat', input: {}},
+			{name: 'CustomRepeat', input: {}},
 		];
-		expect(summarizeToolCalls(calls)).toBe('called Skill 3 times');
+		expect(summarizeToolCalls(calls)).toBe('called CustomRepeat 3 times');
 	});
 
 	it('shows separate entries for distinct unknown tools', () => {
@@ -210,6 +210,16 @@ describe('summarizeToolCalls', () => {
 			{name: 'AnotherTool', input: {}},
 		];
 		expect(summarizeToolCalls(calls)).toBe('called CustomTool, called AnotherTool');
+	});
+
+	it('summarizes Skill tool calls with upstream verb', () => {
+		expect(summarizeToolCalls([{name: 'Skill', input: {}}])).toBe('used a skill');
+		const calls = [
+			{name: 'Skill', input: {}},
+			{name: 'Skill', input: {}},
+			{name: 'Skill', input: {}},
+		];
+		expect(summarizeToolCalls(calls)).toBe('used 3 skills');
 	});
 
 	it('extracts server name from MCP tool and strips plugin_ prefix', () => {
@@ -234,10 +244,10 @@ describe('summarizeToolCalls', () => {
 		const calls = [
 			{name: 'mcp__plugin_github_github__list_issues', input: {}},
 			{name: 'mcp__chrome-devtools__click', input: {}},
-			{name: 'Skill', input: {}},
+			{name: 'CustomTool', input: {}},
 			{name: 'mcp__plugin_github_github__search_code', input: {}},
 		];
-		expect(summarizeToolCalls(calls)).toBe('called github 2 times, called chrome-devtools, called Skill');
+		expect(summarizeToolCalls(calls)).toBe('called github 2 times, called chrome-devtools, called CustomTool');
 	});
 
 	it('Edit calls include +N -N diff stats summed across calls', () => {

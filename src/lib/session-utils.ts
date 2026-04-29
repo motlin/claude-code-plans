@@ -76,6 +76,7 @@ const TOOL_CATEGORIES = [
 	'recall',
 	'memwrite',
 	'toolsearch',
+	'skill',
 ] as const;
 type ToolCategory = (typeof TOOL_CATEGORIES)[number];
 
@@ -158,6 +159,7 @@ function categorize(call: ToolCallLike): ToolCategory | null {
 	if (call.name === 'WebFetch') return 'webfetch';
 	if (call.name === 'WebSearch') return 'websearch';
 	if (call.name === 'ToolSearch') return 'toolsearch';
+	if (call.name === 'Skill') return 'skill';
 	return null;
 }
 
@@ -316,6 +318,9 @@ function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
 				break;
 			case 'toolsearch':
 				segments.push({verb: 'Loaded', rest: pluralize(count, 'a tool schema', '{n} tool schemas')});
+				break;
+			case 'skill':
+				segments.push({verb: 'Used', rest: pluralize(count, 'a skill', '{n} skills')});
 				break;
 		}
 	}

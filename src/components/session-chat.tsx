@@ -1406,6 +1406,7 @@ function toolCallVerb(name: string): string {
 	if (name === 'WebFetch') return 'Fetched';
 	if (name === 'WebSearch') return 'Searched web';
 	if (name === 'ToolSearch') return 'Loaded';
+	if (name === 'Skill') return 'Loaded skill';
 	if (name.startsWith('mcp__')) return formatToolName(name);
 	return name;
 }
