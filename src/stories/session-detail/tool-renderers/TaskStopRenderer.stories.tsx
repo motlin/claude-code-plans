@@ -20,21 +20,58 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Success: Story = {
+export const StoppedBashTask: Story = {
 	args: {
 		toolCall: makeToolCall({
-			input: {task_id: '42'},
-			result: 'Task #42 stopped',
+			input: {task_id: 'br5e8me8g'},
+			result: JSON.stringify({
+				message: 'Successfully stopped task: br5e8me8g (sleep 500)',
+				task_id: 'br5e8me8g',
+				task_type: 'local_bash',
+				command: 'sleep 500',
+			}),
 		}),
 	},
 };
 
-export const Error: Story = {
+export const StoppedAgentTask: Story = {
 	args: {
 		toolCall: makeToolCall({
-			input: {task_id: '99'},
-			result: 'Error: Task #99 not found',
+			input: {task_id: 'a13078a3fbcc95fef'},
+			result: JSON.stringify({
+				message: 'Successfully stopped task: a13078a3fbcc95fef (Long-running agent to stop)',
+				task_id: 'a13078a3fbcc95fef',
+				task_type: 'local_agent',
+				command: 'Long-running agent to stop',
+			}),
+		}),
+	},
+};
+
+export const TaskNotFound: Story = {
+	args: {
+		toolCall: makeToolCall({
+			input: {task_id: 'nonexistent-task-12345'},
+			result: 'Error: No task found with ID: nonexistent-task-12345',
 			isError: true,
+		}),
+	},
+};
+
+export const MissingTaskId: Story = {
+	args: {
+		toolCall: makeToolCall({
+			input: {},
+			result: 'Error: Missing required parameter: task_id',
+			isError: true,
+		}),
+	},
+};
+
+export const Pending: Story = {
+	args: {
+		toolCall: makeToolCall({
+			input: {task_id: 'bovj87vle'},
 		}),
 	},
 };

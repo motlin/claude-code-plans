@@ -193,5 +193,6 @@ function getToolParam(name: string, input: Record<string, unknown>): string {
 	if (typeof input['skill'] === 'string') return input['skill'];
 	if (typeof input['subject'] === 'string') return truncate(input['subject']);
 	if (typeof input['taskId'] === 'string') return `#${input['taskId']}`;
+	if (typeof input['task_id'] === 'string') return `#${input['task_id']}`;
 	return '';
 }
