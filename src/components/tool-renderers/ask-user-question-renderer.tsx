@@ -12,23 +12,34 @@ import {
 	type QuestionLike,
 } from '../../lib/ask-user-question';
 
-function KbdBadge({children}: {children: ReactNode}) {
+function IndexBadge({children, focused}: {children: ReactNode; focused?: boolean}) {
 	return (
-		<kbd className="inline-flex items-center justify-center h-5 min-w-5 px-1 rounded bg-bg-300/50 border border-border-300/15 text-[10px] font-mono text-text-400 shrink-0">
+		<span
+			className={`relative flex size-[30px] shrink-0 items-center justify-center rounded-[10px] overflow-hidden text-sm ${
+				focused ? 'bg-bg-400 text-text-100' : 'bg-bg-300 text-text-500'
+			}`}
+		>
 			{children}
-		</kbd>
+		</span>
+	);
+}
+
+function OptionDivider({hidden}: {hidden?: boolean}) {
+	return (
+		<div
+			aria-hidden="true"
+			className={`h-[0.5px] bg-border-300 mx-3 transition-opacity duration-150 ${hidden ? 'opacity-0' : ''}`}
+		/>
 	);
 }
 
 function ReadOnlyAnswer({label, description, index}: {label: string; description?: string | undefined; index: number}) {
 	return (
-		<div className="rounded-lg bg-accent-900/50 ring-1 ring-accent-100/30 px-3 py-2 text-xs">
-			<div className="flex items-center gap-2">
-				<div className="flex flex-col flex-1 min-w-0">
-					<span className="font-semibold">{label}</span>
-					{description && <span className="text-text-500 mt-0.5">{description}</span>}
-				</div>
-				<KbdBadge>{index}</KbdBadge>
+		<div className="group/row flex w-full items-center gap-3 h-[3.5rem] px-3 text-left bg-bg-200 rounded-2xl">
+			<IndexBadge focused>{index}</IndexBadge>
+			<div className="flex flex-col flex-1 min-w-0">
+				<span className="text-sm text-text-000 truncate">{label}</span>
+				{description && <span className="text-xs text-text-500 truncate">{description}</span>}
 			</div>
 		</div>
 	);
@@ -36,13 +47,11 @@ function ReadOnlyAnswer({label, description, index}: {label: string; description
 
 function ReadOnlyOption({label, description, index}: {label: string; description?: string | undefined; index: number}) {
 	return (
-		<div className="rounded-lg bg-bg-200 opacity-50 px-3 py-2 text-xs">
-			<div className="flex items-center gap-2">
-				<div className="flex flex-col flex-1 min-w-0">
-					<span className="font-semibold">{label}</span>
-					{description && <span className="text-text-500 mt-0.5">{description}</span>}
-				</div>
-				<KbdBadge>{index}</KbdBadge>
+		<div className="group/row flex w-full items-center gap-3 h-[3.5rem] px-3 text-left rounded-2xl opacity-50">
+			<IndexBadge>{index}</IndexBadge>
+			<div className="flex flex-col flex-1 min-w-0">
+				<span className="text-sm text-text-300 truncate">{label}</span>
+				{description && <span className="text-xs text-text-500 truncate">{description}</span>}
 			</div>
 		</div>
 	);
@@ -70,15 +79,28 @@ function notesAddInformation(notes: string | null | undefined, answerValue: stri
 
 function ReadOnlyOtherAnswer({value, notes}: {value: string; notes?: string | null}) {
 	return (
-		<div className="rounded-lg bg-accent-900/50 ring-1 ring-accent-100/30 px-3 py-2 text-xs">
-			<div className="flex items-center gap-2">
-				<div className="flex flex-col flex-1 min-w-0">
-					<span className="font-semibold">Other</span>
-					<span className="text-text-500 mt-0.5 whitespace-pre-wrap">{value}</span>
-				</div>
+		<div className="group/row flex w-full items-center gap-3 h-[3.5rem] px-3 text-left bg-bg-200 rounded-2xl">
+			<IndexBadge focused>
+				<PencilIcon />
+			</IndexBadge>
+			<div className="flex flex-col flex-1 min-w-0">
+				<span className="text-sm text-text-000 truncate">{value}</span>
 			</div>
 			{notesAddInformation(notes, value) && <NotesLine notes={notes!} />}
 		</div>
+	);
+}
+
+function PencilIcon() {
+	return (
+		<svg
+			width="16"
+			height="16"
+			viewBox="0 0 256 256"
+			fill="currentColor"
+		>
+			<path d="M227.31,73.37,182.63,28.69a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.31,96a16,16,0,0,0,0-22.63ZM92.69,208H48V163.31l88-88L180.69,120ZM192,108.69,147.31,64l24-24L216,84.69Z" />
+		</svg>
 	);
 }
 
@@ -95,10 +117,11 @@ function AnsweredQuestion({question, header, options, parsed}: QuestionLike & {p
 
 	return (
 		<div>
-			{header && <p className="text-[10px] uppercase tracking-wider text-text-500 mb-1">{header}</p>}
-			<p className="text-sm font-semibold mb-2 whitespace-pre-wrap">{question}</p>
-			<div className="flex flex-col gap-1.5">
+			{header && <p className="text-xs text-text-500 mb-1 pl-3">{header}</p>}
+			<p className="text-sm text-text-100 mb-2 pl-3">{question}</p>
+			<div className="flex flex-col">
 				{options.map((opt, optionIndex) => {
+					const isLast = optionIndex === options.length - 1 && !isOther;
 					if (opt.label === answerValue) {
 						return (
 							<div key={opt.label}>
@@ -110,23 +133,29 @@ function AnsweredQuestion({question, header, options, parsed}: QuestionLike & {p
 								{notes !== null && notes !== undefined && notes.trim() !== '' && (
 									<NotesLine notes={notes} />
 								)}
+								{!isLast && <OptionDivider hidden />}
 							</div>
 						);
 					}
 					return (
-						<ReadOnlyOption
-							key={opt.label}
-							label={opt.label}
-							description={opt.description}
-							index={optionIndex + 1}
-						/>
+						<div key={opt.label}>
+							<ReadOnlyOption
+								label={opt.label}
+								description={opt.description}
+								index={optionIndex + 1}
+							/>
+							{!isLast && <OptionDivider />}
+						</div>
 					);
 				})}
 				{isOther && (
-					<ReadOnlyOtherAnswer
-						value={answerValue}
-						notes={notes ?? null}
-					/>
+					<>
+						<OptionDivider hidden />
+						<ReadOnlyOtherAnswer
+							value={answerValue}
+							notes={notes ?? null}
+						/>
+					</>
 				)}
 			</div>
 		</div>
@@ -225,87 +254,114 @@ function AnswerForm({
 	}
 
 	return (
-		<div className="flex flex-col gap-4">
+		<div className="flex flex-col gap-4 rounded-[20px] bg-bg-000/90 backdrop-blur-md pt-4 shadow-[0_0.25rem_1.25rem_rgba(0,0,0,0.075),0_0_0_0.5px_hsla(var(--border-200)/0.3)] overflow-hidden">
 			{questions.map((q, index) => {
 				const draft = drafts[index]!;
 				const isMulti = q.multiSelect ?? false;
 				return (
 					<div key={index}>
-						{q.header && (
-							<p className="text-[10px] uppercase tracking-wider text-text-500 mb-1">{q.header}</p>
-						)}
-						<p className="text-sm font-semibold mb-2">{q.question}</p>
-						<div className="flex flex-col gap-1.5">
-							{q.options.map((opt, optionIndex) => {
-								const selected = draft.selected.has(opt.label) && !draft.useOther;
-								return (
-									<button
-										key={opt.label}
-										type="button"
-										onClick={() => toggleOption(index, opt.label)}
-										disabled={submitting}
-										className={`text-left w-full rounded-lg px-3 py-2 text-xs cursor-pointer transition-colors ${
-											selected
-												? 'bg-accent-900/50 ring-1 ring-accent-100/30'
-												: 'bg-bg-200 hover:bg-bg-300'
-										} disabled:cursor-not-allowed disabled:opacity-50`}
-									>
-										<div className="flex items-center gap-2">
-											<div className="flex flex-col flex-1 min-w-0">
-												<span className="font-semibold">{opt.label}</span>
-												{opt.description && (
-													<span className="text-text-500 mt-0.5">{opt.description}</span>
+						<div className="flex items-center gap-2 pl-5 pb-2 pr-3">
+							<span className="flex-1 text-text-100 text-sm">{q.question}</span>
+							{q.header && <span className="text-xs text-text-500 shrink-0">{q.header}</span>}
+						</div>
+						<div className="flex-1 p-1.5">
+							<div className="flex flex-col">
+								{q.options.map((opt, optionIndex) => {
+									const selected = draft.selected.has(opt.label) && !draft.useOther;
+									const isLast = optionIndex === q.options.length - 1;
+									return (
+										<div key={opt.label}>
+											<button
+												type="button"
+												onClick={() => toggleOption(index, opt.label)}
+												disabled={submitting}
+												className={`group/row flex w-full items-center gap-3 h-[3.5rem] px-3 text-left cursor-pointer transition-colors rounded-2xl ${
+													selected ? 'bg-bg-200' : 'hover:bg-bg-100'
+												} disabled:cursor-not-allowed disabled:opacity-50`}
+											>
+												{isMulti ? (
+													<div className="flex size-[30px] shrink-0 items-center justify-center">
+														<input
+															type="checkbox"
+															checked={selected}
+															readOnly
+															className="w-5 h-5 pointer-events-none"
+														/>
+													</div>
+												) : (
+													<IndexBadge focused={selected}>{optionIndex + 1}</IndexBadge>
 												)}
-											</div>
-											<KbdBadge>{optionIndex + 1}</KbdBadge>
+												<div className="flex flex-col flex-1 min-w-0">
+													<span
+														className={`text-sm truncate ${selected ? 'text-text-000' : 'text-text-300'}`}
+													>
+														{opt.label}
+													</span>
+													{opt.description && (
+														<span className="text-xs text-text-500 truncate">
+															{opt.description}
+														</span>
+													)}
+												</div>
+												{selected && !isMulti && (
+													<span
+														className="text-text-100/50 text-sm shrink-0 mr-2"
+														aria-hidden="true"
+													>
+														⏎
+													</span>
+												)}
+											</button>
+											{!isLast && <OptionDivider hidden={selected} />}
 										</div>
-									</button>
-								);
-							})}
-							<div
-								className={`rounded-lg px-3 py-2 text-xs transition-colors ${
-									draft.useOther ? 'bg-accent-900/50 ring-1 ring-accent-100/30' : 'bg-bg-200'
-								}`}
-							>
-								<button
-									type="button"
+									);
+								})}
+								<OptionDivider hidden={draft.useOther} />
+								<div
+									className={`group/row flex w-full items-center gap-3 h-[3.5rem] px-3 text-left cursor-text rounded-2xl ${
+										draft.useOther ? 'bg-bg-200' : 'hover:bg-bg-100'
+									}`}
 									onClick={() => selectOther(index)}
-									disabled={submitting}
-									className="w-full text-left cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
 								>
-									<div className="flex items-center gap-2">
-										<span className="font-semibold flex-1">Other</span>
-										<KbdBadge>{q.options.length + 1}</KbdBadge>
-									</div>
-								</button>
-								<textarea
-									value={draft.otherText}
-									onChange={(e) => setOtherText(index, e.target.value)}
-									onFocus={() => selectOther(index)}
-									onInput={(e) => {
-										const target = e.target as HTMLTextAreaElement;
-										target.style.height = 'auto';
-										target.style.height = `${target.scrollHeight}px`;
-									}}
-									disabled={submitting}
-									placeholder="Type a custom answer..."
-									rows={1}
-									className="mt-1.5 w-full rounded border border-border-300/15 bg-bg-000 px-2 py-1.5 text-xs text-text-100 outline-none focus:border-accent-100/40 disabled:opacity-50 resize-none"
-								/>
+									{isMulti ? (
+										<div className="flex size-[30px] shrink-0 items-center justify-center">
+											<input
+												type="checkbox"
+												checked={draft.useOther && draft.otherText.trim().length > 0}
+												readOnly
+												className="w-5 h-5 pointer-events-none"
+											/>
+										</div>
+									) : (
+										<IndexBadge focused={draft.useOther}>
+											<PencilIcon />
+										</IndexBadge>
+									)}
+									<input
+										type="text"
+										value={draft.otherText}
+										onChange={(e) => setOtherText(index, e.target.value)}
+										onFocus={() => selectOther(index)}
+										disabled={submitting}
+										placeholder="Type your answer"
+										className="flex-1 min-w-0 w-full bg-transparent text-sm text-text-100 placeholder:text-text-500 placeholder:opacity-60 outline-none ring-0 border-0 shadow-none focus:ring-0 focus:!outline-none focus:border-0 focus:shadow-none"
+									/>
+								</div>
 							</div>
 						</div>
 						{isMulti && (
-							<p className="mt-1 text-[10px] text-text-500 italic">Select one or more options.</p>
+							<p className="mt-1 text-[10px] text-text-500 italic pl-5">Select one or more options.</p>
 						)}
 					</div>
 				);
 			})}
 			{error && (
-				<div className="rounded border border-danger-000/30 bg-danger-000/10 px-2.5 py-1.5 text-xs text-danger-000">
+				<div className="rounded border border-danger-000/30 bg-danger-000/10 px-2.5 py-1.5 text-xs text-danger-000 mx-3">
 					{error}
 				</div>
 			)}
-			<div className="flex items-center justify-end gap-2">
+			<div className="h-[0.5px] bg-border-300 mx-0" />
+			<div className="flex items-center justify-end gap-2 px-4 pb-3">
 				<button
 					type="button"
 					onClick={handleSkip}
@@ -327,7 +383,6 @@ function AnswerForm({
 						/>
 					) : null}
 					{submitting ? 'Submitting...' : 'Submit'}
-					{!submitting && <KbdBadge>⏎</KbdBadge>}
 				</button>
 			</div>
 		</div>
@@ -354,7 +409,7 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 		const singleQuestion = (toolCall.input['question'] as string) ?? '';
 		return (
 			<div>
-				<p className="text-sm font-semibold">{singleQuestion}</p>
+				<p className="text-sm text-text-100">{singleQuestion}</p>
 				{result && <p className="text-sm text-text-500 mt-1 whitespace-pre-wrap">{result}</p>}
 			</div>
 		);
@@ -373,33 +428,20 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 	// don't silently lose information.
 	const showRawFallback = result !== undefined && parsed === null;
 
-	if (questions.length > 1) {
-		return (
-			<div className="flex flex-col gap-3">
-				{questions.map((q, i) => (
-					<AnsweredQuestion
-						key={i}
-						question={q.question}
-						{...(q.header ? {header: q.header} : {})}
-						options={q.options}
-						parsed={parsedByQuestion.get(q.question)}
-					/>
-				))}
-				{showRawFallback && <p className="text-sm text-text-500 mt-1 whitespace-pre-wrap">{result}</p>}
-			</div>
-		);
-	}
+	const questionElements = questions.map((q, i) => (
+		<AnsweredQuestion
+			key={i}
+			question={q.question}
+			{...(q.header ? {header: q.header} : {})}
+			options={q.options}
+			parsed={parsedByQuestion.get(q.question)}
+		/>
+	));
 
-	const only = questions[0]!;
 	return (
-		<>
-			<AnsweredQuestion
-				question={only.question}
-				{...(only.header ? {header: only.header} : {})}
-				options={only.options}
-				parsed={parsedByQuestion.get(only.question)}
-			/>
-			{showRawFallback && <p className="text-sm text-text-500 mt-1 whitespace-pre-wrap">{result}</p>}
-		</>
+		<div className="flex flex-col gap-4 rounded-[20px] bg-bg-000/90 backdrop-blur-md pt-4 pb-4 shadow-[0_0.25rem_1.25rem_rgba(0,0,0,0.075),0_0_0_0.5px_hsla(var(--border-200)/0.3)] overflow-hidden">
+			{questionElements}
+			{showRawFallback && <p className="text-sm text-text-500 mt-1 whitespace-pre-wrap px-5">{result}</p>}
+		</div>
 	);
 }
