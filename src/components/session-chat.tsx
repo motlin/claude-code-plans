@@ -1405,7 +1405,7 @@ function toolCallVerb(name: string): string {
 	if (name === 'Agent') return 'Ran agent';
 	if (name === 'WebFetch') return 'Fetched';
 	if (name === 'WebSearch') return 'Searched web';
-	if (name === 'ToolSearch') return 'Loaded';
+	if (name === 'ToolSearch') return 'Used ToolSearch';
 	if (name === 'Skill') return 'Loaded skill';
 	if (name.startsWith('mcp__')) return formatToolName(name);
 	return name;
@@ -1489,6 +1489,7 @@ const FILE_PARAM_TOOLS = new Set(['Read', 'Edit', 'MultiEdit', 'Write']);
  * so we suppress it from the ToolCallRow header to avoid duplication.
  */
 const RENDERER_HANDLES_PARAM = new Set([
+	'ToolSearch',
 	'mcp__claude-in-chrome__navigate',
 	'mcp__chrome-devtools__navigate_page',
 	'mcp__plugin_playwright_playwright__browser_navigate',
