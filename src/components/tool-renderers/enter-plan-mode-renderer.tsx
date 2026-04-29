@@ -1,13 +1,15 @@
 import type {ToolRendererProps} from './types';
-import {KeyValueCard} from './shared';
+import {ErrorBorder, KeyValueCard} from './shared';
 
 export function EnterPlanModeRenderer({toolCall}: ToolRendererProps) {
 	const {result} = toolCall;
 
 	return (
-		<KeyValueCard
-			params={[]}
-			result={result && result !== 'success' ? result : undefined}
-		/>
+		<ErrorBorder isError={toolCall.isError}>
+			<KeyValueCard
+				params={[]}
+				result={result && result !== 'success' ? result : undefined}
+			/>
+		</ErrorBorder>
 	);
 }
