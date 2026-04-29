@@ -255,6 +255,18 @@
 	}
 }
 
+/* Upstream claude.ai/code focus ring utilities:
+   Tailwind v4 uses --tw-outline-style to control outline-style globally,
+   so we set that variable instead of fighting with the shorthand. */
+.hide-focus-ring {
+	--tw-outline-style: solid;
+	outline: 2px solid transparent;
+	outline-offset: 2px;
+}
+.hide-focus-ring:focus-visible {
+	outline-color: var(--color-accent-100);
+}
+
 @layer base {
 	* {
 		@apply border-border-300/15;
@@ -262,4 +274,14 @@
 	body {
 		@apply bg-bg-100 text-text-100 font-sans;
 	}
+}
+
+/* Hide the old line number column in unified diff view to avoid showing
+   duplicate numbers (old and new are identical for our Edit tool fragments
+   which always start at line 1). */
+.diff-tailwindcss-wrapper .diff-line-num [data-line-old-num] {
+	display: none;
+}
+.diff-tailwindcss-wrapper .diff-line-num [data-line-new-num] {
+	width: 100%;
 }

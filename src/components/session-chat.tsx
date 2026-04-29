@@ -1544,7 +1544,7 @@ function ToolCallRow({call, sessionId}: {call: ClientToolCall; sessionId: string
 						setExpanded(!expanded);
 					}
 				}}
-				className="relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left cursor-pointer outline-none rounded-r3"
+				className="relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left cursor-pointer hide-focus-ring rounded-r3"
 			>
 				<span className="shrink-0 text-body text-assistant-secondary">{verb}</span>
 				{displayParam && (
@@ -1648,7 +1648,7 @@ function ToolCallSummary({calls, sessionId}: {calls: ClientToolCall[]; sessionId
 					<button
 						type="button"
 						onClick={() => setExpanded(!expanded)}
-						className="group/tool flex self-start max-w-full items-center py-0 gap-g1 text-left cursor-pointer outline-none rounded-r3"
+						className="relative group/tool flex self-start max-w-full items-center py-0 gap-g1 text-left hide-focus-ring rounded-r3"
 					>
 						<span className="inline-flex items-center gap-g3 min-w-0">
 							<span className="text-body truncate min-w-0">
