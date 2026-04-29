@@ -1494,6 +1494,15 @@ const RENDERER_HANDLES_PARAM = new Set([
 ]);
 
 /**
+ * Tools whose renderer provides its own bg-t1 card shell (header + body).
+ * These get a `group/body py-p6` wrapper with a `bg-t1 rounded-r6` inner div.
+ *
+ * All other tools (KeyValueCard-style) get `group/body relative flex flex-col w-full pt-p3`
+ * with no inner wrapper, matching upstream claude.ai/code.
+ */
+const CARD_STYLE_TOOLS = new Set(['Bash', 'Read', 'Edit', 'MultiEdit', 'Write']);
+
+/**
  * Tools that show inline diff stats (+N -M) in the clickable row.
  */
 const EDIT_TOOLS = new Set(['Edit', 'MultiEdit']);
@@ -1536,6 +1545,7 @@ function ToolCallRow({call, sessionId}: {call: ClientToolCall; sessionId: string
 	const verb = toolCallVerb(call.name);
 	const isFileParam = FILE_PARAM_TOOLS.has(call.name);
 	const diffStats = useEditDiffStats(call);
+	const isCardStyle = CARD_STYLE_TOOLS.has(call.name);
 
 	const displayParam = RENDERER_HANDLES_PARAM.has(call.name) ? '' : call.param;
 
@@ -1576,16 +1586,22 @@ function ToolCallRow({call, sessionId}: {call: ClientToolCall; sessionId: string
 			</div>
 			<div className={`grid ${expanded ? 'grid-rows-expand' : 'grid-rows-collapse'}`}>
 				<div className="overflow-hidden">
-					<div className="group/body py-p6">
-						<div className="bg-t1 rounded-r6 overflow-clip flex flex-col relative">
-							<Renderer toolCall={call} />
-							<DebugLink
-								sessionId={sessionId}
-								uuid={call.sourceUuid}
-								className="absolute top-1 right-1"
-							/>
+					{isCardStyle ? (
+						<div className="group/body py-p6">
+							<div className="bg-t1 rounded-r6 overflow-clip flex flex-col relative">
+								<Renderer toolCall={call} />
+								<DebugLink
+									sessionId={sessionId}
+									uuid={call.sourceUuid}
+									className="absolute top-1 right-1"
+								/>
+							</div>
 						</div>
-					</div>
+					) : (
+						<div className="group/body relative flex flex-col w-full pt-p3">
+							<Renderer toolCall={call} />
+						</div>
+					)}
 				</div>
 			</div>
 		</div>
