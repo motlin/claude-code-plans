@@ -29,12 +29,42 @@ export const Success: Story = {
 	},
 };
 
+export const NoTasks: Story = {
+	args: {
+		toolCall: makeToolCall({
+			input: {},
+			result: 'No tasks found',
+		}),
+	},
+};
+
+export const Pending: Story = {
+	args: {
+		toolCall: makeToolCall({
+			input: {},
+		}),
+	},
+};
+
 export const Error: Story = {
 	args: {
 		toolCall: makeToolCall({
 			input: {},
-			result: '',
+			result: 'Failed to list tasks: permission denied',
 			isError: true,
+		}),
+	},
+};
+
+export const ManyTasks: Story = {
+	args: {
+		toolCall: makeToolCall({
+			input: {},
+			result: Array.from({length: 12}, (_, i) => {
+				const statuses = ['completed', 'in_progress', 'pending'];
+				const status = statuses[i % 3]!;
+				return `#${i + 1} [${status}] Task ${i + 1}: ${['Fix login bug', 'Add unit tests', 'Deploy to staging', 'Refactor database layer', 'Update documentation', 'Add error handling', 'Optimize queries', 'Add caching', 'Setup CI/CD', 'Write integration tests', 'Add monitoring', 'Fix memory leak'][i]}`;
+			}).join('\n'),
 		}),
 	},
 };
