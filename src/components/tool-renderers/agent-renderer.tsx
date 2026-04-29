@@ -14,8 +14,8 @@ export function AgentRenderer({toolCall}: ToolRendererProps) {
 	const agentSessionId = subagentInfo?.agentId ?? null;
 
 	const params: KeyValueParam[] = [];
-	if (description) params.push({key: 'description', value: description, markdown: true});
-	if (prompt) params.push({key: 'prompt', value: prompt, markdown: true});
+	if (description) params.push({key: 'description', value: description});
+	if (prompt) params.push({key: 'prompt', value: prompt});
 	if (agentType) params.push({key: 'subagent_type', value: agentType});
 
 	return (
