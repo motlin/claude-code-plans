@@ -1,6 +1,6 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {formatDistanceToNow} from 'date-fns';
-import {Copy, Link2} from 'lucide-react';
+import {Bot, Copy, Link, Link2, Lock, Palette} from 'lucide-react';
 import {MarkdownArticle} from './markdown-article';
 import {getToolRenderer} from './tool-renderers';
 import {buildClientToolCall, buildSubagentLookup} from './tool-renderers/types';
@@ -610,7 +610,7 @@ function renderSessionMessage({
 	if (line.type === 'agent-name') {
 		return (
 			<Banner
-				icon="🤖"
+				icon={<Bot className="h-3.5 w-3.5" />}
 				label={line.agentName}
 			/>
 		);
@@ -618,7 +618,7 @@ function renderSessionMessage({
 	if (line.type === 'agent-color') {
 		return (
 			<Banner
-				icon="🎨"
+				icon={<Palette className="h-3.5 w-3.5" />}
 				label={`Agent color: ${line.agentColor}`}
 			/>
 		);
@@ -626,14 +626,14 @@ function renderSessionMessage({
 	if (line.type === 'permission-mode') {
 		return (
 			<Banner
-				icon="🔒"
+				icon={<Lock className="h-3.5 w-3.5" />}
 				label={`Permission mode: ${line.permissionMode}`}
 			/>
 		);
 	}
 	if (line.type === 'pr-link') {
 		return (
-			<Banner icon="🔗">
+			<Banner icon={<Link className="h-3.5 w-3.5" />}>
 				<a
 					href={line.prUrl}
 					target="_blank"
