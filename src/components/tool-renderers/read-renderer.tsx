@@ -135,8 +135,8 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 								{parsedLines.map((line, index) => (
 									<div
 										key={index}
-										className="h-[17px] whitespace-pre-wrap break-words"
-										style={{padding: '0 7.2px', wordBreak: 'break-word'}}
+										className="h-[17px] whitespace-pre"
+										style={{padding: '0 7.2px'}}
 									>
 										{tokens?.[index] ? (
 											<HighlightedLine tokens={tokens[index]} />
