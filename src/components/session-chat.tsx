@@ -1554,7 +1554,11 @@ function ToolCallRow({call, sessionId}: {call: ClientToolCall; sessionId: string
 	const diffStats = useEditDiffStats(call);
 	const isCardStyle = CARD_STYLE_TOOLS.has(call.name);
 
-	const displayParam = RENDERER_HANDLES_PARAM.has(call.name) ? '' : call.param;
+	const displayParam = RENDERER_HANDLES_PARAM.has(call.name)
+		? ''
+		: isFileParam
+			? (call.param.split('/').pop() ?? call.param)
+			: call.param;
 
 	return (
 		<div className="flex flex-col w-full">
