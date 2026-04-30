@@ -20,6 +20,7 @@ import {
 	Info,
 } from 'lucide-react';
 import type {ToolRendererProps} from './types';
+import {ErrorBorder} from './shared';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -471,6 +472,26 @@ export function PlaywrightRenderer({toolCall}: ToolRendererProps) {
 	const resultText = toolCall.result ?? '';
 	const input = toolCall.input as Record<string, unknown>;
 
+	return (
+		<ErrorBorder isError={toolCall.isError}>
+			<PlaywrightContent
+				tool={tool}
+				input={input}
+				resultText={resultText}
+			/>
+		</ErrorBorder>
+	);
+}
+
+function PlaywrightContent({
+	tool,
+	input,
+	resultText,
+}: {
+	tool: string;
+	input: Record<string, unknown>;
+	resultText: string;
+}) {
 	switch (tool) {
 		case 'browser_navigate':
 			return (
