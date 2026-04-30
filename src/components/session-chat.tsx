@@ -707,7 +707,7 @@ function TruncatedContent({
 						onClick={() => setShowFull(true)}
 						className={
 							variant === 'user'
-								? 'text-xs font-medium cursor-pointer rounded-full px-2 py-0.5 bg-white/20 text-white'
+								? 'text-xs font-medium cursor-pointer rounded-full px-2 py-0.5 bg-accent-100/15 text-user-msg-text'
 								: 'text-xs font-medium text-accent-100 hover:text-accent-000 cursor-pointer rounded-full bg-bg-200 px-2 py-0.5'
 						}
 					>
