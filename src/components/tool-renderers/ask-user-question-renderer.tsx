@@ -2,6 +2,7 @@ import {useState, type ReactNode} from 'react';
 import {Loader2} from 'lucide-react';
 import type {ToolRendererProps} from './types';
 import {useAskUserQuestionContext} from '../ask-user-question-context';
+import {MarkdownArticle} from '../markdown-article';
 import {
 	answerForQuestion,
 	makeInitialDraft,
@@ -118,7 +119,9 @@ function AnsweredQuestion({question, header, options, parsed}: QuestionLike & {p
 	return (
 		<div>
 			{header && <p className="text-xs text-text-500 mb-1 pl-3">{header}</p>}
-			<p className="text-sm text-text-100 mb-2 pl-3">{question}</p>
+			<div className="mb-2 pl-3">
+				<MarkdownArticle markdown={question} />
+			</div>
 			<div className="flex flex-col">
 				{options.map((opt, optionIndex) => {
 					const isLast = optionIndex === options.length - 1 && !isOther;
@@ -260,8 +263,10 @@ function AnswerForm({
 				const isMulti = q.multiSelect ?? false;
 				return (
 					<div key={index}>
-						<div className="flex items-center gap-2 pl-5 pb-2 pr-3">
-							<span className="flex-1 text-text-100 text-sm">{q.question}</span>
+						<div className="flex items-start gap-2 pl-5 pb-2 pr-3">
+							<div className="flex-1 min-w-0">
+								<MarkdownArticle markdown={q.question} />
+							</div>
 							{q.header && <span className="text-xs text-text-500 shrink-0">{q.header}</span>}
 						</div>
 						<div className="flex-1 p-1.5">
@@ -409,7 +414,7 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 		const singleQuestion = (toolCall.input['question'] as string) ?? '';
 		return (
 			<div>
-				<p className="text-sm text-text-100">{singleQuestion}</p>
+				<MarkdownArticle markdown={singleQuestion} />
 				{result && <p className="text-sm text-text-500 mt-1 whitespace-pre-wrap">{result}</p>}
 			</div>
 		);
