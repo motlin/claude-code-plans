@@ -9,7 +9,7 @@ import {ChatInput} from '../components/chat-input';
 import {StreamingMessage} from '../components/streaming-message';
 import {useChatStream} from '../hooks/use-chat-stream';
 import {AskUserQuestionProvider, type AskUserQuestionContextValue} from '../components/ask-user-question-context';
-import {getSubagentTree, getSessionSummary, requestSummary, isStarred, toggleSessionStar} from '../lib/server-fns';
+import {getSessionSubagents, getSessionSummary, requestSummary, isStarred, toggleSessionStar} from '../lib/server-fns';
 import {useIsSessionActive, useStatusline} from '../hooks/use-claude-events';
 import {StatusFooter} from '../components/status-footer';
 import {processTranscript} from '../lib/transcript';
@@ -50,7 +50,6 @@ const getSession = createServerFn({method: 'GET'})
 				title: subagent.description ?? subagent.slug ?? id,
 				projectName: subagent.projectId,
 				projectId: subagent.projectId,
-				subagentTree: [],
 				subagentCount: 0,
 				starred: false,
 				projectPath: parentSessionProjectPath,
@@ -64,7 +63,10 @@ const getSession = createServerFn({method: 'GET'})
 			};
 		}
 
-		const [subagentResult, starResult] = await Promise.all([getSubagentTree({data: id}), isStarred({data: id})]);
+		const [subagentResult, starResult] = await Promise.all([
+			getSessionSubagents({data: id}),
+			isStarred({data: id}),
+		]);
 
 		const projectPath = getSessionProjectPath(index, id);
 		const sessionMeta = getSessionMeta(index, id);
@@ -93,7 +95,6 @@ const getSession = createServerFn({method: 'GET'})
 			title: sessionRow.customTitle ?? sessionRow.title,
 			projectName: sessionMeta?.projectName ?? sessionRow.projectId,
 			projectId: sessionRow.projectId,
-			subagentTree: subagentResult.tree,
 			subagentCount: subagentResult.totalCount,
 			starred: starResult.starred,
 			projectPath,
@@ -555,7 +556,6 @@ function SessionPage() {
 					sessionId={params.id}
 					lines={processed.lines}
 					toolResultMap={processed.toolResultMap}
-					subagentTree={data.subagentTree}
 					showThinking={settings.showThinking}
 					showTools={settings.showTools}
 					showPassedHooks={settings.showPassedHooks}

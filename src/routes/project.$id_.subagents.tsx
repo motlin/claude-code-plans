@@ -1,12 +1,12 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
 import {ArrowLeft} from 'lucide-react';
-import {getProjectSubagentTree} from '../lib/server-fns';
+import {getProjectSubagents} from '../lib/server-fns';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
-import {SubagentTree} from '../components/subagent-tree';
+import {SubagentGantt} from '../components/subagent-gantt';
 
 export const Route = createFileRoute('/project/$id_/subagents')({
 	component: ProjectSubagentsPage,
-	loader: ({params}) => getProjectSubagentTree({data: params.id}),
+	loader: ({params}) => getProjectSubagents({data: params.id}),
 	head: ({loaderData}) => ({
 		meta: [{title: loaderData ? `${loaderData.project.name} subagents` : 'Project Not Found'}],
 	}),
@@ -32,7 +32,7 @@ function ProjectSubagentsPage() {
 		);
 	}
 
-	const {project, subagentTree, subagentCount} = data;
+	const {project, agents, subagentCount} = data;
 
 	return (
 		<div>
@@ -56,7 +56,7 @@ function ProjectSubagentsPage() {
 				<p className="mt-4 text-text-500">No subagents for this project.</p>
 			) : (
 				<section className="mt-4">
-					<SubagentTree tree={subagentTree} />
+					<SubagentGantt agents={agents} />
 				</section>
 			)}
 		</div>

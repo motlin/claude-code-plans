@@ -61,7 +61,6 @@ export const WithMessages: Story = {
 		sessionId: 'story-session-1',
 		lines: simpleConversation,
 		toolResultMap: new Map(),
-		subagentTree: [],
 	},
 };
 
@@ -70,7 +69,6 @@ export const EmptySession: Story = {
 		sessionId: 'story-session-empty',
 		lines: [],
 		toolResultMap: new Map(),
-		subagentTree: [],
 	},
 };
 
@@ -98,7 +96,6 @@ export const WithToolCalls: Story = {
 				{result: '# My Project\nA sample project.', isError: false, resultUuid: 'result-1', duration: 42},
 			],
 		]),
-		subagentTree: [],
 	},
 };
 
@@ -177,7 +174,6 @@ export const WithGroupedAssistantMessages: Story = {
 			['tool-g2', {result: 'OK', isError: false, resultUuid: 'result-g2', duration: 8}],
 			['tool-g3', {result: 'All 12 tests passed', isError: false, resultUuid: 'result-g3', duration: 3200}],
 		]),
-		subagentTree: [],
 	},
 };
 
@@ -205,7 +201,6 @@ export const WithMetadataRecords: Story = {
 			assistantBlocks(6, [{type: 'text', text: 'The fix has been merged.'}], '2026-04-19T10:10:05Z'),
 		],
 		toolResultMap: new Map(),
-		subagentTree: [],
 	},
 };
 
@@ -238,7 +233,6 @@ export const WithUserImage: Story = {
 			),
 		],
 		toolResultMap: new Map(),
-		subagentTree: [],
 	},
 };
 
@@ -260,7 +254,6 @@ export const WithAssistantImage: Story = {
 			),
 		],
 		toolResultMap: new Map(),
-		subagentTree: [],
 	},
 };
 
@@ -319,7 +312,6 @@ export const WithDisplayToggles: Story = {
 			assistantBlocks(10, [{type: 'text', text: 'Review complete.'}], '2026-04-19T10:01:05Z'),
 		],
 		toolResultMap: new Map(),
-		subagentTree: [],
 		showPassedHooks: false,
 		showHookWarnings: false,
 		showHookErrors: false,
@@ -349,7 +341,6 @@ export const WithDocumentAttachment: Story = {
 			),
 		],
 		toolResultMap: new Map(),
-		subagentTree: [],
 	},
 };
 
@@ -426,7 +417,6 @@ export const WithMcpToolCalls: Story = {
 			],
 			['tool-mcp3', {result: 'Screenshot saved', isError: false, resultUuid: 'r-mcp3', duration: 1200}],
 		]),
-		subagentTree: [],
 	},
 };
 
@@ -486,7 +476,6 @@ export const WithToolCallsOnly: Story = {
 				{result: 'vite.config.ts\neslint.config.js', isError: false, resultUuid: 'r-nt3', duration: 15},
 			],
 		]),
-		subagentTree: [],
 	},
 };
 
@@ -507,6 +496,5 @@ export const WithSingleAssistantNoTools: Story = {
 			),
 		],
 		toolResultMap: new Map(),
-		subagentTree: [],
 	},
 };

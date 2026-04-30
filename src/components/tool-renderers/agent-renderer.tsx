@@ -3,15 +3,17 @@ import type {ToolRendererProps} from './types';
 import type {KeyValueParam} from './shared';
 import {ErrorBorder, KeyValueCard} from './shared';
 
+const AGENT_ID_RE = /agentId:\s*(\S+)/;
+
 export function AgentRenderer({toolCall}: ToolRendererProps) {
 	const prompt = (toolCall.input['prompt'] as string) ?? '';
 	const agentType = (toolCall.input['subagent_type'] as string) ?? '';
 	const description = (toolCall.input['description'] as string) ?? '';
-	const {result, isError, subagentInfo} = toolCall;
+	const {result, isError} = toolCall;
 
-	const agentIdMatch = result?.match(/agentId:\s*(\S+)/);
+	const agentIdMatch = result?.match(AGENT_ID_RE);
 	const displayResult = agentIdMatch?.[1] ? result!.replace(/agentId:\s*\S+\n?/, '').trim() : result;
-	const agentSessionId = subagentInfo?.agentId ?? null;
+	const agentSessionId = agentIdMatch?.[1] ? `agent-${agentIdMatch[1]}` : null;
 
 	const params: KeyValueParam[] = [];
 	if (description) params.push({key: 'description', value: description});

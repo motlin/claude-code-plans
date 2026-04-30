@@ -32,13 +32,9 @@ import {
 	getTasksForProject,
 	getIncompleteTasksGroupedByProject,
 	getTaskCountsForProject,
-	buildSubagentTree,
 	listBranchesForProject,
 	listSessionsForBranch,
 	listCwdsForProject,
-	type DbSubagent,
-	type ParallelGroup,
-	type SubagentTreeNode,
 } from '../src/lib/db/queries';
 import * as schema from '../src/lib/db/schema';
 import {eq} from 'drizzle-orm';
@@ -1285,108 +1281,6 @@ describe('subagents', () => {
 		expect(child.parentAgentId).toBe('agent-parent111');
 		// Description should still be updated even when parentAgentId is preserved
 		expect(child.description).toBe('Root agent call');
-	});
-});
-
-describe('buildSubagentTree', () => {
-	function makeAgent(overrides: Partial<DbSubagent> & {id: string}): DbSubagent {
-		return {
-			sessionId: 'sess-1',
-			projectId: 'proj-1',
-			parentAgentId: null,
-			agentType: null,
-			slug: null,
-			description: null,
-			startedAt: null,
-			finishedAt: null,
-			filePath: `/path/${overrides.id}.jsonl`,
-			mtimeMs: 1000,
-			...overrides,
-		};
-	}
-
-	it('builds a flat list for serial agents', () => {
-		const agents = [
-			makeAgent({id: 'a', startedAt: '1999-12-31T00:00:00.000Z', finishedAt: '1999-12-31T00:00:10.000Z'}),
-			makeAgent({id: 'b', startedAt: '1999-12-31T00:00:15.000Z', finishedAt: '1999-12-31T00:00:25.000Z'}),
-			makeAgent({id: 'c', startedAt: '1999-12-31T00:00:30.000Z', finishedAt: '1999-12-31T00:00:40.000Z'}),
-		];
-
-		const tree = buildSubagentTree(agents);
-		expect(tree.map((n) => (n as SubagentTreeNode).agent.id)).toStrictEqual(['a', 'b', 'c']);
-	});
-
-	it('groups parallel agents with same start time', () => {
-		const agents = [
-			makeAgent({id: 'build', startedAt: '1999-12-31T00:00:00.000Z', finishedAt: '1999-12-31T00:00:10.000Z'}),
-			makeAgent({id: 'review1', startedAt: '1999-12-31T00:00:15.000Z', finishedAt: '1999-12-31T00:00:25.000Z'}),
-			makeAgent({id: 'review2', startedAt: '1999-12-31T00:00:15.000Z', finishedAt: '1999-12-31T00:00:30.000Z'}),
-			makeAgent({id: 'review3', startedAt: '1999-12-31T00:00:15.500Z', finishedAt: '1999-12-31T00:00:20.000Z'}),
-			makeAgent({id: 'commit', startedAt: '1999-12-31T00:00:35.000Z', finishedAt: '1999-12-31T00:00:40.000Z'}),
-		];
-
-		const tree = buildSubagentTree(agents);
-		expect(tree.length).toBe(3);
-		expect((tree[0] as SubagentTreeNode).agent.id).toBe('build');
-
-		const group = tree[1] as ParallelGroup;
-		expect(group.type).toBe('parallel');
-		expect(group.children.length).toBe(3);
-		expect(group.wallClockMs).toBe(15000); // review2 took longest: 15s
-
-		expect((tree[2] as SubagentTreeNode).agent.id).toBe('commit');
-	});
-
-	it('nests children under their parent', () => {
-		const agents = [
-			makeAgent({id: 'parent', startedAt: '1999-12-31T00:00:00.000Z', finishedAt: '1999-12-31T00:00:30.000Z'}),
-			makeAgent({
-				id: 'child',
-				parentAgentId: 'parent',
-				startedAt: '1999-12-31T00:00:05.000Z',
-				finishedAt: '1999-12-31T00:00:15.000Z',
-			}),
-		];
-
-		const tree = buildSubagentTree(agents);
-		expect(tree.length).toBe(1);
-
-		const parent = tree[0] as SubagentTreeNode;
-		expect(parent.agent.id).toBe('parent');
-		expect(parent.children.map((c) => (c as SubagentTreeNode).agent.id)).toStrictEqual(['child']);
-	});
-
-	it('handles deep nesting', () => {
-		const agents = [
-			makeAgent({
-				id: 'root-agent',
-				startedAt: '1999-12-31T00:00:00.000Z',
-				finishedAt: '1999-12-31T00:01:00.000Z',
-			}),
-			makeAgent({
-				id: 'mid',
-				parentAgentId: 'root-agent',
-				startedAt: '1999-12-31T00:00:10.000Z',
-				finishedAt: '1999-12-31T00:00:40.000Z',
-			}),
-			makeAgent({
-				id: 'deep',
-				parentAgentId: 'mid',
-				startedAt: '1999-12-31T00:00:15.000Z',
-				finishedAt: '1999-12-31T00:00:25.000Z',
-			}),
-		];
-
-		const tree = buildSubagentTree(agents);
-		expect(tree.length).toBe(1);
-		const root = tree[0] as SubagentTreeNode;
-		expect(root.children.length).toBe(1);
-		const mid = root.children[0] as SubagentTreeNode;
-		expect(mid.children.map((c) => (c as SubagentTreeNode).agent.id)).toStrictEqual(['deep']);
-	});
-
-	it('returns empty array for no agents', () => {
-		expect(buildSubagentTree([])).toStrictEqual([]);
 	});
 });
 

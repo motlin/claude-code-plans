@@ -3,7 +3,7 @@ import {formatDistanceToNow} from 'date-fns';
 import {Bot, Copy, Link, Link2, Lock, Palette} from 'lucide-react';
 import {MarkdownArticle} from './markdown-article';
 import {getToolRenderer} from './tool-renderers';
-import {buildClientToolCall, buildSubagentLookup} from './tool-renderers/types';
+import {buildClientToolCall} from './tool-renderers/types';
 import type {ClientToolCall} from './tool-renderers';
 import {ChevronIcon, TerminalOutput} from './tool-renderers/shared';
 import {computeDiffData} from '../lib/diff-utils';
@@ -13,7 +13,6 @@ import {hmrPersist} from '../lib/hmr-persist';
 import {writeClipboardText} from '../lib/clipboard';
 import type {MessageSessionLine, SessionLine, SessionContentBlock, ToolResultInfo} from '../lib/sessions';
 import type {ToolUseBlock} from '../lib/schemas';
-import type {SubagentTreeEntry} from '../lib/db/queries';
 import {AttachmentBanner, Banner} from './attachment-banner';
 import {
 	stripCommandTags,
@@ -68,7 +67,6 @@ export interface SessionChatProps {
 	sessionId: string;
 	lines: SessionLine[];
 	toolResultMap: Map<string, ToolResultInfo>;
-	subagentTree: SubagentTreeEntry[];
 	showThinking?: boolean;
 	showTools?: boolean;
 	showPassedHooks?: boolean;
@@ -225,7 +223,6 @@ export const SessionChat = React.memo(function SessionChat({
 	sessionId,
 	lines,
 	toolResultMap,
-	subagentTree,
 	showThinking = false,
 	showTools = true,
 	showPassedHooks = false,
@@ -234,7 +231,6 @@ export const SessionChat = React.memo(function SessionChat({
 	showSystemBanners = false,
 }: SessionChatProps) {
 	const endRef = useRef<HTMLDivElement>(null);
-	const subagentLookup = useMemo(() => buildSubagentLookup(subagentTree), [subagentTree]);
 	const isSubagentSession = sessionId.startsWith('agent-');
 
 	useEffect(() => {
@@ -251,7 +247,6 @@ export const SessionChat = React.memo(function SessionChat({
 				lines={lines}
 				sessionId={sessionId}
 				toolResultMap={toolResultMap}
-				subagentLookup={subagentLookup}
 				isSubagentSession={isSubagentSession}
 				showThinking={showThinking}
 				showTools={showTools}
@@ -284,7 +279,6 @@ function buildSkipSet(lines: SessionLine[]): Set<number> {
 interface LineRenderProps {
 	sessionId: string;
 	toolResultMap: Map<string, ToolResultInfo>;
-	subagentLookup: ReturnType<typeof buildSubagentLookup>;
 	isSubagentSession: boolean;
 	showThinking: boolean;
 	showTools: boolean;
@@ -338,14 +332,12 @@ function GroupedToolCallEntry({
 	className,
 	sessionId,
 	toolResultMap,
-	subagentLookup,
 }: {
 	lines: SessionLine[];
 	indices: number[];
 	className?: string;
 	sessionId: string;
 	toolResultMap: Map<string, ToolResultInfo>;
-	subagentLookup: ReturnType<typeof buildSubagentLookup>;
 }) {
 	const allToolCalls = useMemo(
 		() =>
@@ -355,9 +347,9 @@ function GroupedToolCallEntry({
 				if (!Array.isArray(content)) return [];
 				return content
 					.filter((b): b is ToolUseBlock => b.type === 'tool_use')
-					.map((block) => buildClientToolCall(block, line.uuid ?? '', toolResultMap, subagentLookup));
+					.map((block) => buildClientToolCall(block, line.uuid ?? '', toolResultMap));
 			}),
-		[lines, toolResultMap, subagentLookup],
+		[lines, toolResultMap],
 	);
 
 	if (allToolCalls.length === 0) return null;
@@ -574,7 +566,6 @@ function renderSessionMessage({
 	index,
 	sessionId,
 	toolResultMap,
-	subagentLookup,
 	isSubagentSession,
 	showThinking,
 	showTools,
@@ -601,7 +592,6 @@ function renderSessionMessage({
 				line={line}
 				sessionId={sessionId}
 				toolResultMap={toolResultMap}
-				subagentLookup={subagentLookup}
 				showThinking={showThinking}
 				showTools={showTools}
 			/>
@@ -1220,14 +1210,12 @@ function AssistantEntry({
 	line,
 	sessionId,
 	toolResultMap,
-	subagentLookup,
 	showThinking,
 	showTools,
 }: {
 	line: MessageSessionLine;
 	sessionId: string;
 	toolResultMap: Map<string, ToolResultInfo>;
-	subagentLookup: ReturnType<typeof buildSubagentLookup>;
 	showThinking: boolean;
 	showTools: boolean;
 }) {
@@ -1242,8 +1230,8 @@ function AssistantEntry({
 		() =>
 			content
 				.filter((b): b is ToolUseBlock => b.type === 'tool_use')
-				.map((block) => buildClientToolCall(block, line.uuid ?? '', toolResultMap, subagentLookup)),
-		[content, line, toolResultMap, subagentLookup],
+				.map((block) => buildClientToolCall(block, line.uuid ?? '', toolResultMap)),
+		[content, line, toolResultMap],
 	);
 	const hasVisibleNonToolContent = content.some(
 		(b) =>
@@ -1419,33 +1407,6 @@ function toolCallVerb(name: string): string {
 const PROMINENT_TOOLS = new Set(['AskUserQuestion']);
 const TASK_TOOLS = new Set(['TaskCreate', 'TaskUpdate', 'TaskGet', 'TaskList', 'TaskStop']);
 
-type ToolListItem = {kind: 'call'; call: ClientToolCall} | {kind: 'parallel'; key: string; calls: ClientToolCall[]};
-
-function groupParallelSubagents(calls: ClientToolCall[]): ToolListItem[] {
-	const result: ToolListItem[] = [];
-	let i = 0;
-	while (i < calls.length) {
-		const call = calls[i]!;
-		const key = call.subagentInfo?.parallelGroupKey;
-		if (key) {
-			const group: ClientToolCall[] = [call];
-			let j = i + 1;
-			while (j < calls.length && calls[j]!.subagentInfo?.parallelGroupKey === key) {
-				group.push(calls[j]!);
-				j++;
-			}
-			if (group.length > 1) {
-				result.push({kind: 'parallel', key, calls: group});
-				i = j;
-				continue;
-			}
-		}
-		result.push({kind: 'call', call});
-		i++;
-	}
-	return result;
-}
-
 function ToolCallSection({calls, sessionId}: {calls: ClientToolCall[]; sessionId: string}) {
 	const prominentCalls = calls.filter((c) => PROMINENT_TOOLS.has(c.name));
 	const backgroundCalls = calls.filter((c) => !PROMINENT_TOOLS.has(c.name));
@@ -1619,29 +1580,6 @@ function ToolCallRow({call, sessionId}: {call: ClientToolCall; sessionId: string
 	);
 }
 
-function ParallelGroupInline({calls, sessionId}: {calls: ClientToolCall[]; sessionId: string}) {
-	const size = calls.length;
-
-	return (
-		<div className="min-w-0 py-0.5">
-			<div className="flex items-center gap-1.5 text-[12px] text-text-500 mb-1">
-				<span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-accent-000/12 text-accent-100">
-					parallel &times;{size}
-				</span>
-			</div>
-			<div className="ml-2 pl-2 border-l border-accent-000/20">
-				{calls.map((call, i) => (
-					<ToolCallRow
-						key={i}
-						call={call}
-						sessionId={sessionId}
-					/>
-				))}
-			</div>
-		</div>
-	);
-}
-
 /**
  * Renders the structured summary as verb spans matching upstream claude.ai/code:
  *   <span class="text-body text-assistant-secondary">{verb}</span>
@@ -1667,7 +1605,6 @@ function ToolCallSummary({calls, sessionId}: {calls: ClientToolCall[]; sessionId
 	const taskCalls = calls.filter((c) => TASK_TOOLS.has(c.name));
 	const hasTasksView = taskCalls.length >= 3;
 	const displayCalls = hasTasksView ? calls.filter((c) => !TASK_TOOLS.has(c.name)) : calls;
-	const items = groupParallelSubagents(displayCalls);
 	const segments = useMemo(() => summarizeToolCallsStructured(displayCalls), [displayCalls]);
 
 	return (
@@ -1699,24 +1636,13 @@ function ToolCallSummary({calls, sessionId}: {calls: ClientToolCall[]; sessionId
 					<div className={`grid ${expanded ? 'grid-rows-expand' : 'grid-rows-collapse'}`}>
 						<div className="overflow-hidden">
 							<div className="flex flex-col gap-g3 bg-t1 rounded-r6 p-p7 mt-p3">
-								{items.map((item, i) => {
-									if (item.kind === 'parallel') {
-										return (
-											<ParallelGroupInline
-												key={`pg-${item.key}`}
-												calls={item.calls}
-												sessionId={sessionId}
-											/>
-										);
-									}
-									return (
-										<ToolCallRow
-											key={i}
-											call={item.call}
-											sessionId={sessionId}
-										/>
-									);
-								})}
+								{displayCalls.map((call, i) => (
+									<ToolCallRow
+										key={i}
+										call={call}
+										sessionId={sessionId}
+									/>
+								))}
 							</div>
 						</div>
 					</div>

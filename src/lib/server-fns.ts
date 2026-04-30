@@ -9,7 +9,6 @@ import {
 	searchSessionsFromDb,
 	getSubagentsForSession,
 	getSubagentsForProject,
-	buildSubagentTree,
 	getPlanProjectMappings,
 	toggleStar as toggleStarInDb,
 	getStarredSessions as getStarredSessionsFromDb,
@@ -247,7 +246,6 @@ export const getProject = createServerFn({method: 'GET'})
 		}
 
 		const allSubagents = getSubagentsForProject(index, projectId);
-		const subagentTree = buildSubagentTree(allSubagents);
 		const subagentCountBySession = new Map<string, number>();
 		for (const a of allSubagents) {
 			subagentCountBySession.set(a.sessionId, (subagentCountBySession.get(a.sessionId) ?? 0) + 1);
@@ -272,7 +270,6 @@ export const getProject = createServerFn({method: 'GET'})
 			name: detail.name,
 			projectPath: detail.projectPath,
 			subagentCount: detail.subagentCount,
-			subagentTree,
 			sessions: detail.sessions.map((s) => ({
 				id: s.id,
 				title: s.title,
@@ -315,13 +312,13 @@ export const getPlanLinks = createServerFn({method: 'GET'})
 		}));
 	});
 
-export const getSubagentTree = createServerFn({method: 'GET'})
+export const getSessionSubagents = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: sessionId}) => {
 		const {getDb} = await import('./db');
 		const {index} = getDb();
 		const agents = getSubagentsForSession(index, sessionId);
-		return {tree: buildSubagentTree(agents), totalCount: agents.length, agents};
+		return {totalCount: agents.length, agents};
 	});
 
 export const searchSessions = createServerFn({method: 'GET'})
@@ -760,7 +757,7 @@ export const getProjectBranches = createServerFn({method: 'GET'})
 		}));
 	});
 
-export const getProjectSubagentTree = createServerFn({method: 'GET'})
+export const getProjectSubagents = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: projectId}) => {
 		const {getDb} = await import('./db');
@@ -768,13 +765,12 @@ export const getProjectSubagentTree = createServerFn({method: 'GET'})
 		const detail = getProjectDetailFromDb(index, projectId);
 		if (!detail) return null;
 
-		const allSubagents = getSubagentsForProject(index, projectId);
-		const subagentTree = buildSubagentTree(allSubagents);
+		const agents = getSubagentsForProject(index, projectId);
 
 		return {
 			project: projectScopeBase(detail),
-			subagentTree,
-			subagentCount: allSubagents.length,
+			agents,
+			subagentCount: agents.length,
 		};
 	});
 

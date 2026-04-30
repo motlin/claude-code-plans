@@ -1,6 +1,6 @@
 import {createContext, useCallback, useContext, useEffect, useState} from 'react';
 
-type SubagentView = 'tree' | 'gantt' | 'sequence';
+type SubagentView = 'gantt' | 'sequence';
 export type Verbosity = 'normal' | 'thinking' | 'verbose';
 
 export interface Settings {
@@ -39,7 +39,7 @@ export const DEFAULTS: Settings = {
 
 	showSystemBanners: false,
 
-	defaultSubagentView: 'tree',
+	defaultSubagentView: 'gantt',
 
 	chromeHidden: false,
 	statusFooterVisible: true,
@@ -151,6 +151,11 @@ export function SettingsProvider({children}: {children: React.ReactNode}) {
 			if (stored !== undefined) {
 				(loaded as Record<keyof Settings, Settings[keyof Settings]>)[key] = stored;
 			}
+		}
+		// Migrate removed 'tree' subagent view to 'gantt'
+		if (loaded.defaultSubagentView === ('tree' as SubagentView)) {
+			loaded.defaultSubagentView = 'gantt';
+			writeStoredValue('defaultSubagentView', 'gantt');
 		}
 		const rawVerbosity = localStorage.getItem(STORAGE_KEYS.verbosity);
 		if (rawVerbosity === 'minimal') {

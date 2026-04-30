@@ -1,8 +1,7 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
 import {queryOptions, useSuspenseQuery} from '@tanstack/react-query';
 import {ArrowLeft, GitFork} from 'lucide-react';
-import {getSubagentTree} from '../lib/server-fns';
-import {SubagentTree} from '../components/subagent-tree';
+import {getSessionSubagents} from '../lib/server-fns';
 import {SubagentGantt} from '../components/subagent-gantt';
 import {SubagentSequence} from '../components/subagent-sequence';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
@@ -11,7 +10,7 @@ import {useSettings} from '../components/settings-provider';
 const subagentQueryOptions = (sessionId: string) =>
 	queryOptions({
 		queryKey: ['session', sessionId, 'subagents'] as const,
-		queryFn: () => getSubagentTree({data: sessionId}),
+		queryFn: () => getSessionSubagents({data: sessionId}),
 		staleTime: Infinity,
 		gcTime: Infinity,
 	});
@@ -52,12 +51,10 @@ function SubagentsPage() {
 				<p className="mt-4 text-sm text-text-500">No subagents for this session.</p>
 			) : (
 				<div className="mt-3">
-					{subagentView === 'tree' ? (
-						<SubagentTree tree={data.tree} />
-					) : subagentView === 'gantt' ? (
-						<SubagentGantt agents={data.agents} />
-					) : (
+					{subagentView === 'sequence' ? (
 						<SubagentSequence agents={data.agents} />
+					) : (
+						<SubagentGantt agents={data.agents} />
 					)}
 				</div>
 			)}

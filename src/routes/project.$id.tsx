@@ -14,7 +14,6 @@ import {
 import type {ComponentType, SVGProps} from 'react';
 import {projectQueryOptions} from '../queries/projects';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
-import {SubagentTree} from '../components/subagent-tree';
 
 export const Route = createFileRoute('/project/$id')({
 	component: ProjectPage,
@@ -221,7 +220,14 @@ function ProjectPage() {
 						Subagents ({data.subagentCount})
 					</h2>
 					<div className="mt-2">
-						<SubagentTree tree={data.subagentTree} />
+						<Link
+							to="/project/$id/subagents"
+							params={{id}}
+							className="text-xs text-accent-100 hover:underline inline-flex items-center gap-1"
+						>
+							<Bot className="h-3 w-3" />
+							View all subagents
+						</Link>
 					</div>
 				</section>
 			)}
