@@ -1,4 +1,4 @@
-import {renderMarkdownToHtml, looksLikeMarkdown} from '../src/lib/client-markdown';
+import {renderMarkdownToHtml, renderMarkdownWithHighlighting, looksLikeMarkdown} from '../src/lib/client-markdown';
 
 describe('looksLikeMarkdown', () => {
 	it('returns true for text with 2+ markdown indicators', () => {
@@ -83,5 +83,26 @@ describe('renderMarkdownToHtml', () => {
 		const result1 = renderMarkdownToHtml('# Test');
 		const result2 = renderMarkdownToHtml('# Test');
 		expect(result1).toBe(result2);
+	});
+});
+
+describe('renderMarkdownWithHighlighting', () => {
+	it('falls back to plain rendering when highlighter is null', () => {
+		const markdown = '# Hello\n\n```js\nconst x = 1;\n```';
+		const result = renderMarkdownWithHighlighting(markdown, null);
+		const plainResult = renderMarkdownToHtml(markdown);
+		expect(result).toBe(plainResult);
+	});
+
+	it('returns empty string for empty input even with null highlighter', () => {
+		expect(renderMarkdownWithHighlighting('', null)).toBe('');
+		expect(renderMarkdownWithHighlighting('   ', null)).toBe('');
+	});
+
+	it('renders non-code markdown the same with or without highlighter', () => {
+		const markdown = '**bold** and *italic*';
+		const result = renderMarkdownWithHighlighting(markdown, null);
+		expect(result).toContain('<strong>bold</strong>');
+		expect(result).toContain('<em>italic</em>');
 	});
 });

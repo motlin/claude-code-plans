@@ -1,5 +1,6 @@
-import {type ReactNode, useCallback, useMemo, useState} from 'react';
-import {renderMarkdownToHtml} from '../../lib/client-markdown';
+import {type ReactNode, useCallback, useMemo, useState, useSyncExternalStore} from 'react';
+import {renderMarkdownWithHighlighting} from '../../lib/client-markdown';
+import {getHighlighterSync, getHighlighterVersion, subscribeHighlighter} from '../../hooks/use-shiki';
 import markdownStyles from '../markdown-article.module.css';
 
 // ANSI color code to CSS color mapping
@@ -447,7 +448,11 @@ export function CollapsibleSection({
  * Memoizes the HTML output to avoid re-rendering on every parent render.
  */
 function InlineMarkdown({text}: {text: string}) {
-	const html = useMemo(() => renderMarkdownToHtml(text), [text]);
+	const highlighterVersion = useSyncExternalStore(subscribeHighlighter, getHighlighterVersion, () => 0);
+	const html = useMemo(() => {
+		void highlighterVersion;
+		return renderMarkdownWithHighlighting(text, getHighlighterSync());
+	}, [text, highlighterVersion]);
 	return (
 		<div
 			className={markdownStyles['markdown']}

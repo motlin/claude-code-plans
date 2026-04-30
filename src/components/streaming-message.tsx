@@ -1,5 +1,6 @@
-import {useEffect, useRef, useMemo} from 'react';
-import {renderMarkdownToHtml} from '../lib/client-markdown';
+import {useEffect, useRef, useMemo, useSyncExternalStore} from 'react';
+import {renderMarkdownWithHighlighting} from '../lib/client-markdown';
+import {getHighlighterSync, getHighlighterVersion, subscribeHighlighter} from '../hooks/use-shiki';
 import styles from './markdown-article.module.css';
 
 interface StreamingMessageProps {
@@ -21,9 +22,12 @@ export function StreamingMessage({text, isComplete, error, forkedSessionId, sent
 		endRef.current?.scrollIntoView({behavior: 'smooth', block: 'end'});
 	}, [sentPrompt]);
 
+	const highlighterVersion = useSyncExternalStore(subscribeHighlighter, getHighlighterVersion, () => 0);
+
 	const renderedHtml = useMemo(() => {
-		return renderMarkdownToHtml(text);
-	}, [text]);
+		void highlighterVersion;
+		return renderMarkdownWithHighlighting(text, getHighlighterSync());
+	}, [text, highlighterVersion]);
 
 	return (
 		<div className="mx-auto w-full max-w-3xl px-8 py-4">

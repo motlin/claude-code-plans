@@ -94,6 +94,25 @@ if (typeof window !== 'undefined') {
 }
 
 // ---------------------------------------------------------------------------
+// Non-hook accessors for use in plain functions (e.g. markdown-it highlight)
+// ---------------------------------------------------------------------------
+
+/** Returns the highlighter if already loaded, otherwise null. */
+export function getHighlighterSync(): HighlighterCore | null {
+	return highlighterInstance;
+}
+
+/** Subscribe to highlighter readiness changes. */
+export function subscribeHighlighter(callback: () => void): () => void {
+	return subscribe(callback);
+}
+
+/** Snapshot function for useSyncExternalStore. */
+export function getHighlighterVersion(): number {
+	return getVersion();
+}
+
+// ---------------------------------------------------------------------------
 // React hook
 // ---------------------------------------------------------------------------
 
