@@ -181,6 +181,40 @@ describe('parseAnswerResult', () => {
 		expect(parseAnswerResult(text, [])).toBe(null);
 	});
 
+	it('handles "selected preview:" annotations in the remainder', () => {
+		const preview =
+			'┌─ user side ──────────────────┐\n│ $ git status                 │\n└──────────────────────────────┘';
+		const text =
+			'User has answered your questions: "How should it render?"="Combined bubble" selected preview:\n' +
+			preview +
+			', "How should stderr render?"="Red error styling".' +
+			" You can now continue with the user's answers in mind.";
+		const result = parseAnswerResult(text, [
+			q('How should it render?', [{label: 'Combined bubble'}]),
+			q('How should stderr render?', [{label: 'Red error styling'}]),
+		]);
+		expect(result).toStrictEqual([
+			{question: 'How should it render?', answer: 'Combined bubble', notes: null},
+			{question: 'How should stderr render?', answer: 'Red error styling', notes: null},
+		]);
+	});
+
+	it('handles both "user notes:" and "selected preview:" annotations', () => {
+		const text =
+			'User has answered your questions: "Pick one?"="Option A" user notes: some detail selected preview:\nfoo.' +
+			" You can now continue with the user's answers in mind.";
+		const result = parseAnswerResult(text, [q('Pick one?', [{label: 'Option A'}])]);
+		expect(result).toStrictEqual([{question: 'Pick one?', answer: 'Option A', notes: 'some detail'}]);
+	});
+
+	it('handles unknown annotations in the remainder without failing', () => {
+		const text =
+			'User has answered your questions: "Q1?"="A1" some future annotation: data.' +
+			" You can now continue with the user's answers in mind.";
+		const result = parseAnswerResult(text, [q('Q1?', [{label: 'A1'}])]);
+		expect(result).toStrictEqual([{question: 'Q1?', answer: 'A1', notes: null}]);
+	});
+
 	it('parses the real eclipse-collections "Other" answer where notes echo the value', () => {
 		// Real example from session 01f99877 - the bug screenshot referenced in
 		// task #48. Both questions used 'Other' and the notes are duplicates of

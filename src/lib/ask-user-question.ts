@@ -96,6 +96,7 @@ export interface ParsedAnswer {
 const ENVELOPE_PREFIX = 'User has answered your questions: ';
 const ENVELOPE_SUFFIX = ". You can now continue with the user's answers in mind.";
 const NOTES_MARKER = ' user notes: ';
+const PREVIEW_MARKER = ' selected preview:';
 const PAIR_SEPARATOR = ', ';
 
 /**
@@ -139,19 +140,31 @@ export function parseAnswerResult(text: string, questions: QuestionLike[]): Pars
 			segmentEnd = nextIdx;
 		}
 
-		let notes: string | null = null;
-		const remainder = body.slice(cursor, segmentEnd);
-		if (remainder.startsWith(NOTES_MARKER)) {
-			notes = remainder.slice(NOTES_MARKER.length);
-		} else if (remainder.length !== 0) {
-			return null;
-		}
+		const notes = extractNotes(body.slice(cursor, segmentEnd));
 
 		result.push({question, answer, notes});
 		body = body.slice(segmentEnd + (i + 1 < questions.length ? PAIR_SEPARATOR.length : 0));
 	}
 	if (body.length !== 0) return null;
 	return result;
+}
+
+/**
+ * Extract user notes from the annotation remainder between an answer value and
+ * the next question separator. The remainder can contain multiple annotation
+ * markers (e.g. ` user notes: ...`, ` selected preview:\n...`). We extract
+ * the notes value and ignore other annotations.
+ */
+function extractNotes(remainder: string): string | null {
+	if (remainder.length === 0) return null;
+	const notesStart = remainder.indexOf(NOTES_MARKER);
+	if (notesStart < 0) return null;
+	const notesContent = remainder.slice(notesStart + NOTES_MARKER.length);
+	const previewIndex = notesContent.indexOf(PREVIEW_MARKER);
+	if (previewIndex >= 0) {
+		return notesContent.slice(0, previewIndex);
+	}
+	return notesContent;
 }
 
 function findClosingQuote(text: string, start: number): number {

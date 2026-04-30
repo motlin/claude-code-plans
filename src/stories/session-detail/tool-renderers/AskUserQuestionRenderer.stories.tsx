@@ -92,6 +92,39 @@ export const ActiveSession: Story = {
 	},
 };
 
+export const AnsweredWithPreviewAnnotation: Story = {
+	args: {
+		toolCall: makeToolCall({
+			input: {
+				questions: [
+					{
+						question: 'How should bash-mode commands render?',
+						header: 'Layout',
+						options: [
+							{label: 'Combined bubble', description: 'Stitch bash-input with stdout into one bubble'},
+							{label: 'Two separate bubbles', description: 'Input and output as separate bubbles'},
+							{label: 'Input only', description: 'Show only the command, hide output'},
+						],
+					},
+					{
+						question: 'How should stderr render?',
+						header: 'Stderr',
+						options: [
+							{label: 'Red error styling', description: 'Red-tinted block for stderr'},
+							{label: 'Same as stdout', description: 'No special styling'},
+						],
+					},
+				],
+			},
+			result:
+				'User has answered your questions: "How should bash-mode commands render?"="Combined bubble" selected preview:\n' +
+				'$ git status\nOn branch main\nnothing to commit' +
+				', "How should stderr render?"="Red error styling".' +
+				" You can now continue with the user's answers in mind.",
+		}),
+	},
+};
+
 export const AnsweredOther: Story = {
 	args: {
 		toolCall: makeToolCall({
