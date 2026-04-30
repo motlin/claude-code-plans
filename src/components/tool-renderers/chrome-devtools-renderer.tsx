@@ -13,6 +13,7 @@ import {
 	ArrowLeft,
 } from 'lucide-react';
 import type {ToolRendererProps} from './types';
+import {ErrorBorder} from './shared';
 
 // ---------------------------------------------------------------------------
 // Shared parsers
@@ -657,11 +658,30 @@ function DefaultCdpRenderer({resultText}: {resultText: string}) {
 // ---------------------------------------------------------------------------
 
 export function ChromeDevtoolsRenderer({toolCall}: ToolRendererProps) {
-	// Extract tool name: "mcp__chrome-devtools__navigate_page" -> "navigate_page"
 	const tool = toolCall.name.split('__').slice(2).join('__');
 	const resultText = toolCall.result ?? '';
+	const input = toolCall.input as Record<string, unknown>;
 
-	// Try to parse result as JSON for screenshot path detection
+	return (
+		<ErrorBorder isError={toolCall.isError}>
+			<ChromeDevtoolsContent
+				tool={tool}
+				input={input}
+				resultText={resultText}
+			/>
+		</ErrorBorder>
+	);
+}
+
+function ChromeDevtoolsContent({
+	tool,
+	input,
+	resultText,
+}: {
+	tool: string;
+	input: Record<string, unknown>;
+	resultText: string;
+}) {
 	let parsedResult: Record<string, unknown> | null = null;
 	try {
 		parsedResult = JSON.parse(resultText) as Record<string, unknown>;
@@ -669,15 +689,12 @@ export function ChromeDevtoolsRenderer({toolCall}: ToolRendererProps) {
 		/* text result */
 	}
 
-	// Handle screenshot results (screenshot_path or path field pointing to image)
 	const screenshotPath = (parsedResult?.['screenshot_path'] ?? parsedResult?.['path']) as string | undefined;
 	if (screenshotPath && /\.(png|jpg|jpeg|gif|webp)$/i.test(screenshotPath)) {
 		return <ScreenshotRenderer path={screenshotPath} />;
 	}
 
 	if (!resultText) return <span className="text-xs text-muted-foreground">No result</span>;
-
-	const input = toolCall.input as Record<string, unknown>;
 
 	switch (tool) {
 		case 'navigate_page':
