@@ -371,11 +371,30 @@ function DefaultRenderer({resultText}: {resultText: string}) {
 // ---------------------------------------------------------------------------
 
 export function ClaudeInChromeRenderer({toolCall}: ToolRendererProps) {
-	// Extract tool name: "mcp__claude-in-chrome__navigate" -> "navigate"
 	const tool = toolCall.name.split('__').slice(2).join('__');
 	const resultText = toolCall.result ?? '';
 	const input = toolCall.input as Record<string, unknown>;
 
+	return (
+		<ErrorBorder isError={toolCall.isError}>
+			<ClaudeInChromeContent
+				tool={tool}
+				input={input}
+				resultText={resultText}
+			/>
+		</ErrorBorder>
+	);
+}
+
+function ClaudeInChromeContent({
+	tool,
+	input,
+	resultText,
+}: {
+	tool: string;
+	input: Record<string, unknown>;
+	resultText: string;
+}) {
 	switch (tool) {
 		case 'navigate':
 			return (
