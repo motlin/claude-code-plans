@@ -63,7 +63,7 @@ function resolveLang(filePath: string): string {
 	return SUPPORTED_LANGS.has(mapped) ? mapped : 'txt';
 }
 
-const PLAN_RE = /\.claude\/plans\/([^/]+)\.md$/;
+const PLAN_RE = /\.claude\/plans\/([^/]+\.md)$/;
 
 /**
  * Split a file path into a truncatable prefix and a non-truncatable suffix.

@@ -3,7 +3,7 @@ import {FileText} from 'lucide-react';
 import type {ToolRendererProps} from './types';
 import {ErrorBorder, KeyValueCard} from './shared';
 
-const PLAN_FILE_RE = /\.claude\/plans\/([^/\s]+)\.md/;
+const PLAN_FILE_RE = /\.claude\/plans\/([^/\s]+\.md)/;
 
 export function ExitPlanModeRenderer({toolCall}: ToolRendererProps) {
 	const {result} = toolCall;
