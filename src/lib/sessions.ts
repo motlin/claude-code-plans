@@ -511,7 +511,8 @@ export interface RawJsonlLine {
 	parseError?: boolean;
 }
 
-interface RawWindow {
+// fallow-ignore-next-line unused-type
+export interface RawWindow {
 	focal: RawJsonlLine;
 	before: RawJsonlLine[];
 	after: RawJsonlLine[];

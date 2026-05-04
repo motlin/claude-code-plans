@@ -4,7 +4,8 @@ import {homedir} from 'node:os';
 import {resolveProjectName} from './memory';
 import {getActiveSessionEntries} from './active-session-store';
 
-interface ActiveSession {
+// fallow-ignore-next-line unused-type
+export interface ActiveSession {
 	sessionId: string;
 	projectDir: string;
 	projectName: string;
@@ -13,7 +14,7 @@ interface ActiveSession {
 
 const DEFAULT_ACTIVE_THRESHOLD_MS = 60_000;
 
-export async function getActiveSessions(activeTimeoutMs = DEFAULT_ACTIVE_THRESHOLD_MS): Promise<ActiveSession[]> {
+export async function scanActiveSessions(activeTimeoutMs = DEFAULT_ACTIVE_THRESHOLD_MS): Promise<ActiveSession[]> {
 	// Check in-memory store first (populated by hook events)
 	const storeEntries = getActiveSessionEntries();
 	if (storeEntries.length > 0) {

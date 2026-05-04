@@ -27,7 +27,7 @@ import {
 	toggleStar,
 	getStarredSessionIds,
 	getStarredSessions,
-	searchMessageContent,
+	searchMessageContentDb,
 	getTasksForProject,
 	getIncompleteTasksGroupedByProject,
 	getTaskCountsForProject,
@@ -1415,23 +1415,23 @@ describe('message content FTS', () => {
 	});
 
 	it('indexes and searches message content', () => {
-		const results = searchMessageContent(db.index, 'authentication');
+		const results = searchMessageContentDb(db.index, 'authentication');
 		expect(results.map((r) => r.sessionId)).toStrictEqual(['fts-sess-1']);
 	});
 
 	it('finds assistant message content', () => {
-		const results = searchMessageContent(db.index, 'middleware');
+		const results = searchMessageContentDb(db.index, 'middleware');
 		expect(results.map((r) => r.sessionId)).toStrictEqual(['fts-sess-1']);
 	});
 
 	it('returns snippet with highlight marks', () => {
-		const results = searchMessageContent(db.index, 'login');
+		const results = searchMessageContentDb(db.index, 'login');
 		expect(results.map((r) => r.sessionId)).toStrictEqual(['fts-sess-1']);
 		expect(results[0]!.snippet).toContain('<mark>');
 	});
 
 	it('returns empty for non-matching query', () => {
-		const results = searchMessageContent(db.index, 'nonexistent');
+		const results = searchMessageContentDb(db.index, 'nonexistent');
 		expect(results.length).toBe(0);
 	});
 });

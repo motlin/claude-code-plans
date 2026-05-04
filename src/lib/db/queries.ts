@@ -330,7 +330,8 @@ function getPlanLinksForProjectFromDb(db: IndexDb, projectId: string): DbPlanSes
 	}));
 }
 
-interface DbSearchResult {
+// fallow-ignore-next-line unused-type
+export interface DbSearchResult {
 	sessionId: string;
 	title: string;
 	firstPrompt: string | null;
@@ -482,7 +483,8 @@ export function buildSubagentTree(agents: DbSubagent[]): SubagentTreeEntry[] {
 	return buildChildren(null);
 }
 
-interface DbMessageSearchResult {
+// fallow-ignore-next-line unused-type
+export interface DbMessageSearchResult {
 	sessionId: string;
 	title: string;
 	snippet: string;
@@ -493,7 +495,7 @@ interface DbMessageSearchResult {
 	rank: number;
 }
 
-export function searchMessageContent(db: IndexDb, query: string, limit = 50): DbMessageSearchResult[] {
+export function searchMessageContentDb(db: IndexDb, query: string, limit = 50): DbMessageSearchResult[] {
 	const projectNames = getProjectNameMap(db);
 
 	const rows = db.all(

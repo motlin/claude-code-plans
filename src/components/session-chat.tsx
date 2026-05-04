@@ -50,7 +50,8 @@ function Timestamp({value}: {value: string | null}) {
 	);
 }
 
-interface SessionChatProps {
+// fallow-ignore-next-line unused-type
+export interface SessionChatProps {
 	sessionId: string;
 	lines: SessionLine[];
 	toolResultMap: SerializedToolResultMap;

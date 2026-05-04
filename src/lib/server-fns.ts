@@ -14,7 +14,7 @@ import {
 	toggleStar as toggleStarInDb,
 	getStarredSessions as getStarredSessionsFromDb,
 	isSessionStarred as isSessionStarredInDb,
-	searchMessageContent as searchMessageContentFromDb,
+	searchMessageContentDb,
 	getIncompleteTasksGroupedByProject,
 	getTasksForProject,
 	getTaskCountsForProject,
@@ -157,8 +157,8 @@ export const getProjects = createServerFn({method: 'GET'}).handler(async () => {
 	const projects = listProjectsFromDb(index);
 
 	// Get active sessions, plan counts, and task counts
-	const {getActiveSessions: getActiveSessionsList} = await import('./active-sessions');
-	const activeSessions = await getActiveSessionsList();
+	const {scanActiveSessions} = await import('./active-sessions');
+	const activeSessions = await scanActiveSessions();
 	const activeByProject = new Map<string, number>();
 	for (const a of activeSessions) {
 		activeByProject.set(a.projectDir, (activeByProject.get(a.projectDir) ?? 0) + 1);
@@ -369,8 +369,8 @@ export const isStarred = createServerFn({method: 'GET'})
 export const getActiveSessions = createServerFn({method: 'GET'})
 	.inputValidator(z.object({activeTimeoutMs: z.number().optional()}).optional())
 	.handler(async ({data}) => {
-		const {getActiveSessions: list} = await import('./active-sessions');
-		return list(data?.activeTimeoutMs);
+		const {scanActiveSessions} = await import('./active-sessions');
+		return scanActiveSessions(data?.activeTimeoutMs);
 	});
 
 export const getIndexingStatus = createServerFn({method: 'GET'}).handler(async () => {
@@ -383,7 +383,7 @@ export const searchMessageContent = createServerFn({method: 'GET'})
 	.handler(async ({data: query}) => {
 		const {getDb} = await import('./db');
 		const {index} = getDb();
-		return searchMessageContentFromDb(index, query);
+		return searchMessageContentDb(index, query);
 	});
 
 export const getSessionSummary = createServerFn({method: 'GET'})
@@ -629,7 +629,8 @@ export const getTasks = createServerFn({method: 'GET'}).handler(async () => {
 // Project-scoped sub-route data
 // ---------------------------------------------------------------------------
 
-interface ProjectScopeBase {
+// fallow-ignore-next-line unused-type
+export interface ProjectScopeBase {
 	id: string;
 	name: string;
 	projectPath: string | null;
