@@ -10,7 +10,7 @@ export interface QuestionLike {
 	multiSelect?: boolean;
 }
 
-export interface AnswerEntry {
+interface AnswerEntry {
 	question: string;
 	answer: string;
 }

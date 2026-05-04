@@ -629,7 +629,7 @@ export const getTasks = createServerFn({method: 'GET'}).handler(async () => {
 // Project-scoped sub-route data
 // ---------------------------------------------------------------------------
 
-export interface ProjectScopeBase {
+interface ProjectScopeBase {
 	id: string;
 	name: string;
 	projectPath: string | null;

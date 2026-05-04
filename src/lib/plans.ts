@@ -2,7 +2,7 @@ import {readdir, readFile, stat, writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {extractTitle} from './markdown-utils.js';
 
-export interface PlanEntry {
+interface PlanEntry {
 	filename: string;
 	title: string;
 	mtime: Date;

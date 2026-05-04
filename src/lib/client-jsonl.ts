@@ -9,7 +9,7 @@
 import type {MessageSessionLine, SessionContentBlock, ToolResultInfo} from './sessions';
 import {extractToolResultContent, stripResultTags, truncateResult} from './session-utils';
 
-export interface InterpretedLines {
+interface InterpretedLines {
 	newSessionLines: MessageSessionLine[];
 	newToolResults: Map<string, ToolResultInfo>;
 }

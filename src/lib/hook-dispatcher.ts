@@ -11,14 +11,14 @@ type IndexDb = BetterSQLite3Database<typeof schema>;
  * an interface so tests can substitute a fake without loading the real
  * HMR-persisted singleton.
  */
-export interface ActiveSessionStore {
+interface ActiveSessionStore {
 	markSessionActive(sessionId: string, meta: {cwd: string; model?: string}): void;
 	markSessionEnded(sessionId: string): void;
 	touchSession(sessionId: string): void;
 	getActiveSessionEntry(sessionId: string): ActiveSessionEntry | null;
 }
 
-export interface DispatchHookEventArgs {
+interface DispatchHookEventArgs {
 	event: HookEvent;
 	db: IndexDb;
 	store: ActiveSessionStore;

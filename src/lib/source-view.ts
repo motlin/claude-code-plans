@@ -5,7 +5,7 @@ import {join, resolve, sep} from 'node:path';
  * Generic source-view kinds. Each kind maps to a known root directory under ~/.claude/
  * and an allowed file extension. A "source path" identifies a file relative to that root.
  */
-export type SourceKind = 'plan' | 'memory' | 'task' | 'command';
+type SourceKind = 'plan' | 'memory' | 'task' | 'command';
 
 export interface SourceKindConfig {
 	root: string;

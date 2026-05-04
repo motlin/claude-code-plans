@@ -9,7 +9,7 @@ export interface FileTreeNode {
 	children?: FileTreeNode[];
 }
 
-export interface PluginFile {
+interface PluginFile {
 	filename: string;
 	name: string;
 	description: string;
@@ -17,7 +17,7 @@ export interface PluginFile {
 	frontmatter: Record<string, string>;
 }
 
-export interface PluginSkill {
+interface PluginSkill {
 	dirname: string;
 	name: string;
 	description: string;

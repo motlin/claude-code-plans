@@ -4,9 +4,9 @@
  * (no Shiki, no MarkdownIt, no Node.js dependencies).
  */
 
-export type DiffOp = readonly ['equal', string] | readonly ['remove', string] | readonly ['add', string];
+type DiffOp = readonly ['equal', string] | readonly ['remove', string] | readonly ['add', string];
 
-export interface DiffData {
+interface DiffData {
 	ops: DiffOp[];
 	added: number;
 	removed: number;

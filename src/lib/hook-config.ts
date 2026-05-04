@@ -21,7 +21,7 @@ export const HOOK_EVENT_NAMES = [
 	'WorktreeCreate',
 ] as const;
 
-export type HookEventName = (typeof HOOK_EVENT_NAMES)[number];
+type HookEventName = (typeof HOOK_EVENT_NAMES)[number];
 
 interface HookEntry {
 	type: 'command';
@@ -32,7 +32,7 @@ interface HookMatcher {
 	hooks: HookEntry[];
 }
 
-export interface HooksConfig {
+interface HooksConfig {
 	hooks: Record<string, HookMatcher[]>;
 }
 
@@ -63,7 +63,7 @@ function jqExprForEvent(eventName: HookEventName): string {
 	}
 }
 
-export interface GenerateOptions {
+interface GenerateOptions {
 	port?: number;
 }
 

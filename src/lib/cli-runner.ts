@@ -1,6 +1,6 @@
 import {spawn, type ChildProcess} from 'node:child_process';
 
-export interface SpawnOptions {
+interface SpawnOptions {
 	sessionId: string;
 	prompt: string;
 	projectDir: string;

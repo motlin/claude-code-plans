@@ -4,7 +4,7 @@ import {homedir} from 'node:os';
 import {resolveProjectName} from './memory';
 import {getActiveSessionEntries} from './active-session-store';
 
-export interface ActiveSession {
+interface ActiveSession {
 	sessionId: string;
 	projectDir: string;
 	projectName: string;

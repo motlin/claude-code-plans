@@ -3,7 +3,7 @@ import {join} from 'node:path';
 import {homedir} from 'node:os';
 import {extractTitle} from './markdown-utils.js';
 
-export interface MemoryEntry {
+interface MemoryEntry {
 	filename: string;
 	title: string;
 	mtime: Date;
@@ -11,7 +11,7 @@ export interface MemoryEntry {
 	projectName: string;
 }
 
-export interface ProjectGroup {
+interface ProjectGroup {
 	project: string;
 	projectName: string;
 	memories: MemoryEntry[];

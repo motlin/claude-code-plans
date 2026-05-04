@@ -34,7 +34,7 @@ export interface AssistantGroup {
 	tailText: TailText | null;
 }
 
-export type GroupedEntry = GroupedLine | AssistantGroup;
+type GroupedEntry = GroupedLine | AssistantGroup;
 
 /**
  * Extract tool call info from an assistant line's content blocks.

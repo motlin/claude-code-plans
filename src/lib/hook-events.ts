@@ -20,8 +20,6 @@ export const SSE_EVENTS = {
 	CONTENT_UPDATED: 'content:updated',
 } as const;
 
-export type SseEventType = (typeof SSE_EVENTS)[keyof typeof SSE_EVENTS];
-
 /**
  * Domain-level delta events. Payloads carry the data needed to patch the
  * TanStack Query cache client-side without a refetch. The server is
@@ -41,8 +39,6 @@ export const DOMAIN_EVENTS = {
 	TASK_CHANGED: 'task:changed',
 	TASK_COMPLETED: 'task:completed',
 } as const;
-
-export type DomainEventType = (typeof DOMAIN_EVENTS)[keyof typeof DOMAIN_EVENTS];
 
 // ---------------------------------------------------------------------------
 // SSE Event Payloads (sent to client)
@@ -105,21 +101,6 @@ export interface ActiveSessionPayload {
 export interface SessionLinesAppendedPayload {
 	sessionId: string;
 	lines: Record<string, unknown>[];
-}
-
-export interface DomainEventPayloads {
-	[DOMAIN_EVENTS.SESSION_ADDED]: {session: SessionSummaryPayload};
-	[DOMAIN_EVENTS.SESSION_REMOVED]: {sessionId: string; projectDir: string};
-	[DOMAIN_EVENTS.SESSION_UPDATED]: {session: SessionSummaryPayload};
-	[DOMAIN_EVENTS.SESSION_STARTED]: {session: ActiveSessionPayload};
-	[DOMAIN_EVENTS.SESSION_ENDED]: {sessionId: string};
-	[DOMAIN_EVENTS.SESSION_LINES_APPENDED]: SessionLinesAppendedPayload;
-	[DOMAIN_EVENTS.PLAN_CHANGED]: {plan: PlanSummaryPayload};
-	[DOMAIN_EVENTS.PLAN_REMOVED]: {filename: string};
-	[DOMAIN_EVENTS.MEMORY_CHANGED]: {memory: MemorySummaryPayload};
-	[DOMAIN_EVENTS.MEMORY_REMOVED]: {project: string; filename: string};
-	[DOMAIN_EVENTS.TASK_CHANGED]: {task: TaskSummaryPayload};
-	[DOMAIN_EVENTS.TASK_COMPLETED]: {taskId: string; subject: string};
 }
 
 // ---------------------------------------------------------------------------

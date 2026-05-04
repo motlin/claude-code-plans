@@ -13,7 +13,7 @@ export interface AppContextConfig {
 	statuslineDir: string;
 }
 
-export interface AppContext {
+interface AppContext {
 	db: AppDb;
 	watcher: FSWatcher;
 	sseClients: Set<ReadableStreamDefaultController>;
