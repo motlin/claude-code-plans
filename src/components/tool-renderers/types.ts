@@ -2,9 +2,9 @@ import type {MessageSessionLine, SessionContentBlock, ToolResultInfo} from '../.
 import type {SubagentTreeEntry, SubagentTreeNode, ParallelGroup} from '../../lib/db/queries';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- TanStack serialization narrows unknown to {}
-export type ToolInput = Record<string, {}>;
+type ToolInput = Record<string, {}>;
 
-export interface SubagentInlineInfo {
+interface SubagentInlineInfo {
 	agentId: string;
 	agentType: string | null;
 	slug: string | null;

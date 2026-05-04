@@ -3,17 +3,17 @@ import {Activity} from 'lucide-react';
 import type {DbSubagent} from '../lib/db/queries';
 import {formatDuration} from './tool-renderers/shared';
 
-export interface TimeRange {
+interface TimeRange {
 	startMs: number;
 	endMs: number;
 }
 
-export interface SwimlaneTick {
+interface SwimlaneTick {
 	offsetMs: number;
 	label: string;
 }
 
-export interface Swimlane {
+interface Swimlane {
 	agent: DbSubagent;
 	depth: number;
 	startMs: number;

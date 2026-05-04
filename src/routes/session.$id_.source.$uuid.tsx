@@ -17,7 +17,7 @@ const InputSchema = z.object({
 	contextN: z.number().int().min(0).max(50).default(5),
 });
 
-export interface PairedResult {
+interface PairedResult {
 	resultEntry: RawJsonlLine;
 	resultLineIndex: number;
 	toolUseId: string;

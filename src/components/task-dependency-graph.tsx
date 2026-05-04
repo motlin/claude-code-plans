@@ -16,7 +16,7 @@ export interface TaskGroup {
 	tasks: GraphTask[];
 }
 
-export interface NodePos {
+interface NodePos {
 	x: number;
 	y: number;
 	layer: number;

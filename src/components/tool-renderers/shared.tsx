@@ -39,7 +39,7 @@ const BG_COLORS: Record<number, string> = {
 	107: '#ffffff',
 };
 
-export interface StyledPart {
+interface StyledPart {
 	text: string;
 	fg?: string;
 	bg?: string;

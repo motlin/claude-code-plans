@@ -18,7 +18,7 @@ import type {ToolRendererProps} from './types';
 // Shared parsers
 // ---------------------------------------------------------------------------
 
-export interface PageInfo {
+interface PageInfo {
 	index: number;
 	url: string;
 	selected: boolean;
@@ -39,7 +39,7 @@ export function parsePageList(text: string): PageInfo[] {
 	return pages;
 }
 
-export interface ConsoleMessage {
+interface ConsoleMessage {
 	msgid: string;
 	level: string;
 	message: string;
@@ -60,7 +60,7 @@ export function parseConsoleMessage(line: string): ConsoleMessage | null {
 	return result;
 }
 
-export interface NetworkRequest {
+interface NetworkRequest {
 	reqid: string;
 	method: string;
 	url: string;

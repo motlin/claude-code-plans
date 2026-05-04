@@ -1,6 +1,6 @@
 import {createContext, useContext, type ReactNode} from 'react';
 
-export interface AnswerSubmission {
+interface AnswerSubmission {
 	toolUseId: string;
 	answers: Array<{question: string; answer: string}>;
 }

@@ -3,12 +3,12 @@ import {Workflow} from 'lucide-react';
 import type {DbSubagent} from '../lib/db/queries';
 import {formatDuration} from './tool-renderers/shared';
 
-export interface SequenceTimeRange {
+interface SequenceTimeRange {
 	startMs: number;
 	endMs: number;
 }
 
-export interface SequenceLifeline {
+interface SequenceLifeline {
 	agent: DbSubagent;
 	column: number;
 	depth: number;
@@ -17,7 +17,7 @@ export interface SequenceLifeline {
 	waiting: SequenceTimeRange[];
 }
 
-export interface SequenceSpawnArrow {
+interface SequenceSpawnArrow {
 	parentId: string;
 	childId: string;
 	parentColumn: number;
@@ -25,7 +25,7 @@ export interface SequenceSpawnArrow {
 	atMs: number;
 }
 
-export interface SequenceReturnArrow {
+interface SequenceReturnArrow {
 	parentId: string;
 	childId: string;
 	parentColumn: number;
@@ -33,7 +33,7 @@ export interface SequenceReturnArrow {
 	atMs: number;
 }
 
-export interface SequenceTick {
+interface SequenceTick {
 	offsetMs: number;
 	label: string;
 }

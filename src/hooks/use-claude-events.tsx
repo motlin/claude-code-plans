@@ -16,7 +16,7 @@ import type {SerializedToolResultMap} from '../components/tool-renderers';
 // State types
 // ---------------------------------------------------------------------------
 
-export interface ActiveSessionInfo {
+interface ActiveSessionInfo {
 	sessionId: string;
 	cwd: string;
 	model: string;
