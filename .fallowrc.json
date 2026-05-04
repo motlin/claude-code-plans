@@ -9,7 +9,8 @@
 	],
 	"rules": {
 		"unused-dependencies": "warn",
-		"unused-types": "warn",
+		"unused-types": "error",
+		"unused-exports": "error",
 		"duplicate-exports": "warn"
 	}
 }
