@@ -51,7 +51,7 @@ export type MessageContent =
 	| {type: 'bash-input'; command: string; sourceUuid: string}
 	| {type: 'bash-output'; stdout: string; stderr: string; sourceUuid: string};
 
-export interface SessionMessage {
+interface SessionMessage {
 	role: 'user' | 'assistant';
 	textBlocks: string[];
 	content: MessageContent[];
@@ -60,7 +60,7 @@ export interface SessionMessage {
 	isCommand?: boolean;
 }
 
-export interface SessionDetail {
+interface SessionDetail {
 	id: string;
 	title: string;
 	projectName: string;
@@ -78,7 +78,7 @@ type SerializableValue = Record<string, {}>;
  * so TanStack's serialization validation passes. The `type` field is a string
  * literal union matching all known content block types from the Zod schema.
  */
-export interface SerializableContentBlock {
+interface SerializableContentBlock {
 	type: 'text' | 'tool_use' | 'thinking' | 'tool_result' | 'image' | 'document';
 	text?: string | undefined;
 	thinking?: string | undefined;
@@ -147,7 +147,7 @@ interface PrLinkSessionLine {
 	lineIndex: number;
 }
 
-export interface AttachmentSessionLine {
+interface AttachmentSessionLine {
 	type: 'attachment';
 	/** JSON-serialized AttachmentPayload (parsed on client to avoid TanStack serialization issues with unknown[]) */
 	attachmentJson: string;
@@ -176,7 +176,7 @@ export interface ToolResultInfo {
 /**
  * Raw session data: parsed lines + lookup maps for pairing and decorations.
  */
-export interface SessionLines {
+interface SessionLines {
 	id: string;
 	title: string;
 	projectName: string;
@@ -511,7 +511,7 @@ export interface RawJsonlLine {
 	parseError?: boolean;
 }
 
-export interface RawWindow {
+interface RawWindow {
 	focal: RawJsonlLine;
 	before: RawJsonlLine[];
 	after: RawJsonlLine[];
