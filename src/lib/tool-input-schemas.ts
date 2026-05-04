@@ -13,7 +13,7 @@ export const BashInputSchema = z
 export const ReadInputSchema = z
 	.object({
 		file_path: z.string(),
-		offset: z.number().optional(),
+		offset: z.union([z.number(), z.string()]).optional(),
 		limit: z.number().optional(),
 		pages: z.string().optional(),
 	})
@@ -183,7 +183,7 @@ const ToolSearchInputSchema = z
 
 const TodoWriteInputSchema = z
 	.object({
-		todos: z.array(z.unknown()),
+		todos: z.union([z.array(z.unknown()), z.string()]),
 	})
 	.strict();
 
@@ -191,6 +191,7 @@ const WebSearchInputSchema = z
 	.object({
 		query: z.string(),
 		allowed_domains: z.array(z.string()).optional(),
+		blocked_domains: z.array(z.string()).optional(),
 	})
 	.strict();
 
@@ -198,7 +199,7 @@ const SendMessageInputSchema = z
 	.object({
 		to: z.string().optional(),
 		recipient: z.string().optional(),
-		message: z.string().optional(),
+		message: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
 		content: z.string().optional(),
 		type: z.string().optional(),
 		prompt: z.string().optional(),
@@ -208,7 +209,8 @@ const SendMessageInputSchema = z
 
 const TaskStopInputSchema = z
 	.object({
-		task_id: z.string(),
+		task_id: z.string().optional(),
+		shell_id: z.string().optional(),
 	})
 	.strict();
 
@@ -243,7 +245,19 @@ export const toolInputSchemas: Record<string, z.ZodType> = {
 	WebSearch: WebSearchInputSchema,
 	SendMessage: SendMessageInputSchema,
 	TaskStop: TaskStopInputSchema,
+	TaskOutput: z.record(z.string(), z.unknown()),
 	CronCreate: CronCreateInputSchema,
+	CronDelete: z.record(z.string(), z.unknown()),
+	CronList: z.record(z.string(), z.unknown()),
+	TeamCreate: z.record(z.string(), z.unknown()),
+	TeamDelete: z.record(z.string(), z.unknown()),
+	ScheduleWakeup: z.record(z.string(), z.unknown()),
+	EnterWorktree: z.record(z.string(), z.unknown()),
+	ExitWorktree: z.record(z.string(), z.unknown()),
+	LSP: z.record(z.string(), z.unknown()),
+	NotebookEdit: z.record(z.string(), z.unknown()),
+	NotebookRead: z.record(z.string(), z.unknown()),
+	LS: z.record(z.string(), z.unknown()),
 };
 
 // MCP tool inputs vary by server — skip strict validation for them.

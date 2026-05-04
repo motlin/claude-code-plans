@@ -148,6 +148,7 @@ const BaseRecordFields = {
 	entrypoint: z.string().optional(),
 	forkedFrom: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
 	teamName: z.string().optional(),
+	leafUuid: z.string().optional(),
 };
 
 export const UserRecordSchema = z
@@ -192,10 +193,15 @@ export const AssistantRecordSchema = z
 				stop_details: z.union([z.record(z.string(), z.unknown()), z.null()]).optional(),
 				container: z.union([z.record(z.string(), z.unknown()), z.null()]).optional(),
 				context_management: z.union([z.record(z.string(), z.unknown()), z.null()]).optional(),
+				diagnostics: z.union([z.array(z.unknown()), z.record(z.string(), z.unknown()), z.null()]).optional(),
 			})
 			.strict(),
 		isApiErrorMessage: z.boolean().optional(),
 		error: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+		attributionSkill: z.string().optional(),
+		attributionPlugin: z.string().optional(),
+		apiErrorStatus: z.union([z.number(), z.string()]).optional(),
+		errorDetails: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
 	})
 	.strict();
 
@@ -292,6 +298,14 @@ const HookCancelledAttachmentPayload = z
 		...HookBaseFields,
 		command: z.string().optional(),
 		durationMs: z.number().optional(),
+	})
+	.strict();
+
+const HookSystemMessageAttachmentPayload = z
+	.object({
+		type: z.literal('hook_system_message'),
+		...HookBaseFields,
+		content: z.union([z.string(), z.array(z.unknown())]).optional(),
 	})
 	.strict();
 
@@ -456,13 +470,41 @@ const MaxTurnsReachedAttachmentPayload = z
 	})
 	.strict();
 
+const AutoModeAttachmentPayload = z
+	.object({
+		type: z.literal('auto_mode'),
+		reminderType: z.string().optional(),
+	})
+	.strict();
+
+const PlanFileReferenceAttachmentPayload = z
+	.object({
+		type: z.literal('plan_file_reference'),
+		planFilePath: z.string().optional(),
+		planContent: z.string().optional(),
+	})
+	.strict();
+
+const NestedMemoryAttachmentPayload = z
+	.object({
+		type: z.literal('nested_memory'),
+		path: z.string().optional(),
+		content: z.record(z.string(), z.unknown()).optional(),
+		displayPath: z.string().optional(),
+	})
+	.strict();
+
 export const AttachmentPayloadSchema = z.discriminatedUnion('type', [
 	PlanModeAttachmentPayload,
+	AutoModeAttachmentPayload,
+	PlanFileReferenceAttachmentPayload,
+	NestedMemoryAttachmentPayload,
 	PlanModeExitAttachmentPayload,
 	HookSuccessAttachmentPayload,
 	HookNonBlockingErrorAttachmentPayload,
 	HookBlockingErrorAttachmentPayload,
 	HookCancelledAttachmentPayload,
+	HookSystemMessageAttachmentPayload,
 	HookAdditionalContextAttachmentPayload,
 	DeferredToolsDeltaAttachmentPayload,
 	McpInstructionsDeltaAttachmentPayload,
@@ -537,10 +579,19 @@ export const SystemRecordSchema = z
 	})
 	.strict();
 
+const AiTitleRecordSchema = z
+	.object({
+		type: z.literal('ai-title'),
+		aiTitle: z.string(),
+		sessionId: z.string(),
+	})
+	.strict();
+
 export const LastPromptRecordSchema = z
 	.object({
 		type: z.literal('last-prompt'),
-		lastPrompt: z.string(),
+		lastPrompt: z.string().optional(),
+		leafUuid: z.string().optional(),
 		sessionId: z.string(),
 	})
 	.strict();
@@ -579,6 +630,14 @@ const PermissionModeRecordSchema = z
 	})
 	.strict();
 
+const WorktreeStateRecordSchema = z
+	.object({
+		type: z.literal('worktree-state'),
+		worktreeSession: z.union([z.record(z.string(), z.unknown()), z.null()]).optional(),
+		sessionId: z.string().optional(),
+	})
+	.strict();
+
 const PrLinkRecordSchema = z
 	.object({
 		type: z.literal('pr-link'),
@@ -602,11 +661,13 @@ export const JsonlRecordSchema = z.discriminatedUnion('type', [
 	AttachmentRecordSchema,
 	ProgressRecordSchema,
 	SystemRecordSchema,
+	AiTitleRecordSchema,
 	LastPromptRecordSchema,
 	QueueOperationRecordSchema,
 	AgentNameRecordSchema,
 	AgentColorRecordSchema,
 	PermissionModeRecordSchema,
+	WorktreeStateRecordSchema,
 	PrLinkRecordSchema,
 ]);
 
