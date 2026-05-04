@@ -51,8 +51,8 @@ storybook: install
 build-storybook: install
     npm run build-storybook
 
-# Run fallow
-fallow: install
+# Run fallow (build first to generate routeTree.gen.ts)
+fallow: build
     npm run fallow{{_ci}}
 
 # Run all pre-commit checks
