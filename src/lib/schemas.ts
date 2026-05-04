@@ -693,32 +693,8 @@ export const TaskFileSchema = z
 // Types
 // ---------------------------------------------------------------------------
 
-type SessionIndexEntry = z.infer<typeof SessionIndexEntrySchema>;
-type SessionsIndex = z.infer<typeof SessionsIndexSchema>;
-type CustomTitleRecord = z.infer<typeof CustomTitleRecordSchema>;
-type FileHistorySnapshot = z.infer<typeof FileHistorySnapshotSchema>;
-type AttachmentRecord = z.infer<typeof AttachmentRecordSchema>;
-type TextBlock = z.infer<typeof TextBlockSchema>;
-type ToolUseBlock = z.infer<typeof ToolUseBlockSchema>;
-type ThinkingBlock = z.infer<typeof ThinkingBlockSchema>;
-type ToolResultBlock = z.infer<typeof ToolResultBlockSchema>;
-type ImageBlock = z.infer<typeof ImageBlockSchema>;
-type DocumentBlock = z.infer<typeof DocumentBlockSchema>;
-type ContentBlock = z.infer<typeof ContentBlockSchema>;
-type UserRecord = z.infer<typeof UserRecordSchema>;
-type AssistantRecord = z.infer<typeof AssistantRecordSchema>;
-type ProgressRecord = z.infer<typeof ProgressRecordSchema>;
-type SystemRecord = z.infer<typeof SystemRecordSchema>;
-type LastPromptRecord = z.infer<typeof LastPromptRecordSchema>;
-type QueueOperationRecord = z.infer<typeof QueueOperationRecordSchema>;
-type AgentNameRecord = z.infer<typeof AgentNameRecordSchema>;
-type AgentColorRecord = z.infer<typeof AgentColorRecordSchema>;
-type PermissionModeRecord = z.infer<typeof PermissionModeRecordSchema>;
-type PrLinkRecord = z.infer<typeof PrLinkRecordSchema>;
 export type AttachmentPayload = z.infer<typeof AttachmentPayloadSchema>;
 type JsonlRecord = z.infer<typeof JsonlRecordSchema>;
-type TaskStatus = z.infer<typeof TaskStatusSchema>;
-type TaskFile = z.infer<typeof TaskFileSchema>;
 
 // ---------------------------------------------------------------------------
 // Utility
