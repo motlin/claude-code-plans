@@ -693,32 +693,32 @@ export const TaskFileSchema = z
 // Types
 // ---------------------------------------------------------------------------
 
-export type SessionIndexEntry = z.infer<typeof SessionIndexEntrySchema>;
-export type SessionsIndex = z.infer<typeof SessionsIndexSchema>;
-export type CustomTitleRecord = z.infer<typeof CustomTitleRecordSchema>;
-export type FileHistorySnapshot = z.infer<typeof FileHistorySnapshotSchema>;
-export type AttachmentRecord = z.infer<typeof AttachmentRecordSchema>;
-export type TextBlock = z.infer<typeof TextBlockSchema>;
-export type ToolUseBlock = z.infer<typeof ToolUseBlockSchema>;
-export type ThinkingBlock = z.infer<typeof ThinkingBlockSchema>;
-export type ToolResultBlock = z.infer<typeof ToolResultBlockSchema>;
-export type ImageBlock = z.infer<typeof ImageBlockSchema>;
-export type DocumentBlock = z.infer<typeof DocumentBlockSchema>;
-export type ContentBlock = z.infer<typeof ContentBlockSchema>;
-export type UserRecord = z.infer<typeof UserRecordSchema>;
-export type AssistantRecord = z.infer<typeof AssistantRecordSchema>;
-export type ProgressRecord = z.infer<typeof ProgressRecordSchema>;
-export type SystemRecord = z.infer<typeof SystemRecordSchema>;
-export type LastPromptRecord = z.infer<typeof LastPromptRecordSchema>;
-export type QueueOperationRecord = z.infer<typeof QueueOperationRecordSchema>;
-export type AgentNameRecord = z.infer<typeof AgentNameRecordSchema>;
-export type AgentColorRecord = z.infer<typeof AgentColorRecordSchema>;
-export type PermissionModeRecord = z.infer<typeof PermissionModeRecordSchema>;
-export type PrLinkRecord = z.infer<typeof PrLinkRecordSchema>;
+type SessionIndexEntry = z.infer<typeof SessionIndexEntrySchema>;
+type SessionsIndex = z.infer<typeof SessionsIndexSchema>;
+type CustomTitleRecord = z.infer<typeof CustomTitleRecordSchema>;
+type FileHistorySnapshot = z.infer<typeof FileHistorySnapshotSchema>;
+type AttachmentRecord = z.infer<typeof AttachmentRecordSchema>;
+type TextBlock = z.infer<typeof TextBlockSchema>;
+type ToolUseBlock = z.infer<typeof ToolUseBlockSchema>;
+type ThinkingBlock = z.infer<typeof ThinkingBlockSchema>;
+type ToolResultBlock = z.infer<typeof ToolResultBlockSchema>;
+type ImageBlock = z.infer<typeof ImageBlockSchema>;
+type DocumentBlock = z.infer<typeof DocumentBlockSchema>;
+type ContentBlock = z.infer<typeof ContentBlockSchema>;
+type UserRecord = z.infer<typeof UserRecordSchema>;
+type AssistantRecord = z.infer<typeof AssistantRecordSchema>;
+type ProgressRecord = z.infer<typeof ProgressRecordSchema>;
+type SystemRecord = z.infer<typeof SystemRecordSchema>;
+type LastPromptRecord = z.infer<typeof LastPromptRecordSchema>;
+type QueueOperationRecord = z.infer<typeof QueueOperationRecordSchema>;
+type AgentNameRecord = z.infer<typeof AgentNameRecordSchema>;
+type AgentColorRecord = z.infer<typeof AgentColorRecordSchema>;
+type PermissionModeRecord = z.infer<typeof PermissionModeRecordSchema>;
+type PrLinkRecord = z.infer<typeof PrLinkRecordSchema>;
 export type AttachmentPayload = z.infer<typeof AttachmentPayloadSchema>;
-export type JsonlRecord = z.infer<typeof JsonlRecordSchema>;
-export type TaskStatus = z.infer<typeof TaskStatusSchema>;
-export type TaskFile = z.infer<typeof TaskFileSchema>;
+type JsonlRecord = z.infer<typeof JsonlRecordSchema>;
+type TaskStatus = z.infer<typeof TaskStatusSchema>;
+type TaskFile = z.infer<typeof TaskFileSchema>;
 
 // ---------------------------------------------------------------------------
 // Utility

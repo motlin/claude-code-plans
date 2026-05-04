@@ -821,37 +821,6 @@ type JsonValue = string | number | boolean | null | JsonValue[] | {[key: string]
 // Settings viewer
 // ---------------------------------------------------------------------------
 
-export interface SettingsFileResult {
-	path: string;
-	exists: boolean;
-	content: string;
-	renderedHtml: string;
-}
-
-export const getSettings = createServerFn({method: 'GET'}).handler(async () => {
-	const {claudeHome, join} = await claudeDirs();
-	const {readFile} = await import('node:fs/promises');
-	const {renderMarkdown} = await import('./renderer');
-
-	const filenames = ['settings.json', 'settings.local.json'] as const;
-	const results: SettingsFileResult[] = [];
-
-	for (const filename of filenames) {
-		const filePath = join(claudeHome, filename);
-		try {
-			const raw = await readFile(filePath, 'utf-8');
-			const pretty = JSON.stringify(JSON.parse(raw), null, 2);
-			const markdown = '```json\n' + pretty + '\n```';
-			const renderedHtml = await renderMarkdown(markdown);
-			results.push({path: filePath, exists: true, content: pretty, renderedHtml});
-		} catch {
-			results.push({path: filePath, exists: false, content: '', renderedHtml: ''});
-		}
-	}
-
-	return results;
-});
-
 const SETTINGS_FILENAMES = ['settings.json', 'settings.local.json'] as const;
 
 export const getSettingsRaw = createServerFn({method: 'GET'}).handler(async () => {
