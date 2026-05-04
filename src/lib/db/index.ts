@@ -29,5 +29,3 @@ export async function initDb(): Promise<AppDb> {
 	await fullScan(db.index, PROJECTS_DIR, TASKS_DIR, PLANS_DIR);
 	return db;
 }
-
-export {type AppDb} from './connection';
