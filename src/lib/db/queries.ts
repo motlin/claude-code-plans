@@ -34,7 +34,7 @@ function batchFetchSessions(db: IndexDb, sessionIds: string[]) {
 	return new Map(rows.map((r) => [r.id, r]));
 }
 
-export interface DbProjectSummary {
+interface DbProjectSummary {
 	id: string;
 	name: string;
 	projectPath: string | null;
@@ -143,7 +143,7 @@ export function listSessionsForProjectFromDb(db: IndexDb, projectId: string): Se
 	}));
 }
 
-export interface DbBranchSummary {
+interface DbBranchSummary {
 	branch: string;
 	sessionCount: number;
 	lastActivity: number;
@@ -211,7 +211,7 @@ export function listSessionsForBranch(db: IndexDb, projectId: string, branch: st
 	}));
 }
 
-export interface DbCwdSummary {
+interface DbCwdSummary {
 	cwd: string;
 	sessionCount: number;
 	lastActivity: number;
@@ -245,7 +245,7 @@ export function listCwdsForProject(db: IndexDb, projectId: string): DbCwdSummary
 		}));
 }
 
-export interface DbPlanSessionLink {
+interface DbPlanSessionLink {
 	planFilename: string;
 	sessionId: string;
 	projectId: string;
@@ -277,7 +277,7 @@ export function getPlanLinksFromDb(db: IndexDb, planFilename?: string): DbPlanSe
 	}));
 }
 
-export interface DbProjectDetail {
+interface DbProjectDetail {
 	id: string;
 	name: string;
 	projectPath: string | null;
@@ -330,7 +330,7 @@ function getPlanLinksForProjectFromDb(db: IndexDb, projectId: string): DbPlanSes
 	}));
 }
 
-export interface DbSearchResult {
+interface DbSearchResult {
 	sessionId: string;
 	title: string;
 	firstPrompt: string | null;
@@ -482,7 +482,7 @@ export function buildSubagentTree(agents: DbSubagent[]): SubagentTreeEntry[] {
 	return buildChildren(null);
 }
 
-export interface DbMessageSearchResult {
+interface DbMessageSearchResult {
 	sessionId: string;
 	title: string;
 	snippet: string;
@@ -591,7 +591,7 @@ export function getStarredSessions(db: IndexDb): SessionEntry[] {
 	}));
 }
 
-export interface DbPlanProjectMapping {
+interface DbPlanProjectMapping {
 	planFilename: string;
 	projectId: string;
 	projectName: string;
@@ -673,7 +673,7 @@ export interface TaskRow {
 	blockedBy: string[];
 }
 
-export interface TaskProjectGroup {
+interface TaskProjectGroup {
 	projectDir: string;
 	tasks: TaskRow[];
 	totalPending: number;
