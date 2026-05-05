@@ -4,7 +4,6 @@ import {homedir} from 'node:os';
 import {resolveProjectName} from './memory';
 import {getActiveSessionEntries} from './active-session-store';
 
-// fallow-ignore-next-line unused-type
 export interface ActiveSession {
 	sessionId: string;
 	projectDir: string;

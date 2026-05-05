@@ -2,7 +2,7 @@
 	"$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
 	"entry": ["scripts/field-presence.ts"],
 	"ignorePatterns": [".storybook/**", "src/routeTree.gen.ts"],
-	"ignoreDependencies": ["@spotlightjs/spotlight", "agentation"],
+	"ignoreDependencies": ["@shikijs/core", "@shikijs/engine-javascript", "@spotlightjs/spotlight", "agentation"],
 	"ignoreExports": [
 		{"file": "src/components/markdown-article.module.css", "exports": ["*"]},
 		{"file": "src/components/session-chat.tsx", "exports": ["SessionChatProps"]},

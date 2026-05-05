@@ -41,7 +41,6 @@ function getLineTimestamp(line: SessionLine): string | undefined {
 	return undefined;
 }
 
-// fallow-ignore-next-line unused-type
 export interface SessionChatProps {
 	sessionId: string;
 	lines: SessionLine[];

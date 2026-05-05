@@ -330,7 +330,6 @@ function getPlanLinksForProjectFromDb(db: IndexDb, projectId: string): DbPlanSes
 	}));
 }
 
-// fallow-ignore-next-line unused-type
 export interface DbSearchResult {
 	sessionId: string;
 	title: string;
@@ -483,7 +482,6 @@ export function buildSubagentTree(agents: DbSubagent[]): SubagentTreeEntry[] {
 	return buildChildren(null);
 }
 
-// fallow-ignore-next-line unused-type
 export interface DbMessageSearchResult {
 	sessionId: string;
 	title: string;

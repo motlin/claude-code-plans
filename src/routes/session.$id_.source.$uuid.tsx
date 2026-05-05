@@ -18,7 +18,6 @@ const InputSchema = z.object({
 	contextN: z.number().int().min(0).max(50).default(5),
 });
 
-// fallow-ignore-next-line unused-type
 export interface PairedResult {
 	resultEntry: RawJsonlLine;
 	resultLineIndex: number;
