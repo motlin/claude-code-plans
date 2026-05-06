@@ -323,6 +323,7 @@ const DeferredToolsDeltaAttachmentPayload = z
 		addedNames: z.array(z.string()).optional(),
 		addedLines: z.array(z.string()).optional(),
 		removedNames: z.array(z.string()).optional(),
+		readdedNames: z.array(z.string()).optional(),
 	})
 	.strict();
 
