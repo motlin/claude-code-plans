@@ -14,12 +14,13 @@ const getPlan = createServerFn({method: 'GET'})
 		const {homedir} = await import('node:os');
 		const {join} = await import('node:path');
 		const {readPlan, getPlanMtime} = await import('../lib/plans');
-		const {extractTitleFromContent} = await import('../lib/markdown-utils');
+		const {extractTitleFromContent, stripLeadingTitleHeading} = await import('../lib/markdown-utils');
 		const plansDir = join(homedir(), '.claude', 'plans');
 		const content = await readPlan(plansDir, filename);
 		if (!content) return null;
-		const html = await renderMarkdown(content);
 		const title = extractTitleFromContent(content, filename);
+		const body = stripLeadingTitleHeading(content);
+		const html = await renderMarkdown(body);
 		const links = await getPlanLinks({data: filename});
 		const mtime = await getPlanMtime(plansDir, filename);
 		return {html, title, links, mtime: mtime?.toISOString() ?? null};
