@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, {Suspense, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {formatDistanceToNow} from 'date-fns';
 import {Bot, Copy, Link, Link2, Lock, Palette} from 'lucide-react';
 import {MarkdownArticle} from './markdown-article';
@@ -1432,7 +1432,9 @@ function ToolCallSection({calls, sessionId}: {calls: ClientToolCall[]; sessionId
 						key={`prominent-${i}`}
 						className="relative rounded-lg border border-border-300/15 bg-bg-000 p-4 text-sm shadow-sm"
 					>
-						<Renderer toolCall={call} />
+						<Suspense fallback={null}>
+							<Renderer toolCall={call} />
+						</Suspense>
 						<DebugLink
 							sessionId={sessionId}
 							uuid={call.sourceUuid}
@@ -1561,7 +1563,9 @@ function ToolCallRow({call, sessionId}: {call: ClientToolCall; sessionId: string
 					{isCardStyle ? (
 						<div className="group/body py-p6">
 							<div className="bg-t1 rounded-r6 overflow-clip flex flex-col relative">
-								<Renderer toolCall={call} />
+								<Suspense fallback={null}>
+									<Renderer toolCall={call} />
+								</Suspense>
 								<DebugLink
 									sessionId={sessionId}
 									uuid={call.sourceUuid}
@@ -1571,7 +1575,9 @@ function ToolCallRow({call, sessionId}: {call: ClientToolCall; sessionId: string
 						</div>
 					) : (
 						<div className="group/body relative flex flex-col w-full pt-p3">
-							<Renderer toolCall={call} />
+							<Suspense fallback={null}>
+								<Renderer toolCall={call} />
+							</Suspense>
 						</div>
 					)}
 				</div>
