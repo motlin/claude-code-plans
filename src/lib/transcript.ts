@@ -109,6 +109,9 @@ const MessageLineSchema = z.object({
 	parentUuid: z.string().optional(),
 	timestamp: z.string().optional(),
 	userType: z.string().optional(),
+	isMeta: z.boolean().optional(),
+	isCompactSummary: z.boolean().optional(),
+	isVisibleInTranscriptOnly: z.boolean().optional(),
 	message: z
 		.object({
 			role: z.string().optional(),
@@ -472,6 +475,11 @@ function processRecordBatch(
 		if (typeof record.parentUuid === 'string') processedLine.parentUuid = record.parentUuid;
 		if (record.timestamp !== undefined) processedLine.timestamp = record.timestamp;
 		if (typeof record.userType === 'string') processedLine.userType = record.userType;
+		if (record.type === 'user') {
+			if (record.isMeta === true) processedLine.isMeta = true;
+			if (record.isCompactSummary === true) processedLine.isCompactSummary = true;
+			if (record.isVisibleInTranscriptOnly === true) processedLine.isVisibleInTranscriptOnly = true;
+		}
 		// The Zod-parsed message uses the ContentBlock type directly --
 		// no intermediate serialization type needed.
 		processedLine.message = record.message as MessageProcessedLine['message'];

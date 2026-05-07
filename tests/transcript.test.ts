@@ -287,6 +287,73 @@ describe('processTranscript', () => {
 		}
 	});
 
+	it('preserves isMeta on user message lines when true', () => {
+		const records = [userRecord([{type: 'text', text: 'Stop hook feedback: ...'}], {uuid: 'u-1', isMeta: true})];
+		const result = processTranscript(records);
+		const line = result.lines[0]!;
+		expect(line.type).toBe('user');
+		if (line.type === 'user') {
+			expect(line.isMeta).toBe(true);
+		}
+	});
+
+	it('omits isMeta when not present on record', () => {
+		const records = [userRecord([{type: 'text', text: 'Hello'}], {uuid: 'u-1'})];
+		const result = processTranscript(records);
+		const line = result.lines[0]!;
+		if (line.type === 'user') {
+			expect(line.isMeta).toBeUndefined();
+		}
+	});
+
+	it('preserves isCompactSummary on user message lines when true', () => {
+		const records = [
+			userRecord([{type: 'text', text: 'This session is being continued from a previous conversation...'}], {
+				uuid: 'u-1',
+				isCompactSummary: true,
+			}),
+		];
+		const result = processTranscript(records);
+		const line = result.lines[0]!;
+		expect(line.type).toBe('user');
+		if (line.type === 'user') {
+			expect(line.isCompactSummary).toBe(true);
+		}
+	});
+
+	it('omits isCompactSummary when not present on record', () => {
+		const records = [userRecord([{type: 'text', text: 'Hello'}], {uuid: 'u-1'})];
+		const result = processTranscript(records);
+		const line = result.lines[0]!;
+		if (line.type === 'user') {
+			expect(line.isCompactSummary).toBeUndefined();
+		}
+	});
+
+	it('preserves isVisibleInTranscriptOnly on user message lines when true', () => {
+		const records = [
+			userRecord([{type: 'text', text: 'Hidden message'}], {
+				uuid: 'u-1',
+				isVisibleInTranscriptOnly: true,
+			}),
+		];
+		const result = processTranscript(records);
+		const line = result.lines[0]!;
+		expect(line.type).toBe('user');
+		if (line.type === 'user') {
+			expect(line.isVisibleInTranscriptOnly).toBe(true);
+		}
+	});
+
+	it('omits isVisibleInTranscriptOnly when not present on record', () => {
+		const records = [userRecord([{type: 'text', text: 'Hello'}], {uuid: 'u-1'})];
+		const result = processTranscript(records);
+		const line = result.lines[0]!;
+		if (line.type === 'user') {
+			expect(line.isVisibleInTranscriptOnly).toBeUndefined();
+		}
+	});
+
 	it('handles user records with string content', () => {
 		const records = [userRecord('simple text', {uuid: 'u-1'})];
 		const result = processTranscript(records);
