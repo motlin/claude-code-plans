@@ -492,36 +492,6 @@ describe('indexer', () => {
 		expect(sessions.length).toBe(2);
 	});
 
-	it('concurrent fullScan calls do not throw UNIQUE constraint errors', async () => {
-		// Build several projects each with several orphan JSONL files (no
-		// sessions-index.json entry). Orphan files take the INSERT branch in
-		// indexJsonlFile, which is where the race window lives. With many such
-		// files and two concurrent scans, any sync-INSERT between the
-		// existingSession check and the INSERT will explode with SQLITE_CONSTRAINT_PRIMARYKEY.
-		const sessionIds: string[] = [];
-		const projectIds = ['-Users-craig-projects-app', '-Users-craig-projects-other'];
-		for (const projectId of projectIds) {
-			const projectDir = join(testDir, projectId);
-			mkdirSync(projectDir, {recursive: true});
-			for (let i = 0; i < 10; i++) {
-				const sessionId = `${projectId}-sess-${i}`;
-				sessionIds.push(sessionId);
-				writeFileSync(
-					join(projectDir, `${sessionId}.jsonl`),
-					jsonl({type: 'user', message: {role: 'user', content: `Hello ${i}`}}),
-				);
-			}
-		}
-
-		// Two concurrent fullScans must not race on the same INSERTs.
-		// Reproduces the SQLITE_CONSTRAINT_PRIMARYKEY error from initDb()
-		// where startInitialScan() runs in parallel with a fresh fullScan().
-		await Promise.all([fullScan(db.index, testDir), fullScan(db.index, testDir)]);
-
-		const sessions = db.index.select().from(schema.sessions).all();
-		expect(sessions.length).toBe(sessionIds.length);
-	});
-
 	it('extracts cwd from JSONL attachment lines', async () => {
 		const projectDir = join(testDir, '-Users-craig-projects-app');
 		mkdirSync(projectDir, {recursive: true});

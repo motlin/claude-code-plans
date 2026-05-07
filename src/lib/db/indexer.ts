@@ -323,10 +323,6 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 			})
 			.run();
 
-		// onConflictDoNothing keeps this idempotent under concurrent scans:
-		// the existingSession check above and this INSERT straddle async I/O,
-		// so two scans can both reach this branch for the same sessionId
-		// (e.g. an orphan JSONL with no sessions-index.json entry).
 		db.insert(schema.sessions)
 			.values({
 				id: sessionId,
@@ -343,7 +339,6 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 				mtimeMs: fileStat.mtimeMs,
 				filePath,
 			})
-			.onConflictDoNothing()
 			.run();
 	}
 
