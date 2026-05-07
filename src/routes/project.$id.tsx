@@ -114,14 +114,14 @@ function ProjectPage() {
 			{/* Sub-route nav cards */}
 			<div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
 				<NavCard
-					to="/project/$id_/sessions"
+					to="/project/$id/sessions"
 					params={{id: data.id}}
 					icon={MessageSquare}
 					label="Sessions"
 					count={data.sessions.length}
 				/>
 				<NavCard
-					to="/project/$id_/tasks"
+					to="/project/$id/tasks"
 					params={{id: data.id}}
 					icon={CheckSquare}
 					label="Tasks"
@@ -129,14 +129,14 @@ function ProjectPage() {
 					{...(taskHint ? {hint: taskHint} : {})}
 				/>
 				<NavCard
-					to="/project/$id_/memories"
+					to="/project/$id/memories"
 					params={{id: data.id}}
 					icon={Brain}
 					label="Memories"
 					count={data.memories.length}
 				/>
 				<NavCard
-					to="/project/$id_/plans"
+					to="/project/$id/plans"
 					params={{id: data.id}}
 					icon={FileText}
 					label="Plans"
@@ -144,7 +144,7 @@ function ProjectPage() {
 				/>
 				{data.subagentCount > 0 && (
 					<NavCard
-						to="/project/$id_/subagents"
+						to="/project/$id/subagents"
 						params={{id: data.id}}
 						icon={Bot}
 						label="Subagents"
