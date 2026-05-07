@@ -1,9 +1,7 @@
 import {createServerFn} from '@tanstack/react-start';
 import {z} from 'zod';
 import {
-	getProjectDetailFromDb,
 	searchSessionsFromDb,
-	getPlanProjectMappings,
 	toggleStar as toggleStarInDb,
 	getStarredSessions as getStarredSessionsFromDb,
 	searchMessageContentDb,
@@ -21,102 +19,6 @@ async function claudeDirs() {
 		join,
 	};
 }
-
-export const getPlans = createServerFn({method: 'GET'}).handler(async () => {
-	const {plansDir} = await claudeDirs();
-	const {listPlans} = await import('./plans');
-	const plans = await listPlans(plansDir);
-	return plans.map((p) => ({
-		filename: p.filename,
-		title: p.title,
-		mtime: p.mtime.toISOString(),
-	}));
-});
-
-type PlanGroupResult = {
-	projectId: string;
-	projectName: string;
-	plans: Array<{filename: string; title: string; mtime: string}>;
-};
-
-export const getPlansGrouped = createServerFn({method: 'GET'}).handler(async () => {
-	const {plansDir} = await claudeDirs();
-	const {listPlans} = await import('./plans');
-	const plans = await listPlans(plansDir);
-	const {getDb} = await import('./db');
-	const {index} = getDb();
-	const mappings = getPlanProjectMappings(index);
-
-	// Build a map from planFilename -> {projectId, projectName}[]
-	const planProjects = new Map<string, {projectId: string; projectName: string}[]>();
-	for (const m of mappings) {
-		const list = planProjects.get(m.planFilename);
-		if (list) {
-			list.push({projectId: m.projectId, projectName: m.projectName});
-		} else {
-			planProjects.set(m.planFilename, [{projectId: m.projectId, projectName: m.projectName}]);
-		}
-	}
-
-	// Group plans by project. A plan linked to multiple projects appears in each.
-	// Plans with no links go into "Unlinked".
-	const groups = new Map<string, {projectName: string; plans: typeof serialized}>();
-	const serialized = plans.map((p) => ({
-		filename: p.filename,
-		title: p.title,
-		mtime: p.mtime.toISOString(),
-	}));
-
-	for (const plan of serialized) {
-		const projects = planProjects.get(plan.filename);
-		if (!projects || projects.length === 0) {
-			const group = groups.get('__unlinked__');
-			if (group) {
-				group.plans.push(plan);
-			} else {
-				groups.set('__unlinked__', {
-					projectName: 'Unlinked',
-					plans: [plan],
-				});
-			}
-		} else {
-			for (const proj of projects) {
-				const group = groups.get(proj.projectId);
-				if (group) {
-					group.plans.push(plan);
-				} else {
-					groups.set(proj.projectId, {
-						projectName: proj.projectName,
-						plans: [plan],
-					});
-				}
-			}
-		}
-	}
-
-	const result: PlanGroupResult[] = Array.from(groups.entries()).map(([projectId, group]) => ({
-		projectId,
-		projectName: group.projectName,
-		plans: group.plans,
-	}));
-	return result;
-});
-
-export const getMemories = createServerFn({method: 'GET'}).handler(async () => {
-	const {projectsDir} = await claudeDirs();
-	const {listMemories} = await import('./memory');
-	const groups = await listMemories(projectsDir);
-	return groups.map((g) => ({
-		project: g.project,
-		projectName: g.projectName,
-		memories: g.memories.map((m) => ({
-			filename: m.filename,
-			title: m.title,
-			mtime: m.mtime.toISOString(),
-			project: m.project,
-		})),
-	}));
-});
 
 export const searchSessions = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
@@ -389,60 +291,6 @@ export const getTasks = createServerFn({method: 'GET'}).handler(async () => {
 		})),
 	);
 });
-
-// ---------------------------------------------------------------------------
-// Project-scoped sub-route data
-// ---------------------------------------------------------------------------
-
-export interface ProjectScopeBase {
-	id: string;
-	name: string;
-	projectPath: string | null;
-}
-
-function projectScopeBase(detail: NonNullable<ReturnType<typeof getProjectDetailFromDb>>): ProjectScopeBase {
-	return {id: detail.id, name: detail.name, projectPath: detail.projectPath};
-}
-
-export const getProjectMemoriesList = createServerFn({method: 'GET'})
-	.inputValidator(z.string())
-	.handler(async ({data: projectId}) => {
-		const {projectsDir, join} = await claudeDirs();
-		const {getDb} = await import('./db');
-		const {index} = getDb();
-		const detail = getProjectDetailFromDb(index, projectId);
-		if (!detail) return null;
-
-		const memDir = join(projectsDir, projectId, 'memory');
-		const {readdir, stat} = await import('node:fs/promises');
-		let mdFiles: string[];
-		try {
-			const files = await readdir(memDir);
-			mdFiles = files.filter((f) => f.endsWith('.md'));
-		} catch {
-			return {project: projectScopeBase(detail), memories: []};
-		}
-
-		const settled = await Promise.all(
-			mdFiles.map(async (filename) => {
-				try {
-					const fileStat = await stat(join(memDir, filename));
-					return {
-						filename,
-						title: filename.replace(/\.md$/, ''),
-						mtime: fileStat.mtime.toISOString(),
-						project: projectId,
-					};
-				} catch {
-					return null;
-				}
-			}),
-		);
-		const memories = settled.filter((m): m is NonNullable<typeof m> => m !== null);
-		memories.sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime());
-
-		return {project: projectScopeBase(detail), memories};
-	});
 
 // ---------------------------------------------------------------------------
 // Settings viewer

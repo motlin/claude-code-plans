@@ -1,6 +1,5 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
 import {useSuspenseQuery} from '@tanstack/react-query';
-import {queryOptions} from '@tanstack/react-query';
 import {
 	ArrowLeft,
 	ArrowRight,
@@ -19,16 +18,8 @@ import {
 	projectPlansQueryOptions,
 	projectTasksQueryOptions,
 } from '../lib/api/projects';
-import {getProjectMemoriesList} from '../lib/server-fns';
+import {projectMemoriesQueryOptions} from '../lib/api/memories';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
-
-const projectMemoriesQueryOptions = (id: string) =>
-	queryOptions({
-		queryKey: ['projects', id, 'memories'] as const,
-		queryFn: () => getProjectMemoriesList({data: id}),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
 
 export const Route = createFileRoute('/project/$id')({
 	component: ProjectPage,

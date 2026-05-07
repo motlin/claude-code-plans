@@ -137,9 +137,6 @@ export function useIsSessionActive(sessionId: string): boolean {
 // ---------------------------------------------------------------------------
 
 type SessionsGroup = {project: string; projectName: string; sessions: SessionSummaryPayload[]};
-type MemoryItem = {filename: string; title: string; mtime: string; project: string};
-type MemoriesGroup = {project: string; projectName: string; memories: MemoryItem[]};
-type PlansGroup = {projectId: string; projectName: string; plans: PlanSummaryPayload[]};
 
 export function applySessionAdded(queryClient: QueryClient, session: SessionSummaryPayload): void {
 	queryClient.setQueryData<SessionsGroup[]>(['sessions'], (old) => {
@@ -220,13 +217,9 @@ export function applySessionUpdated(queryClient: QueryClient, session: SessionSu
 }
 
 export function applyPlanChanged(queryClient: QueryClient, plan: PlanSummaryPayload): void {
-	queryClient.setQueryData<PlanSummaryPayload[]>(['plans'], (old) => {
-		if (!old) return old;
-		const index = old.findIndex((p) => p.filename === plan.filename);
-		return index >= 0 ? old.map((p, i) => (i === index ? plan : p)) : [plan, ...old];
-	});
-	// Grouped plans have links we don't know from the event alone — invalidate.
-	void queryClient.invalidateQueries({queryKey: ['plans', 'grouped']});
+	// The flat plans list now carries projects[] per item which the SSE event
+	// does not — invalidate to refetch instead of patching a partial shape.
+	void queryClient.invalidateQueries({queryKey: ['plans']});
 	// Plan detail and links queries must also be invalidated so the detail/edit
 	// pages reflect external edits without waiting for staleTime expiry.
 	void queryClient.invalidateQueries({queryKey: ['plans', plan.filename]});
@@ -234,62 +227,22 @@ export function applyPlanChanged(queryClient: QueryClient, plan: PlanSummaryPayl
 }
 
 export function applyPlanRemoved(queryClient: QueryClient, filename: string): void {
-	queryClient.setQueryData<PlanSummaryPayload[]>(['plans'], (old) =>
-		old ? old.filter((p) => p.filename !== filename) : old,
-	);
-	queryClient.setQueryData<PlansGroup[]>(['plans', 'grouped'], (old) => {
-		if (!old) return old;
-		return old
-			.map((group) => ({...group, plans: group.plans.filter((p) => p.filename !== filename)}))
-			.filter((group) => group.plans.length > 0);
-	});
+	void queryClient.invalidateQueries({queryKey: ['plans']});
 	queryClient.removeQueries({queryKey: ['plans', filename, 'links']});
 	queryClient.removeQueries({queryKey: ['plans', filename]});
 }
 
 export function applyMemoryChanged(queryClient: QueryClient, memory: MemorySummaryPayload): void {
-	queryClient.setQueryData<MemoriesGroup[]>(['memories'], (old) => {
-		if (!old) return old;
-		const summary: MemoryItem = {
-			filename: memory.filename,
-			title: memory.title,
-			mtime: memory.mtime,
-			project: memory.project,
-		};
-		const groupIndex = old.findIndex((g) => g.project === memory.project);
-		if (groupIndex === -1) {
-			return [...old, {project: memory.project, projectName: memory.projectName, memories: [summary]}];
-		}
-		return old.map((group, i) => {
-			if (i !== groupIndex) return group;
-			const existingIndex = group.memories.findIndex((m) => m.filename === memory.filename);
-			if (existingIndex >= 0) {
-				return {
-					...group,
-					memories: group.memories.map((m, j) => (j === existingIndex ? summary : m)),
-				};
-			}
-			return {...group, memories: [summary, ...group.memories]};
-		});
+	// Per-project memory list and detail are now keyed by project id.
+	void queryClient.invalidateQueries({queryKey: ['projects', memory.project, 'memories']});
+	void queryClient.invalidateQueries({
+		queryKey: ['projects', memory.project, 'memories', memory.filename],
 	});
-	// Invalidate detail and raw queries so the detail/edit pages reflect
-	// external edits without waiting for staleTime expiry.
-	void queryClient.invalidateQueries({queryKey: ['memory', memory.project, memory.filename, 'detail']});
-	void queryClient.invalidateQueries({queryKey: ['memory', memory.project, memory.filename, 'raw']});
 }
 
 export function applyMemoryRemoved(queryClient: QueryClient, project: string, filename: string): void {
-	queryClient.setQueryData<MemoriesGroup[]>(['memories'], (old) => {
-		if (!old) return old;
-		return old
-			.map((group) =>
-				group.project === project
-					? {...group, memories: group.memories.filter((m) => m.filename !== filename)}
-					: group,
-			)
-			.filter((group) => group.memories.length > 0);
-	});
-	queryClient.removeQueries({queryKey: ['memory', project, filename]});
+	void queryClient.invalidateQueries({queryKey: ['projects', project, 'memories']});
+	queryClient.removeQueries({queryKey: ['projects', project, 'memories', filename]});
 }
 
 export function applyTaskChanged(queryClient: QueryClient, projectDir: string): void {

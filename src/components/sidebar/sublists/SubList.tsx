@@ -1,6 +1,7 @@
 import {Link} from '@tanstack/react-router';
-import {useQuery} from '@tanstack/react-query';
-import {memoriesQueryOptions} from '../../../queries/memories';
+import {useQueries, useQuery} from '@tanstack/react-query';
+import {projectsQueryOptions} from '../../../lib/api/projects';
+import {projectMemoriesQueryOptions} from '../../../lib/api/memories';
 import {sessionsQueryOptions} from '../../../queries/sessions';
 import type {Section, SubItem} from '../types';
 import {LoadingBars} from '../primitives/LoadingBars';
@@ -9,9 +10,15 @@ import {LoadingBars} from '../primitives/LoadingBars';
 // component. Sidebar.tsx routes active/projects/plans/plugins to their own
 // sublists, so only `memories` and `sessions` actually reach this component.
 export function SubList({section, activeItemId}: {section: Section; activeItemId: string | null}) {
-	const memoriesQuery = useQuery({
-		...memoriesQueryOptions,
+	const projectsQuery = useQuery({
+		...projectsQueryOptions(),
 		enabled: section === 'memories',
+	});
+	const memoryQueries = useQueries({
+		queries:
+			section === 'memories' && projectsQuery.data
+				? projectsQuery.data.map((p) => ({...projectMemoriesQueryOptions(p.id), enabled: true}))
+				: [],
 	});
 	const sessionsQuery = useQuery({
 		...sessionsQueryOptions,
@@ -21,9 +28,10 @@ export function SubList({section, activeItemId}: {section: Section; activeItemId
 	let items: SubItem[] | null = null;
 
 	if (section === 'memories') {
-		if (memoriesQuery.data) {
-			items = memoriesQuery.data
-				.flatMap((g) => g.memories)
+		// every() returns true for an empty array, which correctly handles "no projects".
+		if (projectsQuery.data && memoryQueries.every((q) => q.data !== undefined)) {
+			items = memoryQueries
+				.flatMap((q) => q.data?.memories ?? [])
 				.sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime())
 				.slice(0, 20)
 				.map((m) => ({

@@ -1,28 +1,12 @@
 import {createFileRoute, Link, useNavigate} from '@tanstack/react-router';
 import {createServerFn} from '@tanstack/react-start';
-import {queryOptions, useSuspenseQuery} from '@tanstack/react-query';
-import {renderMarkdown} from '../lib/renderer';
-import {MarkdownArticle} from '../components/markdown-article';
+import {useSuspenseQuery} from '@tanstack/react-query';
+import {MarkdownView} from '../components/markdown-view';
+import {memoryDetailQueryOptions} from '../lib/api/memories';
 import {ArrowLeft, Pencil, Trash2} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {DebugLink} from '../components/debug-link';
 import {useCallback, useState} from 'react';
-
-const getMemory = createServerFn({method: 'GET'})
-	.inputValidator((d: {project: string; filename: string}) => d)
-	.handler(async ({data: {project, filename}}) => {
-		const {homedir} = await import('node:os');
-		const {join} = await import('node:path');
-		const {readMemory, decodeProjectDir} = await import('../lib/memory');
-		const {extractTitleFromContent} = await import('../lib/markdown-utils');
-		const projectsDir = join(homedir(), '.claude', 'projects');
-		const content = await readMemory(projectsDir, project, filename);
-		if (!content) return null;
-		const html = await renderMarkdown(content);
-		const title = extractTitleFromContent(content, filename);
-		const projectName = decodeProjectDir(project);
-		return {html, title, projectName};
-	});
 
 const removeMemory = createServerFn({method: 'POST'})
 	.inputValidator((d: {project: string; filename: string}) => d)
@@ -34,39 +18,21 @@ const removeMemory = createServerFn({method: 'POST'})
 		return deleteMemory(projectsDir, project, filename);
 	});
 
-const memoryDetailQueryOptions = (project: string, filename: string) =>
-	queryOptions({
-		queryKey: ['memory', project, filename, 'detail'] as const,
-		queryFn: () => getMemory({data: {project, filename}}),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
-
 export const Route = createFileRoute('/memory/$project/$filename')({
 	component: MemoryPage,
 	loader: ({context: {queryClient}, params}) =>
 		queryClient.ensureQueryData(memoryDetailQueryOptions(params.project, params.filename)),
-	head: ({loaderData}) => ({
-		meta: [{title: loaderData?.title ?? 'Memory Not Found'}],
+	head: ({params}) => ({
+		meta: [{title: params.filename}],
 	}),
 });
 
 function MemoryPage() {
 	const {project, filename} = Route.useParams();
-	const {data: loaderData} = useSuspenseQuery(memoryDetailQueryOptions(project, filename));
+	const {data} = useSuspenseQuery(memoryDetailQueryOptions(project, filename));
 	const navigate = useNavigate();
 	const [confirmingDelete, setConfirmingDelete] = useState(false);
 	const [deleting, setDeleting] = useState(false);
-	const state = Route.useMatch({
-		select: (m) => (m as unknown as {state?: {html?: string; title?: string; projectName?: string}}).state,
-	});
-	const data = state?.html
-		? {
-				html: state.html,
-				title: state.title ?? loaderData?.title ?? '',
-				projectName: state.projectName ?? loaderData?.projectName ?? '',
-			}
-		: loaderData;
 
 	const handleDelete = useCallback(async () => {
 		setDeleting(true);
@@ -151,7 +117,7 @@ function MemoryPage() {
 				)}
 			</DetailTopBar>
 			<div className="mt-4">
-				<MarkdownArticle html={data.html} />
+				<MarkdownView markdown={data.markdown} />
 			</div>
 		</div>
 	);

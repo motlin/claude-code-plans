@@ -1,8 +1,8 @@
 import {createFileRoute, Link, useNavigate} from '@tanstack/react-router';
 import {createServerFn} from '@tanstack/react-start';
-import {queryOptions, useSuspenseQuery} from '@tanstack/react-query';
+import {useSuspenseQuery} from '@tanstack/react-query';
 import {z} from 'zod';
-import {renderMarkdown} from '../lib/renderer';
+import {memoryDetailQueryOptions} from '../lib/api/memories';
 import {lazy, Suspense, useCallback, useEffect, useRef, useState} from 'react';
 
 const MarkdownEditor = lazy(() => import('../components/markdown-editor').then((m) => ({default: m.MarkdownEditor})));
@@ -13,57 +13,29 @@ function ClientOnly({children, fallback}: {children: React.ReactNode; fallback: 
 	return mounted ? children : fallback;
 }
 
-const getMemoryRaw = createServerFn({method: 'GET'})
-	.inputValidator(z.object({project: z.string(), filename: z.string()}))
-	.handler(async ({data: {project, filename}}) => {
-		const {homedir} = await import('node:os');
-		const {join} = await import('node:path');
-		const {readMemory, decodeProjectDir} = await import('../lib/memory');
-		const {extractTitleFromContent} = await import('../lib/markdown-utils');
-		const projectsDir = join(homedir(), '.claude', 'projects');
-		const content = await readMemory(projectsDir, project, filename);
-		if (!content) return null;
-		const title = extractTitleFromContent(content, filename);
-		const projectName = decodeProjectDir(project);
-		return {markdown: content, title, projectName};
-	});
-
 const saveMemory = createServerFn({method: 'POST'})
 	.inputValidator(z.object({project: z.string(), filename: z.string(), content: z.string()}))
 	.handler(async ({data: {project, filename, content}}) => {
 		const {homedir} = await import('node:os');
 		const {join} = await import('node:path');
-		const {writeMemory, decodeProjectDir} = await import('../lib/memory');
-		const {extractTitleFromContent} = await import('../lib/markdown-utils');
+		const {writeMemory} = await import('../lib/memory');
 		const projectsDir = join(homedir(), '.claude', 'projects');
 		const ok = await writeMemory(projectsDir, project, filename, content);
-		if (!ok) return null;
-		const html = await renderMarkdown(content);
-		const title = extractTitleFromContent(content, filename);
-		const projectName = decodeProjectDir(project);
-		return {html, title, projectName};
-	});
-
-const memoryRawQueryOptions = (project: string, filename: string) =>
-	queryOptions({
-		queryKey: ['memory', project, filename, 'raw'] as const,
-		queryFn: () => getMemoryRaw({data: {project, filename}}),
-		staleTime: Infinity,
-		gcTime: Infinity,
+		return {ok};
 	});
 
 export const Route = createFileRoute('/memory/$project/$filename_/edit')({
 	component: MemoryEditPage,
 	loader: ({context: {queryClient}, params}) =>
-		queryClient.ensureQueryData(memoryRawQueryOptions(params.project, params.filename)),
-	head: ({loaderData}) => ({
-		meta: [{title: loaderData ? `Edit: ${loaderData.title}` : 'Memory Not Found'}],
+		queryClient.ensureQueryData(memoryDetailQueryOptions(params.project, params.filename)),
+	head: ({params}) => ({
+		meta: [{title: `Edit: ${params.filename}`}],
 	}),
 });
 
 function MemoryEditPage() {
 	const {project, filename} = Route.useParams();
-	const {data} = useSuspenseQuery(memoryRawQueryOptions(project, filename));
+	const {data} = useSuspenseQuery(memoryDetailQueryOptions(project, filename));
 
 	const initialMarkdown = data?.markdown ?? '';
 	const draftRef = useRef(initialMarkdown);
@@ -90,20 +62,19 @@ function MemoryEditPage() {
 		setFeedback(null);
 		const result = await doSave();
 		setSaving(false);
-		setFeedback(result ? 'Saved' : 'Failed to save');
+		setFeedback(result.ok ? 'Saved' : 'Failed to save');
 	}, [doSave]);
 
 	const handlePreview = useCallback(async () => {
 		setSaving(true);
 		const result = await doSave();
 		setSaving(false);
-		navigate({
-			to: '/memory/$project/$filename',
-			params: {project, filename},
-			state: (result
-				? {html: result.html, title: result.title, projectName: result.projectName}
-				: undefined) as unknown as true,
-		});
+		if (result.ok) {
+			navigate({
+				to: '/memory/$project/$filename',
+				params: {project, filename},
+			});
+		}
 	}, [doSave, navigate, project, filename]);
 
 	if (!data) {

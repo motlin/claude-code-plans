@@ -16,6 +16,28 @@ export const PlanDetailResponse = z.object({
 	title: z.string(),
 });
 
+const PlanProjectRefSchema = z.object({
+	projectId: z.string(),
+	projectName: z.string(),
+});
+const PlanListItemSchema = z.object({
+	filename: z.string(),
+	title: z.string(),
+	mtime: z.string(),
+	projects: z.array(PlanProjectRefSchema),
+});
+export const PlanListResponse = z.array(PlanListItemSchema);
+export type PlanListItem = z.infer<typeof PlanListItemSchema>;
+export type PlanProjectRef = z.infer<typeof PlanProjectRefSchema>;
+
+export const plansQueryOptions = () =>
+	queryOptions({
+		queryKey: ['plans'] as const,
+		queryFn: () => apiFetch('/api/plans', PlanListResponse),
+		staleTime: Infinity,
+		gcTime: Infinity,
+	});
+
 export const planQueryOptions = (filename: string) =>
 	queryOptions({
 		queryKey: ['plans', filename] as const,

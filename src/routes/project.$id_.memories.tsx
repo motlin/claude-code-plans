@@ -1,12 +1,13 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
+import {useSuspenseQuery} from '@tanstack/react-query';
 import {ArrowLeft} from 'lucide-react';
-import {getProjectMemoriesList} from '../lib/server-fns';
+import {projectMemoriesQueryOptions} from '../lib/api/memories';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {DebugLink} from '../components/debug-link';
 
 export const Route = createFileRoute('/project/$id_/memories')({
 	component: ProjectMemoriesPage,
-	loader: ({params}) => getProjectMemoriesList({data: params.id}),
+	loader: ({context: {queryClient}, params}) => queryClient.ensureQueryData(projectMemoriesQueryOptions(params.id)),
 	head: ({loaderData}) => ({
 		meta: [{title: loaderData ? `${loaderData.project.name} memories` : 'Project Not Found'}],
 	}),
@@ -23,7 +24,8 @@ function formatDate(iso: string): string {
 }
 
 function ProjectMemoriesPage() {
-	const data = Route.useLoaderData();
+	const {id} = Route.useParams();
+	const {data} = useSuspenseQuery(projectMemoriesQueryOptions(id));
 
 	if (!data) {
 		return (

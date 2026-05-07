@@ -1,12 +1,54 @@
 import {Link} from '@tanstack/react-router';
 import {useQuery} from '@tanstack/react-query';
 import {ChevronRight} from 'lucide-react';
-import {useEffect, useState} from 'react';
-import {plansGroupedQueryOptions} from '../../../queries/plans';
+import {useEffect, useMemo, useState} from 'react';
+import {plansQueryOptions, type PlanListItem} from '../../../lib/api/plans';
 import {LoadingBars} from '../primitives/LoadingBars';
 
+interface PlansGroup {
+	projectId: string;
+	projectName: string;
+	plans: PlanListItem[];
+}
+
+const UNLINKED_GROUP_ID = '__unlinked__';
+const UNLINKED_GROUP_NAME = 'Unlinked';
+
+function groupPlans(plans: PlanListItem[]): PlansGroup[] {
+	const groups = new Map<string, PlansGroup>();
+	for (const plan of plans) {
+		if (plan.projects.length === 0) {
+			const group = groups.get(UNLINKED_GROUP_ID);
+			if (group) {
+				group.plans.push(plan);
+			} else {
+				groups.set(UNLINKED_GROUP_ID, {
+					projectId: UNLINKED_GROUP_ID,
+					projectName: UNLINKED_GROUP_NAME,
+					plans: [plan],
+				});
+			}
+		} else {
+			for (const ref of plan.projects) {
+				const group = groups.get(ref.projectId);
+				if (group) {
+					group.plans.push(plan);
+				} else {
+					groups.set(ref.projectId, {
+						projectId: ref.projectId,
+						projectName: ref.projectName,
+						plans: [plan],
+					});
+				}
+			}
+		}
+	}
+	return [...groups.values()];
+}
+
 export function PlansSubList({activeItemId}: {activeItemId: string | null}) {
-	const {data: groups} = useQuery(plansGroupedQueryOptions);
+	const {data: plans} = useQuery(plansQueryOptions());
+	const groups = useMemo(() => (plans ? groupPlans(plans) : undefined), [plans]);
 	const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
 	// Auto-expand/collapse groups based on active plan

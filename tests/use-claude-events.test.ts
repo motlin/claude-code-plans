@@ -363,33 +363,14 @@ describe('applySessionUpdated', () => {
 });
 
 describe('applyPlanChanged', () => {
-	it('prepends a new plan to the flat plans cache', () => {
+	it('invalidates the flat plans list so it refetches with up-to-date project links', () => {
 		const queryClient = new QueryClient();
-		queryClient.setQueryData(['plans'], [makePlan('old.md')]);
+		queryClient.setQueryData(['plans'], [makePlan('a.md')]);
 
-		applyPlanChanged(queryClient, makePlan('new.md'));
+		applyPlanChanged(queryClient, makePlan('a.md', 'Updated'));
 
-		const plans = queryClient.getQueryData<PlanSummaryPayload[]>(['plans']);
-		expect(plans?.map((p) => p.filename)).toStrictEqual(['new.md', 'old.md']);
-	});
-
-	it('replaces an existing plan in place when its filename already exists', () => {
-		const queryClient = new QueryClient();
-		queryClient.setQueryData(['plans'], [makePlan('a.md', 'Old title')]);
-
-		applyPlanChanged(queryClient, makePlan('a.md', 'New title'));
-
-		const plans = queryClient.getQueryData<PlanSummaryPayload[]>(['plans']);
-		expect(plans?.length).toBe(1);
-		expect(plans?.[0]?.title).toBe('New title');
-	});
-
-	it('leaves the cache untouched when it was empty', () => {
-		const queryClient = new QueryClient();
-		applyPlanChanged(queryClient, makePlan('first.md'));
-
-		const plans = queryClient.getQueryData<PlanSummaryPayload[]>(['plans']);
-		expect(plans).toBe(undefined);
+		const plansState = queryClient.getQueryState(['plans']);
+		expect(plansState?.isInvalidated).toBe(true);
 	});
 
 	it('invalidates plan detail and links queries for the changed plan', () => {
@@ -408,166 +389,77 @@ describe('applyPlanChanged', () => {
 });
 
 describe('applyPlanRemoved', () => {
-	it('filters the plan out of the flat plans cache', () => {
+	it('invalidates the flat plans list and removes the per-plan detail caches', () => {
 		const queryClient = new QueryClient();
 		queryClient.setQueryData(['plans'], [makePlan('a.md'), makePlan('b.md')]);
+		queryClient.setQueryData(['plans', 'a.md'], {markdown: 'a', mtime: null, title: 'a'});
+		queryClient.setQueryData(['plans', 'a.md', 'links'], []);
 
 		applyPlanRemoved(queryClient, 'a.md');
 
-		const plans = queryClient.getQueryData<PlanSummaryPayload[]>(['plans']);
-		expect(plans?.map((p) => p.filename)).toStrictEqual(['b.md']);
-	});
-
-	it('filters the plan out of grouped caches, dropping empty groups', () => {
-		const queryClient = new QueryClient();
-		queryClient.setQueryData(
-			['plans', 'grouped'],
-			[
-				{projectId: 'p1', projectName: 'P1', plans: [makePlan('a.md')]},
-				{projectId: 'p2', projectName: 'P2', plans: [makePlan('a.md'), makePlan('b.md')]},
-			],
-		);
-
-		applyPlanRemoved(queryClient, 'a.md');
-
-		const grouped = queryClient.getQueryData<Array<{projectId: string; plans: PlanSummaryPayload[]}>>([
-			'plans',
-			'grouped',
-		]);
-		expect(grouped?.map((g) => g.projectId)).toStrictEqual(['p2']);
-		expect(grouped?.[0]?.plans.map((p) => p.filename)).toStrictEqual(['b.md']);
+		const plansState = queryClient.getQueryState(['plans']);
+		expect(plansState?.isInvalidated).toBe(true);
+		expect(queryClient.getQueryData(['plans', 'a.md'])).toBeUndefined();
+		expect(queryClient.getQueryData(['plans', 'a.md', 'links'])).toBeUndefined();
 	});
 });
 
 describe('applyMemoryChanged', () => {
-	it('replaces an existing memory in the matching project group', () => {
+	it('invalidates the project memory list and per-memory detail caches', () => {
 		const queryClient = new QueryClient();
-		queryClient.setQueryData(
-			['memories'],
-			[
-				{
-					project: 'proj-a',
-					projectName: 'Project A',
-					memories: [
-						{filename: 'MEMORY.md', title: 'Old', mtime: '1999-12-30T00:00:00.000Z', project: 'proj-a'},
-					],
-				},
-			],
-		);
-
-		applyMemoryChanged(queryClient, makeMemory('proj-a', 'MEMORY.md', 'New'));
-
-		const groups = queryClient.getQueryData<
-			Array<{project: string; memories: Array<{filename: string; title: string}>}>
-		>(['memories']);
-		expect(groups?.[0]?.memories.length).toBe(1);
-		expect(groups?.[0]?.memories[0]?.title).toBe('New');
-	});
-
-	it('creates a new project group when the memory is from a new project', () => {
-		const queryClient = new QueryClient();
-		queryClient.setQueryData(['memories'], [{project: 'proj-a', projectName: 'Project A', memories: []}]);
-
-		applyMemoryChanged(queryClient, makeMemory('proj-b', 'MEMORY.md'));
-
-		const groups = queryClient.getQueryData<Array<{project: string; memories: Array<{filename: string}>}>>([
-			'memories',
-		]);
-		expect(groups?.map((g) => g.project)).toStrictEqual(['proj-a', 'proj-b']);
-		expect(groups?.[1]?.memories.map((m) => m.filename)).toStrictEqual(['MEMORY.md']);
-	});
-
-	it('invalidates memory detail and raw queries', () => {
-		const queryClient = new QueryClient();
-		queryClient.setQueryData(['memories'], []);
-		queryClient.setQueryData(['memory', 'proj-a', 'MEMORY.md', 'detail'], {content: 'old'});
-		queryClient.setQueryData(['memory', 'proj-a', 'MEMORY.md', 'raw'], 'old raw');
+		queryClient.setQueryData(['projects', 'proj-a', 'memories'], {
+			project: {id: 'proj-a', name: 'Project A', projectPath: null},
+			memories: [],
+		});
+		queryClient.setQueryData(['projects', 'proj-a', 'memories', 'MEMORY.md'], {
+			markdown: 'old',
+			mtime: null,
+			projectName: 'Project A',
+		});
 
 		applyMemoryChanged(queryClient, makeMemory('proj-a', 'MEMORY.md', 'Updated'));
 
-		const detailState = queryClient.getQueryState(['memory', 'proj-a', 'MEMORY.md', 'detail']);
-		const rawState = queryClient.getQueryState(['memory', 'proj-a', 'MEMORY.md', 'raw']);
+		const listState = queryClient.getQueryState(['projects', 'proj-a', 'memories']);
+		const detailState = queryClient.getQueryState(['projects', 'proj-a', 'memories', 'MEMORY.md']);
+		expect(listState?.isInvalidated).toBe(true);
 		expect(detailState?.isInvalidated).toBe(true);
-		expect(rawState?.isInvalidated).toBe(true);
 	});
 });
 
 describe('applyMemoryRemoved', () => {
-	it('removes the memory from its project group', () => {
+	it('invalidates the project memory list and evicts the per-memory cache', () => {
 		const queryClient = new QueryClient();
-		queryClient.setQueryData(
-			['memories'],
-			[
-				{
-					project: 'proj-a',
-					projectName: 'Project A',
-					memories: [
-						{
-							filename: 'MEMORY.md',
-							title: 'MEMORY.md',
-							mtime: '1999-12-31T00:00:00.000Z',
-							project: 'proj-a',
-						},
-						{filename: 'other.md', title: 'other.md', mtime: '1999-12-31T00:00:00.000Z', project: 'proj-a'},
-					],
-				},
-			],
-		);
+		queryClient.setQueryData(['projects', 'proj-a', 'memories'], {
+			project: {id: 'proj-a', name: 'Project A', projectPath: null},
+			memories: [],
+		});
+		queryClient.setQueryData(['projects', 'proj-a', 'memories', 'MEMORY.md'], {
+			markdown: 'old',
+			mtime: null,
+			projectName: 'Project A',
+		});
+		queryClient.setQueryData(['projects', 'proj-b', 'memories', 'OTHER.md'], {
+			markdown: 'keep',
+			mtime: null,
+			projectName: 'Project B',
+		});
 
 		applyMemoryRemoved(queryClient, 'proj-a', 'MEMORY.md');
 
-		const groups = queryClient.getQueryData<Array<{project: string; memories: Array<{filename: string}>}>>([
-			'memories',
-		]);
-		expect(groups?.[0]?.memories.map((m) => m.filename)).toStrictEqual(['other.md']);
-	});
-
-	it('drops the project group when its last memory is removed', () => {
-		const queryClient = new QueryClient();
-		queryClient.setQueryData(
-			['memories'],
-			[
-				{
-					project: 'proj-a',
-					projectName: 'Project A',
-					memories: [
-						{
-							filename: 'MEMORY.md',
-							title: 'MEMORY.md',
-							mtime: '1999-12-31T00:00:00.000Z',
-							project: 'proj-a',
-						},
-					],
-				},
-			],
-		);
-
-		applyMemoryRemoved(queryClient, 'proj-a', 'MEMORY.md');
-
-		const groups = queryClient.getQueryData<Array<{project: string; memories: Array<{filename: string}>}>>([
-			'memories',
-		]);
-		expect(groups).toStrictEqual([]);
-	});
-
-	it('evicts per-memory sub-cache under ["memory", project, filename, ...]', () => {
-		const queryClient = new QueryClient();
-		queryClient.setQueryData(['memories'], []);
-		queryClient.setQueryData(['memory', 'proj-a', 'MEMORY.md', 'detail'], {content: 'old'});
-		queryClient.setQueryData(['memory', 'proj-a', 'MEMORY.md', 'raw'], 'old raw');
-		queryClient.setQueryData(['memory', 'proj-b', 'OTHER.md', 'detail'], {content: 'keep'});
-
-		applyMemoryRemoved(queryClient, 'proj-a', 'MEMORY.md');
-
-		expect(queryClient.getQueryData(['memory', 'proj-a', 'MEMORY.md', 'detail'])).toBeUndefined();
-		expect(queryClient.getQueryData(['memory', 'proj-a', 'MEMORY.md', 'raw'])).toBeUndefined();
-		expect(queryClient.getQueryData(['memory', 'proj-b', 'OTHER.md', 'detail'])).toStrictEqual({content: 'keep'});
+		const listState = queryClient.getQueryState(['projects', 'proj-a', 'memories']);
+		expect(listState?.isInvalidated).toBe(true);
+		expect(queryClient.getQueryData(['projects', 'proj-a', 'memories', 'MEMORY.md'])).toBeUndefined();
+		expect(queryClient.getQueryData(['projects', 'proj-b', 'memories', 'OTHER.md'])).toStrictEqual({
+			markdown: 'keep',
+			mtime: null,
+			projectName: 'Project B',
+		});
 	});
 
 	it('is a no-op when the memories query has never been populated', () => {
 		const queryClient = new QueryClient();
 		applyMemoryRemoved(queryClient, 'proj-a', 'MEMORY.md');
-		expect(queryClient.getQueryData(['memories'])).toBeUndefined();
+		expect(queryClient.getQueryData(['projects', 'proj-a', 'memories'])).toBeUndefined();
 	});
 });
 

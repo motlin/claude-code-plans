@@ -1,5 +1,5 @@
 import {Link} from '@tanstack/react-router';
-import {useQuery, useQueryClient, queryOptions} from '@tanstack/react-query';
+import {useQuery, useQueryClient} from '@tanstack/react-query';
 import {ChevronRight, GitBranch} from 'lucide-react';
 import {useEffect, useMemo, useState} from 'react';
 import {
@@ -9,17 +9,9 @@ import {
 	projectTasksQueryOptions,
 	projectBranchesQueryOptions,
 } from '../../../lib/api/projects';
-import {getProjectMemoriesList} from '../../../lib/server-fns';
+import {projectMemoriesQueryOptions} from '../../../lib/api/memories';
 import type {ProjectDetail} from '../types';
 import {LoadingBars} from '../primitives/LoadingBars';
-
-const projectMemoriesQueryOptions = (id: string) =>
-	queryOptions({
-		queryKey: ['projects', id, 'memories'] as const,
-		queryFn: () => getProjectMemoriesList({data: id}),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
 
 function prefetchProjectDetail(queryClient: ReturnType<typeof useQueryClient>, projectId: string) {
 	void queryClient.prefetchQuery(projectSessionsQueryOptions(projectId));
