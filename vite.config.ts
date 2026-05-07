@@ -16,5 +16,13 @@ export default defineConfig({
 	resolve: {
 		tsconfigPaths: true,
 	},
+	build: {
+		// The session detail route legitimately ships ~1.2MB (gzipped ~370kB) of tool
+		// renderers, transcript processing, and chat UI. The markdown editor and the
+		// Shiki C/C++ language grammar are similarly large but already lazy-loaded.
+		// Raise the warning threshold so it only fires on regressions beyond today's
+		// baseline rather than firing on every build.
+		chunkSizeWarningLimit: 1500,
+	},
 	plugins: [tailwindcss(), tanstackStart(), viteReact()],
 });
