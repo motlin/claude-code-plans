@@ -9,7 +9,6 @@ function makeTask(id: string, overrides: Partial<GraphTask> = {}): GraphTask {
 		status: 'pending',
 		blocks: [],
 		blockedBy: [],
-		subjectHtml: `Task ${id}`,
 		...overrides,
 	};
 }

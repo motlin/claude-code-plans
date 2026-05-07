@@ -53,6 +53,7 @@ async function getHighlighter(): Promise<HighlighterCore> {
 
 interface MarkdownItLike {
 	render(src: string): string;
+	renderInline(src: string): string;
 }
 
 let mdPromise: Promise<MarkdownItLike> | null = null;
@@ -107,4 +108,14 @@ export async function renderMarkdown(markdown: string): Promise<string> {
 	if (!markdown.trim()) return '';
 	const md = await getMd();
 	return md.render(markdown);
+}
+
+/**
+ * Render markdown as inline HTML on the client (no `<p>` wrap, no block
+ * elements). Suitable for short single-line snippets like task subjects.
+ */
+export async function renderInlineMarkdown(markdown: string): Promise<string> {
+	if (!markdown.trim()) return '';
+	const md = await getMd();
+	return md.renderInline(markdown);
 }

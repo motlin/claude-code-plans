@@ -2,10 +2,10 @@ import {createFileRoute} from '@tanstack/react-router';
 import {useSuspenseQuery} from '@tanstack/react-query';
 import {useState} from 'react';
 import {ChevronRight, CheckCircle, Circle, Ban, List, GitBranch} from 'lucide-react';
-import styles from '../components/markdown-article.module.css';
-import {tasksQueryOptions} from '../queries/tasks';
+import {tasksQueryOptions} from '../lib/api/tasks';
 import {TaskDependencyGraph} from '../components/task-dependency-graph';
 import {DebugLink} from '../components/debug-link';
+import {MarkdownInline, MarkdownView} from '../components/markdown-view';
 
 export const Route = createFileRoute('/tasks')({
 	component: TasksPage,
@@ -120,10 +120,7 @@ function TasksPage() {
 												<div className="min-w-0 flex-1">
 													<div className="text-sm text-text-100 flex items-center gap-1.5">
 														<span>
-															#{task.taskId}{' '}
-															<span
-																dangerouslySetInnerHTML={{__html: task.subjectHtml}}
-															/>
+															#{task.taskId} <MarkdownInline markdown={task.subject} />
 														</span>
 														<DebugLink
 															kind="task"
@@ -131,10 +128,9 @@ function TasksPage() {
 														/>
 													</div>
 													{task.description && task.description !== task.subject && (
-														<div
-															className={`mt-0.5 text-xs text-text-500 ${styles['markdown']}`}
-															dangerouslySetInnerHTML={{__html: task.descriptionHtml}}
-														/>
+														<div className="mt-0.5 text-xs text-text-500">
+															<MarkdownView markdown={task.description} />
+														</div>
 													)}
 													<div className="mt-0.5 flex items-center gap-2">
 														<span

@@ -1,5 +1,5 @@
 import {useEffect, useState} from 'react';
-import {renderMarkdown} from '../lib/markdown';
+import {renderInlineMarkdown, renderMarkdown} from '../lib/markdown';
 import styles from './markdown-article.module.css';
 
 /**
@@ -36,4 +36,33 @@ export function MarkdownView({markdown}: {markdown: string}) {
 			dangerouslySetInnerHTML={{__html: html}}
 		/>
 	);
+}
+
+/**
+ * Inline variant of {@link MarkdownView}. Renders short markdown snippets
+ * (e.g. task subjects) without paragraph wrapping. While the lazy renderer
+ * loads, falls back to the raw text inside a `<span>`.
+ */
+export function MarkdownInline({markdown}: {markdown: string}) {
+	const [html, setHtml] = useState<string | null>(null);
+
+	useEffect(() => {
+		let cancelled = false;
+		renderInlineMarkdown(markdown).then(
+			(rendered) => {
+				if (!cancelled) setHtml(rendered);
+			},
+			() => {
+				// Highlighter failed to load; keep the raw fallback.
+			},
+		);
+		return () => {
+			cancelled = true;
+		};
+	}, [markdown]);
+
+	if (html == null) {
+		return <span>{markdown}</span>;
+	}
+	return <span dangerouslySetInnerHTML={{__html: html}} />;
 }

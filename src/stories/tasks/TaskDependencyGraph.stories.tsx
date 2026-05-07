@@ -8,7 +8,6 @@ function makeTask(overrides: Partial<GraphTask> & Pick<GraphTask, 'taskId' | 'su
 		status: 'pending',
 		blocks: [],
 		blockedBy: [],
-		subjectHtml: overrides.subject,
 		...overrides,
 	};
 }

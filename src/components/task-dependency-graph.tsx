@@ -8,7 +8,6 @@ export interface GraphTask {
 	status: string;
 	blocks: string[];
 	blockedBy: string[];
-	subjectHtml: string;
 }
 
 export interface TaskGroup {

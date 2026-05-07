@@ -5,7 +5,6 @@ import {
 	toggleStar as toggleStarInDb,
 	getStarredSessions as getStarredSessionsFromDb,
 	searchMessageContentDb,
-	getIncompleteTasksGroupedByProject,
 } from './db/queries';
 
 async function claudeDirs() {
@@ -267,30 +266,6 @@ export const uninstallHooks = createServerFn({method: 'POST'})
 		await writeFile(settingsPath, JSON.stringify(existing, null, 2) + '\n', 'utf-8');
 		return {ok: true, settingsPath};
 	});
-
-// ---------------------------------------------------------------------------
-// Task management
-// ---------------------------------------------------------------------------
-
-export const getTasks = createServerFn({method: 'GET'}).handler(async () => {
-	const {getDb} = await import('./db');
-	const {index} = getDb();
-	const groups = getIncompleteTasksGroupedByProject(index);
-	const {renderInlineMarkdown, renderMarkdown} = await import('./renderer');
-
-	return Promise.all(
-		groups.map(async (group) => ({
-			...group,
-			tasks: await Promise.all(
-				group.tasks.map(async (task) => ({
-					...task,
-					subjectHtml: await renderInlineMarkdown(task.subject),
-					descriptionHtml: await renderMarkdown(task.description),
-				})),
-			),
-		})),
-	);
-});
 
 // ---------------------------------------------------------------------------
 // Settings viewer
