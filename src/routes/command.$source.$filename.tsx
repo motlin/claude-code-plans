@@ -1,14 +1,14 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
 import {useSuspenseQuery} from '@tanstack/react-query';
-import {userCommandRenderedQueryOptions} from '../queries/plugins';
-import {MarkdownArticle} from '../components/markdown-article';
+import {userCommandFileQueryOptions} from '../lib/api/plugins';
+import {MarkdownView} from '../components/markdown-view';
 import {ArrowLeft} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 
 export const Route = createFileRoute('/command/$source/$filename')({
 	component: CommandPage,
 	loader: ({context: {queryClient}, params}) =>
-		queryClient.ensureQueryData(userCommandRenderedQueryOptions(params.source, params.filename)),
+		queryClient.ensureQueryData(userCommandFileQueryOptions(params.source, params.filename)),
 	head: ({loaderData}) => ({
 		meta: [{title: loaderData?.title ?? 'Command Not Found'}],
 	}),
@@ -16,7 +16,7 @@ export const Route = createFileRoute('/command/$source/$filename')({
 
 function CommandPage() {
 	const {source, filename} = Route.useParams();
-	const {data} = useSuspenseQuery(userCommandRenderedQueryOptions(source, filename));
+	const {data} = useSuspenseQuery(userCommandFileQueryOptions(source, filename));
 
 	if (!data) {
 		return (
@@ -49,7 +49,7 @@ function CommandPage() {
 				<span className="text-xs text-text-500">{data.sourceName}</span>
 			</DetailTopBar>
 			<div className="mt-4">
-				<MarkdownArticle html={data.html} />
+				<MarkdownView markdown={data.markdown} />
 			</div>
 		</div>
 	);

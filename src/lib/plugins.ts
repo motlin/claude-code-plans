@@ -165,26 +165,6 @@ export function extractMarketplace(pluginId: string): string {
 	return pluginId.slice(atIdx + 1);
 }
 
-export async function listMarketplaces(): Promise<Record<string, MarketplaceInfo>> {
-	const marketplacesPath = join(homedir(), '.claude', 'plugins', 'known_marketplaces.json');
-	try {
-		const raw = await readFile(marketplacesPath, 'utf-8');
-		const data = JSON.parse(raw) as Record<string, {source: {source: string; repo?: string; path?: string}}>;
-		const result: Record<string, MarketplaceInfo> = {};
-		for (const [id, info] of Object.entries(data)) {
-			result[id] = {
-				id,
-				displayName: formatMarketplaceName(id),
-				source: info.source,
-			};
-		}
-
-		return result;
-	} catch {
-		return {};
-	}
-}
-
 export function formatMarketplaceName(id: string): string {
 	return id
 		.split('-')

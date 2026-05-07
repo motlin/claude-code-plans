@@ -1,7 +1,7 @@
 import {useState} from 'react';
 import {Link} from '@tanstack/react-router';
 import {ChevronRight, Folder, FileText, FileCode, FileJson, File} from 'lucide-react';
-import type {FileTreeNode} from '../lib/plugins';
+import type {FileTreeNodeData as FileTreeNode} from '../lib/api/plugins';
 
 function getName(node: FileTreeNode) {
 	const i = node.path.lastIndexOf('/');

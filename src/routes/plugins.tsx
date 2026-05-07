@@ -1,19 +1,23 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {useSuspenseQuery} from '@tanstack/react-query';
-import {getPluginTree} from '../lib/server-fns';
-import {pluginGroupsQueryOptions, userCommandsQueryOptions} from '../queries/plugins';
+import {useQuery, useSuspenseQuery} from '@tanstack/react-query';
+import {
+	groupPluginsByMarketplace,
+	pluginTreeQueryOptions,
+	pluginsQueryOptions,
+	userCommandsQueryOptions,
+	type PluginInfoData,
+	type PluginMarketplaceGroup,
+	type UserCommandGroupData,
+} from '../lib/api/plugins';
 import {ChevronRight, ChevronDown, Blocks, Terminal, Bot, Sparkles, BookOpen, Store, FolderTree} from 'lucide-react';
-import {useState} from 'react';
-import type {PluginInfo, PluginGroup, UserCommandGroup, FileTreeNode} from '../lib/plugins';
+import {useMemo, useState} from 'react';
 import {FileTree} from '../components/file-tree';
-
-type PluginGroupWithOfficial = PluginGroup & {isOfficial: boolean};
 
 export const Route = createFileRoute('/plugins')({
 	component: PluginsPage,
 	loader: ({context: {queryClient}}) =>
 		Promise.all([
-			queryClient.ensureQueryData(pluginGroupsQueryOptions),
+			queryClient.ensureQueryData(pluginsQueryOptions),
 			queryClient.ensureQueryData(userCommandsQueryOptions),
 		]),
 	head: () => ({
@@ -21,7 +25,7 @@ export const Route = createFileRoute('/plugins')({
 	}),
 });
 
-function MarketplaceGroup({group, defaultExpanded}: {group: PluginGroupWithOfficial; defaultExpanded: boolean}) {
+function MarketplaceGroup({group, defaultExpanded}: {group: PluginMarketplaceGroup; defaultExpanded: boolean}) {
 	const [expanded, setExpanded] = useState(defaultExpanded);
 	const pluginCount = group.plugins.length;
 
@@ -62,27 +66,18 @@ function MarketplaceGroup({group, defaultExpanded}: {group: PluginGroupWithOffic
 
 type PluginTab = 'contents' | 'files';
 
-function PluginCard({plugin}: {plugin: PluginInfo}) {
+function PluginCard({plugin}: {plugin: PluginInfoData}) {
 	const [expanded, setExpanded] = useState(false);
 	const [activeTab, setActiveTab] = useState<PluginTab>('contents');
-	const [fileTree, setFileTree] = useState<FileTreeNode | null>(null);
-	const [treeLoading, setTreeLoading] = useState(false);
-	const [treeLoaded, setTreeLoaded] = useState(false);
+	const [treeEnabled, setTreeEnabled] = useState(false);
 	const totalItems = plugin.agents.length + plugin.commands.length + plugin.skills.length;
 
-	async function loadFileTree() {
-		if (treeLoaded) return;
-		setTreeLoading(true);
-		const tree = await getPluginTree({data: {pluginId: plugin.id}});
-		setFileTree(tree);
-		setTreeLoaded(true);
-		setTreeLoading(false);
-	}
+	const treeQuery = useQuery({...pluginTreeQueryOptions(plugin.id), enabled: treeEnabled});
 
 	function switchTab(tab: PluginTab) {
 		setActiveTab(tab);
 		if (tab === 'files') {
-			loadFileTree();
+			setTreeEnabled(true);
 		}
 	}
 
@@ -230,20 +225,20 @@ function PluginCard({plugin}: {plugin: PluginInfo}) {
 
 					{activeTab === 'files' && (
 						<div className="mt-1">
-							{treeLoading && (
+							{treeQuery.isLoading && (
 								<div className="space-y-1.5 py-2">
 									<div className="h-3 w-3/4 animate-pulse rounded bg-bg-300/50" />
 									<div className="h-3 w-1/2 animate-pulse rounded bg-bg-300/50" />
 									<div className="h-3 w-2/3 animate-pulse rounded bg-bg-300/50" />
 								</div>
 							)}
-							{!treeLoading && fileTree && (
+							{!treeQuery.isLoading && treeQuery.data && (
 								<FileTree
-									tree={fileTree}
+									tree={treeQuery.data}
 									pluginId={plugin.id}
 								/>
 							)}
-							{!treeLoading && !fileTree && treeLoaded && (
+							{!treeQuery.isLoading && treeQuery.isFetched && !treeQuery.data && (
 								<p className="py-2 text-xs text-text-500">Could not read plugin directory.</p>
 							)}
 						</div>
@@ -311,9 +306,10 @@ function ContentSection({
 }
 
 function PluginsPage() {
-	const {data: groups} = useSuspenseQuery(pluginGroupsQueryOptions);
+	const {data: plugins} = useSuspenseQuery(pluginsQueryOptions);
 	const {data: userCommands} = useSuspenseQuery(userCommandsQueryOptions);
-	const pluginCount = groups.reduce((n, g) => n + g.plugins.length, 0);
+	const groups = useMemo(() => groupPluginsByMarketplace(plugins), [plugins]);
+	const pluginCount = plugins.length;
 	const commandGroupCount = userCommands.length;
 
 	return (
@@ -324,12 +320,12 @@ function PluginsPage() {
 				{' across '}
 				{groups.length} marketplace{groups.length !== 1 && 's'}
 				{commandGroupCount > 0 &&
-					`, ${userCommands.reduce((n: number, g: UserCommandGroup) => n + g.commands.length, 0)} user command${userCommands.reduce((n: number, g: UserCommandGroup) => n + g.commands.length, 0) !== 1 ? 's' : ''}`}
+					`, ${userCommands.reduce((n: number, g: UserCommandGroupData) => n + g.commands.length, 0)} user command${userCommands.reduce((n: number, g: UserCommandGroupData) => n + g.commands.length, 0) !== 1 ? 's' : ''}`}
 			</p>
 
 			{groups.length > 0 && (
 				<div className="mt-6 space-y-4">
-					{groups.map((group: PluginGroupWithOfficial) => (
+					{groups.map((group) => (
 						<MarketplaceGroup
 							key={group.marketplace.id}
 							group={group}
@@ -342,7 +338,7 @@ function PluginsPage() {
 			{commandGroupCount > 0 && (
 				<div className="mt-8">
 					<h2 className="text-base font-semibold">User Commands</h2>
-					{userCommands.map((group: UserCommandGroup) => (
+					{userCommands.map((group: UserCommandGroupData) => (
 						<div
 							key={group.source}
 							className="mt-4"
