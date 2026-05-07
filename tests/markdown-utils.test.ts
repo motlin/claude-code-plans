@@ -1,7 +1,12 @@
 import {writeFileSync, mkdirSync, rmSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {humanizeFilename, extractTitleFromContent, extractTitle} from '../src/lib/markdown-utils.js';
+import {
+	humanizeFilename,
+	extractTitleFromContent,
+	extractTitle,
+	stripLeadingTitleHeading,
+} from '../src/lib/markdown-utils.js';
 
 const testDir = join(tmpdir(), 'claude-md-utils-test-' + process.pid);
 
@@ -34,6 +39,32 @@ describe('extractTitleFromContent', () => {
 
 	it('falls back for empty content', () => {
 		expect(extractTitleFromContent('', 'fallback.md')).toBe('Fallback');
+	});
+});
+
+describe('stripLeadingTitleHeading', () => {
+	it('strips H1 line and a single trailing blank line', () => {
+		expect(stripLeadingTitleHeading('# Title\n\nBody')).toBe('Body');
+	});
+
+	it('strips H1 line when no trailing blank line follows', () => {
+		expect(stripLeadingTitleHeading('# Title\nBody')).toBe('Body');
+	});
+
+	it('returns empty string when input is only an H1', () => {
+		expect(stripLeadingTitleHeading('# Title')).toBe('');
+	});
+
+	it('does not strip level-2 headings', () => {
+		expect(stripLeadingTitleHeading('## Sub')).toBe('## Sub');
+	});
+
+	it('passes through content with no H1', () => {
+		expect(stripLeadingTitleHeading('No heading')).toBe('No heading');
+	});
+
+	it('passes through empty input', () => {
+		expect(stripLeadingTitleHeading('')).toBe('');
 	});
 });
 

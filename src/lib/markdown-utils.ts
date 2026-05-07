@@ -15,6 +15,18 @@ export function extractTitleFromContent(content: string, filename: string): stri
 	return humanizeFilename(filename);
 }
 
+export function stripLeadingTitleHeading(content: string): string {
+	const lines = content.split('\n');
+	const firstLine = lines[0];
+	if (firstLine === undefined || !firstLine.startsWith('# ')) {
+		return content;
+	}
+	if (lines.length > 1 && lines[1] === '') {
+		return lines.slice(2).join('\n');
+	}
+	return lines.slice(1).join('\n');
+}
+
 export async function extractTitle(filePath: string, filename: string): Promise<string> {
 	try {
 		const content = await readFile(filePath, 'utf-8');
