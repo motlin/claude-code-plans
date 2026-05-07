@@ -1,11 +1,6 @@
 import {createServerFn} from '@tanstack/react-start';
 import {z} from 'zod';
-import {
-	searchSessionsFromDb,
-	toggleStar as toggleStarInDb,
-	getStarredSessions as getStarredSessionsFromDb,
-	searchMessageContentDb,
-} from './db/queries';
+import {toggleStar as toggleStarInDb, getStarredSessions as getStarredSessionsFromDb} from './db/queries';
 
 async function claudeDirs() {
 	const {homedir} = await import('node:os');
@@ -18,14 +13,6 @@ async function claudeDirs() {
 		join,
 	};
 }
-
-export const searchSessions = createServerFn({method: 'GET'})
-	.inputValidator(z.string())
-	.handler(async ({data: query}) => {
-		const {getDb} = await import('./db');
-		const {index} = getDb();
-		return searchSessionsFromDb(index, query);
-	});
 
 export const toggleSessionStar = createServerFn({method: 'POST'})
 	.inputValidator(z.string())
@@ -52,14 +39,6 @@ export const getStarredSessionList = createServerFn({method: 'GET'}).handler(asy
 		gitBranch: s.gitBranch,
 	}));
 });
-
-export const searchMessageContent = createServerFn({method: 'GET'})
-	.inputValidator(z.string())
-	.handler(async ({data: query}) => {
-		const {getDb} = await import('./db');
-		const {index} = getDb();
-		return searchMessageContentDb(index, query);
-	});
 
 export const requestSummary = createServerFn({method: 'POST'})
 	.inputValidator(z.string())

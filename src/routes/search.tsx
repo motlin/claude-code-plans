@@ -1,17 +1,14 @@
 import {createFileRoute, Link, useNavigate} from '@tanstack/react-router';
+import {useQuery} from '@tanstack/react-query';
 import {useState} from 'react';
-import {searchSessions, searchMessageContent} from '../lib/server-fns';
+import {
+	sessionSearchQueryOptions,
+	messageSearchQueryOptions,
+	type SessionSearchItem,
+	type MessageSearchItem,
+} from '../lib/api/search';
 
-type TitleResult = Awaited<ReturnType<typeof searchSessions>>[number];
-type ContentResult = Awaited<ReturnType<typeof searchMessageContent>>[number];
-type SearchResult = (TitleResult | ContentResult) & {
-	sessionId: string;
-	title: string;
-	snippet: string;
-	projectName: string;
-	mtime: string;
-	messageCount: number;
-};
+type SearchResult = SessionSearchItem | MessageSearchItem;
 
 function formatDate(iso: string): string {
 	if (!iso) return '';
@@ -34,38 +31,28 @@ export const Route = createFileRoute('/search')({
 });
 
 function SearchPage() {
-	const {q, mode: initialMode} = Route.useSearch();
+	const {q: submittedQuery, mode} = Route.useSearch();
 	const navigate = useNavigate();
-	const [query, setQuery] = useState(q);
-	const [mode, setMode] = useState<'titles' | 'conversations'>(initialMode);
-	const [results, setResults] = useState<SearchResult[]>([]);
-	const [searched, setSearched] = useState(false);
-	const [loading, setLoading] = useState(false);
+	const [query, setQuery] = useState(submittedQuery);
 
-	async function handleSearch(searchQuery?: string, searchMode?: 'titles' | 'conversations') {
-		const q = searchQuery ?? query;
-		const m = searchMode ?? mode;
-		if (!q.trim()) return;
+	const titlesQuery = useQuery({
+		...sessionSearchQueryOptions(submittedQuery),
+		enabled: mode === 'titles' && submittedQuery.length > 0,
+	});
+	const conversationsQuery = useQuery({
+		...messageSearchQueryOptions(submittedQuery),
+		enabled: mode === 'conversations' && submittedQuery.length > 0,
+	});
 
-		setLoading(true);
-		try {
-			let data: SearchResult[];
-			if (m === 'conversations') {
-				data = await searchMessageContent({data: q.trim()});
-			} else {
-				data = await searchSessions({data: q.trim()});
-			}
-			setResults(data);
-			setSearched(true);
-			navigate({to: '/search', search: {q: q.trim(), mode: m}, replace: true});
-		} finally {
-			setLoading(false);
-		}
-	}
+	const activeQuery = mode === 'conversations' ? conversationsQuery : titlesQuery;
+	const results: SearchResult[] = activeQuery.data ?? [];
+	const loading = activeQuery.isFetching;
+	const searched = submittedQuery.length > 0 && activeQuery.isFetched;
 
-	// Auto-search on mount if query param present
-	if (q && !searched && !loading) {
-		handleSearch(q, mode);
+	function handleSubmit() {
+		const next = query.trim();
+		if (!next) return;
+		navigate({to: '/search', search: {q: next, mode}, replace: true});
 	}
 
 	return (
@@ -76,7 +63,7 @@ function SearchPage() {
 				className="mt-4 flex gap-2"
 				onSubmit={(e) => {
 					e.preventDefault();
-					handleSearch();
+					handleSubmit();
 				}}
 			>
 				<input
@@ -100,8 +87,7 @@ function SearchPage() {
 				<button
 					type="button"
 					onClick={() => {
-						setMode('titles');
-						if (searched && query.trim()) handleSearch(query, 'titles');
+						navigate({to: '/search', search: {q: submittedQuery, mode: 'titles'}, replace: true});
 					}}
 					className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
 						mode === 'titles' ? 'bg-accent-100 text-bg-000' : 'bg-bg-200 text-text-500 hover:bg-bg-200/80'
@@ -112,8 +98,7 @@ function SearchPage() {
 				<button
 					type="button"
 					onClick={() => {
-						setMode('conversations');
-						if (searched && query.trim()) handleSearch(query, 'conversations');
+						navigate({to: '/search', search: {q: submittedQuery, mode: 'conversations'}, replace: true});
 					}}
 					className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
 						mode === 'conversations'
@@ -126,7 +111,7 @@ function SearchPage() {
 			</div>
 
 			{searched && results.length === 0 && (
-				<p className="mt-6 text-sm text-text-500">No results found for &ldquo;{q}&rdquo;</p>
+				<p className="mt-6 text-sm text-text-500">No results found for &ldquo;{submittedQuery}&rdquo;</p>
 			)}
 
 			{searched && results.length > 0 && (
