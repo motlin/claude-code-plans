@@ -1,18 +1,13 @@
 import {createServerFn} from '@tanstack/react-start';
 import {z} from 'zod';
 import {
-	listSessionsForProjectFromDb,
 	getProjectDetailFromDb,
 	searchSessionsFromDb,
-	getSubagentsForProject,
 	getPlanProjectMappings,
 	toggleStar as toggleStarInDb,
 	getStarredSessions as getStarredSessionsFromDb,
 	searchMessageContentDb,
 	getIncompleteTasksGroupedByProject,
-	getTasksForProject,
-	getTaskCountsForProject,
-	listBranchesForProject,
 } from './db/queries';
 
 async function claudeDirs() {
@@ -122,98 +117,6 @@ export const getMemories = createServerFn({method: 'GET'}).handler(async () => {
 		})),
 	}));
 });
-
-export const getProject = createServerFn({method: 'GET'})
-	.inputValidator(z.string())
-	.handler(async ({data: projectId}) => {
-		const {projectsDir, plansDir, join} = await claudeDirs();
-		const {getDb} = await import('./db');
-		const {index} = getDb();
-		const detail = getProjectDetailFromDb(index, projectId);
-		if (!detail) return null;
-
-		// Get memories from filesystem (still user-editable .md files)
-		const memDir = join(projectsDir, projectId, 'memory');
-		const memories: Array<{
-			filename: string;
-			title: string;
-			mtime: string;
-			project: string;
-		}> = [];
-		try {
-			const {readdir, stat} = await import('node:fs/promises');
-			const files = await readdir(memDir);
-			const mdFiles = files.filter((f) => f.endsWith('.md'));
-			for (const filename of mdFiles) {
-				try {
-					const fileStat = await stat(join(memDir, filename));
-					memories.push({
-						filename,
-						title: filename.replace(/\.md$/, ''),
-						mtime: fileStat.mtime.toISOString(),
-						project: projectId,
-					});
-				} catch {
-					// skip
-				}
-			}
-			memories.sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime());
-		} catch {
-			// no memory dir
-		}
-
-		const allSubagents = getSubagentsForProject(index, projectId);
-		const subagentCountBySession = new Map<string, number>();
-		for (const a of allSubagents) {
-			subagentCountBySession.set(a.sessionId, (subagentCountBySession.get(a.sessionId) ?? 0) + 1);
-		}
-
-		const rawTodos = getTasksForProject(index, detail.name);
-		const todoCounts = getTaskCountsForProject(index, detail.name);
-		const [{renderInlineMarkdown, renderMarkdown}, {extractTitle}] = await Promise.all([
-			import('./renderer'),
-			import('./markdown-utils'),
-		]);
-		const todos = await Promise.all(
-			rawTodos.map(async (task) => ({
-				...task,
-				subjectHtml: await renderInlineMarkdown(task.subject),
-				descriptionHtml: await renderMarkdown(task.description),
-			})),
-		);
-
-		return {
-			id: detail.id,
-			name: detail.name,
-			projectPath: detail.projectPath,
-			subagentCount: detail.subagentCount,
-			sessions: detail.sessions.map((s) => ({
-				id: s.id,
-				title: s.title,
-				summary: s.summary,
-				mtime: s.mtime.toISOString(),
-				created: s.created.toISOString(),
-				messageCount: s.messageCount,
-				gitBranch: s.gitBranch,
-				subagentCount: subagentCountBySession.get(s.id) ?? 0,
-			})),
-			memories,
-			todos,
-			todoCounts,
-			plans: await Promise.all(
-				[...new Map(detail.planLinks.map((p) => [p.planFilename, p])).values()].map(async (p) => {
-					const planPath = join(plansDir, p.planFilename);
-					const title = await extractTitle(planPath, p.planFilename);
-					return {
-						filename: p.planFilename,
-						title,
-						sessionId: p.sessionId,
-						projectName: p.projectName,
-					};
-				}),
-			),
-		};
-	});
 
 export const searchSessions = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
@@ -539,126 +442,6 @@ export const getProjectMemoriesList = createServerFn({method: 'GET'})
 		memories.sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime());
 
 		return {project: projectScopeBase(detail), memories};
-	});
-
-export const getProjectPlansList = createServerFn({method: 'GET'})
-	.inputValidator(z.string())
-	.handler(async ({data: projectId}) => {
-		const {plansDir, join} = await claudeDirs();
-		const {getDb} = await import('./db');
-		const {index} = getDb();
-		const detail = getProjectDetailFromDb(index, projectId);
-		if (!detail) return null;
-
-		const uniqueLinks = [...new Map(detail.planLinks.map((p) => [p.planFilename, p])).values()];
-		const {stat} = await import('node:fs/promises');
-		const {extractTitle} = await import('./markdown-utils');
-		const plans = await Promise.all(
-			uniqueLinks.map(async (p) => {
-				const planPath = join(plansDir, p.planFilename);
-				const [statResult, title] = await Promise.all([
-					stat(planPath).catch(() => null),
-					extractTitle(planPath, p.planFilename),
-				]);
-				return {
-					filename: p.planFilename,
-					title,
-					mtime: statResult ? statResult.mtime.toISOString() : null,
-					sessionId: p.sessionId,
-				};
-			}),
-		);
-
-		plans.sort((a, b) => {
-			if (a.mtime && b.mtime) return new Date(b.mtime).getTime() - new Date(a.mtime).getTime();
-			if (a.mtime) return -1;
-			if (b.mtime) return 1;
-			return a.filename.localeCompare(b.filename);
-		});
-
-		return {project: projectScopeBase(detail), plans};
-	});
-
-export const getProjectSessionsList = createServerFn({method: 'GET'})
-	.inputValidator(z.string())
-	.handler(async ({data: projectId}) => {
-		const {getDb} = await import('./db');
-		const {index} = getDb();
-		const detail = getProjectDetailFromDb(index, projectId);
-		if (!detail) return null;
-
-		const sessions = listSessionsForProjectFromDb(index, projectId);
-		const allSubagents = getSubagentsForProject(index, projectId);
-		const subagentBySession = new Map<string, number>();
-		for (const a of allSubagents) {
-			subagentBySession.set(a.sessionId, (subagentBySession.get(a.sessionId) ?? 0) + 1);
-		}
-
-		return {
-			project: projectScopeBase(detail),
-			sessions: sessions.map((s) => ({
-				id: s.id,
-				title: s.title,
-				summary: s.summary,
-				mtime: s.mtime.toISOString(),
-				created: s.created.toISOString(),
-				messageCount: s.messageCount,
-				gitBranch: s.gitBranch,
-				subagentCount: subagentBySession.get(s.id) ?? 0,
-			})),
-		};
-	});
-
-export const getProjectBranches = createServerFn({method: 'GET'})
-	.inputValidator(z.string())
-	.handler(async ({data: projectId}) => {
-		const {getDb} = await import('./db');
-		const {index} = getDb();
-		const branches = listBranchesForProject(index, projectId);
-		return branches.map((b) => ({
-			branch: b.branch,
-			sessionCount: b.sessionCount,
-			lastActivity: new Date(b.lastActivity).toISOString(),
-		}));
-	});
-
-export const getProjectSubagents = createServerFn({method: 'GET'})
-	.inputValidator(z.string())
-	.handler(async ({data: projectId}) => {
-		const {getDb} = await import('./db');
-		const {index} = getDb();
-		const detail = getProjectDetailFromDb(index, projectId);
-		if (!detail) return null;
-
-		const agents = getSubagentsForProject(index, projectId);
-
-		return {
-			project: projectScopeBase(detail),
-			agents,
-			subagentCount: agents.length,
-		};
-	});
-
-export const getProjectTasksDetailed = createServerFn({method: 'GET'})
-	.inputValidator(z.string())
-	.handler(async ({data: projectId}) => {
-		const {getDb} = await import('./db');
-		const {index} = getDb();
-		const detail = getProjectDetailFromDb(index, projectId);
-		if (!detail) return null;
-
-		const rawTodos = getTasksForProject(index, detail.name);
-		const todoCounts = getTaskCountsForProject(index, detail.name);
-		const {renderInlineMarkdown, renderMarkdown} = await import('./renderer');
-		const todos = await Promise.all(
-			rawTodos.map(async (task) => ({
-				...task,
-				subjectHtml: await renderInlineMarkdown(task.subject),
-				descriptionHtml: await renderMarkdown(task.description),
-			})),
-		);
-
-		return {project: projectScopeBase(detail), todos, todoCounts};
 	});
 
 // ---------------------------------------------------------------------------

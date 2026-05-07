@@ -1,19 +1,40 @@
 import {Link} from '@tanstack/react-router';
-import {useQuery, useQueryClient} from '@tanstack/react-query';
+import {useQuery, useQueryClient, queryOptions} from '@tanstack/react-query';
 import {ChevronRight, GitBranch} from 'lucide-react';
 import {useEffect, useMemo, useState} from 'react';
-import {projectQueryOptions, projectBranchesQueryOptions} from '../../../queries/projects';
-import {projectsQueryOptions} from '../../../lib/api/projects';
+import {
+	projectsQueryOptions,
+	projectSessionsQueryOptions,
+	projectPlansQueryOptions,
+	projectTasksQueryOptions,
+	projectBranchesQueryOptions,
+} from '../../../lib/api/projects';
+import {getProjectMemoriesList} from '../../../lib/server-fns';
 import type {ProjectDetail} from '../types';
 import {LoadingBars} from '../primitives/LoadingBars';
+
+const projectMemoriesQueryOptions = (id: string) =>
+	queryOptions({
+		queryKey: ['projects', id, 'memories'] as const,
+		queryFn: () => getProjectMemoriesList({data: id}),
+		staleTime: Infinity,
+		gcTime: Infinity,
+	});
+
+function prefetchProjectDetail(queryClient: ReturnType<typeof useQueryClient>, projectId: string) {
+	void queryClient.prefetchQuery(projectSessionsQueryOptions(projectId));
+	void queryClient.prefetchQuery(projectPlansQueryOptions(projectId));
+	void queryClient.prefetchQuery(projectTasksQueryOptions(projectId));
+	void queryClient.prefetchQuery(projectMemoriesQueryOptions(projectId));
+}
 
 export function ProjectsSubList({activeItemId}: {activeItemId: string | null}) {
 	const {data: projects} = useQuery(projectsQueryOptions());
 	const queryClient = useQueryClient();
 	const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 
-	// Auto-expand the active project and prefetch its detail into the shared
-	// TanStack Query cache so sidebar + /project/$id share the same data.
+	// Auto-expand the active project and prefetch its sub-resources into the
+	// shared TanStack Query cache so sidebar + /project/$id share data.
 	useEffect(() => {
 		if (!projects || !activeItemId) return;
 
@@ -21,7 +42,7 @@ export function ProjectsSubList({activeItemId}: {activeItemId: string | null}) {
 		if (!activeProject) return;
 
 		setExpandedProjects((prev) => (prev.has(activeProject.id) ? prev : new Set(prev).add(activeProject.id)));
-		void queryClient.prefetchQuery(projectQueryOptions(activeProject.id));
+		prefetchProjectDetail(queryClient, activeProject.id);
 	}, [activeItemId, projects, queryClient]);
 
 	function toggleProject(projectId: string) {
@@ -35,8 +56,7 @@ export function ProjectsSubList({activeItemId}: {activeItemId: string | null}) {
 		}
 
 		setExpandedProjects((prev) => new Set(prev).add(projectId));
-		// Prefetch the project detail through the shared query cache.
-		void queryClient.prefetchQuery(projectQueryOptions(projectId));
+		prefetchProjectDetail(queryClient, projectId);
 	}
 
 	if (projects === undefined) {
@@ -101,8 +121,8 @@ export function ProjectsSubList({activeItemId}: {activeItemId: string | null}) {
 	);
 }
 
-// Per-project expanded detail reads from the shared project query cache so
-// sidebar + /project/$id route share a single fetch per project.
+// Per-project expanded detail reads from shared sub-resource query caches so
+// sidebar + /project/$id route share fetches per project.
 function ExpandedProjectDetail({
 	projectId,
 	labelClass,
@@ -112,27 +132,36 @@ function ExpandedProjectDetail({
 	labelClass: string;
 	linkClass: (isActive: boolean) => string;
 }) {
-	const {data: raw, isFetching} = useQuery(projectQueryOptions(projectId));
-
+	const {data: sessions, isFetching: isFetchingSessions} = useQuery(projectSessionsQueryOptions(projectId));
+	const {data: plans} = useQuery(projectPlansQueryOptions(projectId));
+	const {data: tasksData} = useQuery(projectTasksQueryOptions(projectId));
+	const {data: memoriesData} = useQuery(projectMemoriesQueryOptions(projectId));
 	const {data: branches} = useQuery(projectBranchesQueryOptions(projectId));
 
 	const detail: ProjectDetail | undefined = useMemo(() => {
-		if (!raw) return undefined;
+		if (!sessions || !plans || !tasksData || !memoriesData) return undefined;
 		return {
-			sessions: raw.sessions.map((s) => ({id: s.id, title: s.title, gitBranch: s.gitBranch})),
-			plans: raw.plans.map((p) => ({filename: p.filename, title: p.title})),
-			memories: raw.memories.map((m) => ({
+			sessions: sessions.map((s) => {
+				const item: {id: string; title: string; gitBranch?: string | undefined} = {
+					id: s.id,
+					title: s.title,
+				};
+				if (s.gitBranch !== undefined) item.gitBranch = s.gitBranch;
+				return item;
+			}),
+			plans: plans.map((p) => ({filename: p.filename, title: p.title})),
+			memories: (memoriesData?.memories ?? []).map((m) => ({
 				filename: m.filename,
 				title: m.title,
 				project: m.project,
 			})),
-			todoCounts: raw.todoCounts,
+			todoCounts: tasksData.todoCounts,
 		};
-	}, [raw]);
+	}, [sessions, plans, tasksData, memoriesData]);
 
 	return (
 		<div className="pl-4">
-			{!detail && isFetching && <LoadingBars />}
+			{!detail && isFetchingSessions && <LoadingBars />}
 			{detail && (
 				<>
 					{branches && branches.length > 1 && (

@@ -1,0 +1,44 @@
+import {createFileRoute} from '@tanstack/react-router';
+import {ProjectTasksResponse} from '../../lib/api/projects';
+
+export const Route = createFileRoute('/api/projects/$id/tasks')({
+	server: {
+		handlers: {
+			GET: async ({params}: {params: {id: string}}) => {
+				const {getDb} = await import('../../lib/db');
+				const {getProjectDetailFromDb, getTasksForProject, getTaskCountsForProject} = await import(
+					'../../lib/db/queries'
+				);
+				const {renderInlineMarkdown, renderMarkdown} = await import('../../lib/renderer');
+
+				const {index} = getDb();
+				const detail = getProjectDetailFromDb(index, params.id);
+
+				if (!detail) {
+					return Response.json(
+						ProjectTasksResponse.parse({
+							todos: [],
+							todoCounts: {total: 0, pending: 0, inProgress: 0, completed: 0},
+						}),
+						{headers: {'Cache-Control': 'private, max-age=0, must-revalidate'}},
+					);
+				}
+
+				const rawTodos = getTasksForProject(index, detail.name);
+				const todoCounts = getTaskCountsForProject(index, detail.name);
+
+				const todos = await Promise.all(
+					rawTodos.map(async (task) => ({
+						...task,
+						subjectHtml: await renderInlineMarkdown(task.subject),
+						descriptionHtml: await renderMarkdown(task.description),
+					})),
+				);
+
+				return Response.json(ProjectTasksResponse.parse({todos, todoCounts}), {
+					headers: {'Cache-Control': 'private, max-age=0, must-revalidate'},
+				});
+			},
+		},
+	},
+});

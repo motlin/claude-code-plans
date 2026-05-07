@@ -1,21 +1,30 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
+import {useSuspenseQuery} from '@tanstack/react-query';
 import {ArrowLeft} from 'lucide-react';
-import {getProjectSubagents} from '../lib/server-fns';
+import {projectDetailQueryOptions, projectSubagentsQueryOptions} from '../lib/api/projects';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {SubagentGantt} from '../components/subagent-gantt';
 
 export const Route = createFileRoute('/project/$id_/subagents')({
 	component: ProjectSubagentsPage,
-	loader: ({params}) => getProjectSubagents({data: params.id}),
+	loader: async ({context: {queryClient}, params}) => {
+		const [detail] = await Promise.all([
+			queryClient.ensureQueryData(projectDetailQueryOptions(params.id)),
+			queryClient.ensureQueryData(projectSubagentsQueryOptions(params.id)),
+		]);
+		return detail;
+	},
 	head: ({loaderData}) => ({
-		meta: [{title: loaderData ? `${loaderData.project.name} subagents` : 'Project Not Found'}],
+		meta: [{title: loaderData ? `${loaderData.name} subagents` : 'Project Not Found'}],
 	}),
 });
 
 function ProjectSubagentsPage() {
-	const data = Route.useLoaderData();
+	const {id} = Route.useParams();
+	const {data: project} = useSuspenseQuery(projectDetailQueryOptions(id));
+	const {data: agents} = useSuspenseQuery(projectSubagentsQueryOptions(id));
 
-	if (!data) {
+	if (!project) {
 		return (
 			<div>
 				<DetailTopBar>
@@ -32,7 +41,7 @@ function ProjectSubagentsPage() {
 		);
 	}
 
-	const {project, agents, subagentCount} = data;
+	const subagentCount = agents.length;
 
 	return (
 		<div>

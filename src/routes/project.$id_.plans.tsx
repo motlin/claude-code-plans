@@ -1,14 +1,21 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
+import {useSuspenseQuery} from '@tanstack/react-query';
 import {ArrowLeft} from 'lucide-react';
-import {getProjectPlansList} from '../lib/server-fns';
+import {projectDetailQueryOptions, projectPlansQueryOptions} from '../lib/api/projects';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {DebugLink} from '../components/debug-link';
 
 export const Route = createFileRoute('/project/$id_/plans')({
 	component: ProjectPlansPage,
-	loader: ({params}) => getProjectPlansList({data: params.id}),
+	loader: async ({context: {queryClient}, params}) => {
+		const [detail] = await Promise.all([
+			queryClient.ensureQueryData(projectDetailQueryOptions(params.id)),
+			queryClient.ensureQueryData(projectPlansQueryOptions(params.id)),
+		]);
+		return detail;
+	},
 	head: ({loaderData}) => ({
-		meta: [{title: loaderData ? `${loaderData.project.name} plans` : 'Project Not Found'}],
+		meta: [{title: loaderData ? `${loaderData.name} plans` : 'Project Not Found'}],
 	}),
 });
 
@@ -23,9 +30,11 @@ function formatDate(iso: string): string {
 }
 
 function ProjectPlansPage() {
-	const data = Route.useLoaderData();
+	const {id} = Route.useParams();
+	const {data: project} = useSuspenseQuery(projectDetailQueryOptions(id));
+	const {data: plans} = useSuspenseQuery(projectPlansQueryOptions(id));
 
-	if (!data) {
+	if (!project) {
 		return (
 			<div>
 				<DetailTopBar>
@@ -42,7 +51,6 @@ function ProjectPlansPage() {
 		);
 	}
 
-	const {project, plans} = data;
 	const count = plans.length;
 
 	return (

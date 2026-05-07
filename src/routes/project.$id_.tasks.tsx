@@ -1,15 +1,22 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
+import {useSuspenseQuery} from '@tanstack/react-query';
 import {ArrowLeft, CheckCircle, Circle, Ban} from 'lucide-react';
 import styles from '../components/markdown-article.module.css';
-import {getProjectTasksDetailed} from '../lib/server-fns';
+import {projectDetailQueryOptions, projectTasksQueryOptions} from '../lib/api/projects';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {DebugLink} from '../components/debug-link';
 
 export const Route = createFileRoute('/project/$id_/tasks')({
 	component: ProjectTasksPage,
-	loader: ({params}) => getProjectTasksDetailed({data: params.id}),
+	loader: async ({context: {queryClient}, params}) => {
+		const [detail] = await Promise.all([
+			queryClient.ensureQueryData(projectDetailQueryOptions(params.id)),
+			queryClient.ensureQueryData(projectTasksQueryOptions(params.id)),
+		]);
+		return detail;
+	},
 	head: ({loaderData}) => ({
-		meta: [{title: loaderData ? `${loaderData.project.name} tasks` : 'Project Not Found'}],
+		meta: [{title: loaderData ? `${loaderData.name} tasks` : 'Project Not Found'}],
 	}),
 });
 
@@ -26,9 +33,11 @@ const statusLabel: Record<string, string> = {
 };
 
 function ProjectTasksPage() {
-	const data = Route.useLoaderData();
+	const {id} = Route.useParams();
+	const {data: project} = useSuspenseQuery(projectDetailQueryOptions(id));
+	const {data: tasksData} = useSuspenseQuery(projectTasksQueryOptions(id));
 
-	if (!data) {
+	if (!project) {
 		return (
 			<div>
 				<DetailTopBar>
@@ -45,7 +54,7 @@ function ProjectTasksPage() {
 		);
 	}
 
-	const {project, todos, todoCounts} = data;
+	const {todos, todoCounts} = tasksData;
 
 	return (
 		<div>

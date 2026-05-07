@@ -1,19 +1,11 @@
-import {queryOptions} from '@tanstack/react-query';
-import {getProject, getProjectBranches} from '../lib/server-fns';
-
-const BRANCHES_STALE_TIME_MS = 30_000;
-
-export const projectQueryOptions = (id: string) =>
-	queryOptions({
-		queryKey: ['project', id] as const,
-		queryFn: () => getProject({data: id}),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
-
-export const projectBranchesQueryOptions = (projectId: string) =>
-	queryOptions({
-		queryKey: ['project-branches', projectId] as const,
-		queryFn: () => getProjectBranches({data: projectId}),
-		staleTime: BRANCHES_STALE_TIME_MS,
-	});
+// This file is retained as a compatibility shim while Phase 2c migrates
+// `getProject` and friends to REST endpoints. Re-export the new query options
+// so existing imports keep working until callers are updated.
+export {
+	projectDetailQueryOptions,
+	projectBranchesQueryOptions,
+	projectSessionsQueryOptions,
+	projectPlansQueryOptions,
+	projectSubagentsQueryOptions,
+	projectTasksQueryOptions,
+} from '../lib/api/projects';

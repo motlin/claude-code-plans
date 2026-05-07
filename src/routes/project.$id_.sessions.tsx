@@ -1,8 +1,9 @@
 import {createFileRoute, Link, useNavigate} from '@tanstack/react-router';
+import {useSuspenseQuery} from '@tanstack/react-query';
 import {ArrowLeft, GitBranch, X} from 'lucide-react';
 import {useMemo} from 'react';
 import {z} from 'zod';
-import {getProjectSessionsList} from '../lib/server-fns';
+import {projectDetailQueryOptions, projectSessionsQueryOptions} from '../lib/api/projects';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {useClaudeEvents} from '../hooks/use-claude-events';
 
@@ -13,9 +14,15 @@ const sessionsSearchSchema = z.object({
 export const Route = createFileRoute('/project/$id_/sessions')({
 	component: ProjectSessionsPage,
 	validateSearch: sessionsSearchSchema,
-	loader: ({params}) => getProjectSessionsList({data: params.id}),
+	loader: async ({context: {queryClient}, params}) => {
+		const [detail] = await Promise.all([
+			queryClient.ensureQueryData(projectDetailQueryOptions(params.id)),
+			queryClient.ensureQueryData(projectSessionsQueryOptions(params.id)),
+		]);
+		return detail;
+	},
 	head: ({loaderData}) => ({
-		meta: [{title: loaderData ? `${loaderData.project.name} sessions` : 'Project Not Found'}],
+		meta: [{title: loaderData ? `${loaderData.name} sessions` : 'Project Not Found'}],
 	}),
 });
 
@@ -30,13 +37,30 @@ function formatDate(iso: string): string {
 }
 
 function ProjectSessionsPage() {
-	const data = Route.useLoaderData();
+	const {id} = Route.useParams();
+	const {data: project} = useSuspenseQuery(projectDetailQueryOptions(id));
+	const {data: allSessions} = useSuspenseQuery(projectSessionsQueryOptions(id));
 	const {branch} = Route.useSearch();
 	const navigate = useNavigate();
 	const {activeSessions} = useClaudeEvents();
 	const activeIds = new Set(activeSessions.keys());
 
-	if (!data) {
+	const sessions = useMemo(
+		() => (branch ? allSessions.filter((s) => s.gitBranch === branch) : allSessions),
+		[allSessions, branch],
+	);
+
+	const uniqueBranches = useMemo(() => {
+		const counts = new Map<string, number>();
+		for (const s of allSessions) {
+			if (s.gitBranch) {
+				counts.set(s.gitBranch, (counts.get(s.gitBranch) ?? 0) + 1);
+			}
+		}
+		return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+	}, [allSessions]);
+
+	if (!project) {
 		return (
 			<div>
 				<DetailTopBar>
@@ -52,22 +76,6 @@ function ProjectSessionsPage() {
 			</div>
 		);
 	}
-
-	const {project, sessions: allSessions} = data;
-	const sessions = useMemo(
-		() => (branch ? allSessions.filter((s) => s.gitBranch === branch) : allSessions),
-		[allSessions, branch],
-	);
-
-	const uniqueBranches = useMemo(() => {
-		const counts = new Map<string, number>();
-		for (const s of allSessions) {
-			if (s.gitBranch) {
-				counts.set(s.gitBranch, (counts.get(s.gitBranch) ?? 0) + 1);
-			}
-		}
-		return [...counts.entries()].sort((a, b) => b[1] - a[1]);
-	}, [allSessions]);
 
 	return (
 		<div>

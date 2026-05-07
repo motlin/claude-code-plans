@@ -1,5 +1,6 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
 import {useSuspenseQuery} from '@tanstack/react-query';
+import {queryOptions} from '@tanstack/react-query';
 import {
 	ArrowLeft,
 	ArrowRight,
@@ -12,12 +13,35 @@ import {
 	MessageSquare,
 } from 'lucide-react';
 import type {ComponentType, SVGProps} from 'react';
-import {projectQueryOptions} from '../queries/projects';
+import {
+	projectDetailQueryOptions,
+	projectSessionsQueryOptions,
+	projectPlansQueryOptions,
+	projectTasksQueryOptions,
+} from '../lib/api/projects';
+import {getProjectMemoriesList} from '../lib/server-fns';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
+
+const projectMemoriesQueryOptions = (id: string) =>
+	queryOptions({
+		queryKey: ['projects', id, 'memories'] as const,
+		queryFn: () => getProjectMemoriesList({data: id}),
+		staleTime: Infinity,
+		gcTime: Infinity,
+	});
 
 export const Route = createFileRoute('/project/$id')({
 	component: ProjectPage,
-	loader: ({context: {queryClient}, params}) => queryClient.ensureQueryData(projectQueryOptions(params.id)),
+	loader: async ({context: {queryClient}, params}) => {
+		const [detail] = await Promise.all([
+			queryClient.ensureQueryData(projectDetailQueryOptions(params.id)),
+			queryClient.ensureQueryData(projectSessionsQueryOptions(params.id)),
+			queryClient.ensureQueryData(projectPlansQueryOptions(params.id)),
+			queryClient.ensureQueryData(projectTasksQueryOptions(params.id)),
+			queryClient.ensureQueryData(projectMemoriesQueryOptions(params.id)),
+		]);
+		return detail;
+	},
 	head: ({loaderData}) => ({
 		meta: [{title: loaderData?.name ?? 'Project Not Found'}],
 	}),
@@ -66,9 +90,13 @@ function NavCard({to, params, icon: Icon, label, count, hint}: NavCardProps) {
 
 function ProjectPage() {
 	const {id} = Route.useParams();
-	const {data} = useSuspenseQuery(projectQueryOptions(id));
+	const {data: detail} = useSuspenseQuery(projectDetailQueryOptions(id));
+	const {data: sessions} = useSuspenseQuery(projectSessionsQueryOptions(id));
+	const {data: plans} = useSuspenseQuery(projectPlansQueryOptions(id));
+	const {data: tasksData} = useSuspenseQuery(projectTasksQueryOptions(id));
+	const {data: memoriesData} = useSuspenseQuery(projectMemoriesQueryOptions(id));
 
-	if (!data) {
+	if (!detail) {
 		return (
 			<div>
 				<DetailTopBar>
@@ -86,14 +114,16 @@ function ProjectPage() {
 		);
 	}
 
-	const planCount = new Set(data.plans.map((p) => p.filename)).size;
+	const memories = memoriesData?.memories ?? [];
+	const {todos, todoCounts} = tasksData;
+	const planCount = new Set(plans.map((p) => p.filename)).size;
 	const taskHint =
-		data.todoCounts.inProgress > 0
-			? `${data.todoCounts.inProgress} in progress, ${data.todoCounts.pending} pending`
-			: data.todoCounts.pending > 0
-				? `${data.todoCounts.pending} pending`
-				: data.todoCounts.completed > 0
-					? `${data.todoCounts.completed} completed`
+		todoCounts.inProgress > 0
+			? `${todoCounts.inProgress} in progress, ${todoCounts.pending} pending`
+			: todoCounts.pending > 0
+				? `${todoCounts.pending} pending`
+				: todoCounts.completed > 0
+					? `${todoCounts.completed} completed`
 					: undefined;
 
 	return (
@@ -108,47 +138,47 @@ function ProjectPage() {
 				</Link>
 			</DetailTopBar>
 
-			<h1 className="text-lg font-semibold">{data.name}</h1>
-			{data.projectPath && <p className="mt-0.5 text-xs text-text-500">{data.projectPath}</p>}
+			<h1 className="text-lg font-semibold">{detail.name}</h1>
+			{detail.projectPath && <p className="mt-0.5 text-xs text-text-500">{detail.projectPath}</p>}
 
 			{/* Sub-route nav cards */}
 			<div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
 				<NavCard
 					to="/project/$id/sessions"
-					params={{id: data.id}}
+					params={{id: detail.id}}
 					icon={MessageSquare}
 					label="Sessions"
-					count={data.sessions.length}
+					count={sessions.length}
 				/>
 				<NavCard
 					to="/project/$id/tasks"
-					params={{id: data.id}}
+					params={{id: detail.id}}
 					icon={CheckSquare}
 					label="Tasks"
-					count={data.todoCounts.total}
+					count={todoCounts.total}
 					{...(taskHint ? {hint: taskHint} : {})}
 				/>
 				<NavCard
 					to="/project/$id/memories"
-					params={{id: data.id}}
+					params={{id: detail.id}}
 					icon={Brain}
 					label="Memories"
-					count={data.memories.length}
+					count={memories.length}
 				/>
 				<NavCard
 					to="/project/$id/plans"
-					params={{id: data.id}}
+					params={{id: detail.id}}
 					icon={FileText}
 					label="Plans"
 					count={planCount}
 				/>
-				{data.subagentCount > 0 && (
+				{detail.subagentCount > 0 && (
 					<NavCard
 						to="/project/$id/subagents"
-						params={{id: data.id}}
+						params={{id: detail.id}}
 						icon={Bot}
 						label="Subagents"
-						count={data.subagentCount}
+						count={detail.subagentCount}
 					/>
 				)}
 			</div>
@@ -156,13 +186,13 @@ function ProjectPage() {
 			{/* Sessions */}
 			<section className="mt-8">
 				<h2 className="border-b border-border-300/15 pb-1 text-sm font-semibold">
-					Sessions ({data.sessions.length})
+					Sessions ({sessions.length})
 				</h2>
-				{data.sessions.length === 0 ? (
+				{sessions.length === 0 ? (
 					<p className="mt-2 text-sm text-text-500">No sessions.</p>
 				) : (
 					<ul className="mt-2 space-y-1">
-						{data.sessions.map((sess) => (
+						{sessions.map((sess) => (
 							<li key={sess.id}>
 								<Link
 									to="/session/$id"
@@ -214,10 +244,10 @@ function ProjectPage() {
 			</section>
 
 			{/* Subagents */}
-			{data.subagentCount > 0 && (
+			{detail.subagentCount > 0 && (
 				<section className="mt-8">
 					<h2 className="border-b border-border-300/15 pb-1 text-sm font-semibold">
-						Subagents ({data.subagentCount})
+						Subagents ({detail.subagentCount})
 					</h2>
 					<div className="mt-2">
 						<Link
@@ -233,23 +263,21 @@ function ProjectPage() {
 			)}
 
 			{/* Tasks */}
-			{data.todos.length > 0 && (
+			{todos.length > 0 && (
 				<section className="mt-8">
 					<h2 className="border-b border-border-300/15 pb-1 text-sm font-semibold">
-						Tasks ({data.todoCounts.total})
-						{data.todoCounts.pending > 0 && (
-							<span className="ml-2 text-xs font-normal text-text-500">
-								{data.todoCounts.pending} pending
-							</span>
+						Tasks ({todoCounts.total})
+						{todoCounts.pending > 0 && (
+							<span className="ml-2 text-xs font-normal text-text-500">{todoCounts.pending} pending</span>
 						)}
-						{data.todoCounts.inProgress > 0 && (
+						{todoCounts.inProgress > 0 && (
 							<span className="ml-2 text-xs font-normal text-blue-500">
-								{data.todoCounts.inProgress} in progress
+								{todoCounts.inProgress} in progress
 							</span>
 						)}
 					</h2>
 					<div className="mt-2 space-y-1">
-						{data.todos.map((task) => (
+						{todos.map((task) => (
 							<div
 								key={task.taskId}
 								className="flex items-start gap-2 rounded-md p-2"
@@ -280,13 +308,13 @@ function ProjectPage() {
 			{/* Memories */}
 			<section className="mt-8">
 				<h2 className="border-b border-border-300/15 pb-1 text-sm font-semibold">
-					Memories ({data.memories.length})
+					Memories ({memories.length})
 				</h2>
-				{data.memories.length === 0 ? (
+				{memories.length === 0 ? (
 					<p className="mt-2 text-sm text-text-500">No memories.</p>
 				) : (
 					<ul className="mt-2 space-y-1">
-						{data.memories.map((mem) => (
+						{memories.map((mem) => (
 							<li key={mem.filename}>
 								<Link
 									to="/memory/$project/$filename"
@@ -308,13 +336,13 @@ function ProjectPage() {
 			</section>
 
 			{/* Linked Plans */}
-			{data.plans.length > 0 && (
+			{plans.length > 0 && (
 				<section className="mt-8">
 					<h2 className="border-b border-border-300/15 pb-1 text-sm font-semibold">
-						Linked Plans ({data.plans.length})
+						Linked Plans ({plans.length})
 					</h2>
 					<ul className="mt-2 space-y-1">
-						{data.plans.map((plan) => (
+						{plans.map((plan) => (
 							<li key={plan.filename}>
 								<Link
 									to="/plan/$filename"
