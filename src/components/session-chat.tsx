@@ -709,12 +709,62 @@ function TruncatedContent({
 	);
 }
 
+type UserContentKind =
+	| 'command'
+	| 'bash'
+	| 'text'
+	| 'tool-result-only'
+	| 'request-interrupted'
+	| 'compact-summary'
+	| 'stop-hook'
+	| 'slash-command-body';
+
+const REQUEST_INTERRUPTED_RE = /^\[Request interrupted by user.*\]\s*$/;
+
+function getUserContentText(line: MessageSessionLine): string {
+	const content = line.message?.content;
+	if (!content) return '';
+	if (typeof content === 'string') return content;
+	const parts: string[] = [];
+	for (const block of content) {
+		if (block.type === 'text' && typeof block.text === 'string') {
+			parts.push(block.text);
+		}
+	}
+	return parts.join('\n').trim();
+}
+
+function hasDocumentBlock(line: MessageSessionLine): boolean {
+	const content = line.message?.content;
+	if (!content || typeof content === 'string') return false;
+	return content.some((block) => block.type === 'document');
+}
+
 /**
  * Classify a user line's content: is it a command, bash input/output, or regular text?
  */
-function classifyUserContent(line: MessageSessionLine): 'command' | 'bash' | 'text' | 'tool-result-only' {
+function classifyUserContent(line: MessageSessionLine): UserContentKind {
 	const content = line.message?.content;
 	if (!content) return 'text';
+
+	const text = getUserContentText(line);
+
+	// Compact-summary: explicit flags trump everything.
+	if (line.isCompactSummary === true || line.isVisibleInTranscriptOnly === true) {
+		return 'compact-summary';
+	}
+
+	// Request-interrupted: detect by content text shape.
+	if (text && REQUEST_INTERRUPTED_RE.test(text)) {
+		return 'request-interrupted';
+	}
+
+	// Document attachments are always user-initiated, even when isMeta is set —
+	// otherwise an isMeta line is either stop-hook feedback or a slash-command body.
+	if (line.isMeta === true && !hasDocumentBlock(line)) {
+		if (text.startsWith('Stop hook feedback:')) return 'stop-hook';
+		return 'slash-command-body';
+	}
 
 	if (typeof content === 'string') {
 		if (parseCommandBlock(content)) return 'command';
@@ -802,14 +852,14 @@ function UserEntry({
 		);
 	}
 
-	const isExternal = line.userType === 'external';
-
-	if (isExternal) {
+	if (kind in LABEL_BY_KIND) {
+		const label = LABEL_BY_KIND[kind as LabeledKind];
 		return (
-			<ExternalMessageEntry
+			<LabeledAutomatedEntry
 				line={line}
 				index={index}
 				sessionId={sessionId}
+				label={label}
 			/>
 		);
 	}
@@ -833,7 +883,26 @@ function UserEntry({
 	);
 }
 
-function ExternalMessageEntry({line, index, sessionId}: {line: MessageSessionLine; index: number; sessionId: string}) {
+type LabeledKind = 'request-interrupted' | 'compact-summary' | 'stop-hook' | 'slash-command-body';
+
+const LABEL_BY_KIND: Record<LabeledKind, string> = {
+	'request-interrupted': 'Request interrupted',
+	'compact-summary': 'Compact summary',
+	'stop-hook': 'Stop hook feedback',
+	'slash-command-body': 'Slash command body',
+};
+
+function LabeledAutomatedEntry({
+	line,
+	index,
+	sessionId,
+	label,
+}: {
+	line: MessageSessionLine;
+	index: number;
+	sessionId: string;
+	label: string;
+}) {
 	const timestamp = 'timestamp' in line ? line.timestamp : undefined;
 	const actionsProps = {line, index, ...(timestamp ? {timestamp} : {})};
 	const {textNodes, mediaNodes} = renderUserContentBlocks(line, sessionId);
@@ -845,7 +914,7 @@ function ExternalMessageEntry({line, index, sessionId}: {line: MessageSessionLin
 			<div className="flex flex-col items-start gap-1 max-w-[85%] min-w-0">
 				<div className="flex items-center gap-1.5 px-1">
 					<span className="text-[10px] font-medium text-text-500 bg-bg-200 rounded-full px-2 py-0.5">
-						Automated
+						{label}
 					</span>
 				</div>
 				{textNodes.length > 0 && (
