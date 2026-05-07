@@ -2,12 +2,13 @@ import {Link} from '@tanstack/react-router';
 import {useQuery, useQueryClient} from '@tanstack/react-query';
 import {ChevronRight, GitBranch} from 'lucide-react';
 import {useEffect, useMemo, useState} from 'react';
-import {projectQueryOptions, projectsQueryOptions, projectBranchesQueryOptions} from '../../../queries/projects';
+import {projectQueryOptions, projectBranchesQueryOptions} from '../../../queries/projects';
+import {projectsQueryOptions} from '../../../lib/api/projects';
 import type {ProjectDetail} from '../types';
 import {LoadingBars} from '../primitives/LoadingBars';
 
 export function ProjectsSubList({activeItemId}: {activeItemId: string | null}) {
-	const {data: projects} = useQuery(projectsQueryOptions);
+	const {data: projects} = useQuery(projectsQueryOptions());
 	const queryClient = useQueryClient();
 	const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 

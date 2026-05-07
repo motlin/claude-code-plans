@@ -1,6 +1,6 @@
 import type {Meta, StoryObj} from '@storybook/react-vite';
 import {ProjectsSubList} from '../../components/sidebar/sublists/ProjectsSubList';
-import {projectsQueryOptions} from '../../queries/projects';
+import {projectsQueryOptions} from '../../lib/api/projects';
 import {createStoryQueryClient, StoryWrapper} from './decorators';
 
 const meta = {
@@ -14,7 +14,7 @@ type Story = StoryObj;
 export const WithProjects: Story = {
 	render: () => {
 		const queryClient = createStoryQueryClient();
-		queryClient.setQueryData(projectsQueryOptions.queryKey, [
+		queryClient.setQueryData(projectsQueryOptions().queryKey, [
 			{
 				id: 'proj-1',
 				name: 'claude-code-plans',
@@ -49,7 +49,7 @@ export const WithProjects: Story = {
 export const Empty: Story = {
 	render: () => {
 		const queryClient = createStoryQueryClient();
-		queryClient.setQueryData(projectsQueryOptions.queryKey, [] as never[]);
+		queryClient.setQueryData(projectsQueryOptions().queryKey, [] as never[]);
 		return (
 			<StoryWrapper queryClient={queryClient}>
 				<ProjectsSubList activeItemId={null} />

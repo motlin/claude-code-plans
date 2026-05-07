@@ -1,30 +1,11 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {createServerFn} from '@tanstack/react-start';
-import {queryOptions, useSuspenseQuery} from '@tanstack/react-query';
-import {renderMarkdown} from '../lib/renderer';
-import {MarkdownArticle} from '../components/markdown-article';
-import {getPlanLinks} from '../lib/server-fns';
+import {useSuspenseQuery} from '@tanstack/react-query';
+import {MarkdownView} from '../components/markdown-view';
+import {planQueryOptions, planLinksQueryOptions} from '../lib/api/plans';
+import {stripLeadingTitleHeading} from '../lib/markdown-utils';
 import {ArrowLeft, Pencil, FolderOpen, MessageSquare, Clock} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {DebugLink} from '../components/debug-link';
-
-const getPlan = createServerFn({method: 'GET'})
-	.inputValidator((d: string) => d)
-	.handler(async ({data: filename}) => {
-		const {homedir} = await import('node:os');
-		const {join} = await import('node:path');
-		const {readPlan, getPlanMtime} = await import('../lib/plans');
-		const {extractTitleFromContent, stripLeadingTitleHeading} = await import('../lib/markdown-utils');
-		const plansDir = join(homedir(), '.claude', 'plans');
-		const content = await readPlan(plansDir, filename);
-		if (!content) return null;
-		const title = extractTitleFromContent(content, filename);
-		const body = stripLeadingTitleHeading(content);
-		const html = await renderMarkdown(body);
-		const links = await getPlanLinks({data: filename});
-		const mtime = await getPlanMtime(plansDir, filename);
-		return {html, title, links, mtime: mtime?.toISOString() ?? null};
-	});
 
 function formatDate(iso: string): string {
 	return new Date(iso).toLocaleDateString('en-US', {
@@ -37,36 +18,24 @@ function formatDate(iso: string): string {
 	});
 }
 
-const planDetailQueryOptions = (filename: string) =>
-	queryOptions({
-		queryKey: ['plan', filename, 'detail'] as const,
-		queryFn: () => getPlan({data: filename}),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
-
 export const Route = createFileRoute('/plan/$filename')({
 	component: PlanPage,
-	loader: ({context: {queryClient}, params}) => queryClient.ensureQueryData(planDetailQueryOptions(params.filename)),
-	head: ({loaderData}) => ({
-		meta: [{title: loaderData?.title ?? 'Plan Not Found'}],
+	loader: ({context: {queryClient}, params}) =>
+		Promise.all([
+			queryClient.ensureQueryData(planQueryOptions(params.filename)),
+			queryClient.ensureQueryData(planLinksQueryOptions(params.filename)),
+		]),
+	head: ({params}) => ({
+		meta: [{title: params.filename}],
 	}),
 });
 
 function PlanPage() {
 	const {filename} = Route.useParams();
-	const {data: loaderData} = useSuspenseQuery(planDetailQueryOptions(filename));
-	const state = Route.useMatch({select: (m) => (m as unknown as {state?: {html?: string; title?: string}}).state});
-	const data = state?.html
-		? {
-				html: state.html,
-				title: state.title ?? loaderData?.title ?? '',
-				links: loaderData?.links ?? [],
-				mtime: loaderData?.mtime ?? null,
-			}
-		: loaderData;
+	const {data: plan} = useSuspenseQuery(planQueryOptions(filename));
+	const {data: links} = useSuspenseQuery(planLinksQueryOptions(filename));
 
-	if (!data) {
+	if (!plan) {
 		return (
 			<div>
 				<DetailTopBar>
@@ -83,6 +52,8 @@ function PlanPage() {
 			</div>
 		);
 	}
+
+	const body = stripLeadingTitleHeading(plan.markdown);
 
 	return (
 		<div>
@@ -104,29 +75,29 @@ function PlanPage() {
 				</Link>
 				<DebugLink
 					kind="plan"
-					relativePath={Route.useParams().filename}
+					relativePath={filename}
 				/>
 			</DetailTopBar>
-			{data.mtime && (
+			{plan.mtime && (
 				<div className="mt-3 flex items-center gap-1.5 text-xs text-text-500">
 					<Clock className="h-3 w-3" />
-					Last modified {formatDate(data.mtime)}
+					Last modified {formatDate(plan.mtime)}
 				</div>
 			)}
-			<h1 className="text-lg font-semibold">{data.title}</h1>
+			<h1 className="text-lg font-semibold">{plan.title}</h1>
 			<p className="text-xs text-text-500">{filename}</p>
 			<div className="mt-4">
-				<MarkdownArticle html={data.html} />
+				<MarkdownView markdown={body} />
 			</div>
 
-			{data.links.length > 0 && (
+			{links.length > 0 && (
 				<section className="mt-8 border-t border-border-300/15 pt-6">
 					<h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-400">
 						Related Sessions
 					</h2>
 					{(() => {
-						const byProject = new Map<string, {projectName: string; sessions: typeof data.links}>();
-						for (const link of data.links) {
+						const byProject = new Map<string, {projectName: string; sessions: typeof links}>();
+						for (const link of links) {
 							const key = link.project;
 							if (!byProject.has(key)) {
 								byProject.set(key, {projectName: link.projectName, sessions: []});

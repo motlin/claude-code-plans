@@ -218,16 +218,16 @@ describe('applySessionAdded', () => {
 	it('invalidates all plan link queries', () => {
 		const queryClient = new QueryClient();
 		queryClient.setQueryData(['sessions'], []);
-		queryClient.setQueryData(['plan', 'plan-a.md', 'links'], [{sessionId: 's1'}]);
-		queryClient.setQueryData(['plan', 'plan-b.md', 'links'], [{sessionId: 's2'}]);
-		queryClient.setQueryData(['plan', 'plan-a.md', 'detail'], {content: 'keep'});
+		queryClient.setQueryData(['plans', 'plan-a.md', 'links'], [{sessionId: 's1'}]);
+		queryClient.setQueryData(['plans', 'plan-b.md', 'links'], [{sessionId: 's2'}]);
+		queryClient.setQueryData(['plans', 'plan-a.md'], {content: 'keep'});
 
 		applySessionAdded(queryClient, makeSession({id: 'new-1', project: 'proj-a'}));
 
-		expect(queryClient.getQueryState(['plan', 'plan-a.md', 'links'])?.isInvalidated).toBe(true);
-		expect(queryClient.getQueryState(['plan', 'plan-b.md', 'links'])?.isInvalidated).toBe(true);
+		expect(queryClient.getQueryState(['plans', 'plan-a.md', 'links'])?.isInvalidated).toBe(true);
+		expect(queryClient.getQueryState(['plans', 'plan-b.md', 'links'])?.isInvalidated).toBe(true);
 		// Plan detail should not be invalidated by session addition.
-		expect(queryClient.getQueryState(['plan', 'plan-a.md', 'detail'])?.isInvalidated).toBe(false);
+		expect(queryClient.getQueryState(['plans', 'plan-a.md'])?.isInvalidated).toBe(false);
 	});
 });
 
@@ -392,18 +392,18 @@ describe('applyPlanChanged', () => {
 		expect(plans).toBe(undefined);
 	});
 
-	it('invalidates plan detail and raw queries for the changed plan', () => {
+	it('invalidates plan detail and links queries for the changed plan', () => {
 		const queryClient = new QueryClient();
 		queryClient.setQueryData(['plans'], [makePlan('a.md')]);
-		queryClient.setQueryData(['plan', 'a.md', 'detail'], {content: 'old detail'});
-		queryClient.setQueryData(['plan', 'a.md', 'raw'], 'old raw');
+		queryClient.setQueryData(['plans', 'a.md'], {markdown: 'old', mtime: null, title: 'old'});
+		queryClient.setQueryData(['plans', 'a.md', 'links'], []);
 
 		applyPlanChanged(queryClient, makePlan('a.md', 'Updated'));
 
-		const detailState = queryClient.getQueryState(['plan', 'a.md', 'detail']);
-		const rawState = queryClient.getQueryState(['plan', 'a.md', 'raw']);
+		const detailState = queryClient.getQueryState(['plans', 'a.md']);
+		const linksState = queryClient.getQueryState(['plans', 'a.md', 'links']);
 		expect(detailState?.isInvalidated).toBe(true);
-		expect(rawState?.isInvalidated).toBe(true);
+		expect(linksState?.isInvalidated).toBe(true);
 	});
 });
 

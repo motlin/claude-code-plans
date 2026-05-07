@@ -167,7 +167,7 @@ export function applySessionAdded(queryClient: QueryClient, session: SessionSumm
 	// Plan links are derived from session JSONL content — a new session may
 	// reference a plan, so invalidate all plan link queries.
 	void queryClient.invalidateQueries({
-		predicate: (query) => query.queryKey[0] === 'plan' && query.queryKey[2] === 'links',
+		predicate: (query) => query.queryKey[0] === 'plans' && query.queryKey[2] === 'links',
 	});
 }
 
@@ -227,10 +227,10 @@ export function applyPlanChanged(queryClient: QueryClient, plan: PlanSummaryPayl
 	});
 	// Grouped plans have links we don't know from the event alone — invalidate.
 	void queryClient.invalidateQueries({queryKey: ['plans', 'grouped']});
-	// Plan detail and raw queries must also be invalidated so the detail/edit
+	// Plan detail and links queries must also be invalidated so the detail/edit
 	// pages reflect external edits without waiting for staleTime expiry.
-	void queryClient.invalidateQueries({queryKey: ['plan', plan.filename, 'detail']});
-	void queryClient.invalidateQueries({queryKey: ['plan', plan.filename, 'raw']});
+	void queryClient.invalidateQueries({queryKey: ['plans', plan.filename]});
+	void queryClient.invalidateQueries({queryKey: ['plans', plan.filename, 'links']});
 }
 
 export function applyPlanRemoved(queryClient: QueryClient, filename: string): void {
@@ -243,7 +243,8 @@ export function applyPlanRemoved(queryClient: QueryClient, filename: string): vo
 			.map((group) => ({...group, plans: group.plans.filter((p) => p.filename !== filename)}))
 			.filter((group) => group.plans.length > 0);
 	});
-	queryClient.removeQueries({queryKey: ['plan', filename, 'links']});
+	queryClient.removeQueries({queryKey: ['plans', filename, 'links']});
+	queryClient.removeQueries({queryKey: ['plans', filename]});
 }
 
 export function applyMemoryChanged(queryClient: QueryClient, memory: MemorySummaryPayload): void {

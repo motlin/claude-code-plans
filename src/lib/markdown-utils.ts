@@ -1,5 +1,3 @@
-import {readFile} from 'node:fs/promises';
-
 export function humanizeFilename(filename: string): string {
 	return filename
 		.replace(/\.md$/, '')
@@ -29,6 +27,7 @@ export function stripLeadingTitleHeading(content: string): string {
 
 export async function extractTitle(filePath: string, filename: string): Promise<string> {
 	try {
+		const {readFile} = await import('node:fs/promises');
 		const content = await readFile(filePath, 'utf-8');
 		return extractTitleFromContent(content, filename);
 	} catch {

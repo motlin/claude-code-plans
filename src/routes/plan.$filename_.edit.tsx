@@ -1,8 +1,8 @@
 import {createFileRoute, Link, useNavigate} from '@tanstack/react-router';
-import {createServerFn} from '@tanstack/react-start';
-import {queryOptions, useSuspenseQuery} from '@tanstack/react-query';
+import {useSuspenseQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 import {z} from 'zod';
-import {renderMarkdown} from '../lib/renderer';
+import {planQueryOptions} from '../lib/api/plans';
+import {apiFetch} from '../lib/api/client';
 import {lazy, Suspense, useCallback, useEffect, useRef, useState} from 'react';
 
 const MarkdownEditor = lazy(() => import('../components/markdown-editor').then((m) => ({default: m.MarkdownEditor})));
@@ -13,46 +13,14 @@ function ClientOnly({children, fallback}: {children: React.ReactNode; fallback: 
 	return mounted ? children : fallback;
 }
 
-const getPlanRaw = createServerFn({method: 'GET'})
-	.inputValidator(z.string())
-	.handler(async ({data: filename}) => {
-		const {homedir} = await import('node:os');
-		const {join} = await import('node:path');
-		const {readPlan} = await import('../lib/plans');
-		const {extractTitleFromContent} = await import('../lib/markdown-utils');
-		const plansDir = join(homedir(), '.claude', 'plans');
-		const content = await readPlan(plansDir, filename);
-		if (!content) return null;
-		const title = extractTitleFromContent(content, filename);
-		return {markdown: content, title};
-	});
-
-const savePlan = createServerFn({method: 'POST'})
-	.inputValidator(z.object({filename: z.string(), content: z.string()}))
-	.handler(async ({data: {filename, content}}) => {
-		const {homedir} = await import('node:os');
-		const {join} = await import('node:path');
-		const {writePlan} = await import('../lib/plans');
-		const {extractTitleFromContent} = await import('../lib/markdown-utils');
-		const plansDir = join(homedir(), '.claude', 'plans');
-		const ok = await writePlan(plansDir, filename, content);
-		if (!ok) return null;
-		const html = await renderMarkdown(content);
-		const title = extractTitleFromContent(content, filename);
-		return {html, title};
-	});
-
-const planRawQueryOptions = (filename: string) =>
-	queryOptions({
-		queryKey: ['plan', filename, 'raw'] as const,
-		queryFn: () => getPlanRaw({data: filename}),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
+const PlanSaveResponse = z.object({
+	title: z.string(),
+	mtime: z.string().nullable(),
+});
 
 export const Route = createFileRoute('/plan/$filename_/edit')({
 	component: PlanEditPage,
-	loader: ({context: {queryClient}, params}) => queryClient.ensureQueryData(planRawQueryOptions(params.filename)),
+	loader: ({context: {queryClient}, params}) => queryClient.ensureQueryData(planQueryOptions(params.filename)),
 	head: ({loaderData}) => ({
 		meta: [{title: loaderData ? `Edit: ${loaderData.title}` : 'Plan Not Found'}],
 	}),
@@ -60,17 +28,16 @@ export const Route = createFileRoute('/plan/$filename_/edit')({
 
 function PlanEditPage() {
 	const {filename} = Route.useParams();
-	const {data} = useSuspenseQuery(planRawQueryOptions(filename));
+	const {data} = useSuspenseQuery(planQueryOptions(filename));
+	const queryClient = useQueryClient();
 
 	const initialMarkdown = data?.markdown ?? '';
 	const draftRef = useRef(initialMarkdown);
 
-	// Re-sync ref when loader data changes (e.g. after save + navigate back)
 	useEffect(() => {
 		draftRef.current = initialMarkdown;
 	}, [initialMarkdown]);
 
-	const [saving, setSaving] = useState(false);
 	const [feedback, setFeedback] = useState<string | null>(null);
 
 	const handleChange = useCallback((value: string) => {
@@ -79,28 +46,37 @@ function PlanEditPage() {
 
 	const navigate = useNavigate();
 
-	const doSave = useCallback(async () => {
-		return savePlan({data: {filename, content: draftRef.current}});
-	}, [filename]);
+	const saveMutation = useMutation({
+		mutationFn: (markdown: string) =>
+			apiFetch(`/api/plans/${encodeURIComponent(filename)}`, PlanSaveResponse, {
+				method: 'PUT',
+				headers: {'Content-Type': 'text/plain'},
+				body: markdown,
+			}),
+		onSuccess: () => {
+			void queryClient.invalidateQueries({queryKey: ['plans']});
+			void queryClient.invalidateQueries({queryKey: ['plans', filename]});
+		},
+	});
 
 	const handleSave = useCallback(async () => {
-		setSaving(true);
 		setFeedback(null);
-		const result = await doSave();
-		setSaving(false);
-		setFeedback(result ? 'Saved' : 'Failed to save');
-	}, [doSave]);
+		try {
+			await saveMutation.mutateAsync(draftRef.current);
+			setFeedback('Saved');
+		} catch {
+			setFeedback('Failed to save');
+		}
+	}, [saveMutation]);
 
 	const handlePreview = useCallback(async () => {
-		setSaving(true);
-		const result = await doSave();
-		setSaving(false);
-		navigate({
-			to: '/plan/$filename',
-			params: {filename},
-			state: (result ? {html: result.html, title: result.title} : undefined) as unknown as true,
-		});
-	}, [doSave, navigate, filename]);
+		try {
+			await saveMutation.mutateAsync(draftRef.current);
+			navigate({to: '/plan/$filename', params: {filename}});
+		} catch {
+			setFeedback('Failed to save');
+		}
+	}, [saveMutation, navigate, filename]);
 
 	if (!data) {
 		return (
@@ -115,6 +91,8 @@ function PlanEditPage() {
 			</div>
 		);
 	}
+
+	const saving = saveMutation.isPending;
 
 	return (
 		<div className="flex flex-col gap-4">
