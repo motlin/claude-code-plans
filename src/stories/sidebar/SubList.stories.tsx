@@ -29,6 +29,7 @@ export const WithSessions: Story = {
 						projectName: 'my-project',
 						messageCount: 12,
 						gitBranch: undefined,
+						starred: false,
 					},
 					{
 						id: 'sess-2',
@@ -40,6 +41,7 @@ export const WithSessions: Story = {
 						projectName: 'my-project',
 						messageCount: 8,
 						gitBranch: undefined,
+						starred: false,
 					},
 					{
 						id: 'sess-3',
@@ -51,6 +53,7 @@ export const WithSessions: Story = {
 						projectName: 'my-project',
 						messageCount: 5,
 						gitBranch: undefined,
+						starred: false,
 					},
 				],
 			},

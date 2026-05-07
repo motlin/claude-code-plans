@@ -1,11 +1,12 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
 import {useSuspenseQuery} from '@tanstack/react-query';
-import {getActiveSessions} from '../lib/server-fns';
+import type {z} from 'zod';
+import {ActiveSessionListResponse} from '../lib/api/sessions';
 import {activeSessionsQueryOptions} from '../queries/active';
 import {useClaudeEvents} from '../hooks/use-claude-events';
 import {useSettings} from '../components/settings-provider';
 
-type ActiveSession = Awaited<ReturnType<typeof getActiveSessions>>[number];
+type ActiveSession = z.infer<typeof ActiveSessionListResponse>[number];
 
 export const Route = createFileRoute('/active')({
 	component: ActivePage,

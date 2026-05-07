@@ -329,7 +329,7 @@ export function applySessionLinesAppended(
 function invalidateActiveSessions(queryClient: QueryClient): void {
 	// The reducer owns activeSessions state; we only invalidate the query cache
 	// here so components using the active-sessions query pick up changes.
-	void queryClient.invalidateQueries({queryKey: ['active-sessions']});
+	void queryClient.invalidateQueries({queryKey: ['sessions', 'active']});
 }
 
 // ---------------------------------------------------------------------------

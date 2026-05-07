@@ -1,9 +1,3 @@
-import {queryOptions} from '@tanstack/react-query';
-import {getSessions} from '../lib/server-fns';
+import {sessionsQueryOptions as apiSessionsQueryOptions} from '../lib/api/sessions';
 
-export const sessionsQueryOptions = queryOptions({
-	queryKey: ['sessions'] as const,
-	queryFn: () => getSessions(),
-	staleTime: Infinity,
-	gcTime: Infinity,
-});
+export const sessionsQueryOptions = apiSessionsQueryOptions();

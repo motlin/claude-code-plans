@@ -1,7 +1,6 @@
 import {createServerFn} from '@tanstack/react-start';
 import {z} from 'zod';
 import {
-	listSessionsFromDb,
 	listSessionsForProjectFromDb,
 	getProjectDetailFromDb,
 	searchSessionsFromDb,
@@ -122,27 +121,6 @@ export const getMemories = createServerFn({method: 'GET'}).handler(async () => {
 			title: m.title,
 			mtime: m.mtime.toISOString(),
 			project: m.project,
-		})),
-	}));
-});
-
-export const getSessions = createServerFn({method: 'GET'}).handler(async () => {
-	const {getDb} = await import('./db');
-	const {index} = getDb();
-	const groups = listSessionsFromDb(index);
-	return groups.map((g) => ({
-		project: g.project,
-		projectName: g.projectName,
-		sessions: g.sessions.map((s) => ({
-			id: s.id,
-			title: s.title,
-			summary: s.summary,
-			mtime: s.mtime.toISOString(),
-			created: s.created.toISOString(),
-			project: s.project,
-			projectName: s.projectName,
-			messageCount: s.messageCount,
-			gitBranch: s.gitBranch,
 		})),
 	}));
 });
@@ -289,18 +267,6 @@ export const isStarred = createServerFn({method: 'GET'})
 		const {index} = getDb();
 		return {starred: isSessionStarredInDb(index, sessionId)};
 	});
-
-export const getActiveSessions = createServerFn({method: 'GET'})
-	.inputValidator(z.object({activeTimeoutMs: z.number().optional()}).optional())
-	.handler(async ({data}) => {
-		const {scanActiveSessions} = await import('./active-sessions');
-		return scanActiveSessions(data?.activeTimeoutMs);
-	});
-
-export const getIndexingStatus = createServerFn({method: 'GET'}).handler(async () => {
-	const {isCurrentlyIndexing} = await import('./db/indexer');
-	return {isIndexing: isCurrentlyIndexing()};
-});
 
 export const searchMessageContent = createServerFn({method: 'GET'})
 	.inputValidator(z.string())

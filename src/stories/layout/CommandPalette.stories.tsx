@@ -22,6 +22,7 @@ const sampleSessions = [
 				projectName: 'project-a',
 				messageCount: 24,
 				gitBranch: 'main' as string | undefined,
+				starred: false,
 			},
 			{
 				id: 'sess-2',
@@ -33,6 +34,7 @@ const sampleSessions = [
 				projectName: 'project-a',
 				messageCount: 12,
 				gitBranch: 'fix/db' as string | undefined,
+				starred: false,
 			},
 		],
 	},
@@ -50,6 +52,7 @@ const sampleSessions = [
 				projectName: 'project-b',
 				messageCount: 8,
 				gitBranch: undefined,
+				starred: false,
 			},
 		],
 	},

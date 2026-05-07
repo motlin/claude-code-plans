@@ -1,10 +1,3 @@
-import {queryOptions} from '@tanstack/react-query';
-import {getActiveSessions} from '../lib/server-fns';
+import {activeSessionsQueryOptions as apiActiveSessionsQueryOptions} from '../lib/api/sessions';
 
-export const activeSessionsQueryOptions = (activeTimeoutMs?: number) =>
-	queryOptions({
-		queryKey: ['active-sessions', activeTimeoutMs] as const,
-		queryFn: () => getActiveSessions({data: activeTimeoutMs !== undefined ? {activeTimeoutMs} : undefined}),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
+export const activeSessionsQueryOptions = (activeTimeoutMs?: number) => apiActiveSessionsQueryOptions(activeTimeoutMs);

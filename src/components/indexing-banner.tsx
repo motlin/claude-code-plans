@@ -1,6 +1,7 @@
 import {Loader2, X} from 'lucide-react';
 import {useEffect, useState} from 'react';
-import {getIndexingStatus} from '../lib/server-fns';
+import {apiFetch} from '../lib/api/client';
+import {IndexingStatusResponse} from '../lib/api/indexing';
 
 export function IndexingBannerView({onDismiss}: {onDismiss: () => void}) {
 	return (
@@ -27,8 +28,8 @@ export function IndexingBanner() {
 
 		async function poll() {
 			try {
-				const result = await getIndexingStatus();
-				if (!cancelled && result) setIsIndexing(result.isIndexing);
+				const result = await apiFetch('/api/indexing-status', IndexingStatusResponse);
+				if (!cancelled) setIsIndexing(result.isIndexing);
 			} catch {
 				// Server function unavailable during HMR
 			}
