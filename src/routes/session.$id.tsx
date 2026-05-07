@@ -1,174 +1,27 @@
 import {createFileRoute, Link, useRouter} from '@tanstack/react-router';
 import type {ErrorComponentProps} from '@tanstack/react-router';
-import {createServerFn} from '@tanstack/react-start';
-import {queryOptions, useSuspenseQuery, useQueryClient} from '@tanstack/react-query';
-import {z} from 'zod';
+import {useSuspenseQuery, useQueryClient} from '@tanstack/react-query';
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {SessionChat} from '../components/session-chat';
 import {ChatInput} from '../components/chat-input';
 import {StreamingMessage} from '../components/streaming-message';
 import {useChatStream} from '../hooks/use-chat-stream';
 import {AskUserQuestionProvider, type AskUserQuestionContextValue} from '../components/ask-user-question-context';
-import {getSessionSubagents, getSessionSummary, requestSummary, isStarred, toggleSessionStar} from '../lib/server-fns';
+import {requestSummary, toggleSessionStar} from '../lib/server-fns';
+import {sessionDetailQueryOptions, transcriptQueryOptions} from '../lib/api/sessions';
+import {extractSubagents} from '../lib/subagents';
 import {useIsSessionActive, useStatusline} from '../hooks/use-claude-events';
 import {StatusFooter} from '../components/status-footer';
 import {processTranscript} from '../lib/transcript';
 import {ArrowLeft, ArrowUp, ArrowDown, Copy, Terminal, GitFork, Download, Maximize2, Minimize2} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {useSettings} from '../components/settings-provider';
-import type {JsonValue} from '../lib/hook-events';
-
-const getSession = createServerFn({method: 'GET'})
-	.inputValidator(z.object({id: z.string()}))
-	.handler(async ({data: {id}}) => {
-		const {getDb} = await import('../lib/db');
-		const {getSessionProjectPath, getSessionMeta, getTaskCountsForProject, getSubagentById} = await import(
-			'../lib/db/queries'
-		);
-		const {sessions} = await import('../lib/db/schema');
-		const {eq} = await import('drizzle-orm');
-		const {index} = getDb();
-
-		const sessionRow = index
-			.select({
-				title: sessions.title,
-				customTitle: sessions.customTitle,
-				projectId: sessions.projectId,
-			})
-			.from(sessions)
-			.where(eq(sessions.id, id))
-			.get();
-
-		// Fall back to the subagents table when the ID is not a regular session
-		if (!sessionRow) {
-			const subagent = getSubagentById(index, id);
-			if (!subagent) return null;
-
-			const parentSessionProjectPath = getSessionProjectPath(index, subagent.sessionId);
-
-			return {
-				title: subagent.description ?? subagent.slug ?? id,
-				projectName: subagent.projectId,
-				projectId: subagent.projectId,
-				subagentCount: 0,
-				starred: false,
-				projectPath: parentSessionProjectPath,
-				gitBranch: null as string | null,
-				cwd: null as string | null,
-				gitSha: null as string | null,
-				gitClean: null as boolean | null,
-				messageCount: 0,
-				pendingTaskCount: 0,
-				parentSessionId: subagent.sessionId,
-			};
-		}
-
-		const [subagentResult, starResult] = await Promise.all([
-			getSessionSubagents({data: id}),
-			isStarred({data: id}),
-		]);
-
-		const projectPath = getSessionProjectPath(index, id);
-		const sessionMeta = getSessionMeta(index, id);
-
-		let pendingTaskCount = 0;
-		if (sessionMeta?.projectName) {
-			const taskCounts = getTaskCountsForProject(index, sessionMeta.projectName);
-			pendingTaskCount = taskCounts.pending + taskCounts.inProgress;
-		}
-
-		let gitSha: string | null = null;
-		let gitClean: boolean | null = null;
-		if (projectPath) {
-			try {
-				const {execSync} = await import('node:child_process');
-				const execOpts = {cwd: projectPath, encoding: 'utf-8', stdio: 'pipe'} as const;
-				gitSha = execSync('git rev-parse --short HEAD', execOpts).trim();
-				const status = execSync('git status --porcelain', execOpts).trim();
-				gitClean = status.length === 0;
-			} catch {
-				// not a git repo or git not available
-			}
-		}
-
-		return {
-			title: sessionRow.customTitle ?? sessionRow.title,
-			projectName: sessionMeta?.projectName ?? sessionRow.projectId,
-			projectId: sessionRow.projectId,
-			subagentCount: subagentResult.totalCount,
-			starred: starResult.starred,
-			projectPath,
-			gitBranch: sessionMeta?.gitBranch ?? null,
-			cwd: sessionMeta?.cwd ?? null,
-			gitSha,
-			gitClean,
-			messageCount: sessionMeta?.messageCount ?? 0,
-			pendingTaskCount,
-			parentSessionId: undefined as string | undefined,
-		};
-	});
-
-const sessionMetaQueryOptions = (id: string) =>
-	queryOptions({
-		queryKey: ['session', id, 'detail'] as const,
-		queryFn: () => getSession({data: {id}}),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
-
-export interface TranscriptData {
-	records: Record<string, JsonValue>[];
-	byteOffset: number;
-}
-
-const getTranscript = createServerFn({method: 'GET'})
-	.inputValidator(z.object({id: z.string()}))
-	.handler(async ({data: {id}}) => {
-		const {getDb} = await import('../lib/db');
-		const {getSubagentById} = await import('../lib/db/queries');
-		const {sessions} = await import('../lib/db/schema');
-		const {eq} = await import('drizzle-orm');
-		const {readFileSync, statSync} = await import('node:fs');
-
-		const {index} = getDb();
-		const row = index.select().from(sessions).where(eq(sessions.id, id)).get();
-
-		// Resolve the file path: regular session or subagent JSONL
-		let filePath: string | undefined;
-		if (row) {
-			filePath = row.filePath;
-		} else {
-			const subagent = getSubagentById(index, id);
-			if (subagent) filePath = subagent.filePath;
-		}
-		if (!filePath) return {records: [] as Record<string, JsonValue>[], byteOffset: 0};
-
-		try {
-			const fileSize = statSync(filePath).size;
-			const content = readFileSync(filePath, 'utf-8');
-			const records = content
-				.split('\n')
-				.filter((line) => line.trim())
-				.map((line) => JSON.parse(line) as Record<string, JsonValue>);
-			return {records, byteOffset: fileSize};
-		} catch {
-			return {records: [] as Record<string, JsonValue>[], byteOffset: 0};
-		}
-	});
-
-const transcriptQueryOptions = (id: string) =>
-	queryOptions({
-		queryKey: ['session', id, 'transcript'] as const,
-		queryFn: (): Promise<TranscriptData> => getTranscript({data: {id}}),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
 
 export const Route = createFileRoute('/session/$id')({
 	component: SessionPage,
 	loader: async ({context: {queryClient}, params}) => {
 		const [meta] = await Promise.all([
-			queryClient.ensureQueryData(sessionMetaQueryOptions(params.id)),
+			queryClient.ensureQueryData(sessionDetailQueryOptions(params.id)),
 			queryClient.ensureQueryData(transcriptQueryOptions(params.id)),
 		]);
 		return meta;
@@ -297,12 +150,16 @@ function CopyButton({
 function SessionPage() {
 	const params = Route.useParams();
 	const queryClient = useQueryClient();
-	const {data} = useSuspenseQuery(sessionMetaQueryOptions(params.id));
+	const {data} = useSuspenseQuery(sessionDetailQueryOptions(params.id));
 	const {data: transcript} = useSuspenseQuery(transcriptQueryOptions(params.id));
 
 	const processed = useMemo(() => processTranscript(transcript.records), [transcript.records]);
-	const [aiSummary, setAiSummary] = useState<string | null>(null);
-	const [summaryLoaded, setSummaryLoaded] = useState(false);
+	const subagentCount = useMemo(() => {
+		if (!data?.projectId) return 0;
+		return extractSubagents(transcript.records, data.projectId).length;
+	}, [transcript.records, data?.projectId]);
+	const [aiSummary, setAiSummary] = useState<string | null>(data?.summary ?? null);
+	const summaryLoaded = true;
 	const [starred, setStarred] = useState(data?.starred ?? false);
 	const isActive = useIsSessionActive(params.id);
 	const statusline = useStatusline(params.id);
@@ -367,23 +224,8 @@ function SessionPage() {
 	}, [params.id]);
 
 	useEffect(() => {
-		let cancelled = false;
-		setSummaryLoaded(false);
-		setAiSummary(null);
-		getSessionSummary({data: params.id})
-			.then((r) => {
-				if (!cancelled) {
-					setAiSummary(r.summary);
-					setSummaryLoaded(true);
-				}
-			})
-			.catch(() => {
-				if (!cancelled) setSummaryLoaded(true);
-			});
-		return () => {
-			cancelled = true;
-		};
-	}, [params.id]);
+		setAiSummary(data?.summary ?? null);
+	}, [params.id, data?.summary]);
 
 	if (!data) {
 		return (
@@ -522,14 +364,14 @@ function SessionPage() {
 						)
 					)}
 
-					{data.subagentCount > 0 && (
+					{subagentCount > 0 && (
 						<Link
 							to="/session/$id/subagents"
 							params={{id: params.id}}
 							className="mt-2 inline-flex items-center gap-1.5 text-xs text-accent-100 hover:underline"
 						>
 							<GitFork className="h-3 w-3" />
-							{data.subagentCount} subagent{data.subagentCount === 1 ? '' : 's'}
+							{subagentCount} subagent{subagentCount === 1 ? '' : 's'}
 						</Link>
 					)}
 				</div>

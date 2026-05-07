@@ -1,77 +1,22 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {createServerFn} from '@tanstack/react-start';
+import {useSuspenseQuery} from '@tanstack/react-query';
 import {useMemo, useState} from 'react';
-import {z} from 'zod';
-import {homedir} from 'node:os';
-import {join} from 'node:path';
-import type {MessageContent, RawJsonlLine} from '../lib/sessions';
+import {sessionSourceQueryOptions} from '../lib/api/sessions';
 import {LinkedJson, type LinkedJsonContext} from '../components/linked-json';
 import {Bot, MessageSquare, Cpu, FileText, AlertTriangle} from 'lucide-react';
 
-const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
-const UUID_RE = /^[a-f0-9-]{36}$/i;
-const SESSION_ID_RE = /^[a-z0-9-]+$/;
-
-const InputSchema = z.object({
-	sessionId: z.string(),
-	uuid: z.string(),
-	contextN: z.number().int().min(0).max(50).default(5),
-});
-
 export interface PairedResult {
-	resultEntry: RawJsonlLine;
+	resultEntry: {raw: string; lineIndex: number; uuid?: string};
 	resultLineIndex: number;
 	toolUseId: string;
 }
 
-const getSessionSource = createServerFn({method: 'GET'})
-	.inputValidator(InputSchema)
-	.handler(async ({data}) => {
-		const {sessionId, uuid, contextN} = data;
-		if (!UUID_RE.test(uuid)) return null;
-		if (!SESSION_ID_RE.test(sessionId)) return null;
-
-		const {readSession, readSessionRawWindow} = await import('../lib/sessions');
-		const window = await readSessionRawWindow(PROJECTS_DIR, sessionId, uuid, contextN);
-		if (!window) return null;
-
-		const detail = await readSession(PROJECTS_DIR, sessionId);
-		const parsedBlocks: MessageContent[] = [];
-		if (detail) {
-			for (const msg of detail.messages) {
-				for (const block of msg.content) {
-					if (block.sourceUuid === uuid) parsedBlocks.push(block);
-				}
-			}
-		}
-
-		const paired = findPairedToolResult(window.focal.raw, window.after);
-		const sessionTitle = detail?.title ?? sessionId;
-
-		const allLines = [...window.before, window.focal, ...window.after];
-		const knownUuids = allLines.map((l) => l.uuid).filter((u): u is string => u != null);
-
-		let projectId: string | undefined;
-		try {
-			const {getDb} = await import('../lib/db');
-			const {getSessionProjectId} = await import('../lib/db/queries');
-			const db = getDb();
-			const pid = getSessionProjectId(db.index, sessionId);
-			if (pid) projectId = pid;
-		} catch {
-			// DB not available -- leave undefined
-		}
-
-		return {
-			window,
-			parsedBlocksJson: JSON.stringify(parsedBlocks, null, 2),
-			parsedBlocksCount: parsedBlocks.length,
-			paired,
-			sessionTitle,
-			knownUuids,
-			projectId,
-		};
-	});
+export const Route = createFileRoute('/session/$id_/source/$uuid')({
+	component: SourceViewPage,
+	loader: ({context: {queryClient}, params}) =>
+		queryClient.ensureQueryData(sessionSourceQueryOptions(params.id, params.uuid, 5)),
+	head: ({params}) => ({meta: [{title: `Source: ${params.uuid.slice(0, 8)}`}]}),
+});
 
 function safeParse(raw: string): unknown {
 	try {
@@ -81,7 +26,10 @@ function safeParse(raw: string): unknown {
 	}
 }
 
-export function findPairedToolResult(focalRaw: string, candidates: RawJsonlLine[]): PairedResult | null {
+export function findPairedToolResult(
+	focalRaw: string,
+	candidates: Array<{raw: string; lineIndex: number; uuid?: string}>,
+): PairedResult | null {
 	const focalParsed = safeParse(focalRaw) as
 		| {type?: string; message?: {content?: Array<{type?: string; id?: string}>}}
 		| undefined;
@@ -110,12 +58,6 @@ export function findPairedToolResult(focalRaw: string, candidates: RawJsonlLine[
 	}
 	return null;
 }
-
-export const Route = createFileRoute('/session/$id_/source/$uuid')({
-	component: SourceViewPage,
-	loader: ({params}) => getSessionSource({data: {sessionId: params.id, uuid: params.uuid, contextN: 5}}),
-	head: ({params}) => ({meta: [{title: `Source: ${params.uuid.slice(0, 8)}`}]}),
-});
 
 function prettyJsonl(raw: string): string {
 	try {
@@ -188,7 +130,13 @@ function recordTypeIcon(type: string) {
 	}
 }
 
-function NeighborLink({entry, sessionId}: {entry: RawJsonlLine; sessionId: string}) {
+function NeighborLink({
+	entry,
+	sessionId,
+}: {
+	entry: {raw: string; lineIndex: number; uuid?: string | undefined; parseError?: boolean | undefined};
+	sessionId: string;
+}) {
 	const summary = useMemo(() => summarizeRecord(entry.raw), [entry.raw]);
 
 	const toolLabel =
@@ -254,8 +202,8 @@ function CopyButton({text}: {text: string}) {
 }
 
 function SourceViewPage() {
-	const data = Route.useLoaderData();
 	const params = Route.useParams();
+	const {data} = useSuspenseQuery(sessionSourceQueryOptions(params.id, params.uuid, 5));
 
 	if (!data) {
 		return (
@@ -284,7 +232,7 @@ function SourceViewPage() {
 	const jsonCtx: LinkedJsonContext = useMemo(
 		() => ({
 			sessionId: params.id,
-			projectId,
+			...(projectId !== undefined ? {projectId} : {}),
 			knownUuids: new Set(knownUuids ?? []),
 		}),
 		[params.id, projectId, knownUuids],

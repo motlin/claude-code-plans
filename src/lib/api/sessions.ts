@@ -31,6 +31,75 @@ const ActiveSessionSchema = z.object({
 });
 export const ActiveSessionListResponse = z.array(ActiveSessionSchema);
 
+export const SessionDetailResponse = z
+	.object({
+		title: z.string(),
+		projectName: z.string(),
+		projectId: z.string(),
+		starred: z.boolean(),
+		summary: z.string().nullable(),
+		projectPath: z.string().nullable(),
+		gitBranch: z.string().nullable(),
+		cwd: z.string().nullable(),
+		gitSha: z.string().nullable(),
+		gitClean: z.boolean().nullable(),
+		messageCount: z.number(),
+		pendingTaskCount: z.number(),
+		parentSessionId: z.string().optional(),
+	})
+	.nullable();
+export type SessionDetail = z.infer<typeof SessionDetailResponse>;
+
+const JsonValueSchema: z.ZodType<unknown> = z.lazy(() =>
+	z.union([
+		z.string(),
+		z.number(),
+		z.boolean(),
+		z.null(),
+		z.array(JsonValueSchema),
+		z.record(z.string(), JsonValueSchema),
+	]),
+);
+
+export const TranscriptResponse = z.object({
+	records: z.array(z.record(z.string(), JsonValueSchema)),
+	byteOffset: z.number(),
+});
+export type TranscriptData = z.infer<typeof TranscriptResponse>;
+
+export const StatuslineResponse = z.record(z.string(), JsonValueSchema).nullable();
+
+const RawJsonlLineSchema = z.object({
+	raw: z.string(),
+	uuid: z.string().optional(),
+	lineIndex: z.number(),
+	parseError: z.boolean().optional(),
+});
+
+const RawWindowSchema = z.object({
+	before: z.array(RawJsonlLineSchema),
+	focal: RawJsonlLineSchema,
+	after: z.array(RawJsonlLineSchema),
+});
+
+const PairedResultSchema = z.object({
+	resultEntry: RawJsonlLineSchema,
+	resultLineIndex: z.number(),
+	toolUseId: z.string(),
+});
+
+export const SessionSourceResponse = z
+	.object({
+		window: RawWindowSchema,
+		parsedBlocksJson: z.string(),
+		parsedBlocksCount: z.number(),
+		paired: PairedResultSchema.nullable(),
+		sessionTitle: z.string(),
+		knownUuids: z.array(z.string()),
+		projectId: z.string().optional(),
+	})
+	.nullable();
+
 export const sessionsQueryOptions = () =>
 	queryOptions({
 		queryKey: ['sessions'] as const,
@@ -51,3 +120,31 @@ export const activeSessionsQueryOptions = (activeTimeoutMs?: number) => {
 		gcTime: Infinity,
 	});
 };
+
+export const sessionDetailQueryOptions = (id: string) =>
+	queryOptions({
+		queryKey: ['sessions', id] as const,
+		queryFn: () => apiFetch(`/api/sessions/${encodeURIComponent(id)}`, SessionDetailResponse),
+		staleTime: Infinity,
+		gcTime: Infinity,
+	});
+
+export const transcriptQueryOptions = (id: string) =>
+	queryOptions({
+		queryKey: ['sessions', id, 'transcript'] as const,
+		queryFn: () => apiFetch(`/api/sessions/${encodeURIComponent(id)}/transcript`, TranscriptResponse),
+		staleTime: Infinity,
+		gcTime: Infinity,
+	});
+
+export const sessionSourceQueryOptions = (sessionId: string, uuid: string, contextN = 5) =>
+	queryOptions({
+		queryKey: ['sessions', sessionId, 'source', uuid, contextN] as const,
+		queryFn: () =>
+			apiFetch(
+				`/api/sessions/${encodeURIComponent(sessionId)}/source/${encodeURIComponent(uuid)}?context=${contextN}`,
+				SessionSourceResponse,
+			),
+		staleTime: Infinity,
+		gcTime: Infinity,
+	});

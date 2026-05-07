@@ -1,23 +1,22 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {queryOptions, useSuspenseQuery} from '@tanstack/react-query';
+import {useSuspenseQuery} from '@tanstack/react-query';
+import {useMemo} from 'react';
 import {ArrowLeft, GitFork} from 'lucide-react';
-import {getSessionSubagents} from '../lib/server-fns';
+import {sessionDetailQueryOptions, transcriptQueryOptions} from '../lib/api/sessions';
+import {extractSubagents} from '../lib/subagents';
 import {SubagentGantt} from '../components/subagent-gantt';
 import {SubagentSequence} from '../components/subagent-sequence';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {useSettings} from '../components/settings-provider';
 
-const subagentQueryOptions = (sessionId: string) =>
-	queryOptions({
-		queryKey: ['session', sessionId, 'subagents'] as const,
-		queryFn: () => getSessionSubagents({data: sessionId}),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
-
 export const Route = createFileRoute('/session/$id_/subagents')({
 	component: SubagentsPage,
-	loader: ({context: {queryClient}, params}) => queryClient.ensureQueryData(subagentQueryOptions(params.id)),
+	loader: async ({context: {queryClient}, params}) => {
+		await Promise.all([
+			queryClient.ensureQueryData(sessionDetailQueryOptions(params.id)),
+			queryClient.ensureQueryData(transcriptQueryOptions(params.id)),
+		]);
+	},
 	head: ({params}) => ({
 		meta: [{title: `Subagents - ${params.id.slice(0, 8)}`}],
 	}),
@@ -25,9 +24,15 @@ export const Route = createFileRoute('/session/$id_/subagents')({
 
 function SubagentsPage() {
 	const params = Route.useParams();
-	const {data} = useSuspenseQuery(subagentQueryOptions(params.id));
+	const {data: detail} = useSuspenseQuery(sessionDetailQueryOptions(params.id));
+	const {data: transcript} = useSuspenseQuery(transcriptQueryOptions(params.id));
 	const {settings} = useSettings();
 	const subagentView = settings.defaultSubagentView;
+
+	const agents = useMemo(() => {
+		if (!detail?.projectId) return [];
+		return extractSubagents(transcript.records, detail.projectId);
+	}, [transcript.records, detail?.projectId]);
 
 	return (
 		<div>
@@ -44,17 +49,17 @@ function SubagentsPage() {
 
 			<h1 className="text-lg font-semibold flex items-center gap-2">
 				<GitFork className="h-4 w-4 text-text-500" />
-				Subagents ({data.totalCount})
+				Subagents ({agents.length})
 			</h1>
 
-			{data.totalCount === 0 ? (
+			{agents.length === 0 ? (
 				<p className="mt-4 text-sm text-text-500">No subagents for this session.</p>
 			) : (
 				<div className="mt-3">
 					{subagentView === 'sequence' ? (
-						<SubagentSequence agents={data.agents} />
+						<SubagentSequence agents={agents} />
 					) : (
-						<SubagentGantt agents={data.agents} />
+						<SubagentGantt agents={agents} />
 					)}
 				</div>
 			)}

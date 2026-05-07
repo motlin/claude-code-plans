@@ -19,7 +19,7 @@ import {
 	type SessionLinesAppendedPayload,
 	type SessionSummaryPayload,
 } from '../lib/hook-events';
-import type {TranscriptData} from '../routes/session.$id';
+import type {TranscriptData} from '../lib/api/sessions';
 
 // ---------------------------------------------------------------------------
 // State types
@@ -310,7 +310,7 @@ export function applySessionLinesAppended(
 	sessionId: string,
 	payload: SessionLinesAppendedPayload,
 ): void {
-	const queryKey = ['session', sessionId, 'transcript'] as const;
+	const queryKey = ['sessions', sessionId, 'transcript'] as const;
 	const cached = queryClient.getQueryData<TranscriptData>(queryKey);
 
 	if (!cached) return;
@@ -545,8 +545,12 @@ export function useStatusline(sessionId: string): Record<string, unknown> | null
 
 	const fetchStatusline = useCallback(async () => {
 		try {
-			const {getStatusline} = await import('../lib/server-fns');
-			const result = await getStatusline({data: {sessionId}});
+			const {apiFetch} = await import('../lib/api/client');
+			const {StatuslineResponse} = await import('../lib/api/sessions');
+			const result = await apiFetch(
+				`/api/sessions/${encodeURIComponent(sessionId)}/statusline`,
+				StatuslineResponse,
+			);
 			if (result) {
 				setData(result as Record<string, unknown>);
 			}

@@ -4,12 +4,10 @@ import {
 	listSessionsForProjectFromDb,
 	getProjectDetailFromDb,
 	searchSessionsFromDb,
-	getSubagentsForSession,
 	getSubagentsForProject,
 	getPlanProjectMappings,
 	toggleStar as toggleStarInDb,
 	getStarredSessions as getStarredSessionsFromDb,
-	isSessionStarred as isSessionStarredInDb,
 	searchMessageContentDb,
 	getIncompleteTasksGroupedByProject,
 	getTasksForProject,
@@ -217,15 +215,6 @@ export const getProject = createServerFn({method: 'GET'})
 		};
 	});
 
-export const getSessionSubagents = createServerFn({method: 'GET'})
-	.inputValidator(z.string())
-	.handler(async ({data: sessionId}) => {
-		const {getDb} = await import('./db');
-		const {index} = getDb();
-		const agents = getSubagentsForSession(index, sessionId);
-		return {totalCount: agents.length, agents};
-	});
-
 export const searchSessions = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: query}) => {
@@ -260,29 +249,12 @@ export const getStarredSessionList = createServerFn({method: 'GET'}).handler(asy
 	}));
 });
 
-export const isStarred = createServerFn({method: 'GET'})
-	.inputValidator(z.string())
-	.handler(async ({data: sessionId}) => {
-		const {getDb} = await import('./db');
-		const {index} = getDb();
-		return {starred: isSessionStarredInDb(index, sessionId)};
-	});
-
 export const searchMessageContent = createServerFn({method: 'GET'})
 	.inputValidator(z.string())
 	.handler(async ({data: query}) => {
 		const {getDb} = await import('./db');
 		const {index} = getDb();
 		return searchMessageContentDb(index, query);
-	});
-
-export const getSessionSummary = createServerFn({method: 'GET'})
-	.inputValidator(z.string())
-	.handler(async ({data: sessionId}) => {
-		const {getDb} = await import('./db');
-		const {summaries} = getDb();
-		const {getSummary} = await import('./summaries');
-		return {summary: getSummary(summaries, sessionId)};
 	});
 
 export const requestSummary = createServerFn({method: 'POST'})
@@ -688,23 +660,6 @@ export const getProjectTasksDetailed = createServerFn({method: 'GET'})
 
 		return {project: projectScopeBase(detail), todos, todoCounts};
 	});
-
-export const getStatusline = createServerFn({method: 'GET'})
-	.inputValidator(z.object({sessionId: z.string()}))
-	.handler(async ({data: {sessionId}}) => {
-		const {join} = await claudeDirs();
-		const {getCacheDir} = await import('./db/connection');
-		const filePath = join(getCacheDir(), 'statusline', `${sessionId}.json`);
-		try {
-			const {readFile} = await import('node:fs/promises');
-			const raw = await readFile(filePath, 'utf-8');
-			return JSON.parse(raw) as Record<string, JsonValue>;
-		} catch {
-			return null;
-		}
-	});
-
-type JsonValue = string | number | boolean | null | JsonValue[] | {[key: string]: JsonValue};
 
 // ---------------------------------------------------------------------------
 // Settings viewer

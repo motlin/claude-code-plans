@@ -1,6 +1,6 @@
 import {useMemo, useState} from 'react';
 import {Workflow} from 'lucide-react';
-import type {DbSubagent} from '../lib/db/queries';
+import type {Subagent} from '../lib/subagents';
 import {formatDuration} from './tool-renderers/shared';
 
 interface SequenceTimeRange {
@@ -9,7 +9,7 @@ interface SequenceTimeRange {
 }
 
 interface SequenceLifeline {
-	agent: DbSubagent;
+	agent: Subagent;
 	column: number;
 	depth: number;
 	startMs: number;
@@ -75,7 +75,7 @@ function toMsOrNull(iso: string | null): number | null {
 	return Number.isFinite(ms) ? ms : null;
 }
 
-function computeDepths(timed: DbSubagent[]): Map<string, number> {
+function computeDepths(timed: Subagent[]): Map<string, number> {
 	const byId = new Map(timed.map((a) => [a.id, a]));
 	const depthOf = new Map<string, number>();
 
@@ -148,7 +148,7 @@ function buildTicks(totalMs: number): SequenceTick[] {
 	return ticks;
 }
 
-export function layoutSequence(agents: DbSubagent[]): SequenceLayout {
+export function layoutSequence(agents: Subagent[]): SequenceLayout {
 	const timed = agents.filter((a) => toMsOrNull(a.startedAt) !== null && toMsOrNull(a.finishedAt) !== null);
 
 	if (timed.length === 0) {
@@ -156,7 +156,7 @@ export function layoutSequence(agents: DbSubagent[]): SequenceLayout {
 	}
 
 	const depthOf = computeDepths(timed);
-	const childrenByParent = new Map<string, DbSubagent[]>();
+	const childrenByParent = new Map<string, Subagent[]>();
 	for (const a of timed) {
 		const key = a.parentAgentId;
 		if (!key) continue;
@@ -256,7 +256,7 @@ function truncate(text: string, max: number): string {
 	return text.slice(0, max - 1) + '\u2026';
 }
 
-export function SubagentSequence({agents}: {agents: DbSubagent[]}) {
+export function SubagentSequence({agents}: {agents: Subagent[]}) {
 	const layout = useMemo(() => layoutSequence(agents), [agents]);
 	const [zoom, setZoom] = useState<ZoomLevel>(1);
 	const [hoveredId, setHoveredId] = useState<string | null>(null);

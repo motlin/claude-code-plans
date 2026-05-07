@@ -1,6 +1,6 @@
 import {useMemo, useState} from 'react';
 import {Activity} from 'lucide-react';
-import type {DbSubagent} from '../lib/db/queries';
+import type {Subagent} from '../lib/subagents';
 import {formatDuration} from './tool-renderers/shared';
 
 interface TimeRange {
@@ -14,7 +14,7 @@ interface SwimlaneTick {
 }
 
 interface Swimlane {
-	agent: DbSubagent;
+	agent: Subagent;
 	depth: number;
 	startMs: number;
 	endMs: number;
@@ -56,7 +56,7 @@ function toMsOrNull(iso: string | null): number | null {
 	return Number.isFinite(ms) ? ms : null;
 }
 
-function computeDepths(timed: DbSubagent[]): Map<string, number> {
+function computeDepths(timed: Subagent[]): Map<string, number> {
 	const byId = new Map(timed.map((a) => [a.id, a]));
 	const depthOf = new Map<string, number>();
 
@@ -129,7 +129,7 @@ function buildTicks(totalMs: number): SwimlaneTick[] {
 	return ticks;
 }
 
-export function layoutSwimlanes(agents: DbSubagent[]): SwimlaneLayout {
+export function layoutSwimlanes(agents: Subagent[]): SwimlaneLayout {
 	const timed = agents.filter((a) => toMsOrNull(a.startedAt) !== null && toMsOrNull(a.finishedAt) !== null);
 
 	if (timed.length === 0) {
@@ -137,7 +137,7 @@ export function layoutSwimlanes(agents: DbSubagent[]): SwimlaneLayout {
 	}
 
 	const depthOf = computeDepths(timed);
-	const childrenByParent = new Map<string, DbSubagent[]>();
+	const childrenByParent = new Map<string, Subagent[]>();
 	for (const a of timed) {
 		const key = a.parentAgentId;
 		if (!key) continue;
@@ -199,7 +199,7 @@ function timeAt(offsetMs: number, totalMs: number, plotWidth: number): number {
 	return (offsetMs / totalMs) * plotWidth;
 }
 
-export function SubagentGantt({agents}: {agents: DbSubagent[]}) {
+export function SubagentGantt({agents}: {agents: Subagent[]}) {
 	const layout = useMemo(() => layoutSwimlanes(agents), [agents]);
 	const [zoom, setZoom] = useState<ZoomLevel>(1);
 	const [hoveredId, setHoveredId] = useState<string | null>(null);
