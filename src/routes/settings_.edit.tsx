@@ -1,5 +1,5 @@
 import type {ThemedToken} from '@shikijs/core';
-import {queryOptions, useQueryClient, useSuspenseQuery} from '@tanstack/react-query';
+import {useQueryClient, useSuspenseQuery} from '@tanstack/react-query';
 import {createFileRoute, Link} from '@tanstack/react-router';
 import {
 	AlertCircle,
@@ -16,13 +16,8 @@ import {
 } from 'lucide-react';
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {useHighlightedLines} from '../hooks/use-shiki';
-import {getSettingsRaw, saveSettingsFile} from '../lib/server-fns';
-
-const settingsRawQueryOptions = queryOptions({
-	queryKey: ['settings', 'raw'] as const,
-	queryFn: () => getSettingsRaw(),
-	staleTime: 30_000,
-});
+import {settingsQueryOptions} from '../lib/api/settings';
+import {saveSettingsFile} from '../lib/server-fns';
 
 const FILE_LABELS: Record<string, string> = {
 	'settings.json': 'Global Settings',
@@ -36,7 +31,7 @@ const FILE_DESCRIPTIONS: Record<string, string> = {
 
 export const Route = createFileRoute('/settings_/edit')({
 	component: SettingsEditPage,
-	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(settingsRawQueryOptions),
+	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(settingsQueryOptions),
 	head: () => ({
 		meta: [{title: 'Edit Settings'}],
 	}),
@@ -1627,7 +1622,7 @@ function FormEditor({filename, initialContent, path}: {filename: string; initial
 type EditorTab = 'form' | 'json';
 
 function SettingsEditPage() {
-	const {data: files} = useSuspenseQuery(settingsRawQueryOptions);
+	const {data: files} = useSuspenseQuery(settingsQueryOptions);
 	const [activeTab, setActiveTab] = useState<EditorTab>('form');
 
 	return (

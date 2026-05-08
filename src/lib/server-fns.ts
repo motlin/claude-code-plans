@@ -54,43 +54,6 @@ export const requestSummary = createServerFn({method: 'POST'})
 // Hook installation
 // ---------------------------------------------------------------------------
 
-export const getHookStatus = createServerFn({method: 'GET'}).handler(async () => {
-	const {claudeHome, join} = await claudeDirs();
-	const {generateHooksConfig, HOOK_EVENT_NAMES} = await import('./hook-config');
-	const settingsPath = join(claudeHome, 'settings.json');
-	const {readFile} = await import('node:fs/promises');
-
-	let existing: Record<string, unknown> = {};
-	try {
-		const raw = await readFile(settingsPath, 'utf-8');
-		existing = JSON.parse(raw) as Record<string, unknown>;
-	} catch {
-		return {installed: false, partial: false, settingsPath};
-	}
-
-	const hooks = existing['hooks'] as Record<string, unknown[]> | undefined;
-	if (!hooks) return {installed: false, partial: false, settingsPath};
-
-	const desired = generateHooksConfig();
-	const installedCount = HOOK_EVENT_NAMES.filter((name) => {
-		const entries = hooks[name];
-		if (!Array.isArray(entries)) return false;
-		const desiredCmd = (desired.hooks[name]?.[0]?.hooks[0] as {command: string} | undefined)?.command;
-		return entries.some((e) => {
-			const entryHooks = (e as {hooks?: Array<{command?: string}>}).hooks;
-			return entryHooks?.some((h) => h.command === desiredCmd);
-		});
-	}).length;
-
-	return {
-		installed: installedCount === HOOK_EVENT_NAMES.length,
-		partial: installedCount > 0 && installedCount < HOOK_EVENT_NAMES.length,
-		installedCount,
-		totalCount: HOOK_EVENT_NAMES.length,
-		settingsPath,
-	};
-});
-
 export const installHooks = createServerFn({method: 'POST'})
 	.inputValidator((input: unknown) => z.object({port: z.number().optional()}).parse(input))
 	.handler(async ({data}) => {
@@ -187,26 +150,6 @@ export const uninstallHooks = createServerFn({method: 'POST'})
 // ---------------------------------------------------------------------------
 
 const SETTINGS_FILENAMES = ['settings.json', 'settings.local.json'] as const;
-
-export const getSettingsRaw = createServerFn({method: 'GET'}).handler(async () => {
-	const {claudeHome, join} = await claudeDirs();
-	const {readFile} = await import('node:fs/promises');
-
-	const results: Array<{filename: string; path: string; exists: boolean; content: string}> = [];
-
-	for (const filename of SETTINGS_FILENAMES) {
-		const filePath = join(claudeHome, filename);
-		try {
-			const raw = await readFile(filePath, 'utf-8');
-			const pretty = JSON.stringify(JSON.parse(raw), null, 2);
-			results.push({filename, path: filePath, exists: true, content: pretty});
-		} catch {
-			results.push({filename, path: filePath, exists: false, content: '{}'});
-		}
-	}
-
-	return results;
-});
 
 export const saveSettingsFile = createServerFn({method: 'POST'})
 	.inputValidator(z.object({filename: z.enum(SETTINGS_FILENAMES), content: z.string()}))

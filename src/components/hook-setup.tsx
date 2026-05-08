@@ -1,26 +1,22 @@
-import {useState, useEffect} from 'react';
+import {useState} from 'react';
+import {useQuery, useQueryClient} from '@tanstack/react-query';
 import {Check, Copy, Settings, Download, Trash2, AlertCircle} from 'lucide-react';
 import {generateHooksJson, DEFAULT_HOOK_PORT} from '../lib/hook-config';
-import {getHookStatus, installHooks, uninstallHooks} from '../lib/server-fns';
-
-type HookStatus = Awaited<ReturnType<typeof getHookStatus>>;
+import {hookStatusQueryOptions} from '../lib/api/hooks';
+import {installHooks, uninstallHooks} from '../lib/server-fns';
 
 export function HookSetup() {
 	const [port, setPort] = useState(DEFAULT_HOOK_PORT);
 	const [copied, setCopied] = useState(false);
-	const [status, setStatus] = useState<HookStatus | null>(null);
 	const [installing, setInstalling] = useState(false);
 	const [uninstalling, setUninstalling] = useState(false);
 	const [message, setMessage] = useState<{type: 'success' | 'error'; text: string} | null>(null);
 	const [showJson, setShowJson] = useState(false);
 
-	const json = generateHooksJson({port});
+	const {data: status} = useQuery(hookStatusQueryOptions);
+	const queryClient = useQueryClient();
 
-	useEffect(() => {
-		getHookStatus()
-			.then(setStatus)
-			.catch(() => {});
-	}, []);
+	const json = generateHooksJson({port});
 
 	function handleCopy() {
 		navigator.clipboard.writeText(json);
@@ -34,8 +30,7 @@ export function HookSetup() {
 		try {
 			const result = await installHooks({data: {port}});
 			setMessage({type: 'success', text: `Hooks installed to ${result.settingsPath}`});
-			const updated = await getHookStatus();
-			setStatus(updated);
+			await queryClient.invalidateQueries({queryKey: ['hooks', 'status']});
 		} catch (err) {
 			setMessage({type: 'error', text: (err as Error).message});
 		} finally {
@@ -49,8 +44,7 @@ export function HookSetup() {
 		try {
 			const result = await uninstallHooks({data: {port}});
 			setMessage({type: 'success', text: `Hooks removed from ${result.settingsPath}`});
-			const updated = await getHookStatus();
-			setStatus(updated);
+			await queryClient.invalidateQueries({queryKey: ['hooks', 'status']});
 		} catch (err) {
 			setMessage({type: 'error', text: (err as Error).message});
 		} finally {
