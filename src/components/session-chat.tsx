@@ -73,6 +73,8 @@ export interface SessionChatProps {
 	showHookWarnings?: boolean;
 	showHookErrors?: boolean;
 	showSystemBanners?: boolean;
+	showCompactSummaries?: boolean;
+	showTranscriptOnly?: boolean;
 }
 
 const autoScrolledSessions = hmrPersist('autoScrolledSessions', () => new Set<string>());
@@ -229,6 +231,8 @@ export const SessionChat = React.memo(function SessionChat({
 	showHookWarnings = false,
 	showHookErrors = false,
 	showSystemBanners = false,
+	showCompactSummaries = false,
+	showTranscriptOnly = false,
 }: SessionChatProps) {
 	const endRef = useRef<HTMLDivElement>(null);
 	const isSubagentSession = sessionId.startsWith('agent-');
@@ -254,6 +258,8 @@ export const SessionChat = React.memo(function SessionChat({
 				showHookWarnings={showHookWarnings}
 				showHookErrors={showHookErrors}
 				showSystemBanners={showSystemBanners}
+				showCompactSummaries={showCompactSummaries}
+				showTranscriptOnly={showTranscriptOnly}
 			/>
 			<div ref={endRef} />
 		</div>
@@ -286,6 +292,8 @@ interface LineRenderProps {
 	showHookWarnings: boolean;
 	showHookErrors: boolean;
 	showSystemBanners: boolean;
+	showCompactSummaries: boolean;
+	showTranscriptOnly: boolean;
 }
 
 function LineEntry({
@@ -534,11 +542,18 @@ function isLineVisible(
 		showHookWarnings,
 		showHookErrors,
 		showSystemBanners,
+		showTranscriptOnly,
 		showThinking,
 		showTools,
 	}: Pick<
 		LineRenderProps,
-		'showPassedHooks' | 'showHookWarnings' | 'showHookErrors' | 'showSystemBanners' | 'showThinking' | 'showTools'
+		| 'showPassedHooks'
+		| 'showHookWarnings'
+		| 'showHookErrors'
+		| 'showSystemBanners'
+		| 'showTranscriptOnly'
+		| 'showThinking'
+		| 'showTools'
 	>,
 ): boolean {
 	if (line.type === 'agent-name' || line.type === 'agent-color' || line.type === 'permission-mode')
@@ -549,6 +564,14 @@ function isLineVisible(
 		if (subtype && HOOK_WARNING_SUBTYPES.has(subtype)) return showHookWarnings;
 		if (subtype && HOOK_ERROR_SUBTYPES.has(subtype)) return showHookErrors;
 		if (subtype && SYSTEM_BANNER_SUBTYPES.has(subtype)) return showSystemBanners;
+	}
+	if (
+		line.type === 'user' &&
+		line.isVisibleInTranscriptOnly === true &&
+		line.isCompactSummary !== true &&
+		!showTranscriptOnly
+	) {
+		return false;
 	}
 	if (!hasAssistantVisibleContent(line, showThinking, showTools)) return false;
 	return true;
@@ -569,6 +592,7 @@ function renderSessionMessage({
 	isSubagentSession,
 	showThinking,
 	showTools,
+	showCompactSummaries,
 	nextLine,
 }: LineRenderProps & {
 	line: SessionLine;
@@ -583,6 +607,7 @@ function renderSessionMessage({
 				sessionId={sessionId}
 				nextLine={nextLine}
 				isSubagentSession={isSubagentSession}
+				showCompactSummaries={showCompactSummaries}
 			/>
 		);
 	}
@@ -809,14 +834,26 @@ function UserEntry({
 	sessionId,
 	nextLine,
 	isSubagentSession,
+	showCompactSummaries,
 }: {
 	line: MessageSessionLine;
 	index: number;
 	sessionId: string;
 	nextLine?: SessionLine | undefined;
 	isSubagentSession: boolean;
+	showCompactSummaries: boolean;
 }) {
 	const kind = classifyUserContent(line);
+
+	if (line.isCompactSummary === true && !showCompactSummaries) {
+		return (
+			<CompactSummaryStub
+				line={line}
+				index={index}
+				sessionId={sessionId}
+			/>
+		);
+	}
 
 	if (kind === 'command') {
 		return (
@@ -891,6 +928,72 @@ const LABEL_BY_KIND: Record<LabeledKind, string> = {
 	'stop-hook': 'Stop hook feedback',
 	'slash-command-body': 'Slash command body',
 };
+
+function getCompactSummarySizeKB(line: MessageSessionLine): number {
+	const content = line.message?.content;
+	if (!content) return 0;
+	let bytes = 0;
+	if (typeof content === 'string') {
+		bytes = content.length;
+	} else {
+		for (const block of content) {
+			if (block.type === 'text' && typeof block.text === 'string') {
+				bytes += block.text.length;
+			}
+		}
+	}
+	return Math.max(1, Math.round(bytes / 1024));
+}
+
+function CompactSummaryStub({line, index, sessionId}: {line: MessageSessionLine; index: number; sessionId: string}) {
+	const [expanded, setExpanded] = useState(false);
+	const sizeKB = getCompactSummarySizeKB(line);
+
+	if (expanded) {
+		const timestamp = 'timestamp' in line ? line.timestamp : undefined;
+		const actionsProps = {line, index, ...(timestamp ? {timestamp} : {})};
+		const {textNodes, mediaNodes} = renderUserContentBlocks(line, sessionId);
+
+		return (
+			<div className="group/msg flex justify-start w-full">
+				<div className="flex flex-col items-start gap-1 max-w-[85%] min-w-0">
+					<div className="flex items-center gap-1.5 px-1">
+						<span className="text-[10px] font-medium text-text-500 bg-bg-200 rounded-full px-2 py-0.5">
+							Compact summary
+						</span>
+						<button
+							type="button"
+							onClick={() => setExpanded(false)}
+							className="text-[10px] text-text-500 hover:text-text-000 cursor-pointer"
+						>
+							Collapse
+						</button>
+					</div>
+					{textNodes.length > 0 && (
+						<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] rounded-bl-[2px] bg-auto-msg-bg text-auto-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-[13px] leading-[20px] select-text">
+							{textNodes}
+						</div>
+					)}
+					{mediaNodes}
+					<UserMessageActions {...actionsProps} />
+				</div>
+			</div>
+		);
+	}
+
+	return (
+		<div className="group/msg flex justify-start w-full">
+			<button
+				type="button"
+				onClick={() => setExpanded(true)}
+				className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-bg-200 text-[11px] text-text-500 hover:text-text-000 cursor-pointer"
+			>
+				<span className="font-medium">Compact summary (~{sizeKB} KB)</span>
+				<span>— click to expand</span>
+			</button>
+		</div>
+	);
+}
 
 function LabeledAutomatedEntry({
 	line,

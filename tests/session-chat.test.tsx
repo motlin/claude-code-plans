@@ -18,7 +18,10 @@ const SHAPES = JSON.parse(readFileSync(FIXTURE_PATH, 'utf8')) as Record<string, 
 // Helpers
 // ---------------------------------------------------------------------------
 
-function renderShape(shapeKey: string): string {
+function renderShape(
+	shapeKey: string,
+	overrides?: {showCompactSummaries?: boolean; showTranscriptOnly?: boolean},
+): string {
 	const record = SHAPES[shapeKey];
 	expect(record, `fixture ${shapeKey} missing`).toBeDefined();
 	const {lines, toolResultMap} = processTranscript([record]);
@@ -27,6 +30,8 @@ function renderShape(shapeKey: string): string {
 			sessionId="test-session"
 			lines={lines}
 			toolResultMap={toolResultMap}
+			showCompactSummaries={overrides?.showCompactSummaries ?? true}
+			showTranscriptOnly={overrides?.showTranscriptOnly ?? true}
 		/>,
 	);
 }
@@ -85,6 +90,16 @@ describe('SessionChat user-message shapes', () => {
 
 		expect(html).toContain('bg-auto-msg-bg');
 		expect(html).toContain('>Slash command body<');
+	});
+
+	it('Shape C — compact summary collapses to a stub when showCompactSummaries=false', () => {
+		const html = renderShape('C', {showCompactSummaries: false});
+
+		// Stub label appears with the size hint and call-to-action.
+		expect(html).toContain('Compact summary (~');
+		expect(html).toContain('click to expand');
+		// Full automated bubble is NOT rendered.
+		expect(html).not.toContain('bg-auto-msg-bg');
 	});
 
 	it('Shape F — document attachment renders the regular blue user bubble path with no automated label', () => {
