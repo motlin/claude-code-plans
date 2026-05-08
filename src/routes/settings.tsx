@@ -287,6 +287,16 @@ function SettingsPage() {
 						description="Show system-level banner messages"
 						settingKey="showSystemBanners"
 					/>
+					<ToggleRow
+						label="Show compact summaries inline"
+						description="Render full /compact recap messages instead of a collapsed stub"
+						settingKey="showCompactSummaries"
+					/>
+					<ToggleRow
+						label="Show transcript-only system records"
+						description="Render synthesized records that Claude never saw as input"
+						settingKey="showTranscriptOnly"
+					/>
 				</Section>
 
 				<Section
