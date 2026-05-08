@@ -224,12 +224,14 @@ export function applyPlanChanged(queryClient: QueryClient, plan: PlanSummaryPayl
 	// pages reflect external edits without waiting for staleTime expiry.
 	void queryClient.invalidateQueries({queryKey: ['plans', plan.filename]});
 	void queryClient.invalidateQueries({queryKey: ['plans', plan.filename, 'links']});
+	void queryClient.invalidateQueries({queryKey: ['source', 'plan', plan.filename]});
 }
 
 export function applyPlanRemoved(queryClient: QueryClient, filename: string): void {
 	void queryClient.invalidateQueries({queryKey: ['plans']});
 	queryClient.removeQueries({queryKey: ['plans', filename, 'links']});
 	queryClient.removeQueries({queryKey: ['plans', filename]});
+	queryClient.removeQueries({queryKey: ['source', 'plan', filename]});
 }
 
 export function applyMemoryChanged(queryClient: QueryClient, memory: MemorySummaryPayload): void {

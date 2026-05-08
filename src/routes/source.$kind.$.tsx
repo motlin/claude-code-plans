@@ -1,31 +1,12 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
-import {createServerFn} from '@tanstack/react-start';
+import {useSuspenseQuery} from '@tanstack/react-query';
 import {useState} from 'react';
-import {z} from 'zod';
-import type {SourceFile} from '../lib/source-view';
-
-const InputSchema = z.object({
-	kind: z.string(),
-	relativePath: z.string(),
-});
-
-const getGenericSource = createServerFn({method: 'GET'})
-	.inputValidator(InputSchema)
-	.handler(async ({data}): Promise<SourceFile | null> => {
-		const {homedir} = await import('node:os');
-		const {join} = await import('node:path');
-		const {buildSourceConfig, isValidSourceKind, readSourceFile} = await import('../lib/source-view');
-		const claudeHome = join(homedir(), '.claude');
-		const {kind, relativePath} = data;
-		if (!isValidSourceKind(kind)) return null;
-		const config = buildSourceConfig(kind, claudeHome);
-		if (!config) return null;
-		return readSourceFile(kind, config, relativePath);
-	});
+import {sourceFileQueryOptions} from '../lib/api/source';
 
 export const Route = createFileRoute('/source/$kind/$')({
 	component: GenericSourcePage,
-	loader: ({params}) => getGenericSource({data: {kind: params.kind, relativePath: params._splat ?? ''}}),
+	loader: ({context: {queryClient}, params}) =>
+		queryClient.ensureQueryData(sourceFileQueryOptions(params.kind, params._splat ?? '')),
 	head: ({params}) => {
 		const tail = (params._splat ?? '').split('/').pop() ?? params.kind;
 		return {meta: [{title: `Source: ${tail}`}]};
@@ -76,9 +57,9 @@ const BACK_LINKS: Record<string, {to: string; label: string}> = {
 };
 
 function GenericSourcePage() {
-	const data = Route.useLoaderData();
 	const {kind, _splat} = Route.useParams();
 	const relativePath = _splat ?? '';
+	const {data} = useSuspenseQuery(sourceFileQueryOptions(kind, relativePath));
 	const back = BACK_LINKS[kind];
 	const kindLabel = KIND_LABELS[kind] ?? kind;
 
