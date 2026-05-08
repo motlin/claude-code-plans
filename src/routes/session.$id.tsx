@@ -7,8 +7,12 @@ import {ChatInput} from '../components/chat-input';
 import {StreamingMessage} from '../components/streaming-message';
 import {useChatStream} from '../hooks/use-chat-stream';
 import {AskUserQuestionProvider, type AskUserQuestionContextValue} from '../components/ask-user-question-context';
-import {requestSummary, toggleSessionStar} from '../lib/server-fns';
-import {sessionDetailQueryOptions, transcriptQueryOptions} from '../lib/api/sessions';
+import {
+	sessionDetailQueryOptions,
+	transcriptQueryOptions,
+	useRequestSummary,
+	useToggleSessionStar,
+} from '../lib/api/sessions';
 import {extractSubagents} from '../lib/subagents';
 import {useIsSessionActive, useStatusline} from '../hooks/use-claude-events';
 import {StatusFooter} from '../components/status-footer';
@@ -164,6 +168,8 @@ function SessionPage() {
 	const isActive = useIsSessionActive(params.id);
 	const statusline = useStatusline(params.id);
 	const [generating, setGenerating] = useState(false);
+	const summaryMutation = useRequestSummary(params.id);
+	const starMutation = useToggleSessionStar(params.id);
 	const {settings, setSetting} = useSettings();
 	const chromeHidden = settings.chromeHidden;
 	const setChromeHidden = useCallback((v: boolean) => setSetting('chromeHidden', v), [setSetting]);
@@ -248,7 +254,7 @@ function SessionPage() {
 	async function handleGenerateSummary() {
 		setGenerating(true);
 		try {
-			const result = await requestSummary({data: params.id});
+			const result = await summaryMutation.mutateAsync();
 			if (result.summary) {
 				setAiSummary(result.summary);
 			}
@@ -319,7 +325,7 @@ function SessionPage() {
 						<button
 							type="button"
 							onClick={async () => {
-								const result = await toggleSessionStar({data: params.id});
+								const result = await starMutation.mutateAsync(!starred);
 								setStarred(result.starred);
 								void queryClient.invalidateQueries({queryKey: ['starred-sessions']});
 							}}

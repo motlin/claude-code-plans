@@ -481,6 +481,24 @@ export function toggleStar(db: IndexDb, sessionId: string): boolean {
 	return true;
 }
 
+export function setStar(db: IndexDb, sessionId: string, starred: boolean): boolean {
+	const existing = db
+		.select()
+		.from(schema.starredSessions)
+		.where(eq(schema.starredSessions.sessionId, sessionId))
+		.get();
+	if (starred) {
+		if (!existing) {
+			db.insert(schema.starredSessions).values({sessionId, starredAt: Date.now()}).run();
+		}
+		return true;
+	}
+	if (existing) {
+		db.delete(schema.starredSessions).where(eq(schema.starredSessions.sessionId, sessionId)).run();
+	}
+	return false;
+}
+
 export function getStarredSessionIds(db: IndexDb): Set<string> {
 	const rows = db.select({sessionId: schema.starredSessions.sessionId}).from(schema.starredSessions).all();
 	return new Set(rows.map((r) => r.sessionId));

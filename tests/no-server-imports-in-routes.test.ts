@@ -58,7 +58,7 @@ describe('client build must not contain externalized Node built-ins', () => {
 				`Client bundle contains references to Node built-in modules:\n` +
 					violations.map((v) => `  - ${v}`).join('\n') +
 					'\n\nA route file is importing a server-only module at the top level.' +
-					'\nMove these imports inside createServerFn handlers using dynamic import().',
+					'\nMove these imports inside API route handlers (src/routes/api/) using dynamic import().',
 			);
 		}
 	}, 30_000);

@@ -1,22 +1,11 @@
 import {createFileRoute, Link, useNavigate} from '@tanstack/react-router';
-import {createServerFn} from '@tanstack/react-start';
 import {useSuspenseQuery} from '@tanstack/react-query';
 import {MarkdownView} from '../components/markdown-view';
-import {memoryDetailQueryOptions} from '../lib/api/memories';
+import {memoryDetailQueryOptions, useRemoveMemory} from '../lib/api/memories';
 import {ArrowLeft, Pencil, Trash2} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {DebugLink} from '../components/debug-link';
 import {useCallback, useState} from 'react';
-
-const removeMemory = createServerFn({method: 'POST'})
-	.inputValidator((d: {project: string; filename: string}) => d)
-	.handler(async ({data: {project, filename}}) => {
-		const {homedir} = await import('node:os');
-		const {join} = await import('node:path');
-		const {deleteMemory} = await import('../lib/memory');
-		const projectsDir = join(homedir(), '.claude', 'projects');
-		return deleteMemory(projectsDir, project, filename);
-	});
 
 export const Route = createFileRoute('/memory/$project/$filename')({
 	component: MemoryPage,
@@ -32,18 +21,21 @@ function MemoryPage() {
 	const {data} = useSuspenseQuery(memoryDetailQueryOptions(project, filename));
 	const navigate = useNavigate();
 	const [confirmingDelete, setConfirmingDelete] = useState(false);
-	const [deleting, setDeleting] = useState(false);
+	const removeMutation = useRemoveMemory(project, filename);
+	const deleting = removeMutation.isPending;
 
 	const handleDelete = useCallback(async () => {
-		setDeleting(true);
-		const ok = await removeMemory({data: {project, filename}});
-		if (ok) {
-			navigate({to: '/memories'});
-		} else {
-			setDeleting(false);
-			setConfirmingDelete(false);
+		try {
+			const result = await removeMutation.mutateAsync();
+			if (result.ok) {
+				navigate({to: '/memories'});
+				return;
+			}
+		} catch {
+			// fall through
 		}
-	}, [project, filename, navigate]);
+		setConfirmingDelete(false);
+	}, [removeMutation, navigate]);
 
 	if (!data) {
 		return (

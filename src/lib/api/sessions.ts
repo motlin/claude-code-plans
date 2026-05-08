@@ -1,5 +1,5 @@
 import {z} from 'zod';
-import {queryOptions} from '@tanstack/react-query';
+import {queryOptions, useMutation, useQueryClient} from '@tanstack/react-query';
 import {apiFetch} from './client';
 
 const SessionListItemSchema = z.object({
@@ -148,3 +148,34 @@ export const sessionSourceQueryOptions = (sessionId: string, uuid: string, conte
 		staleTime: Infinity,
 		gcTime: Infinity,
 	});
+
+export const StarredMutationResponse = z.object({starred: z.boolean()});
+export const useToggleSessionStar = (sessionId: string) => {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (starred: boolean) =>
+			apiFetch(`/api/sessions/${encodeURIComponent(sessionId)}/starred`, StarredMutationResponse, {
+				method: 'PUT',
+				headers: {'Content-Type': 'application/json'},
+				body: JSON.stringify({starred}),
+			}),
+		onSuccess: () => {
+			void qc.invalidateQueries({queryKey: ['sessions']});
+			void qc.invalidateQueries({queryKey: ['sessions', sessionId]});
+		},
+	});
+};
+
+export const SummaryMutationResponse = z.object({summary: z.string().nullable()});
+export const useRequestSummary = (sessionId: string) => {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: () =>
+			apiFetch(`/api/sessions/${encodeURIComponent(sessionId)}/summary`, SummaryMutationResponse, {
+				method: 'POST',
+			}),
+		onSuccess: () => {
+			void qc.invalidateQueries({queryKey: ['sessions', sessionId]});
+		},
+	});
+};

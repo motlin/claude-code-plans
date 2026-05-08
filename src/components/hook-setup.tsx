@@ -1,20 +1,20 @@
 import {useState} from 'react';
-import {useQuery, useQueryClient} from '@tanstack/react-query';
+import {useQuery} from '@tanstack/react-query';
 import {Check, Copy, Settings, Download, Trash2, AlertCircle} from 'lucide-react';
 import {generateHooksJson, DEFAULT_HOOK_PORT} from '../lib/hook-config';
-import {hookStatusQueryOptions} from '../lib/api/hooks';
-import {installHooks, uninstallHooks} from '../lib/server-fns';
+import {hookStatusQueryOptions, useInstallHooks, useUninstallHooks} from '../lib/api/hooks';
 
 export function HookSetup() {
 	const [port, setPort] = useState(DEFAULT_HOOK_PORT);
 	const [copied, setCopied] = useState(false);
-	const [installing, setInstalling] = useState(false);
-	const [uninstalling, setUninstalling] = useState(false);
 	const [message, setMessage] = useState<{type: 'success' | 'error'; text: string} | null>(null);
 	const [showJson, setShowJson] = useState(false);
 
 	const {data: status} = useQuery(hookStatusQueryOptions);
-	const queryClient = useQueryClient();
+	const installMutation = useInstallHooks();
+	const uninstallMutation = useUninstallHooks();
+	const installing = installMutation.isPending;
+	const uninstalling = uninstallMutation.isPending;
 
 	const json = generateHooksJson({port});
 
@@ -25,30 +25,22 @@ export function HookSetup() {
 	}
 
 	async function handleInstall() {
-		setInstalling(true);
 		setMessage(null);
 		try {
-			const result = await installHooks({data: {port}});
+			const result = await installMutation.mutateAsync({port});
 			setMessage({type: 'success', text: `Hooks installed to ${result.settingsPath}`});
-			await queryClient.invalidateQueries({queryKey: ['hooks', 'status']});
 		} catch (err) {
 			setMessage({type: 'error', text: (err as Error).message});
-		} finally {
-			setInstalling(false);
 		}
 	}
 
 	async function handleUninstall() {
-		setUninstalling(true);
 		setMessage(null);
 		try {
-			const result = await uninstallHooks({data: {port}});
+			const result = await uninstallMutation.mutateAsync({port});
 			setMessage({type: 'success', text: `Hooks removed from ${result.settingsPath}`});
-			await queryClient.invalidateQueries({queryKey: ['hooks', 'status']});
 		} catch (err) {
 			setMessage({type: 'error', text: (err as Error).message});
-		} finally {
-			setUninstalling(false);
 		}
 	}
 

@@ -1,5 +1,5 @@
 import type {ThemedToken} from '@shikijs/core';
-import {useQueryClient, useSuspenseQuery} from '@tanstack/react-query';
+import {useSuspenseQuery} from '@tanstack/react-query';
 import {createFileRoute, Link} from '@tanstack/react-router';
 import {
 	AlertCircle,
@@ -16,8 +16,7 @@ import {
 } from 'lucide-react';
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {useHighlightedLines} from '../hooks/use-shiki';
-import {settingsQueryOptions} from '../lib/api/settings';
-import {saveSettingsFile} from '../lib/server-fns';
+import {settingsQueryOptions, useSaveSettingsFile} from '../lib/api/settings';
 
 const FILE_LABELS: Record<string, string> = {
 	'settings.json': 'Global Settings',
@@ -58,11 +57,11 @@ function JsonEditor({filename, initialContent, path}: {filename: string; initial
 	const draftRef = useRef(initialContent);
 	const [editorValue, setEditorValue] = useState(initialContent);
 	const [savedContent, setSavedContent] = useState(initialContent);
-	const [saving, setSaving] = useState(false);
 	const [feedback, setFeedback] = useState<Feedback | null>(null);
 	const [validationError, setValidationError] = useState<string | null>(null);
 	const [formatFeedback, setFormatFeedback] = useState(false);
-	const queryClient = useQueryClient();
+	const saveMutation = useSaveSettingsFile();
+	const saving = saveMutation.isPending;
 
 	const validate = useCallback((text: string): string | null => {
 		try {
@@ -95,27 +94,22 @@ function JsonEditor({filename, initialContent, path}: {filename: string; initial
 			return;
 		}
 
-		setSaving(true);
 		setFeedback(null);
 		try {
-			const result = await saveSettingsFile({
-				data: {filename: filename as 'settings.json' | 'settings.local.json', content},
+			const result = await saveMutation.mutateAsync({
+				filename: filename as 'settings.json' | 'settings.local.json',
+				content,
 			});
 			setFeedback({type: 'success', text: `Saved to ${result.path}`});
-			// Re-format the content after save (server normalizes it)
 			const pretty = JSON.stringify(JSON.parse(content), null, 2);
 			draftRef.current = pretty;
 			setEditorValue(pretty);
 			setSavedContent(pretty);
 			setValidationError(null);
-			// Invalidate the viewer query so navigating back shows fresh data
-			await queryClient.invalidateQueries({queryKey: ['settings']});
 		} catch (error) {
 			setFeedback({type: 'error', text: (error as Error).message});
-		} finally {
-			setSaving(false);
 		}
-	}, [filename, validate, queryClient]);
+	}, [filename, validate, saveMutation]);
 
 	const handleReset = useCallback(() => {
 		draftRef.current = savedContent;
@@ -1399,9 +1393,9 @@ function FormEditor({filename, initialContent, path}: {filename: string; initial
 		}
 	});
 	const [savedData, setSavedData] = useState<Record<string, unknown>>(data);
-	const [saving, setSaving] = useState(false);
 	const [feedback, setFeedback] = useState<Feedback | null>(null);
-	const queryClient = useQueryClient();
+	const saveMutation = useSaveSettingsFile();
+	const saving = saveMutation.isPending;
 
 	const isDirty = JSON.stringify(data) !== JSON.stringify(savedData);
 
@@ -1411,10 +1405,8 @@ function FormEditor({filename, initialContent, path}: {filename: string; initial
 	}, []);
 
 	const handleSave = useCallback(async () => {
-		setSaving(true);
 		setFeedback(null);
 		try {
-			// Strip empty dedicated-editor keys so we don't write empty objects/arrays to disk
 			const cleaned = {...data};
 			for (const key of DEDICATED_EDITOR_KEYS) {
 				const val = cleaned[key];
@@ -1426,18 +1418,16 @@ function FormEditor({filename, initialContent, path}: {filename: string; initial
 				}
 			}
 			const content = JSON.stringify(cleaned, null, 2);
-			const result = await saveSettingsFile({
-				data: {filename: filename as 'settings.json' | 'settings.local.json', content},
+			const result = await saveMutation.mutateAsync({
+				filename: filename as 'settings.json' | 'settings.local.json',
+				content,
 			});
 			setFeedback({type: 'success', text: `Saved to ${result.path}`});
 			setSavedData({...data});
-			await queryClient.invalidateQueries({queryKey: ['settings']});
 		} catch (error) {
 			setFeedback({type: 'error', text: (error as Error).message});
-		} finally {
-			setSaving(false);
 		}
-	}, [data, filename, queryClient]);
+	}, [data, filename, saveMutation]);
 
 	const handleReset = useCallback(() => {
 		setData({...savedData});

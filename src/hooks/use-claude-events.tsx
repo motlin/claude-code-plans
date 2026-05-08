@@ -132,8 +132,8 @@ export function useIsSessionActive(sessionId: string): boolean {
 // Cache-patching helpers (exported for testing)
 //
 // Each handler applies a single domain event to the TanStack Query cache in
-// place with setQueryData. Data shapes mirror the server functions in
-// src/lib/server-fns.ts (groups of {project, projectName, entries}).
+// place with setQueryData. Data shapes mirror the API endpoints in
+// src/routes/api/ (groups of {project, projectName, entries}).
 // ---------------------------------------------------------------------------
 
 type SessionsGroup = {project: string; projectName: string; sessions: SessionSummaryPayload[]};

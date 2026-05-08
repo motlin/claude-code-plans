@@ -1,5 +1,5 @@
 import {z} from 'zod';
-import {queryOptions} from '@tanstack/react-query';
+import {queryOptions, useMutation, useQueryClient} from '@tanstack/react-query';
 import {apiFetch} from './client';
 
 const SettingsFileSchema = z.object({
@@ -17,3 +17,21 @@ export const settingsQueryOptions = queryOptions({
 	staleTime: Infinity,
 	gcTime: Infinity,
 });
+
+export const SettingsSaveResponse = z.object({path: z.string()});
+
+export const useSaveSettingsFile = () => {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: ({filename, content}: {filename: 'settings.json' | 'settings.local.json'; content: string}) =>
+			apiFetch(`/api/settings/${encodeURIComponent(filename)}`, SettingsSaveResponse, {
+				method: 'PUT',
+				headers: {'Content-Type': 'application/json'},
+				body: content,
+			}),
+		onSuccess: () => {
+			void qc.invalidateQueries({queryKey: ['settings']});
+			void qc.invalidateQueries({queryKey: ['hooks', 'status']});
+		},
+	});
+};

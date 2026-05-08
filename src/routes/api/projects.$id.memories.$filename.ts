@@ -1,5 +1,5 @@
 import {createFileRoute} from '@tanstack/react-router';
-import {MemoryDetailResponse} from '../../lib/api/memories';
+import {MemoryDeleteResponse, MemoryDetailResponse, MemorySaveResponse} from '../../lib/api/memories';
 
 export const Route = createFileRoute('/api/projects/$id/memories/$filename')({
 	server: {
@@ -61,6 +61,30 @@ export const Route = createFileRoute('/api/projects/$id/memories/$filename')({
 					}),
 					{headers},
 				);
+			},
+			PUT: async ({params, request}: {params: {id: string; filename: string}; request: Request}) => {
+				const {homedir} = await import('node:os');
+				const {join} = await import('node:path');
+				const {writeMemory} = await import('../../lib/memory');
+				const projectsDir = join(homedir(), '.claude', 'projects');
+				const content = await request.text();
+				const ok = await writeMemory(projectsDir, params.id, params.filename, content);
+				if (!ok) {
+					return new Response('Invalid path', {status: 400});
+				}
+				return Response.json(MemorySaveResponse.parse({ok}), {
+					headers: {'Cache-Control': 'private, max-age=0, must-revalidate'},
+				});
+			},
+			DELETE: async ({params}: {params: {id: string; filename: string}}) => {
+				const {homedir} = await import('node:os');
+				const {join} = await import('node:path');
+				const {deleteMemory} = await import('../../lib/memory');
+				const projectsDir = join(homedir(), '.claude', 'projects');
+				const ok = await deleteMemory(projectsDir, params.id, params.filename);
+				return Response.json(MemoryDeleteResponse.parse({ok}), {
+					headers: {'Cache-Control': 'private, max-age=0, must-revalidate'},
+				});
 			},
 		},
 	},

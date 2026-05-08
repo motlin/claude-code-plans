@@ -1,8 +1,11 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
 import {useSuspenseQuery, useQueryClient} from '@tanstack/react-query';
 import {useMemo} from 'react';
-import {toggleSessionStar} from '../lib/server-fns';
+import {z} from 'zod';
+import {apiFetch} from '../lib/api/client';
 import {sessionsQueryOptions} from '../queries/sessions';
+
+const StarredMutationResponse = z.object({starred: z.boolean()});
 
 export const Route = createFileRoute('/starred')({
 	component: StarredPage,
@@ -35,7 +38,11 @@ function StarredPage() {
 	);
 
 	async function handleUnstar(sessionId: string) {
-		await toggleSessionStar({data: sessionId});
+		await apiFetch(`/api/sessions/${encodeURIComponent(sessionId)}/starred`, StarredMutationResponse, {
+			method: 'PUT',
+			headers: {'Content-Type': 'application/json'},
+			body: JSON.stringify({starred: false}),
+		});
 		void queryClient.invalidateQueries({queryKey: ['sessions']});
 	}
 

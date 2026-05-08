@@ -1,8 +1,6 @@
 import {createFileRoute, Link, useNavigate} from '@tanstack/react-router';
-import {createServerFn} from '@tanstack/react-start';
 import {useSuspenseQuery} from '@tanstack/react-query';
-import {z} from 'zod';
-import {memoryDetailQueryOptions} from '../lib/api/memories';
+import {memoryDetailQueryOptions, useSaveMemory} from '../lib/api/memories';
 import {lazy, Suspense, useCallback, useEffect, useRef, useState} from 'react';
 
 const MarkdownEditor = lazy(() => import('../components/markdown-editor').then((m) => ({default: m.MarkdownEditor})));
@@ -12,17 +10,6 @@ function ClientOnly({children, fallback}: {children: React.ReactNode; fallback: 
 	useEffect(() => setMounted(true), []);
 	return mounted ? children : fallback;
 }
-
-const saveMemory = createServerFn({method: 'POST'})
-	.inputValidator(z.object({project: z.string(), filename: z.string(), content: z.string()}))
-	.handler(async ({data: {project, filename, content}}) => {
-		const {homedir} = await import('node:os');
-		const {join} = await import('node:path');
-		const {writeMemory} = await import('../lib/memory');
-		const projectsDir = join(homedir(), '.claude', 'projects');
-		const ok = await writeMemory(projectsDir, project, filename, content);
-		return {ok};
-	});
 
 export const Route = createFileRoute('/memory/$project/$filename_/edit')({
 	component: MemoryEditPage,
@@ -36,6 +23,8 @@ export const Route = createFileRoute('/memory/$project/$filename_/edit')({
 function MemoryEditPage() {
 	const {project, filename} = Route.useParams();
 	const {data} = useSuspenseQuery(memoryDetailQueryOptions(project, filename));
+	const saveMutation = useSaveMemory(project, filename);
+	const saving = saveMutation.isPending;
 
 	const initialMarkdown = data?.markdown ?? '';
 	const draftRef = useRef(initialMarkdown);
@@ -44,7 +33,6 @@ function MemoryEditPage() {
 		draftRef.current = initialMarkdown;
 	}, [initialMarkdown]);
 
-	const [saving, setSaving] = useState(false);
 	const [feedback, setFeedback] = useState<string | null>(null);
 
 	const handleChange = useCallback((value: string) => {
@@ -54,21 +42,21 @@ function MemoryEditPage() {
 	const navigate = useNavigate();
 
 	const doSave = useCallback(async () => {
-		return saveMemory({data: {project, filename, content: draftRef.current}});
-	}, [project, filename]);
+		try {
+			return await saveMutation.mutateAsync(draftRef.current);
+		} catch {
+			return {ok: false};
+		}
+	}, [saveMutation]);
 
 	const handleSave = useCallback(async () => {
-		setSaving(true);
 		setFeedback(null);
 		const result = await doSave();
-		setSaving(false);
 		setFeedback(result.ok ? 'Saved' : 'Failed to save');
 	}, [doSave]);
 
 	const handlePreview = useCallback(async () => {
-		setSaving(true);
 		const result = await doSave();
-		setSaving(false);
 		if (result.ok) {
 			navigate({
 				to: '/memory/$project/$filename',
