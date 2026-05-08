@@ -2,7 +2,8 @@ import {Outlet, createRootRouteWithContext, HeadContent, Scripts, useRouter} fro
 import type {ErrorComponentProps} from '@tanstack/react-router';
 import {QueryClientProvider, type QueryClient} from '@tanstack/react-query';
 import {ReactQueryDevtools} from '@tanstack/react-query-devtools';
-import {useEffect, useState, type ComponentType, type ReactNode} from 'react';
+import {useEffect, useState, type ReactNode} from 'react';
+import {Agentation} from 'agentation';
 import {ThemeProvider} from '../components/theme-provider';
 import {SettingsProvider} from '../components/settings-provider';
 import {ModeToggle} from '../components/mode-toggle';
@@ -11,9 +12,23 @@ import {CommandPalette} from '../components/command-palette';
 import {useCommandPalette} from '../hooks/use-command-palette';
 import {IndexingBanner} from '../components/indexing-banner';
 import {ClaudeEventsProvider} from '../hooks/use-claude-events';
+import {plansQueryOptions} from '../lib/api/plans';
+import {projectsQueryOptions} from '../lib/api/projects';
+import {pluginsQueryOptions, userCommandsQueryOptions} from '../lib/api/plugins';
+import {activeSessionsQueryOptions, sessionsQueryOptions} from '../lib/api/sessions';
 import appCss from '../styles/globals.css?url';
 
 export const Route = createRootRouteWithContext<{queryClient: QueryClient}>()({
+	ssr: true,
+	loader: ({context: {queryClient}}) =>
+		Promise.all([
+			queryClient.ensureQueryData(projectsQueryOptions()),
+			queryClient.ensureQueryData(plansQueryOptions()),
+			queryClient.ensureQueryData(sessionsQueryOptions()),
+			queryClient.ensureQueryData(pluginsQueryOptions),
+			queryClient.ensureQueryData(userCommandsQueryOptions),
+			queryClient.ensureQueryData(activeSessionsQueryOptions(60_000)),
+		]),
 	head: () => ({
 		meta: [{charSet: 'utf-8'}, {name: 'viewport', content: 'width=device-width, initial-scale=1'}],
 		links: [
@@ -79,17 +94,6 @@ function MobileSidebar({open, onClose}: {open: boolean; onClose: () => void}) {
 	);
 }
 
-function ClientOnlyAgentation() {
-	const [Component, setComponent] = useState<ComponentType<{endpoint: string}> | null>(null);
-	useEffect(() => {
-		void import('agentation').then((m) => {
-			setComponent(() => m.Agentation);
-		});
-	}, []);
-	if (!Component) return null;
-	return <Component endpoint="http://localhost:4747" />;
-}
-
 function RootComponent() {
 	const {queryClient} = Route.useRouteContext();
 	return (
@@ -104,7 +108,7 @@ function RootComponent() {
 				</ThemeProvider>
 				{import.meta.env.DEV ? <ReactQueryDevtools buttonPosition="bottom-left" /> : null}
 			</QueryClientProvider>
-			{import.meta.env.DEV && <ClientOnlyAgentation />}
+			{import.meta.env.DEV && <Agentation endpoint="http://localhost:4747" />}
 		</RootDocument>
 	);
 }
@@ -182,16 +186,10 @@ function RootErrorComponent({error, reset}: ErrorComponentProps) {
 	);
 }
 
-const themeScript = `(function(){try{var t=localStorage.getItem('theme');var d=document.documentElement;if(t==='dark')d.classList.add('dark');else if(t==='light')d.classList.add('light');else{d.classList.add(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light')}}catch(e){}})()`;
-
 function RootDocument({children}: Readonly<{children: ReactNode}>) {
 	return (
-		<html
-			lang="en"
-			suppressHydrationWarning
-		>
+		<html lang="en">
 			<head>
-				<script dangerouslySetInnerHTML={{__html: themeScript}} />
 				<HeadContent />
 			</head>
 			<body>

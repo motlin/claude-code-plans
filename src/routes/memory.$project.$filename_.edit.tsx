@@ -5,12 +5,6 @@ import {lazy, Suspense, useCallback, useEffect, useRef, useState} from 'react';
 
 const MarkdownEditor = lazy(() => import('../components/markdown-editor').then((m) => ({default: m.MarkdownEditor})));
 
-function ClientOnly({children, fallback}: {children: React.ReactNode; fallback: React.ReactNode}) {
-	const [mounted, setMounted] = useState(false);
-	useEffect(() => setMounted(true), []);
-	return mounted ? children : fallback;
-}
-
 export const Route = createFileRoute('/memory/$project/$filename_/edit')({
 	component: MemoryEditPage,
 	loader: ({context: {queryClient}, params}) =>
@@ -110,15 +104,13 @@ function MemoryEditPage() {
 					</span>
 				)}
 			</div>
-			<ClientOnly fallback={<div className="text-text-500 text-sm">Loading editor...</div>}>
-				<Suspense fallback={<div className="text-text-500 text-sm">Loading editor...</div>}>
-					<MarkdownEditor
-						key={initialMarkdown}
-						markdown={initialMarkdown}
-						onChange={handleChange}
-					/>
-				</Suspense>
-			</ClientOnly>
+			<Suspense fallback={<div className="text-text-500 text-sm">Loading editor...</div>}>
+				<MarkdownEditor
+					key={initialMarkdown}
+					markdown={initialMarkdown}
+					onChange={handleChange}
+				/>
+			</Suspense>
 		</div>
 	);
 }

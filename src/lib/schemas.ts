@@ -318,6 +318,7 @@ const DeferredToolsDeltaAttachmentPayload = z
 		addedLines: z.array(z.string()).optional(),
 		removedNames: z.array(z.string()).optional(),
 		readdedNames: z.array(z.string()).optional(),
+		pendingMcpServers: z.array(z.string()).optional(),
 	})
 	.strict();
 
@@ -770,6 +771,7 @@ export const ClaudeSettingsSchema = z
 		preferredNotifChannel: z.string().optional(),
 		outputStyle: z.string().optional(),
 		spinnerTipsEnabled: z.boolean().optional(),
+		effortLevel: z.string().optional(),
 		env: z.record(z.string(), z.string()).optional(),
 		permissions: PermissionsSchema.optional(),
 		hooks: HooksSchema.optional(),

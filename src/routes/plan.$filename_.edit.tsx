@@ -7,12 +7,6 @@ import {lazy, Suspense, useCallback, useEffect, useRef, useState} from 'react';
 
 const MarkdownEditor = lazy(() => import('../components/markdown-editor').then((m) => ({default: m.MarkdownEditor})));
 
-function ClientOnly({children, fallback}: {children: React.ReactNode; fallback: React.ReactNode}) {
-	const [mounted, setMounted] = useState(false);
-	useEffect(() => setMounted(true), []);
-	return mounted ? children : fallback;
-}
-
 const PlanSaveResponse = z.object({
 	title: z.string(),
 	mtime: z.string().nullable(),
@@ -124,15 +118,13 @@ function PlanEditPage() {
 					</span>
 				)}
 			</div>
-			<ClientOnly fallback={<div className="text-text-500 text-sm">Loading editor...</div>}>
-				<Suspense fallback={<div className="text-text-500 text-sm">Loading editor...</div>}>
-					<MarkdownEditor
-						key={initialMarkdown}
-						markdown={initialMarkdown}
-						onChange={handleChange}
-					/>
-				</Suspense>
-			</ClientOnly>
+			<Suspense fallback={<div className="text-text-500 text-sm">Loading editor...</div>}>
+				<MarkdownEditor
+					key={initialMarkdown}
+					markdown={initialMarkdown}
+					onChange={handleChange}
+				/>
+			</Suspense>
 		</div>
 	);
 }
