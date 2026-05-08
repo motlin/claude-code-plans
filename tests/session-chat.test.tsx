@@ -18,22 +18,29 @@ const SHAPES = JSON.parse(readFileSync(FIXTURE_PATH, 'utf8')) as Record<string, 
 // Helpers
 // ---------------------------------------------------------------------------
 
-function renderShape(
-	shapeKey: string,
-	overrides?: {showCompactSummaries?: boolean; showTranscriptOnly?: boolean},
-): string {
-	const record = SHAPES[shapeKey];
-	expect(record, `fixture ${shapeKey} missing`).toBeDefined();
+interface RenderOverrides {
+	showCompactSummaries?: boolean;
+	showTranscriptOnly?: boolean;
+}
+
+function renderRecord(record: unknown, overrides: RenderOverrides, defaults: Required<RenderOverrides>): string {
 	const {lines, toolResultMap} = processTranscript([record]);
 	return renderToStaticMarkup(
 		<SessionChat
 			sessionId="test-session"
 			lines={lines}
 			toolResultMap={toolResultMap}
-			showCompactSummaries={overrides?.showCompactSummaries ?? true}
-			showTranscriptOnly={overrides?.showTranscriptOnly ?? true}
+			showCompactSummaries={overrides.showCompactSummaries ?? defaults.showCompactSummaries}
+			showTranscriptOnly={overrides.showTranscriptOnly ?? defaults.showTranscriptOnly}
 		/>,
 	);
+}
+
+function renderShape(shapeKey: string, overrides: RenderOverrides = {}): string {
+	const record = SHAPES[shapeKey];
+	expect(record, `fixture ${shapeKey} missing`).toBeDefined();
+	// Shapes test rendering: enable both flags by default so the bubbles appear.
+	return renderRecord(record, overrides, {showCompactSummaries: true, showTranscriptOnly: true});
 }
 
 // Labels that should never leak onto user-initiated bubbles (shapes A and F).
@@ -102,6 +109,16 @@ describe('SessionChat user-message shapes', () => {
 		expect(html).not.toContain('bg-auto-msg-bg');
 	});
 
+	it('Shape C — compact summary renders fully when showCompactSummaries=true', () => {
+		const html = renderShape('C', {showCompactSummaries: true});
+
+		// Full automated bubble IS rendered.
+		expect(html).toContain('bg-auto-msg-bg');
+		expect(html).toContain('>Compact summary<');
+		// Stub call-to-action is NOT shown.
+		expect(html).not.toContain('click to expand');
+	});
+
 	it('Shape F — document attachment renders the regular blue user bubble path with no automated label', () => {
 		const html = renderShape('F');
 
@@ -115,5 +132,64 @@ describe('SessionChat user-message shapes', () => {
 
 		// The PDF/document block renders its own caption.
 		expect(html).toContain('PDF attached');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Transcript-only suppression: records with isVisibleInTranscriptOnly=true and
+// isCompactSummary=false (the broader catch-all category, distinct from compact
+// summaries) should be fully suppressed when showTranscriptOnly=false.
+// ---------------------------------------------------------------------------
+
+const TRANSCRIPT_ONLY_TEXT = 'TRANSCRIPT_ONLY_MARKER_PHRASE_FOR_TEST';
+
+const TRANSCRIPT_ONLY_RECORD = {
+	parentUuid: '00000000-0000-0000-0000-000000000001',
+	isSidechain: false,
+	type: 'user',
+	message: {
+		role: 'user',
+		content: TRANSCRIPT_ONLY_TEXT,
+	},
+	isVisibleInTranscriptOnly: true,
+	isCompactSummary: false,
+	uuid: '00000000-0000-0000-0000-000000000002',
+	timestamp: '2026-05-07T00:00:00.000Z',
+	userType: 'external',
+	entrypoint: 'cli',
+	cwd: '/tmp/test',
+	sessionId: '00000000-0000-0000-0000-000000000003',
+	version: '2.1.132',
+	gitBranch: 'main',
+	slug: 'transcript-only-test',
+};
+
+function renderTranscriptOnly(overrides: RenderOverrides): string {
+	// Default both flags to false so isLineVisible can suppress the row.
+	return renderRecord(TRANSCRIPT_ONLY_RECORD, overrides, {showCompactSummaries: false, showTranscriptOnly: false});
+}
+
+describe('SessionChat transcript-only suppression', () => {
+	it('omits the row entirely when isVisibleInTranscriptOnly=true && isCompactSummary=false && showTranscriptOnly=false', () => {
+		const html = renderTranscriptOnly({showTranscriptOnly: false});
+
+		// The marker text must not appear anywhere in the output: the line is
+		// fully filtered out by isLineVisible() before the renderer ever sees it.
+		expect(html).not.toContain(TRANSCRIPT_ONLY_TEXT);
+		// Neither the labeled automated bubble nor the regular blue bubble.
+		expect(html).not.toContain('bg-auto-msg-bg');
+		expect(html).not.toContain('bg-user-msg-bg');
+	});
+
+	it('renders the row fully when isVisibleInTranscriptOnly=true && isCompactSummary=false && showTranscriptOnly=true', () => {
+		const html = renderTranscriptOnly({showTranscriptOnly: true});
+
+		// The marker text appears.
+		expect(html).toContain(TRANSCRIPT_ONLY_TEXT);
+		// The compact-summary classifier in classifyUserContent treats
+		// isVisibleInTranscriptOnly=true the same as isCompactSummary=true,
+		// so it falls through to the LabeledAutomatedEntry "Compact summary"
+		// path — the gray automated bubble is shown.
+		expect(html).toContain('bg-auto-msg-bg');
 	});
 });

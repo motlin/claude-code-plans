@@ -99,5 +99,77 @@ describe('settings-provider', () => {
 			};
 			expect(detectVerbosity(settings)).toBe('verbose');
 		});
+
+		it('does NOT detect verbose when showCompactSummaries is false', () => {
+			const settings: Settings = {
+				...DEFAULTS,
+				showTools: true,
+				showThinking: true,
+				showPassedHooks: true,
+				showHookWarnings: true,
+				showHookErrors: true,
+				showSystemBanners: true,
+				showCompactSummaries: false,
+				showTranscriptOnly: true,
+			};
+			expect(detectVerbosity(settings)).not.toBe('verbose');
+		});
+
+		it('does NOT detect verbose when showTranscriptOnly is false', () => {
+			const settings: Settings = {
+				...DEFAULTS,
+				showTools: true,
+				showThinking: true,
+				showPassedHooks: true,
+				showHookWarnings: true,
+				showHookErrors: true,
+				showSystemBanners: true,
+				showCompactSummaries: true,
+				showTranscriptOnly: false,
+			};
+			expect(detectVerbosity(settings)).not.toBe('verbose');
+		});
+
+		it('falls back to saved verbosity when showCompactSummaries deviates from normal preset', () => {
+			// settings.verbosity ('normal') is returned as a fallback because no
+			// preset matches exactly; that's distinct from "this matches normal".
+			const settings: Settings = {...DEFAULTS, showCompactSummaries: true, verbosity: 'verbose'};
+			expect(detectVerbosity(settings)).toBe('verbose');
+		});
+
+		it('falls back to saved verbosity when showTranscriptOnly deviates from normal preset', () => {
+			const settings: Settings = {...DEFAULTS, showTranscriptOnly: true, verbosity: 'verbose'};
+			expect(detectVerbosity(settings)).toBe('verbose');
+		});
+
+		it('does NOT detect thinking when showCompactSummaries is true', () => {
+			const settings: Settings = {
+				...DEFAULTS,
+				showTools: true,
+				showThinking: true,
+				showPassedHooks: false,
+				showHookWarnings: true,
+				showHookErrors: true,
+				showSystemBanners: false,
+				showCompactSummaries: true,
+				showTranscriptOnly: false,
+			};
+			expect(detectVerbosity(settings)).not.toBe('thinking');
+		});
+
+		it('does NOT detect thinking when showTranscriptOnly is true', () => {
+			const settings: Settings = {
+				...DEFAULTS,
+				showTools: true,
+				showThinking: true,
+				showPassedHooks: false,
+				showHookWarnings: true,
+				showHookErrors: true,
+				showSystemBanners: false,
+				showCompactSummaries: false,
+				showTranscriptOnly: true,
+			};
+			expect(detectVerbosity(settings)).not.toBe('thinking');
+		});
 	});
 });
