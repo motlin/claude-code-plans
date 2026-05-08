@@ -13,6 +13,8 @@ describe('settings-provider', () => {
 			expect(VERBOSITY_KEYS).toContain('showHookWarnings');
 			expect(VERBOSITY_KEYS).toContain('showHookErrors');
 			expect(VERBOSITY_KEYS).toContain('showSystemBanners');
+			expect(VERBOSITY_KEYS).toContain('showCompactSummaries');
+			expect(VERBOSITY_KEYS).toContain('showTranscriptOnly');
 		});
 	});
 
@@ -76,6 +78,8 @@ describe('settings-provider', () => {
 				showHookWarnings: true,
 				showHookErrors: true,
 				showSystemBanners: true,
+				showCompactSummaries: true,
+				showTranscriptOnly: true,
 			};
 			expect(detectVerbosity(settings)).toBe('verbose');
 		});
@@ -89,6 +93,8 @@ describe('settings-provider', () => {
 				showHookWarnings: true,
 				showHookErrors: true,
 				showSystemBanners: true,
+				showCompactSummaries: true,
+				showTranscriptOnly: true,
 				showDebug: true,
 			};
 			expect(detectVerbosity(settings)).toBe('verbose');

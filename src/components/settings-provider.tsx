@@ -14,6 +14,8 @@ export interface Settings {
 	showHookErrors: boolean;
 
 	showSystemBanners: boolean;
+	showCompactSummaries: boolean;
+	showTranscriptOnly: boolean;
 
 	defaultSubagentView: SubagentView;
 
@@ -38,6 +40,8 @@ export const DEFAULTS: Settings = {
 	showHookErrors: true,
 
 	showSystemBanners: false,
+	showCompactSummaries: false,
+	showTranscriptOnly: false,
 
 	defaultSubagentView: 'gantt',
 
@@ -60,6 +64,8 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
 	showHookWarnings: 'ccp-show-hook-warnings',
 	showHookErrors: 'ccp-show-hook-errors',
 	showSystemBanners: 'ccp-show-system-banners',
+	showCompactSummaries: 'ccp-show-compact-summaries',
+	showTranscriptOnly: 'ccp-show-transcript-only',
 	defaultSubagentView: 'ccp-subagent-view',
 	chromeHidden: 'ccp-chrome-hidden',
 	statusFooterVisible: 'ccp-status-footer',
@@ -76,6 +82,8 @@ const VERBOSITY_PRESETS: Record<Verbosity, Partial<Settings>> = {
 		showHookWarnings: true,
 		showHookErrors: true,
 		showSystemBanners: false,
+		showCompactSummaries: false,
+		showTranscriptOnly: false,
 	},
 	thinking: {
 		showTools: true,
@@ -84,6 +92,8 @@ const VERBOSITY_PRESETS: Record<Verbosity, Partial<Settings>> = {
 		showHookWarnings: true,
 		showHookErrors: true,
 		showSystemBanners: false,
+		showCompactSummaries: false,
+		showTranscriptOnly: false,
 	},
 	verbose: {
 		showTools: true,
@@ -92,6 +102,8 @@ const VERBOSITY_PRESETS: Record<Verbosity, Partial<Settings>> = {
 		showHookWarnings: true,
 		showHookErrors: true,
 		showSystemBanners: true,
+		showCompactSummaries: true,
+		showTranscriptOnly: true,
 	},
 };
 
