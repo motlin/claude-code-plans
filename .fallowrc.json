@@ -8,8 +8,8 @@
 		{"file": "src/components/session-chat.tsx", "exports": ["SessionChatProps"]},
 		{"file": "src/components/settings-provider.tsx", "exports": ["SettingsProvider"]},
 		{"file": "src/lib/active-sessions.ts", "exports": ["ActiveSession"]},
+		{"file": "src/lib/claude-light-theme.ts", "exports": ["claudeLight"]},
 		{"file": "src/lib/db/queries.ts", "exports": ["DbSearchResult", "DbMessageSearchResult"]},
-		{"file": "src/lib/server-fns.ts", "exports": ["ProjectScopeBase"]},
 		{"file": "src/lib/sessions.ts", "exports": ["RawWindow", "readSessionLines"]},
 		{"file": "src/routes/session.$id_.source.$uuid.tsx", "exports": ["PairedResult"]},
 		{"file": "src/components/tool-renderers/shared.tsx", "exports": ["CopyButton"]}
