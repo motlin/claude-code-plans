@@ -316,6 +316,66 @@ export const WithDisplayToggles: Story = {
 		showHookWarnings: false,
 		showHookErrors: false,
 		showSystemBanners: false,
+		showCompactSummaries: false,
+		showTranscriptOnly: false,
+	},
+};
+
+const compactSummaryBody = `This session is being continued from a previous conversation that ran out of context. The conversation is summarized below:
+
+## Summary
+- Refactored the auth module to use async/await throughout.
+- Added unit tests covering login, logout, and refresh-token paths.
+- Migrated the session store from in-memory to SQLite.
+
+## Outstanding work
+- Wire up the new \`/api/session/refresh\` endpoint.
+- Update the docs site to mention the SQLite migration.
+- Investigate intermittent CI flakiness in \`auth.test.ts\`.`;
+
+const compactSummaryLine: SessionLine = {
+	type: 'user',
+	uuid: 'uuid-compact-1',
+	timestamp: '2026-04-19T18:00:00Z',
+	lineIndex: 0,
+	isCompactSummary: true,
+	isVisibleInTranscriptOnly: true,
+	message: {role: 'user', content: compactSummaryBody},
+};
+
+export const WithCompactSummaryCollapsed: Story = {
+	args: {
+		sessionId: 'story-session-compact-collapsed',
+		lines: [
+			compactSummaryLine,
+			line(1, 'user', 'Continue from where we left off — wire up the refresh endpoint.', '2026-04-19T18:00:30Z'),
+			assistantBlocks(
+				2,
+				[{type: 'text', text: "I'll start by adding the route handler for /api/session/refresh."}],
+				'2026-04-19T18:00:35Z',
+			),
+		],
+		toolResultMap: new Map(),
+		showCompactSummaries: false,
+		showTranscriptOnly: false,
+	},
+};
+
+export const WithCompactSummaryExpanded: Story = {
+	args: {
+		sessionId: 'story-session-compact-expanded',
+		lines: [
+			compactSummaryLine,
+			line(1, 'user', 'Continue from where we left off — wire up the refresh endpoint.', '2026-04-19T18:00:30Z'),
+			assistantBlocks(
+				2,
+				[{type: 'text', text: "I'll start by adding the route handler for /api/session/refresh."}],
+				'2026-04-19T18:00:35Z',
+			),
+		],
+		toolResultMap: new Map(),
+		showCompactSummaries: true,
+		showTranscriptOnly: true,
 	},
 };
 
