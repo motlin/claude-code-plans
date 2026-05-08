@@ -20,6 +20,7 @@ import {
 } from '../lib/api/projects';
 import {projectMemoriesQueryOptions} from '../lib/api/memories';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
+import {MarkdownInline} from '../components/markdown-view';
 
 export const Route = createFileRoute('/project/$id')({
 	component: ProjectPage,
@@ -282,7 +283,7 @@ function ProjectPage() {
 								)}
 								<div className="min-w-0 flex-1">
 									<div className="text-sm text-text-100">
-										#{task.taskId} <span dangerouslySetInnerHTML={{__html: task.subjectHtml}} />
+										#{task.taskId} <MarkdownInline markdown={task.subject} />
 									</div>
 									{task.blockedBy.length > 0 && (
 										<div className="mt-0.5 text-[10px] text-orange-500">

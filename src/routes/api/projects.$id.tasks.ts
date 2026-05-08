@@ -9,7 +9,6 @@ export const Route = createFileRoute('/api/projects/$id/tasks')({
 				const {getProjectDetailFromDb, getTasksForProject, getTaskCountsForProject} = await import(
 					'../../lib/db/queries'
 				);
-				const {renderInlineMarkdown, renderMarkdown} = await import('../../lib/renderer');
 
 				const {index} = getDb();
 				const detail = getProjectDetailFromDb(index, params.id);
@@ -24,16 +23,8 @@ export const Route = createFileRoute('/api/projects/$id/tasks')({
 					);
 				}
 
-				const rawTodos = getTasksForProject(index, detail.name);
+				const todos = getTasksForProject(index, detail.name);
 				const todoCounts = getTaskCountsForProject(index, detail.name);
-
-				const todos = await Promise.all(
-					rawTodos.map(async (task) => ({
-						...task,
-						subjectHtml: await renderInlineMarkdown(task.subject),
-						descriptionHtml: await renderMarkdown(task.description),
-					})),
-				);
 
 				return Response.json(ProjectTasksResponse.parse({todos, todoCounts}), {
 					headers: {'Cache-Control': 'private, max-age=0, must-revalidate'},

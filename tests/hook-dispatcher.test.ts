@@ -144,6 +144,7 @@ describe('dispatchHookEvent', () => {
 				projectName: 'app',
 				messageCount: 1,
 				gitBranch: undefined,
+				starred: false,
 			},
 		});
 	});
@@ -190,6 +191,7 @@ describe('dispatchHookEvent', () => {
 				projectName: 'app',
 				messageCount: 12,
 				gitBranch: undefined,
+				starred: false,
 			},
 		});
 	});

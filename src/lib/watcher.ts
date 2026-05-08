@@ -4,7 +4,7 @@ import {stat} from 'node:fs/promises';
 import {basename, dirname} from 'node:path';
 import {getDb} from './db';
 import {indexFile} from './db/indexer';
-import {listSessionsForProjectFromDb, getTasksForProject} from './db/queries';
+import {listSessionsForProjectFromDb, getTasksForProject, getStarredSessionIds} from './db/queries';
 import type {TaskRow} from './db/queries';
 import {extractTitle} from './markdown-utils';
 import {resolveProjectName} from './memory';
@@ -76,7 +76,8 @@ function sessionSummariesEqual(a: SessionSummaryPayload, b: SessionSummaryPayloa
 		a.mtime === b.mtime &&
 		a.messageCount === b.messageCount &&
 		a.gitBranch === b.gitBranch &&
-		a.projectName === b.projectName
+		a.projectName === b.projectName &&
+		a.starred === b.starred
 	);
 }
 
@@ -112,9 +113,10 @@ function tasksEqual(a: TaskSummaryPayload, b: TaskSummaryPayload): boolean {
 function diffAndBroadcastSessions(projectId: string): void {
 	const {index} = getDb();
 	const rows = listSessionsForProjectFromDb(index, projectId);
+	const starredIds = getStarredSessionIds(index);
 	const next = new Map<string, SessionSummaryPayload>();
 	for (const row of rows) {
-		next.set(row.id, toSessionSummaryPayload(row));
+		next.set(row.id, toSessionSummaryPayload(row, starredIds.has(row.id)));
 	}
 
 	const previous = lastSessionsByProject.get(projectId) ?? new Map();

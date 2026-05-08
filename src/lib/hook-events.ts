@@ -46,8 +46,8 @@ export const DOMAIN_EVENTS = {
 
 /**
  * Summary payload for a single session, matching the serialized shape
- * emitted by `getSessions` / `getStarredSessionList` server functions.
- * Dates are ISO strings so payloads survive JSON serialization to clients.
+ * emitted by the `/api/sessions` endpoint. Dates are ISO strings so payloads
+ * survive JSON serialization to clients.
  */
 export interface SessionSummaryPayload {
 	id: string;
@@ -59,9 +59,10 @@ export interface SessionSummaryPayload {
 	projectName: string;
 	messageCount: number;
 	gitBranch: string | undefined;
+	starred: boolean;
 }
 
-/** Summary payload for a single plan, matching `getPlans` output. */
+/** Summary payload for a single plan, matching `/api/plans` output. */
 export interface PlanSummaryPayload {
 	filename: string;
 	title: string;

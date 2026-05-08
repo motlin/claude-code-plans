@@ -1,6 +1,6 @@
 import {createServerFn} from '@tanstack/react-start';
 import {z} from 'zod';
-import {toggleStar as toggleStarInDb, getStarredSessions as getStarredSessionsFromDb} from './db/queries';
+import {toggleStar as toggleStarInDb} from './db/queries';
 
 async function claudeDirs() {
 	const {homedir} = await import('node:os');
@@ -22,23 +22,6 @@ export const toggleSessionStar = createServerFn({method: 'POST'})
 		const starred = toggleStarInDb(index, sessionId);
 		return {starred};
 	});
-
-export const getStarredSessionList = createServerFn({method: 'GET'}).handler(async () => {
-	const {getDb} = await import('./db');
-	const {index} = getDb();
-	const sessions = getStarredSessionsFromDb(index);
-	return sessions.map((s) => ({
-		id: s.id,
-		title: s.title,
-		summary: s.summary,
-		mtime: s.mtime.toISOString(),
-		created: s.created.toISOString(),
-		project: s.project,
-		projectName: s.projectName,
-		messageCount: s.messageCount,
-		gitBranch: s.gitBranch,
-	}));
-});
 
 export const requestSummary = createServerFn({method: 'POST'})
 	.inputValidator(z.string())

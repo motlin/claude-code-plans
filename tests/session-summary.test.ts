@@ -79,6 +79,7 @@ describe('buildSessionSummaryPayloadFromDb', () => {
 			project: '-Users-craig-projects-app',
 			projectName: 'app',
 			gitBranch: undefined,
+			starred: false,
 		});
 	});
 

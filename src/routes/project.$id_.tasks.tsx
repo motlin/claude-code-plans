@@ -1,10 +1,10 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
 import {useSuspenseQuery} from '@tanstack/react-query';
 import {ArrowLeft, CheckCircle, Circle, Ban} from 'lucide-react';
-import styles from '../components/markdown-article.module.css';
 import {projectDetailQueryOptions, projectTasksQueryOptions} from '../lib/api/projects';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {DebugLink} from '../components/debug-link';
+import {MarkdownInline, MarkdownView} from '../components/markdown-view';
 
 export const Route = createFileRoute('/project/$id_/tasks')({
 	component: ProjectTasksPage,
@@ -98,7 +98,7 @@ function ProjectTasksPage() {
 							<div className="min-w-0 flex-1">
 								<div className="text-sm text-text-100 flex items-center gap-1.5">
 									<span>
-										#{task.taskId} <span dangerouslySetInnerHTML={{__html: task.subjectHtml}} />
+										#{task.taskId} <MarkdownInline markdown={task.subject} />
 									</span>
 									<DebugLink
 										kind="task"
@@ -106,10 +106,9 @@ function ProjectTasksPage() {
 									/>
 								</div>
 								{task.description && task.description !== task.subject && (
-									<div
-										className={`mt-0.5 text-xs text-text-500 ${styles['markdown']}`}
-										dangerouslySetInnerHTML={{__html: task.descriptionHtml}}
-									/>
+									<div className="mt-0.5 text-xs text-text-500">
+										<MarkdownView markdown={task.description} />
+									</div>
 								)}
 								<div className="mt-0.5 flex items-center gap-2">
 									<span

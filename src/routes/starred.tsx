@@ -1,12 +1,12 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
 import {useSuspenseQuery, useQueryClient} from '@tanstack/react-query';
-import {useState} from 'react';
+import {useMemo} from 'react';
 import {toggleSessionStar} from '../lib/server-fns';
-import {starredSessionsQueryOptions} from '../queries/starred';
+import {sessionsQueryOptions} from '../queries/sessions';
 
 export const Route = createFileRoute('/starred')({
 	component: StarredPage,
-	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(starredSessionsQueryOptions),
+	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(sessionsQueryOptions),
 	head: () => ({
 		meta: [{title: 'Starred Sessions'}],
 	}),
@@ -24,13 +24,19 @@ function formatDate(iso: string): string {
 
 function StarredPage() {
 	const queryClient = useQueryClient();
-	const {data: initialSessions} = useSuspenseQuery(starredSessionsQueryOptions);
-	const [sessions, setSessions] = useState(initialSessions);
+	const {data: groups} = useSuspenseQuery(sessionsQueryOptions);
+	const sessions = useMemo(
+		() =>
+			groups
+				.flatMap((group) => group.sessions)
+				.filter((session) => session.starred)
+				.sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime()),
+		[groups],
+	);
 
 	async function handleUnstar(sessionId: string) {
 		await toggleSessionStar({data: sessionId});
-		setSessions((prev) => prev.filter((s) => s.id !== sessionId));
-		void queryClient.invalidateQueries({queryKey: ['starred-sessions']});
+		void queryClient.invalidateQueries({queryKey: ['sessions']});
 	}
 
 	return (

@@ -39,7 +39,7 @@ function makeTask(overrides: Partial<TaskRow> = {}): TaskRow {
 
 describe('toSessionSummaryPayload', () => {
 	it('serializes dates as ISO strings and preserves core fields', () => {
-		const payload = toSessionSummaryPayload(makeSession());
+		const payload = toSessionSummaryPayload(makeSession(), false);
 
 		expect(payload).toStrictEqual({
 			id: 'sess-1',
@@ -51,32 +51,44 @@ describe('toSessionSummaryPayload', () => {
 			projectName: 'Project 1',
 			messageCount: 3,
 			gitBranch: undefined,
+			starred: false,
 		});
+	});
+
+	it('reflects the starred flag from the caller', () => {
+		const payload = toSessionSummaryPayload(makeSession(), true);
+		expect(payload.starred).toBe(true);
 	});
 });
 
 describe('sessionSummariesEqual', () => {
 	it('returns true for identical summaries', () => {
-		const a = toSessionSummaryPayload(makeSession());
-		const b = toSessionSummaryPayload(makeSession());
+		const a = toSessionSummaryPayload(makeSession(), false);
+		const b = toSessionSummaryPayload(makeSession(), false);
 		expect(sessionSummariesEqual(a, b)).toBe(true);
 	});
 
 	it('returns false when the title changes', () => {
-		const a = toSessionSummaryPayload(makeSession());
-		const b = toSessionSummaryPayload(makeSession({title: 'Different'}));
+		const a = toSessionSummaryPayload(makeSession(), false);
+		const b = toSessionSummaryPayload(makeSession({title: 'Different'}), false);
 		expect(sessionSummariesEqual(a, b)).toBe(false);
 	});
 
 	it('returns false when the mtime changes', () => {
-		const a = toSessionSummaryPayload(makeSession());
-		const b = toSessionSummaryPayload(makeSession({mtime: new Date('2000-01-01T00:00:00.000Z')}));
+		const a = toSessionSummaryPayload(makeSession(), false);
+		const b = toSessionSummaryPayload(makeSession({mtime: new Date('2000-01-01T00:00:00.000Z')}), false);
 		expect(sessionSummariesEqual(a, b)).toBe(false);
 	});
 
 	it('returns false when messageCount changes (new message appended)', () => {
-		const a = toSessionSummaryPayload(makeSession());
-		const b = toSessionSummaryPayload(makeSession({messageCount: 4}));
+		const a = toSessionSummaryPayload(makeSession(), false);
+		const b = toSessionSummaryPayload(makeSession({messageCount: 4}), false);
+		expect(sessionSummariesEqual(a, b)).toBe(false);
+	});
+
+	it('returns false when starred changes', () => {
+		const a = toSessionSummaryPayload(makeSession(), false);
+		const b = toSessionSummaryPayload(makeSession(), true);
 		expect(sessionSummariesEqual(a, b)).toBe(false);
 	});
 });

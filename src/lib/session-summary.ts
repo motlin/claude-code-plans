@@ -24,9 +24,9 @@ export function toActiveSessionPayload(entry: ActiveSessionEntry): ActiveSession
 
 /**
  * Convert a raw DB SessionEntry into the serialized SessionSummaryPayload
- * shape used by `getSessions` and the session:added/updated/removed events.
+ * shape used by `/api/sessions` and the session:added/updated/removed events.
  */
-export function toSessionSummaryPayload(entry: SessionEntry): SessionSummaryPayload {
+export function toSessionSummaryPayload(entry: SessionEntry, starred: boolean): SessionSummaryPayload {
 	return {
 		id: entry.id,
 		title: entry.title,
@@ -37,6 +37,7 @@ export function toSessionSummaryPayload(entry: SessionEntry): SessionSummaryPayl
 		projectName: entry.projectName,
 		messageCount: entry.messageCount,
 		gitBranch: entry.gitBranch,
+		starred,
 	};
 }
 
@@ -53,18 +54,27 @@ export function buildSessionSummaryPayloadFromDb(db: IndexDb, sessionId: string)
 	const projectRow = db.select().from(schema.projects).where(eq(schema.projects.id, row.projectId)).get();
 	const projectName = projectRow?.name ?? row.projectId;
 
-	return toSessionSummaryPayload({
-		id: row.id,
-		title: row.title,
-		firstPrompt: row.firstPrompt ?? undefined,
-		summary: row.summary ?? undefined,
-		customTitle: row.customTitle ?? undefined,
-		mtime: new Date(row.mtimeMs),
-		created: new Date(row.createdAt),
-		project: row.projectId,
-		projectName,
-		messageCount: row.messageCount,
-		gitBranch: row.gitBranch ?? undefined,
-		isSidechain: row.isSidechain === 1,
-	});
+	const starredRow = db
+		.select()
+		.from(schema.starredSessions)
+		.where(eq(schema.starredSessions.sessionId, sessionId))
+		.get();
+
+	return toSessionSummaryPayload(
+		{
+			id: row.id,
+			title: row.title,
+			firstPrompt: row.firstPrompt ?? undefined,
+			summary: row.summary ?? undefined,
+			customTitle: row.customTitle ?? undefined,
+			mtime: new Date(row.mtimeMs),
+			created: new Date(row.createdAt),
+			project: row.projectId,
+			projectName,
+			messageCount: row.messageCount,
+			gitBranch: row.gitBranch ?? undefined,
+			isSidechain: row.isSidechain === 1,
+		},
+		!!starredRow,
+	);
 }

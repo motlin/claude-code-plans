@@ -179,9 +179,6 @@ export function applySessionRemoved(queryClient: QueryClient, sessionId: string,
 			)
 			.filter((group) => group.sessions.length > 0);
 	});
-	queryClient.setQueryData<SessionSummaryPayload[]>(['starred-sessions'], (old) =>
-		old ? old.filter((s) => s.id !== sessionId) : old,
-	);
 	// Invalidate (don't remove) the session sub-caches so that any mounted
 	// useSuspenseQuery keeps showing cached data while refetching in the
 	// background. Removing queries would cause useSuspenseQuery to re-suspend,
@@ -204,9 +201,6 @@ export function applySessionUpdated(queryClient: QueryClient, session: SessionSu
 				: group,
 		);
 	});
-	queryClient.setQueryData<SessionSummaryPayload[]>(['starred-sessions'], (old) =>
-		old ? old.map((s) => (s.id === session.id ? session : s)) : old,
-	);
 	// Invalidate session detail (metadata like messageCount, gitBranch) and summary.
 	// The transcript is NOT invalidated here because SESSION_LINES_APPENDED handles
 	// incremental transcript updates. Invalidating the transcript would cause a
@@ -248,9 +242,9 @@ export function applyMemoryRemoved(queryClient: QueryClient, project: string, fi
 }
 
 export function applyTaskChanged(queryClient: QueryClient, projectDir: string): void {
-	// Task lists include server-rendered HTML (subjectHtml, descriptionHtml) that
-	// the SSE delta does not carry — invalidate the affected queries instead of
-	// patching partial data into the cache.
+	// SSE deltas only carry the changed task id — invalidate the affected
+	// queries so they refetch with up-to-date payloads rather than splicing
+	// partial data into the cache.
 	void queryClient.invalidateQueries({queryKey: ['tasks']});
 	void queryClient.invalidateQueries({queryKey: ['tasks', 'project', projectDir]});
 }

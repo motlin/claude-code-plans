@@ -29,6 +29,7 @@ function makeSession(overrides: Partial<SessionSummaryPayload> & {id: string; pr
 		projectName: `Project ${project}`,
 		messageCount: 0,
 		gitBranch: undefined,
+		starred: false,
 		...rest,
 	};
 }
@@ -268,19 +269,6 @@ describe('applySessionRemoved', () => {
 		expect(groups).toStrictEqual([]);
 	});
 
-	it('also filters the starred-sessions cache', () => {
-		const queryClient = new QueryClient();
-		queryClient.setQueryData(
-			['starred-sessions'],
-			[makeSession({id: 'a1', project: 'proj-a'}), makeSession({id: 'a2', project: 'proj-a'})],
-		);
-
-		applySessionRemoved(queryClient, 'a1', 'proj-a');
-
-		const starred = queryClient.getQueryData<SessionSummaryPayload[]>(['starred-sessions']);
-		expect(starred?.map((s) => s.id)).toStrictEqual(['a2']);
-	});
-
 	it('invalidates per-session sub-caches under ["session", id, ...] without removing data', () => {
 		const queryClient = new QueryClient();
 		queryClient.setQueryData(['session', 'a1', 'detail'], {id: 'a1'});
@@ -326,16 +314,6 @@ describe('applySessionUpdated', () => {
 			'sessions',
 		]);
 		expect(groups?.[0]?.sessions[0]?.title).toBe('New');
-	});
-
-	it('also patches the starred-sessions cache', () => {
-		const queryClient = new QueryClient();
-		queryClient.setQueryData(['starred-sessions'], [makeSession({id: 'a1', project: 'proj-a', title: 'Old'})]);
-
-		applySessionUpdated(queryClient, makeSession({id: 'a1', project: 'proj-a', title: 'New'}));
-
-		const starred = queryClient.getQueryData<SessionSummaryPayload[]>(['starred-sessions']);
-		expect(starred?.[0]?.title).toBe('New');
 	});
 
 	it('invalidates session detail and summary queries', () => {

@@ -122,9 +122,3 @@ export async function renderMarkdown(markdown: string): Promise<string> {
 	renderMarkdownCache.set(markdown, html);
 	return html;
 }
-
-export async function renderInlineMarkdown(text: string): Promise<string> {
-	if (!text.trim()) return '';
-	const instance = await getMd();
-	return instance.renderInline(text);
-}

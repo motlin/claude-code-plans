@@ -124,8 +124,6 @@ const TaskItemSchema = z.object({
 	activeForm: z.string().nullable(),
 	blocks: z.array(z.string()),
 	blockedBy: z.array(z.string()),
-	subjectHtml: z.string(),
-	descriptionHtml: z.string(),
 });
 
 const TaskCountsSchema = z.object({
