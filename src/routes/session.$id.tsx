@@ -410,6 +410,8 @@ function SessionPage() {
 					showHookWarnings={settings.showHookWarnings}
 					showHookErrors={settings.showHookErrors}
 					showSystemBanners={settings.showSystemBanners}
+					showCompactSummaries={settings.showCompactSummaries}
+					showTranscriptOnly={settings.showTranscriptOnly}
 				/>
 			</AskUserQuestionProvider>
 
