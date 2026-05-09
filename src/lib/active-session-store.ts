@@ -6,6 +6,7 @@ export interface ActiveSessionEntry {
 	model: string;
 	startedAt: number;
 	lastActivity: number;
+	claudeEnv: Record<string, string>;
 }
 
 const store = hmrPersist('activeSessionStore', () => new Map<string, ActiveSessionEntry>());
@@ -19,11 +20,15 @@ hmrDispose(() => {
 const STALE_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
 export const SWEEP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
-export function markSessionActive(sessionId: string, meta: {cwd: string; model?: string}): void {
+export function markSessionActive(
+	sessionId: string,
+	meta: {cwd: string; model?: string; claudeEnv?: Record<string, string>},
+): void {
 	const existing = store.get(sessionId);
 	if (existing) {
 		existing.lastActivity = Date.now();
 		existing.cwd = meta.cwd;
+		if (meta.claudeEnv) existing.claudeEnv = meta.claudeEnv;
 	} else {
 		store.set(sessionId, {
 			sessionId,
@@ -31,6 +36,7 @@ export function markSessionActive(sessionId: string, meta: {cwd: string; model?:
 			model: meta.model ?? '',
 			startedAt: Date.now(),
 			lastActivity: Date.now(),
+			claudeEnv: meta.claudeEnv ?? {},
 		});
 	}
 }

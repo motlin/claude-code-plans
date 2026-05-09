@@ -13,6 +13,26 @@ describe('HookEventEnvelope', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('parses SessionStart event with claude_env metadata', () => {
+		const result = HookEventEnvelope.safeParse({
+			session_id: 'abc123',
+			hook_event_name: 'SessionStart',
+			cwd: '/home/user/project',
+			claude_env: {
+				CLAUDE_CODE_ENTRYPOINT: 'cli',
+				CLAUDE_CODE_EXECPATH: '/Users/user/.local/share/claude/versions/2.1.119',
+				CLAUDECODE: '1',
+				CLAUDE_EFFORT: 'high',
+				CLAUDE_CODE_TASK_LIST_ID: 'my-project',
+			},
+		});
+		expect(result.success).toBe(true);
+		if (result.success && result.data.hook_event_name === 'SessionStart') {
+			expect(result.data.claude_env?.['CLAUDE_CODE_ENTRYPOINT']).toBe('cli');
+			expect(result.data.claude_env?.['CLAUDE_EFFORT']).toBe('high');
+		}
+	});
+
 	it('parses PostToolUse event', () => {
 		const result = HookEventEnvelope.safeParse({
 			session_id: 'abc123',

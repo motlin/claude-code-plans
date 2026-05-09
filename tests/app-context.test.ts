@@ -74,6 +74,7 @@ describe('sweepSessions', () => {
 			model: 'test',
 			startedAt: Date.now() - 20 * 60 * 1000,
 			lastActivity: Date.now() - 20 * 60 * 1000,
+			claudeEnv: {},
 		});
 
 		store.set('fresh', {
@@ -82,6 +83,7 @@ describe('sweepSessions', () => {
 			model: 'test',
 			startedAt: Date.now(),
 			lastActivity: Date.now(),
+			claudeEnv: {},
 		});
 
 		sweepSessions(store);

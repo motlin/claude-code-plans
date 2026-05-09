@@ -155,6 +155,11 @@ const SessionStartHookEvent = BaseHookFields.extend({
 	hook_event_name: z.literal('SessionStart'),
 	source: z.string().optional(),
 	model: z.string().optional(),
+	// Snapshot of all CLAUDE-prefixed environment variables at session start
+	// (CLAUDE_CODE_ENTRYPOINT, CLAUDE_CODE_EXECPATH, CLAUDECODE, CLAUDE_EFFORT,
+	// CLAUDE_CODE_TASK_LIST_ID, etc.). Captured by the SessionStart hook's jq
+	// filter and persisted on the active-session entry for later inspection.
+	claude_env: z.record(z.string(), z.string()).optional(),
 });
 
 const SessionEndHookEvent = BaseHookFields.extend({

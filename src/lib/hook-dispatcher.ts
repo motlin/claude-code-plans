@@ -12,7 +12,7 @@ type IndexDb = BetterSQLite3Database<typeof schema>;
  * HMR-persisted singleton.
  */
 interface ActiveSessionStore {
-	markSessionActive(sessionId: string, meta: {cwd: string; model?: string}): void;
+	markSessionActive(sessionId: string, meta: {cwd: string; model?: string; claudeEnv?: Record<string, string>}): void;
 	markSessionEnded(sessionId: string): void;
 	touchSession(sessionId: string): void;
 	getActiveSessionEntry(sessionId: string): ActiveSessionEntry | null;
@@ -35,9 +35,14 @@ interface DispatchHookEventArgs {
 export function dispatchHookEvent({event, db, store, broadcast}: DispatchHookEventArgs): void {
 	switch (event.hook_event_name) {
 		case 'SessionStart': {
-			const meta: {cwd: string; model?: string} = {cwd: event.cwd ?? ''};
+			const meta: {cwd: string; model?: string; claudeEnv?: Record<string, string>} = {
+				cwd: event.cwd ?? '',
+			};
 			if (event.model !== undefined) {
 				meta.model = event.model;
+			}
+			if (event.claude_env !== undefined) {
+				meta.claudeEnv = event.claude_env;
 			}
 			store.markSessionActive(event.session_id, meta);
 

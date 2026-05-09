@@ -48,8 +48,13 @@ function jqExprForEvent(eventName: HookEventName): string {
 	const base = `.session_id = $ENV.CLAUDE_SESSION_ID // "" | .hook_event_name = "${eventName}"`;
 
 	switch (eventName) {
-		case 'SessionStart':
-			return `${base} | .cwd = $ENV.PWD // "" | .model = ($ENV.CLAUDE_MODEL // "")`;
+		case 'SessionStart': {
+			// Capture every CLAUDE-prefixed env var (CLAUDE_*, CLAUDECODE, etc.) so
+			// the server can persist runtime metadata such as CLAUDE_CODE_ENTRYPOINT,
+			// CLAUDE_CODE_EXECPATH, CLAUDE_EFFORT, and other flags claude(1) sets.
+			const claudeEnv = `.claude_env = ($ENV | with_entries(select(.key | startswith("CLAUDE"))))`;
+			return `${base} | .cwd = $ENV.PWD // "" | .model = ($ENV.CLAUDE_MODEL // "") | ${claudeEnv}`;
+		}
 		case 'SessionEnd':
 			return base;
 		case 'Stop':

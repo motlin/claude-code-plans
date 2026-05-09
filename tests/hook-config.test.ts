@@ -72,6 +72,14 @@ describe('generateHooksConfig', () => {
 		expect(command).toContain('cwd');
 	});
 
+	it('SessionStart hook captures CLAUDE-prefixed env vars into claude_env', () => {
+		const config = generateHooksConfig();
+		const hooks = config.hooks as Record<string, Array<{hooks: Array<{type: string; command: string}>}>>;
+		const command = hooks['SessionStart']![0]!.hooks[0]!.command;
+		expect(command).toContain('claude_env');
+		expect(command).toContain('startswith("CLAUDE")');
+	});
+
 	it('PostToolUse hook includes tool_name field', () => {
 		const config = generateHooksConfig();
 		const hooks = config.hooks as Record<string, Array<{hooks: Array<{type: string; command: string}>}>>;

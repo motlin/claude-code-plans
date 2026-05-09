@@ -16,8 +16,10 @@ function makeSessionsIndex(entries: Record<string, unknown>[]): string {
 	return JSON.stringify({version: 1, entries});
 }
 
+type StoreMeta = {cwd: string; model?: string; claudeEnv?: Record<string, string>};
+
 function makeStore() {
-	const activeCalls: Array<{sessionId: string; meta: {cwd: string; model?: string}}> = [];
+	const activeCalls: Array<{sessionId: string; meta: StoreMeta}> = [];
 	const endedCalls: string[] = [];
 	const touchedCalls: string[] = [];
 	return {
@@ -25,7 +27,7 @@ function makeStore() {
 		endedCalls,
 		touchedCalls,
 		store: {
-			markSessionActive: (sessionId: string, meta: {cwd: string; model?: string}) => {
+			markSessionActive: (sessionId: string, meta: StoreMeta) => {
 				activeCalls.push({sessionId, meta});
 			},
 			markSessionEnded: (sessionId: string) => {
@@ -43,6 +45,7 @@ function makeStore() {
 					model: call.meta.model ?? '',
 					startedAt: 946_598_400_000,
 					lastActivity: 946_598_400_000,
+					claudeEnv: call.meta.claudeEnv ?? {},
 				};
 			},
 		},

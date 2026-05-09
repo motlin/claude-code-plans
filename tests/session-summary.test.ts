@@ -31,6 +31,7 @@ describe('toActiveSessionPayload', () => {
 			model: 'claude-sonnet-4-6',
 			startedAt: 946_598_400_000,
 			lastActivity: 946_598_401_000,
+			claudeEnv: {},
 		};
 
 		const payload = toActiveSessionPayload(entry);
