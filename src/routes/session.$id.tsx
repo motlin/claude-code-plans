@@ -229,6 +229,26 @@ function SessionPage() {
 		}
 	}, [params.id]);
 
+	// Hide the streamed reply once the JSONL has caught up. Otherwise the
+	// stream bubble (kept around by isComplete) and the new transcript line
+	// from SSE both render the same text — visible as a duplicate message.
+	const completionRecordCountRef = useRef<number | null>(null);
+	useEffect(() => {
+		if (chatStream.state.isStreaming) {
+			completionRecordCountRef.current = null;
+			return;
+		}
+		if (!chatStream.state.isComplete) return;
+		if (completionRecordCountRef.current === null) {
+			completionRecordCountRef.current = transcript.records.length;
+			return;
+		}
+		if (transcript.records.length > completionRecordCountRef.current) {
+			completionRecordCountRef.current = null;
+			chatStream.reset();
+		}
+	}, [chatStream.state.isStreaming, chatStream.state.isComplete, transcript.records.length]);
+
 	useEffect(() => {
 		setAiSummary(data?.summary ?? null);
 	}, [params.id, data?.summary]);
