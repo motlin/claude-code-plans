@@ -446,7 +446,7 @@ function SessionLineList({
 						line={line}
 						index={groupStart}
 						nextLine={lines[groupStart + 1]}
-						className={isNewTurn ? 'pb-6' : ''}
+						className={isNewTurn ? 'pb-4' : ''}
 						{...renderProps}
 					/>,
 				);
@@ -456,7 +456,7 @@ function SessionLineList({
 						key={`group-${groupStart}`}
 						lines={groupIndices.map((idx) => lines[idx]!)}
 						indices={groupIndices}
-						className={isNewTurn ? 'pb-6' : ''}
+						className={isNewTurn ? 'pb-4' : ''}
 						{...renderProps}
 					/>,
 				);
@@ -477,7 +477,7 @@ function SessionLineList({
 				line={line}
 				index={i}
 				nextLine={lines[i + 1]}
-				className={`${isNewTurn ? 'pb-6' : ''} ${isBannerAfterBanner ? 'mt-1' : ''}`}
+				className={`${isNewTurn ? 'pb-4' : ''} ${isBannerAfterBanner ? 'mt-1' : ''}`}
 				{...renderProps}
 			/>,
 		);
