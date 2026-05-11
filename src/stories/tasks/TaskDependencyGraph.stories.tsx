@@ -1,6 +1,6 @@
 import type {Meta, StoryObj} from '@storybook/react-vite';
 import {TaskDependencyGraph} from '../../components/task-dependency-graph';
-import type {GraphTask, TaskGroup} from '../../components/task-dependency-graph';
+import type {GraphTask, TaskGraphGroup} from '../../components/task-dependency-graph';
 
 function makeTask(overrides: Partial<GraphTask> & Pick<GraphTask, 'taskId' | 'subject'>): GraphTask {
 	return {
@@ -25,9 +25,9 @@ const circularTasks: GraphTask[] = [
 	makeTask({taskId: 'c', subject: 'Task C', blockedBy: ['b'], blocks: ['a']}),
 ];
 
-const groups: TaskGroup[] = [{projectDir: '/project', tasks: tasksWithDeps}];
-const circularGroups: TaskGroup[] = [{projectDir: '/project', tasks: circularTasks}];
-const emptyGroups: TaskGroup[] = [{projectDir: '/project', tasks: []}];
+const groups: TaskGraphGroup[] = [{projectDir: '/project', tasks: tasksWithDeps}];
+const circularGroups: TaskGraphGroup[] = [{projectDir: '/project', tasks: circularTasks}];
+const emptyGroups: TaskGraphGroup[] = [{projectDir: '/project', tasks: []}];
 
 const meta = {
 	title: 'Tasks/TaskDependencyGraph',

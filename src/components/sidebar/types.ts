@@ -18,7 +18,7 @@ export interface SubItem {
 	params: Record<string, string>;
 }
 
-export interface ProjectDetail {
+export interface SidebarProjectDetail {
 	sessions: Array<{id: string; title: string; gitBranch?: string | undefined}>;
 	plans: Array<{filename: string; title: string}>;
 	memories: Array<{filename: string; title: string; project: string}>;

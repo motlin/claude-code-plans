@@ -3,7 +3,7 @@ import {useSuspenseQuery, useQueryClient} from '@tanstack/react-query';
 import {useMemo} from 'react';
 import {z} from 'zod';
 import {apiFetch} from '../lib/api/client';
-import {sessionsQueryOptions} from '../queries/sessions';
+import {sessionsQueryOptions} from '../lib/api/sessions';
 
 const StarredMutationResponse = z.object({starred: z.boolean()});
 

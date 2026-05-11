@@ -39,17 +39,6 @@ export interface PluginInfo {
 	skills: PluginSkill[];
 }
 
-export interface MarketplaceInfo {
-	id: string;
-	displayName: string;
-	source: {source: string; repo?: string; path?: string};
-}
-
-export interface PluginGroup {
-	marketplace: MarketplaceInfo;
-	plugins: PluginInfo[];
-}
-
 export interface UserCommandGroup {
 	source: string;
 	sourceName: string;
@@ -170,37 +159,6 @@ export function formatMarketplaceName(id: string): string {
 		.split('-')
 		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 		.join(' ');
-}
-
-export function groupPluginsByMarketplace(
-	plugins: PluginInfo[],
-	marketplaces: Record<string, MarketplaceInfo>,
-): PluginGroup[] {
-	const groups = new Map<string, PluginGroup>();
-
-	for (const plugin of plugins) {
-		const marketplaceId = plugin.marketplace;
-		if (!groups.has(marketplaceId)) {
-			const info = marketplaces[marketplaceId] || {
-				id: marketplaceId,
-				displayName: formatMarketplaceName(marketplaceId),
-				source: {source: 'unknown'},
-			};
-			groups.set(marketplaceId, {marketplace: info, plugins: []});
-		}
-
-		groups.get(marketplaceId)!.plugins.push(plugin);
-	}
-
-	// Sort groups: official first, then alphabetically
-	const sorted = [...groups.values()].sort((a, b) => {
-		const aOfficial = isOfficialMarketplace(a.marketplace.id);
-		const bOfficial = isOfficialMarketplace(b.marketplace.id);
-		if (aOfficial !== bOfficial) return aOfficial ? -1 : 1;
-		return a.marketplace.displayName.localeCompare(b.marketplace.displayName);
-	});
-
-	return sorted;
 }
 
 export function isOfficialMarketplace(marketplaceId: string): boolean {

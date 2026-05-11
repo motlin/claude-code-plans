@@ -3,7 +3,7 @@ import {useNavigate} from '@tanstack/react-router';
 import {useMemo} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {FileText, Brain, MessageSquare, FolderOpen, Search, Star, Home, SlidersHorizontal} from 'lucide-react';
-import {sessionsQueryOptions} from '../queries/sessions';
+import {sessionsQueryOptions} from '../lib/api/sessions';
 
 interface RecentSession {
 	id: string;

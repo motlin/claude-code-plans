@@ -28,7 +28,6 @@ const PlanListItemSchema = z.object({
 });
 export const PlanListResponse = z.array(PlanListItemSchema);
 export type PlanListItem = z.infer<typeof PlanListItemSchema>;
-export type PlanProjectRef = z.infer<typeof PlanProjectRefSchema>;
 
 export const plansQueryOptions = () =>
 	queryOptions({

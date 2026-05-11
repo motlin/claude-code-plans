@@ -9,7 +9,6 @@ const PluginFileSchema = z.object({
 	type: z.enum(['agent', 'command', 'skill', 'reference', 'example']),
 	frontmatter: z.record(z.string(), z.string()),
 });
-export type PluginFileMeta = z.infer<typeof PluginFileSchema>;
 
 const PluginSkillSchema = z.object({
 	dirname: z.string(),
@@ -19,7 +18,6 @@ const PluginSkillSchema = z.object({
 	references: z.array(PluginFileSchema),
 	examples: z.array(PluginFileSchema),
 });
-export type PluginSkillMeta = z.infer<typeof PluginSkillSchema>;
 
 const PluginInfoSchema = z.object({
 	id: z.string(),
@@ -58,7 +56,6 @@ const FileTreeNodeSchema: z.ZodType<FileTreeNodeData> = z.lazy(() =>
 	}),
 );
 export const PluginTreeResponse = FileTreeNodeSchema.nullable();
-export type PluginTreeData = z.infer<typeof PluginTreeResponse>;
 
 export const PluginFileResponse = z
 	.object({
@@ -67,7 +64,6 @@ export const PluginFileResponse = z
 		frontmatter: z.record(z.string(), z.string()),
 	})
 	.nullable();
-export type PluginFileData = z.infer<typeof PluginFileResponse>;
 
 export const UserCommandFileResponse = z
 	.object({
@@ -76,7 +72,6 @@ export const UserCommandFileResponse = z
 		sourceName: z.string(),
 	})
 	.nullable();
-export type UserCommandFileData = z.infer<typeof UserCommandFileResponse>;
 
 export type PluginMarketplaceGroup = {
 	marketplace: {id: string; displayName: string};

@@ -12,7 +12,6 @@ const TaskItemSchema = z.object({
 	blocks: z.array(z.string()),
 	blockedBy: z.array(z.string()),
 });
-export type TaskItem = z.infer<typeof TaskItemSchema>;
 
 const TaskGroupSchema = z.object({
 	projectDir: z.string(),
@@ -20,7 +19,6 @@ const TaskGroupSchema = z.object({
 	totalPending: z.number(),
 	totalInProgress: z.number(),
 });
-export type TaskGroup = z.infer<typeof TaskGroupSchema>;
 
 export const TaskListResponse = z.array(TaskGroupSchema);
 

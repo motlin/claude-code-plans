@@ -11,92 +11,13 @@
 import {z} from 'zod';
 import type {ToolResultInfo} from './sessions';
 import {ContentBlockSchema, JsonlRecordSchema} from './schemas';
-
-// ---------------------------------------------------------------------------
-// Re-exported shared helpers (moved from session-utils.ts)
-// ---------------------------------------------------------------------------
-
-const COMMAND_MESSAGE_RE = /<command-message[^>]*>([\s\S]*?)<\/command-message>/;
-const STRIP_BLOCK_RE =
-	/<(?:command-name|command-args|local-command-stdout)[^>]*>[\s\S]*?<\/(?:command-name|command-args|local-command-stdout)>/g;
-const STRIP_TAG_RE =
-	/<\/?(?:command-message|command-name|command-args|command|local-command-caveat|local-command-stdout)[^>]*>/g;
-
-function cleanCommandText(text: string): string {
-	const msgMatch = text.match(COMMAND_MESSAGE_RE);
-	if (msgMatch) {
-		return msgMatch[1]!.replace(STRIP_TAG_RE, '').trim();
-	}
-	return text.replace(STRIP_BLOCK_RE, '').replace(STRIP_TAG_RE, '').trim();
-}
-
-/**
- * Strip command-related XML tags from user message text.
- */
-export function stripCommandTags(text: string): string {
-	return cleanCommandText(text);
-}
-
-/**
- * Extract text from a tool_result content field.
- * Content can be a plain string or an array of {type: 'text', text: string} blocks.
- */
-export function extractToolResultContent(content: unknown): string | undefined {
-	if (typeof content === 'string') return content;
-	if (Array.isArray(content)) {
-		const texts: string[] = [];
-		for (const item of content) {
-			if (typeof item === 'object' && item !== null && 'type' in item && 'text' in item) {
-				const block = item as {type: string; text: string};
-				if (block.type === 'text' && typeof block.text === 'string') {
-					texts.push(block.text);
-				}
-			}
-		}
-		return texts.length > 0 ? texts.join('\n') : undefined;
-	}
-	return undefined;
-}
-
-/**
- * Strip non-rendering wrapper tags from tool result text.
- */
-export function stripResultTags(text: string): string {
-	let result = text;
-	result = result.replace(/<\/?tool_use_error>/g, '');
-	result = result.replace(/<\/?persisted-output>/g, '');
-	result = result.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '');
-	if (result !== text) result = result.trim();
-	return result;
-}
-
-/**
- * Truncate text to a maximum number of lines, appending a count of omitted lines.
- */
-export function truncateResult(text: string, maxLines: number): string {
-	const lines = text.split('\n');
-	if (lines.length <= maxLines) return text;
-	const truncated = lines.slice(0, maxLines);
-	truncated.push(`... (${lines.length - maxLines} more lines)`);
-	return truncated.join('\n');
-}
-
-/**
- * Extract a display title from user prompt text.
- */
-export function extractSessionTitle(text: string, fallback?: string): string {
-	const cleaned = cleanCommandText(text);
-	if (!cleaned) return fallback ?? 'Untitled Session';
-
-	if (cleaned.length <= 80) return cleaned;
-
-	const truncated = cleaned.slice(0, 80);
-	const lastSpace = truncated.lastIndexOf(' ');
-	if (lastSpace > 40) {
-		return truncated.slice(0, lastSpace) + '...';
-	}
-	return truncated + '...';
-}
+import {
+	extractSessionTitle,
+	extractToolResultContent,
+	stripCommandTags,
+	stripResultTags,
+	truncateResult,
+} from './session-utils';
 
 // ---------------------------------------------------------------------------
 // Rendered line schemas -- Zod definitions for processed JSONL output.
@@ -177,13 +98,11 @@ const RenderedLineSchema = z.discriminatedUnion('type', [
 
 export type MessageProcessedLine = z.infer<typeof MessageLineSchema>;
 export type ProcessedLine = z.infer<typeof RenderedLineSchema>;
-export type ContentBlock = z.infer<typeof ContentBlockSchema>;
 
 // Convenience aliases used by consumers
 export type SessionLine = ProcessedLine;
 export type MessageSessionLine = MessageProcessedLine;
-export type SessionContentBlock = ContentBlock;
-export type AttachmentSessionLine = z.infer<typeof AttachmentLineSchema>;
+export type SessionContentBlock = z.infer<typeof ContentBlockSchema>;
 
 // ---------------------------------------------------------------------------
 // Transcript result types

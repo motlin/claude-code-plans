@@ -1,8 +1,7 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
 import {useSuspenseQuery} from '@tanstack/react-query';
 import type {z} from 'zod';
-import {ActiveSessionListResponse} from '../lib/api/sessions';
-import {activeSessionsQueryOptions} from '../queries/active';
+import {ActiveSessionListResponse, activeSessionsQueryOptions} from '../lib/api/sessions';
 import {useClaudeEvents} from '../hooks/use-claude-events';
 import {useSettings} from '../components/settings-provider';
 

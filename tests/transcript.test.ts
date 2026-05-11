@@ -1,13 +1,12 @@
 import {describe, it, expect} from 'vitest';
+import {processTranscript, processNewRecords} from '../src/lib/transcript';
 import {
-	processTranscript,
-	processNewRecords,
 	extractToolResultContent,
 	stripResultTags,
 	truncateResult,
 	stripCommandTags,
 	extractSessionTitle,
-} from '../src/lib/transcript';
+} from '../src/lib/session-utils';
 
 // ---------------------------------------------------------------------------
 // Helper: build a minimal JSONL record

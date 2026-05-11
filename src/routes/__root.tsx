@@ -24,7 +24,7 @@ export const Route = createRootRouteWithContext<{queryClient: QueryClient}>()({
 		Promise.all([
 			queryClient.ensureQueryData(projectsQueryOptions()),
 			queryClient.ensureQueryData(plansQueryOptions()),
-			queryClient.ensureQueryData(sessionsQueryOptions()),
+			queryClient.ensureQueryData(sessionsQueryOptions),
 			queryClient.ensureQueryData(pluginsQueryOptions),
 			queryClient.ensureQueryData(userCommandsQueryOptions),
 			queryClient.ensureQueryData(activeSessionsQueryOptions(60_000)),
