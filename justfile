@@ -53,7 +53,8 @@ build-storybook: install
 
 # Run fallow (build first to generate routeTree.gen.ts)
 fallow: build
-    npm run fallow{{_ci}}
+    npm run fallow
+    npm run fallow:ci
 
 # Run all pre-commit checks
 [arg("quick", long, value="true", help="Skip tests")]

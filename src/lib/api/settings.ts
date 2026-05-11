@@ -8,7 +8,6 @@ const SettingsFileSchema = z.object({
 	exists: z.boolean(),
 	content: z.string(),
 });
-export type SettingsFile = z.infer<typeof SettingsFileSchema>;
 export const SettingsResponse = z.array(SettingsFileSchema);
 
 export const settingsQueryOptions = queryOptions({

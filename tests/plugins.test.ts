@@ -7,11 +7,9 @@ import {
 	readUserCommandContent,
 	extractMarketplace,
 	formatMarketplaceName,
-	groupPluginsByMarketplace,
 	isOfficialMarketplace,
 	scanPluginTree,
 } from '../src/lib/plugins.js';
-import type {PluginInfo, MarketplaceInfo} from '../src/lib/plugins.js';
 
 const testDir = join(tmpdir(), 'claude-plugins-test-' + process.pid);
 
@@ -161,78 +159,6 @@ describe('isOfficialMarketplace', () => {
 
 	it('returns false for third-party', () => {
 		expect(isOfficialMarketplace('claude-code-plugins')).toBe(false);
-	});
-});
-
-describe('groupPluginsByMarketplace', () => {
-	function makePlugin(id: string, name: string): PluginInfo {
-		return {
-			id,
-			name,
-			version: '1.0.0',
-			description: '',
-			author: '',
-			marketplace: extractMarketplace(id),
-			installPath: '/tmp/test',
-			agents: [],
-			commands: [],
-			skills: [],
-		};
-	}
-
-	const marketplaces: Record<string, MarketplaceInfo> = {
-		'claude-plugins-official': {
-			id: 'claude-plugins-official',
-			displayName: 'Claude Plugins Official',
-			source: {source: 'github', repo: 'anthropics/claude-plugins-official'},
-		},
-		'claude-code-plugins': {
-			id: 'claude-code-plugins',
-			displayName: 'Claude Code Plugins',
-			source: {source: 'github', repo: 'anthropics/claude-code-plugins'},
-		},
-	};
-
-	it('groups plugins by marketplace', () => {
-		const plugins = [
-			makePlugin('hookify@claude-code-plugins', 'hookify'),
-			makePlugin('playwright@claude-plugins-official', 'playwright'),
-			makePlugin('feature-dev@claude-code-plugins', 'feature-dev'),
-		];
-
-		const groups = groupPluginsByMarketplace(plugins, marketplaces);
-		expect(groups.map((g) => g.marketplace.id)).toStrictEqual(['claude-plugins-official', 'claude-code-plugins']);
-		expect(groups[0]!.plugins.length).toBe(1);
-		expect(groups[1]!.plugins.length).toBe(2);
-	});
-
-	it('handles unknown marketplace gracefully', () => {
-		const plugins = [makePlugin('my-plugin@custom-marketplace', 'my-plugin')];
-		const groups = groupPluginsByMarketplace(plugins, marketplaces);
-		expect(groups.length).toBe(1);
-		expect(groups[0]!.marketplace.displayName).toBe('Custom Marketplace');
-	});
-
-	it('returns empty array for no plugins', () => {
-		expect(groupPluginsByMarketplace([], marketplaces)).toStrictEqual([]);
-	});
-
-	it('sorts official marketplaces before third-party', () => {
-		const plugins = [
-			makePlugin('a@zzz-marketplace', 'a'),
-			makePlugin('b@anthropic-agent-skills', 'b'),
-			makePlugin('c@claude-plugins-official', 'c'),
-			makePlugin('d@aaa-marketplace', 'd'),
-		];
-		const groups = groupPluginsByMarketplace(plugins, {});
-		const ids = groups.map((g) => g.marketplace.id);
-		// Both official first (alphabetically among themselves), then third-party alphabetically
-		expect(ids).toStrictEqual([
-			'anthropic-agent-skills',
-			'claude-plugins-official',
-			'aaa-marketplace',
-			'zzz-marketplace',
-		]);
 	});
 });
 

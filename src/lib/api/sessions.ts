@@ -14,7 +14,6 @@ const SessionListItemSchema = z.object({
 	gitBranch: z.string().optional(),
 	starred: z.boolean(),
 });
-export type SessionListItem = z.infer<typeof SessionListItemSchema>;
 
 const SessionProjectGroupSchema = z.object({
 	project: z.string(),
@@ -48,7 +47,6 @@ export const SessionDetailResponse = z
 		parentSessionId: z.string().optional(),
 	})
 	.nullable();
-export type SessionDetail = z.infer<typeof SessionDetailResponse>;
 
 const JsonValueSchema: z.ZodType<unknown> = z.lazy(() =>
 	z.union([
@@ -100,13 +98,12 @@ export const SessionSourceResponse = z
 	})
 	.nullable();
 
-export const sessionsQueryOptions = () =>
-	queryOptions({
-		queryKey: ['sessions'] as const,
-		queryFn: () => apiFetch('/api/sessions', SessionListResponse),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
+export const sessionsQueryOptions = queryOptions({
+	queryKey: ['sessions'] as const,
+	queryFn: () => apiFetch('/api/sessions', SessionListResponse),
+	staleTime: Infinity,
+	gcTime: Infinity,
+});
 
 export const activeSessionsQueryOptions = (activeTimeoutMs?: number) => {
 	const url =

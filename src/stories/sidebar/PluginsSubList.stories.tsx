@@ -1,6 +1,6 @@
 import type {Meta, StoryObj} from '@storybook/react-vite';
 import {PluginsSubList} from '../../components/sidebar/sublists/PluginsSubList';
-import {pluginsQueryOptions, userCommandsQueryOptions} from '../../queries/plugins';
+import {pluginsQueryOptions, userCommandsQueryOptions} from '../../lib/api/plugins';
 import {createStoryQueryClient, StoryWrapper} from './decorators';
 
 const meta = {

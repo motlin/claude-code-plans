@@ -4,12 +4,6 @@ import type {ToolUseBlock} from '../../lib/schemas';
 type ToolInput = Record<string, unknown>;
 
 /**
- * Array-of-tuples representation of the ToolResultInfo map,
- * used where Map is not directly serializable (e.g. SSE cache patching).
- */
-export type SerializedToolResultMap = Array<[string, ToolResultInfo]>;
-
-/**
  * ClientToolCall is the flattened shape passed to individual tool renderers.
  * Built at render time from raw JSONL block + decorations + tool result info.
  */

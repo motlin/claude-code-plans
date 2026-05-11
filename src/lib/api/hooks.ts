@@ -9,7 +9,6 @@ export const HookStatusResponse = z.object({
 	totalCount: z.number().optional(),
 	settingsPath: z.string(),
 });
-export type HookStatus = z.infer<typeof HookStatusResponse>;
 
 export const hookStatusQueryOptions = queryOptions({
 	queryKey: ['hooks', 'status'] as const,

@@ -22,7 +22,6 @@ export const MemoryListResponse = z
 		memories: z.array(MemoryListItemSchema),
 	})
 	.nullable();
-export type MemoryListData = z.infer<typeof MemoryListResponse>;
 
 export const MemoryDetailResponse = z
 	.object({
@@ -31,7 +30,6 @@ export const MemoryDetailResponse = z
 		projectName: z.string(),
 	})
 	.nullable();
-export type MemoryDetail = z.infer<typeof MemoryDetailResponse>;
 
 export const projectMemoriesQueryOptions = (id: string) =>
 	queryOptions({

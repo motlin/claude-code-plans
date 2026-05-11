@@ -1,6 +1,6 @@
 import {Link} from '@tanstack/react-router';
 import {useQuery} from '@tanstack/react-query';
-import {pluginsQueryOptions, userCommandsQueryOptions} from '../../../queries/plugins';
+import {pluginsQueryOptions, userCommandsQueryOptions} from '../../../lib/api/plugins';
 import {LoadingBars} from '../primitives/LoadingBars';
 
 type SidebarItem =

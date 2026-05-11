@@ -18,6 +18,6 @@
 		"unused-dependencies": "warn",
 		"unused-types": "error",
 		"unused-exports": "error",
-		"duplicate-exports": "warn"
+		"duplicate-exports": "error"
 	}
 }

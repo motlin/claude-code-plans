@@ -31,7 +31,6 @@ export const ProjectDetailResponse = z
 		subagentCount: z.number(),
 	})
 	.nullable();
-export type ProjectDetail = z.infer<typeof ProjectDetailResponse>;
 
 export const projectDetailQueryOptions = (id: string) =>
 	queryOptions({
@@ -52,7 +51,6 @@ const ProjectSessionItemSchema = z.object({
 	subagentCount: z.number(),
 });
 export const ProjectSessionListResponse = z.array(ProjectSessionItemSchema);
-export type ProjectSessionListItem = z.infer<typeof ProjectSessionItemSchema>;
 
 export const projectSessionsQueryOptions = (id: string) =>
 	queryOptions({
@@ -105,7 +103,6 @@ const ProjectPlanItemSchema = z.object({
 	sessionId: z.string(),
 });
 export const ProjectPlanListResponse = z.array(ProjectPlanItemSchema);
-export type ProjectPlanListItem = z.infer<typeof ProjectPlanItemSchema>;
 
 export const projectPlansQueryOptions = (id: string) =>
 	queryOptions({
@@ -137,8 +134,6 @@ export const ProjectTasksResponse = z.object({
 	todos: z.array(TaskItemSchema),
 	todoCounts: TaskCountsSchema,
 });
-export type ProjectTaskItem = z.infer<typeof TaskItemSchema>;
-export type ProjectTaskCounts = z.infer<typeof TaskCountsSchema>;
 
 export const projectTasksQueryOptions = (id: string) =>
 	queryOptions({

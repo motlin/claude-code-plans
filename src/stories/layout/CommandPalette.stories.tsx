@@ -2,7 +2,7 @@ import type {Meta, StoryObj} from '@storybook/react-vite';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {RouterProvider} from '@tanstack/react-router';
 import {CommandPalette} from '../../components/command-palette';
-import {sessionsQueryOptions} from '../../queries/sessions';
+import {sessionsQueryOptions} from '../../lib/api/sessions';
 import {createStoryRouter} from '../sidebar/decorators';
 
 const now = Date.now();

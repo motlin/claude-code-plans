@@ -1,6 +1,6 @@
 import {Link} from '@tanstack/react-router';
 import {useQuery} from '@tanstack/react-query';
-import {activeSessionsQueryOptions} from '../../../queries/active';
+import {activeSessionsQueryOptions} from '../../../lib/api/sessions';
 import {LoadingBars} from '../primitives/LoadingBars';
 import {useSettings} from '../../settings-provider';
 

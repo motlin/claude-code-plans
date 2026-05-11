@@ -1,7 +1,7 @@
 import {createFileRoute, Link} from '@tanstack/react-router';
 import {useSuspenseQuery} from '@tanstack/react-query';
 import {useState} from 'react';
-import {sessionsQueryOptions} from '../queries/sessions';
+import {sessionsQueryOptions} from '../lib/api/sessions';
 import {useClaudeEvents} from '../hooks/use-claude-events';
 
 export const Route = createFileRoute('/sessions')({

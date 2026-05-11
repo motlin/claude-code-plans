@@ -2,7 +2,7 @@ import {Link} from '@tanstack/react-router';
 import {useQueries, useQuery} from '@tanstack/react-query';
 import {projectsQueryOptions} from '../../../lib/api/projects';
 import {projectMemoriesQueryOptions} from '../../../lib/api/memories';
-import {sessionsQueryOptions} from '../../../queries/sessions';
+import {sessionsQueryOptions} from '../../../lib/api/sessions';
 import type {Section, SubItem} from '../types';
 import {LoadingBars} from '../primitives/LoadingBars';
 

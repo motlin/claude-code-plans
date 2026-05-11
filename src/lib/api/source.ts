@@ -10,7 +10,6 @@ export const SourceFileResponse = z
 		absolutePath: z.string(),
 	})
 	.nullable();
-export type SourceFileData = z.infer<typeof SourceFileResponse>;
 
 export const sourceFileQueryOptions = (kind: string, relativePath: string) =>
 	queryOptions({

@@ -10,7 +10,7 @@ export interface GraphTask {
 	blockedBy: string[];
 }
 
-export interface TaskGroup {
+export interface TaskGraphGroup {
 	projectDir: string;
 	tasks: GraphTask[];
 }
@@ -98,7 +98,7 @@ function truncate(text: string, max: number): string {
 	return text.length > max ? text.slice(0, max - 1) + '\u2026' : text;
 }
 
-export function TaskDependencyGraph({groups}: {groups: TaskGroup[]}) {
+export function TaskDependencyGraph({groups}: {groups: TaskGraphGroup[]}) {
 	const [hoveredId, setHoveredId] = useState<string | null>(null);
 	const isDark = useResolvedTheme() === 'dark';
 

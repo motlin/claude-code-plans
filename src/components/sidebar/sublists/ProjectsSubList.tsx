@@ -10,7 +10,7 @@ import {
 	projectBranchesQueryOptions,
 } from '../../../lib/api/projects';
 import {projectMemoriesQueryOptions} from '../../../lib/api/memories';
-import type {ProjectDetail} from '../types';
+import type {SidebarProjectDetail} from '../types';
 import {LoadingBars} from '../primitives/LoadingBars';
 
 function prefetchProjectDetail(queryClient: ReturnType<typeof useQueryClient>, projectId: string) {
@@ -130,7 +130,7 @@ function ExpandedProjectDetail({
 	const {data: memoriesData} = useQuery(projectMemoriesQueryOptions(projectId));
 	const {data: branches} = useQuery(projectBranchesQueryOptions(projectId));
 
-	const detail: ProjectDetail | undefined = useMemo(() => {
+	const detail: SidebarProjectDetail | undefined = useMemo(() => {
 		if (!sessions || !plans || !tasksData || !memoriesData) return undefined;
 		return {
 			sessions: sessions.map((s) => {

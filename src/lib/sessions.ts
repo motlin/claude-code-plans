@@ -46,7 +46,7 @@ interface ToolCallInfo {
 	resultUuid?: string;
 }
 
-export type MessageContent =
+type MessageContent =
 	| {type: 'text'; text: string; sourceUuid: string}
 	| {type: 'thinking'; thinking: string; sourceUuid: string}
 	| {type: 'image'; mediaType: string; data: string; sourceUuid: string}
@@ -75,15 +75,7 @@ interface SessionDetail {
 	uuidToLine: Map<string, number>;
 }
 
-export type {
-	SessionLine,
-	MessageSessionLine,
-	SessionContentBlock,
-	AttachmentSessionLine,
-	ProcessedLine,
-	MessageProcessedLine,
-	ContentBlock,
-} from './transcript';
+export type {SessionLine, MessageSessionLine, SessionContentBlock} from './transcript';
 
 /**
  * Information about a tool_result paired with its tool_use.
