@@ -10,7 +10,7 @@ import {ActiveSubList, PlansSubList, ProjectsSubList, PluginsSubList, SubList} f
 export function Sidebar({collapsed, onToggle, mobile}: {collapsed: boolean; onToggle: () => void; mobile?: boolean}) {
 	const matches = useMatches();
 	const currentPath = matches[matches.length - 1]?.fullPath ?? '/';
-	const {section: activeSection, activeItemId} = useActiveSection(matches);
+	const {section: activeSection, activeItemId, collapseOthers} = useActiveSection(matches);
 	const [collapsedSections, setCollapsedSections] = useState<Set<Section>>(new Set());
 
 	function toggleSection(section: Section) {
@@ -35,9 +35,9 @@ export function Sidebar({collapsed, onToggle, mobile}: {collapsed: boolean; onTo
 			// Expand the active section
 			next.delete(activeSection);
 
-			// Collapse sections that don't contain the current view
-			// But only collapse if there's an active item (navigated to a specific item)
-			if (activeItemId) {
+			// Collapse sections that don't contain the current view when navigated to a
+			// specific item, or when the active route opts in via collapseOthers (e.g. home).
+			if (activeItemId || collapseOthers) {
 				for (const item of navItems) {
 					if (item.section !== activeSection && item.section !== 'starred' && item.section !== 'active') {
 						next.add(item.section);
@@ -47,7 +47,7 @@ export function Sidebar({collapsed, onToggle, mobile}: {collapsed: boolean; onTo
 
 			return next;
 		});
-	}, [activeSection, activeItemId]);
+	}, [activeSection, activeItemId, collapseOthers]);
 
 	if (collapsed && !mobile) {
 		return (

@@ -5,25 +5,30 @@ export function useActiveSection(matches: ReturnType<typeof useMatches>): {
 	section: Section | null;
 	activeItemId: string | null;
 	projectId: string | null;
+	collapseOthers: boolean;
 } {
 	const lastMatch = matches[matches.length - 1];
 	const path = lastMatch?.fullPath ?? '/';
 	const params = lastMatch?.params as Record<string, string> | undefined;
 
+	if (path === '/') {
+		return {section: 'plans', activeItemId: null, projectId: null, collapseOthers: true};
+	}
 	if (path.startsWith('/active')) {
-		return {section: 'active', activeItemId: null, projectId: null};
+		return {section: 'active', activeItemId: null, projectId: null, collapseOthers: false};
 	}
 	if (path.startsWith('/starred')) {
-		return {section: 'starred', activeItemId: null, projectId: null};
+		return {section: 'starred', activeItemId: null, projectId: null, collapseOthers: false};
 	}
 	if (path.startsWith('/tasks')) {
-		return {section: 'tasks', activeItemId: null, projectId: null};
+		return {section: 'tasks', activeItemId: null, projectId: null, collapseOthers: false};
 	}
 	if (path.startsWith('/project') && !path.startsWith('/projects')) {
 		return {
 			section: 'projects',
 			activeItemId: params?.['id'] ?? null,
 			projectId: params?.['id'] ?? null,
+			collapseOthers: false,
 		};
 	}
 	if (path === '/projects') {
@@ -31,6 +36,7 @@ export function useActiveSection(matches: ReturnType<typeof useMatches>): {
 			section: 'projects',
 			activeItemId: null,
 			projectId: null,
+			collapseOthers: false,
 		};
 	}
 	if (path.startsWith('/plan') || path === '/plans') {
@@ -38,6 +44,7 @@ export function useActiveSection(matches: ReturnType<typeof useMatches>): {
 			section: 'plans',
 			activeItemId: params?.['filename'] ?? null,
 			projectId: null,
+			collapseOthers: false,
 		};
 	}
 	if (path.startsWith('/memor') || path === '/memories') {
@@ -46,6 +53,7 @@ export function useActiveSection(matches: ReturnType<typeof useMatches>): {
 			activeItemId:
 				params?.['project'] && params?.['filename'] ? `${params['project']}/${params['filename']}` : null,
 			projectId: params?.['project'] ?? null,
+			collapseOthers: false,
 		};
 	}
 	if (path.startsWith('/session') || path === '/sessions') {
@@ -53,6 +61,7 @@ export function useActiveSection(matches: ReturnType<typeof useMatches>): {
 			section: 'sessions',
 			activeItemId: params?.['id'] ?? null,
 			projectId: null,
+			collapseOthers: false,
 		};
 	}
 	if (path.startsWith('/plugin') || path === '/plugins' || path.startsWith('/command')) {
@@ -60,16 +69,17 @@ export function useActiveSection(matches: ReturnType<typeof useMatches>): {
 			section: 'plugins',
 			activeItemId: params?.['id'] ?? null,
 			projectId: null,
+			collapseOthers: false,
 		};
 	}
 	if (path.startsWith('/settings/edit')) {
-		return {section: 'config', activeItemId: null, projectId: null};
+		return {section: 'config', activeItemId: null, projectId: null, collapseOthers: false};
 	}
 	if (path.startsWith('/settings')) {
-		return {section: 'settings', activeItemId: null, projectId: null};
+		return {section: 'settings', activeItemId: null, projectId: null, collapseOthers: false};
 	}
 	if (path.startsWith('/setup')) {
-		return {section: 'setup', activeItemId: null, projectId: null};
+		return {section: 'setup', activeItemId: null, projectId: null, collapseOthers: false};
 	}
-	return {section: null, activeItemId: null, projectId: null};
+	return {section: null, activeItemId: null, projectId: null, collapseOthers: false};
 }
