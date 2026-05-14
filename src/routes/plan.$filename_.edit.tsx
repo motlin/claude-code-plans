@@ -9,7 +9,6 @@ const MarkdownEditor = lazy(() => import('../components/markdown-editor').then((
 
 const PlanSaveResponse = z.object({
 	title: z.string(),
-	mtime: z.string().nullable(),
 });
 
 export const Route = createFileRoute('/plan/$filename_/edit')({
