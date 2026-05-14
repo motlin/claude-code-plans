@@ -744,6 +744,104 @@ export async function indexPlanFile(
 	return {changed: true};
 }
 
+/**
+ * Bulk-reconcile the temporal `plans` table against the plans directory on
+ * disk. Implements the Bulk Import Pattern: partitions filenames into
+ * inserts/updates/unchanged/phase-outs by set arithmetic, then applies all
+ * writes atomically in a single transaction sharing one `now` timestamp so
+ * as-of queries at `now` return a coherent snapshot.
+ *
+ * Intended to run once at startup, after the watcher is ready, to reconcile
+ * drift accumulated while the watcher wasn't running.
+ *
+ * Returns counts for logging. `unchanged` rows are not touched.
+ */
+export async function bulkSyncPlansFromDisk(
+	db: IndexDb,
+	plansDir: string,
+	now: string,
+): Promise<{inserted: number; updated: number; unchanged: number; phaseOut: number}> {
+	let entries: string[];
+	try {
+		entries = await readdir(plansDir);
+	} catch {
+		return {inserted: 0, updated: 0, unchanged: 0, phaseOut: 0};
+	}
+
+	const diskMap = new Map<string, {sha: string; title: string}>();
+	for (const entry of entries) {
+		if (!entry.endsWith('.md')) continue;
+		const filePath = join(plansDir, entry);
+		let content: string;
+		try {
+			content = await readFile(filePath, 'utf-8');
+		} catch {
+			continue;
+		}
+		const sha = createHash('sha256').update(content).digest('hex');
+		const title = extractTitleFromContent(content, entry);
+		diskMap.set(entry, {sha, title});
+	}
+
+	const dbRows = db
+		.select({filename: schema.plans.filename, sha: schema.plans.sha})
+		.from(schema.plans)
+		.where(eq(schema.plans.systemTo, FAR_FUTURE))
+		.all();
+	const dbMap = new Map<string, string>();
+	for (const row of dbRows) {
+		dbMap.set(row.filename, row.sha);
+	}
+
+	const inserts: Array<{filename: string; sha: string; title: string}> = [];
+	const updates: Array<{filename: string; sha: string; title: string}> = [];
+	const phaseOuts: string[] = [];
+	let unchanged = 0;
+
+	for (const [filename, {sha, title}] of diskMap) {
+		const dbSha = dbMap.get(filename);
+		if (dbSha === undefined) {
+			inserts.push({filename, sha, title});
+		} else if (dbSha === sha) {
+			unchanged += 1;
+		} else {
+			updates.push({filename, sha, title});
+		}
+	}
+
+	for (const filename of dbMap.keys()) {
+		if (!diskMap.has(filename)) {
+			phaseOuts.push(filename);
+		}
+	}
+
+	db.transaction((tx) => {
+		for (const filename of phaseOuts) {
+			tx.update(schema.plans)
+				.set({systemTo: now})
+				.where(and(eq(schema.plans.filename, filename), eq(schema.plans.systemTo, FAR_FUTURE)))
+				.run();
+		}
+		for (const {filename, sha, title} of updates) {
+			tx.update(schema.plans)
+				.set({systemTo: now})
+				.where(and(eq(schema.plans.filename, filename), eq(schema.plans.systemTo, FAR_FUTURE)))
+				.run();
+			tx.insert(schema.plans).values({filename, title, sha, systemFrom: now, systemTo: FAR_FUTURE}).run();
+		}
+		for (const {filename, sha, title} of inserts) {
+			tx.insert(schema.plans).values({filename, title, sha, systemFrom: now, systemTo: FAR_FUTURE}).run();
+		}
+	});
+
+	return {
+		inserted: inserts.length,
+		updated: updates.length,
+		unchanged,
+		phaseOut: phaseOuts.length,
+	};
+}
+
 let indexingInProgress = false;
 export function isCurrentlyIndexing(): boolean {
 	return indexingInProgress;
