@@ -645,7 +645,7 @@ export async function scanTasksDir(db: IndexDb, tasksDir: string): Promise<void>
 	}
 }
 
-async function indexMemoryFile(db: IndexDb, filePath: string, projectId: string): Promise<void> {
+export async function indexMemoryFile(db: IndexDb, filePath: string, projectId: string): Promise<void> {
 	let fileStat: Awaited<ReturnType<typeof stat>>;
 	try {
 		fileStat = await stat(filePath);
@@ -690,7 +690,7 @@ async function indexMemoryFile(db: IndexDb, filePath: string, projectId: string)
 		.run();
 }
 
-async function scanMemoriesForProject(db: IndexDb, projectsDir: string, projectId: string): Promise<void> {
+export async function scanMemoriesForProject(db: IndexDb, projectsDir: string, projectId: string): Promise<void> {
 	const memoryDir = join(projectsDir, projectId, 'memory');
 	let files: string[];
 	try {
