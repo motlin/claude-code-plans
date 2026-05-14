@@ -254,6 +254,15 @@ interface DbPlanSessionLink {
 	sessionTitle: string | null;
 }
 
+export function getPlanFilenameForSession(db: IndexDb, sessionId: string): string | null {
+	const row = db
+		.select({planFilename: schema.planSessions.planFilename})
+		.from(schema.planSessions)
+		.where(eq(schema.planSessions.sessionId, sessionId))
+		.get();
+	return row?.planFilename ?? null;
+}
+
 export function getPlanLinksFromDb(db: IndexDb, planFilename?: string): DbPlanSessionLink[] {
 	const projectNames = getProjectNameMap(db);
 
