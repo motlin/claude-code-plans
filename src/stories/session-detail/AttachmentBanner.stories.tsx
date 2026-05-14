@@ -246,3 +246,51 @@ export const Diagnostics: Story = {
 		}),
 	},
 };
+
+export const AutoMode: Story = {
+	args: {
+		attachmentJson: JSON.stringify({
+			type: 'auto_mode',
+			reminderType: 'initial',
+		}),
+	},
+};
+
+export const MaxTurnsReached: Story = {
+	args: {
+		attachmentJson: JSON.stringify({
+			type: 'max_turns_reached',
+			maxTurns: 50,
+			turnCount: 50,
+		}),
+	},
+};
+
+export const PlanModeReentry: Story = {
+	args: {
+		attachmentJson: JSON.stringify({
+			type: 'plan_mode_reentry',
+			planFilePath: '/Users/craig/.claude/plans/2026-04-21-my-plan.md',
+			planExists: true,
+		}),
+	},
+};
+
+export const PlanFileReference: Story = {
+	args: {
+		attachmentJson: JSON.stringify({
+			type: 'plan_file_reference',
+			planFilePath: '/Users/craig/.claude/plans/2026-04-21-my-plan.md',
+		}),
+	},
+};
+
+export const NestedMemory: Story = {
+	args: {
+		attachmentJson: JSON.stringify({
+			type: 'nested_memory',
+			path: '/Users/craig/projects/claude-code-plans/CLAUDE.md',
+			displayPath: 'CLAUDE.md',
+		}),
+	},
+};
