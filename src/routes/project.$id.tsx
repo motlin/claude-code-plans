@@ -19,6 +19,8 @@ import {
 	projectTasksQueryOptions,
 } from '../lib/api/projects';
 import {projectMemoriesQueryOptions} from '../lib/api/memories';
+import {projectApprovalsQueryOptions} from '../lib/api/approvals';
+import {formatRelativeTimeFromIso} from '../lib/relative-time';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {MarkdownInline} from '../components/markdown-view';
 
@@ -31,6 +33,7 @@ export const Route = createFileRoute('/project/$id')({
 			queryClient.ensureQueryData(projectPlansQueryOptions(params.id)),
 			queryClient.ensureQueryData(projectTasksQueryOptions(params.id)),
 			queryClient.ensureQueryData(projectMemoriesQueryOptions(params.id)),
+			queryClient.ensureQueryData(projectApprovalsQueryOptions(params.id)),
 		]);
 		return detail;
 	},
@@ -87,6 +90,7 @@ function ProjectPage() {
 	const {data: plans} = useSuspenseQuery(projectPlansQueryOptions(id));
 	const {data: tasksData} = useSuspenseQuery(projectTasksQueryOptions(id));
 	const {data: memoriesData} = useSuspenseQuery(projectMemoriesQueryOptions(id));
+	const {data: approvalsData} = useSuspenseQuery(projectApprovalsQueryOptions(id));
 
 	if (!detail) {
 		return (
@@ -132,6 +136,34 @@ function ProjectPage() {
 
 			<h1 className="text-lg font-semibold">{detail.name}</h1>
 			{detail.projectPath && <p className="mt-0.5 text-xs text-text-500">{detail.projectPath}</p>}
+
+			{approvalsData.approvals.length > 0 && (
+				<section className="mt-6">
+					<h2 className="border-b border-border-300/15 pb-1 text-sm font-semibold">
+						Awaiting approval ({approvalsData.approvals.length})
+					</h2>
+					<ul className="mt-2 space-y-1">
+						{approvalsData.approvals.map((approval) => {
+							const linkProps = approval.planFilename
+								? ({to: '/plan/$filename', params: {filename: approval.planFilename}} as const)
+								: ({to: '/session/$id', params: {id: approval.sessionId}} as const);
+							return (
+								<li key={`${approval.sessionId}:${approval.toolUseId}`}>
+									<Link
+										{...linkProps}
+										className="flex items-center gap-2 rounded-md border border-border-300/15 px-4 py-3 no-underline transition-colors hover:bg-bg-200/50"
+									>
+										<span className={pillStyles.outline}>{approval.toolName}</span>
+										<span className="ml-auto text-xs text-text-500">
+											{formatRelativeTimeFromIso(approval.blockedSince)}
+										</span>
+									</Link>
+								</li>
+							);
+						})}
+					</ul>
+				</section>
+			)}
 
 			{/* Sub-route nav cards */}
 			<div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
