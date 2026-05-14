@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/react';
 import {StartClient} from '@tanstack/react-start/client';
 import {hydrateRoot} from 'react-dom/client';
+import {preloadMarkdown} from './lib/markdown';
 import './router';
 
 if (import.meta.env.DEV) {
@@ -15,4 +16,5 @@ if (import.meta.env.DEV) {
 	});
 }
 
+preloadMarkdown();
 hydrateRoot(document, <StartClient />);
