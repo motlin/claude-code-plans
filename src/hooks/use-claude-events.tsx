@@ -15,6 +15,7 @@ import {
 	SSE_EVENTS,
 	type JsonValue,
 	type MemorySummaryPayload,
+	type PendingApprovalPayload,
 	type PlanSummaryPayload,
 	type SessionLinesAppendedPayload,
 	type SessionSummaryPayload,
@@ -249,6 +250,43 @@ export function applyTaskChanged(queryClient: QueryClient, projectDir: string): 
 	void queryClient.invalidateQueries({queryKey: ['tasks', 'project', projectDir]});
 }
 
+type ApprovalsData = {approvals: PendingApprovalPayload[]};
+
+function upsertApproval(
+	approvals: PendingApprovalPayload[],
+	approval: PendingApprovalPayload,
+): PendingApprovalPayload[] {
+	const existingIndex = approvals.findIndex((a) => a.sessionId === approval.sessionId);
+	const next =
+		existingIndex >= 0 ? approvals.map((a, i) => (i === existingIndex ? approval : a)) : [...approvals, approval];
+	// Sort oldest-waiting first (ascending by blockedSince) to match the API.
+	return [...next].sort((a, b) => (a.blockedSince < b.blockedSince ? -1 : a.blockedSince > b.blockedSince ? 1 : 0));
+}
+
+function applyApprovalChanged(queryClient: QueryClient, approval: PendingApprovalPayload): void {
+	queryClient.setQueryData<ApprovalsData>(['approvals'], (old) => {
+		if (!old) return old;
+		return {approvals: upsertApproval(old.approvals, approval)};
+	});
+	queryClient.setQueryData<ApprovalsData>(['approvals', approval.projectId], (old) => {
+		if (!old) return old;
+		return {approvals: upsertApproval(old.approvals, approval)};
+	});
+}
+
+function applyApprovalResolved(queryClient: QueryClient, sessionId: string): void {
+	// The project-scoped cache is keyed by projectId, which the APPROVAL_RESOLVED
+	// payload does not carry. getQueriesData matches every cache whose key starts
+	// with ['approvals'] — both the global list and every per-project slice — so
+	// filter each in one pass.
+	for (const [key, data] of queryClient.getQueriesData<ApprovalsData>({queryKey: ['approvals']})) {
+		if (!data) continue;
+		queryClient.setQueryData<ApprovalsData>(key, {
+			approvals: data.approvals.filter((a) => a.sessionId !== sessionId),
+		});
+	}
+}
+
 /**
  * Apply SESSION_LINES_APPENDED: append raw JSONL records to the transcript
  * cache. The component's useMemo on processTranscript() recomputes
@@ -300,6 +338,8 @@ const DOMAIN_EVENT_TYPES = [
 	DOMAIN_EVENTS.MEMORY_REMOVED,
 	DOMAIN_EVENTS.TASK_CHANGED,
 	DOMAIN_EVENTS.TASK_COMPLETED,
+	DOMAIN_EVENTS.APPROVAL_CHANGED,
+	DOMAIN_EVENTS.APPROVAL_RESOLVED,
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -441,6 +481,16 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 				}
 				case DOMAIN_EVENTS.TASK_COMPLETED: {
 					void queryClient.invalidateQueries({queryKey: ['tasks']});
+					break;
+				}
+				case DOMAIN_EVENTS.APPROVAL_CHANGED: {
+					const approval = data['approval'] as PendingApprovalPayload | undefined;
+					if (approval) applyApprovalChanged(queryClient, approval);
+					break;
+				}
+				case DOMAIN_EVENTS.APPROVAL_RESOLVED: {
+					const sessionId = data['sessionId'];
+					if (typeof sessionId === 'string') applyApprovalResolved(queryClient, sessionId);
 					break;
 				}
 				default:
