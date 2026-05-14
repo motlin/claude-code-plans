@@ -12,6 +12,7 @@ import {CommandPalette} from '../components/command-palette';
 import {useCommandPalette} from '../hooks/use-command-palette';
 import {IndexingBanner} from '../components/indexing-banner';
 import {ClaudeEventsProvider} from '../hooks/use-claude-events';
+import {approvalsQueryOptions} from '../lib/api/approvals';
 import {plansQueryOptions} from '../lib/api/plans';
 import {projectsQueryOptions} from '../lib/api/projects';
 import {pluginsQueryOptions, userCommandsQueryOptions} from '../lib/api/plugins';
@@ -28,6 +29,7 @@ export const Route = createRootRouteWithContext<{queryClient: QueryClient}>()({
 			queryClient.ensureQueryData(pluginsQueryOptions),
 			queryClient.ensureQueryData(userCommandsQueryOptions),
 			queryClient.ensureQueryData(activeSessionsQueryOptions(60_000)),
+			queryClient.ensureQueryData(approvalsQueryOptions()),
 		]),
 	head: () => ({
 		meta: [{charSet: 'utf-8'}, {name: 'viewport', content: 'width=device-width, initial-scale=1'}],
