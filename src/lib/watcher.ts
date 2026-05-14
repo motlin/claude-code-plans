@@ -3,7 +3,7 @@ import type {FSWatcher} from 'chokidar';
 import {stat} from 'node:fs/promises';
 import {basename, dirname, join} from 'node:path';
 import type {BetterSQLite3Database} from 'drizzle-orm/better-sqlite3';
-import {getDb} from './db';
+import {awaitInitialScan, getDb} from './db';
 import {indexFile, phaseOutPlan} from './db/indexer';
 import {listSessionsForProjectFromDb, getTasksForProject, getStarredSessionIds} from './db/queries';
 import type {TaskRow} from './db/queries';
@@ -318,7 +318,8 @@ async function indexSilently(path: string, projectsDir: string): Promise<{linked
 	}
 }
 
-function handleFileChange(path: string): void {
+async function handleFileChange(path: string): Promise<void> {
+	await awaitInitialScan();
 	const ext = path.slice(path.lastIndexOf('.'));
 	if (!WATCHED_EXTENSIONS.has(ext)) return;
 
@@ -398,7 +399,8 @@ function handleFileChange(path: string): void {
 	}
 }
 
-function handleFileUnlink(path: string): void {
+async function handleFileUnlink(path: string): Promise<void> {
+	await awaitInitialScan();
 	const ext = path.slice(path.lastIndexOf('.'));
 	if (!WATCHED_EXTENSIONS.has(ext)) return;
 
