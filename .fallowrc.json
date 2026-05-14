@@ -9,6 +9,10 @@
 		{"file": "src/components/settings-provider.tsx", "exports": ["SettingsProvider"]},
 		{"file": "src/lib/active-sessions.ts", "exports": ["ActiveSession"]},
 		{"file": "src/lib/claude-light-theme.ts", "exports": ["claudeLight"]},
+		{
+			"file": "src/lib/markdown.ts",
+			"exports": ["preloadMarkdown", "renderMarkdownPromise", "renderInlineMarkdownPromise"]
+		},
 		{"file": "src/lib/db/queries.ts", "exports": ["DbSearchResult", "DbMessageSearchResult"]},
 		{"file": "src/lib/sessions.ts", "exports": ["RawWindow", "readSessionLines"]},
 		{"file": "src/routes/session.$id_.source.$uuid.tsx", "exports": ["PairedResult"]},

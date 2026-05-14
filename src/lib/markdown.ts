@@ -119,3 +119,51 @@ export async function renderInlineMarkdown(markdown: string): Promise<string> {
 	const md = await getMd();
 	return md.renderInline(markdown);
 }
+
+/**
+ * Fire-and-forget preload of the markdown rendering chunk. Safe to call
+ * multiple times — the underlying `mdPromise` cache makes it idempotent.
+ * Use at app startup so the chunk is ready before any `MarkdownView` mounts.
+ */
+export function preloadMarkdown(): void {
+	void getMd();
+}
+
+const MARKDOWN_PROMISE_CACHE_MAX = 64;
+const markdownPromiseCache = new Map<string, Promise<string>>();
+const inlineMarkdownPromiseCache = new Map<string, Promise<string>>();
+
+function getOrSetCached(
+	cache: Map<string, Promise<string>>,
+	key: string,
+	factory: () => Promise<string>,
+): Promise<string> {
+	const existing = cache.get(key);
+	if (existing) return existing;
+	const promise = factory();
+	cache.set(key, promise);
+	while (cache.size > MARKDOWN_PROMISE_CACHE_MAX) {
+		const oldest = cache.keys().next().value;
+		if (oldest === undefined) break;
+		cache.delete(oldest);
+	}
+	return promise;
+}
+
+/**
+ * Memoized promise variant of `renderMarkdown` suitable for React 19's `use()`.
+ * Returns a stable promise reference per `markdown` input so suspense doesn't
+ * re-trigger on every render. Bounded to the last 64 inputs via FIFO eviction.
+ */
+export function renderMarkdownPromise(markdown: string): Promise<string> {
+	return getOrSetCached(markdownPromiseCache, markdown, () => renderMarkdown(markdown));
+}
+
+/**
+ * Memoized promise variant of `renderInlineMarkdown` suitable for React 19's
+ * `use()`. Returns a stable promise reference per `markdown` input. Bounded to
+ * the last 64 inputs via FIFO eviction.
+ */
+export function renderInlineMarkdownPromise(markdown: string): Promise<string> {
+	return getOrSetCached(inlineMarkdownPromiseCache, markdown, () => renderInlineMarkdown(markdown));
+}
