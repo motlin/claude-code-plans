@@ -771,3 +771,39 @@ export function getTaskCountsForProject(
 
 	return {total, pending, inProgress, completed};
 }
+
+// ---------------------------------------------------------------------------
+// Memories
+// ---------------------------------------------------------------------------
+
+export interface MemoryRow {
+	filename: string;
+	title: string;
+	mtimeMs: number;
+}
+
+export function getMemoryCountsForProjects(db: IndexDb): Map<string, number> {
+	const rows = db
+		.select({
+			projectId: schema.memories.projectId,
+			count: sql<number>`count(*)`,
+		})
+		.from(schema.memories)
+		.groupBy(schema.memories.projectId)
+		.all();
+
+	return new Map(rows.map((r) => [r.projectId, r.count]));
+}
+
+export function getMemoriesForProject(db: IndexDb, projectId: string): MemoryRow[] {
+	return db
+		.select({
+			filename: schema.memories.filename,
+			title: schema.memories.title,
+			mtimeMs: schema.memories.mtimeMs,
+		})
+		.from(schema.memories)
+		.where(eq(schema.memories.projectId, projectId))
+		.orderBy(desc(schema.memories.mtimeMs))
+		.all();
+}
