@@ -4,7 +4,7 @@ import * as schema from './schema';
 import {scanAllPendingApprovals, scanPendingApproval, type PendingApproval} from '../pending-approvals';
 import {getPlanFilenameForSession} from './queries';
 import {DOMAIN_EVENTS} from '../hook-events';
-import {broadcastTyped} from '../watcher';
+import {broadcastTyped} from '../sse-broadcast';
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
