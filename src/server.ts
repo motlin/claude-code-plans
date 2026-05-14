@@ -11,7 +11,8 @@ import handler, {createServerEntry} from '@tanstack/react-start/server-entry';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {createWatcher} from './lib/watcher';
-import {initDb} from './lib/db';
+import {initDb, getDb} from './lib/db';
+import {bulkSyncPlansFromDisk} from './lib/db/indexer';
 import {startSweep} from './lib/active-session-store';
 import {getCacheDir} from './lib/db/connection';
 
@@ -22,19 +23,37 @@ const PLUGINS_DIR = join(homedir(), '.claude', 'plugins', 'cache');
 const TASKS_DIR = join(homedir(), '.claude', 'tasks');
 const STATUSLINE_DIR = join(getCacheDir(), 'statusline');
 
-initDb().catch((err) => {
-	console.error('Failed to initialize database:', err);
-});
+void (async () => {
+	try {
+		await initDb();
+	} catch (err) {
+		console.error('Failed to initialize database:', err);
+		return;
+	}
 
-createWatcher(
-	[PLANS_DIR, PROJECTS_DIR, COMMANDS_DIR, PLUGINS_DIR, TASKS_DIR, STATUSLINE_DIR],
-	PROJECTS_DIR,
-	PLANS_DIR,
-	STATUSLINE_DIR,
-).catch((err) => {
-	console.error('Failed to create watcher:', err);
-});
-startSweep();
+	let watcher;
+	try {
+		watcher = await createWatcher(
+			[PLANS_DIR, PROJECTS_DIR, COMMANDS_DIR, PLUGINS_DIR, TASKS_DIR, STATUSLINE_DIR],
+			PROJECTS_DIR,
+			PLANS_DIR,
+			STATUSLINE_DIR,
+		);
+	} catch (err) {
+		console.error('Failed to create watcher:', err);
+		return;
+	}
+
+	await new Promise<void>((resolve) => watcher.once('ready', () => resolve()));
+
+	try {
+		await bulkSyncPlansFromDisk(getDb().index, PLANS_DIR, new Date().toISOString());
+	} catch (err) {
+		console.error('Failed to bulk sync plans from disk:', err);
+	}
+
+	startSweep();
+})();
 
 export default createServerEntry({
 	fetch(request) {
