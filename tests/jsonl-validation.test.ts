@@ -7,6 +7,8 @@ describe('JsonlRecordSchema against disk', () => {
 	const projectsDir = join(homedir(), '.claude', 'projects');
 
 	it('validates every line in every JSONL file on disk', () => {
+		// Scans every JSONL file under ~/.claude/projects; the default 15s
+		// timeout is too short for the full disk sweep.
 		let projectDirs: string[];
 		try {
 			projectDirs = readdirSync(projectsDir);
