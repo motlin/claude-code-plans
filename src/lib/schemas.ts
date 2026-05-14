@@ -621,6 +621,14 @@ const AgentNameRecordSchema = z
 	})
 	.strict();
 
+const AgentSettingRecordSchema = z
+	.object({
+		type: z.literal('agent-setting'),
+		agentSetting: z.string(),
+		sessionId: z.string(),
+	})
+	.strict();
+
 const AgentColorRecordSchema = z
 	.object({
 		type: z.literal('agent-color'),
@@ -637,19 +645,24 @@ const PermissionModeRecordSchema = z
 	})
 	.strict();
 
-const WorktreeStateRecordSchema = z
+const WorktreeSessionSchema = z
 	.object({
-		type: z.literal('worktree-state'),
-		worktreeSession: z.union([z.record(z.string(), z.unknown()), z.null()]).optional(),
-		sessionId: z.string().optional(),
+		originalCwd: z.string(),
+		worktreePath: z.string(),
+		worktreeName: z.string(),
+		worktreeBranch: z.string(),
+		sessionId: z.string(),
+		originalBranch: z.string().optional(),
+		originalHeadCommit: z.string().optional(),
+		enteredExisting: z.boolean().optional(),
 	})
 	.strict();
 
-const AgentSettingRecordSchema = z
+const WorktreeStateRecordSchema = z
 	.object({
-		type: z.literal('agent-setting'),
-		agentSetting: z.string(),
-		sessionId: z.string(),
+		type: z.literal('worktree-state'),
+		worktreeSession: z.union([WorktreeSessionSchema, z.null()]).optional(),
+		sessionId: z.string().optional(),
 	})
 	.strict();
 
@@ -680,11 +693,11 @@ export const JsonlRecordSchema = z.discriminatedUnion('type', [
 	LastPromptRecordSchema,
 	QueueOperationRecordSchema,
 	AgentNameRecordSchema,
+	AgentSettingRecordSchema,
 	AgentColorRecordSchema,
 	PermissionModeRecordSchema,
 	WorktreeStateRecordSchema,
 	PrLinkRecordSchema,
-	AgentSettingRecordSchema,
 ]);
 
 // ---------------------------------------------------------------------------
