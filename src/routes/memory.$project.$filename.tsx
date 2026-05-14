@@ -1,11 +1,11 @@
 import {createFileRoute, Link, useNavigate} from '@tanstack/react-router';
 import {useSuspenseQuery} from '@tanstack/react-query';
-import {MarkdownView} from '../components/markdown-view';
+import {MarkdownSkeleton, MarkdownView} from '../components/markdown-view';
 import {memoryDetailQueryOptions, useRemoveMemory} from '../lib/api/memories';
 import {ArrowLeft, Pencil, Trash2} from 'lucide-react';
 import {DetailTopBar, pillStyles} from '../components/detail-top-bar';
 import {DebugLink} from '../components/debug-link';
-import {useCallback, useState} from 'react';
+import {Suspense, useCallback, useState} from 'react';
 
 export const Route = createFileRoute('/memory/$project/$filename')({
 	component: MemoryPage,
@@ -109,7 +109,9 @@ function MemoryPage() {
 				)}
 			</DetailTopBar>
 			<div className="mt-4">
-				<MarkdownView markdown={data.markdown} />
+				<Suspense fallback={<MarkdownSkeleton />}>
+					<MarkdownView markdown={data.markdown} />
+				</Suspense>
 			</div>
 		</div>
 	);

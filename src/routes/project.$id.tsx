@@ -11,7 +11,7 @@ import {
 	FileText,
 	MessageSquare,
 } from 'lucide-react';
-import type {ComponentType, SVGProps} from 'react';
+import {Suspense, type ComponentType, type SVGProps} from 'react';
 import {
 	projectDetailQueryOptions,
 	projectSessionsQueryOptions,
@@ -283,7 +283,10 @@ function ProjectPage() {
 								)}
 								<div className="min-w-0 flex-1">
 									<div className="text-sm text-text-100">
-										#{task.taskId} <MarkdownInline markdown={task.subject} />
+										#{task.taskId}{' '}
+										<Suspense fallback={null}>
+											<MarkdownInline markdown={task.subject} />
+										</Suspense>
 									</div>
 									{task.blockedBy.length > 0 && (
 										<div className="mt-0.5 text-[10px] text-orange-500">
