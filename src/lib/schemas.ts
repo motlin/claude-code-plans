@@ -143,6 +143,7 @@ const BaseRecordFields = {
 	teamName: z.string().optional(),
 	leafUuid: z.string().optional(),
 	agentId: z.string().optional(),
+	sessionKind: z.string().optional(),
 };
 
 export const UserRecordSchema = z
@@ -239,6 +240,14 @@ const PlanModeAttachmentPayload = z
 const PlanModeExitAttachmentPayload = z
 	.object({
 		type: z.literal('plan_mode_exit'),
+		planFilePath: z.string().optional(),
+		planExists: z.boolean().optional(),
+	})
+	.strict();
+
+const PlanModeReentryAttachmentPayload = z
+	.object({
+		type: z.literal('plan_mode_reentry'),
 		planFilePath: z.string().optional(),
 		planExists: z.boolean().optional(),
 	})
@@ -355,6 +364,7 @@ const EditedTextFileAttachmentPayload = z
 		type: z.literal('edited_text_file'),
 		filename: z.string(),
 		snippet: z.string().optional(),
+		displayPath: z.string().optional(),
 	})
 	.strict();
 
@@ -496,6 +506,7 @@ export const AttachmentPayloadSchema = z.discriminatedUnion('type', [
 	PlanFileReferenceAttachmentPayload,
 	NestedMemoryAttachmentPayload,
 	PlanModeExitAttachmentPayload,
+	PlanModeReentryAttachmentPayload,
 	HookSuccessAttachmentPayload,
 	HookNonBlockingErrorAttachmentPayload,
 	HookBlockingErrorAttachmentPayload,
@@ -634,6 +645,14 @@ const WorktreeStateRecordSchema = z
 	})
 	.strict();
 
+const AgentSettingRecordSchema = z
+	.object({
+		type: z.literal('agent-setting'),
+		agentSetting: z.string(),
+		sessionId: z.string(),
+	})
+	.strict();
+
 const PrLinkRecordSchema = z
 	.object({
 		type: z.literal('pr-link'),
@@ -665,6 +684,7 @@ export const JsonlRecordSchema = z.discriminatedUnion('type', [
 	PermissionModeRecordSchema,
 	WorktreeStateRecordSchema,
 	PrLinkRecordSchema,
+	AgentSettingRecordSchema,
 ]);
 
 // ---------------------------------------------------------------------------
@@ -751,6 +771,12 @@ const RemoteSchema = z
 	})
 	.strict();
 
+const WorktreeSettingsSchema = z
+	.object({
+		baseRef: z.string().optional(),
+	})
+	.strict();
+
 export const ClaudeSettingsSchema = z
 	.object({
 		$schema: z.string().optional(),
@@ -759,6 +785,7 @@ export const ClaudeSettingsSchema = z
 		tui: z.string().optional(),
 		verbose: z.boolean().optional(),
 		includeCoAuthoredBy: z.boolean().optional(),
+		includeGitInstructions: z.boolean().optional(),
 		alwaysThinkingEnabled: z.boolean().optional(),
 		voiceEnabled: z.boolean().optional(),
 		cleanupPeriodDays: z.number().optional(),
@@ -778,6 +805,7 @@ export const ClaudeSettingsSchema = z
 		statusLine: StatusLineSchema.optional(),
 		sandbox: SandboxSchema.optional(),
 		remote: RemoteSchema.optional(),
+		worktree: WorktreeSettingsSchema.optional(),
 		enabledPlugins: z.record(z.string(), z.boolean()).optional(),
 		extraKnownMarketplaces: z.record(z.string(), MarketplaceEntrySchema).optional(),
 	})
