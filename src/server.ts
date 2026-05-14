@@ -11,8 +11,7 @@ import handler, {createServerEntry} from '@tanstack/react-start/server-entry';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {createWatcher} from './lib/watcher';
-import {initDb, getDb} from './lib/db';
-import {bulkSyncPlansFromDisk} from './lib/db/indexer';
+import {initDb, runInitialScan} from './lib/db';
 import {startSweep} from './lib/active-session-store';
 import {getCacheDir} from './lib/db/connection';
 
@@ -47,9 +46,9 @@ void (async () => {
 	await new Promise<void>((resolve) => watcher.once('ready', () => resolve()));
 
 	try {
-		await bulkSyncPlansFromDisk(getDb().index, PLANS_DIR, new Date().toISOString());
+		await runInitialScan(PLANS_DIR);
 	} catch (err) {
-		console.error('Failed to bulk sync plans from disk:', err);
+		console.error('Initial scan failed:', err);
 	}
 
 	startSweep();
