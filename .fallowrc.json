@@ -14,6 +14,16 @@
 			"file": "src/lib/pending-approvals.ts",
 			"exports": ["scanAllPendingApprovals", "PendingApprovalToolName", "PendingApproval"]
 		},
+		{
+			"file": "src/lib/db/pending-approvals-cache.ts",
+			"exports": [
+				"initPendingApprovalsCache",
+				"getPendingApprovals",
+				"getPendingApprovalsForProject",
+				"updatePendingApprovalForSession",
+				"removePendingApprovalForSession"
+			]
+		},
 		{"file": "src/lib/claude-light-theme.ts", "exports": ["claudeLight"]},
 		{
 			"file": "src/lib/markdown.ts",
