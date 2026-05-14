@@ -3,6 +3,7 @@ import {Link} from '@tanstack/react-router';
 import {
 	AlertTriangle,
 	Ban,
+	Bot,
 	Brain,
 	Calendar,
 	CircleCheck,
@@ -273,6 +274,77 @@ function AttachmentContent({
 					uuid={uuid}
 				/>
 			);
+		case 'plan_mode_reentry': {
+			const planFilename = attachment.planFilePath?.split('/').pop();
+			return (
+				<Banner
+					icon={<ClipboardList className="h-3.5 w-3.5" />}
+					label="Re-entered plan mode"
+					sessionId={sessionId}
+					uuid={uuid}
+				>
+					{planFilename && (
+						<Link
+							to="/plan/$filename"
+							params={{filename: planFilename}}
+							className="font-mono text-accent-500 hover:underline truncate max-w-xs"
+							title={attachment.planFilePath}
+						>
+							{planFilename}
+						</Link>
+					)}
+				</Banner>
+			);
+		}
+		case 'plan_file_reference': {
+			const planFilename = attachment.planFilePath?.split('/').pop();
+			return (
+				<Banner
+					icon={<ClipboardList className="h-3.5 w-3.5" />}
+					label="Plan file"
+					sessionId={sessionId}
+					uuid={uuid}
+				>
+					{planFilename && (
+						<Link
+							to="/plan/$filename"
+							params={{filename: planFilename}}
+							className="font-mono text-accent-500 hover:underline truncate max-w-xs"
+							title={attachment.planFilePath}
+						>
+							{planFilename}
+						</Link>
+					)}
+				</Banner>
+			);
+		}
+		case 'nested_memory':
+			return (
+				<Banner
+					icon={<FileText className="h-3.5 w-3.5" />}
+					label={`Memory: ${attachment.displayPath ?? attachment.path ?? 'nested'}`}
+					sessionId={sessionId}
+					uuid={uuid}
+				/>
+			);
+		case 'auto_mode':
+			return (
+				<Banner
+					icon={<Bot className="h-3.5 w-3.5" />}
+					label={`Auto mode${attachment.reminderType ? `: ${attachment.reminderType}` : ''}`}
+					sessionId={sessionId}
+					uuid={uuid}
+				/>
+			);
+		case 'max_turns_reached':
+			return (
+				<Banner
+					icon={<AlertTriangle className="h-3.5 w-3.5" />}
+					label={`Max turns reached${attachment.maxTurns !== undefined ? ` (${attachment.turnCount ?? '?'}/${attachment.maxTurns})` : ''}`}
+					sessionId={sessionId}
+					uuid={uuid}
+				/>
+			);
 
 		// -- Tool/MCP ecosystem --
 		case 'deferred_tools_delta': {
@@ -371,7 +443,14 @@ function AttachmentContent({
 				</Banner>
 			);
 		default:
-			throw new Error(`Unhandled attachment type: ${(attachment as {type: string}).type}`);
+			return (
+				<Banner
+					icon={<Paperclip className="h-3.5 w-3.5" />}
+					label={(attachment as {type: string}).type}
+					sessionId={sessionId}
+					uuid={uuid}
+				/>
+			);
 	}
 }
 
