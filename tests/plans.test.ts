@@ -1,7 +1,7 @@
 import {writeFileSync, mkdirSync, rmSync, utimesSync, readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {listPlans, readPlan, writePlan, getPlanMtime} from '../src/lib/plans.js';
+import {listPlans, readPlan, writePlan, getPlanMtime, buildPlanNotModifiedResponse} from '../src/lib/plans.js';
 
 const testDir = join(tmpdir(), 'claude-plans-test-' + process.pid);
 
@@ -156,5 +156,34 @@ describe('getPlanMtime', () => {
 		writeFileSync(join(testDir, 'secret.txt'), 'secret');
 		const mtime = await getPlanMtime(testDir, 'secret.txt');
 		expect(mtime).toBe(null);
+	});
+});
+
+describe('buildPlanNotModifiedResponse', () => {
+	it('returns a 304 when If-None-Match matches the row sha', () => {
+		const sha = 'abc123';
+		const response = buildPlanNotModifiedResponse(`"${sha}"`, {sha});
+		expect(response).not.toBeNull();
+		expect(response!.status).toBe(304);
+		expect(response!.headers.get('ETag')).toBe(`"${sha}"`);
+		expect(response!.headers.get('Cache-Control')).toBe('private, max-age=0, must-revalidate');
+	});
+
+	it('returns null when If-None-Match is absent', () => {
+		expect(buildPlanNotModifiedResponse(null, {sha: 'abc123'})).toBeNull();
+	});
+
+	it('returns null when If-None-Match differs from the row sha', () => {
+		expect(buildPlanNotModifiedResponse('"stale"', {sha: 'fresh'})).toBeNull();
+	});
+
+	it('returns null when the row is missing', () => {
+		expect(buildPlanNotModifiedResponse('"any"', null)).toBeNull();
+	});
+
+	it('treats an unquoted If-None-Match as a mismatch (server emits quoted ETags)', () => {
+		// HTTP ETags are quoted strings — a client sending the bare sha
+		// should not get a 304.
+		expect(buildPlanNotModifiedResponse('abc123', {sha: 'abc123'})).toBeNull();
 	});
 });

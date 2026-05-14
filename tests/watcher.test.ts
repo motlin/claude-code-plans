@@ -1,9 +1,33 @@
-import {describe, expect, it} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it} from 'vitest';
+import {writeFileSync, mkdirSync, rmSync} from 'node:fs';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
 import {__testing} from '../src/lib/watcher';
+import {openTestDb, type AppDb} from '../src/lib/db/connection';
+import * as schema from '../src/lib/db/schema';
+import {DOMAIN_EVENTS} from '../src/lib/hook-events';
+import {eq} from 'drizzle-orm';
 import type {SessionEntry} from '../src/lib/sessions';
 import type {TaskRow} from '../src/lib/db/queries';
 
-const {toSessionSummaryPayload, sessionSummariesEqual, toTaskSummaryPayload, tasksEqual} = __testing;
+const {
+	toSessionSummaryPayload,
+	sessionSummariesEqual,
+	toTaskSummaryPayload,
+	tasksEqual,
+	handleJsonlPlanLinks,
+	handlePlanMdChange,
+	handlePlanMdUnlink,
+} = __testing;
+
+interface CapturedBroadcast {
+	type: string;
+	data: Record<string, unknown>;
+}
+
+function jsonl(...lines: Record<string, unknown>[]): string {
+	return lines.map((l) => JSON.stringify(l)).join('\n') + '\n';
+}
 
 function makeSession(overrides: Partial<SessionEntry> = {}): SessionEntry {
 	return {
@@ -129,5 +153,179 @@ describe('tasksEqual', () => {
 		const a = toTaskSummaryPayload(makeTask({blocks: ['a', 'b']}));
 		const b = toTaskSummaryPayload(makeTask({blocks: ['b', 'a']}));
 		expect(tasksEqual(a, b)).toBe(false);
+	});
+});
+
+describe('handleJsonlPlanLinks', () => {
+	const testDir = join(tmpdir(), 'claude-watcher-test-' + process.pid);
+	let db: AppDb;
+
+	beforeEach(() => {
+		mkdirSync(testDir, {recursive: true});
+		db = openTestDb();
+	});
+
+	afterEach(() => {
+		db.close();
+		rmSync(testDir, {recursive: true, force: true});
+	});
+
+	it('broadcasts PLAN_CHANGED for each plan linked by a JSONL with a plan_mode line', async () => {
+		const projectsDir = testDir;
+		const plansDir = join(testDir, 'plans');
+		const projectDir = join(projectsDir, '-Users-craig-projects-app');
+		mkdirSync(plansDir, {recursive: true});
+		mkdirSync(projectDir, {recursive: true});
+
+		writeFileSync(join(plansDir, 'gamma.md'), '# Gamma');
+
+		const jsonlPath = join(projectDir, 'sess-watcher.jsonl');
+		writeFileSync(
+			jsonlPath,
+			jsonl(
+				{type: 'user', sessionId: 'sess-watcher', message: {role: 'user', content: 'Draft'}},
+				{
+					type: 'attachment',
+					sessionId: 'sess-watcher',
+					attachment: {
+						type: 'plan_mode',
+						planFilePath: '/Users/craig/.claude/plans/gamma.md',
+					},
+				},
+			),
+		);
+
+		const broadcasts: CapturedBroadcast[] = [];
+		const result = await handleJsonlPlanLinks(db.index, jsonlPath, projectsDir, plansDir, (type, data) =>
+			broadcasts.push({type, data}),
+		);
+
+		expect(result.linkedPlans).toStrictEqual(['gamma.md']);
+		const planEvents = broadcasts.filter((b) => b.type === DOMAIN_EVENTS.PLAN_CHANGED);
+		expect(planEvents.length).toBe(1);
+		const payload = planEvents[0]!.data as {plan: {filename: string; title: string}};
+		expect(payload.plan.filename).toBe('gamma.md');
+		expect(payload.plan.title).toBe('Gamma');
+	});
+
+	it('broadcasts nothing when the JSONL has no plan references', async () => {
+		const projectsDir = testDir;
+		const plansDir = join(testDir, 'plans');
+		const projectDir = join(projectsDir, '-Users-craig-projects-app');
+		mkdirSync(plansDir, {recursive: true});
+		mkdirSync(projectDir, {recursive: true});
+
+		const jsonlPath = join(projectDir, 'sess-no-plan.jsonl');
+		writeFileSync(
+			jsonlPath,
+			jsonl({type: 'user', sessionId: 'sess-no-plan', message: {role: 'user', content: 'Hi'}}),
+		);
+
+		const broadcasts: CapturedBroadcast[] = [];
+		const result = await handleJsonlPlanLinks(db.index, jsonlPath, projectsDir, plansDir, (type, data) =>
+			broadcasts.push({type, data}),
+		);
+
+		expect(result.linkedPlans).toStrictEqual([]);
+		expect(broadcasts.filter((b) => b.type === DOMAIN_EVENTS.PLAN_CHANGED)).toStrictEqual([]);
+	});
+});
+
+describe('handlePlanMdChange', () => {
+	const testDir = join(tmpdir(), 'claude-watcher-md-test-' + process.pid);
+	let db: AppDb;
+
+	beforeEach(() => {
+		mkdirSync(testDir, {recursive: true});
+		db = openTestDb();
+	});
+
+	afterEach(() => {
+		db.close();
+		rmSync(testDir, {recursive: true, force: true});
+	});
+
+	it('inserts the plans row before broadcasting PLAN_CHANGED', async () => {
+		const projectsDir = join(testDir, 'projects');
+		const plansDir = join(testDir, 'plans');
+		mkdirSync(projectsDir, {recursive: true});
+		mkdirSync(plansDir, {recursive: true});
+		const mdPath = join(plansDir, 'delta.md');
+		writeFileSync(mdPath, '# Delta');
+
+		let rowAtBroadcastTime: (typeof rows)[number] | null = null;
+		let rows: Array<{filename: string; sha: string; systemTo: string}> = [];
+
+		await handlePlanMdChange(db.index, mdPath, projectsDir, plansDir, (type, data) => {
+			if (type === DOMAIN_EVENTS.PLAN_CHANGED) {
+				rows = db.index
+					.select({
+						filename: schema.plans.filename,
+						sha: schema.plans.sha,
+						systemTo: schema.plans.systemTo,
+					})
+					.from(schema.plans)
+					.where(eq(schema.plans.systemTo, schema.FAR_FUTURE))
+					.all();
+				rowAtBroadcastTime = rows.find((r) => r.filename === 'delta.md') ?? null;
+			}
+			void data;
+		});
+
+		// At the time PLAN_CHANGED fired, the row must already be current in
+		// the temporal `plans` table — the indexer wrote before the broadcast.
+		expect(rowAtBroadcastTime).not.toBeNull();
+		expect(rowAtBroadcastTime!.filename).toBe('delta.md');
+		expect(rowAtBroadcastTime!.systemTo).toBe(schema.FAR_FUTURE);
+	});
+});
+
+describe('handlePlanMdUnlink', () => {
+	const testDir = join(tmpdir(), 'claude-watcher-unlink-test-' + process.pid);
+	let db: AppDb;
+
+	beforeEach(() => {
+		mkdirSync(testDir, {recursive: true});
+		db = openTestDb();
+	});
+
+	afterEach(() => {
+		db.close();
+		rmSync(testDir, {recursive: true, force: true});
+	});
+
+	it('phases out the row before broadcasting PLAN_REMOVED', () => {
+		const plansDir = join(testDir, 'plans');
+		mkdirSync(plansDir, {recursive: true});
+		const mdPath = join(plansDir, 'epsilon.md');
+
+		db.index
+			.insert(schema.plans)
+			.values({
+				filename: 'epsilon.md',
+				title: 'Epsilon',
+				sha: 'deadbeef',
+				systemFrom: '2026-05-14T00:00:00.000Z',
+				systemTo: schema.FAR_FUTURE,
+			})
+			.run();
+
+		let currentRowCountAtBroadcast = -1;
+		const broadcasts: CapturedBroadcast[] = [];
+
+		handlePlanMdUnlink(db.index, mdPath, '2026-05-14T01:00:00.000Z', (type, data) => {
+			broadcasts.push({type, data});
+			if (type === DOMAIN_EVENTS.PLAN_REMOVED) {
+				currentRowCountAtBroadcast = db.index
+					.select()
+					.from(schema.plans)
+					.where(eq(schema.plans.systemTo, schema.FAR_FUTURE))
+					.all().length;
+			}
+		});
+
+		// At broadcast time, the row was already phased out.
+		expect(currentRowCountAtBroadcast).toBe(0);
+		expect(broadcasts).toStrictEqual([{type: DOMAIN_EVENTS.PLAN_REMOVED, data: {filename: 'epsilon.md'}}]);
 	});
 });

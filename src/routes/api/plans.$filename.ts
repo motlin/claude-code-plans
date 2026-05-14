@@ -7,7 +7,7 @@ export const Route = createFileRoute('/api/plans/$filename')({
 			GET: async ({params, request}: {params: {filename: string}; request: Request}) => {
 				const {homedir} = await import('node:os');
 				const {join} = await import('node:path');
-				const {readPlan} = await import('../../lib/plans');
+				const {readPlan, buildPlanNotModifiedResponse} = await import('../../lib/plans');
 				const {extractTitleFromContent} = await import('../../lib/markdown-utils');
 				const {getDb} = await import('../../lib/db');
 				const {getPlanFromDb} = await import('../../lib/db/queries');
@@ -16,19 +16,8 @@ export const Route = createFileRoute('/api/plans/$filename')({
 				const filename = params.filename;
 
 				const row = getPlanFromDb(getDb().index, filename);
-				if (row) {
-					const ifNoneMatch = request.headers.get('If-None-Match');
-					const etag = `"${row.sha}"`;
-					if (ifNoneMatch && ifNoneMatch === etag) {
-						return new Response(null, {
-							status: 304,
-							headers: {
-								'Cache-Control': 'private, max-age=0, must-revalidate',
-								ETag: etag,
-							},
-						});
-					}
-				}
+				const notModified = buildPlanNotModifiedResponse(request.headers.get('If-None-Match'), row);
+				if (notModified) return notModified;
 
 				const markdown = await readPlan(plansDir, filename);
 				if (markdown == null || row == null) {

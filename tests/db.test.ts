@@ -629,6 +629,125 @@ describe('indexer', () => {
 		expect(current.length).toBe(3);
 	});
 
+	it('indexJsonlFile returns linkedPlans matching the filenames upserted into plan_sessions', async () => {
+		const projectDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projectDir, {recursive: true});
+
+		writeFileSync(
+			join(projectDir, 'sessions-index.json'),
+			makeSessionsIndex([
+				{
+					sessionId: 'sess-linked',
+					fullPath: join(projectDir, 'sess-linked.jsonl'),
+					fileMtime: Date.now(),
+					firstPrompt: 'Draft',
+				},
+			]),
+		);
+		await indexSessionsIndex(db.index, projectDir, '-Users-craig-projects-app');
+
+		writeFileSync(
+			join(projectDir, 'sess-linked.jsonl'),
+			jsonl(
+				{type: 'user', ...baseFields, sessionId: 'sess-linked', message: {role: 'user', content: 'Draft'}},
+				{
+					type: 'attachment',
+					...baseFields,
+					sessionId: 'sess-linked',
+					attachment: {
+						type: 'plan_mode',
+						planFilePath: '/Users/craig/.claude/plans/alpha.md',
+					},
+				},
+				{
+					type: 'file-history-snapshot',
+					messageId: 'msg-3',
+					isSnapshotUpdate: false,
+					snapshot: {
+						messageId: 'msg-3',
+						timestamp: '1999-12-31T00:00:00.000Z',
+						trackedFileBackups: {
+							'/Users/craig/.claude/plans/beta.md': 'backup',
+						},
+					},
+				},
+			),
+		);
+
+		const result = await indexJsonlFile(
+			db.index,
+			join(projectDir, 'sess-linked.jsonl'),
+			'-Users-craig-projects-app',
+		);
+
+		// Sort both sides — the indexer is free to traverse the Set in any order.
+		const returned = [...result.linkedPlans].sort();
+		const inDb = db.index
+			.select({planFilename: schema.planSessions.planFilename})
+			.from(schema.planSessions)
+			.all()
+			.map((r) => r.planFilename)
+			.sort();
+		expect(returned).toStrictEqual(['alpha.md', 'beta.md']);
+		expect(returned).toStrictEqual(inDb);
+	});
+
+	it('indexJsonlFile returns empty linkedPlans when the JSONL has no plan references', async () => {
+		const projectDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projectDir, {recursive: true});
+
+		writeFileSync(
+			join(projectDir, 'sessions-index.json'),
+			makeSessionsIndex([
+				{
+					sessionId: 'sess-no-plans',
+					fullPath: join(projectDir, 'sess-no-plans.jsonl'),
+					fileMtime: Date.now(),
+					firstPrompt: 'Nothing',
+				},
+			]),
+		);
+		await indexSessionsIndex(db.index, projectDir, '-Users-craig-projects-app');
+
+		writeFileSync(
+			join(projectDir, 'sess-no-plans.jsonl'),
+			jsonl({type: 'user', ...baseFields, sessionId: 'sess-no-plans', message: {role: 'user', content: 'Hi'}}),
+		);
+
+		const result = await indexJsonlFile(
+			db.index,
+			join(projectDir, 'sess-no-plans.jsonl'),
+			'-Users-craig-projects-app',
+		);
+
+		expect(result).toStrictEqual({linkedPlans: []});
+	});
+
+	it('race-tolerance: indexPlanFile and bulkSyncPlansFromDisk leave exactly one current row', async () => {
+		const plansDir = join(testDir, 'plans');
+		mkdirSync(plansDir, {recursive: true});
+		writeFileSync(join(plansDir, 'racy.md'), '# Racy');
+
+		// Kick both writers off in parallel against the same filename. Either
+		// path's insert may win; the other should hit a PK conflict on
+		// (filename, system_to) and either no-op or get caught at the
+		// transaction boundary. Final state: exactly one current row.
+		const sharedNow = '2026-05-14T00:00:00.000Z';
+		const results = await Promise.allSettled([
+			indexPlanFile(db.index, plansDir, 'racy.md', sharedNow),
+			bulkSyncPlansFromDisk(db.index, plansDir, sharedNow),
+		]);
+
+		// At least one path must have succeeded — the loser may have rejected
+		// with a PK violation, but that's tolerated as a deduplicated no-op.
+		const fulfilled = results.filter((r) => r.status === 'fulfilled');
+		expect(fulfilled.length).toBeGreaterThanOrEqual(1);
+
+		const current = db.index.select().from(schema.plans).where(eq(schema.plans.systemTo, schema.FAR_FUTURE)).all();
+		expect(current.length).toBe(1);
+		expect(current[0]!.filename).toBe('racy.md');
+	});
+
 	it('ignores plan_mode attachments with no planFilePath', async () => {
 		const projectDir = join(testDir, '-Users-craig-projects-app');
 		mkdirSync(projectDir, {recursive: true});
