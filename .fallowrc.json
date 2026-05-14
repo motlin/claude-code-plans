@@ -9,6 +9,7 @@
 		{"file": "src/components/session-chat.tsx", "exports": ["SessionChatProps"]},
 		{"file": "src/components/settings-provider.tsx", "exports": ["SettingsProvider"]},
 		{"file": "src/lib/active-sessions.ts", "exports": ["ActiveSession"]},
+		{"file": "src/lib/hook-events.ts", "exports": ["PendingApprovalPayload"]},
 		{"file": "src/lib/claude-light-theme.ts", "exports": ["claudeLight"]},
 		{
 			"file": "src/lib/markdown.ts",

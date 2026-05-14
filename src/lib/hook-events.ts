@@ -38,6 +38,8 @@ export const DOMAIN_EVENTS = {
 	MEMORY_REMOVED: 'memory:removed',
 	TASK_CHANGED: 'task:changed',
 	TASK_COMPLETED: 'task:completed',
+	APPROVAL_CHANGED: 'approval:changed',
+	APPROVAL_RESOLVED: 'approval:resolved',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -60,6 +62,22 @@ export interface SessionSummaryPayload {
 	messageCount: number;
 	gitBranch: string | undefined;
 	starred: boolean;
+}
+
+/**
+ * Payload describing a session that is currently blocked waiting for the user
+ * to answer an `ExitPlanMode` or `AskUserQuestion` tool call. `blockedSince` is
+ * an ISO string so the payload survives JSON serialization to clients.
+ */
+export interface PendingApprovalPayload {
+	sessionId: string;
+	projectId: string;
+	projectName: string;
+	toolName: 'ExitPlanMode' | 'AskUserQuestion';
+	toolUseId: string;
+	blockedSince: string;
+	planFilename: string | null;
+	questionPreview: string | null;
 }
 
 /** Summary payload for a single plan, matching `/api/plans` output. */
