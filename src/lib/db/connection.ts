@@ -93,6 +93,16 @@ CREATE TABLE IF NOT EXISTS starred_sessions (
   session_id TEXT PRIMARY KEY,
   starred_at INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS plans (
+  filename TEXT NOT NULL,
+  title TEXT NOT NULL,
+  sha TEXT NOT NULL,
+  system_from TEXT NOT NULL,
+  system_to TEXT NOT NULL DEFAULT '9999-12-31 23:59:59',
+  PRIMARY KEY(filename, system_to)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS plans_system_from_idx ON plans(filename, system_from);
 `;
 
 const CREATE_FTS_SQL = `
@@ -151,6 +161,7 @@ function initIndexDb(sqlite: Database.Database): void {
 		sqlite.exec('DROP TABLE IF EXISTS todo_tasks');
 		sqlite.exec('DROP TABLE IF EXISTS todo_files');
 		sqlite.exec('DROP TABLE IF EXISTS starred_sessions');
+		sqlite.exec('DROP TABLE IF EXISTS plans');
 		sqlite.exec('DROP TABLE IF EXISTS subagents');
 		sqlite.exec('DROP TABLE IF EXISTS plan_sessions');
 		sqlite.exec('DROP TABLE IF EXISTS sessions');
