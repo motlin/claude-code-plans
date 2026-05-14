@@ -8,6 +8,7 @@ import {
 	indexPlanFile,
 	indexSessionsIndex,
 	indexTaskFile,
+	bulkSyncPlansFromDisk,
 	phaseOutPlan,
 	pruneStalePlanLinks,
 	indexSubagentFile,
@@ -486,6 +487,146 @@ describe('indexer', () => {
 		expect(rows.length).toBe(1);
 		// Second phase-out had no current row to touch, so system_to stays at first call's `now`.
 		expect(rows[0]!.systemTo).toBe('2026-05-14T01:00:00.000Z');
+	});
+
+	it('bulkSyncPlansFromDisk inserts files present on disk but missing from the DB', async () => {
+		const plansDir = join(testDir, 'plans');
+		mkdirSync(plansDir, {recursive: true});
+		writeFileSync(join(plansDir, 'a.md'), '# A');
+		writeFileSync(join(plansDir, 'b.md'), '# B');
+
+		const result = await bulkSyncPlansFromDisk(db.index, plansDir, '2026-05-14T00:00:00.000Z');
+		expect(result).toStrictEqual({inserted: 2, updated: 0, unchanged: 0, phaseOut: 0});
+
+		const rows = db.index.select().from(schema.plans).all();
+		expect(rows.length).toBe(2);
+		for (const row of rows) {
+			expect(row.systemFrom).toBe('2026-05-14T00:00:00.000Z');
+			expect(row.systemTo).toBe(schema.FAR_FUTURE);
+		}
+	});
+
+	it('bulkSyncPlansFromDisk updates rows with changed sha: phases out old, inserts new', async () => {
+		const plansDir = join(testDir, 'plans');
+		mkdirSync(plansDir, {recursive: true});
+		writeFileSync(join(plansDir, 'u.md'), '# Original');
+
+		await bulkSyncPlansFromDisk(db.index, plansDir, '2026-05-14T00:00:00.000Z');
+		writeFileSync(join(plansDir, 'u.md'), '# Updated');
+
+		const result = await bulkSyncPlansFromDisk(db.index, plansDir, '2026-05-14T01:00:00.000Z');
+		expect(result).toStrictEqual({inserted: 0, updated: 1, unchanged: 0, phaseOut: 0});
+
+		const rows = db.index.select().from(schema.plans).all();
+		expect(rows.length).toBe(2);
+		const closed = rows.find((r) => r.systemTo !== schema.FAR_FUTURE)!;
+		const current = rows.find((r) => r.systemTo === schema.FAR_FUTURE)!;
+		expect(closed.title).toBe('Original');
+		expect(closed.systemTo).toBe('2026-05-14T01:00:00.000Z');
+		expect(current.title).toBe('Updated');
+		expect(current.systemFrom).toBe('2026-05-14T01:00:00.000Z');
+	});
+
+	it('bulkSyncPlansFromDisk leaves unchanged rows untouched', async () => {
+		const plansDir = join(testDir, 'plans');
+		mkdirSync(plansDir, {recursive: true});
+		writeFileSync(join(plansDir, 'same.md'), '# Stable');
+
+		await bulkSyncPlansFromDisk(db.index, plansDir, '2026-05-14T00:00:00.000Z');
+		const before = db.index.select().from(schema.plans).all();
+
+		const result = await bulkSyncPlansFromDisk(db.index, plansDir, '2026-05-14T05:00:00.000Z');
+		expect(result).toStrictEqual({inserted: 0, updated: 0, unchanged: 1, phaseOut: 0});
+
+		const after = db.index.select().from(schema.plans).all();
+		expect(after.length).toBe(1);
+		expect(after[0]!.systemFrom).toBe(before[0]!.systemFrom);
+		expect(after[0]!.systemTo).toBe(schema.FAR_FUTURE);
+	});
+
+	it('bulkSyncPlansFromDisk phases out rows present in DB but missing from disk', async () => {
+		const plansDir = join(testDir, 'plans');
+		mkdirSync(plansDir, {recursive: true});
+		writeFileSync(join(plansDir, 'keep.md'), '# Keep');
+		writeFileSync(join(plansDir, 'drop.md'), '# Drop');
+
+		await bulkSyncPlansFromDisk(db.index, plansDir, '2026-05-14T00:00:00.000Z');
+		rmSync(join(plansDir, 'drop.md'));
+
+		const result = await bulkSyncPlansFromDisk(db.index, plansDir, '2026-05-14T02:00:00.000Z');
+		expect(result).toStrictEqual({inserted: 0, updated: 0, unchanged: 1, phaseOut: 1});
+
+		const current = db.index.select().from(schema.plans).where(eq(schema.plans.systemTo, schema.FAR_FUTURE)).all();
+		expect(current.length).toBe(1);
+		expect(current[0]!.filename).toBe('keep.md');
+
+		const closed = db.index
+			.select()
+			.from(schema.plans)
+			.all()
+			.filter((r) => r.systemTo !== schema.FAR_FUTURE);
+		expect(closed.length).toBe(1);
+		expect(closed[0]!.filename).toBe('drop.md');
+		expect(closed[0]!.systemTo).toBe('2026-05-14T02:00:00.000Z');
+	});
+
+	it('bulkSyncPlansFromDisk produces a coherent snapshot: one shared timestamp across all writes', async () => {
+		const plansDir = join(testDir, 'plans');
+		mkdirSync(plansDir, {recursive: true});
+		writeFileSync(join(plansDir, 'old-update.md'), '# v1');
+		writeFileSync(join(plansDir, 'old-drop.md'), '# Drop');
+
+		await bulkSyncPlansFromDisk(db.index, plansDir, '2026-05-14T00:00:00.000Z');
+
+		writeFileSync(join(plansDir, 'old-update.md'), '# v2');
+		writeFileSync(join(plansDir, 'new-insert.md'), '# Fresh');
+		rmSync(join(plansDir, 'old-drop.md'));
+
+		const sharedNow = '2026-05-14T03:00:00.000Z';
+		const result = await bulkSyncPlansFromDisk(db.index, plansDir, sharedNow);
+		expect(result).toStrictEqual({inserted: 1, updated: 1, unchanged: 0, phaseOut: 1});
+
+		const allRows = db.index.select().from(schema.plans).all();
+		const writtenThisRun = allRows.filter((r) => r.systemFrom === sharedNow || r.systemTo === sharedNow);
+		// Insert: 1 row with systemFrom=sharedNow.
+		// Update: old row's systemTo=sharedNow + new row's systemFrom=sharedNow.
+		// Phase-out: old row's systemTo=sharedNow.
+		expect(writtenThisRun.length).toBe(4);
+		for (const row of writtenThisRun) {
+			const usesNow = row.systemFrom === sharedNow || row.systemTo === sharedNow;
+			expect(usesNow).toBe(true);
+		}
+	});
+
+	it('bulkSyncPlansFromDisk phases out all current rows when disk is empty', async () => {
+		const plansDir = join(testDir, 'plans');
+		mkdirSync(plansDir, {recursive: true});
+		writeFileSync(join(plansDir, 'a.md'), '# A');
+		writeFileSync(join(plansDir, 'b.md'), '# B');
+
+		await bulkSyncPlansFromDisk(db.index, plansDir, '2026-05-14T00:00:00.000Z');
+		rmSync(join(plansDir, 'a.md'));
+		rmSync(join(plansDir, 'b.md'));
+
+		const result = await bulkSyncPlansFromDisk(db.index, plansDir, '2026-05-14T04:00:00.000Z');
+		expect(result).toStrictEqual({inserted: 0, updated: 0, unchanged: 0, phaseOut: 2});
+
+		const current = db.index.select().from(schema.plans).where(eq(schema.plans.systemTo, schema.FAR_FUTURE)).all();
+		expect(current.length).toBe(0);
+	});
+
+	it('bulkSyncPlansFromDisk inserts everything when DB is empty', async () => {
+		const plansDir = join(testDir, 'plans');
+		mkdirSync(plansDir, {recursive: true});
+		writeFileSync(join(plansDir, 'x.md'), '# X');
+		writeFileSync(join(plansDir, 'y.md'), '# Y');
+		writeFileSync(join(plansDir, 'z.md'), '# Z');
+
+		const result = await bulkSyncPlansFromDisk(db.index, plansDir, '2026-05-14T00:00:00.000Z');
+		expect(result).toStrictEqual({inserted: 3, updated: 0, unchanged: 0, phaseOut: 0});
+
+		const current = db.index.select().from(schema.plans).where(eq(schema.plans.systemTo, schema.FAR_FUTURE)).all();
+		expect(current.length).toBe(3);
 	});
 
 	it('ignores plan_mode attachments with no planFilePath', async () => {
