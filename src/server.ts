@@ -11,9 +11,10 @@ import handler, {createServerEntry} from '@tanstack/react-start/server-entry';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {createWatcher} from './lib/watcher';
-import {initDb, runInitialScan} from './lib/db';
+import {getDb, initDb, runInitialScan} from './lib/db';
 import {startSweep} from './lib/active-session-store';
 import {getCacheDir} from './lib/db/connection';
+import {initPendingApprovalsCache} from './lib/db/pending-approvals-cache';
 
 const PLANS_DIR = join(homedir(), '.claude', 'plans');
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
@@ -28,6 +29,12 @@ void (async () => {
 	} catch (err) {
 		console.error('Failed to initialize database:', err);
 		return;
+	}
+
+	try {
+		await initPendingApprovalsCache(getDb().index);
+	} catch (err) {
+		console.error('Failed to initialize pending approvals cache:', err);
 	}
 
 	let watcher;
