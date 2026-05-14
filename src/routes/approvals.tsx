@@ -3,6 +3,7 @@ import {useSuspenseQuery, useQuery} from '@tanstack/react-query';
 import {useMemo} from 'react';
 import {approvalsQueryOptions} from '../lib/api/approvals';
 import {sessionsQueryOptions} from '../lib/api/sessions';
+import {formatRelativeTimeFromIso} from '../lib/relative-time';
 import {pillStyles} from '../components/detail-top-bar';
 
 export const Route = createFileRoute('/approvals')({
@@ -12,18 +13,6 @@ export const Route = createFileRoute('/approvals')({
 		meta: [{title: 'Approvals'}],
 	}),
 });
-
-function formatRelativeTime(iso: string): string {
-	const diffMs = Date.now() - new Date(iso).getTime();
-	const seconds = Math.floor(diffMs / 1000);
-	if (seconds < 60) return `${seconds}s ago`;
-	const minutes = Math.floor(seconds / 60);
-	if (minutes < 60) return `${minutes}m ago`;
-	const hours = Math.floor(minutes / 60);
-	if (hours < 24) return `${hours}h ago`;
-	const days = Math.floor(hours / 24);
-	return `${days}d ago`;
-}
 
 function truncate(text: string, max: number): string {
 	if (text.length <= max) return text;
@@ -77,7 +66,7 @@ function ApprovalsPage() {
 										</span>
 										<span className={pillStyles.outline}>{approval.toolName}</span>
 										<span className="ml-auto text-xs text-text-500">
-											{formatRelativeTime(approval.blockedSince)}
+											{formatRelativeTimeFromIso(approval.blockedSince)}
 										</span>
 									</div>
 									<div className="mt-1 truncate text-xs text-text-500">{sessionTitle}</div>
