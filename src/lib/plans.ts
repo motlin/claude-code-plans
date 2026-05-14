@@ -67,3 +67,23 @@ export async function writePlan(plansDir: string, filename: string, content: str
 	await writeFile(join(plansDir, filename), content, 'utf-8');
 	return true;
 }
+
+/**
+ * Build a 304 Not Modified response when the client's `If-None-Match` header
+ * matches the row's current sha. Returns null if no 304 should be sent —
+ * either the client did not send the header, the row is missing, or the
+ * shas differ. Centralized so the conditional-GET behavior is testable
+ * without spinning up the TanStack route runtime.
+ */
+export function buildPlanNotModifiedResponse(ifNoneMatch: string | null, row: {sha: string} | null): Response | null {
+	if (!row) return null;
+	const etag = `"${row.sha}"`;
+	if (!ifNoneMatch || ifNoneMatch !== etag) return null;
+	return new Response(null, {
+		status: 304,
+		headers: {
+			'Cache-Control': 'private, max-age=0, must-revalidate',
+			ETag: etag,
+		},
+	});
+}
