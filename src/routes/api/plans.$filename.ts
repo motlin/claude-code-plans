@@ -7,32 +7,31 @@ export const Route = createFileRoute('/api/plans/$filename')({
 			GET: async ({params, request}: {params: {filename: string}; request: Request}) => {
 				const {homedir} = await import('node:os');
 				const {join} = await import('node:path');
-				const {readPlan, getPlanMtime} = await import('../../lib/plans');
+				const {readPlan} = await import('../../lib/plans');
 				const {extractTitleFromContent} = await import('../../lib/markdown-utils');
+				const {getDb} = await import('../../lib/db');
+				const {getPlanFromDb} = await import('../../lib/db/queries');
 
 				const plansDir = join(homedir(), '.claude', 'plans');
 				const filename = params.filename;
 
-				const mtime = await getPlanMtime(plansDir, filename);
-				if (mtime) {
-					const ifModifiedSince = request.headers.get('If-Modified-Since');
-					if (ifModifiedSince) {
-						const since = new Date(ifModifiedSince).getTime();
-						const mtimeFloor = Math.floor(mtime.getTime() / 1000) * 1000;
-						if (!Number.isNaN(since) && since >= mtimeFloor) {
-							return new Response(null, {
-								status: 304,
-								headers: {
-									'Cache-Control': 'private, max-age=0, must-revalidate',
-									'Last-Modified': mtime.toUTCString(),
-								},
-							});
-						}
+				const row = getPlanFromDb(getDb().index, filename);
+				if (row) {
+					const ifNoneMatch = request.headers.get('If-None-Match');
+					const etag = `"${row.sha}"`;
+					if (ifNoneMatch && ifNoneMatch === etag) {
+						return new Response(null, {
+							status: 304,
+							headers: {
+								'Cache-Control': 'private, max-age=0, must-revalidate',
+								ETag: etag,
+							},
+						});
 					}
 				}
 
 				const markdown = await readPlan(plansDir, filename);
-				if (markdown == null) {
+				if (markdown == null || row == null) {
 					return new Response('Not Found', {status: 404});
 				}
 
@@ -40,15 +39,14 @@ export const Route = createFileRoute('/api/plans/$filename')({
 
 				const headers: Record<string, string> = {
 					'Cache-Control': 'private, max-age=0, must-revalidate',
+					ETag: `"${row.sha}"`,
 				};
-				if (mtime) {
-					headers['Last-Modified'] = mtime.toUTCString();
-				}
 
 				return Response.json(
 					PlanDetailResponse.parse({
 						markdown,
-						mtime: mtime ? mtime.toISOString() : null,
+						sha: row.sha,
+						systemFrom: row.systemFrom,
 						title,
 					}),
 					{headers},
@@ -57,7 +55,7 @@ export const Route = createFileRoute('/api/plans/$filename')({
 			PUT: async ({params, request}: {params: {filename: string}; request: Request}) => {
 				const {homedir} = await import('node:os');
 				const {join} = await import('node:path');
-				const {writePlan, getPlanMtime} = await import('../../lib/plans');
+				const {writePlan} = await import('../../lib/plans');
 				const {extractTitleFromContent} = await import('../../lib/markdown-utils');
 
 				const plansDir = join(homedir(), '.claude', 'plans');
@@ -67,13 +65,11 @@ export const Route = createFileRoute('/api/plans/$filename')({
 					return new Response('Not Found', {status: 404});
 				}
 
-				const mtime = await getPlanMtime(plansDir, params.filename);
 				const title = extractTitleFromContent(markdown, params.filename);
 
 				return Response.json(
 					{
 						title,
-						mtime: mtime ? mtime.toISOString() : null,
 					},
 					{headers: {'Cache-Control': 'private, max-age=0, must-revalidate'}},
 				);
