@@ -1,3 +1,4 @@
+import {Suspense} from 'react';
 import {createFileRoute, Link} from '@tanstack/react-router';
 import {useSuspenseQuery} from '@tanstack/react-query';
 import {ArrowLeft, CheckCircle, Circle, Ban} from 'lucide-react';
@@ -98,7 +99,10 @@ function ProjectTasksPage() {
 							<div className="min-w-0 flex-1">
 								<div className="text-sm text-text-100 flex items-center gap-1.5">
 									<span>
-										#{task.taskId} <MarkdownInline markdown={task.subject} />
+										#{task.taskId}{' '}
+										<Suspense fallback={null}>
+											<MarkdownInline markdown={task.subject} />
+										</Suspense>
 									</span>
 									<DebugLink
 										kind="task"
@@ -107,7 +111,9 @@ function ProjectTasksPage() {
 								</div>
 								{task.description && task.description !== task.subject && (
 									<div className="mt-0.5 text-xs text-text-500">
-										<MarkdownView markdown={task.description} />
+										<Suspense fallback={null}>
+											<MarkdownView markdown={task.description} />
+										</Suspense>
 									</div>
 								)}
 								<div className="mt-0.5 flex items-center gap-2">
