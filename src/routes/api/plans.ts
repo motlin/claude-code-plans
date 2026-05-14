@@ -5,16 +5,12 @@ export const Route = createFileRoute('/api/plans')({
 	server: {
 		handlers: {
 			GET: async () => {
-				const {homedir} = await import('node:os');
-				const {join} = await import('node:path');
-				const {listPlans} = await import('../../lib/plans');
 				const {getDb} = await import('../../lib/db');
-				const {getPlanProjectMappings} = await import('../../lib/db/queries');
-
-				const plansDir = join(homedir(), '.claude', 'plans');
-				const plans = await listPlans(plansDir);
+				const {getPlanProjectMappings, listPlansFromDb} = await import('../../lib/db/queries');
 
 				const {index} = getDb();
+				const plans = listPlansFromDb(index);
+
 				const mappings = getPlanProjectMappings(index);
 				const planProjects = new Map<string, Map<string, string>>();
 				for (const m of mappings) {
@@ -33,7 +29,8 @@ export const Route = createFileRoute('/api/plans')({
 					return {
 						filename: p.filename,
 						title: p.title,
-						mtime: p.mtime.toISOString(),
+						sha: p.sha,
+						systemFrom: p.systemFrom,
 						projects: refs
 							? [...refs.entries()].map(([projectId, projectName]) => ({projectId, projectName}))
 							: [],
