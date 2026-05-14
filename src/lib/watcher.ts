@@ -8,6 +8,7 @@ import {awaitInitialScan, getDb} from './db';
 import {indexFile, phaseOutPlan} from './db/indexer';
 import {listSessionsForProjectFromDb, getTasksForProject, getStarredSessionIds} from './db/queries';
 import type {TaskRow} from './db/queries';
+import {updatePendingApprovalForSession, removePendingApprovalForSession} from './db/pending-approvals-cache';
 import * as dbSchema from './db/schema';
 import {extractTitle} from './markdown-utils';
 import {resolveProjectName} from './memory';
@@ -25,9 +26,11 @@ type IndexDb = BetterSQLite3Database<typeof dbSchema>;
 type BroadcastFn = (type: string, data: Record<string, unknown>) => void;
 import {toSessionSummaryPayload} from './session-summary';
 import {hmrPersist, hmrDispose} from './hmr-persist';
+import {broadcastTyped, broadcast, addClient, removeClient} from './sse-broadcast';
+
+export {broadcastTyped, broadcast, addClient, removeClient};
 
 // Persisted state: survives HMR reloads via import.meta.hot.data
-const clients = hmrPersist('watcherClients', () => new Set<ReadableStreamDefaultController>());
 const lastSessionsByProject = hmrPersist(
 	'lastSessionsByProject',
 	() => new Map<string, Map<string, SessionSummaryPayload>>(),
@@ -48,33 +51,8 @@ hmrDispose(async () => {
 	if (debounceTimer) clearTimeout(debounceTimer);
 });
 
-const encoder = new TextEncoder();
-
 const WATCHED_EXTENSIONS = new Set(['.md', '.jsonl', '.json']);
 const JSONL_THROTTLE_MS = 2000;
-
-export function broadcastTyped(type: string, data: Record<string, unknown>): void {
-	const payload = encoder.encode(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
-	for (const client of clients) {
-		try {
-			client.enqueue(payload);
-		} catch {
-			clients.delete(client);
-		}
-	}
-}
-
-export function broadcast(): void {
-	broadcastTyped(SSE_EVENTS.CONTENT_UPDATED, {});
-}
-
-export function addClient(controller: ReadableStreamDefaultController): void {
-	clients.add(controller);
-}
-
-export function removeClient(controller: ReadableStreamDefaultController): void {
-	clients.delete(controller);
-}
 
 function sessionSummariesEqual(a: SessionSummaryPayload, b: SessionSummaryPayload): boolean {
 	return (
@@ -352,10 +330,26 @@ async function handleFileChange(path: string): Promise<void> {
 			}
 
 			const {linkedPlans} = await indexSilently(path, projectsDir);
-			safeDiffSessions(projectIdFromPath(path, projectsDir));
+			const projectId = projectIdFromPath(path, projectsDir);
+			safeDiffSessions(projectId);
 			if (plansDir) {
 				for (const planFilename of linkedPlans) {
 					void broadcastPlanChanged(join(plansDir, planFilename));
+				}
+			}
+
+			if (projectId) {
+				try {
+					const projectName = await resolveProjectName(projectId);
+					await updatePendingApprovalForSession(
+						getDb().index,
+						sessionIdFromJsonlPath(path),
+						path,
+						projectId,
+						projectName,
+					);
+				} catch {
+					// transient error scanning JSONL; next change will retry
 				}
 			}
 		};
@@ -431,6 +425,7 @@ async function handleFileUnlink(path: string): Promise<void> {
 	} else if (ext === '.jsonl') {
 		jsonlOffsets.delete(path);
 		safeDiffSessions(projectIdFromPath(path, projectsDir));
+		removePendingApprovalForSession(sessionIdFromJsonlPath(path));
 	} else if (ext === '.json' && path.endsWith('sessions-index.json')) {
 		safeDiffSessions(basename(dirname(path)));
 	} else if (ext === '.json' && path.includes('/tasks/')) {

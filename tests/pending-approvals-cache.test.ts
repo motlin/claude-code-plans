@@ -15,13 +15,13 @@ import {DOMAIN_EVENTS} from '../src/lib/hook-events';
  * has no matching tool_result) and broadcasting domain-level deltas through
  * the SSE channel as JSONL files change.
  *
- * Mocks `broadcastTyped` from `src/lib/watcher` so we can assert the exact
- * events emitted when entries are added, updated, or resolved.
+ * Mocks `broadcastTyped` from `src/lib/sse-broadcast` so we can assert the
+ * exact events emitted when entries are added, updated, or resolved.
  */
 
 const broadcastSpy = vi.fn();
 
-vi.mock('../src/lib/watcher', () => ({
+vi.mock('../src/lib/sse-broadcast', () => ({
 	broadcastTyped: (...args: unknown[]) => broadcastSpy(...args),
 }));
 
