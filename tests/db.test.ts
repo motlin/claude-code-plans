@@ -5,8 +5,10 @@ import {openTestDb, type AppDb} from '../src/lib/db/connection';
 import {
 	fullScan,
 	indexJsonlFile,
+	indexPlanFile,
 	indexSessionsIndex,
 	indexTaskFile,
+	phaseOutPlan,
 	pruneStalePlanLinks,
 	indexSubagentFile,
 	linkSubagentParents,
@@ -334,6 +336,156 @@ describe('indexer', () => {
 
 		const remaining = db.index.select().from(schema.planSessions).all();
 		expect(remaining.length).toBe(1);
+	});
+
+	it('indexPlanFile inserts a fresh row with system_to=FAR_FUTURE', async () => {
+		const plansDir = join(testDir, 'plans');
+		mkdirSync(plansDir, {recursive: true});
+		writeFileSync(join(plansDir, 'fresh.md'), '# Fresh Plan\n\nbody');
+
+		const result = await indexPlanFile(db.index, plansDir, 'fresh.md', '2026-05-14T00:00:00.000Z');
+		expect(result).toStrictEqual({changed: true});
+
+		const rows = db.index.select().from(schema.plans).all();
+		expect(rows.length).toBe(1);
+		expect(rows[0]!.filename).toBe('fresh.md');
+		expect(rows[0]!.title).toBe('Fresh Plan');
+		expect(rows[0]!.systemFrom).toBe('2026-05-14T00:00:00.000Z');
+		expect(rows[0]!.systemTo).toBe(schema.FAR_FUTURE);
+		expect(rows[0]!.sha).toMatch(/^[0-9a-f]{64}$/);
+	});
+
+	it('indexPlanFile is a no-op when content is unchanged (same sha)', async () => {
+		const plansDir = join(testDir, 'plans');
+		mkdirSync(plansDir, {recursive: true});
+		writeFileSync(join(plansDir, 'same.md'), '# Same Plan\n\nbody');
+
+		await indexPlanFile(db.index, plansDir, 'same.md', '2026-05-14T00:00:00.000Z');
+		const result = await indexPlanFile(db.index, plansDir, 'same.md', '2026-05-14T01:00:00.000Z');
+		expect(result).toStrictEqual({changed: false});
+
+		const rows = db.index.select().from(schema.plans).all();
+		expect(rows.length).toBe(1);
+		expect(rows[0]!.systemFrom).toBe('2026-05-14T00:00:00.000Z');
+		expect(rows[0]!.systemTo).toBe(schema.FAR_FUTURE);
+	});
+
+	it('indexPlanFile phases out old row and inserts new on content change', async () => {
+		const plansDir = join(testDir, 'plans');
+		mkdirSync(plansDir, {recursive: true});
+		writeFileSync(join(plansDir, 'changes.md'), '# Original\n\nbody');
+
+		await indexPlanFile(db.index, plansDir, 'changes.md', '2026-05-14T00:00:00.000Z');
+
+		writeFileSync(join(plansDir, 'changes.md'), '# Updated\n\nnew body');
+		const result = await indexPlanFile(db.index, plansDir, 'changes.md', '2026-05-14T02:00:00.000Z');
+		expect(result).toStrictEqual({changed: true});
+
+		const rows = db.index.select().from(schema.plans).all();
+		expect(rows.length).toBe(2);
+
+		const closed = rows.find((r) => r.systemTo !== schema.FAR_FUTURE)!;
+		const current = rows.find((r) => r.systemTo === schema.FAR_FUTURE)!;
+		expect(closed.title).toBe('Original');
+		expect(closed.systemFrom).toBe('2026-05-14T00:00:00.000Z');
+		expect(closed.systemTo).toBe('2026-05-14T02:00:00.000Z');
+		expect(current.title).toBe('Updated');
+		expect(current.systemFrom).toBe('2026-05-14T02:00:00.000Z');
+		expect(current.sha).not.toBe(closed.sha);
+	});
+
+	it('indexPlanFile maintains exactly one current row per filename', async () => {
+		const plansDir = join(testDir, 'plans');
+		mkdirSync(plansDir, {recursive: true});
+
+		writeFileSync(join(plansDir, 'multi.md'), '# v1');
+		await indexPlanFile(db.index, plansDir, 'multi.md', '2026-05-14T00:00:00.000Z');
+
+		writeFileSync(join(plansDir, 'multi.md'), '# v2');
+		await indexPlanFile(db.index, plansDir, 'multi.md', '2026-05-14T01:00:00.000Z');
+
+		writeFileSync(join(plansDir, 'multi.md'), '# v3');
+		await indexPlanFile(db.index, plansDir, 'multi.md', '2026-05-14T02:00:00.000Z');
+
+		const current = db.index.select().from(schema.plans).where(eq(schema.plans.systemTo, schema.FAR_FUTURE)).all();
+		expect(current.length).toBe(1);
+		expect(current[0]!.title).toBe('v3');
+
+		const all = db.index.select().from(schema.plans).all();
+		expect(all.length).toBe(3);
+	});
+
+	it('indexPlanFile phases out current row when file is missing', async () => {
+		const plansDir = join(testDir, 'plans');
+		mkdirSync(plansDir, {recursive: true});
+		writeFileSync(join(plansDir, 'goner.md'), '# Goner');
+
+		await indexPlanFile(db.index, plansDir, 'goner.md', '2026-05-14T00:00:00.000Z');
+		rmSync(join(plansDir, 'goner.md'));
+
+		const result = await indexPlanFile(db.index, plansDir, 'goner.md', '2026-05-14T01:00:00.000Z');
+		expect(result).toStrictEqual({changed: true});
+
+		const rows = db.index.select().from(schema.plans).all();
+		expect(rows.length).toBe(1);
+		expect(rows[0]!.systemTo).toBe('2026-05-14T01:00:00.000Z');
+
+		const current = db.index.select().from(schema.plans).where(eq(schema.plans.systemTo, schema.FAR_FUTURE)).all();
+		expect(current.length).toBe(0);
+	});
+
+	it('indexPlanFile returns changed:false when missing file has no current row', async () => {
+		const plansDir = join(testDir, 'plans');
+		mkdirSync(plansDir, {recursive: true});
+
+		const result = await indexPlanFile(db.index, plansDir, 'never-existed.md', '2026-05-14T00:00:00.000Z');
+		expect(result).toStrictEqual({changed: false});
+
+		const rows = db.index.select().from(schema.plans).all();
+		expect(rows.length).toBe(0);
+	});
+
+	it('phaseOutPlan closes current row without inserting a replacement', () => {
+		db.index
+			.insert(schema.plans)
+			.values({
+				filename: 'pose.md',
+				title: 'Pose',
+				sha: 'deadbeef',
+				systemFrom: '2026-05-14T00:00:00.000Z',
+				systemTo: schema.FAR_FUTURE,
+			})
+			.run();
+
+		phaseOutPlan(db.index, 'pose.md', '2026-05-14T01:00:00.000Z');
+
+		const rows = db.index.select().from(schema.plans).all();
+		expect(rows.length).toBe(1);
+		expect(rows[0]!.systemTo).toBe('2026-05-14T01:00:00.000Z');
+
+		const current = db.index.select().from(schema.plans).where(eq(schema.plans.systemTo, schema.FAR_FUTURE)).all();
+		expect(current.length).toBe(0);
+	});
+
+	it('phaseOutPlan is idempotent: second call finds no current row', () => {
+		db.index
+			.insert(schema.plans)
+			.values({
+				filename: 'idem.md',
+				title: 'Idem',
+				sha: 'cafebabe',
+				systemFrom: '2026-05-14T00:00:00.000Z',
+				systemTo: schema.FAR_FUTURE,
+			})
+			.run();
+
+		phaseOutPlan(db.index, 'idem.md', '2026-05-14T01:00:00.000Z');
+		phaseOutPlan(db.index, 'idem.md', '2026-05-14T02:00:00.000Z');
+
+		const rows = db.index.select().from(schema.plans).all();
+		expect(rows.length).toBe(1);
+		// Second phase-out had no current row to touch, so system_to stays at first call's `now`.
+		expect(rows[0]!.systemTo).toBe('2026-05-14T01:00:00.000Z');
 	});
 
 	it('ignores plan_mode attachments with no planFilePath', async () => {
