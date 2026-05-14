@@ -2,10 +2,12 @@ import {watch} from 'chokidar';
 import type {FSWatcher} from 'chokidar';
 import {stat} from 'node:fs/promises';
 import {basename, dirname, join} from 'node:path';
+import type {BetterSQLite3Database} from 'drizzle-orm/better-sqlite3';
 import {getDb} from './db';
 import {indexFile, phaseOutPlan} from './db/indexer';
 import {listSessionsForProjectFromDb, getTasksForProject, getStarredSessionIds} from './db/queries';
 import type {TaskRow} from './db/queries';
+import * as dbSchema from './db/schema';
 import {extractTitle} from './markdown-utils';
 import {resolveProjectName} from './memory';
 import {
@@ -15,6 +17,11 @@ import {
 	type SessionSummaryPayload,
 	type TaskSummaryPayload,
 } from './hook-events';
+
+type IndexDb = BetterSQLite3Database<typeof dbSchema>;
+
+/** Callback signature for broadcasting events. */
+type BroadcastFn = (type: string, data: Record<string, unknown>) => void;
 import {toSessionSummaryPayload} from './session-summary';
 import {hmrPersist, hmrDispose} from './hmr-persist';
 
@@ -176,9 +183,10 @@ function diffAndBroadcastTasks(projectDir: string): void {
 
 /**
  * Broadcast a plan:changed event with the plan's filename, title, and mtime.
- * Falls through silently if the file has since disappeared.
+ * Falls through silently if the file has since disappeared. Accepts an
+ * injectable broadcast callback so tests can capture emissions.
  */
-async function broadcastPlanChanged(filePath: string): Promise<void> {
+async function broadcastPlanChangedWith(filePath: string, broadcast: BroadcastFn): Promise<void> {
 	const filename = basename(filePath);
 	let mtime: Date;
 	try {
@@ -188,9 +196,61 @@ async function broadcastPlanChanged(filePath: string): Promise<void> {
 		return;
 	}
 	const title = await extractTitle(filePath, filename);
-	broadcastTyped(DOMAIN_EVENTS.PLAN_CHANGED, {
+	broadcast(DOMAIN_EVENTS.PLAN_CHANGED, {
 		plan: {filename, title, mtime: mtime.toISOString()},
 	});
+}
+
+async function broadcastPlanChanged(filePath: string): Promise<void> {
+	await broadcastPlanChangedWith(filePath, broadcastTyped);
+}
+
+/**
+ * Handle a `.jsonl` change by indexing the file and broadcasting
+ * `plan:changed` for each plan filename returned by the indexer. Pure
+ * function over (db, paths, broadcast) — no module state. Used by the
+ * watcher and exercised directly by tests.
+ */
+async function handleJsonlPlanLinks(
+	db: IndexDb,
+	jsonlPath: string,
+	projectsDir: string,
+	plansDir: string,
+	broadcast: BroadcastFn,
+): Promise<{linkedPlans: string[]}> {
+	const result = await indexFile(db, jsonlPath, projectsDir, plansDir);
+	for (const planFilename of result.linkedPlans) {
+		await broadcastPlanChangedWith(join(plansDir, planFilename), broadcast);
+	}
+	return result;
+}
+
+/**
+ * Handle a `.md` add/change for a plan file: route through the indexer
+ * (which upserts the temporal `plans` row) first, then broadcast
+ * `plan:changed`. Ordering matters — the row must be current before the
+ * client's refetch fires.
+ */
+async function handlePlanMdChange(
+	db: IndexDb,
+	mdPath: string,
+	projectsDir: string,
+	plansDir: string,
+	broadcast: BroadcastFn,
+): Promise<void> {
+	await indexFile(db, mdPath, projectsDir, plansDir);
+	await broadcastPlanChangedWith(mdPath, broadcast);
+}
+
+/**
+ * Handle a `.md` unlink for a plan file: phase out the current row in the
+ * temporal `plans` table, then broadcast `plan:removed`. Idempotent at the
+ * DB level — repeating finds no current row to phase out.
+ */
+function handlePlanMdUnlink(db: IndexDb, mdPath: string, now: string, broadcast: BroadcastFn): void {
+	const filename = basename(mdPath);
+	phaseOutPlan(db, filename, now);
+	broadcast(DOMAIN_EVENTS.PLAN_REMOVED, {filename});
 }
 
 /**
@@ -325,8 +385,12 @@ function handleFileChange(path: string): void {
 	} else if (ext === '.md') {
 		if (plansDir && path.startsWith(plansDir)) {
 			(async () => {
-				await indexSilently(path, projectsDir);
-				await broadcastPlanChanged(path);
+				try {
+					await handlePlanMdChange(getDb().index, path, projectsDir, plansDir, broadcastTyped);
+				} catch {
+					// transient indexing error
+					await broadcastPlanChanged(path);
+				}
 			})();
 		} else if (projectsDir && path.startsWith(projectsDir)) {
 			void broadcastMemoryChanged(path, projectsDir);
@@ -340,11 +404,11 @@ function handleFileUnlink(path: string): void {
 
 	if (ext === '.md' && plansDir && path.startsWith(plansDir)) {
 		try {
-			phaseOutPlan(getDb().index, basename(path), new Date().toISOString());
+			handlePlanMdUnlink(getDb().index, path, new Date().toISOString(), broadcastTyped);
 		} catch {
-			// transient DB error; broadcast still fires
+			// transient DB error; ensure broadcast still fires
+			broadcastTyped(DOMAIN_EVENTS.PLAN_REMOVED, {filename: basename(path)});
 		}
-		broadcastTyped(DOMAIN_EVENTS.PLAN_REMOVED, {filename: basename(path)});
 	} else if (ext === '.md' && projectsDir && path.startsWith(projectsDir)) {
 		const relative = path.slice(projectsDir.length + 1);
 		const project = relative.split('/')[0] ?? '';
@@ -396,4 +460,7 @@ export const __testing = {
 	sessionSummariesEqual,
 	toTaskSummaryPayload,
 	tasksEqual,
+	handleJsonlPlanLinks,
+	handlePlanMdChange,
+	handlePlanMdUnlink,
 };
