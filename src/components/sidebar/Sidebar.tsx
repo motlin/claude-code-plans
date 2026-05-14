@@ -1,4 +1,5 @@
 import {Link, useMatches} from '@tanstack/react-router';
+import {useQuery} from '@tanstack/react-query';
 import {ChevronRight} from 'lucide-react';
 import {useEffect, useState} from 'react';
 import type {Section} from './types';
@@ -6,12 +7,15 @@ import {useActiveSection} from './hooks';
 import {navItems} from './navigation';
 import {SidebarToggleIcon, SearchInput} from './primitives';
 import {ActiveSubList, PlansSubList, ProjectsSubList, PluginsSubList, SubList} from './sublists';
+import {approvalsQueryOptions} from '../../lib/api/approvals';
 
 export function Sidebar({collapsed, onToggle, mobile}: {collapsed: boolean; onToggle: () => void; mobile?: boolean}) {
 	const matches = useMatches();
 	const currentPath = matches[matches.length - 1]?.fullPath ?? '/';
 	const {section: activeSection, activeItemId, collapseOthers} = useActiveSection(matches);
 	const [collapsedSections, setCollapsedSections] = useState<Set<Section>>(new Set());
+	const {data: approvalsData} = useQuery(approvalsQueryOptions());
+	const approvalsCount = approvalsData?.approvals.length ?? 0;
 
 	function toggleSection(section: Section) {
 		setCollapsedSections((prev) => {
@@ -39,7 +43,12 @@ export function Sidebar({collapsed, onToggle, mobile}: {collapsed: boolean; onTo
 			// specific item, or when the active route opts in via collapseOthers (e.g. home).
 			if (activeItemId || collapseOthers) {
 				for (const item of navItems) {
-					if (item.section !== activeSection && item.section !== 'starred' && item.section !== 'active') {
+					if (
+						item.section !== activeSection &&
+						item.section !== 'starred' &&
+						item.section !== 'active' &&
+						item.section !== 'approvals'
+					) {
 						next.add(item.section);
 					}
 				}
@@ -131,11 +140,21 @@ export function Sidebar({collapsed, onToggle, mobile}: {collapsed: boolean; onTo
 									style={{fontWeight: isActive ? 500 : 430, lineHeight: '16px'}}
 								>
 									<Icon className="h-4 w-4 shrink-0" />
-									{item.label}
+									<span className="flex-1 truncate">{item.label}</span>
+									{(item.section === 'approvals' || item.section === 'active') &&
+										approvalsCount > 0 && (
+											<span
+												className="ml-auto inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-semibold text-white"
+												title={`${approvalsCount} awaiting approval`}
+											>
+												{approvalsCount}
+											</span>
+										)}
 								</Link>
 							</div>
 							{isExpanded &&
 								item.section !== 'starred' &&
+								item.section !== 'approvals' &&
 								item.section !== 'settings' &&
 								item.section !== 'config' &&
 								item.section !== 'setup' &&
