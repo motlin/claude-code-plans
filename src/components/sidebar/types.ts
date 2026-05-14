@@ -1,5 +1,6 @@
 export type Section =
 	| 'active'
+	| 'approvals'
 	| 'starred'
 	| 'tasks'
 	| 'projects'

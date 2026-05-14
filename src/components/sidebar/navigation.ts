@@ -6,6 +6,7 @@ import {
 	FolderOpen,
 	Star,
 	Radio,
+	Inbox,
 	Blocks,
 	Settings,
 	ListTodo,
@@ -15,6 +16,7 @@ import type {Section} from './types';
 
 export const navItems = [
 	{to: '/active', label: 'Active', icon: Radio, section: 'active' as Section},
+	{to: '/approvals', label: 'Approvals', icon: Inbox, section: 'approvals' as Section},
 	{to: '/starred', label: 'Starred', icon: Star, section: 'starred' as Section},
 	{to: '/tasks', label: 'Tasks', icon: ListTodo, section: 'tasks' as Section},
 	{to: '/projects', label: 'Projects', icon: FolderOpen, section: 'projects' as Section},
