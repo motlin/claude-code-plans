@@ -23,7 +23,8 @@ const PlanProjectRefSchema = z.object({
 const PlanListItemSchema = z.object({
 	filename: z.string(),
 	title: z.string(),
-	mtime: z.string(),
+	sha: z.string(),
+	systemFrom: z.string(),
 	projects: z.array(PlanProjectRefSchema),
 });
 export const PlanListResponse = z.array(PlanListItemSchema);
