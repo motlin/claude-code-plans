@@ -5,16 +5,15 @@ export const Route = createFileRoute('/api/projects')({
 	server: {
 		handlers: {
 			GET: async () => {
-				const {homedir} = await import('node:os');
-				const {join} = await import('node:path');
 				const {getDb} = await import('../../lib/db');
-				const {listProjectsFromDb, getPlanProjectMappings, getTaskCountsForProject} = await import(
-					'../../lib/db/queries'
-				);
+				const {
+					listProjectsFromDb,
+					getPlanProjectMappings,
+					getTaskCountsForProject,
+					getMemoryCountsForProjects,
+				} = await import('../../lib/db/queries');
 				const {scanActiveSessions} = await import('../../lib/active-sessions');
-				const {readdir} = await import('node:fs/promises');
 
-				const projectsDir = join(homedir(), '.claude', 'projects');
 				const {index} = getDb();
 				const projects = listProjectsFromDb(index);
 
@@ -35,17 +34,10 @@ export const Route = createFileRoute('/api/projects')({
 					set.add(link.planFilename);
 				}
 
+				const memoryCounts = getMemoryCountsForProjects(index);
+
 				const enriched = await Promise.all(
 					projects.map(async (p) => {
-						let memoryCount = 0;
-						try {
-							const memDir = join(projectsDir, p.id, 'memory');
-							const files = await readdir(memDir);
-							memoryCount = files.filter((f) => f.endsWith('.md')).length;
-						} catch {
-							// no memory dir
-						}
-
 						const taskCounts = getTaskCountsForProject(index, p.name);
 
 						return {
@@ -53,7 +45,7 @@ export const Route = createFileRoute('/api/projects')({
 							name: p.name,
 							projectPath: p.projectPath,
 							sessionCount: p.sessionCount,
-							memoryCount,
+							memoryCount: memoryCounts.get(p.id) ?? 0,
 							planCount: planCountByProject.get(p.id)?.size ?? 0,
 							taskCount: taskCounts.pending + taskCounts.inProgress,
 							activeCount: activeByProject.get(p.id) ?? 0,
