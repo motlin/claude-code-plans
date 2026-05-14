@@ -89,6 +89,15 @@ CREATE TABLE IF NOT EXISTS tasks (
 CREATE INDEX IF NOT EXISTS tasks_project_dir_idx ON tasks(project_dir);
 CREATE INDEX IF NOT EXISTS tasks_status_idx ON tasks(status);
 
+CREATE TABLE IF NOT EXISTS memories (
+  file_path TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  filename TEXT NOT NULL,
+  title TEXT NOT NULL,
+  mtime_ms INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS memories_project_id_idx ON memories(project_id);
+
 CREATE TABLE IF NOT EXISTS starred_sessions (
   session_id TEXT PRIMARY KEY,
   starred_at INTEGER NOT NULL
@@ -160,6 +169,7 @@ function initIndexDb(sqlite: Database.Database): void {
 		sqlite.exec('DROP TABLE IF EXISTS tasks');
 		sqlite.exec('DROP TABLE IF EXISTS todo_tasks');
 		sqlite.exec('DROP TABLE IF EXISTS todo_files');
+		sqlite.exec('DROP TABLE IF EXISTS memories');
 		sqlite.exec('DROP TABLE IF EXISTS starred_sessions');
 		sqlite.exec('DROP TABLE IF EXISTS plans');
 		sqlite.exec('DROP TABLE IF EXISTS subagents');
