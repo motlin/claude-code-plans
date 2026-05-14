@@ -1,8 +1,9 @@
 import {readdir, readFile, stat} from 'node:fs/promises';
 import {createReadStream} from 'node:fs';
+import {createHash} from 'node:crypto';
 import {join, basename} from 'node:path';
 import {createInterface} from 'node:readline';
-import {eq, notInArray, sql} from 'drizzle-orm';
+import {and, eq, notInArray, sql} from 'drizzle-orm';
 import type {BetterSQLite3Database} from 'drizzle-orm/better-sqlite3';
 import {
 	SessionsIndexSchema,
@@ -13,7 +14,9 @@ import {
 } from '../schemas';
 import {decodeProjectDir, resolveProjectPath} from '../memory';
 import {extractSessionTitle} from '../sessions';
+import {extractTitleFromContent} from '../markdown-utils';
 import * as schema from './schema';
+import {FAR_FUTURE} from './schema';
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
@@ -667,6 +670,78 @@ export async function pruneStalePlanLinks(db: IndexDb, plansDir: string): Promis
 		.where(notInArray(schema.planSessions.planFilename, existingPlans))
 		.run();
 	return result.changes;
+}
+
+/**
+ * Phase out the current row for `filename` in the temporal `plans` table.
+ * Idempotent — running twice with the same `now` finds no current row on the
+ * second call.
+ */
+export function phaseOutPlan(db: IndexDb, filename: string, now: string): void {
+	db.update(schema.plans)
+		.set({systemTo: now})
+		.where(and(eq(schema.plans.filename, filename), eq(schema.plans.systemTo, FAR_FUTURE)))
+		.run();
+}
+
+/**
+ * Temporal per-file indexer for a single plan markdown file.
+ *
+ * - Reads the file (returns {changed: false} if missing, after phasing out any
+ *   current row).
+ * - Computes sha256 over the content and a display title.
+ * - Compares the sha to the current row; if identical, no-op.
+ * - Otherwise phases out the current row and inserts a new one with
+ *   system_from = now, system_to = FAR_FUTURE. All writes happen in a single
+ *   db.transaction().
+ */
+export async function indexPlanFile(
+	db: IndexDb,
+	plansDir: string,
+	filename: string,
+	now: string,
+): Promise<{changed: boolean}> {
+	const filePath = join(plansDir, filename);
+	let content: string;
+	try {
+		await stat(filePath);
+		content = await readFile(filePath, 'utf-8');
+	} catch {
+		// File is gone — phase out any current row.
+		const existing = db
+			.select({sha: schema.plans.sha})
+			.from(schema.plans)
+			.where(and(eq(schema.plans.filename, filename), eq(schema.plans.systemTo, FAR_FUTURE)))
+			.get();
+		if (!existing) return {changed: false};
+		phaseOutPlan(db, filename, now);
+		return {changed: true};
+	}
+
+	const sha = createHash('sha256').update(content).digest('hex');
+	const title = extractTitleFromContent(content, filename);
+
+	const existing = db
+		.select({sha: schema.plans.sha})
+		.from(schema.plans)
+		.where(and(eq(schema.plans.filename, filename), eq(schema.plans.systemTo, FAR_FUTURE)))
+		.get();
+
+	if (existing && existing.sha === sha) {
+		return {changed: false};
+	}
+
+	db.transaction((tx) => {
+		if (existing) {
+			tx.update(schema.plans)
+				.set({systemTo: now})
+				.where(and(eq(schema.plans.filename, filename), eq(schema.plans.systemTo, FAR_FUTURE)))
+				.run();
+		}
+		tx.insert(schema.plans).values({filename, title, sha, systemFrom: now, systemTo: FAR_FUTURE}).run();
+	});
+
+	return {changed: true};
 }
 
 let indexingInProgress = false;
