@@ -1,9 +1,9 @@
 import {watch} from 'chokidar';
 import type {FSWatcher} from 'chokidar';
 import {stat} from 'node:fs/promises';
-import {basename, dirname} from 'node:path';
+import {basename, dirname, join} from 'node:path';
 import {getDb} from './db';
-import {indexFile} from './db/indexer';
+import {indexFile, phaseOutPlan} from './db/indexer';
 import {listSessionsForProjectFromDb, getTasksForProject, getStarredSessionIds} from './db/queries';
 import type {TaskRow} from './db/queries';
 import {extractTitle} from './markdown-utils';
@@ -248,12 +248,13 @@ function sessionIdFromJsonlPath(path: string): string {
 	return basename(path, '.jsonl');
 }
 
-async function indexSilently(path: string, projectsDir: string): Promise<void> {
+async function indexSilently(path: string, projectsDir: string): Promise<{linkedPlans: string[]}> {
 	try {
 		const {index} = getDb();
-		await indexFile(index, path, projectsDir);
+		return await indexFile(index, path, projectsDir, plansDir || undefined);
 	} catch {
 		// indexing error — deltas below still reflect prior DB state
+		return {linkedPlans: []};
 	}
 }
 
@@ -288,8 +289,13 @@ function handleFileChange(path: string): void {
 				// File may have been deleted between the watcher event and this read.
 			}
 
-			await indexSilently(path, projectsDir);
+			const {linkedPlans} = await indexSilently(path, projectsDir);
 			safeDiffSessions(projectIdFromPath(path, projectsDir));
+			if (plansDir) {
+				for (const planFilename of linkedPlans) {
+					void broadcastPlanChanged(join(plansDir, planFilename));
+				}
+			}
 		};
 
 		if (debounceTimer) clearTimeout(debounceTimer);
@@ -318,7 +324,10 @@ function handleFileChange(path: string): void {
 		})();
 	} else if (ext === '.md') {
 		if (plansDir && path.startsWith(plansDir)) {
-			void broadcastPlanChanged(path);
+			(async () => {
+				await indexSilently(path, projectsDir);
+				await broadcastPlanChanged(path);
+			})();
 		} else if (projectsDir && path.startsWith(projectsDir)) {
 			void broadcastMemoryChanged(path, projectsDir);
 		}
@@ -330,6 +339,11 @@ function handleFileUnlink(path: string): void {
 	if (!WATCHED_EXTENSIONS.has(ext)) return;
 
 	if (ext === '.md' && plansDir && path.startsWith(plansDir)) {
+		try {
+			phaseOutPlan(getDb().index, basename(path), new Date().toISOString());
+		} catch {
+			// transient DB error; broadcast still fires
+		}
 		broadcastTyped(DOMAIN_EVENTS.PLAN_REMOVED, {filename: basename(path)});
 	} else if (ext === '.md' && projectsDir && path.startsWith(projectsDir)) {
 		const relative = path.slice(projectsDir.length + 1);
