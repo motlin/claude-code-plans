@@ -79,10 +79,10 @@ function PlanPage() {
 					relativePath={filename}
 				/>
 			</DetailTopBar>
-			{plan.mtime && (
+			{plan.systemFrom && (
 				<div className="mt-3 flex items-center gap-1.5 text-xs text-text-500">
 					<Clock className="h-3 w-3" />
-					Last modified {formatDate(plan.mtime)}
+					Last modified {formatDate(plan.systemFrom)}
 				</div>
 			)}
 			<h1 className="text-lg font-semibold">{plan.title}</h1>

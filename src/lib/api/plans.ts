@@ -12,7 +12,8 @@ export const PlanLinksResponse = z.array(PlanLinkSchema);
 
 export const PlanDetailResponse = z.object({
 	markdown: z.string(),
-	mtime: z.string().nullable(),
+	sha: z.string(),
+	systemFrom: z.string(),
 	title: z.string(),
 });
 
