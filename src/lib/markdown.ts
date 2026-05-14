@@ -114,7 +114,7 @@ export async function renderMarkdown(markdown: string): Promise<string> {
  * Render markdown as inline HTML on the client (no `<p>` wrap, no block
  * elements). Suitable for short single-line snippets like task subjects.
  */
-export async function renderInlineMarkdown(markdown: string): Promise<string> {
+async function renderInlineMarkdown(markdown: string): Promise<string> {
 	if (!markdown.trim()) return '';
 	const md = await getMd();
 	return md.renderInline(markdown);
