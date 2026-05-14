@@ -10,6 +10,10 @@
 		{"file": "src/components/settings-provider.tsx", "exports": ["SettingsProvider"]},
 		{"file": "src/lib/active-sessions.ts", "exports": ["ActiveSession"]},
 		{"file": "src/lib/hook-events.ts", "exports": ["PendingApprovalPayload"]},
+		{
+			"file": "src/lib/pending-approvals.ts",
+			"exports": ["scanAllPendingApprovals", "PendingApprovalToolName", "PendingApproval"]
+		},
 		{"file": "src/lib/claude-light-theme.ts", "exports": ["claudeLight"]},
 		{
 			"file": "src/lib/markdown.ts",
@@ -24,7 +28,8 @@
 				"listPlansFromDb",
 				"getMemoryCountsForProjects",
 				"getMemoriesForProject",
-				"MemoryRow"
+				"MemoryRow",
+				"getPlanFilenameForSession"
 			]
 		},
 		{"file": "src/lib/sessions.ts", "exports": ["RawWindow", "readSessionLines"]},
