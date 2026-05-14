@@ -621,6 +621,14 @@ const AgentNameRecordSchema = z
 	})
 	.strict();
 
+const AgentSettingRecordSchema = z
+	.object({
+		type: z.literal('agent-setting'),
+		agentSetting: z.string(),
+		sessionId: z.string(),
+	})
+	.strict();
+
 const AgentColorRecordSchema = z
 	.object({
 		type: z.literal('agent-color'),
@@ -642,14 +650,6 @@ const WorktreeStateRecordSchema = z
 		type: z.literal('worktree-state'),
 		worktreeSession: z.union([z.record(z.string(), z.unknown()), z.null()]).optional(),
 		sessionId: z.string().optional(),
-	})
-	.strict();
-
-const AgentSettingRecordSchema = z
-	.object({
-		type: z.literal('agent-setting'),
-		agentSetting: z.string(),
-		sessionId: z.string(),
 	})
 	.strict();
 
@@ -680,11 +680,11 @@ export const JsonlRecordSchema = z.discriminatedUnion('type', [
 	LastPromptRecordSchema,
 	QueueOperationRecordSchema,
 	AgentNameRecordSchema,
+	AgentSettingRecordSchema,
 	AgentColorRecordSchema,
 	PermissionModeRecordSchema,
 	WorktreeStateRecordSchema,
 	PrLinkRecordSchema,
-	AgentSettingRecordSchema,
 ]);
 
 // ---------------------------------------------------------------------------
@@ -771,12 +771,6 @@ const RemoteSchema = z
 	})
 	.strict();
 
-const WorktreeSettingsSchema = z
-	.object({
-		baseRef: z.string().optional(),
-	})
-	.strict();
-
 export const ClaudeSettingsSchema = z
 	.object({
 		$schema: z.string().optional(),
@@ -805,7 +799,7 @@ export const ClaudeSettingsSchema = z
 		statusLine: StatusLineSchema.optional(),
 		sandbox: SandboxSchema.optional(),
 		remote: RemoteSchema.optional(),
-		worktree: WorktreeSettingsSchema.optional(),
+		worktree: z.record(z.string(), z.unknown()).optional(),
 		enabledPlugins: z.record(z.string(), z.boolean()).optional(),
 		extraKnownMarketplaces: z.record(z.string(), MarketplaceEntrySchema).optional(),
 	})
