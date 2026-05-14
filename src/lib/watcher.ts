@@ -2,6 +2,7 @@ import {watch} from 'chokidar';
 import type {FSWatcher} from 'chokidar';
 import {stat} from 'node:fs/promises';
 import {basename, dirname, join} from 'node:path';
+import {eq} from 'drizzle-orm';
 import type {BetterSQLite3Database} from 'drizzle-orm/better-sqlite3';
 import {awaitInitialScan, getDb} from './db';
 import {indexFile, phaseOutPlan} from './db/indexer';
@@ -394,7 +395,10 @@ async function handleFileChange(path: string): Promise<void> {
 				}
 			})();
 		} else if (projectsDir && path.startsWith(projectsDir)) {
-			void broadcastMemoryChanged(path, projectsDir);
+			(async () => {
+				await indexSilently(path, projectsDir);
+				await broadcastMemoryChanged(path, projectsDir);
+			})();
 		}
 	}
 }
@@ -415,6 +419,13 @@ async function handleFileUnlink(path: string): Promise<void> {
 		const relative = path.slice(projectsDir.length + 1);
 		const project = relative.split('/')[0] ?? '';
 		if (project) {
+			try {
+				const {index} = getDb();
+				index.delete(dbSchema.memories).where(eq(dbSchema.memories.filePath, path)).run();
+				index.delete(dbSchema.indexedFiles).where(eq(dbSchema.indexedFiles.path, path)).run();
+			} catch {
+				// transient DB error; broadcast still fires
+			}
 			broadcastTyped(DOMAIN_EVENTS.MEMORY_REMOVED, {project, filename: basename(path)});
 		}
 	} else if (ext === '.jsonl') {
