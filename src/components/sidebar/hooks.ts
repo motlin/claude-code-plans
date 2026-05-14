@@ -17,6 +17,9 @@ export function useActiveSection(matches: ReturnType<typeof useMatches>): {
 	if (path.startsWith('/active')) {
 		return {section: 'active', activeItemId: null, projectId: null, collapseOthers: false};
 	}
+	if (path.startsWith('/approvals')) {
+		return {section: 'approvals', activeItemId: null, projectId: null, collapseOthers: false};
+	}
 	if (path.startsWith('/starred')) {
 		return {section: 'starred', activeItemId: null, projectId: null, collapseOthers: false};
 	}
