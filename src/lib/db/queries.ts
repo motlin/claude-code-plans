@@ -1,6 +1,7 @@
 import {eq, desc, sql, and, inArray, isNotNull} from 'drizzle-orm';
 import type {BetterSQLite3Database} from 'drizzle-orm/better-sqlite3';
 import * as schema from './schema';
+import {FAR_FUTURE} from './schema';
 import type {SessionEntry, SessionProjectGroup} from '../sessions';
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
@@ -581,6 +582,29 @@ export function getSessionMeta(
 		messageCount: row.messageCount,
 		projectName: projectNames.get(row.projectId) ?? null,
 	};
+}
+
+interface DbPlanListEntry {
+	filename: string;
+	title: string;
+	sha: string;
+	systemFrom: string;
+}
+
+export function listPlansFromDb(db: IndexDb): DbPlanListEntry[] {
+	const rows = db
+		.select({
+			filename: schema.plans.filename,
+			title: schema.plans.title,
+			sha: schema.plans.sha,
+			systemFrom: schema.plans.systemFrom,
+		})
+		.from(schema.plans)
+		.where(eq(schema.plans.systemTo, FAR_FUTURE))
+		.orderBy(desc(schema.plans.systemFrom))
+		.all();
+
+	return rows;
 }
 
 export function getPlanProjectMappings(db: IndexDb): DbPlanProjectMapping[] {
