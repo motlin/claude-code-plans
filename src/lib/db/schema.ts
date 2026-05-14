@@ -1,6 +1,8 @@
-import {sqliteTable, text, integer, index, primaryKey} from 'drizzle-orm/sqlite-core';
+import {sqliteTable, text, integer, index, primaryKey, uniqueIndex} from 'drizzle-orm/sqlite-core';
 
-export const SCHEMA_VERSION = '8';
+export const SCHEMA_VERSION = '9';
+
+export const FAR_FUTURE = '9999-12-31 23:59:59';
 
 export const metadata = sqliteTable('metadata', {
 	key: text('key').primaryKey(),
@@ -92,6 +94,21 @@ export const tasks = sqliteTable(
 		mtimeMs: integer('mtime_ms').notNull(),
 	},
 	(table) => [index('tasks_project_dir_idx').on(table.projectDir), index('tasks_status_idx').on(table.status)],
+);
+
+export const plans = sqliteTable(
+	'plans',
+	{
+		filename: text('filename').notNull(),
+		title: text('title').notNull(),
+		sha: text('sha').notNull(),
+		systemFrom: text('system_from').notNull(),
+		systemTo: text('system_to').notNull().default(FAR_FUTURE),
+	},
+	(table) => [
+		primaryKey({columns: [table.filename, table.systemTo]}),
+		uniqueIndex('plans_system_from_idx').on(table.filename, table.systemFrom),
+	],
 );
 
 export const starredSessions = sqliteTable('starred_sessions', {
