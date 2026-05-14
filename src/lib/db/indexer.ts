@@ -14,7 +14,7 @@ import {
 } from '../schemas';
 import {decodeProjectDir, resolveProjectPath} from '../memory';
 import {extractSessionTitle} from '../sessions';
-import {extractTitleFromContent} from '../markdown-utils';
+import {extractTitle, extractTitleFromContent} from '../markdown-utils';
 import * as schema from './schema';
 import {FAR_FUTURE} from './schema';
 
@@ -645,6 +645,92 @@ export async function scanTasksDir(db: IndexDb, tasksDir: string): Promise<void>
 	}
 }
 
+async function indexMemoryFile(db: IndexDb, filePath: string, projectId: string): Promise<void> {
+	let fileStat: Awaited<ReturnType<typeof stat>>;
+	try {
+		fileStat = await stat(filePath);
+	} catch {
+		return;
+	}
+
+	const existing = db.select().from(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).get();
+	if (existing && existing.mtimeMs === fileStat.mtimeMs) {
+		const memoryRow = db.select().from(schema.memories).where(eq(schema.memories.filePath, filePath)).get();
+		if (memoryRow) return;
+	}
+
+	const filename = basename(filePath);
+	const title = await extractTitle(filePath, filename);
+
+	db.insert(schema.memories)
+		.values({
+			filePath,
+			projectId,
+			filename,
+			title,
+			mtimeMs: fileStat.mtimeMs,
+		})
+		.onConflictDoUpdate({
+			target: schema.memories.filePath,
+			set: {
+				projectId,
+				filename,
+				title,
+				mtimeMs: fileStat.mtimeMs,
+			},
+		})
+		.run();
+
+	db.insert(schema.indexedFiles)
+		.values({path: filePath, mtimeMs: fileStat.mtimeMs, sizeBytes: fileStat.size, indexedAt: Date.now()})
+		.onConflictDoUpdate({
+			target: schema.indexedFiles.path,
+			set: {mtimeMs: fileStat.mtimeMs, sizeBytes: fileStat.size, indexedAt: Date.now()},
+		})
+		.run();
+}
+
+async function scanMemoriesForProject(db: IndexDb, projectsDir: string, projectId: string): Promise<void> {
+	const memoryDir = join(projectsDir, projectId, 'memory');
+	let files: string[];
+	try {
+		files = await readdir(memoryDir);
+	} catch {
+		// memory dir missing — prune any stale rows for this project and return
+		const stale = db
+			.select({filePath: schema.memories.filePath})
+			.from(schema.memories)
+			.where(eq(schema.memories.projectId, projectId))
+			.all();
+		for (const row of stale) {
+			db.delete(schema.memories).where(eq(schema.memories.filePath, row.filePath)).run();
+			db.delete(schema.indexedFiles).where(eq(schema.indexedFiles.path, row.filePath)).run();
+		}
+		return;
+	}
+
+	const indexedPaths = new Set<string>();
+	for (const file of files) {
+		if (!file.endsWith('.md')) continue;
+		const filePath = join(memoryDir, file);
+		indexedPaths.add(filePath);
+		await indexMemoryFile(db, filePath, projectId);
+	}
+
+	// Prune memory rows for this project whose filePath is missing on disk
+	const existingRows = db
+		.select({filePath: schema.memories.filePath})
+		.from(schema.memories)
+		.where(eq(schema.memories.projectId, projectId))
+		.all();
+	for (const row of existingRows) {
+		if (!indexedPaths.has(row.filePath)) {
+			db.delete(schema.memories).where(eq(schema.memories.filePath, row.filePath)).run();
+			db.delete(schema.indexedFiles).where(eq(schema.indexedFiles.path, row.filePath)).run();
+		}
+	}
+}
+
 /**
  * Remove plan_sessions rows whose plan file no longer exists on disk. Returns
  * the number of rows deleted. Leaves the table untouched when the plans
@@ -918,6 +1004,9 @@ export async function fullScan(db: IndexDb, projectsDir: string, tasksDir?: stri
 			for (const sjPath of sessionJsonlPaths) {
 				await linkSubagentParents(db, sjPath, null);
 			}
+
+			// Index memory markdown files for this project
+			await scanMemoriesForProject(db, projectsDir, project);
 		}
 
 		if (tasksDir) {
@@ -954,6 +1043,17 @@ export async function indexFile(
 		const filename = basename(filePath);
 		await indexPlanFile(db, plansDir, filename, new Date().toISOString());
 		return {linkedPlans: []};
+	}
+
+	// Memory markdown file: {projectsDir}/{project}/memory/{filename}.md
+	if (filePath.endsWith('.md') && filePath.startsWith(projectsDir + '/')) {
+		const rel = filePath.slice(projectsDir.length + 1);
+		const parts = rel.split('/');
+		if (parts.length === 3 && parts[1] === 'memory') {
+			const project = parts[0]!;
+			await indexMemoryFile(db, filePath, project);
+			return {linkedPlans: []};
+		}
 	}
 
 	// Determine what kind of file changed and index accordingly
