@@ -5,6 +5,7 @@
 	"ignoreDependencies": ["@shikijs/core", "@shikijs/engine-javascript", "@spotlightjs/spotlight", "agentation"],
 	"ignoreExports": [
 		{"file": "src/components/markdown-article.module.css", "exports": ["*"]},
+		{"file": "src/components/markdown-view.tsx", "exports": ["MarkdownSkeleton"]},
 		{"file": "src/components/session-chat.tsx", "exports": ["SessionChatProps"]},
 		{"file": "src/components/settings-provider.tsx", "exports": ["SettingsProvider"]},
 		{"file": "src/lib/active-sessions.ts", "exports": ["ActiveSession"]},
