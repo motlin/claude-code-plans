@@ -167,16 +167,16 @@ export async function indexSessionsIndex(db: IndexDb, projectDir: string, projec
 		.run();
 }
 
-export async function indexJsonlFile(db: IndexDb, filePath: string, project: string): Promise<void> {
+export async function indexJsonlFile(db: IndexDb, filePath: string, project: string): Promise<{linkedPlans: string[]}> {
 	let fileStat: Awaited<ReturnType<typeof stat>>;
 	try {
 		fileStat = await stat(filePath);
 	} catch {
-		return;
+		return {linkedPlans: []};
 	}
 
 	const existing = db.select().from(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).get();
-	if (existing && existing.mtimeMs === fileStat.mtimeMs) return;
+	if (existing && existing.mtimeMs === fileStat.mtimeMs) return {linkedPlans: []};
 
 	const sessionId = basename(filePath, '.jsonl');
 	const planFilenames = new Set<string>();
@@ -365,6 +365,8 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 			set: {mtimeMs: fileStat.mtimeMs, sizeBytes: fileStat.size, indexedAt: Date.now()},
 		})
 		.run();
+
+	return {linkedPlans: Array.from(planFilenames)};
 }
 
 export async function indexSubagentFile(
@@ -930,7 +932,12 @@ export async function fullScan(db: IndexDb, projectsDir: string, tasksDir?: stri
 	}
 }
 
-export async function indexFile(db: IndexDb, filePath: string, projectsDir: string): Promise<void> {
+export async function indexFile(
+	db: IndexDb,
+	filePath: string,
+	projectsDir: string,
+	plansDir?: string,
+): Promise<{linkedPlans: string[]}> {
 	// Task file: ~/.claude/tasks/{projectDir}/{id}.json
 	if (filePath.includes('/tasks/') && filePath.endsWith('.json')) {
 		const parts = filePath.split('/');
@@ -939,7 +946,14 @@ export async function indexFile(db: IndexDb, filePath: string, projectsDir: stri
 		if (projectDir) {
 			await indexTaskFile(db, filePath, projectDir);
 		}
-		return;
+		return {linkedPlans: []};
+	}
+
+	// Plan markdown file: ~/.claude/plans/{filename}.md
+	if (filePath.endsWith('.md') && plansDir && filePath.startsWith(plansDir)) {
+		const filename = basename(filePath);
+		await indexPlanFile(db, plansDir, filename, new Date().toISOString());
+		return {linkedPlans: []};
 	}
 
 	// Determine what kind of file changed and index accordingly
@@ -951,7 +965,7 @@ export async function indexFile(db: IndexDb, filePath: string, projectsDir: stri
 			const projectDir = parts.slice(0, projectIdx + 1).join('/');
 			await indexSessionsIndex(db, projectDir, project);
 		}
-		return;
+		return {linkedPlans: []};
 	}
 
 	if (filePath.endsWith('.jsonl')) {
@@ -972,7 +986,7 @@ export async function indexFile(db: IndexDb, filePath: string, projectsDir: stri
 					await linkSubagentParents(db, filePath, agentFilename);
 				}
 			}
-			return;
+			return {linkedPlans: []};
 		}
 
 		// Regular session JSONL
@@ -980,9 +994,12 @@ export async function indexFile(db: IndexDb, filePath: string, projectsDir: stri
 		const projectsDirParts = projectsDir.split('/');
 		const project = parts[projectsDirParts.length];
 		if (project) {
-			await indexJsonlFile(db, filePath, project);
+			const result = await indexJsonlFile(db, filePath, project);
 			// Link parent-child relationships from root session JSONL
 			await linkSubagentParents(db, filePath, null);
+			return result;
 		}
 	}
+
+	return {linkedPlans: []};
 }
