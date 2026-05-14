@@ -31,6 +31,10 @@
 		},
 		{"file": "src/lib/db/index.ts", "exports": ["runInitialScan", "awaitInitialScan"]},
 		{
+			"file": "src/lib/api/approvals.ts",
+			"exports": ["ApprovalsResponse", "approvalsQueryOptions", "projectApprovalsQueryOptions"]
+		},
+		{
 			"file": "src/lib/db/queries.ts",
 			"exports": [
 				"DbSearchResult",
