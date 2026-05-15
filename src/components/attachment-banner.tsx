@@ -443,14 +443,7 @@ function AttachmentContent({
 				</Banner>
 			);
 		default:
-			return (
-				<Banner
-					icon={<Paperclip className="h-3.5 w-3.5" />}
-					label={(attachment as {type: string}).type}
-					sessionId={sessionId}
-					uuid={uuid}
-				/>
-			);
+			throw new Error(`Unhandled attachment type: ${(attachment as {type: string}).type}`);
 	}
 }
 
