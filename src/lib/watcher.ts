@@ -448,8 +448,6 @@ export async function createWatcher(
 	watcher = watch(dirs, {
 		ignoreInitial: true,
 		awaitWriteFinish: {stabilityThreshold: 300, pollInterval: 100},
-		usePolling: true,
-		interval: 1000,
 	});
 
 	watcher.on('add', handleFileChange);
