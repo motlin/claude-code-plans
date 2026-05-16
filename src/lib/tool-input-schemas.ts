@@ -14,7 +14,7 @@ export const ReadInputSchema = z
 	.object({
 		file_path: z.string(),
 		offset: z.union([z.number(), z.string()]).optional(),
-		limit: z.number().optional(),
+		limit: z.union([z.number(), z.string()]).optional(),
 		pages: z.string().optional(),
 	})
 	.strict();
