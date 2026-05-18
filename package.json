@@ -25,7 +25,7 @@
 		"@sentry/node": "^10.53.1",
 		"@sentry/react": "^10.53.1",
 		"@tanstack/react-query": "^5.100.11",
-		"@tanstack/react-query-devtools": "^5.100.10",
+		"@tanstack/react-query-devtools": "^5.100.11",
 		"@tanstack/react-router": "^1.167.5",
 		"@tanstack/react-router-ssr-query": "^1.166.12",
 		"@tanstack/react-start": "^1.167.65",
