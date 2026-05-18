@@ -87,6 +87,7 @@ export const AgentInputSchema = z
 		name: z.string().optional(),
 		run_in_background: z.boolean().optional(),
 		team_name: z.string().optional(),
+		parameter: z.string().optional(),
 	})
 	.strict();
 
