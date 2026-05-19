@@ -774,6 +774,7 @@ const RemoteSchema = z
 const WorktreeSettingsSchema = z
 	.object({
 		baseRef: z.string().optional(),
+		bgIsolation: z.string().optional(),
 	})
 	.strict();
 
