@@ -69,8 +69,10 @@ describe('dispatchHookEvent', () => {
 		const event: HookEvent = {
 			hook_event_name: 'SessionStart',
 			session_id: 'abc-123',
+			transcript_path: '/Users/u/.claude/projects/-h-u-p/abc-123.jsonl',
 			cwd: '/home/user/project',
 			model: 'claude-sonnet-4-6',
+			source: 'startup',
 		};
 
 		dispatchHookEvent({
@@ -127,7 +129,9 @@ describe('dispatchHookEvent', () => {
 			event: {
 				hook_event_name: 'SessionStart',
 				session_id: 'abc-123',
+				transcript_path: '/Users/craig/.claude/projects/-Users-craig-projects-app/abc-123.jsonl',
 				cwd: '/Users/craig/projects/app',
+				source: 'startup',
 			},
 			db: db.index,
 			store,
@@ -174,7 +178,12 @@ describe('dispatchHookEvent', () => {
 		const broadcasts: Broadcast[] = [];
 		const {store, touchedCalls} = makeStore();
 		dispatchHookEvent({
-			event: {hook_event_name: 'Stop', session_id: 'abc-123'},
+			event: {
+				hook_event_name: 'Stop',
+				session_id: 'abc-123',
+				transcript_path: '/Users/craig/.claude/projects/-Users-craig-projects-app/abc-123.jsonl',
+				cwd: '/Users/craig/projects/app',
+			},
 			db: db.index,
 			store,
 			broadcast: (type, data) => broadcasts.push({type, data}),
@@ -203,7 +212,12 @@ describe('dispatchHookEvent', () => {
 		const broadcasts: Broadcast[] = [];
 		const {store} = makeStore();
 		dispatchHookEvent({
-			event: {hook_event_name: 'Stop', session_id: 'unknown-session'},
+			event: {
+				hook_event_name: 'Stop',
+				session_id: 'unknown-session',
+				transcript_path: '/tmp/unknown.jsonl',
+				cwd: '/tmp',
+			},
 			db: db.index,
 			store,
 			broadcast: (type, data) => broadcasts.push({type, data}),
@@ -216,7 +230,12 @@ describe('dispatchHookEvent', () => {
 		const broadcasts: Broadcast[] = [];
 		const {store, endedCalls} = makeStore();
 		dispatchHookEvent({
-			event: {hook_event_name: 'SessionEnd', session_id: 'abc-123'},
+			event: {
+				hook_event_name: 'SessionEnd',
+				session_id: 'abc-123',
+				transcript_path: '/tmp/abc-123.jsonl',
+				cwd: '/tmp',
+			},
 			db: db.index,
 			store,
 			broadcast: (type, data) => broadcasts.push({type, data}),
@@ -236,6 +255,8 @@ describe('dispatchHookEvent', () => {
 			event: {
 				hook_event_name: 'TaskCompleted',
 				session_id: 'abc-123',
+				transcript_path: '/tmp/abc-123.jsonl',
+				cwd: '/tmp',
 				task_id: 'task-001',
 				task_subject: 'Build auth',
 			},

@@ -28,7 +28,7 @@ export const EditInputSchema = z
 	})
 	.strict();
 
-const MultiEditInputSchema = z
+export const MultiEditInputSchema = z
 	.object({
 		file_path: z.string(),
 		edits: z.array(
@@ -91,7 +91,7 @@ export const AgentInputSchema = z
 	})
 	.strict();
 
-const WebFetchInputSchema = z
+export const WebFetchInputSchema = z
 	.object({
 		url: z.string(),
 		prompt: z.string().optional(),
@@ -143,7 +143,7 @@ const OptionSchema = z
 	})
 	.strict();
 
-const AskUserQuestionInputSchema = z
+export const AskUserQuestionInputSchema = z
 	.object({
 		question: z.string().optional(),
 		options: z.array(OptionSchema).optional(),
@@ -165,7 +165,7 @@ const AskUserQuestionInputSchema = z
 	})
 	.strict();
 
-const ExitPlanModeInputSchema = z
+export const ExitPlanModeInputSchema = z
 	.object({
 		plan: z.string().optional(),
 		planFilePath: z.string().optional(),
@@ -182,7 +182,7 @@ const ToolSearchInputSchema = z
 	})
 	.strict();
 
-const TodoWriteInputSchema = z
+export const TodoWriteInputSchema = z
 	.object({
 		todos: z.union([z.array(z.unknown()), z.string()]),
 	})

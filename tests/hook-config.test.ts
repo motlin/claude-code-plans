@@ -4,14 +4,25 @@ import {generateHooksConfig, DEFAULT_HOOK_PORT, HOOK_EVENT_NAMES} from '../src/l
 describe('HOOK_EVENT_NAMES', () => {
 	it('contains all expected Claude hook event names', () => {
 		expect([...HOOK_EVENT_NAMES].sort()).toStrictEqual(
-			['SessionStart', 'SessionEnd', 'Stop', 'PostToolUse', 'TaskCompleted', 'WorktreeCreate'].sort(),
+			[
+				'SessionStart',
+				'SessionEnd',
+				'Stop',
+				'SubagentStop',
+				'UserPromptSubmit',
+				'Notification',
+				'PreCompact',
+				'PreToolUse',
+				'PostToolUse',
+				'TaskCompleted',
+				'WorktreeCreate',
+			].sort(),
 		);
 	});
 
-	it('is derived from the HookEventEnvelope discriminated union', async () => {
-		const {HookEventEnvelope} = await import('../src/lib/hook-events');
-		const fromUnion = HookEventEnvelope.options.map((v) => v.shape.hook_event_name.value).sort();
-		expect([...HOOK_EVENT_NAMES].sort()).toStrictEqual(fromUnion);
+	it('is re-exported from the hook-events module', async () => {
+		const {KNOWN_HOOK_EVENTS} = await import('../src/lib/hook-events');
+		expect(HOOK_EVENT_NAMES).toStrictEqual(KNOWN_HOOK_EVENTS);
 	});
 });
 
