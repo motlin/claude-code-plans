@@ -24,7 +24,7 @@
 		"@mdxeditor/editor": "^4.0.0",
 		"@tanstack/react-query": "^5.100.11",
 		"@tanstack/react-query-devtools": "^5.100.11",
-		"@tanstack/react-router": "^1.167.5",
+		"@tanstack/react-router": "^1.170.5",
 		"@tanstack/react-router-ssr-query": "^1.167.0",
 		"@tanstack/react-start": "^1.168.6",
 		"better-sqlite3": "^12.10.0",
