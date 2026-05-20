@@ -18,6 +18,16 @@ import {
 import {buildSessionSummaryPayloadFromDb, toActiveSessionPayload} from './session-summary';
 import {indexFile, indexJsonlFile} from './db/indexer';
 import {resolveProjectName} from './memory';
+import {recentlyBroadcast} from './update-dedupe';
+
+/**
+ * TTL covering the gap between the hook fast-path broadcast and the chokidar
+ * trailing broadcast. With `awaitWriteFinish: {stabilityThreshold: 300}` on
+ * the watcher (`src/lib/watcher.ts`) the second broadcast lands ~300-400ms
+ * later; 500ms is comfortably outside the race but short enough that a
+ * second genuine edit isn't suppressed.
+ */
+const DEDUPE_TTL_MS = 500;
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
@@ -124,6 +134,8 @@ function broadcastPlanChangedFromDb(
 		title: row.title,
 		mtime: new Date(row.mtimeMs).toISOString(),
 	};
+	const key = `${DOMAIN_EVENTS.PLAN_CHANGED}:${filename}:${payload.mtime}`;
+	if (recentlyBroadcast(key, DEDUPE_TTL_MS)) return;
 	broadcast(DOMAIN_EVENTS.PLAN_CHANGED, {plan: payload});
 }
 
@@ -149,6 +161,8 @@ function broadcastTaskChangedFromDb(
 		blocks: JSON.parse(row.blocksJson) as string[],
 		blockedBy: JSON.parse(row.blockedByJson) as string[],
 	};
+	const taskKey = `${DOMAIN_EVENTS.TASK_CHANGED}:${filePath}:${row.status}`;
+	if (recentlyBroadcast(taskKey, DEDUPE_TTL_MS)) return;
 	broadcast(DOMAIN_EVENTS.TASK_CHANGED, {task: payload});
 	if (row.status === 'completed') {
 		broadcast(DOMAIN_EVENTS.TASK_COMPLETED, {taskId: row.taskId, subject: row.subject});
@@ -175,6 +189,8 @@ async function broadcastMemoryChangedFromDb(
 		project: row.projectId,
 		projectName,
 	};
+	const key = `${DOMAIN_EVENTS.MEMORY_CHANGED}:${filePath}:${payload.mtime}`;
+	if (recentlyBroadcast(key, DEDUPE_TTL_MS)) return;
 	broadcast(DOMAIN_EVENTS.MEMORY_CHANGED, {memory: payload});
 }
 
@@ -248,7 +264,10 @@ async function appendTranscriptLines(
 		const {lines: newLines, nextByteOffset} = await readNewJsonlLines(transcriptPath, fromOffset);
 		state?.jsonlOffsets.set(transcriptPath, nextByteOffset);
 		if (newLines.length > 0) {
-			broadcast(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {sessionId, lines: newLines});
+			const key = `${DOMAIN_EVENTS.SESSION_LINES_APPENDED}:${sessionId}:${nextByteOffset}`;
+			if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
+				broadcast(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {sessionId, lines: newLines});
+			}
 		}
 	} catch {
 		// transient read error — chokidar will retry
@@ -303,7 +322,10 @@ export async function dispatchHookEvent({
 			}
 			const summary = buildSessionSummaryPayloadFromDb(db, event.session_id);
 			if (summary) {
-				broadcast(DOMAIN_EVENTS.SESSION_ADDED, {session: summary});
+				const key = `${DOMAIN_EVENTS.SESSION_ADDED}:${summary.id}:${summary.mtime}`;
+				if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
+					broadcast(DOMAIN_EVENTS.SESSION_ADDED, {session: summary});
+				}
 			}
 			break;
 		}
@@ -319,7 +341,10 @@ export async function dispatchHookEvent({
 			store.touchSession(event.session_id);
 			const summary = buildSessionSummaryPayloadFromDb(db, event.session_id);
 			if (summary) {
-				broadcast(DOMAIN_EVENTS.SESSION_UPDATED, {session: summary});
+				const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${summary.id}:${summary.mtime}`;
+				if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
+					broadcast(DOMAIN_EVENTS.SESSION_UPDATED, {session: summary});
+				}
 			}
 			break;
 		}
@@ -356,7 +381,10 @@ export async function dispatchHookEvent({
 			store.touchSession(event.session_id);
 			const summary = buildSessionSummaryPayloadFromDb(db, event.session_id);
 			if (summary) {
-				broadcast(DOMAIN_EVENTS.SESSION_UPDATED, {session: summary});
+				const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${summary.id}:${summary.mtime}`;
+				if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
+					broadcast(DOMAIN_EVENTS.SESSION_UPDATED, {session: summary});
+				}
 			}
 			break;
 		}

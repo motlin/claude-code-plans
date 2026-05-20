@@ -27,6 +27,14 @@ type BroadcastFn = (type: string, data: Record<string, unknown>) => void;
 import {toSessionSummaryPayload} from './session-summary';
 import {hmrPersist, hmrDispose} from './hmr-persist';
 import {broadcastTyped, broadcast, addClient, removeClient} from './sse-broadcast';
+import {recentlyBroadcast} from './update-dedupe';
+
+/**
+ * TTL covering the gap between the hook fast-path broadcast and this
+ * trailing chokidar broadcast. Mirrors `DEDUPE_TTL_MS` in
+ * `src/lib/hook-dispatcher.ts`.
+ */
+const DEDUPE_TTL_MS = 500;
 
 export {broadcastTyped, broadcast, addClient, removeClient};
 
@@ -109,12 +117,18 @@ function diffAndBroadcastSessions(projectId: string): void {
 	const {added, removed, updated} = diffEntityMaps(previous, next, sessionSummariesEqual);
 
 	for (const session of added) {
+		const key = `${DOMAIN_EVENTS.SESSION_ADDED}:${session.id}:${session.mtime}`;
+		if (recentlyBroadcast(key, DEDUPE_TTL_MS)) continue;
 		broadcastTyped(DOMAIN_EVENTS.SESSION_ADDED, {session});
 	}
 	for (const sessionId of removed) {
+		const key = `${DOMAIN_EVENTS.SESSION_REMOVED}:${sessionId}:${projectId}`;
+		if (recentlyBroadcast(key, DEDUPE_TTL_MS)) continue;
 		broadcastTyped(DOMAIN_EVENTS.SESSION_REMOVED, {sessionId, projectDir: projectId});
 	}
 	for (const session of updated) {
+		const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${session.id}:${session.mtime}`;
+		if (recentlyBroadcast(key, DEDUPE_TTL_MS)) continue;
 		broadcastTyped(DOMAIN_EVENTS.SESSION_UPDATED, {session});
 	}
 
@@ -138,13 +152,19 @@ function diffAndBroadcastTasks(projectDir: string): void {
 	const {added, removed, updated} = diffEntityMaps(previous, next, tasksEqual);
 
 	for (const task of added) {
-		broadcastTyped(DOMAIN_EVENTS.TASK_CHANGED, {task});
+		const key = `${DOMAIN_EVENTS.TASK_CHANGED}:${task.taskId}:${task.status}`;
+		if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
+			broadcastTyped(DOMAIN_EVENTS.TASK_CHANGED, {task});
+		}
 		if (task.status === 'completed') {
 			broadcastTyped(DOMAIN_EVENTS.TASK_COMPLETED, {taskId: task.taskId, subject: task.subject});
 		}
 	}
 	for (const task of updated) {
-		broadcastTyped(DOMAIN_EVENTS.TASK_CHANGED, {task});
+		const key = `${DOMAIN_EVENTS.TASK_CHANGED}:${task.taskId}:${task.status}`;
+		if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
+			broadcastTyped(DOMAIN_EVENTS.TASK_CHANGED, {task});
+		}
 		const wasCompleted = previous.get(task.taskId)?.status === 'completed';
 		if (task.status === 'completed' && !wasCompleted) {
 			broadcastTyped(DOMAIN_EVENTS.TASK_COMPLETED, {taskId: task.taskId, subject: task.subject});
@@ -174,6 +194,8 @@ async function broadcastPlanChangedWith(filePath: string, broadcast: BroadcastFn
 	} catch {
 		return;
 	}
+	const key = `${DOMAIN_EVENTS.PLAN_CHANGED}:${filename}:${mtime.toISOString()}`;
+	if (recentlyBroadcast(key, DEDUPE_TTL_MS)) return;
 	const title = await extractTitle(filePath, filename);
 	broadcast(DOMAIN_EVENTS.PLAN_CHANGED, {
 		plan: {filename, title, mtime: mtime.toISOString()},
@@ -248,6 +270,8 @@ async function broadcastMemoryChanged(filePath: string, projectsDir: string): Pr
 	const relative = filePath.slice(projectsDir.length + 1);
 	const project = relative.split('/')[0] ?? '';
 	if (!project) return;
+	const key = `${DOMAIN_EVENTS.MEMORY_CHANGED}:${filePath}:${mtime.toISOString()}`;
+	if (recentlyBroadcast(key, DEDUPE_TTL_MS)) return;
 	const projectName = await resolveProjectName(project);
 	const title = filename.replace(/\.md$/, '');
 	broadcastTyped(DOMAIN_EVENTS.MEMORY_CHANGED, {
@@ -320,10 +344,14 @@ async function handleFileChange(path: string): Promise<void> {
 				jsonlOffsets.set(path, nextByteOffset);
 
 				if (newLines.length > 0) {
-					broadcastTyped(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {
-						sessionId: sessionIdFromJsonlPath(path),
-						lines: newLines,
-					});
+					const sessionId = sessionIdFromJsonlPath(path);
+					const key = `${DOMAIN_EVENTS.SESSION_LINES_APPENDED}:${sessionId}:${nextByteOffset}`;
+					if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
+						broadcastTyped(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {
+							sessionId,
+							lines: newLines,
+						});
+					}
 				}
 			} catch {
 				// File may have been deleted between the watcher event and this read.
