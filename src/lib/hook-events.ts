@@ -54,7 +54,22 @@ export const DOMAIN_EVENTS = {
 	TASK_COMPLETED: 'task:completed',
 	APPROVAL_CHANGED: 'approval:changed',
 	APPROVAL_RESOLVED: 'approval:resolved',
+	HOOK_SCHEMA_DRIFT: 'hook:schema-drift',
 } as const;
+
+/**
+ * Payload broadcast when a hook event POSTed to /api/hook fails to parse
+ * against `HookEventEnvelope`. Carries the offending event name, the set of
+ * missing/unknown field paths derived from the Zod issue list, and the count
+ * of how many times this exact (event_name, body_sha256) drift has been seen
+ * on the server since startup.
+ */
+export interface HookSchemaDriftPayload {
+	hookEventName: string;
+	missingFields: string[];
+	unknownFields: string[];
+	count: number;
+}
 
 // ---------------------------------------------------------------------------
 // SSE Event Payloads (sent to client)

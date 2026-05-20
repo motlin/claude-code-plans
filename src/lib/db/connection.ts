@@ -109,6 +109,18 @@ CREATE TABLE IF NOT EXISTS plans (
   mtime_ms INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS plans_mtime_desc_idx ON plans(mtime_ms);
+
+CREATE TABLE IF NOT EXISTS hook_schema_drift (
+  hook_event_name TEXT NOT NULL,
+  body_sha256 TEXT NOT NULL,
+  raw_body TEXT NOT NULL,
+  issues_json TEXT NOT NULL,
+  count INTEGER NOT NULL DEFAULT 1,
+  first_seen_at INTEGER NOT NULL,
+  last_seen_at INTEGER NOT NULL,
+  PRIMARY KEY (hook_event_name, body_sha256)
+);
+CREATE INDEX IF NOT EXISTS hook_schema_drift_last_seen_idx ON hook_schema_drift(last_seen_at);
 `;
 
 const CREATE_FTS_SQL = `
@@ -159,6 +171,7 @@ function dropAllTables(sqlite: Database.Database): void {
 	sqlite.exec('DROP TABLE IF EXISTS memories');
 	sqlite.exec('DROP TABLE IF EXISTS starred_sessions');
 	sqlite.exec('DROP TABLE IF EXISTS plans');
+	sqlite.exec('DROP TABLE IF EXISTS hook_schema_drift');
 	sqlite.exec('DROP TABLE IF EXISTS subagents');
 	sqlite.exec('DROP TABLE IF EXISTS plan_sessions');
 	sqlite.exec('DROP TABLE IF EXISTS sessions');
