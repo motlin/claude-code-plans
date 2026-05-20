@@ -616,21 +616,6 @@ export function listPlansFromDb(db: IndexDb): DbPlanListEntry[] {
 	return rows;
 }
 
-export function getPlanFromDb(db: IndexDb, filename: string): DbPlanListEntry | null {
-	const row = db
-		.select({
-			filename: schema.plans.filename,
-			title: schema.plans.title,
-			sha: schema.plans.sha,
-			systemFrom: schema.plans.systemFrom,
-		})
-		.from(schema.plans)
-		.where(and(eq(schema.plans.filename, filename), eq(schema.plans.systemTo, FAR_FUTURE)))
-		.get();
-
-	return row ?? null;
-}
-
 export function getPlanProjectMappings(db: IndexDb): DbPlanProjectMapping[] {
 	const projectNames = getProjectNameMap(db);
 
