@@ -46,6 +46,10 @@ export const DOMAIN_EVENTS = {
 	SESSION_STARTED: 'session:started',
 	SESSION_ENDED: 'session:ended',
 	SESSION_LINES_APPENDED: 'session:lines-appended',
+	SESSION_PROMPT_SUBMITTED: 'session:prompt-submitted',
+	SESSION_TOOL_PENDING: 'session:tool-pending',
+	SESSION_COMPACTING: 'session:compacting',
+	NOTIFICATION: 'notification',
 	PLAN_CHANGED: 'plan:changed',
 	PLAN_REMOVED: 'plan:removed',
 	MEMORY_CHANGED: 'memory:changed',
@@ -151,6 +155,49 @@ export type JsonValue = string | number | boolean | null | JsonValue[] | {[key: 
 export interface SessionLinesAppendedPayload {
 	sessionId: string;
 	lines: Record<string, JsonValue>[];
+}
+
+/**
+ * Payload broadcast when a `UserPromptSubmit` hook fires. Lets the session view
+ * render the user's message before the JSONL file has been flushed to disk.
+ * `ts` is an ISO string so the payload survives JSON serialization.
+ */
+export interface SessionPromptSubmittedPayload {
+	sessionId: string;
+	prompt: string;
+	ts: string;
+}
+
+/**
+ * Payload broadcast when a `PreToolUse` hook fires. The UI uses this to show
+ * an "in-flight" indicator for the tool call before the corresponding
+ * `PostToolUse` event lands with the response body.
+ */
+export interface SessionToolPendingPayload {
+	sessionId: string;
+	toolName: string;
+	toolUseId: string;
+}
+
+/**
+ * Payload broadcast when a `Notification` hook fires. Surfaces in the
+ * active-session indicator so the user sees Claude Code-issued notifications
+ * (waiting for input, idle timeout, etc.) without polling.
+ */
+export interface NotificationPayload {
+	sessionId: string;
+	message: string;
+	title: string | undefined;
+}
+
+/**
+ * Payload broadcast when a `PreCompact` hook fires. Lets the UI render a
+ * "compaction in progress" state for the session until the compacted
+ * transcript shows up via the watcher / next `Stop`.
+ */
+export interface SessionCompactingPayload {
+	sessionId: string;
+	trigger: 'manual' | 'auto' | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -460,6 +507,7 @@ function buildToolUseEvent(eventName: 'PreToolUse' | 'PostToolUse') {
 			...BaseHookFields,
 			hook_event_name: z.literal(eventName),
 			tool_name: toolVariant.shape.tool_name,
+			tool_use_id: z.string().optional(),
 			tool_input: toolVariant.shape.tool_input,
 			tool_response: toolVariant.shape.tool_response,
 		}),

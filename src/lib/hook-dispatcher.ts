@@ -9,7 +9,11 @@ import {
 	type HookEvent,
 	type PlanSummaryPayload,
 	type MemorySummaryPayload,
+	type NotificationPayload,
 	type TaskSummaryPayload,
+	type SessionPromptSubmittedPayload,
+	type SessionToolPendingPayload,
+	type SessionCompactingPayload,
 } from './hook-events';
 import {buildSessionSummaryPayloadFromDb, toActiveSessionPayload} from './session-summary';
 import {indexFile, indexJsonlFile} from './db/indexer';
@@ -341,6 +345,58 @@ export async function dispatchHookEvent({
 			if (dirs && event.transcript_path) {
 				await appendTranscriptLines(db, event.transcript_path, dirs.projectsDir, state, broadcast);
 			}
+			break;
+		}
+
+		case 'SubagentStop': {
+			// Subagents share the same shape as a top-level Stop, but the
+			// session_id here is the subagent's id. The subagents indexer already
+			// knows the parent linkage, so we just touch the session and emit a
+			// SESSION_UPDATED with the enriched payload if it's been indexed.
+			store.touchSession(event.session_id);
+			const summary = buildSessionSummaryPayloadFromDb(db, event.session_id);
+			if (summary) {
+				broadcast(DOMAIN_EVENTS.SESSION_UPDATED, {session: summary});
+			}
+			break;
+		}
+
+		case 'UserPromptSubmit': {
+			store.touchSession(event.session_id);
+			broadcast(DOMAIN_EVENTS.SESSION_PROMPT_SUBMITTED, {
+				sessionId: event.session_id,
+				prompt: event.prompt,
+				ts: new Date().toISOString(),
+			} satisfies SessionPromptSubmittedPayload);
+			break;
+		}
+
+		case 'PreToolUse': {
+			store.touchSession(event.session_id);
+			broadcast(DOMAIN_EVENTS.SESSION_TOOL_PENDING, {
+				sessionId: event.session_id,
+				toolName: event.tool_name,
+				toolUseId: event.tool_use_id ?? '',
+			} satisfies SessionToolPendingPayload);
+			break;
+		}
+
+		case 'Notification': {
+			store.touchSession(event.session_id);
+			broadcast(DOMAIN_EVENTS.NOTIFICATION, {
+				sessionId: event.session_id,
+				message: event.message,
+				title: event.title,
+			} satisfies NotificationPayload);
+			break;
+		}
+
+		case 'PreCompact': {
+			store.touchSession(event.session_id);
+			broadcast(DOMAIN_EVENTS.SESSION_COMPACTING, {
+				sessionId: event.session_id,
+				trigger: event.trigger,
+			} satisfies SessionCompactingPayload);
 			break;
 		}
 

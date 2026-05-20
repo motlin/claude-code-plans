@@ -16,10 +16,12 @@ import {
 	type HookSchemaDriftPayload,
 	type JsonValue,
 	type MemorySummaryPayload,
+	type NotificationPayload,
 	type PendingApprovalPayload,
 	type PlanSummaryPayload,
 	type SessionLinesAppendedPayload,
 	type SessionSummaryPayload,
+	type SessionToolPendingPayload,
 } from '../lib/hook-events';
 import type {TranscriptData} from '../lib/api/sessions';
 
@@ -45,6 +47,26 @@ export interface ClaudeEventsState {
 	hookSchemaDrifts: Map<string, HookSchemaDriftPayload>;
 	/** Set of event names the user has dismissed from the banner. */
 	dismissedDrifts: Set<string>;
+	/**
+	 * Pending tool calls keyed by `sessionId` — the most recent `PreToolUse`
+	 * for each session. Cleared when the corresponding `PostToolUse`-driven
+	 * `SESSION_LINES_APPENDED` arrives (or on `SESSION_ENDED`). Used by the
+	 * session view to render an "in-flight" indicator before the response body
+	 * lands in the JSONL.
+	 */
+	pendingTools: Map<string, SessionToolPendingPayload>;
+	/**
+	 * Set of session ids currently mid-compaction. Populated by `PreCompact`
+	 * and cleared on the next `SESSION_LINES_APPENDED` for that session (the
+	 * compacted transcript is the first new line after compaction completes).
+	 */
+	compactingSessions: Set<string>;
+	/**
+	 * The most recent `Notification` payload for each session. The session
+	 * view / sidebar indicator surfaces this so the user sees Claude Code's
+	 * idle / awaiting-input notifications without having to poll.
+	 */
+	notifications: Map<string, NotificationPayload>;
 }
 
 // ---------------------------------------------------------------------------
@@ -75,6 +97,9 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 			activeSessions: new Map(),
 			hookSchemaDrifts: new Map(),
 			dismissedDrifts: new Set(),
+			pendingTools: new Map(),
+			compactingSessions: new Set(),
+			notifications: new Map(),
 		};
 	}
 
@@ -120,10 +145,21 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 			return {...state, activeSessions};
 		}
 		case SSE_EVENTS.SESSION_END: {
-			if (!sessionId || !state.activeSessions.has(sessionId)) return state;
+			if (!sessionId) return state;
+			const hadActive = state.activeSessions.has(sessionId);
+			const hadPending = state.pendingTools.has(sessionId);
+			const hadCompacting = state.compactingSessions.has(sessionId);
+			const hadNotification = state.notifications.has(sessionId);
+			if (!hadActive && !hadPending && !hadCompacting && !hadNotification) return state;
 			const activeSessions = new Map(state.activeSessions);
 			activeSessions.delete(sessionId);
-			return {...state, activeSessions};
+			const pendingTools = new Map(state.pendingTools);
+			pendingTools.delete(sessionId);
+			const compactingSessions = new Set(state.compactingSessions);
+			compactingSessions.delete(sessionId);
+			const notifications = new Map(state.notifications);
+			notifications.delete(sessionId);
+			return {...state, activeSessions, pendingTools, compactingSessions, notifications};
 		}
 		case DOMAIN_EVENTS.SESSION_UPDATED: {
 			// Domain SESSION_UPDATED carries the full session summary; only the id
@@ -136,6 +172,60 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 			const activeSessions = new Map(state.activeSessions);
 			activeSessions.set(id, {...existing, lastActivity: action.timestamp});
 			return {...state, activeSessions};
+		}
+		case DOMAIN_EVENTS.SESSION_TOOL_PENDING: {
+			if (!sessionId) return state;
+			const toolName = typeof action.data['toolName'] === 'string' ? action.data['toolName'] : '';
+			const toolUseId = typeof action.data['toolUseId'] === 'string' ? action.data['toolUseId'] : '';
+			const pendingTools = new Map(state.pendingTools);
+			pendingTools.set(sessionId, {sessionId, toolName, toolUseId});
+			return {...state, pendingTools};
+		}
+		case DOMAIN_EVENTS.SESSION_LINES_APPENDED: {
+			// Once new lines land we can clear any pending-tool / compacting state
+			// for that session — the JSONL is the source of truth for what's
+			// actually been executed.
+			if (!sessionId) return state;
+			if (!state.pendingTools.has(sessionId) && !state.compactingSessions.has(sessionId)) return state;
+			const pendingTools = new Map(state.pendingTools);
+			pendingTools.delete(sessionId);
+			const compactingSessions = new Set(state.compactingSessions);
+			compactingSessions.delete(sessionId);
+			return {...state, pendingTools, compactingSessions};
+		}
+		case DOMAIN_EVENTS.SESSION_COMPACTING: {
+			if (!sessionId) return state;
+			const compactingSessions = new Set(state.compactingSessions);
+			compactingSessions.add(sessionId);
+			return {...state, compactingSessions};
+		}
+		case DOMAIN_EVENTS.NOTIFICATION: {
+			if (!sessionId) return state;
+			const message = typeof action.data['message'] === 'string' ? action.data['message'] : '';
+			const title = typeof action.data['title'] === 'string' ? action.data['title'] : undefined;
+			const notifications = new Map(state.notifications);
+			notifications.set(sessionId, {sessionId, message, title});
+			return {...state, notifications};
+		}
+		case DOMAIN_EVENTS.SESSION_ENDED: {
+			// Domain SESSION_ENDED cleans up the same per-session state the
+			// legacy SESSION_END case above does, scoped to data not owned by
+			// the activeSessions map (which the legacy case already clears).
+			if (!sessionId) return state;
+			if (
+				!state.pendingTools.has(sessionId) &&
+				!state.compactingSessions.has(sessionId) &&
+				!state.notifications.has(sessionId)
+			) {
+				return state;
+			}
+			const pendingTools = new Map(state.pendingTools);
+			pendingTools.delete(sessionId);
+			const compactingSessions = new Set(state.compactingSessions);
+			compactingSessions.delete(sessionId);
+			const notifications = new Map(state.notifications);
+			notifications.delete(sessionId);
+			return {...state, pendingTools, compactingSessions, notifications};
 		}
 		default:
 			return state;
@@ -394,6 +484,10 @@ const DOMAIN_EVENT_TYPES = [
 	DOMAIN_EVENTS.SESSION_STARTED,
 	DOMAIN_EVENTS.SESSION_ENDED,
 	DOMAIN_EVENTS.SESSION_LINES_APPENDED,
+	DOMAIN_EVENTS.SESSION_PROMPT_SUBMITTED,
+	DOMAIN_EVENTS.SESSION_TOOL_PENDING,
+	DOMAIN_EVENTS.SESSION_COMPACTING,
+	DOMAIN_EVENTS.NOTIFICATION,
 	DOMAIN_EVENTS.PLAN_CHANGED,
 	DOMAIN_EVENTS.PLAN_REMOVED,
 	DOMAIN_EVENTS.MEMORY_CHANGED,
@@ -414,6 +508,9 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 		activeSessions: new Map<string, ActiveSessionInfo>(),
 		hookSchemaDrifts: new Map<string, HookSchemaDriftPayload>(),
 		dismissedDrifts: new Set<string>(),
+		pendingTools: new Map<string, SessionToolPendingPayload>(),
+		compactingSessions: new Set<string>(),
+		notifications: new Map<string, NotificationPayload>(),
 	}));
 
 	const queryClient = useQueryClient();
@@ -509,6 +606,43 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 							lines: lines as Record<string, JsonValue>[],
 						});
 					}
+					// Mirror into the reducer so the pending-tool / compacting
+					// indicators clear once new transcript lines actually land.
+					dispatch({
+						type: 'SSE_EVENT',
+						eventType: e.type,
+						data,
+						timestamp: Date.now(),
+					});
+					break;
+				}
+				case DOMAIN_EVENTS.SESSION_PROMPT_SUBMITTED: {
+					// The user's prompt is rendered from this delta before the
+					// JSONL flush — invalidate the transcript so the next
+					// useSuspenseQuery render picks up the new line. The reducer
+					// also stores the prompt so the session view can show it
+					// optimistically even before the refetch returns.
+					const sessionId = data['sessionId'];
+					if (typeof sessionId === 'string') {
+						void queryClient.invalidateQueries({queryKey: ['sessions', sessionId, 'transcript']});
+					}
+					dispatch({
+						type: 'SSE_EVENT',
+						eventType: e.type,
+						data,
+						timestamp: Date.now(),
+					});
+					break;
+				}
+				case DOMAIN_EVENTS.SESSION_TOOL_PENDING:
+				case DOMAIN_EVENTS.SESSION_COMPACTING:
+				case DOMAIN_EVENTS.NOTIFICATION: {
+					dispatch({
+						type: 'SSE_EVENT',
+						eventType: e.type,
+						data,
+						timestamp: Date.now(),
+					});
 					break;
 				}
 				case DOMAIN_EVENTS.SESSION_STARTED:
