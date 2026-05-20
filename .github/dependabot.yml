@@ -18,6 +18,12 @@ updates:
               patterns:
                   - 'vitest'
                   - '@vitest/*'
+          react-ecosystem:
+              patterns:
+                  - 'react'
+                  - 'react-dom'
+                  - '@types/react'
+                  - '@types/react-dom'
       commit-message:
           prefix: 'dependabot'
           include: 'scope'
