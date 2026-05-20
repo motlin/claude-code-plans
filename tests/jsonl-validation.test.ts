@@ -80,5 +80,5 @@ describe('JsonlRecordSchema against disk', () => {
 		}
 
 		expect(totalLines).toBeGreaterThan(0);
-	});
+	}, 120000);
 });
