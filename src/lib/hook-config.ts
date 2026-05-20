@@ -40,8 +40,13 @@ interface HooksConfig {
  * merges in a `claude_env` field carrying every CLAUDE-prefixed environment
  * variable. We do *not* strip any fields — the server-side strict Zod schema
  * decides what's valid and the schema-drift recovery path handles new fields.
+ *
+ * Exported so the round-trip test in `tests/hook-jq-roundtrip.test.ts` can
+ * shell out to the exact same `jq` invocation a real hook would, against a
+ * captured stdin payload, and assert the result still parses cleanly under
+ * `HookEventEnvelope`.
  */
-const HOOK_PAYLOAD_JQ_FILTER = '. + {claude_env: ($ENV | with_entries(select(.key | startswith("CLAUDE"))))}';
+export const HOOK_PAYLOAD_JQ_FILTER = '. + {claude_env: ($ENV | with_entries(select(.key | startswith("CLAUDE"))))}';
 
 function curlPost(port: number): string {
 	// --connect-timeout 0.1 + `|| true` guarantee the hook never blocks Claude:
