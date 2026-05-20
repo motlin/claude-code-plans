@@ -46,8 +46,6 @@ export async function createAppContext(config: AppContextConfig): Promise<AppCon
 		{
 			ignoreInitial: true,
 			awaitWriteFinish: {stabilityThreshold: 300, pollInterval: 100},
-			usePolling: true,
-			interval: 1000,
 		},
 	);
 
