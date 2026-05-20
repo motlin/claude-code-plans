@@ -22,8 +22,6 @@
 	"dependencies": {
 		"@git-diff-view/react": "^0.1.4",
 		"@mdxeditor/editor": "^4.0.0",
-		"@sentry/node": "^10.53.1",
-		"@sentry/react": "^10.53.1",
 		"@tanstack/react-query": "^5.100.11",
 		"@tanstack/react-query-devtools": "^5.100.11",
 		"@tanstack/react-router": "^1.167.5",
@@ -47,7 +45,6 @@
 	"devDependencies": {
 		"@biomejs/biome": "2.4.15",
 		"@chromatic-com/storybook": "^5.2.1",
-		"@spotlightjs/spotlight": "^4.11.4",
 		"@storybook/addon-a11y": "^10.4.0",
 		"@storybook/addon-docs": "^10.4.0",
 		"@storybook/react-vite": "^10.4.0",
