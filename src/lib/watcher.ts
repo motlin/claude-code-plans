@@ -5,7 +5,7 @@ import {basename, dirname, join} from 'node:path';
 import {eq} from 'drizzle-orm';
 import type {BetterSQLite3Database} from 'drizzle-orm/better-sqlite3';
 import {awaitInitialScan, getDb} from './db';
-import {indexFile, phaseOutPlan} from './db/indexer';
+import {indexFile, deletePlan} from './db/indexer';
 import {listSessionsForProjectFromDb, getTasksForProject, getStarredSessionIds} from './db/queries';
 import type {TaskRow} from './db/queries';
 import {updatePendingApprovalForSession, removePendingApprovalForSession} from './db/pending-approvals-cache';
@@ -222,13 +222,13 @@ async function handlePlanMdChange(
 }
 
 /**
- * Handle a `.md` unlink for a plan file: phase out the current row in the
- * temporal `plans` table, then broadcast `plan:removed`. Idempotent at the
- * DB level — repeating finds no current row to phase out.
+ * Handle a `.md` unlink for a plan file: delete the row from the `plans`
+ * table, then broadcast `plan:removed`. Idempotent at the DB level —
+ * repeating is a no-op.
  */
-function handlePlanMdUnlink(db: IndexDb, mdPath: string, now: string, broadcast: BroadcastFn): void {
+function handlePlanMdUnlink(db: IndexDb, mdPath: string, broadcast: BroadcastFn): void {
 	const filename = basename(mdPath);
-	phaseOutPlan(db, filename, now);
+	deletePlan(db, plansDir, filename);
 	broadcast(DOMAIN_EVENTS.PLAN_REMOVED, {filename});
 }
 
@@ -404,7 +404,7 @@ async function handleFileUnlink(path: string): Promise<void> {
 
 	if (ext === '.md' && plansDir && path.startsWith(plansDir)) {
 		try {
-			handlePlanMdUnlink(getDb().index, path, new Date().toISOString(), broadcastTyped);
+			handlePlanMdUnlink(getDb().index, path, broadcastTyped);
 		} catch {
 			// transient DB error; ensure broadcast still fires
 			broadcastTyped(DOMAIN_EVENTS.PLAN_REMOVED, {filename: basename(path)});

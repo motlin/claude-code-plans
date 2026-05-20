@@ -253,30 +253,28 @@ describe('handlePlanMdChange', () => {
 		const mdPath = join(plansDir, 'delta.md');
 		writeFileSync(mdPath, '# Delta');
 
-		let rowAtBroadcastTime: (typeof rows)[number] | null = null;
-		let rows: Array<{filename: string; sha: string; systemTo: string}> = [];
+		let rowAtBroadcastTime: {filename: string; title: string} | null = null;
 
 		await handlePlanMdChange(db.index, mdPath, projectsDir, plansDir, (type, data) => {
 			if (type === DOMAIN_EVENTS.PLAN_CHANGED) {
-				rows = db.index
+				const rows = db.index
 					.select({
 						filename: schema.plans.filename,
-						sha: schema.plans.sha,
-						systemTo: schema.plans.systemTo,
+						title: schema.plans.title,
 					})
 					.from(schema.plans)
-					.where(eq(schema.plans.systemTo, schema.FAR_FUTURE))
+					.where(eq(schema.plans.filename, 'delta.md'))
 					.all();
-				rowAtBroadcastTime = rows.find((r) => r.filename === 'delta.md') ?? null;
+				rowAtBroadcastTime = rows[0] ?? null;
 			}
 			void data;
 		});
 
-		// At the time PLAN_CHANGED fired, the row must already be current in
-		// the temporal `plans` table — the indexer wrote before the broadcast.
+		// At the time PLAN_CHANGED fired, the plans row must already be
+		// present — the indexer wrote before the broadcast.
 		expect(rowAtBroadcastTime).not.toBeNull();
 		expect(rowAtBroadcastTime!.filename).toBe('delta.md');
-		expect(rowAtBroadcastTime!.systemTo).toBe(schema.FAR_FUTURE);
+		expect(rowAtBroadcastTime!.title).toBe('Delta');
 	});
 });
 
@@ -294,7 +292,7 @@ describe('handlePlanMdUnlink', () => {
 		rmSync(testDir, {recursive: true, force: true});
 	});
 
-	it('phases out the row before broadcasting PLAN_REMOVED', () => {
+	it('deletes the row before broadcasting PLAN_REMOVED', () => {
 		const plansDir = join(testDir, 'plans');
 		mkdirSync(plansDir, {recursive: true});
 		const mdPath = join(plansDir, 'epsilon.md');
@@ -304,28 +302,26 @@ describe('handlePlanMdUnlink', () => {
 			.values({
 				filename: 'epsilon.md',
 				title: 'Epsilon',
-				sha: 'deadbeef',
-				systemFrom: '2026-05-14T00:00:00.000Z',
-				systemTo: schema.FAR_FUTURE,
+				mtimeMs: 1_700_000_000_000,
 			})
 			.run();
 
-		let currentRowCountAtBroadcast = -1;
+		let rowCountAtBroadcast = -1;
 		const broadcasts: CapturedBroadcast[] = [];
 
-		handlePlanMdUnlink(db.index, mdPath, '2026-05-14T01:00:00.000Z', (type, data) => {
+		handlePlanMdUnlink(db.index, mdPath, (type, data) => {
 			broadcasts.push({type, data});
 			if (type === DOMAIN_EVENTS.PLAN_REMOVED) {
-				currentRowCountAtBroadcast = db.index
+				rowCountAtBroadcast = db.index
 					.select()
 					.from(schema.plans)
-					.where(eq(schema.plans.systemTo, schema.FAR_FUTURE))
+					.where(eq(schema.plans.filename, 'epsilon.md'))
 					.all().length;
 			}
 		});
 
-		// At broadcast time, the row was already phased out.
-		expect(currentRowCountAtBroadcast).toBe(0);
+		// At broadcast time, the row was already deleted.
+		expect(rowCountAtBroadcast).toBe(0);
 		expect(broadcasts).toStrictEqual([{type: DOMAIN_EVENTS.PLAN_REMOVED, data: {filename: 'epsilon.md'}}]);
 	});
 });

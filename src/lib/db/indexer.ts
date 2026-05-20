@@ -1,9 +1,8 @@
 import {readdir, readFile, stat} from 'node:fs/promises';
 import {createReadStream} from 'node:fs';
-import {createHash} from 'node:crypto';
 import {join, basename} from 'node:path';
 import {createInterface} from 'node:readline';
-import {and, eq, notInArray, sql} from 'drizzle-orm';
+import {eq, notInArray, sql} from 'drizzle-orm';
 import type {BetterSQLite3Database} from 'drizzle-orm/better-sqlite3';
 import {
 	SessionsIndexSchema,
@@ -16,7 +15,6 @@ import {decodeProjectDir, resolveProjectPath} from '../memory';
 import {extractSessionTitle} from '../sessions';
 import {extractTitle, extractTitleFromContent} from '../markdown-utils';
 import * as schema from './schema';
-import {FAR_FUTURE} from './schema';
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
@@ -761,173 +759,98 @@ export async function pruneStalePlanLinks(db: IndexDb, plansDir: string): Promis
 }
 
 /**
- * Phase out the current row for `filename` in the temporal `plans` table.
- * Idempotent — running twice with the same `now` finds no current row on the
- * second call.
+ * Delete the row for `filename` from the `plans` table, along with its
+ * matching `indexed_files` cache entry. Idempotent — running twice is fine.
  */
-export function phaseOutPlan(db: IndexDb, filename: string, now: string): void {
-	db.update(schema.plans)
-		.set({systemTo: now})
-		.where(and(eq(schema.plans.filename, filename), eq(schema.plans.systemTo, FAR_FUTURE)))
+export function deletePlan(db: IndexDb, plansDir: string, filename: string): void {
+	db.delete(schema.plans).where(eq(schema.plans.filename, filename)).run();
+	db.delete(schema.indexedFiles)
+		.where(eq(schema.indexedFiles.path, join(plansDir, filename)))
 		.run();
 }
 
 /**
- * Temporal per-file indexer for a single plan markdown file.
+ * Per-file indexer for a single plan markdown file. Mirrors `indexTaskFile`.
  *
- * - Reads the file (returns {changed: false} if missing, after phasing out any
- *   current row).
- * - Computes sha256 over the content and a display title.
- * - Compares the sha to the current row; if identical, no-op.
- * - Otherwise phases out the current row and inserts a new one with
- *   system_from = now, system_to = FAR_FUTURE. All writes happen in a single
- *   db.transaction().
+ * - If the file is missing on disk, delete the `plans` row and return.
+ * - If the `indexed_files` cache shows the same mtime, short-circuit.
+ * - Otherwise read content, compute a display title, upsert the `plans` row
+ *   keyed on `filename`, and upsert the `indexed_files` row.
  */
-export async function indexPlanFile(
-	db: IndexDb,
-	plansDir: string,
-	filename: string,
-	now: string,
-): Promise<{changed: boolean}> {
+export async function indexPlanFile(db: IndexDb, plansDir: string, filename: string): Promise<{changed: boolean}> {
 	const filePath = join(plansDir, filename);
-	let content: string;
+	let fileStat: Awaited<ReturnType<typeof stat>>;
 	try {
-		await stat(filePath);
-		content = await readFile(filePath, 'utf-8');
+		fileStat = await stat(filePath);
 	} catch {
-		// File is gone — phase out any current row.
-		const existing = db
-			.select({sha: schema.plans.sha})
-			.from(schema.plans)
-			.where(and(eq(schema.plans.filename, filename), eq(schema.plans.systemTo, FAR_FUTURE)))
-			.get();
-		if (!existing) return {changed: false};
-		phaseOutPlan(db, filename, now);
+		deletePlan(db, plansDir, filename);
 		return {changed: true};
 	}
 
-	const sha = createHash('sha256').update(content).digest('hex');
-	const title = extractTitleFromContent(content, filename);
-
-	const existing = db
-		.select({sha: schema.plans.sha})
-		.from(schema.plans)
-		.where(and(eq(schema.plans.filename, filename), eq(schema.plans.systemTo, FAR_FUTURE)))
-		.get();
-
-	if (existing && existing.sha === sha) {
+	const existing = db.select().from(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).get();
+	if (existing && existing.mtimeMs === fileStat.mtimeMs) {
 		return {changed: false};
 	}
 
-	db.transaction((tx) => {
-		if (existing) {
-			tx.update(schema.plans)
-				.set({systemTo: now})
-				.where(and(eq(schema.plans.filename, filename), eq(schema.plans.systemTo, FAR_FUTURE)))
-				.run();
-		}
-		tx.insert(schema.plans).values({filename, title, sha, systemFrom: now, systemTo: FAR_FUTURE}).run();
-	});
+	let content: string;
+	try {
+		content = await readFile(filePath, 'utf-8');
+	} catch {
+		deletePlan(db, plansDir, filename);
+		return {changed: true};
+	}
+
+	const title = extractTitleFromContent(content, filename);
+
+	db.insert(schema.plans)
+		.values({filename, title, mtimeMs: fileStat.mtimeMs})
+		.onConflictDoUpdate({
+			target: schema.plans.filename,
+			set: {title, mtimeMs: fileStat.mtimeMs},
+		})
+		.run();
+
+	db.insert(schema.indexedFiles)
+		.values({path: filePath, mtimeMs: fileStat.mtimeMs, sizeBytes: fileStat.size, indexedAt: Date.now()})
+		.onConflictDoUpdate({
+			target: schema.indexedFiles.path,
+			set: {mtimeMs: fileStat.mtimeMs, sizeBytes: fileStat.size, indexedAt: Date.now()},
+		})
+		.run();
 
 	return {changed: true};
 }
 
 /**
- * Bulk-reconcile the temporal `plans` table against the plans directory on
- * disk. Implements the Bulk Import Pattern: partitions filenames into
- * inserts/updates/unchanged/phase-outs by set arithmetic, then applies all
- * writes atomically in a single transaction sharing one `now` timestamp so
- * as-of queries at `now` return a coherent snapshot.
+ * Scan the plans directory, indexing each `.md` file via `indexPlanFile` and
+ * pruning `plans` rows (plus their `indexed_files` cache entries) whose
+ * filename is no longer on disk. Mirrors `scanTasksDir`.
  *
- * Intended to run once at startup, after the watcher is ready, to reconcile
- * drift accumulated while the watcher wasn't running.
- *
- * Returns counts for logging. `unchanged` rows are not touched.
+ * The `indexed_files` mtime short-circuit inside `indexPlanFile` makes repeat
+ * passes cheap — only changed files do real work.
  */
-export async function bulkSyncPlansFromDisk(
-	db: IndexDb,
-	plansDir: string,
-	now: string,
-): Promise<{inserted: number; updated: number; unchanged: number; phaseOut: number}> {
+export async function scanPlansDir(db: IndexDb, plansDir: string): Promise<void> {
 	let entries: string[];
 	try {
 		entries = await readdir(plansDir);
 	} catch {
-		return {inserted: 0, updated: 0, unchanged: 0, phaseOut: 0};
+		return;
 	}
 
-	const diskMap = new Map<string, {sha: string; title: string}>();
+	const indexedFilenames = new Set<string>();
 	for (const entry of entries) {
 		if (!entry.endsWith('.md')) continue;
-		const filePath = join(plansDir, entry);
-		let content: string;
-		try {
-			content = await readFile(filePath, 'utf-8');
-		} catch {
-			continue;
-		}
-		const sha = createHash('sha256').update(content).digest('hex');
-		const title = extractTitleFromContent(content, entry);
-		diskMap.set(entry, {sha, title});
+		indexedFilenames.add(entry);
+		await indexPlanFile(db, plansDir, entry);
 	}
 
-	const dbRows = db
-		.select({filename: schema.plans.filename, sha: schema.plans.sha})
-		.from(schema.plans)
-		.where(eq(schema.plans.systemTo, FAR_FUTURE))
-		.all();
-	const dbMap = new Map<string, string>();
-	for (const row of dbRows) {
-		dbMap.set(row.filename, row.sha);
-	}
-
-	const inserts: Array<{filename: string; sha: string; title: string}> = [];
-	const updates: Array<{filename: string; sha: string; title: string}> = [];
-	const phaseOuts: string[] = [];
-	let unchanged = 0;
-
-	for (const [filename, {sha, title}] of diskMap) {
-		const dbSha = dbMap.get(filename);
-		if (dbSha === undefined) {
-			inserts.push({filename, sha, title});
-		} else if (dbSha === sha) {
-			unchanged += 1;
-		} else {
-			updates.push({filename, sha, title});
+	// Prune plans rows whose filename is missing on disk.
+	const existingPlans = db.select({filename: schema.plans.filename}).from(schema.plans).all();
+	for (const row of existingPlans) {
+		if (!indexedFilenames.has(row.filename)) {
+			deletePlan(db, plansDir, row.filename);
 		}
 	}
-
-	for (const filename of dbMap.keys()) {
-		if (!diskMap.has(filename)) {
-			phaseOuts.push(filename);
-		}
-	}
-
-	db.transaction((tx) => {
-		for (const filename of phaseOuts) {
-			tx.update(schema.plans)
-				.set({systemTo: now})
-				.where(and(eq(schema.plans.filename, filename), eq(schema.plans.systemTo, FAR_FUTURE)))
-				.run();
-		}
-		for (const {filename, sha, title} of updates) {
-			tx.update(schema.plans)
-				.set({systemTo: now})
-				.where(and(eq(schema.plans.filename, filename), eq(schema.plans.systemTo, FAR_FUTURE)))
-				.run();
-			tx.insert(schema.plans).values({filename, title, sha, systemFrom: now, systemTo: FAR_FUTURE}).run();
-		}
-		for (const {filename, sha, title} of inserts) {
-			tx.insert(schema.plans).values({filename, title, sha, systemFrom: now, systemTo: FAR_FUTURE}).run();
-		}
-	});
-
-	return {
-		inserted: inserts.length,
-		updated: updates.length,
-		unchanged,
-		phaseOut: phaseOuts.length,
-	};
 }
 
 let indexingInProgress = false;
@@ -1014,6 +937,7 @@ export async function fullScan(db: IndexDb, projectsDir: string, tasksDir?: stri
 		}
 
 		if (plansDir) {
+			await scanPlansDir(db, plansDir);
 			await pruneStalePlanLinks(db, plansDir);
 		}
 	} finally {
@@ -1041,7 +965,7 @@ export async function indexFile(
 	// Plan markdown file: ~/.claude/plans/{filename}.md
 	if (filePath.endsWith('.md') && plansDir && filePath.startsWith(plansDir)) {
 		const filename = basename(filePath);
-		await indexPlanFile(db, plansDir, filename, new Date().toISOString());
+		await indexPlanFile(db, plansDir, filename);
 		return {linkedPlans: []};
 	}
 

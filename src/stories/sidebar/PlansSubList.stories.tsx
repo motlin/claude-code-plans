@@ -18,15 +18,13 @@ export const SingleProject: Story = {
 			{
 				filename: 'plan-a.md',
 				title: 'Storybook setup',
-				sha: 'sha-a',
-				systemFrom: '2026-04-19T10:00:00Z',
+				mtime: '2026-04-19T10:00:00Z',
 				projects: [{projectId: 'proj-1', projectName: 'claude-code-plans'}],
 			},
 			{
 				filename: 'plan-b.md',
 				title: 'Sidebar refactor',
-				sha: 'sha-b',
-				systemFrom: '2026-04-18T09:00:00Z',
+				mtime: '2026-04-18T09:00:00Z',
 				projects: [{projectId: 'proj-1', projectName: 'claude-code-plans'}],
 			},
 		]);
@@ -45,22 +43,19 @@ export const MultipleProjects: Story = {
 			{
 				filename: 'plan-a.md',
 				title: 'Storybook setup',
-				sha: 'sha-a',
-				systemFrom: '2026-04-19T10:00:00Z',
+				mtime: '2026-04-19T10:00:00Z',
 				projects: [{projectId: 'proj-1', projectName: 'claude-code-plans'}],
 			},
 			{
 				filename: 'plan-c.md',
 				title: 'API redesign',
-				sha: 'sha-c',
-				systemFrom: '2026-04-17T08:00:00Z',
+				mtime: '2026-04-17T08:00:00Z',
 				projects: [{projectId: 'proj-2', projectName: 'other-project'}],
 			},
 			{
 				filename: 'plan-d.md',
 				title: 'DB migration',
-				sha: 'sha-d',
-				systemFrom: '2026-04-16T07:00:00Z',
+				mtime: '2026-04-16T07:00:00Z',
 				projects: [{projectId: 'proj-2', projectName: 'other-project'}],
 			},
 		]);

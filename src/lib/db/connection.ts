@@ -104,14 +104,11 @@ CREATE TABLE IF NOT EXISTS starred_sessions (
 );
 
 CREATE TABLE IF NOT EXISTS plans (
-  filename TEXT NOT NULL,
+  filename TEXT PRIMARY KEY,
   title TEXT NOT NULL,
-  sha TEXT NOT NULL,
-  system_from TEXT NOT NULL,
-  system_to TEXT NOT NULL DEFAULT '9999-12-31 23:59:59',
-  PRIMARY KEY(filename, system_to)
+  mtime_ms INTEGER NOT NULL
 );
-CREATE UNIQUE INDEX IF NOT EXISTS plans_system_from_idx ON plans(filename, system_from);
+CREATE INDEX IF NOT EXISTS plans_mtime_desc_idx ON plans(mtime_ms);
 `;
 
 const CREATE_FTS_SQL = `
@@ -156,31 +153,37 @@ CREATE TABLE IF NOT EXISTS summaries (
 function initIndexDb(sqlite: Database.Database): void {
 	sqlite.pragma('journal_mode = WAL');
 	sqlite.pragma('foreign_keys = ON');
+
+	// Check schema version BEFORE running CREATE_TABLES_SQL so that an
+	// old schema (e.g. a `plans` table with the legacy temporal columns)
+	// is dropped first. Otherwise `CREATE INDEX ... ON plans(mtime_ms)`
+	// would target the still-present old table and fail.
+	const metadataExists =
+		sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='metadata'").get() !== undefined;
+	if (metadataExists) {
+		const row = sqlite.prepare("SELECT value FROM metadata WHERE key = 'schema_version'").get() as
+			| {value: string}
+			| undefined;
+		if (!row || row.value !== schema.SCHEMA_VERSION) {
+			sqlite.exec('DROP TABLE IF EXISTS sessions_fts');
+			sqlite.exec('DROP TABLE IF EXISTS message_content_fts');
+			sqlite.exec('DROP TABLE IF EXISTS tasks');
+			sqlite.exec('DROP TABLE IF EXISTS todo_tasks');
+			sqlite.exec('DROP TABLE IF EXISTS todo_files');
+			sqlite.exec('DROP TABLE IF EXISTS memories');
+			sqlite.exec('DROP TABLE IF EXISTS starred_sessions');
+			sqlite.exec('DROP TABLE IF EXISTS plans');
+			sqlite.exec('DROP TABLE IF EXISTS subagents');
+			sqlite.exec('DROP TABLE IF EXISTS plan_sessions');
+			sqlite.exec('DROP TABLE IF EXISTS sessions');
+			sqlite.exec('DROP TABLE IF EXISTS projects');
+			sqlite.exec('DROP TABLE IF EXISTS indexed_files');
+			sqlite.exec('DROP TABLE IF EXISTS metadata');
+		}
+	}
+
 	sqlite.exec(CREATE_TABLES_SQL);
 	sqlite.exec(CREATE_FTS_SQL);
-
-	const row = sqlite.prepare("SELECT value FROM metadata WHERE key = 'schema_version'").get() as
-		| {value: string}
-		| undefined;
-	if (row && row.value !== schema.SCHEMA_VERSION) {
-		// Schema version mismatch — drop and rebuild
-		sqlite.exec('DROP TABLE IF EXISTS sessions_fts');
-		sqlite.exec('DROP TABLE IF EXISTS message_content_fts');
-		sqlite.exec('DROP TABLE IF EXISTS tasks');
-		sqlite.exec('DROP TABLE IF EXISTS todo_tasks');
-		sqlite.exec('DROP TABLE IF EXISTS todo_files');
-		sqlite.exec('DROP TABLE IF EXISTS memories');
-		sqlite.exec('DROP TABLE IF EXISTS starred_sessions');
-		sqlite.exec('DROP TABLE IF EXISTS plans');
-		sqlite.exec('DROP TABLE IF EXISTS subagents');
-		sqlite.exec('DROP TABLE IF EXISTS plan_sessions');
-		sqlite.exec('DROP TABLE IF EXISTS sessions');
-		sqlite.exec('DROP TABLE IF EXISTS projects');
-		sqlite.exec('DROP TABLE IF EXISTS indexed_files');
-		sqlite.exec('DROP TABLE IF EXISTS metadata');
-		sqlite.exec(CREATE_TABLES_SQL);
-		sqlite.exec(CREATE_FTS_SQL);
-	}
 	sqlite
 		.prepare("INSERT OR REPLACE INTO metadata (key, value) VALUES ('schema_version', ?)")
 		.run(schema.SCHEMA_VERSION);

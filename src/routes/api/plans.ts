@@ -29,8 +29,7 @@ export const Route = createFileRoute('/api/plans')({
 					return {
 						filename: p.filename,
 						title: p.title,
-						sha: p.sha,
-						systemFrom: p.systemFrom,
+						mtime: new Date(p.mtimeMs).toISOString(),
 						projects: refs
 							? [...refs.entries()].map(([projectId, projectName]) => ({projectId, projectName}))
 							: [],
