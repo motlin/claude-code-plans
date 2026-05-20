@@ -598,4 +598,106 @@ describe('dispatchHookEvent', () => {
 			expect(broadcasts.filter((b) => b.type === DOMAIN_EVENTS.SESSION_LINES_APPENDED).length).toBe(0);
 		});
 	});
+
+	describe('dedupe between hook fast-path and watcher trailing broadcast', () => {
+		it('only broadcasts plan:changed once when PostToolUse fires then watcher trails', async () => {
+			const {__testing: dedupeTesting} = await import('../src/lib/update-dedupe');
+			dedupeTesting.clear();
+
+			const dirs = {
+				projectsDir: join(testDir, 'projects'),
+				plansDir: join(testDir, 'plans'),
+				tasksDir: join(testDir, 'tasks'),
+				commandsDir: join(testDir, 'commands'),
+				pluginsDir: join(testDir, 'plugins', 'cache'),
+				statuslineDir: join(testDir, 'statusline'),
+			};
+			mkdirSync(dirs.plansDir, {recursive: true});
+			const planFilename = '2026-05-20-dedupe-plan.md';
+			const planPath = join(dirs.plansDir, planFilename);
+			writeFileSync(planPath, '# Dedupe Plan\n\nBody.\n');
+
+			const broadcasts: Broadcast[] = [];
+			const broadcast = (type: string, data: Record<string, unknown>): void => {
+				broadcasts.push({type, data});
+			};
+			const {store} = makeStore();
+
+			// 1. Hook fast-path broadcasts plan:changed.
+			await dispatchHookEvent({
+				event: {
+					hook_event_name: 'PostToolUse',
+					session_id: 'abc-123',
+					transcript_path: '/tmp/missing.jsonl',
+					cwd: '/tmp',
+					tool_name: 'Edit',
+					tool_input: {file_path: planPath, old_string: 'Body.', new_string: 'New.'},
+				},
+				db: db.index,
+				store,
+				broadcast,
+				dirs,
+			});
+
+			// 2. Simulate the chokidar trailing broadcast for the same file.
+			const {__testing: watcherTesting} = await import('../src/lib/watcher');
+			await watcherTesting.handlePlanMdChange(db.index, planPath, dirs.projectsDir, dirs.plansDir, broadcast);
+
+			const planChanged = broadcasts.filter((b) => b.type === DOMAIN_EVENTS.PLAN_CHANGED);
+			expect(planChanged.length).toBe(1);
+		});
+
+		it('only broadcasts task:changed once when PostToolUse fires then a second identical call trails', async () => {
+			const {__testing: dedupeTesting} = await import('../src/lib/update-dedupe');
+			dedupeTesting.clear();
+
+			const dirs = {
+				projectsDir: join(testDir, 'projects'),
+				plansDir: join(testDir, 'plans'),
+				tasksDir: join(testDir, 'tasks'),
+				commandsDir: join(testDir, 'commands'),
+				pluginsDir: join(testDir, 'plugins', 'cache'),
+				statuslineDir: join(testDir, 'statusline'),
+			};
+			const projectDir = 'sample-project';
+			const tasksProjectDir = join(dirs.tasksDir, projectDir);
+			mkdirSync(tasksProjectDir, {recursive: true});
+			const taskId = 'task-dd-001';
+			const taskPath = join(tasksProjectDir, `${taskId}.json`);
+			writeFileSync(
+				taskPath,
+				JSON.stringify({
+					id: taskId,
+					subject: 'Dedupe me',
+					description: 'desc',
+					status: 'in_progress',
+					blocks: [],
+					blockedBy: [],
+				}),
+			);
+
+			const broadcasts: Broadcast[] = [];
+			const broadcast = (type: string, data: Record<string, unknown>): void => {
+				broadcasts.push({type, data});
+			};
+			const {store} = makeStore();
+
+			const event: HookEvent = {
+				hook_event_name: 'PostToolUse',
+				session_id: 'abc-123',
+				transcript_path: '/tmp/missing.jsonl',
+				cwd: '/tmp',
+				tool_name: 'Write',
+				tool_input: {file_path: taskPath, content: '{}'},
+			};
+
+			await dispatchHookEvent({event, db: db.index, store, broadcast, dirs});
+			// Fire the same hook again -- simulates the watcher's trailing broadcast
+			// for the same task file with the same status signal.
+			await dispatchHookEvent({event, db: db.index, store, broadcast, dirs});
+
+			const taskChanged = broadcasts.filter((b) => b.type === DOMAIN_EVENTS.TASK_CHANGED);
+			expect(taskChanged.length).toBe(1);
+		});
+	});
 });

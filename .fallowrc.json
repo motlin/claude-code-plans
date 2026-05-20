@@ -48,7 +48,15 @@
 		},
 		{"file": "src/lib/sessions.ts", "exports": ["RawWindow", "readSessionLines"]},
 		{"file": "src/routes/session.$id_.source.$uuid.tsx", "exports": ["PairedResult"]},
-		{"file": "src/components/tool-renderers/shared.tsx", "exports": ["CopyButton"]}
+		{"file": "src/components/tool-renderers/shared.tsx", "exports": ["CopyButton"]},
+		{
+			"file": "src/lib/update-dedupe.ts",
+			"exports": ["*"]
+		},
+		{
+			"file": "src/lib/watcher.ts",
+			"exports": ["*"]
+		}
 	],
 	"rules": {
 		"unused-dependencies": "warn",
