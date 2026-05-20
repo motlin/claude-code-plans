@@ -134,7 +134,11 @@ function broadcastPlanChangedFromDb(
 		title: row.title,
 		mtime: new Date(row.mtimeMs).toISOString(),
 	};
-	const key = `${DOMAIN_EVENTS.PLAN_CHANGED}:${filename}:${payload.mtime}`;
+	// Key on the integer mtimeMs (truncated) rather than the ISO string. The
+	// watcher path derives mtime via `stat()` which Node may round up to the
+	// nearest ms, while the DB stored a truncated copy — using the floored
+	// integer here keeps both paths in agreement.
+	const key = `${DOMAIN_EVENTS.PLAN_CHANGED}:${filename}:${Math.floor(row.mtimeMs)}`;
 	if (recentlyBroadcast(key, DEDUPE_TTL_MS)) return;
 	broadcast(DOMAIN_EVENTS.PLAN_CHANGED, {plan: payload});
 }
@@ -189,7 +193,9 @@ async function broadcastMemoryChangedFromDb(
 		project: row.projectId,
 		projectName,
 	};
-	const key = `${DOMAIN_EVENTS.MEMORY_CHANGED}:${filePath}:${payload.mtime}`;
+	// Key on the integer mtimeMs (truncated) — see `broadcastPlanChangedFromDb`
+	// for the precision-mismatch rationale shared with the watcher.
+	const key = `${DOMAIN_EVENTS.MEMORY_CHANGED}:${filePath}:${Math.floor(row.mtimeMs)}`;
 	if (recentlyBroadcast(key, DEDUPE_TTL_MS)) return;
 	broadcast(DOMAIN_EVENTS.MEMORY_CHANGED, {memory: payload});
 }

@@ -188,13 +188,19 @@ function diffAndBroadcastTasks(projectDir: string): void {
 async function broadcastPlanChangedWith(filePath: string, broadcast: BroadcastFn): Promise<void> {
 	const filename = basename(filePath);
 	let mtime: Date;
+	let mtimeMs: number;
 	try {
 		const fileStat = await stat(filePath);
 		mtime = fileStat.mtime;
+		mtimeMs = fileStat.mtimeMs;
 	} catch {
 		return;
 	}
-	const key = `${DOMAIN_EVENTS.PLAN_CHANGED}:${filename}:${mtime.toISOString()}`;
+	// Key on the integer mtimeMs (truncated) rather than the ISO string. The
+	// hook fast-path reads its mtime back from the `plans` row where SQLite
+	// truncates the sub-ms portion; the watcher would otherwise round up to the
+	// next ms and produce a different ISO string for the same edit.
+	const key = `${DOMAIN_EVENTS.PLAN_CHANGED}:${filename}:${Math.floor(mtimeMs)}`;
 	if (recentlyBroadcast(key, DEDUPE_TTL_MS)) return;
 	const title = await extractTitle(filePath, filename);
 	broadcast(DOMAIN_EVENTS.PLAN_CHANGED, {
@@ -261,16 +267,20 @@ function handlePlanMdUnlink(db: IndexDb, mdPath: string, broadcast: BroadcastFn)
 async function broadcastMemoryChanged(filePath: string, projectsDir: string): Promise<void> {
 	const filename = basename(filePath);
 	let mtime: Date;
+	let mtimeMs: number;
 	try {
 		const fileStat = await stat(filePath);
 		mtime = fileStat.mtime;
+		mtimeMs = fileStat.mtimeMs;
 	} catch {
 		return;
 	}
 	const relative = filePath.slice(projectsDir.length + 1);
 	const project = relative.split('/')[0] ?? '';
 	if (!project) return;
-	const key = `${DOMAIN_EVENTS.MEMORY_CHANGED}:${filePath}:${mtime.toISOString()}`;
+	// Key on the integer mtimeMs (truncated) — see `broadcastPlanChangedWith`
+	// for the precision-mismatch rationale shared with the dispatcher.
+	const key = `${DOMAIN_EVENTS.MEMORY_CHANGED}:${filePath}:${Math.floor(mtimeMs)}`;
 	if (recentlyBroadcast(key, DEDUPE_TTL_MS)) return;
 	const projectName = await resolveProjectName(project);
 	const title = filename.replace(/\.md$/, '');
