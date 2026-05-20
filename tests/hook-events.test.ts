@@ -2,11 +2,16 @@ import {describe, expect, it} from 'vitest';
 import {SSE_EVENTS, DOMAIN_EVENTS, HookEventEnvelope, diffEntityMaps} from '../src/lib/hook-events';
 
 describe('HookEventEnvelope', () => {
+	const baseEnvelope = {
+		session_id: 'abc123',
+		transcript_path: '/Users/user/.claude/projects/-Users-user-project/abc123.jsonl',
+		cwd: '/home/user/project',
+	};
+
 	it('parses SessionStart event', () => {
 		const result = HookEventEnvelope.safeParse({
-			session_id: 'abc123',
+			...baseEnvelope,
 			hook_event_name: 'SessionStart',
-			cwd: '/home/user/project',
 			model: 'claude-sonnet-4-6',
 			source: 'startup',
 		});
@@ -15,9 +20,9 @@ describe('HookEventEnvelope', () => {
 
 	it('parses SessionStart event with claude_env metadata', () => {
 		const result = HookEventEnvelope.safeParse({
-			session_id: 'abc123',
+			...baseEnvelope,
 			hook_event_name: 'SessionStart',
-			cwd: '/home/user/project',
+			source: 'resume',
 			claude_env: {
 				CLAUDE_CODE_ENTRYPOINT: 'cli',
 				CLAUDE_CODE_EXECPATH: '/Users/user/.local/share/claude/versions/2.1.119',
@@ -33,9 +38,17 @@ describe('HookEventEnvelope', () => {
 		}
 	});
 
-	it('parses PostToolUse event', () => {
+	it('requires source on SessionStart', () => {
 		const result = HookEventEnvelope.safeParse({
-			session_id: 'abc123',
+			...baseEnvelope,
+			hook_event_name: 'SessionStart',
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('parses PostToolUse event for Write tool', () => {
+		const result = HookEventEnvelope.safeParse({
+			...baseEnvelope,
 			hook_event_name: 'PostToolUse',
 			tool_name: 'Write',
 			tool_input: {file_path: '/tmp/test.ts', content: 'hello'},
@@ -43,9 +56,86 @@ describe('HookEventEnvelope', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('parses PostToolUse event for Bash tool with tool_response', () => {
+		const result = HookEventEnvelope.safeParse({
+			...baseEnvelope,
+			hook_event_name: 'PostToolUse',
+			tool_name: 'Bash',
+			tool_input: {command: 'ls'},
+			tool_response: {stdout: 'a.txt\nb.txt', stderr: ''},
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects PostToolUse with unknown tool_name', () => {
+		const result = HookEventEnvelope.safeParse({
+			...baseEnvelope,
+			hook_event_name: 'PostToolUse',
+			tool_name: 'NotARealTool',
+			tool_input: {anything: 1},
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects PostToolUse with extra top-level fields', () => {
+		const result = HookEventEnvelope.safeParse({
+			...baseEnvelope,
+			hook_event_name: 'PostToolUse',
+			tool_name: 'Write',
+			tool_input: {file_path: '/tmp/test.ts', content: 'hello'},
+			brand_new_field: 'surprise',
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('parses PreToolUse event', () => {
+		const result = HookEventEnvelope.safeParse({
+			...baseEnvelope,
+			hook_event_name: 'PreToolUse',
+			tool_name: 'Read',
+			tool_input: {file_path: '/etc/hosts'},
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('parses UserPromptSubmit event', () => {
+		const result = HookEventEnvelope.safeParse({
+			...baseEnvelope,
+			hook_event_name: 'UserPromptSubmit',
+			prompt: 'fix the login bug',
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('parses Notification event', () => {
+		const result = HookEventEnvelope.safeParse({
+			...baseEnvelope,
+			hook_event_name: 'Notification',
+			message: 'Claude is waiting for your input',
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('parses SubagentStop event', () => {
+		const result = HookEventEnvelope.safeParse({
+			...baseEnvelope,
+			hook_event_name: 'SubagentStop',
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('parses PreCompact event', () => {
+		const result = HookEventEnvelope.safeParse({
+			...baseEnvelope,
+			hook_event_name: 'PreCompact',
+			trigger: 'auto',
+		});
+		expect(result.success).toBe(true);
+	});
+
 	it('parses TaskCompleted event', () => {
 		const result = HookEventEnvelope.safeParse({
-			session_id: 'abc123',
+			...baseEnvelope,
 			hook_event_name: 'TaskCompleted',
 			task_id: 'task-001',
 			task_subject: 'Build auth',
@@ -55,8 +145,26 @@ describe('HookEventEnvelope', () => {
 
 	it('rejects unknown event types', () => {
 		const result = HookEventEnvelope.safeParse({
-			session_id: 'abc123',
+			...baseEnvelope,
 			hook_event_name: 'Unknown',
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('requires transcript_path on every event', () => {
+		const result = HookEventEnvelope.safeParse({
+			session_id: 'abc123',
+			cwd: '/home/user/project',
+			hook_event_name: 'Stop',
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('requires cwd on every event', () => {
+		const result = HookEventEnvelope.safeParse({
+			session_id: 'abc123',
+			transcript_path: '/x/y.jsonl',
+			hook_event_name: 'Stop',
 		});
 		expect(result.success).toBe(false);
 	});
