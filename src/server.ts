@@ -44,7 +44,7 @@ void (async () => {
 	await new Promise<void>((resolve) => watcher.once('ready', () => resolve()));
 
 	try {
-		await runInitialScan(PLANS_DIR);
+		await runInitialScan();
 	} catch (err) {
 		console.error('Initial scan failed:', err);
 	}

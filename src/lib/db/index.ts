@@ -1,5 +1,5 @@
 import {openAppDb, type AppDb} from './connection';
-import {bulkSyncPlansFromDisk, fullScan} from './indexer';
+import {fullScan} from './indexer';
 import {hmrPersist} from '../hmr-persist';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
@@ -31,7 +31,7 @@ export async function initDb(): Promise<AppDb> {
 	return getDb();
 }
 
-export function runInitialScan(plansDir: string): Promise<void> {
+export function runInitialScan(): Promise<void> {
 	const holder = getScanHolder();
 	if (holder.promise === null) {
 		holder.promise = (async () => {
@@ -40,11 +40,6 @@ export function runInitialScan(plansDir: string): Promise<void> {
 				await fullScan(db.index, PROJECTS_DIR, TASKS_DIR, PLANS_DIR);
 			} catch (err) {
 				console.error('Initial database scan failed:', err);
-			}
-			try {
-				await bulkSyncPlansFromDisk(db.index, plansDir, new Date().toISOString());
-			} catch (err) {
-				console.error('Initial plans sync failed:', err);
 			}
 		})();
 	}

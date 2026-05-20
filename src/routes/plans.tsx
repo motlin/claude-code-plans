@@ -38,7 +38,7 @@ function PlansPage() {
 			) : (
 				<ul className="mt-4 space-y-2">
 					{plans.map((plan, index) => {
-						const ageHours = (now - new Date(plan.systemFrom).getTime()) / 3600000;
+						const ageHours = (now - new Date(plan.mtime).getTime()) / 3600000;
 						return (
 							<li
 								key={plan.filename}
@@ -59,7 +59,7 @@ function PlansPage() {
 										)}
 									</span>
 									<span className="ml-4 shrink-0 text-xs text-text-500">
-										{formatDate(plan.systemFrom)}
+										{formatDate(plan.mtime)}
 									</span>
 								</Link>
 								<DebugLink

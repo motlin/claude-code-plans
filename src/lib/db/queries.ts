@@ -1,7 +1,6 @@
 import {eq, desc, sql, and, inArray, isNotNull} from 'drizzle-orm';
 import type {BetterSQLite3Database} from 'drizzle-orm/better-sqlite3';
 import * as schema from './schema';
-import {FAR_FUTURE} from './schema';
 import type {SessionEntry, SessionProjectGroup} from '../sessions';
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
@@ -596,8 +595,7 @@ export function getSessionMeta(
 interface DbPlanListEntry {
 	filename: string;
 	title: string;
-	sha: string;
-	systemFrom: string;
+	mtimeMs: number;
 }
 
 export function listPlansFromDb(db: IndexDb): DbPlanListEntry[] {
@@ -605,12 +603,10 @@ export function listPlansFromDb(db: IndexDb): DbPlanListEntry[] {
 		.select({
 			filename: schema.plans.filename,
 			title: schema.plans.title,
-			sha: schema.plans.sha,
-			systemFrom: schema.plans.systemFrom,
+			mtimeMs: schema.plans.mtimeMs,
 		})
 		.from(schema.plans)
-		.where(eq(schema.plans.systemTo, FAR_FUTURE))
-		.orderBy(desc(schema.plans.systemFrom))
+		.orderBy(desc(schema.plans.mtimeMs))
 		.all();
 
 	return rows;

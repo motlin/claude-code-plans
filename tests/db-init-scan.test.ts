@@ -8,7 +8,7 @@ import {openTestDb, type AppDb} from '../src/lib/db/connection';
  * The production boot order is:
  *   1. `initDb()` — opens the DB, runs schema migrations, returns.
  *   2. `createWatcher(...)` + `await watcher.once('ready')`
- *   3. `runInitialScan(plansDir)` — runs `fullScan` then `bulkSyncPlansFromDisk`.
+ *   3. `runInitialScan()` — runs `fullScan` (which now includes `scanPlansDir`).
  *   4. `startSweep()`
  *
  * Watcher event handlers `await awaitInitialScan()` before touching the DB
@@ -31,12 +31,8 @@ describe('db boot ordering', () => {
 		testDb = openTestDb();
 	});
 
-	function mockDbModule(opts: {
-		fullScan?: ReturnType<typeof vi.fn>;
-		bulkSyncPlansFromDisk?: ReturnType<typeof vi.fn>;
-	}): void {
+	function mockDbModule(opts: {fullScan?: ReturnType<typeof vi.fn>}): void {
 		const fullScan = opts.fullScan ?? vi.fn(async () => {});
-		const bulkSyncPlansFromDisk = opts.bulkSyncPlansFromDisk ?? vi.fn(async () => ({}));
 
 		vi.doMock('../src/lib/db/connection', async () => {
 			const actual = await vi.importActual<typeof import('../src/lib/db/connection')>('../src/lib/db/connection');
@@ -51,22 +47,19 @@ describe('db boot ordering', () => {
 			return {
 				...actual,
 				fullScan,
-				bulkSyncPlansFromDisk,
 			};
 		});
 	}
 
 	it('initDb() returns without running fullScan and leaves awaitInitialScan() a no-op', async () => {
 		const fullScan = vi.fn(async () => {});
-		const bulkSyncPlansFromDisk = vi.fn(async () => ({}));
-		mockDbModule({fullScan, bulkSyncPlansFromDisk});
+		mockDbModule({fullScan});
 
 		const {initDb, awaitInitialScan} = await import('../src/lib/db');
 
 		await initDb();
 
 		expect(fullScan).not.toHaveBeenCalled();
-		expect(bulkSyncPlansFromDisk).not.toHaveBeenCalled();
 
 		// awaitInitialScan() must be safe to call before any scan has started.
 		// It resolves immediately (the holder's promise is null).
@@ -88,28 +81,25 @@ describe('db boot ordering', () => {
 		const fullScan = vi.fn(async () => {
 			await new Promise((resolve) => setTimeout(resolve, 5));
 		});
-		const bulkSyncPlansFromDisk = vi.fn(async () => ({}));
-		mockDbModule({fullScan, bulkSyncPlansFromDisk});
+		mockDbModule({fullScan});
 
 		const {runInitialScan} = await import('../src/lib/db');
 
-		const a = runInitialScan('/tmp/plans');
-		const b = runInitialScan('/tmp/plans');
+		const a = runInitialScan();
+		const b = runInitialScan();
 
 		expect(a).toBe(b);
 
 		await Promise.all([a, b]);
 
 		expect(fullScan).toHaveBeenCalledTimes(1);
-		expect(bulkSyncPlansFromDisk).toHaveBeenCalledTimes(1);
 
 		// A third call after completion should still return the same memoized
 		// promise — no second scan kicks off.
-		const c = runInitialScan('/tmp/plans');
+		const c = runInitialScan();
 		expect(c).toBe(a);
 		await c;
 		expect(fullScan).toHaveBeenCalledTimes(1);
-		expect(bulkSyncPlansFromDisk).toHaveBeenCalledTimes(1);
 	});
 
 	it('handler awaiting awaitInitialScan() before runInitialScan() resolves runs exactly once, after the scan', async () => {
@@ -122,11 +112,7 @@ describe('db boot ordering', () => {
 			});
 			order.push('scan:end');
 		});
-		const bulkSyncPlansFromDisk = vi.fn(async () => {
-			order.push('plans-sync');
-			return {};
-		});
-		mockDbModule({fullScan, bulkSyncPlansFromDisk});
+		mockDbModule({fullScan});
 
 		const {runInitialScan, awaitInitialScan} = await import('../src/lib/db');
 
@@ -141,7 +127,7 @@ describe('db boot ordering', () => {
 
 		// Kick the scan, then queue a handler invocation while the scan is
 		// still in-flight. The handler must observe the post-scan state.
-		const scanPromise = runInitialScan('/tmp/plans');
+		const scanPromise = runInitialScan();
 		const handlerPromise = handler();
 
 		// Let microtasks settle so the handler reaches its `await`.
@@ -152,23 +138,21 @@ describe('db boot ordering', () => {
 		// in-flight scan promise.
 		expect(order).toStrictEqual(['scan:start']);
 
-		// Release the scan; both `bulkSyncPlansFromDisk` and the handler
-		// should resolve in order.
+		// Release the scan; the handler should resolve in order.
 		scanResolve();
 		await Promise.all([scanPromise, handlerPromise]);
 
-		expect(order).toStrictEqual(['scan:start', 'scan:end', 'plans-sync', 'handler']);
+		expect(order).toStrictEqual(['scan:start', 'scan:end', 'handler']);
 		expect(handlerCalls.length).toBe(1);
 	});
 
 	it('handler awaiting awaitInitialScan() after the scan resolves runs immediately', async () => {
 		const fullScan = vi.fn(async () => {});
-		const bulkSyncPlansFromDisk = vi.fn(async () => ({}));
-		mockDbModule({fullScan, bulkSyncPlansFromDisk});
+		mockDbModule({fullScan});
 
 		const {runInitialScan, awaitInitialScan} = await import('../src/lib/db');
 
-		await runInitialScan('/tmp/plans');
+		await runInitialScan();
 
 		// After the scan completes, `awaitInitialScan()` should resolve
 		// immediately for handlers that fire later.
