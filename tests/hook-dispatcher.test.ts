@@ -248,6 +248,115 @@ describe('dispatchHookEvent', () => {
 		});
 	});
 
+	it('UserPromptSubmit broadcasts SESSION_PROMPT_SUBMITTED with the prompt body', async () => {
+		const broadcasts: Broadcast[] = [];
+		const {store, touchedCalls} = makeStore();
+		await dispatchHookEvent({
+			event: {
+				hook_event_name: 'UserPromptSubmit',
+				session_id: 'abc-123',
+				transcript_path: '/tmp/abc-123.jsonl',
+				cwd: '/tmp',
+				prompt: 'fix the login bug',
+			},
+			db: db.index,
+			store,
+			broadcast: (type, data) => broadcasts.push({type, data}),
+		});
+
+		expect(touchedCalls).toStrictEqual(['abc-123']);
+		const submitted = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_PROMPT_SUBMITTED);
+		if (!submitted) throw new Error('Expected session:prompt-submitted broadcast');
+		expect(submitted.data['sessionId']).toBe('abc-123');
+		expect(submitted.data['prompt']).toBe('fix the login bug');
+		expect(typeof submitted.data['ts']).toBe('string');
+	});
+
+	it('Notification broadcasts NOTIFICATION with message and optional title', async () => {
+		const broadcasts: Broadcast[] = [];
+		const {store} = makeStore();
+		await dispatchHookEvent({
+			event: {
+				hook_event_name: 'Notification',
+				session_id: 'abc-123',
+				transcript_path: '/tmp/abc-123.jsonl',
+				cwd: '/tmp',
+				message: 'Waiting for input',
+				title: 'Claude Code',
+			},
+			db: db.index,
+			store,
+			broadcast: (type, data) => broadcasts.push({type, data}),
+		});
+
+		const notif = broadcasts.find((b) => b.type === DOMAIN_EVENTS.NOTIFICATION);
+		if (!notif) throw new Error('Expected notification broadcast');
+		expect(notif.data).toStrictEqual({
+			sessionId: 'abc-123',
+			message: 'Waiting for input',
+			title: 'Claude Code',
+		});
+	});
+
+	it('PreCompact broadcasts SESSION_COMPACTING with optional trigger', async () => {
+		const broadcasts: Broadcast[] = [];
+		const {store} = makeStore();
+		await dispatchHookEvent({
+			event: {
+				hook_event_name: 'PreCompact',
+				session_id: 'abc-123',
+				transcript_path: '/tmp/abc-123.jsonl',
+				cwd: '/tmp',
+				trigger: 'auto',
+			},
+			db: db.index,
+			store,
+			broadcast: (type, data) => broadcasts.push({type, data}),
+		});
+
+		const compacting = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_COMPACTING);
+		if (!compacting) throw new Error('Expected session:compacting broadcast');
+		expect(compacting.data).toStrictEqual({sessionId: 'abc-123', trigger: 'auto'});
+	});
+
+	it('SubagentStop broadcasts SESSION_UPDATED for the subagent session id when indexed', async () => {
+		const projectDir = join(testDir, '-Users-craig-projects-app');
+		mkdirSync(projectDir, {recursive: true});
+		writeFileSync(
+			join(projectDir, 'sessions-index.json'),
+			makeSessionsIndex([
+				{
+					sessionId: 'sub-456',
+					fullPath: join(projectDir, 'sub-456.jsonl'),
+					fileMtime: 946_598_400_000,
+					firstPrompt: 'subagent work',
+					messageCount: 3,
+					projectPath: '/Users/craig/projects/app',
+				},
+			]),
+		);
+		await indexSessionsIndex(db.index, projectDir, '-Users-craig-projects-app');
+
+		const broadcasts: Broadcast[] = [];
+		const {store, touchedCalls} = makeStore();
+		await dispatchHookEvent({
+			event: {
+				hook_event_name: 'SubagentStop',
+				session_id: 'sub-456',
+				transcript_path: '/Users/craig/.claude/projects/-Users-craig-projects-app/sub-456.jsonl',
+				cwd: '/tmp',
+			},
+			db: db.index,
+			store,
+			broadcast: (type, data) => broadcasts.push({type, data}),
+		});
+
+		expect(touchedCalls).toStrictEqual(['sub-456']);
+		const updated = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_UPDATED);
+		if (!updated) throw new Error('Expected session:updated broadcast for subagent');
+		expect((updated.data as {session: {id: string}}).session.id).toBe('sub-456');
+	});
+
 	it('TaskCompleted broadcasts the domain TASK_COMPLETED event', async () => {
 		const broadcasts: Broadcast[] = [];
 		const {store, touchedCalls} = makeStore();
@@ -406,6 +515,30 @@ describe('dispatchHookEvent', () => {
 					b.type === DOMAIN_EVENTS.MEMORY_CHANGED,
 			);
 			expect(domain).toBeUndefined();
+		});
+
+		it('PreToolUse broadcasts SESSION_TOOL_PENDING with toolName and toolUseId', async () => {
+			const broadcasts: Broadcast[] = [];
+			const {store, touchedCalls} = makeStore();
+			await dispatchHookEvent({
+				event: {
+					hook_event_name: 'PreToolUse',
+					session_id: 'abc-123',
+					transcript_path: '/tmp/abc-123.jsonl',
+					cwd: '/tmp',
+					tool_name: 'Bash',
+					tool_use_id: 'toolu_abc',
+					tool_input: {command: 'ls'},
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) => broadcasts.push({type, data}),
+			});
+
+			expect(touchedCalls).toStrictEqual(['abc-123']);
+			const pending = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_TOOL_PENDING);
+			if (!pending) throw new Error('Expected session:tool-pending broadcast');
+			expect(pending.data).toStrictEqual({sessionId: 'abc-123', toolName: 'Bash', toolUseId: 'toolu_abc'});
 		});
 
 		it('PostToolUse with a transcript_path broadcasts session:lines-appended for new lines only', async () => {

@@ -53,6 +53,9 @@ function makeInitialState(): ClaudeEventsState {
 		activeSessions: new Map(),
 		hookSchemaDrifts: new Map(),
 		dismissedDrifts: new Set(),
+		pendingTools: new Map(),
+		compactingSessions: new Set(),
+		notifications: new Map(),
 	};
 }
 
