@@ -11,6 +11,7 @@ import {Sidebar} from '../components/sidebar/index';
 import {CommandPalette} from '../components/command-palette';
 import {useCommandPalette} from '../hooks/use-command-palette';
 import {IndexingBanner} from '../components/indexing-banner';
+import {HookSchemaDriftBanner} from '../components/hook-schema-drift-banner';
 import {ClaudeEventsProvider} from '../hooks/use-claude-events';
 import {approvalsQueryOptions} from '../lib/api/approvals';
 import {plansQueryOptions} from '../lib/api/plans';
@@ -129,6 +130,7 @@ function RootLayout() {
 				/>
 				<main className="flex-1 overflow-y-auto bg-bg-000">
 					<IndexingBanner />
+					<HookSchemaDriftBanner />
 					<div className="flex min-h-9 items-center px-4 pt-3 sm:px-8">
 						<button
 							type="button"

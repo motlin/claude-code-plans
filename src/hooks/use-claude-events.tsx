@@ -13,6 +13,7 @@ import {useQueryClient, type QueryClient} from '@tanstack/react-query';
 import {
 	DOMAIN_EVENTS,
 	SSE_EVENTS,
+	type HookSchemaDriftPayload,
 	type JsonValue,
 	type MemorySummaryPayload,
 	type PendingApprovalPayload,
@@ -36,6 +37,14 @@ interface ActiveSessionInfo {
 
 export interface ClaudeEventsState {
 	activeSessions: Map<string, ActiveSessionInfo>;
+	/**
+	 * Schema-drift notifications keyed by `hookEventName`. The latest payload
+	 * for each event name wins; older drifts for the same event are replaced
+	 * so the banner shows the freshest unknown-field set rather than stacking.
+	 */
+	hookSchemaDrifts: Map<string, HookSchemaDriftPayload>;
+	/** Set of event names the user has dismissed from the banner. */
+	dismissedDrifts: Set<string>;
 }
 
 // ---------------------------------------------------------------------------
@@ -49,6 +58,7 @@ export type ClaudeEventsAction =
 			data: Record<string, unknown>;
 			timestamp: number;
 	  }
+	| {type: 'DISMISS_DRIFT'; hookEventName: string}
 	| {type: 'RESET'};
 
 // ---------------------------------------------------------------------------
@@ -61,7 +71,37 @@ export type ClaudeEventsAction =
 
 export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEventsAction): ClaudeEventsState {
 	if (action.type === 'RESET') {
-		return {activeSessions: new Map()};
+		return {
+			activeSessions: new Map(),
+			hookSchemaDrifts: new Map(),
+			dismissedDrifts: new Set(),
+		};
+	}
+
+	if (action.type === 'DISMISS_DRIFT') {
+		const dismissedDrifts = new Set(state.dismissedDrifts);
+		dismissedDrifts.add(action.hookEventName);
+		return {...state, dismissedDrifts};
+	}
+
+	if (action.eventType === DOMAIN_EVENTS.HOOK_SCHEMA_DRIFT) {
+		const hookEventName =
+			typeof action.data['hookEventName'] === 'string' ? action.data['hookEventName'] : undefined;
+		const count = typeof action.data['count'] === 'number' ? action.data['count'] : 1;
+		const missingFields = Array.isArray(action.data['missingFields'])
+			? (action.data['missingFields'] as unknown[]).filter((v): v is string => typeof v === 'string')
+			: [];
+		const unknownFields = Array.isArray(action.data['unknownFields'])
+			? (action.data['unknownFields'] as unknown[]).filter((v): v is string => typeof v === 'string')
+			: [];
+		if (!hookEventName) return state;
+		const hookSchemaDrifts = new Map(state.hookSchemaDrifts);
+		hookSchemaDrifts.set(hookEventName, {hookEventName, missingFields, unknownFields, count});
+		// A fresh drift re-surfaces the banner — clear the dismissal so the
+		// user sees the new unknown-field set.
+		const dismissedDrifts = new Set(state.dismissedDrifts);
+		dismissedDrifts.delete(hookEventName);
+		return {...state, hookSchemaDrifts, dismissedDrifts};
 	}
 
 	const sessionId = typeof action.data['sessionId'] === 'string' ? action.data['sessionId'] : undefined;
@@ -77,13 +117,13 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 				startedAt: action.timestamp,
 				lastActivity: action.timestamp,
 			});
-			return {activeSessions};
+			return {...state, activeSessions};
 		}
 		case SSE_EVENTS.SESSION_END: {
 			if (!sessionId || !state.activeSessions.has(sessionId)) return state;
 			const activeSessions = new Map(state.activeSessions);
 			activeSessions.delete(sessionId);
-			return {activeSessions};
+			return {...state, activeSessions};
 		}
 		case DOMAIN_EVENTS.SESSION_UPDATED: {
 			// Domain SESSION_UPDATED carries the full session summary; only the id
@@ -95,7 +135,7 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 			if (!existing) return state;
 			const activeSessions = new Map(state.activeSessions);
 			activeSessions.set(id, {...existing, lastActivity: action.timestamp});
-			return {activeSessions};
+			return {...state, activeSessions};
 		}
 		default:
 			return state;
@@ -109,6 +149,7 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 interface ClaudeEventsContextValue {
 	state: ClaudeEventsState;
 	subscribeStatusline: (listener: (sessionId: string) => void) => () => void;
+	dismissHookSchemaDrift: (hookEventName: string) => void;
 }
 
 const ClaudeEventsContext = createContext<ClaudeEventsContextValue | null>(null);
@@ -127,6 +168,27 @@ export function useClaudeEvents(): ClaudeEventsState {
 export function useIsSessionActive(sessionId: string): boolean {
 	const {activeSessions} = useClaudeEvents();
 	return activeSessions.has(sessionId);
+}
+
+/**
+ * Hook returning the list of undismissed schema-drift notifications, plus a
+ * dismiss callback. Components render a banner over this list and call
+ * `dismiss(hookEventName)` to hide it until the next drift arrives.
+ */
+export function useHookSchemaDrifts(): {
+	drifts: HookSchemaDriftPayload[];
+	dismiss: (hookEventName: string) => void;
+} {
+	const ctx = useContext(ClaudeEventsContext);
+	if (!ctx) {
+		throw new Error('useHookSchemaDrifts must be used within a ClaudeEventsProvider');
+	}
+	const {hookSchemaDrifts, dismissedDrifts} = ctx.state;
+	const drifts: HookSchemaDriftPayload[] = [];
+	for (const [name, payload] of hookSchemaDrifts) {
+		if (!dismissedDrifts.has(name)) drifts.push(payload);
+	}
+	return {drifts, dismiss: ctx.dismissHookSchemaDrift};
 }
 
 // ---------------------------------------------------------------------------
@@ -340,6 +402,7 @@ const DOMAIN_EVENT_TYPES = [
 	DOMAIN_EVENTS.TASK_COMPLETED,
 	DOMAIN_EVENTS.APPROVAL_CHANGED,
 	DOMAIN_EVENTS.APPROVAL_RESOLVED,
+	DOMAIN_EVENTS.HOOK_SCHEMA_DRIFT,
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -349,6 +412,8 @@ const DOMAIN_EVENT_TYPES = [
 export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 	const [state, dispatch] = useReducer(claudeEventsReducer, undefined, () => ({
 		activeSessions: new Map<string, ActiveSessionInfo>(),
+		hookSchemaDrifts: new Map<string, HookSchemaDriftPayload>(),
+		dismissedDrifts: new Set<string>(),
 	}));
 
 	const queryClient = useQueryClient();
@@ -359,6 +424,10 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 		return () => {
 			statuslineListenersRef.current.delete(listener);
 		};
+	}, []);
+
+	const dismissHookSchemaDrift = useCallback((hookEventName: string) => {
+		dispatch({type: 'DISMISS_DRIFT', hookEventName});
 	}, []);
 
 	useEffect(() => {
@@ -493,6 +562,15 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 					if (typeof sessionId === 'string') applyApprovalResolved(queryClient, sessionId);
 					break;
 				}
+				case DOMAIN_EVENTS.HOOK_SCHEMA_DRIFT: {
+					dispatch({
+						type: 'SSE_EVENT',
+						eventType: e.type,
+						data,
+						timestamp: Date.now(),
+					});
+					break;
+				}
 				default:
 					break;
 			}
@@ -525,8 +603,8 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 	}, [queryClient]);
 
 	const contextValue: ClaudeEventsContextValue = useMemo(
-		() => ({state, subscribeStatusline}),
-		[state, subscribeStatusline],
+		() => ({state, subscribeStatusline, dismissHookSchemaDrift}),
+		[state, subscribeStatusline, dismissHookSchemaDrift],
 	);
 
 	return <ClaudeEventsContext.Provider value={contextValue}>{children}</ClaudeEventsContext.Provider>;

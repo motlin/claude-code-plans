@@ -51,6 +51,8 @@ function makeMemory(project: string, filename: string, title = filename): Memory
 function makeInitialState(): ClaudeEventsState {
 	return {
 		activeSessions: new Map(),
+		hookSchemaDrifts: new Map(),
+		dismissedDrifts: new Set(),
 	};
 }
 
@@ -161,6 +163,51 @@ describe('claudeEventsReducer', () => {
 		const action: ClaudeEventsAction = {type: 'RESET'};
 		const next = claudeEventsReducer(state, action);
 		expect(next.activeSessions.size).toBe(0);
+		expect(next.hookSchemaDrifts.size).toBe(0);
+		expect(next.dismissedDrifts.size).toBe(0);
+	});
+
+	it('records hook:schema-drift payloads keyed by hookEventName', () => {
+		const state = makeInitialState();
+		const action: ClaudeEventsAction = {
+			type: 'SSE_EVENT',
+			eventType: 'hook:schema-drift',
+			data: {
+				hookEventName: 'PostToolUse',
+				missingFields: ['tool_response.foo'],
+				unknownFields: ['tool_input.experimental_flag'],
+				count: 3,
+			},
+			timestamp: 5000,
+		};
+		const next = claudeEventsReducer(state, action);
+		expect(next.hookSchemaDrifts.get('PostToolUse')).toStrictEqual({
+			hookEventName: 'PostToolUse',
+			missingFields: ['tool_response.foo'],
+			unknownFields: ['tool_input.experimental_flag'],
+			count: 3,
+		});
+	});
+
+	it('DISMISS_DRIFT hides the named drift until a fresh one arrives', () => {
+		const state = makeInitialState();
+		state.hookSchemaDrifts.set('PostToolUse', {
+			hookEventName: 'PostToolUse',
+			missingFields: [],
+			unknownFields: ['x'],
+			count: 1,
+		});
+		const dismissed = claudeEventsReducer(state, {type: 'DISMISS_DRIFT', hookEventName: 'PostToolUse'});
+		expect(dismissed.dismissedDrifts.has('PostToolUse')).toBe(true);
+
+		// A new drift for the same event clears the dismissal.
+		const next = claudeEventsReducer(dismissed, {
+			type: 'SSE_EVENT',
+			eventType: 'hook:schema-drift',
+			data: {hookEventName: 'PostToolUse', missingFields: [], unknownFields: ['y'], count: 2},
+			timestamp: 6000,
+		});
+		expect(next.dismissedDrifts.has('PostToolUse')).toBe(false);
 	});
 });
 

@@ -1,6 +1,6 @@
 import {sqliteTable, text, integer, index, primaryKey} from 'drizzle-orm/sqlite-core';
 
-export const SCHEMA_VERSION = '11';
+export const SCHEMA_VERSION = '12';
 
 export const FAR_FUTURE = '9999-12-31 23:59:59';
 
@@ -129,3 +129,20 @@ export const summaries = sqliteTable('summaries', {
 	summary: text('summary').notNull(),
 	generatedAt: integer('generated_at').notNull(),
 });
+
+export const hookSchemaDrift = sqliteTable(
+	'hook_schema_drift',
+	{
+		hookEventName: text('hook_event_name').notNull(),
+		bodySha256: text('body_sha256').notNull(),
+		rawBody: text('raw_body').notNull(),
+		issuesJson: text('issues_json').notNull(),
+		count: integer('count').notNull().default(1),
+		firstSeenAt: integer('first_seen_at').notNull(),
+		lastSeenAt: integer('last_seen_at').notNull(),
+	},
+	(table) => [
+		primaryKey({columns: [table.hookEventName, table.bodySha256]}),
+		index('hook_schema_drift_last_seen_idx').on(table.lastSeenAt),
+	],
+);
