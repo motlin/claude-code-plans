@@ -37,7 +37,7 @@
 		"markdown-it-footnote": "^4.0.0",
 		"markdown-it-task-lists": "^2.1.1",
 		"react": "^19.2.5",
-		"react-dom": "^19.2.5",
+		"react-dom": "^19.2.6",
 		"shiki": "^4.1.0",
 		"srvx": "^0.11.13",
 		"zod": "^4.4.3"
