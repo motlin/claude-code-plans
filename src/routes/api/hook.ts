@@ -6,16 +6,40 @@ import {sql} from 'drizzle-orm';
 import type {ZodError} from 'zod';
 import {DOMAIN_EVENTS, HookEventEnvelope} from '../../lib/hook-events';
 import {broadcastTyped} from '../../lib/watcher';
-import {dispatchHookEvent} from '../../lib/hook-dispatcher';
+import {dispatchHookEvent, type HookDispatchDirs, type HookDispatchState} from '../../lib/hook-dispatcher';
 import {getActiveSessionEntry, markSessionActive, markSessionEnded, touchSession} from '../../lib/active-session-store';
+import {getCacheDir} from '../../lib/db/connection';
 import {getDb} from '../../lib/db';
 import {hookSchemaDrift} from '../../lib/db/schema';
 import {indexFile} from '../../lib/db/indexer';
+import {hmrPersist} from '../../lib/hmr-persist';
 import type {BetterSQLite3Database} from 'drizzle-orm/better-sqlite3';
 import * as dbSchema from '../../lib/db/schema';
 
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 const PLANS_DIR = join(homedir(), '.claude', 'plans');
+const TASKS_DIR = join(homedir(), '.claude', 'tasks');
+const COMMANDS_DIR = join(homedir(), '.claude', 'commands');
+const PLUGINS_DIR = join(homedir(), '.claude', 'plugins', 'cache');
+const STATUSLINE_DIR = join(getCacheDir(), 'statusline');
+
+const HOOK_DIRS: HookDispatchDirs = {
+	projectsDir: PROJECTS_DIR,
+	plansDir: PLANS_DIR,
+	tasksDir: TASKS_DIR,
+	commandsDir: COMMANDS_DIR,
+	pluginsDir: PLUGINS_DIR,
+	statuslineDir: STATUSLINE_DIR,
+};
+
+/**
+ * Shared JSONL byte-offset map for the dispatcher's `SESSION_LINES_APPENDED`
+ * fast path. Persisted across HMR reloads so the dispatcher does not
+ * re-broadcast already-seen lines after a hot reload.
+ */
+const dispatcherState: HookDispatchState = {
+	jsonlOffsets: hmrPersist('hookDispatcherJsonlOffsets', () => new Map<string, number>()),
+};
 
 /** Truncated raw body to keep the drift table from growing unbounded. */
 const RAW_BODY_MAX_BYTES = 16_384;
@@ -176,7 +200,7 @@ export const Route = createFileRoute('/api/hook')({
 
 				const {index} = getDb();
 
-				dispatchHookEvent({
+				await dispatchHookEvent({
 					event: result.data,
 					db: index,
 					store: {
@@ -186,6 +210,8 @@ export const Route = createFileRoute('/api/hook')({
 						getActiveSessionEntry,
 					},
 					broadcast: broadcastTyped,
+					dirs: HOOK_DIRS,
+					state: dispatcherState,
 				});
 
 				return Response.json({ok: true});

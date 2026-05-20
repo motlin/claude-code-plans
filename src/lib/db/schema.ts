@@ -2,8 +2,6 @@ import {sqliteTable, text, integer, index, primaryKey} from 'drizzle-orm/sqlite-
 
 export const SCHEMA_VERSION = '12';
 
-export const FAR_FUTURE = '9999-12-31 23:59:59';
-
 export const metadata = sqliteTable('metadata', {
 	key: text('key').primaryKey(),
 	value: text('value').notNull(),

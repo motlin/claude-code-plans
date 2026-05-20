@@ -63,7 +63,7 @@ afterEach(() => {
 });
 
 describe('dispatchHookEvent', () => {
-	it('SessionStart broadcasts both legacy SESSION_START and domain SESSION_STARTED with full payload', () => {
+	it('SessionStart broadcasts both legacy SESSION_START and domain SESSION_STARTED with full payload', async () => {
 		const broadcasts: Broadcast[] = [];
 		const {store, activeCalls} = makeStore();
 		const event: HookEvent = {
@@ -75,7 +75,7 @@ describe('dispatchHookEvent', () => {
 			source: 'startup',
 		};
 
-		dispatchHookEvent({
+		await dispatchHookEvent({
 			event,
 			db: db.index,
 			store,
@@ -125,7 +125,7 @@ describe('dispatchHookEvent', () => {
 
 		const broadcasts: Broadcast[] = [];
 		const {store} = makeStore();
-		dispatchHookEvent({
+		await dispatchHookEvent({
 			event: {
 				hook_event_name: 'SessionStart',
 				session_id: 'abc-123',
@@ -177,7 +177,7 @@ describe('dispatchHookEvent', () => {
 
 		const broadcasts: Broadcast[] = [];
 		const {store, touchedCalls} = makeStore();
-		dispatchHookEvent({
+		await dispatchHookEvent({
 			event: {
 				hook_event_name: 'Stop',
 				session_id: 'abc-123',
@@ -208,10 +208,10 @@ describe('dispatchHookEvent', () => {
 		});
 	});
 
-	it('Stop without an indexed session emits nothing on the wire', () => {
+	it('Stop without an indexed session emits nothing on the wire', async () => {
 		const broadcasts: Broadcast[] = [];
 		const {store} = makeStore();
-		dispatchHookEvent({
+		await dispatchHookEvent({
 			event: {
 				hook_event_name: 'Stop',
 				session_id: 'unknown-session',
@@ -226,10 +226,10 @@ describe('dispatchHookEvent', () => {
 		expect(broadcasts).toStrictEqual([]);
 	});
 
-	it('SessionEnd broadcasts both lifecycle SESSION_END and domain SESSION_ENDED', () => {
+	it('SessionEnd broadcasts both lifecycle SESSION_END and domain SESSION_ENDED', async () => {
 		const broadcasts: Broadcast[] = [];
 		const {store, endedCalls} = makeStore();
-		dispatchHookEvent({
+		await dispatchHookEvent({
 			event: {
 				hook_event_name: 'SessionEnd',
 				session_id: 'abc-123',
@@ -248,10 +248,10 @@ describe('dispatchHookEvent', () => {
 		});
 	});
 
-	it('TaskCompleted broadcasts the domain TASK_COMPLETED event', () => {
+	it('TaskCompleted broadcasts the domain TASK_COMPLETED event', async () => {
 		const broadcasts: Broadcast[] = [];
 		const {store, touchedCalls} = makeStore();
-		dispatchHookEvent({
+		await dispatchHookEvent({
 			event: {
 				hook_event_name: 'TaskCompleted',
 				session_id: 'abc-123',
@@ -269,5 +269,200 @@ describe('dispatchHookEvent', () => {
 		const completed = broadcasts.filter((b) => b.type === DOMAIN_EVENTS.TASK_COMPLETED);
 		expect(completed.length).toBe(1);
 		expect(completed[0]!.data).toStrictEqual({taskId: 'task-001', subject: 'Build auth'});
+	});
+
+	describe('PostToolUse fast path', () => {
+		function makeDirs(): import('../src/lib/hook-dispatcher').HookDispatchDirs {
+			return {
+				projectsDir: join(testDir, 'projects'),
+				plansDir: join(testDir, 'plans'),
+				tasksDir: join(testDir, 'tasks'),
+				commandsDir: join(testDir, 'commands'),
+				pluginsDir: join(testDir, 'plugins', 'cache'),
+				statuslineDir: join(testDir, 'statusline'),
+			};
+		}
+
+		it('Edit on a plan markdown file indexes the file and broadcasts plan:changed', async () => {
+			const dirs = makeDirs();
+			mkdirSync(dirs.plansDir, {recursive: true});
+			const planFilename = '2026-05-20-test-plan.md';
+			const planPath = join(dirs.plansDir, planFilename);
+			writeFileSync(planPath, '# Test Plan Title\n\nBody.\n');
+
+			const broadcasts: Broadcast[] = [];
+			const {store} = makeStore();
+
+			await dispatchHookEvent({
+				event: {
+					hook_event_name: 'PostToolUse',
+					session_id: 'abc-123',
+					transcript_path: '/tmp/missing.jsonl',
+					cwd: '/tmp',
+					tool_name: 'Edit',
+					tool_input: {
+						file_path: planPath,
+						old_string: 'Body.',
+						new_string: 'New body.',
+					},
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) => broadcasts.push({type, data}),
+				dirs,
+			});
+
+			const planChanged = broadcasts.find((b) => b.type === DOMAIN_EVENTS.PLAN_CHANGED);
+			if (!planChanged) throw new Error('Expected plan:changed broadcast');
+			const plan = (planChanged.data as {plan: {filename: string; title: string; mtime: string}}).plan;
+			expect(plan.filename).toBe(planFilename);
+			expect(plan.title).toBe('Test Plan Title');
+			expect(typeof plan.mtime).toBe('string');
+		});
+
+		it('Write on a task json file indexes the task and broadcasts task:changed', async () => {
+			const dirs = makeDirs();
+			const projectDir = 'sample-project';
+			const tasksProjectDir = join(dirs.tasksDir, projectDir);
+			mkdirSync(tasksProjectDir, {recursive: true});
+			const taskId = 'task-007';
+			const taskPath = join(tasksProjectDir, `${taskId}.json`);
+			writeFileSync(
+				taskPath,
+				JSON.stringify({
+					id: taskId,
+					subject: 'Ship the thing',
+					description: 'desc',
+					status: 'in_progress',
+					blocks: [],
+					blockedBy: [],
+				}),
+			);
+
+			const broadcasts: Broadcast[] = [];
+			const {store, touchedCalls} = makeStore();
+
+			await dispatchHookEvent({
+				event: {
+					hook_event_name: 'PostToolUse',
+					session_id: 'abc-123',
+					transcript_path: '/tmp/missing.jsonl',
+					cwd: '/tmp',
+					tool_name: 'Write',
+					tool_input: {file_path: taskPath, content: '{}'},
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) => broadcasts.push({type, data}),
+				dirs,
+			});
+
+			expect(touchedCalls).toStrictEqual(['abc-123']);
+			const taskChanged = broadcasts.find((b) => b.type === DOMAIN_EVENTS.TASK_CHANGED);
+			if (!taskChanged) throw new Error('Expected task:changed broadcast');
+			expect(taskChanged.data).toStrictEqual({
+				task: {
+					taskId,
+					projectDir,
+					subject: 'Ship the thing',
+					description: 'desc',
+					status: 'in_progress',
+					activeForm: null,
+					blocks: [],
+					blockedBy: [],
+				},
+			});
+		});
+
+		it('Edit on an unrelated path emits no domain delta but still touches session', async () => {
+			const dirs = makeDirs();
+			const broadcasts: Broadcast[] = [];
+			const {store, touchedCalls} = makeStore();
+
+			await dispatchHookEvent({
+				event: {
+					hook_event_name: 'PostToolUse',
+					session_id: 'abc-123',
+					transcript_path: '/tmp/missing.jsonl',
+					cwd: '/tmp',
+					tool_name: 'Edit',
+					tool_input: {
+						file_path: join(testDir, 'unrelated', 'note.md'),
+						old_string: 'a',
+						new_string: 'b',
+					},
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) => broadcasts.push({type, data}),
+				dirs,
+			});
+
+			expect(touchedCalls).toStrictEqual(['abc-123']);
+			const domain = broadcasts.find(
+				(b) =>
+					b.type === DOMAIN_EVENTS.PLAN_CHANGED ||
+					b.type === DOMAIN_EVENTS.TASK_CHANGED ||
+					b.type === DOMAIN_EVENTS.MEMORY_CHANGED,
+			);
+			expect(domain).toBeUndefined();
+		});
+
+		it('PostToolUse with a transcript_path broadcasts session:lines-appended for new lines only', async () => {
+			const dirs = makeDirs();
+			const projectId = '-Users-craig-projects-app';
+			const projectDir = join(dirs.projectsDir, projectId);
+			mkdirSync(projectDir, {recursive: true});
+			const sessionId = 'abc-123';
+			const transcriptPath = join(projectDir, `${sessionId}.jsonl`);
+			const line1 = JSON.stringify({type: 'user', message: 'hello'});
+			const line2 = JSON.stringify({type: 'assistant', message: 'world'});
+			writeFileSync(transcriptPath, line1 + '\n' + line2 + '\n');
+
+			const broadcasts: Broadcast[] = [];
+			const {store} = makeStore();
+			const state: import('../src/lib/hook-dispatcher').HookDispatchState = {jsonlOffsets: new Map()};
+
+			await dispatchHookEvent({
+				event: {
+					hook_event_name: 'PostToolUse',
+					session_id: sessionId,
+					transcript_path: transcriptPath,
+					cwd: '/tmp',
+					tool_name: 'Bash',
+					tool_input: {command: 'echo hi'},
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) => broadcasts.push({type, data}),
+				dirs,
+				state,
+			});
+
+			const linesAppended = broadcasts.filter((b) => b.type === DOMAIN_EVENTS.SESSION_LINES_APPENDED);
+			expect(linesAppended.length).toBe(1);
+			expect(linesAppended[0]!.data['sessionId']).toBe(sessionId);
+			expect((linesAppended[0]!.data['lines'] as unknown[]).length).toBe(2);
+
+			// Second event with no new content -- no broadcast.
+			broadcasts.length = 0;
+			await dispatchHookEvent({
+				event: {
+					hook_event_name: 'PostToolUse',
+					session_id: sessionId,
+					transcript_path: transcriptPath,
+					cwd: '/tmp',
+					tool_name: 'Bash',
+					tool_input: {command: 'echo hi'},
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) => broadcasts.push({type, data}),
+				dirs,
+				state,
+			});
+
+			expect(broadcasts.filter((b) => b.type === DOMAIN_EVENTS.SESSION_LINES_APPENDED).length).toBe(0);
+		});
 	});
 });
