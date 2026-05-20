@@ -2,26 +2,24 @@
  * Generates the Claude Code hooks configuration block for ~/.claude/settings.json.
  *
  * Each hook event fires a curl POST to the local server's /api/hook endpoint,
- * passing along event metadata as JSON. The server uses this for real-time
- * session tracking, task completion notifications, and SSE broadcasts.
+ * forwarding the full hook stdin payload from Claude Code (tool_input,
+ * tool_response, transcript_path, prompt, etc.) merged with a snapshot of all
+ * CLAUDE-prefixed environment variables under `claude_env`. The server uses
+ * this for real-time session tracking, task completion notifications, and SSE
+ * broadcasts.
  */
+
+import {KNOWN_HOOK_EVENTS} from './hook-events';
 
 export const DEFAULT_HOOK_PORT = 7526;
 
 /**
- * All Claude hook event names that the server handles.
- * Must stay in sync with HookEventEnvelope in hook-events.ts.
+ * All Claude hook event names that the server handles. Derived from the
+ * `HookEventEnvelope` discriminated union in `hook-events.ts` so there is a
+ * single source of truth — adding a new variant to the union automatically
+ * adds a hook entry here without a second list to keep in sync.
  */
-export const HOOK_EVENT_NAMES = [
-	'SessionStart',
-	'SessionEnd',
-	'Stop',
-	'PostToolUse',
-	'TaskCompleted',
-	'WorktreeCreate',
-] as const;
-
-type HookEventName = (typeof HOOK_EVENT_NAMES)[number];
+export const HOOK_EVENT_NAMES = KNOWN_HOOK_EVENTS;
 
 interface HookEntry {
 	type: 'command';
@@ -36,36 +34,20 @@ interface HooksConfig {
 	hooks: Record<string, HookMatcher[]>;
 }
 
-function curlPost(port: number, jqExpr: string): string {
-	return `curl -sX POST --connect-timeout 0.1 http://localhost:${port}/api/hook -H 'Content-Type: application/json' -d "$(echo '{}' | jq -c '${jqExpr}')" >/dev/null 2>&1 || true`;
-}
-
 /**
- * Build the jq expression that constructs the JSON body for a given event.
- * The stdin to jq is the hook context JSON provided by Claude Code.
+ * Single jq filter applied to every hook event. Reads the full hook context
+ * JSON from stdin (whatever Claude Code chose to send for this event) and
+ * merges in a `claude_env` field carrying every CLAUDE-prefixed environment
+ * variable. We do *not* strip any fields — the server-side strict Zod schema
+ * decides what's valid and the schema-drift recovery path handles new fields.
  */
-function jqExprForEvent(eventName: HookEventName): string {
-	const base = `.session_id = $ENV.CLAUDE_SESSION_ID // "" | .hook_event_name = "${eventName}"`;
+const HOOK_PAYLOAD_JQ_FILTER = '. + {claude_env: ($ENV | with_entries(select(.key | startswith("CLAUDE"))))}';
 
-	switch (eventName) {
-		case 'SessionStart': {
-			// Capture every CLAUDE-prefixed env var (CLAUDE_*, CLAUDECODE, etc.) so
-			// the server can persist runtime metadata such as CLAUDE_CODE_ENTRYPOINT,
-			// CLAUDE_CODE_EXECPATH, CLAUDE_EFFORT, and other flags claude(1) sets.
-			const claudeEnv = `.claude_env = ($ENV | with_entries(select(.key | startswith("CLAUDE"))))`;
-			return `${base} | .cwd = $ENV.PWD // "" | .model = ($ENV.CLAUDE_MODEL // "") | ${claudeEnv}`;
-		}
-		case 'SessionEnd':
-			return base;
-		case 'Stop':
-			return base;
-		case 'PostToolUse':
-			return `${base} | .tool_name = ($ENV.CLAUDE_TOOL_NAME // "")`;
-		case 'TaskCompleted':
-			return `${base} | .task_id = ($ENV.CLAUDE_TASK_ID // "") | .task_subject = ($ENV.CLAUDE_TASK_SUBJECT // "")`;
-		case 'WorktreeCreate':
-			return `${base} | .name = ($ENV.CLAUDE_WORKTREE_NAME // "")`;
-	}
+function curlPost(port: number): string {
+	// --connect-timeout 0.1 + `|| true` guarantee the hook never blocks Claude:
+	// if the viewer isn't running the curl returns immediately and the shell
+	// exits 0 regardless.
+	return `jq -c '${HOOK_PAYLOAD_JQ_FILTER}' | curl -sX POST --connect-timeout 0.1 http://localhost:${port}/api/hook -H 'Content-Type: application/json' --data-binary @- >/dev/null 2>&1 || true`;
 }
 
 interface GenerateOptions {
@@ -75,6 +57,7 @@ interface GenerateOptions {
 export function generateHooksConfig(options?: GenerateOptions): HooksConfig {
 	const port = options?.port ?? DEFAULT_HOOK_PORT;
 	const hooks: Record<string, HookMatcher[]> = {};
+	const command = curlPost(port);
 
 	for (const eventName of HOOK_EVENT_NAMES) {
 		hooks[eventName] = [
@@ -82,7 +65,7 @@ export function generateHooksConfig(options?: GenerateOptions): HooksConfig {
 				hooks: [
 					{
 						type: 'command',
-						command: curlPost(port, jqExprForEvent(eventName)),
+						command,
 					},
 				],
 			},
