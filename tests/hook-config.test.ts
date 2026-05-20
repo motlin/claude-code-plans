@@ -3,14 +3,15 @@ import {generateHooksConfig, DEFAULT_HOOK_PORT, HOOK_EVENT_NAMES} from '../src/l
 
 describe('HOOK_EVENT_NAMES', () => {
 	it('contains all expected Claude hook event names', () => {
-		expect(HOOK_EVENT_NAMES).toStrictEqual([
-			'SessionStart',
-			'SessionEnd',
-			'Stop',
-			'PostToolUse',
-			'TaskCompleted',
-			'WorktreeCreate',
-		]);
+		expect([...HOOK_EVENT_NAMES].sort()).toStrictEqual(
+			['SessionStart', 'SessionEnd', 'Stop', 'PostToolUse', 'TaskCompleted', 'WorktreeCreate'].sort(),
+		);
+	});
+
+	it('is derived from the HookEventEnvelope discriminated union', async () => {
+		const {HookEventEnvelope} = await import('../src/lib/hook-events');
+		const fromUnion = HookEventEnvelope.options.map((v) => v.shape.hook_event_name.value).sort();
+		expect([...HOOK_EVENT_NAMES].sort()).toStrictEqual(fromUnion);
 	});
 });
 
@@ -46,52 +47,33 @@ describe('generateHooksConfig', () => {
 		expect(json).toContain('/api/hook');
 	});
 
-	it('each hook uses curl to POST JSON with session_id and hook_event_name', () => {
+	it('uses the same command for every hook event (single forwarder)', () => {
 		const config = generateHooksConfig();
 		const hooks = config.hooks as Record<string, Array<{hooks: Array<{type: string; command: string}>}>>;
+		const commands = HOOK_EVENT_NAMES.map((name) => hooks[name]![0]!.hooks[0]!.command);
+		const unique = new Set(commands);
+		expect(unique.size).toBe(1);
+	});
 
+	it('forwards the full hook stdin payload via jq', () => {
+		const config = generateHooksConfig();
+		const hooks = config.hooks as Record<string, Array<{hooks: Array<{type: string; command: string}>}>>;
+		const command = hooks['SessionStart']![0]!.hooks[0]!.command;
+		// Pipes stdin through jq, not `echo '{}' | jq`
+		expect(command).toContain('jq -c');
+		expect(command).not.toContain("echo '{}'");
+		// Posts the jq output as the request body
+		expect(command).toContain('--data-binary @-');
+	});
+
+	it('merges CLAUDE-prefixed env vars into claude_env on every event', () => {
+		const config = generateHooksConfig();
+		const hooks = config.hooks as Record<string, Array<{hooks: Array<{type: string; command: string}>}>>;
 		for (const eventName of HOOK_EVENT_NAMES) {
-			const entries = hooks[eventName];
-			if (!entries || entries.length === 0) throw new Error(`No entries for ${eventName}`);
-
-			const hookDef = entries[0]!;
-			if (hookDef.hooks.length === 0) throw new Error(`No hooks for ${eventName}`);
-
-			const command = hookDef.hooks[0]!.command;
-			expect(command).toContain('curl');
-			expect(command).toContain('POST');
-			expect(command).toContain('hook_event_name');
+			const command = hooks[eventName]![0]!.hooks[0]!.command;
+			expect(command).toContain('claude_env');
+			expect(command).toContain('startswith("CLAUDE")');
 		}
-	});
-
-	it('SessionStart hook includes model and cwd fields', () => {
-		const config = generateHooksConfig();
-		const hooks = config.hooks as Record<string, Array<{hooks: Array<{type: string; command: string}>}>>;
-		const command = hooks['SessionStart']![0]!.hooks[0]!.command;
-		expect(command).toContain('model');
-		expect(command).toContain('cwd');
-	});
-
-	it('SessionStart hook captures CLAUDE-prefixed env vars into claude_env', () => {
-		const config = generateHooksConfig();
-		const hooks = config.hooks as Record<string, Array<{hooks: Array<{type: string; command: string}>}>>;
-		const command = hooks['SessionStart']![0]!.hooks[0]!.command;
-		expect(command).toContain('claude_env');
-		expect(command).toContain('startswith("CLAUDE")');
-	});
-
-	it('PostToolUse hook includes tool_name field', () => {
-		const config = generateHooksConfig();
-		const hooks = config.hooks as Record<string, Array<{hooks: Array<{type: string; command: string}>}>>;
-		const command = hooks['PostToolUse']![0]!.hooks[0]!.command;
-		expect(command).toContain('tool_name');
-	});
-
-	it('TaskCompleted hook includes task fields', () => {
-		const config = generateHooksConfig();
-		const hooks = config.hooks as Record<string, Array<{hooks: Array<{type: string; command: string}>}>>;
-		const command = hooks['TaskCompleted']![0]!.hooks[0]!.command;
-		expect(command).toContain('task_id');
 	});
 
 	it('produces valid JSON when stringified', () => {
@@ -101,13 +83,13 @@ describe('generateHooksConfig', () => {
 		expect(parsed).toStrictEqual(config);
 	});
 
-	it('all hooks suppress errors with || true', () => {
+	it('all hooks suppress errors with || true and use --connect-timeout to never block', () => {
 		const config = generateHooksConfig();
-		// Every curl command should be non-blocking (fail silently)
 		const hooks = config.hooks as Record<string, Array<{hooks: Array<{type: string; command: string}>}>>;
 		for (const eventName of HOOK_EVENT_NAMES) {
 			const command = hooks[eventName]![0]!.hooks[0]!.command;
 			expect(command).toContain('|| true');
+			expect(command).toContain('--connect-timeout 0.1');
 		}
 	});
 });

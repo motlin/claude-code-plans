@@ -217,3 +217,13 @@ export const HookEventEnvelope = z.discriminatedUnion('hook_event_name', [
 ]);
 
 export type HookEvent = z.infer<typeof HookEventEnvelope>;
+
+/**
+ * The set of hook event names handled by the receiver, derived directly from
+ * the discriminated union above so there's no second list to keep in sync.
+ * Each variant declares `hook_event_name: z.literal('...')` — we read that
+ * literal back out of the schema definition.
+ */
+export const KNOWN_HOOK_EVENTS: readonly HookEvent['hook_event_name'][] = HookEventEnvelope.options.map(
+	(variant) => variant.shape.hook_event_name.value,
+);
