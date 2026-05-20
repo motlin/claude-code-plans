@@ -150,35 +150,36 @@ CREATE TABLE IF NOT EXISTS summaries (
 );
 `;
 
+function dropAllTables(sqlite: Database.Database): void {
+	sqlite.exec('DROP TABLE IF EXISTS sessions_fts');
+	sqlite.exec('DROP TABLE IF EXISTS message_content_fts');
+	sqlite.exec('DROP TABLE IF EXISTS tasks');
+	sqlite.exec('DROP TABLE IF EXISTS todo_tasks');
+	sqlite.exec('DROP TABLE IF EXISTS todo_files');
+	sqlite.exec('DROP TABLE IF EXISTS memories');
+	sqlite.exec('DROP TABLE IF EXISTS starred_sessions');
+	sqlite.exec('DROP TABLE IF EXISTS plans');
+	sqlite.exec('DROP TABLE IF EXISTS subagents');
+	sqlite.exec('DROP TABLE IF EXISTS plan_sessions');
+	sqlite.exec('DROP TABLE IF EXISTS sessions');
+	sqlite.exec('DROP TABLE IF EXISTS projects');
+	sqlite.exec('DROP TABLE IF EXISTS indexed_files');
+	sqlite.exec('DROP TABLE IF EXISTS metadata');
+}
+
 function initIndexDb(sqlite: Database.Database): void {
 	sqlite.pragma('journal_mode = WAL');
 	sqlite.pragma('foreign_keys = ON');
 
-	// Check schema version BEFORE running CREATE_TABLES_SQL so that an
-	// old schema (e.g. a `plans` table with the legacy temporal columns)
-	// is dropped first. Otherwise `CREATE INDEX ... ON plans(mtime_ms)`
-	// would target the still-present old table and fail.
-	const metadataExists =
-		sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='metadata'").get() !== undefined;
+	const metadataExists = sqlite
+		.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='metadata'")
+		.get() as {name: string} | undefined;
 	if (metadataExists) {
 		const row = sqlite.prepare("SELECT value FROM metadata WHERE key = 'schema_version'").get() as
 			| {value: string}
 			| undefined;
 		if (!row || row.value !== schema.SCHEMA_VERSION) {
-			sqlite.exec('DROP TABLE IF EXISTS sessions_fts');
-			sqlite.exec('DROP TABLE IF EXISTS message_content_fts');
-			sqlite.exec('DROP TABLE IF EXISTS tasks');
-			sqlite.exec('DROP TABLE IF EXISTS todo_tasks');
-			sqlite.exec('DROP TABLE IF EXISTS todo_files');
-			sqlite.exec('DROP TABLE IF EXISTS memories');
-			sqlite.exec('DROP TABLE IF EXISTS starred_sessions');
-			sqlite.exec('DROP TABLE IF EXISTS plans');
-			sqlite.exec('DROP TABLE IF EXISTS subagents');
-			sqlite.exec('DROP TABLE IF EXISTS plan_sessions');
-			sqlite.exec('DROP TABLE IF EXISTS sessions');
-			sqlite.exec('DROP TABLE IF EXISTS projects');
-			sqlite.exec('DROP TABLE IF EXISTS indexed_files');
-			sqlite.exec('DROP TABLE IF EXISTS metadata');
+			dropAllTables(sqlite);
 		}
 	}
 
