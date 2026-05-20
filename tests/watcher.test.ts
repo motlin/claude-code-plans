@@ -1,8 +1,9 @@
 import {afterEach, beforeEach, describe, expect, it} from 'vitest';
-import {writeFileSync, mkdirSync, rmSync} from 'node:fs';
+import {writeFileSync, mkdirSync, mkdtempSync, rmSync} from 'node:fs';
+import {createServer, type Server} from 'node:net';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {__testing} from '../src/lib/watcher';
+import {__testing, createWatcher, shouldIgnoreWatch} from '../src/lib/watcher';
 import {openTestDb, type AppDb} from '../src/lib/db/connection';
 import * as schema from '../src/lib/db/schema';
 import {DOMAIN_EVENTS} from '../src/lib/hook-events';
@@ -323,5 +324,114 @@ describe('handlePlanMdUnlink', () => {
 		// At broadcast time, the row was already deleted.
 		expect(rowCountAtBroadcast).toBe(0);
 		expect(broadcasts).toStrictEqual([{type: DOMAIN_EVENTS.PLAN_REMOVED, data: {filename: 'epsilon.md'}}]);
+	});
+});
+
+describe('shouldIgnoreWatch', () => {
+	const fileStats = {isFile: () => true, isDirectory: () => false} as import('node:fs').Stats;
+	const dirStats = {isFile: () => false, isDirectory: () => true} as import('node:fs').Stats;
+	const socketStats = {isFile: () => false, isDirectory: () => false} as import('node:fs').Stats;
+
+	it('ignores .git directories at any depth', () => {
+		expect(shouldIgnoreWatch('/foo/.git')).toBe(true);
+		expect(shouldIgnoreWatch('/foo/.git/fsmonitor--daemon.ipc')).toBe(true);
+		expect(shouldIgnoreWatch('/a/b/c/.git/HEAD')).toBe(true);
+		expect(shouldIgnoreWatch('.git/config')).toBe(true);
+	});
+
+	it('ignores node_modules subtrees', () => {
+		expect(shouldIgnoreWatch('/foo/node_modules')).toBe(true);
+		expect(shouldIgnoreWatch('/foo/node_modules/react/package.json')).toBe(true);
+	});
+
+	it('ignores common build / cache / vendor directories', () => {
+		expect(shouldIgnoreWatch('/foo/dist/bundle.js')).toBe(true);
+		expect(shouldIgnoreWatch('/foo/build/output.json')).toBe(true);
+		expect(shouldIgnoreWatch('/foo/out/index.html')).toBe(true);
+		expect(shouldIgnoreWatch('/foo/coverage/report.json')).toBe(true);
+		expect(shouldIgnoreWatch('/foo/.next/cache/x')).toBe(true);
+		expect(shouldIgnoreWatch('/foo/.turbo/x')).toBe(true);
+		expect(shouldIgnoreWatch('/foo/.vite/x')).toBe(true);
+		expect(shouldIgnoreWatch('/foo/.cache/x')).toBe(true);
+		expect(shouldIgnoreWatch('/foo/target/release/bin')).toBe(true);
+	});
+
+	it('does not ignore look-alike basenames in other positions', () => {
+		expect(shouldIgnoreWatch('/foo/my-dist-tool/file.md', fileStats)).toBe(false);
+		expect(shouldIgnoreWatch('/foo/distributed.md', fileStats)).toBe(false);
+	});
+
+	it('does not ignore watched files or directories', () => {
+		expect(shouldIgnoreWatch('/foo/bar.md', fileStats)).toBe(false);
+		expect(shouldIgnoreWatch('/foo/bar', dirStats)).toBe(false);
+	});
+
+	it('ignores non-regular files (sockets, FIFOs)', () => {
+		expect(shouldIgnoreWatch('/foo/sock', socketStats)).toBe(true);
+	});
+
+	it('ignores files with non-watched extensions when stats indicate a file', () => {
+		expect(shouldIgnoreWatch('/foo/bar.png', fileStats)).toBe(true);
+		expect(shouldIgnoreWatch('/foo/bar.ts', fileStats)).toBe(true);
+		expect(shouldIgnoreWatch('/foo/Makefile', fileStats)).toBe(true);
+	});
+
+	it('does not ignore watched extensions', () => {
+		expect(shouldIgnoreWatch('/foo/bar.md', fileStats)).toBe(false);
+		expect(shouldIgnoreWatch('/foo/bar.jsonl', fileStats)).toBe(false);
+		expect(shouldIgnoreWatch('/foo/bar.json', fileStats)).toBe(false);
+	});
+});
+
+describe('createWatcher resilience', () => {
+	let dir: string;
+	let server: Server | null = null;
+
+	beforeEach(() => {
+		dir = mkdtempSync(join(tmpdir(), 'watcher-socket-test-'));
+	});
+
+	afterEach(async () => {
+		if (server) {
+			await new Promise<void>((resolve) => server!.close(() => resolve()));
+			server = null;
+		}
+		rmSync(dir, {recursive: true, force: true});
+	});
+
+	it('boots without EMFILE when the watched tree has thousands of directories', async () => {
+		// fs.watch on macOS hits EMFILE around 5k watched directories; verify
+		// createWatcher survives a tree well past that limit (the real plugin
+		// cache holds 100k+ files spread across ~5k dirs).
+		for (let i = 0; i < 6000; i++) {
+			mkdirSync(join(dir, `d${i}`));
+		}
+		const watcher = await createWatcher([dir]);
+		const errors: unknown[] = [];
+		watcher.on('error', (err) => errors.push(err));
+		await new Promise<void>((resolve) => watcher.once('ready', () => resolve()));
+		await watcher.close();
+		expect(errors).toStrictEqual([]);
+	}, 30_000);
+
+	it('does not crash when a .git directory contains a Unix socket', async () => {
+		const gitDir = join(dir, '.git');
+		mkdirSync(gitDir, {recursive: true});
+		const sockPath = join(gitDir, 'fsmonitor--daemon.ipc');
+		server = createServer();
+		await new Promise<void>((resolve, reject) => {
+			server!.once('error', reject);
+			server!.listen(sockPath, () => resolve());
+		});
+
+		const watcher = await createWatcher([dir]);
+		const errors: unknown[] = [];
+		watcher.on('error', (err) => errors.push(err));
+		await new Promise<void>((resolve) => watcher.once('ready', () => resolve()));
+		// Let any deferred errors land before asserting.
+		await new Promise((r) => setTimeout(r, 100));
+		await watcher.close();
+
+		expect(errors).toStrictEqual([]);
 	});
 });

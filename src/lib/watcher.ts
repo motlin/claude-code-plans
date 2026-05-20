@@ -1,5 +1,6 @@
 import {watch} from 'chokidar';
 import type {FSWatcher} from 'chokidar';
+import type {Stats} from 'node:fs';
 import {stat} from 'node:fs/promises';
 import {basename, dirname, join} from 'node:path';
 import {eq} from 'drizzle-orm';
@@ -61,6 +62,56 @@ hmrDispose(async () => {
 
 const WATCHED_EXTENSIONS = new Set(['.md', '.jsonl', '.json']);
 const JSONL_THROTTLE_MS = 2000;
+
+/**
+ * Directory basenames whose subtrees we never descend into. These are the
+ * usual suspects for vendored deps, build artifacts, and tool caches that
+ * inflate watched-file counts inside the plugin cache (100k+ files) without
+ * ever holding anything we render. `.git` also contains unwatchable Unix
+ * sockets like `fsmonitor--daemon.ipc` that crash `fs.watch` outright.
+ */
+const IGNORED_DIR_NAMES = new Set([
+	'.git',
+	'node_modules',
+	'dist',
+	'build',
+	'out',
+	'coverage',
+	'.next',
+	'.turbo',
+	'.vite',
+	'.cache',
+	'.venv',
+	'target',
+	// Plugin cache runtime markers: each installed plugin holds 600+ tiny
+	// PID-named files in its `.in_use/` dir. We never render them, but every
+	// dir chokidar descends into costs a kqueue handle, and the aggregate
+	// across ~30 plugins pushes the watcher over fs.watch's process limit.
+	'.in_use',
+]);
+
+const IGNORED_DIR_PATTERN = new RegExp(
+	`(?:^|/)(?:${[...IGNORED_DIR_NAMES].map((d) => d.replace(/\./g, '\\.')).join('|')})(?:/|$)`,
+);
+
+/**
+ * Predicate passed to chokidar's `ignored` option.
+ *
+ * - Skips bulky vendored/generated subtrees (see `IGNORED_DIR_NAMES`).
+ * - Skips files whose extension isn't in `WATCHED_EXTENSIONS` — the handlers
+ *   return early on those anyway, so watching them is pure waste.
+ * - Defense in depth: skips non-regular files (sockets, FIFOs).
+ */
+export function shouldIgnoreWatch(path: string, stats?: Stats): boolean {
+	if (IGNORED_DIR_PATTERN.test(path)) return true;
+	if (stats && !stats.isFile() && !stats.isDirectory()) return true;
+	if (stats?.isFile()) {
+		const dot = path.lastIndexOf('.');
+		const ext = dot >= 0 ? path.slice(dot) : '';
+		if (!WATCHED_EXTENSIONS.has(ext)) return true;
+	}
+	return false;
+}
 
 function sessionSummariesEqual(a: SessionSummaryPayload, b: SessionSummaryPayload): boolean {
 	return (
@@ -483,9 +534,18 @@ export async function createWatcher(
 
 	if (watcher) await watcher.close();
 
+	// `usePolling: true` because fs.watch on macOS uses kqueue, which caps out
+	// around ~5k watched directories per process; the plugin cache + projects
+	// together blow past that and emit EMFILE. Polling sidesteps the limit at
+	// the cost of one stat() per watched file per `interval`. The aggressive
+	// `ignored` predicate keeps the poll set small enough to be cheap.
 	watcher = watch(dirs, {
 		ignoreInitial: true,
-		awaitWriteFinish: {stabilityThreshold: 300, pollInterval: 100},
+		awaitWriteFinish: {stabilityThreshold: 300, pollInterval: 200},
+		usePolling: true,
+		interval: 1000,
+		binaryInterval: 2000,
+		ignored: shouldIgnoreWatch,
 	});
 
 	watcher.on('add', handleFileChange);
