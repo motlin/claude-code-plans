@@ -215,6 +215,13 @@ export function getCacheDir(): string {
 }
 
 export function openAppDb(opts?: {cacheDir?: string | undefined}): AppDb {
+	// Under vitest, refuse to fall back to the production cache dir. Doing so
+	// opens the real index.db and contends for its write lock with a running
+	// dev/prod server — a failure that only surfaces when the app happens to
+	// be running. Force tests to be explicit (openTestDb or a temp dir).
+	if (process.env['VITEST'] && !opts?.cacheDir) {
+		throw new Error('openAppDb: tests must pass an explicit cacheDir (use openTestDb or a temp dir)');
+	}
 	const cacheDir = opts?.cacheDir ?? getCacheDir();
 	mkdirSync(cacheDir, {recursive: true});
 
