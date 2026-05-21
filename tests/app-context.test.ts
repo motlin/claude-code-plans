@@ -16,6 +16,7 @@ function makeTestConfig(): AppContextConfig {
 		pluginsDir: join(testDir, 'plugins'),
 		tasksDir: join(testDir, 'tasks'),
 		statuslineDir: join(testDir, 'statusline'),
+		cacheDir: join(testDir, 'cache'),
 	};
 }
 

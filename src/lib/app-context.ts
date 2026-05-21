@@ -11,6 +11,7 @@ export interface AppContextConfig {
 	pluginsDir: string;
 	tasksDir: string;
 	statuslineDir: string;
+	cacheDir?: string;
 }
 
 interface AppContext {
@@ -23,7 +24,7 @@ interface AppContext {
 }
 
 export async function createAppContext(config: AppContextConfig): Promise<AppContext> {
-	const db = openAppDb();
+	const db = openAppDb(config.cacheDir === undefined ? undefined : {cacheDir: config.cacheDir});
 	try {
 		await fullScan(db.index, config.projectsDir, config.tasksDir, config.plansDir);
 	} catch (err) {

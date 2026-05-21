@@ -3,7 +3,13 @@ import {writeFileSync, mkdirSync, mkdtempSync, rmSync} from 'node:fs';
 import {createServer, type Server} from 'node:net';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {__testing, createWatcher, shouldIgnoreWatch} from '../src/lib/watcher';
+import {
+	__testing,
+	createWatcher,
+	shouldIgnoreWatch,
+	resolveIgnoredDirNames,
+	buildIgnoredDirPattern,
+} from '../src/lib/watcher';
 import {openTestDb, type AppDb} from '../src/lib/db/connection';
 import * as schema from '../src/lib/db/schema';
 import {DOMAIN_EVENTS} from '../src/lib/hook-events';
@@ -332,6 +338,16 @@ describe('shouldIgnoreWatch', () => {
 	const dirStats = {isFile: () => false, isDirectory: () => true} as import('node:fs').Stats;
 	const socketStats = {isFile: () => false, isDirectory: () => false} as import('node:fs').Stats;
 
+	// The module resolves ignored dirs from the real settings.json / env at
+	// load time. Pin it to the hard-coded defaults so these assertions are
+	// deterministic regardless of the developer's environment.
+	beforeEach(() => {
+		__testing.resetIgnoredDirPattern();
+	});
+	afterEach(() => {
+		__testing.resetIgnoredDirPattern();
+	});
+
 	it('ignores .git directories at any depth', () => {
 		expect(shouldIgnoreWatch('/foo/.git')).toBe(true);
 		expect(shouldIgnoreWatch('/foo/.git/fsmonitor--daemon.ipc')).toBe(true);
@@ -380,6 +396,92 @@ describe('shouldIgnoreWatch', () => {
 		expect(shouldIgnoreWatch('/foo/bar.md', fileStats)).toBe(false);
 		expect(shouldIgnoreWatch('/foo/bar.jsonl', fileStats)).toBe(false);
 		expect(shouldIgnoreWatch('/foo/bar.json', fileStats)).toBe(false);
+	});
+});
+
+describe('resolveIgnoredDirNames', () => {
+	const settingsDir = mkdtempSync(join(tmpdir(), 'watcher-settings-test-'));
+	const settingsPath = join(settingsDir, 'settings.json');
+	const missingPath = join(settingsDir, 'does-not-exist.json');
+
+	afterEach(() => {
+		rmSync(settingsPath, {force: true});
+	});
+
+	it('uses the hard-coded defaults when neither env var nor settings provides values', () => {
+		const resolved = resolveIgnoredDirNames({}, missingPath);
+		expect([...resolved].sort()).toStrictEqual([...__testing.DEFAULT_IGNORED_DIR_NAMES].sort());
+	});
+
+	it('overrides defaults with the CCP_WATCHER_IGNORED_DIRS env var', () => {
+		const resolved = resolveIgnoredDirNames({CCP_WATCHER_IGNORED_DIRS: 'foo, bar ,baz'}, missingPath);
+		expect([...resolved].sort()).toStrictEqual(['bar', 'baz', 'foo']);
+	});
+
+	it('ignores an empty CCP_WATCHER_IGNORED_DIRS and falls back to settings', () => {
+		writeFileSync(settingsPath, JSON.stringify({ignored_dirs: ['vendor']}));
+		const resolved = resolveIgnoredDirNames({CCP_WATCHER_IGNORED_DIRS: '  ,  '}, settingsPath);
+		expect([...resolved]).toStrictEqual(['vendor']);
+	});
+
+	it('overrides defaults with the ignored_dirs array in settings.json', () => {
+		writeFileSync(settingsPath, JSON.stringify({ignored_dirs: ['vendor', 'tmp']}));
+		const resolved = resolveIgnoredDirNames({}, settingsPath);
+		expect([...resolved].sort()).toStrictEqual(['tmp', 'vendor']);
+	});
+
+	it('prefers the env var over settings.json when both are present', () => {
+		writeFileSync(settingsPath, JSON.stringify({ignored_dirs: ['from-settings']}));
+		const resolved = resolveIgnoredDirNames({CCP_WATCHER_IGNORED_DIRS: 'from-env'}, settingsPath);
+		expect([...resolved]).toStrictEqual(['from-env']);
+	});
+
+	it('falls back to defaults when settings.json is malformed JSON', () => {
+		writeFileSync(settingsPath, '{ not json');
+		const resolved = resolveIgnoredDirNames({}, settingsPath);
+		expect([...resolved].sort()).toStrictEqual([...__testing.DEFAULT_IGNORED_DIR_NAMES].sort());
+	});
+
+	it('falls back to defaults when ignored_dirs is not an array', () => {
+		writeFileSync(settingsPath, JSON.stringify({ignored_dirs: 'node_modules'}));
+		const resolved = resolveIgnoredDirNames({}, settingsPath);
+		expect([...resolved].sort()).toStrictEqual([...__testing.DEFAULT_IGNORED_DIR_NAMES].sort());
+	});
+
+	it('drops non-string and blank entries from the settings array', () => {
+		writeFileSync(settingsPath, JSON.stringify({ignored_dirs: ['keep', '', '  ', 42, null]}));
+		const resolved = readIgnoredDirsFromSettingsViaTesting(settingsPath);
+		expect(resolved).toStrictEqual(['keep']);
+	});
+
+	function readIgnoredDirsFromSettingsViaTesting(path: string): string[] | null {
+		return __testing.readIgnoredDirsFromSettings(path);
+	}
+});
+
+describe('shouldIgnoreWatch with configured ignored dirs', () => {
+	const fileStats = {isFile: () => true, isDirectory: () => false} as import('node:fs').Stats;
+
+	afterEach(() => {
+		__testing.resetIgnoredDirPattern();
+	});
+
+	it('honors a custom ignored-dir set when applied via the resolved pattern', () => {
+		__testing.setIgnoredDirPattern(buildIgnoredDirPattern(new Set(['vendor', 'tmp'])));
+
+		expect(shouldIgnoreWatch('/foo/vendor/file.json')).toBe(true);
+		expect(shouldIgnoreWatch('/foo/tmp/file.json')).toBe(true);
+		// node_modules is no longer in the configured set.
+		expect(shouldIgnoreWatch('/foo/node_modules/x.json', fileStats)).toBe(false);
+	});
+
+	it('escapes regex metacharacters in configured directory names', () => {
+		__testing.setIgnoredDirPattern(buildIgnoredDirPattern(new Set(['.cache', 'a+b'])));
+
+		expect(shouldIgnoreWatch('/foo/.cache/x')).toBe(true);
+		expect(shouldIgnoreWatch('/foo/a+b/x')).toBe(true);
+		// A literal '+' must not match as a regex quantifier.
+		expect(shouldIgnoreWatch('/foo/aab/x.json', fileStats)).toBe(false);
 	});
 });
 
