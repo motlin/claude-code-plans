@@ -214,7 +214,7 @@ export function getCacheDir(): string {
 	return join(base, 'claude-code-plans');
 }
 
-export function openAppDb(opts?: {cacheDir?: string}): AppDb {
+export function openAppDb(opts?: {cacheDir?: string | undefined}): AppDb {
 	const cacheDir = opts?.cacheDir ?? getCacheDir();
 	mkdirSync(cacheDir, {recursive: true});
 
