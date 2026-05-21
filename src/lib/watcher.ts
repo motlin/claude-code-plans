@@ -1,7 +1,9 @@
 import {watch} from 'chokidar';
 import type {FSWatcher} from 'chokidar';
 import type {Stats} from 'node:fs';
+import {readFileSync} from 'node:fs';
 import {stat} from 'node:fs/promises';
+import {homedir} from 'node:os';
 import {basename, dirname, join} from 'node:path';
 import {eq} from 'drizzle-orm';
 import type {BetterSQLite3Database} from 'drizzle-orm/better-sqlite3';
@@ -64,13 +66,13 @@ const WATCHED_EXTENSIONS = new Set(['.md', '.jsonl', '.json']);
 const JSONL_THROTTLE_MS = 2000;
 
 /**
- * Directory basenames whose subtrees we never descend into. These are the
- * usual suspects for vendored deps, build artifacts, and tool caches that
+ * Default directory basenames whose subtrees we never descend into. These are
+ * the usual suspects for vendored deps, build artifacts, and tool caches that
  * inflate watched-file counts inside the plugin cache (100k+ files) without
  * ever holding anything we render. `.git` also contains unwatchable Unix
  * sockets like `fsmonitor--daemon.ipc` that crash `fs.watch` outright.
  */
-const IGNORED_DIR_NAMES = new Set([
+const DEFAULT_IGNORED_DIR_NAMES = [
 	'.git',
 	'node_modules',
 	'dist',
@@ -88,22 +90,82 @@ const IGNORED_DIR_NAMES = new Set([
 	// dir chokidar descends into costs a kqueue handle, and the aggregate
 	// across ~30 plugins pushes the watcher over fs.watch's process limit.
 	'.in_use',
-]);
+];
 
-const IGNORED_DIR_PATTERN = new RegExp(
-	`(?:^|/)(?:${[...IGNORED_DIR_NAMES].map((d) => d.replace(/\./g, '\\.')).join('|')})(?:/|$)`,
-);
+/** Environment variable holding a comma-separated list of ignored directories. */
+const IGNORED_DIRS_ENV_VAR = 'CCP_WATCHER_IGNORED_DIRS';
+
+/** Path to the user's Claude settings file, read for the `ignored_dirs` key. */
+const SETTINGS_PATH = join(homedir(), '.claude', 'settings.json');
+
+/** Parse a comma-separated list into trimmed, non-empty directory names. */
+function parseDirList(raw: string): string[] {
+	return raw
+		.split(',')
+		.map((d) => d.trim())
+		.filter((d) => d.length > 0);
+}
+
+/**
+ * Read the `ignored_dirs` array from `~/.claude/settings.json`, if present.
+ * Returns `null` when the file is missing, unreadable, not valid JSON, or has
+ * no usable `ignored_dirs` array — callers fall back to the next source.
+ */
+function readIgnoredDirsFromSettings(settingsPath: string): string[] | null {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(readFileSync(settingsPath, 'utf8'));
+	} catch {
+		return null;
+	}
+	if (typeof parsed !== 'object' || parsed === null) return null;
+	const value = (parsed as Record<string, unknown>)['ignored_dirs'];
+	if (!Array.isArray(value)) return null;
+	const dirs = value.filter((d): d is string => typeof d === 'string' && d.trim().length > 0).map((d) => d.trim());
+	return dirs.length > 0 ? dirs : null;
+}
+
+/**
+ * Resolve the directory basenames to ignore, in priority order:
+ *
+ * 1. The `CCP_WATCHER_IGNORED_DIRS` environment variable (comma-separated).
+ * 2. The `ignored_dirs` array in `~/.claude/settings.json`.
+ * 3. The hard-coded `DEFAULT_IGNORED_DIR_NAMES`.
+ */
+export function resolveIgnoredDirNames(
+	env: NodeJS.ProcessEnv = process.env,
+	settingsPath: string = SETTINGS_PATH,
+): Set<string> {
+	const envValue = env[IGNORED_DIRS_ENV_VAR];
+	if (envValue) {
+		const dirs = parseDirList(envValue);
+		if (dirs.length > 0) return new Set(dirs);
+	}
+	const fromSettings = readIgnoredDirsFromSettings(settingsPath);
+	if (fromSettings) return new Set(fromSettings);
+	return new Set(DEFAULT_IGNORED_DIR_NAMES);
+}
+
+/** Build the path-matching regex for a given set of ignored directory names. */
+export function buildIgnoredDirPattern(dirNames: Set<string>): RegExp {
+	const escaped = [...dirNames].map((d) => d.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+	return new RegExp(`(?:^|/)(?:${escaped.join('|')})(?:/|$)`);
+}
+
+// Resolved once at module load. The env var and settings file are read at
+// startup; restart the server to pick up changes.
+let ignoredDirPattern = buildIgnoredDirPattern(resolveIgnoredDirNames());
 
 /**
  * Predicate passed to chokidar's `ignored` option.
  *
- * - Skips bulky vendored/generated subtrees (see `IGNORED_DIR_NAMES`).
+ * - Skips bulky vendored/generated subtrees (see `resolveIgnoredDirNames`).
  * - Skips files whose extension isn't in `WATCHED_EXTENSIONS` — the handlers
  *   return early on those anyway, so watching them is pure waste.
  * - Defense in depth: skips non-regular files (sockets, FIFOs).
  */
 export function shouldIgnoreWatch(path: string, stats?: Stats): boolean {
-	if (IGNORED_DIR_PATTERN.test(path)) return true;
+	if (ignoredDirPattern.test(path)) return true;
 	if (stats && !stats.isFile() && !stats.isDirectory()) return true;
 	if (stats?.isFile()) {
 		const dot = path.lastIndexOf('.');
@@ -532,6 +594,10 @@ export async function createWatcher(
 	if (plDir) plansDir = plDir;
 	if (slDir) statuslineDir = slDir;
 
+	// Re-resolve ignored directories at boot so a settings.json edit or env var
+	// set after this module first loaded still takes effect on server restart.
+	ignoredDirPattern = buildIgnoredDirPattern(resolveIgnoredDirNames());
+
 	if (watcher) await watcher.close();
 
 	// `usePolling: true` because fs.watch on macOS uses kqueue, which caps out
@@ -567,4 +633,14 @@ export const __testing = {
 	handleJsonlPlanLinks,
 	handlePlanMdChange,
 	handlePlanMdUnlink,
+	readIgnoredDirsFromSettings,
+	DEFAULT_IGNORED_DIR_NAMES,
+	/** Override the resolved ignored-dir pattern so `shouldIgnoreWatch` is deterministic in tests. */
+	setIgnoredDirPattern(pattern: RegExp): void {
+		ignoredDirPattern = pattern;
+	},
+	/** Restore the pattern derived purely from the hard-coded defaults. */
+	resetIgnoredDirPattern(): void {
+		ignoredDirPattern = buildIgnoredDirPattern(new Set(DEFAULT_IGNORED_DIR_NAMES));
+	},
 };

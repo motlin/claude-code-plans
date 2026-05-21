@@ -1,7 +1,15 @@
 {
 	"$schema": "https://biomejs.dev/schemas/2.3.8/schema.json",
 	"files": {
-		"includes": ["**/*.json", "**/*.jsonc", "src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"],
+		"includes": [
+			"**/*.json",
+			"**/*.jsonc",
+			"src/**/*.ts",
+			"src/**/*.tsx",
+			"tests/**/*.ts",
+			"tests/**/*.tsx",
+			"!eslint_report.json",
+		],
 		"ignoreUnknown": true,
 	},
 	"formatter": {
