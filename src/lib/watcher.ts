@@ -3,7 +3,6 @@ import type {FSWatcher} from 'chokidar';
 import type {Stats} from 'node:fs';
 import {readFileSync} from 'node:fs';
 import {stat} from 'node:fs/promises';
-import {homedir} from 'node:os';
 import {basename, dirname, join} from 'node:path';
 import {eq} from 'drizzle-orm';
 import type {BetterSQLite3Database} from 'drizzle-orm/better-sqlite3';
@@ -29,6 +28,7 @@ type IndexDb = BetterSQLite3Database<typeof dbSchema>;
 type BroadcastFn = (type: string, data: Record<string, unknown>) => void;
 import {toSessionSummaryPayload} from './session-summary';
 import {hmrPersist, hmrDispose} from './hmr-persist';
+import {getConfigPath} from './config';
 import {broadcastTyped, broadcast, addClient, removeClient} from './sse-broadcast';
 import {recentlyBroadcast} from './update-dedupe';
 
@@ -95,9 +95,6 @@ const DEFAULT_IGNORED_DIR_NAMES = [
 /** Environment variable holding a comma-separated list of ignored directories. */
 const IGNORED_DIRS_ENV_VAR = 'CCP_WATCHER_IGNORED_DIRS';
 
-/** Path to the user's Claude settings file, read for the `ignored_dirs` key. */
-const SETTINGS_PATH = join(homedir(), '.claude', 'settings.json');
-
 /** Parse a comma-separated list into trimmed, non-empty directory names. */
 function parseDirList(raw: string): string[] {
 	return raw
@@ -107,14 +104,15 @@ function parseDirList(raw: string): string[] {
 }
 
 /**
- * Read the `ignored_dirs` array from `~/.claude/settings.json`, if present.
- * Returns `null` when the file is missing, unreadable, not valid JSON, or has
- * no usable `ignored_dirs` array — callers fall back to the next source.
+ * Read the `ignored_dirs` array from this app's own config file
+ * (`~/.config/claude-code-plans/config.json`). Returns `null` when the file
+ * is missing, unreadable, not valid JSON, or has no usable `ignored_dirs`
+ * array — callers fall back to the next source.
  */
-function readIgnoredDirsFromSettings(settingsPath: string): string[] | null {
+function readIgnoredDirsFromConfig(configPath: string): string[] | null {
 	let parsed: unknown;
 	try {
-		parsed = JSON.parse(readFileSync(settingsPath, 'utf8'));
+		parsed = JSON.parse(readFileSync(configPath, 'utf8'));
 	} catch {
 		return null;
 	}
@@ -129,20 +127,20 @@ function readIgnoredDirsFromSettings(settingsPath: string): string[] | null {
  * Resolve the directory basenames to ignore, in priority order:
  *
  * 1. The `CCP_WATCHER_IGNORED_DIRS` environment variable (comma-separated).
- * 2. The `ignored_dirs` array in `~/.claude/settings.json`.
+ * 2. The `ignored_dirs` array in `~/.config/claude-code-plans/config.json`.
  * 3. The hard-coded `DEFAULT_IGNORED_DIR_NAMES`.
  */
 export function resolveIgnoredDirNames(
 	env: NodeJS.ProcessEnv = process.env,
-	settingsPath: string = SETTINGS_PATH,
+	configPath: string = getConfigPath(),
 ): Set<string> {
 	const envValue = env[IGNORED_DIRS_ENV_VAR];
 	if (envValue) {
 		const dirs = parseDirList(envValue);
 		if (dirs.length > 0) return new Set(dirs);
 	}
-	const fromSettings = readIgnoredDirsFromSettings(settingsPath);
-	if (fromSettings) return new Set(fromSettings);
+	const fromConfig = readIgnoredDirsFromConfig(configPath);
+	if (fromConfig) return new Set(fromConfig);
 	return new Set(DEFAULT_IGNORED_DIR_NAMES);
 }
 
@@ -152,7 +150,7 @@ export function buildIgnoredDirPattern(dirNames: Set<string>): RegExp {
 	return new RegExp(`(?:^|/)(?:${escaped.join('|')})(?:/|$)`);
 }
 
-// Resolved once at module load. The env var and settings file are read at
+// Resolved once at module load. The env var and config file are read at
 // startup; restart the server to pick up changes.
 let ignoredDirPattern = buildIgnoredDirPattern(resolveIgnoredDirNames());
 
@@ -594,7 +592,7 @@ export async function createWatcher(
 	if (plDir) plansDir = plDir;
 	if (slDir) statuslineDir = slDir;
 
-	// Re-resolve ignored directories at boot so a settings.json edit or env var
+	// Re-resolve ignored directories at boot so a config.json edit or env var
 	// set after this module first loaded still takes effect on server restart.
 	ignoredDirPattern = buildIgnoredDirPattern(resolveIgnoredDirNames());
 
@@ -633,7 +631,7 @@ export const __testing = {
 	handleJsonlPlanLinks,
 	handlePlanMdChange,
 	handlePlanMdUnlink,
-	readIgnoredDirsFromSettings,
+	readIgnoredDirsFromConfig,
 	DEFAULT_IGNORED_DIR_NAMES,
 	/** Override the resolved ignored-dir pattern so `shouldIgnoreWatch` is deterministic in tests. */
 	setIgnoredDirPattern(pattern: RegExp): void {

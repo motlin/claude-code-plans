@@ -338,7 +338,7 @@ describe('shouldIgnoreWatch', () => {
 	const dirStats = {isFile: () => false, isDirectory: () => true} as import('node:fs').Stats;
 	const socketStats = {isFile: () => false, isDirectory: () => false} as import('node:fs').Stats;
 
-	// The module resolves ignored dirs from the real settings.json / env at
+	// The module resolves ignored dirs from the real config.json / env at
 	// load time. Pin it to the hard-coded defaults so these assertions are
 	// deterministic regardless of the developer's environment.
 	beforeEach(() => {
@@ -400,15 +400,15 @@ describe('shouldIgnoreWatch', () => {
 });
 
 describe('resolveIgnoredDirNames', () => {
-	const settingsDir = mkdtempSync(join(tmpdir(), 'watcher-settings-test-'));
-	const settingsPath = join(settingsDir, 'settings.json');
-	const missingPath = join(settingsDir, 'does-not-exist.json');
+	const configDir = mkdtempSync(join(tmpdir(), 'watcher-config-test-'));
+	const configPath = join(configDir, 'config.json');
+	const missingPath = join(configDir, 'does-not-exist.json');
 
 	afterEach(() => {
-		rmSync(settingsPath, {force: true});
+		rmSync(configPath, {force: true});
 	});
 
-	it('uses the hard-coded defaults when neither env var nor settings provides values', () => {
+	it('uses the hard-coded defaults when neither env var nor config provides values', () => {
 		const resolved = resolveIgnoredDirNames({}, missingPath);
 		expect([...resolved].sort()).toStrictEqual([...__testing.DEFAULT_IGNORED_DIR_NAMES].sort());
 	});
@@ -418,44 +418,44 @@ describe('resolveIgnoredDirNames', () => {
 		expect([...resolved].sort()).toStrictEqual(['bar', 'baz', 'foo']);
 	});
 
-	it('ignores an empty CCP_WATCHER_IGNORED_DIRS and falls back to settings', () => {
-		writeFileSync(settingsPath, JSON.stringify({ignored_dirs: ['vendor']}));
-		const resolved = resolveIgnoredDirNames({CCP_WATCHER_IGNORED_DIRS: '  ,  '}, settingsPath);
+	it('ignores an empty CCP_WATCHER_IGNORED_DIRS and falls back to config', () => {
+		writeFileSync(configPath, JSON.stringify({ignored_dirs: ['vendor']}));
+		const resolved = resolveIgnoredDirNames({CCP_WATCHER_IGNORED_DIRS: '  ,  '}, configPath);
 		expect([...resolved]).toStrictEqual(['vendor']);
 	});
 
-	it('overrides defaults with the ignored_dirs array in settings.json', () => {
-		writeFileSync(settingsPath, JSON.stringify({ignored_dirs: ['vendor', 'tmp']}));
-		const resolved = resolveIgnoredDirNames({}, settingsPath);
+	it('overrides defaults with the ignored_dirs array in config.json', () => {
+		writeFileSync(configPath, JSON.stringify({ignored_dirs: ['vendor', 'tmp']}));
+		const resolved = resolveIgnoredDirNames({}, configPath);
 		expect([...resolved].sort()).toStrictEqual(['tmp', 'vendor']);
 	});
 
-	it('prefers the env var over settings.json when both are present', () => {
-		writeFileSync(settingsPath, JSON.stringify({ignored_dirs: ['from-settings']}));
-		const resolved = resolveIgnoredDirNames({CCP_WATCHER_IGNORED_DIRS: 'from-env'}, settingsPath);
+	it('prefers the env var over config.json when both are present', () => {
+		writeFileSync(configPath, JSON.stringify({ignored_dirs: ['from-config']}));
+		const resolved = resolveIgnoredDirNames({CCP_WATCHER_IGNORED_DIRS: 'from-env'}, configPath);
 		expect([...resolved]).toStrictEqual(['from-env']);
 	});
 
-	it('falls back to defaults when settings.json is malformed JSON', () => {
-		writeFileSync(settingsPath, '{ not json');
-		const resolved = resolveIgnoredDirNames({}, settingsPath);
+	it('falls back to defaults when config.json is malformed JSON', () => {
+		writeFileSync(configPath, '{ not json');
+		const resolved = resolveIgnoredDirNames({}, configPath);
 		expect([...resolved].sort()).toStrictEqual([...__testing.DEFAULT_IGNORED_DIR_NAMES].sort());
 	});
 
 	it('falls back to defaults when ignored_dirs is not an array', () => {
-		writeFileSync(settingsPath, JSON.stringify({ignored_dirs: 'node_modules'}));
-		const resolved = resolveIgnoredDirNames({}, settingsPath);
+		writeFileSync(configPath, JSON.stringify({ignored_dirs: 'node_modules'}));
+		const resolved = resolveIgnoredDirNames({}, configPath);
 		expect([...resolved].sort()).toStrictEqual([...__testing.DEFAULT_IGNORED_DIR_NAMES].sort());
 	});
 
-	it('drops non-string and blank entries from the settings array', () => {
-		writeFileSync(settingsPath, JSON.stringify({ignored_dirs: ['keep', '', '  ', 42, null]}));
-		const resolved = readIgnoredDirsFromSettingsViaTesting(settingsPath);
+	it('drops non-string and blank entries from the config array', () => {
+		writeFileSync(configPath, JSON.stringify({ignored_dirs: ['keep', '', '  ', 42, null]}));
+		const resolved = readIgnoredDirsFromConfigViaTesting(configPath);
 		expect(resolved).toStrictEqual(['keep']);
 	});
 
-	function readIgnoredDirsFromSettingsViaTesting(path: string): string[] | null {
-		return __testing.readIgnoredDirsFromSettings(path);
+	function readIgnoredDirsFromConfigViaTesting(path: string): string[] | null {
+		return __testing.readIgnoredDirsFromConfig(path);
 	}
 });
 
