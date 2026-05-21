@@ -22,7 +22,7 @@ function makeTestConfig(): AppContextConfig {
 
 beforeEach(() => {
 	mkdirSync(testDir, {recursive: true});
-	for (const sub of ['projects', 'plans', 'commands', 'plugins', 'tasks', 'statusline']) {
+	for (const sub of ['projects', 'plans', 'commands', 'plugins', 'tasks', 'statusline', 'cache']) {
 		mkdirSync(join(testDir, sub), {recursive: true});
 	}
 });
