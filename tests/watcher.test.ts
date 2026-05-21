@@ -448,10 +448,22 @@ describe('resolveIgnoredDirNames', () => {
 		expect([...resolved].sort()).toStrictEqual([...__testing.DEFAULT_IGNORED_DIR_NAMES].sort());
 	});
 
-	it('drops non-string and blank entries from the config array', () => {
+	it('rejects the whole file and falls back to defaults when an array entry is invalid', () => {
 		writeFileSync(configPath, JSON.stringify({ignored_dirs: ['keep', '', '  ', 42, null]}));
+		const resolved = resolveIgnoredDirNames({}, configPath);
+		expect([...resolved].sort()).toStrictEqual([...__testing.DEFAULT_IGNORED_DIR_NAMES].sort());
+	});
+
+	it('rejects the whole file and falls back to defaults on unknown config keys', () => {
+		writeFileSync(configPath, JSON.stringify({ignored_dirs: ['vendor'], bogus: true}));
+		const resolved = resolveIgnoredDirNames({}, configPath);
+		expect([...resolved].sort()).toStrictEqual([...__testing.DEFAULT_IGNORED_DIR_NAMES].sort());
+	});
+
+	it('trims whitespace around valid configured directory names', () => {
+		writeFileSync(configPath, JSON.stringify({ignored_dirs: ['  vendor  ', 'tmp']}));
 		const resolved = readIgnoredDirsFromConfigViaTesting(configPath);
-		expect(resolved).toStrictEqual(['keep']);
+		expect(resolved).toStrictEqual(['vendor', 'tmp']);
 	});
 
 	function readIgnoredDirsFromConfigViaTesting(path: string): string[] | null {
