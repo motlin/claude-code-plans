@@ -1,7 +1,6 @@
 import {watch} from 'chokidar';
 import type {FSWatcher} from 'chokidar';
 import type {Stats} from 'node:fs';
-import {readFileSync} from 'node:fs';
 import {stat} from 'node:fs/promises';
 import {basename, dirname, join} from 'node:path';
 import {eq} from 'drizzle-orm';
@@ -28,7 +27,7 @@ type IndexDb = BetterSQLite3Database<typeof dbSchema>;
 type BroadcastFn = (type: string, data: Record<string, unknown>) => void;
 import {toSessionSummaryPayload} from './session-summary';
 import {hmrPersist, hmrDispose} from './hmr-persist';
-import {getConfigPath} from './config';
+import {getConfigPath, readConfig} from './config';
 import {broadcastTyped, broadcast, addClient, removeClient} from './sse-broadcast';
 import {recentlyBroadcast} from './update-dedupe';
 
@@ -106,21 +105,12 @@ function parseDirList(raw: string): string[] {
 /**
  * Read the `ignored_dirs` array from this app's own config file
  * (`~/.config/claude-code-plans/config.json`). Returns `null` when the file
- * is missing, unreadable, not valid JSON, or has no usable `ignored_dirs`
- * array — callers fall back to the next source.
+ * is missing, unreadable, not valid JSON, fails strict schema validation, or
+ * has no usable `ignored_dirs` array — callers fall back to the next source.
  */
 function readIgnoredDirsFromConfig(configPath: string): string[] | null {
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(readFileSync(configPath, 'utf8'));
-	} catch {
-		return null;
-	}
-	if (typeof parsed !== 'object' || parsed === null) return null;
-	const value = (parsed as Record<string, unknown>)['ignored_dirs'];
-	if (!Array.isArray(value)) return null;
-	const dirs = value.filter((d): d is string => typeof d === 'string' && d.trim().length > 0).map((d) => d.trim());
-	return dirs.length > 0 ? dirs : null;
+	const dirs = readConfig(configPath)?.ignored_dirs;
+	return dirs && dirs.length > 0 ? dirs : null;
 }
 
 /**
