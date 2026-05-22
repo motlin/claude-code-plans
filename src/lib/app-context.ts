@@ -24,7 +24,7 @@ interface AppContext {
 }
 
 export async function createAppContext(config: AppContextConfig): Promise<AppContext> {
-	const db = openAppDb(config.cacheDir === undefined ? undefined : {cacheDir: config.cacheDir});
+	const db = openAppDb({cacheDir: config.cacheDir});
 	try {
 		await fullScan(db.index, config.projectsDir, config.tasksDir, config.plansDir);
 	} catch (err) {
