@@ -346,6 +346,7 @@ const SkillListingAttachmentPayload = z
 		content: z.string().optional(),
 		skillCount: z.number().optional(),
 		isInitial: z.boolean().optional(),
+		names: z.array(z.string()).optional(),
 	})
 	.strict();
 
