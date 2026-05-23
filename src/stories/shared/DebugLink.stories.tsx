@@ -1,6 +1,6 @@
-import type {Meta, StoryObj} from '@storybook/react-vite';
-import {DebugLink} from '../../components/debug-link';
-import {SettingsProvider} from '../../components/settings-provider';
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { DebugLink } from "../../components/debug-link";
+import { SettingsProvider } from "../../components/settings-provider";
 
 /**
  * DebugLink is hidden unless debug mode is enabled.
@@ -10,18 +10,18 @@ import {SettingsProvider} from '../../components/settings-provider';
  * props cannot be represented via Storybook's flattened args type.
  */
 const meta = {
-	title: 'Shared/DebugLink',
-	component: DebugLink,
-	decorators: [
-		(Story) => {
-			localStorage.setItem('ccp-show-debug', 'true');
-			return (
-				<SettingsProvider>
-					<Story />
-				</SettingsProvider>
-			);
-		},
-	],
+  title: "Shared/DebugLink",
+  component: DebugLink,
+  decorators: [
+    (Story) => {
+      localStorage.setItem("ccp-show-debug", "true");
+      return (
+        <SettingsProvider>
+          <Story />
+        </SettingsProvider>
+      );
+    },
+  ],
 } satisfies Meta;
 
 export default meta;
@@ -31,19 +31,9 @@ export default meta;
 type Story = StoryObj;
 
 export const SessionLink: Story = {
-	render: () => (
-		<DebugLink
-			sessionId="abc123"
-			uuid="deadbeef-1234-5678-9abc-def012345678"
-		/>
-	),
+  render: () => <DebugLink sessionId="abc123" uuid="deadbeef-1234-5678-9abc-def012345678" />,
 };
 
 export const MissingUuid: Story = {
-	render: () => (
-		<DebugLink
-			sessionId="abc123"
-			uuid={undefined}
-		/>
-	),
+  render: () => <DebugLink sessionId="abc123" uuid={undefined} />,
 };

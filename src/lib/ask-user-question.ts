@@ -4,15 +4,15 @@
  */
 
 export interface QuestionLike {
-	question: string;
-	header?: string;
-	options: Array<{label: string; description?: string}>;
-	multiSelect?: boolean;
+  question: string;
+  header?: string;
+  options: Array<{ label: string; description?: string }>;
+  multiSelect?: boolean;
 }
 
 interface AnswerEntry {
-	question: string;
-	answer: string;
+  question: string;
+  answer: string;
 }
 
 /**
@@ -27,16 +27,16 @@ interface AnswerEntry {
  * passed through verbatim as the answer value.
  */
 export function formatAnswerPrompt(toolUseId: string, answers: AnswerEntry[]): string {
-	const pieces = answers.map((a) => `"${escapeQuote(a.question)}"="${escapeQuote(a.answer)}"`);
-	return [
-		`(Answering AskUserQuestion ${toolUseId} from the web viewer.)`,
-		`User has answered your questions: ${pieces.join(', ')}.`,
-		"You can now continue with the user's answers in mind.",
-	].join(' ');
+  const pieces = answers.map((a) => `"${escapeQuote(a.question)}"="${escapeQuote(a.answer)}"`);
+  return [
+    `(Answering AskUserQuestion ${toolUseId} from the web viewer.)`,
+    `User has answered your questions: ${pieces.join(", ")}.`,
+    "You can now continue with the user's answers in mind.",
+  ].join(" ");
 }
 
 function escapeQuote(value: string): string {
-	return value.replace(/"/g, '\\"');
+  return value.replace(/"/g, '\\"');
 }
 
 /**
@@ -46,29 +46,29 @@ function escapeQuote(value: string): string {
  * neither form is present (e.g. malformed input).
  */
 export function normalizeQuestions(input: Record<string, unknown>): QuestionLike[] | null {
-	const multi = input['questions'];
-	if (Array.isArray(multi) && multi.length > 0) {
-		return multi as QuestionLike[];
-	}
-	const singleQ = typeof input['question'] === 'string' ? (input['question'] as string) : null;
-	const singleOpts = input['options'] as Array<{label: string; description?: string}> | undefined;
-	if (singleQ && singleOpts && singleOpts.length > 0) {
-		const data: QuestionLike = {question: singleQ, options: singleOpts};
-		if (typeof input['multiSelect'] === 'boolean') data.multiSelect = input['multiSelect'];
-		if (typeof input['header'] === 'string') data.header = input['header'] as string;
-		return [data];
-	}
-	return null;
+  const multi = input["questions"];
+  if (Array.isArray(multi) && multi.length > 0) {
+    return multi as QuestionLike[];
+  }
+  const singleQ = typeof input["question"] === "string" ? (input["question"] as string) : null;
+  const singleOpts = input["options"] as Array<{ label: string; description?: string }> | undefined;
+  if (singleQ && singleOpts && singleOpts.length > 0) {
+    const data: QuestionLike = { question: singleQ, options: singleOpts };
+    if (typeof input["multiSelect"] === "boolean") data.multiSelect = input["multiSelect"];
+    if (typeof input["header"] === "string") data.header = input["header"] as string;
+    return [data];
+  }
+  return null;
 }
 
 export interface QuestionDraft {
-	selected: Set<string>;
-	otherText: string;
-	useOther: boolean;
+  selected: Set<string>;
+  otherText: string;
+  useOther: boolean;
 }
 
 export function makeInitialDraft(): QuestionDraft {
-	return {selected: new Set(), otherText: '', useOther: false};
+  return { selected: new Set(), otherText: "", useOther: false };
 }
 
 /**
@@ -77,27 +77,27 @@ export function makeInitialDraft(): QuestionDraft {
  * text). For multiSelect questions, joins selected labels with ', '.
  */
 export function answerForQuestion(question: QuestionLike, draft: QuestionDraft): string | null {
-	if (draft.useOther) {
-		const trimmed = draft.otherText.trim();
-		return trimmed.length > 0 ? trimmed : null;
-	}
-	const selected = [...draft.selected];
-	if (selected.length === 0) return null;
-	if (question.multiSelect) return selected.join(', ');
-	return selected[0] ?? null;
+  if (draft.useOther) {
+    const trimmed = draft.otherText.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  const selected = [...draft.selected];
+  if (selected.length === 0) return null;
+  if (question.multiSelect) return selected.join(", ");
+  return selected[0] ?? null;
 }
 
 export interface ParsedAnswer {
-	question: string;
-	answer: string;
-	notes: string | null;
+  question: string;
+  answer: string;
+  notes: string | null;
 }
 
-const ENVELOPE_PREFIX = 'User has answered your questions: ';
+const ENVELOPE_PREFIX = "User has answered your questions: ";
 const ENVELOPE_SUFFIX = ". You can now continue with the user's answers in mind.";
-const NOTES_MARKER = ' user notes: ';
-const PREVIEW_MARKER = ' selected preview:';
-const PAIR_SEPARATOR = ', ';
+const NOTES_MARKER = " user notes: ";
+const PREVIEW_MARKER = " selected preview:";
+const PAIR_SEPARATOR = ", ";
 
 /**
  * Parse the canonical AskUserQuestion `tool_result.content` text into a
@@ -112,41 +112,41 @@ const PAIR_SEPARATOR = ', ';
  * pairs even when answers or notes contain commas.
  */
 export function parseAnswerResult(text: string, questions: QuestionLike[]): ParsedAnswer[] | null {
-	if (questions.length === 0) return null;
-	if (!text.startsWith(ENVELOPE_PREFIX)) return null;
-	const suffixStart = text.lastIndexOf(ENVELOPE_SUFFIX);
-	if (suffixStart < 0) return null;
-	let body = text.slice(ENVELOPE_PREFIX.length, suffixStart);
+  if (questions.length === 0) return null;
+  if (!text.startsWith(ENVELOPE_PREFIX)) return null;
+  const suffixStart = text.lastIndexOf(ENVELOPE_SUFFIX);
+  if (suffixStart < 0) return null;
+  let body = text.slice(ENVELOPE_PREFIX.length, suffixStart);
 
-	const result: ParsedAnswer[] = [];
-	for (let i = 0; i < questions.length; i++) {
-		const question = questions[i]!.question;
-		const anchor = `"${escapeQuote(question)}"=`;
-		if (!body.startsWith(anchor)) return null;
-		let cursor = anchor.length;
-		const answerEnd = findClosingQuote(body, cursor + 1);
-		if (answerEnd < 0) return null;
-		const answer = unescapeQuote(body.slice(cursor + 1, answerEnd));
-		cursor = answerEnd + 1;
+  const result: ParsedAnswer[] = [];
+  for (let i = 0; i < questions.length; i++) {
+    const question = questions[i]!.question;
+    const anchor = `"${escapeQuote(question)}"=`;
+    if (!body.startsWith(anchor)) return null;
+    let cursor = anchor.length;
+    const answerEnd = findClosingQuote(body, cursor + 1);
+    if (answerEnd < 0) return null;
+    const answer = unescapeQuote(body.slice(cursor + 1, answerEnd));
+    cursor = answerEnd + 1;
 
-		// Find where this question's segment ends. The next question's anchor
-		// (after a ", " separator) is the boundary; otherwise the segment runs
-		// to the end of the body.
-		let segmentEnd = body.length;
-		if (i + 1 < questions.length) {
-			const nextAnchor = `${PAIR_SEPARATOR}"${escapeQuote(questions[i + 1]!.question)}"=`;
-			const nextIdx = body.indexOf(nextAnchor, cursor);
-			if (nextIdx < 0) return null;
-			segmentEnd = nextIdx;
-		}
+    // Find where this question's segment ends. The next question's anchor
+    // (after a ", " separator) is the boundary; otherwise the segment runs
+    // to the end of the body.
+    let segmentEnd = body.length;
+    if (i + 1 < questions.length) {
+      const nextAnchor = `${PAIR_SEPARATOR}"${escapeQuote(questions[i + 1]!.question)}"=`;
+      const nextIdx = body.indexOf(nextAnchor, cursor);
+      if (nextIdx < 0) return null;
+      segmentEnd = nextIdx;
+    }
 
-		const notes = extractNotes(body.slice(cursor, segmentEnd));
+    const notes = extractNotes(body.slice(cursor, segmentEnd));
 
-		result.push({question, answer, notes});
-		body = body.slice(segmentEnd + (i + 1 < questions.length ? PAIR_SEPARATOR.length : 0));
-	}
-	if (body.length !== 0) return null;
-	return result;
+    result.push({ question, answer, notes });
+    body = body.slice(segmentEnd + (i + 1 < questions.length ? PAIR_SEPARATOR.length : 0));
+  }
+  if (body.length !== 0) return null;
+  return result;
 }
 
 /**
@@ -156,30 +156,30 @@ export function parseAnswerResult(text: string, questions: QuestionLike[]): Pars
  * the notes value and ignore other annotations.
  */
 function extractNotes(remainder: string): string | null {
-	if (remainder.length === 0) return null;
-	const notesStart = remainder.indexOf(NOTES_MARKER);
-	if (notesStart < 0) return null;
-	const notesContent = remainder.slice(notesStart + NOTES_MARKER.length);
-	const previewIndex = notesContent.indexOf(PREVIEW_MARKER);
-	if (previewIndex >= 0) {
-		return notesContent.slice(0, previewIndex);
-	}
-	return notesContent;
+  if (remainder.length === 0) return null;
+  const notesStart = remainder.indexOf(NOTES_MARKER);
+  if (notesStart < 0) return null;
+  const notesContent = remainder.slice(notesStart + NOTES_MARKER.length);
+  const previewIndex = notesContent.indexOf(PREVIEW_MARKER);
+  if (previewIndex >= 0) {
+    return notesContent.slice(0, previewIndex);
+  }
+  return notesContent;
 }
 
 function findClosingQuote(text: string, start: number): number {
-	let i = start;
-	while (i < text.length) {
-		if (text[i] === '\\' && i + 1 < text.length) {
-			i += 2;
-			continue;
-		}
-		if (text[i] === '"') return i;
-		i++;
-	}
-	return -1;
+  let i = start;
+  while (i < text.length) {
+    if (text[i] === "\\" && i + 1 < text.length) {
+      i += 2;
+      continue;
+    }
+    if (text[i] === '"') return i;
+    i++;
+  }
+  return -1;
 }
 
 function unescapeQuote(value: string): string {
-	return value.replace(/\\"/g, '"');
+  return value.replace(/\\"/g, '"');
 }

@@ -1,41 +1,36 @@
 repos:
-    - repo: https://github.com/pre-commit/pre-commit-hooks
-      rev: v5.0.0
-      hooks:
-          - id: check-yaml
-            args: ['--allow-multiple-documents']
-          - id: check-json
-            exclude: "tsconfig.*\\.json|package-lock\\.json|biome\\.jsonc"
-          - id: check-toml
-          - id: end-of-file-fixer
-            exclude: "package-lock\\.json|\\.idea/"
-          - id: trailing-whitespace
-            exclude: "package-lock\\.json|\\.idea/"
-          - id: check-added-large-files
-            args: ['--maxkb=1000']
-          - id: check-case-conflict
-          - id: check-merge-conflict
-          - id: detect-private-key
-          - id: mixed-line-ending
-            args: ['--fix=lf']
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+        args: ["--allow-multiple-documents"]
+      - id: check-json
+        exclude: "tsconfig.*\\.json|package-lock\\.json"
+      - id: check-toml
+      - id: end-of-file-fixer
+        exclude: "package-lock\\.json|\\.idea/"
+      - id: trailing-whitespace
+        exclude: "package-lock\\.json|\\.idea/"
+      - id: check-added-large-files
+        args: ["--maxkb=1000"]
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
 
-    - repo: local
-      hooks:
-          - id: biome
-            name: biome
-            entry: npx @biomejs/biome format --write --no-errors-on-unmatched
-            language: system
-            types: [file]
+  - repo: local
+    hooks:
+      - id: vp-check
+        name: vp check
+        entry: npx vp check --fix
+        language: system
+        pass_filenames: false
+        types: [file]
 
-          - id: eslint
-            name: eslint
-            entry: npx eslint --fix
-            language: system
-            types: [file]
-
-          - id: fallow
-            name: fallow fix
-            entry: npx fallow fix --base HEAD --yes
-            language: system
-            pass_filenames: false
-            types: [file]
+      - id: fallow
+        name: fallow fix
+        entry: npx fallow fix --base HEAD --yes
+        language: system
+        pass_filenames: false
+        types: [file]

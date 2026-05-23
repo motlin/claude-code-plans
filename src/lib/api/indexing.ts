@@ -1,5 +1,5 @@
-import {z} from 'zod';
+import { z } from "zod";
 
 export const IndexingStatusResponse = z.object({
-	isIndexing: z.boolean(),
+  isIndexing: z.boolean(),
 });

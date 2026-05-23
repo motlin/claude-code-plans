@@ -9,7 +9,7 @@
  * broadcasts.
  */
 
-import {KNOWN_HOOK_EVENTS} from './hook-events';
+import { KNOWN_HOOK_EVENTS } from "./hook-events";
 
 export const DEFAULT_HOOK_PORT = 7526;
 
@@ -22,16 +22,16 @@ export const DEFAULT_HOOK_PORT = 7526;
 export const HOOK_EVENT_NAMES = KNOWN_HOOK_EVENTS;
 
 interface HookEntry {
-	type: 'command';
-	command: string;
+  type: "command";
+  command: string;
 }
 
 interface HookMatcher {
-	hooks: HookEntry[];
+  hooks: HookEntry[];
 }
 
 interface HooksConfig {
-	hooks: Record<string, HookMatcher[]>;
+  hooks: Record<string, HookMatcher[]>;
 }
 
 /**
@@ -46,38 +46,39 @@ interface HooksConfig {
  * captured stdin payload, and assert the result still parses cleanly under
  * `HookEventEnvelope`.
  */
-export const HOOK_PAYLOAD_JQ_FILTER = '. + {claude_env: ($ENV | with_entries(select(.key | startswith("CLAUDE"))))}';
+export const HOOK_PAYLOAD_JQ_FILTER =
+  '. + {claude_env: ($ENV | with_entries(select(.key | startswith("CLAUDE"))))}';
 
 function curlPost(port: number): string {
-	// --connect-timeout 0.1 + `|| true` guarantee the hook never blocks Claude:
-	// if the viewer isn't running the curl returns immediately and the shell
-	// exits 0 regardless.
-	return `jq -c '${HOOK_PAYLOAD_JQ_FILTER}' | curl -sX POST --connect-timeout 0.1 http://localhost:${port}/api/hook -H 'Content-Type: application/json' --data-binary @- >/dev/null 2>&1 || true`;
+  // --connect-timeout 0.1 + `|| true` guarantee the hook never blocks Claude:
+  // if the viewer isn't running the curl returns immediately and the shell
+  // exits 0 regardless.
+  return `jq -c '${HOOK_PAYLOAD_JQ_FILTER}' | curl -sX POST --connect-timeout 0.1 http://localhost:${port}/api/hook -H 'Content-Type: application/json' --data-binary @- >/dev/null 2>&1 || true`;
 }
 
 interface GenerateOptions {
-	port?: number;
+  port?: number;
 }
 
 export function generateHooksConfig(options?: GenerateOptions): HooksConfig {
-	const port = options?.port ?? DEFAULT_HOOK_PORT;
-	const hooks: Record<string, HookMatcher[]> = {};
-	const command = curlPost(port);
+  const port = options?.port ?? DEFAULT_HOOK_PORT;
+  const hooks: Record<string, HookMatcher[]> = {};
+  const command = curlPost(port);
 
-	for (const eventName of HOOK_EVENT_NAMES) {
-		hooks[eventName] = [
-			{
-				hooks: [
-					{
-						type: 'command',
-						command,
-					},
-				],
-			},
-		];
-	}
+  for (const eventName of HOOK_EVENT_NAMES) {
+    hooks[eventName] = [
+      {
+        hooks: [
+          {
+            type: "command",
+            command,
+          },
+        ],
+      },
+    ];
+  }
 
-	return {hooks};
+  return { hooks };
 }
 
 /**
@@ -85,5 +86,5 @@ export function generateHooksConfig(options?: GenerateOptions): HooksConfig {
  * suitable for copying into ~/.claude/settings.json.
  */
 export function generateHooksJson(options?: GenerateOptions): string {
-	return JSON.stringify(generateHooksConfig(options), null, 2);
+  return JSON.stringify(generateHooksConfig(options), null, 2);
 }

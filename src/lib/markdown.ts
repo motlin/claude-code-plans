@@ -9,95 +9,97 @@
  * `<MarkdownView markdown={...} />` component which wraps it with a raw-`<pre>`
  * fallback for the time before the chunk arrives.
  */
-import type {HighlighterCore} from '@shikijs/core';
+import type { HighlighterCore } from "@shikijs/core";
 
 let highlighterPromise: Promise<HighlighterCore> | null = null;
 
 async function getHighlighter(): Promise<HighlighterCore> {
-	if (highlighterPromise) return highlighterPromise;
-	highlighterPromise = (async () => {
-		const [{createHighlighterCore}, {createJavaScriptRegexEngine}, {claudeLight}] = await Promise.all([
-			import('@shikijs/core'),
-			import('@shikijs/engine-javascript'),
-			import('./claude-light-theme'),
-		]);
-		return createHighlighterCore({
-			themes: [claudeLight, import('shiki/themes/github-dark.mjs')],
-			langs: [
-				import('shiki/langs/typescript.mjs'),
-				import('shiki/langs/tsx.mjs'),
-				import('shiki/langs/javascript.mjs'),
-				import('shiki/langs/jsx.mjs'),
-				import('shiki/langs/json.mjs'),
-				import('shiki/langs/python.mjs'),
-				import('shiki/langs/css.mjs'),
-				import('shiki/langs/html.mjs'),
-				import('shiki/langs/markdown.mjs'),
-				import('shiki/langs/yaml.mjs'),
-				import('shiki/langs/shellscript.mjs'),
-				import('shiki/langs/rust.mjs'),
-				import('shiki/langs/go.mjs'),
-				import('shiki/langs/ruby.mjs'),
-				import('shiki/langs/java.mjs'),
-				import('shiki/langs/sql.mjs'),
-				import('shiki/langs/toml.mjs'),
-				import('shiki/langs/xml.mjs'),
-				import('shiki/langs/c.mjs'),
-				import('shiki/langs/cpp.mjs'),
-			],
-			engine: createJavaScriptRegexEngine(),
-		});
-	})();
-	return highlighterPromise;
+  if (highlighterPromise) return highlighterPromise;
+  highlighterPromise = (async () => {
+    const [{ createHighlighterCore }, { createJavaScriptRegexEngine }, { claudeLight }] =
+      await Promise.all([
+        import("@shikijs/core"),
+        import("@shikijs/engine-javascript"),
+        import("./claude-light-theme"),
+      ]);
+    return createHighlighterCore({
+      themes: [claudeLight, import("shiki/themes/github-dark.mjs")],
+      langs: [
+        import("shiki/langs/typescript.mjs"),
+        import("shiki/langs/tsx.mjs"),
+        import("shiki/langs/javascript.mjs"),
+        import("shiki/langs/jsx.mjs"),
+        import("shiki/langs/json.mjs"),
+        import("shiki/langs/python.mjs"),
+        import("shiki/langs/css.mjs"),
+        import("shiki/langs/html.mjs"),
+        import("shiki/langs/markdown.mjs"),
+        import("shiki/langs/yaml.mjs"),
+        import("shiki/langs/shellscript.mjs"),
+        import("shiki/langs/rust.mjs"),
+        import("shiki/langs/go.mjs"),
+        import("shiki/langs/ruby.mjs"),
+        import("shiki/langs/java.mjs"),
+        import("shiki/langs/sql.mjs"),
+        import("shiki/langs/toml.mjs"),
+        import("shiki/langs/xml.mjs"),
+        import("shiki/langs/c.mjs"),
+        import("shiki/langs/cpp.mjs"),
+      ],
+      engine: createJavaScriptRegexEngine(),
+    });
+  })();
+  return highlighterPromise;
 }
 
 interface MarkdownItLike {
-	render(src: string): string;
-	renderInline(src: string): string;
+  render(src: string): string;
+  renderInline(src: string): string;
 }
 
 let mdPromise: Promise<MarkdownItLike> | null = null;
 
 async function getMd(): Promise<MarkdownItLike> {
-	if (mdPromise) return mdPromise;
-	mdPromise = (async () => {
-		const highlighter = await getHighlighter();
-		const [{default: MarkdownIt}, {default: taskLists}, {default: footnote}] = await Promise.all([
-			import('markdown-it'),
-			import('markdown-it-task-lists'),
-			import('markdown-it-footnote'),
-		]);
+  if (mdPromise) return mdPromise;
+  mdPromise = (async () => {
+    const highlighter = await getHighlighter();
+    const [{ default: MarkdownIt }, { default: taskLists }, { default: footnote }] =
+      await Promise.all([
+        import("markdown-it"),
+        import("markdown-it-task-lists"),
+        import("markdown-it-footnote"),
+      ]);
 
-		const loadedLanguages = highlighter.getLoadedLanguages();
-		const md = MarkdownIt({
-			html: true,
-			linkify: true,
-			typographer: true,
-			highlight(code: string, lang: string): string {
-				const language = lang || 'text';
-				if (language === 'text' || !loadedLanguages.includes(language)) return '';
-				try {
-					let trimmed = code;
-					if (trimmed.endsWith('\n')) trimmed = trimmed.slice(0, -1);
-					return highlighter.codeToHtml(trimmed, {
-						lang: language,
-						themes: {
-							light: 'claude-light',
-							dark: 'github-dark',
-						},
-						defaultColor: 'light',
-						cssVariablePrefix: '--shiki-',
-					});
-				} catch {
-					return '';
-				}
-			},
-		});
-		md.use(taskLists);
-		md.use(footnote);
-		return md;
-	})();
-	return mdPromise;
+    const loadedLanguages = highlighter.getLoadedLanguages();
+    const md = MarkdownIt({
+      html: true,
+      linkify: true,
+      typographer: true,
+      highlight(code: string, lang: string): string {
+        const language = lang || "text";
+        if (language === "text" || !loadedLanguages.includes(language)) return "";
+        try {
+          let trimmed = code;
+          if (trimmed.endsWith("\n")) trimmed = trimmed.slice(0, -1);
+          return highlighter.codeToHtml(trimmed, {
+            lang: language,
+            themes: {
+              light: "claude-light",
+              dark: "github-dark",
+            },
+            defaultColor: "light",
+            cssVariablePrefix: "--shiki-",
+          });
+        } catch {
+          return "";
+        }
+      },
+    });
+    md.use(taskLists);
+    md.use(footnote);
+    return md;
+  })();
+  return mdPromise;
 }
 
 /**
@@ -105,9 +107,9 @@ async function getMd(): Promise<MarkdownItLike> {
  * first call; subsequent calls reuse the cached instances.
  */
 export async function renderMarkdown(markdown: string): Promise<string> {
-	if (!markdown.trim()) return '';
-	const md = await getMd();
-	return md.render(markdown);
+  if (!markdown.trim()) return "";
+  const md = await getMd();
+  return md.render(markdown);
 }
 
 /**
@@ -115,9 +117,9 @@ export async function renderMarkdown(markdown: string): Promise<string> {
  * elements). Suitable for short single-line snippets like task subjects.
  */
 async function renderInlineMarkdown(markdown: string): Promise<string> {
-	if (!markdown.trim()) return '';
-	const md = await getMd();
-	return md.renderInline(markdown);
+  if (!markdown.trim()) return "";
+  const md = await getMd();
+  return md.renderInline(markdown);
 }
 
 /**
@@ -126,7 +128,7 @@ async function renderInlineMarkdown(markdown: string): Promise<string> {
  * Use at app startup so the chunk is ready before any `MarkdownView` mounts.
  */
 export function preloadMarkdown(): void {
-	void getMd();
+  void getMd();
 }
 
 const MARKDOWN_PROMISE_CACHE_MAX = 64;
@@ -134,20 +136,20 @@ const markdownPromiseCache = new Map<string, Promise<string>>();
 const inlineMarkdownPromiseCache = new Map<string, Promise<string>>();
 
 function getOrSetCached(
-	cache: Map<string, Promise<string>>,
-	key: string,
-	factory: () => Promise<string>,
+  cache: Map<string, Promise<string>>,
+  key: string,
+  factory: () => Promise<string>,
 ): Promise<string> {
-	const existing = cache.get(key);
-	if (existing) return existing;
-	const promise = factory();
-	cache.set(key, promise);
-	while (cache.size > MARKDOWN_PROMISE_CACHE_MAX) {
-		const oldest = cache.keys().next().value;
-		if (oldest === undefined) break;
-		cache.delete(oldest);
-	}
-	return promise;
+  const existing = cache.get(key);
+  if (existing) return existing;
+  const promise = factory();
+  cache.set(key, promise);
+  while (cache.size > MARKDOWN_PROMISE_CACHE_MAX) {
+    const oldest = cache.keys().next().value;
+    if (oldest === undefined) break;
+    cache.delete(oldest);
+  }
+  return promise;
 }
 
 /**
@@ -156,7 +158,7 @@ function getOrSetCached(
  * re-trigger on every render. Bounded to the last 64 inputs via FIFO eviction.
  */
 export function renderMarkdownPromise(markdown: string): Promise<string> {
-	return getOrSetCached(markdownPromiseCache, markdown, () => renderMarkdown(markdown));
+  return getOrSetCached(markdownPromiseCache, markdown, () => renderMarkdown(markdown));
 }
 
 /**
@@ -165,5 +167,5 @@ export function renderMarkdownPromise(markdown: string): Promise<string> {
  * the last 64 inputs via FIFO eviction.
  */
 export function renderInlineMarkdownPromise(markdown: string): Promise<string> {
-	return getOrSetCached(inlineMarkdownPromiseCache, markdown, () => renderInlineMarkdown(markdown));
+  return getOrSetCached(inlineMarkdownPromiseCache, markdown, () => renderInlineMarkdown(markdown));
 }

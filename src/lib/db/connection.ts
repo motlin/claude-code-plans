@@ -1,14 +1,14 @@
-import {drizzle, type BetterSQLite3Database} from 'drizzle-orm/better-sqlite3';
-import Database from 'better-sqlite3';
-import {mkdirSync} from 'node:fs';
-import {join} from 'node:path';
-import {homedir} from 'node:os';
-import * as schema from './schema';
+import { drizzle, type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import Database from "better-sqlite3";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { homedir } from "node:os";
+import * as schema from "./schema";
 
 export interface AppDb {
-	index: BetterSQLite3Database<typeof schema>;
-	summaries: BetterSQLite3Database<typeof schema>;
-	close(): void;
+  index: BetterSQLite3Database<typeof schema>;
+  summaries: BetterSQLite3Database<typeof schema>;
+  close(): void;
 }
 
 const CREATE_TABLES_SQL = `
@@ -163,101 +163,103 @@ CREATE TABLE IF NOT EXISTS summaries (
 `;
 
 function dropAllTables(sqlite: Database.Database): void {
-	sqlite.exec('DROP TABLE IF EXISTS sessions_fts');
-	sqlite.exec('DROP TABLE IF EXISTS message_content_fts');
-	sqlite.exec('DROP TABLE IF EXISTS tasks');
-	sqlite.exec('DROP TABLE IF EXISTS todo_tasks');
-	sqlite.exec('DROP TABLE IF EXISTS todo_files');
-	sqlite.exec('DROP TABLE IF EXISTS memories');
-	sqlite.exec('DROP TABLE IF EXISTS starred_sessions');
-	sqlite.exec('DROP TABLE IF EXISTS plans');
-	sqlite.exec('DROP TABLE IF EXISTS hook_schema_drift');
-	sqlite.exec('DROP TABLE IF EXISTS subagents');
-	sqlite.exec('DROP TABLE IF EXISTS plan_sessions');
-	sqlite.exec('DROP TABLE IF EXISTS sessions');
-	sqlite.exec('DROP TABLE IF EXISTS projects');
-	sqlite.exec('DROP TABLE IF EXISTS indexed_files');
-	sqlite.exec('DROP TABLE IF EXISTS metadata');
+  sqlite.exec("DROP TABLE IF EXISTS sessions_fts");
+  sqlite.exec("DROP TABLE IF EXISTS message_content_fts");
+  sqlite.exec("DROP TABLE IF EXISTS tasks");
+  sqlite.exec("DROP TABLE IF EXISTS todo_tasks");
+  sqlite.exec("DROP TABLE IF EXISTS todo_files");
+  sqlite.exec("DROP TABLE IF EXISTS memories");
+  sqlite.exec("DROP TABLE IF EXISTS starred_sessions");
+  sqlite.exec("DROP TABLE IF EXISTS plans");
+  sqlite.exec("DROP TABLE IF EXISTS hook_schema_drift");
+  sqlite.exec("DROP TABLE IF EXISTS subagents");
+  sqlite.exec("DROP TABLE IF EXISTS plan_sessions");
+  sqlite.exec("DROP TABLE IF EXISTS sessions");
+  sqlite.exec("DROP TABLE IF EXISTS projects");
+  sqlite.exec("DROP TABLE IF EXISTS indexed_files");
+  sqlite.exec("DROP TABLE IF EXISTS metadata");
 }
 
 function initIndexDb(sqlite: Database.Database): void {
-	sqlite.pragma('journal_mode = WAL');
-	sqlite.pragma('foreign_keys = ON');
+  sqlite.pragma("journal_mode = WAL");
+  sqlite.pragma("foreign_keys = ON");
 
-	const metadataExists = sqlite
-		.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='metadata'")
-		.get() as {name: string} | undefined;
-	if (metadataExists) {
-		const row = sqlite.prepare("SELECT value FROM metadata WHERE key = 'schema_version'").get() as
-			| {value: string}
-			| undefined;
-		if (!row || row.value !== schema.SCHEMA_VERSION) {
-			dropAllTables(sqlite);
-		}
-	}
+  const metadataExists = sqlite
+    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='metadata'")
+    .get() as { name: string } | undefined;
+  if (metadataExists) {
+    const row = sqlite.prepare("SELECT value FROM metadata WHERE key = 'schema_version'").get() as
+      | { value: string }
+      | undefined;
+    if (!row || row.value !== schema.SCHEMA_VERSION) {
+      dropAllTables(sqlite);
+    }
+  }
 
-	sqlite.exec(CREATE_TABLES_SQL);
-	sqlite.exec(CREATE_FTS_SQL);
-	sqlite
-		.prepare("INSERT OR REPLACE INTO metadata (key, value) VALUES ('schema_version', ?)")
-		.run(schema.SCHEMA_VERSION);
+  sqlite.exec(CREATE_TABLES_SQL);
+  sqlite.exec(CREATE_FTS_SQL);
+  sqlite
+    .prepare("INSERT OR REPLACE INTO metadata (key, value) VALUES ('schema_version', ?)")
+    .run(schema.SCHEMA_VERSION);
 }
 
 function initSummariesDb(sqlite: Database.Database): void {
-	sqlite.pragma('journal_mode = WAL');
-	sqlite.exec(CREATE_SUMMARIES_SQL);
+  sqlite.pragma("journal_mode = WAL");
+  sqlite.exec(CREATE_SUMMARIES_SQL);
 }
 
 export function getCacheDir(): string {
-	const xdg = process.env['XDG_CACHE_HOME'];
-	const base = xdg || join(homedir(), '.cache');
-	return join(base, 'claude-code-plans');
+  const xdg = process.env["XDG_CACHE_HOME"];
+  const base = xdg || join(homedir(), ".cache");
+  return join(base, "claude-code-plans");
 }
 
-export function openAppDb(opts?: {cacheDir?: string | undefined}): AppDb {
-	// Under vitest, refuse to fall back to the production cache dir. Doing so
-	// opens the real index.db and contends for its write lock with a running
-	// dev/prod server — a failure that only surfaces when the app happens to
-	// be running. Force tests to be explicit (openTestDb or a temp dir).
-	if (process.env['VITEST'] && !opts?.cacheDir) {
-		throw new Error('openAppDb: tests must pass an explicit cacheDir (use openTestDb or a temp dir)');
-	}
-	const cacheDir = opts?.cacheDir ?? getCacheDir();
-	mkdirSync(cacheDir, {recursive: true});
+export function openAppDb(opts?: { cacheDir?: string | undefined }): AppDb {
+  // Under vitest, refuse to fall back to the production cache dir. Doing so
+  // opens the real index.db and contends for its write lock with a running
+  // dev/prod server — a failure that only surfaces when the app happens to
+  // be running. Force tests to be explicit (openTestDb or a temp dir).
+  if (process.env["VITEST"] && !opts?.cacheDir) {
+    throw new Error(
+      "openAppDb: tests must pass an explicit cacheDir (use openTestDb or a temp dir)",
+    );
+  }
+  const cacheDir = opts?.cacheDir ?? getCacheDir();
+  mkdirSync(cacheDir, { recursive: true });
 
-	const indexSqlite = new Database(join(cacheDir, 'index.db'));
-	initIndexDb(indexSqlite);
-	const indexDb = drizzle(indexSqlite, {schema});
+  const indexSqlite = new Database(join(cacheDir, "index.db"));
+  initIndexDb(indexSqlite);
+  const indexDb = drizzle(indexSqlite, { schema });
 
-	const summariesSqlite = new Database(join(cacheDir, 'summaries.db'));
-	initSummariesDb(summariesSqlite);
-	const summariesDb = drizzle(summariesSqlite, {schema});
+  const summariesSqlite = new Database(join(cacheDir, "summaries.db"));
+  initSummariesDb(summariesSqlite);
+  const summariesDb = drizzle(summariesSqlite, { schema });
 
-	return {
-		index: indexDb,
-		summaries: summariesDb,
-		close() {
-			indexSqlite.close();
-			summariesSqlite.close();
-		},
-	};
+  return {
+    index: indexDb,
+    summaries: summariesDb,
+    close() {
+      indexSqlite.close();
+      summariesSqlite.close();
+    },
+  };
 }
 
 export function openTestDb(): AppDb {
-	const indexSqlite = new Database(':memory:');
-	initIndexDb(indexSqlite);
-	const indexDb = drizzle(indexSqlite, {schema});
+  const indexSqlite = new Database(":memory:");
+  initIndexDb(indexSqlite);
+  const indexDb = drizzle(indexSqlite, { schema });
 
-	const summariesSqlite = new Database(':memory:');
-	initSummariesDb(summariesSqlite);
-	const summariesDb = drizzle(summariesSqlite, {schema});
+  const summariesSqlite = new Database(":memory:");
+  initSummariesDb(summariesSqlite);
+  const summariesDb = drizzle(summariesSqlite, { schema });
 
-	return {
-		index: indexDb,
-		summaries: summariesDb,
-		close() {
-			indexSqlite.close();
-			summariesSqlite.close();
-		},
-	};
+  return {
+    index: indexDb,
+    summaries: summariesDb,
+    close() {
+      indexSqlite.close();
+      summariesSqlite.close();
+    },
+  };
 }

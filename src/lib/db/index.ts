@@ -1,12 +1,12 @@
-import {openAppDb, type AppDb} from './connection';
-import {fullScan} from './indexer';
-import {hmrPersist} from '../hmr-persist';
-import {homedir} from 'node:os';
-import {join} from 'node:path';
+import { openAppDb, type AppDb } from "./connection";
+import { fullScan } from "./indexer";
+import { hmrPersist } from "../hmr-persist";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
-const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
-const TASKS_DIR = join(homedir(), '.claude', 'tasks');
-const PLANS_DIR = join(homedir(), '.claude', 'plans');
+const PROJECTS_DIR = join(homedir(), ".claude", "projects");
+const TASKS_DIR = join(homedir(), ".claude", "tasks");
+const PLANS_DIR = join(homedir(), ".claude", "plans");
 
 // Holds the in-flight initial scan so concurrent callers await the same
 // fullScan instead of racing two scans on the same DB. Two concurrent scans
@@ -17,35 +17,35 @@ const PLANS_DIR = join(homedir(), '.claude', 'plans');
 // only entrypoints. The holder pattern lets awaitInitialScan() observe
 // whether a scan has been started without forcing one to start.
 
-type ScanHolder = {promise: Promise<void> | null};
+type ScanHolder = { promise: Promise<void> | null };
 
 function getScanHolder(): ScanHolder {
-	return hmrPersist<ScanHolder>('appDbScanPromise', () => ({promise: null}));
+  return hmrPersist<ScanHolder>("appDbScanPromise", () => ({ promise: null }));
 }
 
 export function getDb(): AppDb {
-	return hmrPersist('appDb', () => openAppDb());
+  return hmrPersist("appDb", () => openAppDb());
 }
 
 export async function initDb(): Promise<AppDb> {
-	return getDb();
+  return getDb();
 }
 
 export function runInitialScan(): Promise<void> {
-	const holder = getScanHolder();
-	if (holder.promise === null) {
-		holder.promise = (async () => {
-			const db = getDb();
-			try {
-				await fullScan(db.index, PROJECTS_DIR, TASKS_DIR, PLANS_DIR);
-			} catch (err) {
-				console.error('Initial database scan failed:', err);
-			}
-		})();
-	}
-	return holder.promise;
+  const holder = getScanHolder();
+  if (holder.promise === null) {
+    holder.promise = (async () => {
+      const db = getDb();
+      try {
+        await fullScan(db.index, PROJECTS_DIR, TASKS_DIR, PLANS_DIR);
+      } catch (err) {
+        console.error("Initial database scan failed:", err);
+      }
+    })();
+  }
+  return holder.promise;
 }
 
 export function awaitInitialScan(): Promise<void> {
-	return getScanHolder().promise ?? Promise.resolve();
+  return getScanHolder().promise ?? Promise.resolve();
 }

@@ -16,14 +16,15 @@ Use this checklist when auditing a category of Claude Code rendering features. T
 At the top of each findings document, include an audit status table:
 
 ```markdown
-| Feature | Audited | Differences Found | Tasks Created |
-|---------|---------|-------------------|---------------|
-| Feature 1 | Yes | N | Y/N |
-| Feature 2 | Yes (no examples) | 0 | N/A |
-| Feature 3 | Yes | N | Y/N |
+| Feature   | Audited           | Differences Found | Tasks Created |
+| --------- | ----------------- | ----------------- | ------------- |
+| Feature 1 | Yes               | N                 | Y/N           |
+| Feature 2 | Yes (no examples) | 0                 | N/A           |
+| Feature 3 | Yes               | N                 | Y/N           |
 ```
 
 Columns:
+
 - **Feature**: Name of the feature being audited
 - **Audited**: "Yes" if audited; "Yes (no examples)" if no JSONL found
 - **Differences Found**: Number of differences discovered (0 if no examples or none found)
@@ -53,23 +54,27 @@ Real examples extracted from sessions in `~/.claude/projects/-Users-craig-projec
 
 For each feature with a difference found, create a section:
 
-```markdown
+````markdown
 ### N. Feature Name
 
 **JSONL example** (from `sessionid`):
+
 ```json
 // tool_use / message structure
 { key: "value", ... }
 // result/following message
 { ... }
 ```
+````
 
 **Our rendering** (files involved and current behavior):
+
 - Describe current implementation (which file, which function)
 - Describe what is rendered and how
 - Note any limitations or missing pieces
 
 **Claude Code web viewer** (from screenshots/live testing):
+
 - Describe what the web viewer displays
 - Note styling, layout, interactions
 - Describe how params/inputs are displayed
@@ -81,7 +86,8 @@ For each feature with a difference found, create a section:
 2. **P{1|2|3} - Another difference**: ...
 
 ---
-```
+
+````
 
 ### Priority Levels
 
@@ -107,7 +113,7 @@ If you find issues that affect multiple features, document them separately:
 ### CC2. Another pattern
 
 ...
-```
+````
 
 ## Summary of Follow-Up Tasks
 
@@ -118,12 +124,12 @@ At the end, summarize all findings as actionable tasks:
 
 Ordered by priority:
 
-| # | Priority | Task | Affected Features |
-|---|----------|------|------------------|
-| 1 | P1 | Implement feature X | Feature A, Feature B |
-| 2 | P1 | Fix feature Y | Feature C |
-| 3 | P2 | Add styling for feature Z | Feature A |
-| ... | ... | ... | ... |
+| #   | Priority | Task                      | Affected Features    |
+| --- | -------- | ------------------------- | -------------------- |
+| 1   | P1       | Implement feature X       | Feature A, Feature B |
+| 2   | P1       | Fix feature Y             | Feature C            |
+| 3   | P2       | Add styling for feature Z | Feature A            |
+| ... | ...      | ...                       | ...                  |
 ```
 
 ## Creating Follow-Up Tasks

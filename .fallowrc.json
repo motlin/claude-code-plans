@@ -1,67 +1,93 @@
 {
-	"$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
-	"entry": ["scripts/field-presence.ts"],
-	"ignorePatterns": [".storybook/**", "src/routeTree.gen.ts"],
-	"ignoreDependencies": ["@shikijs/core", "@shikijs/engine-javascript", "@spotlightjs/spotlight", "agentation"],
-	"ignoreExports": [
-		{"file": "src/components/markdown-article.module.css", "exports": ["*"]},
-		{"file": "src/components/markdown-view.tsx", "exports": ["MarkdownSkeleton"]},
-		{"file": "src/components/session-chat.tsx", "exports": ["SessionChatProps"]},
-		{"file": "src/components/settings-provider.tsx", "exports": ["SettingsProvider"]},
-		{"file": "src/lib/active-sessions.ts", "exports": ["ActiveSession"]},
-		{"file": "src/lib/hook-events.ts", "exports": ["PendingApprovalPayload"]},
-		{
-			"file": "src/lib/pending-approvals.ts",
-			"exports": ["scanAllPendingApprovals", "PendingApprovalToolName", "PendingApproval"]
-		},
-		{
-			"file": "src/lib/db/pending-approvals-cache.ts",
-			"exports": [
-				"initPendingApprovalsCache",
-				"getPendingApprovals",
-				"getPendingApprovalsForProject",
-				"updatePendingApprovalForSession",
-				"removePendingApprovalForSession"
-			]
-		},
-		{"file": "src/lib/claude-light-theme.ts", "exports": ["claudeLight"]},
-		{
-			"file": "src/lib/markdown.ts",
-			"exports": ["preloadMarkdown", "renderMarkdownPromise", "renderInlineMarkdownPromise"]
-		},
-		{"file": "src/lib/db/index.ts", "exports": ["runInitialScan", "awaitInitialScan"]},
-		{
-			"file": "src/lib/api/approvals.ts",
-			"exports": ["ApprovalsResponse", "approvalsQueryOptions", "projectApprovalsQueryOptions"]
-		},
-		{
-			"file": "src/lib/db/queries.ts",
-			"exports": [
-				"DbSearchResult",
-				"DbMessageSearchResult",
-				"listPlansFromDb",
-				"getMemoryCountsForProjects",
-				"getMemoriesForProject",
-				"MemoryRow",
-				"getPlanFilenameForSession"
-			]
-		},
-		{"file": "src/lib/sessions.ts", "exports": ["RawWindow", "readSessionLines"]},
-		{"file": "src/routes/session.$id_.source.$uuid.tsx", "exports": ["PairedResult"]},
-		{"file": "src/components/tool-renderers/shared.tsx", "exports": ["CopyButton"]},
-		{
-			"file": "src/lib/update-dedupe.ts",
-			"exports": ["*"]
-		},
-		{
-			"file": "src/lib/watcher.ts",
-			"exports": ["*"]
-		}
-	],
-	"rules": {
-		"unused-dependencies": "warn",
-		"unused-types": "error",
-		"unused-exports": "error",
-		"duplicate-exports": "error"
-	}
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "entry": ["scripts/field-presence.ts"],
+  "ignorePatterns": [".storybook/**", "src/routeTree.gen.ts"],
+  "ignoreDependencies": [
+    "@shikijs/core",
+    "@shikijs/engine-javascript",
+    "@spotlightjs/spotlight",
+    "agentation"
+  ],
+  "ignoreExports": [
+    { "file": "src/components/markdown-article.module.css", "exports": ["*"] },
+    {
+      "file": "src/components/markdown-view.tsx",
+      "exports": ["MarkdownSkeleton"]
+    },
+    {
+      "file": "src/components/session-chat.tsx",
+      "exports": ["SessionChatProps"]
+    },
+    {
+      "file": "src/components/settings-provider.tsx",
+      "exports": ["SettingsProvider"]
+    },
+    { "file": "src/lib/active-sessions.ts", "exports": ["ActiveSession"] },
+    { "file": "src/lib/hook-events.ts", "exports": ["PendingApprovalPayload"] },
+    {
+      "file": "src/lib/pending-approvals.ts",
+      "exports": ["scanAllPendingApprovals", "PendingApprovalToolName", "PendingApproval"]
+    },
+    {
+      "file": "src/lib/db/pending-approvals-cache.ts",
+      "exports": [
+        "initPendingApprovalsCache",
+        "getPendingApprovals",
+        "getPendingApprovalsForProject",
+        "updatePendingApprovalForSession",
+        "removePendingApprovalForSession"
+      ]
+    },
+    { "file": "src/lib/claude-light-theme.ts", "exports": ["claudeLight"] },
+    {
+      "file": "src/lib/markdown.ts",
+      "exports": ["preloadMarkdown", "renderMarkdownPromise", "renderInlineMarkdownPromise"]
+    },
+    {
+      "file": "src/lib/db/index.ts",
+      "exports": ["runInitialScan", "awaitInitialScan"]
+    },
+    {
+      "file": "src/lib/api/approvals.ts",
+      "exports": ["ApprovalsResponse", "approvalsQueryOptions", "projectApprovalsQueryOptions"]
+    },
+    {
+      "file": "src/lib/db/queries.ts",
+      "exports": [
+        "DbSearchResult",
+        "DbMessageSearchResult",
+        "listPlansFromDb",
+        "getMemoryCountsForProjects",
+        "getMemoriesForProject",
+        "MemoryRow",
+        "getPlanFilenameForSession"
+      ]
+    },
+    {
+      "file": "src/lib/sessions.ts",
+      "exports": ["RawWindow", "readSessionLines"]
+    },
+    {
+      "file": "src/routes/session.$id_.source.$uuid.tsx",
+      "exports": ["PairedResult"]
+    },
+    {
+      "file": "src/components/tool-renderers/shared.tsx",
+      "exports": ["CopyButton"]
+    },
+    {
+      "file": "src/lib/update-dedupe.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/lib/watcher.ts",
+      "exports": ["*"]
+    }
+  ],
+  "rules": {
+    "unused-dependencies": "warn",
+    "unused-types": "error",
+    "unused-exports": "error",
+    "duplicate-exports": "error"
+  }
 }

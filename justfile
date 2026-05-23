@@ -20,16 +20,16 @@ dev *args: install
 start *args: install build
     PORT={{port}} npm run start {{args}}
 
-# Run ESLint
-eslint: install
-    npm run eslint{{_ci}}
+# Run Oxlint
+oxlint: install
+    npm run oxlint{{_ci}}
 
-# Run Biome formatter
-biome: install
-    npm run biome{{_ci}}
+# Run Oxfmt formatter
+fmt: install
+    npm run fmt{{_ci}}
 
 # Run all formatters
-format: biome
+format: fmt
 
 # Run tests
 test *args: install
@@ -58,7 +58,7 @@ fallow: build
 
 # Run all pre-commit checks
 [arg("quick", long, value="true", help="Skip tests")]
-precommit quick="": eslint format build typecheck fallow
+precommit quick="": oxlint format build typecheck fallow
     {{ if quick != "true" { "just test" } else { "true" } }}
     @echo "All pre-commit checks passed!"
 

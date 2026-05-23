@@ -1,10 +1,10 @@
 .markdown {
-	font-family: var(--font-sans);
-	font-size: 14px;
-	font-weight: 430;
-	line-height: 19.6px;
-	color: var(--text-100);
-	white-space: normal;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 430;
+  line-height: 19.6px;
+  color: var(--text-100);
+  white-space: normal;
 }
 
 .markdown h1,
@@ -13,217 +13,217 @@
 .markdown h4,
 .markdown h5,
 .markdown h6 {
-	font-size: 14px;
-	font-weight: 600;
-	line-height: 20px;
-	margin-top: 8px;
-	margin-bottom: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  margin-top: 8px;
+  margin-bottom: 4px;
 }
 
 .markdown h1 {
-	font-size: 18px;
-	line-height: 24px;
-	margin-top: 0;
-	margin-bottom: 8px;
+  font-size: 18px;
+  line-height: 24px;
+  margin-top: 0;
+  margin-bottom: 8px;
 }
 
 .markdown p {
-	margin: 4px 0;
-	white-space: pre-wrap;
+  margin: 4px 0;
+  white-space: pre-wrap;
 }
 
 .markdown ul {
-	list-style-type: disc;
-	list-style-position: outside;
-	margin-left: 1.5rem;
+  list-style-type: disc;
+  list-style-position: outside;
+  margin-left: 1.5rem;
 }
 
 .markdown ol {
-	list-style-type: decimal;
-	list-style-position: outside;
-	margin-left: 1.5rem;
+  list-style-type: decimal;
+  list-style-position: outside;
+  margin-left: 1.5rem;
 }
 
 .markdown ul > li,
 .markdown ol > li {
-	font-size: 14px;
-	font-weight: 400;
-	line-height: 20px;
-	margin-top: 2px;
-	margin-bottom: 2px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  margin-top: 2px;
+  margin-bottom: 2px;
 }
 
 /* Task list checkboxes */
 .markdown :global(.contains-task-list) {
-	list-style-type: none;
-	margin-left: 0;
-	padding-left: 0;
+  list-style-type: none;
+  margin-left: 0;
+  padding-left: 0;
 }
 
 .markdown :global(.task-list-item) {
-	display: flex;
-	align-items: baseline;
-	gap: 0.5rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
 }
 
 .markdown :global(.task-list-item-checkbox) {
-	margin: 0;
-	accent-color: var(--accent-100);
+  margin: 0;
+  accent-color: var(--accent-100);
 }
 
 .markdown blockquote {
-	border-left: 4px solid var(--border-300);
-	padding-left: 1rem;
-	font-style: italic;
-	margin: 8px 0;
+  border-left: 4px solid var(--border-300);
+  padding-left: 1rem;
+  font-style: italic;
+  margin: 8px 0;
 }
 
 .markdown pre {
-	font-family: var(--font-mono);
-	font-size: 13px;
-	font-weight: 400;
-	line-height: 20px;
-	background: rgba(250, 249, 245, 0.5);
-	border: 0.5px solid rgba(31, 30, 29, 0.15);
-	border-radius: 8px;
-	padding: 8px;
-	margin: 8px 0;
-	overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 20px;
+  background: rgba(250, 249, 245, 0.5);
+  border: 0.5px solid rgba(31, 30, 29, 0.15);
+  border-radius: 8px;
+  padding: 8px;
+  margin: 8px 0;
+  overflow-x: auto;
 }
 
 :global(.dark) .markdown pre {
-	background: hsl(30 3.3% 11.8% / 0.5);
-	border-color: rgba(255, 255, 255, 0.1);
+  background: hsl(30 3.3% 11.8% / 0.5);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .markdown code {
-	font-family: var(--font-mono);
-	font-size: 13px;
-	font-weight: 430;
-	line-height: 20px;
-	background: hsl(48 33.3% 97.1% / 0.5);
-	border: 0.5px solid rgba(31, 30, 29, 0.15);
-	color: var(--danger-000);
-	border-radius: 0.4rem;
-	padding: 1px 4px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 430;
+  line-height: 20px;
+  background: hsl(48 33.3% 97.1% / 0.5);
+  border: 0.5px solid rgba(31, 30, 29, 0.15);
+  color: var(--danger-000);
+  border-radius: 0.4rem;
+  padding: 1px 4px;
 }
 
 :global(.dark) .markdown code {
-	background: hsl(30 3.3% 11.8% / 0.5);
-	color: var(--danger-000);
-	border-color: rgba(255, 255, 255, 0.1);
+  background: hsl(30 3.3% 11.8% / 0.5);
+  color: var(--danger-000);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .markdown pre code {
-	background: none;
-	border: none;
-	color: inherit;
-	padding: 0;
-	font-weight: 400;
-	border-radius: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  padding: 0;
+  font-weight: 400;
+  border-radius: 0;
 }
 
 .markdown a {
-	color: inherit;
-	text-decoration: underline;
+  color: inherit;
+  text-decoration: underline;
 }
 
 .markdown a:hover {
-	opacity: 0.7;
+  opacity: 0.7;
 }
 
 .markdown table {
-	border-collapse: collapse;
-	width: 100%;
-	margin: 8px 0;
-	font-size: 13px;
+  border-collapse: collapse;
+  width: 100%;
+  margin: 8px 0;
+  font-size: 13px;
 }
 
 .markdown th,
 .markdown td {
-	border: 1px solid var(--border-300);
-	padding: 6px 12px;
-	text-align: left;
+  border: 1px solid var(--border-300);
+  padding: 6px 12px;
+  text-align: left;
 }
 
 .markdown th {
-	font-weight: 600;
-	background: var(--bg-200);
+  font-weight: 600;
+  background: var(--bg-200);
 }
 
 .markdown hr {
-	border: none;
-	border-top: 1px solid var(--border-300);
-	margin: 16px 0;
+  border: none;
+  border-top: 1px solid var(--border-300);
+  margin: 16px 0;
 }
 
 .markdown img {
-	max-width: 100%;
-	border-radius: 0.5rem;
+  max-width: 100%;
+  border-radius: 0.5rem;
 }
 
 /* User message bubble overrides — readable on blue backgrounds */
 :global(.user-message-bubble) .markdown {
-	color: var(--user-msg-text);
-	overflow-wrap: anywhere;
-	min-width: 0;
+  color: var(--user-msg-text);
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 :global(.user-message-bubble) .markdown code {
-	background: rgba(255, 255, 255, 0.15);
-	border-color: rgba(255, 255, 255, 0.2);
-	color: var(--user-msg-text);
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--user-msg-text);
 }
 
 :global(.user-message-bubble) .markdown pre {
-	background: rgba(0, 0, 0, 0.2);
-	border-color: rgba(255, 255, 255, 0.15);
-	max-width: 100%;
-	overflow-wrap: normal;
+  background: rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.15);
+  max-width: 100%;
+  overflow-wrap: normal;
 }
 
 :global(.user-message-bubble) .markdown pre code {
-	background: none;
-	border: none;
-	color: inherit;
+  background: none;
+  border: none;
+  color: inherit;
 }
 
 :global(.user-message-bubble) .markdown blockquote {
-	border-left-color: rgba(255, 255, 255, 0.4);
+  border-left-color: rgba(255, 255, 255, 0.4);
 }
 
 :global(.user-message-bubble) .markdown th,
 :global(.user-message-bubble) .markdown td {
-	border-color: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 :global(.user-message-bubble) .markdown th {
-	background: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.15);
 }
 
 :global(.user-message-bubble) .markdown a {
-	color: var(--user-msg-text);
-	text-decoration: underline;
+  color: var(--user-msg-text);
+  text-decoration: underline;
 }
 
 :global(.user-message-bubble) .markdown hr {
-	border-top-color: rgba(255, 255, 255, 0.3);
+  border-top-color: rgba(255, 255, 255, 0.3);
 }
 
 :global(.user-message-bubble) .markdown :global(.task-list-item-checkbox) {
-	accent-color: var(--user-msg-text);
+  accent-color: var(--user-msg-text);
 }
 
 /* Shiki dual theme support:
    Light theme uses inline color/background-color directly.
    Dark theme uses --shiki-dark and --shiki-dark-bg CSS variables. */
 :global(.dark) .markdown :global(.shiki) {
-	color: var(--shiki-dark) !important;
-	background-color: hsl(30 3.3% 11.8% / 0.5) !important;
-	border-color: rgba(255, 255, 255, 0.1) !important;
+  color: var(--shiki-dark) !important;
+  background-color: hsl(30 3.3% 11.8% / 0.5) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 :global(.dark) .markdown :global(.shiki) span {
-	color: var(--shiki-dark) !important;
-	background-color: transparent !important;
+  color: var(--shiki-dark) !important;
+  background-color: transparent !important;
 }

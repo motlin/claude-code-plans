@@ -1,2 +1,2 @@
-export {SidebarToggleIcon} from './SidebarToggleIcon';
-export {SearchInput} from './SearchInput';
+export { SidebarToggleIcon } from "./SidebarToggleIcon";
+export { SearchInput } from "./SearchInput";

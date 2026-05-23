@@ -4,284 +4,285 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-	--font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-	--font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, "Cascadia Code", monospace;
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, "Cascadia Code", monospace;
 
-	/* Background tokens */
-	--color-bg-000: var(--bg-000);
-	--color-bg-100: var(--bg-100);
-	--color-bg-200: var(--bg-200);
-	--color-bg-300: var(--bg-300);
-	--color-bg-400: var(--bg-400);
-	--color-bg-500: var(--bg-500);
+  /* Background tokens */
+  --color-bg-000: var(--bg-000);
+  --color-bg-100: var(--bg-100);
+  --color-bg-200: var(--bg-200);
+  --color-bg-300: var(--bg-300);
+  --color-bg-400: var(--bg-400);
+  --color-bg-500: var(--bg-500);
 
-	/* Text tokens */
-	--color-text-000: var(--text-000);
-	--color-text-100: var(--text-100);
-	--color-text-200: var(--text-200);
-	--color-text-300: var(--text-300);
-	--color-text-400: var(--text-400);
-	--color-text-500: var(--text-500);
+  /* Text tokens */
+  --color-text-000: var(--text-000);
+  --color-text-100: var(--text-100);
+  --color-text-200: var(--text-200);
+  --color-text-300: var(--text-300);
+  --color-text-400: var(--text-400);
+  --color-text-500: var(--text-500);
 
-	/* Border tokens */
-	--color-border-100: var(--border-100);
-	--color-border-200: var(--border-200);
-	--color-border-300: var(--border-300);
-	--color-border-400: var(--border-400);
+  /* Border tokens */
+  --color-border-100: var(--border-100);
+  --color-border-200: var(--border-200);
+  --color-border-300: var(--border-300);
+  --color-border-400: var(--border-400);
 
-	/* Semantic colors */
-	--color-danger-000: var(--danger-000);
-	--color-danger-100: var(--danger-100);
-	--color-danger-200: var(--danger-200);
-	--color-danger-900: var(--danger-900);
-	--color-success-000: var(--success-000);
-	--color-success-100: var(--success-100);
-	--color-success-900: var(--success-900);
-	--color-warning-000: var(--warning-000);
-	--color-warning-100: var(--warning-100);
-	--color-accent-000: var(--accent-000);
-	--color-accent-100: var(--accent-100);
-	--color-accent-900: var(--accent-900);
+  /* Semantic colors */
+  --color-danger-000: var(--danger-000);
+  --color-danger-100: var(--danger-100);
+  --color-danger-200: var(--danger-200);
+  --color-danger-900: var(--danger-900);
+  --color-success-000: var(--success-000);
+  --color-success-100: var(--success-100);
+  --color-success-900: var(--success-900);
+  --color-warning-000: var(--warning-000);
+  --color-warning-100: var(--warning-100);
+  --color-accent-000: var(--accent-000);
+  --color-accent-100: var(--accent-100);
+  --color-accent-900: var(--accent-900);
 
-	/* User message bubble */
-	--color-user-msg-bg: var(--user-msg-bg);
-	--color-user-msg-text: var(--user-msg-text);
+  /* User message bubble */
+  --color-user-msg-bg: var(--user-msg-bg);
+  --color-user-msg-text: var(--user-msg-text);
 
-	/* Automated (external) message bubble */
-	--color-auto-msg-bg: var(--auto-msg-bg);
-	--color-auto-msg-text: var(--auto-msg-text);
+  /* Automated (external) message bubble */
+  --color-auto-msg-bg: var(--auto-msg-bg);
+  --color-auto-msg-text: var(--auto-msg-text);
 
-	/* Upstream claude.ai/code — extended diff stat colors */
-	--color-extended-green: var(--upstream-extended-green);
-	--color-extended-pink: var(--upstream-extended-pink);
+  /* Upstream claude.ai/code — extended diff stat colors */
+  --color-extended-green: var(--upstream-extended-green);
+  --color-extended-pink: var(--upstream-extended-pink);
 
-	/* Upstream claude.ai/code — assistant text colors */
-	--color-assistant-primary: var(--upstream-text-assistant-primary);
-	--color-assistant-secondary: var(--upstream-text-assistant-secondary);
+  /* Upstream claude.ai/code — assistant text colors */
+  --color-assistant-primary: var(--upstream-text-assistant-primary);
+  --color-assistant-secondary: var(--upstream-text-assistant-secondary);
 
-	/* Upstream claude.ai/code — transparency layers (bg-t1, bg-t2, etc.) */
-	--color-t0: var(--upstream-t0);
-	--color-t1: var(--upstream-t1);
-	--color-t2: var(--upstream-t2);
-	--color-t3: var(--upstream-t3);
-	--color-t4: var(--upstream-t4);
-	--color-t5: var(--upstream-t5);
-	--color-t6: var(--upstream-t6);
-	--color-t7: var(--upstream-t7);
-	--color-t8: var(--upstream-t8);
-	--color-t9: var(--upstream-t9);
+  /* Upstream claude.ai/code — transparency layers (bg-t1, bg-t2, etc.) */
+  --color-t0: var(--upstream-t0);
+  --color-t1: var(--upstream-t1);
+  --color-t2: var(--upstream-t2);
+  --color-t3: var(--upstream-t3);
+  --color-t4: var(--upstream-t4);
+  --color-t5: var(--upstream-t5);
+  --color-t6: var(--upstream-t6);
+  --color-t7: var(--upstream-t7);
+  --color-t8: var(--upstream-t8);
+  --color-t9: var(--upstream-t9);
 
-	/* Upstream claude.ai/code — spacing scale (gap-g3, p-p6, etc.) */
-	--spacing-g1: 2px;
-	--spacing-g2: 3px;
-	--spacing-g3: 4px;
-	--spacing-g4: 5px;
-	--spacing-g5: 6px;
-	--spacing-g6: 8px;
-	--spacing-g7: 10px;
-	--spacing-g8: 12px;
-	--spacing-p3: 4px;
-	--spacing-p4: 5px;
-	--spacing-p5: 6px;
-	--spacing-p6: 8px;
-	--spacing-p7: 10px;
-	--spacing-p8: 12px;
+  /* Upstream claude.ai/code — spacing scale (gap-g3, p-p6, etc.) */
+  --spacing-g1: 2px;
+  --spacing-g2: 3px;
+  --spacing-g3: 4px;
+  --spacing-g4: 5px;
+  --spacing-g5: 6px;
+  --spacing-g6: 8px;
+  --spacing-g7: 10px;
+  --spacing-g8: 12px;
+  --spacing-p3: 4px;
+  --spacing-p4: 5px;
+  --spacing-p5: 6px;
+  --spacing-p6: 8px;
+  --spacing-p7: 10px;
+  --spacing-p8: 12px;
 
-	/* Upstream claude.ai/code — border radii (rounded-r3, rounded-r6, etc.) */
-	--radius-r3: 4px;
-	--radius-r4: 5px;
-	--radius-r5: 6px;
-	--radius-r6: 8px;
+  /* Upstream claude.ai/code — border radii (rounded-r3, rounded-r6, etc.) */
+  --radius-r3: 4px;
+  --radius-r4: 5px;
+  --radius-r5: 6px;
+  --radius-r6: 8px;
 
-	--radius-sm: calc(var(--radius) - 4px);
-	--radius-md: calc(var(--radius) - 2px);
-	--radius-lg: var(--radius);
-	--radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 
-	/* Upstream claude.ai/code — typography scale */
-	--text-body: var(--upstream-text-body);
-	--text-body--line-height: var(--upstream-leading-body);
-	--text-code: var(--upstream-text-code);
-	--text-code--line-height: var(--upstream-leading-code);
+  /* Upstream claude.ai/code — typography scale */
+  --text-body: var(--upstream-text-body);
+  --text-body--line-height: var(--upstream-leading-body);
+  --text-code: var(--upstream-text-code);
+  --text-code--line-height: var(--upstream-leading-code);
 }
 
 :root {
-	--radius: 0.625rem;
+  --radius: 0.625rem;
 
-	/* Backgrounds */
-	--bg-000: hsl(0 0% 100%);
-	--bg-100: hsl(48 33.3% 97.1%);
-	--bg-200: hsl(53 28.6% 94.5%);
-	--bg-300: hsl(48 25% 92.2%);
-	--bg-400: hsl(50 20.7% 88.6%);
-	--bg-500: hsl(50 20.7% 88.6%);
+  /* Backgrounds */
+  --bg-000: hsl(0 0% 100%);
+  --bg-100: hsl(48 33.3% 97.1%);
+  --bg-200: hsl(53 28.6% 94.5%);
+  --bg-300: hsl(48 25% 92.2%);
+  --bg-400: hsl(50 20.7% 88.6%);
+  --bg-500: hsl(50 20.7% 88.6%);
 
-	/* Text */
-	--text-000: hsl(60 2.6% 7.6%);
-	--text-100: hsl(60 2.6% 7.6%);
-	--text-200: hsl(60 2.5% 23.3%);
-	--text-300: hsl(60 2.5% 23.3%);
-	--text-400: hsl(51 3.1% 43.7%);
-	--text-500: hsl(51 3.1% 43.7%);
+  /* Text */
+  --text-000: hsl(60 2.6% 7.6%);
+  --text-100: hsl(60 2.6% 7.6%);
+  --text-200: hsl(60 2.5% 23.3%);
+  --text-300: hsl(60 2.5% 23.3%);
+  --text-400: hsl(51 3.1% 43.7%);
+  --text-500: hsl(51 3.1% 43.7%);
 
-	/* Borders */
-	--border-100: hsl(30 3.3% 11.8%);
-	--border-200: hsl(30 3.3% 11.8%);
-	--border-300: hsl(30 3.3% 11.8%);
-	--border-400: hsl(30 3.3% 11.8%);
+  /* Borders */
+  --border-100: hsl(30 3.3% 11.8%);
+  --border-200: hsl(30 3.3% 11.8%);
+  --border-300: hsl(30 3.3% 11.8%);
+  --border-400: hsl(30 3.3% 11.8%);
 
-	/* Semantic colors */
-	--danger-000: hsl(0 58.6% 34.1%);
-	--danger-100: hsl(0 56.2% 45.4%);
-	--danger-200: hsl(0 56.2% 45.4%);
-	--danger-900: hsl(0 50% 95%);
-	--success-000: hsl(125 100% 18%);
-	--success-100: hsl(103 72.3% 26.9%);
-	--success-900: hsl(86 45.1% 90%);
-	--warning-000: hsl(45 91.8% 19%);
-	--warning-100: hsl(39 88.8% 28%);
-	--accent-000: hsl(210 73.7% 40.2%);
-	--accent-100: hsl(210 70.9% 51.6%);
-	--accent-900: hsl(211 72% 90%);
+  /* Semantic colors */
+  --danger-000: hsl(0 58.6% 34.1%);
+  --danger-100: hsl(0 56.2% 45.4%);
+  --danger-200: hsl(0 56.2% 45.4%);
+  --danger-900: hsl(0 50% 95%);
+  --success-000: hsl(125 100% 18%);
+  --success-100: hsl(103 72.3% 26.9%);
+  --success-900: hsl(86 45.1% 90%);
+  --warning-000: hsl(45 91.8% 19%);
+  --warning-100: hsl(39 88.8% 28%);
+  --accent-000: hsl(210 73.7% 40.2%);
+  --accent-100: hsl(210 70.9% 51.6%);
+  --accent-900: hsl(211 72% 90%);
 
-	/* User message bubble — matches claude.ai/code: 7% accent tint + blue text */
-	--user-msg-bg: hsl(210 100% 45% / 0.07);
-	--user-msg-text: hsl(210 100% 40%);
+  /* User message bubble — matches claude.ai/code: 7% accent tint + blue text */
+  --user-msg-bg: hsl(210 100% 45% / 0.07);
+  --user-msg-text: hsl(210 100% 40%);
 
-	/* Automated (external) message bubble — neutral gray tint */
-	--auto-msg-bg: hsl(0 0% 50% / 0.08);
-	--auto-msg-text: hsl(0 0% 35%);
+  /* Automated (external) message bubble — neutral gray tint */
+  --auto-msg-bg: hsl(0 0% 50% / 0.08);
+  --auto-msg-text: hsl(0 0% 35%);
 
-	/* Upstream claude.ai/code — assistant text colors */
-	--upstream-text-assistant-primary: hsl(0 0% 4%);
-	--upstream-text-assistant-secondary: hsl(40 3% 42%);
+  /* Upstream claude.ai/code — assistant text colors */
+  --upstream-text-assistant-primary: hsl(0 0% 4%);
+  --upstream-text-assistant-secondary: hsl(40 3% 42%);
 
-	/* Upstream claude.ai/code — extended diff stat colors */
-	--upstream-extended-green: hsl(134 68% 37%);
-	--upstream-extended-pink: hsl(342 73% 47%);
+  /* Upstream claude.ai/code — extended diff stat colors */
+  --upstream-extended-green: hsl(134 68% 37%);
+  --upstream-extended-pink: hsl(342 73% 47%);
 
-	/* Upstream claude.ai/code — transparency layers (gray-900 base) */
-	--upstream-t0: hsl(0 0% 4% / 0);
-	--upstream-t1: hsl(0 0% 4% / 0.04);
-	--upstream-t2: hsl(0 0% 4% / 0.06);
-	--upstream-t3: hsl(0 0% 4% / 0.10);
-	--upstream-t4: hsl(0 0% 4% / 0.16);
-	--upstream-t5: hsl(0 0% 4% / 0.25);
-	--upstream-t6: hsl(0 0% 4% / 0.50);
-	--upstream-t7: hsl(0 0% 4% / 0.80);
-	--upstream-t8: hsl(0 0% 4% / 0.90);
-	--upstream-t9: hsl(0 0% 4% / 1);
+  /* Upstream claude.ai/code — transparency layers (gray-900 base) */
+  --upstream-t0: hsl(0 0% 4% / 0);
+  --upstream-t1: hsl(0 0% 4% / 0.04);
+  --upstream-t2: hsl(0 0% 4% / 0.06);
+  --upstream-t3: hsl(0 0% 4% / 0.1);
+  --upstream-t4: hsl(0 0% 4% / 0.16);
+  --upstream-t5: hsl(0 0% 4% / 0.25);
+  --upstream-t6: hsl(0 0% 4% / 0.5);
+  --upstream-t7: hsl(0 0% 4% / 0.8);
+  --upstream-t8: hsl(0 0% 4% / 0.9);
+  --upstream-t9: hsl(0 0% 4% / 1);
 
-	/* Upstream claude.ai/code — typography */
-	--upstream-text-body: 13px;
-	--upstream-leading-body: 20px;
-	--upstream-text-code: 12px;
-	--upstream-leading-code: 17px;
+  /* Upstream claude.ai/code — typography */
+  --upstream-text-body: 13px;
+  --upstream-leading-body: 20px;
+  --upstream-text-code: 12px;
+  --upstream-leading-code: 17px;
 }
 
 .dark {
-	/* Backgrounds */
-	--bg-000: hsl(60 2.1% 18.4%);
-	--bg-100: hsl(60 2.7% 14.5%);
-	--bg-200: hsl(30 3.3% 11.8%);
-	--bg-300: hsl(60 2.6% 7.6%);
-	--bg-400: hsl(0 0% 0%);
-	--bg-500: hsl(0 0% 0%);
+  /* Backgrounds */
+  --bg-000: hsl(60 2.1% 18.4%);
+  --bg-100: hsl(60 2.7% 14.5%);
+  --bg-200: hsl(30 3.3% 11.8%);
+  --bg-300: hsl(60 2.6% 7.6%);
+  --bg-400: hsl(0 0% 0%);
+  --bg-500: hsl(0 0% 0%);
 
-	/* Text */
-	--text-000: hsl(48 33.3% 97.1%);
-	--text-100: hsl(48 33.3% 97.1%);
-	--text-200: hsl(50 9% 73.7%);
-	--text-300: hsl(50 9% 73.7%);
-	--text-400: hsl(48 4.8% 59.2%);
-	--text-500: hsl(48 4.8% 59.2%);
+  /* Text */
+  --text-000: hsl(48 33.3% 97.1%);
+  --text-100: hsl(48 33.3% 97.1%);
+  --text-200: hsl(50 9% 73.7%);
+  --text-300: hsl(50 9% 73.7%);
+  --text-400: hsl(48 4.8% 59.2%);
+  --text-500: hsl(48 4.8% 59.2%);
 
-	/* Borders */
-	--border-100: hsl(51 16.5% 84.5%);
-	--border-200: hsl(51 16.5% 84.5%);
-	--border-300: hsl(51 16.5% 84.5%);
-	--border-400: hsl(51 16.5% 84.5%);
+  /* Borders */
+  --border-100: hsl(51 16.5% 84.5%);
+  --border-200: hsl(51 16.5% 84.5%);
+  --border-300: hsl(51 16.5% 84.5%);
+  --border-400: hsl(51 16.5% 84.5%);
 
-	/* Semantic colors */
-	--danger-000: hsl(0 98.4% 75.1%);
-	--danger-100: hsl(0 67% 59.6%);
-	--danger-900: hsl(0 46.5% 27.8%);
-	--success-000: hsl(97 59.1% 46.1%);
-	--success-100: hsl(97 75% 32.9%);
-	--success-900: hsl(127 100% 13.9%);
-	--warning-000: hsl(40 71% 50%);
-	--warning-100: hsl(39 93.4% 35.9%);
-	--accent-000: hsl(210 65.5% 67.1%);
-	--accent-100: hsl(210 70.9% 51.6%);
-	--accent-900: hsl(210 55.9% 24.6%);
+  /* Semantic colors */
+  --danger-000: hsl(0 98.4% 75.1%);
+  --danger-100: hsl(0 67% 59.6%);
+  --danger-900: hsl(0 46.5% 27.8%);
+  --success-000: hsl(97 59.1% 46.1%);
+  --success-100: hsl(97 75% 32.9%);
+  --success-900: hsl(127 100% 13.9%);
+  --warning-000: hsl(40 71% 50%);
+  --warning-100: hsl(39 93.4% 35.9%);
+  --accent-000: hsl(210 65.5% 67.1%);
+  --accent-100: hsl(210 70.9% 51.6%);
+  --accent-900: hsl(210 55.9% 24.6%);
 
-	/* User message bubble — matches claude.ai/code: accent tint + blue text */
-	--user-msg-bg: hsl(210 100% 55% / 0.10);
-	--user-msg-text: hsl(210 80% 68%);
+  /* User message bubble — matches claude.ai/code: accent tint + blue text */
+  --user-msg-bg: hsl(210 100% 55% / 0.1);
+  --user-msg-text: hsl(210 80% 68%);
 
-	/* Automated (external) message bubble — neutral gray tint */
-	--auto-msg-bg: hsl(0 0% 100% / 0.08);
-	--auto-msg-text: hsl(0 0% 70%);
+  /* Automated (external) message bubble — neutral gray tint */
+  --auto-msg-bg: hsl(0 0% 100% / 0.08);
+  --auto-msg-text: hsl(0 0% 70%);
 
-	/* Upstream claude.ai/code — assistant text colors (inverted gray scale) */
-	--upstream-text-assistant-primary: hsl(53 12% 87%);
-	--upstream-text-assistant-secondary: hsl(55 6% 63%);
+  /* Upstream claude.ai/code — assistant text colors (inverted gray scale) */
+  --upstream-text-assistant-primary: hsl(53 12% 87%);
+  --upstream-text-assistant-secondary: hsl(55 6% 63%);
 
-	/* Upstream claude.ai/code — extended diff stat colors (dark mode) */
-	--upstream-extended-green: hsl(134 60% 52%);
-	--upstream-extended-pink: hsl(342 65% 62%);
+  /* Upstream claude.ai/code — extended diff stat colors (dark mode) */
+  --upstream-extended-green: hsl(134 60% 52%);
+  --upstream-extended-pink: hsl(342 65% 62%);
 
-	/* Upstream claude.ai/code — transparency layers (white base) */
-	--upstream-t0: hsl(0 0% 100% / 0);
-	--upstream-t1: hsl(0 0% 100% / 0.04);
-	--upstream-t2: hsl(0 0% 100% / 0.08);
-	--upstream-t3: hsl(0 0% 100% / 0.12);
-	--upstream-t4: hsl(0 0% 100% / 0.16);
-	--upstream-t5: hsl(0 0% 100% / 0.25);
-	--upstream-t6: hsl(0 0% 100% / 0.40);
-	--upstream-t7: hsl(0 0% 100% / 0.70);
-	--upstream-t8: hsl(0 0% 100% / 0.80);
-	--upstream-t9: hsl(0 0% 100% / 1);
+  /* Upstream claude.ai/code — transparency layers (white base) */
+  --upstream-t0: hsl(0 0% 100% / 0);
+  --upstream-t1: hsl(0 0% 100% / 0.04);
+  --upstream-t2: hsl(0 0% 100% / 0.08);
+  --upstream-t3: hsl(0 0% 100% / 0.12);
+  --upstream-t4: hsl(0 0% 100% / 0.16);
+  --upstream-t5: hsl(0 0% 100% / 0.25);
+  --upstream-t6: hsl(0 0% 100% / 0.4);
+  --upstream-t7: hsl(0 0% 100% / 0.7);
+  --upstream-t8: hsl(0 0% 100% / 0.8);
+  --upstream-t9: hsl(0 0% 100% / 1);
 }
 
 @layer utilities {
-	.grid-rows-collapse {
-		grid-template-rows: 0fr;
-		transition: grid-template-rows 200ms ease-out;
-	}
-	.grid-rows-expand {
-		grid-template-rows: 1fr;
-		transition: grid-template-rows 200ms ease-out;
-	}
+  .grid-rows-collapse {
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 200ms ease-out;
+  }
+  .grid-rows-expand {
+    grid-template-rows: 1fr;
+    transition: grid-template-rows 200ms ease-out;
+  }
 }
 
 /* Upstream claude.ai/code focus ring utilities:
    Tailwind v4 uses --tw-outline-style to control outline-style globally,
    so we set that variable instead of fighting with the shorthand. */
 .hide-focus-ring {
-	--tw-outline-style: solid;
-	outline: 2px solid transparent;
-	outline-offset: 2px;
+  --tw-outline-style: solid;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
 }
 .hide-focus-ring:focus-visible {
-	outline-color: var(--color-accent-100);
+  outline-color: var(--color-accent-100);
 }
 
 @layer base {
-	* {
-		@apply border-border-300/15;
-	}
-	body {
-		@apply bg-bg-100 text-text-100 font-sans;
-	}
+  * {
+    @apply border-border-300/15;
+  }
+  body {
+    @apply bg-bg-100 text-text-100 font-sans;
+  }
 }
 
 /* Hide the old line number column in unified diff view to avoid showing
    duplicate numbers (old and new are identical for our Edit tool fragments
    which always start at line 1). */
 .diff-tailwindcss-wrapper .diff-line-num [data-line-old-num] {
-	display: none;
+  display: none;
 }
 .diff-tailwindcss-wrapper .diff-line-num [data-line-new-num] {
-	width: 100%;
+  width: 100%;
 }

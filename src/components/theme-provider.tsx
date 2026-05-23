@@ -1,73 +1,73 @@
-import {createContext, useContext, useEffect, useState} from 'react';
+import { createContext, useContext, useEffect, useState } from "react";
 
-type Theme = 'dark' | 'light' | 'system';
+type Theme = "dark" | "light" | "system";
 
 interface ThemeProviderState {
-	theme: Theme;
-	setTheme: (theme: Theme) => void;
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
 }
 
 const ThemeProviderContext = createContext<ThemeProviderState>({
-	theme: 'system',
-	setTheme: () => null,
+  theme: "system",
+  setTheme: () => null,
 });
 
 export function ThemeProvider({
-	children,
-	defaultTheme = 'system',
-	storageKey = 'theme',
+  children,
+  defaultTheme = "system",
+  storageKey = "theme",
 }: {
-	children: React.ReactNode;
-	defaultTheme?: Theme;
-	storageKey?: string;
+  children: React.ReactNode;
+  defaultTheme?: Theme;
+  storageKey?: string;
 }) {
-	const [theme, setTheme] = useState<Theme>(defaultTheme);
+  const [theme, setTheme] = useState<Theme>(defaultTheme);
 
-	useEffect(() => {
-		const stored = localStorage.getItem(storageKey) as Theme | null;
-		if (stored) setTheme(stored);
-	}, [storageKey]);
+  useEffect(() => {
+    const stored = localStorage.getItem(storageKey) as Theme | null;
+    if (stored) setTheme(stored);
+  }, [storageKey]);
 
-	useEffect(() => {
-		const root = document.documentElement;
-		root.classList.remove('light', 'dark');
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.remove("light", "dark");
 
-		if (theme === 'system') {
-			const mql = window.matchMedia('(prefers-color-scheme: dark)');
-			const handler = (e: MediaQueryListEvent) => {
-				root.classList.remove('light', 'dark');
-				root.classList.add(e.matches ? 'dark' : 'light');
-			};
-			root.classList.add(mql.matches ? 'dark' : 'light');
-			mql.addEventListener('change', handler);
-			return () => {
-				mql.removeEventListener('change', handler);
-			};
-		}
+    if (theme === "system") {
+      const mql = window.matchMedia("(prefers-color-scheme: dark)");
+      const handler = (e: MediaQueryListEvent) => {
+        root.classList.remove("light", "dark");
+        root.classList.add(e.matches ? "dark" : "light");
+      };
+      root.classList.add(mql.matches ? "dark" : "light");
+      mql.addEventListener("change", handler);
+      return () => {
+        mql.removeEventListener("change", handler);
+      };
+    }
 
-		root.classList.add(theme);
-		return undefined;
-	}, [theme]);
+    root.classList.add(theme);
+    return undefined;
+  }, [theme]);
 
-	return (
-		<ThemeProviderContext.Provider
-			value={{
-				theme,
-				setTheme: (t: Theme) => {
-					localStorage.setItem(storageKey, t);
-					setTheme(t);
-				},
-			}}
-		>
-			{children}
-		</ThemeProviderContext.Provider>
-	);
+  return (
+    <ThemeProviderContext.Provider
+      value={{
+        theme,
+        setTheme: (t: Theme) => {
+          localStorage.setItem(storageKey, t);
+          setTheme(t);
+        },
+      }}
+    >
+      {children}
+    </ThemeProviderContext.Provider>
+  );
 }
 
 export function useTheme() {
-	const context = useContext(ThemeProviderContext);
-	if (context === undefined) throw new Error('useTheme must be used within a ThemeProvider');
-	return context;
+  const context = useContext(ThemeProviderContext);
+  if (context === undefined) throw new Error("useTheme must be used within a ThemeProvider");
+  return context;
 }
 
 /**
@@ -75,20 +75,20 @@ export function useTheme() {
  * Tracks the `.dark` class that `ThemeProvider` toggles, so callers resolve
  * the `system` preference correctly and respond to OS-level changes.
  */
-export function useResolvedTheme(): 'light' | 'dark' {
-	const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-		if (typeof document === 'undefined') return 'light';
-		return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-	});
+export function useResolvedTheme(): "light" | "dark" {
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    if (typeof document === "undefined") return "light";
+    return document.documentElement.classList.contains("dark") ? "dark" : "light";
+  });
 
-	useEffect(() => {
-		const root = document.documentElement;
-		const observer = new MutationObserver(() => {
-			setTheme(root.classList.contains('dark') ? 'dark' : 'light');
-		});
-		observer.observe(root, {attributes: true, attributeFilter: ['class']});
-		return () => observer.disconnect();
-	}, []);
+  useEffect(() => {
+    const root = document.documentElement;
+    const observer = new MutationObserver(() => {
+      setTheme(root.classList.contains("dark") ? "dark" : "light");
+    });
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
 
-	return theme;
+  return theme;
 }

@@ -1,5 +1,5 @@
-import {createFileRoute} from '@tanstack/react-router';
-import {PlanDetailResponse} from '../../lib/api/plans';
+import { createFileRoute } from "@tanstack/react-router";
+import { PlanDetailResponse } from "../../lib/api/plans";
 
 /**
  * Returns `true` when an `If-Modified-Since` header value indicates the
@@ -11,90 +11,92 @@ import {PlanDetailResponse} from '../../lib/api/plans';
  * older than the floored mtime.
  */
 export function isPlanNotModified(ifModifiedSince: string | null, mtime: Date): boolean {
-	if (!ifModifiedSince) return false;
-	const since = new Date(ifModifiedSince).getTime();
-	if (Number.isNaN(since)) return false;
-	const mtimeFloor = Math.floor(mtime.getTime() / 1000) * 1000;
-	return since >= mtimeFloor;
+  if (!ifModifiedSince) return false;
+  const since = new Date(ifModifiedSince).getTime();
+  if (Number.isNaN(since)) return false;
+  const mtimeFloor = Math.floor(mtime.getTime() / 1000) * 1000;
+  return since >= mtimeFloor;
 }
 
-export const Route = createFileRoute('/api/plans/$filename')({
-	server: {
-		handlers: {
-			GET: async ({params, request}: {params: {filename: string}; request: Request}) => {
-				const {homedir} = await import('node:os');
-				const {join} = await import('node:path');
-				const {stat} = await import('node:fs/promises');
-				const {readPlan} = await import('../../lib/plans');
-				const {extractTitleFromContent} = await import('../../lib/markdown-utils');
+export const Route = createFileRoute("/api/plans/$filename")({
+  server: {
+    handlers: {
+      GET: async ({ params, request }: { params: { filename: string }; request: Request }) => {
+        const { homedir } = await import("node:os");
+        const { join } = await import("node:path");
+        const { stat } = await import("node:fs/promises");
+        const { readPlan } = await import("../../lib/plans");
+        const { extractTitleFromContent } = await import("../../lib/markdown-utils");
 
-				const plansDir = join(homedir(), '.claude', 'plans');
-				const filename = params.filename;
-				const filePath = join(plansDir, filename);
+        const plansDir = join(homedir(), ".claude", "plans");
+        const filename = params.filename;
+        const filePath = join(plansDir, filename);
 
-				let mtime: Date | null = null;
-				try {
-					const fileStat = await stat(filePath);
-					mtime = fileStat.mtime;
-				} catch {
-					// missing file — fall through to readPlan which returns null
-				}
+        let mtime: Date | null = null;
+        try {
+          const fileStat = await stat(filePath);
+          mtime = fileStat.mtime;
+        } catch {
+          // missing file — fall through to readPlan which returns null
+        }
 
-				if (mtime) {
-					if (isPlanNotModified(request.headers.get('If-Modified-Since'), mtime)) {
-						return new Response(null, {
-							status: 304,
-							headers: {
-								'Cache-Control': 'private, max-age=0, must-revalidate',
-								'Last-Modified': mtime.toUTCString(),
-							},
-						});
-					}
-				}
+        if (mtime) {
+          if (isPlanNotModified(request.headers.get("If-Modified-Since"), mtime)) {
+            return new Response(null, {
+              status: 304,
+              headers: {
+                "Cache-Control": "private, max-age=0, must-revalidate",
+                "Last-Modified": mtime.toUTCString(),
+              },
+            });
+          }
+        }
 
-				const markdown = await readPlan(plansDir, filename);
-				if (markdown == null || mtime == null) {
-					return new Response('Not Found', {status: 404});
-				}
+        const markdown = await readPlan(plansDir, filename);
+        if (markdown == null || mtime == null) {
+          return new Response("Not Found", { status: 404 });
+        }
 
-				const title = extractTitleFromContent(markdown, filename);
+        const title = extractTitleFromContent(markdown, filename);
 
-				const headers: Record<string, string> = {
-					'Cache-Control': 'private, max-age=0, must-revalidate',
-					'Last-Modified': mtime.toUTCString(),
-				};
+        const headers: Record<string, string> = {
+          "Cache-Control": "private, max-age=0, must-revalidate",
+          "Last-Modified": mtime.toUTCString(),
+        };
 
-				return Response.json(
-					PlanDetailResponse.parse({
-						markdown,
-						mtime: mtime.toISOString(),
-						title,
-					}),
-					{headers},
-				);
-			},
-			PUT: async ({params, request}: {params: {filename: string}; request: Request}) => {
-				const {homedir} = await import('node:os');
-				const {join} = await import('node:path');
-				const {writePlan} = await import('../../lib/plans');
-				const {extractTitleFromContent} = await import('../../lib/markdown-utils');
+        return Response.json(
+          PlanDetailResponse.parse({
+            markdown,
+            mtime: mtime.toISOString(),
+            title,
+          }),
+          { headers },
+        );
+      },
+      PUT: async ({ params, request }: { params: { filename: string }; request: Request }) => {
+        const { homedir } = await import("node:os");
+        const { join } = await import("node:path");
+        const { writePlan } = await import("../../lib/plans");
+        const { extractTitleFromContent } = await import("../../lib/markdown-utils");
 
-				const plansDir = join(homedir(), '.claude', 'plans');
-				const markdown = await request.text();
-				const ok = await writePlan(plansDir, params.filename, markdown);
-				if (!ok) {
-					return new Response('Not Found', {status: 404});
-				}
+        const plansDir = join(homedir(), ".claude", "plans");
+        const markdown = await request.text();
+        const ok = await writePlan(plansDir, params.filename, markdown);
+        if (!ok) {
+          return new Response("Not Found", { status: 404 });
+        }
 
-				const title = extractTitleFromContent(markdown, params.filename);
+        const title = extractTitleFromContent(markdown, params.filename);
 
-				return Response.json(
-					{
-						title,
-					},
-					{headers: {'Cache-Control': 'private, max-age=0, must-revalidate'}},
-				);
-			},
-		},
-	},
+        return Response.json(
+          {
+            title,
+          },
+          {
+            headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
+          },
+        );
+      },
+    },
+  },
 });

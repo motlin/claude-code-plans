@@ -14,15 +14,15 @@ This is a sample plan for testing.
 
 ```typescript
 function hello(): string {
-    return 'Hello, World!';
+  return "Hello, World!";
 }
 ```
 
 ### Table Example
 
 | Column A | Column B |
-|---|---|
-| value 1 | value 2 |
-| value 3 | value 4 |
+| -------- | -------- |
+| value 1  | value 2  |
+| value 3  | value 4  |
 
 **Bold text** and [a link](https://example.com).

@@ -1,50 +1,74 @@
-import {describe, expect, it} from 'vitest';
-import {extractTasks} from '../src/components/tasks-view';
-import type {ClientToolCall} from '../src/components/tool-renderers/types';
+import { describe, expect, it } from "vite-plus/test";
+import { extractTasks } from "../src/components/tasks-view";
+import type { ClientToolCall } from "../src/components/tool-renderers/types";
 
-function makeToolCall(name: string, input: ClientToolCall['input']): ClientToolCall {
-	return {id: crypto.randomUUID(), name, input, param: '', result: '', sourceUuid: ''};
+function makeToolCall(name: string, input: ClientToolCall["input"]): ClientToolCall {
+  return {
+    id: crypto.randomUUID(),
+    name,
+    input,
+    param: "",
+    result: "",
+    sourceUuid: "",
+  };
 }
 
-describe('extractTasks', () => {
-	it('extracts tasks from TaskCreate calls', () => {
-		const calls = [
-			makeToolCall('TaskCreate', {subject: 'Build auth', description: 'Add JWT'}),
-			makeToolCall('TaskCreate', {subject: 'Add tests'}),
-		];
-		expect(extractTasks(calls)).toStrictEqual([
-			{id: '1', subject: 'Build auth', description: 'Add JWT', status: 'pending'},
-			{id: '2', subject: 'Add tests', description: '', status: 'pending'},
-		]);
-	});
+describe("extractTasks", () => {
+  it("extracts tasks from TaskCreate calls", () => {
+    const calls = [
+      makeToolCall("TaskCreate", {
+        subject: "Build auth",
+        description: "Add JWT",
+      }),
+      makeToolCall("TaskCreate", { subject: "Add tests" }),
+    ];
+    expect(extractTasks(calls)).toStrictEqual([
+      {
+        id: "1",
+        subject: "Build auth",
+        description: "Add JWT",
+        status: "pending",
+      },
+      { id: "2", subject: "Add tests", description: "", status: "pending" },
+    ]);
+  });
 
-	it('applies TaskUpdate status changes', () => {
-		const calls = [
-			makeToolCall('TaskCreate', {subject: 'Task A'}),
-			makeToolCall('TaskUpdate', {taskId: '1', status: 'in_progress'}),
-			makeToolCall('TaskUpdate', {taskId: '1', status: 'completed'}),
-		];
-		expect(extractTasks(calls)).toStrictEqual([{id: '1', subject: 'Task A', description: '', status: 'completed'}]);
-	});
+  it("applies TaskUpdate status changes", () => {
+    const calls = [
+      makeToolCall("TaskCreate", { subject: "Task A" }),
+      makeToolCall("TaskUpdate", { taskId: "1", status: "in_progress" }),
+      makeToolCall("TaskUpdate", { taskId: "1", status: "completed" }),
+    ];
+    expect(extractTasks(calls)).toStrictEqual([
+      { id: "1", subject: "Task A", description: "", status: "completed" },
+    ]);
+  });
 
-	it('ignores TaskUpdate for unknown task IDs', () => {
-		const calls = [
-			makeToolCall('TaskCreate', {subject: 'Task A'}),
-			makeToolCall('TaskUpdate', {taskId: '99', status: 'completed'}),
-		];
-		expect(extractTasks(calls)).toStrictEqual([{id: '1', subject: 'Task A', description: '', status: 'pending'}]);
-	});
+  it("ignores TaskUpdate for unknown task IDs", () => {
+    const calls = [
+      makeToolCall("TaskCreate", { subject: "Task A" }),
+      makeToolCall("TaskUpdate", { taskId: "99", status: "completed" }),
+    ];
+    expect(extractTasks(calls)).toStrictEqual([
+      { id: "1", subject: "Task A", description: "", status: "pending" },
+    ]);
+  });
 
-	it('returns empty array when no task calls exist', () => {
-		const calls = [makeToolCall('Bash', {command: 'echo hi'}), makeToolCall('Read', {file_path: '/tmp/foo'})];
-		expect(extractTasks(calls)).toStrictEqual([]);
-	});
+  it("returns empty array when no task calls exist", () => {
+    const calls = [
+      makeToolCall("Bash", { command: "echo hi" }),
+      makeToolCall("Read", { file_path: "/tmp/foo" }),
+    ];
+    expect(extractTasks(calls)).toStrictEqual([]);
+  });
 
-	it('ignores invalid status values in TaskUpdate', () => {
-		const calls = [
-			makeToolCall('TaskCreate', {subject: 'Task A'}),
-			makeToolCall('TaskUpdate', {taskId: '1', status: 'invalid_status'}),
-		];
-		expect(extractTasks(calls)).toStrictEqual([{id: '1', subject: 'Task A', description: '', status: 'pending'}]);
-	});
+  it("ignores invalid status values in TaskUpdate", () => {
+    const calls = [
+      makeToolCall("TaskCreate", { subject: "Task A" }),
+      makeToolCall("TaskUpdate", { taskId: "1", status: "invalid_status" }),
+    ];
+    expect(extractTasks(calls)).toStrictEqual([
+      { id: "1", subject: "Task A", description: "", status: "pending" },
+    ]);
+  });
 });

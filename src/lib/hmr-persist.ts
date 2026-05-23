@@ -14,12 +14,12 @@
 const cache: Record<string, unknown> = {};
 
 export function hmrPersist<T>(key: string, init: () => T): T {
-	if (import.meta.hot) {
-		return (import.meta.hot.data[key] ??= init()) as T;
-	}
-	return (cache[key] ??= init()) as T;
+  if (import.meta.hot) {
+    return (import.meta.hot.data[key] ??= init()) as T;
+  }
+  return (cache[key] ??= init()) as T;
 }
 
 export function hmrDispose(cleanup: () => void | Promise<void>): void {
-	import.meta.hot?.dispose(cleanup);
+  import.meta.hot?.dispose(cleanup);
 }

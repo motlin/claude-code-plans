@@ -1,532 +1,541 @@
-import type {ThemedToken} from '@shikijs/core';
-import {useSuspenseQuery} from '@tanstack/react-query';
-import {createFileRoute, Link} from '@tanstack/react-router';
+import type { ThemedToken } from "@shikijs/core";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-	AlertCircle,
-	Check,
-	ChevronDown,
-	ChevronRight,
-	Code,
-	Plus,
-	RotateCcw,
-	Save,
-	SlidersHorizontal,
-	Trash2,
-	X,
-} from 'lucide-react';
-import {useCallback, useEffect, useRef, useState} from 'react';
-import {useHighlightedLines} from '../hooks/use-shiki';
-import {settingsQueryOptions, useSaveSettingsFile} from '../lib/api/settings';
+  AlertCircle,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Code,
+  Plus,
+  RotateCcw,
+  Save,
+  SlidersHorizontal,
+  Trash2,
+  X,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useHighlightedLines } from "../hooks/use-shiki";
+import { settingsQueryOptions, useSaveSettingsFile } from "../lib/api/settings";
 
 const FILE_LABELS: Record<string, string> = {
-	'settings.json': 'Global Settings',
-	'settings.local.json': 'Local Settings',
+  "settings.json": "Global Settings",
+  "settings.local.json": "Local Settings",
 };
 
 const FILE_DESCRIPTIONS: Record<string, string> = {
-	'settings.json': 'Shared across machines, checked into dotfiles.',
-	'settings.local.json': 'Machine-specific overrides, not shared.',
+  "settings.json": "Shared across machines, checked into dotfiles.",
+  "settings.local.json": "Machine-specific overrides, not shared.",
 };
 
-export const Route = createFileRoute('/settings_/edit')({
-	component: SettingsEditPage,
-	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(settingsQueryOptions),
-	head: () => ({
-		meta: [{title: 'Edit Settings'}],
-	}),
+export const Route = createFileRoute("/settings_/edit")({
+  component: SettingsEditPage,
+  loader: ({ context: { queryClient } }) => queryClient.ensureQueryData(settingsQueryOptions),
+  head: () => ({
+    meta: [{ title: "Edit Settings" }],
+  }),
 });
 
-type Feedback = {type: 'success' | 'error'; text: string};
+type Feedback = { type: "success" | "error"; text: string };
 
-function HighlightedLine({tokens}: {tokens: ThemedToken[]}) {
-	return (
-		<>
-			{tokens.map((token, index) => (
-				<span
-					key={index}
-					style={{color: token.color}}
-				>
-					{token.content}
-				</span>
-			))}
-		</>
-	);
+function HighlightedLine({ tokens }: { tokens: ThemedToken[] }) {
+  return (
+    <>
+      {tokens.map((token, index) => (
+        <span key={index} style={{ color: token.color }}>
+          {token.content}
+        </span>
+      ))}
+    </>
+  );
 }
 
-function JsonEditor({filename, initialContent, path}: {filename: string; initialContent: string; path: string}) {
-	const draftRef = useRef(initialContent);
-	const [editorValue, setEditorValue] = useState(initialContent);
-	const [savedContent, setSavedContent] = useState(initialContent);
-	const [feedback, setFeedback] = useState<Feedback | null>(null);
-	const [validationError, setValidationError] = useState<string | null>(null);
-	const [formatFeedback, setFormatFeedback] = useState(false);
-	const saveMutation = useSaveSettingsFile();
-	const saving = saveMutation.isPending;
+function JsonEditor({
+  filename,
+  initialContent,
+  path,
+}: {
+  filename: string;
+  initialContent: string;
+  path: string;
+}) {
+  const draftRef = useRef(initialContent);
+  const [editorValue, setEditorValue] = useState(initialContent);
+  const [savedContent, setSavedContent] = useState(initialContent);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [formatFeedback, setFormatFeedback] = useState(false);
+  const saveMutation = useSaveSettingsFile();
+  const saving = saveMutation.isPending;
 
-	const validate = useCallback((text: string): string | null => {
-		try {
-			const parsed: unknown = JSON.parse(text);
-			if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-				return 'Settings must be a JSON object, not an array or primitive.';
-			}
-			return null;
-		} catch (error) {
-			return (error as SyntaxError).message;
-		}
-	}, []);
+  const validate = useCallback((text: string): string | null => {
+    try {
+      const parsed: unknown = JSON.parse(text);
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        return "Settings must be a JSON object, not an array or primitive.";
+      }
+      return null;
+    } catch (error) {
+      return (error as SyntaxError).message;
+    }
+  }, []);
 
-	const handleChange = useCallback(
-		(event: React.ChangeEvent<HTMLTextAreaElement>) => {
-			const value = event.target.value;
-			draftRef.current = value;
-			setEditorValue(value);
-			setValidationError(validate(value));
-			setFeedback(null);
-		},
-		[validate],
-	);
+  const handleChange = useCallback(
+    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const value = event.target.value;
+      draftRef.current = value;
+      setEditorValue(value);
+      setValidationError(validate(value));
+      setFeedback(null);
+    },
+    [validate],
+  );
 
-	const handleSave = useCallback(async () => {
-		const content = draftRef.current;
-		const error = validate(content);
-		if (error) {
-			setValidationError(error);
-			return;
-		}
+  const handleSave = useCallback(async () => {
+    const content = draftRef.current;
+    const error = validate(content);
+    if (error) {
+      setValidationError(error);
+      return;
+    }
 
-		setFeedback(null);
-		try {
-			const result = await saveMutation.mutateAsync({
-				filename: filename as 'settings.json' | 'settings.local.json',
-				content,
-			});
-			setFeedback({type: 'success', text: `Saved to ${result.path}`});
-			const pretty = JSON.stringify(JSON.parse(content), null, 2);
-			draftRef.current = pretty;
-			setEditorValue(pretty);
-			setSavedContent(pretty);
-			setValidationError(null);
-		} catch (error) {
-			setFeedback({type: 'error', text: (error as Error).message});
-		}
-	}, [filename, validate, saveMutation]);
+    setFeedback(null);
+    try {
+      const result = await saveMutation.mutateAsync({
+        filename: filename as "settings.json" | "settings.local.json",
+        content,
+      });
+      setFeedback({ type: "success", text: `Saved to ${result.path}` });
+      const pretty = JSON.stringify(JSON.parse(content), null, 2);
+      draftRef.current = pretty;
+      setEditorValue(pretty);
+      setSavedContent(pretty);
+      setValidationError(null);
+    } catch (error) {
+      setFeedback({ type: "error", text: (error as Error).message });
+    }
+  }, [filename, validate, saveMutation]);
 
-	const handleReset = useCallback(() => {
-		draftRef.current = savedContent;
-		setEditorValue(savedContent);
-		setValidationError(null);
-		setFeedback(null);
-	}, [savedContent]);
+  const handleReset = useCallback(() => {
+    draftRef.current = savedContent;
+    setEditorValue(savedContent);
+    setValidationError(null);
+    setFeedback(null);
+  }, [savedContent]);
 
-	const handleFormat = useCallback(() => {
-		const content = draftRef.current;
-		const error = validate(content);
-		if (error) {
-			setValidationError(error);
-			return;
-		}
-		const pretty = JSON.stringify(JSON.parse(content), null, 2);
-		draftRef.current = pretty;
-		setEditorValue(pretty);
-		setValidationError(null);
-		setFormatFeedback(true);
-		setTimeout(() => {
-			setFormatFeedback(false);
-		}, 1500);
-	}, [validate]);
+  const handleFormat = useCallback(() => {
+    const content = draftRef.current;
+    const error = validate(content);
+    if (error) {
+      setValidationError(error);
+      return;
+    }
+    const pretty = JSON.stringify(JSON.parse(content), null, 2);
+    draftRef.current = pretty;
+    setEditorValue(pretty);
+    setValidationError(null);
+    setFormatFeedback(true);
+    setTimeout(() => {
+      setFormatFeedback(false);
+    }, 1500);
+  }, [validate]);
 
-	const isDirty = editorValue !== savedContent;
-	const lineCount = editorValue.split('\n').length;
+  const isDirty = editorValue !== savedContent;
+  const lineCount = editorValue.split("\n").length;
 
-	const tokens = useHighlightedLines(editorValue, 'json');
-	const textareaRef = useRef<HTMLTextAreaElement>(null);
-	const highlightRef = useRef<HTMLDivElement>(null);
+  const tokens = useHighlightedLines(editorValue, "json");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const highlightRef = useRef<HTMLDivElement>(null);
 
-	// Synchronize scroll position between textarea and highlight layer.
-	useEffect(() => {
-		const textarea = textareaRef.current;
-		const highlight = highlightRef.current;
-		if (!textarea || !highlight) return;
+  // Synchronize scroll position between textarea and highlight layer.
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    const highlight = highlightRef.current;
+    if (!textarea || !highlight) return;
 
-		function handleScroll(): void {
-			if (highlight && textarea) {
-				highlight.scrollTop = textarea.scrollTop;
-				highlight.scrollLeft = textarea.scrollLeft;
-			}
-		}
-		textarea.addEventListener('scroll', handleScroll);
-		return () => {
-			textarea.removeEventListener('scroll', handleScroll);
-		};
-	}, []);
+    function handleScroll(): void {
+      if (highlight && textarea) {
+        highlight.scrollTop = textarea.scrollTop;
+        highlight.scrollLeft = textarea.scrollLeft;
+      }
+    }
+    textarea.addEventListener("scroll", handleScroll);
+    return () => {
+      textarea.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
 
-	return (
-		<section className="space-y-3">
-			<div>
-				<h2 className="text-sm font-semibold text-text-100">{FILE_LABELS[filename] ?? filename}</h2>
-				<p className="text-xs text-text-500 mt-0.5">
-					{FILE_DESCRIPTIONS[filename]} <span className="font-mono">{path}</span>
-				</p>
-			</div>
+  return (
+    <section className="space-y-3">
+      <div>
+        <h2 className="text-sm font-semibold text-text-100">{FILE_LABELS[filename] ?? filename}</h2>
+        <p className="text-xs text-text-500 mt-0.5">
+          {FILE_DESCRIPTIONS[filename]} <span className="font-mono">{path}</span>
+        </p>
+      </div>
 
-			<div className="relative rounded-md bg-bg-100">
-				{tokens && (
-					<div
-						ref={highlightRef}
-						aria-hidden
-						className="absolute inset-0 overflow-hidden rounded-md border border-transparent p-4 font-mono text-xs leading-relaxed pointer-events-none whitespace-pre-wrap break-words"
-					>
-						{tokens.map((lineTokens, lineIndex) => (
-							<div
-								key={lineIndex}
-								className="min-h-[1.625em]"
-							>
-								<HighlightedLine tokens={lineTokens} />
-							</div>
-						))}
-					</div>
-				)}
-				<textarea
-					ref={textareaRef}
-					value={editorValue}
-					onChange={handleChange}
-					spellCheck={false}
-					className={`relative w-full rounded-md border p-4 font-mono text-xs leading-relaxed focus:outline-none focus:ring-1 resize-y ${
-						tokens
-							? 'bg-transparent text-transparent caret-text-100 selection:bg-accent-100/30'
-							: 'bg-bg-100 text-text-100'
-					} ${
-						validationError
-							? 'border-danger-000 focus:ring-danger-000'
-							: 'border-border-300/15 focus:ring-accent-100'
-					}`}
-					rows={Math.min(Math.max(lineCount + 2, 10), 40)}
-				/>
-			</div>
+      <div className="relative rounded-md bg-bg-100">
+        {tokens && (
+          <div
+            ref={highlightRef}
+            aria-hidden
+            className="absolute inset-0 overflow-hidden rounded-md border border-transparent p-4 font-mono text-xs leading-relaxed pointer-events-none whitespace-pre-wrap break-words"
+          >
+            {tokens.map((lineTokens, lineIndex) => (
+              <div key={lineIndex} className="min-h-[1.625em]">
+                <HighlightedLine tokens={lineTokens} />
+              </div>
+            ))}
+          </div>
+        )}
+        <textarea
+          ref={textareaRef}
+          value={editorValue}
+          onChange={handleChange}
+          spellCheck={false}
+          className={`relative w-full rounded-md border p-4 font-mono text-xs leading-relaxed focus:outline-none focus:ring-1 resize-y ${
+            tokens
+              ? "bg-transparent text-transparent caret-text-100 selection:bg-accent-100/30"
+              : "bg-bg-100 text-text-100"
+          } ${
+            validationError
+              ? "border-danger-000 focus:ring-danger-000"
+              : "border-border-300/15 focus:ring-accent-100"
+          }`}
+          rows={Math.min(Math.max(lineCount + 2, 10), 40)}
+        />
+      </div>
 
-			{validationError && (
-				<div className="flex items-start gap-2 rounded-md border border-danger-000/30 bg-danger-000/5 px-3 py-2 text-sm text-danger-000">
-					<AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-					<span className="font-mono text-xs">{validationError}</span>
-				</div>
-			)}
+      {validationError && (
+        <div className="flex items-start gap-2 rounded-md border border-danger-000/30 bg-danger-000/5 px-3 py-2 text-sm text-danger-000">
+          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+          <span className="font-mono text-xs">{validationError}</span>
+        </div>
+      )}
 
-			{feedback && (
-				<div
-					className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${
-						feedback.type === 'success'
-							? 'border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300'
-							: 'border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300'
-					}`}
-				>
-					{feedback.type === 'success' ? <Check className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-					{feedback.text}
-				</div>
-			)}
+      {feedback && (
+        <div
+          className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${
+            feedback.type === "success"
+              ? "border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300"
+              : "border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300"
+          }`}
+        >
+          {feedback.type === "success" ? (
+            <Check className="h-4 w-4" />
+          ) : (
+            <AlertCircle className="h-4 w-4" />
+          )}
+          {feedback.text}
+        </div>
+      )}
 
-			<div className="flex items-center gap-2">
-				<button
-					type="button"
-					onClick={handleSave}
-					disabled={saving || validationError !== null || !isDirty}
-					className="flex items-center gap-1.5 rounded-md bg-accent-100 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-100/80 disabled:opacity-50"
-				>
-					<Save className="h-3.5 w-3.5" />
-					{saving ? 'Saving...' : 'Save'}
-				</button>
-				<button
-					type="button"
-					onClick={handleFormat}
-					disabled={validationError !== null}
-					className={`flex items-center gap-1.5 rounded-md border border-border-300/15 px-3 py-1.5 text-sm transition-colors hover:bg-bg-200 disabled:opacity-50 ${
-						formatFeedback ? 'text-green-600 dark:text-green-400' : 'text-text-300'
-					}`}
-				>
-					{formatFeedback && <Check className="h-3.5 w-3.5" />}
-					{formatFeedback ? 'Formatted' : 'Format'}
-				</button>
-				{isDirty && (
-					<button
-						type="button"
-						onClick={handleReset}
-						className="flex items-center gap-1.5 rounded-md border border-border-300/15 px-3 py-1.5 text-sm text-text-300 transition-colors hover:bg-bg-200"
-					>
-						<RotateCcw className="h-3.5 w-3.5" />
-						Reset
-					</button>
-				)}
-			</div>
-		</section>
-	);
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving || validationError !== null || !isDirty}
+          className="flex items-center gap-1.5 rounded-md bg-accent-100 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-100/80 disabled:opacity-50"
+        >
+          <Save className="h-3.5 w-3.5" />
+          {saving ? "Saving..." : "Save"}
+        </button>
+        <button
+          type="button"
+          onClick={handleFormat}
+          disabled={validationError !== null}
+          className={`flex items-center gap-1.5 rounded-md border border-border-300/15 px-3 py-1.5 text-sm transition-colors hover:bg-bg-200 disabled:opacity-50 ${
+            formatFeedback ? "text-green-600 dark:text-green-400" : "text-text-300"
+          }`}
+        >
+          {formatFeedback && <Check className="h-3.5 w-3.5" />}
+          {formatFeedback ? "Formatted" : "Format"}
+        </button>
+        {isDirty && (
+          <button
+            type="button"
+            onClick={handleReset}
+            className="flex items-center gap-1.5 rounded-md border border-border-300/15 px-3 py-1.5 text-sm text-text-300 transition-colors hover:bg-bg-200"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Reset
+          </button>
+        )}
+      </div>
+    </section>
+  );
 }
 
-type FieldType = 'boolean' | 'string' | 'number' | 'enum' | 'object';
+type FieldType = "boolean" | "string" | "number" | "enum" | "object";
 
 interface FieldDefinition {
-	key: string;
-	label: string;
-	description: string;
-	type: FieldType;
-	section: string;
-	options?: Array<{value: string; label: string}>;
-	min?: number;
-	max?: number;
+  key: string;
+  label: string;
+  description: string;
+  type: FieldType;
+  section: string;
+  options?: Array<{ value: string; label: string }>;
+  min?: number;
+  max?: number;
 }
 
 const FIELD_DEFINITIONS: FieldDefinition[] = [
-	{
-		key: 'model',
-		label: 'Model',
-		description: 'Default Claude model to use',
-		type: 'string',
-		section: 'General',
-	},
-	{
-		key: 'theme',
-		label: 'Theme',
-		description: 'Color scheme for the Claude Code TUI',
-		type: 'enum',
-		section: 'General',
-		options: [
-			{value: 'light', label: 'Light'},
-			{value: 'dark', label: 'Dark'},
-			{value: 'light-daltonized', label: 'Light (daltonized)'},
-			{value: 'dark-daltonized', label: 'Dark (daltonized)'},
-		],
-	},
-	{
-		key: 'tui',
-		label: 'TUI mode',
-		description: 'Terminal UI display mode',
-		type: 'enum',
-		section: 'General',
-		options: [
-			{value: 'fullscreen', label: 'Fullscreen'},
-			{value: 'inline', label: 'Inline'},
-		],
-	},
-	{
-		key: 'verbose',
-		label: 'Verbose',
-		description: 'Enable verbose output in the terminal',
-		type: 'boolean',
-		section: 'General',
-	},
-	{
-		key: 'includeCoAuthoredBy',
-		label: 'Co-authored-by',
-		description: 'Include co-authored-by trailer in git commits',
-		type: 'boolean',
-		section: 'General',
-	},
-	{
-		key: 'alwaysThinkingEnabled',
-		label: 'Extended thinking',
-		description: 'Enable extended thinking on every request',
-		type: 'boolean',
-		section: 'General',
-	},
-	{
-		key: 'voiceEnabled',
-		label: 'Voice',
-		description: 'Enable voice input',
-		type: 'boolean',
-		section: 'General',
-	},
-	{
-		key: 'cleanupPeriodDays',
-		label: 'Cleanup period (days)',
-		description: 'Number of days before old sessions are cleaned up',
-		type: 'number',
-		section: 'Data',
-		min: 1,
-	},
-	{
-		key: 'fileCheckpointingEnabled',
-		label: 'File checkpointing',
-		description: 'Enable automatic file checkpointing for undo support',
-		type: 'boolean',
-		section: 'Data',
-	},
-	{
-		key: 'autoUpdatesChannel',
-		label: 'Auto-updates channel',
-		description: 'Release channel for automatic updates',
-		type: 'enum',
-		section: 'Updates',
-		options: [
-			{value: 'latest', label: 'Latest (stable)'},
-			{value: 'beta', label: 'Beta'},
-			{value: 'disabled', label: 'Disabled'},
-		],
-	},
-	{
-		key: 'enableAllProjectMcpServers',
-		label: 'Enable all project MCP servers',
-		description: 'Auto-enable MCP servers from project .mcp.json files',
-		type: 'boolean',
-		section: 'MCP',
-	},
-	{
-		key: 'skipDangerousModePermissionPrompt',
-		label: 'Skip dangerous mode prompt',
-		description: 'Skip the permission confirmation when using dangerous/yolo mode',
-		type: 'boolean',
-		section: 'Permissions',
-	},
-	{
-		key: 'teammateMode',
-		label: 'Teammate mode',
-		description: 'How Claude Code runs as a teammate / background agent',
-		type: 'enum',
-		section: 'Advanced',
-		options: [
-			{value: 'in-process', label: 'In-process'},
-			{value: 'detached', label: 'Detached'},
-		],
-	},
-	{
-		key: 'preferredNotifChannel',
-		label: 'Notification channel',
-		description: 'Where to deliver desktop notifications',
-		type: 'string',
-		section: 'Advanced',
-	},
+  {
+    key: "model",
+    label: "Model",
+    description: "Default Claude model to use",
+    type: "string",
+    section: "General",
+  },
+  {
+    key: "theme",
+    label: "Theme",
+    description: "Color scheme for the Claude Code TUI",
+    type: "enum",
+    section: "General",
+    options: [
+      { value: "light", label: "Light" },
+      { value: "dark", label: "Dark" },
+      { value: "light-daltonized", label: "Light (daltonized)" },
+      { value: "dark-daltonized", label: "Dark (daltonized)" },
+    ],
+  },
+  {
+    key: "tui",
+    label: "TUI mode",
+    description: "Terminal UI display mode",
+    type: "enum",
+    section: "General",
+    options: [
+      { value: "fullscreen", label: "Fullscreen" },
+      { value: "inline", label: "Inline" },
+    ],
+  },
+  {
+    key: "verbose",
+    label: "Verbose",
+    description: "Enable verbose output in the terminal",
+    type: "boolean",
+    section: "General",
+  },
+  {
+    key: "includeCoAuthoredBy",
+    label: "Co-authored-by",
+    description: "Include co-authored-by trailer in git commits",
+    type: "boolean",
+    section: "General",
+  },
+  {
+    key: "alwaysThinkingEnabled",
+    label: "Extended thinking",
+    description: "Enable extended thinking on every request",
+    type: "boolean",
+    section: "General",
+  },
+  {
+    key: "voiceEnabled",
+    label: "Voice",
+    description: "Enable voice input",
+    type: "boolean",
+    section: "General",
+  },
+  {
+    key: "cleanupPeriodDays",
+    label: "Cleanup period (days)",
+    description: "Number of days before old sessions are cleaned up",
+    type: "number",
+    section: "Data",
+    min: 1,
+  },
+  {
+    key: "fileCheckpointingEnabled",
+    label: "File checkpointing",
+    description: "Enable automatic file checkpointing for undo support",
+    type: "boolean",
+    section: "Data",
+  },
+  {
+    key: "autoUpdatesChannel",
+    label: "Auto-updates channel",
+    description: "Release channel for automatic updates",
+    type: "enum",
+    section: "Updates",
+    options: [
+      { value: "latest", label: "Latest (stable)" },
+      { value: "beta", label: "Beta" },
+      { value: "disabled", label: "Disabled" },
+    ],
+  },
+  {
+    key: "enableAllProjectMcpServers",
+    label: "Enable all project MCP servers",
+    description: "Auto-enable MCP servers from project .mcp.json files",
+    type: "boolean",
+    section: "MCP",
+  },
+  {
+    key: "skipDangerousModePermissionPrompt",
+    label: "Skip dangerous mode prompt",
+    description: "Skip the permission confirmation when using dangerous/yolo mode",
+    type: "boolean",
+    section: "Permissions",
+  },
+  {
+    key: "teammateMode",
+    label: "Teammate mode",
+    description: "How Claude Code runs as a teammate / background agent",
+    type: "enum",
+    section: "Advanced",
+    options: [
+      { value: "in-process", label: "In-process" },
+      { value: "detached", label: "Detached" },
+    ],
+  },
+  {
+    key: "preferredNotifChannel",
+    label: "Notification channel",
+    description: "Where to deliver desktop notifications",
+    type: "string",
+    section: "Advanced",
+  },
 ];
 
-const SECTIONS_ORDER = ['General', 'Data', 'Updates', 'MCP', 'Permissions', 'Advanced'];
+const SECTIONS_ORDER = ["General", "Data", "Updates", "MCP", "Permissions", "Advanced"];
 
 function groupFieldsBySection(): Map<string, FieldDefinition[]> {
-	const groups = new Map<string, FieldDefinition[]>();
-	for (const section of SECTIONS_ORDER) {
-		groups.set(section, []);
-	}
-	for (const field of FIELD_DEFINITIONS) {
-		const existing = groups.get(field.section);
-		if (existing) {
-			existing.push(field);
-		} else {
-			groups.set(field.section, [field]);
-		}
-	}
-	return groups;
+  const groups = new Map<string, FieldDefinition[]>();
+  for (const section of SECTIONS_ORDER) {
+    groups.set(section, []);
+  }
+  for (const field of FIELD_DEFINITIONS) {
+    const existing = groups.get(field.section);
+    if (existing) {
+      existing.push(field);
+    } else {
+      groups.set(field.section, [field]);
+    }
+  }
+  return groups;
 }
 
-function FormToggle({checked, onChange}: {checked: boolean; onChange: (value: boolean) => void}) {
-	return (
-		<button
-			type="button"
-			role="switch"
-			aria-checked={checked}
-			onClick={() => onChange(!checked)}
-			className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-				checked ? 'bg-accent-100' : 'bg-bg-300'
-			}`}
-		>
-			<span
-				className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${
-					checked ? 'translate-x-[18px]' : 'translate-x-[3px]'
-				}`}
-			/>
-		</button>
-	);
+function FormToggle({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
+        checked ? "bg-accent-100" : "bg-bg-300"
+      }`}
+    >
+      <span
+        className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${
+          checked ? "translate-x-[18px]" : "translate-x-[3px]"
+        }`}
+      />
+    </button>
+  );
 }
 
 function FormField({
-	field,
-	value,
-	onChange,
+  field,
+  value,
+  onChange,
 }: {
-	field: FieldDefinition;
-	value: unknown;
-	onChange: (key: string, value: unknown) => void;
+  field: FieldDefinition;
+  value: unknown;
+  onChange: (key: string, value: unknown) => void;
 }) {
-	switch (field.type) {
-		case 'boolean': {
-			return (
-				<div className="flex items-center justify-between gap-4 py-2">
-					<div>
-						<div className="text-sm font-medium text-text-100">{field.label}</div>
-						<div className="text-xs text-text-500">{field.description}</div>
-					</div>
-					<FormToggle
-						checked={value === true}
-						onChange={(checked) => onChange(field.key, checked)}
-					/>
-				</div>
-			);
-		}
-		case 'enum': {
-			return (
-				<div className="flex items-center justify-between gap-4 py-2">
-					<div>
-						<div className="text-sm font-medium text-text-100">{field.label}</div>
-						<div className="text-xs text-text-500">{field.description}</div>
-					</div>
-					<select
-						value={typeof value === 'string' ? value : ''}
-						onChange={(event) => onChange(field.key, event.target.value)}
-						className="rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
-					>
-						{!field.options?.some((o) => o.value === value) && (
-							<option value={typeof value === 'string' ? value : ''}>
-								{typeof value === 'string' ? value : '(not set)'}
-							</option>
-						)}
-						{field.options?.map((option) => (
-							<option
-								key={option.value}
-								value={option.value}
-							>
-								{option.label}
-							</option>
-						))}
-					</select>
-				</div>
-			);
-		}
-		case 'number': {
-			return (
-				<div className="flex items-center justify-between gap-4 py-2">
-					<div>
-						<div className="text-sm font-medium text-text-100">{field.label}</div>
-						<div className="text-xs text-text-500">{field.description}</div>
-					</div>
-					<input
-						type="number"
-						value={typeof value === 'number' ? value : ''}
-						min={field.min}
-						max={field.max}
-						onChange={(event) => {
-							const parsed = Number(event.target.value);
-							if (Number.isFinite(parsed)) {
-								onChange(field.key, parsed);
-							}
-						}}
-						className="w-24 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
-					/>
-				</div>
-			);
-		}
-		case 'string': {
-			return (
-				<div className="flex items-center justify-between gap-4 py-2">
-					<div>
-						<div className="text-sm font-medium text-text-100">{field.label}</div>
-						<div className="text-xs text-text-500">{field.description}</div>
-					</div>
-					<input
-						type="text"
-						value={typeof value === 'string' ? value : ''}
-						onChange={(event) => onChange(field.key, event.target.value)}
-						className="w-48 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
-					/>
-				</div>
-			);
-		}
-		default:
-			return null;
-	}
+  switch (field.type) {
+    case "boolean": {
+      return (
+        <div className="flex items-center justify-between gap-4 py-2">
+          <div>
+            <div className="text-sm font-medium text-text-100">{field.label}</div>
+            <div className="text-xs text-text-500">{field.description}</div>
+          </div>
+          <FormToggle
+            checked={value === true}
+            onChange={(checked) => onChange(field.key, checked)}
+          />
+        </div>
+      );
+    }
+    case "enum": {
+      return (
+        <div className="flex items-center justify-between gap-4 py-2">
+          <div>
+            <div className="text-sm font-medium text-text-100">{field.label}</div>
+            <div className="text-xs text-text-500">{field.description}</div>
+          </div>
+          <select
+            value={typeof value === "string" ? value : ""}
+            onChange={(event) => onChange(field.key, event.target.value)}
+            className="rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+          >
+            {!field.options?.some((o) => o.value === value) && (
+              <option value={typeof value === "string" ? value : ""}>
+                {typeof value === "string" ? value : "(not set)"}
+              </option>
+            )}
+            {field.options?.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      );
+    }
+    case "number": {
+      return (
+        <div className="flex items-center justify-between gap-4 py-2">
+          <div>
+            <div className="text-sm font-medium text-text-100">{field.label}</div>
+            <div className="text-xs text-text-500">{field.description}</div>
+          </div>
+          <input
+            type="number"
+            value={typeof value === "number" ? value : ""}
+            min={field.min}
+            max={field.max}
+            onChange={(event) => {
+              const parsed = Number(event.target.value);
+              if (Number.isFinite(parsed)) {
+                onChange(field.key, parsed);
+              }
+            }}
+            className="w-24 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+          />
+        </div>
+      );
+    }
+    case "string": {
+      return (
+        <div className="flex items-center justify-between gap-4 py-2">
+          <div>
+            <div className="text-sm font-medium text-text-100">{field.label}</div>
+            <div className="text-xs text-text-500">{field.description}</div>
+          </div>
+          <input
+            type="text"
+            value={typeof value === "string" ? value : ""}
+            onChange={(event) => onChange(field.key, event.target.value)}
+            className="w-48 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+          />
+        </div>
+      );
+    }
+    default:
+      return null;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -534,1148 +543,1167 @@ function FormField({
 // ---------------------------------------------------------------------------
 
 function EnvEditor({
-	value,
-	onChange,
+  value,
+  onChange,
 }: {
-	value: Record<string, string>;
-	onChange: (key: string, value: unknown) => void;
+  value: Record<string, string>;
+  onChange: (key: string, value: unknown) => void;
 }) {
-	const entries = Object.entries(value);
-	const [newKey, setNewKey] = useState('');
-	const [newValue, setNewValue] = useState('');
+  const entries = Object.entries(value);
+  const [newKey, setNewKey] = useState("");
+  const [newValue, setNewValue] = useState("");
 
-	const handleEntryChange = useCallback(
-		(oldKey: string, field: 'key' | 'value', fieldValue: string) => {
-			const updated = {...value};
-			if (field === 'key') {
-				const currentValue = updated[oldKey] ?? '';
-				delete updated[oldKey];
-				if (fieldValue) {
-					updated[fieldValue] = currentValue;
-				}
-			} else {
-				updated[oldKey] = fieldValue;
-			}
-			onChange('env', updated);
-		},
-		[value, onChange],
-	);
+  const handleEntryChange = useCallback(
+    (oldKey: string, field: "key" | "value", fieldValue: string) => {
+      const updated = { ...value };
+      if (field === "key") {
+        const currentValue = updated[oldKey] ?? "";
+        delete updated[oldKey];
+        if (fieldValue) {
+          updated[fieldValue] = currentValue;
+        }
+      } else {
+        updated[oldKey] = fieldValue;
+      }
+      onChange("env", updated);
+    },
+    [value, onChange],
+  );
 
-	const handleRemove = useCallback(
-		(key: string) => {
-			const updated = {...value};
-			delete updated[key];
-			onChange('env', updated);
-		},
-		[value, onChange],
-	);
+  const handleRemove = useCallback(
+    (key: string) => {
+      const updated = { ...value };
+      delete updated[key];
+      onChange("env", updated);
+    },
+    [value, onChange],
+  );
 
-	const handleAdd = useCallback(() => {
-		if (!newKey.trim()) return;
-		const updated = {...value, [newKey.trim()]: newValue};
-		onChange('env', updated);
-		setNewKey('');
-		setNewValue('');
-	}, [value, onChange, newKey, newValue]);
+  const handleAdd = useCallback(() => {
+    if (!newKey.trim()) return;
+    const updated = { ...value, [newKey.trim()]: newValue };
+    onChange("env", updated);
+    setNewKey("");
+    setNewValue("");
+  }, [value, onChange, newKey, newValue]);
 
-	return (
-		<div className="py-2">
-			<div className="mb-2">
-				<div className="text-sm font-medium text-text-100">Environment variables</div>
-				<div className="text-xs text-text-500">Key-value pairs injected into Claude Code's environment</div>
-			</div>
-			<div className="space-y-1.5">
-				{entries.map(([entryKey, entryValue]) => (
-					<div
-						key={entryKey}
-						className="flex items-center gap-2"
-					>
-						<input
-							type="text"
-							value={entryKey}
-							onChange={(event) => handleEntryChange(entryKey, 'key', event.target.value)}
-							className="w-48 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
-							placeholder="KEY"
-						/>
-						<span className="text-text-500">=</span>
-						<input
-							type="text"
-							value={entryValue}
-							onChange={(event) => handleEntryChange(entryKey, 'value', event.target.value)}
-							className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
-							placeholder="value"
-						/>
-						<button
-							type="button"
-							onClick={() => handleRemove(entryKey)}
-							className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
-							title="Remove"
-						>
-							<Trash2 className="h-3.5 w-3.5" />
-						</button>
-					</div>
-				))}
-				<div className="flex items-center gap-2 pt-1">
-					<input
-						type="text"
-						value={newKey}
-						onChange={(event) => setNewKey(event.target.value)}
-						onKeyDown={(event) => {
-							if (event.key === 'Enter') handleAdd();
-						}}
-						className="w-48 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
-						placeholder="NEW_KEY"
-					/>
-					<span className="text-text-500">=</span>
-					<input
-						type="text"
-						value={newValue}
-						onChange={(event) => setNewValue(event.target.value)}
-						onKeyDown={(event) => {
-							if (event.key === 'Enter') handleAdd();
-						}}
-						className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
-						placeholder="value"
-					/>
-					<button
-						type="button"
-						onClick={handleAdd}
-						disabled={!newKey.trim()}
-						className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200 disabled:opacity-50"
-					>
-						<Plus className="h-3 w-3" />
-						Add
-					</button>
-				</div>
-			</div>
-		</div>
-	);
+  return (
+    <div className="py-2">
+      <div className="mb-2">
+        <div className="text-sm font-medium text-text-100">Environment variables</div>
+        <div className="text-xs text-text-500">
+          Key-value pairs injected into Claude Code's environment
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        {entries.map(([entryKey, entryValue]) => (
+          <div key={entryKey} className="flex items-center gap-2">
+            <input
+              type="text"
+              value={entryKey}
+              onChange={(event) => handleEntryChange(entryKey, "key", event.target.value)}
+              className="w-48 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+              placeholder="KEY"
+            />
+            <span className="text-text-500">=</span>
+            <input
+              type="text"
+              value={entryValue}
+              onChange={(event) => handleEntryChange(entryKey, "value", event.target.value)}
+              className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+              placeholder="value"
+            />
+            <button
+              type="button"
+              onClick={() => handleRemove(entryKey)}
+              className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
+              title="Remove"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ))}
+        <div className="flex items-center gap-2 pt-1">
+          <input
+            type="text"
+            value={newKey}
+            onChange={(event) => setNewKey(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") handleAdd();
+            }}
+            className="w-48 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
+            placeholder="NEW_KEY"
+          />
+          <span className="text-text-500">=</span>
+          <input
+            type="text"
+            value={newValue}
+            onChange={(event) => setNewValue(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") handleAdd();
+            }}
+            className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
+            placeholder="value"
+          />
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={!newKey.trim()}
+            className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200 disabled:opacity-50"
+          >
+            <Plus className="h-3 w-3" />
+            Add
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function PermissionListEditor({
-	label,
-	description,
-	entries,
-	onUpdate,
+  label,
+  description,
+  entries,
+  onUpdate,
 }: {
-	label: string;
-	description: string;
-	entries: string[];
-	onUpdate: (updated: string[]) => void;
+  label: string;
+  description: string;
+  entries: string[];
+  onUpdate: (updated: string[]) => void;
 }) {
-	const [newEntry, setNewEntry] = useState('');
+  const [newEntry, setNewEntry] = useState("");
 
-	const handleRemove = useCallback(
-		(index: number) => {
-			const updated = entries.filter((_, i) => i !== index);
-			onUpdate(updated);
-		},
-		[entries, onUpdate],
-	);
+  const handleRemove = useCallback(
+    (index: number) => {
+      const updated = entries.filter((_, i) => i !== index);
+      onUpdate(updated);
+    },
+    [entries, onUpdate],
+  );
 
-	const handleAdd = useCallback(() => {
-		if (!newEntry.trim()) return;
-		onUpdate([...entries, newEntry.trim()]);
-		setNewEntry('');
-	}, [entries, onUpdate, newEntry]);
+  const handleAdd = useCallback(() => {
+    if (!newEntry.trim()) return;
+    onUpdate([...entries, newEntry.trim()]);
+    setNewEntry("");
+  }, [entries, onUpdate, newEntry]);
 
-	const handleChange = useCallback(
-		(index: number, value: string) => {
-			const updated = [...entries];
-			updated[index] = value;
-			onUpdate(updated);
-		},
-		[entries, onUpdate],
-	);
+  const handleChange = useCallback(
+    (index: number, value: string) => {
+      const updated = [...entries];
+      updated[index] = value;
+      onUpdate(updated);
+    },
+    [entries, onUpdate],
+  );
 
-	return (
-		<div className="py-2">
-			<div className="mb-2">
-				<div className="text-sm font-medium text-text-100">{label}</div>
-				<div className="text-xs text-text-500">{description}</div>
-			</div>
-			<div className="space-y-1">
-				{entries.map((entry, index) => (
-					<div
-						key={index}
-						className="flex items-center gap-2"
-					>
-						<input
-							type="text"
-							value={entry}
-							onChange={(event) => handleChange(index, event.target.value)}
-							className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
-						/>
-						<button
-							type="button"
-							onClick={() => handleRemove(index)}
-							className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
-							title="Remove"
-						>
-							<Trash2 className="h-3.5 w-3.5" />
-						</button>
-					</div>
-				))}
-				<div className="flex items-center gap-2 pt-1">
-					<input
-						type="text"
-						value={newEntry}
-						onChange={(event) => setNewEntry(event.target.value)}
-						onKeyDown={(event) => {
-							if (event.key === 'Enter') handleAdd();
-						}}
-						className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
-						placeholder="e.g. Bash(ls:*)"
-					/>
-					<button
-						type="button"
-						onClick={handleAdd}
-						disabled={!newEntry.trim()}
-						className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200 disabled:opacity-50"
-					>
-						<Plus className="h-3 w-3" />
-						Add
-					</button>
-				</div>
-			</div>
-		</div>
-	);
+  return (
+    <div className="py-2">
+      <div className="mb-2">
+        <div className="text-sm font-medium text-text-100">{label}</div>
+        <div className="text-xs text-text-500">{description}</div>
+      </div>
+      <div className="space-y-1">
+        {entries.map((entry, index) => (
+          <div key={index} className="flex items-center gap-2">
+            <input
+              type="text"
+              value={entry}
+              onChange={(event) => handleChange(index, event.target.value)}
+              className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+            />
+            <button
+              type="button"
+              onClick={() => handleRemove(index)}
+              className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
+              title="Remove"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ))}
+        <div className="flex items-center gap-2 pt-1">
+          <input
+            type="text"
+            value={newEntry}
+            onChange={(event) => setNewEntry(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") handleAdd();
+            }}
+            className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
+            placeholder="e.g. Bash(ls:*)"
+          />
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={!newEntry.trim()}
+            className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200 disabled:opacity-50"
+          >
+            <Plus className="h-3 w-3" />
+            Add
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function PermissionsEditor({
-	value,
-	onChange,
+  value,
+  onChange,
 }: {
-	value: Record<string, unknown>;
-	onChange: (key: string, value: unknown) => void;
+  value: Record<string, unknown>;
+  onChange: (key: string, value: unknown) => void;
 }) {
-	const allow = Array.isArray(value['allow']) ? (value['allow'] as string[]) : [];
-	const deny = Array.isArray(value['deny']) ? (value['deny'] as string[]) : [];
-	const ask = Array.isArray(value['ask']) ? (value['ask'] as string[]) : [];
-	const defaultMode = typeof value['defaultMode'] === 'string' ? value['defaultMode'] : '';
+  const allow = Array.isArray(value["allow"]) ? (value["allow"] as string[]) : [];
+  const deny = Array.isArray(value["deny"]) ? (value["deny"] as string[]) : [];
+  const ask = Array.isArray(value["ask"]) ? (value["ask"] as string[]) : [];
+  const defaultMode = typeof value["defaultMode"] === "string" ? value["defaultMode"] : "";
 
-	const updateList = useCallback(
-		(listKey: string, updated: string[]) => {
-			onChange('permissions', {...value, [listKey]: updated});
-		},
-		[value, onChange],
-	);
+  const updateList = useCallback(
+    (listKey: string, updated: string[]) => {
+      onChange("permissions", { ...value, [listKey]: updated });
+    },
+    [value, onChange],
+  );
 
-	return (
-		<div className="space-y-3">
-			<PermissionListEditor
-				label="Allow"
-				description="Tools and patterns always permitted without prompting"
-				entries={allow}
-				onUpdate={(updated) => updateList('allow', updated)}
-			/>
-			<PermissionListEditor
-				label="Deny"
-				description="Tools and patterns that are blocked"
-				entries={deny}
-				onUpdate={(updated) => updateList('deny', updated)}
-			/>
-			<PermissionListEditor
-				label="Ask"
-				description="Tools and patterns that require confirmation"
-				entries={ask}
-				onUpdate={(updated) => updateList('ask', updated)}
-			/>
-			<div className="flex items-center justify-between gap-4 py-2">
-				<div>
-					<div className="text-sm font-medium text-text-100">Default mode</div>
-					<div className="text-xs text-text-500">Permission mode when not otherwise specified</div>
-				</div>
-				<select
-					value={defaultMode}
-					onChange={(event) =>
-						onChange('permissions', {...value, defaultMode: event.target.value || undefined})
-					}
-					className="rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
-				>
-					<option value="">(not set)</option>
-					<option value="plan">Plan</option>
-					<option value="auto">Auto</option>
-				</select>
-			</div>
-		</div>
-	);
+  return (
+    <div className="space-y-3">
+      <PermissionListEditor
+        label="Allow"
+        description="Tools and patterns always permitted without prompting"
+        entries={allow}
+        onUpdate={(updated) => updateList("allow", updated)}
+      />
+      <PermissionListEditor
+        label="Deny"
+        description="Tools and patterns that are blocked"
+        entries={deny}
+        onUpdate={(updated) => updateList("deny", updated)}
+      />
+      <PermissionListEditor
+        label="Ask"
+        description="Tools and patterns that require confirmation"
+        entries={ask}
+        onUpdate={(updated) => updateList("ask", updated)}
+      />
+      <div className="flex items-center justify-between gap-4 py-2">
+        <div>
+          <div className="text-sm font-medium text-text-100">Default mode</div>
+          <div className="text-xs text-text-500">Permission mode when not otherwise specified</div>
+        </div>
+        <select
+          value={defaultMode}
+          onChange={(event) =>
+            onChange("permissions", {
+              ...value,
+              defaultMode: event.target.value || undefined,
+            })
+          }
+          className="rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+        >
+          <option value="">(not set)</option>
+          <option value="plan">Plan</option>
+          <option value="auto">Auto</option>
+        </select>
+      </div>
+    </div>
+  );
 }
 
 function StatusLineEditor({
-	value,
-	onChange,
+  value,
+  onChange,
 }: {
-	value: Record<string, unknown>;
-	onChange: (key: string, value: unknown) => void;
+  value: Record<string, unknown>;
+  onChange: (key: string, value: unknown) => void;
 }) {
-	const statusType = typeof value['type'] === 'string' ? value['type'] : '';
-	const command = typeof value['command'] === 'string' ? value['command'] : '';
-	const padding = typeof value['padding'] === 'number' ? value['padding'] : 0;
+  const statusType = typeof value["type"] === "string" ? value["type"] : "";
+  const command = typeof value["command"] === "string" ? value["command"] : "";
+  const padding = typeof value["padding"] === "number" ? value["padding"] : 0;
 
-	const update = useCallback(
-		(field: string, fieldValue: unknown) => {
-			onChange('statusLine', {...value, [field]: fieldValue});
-		},
-		[value, onChange],
-	);
+  const update = useCallback(
+    (field: string, fieldValue: unknown) => {
+      onChange("statusLine", { ...value, [field]: fieldValue });
+    },
+    [value, onChange],
+  );
 
-	return (
-		<div className="py-2">
-			<div className="mb-2">
-				<div className="text-sm font-medium text-text-100">Status line</div>
-				<div className="text-xs text-text-500">Custom status line displayed at the bottom of the TUI</div>
-			</div>
-			<div className="space-y-2">
-				<div className="flex items-center justify-between gap-4">
-					<label className="text-xs text-text-300">Type</label>
-					<select
-						value={statusType}
-						onChange={(event) => update('type', event.target.value || undefined)}
-						className="rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
-					>
-						<option value="">(not set)</option>
-						<option value="command">Command</option>
-					</select>
-				</div>
-				<div className="flex items-center justify-between gap-4">
-					<label className="text-xs text-text-300">Command</label>
-					<input
-						type="text"
-						value={command}
-						onChange={(event) => update('command', event.target.value || undefined)}
-						className="flex-1 max-w-sm rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
-						placeholder="~/.claude/statusline.sh"
-					/>
-				</div>
-				<div className="flex items-center justify-between gap-4">
-					<label className="text-xs text-text-300">Padding</label>
-					<input
-						type="number"
-						value={padding}
-						min={0}
-						onChange={(event) => {
-							const parsed = Number(event.target.value);
-							if (Number.isFinite(parsed)) update('padding', parsed);
-						}}
-						className="w-20 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
-					/>
-				</div>
-			</div>
-		</div>
-	);
+  return (
+    <div className="py-2">
+      <div className="mb-2">
+        <div className="text-sm font-medium text-text-100">Status line</div>
+        <div className="text-xs text-text-500">
+          Custom status line displayed at the bottom of the TUI
+        </div>
+      </div>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-4">
+          <label className="text-xs text-text-300">Type</label>
+          <select
+            value={statusType}
+            onChange={(event) => update("type", event.target.value || undefined)}
+            className="rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+          >
+            <option value="">(not set)</option>
+            <option value="command">Command</option>
+          </select>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <label className="text-xs text-text-300">Command</label>
+          <input
+            type="text"
+            value={command}
+            onChange={(event) => update("command", event.target.value || undefined)}
+            className="flex-1 max-w-sm rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+            placeholder="~/.claude/statusline.sh"
+          />
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <label className="text-xs text-text-300">Padding</label>
+          <input
+            type="number"
+            value={padding}
+            min={0}
+            onChange={(event) => {
+              const parsed = Number(event.target.value);
+              if (Number.isFinite(parsed)) update("padding", parsed);
+            }}
+            className="w-20 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+          />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function HooksEditor({
-	value,
-	onChange,
+  value,
+  onChange,
 }: {
-	value: Record<string, Array<{matcher?: string; hooks: Array<{type: string; command: string; timeout?: number}>}>>;
-	onChange: (key: string, value: unknown) => void;
+  value: Record<
+    string,
+    Array<{
+      matcher?: string;
+      hooks: Array<{ type: string; command: string; timeout?: number }>;
+    }>
+  >;
+  onChange: (key: string, value: unknown) => void;
 }) {
-	const events = Object.keys(value);
-	const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
-	const [newEventName, setNewEventName] = useState('');
+  const events = Object.keys(value);
+  const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
+  const [newEventName, setNewEventName] = useState("");
 
-	const EVENT_OPTIONS = [
-		'PreToolUse',
-		'PostToolUse',
-		'Stop',
-		'SubagentStop',
-		'SessionStart',
-		'SessionEnd',
-		'UserPromptSubmit',
-		'PreCompact',
-		'Notification',
-	];
-	const availableEvents = EVENT_OPTIONS.filter((e) => !events.includes(e));
+  const EVENT_OPTIONS = [
+    "PreToolUse",
+    "PostToolUse",
+    "Stop",
+    "SubagentStop",
+    "SessionStart",
+    "SessionEnd",
+    "UserPromptSubmit",
+    "PreCompact",
+    "Notification",
+  ];
+  const availableEvents = EVENT_OPTIONS.filter((e) => !events.includes(e));
 
-	const handleAddEvent = useCallback(() => {
-		if (!newEventName) return;
-		onChange('hooks', {...value, [newEventName]: []});
-		setNewEventName('');
-		setExpandedEvent(newEventName);
-	}, [value, onChange, newEventName]);
+  const handleAddEvent = useCallback(() => {
+    if (!newEventName) return;
+    onChange("hooks", { ...value, [newEventName]: [] });
+    setNewEventName("");
+    setExpandedEvent(newEventName);
+  }, [value, onChange, newEventName]);
 
-	const handleRemoveEvent = useCallback(
-		(eventName: string) => {
-			const updated = {...value};
-			delete updated[eventName];
-			onChange('hooks', updated);
-			if (expandedEvent === eventName) setExpandedEvent(null);
-		},
-		[value, onChange, expandedEvent],
-	);
+  const handleRemoveEvent = useCallback(
+    (eventName: string) => {
+      const updated = { ...value };
+      delete updated[eventName];
+      onChange("hooks", updated);
+      if (expandedEvent === eventName) setExpandedEvent(null);
+    },
+    [value, onChange, expandedEvent],
+  );
 
-	const handleAddMatcher = useCallback(
-		(eventName: string) => {
-			const matchers = [...(value[eventName] ?? [])];
-			matchers.push({hooks: [{type: 'command', command: ''}]});
-			onChange('hooks', {...value, [eventName]: matchers});
-		},
-		[value, onChange],
-	);
+  const handleAddMatcher = useCallback(
+    (eventName: string) => {
+      const matchers = [...(value[eventName] ?? [])];
+      matchers.push({ hooks: [{ type: "command", command: "" }] });
+      onChange("hooks", { ...value, [eventName]: matchers });
+    },
+    [value, onChange],
+  );
 
-	const handleRemoveMatcher = useCallback(
-		(eventName: string, matcherIndex: number) => {
-			const matchers = (value[eventName] ?? []).filter((_, i) => i !== matcherIndex);
-			onChange('hooks', {...value, [eventName]: matchers});
-		},
-		[value, onChange],
-	);
+  const handleRemoveMatcher = useCallback(
+    (eventName: string, matcherIndex: number) => {
+      const matchers = (value[eventName] ?? []).filter((_, i) => i !== matcherIndex);
+      onChange("hooks", { ...value, [eventName]: matchers });
+    },
+    [value, onChange],
+  );
 
-	const handleMatcherFieldChange = useCallback(
-		(eventName: string, matcherIndex: number, _field: 'matcher', fieldValue: string) => {
-			const matchers = [...(value[eventName] ?? [])];
-			const existing = matchers[matcherIndex];
-			if (!existing) return;
-			if (fieldValue) {
-				matchers[matcherIndex] = {matcher: fieldValue, hooks: existing.hooks};
-			} else {
-				matchers[matcherIndex] = {hooks: existing.hooks};
-			}
-			onChange('hooks', {...value, [eventName]: matchers});
-		},
-		[value, onChange],
-	);
+  const handleMatcherFieldChange = useCallback(
+    (eventName: string, matcherIndex: number, _field: "matcher", fieldValue: string) => {
+      const matchers = [...(value[eventName] ?? [])];
+      const existing = matchers[matcherIndex];
+      if (!existing) return;
+      if (fieldValue) {
+        matchers[matcherIndex] = { matcher: fieldValue, hooks: existing.hooks };
+      } else {
+        matchers[matcherIndex] = { hooks: existing.hooks };
+      }
+      onChange("hooks", { ...value, [eventName]: matchers });
+    },
+    [value, onChange],
+  );
 
-	const handleHookCommandChange = useCallback(
-		(eventName: string, matcherIndex: number, hookIndex: number, command: string) => {
-			const matchers = [...(value[eventName] ?? [])];
-			const existing = matchers[matcherIndex];
-			if (!existing) return;
-			const hooks = [...existing.hooks];
-			hooks[hookIndex] = {type: hooks[hookIndex]?.type ?? 'command', command};
-			if (existing.matcher) {
-				matchers[matcherIndex] = {matcher: existing.matcher, hooks};
-			} else {
-				matchers[matcherIndex] = {hooks};
-			}
-			onChange('hooks', {...value, [eventName]: matchers});
-		},
-		[value, onChange],
-	);
+  const handleHookCommandChange = useCallback(
+    (eventName: string, matcherIndex: number, hookIndex: number, command: string) => {
+      const matchers = [...(value[eventName] ?? [])];
+      const existing = matchers[matcherIndex];
+      if (!existing) return;
+      const hooks = [...existing.hooks];
+      hooks[hookIndex] = { type: hooks[hookIndex]?.type ?? "command", command };
+      if (existing.matcher) {
+        matchers[matcherIndex] = { matcher: existing.matcher, hooks };
+      } else {
+        matchers[matcherIndex] = { hooks };
+      }
+      onChange("hooks", { ...value, [eventName]: matchers });
+    },
+    [value, onChange],
+  );
 
-	const handleAddHookCommand = useCallback(
-		(eventName: string, matcherIndex: number) => {
-			const matchers = [...(value[eventName] ?? [])];
-			const existing = matchers[matcherIndex];
-			if (!existing) return;
-			const hooks = [...existing.hooks, {type: 'command' as const, command: ''}];
-			if (existing.matcher) {
-				matchers[matcherIndex] = {matcher: existing.matcher, hooks};
-			} else {
-				matchers[matcherIndex] = {hooks};
-			}
-			onChange('hooks', {...value, [eventName]: matchers});
-		},
-		[value, onChange],
-	);
+  const handleAddHookCommand = useCallback(
+    (eventName: string, matcherIndex: number) => {
+      const matchers = [...(value[eventName] ?? [])];
+      const existing = matchers[matcherIndex];
+      if (!existing) return;
+      const hooks = [...existing.hooks, { type: "command" as const, command: "" }];
+      if (existing.matcher) {
+        matchers[matcherIndex] = { matcher: existing.matcher, hooks };
+      } else {
+        matchers[matcherIndex] = { hooks };
+      }
+      onChange("hooks", { ...value, [eventName]: matchers });
+    },
+    [value, onChange],
+  );
 
-	const handleRemoveHookCommand = useCallback(
-		(eventName: string, matcherIndex: number, hookIndex: number) => {
-			const matchers = [...(value[eventName] ?? [])];
-			const existing = matchers[matcherIndex];
-			if (!existing) return;
-			const hooks = existing.hooks.filter((_, i) => i !== hookIndex);
-			if (existing.matcher) {
-				matchers[matcherIndex] = {matcher: existing.matcher, hooks};
-			} else {
-				matchers[matcherIndex] = {hooks};
-			}
-			onChange('hooks', {...value, [eventName]: matchers});
-		},
-		[value, onChange],
-	);
+  const handleRemoveHookCommand = useCallback(
+    (eventName: string, matcherIndex: number, hookIndex: number) => {
+      const matchers = [...(value[eventName] ?? [])];
+      const existing = matchers[matcherIndex];
+      if (!existing) return;
+      const hooks = existing.hooks.filter((_, i) => i !== hookIndex);
+      if (existing.matcher) {
+        matchers[matcherIndex] = { matcher: existing.matcher, hooks };
+      } else {
+        matchers[matcherIndex] = { hooks };
+      }
+      onChange("hooks", { ...value, [eventName]: matchers });
+    },
+    [value, onChange],
+  );
 
-	return (
-		<div className="py-2">
-			<div className="mb-2">
-				<div className="text-sm font-medium text-text-100">Hooks</div>
-				<div className="text-xs text-text-500">
-					Event-driven commands that run before/after tool use and other events
-				</div>
-			</div>
-			<div className="space-y-2">
-				{events.map((eventName) => {
-					const matchers = value[eventName] ?? [];
-					const isExpanded = expandedEvent === eventName;
-					return (
-						<div
-							key={eventName}
-							className="rounded-md border border-border-300/15"
-						>
-							<div className="flex items-center justify-between px-3 py-2">
-								<button
-									type="button"
-									onClick={() => setExpandedEvent(isExpanded ? null : eventName)}
-									className="flex items-center gap-1.5 text-sm font-medium text-text-100 hover:text-accent-100"
-								>
-									{isExpanded ? (
-										<ChevronDown className="h-3.5 w-3.5" />
-									) : (
-										<ChevronRight className="h-3.5 w-3.5" />
-									)}
-									{eventName}
-									<span className="font-normal text-text-500">
-										({matchers.length} {matchers.length === 1 ? 'rule' : 'rules'})
-									</span>
-								</button>
-								<button
-									type="button"
-									onClick={() => handleRemoveEvent(eventName)}
-									className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
-									title="Remove event"
-								>
-									<Trash2 className="h-3.5 w-3.5" />
-								</button>
-							</div>
-							{isExpanded && (
-								<div className="border-t border-border-300/15 px-3 py-2 space-y-3">
-									{matchers.map((matcher, matcherIndex) => (
-										<div
-											key={matcherIndex}
-											className="rounded-md border border-border-300/10 bg-bg-100 p-2 space-y-2"
-										>
-											<div className="flex items-center justify-between gap-2">
-												<div className="flex items-center gap-2 flex-1">
-													<span className="text-xs text-text-300 shrink-0">Matcher:</span>
-													<input
-														type="text"
-														value={matcher.matcher ?? ''}
-														onChange={(event) =>
-															handleMatcherFieldChange(
-																eventName,
-																matcherIndex,
-																'matcher',
-																event.target.value,
-															)
-														}
-														className="flex-1 rounded-md border border-border-300/15 bg-bg-000 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
-														placeholder="e.g. Bash (optional)"
-													/>
-												</div>
-												<button
-													type="button"
-													onClick={() => handleRemoveMatcher(eventName, matcherIndex)}
-													className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
-													title="Remove rule"
-												>
-													<Trash2 className="h-3 w-3" />
-												</button>
-											</div>
-											<div className="space-y-1">
-												<span className="text-xs text-text-300">Commands:</span>
-												{matcher.hooks.map((hook, hookIndex) => (
-													<div
-														key={hookIndex}
-														className="flex items-start gap-2"
-													>
-														<textarea
-															value={hook.command}
-															onChange={(event) =>
-																handleHookCommandChange(
-																	eventName,
-																	matcherIndex,
-																	hookIndex,
-																	event.target.value,
-																)
-															}
-															className="flex-1 rounded-md border border-border-300/15 bg-bg-000 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100 resize-y"
-															rows={Math.min(
-																Math.max(hook.command.split('\n').length, 1),
-																4,
-															)}
-															placeholder="command..."
-														/>
-														<button
-															type="button"
-															onClick={() =>
-																handleRemoveHookCommand(
-																	eventName,
-																	matcherIndex,
-																	hookIndex,
-																)
-															}
-															className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000 mt-0.5"
-															title="Remove command"
-														>
-															<X className="h-3 w-3" />
-														</button>
-													</div>
-												))}
-												<button
-													type="button"
-													onClick={() => handleAddHookCommand(eventName, matcherIndex)}
-													className="flex items-center gap-1 text-xs text-text-300 hover:text-accent-100"
-												>
-													<Plus className="h-3 w-3" />
-													Add command
-												</button>
-											</div>
-										</div>
-									))}
-									<button
-										type="button"
-										onClick={() => handleAddMatcher(eventName)}
-										className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200"
-									>
-										<Plus className="h-3 w-3" />
-										Add rule
-									</button>
-								</div>
-							)}
-						</div>
-					);
-				})}
-				{availableEvents.length > 0 && (
-					<div className="flex items-center gap-2 pt-1">
-						<select
-							value={newEventName}
-							onChange={(event) => setNewEventName(event.target.value)}
-							className="rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
-						>
-							<option value="">Select event...</option>
-							{availableEvents.map((e) => (
-								<option
-									key={e}
-									value={e}
-								>
-									{e}
-								</option>
-							))}
-						</select>
-						<button
-							type="button"
-							onClick={handleAddEvent}
-							disabled={!newEventName}
-							className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200 disabled:opacity-50"
-						>
-							<Plus className="h-3 w-3" />
-							Add event
-						</button>
-					</div>
-				)}
-			</div>
-		</div>
-	);
+  return (
+    <div className="py-2">
+      <div className="mb-2">
+        <div className="text-sm font-medium text-text-100">Hooks</div>
+        <div className="text-xs text-text-500">
+          Event-driven commands that run before/after tool use and other events
+        </div>
+      </div>
+      <div className="space-y-2">
+        {events.map((eventName) => {
+          const matchers = value[eventName] ?? [];
+          const isExpanded = expandedEvent === eventName;
+          return (
+            <div key={eventName} className="rounded-md border border-border-300/15">
+              <div className="flex items-center justify-between px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => setExpandedEvent(isExpanded ? null : eventName)}
+                  className="flex items-center gap-1.5 text-sm font-medium text-text-100 hover:text-accent-100"
+                >
+                  {isExpanded ? (
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  ) : (
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  )}
+                  {eventName}
+                  <span className="font-normal text-text-500">
+                    ({matchers.length} {matchers.length === 1 ? "rule" : "rules"})
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveEvent(eventName)}
+                  className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
+                  title="Remove event"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              {isExpanded && (
+                <div className="border-t border-border-300/15 px-3 py-2 space-y-3">
+                  {matchers.map((matcher, matcherIndex) => (
+                    <div
+                      key={matcherIndex}
+                      className="rounded-md border border-border-300/10 bg-bg-100 p-2 space-y-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-1">
+                          <span className="text-xs text-text-300 shrink-0">Matcher:</span>
+                          <input
+                            type="text"
+                            value={matcher.matcher ?? ""}
+                            onChange={(event) =>
+                              handleMatcherFieldChange(
+                                eventName,
+                                matcherIndex,
+                                "matcher",
+                                event.target.value,
+                              )
+                            }
+                            className="flex-1 rounded-md border border-border-300/15 bg-bg-000 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+                            placeholder="e.g. Bash (optional)"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMatcher(eventName, matcherIndex)}
+                          className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
+                          title="Remove rule"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-xs text-text-300">Commands:</span>
+                        {matcher.hooks.map((hook, hookIndex) => (
+                          <div key={hookIndex} className="flex items-start gap-2">
+                            <textarea
+                              value={hook.command}
+                              onChange={(event) =>
+                                handleHookCommandChange(
+                                  eventName,
+                                  matcherIndex,
+                                  hookIndex,
+                                  event.target.value,
+                                )
+                              }
+                              className="flex-1 rounded-md border border-border-300/15 bg-bg-000 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100 resize-y"
+                              rows={Math.min(Math.max(hook.command.split("\n").length, 1), 4)}
+                              placeholder="command..."
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleRemoveHookCommand(eventName, matcherIndex, hookIndex)
+                              }
+                              className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000 mt-0.5"
+                              title="Remove command"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => handleAddHookCommand(eventName, matcherIndex)}
+                          className="flex items-center gap-1 text-xs text-text-300 hover:text-accent-100"
+                        >
+                          <Plus className="h-3 w-3" />
+                          Add command
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => handleAddMatcher(eventName)}
+                    className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Add rule
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {availableEvents.length > 0 && (
+          <div className="flex items-center gap-2 pt-1">
+            <select
+              value={newEventName}
+              onChange={(event) => setNewEventName(event.target.value)}
+              className="rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
+            >
+              <option value="">Select event...</option>
+              {availableEvents.map((e) => (
+                <option key={e} value={e}>
+                  {e}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={handleAddEvent}
+              disabled={!newEventName}
+              className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200 disabled:opacity-50"
+            >
+              <Plus className="h-3 w-3" />
+              Add event
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function PluginsEditor({
-	value,
-	onChange,
+  value,
+  onChange,
 }: {
-	value: Record<string, boolean>;
-	onChange: (key: string, value: unknown) => void;
+  value: Record<string, boolean>;
+  onChange: (key: string, value: unknown) => void;
 }) {
-	const entries = Object.entries(value).sort(([a], [b]) => a.localeCompare(b));
-	const [newPlugin, setNewPlugin] = useState('');
+  const entries = Object.entries(value).sort(([a], [b]) => a.localeCompare(b));
+  const [newPlugin, setNewPlugin] = useState("");
 
-	const handleToggle = useCallback(
-		(pluginName: string, enabled: boolean) => {
-			onChange('enabledPlugins', {...value, [pluginName]: enabled});
-		},
-		[value, onChange],
-	);
+  const handleToggle = useCallback(
+    (pluginName: string, enabled: boolean) => {
+      onChange("enabledPlugins", { ...value, [pluginName]: enabled });
+    },
+    [value, onChange],
+  );
 
-	const handleRemove = useCallback(
-		(pluginName: string) => {
-			const updated = {...value};
-			delete updated[pluginName];
-			onChange('enabledPlugins', updated);
-		},
-		[value, onChange],
-	);
+  const handleRemove = useCallback(
+    (pluginName: string) => {
+      const updated = { ...value };
+      delete updated[pluginName];
+      onChange("enabledPlugins", updated);
+    },
+    [value, onChange],
+  );
 
-	const handleAdd = useCallback(() => {
-		if (!newPlugin.trim()) return;
-		onChange('enabledPlugins', {...value, [newPlugin.trim()]: true});
-		setNewPlugin('');
-	}, [value, onChange, newPlugin]);
+  const handleAdd = useCallback(() => {
+    if (!newPlugin.trim()) return;
+    onChange("enabledPlugins", { ...value, [newPlugin.trim()]: true });
+    setNewPlugin("");
+  }, [value, onChange, newPlugin]);
 
-	return (
-		<div className="py-2">
-			<div className="mb-2">
-				<div className="text-sm font-medium text-text-100">Enabled plugins</div>
-				<div className="text-xs text-text-500">Toggle marketplace plugins on or off</div>
-			</div>
-			<div className="space-y-1">
-				{entries.map(([pluginName, enabled]) => (
-					<div
-						key={pluginName}
-						className="flex items-center justify-between gap-2 py-1"
-					>
-						<span className="font-mono text-xs text-text-100 truncate">{pluginName}</span>
-						<div className="flex items-center gap-2 shrink-0">
-							<FormToggle
-								checked={enabled}
-								onChange={(checked) => handleToggle(pluginName, checked)}
-							/>
-							<button
-								type="button"
-								onClick={() => handleRemove(pluginName)}
-								className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
-								title="Remove"
-							>
-								<Trash2 className="h-3.5 w-3.5" />
-							</button>
-						</div>
-					</div>
-				))}
-				<div className="flex items-center gap-2 pt-1">
-					<input
-						type="text"
-						value={newPlugin}
-						onChange={(event) => setNewPlugin(event.target.value)}
-						onKeyDown={(event) => {
-							if (event.key === 'Enter') handleAdd();
-						}}
-						className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
-						placeholder="plugin-name@marketplace"
-					/>
-					<button
-						type="button"
-						onClick={handleAdd}
-						disabled={!newPlugin.trim()}
-						className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200 disabled:opacity-50"
-					>
-						<Plus className="h-3 w-3" />
-						Add
-					</button>
-				</div>
-			</div>
-		</div>
-	);
+  return (
+    <div className="py-2">
+      <div className="mb-2">
+        <div className="text-sm font-medium text-text-100">Enabled plugins</div>
+        <div className="text-xs text-text-500">Toggle marketplace plugins on or off</div>
+      </div>
+      <div className="space-y-1">
+        {entries.map(([pluginName, enabled]) => (
+          <div key={pluginName} className="flex items-center justify-between gap-2 py-1">
+            <span className="font-mono text-xs text-text-100 truncate">{pluginName}</span>
+            <div className="flex items-center gap-2 shrink-0">
+              <FormToggle
+                checked={enabled}
+                onChange={(checked) => handleToggle(pluginName, checked)}
+              />
+              <button
+                type="button"
+                onClick={() => handleRemove(pluginName)}
+                className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
+                title="Remove"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        ))}
+        <div className="flex items-center gap-2 pt-1">
+          <input
+            type="text"
+            value={newPlugin}
+            onChange={(event) => setNewPlugin(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") handleAdd();
+            }}
+            className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
+            placeholder="plugin-name@marketplace"
+          />
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={!newPlugin.trim()}
+            className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200 disabled:opacity-50"
+          >
+            <Plus className="h-3 w-3" />
+            Add
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function StringListEditor({
-	label,
-	description,
-	fieldKey,
-	entries,
-	onChange,
-	placeholder,
+  label,
+  description,
+  fieldKey,
+  entries,
+  onChange,
+  placeholder,
 }: {
-	label: string;
-	description: string;
-	fieldKey: string;
-	entries: string[];
-	onChange: (key: string, value: unknown) => void;
-	placeholder?: string;
+  label: string;
+  description: string;
+  fieldKey: string;
+  entries: string[];
+  onChange: (key: string, value: unknown) => void;
+  placeholder?: string;
 }) {
-	const [newEntry, setNewEntry] = useState('');
+  const [newEntry, setNewEntry] = useState("");
 
-	const handleRemove = useCallback(
-		(index: number) => {
-			const updated = entries.filter((_, i) => i !== index);
-			onChange(fieldKey, updated);
-		},
-		[entries, onChange, fieldKey],
-	);
+  const handleRemove = useCallback(
+    (index: number) => {
+      const updated = entries.filter((_, i) => i !== index);
+      onChange(fieldKey, updated);
+    },
+    [entries, onChange, fieldKey],
+  );
 
-	const handleAdd = useCallback(() => {
-		if (!newEntry.trim()) return;
-		onChange(fieldKey, [...entries, newEntry.trim()]);
-		setNewEntry('');
-	}, [entries, onChange, fieldKey, newEntry]);
+  const handleAdd = useCallback(() => {
+    if (!newEntry.trim()) return;
+    onChange(fieldKey, [...entries, newEntry.trim()]);
+    setNewEntry("");
+  }, [entries, onChange, fieldKey, newEntry]);
 
-	const handleChange = useCallback(
-		(index: number, value: string) => {
-			const updated = [...entries];
-			updated[index] = value;
-			onChange(fieldKey, updated);
-		},
-		[entries, onChange, fieldKey],
-	);
+  const handleChange = useCallback(
+    (index: number, value: string) => {
+      const updated = [...entries];
+      updated[index] = value;
+      onChange(fieldKey, updated);
+    },
+    [entries, onChange, fieldKey],
+  );
 
-	return (
-		<div className="py-2">
-			<div className="mb-2">
-				<div className="text-sm font-medium text-text-100">{label}</div>
-				<div className="text-xs text-text-500">{description}</div>
-			</div>
-			<div className="space-y-1">
-				{entries.map((entry, index) => (
-					<div
-						key={index}
-						className="flex items-center gap-2"
-					>
-						<input
-							type="text"
-							value={entry}
-							onChange={(event) => handleChange(index, event.target.value)}
-							className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
-						/>
-						<button
-							type="button"
-							onClick={() => handleRemove(index)}
-							className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
-							title="Remove"
-						>
-							<Trash2 className="h-3.5 w-3.5" />
-						</button>
-					</div>
-				))}
-				<div className="flex items-center gap-2 pt-1">
-					<input
-						type="text"
-						value={newEntry}
-						onChange={(event) => setNewEntry(event.target.value)}
-						onKeyDown={(event) => {
-							if (event.key === 'Enter') handleAdd();
-						}}
-						className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
-						placeholder={placeholder ?? 'Add entry...'}
-					/>
-					<button
-						type="button"
-						onClick={handleAdd}
-						disabled={!newEntry.trim()}
-						className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200 disabled:opacity-50"
-					>
-						<Plus className="h-3 w-3" />
-						Add
-					</button>
-				</div>
-			</div>
-		</div>
-	);
+  return (
+    <div className="py-2">
+      <div className="mb-2">
+        <div className="text-sm font-medium text-text-100">{label}</div>
+        <div className="text-xs text-text-500">{description}</div>
+      </div>
+      <div className="space-y-1">
+        {entries.map((entry, index) => (
+          <div key={index} className="flex items-center gap-2">
+            <input
+              type="text"
+              value={entry}
+              onChange={(event) => handleChange(index, event.target.value)}
+              className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+            />
+            <button
+              type="button"
+              onClick={() => handleRemove(index)}
+              className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
+              title="Remove"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ))}
+        <div className="flex items-center gap-2 pt-1">
+          <input
+            type="text"
+            value={newEntry}
+            onChange={(event) => setNewEntry(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") handleAdd();
+            }}
+            className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
+            placeholder={placeholder ?? "Add entry..."}
+          />
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={!newEntry.trim()}
+            className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200 disabled:opacity-50"
+          >
+            <Plus className="h-3 w-3" />
+            Add
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // Keys that have dedicated form editors (not scalar fields, not "Other")
 const DEDICATED_EDITOR_KEYS = new Set([
-	'env',
-	'permissions',
-	'statusLine',
-	'hooks',
-	'enabledPlugins',
-	'enabledMcpjsonServers',
+  "env",
+  "permissions",
+  "statusLine",
+  "hooks",
+  "enabledPlugins",
+  "enabledMcpjsonServers",
 ]);
 
-function ObjectSummary({label, value}: {label: string; value: unknown}) {
-	const [expanded, setExpanded] = useState(false);
+function ObjectSummary({ label, value }: { label: string; value: unknown }) {
+  const [expanded, setExpanded] = useState(false);
 
-	if (value === undefined || value === null) return null;
+  if (value === undefined || value === null) return null;
 
-	const summary =
-		typeof value === 'object' && value !== null
-			? Array.isArray(value)
-				? `${value.length} items`
-				: `${Object.keys(value).length} keys`
-			: String(value);
+  const summary =
+    typeof value === "object" && value !== null
+      ? Array.isArray(value)
+        ? `${value.length} items`
+        : `${Object.keys(value).length} keys`
+      : JSON.stringify(value);
 
-	return (
-		<div className="py-2">
-			<button
-				type="button"
-				onClick={() => setExpanded(!expanded)}
-				className="flex items-center gap-1.5 text-sm font-medium text-text-100 hover:text-accent-100"
-			>
-				{expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-				{label}
-				<span className="font-normal text-text-500">({summary})</span>
-			</button>
-			{expanded && (
-				<pre className="mt-2 max-h-64 overflow-auto rounded-md border border-border-300/15 bg-bg-100 p-3 font-mono text-xs text-text-300">
-					{JSON.stringify(value, null, 2)}
-				</pre>
-			)}
-		</div>
-	);
+  return (
+    <div className="py-2">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1.5 text-sm font-medium text-text-100 hover:text-accent-100"
+      >
+        {expanded ? (
+          <ChevronDown className="h-3.5 w-3.5" />
+        ) : (
+          <ChevronRight className="h-3.5 w-3.5" />
+        )}
+        {label}
+        <span className="font-normal text-text-500">({summary})</span>
+      </button>
+      {expanded && (
+        <pre className="mt-2 max-h-64 overflow-auto rounded-md border border-border-300/15 bg-bg-100 p-3 font-mono text-xs text-text-300">
+          {JSON.stringify(value, null, 2)}
+        </pre>
+      )}
+    </div>
+  );
 }
 
-function FormEditor({filename, initialContent, path}: {filename: string; initialContent: string; path: string}) {
-	const [data, setData] = useState<Record<string, unknown>>(() => {
-		try {
-			return JSON.parse(initialContent) as Record<string, unknown>;
-		} catch {
-			return {};
-		}
-	});
-	const [savedData, setSavedData] = useState<Record<string, unknown>>(data);
-	const [feedback, setFeedback] = useState<Feedback | null>(null);
-	const saveMutation = useSaveSettingsFile();
-	const saving = saveMutation.isPending;
+function FormEditor({
+  filename,
+  initialContent,
+  path,
+}: {
+  filename: string;
+  initialContent: string;
+  path: string;
+}) {
+  const [data, setData] = useState<Record<string, unknown>>(() => {
+    try {
+      return JSON.parse(initialContent) as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+  });
+  const [savedData, setSavedData] = useState<Record<string, unknown>>(data);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const saveMutation = useSaveSettingsFile();
+  const saving = saveMutation.isPending;
 
-	const isDirty = JSON.stringify(data) !== JSON.stringify(savedData);
+  const isDirty = JSON.stringify(data) !== JSON.stringify(savedData);
 
-	const handleFieldChange = useCallback((key: string, value: unknown) => {
-		setData((previous) => ({...previous, [key]: value}));
-		setFeedback(null);
-	}, []);
+  const handleFieldChange = useCallback((key: string, value: unknown) => {
+    setData((previous) => ({ ...previous, [key]: value }));
+    setFeedback(null);
+  }, []);
 
-	const handleSave = useCallback(async () => {
-		setFeedback(null);
-		try {
-			const cleaned = {...data};
-			for (const key of DEDICATED_EDITOR_KEYS) {
-				const val = cleaned[key];
-				if (val === undefined || val === null) continue;
-				if (Array.isArray(val) && val.length === 0) {
-					delete cleaned[key];
-				} else if (typeof val === 'object' && !Array.isArray(val) && Object.keys(val as object).length === 0) {
-					delete cleaned[key];
-				}
-			}
-			const content = JSON.stringify(cleaned, null, 2);
-			const result = await saveMutation.mutateAsync({
-				filename: filename as 'settings.json' | 'settings.local.json',
-				content,
-			});
-			setFeedback({type: 'success', text: `Saved to ${result.path}`});
-			setSavedData({...data});
-		} catch (error) {
-			setFeedback({type: 'error', text: (error as Error).message});
-		}
-	}, [data, filename, saveMutation]);
+  const handleSave = useCallback(async () => {
+    setFeedback(null);
+    try {
+      const cleaned = { ...data };
+      for (const key of DEDICATED_EDITOR_KEYS) {
+        const val = cleaned[key];
+        if (val === undefined || val === null) continue;
+        if (Array.isArray(val) && val.length === 0) {
+          delete cleaned[key];
+        } else if (
+          typeof val === "object" &&
+          !Array.isArray(val) &&
+          Object.keys(val as object).length === 0
+        ) {
+          delete cleaned[key];
+        }
+      }
+      const content = JSON.stringify(cleaned, null, 2);
+      const result = await saveMutation.mutateAsync({
+        filename: filename as "settings.json" | "settings.local.json",
+        content,
+      });
+      setFeedback({ type: "success", text: `Saved to ${result.path}` });
+      setSavedData({ ...data });
+    } catch (error) {
+      setFeedback({ type: "error", text: (error as Error).message });
+    }
+  }, [data, filename, saveMutation]);
 
-	const handleReset = useCallback(() => {
-		setData({...savedData});
-		setFeedback(null);
-	}, [savedData]);
+  const handleReset = useCallback(() => {
+    setData({ ...savedData });
+    setFeedback(null);
+  }, [savedData]);
 
-	const sectionGroups = groupFieldsBySection();
-	const knownKeys = new Set(FIELD_DEFINITIONS.map((f) => f.key));
-	const unknownKeys = Object.keys(data).filter(
-		(k) => !knownKeys.has(k) && !DEDICATED_EDITOR_KEYS.has(k) && k !== '$schema',
-	);
+  const sectionGroups = groupFieldsBySection();
+  const knownKeys = new Set(FIELD_DEFINITIONS.map((f) => f.key));
+  const unknownKeys = Object.keys(data).filter(
+    (k) => !knownKeys.has(k) && !DEDICATED_EDITOR_KEYS.has(k) && k !== "$schema",
+  );
 
-	return (
-		<section className="space-y-3">
-			<div>
-				<h2 className="text-sm font-semibold text-text-100">{FILE_LABELS[filename] ?? filename}</h2>
-				<p className="text-xs text-text-500 mt-0.5">
-					{FILE_DESCRIPTIONS[filename]} <span className="font-mono">{path}</span>
-				</p>
-			</div>
+  return (
+    <section className="space-y-3">
+      <div>
+        <h2 className="text-sm font-semibold text-text-100">{FILE_LABELS[filename] ?? filename}</h2>
+        <p className="text-xs text-text-500 mt-0.5">
+          {FILE_DESCRIPTIONS[filename]} <span className="font-mono">{path}</span>
+        </p>
+      </div>
 
-			<div className="space-y-6">
-				{Array.from(sectionGroups.entries()).map(([section, fields]) => {
-					const relevantFields = fields.filter((f) => data[f.key] !== undefined);
-					if (relevantFields.length === 0) return null;
-					return (
-						<div key={section}>
-							<h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
-								{section}
-							</h3>
-							<div className="divide-y divide-border-300/10">
-								{relevantFields.map((field) => (
-									<FormField
-										key={field.key}
-										field={field}
-										value={data[field.key]}
-										onChange={handleFieldChange}
-									/>
-								))}
-							</div>
-						</div>
-					);
-				})}
+      <div className="space-y-6">
+        {Array.from(sectionGroups.entries()).map(([section, fields]) => {
+          const relevantFields = fields.filter((f) => data[f.key] !== undefined);
+          if (relevantFields.length === 0) return null;
+          return (
+            <div key={section}>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
+                {section}
+              </h3>
+              <div className="divide-y divide-border-300/10">
+                {relevantFields.map((field) => (
+                  <FormField
+                    key={field.key}
+                    field={field}
+                    value={data[field.key]}
+                    onChange={handleFieldChange}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
 
-				<div>
-					<h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">Environment</h3>
-					<EnvEditor
-						value={
-							(typeof data['env'] === 'object' && data['env'] !== null ? data['env'] : {}) as Record<
-								string,
-								string
-							>
-						}
-						onChange={handleFieldChange}
-					/>
-				</div>
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
+            Environment
+          </h3>
+          <EnvEditor
+            value={
+              (typeof data["env"] === "object" && data["env"] !== null
+                ? data["env"]
+                : {}) as Record<string, string>
+            }
+            onChange={handleFieldChange}
+          />
+        </div>
 
-				<div>
-					<h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">Permissions</h3>
-					<PermissionsEditor
-						value={
-							(typeof data['permissions'] === 'object' && data['permissions'] !== null
-								? data['permissions']
-								: {}) as Record<string, unknown>
-						}
-						onChange={handleFieldChange}
-					/>
-				</div>
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
+            Permissions
+          </h3>
+          <PermissionsEditor
+            value={
+              (typeof data["permissions"] === "object" && data["permissions"] !== null
+                ? data["permissions"]
+                : {}) as Record<string, unknown>
+            }
+            onChange={handleFieldChange}
+          />
+        </div>
 
-				<div>
-					<h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">Status Line</h3>
-					<StatusLineEditor
-						value={
-							(typeof data['statusLine'] === 'object' && data['statusLine'] !== null
-								? data['statusLine']
-								: {}) as Record<string, unknown>
-						}
-						onChange={handleFieldChange}
-					/>
-				</div>
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
+            Status Line
+          </h3>
+          <StatusLineEditor
+            value={
+              (typeof data["statusLine"] === "object" && data["statusLine"] !== null
+                ? data["statusLine"]
+                : {}) as Record<string, unknown>
+            }
+            onChange={handleFieldChange}
+          />
+        </div>
 
-				<div>
-					<h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">Hooks</h3>
-					<HooksEditor
-						value={
-							(typeof data['hooks'] === 'object' && data['hooks'] !== null
-								? data['hooks']
-								: {}) as Record<
-								string,
-								Array<{
-									matcher?: string;
-									hooks: Array<{type: string; command: string; timeout?: number}>;
-								}>
-							>
-						}
-						onChange={handleFieldChange}
-					/>
-				</div>
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
+            Hooks
+          </h3>
+          <HooksEditor
+            value={
+              (typeof data["hooks"] === "object" && data["hooks"] !== null
+                ? data["hooks"]
+                : {}) as Record<
+                string,
+                Array<{
+                  matcher?: string;
+                  hooks: Array<{
+                    type: string;
+                    command: string;
+                    timeout?: number;
+                  }>;
+                }>
+              >
+            }
+            onChange={handleFieldChange}
+          />
+        </div>
 
-				<div>
-					<h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">Plugins</h3>
-					<PluginsEditor
-						value={
-							(typeof data['enabledPlugins'] === 'object' && data['enabledPlugins'] !== null
-								? data['enabledPlugins']
-								: {}) as Record<string, boolean>
-						}
-						onChange={handleFieldChange}
-					/>
-				</div>
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
+            Plugins
+          </h3>
+          <PluginsEditor
+            value={
+              (typeof data["enabledPlugins"] === "object" && data["enabledPlugins"] !== null
+                ? data["enabledPlugins"]
+                : {}) as Record<string, boolean>
+            }
+            onChange={handleFieldChange}
+          />
+        </div>
 
-				<div>
-					<h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">MCP Servers</h3>
-					<StringListEditor
-						label="Enabled MCP JSON servers"
-						description="MCP servers from project .mcp.json to auto-enable"
-						fieldKey="enabledMcpjsonServers"
-						entries={
-							Array.isArray(data['enabledMcpjsonServers'])
-								? (data['enabledMcpjsonServers'] as string[])
-								: []
-						}
-						onChange={handleFieldChange}
-						placeholder="server-name"
-					/>
-				</div>
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
+            MCP Servers
+          </h3>
+          <StringListEditor
+            label="Enabled MCP JSON servers"
+            description="MCP servers from project .mcp.json to auto-enable"
+            fieldKey="enabledMcpjsonServers"
+            entries={
+              Array.isArray(data["enabledMcpjsonServers"])
+                ? (data["enabledMcpjsonServers"] as string[])
+                : []
+            }
+            onChange={handleFieldChange}
+            placeholder="server-name"
+          />
+        </div>
 
-				{unknownKeys.length > 0 && (
-					<div>
-						<h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">Other</h3>
-						<div className="divide-y divide-border-300/10">
-							{unknownKeys.map((key) => (
-								<ObjectSummary
-									key={key}
-									label={key}
-									value={data[key]}
-								/>
-							))}
-						</div>
-					</div>
-				)}
-			</div>
+        {unknownKeys.length > 0 && (
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
+              Other
+            </h3>
+            <div className="divide-y divide-border-300/10">
+              {unknownKeys.map((key) => (
+                <ObjectSummary key={key} label={key} value={data[key]} />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
-			{feedback && (
-				<div
-					className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${
-						feedback.type === 'success'
-							? 'border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300'
-							: 'border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300'
-					}`}
-				>
-					{feedback.type === 'success' ? <Check className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-					{feedback.text}
-				</div>
-			)}
+      {feedback && (
+        <div
+          className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${
+            feedback.type === "success"
+              ? "border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300"
+              : "border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300"
+          }`}
+        >
+          {feedback.type === "success" ? (
+            <Check className="h-4 w-4" />
+          ) : (
+            <AlertCircle className="h-4 w-4" />
+          )}
+          {feedback.text}
+        </div>
+      )}
 
-			<div className="flex items-center gap-2">
-				<button
-					type="button"
-					onClick={handleSave}
-					disabled={saving || !isDirty}
-					className="flex items-center gap-1.5 rounded-md bg-accent-100 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-100/80 disabled:opacity-50"
-				>
-					<Save className="h-3.5 w-3.5" />
-					{saving ? 'Saving...' : 'Save'}
-				</button>
-				{isDirty && (
-					<button
-						type="button"
-						onClick={handleReset}
-						className="flex items-center gap-1.5 rounded-md border border-border-300/15 px-3 py-1.5 text-sm text-text-300 transition-colors hover:bg-bg-200"
-					>
-						<RotateCcw className="h-3.5 w-3.5" />
-						Reset
-					</button>
-				)}
-			</div>
-		</section>
-	);
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving || !isDirty}
+          className="flex items-center gap-1.5 rounded-md bg-accent-100 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-100/80 disabled:opacity-50"
+        >
+          <Save className="h-3.5 w-3.5" />
+          {saving ? "Saving..." : "Save"}
+        </button>
+        {isDirty && (
+          <button
+            type="button"
+            onClick={handleReset}
+            className="flex items-center gap-1.5 rounded-md border border-border-300/15 px-3 py-1.5 text-sm text-text-300 transition-colors hover:bg-bg-200"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Reset
+          </button>
+        )}
+      </div>
+    </section>
+  );
 }
 
-type EditorTab = 'form' | 'json';
+type EditorTab = "form" | "json";
 
 function SettingsEditPage() {
-	const {data: files} = useSuspenseQuery(settingsQueryOptions);
-	const [activeTab, setActiveTab] = useState<EditorTab>('form');
+  const { data: files } = useSuspenseQuery(settingsQueryOptions);
+  const [activeTab, setActiveTab] = useState<EditorTab>("form");
 
-	return (
-		<div className="max-w-4xl">
-			<div className="flex items-center justify-between">
-				<div>
-					<h1 className="text-lg font-semibold">Edit Settings</h1>
-					<p className="mt-1 text-sm text-text-500">
-						Edit Claude Code configuration files from <code className="font-mono text-xs">~/.claude/</code>
-					</p>
-				</div>
-				<div className="flex items-center gap-2">
-					<div className="flex rounded-md border border-border-300/15">
-						<button
-							type="button"
-							onClick={() => setActiveTab('form')}
-							className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors first:rounded-l-md ${
-								activeTab === 'form' ? 'bg-accent-100 text-white' : 'text-text-300 hover:bg-bg-200'
-							}`}
-						>
-							<SlidersHorizontal className="h-3.5 w-3.5" />
-							Form
-						</button>
-						<button
-							type="button"
-							onClick={() => setActiveTab('json')}
-							className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors last:rounded-r-md ${
-								activeTab === 'json' ? 'bg-accent-100 text-white' : 'text-text-300 hover:bg-bg-200'
-							}`}
-						>
-							<Code className="h-3.5 w-3.5" />
-							JSON
-						</button>
-					</div>
-					<Link
-						to="/settings"
-						className="flex items-center gap-1.5 rounded-md border border-border-300/15 px-3 py-1.5 text-sm text-text-300 transition-colors hover:bg-bg-200"
-					>
-						<X className="h-3.5 w-3.5" />
-						Cancel
-					</Link>
-				</div>
-			</div>
+  return (
+    <div className="max-w-4xl">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-semibold">Edit Settings</h1>
+          <p className="mt-1 text-sm text-text-500">
+            Edit Claude Code configuration files from{" "}
+            <code className="font-mono text-xs">~/.claude/</code>
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-md border border-border-300/15">
+            <button
+              type="button"
+              onClick={() => setActiveTab("form")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors first:rounded-l-md ${
+                activeTab === "form" ? "bg-accent-100 text-white" : "text-text-300 hover:bg-bg-200"
+              }`}
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              Form
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("json")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors last:rounded-r-md ${
+                activeTab === "json" ? "bg-accent-100 text-white" : "text-text-300 hover:bg-bg-200"
+              }`}
+            >
+              <Code className="h-3.5 w-3.5" />
+              JSON
+            </button>
+          </div>
+          <Link
+            to="/settings"
+            className="flex items-center gap-1.5 rounded-md border border-border-300/15 px-3 py-1.5 text-sm text-text-300 transition-colors hover:bg-bg-200"
+          >
+            <X className="h-3.5 w-3.5" />
+            Cancel
+          </Link>
+        </div>
+      </div>
 
-			<div className="mt-6 space-y-10">
-				{files.map((file) =>
-					activeTab === 'form' ? (
-						<FormEditor
-							key={`form-${file.filename}`}
-							filename={file.filename}
-							initialContent={file.content}
-							path={file.path}
-						/>
-					) : (
-						<JsonEditor
-							key={`json-${file.filename}`}
-							filename={file.filename}
-							initialContent={file.content}
-							path={file.path}
-						/>
-					),
-				)}
-			</div>
-		</div>
-	);
+      <div className="mt-6 space-y-10">
+        {files.map((file) =>
+          activeTab === "form" ? (
+            <FormEditor
+              key={`form-${file.filename}`}
+              filename={file.filename}
+              initialContent={file.content}
+              path={file.path}
+            />
+          ) : (
+            <JsonEditor
+              key={`json-${file.filename}`}
+              filename={file.filename}
+              initialContent={file.content}
+              path={file.path}
+            />
+          ),
+        )}
+      </div>
+    </div>
+  );
 }

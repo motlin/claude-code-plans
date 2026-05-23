@@ -1,4 +1,4 @@
-import type {JsonValue} from './hook-events';
+import type { JsonValue } from "./hook-events";
 
 /**
  * Subagent record extracted from transcript JSONL records.
@@ -15,50 +15,52 @@ import type {JsonValue} from './hook-events';
  * (Phase 2c) walks every transcript so the same constraint applies.
  */
 export interface Subagent {
-	id: string;
-	sessionId: string;
-	projectId: string;
-	parentAgentId: string | null;
-	agentType: string | null;
-	slug: string | null;
-	description: string | null;
-	startedAt: string | null;
-	finishedAt: string | null;
+  id: string;
+  sessionId: string;
+  projectId: string;
+  parentAgentId: string | null;
+  agentType: string | null;
+  slug: string | null;
+  description: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
 }
 
 const AGENT_ID_RE = /agentId:\s*(\S+)/;
 
 interface ToolUseBlock {
-	type: 'tool_use';
-	id: string;
-	name?: string;
-	input?: Record<string, JsonValue>;
+  type: "tool_use";
+  id: string;
+  name?: string;
+  input?: Record<string, JsonValue>;
 }
 
 interface ToolResultBlock {
-	type: 'tool_result';
-	tool_use_id?: string;
-	content?: string | Array<{type?: string; text?: string}>;
+  type: "tool_result";
+  tool_use_id?: string;
+  content?: string | Array<{ type?: string; text?: string }>;
 }
 
-type ContentBlock = ToolUseBlock | ToolResultBlock | {type: string};
+type ContentBlock = ToolUseBlock | ToolResultBlock | { type: string };
 
 interface TranscriptRecord {
-	type?: string;
-	timestamp?: string;
-	sessionId?: string;
-	message?: {content?: string | ContentBlock[]};
+  type?: string;
+  timestamp?: string;
+  sessionId?: string;
+  message?: { content?: string | ContentBlock[] };
 }
 
 function getResultText(block: ToolResultBlock): string {
-	if (typeof block.content === 'string') return block.content;
-	if (Array.isArray(block.content)) {
-		return block.content
-			.filter((b): b is {type: string; text: string} => b.type === 'text' && typeof b.text === 'string')
-			.map((b) => b.text)
-			.join(' ');
-	}
-	return '';
+  if (typeof block.content === "string") return block.content;
+  if (Array.isArray(block.content)) {
+    return block.content
+      .filter(
+        (b): b is { type: string; text: string } => b.type === "text" && typeof b.text === "string",
+      )
+      .map((b) => b.text)
+      .join(" ");
+  }
+  return "";
 }
 
 /**
@@ -73,66 +75,67 @@ function getResultText(block: ToolResultBlock): string {
  * two sources stay in sync without a separate per-session API endpoint.
  */
 export function extractSubagents(records: TranscriptRecord[], projectId: string): Subagent[] {
-	const pendingByToolUseId = new Map<
-		string,
-		{
-			agentType: string | null;
-			description: string | null;
-			startedAt: string | null;
-			sessionId: string;
-		}
-	>();
-	const results: Subagent[] = [];
+  const pendingByToolUseId = new Map<
+    string,
+    {
+      agentType: string | null;
+      description: string | null;
+      startedAt: string | null;
+      sessionId: string;
+    }
+  >();
+  const results: Subagent[] = [];
 
-	for (const record of records) {
-		const content = record.message?.content;
-		if (!Array.isArray(content)) continue;
-		const sessionId = record.sessionId ?? '';
+  for (const record of records) {
+    const content = record.message?.content;
+    if (!Array.isArray(content)) continue;
+    const sessionId = record.sessionId ?? "";
 
-		for (const block of content) {
-			if (block.type === 'tool_use') {
-				const toolUse = block as ToolUseBlock;
-				if (toolUse.name !== 'Agent' || typeof toolUse.id !== 'string') continue;
-				const input = toolUse.input ?? {};
-				const agentType =
-					typeof input['subagent_type'] === 'string' ? (input['subagent_type'] as string) : null;
-				const description = typeof input['description'] === 'string' ? (input['description'] as string) : null;
-				pendingByToolUseId.set(toolUse.id, {
-					agentType,
-					description,
-					startedAt: record.timestamp ?? null,
-					sessionId,
-				});
-				continue;
-			}
+    for (const block of content) {
+      if (block.type === "tool_use") {
+        const toolUse = block as ToolUseBlock;
+        if (toolUse.name !== "Agent" || typeof toolUse.id !== "string") continue;
+        const input = toolUse.input ?? {};
+        const agentType =
+          typeof input["subagent_type"] === "string" ? (input["subagent_type"] as string) : null;
+        const description =
+          typeof input["description"] === "string" ? (input["description"] as string) : null;
+        pendingByToolUseId.set(toolUse.id, {
+          agentType,
+          description,
+          startedAt: record.timestamp ?? null,
+          sessionId,
+        });
+        continue;
+      }
 
-			if (block.type === 'tool_result') {
-				const toolResult = block as ToolResultBlock;
-				if (typeof toolResult.tool_use_id !== 'string') continue;
-				const pending = pendingByToolUseId.get(toolResult.tool_use_id);
-				if (!pending) continue;
-				const text = getResultText(toolResult);
-				const match = AGENT_ID_RE.exec(text);
-				if (!match || !match[1]) {
-					pendingByToolUseId.delete(toolResult.tool_use_id);
-					continue;
-				}
-				const id = `agent-${match[1]}`;
-				results.push({
-					id,
-					sessionId: pending.sessionId,
-					projectId,
-					parentAgentId: null,
-					agentType: pending.agentType,
-					slug: null,
-					description: pending.description,
-					startedAt: pending.startedAt,
-					finishedAt: record.timestamp ?? null,
-				});
-				pendingByToolUseId.delete(toolResult.tool_use_id);
-			}
-		}
-	}
+      if (block.type === "tool_result") {
+        const toolResult = block as ToolResultBlock;
+        if (typeof toolResult.tool_use_id !== "string") continue;
+        const pending = pendingByToolUseId.get(toolResult.tool_use_id);
+        if (!pending) continue;
+        const text = getResultText(toolResult);
+        const match = AGENT_ID_RE.exec(text);
+        if (!match || !match[1]) {
+          pendingByToolUseId.delete(toolResult.tool_use_id);
+          continue;
+        }
+        const id = `agent-${match[1]}`;
+        results.push({
+          id,
+          sessionId: pending.sessionId,
+          projectId,
+          parentAgentId: null,
+          agentType: pending.agentType,
+          slug: null,
+          description: pending.description,
+          startedAt: pending.startedAt,
+          finishedAt: record.timestamp ?? null,
+        });
+        pendingByToolUseId.delete(toolResult.tool_use_id);
+      }
+    }
+  }
 
-	return results;
+  return results;
 }
