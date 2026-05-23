@@ -4,60 +4,59 @@ default:
     @just --list --unsorted
 
 ci := env("CI", "")
-_ci := if ci != "" { ":ci" } else { "" }
 port := "7526"
 
-# `pnpm install` or `pnpm install --frozen-lockfile`
+# Install dependencies
 [group('setup')]
 install:
-    {{ if ci != "" { "pnpm install --frozen-lockfile" } else { "pnpm install" } }}
+    pnpm exec vp install
 
 # Run dev server with Vite (wrapped by Spotlight sidecar)
 dev *args: install
-    PORT={{port}} pnpm dlx @spotlightjs/spotlight run pnpm run dev {{args}}
+    PORT={{port}} pnpm dlx @spotlightjs/spotlight run pnpm exec vp dev {{args}}
 
 # Run production server
 start *args: install build
     PORT={{port}} pnpm run start {{args}}
 
-# Run Oxlint
-oxlint: install
-    pnpm run oxlint{{_ci}}
+# Run linter
+lint: install
+    pnpm exec vp lint {{ if ci != "" { "--format github" } else { "--fix" } }}
 
-# Run Oxfmt formatter
-fmt: install
-    pnpm run fmt{{_ci}}
+# Run formatter
+format: install
+    pnpm exec vp fmt {{ if ci != "" { "--check" } else { "" } }}
 
-# Run all formatters
-format: fmt
+# Run checks (format + lint + typecheck)
+check: install
+    pnpm exec vp check {{ if ci != "" { "" } else { "--fix" } }}
 
 # Run tests
 test *args: install
-    pnpm run test:run {{args}}
+    pnpm exec vp run test:run {{args}}
 
 # Type-check the project (build first to generate routeTree.gen.ts)
 typecheck: install build
-    pnpm run typecheck
+    pnpm exec vp run typecheck
 
 # Build the project
 build: install
-    pnpm run build
+    pnpm exec vp run build
 
 # Run Storybook dev server
-storybook: install
-    pnpm run storybook
+storybook *args: install
+    pnpm exec vp run storybook {{args}}
 
 # Build static Storybook site
 build-storybook: install
-    pnpm run build-storybook
+    pnpm exec vp run build-storybook
 
-# Run fallow (build first to generate routeTree.gen.ts)
+# Run fallow codebase intelligence (dead code, duplication, drift)
 fallow: build
-    pnpm run fallow
-    pnpm run fallow:ci
+    pnpm exec vp run {{ if ci != "" { "fallow:ci" } else { "fallow" } }}
 
 # Run all pre-commit checks
 [arg("quick", long, value="true", help="Skip tests")]
-precommit quick="": oxlint format build typecheck fallow
+precommit quick="": check build fallow
     {{ if quick != "true" { "just test" } else { "true" } }}
     @echo "All pre-commit checks passed!"
