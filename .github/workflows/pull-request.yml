@@ -1,4 +1,4 @@
-# Jobs that run on pull_request, but not on merge_group. This is useful for jobs that post comments on Pull Requests, like ESLint annotations.
+# Jobs that run on pull_request, but not on merge_group. This is useful for jobs that post comments on Pull Requests.
 
 on:
   pull_request:
@@ -28,7 +28,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  eslint-fix:
+  check-fix:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -41,104 +41,35 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: jdx/mise-action@v4
-
-      - name: Configure Git
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "github-actions@github.com"
-
-      - name: Run ESLint Fix
-        run: |
-          npm ci
-          npm run eslint
-
-          if [[ -n $(git status --porcelain) ]]; then
-            FIX_BRANCH="fix-${{ github.event.pull_request.number }}-eslint"
-            git switch --create $FIX_BRANCH
-
-            git add --all
-            git commit --message "Apply ESLint fixes."
-            git push --force origin $FIX_BRANCH
-
-            echo "ESLint fixes have been pushed to the $FIX_BRANCH branch."
-            exit 1
-          else
-            echo "No changes needed by ESLint"
-          fi
-
-  biome-format-fix:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: jdx/mise-action@v4
-
-      - name: Configure Git
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "github-actions@github.com"
-
-      - name: Run Biome Format
-        run: |
-          npx @biomejs/biome format --write
-
-          if [[ -n $(git status --porcelain) ]]; then
-            FIX_BRANCH="fix-${{ github.event.pull_request.number }}-biome"
-            git switch --create $FIX_BRANCH
-
-            git add --all
-            git commit --message "Apply Biome formatting."
-            git push --force origin $FIX_BRANCH
-
-            echo "Biome formatting fixes have been pushed to the $FIX_BRANCH branch."
-            exit 1
-          else
-            echo "No changes needed by Biome"
-          fi
-
-  fallow-fix:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v6
+          cache: true
+      - uses: actions/cache@v5
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: jdx/mise-action@v4
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ hashFiles('pnpm-lock.yaml') }}
 
       - name: Configure Git
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "github-actions@github.com"
 
-      - name: Run Fallow Fix
+      - name: Run vp check --fix
         run: |
-          npm ci
-          npx fallow fix --yes
+          vp install
+          vp check --fix
 
           if [[ -n $(git status --porcelain) ]]; then
-            FIX_BRANCH="fix-${{ github.event.pull_request.number }}-fallow"
+            FIX_BRANCH="fix-${{ github.event.pull_request.number }}-check"
             git switch --create $FIX_BRANCH
 
             git add --all
-            git commit --message "Apply fallow fixes."
+            git commit --message "Apply vp check fixes."
             git push --force origin $FIX_BRANCH
 
-            echo "Fallow fixes have been pushed to the $FIX_BRANCH branch."
+            echo "vp check fixes have been pushed to the $FIX_BRANCH branch."
             exit 1
           else
-            echo "No changes needed by fallow"
+            echo "No changes needed by vp check"
           fi
 
   pre-commit-fix:
@@ -153,13 +84,9 @@ jobs:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.x"
-
       - uses: jdx/mise-action@v4
 
-      - run: npm ci
+      - run: just install
 
       - name: Configure Git
         run: |
