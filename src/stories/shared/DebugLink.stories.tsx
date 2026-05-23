@@ -9,7 +9,7 @@ import { SettingsProvider } from "../../components/settings-provider";
  * Uses `render` instead of `args` because the component's discriminated union
  * props cannot be represented via Storybook's flattened args type.
  */
-const meta = {
+const meta: Meta<typeof DebugLink> = {
   title: "Shared/DebugLink",
   component: DebugLink,
   decorators: [
@@ -22,7 +22,7 @@ const meta = {
       );
     },
   ],
-} satisfies Meta;
+};
 
 export default meta;
 

@@ -7,54 +7,54 @@ ci := env("CI", "")
 _ci := if ci != "" { ":ci" } else { "" }
 port := "7526"
 
-# `npm install` or `npm ci`
+# `pnpm install` or `pnpm install --frozen-lockfile`
 [group('setup')]
 install:
-    {{ if ci != "" { "npm ci" } else { "npm install" } }}
+    {{ if ci != "" { "pnpm install --frozen-lockfile" } else { "pnpm install" } }}
 
 # Run dev server with Vite (wrapped by Spotlight sidecar)
 dev *args: install
-    PORT={{port}} npx @spotlightjs/spotlight run npm run dev {{args}}
+    PORT={{port}} pnpm dlx @spotlightjs/spotlight run pnpm run dev {{args}}
 
 # Run production server
 start *args: install build
-    PORT={{port}} npm run start {{args}}
+    PORT={{port}} pnpm run start {{args}}
 
 # Run Oxlint
 oxlint: install
-    npm run oxlint{{_ci}}
+    pnpm run oxlint{{_ci}}
 
 # Run Oxfmt formatter
 fmt: install
-    npm run fmt{{_ci}}
+    pnpm run fmt{{_ci}}
 
 # Run all formatters
 format: fmt
 
 # Run tests
 test *args: install
-    npm run test:run {{args}}
+    pnpm run test:run {{args}}
 
 # Type-check the project (build first to generate routeTree.gen.ts)
 typecheck: install build
-    npm run typecheck
+    pnpm run typecheck
 
 # Build the project
 build: install
-    npm run build
+    pnpm run build
 
 # Run Storybook dev server
 storybook: install
-    npm run storybook
+    pnpm run storybook
 
 # Build static Storybook site
 build-storybook: install
-    npm run build-storybook
+    pnpm run build-storybook
 
 # Run fallow (build first to generate routeTree.gen.ts)
 fallow: build
-    npm run fallow
-    npm run fallow:ci
+    pnpm run fallow
+    pnpm run fallow:ci
 
 # Run all pre-commit checks
 [arg("quick", long, value="true", help="Skip tests")]
