@@ -1,16 +1,18 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: check-yaml
         args: ["--allow-multiple-documents"]
       - id: check-json
-        exclude: "tsconfig.*\\.json|package-lock\\.json"
+        # Exclude JSONC files (JSON with Comments) as they need comment support
+        exclude: "tsconfig.*\\.json|package-lock\\.json|biome\\.jsonc"
       - id: check-toml
+      - id: check-xml
       - id: end-of-file-fixer
-        exclude: "package-lock\\.json|\\.idea/"
+        exclude: "package-lock\\.json|^\\.idea/"
       - id: trailing-whitespace
-        exclude: "package-lock\\.json|\\.idea/"
+        exclude: "package-lock\\.json|^\\.idea/"
       - id: check-added-large-files
         args: ["--maxkb=1000"]
       - id: check-case-conflict
@@ -21,16 +23,19 @@ repos:
 
   - repo: local
     hooks:
-      - id: vp-check
-        name: vp check
-        entry: npx vp check --fix
+      - id: vp-staged
+        name: vp staged
+        entry: vp staged
         language: system
-        pass_filenames: false
         types: [file]
-
+      - id: markdownlint-cli2
+        name: markdownlint-cli2
+        entry: vp exec markdownlint-cli2
+        language: system
+        types: [markdown]
       - id: fallow
-        name: fallow fix
-        entry: npx fallow fix --base HEAD --yes
+        name: fallow
+        entry: vp exec fallow fix --base HEAD --yes --no-create-config
         language: system
         pass_filenames: false
         types: [file]
