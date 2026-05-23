@@ -47,8 +47,8 @@
 
   // MD010/no-hard-tabs : Hard tabs : https://github.com/DavidAnson/markdownlint/blob/v0.34.0/doc/md010.md
   "MD010": {
-    // Include code blocks
-    "code_blocks": true,
+    // Don't check code blocks: oxfmt uses useTabs: true (including in markdown content)
+    "code_blocks": false,
     // Fenced code languages to ignore
     "ignore_code_languages": ["console"],
     // Number of spaces for each hard tab
