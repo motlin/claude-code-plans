@@ -1,5 +1,5 @@
 [tools]
 just = "1.51.0"
-node = "24.15.0"
+node = "26.2.0"
 "npm:vite-plus" = "latest"
 pre-commit = "latest"
