@@ -17,6 +17,9 @@ peerDependencyRules:
     vite: "*"
     vitest: "*"
 allowBuilds:
+  "@sentry/cli": false
+  "@swc/core": false
   better-sqlite3: true
   esbuild: true
   fallow: true
+  unrs-resolver: false
