@@ -33,6 +33,7 @@ check: install
 
 # Run tests
 test *args: install
+    {{ if ci != "" { "pnpm exec vp exec playwright install --with-deps chromium" } else { "true" } }}
     pnpm exec vp run test:run {{args}}
 
 # Type-check the project (build first to generate routeTree.gen.ts)
