@@ -22,6 +22,7 @@ import {
 	Pin,
 	Plug,
 	Search,
+	Workflow,
 	Wrench,
 	Zap,
 } from 'lucide-react';
@@ -341,6 +342,15 @@ function AttachmentContent({
 				<Banner
 					icon={<AlertTriangle className="h-3.5 w-3.5" />}
 					label={`Max turns reached${attachment.maxTurns !== undefined ? ` (${attachment.turnCount ?? '?'}/${attachment.maxTurns})` : ''}`}
+					sessionId={sessionId}
+					uuid={uuid}
+				/>
+			);
+		case 'workflow_keyword_request':
+			return (
+				<Banner
+					icon={<Workflow className="h-3.5 w-3.5" />}
+					label="Workflow keyword request"
 					sessionId={sessionId}
 					uuid={uuid}
 				/>

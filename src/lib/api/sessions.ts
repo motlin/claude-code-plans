@@ -1,6 +1,7 @@
 import {z} from 'zod';
 import {queryOptions, useMutation, useQueryClient} from '@tanstack/react-query';
 import {apiFetch} from './client';
+import {JsonValueSchema} from '../schemas';
 
 const SessionListItemSchema = z.object({
 	id: z.string(),
@@ -47,17 +48,6 @@ export const SessionDetailResponse = z
 		parentSessionId: z.string().optional(),
 	})
 	.nullable();
-
-const JsonValueSchema: z.ZodType<unknown> = z.lazy(() =>
-	z.union([
-		z.string(),
-		z.number(),
-		z.boolean(),
-		z.null(),
-		z.array(JsonValueSchema),
-		z.record(z.string(), JsonValueSchema),
-	]),
-);
 
 export const TranscriptResponse = z.object({
 	records: z.array(z.record(z.string(), JsonValueSchema)),

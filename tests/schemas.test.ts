@@ -65,7 +65,7 @@ describe('SessionIndexEntrySchema', () => {
 		expect(result.success).toBe(true);
 	});
 
-	it('passes through unknown fields', () => {
+	it('rejects unknown fields', () => {
 		const entry = {
 			sessionId: 'abc-123',
 			fullPath: '/path/to/abc-123.jsonl',
@@ -73,10 +73,7 @@ describe('SessionIndexEntrySchema', () => {
 			unknownField: 'hello',
 		};
 		const result = SessionIndexEntrySchema.safeParse(entry);
-		expect(result.success).toBe(true);
-		if (result.success) {
-			expect(result.data['unknownField']).toBe('hello');
-		}
+		expect(result.success).toBe(false);
 	});
 });
 
@@ -96,7 +93,7 @@ describe('SessionsIndexSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
-	it('passes through originalPath field', () => {
+	it('accepts the originalPath field', () => {
 		const data = {
 			version: 1,
 			entries: [],
@@ -105,8 +102,18 @@ describe('SessionsIndexSchema', () => {
 		const result = SessionsIndexSchema.safeParse(data);
 		expect(result.success).toBe(true);
 		if (result.success) {
-			expect(result.data['originalPath']).toBe('/Users/craig/.claude/projects/proj/sessions-index.json');
+			expect(result.data.originalPath).toBe('/Users/craig/.claude/projects/proj/sessions-index.json');
 		}
+	});
+
+	it('rejects unknown top-level fields', () => {
+		const data = {
+			version: 1,
+			entries: [],
+			bogusField: true,
+		};
+		const result = SessionsIndexSchema.safeParse(data);
+		expect(result.success).toBe(false);
 	});
 });
 
@@ -581,7 +588,7 @@ describe('TaskFileSchema', () => {
 		expect(result.success).toBe(false);
 	});
 
-	it('passes through unknown fields', () => {
+	it('rejects unknown fields', () => {
 		const result = TaskFileSchema.safeParse({
 			id: '1',
 			subject: 'task',
@@ -592,10 +599,7 @@ describe('TaskFileSchema', () => {
 			owner: 'agent-1',
 			metadata: {priority: 'high'},
 		});
-		expect(result.success).toBe(true);
-		if (result.success) {
-			expect(result.data['owner']).toBe('agent-1');
-		}
+		expect(result.success).toBe(false);
 	});
 });
 

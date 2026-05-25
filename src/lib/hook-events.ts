@@ -13,6 +13,7 @@ import {
 	ExitPlanModeInputSchema,
 	AskUserQuestionInputSchema,
 } from './tool-input-schemas';
+import {JsonValueSchema} from './schemas';
 
 // ---------------------------------------------------------------------------
 // SSE Event Types
@@ -294,7 +295,7 @@ const EditToolResponseSchema = z
 		oldString: z.string().optional(),
 		newString: z.string().optional(),
 		originalFile: z.string().optional(),
-		structuredPatch: z.array(z.unknown()).optional(),
+		structuredPatch: z.array(JsonValueSchema).optional(),
 		userModified: z.boolean().optional(),
 		replaceAll: z.boolean().optional(),
 	})
@@ -303,9 +304,9 @@ const EditToolResponseSchema = z
 const MultiEditToolResponseSchema = z
 	.object({
 		filePath: z.string().optional(),
-		edits: z.array(z.unknown()).optional(),
+		edits: z.array(JsonValueSchema).optional(),
 		originalFileContents: z.string().optional(),
-		structuredPatch: z.array(z.unknown()).optional(),
+		structuredPatch: z.array(JsonValueSchema).optional(),
 		userModified: z.boolean().optional(),
 	})
 	.strict();
@@ -315,7 +316,7 @@ const WriteToolResponseSchema = z
 		type: z.string().optional(),
 		filePath: z.string().optional(),
 		content: z.string().optional(),
-		structuredPatch: z.array(z.unknown()).optional(),
+		structuredPatch: z.array(JsonValueSchema).optional(),
 	})
 	.strict();
 
@@ -340,7 +341,7 @@ const GrepToolResponseSchema = z
 
 const TaskToolResponseSchema = z
 	.object({
-		content: z.array(z.unknown()).optional(),
+		content: z.array(JsonValueSchema).optional(),
 		totalTokens: z.number().optional(),
 		totalToolUseCount: z.number().optional(),
 		wasInterrupted: z.boolean().optional(),
@@ -360,8 +361,8 @@ const WebFetchToolResponseSchema = z
 
 const TodoWriteToolResponseSchema = z
 	.object({
-		oldTodos: z.array(z.unknown()).optional(),
-		newTodos: z.array(z.unknown()).optional(),
+		oldTodos: z.array(JsonValueSchema).optional(),
+		newTodos: z.array(JsonValueSchema).optional(),
 	})
 	.strict();
 
@@ -374,7 +375,7 @@ const ExitPlanModeToolResponseSchema = z
 
 const AskUserQuestionToolResponseSchema = z
 	.object({
-		answers: z.array(z.unknown()).optional(),
+		answers: z.array(JsonValueSchema).optional(),
 		answer: z.string().optional(),
 	})
 	.strict();

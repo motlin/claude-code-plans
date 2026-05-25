@@ -113,6 +113,8 @@ const TaskCreateInputSchema = z
 		blocks: z.array(z.string()).optional(),
 		blockedBy: z.array(z.string()).optional(),
 		activeForm: z.string().optional(),
+		agent_type: z.string().optional(),
+		priority: z.string().optional(),
 	})
 	.strict();
 
@@ -124,6 +126,15 @@ const TaskUpdateInputSchema = z
 		description: z.string().optional(),
 		activeForm: z.string().optional(),
 		addBlockedBy: z.array(z.string()).optional(),
+		owner: z.string().optional(),
+		priority: z.string().optional(),
+		metadata: z
+			.object({
+				pr: z.string().optional(),
+				outcome: z.string().optional(),
+			})
+			.strict()
+			.optional(),
 	})
 	.strict();
 
@@ -133,7 +144,11 @@ const TaskGetInputSchema = z
 	})
 	.strict();
 
-const TaskListInputSchema = z.object({}).strict();
+const TaskListInputSchema = z
+	.object({
+		summary: z.string().optional(),
+	})
+	.strict();
 
 const OptionSchema = z
 	.object({
@@ -148,17 +163,20 @@ export const AskUserQuestionInputSchema = z
 		question: z.string().optional(),
 		options: z.array(OptionSchema).optional(),
 		questions: z
-			.array(
-				z
-					.object({
-						question: z.string(),
-						options: z.array(OptionSchema),
-						multiSelect: z.boolean().optional(),
-						header: z.string().optional(),
-						preview: z.union([z.string(), z.null()]).optional(),
-					})
-					.strict(),
-			)
+			.union([
+				z.array(
+					z
+						.object({
+							question: z.string(),
+							options: z.array(OptionSchema),
+							multiSelect: z.boolean().optional(),
+							header: z.string().optional(),
+							preview: z.union([z.string(), z.null()]).optional(),
+						})
+						.strict(),
+				),
+				z.string(),
+			])
 			.optional(),
 		multiSelect: z.boolean().optional(),
 		header: z.string().optional(),
@@ -223,6 +241,102 @@ const CronCreateInputSchema = z
 	})
 	.strict();
 
+const CronDeleteInputSchema = z
+	.object({
+		id: z.string().optional(),
+		cron_id: z.string().optional(),
+	})
+	.strict();
+
+const CronListInputSchema = z.object({}).strict();
+
+const TeamCreateInputSchema = z
+	.object({
+		name: z.string().optional(),
+		team_name: z.string().optional(),
+		description: z.string().optional(),
+		agent_type: z.string().optional(),
+	})
+	.strict();
+
+const TeamDeleteInputSchema = z
+	.object({
+		name: z.string().optional(),
+		team_name: z.string().optional(),
+	})
+	.strict();
+
+const ScheduleWakeupInputSchema = z
+	.object({
+		delaySeconds: z.number().optional(),
+		delay_seconds: z.number().optional(),
+		delay: z.union([z.number(), z.string()]).optional(),
+		timestamp: z.union([z.number(), z.string()]).optional(),
+		cron: z.string().optional(),
+		recurring: z.boolean().optional(),
+		prompt: z.string().optional(),
+		reason: z.string().optional(),
+	})
+	.strict();
+
+const EnterWorktreeInputSchema = z
+	.object({
+		name: z.string().optional(),
+		path: z.string().optional(),
+	})
+	.strict();
+
+const ExitWorktreeInputSchema = z
+	.object({
+		action: z.string().optional(),
+		discard_changes: z.boolean().optional(),
+	})
+	.strict();
+
+const TaskOutputInputSchema = z
+	.object({
+		task_id: z.string().optional(),
+		shell_id: z.string().optional(),
+		block: z.boolean().optional(),
+		timeout: z.number().optional(),
+	})
+	.strict();
+
+const LSPInputSchema = z
+	.object({
+		file_path: z.string().optional(),
+		path: z.string().optional(),
+		line: z.number().optional(),
+		character: z.number().optional(),
+		symbol: z.string().optional(),
+		method: z.string().optional(),
+	})
+	.strict();
+
+const NotebookEditInputSchema = z
+	.object({
+		notebook_path: z.string(),
+		new_source: z.string(),
+		cell_id: z.string().optional(),
+		cell_type: z.string().optional(),
+		edit_mode: z.string().optional(),
+	})
+	.strict();
+
+const NotebookReadInputSchema = z
+	.object({
+		notebook_path: z.string(),
+		cell_id: z.string().optional(),
+	})
+	.strict();
+
+const LSInputSchema = z
+	.object({
+		path: z.string(),
+		ignore: z.array(z.string()).optional(),
+	})
+	.strict();
+
 export const toolInputSchemas: Record<string, z.ZodType> = {
 	Bash: BashInputSchema,
 	Read: ReadInputSchema,
@@ -246,19 +360,19 @@ export const toolInputSchemas: Record<string, z.ZodType> = {
 	WebSearch: WebSearchInputSchema,
 	SendMessage: SendMessageInputSchema,
 	TaskStop: TaskStopInputSchema,
-	TaskOutput: z.record(z.string(), z.unknown()),
+	TaskOutput: TaskOutputInputSchema,
 	CronCreate: CronCreateInputSchema,
-	CronDelete: z.record(z.string(), z.unknown()),
-	CronList: z.record(z.string(), z.unknown()),
-	TeamCreate: z.record(z.string(), z.unknown()),
-	TeamDelete: z.record(z.string(), z.unknown()),
-	ScheduleWakeup: z.record(z.string(), z.unknown()),
-	EnterWorktree: z.record(z.string(), z.unknown()),
-	ExitWorktree: z.record(z.string(), z.unknown()),
-	LSP: z.record(z.string(), z.unknown()),
-	NotebookEdit: z.record(z.string(), z.unknown()),
-	NotebookRead: z.record(z.string(), z.unknown()),
-	LS: z.record(z.string(), z.unknown()),
+	CronDelete: CronDeleteInputSchema,
+	CronList: CronListInputSchema,
+	TeamCreate: TeamCreateInputSchema,
+	TeamDelete: TeamDeleteInputSchema,
+	ScheduleWakeup: ScheduleWakeupInputSchema,
+	EnterWorktree: EnterWorktreeInputSchema,
+	ExitWorktree: ExitWorktreeInputSchema,
+	LSP: LSPInputSchema,
+	NotebookEdit: NotebookEditInputSchema,
+	NotebookRead: NotebookReadInputSchema,
+	LS: LSInputSchema,
 };
 
 // MCP tool inputs vary by server — skip strict validation for them.

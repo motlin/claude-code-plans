@@ -246,10 +246,23 @@ describe('McpConfigSchema', () => {
 		expect(result.success).toBe(false);
 	});
 
-	it('rejects server entry without command', () => {
+	it('parses a remote (sse/http) server entry with url and headers', () => {
 		const result = McpConfigSchema.safeParse({
 			mcpServers: {
-				broken: {args: ['--flag']},
+				remote: {
+					type: 'http',
+					url: 'https://example.com/mcp',
+					headers: {Authorization: 'Bearer token'},
+				},
+			},
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects server entry with unknown fields', () => {
+		const result = McpConfigSchema.safeParse({
+			mcpServers: {
+				broken: {command: '/usr/bin/server', bogusField: true},
 			},
 		});
 		expect(result.success).toBe(false);

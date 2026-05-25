@@ -39,6 +39,7 @@ const MINIMAL_BY_TYPE: Record<string, AttachmentPayload> = {
 	invoked_skills: {type: 'invoked_skills'},
 	ultrathink_effort: {type: 'ultrathink_effort'},
 	max_turns_reached: {type: 'max_turns_reached'},
+	workflow_keyword_request: {type: 'workflow_keyword_request'},
 };
 
 describe('AttachmentBanner', () => {

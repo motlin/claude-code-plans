@@ -2,6 +2,27 @@ import {z} from 'zod';
 import {isMcpTool, toolInputSchemas} from './tool-input-schemas';
 
 // ---------------------------------------------------------------------------
+// JSON value
+// ---------------------------------------------------------------------------
+
+/**
+ * Recursive schema for any valid JSON value. Used in place of `z.unknown()` for
+ * externally-owned API objects (Anthropic `usage`, `container`, etc.) so we
+ * assert "valid JSON" (rejecting undefined/functions/symbols) without breaking
+ * when the upstream shape gains new fields.
+ */
+export const JsonValueSchema: z.ZodType<unknown> = z.lazy(() =>
+	z.union([
+		z.string(),
+		z.number(),
+		z.boolean(),
+		z.null(),
+		z.array(JsonValueSchema),
+		z.record(z.string(), JsonValueSchema),
+	]),
+);
+
+// ---------------------------------------------------------------------------
 // Sessions Index (sessions-index.json)
 // ---------------------------------------------------------------------------
 
@@ -19,14 +40,15 @@ export const SessionIndexEntrySchema = z
 		projectPath: z.string().optional(),
 		isSidechain: z.boolean().optional(),
 	})
-	.passthrough();
+	.strict();
 
 export const SessionsIndexSchema = z
 	.object({
 		version: z.number(),
 		entries: z.array(SessionIndexEntrySchema),
+		originalPath: z.string().optional(),
 	})
-	.passthrough();
+	.strict();
 
 // ---------------------------------------------------------------------------
 // Content Blocks (inside user/assistant messages)
@@ -44,8 +66,8 @@ export const ToolUseBlockSchema = z
 		type: z.literal('tool_use'),
 		id: z.string(),
 		name: z.string(),
-		input: z.record(z.string(), z.unknown()),
-		caller: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+		input: z.record(z.string(), JsonValueSchema),
+		caller: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
 	})
 	.strict();
 
@@ -61,7 +83,7 @@ export const ToolResultBlockSchema = z
 	.object({
 		type: z.literal('tool_result'),
 		tool_use_id: z.string(),
-		content: z.union([z.string(), z.array(z.unknown())]).optional(),
+		content: z.union([z.string(), z.array(JsonValueSchema)]).optional(),
 		is_error: z.boolean().optional(),
 	})
 	.strict();
@@ -139,7 +161,7 @@ const BaseRecordFields = {
 	slug: z.string().optional(),
 	version: z.string().optional(),
 	entrypoint: z.string().optional(),
-	forkedFrom: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+	forkedFrom: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
 	teamName: z.string().optional(),
 	leafUuid: z.string().optional(),
 	agentId: z.string().optional(),
@@ -156,17 +178,19 @@ export const UserRecordSchema = z
 				content: z.union([z.string(), z.array(ContentBlockSchema)]),
 			})
 			.strict(),
-		toolUseResult: z.unknown().optional(),
+		toolUseResult: JsonValueSchema.optional(),
 		sourceToolAssistantUUID: z.string().optional(),
 		sourceToolUseID: z.string().optional(),
 		promptId: z.string().optional(),
 		permissionMode: z.string().optional(),
+		promptSource: z.enum(['typed']).optional(),
 		imagePasteIds: z.array(z.union([z.string(), z.number()])).optional(),
 		isMeta: z.boolean().optional(),
 		isCompactSummary: z.boolean().optional(),
 		isVisibleInTranscriptOnly: z.boolean().optional(),
-		mcpMeta: z.record(z.string(), z.unknown()).optional(),
-		origin: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+		mcpMeta: z.record(z.string(), JsonValueSchema).optional(),
+		origin: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
+		interruptedMessageId: z.string().optional(),
 	})
 	.strict();
 
@@ -184,19 +208,23 @@ export const AssistantRecordSchema = z
 				content: z.union([z.string(), z.array(ContentBlockSchema)]),
 				stop_reason: z.union([z.string(), z.null()]).optional(),
 				stop_sequence: z.union([z.string(), z.null()]).optional(),
-				usage: z.record(z.string(), z.unknown()).optional(),
-				stop_details: z.union([z.record(z.string(), z.unknown()), z.null()]).optional(),
-				container: z.union([z.record(z.string(), z.unknown()), z.null()]).optional(),
-				context_management: z.union([z.record(z.string(), z.unknown()), z.null()]).optional(),
-				diagnostics: z.union([z.array(z.unknown()), z.record(z.string(), z.unknown()), z.null()]).optional(),
+				usage: z.record(z.string(), JsonValueSchema).optional(),
+				stop_details: z.union([z.record(z.string(), JsonValueSchema), z.null()]).optional(),
+				container: z.union([z.record(z.string(), JsonValueSchema), z.null()]).optional(),
+				context_management: z.union([z.record(z.string(), JsonValueSchema), z.null()]).optional(),
+				diagnostics: z
+					.union([z.array(JsonValueSchema), z.record(z.string(), JsonValueSchema), z.null()])
+					.optional(),
 			})
 			.strict(),
 		isApiErrorMessage: z.boolean().optional(),
 		apiErrorStatus: z.union([z.number(), z.string()]).optional(),
-		error: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+		error: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
 		attributionSkill: z.string().optional(),
 		attributionPlugin: z.string().optional(),
-		errorDetails: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+		attributionMcpServer: z.string().optional(),
+		attributionMcpTool: z.string().optional(),
+		errorDetails: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
 	})
 	.strict();
 
@@ -217,7 +245,7 @@ export const FileHistorySnapshotSchema = z
 			.object({
 				messageId: z.string().optional(),
 				timestamp: z.string().optional(),
-				trackedFileBackups: z.record(z.string(), z.unknown()),
+				trackedFileBackups: z.record(z.string(), JsonValueSchema),
 			})
 			.strict(),
 	})
@@ -289,7 +317,7 @@ const HookBlockingErrorAttachmentPayload = z
 	.object({
 		type: z.literal('hook_blocking_error'),
 		...HookBaseFields,
-		blockingError: z.record(z.string(), z.unknown()).optional(),
+		blockingError: z.record(z.string(), JsonValueSchema).optional(),
 		command: z.string().optional(),
 		durationMs: z.number().optional(),
 	})
@@ -308,7 +336,7 @@ const HookSystemMessageAttachmentPayload = z
 	.object({
 		type: z.literal('hook_system_message'),
 		...HookBaseFields,
-		content: z.union([z.string(), z.array(z.unknown())]).optional(),
+		content: z.union([z.string(), z.array(JsonValueSchema)]).optional(),
 	})
 	.strict();
 
@@ -316,7 +344,7 @@ const HookAdditionalContextAttachmentPayload = z
 	.object({
 		type: z.literal('hook_additional_context'),
 		...HookBaseFields,
-		content: z.union([z.string(), z.array(z.unknown())]).optional(),
+		content: z.union([z.string(), z.array(JsonValueSchema)]).optional(),
 	})
 	.strict();
 
@@ -352,7 +380,7 @@ const SkillListingAttachmentPayload = z
 
 // Fields shared by task/todo reminder payloads
 const ReminderBaseFields = {
-	content: z.union([z.string(), z.array(z.unknown())]).optional(),
+	content: z.union([z.string(), z.array(JsonValueSchema)]).optional(),
 	itemCount: z.number().optional(),
 };
 
@@ -373,7 +401,7 @@ const FileAttachmentPayload = z
 	.object({
 		type: z.literal('file'),
 		filename: z.string(),
-		content: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+		content: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
 		displayPath: z.string().optional(),
 	})
 	.strict();
@@ -405,7 +433,7 @@ const DateChangeAttachmentPayload = z
 const CommandPermissionsAttachmentPayload = z
 	.object({
 		type: z.literal('command_permissions'),
-		allowedTools: z.array(z.unknown()).optional(),
+		allowedTools: z.array(JsonValueSchema).optional(),
 		model: z.string().optional(),
 	})
 	.strict();
@@ -413,7 +441,7 @@ const CommandPermissionsAttachmentPayload = z
 const DiagnosticsAttachmentPayload = z
 	.object({
 		type: z.literal('diagnostics'),
-		files: z.array(z.unknown()).optional(),
+		files: z.array(JsonValueSchema).optional(),
 		isNew: z.boolean().optional(),
 	})
 	.strict();
@@ -421,10 +449,10 @@ const DiagnosticsAttachmentPayload = z
 const QueuedCommandAttachmentPayload = z
 	.object({
 		type: z.literal('queued_command'),
-		prompt: z.union([z.string(), z.array(z.unknown())]).optional(),
+		prompt: z.union([z.string(), z.array(JsonValueSchema)]).optional(),
 		commandMode: z.string().optional(),
 		imagePasteIds: z.array(z.union([z.string(), z.number()])).optional(),
-		origin: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+		origin: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
 	})
 	.strict();
 
@@ -458,7 +486,7 @@ const CompanionIntroAttachmentPayload = z
 const InvokedSkillsAttachmentPayload = z
 	.object({
 		type: z.literal('invoked_skills'),
-		skills: z.array(z.unknown()).optional(),
+		skills: z.array(JsonValueSchema).optional(),
 	})
 	.strict();
 
@@ -484,6 +512,12 @@ const AutoModeAttachmentPayload = z
 	})
 	.strict();
 
+const WorkflowKeywordRequestAttachmentPayload = z
+	.object({
+		type: z.literal('workflow_keyword_request'),
+	})
+	.strict();
+
 const PlanFileReferenceAttachmentPayload = z
 	.object({
 		type: z.literal('plan_file_reference'),
@@ -496,7 +530,7 @@ const NestedMemoryAttachmentPayload = z
 	.object({
 		type: z.literal('nested_memory'),
 		path: z.string().optional(),
-		content: z.record(z.string(), z.unknown()).optional(),
+		content: z.record(z.string(), JsonValueSchema).optional(),
 		displayPath: z.string().optional(),
 	})
 	.strict();
@@ -533,6 +567,7 @@ export const AttachmentPayloadSchema = z.discriminatedUnion('type', [
 	InvokedSkillsAttachmentPayload,
 	UltrathinkEffortAttachmentPayload,
 	MaxTurnsReachedAttachmentPayload,
+	WorkflowKeywordRequestAttachmentPayload,
 ]);
 
 /**
@@ -551,7 +586,7 @@ export const ProgressRecordSchema = z
 	.object({
 		type: z.literal('progress'),
 		...BaseRecordFields,
-		data: z.record(z.string(), z.unknown()).optional(),
+		data: z.record(z.string(), JsonValueSchema).optional(),
 		toolUseID: z.string().optional(),
 		parentToolUseID: z.string().optional(),
 	})
@@ -569,18 +604,20 @@ export const SystemRecordSchema = z
 		toolUseID: z.string().optional(),
 		sourceToolUseID: z.string().optional(),
 		hookCount: z.number().optional(),
-		hookInfos: z.array(z.unknown()).optional(),
-		hookErrors: z.array(z.unknown()).optional(),
+		hookInfos: z.array(JsonValueSchema).optional(),
+		hookErrors: z.array(JsonValueSchema).optional(),
 		preventedContinuation: z.boolean().optional(),
 		stopReason: z.string().optional(),
 		hasOutput: z.boolean().optional(),
-		error: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+		error: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
 		messageCount: z.number().optional(),
+		pendingBackgroundAgentCount: z.number().optional(),
+		pendingWorkflowCount: z.number().optional(),
 		promptId: z.string().optional(),
 		permissionMode: z.string().optional(),
 		logicalParentUuid: z.string().optional(),
-		cause: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
-		compactMetadata: z.record(z.string(), z.unknown()).optional(),
+		cause: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
+		compactMetadata: z.record(z.string(), JsonValueSchema).optional(),
 		retryAttempt: z.number().optional(),
 		retryInMs: z.number().optional(),
 		maxRetries: z.number().optional(),
@@ -678,6 +715,14 @@ const PrLinkRecordSchema = z
 	})
 	.strict();
 
+const ModeRecordSchema = z
+	.object({
+		type: z.literal('mode'),
+		mode: z.string(),
+		sessionId: z.string(),
+	})
+	.strict();
+
 /**
  * Discriminated union of all known JSONL record types.
  * Unknown record types are hard errors -- they mean we need a new schema branch.
@@ -699,6 +744,7 @@ export const JsonlRecordSchema = z.discriminatedUnion('type', [
 	PermissionModeRecordSchema,
 	WorktreeStateRecordSchema,
 	PrLinkRecordSchema,
+	ModeRecordSchema,
 ]);
 
 // ---------------------------------------------------------------------------
@@ -717,7 +763,7 @@ export const TaskFileSchema = z
 		blockedBy: z.array(z.string()),
 		activeForm: z.string().optional(),
 	})
-	.passthrough();
+	.strict();
 
 // ---------------------------------------------------------------------------
 // Claude Code Settings (~/.claude/settings.json, settings.local.json)
@@ -809,6 +855,7 @@ export const ClaudeSettingsSchema = z
 		enableAllProjectMcpServers: z.boolean().optional(),
 		enabledMcpjsonServers: z.array(z.string()).optional(),
 		skipDangerousModePermissionPrompt: z.boolean().optional(),
+		skipWorkflowUsageWarning: z.boolean().optional(),
 		teammateMode: z.string().optional(),
 		preferredNotifChannel: z.string().optional(),
 		outputStyle: z.string().optional(),
@@ -833,13 +880,14 @@ export const ClaudeSettingsSchema = z
 const McpServerEntrySchema = z
 	.object({
 		type: z.string().optional(),
-		command: z.string(),
+		command: z.string().optional(),
 		args: z.array(z.string()).optional(),
 		env: z.record(z.string(), z.string()).optional(),
 		cwd: z.string().optional(),
 		url: z.string().optional(),
+		headers: z.record(z.string(), z.string()).optional(),
 	})
-	.passthrough();
+	.strict();
 
 export const McpConfigSchema = z
 	.object({
