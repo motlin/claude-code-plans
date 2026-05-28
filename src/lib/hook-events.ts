@@ -55,6 +55,7 @@ export const DOMAIN_EVENTS = {
   SESSION_COMPACTED: "session:compacted",
   SUBAGENT_STARTED: "subagent:started",
   SESSION_CWD_CHANGED: "session:cwd-changed",
+  INSTRUCTIONS_LOADED: "instructions:loaded",
   NOTIFICATION: "notification",
   PLAN_CHANGED: "plan:changed",
   PLAN_REMOVED: "plan:removed",
@@ -264,6 +265,25 @@ export interface SessionCwdChangedPayload {
   sessionId: string;
   oldCwd: string;
   newCwd: string;
+}
+
+/**
+ * Payload broadcast when an `InstructionsLoaded` hook fires. Records that
+ * Claude Code loaded a CLAUDE.md or rules markdown file into the session
+ * context. The viewer is a passive observer — the event is forwarded as an SSE
+ * delta so a future "context loaded" panel can populate per-session without
+ * polling. `loadReason` mirrors Claude Code's vocabulary
+ * (`session_start` | `nested_traversal` | `path_glob_match` | `include` |
+ * `compact`); `memoryType` distinguishes user/project/local layers.
+ */
+export interface InstructionsLoadedPayload {
+  sessionId: string;
+  filePath: string;
+  memoryType: string | undefined;
+  loadReason: string | undefined;
+  globs: string[] | undefined;
+  triggerFilePath: string | undefined;
+  parentFilePath: string | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -727,6 +747,28 @@ const WorktreeRemoveHookEvent = z.strictObject({
 });
 
 /**
+ * Fires when Claude Code loads a CLAUDE.md or `.claude/rules/*.md` file into
+ * the session context. Observability-only — the viewer just rebroadcasts the
+ * event so a future per-session "context loaded" panel can render the loaded
+ * instruction set. `load_reason` mirrors Claude Code's vocabulary
+ * (`session_start`, `nested_traversal`, `path_glob_match`, `include`,
+ * `compact`); `memory_type` distinguishes user / project / local layers.
+ * Strict schema from day one — unknown fields trigger schema drift.
+ */
+const InstructionsLoadedHookEvent = z.strictObject({
+  ...BaseHookFields,
+  hook_event_name: z.literal("InstructionsLoaded"),
+  file_path: z.string(),
+  memory_type: z.string().optional(),
+  load_reason: z
+    .enum(["session_start", "nested_traversal", "path_glob_match", "include", "compact"])
+    .optional(),
+  globs: z.array(z.string()).optional(),
+  trigger_file_path: z.string().optional(),
+  parent_file_path: z.string().optional(),
+});
+
+/**
  * Union over every hook event Claude Code can send. Each variant is a strict
  * object — unknown fields fail parsing and trigger the schema-drift recovery
  * path in `src/routes/api/hook.ts`. `PreToolUse` and `PostToolUse` are
@@ -756,6 +798,7 @@ export const HookEventEnvelope = z.union([
   WorktreeCreateHookEvent,
   WorktreeRemoveHookEvent,
   CwdChangedHookEvent,
+  InstructionsLoadedHookEvent,
 ]);
 
 export type HookEvent = z.infer<typeof HookEventEnvelope>;
@@ -787,4 +830,5 @@ export const KNOWN_HOOK_EVENTS: readonly HookEventName[] = [
   "WorktreeCreate",
   "WorktreeRemove",
   "CwdChanged",
+  "InstructionsLoaded",
 ];

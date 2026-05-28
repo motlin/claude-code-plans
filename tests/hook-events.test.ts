@@ -361,6 +361,63 @@ describe("HookEventEnvelope", () => {
     expect(result.success).toBe(false);
   });
 
+  it("parses InstructionsLoaded event with full optional payload", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "InstructionsLoaded",
+      file_path: "/Users/u/projects/app/CLAUDE.md",
+      memory_type: "project",
+      load_reason: "session_start",
+      globs: ["**/*.ts"],
+      trigger_file_path: "/Users/u/projects/app/CLAUDE.md",
+      parent_file_path: "/Users/u/projects/app/CLAUDE.md",
+    });
+    expect(result.success).toBe(true);
+    if (result.success && result.data.hook_event_name === "InstructionsLoaded") {
+      expect(result.data.file_path).toBe("/Users/u/projects/app/CLAUDE.md");
+      expect(result.data.memory_type).toBe("project");
+      expect(result.data.load_reason).toBe("session_start");
+      expect(result.data.globs).toStrictEqual(["**/*.ts"]);
+    }
+  });
+
+  it("parses InstructionsLoaded event with only required file_path", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "InstructionsLoaded",
+      file_path: "/Users/u/.claude/CLAUDE.md",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects InstructionsLoaded missing required file_path", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "InstructionsLoaded",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects InstructionsLoaded with unknown load_reason", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "InstructionsLoaded",
+      file_path: "/x/CLAUDE.md",
+      load_reason: "not_a_reason",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects InstructionsLoaded with unknown top-level field", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "InstructionsLoaded",
+      file_path: "/x/CLAUDE.md",
+      surprise: "field",
+    });
+    expect(result.success).toBe(false);
+  });
+
   it("rejects unknown event types", () => {
     const result = HookEventEnvelope.safeParse({
       ...baseEnvelope,
@@ -404,6 +461,7 @@ describe("DOMAIN_EVENTS", () => {
     expect(DOMAIN_EVENTS.TASK_COMPLETED).toBe("task:completed");
     expect(DOMAIN_EVENTS.SUBAGENT_STARTED).toBe("subagent:started");
     expect(DOMAIN_EVENTS.SESSION_COMPACTED).toBe("session:compacted");
+    expect(DOMAIN_EVENTS.INSTRUCTIONS_LOADED).toBe("instructions:loaded");
   });
 
   it("remains distinct from the surviving SSE_EVENTS lifecycle signals", () => {

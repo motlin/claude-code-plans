@@ -18,6 +18,7 @@ import {
   type SessionCompactedPayload,
   type SubagentStartedPayload,
   type SessionCwdChangedPayload,
+  type InstructionsLoadedPayload,
 } from "./hook-events";
 import { buildSessionSummaryPayloadFromDb, toActiveSessionPayload } from "./session-summary";
 import { indexFile, indexJsonlFile } from "./db/indexer";
@@ -543,6 +544,25 @@ export async function dispatchHookEvent({
         sessionId: event.session_id,
         worktreePath: event.worktree_path ?? "",
       });
+      break;
+    }
+
+    case "InstructionsLoaded": {
+      // Observability-only. The viewer is a passive observer — record the load
+      // event so a future per-session "context loaded" panel can populate from
+      // the SSE stream without polling. We touch the session so the
+      // active-session indicator stays alive while a fresh load is happening
+      // (compactions can fire InstructionsLoaded long after SessionStart).
+      store.touchSession(event.session_id);
+      broadcast(DOMAIN_EVENTS.INSTRUCTIONS_LOADED, {
+        sessionId: event.session_id,
+        filePath: event.file_path,
+        memoryType: event.memory_type,
+        loadReason: event.load_reason,
+        globs: event.globs,
+        triggerFilePath: event.trigger_file_path,
+        parentFilePath: event.parent_file_path,
+      } satisfies InstructionsLoadedPayload);
       break;
     }
 

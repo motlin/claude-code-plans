@@ -503,6 +503,70 @@ describe("dispatchHookEvent", () => {
     });
   });
 
+  it("InstructionsLoaded broadcasts INSTRUCTIONS_LOADED with the full payload and touches the session", async () => {
+    const broadcasts: Broadcast[] = [];
+    const { store, touchedCalls } = makeStore();
+    await dispatchHookEvent({
+      event: {
+        hook_event_name: "InstructionsLoaded",
+        session_id: "abc-123",
+        transcript_path: "/Users/u/.claude/projects/-h-u-p/abc-123.jsonl",
+        cwd: "/Users/u/projects/app",
+        file_path: "/Users/u/projects/app/CLAUDE.md",
+        memory_type: "project",
+        load_reason: "session_start",
+        globs: ["**/*.ts"],
+        trigger_file_path: "/Users/u/projects/app/CLAUDE.md",
+        parent_file_path: "/Users/u/projects/app/CLAUDE.md",
+      },
+      db: db.index,
+      store,
+      broadcast: (type, data) => broadcasts.push({ type, data }),
+    });
+
+    expect(touchedCalls).toStrictEqual(["abc-123"]);
+    const loaded = broadcasts.find((b) => b.type === DOMAIN_EVENTS.INSTRUCTIONS_LOADED);
+    if (!loaded) throw new Error("Expected instructions:loaded broadcast");
+    expect(loaded.data).toStrictEqual({
+      sessionId: "abc-123",
+      filePath: "/Users/u/projects/app/CLAUDE.md",
+      memoryType: "project",
+      loadReason: "session_start",
+      globs: ["**/*.ts"],
+      triggerFilePath: "/Users/u/projects/app/CLAUDE.md",
+      parentFilePath: "/Users/u/projects/app/CLAUDE.md",
+    });
+  });
+
+  it("InstructionsLoaded with only required file_path emits undefined optional fields", async () => {
+    const broadcasts: Broadcast[] = [];
+    const { store } = makeStore();
+    await dispatchHookEvent({
+      event: {
+        hook_event_name: "InstructionsLoaded",
+        session_id: "abc-123",
+        transcript_path: "/tmp/abc-123.jsonl",
+        cwd: "/tmp",
+        file_path: "/Users/u/.claude/CLAUDE.md",
+      },
+      db: db.index,
+      store,
+      broadcast: (type, data) => broadcasts.push({ type, data }),
+    });
+
+    const loaded = broadcasts.find((b) => b.type === DOMAIN_EVENTS.INSTRUCTIONS_LOADED);
+    if (!loaded) throw new Error("Expected instructions:loaded broadcast");
+    expect(loaded.data).toStrictEqual({
+      sessionId: "abc-123",
+      filePath: "/Users/u/.claude/CLAUDE.md",
+      memoryType: undefined,
+      loadReason: undefined,
+      globs: undefined,
+      triggerFilePath: undefined,
+      parentFilePath: undefined,
+    });
+  });
+
   it("TaskCreated broadcasts the domain TASK_CREATED event", async () => {
     const broadcasts: Broadcast[] = [];
     const { store, touchedCalls } = makeStore();

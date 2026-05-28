@@ -17,6 +17,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { HOOK_PAYLOAD_JQ_FILTER } from "../src/lib/hook-config";
 import { HookEventEnvelope, type HookEventName } from "../src/lib/hook-events";
 import { cwdChangedFixture } from "./fixtures/cwd-changed";
+import { instructionsLoadedFixture } from "./fixtures/instructions-loaded";
 import { postCompactFixture } from "./fixtures/post-compact";
 import { postToolUseFailureFixture } from "./fixtures/post-tool-use-failure";
 import { subagentStartFixture } from "./fixtures/subagent-start";
@@ -174,6 +175,10 @@ const cases: Case[] = [
   {
     name: "CwdChanged",
     payload: cwdChangedFixture,
+  },
+  {
+    name: "InstructionsLoaded",
+    payload: instructionsLoadedFixture,
   },
 ];
 
