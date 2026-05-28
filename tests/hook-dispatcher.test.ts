@@ -471,6 +471,38 @@ describe("dispatchHookEvent", () => {
     });
   });
 
+  it("CwdChanged updates the active-session store cwd and broadcasts SESSION_CWD_CHANGED", async () => {
+    const broadcasts: Broadcast[] = [];
+    const { store, activeCalls } = makeStore();
+    await dispatchHookEvent({
+      event: {
+        hook_event_name: "CwdChanged",
+        session_id: "abc-123",
+        transcript_path: "/Users/u/.claude/projects/-h-u-p/abc-123.jsonl",
+        cwd: "/Users/u/projects/app",
+        old_cwd: "/Users/u/projects/app",
+        new_cwd: "/Users/u/projects/other-app",
+      },
+      db: db.index,
+      store,
+      broadcast: (type, data) => broadcasts.push({ type, data }),
+    });
+
+    expect(activeCalls).toStrictEqual([
+      {
+        sessionId: "abc-123",
+        meta: { cwd: "/Users/u/projects/other-app" },
+      },
+    ]);
+    const changed = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_CWD_CHANGED);
+    if (!changed) throw new Error("Expected session:cwd-changed broadcast");
+    expect(changed.data).toStrictEqual({
+      sessionId: "abc-123",
+      oldCwd: "/Users/u/projects/app",
+      newCwd: "/Users/u/projects/other-app",
+    });
+  });
+
   it("TaskCreated broadcasts the domain TASK_CREATED event", async () => {
     const broadcasts: Broadcast[] = [];
     const { store, touchedCalls } = makeStore();

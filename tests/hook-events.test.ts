@@ -328,6 +328,39 @@ describe("HookEventEnvelope", () => {
     expect(result.success).toBe(false);
   });
 
+  it("parses CwdChanged event with old_cwd and new_cwd", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "CwdChanged",
+      old_cwd: "/Users/u/projects/app",
+      new_cwd: "/Users/u/projects/other-app",
+    });
+    expect(result.success).toBe(true);
+    if (result.success && result.data.hook_event_name === "CwdChanged") {
+      expect(result.data.old_cwd).toBe("/Users/u/projects/app");
+      expect(result.data.new_cwd).toBe("/Users/u/projects/other-app");
+    }
+  });
+
+  it("rejects CwdChanged missing required old_cwd / new_cwd", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "CwdChanged",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects CwdChanged with unknown top-level field", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "CwdChanged",
+      old_cwd: "/a",
+      new_cwd: "/b",
+      surprise: "field",
+    });
+    expect(result.success).toBe(false);
+  });
+
   it("rejects unknown event types", () => {
     const result = HookEventEnvelope.safeParse({
       ...baseEnvelope,

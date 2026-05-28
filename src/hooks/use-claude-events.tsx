@@ -665,6 +665,7 @@ const DOMAIN_EVENT_TYPES = [
   DOMAIN_EVENTS.SESSION_COMPACTING,
   DOMAIN_EVENTS.SESSION_COMPACTED,
   DOMAIN_EVENTS.SUBAGENT_STARTED,
+  DOMAIN_EVENTS.SESSION_CWD_CHANGED,
   DOMAIN_EVENTS.NOTIFICATION,
   DOMAIN_EVENTS.PLAN_CHANGED,
   DOMAIN_EVENTS.PLAN_REMOVED,
@@ -843,6 +844,16 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
         case DOMAIN_EVENTS.SESSION_STARTED:
         case DOMAIN_EVENTS.SESSION_ENDED: {
           invalidateActiveSessions(queryClient);
+          break;
+        }
+        case DOMAIN_EVENTS.SESSION_CWD_CHANGED: {
+          // Sessions are keyed by project (cwd) — when a session moves to a
+          // new cwd the active-sessions sidebar query must refetch so the
+          // session re-homes under the new project entry. Project lists are
+          // also invalidated because a session leaving a project changes
+          // that project's "has-active-session" status.
+          invalidateActiveSessions(queryClient);
+          void queryClient.invalidateQueries({ queryKey: ["projects"] });
           break;
         }
         case DOMAIN_EVENTS.PLAN_CHANGED: {

@@ -17,6 +17,7 @@ import {
   type SessionCompactingPayload,
   type SessionCompactedPayload,
   type SubagentStartedPayload,
+  type SessionCwdChangedPayload,
 } from "./hook-events";
 import { buildSessionSummaryPayloadFromDb, toActiveSessionPayload } from "./session-summary";
 import { indexFile, indexJsonlFile } from "./db/indexer";
@@ -542,6 +543,22 @@ export async function dispatchHookEvent({
         sessionId: event.session_id,
         worktreePath: event.worktree_path ?? "",
       });
+      break;
+    }
+
+    case "CwdChanged": {
+      // Sessions in this viewer are keyed by project (cwd), so a mid-session
+      // cwd change must re-home the session in the active-session store
+      // before the active-session sidebar query is invalidated. Reusing
+      // markSessionActive mirrors the SessionStart path: it updates `cwd` on
+      // an existing entry and refreshes lastActivity, leaving startedAt
+      // untouched so the session keeps its original start time.
+      store.markSessionActive(event.session_id, { cwd: event.new_cwd });
+      broadcast(DOMAIN_EVENTS.SESSION_CWD_CHANGED, {
+        sessionId: event.session_id,
+        oldCwd: event.old_cwd,
+        newCwd: event.new_cwd,
+      } satisfies SessionCwdChangedPayload);
       break;
     }
   }

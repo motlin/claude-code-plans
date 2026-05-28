@@ -54,6 +54,7 @@ export const DOMAIN_EVENTS = {
   SESSION_COMPACTING: "session:compacting",
   SESSION_COMPACTED: "session:compacted",
   SUBAGENT_STARTED: "subagent:started",
+  SESSION_CWD_CHANGED: "session:cwd-changed",
   NOTIFICATION: "notification",
   PLAN_CHANGED: "plan:changed",
   PLAN_REMOVED: "plan:removed",
@@ -250,6 +251,19 @@ export interface SubagentStartedPayload {
   sessionId: string;
   agentType: string;
   agentId: string;
+}
+
+/**
+ * Payload broadcast when a `CwdChanged` hook fires. Sessions in this viewer
+ * are keyed by project (cwd), so mid-session cwd shifts are otherwise
+ * invisible until the next JSONL flush. The active-session store's cwd is
+ * updated via `markSessionActive` so the active-session sidebar re-homes the
+ * session to the new project.
+ */
+export interface SessionCwdChangedPayload {
+  sessionId: string;
+  oldCwd: string;
+  newCwd: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -686,6 +700,20 @@ const WorktreeCreateHookEvent = z.strictObject({
 });
 
 /**
+ * Fires when the working directory changes mid-session (e.g. the user runs
+ * `cd` via Bash). Sessions in this viewer are keyed by project (cwd), so
+ * without this event a mid-session cwd shift is invisible until the next
+ * JSONL flush. Strict schema from day one — unknown fields trigger the
+ * schema-drift recovery path.
+ */
+const CwdChangedHookEvent = z.strictObject({
+  ...BaseHookFields,
+  hook_event_name: z.literal("CwdChanged"),
+  old_cwd: z.string(),
+  new_cwd: z.string(),
+});
+
+/**
  * Symmetric with `WorktreeCreate` — fires when a worktree is removed. The
  * viewer broadcasts `WORKTREE_REMOVED` so any worktree-aware UI can react in
  * real time. `worktree_path` is the absolute path Claude Code reports for the
@@ -727,6 +755,7 @@ export const HookEventEnvelope = z.union([
   TaskCompletedHookEvent,
   WorktreeCreateHookEvent,
   WorktreeRemoveHookEvent,
+  CwdChangedHookEvent,
 ]);
 
 export type HookEvent = z.infer<typeof HookEventEnvelope>;
@@ -757,4 +786,5 @@ export const KNOWN_HOOK_EVENTS: readonly HookEventName[] = [
   "TaskCompleted",
   "WorktreeCreate",
   "WorktreeRemove",
+  "CwdChanged",
 ];

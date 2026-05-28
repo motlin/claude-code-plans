@@ -16,6 +16,7 @@ import { execFileSync, type SpawnSyncReturns } from "node:child_process";
 import { describe, expect, it } from "vite-plus/test";
 import { HOOK_PAYLOAD_JQ_FILTER } from "../src/lib/hook-config";
 import { HookEventEnvelope, type HookEventName } from "../src/lib/hook-events";
+import { cwdChangedFixture } from "./fixtures/cwd-changed";
 import { postCompactFixture } from "./fixtures/post-compact";
 import { postToolUseFailureFixture } from "./fixtures/post-tool-use-failure";
 import { subagentStartFixture } from "./fixtures/subagent-start";
@@ -169,6 +170,10 @@ const cases: Case[] = [
   {
     name: "WorktreeRemove",
     payload: worktreeRemoveFixture,
+  },
+  {
+    name: "CwdChanged",
+    payload: cwdChangedFixture,
   },
 ];
 
