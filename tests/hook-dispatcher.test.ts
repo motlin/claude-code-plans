@@ -623,6 +623,58 @@ describe("dispatchHookEvent", () => {
     expect(content.data).toStrictEqual({});
   });
 
+  it("MessageDisplay broadcasts MESSAGE_DISPLAYED with sessionId, message, and messageId", async () => {
+    const broadcasts: Broadcast[] = [];
+    const { store, touchedCalls } = makeStore();
+    await dispatchHookEvent({
+      event: {
+        hook_event_name: "MessageDisplay",
+        session_id: "abc-123",
+        transcript_path: "/tmp/abc-123.jsonl",
+        cwd: "/tmp",
+        message: "Here is the answer you asked for.",
+        message_id: "msg_018a7f9b2c3d4e5f",
+      },
+      db: db.index,
+      store,
+      broadcast: (type, data) => broadcasts.push({ type, data }),
+    });
+
+    expect(touchedCalls).toStrictEqual(["abc-123"]);
+    const displayed = broadcasts.find((b) => b.type === DOMAIN_EVENTS.MESSAGE_DISPLAYED);
+    if (!displayed) throw new Error("Expected message:displayed broadcast");
+    expect(displayed.data).toStrictEqual({
+      sessionId: "abc-123",
+      message: "Here is the answer you asked for.",
+      messageId: "msg_018a7f9b2c3d4e5f",
+    });
+  });
+
+  it("MessageDisplay accepts payloads missing the optional message and messageId fields", async () => {
+    const broadcasts: Broadcast[] = [];
+    const { store, touchedCalls } = makeStore();
+    await dispatchHookEvent({
+      event: {
+        hook_event_name: "MessageDisplay",
+        session_id: "abc-123",
+        transcript_path: "/tmp/abc-123.jsonl",
+        cwd: "/tmp",
+      },
+      db: db.index,
+      store,
+      broadcast: (type, data) => broadcasts.push({ type, data }),
+    });
+
+    expect(touchedCalls).toStrictEqual(["abc-123"]);
+    const displayed = broadcasts.find((b) => b.type === DOMAIN_EVENTS.MESSAGE_DISPLAYED);
+    if (!displayed) throw new Error("Expected message:displayed broadcast");
+    expect(displayed.data).toStrictEqual({
+      sessionId: "abc-123",
+      message: undefined,
+      messageId: undefined,
+    });
+  });
+
   it("TaskCreated broadcasts the domain TASK_CREATED event", async () => {
     const broadcasts: Broadcast[] = [];
     const { store, touchedCalls } = makeStore();

@@ -24,6 +24,7 @@ describe("HOOK_EVENT_NAMES", () => {
         "CwdChanged",
         "InstructionsLoaded",
         "ConfigChange",
+        "MessageDisplay",
       ].sort(),
     );
   });

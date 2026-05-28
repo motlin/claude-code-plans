@@ -19,6 +19,7 @@ import { HookEventEnvelope, type HookEventName } from "../src/lib/hook-events";
 import { configChangeFixture } from "./fixtures/config-change";
 import { cwdChangedFixture } from "./fixtures/cwd-changed";
 import { instructionsLoadedFixture } from "./fixtures/instructions-loaded";
+import { messageDisplayFixture } from "./fixtures/message-display";
 import { postCompactFixture } from "./fixtures/post-compact";
 import { postToolUseFailureFixture } from "./fixtures/post-tool-use-failure";
 import { subagentStartFixture } from "./fixtures/subagent-start";
@@ -184,6 +185,10 @@ const cases: Case[] = [
   {
     name: "ConfigChange",
     payload: configChangeFixture,
+  },
+  {
+    name: "MessageDisplay",
+    payload: messageDisplayFixture,
   },
 ];
 

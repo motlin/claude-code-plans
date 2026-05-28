@@ -20,6 +20,7 @@ import {
   type SessionCwdChangedPayload,
   type InstructionsLoadedPayload,
   type ConfigChangedPayload,
+  type MessageDisplayedPayload,
 } from "./hook-events";
 import { buildSessionSummaryPayloadFromDb, toActiveSessionPayload } from "./session-summary";
 import { indexFile, indexJsonlFile } from "./db/indexer";
@@ -584,6 +585,23 @@ export async function dispatchHookEvent({
       if (event.config_source === "skills") {
         broadcast(SSE_EVENTS.CONTENT_UPDATED, {});
       }
+      break;
+    }
+
+    case "MessageDisplay": {
+      // Fires while assistant message text streams to the terminal — other
+      // hooks can transform or hide the displayed text via
+      // `hookSpecificOutput.displayContent`. The viewer is a passive observer:
+      // forward the about-to-render text so the live session view can diff
+      // what the CLI actually rendered against the JSONL transcript and
+      // surface hook-hidden text. Touch the session to keep the
+      // active-session indicator alive while a message streams.
+      store.touchSession(event.session_id);
+      broadcast(DOMAIN_EVENTS.MESSAGE_DISPLAYED, {
+        sessionId: event.session_id,
+        message: event.message,
+        messageId: event.message_id,
+      } satisfies MessageDisplayedPayload);
       break;
     }
 

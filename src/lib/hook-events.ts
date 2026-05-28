@@ -57,6 +57,7 @@ export const DOMAIN_EVENTS = {
   SESSION_CWD_CHANGED: "session:cwd-changed",
   INSTRUCTIONS_LOADED: "instructions:loaded",
   CONFIG_CHANGED: "config:changed",
+  MESSAGE_DISPLAYED: "message:displayed",
   NOTIFICATION: "notification",
   PLAN_CHANGED: "plan:changed",
   PLAN_REMOVED: "plan:removed",
@@ -298,6 +299,23 @@ export interface ConfigChangedPayload {
   sessionId: string;
   configSource: string;
   changedFields: string[];
+}
+
+/**
+ * Payload broadcast when a `MessageDisplay` hook fires. Claude Code emits this
+ * event as assistant message text streams to the terminal — other hooks can
+ * transform or hide the displayed text via `hookSpecificOutput.displayContent`,
+ * but the viewer is a passive observer and only forwards the event. The
+ * `message` field carries whatever text Claude Code reports as the about-to-be
+ * rendered assistant text (real payload shape is not yet documented; the
+ * schema accepts the candidates we've observed so far and lets unknown fields
+ * fall through to the schema-drift recovery path). `messageId` mirrors the
+ * underlying assistant message uuid when Claude Code includes it.
+ */
+export interface MessageDisplayedPayload {
+  sessionId: string;
+  message: string | undefined;
+  messageId: string | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -806,6 +824,28 @@ const ConfigChangeHookEvent = z.strictObject({
 });
 
 /**
+ * Fires while assistant message text streams to the terminal — other hooks
+ * can transform or hide the displayed text via
+ * `hookSpecificOutput.displayContent`. The viewer is a passive observer: it
+ * forwards the event so the live session view can diff what the CLI actually
+ * rendered against the JSONL transcript and surface hook-hidden text.
+ *
+ * The official input shape is not yet documented (this event lands in recent
+ * Claude Code release notes but the hooks reference at code.claude.com still
+ * lists only the common fields). The strict schema below captures the
+ * candidates we expect to see on the wire — `message` for the about-to-render
+ * text, `message_id` for the underlying assistant uuid — and leaves the
+ * schema-drift recovery path in `src/routes/api/hook.ts` to surface anything
+ * else so we can extend this with confidence.
+ */
+const MessageDisplayHookEvent = z.strictObject({
+  ...BaseHookFields,
+  hook_event_name: z.literal("MessageDisplay"),
+  message: z.string().optional(),
+  message_id: z.string().optional(),
+});
+
+/**
  * Union over every hook event Claude Code can send. Each variant is a strict
  * object — unknown fields fail parsing and trigger the schema-drift recovery
  * path in `src/routes/api/hook.ts`. `PreToolUse` and `PostToolUse` are
@@ -837,6 +877,7 @@ export const HookEventEnvelope = z.union([
   CwdChangedHookEvent,
   InstructionsLoadedHookEvent,
   ConfigChangeHookEvent,
+  MessageDisplayHookEvent,
 ]);
 
 export type HookEvent = z.infer<typeof HookEventEnvelope>;
@@ -870,4 +911,5 @@ export const KNOWN_HOOK_EVENTS: readonly HookEventName[] = [
   "CwdChanged",
   "InstructionsLoaded",
   "ConfigChange",
+  "MessageDisplay",
 ];
