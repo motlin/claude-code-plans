@@ -222,6 +222,38 @@ describe("HookEventEnvelope", () => {
     expect(result.success).toBe(true);
   });
 
+  it("parses PostCompact event with reason and tokens_removed", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "PostCompact",
+      reason: "auto",
+      tokens_removed: 5000,
+    });
+    expect(result.success).toBe(true);
+    if (result.success && result.data.hook_event_name === "PostCompact") {
+      expect(result.data.reason).toBe("auto");
+      expect(result.data.tokens_removed).toBe(5000);
+    }
+  });
+
+  it("parses PostCompact event with no optional fields", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "PostCompact",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects PostCompact with unknown top-level field", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "PostCompact",
+      reason: "manual",
+      surprise: "field",
+    });
+    expect(result.success).toBe(false);
+  });
+
   it("parses TaskCompleted event", () => {
     const result = HookEventEnvelope.safeParse({
       ...baseEnvelope,
@@ -308,6 +340,7 @@ describe("DOMAIN_EVENTS", () => {
     expect(DOMAIN_EVENTS.TASK_CREATED).toBe("task:created");
     expect(DOMAIN_EVENTS.TASK_COMPLETED).toBe("task:completed");
     expect(DOMAIN_EVENTS.SUBAGENT_STARTED).toBe("subagent:started");
+    expect(DOMAIN_EVENTS.SESSION_COMPACTED).toBe("session:compacted");
   });
 
   it("remains distinct from the surviving SSE_EVENTS lifecycle signals", () => {

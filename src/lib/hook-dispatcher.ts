@@ -15,6 +15,7 @@ import {
   type SessionToolPendingPayload,
   type SessionToolFailedPayload,
   type SessionCompactingPayload,
+  type SessionCompactedPayload,
   type SubagentStartedPayload,
 } from "./hook-events";
 import { buildSessionSummaryPayloadFromDb, toActiveSessionPayload } from "./session-summary";
@@ -490,6 +491,19 @@ export async function dispatchHookEvent({
         sessionId: event.session_id,
         trigger: event.trigger,
       } satisfies SessionCompactingPayload);
+      break;
+    }
+
+    case "PostCompact": {
+      // Symmetric with PreCompact. The viewer broadcasts SESSION_COMPACTED so
+      // the UI can clear the in-progress compacting indicator that PreCompact
+      // set without waiting for the next transcript line to arrive.
+      store.touchSession(event.session_id);
+      broadcast(DOMAIN_EVENTS.SESSION_COMPACTED, {
+        sessionId: event.session_id,
+        reason: event.reason,
+        tokensRemoved: event.tokens_removed,
+      } satisfies SessionCompactedPayload);
       break;
     }
 

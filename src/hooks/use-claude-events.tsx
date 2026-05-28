@@ -282,6 +282,16 @@ export function claudeEventsReducer(
       compactingSessions.add(sessionId);
       return { ...state, compactingSessions };
     }
+    case DOMAIN_EVENTS.SESSION_COMPACTED: {
+      // Symmetric with SESSION_COMPACTING — Claude Code reports compaction is
+      // done, so clear the in-progress indicator without waiting for the next
+      // transcript line.
+      if (!sessionId) return state;
+      if (!state.compactingSessions.has(sessionId)) return state;
+      const compactingSessions = new Set(state.compactingSessions);
+      compactingSessions.delete(sessionId);
+      return { ...state, compactingSessions };
+    }
     case DOMAIN_EVENTS.NOTIFICATION: {
       if (!sessionId) return state;
       const message = typeof action.data["message"] === "string" ? action.data["message"] : "";
@@ -653,6 +663,7 @@ const DOMAIN_EVENT_TYPES = [
   DOMAIN_EVENTS.SESSION_TOOL_PENDING,
   DOMAIN_EVENTS.SESSION_TOOL_FAILED,
   DOMAIN_EVENTS.SESSION_COMPACTING,
+  DOMAIN_EVENTS.SESSION_COMPACTED,
   DOMAIN_EVENTS.SUBAGENT_STARTED,
   DOMAIN_EVENTS.NOTIFICATION,
   DOMAIN_EVENTS.PLAN_CHANGED,
@@ -809,6 +820,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
         case DOMAIN_EVENTS.SESSION_TOOL_PENDING:
         case DOMAIN_EVENTS.SESSION_TOOL_FAILED:
         case DOMAIN_EVENTS.SESSION_COMPACTING:
+        case DOMAIN_EVENTS.SESSION_COMPACTED:
         case DOMAIN_EVENTS.SUBAGENT_STARTED:
         case DOMAIN_EVENTS.NOTIFICATION: {
           dispatch({

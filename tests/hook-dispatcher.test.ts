@@ -331,6 +331,57 @@ describe("dispatchHookEvent", () => {
     });
   });
 
+  it("PostCompact broadcasts SESSION_COMPACTED with reason and tokensRemoved", async () => {
+    const broadcasts: Broadcast[] = [];
+    const { store, touchedCalls } = makeStore();
+    await dispatchHookEvent({
+      event: {
+        hook_event_name: "PostCompact",
+        session_id: "abc-123",
+        transcript_path: "/tmp/abc-123.jsonl",
+        cwd: "/tmp",
+        reason: "auto",
+        tokens_removed: 5000,
+      },
+      db: db.index,
+      store,
+      broadcast: (type, data) => broadcasts.push({ type, data }),
+    });
+
+    expect(touchedCalls).toStrictEqual(["abc-123"]);
+    const compacted = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_COMPACTED);
+    if (!compacted) throw new Error("Expected session:compacted broadcast");
+    expect(compacted.data).toStrictEqual({
+      sessionId: "abc-123",
+      reason: "auto",
+      tokensRemoved: 5000,
+    });
+  });
+
+  it("PostCompact broadcasts SESSION_COMPACTED with undefined fields when optional fields absent", async () => {
+    const broadcasts: Broadcast[] = [];
+    const { store } = makeStore();
+    await dispatchHookEvent({
+      event: {
+        hook_event_name: "PostCompact",
+        session_id: "abc-123",
+        transcript_path: "/tmp/abc-123.jsonl",
+        cwd: "/tmp",
+      },
+      db: db.index,
+      store,
+      broadcast: (type, data) => broadcasts.push({ type, data }),
+    });
+
+    const compacted = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_COMPACTED);
+    if (!compacted) throw new Error("Expected session:compacted broadcast");
+    expect(compacted.data).toStrictEqual({
+      sessionId: "abc-123",
+      reason: undefined,
+      tokensRemoved: undefined,
+    });
+  });
+
   it("SubagentStop broadcasts SESSION_UPDATED for the subagent session id when indexed", async () => {
     const projectDir = join(testDir, "-Users-craig-projects-app");
     mkdirSync(projectDir, { recursive: true });

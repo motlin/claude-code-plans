@@ -13,6 +13,7 @@ describe("HOOK_EVENT_NAMES", () => {
         "UserPromptSubmit",
         "Notification",
         "PreCompact",
+        "PostCompact",
         "PreToolUse",
         "PostToolUse",
         "PostToolUseFailure",

@@ -51,6 +51,7 @@ export const DOMAIN_EVENTS = {
   SESSION_TOOL_PENDING: "session:tool-pending",
   SESSION_TOOL_FAILED: "session:tool-failed",
   SESSION_COMPACTING: "session:compacting",
+  SESSION_COMPACTED: "session:compacted",
   SUBAGENT_STARTED: "subagent:started",
   NOTIFICATION: "notification",
   PLAN_CHANGED: "plan:changed",
@@ -222,6 +223,19 @@ export interface NotificationPayload {
 export interface SessionCompactingPayload {
   sessionId: string;
   trigger: "manual" | "auto" | undefined;
+}
+
+/**
+ * Payload broadcast when a `PostCompact` hook fires. Symmetric with
+ * `SessionCompactingPayload` — lets the UI clear the in-progress compacting
+ * indicator that the prior `PreCompact` set. `reason` mirrors the
+ * `PreCompact.trigger` vocabulary; `tokensRemoved` is the count Claude Code
+ * reports for how much context the compaction freed.
+ */
+export interface SessionCompactedPayload {
+  sessionId: string;
+  reason: "manual" | "auto" | undefined;
+  tokensRemoved: number | undefined;
 }
 
 /**
@@ -566,6 +580,21 @@ const PreCompactHookEvent = z.strictObject({
 });
 
 /**
+ * Symmetric with `PreCompact` — fires after Claude Code finishes compacting
+ * the session transcript. The viewer broadcasts a `SESSION_COMPACTED` domain
+ * event so the UI can clear the in-progress compacting indicator that the
+ * prior `PreCompact` set. `reason` mirrors `PreCompact.trigger`;
+ * `tokens_removed` is the count Claude Code reports for how much context the
+ * compaction freed.
+ */
+const PostCompactHookEvent = z.strictObject({
+  ...BaseHookFields,
+  hook_event_name: z.literal("PostCompact"),
+  reason: z.enum(["manual", "auto"]).optional(),
+  tokens_removed: z.number().optional(),
+});
+
+/**
  * Build a strict `PreToolUse` / `PostToolUse` variant union. The outer
  * `HookEventEnvelope` discriminates on `hook_event_name`, so we cannot keep a
  * nested `tool_name` discriminated union as a child of a single
@@ -676,6 +705,7 @@ export const HookEventEnvelope = z.union([
   UserPromptSubmitHookEvent,
   NotificationHookEvent,
   PreCompactHookEvent,
+  PostCompactHookEvent,
   PreToolUseHookEvent,
   PostToolUseHookEvent,
   PostToolUseFailureHookEvent,
@@ -704,6 +734,7 @@ export const KNOWN_HOOK_EVENTS: readonly HookEventName[] = [
   "UserPromptSubmit",
   "Notification",
   "PreCompact",
+  "PostCompact",
   "PreToolUse",
   "PostToolUse",
   "PostToolUseFailure",
