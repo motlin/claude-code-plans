@@ -660,6 +660,7 @@ const DOMAIN_EVENT_TYPES = [
   DOMAIN_EVENTS.MEMORY_CHANGED,
   DOMAIN_EVENTS.MEMORY_REMOVED,
   DOMAIN_EVENTS.TASK_CHANGED,
+  DOMAIN_EVENTS.TASK_CREATED,
   DOMAIN_EVENTS.TASK_COMPLETED,
   DOMAIN_EVENTS.APPROVAL_CHANGED,
   DOMAIN_EVENTS.APPROVAL_RESOLVED,
@@ -864,6 +865,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
           }
           break;
         }
+        case DOMAIN_EVENTS.TASK_CREATED:
         case DOMAIN_EVENTS.TASK_COMPLETED: {
           void queryClient.invalidateQueries({ queryKey: ["tasks"] });
           break;

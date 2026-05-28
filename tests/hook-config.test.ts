@@ -16,6 +16,7 @@ describe("HOOK_EVENT_NAMES", () => {
         "PreToolUse",
         "PostToolUse",
         "PostToolUseFailure",
+        "TaskCreated",
         "TaskCompleted",
         "WorktreeCreate",
       ].sort(),

@@ -232,6 +232,40 @@ describe("HookEventEnvelope", () => {
     expect(result.success).toBe(true);
   });
 
+  it("parses TaskCreated event with task_id, task_subject, task_description", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "TaskCreated",
+      task_id: "task-002",
+      task_subject: "Ship feature",
+      task_description: "Implement the new feature end-to-end.",
+    });
+    expect(result.success).toBe(true);
+    if (result.success && result.data.hook_event_name === "TaskCreated") {
+      expect(result.data.task_id).toBe("task-002");
+      expect(result.data.task_subject).toBe("Ship feature");
+      expect(result.data.task_description).toBe("Implement the new feature end-to-end.");
+    }
+  });
+
+  it("parses TaskCreated event with no optional fields", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "TaskCreated",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects TaskCreated with unknown top-level field", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "TaskCreated",
+      task_id: "task-002",
+      surprise: "field",
+    });
+    expect(result.success).toBe(false);
+  });
+
   it("rejects unknown event types", () => {
     const result = HookEventEnvelope.safeParse({
       ...baseEnvelope,
@@ -271,6 +305,7 @@ describe("DOMAIN_EVENTS", () => {
     expect(DOMAIN_EVENTS.MEMORY_CHANGED).toBe("memory:changed");
     expect(DOMAIN_EVENTS.MEMORY_REMOVED).toBe("memory:removed");
     expect(DOMAIN_EVENTS.TASK_CHANGED).toBe("task:changed");
+    expect(DOMAIN_EVENTS.TASK_CREATED).toBe("task:created");
     expect(DOMAIN_EVENTS.TASK_COMPLETED).toBe("task:completed");
     expect(DOMAIN_EVENTS.SUBAGENT_STARTED).toBe("subagent:started");
   });

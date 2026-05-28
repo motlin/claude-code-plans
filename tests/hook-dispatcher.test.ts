@@ -420,6 +420,32 @@ describe("dispatchHookEvent", () => {
     });
   });
 
+  it("TaskCreated broadcasts the domain TASK_CREATED event", async () => {
+    const broadcasts: Broadcast[] = [];
+    const { store, touchedCalls } = makeStore();
+    await dispatchHookEvent({
+      event: {
+        hook_event_name: "TaskCreated",
+        session_id: "abc-123",
+        transcript_path: "/tmp/abc-123.jsonl",
+        cwd: "/tmp",
+        task_id: "task-002",
+        task_subject: "Ship feature",
+      },
+      db: db.index,
+      store,
+      broadcast: (type, data) => broadcasts.push({ type, data }),
+    });
+
+    expect(touchedCalls).toStrictEqual(["abc-123"]);
+    const created = broadcasts.filter((b) => b.type === DOMAIN_EVENTS.TASK_CREATED);
+    expect(created.length).toBe(1);
+    expect(created[0]!.data).toStrictEqual({
+      taskId: "task-002",
+      subject: "Ship feature",
+    });
+  });
+
   it("TaskCompleted broadcasts the domain TASK_COMPLETED event", async () => {
     const broadcasts: Broadcast[] = [];
     const { store, touchedCalls } = makeStore();

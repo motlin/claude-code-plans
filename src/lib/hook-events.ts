@@ -58,6 +58,7 @@ export const DOMAIN_EVENTS = {
   MEMORY_CHANGED: "memory:changed",
   MEMORY_REMOVED: "memory:removed",
   TASK_CHANGED: "task:changed",
+  TASK_CREATED: "task:created",
   TASK_COMPLETED: "task:completed",
   APPROVAL_CHANGED: "approval:changed",
   APPROVAL_RESOLVED: "approval:resolved",
@@ -631,6 +632,23 @@ const TaskCompletedHookEvent = z.strictObject({
   task_description: z.string().optional(),
 });
 
+/**
+ * Symmetric with `TaskCompleted` — fires when a `TaskCreate` tool runs. The
+ * viewer broadcasts a `TASK_CREATED` domain event so the tasks page can update
+ * the moment a task is created, before the `~/.claude/tasks/` JSON file edit
+ * is picked up by the chokidar watcher (~2s later) or by the
+ * `handlePostToolUseFileEdit` fast path. Field names mirror `TaskCompleted`
+ * (`task_id`, `task_subject`, `task_description`) for consistency, even though
+ * Claude Code's underlying tool input uses `task_name`.
+ */
+const TaskCreatedHookEvent = z.strictObject({
+  ...BaseHookFields,
+  hook_event_name: z.literal("TaskCreated"),
+  task_id: z.string().optional(),
+  task_subject: z.string().optional(),
+  task_description: z.string().optional(),
+});
+
 const WorktreeCreateHookEvent = z.strictObject({
   ...BaseHookFields,
   hook_event_name: z.literal("WorktreeCreate"),
@@ -661,6 +679,7 @@ export const HookEventEnvelope = z.union([
   PreToolUseHookEvent,
   PostToolUseHookEvent,
   PostToolUseFailureHookEvent,
+  TaskCreatedHookEvent,
   TaskCompletedHookEvent,
   WorktreeCreateHookEvent,
 ]);
@@ -688,6 +707,7 @@ export const KNOWN_HOOK_EVENTS: readonly HookEventName[] = [
   "PreToolUse",
   "PostToolUse",
   "PostToolUseFailure",
+  "TaskCreated",
   "TaskCompleted",
   "WorktreeCreate",
 ];

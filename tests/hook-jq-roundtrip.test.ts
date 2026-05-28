@@ -18,6 +18,7 @@ import { HOOK_PAYLOAD_JQ_FILTER } from "../src/lib/hook-config";
 import { HookEventEnvelope, type HookEventName } from "../src/lib/hook-events";
 import { postToolUseFailureFixture } from "./fixtures/post-tool-use-failure";
 import { subagentStartFixture } from "./fixtures/subagent-start";
+import { taskCreatedFixture } from "./fixtures/task-created";
 
 // CLAUDE-prefixed env Claude Code typically exposes to the hook subprocess.
 // We pre-stage these via the `env` option to execFileSync so the jq filter's
@@ -137,6 +138,10 @@ const cases: Case[] = [
   {
     name: "PostToolUseFailure",
     payload: postToolUseFailureFixture,
+  },
+  {
+    name: "TaskCreated",
+    payload: taskCreatedFixture,
   },
   {
     name: "TaskCompleted",

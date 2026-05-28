@@ -493,6 +493,19 @@ export async function dispatchHookEvent({
       break;
     }
 
+    case "TaskCreated": {
+      // Symmetric with TaskCompleted. The viewer is a passive observer — the
+      // existing handlePostToolUseFileEdit path already covers indexing the
+      // ~/.claude/tasks/ JSON write. This event exists so the tasks page can
+      // optimistically render the new row before that file write lands.
+      broadcast(DOMAIN_EVENTS.TASK_CREATED, {
+        taskId: event.task_id ?? "",
+        subject: event.task_subject ?? "",
+      });
+      store.touchSession(event.session_id);
+      break;
+    }
+
     case "TaskCompleted": {
       broadcast(DOMAIN_EVENTS.TASK_COMPLETED, {
         taskId: event.task_id ?? "",
