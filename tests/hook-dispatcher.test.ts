@@ -567,6 +567,62 @@ describe("dispatchHookEvent", () => {
     });
   });
 
+  it("ConfigChange broadcasts CONFIG_CHANGED with sessionId, configSource, and changedFields", async () => {
+    const broadcasts: Broadcast[] = [];
+    const { store, touchedCalls } = makeStore();
+    await dispatchHookEvent({
+      event: {
+        hook_event_name: "ConfigChange",
+        session_id: "abc-123",
+        transcript_path: "/tmp/abc-123.jsonl",
+        cwd: "/tmp",
+        config_source: "user_settings",
+        changed_fields: ["hooks.PostToolUse", "permissions.allow"],
+      },
+      db: db.index,
+      store,
+      broadcast: (type, data) => broadcasts.push({ type, data }),
+    });
+
+    expect(touchedCalls).toStrictEqual(["abc-123"]);
+    const changed = broadcasts.find((b) => b.type === DOMAIN_EVENTS.CONFIG_CHANGED);
+    if (!changed) throw new Error("Expected config:changed broadcast");
+    expect(changed.data).toStrictEqual({
+      sessionId: "abc-123",
+      configSource: "user_settings",
+      changedFields: ["hooks.PostToolUse", "permissions.allow"],
+    });
+    expect(broadcasts.find((b) => b.type === SSE_EVENTS.CONTENT_UPDATED)).toBeUndefined();
+  });
+
+  it("ConfigChange with config_source=skills additionally broadcasts CONTENT_UPDATED for the plugins view", async () => {
+    const broadcasts: Broadcast[] = [];
+    const { store } = makeStore();
+    await dispatchHookEvent({
+      event: {
+        hook_event_name: "ConfigChange",
+        session_id: "abc-123",
+        transcript_path: "/tmp/abc-123.jsonl",
+        cwd: "/tmp",
+        config_source: "skills",
+      },
+      db: db.index,
+      store,
+      broadcast: (type, data) => broadcasts.push({ type, data }),
+    });
+
+    const changed = broadcasts.find((b) => b.type === DOMAIN_EVENTS.CONFIG_CHANGED);
+    if (!changed) throw new Error("Expected config:changed broadcast");
+    expect(changed.data).toStrictEqual({
+      sessionId: "abc-123",
+      configSource: "skills",
+      changedFields: [],
+    });
+    const content = broadcasts.find((b) => b.type === SSE_EVENTS.CONTENT_UPDATED);
+    if (!content) throw new Error("Expected content:updated broadcast for skills source");
+    expect(content.data).toStrictEqual({});
+  });
+
   it("TaskCreated broadcasts the domain TASK_CREATED event", async () => {
     const broadcasts: Broadcast[] = [];
     const { store, touchedCalls } = makeStore();

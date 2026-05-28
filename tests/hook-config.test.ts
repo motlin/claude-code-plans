@@ -23,6 +23,7 @@ describe("HOOK_EVENT_NAMES", () => {
         "WorktreeRemove",
         "CwdChanged",
         "InstructionsLoaded",
+        "ConfigChange",
       ].sort(),
     );
   });

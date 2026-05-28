@@ -19,6 +19,7 @@ import {
   type SubagentStartedPayload,
   type SessionCwdChangedPayload,
   type InstructionsLoadedPayload,
+  type ConfigChangedPayload,
 } from "./hook-events";
 import { buildSessionSummaryPayloadFromDb, toActiveSessionPayload } from "./session-summary";
 import { indexFile, indexJsonlFile } from "./db/indexer";
@@ -563,6 +564,26 @@ export async function dispatchHookEvent({
         triggerFilePath: event.trigger_file_path,
         parentFilePath: event.parent_file_path,
       } satisfies InstructionsLoadedPayload);
+      break;
+    }
+
+    case "ConfigChange": {
+      // Settings file changed mid-session. Broadcast CONFIG_CHANGED so any
+      // settings-aware UI can react; when the changed layer is `skills`
+      // (plugin manifests) also emit CONTENT_UPDATED so the plugins view
+      // refetches — same wire protocol the existing
+      // commands/plugins/statusline fast-path in handlePostToolUseFileEdit
+      // uses. The viewer is a passive observer — the event is not acted on
+      // beyond the broadcast.
+      store.touchSession(event.session_id);
+      broadcast(DOMAIN_EVENTS.CONFIG_CHANGED, {
+        sessionId: event.session_id,
+        configSource: event.config_source,
+        changedFields: event.changed_fields ?? [],
+      } satisfies ConfigChangedPayload);
+      if (event.config_source === "skills") {
+        broadcast(SSE_EVENTS.CONTENT_UPDATED, {});
+      }
       break;
     }
 

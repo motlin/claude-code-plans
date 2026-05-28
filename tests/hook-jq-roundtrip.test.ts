@@ -16,6 +16,7 @@ import { execFileSync, type SpawnSyncReturns } from "node:child_process";
 import { describe, expect, it } from "vite-plus/test";
 import { HOOK_PAYLOAD_JQ_FILTER } from "../src/lib/hook-config";
 import { HookEventEnvelope, type HookEventName } from "../src/lib/hook-events";
+import { configChangeFixture } from "./fixtures/config-change";
 import { cwdChangedFixture } from "./fixtures/cwd-changed";
 import { instructionsLoadedFixture } from "./fixtures/instructions-loaded";
 import { postCompactFixture } from "./fixtures/post-compact";
@@ -179,6 +180,10 @@ const cases: Case[] = [
   {
     name: "InstructionsLoaded",
     payload: instructionsLoadedFixture,
+  },
+  {
+    name: "ConfigChange",
+    payload: configChangeFixture,
   },
 ];
 

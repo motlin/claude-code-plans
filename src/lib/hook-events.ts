@@ -56,6 +56,7 @@ export const DOMAIN_EVENTS = {
   SUBAGENT_STARTED: "subagent:started",
   SESSION_CWD_CHANGED: "session:cwd-changed",
   INSTRUCTIONS_LOADED: "instructions:loaded",
+  CONFIG_CHANGED: "config:changed",
   NOTIFICATION: "notification",
   PLAN_CHANGED: "plan:changed",
   PLAN_REMOVED: "plan:removed",
@@ -284,6 +285,19 @@ export interface InstructionsLoadedPayload {
   globs: string[] | undefined;
   triggerFilePath: string | undefined;
   parentFilePath: string | undefined;
+}
+
+/**
+ * Payload broadcast when a `ConfigChange` hook fires. Claude Code emits this
+ * when a settings file changes during the session. `configSource` mirrors the
+ * underlying field — `skills` (plugin manifests) causes the dispatcher to
+ * additionally re-emit `CONTENT_UPDATED` so the plugins view refreshes.
+ * `changedFields` is the list of dotted paths Claude Code reports as modified.
+ */
+export interface ConfigChangedPayload {
+  sessionId: string;
+  configSource: string;
+  changedFields: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -769,6 +783,29 @@ const InstructionsLoadedHookEvent = z.strictObject({
 });
 
 /**
+ * Fires when a configuration file changes during the session. The viewer's
+ * plugins / skills view can go stale if `~/.claude/settings.json` is edited
+ * mid-session — this event lets the dispatcher refresh the relevant UI without
+ * waiting for the chokidar watcher. `config_source` is Claude Code's
+ * vocabulary for which settings layer changed; `skills` corresponds to the
+ * plugin manifests directory. `changed_fields` lists the dotted paths Claude
+ * Code reports as modified. Strict schema from day one — unknown fields
+ * trigger schema drift.
+ */
+const ConfigChangeHookEvent = z.strictObject({
+  ...BaseHookFields,
+  hook_event_name: z.literal("ConfigChange"),
+  config_source: z.enum([
+    "user_settings",
+    "project_settings",
+    "local_settings",
+    "policy_settings",
+    "skills",
+  ]),
+  changed_fields: z.array(z.string()).optional(),
+});
+
+/**
  * Union over every hook event Claude Code can send. Each variant is a strict
  * object — unknown fields fail parsing and trigger the schema-drift recovery
  * path in `src/routes/api/hook.ts`. `PreToolUse` and `PostToolUse` are
@@ -799,6 +836,7 @@ export const HookEventEnvelope = z.union([
   WorktreeRemoveHookEvent,
   CwdChangedHookEvent,
   InstructionsLoadedHookEvent,
+  ConfigChangeHookEvent,
 ]);
 
 export type HookEvent = z.infer<typeof HookEventEnvelope>;
@@ -831,4 +869,5 @@ export const KNOWN_HOOK_EVENTS: readonly HookEventName[] = [
   "WorktreeRemove",
   "CwdChanged",
   "InstructionsLoaded",
+  "ConfigChange",
 ];

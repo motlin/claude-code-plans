@@ -183,7 +183,7 @@ export const UserRecordSchema = z
     sourceToolUseID: z.string().optional(),
     promptId: z.string().optional(),
     permissionMode: z.string().optional(),
-    promptSource: z.enum(["typed"]).optional(),
+    promptSource: z.enum(["typed", "system"]).optional(),
     imagePasteIds: z.array(z.union([z.string(), z.number()])).optional(),
     isMeta: z.boolean().optional(),
     isCompactSummary: z.boolean().optional(),
