@@ -23,6 +23,7 @@ import {
   type SessionSummaryPayload,
   type SessionToolPendingPayload,
   type SessionToolFailedPayload,
+  type SubagentStartedPayload,
 } from "../lib/hook-events";
 import type { TranscriptData } from "../lib/api/sessions";
 
@@ -76,6 +77,16 @@ export interface ClaudeEventsState {
    * idle / awaiting-input notifications without having to poll.
    */
   notifications: Map<string, NotificationPayload>;
+  /**
+   * In-flight subagents keyed by `${sessionId}:${agentId}` (falling back to
+   * `${sessionId}:${agentType}` when Claude Code didn't supply an agent id).
+   * Populated by `SubagentStart` so the subagents view can render a "running"
+   * pill before the corresponding `SubagentStop` lands. Cleared on
+   * `SESSION_ENDED` for the parent session — the matching `SubagentStop`
+   * arrives as a `SESSION_UPDATED` for the subagent's own session id, so
+   * we rely on the parent's session-ended sweep rather than diffing by id.
+   */
+  runningSubagents: Map<string, SubagentStartedPayload>;
 }
 
 // ---------------------------------------------------------------------------
@@ -113,6 +124,7 @@ export function claudeEventsReducer(
       failedTools: new Map(),
       compactingSessions: new Set(),
       notifications: new Map(),
+      runningSubagents: new Map(),
     };
   }
 
@@ -174,7 +186,17 @@ export function claudeEventsReducer(
       const hadCompacting = state.compactingSessions.has(sessionId);
       const hadNotification = state.notifications.has(sessionId);
       const hadFailed = [...state.failedTools.values()].some((f) => f.sessionId === sessionId);
-      if (!hadActive && !hadPending && !hadCompacting && !hadNotification && !hadFailed)
+      const hadRunningSubagent = [...state.runningSubagents.values()].some(
+        (s) => s.sessionId === sessionId,
+      );
+      if (
+        !hadActive &&
+        !hadPending &&
+        !hadCompacting &&
+        !hadNotification &&
+        !hadFailed &&
+        !hadRunningSubagent
+      )
         return state;
       const activeSessions = new Map(state.activeSessions);
       activeSessions.delete(sessionId);
@@ -188,6 +210,10 @@ export function claudeEventsReducer(
       for (const [key, failed] of failedTools) {
         if (failed.sessionId === sessionId) failedTools.delete(key);
       }
+      const runningSubagents = new Map(state.runningSubagents);
+      for (const [key, sub] of runningSubagents) {
+        if (sub.sessionId === sessionId) runningSubagents.delete(key);
+      }
       return {
         ...state,
         activeSessions,
@@ -195,6 +221,7 @@ export function claudeEventsReducer(
         failedTools,
         compactingSessions,
         notifications,
+        runningSubagents,
       };
     }
     case DOMAIN_EVENTS.SESSION_UPDATED: {
@@ -263,6 +290,16 @@ export function claudeEventsReducer(
       notifications.set(sessionId, { sessionId, message, title });
       return { ...state, notifications };
     }
+    case DOMAIN_EVENTS.SUBAGENT_STARTED: {
+      if (!sessionId) return state;
+      const agentType =
+        typeof action.data["agentType"] === "string" ? action.data["agentType"] : "";
+      const agentId = typeof action.data["agentId"] === "string" ? action.data["agentId"] : "";
+      const runningSubagents = new Map(state.runningSubagents);
+      const key = `${sessionId}:${agentId || agentType}`;
+      runningSubagents.set(key, { sessionId, agentType, agentId });
+      return { ...state, runningSubagents };
+    }
     case DOMAIN_EVENTS.SESSION_ENDED: {
       // Domain SESSION_ENDED cleans up the same per-session state the
       // legacy SESSION_END case above does, scoped to data not owned by
@@ -271,11 +308,15 @@ export function claudeEventsReducer(
       const hasFailedForSession = [...state.failedTools.values()].some(
         (f) => f.sessionId === sessionId,
       );
+      const hasRunningSubagentForSession = [...state.runningSubagents.values()].some(
+        (s) => s.sessionId === sessionId,
+      );
       if (
         !state.pendingTools.has(sessionId) &&
         !state.compactingSessions.has(sessionId) &&
         !state.notifications.has(sessionId) &&
-        !hasFailedForSession
+        !hasFailedForSession &&
+        !hasRunningSubagentForSession
       ) {
         return state;
       }
@@ -289,7 +330,18 @@ export function claudeEventsReducer(
       for (const [key, failed] of failedTools) {
         if (failed.sessionId === sessionId) failedTools.delete(key);
       }
-      return { ...state, pendingTools, failedTools, compactingSessions, notifications };
+      const runningSubagents = new Map(state.runningSubagents);
+      for (const [key, sub] of runningSubagents) {
+        if (sub.sessionId === sessionId) runningSubagents.delete(key);
+      }
+      return {
+        ...state,
+        pendingTools,
+        failedTools,
+        compactingSessions,
+        notifications,
+        runningSubagents,
+      };
     }
     default:
       return state;
@@ -601,6 +653,7 @@ const DOMAIN_EVENT_TYPES = [
   DOMAIN_EVENTS.SESSION_TOOL_PENDING,
   DOMAIN_EVENTS.SESSION_TOOL_FAILED,
   DOMAIN_EVENTS.SESSION_COMPACTING,
+  DOMAIN_EVENTS.SUBAGENT_STARTED,
   DOMAIN_EVENTS.NOTIFICATION,
   DOMAIN_EVENTS.PLAN_CHANGED,
   DOMAIN_EVENTS.PLAN_REMOVED,
@@ -626,6 +679,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
     failedTools: new Map<string, SessionToolFailedPayload>(),
     compactingSessions: new Set<string>(),
     notifications: new Map<string, NotificationPayload>(),
+    runningSubagents: new Map<string, SubagentStartedPayload>(),
   }));
 
   const queryClient = useQueryClient();
@@ -754,6 +808,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
         case DOMAIN_EVENTS.SESSION_TOOL_PENDING:
         case DOMAIN_EVENTS.SESSION_TOOL_FAILED:
         case DOMAIN_EVENTS.SESSION_COMPACTING:
+        case DOMAIN_EVENTS.SUBAGENT_STARTED:
         case DOMAIN_EVENTS.NOTIFICATION: {
           dispatch({
             type: "SSE_EVENT",
@@ -761,6 +816,15 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
             data,
             timestamp: Date.now(),
           });
+          // SUBAGENT_STARTED also invalidates the subagents query for the
+          // affected project so the gantt re-renders with the new agent
+          // before the SubagentStop event lands.
+          if (e.type === DOMAIN_EVENTS.SUBAGENT_STARTED) {
+            void queryClient.invalidateQueries({
+              predicate: (query) =>
+                query.queryKey[0] === "projects" && query.queryKey[2] === "subagents",
+            });
+          }
           break;
         }
         case DOMAIN_EVENTS.SESSION_STARTED:

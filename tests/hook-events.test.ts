@@ -161,6 +161,58 @@ describe("HookEventEnvelope", () => {
     expect(result.success).toBe(true);
   });
 
+  it("parses SubagentStart event with agent_type, agent_id, and agent_config", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "SubagentStart",
+      agent_type: "general-purpose",
+      agent_id: "sub-456",
+      agent_config: {
+        model: "claude-sonnet-4-6",
+        system_prompt: "you are focused",
+        tools: ["Read", "Grep"],
+        description: "research",
+      },
+      hook_specific_output: {
+        hookEventName: "SubagentStart",
+        additionalContext: "use absolute paths",
+      },
+    });
+    expect(result.success).toBe(true);
+    if (result.success && result.data.hook_event_name === "SubagentStart") {
+      expect(result.data.agent_type).toBe("general-purpose");
+      expect(result.data.agent_id).toBe("sub-456");
+      expect(result.data.agent_config?.model).toBe("claude-sonnet-4-6");
+    }
+  });
+
+  it("parses SubagentStart event with no optional fields", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "SubagentStart",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects SubagentStart with unknown top-level field", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "SubagentStart",
+      agent_type: "general-purpose",
+      surprise: "field",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects SubagentStart with unknown agent_config field", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "SubagentStart",
+      agent_config: { model: "x", brand_new: "field" },
+    });
+    expect(result.success).toBe(false);
+  });
+
   it("parses PreCompact event", () => {
     const result = HookEventEnvelope.safeParse({
       ...baseEnvelope,
@@ -220,6 +272,7 @@ describe("DOMAIN_EVENTS", () => {
     expect(DOMAIN_EVENTS.MEMORY_REMOVED).toBe("memory:removed");
     expect(DOMAIN_EVENTS.TASK_CHANGED).toBe("task:changed");
     expect(DOMAIN_EVENTS.TASK_COMPLETED).toBe("task:completed");
+    expect(DOMAIN_EVENTS.SUBAGENT_STARTED).toBe("subagent:started");
   });
 
   it("remains distinct from the surviving SSE_EVENTS lifecycle signals", () => {

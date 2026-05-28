@@ -369,6 +369,57 @@ describe("dispatchHookEvent", () => {
     expect((updated.data as { session: { id: string } }).session.id).toBe("sub-456");
   });
 
+  it("SubagentStart broadcasts SUBAGENT_STARTED with agent_type / agent_id and touches the parent session", async () => {
+    const broadcasts: Broadcast[] = [];
+    const { store, touchedCalls } = makeStore();
+    await dispatchHookEvent({
+      event: {
+        hook_event_name: "SubagentStart",
+        session_id: "parent-789",
+        transcript_path: "/Users/u/.claude/projects/-h-u-p/parent-789.jsonl",
+        cwd: "/tmp",
+        agent_type: "general-purpose",
+        agent_id: "sub-456",
+      },
+      db: db.index,
+      store,
+      broadcast: (type, data) => broadcasts.push({ type, data }),
+    });
+
+    expect(touchedCalls).toStrictEqual(["parent-789"]);
+    const started = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SUBAGENT_STARTED);
+    if (!started) throw new Error("Expected subagent:started broadcast");
+    expect(started.data).toStrictEqual({
+      sessionId: "parent-789",
+      agentType: "general-purpose",
+      agentId: "sub-456",
+    });
+  });
+
+  it("SubagentStart defaults missing agent_type / agent_id to empty strings in the broadcast", async () => {
+    const broadcasts: Broadcast[] = [];
+    const { store } = makeStore();
+    await dispatchHookEvent({
+      event: {
+        hook_event_name: "SubagentStart",
+        session_id: "parent-789",
+        transcript_path: "/Users/u/.claude/projects/-h-u-p/parent-789.jsonl",
+        cwd: "/tmp",
+      },
+      db: db.index,
+      store,
+      broadcast: (type, data) => broadcasts.push({ type, data }),
+    });
+
+    const started = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SUBAGENT_STARTED);
+    if (!started) throw new Error("Expected subagent:started broadcast");
+    expect(started.data).toStrictEqual({
+      sessionId: "parent-789",
+      agentType: "",
+      agentId: "",
+    });
+  });
+
   it("TaskCompleted broadcasts the domain TASK_COMPLETED event", async () => {
     const broadcasts: Broadcast[] = [];
     const { store, touchedCalls } = makeStore();

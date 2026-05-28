@@ -63,6 +63,7 @@ function makeInitialState(): ClaudeEventsState {
     failedTools: new Map(),
     compactingSessions: new Set(),
     notifications: new Map(),
+    runningSubagents: new Map(),
   };
 }
 

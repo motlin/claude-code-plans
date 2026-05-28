@@ -51,6 +51,7 @@ export const DOMAIN_EVENTS = {
   SESSION_TOOL_PENDING: "session:tool-pending",
   SESSION_TOOL_FAILED: "session:tool-failed",
   SESSION_COMPACTING: "session:compacting",
+  SUBAGENT_STARTED: "subagent:started",
   NOTIFICATION: "notification",
   PLAN_CHANGED: "plan:changed",
   PLAN_REMOVED: "plan:removed",
@@ -220,6 +221,19 @@ export interface NotificationPayload {
 export interface SessionCompactingPayload {
   sessionId: string;
   trigger: "manual" | "auto" | undefined;
+}
+
+/**
+ * Payload broadcast when a `SubagentStart` hook fires. Symmetric with
+ * `SubagentStop` — surfaces the spawn moment in the subagents view before the
+ * stop event lands. `sessionId` is the parent session that spawned the
+ * subagent; `agentId` is the subagent's own session id when Claude Code
+ * provides it.
+ */
+export interface SubagentStartedPayload {
+  sessionId: string;
+  agentType: string;
+  agentId: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -495,6 +509,41 @@ const SubagentStopHookEvent = z.strictObject({
   stop_hook_active: z.boolean().optional(),
 });
 
+/**
+ * Symmetric with `SubagentStop` — fires when a subagent is spawned. The viewer
+ * uses this to surface a "subagent running" state in the subagents view before
+ * the matching `SubagentStop` lands. `agent_config` is a structured snapshot of
+ * the spawn site's args (model, tool allowlist, system prompt); fields are
+ * strictly enumerated so the schema-drift counter fires when Claude Code
+ * extends the shape. `hook_specific_output.additionalContext` is Claude Code's
+ * slot for injecting strings back into the subagent's turn — accepted but not
+ * acted on (the viewer is a passive observer).
+ */
+const SubagentStartHookSpecificOutput = z
+  .object({
+    hookEventName: z.literal("SubagentStart").optional(),
+    additionalContext: z.string().optional(),
+  })
+  .strict();
+
+const SubagentStartAgentConfig = z
+  .object({
+    model: z.string().optional(),
+    system_prompt: z.string().optional(),
+    tools: z.array(z.string()).optional(),
+    description: z.string().optional(),
+  })
+  .strict();
+
+const SubagentStartHookEvent = z.strictObject({
+  ...BaseHookFields,
+  hook_event_name: z.literal("SubagentStart"),
+  agent_type: z.string().optional(),
+  agent_id: z.string().optional(),
+  agent_config: SubagentStartAgentConfig.optional(),
+  hook_specific_output: SubagentStartHookSpecificOutput.optional(),
+});
+
 const UserPromptSubmitHookEvent = z.strictObject({
   ...BaseHookFields,
   hook_event_name: z.literal("UserPromptSubmit"),
@@ -604,6 +653,7 @@ export const HookEventEnvelope = z.union([
   SessionStartHookEvent,
   SessionEndHookEvent,
   StopHookEvent,
+  SubagentStartHookEvent,
   SubagentStopHookEvent,
   UserPromptSubmitHookEvent,
   NotificationHookEvent,
@@ -630,6 +680,7 @@ export const KNOWN_HOOK_EVENTS: readonly HookEventName[] = [
   "SessionStart",
   "SessionEnd",
   "Stop",
+  "SubagentStart",
   "SubagentStop",
   "UserPromptSubmit",
   "Notification",

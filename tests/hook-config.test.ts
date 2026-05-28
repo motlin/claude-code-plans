@@ -8,6 +8,7 @@ describe("HOOK_EVENT_NAMES", () => {
         "SessionStart",
         "SessionEnd",
         "Stop",
+        "SubagentStart",
         "SubagentStop",
         "UserPromptSubmit",
         "Notification",

@@ -15,6 +15,7 @@ import {
   type SessionToolPendingPayload,
   type SessionToolFailedPayload,
   type SessionCompactingPayload,
+  type SubagentStartedPayload,
 } from "./hook-events";
 import { buildSessionSummaryPayloadFromDb, toActiveSessionPayload } from "./session-summary";
 import { indexFile, indexJsonlFile } from "./db/indexer";
@@ -408,6 +409,30 @@ export async function dispatchHookEvent({
       // knows the parent linkage, so we just touch the session and emit a
       // SESSION_UPDATED with the enriched payload if it's been indexed.
       store.touchSession(event.session_id);
+      const summary = buildSessionSummaryPayloadFromDb(db, event.session_id);
+      if (summary) {
+        const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${summary.id}:${summary.mtime}`;
+        if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
+          broadcast(DOMAIN_EVENTS.SESSION_UPDATED, { session: summary });
+        }
+      }
+      break;
+    }
+
+    case "SubagentStart": {
+      // Symmetric with SubagentStop. The viewer is a passive observer — we
+      // touch the parent session so the active-indicator stays alive, emit a
+      // SUBAGENT_STARTED delta carrying agent_type / agent_id so the
+      // subagents view can render a "running" pill, and re-broadcast the
+      // parent session summary if it's already indexed so the session list
+      // picks up the activity without waiting for the chokidar trailing
+      // event.
+      store.touchSession(event.session_id);
+      broadcast(DOMAIN_EVENTS.SUBAGENT_STARTED, {
+        sessionId: event.session_id,
+        agentType: event.agent_type ?? "",
+        agentId: event.agent_id ?? "",
+      } satisfies SubagentStartedPayload);
       const summary = buildSessionSummaryPayloadFromDb(db, event.session_id);
       if (summary) {
         const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${summary.id}:${summary.mtime}`;
