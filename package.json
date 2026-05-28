@@ -4,6 +4,7 @@
   "description": "Persistent HTTP server that serves Claude Code plans with syntax highlighting and real-time updates",
   "type": "module",
   "scripts": {
+    "preinstall": "npx only-allow pnpm",
     "dev": "vp dev",
     "preview": "vp preview",
     "start": "node .output/server/index.mjs",
