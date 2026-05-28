@@ -564,6 +564,36 @@ describe("dispatchHookEvent", () => {
       });
     });
 
+    it("PostToolUseFailure broadcasts SESSION_TOOL_FAILED with toolName, toolUseId, error", async () => {
+      const broadcasts: Broadcast[] = [];
+      const { store, touchedCalls } = makeStore();
+      await dispatchHookEvent({
+        event: {
+          hook_event_name: "PostToolUseFailure",
+          session_id: "abc-123",
+          transcript_path: "/tmp/abc-123.jsonl",
+          cwd: "/tmp",
+          tool_name: "Bash",
+          tool_use_id: "toolu_fail_01",
+          tool_input: { command: "exit 1" },
+          error: "Command exited with status 1",
+        },
+        db: db.index,
+        store,
+        broadcast: (type, data) => broadcasts.push({ type, data }),
+      });
+
+      expect(touchedCalls).toStrictEqual(["abc-123"]);
+      const failed = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_TOOL_FAILED);
+      if (!failed) throw new Error("Expected session:tool-failed broadcast");
+      expect(failed.data).toStrictEqual({
+        sessionId: "abc-123",
+        toolName: "Bash",
+        toolUseId: "toolu_fail_01",
+        error: "Command exited with status 1",
+      });
+    });
+
     it("PostToolUse with a transcript_path broadcasts session:lines-appended for new lines only", async () => {
       const dirs = makeDirs();
       const projectId = "-Users-craig-projects-app";

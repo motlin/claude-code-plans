@@ -22,6 +22,7 @@ import {
   type SessionLinesAppendedPayload,
   type SessionSummaryPayload,
   type SessionToolPendingPayload,
+  type SessionToolFailedPayload,
 } from "../lib/hook-events";
 import type { TranscriptData } from "../lib/api/sessions";
 
@@ -55,6 +56,14 @@ export interface ClaudeEventsState {
    * lands in the JSONL.
    */
   pendingTools: Map<string, SessionToolPendingPayload>;
+  /**
+   * Failed tool calls keyed by `${sessionId}:${toolUseId}`. Populated by
+   * `PostToolUseFailure` so the session view can mark a specific tool call as
+   * errored before the JSONL watcher (~2s) picks up the failure. The Map is
+   * keyed by `toolUseId` rather than `sessionId` because multiple tool calls
+   * can fail across a session's history.
+   */
+  failedTools: Map<string, SessionToolFailedPayload>;
   /**
    * Set of session ids currently mid-compaction. Populated by `PreCompact`
    * and cleared on the next `SESSION_LINES_APPENDED` for that session (the
@@ -101,6 +110,7 @@ export function claudeEventsReducer(
       hookSchemaDrifts: new Map(),
       dismissedDrifts: new Set(),
       pendingTools: new Map(),
+      failedTools: new Map(),
       compactingSessions: new Set(),
       notifications: new Map(),
     };
@@ -163,7 +173,9 @@ export function claudeEventsReducer(
       const hadPending = state.pendingTools.has(sessionId);
       const hadCompacting = state.compactingSessions.has(sessionId);
       const hadNotification = state.notifications.has(sessionId);
-      if (!hadActive && !hadPending && !hadCompacting && !hadNotification) return state;
+      const hadFailed = [...state.failedTools.values()].some((f) => f.sessionId === sessionId);
+      if (!hadActive && !hadPending && !hadCompacting && !hadNotification && !hadFailed)
+        return state;
       const activeSessions = new Map(state.activeSessions);
       activeSessions.delete(sessionId);
       const pendingTools = new Map(state.pendingTools);
@@ -172,10 +184,15 @@ export function claudeEventsReducer(
       compactingSessions.delete(sessionId);
       const notifications = new Map(state.notifications);
       notifications.delete(sessionId);
+      const failedTools = new Map(state.failedTools);
+      for (const [key, failed] of failedTools) {
+        if (failed.sessionId === sessionId) failedTools.delete(key);
+      }
       return {
         ...state,
         activeSessions,
         pendingTools,
+        failedTools,
         compactingSessions,
         notifications,
       };
@@ -200,6 +217,24 @@ export function claudeEventsReducer(
       const pendingTools = new Map(state.pendingTools);
       pendingTools.set(sessionId, { sessionId, toolName, toolUseId });
       return { ...state, pendingTools };
+    }
+    case DOMAIN_EVENTS.SESSION_TOOL_FAILED: {
+      if (!sessionId) return state;
+      const toolName = typeof action.data["toolName"] === "string" ? action.data["toolName"] : "";
+      const toolUseId =
+        typeof action.data["toolUseId"] === "string" ? action.data["toolUseId"] : "";
+      const error = typeof action.data["error"] === "string" ? action.data["error"] : "";
+      const failedTools = new Map(state.failedTools);
+      const key = `${sessionId}:${toolUseId}`;
+      failedTools.set(key, { sessionId, toolName, toolUseId, error });
+      // A failed tool also clears any in-flight pending indicator for the
+      // same session — the tool is no longer in flight, it's errored.
+      const pendingTools = new Map(state.pendingTools);
+      const existingPending = pendingTools.get(sessionId);
+      if (existingPending && existingPending.toolUseId === toolUseId) {
+        pendingTools.delete(sessionId);
+      }
+      return { ...state, failedTools, pendingTools };
     }
     case DOMAIN_EVENTS.SESSION_LINES_APPENDED: {
       // Once new lines land we can clear any pending-tool / compacting state
@@ -233,10 +268,14 @@ export function claudeEventsReducer(
       // legacy SESSION_END case above does, scoped to data not owned by
       // the activeSessions map (which the legacy case already clears).
       if (!sessionId) return state;
+      const hasFailedForSession = [...state.failedTools.values()].some(
+        (f) => f.sessionId === sessionId,
+      );
       if (
         !state.pendingTools.has(sessionId) &&
         !state.compactingSessions.has(sessionId) &&
-        !state.notifications.has(sessionId)
+        !state.notifications.has(sessionId) &&
+        !hasFailedForSession
       ) {
         return state;
       }
@@ -246,7 +285,11 @@ export function claudeEventsReducer(
       compactingSessions.delete(sessionId);
       const notifications = new Map(state.notifications);
       notifications.delete(sessionId);
-      return { ...state, pendingTools, compactingSessions, notifications };
+      const failedTools = new Map(state.failedTools);
+      for (const [key, failed] of failedTools) {
+        if (failed.sessionId === sessionId) failedTools.delete(key);
+      }
+      return { ...state, pendingTools, failedTools, compactingSessions, notifications };
     }
     default:
       return state;
@@ -556,6 +599,7 @@ const DOMAIN_EVENT_TYPES = [
   DOMAIN_EVENTS.SESSION_LINES_APPENDED,
   DOMAIN_EVENTS.SESSION_PROMPT_SUBMITTED,
   DOMAIN_EVENTS.SESSION_TOOL_PENDING,
+  DOMAIN_EVENTS.SESSION_TOOL_FAILED,
   DOMAIN_EVENTS.SESSION_COMPACTING,
   DOMAIN_EVENTS.NOTIFICATION,
   DOMAIN_EVENTS.PLAN_CHANGED,
@@ -579,6 +623,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
     hookSchemaDrifts: new Map<string, HookSchemaDriftPayload>(),
     dismissedDrifts: new Set<string>(),
     pendingTools: new Map<string, SessionToolPendingPayload>(),
+    failedTools: new Map<string, SessionToolFailedPayload>(),
     compactingSessions: new Set<string>(),
     notifications: new Map<string, NotificationPayload>(),
   }));
@@ -707,6 +752,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
           break;
         }
         case DOMAIN_EVENTS.SESSION_TOOL_PENDING:
+        case DOMAIN_EVENTS.SESSION_TOOL_FAILED:
         case DOMAIN_EVENTS.SESSION_COMPACTING:
         case DOMAIN_EVENTS.NOTIFICATION: {
           dispatch({

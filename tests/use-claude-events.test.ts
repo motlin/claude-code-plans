@@ -60,6 +60,7 @@ function makeInitialState(): ClaudeEventsState {
     hookSchemaDrifts: new Map(),
     dismissedDrifts: new Set(),
     pendingTools: new Map(),
+    failedTools: new Map(),
     compactingSessions: new Set(),
     notifications: new Map(),
   };
@@ -174,6 +175,50 @@ describe("claudeEventsReducer", () => {
     expect(next.activeSessions.size).toBe(0);
     expect(next.hookSchemaDrifts.size).toBe(0);
     expect(next.dismissedDrifts.size).toBe(0);
+  });
+
+  it("records session:tool-failed payloads into failedTools keyed by sessionId:toolUseId", () => {
+    const state = makeInitialState();
+    const action: ClaudeEventsAction = {
+      type: "SSE_EVENT",
+      eventType: "session:tool-failed",
+      data: {
+        sessionId: "abc-123",
+        toolName: "Bash",
+        toolUseId: "toolu_fail_01",
+        error: "exit 1",
+      },
+      timestamp: 5000,
+    };
+    const next = claudeEventsReducer(state, action);
+    expect(next.failedTools.get("abc-123:toolu_fail_01")).toStrictEqual({
+      sessionId: "abc-123",
+      toolName: "Bash",
+      toolUseId: "toolu_fail_01",
+      error: "exit 1",
+    });
+  });
+
+  it("session:tool-failed clears matching pending tool indicator", () => {
+    const state = makeInitialState();
+    state.pendingTools.set("abc-123", {
+      sessionId: "abc-123",
+      toolName: "Bash",
+      toolUseId: "toolu_fail_01",
+    });
+    const next = claudeEventsReducer(state, {
+      type: "SSE_EVENT",
+      eventType: "session:tool-failed",
+      data: {
+        sessionId: "abc-123",
+        toolName: "Bash",
+        toolUseId: "toolu_fail_01",
+        error: "boom",
+      },
+      timestamp: 6000,
+    });
+    expect(next.pendingTools.has("abc-123")).toBe(false);
+    expect(next.failedTools.get("abc-123:toolu_fail_01")?.error).toBe("boom");
   });
 
   it("records hook:schema-drift payloads keyed by hookEventName", () => {

@@ -24,13 +24,29 @@ export interface ToolRendererProps {
 }
 
 /**
+ * Live failure info derived from a `PostToolUseFailure` hook payload. Keyed
+ * by tool_use_id in the caller's map. Lets the session view mark a tool call
+ * as errored before the failure shows up in the JSONL (~2s after the hook).
+ */
+export interface LiveToolFailure {
+  toolUseId: string;
+  error: string;
+}
+
+/**
  * Build a ClientToolCall from a tool_use content block + sidecar maps.
  * Computes all decorations client-side (diff data, markdown rendering).
+ *
+ * `liveFailures` is an optional map keyed by `tool_use_id` of failures
+ * received over SSE from `PostToolUseFailure` hooks. If the JSONL hasn't
+ * caught up yet, the live failure flips `isError` and supplies `result` so
+ * the renderer can show the error message immediately.
  */
 export function buildClientToolCall(
   block: ToolUseBlock,
   sourceUuid: string,
   toolResultMap: Map<string, ToolResultInfo>,
+  liveFailures?: Map<string, LiveToolFailure>,
 ): ClientToolCall {
   const id = block.id;
   const name = block.name;
@@ -51,6 +67,14 @@ export function buildClientToolCall(
     if (resultInfo.isError) call.isError = true;
     call.resultUuid = resultInfo.resultUuid;
     if (resultInfo.duration !== undefined) call.duration = resultInfo.duration;
+  }
+
+  // Live failure override: if SSE told us this tool_use_id failed but the
+  // JSONL hasn't been re-read yet, surface the error immediately.
+  const liveFailure = liveFailures?.get(id);
+  if (liveFailure && !call.isError) {
+    call.isError = true;
+    if (!call.result) call.result = liveFailure.error;
   }
 
   return call;

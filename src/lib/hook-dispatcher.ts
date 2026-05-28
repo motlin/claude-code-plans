@@ -13,6 +13,7 @@ import {
   type TaskSummaryPayload,
   type SessionPromptSubmittedPayload,
   type SessionToolPendingPayload,
+  type SessionToolFailedPayload,
   type SessionCompactingPayload,
 } from "./hook-events";
 import { buildSessionSummaryPayloadFromDb, toActiveSessionPayload } from "./session-summary";
@@ -434,6 +435,17 @@ export async function dispatchHookEvent({
         toolName: event.tool_name,
         toolUseId: event.tool_use_id ?? "",
       } satisfies SessionToolPendingPayload);
+      break;
+    }
+
+    case "PostToolUseFailure": {
+      store.touchSession(event.session_id);
+      broadcast(DOMAIN_EVENTS.SESSION_TOOL_FAILED, {
+        sessionId: event.session_id,
+        toolName: event.tool_name,
+        toolUseId: event.tool_use_id ?? "",
+        error: event.error ?? "",
+      } satisfies SessionToolFailedPayload);
       break;
     }
 

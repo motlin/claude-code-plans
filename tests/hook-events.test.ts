@@ -103,6 +103,38 @@ describe("HookEventEnvelope", () => {
     expect(result.success).toBe(true);
   });
 
+  it("parses PostToolUseFailure event with error and hook_specific_output", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "PostToolUseFailure",
+      tool_name: "Bash",
+      tool_use_id: "toolu_abc",
+      tool_input: { command: "exit 1" },
+      error: "Command exited with status 1",
+      hook_specific_output: {
+        hookEventName: "PostToolUseFailure",
+        additionalContext: "context",
+        systemMessage: "Bash failed",
+      },
+    });
+    expect(result.success).toBe(true);
+    if (result.success && result.data.hook_event_name === "PostToolUseFailure") {
+      expect(result.data.tool_name).toBe("Bash");
+      expect(result.data.error).toBe("Command exited with status 1");
+    }
+  });
+
+  it("rejects PostToolUseFailure with unknown top-level field", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "PostToolUseFailure",
+      tool_name: "Bash",
+      tool_input: { command: "ls" },
+      surprise: "field",
+    });
+    expect(result.success).toBe(false);
+  });
+
   it("parses UserPromptSubmit event", () => {
     const result = HookEventEnvelope.safeParse({
       ...baseEnvelope,

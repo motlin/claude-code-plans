@@ -16,6 +16,7 @@ import { execFileSync, type SpawnSyncReturns } from "node:child_process";
 import { describe, expect, it } from "vite-plus/test";
 import { HOOK_PAYLOAD_JQ_FILTER } from "../src/lib/hook-config";
 import { HookEventEnvelope, type HookEventName } from "../src/lib/hook-events";
+import { postToolUseFailureFixture } from "./fixtures/post-tool-use-failure";
 
 // CLAUDE-prefixed env Claude Code typically exposes to the hook subprocess.
 // We pre-stage these via the `env` option to execFileSync so the jq filter's
@@ -127,6 +128,10 @@ const cases: Case[] = [
       tool_input: { command: "ls" },
       tool_response: { stdout: "a.txt\nb.txt", stderr: "" },
     },
+  },
+  {
+    name: "PostToolUseFailure",
+    payload: postToolUseFailureFixture,
   },
   {
     name: "TaskCompleted",

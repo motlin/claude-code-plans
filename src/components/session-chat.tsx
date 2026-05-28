@@ -5,6 +5,8 @@ import { MarkdownArticle } from "./markdown-article";
 import { getToolRenderer } from "./tool-renderers";
 import { buildClientToolCall } from "./tool-renderers/types";
 import type { ClientToolCall } from "./tool-renderers";
+import type { LiveToolFailure } from "./tool-renderers/types";
+import { useClaudeEvents } from "../hooks/use-claude-events";
 import { ChevronIcon, TerminalOutput } from "./tool-renderers/shared";
 import { computeDiffData } from "../lib/diff-utils";
 import { TasksView } from "./tasks-view";
@@ -372,6 +374,27 @@ function LineEntry({
   );
 }
 
+/**
+ * Hook returning a map of `tool_use_id` -> live failure info derived from
+ * `PostToolUseFailure` SSE events for the given session. Empty when the
+ * session has no in-flight failures or the JSONL has already caught up.
+ */
+function useLiveToolFailures(sessionId: string): Map<string, LiveToolFailure> {
+  const { failedTools } = useClaudeEvents();
+  return useMemo(() => {
+    const map = new Map<string, LiveToolFailure>();
+    for (const failed of failedTools.values()) {
+      if (failed.sessionId !== sessionId) continue;
+      if (!failed.toolUseId) continue;
+      map.set(failed.toolUseId, {
+        toolUseId: failed.toolUseId,
+        error: failed.error,
+      });
+    }
+    return map;
+  }, [failedTools, sessionId]);
+}
+
 function GroupedToolCallEntry({
   lines,
   indices,
@@ -385,6 +408,7 @@ function GroupedToolCallEntry({
   sessionId: string;
   toolResultMap: Map<string, ToolResultInfo>;
 }) {
+  const liveFailures = useLiveToolFailures(sessionId);
   const allToolCalls = useMemo(
     () =>
       lines.flatMap((line) => {
@@ -393,9 +417,9 @@ function GroupedToolCallEntry({
         if (!Array.isArray(content)) return [];
         return content
           .filter((b): b is ToolUseBlock => b.type === "tool_use")
-          .map((block) => buildClientToolCall(block, line.uuid ?? "", toolResultMap));
+          .map((block) => buildClientToolCall(block, line.uuid ?? "", toolResultMap, liveFailures));
       }),
-    [lines, toolResultMap],
+    [lines, toolResultMap, liveFailures],
   );
 
   if (allToolCalls.length === 0) return null;
@@ -1389,12 +1413,13 @@ function AssistantEntry({
   }
 
   // Collect tool_use blocks for the tool summary and section
+  const liveFailures = useLiveToolFailures(sessionId);
   const toolCalls = useMemo(
     () =>
       content
         .filter((b): b is ToolUseBlock => b.type === "tool_use")
-        .map((block) => buildClientToolCall(block, line.uuid ?? "", toolResultMap)),
-    [content, line, toolResultMap],
+        .map((block) => buildClientToolCall(block, line.uuid ?? "", toolResultMap, liveFailures)),
+    [content, line, toolResultMap, liveFailures],
   );
   const hasVisibleNonToolContent = content.some(
     (b) =>

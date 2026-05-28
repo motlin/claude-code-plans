@@ -49,6 +49,7 @@ export const DOMAIN_EVENTS = {
   SESSION_LINES_APPENDED: "session:lines-appended",
   SESSION_PROMPT_SUBMITTED: "session:prompt-submitted",
   SESSION_TOOL_PENDING: "session:tool-pending",
+  SESSION_TOOL_FAILED: "session:tool-failed",
   SESSION_COMPACTING: "session:compacting",
   NOTIFICATION: "notification",
   PLAN_CHANGED: "plan:changed",
@@ -184,6 +185,20 @@ export interface SessionToolPendingPayload {
   sessionId: string;
   toolName: string;
   toolUseId: string;
+}
+
+/**
+ * Payload broadcast when a `PostToolUseFailure` hook fires. Symmetric with
+ * `SessionToolPendingPayload`; the session view uses this to flag a specific
+ * tool call as errored before the failure shows up via the JSONL watcher
+ * (~2s later). `error` is the human-readable failure description Claude Code
+ * attaches to the hook payload.
+ */
+export interface SessionToolFailedPayload {
+  sessionId: string;
+  toolName: string;
+  toolUseId: string;
+  error: string;
 }
 
 /**
@@ -525,6 +540,40 @@ function buildToolUseEvent(eventName: "PreToolUse" | "PostToolUse") {
 const PreToolUseHookEvent = buildToolUseEvent("PreToolUse");
 const PostToolUseHookEvent = buildToolUseEvent("PostToolUse");
 
+/**
+ * Build the `PostToolUseFailure` per-tool union. Symmetric with `PostToolUse`,
+ * fired when a tool call fails instead of succeeding. Carries the failing
+ * `tool_input`, an `error` description, an optional `tool_use_id`, and the
+ * `hook_specific_output` slot Claude Code uses to inject `additionalContext`
+ * / `systemMessage` strings into the next turn. The viewer is a passive
+ * observer so we don't act on the injected strings, but we accept them so
+ * the schema-drift counter doesn't fire on otherwise-valid payloads.
+ */
+const PostToolUseFailureHookSpecificOutput = z
+  .object({
+    hookEventName: z.literal("PostToolUseFailure").optional(),
+    additionalContext: z.string().optional(),
+    systemMessage: z.string().optional(),
+  })
+  .strict();
+
+function buildPostToolUseFailureEvent() {
+  const variants = ToolUseUnion.options.map((toolVariant) =>
+    z.strictObject({
+      ...BaseHookFields,
+      hook_event_name: z.literal("PostToolUseFailure"),
+      tool_name: toolVariant.shape.tool_name,
+      tool_use_id: z.string().optional(),
+      tool_input: toolVariant.shape.tool_input,
+      error: z.string().optional(),
+      hook_specific_output: PostToolUseFailureHookSpecificOutput.optional(),
+    }),
+  );
+  return z.union(variants as [(typeof variants)[number], ...typeof variants]);
+}
+
+const PostToolUseFailureHookEvent = buildPostToolUseFailureEvent();
+
 const TaskCompletedHookEvent = z.strictObject({
   ...BaseHookFields,
   hook_event_name: z.literal("TaskCompleted"),
@@ -561,6 +610,7 @@ export const HookEventEnvelope = z.union([
   PreCompactHookEvent,
   PreToolUseHookEvent,
   PostToolUseHookEvent,
+  PostToolUseFailureHookEvent,
   TaskCompletedHookEvent,
   WorktreeCreateHookEvent,
 ]);
@@ -586,6 +636,7 @@ export const KNOWN_HOOK_EVENTS: readonly HookEventName[] = [
   "PreCompact",
   "PreToolUse",
   "PostToolUse",
+  "PostToolUseFailure",
   "TaskCompleted",
   "WorktreeCreate",
 ];
