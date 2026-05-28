@@ -31,6 +31,7 @@ export const SSE_EVENTS = {
   SESSION_START: "session:start",
   SESSION_END: "session:end",
   WORKTREE_CREATED: "worktree:created",
+  WORKTREE_REMOVED: "worktree:removed",
   STATUSLINE_UPDATED: "statusline:updated",
   CONTENT_UPDATED: "content:updated",
 } as const;
@@ -685,6 +686,19 @@ const WorktreeCreateHookEvent = z.strictObject({
 });
 
 /**
+ * Symmetric with `WorktreeCreate` — fires when a worktree is removed. The
+ * viewer broadcasts `WORKTREE_REMOVED` so any worktree-aware UI can react in
+ * real time. `worktree_path` is the absolute path Claude Code reports for the
+ * removed worktree (mirrors the `worktree_path` field in the underlying tool
+ * input). Strict schema from day one — unknown fields trigger schema drift.
+ */
+const WorktreeRemoveHookEvent = z.strictObject({
+  ...BaseHookFields,
+  hook_event_name: z.literal("WorktreeRemove"),
+  worktree_path: z.string().optional(),
+});
+
+/**
  * Union over every hook event Claude Code can send. Each variant is a strict
  * object — unknown fields fail parsing and trigger the schema-drift recovery
  * path in `src/routes/api/hook.ts`. `PreToolUse` and `PostToolUse` are
@@ -712,6 +726,7 @@ export const HookEventEnvelope = z.union([
   TaskCreatedHookEvent,
   TaskCompletedHookEvent,
   WorktreeCreateHookEvent,
+  WorktreeRemoveHookEvent,
 ]);
 
 export type HookEvent = z.infer<typeof HookEventEnvelope>;
@@ -741,4 +756,5 @@ export const KNOWN_HOOK_EVENTS: readonly HookEventName[] = [
   "TaskCreated",
   "TaskCompleted",
   "WorktreeCreate",
+  "WorktreeRemove",
 ];

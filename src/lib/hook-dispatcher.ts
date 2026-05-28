@@ -536,5 +536,13 @@ export async function dispatchHookEvent({
       });
       break;
     }
+
+    case "WorktreeRemove": {
+      broadcast(SSE_EVENTS.WORKTREE_REMOVED, {
+        sessionId: event.session_id,
+        worktreePath: event.worktree_path ?? "",
+      });
+      break;
+    }
   }
 }

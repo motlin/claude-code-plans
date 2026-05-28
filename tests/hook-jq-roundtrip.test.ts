@@ -20,6 +20,7 @@ import { postCompactFixture } from "./fixtures/post-compact";
 import { postToolUseFailureFixture } from "./fixtures/post-tool-use-failure";
 import { subagentStartFixture } from "./fixtures/subagent-start";
 import { taskCreatedFixture } from "./fixtures/task-created";
+import { worktreeRemoveFixture } from "./fixtures/worktree-remove";
 
 // CLAUDE-prefixed env Claude Code typically exposes to the hook subprocess.
 // We pre-stage these via the `env` option to execFileSync so the jq filter's
@@ -164,6 +165,10 @@ const cases: Case[] = [
       hook_event_name: "WorktreeCreate",
       name: "wt-foo",
     },
+  },
+  {
+    name: "WorktreeRemove",
+    payload: worktreeRemoveFixture,
   },
 ];
 

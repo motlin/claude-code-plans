@@ -298,6 +298,36 @@ describe("HookEventEnvelope", () => {
     expect(result.success).toBe(false);
   });
 
+  it("parses WorktreeRemove event with worktree_path", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "WorktreeRemove",
+      worktree_path: "/Users/u/projects/app-wt-foo",
+    });
+    expect(result.success).toBe(true);
+    if (result.success && result.data.hook_event_name === "WorktreeRemove") {
+      expect(result.data.worktree_path).toBe("/Users/u/projects/app-wt-foo");
+    }
+  });
+
+  it("parses WorktreeRemove event with no optional fields", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "WorktreeRemove",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects WorktreeRemove with unknown top-level field", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "WorktreeRemove",
+      worktree_path: "/x/y",
+      surprise: "field",
+    });
+    expect(result.success).toBe(false);
+  });
+
   it("rejects unknown event types", () => {
     const result = HookEventEnvelope.safeParse({
       ...baseEnvelope,

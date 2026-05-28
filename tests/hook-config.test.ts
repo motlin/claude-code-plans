@@ -20,6 +20,7 @@ describe("HOOK_EVENT_NAMES", () => {
         "TaskCreated",
         "TaskCompleted",
         "WorktreeCreate",
+        "WorktreeRemove",
       ].sort(),
     );
   });
