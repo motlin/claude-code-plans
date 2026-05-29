@@ -4,3 +4,13 @@ node = "26.2.0"
 pnpm = "11.1.1"
 "npm:vite-plus" = "latest"
 pre-commit = "latest"
+
+[settings]
+# Required for [hooks] below; scoped to this repo only.
+experimental = true
+
+[hooks]
+# better-sqlite3 ships a native binary tied to Node's ABI. When mise provisions
+# a different Node version, the cached binary's NODE_MODULE_VERSION no longer
+# matches and every DB call throws. Rebuild it whenever tools are (re)installed.
+postinstall = "pnpm rebuild better-sqlite3"
