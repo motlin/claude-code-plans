@@ -160,7 +160,7 @@ function persistDrift(
 export const Route = createFileRoute("/api/hook")({
   server: {
     handlers: {
-      POST: async ({ request }) => {
+      POST: async ({ request }: { request: Request }) => {
         const rawText = await request.text();
         let body: unknown;
         try {

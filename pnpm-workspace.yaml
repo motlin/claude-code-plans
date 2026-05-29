@@ -9,6 +9,7 @@ catalog:
 overrides:
   vite: "catalog:"
   vitest: "catalog:"
+  "@tanstack/router-core": 1.171.7
 peerDependencyRules:
   allowAny:
     - vite
