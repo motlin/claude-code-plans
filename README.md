@@ -67,16 +67,6 @@ just dev           # run dev server with hot reload
 
 Set `PORT` to change the port (default: `7526`).
 
-### launchd (macOS)
-
-To run as a background service that starts on login:
-
-```sh
-just launchd-install   # install and start the service
-just logs              # tail the server logs
-just launchd-uninstall # stop and remove the service
-```
-
 ## Tech Stack
 
 - [TanStack Start](https://tanstack.com/start) + React 19 + Vite -- SSR framework

@@ -61,18 +61,3 @@ fallow: build
 precommit quick="": oxlint format build typecheck fallow
     {{ if quick != "true" { "just test" } else { "true" } }}
     @echo "All pre-commit checks passed!"
-
-# Install launchd service
-launchd-install:
-    mkdir -p ~/Library/Logs/claude-code-plans
-    cp launchd/com.craig.claude-code-plans.plist ~/Library/LaunchAgents/
-    launchctl load ~/Library/LaunchAgents/com.craig.claude-code-plans.plist
-
-# Uninstall launchd service
-launchd-uninstall:
-    launchctl unload ~/Library/LaunchAgents/com.craig.claude-code-plans.plist
-    rm ~/Library/LaunchAgents/com.craig.claude-code-plans.plist
-
-# View server logs
-logs:
-    tail -f ~/Library/Logs/claude-code-plans/stdout.log
