@@ -183,7 +183,7 @@ export const UserRecordSchema = z
     sourceToolUseID: z.string().optional(),
     promptId: z.string().optional(),
     permissionMode: z.string().optional(),
-    promptSource: z.enum(["typed", "system"]).optional(),
+    promptSource: z.enum(["typed", "system", "sdk"]).optional(),
     imagePasteIds: z.array(z.union([z.string(), z.number()])).optional(),
     isMeta: z.boolean().optional(),
     isCompactSummary: z.boolean().optional(),
@@ -797,6 +797,7 @@ const PermissionsSchema = z
     ask: z.array(z.string()).optional(),
     defaultMode: z.string().optional(),
     additionalDirectories: z.array(z.string()).optional(),
+    disableBypassPermissionsMode: z.string().optional(),
   })
   .strict();
 
@@ -813,12 +814,14 @@ const MarketplaceSourceSchema = z
     source: z.string(),
     repo: z.string().optional(),
     path: z.string().optional(),
+    url: z.string().optional(),
   })
   .strict();
 
 const MarketplaceEntrySchema = z
   .object({
     source: MarketplaceSourceSchema,
+    autoUpdate: z.boolean().optional(),
   })
   .strict();
 
@@ -874,6 +877,13 @@ export const ClaudeSettingsSchema = z
     worktree: WorktreeSettingsSchema.optional(),
     enabledPlugins: z.record(z.string(), z.boolean()).optional(),
     extraKnownMarketplaces: z.record(z.string(), MarketplaceEntrySchema).optional(),
+    spinnerVerbs: z
+      .object({
+        mode: z.string().optional(),
+        verbs: z.array(z.string()).optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
