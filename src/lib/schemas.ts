@@ -835,6 +835,7 @@ const MarketplaceEntrySchema = z
   .object({
     source: MarketplaceSourceSchema,
     autoUpdate: z.boolean().optional(),
+    url: z.string().optional(),
   })
   .strict();
 
@@ -888,6 +889,7 @@ export const ClaudeSettingsSchema = z
     sandbox: SandboxSchema.optional(),
     remote: RemoteSchema.optional(),
     worktree: WorktreeSettingsSchema.optional(),
+    additionalDirectories: z.array(z.string()).optional(),
     enabledPlugins: z.record(z.string(), z.boolean()).optional(),
     extraKnownMarketplaces: z.record(z.string(), MarketplaceEntrySchema).optional(),
     spinnerVerbs: z
