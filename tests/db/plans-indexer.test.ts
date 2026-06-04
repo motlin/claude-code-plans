@@ -32,7 +32,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  db.close();
+  if (db) db.close();
   rmSync(testDir, { recursive: true, force: true });
 });
 

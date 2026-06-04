@@ -10,7 +10,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  db.close();
+  if (db) db.close();
 });
 
 function insertMemory(row: {
