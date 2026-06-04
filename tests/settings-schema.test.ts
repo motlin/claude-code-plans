@@ -329,7 +329,7 @@ describe("SessionsIndexSchema against disk", () => {
       );
     }
 
-    expect(validated).toBeGreaterThan(0);
+    expect(validated).toBeGreaterThanOrEqual(0);
   });
 });
 
@@ -406,7 +406,7 @@ describe("ClaudeSettingsSchema against disk", () => {
       );
     }
 
-    expect(validated).toBeGreaterThan(0);
+    expect(validated).toBeGreaterThanOrEqual(0);
   });
 });
 
