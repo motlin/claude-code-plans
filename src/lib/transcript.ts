@@ -83,7 +83,7 @@ const AttachmentLineSchema = z.object({
  * Discriminated union of all rendered line types.
  * Each variant corresponds to a JSONL record type that produces visible output.
  */
-const RenderedLineSchema = z.discriminatedUnion("type", [
+export const RenderedLineSchema = z.discriminatedUnion("type", [
   MessageLineSchema,
   AgentNameLineSchema,
   AgentColorLineSchema,

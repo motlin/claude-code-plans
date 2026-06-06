@@ -26,6 +26,7 @@ import {
   Wrench,
   Zap,
 } from "lucide-react";
+import { assertNever } from "../lib/assert-never";
 import { AttachmentPayloadSchema, type AttachmentPayload } from "../lib/schemas";
 import { DebugLink } from "./debug-link";
 
@@ -447,7 +448,7 @@ function AttachmentContent({
         </Banner>
       );
     default:
-      throw new Error(`Unhandled attachment type: ${(attachment as { type: string }).type}`);
+      return assertNever(attachment);
   }
 }
 

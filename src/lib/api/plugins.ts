@@ -2,7 +2,7 @@ import { z } from "zod";
 import { queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 
-const PluginFileSchema = z.object({
+export const PluginFileSchema = z.object({
   filename: z.string(),
   name: z.string(),
   description: z.string(),

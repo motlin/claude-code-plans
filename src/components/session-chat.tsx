@@ -1,6 +1,7 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { Bot, Copy, Link, Link2, Lock, Palette } from "lucide-react";
+import { assertNever } from "../lib/assert-never";
 import { MarkdownArticle } from "./markdown-article";
 import { getToolRenderer } from "./tool-renderers";
 import { buildClientToolCall } from "./tool-renderers/types";
@@ -673,72 +674,68 @@ function renderSessionMessage({
   index: number;
   nextLine?: SessionLine | undefined;
 }) {
-  if (line.type === "user") {
-    return (
-      <UserEntry
-        line={line}
-        index={index}
-        sessionId={sessionId}
-        nextLine={nextLine}
-        isSubagentSession={isSubagentSession}
-        showCompactSummaries={showCompactSummaries}
-      />
-    );
+  switch (line.type) {
+    case "user":
+      return (
+        <UserEntry
+          line={line}
+          index={index}
+          sessionId={sessionId}
+          nextLine={nextLine}
+          isSubagentSession={isSubagentSession}
+          showCompactSummaries={showCompactSummaries}
+        />
+      );
+    case "assistant":
+      return (
+        <AssistantEntry
+          line={line}
+          sessionId={sessionId}
+          toolResultMap={toolResultMap}
+          showThinking={showThinking}
+          showTools={showTools}
+        />
+      );
+    case "agent-name":
+      return <Banner icon={<Bot className="h-3.5 w-3.5" />} label={line.agentName} />;
+    case "agent-color":
+      return (
+        <Banner
+          icon={<Palette className="h-3.5 w-3.5" />}
+          label={`Agent color: ${line.agentColor}`}
+        />
+      );
+    case "permission-mode":
+      return (
+        <Banner
+          icon={<Lock className="h-3.5 w-3.5" />}
+          label={`Permission mode: ${line.permissionMode}`}
+        />
+      );
+    case "pr-link":
+      return (
+        <Banner icon={<Link className="h-3.5 w-3.5" />}>
+          <a
+            href={line.prUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-accent-500 hover:underline"
+          >
+            {line.prRepository}#{line.prNumber}
+          </a>
+        </Banner>
+      );
+    case "attachment":
+      return (
+        <AttachmentBanner
+          attachmentJson={line.attachmentJson}
+          sessionId={sessionId}
+          uuid={line.uuid}
+        />
+      );
+    default:
+      return assertNever(line);
   }
-  if (line.type === "assistant") {
-    return (
-      <AssistantEntry
-        line={line}
-        sessionId={sessionId}
-        toolResultMap={toolResultMap}
-        showThinking={showThinking}
-        showTools={showTools}
-      />
-    );
-  }
-  if (line.type === "agent-name") {
-    return <Banner icon={<Bot className="h-3.5 w-3.5" />} label={line.agentName} />;
-  }
-  if (line.type === "agent-color") {
-    return (
-      <Banner
-        icon={<Palette className="h-3.5 w-3.5" />}
-        label={`Agent color: ${line.agentColor}`}
-      />
-    );
-  }
-  if (line.type === "permission-mode") {
-    return (
-      <Banner
-        icon={<Lock className="h-3.5 w-3.5" />}
-        label={`Permission mode: ${line.permissionMode}`}
-      />
-    );
-  }
-  if (line.type === "pr-link") {
-    return (
-      <Banner icon={<Link className="h-3.5 w-3.5" />}>
-        <a
-          href={line.prUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-accent-500 hover:underline"
-        >
-          {line.prRepository}#{line.prNumber}
-        </a>
-      </Banner>
-    );
-  }
-  if (line.type === "attachment") {
-    return (
-      <AttachmentBanner
-        attachmentJson={line.attachmentJson}
-        sessionId={sessionId}
-        uuid={line.uuid}
-      />
-    );
-  }
-  return null;
 }
 
 function TruncatedContent({

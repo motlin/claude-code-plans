@@ -756,7 +756,7 @@ export const JsonlRecordSchema = z.discriminatedUnion("type", [
 // Task Files (~/.claude/tasks/{project}/{id}.json)
 // ---------------------------------------------------------------------------
 
-const TaskStatusSchema = z.enum(["pending", "in_progress", "completed"]);
+export const TaskStatusSchema = z.enum(["pending", "in_progress", "completed"]);
 
 export const TaskFileSchema = z
   .object({

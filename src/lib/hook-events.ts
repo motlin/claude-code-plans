@@ -503,7 +503,7 @@ const AskUserQuestionToolResponseSchema = z
  * are detected by the schema-drift recovery path in `routes/api/hook.ts` so
  * they fail loud instead of being silently accepted.
  */
-const ToolUseUnion = z.discriminatedUnion("tool_name", [
+export const ToolUseUnion = z.discriminatedUnion("tool_name", [
   z.strictObject({
     tool_name: z.literal("Bash"),
     tool_input: BashInputSchema,

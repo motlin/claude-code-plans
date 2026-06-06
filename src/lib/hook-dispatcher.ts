@@ -1,4 +1,5 @@
 import { basename } from "node:path";
+import { assertNever } from "./assert-never";
 import { eq } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as schema from "./db/schema";
@@ -620,5 +621,8 @@ export async function dispatchHookEvent({
       } satisfies SessionCwdChangedPayload);
       break;
     }
+
+    default:
+      assertNever(event);
   }
 }
