@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { scanPendingApproval } from "../src/lib/pending-approvals";
+import { openTestDb, type AppDb } from "../src/lib/db/connection";
+import * as schema from "../src/lib/db/schema";
+import { scanAllPendingApprovals, scanPendingApproval } from "../src/lib/pending-approvals";
 
 function jsonl(...lines: Record<string, unknown>[]): string {
   return lines.map((l) => JSON.stringify(l)).join("\n") + "\n";
@@ -241,5 +243,87 @@ describe("scanPendingApproval", () => {
     const result = await scanPendingApproval(filePath);
 
     expect(result).toBeNull();
+  });
+});
+
+describe("scanAllPendingApprovals", () => {
+  const testDir = join(tmpdir(), "claude-pending-all-test-" + process.pid);
+  let projectDir: string;
+  let db: AppDb;
+
+  beforeEach(() => {
+    mkdirSync(testDir, { recursive: true });
+    projectDir = join(testDir, "projects", PROJECT_DIR_NAME);
+    mkdirSync(projectDir, { recursive: true });
+    db = openTestDb();
+  });
+
+  afterEach(() => {
+    db.close();
+    rmSync(testDir, { recursive: true, force: true });
+  });
+
+  it("skips rows whose session file is missing and returns the valid approval", async () => {
+    const validSessionId = "sess-valid";
+    const validPath = join(projectDir, `${validSessionId}.jsonl`);
+    writeFileSync(
+      validPath,
+      jsonl({
+        type: "assistant",
+        sessionId: validSessionId,
+        timestamp: "2026-05-14T12:00:30.000Z",
+        message: {
+          role: "assistant",
+          content: [
+            {
+              type: "tool_use",
+              id: "toolu_valid",
+              name: "ExitPlanMode",
+              input: { plan: "## Steps" },
+            },
+          ],
+        },
+      }),
+    );
+
+    const missingPath = join(projectDir, "sess-missing.jsonl");
+
+    db.index
+      .insert(schema.projects)
+      .values({ id: "proj-1", name: "app", projectPath: null, updatedAt: 0 })
+      .run();
+    db.index
+      .insert(schema.sessions)
+      .values([
+        {
+          id: "sess-missing",
+          projectId: "proj-1",
+          title: "Missing",
+          messageCount: 0,
+          isSidechain: 0,
+          createdAt: 0,
+          mtimeMs: 0,
+          filePath: missingPath,
+        },
+        {
+          id: validSessionId,
+          projectId: "proj-1",
+          title: "Valid",
+          messageCount: 0,
+          isSidechain: 0,
+          createdAt: 0,
+          mtimeMs: 0,
+          filePath: validPath,
+        },
+      ])
+      .run();
+
+    const results = await scanAllPendingApprovals(db.index);
+
+    expect(results).toHaveLength(1);
+    expect(results[0]!.sessionId).toBe(validSessionId);
+    expect(results[0]!.toolUseId).toBe("toolu_valid");
+    expect(results[0]!.toolName).toBe("ExitPlanMode");
+    expect(results[0]!.projectName).toBe("app");
   });
 });

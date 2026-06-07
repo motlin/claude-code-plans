@@ -181,7 +181,12 @@ export async function scanAllPendingApprovals(db: IndexDb): Promise<PendingAppro
 
   const results: PendingApproval[] = [];
   for (const row of sessionRows) {
-    const approval = await scanPendingApproval(row.filePath);
+    let approval: PendingApproval | null;
+    try {
+      approval = await scanPendingApproval(row.filePath);
+    } catch {
+      continue; // session file deleted since indexing; initial scan will prune the row
+    }
     if (!approval) continue;
     const planFilename =
       approval.planFilename ?? getPlanFilenameForSession(db, approval.sessionId || row.id);
