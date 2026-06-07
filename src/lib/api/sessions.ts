@@ -46,6 +46,10 @@ export const SessionDetailResponse = z
     messageCount: z.number(),
     pendingTaskCount: z.number(),
     parentSessionId: z.string().optional(),
+    entrypoint: z.string().optional(),
+    sessionKind: z.string().optional(),
+    teamNames: z.array(z.string()).optional(),
+    forkedFromSessionId: z.string().optional(),
   })
   .nullable();
 

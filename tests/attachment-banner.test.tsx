@@ -83,4 +83,54 @@ describe("AttachmentBanner", () => {
       expect(() => renderBanner(payload!)).not.toThrow();
     });
   }
+
+  describe("hook_blocking_error", () => {
+    it("renders the nested blocking message when blockingError carries a message string", () => {
+      const html = renderBanner({
+        type: "hook_blocking_error",
+        hookName: "policy-guard",
+        hookEvent: "PreToolUse",
+        blockingError: { message: "Command rejected by policy" },
+      });
+      expect(html).toContain("Command rejected by policy");
+      expect(html).toContain("text-text-600");
+    });
+
+    it("does not render a blocking message when blockingError is absent", () => {
+      const html = renderBanner({
+        type: "hook_blocking_error",
+        hookName: "policy-guard",
+        hookEvent: "PreToolUse",
+      });
+      expect(html).not.toContain("text-text-600");
+    });
+  });
+
+  describe("deferred_tools_delta", () => {
+    it("appends a pluralized pending MCP server count to the banner label", () => {
+      const html = renderBanner({
+        type: "deferred_tools_delta",
+        addedNames: ["WebFetch"],
+        pendingMcpServers: ["context7", "github"],
+      });
+      expect(html).toContain("2 MCP servers pending");
+    });
+
+    it("uses the singular form for a single pending MCP server", () => {
+      const html = renderBanner({
+        type: "deferred_tools_delta",
+        pendingMcpServers: ["context7"],
+      });
+      expect(html).toContain("1 MCP server pending");
+      expect(html).not.toContain("1 MCP servers pending");
+    });
+
+    it("omits the pending segment when there are no pending MCP servers", () => {
+      const html = renderBanner({
+        type: "deferred_tools_delta",
+        addedNames: ["WebFetch"],
+      });
+      expect(html).not.toContain("MCP server");
+    });
+  });
 });

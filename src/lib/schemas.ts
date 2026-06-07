@@ -168,6 +168,8 @@ const BaseRecordFields = {
   sessionKind: z.string().optional(),
 };
 
+export const PromptSourceSchema = z.enum(["typed", "system", "sdk", "queued"]);
+
 export const UserRecordSchema = z
   .object({
     type: z.literal("user"),
@@ -183,7 +185,7 @@ export const UserRecordSchema = z
     sourceToolUseID: z.string().optional(),
     promptId: z.string().optional(),
     permissionMode: z.string().optional(),
-    promptSource: z.enum(["typed", "system", "sdk", "queued"]).optional(),
+    promptSource: PromptSourceSchema.optional(),
     imagePasteIds: z.array(z.union([z.string(), z.number()])).optional(),
     isMeta: z.boolean().optional(),
     isCompactSummary: z.boolean().optional(),
@@ -596,6 +598,16 @@ export const ProgressRecordSchema = z
   })
   .strict();
 
+export const CompactMetadataSchema = z
+  .object({
+    trigger: z.enum(["auto", "manual"]),
+    preTokens: z.number(),
+    postTokens: z.number().optional(),
+    durationMs: z.number().optional(),
+    preCompactDiscoveredTools: z.array(z.string()).optional(),
+  })
+  .strict();
+
 export const SystemRecordSchema = z
   .object({
     type: z.literal("system"),
@@ -622,7 +634,7 @@ export const SystemRecordSchema = z
     permissionMode: z.string().optional(),
     logicalParentUuid: z.string().optional(),
     cause: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
-    compactMetadata: z.record(z.string(), JsonValueSchema).optional(),
+    compactMetadata: CompactMetadataSchema.optional(),
     retryAttempt: z.number().optional(),
     retryInMs: z.number().optional(),
     maxRetries: z.number().optional(),

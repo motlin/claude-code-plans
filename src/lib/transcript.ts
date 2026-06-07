@@ -10,7 +10,13 @@
 
 import { z } from "zod";
 import type { ToolResultInfo } from "./sessions";
-import { ContentBlockSchema, JsonlRecordSchema } from "./schemas";
+import {
+  CompactMetadataSchema,
+  ContentBlockSchema,
+  JsonValueSchema,
+  JsonlRecordSchema,
+  PromptSourceSchema,
+} from "./schemas";
 import {
   extractSessionTitle,
   extractToolResultContent,
@@ -42,6 +48,16 @@ const MessageLineSchema = z.object({
   customTitle: z.string().optional(),
   sessionId: z.string().optional(),
   lineIndex: z.number(),
+  promptSource: PromptSourceSchema.optional(),
+  isApiErrorMessage: z.boolean().optional(),
+  apiErrorStatus: z.union([z.number(), z.string()]).optional(),
+  errorDetails: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
+  stopReason: z.literal("max_tokens").optional(),
+  usage: z.record(z.string(), JsonValueSchema).optional(),
+  attributionSkill: z.string().optional(),
+  attributionPlugin: z.string().optional(),
+  attributionMcpServer: z.string().optional(),
+  attributionMcpTool: z.string().optional(),
 });
 
 const AgentNameLineSchema = z.object({
@@ -79,6 +95,46 @@ const AttachmentLineSchema = z.object({
   lineIndex: z.number(),
 });
 
+/** System-record subtypes the viewer renders; all others are skipped. */
+const RenderedSystemSubtypeSchema = z.enum([
+  "compact_boundary",
+  "stop_hook_summary",
+  "api_error",
+  "turn_duration",
+]);
+
+const SystemLineSchema = z.object({
+  type: z.literal("system"),
+  subtype: RenderedSystemSubtypeSchema,
+  content: z.string().optional(),
+  compactMetadata: CompactMetadataSchema.optional(),
+  hookCount: z.number().optional(),
+  hookInfos: z.array(JsonValueSchema).optional(),
+  hookErrors: z.array(JsonValueSchema).optional(),
+  hookAdditionalContext: z.array(JsonValueSchema).optional(),
+  preventedContinuation: z.boolean().optional(),
+  retryAttempt: z.number().optional(),
+  retryInMs: z.number().optional(),
+  maxRetries: z.number().optional(),
+  pendingBackgroundAgentCount: z.number().optional(),
+  durationMs: z.number().optional(),
+  error: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
+  uuid: z.string().optional(),
+  timestamp: z.string().optional(),
+  lineIndex: z.number(),
+});
+
+const WorktreeLineSchema = z.object({
+  type: z.literal("worktree"),
+  worktreeName: z.string(),
+  worktreeBranch: z.string(),
+  originalCwd: z.string(),
+  originalBranch: z.string().optional(),
+  originalHeadCommit: z.string().optional(),
+  enteredExisting: z.boolean().optional(),
+  lineIndex: z.number(),
+});
+
 /**
  * Discriminated union of all rendered line types.
  * Each variant corresponds to a JSONL record type that produces visible output.
@@ -90,6 +146,8 @@ export const RenderedLineSchema = z.discriminatedUnion("type", [
   PermissionModeLineSchema,
   PrLinkLineSchema,
   AttachmentLineSchema,
+  SystemLineSchema,
+  WorktreeLineSchema,
 ]);
 
 // ---------------------------------------------------------------------------
@@ -268,6 +326,8 @@ function processRecordBatch(
   const toolResults = new Map<string, ToolResultInfo>();
   const toolStartTimes = new Map<string, number>();
   let title = "";
+  let lastWorktreeKey: string | undefined;
+  let lastAttributionKey: string | undefined;
   let customTitle: string | undefined;
 
   for (let i = 0; i < records.length; i++) {
@@ -400,6 +460,69 @@ function processRecordBatch(
       continue;
     }
 
+    if (record.type === "system") {
+      const subtype = RenderedSystemSubtypeSchema.safeParse(record.subtype);
+      if (!subtype.success) continue;
+      const systemLine: z.infer<typeof SystemLineSchema> = {
+        type: "system",
+        subtype: subtype.data,
+        lineIndex,
+      };
+      if (record.content !== undefined) systemLine.content = record.content;
+      if (record.compactMetadata !== undefined) systemLine.compactMetadata = record.compactMetadata;
+      if (record.hookCount !== undefined) systemLine.hookCount = record.hookCount;
+      if (record.hookInfos !== undefined) systemLine.hookInfos = record.hookInfos;
+      if (record.hookErrors !== undefined) systemLine.hookErrors = record.hookErrors;
+      if (record.hookAdditionalContext !== undefined) {
+        systemLine.hookAdditionalContext = record.hookAdditionalContext;
+      }
+      if (record.preventedContinuation !== undefined) {
+        systemLine.preventedContinuation = record.preventedContinuation;
+      }
+      if (record.retryAttempt !== undefined) systemLine.retryAttempt = record.retryAttempt;
+      if (record.retryInMs !== undefined) systemLine.retryInMs = record.retryInMs;
+      if (record.maxRetries !== undefined) systemLine.maxRetries = record.maxRetries;
+      if (record.pendingBackgroundAgentCount !== undefined) {
+        systemLine.pendingBackgroundAgentCount = record.pendingBackgroundAgentCount;
+      }
+      if (record.durationMs !== undefined) systemLine.durationMs = record.durationMs;
+      if (record.error !== undefined) systemLine.error = record.error;
+      if (uuid !== undefined) systemLine.uuid = uuid;
+      if (record.timestamp !== undefined) systemLine.timestamp = record.timestamp;
+      sessionLines.push(systemLine);
+      continue;
+    }
+
+    if (record.type === "worktree-state") {
+      const ws = record.worktreeSession;
+      if (ws === undefined || ws === null) continue;
+      // Worktree state is re-emitted on every prompt; only render changes.
+      const worktreeKey = JSON.stringify([
+        ws.worktreeName,
+        ws.worktreeBranch,
+        ws.originalBranch,
+        ws.originalHeadCommit,
+        ws.originalCwd,
+        ws.enteredExisting,
+      ]);
+      if (worktreeKey === lastWorktreeKey) continue;
+      lastWorktreeKey = worktreeKey;
+      const worktreeLine: z.infer<typeof WorktreeLineSchema> = {
+        type: "worktree",
+        worktreeName: ws.worktreeName,
+        worktreeBranch: ws.worktreeBranch,
+        originalCwd: ws.originalCwd,
+        lineIndex,
+      };
+      if (ws.originalBranch !== undefined) worktreeLine.originalBranch = ws.originalBranch;
+      if (ws.originalHeadCommit !== undefined) {
+        worktreeLine.originalHeadCommit = ws.originalHeadCommit;
+      }
+      if (ws.enteredExisting !== undefined) worktreeLine.enteredExisting = ws.enteredExisting;
+      sessionLines.push(worktreeLine);
+      continue;
+    }
+
     // Only include user/assistant lines for the rendering tree
     if (record.type !== "user" && record.type !== "assistant") continue;
 
@@ -415,6 +538,39 @@ function processRecordBatch(
       if (record.isMeta === true) processedLine.isMeta = true;
       if (record.isCompactSummary === true) processedLine.isCompactSummary = true;
       if (record.isVisibleInTranscriptOnly === true) processedLine.isVisibleInTranscriptOnly = true;
+      if (record.promptSource !== undefined && record.promptSource !== "typed") {
+        processedLine.promptSource = record.promptSource;
+      }
+    }
+    if (record.type === "assistant") {
+      if (record.isApiErrorMessage === true) processedLine.isApiErrorMessage = true;
+      if (record.apiErrorStatus !== undefined) processedLine.apiErrorStatus = record.apiErrorStatus;
+      if (record.errorDetails !== undefined) processedLine.errorDetails = record.errorDetails;
+      if (record.message.stop_reason === "max_tokens") processedLine.stopReason = "max_tokens";
+      if (record.message.usage !== undefined) processedLine.usage = record.message.usage;
+      // Attribution repeats on every turn of a skill/MCP block; only carry it
+      // onto the first line of each run so the UI shows one pill per block.
+      const attributionKey = JSON.stringify([
+        record.attributionSkill,
+        record.attributionPlugin,
+        record.attributionMcpServer,
+        record.attributionMcpTool,
+      ]);
+      if (attributionKey !== lastAttributionKey) {
+        lastAttributionKey = attributionKey;
+        if (record.attributionSkill !== undefined) {
+          processedLine.attributionSkill = record.attributionSkill;
+        }
+        if (record.attributionPlugin !== undefined) {
+          processedLine.attributionPlugin = record.attributionPlugin;
+        }
+        if (record.attributionMcpServer !== undefined) {
+          processedLine.attributionMcpServer = record.attributionMcpServer;
+        }
+        if (record.attributionMcpTool !== undefined) {
+          processedLine.attributionMcpTool = record.attributionMcpTool;
+        }
+      }
     }
     // The Zod-parsed message uses the ContentBlock type directly --
     // no intermediate serialization type needed.

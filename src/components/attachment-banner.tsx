@@ -111,15 +111,25 @@ function AttachmentContent({
           )}
         </Banner>
       );
-    case "hook_blocking_error":
+    case "hook_blocking_error": {
+      const be = attachment.blockingError;
+      const blockingMessage =
+        be && typeof be["message"] === "string"
+          ? be["message"]
+          : be && typeof be["reason"] === "string"
+            ? be["reason"]
+            : undefined;
       return (
         <Banner
           icon={<OctagonX className="h-3.5 w-3.5" />}
           label={`Hook blocked: ${attachment.hookName}`}
           sessionId={sessionId}
           uuid={uuid}
-        />
+        >
+          {blockingMessage && <span className="text-text-600">{blockingMessage}</span>}
+        </Banner>
       );
+    }
     case "hook_system_message":
       return (
         <Banner
@@ -356,6 +366,10 @@ function AttachmentContent({
       const parts: string[] = [];
       if (attachment.addedNames?.length) parts.push(`+${attachment.addedNames.length} tools`);
       if (attachment.removedNames?.length) parts.push(`-${attachment.removedNames.length} tools`);
+      if (attachment.pendingMcpServers?.length) {
+        const n = attachment.pendingMcpServers.length;
+        parts.push(`${n} MCP server${n === 1 ? "" : "s"} pending`);
+      }
       return (
         <Banner
           icon={<Wrench className="h-3.5 w-3.5" />}
@@ -475,7 +489,7 @@ export function Banner({
   );
 }
 
-function Pre({ children }: { children: React.ReactNode }) {
+export function Pre({ children }: { children: React.ReactNode }) {
   return (
     <pre className="w-full mt-1 text-[10px] leading-tight text-text-600 bg-bg-200 rounded px-2 py-1 whitespace-pre-wrap break-all">
       {children}

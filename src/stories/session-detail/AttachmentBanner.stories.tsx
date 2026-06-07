@@ -53,6 +53,17 @@ export const HookAdditionalContext: Story = {
   },
 };
 
+export const HookBlockingError: Story = {
+  args: {
+    attachmentJson: JSON.stringify({
+      type: "hook_blocking_error",
+      hookName: "policy-guard",
+      hookEvent: "PreToolUse",
+      blockingError: { message: "Command rejected: writes outside the workspace are not allowed" },
+    }),
+  },
+};
+
 export const FileAttachment: Story = {
   args: {
     attachmentJson: JSON.stringify({
@@ -177,6 +188,16 @@ export const DeferredToolsDelta: Story = {
       type: "deferred_tools_delta",
       addedNames: ["WebFetch", "WebSearch", "SendMessage"],
       removedNames: ["ToolSearch"],
+    }),
+  },
+};
+
+export const DeferredToolsDeltaWithPendingMcp: Story = {
+  args: {
+    attachmentJson: JSON.stringify({
+      type: "deferred_tools_delta",
+      addedNames: ["WebFetch", "WebSearch"],
+      pendingMcpServers: ["context7", "github"],
     }),
   },
 };

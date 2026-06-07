@@ -594,6 +594,60 @@ describe("readSession", () => {
     expect(await readSession(testDir, "foo bar")).toBe(null);
   });
 
+  it("surfaces session-level provenance fields", async () => {
+    const projDir = join(testDir, "-Users-craig-projects-app");
+    mkdirSync(projDir, { recursive: true });
+    writeFileSync(
+      join(projDir, "prov.jsonl"),
+      jsonl(
+        userMessage("Hello", {
+          entrypoint: "sdk-cli",
+          sessionKind: "bg",
+          teamName: "alpha",
+          forkedFrom: { sessionId: "parent-abc" },
+        }),
+        assistantMessage([{ type: "text", text: "Hi" }], { teamName: "beta" }),
+        userMessage("Again", {
+          entrypoint: "sdk-ts",
+          teamName: "alpha",
+          forkedFrom: "ignored-second",
+        }),
+      ),
+    );
+
+    const detail = await readSession(testDir, "prov");
+    if (!detail) throw new Error("Expected non-null detail");
+    expect(detail.entrypoint).toBe("sdk-cli");
+    expect(detail.sessionKind).toBe("bg");
+    expect(detail.teamNames).toStrictEqual(["alpha", "beta"]);
+    expect(detail.forkedFromSessionId).toBe("parent-abc");
+  });
+
+  it("reads forkedFrom as a plain string", async () => {
+    const projDir = join(testDir, "-Users-craig-projects-app");
+    mkdirSync(projDir, { recursive: true });
+    writeFileSync(
+      join(projDir, "forkstr.jsonl"),
+      jsonl(userMessage("Hi", { forkedFrom: "str-parent" })),
+    );
+
+    const detail = await readSession(testDir, "forkstr");
+    expect(detail!.forkedFromSessionId).toBe("str-parent");
+  });
+
+  it("omits provenance fields when absent", async () => {
+    const projDir = join(testDir, "-Users-craig-projects-app");
+    mkdirSync(projDir, { recursive: true });
+    writeFileSync(join(projDir, "plain.jsonl"), jsonl(userMessage("Hi")));
+
+    const detail = await readSession(testDir, "plain");
+    if (!detail) throw new Error("Expected non-null detail");
+    expect(detail.entrypoint).toBeUndefined();
+    expect(detail.sessionKind).toBeUndefined();
+    expect(detail.teamNames).toBeUndefined();
+    expect(detail.forkedFromSessionId).toBeUndefined();
+  });
+
   it("skips progress and file-history-snapshot entries", async () => {
     const projDir = join(testDir, "-Users-craig-projects-app");
     mkdirSync(projDir, { recursive: true });

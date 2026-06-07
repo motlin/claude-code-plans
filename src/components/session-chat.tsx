@@ -1,6 +1,17 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { Bot, Copy, Link, Link2, Lock, Palette } from "lucide-react";
+import {
+  AlertTriangle,
+  Bot,
+  Copy,
+  GitBranch,
+  Link,
+  Link2,
+  Lock,
+  Palette,
+  Plug,
+  Zap,
+} from "lucide-react";
 import { assertNever } from "../lib/assert-never";
 import { MarkdownArticle } from "./markdown-article";
 import { getToolRenderer } from "./tool-renderers";
@@ -8,7 +19,9 @@ import { buildClientToolCall } from "./tool-renderers/types";
 import type { ClientToolCall } from "./tool-renderers";
 import type { LiveToolFailure } from "./tool-renderers/types";
 import { useClaudeEvents } from "../hooks/use-claude-events";
-import { ChevronIcon, TerminalOutput } from "./tool-renderers/shared";
+import { ChevronIcon, CollapsibleSection, TerminalOutput } from "./tool-renderers/shared";
+import { SystemBanner, formatTokens } from "./system-banner";
+import { promptSourceLabels } from "../lib/schema-choices";
 import { computeDiffData } from "../lib/diff-utils";
 import { TasksView } from "./tasks-view";
 import { DebugLink } from "./debug-link";
@@ -21,7 +34,7 @@ import type {
   ToolResultInfo,
 } from "../lib/sessions";
 import type { ToolUseBlock } from "../lib/schemas";
-import { AttachmentBanner, Banner } from "./attachment-banner";
+import { AttachmentBanner, Banner, Pre } from "./attachment-banner";
 import {
   stripCommandTags,
   parseCommandBlock,
@@ -119,6 +132,7 @@ function MessageToolbar({
   timestamp?: string;
 }) {
   const [copied, setCopied] = useState<"text" | "link" | null>(null);
+  const usage = summarizeUsage(line.usage);
   const relativeTimestamp = formatRelativeTimestamp(timestamp);
   const absoluteTimestamp = formatTimestamp(timestamp);
   const timestampTitle = absoluteTimestamp ?? undefined;
@@ -173,8 +187,40 @@ function MessageToolbar({
           {relativeTimestamp}
         </span>
       )}
+      {line.stopReason === "max_tokens" && (
+        <span className="text-[10px] text-warning-100 self-center rounded-full bg-bg-200 px-1.5">
+          truncated · max tokens
+        </span>
+      )}
+      {usage && (
+        <span
+          className="text-[11px] text-assistant-secondary tabular-nums self-center"
+          title={usage.title}
+        >
+          {usage.summary}
+        </span>
+      )}
     </div>
   );
+}
+
+/** Compact token-usage summary from an assistant message's usage record. */
+function summarizeUsage(
+  usage: Record<string, unknown> | undefined,
+): { summary: string; title: string } | undefined {
+  if (!usage) return undefined;
+  const num = (key: string): number =>
+    typeof usage[key] === "number" ? (usage[key] as number) : 0;
+  const input = num("input_tokens");
+  const output = num("output_tokens");
+  const cacheRead = num("cache_read_input_tokens");
+  const cacheCreate = num("cache_creation_input_tokens");
+  const totalIn = input + cacheRead + cacheCreate;
+  if (totalIn === 0 && output === 0) return undefined;
+  return {
+    summary: `${formatTokens(totalIn)} in / ${formatTokens(output)} out`,
+    title: `input ${input} · cache read ${cacheRead} · cache write ${cacheCreate} · output ${output}`,
+  };
 }
 
 function extractTextFromLine(line: MessageSessionLine): string[] {
@@ -438,6 +484,8 @@ const BANNER_LINE_TYPES = new Set([
   "permission-mode",
   "pr-link",
   "attachment",
+  "system",
+  "worktree",
 ]);
 
 function isToolOnlyAssistantLine(line: SessionLine): boolean {
@@ -633,6 +681,14 @@ function isLineVisible(
 ): boolean {
   if (line.type === "agent-name" || line.type === "agent-color" || line.type === "permission-mode")
     return showSystemBanners;
+  if (line.type === "worktree") return showSystemBanners;
+  if (line.type === "system") {
+    if (line.subtype === "stop_hook_summary") {
+      const failed = (line.hookErrors?.length ?? 0) > 0 || line.preventedContinuation === true;
+      return failed ? showHookErrors : showPassedHooks;
+    }
+    return showSystemBanners;
+  }
   if (line.type === "attachment") {
     const subtype = getAttachmentSubtype(line.attachmentJson);
     if (subtype === "hook_success") return showPassedHooks;
@@ -732,6 +788,27 @@ function renderSessionMessage({
           sessionId={sessionId}
           uuid={line.uuid}
         />
+      );
+    case "system":
+      return <SystemBanner line={line} sessionId={sessionId} />;
+    case "worktree":
+      return (
+        <Banner
+          icon={<GitBranch className="h-3.5 w-3.5" />}
+          label={`Worktree: ${line.worktreeName}`}
+        >
+          <span className="font-mono text-text-600" title={`main repo: ${line.originalCwd}`}>
+            {line.originalBranch !== undefined && line.originalBranch !== line.worktreeBranch
+              ? `${line.originalBranch} → ${line.worktreeBranch}`
+              : line.worktreeBranch}
+          </span>
+          {line.originalHeadCommit !== undefined && (
+            <span className="font-mono text-text-600" title={line.originalHeadCommit}>
+              {line.originalHeadCommit.slice(0, 7)}
+            </span>
+          )}
+          {line.enteredExisting === true && <span className="text-text-600">entered existing</span>}
+        </Banner>
       );
     default:
       return assertNever(line);
@@ -949,6 +1026,11 @@ function UserEntry({
   return (
     <div className="group/msg flex justify-start w-full">
       <div className="flex flex-col items-start gap-1 max-w-[75%] min-w-0">
+        {line.promptSource !== undefined && (
+          <span className="text-[11px] text-text-500">
+            {promptSourceLabels[line.promptSource]} prompt
+          </span>
+        )}
         {textNodes.length > 0 && (
           <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] rounded-bl-[2px] bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-[13px] leading-[20px] select-text">
             {textNodes}
@@ -1435,15 +1517,24 @@ function AssistantEntry({
     return null;
   }
 
+  const attributionRow = <AttributionRow line={line} />;
+
   // Only tool_use blocks -- render as a tool call section
   if (!hasVisibleNonToolContent && hasToolUse) {
     if (!showTools) return null;
-    return <ToolCallSection calls={toolCalls} sessionId={sessionId} />;
+    return (
+      <>
+        {attributionRow}
+        <ToolCallSection calls={toolCalls} sessionId={sessionId} />
+      </>
+    );
   }
 
   // Mixed content: render each block in original order
   return (
     <div className="flex flex-col gap-1.5 min-w-0">
+      {attributionRow}
+      {line.isApiErrorMessage === true && <ApiErrorCallout line={line} />}
       {content.map((block, i) => (
         <ContentBlock
           key={i}
@@ -1456,6 +1547,61 @@ function AssistantEntry({
           toolCalls={toolCalls}
         />
       ))}
+    </div>
+  );
+}
+
+/**
+ * Pills attributing an assistant turn to the skill or MCP server that drove
+ * it. The transcript layer dedupes consecutive identical attribution, so this
+ * renders once per skill/MCP block.
+ */
+function AttributionRow({ line }: { line: MessageSessionLine }) {
+  const skillLabel = line.attributionSkill ?? line.attributionPlugin;
+  const mcpLabel = line.attributionMcpServer
+    ? `${line.attributionMcpServer}${line.attributionMcpTool ? ` · ${line.attributionMcpTool}` : ""}`
+    : undefined;
+  if (!skillLabel && !mcpLabel) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {skillLabel && (
+        <span className="inline-flex items-center gap-1 text-[11px] text-text-500 bg-bg-100 rounded-full px-2 py-0.5">
+          <Zap className="h-3 w-3" />
+          {skillLabel}
+        </span>
+      )}
+      {mcpLabel && (
+        <span className="inline-flex items-center gap-1 text-[11px] text-text-500 bg-bg-100 rounded-full px-2 py-0.5">
+          <Plug className="h-3 w-3" />
+          {mcpLabel}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Error callout for assistant turns flagged as API error messages. */
+function ApiErrorCallout({ line }: { line: MessageSessionLine }) {
+  const details = line.errorDetails;
+  const detailsText =
+    details === undefined
+      ? undefined
+      : typeof details === "string"
+        ? details
+        : JSON.stringify(details, null, 2);
+  return (
+    <div className="border-l-2 border-danger-000 bg-danger-000/10 rounded-r px-3 py-2">
+      <div className="flex items-center gap-1.5 text-xs text-danger-000">
+        <AlertTriangle className="h-3.5 w-3.5" />
+        API Error{line.apiErrorStatus !== undefined ? ` ${line.apiErrorStatus}` : ""}
+      </div>
+      {detailsText !== undefined && (
+        <div className="mt-1">
+          <CollapsibleSection label="Details">
+            <Pre>{detailsText}</Pre>
+          </CollapsibleSection>
+        </div>
+      )}
     </div>
   );
 }

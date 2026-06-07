@@ -32,7 +32,7 @@ type HookEventOf<Name extends HookEvent["hook_event_name"]> = Extract<
   { hook_event_name: Name }
 >;
 
-const promptSourceLabels = {
+export const promptSourceLabels = {
   typed: "Typed",
   system: "System",
   sdk: "SDK",
@@ -85,6 +85,13 @@ const pluginFileTypeLabels = {
   reference: "Reference",
   example: "Example",
 } satisfies Record<z.infer<typeof PluginFileSchema>["type"], string>;
+
+const systemSubtypeLabels = {
+  compact_boundary: "Compaction",
+  stop_hook_summary: "Stop hooks",
+  api_error: "API error",
+  turn_duration: "Turn duration",
+} satisfies Record<Extract<ProcessedLine, { type: "system" }>["subtype"], string>;
 
 const messageLineTypeLabels = {
   user: "User",
@@ -167,6 +174,8 @@ const renderedLineVariants = {
   "permission-mode": true,
   "pr-link": true,
   attachment: true,
+  system: true,
+  worktree: true,
 } satisfies Record<ProcessedLine["type"], true>;
 
 /** Exhaustive handler: switch in src/lib/hook-dispatcher.ts. */
@@ -218,6 +227,8 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   JsonlRecordSchema: jsonlRecordVariants,
   RenderedLineSchema: renderedLineVariants,
   "RenderedLineSchema.<assistant|user>.type": messageLineTypeLabels,
+  "RenderedLineSchema.<system>.subtype": systemSubtypeLabels,
+  "JsonlRecordSchema.<system>.compactMetadata.trigger": compactTriggerLabels,
   ToolUseUnion: toolNames,
   HookEventEnvelope: hookEventNames,
   "HookEventEnvelope.<SessionStart>.source": sessionStartSourceLabels,

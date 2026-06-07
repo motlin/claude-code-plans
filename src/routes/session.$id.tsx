@@ -30,6 +30,7 @@ import {
   Download,
   Maximize2,
   Minimize2,
+  Users,
 } from "lucide-react";
 import { DetailTopBar, pillStyles } from "../components/detail-top-bar";
 import { useSettings } from "../components/settings-provider";
@@ -341,6 +342,36 @@ function SessionPage() {
             <span className="text-xs text-text-500" title={data.projectPath ?? undefined}>
               {data.projectName}
             </span>
+            {data.entrypoint && data.entrypoint !== "cli" && (
+              <span className="inline-flex items-center rounded-full bg-bg-200 px-2 py-0.5 text-xs font-medium text-text-500">
+                {data.entrypoint}
+              </span>
+            )}
+            {data.sessionKind && (
+              <span className="inline-flex items-center rounded-full bg-bg-200 px-2 py-0.5 text-xs font-medium text-text-500">
+                {data.sessionKind}
+              </span>
+            )}
+            {data.teamNames?.map((team) => (
+              <span
+                key={team}
+                className="inline-flex items-center gap-1 rounded-full bg-bg-200 px-2 py-0.5 text-xs font-medium text-text-500"
+              >
+                <Users className="h-3 w-3" />
+                {team}
+              </span>
+            ))}
+            {data.forkedFromSessionId && (
+              <Link
+                to="/session/$id"
+                params={{ id: data.forkedFromSessionId }}
+                className="inline-flex items-center gap-1 rounded-full bg-bg-200 px-2 py-0.5 text-xs font-medium text-text-500 no-underline transition-colors hover:bg-bg-300/70"
+                title={`Forked from ${data.forkedFromSessionId}`}
+              >
+                <GitFork className="h-3 w-3" />
+                Forked from {data.forkedFromSessionId.slice(0, 8)}
+              </Link>
+            )}
             {isActive && (
               <span className="inline-flex items-center gap-1 rounded-full bg-success-900 px-2 py-0.5 text-xs font-medium text-success-000">
                 <span className="h-1.5 w-1.5 rounded-full bg-success-000 animate-pulse" />

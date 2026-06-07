@@ -16,6 +16,11 @@ export const Route = createFileRoute("/api/sessions/$id")({
         const { sessions } = await import("../../lib/db/schema");
         const { eq } = await import("drizzle-orm");
         const { getSummary } = await import("../../lib/summaries");
+        const { readSession } = await import("../../lib/sessions");
+        const { homedir } = await import("node:os");
+        const { join } = await import("node:path");
+
+        const PROJECTS_DIR = join(homedir(), ".claude", "projects");
 
         const { id } = params;
         const { index, summaries } = getDb();
@@ -105,6 +110,15 @@ export const Route = createFileRoute("/api/sessions/$id")({
           messageCount: sessionMeta?.messageCount ?? 0,
           pendingTaskCount,
         };
+
+        const provenance = await readSession(PROJECTS_DIR, id);
+        if (provenance) {
+          if (provenance.entrypoint !== undefined) detail.entrypoint = provenance.entrypoint;
+          if (provenance.sessionKind !== undefined) detail.sessionKind = provenance.sessionKind;
+          if (provenance.teamNames !== undefined) detail.teamNames = provenance.teamNames;
+          if (provenance.forkedFromSessionId !== undefined)
+            detail.forkedFromSessionId = provenance.forkedFromSessionId;
+        }
 
         return Response.json(SessionDetailResponse.parse(detail), {
           headers: { "Cache-Control": "private, max-age=0, must-revalidate" },

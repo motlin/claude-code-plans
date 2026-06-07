@@ -845,3 +845,260 @@ describe("extractSessionTitle", () => {
     expect(extractSessionTitle("")).toBe("Untitled Session");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Message metadata fields (promptSource, API errors, usage, attribution)
+// ---------------------------------------------------------------------------
+
+describe("message metadata fields", () => {
+  it("carries promptSource on user lines except typed", () => {
+    const records = [
+      userRecord("queued prompt", { promptSource: "queued" }),
+      userRecord("typed prompt", { promptSource: "typed" }),
+      userRecord("plain prompt"),
+    ];
+    const result = processTranscript(records);
+    expect(result.lines).toHaveLength(3);
+    expect(result.lines[0]).toMatchObject({ type: "user", promptSource: "queued" });
+    expect(result.lines[1]!).not.toHaveProperty("promptSource");
+    expect(result.lines[2]!).not.toHaveProperty("promptSource");
+  });
+
+  it("carries API error fields on assistant lines", () => {
+    const records = [
+      assistantRecord([{ type: "text", text: "overloaded" }], {
+        isApiErrorMessage: true,
+        apiErrorStatus: 529,
+        errorDetails: '{"error":{"message":"Overloaded"}}',
+      }),
+      assistantRecord([{ type: "text", text: "fine" }]),
+    ];
+    const result = processTranscript(records);
+    expect(result.lines[0]).toMatchObject({
+      type: "assistant",
+      isApiErrorMessage: true,
+      apiErrorStatus: 529,
+      errorDetails: '{"error":{"message":"Overloaded"}}',
+    });
+    expect(result.lines[1]!).not.toHaveProperty("isApiErrorMessage");
+  });
+
+  it("carries stopReason only when max_tokens", () => {
+    const records = [
+      assistantRecord([{ type: "text", text: "cut" }], {
+        message: {
+          role: "assistant",
+          content: [{ type: "text", text: "cut" }],
+          stop_reason: "max_tokens",
+        },
+      }),
+      assistantRecord([{ type: "text", text: "done" }], {
+        message: {
+          role: "assistant",
+          content: [{ type: "text", text: "done" }],
+          stop_reason: "end_turn",
+        },
+      }),
+    ];
+    const result = processTranscript(records);
+    expect(result.lines[0]).toMatchObject({ stopReason: "max_tokens" });
+    expect(result.lines[1]!).not.toHaveProperty("stopReason");
+  });
+
+  it("carries usage and attribution fields on assistant lines", () => {
+    const records = [
+      assistantRecord([{ type: "text", text: "hi" }], {
+        message: {
+          role: "assistant",
+          content: [{ type: "text", text: "hi" }],
+          usage: { input_tokens: 1000, output_tokens: 50 },
+        },
+        attributionSkill: "git:git-workflow",
+        attributionPlugin: "git",
+        attributionMcpServer: "imcp",
+        attributionMcpTool: "weather_current",
+      }),
+    ];
+    const result = processTranscript(records);
+    expect(result.lines[0]).toMatchObject({
+      usage: { input_tokens: 1000, output_tokens: 50 },
+      attributionSkill: "git:git-workflow",
+      attributionPlugin: "git",
+      attributionMcpServer: "imcp",
+      attributionMcpTool: "weather_current",
+    });
+  });
+
+  it("dedupes consecutive identical attribution onto the first line only", () => {
+    const records = [
+      assistantRecord([{ type: "text", text: "a" }], { attributionSkill: "build:fix" }),
+      assistantRecord([{ type: "text", text: "b" }], { attributionSkill: "build:fix" }),
+      assistantRecord([{ type: "text", text: "c" }], { attributionSkill: "other:skill" }),
+      assistantRecord([{ type: "text", text: "d" }]),
+      assistantRecord([{ type: "text", text: "e" }], { attributionSkill: "build:fix" }),
+    ];
+    const result = processTranscript(records);
+    expect(result.lines[0]).toMatchObject({ attributionSkill: "build:fix" });
+    expect(result.lines[1]!).not.toHaveProperty("attributionSkill");
+    expect(result.lines[2]).toMatchObject({ attributionSkill: "other:skill" });
+    expect(result.lines[3]!).not.toHaveProperty("attributionSkill");
+    expect(result.lines[4]).toMatchObject({ attributionSkill: "build:fix" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// System record lines
+// ---------------------------------------------------------------------------
+
+describe("system record lines", () => {
+  it("emits a system line for compact_boundary with typed compactMetadata", () => {
+    const records = [
+      {
+        type: "system",
+        subtype: "compact_boundary",
+        content: "Conversation compacted",
+        compactMetadata: {
+          trigger: "auto",
+          preTokens: 261187,
+          postTokens: 10827,
+          durationMs: 48788,
+          preCompactDiscoveredTools: ["ExitPlanMode"],
+        },
+        uuid: "s-1",
+        timestamp: "1999-12-31T00:00:00Z",
+      },
+    ];
+    const result = processTranscript(records);
+    expect(result.lines).toHaveLength(1);
+    expect(result.lines[0]).toMatchObject({
+      type: "system",
+      subtype: "compact_boundary",
+      content: "Conversation compacted",
+      compactMetadata: { trigger: "auto", preTokens: 261187, postTokens: 10827 },
+      uuid: "s-1",
+      lineIndex: 0,
+    });
+  });
+
+  it("skips unrendered system subtypes", () => {
+    const records = [
+      { type: "system", subtype: "informational", content: "x" },
+      { type: "system", subtype: "local_command", content: "y" },
+      { type: "system", subtype: "scheduled_task_fire", content: "z" },
+    ];
+    expect(processTranscript(records).lines).toStrictEqual([]);
+  });
+
+  it("emits stop_hook_summary with hook fields", () => {
+    const records = [
+      {
+        type: "system",
+        subtype: "stop_hook_summary",
+        hookCount: 3,
+        hookErrors: ["boom"],
+        hookInfos: [{ name: "precommit" }],
+        hookAdditionalContext: ["ctx"],
+        preventedContinuation: true,
+        hasOutput: true,
+      },
+    ];
+    const result = processTranscript(records);
+    expect(result.lines[0]).toMatchObject({
+      type: "system",
+      subtype: "stop_hook_summary",
+      hookCount: 3,
+      hookErrors: ["boom"],
+      hookInfos: [{ name: "precommit" }],
+      hookAdditionalContext: ["ctx"],
+      preventedContinuation: true,
+    });
+  });
+
+  it("emits api_error with retry fields", () => {
+    const records = [
+      {
+        type: "system",
+        subtype: "api_error",
+        error: { message: "Overloaded" },
+        retryAttempt: 2,
+        retryInMs: 4000,
+        maxRetries: 10,
+      },
+    ];
+    const result = processTranscript(records);
+    expect(result.lines[0]).toMatchObject({
+      type: "system",
+      subtype: "api_error",
+      error: { message: "Overloaded" },
+      retryAttempt: 2,
+      retryInMs: 4000,
+      maxRetries: 10,
+    });
+  });
+
+  it("emits turn_duration with durationMs and pending agents", () => {
+    const records = [
+      {
+        type: "system",
+        subtype: "turn_duration",
+        durationMs: 12500,
+        pendingBackgroundAgentCount: 2,
+      },
+    ];
+    const result = processTranscript(records);
+    expect(result.lines[0]).toMatchObject({
+      type: "system",
+      subtype: "turn_duration",
+      durationMs: 12500,
+      pendingBackgroundAgentCount: 2,
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Worktree state lines
+// ---------------------------------------------------------------------------
+
+describe("worktree state lines", () => {
+  const session = {
+    originalCwd: "/Users/x/proj",
+    worktreePath: "/Users/x/proj-wt",
+    worktreeName: "fix-bug",
+    worktreeBranch: "fix-bug-branch",
+    sessionId: "s",
+    originalBranch: "main",
+    originalHeadCommit: "abc1234def5678",
+    enteredExisting: true,
+  };
+
+  it("emits a worktree line and dedupes unchanged repeats", () => {
+    const records = [
+      { type: "worktree-state", worktreeSession: session },
+      { type: "worktree-state", worktreeSession: session },
+    ];
+    const result = processTranscript(records);
+    expect(result.lines).toHaveLength(1);
+    expect(result.lines[0]).toMatchObject({
+      type: "worktree",
+      worktreeName: "fix-bug",
+      worktreeBranch: "fix-bug-branch",
+      originalBranch: "main",
+      originalHeadCommit: "abc1234def5678",
+      originalCwd: "/Users/x/proj",
+      enteredExisting: true,
+    });
+  });
+
+  it("emits again when the worktree changes", () => {
+    const records = [
+      { type: "worktree-state", worktreeSession: session },
+      { type: "worktree-state", worktreeSession: { ...session, worktreeName: "other" } },
+    ];
+    expect(processTranscript(records).lines).toHaveLength(2);
+  });
+
+  it("skips null worktreeSession", () => {
+    const records = [{ type: "worktree-state", worktreeSession: null }];
+    expect(processTranscript(records).lines).toStrictEqual([]);
+  });
+});

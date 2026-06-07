@@ -21,6 +21,10 @@ export interface SessionEntry {
   gitBranch?: string | undefined;
   cwd?: string | undefined;
   isSidechain: boolean;
+  entrypoint?: string | undefined;
+  sessionKind?: string | undefined;
+  teamNames?: string[] | undefined;
+  forkedFromSessionId?: string | undefined;
 }
 
 export interface SessionProjectGroup {
@@ -85,6 +89,10 @@ interface SessionDetail {
   projectId: string;
   messages: SessionMessage[];
   uuidToLine: Map<string, number>;
+  entrypoint?: string | undefined;
+  sessionKind?: string | undefined;
+  teamNames?: string[] | undefined;
+  forkedFromSessionId?: string | undefined;
 }
 
 export type { SessionLine, MessageSessionLine, SessionContentBlock } from "./transcript";
@@ -140,6 +148,10 @@ interface JsonlEntry {
   timestamp?: string;
   customTitle?: string;
   sessionId?: string;
+  entrypoint?: string;
+  sessionKind?: string;
+  teamName?: string;
+  forkedFrom?: string | Record<string, unknown>;
   message?: {
     role?: string;
     content?: string | RawContentBlock[];
@@ -511,6 +523,10 @@ export async function readSession(
   const messages: SessionMessage[] = [];
   let title = sessionId;
   let customTitle: string | undefined;
+  let entrypoint: string | undefined;
+  let sessionKind: string | undefined;
+  let forkedFromSessionId: string | undefined;
+  const teamNameSet = new Set<string>();
   const toolCallMap = new Map<string, ToolCallInfo>();
   const toolStartTimes = new Map<string, number>();
   const uuidToLine = new Map<string, number>();
@@ -535,6 +551,27 @@ export async function readSession(
 
       const sourceUuid = typeof obj.uuid === "string" ? obj.uuid : "";
       if (sourceUuid) uuidToLine.set(sourceUuid, lineIndex);
+
+      if (entrypoint === undefined && typeof obj.entrypoint === "string") {
+        entrypoint = obj.entrypoint;
+      }
+      if (sessionKind === undefined && typeof obj.sessionKind === "string") {
+        sessionKind = obj.sessionKind;
+      }
+      if (typeof obj.teamName === "string") {
+        teamNameSet.add(obj.teamName);
+      }
+      if (forkedFromSessionId === undefined && obj.forkedFrom !== undefined) {
+        const forked = obj.forkedFrom;
+        if (typeof forked === "string") {
+          forkedFromSessionId = forked;
+        } else {
+          const forkedId = forked["sessionId"];
+          if (typeof forkedId === "string") {
+            forkedFromSessionId = forkedId;
+          }
+        }
+      }
 
       if (obj.type === "custom-title") {
         const parsed = CustomTitleRecordSchema.safeParse(obj);
@@ -719,7 +756,7 @@ export async function readSession(
 
   if (customTitle) title = customTitle;
 
-  return {
+  const detail: SessionDetail = {
     id: sessionId,
     title,
     projectName,
@@ -727,6 +764,11 @@ export async function readSession(
     messages,
     uuidToLine,
   };
+  if (entrypoint !== undefined) detail.entrypoint = entrypoint;
+  if (sessionKind !== undefined) detail.sessionKind = sessionKind;
+  if (teamNameSet.size > 0) detail.teamNames = [...teamNameSet];
+  if (forkedFromSessionId !== undefined) detail.forkedFromSessionId = forkedFromSessionId;
+  return detail;
 }
 
 /**
