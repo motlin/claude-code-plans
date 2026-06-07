@@ -130,6 +130,41 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
     type: "string",
     section: "Advanced",
   },
+  {
+    key: "includeGitInstructions",
+    label: "Git instructions",
+    description: "Include git workflow instructions in the system prompt",
+    type: "boolean",
+    section: "General",
+  },
+  {
+    key: "outputStyle",
+    label: "Output style",
+    description: "Name of the output style to use for responses",
+    type: "string",
+    section: "General",
+  },
+  {
+    key: "spinnerTipsEnabled",
+    label: "Spinner tips",
+    description: "Show tips while the spinner is animating",
+    type: "boolean",
+    section: "General",
+  },
+  {
+    key: "effortLevel",
+    label: "Effort level",
+    description: "Reasoning effort level (e.g. low, medium, high)",
+    type: "string",
+    section: "General",
+  },
+  {
+    key: "skipWorkflowUsageWarning",
+    label: "Skip workflow usage warning",
+    description: "Skip the warning shown for workflow usage",
+    type: "boolean",
+    section: "Advanced",
+  },
 ];
 
 export const SECTIONS_ORDER = ["General", "Data", "Updates", "MCP", "Permissions", "Advanced"];
