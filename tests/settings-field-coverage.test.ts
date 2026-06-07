@@ -9,12 +9,7 @@ import { COVERED_SETTINGS_KEYS } from "../src/lib/settings-fields";
  * dedicated editor (reflected in COVERED_SETTINGS_KEYS).
  */
 describe("settings field coverage", () => {
-  // RED guard: 11 schema keys still lack form coverage (includeGitInstructions,
-  // skipWorkflowUsageWarning, outputStyle, spinnerTipsEnabled, effortLevel,
-  // additionalDirectories, extraKnownMarketplaces, sandbox, remote, worktree,
-  // spinnerVerbs). `.fails` keeps the build green while documenting the gap;
-  // the follow-up tasks that add form coverage remove `.fails` to lock it in.
-  it.fails("every ClaudeSettingsSchema key has form coverage", () => {
+  it("every ClaudeSettingsSchema key has form coverage", () => {
     const schemaKeys = Object.keys(ClaudeSettingsSchema.shape);
     const uncovered = schemaKeys.filter((key) => !COVERED_SETTINGS_KEYS.has(key)).sort();
     expect(uncovered).toEqual([]);

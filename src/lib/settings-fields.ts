@@ -177,6 +177,12 @@ export const DEDICATED_EDITOR_KEYS = new Set([
   "hooks",
   "enabledPlugins",
   "enabledMcpjsonServers",
+  "additionalDirectories",
+  "extraKnownMarketplaces",
+  "sandbox",
+  "remote",
+  "worktree",
+  "spinnerVerbs",
 ]);
 
 export type ObjectSubFieldType = "boolean" | "string" | "number" | "stringList";
@@ -196,7 +202,49 @@ export interface ObjectEditorDef {
   fields: ObjectSubField[];
 }
 
-export const OBJECT_EDITORS: ObjectEditorDef[] = [];
+export const OBJECT_EDITORS: ObjectEditorDef[] = [
+  {
+    key: "sandbox",
+    label: "Sandbox",
+    description: "Sandboxed execution settings",
+    section: "Permissions",
+    fields: [
+      { key: "enabled", label: "Enabled", type: "boolean" },
+      {
+        key: "autoAllowBashIfSandboxed",
+        label: "Auto-allow Bash if sandboxed",
+        type: "boolean",
+      },
+    ],
+  },
+  {
+    key: "remote",
+    label: "Remote",
+    description: "Remote environment settings",
+    section: "Advanced",
+    fields: [{ key: "defaultEnvironmentId", label: "Default environment ID", type: "string" }],
+  },
+  {
+    key: "worktree",
+    label: "Worktree",
+    description: "Git worktree settings",
+    section: "Advanced",
+    fields: [
+      { key: "baseRef", label: "Base ref", type: "string" },
+      { key: "bgIsolation", label: "Background isolation", type: "string" },
+    ],
+  },
+  {
+    key: "spinnerVerbs",
+    label: "Spinner verbs",
+    description: "Custom verbs shown while the spinner is animating",
+    section: "Advanced",
+    fields: [
+      { key: "mode", label: "Mode", type: "string" },
+      { key: "verbs", label: "Verbs", type: "stringList" },
+    ],
+  },
+];
 
 export const COVERED_SETTINGS_KEYS: ReadonlySet<string> = new Set<string>([
   ...FIELD_DEFINITIONS.map((f) => f.key),
