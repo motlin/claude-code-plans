@@ -1117,7 +1117,7 @@ function PluginsEditor({
   );
 }
 
-function StringListEditor({
+export function StringListEditor({
   label,
   description,
   fieldKey,
@@ -1244,7 +1244,7 @@ function ObjectSummary({ label, value }: { label: string; value: unknown }) {
   );
 }
 
-function ObjectFieldsEditor({
+export function ObjectFieldsEditor({
   def,
   value,
   onChange,
@@ -1365,7 +1365,7 @@ interface MarketplaceEntry {
   url?: string;
 }
 
-function MarketplacesEditor({
+export function MarketplacesEditor({
   value,
   onChange,
 }: {
