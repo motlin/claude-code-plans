@@ -21,6 +21,8 @@ import {
   DEDICATED_EDITOR_KEYS,
   FIELD_DEFINITIONS,
   type FieldDefinition,
+  OBJECT_EDITORS,
+  type ObjectEditorDef,
   SECTIONS_ORDER,
 } from "../lib/settings-fields";
 
@@ -1242,6 +1244,320 @@ function ObjectSummary({ label, value }: { label: string; value: unknown }) {
   );
 }
 
+function ObjectFieldsEditor({
+  def,
+  value,
+  onChange,
+}: {
+  def: ObjectEditorDef;
+  value: Record<string, unknown>;
+  onChange: (key: string, value: unknown) => void;
+}) {
+  const update = useCallback(
+    (subKey: string, subValue: unknown) => {
+      onChange(def.key, { ...value, [subKey]: subValue });
+    },
+    [def.key, value, onChange],
+  );
+
+  const clear = useCallback(
+    (subKey: string) => {
+      const updated = { ...value };
+      delete updated[subKey];
+      onChange(def.key, updated);
+    },
+    [def.key, value, onChange],
+  );
+
+  return (
+    <div className="py-2">
+      <div className="mb-2">
+        <div className="text-sm font-medium text-text-100">{def.label}</div>
+        <div className="text-xs text-text-500">{def.description}</div>
+      </div>
+      <div className="space-y-2">
+        {def.fields.map((subField) => {
+          const subValue = value[subField.key];
+          switch (subField.type) {
+            case "boolean": {
+              return (
+                <div key={subField.key} className="flex items-center justify-between gap-4">
+                  <label className="text-xs text-text-300">{subField.label}</label>
+                  <FormToggle
+                    checked={subValue === true}
+                    onChange={(checked) => update(subField.key, checked)}
+                  />
+                </div>
+              );
+            }
+            case "number": {
+              return (
+                <div key={subField.key} className="flex items-center justify-between gap-4">
+                  <label className="text-xs text-text-300">{subField.label}</label>
+                  <input
+                    type="number"
+                    value={typeof subValue === "number" ? subValue : ""}
+                    onChange={(event) => {
+                      const raw = event.target.value;
+                      if (raw === "") {
+                        clear(subField.key);
+                        return;
+                      }
+                      const parsed = Number(raw);
+                      if (Number.isFinite(parsed)) update(subField.key, parsed);
+                    }}
+                    className="w-24 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+                  />
+                </div>
+              );
+            }
+            case "stringList": {
+              return (
+                <StringListEditor
+                  key={subField.key}
+                  label={subField.label}
+                  description={subField.description ?? ""}
+                  fieldKey={subField.key}
+                  entries={Array.isArray(subValue) ? (subValue as string[]) : []}
+                  onChange={update}
+                />
+              );
+            }
+            case "string": {
+              return (
+                <div key={subField.key} className="flex items-center justify-between gap-4">
+                  <label className="text-xs text-text-300">{subField.label}</label>
+                  <input
+                    type="text"
+                    value={typeof subValue === "string" ? subValue : ""}
+                    onChange={(event) => {
+                      const raw = event.target.value;
+                      if (raw === "") {
+                        clear(subField.key);
+                      } else {
+                        update(subField.key, raw);
+                      }
+                    }}
+                    className="w-48 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+                  />
+                </div>
+              );
+            }
+            default:
+              return null;
+          }
+        })}
+      </div>
+    </div>
+  );
+}
+
+interface MarketplaceSource {
+  source: string;
+  repo?: string;
+  path?: string;
+  url?: string;
+}
+
+interface MarketplaceEntry {
+  source: MarketplaceSource;
+  autoUpdate?: boolean;
+  url?: string;
+}
+
+function MarketplacesEditor({
+  value,
+  onChange,
+}: {
+  value: Record<string, MarketplaceEntry>;
+  onChange: (key: string, value: unknown) => void;
+}) {
+  const entries = Object.entries(value);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [newName, setNewName] = useState("");
+
+  const handleAdd = useCallback(() => {
+    const name = newName.trim();
+    if (!name) return;
+    onChange("extraKnownMarketplaces", {
+      ...value,
+      [name]: { source: { source: "github" } },
+    });
+    setNewName("");
+    setExpanded(name);
+  }, [value, onChange, newName]);
+
+  const handleRemove = useCallback(
+    (name: string) => {
+      const updated = { ...value };
+      delete updated[name];
+      onChange("extraKnownMarketplaces", updated);
+      if (expanded === name) setExpanded(null);
+    },
+    [value, onChange, expanded],
+  );
+
+  const updateSourceField = useCallback(
+    (name: string, field: keyof MarketplaceSource, fieldValue: string) => {
+      const entry = value[name];
+      if (!entry) return;
+      const source: MarketplaceSource = { ...entry.source };
+      if (field === "source") {
+        source.source = fieldValue;
+      } else if (fieldValue) {
+        source[field] = fieldValue;
+      } else {
+        delete source[field];
+      }
+      onChange("extraKnownMarketplaces", { ...value, [name]: { ...entry, source } });
+    },
+    [value, onChange],
+  );
+
+  const updateAutoUpdate = useCallback(
+    (name: string, autoUpdate: boolean) => {
+      const entry = value[name];
+      if (!entry) return;
+      onChange("extraKnownMarketplaces", { ...value, [name]: { ...entry, autoUpdate } });
+    },
+    [value, onChange],
+  );
+
+  const updateUrl = useCallback(
+    (name: string, url: string) => {
+      const entry = value[name];
+      if (!entry) return;
+      const updatedEntry: MarketplaceEntry = { source: entry.source };
+      if (entry.autoUpdate !== undefined) updatedEntry.autoUpdate = entry.autoUpdate;
+      if (url) updatedEntry.url = url;
+      onChange("extraKnownMarketplaces", { ...value, [name]: updatedEntry });
+    },
+    [value, onChange],
+  );
+
+  return (
+    <div className="py-2">
+      <div className="mb-2">
+        <div className="text-sm font-medium text-text-100">Marketplaces</div>
+        <div className="text-xs text-text-500">Extra known plugin marketplaces</div>
+      </div>
+      <div className="space-y-2">
+        {entries.map(([name, entry]) => {
+          const isExpanded = expanded === name;
+          return (
+            <div key={name} className="rounded-md border border-border-300/15">
+              <div className="flex items-center justify-between px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => setExpanded(isExpanded ? null : name)}
+                  className="flex items-center gap-1.5 text-sm font-medium text-text-100 hover:text-accent-100"
+                >
+                  {isExpanded ? (
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  ) : (
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  )}
+                  <span className="font-mono text-xs">{name}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRemove(name)}
+                  className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
+                  title="Remove marketplace"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              {isExpanded && (
+                <div className="border-t border-border-300/15 px-3 py-2 space-y-2">
+                  <div className="flex items-center justify-between gap-4">
+                    <label className="text-xs text-text-300">Source type</label>
+                    <input
+                      type="text"
+                      value={entry.source.source}
+                      onChange={(event) => updateSourceField(name, "source", event.target.value)}
+                      className="w-48 rounded-md border border-border-300/15 bg-bg-000 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+                      placeholder="github"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <label className="text-xs text-text-300">Repo</label>
+                    <input
+                      type="text"
+                      value={entry.source.repo ?? ""}
+                      onChange={(event) => updateSourceField(name, "repo", event.target.value)}
+                      className="w-48 rounded-md border border-border-300/15 bg-bg-000 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+                      placeholder="owner/repo"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <label className="text-xs text-text-300">Path</label>
+                    <input
+                      type="text"
+                      value={entry.source.path ?? ""}
+                      onChange={(event) => updateSourceField(name, "path", event.target.value)}
+                      className="w-48 rounded-md border border-border-300/15 bg-bg-000 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+                      placeholder="/path"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <label className="text-xs text-text-300">Source URL</label>
+                    <input
+                      type="text"
+                      value={entry.source.url ?? ""}
+                      onChange={(event) => updateSourceField(name, "url", event.target.value)}
+                      className="w-48 rounded-md border border-border-300/15 bg-bg-000 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+                      placeholder="https://..."
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <label className="text-xs text-text-300">Auto-update</label>
+                    <FormToggle
+                      checked={entry.autoUpdate === true}
+                      onChange={(checked) => updateAutoUpdate(name, checked)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <label className="text-xs text-text-300">URL</label>
+                    <input
+                      type="text"
+                      value={entry.url ?? ""}
+                      onChange={(event) => updateUrl(name, event.target.value)}
+                      className="w-48 rounded-md border border-border-300/15 bg-bg-000 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+                      placeholder="https://..."
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        <div className="flex items-center gap-2 pt-1">
+          <input
+            type="text"
+            value={newName}
+            onChange={(event) => setNewName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") handleAdd();
+            }}
+            className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
+            placeholder="marketplace-name"
+          />
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={!newName.trim()}
+            className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200 disabled:opacity-50"
+          >
+            <Plus className="h-3 w-3" />
+            Add
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FormEditor({
   filename,
   initialContent,
@@ -1438,7 +1754,51 @@ function FormEditor({
             onChange={handleFieldChange}
             placeholder="server-name"
           />
+          <StringListEditor
+            label="Additional directories"
+            description="Extra directories Claude Code can access"
+            fieldKey="additionalDirectories"
+            entries={
+              Array.isArray(data["additionalDirectories"])
+                ? (data["additionalDirectories"] as string[])
+                : []
+            }
+            onChange={handleFieldChange}
+            placeholder="/path/to/dir"
+          />
         </div>
+
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
+            Marketplaces
+          </h3>
+          <MarketplacesEditor
+            value={
+              (typeof data["extraKnownMarketplaces"] === "object" &&
+              data["extraKnownMarketplaces"] !== null
+                ? data["extraKnownMarketplaces"]
+                : {}) as Record<string, MarketplaceEntry>
+            }
+            onChange={handleFieldChange}
+          />
+        </div>
+
+        {OBJECT_EDITORS.map((def) => (
+          <div key={def.key}>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
+              {def.label}
+            </h3>
+            <ObjectFieldsEditor
+              def={def}
+              value={
+                (typeof data[def.key] === "object" && data[def.key] !== null
+                  ? data[def.key]
+                  : {}) as Record<string, unknown>
+              }
+              onChange={handleFieldChange}
+            />
+          </div>
+        ))}
 
         {unknownKeys.length > 0 && (
           <div>
