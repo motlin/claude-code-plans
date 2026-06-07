@@ -76,6 +76,10 @@
       "exports": ["CopyButton"]
     },
     {
+      "file": "src/lib/settings-fields.ts",
+      "exports": ["OBJECT_EDITORS", "COVERED_SETTINGS_KEYS"]
+    },
+    {
       "file": "src/lib/update-dedupe.ts",
       "exports": ["*"]
     },
