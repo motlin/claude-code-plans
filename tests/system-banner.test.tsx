@@ -30,6 +30,39 @@ describe("SystemBanner", () => {
     expect(html).toContain("48.8s");
   });
 
+  it("renders compact_boundary preserved segment and message counts", () => {
+    const html = renderBanner({
+      type: "system",
+      subtype: "compact_boundary",
+      content: "Conversation compacted",
+      compactMetadata: {
+        trigger: "manual",
+        preTokens: 180000,
+        postTokens: 9000,
+        preservedSegment: {
+          headUuid: "11111111-aaaa-4bbb-8ccc-dddddddddddd",
+          anchorUuid: "22222222-eeee-4fff-8000-111111111111",
+          tailUuid: "33333333-2222-4333-8444-555555555555",
+        },
+        preservedMessages: {
+          anchorUuid: "22222222-eeee-4fff-8000-111111111111",
+          uuids: ["22222222-eeee-4fff-8000-111111111111", "33333333-2222-4333-8444-555555555555"],
+          allUuids: [
+            "00000000-0000-4000-8000-000000000000",
+            "11111111-aaaa-4bbb-8ccc-dddddddddddd",
+            "22222222-eeee-4fff-8000-111111111111",
+            "33333333-2222-4333-8444-555555555555",
+          ],
+        },
+      },
+      lineIndex: 0,
+    });
+    expect(html).toContain("2/4 messages preserved");
+    expect(html).toContain("head 11111111");
+    expect(html).toContain("anchor 22222222");
+    expect(html).toContain("tail 33333333");
+  });
+
   it("renders stop_hook_summary with error and blocked chips", () => {
     const html = renderBanner({
       type: "system",

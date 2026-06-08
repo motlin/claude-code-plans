@@ -47,6 +47,8 @@ export function SystemBanner({
   switch (line.subtype) {
     case "compact_boundary": {
       const meta = line.compactMetadata;
+      const preserved = meta?.preservedMessages;
+      const segment = meta?.preservedSegment;
       return (
         <Banner
           icon={<Scissors className="h-3.5 w-3.5" />}
@@ -61,6 +63,14 @@ export function SystemBanner({
               {formatTokens(meta.preTokens)}
               {meta.postTokens !== undefined && ` → ${formatTokens(meta.postTokens)} tokens`}
               {meta.durationMs !== undefined && ` · ${formatMs(meta.durationMs)}`}
+              {preserved &&
+                ` · ${preserved.uuids.length}/${preserved.allUuids.length} messages preserved`}
+            </span>
+          )}
+          {segment && (
+            <span className="basis-full font-mono text-[10px] text-text-600">
+              head {segment.headUuid.slice(0, 8)} · anchor {segment.anchorUuid.slice(0, 8)} · tail{" "}
+              {segment.tailUuid.slice(0, 8)}
             </span>
           )}
         </Banner>
