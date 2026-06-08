@@ -11,9 +11,9 @@ port := "7526"
 install:
     pnpm exec vp install
 
-# Run dev server with Vite (wrapped by Spotlight sidecar)
+# Run dev server with Vite
 dev *args: install
-    PORT={{port}} pnpm dlx @spotlightjs/spotlight run pnpm exec vp dev {{args}}
+    PORT={{port}} pnpm exec vp dev {{args}}
 
 # Run production server
 start *args: install build
