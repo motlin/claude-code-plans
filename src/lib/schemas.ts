@@ -605,6 +605,22 @@ export const CompactMetadataSchema = z
     postTokens: z.number().optional(),
     durationMs: z.number().optional(),
     preCompactDiscoveredTools: z.array(z.string()).optional(),
+    preservedSegment: z
+      .object({
+        headUuid: z.string(),
+        anchorUuid: z.string(),
+        tailUuid: z.string(),
+      })
+      .strict()
+      .optional(),
+    preservedMessages: z
+      .object({
+        anchorUuid: z.string(),
+        uuids: z.array(z.string()),
+        allUuids: z.array(z.string()),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
