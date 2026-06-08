@@ -4,6 +4,7 @@ import {
   MemoryDetailResponse,
   MemorySaveResponse,
 } from "../../lib/api/memories";
+import { fromMdSlug } from "../../lib/md-slug";
 
 export const Route = createFileRoute("/api/projects/$id/memories/$filename")({
   server: {
@@ -21,7 +22,8 @@ export const Route = createFileRoute("/api/projects/$id/memories/$filename")({
         const { readMemory, decodeProjectDir } = await import("../../lib/memory");
 
         const projectsDir = join(homedir(), ".claude", "projects");
-        const filePath = join(projectsDir, params.id, "memory", params.filename);
+        const filename = fromMdSlug(params.filename);
+        const filePath = join(projectsDir, params.id, "memory", filename);
 
         let mtime: Date | null = null;
         try {
@@ -48,7 +50,7 @@ export const Route = createFileRoute("/api/projects/$id/memories/$filename")({
           }
         }
 
-        const content = await readMemory(projectsDir, params.id, params.filename);
+        const content = await readMemory(projectsDir, params.id, filename);
         if (content === null) {
           return Response.json(MemoryDetailResponse.parse(null), {
             headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
@@ -84,7 +86,7 @@ export const Route = createFileRoute("/api/projects/$id/memories/$filename")({
         const { writeMemory } = await import("../../lib/memory");
         const projectsDir = join(homedir(), ".claude", "projects");
         const content = await request.text();
-        const ok = await writeMemory(projectsDir, params.id, params.filename, content);
+        const ok = await writeMemory(projectsDir, params.id, fromMdSlug(params.filename), content);
         if (!ok) {
           return new Response("Invalid path", { status: 400 });
         }
@@ -97,7 +99,7 @@ export const Route = createFileRoute("/api/projects/$id/memories/$filename")({
         const { join } = await import("node:path");
         const { deleteMemory } = await import("../../lib/memory");
         const projectsDir = join(homedir(), ".claude", "projects");
-        const ok = await deleteMemory(projectsDir, params.id, params.filename);
+        const ok = await deleteMemory(projectsDir, params.id, fromMdSlug(params.filename));
         return Response.json(MemoryDeleteResponse.parse({ ok }), {
           headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
         });

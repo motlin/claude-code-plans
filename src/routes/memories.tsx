@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQueries, useSuspenseQuery } from "@tanstack/react-query";
 import { projectsQueryOptions } from "../lib/api/projects";
 import { projectMemoriesQueryOptions, type MemoryListItem } from "../lib/api/memories";
+import { toMdSlug } from "../lib/md-slug";
 import { DebugLink } from "../components/debug-link";
 
 export const Route = createFileRoute("/memories")({
@@ -69,7 +70,7 @@ function MemoriesPage() {
                 <li key={`${mem.project}/${mem.filename}`} className="relative">
                   <Link
                     to="/memory/$project/$filename"
-                    params={{ project: mem.project, filename: mem.filename }}
+                    params={{ project: mem.project, filename: toMdSlug(mem.filename) }}
                     className="flex items-center justify-between rounded-md border border-border-300/15 px-4 py-3 transition-colors hover:bg-bg-200/50"
                   >
                     <span className="text-sm font-medium">{mem.title}</span>

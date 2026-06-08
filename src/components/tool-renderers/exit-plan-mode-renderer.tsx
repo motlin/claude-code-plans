@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { FileText } from "lucide-react";
 import type { ToolRendererProps } from "./types";
 import { ErrorBorder, KeyValueCard } from "./shared";
+import { toMdSlug } from "../../lib/md-slug";
 
 const PLAN_FILE_RE = /\.claude\/plans\/([^/\s]+\.md)/;
 
@@ -16,7 +17,7 @@ export function ExitPlanModeRenderer({ toolCall }: ToolRendererProps) {
         {planMatch && (
           <Link
             to="/plan/$filename"
-            params={{ filename: planMatch[1]! }}
+            params={{ filename: toMdSlug(planMatch[1]!) }}
             className="inline-flex items-center gap-1 text-body text-accent-100 hover:underline"
           >
             <FileText size={12} />

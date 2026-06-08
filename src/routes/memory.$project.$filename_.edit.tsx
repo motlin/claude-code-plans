@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { memoryDetailQueryOptions, useSaveMemory } from "../lib/api/memories";
+import { fromMdSlug } from "../lib/md-slug";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 
 const MarkdownEditor = lazy(() =>
@@ -14,14 +15,14 @@ export const Route = createFileRoute("/memory/$project/$filename_/edit")({
   loader: ({ context: { queryClient }, params }) =>
     queryClient.ensureQueryData(memoryDetailQueryOptions(params.project, params.filename)),
   head: ({ params }) => ({
-    meta: [{ title: `Edit: ${params.filename}` }],
+    meta: [{ title: `Edit: ${fromMdSlug(params.filename)}` }],
   }),
 });
 
 function MemoryEditPage() {
-  const { project, filename } = Route.useParams();
-  const { data } = useSuspenseQuery(memoryDetailQueryOptions(project, filename));
-  const saveMutation = useSaveMemory(project, filename);
+  const { project, filename: slug } = Route.useParams();
+  const { data } = useSuspenseQuery(memoryDetailQueryOptions(project, slug));
+  const saveMutation = useSaveMemory(project, slug);
   const saving = saveMutation.isPending;
 
   const initialMarkdown = data?.markdown ?? "";
@@ -58,10 +59,10 @@ function MemoryEditPage() {
     if (result.ok) {
       void navigate({
         to: "/memory/$project/$filename",
-        params: { project, filename },
+        params: { project, filename: slug },
       });
     }
-  }, [doSave, navigate, project, filename]);
+  }, [doSave, navigate, project, slug]);
 
   if (!data) {
     return (

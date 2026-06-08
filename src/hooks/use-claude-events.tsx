@@ -26,6 +26,7 @@ import {
   type SubagentStartedPayload,
 } from "../lib/hook-events";
 import type { TranscriptData } from "../lib/api/sessions";
+import { toMdSlug } from "../lib/md-slug";
 
 // ---------------------------------------------------------------------------
 // State types
@@ -521,10 +522,13 @@ export function applyPlanChanged(queryClient: QueryClient, plan: PlanSummaryPayl
   // does not — invalidate to refetch instead of patching a partial shape.
   void queryClient.invalidateQueries({ queryKey: ["plans"] });
   // Plan detail and links queries must also be invalidated so the detail/edit
-  // pages reflect external edits without waiting for staleTime expiry.
-  void queryClient.invalidateQueries({ queryKey: ["plans", plan.filename] });
+  // pages reflect external edits without waiting for staleTime expiry. Those
+  // queries are keyed by the URL slug (no `.md`); the source viewer keeps the
+  // on-disk filename.
+  const slug = toMdSlug(plan.filename);
+  void queryClient.invalidateQueries({ queryKey: ["plans", slug] });
   void queryClient.invalidateQueries({
-    queryKey: ["plans", plan.filename, "links"],
+    queryKey: ["plans", slug, "links"],
   });
   void queryClient.invalidateQueries({
     queryKey: ["source", "plan", plan.filename],
@@ -533,18 +537,20 @@ export function applyPlanChanged(queryClient: QueryClient, plan: PlanSummaryPayl
 
 export function applyPlanRemoved(queryClient: QueryClient, filename: string): void {
   void queryClient.invalidateQueries({ queryKey: ["plans"] });
-  queryClient.removeQueries({ queryKey: ["plans", filename, "links"] });
-  queryClient.removeQueries({ queryKey: ["plans", filename] });
+  const slug = toMdSlug(filename);
+  queryClient.removeQueries({ queryKey: ["plans", slug, "links"] });
+  queryClient.removeQueries({ queryKey: ["plans", slug] });
   queryClient.removeQueries({ queryKey: ["source", "plan", filename] });
 }
 
 export function applyMemoryChanged(queryClient: QueryClient, memory: MemorySummaryPayload): void {
-  // Per-project memory list and detail are now keyed by project id.
+  // Per-project memory list and detail are now keyed by project id. The detail
+  // query is keyed by the URL slug (no `.md`), so strip the extension to match.
   void queryClient.invalidateQueries({
     queryKey: ["projects", memory.project, "memories"],
   });
   void queryClient.invalidateQueries({
-    queryKey: ["projects", memory.project, "memories", memory.filename],
+    queryKey: ["projects", memory.project, "memories", toMdSlug(memory.filename)],
   });
 }
 
@@ -557,7 +563,7 @@ export function applyMemoryRemoved(
     queryKey: ["projects", project, "memories"],
   });
   queryClient.removeQueries({
-    queryKey: ["projects", project, "memories", filename],
+    queryKey: ["projects", project, "memories", toMdSlug(filename)],
   });
 }
 

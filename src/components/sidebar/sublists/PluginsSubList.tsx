@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { pluginsQueryOptions, userCommandsQueryOptions } from "../../../lib/api/plugins";
+import { toMdSlug } from "../../../lib/md-slug";
 import { LoadingBars } from "../primitives/LoadingBars";
 
 type SidebarItem =
@@ -55,7 +56,7 @@ export function PluginsSubList() {
           <Link
             key={`${item.source}/${item.filename}`}
             to="/command/$source/$filename"
-            params={{ source: item.source, filename: item.filename }}
+            params={{ source: item.source, filename: toMdSlug(item.filename) }}
             className="mb-px block truncate rounded-[4px] px-2 py-1 text-xs text-text-500 no-underline transition-colors hover:bg-bg-300/50 hover:text-text-200"
           >
             {item.label}

@@ -25,8 +25,8 @@ export const Route = createFileRoute("/plan/$filename_/edit")({
 });
 
 function PlanEditPage() {
-  const { filename } = Route.useParams();
-  const { data } = useSuspenseQuery(planQueryOptions(filename));
+  const { filename: slug } = Route.useParams();
+  const { data } = useSuspenseQuery(planQueryOptions(slug));
   const queryClient = useQueryClient();
 
   const initialMarkdown = data?.markdown ?? "";
@@ -46,14 +46,14 @@ function PlanEditPage() {
 
   const saveMutation = useMutation({
     mutationFn: (markdown: string) =>
-      apiFetch(`/api/plans/${encodeURIComponent(filename)}`, PlanSaveResponse, {
+      apiFetch(`/api/plans/${encodeURIComponent(slug)}`, PlanSaveResponse, {
         method: "PUT",
         headers: { "Content-Type": "text/plain" },
         body: markdown,
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["plans"] });
-      void queryClient.invalidateQueries({ queryKey: ["plans", filename] });
+      void queryClient.invalidateQueries({ queryKey: ["plans", slug] });
     },
   });
 
@@ -70,11 +70,11 @@ function PlanEditPage() {
   const handlePreview = useCallback(async () => {
     try {
       await saveMutation.mutateAsync(draftRef.current);
-      void navigate({ to: "/plan/$filename", params: { filename } });
+      void navigate({ to: "/plan/$filename", params: { filename: slug } });
     } catch {
       setFeedback("Failed to save");
     }
-  }, [saveMutation, navigate, filename]);
+  }, [saveMutation, navigate, slug]);
 
   if (!data) {
     return (

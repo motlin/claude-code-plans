@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { projectMemoriesQueryOptions } from "../lib/api/memories";
+import { toMdSlug } from "../lib/md-slug";
 import { DetailTopBar, pillStyles } from "../components/detail-top-bar";
 import { DebugLink } from "../components/debug-link";
 
@@ -70,7 +71,7 @@ function ProjectMemoriesPage() {
             <li key={mem.filename} className="relative">
               <Link
                 to="/memory/$project/$filename"
-                params={{ project: mem.project, filename: mem.filename }}
+                params={{ project: mem.project, filename: toMdSlug(mem.filename) }}
                 className="flex items-center justify-between rounded-md border border-border-300/15 px-4 py-3 transition-colors hover:bg-bg-200/50"
               >
                 <span className="text-sm font-medium">{mem.title}</span>

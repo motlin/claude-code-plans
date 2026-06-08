@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { UserCommandFileResponse } from "../../lib/api/plugins";
+import { fromMdSlug } from "../../lib/md-slug";
 
 export const Route = createFileRoute("/api/plugins/user-commands/$source/$filename")({
   server: {
@@ -9,14 +10,15 @@ export const Route = createFileRoute("/api/plugins/user-commands/$source/$filena
         const { extractTitleFromContent } = await import("../../lib/markdown-utils");
         const { decodeProjectDir } = await import("../../lib/memory");
 
-        const content = await readUserCommandContent(params.source, params.filename);
+        const filename = fromMdSlug(params.filename);
+        const content = await readUserCommandContent(params.source, filename);
         if (!content) {
           return Response.json(UserCommandFileResponse.parse(null), {
             headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
           });
         }
 
-        const title = extractTitleFromContent(content, params.filename);
+        const title = extractTitleFromContent(content, filename);
         const sourceName = params.source === "global" ? "Global" : decodeProjectDir(params.source);
 
         return Response.json(

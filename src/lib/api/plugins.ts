@@ -153,12 +153,15 @@ export const pluginFileQueryOptions = (pluginId: string, pathSegments: ReadonlyA
     staleTime: PLUGINS_STALE_TIME_MS,
   });
 
-export const userCommandFileQueryOptions = (source: string, filename: string) =>
+// `slug` is the command basename without its `.md` extension. The API route
+// re-adds the extension before touching disk; see src/lib/md-slug.ts for why
+// the extension is kept out of the URL.
+export const userCommandFileQueryOptions = (source: string, slug: string) =>
   queryOptions({
-    queryKey: ["plugins", "user-commands", source, filename] as const,
+    queryKey: ["plugins", "user-commands", source, slug] as const,
     queryFn: () =>
       apiFetch(
-        `/api/plugins/user-commands/${encodeURIComponent(source)}/${encodeURIComponent(filename)}`,
+        `/api/plugins/user-commands/${encodeURIComponent(source)}/${encodeURIComponent(slug)}`,
         UserCommandFileResponse,
       ),
     staleTime: PLUGINS_STALE_TIME_MS,

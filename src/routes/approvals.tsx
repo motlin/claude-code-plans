@@ -3,6 +3,7 @@ import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { approvalsQueryOptions } from "../lib/api/approvals";
 import { sessionsQueryOptions } from "../lib/api/sessions";
+import { toMdSlug } from "../lib/md-slug";
 import { formatRelativeTimeFromIso } from "../lib/relative-time";
 import { pillStyles } from "../components/detail-top-bar";
 
@@ -53,7 +54,7 @@ function ApprovalsPage() {
             const linkProps = approval.planFilename
               ? ({
                   to: "/plan/$filename",
-                  params: { filename: approval.planFilename },
+                  params: { filename: toMdSlug(approval.planFilename) },
                 } as const)
               : ({
                   to: "/session/$id",

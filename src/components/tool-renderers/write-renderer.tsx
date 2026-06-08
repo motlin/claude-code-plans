@@ -7,6 +7,7 @@ import type { ToolRendererProps } from "./types";
 import { CopyButton } from "./shared";
 import { useResolvedTheme } from "../theme-provider";
 import { buildUnifiedHunk } from "../../lib/diff-utils";
+import { toMdSlug } from "../../lib/md-slug";
 
 const SUPPORTED_LANGS = new Set([
   "bash",
@@ -154,7 +155,7 @@ export function WriteRenderer({ toolCall }: ToolRendererProps) {
         {planMatch && (
           <Link
             to="/plan/$filename"
-            params={{ filename: planMatch[1]! }}
+            params={{ filename: toMdSlug(planMatch[1]!) }}
             className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 hover:underline shrink-0"
           >
             <FileText size={12} />

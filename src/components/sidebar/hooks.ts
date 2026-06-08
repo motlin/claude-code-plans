@@ -1,4 +1,5 @@
 import type { useMatches } from "@tanstack/react-router";
+import { fromMdSlug } from "../../lib/md-slug";
 import type { Section } from "./types";
 
 export function useActiveSection(matches: ReturnType<typeof useMatches>): {
@@ -70,7 +71,7 @@ export function useActiveSection(matches: ReturnType<typeof useMatches>): {
   if (path.startsWith("/plan") || path === "/plans") {
     return {
       section: "plans",
-      activeItemId: params?.["filename"] ?? null,
+      activeItemId: params?.["filename"] ? fromMdSlug(params["filename"]) : null,
       projectId: null,
       collapseOthers: false,
     };
@@ -80,7 +81,7 @@ export function useActiveSection(matches: ReturnType<typeof useMatches>): {
       section: "memories",
       activeItemId:
         params?.["project"] && params?.["filename"]
-          ? `${params["project"]}/${params["filename"]}`
+          ? `${params["project"]}/${fromMdSlug(params["filename"])}`
           : null,
       projectId: params?.["project"] ?? null,
       collapseOthers: false,

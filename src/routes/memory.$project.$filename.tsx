@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { MarkdownSkeleton, MarkdownView } from "../components/markdown-view";
 import { memoryDetailQueryOptions, useRemoveMemory } from "../lib/api/memories";
+import { fromMdSlug } from "../lib/md-slug";
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { DetailTopBar, pillStyles } from "../components/detail-top-bar";
 import { DebugLink } from "../components/debug-link";
@@ -12,16 +13,17 @@ export const Route = createFileRoute("/memory/$project/$filename")({
   loader: ({ context: { queryClient }, params }) =>
     queryClient.ensureQueryData(memoryDetailQueryOptions(params.project, params.filename)),
   head: ({ params }) => ({
-    meta: [{ title: params.filename }],
+    meta: [{ title: fromMdSlug(params.filename) }],
   }),
 });
 
 function MemoryPage() {
-  const { project, filename } = Route.useParams();
-  const { data } = useSuspenseQuery(memoryDetailQueryOptions(project, filename));
+  const { project, filename: slug } = Route.useParams();
+  const filename = fromMdSlug(slug);
+  const { data } = useSuspenseQuery(memoryDetailQueryOptions(project, slug));
   const navigate = useNavigate();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const removeMutation = useRemoveMemory(project, filename);
+  const removeMutation = useRemoveMemory(project, slug);
   const deleting = removeMutation.isPending;
 
   const handleDelete = useCallback(async () => {
@@ -62,7 +64,7 @@ function MemoryPage() {
         <span className="text-xs text-text-500">{data.projectName}</span>
         <Link
           to="/memory/$project/$filename/edit"
-          params={{ project, filename }}
+          params={{ project, filename: slug }}
           className={pillStyles.outline}
         >
           <Pencil className="h-3 w-3" />

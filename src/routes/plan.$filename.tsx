@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { MarkdownSkeleton, MarkdownView } from "../components/markdown-view";
 import { planQueryOptions, planLinksQueryOptions } from "../lib/api/plans";
+import { fromMdSlug } from "../lib/md-slug";
 import { stripLeadingTitleHeading } from "../lib/markdown-utils";
 import { ArrowLeft, Pencil, FolderOpen, MessageSquare, Clock } from "lucide-react";
 import { DetailTopBar, pillStyles } from "../components/detail-top-bar";
@@ -27,14 +28,15 @@ export const Route = createFileRoute("/plan/$filename")({
       queryClient.ensureQueryData(planLinksQueryOptions(params.filename)),
     ]),
   head: ({ params }) => ({
-    meta: [{ title: params.filename }],
+    meta: [{ title: fromMdSlug(params.filename) }],
   }),
 });
 
 function PlanPage() {
-  const { filename } = Route.useParams();
-  const { data: plan } = useSuspenseQuery(planQueryOptions(filename));
-  const { data: links } = useSuspenseQuery(planLinksQueryOptions(filename));
+  const { filename: slug } = Route.useParams();
+  const filename = fromMdSlug(slug);
+  const { data: plan } = useSuspenseQuery(planQueryOptions(slug));
+  const { data: links } = useSuspenseQuery(planLinksQueryOptions(slug));
 
   if (!plan) {
     return (
@@ -60,7 +62,7 @@ function PlanPage() {
           <ArrowLeft className="h-3.5 w-3.5" />
           All Plans
         </Link>
-        <Link to="/plan/$filename/edit" params={{ filename }} className={pillStyles.outline}>
+        <Link to="/plan/$filename/edit" params={{ filename: slug }} className={pillStyles.outline}>
           <Pencil className="h-3 w-3" />
           Edit
         </Link>

@@ -10,6 +10,7 @@ import {
   projectBranchesQueryOptions,
 } from "../../../lib/api/projects";
 import { projectMemoriesQueryOptions } from "../../../lib/api/memories";
+import { toMdSlug } from "../../../lib/md-slug";
 import type { SidebarProjectDetail } from "../types";
 import { LoadingBars } from "../primitives/LoadingBars";
 
@@ -234,7 +235,7 @@ function ExpandedProjectDetail({
                 <Link
                   key={plan.filename}
                   to="/plan/$filename"
-                  params={{ filename: plan.filename }}
+                  params={{ filename: toMdSlug(plan.filename) }}
                   className={linkClass(false)}
                   style={{ paddingLeft: "1.5rem" }}
                 >
@@ -250,7 +251,7 @@ function ExpandedProjectDetail({
                 <Link
                   key={mem.filename}
                   to="/memory/$project/$filename"
-                  params={{ project: mem.project, filename: mem.filename }}
+                  params={{ project: mem.project, filename: toMdSlug(mem.filename) }}
                   className={linkClass(false)}
                   style={{ paddingLeft: "1.5rem" }}
                 >

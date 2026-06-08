@@ -39,12 +39,15 @@ export const projectMemoriesQueryOptions = (id: string) =>
     gcTime: Infinity,
   });
 
-export const memoryDetailQueryOptions = (project: string, filename: string) =>
+// `slug` is the memory basename without its `.md` extension. The API route
+// re-adds the extension before touching disk; see src/lib/md-slug.ts for why
+// the extension is kept out of the URL.
+export const memoryDetailQueryOptions = (project: string, slug: string) =>
   queryOptions({
-    queryKey: ["projects", project, "memories", filename] as const,
+    queryKey: ["projects", project, "memories", slug] as const,
     queryFn: () =>
       apiFetch(
-        `/api/projects/${encodeURIComponent(project)}/memories/${encodeURIComponent(filename)}`,
+        `/api/projects/${encodeURIComponent(project)}/memories/${encodeURIComponent(slug)}`,
         MemoryDetailResponse,
       ),
     staleTime: Infinity,
@@ -54,12 +57,12 @@ export const memoryDetailQueryOptions = (project: string, filename: string) =>
 export const MemorySaveResponse = z.object({ ok: z.boolean() });
 export const MemoryDeleteResponse = z.object({ ok: z.boolean() });
 
-export const useSaveMemory = (project: string, filename: string) => {
+export const useSaveMemory = (project: string, slug: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (content: string) =>
       apiFetch(
-        `/api/projects/${encodeURIComponent(project)}/memories/${encodeURIComponent(filename)}`,
+        `/api/projects/${encodeURIComponent(project)}/memories/${encodeURIComponent(slug)}`,
         MemorySaveResponse,
         {
           method: "PUT",
@@ -72,18 +75,18 @@ export const useSaveMemory = (project: string, filename: string) => {
         queryKey: ["projects", project, "memories"],
       });
       void qc.invalidateQueries({
-        queryKey: ["projects", project, "memories", filename],
+        queryKey: ["projects", project, "memories", slug],
       });
     },
   });
 };
 
-export const useRemoveMemory = (project: string, filename: string) => {
+export const useRemoveMemory = (project: string, slug: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () =>
       apiFetch(
-        `/api/projects/${encodeURIComponent(project)}/memories/${encodeURIComponent(filename)}`,
+        `/api/projects/${encodeURIComponent(project)}/memories/${encodeURIComponent(slug)}`,
         MemoryDeleteResponse,
         { method: "DELETE" },
       ),

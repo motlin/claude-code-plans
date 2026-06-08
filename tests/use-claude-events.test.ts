@@ -496,42 +496,44 @@ describe("applyPlanChanged", () => {
     expect(plansState?.isInvalidated).toBe(true);
   });
 
-  it("invalidates plan detail and links queries for the changed plan", () => {
+  it("invalidates plan detail and links queries keyed by the URL slug", () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData(["plans"], [makePlan("a.md")]);
-    queryClient.setQueryData(["plans", "a.md"], {
+    // planQueryOptions/planLinksQueryOptions key by the slug, not the filename.
+    queryClient.setQueryData(["plans", "a"], {
       markdown: "old",
       mtime: null,
       title: "old",
     });
-    queryClient.setQueryData(["plans", "a.md", "links"], []);
+    queryClient.setQueryData(["plans", "a", "links"], []);
 
     applyPlanChanged(queryClient, makePlan("a.md", "Updated"));
 
-    const detailState = queryClient.getQueryState(["plans", "a.md"]);
-    const linksState = queryClient.getQueryState(["plans", "a.md", "links"]);
+    const detailState = queryClient.getQueryState(["plans", "a"]);
+    const linksState = queryClient.getQueryState(["plans", "a", "links"]);
     expect(detailState?.isInvalidated).toBe(true);
     expect(linksState?.isInvalidated).toBe(true);
   });
 });
 
 describe("applyPlanRemoved", () => {
-  it("invalidates the flat plans list and removes the per-plan detail caches", () => {
+  it("invalidates the flat plans list and removes the slug-keyed detail caches", () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData(["plans"], [makePlan("a.md"), makePlan("b.md")]);
-    queryClient.setQueryData(["plans", "a.md"], {
+    // planQueryOptions/planLinksQueryOptions key by the slug, not the filename.
+    queryClient.setQueryData(["plans", "a"], {
       markdown: "a",
       mtime: null,
       title: "a",
     });
-    queryClient.setQueryData(["plans", "a.md", "links"], []);
+    queryClient.setQueryData(["plans", "a", "links"], []);
 
     applyPlanRemoved(queryClient, "a.md");
 
     const plansState = queryClient.getQueryState(["plans"]);
     expect(plansState?.isInvalidated).toBe(true);
-    expect(queryClient.getQueryData(["plans", "a.md"])).toBeUndefined();
-    expect(queryClient.getQueryData(["plans", "a.md", "links"])).toBeUndefined();
+    expect(queryClient.getQueryData(["plans", "a"])).toBeUndefined();
+    expect(queryClient.getQueryData(["plans", "a", "links"])).toBeUndefined();
   });
 });
 
@@ -542,7 +544,8 @@ describe("applyMemoryChanged", () => {
       project: { id: "proj-a", name: "Project A", projectPath: null },
       memories: [],
     });
-    queryClient.setQueryData(["projects", "proj-a", "memories", "MEMORY.md"], {
+    // memoryDetailQueryOptions keys by the slug, not the filename.
+    queryClient.setQueryData(["projects", "proj-a", "memories", "MEMORY"], {
       markdown: "old",
       mtime: null,
       projectName: "Project A",
@@ -551,7 +554,7 @@ describe("applyMemoryChanged", () => {
     applyMemoryChanged(queryClient, makeMemory("proj-a", "MEMORY.md", "Updated"));
 
     const listState = queryClient.getQueryState(["projects", "proj-a", "memories"]);
-    const detailState = queryClient.getQueryState(["projects", "proj-a", "memories", "MEMORY.md"]);
+    const detailState = queryClient.getQueryState(["projects", "proj-a", "memories", "MEMORY"]);
     expect(listState?.isInvalidated).toBe(true);
     expect(detailState?.isInvalidated).toBe(true);
   });
@@ -564,12 +567,13 @@ describe("applyMemoryRemoved", () => {
       project: { id: "proj-a", name: "Project A", projectPath: null },
       memories: [],
     });
-    queryClient.setQueryData(["projects", "proj-a", "memories", "MEMORY.md"], {
+    // memoryDetailQueryOptions keys by the slug, not the filename.
+    queryClient.setQueryData(["projects", "proj-a", "memories", "MEMORY"], {
       markdown: "old",
       mtime: null,
       projectName: "Project A",
     });
-    queryClient.setQueryData(["projects", "proj-b", "memories", "OTHER.md"], {
+    queryClient.setQueryData(["projects", "proj-b", "memories", "OTHER"], {
       markdown: "keep",
       mtime: null,
       projectName: "Project B",
@@ -579,10 +583,8 @@ describe("applyMemoryRemoved", () => {
 
     const listState = queryClient.getQueryState(["projects", "proj-a", "memories"]);
     expect(listState?.isInvalidated).toBe(true);
-    expect(
-      queryClient.getQueryData(["projects", "proj-a", "memories", "MEMORY.md"]),
-    ).toBeUndefined();
-    expect(queryClient.getQueryData(["projects", "proj-b", "memories", "OTHER.md"])).toStrictEqual({
+    expect(queryClient.getQueryData(["projects", "proj-a", "memories", "MEMORY"])).toBeUndefined();
+    expect(queryClient.getQueryData(["projects", "proj-b", "memories", "OTHER"])).toStrictEqual({
       markdown: "keep",
       mtime: null,
       projectName: "Project B",

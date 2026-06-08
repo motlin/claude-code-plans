@@ -37,19 +37,21 @@ export const plansQueryOptions = () =>
     gcTime: Infinity,
   });
 
-export const planQueryOptions = (filename: string) =>
+// `slug` is the plan basename without its `.md` extension. The API route
+// re-adds the extension before touching disk; see src/lib/md-slug.ts for why
+// the extension is kept out of the URL.
+export const planQueryOptions = (slug: string) =>
   queryOptions({
-    queryKey: ["plans", filename] as const,
-    queryFn: () =>
-      apiFetchOptional(`/api/plans/${encodeURIComponent(filename)}`, PlanDetailResponse),
+    queryKey: ["plans", slug] as const,
+    queryFn: () => apiFetchOptional(`/api/plans/${encodeURIComponent(slug)}`, PlanDetailResponse),
     staleTime: Infinity,
     gcTime: Infinity,
   });
 
-export const planLinksQueryOptions = (filename: string) =>
+export const planLinksQueryOptions = (slug: string) =>
   queryOptions({
-    queryKey: ["plans", filename, "links"] as const,
-    queryFn: () => apiFetch(`/api/plans/${encodeURIComponent(filename)}/links`, PlanLinksResponse),
+    queryKey: ["plans", slug, "links"] as const,
+    queryFn: () => apiFetch(`/api/plans/${encodeURIComponent(slug)}/links`, PlanLinksResponse),
     staleTime: Infinity,
     gcTime: Infinity,
   });

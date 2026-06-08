@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { assertNever } from "../lib/assert-never";
 import { AttachmentPayloadSchema, type AttachmentPayload } from "../lib/schemas";
+import { toMdSlug } from "../lib/md-slug";
 import { DebugLink } from "./debug-link";
 
 /**
@@ -261,7 +262,7 @@ function AttachmentContent({
           {planFilename && (
             <Link
               to="/plan/$filename"
-              params={{ filename: planFilename }}
+              params={{ filename: toMdSlug(planFilename) }}
               className="font-mono text-accent-500 hover:underline truncate max-w-xs"
               title={attachment.planFilePath}
             >
@@ -292,7 +293,7 @@ function AttachmentContent({
           {planFilename && (
             <Link
               to="/plan/$filename"
-              params={{ filename: planFilename }}
+              params={{ filename: toMdSlug(planFilename) }}
               className="font-mono text-accent-500 hover:underline truncate max-w-xs"
               title={attachment.planFilePath}
             >
@@ -314,7 +315,7 @@ function AttachmentContent({
           {planFilename && (
             <Link
               to="/plan/$filename"
-              params={{ filename: planFilename }}
+              params={{ filename: toMdSlug(planFilename) }}
               className="font-mono text-accent-500 hover:underline truncate max-w-xs"
               title={attachment.planFilePath}
             >

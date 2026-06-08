@@ -20,6 +20,7 @@ import {
 } from "../lib/api/projects";
 import { projectMemoriesQueryOptions } from "../lib/api/memories";
 import { projectApprovalsQueryOptions } from "../lib/api/approvals";
+import { toMdSlug } from "../lib/md-slug";
 import { formatRelativeTimeFromIso } from "../lib/relative-time";
 import { DetailTopBar, pillStyles } from "../components/detail-top-bar";
 import { MarkdownInline } from "../components/markdown-view";
@@ -141,7 +142,7 @@ function ProjectPage() {
               const linkProps = approval.planFilename
                 ? ({
                     to: "/plan/$filename",
-                    params: { filename: approval.planFilename },
+                    params: { filename: toMdSlug(approval.planFilename) },
                   } as const)
                 : ({
                     to: "/session/$id",
@@ -341,7 +342,7 @@ function ProjectPage() {
               <li key={mem.filename}>
                 <Link
                   to="/memory/$project/$filename"
-                  params={{ project: mem.project, filename: mem.filename }}
+                  params={{ project: mem.project, filename: toMdSlug(mem.filename) }}
                   className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-bg-200/50"
                 >
                   <div className="truncate" style={{ fontSize: "14px", fontWeight: 430 }}>
@@ -366,7 +367,7 @@ function ProjectPage() {
               <li key={plan.filename}>
                 <Link
                   to="/plan/$filename"
-                  params={{ filename: plan.filename }}
+                  params={{ filename: toMdSlug(plan.filename) }}
                   className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-bg-200/50"
                 >
                   <div className="truncate" style={{ fontSize: "14px", fontWeight: 430 }}>

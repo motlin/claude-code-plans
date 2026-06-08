@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PlanLinksResponse } from "../../lib/api/plans";
+import { fromMdSlug } from "../../lib/md-slug";
 
 export const Route = createFileRoute("/api/plans/$filename/links")({
   server: {
@@ -9,7 +10,7 @@ export const Route = createFileRoute("/api/plans/$filename/links")({
         const { getPlanLinksFromDb } = await import("../../lib/db/queries");
 
         const { index } = getDb();
-        const links = getPlanLinksFromDb(index, params.filename);
+        const links = getPlanLinksFromDb(index, fromMdSlug(params.filename));
         const serialized = links.map((l) => ({
           sessionId: l.sessionId,
           project: l.projectId,

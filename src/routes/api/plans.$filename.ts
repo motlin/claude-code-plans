@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PlanDetailResponse } from "../../lib/api/plans";
+import { fromMdSlug } from "../../lib/md-slug";
 
 /**
  * Returns `true` when an `If-Modified-Since` header value indicates the
@@ -29,7 +30,7 @@ export const Route = createFileRoute("/api/plans/$filename")({
         const { extractTitleFromContent } = await import("../../lib/markdown-utils");
 
         const plansDir = join(homedir(), ".claude", "plans");
-        const filename = params.filename;
+        const filename = fromMdSlug(params.filename);
         const filePath = join(plansDir, filename);
 
         let mtime: Date | null = null;
@@ -80,13 +81,14 @@ export const Route = createFileRoute("/api/plans/$filename")({
         const { extractTitleFromContent } = await import("../../lib/markdown-utils");
 
         const plansDir = join(homedir(), ".claude", "plans");
+        const filename = fromMdSlug(params.filename);
         const markdown = await request.text();
-        const ok = await writePlan(plansDir, params.filename, markdown);
+        const ok = await writePlan(plansDir, filename, markdown);
         if (!ok) {
           return new Response("Not Found", { status: 404 });
         }
 
-        const title = extractTitleFromContent(markdown, params.filename);
+        const title = extractTitleFromContent(markdown, filename);
 
         return Response.json(
           {

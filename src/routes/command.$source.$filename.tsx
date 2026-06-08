@@ -16,8 +16,8 @@ export const Route = createFileRoute("/command/$source/$filename")({
 });
 
 function CommandPage() {
-  const { source, filename } = Route.useParams();
-  const { data } = useSuspenseQuery(userCommandFileQueryOptions(source, filename));
+  const { source, filename: slug } = Route.useParams();
+  const { data } = useSuspenseQuery(userCommandFileQueryOptions(source, slug));
 
   if (!data) {
     return (

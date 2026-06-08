@@ -3,6 +3,7 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { projectsQueryOptions } from "../../../lib/api/projects";
 import { projectMemoriesQueryOptions } from "../../../lib/api/memories";
 import { sessionsQueryOptions } from "../../../lib/api/sessions";
+import { toMdSlug } from "../../../lib/md-slug";
 import type { Section, SubItem } from "../types";
 import { LoadingBars } from "../primitives/LoadingBars";
 
@@ -47,7 +48,7 @@ export function SubList({
           id: `${m.project}/${m.filename}`,
           label: m.title,
           to: "/memory/$project/$filename",
-          params: { project: m.project, filename: m.filename },
+          params: { project: m.project, filename: toMdSlug(m.filename) },
         }));
     }
   } else if (section === "sessions") {

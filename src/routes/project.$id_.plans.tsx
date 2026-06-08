@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { projectDetailQueryOptions, projectPlansQueryOptions } from "../lib/api/projects";
+import { toMdSlug } from "../lib/md-slug";
 import { DetailTopBar, pillStyles } from "../components/detail-top-bar";
 import { DebugLink } from "../components/debug-link";
 
@@ -72,7 +73,7 @@ function ProjectPlansPage() {
             <li key={plan.filename} className="relative">
               <Link
                 to="/plan/$filename"
-                params={{ filename: plan.filename }}
+                params={{ filename: toMdSlug(plan.filename) }}
                 className="flex items-center justify-between rounded-md border border-border-300/15 px-4 py-3 transition-colors hover:bg-bg-200/50"
               >
                 <span className="text-sm font-medium">{plan.title}</span>

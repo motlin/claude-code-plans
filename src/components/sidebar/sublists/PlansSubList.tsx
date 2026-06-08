@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { plansQueryOptions, type PlanListItem } from "../../../lib/api/plans";
+import { toMdSlug } from "../../../lib/md-slug";
 import { LoadingBars } from "../primitives/LoadingBars";
 
 interface PlansGroup {
@@ -111,7 +112,7 @@ export function PlansSubList({ activeItemId }: { activeItemId: string | null }) 
             <Link
               key={plan.filename}
               to="/plan/$filename"
-              params={{ filename: plan.filename }}
+              params={{ filename: toMdSlug(plan.filename) }}
               className={`mb-px block truncate rounded-[4px] px-2 py-1 text-xs no-underline transition-colors ${
                 isActive
                   ? "bg-bg-300/50 font-medium text-text-000"
@@ -153,7 +154,7 @@ export function PlansSubList({ activeItemId }: { activeItemId: string | null }) 
                   <Link
                     key={plan.filename}
                     to="/plan/$filename"
-                    params={{ filename: plan.filename }}
+                    params={{ filename: toMdSlug(plan.filename) }}
                     className={`mb-px block truncate rounded-[4px] py-1 pl-5 pr-2 text-xs no-underline transition-colors ${
                       isActive
                         ? "bg-bg-300/50 font-medium text-text-000"

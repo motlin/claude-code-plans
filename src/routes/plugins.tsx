@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { FileTree } from "../components/file-tree";
+import { toMdSlug } from "../lib/md-slug";
 
 export const Route = createFileRoute("/plugins")({
   component: PluginsPage,
@@ -365,7 +366,7 @@ function PluginsPage() {
                   <li key={cmd.filename}>
                     <Link
                       to="/command/$source/$filename"
-                      params={{ source: group.source, filename: cmd.filename }}
+                      params={{ source: group.source, filename: toMdSlug(cmd.filename) }}
                       className="block rounded-md border border-border-300/15 px-4 py-3 text-sm font-medium text-text-200 no-underline transition-colors hover:bg-bg-200/50"
                     >
                       {cmd.name}
