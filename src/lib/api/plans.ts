@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { queryOptions } from "@tanstack/react-query";
-import { apiFetch } from "./client";
+import { apiFetch, apiFetchOptional } from "./client";
 
 const PlanLinkSchema = z.object({
   sessionId: z.string(),
@@ -40,7 +40,8 @@ export const plansQueryOptions = () =>
 export const planQueryOptions = (filename: string) =>
   queryOptions({
     queryKey: ["plans", filename] as const,
-    queryFn: () => apiFetch(`/api/plans/${encodeURIComponent(filename)}`, PlanDetailResponse),
+    queryFn: () =>
+      apiFetchOptional(`/api/plans/${encodeURIComponent(filename)}`, PlanDetailResponse),
     staleTime: Infinity,
     gcTime: Infinity,
   });

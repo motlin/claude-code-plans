@@ -13,6 +13,18 @@ function resolveUrl(url: string): string {
   return `http://127.0.0.1:${port}${url}`;
 }
 
+async function parseOk<S extends z.ZodTypeAny>(
+  url: string,
+  schema: S,
+  res: Response,
+): Promise<z.infer<S>> {
+  if (!res.ok) {
+    throw new Error(`${url} -> ${res.status} ${res.statusText}`);
+  }
+  const json: unknown = await res.json();
+  return schema.parse(json) as z.infer<S>;
+}
+
 /**
  * Typed fetch helper for REST endpoints. Validates the JSON response with the
  * given Zod schema and returns the inferred type. Use as the single
@@ -26,13 +38,25 @@ export async function apiFetch<S extends z.ZodTypeAny>(
   schema: S,
   init?: RequestInit,
 ): Promise<z.infer<S>> {
-  const res = await fetch(resolveUrl(url), {
-    credentials: "same-origin",
-    ...init,
-  });
-  if (!res.ok) {
-    throw new Error(`${url} -> ${res.status} ${res.statusText}`);
+  const res = await fetch(resolveUrl(url), { credentials: "same-origin", ...init });
+  return parseOk(url, schema, res);
+}
+
+/**
+ * Like {@link apiFetch}, but resolves to `null` on a 404 instead of throwing.
+ * Use for resources whose absence is an expected, renderable state — e.g. a
+ * plan file deleted while a browser tab stayed parked on its URL, which would
+ * otherwise crash the route's suspense boundary. All other non-2xx statuses
+ * and schema-validation failures still throw.
+ */
+export async function apiFetchOptional<S extends z.ZodTypeAny>(
+  url: string,
+  schema: S,
+  init?: RequestInit,
+): Promise<z.infer<S> | null> {
+  const res = await fetch(resolveUrl(url), { credentials: "same-origin", ...init });
+  if (res.status === 404) {
+    return null;
   }
-  const json: unknown = await res.json();
-  return schema.parse(json) as z.infer<S>;
+  return parseOk(url, schema, res);
 }
