@@ -87,8 +87,7 @@ For each feature with a difference found, create a section:
 
 ---
 
-````
-
+````markdown
 ### Priority Levels
 
 - **P1 - Critical**: Feature is non-functional or unusable without this fix. User cannot understand the result.
@@ -113,6 +112,7 @@ If you find issues that affect multiple features, document them separately:
 ### CC2. Another pattern
 
 ...
+```
 ````
 
 ## Summary of Follow-Up Tasks
