@@ -8,7 +8,7 @@
     "dev": "vp dev",
     "preview": "vp preview",
     "start": "node .output/server/index.mjs",
-    "build": "tsgo --noEmit && vp build",
+    "build": "vp build && tsgo --noEmit",
     "oxlint": "vp lint . --fix",
     "oxlint:ci": "vp lint . --format github",
     "fmt": "vp fmt",
