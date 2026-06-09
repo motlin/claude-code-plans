@@ -64,7 +64,7 @@
     "agentation": "^3.0.2",
     "drizzle-kit": "^0.31.10",
     "eslint": "^10.4.0",
-    "fallow": "^2.85.0",
+    "fallow": "^2.90.0",
     "jsdom": "^29.1.1",
     "markdownlint-cli2": "^0.22.1",
     "nitro": "^3.0.260522-beta",
