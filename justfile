@@ -56,8 +56,12 @@ build-storybook: install
 fallow: build
     pnpm exec vp run {{ if ci != "" { "fallow:ci" } else { "fallow" } }}
 
+# Run pre-commit hooks
+pre-commit: install
+    pre-commit run --all-files
+
 # Run all pre-commit checks
 [arg("quick", long, value="true", help="Skip tests")]
-precommit quick="": check build fallow
+precommit quick="": check build fallow pre-commit
     {{ if quick != "true" { "just test" } else { "true" } }}
     @echo "All pre-commit checks passed!"
