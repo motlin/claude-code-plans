@@ -4,3 +4,6 @@
 # Windows batch files need CRLF
 *.cmd text eol=crlf
 *.bat text eol=crlf
+
+# Keep .idea files visible in diffs (not marked as generated)
+/.idea/** linguist-generated=false
