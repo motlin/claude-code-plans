@@ -41,8 +41,8 @@ importers:
         specifier: ^1.168.25
         version: 1.168.25(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(typescript@6.0.3))(crossws@0.4.5(srvx@0.11.16))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       better-sqlite3:
-        specifier: ^12.10.0
-        version: 12.10.0
+        specifier: ^12.10.1
+        version: 12.10.1
       chokidar:
         specifier: ^5.0.0
         version: 5.0.0
@@ -54,7 +54,7 @@ importers:
         version: 4.4.0
       drizzle-orm:
         specifier: ^0.45.2
-        version: 0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.10.0)
+        version: 0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.10.1)
       lucide-react:
         specifier: ^1.18.0
         version: 1.18.0(react@19.2.7)
@@ -139,7 +139,7 @@ importers:
         version: 0.22.1
       nitro:
         specifier: ^3.0.260522-beta
-        version: 3.0.260522-beta(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(typescript@6.0.3))(better-sqlite3@12.10.0)(chokidar@5.0.0)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.10.0))(jiti@2.7.0)(lru-cache@11.5.1)
+        version: 3.0.260522-beta(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(typescript@6.0.3))(better-sqlite3@12.10.1)(chokidar@5.0.0)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.10.1))(jiti@2.7.0)(lru-cache@11.5.1)
       playwright:
         specifier: ^1.61.0
         version: 1.61.0
@@ -3423,8 +3423,8 @@ packages:
     engines: {node: '>=6.0.0'}
     hasBin: true
 
-  better-sqlite3@12.10.0:
-    resolution: {integrity: sha512-CyzaZRQKyHkB2ZInfTTl2nvT33EbDpjkLEbE8/Zck3Ll6O0qqvuGdrJ45HgtH+HykRg88ITY3AdreBGN70aBSQ==}
+  better-sqlite3@12.10.1:
+    resolution: {integrity: sha512-HfFtzCqnSfwB3+HroF6PSKzyh+7RfNMGPCzHFUZXRlvrPCb4P3cvxKZNN43Sr7IrkofqQZM+gIvffGpA8VvqgA==}
     engines: {node: 20.x || 22.x || 23.x || 24.x || 25.x || 26.x}
 
   bidi-js@1.0.3:
@@ -8425,7 +8425,7 @@ snapshots:
 
   baseline-browser-mapping@2.10.35: {}
 
-  better-sqlite3@12.10.0:
+  better-sqlite3@12.10.1:
     dependencies:
       bindings: 1.5.0
       prebuild-install: 7.1.3
@@ -8576,10 +8576,10 @@ snapshots:
 
   date-fns@4.4.0: {}
 
-  db0@0.3.4(better-sqlite3@12.10.0)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.10.0)):
+  db0@0.3.4(better-sqlite3@12.10.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.10.1)):
     optionalDependencies:
-      better-sqlite3: 12.10.0
-      drizzle-orm: 0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.10.0)
+      better-sqlite3: 12.10.1
+      drizzle-orm: 0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.10.1)
 
   debug@4.4.3:
     dependencies:
@@ -8648,10 +8648,10 @@ snapshots:
       esbuild: 0.25.12
       tsx: 4.22.3
 
-  drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.10.0):
+  drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.10.1):
     optionalDependencies:
       '@types/better-sqlite3': 7.6.13
-      better-sqlite3: 12.10.0
+      better-sqlite3: 12.10.1
 
   electron-to-chromium@1.5.371: {}
 
@@ -9818,11 +9818,11 @@ snapshots:
 
   nf3@0.3.17: {}
 
-  nitro@3.0.260522-beta(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(typescript@6.0.3))(better-sqlite3@12.10.0)(chokidar@5.0.0)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.10.0))(jiti@2.7.0)(lru-cache@11.5.1):
+  nitro@3.0.260522-beta(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(typescript@6.0.3))(better-sqlite3@12.10.1)(chokidar@5.0.0)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.10.1))(jiti@2.7.0)(lru-cache@11.5.1):
     dependencies:
       consola: 3.4.2
       crossws: 0.4.5(srvx@0.11.16)
-      db0: 0.3.4(better-sqlite3@12.10.0)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.10.0))
+      db0: 0.3.4(better-sqlite3@12.10.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.10.1))
       env-runner: 0.1.9
       h3: 2.0.1-rc.22(crossws@0.4.5(srvx@0.11.16))
       hookable: 6.1.1
@@ -9833,7 +9833,7 @@ snapshots:
       rolldown: 1.0.3
       srvx: 0.11.16
       unenv: 2.0.0-rc.24
-      unstorage: 2.0.0-alpha.7(chokidar@5.0.0)(db0@0.3.4(better-sqlite3@12.10.0)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.10.0)))(lru-cache@11.5.1)(ofetch@2.0.0-alpha.3)
+      unstorage: 2.0.0-alpha.7(chokidar@5.0.0)(db0@0.3.4(better-sqlite3@12.10.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.10.1)))(lru-cache@11.5.1)(ofetch@2.0.0-alpha.3)
     optionalDependencies:
       jiti: 2.7.0
       vite: '@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(typescript@6.0.3)'
@@ -10570,10 +10570,10 @@ snapshots:
       picomatch: 4.0.4
       webpack-virtual-modules: 0.6.2
 
-  unstorage@2.0.0-alpha.7(chokidar@5.0.0)(db0@0.3.4(better-sqlite3@12.10.0)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.10.0)))(lru-cache@11.5.1)(ofetch@2.0.0-alpha.3):
+  unstorage@2.0.0-alpha.7(chokidar@5.0.0)(db0@0.3.4(better-sqlite3@12.10.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.10.1)))(lru-cache@11.5.1)(ofetch@2.0.0-alpha.3):
     optionalDependencies:
       chokidar: 5.0.0
-      db0: 0.3.4(better-sqlite3@12.10.0)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.10.0))
+      db0: 0.3.4(better-sqlite3@12.10.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.10.1))
       lru-cache: 11.5.1
       ofetch: 2.0.0-alpha.3
 
