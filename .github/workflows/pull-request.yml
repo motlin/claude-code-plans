@@ -48,6 +48,8 @@ jobs:
       - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
           cache: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.local/share/pnpm/store
@@ -90,6 +92,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
       - run: just install
 
@@ -115,3 +119,13 @@ jobs:
           else
             echo "No changes needed by pre-commit"
           fi
+
+  all-pr-checks:
+    name: All PR checks
+    if: ${{ !cancelled() }}
+    needs: [forbid-merge-commits, check-fix, pre-commit-fix]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}
