@@ -15,7 +15,7 @@ jobs:
   forbid-merge-commits:
     runs-on: ubuntu-latest
     steps:
-      - uses: motlin/forbid-merge-commits-action@e79f9ed1c54b0bfb9e8a4ecaa8acfabfd01c1953 # main
+      - uses: motlin/forbid-merge-commits-action@49483ed78d3c59ae66e338ad12edd34c6dac7fdf # v1.0.8
 
   automerge-dependabot:
     if: github.event.pull_request.user.login == 'dependabot[bot]'
@@ -126,6 +126,6 @@ jobs:
     needs: [forbid-merge-commits, check-fix, pre-commit-fix]
     runs-on: ubuntu-latest
     steps:
-      - uses: re-actors/alls-green@release/v1
+      - uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe # v1.2.2
         with:
           jobs: ${{ toJSON(needs) }}
