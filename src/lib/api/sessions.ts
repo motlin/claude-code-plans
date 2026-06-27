@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  queryOptions,
+  infiniteQueryOptions,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { apiFetch } from "./client";
 import { JsonValueSchema } from "../schemas";
 
@@ -15,13 +20,28 @@ const SessionListItemSchema = z.object({
   gitBranch: z.string().optional(),
   starred: z.boolean(),
 });
+export type SessionListItem = z.infer<typeof SessionListItemSchema>;
 
-const SessionProjectGroupSchema = z.object({
+/** Paginated, mtime-desc feed of recent sessions across all projects. */
+export const RecentSessionsResponse = z.object({
+  sessions: z.array(SessionListItemSchema),
+  nextCursor: z.string().nullable(),
+});
+
+/** Sessions grouped by project, each capped to a preview slice with a total count. */
+const SessionGroupSummarySchema = z.object({
   project: z.string(),
   projectName: z.string(),
+  sessionCount: z.number(),
   sessions: z.array(SessionListItemSchema),
 });
-export const SessionListResponse = z.array(SessionProjectGroupSchema);
+export const GroupedSessionsResponse = z.array(SessionGroupSummarySchema);
+
+export const StarredSessionsResponse = z.array(SessionListItemSchema);
+
+export const SessionTitlesResponse = z.object({
+  titles: z.record(z.string(), z.string()),
+});
 
 const ActiveSessionSchema = z.object({
   sessionId: z.string(),
@@ -92,12 +112,62 @@ export const SessionSourceResponse = z
   })
   .nullable();
 
-export const sessionsQueryOptions = queryOptions({
-  queryKey: ["sessions"] as const,
-  queryFn: () => apiFetch("/api/sessions", SessionListResponse),
+export const DEFAULT_RECENT_PAGE_SIZE = 50;
+
+/** Single page of recent sessions (no pagination) — for compact previews. */
+export const recentSessionsQueryOptions = (limit: number) =>
+  queryOptions({
+    queryKey: ["sessions", "recent", limit] as const,
+    queryFn: () => apiFetch(`/api/sessions/recent?limit=${limit}`, RecentSessionsResponse),
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+
+/** Infinite, cursor-paginated recent sessions — for the main sessions list. */
+export const recentSessionsInfiniteQueryOptions = (limit: number = DEFAULT_RECENT_PAGE_SIZE) =>
+  infiniteQueryOptions({
+    queryKey: ["sessions", "recent", "infinite", limit] as const,
+    queryFn: ({ pageParam }) => {
+      const cursor = pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : "";
+      return apiFetch(`/api/sessions/recent?limit=${limit}${cursor}`, RecentSessionsResponse);
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+
+export const groupedSessionsQueryOptions = (perProject?: number) =>
+  queryOptions({
+    queryKey: ["sessions", "grouped", perProject ?? null] as const,
+    queryFn: () =>
+      apiFetch(
+        `/api/sessions/grouped${perProject ? `?perProject=${perProject}` : ""}`,
+        GroupedSessionsResponse,
+      ),
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+
+export const starredSessionsQueryOptions = queryOptions({
+  queryKey: ["sessions", "starred"] as const,
+  queryFn: () => apiFetch("/api/sessions/starred", StarredSessionsResponse),
   staleTime: Infinity,
   gcTime: Infinity,
 });
+
+export const sessionTitlesQueryOptions = (ids: string[]) =>
+  queryOptions({
+    queryKey: ["sessions", "titles", [...ids].sort()] as const,
+    queryFn: () =>
+      apiFetch(
+        `/api/sessions/titles?ids=${encodeURIComponent(ids.join(","))}`,
+        SessionTitlesResponse,
+      ),
+    enabled: ids.length > 0,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
 
 export const activeSessionsQueryOptions = (activeTimeoutMs?: number) => {
   const url =

@@ -12,7 +12,7 @@ import {
   Home,
   SlidersHorizontal,
 } from "lucide-react";
-import { sessionsQueryOptions } from "../lib/api/sessions";
+import { recentSessionsQueryOptions } from "../lib/api/sessions";
 
 interface RecentSession {
   id: string;
@@ -42,18 +42,14 @@ export function CommandPalette({
   onOpenChange: (open: boolean) => void;
 }) {
   const navigate = useNavigate();
-  // Use the shared sessions query so the palette shares cache with routes and sidebar.
-  // `enabled: open` avoids fetching until the palette is opened.
-  const { data: groups } = useQuery({ ...sessionsQueryOptions, enabled: open });
+  // `enabled: open` avoids fetching until the palette is opened. The server
+  // already returns the most-recent sessions, ordered, so no client sort needed.
+  const { data } = useQuery({ ...recentSessionsQueryOptions(8), enabled: open });
 
-  const recentSessions = useMemo<RecentSession[]>(() => {
-    if (!groups) return [];
-    return groups
-      .flatMap((g) => g.sessions)
-      .sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime())
-      .slice(0, 8)
-      .map((s) => ({ id: s.id, title: s.title, mtime: s.mtime }));
-  }, [groups]);
+  const recentSessions = useMemo<RecentSession[]>(
+    () => (data?.sessions ?? []).map((s) => ({ id: s.id, title: s.title, mtime: s.mtime })),
+    [data],
+  );
 
   function select(callback: () => void) {
     onOpenChange(false);

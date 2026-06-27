@@ -1,7 +1,7 @@
 import { eq, desc, sql, and, inArray, isNotNull } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as schema from "./schema";
-import type { SessionEntry, SessionProjectGroup } from "../sessions";
+import type { SessionEntry } from "../sessions";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
@@ -11,6 +11,26 @@ function getProjectNameMap(db: IndexDb): Map<string, string> {
     .from(schema.projects)
     .all();
   return new Map(rows.map((r) => [r.id, r.name]));
+}
+
+type SessionRow = typeof schema.sessions.$inferSelect;
+
+function rowToSessionEntry(row: SessionRow, projectNames: Map<string, string>): SessionEntry {
+  return {
+    id: row.id,
+    title: row.title,
+    firstPrompt: row.firstPrompt ?? undefined,
+    summary: row.summary ?? undefined,
+    customTitle: row.customTitle ?? undefined,
+    mtime: new Date(row.mtimeMs),
+    created: new Date(row.createdAt),
+    project: row.projectId,
+    projectName: projectNames.get(row.projectId) ?? row.projectId,
+    messageCount: row.messageCount,
+    gitBranch: row.gitBranch ?? undefined,
+    cwd: row.cwd ?? undefined,
+    isSidechain: row.isSidechain === 1,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -67,59 +87,140 @@ export function listProjectsFromDb(db: IndexDb): DbProjectSummary[] {
   return rows;
 }
 
-export function listSessionsFromDb(db: IndexDb): SessionProjectGroup[] {
+/**
+ * A flat, mtime-descending cursor into the sessions list. Pagination compares
+ * on (mtimeMs, id) so ties on mtimeMs never drop or duplicate rows at a page
+ * boundary.
+ */
+export interface SessionCursor {
+  mtimeMs: number;
+  id: string;
+}
+
+export interface RecentSessionsPage {
+  sessions: SessionEntry[];
+  nextCursor: SessionCursor | null;
+}
+
+/**
+ * Most-recently-modified sessions across all projects (sidechains excluded),
+ * page by page. Pass the previous page's `nextCursor` as `before` to continue.
+ */
+export function listRecentSessionsFromDb(
+  db: IndexDb,
+  opts: { limit: number; before?: SessionCursor },
+): RecentSessionsPage {
+  const { limit, before } = opts;
+  const condition = before
+    ? and(
+        eq(schema.sessions.isSidechain, 0),
+        sql`(${schema.sessions.mtimeMs} < ${before.mtimeMs} OR (${schema.sessions.mtimeMs} = ${before.mtimeMs} AND ${schema.sessions.id} < ${before.id}))`,
+      )
+    : eq(schema.sessions.isSidechain, 0);
+
   const rows = db
     .select()
     .from(schema.sessions)
-    .where(eq(schema.sessions.isSidechain, 0))
-    .orderBy(desc(schema.sessions.mtimeMs))
+    .where(condition)
+    .orderBy(desc(schema.sessions.mtimeMs), desc(schema.sessions.id))
+    .limit(limit + 1)
     .all();
 
-  const projectMap = new Map<string, SessionEntry[]>();
+  const hasMore = rows.length > limit;
+  const page = hasMore ? rows.slice(0, limit) : rows;
+  const projectNames = getProjectNameMap(db);
+  const sessions = page.map((row) => rowToSessionEntry(row, projectNames));
+  const last = page[page.length - 1];
+  const nextCursor = hasMore && last ? { mtimeMs: last.mtimeMs, id: last.id } : null;
+  return { sessions, nextCursor };
+}
+
+export interface SessionGroupSummary {
+  project: string;
+  projectName: string;
+  /** Total non-sidechain sessions in the project (not just the returned slice). */
+  sessionCount: number;
+  sessions: SessionEntry[];
+}
+
+const DEFAULT_PER_PROJECT = 10;
+
+/**
+ * Sessions grouped by project for the "By Project" view: each group holds only
+ * its `perProject` most-recent sessions plus the full `sessionCount`, so the UI
+ * can show "N more" without loading every row.
+ */
+export function listSessionGroupsFromDb(
+  db: IndexDb,
+  opts: { perProject?: number } = {},
+): SessionGroupSummary[] {
+  const perProject = opts.perProject ?? DEFAULT_PER_PROJECT;
   const projectNames = getProjectNameMap(db);
 
-  for (const row of rows) {
-    const entry: SessionEntry = {
-      id: row.id,
-      title: row.title,
-      firstPrompt: row.firstPrompt ?? undefined,
-      summary: row.summary ?? undefined,
-      customTitle: row.customTitle ?? undefined,
-      mtime: new Date(row.mtimeMs),
-      created: new Date(row.createdAt),
-      project: row.projectId,
-      projectName: projectNames.get(row.projectId) ?? row.projectId,
-      messageCount: row.messageCount,
-      gitBranch: row.gitBranch ?? undefined,
-      cwd: row.cwd ?? undefined,
-      isSidechain: false,
-    };
+  const stats = db
+    .select({
+      projectId: schema.sessions.projectId,
+      count: sql<number>`count(*)`,
+      maxMtime: sql<number>`max(${schema.sessions.mtimeMs})`,
+    })
+    .from(schema.sessions)
+    .where(eq(schema.sessions.isSidechain, 0))
+    .groupBy(schema.sessions.projectId)
+    .all();
+  const statByProject = new Map(stats.map((s) => [s.projectId, s]));
 
-    const list = projectMap.get(row.projectId);
-    if (list) {
-      list.push(entry);
-    } else {
-      projectMap.set(row.projectId, [entry]);
-    }
+  // Top-N per project via a window function, ordered so rows arrive grouped by
+  // project and newest-first within each project.
+  const cappedRows = db.all(
+    sql`SELECT id FROM (
+          SELECT id, project_id,
+                 row_number() OVER (PARTITION BY project_id ORDER BY mtime_ms DESC, id DESC) AS rn
+          FROM sessions
+          WHERE is_sidechain = 0
+        ) WHERE rn <= ${perProject}
+        ORDER BY project_id, rn`,
+  ) as Array<{ id: string }>;
+
+  const sessionMap = batchFetchSessions(
+    db,
+    cappedRows.map((r) => r.id),
+  );
+
+  const grouped = new Map<string, SessionEntry[]>();
+  for (const { id } of cappedRows) {
+    const row = sessionMap.get(id);
+    if (!row) continue;
+    const entry = rowToSessionEntry(row, projectNames);
+    const list = grouped.get(row.projectId);
+    if (list) list.push(entry);
+    else grouped.set(row.projectId, [entry]);
   }
 
-  const groups: SessionProjectGroup[] = [];
-  for (const [project, sessions] of projectMap) {
+  const groups: SessionGroupSummary[] = [];
+  for (const [project, sessions] of grouped) {
     groups.push({
       project,
       projectName: projectNames.get(project) ?? project,
+      sessionCount: statByProject.get(project)?.count ?? sessions.length,
       sessions,
     });
   }
 
-  // Sort groups by max mtime
-  groups.sort((a, b) => {
-    const aMax = Math.max(...a.sessions.map((s) => s.mtime.getTime()));
-    const bMax = Math.max(...b.sessions.map((s) => s.mtime.getTime()));
-    return bMax - aMax;
-  });
-
+  groups.sort(
+    (a, b) =>
+      (statByProject.get(b.project)?.maxMtime ?? 0) - (statByProject.get(a.project)?.maxMtime ?? 0),
+  );
   return groups;
+}
+
+/** Map of session id -> title for the given ids (unknown ids are omitted). */
+export function getSessionTitlesByIds(db: IndexDb, ids: string[]): Record<string, string> {
+  const titles = batchFetchSessionTitles(db, ids);
+  const out: Record<string, string> = {};
+  for (const [id, title] of titles) {
+    if (title != null) out[id] = title;
+  }
+  return out;
 }
 
 export function listSessionsForProjectFromDb(db: IndexDb, projectId: string): SessionEntry[] {

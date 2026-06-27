@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { projectsQueryOptions } from "../../../lib/api/projects";
 import { projectMemoriesQueryOptions } from "../../../lib/api/memories";
-import { sessionsQueryOptions } from "../../../lib/api/sessions";
+import { recentSessionsQueryOptions } from "../../../lib/api/sessions";
 import { toMdSlug } from "../../../lib/md-slug";
 import type { Section, SubItem } from "../types";
 import { LoadingBars } from "../primitives/LoadingBars";
@@ -31,7 +31,7 @@ export function SubList({
         : [],
   });
   const sessionsQuery = useQuery({
-    ...sessionsQueryOptions,
+    ...recentSessionsQueryOptions(20),
     enabled: section === "sessions",
   });
 
@@ -53,16 +53,13 @@ export function SubList({
     }
   } else if (section === "sessions") {
     if (sessionsQuery.data) {
-      items = sessionsQuery.data
-        .flatMap((g) => g.sessions)
-        .sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime())
-        .slice(0, 20)
-        .map((s) => ({
-          id: s.id,
-          label: s.title,
-          to: "/session/$id",
-          params: { id: s.id },
-        }));
+      // Server returns the 20 most-recent sessions, already ordered.
+      items = sessionsQuery.data.sessions.map((s) => ({
+        id: s.id,
+        label: s.title,
+        to: "/session/$id",
+        params: { id: s.id },
+      }));
     }
   } else {
     items = [];

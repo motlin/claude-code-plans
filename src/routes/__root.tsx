@@ -23,7 +23,11 @@ import { approvalsQueryOptions } from "../lib/api/approvals";
 import { plansQueryOptions } from "../lib/api/plans";
 import { projectsQueryOptions } from "../lib/api/projects";
 import { pluginsQueryOptions, userCommandsQueryOptions } from "../lib/api/plugins";
-import { activeSessionsQueryOptions, sessionsQueryOptions } from "../lib/api/sessions";
+import {
+  activeSessionsQueryOptions,
+  recentSessionsInfiniteQueryOptions,
+  groupedSessionsQueryOptions,
+} from "../lib/api/sessions";
 import appCss from "../styles/globals.css?url";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -32,7 +36,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     Promise.all([
       queryClient.ensureQueryData(projectsQueryOptions()),
       queryClient.ensureQueryData(plansQueryOptions()),
-      queryClient.ensureQueryData(sessionsQueryOptions),
+      queryClient.ensureInfiniteQueryData(recentSessionsInfiniteQueryOptions()),
+      queryClient.ensureQueryData(groupedSessionsQueryOptions()),
       queryClient.ensureQueryData(pluginsQueryOptions),
       queryClient.ensureQueryData(userCommandsQueryOptions),
       queryClient.ensureQueryData(activeSessionsQueryOptions(60_000)),

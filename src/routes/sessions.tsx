@@ -1,12 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { sessionsQueryOptions } from "../lib/api/sessions";
+import { useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
+import {
+  groupedSessionsQueryOptions,
+  recentSessionsInfiniteQueryOptions,
+} from "../lib/api/sessions";
 import { useClaudeEvents } from "../hooks/use-claude-events";
 
 export const Route = createFileRoute("/sessions")({
   component: SessionsPage,
-  loader: ({ context: { queryClient } }) => queryClient.ensureQueryData(sessionsQueryOptions),
+  loader: ({ context: { queryClient } }) =>
+    Promise.all([
+      queryClient.ensureInfiniteQueryData(recentSessionsInfiniteQueryOptions()),
+      queryClient.ensureQueryData(groupedSessionsQueryOptions()),
+    ]),
   head: () => ({
     meta: [{ title: "Claude Sessions" }],
   }),
@@ -38,18 +44,18 @@ function getTimePeriod(mtime: string): string {
   return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
-const INITIAL_SHOW = 50;
-const PER_PROJECT_LIMIT = 10;
-
 function SessionsPage() {
-  const { data: groups } = useSuspenseQuery(sessionsQueryOptions);
+  const {
+    data: recent,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useSuspenseInfiniteQuery(recentSessionsInfiniteQueryOptions());
+  const { data: groups } = useSuspenseQuery(groupedSessionsQueryOptions());
   const { activeSessions } = useClaudeEvents();
   const activeIds = new Set(activeSessions.keys());
-  const [showAll, setShowAll] = useState(false);
 
-  const allSessions = groups
-    .flatMap((g) => g.sessions)
-    .sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime());
+  const allSessions = recent.pages.flatMap((p) => p.sessions);
 
   const timePeriodGroups: Array<{
     period: string;
@@ -65,30 +71,16 @@ function SessionsPage() {
     }
   }
 
-  const hiddenCount = allSessions.length - INITIAL_SHOW;
-
-  const visibleTimePeriodGroups: Array<{
-    period: string;
-    sessions: typeof allSessions;
-  }> = [];
-  let remaining = showAll ? Infinity : INITIAL_SHOW;
-  for (const group of timePeriodGroups) {
-    if (remaining <= 0) break;
-    const slice = group.sessions.slice(0, remaining);
-    visibleTimePeriodGroups.push({ period: group.period, sessions: slice });
-    remaining -= slice.length;
-  }
-
   return (
     <div>
       <h1 className="text-lg font-semibold">Claude Sessions</h1>
 
-      {groups.length === 0 ? (
+      {allSessions.length === 0 ? (
         <p className="mt-4 text-text-500">No session files found.</p>
       ) : (
         <>
           <div className="mt-6">
-            {visibleTimePeriodGroups.map((group) => (
+            {timePeriodGroups.map((group) => (
               <div key={group.period}>
                 <h2 className="sticky top-0 z-10 bg-bg-000 border-b border-border-300/15 pb-1 pt-2 text-sm font-semibold text-text-500">
                   {group.period}
@@ -100,13 +92,14 @@ function SessionsPage() {
                 </ul>
               </div>
             ))}
-            {!showAll && hiddenCount > 0 && (
+            {hasNextPage && (
               <button
                 type="button"
-                onClick={() => setShowAll(true)}
-                className="mt-2 text-sm text-accent-100 hover:underline cursor-pointer"
+                onClick={() => void fetchNextPage()}
+                disabled={isFetchingNextPage}
+                className="mt-2 text-sm text-accent-100 hover:underline cursor-pointer disabled:opacity-50"
               >
-                Show {hiddenCount} more sessions
+                {isFetchingNextPage ? "Loading…" : "Show more sessions"}
               </button>
             )}
           </div>
@@ -114,8 +107,8 @@ function SessionsPage() {
           <div className="mt-8">
             <h2 className="border-b border-border-300/15 pb-1 text-sm font-semibold">By Project</h2>
             {groups.map((group) => {
-              const shown = group.sessions.slice(0, PER_PROJECT_LIMIT);
-              const remaining = group.sessions.length - shown.length;
+              const shown = group.sessions;
+              const remaining = group.sessionCount - shown.length;
               return (
                 <div key={group.project} className="mt-4">
                   <h3 className="text-sm font-medium text-text-500">
@@ -126,7 +119,7 @@ function SessionsPage() {
                     >
                       {group.projectName}
                     </Link>
-                    <span className="ml-1.5 text-xs font-normal">({group.sessions.length})</span>
+                    <span className="ml-1.5 text-xs font-normal">({group.sessionCount})</span>
                   </h3>
                   <ul className="mt-1 space-y-1">
                     {shown.map((sess) => (

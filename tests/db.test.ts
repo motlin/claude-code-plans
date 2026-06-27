@@ -14,7 +14,9 @@ import {
 } from "../src/lib/db/indexer";
 import {
   listProjectsFromDb,
-  listSessionsFromDb,
+  listSessionGroupsFromDb,
+  listRecentSessionsFromDb,
+  getSessionTitlesByIds,
   listSessionsForProjectFromDb,
   getPlanLinksFromDb,
   getProjectDetailFromDb,
@@ -938,10 +940,42 @@ describe("queries", () => {
     expect(projects[0]!.sessionCount).toBe(2); // excludes sidechain
   });
 
-  it("listSessionsFromDb returns grouped sessions excluding sidechains", () => {
-    const groups = listSessionsFromDb(db.index);
+  it("listSessionGroupsFromDb returns grouped sessions excluding sidechains, with counts", () => {
+    const groups = listSessionGroupsFromDb(db.index);
     expect(groups.map((g) => g.project)).toStrictEqual(["proj-a", "proj-b"]);
     expect(groups[0]!.sessions.map((s) => s.id)).toStrictEqual(["sess-1", "sess-2"]); // no sidechain, highest mtime first
+    expect(groups[0]!.sessionCount).toBe(2);
+    expect(groups[1]!.sessionCount).toBe(1);
+  });
+
+  it("listSessionGroupsFromDb caps sessions per project but keeps full count", () => {
+    const groups = listSessionGroupsFromDb(db.index, { perProject: 1 });
+    const alpha = groups.find((g) => g.project === "proj-a")!;
+    expect(alpha.sessions.map((s) => s.id)).toStrictEqual(["sess-1"]); // only newest
+    expect(alpha.sessionCount).toBe(2); // count still reflects all non-sidechain sessions
+  });
+
+  it("listRecentSessionsFromDb returns a flat mtime-desc page across projects", () => {
+    const page = listRecentSessionsFromDb(db.index, { limit: 10 });
+    expect(page.sessions.map((s) => s.id)).toStrictEqual(["sess-1", "sess-2", "sess-3"]); // sidechain excluded
+    expect(page.nextCursor).toBe(null);
+  });
+
+  it("listRecentSessionsFromDb paginates via the cursor without gaps or overlaps", () => {
+    const first = listRecentSessionsFromDb(db.index, { limit: 2 });
+    expect(first.sessions.map((s) => s.id)).toStrictEqual(["sess-1", "sess-2"]);
+    expect(first.nextCursor).toStrictEqual({ mtimeMs: 2000, id: "sess-2" });
+
+    const second = listRecentSessionsFromDb(db.index, { limit: 2, before: first.nextCursor! });
+    expect(second.sessions.map((s) => s.id)).toStrictEqual(["sess-3"]);
+    expect(second.nextCursor).toBe(null);
+  });
+
+  it("getSessionTitlesByIds returns a map of id to title for known sessions", () => {
+    expect(getSessionTitlesByIds(db.index, ["sess-1", "sess-3", "missing"])).toStrictEqual({
+      "sess-1": "Fix login",
+      "sess-3": "Deploy",
+    });
   });
 
   it("listSessionsForProjectFromDb returns sessions for a project", () => {

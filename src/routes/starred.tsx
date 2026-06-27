@@ -3,13 +3,14 @@ import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { z } from "zod";
 import { apiFetch } from "../lib/api/client";
-import { sessionsQueryOptions } from "../lib/api/sessions";
+import { starredSessionsQueryOptions } from "../lib/api/sessions";
 
 const StarredMutationResponse = z.object({ starred: z.boolean() });
 
 export const Route = createFileRoute("/starred")({
   component: StarredPage,
-  loader: ({ context: { queryClient } }) => queryClient.ensureQueryData(sessionsQueryOptions),
+  loader: ({ context: { queryClient } }) =>
+    queryClient.ensureQueryData(starredSessionsQueryOptions),
   head: () => ({
     meta: [{ title: "Starred Sessions" }],
   }),
@@ -27,14 +28,10 @@ function formatDate(iso: string): string {
 
 function StarredPage() {
   const queryClient = useQueryClient();
-  const { data: groups } = useSuspenseQuery(sessionsQueryOptions);
+  const { data: starred } = useSuspenseQuery(starredSessionsQueryOptions);
   const sessions = useMemo(
-    () =>
-      groups
-        .flatMap((group) => group.sessions)
-        .filter((session) => session.starred)
-        .sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime()),
-    [groups],
+    () => [...starred].sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime()),
+    [starred],
   );
 
   async function handleUnstar(sessionId: string) {

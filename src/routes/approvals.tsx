@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { approvalsQueryOptions } from "../lib/api/approvals";
-import { sessionsQueryOptions } from "../lib/api/sessions";
+import { sessionTitlesQueryOptions } from "../lib/api/sessions";
 import { toMdSlug } from "../lib/md-slug";
 import { formatRelativeTimeFromIso } from "../lib/relative-time";
 import { pillStyles } from "../components/detail-top-bar";
@@ -22,21 +22,11 @@ function truncate(text: string, max: number): string {
 
 function ApprovalsPage() {
   const { data } = useSuspenseQuery(approvalsQueryOptions());
-  const { data: sessionGroups } = useQuery(sessionsQueryOptions);
-
-  const sessionTitleById = useMemo(() => {
-    const map = new Map<string, string>();
-    if (sessionGroups) {
-      for (const group of sessionGroups) {
-        for (const session of group.sessions) {
-          map.set(session.id, session.title);
-        }
-      }
-    }
-    return map;
-  }, [sessionGroups]);
-
   const approvals = data.approvals;
+
+  const sessionIds = useMemo(() => approvals.map((a) => a.sessionId), [approvals]);
+  const { data: titlesData } = useQuery(sessionTitlesQueryOptions(sessionIds));
+  const titles = titlesData?.titles ?? {};
 
   return (
     <div>
@@ -50,7 +40,7 @@ function ApprovalsPage() {
       ) : (
         <ul className="mt-4 space-y-1">
           {approvals.map((approval) => {
-            const sessionTitle = sessionTitleById.get(approval.sessionId) ?? approval.sessionId;
+            const sessionTitle = titles[approval.sessionId] ?? approval.sessionId;
             const linkProps = approval.planFilename
               ? ({
                   to: "/plan/$filename",
