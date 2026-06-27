@@ -8,6 +8,8 @@ import { navItems } from "./navigation";
 import { SidebarToggleIcon, SearchInput } from "./primitives";
 import { ActiveSubList, PlansSubList, ProjectsSubList, PluginsSubList, SubList } from "./sublists";
 import { approvalsQueryOptions } from "../../lib/api/approvals";
+import { activeSessionsQueryOptions } from "../../lib/api/sessions";
+import { useSettings } from "../settings-provider";
 
 export function Sidebar({
   collapsed,
@@ -24,6 +26,11 @@ export function Sidebar({
   const [collapsedSections, setCollapsedSections] = useState<Set<Section>>(new Set());
   const { data: approvalsData } = useQuery(approvalsQueryOptions());
   const approvalsCount = approvalsData?.approvals.length ?? 0;
+  const { settings } = useSettings();
+  const { data: activeSessions } = useQuery(
+    activeSessionsQueryOptions(settings.activeTimeoutSec * 1000),
+  );
+  const activeCount = activeSessions?.length ?? 0;
 
   function toggleSection(section: Section) {
     setCollapsedSections((prev) => {
@@ -121,6 +128,12 @@ export function Sidebar({
             item.to === "/settings" ? currentPath === "/settings" : currentPath.startsWith(item.to);
           const Icon = item.icon;
           const isExpanded = !collapsedSections.has(item.section);
+          const badge =
+            item.section === "active"
+              ? { count: activeCount, title: `${activeCount} active` }
+              : item.section === "approvals"
+                ? { count: approvalsCount, title: `${approvalsCount} awaiting approval` }
+                : null;
           return (
             <div key={item.to}>
               <div className="flex items-center">
@@ -151,15 +164,14 @@ export function Sidebar({
                 >
                   <Icon className="h-4 w-4 shrink-0" />
                   <span className="flex-1 truncate">{item.label}</span>
-                  {(item.section === "approvals" || item.section === "active") &&
-                    approvalsCount > 0 && (
-                      <span
-                        className="ml-auto inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-semibold text-white"
-                        title={`${approvalsCount} awaiting approval`}
-                      >
-                        {approvalsCount}
-                      </span>
-                    )}
+                  {badge && badge.count > 0 && (
+                    <span
+                      className="ml-auto inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-semibold text-white"
+                      title={badge.title}
+                    >
+                      {badge.count}
+                    </span>
+                  )}
                 </Link>
               </div>
               {isExpanded &&
