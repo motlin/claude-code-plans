@@ -985,6 +985,34 @@ export function isCurrentlyIndexing(): boolean {
   return indexingInProgress;
 }
 
+/** Max concurrent session files indexed during a full scan. */
+const SCAN_CONCURRENCY = 8;
+
+/** Run `fn` over `items` with at most `limit` in flight at once. */
+async function mapLimit<T>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<void>,
+): Promise<void> {
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const idx = next++;
+      await fn(items[idx]!);
+    }
+  });
+  await Promise.all(workers);
+}
+
+/** Snapshot of indexed_files mtimes, so the scan can detect changes in memory. */
+function loadIndexedFileMtimes(db: IndexDb): Map<string, number> {
+  const rows = db
+    .select({ path: schema.indexedFiles.path, mtimeMs: schema.indexedFiles.mtimeMs })
+    .from(schema.indexedFiles)
+    .all();
+  return new Map(rows.map((r) => [r.path, r.mtimeMs]));
+}
+
 export async function fullScan(
   db: IndexDb,
   projectsDir: string,
@@ -1000,37 +1028,73 @@ export async function fullScan(
       return;
     }
 
+    // Validate project dirs and capture a recency signal, so the most-recently
+    // active projects are indexed first and fresh sessions surface within
+    // seconds rather than after the whole scan completes.
+    const projects: { project: string; projectPath: string; recency: number }[] = [];
     for (const project of projectDirs) {
       const projectPath = join(projectsDir, project);
+      let recency: number;
       try {
         const dirStat = await stat(projectPath);
         if (!dirStat.isDirectory()) continue;
+        recency = dirStat.mtimeMs;
       } catch {
         continue;
       }
+      // sessions-index.json is rewritten as a project's sessions change, so it
+      // is a better recency signal than the dir mtime on filesystems that don't
+      // bump the dir when an existing file is appended to.
+      try {
+        const idxStat = await stat(join(projectPath, "sessions-index.json"));
+        recency = Math.max(recency, idxStat.mtimeMs);
+      } catch {
+        // no sessions-index.json
+      }
+      projects.push({ project, projectPath, recency });
+    }
+    projects.sort((a, b) => b.recency - a.recency);
 
+    // One bulk read of indexed_files so per-session change detection (used to
+    // skip the expensive subagent re-link) is an in-memory lookup.
+    const knownMtimes = loadIndexedFileMtimes(db);
+
+    for (const { project, projectPath } of projects) {
       // Index sessions-index.json
       await indexSessionsIndex(db, projectPath, project);
 
-      // Index JSONL files
+      // Discover session JSONL files with their mtimes, newest first.
       let files: string[];
       try {
         files = await readdir(projectPath);
       } catch {
         continue;
       }
+      const sessionFiles = await Promise.all(
+        files
+          .filter((f) => f.endsWith(".jsonl"))
+          .map(async (f) => {
+            const path = join(projectPath, f);
+            let mtimeMs = 0;
+            try {
+              mtimeMs = (await stat(path)).mtimeMs;
+            } catch {
+              // unreadable; indexJsonlFile will skip it too
+            }
+            return { sessionId: f.replace(/\.jsonl$/, ""), path, mtimeMs };
+          }),
+      );
+      sessionFiles.sort((a, b) => b.mtimeMs - a.mtimeMs);
 
-      for (const file of files) {
-        if (!file.endsWith(".jsonl")) continue;
-        await indexJsonlFile(db, join(projectPath, file), project);
-      }
+      // Index JSONL files with bounded concurrency.
+      await mapLimit(sessionFiles, SCAN_CONCURRENCY, async ({ path }) => {
+        await indexJsonlFile(db, path, project);
+      });
 
-      // Index subagents
-      const sessionJsonlPaths: string[] = [];
-      for (const file of files) {
-        if (!file.endsWith(".jsonl")) continue;
-        const sessionId = file.replace(/\.jsonl$/, "");
-        const sessionJsonlPath = join(projectPath, file);
+      // Index subagents and (re)link parent-child relationships. Linking
+      // re-streams whole JSONL files, so only do it for sessions whose root or
+      // subagent files actually changed since the last scan.
+      for (const { sessionId, path: sessionJsonlPath, mtimeMs: sessionMtime } of sessionFiles) {
         const subagentsDir = join(projectPath, sessionId, "subagents");
         let subFiles: string[];
         try {
@@ -1038,26 +1102,29 @@ export async function fullScan(
         } catch {
           continue;
         }
+
+        let changed = knownMtimes.get(sessionJsonlPath) !== sessionMtime;
         const subagentJsonlPaths: string[] = [];
         for (const sf of subFiles) {
           if (!sf.startsWith("agent-") || !sf.endsWith(".jsonl")) continue;
           const sfPath = join(subagentsDir, sf);
+          let sfMtime = 0;
+          try {
+            sfMtime = (await stat(sfPath)).mtimeMs;
+          } catch {
+            continue;
+          }
+          if (knownMtimes.get(sfPath) !== sfMtime) changed = true;
           await indexSubagentFile(db, sfPath, sessionId, project);
           subagentJsonlPaths.push(sfPath);
         }
-        if (subagentJsonlPaths.length > 0) {
-          sessionJsonlPaths.push(sessionJsonlPath);
-          // Also link from subagent JSONL files (for nesting)
-          for (const saPath of subagentJsonlPaths) {
-            const agentFilename = basename(saPath, ".jsonl");
-            await linkSubagentParents(db, saPath, agentFilename);
-          }
-        }
-      }
 
-      // Link parent-child relationships from root session JSONL files
-      for (const sjPath of sessionJsonlPaths) {
-        await linkSubagentParents(db, sjPath, null);
+        if (changed && subagentJsonlPaths.length > 0) {
+          for (const saPath of subagentJsonlPaths) {
+            await linkSubagentParents(db, saPath, basename(saPath, ".jsonl"));
+          }
+          await linkSubagentParents(db, sessionJsonlPath, null);
+        }
       }
 
       // Index memory markdown files for this project
