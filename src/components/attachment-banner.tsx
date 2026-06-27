@@ -343,6 +343,15 @@ function AttachmentContent({
           uuid={uuid}
         />
       );
+    case "auto_mode_exit":
+      return (
+        <Banner
+          icon={<Bot className="h-3.5 w-3.5" />}
+          label="Auto mode exited"
+          sessionId={sessionId}
+          uuid={uuid}
+        />
+      );
     case "max_turns_reached":
       return (
         <Banner
@@ -375,6 +384,19 @@ function AttachmentContent({
         <Banner
           icon={<Wrench className="h-3.5 w-3.5" />}
           label={`Deferred tools: ${parts.join(", ") || "updated"}`}
+          sessionId={sessionId}
+          uuid={uuid}
+        />
+      );
+    }
+    case "agent_listing_delta": {
+      const parts: string[] = [];
+      if (attachment.addedTypes?.length) parts.push(`+${attachment.addedTypes.length} agents`);
+      if (attachment.removedTypes?.length) parts.push(`-${attachment.removedTypes.length} agents`);
+      return (
+        <Banner
+          icon={<Bot className="h-3.5 w-3.5" />}
+          label={`Agents${attachment.isInitial ? " — initial" : ""}: ${parts.join(", ") || "updated"}`}
           sessionId={sessionId}
           uuid={uuid}
         />

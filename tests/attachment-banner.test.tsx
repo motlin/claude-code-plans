@@ -10,6 +10,7 @@ function renderBanner(payload: AttachmentPayload): string {
 const MINIMAL_BY_TYPE: Record<string, AttachmentPayload> = {
   plan_mode: { type: "plan_mode" },
   auto_mode: { type: "auto_mode" },
+  auto_mode_exit: { type: "auto_mode_exit" },
   plan_file_reference: { type: "plan_file_reference" },
   nested_memory: { type: "nested_memory" },
   plan_mode_exit: { type: "plan_mode_exit" },
@@ -45,6 +46,7 @@ const MINIMAL_BY_TYPE: Record<string, AttachmentPayload> = {
     hookEvent: "PreToolUse",
   },
   deferred_tools_delta: { type: "deferred_tools_delta" },
+  agent_listing_delta: { type: "agent_listing_delta" },
   mcp_instructions_delta: { type: "mcp_instructions_delta" },
   skill_listing: { type: "skill_listing" },
   task_reminder: { type: "task_reminder" },

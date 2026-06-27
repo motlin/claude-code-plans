@@ -361,6 +361,17 @@ const DeferredToolsDeltaAttachmentPayload = z
   })
   .strict();
 
+const AgentListingDeltaAttachmentPayload = z
+  .object({
+    type: z.literal("agent_listing_delta"),
+    addedTypes: z.array(z.string()).optional(),
+    addedLines: z.array(z.string()).optional(),
+    removedTypes: z.array(z.string()).optional(),
+    isInitial: z.boolean().optional(),
+    showConcurrencyNote: z.boolean().optional(),
+  })
+  .strict();
+
 const McpInstructionsDeltaAttachmentPayload = z
   .object({
     type: z.literal("mcp_instructions_delta"),
@@ -459,6 +470,7 @@ const QueuedCommandAttachmentPayload = z
     commandMode: z.string().optional(),
     imagePasteIds: z.array(z.union([z.string(), z.number()])).optional(),
     origin: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
+    timestamp: z.string().optional(),
   })
   .strict();
 
@@ -524,6 +536,12 @@ const WorkflowKeywordRequestAttachmentPayload = z
   })
   .strict();
 
+const AutoModeExitAttachmentPayload = z
+  .object({
+    type: z.literal("auto_mode_exit"),
+  })
+  .strict();
+
 const PlanFileReferenceAttachmentPayload = z
   .object({
     type: z.literal("plan_file_reference"),
@@ -544,6 +562,7 @@ const NestedMemoryAttachmentPayload = z
 export const AttachmentPayloadSchema = z.discriminatedUnion("type", [
   PlanModeAttachmentPayload,
   AutoModeAttachmentPayload,
+  AutoModeExitAttachmentPayload,
   PlanFileReferenceAttachmentPayload,
   NestedMemoryAttachmentPayload,
   PlanModeExitAttachmentPayload,
@@ -555,6 +574,7 @@ export const AttachmentPayloadSchema = z.discriminatedUnion("type", [
   HookSystemMessageAttachmentPayload,
   HookAdditionalContextAttachmentPayload,
   DeferredToolsDeltaAttachmentPayload,
+  AgentListingDeltaAttachmentPayload,
   McpInstructionsDeltaAttachmentPayload,
   SkillListingAttachmentPayload,
   TaskReminderAttachmentPayload,
