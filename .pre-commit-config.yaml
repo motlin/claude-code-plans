@@ -42,7 +42,7 @@ repos:
         types: [markdown]
       - id: fallow
         name: fallow
-        entry: vp exec fallow fix --base HEAD --yes --no-create-config
+        entry: vp exec fallow dead-code --fail-on-issues
         language: system
         pass_filenames: false
         types: [file]
