@@ -26,7 +26,8 @@ import { subagentStartFixture } from "./fixtures/subagent-start";
 import { taskCreatedFixture } from "./fixtures/task-created";
 import { worktreeRemoveFixture } from "./fixtures/worktree-remove";
 
-// CLAUDE-prefixed env Claude Code typically exposes to the hook subprocess.
+// CLAUDE-prefixed env Claude Code typically exposes to the hook subprocess,
+// plus the tmux TMUX/TMUX_PANE vars present when Claude runs inside a tmux pane.
 // We pre-stage these via the `env` option to execFileSync so the jq filter's
 // `$ENV` reflects what the real hook would see.
 const HOOK_ENV: Record<string, string> = {
@@ -35,7 +36,11 @@ const HOOK_ENV: Record<string, string> = {
   CLAUDE_CODE_EXECPATH: "/Users/u/.local/share/claude/versions/2.1.119",
   CLAUDECODE: "1",
   CLAUDE_PROJECT_DIR: "/Users/u/projects/app",
-  // A non-CLAUDE-prefixed key — must NOT leak through the filter.
+  // tmux exposes these to a hook running inside a pane; the filter forwards the
+  // two exact keys (not by prefix) so the tmux-window mapping can be captured.
+  TMUX: "/private/tmp/tmux-501/default,12345,0",
+  TMUX_PANE: "%593",
+  // A non-CLAUDE-prefixed, non-tmux key — must NOT leak through the filter.
   HOME: "/Users/u",
 };
 
@@ -207,7 +212,7 @@ describe("hook stdin -> jq filter -> HookEventEnvelope round-trip", () => {
     });
   }
 
-  it("attaches every CLAUDE-prefixed env var under claude_env", () => {
+  it("attaches every CLAUDE-prefixed env var plus TMUX/TMUX_PANE under claude_env", () => {
     const transformed = jqRoundTrip({
       ...baseEnvelope,
       hook_event_name: "Stop",
@@ -220,6 +225,8 @@ describe("hook stdin -> jq filter -> HookEventEnvelope round-trip", () => {
       CLAUDE_CODE_EXECPATH: "/Users/u/.local/share/claude/versions/2.1.119",
       CLAUDECODE: "1",
       CLAUDE_PROJECT_DIR: "/Users/u/projects/app",
+      TMUX: "/private/tmp/tmux-501/default,12345,0",
+      TMUX_PANE: "%593",
     });
   });
 

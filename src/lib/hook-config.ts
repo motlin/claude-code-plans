@@ -4,9 +4,9 @@
  * Each hook event fires a curl POST to the local server's /api/hook endpoint,
  * forwarding the full hook stdin payload from Claude Code (tool_input,
  * tool_response, transcript_path, prompt, etc.) merged with a snapshot of all
- * CLAUDE-prefixed environment variables under `claude_env`. The server uses
- * this for real-time session tracking, task completion notifications, and SSE
- * broadcasts.
+ * CLAUDE-prefixed environment variables (plus the tmux `TMUX`/`TMUX_PANE` vars)
+ * under `claude_env`. The server uses this for real-time session tracking, task
+ * completion notifications, SSE broadcasts, and mapping sessions to tmux windows.
  */
 
 import { KNOWN_HOOK_EVENTS } from "./hook-events";
@@ -38,8 +38,10 @@ interface HooksConfig {
  * Single jq filter applied to every hook event. Reads the full hook context
  * JSON from stdin (whatever Claude Code chose to send for this event) and
  * merges in a `claude_env` field carrying every CLAUDE-prefixed environment
- * variable. We do *not* strip any fields — the server-side strict Zod schema
- * decides what's valid and the schema-drift recovery path handles new fields.
+ * variable plus the tmux `TMUX`/`TMUX_PANE` vars (selected by exact name, used
+ * to map a session to its live tmux window). We do *not* strip any fields — the
+ * server-side strict Zod schema decides what's valid and the schema-drift
+ * recovery path handles new fields.
  *
  * Exported so the round-trip test in `tests/hook-jq-roundtrip.test.ts` can
  * shell out to the exact same `jq` invocation a real hook would, against a
@@ -47,7 +49,7 @@ interface HooksConfig {
  * `HookEventEnvelope`.
  */
 export const HOOK_PAYLOAD_JQ_FILTER =
-  '. + {claude_env: ($ENV | with_entries(select(.key | startswith("CLAUDE"))))}';
+  '. + {claude_env: ($ENV | with_entries(select(.key | startswith("CLAUDE") or . == "TMUX" or . == "TMUX_PANE")))}';
 
 function curlPost(port: number): string {
   // --connect-timeout 0.1 + `|| true` guarantee the hook never blocks Claude:
