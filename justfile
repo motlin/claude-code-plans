@@ -10,6 +10,25 @@ port := "7526"
 [group('setup')]
 install:
     vp install
+    just ensure-sqlite-native
+
+# Verify better-sqlite3 native modules match the active Node runtime
+[group('setup')]
+ensure-sqlite-native:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ ! -d node_modules/.pnpm ]; then
+        exit 0
+    fi
+    find node_modules/.pnpm -path "*/node_modules/better-sqlite3/package.json" -print | sort | while IFS= read -r package_json; do
+        package_dir="$PWD/$(dirname "$package_json")"
+        if node -e 'const Database = require(process.argv[1]); new Database(":memory:").close();' "$package_dir" >/dev/null 2>&1; then
+            continue
+        fi
+        rm -rf "$package_dir/build"
+        pnpm --dir "$package_dir" run build-release
+        node -e 'const Database = require(process.argv[1]); new Database(":memory:").close();' "$package_dir"
+    done
 
 # Run dev server with Vite
 dev *args: install
