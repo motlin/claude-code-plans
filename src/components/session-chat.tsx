@@ -1,5 +1,4 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { formatDistanceToNow } from "date-fns";
 import {
   AlertTriangle,
   Bot,
@@ -13,6 +12,7 @@ import {
   Zap,
 } from "lucide-react";
 import { assertNever } from "../lib/assert-never";
+import { formatTimestamp, formatRelativeTimestamp } from "../lib/timestamp-format";
 import { MarkdownArticle } from "./markdown-article";
 import { getToolRenderer } from "./tool-renderers";
 import { buildClientToolCall } from "./tool-renderers/types";
@@ -44,52 +44,6 @@ import {
   summarizeToolCallsStructured,
 } from "../lib/session-utils";
 import type { SummarySegment } from "../lib/session-utils";
-
-function formatTimestamp(timestamp?: string): string | null {
-  if (!timestamp) return null;
-  try {
-    const date = new Date(timestamp);
-    if (isNaN(date.getTime())) return null;
-
-    const now = new Date();
-    const isToday = date.toDateString() === now.toDateString();
-
-    if (isToday) {
-      return date.toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      });
-    } else {
-      return (
-        date.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }) +
-        " " +
-        date.toLocaleTimeString("en-US", {
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
-        })
-      );
-    }
-  } catch {
-    return null;
-  }
-}
-
-function formatRelativeTimestamp(timestamp?: string): string | null {
-  if (!timestamp) return null;
-  try {
-    const date = new Date(timestamp);
-    if (isNaN(date.getTime())) return null;
-    return formatDistanceToNow(date, { addSuffix: true });
-  } catch {
-    return null;
-  }
-}
 
 function getLineTimestamp(line: SessionLine): string | undefined {
   if ("timestamp" in line) return line.timestamp;

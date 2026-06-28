@@ -108,6 +108,26 @@ describe("AttachmentBanner", () => {
     });
   });
 
+  describe("queued_command", () => {
+    it("renders a relative timestamp with an absolute title when timestamp is present", () => {
+      const html = renderBanner({
+        type: "queued_command",
+        prompt: "do the thing",
+        timestamp: "2020-01-15T08:30:00.000Z",
+      });
+      expect(html).toContain("ago");
+      expect(html).toContain("2020");
+    });
+
+    it("omits the timestamp span when no timestamp is present", () => {
+      const html = renderBanner({
+        type: "queued_command",
+        prompt: "do the thing",
+      });
+      expect(html).not.toContain("ago");
+    });
+  });
+
   describe("deferred_tools_delta", () => {
     it("appends a pluralized pending MCP server count to the banner label", () => {
       const html = renderBanner({

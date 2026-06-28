@@ -29,6 +29,7 @@ import {
 import { assertNever } from "../lib/assert-never";
 import { AttachmentPayloadSchema, type AttachmentPayload } from "../lib/schemas";
 import { toMdSlug } from "../lib/md-slug";
+import { formatTimestamp, formatRelativeTimestamp } from "../lib/timestamp-format";
 import { DebugLink } from "./debug-link";
 
 /**
@@ -449,7 +450,9 @@ function AttachmentContent({
     }
 
     // -- Commands --
-    case "queued_command":
+    case "queued_command": {
+      const queuedRelative = formatRelativeTimestamp(attachment.timestamp);
+      const queuedAbsolute = formatTimestamp(attachment.timestamp);
       return (
         <Banner
           icon={<Hourglass className="h-3.5 w-3.5" />}
@@ -464,8 +467,14 @@ function AttachmentContent({
                 : attachment.prompt}
             </span>
           )}
+          {queuedRelative && (
+            <span className="text-text-500" title={queuedAbsolute ?? undefined}>
+              {queuedRelative}
+            </span>
+          )}
         </Banner>
       );
+    }
 
     // -- Diagnostics --
     case "diagnostics":
