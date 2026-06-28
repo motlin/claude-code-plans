@@ -15,7 +15,7 @@ import {
 export const Route = createFileRoute("/")({
   component: Home,
   head: () => ({
-    meta: [{ title: "Claude Code Viewer" }],
+    meta: [{ title: "Claude Code Browser" }],
   }),
 });
 
@@ -85,7 +85,7 @@ const cards = [
 function Home() {
   return (
     <div>
-      <h1 className="text-lg font-semibold">Claude Code Viewer</h1>
+      <h1 className="text-lg font-semibold">Claude Code Browser</h1>
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((card) => {
           const Icon = card.icon;

@@ -1,4 +1,4 @@
-# Claude Code Viewer
+# Claude Code Browser
 
 A local web UI for browsing your [Claude Code](https://docs.anthropic.com/en/docs/claude-code) data: sessions, plans, memories, tasks, and plugins. It reads directly from `~/.claude/` and displays everything in a searchable, syntax-highlighted interface with live updates.
 

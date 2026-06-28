@@ -1,7 +1,7 @@
 {
-  "name": "claude-code-plans",
+  "name": "claude-code-browser",
   "version": "1.0.0",
-  "description": "Persistent HTTP server that serves Claude Code plans with syntax highlighting and real-time updates",
+  "description": "Claude Code Browser: a persistent HTTP server that browses your Claude Code data with syntax highlighting and real-time updates",
   "type": "module",
   "scripts": {
     "preinstall": "npx only-allow pnpm",

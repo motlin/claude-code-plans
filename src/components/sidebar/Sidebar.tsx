@@ -108,7 +108,7 @@ export function Sidebar({
               />
             </svg>
           </span>
-          Claude Code Viewer
+          Claude Code Browser
         </Link>
         <button
           type="button"
