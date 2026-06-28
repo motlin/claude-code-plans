@@ -358,6 +358,7 @@ const DeferredToolsDeltaAttachmentPayload = z
     removedNames: z.array(z.string()).optional(),
     readdedNames: z.array(z.string()).optional(),
     pendingMcpServers: z.array(z.string()).optional(),
+    needsAuthMcpServers: z.array(z.string()).optional(),
   })
   .strict();
 
@@ -641,6 +642,7 @@ export const CompactMetadataSchema = z
       })
       .strict()
       .optional(),
+    cumulativeDroppedTokens: z.number().optional(),
   })
   .strict();
 

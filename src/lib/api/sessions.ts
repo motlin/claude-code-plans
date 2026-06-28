@@ -20,8 +20,6 @@ const SessionListItemSchema = z.object({
   gitBranch: z.string().optional(),
   starred: z.boolean(),
 });
-export type SessionListItem = z.infer<typeof SessionListItemSchema>;
-
 /** Paginated, mtime-desc feed of recent sessions across all projects. */
 export const RecentSessionsResponse = z.object({
   sessions: z.array(SessionListItemSchema),
