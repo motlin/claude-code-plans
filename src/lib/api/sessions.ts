@@ -110,7 +110,7 @@ export const SessionSourceResponse = z
   })
   .nullable();
 
-export const DEFAULT_RECENT_PAGE_SIZE = 50;
+const DEFAULT_RECENT_PAGE_SIZE = 50;
 
 /** Single page of recent sessions (no pagination) — for compact previews. */
 export const recentSessionsQueryOptions = (limit: number) =>
