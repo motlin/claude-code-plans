@@ -28,7 +28,7 @@
     "@git-diff-view/react": "^0.1.6",
     "@mdxeditor/editor": "^4.0.4",
     "@tanstack/react-query": "^5.101.0",
-    "@tanstack/react-query-devtools": "^5.101.0",
+    "@tanstack/react-query-devtools": "^5.101.2",
     "@tanstack/react-router": "^1.170.16",
     "@tanstack/react-router-ssr-query": "^1.167.1",
     "@tanstack/react-start": "^1.168.26",
@@ -49,7 +49,7 @@
   "devDependencies": {
     "@storybook/react-vite": "^10.4.6",
     "@tailwindcss/vite": "^4.3.1",
-    "@tanstack/react-query-devtools": "^5.101.0",
+    "@tanstack/react-query-devtools": "^5.101.2",
     "@testing-library/react": "^16.3.2",
     "@types/better-sqlite3": "^7.6.13",
     "@types/markdown-it": "^14.1.2",
