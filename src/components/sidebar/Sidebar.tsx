@@ -30,7 +30,9 @@ export function Sidebar({
   const matches = useMatches();
   const currentPath = matches[matches.length - 1]?.fullPath ?? "/";
   const { section: activeSection, activeItemId, collapseOthers } = useActiveSection(matches);
-  const [collapsedSections, setCollapsedSections] = useState<Set<Section>>(new Set());
+  const [collapsedSections, setCollapsedSections] = useState<Set<Section>>(
+    () => new Set(navItems.map((item) => item.section)),
+  );
   const { data: approvalsData } = useQuery(approvalsQueryOptions());
   const approvalsCount = approvalsData?.approvals.length ?? 0;
   const { settings } = useSettings();
