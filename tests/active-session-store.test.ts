@@ -65,4 +65,45 @@ describe("active-session-store", () => {
     touchSession("nonexistent");
     expect(hasAnyActiveSessions()).toBe(false);
   });
+
+  it("captures tmux pane and server socket from claudeEnv", () => {
+    markSessionActive("s1", {
+      cwd: "/projects/foo",
+      claudeEnv: { TMUX_PANE: "%593", TMUX: "/tmp/tmux-501/default,12345,0" },
+    });
+    const entry = getActiveSessionEntries()[0]!;
+    expect(entry.tmuxPane).toBe("%593");
+    expect(entry.tmuxServerSocket).toBe("/tmp/tmux-501/default");
+  });
+
+  it("leaves tmux fields empty when claudeEnv lacks TMUX vars", () => {
+    markSessionActive("s1", { cwd: "/projects/foo" });
+    const entry = getActiveSessionEntries()[0]!;
+    expect(entry.tmuxPane).toBe("");
+    expect(entry.tmuxServerSocket).toBe("");
+  });
+
+  it("re-stamps tmux fields on touch with claudeEnv", () => {
+    markSessionActive("s1", {
+      cwd: "/projects/foo",
+      claudeEnv: { TMUX_PANE: "%1", TMUX: "/tmp/tmux-501/default,1,0" },
+    });
+    touchSession("s1", {
+      claudeEnv: { TMUX_PANE: "%2", TMUX: "/tmp/tmux-501/default,2,0" },
+    });
+    const entry = getActiveSessionEntries()[0]!;
+    expect(entry.tmuxPane).toBe("%2");
+    expect(entry.tmuxServerSocket).toBe("/tmp/tmux-501/default");
+  });
+
+  it("preserves tmux fields on touch without claudeEnv", () => {
+    markSessionActive("s1", {
+      cwd: "/projects/foo",
+      claudeEnv: { TMUX_PANE: "%7", TMUX: "/tmp/tmux-501/default,9,0" },
+    });
+    touchSession("s1");
+    const entry = getActiveSessionEntries()[0]!;
+    expect(entry.tmuxPane).toBe("%7");
+    expect(entry.tmuxServerSocket).toBe("/tmp/tmux-501/default");
+  });
 });

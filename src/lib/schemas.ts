@@ -332,6 +332,8 @@ const HookCancelledAttachmentPayload = z
     ...HookBaseFields,
     command: z.string().optional(),
     durationMs: z.number().optional(),
+    timedOut: z.boolean().optional(),
+    timeoutMs: z.number().optional(),
   })
   .strict();
 

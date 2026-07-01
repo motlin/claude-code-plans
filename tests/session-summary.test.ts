@@ -35,6 +35,8 @@ describe("toActiveSessionPayload", () => {
       startedAt: 946_598_400_000,
       lastActivity: 946_598_401_000,
       claudeEnv: {},
+      tmuxPane: "",
+      tmuxServerSocket: "",
     };
 
     const payload = toActiveSessionPayload(entry);

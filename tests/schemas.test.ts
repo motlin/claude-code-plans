@@ -398,6 +398,24 @@ describe("QueueOperationRecordSchema", () => {
 });
 
 describe("JsonlRecordSchema", () => {
+  it("parses hook-cancelled attachment records with timeout metadata", () => {
+    const result = JsonlRecordSchema.safeParse({
+      type: "attachment",
+      ...baseFields,
+      attachment: {
+        type: "hook_cancelled",
+        hookName: "PreToolUse:Bash",
+        toolUseID: "toolu_100",
+        hookEvent: "PreToolUse",
+        command: "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/pretooluse.py",
+        durationMs: 10045,
+        timedOut: true,
+        timeoutMs: 10000,
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("parses user records", () => {
     const record = {
       type: "user",

@@ -26,10 +26,15 @@ function makeStore() {
   const activeCalls: Array<{ sessionId: string; meta: StoreMeta }> = [];
   const endedCalls: string[] = [];
   const touchedCalls: string[] = [];
+  const touchCalls: Array<{
+    sessionId: string;
+    meta?: { claudeEnv?: Record<string, string> };
+  }> = [];
   return {
     activeCalls,
     endedCalls,
     touchedCalls,
+    touchCalls,
     store: {
       markSessionActive: (sessionId: string, meta: StoreMeta) => {
         activeCalls.push({ sessionId, meta });
@@ -37,8 +42,9 @@ function makeStore() {
       markSessionEnded: (sessionId: string) => {
         endedCalls.push(sessionId);
       },
-      touchSession: (sessionId: string) => {
+      touchSession: (sessionId: string, meta?: { claudeEnv?: Record<string, string> }) => {
         touchedCalls.push(sessionId);
+        touchCalls.push(meta === undefined ? { sessionId } : { sessionId, meta });
       },
       getActiveSessionEntry: (sessionId: string) => {
         const call = activeCalls.find((c) => c.sessionId === sessionId);
@@ -50,6 +56,8 @@ function makeStore() {
           startedAt: 946_598_400_000,
           lastActivity: 946_598_400_000,
           claudeEnv: call.meta.claudeEnv ?? {},
+          tmuxPane: call.meta.claudeEnv?.["TMUX_PANE"] ?? "",
+          tmuxServerSocket: call.meta.claudeEnv?.["TMUX"]?.split(",")[0] ?? "",
         };
       },
     },
@@ -279,6 +287,31 @@ describe("dispatchHookEvent", () => {
     expect(submitted.data["sessionId"]).toBe("abc-123");
     expect(submitted.data["prompt"]).toBe("fix the login bug");
     expect(typeof submitted.data["ts"]).toBe("string");
+  });
+
+  it("UserPromptSubmit re-stamps the tmux pane by passing claude_env to touchSession", async () => {
+    const broadcasts: Broadcast[] = [];
+    const { store, touchCalls } = makeStore();
+    await dispatchHookEvent({
+      event: {
+        hook_event_name: "UserPromptSubmit",
+        session_id: "abc-123",
+        transcript_path: "/tmp/abc-123.jsonl",
+        cwd: "/tmp",
+        prompt: "resume work",
+        claude_env: { TMUX_PANE: "%42", TMUX: "/tmp/tmux-501/default,900,0" },
+      },
+      db: db.index,
+      store,
+      broadcast: (type, data) => broadcasts.push({ type, data }),
+    });
+
+    expect(touchCalls).toStrictEqual([
+      {
+        sessionId: "abc-123",
+        meta: { claudeEnv: { TMUX_PANE: "%42", TMUX: "/tmp/tmux-501/default,900,0" } },
+      },
+    ]);
   });
 
   it("Notification broadcasts NOTIFICATION with message and optional title", async () => {

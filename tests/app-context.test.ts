@@ -76,6 +76,8 @@ describe("sweepSessions", () => {
       startedAt: Date.now() - 20 * 60 * 1000,
       lastActivity: Date.now() - 20 * 60 * 1000,
       claudeEnv: {},
+      tmuxPane: "",
+      tmuxServerSocket: "",
     });
 
     store.set("fresh", {
@@ -85,6 +87,8 @@ describe("sweepSessions", () => {
       startedAt: Date.now(),
       lastActivity: Date.now(),
       claudeEnv: {},
+      tmuxPane: "",
+      tmuxServerSocket: "",
     });
 
     sweepSessions(store);
