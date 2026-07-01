@@ -29,7 +29,7 @@ export function Sidebar({
 }) {
   const matches = useMatches();
   const currentPath = matches[matches.length - 1]?.fullPath ?? "/";
-  const { section: activeSection, activeItemId, collapseOthers } = useActiveSection(matches);
+  const { section: activeSection, activeItemId } = useActiveSection(matches);
   const [collapsedSections, setCollapsedSections] = useState<Set<Section>>(
     () => new Set(navItems.map((item) => item.section)),
   );
@@ -64,15 +64,10 @@ export function Sidebar({
       next.delete(activeSection);
 
       // Collapse sections that don't contain the current view when navigated to a
-      // specific item, or when the active route opts in via collapseOthers (e.g. home).
-      if (activeItemId || collapseOthers) {
+      // specific item.
+      if (activeItemId) {
         for (const item of navItems) {
-          if (
-            item.section !== activeSection &&
-            item.section !== "starred" &&
-            item.section !== "active" &&
-            item.section !== "approvals"
-          ) {
+          if (item.section !== activeSection) {
             next.add(item.section);
           }
         }
@@ -80,7 +75,7 @@ export function Sidebar({
 
       return next;
     });
-  }, [activeSection, activeItemId, collapseOthers]);
+  }, [activeSection, activeItemId]);
 
   if (collapsed && !mobile) {
     return (
