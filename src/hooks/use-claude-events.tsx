@@ -801,6 +801,10 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
               lines: lines as Record<string, JsonValue>[],
             });
           }
+          // An already-running session emits this event as it works; the
+          // active-sessions query only refetches on lifecycle events, so
+          // invalidate here to keep the /active page and sidebar live.
+          invalidateActiveSessions(queryClient);
           // Mirror into the reducer so the pending-tool / compacting
           // indicators clear once new transcript lines actually land.
           dispatch({
@@ -826,6 +830,9 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
           // A prompt re-stamps the session's tmux pane (survives a resume into
           // a new pane), so refresh the tmux window mapping.
           invalidateTmuxWindows(queryClient);
+          // Surface the session on the /active page the moment a prompt is
+          // submitted, before the JSONL flush and lifecycle events land.
+          invalidateActiveSessions(queryClient);
           dispatch({
             type: "SSE_EVENT",
             eventType: e.type,
