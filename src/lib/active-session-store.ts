@@ -36,7 +36,7 @@ function deriveTmux(claudeEnv: Record<string, string> | undefined): {
 } {
   const tmuxPane = claudeEnv?.["TMUX_PANE"] ?? "";
   const tmux = claudeEnv?.["TMUX"] ?? "";
-  const tmuxServerSocket = tmux === "" ? "" : (tmux.split(",")[0] ?? "");
+  const tmuxServerSocket = tmux.split(",")[0] ?? "";
   return { tmuxPane, tmuxServerSocket };
 }
 

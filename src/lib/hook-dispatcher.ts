@@ -453,11 +453,10 @@ export async function dispatchHookEvent({
       // Re-stamp the tmux pane/socket every prompt so the mapping survives a
       // `claude --resume` into a new pane. Only pass claude_env when present so
       // the store keeps any prior mapping rather than clobbering it with "".
-      const touchMeta: { claudeEnv?: Record<string, string> } = {};
-      if (event.claude_env !== undefined) {
-        touchMeta.claudeEnv = event.claude_env;
-      }
-      store.touchSession(event.session_id, touchMeta);
+      store.touchSession(
+        event.session_id,
+        event.claude_env !== undefined ? { claudeEnv: event.claude_env } : undefined,
+      );
       broadcast(DOMAIN_EVENTS.SESSION_PROMPT_SUBMITTED, {
         sessionId: event.session_id,
         prompt: event.prompt,

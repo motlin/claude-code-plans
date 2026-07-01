@@ -102,7 +102,6 @@ export async function getTmuxWindows(
   }
 
   const windows: TmuxWindow[] = [];
-  const seenPanes = new Set<string>();
 
   for (const [socket, socketEntries] of bySocket) {
     let panes: Map<string, TmuxPane>;
@@ -112,14 +111,14 @@ export async function getTmuxWindows(
       continue;
     }
 
+    const seenPanes = new Set<string>();
     for (const entry of socketEntries) {
       const pane = panes.get(entry.tmuxPane);
       if (!pane) continue;
       // One window per pane: multiple store entries can point at the same pane
       // (grouped sessions, resume churn).
-      const paneKey = `${socket}\t${pane.paneId}`;
-      if (seenPanes.has(paneKey)) continue;
-      seenPanes.add(paneKey);
+      if (seenPanes.has(pane.paneId)) continue;
+      seenPanes.add(pane.paneId);
       windows.push({
         sessionId: entry.sessionId,
         projectName: entry.cwd ? basename(entry.cwd) : "",
