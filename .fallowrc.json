@@ -4,7 +4,10 @@
   "ignorePatterns": [".storybook/**", "src/routeTree.gen.ts"],
   "ignoreDependencies": ["@shikijs/core", "@shikijs/engine-javascript", "agentation"],
   "ignoreExports": [
-    { "file": "src/components/markdown-article.module.css", "exports": ["*"] },
+    {
+      "file": "src/components/markdown-article.module.css",
+      "exports": ["*"]
+    },
     {
       "file": "src/components/markdown-view.tsx",
       "exports": ["MarkdownSkeleton"]
@@ -17,8 +20,14 @@
       "file": "src/components/settings-provider.tsx",
       "exports": ["SettingsProvider"]
     },
-    { "file": "src/lib/active-sessions.ts", "exports": ["ActiveSession"] },
-    { "file": "src/lib/hook-events.ts", "exports": ["PendingApprovalPayload"] },
+    {
+      "file": "src/lib/active-sessions.ts",
+      "exports": ["ActiveSession"]
+    },
+    {
+      "file": "src/lib/hook-events.ts",
+      "exports": ["PendingApprovalPayload"]
+    },
     {
       "file": "src/lib/pending-approvals.ts",
       "exports": ["scanAllPendingApprovals", "PendingApprovalToolName", "PendingApproval"]
@@ -33,7 +42,10 @@
         "removePendingApprovalForSession"
       ]
     },
-    { "file": "src/lib/claude-light-theme.ts", "exports": ["claudeLight"] },
+    {
+      "file": "src/lib/claude-light-theme.ts",
+      "exports": ["claudeLight"]
+    },
     {
       "file": "src/lib/markdown.ts",
       "exports": ["preloadMarkdown", "renderMarkdownPromise", "renderInlineMarkdownPromise"]
@@ -45,6 +57,10 @@
     {
       "file": "src/lib/api/approvals.ts",
       "exports": ["ApprovalsResponse", "approvalsQueryOptions", "projectApprovalsQueryOptions"]
+    },
+    {
+      "file": "src/lib/api/tmux.ts",
+      "exports": ["tmuxWindowsQueryOptions"]
     },
     {
       "file": "src/lib/db/queries.ts",
