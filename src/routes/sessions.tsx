@@ -3,6 +3,7 @@ import { useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-quer
 import {
   groupedSessionsQueryOptions,
   recentSessionsInfiniteQueryOptions,
+  type SessionListItem,
 } from "../lib/api/sessions";
 import { useClaudeEvents } from "../hooks/use-claude-events";
 
@@ -145,21 +146,7 @@ function SessionsPage() {
   );
 }
 
-function SessionItem({
-  session,
-  isActive,
-}: {
-  session: {
-    id: string;
-    title: string;
-    summary?: string | undefined;
-    mtime: string;
-    projectName: string;
-    messageCount: number;
-    gitBranch?: string | undefined;
-  };
-  isActive?: boolean;
-}) {
+function SessionItem({ session, isActive }: { session: SessionListItem; isActive?: boolean }) {
   return (
     <li>
       <Link

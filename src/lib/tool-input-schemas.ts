@@ -79,6 +79,7 @@ export const GrepInputSchema = z
 export const AgentInputSchema = z
   .object({
     prompt: z.string().optional(),
+    agentType: z.string().optional(),
     description: z.string().optional(),
     subagent_type: z.string().optional(),
     isolation: z.string().optional(),
