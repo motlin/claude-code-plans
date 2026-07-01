@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import { resolveProjectName } from "./memory";
 import { getActiveSessionEntries } from "./active-session-store";
+import { ACTIVE_SESSION_WINDOW_MS } from "./active-session-window";
 
 export interface ActiveSession {
   sessionId: string;
@@ -11,10 +12,8 @@ export interface ActiveSession {
   lastModified: number;
 }
 
-const DEFAULT_ACTIVE_THRESHOLD_MS = 60_000;
-
 export async function scanActiveSessions(
-  activeTimeoutMs = DEFAULT_ACTIVE_THRESHOLD_MS,
+  activeTimeoutMs = ACTIVE_SESSION_WINDOW_MS,
 ): Promise<ActiveSession[]> {
   // Check in-memory store first (populated by hook events)
   const storeEntries = getActiveSessionEntries();

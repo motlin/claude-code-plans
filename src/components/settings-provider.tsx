@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
+import { ACTIVE_SESSION_WINDOW_MS } from "../lib/active-session-window";
+
 type SubagentView = "gantt" | "sequence";
 export type Verbosity = "normal" | "thinking" | "verbose";
 
@@ -50,7 +52,7 @@ export const DEFAULTS: Settings = {
 
   showSummaryButton: true,
 
-  activeTimeoutSec: 60,
+  activeTimeoutSec: ACTIVE_SESSION_WINDOW_MS / 1000,
 
   verbosity: "normal",
 };
