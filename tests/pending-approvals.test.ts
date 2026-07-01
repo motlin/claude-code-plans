@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openTestDb, type AppDb } from "../src/lib/db/connection";
@@ -325,5 +325,70 @@ describe("scanAllPendingApprovals", () => {
     expect(results[0]!.toolUseId).toBe("toolu_valid");
     expect(results[0]!.toolName).toBe("ExitPlanMode");
     expect(results[0]!.projectName).toBe("app");
+  });
+
+  function insertBlockingSession(sessionId: string, filePath: string): void {
+    writeFileSync(
+      filePath,
+      jsonl({
+        type: "assistant",
+        sessionId,
+        timestamp: "2026-05-14T12:00:30.000Z",
+        message: {
+          role: "assistant",
+          content: [
+            {
+              type: "tool_use",
+              id: `toolu_${sessionId}`,
+              name: "ExitPlanMode",
+              input: { plan: "## Steps" },
+            },
+          ],
+        },
+      }),
+    );
+    db.index
+      .insert(schema.projects)
+      .values({ id: "proj-1", name: "app", projectPath: null, updatedAt: 0 })
+      .onConflictDoNothing()
+      .run();
+    db.index
+      .insert(schema.sessions)
+      .values({
+        id: sessionId,
+        projectId: "proj-1",
+        title: "Session",
+        messageCount: 0,
+        isSidechain: 0,
+        createdAt: 0,
+        mtimeMs: 0,
+        filePath,
+      })
+      .run();
+  }
+
+  it("hides a blocking approval whose session file is stale (>7 days)", async () => {
+    const sessionId = "sess-stale";
+    const filePath = join(projectDir, `${sessionId}.jsonl`);
+    insertBlockingSession(sessionId, filePath);
+
+    const eightDaysAgo = (Date.now() - 8 * 24 * 60 * 60 * 1000) / 1000;
+    utimesSync(filePath, eightDaysAgo, eightDaysAgo);
+
+    const results = await scanAllPendingApprovals(db.index);
+
+    expect(results).toEqual([]);
+  });
+
+  it("shows a blocking approval whose session file was recently modified", async () => {
+    const sessionId = "sess-recent";
+    const filePath = join(projectDir, `${sessionId}.jsonl`);
+    insertBlockingSession(sessionId, filePath);
+
+    const results = await scanAllPendingApprovals(db.index);
+
+    expect(results).toHaveLength(1);
+    expect(results[0]!.sessionId).toBe(sessionId);
+    expect(results[0]!.toolName).toBe("ExitPlanMode");
   });
 });

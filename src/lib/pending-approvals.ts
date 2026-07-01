@@ -1,4 +1,4 @@
-import { createReadStream } from "node:fs";
+import { createReadStream, statSync } from "node:fs";
 import { basename } from "node:path";
 import { createInterface } from "node:readline";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
@@ -8,6 +8,8 @@ import { getPlanFilenameForSession } from "./db/queries";
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
 export type PendingApprovalToolName = "ExitPlanMode" | "AskUserQuestion";
+
+const STALE_APPROVAL_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export interface PendingApproval {
   sessionId: string;
@@ -179,8 +181,17 @@ export async function scanAllPendingApprovals(db: IndexDb): Promise<PendingAppro
     .all();
   const projectNames = new Map(projectRows.map((r) => [r.id, r.name]));
 
+  const staleCutoff = Date.now() - STALE_APPROVAL_THRESHOLD_MS;
   const results: PendingApproval[] = [];
   for (const row of sessionRows) {
+    let mtimeMs: number;
+    try {
+      mtimeMs = statSync(row.filePath).mtimeMs;
+    } catch {
+      continue; // file deleted since indexing
+    }
+    if (mtimeMs < staleCutoff) continue; // session untouched for >7 days
+
     let approval: PendingApproval | null;
     try {
       approval = await scanPendingApproval(row.filePath);
