@@ -6,6 +6,7 @@ import {
   FolderOpen,
   Star,
   Radio,
+  SquareTerminal,
   Inbox,
   Blocks,
   Settings,
@@ -16,6 +17,12 @@ import type { Section } from "./types";
 
 export const navItems = [
   { to: "/active", label: "Active", icon: Radio, section: "active" as Section },
+  {
+    to: "/tmux",
+    label: "Tmux Windows",
+    icon: SquareTerminal,
+    section: "tmux" as Section,
+  },
   {
     to: "/approvals",
     label: "Approvals",

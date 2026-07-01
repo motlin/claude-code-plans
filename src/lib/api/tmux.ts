@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { queryOptions } from "@tanstack/react-query";
+import { apiFetch } from "./client";
 
 /**
  * Response shape mirroring the `TmuxWindow` interface produced by
@@ -18,3 +20,8 @@ const TmuxWindowSchema = z
   .strict();
 
 export const TmuxWindowListResponse = z.array(TmuxWindowSchema);
+
+export const tmuxWindowsQueryOptions = queryOptions({
+  queryKey: ["tmux", "windows"] as const,
+  queryFn: () => apiFetch("/api/tmux-windows", TmuxWindowListResponse),
+});

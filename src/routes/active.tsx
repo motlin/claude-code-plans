@@ -4,6 +4,7 @@ import type { z } from "zod";
 import { ActiveSessionListResponse, activeSessionsQueryOptions } from "../lib/api/sessions";
 import { useClaudeEvents } from "../hooks/use-claude-events";
 import { useSettings } from "../components/settings-provider";
+import { StatusDot } from "../components/sidebar/primitives/StatusDot";
 
 type ActiveSession = z.infer<typeof ActiveSessionListResponse>[number];
 
@@ -60,10 +61,7 @@ function ActivePage() {
               className="block rounded-md border border-border-300/15 p-3 no-underline transition-colors hover:bg-bg-200/50"
             >
               <div className="flex items-center gap-2">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
-                </span>
+                <StatusDot active />
                 <span className="truncate text-sm font-medium text-text-000">
                   {session.projectName}
                 </span>

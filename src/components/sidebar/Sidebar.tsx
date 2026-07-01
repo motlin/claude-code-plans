@@ -6,7 +6,14 @@ import type { Section } from "./types";
 import { useActiveSection } from "./hooks";
 import { navItems } from "./navigation";
 import { SidebarToggleIcon, SearchInput } from "./primitives";
-import { ActiveSubList, PlansSubList, ProjectsSubList, PluginsSubList, SubList } from "./sublists";
+import {
+  ActiveSubList,
+  TmuxWindowsSubList,
+  PlansSubList,
+  ProjectsSubList,
+  PluginsSubList,
+  SubList,
+} from "./sublists";
 import { approvalsQueryOptions } from "../../lib/api/approvals";
 import { activeSessionsQueryOptions } from "../../lib/api/sessions";
 import { useSettings } from "../settings-provider";
@@ -182,6 +189,8 @@ export function Sidebar({
                 item.section !== "setup" &&
                 (item.section === "active" ? (
                   <ActiveSubList />
+                ) : item.section === "tmux" ? (
+                  <TmuxWindowsSubList />
                 ) : item.section === "projects" ? (
                   <ProjectsSubList activeItemId={activeItemId} />
                 ) : item.section === "plans" ? (

@@ -28,6 +28,14 @@ export function useActiveSection(matches: ReturnType<typeof useMatches>): {
       collapseOthers: false,
     };
   }
+  if (path.startsWith("/tmux")) {
+    return {
+      section: "tmux",
+      activeItemId: null,
+      projectId: null,
+      collapseOthers: false,
+    };
+  }
   if (path.startsWith("/approvals")) {
     return {
       section: "approvals",

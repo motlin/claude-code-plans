@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { activeSessionsQueryOptions } from "../../../lib/api/sessions";
 import { LoadingBars } from "../primitives/LoadingBars";
+import { StatusDot } from "../primitives/StatusDot";
 import { useSettings } from "../../settings-provider";
 
 export function ActiveSubList() {
@@ -32,10 +33,7 @@ export function ActiveSubList() {
           params={{ id: session.sessionId }}
           className="mb-px flex items-center gap-2 rounded-[4px] px-2 py-1 text-xs text-text-500 no-underline transition-colors hover:bg-bg-300/50 hover:text-text-200"
         >
-          <span className="relative flex h-2 w-2 shrink-0">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
-          </span>
+          <StatusDot active size="sm" />
           <span className="truncate">{session.projectName}</span>
         </Link>
       ))}

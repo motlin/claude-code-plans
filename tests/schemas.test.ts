@@ -831,6 +831,11 @@ describe("Per-tool input schemas", () => {
       expect(WriteInputSchema.safeParse(input).success).toBe(true);
     });
 
+    it("accepts path/content fields from historical transcripts", () => {
+      const input = { path: "/foo.ts", content: "hello" };
+      expect(WriteInputSchema.safeParse(input).success).toBe(true);
+    });
+
     it("rejects incomplete write fields", () => {
       expect(WriteInputSchema.safeParse({ file_path: "/foo.ts" }).success).toBe(false);
       expect(WriteInputSchema.safeParse({ path: "/foo.ts" }).success).toBe(false);
@@ -994,6 +999,19 @@ describe("ContentBlockSchema tool input validation", () => {
     };
     expect(ContentBlockSchema.safeParse(objectMetadataBlock).success).toBe(true);
     expect(ContentBlockSchema.safeParse(stringMetadataBlock).success).toBe(true);
+  });
+
+  it("accepts historical TaskUpdate id input", () => {
+    const block = {
+      type: "tool_use",
+      id: "tu_1",
+      name: "TaskUpdate",
+      input: {
+        id: 6,
+        status: "completed",
+      },
+    };
+    expect(ContentBlockSchema.safeParse(block).success).toBe(true);
   });
 
   it("rejects extra input fields for known tools", () => {

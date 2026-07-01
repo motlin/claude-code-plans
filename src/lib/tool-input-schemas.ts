@@ -67,13 +67,16 @@ export const WriteInputSchema = z
     const hasLegacyInput = input.path !== undefined || input.data !== undefined;
     const canonicalInputIsComplete = input.file_path !== undefined && input.content !== undefined;
     const legacyInputIsComplete = input.path !== undefined && input.data !== undefined;
+    const pathContentInputIsComplete = input.path !== undefined && input.content !== undefined;
 
     if (canonicalInputIsComplete && !hasLegacyInput) return;
     if (legacyInputIsComplete && !hasCanonicalInput) return;
+    if (pathContentInputIsComplete && input.file_path === undefined && input.data === undefined)
+      return;
 
     ctx.addIssue({
       code: "custom",
-      message: "Write input must include file_path/content or path/data",
+      message: "Write input must include file_path/content, path/data, or path/content",
     });
   });
 
@@ -149,7 +152,8 @@ const TaskCreateInputSchema = z
 
 const TaskUpdateInputSchema = z
   .object({
-    taskId: z.string(),
+    taskId: z.string().optional(),
+    id: z.union([z.string(), z.number()]).optional(),
     status: z.string().optional(),
     subject: z.string().optional(),
     description: z.string().optional(),
@@ -159,7 +163,10 @@ const TaskUpdateInputSchema = z
     priority: z.string().optional(),
     metadata: z.union([z.string(), z.record(z.string(), JsonInputValueSchema)]).optional(),
   })
-  .strict();
+  .strict()
+  .refine((input) => input.taskId !== undefined || input.id !== undefined, {
+    message: "TaskUpdate input must include taskId or id",
+  });
 
 const TaskGetInputSchema = z
   .object({
