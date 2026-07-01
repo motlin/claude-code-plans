@@ -652,6 +652,13 @@ function invalidateActiveSessions(queryClient: QueryClient): void {
   void queryClient.invalidateQueries({ queryKey: ["sessions", "active"] });
 }
 
+function invalidateTmuxWindows(queryClient: QueryClient): void {
+  // The tmux window → session mapping changes exactly when session lifecycle
+  // events fire (start/end re-panes; a prompt re-stamps the pane after a
+  // resume). Piggyback on those events rather than adding a server broadcast.
+  void queryClient.invalidateQueries({ queryKey: ["tmux", "windows"] });
+}
+
 // ---------------------------------------------------------------------------
 // SSE event types we subscribe to
 // ---------------------------------------------------------------------------
@@ -816,6 +823,9 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
               queryKey: ["sessions", sessionId, "transcript"],
             });
           }
+          // A prompt re-stamps the session's tmux pane (survives a resume into
+          // a new pane), so refresh the tmux window mapping.
+          invalidateTmuxWindows(queryClient);
           dispatch({
             type: "SSE_EVENT",
             eventType: e.type,
@@ -850,6 +860,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
         case DOMAIN_EVENTS.SESSION_STARTED:
         case DOMAIN_EVENTS.SESSION_ENDED: {
           invalidateActiveSessions(queryClient);
+          invalidateTmuxWindows(queryClient);
           break;
         }
         case DOMAIN_EVENTS.SESSION_CWD_CHANGED: {
