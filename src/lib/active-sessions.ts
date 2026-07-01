@@ -15,14 +15,26 @@ export interface ActiveSession {
 export async function scanActiveSessions(
   activeTimeoutMs = ACTIVE_SESSION_WINDOW_MS,
 ): Promise<ActiveSession[]> {
-  // Check in-memory store first (populated by hook events)
-  const storeEntries = getActiveSessionEntries();
-  if (storeEntries.length > 0) {
-    return getActiveSessionsFromStore(storeEntries);
+  // Build both views and union them: the hook-driven store (accurate liveness,
+  // richer project/cwd info) and the filesystem mtime scan (catches sessions
+  // whose hooks never registered, e.g. the current one). Either alone is lossy,
+  // so a session shows up if *either* source knows about it.
+  const [storeSessions, fsSessions] = await Promise.all([
+    getActiveSessionsFromStore(getActiveSessionEntries()),
+    getActiveSessionsFromFilesystem(activeTimeoutMs),
+  ]);
+
+  // Dedup by sessionId, keeping the entry with the fresher lastModified. Store
+  // entries are visited first, so on a tie they win (richer project/cwd info).
+  const bySessionId = new Map<string, ActiveSession>();
+  for (const session of [...storeSessions, ...fsSessions]) {
+    const existing = bySessionId.get(session.sessionId);
+    if (!existing || session.lastModified > existing.lastModified) {
+      bySessionId.set(session.sessionId, session);
+    }
   }
 
-  // Fallback to filesystem scan when hooks are not configured
-  return getActiveSessionsFromFilesystem(activeTimeoutMs);
+  return [...bySessionId.values()].sort((a, b) => b.lastModified - a.lastModified);
 }
 
 async function getActiveSessionsFromStore(
@@ -37,19 +49,25 @@ async function getActiveSessionsFromStore(
     const projectDir = await findProjectDirForCwd(entry.cwd);
     if (!projectDir) continue;
 
-    let name = nameCache.get(projectDir);
-    if (!name) {
-      name = await resolveProjectName(projectDir);
-      nameCache.set(projectDir, name);
-    }
     result.push({
       sessionId: entry.sessionId,
       projectDir,
-      projectName: name,
+      projectName: await resolveProjectNameCached(nameCache, projectDir),
       lastModified: entry.lastActivity,
     });
   }
   return result;
+}
+
+async function resolveProjectNameCached(
+  cache: Map<string, string>,
+  projectDir: string,
+): Promise<string> {
+  const cached = cache.get(projectDir);
+  if (cached) return cached;
+  const name = await resolveProjectName(projectDir);
+  cache.set(projectDir, name);
+  return name;
 }
 
 async function findProjectDirForCwd(cwd: string): Promise<string | null> {
@@ -116,12 +134,7 @@ async function getActiveSessionsFromFilesystem(
   const nameCache = new Map<string, string>();
   const result: ActiveSession[] = [];
   for (const s of active) {
-    let name = nameCache.get(s.projectDir);
-    if (!name) {
-      name = await resolveProjectName(s.projectDir);
-      nameCache.set(s.projectDir, name);
-    }
-    result.push({ ...s, projectName: name });
+    result.push({ ...s, projectName: await resolveProjectNameCached(nameCache, s.projectDir) });
   }
   return result;
 }
