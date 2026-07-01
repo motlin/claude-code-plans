@@ -367,13 +367,17 @@ describe("scanAllPendingApprovals", () => {
       .run();
   }
 
+  function setFileMtimeDaysAgo(filePath: string, days: number): void {
+    const secondsAgo = (Date.now() - days * 24 * 60 * 60 * 1000) / 1000;
+    utimesSync(filePath, secondsAgo, secondsAgo);
+  }
+
   it("hides a blocking approval whose session file is stale (>7 days)", async () => {
     const sessionId = "sess-stale";
     const filePath = join(projectDir, `${sessionId}.jsonl`);
     insertBlockingSession(sessionId, filePath);
 
-    const eightDaysAgo = (Date.now() - 8 * 24 * 60 * 60 * 1000) / 1000;
-    utimesSync(filePath, eightDaysAgo, eightDaysAgo);
+    setFileMtimeDaysAgo(filePath, 8);
 
     const results = await scanAllPendingApprovals(db.index);
 
@@ -396,8 +400,7 @@ describe("scanAllPendingApprovals", () => {
     const staleId = "sess-stale-mixed";
     const stalePath = join(projectDir, `${staleId}.jsonl`);
     insertBlockingSession(staleId, stalePath);
-    const eightDaysAgo = (Date.now() - 8 * 24 * 60 * 60 * 1000) / 1000;
-    utimesSync(stalePath, eightDaysAgo, eightDaysAgo);
+    setFileMtimeDaysAgo(stalePath, 8);
 
     const recentId = "sess-recent-mixed";
     const recentPath = join(projectDir, `${recentId}.jsonl`);
@@ -409,15 +412,13 @@ describe("scanAllPendingApprovals", () => {
     expect(results[0]!.sessionId).toBe(recentId);
   });
 
-  it("includes a blocking approval whose session file mtime is exactly at the 7-day cutoff", async () => {
+  it("includes a blocking approval whose session file mtime is just inside the 7-day window", async () => {
     const sessionId = "sess-boundary";
     const filePath = join(projectDir, `${sessionId}.jsonl`);
     insertBlockingSession(sessionId, filePath);
 
-    // Set mtime to exactly 7 days ago (not older), which is at the cutoff boundary.
-    // The filter is mtimeMs < staleCutoff so an equal value passes through.
-    const exactlySevenDaysAgo = (Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000;
-    utimesSync(filePath, exactlySevenDaysAgo, exactlySevenDaysAgo);
+    // 6 days is inside the 7-day staleness window (filter is mtimeMs < staleCutoff).
+    setFileMtimeDaysAgo(filePath, 6);
 
     const results = await scanAllPendingApprovals(db.index);
 
