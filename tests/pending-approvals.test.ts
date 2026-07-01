@@ -391,4 +391,37 @@ describe("scanAllPendingApprovals", () => {
     expect(results[0]!.sessionId).toBe(sessionId);
     expect(results[0]!.toolName).toBe("ExitPlanMode");
   });
+
+  it("shows only the recent approval when mixed with a stale session", async () => {
+    const staleId = "sess-stale-mixed";
+    const stalePath = join(projectDir, `${staleId}.jsonl`);
+    insertBlockingSession(staleId, stalePath);
+    const eightDaysAgo = (Date.now() - 8 * 24 * 60 * 60 * 1000) / 1000;
+    utimesSync(stalePath, eightDaysAgo, eightDaysAgo);
+
+    const recentId = "sess-recent-mixed";
+    const recentPath = join(projectDir, `${recentId}.jsonl`);
+    insertBlockingSession(recentId, recentPath);
+
+    const results = await scanAllPendingApprovals(db.index);
+
+    expect(results).toHaveLength(1);
+    expect(results[0]!.sessionId).toBe(recentId);
+  });
+
+  it("includes a blocking approval whose session file mtime is exactly at the 7-day cutoff", async () => {
+    const sessionId = "sess-boundary";
+    const filePath = join(projectDir, `${sessionId}.jsonl`);
+    insertBlockingSession(sessionId, filePath);
+
+    // Set mtime to exactly 7 days ago (not older), which is at the cutoff boundary.
+    // The filter is mtimeMs < staleCutoff so an equal value passes through.
+    const exactlySevenDaysAgo = (Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000;
+    utimesSync(filePath, exactlySevenDaysAgo, exactlySevenDaysAgo);
+
+    const results = await scanAllPendingApprovals(db.index);
+
+    expect(results).toHaveLength(1);
+    expect(results[0]!.sessionId).toBe(sessionId);
+  });
 });
