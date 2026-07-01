@@ -11,6 +11,32 @@ export const Route = createFileRoute("/tmux")({
   }),
 });
 
+function TmuxEmptyState() {
+  return (
+    <div className="mx-auto mt-8 max-w-lg rounded-md border border-border-300/15 p-6 text-sm text-text-500">
+      <p className="text-text-000">No tmux windows are linked to Claude sessions yet.</p>
+      <p className="mt-3">
+        This live view only shows windows once a session reports its pane. To enable it:
+      </p>
+      <ul className="mt-2 list-disc space-y-1 pl-5">
+        <li>
+          Run Claude Code <span className="font-medium text-text-000">inside tmux</span> so{" "}
+          <code className="rounded bg-bg-200/60 px-1 py-0.5 text-xs">TMUX</code> and{" "}
+          <code className="rounded bg-bg-200/60 px-1 py-0.5 text-xs">TMUX_PANE</code> are set.
+        </li>
+        <li>
+          Re-install the hooks from{" "}
+          <Link to="/setup" className="text-accent-100 hover:underline">
+            Setup
+          </Link>{" "}
+          so the pane variables are forwarded to the browser.
+        </li>
+        <li>Submit a prompt in a live session — its window appears here automatically.</li>
+      </ul>
+    </div>
+  );
+}
+
 function TmuxWindowsPage() {
   const { data: windows } = useSuspenseQuery(tmuxWindowsQueryOptions);
 
@@ -19,10 +45,11 @@ function TmuxWindowsPage() {
       <div className="flex items-center gap-3">
         <h1 className="text-lg font-semibold">Tmux Windows</h1>
         <span className="text-sm text-text-500">{windows.length} windows</span>
+        <span className="text-xs text-text-500">(live updates via SSE)</span>
       </div>
 
       {windows.length === 0 ? (
-        <p className="mt-8 text-center text-text-500">No tmux windows linked to Claude sessions</p>
+        <TmuxEmptyState />
       ) : (
         <div className="mt-4 space-y-1">
           {windows.map((win) => (
