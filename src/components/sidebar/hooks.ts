@@ -14,7 +14,7 @@ export function useActiveSection(matches: ReturnType<typeof useMatches>): {
 
   if (path === "/") {
     return {
-      section: "plans",
+      section: null,
       activeItemId: null,
       projectId: null,
       collapseOthers: true,
