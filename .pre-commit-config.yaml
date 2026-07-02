@@ -30,11 +30,6 @@ repos:
 
   - repo: local
     hooks:
-      - id: vp-staged
-        name: vp staged
-        entry: vp staged
-        language: system
-        types: [file]
       - id: markdownlint-cli2
         name: markdownlint-cli2
         entry: vp exec markdownlint-cli2

@@ -5,9 +5,6 @@ import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
-  staged: {
-    "*": "vp check --fix",
-  },
   lint: {
     plugins: ["oxc", "typescript", "unicorn", "react"],
     categories: {
