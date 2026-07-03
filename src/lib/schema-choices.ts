@@ -113,6 +113,7 @@ const attachmentVariants = {
   agent_listing_delta: true,
   mcp_instructions_delta: true,
   skill_listing: true,
+  dynamic_skill: true,
   task_reminder: true,
   todo_reminder: true,
   edited_text_file: true,

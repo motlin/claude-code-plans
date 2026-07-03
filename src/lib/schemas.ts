@@ -181,6 +181,7 @@ export const UserRecordSchema = z
       })
       .strict(),
     toolUseResult: JsonValueSchema.optional(),
+    toolDenialKind: z.string().optional(),
     sourceToolAssistantUUID: z.string().optional(),
     sourceToolUseID: z.string().optional(),
     promptId: z.string().optional(),
@@ -392,6 +393,15 @@ const SkillListingAttachmentPayload = z
   })
   .strict();
 
+const DynamicSkillAttachmentPayload = z
+  .object({
+    type: z.literal("dynamic_skill"),
+    skillDir: z.string().optional(),
+    skillNames: z.array(z.string()).optional(),
+    displayPath: z.string().optional(),
+  })
+  .strict();
+
 // Fields shared by task/todo reminder payloads
 const ReminderBaseFields = {
   content: z.union([z.string(), z.array(JsonValueSchema)]).optional(),
@@ -472,6 +482,7 @@ const QueuedCommandAttachmentPayload = z
     imagePasteIds: z.array(z.union([z.string(), z.number()])).optional(),
     origin: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
     timestamp: z.string().optional(),
+    isMeta: z.boolean().optional(),
   })
   .strict();
 
@@ -578,6 +589,7 @@ export const AttachmentPayloadSchema = z.discriminatedUnion("type", [
   AgentListingDeltaAttachmentPayload,
   McpInstructionsDeltaAttachmentPayload,
   SkillListingAttachmentPayload,
+  DynamicSkillAttachmentPayload,
   TaskReminderAttachmentPayload,
   TodoReminderAttachmentPayload,
   EditedTextFileAttachmentPayload,

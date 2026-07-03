@@ -49,6 +49,7 @@ const MINIMAL_BY_TYPE: Record<string, AttachmentPayload> = {
   agent_listing_delta: { type: "agent_listing_delta" },
   mcp_instructions_delta: { type: "mcp_instructions_delta" },
   skill_listing: { type: "skill_listing" },
+  dynamic_skill: { type: "dynamic_skill" },
   task_reminder: { type: "task_reminder" },
   todo_reminder: { type: "todo_reminder" },
   edited_text_file: { type: "edited_text_file", filename: "f.ts" },

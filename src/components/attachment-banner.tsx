@@ -425,6 +425,15 @@ function AttachmentContent({
           uuid={uuid}
         />
       );
+    case "dynamic_skill":
+      return (
+        <Banner
+          icon={<Zap className="h-3.5 w-3.5" />}
+          label={`Dynamic skills${attachment.skillNames?.length ? ` (${attachment.skillNames.length})` : ""}: ${attachment.displayPath ?? attachment.skillDir ?? "loaded"}`}
+          sessionId={sessionId}
+          uuid={uuid}
+        />
+      );
     case "invoked_skills":
       return (
         <Banner

@@ -408,6 +408,17 @@ describe("JsonlRecordSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("parses user records with tool denial metadata", () => {
+    const result = JsonlRecordSchema.safeParse({
+      type: "user",
+      ...baseFields,
+      message: { role: "user", content: [] },
+      toolUseResult: "Error: permission denied",
+      toolDenialKind: "permission-rule",
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("parses assistant records", () => {
     const record = {
       type: "assistant",
@@ -479,6 +490,35 @@ describe("JsonlRecordSchema", () => {
       timestamp: "1999-12-31T00:00:00.000Z",
       sessionId: "sess-123",
       content: "stuff",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("parses queued command attachments with meta markers", () => {
+    const result = JsonlRecordSchema.safeParse({
+      type: "attachment",
+      ...baseFields,
+      attachment: {
+        type: "queued_command",
+        prompt: "Run the queued test command",
+        commandMode: "prompt",
+        timestamp: "1999-12-31T00:00:00.000Z",
+        isMeta: true,
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("parses dynamic skill attachments", () => {
+    const result = JsonlRecordSchema.safeParse({
+      type: "attachment",
+      ...baseFields,
+      attachment: {
+        type: "dynamic_skill",
+        skillDir: "/tmp/test/.claude/skills",
+        skillNames: ["alice-skill"],
+        displayPath: "test/.claude/skills",
+      },
     });
     expect(result.success).toBe(true);
   });
