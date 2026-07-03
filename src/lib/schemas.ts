@@ -831,6 +831,7 @@ export const TaskFileSchema = z
     blocks: z.array(z.string()),
     blockedBy: z.array(z.string()),
     activeForm: z.string().optional(),
+    metadata: z.record(z.string(), JsonValueSchema).optional(),
   })
   .strict();
 

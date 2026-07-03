@@ -1,5 +1,16 @@
 import { z } from "zod";
 
+const JsonInputValueSchema: z.ZodType<unknown> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(JsonInputValueSchema),
+    z.record(z.string(), JsonInputValueSchema),
+  ]),
+);
+
 export const BashInputSchema = z
   .object({
     command: z.string(),
@@ -45,10 +56,26 @@ export const MultiEditInputSchema = z
 
 export const WriteInputSchema = z
   .object({
-    file_path: z.string(),
-    content: z.string(),
+    file_path: z.string().optional(),
+    content: z.string().optional(),
+    path: z.string().optional(),
+    data: z.string().optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((input, ctx) => {
+    const hasCanonicalInput = input.file_path !== undefined || input.content !== undefined;
+    const hasLegacyInput = input.path !== undefined || input.data !== undefined;
+    const canonicalInputIsComplete = input.file_path !== undefined && input.content !== undefined;
+    const legacyInputIsComplete = input.path !== undefined && input.data !== undefined;
+
+    if (canonicalInputIsComplete && !hasLegacyInput) return;
+    if (legacyInputIsComplete && !hasCanonicalInput) return;
+
+    ctx.addIssue({
+      code: "custom",
+      message: "Write input must include file_path/content or path/data",
+    });
+  });
 
 export const GlobInputSchema = z
   .object({
@@ -116,6 +143,7 @@ const TaskCreateInputSchema = z
     activeForm: z.string().optional(),
     agent_type: z.string().optional(),
     priority: z.string().optional(),
+    metadata: z.record(z.string(), JsonInputValueSchema).optional(),
   })
   .strict();
 
@@ -129,13 +157,7 @@ const TaskUpdateInputSchema = z
     addBlockedBy: z.array(z.string()).optional(),
     owner: z.string().optional(),
     priority: z.string().optional(),
-    metadata: z
-      .object({
-        pr: z.string().optional(),
-        outcome: z.string().optional(),
-      })
-      .strict()
-      .optional(),
+    metadata: z.union([z.string(), z.record(z.string(), JsonInputValueSchema)]).optional(),
   })
   .strict();
 

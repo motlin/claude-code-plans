@@ -657,6 +657,23 @@ describe("TaskFileSchema", () => {
     expect(result.success).toBe(false);
   });
 
+  it("accepts persisted task metadata", () => {
+    const result = TaskFileSchema.safeParse({
+      id: "1",
+      subject: "task",
+      description: "desc",
+      status: "completed",
+      blocks: [],
+      blockedBy: [],
+      metadata: {
+        commit_sha: "769a03b2",
+        tests_added: 11,
+        verification: { status: "passed" },
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("rejects unknown fields", () => {
     const result = TaskFileSchema.safeParse({
       id: "1",
@@ -808,6 +825,16 @@ describe("Per-tool input schemas", () => {
       const input = { file_path: "/foo.ts", content: "hello" };
       expect(WriteInputSchema.safeParse(input).success).toBe(true);
     });
+
+    it("accepts legacy path/data fields", () => {
+      const input = { path: "/foo.ts", data: "hello" };
+      expect(WriteInputSchema.safeParse(input).success).toBe(true);
+    });
+
+    it("rejects incomplete write fields", () => {
+      expect(WriteInputSchema.safeParse({ file_path: "/foo.ts" }).success).toBe(false);
+      expect(WriteInputSchema.safeParse({ path: "/foo.ts" }).success).toBe(false);
+    });
   });
 
   describe("GlobInputSchema", () => {
@@ -922,6 +949,51 @@ describe("ContentBlockSchema tool input validation", () => {
     };
     const result = ContentBlockSchema.safeParse(block);
     expect(result.success).toBe(false);
+  });
+
+  it("accepts TaskCreate metadata objects", () => {
+    const block = {
+      type: "tool_use",
+      id: "tu_1",
+      name: "TaskCreate",
+      input: {
+        subject: "Ship the feature",
+        metadata: {
+          commit_sha: "769a03b2",
+          test_pass_rate: "100%",
+        },
+      },
+    };
+    const result = ContentBlockSchema.safeParse(block);
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts TaskUpdate metadata objects and strings", () => {
+    const objectMetadataBlock = {
+      type: "tool_use",
+      id: "tu_1",
+      name: "TaskUpdate",
+      input: {
+        taskId: "1",
+        status: "completed",
+        metadata: {
+          commit_sha: "dd9b3c9f7514fdec89f64be11f1a254c92d11c42",
+          tests_added: 11,
+        },
+      },
+    };
+    const stringMetadataBlock = {
+      type: "tool_use",
+      id: "tu_2",
+      name: "TaskUpdate",
+      input: {
+        taskId: "1",
+        status: "completed",
+        metadata: '{"precommit_checks":"15/15 passed"}',
+      },
+    };
+    expect(ContentBlockSchema.safeParse(objectMetadataBlock).success).toBe(true);
+    expect(ContentBlockSchema.safeParse(stringMetadataBlock).success).toBe(true);
   });
 
   it("rejects extra input fields for known tools", () => {
