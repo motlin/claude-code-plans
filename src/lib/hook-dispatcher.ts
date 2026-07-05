@@ -24,10 +24,10 @@ import {
   type MessageDisplayedPayload,
 } from "./hook-events";
 import { buildSessionSummaryPayloadFromDb, toActiveSessionPayload } from "./session-summary";
+import { addNotification } from "./notifications-store";
 import { indexFile, indexJsonlFile } from "./db/indexer";
 import { resolveProjectName } from "./memory";
 import { recentlyBroadcast } from "./update-dedupe";
-import { addNotification } from "./notifications-store";
 
 /**
  * TTL covering the gap between the hook fast-path broadcast and the chokidar
@@ -489,18 +489,31 @@ export async function dispatchHookEvent({
 
     case "Notification": {
       store.touchSession(event.session_id);
-      addNotification(db, {
-        sessionId: event.session_id,
-        cwd: event.cwd,
-        message: event.message,
-        ...(event.title !== undefined ? { title: event.title } : {}),
-        notificationType: event.notification_type ?? "unknown",
-      });
       broadcast(DOMAIN_EVENTS.NOTIFICATION, {
         sessionId: event.session_id,
         message: event.message,
         title: event.title,
       } satisfies NotificationPayload);
+      // Persist into the server-side notifications store so the notification
+      // is queryable via /api/notifications and survives page reloads. The
+      // store resolves projectId/projectName and broadcasts NOTIFICATION_ADDED
+      // itself, so no extra broadcast is needed here.
+      const notificationInput: {
+        sessionId: string;
+        cwd: string;
+        message: string;
+        title?: string;
+        notificationType: string;
+      } = {
+        sessionId: event.session_id,
+        cwd: event.cwd,
+        message: event.message,
+        notificationType: event.notification_type ?? "",
+      };
+      if (event.title !== undefined) {
+        notificationInput.title = event.title;
+      }
+      addNotification(db, notificationInput);
       break;
     }
 

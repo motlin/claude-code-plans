@@ -6,6 +6,7 @@ import { indexSessionsIndex } from "../src/lib/db/indexer";
 import { dispatchHookEvent } from "../src/lib/hook-dispatcher";
 import { DOMAIN_EVENTS, SSE_EVENTS } from "../src/lib/hook-events";
 import type { HookEvent } from "../src/lib/hook-events";
+import { getNotifications, clearAllNotifications } from "../src/lib/notifications-store";
 
 const testDir = join(tmpdir(), "claude-hook-dispatcher-test-" + process.pid);
 let db: AppDb;
@@ -338,6 +339,60 @@ describe("dispatchHookEvent", () => {
       message: "Waiting for input",
       title: "Claude Code",
     });
+  });
+
+  it("Notification persists into the notifications store with the classified type", async () => {
+    clearAllNotifications();
+    const { store } = makeStore();
+    await dispatchHookEvent({
+      event: {
+        hook_event_name: "Notification",
+        session_id: "abc-123",
+        transcript_path: "/tmp/abc-123.jsonl",
+        cwd: "/tmp/my-project",
+        message: "Agent needs your input",
+        title: "Claude Code",
+        notification_type: "agent_needs_input",
+      },
+      db: db.index,
+      store,
+      broadcast: () => {},
+    });
+
+    const stored = getNotifications();
+    expect(stored).toHaveLength(1);
+    expect(stored[0]).toMatchObject({
+      sessionId: "abc-123",
+      message: "Agent needs your input",
+      title: "Claude Code",
+      notificationType: "agent_needs_input",
+      // Session is not indexed, so project resolution falls back to basename(cwd).
+      projectId: "my-project",
+      projectName: "my-project",
+    });
+  });
+
+  it("Notification without notification_type persists with an empty-string type", async () => {
+    clearAllNotifications();
+    const { store } = makeStore();
+    await dispatchHookEvent({
+      event: {
+        hook_event_name: "Notification",
+        session_id: "abc-123",
+        transcript_path: "/tmp/abc-123.jsonl",
+        cwd: "/tmp/my-project",
+        message: "Waiting for input",
+      },
+      db: db.index,
+      store,
+      broadcast: () => {},
+    });
+
+    const stored = getNotifications();
+    expect(stored).toHaveLength(1);
+    expect(stored[0]?.notificationType).toBe("");
+    // No title on the hook → absent, not `undefined`, per exactOptionalPropertyTypes.
+    expect(stored[0] && "title" in stored[0]).toBe(false);
   });
 
   it("PreCompact broadcasts SESSION_COMPACTING with optional trigger", async () => {
