@@ -1,4 +1,5 @@
 import type { JsonValue } from "./hook-events";
+import { getAgentTypeOrNull } from "./tool-utils";
 
 /**
  * Subagent record extracted from transcript JSONL records.
@@ -96,8 +97,7 @@ export function extractSubagents(records: TranscriptRecord[], projectId: string)
         const toolUse = block as ToolUseBlock;
         if (toolUse.name !== "Agent" || typeof toolUse.id !== "string") continue;
         const input = toolUse.input ?? {};
-        const agentType =
-          typeof input["subagent_type"] === "string" ? (input["subagent_type"] as string) : null;
+        const agentType = getAgentTypeOrNull(input);
         const description =
           typeof input["description"] === "string" ? (input["description"] as string) : null;
         pendingByToolUseId.set(toolUse.id, {

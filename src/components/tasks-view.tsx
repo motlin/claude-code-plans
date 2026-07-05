@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CheckCircle, Circle, ChevronDown, ChevronRight } from "lucide-react";
 import type { ClientToolCall } from "./tool-renderers/types";
+import { getAgentTypeWithDefault } from "../lib/tool-utils";
 
 interface TaskItem {
   id: string;
@@ -69,7 +70,7 @@ function extractAgents(toolCalls: ClientToolCall[]): AgentItem[] {
       autoId++;
       const prompt = (call.input["prompt"] as string) ?? "";
       const desc = (call.input["description"] as string) ?? prompt.slice(0, 80);
-      const agentType = (call.input["subagent_type"] as string) ?? "general-purpose";
+      const agentType = getAgentTypeWithDefault(call.input);
       const hasResult = call.result !== undefined;
       const isError = call.isError === true;
 

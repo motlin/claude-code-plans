@@ -65,3 +65,55 @@ export const WithTasksAndAgents: Story = {
 export const EmptyList: Story = {
   args: { toolCalls: [] },
 };
+
+const toolCallsWithAgentType: ClientToolCall[] = [
+  makeToolCall({
+    name: "Agent",
+    input: {
+      prompt: "Search for files matching the pattern",
+      agentType: "Explore",
+      description: "File search",
+    },
+    result: "Found 15 matching files",
+  }),
+  makeToolCall({
+    name: "Agent",
+    input: {
+      prompt: "Create an implementation plan",
+      agentType: "Plan",
+      description: "Implementation planning",
+    },
+    result: "Created 5-step plan",
+  }),
+  makeToolCall({
+    name: "Agent",
+    input: {
+      prompt: "Review code quality",
+      agentType: "code-reviewer",
+      description: "Code review",
+    },
+    result: "Found 3 issues",
+    isError: false,
+  }),
+];
+
+export const WithAgentTypeField: Story = {
+  args: { toolCalls: toolCallsWithAgentType },
+};
+
+const toolCallsAgentTypePreferred: ClientToolCall[] = [
+  makeToolCall({
+    name: "Agent",
+    input: {
+      prompt: "Fix the bug",
+      agentType: "Explore",
+      subagent_type: "legacy-type",
+      description: "Bug investigation",
+    },
+    result: "Bug fixed",
+  }),
+];
+
+export const AgentTypePreferred: Story = {
+  args: { toolCalls: toolCallsAgentTypePreferred },
+};

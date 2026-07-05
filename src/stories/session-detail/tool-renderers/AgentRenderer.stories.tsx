@@ -52,3 +52,32 @@ export const Error: Story = {
     }),
   },
 };
+
+export const WithAgentType: Story = {
+  args: {
+    toolCall: makeToolCall({
+      input: {
+        prompt: "Search for files matching the pattern.",
+        agentType: "Explore",
+        description: "File pattern search",
+      },
+      result: "agentId: xyz789\nFound 25 matching files across the codebase.",
+      duration: 12300,
+    }),
+  },
+};
+
+export const AgentTypePreferredOverSubagentType: Story = {
+  args: {
+    toolCall: makeToolCall({
+      input: {
+        prompt: "Create a comprehensive implementation plan.",
+        agentType: "Plan",
+        subagent_type: "legacy-type",
+        description: "Implementation planning",
+      },
+      result: "agentId: plan001\n5-step implementation plan created and documented.",
+      duration: 28500,
+    }),
+  },
+};
