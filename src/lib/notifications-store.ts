@@ -133,6 +133,16 @@ export function getNotifications(): NotificationEntry[] {
   return [...store.values()].sort((a, b) => b.createdAt - a.createdAt);
 }
 
+export function getNotificationsForProject(projectId: string): NotificationEntry[] {
+  return getNotifications().filter((entry) => entry.projectId === projectId);
+}
+
+export function dismissNotification(id: string): void {
+  if (store.delete(id)) {
+    broadcastTyped(DOMAIN_EVENTS.NOTIFICATION_CLEARED, { id });
+  }
+}
+
 export function clearAllNotifications(): void {
   store.clear();
   broadcastTyped(DOMAIN_EVENTS.NOTIFICATION_CLEARED, { all: true });
