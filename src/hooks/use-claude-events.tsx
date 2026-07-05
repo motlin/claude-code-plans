@@ -17,6 +17,8 @@ import {
   type JsonValue,
   type MemorySummaryPayload,
   type NotificationPayload,
+  type NotificationEntryPayload,
+  type NotificationClearedPayload,
   type PendingApprovalPayload,
   type PlanSummaryPayload,
   type SessionLinesAppendedPayload,
@@ -366,6 +368,9 @@ export function claudeEventsReducer(
 interface ClaudeEventsContextValue {
   state: ClaudeEventsState;
   subscribeStatusline: (listener: (sessionId: string) => void) => () => void;
+  subscribeNotifications: (
+    listener: (notification: NotificationEntryPayload) => void,
+  ) => () => void;
   dismissHookSchemaDrift: (hookEventName: string) => void;
 }
 
@@ -620,6 +625,51 @@ function applyApprovalResolved(queryClient: QueryClient, sessionId: string): voi
   }
 }
 
+type NotificationsData = { notifications: NotificationEntryPayload[] };
+
+function upsertNotification(
+  notifications: NotificationEntryPayload[],
+  notification: NotificationEntryPayload,
+): NotificationEntryPayload[] {
+  // Newest-first: drop any existing entry with the same id, then prepend the
+  // fresh one so the list matches the store's newest-first ordering.
+  const rest = notifications.filter((n) => n.id !== notification.id);
+  return [notification, ...rest];
+}
+
+function applyNotificationAdded(
+  queryClient: QueryClient,
+  notification: NotificationEntryPayload,
+): void {
+  queryClient.setQueryData<NotificationsData>(["notifications"], (old) => {
+    if (!old) return old;
+    return { notifications: upsertNotification(old.notifications, notification) };
+  });
+  queryClient.setQueryData<NotificationsData>(["notifications", notification.projectId], (old) => {
+    if (!old) return old;
+    return { notifications: upsertNotification(old.notifications, notification) };
+  });
+}
+
+function applyNotificationCleared(
+  queryClient: QueryClient,
+  payload: NotificationClearedPayload,
+): void {
+  // The project-scoped cache is keyed by projectId, which the NOTIFICATION_CLEARED
+  // payload does not carry. getQueriesData matches every cache whose key starts
+  // with ['notifications'] — both the global list and every per-project slice —
+  // so filter/empty each in one pass. `all` empties every slice; otherwise the
+  // single `id` is removed.
+  for (const [key, data] of queryClient.getQueriesData<NotificationsData>({
+    queryKey: ["notifications"],
+  })) {
+    if (!data) continue;
+    queryClient.setQueryData<NotificationsData>(key, {
+      notifications: payload.all ? [] : data.notifications.filter((n) => n.id !== payload.id),
+    });
+  }
+}
+
 /**
  * Apply SESSION_LINES_APPENDED: append raw JSONL records to the transcript
  * cache. The component's useMemo on processTranscript() recomputes
@@ -680,6 +730,8 @@ const DOMAIN_EVENT_TYPES = [
   DOMAIN_EVENTS.SUBAGENT_STARTED,
   DOMAIN_EVENTS.SESSION_CWD_CHANGED,
   DOMAIN_EVENTS.NOTIFICATION,
+  DOMAIN_EVENTS.NOTIFICATION_ADDED,
+  DOMAIN_EVENTS.NOTIFICATION_CLEARED,
   DOMAIN_EVENTS.PLAN_CHANGED,
   DOMAIN_EVENTS.PLAN_REMOVED,
   DOMAIN_EVENTS.MEMORY_CHANGED,
@@ -710,6 +762,9 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
 
   const queryClient = useQueryClient();
   const statuslineListenersRef = useRef(new Set<(sessionId: string) => void>());
+  const notificationListenersRef = useRef(
+    new Set<(notification: NotificationEntryPayload) => void>(),
+  );
 
   const subscribeStatusline = useCallback((listener: (sessionId: string) => void) => {
     statuslineListenersRef.current.add(listener);
@@ -717,6 +772,16 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
       statuslineListenersRef.current.delete(listener);
     };
   }, []);
+
+  const subscribeNotifications = useCallback(
+    (listener: (notification: NotificationEntryPayload) => void) => {
+      notificationListenersRef.current.add(listener);
+      return () => {
+        notificationListenersRef.current.delete(listener);
+      };
+    },
+    [],
+  );
 
   const dismissHookSchemaDrift = useCallback((hookEventName: string) => {
     dispatch({ type: "DISMISS_DRIFT", hookEventName });
@@ -927,6 +992,27 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
           if (typeof sessionId === "string") applyApprovalResolved(queryClient, sessionId);
           break;
         }
+        case DOMAIN_EVENTS.NOTIFICATION_ADDED: {
+          const notification = data["notification"] as NotificationEntryPayload | undefined;
+          if (notification) {
+            applyNotificationAdded(queryClient, notification);
+            // Fan the fresh entry out to the desktop-notification bridge so it
+            // can raise a native OS notification when the tab is backgrounded.
+            for (const listener of notificationListenersRef.current) {
+              listener(notification);
+            }
+          }
+          break;
+        }
+        case DOMAIN_EVENTS.NOTIFICATION_CLEARED: {
+          const id = data["id"];
+          const all = data["all"];
+          applyNotificationCleared(queryClient, {
+            ...(typeof id === "string" ? { id } : {}),
+            ...(typeof all === "boolean" ? { all } : {}),
+          });
+          break;
+        }
         case DOMAIN_EVENTS.HOOK_SCHEMA_DRIFT: {
           dispatch({
             type: "SSE_EVENT",
@@ -968,8 +1054,8 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
   }, [queryClient]);
 
   const contextValue: ClaudeEventsContextValue = useMemo(
-    () => ({ state, subscribeStatusline, dismissHookSchemaDrift }),
-    [state, subscribeStatusline, dismissHookSchemaDrift],
+    () => ({ state, subscribeStatusline, subscribeNotifications, dismissHookSchemaDrift }),
+    [state, subscribeStatusline, subscribeNotifications, dismissHookSchemaDrift],
   );
 
   return (
