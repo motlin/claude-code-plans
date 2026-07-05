@@ -640,6 +640,7 @@ export const CompactMetadataSchema = z
     postTokens: z.number().optional(),
     durationMs: z.number().optional(),
     preCompactDiscoveredTools: z.array(z.string()).optional(),
+    cumulativeDroppedTokens: z.number().optional(),
     preservedSegment: z
       .object({
         headUuid: z.string(),
@@ -656,7 +657,6 @@ export const CompactMetadataSchema = z
       })
       .strict()
       .optional(),
-    cumulativeDroppedTokens: z.number().optional(),
   })
   .strict();
 

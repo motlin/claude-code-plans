@@ -109,9 +109,10 @@ export const GrepInputSchema = z
 export const AgentInputSchema = z
   .object({
     prompt: z.string().optional(),
-    agentType: z.string().optional(),
     description: z.string().optional(),
     subagent_type: z.string().optional(),
+    agentType: z.string().optional(),
+    label: z.string().optional(),
     isolation: z.string().optional(),
     mode: z.string().optional(),
     model: z.string().optional(),
@@ -146,7 +147,7 @@ const TaskCreateInputSchema = z
     activeForm: z.string().optional(),
     agent_type: z.string().optional(),
     priority: z.string().optional(),
-    metadata: z.record(z.string(), JsonInputValueSchema).optional(),
+    metadata: z.union([z.string(), z.record(z.string(), JsonInputValueSchema)]).optional(),
   })
   .strict();
 
