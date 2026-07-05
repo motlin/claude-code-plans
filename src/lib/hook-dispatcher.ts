@@ -27,6 +27,7 @@ import { buildSessionSummaryPayloadFromDb, toActiveSessionPayload } from "./sess
 import { indexFile, indexJsonlFile } from "./db/indexer";
 import { resolveProjectName } from "./memory";
 import { recentlyBroadcast } from "./update-dedupe";
+import { addNotification } from "./notifications-store";
 
 /**
  * TTL covering the gap between the hook fast-path broadcast and the chokidar
@@ -488,6 +489,13 @@ export async function dispatchHookEvent({
 
     case "Notification": {
       store.touchSession(event.session_id);
+      addNotification(db, {
+        sessionId: event.session_id,
+        cwd: event.cwd,
+        message: event.message,
+        ...(event.title !== undefined ? { title: event.title } : {}),
+        notificationType: event.notification_type ?? "unknown",
+      });
       broadcast(DOMAIN_EVENTS.NOTIFICATION, {
         sessionId: event.session_id,
         message: event.message,

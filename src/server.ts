@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { createWatcher } from "./lib/watcher";
 import { getDb, initDb, runInitialScan } from "./lib/db";
 import { startSweep } from "./lib/active-session-store";
+import { startNotificationsSweep } from "./lib/notifications-store";
 import { getCacheDir } from "./lib/db/connection";
 import { initPendingApprovalsCache } from "./lib/db/pending-approvals-cache";
 
@@ -50,6 +51,7 @@ void (async () => {
   }
 
   startSweep();
+  startNotificationsSweep();
 })();
 
 export default createServerEntry({
