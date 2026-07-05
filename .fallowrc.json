@@ -26,7 +26,11 @@
     },
     {
       "file": "src/lib/hook-events.ts",
-      "exports": ["PendingApprovalPayload"]
+      "exports": [
+        "PendingApprovalPayload",
+        "NotificationEntryPayload",
+        "NotificationClearedPayload"
+      ]
     },
     {
       "file": "src/lib/pending-approvals.ts",

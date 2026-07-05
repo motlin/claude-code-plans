@@ -59,6 +59,8 @@ export const DOMAIN_EVENTS = {
   CONFIG_CHANGED: "config:changed",
   MESSAGE_DISPLAYED: "message:displayed",
   NOTIFICATION: "notification",
+  NOTIFICATION_ADDED: "notification:added",
+  NOTIFICATION_CLEARED: "notification:cleared",
   PLAN_CHANGED: "plan:changed",
   PLAN_REMOVED: "plan:removed",
   MEMORY_CHANGED: "memory:changed",
@@ -218,6 +220,37 @@ export interface NotificationPayload {
   sessionId: string;
   message: string;
   title: string | undefined;
+}
+
+/**
+ * A single persisted notification entry, broadcast via `NOTIFICATION_ADDED`
+ * when a `Notification` hook lands in the server-side notifications store.
+ * Mirrors the store's `NotificationEntry` shape. `notificationType` is the
+ * freeform discriminator from the hook (`agent_needs_input` / `agent_completed`
+ * / unknown); the presentation layer classifies known kinds and degrades to
+ * `message`/`title` otherwise. `createdAt` is epoch ms; `createdAtIso` is the
+ * ISO form used for relative-time rendering after JSON serialization.
+ */
+export interface NotificationEntryPayload {
+  id: string;
+  sessionId: string;
+  projectId: string;
+  projectName: string;
+  message: string;
+  title: string | undefined;
+  notificationType: string;
+  createdAt: number;
+  createdAtIso: string;
+}
+
+/**
+ * Payload broadcast via `NOTIFICATION_CLEARED` when notifications are dismissed.
+ * `id` targets a single entry (per-row dismiss); `all` signals a clear-all so
+ * the client empties every notifications slice.
+ */
+export interface NotificationClearedPayload {
+  id?: string;
+  all?: boolean;
 }
 
 /**
@@ -637,6 +670,13 @@ const NotificationHookEvent = z.strictObject({
   hook_event_name: z.literal("Notification"),
   message: z.string(),
   title: z.string().optional(),
+  // Freeform discriminator for background-agent notifications
+  // (`agent_needs_input` / `agent_completed`). Must stay `z.string()`, never a
+  // strict `z.enum` — the envelope is `safeParse`d, so an enum would reject any
+  // unknown/future value and route the event to the schema-drift path, silently
+  // dropping the notification exactly when a new kind ships. Known kinds are
+  // classified in the presentation layer instead.
+  notification_type: z.string().optional(),
 });
 
 const PreCompactHookEvent = z.strictObject({
