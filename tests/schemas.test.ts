@@ -296,6 +296,18 @@ describe("UserRecordSchema", () => {
     const result = UserRecordSchema.safeParse(record);
     expect(result.success).toBe(true);
   });
+
+  it("accepts queue priority metadata", () => {
+    const record = {
+      type: "user",
+      ...baseFields,
+      message: { role: "user", content: "Background agents were stopped by the user." },
+      promptSource: "system",
+      queuePriority: "later",
+    };
+    const result = UserRecordSchema.safeParse(record);
+    expect(result.success).toBe(true);
+  });
 });
 
 describe("AssistantRecordSchema", () => {

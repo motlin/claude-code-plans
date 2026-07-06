@@ -188,6 +188,7 @@ export const UserRecordSchema = z
     promptId: z.string().optional(),
     permissionMode: z.string().optional(),
     promptSource: PromptSourceSchema.optional(),
+    queuePriority: z.string().optional(),
     imagePasteIds: z.array(z.union([z.string(), z.number()])).optional(),
     isMeta: z.boolean().optional(),
     isCompactSummary: z.boolean().optional(),
@@ -195,7 +196,6 @@ export const UserRecordSchema = z
     mcpMeta: z.record(z.string(), JsonValueSchema).optional(),
     origin: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
     interruptedMessageId: z.string().optional(),
-    queuePriority: z.string().optional(),
   })
   .strict();
 
