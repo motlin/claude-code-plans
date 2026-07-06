@@ -123,6 +123,55 @@ export const WithToolCalls: Story = {
   },
 };
 
+export const WithSubagentInfo: Story = {
+  args: {
+    sessionId: "story-session-subagent",
+    lines: [
+      line(0, "user", "Investigate the codebase", "2026-04-19T10:00:00Z"),
+      assistantBlocks(
+        1,
+        [
+          {
+            type: "tool_use",
+            id: "tool-agent-1",
+            name: "Agent",
+            input: {
+              subagent_type: "Explore",
+              description: "Scan the codebase",
+              prompt: "Find all files related to authentication.",
+            } as ToolUseBlock["input"],
+          },
+        ],
+        "2026-04-19T10:00:02Z",
+      ),
+    ],
+    toolResultMap: new Map([
+      [
+        "tool-agent-1",
+        {
+          result: "agentId: scan001\nFound 42 files across the auth module.",
+          isError: false,
+          resultUuid: "result-agent-1",
+          duration: 32000,
+        },
+      ],
+    ]),
+    subagents: [
+      {
+        id: "agent-scan001",
+        sessionId: "story-session-subagent",
+        projectId: "story-project",
+        parentAgentId: null,
+        agentType: "Explore",
+        slug: "scan-codebase",
+        description: "Scan the codebase",
+        startedAt: "2026-04-19T10:00:02Z",
+        finishedAt: "2026-04-19T10:00:34Z",
+      },
+    ],
+  },
+};
+
 export const WithGroupedAssistantMessages: Story = {
   args: {
     sessionId: "story-session-grouped",

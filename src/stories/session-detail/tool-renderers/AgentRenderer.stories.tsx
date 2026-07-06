@@ -34,6 +34,15 @@ export const Success: Story = {
       },
       result: "agentId: abc123\nAll 12 tests now pass. Fixed a missing await in verifyToken().",
       duration: 45200,
+      subagentInfo: {
+        agentId: "agent-abc123",
+        agentType: "Code",
+        slug: "fix-auth-tests",
+        description: "Fix auth test failures",
+        startedAt: "2026-04-19T10:00:00Z",
+        finishedAt: "2026-04-19T10:00:45Z",
+        status: "done",
+      },
     }),
   },
 };
@@ -49,6 +58,40 @@ export const Error: Story = {
       result:
         "agentId: def456\nError: Build failed with exit code 1. Missing environment variable DATABASE_URL.",
       isError: true,
+      subagentInfo: {
+        agentId: "agent-def456",
+        agentType: "build",
+        slug: "deploy-prod",
+        description: "Production deployment",
+        startedAt: "2026-04-19T10:05:00Z",
+        finishedAt: "2026-04-19T10:05:12Z",
+        status: "error",
+      },
+    }),
+  },
+};
+
+export const ParallelGroup: Story = {
+  args: {
+    toolCall: makeToolCall({
+      input: {
+        prompt: "Review the diff for correctness and style.",
+        subagent_type: "code-review",
+        description: "Review diff",
+      },
+      result: "agentId: par789\nNo issues found.",
+      duration: 18000,
+      subagentInfo: {
+        agentId: "agent-par789",
+        agentType: "code-review",
+        slug: "review-diff",
+        description: "Review diff",
+        startedAt: "2026-04-19T10:10:00Z",
+        finishedAt: "2026-04-19T10:10:18Z",
+        status: "done",
+        parallelGroupKey: "2026-04-19T10:10:00Z",
+        parallelGroupSize: 3,
+      },
     }),
   },
 };
