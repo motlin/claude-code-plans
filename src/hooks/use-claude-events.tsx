@@ -645,7 +645,7 @@ function upsertNotification(
   return [notification, ...rest];
 }
 
-function applyNotificationAdded(
+export function applyNotificationAdded(
   queryClient: QueryClient,
   notification: NotificationEntryPayload,
 ): void {
@@ -659,7 +659,7 @@ function applyNotificationAdded(
   });
 }
 
-function applyNotificationCleared(
+export function applyNotificationCleared(
   queryClient: QueryClient,
   payload: NotificationClearedPayload,
 ): void {

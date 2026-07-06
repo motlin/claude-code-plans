@@ -59,7 +59,10 @@ function resolveProject(
   cwd: string,
 ): { projectId: string; projectName: string } {
   const row = db
-    .select({ projectId: schema.sessions.projectId, projectName: schema.projects.name })
+    .select({
+      projectId: schema.sessions.projectId,
+      projectName: schema.projects.name,
+    })
     .from(schema.sessions)
     .innerJoin(schema.projects, eq(schema.projects.id, schema.sessions.projectId))
     .where(eq(schema.sessions.id, sessionId))
@@ -125,7 +128,9 @@ export function addNotification(
 
   store.set(entry.id, entry);
   enforceMaxEntries();
-  broadcastTyped(DOMAIN_EVENTS.NOTIFICATION_ADDED, { notification: toPayload(entry) });
+  broadcastTyped(DOMAIN_EVENTS.NOTIFICATION_ADDED, {
+    notification: toPayload(entry),
+  });
   return entry;
 }
 
@@ -150,10 +155,10 @@ export function clearAllNotifications(): void {
 
 /**
  * Drop entries older than the TTL. Takes the target map (mirrors
- * `sweepSessions`) so a future test could drive it with injected timestamps
- * rather than real `Date.now`/sleep.
+ * `sweepSessions`) so a test can drive it with injected timestamps rather than
+ * real `Date.now`/sleep.
  */
-function sweepNotifications(target: Map<string, NotificationEntry>): void {
+export function sweepNotifications(target: Map<string, NotificationEntry>): void {
   const cutoff = Date.now() - NOTIFICATION_TTL_MS;
   for (const [id, entry] of target) {
     if (entry.createdAt < cutoff) {

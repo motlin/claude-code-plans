@@ -3,6 +3,8 @@ import { QueryClient } from "@tanstack/react-query";
 import {
   applyMemoryChanged,
   applyMemoryRemoved,
+  applyNotificationAdded,
+  applyNotificationCleared,
   applyPlanChanged,
   applyPlanRemoved,
   applySessionAdded,
@@ -16,6 +18,7 @@ import {
 } from "../src/hooks/use-claude-events";
 import type {
   MemorySummaryPayload,
+  NotificationEntryPayload,
   PlanSummaryPayload,
   SessionSummaryPayload,
 } from "../src/lib/hook-events";
@@ -611,6 +614,123 @@ describe("applyTaskChanged", () => {
     const projectState = queryClient.getQueryState(["tasks", "project", "proj-a"]);
     expect(globalState?.isInvalidated).toBe(true);
     expect(projectState?.isInvalidated).toBe(true);
+  });
+});
+
+function makeNotification(
+  overrides: Partial<NotificationEntryPayload> & {
+    id: string;
+    projectId: string;
+  },
+): NotificationEntryPayload {
+  const { id, projectId, ...rest } = overrides;
+  return {
+    id,
+    sessionId: `sess-${id}`,
+    projectId,
+    projectName: `Project ${projectId}`,
+    message: `Message ${id}`,
+    title: undefined,
+    notificationType: "agent_needs_input",
+    createdAt: 1_000,
+    createdAtIso: "1999-12-31T00:00:00.000Z",
+    ...rest,
+  };
+}
+
+type NotificationsData = { notifications: NotificationEntryPayload[] };
+
+describe("applyNotificationAdded", () => {
+  it("prepends the new notification newest-first into both the global and per-project slices", () => {
+    const queryClient = new QueryClient();
+    const existing = makeNotification({ id: "old", projectId: "proj-a" });
+    queryClient.setQueryData<NotificationsData>(["notifications"], {
+      notifications: [existing],
+    });
+    queryClient.setQueryData<NotificationsData>(["notifications", "proj-a"], {
+      notifications: [existing],
+    });
+
+    applyNotificationAdded(queryClient, makeNotification({ id: "new", projectId: "proj-a" }));
+
+    const global = queryClient.getQueryData<NotificationsData>(["notifications"]);
+    const scoped = queryClient.getQueryData<NotificationsData>(["notifications", "proj-a"]);
+    expect(global?.notifications.map((n) => n.id)).toStrictEqual(["new", "old"]);
+    expect(scoped?.notifications.map((n) => n.id)).toStrictEqual(["new", "old"]);
+  });
+
+  it("replaces an existing entry with the same id and moves it to the front", () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData<NotificationsData>(["notifications"], {
+      notifications: [
+        makeNotification({ id: "a", projectId: "proj-a", message: "old text" }),
+        makeNotification({ id: "b", projectId: "proj-a" }),
+      ],
+    });
+
+    applyNotificationAdded(
+      queryClient,
+      makeNotification({ id: "a", projectId: "proj-a", message: "new text" }),
+    );
+
+    const global = queryClient.getQueryData<NotificationsData>(["notifications"]);
+    expect(global?.notifications.map((n) => n.id)).toStrictEqual(["a", "b"]);
+    expect(global?.notifications[0]?.message).toBe("new text");
+  });
+
+  it("is a no-op when a slice has never been populated", () => {
+    const queryClient = new QueryClient();
+    applyNotificationAdded(queryClient, makeNotification({ id: "x", projectId: "proj-a" }));
+    expect(queryClient.getQueryData(["notifications"])).toBeUndefined();
+    expect(queryClient.getQueryData(["notifications", "proj-a"])).toBeUndefined();
+  });
+});
+
+describe("applyNotificationCleared", () => {
+  it("removes a single id from every matching slice", () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData<NotificationsData>(["notifications"], {
+      notifications: [
+        makeNotification({ id: "a", projectId: "proj-a" }),
+        makeNotification({ id: "b", projectId: "proj-b" }),
+      ],
+    });
+    queryClient.setQueryData<NotificationsData>(["notifications", "proj-a"], {
+      notifications: [makeNotification({ id: "a", projectId: "proj-a" })],
+    });
+
+    applyNotificationCleared(queryClient, { id: "a" });
+
+    expect(
+      queryClient
+        .getQueryData<NotificationsData>(["notifications"])
+        ?.notifications.map((n) => n.id),
+    ).toStrictEqual(["b"]);
+    expect(
+      queryClient.getQueryData<NotificationsData>(["notifications", "proj-a"])?.notifications,
+    ).toStrictEqual([]);
+  });
+
+  it("empties every slice when all:true", () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData<NotificationsData>(["notifications"], {
+      notifications: [
+        makeNotification({ id: "a", projectId: "proj-a" }),
+        makeNotification({ id: "b", projectId: "proj-b" }),
+      ],
+    });
+    queryClient.setQueryData<NotificationsData>(["notifications", "proj-a"], {
+      notifications: [makeNotification({ id: "a", projectId: "proj-a" })],
+    });
+
+    applyNotificationCleared(queryClient, { all: true });
+
+    expect(
+      queryClient.getQueryData<NotificationsData>(["notifications"])?.notifications,
+    ).toStrictEqual([]);
+    expect(
+      queryClient.getQueryData<NotificationsData>(["notifications", "proj-a"])?.notifications,
+    ).toStrictEqual([]);
   });
 });
 
