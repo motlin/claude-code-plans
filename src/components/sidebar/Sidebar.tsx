@@ -15,6 +15,7 @@ import {
   SubList,
 } from "./sublists";
 import { approvalsQueryOptions } from "../../lib/api/approvals";
+import { notificationsQueryOptions } from "../../lib/api/notifications";
 import { activeSessionsQueryOptions } from "../../lib/api/sessions";
 import { useSettings } from "../settings-provider";
 
@@ -35,6 +36,10 @@ export function Sidebar({
   );
   const { data: approvalsData } = useQuery(approvalsQueryOptions());
   const approvalsCount = approvalsData?.approvals.length ?? 0;
+  const { data: notificationsData } = useQuery(notificationsQueryOptions());
+  const unreadCount =
+    notificationsData?.notifications.filter((n) => n.notificationType === "agent_needs_input")
+      .length ?? 0;
   const { settings } = useSettings();
   const { data: activeSessions } = useQuery(
     activeSessionsQueryOptions(settings.activeTimeoutSec * 1000),
@@ -137,7 +142,9 @@ export function Sidebar({
               ? { count: activeCount, title: `${activeCount} active` }
               : item.section === "approvals"
                 ? { count: approvalsCount, title: `${approvalsCount} awaiting approval` }
-                : null;
+                : item.section === "notifications"
+                  ? { count: unreadCount, title: `${unreadCount} needing input` }
+                  : null;
           return (
             <div key={item.to}>
               <div className="flex items-center">
@@ -181,6 +188,7 @@ export function Sidebar({
               {isExpanded &&
                 item.section !== "starred" &&
                 item.section !== "approvals" &&
+                item.section !== "notifications" &&
                 item.section !== "settings" &&
                 item.section !== "config" &&
                 item.section !== "setup" &&

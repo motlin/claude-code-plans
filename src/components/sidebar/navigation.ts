@@ -8,6 +8,7 @@ import {
   Radio,
   SquareTerminal,
   Inbox,
+  Bell,
   Blocks,
   Settings,
   ListTodo,
@@ -28,6 +29,12 @@ export const navItems = [
     label: "Approvals",
     icon: Inbox,
     section: "approvals" as Section,
+  },
+  {
+    to: "/notifications",
+    label: "Notifications",
+    icon: Bell,
+    section: "notifications" as Section,
   },
   {
     to: "/starred",
