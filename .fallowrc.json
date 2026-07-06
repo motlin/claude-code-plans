@@ -78,6 +78,10 @@
       "exports": ["tmuxWindowsQueryOptions"]
     },
     {
+      "file": "src/lib/api/sessions.ts",
+      "exports": ["SessionSubagentsResponse", "sessionSubagentsQueryOptions"]
+    },
+    {
       "file": "src/lib/db/queries.ts",
       "exports": [
         "DbSearchResult",

@@ -49,6 +49,13 @@ export function getSubagentLifecycleKey(
   return `${sessionId}:${unprefixedAgentId || agentType}`;
 }
 
+/**
+ * Project the DB-backed `DbSubagent` row onto the client `Subagent` wire shape,
+ * dropping the server-only `filePath`/`mtimeMs` fields. The DB is the only source
+ * that carries a real `parentAgentId` (via `linkSubagentParents`), so the
+ * subagent endpoints map through here rather than deriving flat records from
+ * individual transcripts.
+ */
 export function toClientSubagent(row: DbSubagent): Subagent {
   return {
     id: row.id,
