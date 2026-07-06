@@ -500,6 +500,7 @@ function SessionPage() {
           sessionId={params.id}
           lines={processed.lines}
           toolResultMap={processed.toolResultMap}
+          subagents={subagents}
           showThinking={settings.showThinking}
           showTools={settings.showTools}
           showPassedHooks={settings.showPassedHooks}

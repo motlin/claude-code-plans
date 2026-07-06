@@ -15,9 +15,10 @@ import { assertNever } from "../lib/assert-never";
 import { formatTimestamp, formatRelativeTimestamp } from "../lib/timestamp-format";
 import { MarkdownArticle } from "./markdown-article";
 import { getToolRenderer } from "./tool-renderers";
-import { buildClientToolCall } from "./tool-renderers/types";
+import { buildClientToolCall, buildSubagentLookup } from "./tool-renderers/types";
 import type { ClientToolCall } from "./tool-renderers";
-import type { LiveToolFailure } from "./tool-renderers/types";
+import type { LiveToolFailure, SubagentLookup } from "./tool-renderers/types";
+import type { Subagent } from "../lib/subagents";
 import { useClaudeEvents } from "../hooks/use-claude-events";
 import { ChevronIcon, CollapsibleSection, TerminalOutput } from "./tool-renderers/shared";
 import { SystemBanner, formatTokens } from "./system-banner";
@@ -54,6 +55,7 @@ export interface SessionChatProps {
   sessionId: string;
   lines: SessionLine[];
   toolResultMap: Map<string, ToolResultInfo>;
+  subagents?: Subagent[];
   showThinking?: boolean;
   showTools?: boolean;
   showPassedHooks?: boolean;
@@ -261,6 +263,7 @@ export const SessionChat = React.memo(function SessionChat({
   sessionId,
   lines,
   toolResultMap,
+  subagents = [],
   showThinking = false,
   showTools = true,
   showPassedHooks = false,
@@ -272,6 +275,7 @@ export const SessionChat = React.memo(function SessionChat({
 }: SessionChatProps) {
   const endRef = useRef<HTMLDivElement>(null);
   const isSubagentSession = sessionId.startsWith("agent-");
+  const subagentLookup = useMemo(() => buildSubagentLookup(subagents), [subagents]);
 
   useEffect(() => {
     if (autoScrolledSessions.has(sessionId)) return;
@@ -287,6 +291,7 @@ export const SessionChat = React.memo(function SessionChat({
         lines={lines}
         sessionId={sessionId}
         toolResultMap={toolResultMap}
+        subagentLookup={subagentLookup}
         isSubagentSession={isSubagentSession}
         showThinking={showThinking}
         showTools={showTools}
@@ -321,6 +326,7 @@ function buildSkipSet(lines: SessionLine[]): Set<number> {
 interface LineRenderProps {
   sessionId: string;
   toolResultMap: Map<string, ToolResultInfo>;
+  subagentLookup: SubagentLookup;
   isSubagentSession: boolean;
   showThinking: boolean;
   showTools: boolean;
@@ -402,12 +408,14 @@ function GroupedToolCallEntry({
   className,
   sessionId,
   toolResultMap,
+  subagentLookup,
 }: {
   lines: SessionLine[];
   indices: number[];
   className?: string;
   sessionId: string;
   toolResultMap: Map<string, ToolResultInfo>;
+  subagentLookup: SubagentLookup;
 }) {
   const liveFailures = useLiveToolFailures(sessionId);
   const allToolCalls = useMemo(
@@ -418,9 +426,17 @@ function GroupedToolCallEntry({
         if (!Array.isArray(content)) return [];
         return content
           .filter((b): b is ToolUseBlock => b.type === "tool_use")
-          .map((block) => buildClientToolCall(block, line.uuid ?? "", toolResultMap, liveFailures));
+          .map((block) =>
+            buildClientToolCall(
+              block,
+              line.uuid ?? "",
+              toolResultMap,
+              liveFailures,
+              subagentLookup,
+            ),
+          );
       }),
-    [lines, toolResultMap, liveFailures],
+    [lines, toolResultMap, liveFailures, subagentLookup],
   );
 
   if (allToolCalls.length === 0) return null;
@@ -674,6 +690,7 @@ function renderSessionMessage({
   index,
   sessionId,
   toolResultMap,
+  subagentLookup,
   isSubagentSession,
   showThinking,
   showTools,
@@ -702,6 +719,7 @@ function renderSessionMessage({
           line={line}
           sessionId={sessionId}
           toolResultMap={toolResultMap}
+          subagentLookup={subagentLookup}
           showThinking={showThinking}
           showTools={showTools}
         />
@@ -1430,12 +1448,14 @@ function AssistantEntry({
   line,
   sessionId,
   toolResultMap,
+  subagentLookup,
   showThinking,
   showTools,
 }: {
   line: MessageSessionLine;
   sessionId: string;
   toolResultMap: Map<string, ToolResultInfo>;
+  subagentLookup: SubagentLookup;
   showThinking: boolean;
   showTools: boolean;
 }) {
@@ -1451,8 +1471,10 @@ function AssistantEntry({
     () =>
       content
         .filter((b): b is ToolUseBlock => b.type === "tool_use")
-        .map((block) => buildClientToolCall(block, line.uuid ?? "", toolResultMap, liveFailures)),
-    [content, line, toolResultMap, liveFailures],
+        .map((block) =>
+          buildClientToolCall(block, line.uuid ?? "", toolResultMap, liveFailures, subagentLookup),
+        ),
+    [content, line, toolResultMap, liveFailures, subagentLookup],
   );
   const hasVisibleNonToolContent = content.some(
     (b) =>
