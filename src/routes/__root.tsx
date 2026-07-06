@@ -19,7 +19,9 @@ import { useCommandPalette } from "../hooks/use-command-palette";
 import { IndexingBanner } from "../components/indexing-banner";
 import { HookSchemaDriftBanner } from "../components/hook-schema-drift-banner";
 import { ClaudeEventsProvider } from "../hooks/use-claude-events";
+import { DesktopNotificationBridge } from "../components/desktop-notification-bridge";
 import { approvalsQueryOptions } from "../lib/api/approvals";
+import { notificationsQueryOptions } from "../lib/api/notifications";
 import { plansQueryOptions } from "../lib/api/plans";
 import { projectsQueryOptions } from "../lib/api/projects";
 import { pluginsQueryOptions, userCommandsQueryOptions } from "../lib/api/plugins";
@@ -42,6 +44,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       queryClient.ensureQueryData(userCommandsQueryOptions),
       queryClient.ensureQueryData(activeSessionsQueryOptions(60_000)),
       queryClient.ensureQueryData(approvalsQueryOptions()),
+      queryClient.ensureQueryData(notificationsQueryOptions()),
     ]),
   head: () => ({
     meta: [
@@ -135,6 +138,7 @@ function RootLayout() {
         <main className="flex-1 overflow-y-auto bg-bg-000">
           <IndexingBanner />
           <HookSchemaDriftBanner />
+          <DesktopNotificationBridge />
           <div className="flex min-h-9 items-center px-4 pt-3 sm:px-8">
             <button
               type="button"

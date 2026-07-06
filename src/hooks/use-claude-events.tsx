@@ -384,6 +384,14 @@ export function useClaudeEvents(): ClaudeEventsState {
   return ctx.state;
 }
 
+export function useSubscribeNotifications(): ClaudeEventsContextValue["subscribeNotifications"] {
+  const context = useContext(ClaudeEventsContext);
+  if (!context) {
+    throw new Error("useSubscribeNotifications must be used within a ClaudeEventsProvider");
+  }
+  return context.subscribeNotifications;
+}
+
 /**
  * Convenience hook: returns true if the given session ID is in the active sessions map.
  */
