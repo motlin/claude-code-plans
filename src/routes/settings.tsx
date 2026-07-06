@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { Eye, Gauge, GitFork, Info, Palette, Sparkles, Webhook, Wrench } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Bell, Eye, Gauge, GitFork, Info, Palette, Sparkles, Webhook, Wrench } from "lucide-react";
 import { useSettings, type Settings, type Verbosity } from "../components/settings-provider";
 import { useTheme } from "../components/theme-provider";
 
@@ -42,6 +42,71 @@ function ToggleRow({ label, description, settingKey }: ToggleRowProps) {
         className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
           checked ? "bg-accent-100" : "bg-bg-300"
         }`}
+      >
+        <span
+          className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${
+            checked ? "translate-x-[18px]" : "translate-x-[3px]"
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
+function DesktopNotificationsRow() {
+  const { settings, setSetting } = useSettings();
+  const checked = settings.desktopNotifications;
+  const [supported, setSupported] = useState(false);
+  const [permission, setPermission] = useState<NotificationPermission>("default");
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setSupported(true);
+      setPermission(Notification.permission);
+    }
+  }, []);
+
+  const handleToggle = async () => {
+    if (!supported) return;
+    const next = !checked;
+    if (next && Notification.permission !== "granted") {
+      const result = await Notification.requestPermission();
+      setPermission(result);
+      if (result !== "granted") return;
+    }
+    setSetting("desktopNotifications", next);
+  };
+
+  const blocked = supported && permission === "denied";
+
+  return (
+    <div className="flex items-center justify-between gap-4 py-2">
+      <div>
+        <div className="text-sm font-medium text-text-100">Desktop notifications</div>
+        <div className="text-xs text-text-500">
+          Show native OS notifications when an agent needs input or finishes while this tab is in
+          the background
+        </div>
+        {!supported && (
+          <div className="mt-1 text-xs text-amber-600">
+            This browser does not support desktop notifications.
+          </div>
+        )}
+        {blocked && (
+          <div className="mt-1 text-xs text-amber-600">
+            Notifications are blocked. Allow them for this site in your browser settings to enable.
+          </div>
+        )}
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        disabled={!supported || blocked}
+        onClick={() => void handleToggle()}
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
+          checked ? "bg-accent-100" : "bg-bg-300"
+        } ${!supported || blocked ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
       >
         <span
           className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${
@@ -334,6 +399,10 @@ function SettingsPage() {
             description="Show the status bar at the bottom of session views"
             settingKey="statusFooterVisible"
           />
+        </Section>
+
+        <Section icon={Bell} title="Notifications">
+          <DesktopNotificationsRow />
         </Section>
 
         <Section icon={Sparkles} title="AI Features">

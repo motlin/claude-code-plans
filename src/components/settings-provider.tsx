@@ -28,6 +28,8 @@ export interface Settings {
 
   activeTimeoutSec: number;
 
+  desktopNotifications: boolean;
+
   verbosity: Verbosity;
 }
 
@@ -54,6 +56,8 @@ export const DEFAULTS: Settings = {
 
   activeTimeoutSec: ACTIVE_SESSION_WINDOW_MS / 1000,
 
+  desktopNotifications: false,
+
   verbosity: "normal",
 };
 
@@ -73,6 +77,7 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
   statusFooterVisible: "ccp-status-footer",
   showSummaryButton: "ccp-show-summary-button",
   activeTimeoutSec: "ccp-active-timeout",
+  desktopNotifications: "ccp-desktop-notifications",
   verbosity: "ccp-verbosity",
 };
 
