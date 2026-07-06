@@ -4,6 +4,9 @@ import { ArrowLeft } from "lucide-react";
 import { projectDetailQueryOptions, projectSubagentsQueryOptions } from "../lib/api/projects";
 import { DetailTopBar, pillStyles } from "../components/detail-top-bar";
 import { SubagentGantt } from "../components/subagent-gantt";
+import { SubagentSequence } from "../components/subagent-sequence";
+import { SubagentTree } from "../components/subagent-tree";
+import { useSettings } from "../components/settings-provider";
 
 export const Route = createFileRoute("/project/$id_/subagents")({
   component: ProjectSubagentsPage,
@@ -27,6 +30,8 @@ function ProjectSubagentsPage() {
   const { id } = Route.useParams();
   const { data: project } = useSuspenseQuery(projectDetailQueryOptions(id));
   const { data: agents } = useSuspenseQuery(projectSubagentsQueryOptions(id));
+  const { settings } = useSettings();
+  const subagentView = settings.defaultSubagentView;
 
   if (!project) {
     return (
@@ -62,7 +67,13 @@ function ProjectSubagentsPage() {
         <p className="mt-4 text-text-500">No subagents for this project.</p>
       ) : (
         <section className="mt-4">
-          <SubagentGantt agents={agents} />
+          {subagentView === "tree" ? (
+            <SubagentTree agents={agents} />
+          ) : subagentView === "sequence" ? (
+            <SubagentSequence agents={agents} />
+          ) : (
+            <SubagentGantt agents={agents} />
+          )}
         </section>
       )}
     </div>
