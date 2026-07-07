@@ -173,7 +173,7 @@ const TaskUpdateInputSchema = z
 const TaskGetInputSchema = z
   .object({
     taskId: z.string().optional(),
-    id: z.string().optional(),
+    id: z.union([z.string(), z.number()]).optional(),
   })
   .strict()
   .refine((input) => input.taskId !== undefined || input.id !== undefined, {

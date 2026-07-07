@@ -1295,6 +1295,18 @@ describe("ContentBlockSchema tool input validation", () => {
     expect(ContentBlockSchema.safeParse(block).success).toBe(true);
   });
 
+  it("accepts TaskGet id input", () => {
+    const block = {
+      type: "tool_use",
+      id: "tool-task-get-100",
+      name: "TaskGet",
+      input: {
+        id: "100",
+      },
+    };
+    expect(ContentBlockSchema.safeParse(block).success).toBe(true);
+  });
+
   it("rejects extra input fields for known tools", () => {
     const block = {
       type: "tool_use",

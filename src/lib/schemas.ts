@@ -434,8 +434,8 @@ const TaskStatusAttachmentPayload = z
   .object({
     type: z.literal("task_status"),
     taskId: z.string(),
-    taskType: z.string(),
-    description: z.string(),
+    taskType: z.string().optional(),
+    description: z.string().optional(),
     status: z.string(),
     deltaSummary: z.union([z.string(), z.null()]).optional(),
     outputFilePath: z.string().optional(),

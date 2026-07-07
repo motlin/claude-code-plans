@@ -40,3 +40,12 @@ export const Error: Story = {
     }),
   },
 };
+
+export const IdInput: Story = {
+  args: {
+    toolCall: makeToolCall({
+      input: { id: "100" },
+      result: "Task #100: Review generated output\nstatus: completed",
+    }),
+  },
+};

@@ -239,6 +239,20 @@ export const TaskReminder: Story = {
   },
 };
 
+export const TaskStatus: Story = {
+  args: {
+    attachmentJson: JSON.stringify({
+      type: "task_status",
+      taskId: "100",
+      taskType: "local_agent",
+      description: "Review generated output",
+      status: "completed",
+      deltaSummary: null,
+      outputFilePath: "/tmp/test/task-100.output",
+    }),
+  },
+};
+
 export const TodoReminder: Story = {
   args: {
     attachmentJson: JSON.stringify({

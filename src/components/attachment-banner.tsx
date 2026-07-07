@@ -479,15 +479,25 @@ function AttachmentContent({
         />
       );
     }
-    case "task_status":
+    case "task_status": {
+      const completed = attachment.status === "completed";
       return (
         <Banner
-          icon={<CircleCheck className="h-3.5 w-3.5" />}
-          label={`Task ${attachment.status}: ${attachment.description}`}
+          icon={
+            completed ? (
+              <CircleCheck className="h-3.5 w-3.5" />
+            ) : (
+              <Hourglass className="h-3.5 w-3.5" />
+            )
+          }
+          label={`Task ${attachment.status}${attachment.description ? `: ${attachment.description}` : ""}`}
           sessionId={sessionId}
           uuid={uuid}
-        />
+        >
+          <span className="text-text-600">#{attachment.taskId}</span>
+        </Banner>
       );
+    }
 
     // -- Commands --
     case "queued_command": {
