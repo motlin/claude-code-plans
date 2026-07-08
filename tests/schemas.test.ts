@@ -905,6 +905,7 @@ describe("TaskFileSchema", () => {
       blocks: [],
       blockedBy: [],
       owner: "agent-1",
+      metadata: { priority: "high" },
     });
     expect(result.success).toBe(true);
   });
