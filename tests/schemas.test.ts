@@ -905,6 +905,18 @@ describe("TaskFileSchema", () => {
       blocks: [],
       blockedBy: [],
       owner: "agent-1",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts metadata with arbitrary JSON values", () => {
+    const result = TaskFileSchema.safeParse({
+      id: "1",
+      subject: "task",
+      description: "desc",
+      status: "pending",
+      blocks: [],
+      blockedBy: [],
       metadata: { priority: "high" },
     });
     expect(result.success).toBe(true);
@@ -1222,6 +1234,19 @@ describe("ContentBlockSchema tool input validation", () => {
           commit_sha: "769a03b2",
           test_pass_rate: "100%",
         },
+      },
+    };
+    const result = ContentBlockSchema.safeParse(block);
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts TaskCreate inputs without subjects", () => {
+    const block = {
+      type: "tool_use",
+      id: "tu_1",
+      name: "TaskCreate",
+      input: {
+        description: "Create the next task from context",
       },
     };
     const result = ContentBlockSchema.safeParse(block);
