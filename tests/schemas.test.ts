@@ -541,6 +541,64 @@ describe("JsonlRecordSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("parses assistant records with snake_case session id", () => {
+    const result = JsonlRecordSchema.safeParse({
+      type: "assistant",
+      ...baseFields,
+      session_id: "sess-123",
+      message: {
+        ...assistantMessageFields,
+        content: [{ type: "text", text: "Hi" }],
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("parses TaskCreate tool uses without a subject", () => {
+    const result = JsonlRecordSchema.safeParse({
+      type: "assistant",
+      ...baseFields,
+      message: {
+        ...assistantMessageFields,
+        content: [
+          {
+            type: "tool_use",
+            id: "toolu_123",
+            name: "TaskCreate",
+            input: {
+              description: "Fill in the implementation details",
+              activeForm: "Implementing",
+            },
+          },
+        ],
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("parses Agent tool uses with effort", () => {
+    const result = JsonlRecordSchema.safeParse({
+      type: "assistant",
+      ...baseFields,
+      message: {
+        ...assistantMessageFields,
+        content: [
+          {
+            type: "tool_use",
+            id: "toolu_123",
+            name: "Agent",
+            input: {
+              prompt: "Inspect the code",
+              model: "sonnet",
+              effort: "high",
+            },
+          },
+        ],
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("parses custom-title records", () => {
     const result = JsonlRecordSchema.safeParse({
       type: "custom-title",
@@ -838,15 +896,16 @@ describe("TaskFileSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("accepts persisted task owner", () => {
+  it("accepts persisted task owner and metadata", () => {
     const result = TaskFileSchema.safeParse({
       id: "1",
       subject: "task",
       description: "desc",
-      status: "completed",
+      status: "pending",
       blocks: [],
       blockedBy: [],
       owner: "agent-1",
+      metadata: { priority: "high" },
     });
     expect(result.success).toBe(true);
   });
@@ -859,9 +918,7 @@ describe("TaskFileSchema", () => {
       status: "pending",
       blocks: [],
       blockedBy: [],
-      owner: "alice",
-      metadata: { priority: "high" },
-      unknownField: true,
+      extraField: true,
     });
     expect(result.success).toBe(false);
   });
