@@ -200,6 +200,35 @@ describe("content block schemas", () => {
     expect(result.success).toBe(true);
   });
 
+  it("parses a tool_use block with newer Agent effort input", () => {
+    const block = {
+      type: "tool_use",
+      id: "tu_123",
+      name: "Agent",
+      input: {
+        description: "Review the change",
+        prompt: "Find risks",
+        effort: "high",
+      },
+    };
+    const result = ContentBlockSchema.safeParse(block);
+    expect(result.success).toBe(true);
+  });
+
+  it("parses a tool_use block with TaskCreate active form and no subject", () => {
+    const block = {
+      type: "tool_use",
+      id: "tu_123",
+      name: "TaskCreate",
+      input: {
+        description: "Implement the next slice",
+        activeForm: "Implementing the next slice",
+      },
+    };
+    const result = ContentBlockSchema.safeParse(block);
+    expect(result.success).toBe(true);
+  });
+
   it("parses a thinking block", () => {
     const block = {
       type: "thinking",
@@ -340,6 +369,21 @@ describe("AssistantRecordSchema", () => {
       requestId: "req_123",
       slug: "radiant-beaming-kay",
       effort: "high",
+      message: {
+        ...assistantMessageFields,
+        content: [{ type: "text", text: "Hi" }],
+      },
+    };
+    const result = AssistantRecordSchema.safeParse(record);
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts newer snake_case session_id metadata", () => {
+    const record = {
+      type: "assistant",
+      ...baseFields,
+      session_id: "sess-123",
+      requestId: "req_123",
       message: {
         ...assistantMessageFields,
         content: [{ type: "text", text: "Hi" }],
@@ -790,6 +834,19 @@ describe("TaskFileSchema", () => {
         tests_added: 11,
         verification: { status: "passed" },
       },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts persisted task owner", () => {
+    const result = TaskFileSchema.safeParse({
+      id: "1",
+      subject: "task",
+      description: "desc",
+      status: "completed",
+      blocks: [],
+      blockedBy: [],
+      owner: "agent-1",
     });
     expect(result.success).toBe(true);
   });
