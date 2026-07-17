@@ -5,8 +5,8 @@ import { COVERED_SETTINGS_KEYS } from "../src/lib/settings-fields";
 /**
  * Guard test (in the spirit of the schema-choices registry): every top-level
  * key of ClaudeSettingsSchema must have settings form coverage. A new schema
- * key turns this test red until it gets a FIELD_DEFINITIONS entry or a
- * dedicated editor (reflected in COVERED_SETTINGS_KEYS).
+ * key turns this test red until it gets an editable field, dedicated editor,
+ * or read-only summary (reflected in COVERED_SETTINGS_KEYS).
  */
 describe("settings field coverage", () => {
   it("every ClaudeSettingsSchema key has form coverage", () => {

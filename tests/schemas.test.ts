@@ -327,6 +327,7 @@ describe("AssistantRecordSchema", () => {
       ...baseFields,
       requestId: "req_123",
       slug: "radiant-beaming-kay",
+      effort: "high",
       message: {
         ...assistantMessageFields,
         content: [{ type: "text", text: "Hi" }],
@@ -362,6 +363,16 @@ describe("SystemRecordSchema", () => {
     if (result.success) {
       expect(result.data.subtype).toBe("turn_duration");
     }
+  });
+
+  it("parses the request retry source", () => {
+    const record = {
+      type: "system",
+      subtype: "api_error",
+      source: "request_retry",
+    };
+
+    expect(SystemRecordSchema.parse(record)).toStrictEqual(record);
   });
 });
 
@@ -416,6 +427,18 @@ describe("JsonlRecordSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("parses auto mode attachments with consent flow metadata", () => {
+    const record = {
+      type: "attachment",
+      attachment: {
+        type: "auto_mode",
+        autoModeConsentFlow: false,
+      },
+    };
+
+    expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+  });
+
   it("parses user records", () => {
     const record = {
       type: "user",
@@ -423,6 +446,17 @@ describe("JsonlRecordSchema", () => {
       message: { role: "user", content: "Hello" },
     };
     const result = JsonlRecordSchema.safeParse(record);
+    expect(result.success).toBe(true);
+  });
+
+  it("parses user records with current session and queue metadata", () => {
+    const result = JsonlRecordSchema.safeParse({
+      type: "user",
+      ...baseFields,
+      session_id: "session-100",
+      queuePriority: "later",
+      message: { role: "user", content: "Queued prompt" },
+    });
     expect(result.success).toBe(true);
   });
 
@@ -536,6 +570,80 @@ describe("JsonlRecordSchema", () => {
         skillDir: "/tmp/test/.claude/skills",
         skillNames: ["alice-skill"],
         displayPath: "test/.claude/skills",
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("parses async hook response attachments", () => {
+    const result = JsonlRecordSchema.safeParse({
+      type: "attachment",
+      ...baseFields,
+      attachment: {
+        type: "async_hook_response",
+        processId: "async-hook-100",
+        hookName: "PreToolUse:Read",
+        hookEvent: "PreToolUse",
+        response: { decision: "allow" },
+        stdout: "allowed",
+        stderr: "",
+        exitCode: 0,
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("parses already-read file attachments", () => {
+    const result = JsonlRecordSchema.safeParse({
+      type: "attachment",
+      ...baseFields,
+      attachment: {
+        type: "already_read_file",
+        filename: "/tmp/test/example.ts",
+        displayPath: "example.ts",
+        content: { type: "text" },
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("parses task status attachments", () => {
+    const result = JsonlRecordSchema.safeParse({
+      type: "attachment",
+      ...baseFields,
+      attachment: {
+        type: "task_status",
+        taskId: "task-100",
+        taskType: "local_agent",
+        description: "Example task",
+        status: "completed",
+        deltaSummary: null,
+        outputFilePath: "/tmp/test/task-100.output",
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("parses relocated records", () => {
+    const result = JsonlRecordSchema.safeParse({
+      type: "relocated",
+      sessionId: "session-100",
+      relocatedCwd: "/tmp/test/worktree",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("parses worktree state with the pre-entry directory", () => {
+    const result = JsonlRecordSchema.safeParse({
+      type: "worktree-state",
+      sessionId: "session-100",
+      worktreeSession: {
+        originalCwd: "/tmp/test/project",
+        preEnterOriginalCwd: "/tmp/test/project",
+        worktreePath: "/tmp/test/worktree",
+        worktreeName: "alice-worktree",
+        worktreeBranch: "test/alice-worktree",
+        sessionId: "session-100",
       },
     });
     expect(result.success).toBe(true);
@@ -682,8 +790,9 @@ describe("TaskFileSchema", () => {
       status: "pending",
       blocks: [],
       blockedBy: [],
-      owner: "agent-1",
+      owner: "alice",
       metadata: { priority: "high" },
+      unknownField: true,
     });
     expect(result.success).toBe(false);
   });
@@ -884,11 +993,31 @@ describe("Per-tool input schemas", () => {
         isolation: "full",
         mode: "plan",
         model: "sonnet",
+        effort: "high",
         name: "my-agent",
         run_in_background: true,
         team_name: "alpha",
       };
       expect(AgentInputSchema.safeParse(input).success).toBe(true);
+    });
+  });
+
+  describe("task tool schemas", () => {
+    it("accepts TaskCreate input without a subject", () => {
+      const schema = toolInputSchemas["TaskCreate"];
+      if (!schema) throw new Error("Missing TaskCreate input schema");
+      const result = schema.safeParse({
+        description: "Create an example task",
+        activeForm: "Creating an example task",
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("accepts TaskGet input with id", () => {
+      const schema = toolInputSchemas["TaskGet"];
+      if (!schema) throw new Error("Missing TaskGet input schema");
+      const result = schema.safeParse({ id: "task-100" });
+      expect(result.success).toBe(true);
     });
   });
 

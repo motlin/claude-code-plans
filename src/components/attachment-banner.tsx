@@ -145,6 +145,19 @@ function AttachmentContent({
           )}
         </Banner>
       );
+    case "async_hook_response":
+      return (
+        <Banner
+          icon={<CircleCheck className="h-3.5 w-3.5" />}
+          label={`Async hook completed: ${attachment.hookName}`}
+          sessionId={sessionId}
+          uuid={uuid}
+        >
+          {attachment.exitCode !== undefined && (
+            <span className="text-text-600">exit {attachment.exitCode}</span>
+          )}
+        </Banner>
+      );
 
     // -- File context --
     case "file":
@@ -152,6 +165,15 @@ function AttachmentContent({
         <Banner
           icon={<FileText className="h-3.5 w-3.5" />}
           label={attachment.displayPath ?? attachment.filename}
+          sessionId={sessionId}
+          uuid={uuid}
+        />
+      );
+    case "already_read_file":
+      return (
+        <Banner
+          icon={<FileText className="h-3.5 w-3.5" />}
+          label={`Already read: ${attachment.displayPath ?? attachment.filename}`}
           sessionId={sessionId}
           uuid={uuid}
         />
@@ -457,6 +479,15 @@ function AttachmentContent({
         />
       );
     }
+    case "task_status":
+      return (
+        <Banner
+          icon={<CircleCheck className="h-3.5 w-3.5" />}
+          label={`Task ${attachment.status}: ${attachment.description}`}
+          sessionId={sessionId}
+          uuid={uuid}
+        />
+      );
 
     // -- Commands --
     case "queued_command": {

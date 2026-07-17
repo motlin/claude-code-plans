@@ -153,6 +153,7 @@ const BaseRecordFields = {
   uuid: z.string().optional(),
   timestamp: z.string().optional(),
   sessionId: z.string().optional(),
+  session_id: z.string().optional(),
   parentUuid: z.union([z.string(), z.null()]).optional(),
   isSidechain: z.boolean().optional(),
   userType: z.string().optional(),
@@ -194,6 +195,7 @@ export const UserRecordSchema = z
     mcpMeta: z.record(z.string(), JsonValueSchema).optional(),
     origin: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
     interruptedMessageId: z.string().optional(),
+    queuePriority: z.string().optional(),
   })
   .strict();
 
@@ -202,6 +204,7 @@ export const AssistantRecordSchema = z
     type: z.literal("assistant"),
     ...BaseRecordFields,
     requestId: z.string().optional(),
+    effort: z.string().optional(),
     message: z
       .object({
         role: z.literal("assistant"),
@@ -353,6 +356,19 @@ const HookAdditionalContextAttachmentPayload = z
   })
   .strict();
 
+const AsyncHookResponseAttachmentPayload = z
+  .object({
+    type: z.literal("async_hook_response"),
+    processId: z.string(),
+    hookName: z.string(),
+    hookEvent: z.string(),
+    response: z.record(z.string(), JsonValueSchema).optional(),
+    stdout: z.string().optional(),
+    stderr: z.string().optional(),
+    exitCode: z.number().optional(),
+  })
+  .strict();
+
 const DeferredToolsDeltaAttachmentPayload = z
   .object({
     type: z.literal("deferred_tools_delta"),
@@ -414,6 +430,18 @@ const TaskReminderAttachmentPayload = z
   .object({ type: z.literal("task_reminder"), ...ReminderBaseFields })
   .strict();
 
+const TaskStatusAttachmentPayload = z
+  .object({
+    type: z.literal("task_status"),
+    taskId: z.string(),
+    taskType: z.string(),
+    description: z.string(),
+    status: z.string(),
+    deltaSummary: z.union([z.string(), z.null()]).optional(),
+    outputFilePath: z.string().optional(),
+  })
+  .strict();
+
 const TodoReminderAttachmentPayload = z
   .object({ type: z.literal("todo_reminder"), ...ReminderBaseFields })
   .strict();
@@ -430,6 +458,15 @@ const EditedTextFileAttachmentPayload = z
 const FileAttachmentPayload = z
   .object({
     type: z.literal("file"),
+    filename: z.string(),
+    content: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
+    displayPath: z.string().optional(),
+  })
+  .strict();
+
+const AlreadyReadFileAttachmentPayload = z
+  .object({
+    type: z.literal("already_read_file"),
     filename: z.string(),
     content: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
     displayPath: z.string().optional(),
@@ -541,6 +578,7 @@ const AutoModeAttachmentPayload = z
   .object({
     type: z.literal("auto_mode"),
     reminderType: z.string().optional(),
+    autoModeConsentFlow: z.boolean().optional(),
   })
   .strict();
 
@@ -587,15 +625,18 @@ export const AttachmentPayloadSchema = z.discriminatedUnion("type", [
   HookCancelledAttachmentPayload,
   HookSystemMessageAttachmentPayload,
   HookAdditionalContextAttachmentPayload,
+  AsyncHookResponseAttachmentPayload,
   DeferredToolsDeltaAttachmentPayload,
   AgentListingDeltaAttachmentPayload,
   McpInstructionsDeltaAttachmentPayload,
   SkillListingAttachmentPayload,
   DynamicSkillAttachmentPayload,
   TaskReminderAttachmentPayload,
+  TaskStatusAttachmentPayload,
   TodoReminderAttachmentPayload,
   EditedTextFileAttachmentPayload,
   FileAttachmentPayload,
+  AlreadyReadFileAttachmentPayload,
   DirectoryAttachmentPayload,
   CompactFileReferenceAttachmentPayload,
   DateChangeAttachmentPayload,
@@ -690,6 +731,7 @@ export const SystemRecordSchema = z
     retryAttempt: z.number().optional(),
     retryInMs: z.number().optional(),
     maxRetries: z.number().optional(),
+    source: z.string().optional(),
   })
   .strict();
 
@@ -755,6 +797,7 @@ const PermissionModeRecordSchema = z
 const WorktreeSessionSchema = z
   .object({
     originalCwd: z.string(),
+    preEnterOriginalCwd: z.string().optional(),
     worktreePath: z.string(),
     worktreeName: z.string(),
     worktreeBranch: z.string(),
@@ -762,6 +805,14 @@ const WorktreeSessionSchema = z
     originalBranch: z.string().optional(),
     originalHeadCommit: z.string().optional(),
     enteredExisting: z.boolean().optional(),
+  })
+  .strict();
+
+const RelocatedRecordSchema = z
+  .object({
+    type: z.literal("relocated"),
+    sessionId: z.string(),
+    relocatedCwd: z.string(),
   })
   .strict();
 
@@ -812,6 +863,7 @@ export const JsonlRecordSchema = z.discriminatedUnion("type", [
   AgentColorRecordSchema,
   PermissionModeRecordSchema,
   WorktreeStateRecordSchema,
+  RelocatedRecordSchema,
   PrLinkRecordSchema,
   ModeRecordSchema,
 ]);
@@ -831,6 +883,7 @@ export const TaskFileSchema = z
     blocks: z.array(z.string()),
     blockedBy: z.array(z.string()),
     activeForm: z.string().optional(),
+    owner: z.string().optional(),
     metadata: z.record(z.string(), JsonValueSchema).optional(),
   })
   .strict();
@@ -922,6 +975,7 @@ export const ClaudeSettingsSchema = z
     includeCoAuthoredBy: z.boolean().optional(),
     includeGitInstructions: z.boolean().optional(),
     alwaysThinkingEnabled: z.boolean().optional(),
+    autoCompactEnabled: z.boolean().optional(),
     voiceEnabled: z.boolean().optional(),
     cleanupPeriodDays: z.number().optional(),
     fileCheckpointingEnabled: z.boolean().optional(),
@@ -934,6 +988,7 @@ export const ClaudeSettingsSchema = z
     preferredNotifChannel: z.string().optional(),
     outputStyle: z.string().optional(),
     spinnerTipsEnabled: z.boolean().optional(),
+    skillOverrides: z.record(z.string(), z.string()).optional(),
     effortLevel: z.string().optional(),
     env: z.record(z.string(), z.string()).optional(),
     permissions: PermissionsSchema.optional(),

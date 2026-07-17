@@ -65,6 +65,13 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
     section: "General",
   },
   {
+    key: "autoCompactEnabled",
+    label: "Auto compact",
+    description: "Automatically compact long conversations",
+    type: "boolean",
+    section: "General",
+  },
+  {
     key: "voiceEnabled",
     label: "Voice",
     description: "Enable voice input",
@@ -185,6 +192,8 @@ export const DEDICATED_EDITOR_KEYS = new Set([
   "spinnerVerbs",
 ]);
 
+const SUMMARY_SETTINGS_KEYS = new Set(["skillOverrides"]);
+
 export type ObjectSubFieldType = "boolean" | "string" | "number" | "stringList";
 
 export interface ObjectSubField {
@@ -249,5 +258,6 @@ export const OBJECT_EDITORS: ObjectEditorDef[] = [
 export const COVERED_SETTINGS_KEYS: ReadonlySet<string> = new Set<string>([
   ...FIELD_DEFINITIONS.map((f) => f.key),
   ...DEDICATED_EDITOR_KEYS,
+  ...SUMMARY_SETTINGS_KEYS,
   "$schema",
 ]);

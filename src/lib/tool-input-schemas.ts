@@ -116,6 +116,7 @@ export const AgentInputSchema = z
     isolation: z.string().optional(),
     mode: z.string().optional(),
     model: z.string().optional(),
+    effort: z.string().optional(),
     name: z.string().optional(),
     run_in_background: z.boolean().optional(),
     team_name: z.string().optional(),
@@ -139,7 +140,7 @@ const SkillInputSchema = z
 
 const TaskCreateInputSchema = z
   .object({
-    subject: z.string(),
+    subject: z.string().optional(),
     description: z.string().optional(),
     status: z.string().optional(),
     blocks: z.array(z.string()).optional(),
@@ -171,9 +172,13 @@ const TaskUpdateInputSchema = z
 
 const TaskGetInputSchema = z
   .object({
-    taskId: z.string(),
+    taskId: z.string().optional(),
+    id: z.string().optional(),
   })
-  .strict();
+  .strict()
+  .refine((input) => input.taskId !== undefined || input.id !== undefined, {
+    message: "TaskGet input must include taskId or id",
+  });
 
 const TaskListInputSchema = z
   .object({

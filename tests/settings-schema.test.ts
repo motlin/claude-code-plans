@@ -104,6 +104,7 @@ describe("ClaudeSettingsSchema", () => {
       verbose: true,
       includeCoAuthoredBy: false,
       alwaysThinkingEnabled: true,
+      autoCompactEnabled: true,
       voiceEnabled: false,
       cleanupPeriodDays: 90,
       fileCheckpointingEnabled: true,
@@ -111,6 +112,7 @@ describe("ClaudeSettingsSchema", () => {
       skipDangerousModePermissionPrompt: false,
       teammateMode: "in-process",
       preferredNotifChannel: "ghostty",
+      skillOverrides: { "example-skill": "off" },
     });
     expect(result.success).toBe(true);
   });
