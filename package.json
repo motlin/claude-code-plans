@@ -25,7 +25,7 @@
     "prepare": "VITE_GIT_HOOKS=0 vp config"
   },
   "dependencies": {
-    "@git-diff-view/react": "^0.1.6",
+    "@git-diff-view/react": "^0.1.7",
     "@mdxeditor/editor": "^4.0.4",
     "@tanstack/react-query": "^5.101.2",
     "@tanstack/react-query-devtools": "^5.101.2",
