@@ -102,7 +102,7 @@ export default defineConfig({
     // instead of silently falling back to a different port.
     port: Number(process.env["PORT"] ?? 7526),
     strictPort: true,
-    host: true,
+    host: "127.0.0.1",
     allowedHosts: [
       "plans.m4.notlin.com",
       ...(process.env["VITE_ALLOWED_HOSTS"]?.split(",").filter(Boolean) ?? []),
