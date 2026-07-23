@@ -460,6 +460,7 @@ describe("DOMAIN_EVENTS", () => {
     expect(DOMAIN_EVENTS.TASK_CREATED).toBe("task:created");
     expect(DOMAIN_EVENTS.TASK_COMPLETED).toBe("task:completed");
     expect(DOMAIN_EVENTS.SUBAGENT_STARTED).toBe("subagent:started");
+    expect(DOMAIN_EVENTS.SUBAGENT_STOPPED).toBe("subagent:stopped");
     expect(DOMAIN_EVENTS.SESSION_COMPACTED).toBe("session:compacted");
     expect(DOMAIN_EVENTS.INSTRUCTIONS_LOADED).toBe("instructions:loaded");
   });

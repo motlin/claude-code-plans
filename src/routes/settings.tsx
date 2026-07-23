@@ -381,6 +381,7 @@ function SettingsPage() {
             description="Initial view mode for sub-agent visualizations"
             settingKey="defaultSubagentView"
             options={[
+              { value: "tree", label: "Tree" },
               { value: "gantt", label: "Gantt" },
               { value: "sequence", label: "Sequence" },
             ]}

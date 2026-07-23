@@ -1,21 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
 import { ArrowLeft, GitFork } from "lucide-react";
-import { sessionDetailQueryOptions, transcriptQueryOptions } from "../lib/api/sessions";
-import { extractSubagents } from "../lib/subagents";
+import { sessionSubagentsQueryOptions } from "../lib/api/sessions";
 import { SubagentGantt } from "../components/subagent-gantt";
 import { SubagentSequence } from "../components/subagent-sequence";
+import { SubagentTree } from "../components/subagent-tree";
 import { DetailTopBar, pillStyles } from "../components/detail-top-bar";
 import { useSettings } from "../components/settings-provider";
 
 export const Route = createFileRoute("/session/$id_/subagents")({
   component: SubagentsPage,
   loader: async ({ context: { queryClient }, params }) => {
-    await Promise.all([
-      queryClient.ensureQueryData(sessionDetailQueryOptions(params.id)),
-      queryClient.ensureQueryData(transcriptQueryOptions(params.id)),
-    ]);
+    await queryClient.ensureQueryData(sessionSubagentsQueryOptions(params.id));
   },
   head: ({ params }) => ({
     meta: [{ title: `Subagents - ${params.id.slice(0, 8)}` }],
@@ -24,15 +20,9 @@ export const Route = createFileRoute("/session/$id_/subagents")({
 
 function SubagentsPage() {
   const params = Route.useParams();
-  const { data: detail } = useSuspenseQuery(sessionDetailQueryOptions(params.id));
-  const { data: transcript } = useSuspenseQuery(transcriptQueryOptions(params.id));
+  const { data: agents } = useSuspenseQuery(sessionSubagentsQueryOptions(params.id));
   const { settings } = useSettings();
   const subagentView = settings.defaultSubagentView;
-
-  const agents = useMemo(() => {
-    if (!detail?.projectId) return [];
-    return extractSubagents(transcript.records, detail.projectId);
-  }, [transcript.records, detail?.projectId]);
 
   return (
     <div>
@@ -52,7 +42,9 @@ function SubagentsPage() {
         <p className="mt-4 text-sm text-text-500">No subagents for this session.</p>
       ) : (
         <div className="mt-3">
-          {subagentView === "sequence" ? (
+          {subagentView === "tree" ? (
+            <SubagentTree agents={agents} />
+          ) : subagentView === "sequence" ? (
             <SubagentSequence agents={agents} />
           ) : (
             <SubagentGantt agents={agents} />

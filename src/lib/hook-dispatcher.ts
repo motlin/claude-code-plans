@@ -1,6 +1,6 @@
 import { basename } from "node:path";
 import { assertNever } from "./assert-never";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as schema from "./db/schema";
 import type { ActiveSessionEntry } from "./active-session-store";
@@ -18,6 +18,7 @@ import {
   type SessionCompactingPayload,
   type SessionCompactedPayload,
   type SubagentStartedPayload,
+  type SubagentStoppedPayload,
   type SessionCwdChangedPayload,
   type InstructionsLoadedPayload,
   type ConfigChangedPayload,
@@ -28,6 +29,7 @@ import { addNotification } from "./notifications-store";
 import { indexFile, indexJsonlFile } from "./db/indexer";
 import { resolveProjectName } from "./memory";
 import { recentlyBroadcast } from "./update-dedupe";
+import { toSubagentSessionId } from "./subagents";
 
 /**
  * TTL covering the gap between the hook fast-path broadcast and the chokidar
@@ -411,11 +413,28 @@ export async function dispatchHookEvent({
     }
 
     case "SubagentStop": {
-      // Subagents share the same shape as a top-level Stop, but the
-      // session_id here is the subagent's id. The subagents indexer already
-      // knows the parent linkage, so we just touch the session and emit a
-      // SESSION_UPDATED with the enriched payload if it's been indexed.
       store.touchSession(event.session_id);
+      const subagent = db
+        .select({
+          id: schema.subagents.id,
+          sessionId: schema.subagents.sessionId,
+          agentType: schema.subagents.agentType,
+        })
+        .from(schema.subagents)
+        .where(
+          or(
+            eq(schema.subagents.id, event.session_id),
+            eq(schema.subagents.id, toSubagentSessionId(event.session_id)),
+          ),
+        )
+        .get();
+      if (subagent) {
+        broadcast(DOMAIN_EVENTS.SUBAGENT_STOPPED, {
+          sessionId: subagent.sessionId,
+          agentType: subagent.agentType ?? "",
+          agentId: subagent.id,
+        } satisfies SubagentStoppedPayload);
+      }
       const summary = buildSessionSummaryPayloadFromDb(db, event.session_id);
       if (summary) {
         const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${summary.id}:${summary.mtime}`;
@@ -429,16 +448,14 @@ export async function dispatchHookEvent({
     case "SubagentStart": {
       // Symmetric with SubagentStop. The viewer is a passive observer — we
       // touch the parent session so the active-indicator stays alive, emit a
-      // SUBAGENT_STARTED delta carrying agent_type / agent_id so the
-      // subagents view can render a "running" pill, and re-broadcast the
-      // parent session summary if it's already indexed so the session list
-      // picks up the activity without waiting for the chokidar trailing
-      // event.
+      // SUBAGENT_STARTED delta, and re-broadcast the parent session summary
+      // if it is already indexed.
       store.touchSession(event.session_id);
       broadcast(DOMAIN_EVENTS.SUBAGENT_STARTED, {
         sessionId: event.session_id,
         agentType: event.agent_type ?? "",
         agentId: event.agent_id ?? "",
+        description: event.agent_config?.description ?? "",
       } satisfies SubagentStartedPayload);
       const summary = buildSessionSummaryPayloadFromDb(db, event.session_id);
       if (summary) {

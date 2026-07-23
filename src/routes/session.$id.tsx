@@ -10,14 +10,20 @@ import {
   AskUserQuestionProvider,
   type AskUserQuestionContextValue,
 } from "../components/ask-user-question-context";
+import { ActiveSubagents } from "../components/active-subagents";
 import {
   sessionDetailQueryOptions,
+  sessionSubagentsQueryOptions,
   transcriptQueryOptions,
   useRequestSummary,
   useToggleSessionStar,
 } from "../lib/api/sessions";
-import { extractSubagents } from "../lib/subagents";
-import { useIsSessionActive, useStatusline } from "../hooks/use-claude-events";
+import {
+  getSubagentLifecycleKey,
+  extractPendingSubagents,
+  type ActiveSubagent,
+} from "../lib/subagents";
+import { useClaudeEvents, useIsSessionActive, useStatusline } from "../hooks/use-claude-events";
 import { StatusFooter } from "../components/status-footer";
 import { processTranscript } from "../lib/transcript";
 import {
@@ -41,6 +47,7 @@ export const Route = createFileRoute("/session/$id")({
     const [meta] = await Promise.all([
       queryClient.ensureQueryData(sessionDetailQueryOptions(params.id)),
       queryClient.ensureQueryData(transcriptQueryOptions(params.id)),
+      queryClient.ensureQueryData(sessionSubagentsQueryOptions(params.id)),
     ]);
     return meta;
   },
@@ -183,12 +190,23 @@ function SessionPage() {
   const queryClient = useQueryClient();
   const { data } = useSuspenseQuery(sessionDetailQueryOptions(params.id));
   const { data: transcript } = useSuspenseQuery(transcriptQueryOptions(params.id));
+  const { data: subagents } = useSuspenseQuery(sessionSubagentsQueryOptions(params.id));
 
   const processed = useMemo(() => processTranscript(transcript.records), [transcript.records]);
-  const subagentCount = useMemo(() => {
-    if (!data?.projectId) return 0;
-    return extractSubagents(transcript.records, data.projectId).length;
-  }, [transcript.records, data?.projectId]);
+  const { runningSubagents } = useClaudeEvents();
+  const transcriptActiveSubagents = useMemo(
+    () => extractPendingSubagents(transcript.records),
+    [transcript.records],
+  );
+  const activeSubagents = useMemo(() => {
+    const eventSubagents: ActiveSubagent[] = [...runningSubagents.values()]
+      .filter((subagent) => subagent.sessionId === params.id)
+      .map((subagent) => ({
+        key: getSubagentLifecycleKey(subagent.sessionId, subagent.agentId, subagent.agentType),
+        ...subagent,
+      }));
+    return eventSubagents.length > 0 ? eventSubagents : transcriptActiveSubagents;
+  }, [params.id, runningSubagents, transcriptActiveSubagents]);
   const [aiSummary, setAiSummary] = useState<string | null>(data?.summary ?? null);
   const summaryLoaded = true;
   const [starred, setStarred] = useState(data?.starred ?? false);
@@ -447,16 +465,17 @@ function SessionPage() {
             )
           )}
 
-          {subagentCount > 0 && (
+          {subagents.length > 0 && (
             <Link
               to="/session/$id/subagents"
               params={{ id: params.id }}
               className="mt-2 inline-flex items-center gap-1.5 text-xs text-accent-100 hover:underline"
             >
               <GitFork className="h-3 w-3" />
-              {subagentCount} subagent{subagentCount === 1 ? "" : "s"}
+              {subagents.length} subagent{subagents.length === 1 ? "" : "s"}
             </Link>
           )}
+          <ActiveSubagents agents={activeSubagents} />
         </div>
       )}
 

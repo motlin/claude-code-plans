@@ -16,11 +16,12 @@ import {
   type ClaudeEventsState,
   type ClaudeEventsAction,
 } from "../src/hooks/use-claude-events";
-import type {
-  MemorySummaryPayload,
-  NotificationEntryPayload,
-  PlanSummaryPayload,
-  SessionSummaryPayload,
+import {
+  DOMAIN_EVENTS,
+  type MemorySummaryPayload,
+  type NotificationEntryPayload,
+  type PlanSummaryPayload,
+  type SessionSummaryPayload,
 } from "../src/lib/hook-events";
 import type { TranscriptData } from "../src/lib/api/sessions";
 
@@ -71,6 +72,45 @@ function makeInitialState(): ClaudeEventsState {
 }
 
 describe("claudeEventsReducer", () => {
+  it("tracks a subagent from start through stop", () => {
+    const started = claudeEventsReducer(makeInitialState(), {
+      type: "SSE_EVENT",
+      eventType: DOMAIN_EVENTS.SUBAGENT_STARTED,
+      data: {
+        sessionId: "session-test",
+        agentType: "Explore",
+        agentId: "test-agent",
+        description: "Inspect test behavior",
+      },
+      timestamp: 1_000,
+    });
+    expect(started.runningSubagents).toStrictEqual(
+      new Map([
+        [
+          "session-test:test-agent",
+          {
+            sessionId: "session-test",
+            agentType: "Explore",
+            agentId: "test-agent",
+            description: "Inspect test behavior",
+          },
+        ],
+      ]),
+    );
+
+    const stopped = claudeEventsReducer(started, {
+      type: "SSE_EVENT",
+      eventType: DOMAIN_EVENTS.SUBAGENT_STOPPED,
+      data: {
+        sessionId: "session-test",
+        agentType: "Explore",
+        agentId: "agent-test-agent",
+      },
+      timestamp: 2_000,
+    });
+    expect(stopped.runningSubagents).toStrictEqual(new Map());
+  });
+
   it("handles session:start by adding to activeSessions", () => {
     const state = makeInitialState();
     const action: ClaudeEventsAction = {
@@ -792,8 +832,10 @@ describe("applySessionLinesAppended", () => {
     });
 
     const cached = queryClient.getQueryData<TranscriptData>(["sessions", "sess-1", "transcript"])!;
-    expect(cached.records).toStrictEqual([existingRecord, newRecord]);
-    expect(cached.byteOffset).toBe(100);
+    expect(cached).toStrictEqual({
+      records: [existingRecord, newRecord],
+      byteOffset: 100,
+    });
   });
 
   it("does not modify cache when lines array is empty", () => {
@@ -831,6 +873,9 @@ describe("applySessionLinesAppended", () => {
     });
 
     const cached = queryClient.getQueryData<TranscriptData>(["sessions", "sess-1", "transcript"])!;
-    expect(cached.records).toStrictEqual(records);
+    expect(cached).toStrictEqual({
+      records,
+      byteOffset: 50,
+    });
   });
 });

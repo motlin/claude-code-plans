@@ -210,6 +210,28 @@ export const sessionSourceQueryOptions = (sessionId: string, uuid: string, conte
     gcTime: Infinity,
   });
 
+const SessionSubagentSchema = z.object({
+  id: z.string(),
+  sessionId: z.string(),
+  projectId: z.string(),
+  parentAgentId: z.string().nullable(),
+  agentType: z.string().nullable(),
+  slug: z.string().nullable(),
+  description: z.string().nullable(),
+  startedAt: z.string().nullable(),
+  finishedAt: z.string().nullable(),
+});
+export const SessionSubagentsResponse = z.array(SessionSubagentSchema);
+
+export const sessionSubagentsQueryOptions = (id: string) =>
+  queryOptions({
+    queryKey: ["sessions", id, "subagents"] as const,
+    queryFn: () =>
+      apiFetch(`/api/sessions/${encodeURIComponent(id)}/subagents`, SessionSubagentsResponse),
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+
 export const StarredMutationResponse = z.object({ starred: z.boolean() });
 export const useToggleSessionStar = (sessionId: string) => {
   const qc = useQueryClient();

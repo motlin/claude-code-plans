@@ -29,6 +29,7 @@ import {
 } from "../lib/hook-events";
 import type { TranscriptData } from "../lib/api/sessions";
 import { toMdSlug } from "../lib/md-slug";
+import { getSubagentLifecycleKey } from "../lib/subagents";
 
 // ---------------------------------------------------------------------------
 // State types
@@ -83,11 +84,8 @@ export interface ClaudeEventsState {
   /**
    * In-flight subagents keyed by `${sessionId}:${agentId}` (falling back to
    * `${sessionId}:${agentType}` when Claude Code didn't supply an agent id).
-   * Populated by `SubagentStart` so the subagents view can render a "running"
-   * pill before the corresponding `SubagentStop` lands. Cleared on
-   * `SESSION_ENDED` for the parent session — the matching `SubagentStop`
-   * arrives as a `SESSION_UPDATED` for the subagent's own session id, so
-   * we rely on the parent's session-ended sweep rather than diffing by id.
+   * Populated by `SubagentStart` and cleared by `SubagentStop` or the parent
+   * session ending.
    */
   runningSubagents: Map<string, SubagentStartedPayload>;
 }
@@ -308,9 +306,22 @@ export function claudeEventsReducer(
       const agentType =
         typeof action.data["agentType"] === "string" ? action.data["agentType"] : "";
       const agentId = typeof action.data["agentId"] === "string" ? action.data["agentId"] : "";
+      const description =
+        typeof action.data["description"] === "string" ? action.data["description"] : "";
       const runningSubagents = new Map(state.runningSubagents);
-      const key = `${sessionId}:${agentId || agentType}`;
-      runningSubagents.set(key, { sessionId, agentType, agentId });
+      const key = getSubagentLifecycleKey(sessionId, agentId, agentType);
+      runningSubagents.set(key, { sessionId, agentType, agentId, description });
+      return { ...state, runningSubagents };
+    }
+    case DOMAIN_EVENTS.SUBAGENT_STOPPED: {
+      if (!sessionId) return state;
+      const agentType =
+        typeof action.data["agentType"] === "string" ? action.data["agentType"] : "";
+      const agentId = typeof action.data["agentId"] === "string" ? action.data["agentId"] : "";
+      const key = getSubagentLifecycleKey(sessionId, agentId, agentType);
+      if (!state.runningSubagents.has(key)) return state;
+      const runningSubagents = new Map(state.runningSubagents);
+      runningSubagents.delete(key);
       return { ...state, runningSubagents };
     }
     case DOMAIN_EVENTS.SESSION_ENDED: {
@@ -736,6 +747,7 @@ const DOMAIN_EVENT_TYPES = [
   DOMAIN_EVENTS.SESSION_COMPACTING,
   DOMAIN_EVENTS.SESSION_COMPACTED,
   DOMAIN_EVENTS.SUBAGENT_STARTED,
+  DOMAIN_EVENTS.SUBAGENT_STOPPED,
   DOMAIN_EVENTS.SESSION_CWD_CHANGED,
   DOMAIN_EVENTS.NOTIFICATION,
   DOMAIN_EVENTS.NOTIFICATION_ADDED,
@@ -919,6 +931,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
         case DOMAIN_EVENTS.SESSION_COMPACTING:
         case DOMAIN_EVENTS.SESSION_COMPACTED:
         case DOMAIN_EVENTS.SUBAGENT_STARTED:
+        case DOMAIN_EVENTS.SUBAGENT_STOPPED:
         case DOMAIN_EVENTS.NOTIFICATION: {
           dispatch({
             type: "SSE_EVENT",
@@ -926,10 +939,21 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
             data,
             timestamp: Date.now(),
           });
-          // SUBAGENT_STARTED also invalidates the subagents query for the
-          // affected project so the gantt re-renders with the new agent
-          // before the SubagentStop event lands.
-          if (e.type === DOMAIN_EVENTS.SUBAGENT_STARTED) {
+          if (
+            e.type === DOMAIN_EVENTS.SUBAGENT_STARTED ||
+            e.type === DOMAIN_EVENTS.SUBAGENT_STOPPED
+          ) {
+            const sessionId = data["sessionId"];
+            if (typeof sessionId === "string") {
+              void queryClient.invalidateQueries({
+                queryKey: ["sessions", sessionId, "subagents"],
+              });
+              if (e.type === DOMAIN_EVENTS.SUBAGENT_STOPPED) {
+                void queryClient.invalidateQueries({
+                  queryKey: ["sessions", sessionId, "transcript"],
+                });
+              }
+            }
             void queryClient.invalidateQueries({
               predicate: (query) =>
                 query.queryKey[0] === "projects" && query.queryKey[2] === "subagents",

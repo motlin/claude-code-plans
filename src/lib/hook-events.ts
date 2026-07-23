@@ -54,6 +54,7 @@ export const DOMAIN_EVENTS = {
   SESSION_COMPACTING: "session:compacting",
   SESSION_COMPACTED: "session:compacted",
   SUBAGENT_STARTED: "subagent:started",
+  SUBAGENT_STOPPED: "subagent:stopped",
   SESSION_CWD_CHANGED: "session:cwd-changed",
   INSTRUCTIONS_LOADED: "instructions:loaded",
   CONFIG_CHANGED: "config:changed",
@@ -277,13 +278,18 @@ export interface SessionCompactedPayload {
 }
 
 /**
- * Payload broadcast when a `SubagentStart` hook fires. Symmetric with
- * `SubagentStop` — surfaces the spawn moment in the subagents view before the
- * stop event lands. `sessionId` is the parent session that spawned the
- * subagent; `agentId` is the subagent's own session id when Claude Code
- * provides it.
+ * Payload broadcast when a `SubagentStart` hook fires. `sessionId` is the
+ * parent session; `agentId` is the subagent session when Claude Code provides
+ * it.
  */
 export interface SubagentStartedPayload {
+  sessionId: string;
+  agentType: string;
+  agentId: string;
+  description: string;
+}
+
+export interface SubagentStoppedPayload {
   sessionId: string;
   agentType: string;
   agentId: string;

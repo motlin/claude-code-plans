@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 
 import { ACTIVE_SESSION_WINDOW_MS } from "../lib/active-session-window";
 
-type SubagentView = "gantt" | "sequence";
+type SubagentView = "tree" | "gantt" | "sequence";
 export type Verbosity = "normal" | "thinking" | "verbose";
 
 export interface Settings {
@@ -47,7 +47,7 @@ export const DEFAULTS: Settings = {
   showCompactSummaries: false,
   showTranscriptOnly: false,
 
-  defaultSubagentView: "gantt",
+  defaultSubagentView: "tree",
 
   chromeHidden: false,
   statusFooterVisible: true,
@@ -80,6 +80,8 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
   desktopNotifications: "ccp-desktop-notifications",
   verbosity: "ccp-verbosity",
 };
+
+const SUBAGENT_TREE_RESTORATION_KEY = "ccp-subagent-tree-restored";
 
 const VERBOSITY_PRESETS: Record<Verbosity, Partial<Settings>> = {
   normal: {
@@ -171,10 +173,12 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         (loaded as Record<keyof Settings, Settings[keyof Settings]>)[key] = stored;
       }
     }
-    // Migrate removed 'tree' subagent view to 'gantt'
-    if (loaded.defaultSubagentView === ("tree" as SubagentView)) {
-      loaded.defaultSubagentView = "gantt";
-      writeStoredValue("defaultSubagentView", "gantt");
+    if (localStorage.getItem(SUBAGENT_TREE_RESTORATION_KEY) === null) {
+      if (loaded.defaultSubagentView === "gantt") {
+        loaded.defaultSubagentView = "tree";
+        writeStoredValue("defaultSubagentView", "tree");
+      }
+      localStorage.setItem(SUBAGENT_TREE_RESTORATION_KEY, "true");
     }
     const rawVerbosity = localStorage.getItem(STORAGE_KEYS.verbosity);
     if (rawVerbosity === "minimal") {

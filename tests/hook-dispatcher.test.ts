@@ -7,6 +7,7 @@ import { dispatchHookEvent } from "../src/lib/hook-dispatcher";
 import { DOMAIN_EVENTS, SSE_EVENTS } from "../src/lib/hook-events";
 import type { HookEvent } from "../src/lib/hook-events";
 import { getNotifications, clearAllNotifications } from "../src/lib/notifications-store";
+import * as schema from "../src/lib/db/schema";
 
 const testDir = join(tmpdir(), "claude-hook-dispatcher-test-" + process.pid);
 let db: AppDb;
@@ -487,6 +488,18 @@ describe("dispatchHookEvent", () => {
       ]),
     );
     await indexSessionsIndex(db.index, projectDir, "-Users-craig-projects-app");
+    db.index
+      .insert(schema.subagents)
+      .values({
+        id: "sub-456",
+        sessionId: "parent-789",
+        projectId: "project-test",
+        parentAgentId: null,
+        agentType: "Explore",
+        filePath: "/tmp/test/sub-456.jsonl",
+        mtimeMs: 1_000,
+      })
+      .run();
 
     const broadcasts: Broadcast[] = [];
     const { store, touchedCalls } = makeStore();
@@ -503,6 +516,15 @@ describe("dispatchHookEvent", () => {
     });
 
     expect(touchedCalls).toStrictEqual(["sub-456"]);
+    const stopped = broadcasts.find(
+      (broadcast) => broadcast.type === DOMAIN_EVENTS.SUBAGENT_STOPPED,
+    );
+    if (!stopped) throw new Error("Expected subagent:stopped broadcast");
+    expect(stopped.data).toStrictEqual({
+      sessionId: "parent-789",
+      agentType: "Explore",
+      agentId: "sub-456",
+    });
     const updated = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_UPDATED);
     if (!updated) throw new Error("Expected session:updated broadcast for subagent");
     expect((updated.data as { session: { id: string } }).session.id).toBe("sub-456");
@@ -519,6 +541,9 @@ describe("dispatchHookEvent", () => {
         cwd: "/tmp",
         agent_type: "general-purpose",
         agent_id: "sub-456",
+        agent_config: {
+          description: "Inspect test behavior",
+        },
       },
       db: db.index,
       store,
@@ -532,6 +557,7 @@ describe("dispatchHookEvent", () => {
       sessionId: "parent-789",
       agentType: "general-purpose",
       agentId: "sub-456",
+      description: "Inspect test behavior",
     });
   });
 
@@ -556,6 +582,7 @@ describe("dispatchHookEvent", () => {
       sessionId: "parent-789",
       agentType: "",
       agentId: "",
+      description: "",
     });
   });
 

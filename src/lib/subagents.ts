@@ -1,4 +1,5 @@
 import type { JsonValue } from "./hook-events";
+import type { DbSubagent } from "./db/queries";
 import { getAgentTypeOrNull } from "./tool-utils";
 
 /**
@@ -25,6 +26,41 @@ export interface Subagent {
   description: string | null;
   startedAt: string | null;
   finishedAt: string | null;
+}
+
+export interface ActiveSubagent {
+  key: string;
+  sessionId: string;
+  agentType: string;
+  agentId: string;
+  description: string;
+}
+
+export function toSubagentSessionId(agentId: string): string {
+  return agentId.startsWith("agent-") ? agentId : `agent-${agentId}`;
+}
+
+export function getSubagentLifecycleKey(
+  sessionId: string,
+  agentId: string,
+  agentType: string,
+): string {
+  const unprefixedAgentId = agentId.startsWith("agent-") ? agentId.slice("agent-".length) : agentId;
+  return `${sessionId}:${unprefixedAgentId || agentType}`;
+}
+
+export function toClientSubagent(row: DbSubagent): Subagent {
+  return {
+    id: row.id,
+    sessionId: row.sessionId,
+    projectId: row.projectId,
+    parentAgentId: row.parentAgentId,
+    agentType: row.agentType,
+    slug: row.slug,
+    description: row.description,
+    startedAt: row.startedAt,
+    finishedAt: row.finishedAt,
+  };
 }
 
 const AGENT_ID_RE = /agentId:\s*(\S+)/;
@@ -71,11 +107,13 @@ function getResultText(block: ToolResultBlock): string {
  * subagent entry. The matching `tool_result` (looked up by `tool_use_id`)
  * supplies the agent id (`agentId: agent-...`) and the finishedAt timestamp.
  *
- * The same `extractSubagents` utility is used both by the client session view
- * and by the project-aggregate `/api/projects/:id/subagents` handler so the
- * two sources stay in sync without a separate per-session API endpoint.
+ * The completed entries remain useful while scanning because they distinguish
+ * finished invocations from agents that are still active.
  */
-export function extractSubagents(records: TranscriptRecord[], projectId: string): Subagent[] {
+function extractSubagentSnapshot(
+  records: TranscriptRecord[],
+  projectId: string,
+): { agents: Subagent[]; activeSubagents: ActiveSubagent[] } {
   const pendingByToolUseId = new Map<
     string,
     {
@@ -137,5 +175,18 @@ export function extractSubagents(records: TranscriptRecord[], projectId: string)
     }
   }
 
-  return results;
+  return {
+    agents: results,
+    activeSubagents: [...pendingByToolUseId].map(([toolUseId, pending]) => ({
+      key: toolUseId,
+      sessionId: pending.sessionId,
+      agentType: pending.agentType ?? "",
+      agentId: "",
+      description: pending.description ?? "",
+    })),
+  };
+}
+
+export function extractPendingSubagents(records: TranscriptRecord[]): ActiveSubagent[] {
+  return extractSubagentSnapshot(records, "").activeSubagents;
 }
