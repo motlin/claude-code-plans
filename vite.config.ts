@@ -103,7 +103,10 @@ export default defineConfig({
     port: Number(process.env["PORT"] ?? 7526),
     strictPort: true,
     host: true,
-    allowedHosts: process.env["VITE_ALLOWED_HOSTS"]?.split(",").filter(Boolean) ?? [],
+    allowedHosts: [
+      "plans.m4.notlin.com",
+      ...(process.env["VITE_ALLOWED_HOSTS"]?.split(",").filter(Boolean) ?? []),
+    ],
     watch: { ignored: ["**/routeTree.gen.ts"] },
   },
   resolve: {
