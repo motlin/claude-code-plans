@@ -6,6 +6,7 @@ import { tasksQueryOptions } from "../lib/api/tasks";
 import { TaskDependencyGraph } from "../components/task-dependency-graph";
 import { DebugLink } from "../components/debug-link";
 import { MarkdownInline, MarkdownView } from "../components/markdown-view";
+import { TaskMetadata } from "../components/task-metadata";
 
 export const Route = createFileRoute("/tasks")({
   component: TasksPage,
@@ -149,6 +150,7 @@ function TasksPage() {
                               </span>
                             )}
                           </div>
+                          <TaskMetadata metadata={task.metadata} />
                         </div>
                       </div>
                     ))}

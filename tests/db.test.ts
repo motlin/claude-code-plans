@@ -1831,6 +1831,24 @@ describe("task indexer", () => {
     expect(JSON.parse(tasks[0]!.blockedByJson)).toStrictEqual(["1"]);
   });
 
+  it("stores metadata as JSON", async () => {
+    const tasksDir = join(testDir, "tasks", "my-project");
+    mkdirSync(tasksDir, { recursive: true });
+
+    const filePath = join(tasksDir, "2.json");
+    const metadata = {
+      commit_sha: "fac216c",
+      verification: { status: "passed", tests: 12 },
+    };
+    writeFileSync(filePath, makeTaskFile({ id: "2", metadata }));
+
+    await indexTaskFile(db.index, filePath, "my-project");
+
+    const tasks = db.index.select().from(schema.tasks).all();
+    if (tasks.length !== 1) throw new Error(`Expected 1 task, got ${tasks.length}`);
+    expect(JSON.parse(tasks[0]!.metadataJson)).toStrictEqual(metadata);
+  });
+
   it("skips re-indexing when mtime unchanged", async () => {
     const tasksDir = join(testDir, "tasks", "my-project");
     mkdirSync(tasksDir, { recursive: true });
@@ -1981,6 +1999,10 @@ describe("task queries", () => {
         status: "completed",
         blocks: ["2"],
         blockedBy: [],
+        metadata: {
+          commit_sha: "fac216c",
+          verification: { status: "passed" },
+        },
       }),
     );
     writeFileSync(
@@ -2024,6 +2046,16 @@ describe("task queries", () => {
     const task2 = tasks.find((t) => t.taskId === "2");
     if (!task2) throw new Error("Expected task with id 2");
     expect(task2.blockedBy).toStrictEqual(["1"]);
+  });
+
+  it("getTasksForProject parses metadata", () => {
+    const tasks = getTasksForProject(db.index, "app");
+    const task = tasks.find((candidate) => candidate.taskId === "1");
+    if (!task) throw new Error("Expected task with id 1");
+    expect(task.metadata).toStrictEqual({
+      commit_sha: "fac216c",
+      verification: { status: "passed" },
+    });
   });
 
   it("getTasksForProject returns empty for unknown project", () => {

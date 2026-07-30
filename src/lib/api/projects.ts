@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "./client";
+import { JsonValueSchema } from "../schemas";
 
 const ProjectListItemSchema = z.object({
   id: z.string(),
@@ -125,6 +126,7 @@ const TaskItemSchema = z.object({
   activeForm: z.string().nullable(),
   blocks: z.array(z.string()),
   blockedBy: z.array(z.string()),
+  metadata: z.record(z.string(), JsonValueSchema),
 });
 
 const TaskCountsSchema = z.object({

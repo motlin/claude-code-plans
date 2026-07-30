@@ -64,6 +64,7 @@ function makeTask(overrides: Partial<TaskRow> = {}): TaskRow {
     activeForm: null,
     blocks: [],
     blockedBy: [],
+    metadata: {},
     ...overrides,
   };
 }

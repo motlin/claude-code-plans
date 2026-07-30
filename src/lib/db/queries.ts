@@ -791,6 +791,7 @@ export interface TaskRow {
   activeForm: string | null;
   blocks: string[];
   blockedBy: string[];
+  metadata: Record<string, unknown>;
 }
 
 interface TaskProjectGroup {
@@ -809,6 +810,7 @@ function parseTaskRow(row: {
   activeForm: string | null;
   blocksJson: string;
   blockedByJson: string;
+  metadataJson: string;
 }): TaskRow {
   return {
     taskId: row.taskId,
@@ -819,6 +821,7 @@ function parseTaskRow(row: {
     activeForm: row.activeForm,
     blocks: JSON.parse(row.blocksJson) as string[],
     blockedBy: JSON.parse(row.blockedByJson) as string[],
+    metadata: JSON.parse(row.metadataJson) as Record<string, unknown>,
   };
 }
 
@@ -833,6 +836,7 @@ export function getTasksForProject(db: IndexDb, projectDir: string): TaskRow[] {
       activeForm: schema.tasks.activeForm,
       blocksJson: schema.tasks.blocksJson,
       blockedByJson: schema.tasks.blockedByJson,
+      metadataJson: schema.tasks.metadataJson,
     })
     .from(schema.tasks)
     .where(eq(schema.tasks.projectDir, projectDir))
@@ -852,6 +856,7 @@ export function getIncompleteTasksGroupedByProject(db: IndexDb): TaskProjectGrou
       activeForm: schema.tasks.activeForm,
       blocksJson: schema.tasks.blocksJson,
       blockedByJson: schema.tasks.blockedByJson,
+      metadataJson: schema.tasks.metadataJson,
     })
     .from(schema.tasks)
     .where(sql`${schema.tasks.status} IN ('pending', 'in_progress')`)

@@ -649,6 +649,7 @@ export async function indexTaskFile(
       activeForm: task.activeForm ?? null,
       blocksJson: JSON.stringify(task.blocks),
       blockedByJson: JSON.stringify(task.blockedBy),
+      metadataJson: JSON.stringify(task.metadata ?? {}),
       mtimeMs: fileStat.mtimeMs,
     })
     .onConflictDoUpdate({
@@ -661,6 +662,7 @@ export async function indexTaskFile(
         activeForm: task.activeForm ?? null,
         blocksJson: JSON.stringify(task.blocks),
         blockedByJson: JSON.stringify(task.blockedBy),
+        metadataJson: JSON.stringify(task.metadata ?? {}),
         mtimeMs: fileStat.mtimeMs,
       },
     })

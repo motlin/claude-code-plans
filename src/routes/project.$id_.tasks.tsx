@@ -6,6 +6,7 @@ import { projectDetailQueryOptions, projectTasksQueryOptions } from "../lib/api/
 import { DetailTopBar, pillStyles } from "../components/detail-top-bar";
 import { DebugLink } from "../components/debug-link";
 import { MarkdownInline, MarkdownView } from "../components/markdown-view";
+import { TaskMetadata } from "../components/task-metadata";
 
 export const Route = createFileRoute("/project/$id_/tasks")({
   component: ProjectTasksPage,
@@ -118,6 +119,7 @@ function ProjectTasksPage() {
                     </span>
                   )}
                 </div>
+                <TaskMetadata metadata={task.metadata} />
               </div>
             </div>
           ))}

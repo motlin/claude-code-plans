@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   active_form TEXT,
   blocks_json TEXT NOT NULL DEFAULT '[]',
   blocked_by_json TEXT NOT NULL DEFAULT '[]',
+  metadata_json TEXT NOT NULL DEFAULT '{}',
   mtime_ms INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS tasks_project_dir_idx ON tasks(project_dir);

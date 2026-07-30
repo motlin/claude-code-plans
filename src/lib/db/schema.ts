@@ -1,6 +1,6 @@
 import { sqliteTable, text, integer, index, primaryKey } from "drizzle-orm/sqlite-core";
 
-export const SCHEMA_VERSION = "12";
+export const SCHEMA_VERSION = "13";
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),
@@ -89,6 +89,7 @@ export const tasks = sqliteTable(
     activeForm: text("active_form"),
     blocksJson: text("blocks_json").notNull().default("[]"),
     blockedByJson: text("blocked_by_json").notNull().default("[]"),
+    metadataJson: text("metadata_json").notNull().default("{}"),
     mtimeMs: integer("mtime_ms").notNull(),
   },
   (table) => [
