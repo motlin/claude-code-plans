@@ -42,6 +42,7 @@ import { DetailTopBar, pillStyles } from "../components/detail-top-bar";
 import { useSettings } from "../components/settings-provider";
 
 export const Route = createFileRoute("/session/$id")({
+  ssr: false,
   component: SessionPage,
   loader: async ({ context: { queryClient }, params }) => {
     const [meta] = await Promise.all([
