@@ -144,6 +144,33 @@ describe("SessionChat user-message shapes", () => {
   });
 });
 
+describe("SessionChat prompt metadata", () => {
+  it("identifies system prompts that Claude queued for later", () => {
+    const html = renderRecord(
+      {
+        type: "user",
+        message: {
+          role: "user",
+          content: "Background agents were stopped by the user.",
+        },
+        promptSource: "system",
+        queuePriority: "later",
+      },
+      {},
+      {
+        showCompactSummaries: true,
+        showTranscriptOnly: true,
+      },
+    );
+
+    const labels = Array.from(
+      html.matchAll(/<span class="text-\[11px\] text-text-500">([^<]+)<\/span>/g),
+      ([, label]) => label,
+    );
+    expect(labels).toStrictEqual(["System prompt · queued for later"]);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Transcript-only suppression: records with isVisibleInTranscriptOnly=true and
 // isCompactSummary=false (the broader catch-all category, distinct from compact

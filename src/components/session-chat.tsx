@@ -1001,6 +1001,7 @@ function UserEntry({
         {line.promptSource !== undefined && (
           <span className="text-[11px] text-text-500">
             {promptSourceLabels[line.promptSource]} prompt
+            {line.queuePriority === "later" && " · queued for later"}
           </span>
         )}
         {textNodes.length > 0 && (

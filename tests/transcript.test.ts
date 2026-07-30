@@ -851,17 +851,44 @@ describe("extractSessionTitle", () => {
 // ---------------------------------------------------------------------------
 
 describe("message metadata fields", () => {
-  it("carries promptSource on user lines except typed", () => {
+  it("carries promptSource and queuePriority on user lines except typed prompt sources", () => {
     const records = [
-      userRecord("queued prompt", { promptSource: "queued" }),
+      userRecord("Background agents were stopped by the user.", {
+        promptSource: "system",
+        queuePriority: "later",
+      }),
       userRecord("typed prompt", { promptSource: "typed" }),
       userRecord("plain prompt"),
     ];
     const result = processTranscript(records);
-    expect(result.lines).toHaveLength(3);
-    expect(result.lines[0]).toMatchObject({ type: "user", promptSource: "queued" });
-    expect(result.lines[1]!).not.toHaveProperty("promptSource");
-    expect(result.lines[2]!).not.toHaveProperty("promptSource");
+    expect(result.lines).toStrictEqual([
+      {
+        type: "user",
+        lineIndex: 0,
+        promptSource: "system",
+        queuePriority: "later",
+        message: {
+          role: "user",
+          content: "Background agents were stopped by the user.",
+        },
+      },
+      {
+        type: "user",
+        lineIndex: 1,
+        message: {
+          role: "user",
+          content: "typed prompt",
+        },
+      },
+      {
+        type: "user",
+        lineIndex: 2,
+        message: {
+          role: "user",
+          content: "plain prompt",
+        },
+      },
+    ]);
   });
 
   it("carries API error fields on assistant lines", () => {

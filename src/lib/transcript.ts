@@ -49,6 +49,7 @@ const MessageLineSchema = z.object({
   sessionId: z.string().optional(),
   lineIndex: z.number(),
   promptSource: PromptSourceSchema.optional(),
+  queuePriority: z.literal("later").optional(),
   isApiErrorMessage: z.boolean().optional(),
   apiErrorStatus: z.union([z.number(), z.string()]).optional(),
   errorDetails: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
@@ -540,6 +541,9 @@ function processRecordBatch(
       if (record.isVisibleInTranscriptOnly === true) processedLine.isVisibleInTranscriptOnly = true;
       if (record.promptSource !== undefined && record.promptSource !== "typed") {
         processedLine.promptSource = record.promptSource;
+      }
+      if (record.queuePriority !== undefined) {
+        processedLine.queuePriority = record.queuePriority;
       }
     }
     if (record.type === "assistant") {
