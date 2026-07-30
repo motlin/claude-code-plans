@@ -188,7 +188,7 @@ export const UserRecordSchema = z
     promptId: z.string().optional(),
     permissionMode: z.string().optional(),
     promptSource: PromptSourceSchema.optional(),
-    queuePriority: z.string().optional(),
+    queuePriority: z.literal("later").optional(),
     imagePasteIds: z.array(z.union([z.string(), z.number()])).optional(),
     isMeta: z.boolean().optional(),
     isCompactSummary: z.boolean().optional(),
