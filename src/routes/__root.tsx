@@ -33,7 +33,7 @@ import {
 import appCss from "../styles/globals.css?url";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  ssr: true,
+  ssr: false,
   loader: ({ context: { queryClient } }) =>
     Promise.all([
       queryClient.ensureQueryData(projectsQueryOptions()),
