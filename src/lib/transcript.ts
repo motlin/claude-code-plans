@@ -93,6 +93,7 @@ const AttachmentLineSchema = z.object({
   attachmentJson: z.string(),
   uuid: z.string().optional(),
   timestamp: z.string().optional(),
+  sessionId: z.string().optional(),
   lineIndex: z.number(),
 });
 
@@ -122,6 +123,7 @@ const SystemLineSchema = z.object({
   error: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
   uuid: z.string().optional(),
   timestamp: z.string().optional(),
+  sessionId: z.string().optional(),
   lineIndex: z.number(),
 });
 
@@ -178,6 +180,16 @@ export interface ProcessedTranscript {
 interface IncrementalResult {
   newSessionLines: ProcessedLine[];
   newToolResults: Map<string, ToolResultInfo>;
+}
+
+function getRecordSessionId(record: z.infer<typeof JsonlRecordSchema>): string | undefined {
+  if ("sessionId" in record && typeof record.sessionId === "string") {
+    return record.sessionId;
+  }
+  if ("session_id" in record && typeof record.session_id === "string") {
+    return record.session_id;
+  }
+  return undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -340,6 +352,7 @@ function processRecordBatch(
     const record = parsed.data;
 
     const uuid = "uuid" in record && typeof record.uuid === "string" ? record.uuid : undefined;
+    const sessionId = getRecordSessionId(record);
     if (uuid && uuidToLine) uuidToLine.set(uuid, lineIndex);
 
     if (record.type === "custom-title") {
@@ -457,6 +470,7 @@ function processRecordBatch(
       };
       if (uuid !== undefined) attachmentLine.uuid = uuid;
       if (record.timestamp !== undefined) attachmentLine.timestamp = record.timestamp;
+      if (sessionId !== undefined) attachmentLine.sessionId = sessionId;
       sessionLines.push(attachmentLine);
       continue;
     }
@@ -490,6 +504,7 @@ function processRecordBatch(
       if (record.error !== undefined) systemLine.error = record.error;
       if (uuid !== undefined) systemLine.uuid = uuid;
       if (record.timestamp !== undefined) systemLine.timestamp = record.timestamp;
+      if (sessionId !== undefined) systemLine.sessionId = sessionId;
       sessionLines.push(systemLine);
       continue;
     }
@@ -532,6 +547,7 @@ function processRecordBatch(
       lineIndex,
     };
     if (uuid !== undefined) processedLine.uuid = uuid;
+    if (sessionId !== undefined) processedLine.sessionId = sessionId;
     if (typeof record.parentUuid === "string") processedLine.parentUuid = record.parentUuid;
     if (record.timestamp !== undefined) processedLine.timestamp = record.timestamp;
     if (typeof record.userType === "string") processedLine.userType = record.userType;

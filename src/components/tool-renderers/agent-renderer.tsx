@@ -22,6 +22,7 @@ export function AgentRenderer({ toolCall }: ToolRendererProps) {
   const prompt = (toolCall.input["prompt"] as string) ?? "";
   const agentType = getAgentTypeFromInput(toolCall.input);
   const description = (toolCall.input["description"] as string) ?? "";
+  const effort = (toolCall.input["effort"] as string) ?? "";
   const parameter = (toolCall.input["parameter"] as string) ?? "";
   const { result, isError, subagentInfo } = toolCall;
 
@@ -42,6 +43,7 @@ export function AgentRenderer({ toolCall }: ToolRendererProps) {
   if (description) params.push({ key: "description", value: description });
   if (prompt) params.push({ key: "prompt", value: prompt });
   if (agentType) params.push({ key: "agentType", value: agentType });
+  if (effort) params.push({ key: "effort", value: effort });
   if (slug) params.push({ key: "slug", value: slug });
   if (parameter) params.push({ key: "parameter", value: parameter });
 

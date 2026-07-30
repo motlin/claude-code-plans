@@ -1,10 +1,16 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, it, expect } from "vite-plus/test";
+import { describe, it, expect, vi } from "vite-plus/test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { SessionChat } from "../src/components/session-chat";
 import { processTranscript } from "../src/lib/transcript";
+
+vi.mock("../src/components/settings-provider", () => ({
+  useSettings: () => ({
+    settings: { showDebug: true },
+  }),
+}));
 
 // ---------------------------------------------------------------------------
 // Fixtures: real JSONL records captured from ~/.claude/projects (see
@@ -168,6 +174,30 @@ describe("SessionChat prompt metadata", () => {
       ([, label]) => label,
     );
     expect(labels).toStrictEqual(["System prompt · queued for later"]);
+  });
+});
+
+describe("SessionChat source links", () => {
+  it("uses the parsed snake_case record session identifier", () => {
+    const html = renderRecord(
+      {
+        type: "user",
+        uuid: "record-uuid",
+        session_id: "record-session",
+        message: {
+          role: "user",
+          content: "Session-specific source",
+        },
+      },
+      {},
+      {
+        showCompactSummaries: true,
+        showTranscriptOnly: true,
+      },
+    );
+
+    expect(html).toContain('href="/session/record-session/source/record-uuid"');
+    expect(html).not.toContain('href="/session/test-session/source/record-uuid"');
   });
 });
 

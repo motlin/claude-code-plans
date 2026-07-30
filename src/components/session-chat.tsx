@@ -51,6 +51,10 @@ function getLineTimestamp(line: SessionLine): string | undefined {
   return undefined;
 }
 
+function getSourceSessionId(line: SessionLine, fallbackSessionId: string): string {
+  return "sessionId" in line && line.sessionId !== undefined ? line.sessionId : fallbackSessionId;
+}
+
 export interface SessionChatProps {
   sessionId: string;
   lines: SessionLine[];
@@ -441,9 +445,11 @@ function GroupedToolCallEntry({
 
   if (allToolCalls.length === 0) return null;
 
+  const sourceSessionId = getSourceSessionId(lines[0]!, sessionId);
+
   return (
     <div id={`msg-${indices[0]}`} className={`group/msg flex flex-col w-full ${className ?? ""}`}>
-      <ToolCallSection calls={allToolCalls} sessionId={sessionId} />
+      <ToolCallSection calls={allToolCalls} sessionId={sourceSessionId} />
     </div>
   );
 }
@@ -701,13 +707,15 @@ function renderSessionMessage({
   index: number;
   nextLine?: SessionLine | undefined;
 }) {
+  const sourceSessionId = getSourceSessionId(line, sessionId);
+
   switch (line.type) {
     case "user":
       return (
         <UserEntry
           line={line}
           index={index}
-          sessionId={sessionId}
+          sessionId={sourceSessionId}
           nextLine={nextLine}
           isSubagentSession={isSubagentSession}
           showCompactSummaries={showCompactSummaries}
@@ -717,7 +725,7 @@ function renderSessionMessage({
       return (
         <AssistantEntry
           line={line}
-          sessionId={sessionId}
+          sessionId={sourceSessionId}
           toolResultMap={toolResultMap}
           subagentLookup={subagentLookup}
           showThinking={showThinking}
@@ -757,12 +765,12 @@ function renderSessionMessage({
       return (
         <AttachmentBanner
           attachmentJson={line.attachmentJson}
-          sessionId={sessionId}
+          sessionId={sourceSessionId}
           uuid={line.uuid}
         />
       );
     case "system":
-      return <SystemBanner line={line} sessionId={sessionId} />;
+      return <SystemBanner line={line} sessionId={sourceSessionId} />;
     case "worktree":
       return (
         <Banner

@@ -63,6 +63,28 @@ describe("processTranscript", () => {
     expect(result.lines[1]!.lineIndex).toBe(1);
   });
 
+  it("normalizes snake_case session identifiers for rendered lines", () => {
+    const result = processTranscript([
+      userRecord("Hello", {
+        uuid: "u-1",
+        session_id: "record-session",
+      }),
+    ]);
+
+    expect(result.lines).toStrictEqual([
+      {
+        type: "user",
+        uuid: "u-1",
+        sessionId: "record-session",
+        message: {
+          role: "user",
+          content: "Hello",
+        },
+        lineIndex: 0,
+      },
+    ]);
+  });
+
   it("filters out non-rendering record types", () => {
     const records = [
       { type: "system", uuid: "sys-1", timestamp: "1999-12-31T00:00:00Z" },

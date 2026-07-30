@@ -14,6 +14,7 @@ interface AgentItem {
   id: number;
   description: string;
   agentType: string;
+  effort?: string;
   status: "running" | "completed" | "error";
   result?: string;
 }
@@ -71,6 +72,7 @@ function extractAgents(toolCalls: ClientToolCall[]): AgentItem[] {
       const prompt = (call.input["prompt"] as string) ?? "";
       const desc = (call.input["description"] as string) ?? prompt.slice(0, 80);
       const agentType = getAgentTypeWithDefault(call.input);
+      const effort = call.input["effort"] as string | undefined;
       const hasResult = call.result !== undefined;
       const isError = call.isError === true;
 
@@ -80,6 +82,7 @@ function extractAgents(toolCalls: ClientToolCall[]): AgentItem[] {
         agentType,
         status: isError ? "error" : hasResult ? "completed" : "running",
       };
+      if (effort !== undefined) agent.effort = effort;
       if (call.result !== undefined) agent.result = call.result;
       agents.push(agent);
     }
@@ -128,6 +131,9 @@ function AgentCard({ agent }: { agent: AgentItem }) {
         <span className={`px-2 py-0.5 rounded text-xs font-medium shrink-0 ${color}`}>
           {agent.agentType}
         </span>
+        {agent.effort && (
+          <span className="text-xs text-text-500 shrink-0">{agent.effort} effort</span>
+        )}
         <span className="text-sm text-text-000 truncate flex-1">{agent.description}</span>
         <span className={`text-xs shrink-0 ${statusColor}`}>{statusText}</span>
       </button>

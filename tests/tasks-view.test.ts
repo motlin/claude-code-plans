@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vite-plus/test";
-import { extractTasks } from "../src/components/tasks-view";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { AgentRenderer } from "../src/components/tool-renderers/agent-renderer";
+import { extractTasks, TasksView } from "../src/components/tasks-view";
 import type { ClientToolCall } from "../src/components/tool-renderers/types";
 
 function makeToolCall(name: string, input: ClientToolCall["input"]): ClientToolCall {
@@ -70,5 +73,37 @@ describe("extractTasks", () => {
     expect(extractTasks(calls)).toStrictEqual([
       { id: "1", subject: "Task A", description: "", status: "pending" },
     ]);
+  });
+});
+
+describe("Agent effort rendering", () => {
+  it("shows effort in Agent tool details", () => {
+    const html = renderToStaticMarkup(
+      createElement(AgentRenderer, {
+        toolCall: makeToolCall("Agent", {
+          prompt: "Inspect the code",
+          subagent_type: "Explore",
+          effort: "high",
+        }),
+      }),
+    );
+
+    expect(html).toContain("effort: high");
+  });
+
+  it("shows effort on agent cards in the Tasks view", () => {
+    const html = renderToStaticMarkup(
+      createElement(TasksView, {
+        toolCalls: [
+          makeToolCall("Agent", {
+            description: "Inspect the code",
+            subagent_type: "Explore",
+            effort: "high",
+          }),
+        ],
+      }),
+    );
+
+    expect(html).toContain(">high effort<");
   });
 });

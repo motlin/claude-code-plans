@@ -103,6 +103,7 @@ export const WithAgentType: Story = {
         prompt: "Search for files matching the pattern.",
         agentType: "Explore",
         description: "File pattern search",
+        effort: "high",
       },
       result: "agentId: xyz789\nFound 25 matching files across the codebase.",
       duration: 12300,
