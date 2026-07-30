@@ -1,6 +1,6 @@
-import type { DbSubagent } from "../../lib/db/queries";
+import type { Subagent } from "../../lib/subagents";
 
-export function makeAgent(overrides: Partial<DbSubagent> & { id: string }): DbSubagent {
+export function makeAgent(overrides: Partial<Subagent> & { id: string }): Subagent {
   return {
     sessionId: "session-1",
     projectId: "project-1",
@@ -10,8 +10,6 @@ export function makeAgent(overrides: Partial<DbSubagent> & { id: string }): DbSu
     description: null,
     startedAt: "2026-04-19T10:00:00Z",
     finishedAt: "2026-04-19T10:01:00Z",
-    filePath: `/fake/${overrides.id}.jsonl`,
-    mtimeMs: Date.now(),
     ...overrides,
   };
 }

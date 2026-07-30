@@ -45,28 +45,76 @@ function summarizeTree(entries: SubagentTreeEntry[]): TreeSummary[] {
 }
 
 describe("buildSubagentTree", () => {
-  it("groups parallel siblings and nests descendants", () => {
+  it("builds a flat list for serial agents", () => {
+    const agents = [
+      makeAgent({
+        id: "agent-a",
+        startedAt: "1999-12-31T00:00:00.000Z",
+        finishedAt: "1999-12-31T00:00:10.000Z",
+      }),
+      makeAgent({
+        id: "agent-b",
+        startedAt: "1999-12-31T00:00:15.000Z",
+        finishedAt: "1999-12-31T00:00:25.000Z",
+      }),
+      makeAgent({
+        id: "agent-c",
+        startedAt: "1999-12-31T00:00:30.000Z",
+        finishedAt: "1999-12-31T00:00:40.000Z",
+      }),
+    ];
+
+    expect(summarizeTree(buildSubagentTree(agents))).toStrictEqual([
+      { kind: "agent", id: "agent-a", children: [] },
+      { kind: "agent", id: "agent-b", children: [] },
+      { kind: "agent", id: "agent-c", children: [] },
+    ]);
+  });
+
+  it("groups siblings started within two seconds but not at the boundary", () => {
+    const agents = [
+      makeAgent({
+        id: "agent-a",
+        startedAt: "1999-12-31T00:00:00.000Z",
+        finishedAt: "1999-12-31T00:00:10.000Z",
+      }),
+      makeAgent({
+        id: "agent-b",
+        startedAt: "1999-12-31T00:00:01.999Z",
+        finishedAt: "1999-12-31T00:00:16.999Z",
+      }),
+      makeAgent({
+        id: "agent-c",
+        startedAt: "1999-12-31T00:00:02.000Z",
+        finishedAt: "1999-12-31T00:00:07.000Z",
+      }),
+    ];
+
+    expect(summarizeTree(buildSubagentTree(agents))).toStrictEqual([
+      {
+        kind: "parallel",
+        wallClockMs: 15_000,
+        children: [
+          { kind: "agent", id: "agent-a", children: [] },
+          { kind: "agent", id: "agent-b", children: [] },
+        ],
+      },
+      { kind: "agent", id: "agent-c", children: [] },
+    ]);
+  });
+
+  it("nests children under their parent", () => {
     const agents = [
       makeAgent({
         id: "agent-parent",
         startedAt: "1999-12-31T00:00:00.000Z",
-        finishedAt: "1999-12-31T00:01:00.000Z",
+        finishedAt: "1999-12-31T00:00:30.000Z",
       }),
       makeAgent({
         id: "agent-child",
         parentAgentId: "agent-parent",
         startedAt: "1999-12-31T00:00:05.000Z",
         finishedAt: "1999-12-31T00:00:15.000Z",
-      }),
-      makeAgent({
-        id: "agent-parallel-a",
-        startedAt: "1999-12-31T00:01:10.000Z",
-        finishedAt: "1999-12-31T00:01:20.000Z",
-      }),
-      makeAgent({
-        id: "agent-parallel-b",
-        startedAt: "1999-12-31T00:01:11.000Z",
-        finishedAt: "1999-12-31T00:01:26.000Z",
       }),
     ];
 
@@ -76,12 +124,40 @@ describe("buildSubagentTree", () => {
         id: "agent-parent",
         children: [{ kind: "agent", id: "agent-child", children: [] }],
       },
+    ]);
+  });
+
+  it("handles deep nesting", () => {
+    const agents = [
+      makeAgent({
+        id: "agent-root",
+        startedAt: "1999-12-31T00:00:00.000Z",
+        finishedAt: "1999-12-31T00:01:00.000Z",
+      }),
+      makeAgent({
+        id: "agent-middle",
+        parentAgentId: "agent-root",
+        startedAt: "1999-12-31T00:00:10.000Z",
+        finishedAt: "1999-12-31T00:00:40.000Z",
+      }),
+      makeAgent({
+        id: "agent-deep",
+        parentAgentId: "agent-middle",
+        startedAt: "1999-12-31T00:00:15.000Z",
+        finishedAt: "1999-12-31T00:00:25.000Z",
+      }),
+    ];
+
+    expect(summarizeTree(buildSubagentTree(agents))).toStrictEqual([
       {
-        kind: "parallel",
-        wallClockMs: 15_000,
+        kind: "agent",
+        id: "agent-root",
         children: [
-          { kind: "agent", id: "agent-parallel-a", children: [] },
-          { kind: "agent", id: "agent-parallel-b", children: [] },
+          {
+            kind: "agent",
+            id: "agent-middle",
+            children: [{ kind: "agent", id: "agent-deep", children: [] }],
+          },
         ],
       },
     ]);

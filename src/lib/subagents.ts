@@ -5,16 +5,15 @@ import { getAgentTypeOrNull } from "./tool-utils";
 /**
  * Subagent record extracted from transcript JSONL records.
  *
- * This shape is the contract between transcript-derived extraction and the
- * Gantt/Sequence visualisation components. It mirrors the historical
- * `DbSubagent` shape closely enough that those components can keep using the
- * same field names.
+ * This shape is the client contract shared by the subagent API endpoints,
+ * transcript-derived extraction, and the Tree/Gantt/Sequence visualizations.
+ * It mirrors the historical `DbSubagent` shape while omitting server-only
+ * filesystem metadata.
  *
- * `parentAgentId` is left null when the parent transcript is the root session
- * (we cannot detect parent-child relationships across nested subagent JSONL
- * files from a single transcript). For most sessions this is fine because
- * subagent depth is rarely > 1 in practice; the project-aggregate handler
- * (Phase 2c) walks every transcript so the same constraint applies.
+ * Transcript-derived extraction leaves `parentAgentId` null because a single
+ * transcript cannot reveal relationships across nested subagent JSONL files.
+ * API handlers use DB-backed rows, which preserve parent links established by
+ * the indexer.
  */
 export interface Subagent {
   id: string;

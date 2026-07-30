@@ -81,8 +81,6 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
   verbosity: "ccp-verbosity",
 };
 
-const SUBAGENT_TREE_RESTORATION_KEY = "ccp-subagent-tree-restored";
-
 const VERBOSITY_PRESETS: Record<Verbosity, Partial<Settings>> = {
   normal: {
     showTools: true,
@@ -172,13 +170,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       if (stored !== undefined) {
         (loaded as Record<keyof Settings, Settings[keyof Settings]>)[key] = stored;
       }
-    }
-    if (localStorage.getItem(SUBAGENT_TREE_RESTORATION_KEY) === null) {
-      if (loaded.defaultSubagentView === "gantt") {
-        loaded.defaultSubagentView = "tree";
-        writeStoredValue("defaultSubagentView", "tree");
-      }
-      localStorage.setItem(SUBAGENT_TREE_RESTORATION_KEY, "true");
     }
     const rawVerbosity = localStorage.getItem(STORAGE_KEYS.verbosity);
     if (rawVerbosity === "minimal") {
