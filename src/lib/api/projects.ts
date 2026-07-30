@@ -124,6 +124,7 @@ const TaskItemSchema = z.object({
   description: z.string(),
   status: z.string(),
   activeForm: z.string().nullable(),
+  owner: z.string().nullable(),
   blocks: z.array(z.string()),
   blockedBy: z.array(z.string()),
   metadata: z.record(z.string(), JsonValueSchema),

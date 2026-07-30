@@ -1,7 +1,7 @@
 import type { ToolResultInfo } from "../../lib/sessions";
 import type { ToolUseBlock } from "../../lib/schemas";
 import type { Subagent } from "../../lib/subagents";
-import { getAgentTypeOrNull } from "../../lib/tool-utils";
+import { getAgentTypeOrNull, getTaskCreateDisplaySubject } from "../../lib/tool-utils";
 import { buildSubagentTree } from "../../lib/subagent-tree";
 import type {
   ParallelSubagentGroup,
@@ -228,6 +228,7 @@ function truncate(value: string, maxLength = 60): string {
 function getToolParam(name: string, input: Record<string, unknown>): string {
   if (name === "ToolSearch")
     return typeof input["query"] === "string" ? truncate(input["query"]) : "";
+  if (name === "TaskCreate") return truncate(getTaskCreateDisplaySubject(input));
   if (typeof input["file_path"] === "string") return input["file_path"];
   if (typeof input["description"] === "string") return truncate(input["description"]);
   if (typeof input["command"] === "string") return input["command"];

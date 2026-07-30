@@ -943,6 +943,7 @@ describe("dispatchHookEvent", () => {
           description: "desc",
           status: "in_progress",
           activeForm: null,
+          owner: null,
           blocks: [],
           blockedBy: [],
         },

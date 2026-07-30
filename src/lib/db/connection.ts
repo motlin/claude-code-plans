@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   description TEXT NOT NULL,
   status TEXT NOT NULL,
   active_form TEXT,
+  owner TEXT,
   blocks_json TEXT NOT NULL DEFAULT '[]',
   blocked_by_json TEXT NOT NULL DEFAULT '[]',
   metadata_json TEXT NOT NULL DEFAULT '{}',
@@ -89,6 +90,7 @@ CREATE TABLE IF NOT EXISTS tasks (
 );
 CREATE INDEX IF NOT EXISTS tasks_project_dir_idx ON tasks(project_dir);
 CREATE INDEX IF NOT EXISTS tasks_status_idx ON tasks(status);
+CREATE INDEX IF NOT EXISTS tasks_owner_idx ON tasks(owner);
 
 CREATE TABLE IF NOT EXISTS memories (
   file_path TEXT PRIMARY KEY,

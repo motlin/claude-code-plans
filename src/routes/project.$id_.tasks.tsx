@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { ArrowLeft, CheckCircle, Circle, Ban } from "lucide-react";
@@ -7,6 +7,8 @@ import { DetailTopBar, pillStyles } from "../components/detail-top-bar";
 import { DebugLink } from "../components/debug-link";
 import { MarkdownInline, MarkdownView } from "../components/markdown-view";
 import { TaskMetadata } from "../components/task-metadata";
+import { TaskOwner } from "../components/task-owner";
+import { filterTasks } from "../lib/task-search";
 
 export const Route = createFileRoute("/project/$id_/tasks")({
   component: ProjectTasksPage,
@@ -38,6 +40,9 @@ function ProjectTasksPage() {
   const { id } = Route.useParams();
   const { data: project } = useSuspenseQuery(projectDetailQueryOptions(id));
   const { data: tasksData } = useSuspenseQuery(projectTasksQueryOptions(id));
+  const [searchQuery, setSearchQuery] = useState("");
+  const { todos, todoCounts } = tasksData;
+  const visibleTodos = useMemo(() => filterTasks(todos, searchQuery), [todos, searchQuery]);
 
   if (!project) {
     return (
@@ -52,8 +57,6 @@ function ProjectTasksPage() {
       </div>
     );
   }
-
-  const { todos, todoCounts } = tasksData;
 
   return (
     <div>
@@ -76,11 +79,22 @@ function ProjectTasksPage() {
         )}
       </p>
 
+      <input
+        type="search"
+        value={searchQuery}
+        onChange={(event) => setSearchQuery(event.target.value)}
+        placeholder="Search tasks by title, description, active form, or owner..."
+        aria-label="Search tasks"
+        className="mt-4 w-full rounded-md border border-border-300/15 bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent-100"
+      />
+
       {todos.length === 0 ? (
         <p className="mt-4 text-text-500">No tasks for this project.</p>
+      ) : visibleTodos.length === 0 ? (
+        <p className="mt-4 text-text-500">No tasks match &ldquo;{searchQuery.trim()}&rdquo;.</p>
       ) : (
         <div className="mt-4 space-y-1">
-          {todos.map((task) => (
+          {visibleTodos.map((task) => (
             <div key={task.taskId} className="flex items-start gap-2 rounded-md p-2">
               {task.status === "completed" ? (
                 <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
@@ -118,6 +132,7 @@ function ProjectTasksPage() {
                       blocked by #{task.blockedBy.join(", #")}
                     </span>
                   )}
+                  <TaskOwner owner={task.owner} />
                 </div>
                 <TaskMetadata metadata={task.metadata} />
               </div>

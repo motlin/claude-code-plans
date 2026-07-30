@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { AgentRenderer } from "../src/components/tool-renderers/agent-renderer";
+import { getTaskCreateParams } from "../src/components/tool-renderers/task-create-renderer";
 import { extractTasks, TasksView } from "../src/components/tasks-view";
 import type { ClientToolCall } from "../src/components/tool-renderers/types";
 
@@ -33,6 +34,44 @@ describe("extractTasks", () => {
         status: "pending",
       },
       { id: "2", subject: "Add tests", description: "", status: "pending" },
+    ]);
+  });
+
+  it("uses description and active form when TaskCreate omits subject", () => {
+    const calls = [
+      makeToolCall("TaskCreate", {
+        description: "Describe the first task",
+        activeForm: "Creating the first task",
+      }),
+      makeToolCall("TaskCreate", { activeForm: "Creating the second task" }),
+      makeToolCall("TaskCreate", {}),
+    ];
+
+    expect(extractTasks(calls)).toStrictEqual([
+      {
+        id: "1",
+        subject: "Describe the first task",
+        description: "Describe the first task",
+        status: "pending",
+      },
+      {
+        id: "2",
+        subject: "Creating the second task",
+        description: "",
+        status: "pending",
+      },
+      {
+        id: "3",
+        subject: "Task 3",
+        description: "",
+        status: "pending",
+      },
+    ]);
+  });
+
+  it("renders the active form as the subject fallback for TaskCreate", () => {
+    expect(getTaskCreateParams({ activeForm: "Creating the example task" })).toStrictEqual([
+      { key: "subject", value: "Creating the example task" },
     ]);
   });
 

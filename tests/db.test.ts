@@ -1849,6 +1849,33 @@ describe("task indexer", () => {
     expect(JSON.parse(tasks[0]!.metadataJson)).toStrictEqual(metadata);
   });
 
+  it("indexes the task owner", async () => {
+    const tasksDir = join(testDir, "tasks", "example-project");
+    mkdirSync(tasksDir, { recursive: true });
+
+    const filePath = join(tasksDir, "owner-task.json");
+    writeFileSync(filePath, makeTaskFile({ id: "owner-task", owner: "alice" }));
+
+    await indexTaskFile(db.index, filePath, "example-project");
+
+    expect(
+      db.index
+        .select({
+          taskId: schema.tasks.taskId,
+          projectDir: schema.tasks.projectDir,
+          owner: schema.tasks.owner,
+        })
+        .from(schema.tasks)
+        .all(),
+    ).toStrictEqual([
+      {
+        taskId: "owner-task",
+        projectDir: "example-project",
+        owner: "alice",
+      },
+    ]);
+  });
+
   it("skips re-indexing when mtime unchanged", async () => {
     const tasksDir = join(testDir, "tasks", "my-project");
     mkdirSync(tasksDir, { recursive: true });
@@ -1999,6 +2026,7 @@ describe("task queries", () => {
         status: "completed",
         blocks: ["2"],
         blockedBy: [],
+        owner: "alice",
         metadata: {
           commit_sha: "fac216c",
           verification: { status: "passed" },
@@ -2056,6 +2084,19 @@ describe("task queries", () => {
       commit_sha: "fac216c",
       verification: { status: "passed" },
     });
+  });
+
+  it("getTasksForProject returns the indexed owner", () => {
+    const tasks = getTasksForProject(db.index, "app");
+    expect(
+      tasks
+        .map(({ taskId, owner }) => ({ taskId, owner }))
+        .sort((left, right) => left.taskId.localeCompare(right.taskId)),
+    ).toStrictEqual([
+      { taskId: "1", owner: "alice" },
+      { taskId: "2", owner: null },
+      { taskId: "3", owner: null },
+    ]);
   });
 
   it("getTasksForProject returns empty for unknown project", () => {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CheckCircle, Circle, ChevronDown, ChevronRight } from "lucide-react";
 import type { ClientToolCall } from "./tool-renderers/types";
-import { getAgentTypeWithDefault } from "../lib/tool-utils";
+import { getAgentTypeWithDefault, getTaskCreateDisplaySubject } from "../lib/tool-utils";
 
 interface TaskItem {
   id: string;
@@ -41,10 +41,11 @@ export function extractTasks(toolCalls: ClientToolCall[]): TaskItem[] {
     if (call.name === "TaskCreate") {
       autoId++;
       const id = String(autoId);
+      const description = (call.input["description"] as string) ?? "";
       tasks.set(id, {
         id,
-        subject: (call.input["subject"] as string) ?? `Task ${id}`,
-        description: (call.input["description"] as string) ?? "",
+        subject: getTaskCreateDisplaySubject(call.input) || `Task ${id}`,
+        description,
         status: "pending",
       });
     } else if (call.name === "TaskUpdate") {
@@ -203,7 +204,7 @@ export function TasksView({ toolCalls }: { toolCalls: ClientToolCall[] }) {
                   <h3 className="text-sm font-medium text-text-000 mt-1 truncate">
                     {task.subject}
                   </h3>
-                  {task.description && (
+                  {task.description && task.description !== task.subject && (
                     <p className="text-xs text-text-500 mt-0.5 line-clamp-2">{task.description}</p>
                   )}
                 </div>

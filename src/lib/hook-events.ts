@@ -150,6 +150,7 @@ export interface TaskSummaryPayload {
   description: string;
   status: string;
   activeForm: string | null;
+  owner: string | null;
   blocks: string[];
   blockedBy: string[];
 }

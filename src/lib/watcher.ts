@@ -194,6 +194,7 @@ function toTaskSummaryPayload(row: TaskRow): TaskSummaryPayload {
     description: row.description,
     status: row.status,
     activeForm: row.activeForm,
+    owner: row.owner,
     blocks: row.blocks,
     blockedBy: row.blockedBy,
   };
@@ -205,6 +206,7 @@ function tasksEqual(a: TaskSummaryPayload, b: TaskSummaryPayload): boolean {
     a.description === b.description &&
     a.status === b.status &&
     a.activeForm === b.activeForm &&
+    a.owner === b.owner &&
     JSON.stringify(a.blocks) === JSON.stringify(b.blocks) &&
     JSON.stringify(a.blockedBy) === JSON.stringify(b.blockedBy)
   );

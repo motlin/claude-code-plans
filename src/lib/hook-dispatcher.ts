@@ -183,6 +183,7 @@ function broadcastTaskChangedFromDb(
     description: row.description,
     status: row.status,
     activeForm: row.activeForm,
+    owner: row.owner,
     blocks: JSON.parse(row.blocksJson) as string[],
     blockedBy: JSON.parse(row.blockedByJson) as string[],
   };

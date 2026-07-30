@@ -24,6 +24,7 @@ import { toMdSlug } from "../lib/md-slug";
 import { formatRelativeTimeFromIso } from "../lib/relative-time";
 import { DetailTopBar, pillStyles } from "../components/detail-top-bar";
 import { MarkdownInline } from "../components/markdown-view";
+import { TaskOwner } from "../components/task-owner";
 
 export const Route = createFileRoute("/project/$id")({
   component: ProjectPage,
@@ -317,6 +318,7 @@ function ProjectPage() {
                       <MarkdownInline markdown={task.subject} />
                     </Suspense>
                   </div>
+                  <TaskOwner owner={task.owner} />
                   {task.blockedBy.length > 0 && (
                     <div className="mt-0.5 text-[10px] text-orange-500">
                       blocked by #{task.blockedBy.join(", #")}

@@ -62,6 +62,7 @@ function makeTask(overrides: Partial<TaskRow> = {}): TaskRow {
     description: "Details",
     status: "pending",
     activeForm: null,
+    owner: null,
     blocks: [],
     blockedBy: [],
     metadata: {},
@@ -141,6 +142,7 @@ describe("toTaskSummaryPayload", () => {
       description: "Details",
       status: "pending",
       activeForm: null,
+      owner: null,
       blocks: ["task-2"],
       blockedBy: ["task-3"],
     });
@@ -157,6 +159,12 @@ describe("tasksEqual", () => {
   it("returns false when status changes from pending to completed", () => {
     const a = toTaskSummaryPayload(makeTask({ status: "pending" }));
     const b = toTaskSummaryPayload(makeTask({ status: "completed" }));
+    expect(tasksEqual(a, b)).toBe(false);
+  });
+
+  it("returns false when owner changes", () => {
+    const a = toTaskSummaryPayload(makeTask({ owner: "alice" }));
+    const b = toTaskSummaryPayload(makeTask({ owner: "bob" }));
     expect(tasksEqual(a, b)).toBe(false);
   });
 

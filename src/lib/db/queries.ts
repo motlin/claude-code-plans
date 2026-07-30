@@ -789,6 +789,7 @@ export interface TaskRow {
   description: string;
   status: string;
   activeForm: string | null;
+  owner: string | null;
   blocks: string[];
   blockedBy: string[];
   metadata: Record<string, unknown>;
@@ -808,6 +809,7 @@ function parseTaskRow(row: {
   description: string;
   status: string;
   activeForm: string | null;
+  owner: string | null;
   blocksJson: string;
   blockedByJson: string;
   metadataJson: string;
@@ -819,6 +821,7 @@ function parseTaskRow(row: {
     description: row.description,
     status: row.status,
     activeForm: row.activeForm,
+    owner: row.owner,
     blocks: JSON.parse(row.blocksJson) as string[],
     blockedBy: JSON.parse(row.blockedByJson) as string[],
     metadata: JSON.parse(row.metadataJson) as Record<string, unknown>,
@@ -834,6 +837,7 @@ export function getTasksForProject(db: IndexDb, projectDir: string): TaskRow[] {
       description: schema.tasks.description,
       status: schema.tasks.status,
       activeForm: schema.tasks.activeForm,
+      owner: schema.tasks.owner,
       blocksJson: schema.tasks.blocksJson,
       blockedByJson: schema.tasks.blockedByJson,
       metadataJson: schema.tasks.metadataJson,
@@ -854,6 +858,7 @@ export function getIncompleteTasksGroupedByProject(db: IndexDb): TaskProjectGrou
       description: schema.tasks.description,
       status: schema.tasks.status,
       activeForm: schema.tasks.activeForm,
+      owner: schema.tasks.owner,
       blocksJson: schema.tasks.blocksJson,
       blockedByJson: schema.tasks.blockedByJson,
       metadataJson: schema.tasks.metadataJson,

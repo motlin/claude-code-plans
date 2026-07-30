@@ -25,3 +25,15 @@ export function getAgentTypeOrNull(input: Record<string, unknown>): string | nul
   const type = (input["agentType"] as string) ?? (input["subagent_type"] as string);
   return type ?? null;
 }
+
+/**
+ * Resolve the label Claude supplies for a TaskCreate call. Recent records may
+ * omit subject, so use the descriptive fields in their order of specificity.
+ */
+export function getTaskCreateDisplaySubject(input: Record<string, unknown>): string {
+  for (const key of ["subject", "description", "activeForm"]) {
+    const value = input[key];
+    if (typeof value === "string" && value.trim().length > 0) return value;
+  }
+  return "";
+}

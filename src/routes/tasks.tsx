@@ -1,12 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { ChevronRight, CheckCircle, Circle, Ban, List, GitBranch } from "lucide-react";
 import { tasksQueryOptions } from "../lib/api/tasks";
 import { TaskDependencyGraph } from "../components/task-dependency-graph";
 import { DebugLink } from "../components/debug-link";
 import { MarkdownInline, MarkdownView } from "../components/markdown-view";
 import { TaskMetadata } from "../components/task-metadata";
+import { TaskOwner } from "../components/task-owner";
+import { filterTasks } from "../lib/task-search";
 
 export const Route = createFileRoute("/tasks")({
   component: TasksPage,
@@ -34,6 +36,22 @@ function TasksPage() {
   const { data: groups } = useSuspenseQuery(tasksQueryOptions);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [view, setView] = useState<View>("list");
+  const [searchQuery, setSearchQuery] = useState("");
+  const visibleGroups = useMemo(
+    () =>
+      groups
+        .map((group) => {
+          const tasks = filterTasks(group.tasks, searchQuery);
+          return {
+            ...group,
+            tasks,
+            totalPending: tasks.filter((task) => task.status === "pending").length,
+            totalInProgress: tasks.filter((task) => task.status === "in_progress").length,
+          };
+        })
+        .filter((group) => group.tasks.length > 0),
+    [groups, searchQuery],
+  );
 
   function toggleGroup(projectDir: string) {
     setCollapsed((prev) => {
@@ -71,13 +89,24 @@ function TasksPage() {
         </div>
       </div>
 
+      <input
+        type="search"
+        value={searchQuery}
+        onChange={(event) => setSearchQuery(event.target.value)}
+        placeholder="Search tasks by title, description, active form, or owner..."
+        aria-label="Search tasks"
+        className="mt-4 w-full rounded-md border border-border-300/15 bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent-100"
+      />
+
       {groups.length === 0 ? (
         <p className="mt-4 text-text-500">No incomplete tasks across any projects.</p>
+      ) : visibleGroups.length === 0 ? (
+        <p className="mt-4 text-text-500">No tasks match &ldquo;{searchQuery.trim()}&rdquo;.</p>
       ) : view === "graph" ? (
-        <TaskDependencyGraph groups={groups} />
+        <TaskDependencyGraph groups={visibleGroups} />
       ) : (
         <div className="mt-6 space-y-4">
-          {groups.map((group) => {
+          {visibleGroups.map((group) => {
             const isCollapsed = collapsed.has(group.projectDir);
             return (
               <div key={group.projectDir}>
@@ -149,6 +178,7 @@ function TasksPage() {
                                 blocked by #{task.blockedBy.join(", #")}
                               </span>
                             )}
+                            <TaskOwner owner={task.owner} />
                           </div>
                           <TaskMetadata metadata={task.metadata} />
                         </div>
