@@ -3,20 +3,5 @@
 // Docs: https://github.com/DavidAnson/markdownlint-cli2#configuration
 {
   "globs": ["**/*.md"],
-  "ignores": [
-    "**/node_modules/**",
-    ".llm/**",
-    ".claude/**",
-    ".fallow/**",
-    ".output/**",
-    ".playwright-mcp/**",
-    ".serena/**",
-    ".tanstack/**",
-    ".vite-hooks/**",
-    "dist/**",
-    "mockups/**",
-    "screenshots/**",
-    "CLAUDE.md",
-    "CLAUDE.local.md",
-  ],
+  "ignores": ["**/node_modules/**", ".llm/**", ".claude/**", "dist/**", "CLAUDE.md"],
 }
