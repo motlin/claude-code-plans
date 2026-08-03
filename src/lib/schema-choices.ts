@@ -123,6 +123,7 @@ const attachmentVariants = {
   already_read_file: true,
   directory: true,
   compact_file_reference: true,
+  read_truncation_notice: true,
   date_change: true,
   command_permissions: true,
   diagnostics: true,

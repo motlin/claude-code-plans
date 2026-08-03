@@ -196,6 +196,17 @@ function AttachmentContent({
           uuid={uuid}
         />
       );
+    case "read_truncation_notice":
+      return (
+        <Banner
+          icon={<AlertTriangle className="h-3.5 w-3.5" />}
+          label="Read output truncated"
+          sessionId={sessionId}
+          uuid={uuid}
+        >
+          <Pre>{attachment.banner}</Pre>
+        </Banner>
+      );
     case "edited_text_file":
       return (
         <Banner

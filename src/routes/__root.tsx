@@ -70,6 +70,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
     ],
   }),
+  // `ssr: false` suppresses RootComponent on the server, so the document wrapper must stay here.
+  // Nesting RootDocument inside RootComponent leaves the initial response without an HTML shell.
+  shellComponent: RootDocument,
   component: RootComponent,
   notFoundComponent: NotFound,
   errorComponent: RootErrorComponent,
@@ -110,7 +113,7 @@ function MobileSidebar({ open, onClose }: { open: boolean; onClose: () => void }
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
-    <RootDocument>
+    <>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <SettingsProvider>
@@ -122,7 +125,7 @@ function RootComponent() {
         {import.meta.env.DEV ? <ReactQueryDevtools buttonPosition="bottom-left" /> : null}
       </QueryClientProvider>
       {import.meta.env.DEV && <Agentation endpoint="http://localhost:4747" />}
-    </RootDocument>
+    </>
   );
 }
 

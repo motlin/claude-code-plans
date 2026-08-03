@@ -161,6 +161,7 @@ const TaskUpdateInputSchema = z
     description: z.string().optional(),
     activeForm: z.string().optional(),
     addBlockedBy: z.array(z.string()).optional(),
+    addBlocks: z.array(z.string()).optional(),
     owner: z.string().optional(),
     priority: z.string().optional(),
     metadata: z.union([z.string(), z.record(z.string(), JsonInputValueSchema)]).optional(),

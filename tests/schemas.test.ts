@@ -333,9 +333,10 @@ describe("UserRecordSchema", () => {
       message: { role: "user", content: "Background agents were stopped by the user." },
       promptSource: "system",
       queuePriority: "later",
+      userFeedback: "Please preserve the current behavior.",
     };
-    const result = UserRecordSchema.safeParse(record);
-    expect(result.success).toBe(true);
+
+    expect(UserRecordSchema.parse(record)).toStrictEqual(record);
   });
 });
 
@@ -369,13 +370,13 @@ describe("AssistantRecordSchema", () => {
       requestId: "req_123",
       slug: "radiant-beaming-kay",
       effort: "high",
+      healsDistinctCarrier: true,
       message: {
         ...assistantMessageFields,
         content: [{ type: "text", text: "Hi" }],
       },
     };
-    const result = AssistantRecordSchema.safeParse(record);
-    expect(result.success).toBe(true);
+    expect(AssistantRecordSchema.parse(record)).toStrictEqual(record);
   });
 
   it("accepts newer snake_case session_id metadata", () => {
@@ -413,12 +414,10 @@ describe("SystemRecordSchema", () => {
       ...baseFields,
       subtype: "turn_duration",
       durationMs: 5000,
+      preventContinuation: true,
     };
-    const result = SystemRecordSchema.safeParse(record);
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.subtype).toBe("turn_duration");
-    }
+
+    expect(SystemRecordSchema.parse(record)).toStrictEqual(record);
   });
 
   it("parses the request retry source", () => {
@@ -437,13 +436,11 @@ describe("LastPromptRecordSchema", () => {
     const record = {
       type: "last-prompt",
       lastPrompt: "Fix the login bug",
+      explicit: true,
       sessionId: "sess-123",
     };
-    const result = LastPromptRecordSchema.safeParse(record);
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.lastPrompt).toBe("Fix the login bug");
-    }
+
+    expect(LastPromptRecordSchema.parse(record)).toStrictEqual(record);
   });
 });
 
@@ -1290,9 +1287,11 @@ describe("ContentBlockSchema tool input validation", () => {
       input: {
         id: 6,
         status: "completed",
+        addBlocks: ["100", "200"],
       },
     };
-    expect(ContentBlockSchema.safeParse(block).success).toBe(true);
+
+    expect(ContentBlockSchema.parse(block)).toStrictEqual(block);
   });
 
   it("accepts TaskGet id input", () => {

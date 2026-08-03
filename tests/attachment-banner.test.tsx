@@ -64,6 +64,11 @@ const MINIMAL_BY_TYPE: Record<string, AttachmentPayload> = {
   already_read_file: { type: "already_read_file", filename: "/tmp/test/example.ts" },
   directory: { type: "directory" },
   compact_file_reference: { type: "compact_file_reference" },
+  read_truncation_notice: {
+    type: "read_truncation_notice",
+    banner: "[Truncated: showing lines 1-100 of 200 total.]",
+    toolUseID: "toolu_100",
+  },
   date_change: { type: "date_change", newDate: "2026-05-14" },
   command_permissions: { type: "command_permissions" },
   diagnostics: { type: "diagnostics" },
@@ -115,6 +120,18 @@ describe("AttachmentBanner", () => {
       });
       expect(html).not.toContain("text-text-600");
     });
+  });
+
+  it("renders read truncation notices", () => {
+    const html = renderBanner({
+      type: "read_truncation_notice",
+      banner: "[Truncated: showing lines 1-100 of 200 total.]",
+      toolUseID: "toolu_100",
+    });
+
+    expect(html).toStrictEqual(
+      '<div class="flex flex-wrap items-center gap-2 py-1.5 px-3 text-xs text-text-500 bg-bg-100 rounded-md border border-border-300/10"><span class="shrink-0"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-triangle-alert h-3.5 w-3.5" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span><span>Read output truncated</span><pre class="w-full mt-1 text-[10px] leading-tight text-text-600 bg-bg-200 rounded px-2 py-1 whitespace-pre-wrap break-all">[Truncated: showing lines 1-100 of 200 total.]</pre></div>',
+    );
   });
 
   describe("queued_command", () => {

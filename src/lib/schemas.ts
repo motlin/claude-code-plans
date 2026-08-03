@@ -196,6 +196,7 @@ export const UserRecordSchema = z
     mcpMeta: z.record(z.string(), JsonValueSchema).optional(),
     origin: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
     interruptedMessageId: z.string().optional(),
+    userFeedback: z.string().optional(),
   })
   .strict();
 
@@ -231,6 +232,7 @@ export const AssistantRecordSchema = z
     attributionMcpServer: z.string().optional(),
     attributionMcpTool: z.string().optional(),
     errorDetails: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
+    healsDistinctCarrier: z.boolean().optional(),
   })
   .strict();
 
@@ -490,6 +492,14 @@ const CompactFileReferenceAttachmentPayload = z
   })
   .strict();
 
+const ReadTruncationNoticeAttachmentPayload = z
+  .object({
+    type: z.literal("read_truncation_notice"),
+    banner: z.string(),
+    toolUseID: z.string().optional(),
+  })
+  .strict();
+
 const DateChangeAttachmentPayload = z
   .object({
     type: z.literal("date_change"),
@@ -639,6 +649,7 @@ export const AttachmentPayloadSchema = z.discriminatedUnion("type", [
   AlreadyReadFileAttachmentPayload,
   DirectoryAttachmentPayload,
   CompactFileReferenceAttachmentPayload,
+  ReadTruncationNoticeAttachmentPayload,
   DateChangeAttachmentPayload,
   CommandPermissionsAttachmentPayload,
   DiagnosticsAttachmentPayload,
@@ -717,6 +728,7 @@ export const SystemRecordSchema = z
     hookErrors: z.array(JsonValueSchema).optional(),
     hookAdditionalContext: z.array(JsonValueSchema).optional(),
     preventedContinuation: z.boolean().optional(),
+    preventContinuation: z.boolean().optional(),
     stopReason: z.string().optional(),
     hasOutput: z.boolean().optional(),
     error: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
@@ -748,6 +760,7 @@ export const LastPromptRecordSchema = z
     type: z.literal("last-prompt"),
     lastPrompt: z.string().optional(),
     leafUuid: z.string().optional(),
+    explicit: z.boolean().optional(),
     sessionId: z.string(),
   })
   .strict();
