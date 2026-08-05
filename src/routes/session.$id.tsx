@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { DetailTopBar, pillStyles } from "../components/detail-top-bar";
 import { useSettings } from "../components/settings-provider";
+import { writeClipboardText } from "../lib/clipboard";
 
 export const Route = createFileRoute("/session/$id")({
   component: SessionPage,
@@ -151,7 +152,7 @@ function FloatingScrollButtons() {
   );
 }
 
-function CopyButton({
+export function CopyButton({
   title,
   text,
   icon: Icon,
@@ -167,10 +168,12 @@ function CopyButton({
       <button
         type="button"
         title={title}
-        onClick={() => {
-          void navigator.clipboard.writeText(text);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 1500);
+        onClick={async () => {
+          const copySucceeded = await writeClipboardText(text);
+          setCopied(copySucceeded);
+          if (copySucceeded) {
+            setTimeout(() => setCopied(false), 1500);
+          }
         }}
         className="text-text-500 hover:text-text-000 transition-colors cursor-pointer"
       >
