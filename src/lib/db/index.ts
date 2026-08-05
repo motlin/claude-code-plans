@@ -37,7 +37,7 @@ export function runInitialScan(): Promise<void> {
     holder.promise = (async () => {
       const db = getDb();
       try {
-        await fullScan(db.index, PROJECTS_DIR, TASKS_DIR, PLANS_DIR);
+        await fullScan(db.index, db.summaries, PROJECTS_DIR, TASKS_DIR, PLANS_DIR);
       } catch (err) {
         console.error("Initial database scan failed:", err);
       }

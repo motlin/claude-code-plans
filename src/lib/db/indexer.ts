@@ -1,6 +1,6 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { createReadStream } from "node:fs";
-import { join, basename } from "node:path";
+import { join, basename, relative, sep } from "node:path";
 import { createInterface } from "node:readline";
 import { eq, notInArray, sql } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
@@ -1025,24 +1025,109 @@ function loadIndexedFileMtimes(db: IndexDb): Map<string, number> {
   return new Map(rows.map((r) => [r.path, r.mtimeMs]));
 }
 
+function isPrimaryTranscriptPath(projectsDir: string, filePath: string): boolean {
+  const relativePath = relative(projectsDir, filePath);
+  const pathParts = relativePath.split(sep);
+  return (
+    pathParts.length === 2 &&
+    pathParts[0] !== ".." &&
+    pathParts[0] !== "." &&
+    pathParts[1]!.endsWith(".jsonl")
+  );
+}
+
+/**
+ * Prune sessions whose primary transcripts disappeared during a complete scan.
+ * A session ID still present under another project is a moved session, so only
+ * its stale path cache is removed and all session metadata is preserved.
+ */
+function pruneDeletedSessions(
+  indexDb: IndexDb,
+  summariesDb: IndexDb,
+  projectsDir: string,
+  discoveredPaths: Set<string>,
+): void {
+  const onDiskPaths = new Set(
+    Array.from(discoveredPaths).filter((path) => isPrimaryTranscriptPath(projectsDir, path)),
+  );
+  const onDiskIds = new Set(Array.from(onDiskPaths, (path) => basename(path, ".jsonl")));
+  const existingSessions = indexDb
+    .select({ id: schema.sessions.id, filePath: schema.sessions.filePath })
+    .from(schema.sessions)
+    .all();
+
+  for (const session of existingSessions) {
+    if (onDiskPaths.has(session.filePath)) continue;
+
+    indexDb.delete(schema.indexedFiles).where(eq(schema.indexedFiles.path, session.filePath)).run();
+    if (onDiskIds.has(session.id)) continue;
+
+    const subagentPaths = indexDb
+      .select({ filePath: schema.subagents.filePath })
+      .from(schema.subagents)
+      .where(eq(schema.subagents.sessionId, session.id))
+      .all();
+    for (const subagent of subagentPaths) {
+      indexDb
+        .delete(schema.indexedFiles)
+        .where(eq(schema.indexedFiles.path, subagent.filePath))
+        .run();
+    }
+
+    indexDb.delete(schema.subagents).where(eq(schema.subagents.sessionId, session.id)).run();
+    indexDb.delete(schema.planSessions).where(eq(schema.planSessions.sessionId, session.id)).run();
+    indexDb
+      .delete(schema.starredSessions)
+      .where(eq(schema.starredSessions.sessionId, session.id))
+      .run();
+    summariesDb.delete(schema.summaries).where(eq(schema.summaries.sessionId, session.id)).run();
+    indexDb.run(sql`DELETE FROM message_content_fts WHERE session_id = ${session.id}`);
+    indexDb.delete(schema.sessions).where(eq(schema.sessions.id, session.id)).run();
+  }
+
+  // Re-indexing a moved session updates sessions.filePath before pruning runs,
+  // so remove stale primary transcript cache rows independently of session rows.
+  const indexedPaths = indexDb
+    .select({ path: schema.indexedFiles.path })
+    .from(schema.indexedFiles)
+    .all();
+  for (const indexedFile of indexedPaths) {
+    if (
+      isPrimaryTranscriptPath(projectsDir, indexedFile.path) &&
+      !onDiskPaths.has(indexedFile.path)
+    ) {
+      indexDb
+        .delete(schema.indexedFiles)
+        .where(eq(schema.indexedFiles.path, indexedFile.path))
+        .run();
+    }
+  }
+}
+
+type ReadDirectory = (path: string) => Promise<string[]>;
+
 export async function fullScan(
-  db: IndexDb,
+  indexDb: IndexDb,
+  summariesDb: IndexDb,
   projectsDir: string,
   tasksDir?: string,
   plansDir?: string,
+  readDirectory: ReadDirectory = readdir,
 ): Promise<void> {
   indexingInProgress = true;
   try {
     let projectDirs: string[];
     try {
-      projectDirs = await readdir(projectsDir);
+      projectDirs = await readDirectory(projectsDir);
     } catch {
+      // The root was not enumerable, so this pass cannot prove anything was deleted.
       return;
     }
 
     // Validate project dirs and capture a recency signal, so the most-recently
     // active projects are indexed first and fresh sessions surface within
     // seconds rather than after the whole scan completes.
+    let scanComplete = true;
     const projects: { project: string; projectPath: string; recency: number }[] = [];
     for (const project of projectDirs) {
       const projectPath = join(projectsDir, project);
@@ -1052,6 +1137,7 @@ export async function fullScan(
         if (!dirStat.isDirectory()) continue;
         recency = dirStat.mtimeMs;
       } catch {
+        scanComplete = false;
         continue;
       }
       // sessions-index.json is rewritten as a project's sessions change, so it
@@ -1069,17 +1155,19 @@ export async function fullScan(
 
     // One bulk read of indexed_files so per-session change detection (used to
     // skip the expensive subagent re-link) is an in-memory lookup.
-    const knownMtimes = loadIndexedFileMtimes(db);
+    const knownMtimes = loadIndexedFileMtimes(indexDb);
+    const onDiskPaths = new Set<string>();
 
     for (const { project, projectPath } of projects) {
       // Index sessions-index.json
-      await indexSessionsIndex(db, projectPath, project);
+      await indexSessionsIndex(indexDb, projectPath, project);
 
       // Discover session JSONL files with their mtimes, newest first.
       let files: string[];
       try {
-        files = await readdir(projectPath);
+        files = await readDirectory(projectPath);
       } catch {
+        scanComplete = false;
         continue;
       }
       const sessionFiles = await Promise.all(
@@ -1096,11 +1184,14 @@ export async function fullScan(
             return { sessionId: f.replace(/\.jsonl$/, ""), path, mtimeMs };
           }),
       );
+      for (const sessionFile of sessionFiles) {
+        onDiskPaths.add(sessionFile.path);
+      }
       sessionFiles.sort((a, b) => b.mtimeMs - a.mtimeMs);
 
       // Index JSONL files with bounded concurrency.
       await mapLimit(sessionFiles, SCAN_CONCURRENCY, async ({ path }) => {
-        await indexJsonlFile(db, path, project);
+        await indexJsonlFile(indexDb, path, project);
       });
 
       // Index subagents and (re)link parent-child relationships. Linking
@@ -1110,7 +1201,7 @@ export async function fullScan(
         const subagentsDir = join(projectPath, sessionId, "subagents");
         let subFiles: string[];
         try {
-          subFiles = await readdir(subagentsDir);
+          subFiles = await readDirectory(subagentsDir);
         } catch {
           continue;
         }
@@ -1127,29 +1218,35 @@ export async function fullScan(
             continue;
           }
           if (knownMtimes.get(sfPath) !== sfMtime) changed = true;
-          await indexSubagentFile(db, sfPath, sessionId, project);
+          await indexSubagentFile(indexDb, sfPath, sessionId, project);
           subagentJsonlPaths.push(sfPath);
         }
 
         if (changed && subagentJsonlPaths.length > 0) {
           for (const saPath of subagentJsonlPaths) {
-            await linkSubagentParents(db, saPath, basename(saPath, ".jsonl"));
+            await linkSubagentParents(indexDb, saPath, basename(saPath, ".jsonl"));
           }
-          await linkSubagentParents(db, sessionJsonlPath, null);
+          await linkSubagentParents(indexDb, sessionJsonlPath, null);
         }
       }
 
       // Index memory markdown files for this project
-      await scanMemoriesForProject(db, projectsDir, project);
+      await scanMemoriesForProject(indexDb, projectsDir, project);
+    }
+
+    // Pruning is only safe after every project directory was enumerated. A
+    // transient permission or mount failure must leave the existing index intact.
+    if (scanComplete) {
+      pruneDeletedSessions(indexDb, summariesDb, projectsDir, onDiskPaths);
     }
 
     if (tasksDir) {
-      await scanTasksDir(db, tasksDir);
+      await scanTasksDir(indexDb, tasksDir);
     }
 
     if (plansDir) {
-      await scanPlansDir(db, plansDir);
-      await pruneStalePlanLinks(db, plansDir);
+      await scanPlansDir(indexDb, plansDir);
+      await pruneStalePlanLinks(indexDb, plansDir);
     }
   } finally {
     indexingInProgress = false;

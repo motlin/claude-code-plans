@@ -1,4 +1,5 @@
 import { writeFileSync, mkdirSync, renameSync, rmSync } from "node:fs";
+import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { openTestDb, type AppDb } from "../src/lib/db/connection";
@@ -39,7 +40,7 @@ import {
   listCwdsForProject,
 } from "../src/lib/db/queries";
 import * as schema from "../src/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 const testDir = join(tmpdir(), "claude-db-test-" + process.pid);
 let db: AppDb;
@@ -702,13 +703,202 @@ describe("indexer", () => {
       }),
     );
 
-    await fullScan(db.index, testDir);
+    await fullScan(db.index, db.summaries, testDir);
 
     const projects = listProjectsFromDb(db.index);
     expect(projects.map((p) => p.name)).toStrictEqual(["/Users/craig/projects/app"]);
 
     const sessions = db.index.select().from(schema.sessions).all();
     expect(sessions.length).toBe(2);
+  });
+
+  it("prunes a session whose primary transcript was deleted", async () => {
+    const project = "-tmp-alice-project";
+    const projectDir = join(testDir, project);
+    const retainedPath = join(projectDir, "session-alice.jsonl");
+    const deletedPath = join(projectDir, "session-bob.jsonl");
+    mkdirSync(projectDir, { recursive: true });
+    writeFileSync(retainedPath, jsonl({ type: "user", message: { content: "Retain Alice" } }));
+    writeFileSync(deletedPath, jsonl({ type: "user", message: { content: "Delete Bob" } }));
+
+    await fullScan(db.index, db.summaries, testDir);
+    rmSync(deletedPath);
+    await fullScan(db.index, db.summaries, testDir);
+
+    const sessions = db.index
+      .select({ id: schema.sessions.id, filePath: schema.sessions.filePath })
+      .from(schema.sessions)
+      .all();
+    const indexedTranscripts = db.index
+      .select({ path: schema.indexedFiles.path })
+      .from(schema.indexedFiles)
+      .all()
+      .filter((row) => row.path.endsWith(".jsonl"));
+    expect({ indexedTranscripts, sessions }).toStrictEqual({
+      indexedTranscripts: [{ path: retainedPath }],
+      sessions: [{ id: "session-alice", filePath: retainedPath }],
+    });
+  });
+
+  it("preserves metadata when a session transcript moves between projects", async () => {
+    const sessionId = "session-alice";
+    const oldProject = "-tmp-alice-old";
+    const newProject = "-tmp-alice-new";
+    const oldProjectDir = join(testDir, oldProject);
+    const newProjectDir = join(testDir, newProject);
+    const oldPath = join(oldProjectDir, `${sessionId}.jsonl`);
+    const newPath = join(newProjectDir, `${sessionId}.jsonl`);
+    mkdirSync(oldProjectDir, { recursive: true });
+    mkdirSync(newProjectDir, { recursive: true });
+    writeFileSync(
+      oldPath,
+      jsonl({ type: "user", cwd: "/tmp/alice/old", message: { content: "Move Alice" } }),
+    );
+    await fullScan(db.index, db.summaries, testDir);
+    db.index.insert(schema.starredSessions).values({ sessionId, starredAt: 946_684_800_000 }).run();
+    db.summaries
+      .insert(schema.summaries)
+      .values({
+        sessionId,
+        lastMessageId: "message-alice",
+        summary: "Alice moved projects.",
+        generatedAt: 946_684_800_000,
+      })
+      .run();
+
+    renameSync(oldPath, newPath);
+    await fullScan(db.index, db.summaries, testDir);
+
+    const session = db.index
+      .select({
+        id: schema.sessions.id,
+        projectId: schema.sessions.projectId,
+        filePath: schema.sessions.filePath,
+      })
+      .from(schema.sessions)
+      .get();
+    const stars = db.index.select().from(schema.starredSessions).all();
+    const summaries = db.summaries.select().from(schema.summaries).all();
+    const transcriptPaths = db.index
+      .select({ path: schema.indexedFiles.path })
+      .from(schema.indexedFiles)
+      .all()
+      .filter((row) => row.path.endsWith(".jsonl"));
+    expect({ session, stars, summaries, transcriptPaths }).toStrictEqual({
+      session: { id: sessionId, projectId: newProject, filePath: newPath },
+      stars: [{ sessionId, starredAt: 946_684_800_000 }],
+      summaries: [
+        {
+          sessionId,
+          lastMessageId: "message-alice",
+          summary: "Alice moved projects.",
+          generatedAt: 946_684_800_000,
+        },
+      ],
+      transcriptPaths: [{ path: newPath }],
+    });
+  });
+
+  it("prunes every dependent row for a deleted session", async () => {
+    const sessionId = "session-alice";
+    const project = "-tmp-alice-project";
+    const projectDir = join(testDir, project);
+    const sessionPath = join(projectDir, `${sessionId}.jsonl`);
+    const subagentsDir = join(projectDir, sessionId, "subagents");
+    const subagentPath = join(subagentsDir, "agent-alice.jsonl");
+    mkdirSync(subagentsDir, { recursive: true });
+    writeFileSync(
+      sessionPath,
+      jsonl(
+        { type: "user", message: { content: "Ask Alice" } },
+        { type: "assistant", message: { content: "Alice answers" } },
+      ),
+    );
+    writeFileSync(
+      subagentPath,
+      jsonl({
+        type: "assistant",
+        timestamp: "2000-01-01T00:00:00.000Z",
+        message: { content: "Work" },
+      }),
+    );
+    await fullScan(db.index, db.summaries, testDir);
+    db.index
+      .insert(schema.planSessions)
+      .values({ planFilename: "alice-plan.md", sessionId, projectId: project })
+      .run();
+    db.index.insert(schema.starredSessions).values({ sessionId, starredAt: 946_684_800_000 }).run();
+    db.summaries
+      .insert(schema.summaries)
+      .values({
+        sessionId,
+        lastMessageId: "message-alice",
+        summary: "Alice finished.",
+        generatedAt: 946_684_800_000,
+      })
+      .run();
+
+    rmSync(sessionPath);
+    rmSync(join(projectDir, sessionId), { recursive: true });
+    await fullScan(db.index, db.summaries, testDir);
+
+    const indexedPaths = db.index
+      .select({ path: schema.indexedFiles.path })
+      .from(schema.indexedFiles)
+      .all();
+    const messageContentRows = db.index.all(
+      sql`SELECT session_id FROM message_content_fts WHERE session_id = ${sessionId}`,
+    );
+    const sessionSearchRows = db.index.all(
+      sql`SELECT session_id FROM sessions_fts WHERE session_id = ${sessionId}`,
+    );
+    expect({
+      indexedPaths,
+      messageContentRows,
+      planSessions: db.index.select().from(schema.planSessions).all(),
+      sessions: db.index.select().from(schema.sessions).all(),
+      sessionSearchRows,
+      stars: db.index.select().from(schema.starredSessions).all(),
+      subagents: db.index.select().from(schema.subagents).all(),
+      summaries: db.summaries.select().from(schema.summaries).all(),
+    }).toStrictEqual({
+      indexedPaths: [],
+      messageContentRows: [],
+      planSessions: [],
+      sessions: [],
+      sessionSearchRows: [],
+      stars: [],
+      subagents: [],
+      summaries: [],
+    });
+  });
+
+  it("does not prune when a project directory cannot be enumerated", async () => {
+    const project = "-tmp-alice-project";
+    const projectDir = join(testDir, project);
+    const sessionPath = join(projectDir, "session-alice.jsonl");
+    mkdirSync(projectDir, { recursive: true });
+    writeFileSync(sessionPath, jsonl({ type: "user", message: { content: "Retain Alice" } }));
+    await fullScan(db.index, db.summaries, testDir);
+    rmSync(sessionPath);
+
+    await fullScan(db.index, db.summaries, testDir, undefined, undefined, async (directoryPath) => {
+      if (directoryPath === projectDir) throw new Error("Unreadable Alice project fixture");
+      return readdir(directoryPath);
+    });
+
+    const sessions = db.index
+      .select({ id: schema.sessions.id, filePath: schema.sessions.filePath })
+      .from(schema.sessions)
+      .all();
+    const indexedFiles = db.index
+      .select({ path: schema.indexedFiles.path })
+      .from(schema.indexedFiles)
+      .all();
+    expect({ indexedFiles, sessions }).toStrictEqual({
+      indexedFiles: [{ path: sessionPath }],
+      sessions: [{ id: "session-alice", filePath: sessionPath }],
+    });
   });
 
   it("extracts cwd from JSONL attachment lines", async () => {
