@@ -185,6 +185,16 @@ function CopyButton({
   );
 }
 
+export function createSessionCommands(sessionId: string, projectPath: string | null) {
+  const directoryPrefix = projectPath === null ? "" : `cd '${projectPath}' && `;
+  const resumeCommand = `${directoryPrefix}claude -r ${sessionId}`;
+
+  return {
+    resume: resumeCommand,
+    fork: `${resumeCommand} --fork-session`,
+  };
+}
+
 function SessionPage() {
   const params = Route.useParams();
   const queryClient = useQueryClient();
@@ -324,6 +334,8 @@ function SessionPage() {
     );
   }
 
+  const sessionCommands = createSessionCommands(params.id, data.projectPath);
+
   async function handleGenerateSummary() {
     setGenerating(true);
     try {
@@ -397,16 +409,8 @@ function SessionPage() {
               </span>
             )}
             <CopyButton title="Copy session ID" text={params.id} icon={Copy} />
-            <CopyButton
-              title="Copy resume command"
-              text={`claude -r ${params.id}`}
-              icon={Terminal}
-            />
-            <CopyButton
-              title="Copy fork command"
-              text={`claude -r ${params.id} --fork-session`}
-              icon={GitFork}
-            />
+            <CopyButton title="Copy resume command" text={sessionCommands.resume} icon={Terminal} />
+            <CopyButton title="Copy fork command" text={sessionCommands.fork} icon={GitFork} />
             <a
               href={`/api/raw?sessionId=${params.id}`}
               download
