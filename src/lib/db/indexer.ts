@@ -11,7 +11,7 @@ import {
   AttachmentRecordSchema,
   TaskFileSchema,
 } from "../schemas";
-import { decodeProjectDir, resolveProjectPath } from "../memory";
+import { decodeProjectDir, encodeProjectPath, resolveProjectPath } from "../memory";
 import { extractSessionTitle } from "../sessions";
 import { extractTitle, extractTitleFromContent } from "../markdown-utils";
 import * as schema from "./schema";
@@ -203,7 +203,8 @@ export async function indexJsonlFile(
   const sessionId = basename(filePath, ".jsonl");
   const planFilenames = new Set<string>();
   let customTitle: string | undefined;
-  let sessionCwd: string | undefined;
+  let lastSessionCwd: string | undefined;
+  let anchoredSessionCwd: string | undefined;
   let sessionGitBranch: string | undefined;
   const textChunks: string[] = [];
 
@@ -249,12 +250,14 @@ export async function indexJsonlFile(
         }
       }
 
-      // Extract cwd from early lines (attachment, system, or init lines carry it)
-      if (!sessionCwd && line.includes('"cwd"')) {
+      if (line.includes('"cwd"')) {
         try {
           const parsed = JSON.parse(line) as { cwd?: string };
           if (typeof parsed.cwd === "string") {
-            sessionCwd = parsed.cwd;
+            lastSessionCwd = parsed.cwd;
+            if (encodeProjectPath(parsed.cwd) === project) {
+              anchoredSessionCwd = parsed.cwd;
+            }
           }
         } catch {
           // skip
@@ -312,6 +315,8 @@ export async function indexJsonlFile(
   } finally {
     rl.close();
   }
+
+  const sessionCwd = anchoredSessionCwd ?? lastSessionCwd;
 
   // Upsert plan links
   for (const planFilename of planFilenames) {

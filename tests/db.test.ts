@@ -734,6 +734,66 @@ describe("indexer", () => {
     expect(session.cwd).toBe("/Users/craig/projects/app");
   });
 
+  it("keeps the last cwd anchored to the transcript project after shell directory drift", async () => {
+    const project = "-tmp-a";
+    const projectDir = join(testDir, project);
+    const jsonlPath = join(projectDir, "shell-cd.jsonl");
+    mkdirSync(projectDir, { recursive: true });
+    writeFileSync(
+      jsonlPath,
+      jsonl({ type: "attachment", cwd: "/tmp/a" }, { type: "attachment", cwd: "/tmp/a/src" }),
+    );
+
+    await indexJsonlFile(db.index, jsonlPath, project);
+
+    const session = db.index
+      .select({ cwd: schema.sessions.cwd })
+      .from(schema.sessions)
+      .where(eq(schema.sessions.id, "shell-cd"))
+      .get();
+    expect(session).toStrictEqual({ cwd: "/tmp/a" });
+  });
+
+  it("uses the last cwd anchored to a project after the transcript moves", async () => {
+    const project = "-tmp-b";
+    const projectDir = join(testDir, project);
+    const jsonlPath = join(projectDir, "slash-cd.jsonl");
+    mkdirSync(projectDir, { recursive: true });
+    writeFileSync(
+      jsonlPath,
+      jsonl({ type: "attachment", cwd: "/tmp/a" }, { type: "attachment", cwd: "/tmp/b" }),
+    );
+
+    await indexJsonlFile(db.index, jsonlPath, project);
+
+    const session = db.index
+      .select({ cwd: schema.sessions.cwd })
+      .from(schema.sessions)
+      .where(eq(schema.sessions.id, "slash-cd"))
+      .get();
+    expect(session).toStrictEqual({ cwd: "/tmp/b" });
+  });
+
+  it("falls back to the last cwd when none match the transcript project", async () => {
+    const project = "-tmp-c";
+    const projectDir = join(testDir, project);
+    const jsonlPath = join(projectDir, "unanchored-cwd.jsonl");
+    mkdirSync(projectDir, { recursive: true });
+    writeFileSync(
+      jsonlPath,
+      jsonl({ type: "attachment", cwd: "/tmp/a" }, { type: "attachment", cwd: "/tmp/b" }),
+    );
+
+    await indexJsonlFile(db.index, jsonlPath, project);
+
+    const session = db.index
+      .select({ cwd: schema.sessions.cwd })
+      .from(schema.sessions)
+      .where(eq(schema.sessions.id, "unanchored-cwd"))
+      .get();
+    expect(session).toStrictEqual({ cwd: "/tmp/b" });
+  });
+
   it("indexes cwd from sessions-index.json projectPath", async () => {
     const projectDir = join(testDir, "-Users-craig-projects-app");
     mkdirSync(projectDir, { recursive: true });

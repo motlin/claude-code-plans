@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { tmpdir, homedir } from "node:os";
 import {
   decodeProjectDir,
+  encodeProjectPath,
   listMemories,
   readMemory,
   writeMemory,
@@ -18,6 +19,12 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(testDir, { recursive: true, force: true });
+});
+
+describe("encodeProjectPath", () => {
+  it("collapses path punctuation to hyphens", () => {
+    expect(["/", ".", "_", "-"].map(encodeProjectPath)).toStrictEqual(["-", "-", "-", "-"]);
+  });
 });
 
 describe("decodeProjectDir", () => {

@@ -17,6 +17,10 @@ interface ProjectGroup {
   memories: MemoryEntry[];
 }
 
+export function encodeProjectPath(dirPath: string): string {
+  return dirPath.replace(/[^a-zA-Z0-9]/g, "-");
+}
+
 export function decodeProjectDir(encoded: string, projectPath?: string): string {
   if (projectPath) {
     const segments = projectPath.split("/");
