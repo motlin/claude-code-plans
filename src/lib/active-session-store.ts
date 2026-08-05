@@ -21,6 +21,23 @@ export interface ActiveSessionEntry {
    * socket disambiguates panes across multiple tmux servers.
    */
   tmuxServerSocket: string;
+  /**
+   * herdr pane id (e.g. `w1:p1`) captured in `HERDR_PANE_ID` when the Claude
+   * process launches. It is re-derived from every fresh env snapshot, but can
+   * become stale after a cross-workspace move because herdr reassigns
+   * `pane_id` while preserving `terminal_id`. Empty when outside herdr.
+   */
+  herdrPane: string;
+  /**
+   * herdr workspace id containing `herdrPane`, taken from
+   * `claude_env.HERDR_WORKSPACE_ID`. Empty when outside herdr.
+   */
+  herdrWorkspace: string;
+  /**
+   * herdr JSON API socket path, taken from `claude_env.HERDR_SOCKET_PATH`.
+   * Empty when outside herdr.
+   */
+  herdrSocketPath: string;
 }
 
 /**
@@ -40,16 +57,32 @@ function deriveTmux(claudeEnv: Record<string, string> | undefined): {
   return { tmuxPane, tmuxServerSocket };
 }
 
+function deriveHerdr(claudeEnv: Record<string, string> | undefined): {
+  herdrPane: string;
+  herdrWorkspace: string;
+  herdrSocketPath: string;
+} {
+  return {
+    herdrPane: claudeEnv?.["HERDR_PANE_ID"] ?? "",
+    herdrWorkspace: claudeEnv?.["HERDR_WORKSPACE_ID"] ?? "",
+    herdrSocketPath: claudeEnv?.["HERDR_SOCKET_PATH"] ?? "",
+  };
+}
+
 /**
- * Stamp a fresh `claude_env` snapshot onto an entry, re-deriving its tmux
- * pane/socket. Callers guard on a present `claudeEnv` so a missing env never
+ * Stamp a fresh `claude_env` snapshot onto an entry, re-deriving its terminal
+ * placement. Callers guard on a present `claudeEnv` so a missing env never
  * clobbers a previously known mapping.
  */
 function applyClaudeEnv(entry: ActiveSessionEntry, claudeEnv: Record<string, string>): void {
   entry.claudeEnv = claudeEnv;
   const { tmuxPane, tmuxServerSocket } = deriveTmux(claudeEnv);
+  const { herdrPane, herdrWorkspace, herdrSocketPath } = deriveHerdr(claudeEnv);
   entry.tmuxPane = tmuxPane;
   entry.tmuxServerSocket = tmuxServerSocket;
+  entry.herdrPane = herdrPane;
+  entry.herdrWorkspace = herdrWorkspace;
+  entry.herdrSocketPath = herdrSocketPath;
 }
 
 const store = hmrPersist("activeSessionStore", () => new Map<string, ActiveSessionEntry>());
@@ -71,11 +104,12 @@ export function markSessionActive(
   if (existing) {
     existing.lastActivity = Date.now();
     existing.cwd = meta.cwd;
-    // Only re-derive the tmux mapping when a fresh claude_env is supplied.
+    // Only re-derive terminal mappings when a fresh claude_env is supplied.
     // Callers without one (e.g. CwdChanged) must not clobber a known pane.
     if (meta.claudeEnv) applyClaudeEnv(existing, meta.claudeEnv);
   } else {
     const { tmuxPane, tmuxServerSocket } = deriveTmux(meta.claudeEnv);
+    const { herdrPane, herdrWorkspace, herdrSocketPath } = deriveHerdr(meta.claudeEnv);
     store.set(sessionId, {
       sessionId,
       cwd: meta.cwd,
@@ -85,6 +119,9 @@ export function markSessionActive(
       claudeEnv: meta.claudeEnv ?? {},
       tmuxPane,
       tmuxServerSocket,
+      herdrPane,
+      herdrWorkspace,
+      herdrSocketPath,
     });
   }
 }
@@ -100,10 +137,9 @@ export function touchSession(
   const entry = store.get(sessionId);
   if (entry) {
     entry.lastActivity = Date.now();
-    // Re-stamp the tmux mapping when a fresh claude_env is supplied (every
-    // UserPromptSubmit) so the pane stays correct after a `claude --resume`
-    // into a new pane. Touches without an env (Stop, PostToolUse, …) leave the
-    // existing mapping untouched.
+    // Re-stamp terminal mappings when a fresh claude_env is supplied (every
+    // UserPromptSubmit) so placement stays correct after a `claude --resume`.
+    // Touches without an env (Stop, PostToolUse, …) leave mappings untouched.
     if (meta?.claudeEnv) applyClaudeEnv(entry, meta.claudeEnv);
   }
 }

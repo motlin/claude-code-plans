@@ -78,6 +78,9 @@ describe("sweepSessions", () => {
       claudeEnv: {},
       tmuxPane: "",
       tmuxServerSocket: "",
+      herdrPane: "",
+      herdrWorkspace: "",
+      herdrSocketPath: "",
     });
 
     store.set("fresh", {
@@ -89,6 +92,9 @@ describe("sweepSessions", () => {
       claudeEnv: {},
       tmuxPane: "",
       tmuxServerSocket: "",
+      herdrPane: "",
+      herdrWorkspace: "",
+      herdrSocketPath: "",
     });
 
     sweepSessions(store);

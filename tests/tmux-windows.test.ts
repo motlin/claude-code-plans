@@ -12,6 +12,9 @@ function entry(overrides: Partial<ActiveSessionEntry>): ActiveSessionEntry {
     claudeEnv: {},
     tmuxPane: "%1",
     tmuxServerSocket: "/tmp/tmux-501/default",
+    herdrPane: "",
+    herdrWorkspace: "",
+    herdrSocketPath: "",
     ...overrides,
   };
 }

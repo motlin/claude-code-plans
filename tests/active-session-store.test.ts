@@ -83,6 +83,27 @@ describe("active-session-store", () => {
     expect(entry.tmuxServerSocket).toBe("");
   });
 
+  it("captures herdr placement from claudeEnv", () => {
+    markSessionActive("s1", {
+      cwd: "/projects/foo",
+      claudeEnv: {
+        HERDR_PANE_ID: "w1:p1",
+        HERDR_WORKSPACE_ID: "w1",
+        HERDR_SOCKET_PATH: "/tmp/test/herdr.sock",
+      },
+    });
+    const entry = getActiveSessionEntries()[0]!;
+    expect({
+      herdrPane: entry.herdrPane,
+      herdrWorkspace: entry.herdrWorkspace,
+      herdrSocketPath: entry.herdrSocketPath,
+    }).toStrictEqual({
+      herdrPane: "w1:p1",
+      herdrWorkspace: "w1",
+      herdrSocketPath: "/tmp/test/herdr.sock",
+    });
+  });
+
   it("re-stamps tmux fields on touch with claudeEnv", () => {
     markSessionActive("s1", {
       cwd: "/projects/foo",

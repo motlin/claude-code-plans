@@ -60,6 +60,9 @@ function makeStore() {
           claudeEnv: call.meta.claudeEnv ?? {},
           tmuxPane: call.meta.claudeEnv?.["TMUX_PANE"] ?? "",
           tmuxServerSocket: call.meta.claudeEnv?.["TMUX"]?.split(",")[0] ?? "",
+          herdrPane: call.meta.claudeEnv?.["HERDR_PANE_ID"] ?? "",
+          herdrWorkspace: call.meta.claudeEnv?.["HERDR_WORKSPACE_ID"] ?? "",
+          herdrSocketPath: call.meta.claudeEnv?.["HERDR_SOCKET_PATH"] ?? "",
         };
       },
     },

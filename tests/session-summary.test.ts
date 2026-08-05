@@ -37,6 +37,9 @@ describe("toActiveSessionPayload", () => {
       claudeEnv: {},
       tmuxPane: "",
       tmuxServerSocket: "",
+      herdrPane: "",
+      herdrWorkspace: "",
+      herdrSocketPath: "",
     };
 
     const payload = toActiveSessionPayload(entry);
