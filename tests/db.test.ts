@@ -1,4 +1,4 @@
-import { writeFileSync, mkdirSync, rmSync } from "node:fs";
+import { writeFileSync, mkdirSync, renameSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { openTestDb, type AppDb } from "../src/lib/db/connection";
@@ -601,6 +601,44 @@ describe("indexer", () => {
       .get();
     if (!after) throw new Error("Expected session mtime-sess after re-index");
     expect(after.mtimeMs).toBeGreaterThan(oldMtime);
+  });
+
+  it("updates the session location when its JSONL moves to another project", async () => {
+    const sessionId = "00000000-0000-4000-8000-000000000001";
+    const oldProject = "-tmp-a";
+    const newProject = "-tmp-b";
+    const oldProjectDir = join(testDir, oldProject);
+    const newProjectDir = join(testDir, newProject);
+    const oldFilePath = join(oldProjectDir, `${sessionId}.jsonl`);
+    const newFilePath = join(newProjectDir, `${sessionId}.jsonl`);
+    mkdirSync(oldProjectDir, { recursive: true });
+    mkdirSync(newProjectDir, { recursive: true });
+    writeFileSync(
+      oldFilePath,
+      jsonl({
+        type: "user",
+        message: { role: "user", content: "Move this test session" },
+      }),
+    );
+
+    await indexJsonlFile(db.index, oldFilePath, oldProject);
+    renameSync(oldFilePath, newFilePath);
+    await indexJsonlFile(db.index, newFilePath, newProject);
+
+    const session = db.index
+      .select({ filePath: schema.sessions.filePath, projectId: schema.sessions.projectId })
+      .from(schema.sessions)
+      .where(eq(schema.sessions.id, sessionId))
+      .get();
+    const project = db.index
+      .select({ id: schema.projects.id })
+      .from(schema.projects)
+      .where(eq(schema.projects.id, newProject))
+      .get();
+    expect({ project, session }).toStrictEqual({
+      project: { id: newProject },
+      session: { filePath: newFilePath, projectId: newProject },
+    });
   });
 
   it("creates session from JSONL when not in index", async () => {

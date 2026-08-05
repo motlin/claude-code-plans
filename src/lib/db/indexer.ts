@@ -326,8 +326,27 @@ export async function indexJsonlFile(
     .from(schema.sessions)
     .where(eq(schema.sessions.id, sessionId))
     .get();
+  const projectPath = await resolveProjectPath(project);
+  const projectName = projectPath ? projectPath.split("/").pop()! : decodeProjectDir(project);
+
+  // Ensure project exists
+  db.insert(schema.projects)
+    .values({
+      id: project,
+      name: projectName,
+      projectPath,
+      updatedAt: fileStat.mtimeMs,
+    })
+    .onConflictDoUpdate({
+      target: schema.projects.id,
+      set: { name: projectName, projectPath, updatedAt: fileStat.mtimeMs },
+    })
+    .run();
+
   if (existingSession) {
     const updates: Record<string, unknown> = { mtimeMs: fileStat.mtimeMs };
+    updates["filePath"] = filePath;
+    updates["projectId"] = project;
     if (customTitle) {
       updates["customTitle"] = customTitle;
       updates["title"] = customTitle;
@@ -342,22 +361,6 @@ export async function indexJsonlFile(
   } else {
     const firstMsg = await readFirstUserMessage(filePath);
     const title = customTitle ?? extractSessionTitle(firstMsg ?? "", sessionId);
-    const projectPath = await resolveProjectPath(project);
-    const projectName = projectPath ? projectPath.split("/").pop()! : decodeProjectDir(project);
-
-    // Ensure project exists
-    db.insert(schema.projects)
-      .values({
-        id: project,
-        name: projectName,
-        projectPath,
-        updatedAt: fileStat.mtimeMs,
-      })
-      .onConflictDoUpdate({
-        target: schema.projects.id,
-        set: { name: projectName, projectPath, updatedAt: fileStat.mtimeMs },
-      })
-      .run();
 
     db.insert(schema.sessions)
       .values({
