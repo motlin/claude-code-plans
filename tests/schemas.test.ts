@@ -371,6 +371,7 @@ describe("AssistantRecordSchema", () => {
       slug: "radiant-beaming-kay",
       effort: "high",
       healsDistinctCarrier: true,
+      isAbortedMidStream: true,
       message: {
         ...assistantMessageFields,
         content: [{ type: "text", text: "Hi" }],
@@ -522,6 +523,17 @@ describe("JsonlRecordSchema", () => {
       toolDenialKind: "permission-rule",
     });
     expect(result.success).toBe(true);
+  });
+
+  it("parses user records interrupted by shutdown", () => {
+    const record = {
+      type: "user",
+      ...baseFields,
+      message: { role: "user", content: "Continue the task" },
+      interruptedByShutdown: true,
+    };
+
+    expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
   });
 
   it("parses assistant records", () => {
@@ -745,7 +757,7 @@ describe("JsonlRecordSchema", () => {
   });
 
   it("parses worktree state with the pre-entry directory", () => {
-    const result = JsonlRecordSchema.safeParse({
+    const record = {
       type: "worktree-state",
       sessionId: "session-100",
       worktreeSession: {
@@ -756,8 +768,26 @@ describe("JsonlRecordSchema", () => {
         worktreeBranch: "test/alice-worktree",
         sessionId: "session-100",
       },
-    });
-    expect(result.success).toBe(true);
+    };
+
+    expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+  });
+
+  it("parses hook-based worktree state without a Git branch", () => {
+    const record = {
+      type: "worktree-state",
+      sessionId: "session-100",
+      worktreeSession: {
+        originalCwd: "/tmp/test/project",
+        preEnterOriginalCwd: "/tmp/test/project",
+        worktreePath: "/tmp/test/worktree",
+        worktreeName: "alice-worktree",
+        sessionId: "session-100",
+        hookBased: true,
+      },
+    };
+
+    expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
   });
 
   it("parses user records with agentId (subagent sessions)", () => {

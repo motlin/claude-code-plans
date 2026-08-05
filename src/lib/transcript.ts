@@ -512,6 +512,7 @@ function processRecordBatch(
     if (record.type === "worktree-state") {
       const ws = record.worktreeSession;
       if (ws === undefined || ws === null) continue;
+      if (ws.worktreeBranch === undefined) continue;
       // Worktree state is re-emitted on every prompt; only render changes.
       const worktreeKey = JSON.stringify([
         ws.worktreeName,

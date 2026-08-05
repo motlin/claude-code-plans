@@ -1150,4 +1150,22 @@ describe("worktree state lines", () => {
     const records = [{ type: "worktree-state", worktreeSession: null }];
     expect(processTranscript(records).lines).toStrictEqual([]);
   });
+
+  it("skips hook-based worktree sessions without branch metadata", () => {
+    const records = [
+      {
+        type: "worktree-state",
+        worktreeSession: {
+          originalCwd: "/tmp/test/project",
+          preEnterOriginalCwd: "/tmp/test/project",
+          worktreePath: "/tmp/test/worktree",
+          worktreeName: "alice-worktree",
+          sessionId: "session-100",
+          hookBased: true,
+        },
+      },
+    ];
+
+    expect(processTranscript(records).lines).toStrictEqual([]);
+  });
 });

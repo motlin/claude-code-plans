@@ -196,6 +196,7 @@ export const UserRecordSchema = z
     mcpMeta: z.record(z.string(), JsonValueSchema).optional(),
     origin: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
     interruptedMessageId: z.string().optional(),
+    interruptedByShutdown: z.boolean().optional(),
     userFeedback: z.string().optional(),
   })
   .strict();
@@ -233,6 +234,7 @@ export const AssistantRecordSchema = z
     attributionMcpTool: z.string().optional(),
     errorDetails: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
     healsDistinctCarrier: z.boolean().optional(),
+    isAbortedMidStream: z.boolean().optional(),
   })
   .strict();
 
@@ -813,13 +815,23 @@ const WorktreeSessionSchema = z
     preEnterOriginalCwd: z.string().optional(),
     worktreePath: z.string(),
     worktreeName: z.string(),
-    worktreeBranch: z.string(),
+    worktreeBranch: z.string().optional(),
     sessionId: z.string(),
     originalBranch: z.string().optional(),
     originalHeadCommit: z.string().optional(),
     enteredExisting: z.boolean().optional(),
+    hookBased: z.boolean().optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((session, context) => {
+    if (session.worktreeBranch === undefined && session.hookBased !== true) {
+      context.addIssue({
+        code: "custom",
+        path: ["worktreeBranch"],
+        message: "Required for non-hook worktree sessions",
+      });
+    }
+  });
 
 const RelocatedRecordSchema = z
   .object({
