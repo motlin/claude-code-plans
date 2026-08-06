@@ -1,9 +1,15 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { z } from "zod";
 
 import { ACTIVE_SESSION_WINDOW_MS } from "../lib/active-session-window";
 
 type SubagentView = "tree" | "gantt" | "sequence";
 export type Verbosity = "normal" | "thinking" | "verbose";
+
+export interface LinkCategoryRule {
+  label: string;
+  hostPattern: string;
+}
 
 export interface Settings {
   showThinking: boolean;
@@ -31,6 +37,8 @@ export interface Settings {
   desktopNotifications: boolean;
 
   verbosity: Verbosity;
+
+  linkCategoryRules: LinkCategoryRule[];
 }
 
 export const DEFAULTS: Settings = {
@@ -59,6 +67,8 @@ export const DEFAULTS: Settings = {
   desktopNotifications: false,
 
   verbosity: "normal",
+
+  linkCategoryRules: [],
 };
 
 const STORAGE_KEYS: Record<keyof Settings, string> = {
@@ -79,7 +89,17 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
   activeTimeoutSec: "ccp-active-timeout",
   desktopNotifications: "ccp-desktop-notifications",
   verbosity: "ccp-verbosity",
+  linkCategoryRules: "ccp-link-category-rules",
 };
+
+const LINK_CATEGORY_RULES_SCHEMA = z.array(
+  z
+    .object({
+      label: z.string(),
+      hostPattern: z.string(),
+    })
+    .strict(),
+);
 
 const VERBOSITY_PRESETS: Record<Verbosity, Partial<Settings>> = {
   normal: {
@@ -132,6 +152,14 @@ function readStoredValue<K extends keyof Settings>(key: K): Settings[K] | undefi
   if (stored === null) return undefined;
 
   const defaultValue = DEFAULTS[key];
+  if (Array.isArray(defaultValue)) {
+    try {
+      const parsed = LINK_CATEGORY_RULES_SCHEMA.safeParse(JSON.parse(stored));
+      return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
+    } catch {
+      return undefined;
+    }
+  }
   if (typeof defaultValue === "boolean") {
     return (stored === "true") as Settings[K];
   }
@@ -143,7 +171,10 @@ function readStoredValue<K extends keyof Settings>(key: K): Settings[K] | undefi
 }
 
 function writeStoredValue<K extends keyof Settings>(key: K, value: Settings[K]): void {
-  localStorage.setItem(STORAGE_KEYS[key], String(value));
+  localStorage.setItem(
+    STORAGE_KEYS[key],
+    Array.isArray(value) ? JSON.stringify(value) : String(value),
+  );
 }
 
 interface SettingsContextValue {

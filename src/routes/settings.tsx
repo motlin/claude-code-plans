@@ -1,6 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Bell, Eye, Gauge, GitFork, Info, Palette, Sparkles, Webhook, Wrench } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Bell,
+  Eye,
+  Gauge,
+  GitFork,
+  Info,
+  Link2,
+  Palette,
+  Plus,
+  Sparkles,
+  Trash2,
+  Webhook,
+  Wrench,
+} from "lucide-react";
 import { useSettings, type Settings, type Verbosity } from "../components/settings-provider";
 import { useTheme } from "../components/theme-provider";
 
@@ -16,6 +31,9 @@ type BooleanSettingKey = {
 }[keyof Settings];
 type NumberSettingKey = {
   [K in keyof Settings]: Settings[K] extends number ? K : never;
+}[keyof Settings];
+type StringSettingKey = {
+  [K in keyof Settings]: Settings[K] extends string ? K : never;
 }[keyof Settings];
 
 interface ToggleRowProps {
@@ -118,19 +136,14 @@ function DesktopNotificationsRow() {
   );
 }
 
-interface SelectRowProps<K extends keyof Settings> {
+interface SelectRowProps {
   label: string;
   description: string;
-  settingKey: K;
-  options: Array<{ value: Settings[K]; label: string }>;
+  settingKey: StringSettingKey;
+  options: Array<{ value: Settings[StringSettingKey]; label: string }>;
 }
 
-function SelectRow<K extends keyof Settings>({
-  label,
-  description,
-  settingKey,
-  options,
-}: SelectRowProps<K>) {
+function SelectRow({ label, description, settingKey, options }: SelectRowProps) {
   const { settings, setSetting } = useSettings();
   const current = settings[settingKey];
 
@@ -141,12 +154,12 @@ function SelectRow<K extends keyof Settings>({
         <div className="text-xs text-text-500">{description}</div>
       </div>
       <select
-        value={String(current)}
-        onChange={(e) => setSetting(settingKey, e.target.value as Settings[K])}
+        value={current}
+        onChange={(e) => setSetting(settingKey, e.target.value as Settings[StringSettingKey])}
         className="rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
       >
         {options.map((option) => (
-          <option key={String(option.value)} value={String(option.value)}>
+          <option key={option.value} value={option.value}>
             {option.label}
           </option>
         ))}
@@ -302,6 +315,124 @@ function ThemeRow() {
   );
 }
 
+export function LinkCategoryRulesSection() {
+  const { settings, setSetting } = useSettings();
+  const rules = settings.linkCategoryRules;
+
+  function replaceRule(index: number, nextRule: Settings["linkCategoryRules"][number]): void {
+    setSetting(
+      "linkCategoryRules",
+      rules.map((rule, ruleIndex) => (ruleIndex === index ? nextRule : rule)),
+    );
+  }
+
+  function moveRule(index: number, destinationIndex: number): void {
+    if (destinationIndex < 0 || destinationIndex >= rules.length) return;
+
+    const reordered = [...rules];
+    const selected = reordered[index];
+    const destination = reordered[destinationIndex];
+    if (selected === undefined || destination === undefined) return;
+    reordered[index] = destination;
+    reordered[destinationIndex] = selected;
+    setSetting("linkCategoryRules", reordered);
+  }
+
+  return (
+    <Section icon={Link2} title="Link categories">
+      <div className="py-2">
+        <p className="text-xs text-text-500">
+          Match hostnames to custom categories in the order shown. Patterns can include globs such
+          as
+          <code className="mx-1 rounded bg-bg-200 px-1 py-0.5">*.example.com</code>
+          or exact hosts such as
+          <code className="ml-1 rounded bg-bg-200 px-1 py-0.5">internal-wiki</code>.
+        </p>
+
+        <div className="mt-3 space-y-2">
+          {rules.map((rule, index) => (
+            <div
+              key={index}
+              role="group"
+              aria-label={`Link category rule ${index + 1}`}
+              className="grid grid-cols-1 gap-2 rounded-md border border-border-300/15 bg-bg-100 p-2 sm:grid-cols-[1fr_1fr_auto]"
+            >
+              <label className="text-xs text-text-500">
+                Label for rule {index + 1}
+                <input
+                  type="text"
+                  value={rule.label}
+                  onChange={(event) => replaceRule(index, { ...rule, label: event.target.value })}
+                  className="mt-1 block w-full rounded-md border border-border-300/15 bg-bg-100 px-2 py-1.5 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+                />
+              </label>
+              <label className="text-xs text-text-500">
+                Host pattern for rule {index + 1}
+                <input
+                  type="text"
+                  value={rule.hostPattern}
+                  placeholder="*.example.com"
+                  onChange={(event) =>
+                    replaceRule(index, { ...rule, hostPattern: event.target.value })
+                  }
+                  className="mt-1 block w-full rounded-md border border-border-300/15 bg-bg-100 px-2 py-1.5 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+                />
+              </label>
+              <div className="flex items-end gap-1">
+                <button
+                  type="button"
+                  aria-label={`Move rule ${index + 1} up`}
+                  title="Move up"
+                  disabled={index === 0}
+                  onClick={() => moveRule(index, index - 1)}
+                  className="rounded-md border border-border-300/15 p-1.5 text-text-300 transition-colors hover:bg-bg-200 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ArrowUp className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Move rule ${index + 1} down`}
+                  title="Move down"
+                  disabled={index === rules.length - 1}
+                  onClick={() => moveRule(index, index + 1)}
+                  className="rounded-md border border-border-300/15 p-1.5 text-text-300 transition-colors hover:bg-bg-200 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ArrowDown className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Delete rule ${index + 1}`}
+                  title="Delete rule"
+                  onClick={() =>
+                    setSetting(
+                      "linkCategoryRules",
+                      rules.filter((_, ruleIndex) => ruleIndex !== index),
+                    )
+                  }
+                  className="rounded-md border border-border-300/15 p-1.5 text-red-600 transition-colors hover:bg-red-600/10"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={() =>
+            setSetting("linkCategoryRules", [...rules, { label: "", hostPattern: "" }])
+          }
+          className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-border-300/15 px-3 py-1.5 text-sm text-text-300 transition-colors hover:bg-bg-200"
+        >
+          <Plus className="h-4 w-4" />
+          Add rule
+        </button>
+      </div>
+    </Section>
+  );
+}
+
 function SettingsPage() {
   const { resetAll } = useSettings();
   const [confirmReset, setConfirmReset] = useState(false);
@@ -405,6 +536,8 @@ function SettingsPage() {
         <Section icon={Bell} title="Notifications">
           <DesktopNotificationsRow />
         </Section>
+
+        <LinkCategoryRulesSection />
 
         <Section icon={Sparkles} title="AI Features">
           <ToggleRow
