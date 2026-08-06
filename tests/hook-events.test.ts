@@ -1,10 +1,26 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
   SSE_EVENTS,
+  HERDR_EVENTS,
   DOMAIN_EVENTS,
   HookEventEnvelope,
   diffEntityMaps,
 } from "../src/lib/hook-events";
+
+describe("HERDR_EVENTS", () => {
+  it("defines the herdr bridge event namespace", () => {
+    expect(HERDR_EVENTS).toStrictEqual({
+      PANES_SNAPSHOT: "herdr:panes-snapshot",
+      PANE_CREATED: "herdr:pane-created",
+      PANE_CLOSED: "herdr:pane-closed",
+      PANE_UPDATED: "herdr:pane-updated",
+      PANE_MOVED: "herdr:pane-moved",
+      PANE_EXITED: "herdr:pane-exited",
+      PANE_AGENT_DETECTED: "herdr:pane-agent-detected",
+      PANE_AGENT_STATUS_CHANGED: "herdr:pane-agent-status-changed",
+    });
+  });
+});
 
 describe("HookEventEnvelope", () => {
   const baseEnvelope = {

@@ -36,6 +36,18 @@ export const SSE_EVENTS = {
   CONTENT_UPDATED: "content:updated",
 } as const;
 
+/** Events emitted by the process-wide herdr subscription bridge. */
+export const HERDR_EVENTS = {
+  PANES_SNAPSHOT: "herdr:panes-snapshot",
+  PANE_CREATED: "herdr:pane-created",
+  PANE_CLOSED: "herdr:pane-closed",
+  PANE_UPDATED: "herdr:pane-updated",
+  PANE_MOVED: "herdr:pane-moved",
+  PANE_EXITED: "herdr:pane-exited",
+  PANE_AGENT_DETECTED: "herdr:pane-agent-detected",
+  PANE_AGENT_STATUS_CHANGED: "herdr:pane-agent-status-changed",
+} as const;
+
 /**
  * Domain-level delta events. Payloads carry the data needed to patch the
  * TanStack Query cache client-side without a refetch. The server is

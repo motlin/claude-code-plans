@@ -116,6 +116,14 @@
     {
       "file": "src/lib/watcher.ts",
       "exports": ["*"]
+    },
+    {
+      "file": "src/lib/herdr/availability.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/lib/herdr/subscribe.ts",
+      "exports": ["*"]
     }
   ],
   "duplicates": {

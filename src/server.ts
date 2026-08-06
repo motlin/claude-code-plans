@@ -7,6 +7,7 @@ import { startSweep } from "./lib/active-session-store";
 import { startNotificationsSweep } from "./lib/notifications-store";
 import { getCacheDir } from "./lib/db/connection";
 import { initPendingApprovalsCache } from "./lib/db/pending-approvals-cache";
+import { startHerdrEventBridge } from "./lib/herdr/subscribe";
 
 const PLANS_DIR = join(homedir(), ".claude", "plans");
 const PROJECTS_DIR = join(homedir(), ".claude", "projects");
@@ -52,6 +53,7 @@ void (async () => {
 
   startSweep();
   startNotificationsSweep();
+  startHerdrEventBridge();
 })();
 
 export default createServerEntry({
