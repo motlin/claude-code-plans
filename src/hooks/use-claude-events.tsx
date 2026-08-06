@@ -37,6 +37,7 @@ import { toMdSlug } from "../lib/md-slug";
 import { getSubagentLifecycleKey } from "../lib/subagents";
 import { observeSessionState } from "../lib/unread-store";
 import type { ActivityState } from "../lib/session-state";
+import type { Statusline } from "../lib/api/statusline";
 
 // ---------------------------------------------------------------------------
 // State types
@@ -1251,21 +1252,19 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
 // a separate connection (which wastes resources and can cause instability).
 // ---------------------------------------------------------------------------
 
-export function useStatusline(sessionId: string): Record<string, unknown> | null {
+export function useStatusline(sessionId: string): Statusline | null {
   const ctx = useContext(ClaudeEventsContext);
-  const [data, setData] = useState<Record<string, unknown> | null>(null);
+  const [data, setData] = useState<Statusline | null>(null);
 
   const fetchStatusline = useCallback(async () => {
     try {
       const { apiFetch } = await import("../lib/api/client");
-      const { StatuslineResponse } = await import("../lib/api/sessions");
+      const { StatuslineResponse } = await import("../lib/api/statusline");
       const result = await apiFetch(
         `/api/sessions/${encodeURIComponent(sessionId)}/statusline`,
         StatuslineResponse,
       );
-      if (result) {
-        setData(result as Record<string, unknown>);
-      }
+      if (result) setData(result);
     } catch {
       // statusline not available
     }

@@ -84,8 +84,6 @@ export const TranscriptResponse = z.object({
 });
 export type TranscriptData = z.infer<typeof TranscriptResponse>;
 
-export const StatuslineResponse = z.record(z.string(), JsonValueSchema).nullable();
-
 const RawJsonlLineSchema = z.object({
   raw: z.string(),
   uuid: z.string().optional(),

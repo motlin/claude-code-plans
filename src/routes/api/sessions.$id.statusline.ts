@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { StatuslineResponse } from "../../lib/api/sessions";
+import { StatuslineResponse } from "../../lib/api/statusline";
 
 export const Route = createFileRoute("/api/sessions/$id/statusline")({
   server: {
