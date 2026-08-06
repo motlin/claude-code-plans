@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { HookMutationResponse } from "../../lib/api/hooks";
+import { rejectCrossSite } from "../../lib/same-origin-guard";
 
 const HooksMutationBody = z.object({ port: z.number().optional() });
 
@@ -14,6 +15,9 @@ export const Route = createFileRoute("/api/hooks")({
   server: {
     handlers: {
       POST: async ({ request }: { request: Request }) => {
+        const rejection = rejectCrossSite(request);
+        if (rejection) return rejection;
+
         const { claudeHome, join } = await claudeHomeJoin();
         const { generateHooksConfig } = await import("../../lib/hook-config");
         const { readFile, writeFile, mkdir } = await import("node:fs/promises");
@@ -60,6 +64,9 @@ export const Route = createFileRoute("/api/hooks")({
         });
       },
       DELETE: async ({ request }: { request: Request }) => {
+        const rejection = rejectCrossSite(request);
+        if (rejection) return rejection;
+
         const { claudeHome, join } = await claudeHomeJoin();
         const { generateHooksConfig } = await import("../../lib/hook-config");
         const { readFile, writeFile } = await import("node:fs/promises");

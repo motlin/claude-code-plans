@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { NotificationsResponse } from "../../lib/api/notifications";
+import { rejectCrossSite } from "../../lib/same-origin-guard";
 
 export const Route = createFileRoute("/api/notifications")({
   server: {
@@ -16,7 +17,10 @@ export const Route = createFileRoute("/api/notifications")({
           headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
         });
       },
-      DELETE: async () => {
+      DELETE: async ({ request }: { request: Request }) => {
+        const rejection = rejectCrossSite(request);
+        if (rejection) return rejection;
+
         const { clearAllNotifications } = await import("../../lib/notifications-store");
         clearAllNotifications();
         return Response.json(

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
+import { rejectCrossSite } from "../../lib/same-origin-guard";
 import { handleCancel, spawnResumeStream } from "../../lib/spawn-resume";
 
 const chatSchema = z.object({
@@ -11,6 +12,9 @@ export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
       POST: async ({ request }: { request: Request }) => {
+        const rejection = rejectCrossSite(request);
+        if (rejection) return rejection;
+
         const json: unknown = await request.json();
 
         const cancelled = handleCancel(json);

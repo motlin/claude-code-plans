@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PlanDetailResponse } from "../../lib/api/plans";
 import { fromMdSlug } from "../../lib/md-slug";
+import { rejectCrossSite } from "../../lib/same-origin-guard";
 
 /**
  * Returns `true` when an `If-Modified-Since` header value indicates the
@@ -75,6 +76,9 @@ export const Route = createFileRoute("/api/plans/$filename")({
         );
       },
       PUT: async ({ params, request }: { params: { filename: string }; request: Request }) => {
+        const rejection = rejectCrossSite(request);
+        if (rejection) return rejection;
+
         const { homedir } = await import("node:os");
         const { join } = await import("node:path");
         const { writePlan } = await import("../../lib/plans");

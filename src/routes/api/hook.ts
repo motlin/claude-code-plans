@@ -22,6 +22,7 @@ import { getDb } from "../../lib/db";
 import { hookSchemaDrift } from "../../lib/db/schema";
 import { indexFile } from "../../lib/db/indexer";
 import { hmrPersist } from "../../lib/hmr-persist";
+import { rejectCrossSite } from "../../lib/same-origin-guard";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as dbSchema from "../../lib/db/schema";
 
@@ -161,6 +162,9 @@ export const Route = createFileRoute("/api/hook")({
   server: {
     handlers: {
       POST: async ({ request }: { request: Request }) => {
+        const rejection = rejectCrossSite(request);
+        if (rejection) return rejection;
+
         const rawText = await request.text();
         let body: unknown;
         try {

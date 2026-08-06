@@ -5,6 +5,7 @@ import {
   MemorySaveResponse,
 } from "../../lib/api/memories";
 import { fromMdSlug } from "../../lib/md-slug";
+import { rejectCrossSite } from "../../lib/same-origin-guard";
 
 export const Route = createFileRoute("/api/projects/$id/memories/$filename")({
   server: {
@@ -81,6 +82,9 @@ export const Route = createFileRoute("/api/projects/$id/memories/$filename")({
         params: { id: string; filename: string };
         request: Request;
       }) => {
+        const rejection = rejectCrossSite(request);
+        if (rejection) return rejection;
+
         const { homedir } = await import("node:os");
         const { join } = await import("node:path");
         const { writeMemory } = await import("../../lib/memory");
@@ -94,7 +98,16 @@ export const Route = createFileRoute("/api/projects/$id/memories/$filename")({
           headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
         });
       },
-      DELETE: async ({ params }: { params: { id: string; filename: string } }) => {
+      DELETE: async ({
+        params,
+        request,
+      }: {
+        params: { id: string; filename: string };
+        request: Request;
+      }) => {
+        const rejection = rejectCrossSite(request);
+        if (rejection) return rejection;
+
         const { homedir } = await import("node:os");
         const { join } = await import("node:path");
         const { deleteMemory } = await import("../../lib/memory");

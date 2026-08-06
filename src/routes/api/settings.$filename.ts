@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { SettingsSaveResponse } from "../../lib/api/settings";
+import { rejectCrossSite } from "../../lib/same-origin-guard";
 
 const SETTINGS_FILENAMES = ["settings.json", "settings.local.json"] as const;
 
@@ -8,6 +9,9 @@ export const Route = createFileRoute("/api/settings/$filename")({
   server: {
     handlers: {
       PUT: async ({ params, request }: { params: { filename: string }; request: Request }) => {
+        const rejection = rejectCrossSite(request);
+        if (rejection) return rejection;
+
         const filenameParse = z.enum(SETTINGS_FILENAMES).safeParse(params.filename);
         if (!filenameParse.success) {
           return new Response("Invalid settings filename", { status: 400 });
