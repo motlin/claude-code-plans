@@ -4,6 +4,7 @@ import { KNOWN_HOOK_EVENTS } from "../src/lib/hook-events";
 import type { HookEvent } from "../src/lib/hook-events";
 import {
   STATE_RANK,
+  compareByStableCreation,
   compareByUrgency,
   displayState,
   stateForEvent,
@@ -248,6 +249,22 @@ describe("compareByUrgency", () => {
       "working-older",
       "idle",
       "unknown-newest",
+    ]);
+  });
+});
+
+describe("compareByStableCreation", () => {
+  it("sorts by creation time with a session-id tiebreak and ignores activity", () => {
+    const sessions = [
+      { sessionId: "session-c", createdAt: 2_000, lastModified: 9_000 },
+      { sessionId: "session-b", createdAt: 1_000, lastModified: 1_000 },
+      { sessionId: "session-a", createdAt: 1_000, lastModified: 8_000 },
+    ];
+
+    expect(sessions.sort(compareByStableCreation).map(({ sessionId }) => sessionId)).toStrictEqual([
+      "session-a",
+      "session-b",
+      "session-c",
     ]);
   });
 });

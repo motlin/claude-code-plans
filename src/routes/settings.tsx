@@ -523,6 +523,15 @@ function SettingsPage() {
         <VerbositySection />
 
         <Section icon={Eye} title="Session Display">
+          <SelectRow
+            label="Active session order"
+            description="Prioritize sessions needing attention or keep creation order stable"
+            settingKey="sessionSort"
+            options={[
+              { value: "urgency", label: "Urgency" },
+              { value: "stable", label: "Stable" },
+            ]}
+          />
           <ToggleRow
             label="Thinking"
             description="Show Claude's extended thinking blocks"

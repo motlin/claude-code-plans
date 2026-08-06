@@ -15,6 +15,7 @@ import { join } from "node:path";
  */
 
 let tempHome: string;
+let pendingApprovals: Array<{ sessionId: string; blockedSince: string }>;
 
 /** Encode a cwd into the `~/.claude/projects` directory-name form. */
 function encode(cwd: string): string {
@@ -53,6 +54,9 @@ async function loadModules() {
       },
     };
   });
+  vi.doMock("../src/lib/db/pending-approvals-cache", () => ({
+    getPendingApprovals: () => pendingApprovals,
+  }));
   const scanMod = await import("../src/lib/active-sessions");
   const storeMod = await import("../src/lib/active-session-store");
   return { scanMod, storeMod };
@@ -60,6 +64,7 @@ async function loadModules() {
 
 beforeEach(() => {
   tempHome = mkdtempSync(join(tmpdir(), "active-sessions-test-"));
+  pendingApprovals = [];
   mkdirSync(projectsDir(), { recursive: true });
 });
 
@@ -67,6 +72,7 @@ afterEach(() => {
   rmSync(tempHome, { recursive: true, force: true });
   vi.doUnmock("node:os");
   vi.doUnmock("../src/lib/memory");
+  vi.doUnmock("../src/lib/db/pending-approvals-cache");
   vi.resetModules();
 });
 
@@ -82,7 +88,10 @@ describe("scanActiveSessions", () => {
         sessionId: "fs-only",
         projectDir: encode("/Users/test/alpha"),
         projectName: "alpha",
+        createdAt: statSync(file).birthtimeMs,
         lastModified: statSync(file).mtimeMs,
+        state: "unknown",
+        blockedSince: null,
       },
     ]);
   });
@@ -101,6 +110,7 @@ describe("scanActiveSessions", () => {
     const { scanMod, storeMod } = await loadModules();
 
     storeMod.markSessionActive("shared", { cwd: "/Users/test/alpha" });
+    storeMod.setSessionState("shared", "working");
     // Make the store entry older than the filesystem file so the fs mtime wins.
     const entry = storeMod.getActiveSessionEntries().find((e) => e.sessionId === "shared")!;
     entry.lastActivity = Date.now() - 60_000;
@@ -112,7 +122,10 @@ describe("scanActiveSessions", () => {
         sessionId: "shared",
         projectDir: encode("/Users/test/alpha"),
         projectName: "alpha",
+        createdAt: Math.min(entry.startedAt, statSync(file).birthtimeMs),
         lastModified: statSync(file).mtimeMs,
+        state: "working",
+        blockedSince: null,
       },
     ]);
   });
@@ -131,5 +144,19 @@ describe("scanActiveSessions", () => {
     const byId = new Map(result.map((r) => [r.sessionId, r]));
     expect(byId.get("fs-only")!.projectName).toBe("alpha");
     expect(byId.get("store-only")!.projectName).toBe("beta");
+  });
+
+  it("prefers durable pending-approval state and exposes its blocked-since clock", async () => {
+    writeSessionFile("/Users/test/alpha", "waiting", new Date(Date.now() - 30_000));
+    pendingApprovals = [{ sessionId: "waiting", blockedSince: "2000-01-01T00:00:00.000Z" }];
+    const { scanMod } = await loadModules();
+
+    const result = await scanMod.scanActiveSessions();
+
+    expect(result[0]).toMatchObject({
+      sessionId: "waiting",
+      state: "waiting",
+      blockedSince: "2000-01-01T00:00:00.000Z",
+    });
   });
 });

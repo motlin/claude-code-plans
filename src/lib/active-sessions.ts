@@ -4,12 +4,17 @@ import { homedir } from "node:os";
 import { resolveProjectName } from "./memory";
 import { getActiveSessionEntries } from "./active-session-store";
 import { ACTIVE_SESSION_WINDOW_MS } from "./active-session-window";
+import { getPendingApprovals } from "./db/pending-approvals-cache";
+import type { ActivityState } from "./session-state";
 
 export interface ActiveSession {
   sessionId: string;
   projectDir: string;
   projectName: string;
+  createdAt: number;
   lastModified: number;
+  state: ActivityState;
+  blockedSince: string | null;
 }
 
 export async function scanActiveSessions(
@@ -29,9 +34,32 @@ export async function scanActiveSessions(
   const bySessionId = new Map<string, ActiveSession>();
   for (const session of [...storeSessions, ...fsSessions]) {
     const existing = bySessionId.get(session.sessionId);
-    if (!existing || session.lastModified > existing.lastModified) {
+    if (!existing) {
       bySessionId.set(session.sessionId, session);
+      continue;
     }
+
+    const fresher = session.lastModified > existing.lastModified ? session : existing;
+    const state = session.state === "unknown" ? existing.state : session.state;
+    bySessionId.set(session.sessionId, {
+      ...fresher,
+      createdAt: Math.min(existing.createdAt, session.createdAt),
+      state,
+      blockedSince: null,
+    });
+  }
+
+  const approvals = new Map(
+    getPendingApprovals().map((approval) => [approval.sessionId, approval] as const),
+  );
+  for (const [sessionId, session] of bySessionId) {
+    const approval = approvals.get(sessionId);
+    if (!approval) continue;
+    bySessionId.set(sessionId, {
+      ...session,
+      state: "waiting",
+      blockedSince: approval.blockedSince,
+    });
   }
 
   return [...bySessionId.values()].sort((a, b) => b.lastModified - a.lastModified);
@@ -53,7 +81,10 @@ async function getActiveSessionsFromStore(
       sessionId: entry.sessionId,
       projectDir,
       projectName: await resolveProjectNameCached(nameCache, projectDir),
+      createdAt: entry.startedAt,
       lastModified: entry.lastActivity,
+      state: entry.state,
+      blockedSince: null,
     });
   }
   return result;
@@ -120,7 +151,10 @@ async function getActiveSessionsFromFilesystem(
           active.push({
             sessionId: file.replace(/\.jsonl$/, ""),
             projectDir: dir,
+            createdAt: st.birthtimeMs > 0 ? st.birthtimeMs : st.mtimeMs,
             lastModified: st.mtimeMs,
+            state: "unknown",
+            blockedSince: null,
           });
         }
       } catch {

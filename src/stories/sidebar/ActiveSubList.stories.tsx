@@ -30,13 +30,19 @@ export const WithSessions: Story = {
         sessionId: "sess-1",
         projectDir: "/home/user/claude-code-plans",
         projectName: "claude-code-plans",
+        createdAt: Date.now() - 60_000,
         lastModified: Date.now(),
+        state: "working",
+        blockedSince: null,
       },
       {
         sessionId: "sess-2",
         projectDir: "/home/user/my-other-project",
         projectName: "my-other-project",
+        createdAt: Date.now() - 30_000,
         lastModified: Date.now(),
+        state: "waiting",
+        blockedSince: new Date(Date.now() - 31 * 60_000).toISOString(),
       },
     ]);
     return (

@@ -26,6 +26,11 @@ export interface UrgencySortableSession {
   lastModified: number;
 }
 
+export interface StableSortableSession {
+  sessionId: string;
+  createdAt: number;
+}
+
 export function compareByUrgency(
   first: UrgencySortableSession,
   second: UrgencySortableSession,
@@ -33,6 +38,14 @@ export function compareByUrgency(
   return (
     STATE_RANK[first.state] - STATE_RANK[second.state] || second.lastModified - first.lastModified
   );
+}
+
+/** Keep stable mode independent from changing activity timestamps. */
+export function compareByStableCreation(
+  first: StableSortableSession,
+  second: StableSortableSession,
+): number {
+  return first.createdAt - second.createdAt || first.sessionId.localeCompare(second.sessionId);
 }
 
 export function waitHeat(
