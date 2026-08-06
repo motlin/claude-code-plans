@@ -45,6 +45,12 @@ import { DetailTopBar, pillStyles } from "../components/detail-top-bar";
 import { useSettings } from "../components/settings-provider";
 import { writeClipboardText } from "../lib/clipboard";
 import { useSessionViewedState } from "../hooks/use-session-viewed-state";
+import {
+  FilesDrawer,
+  FilesDrawerToggle,
+  useExtractedSessionFiles,
+  useFilesDrawerState,
+} from "../components/files-drawer";
 
 export const Route = createFileRoute("/session/$id")({
   component: SessionPage,
@@ -310,6 +316,8 @@ function SessionPage() {
   const viewedState = useSessionViewedState(params.id, transcript.records.length - 1);
 
   const processed = useMemo(() => processTranscript(transcript.records), [transcript.records]);
+  const sessionFiles = useExtractedSessionFiles(processed.lines, data?.homeRoot);
+  const filesDrawerState = useFilesDrawerState();
   const { runningSubagents } = useClaudeEvents();
   const transcriptActiveSubagents = useMemo(
     () => extractPendingSubagents(transcript.records),
@@ -517,6 +525,11 @@ function SessionPage() {
                 Active
               </span>
             )}
+            <FilesDrawerToggle
+              count={sessionFiles.totalCount}
+              isOpen={filesDrawerState.openDrawer === "files" && sessionFiles.totalCount > 0}
+              onToggle={filesDrawerState.toggleFilesDrawer}
+            />
             <CopyButton title="Copy session ID" text={params.id} icon={Copy} />
             <CopyButton title="Copy resume command" text={sessionCommands.resume} icon={Terminal} />
             <CopyButton title="Copy fork command" text={sessionCommands.fork} icon={GitFork} />
@@ -661,6 +674,16 @@ function SessionPage() {
       )}
 
       <FloatingScrollButtons />
+
+      {filesDrawerState.openDrawer === "files" && sessionFiles.totalCount > 0 && (
+        <FilesDrawer
+          sessionFiles={sessionFiles}
+          sourceSelection={filesDrawerState.sourceSelection}
+          onSourceSelected={filesDrawerState.setSourceSelected}
+          onUnselectAllSources={filesDrawerState.unselectAllSources}
+          onClose={filesDrawerState.closeDrawer}
+        />
+      )}
 
       {/* Sticky footer: chat input + status bar */}
       {((!chromeHidden && data.projectPath) || statusline) && (

@@ -22,7 +22,8 @@ export const Route = createFileRoute("/api/sessions/$id")({
         const { homedir } = await import("node:os");
         const { join } = await import("node:path");
 
-        const PROJECTS_DIR = join(homedir(), ".claude", "projects");
+        const homeRoot = homedir();
+        const PROJECTS_DIR = join(homeRoot, ".claude", "projects");
 
         const { id } = params;
         const { index, summaries } = getDb();
@@ -52,6 +53,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
             title: subagent.description ?? subagent.slug ?? id,
             projectName: subagent.projectId,
             projectId: subagent.projectId,
+            homeRoot,
             starred: false,
             summary: null,
             projectPath: parentSessionProjectPath,
@@ -103,6 +105,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
           title: sessionRow.customTitle ?? sessionRow.title,
           projectName: sessionMeta?.projectName ?? sessionRow.projectId,
           projectId: sessionRow.projectId,
+          homeRoot,
           starred,
           summary,
           projectPath,

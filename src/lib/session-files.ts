@@ -157,7 +157,7 @@ function getTypedPath(
   }
 }
 
-function sourceKey(occurrence: ResourceOccurrence): FileSourceKey {
+export function getFileSourceKey(occurrence: ResourceOccurrence): FileSourceKey {
   if (occurrence.source === "visible") {
     return occurrence.role === "user" ? "userMessage" : "agentMessage";
   }
@@ -271,7 +271,7 @@ export function extractSessionFiles(lines: SessionLine[], homeRoot: string): Ses
   };
 
   for (const file of files) {
-    const fileSources = new Set(file.occurrences.map(sourceKey));
+    const fileSources = new Set(file.occurrences.map(getFileSourceKey));
     for (const key of fileSources) counts[key] += 1;
   }
 
