@@ -124,8 +124,8 @@ importers:
         specifier: ^10.8.0
         version: 10.8.0(jiti@2.7.0)
       fallow:
-        specifier: ^3.11.0
-        version: 3.11.0
+        specifier: ^3.12.0
+        version: 3.12.0
       jsdom:
         specifier: ^30.0.1
         version: 30.0.1
@@ -907,43 +907,43 @@ packages:
       '@noble/hashes':
         optional: true
 
-  '@fallow-cli/darwin-arm64@3.11.0':
-    resolution: {integrity: sha512-wSBCS3rInx7OslJ2oHaVtWzwi9gnW/t6yuOp/WsrQ1rVb3R10koSG/4CWfwKob2yycLGW4pwjGPY/Fl7Ky0irA==}
+  '@fallow-cli/darwin-arm64@3.12.0':
+    resolution: {integrity: sha512-OvEXwg2PagAP8LA/tKfCTHEnv0b33PdKZztlhAgjmPwDWEO8q25AdnbgL9phCmLVj3/emHK437F8Q0bUSANfQg==}
     cpu: [arm64]
     os: [darwin]
 
-  '@fallow-cli/darwin-x64@3.11.0':
-    resolution: {integrity: sha512-eAfUHmB9dwOgT1DjJkVILnlVF/sQGEZE5dOJfaBFqZErqm0EArC6Xr/Tt41niBCkS4oHfpGQ/41g1+oeOqS/fQ==}
+  '@fallow-cli/darwin-x64@3.12.0':
+    resolution: {integrity: sha512-+i77LdMOosrhnnA0dWgtoM4NWj4unjsAz6Yv4Wyzvk93mbBmyxmsM1AS1xTNHrrOa3adQUPOXRWPMtqHeBwSuw==}
     cpu: [x64]
     os: [darwin]
 
-  '@fallow-cli/linux-arm64-gnu@3.11.0':
-    resolution: {integrity: sha512-4JND8XJzP/IMx4G1hNIiMTtGuEtLYeH176tA1C0Uc8EayM9PQdoDP/w7D1z+gkT8zUFSQr0cQ894WWDgyfoQ1w==}
+  '@fallow-cli/linux-arm64-gnu@3.12.0':
+    resolution: {integrity: sha512-V8NPBYQqUATq9/AjDJO/dIAcbPtyyAnUkIDmbCJGxvWzPer2Ur0CNziCVRMXZq2wNpbApRfgpx+kOZOP8cfPeA==}
     cpu: [arm64]
     os: [linux]
 
-  '@fallow-cli/linux-arm64-musl@3.11.0':
-    resolution: {integrity: sha512-2Yrx4U8CO4dDdi+N8tW7MdjSJ/HP7JJo4JtJUJ3B0KBS4uK/k+r11E8hhEoqU0GqeSf9t7HutyhVnh89+Glt3g==}
+  '@fallow-cli/linux-arm64-musl@3.12.0':
+    resolution: {integrity: sha512-a7R7h8dic4YBfe4Z+Xws6D8YFen7Ss2NX9LsyNpUY1bgLkMDH8+8O2yagMIH6IJuKPsM5xe+HuDGyJqy/ppzyQ==}
     cpu: [arm64]
     os: [linux]
 
-  '@fallow-cli/linux-x64-gnu@3.11.0':
-    resolution: {integrity: sha512-DHIv99vJBSXYDz9Xk5MWq+m920F4GZ4lkvaNOvo5a8s/t7Huo0j++YOXfg4XwKXiFUXy+1VYoZ+7Lfb6pqMstQ==}
+  '@fallow-cli/linux-x64-gnu@3.12.0':
+    resolution: {integrity: sha512-yz0jOJ6xR2ZACVHIZkXSfLGxZ+yCIC4cqzWqAr/GQA0fOYmJ0LcdYjvMb1hk2LUSuNZE4rEaR4yutPNNO9bLng==}
     cpu: [x64]
     os: [linux]
 
-  '@fallow-cli/linux-x64-musl@3.11.0':
-    resolution: {integrity: sha512-QlPWMu3G6FYUa0HWIzG5B75dFQ284SMIJLNK3NlzyOAPWZgzXt5Sex6XTyKcSak1FrKysePbAoXD6yZaZ3U/jQ==}
+  '@fallow-cli/linux-x64-musl@3.12.0':
+    resolution: {integrity: sha512-BgOPxeAQK2+w7ZrzP1rXZvh9mn4D4S9Jr5nFel/aAx+PIAiNi8BX/67AM7m3fwfR7wAMjFVh8fXD8WWOqGsFrQ==}
     cpu: [x64]
     os: [linux]
 
-  '@fallow-cli/win32-arm64-msvc@3.11.0':
-    resolution: {integrity: sha512-3ZxW0i2IOG+L1ByITjKX87NTz16XJk0NZs1UebhyDE/P6XRANTnSA1/JkHPi3CMBd1Khd+EuDA64BzbwjCBFkw==}
+  '@fallow-cli/win32-arm64-msvc@3.12.0':
+    resolution: {integrity: sha512-SzTGSnjHRSa3eID1ik05IpoxTso398FW7ZozZAC1yG8Qsw29h66/TTwOq2hEwpDIs8nycw8o34YZYiZseNKobQ==}
     cpu: [arm64]
     os: [win32]
 
-  '@fallow-cli/win32-x64-msvc@3.11.0':
-    resolution: {integrity: sha512-XkowUPGSZrecXw+aLQF+UAWnlQWSk2CwnagqUqlbVJw5zsABDa8HliMyDWXWkhm1PGOH32PAqJLE7T0xJ5Ax6A==}
+  '@fallow-cli/win32-x64-msvc@3.12.0':
+    resolution: {integrity: sha512-7WdpF/V79wNiAumczO057ldD50eg0GWoGrF5ym3QiZdkOzaVv3hioM8lFR9X1R9q3NiuBy2MxavbjHVaSyE6FQ==}
     cpu: [x64]
     os: [win32]
 
@@ -3863,13 +3863,13 @@ packages:
   exsolve@1.1.1:
     resolution: {integrity: sha512-9U/jZUgjnSGyntRr6y5Muu1MJcwFl6kPu7k8qLF0IMNfLqvw0NZ4nnVDq0RVoZ0RvCyumib4Ez3KYrVfilrw+g==}
 
-  fallow-type-aware@3.10.0:
-    resolution: {integrity: sha512-cKvAYeDybtQKDA5cMX+EfTv4aP5U9qH7eVus2zXbZdZzfQNwetBwZaa9XqLcU1XxAklFm9jS7JWhAhbl1tbNKA==}
+  fallow-type-aware@3.12.0:
+    resolution: {integrity: sha512-CjOgZQTeUEPYDWEPcPAeTv3HCKh5nXicmzUvOWrDp3RdoSdxNOzI6TMQC1s80qPvWbIoIyAUeAf55hMBijQblQ==}
     engines: {node: '>=20'}
     hasBin: true
 
-  fallow@3.11.0:
-    resolution: {integrity: sha512-fYNnZZnxMjmjDGCuUsDe4rCs1w9c5YMbmRVm5jHN0BK8oCJJlz/lt4z/FVJtC+uFmkmWvSK1YSvQacFGArHTrA==}
+  fallow@3.12.0:
+    resolution: {integrity: sha512-yS68VKexGDJiECeFiFLsvtzjmw9sLcB5vgyJGm0vjE4i3MSErjYSMBX1EvwYJHvoxR/Lpcenz/tK/yM9RWkZHw==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -6208,28 +6208,28 @@ snapshots:
 
   '@exodus/bytes@1.15.1': {}
 
-  '@fallow-cli/darwin-arm64@3.11.0':
+  '@fallow-cli/darwin-arm64@3.12.0':
     optional: true
 
-  '@fallow-cli/darwin-x64@3.11.0':
+  '@fallow-cli/darwin-x64@3.12.0':
     optional: true
 
-  '@fallow-cli/linux-arm64-gnu@3.11.0':
+  '@fallow-cli/linux-arm64-gnu@3.12.0':
     optional: true
 
-  '@fallow-cli/linux-arm64-musl@3.11.0':
+  '@fallow-cli/linux-arm64-musl@3.12.0':
     optional: true
 
-  '@fallow-cli/linux-x64-gnu@3.11.0':
+  '@fallow-cli/linux-x64-gnu@3.12.0':
     optional: true
 
-  '@fallow-cli/linux-x64-musl@3.11.0':
+  '@fallow-cli/linux-x64-musl@3.12.0':
     optional: true
 
-  '@fallow-cli/win32-arm64-msvc@3.11.0':
+  '@fallow-cli/win32-arm64-msvc@3.12.0':
     optional: true
 
-  '@fallow-cli/win32-x64-msvc@3.11.0':
+  '@fallow-cli/win32-x64-msvc@3.12.0':
     optional: true
 
   '@floating-ui/core@1.8.0':
@@ -8839,24 +8839,24 @@ snapshots:
 
   exsolve@1.1.1: {}
 
-  fallow-type-aware@3.10.0:
+  fallow-type-aware@3.12.0:
     dependencies:
       typescript: 7.0.2
     optional: true
 
-  fallow@3.11.0:
+  fallow@3.12.0:
     dependencies:
       detect-libc: 2.1.2
     optionalDependencies:
-      '@fallow-cli/darwin-arm64': 3.11.0
-      '@fallow-cli/darwin-x64': 3.11.0
-      '@fallow-cli/linux-arm64-gnu': 3.11.0
-      '@fallow-cli/linux-arm64-musl': 3.11.0
-      '@fallow-cli/linux-x64-gnu': 3.11.0
-      '@fallow-cli/linux-x64-musl': 3.11.0
-      '@fallow-cli/win32-arm64-msvc': 3.11.0
-      '@fallow-cli/win32-x64-msvc': 3.11.0
-      fallow-type-aware: 3.10.0
+      '@fallow-cli/darwin-arm64': 3.12.0
+      '@fallow-cli/darwin-x64': 3.12.0
+      '@fallow-cli/linux-arm64-gnu': 3.12.0
+      '@fallow-cli/linux-arm64-musl': 3.12.0
+      '@fallow-cli/linux-x64-gnu': 3.12.0
+      '@fallow-cli/linux-x64-musl': 3.12.0
+      '@fallow-cli/win32-arm64-msvc': 3.12.0
+      '@fallow-cli/win32-x64-msvc': 3.12.0
+      fallow-type-aware: 3.12.0
 
   fast-deep-equal@3.1.3: {}
 
