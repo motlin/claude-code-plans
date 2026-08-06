@@ -30,6 +30,8 @@ const AppConfigSchema = z
   .object({
     /** Directory basenames the file watcher never descends into. */
     ignored_dirs: z.array(z.string().trim().min(1)).optional(),
+    /** Absolute directory paths whose image files may be served by the app. */
+    image_roots: z.array(z.string()).optional(),
   })
   .strict();
 
