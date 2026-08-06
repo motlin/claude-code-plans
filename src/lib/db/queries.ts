@@ -1,4 +1,4 @@
-import { eq, desc, sql, and, inArray, isNotNull } from "drizzle-orm";
+import { eq, desc, asc, sql, and, inArray, isNotNull } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { basename, dirname, relative, sep } from "node:path";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
@@ -87,6 +87,22 @@ export function listProjectsFromDb(db: IndexDb): DbProjectSummary[] {
     .all();
 
   return rows;
+}
+
+export interface ContextBriefProject {
+  id: string;
+  name: string;
+}
+
+/** Resolve a hook cwd to the most recently indexed project with that exact path. */
+export function getContextBriefProject(db: IndexDb, cwd: string): ContextBriefProject | null {
+  const row = db
+    .select({ id: schema.projects.id, name: schema.projects.name })
+    .from(schema.projects)
+    .where(eq(schema.projects.projectPath, cwd))
+    .orderBy(desc(schema.projects.updatedAt), asc(schema.projects.id))
+    .get();
+  return row ?? null;
 }
 
 /**
@@ -982,6 +998,29 @@ export function listPlansFromDb(db: IndexDb): DbPlanListEntry[] {
   return rows;
 }
 
+export function getRecentPlansForProject(
+  db: IndexDb,
+  projectId: string,
+  limit: number,
+): DbPlanListEntry[] {
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new Error("Context brief plan limit must be a positive integer");
+  }
+
+  return db
+    .selectDistinct({
+      filename: schema.plans.filename,
+      title: schema.plans.title,
+      mtimeMs: schema.plans.mtimeMs,
+    })
+    .from(schema.plans)
+    .innerJoin(schema.planSessions, eq(schema.planSessions.planFilename, schema.plans.filename))
+    .where(eq(schema.planSessions.projectId, projectId))
+    .orderBy(desc(schema.plans.mtimeMs), asc(schema.plans.filename))
+    .limit(limit)
+    .all();
+}
+
 export function getPlanProjectMappings(db: IndexDb): DbPlanProjectMapping[] {
   const projectNames = getProjectNameMap(db);
 
@@ -1066,6 +1105,48 @@ export function getTasksForProject(db: IndexDb, projectDir: string): TaskRow[] {
     })
     .from(schema.tasks)
     .where(eq(schema.tasks.projectDir, projectDir))
+    .all();
+
+  return rows.map(parseTaskRow);
+}
+
+/**
+ * Return open tasks owned by sessions in a project. Claude stores task files
+ * under a session UUID, so tasks.projectDir joins sessions.id rather than a
+ * project name or filesystem path.
+ */
+export function getOpenTasksForProject(db: IndexDb, projectId: string, limit: number): TaskRow[] {
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new Error("Context brief task limit must be a positive integer");
+  }
+
+  const rows = db
+    .select({
+      taskId: schema.tasks.taskId,
+      projectDir: schema.tasks.projectDir,
+      subject: schema.tasks.subject,
+      description: schema.tasks.description,
+      status: schema.tasks.status,
+      activeForm: schema.tasks.activeForm,
+      owner: schema.tasks.owner,
+      blocksJson: schema.tasks.blocksJson,
+      blockedByJson: schema.tasks.blockedByJson,
+      metadataJson: schema.tasks.metadataJson,
+    })
+    .from(schema.tasks)
+    .innerJoin(schema.sessions, eq(schema.sessions.id, schema.tasks.projectDir))
+    .where(
+      and(
+        eq(schema.sessions.projectId, projectId),
+        sql`${schema.tasks.status} IN ('pending', 'in_progress')`,
+      ),
+    )
+    .orderBy(
+      sql`CASE ${schema.tasks.status} WHEN 'in_progress' THEN 0 ELSE 1 END`,
+      desc(schema.tasks.mtimeMs),
+      asc(schema.tasks.taskId),
+    )
+    .limit(limit)
     .all();
 
   return rows.map(parseTaskRow);
@@ -1174,6 +1255,6 @@ export function getMemoriesForProject(db: IndexDb, projectId: string): MemoryRow
     })
     .from(schema.memories)
     .where(eq(schema.memories.projectId, projectId))
-    .orderBy(desc(schema.memories.mtimeMs))
+    .orderBy(desc(schema.memories.mtimeMs), asc(schema.memories.filename))
     .all();
 }

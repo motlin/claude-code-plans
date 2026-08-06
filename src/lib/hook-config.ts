@@ -27,6 +27,7 @@ interface HookEntry {
 }
 
 interface HookMatcher {
+  matcher?: string;
   hooks: HookEntry[];
 }
 
@@ -58,6 +59,12 @@ function curlPost(port: number): string {
   return `jq -c '${HOOK_PAYLOAD_JQ_FILTER}' | curl -sX POST --connect-timeout 0.1 http://localhost:${port}/api/hook -H 'Content-Type: application/json' --data-binary @- >/dev/null 2>&1 || true`;
 }
 
+function curlContextBrief(port: number): string {
+  // This response must reach hook stdout because Claude injects it as session
+  // context. URL encoding preserves cwd paths containing spaces or punctuation.
+  return `curl -s --get --connect-timeout 0.5 --data-urlencode "cwd=$(pwd)" "http://localhost:${port}/api/context-brief" 2>/dev/null || true`;
+}
+
 interface GenerateOptions {
   port?: number;
 }
@@ -79,6 +86,20 @@ export function generateHooksConfig(options?: GenerateOptions): HooksConfig {
       },
     ];
   }
+
+  const sessionStartHooks = hooks["SessionStart"];
+  if (!sessionStartHooks) {
+    throw new Error("SessionStart must be a known hook event");
+  }
+  sessionStartHooks.push({
+    matcher: "startup|resume",
+    hooks: [
+      {
+        type: "command",
+        command: curlContextBrief(port),
+      },
+    ],
+  });
 
   return { hooks };
 }

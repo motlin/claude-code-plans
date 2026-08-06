@@ -78,6 +78,20 @@ describe("generateHooksConfig", () => {
     expect(unique.size).toBe(1);
   });
 
+  it("adds a separate stdout-preserving context hook for startup and resume", () => {
+    const config = generateHooksConfig();
+    expect(config.hooks["SessionStart"]?.[1]).toStrictEqual({
+      matcher: "startup|resume",
+      hooks: [
+        {
+          type: "command",
+          command:
+            'curl -s --get --connect-timeout 0.5 --data-urlencode "cwd=$(pwd)" "http://localhost:7526/api/context-brief" 2>/dev/null || true',
+        },
+      ],
+    });
+  });
+
   it("forwards the full hook stdin payload via jq", () => {
     const config = generateHooksConfig();
     const hooks = config.hooks as Record<
