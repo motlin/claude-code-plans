@@ -31,6 +31,7 @@
   },
   "include": [
     "src/**/*",
+    "mcp-server/**/*",
     "tests/**/*",
     "scripts/**/*",
     "vitest.config.ts",

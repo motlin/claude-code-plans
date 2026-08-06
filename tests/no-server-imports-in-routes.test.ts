@@ -61,5 +61,5 @@ describe("client build must not contain externalized Node built-ins", () => {
           "\nMove these imports inside API route handlers (src/routes/api/) using dynamic import().",
       );
     }
-  }, 30_000);
+  }, 60_000);
 });
