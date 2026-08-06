@@ -6,6 +6,7 @@ import { SessionChat } from "../components/session-chat";
 import { ChatInput } from "../components/chat-input";
 import { StreamingMessage } from "../components/streaming-message";
 import { useChatStream } from "../hooks/use-chat-stream";
+import { herdrPanesQueryOptions, sendHerdrPrompt } from "../lib/api/herdr";
 import {
   AskUserQuestionProvider,
   type AskUserQuestionContextValue,
@@ -49,6 +50,7 @@ export const Route = createFileRoute("/session/$id")({
       queryClient.ensureQueryData(sessionDetailQueryOptions(params.id)),
       queryClient.ensureQueryData(transcriptQueryOptions(params.id)),
       queryClient.ensureQueryData(sessionSubagentsQueryOptions(params.id)),
+      queryClient.ensureQueryData(herdrPanesQueryOptions),
     ]);
     return meta;
   },
@@ -198,12 +200,110 @@ export function createSessionCommands(sessionId: string, projectPath: string | n
   };
 }
 
+interface SessionPromptBehavior {
+  disabled: boolean;
+  deliveryHint: string | undefined;
+  usesHerdr: boolean;
+}
+
+export function getSessionPromptBehavior(
+  sessionId: string,
+  isActive: boolean,
+  herdr: { panes: Array<{ sessionId: string }>; writesEnabled: boolean },
+): SessionPromptBehavior {
+  const hasLivePane = herdr.panes.some((pane) => pane.sessionId === sessionId);
+
+  if (!hasLivePane) {
+    return { disabled: isActive, deliveryHint: undefined, usesHerdr: false };
+  }
+  if (!herdr.writesEnabled) {
+    return {
+      disabled: true,
+      deliveryHint: "- live herdr input is disabled",
+      usesHerdr: false,
+    };
+  }
+  return {
+    disabled: false,
+    deliveryHint: "- sends to live herdr session",
+    usesHerdr: true,
+  };
+}
+
+interface LiveHerdrPromptState {
+  error: string;
+  isPending: boolean;
+  prompt: string;
+}
+
+const EMPTY_LIVE_HERDR_PROMPT_STATE: LiveHerdrPromptState = {
+  error: "",
+  isPending: false,
+  prompt: "",
+};
+
+export function useLiveHerdrPrompt(
+  sessionId: string,
+  transcriptRecordCount: number,
+  postPrompt: (sessionId: string, prompt: string) => Promise<void> = sendHerdrPrompt,
+) {
+  const [state, setState] = useState<LiveHerdrPromptState>(EMPTY_LIVE_HERDR_PROMPT_STATE);
+  const pendingRecordCountRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    pendingRecordCountRef.current = null;
+    setState(EMPTY_LIVE_HERDR_PROMPT_STATE);
+  }, [sessionId]);
+
+  useEffect(() => {
+    const pendingRecordCount = pendingRecordCountRef.current;
+    if (pendingRecordCount === null || transcriptRecordCount <= pendingRecordCount) return;
+    pendingRecordCountRef.current = null;
+    setState(EMPTY_LIVE_HERDR_PROMPT_STATE);
+  }, [transcriptRecordCount]);
+
+  const send = useCallback(
+    async (prompt: string) => {
+      pendingRecordCountRef.current = transcriptRecordCount;
+      setState({ error: "", isPending: true, prompt });
+      try {
+        await postPrompt(sessionId, prompt);
+      } catch (error) {
+        pendingRecordCountRef.current = null;
+        setState({
+          error: error instanceof Error ? error.message : "Failed to send prompt",
+          isPending: false,
+          prompt,
+        });
+      }
+    },
+    [postPrompt, sessionId, transcriptRecordCount],
+  );
+
+  return { send, state };
+}
+
+export function routeSessionPrompt(
+  usesHerdr: boolean,
+  sessionId: string,
+  prompt: string,
+  sendLivePrompt: (prompt: string) => Promise<void>,
+  sendForkedPrompt: (sessionId: string, prompt: string) => Promise<void>,
+): void {
+  if (usesHerdr) {
+    void sendLivePrompt(prompt);
+    return;
+  }
+  void sendForkedPrompt(sessionId, prompt);
+}
+
 function SessionPage() {
   const params = Route.useParams();
   const queryClient = useQueryClient();
   const { data } = useSuspenseQuery(sessionDetailQueryOptions(params.id));
   const { data: transcript } = useSuspenseQuery(transcriptQueryOptions(params.id));
   const { data: subagents } = useSuspenseQuery(sessionSubagentsQueryOptions(params.id));
+  const { data: herdr } = useSuspenseQuery(herdrPanesQueryOptions);
 
   const processed = useMemo(() => processTranscript(transcript.records), [transcript.records]);
   const { runningSubagents } = useClaudeEvents();
@@ -284,6 +384,8 @@ function SessionPage() {
     [isActive, submitAnswer],
   );
   const chatStream = useChatStream();
+  const liveHerdrPrompt = useLiveHerdrPrompt(params.id, transcript.records.length);
+  const promptBehavior = getSessionPromptBehavior(params.id, isActive, herdr);
   const prevSessionIdRef = useRef(params.id);
 
   useEffect(() => {
@@ -529,6 +631,16 @@ function SessionPage() {
         />
       )}
 
+      {liveHerdrPrompt.state.prompt !== "" && (
+        <StreamingMessage
+          text=""
+          isComplete={!liveHerdrPrompt.state.isPending}
+          error={liveHerdrPrompt.state.error || undefined}
+          sentPrompt={liveHerdrPrompt.state.prompt}
+          pendingLabel="Sent to live session — waiting for transcript..."
+        />
+      )}
+
       <FloatingScrollButtons />
 
       {/* Sticky footer: chat input + status bar */}
@@ -536,11 +648,20 @@ function SessionPage() {
         <div className="sticky bottom-0 z-10 -mx-4 -mb-8 sm:-mx-8">
           {!chromeHidden && data.projectPath && (
             <ChatInput
-              onSend={(prompt) => chatStream.send(params.id, prompt)}
+              onSend={(prompt) =>
+                routeSessionPrompt(
+                  promptBehavior.usesHerdr,
+                  params.id,
+                  prompt,
+                  liveHerdrPrompt.send,
+                  chatStream.send,
+                )
+              }
               onCancel={chatStream.cancel}
-              isStreaming={chatStream.state.isStreaming}
-              disabled={isActive}
+              isStreaming={!promptBehavior.usesHerdr && chatStream.state.isStreaming}
+              disabled={promptBehavior.disabled || liveHerdrPrompt.state.isPending}
               projectPath={data.projectPath}
+              deliveryHint={promptBehavior.deliveryHint}
             />
           )}
           {statusline && (

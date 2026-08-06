@@ -6,6 +6,7 @@ interface ChatInputProps {
   isStreaming: boolean;
   disabled?: boolean;
   projectPath?: string;
+  deliveryHint?: string | undefined;
 }
 
 export function ChatInput({
@@ -14,6 +15,7 @@ export function ChatInput({
   isStreaming,
   disabled,
   projectPath,
+  deliveryHint = "- will fork session",
 }: ChatInputProps) {
   const [prompt, setPrompt] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -54,7 +56,7 @@ export function ChatInput({
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
           </svg>
           <span className="truncate font-mono">{projectPath}</span>
-          <span className="text-text-500/60">- will fork session</span>
+          <span className="text-text-500/60">{deliveryHint}</span>
         </div>
       )}
       <div className="flex items-end gap-2">

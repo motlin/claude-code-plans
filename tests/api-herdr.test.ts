@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vite-plus/test";
-import { HerdrPaneListResponse, herdrPanesQueryOptions } from "../src/lib/api/herdr";
+import { describe, expect, it, vi } from "vite-plus/test";
+import {
+  HerdrPaneIndexResponse,
+  herdrPanesQueryOptions,
+  sendHerdrPrompt,
+} from "../src/lib/api/herdr";
 
 const linkedPane = {
   paneId: "w100:p100",
@@ -21,17 +25,53 @@ const linkedPane = {
 describe("herdr panes API contract", () => {
   it("parses the complete pane link and exposes a stable query key", () => {
     expect({
-      panes: HerdrPaneListResponse.parse([linkedPane]),
+      response: HerdrPaneIndexResponse.parse({ panes: [linkedPane], writesEnabled: true }),
       queryKey: herdrPanesQueryOptions.queryKey,
     }).toStrictEqual({
-      panes: [linkedPane],
+      response: { panes: [linkedPane], writesEnabled: true },
       queryKey: ["herdr", "panes"],
     });
   });
 
   it("rejects fields outside the ccp-owned response contract", () => {
     expect(
-      HerdrPaneListResponse.safeParse([{ ...linkedPane, unexpectedTestField: true }]).success,
+      HerdrPaneIndexResponse.safeParse({
+        panes: [{ ...linkedPane, unexpectedTestField: true }],
+        writesEnabled: false,
+      }).success,
     ).toBe(false);
+  });
+
+  it("posts a prompt to the live-session endpoint", async () => {
+    const fetcher = vi.fn<typeof fetch>();
+    fetcher.mockResolvedValue(Response.json({ ok: true }));
+
+    await sendHerdrPrompt("session-test-100", "Ask Alice to inspect the test", fetcher);
+
+    expect(fetcher.mock.calls).toStrictEqual([
+      [
+        "/api/herdr/prompt",
+        {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: "session-test-100",
+            prompt: "Ask Alice to inspect the test",
+          }),
+        },
+      ],
+    ]);
+  });
+
+  it("surfaces the prompt endpoint's error without treating it as success", async () => {
+    const fetcher = vi.fn<typeof fetch>();
+    fetcher.mockResolvedValue(
+      Response.json({ error: "Fabricated agent is not ready" }, { status: 409 }),
+    );
+
+    await expect(
+      sendHerdrPrompt("session-test-100", "Ask Alice to inspect the test", fetcher),
+    ).rejects.toThrow("Fabricated agent is not ready");
   });
 });

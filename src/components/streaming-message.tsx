@@ -13,6 +13,7 @@ interface StreamingMessageProps {
   error?: string | undefined;
   forkedSessionId?: string | undefined;
   sentPrompt?: string | undefined;
+  pendingLabel?: string | undefined;
 }
 
 export function StreamingMessage({
@@ -21,6 +22,7 @@ export function StreamingMessage({
   error,
   forkedSessionId,
   sentPrompt,
+  pendingLabel = "Thinking...",
 }: StreamingMessageProps) {
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -62,7 +64,7 @@ export function StreamingMessage({
           {!text && !isComplete ? (
             <div className="flex items-center gap-2 text-sm text-text-500">
               <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-accent-100" />
-              Thinking...
+              {pendingLabel}
             </div>
           ) : (
             <div className="min-w-0 text-sm leading-relaxed text-text-100">

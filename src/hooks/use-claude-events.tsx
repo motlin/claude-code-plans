@@ -12,6 +12,7 @@ import {
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import {
   DOMAIN_EVENTS,
+  HERDR_EVENTS,
   SSE_EVENTS,
   type HookSchemaDriftPayload,
   type JsonValue,
@@ -733,6 +734,7 @@ function invalidateTmuxWindows(queryClient: QueryClient): void {
 // ---------------------------------------------------------------------------
 
 const LIFECYCLE_EVENT_TYPES = [SSE_EVENTS.SESSION_START, SSE_EVENTS.SESSION_END] as const;
+const HERDR_EVENT_TYPES = Object.values(HERDR_EVENTS);
 
 const DOMAIN_EVENT_TYPES = [
   DOMAIN_EVENTS.SESSION_ADDED,
@@ -1059,11 +1061,18 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    function handleHerdrEvent() {
+      void queryClient.invalidateQueries({ queryKey: ["herdr", "panes"] });
+    }
+
     for (const eventType of LIFECYCLE_EVENT_TYPES) {
       es.addEventListener(eventType, handleLifecycleEvent);
     }
     for (const eventType of DOMAIN_EVENT_TYPES) {
       es.addEventListener(eventType, handleDomainEvent);
+    }
+    for (const eventType of HERDR_EVENT_TYPES) {
+      es.addEventListener(eventType, handleHerdrEvent);
     }
     es.addEventListener(SSE_EVENTS.STATUSLINE_UPDATED, handleStatuslineEvent);
 

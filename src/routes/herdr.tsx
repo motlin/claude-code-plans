@@ -42,7 +42,8 @@ function HerdrEmptyState() {
 }
 
 function HerdrFleetPage() {
-  const { data: panes } = useSuspenseQuery(herdrPanesQueryOptions);
+  const { data } = useSuspenseQuery(herdrPanesQueryOptions);
+  const panes = data.panes;
 
   return (
     <div>
