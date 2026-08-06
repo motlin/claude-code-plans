@@ -3,10 +3,23 @@ import { createInterface, type Interface as ReadlineInterface } from "node:readl
 import { HERDR_EVENTS } from "../hook-events";
 import { hmrDispose, hmrPersist } from "../hmr-persist";
 import { broadcastTyped } from "../sse-broadcast";
+import { getDb } from "../db";
+import {
+  getCurrentSessionMessageIndex,
+  linkHerdrTerminalToSession,
+  markSessionCompletionUnreviewed,
+  pruneHerdrTerminalLinks,
+  setHerdrTerminalViewed,
+} from "../db/viewed-state";
+import { isSessionVisible } from "../session-visibility";
 import { probeHerdr, type HerdrAvailability } from "./availability";
 import { herdrRequest } from "./client";
 import { getHerdrPanes, type HerdrPaneLink } from "./panes";
 import { HerdrSessionSnapshotResultSchema } from "./schema";
+import {
+  createHerdrViewedStateTracker,
+  type HerdrViewedStateTrackerDependencies,
+} from "./viewed-state";
 
 const UNPARAMETERIZED_SUBSCRIPTIONS = [
   { type: "pane.created" },
@@ -56,7 +69,32 @@ interface BridgeDependencies {
   broadcast: (type: string, data: Record<string, unknown>) => void;
   schedule: (callback: () => void, delayMs: number) => Timer;
   cancel: (timer: Timer) => void;
+  viewedStateTracker: ReturnType<typeof createHerdrViewedStateTracker>;
 }
+
+const defaultViewedStateDependencies: HerdrViewedStateTrackerDependencies = {
+  isSessionVisible,
+  linkTerminal: (terminalId, sessionId) => {
+    linkHerdrTerminalToSession(getDb().index, terminalId, sessionId);
+  },
+  pruneTerminalLinks: (sessionId, activeTerminalIds) => {
+    pruneHerdrTerminalLinks(getDb().index, sessionId, activeTerminalIds);
+  },
+  markSessionCompletionUnreviewed: (sessionId) => {
+    const { index } = getDb();
+    markSessionCompletionUnreviewed(
+      index,
+      sessionId,
+      getCurrentSessionMessageIndex(index, sessionId),
+    );
+  },
+  markTerminalUnviewed: (terminalId, sessionId) => {
+    setHerdrTerminalViewed(getDb().index, terminalId, sessionId, false);
+  },
+  markTerminalViewed: (terminalId, sessionId) => {
+    setHerdrTerminalViewed(getDb().index, terminalId, sessionId, true);
+  },
+};
 
 const defaultDependencies: BridgeDependencies = {
   probe: probeHerdr,
@@ -76,6 +114,7 @@ const defaultDependencies: BridgeDependencies = {
   broadcast: broadcastTyped,
   schedule: setTimeout,
   cancel: clearTimeout,
+  viewedStateTracker: createHerdrViewedStateTracker(defaultViewedStateDependencies),
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -116,7 +155,10 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 
     resyncRunning = true;
     const panes = await dependencies.getPanes();
-    if (!stopped) dependencies.broadcast(HERDR_EVENTS.PANES_SNAPSHOT, { panes });
+    if (!stopped) {
+      dependencies.viewedStateTracker.syncPanes(panes);
+      dependencies.broadcast(HERDR_EVENTS.PANES_SNAPSHOT, { panes });
+    }
     resyncRunning = false;
 
     if (resyncAgain && !stopped) {
@@ -126,7 +168,7 @@ function createBridge(dependencies: BridgeDependencies): () => void {
   };
 
   const scheduleHintResync = (): void => {
-    if (stopped) return;
+    if (stopped || reconnectPending) return;
     if (resyncRunning) {
       resyncAgain = true;
       return;
@@ -165,7 +207,6 @@ function createBridge(dependencies: BridgeDependencies): () => void {
       if (stopped || socket !== nextSocket) return;
       reconnectDelayMs = INITIAL_RECONNECT_DELAY_MS;
       nextSocket.write(subscriptionRequest(paneIds));
-      void runResync();
     });
     nextSocket.once("error", scheduleReconnect);
     nextSocket.once("close", scheduleReconnect);
@@ -181,6 +222,9 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 
       const sseEvent = PUSH_EVENT_TO_SSE_EVENT[pushedEvent];
       if (!sseEvent) return;
+      if (pushedEvent === "pane_agent_status_changed") {
+        dependencies.viewedStateTracker.handleStatusEvent(data);
+      }
       dependencies.broadcast(sseEvent, data);
       if (pushedEvent === "pane_created" || pushedEvent === "pane_closed") {
         scheduleReconnect();
@@ -191,6 +235,10 @@ function createBridge(dependencies: BridgeDependencies): () => void {
   };
 
   const openSubscription = async (): Promise<void> => {
+    if (stopped) return;
+    // Seed terminalId-keyed transition state before subscribing. Otherwise a
+    // fast done→idle push could arrive before its paneId→terminalId mapping.
+    await runResync();
     if (stopped) return;
     const paneIds = await dependencies.getPaneIds();
     if (!stopped) connect(paneIds);

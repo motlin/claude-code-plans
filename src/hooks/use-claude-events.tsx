@@ -1063,6 +1063,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
 
     function handleHerdrEvent() {
       void queryClient.invalidateQueries({ queryKey: ["herdr", "panes"] });
+      void queryClient.invalidateQueries({ queryKey: ["sessions"] });
     }
 
     for (const eventType of LIFECYCLE_EVENT_TYPES) {

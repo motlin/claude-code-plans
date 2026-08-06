@@ -1,7 +1,9 @@
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { Eye, EyeOff } from "lucide-react";
 import { StatusDot } from "../components/sidebar/primitives/StatusDot";
 import { herdrPanesQueryOptions } from "../lib/api/herdr";
+import { updateSessionViewedState } from "../lib/api/viewed-state";
 
 export const Route = createFileRoute("/herdr")({
   component: HerdrFleetPage,
@@ -43,7 +45,20 @@ function HerdrEmptyState() {
 
 function HerdrFleetPage() {
   const { data } = useSuspenseQuery(herdrPanesQueryOptions);
+  const queryClient = useQueryClient();
   const panes = data.panes;
+
+  const setViewed = async (
+    sessionId: string,
+    action: "reviewed" | "unreviewed",
+    messageIndex: number,
+  ): Promise<void> => {
+    await updateSessionViewedState(sessionId, action, messageIndex);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["herdr", "panes"] }),
+      queryClient.invalidateQueries({ queryKey: ["sessions", sessionId] }),
+    ]);
+  };
 
   return (
     <div>
@@ -58,13 +73,15 @@ function HerdrFleetPage() {
       ) : (
         <div className="mt-4 space-y-1">
           {panes.map((pane) => (
-            <Link
+            <div
               key={pane.terminalId}
-              to="/session/$id"
-              params={{ id: pane.sessionId }}
-              className="block rounded-md border border-border-300/15 p-3 no-underline transition-colors hover:bg-bg-200/50"
+              className="flex items-center rounded-md border border-border-300/15 transition-colors hover:bg-bg-200/50"
             >
-              <div className="flex items-center gap-2">
+              <Link
+                to="/session/$id"
+                params={{ id: pane.sessionId }}
+                className="flex min-w-0 flex-1 items-center gap-2 p-3 no-underline"
+              >
                 <StatusDot active={pane.focused} />
                 <span className="sr-only">
                   {pane.focused ? "Herdr pane focused" : "Herdr pane not focused"}
@@ -76,8 +93,31 @@ function HerdrFleetPage() {
                 <span className="ml-auto shrink-0 text-xs text-text-500">
                   herdr&apos;s view: {pane.agentStatus} (advisory)
                 </span>
-              </div>
-            </Link>
+                {!pane.viewedState.viewedAnywhere && (
+                  <span className="shrink-0 text-xs text-warning-000">
+                    review · {pane.viewedState.newMessageCount} new
+                  </span>
+                )}
+              </Link>
+              <button
+                type="button"
+                onClick={() =>
+                  void setViewed(
+                    pane.sessionId,
+                    pane.viewedState.viewedAnywhere ? "unreviewed" : "reviewed",
+                    pane.viewedState.currentMessageIndex,
+                  )
+                }
+                className="mr-3 shrink-0 cursor-pointer text-text-500 hover:text-text-000"
+                title={pane.viewedState.viewedAnywhere ? "Mark unreviewed" : "Mark reviewed"}
+              >
+                {pane.viewedState.viewedAnywhere ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
           ))}
         </div>
       )}

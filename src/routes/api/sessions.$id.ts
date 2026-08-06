@@ -16,6 +16,8 @@ export const Route = createFileRoute("/api/sessions/$id")({
         const { sessions } = await import("../../lib/db/schema");
         const { eq } = await import("drizzle-orm");
         const { getSummary } = await import("../../lib/summaries");
+        const { getCurrentSessionMessageIndex, getSessionViewedState } =
+          await import("../../lib/db/viewed-state");
         const { readSession } = await import("../../lib/sessions");
         const { homedir } = await import("node:os");
         const { join } = await import("node:path");
@@ -59,6 +61,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
             gitClean: null,
             messageCount: 0,
             pendingTaskCount: 0,
+            viewedState: getSessionViewedState(index, id, -1),
             parentSessionId: subagent.sessionId,
           };
           return Response.json(SessionDetailResponse.parse(detail), {
@@ -109,6 +112,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
           gitClean,
           messageCount: sessionMeta?.messageCount ?? 0,
           pendingTaskCount,
+          viewedState: getSessionViewedState(index, id, getCurrentSessionMessageIndex(index, id)),
         };
 
         const provenance = await readSession(PROJECTS_DIR, id);

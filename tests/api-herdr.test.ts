@@ -20,6 +20,15 @@ const linkedPane = {
   revision: 100,
   sessionId: "session-test-100",
   via: "both",
+  viewedState: {
+    currentMessageIndex: 100,
+    lastViewedMessageIndex: 50,
+    reviewTargetMessageIndex: 100,
+    newMessageCount: 50,
+    viewedInCcp: false,
+    viewedInHerdr: true,
+    viewedAnywhere: true,
+  },
 } as const;
 
 describe("herdr panes API contract", () => {

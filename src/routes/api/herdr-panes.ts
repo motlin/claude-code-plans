@@ -5,11 +5,18 @@ export const Route = createFileRoute("/api/herdr-panes")({
   server: {
     handlers: {
       GET: async () => {
-        const [{ getHerdrPanes }, { herdrWritesEnabled }] = await Promise.all([
+        const [
+          { getDb },
+          { getHerdrPanes },
+          { addViewedStateToHerdrPanes },
+          { herdrWritesEnabled },
+        ] = await Promise.all([
+          import("../../lib/db"),
           import("../../lib/herdr/panes"),
+          import("../../lib/herdr/pane-viewed-state"),
           import("../../lib/herdr/prompt"),
         ]);
-        const panes = await getHerdrPanes();
+        const panes = addViewedStateToHerdrPanes(getDb().index, await getHerdrPanes());
         return Response.json(
           HerdrPaneIndexResponse.parse({ panes, writesEnabled: herdrWritesEnabled() }),
           {

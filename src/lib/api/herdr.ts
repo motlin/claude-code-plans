@@ -1,6 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 import { z } from "zod";
 import { apiFetch } from "./client";
+import { SessionViewedStateSchema } from "./viewed-state";
 
 /**
  * Response shape mirroring the `HerdrPaneLink` interface produced by
@@ -23,6 +24,7 @@ const HerdrPaneSchema = z
     revision: z.number(),
     sessionId: z.string(),
     via: z.enum(["env", "agent-session", "both"]),
+    viewedState: SessionViewedStateSchema,
   })
   .strict();
 

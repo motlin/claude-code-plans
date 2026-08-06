@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 import { JsonValueSchema } from "../schemas";
+import { SessionViewedStateSchema } from "./viewed-state";
 
 const SessionListItemSchema = z.object({
   id: z.string(),
@@ -64,6 +65,7 @@ export const SessionDetailResponse = z
     gitClean: z.boolean().nullable(),
     messageCount: z.number(),
     pendingTaskCount: z.number(),
+    viewedState: SessionViewedStateSchema,
     parentSessionId: z.string().optional(),
     entrypoint: z.string().optional(),
     sessionKind: z.string().optional(),

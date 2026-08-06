@@ -58,6 +58,13 @@ async function flushPromises(): Promise<void> {
   for (let index = 0; index < 5; index += 1) await Promise.resolve();
 }
 
+function viewedStateTracker() {
+  return {
+    syncPanes: vi.fn(),
+    handleStatusEvent: vi.fn(),
+  };
+}
+
 describe("herdr event bridge", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -90,6 +97,7 @@ describe("herdr event bridge", () => {
       broadcast: (type, data) => broadcasts.push({ type, data }),
       schedule: setTimeout,
       cancel: clearTimeout,
+      viewedStateTracker: viewedStateTracker(),
     });
     await flushPromises();
 
@@ -106,6 +114,7 @@ describe("herdr event bridge", () => {
     const lineReaders: FakeLineReader[] = [];
     const broadcasts: Broadcast[] = [];
     const getPanes = vi.fn(async () => []);
+    const tracker = viewedStateTracker();
     const stop = __testing.createBridge({
       probe: available,
       connect: () => {
@@ -123,6 +132,7 @@ describe("herdr event bridge", () => {
       broadcast: (type, data) => broadcasts.push({ type, data }),
       schedule: setTimeout,
       cancel: clearTimeout,
+      viewedStateTracker: tracker,
     });
     await flushPromises();
 
@@ -147,39 +157,45 @@ describe("herdr event bridge", () => {
     lineReader.send({ event: "pane_focused", data: { pane_id: "workspace-100:pane-800" } });
     await flushPromises();
 
-    expect({ writes: socket.writes, broadcasts, getPanesCalls: getPanes.mock.calls }).toStrictEqual(
-      {
-        writes: [
-          '{"id":"ccp:sub","method":"events.subscribe","params":{"subscriptions":[{"type":"pane.created"},{"type":"pane.closed"},{"type":"pane.updated"},{"type":"pane.moved"},{"type":"pane.exited"},{"type":"pane.agent_detected"},{"type":"pane.agent_status_changed","pane_id":"workspace-100:pane-100"}]}}\n',
-        ],
-        broadcasts: [
-          { type: HERDR_EVENTS.PANES_SNAPSHOT, data: { panes: [] } },
-          {
-            type: HERDR_EVENTS.PANE_CREATED,
-            data: { pane_id: "workspace-100:pane-100" },
-          },
-          {
-            type: HERDR_EVENTS.PANE_CLOSED,
-            data: { pane_id: "workspace-100:pane-200" },
-          },
-          {
-            type: HERDR_EVENTS.PANE_UPDATED,
-            data: { pane_id: "workspace-100:pane-300" },
-          },
-          { type: HERDR_EVENTS.PANE_MOVED, data: { pane_id: "workspace-100:pane-400" } },
-          { type: HERDR_EVENTS.PANE_EXITED, data: { pane_id: "workspace-100:pane-500" } },
-          {
-            type: HERDR_EVENTS.PANE_AGENT_DETECTED,
-            data: { pane_id: "workspace-100:pane-600" },
-          },
-          {
-            type: HERDR_EVENTS.PANE_AGENT_STATUS_CHANGED,
-            data: { pane_id: "workspace-100:pane-700" },
-          },
-        ],
-        getPanesCalls: [[]],
-      },
-    );
+    expect({
+      writes: socket.writes,
+      broadcasts,
+      getPanesCalls: getPanes.mock.calls,
+      syncedPanes: tracker.syncPanes.mock.calls,
+      statusEvents: tracker.handleStatusEvent.mock.calls,
+    }).toStrictEqual({
+      writes: [
+        '{"id":"ccp:sub","method":"events.subscribe","params":{"subscriptions":[{"type":"pane.created"},{"type":"pane.closed"},{"type":"pane.updated"},{"type":"pane.moved"},{"type":"pane.exited"},{"type":"pane.agent_detected"},{"type":"pane.agent_status_changed","pane_id":"workspace-100:pane-100"}]}}\n',
+      ],
+      broadcasts: [
+        { type: HERDR_EVENTS.PANES_SNAPSHOT, data: { panes: [] } },
+        {
+          type: HERDR_EVENTS.PANE_CREATED,
+          data: { pane_id: "workspace-100:pane-100" },
+        },
+        {
+          type: HERDR_EVENTS.PANE_CLOSED,
+          data: { pane_id: "workspace-100:pane-200" },
+        },
+        {
+          type: HERDR_EVENTS.PANE_UPDATED,
+          data: { pane_id: "workspace-100:pane-300" },
+        },
+        { type: HERDR_EVENTS.PANE_MOVED, data: { pane_id: "workspace-100:pane-400" } },
+        { type: HERDR_EVENTS.PANE_EXITED, data: { pane_id: "workspace-100:pane-500" } },
+        {
+          type: HERDR_EVENTS.PANE_AGENT_DETECTED,
+          data: { pane_id: "workspace-100:pane-600" },
+        },
+        {
+          type: HERDR_EVENTS.PANE_AGENT_STATUS_CHANGED,
+          data: { pane_id: "workspace-100:pane-700" },
+        },
+      ],
+      getPanesCalls: [[]],
+      syncedPanes: [[[]]],
+      statusEvents: [[{ pane_id: "workspace-100:pane-700" }]],
+    });
 
     await vi.advanceTimersByTimeAsync(249);
     expect(getPanes.mock.calls).toStrictEqual([[]]);
@@ -215,6 +231,7 @@ describe("herdr event bridge", () => {
         return setTimeout(callback, delayMs);
       },
       cancel: clearTimeout,
+      viewedStateTracker: viewedStateTracker(),
     });
     await flushPromises();
 
@@ -264,6 +281,7 @@ describe("herdr event bridge", () => {
       broadcast: () => {},
       schedule: setTimeout,
       cancel: clearTimeout,
+      viewedStateTracker: viewedStateTracker(),
     });
     await flushPromises();
     const socket = sockets[0]!;

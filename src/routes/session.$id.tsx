@@ -38,10 +38,13 @@ import {
   Maximize2,
   Minimize2,
   Users,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { DetailTopBar, pillStyles } from "../components/detail-top-bar";
 import { useSettings } from "../components/settings-provider";
 import { writeClipboardText } from "../lib/clipboard";
+import { useSessionViewedState } from "../hooks/use-session-viewed-state";
 
 export const Route = createFileRoute("/session/$id")({
   component: SessionPage,
@@ -304,6 +307,7 @@ function SessionPage() {
   const { data: transcript } = useSuspenseQuery(transcriptQueryOptions(params.id));
   const { data: subagents } = useSuspenseQuery(sessionSubagentsQueryOptions(params.id));
   const { data: herdr } = useSuspenseQuery(herdrPanesQueryOptions);
+  const viewedState = useSessionViewedState(params.id, transcript.records.length - 1);
 
   const processed = useMemo(() => processTranscript(transcript.records), [transcript.records]);
   const { runningSubagents } = useClaudeEvents();
@@ -454,7 +458,7 @@ function SessionPage() {
   }
 
   return (
-    <div>
+    <div ref={viewedState.visibilityRef}>
       {/* Sticky header: top bar + title + subagent link */}
       {!chromeHidden && (
         <div className="sticky top-0 z-10 bg-bg-000 pb-2 -mx-4 px-4 sm:-mx-8 sm:px-8 border-b border-border-300/15">
@@ -516,6 +520,21 @@ function SessionPage() {
             <CopyButton title="Copy session ID" text={params.id} icon={Copy} />
             <CopyButton title="Copy resume command" text={sessionCommands.resume} icon={Terminal} />
             <CopyButton title="Copy fork command" text={sessionCommands.fork} icon={GitFork} />
+            <button
+              type="button"
+              onClick={() => {
+                if (data.viewedState.viewedAnywhere) void viewedState.markUnreviewed();
+                else void viewedState.markReviewed();
+              }}
+              className="shrink-0 cursor-pointer text-text-500 transition-colors hover:text-text-000"
+              title={data.viewedState.viewedAnywhere ? "Mark unreviewed" : "Mark reviewed"}
+            >
+              {data.viewedState.viewedAnywhere ? (
+                <EyeOff className="h-3.5 w-3.5" />
+              ) : (
+                <Eye className="h-3.5 w-3.5" />
+              )}
+            </button>
             <a
               href={`/api/raw?sessionId=${params.id}`}
               download

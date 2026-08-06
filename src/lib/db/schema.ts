@@ -1,6 +1,6 @@
 import { sqliteTable, text, integer, index, primaryKey } from "drizzle-orm/sqlite-core";
 
-export const SCHEMA_VERSION = "15";
+export const SCHEMA_VERSION = "16";
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),
@@ -43,6 +43,24 @@ export const sessions = sqliteTable(
     index("sessions_mtime_desc_idx").on(table.mtimeMs),
     index("sessions_git_branch_idx").on(table.gitBranch),
   ],
+);
+
+export const sessionViewStates = sqliteTable("session_view_states", {
+  sessionId: text("session_id").primaryKey(),
+  lastViewedMessageIndex: integer("last_viewed_message_index").notNull().default(-1),
+  reviewTargetMessageIndex: integer("review_target_message_index").notNull().default(-1),
+  updatedAt: integer("updated_at").notNull(),
+});
+
+export const herdrTerminalViewStates = sqliteTable(
+  "herdr_terminal_view_states",
+  {
+    terminalId: text("terminal_id").primaryKey(),
+    sessionId: text("session_id").notNull(),
+    viewed: integer("viewed").notNull().default(0),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [index("herdr_terminal_view_states_session_idx").on(table.sessionId)],
 );
 
 export const planSessions = sqliteTable(
