@@ -268,6 +268,14 @@
   outline-color: var(--color-accent-100);
 }
 
+[id^="msg-"] {
+  transition: background-color 200ms ease-out;
+}
+
+.message-highlight {
+  background-color: var(--user-msg-bg);
+}
+
 @layer base {
   * {
     @apply border-border-300/15;
