@@ -2,7 +2,13 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { KNOWN_HOOK_EVENTS } from "../src/lib/hook-events";
 import type { HookEvent } from "../src/lib/hook-events";
-import { stateForEvent, type ActivityState, type DisplayState } from "../src/lib/session-state";
+import {
+  STATE_RANK,
+  compareByUrgency,
+  stateForEvent,
+  type ActivityState,
+  type DisplayState,
+} from "../src/lib/session-state";
 
 const ACTIVITY_STATES = ["idle", "working", "waiting", "unknown"] satisfies ActivityState[];
 const DISPLAY_STATES = [...ACTIVITY_STATES, "review"] satisfies DisplayState[];
@@ -207,5 +213,39 @@ describe("stateForEvent", () => {
 
   it.each(STATE_CASES)("maps $name", ({ event, expected }) => {
     expect(stateForEvent(event)).toBe(expected);
+  });
+});
+
+describe("compareByUrgency", () => {
+  it("defines the complete urgency rank", () => {
+    expect(STATE_RANK).toStrictEqual({
+      waiting: 0,
+      review: 1,
+      working: 2,
+      idle: 3,
+      unknown: 4,
+    });
+  });
+
+  it("sorts by state rank before recency and by newest activity within a state", () => {
+    const sessions = [
+      { id: "unknown-newest", state: "unknown", lastModified: 9_000 },
+      { id: "waiting-older", state: "waiting", lastModified: 1_000 },
+      { id: "working-newer", state: "working", lastModified: 8_000 },
+      { id: "review", state: "review", lastModified: 4_000 },
+      { id: "idle", state: "idle", lastModified: 5_000 },
+      { id: "waiting-newer", state: "waiting", lastModified: 3_000 },
+      { id: "working-older", state: "working", lastModified: 2_000 },
+    ] satisfies Array<{ id: string; state: DisplayState; lastModified: number }>;
+
+    expect(sessions.sort(compareByUrgency).map(({ id }) => id)).toStrictEqual([
+      "waiting-newer",
+      "waiting-older",
+      "review",
+      "working-newer",
+      "working-older",
+      "idle",
+      "unknown-newest",
+    ]);
   });
 });

@@ -4,6 +4,28 @@ export type ActivityState = "idle" | "working" | "waiting" | "unknown";
 
 export type DisplayState = ActivityState | "review";
 
+export const STATE_RANK: Record<DisplayState, number> = {
+  waiting: 0,
+  review: 1,
+  working: 2,
+  idle: 3,
+  unknown: 4,
+};
+
+export interface UrgencySortableSession {
+  state: DisplayState;
+  lastModified: number;
+}
+
+export function compareByUrgency(
+  first: UrgencySortableSession,
+  second: UrgencySortableSession,
+): number {
+  return (
+    STATE_RANK[first.state] - STATE_RANK[second.state] || second.lastModified - first.lastModified
+  );
+}
+
 export function stateForEvent(event: HookEvent): ActivityState | null {
   switch (event.hook_event_name) {
     case "UserPromptSubmit":

@@ -66,24 +66,37 @@ describe("SettingsProvider list persistence", () => {
 
     act(() => {
       firstRender.result.current.setSetting("defaultSubagentView", "sequence");
+      firstRender.result.current.setSetting("sessionSort", "stable");
       firstRender.result.current.setSetting("showThinking", true);
       firstRender.result.current.setSetting("activeTimeoutSec", 120);
     });
 
     expect({
       storedString: localStorage.getItem("ccp-subagent-view"),
+      storedSessionSort: localStorage.getItem("ccp-session-sort"),
       storedBoolean: localStorage.getItem("ccp-show-thinking"),
       storedNumber: localStorage.getItem("ccp-active-timeout"),
-    }).toStrictEqual({ storedString: "sequence", storedBoolean: "true", storedNumber: "120" });
+    }).toStrictEqual({
+      storedString: "sequence",
+      storedSessionSort: "stable",
+      storedBoolean: "true",
+      storedNumber: "120",
+    });
 
     firstRender.unmount();
     const reloaded = renderHook(() => useSettings(), { wrapper });
     await waitFor(() =>
       expect({
         stringValue: reloaded.result.current.settings.defaultSubagentView,
+        sessionSort: reloaded.result.current.settings.sessionSort,
         booleanValue: reloaded.result.current.settings.showThinking,
         numericValue: reloaded.result.current.settings.activeTimeoutSec,
-      }).toStrictEqual({ stringValue: "sequence", booleanValue: true, numericValue: 120 }),
+      }).toStrictEqual({
+        stringValue: "sequence",
+        sessionSort: "stable",
+        booleanValue: true,
+        numericValue: 120,
+      }),
     );
   });
 });

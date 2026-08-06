@@ -34,6 +34,8 @@ export interface Settings {
 
   activeTimeoutSec: number;
 
+  sessionSort: "urgency" | "stable";
+
   desktopNotifications: boolean;
 
   verbosity: Verbosity;
@@ -64,6 +66,8 @@ export const DEFAULTS: Settings = {
 
   activeTimeoutSec: ACTIVE_SESSION_WINDOW_MS / 1000,
 
+  sessionSort: "urgency",
+
   desktopNotifications: false,
 
   verbosity: "normal",
@@ -87,6 +91,7 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
   statusFooterVisible: "ccp-status-footer",
   showSummaryButton: "ccp-show-summary-button",
   activeTimeoutSec: "ccp-active-timeout",
+  sessionSort: "ccp-session-sort",
   desktopNotifications: "ccp-desktop-notifications",
   verbosity: "ccp-verbosity",
   linkCategoryRules: "ccp-link-category-rules",
