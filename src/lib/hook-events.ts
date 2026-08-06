@@ -67,6 +67,7 @@ export const DOMAIN_EVENTS = {
   SESSION_COMPACTED: "session:compacted",
   SUBAGENT_STARTED: "subagent:started",
   SUBAGENT_STOPPED: "subagent:stopped",
+  SUBAGENTS_SNAPSHOT: "subagents:snapshot",
   SESSION_CWD_CHANGED: "session:cwd-changed",
   INSTRUCTIONS_LOADED: "instructions:loaded",
   CONFIG_CHANGED: "config:changed",
@@ -297,17 +298,23 @@ export interface SessionCompactedPayload {
  * parent session; `agentId` is the subagent session when Claude Code provides
  * it.
  */
-export interface SubagentStartedPayload {
+export interface LiveSubagentPayload {
   sessionId: string;
+  parentAgentId: string | null;
   agentType: string;
   agentId: string;
   description: string;
+  startedAt: string;
+  endedAt: string | null;
 }
+
+export type SubagentStartedPayload = LiveSubagentPayload;
 
 export interface SubagentStoppedPayload {
   sessionId: string;
   agentType: string;
   agentId: string;
+  endedAt?: string;
 }
 
 /**

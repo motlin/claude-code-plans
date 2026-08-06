@@ -1,12 +1,14 @@
 import { writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { vi } from "vite-plus/test";
 import { openTestDb, type AppDb } from "../src/lib/db/connection";
 import { indexSessionsIndex } from "../src/lib/db/indexer";
 import { dispatchHookEvent } from "../src/lib/hook-dispatcher";
 import { DOMAIN_EVENTS, SSE_EVENTS } from "../src/lib/hook-events";
 import type { HookEvent } from "../src/lib/hook-events";
 import { getNotifications, clearAllNotifications } from "../src/lib/notifications-store";
+import { clearLiveSubagents } from "../src/lib/live-subagent-store";
 import * as schema from "../src/lib/db/schema";
 import type { ActiveSessionEntry } from "../src/lib/active-session-store";
 import type { ActivityState } from "../src/lib/session-state";
@@ -82,9 +84,12 @@ function makeStore() {
 beforeEach(() => {
   mkdirSync(testDir, { recursive: true });
   db = openTestDb();
+  clearLiveSubagents();
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
+  clearLiveSubagents();
   db.close();
   rmSync(testDir, { recursive: true, force: true });
 });
@@ -765,6 +770,7 @@ describe("dispatchHookEvent", () => {
   });
 
   it("SubagentStart broadcasts SUBAGENT_STARTED with agent_type / agent_id and touches the parent session", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(Date.UTC(1999, 11, 31));
     const broadcasts: Broadcast[] = [];
     const { store, touchedCalls } = makeStore();
     await dispatchHookEvent({
@@ -789,13 +795,16 @@ describe("dispatchHookEvent", () => {
     if (!started) throw new Error("Expected subagent:started broadcast");
     expect(started.data).toStrictEqual({
       sessionId: "parent-789",
+      parentAgentId: null,
       agentType: "general-purpose",
-      agentId: "sub-456",
+      agentId: "agent-sub-456",
       description: "Inspect test behavior",
+      startedAt: "1999-12-31T00:00:00.000Z",
+      endedAt: null,
     });
   });
 
-  it("SubagentStart defaults missing agent_type / agent_id to empty strings in the broadcast", async () => {
+  it("SubagentStart without an agent id does not create an unkeyed live node", async () => {
     const broadcasts: Broadcast[] = [];
     const { store } = makeStore();
     await dispatchHookEvent({
@@ -810,14 +819,56 @@ describe("dispatchHookEvent", () => {
       broadcast: (type, data) => broadcasts.push({ type, data }),
     });
 
-    const started = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SUBAGENT_STARTED);
-    if (!started) throw new Error("Expected subagent:started broadcast");
-    expect(started.data).toStrictEqual({
-      sessionId: "parent-789",
-      agentType: "",
-      agentId: "",
-      description: "",
+    expect(broadcasts.filter((b) => b.type === DOMAIN_EVENTS.SUBAGENT_STARTED)).toStrictEqual([]);
+  });
+
+  it("Stop reconciles a killed live subagent and broadcasts its ended timestamp", async () => {
+    const broadcasts: Broadcast[] = [];
+    const { store } = makeStore();
+    vi.spyOn(Date, "now")
+      .mockReturnValueOnce(Date.UTC(1999, 11, 31))
+      .mockReturnValueOnce(Date.UTC(1999, 11, 31, 0, 0, 5));
+
+    await dispatchHookEvent({
+      event: {
+        hook_event_name: "SubagentStart",
+        session_id: "parent-789",
+        transcript_path: "/Users/u/.claude/projects/-h-u-p/parent-789.jsonl",
+        cwd: "/tmp",
+        agent_type: "Explore",
+        agent_id: "alice",
+        agent_config: { description: "Inspect test behavior" },
+      },
+      db: db.index,
+      store,
+      broadcast: (type, data) => broadcasts.push({ type, data }),
     });
+    broadcasts.length = 0;
+
+    await dispatchHookEvent({
+      event: {
+        hook_event_name: "Stop",
+        session_id: "parent-789",
+        transcript_path: "/Users/u/.claude/projects/-h-u-p/parent-789.jsonl",
+        cwd: "/tmp",
+        stop_hook_active: false,
+      },
+      db: db.index,
+      store,
+      broadcast: (type, data) => broadcasts.push({ type, data }),
+    });
+
+    expect(broadcasts).toStrictEqual([
+      {
+        type: DOMAIN_EVENTS.SUBAGENT_STOPPED,
+        data: {
+          sessionId: "parent-789",
+          agentType: "Explore",
+          agentId: "agent-alice",
+          endedAt: "1999-12-31T00:00:05.000Z",
+        },
+      },
+    ]);
   });
 
   it("CwdChanged updates the active-session store cwd and broadcasts SESSION_CWD_CHANGED", async () => {

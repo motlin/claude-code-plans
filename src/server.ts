@@ -5,6 +5,7 @@ import { createWatcher, resolveIgnoredDirNames } from "./lib/watcher";
 import { getDb, initDb, runInitialScan } from "./lib/db";
 import { startSweep } from "./lib/active-session-store";
 import { startNotificationsSweep } from "./lib/notifications-store";
+import { startLiveSubagentSweep } from "./lib/live-subagent-store";
 import { getCacheDir } from "./lib/db/connection";
 import { initPendingApprovalsCache } from "./lib/db/pending-approvals-cache";
 import { startHerdrEventBridge } from "./lib/herdr/subscribe";
@@ -57,6 +58,7 @@ void (async () => {
 
   startSweep();
   startNotificationsSweep();
+  startLiveSubagentSweep();
   startHerdrEventBridge();
 })();
 

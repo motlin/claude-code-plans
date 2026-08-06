@@ -24,6 +24,7 @@ import {
   type SessionSummaryPayload,
 } from "../src/lib/hook-events";
 import type { TranscriptData } from "../src/lib/api/sessions";
+import type { LiveSubagentNode } from "../src/lib/live-subagent-store";
 
 function makeSession(
   overrides: Partial<SessionSummaryPayload> & { id: string; project: string },
@@ -70,10 +71,50 @@ function makeInitialState(): ClaudeEventsState {
     compactingSessions: new Set(),
     notifications: new Map(),
     runningSubagents: new Map(),
+    liveSubagents: new Map(),
   };
 }
 
 describe("claudeEventsReducer", () => {
+  it("hydrates running and recently-ended nodes from the SSE snapshot", () => {
+    const runningNode: LiveSubagentNode = {
+      sessionId: "session-test",
+      parentAgentId: null,
+      agentType: "Explore",
+      agentId: "agent-alice",
+      description: "Inspect the test project",
+      startedAt: "1999-12-31T00:00:00.000Z",
+      endedAt: null,
+    };
+    const endedNode: LiveSubagentNode = {
+      sessionId: "session-test",
+      parentAgentId: "agent-alice",
+      agentType: "Plan",
+      agentId: "agent-bob",
+      description: "Plan the test change",
+      startedAt: "1999-12-31T00:00:01.000Z",
+      endedAt: "1999-12-31T00:00:02.000Z",
+    };
+
+    const state = claudeEventsReducer(makeInitialState(), {
+      type: "SSE_EVENT",
+      eventType: DOMAIN_EVENTS.SUBAGENTS_SNAPSHOT,
+      data: { subagents: [runningNode, endedNode] },
+      timestamp: 1_000,
+    });
+
+    expect({
+      liveSubagents: state.liveSubagents,
+      runningSubagents: state.runningSubagents,
+    }).toStrictEqual({
+      liveSubagents: new Map([
+        ["agent-alice", runningNode],
+        ["agent-bob", endedNode],
+      ]),
+      runningSubagents: new Map([["session-test:alice", runningNode]]),
+    });
+  });
+
   it("tracks a subagent from start through stop", () => {
     const started = claudeEventsReducer(makeInitialState(), {
       type: "SSE_EVENT",
@@ -86,19 +127,22 @@ describe("claudeEventsReducer", () => {
       },
       timestamp: 1_000,
     });
-    expect(started.runningSubagents).toStrictEqual(
-      new Map([
-        [
-          "session-test:test-agent",
-          {
-            sessionId: "session-test",
-            agentType: "Explore",
-            agentId: "test-agent",
-            description: "Inspect test behavior",
-          },
-        ],
-      ]),
-    );
+    const startedNode = {
+      sessionId: "session-test",
+      parentAgentId: null,
+      agentType: "Explore",
+      agentId: "agent-test-agent",
+      description: "Inspect test behavior",
+      startedAt: "1970-01-01T00:00:01.000Z",
+      endedAt: null,
+    };
+    expect({
+      runningSubagents: started.runningSubagents,
+      liveSubagents: started.liveSubagents,
+    }).toStrictEqual({
+      runningSubagents: new Map([["session-test:test-agent", startedNode]]),
+      liveSubagents: new Map([["agent-test-agent", startedNode]]),
+    });
 
     const stopped = claudeEventsReducer(started, {
       type: "SSE_EVENT",
@@ -110,7 +154,21 @@ describe("claudeEventsReducer", () => {
       },
       timestamp: 2_000,
     });
-    expect(stopped.runningSubagents).toStrictEqual(new Map());
+    expect({
+      runningSubagents: stopped.runningSubagents,
+      liveSubagents: stopped.liveSubagents,
+    }).toStrictEqual({
+      runningSubagents: new Map(),
+      liveSubagents: new Map([
+        [
+          "agent-test-agent",
+          {
+            ...startedNode,
+            endedAt: "1970-01-01T00:00:02.000Z",
+          },
+        ],
+      ]),
+    });
   });
 
   it("handles session:start by adding to activeSessions", () => {

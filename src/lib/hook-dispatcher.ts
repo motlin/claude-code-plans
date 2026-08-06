@@ -26,6 +26,11 @@ import {
 } from "./hook-events";
 import { buildSessionSummaryPayloadFromDb, toActiveSessionPayload } from "./session-summary";
 import { addNotification } from "./notifications-store";
+import {
+  addLiveSubagent,
+  endLiveSubagent,
+  reconcileStoredLiveSubagents,
+} from "./live-subagent-store";
 import { indexFile, indexJsonlFile } from "./db/indexer";
 import { resolveProjectName } from "./memory";
 import { recentlyBroadcast } from "./update-dedupe";
@@ -388,6 +393,14 @@ export async function dispatchHookEvent({
 
     case "Stop": {
       store.touchSession(event.session_id);
+      for (const node of reconcileStoredLiveSubagents(event.session_id)) {
+        broadcast(DOMAIN_EVENTS.SUBAGENT_STOPPED, {
+          sessionId: node.sessionId,
+          agentType: node.agentType,
+          agentId: node.agentId,
+          endedAt: node.endedAt!,
+        } satisfies SubagentStoppedPayload);
+      }
       const summary = buildSessionSummaryPayloadFromDb(db, event.session_id);
       if (summary) {
         const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${summary.id}:${summary.mtime}`;
@@ -424,6 +437,15 @@ export async function dispatchHookEvent({
 
     case "SubagentStop": {
       store.touchSession(event.session_id);
+      const liveSubagent = endLiveSubagent(event.session_id);
+      if (liveSubagent) {
+        broadcast(DOMAIN_EVENTS.SUBAGENT_STOPPED, {
+          sessionId: liveSubagent.sessionId,
+          agentType: liveSubagent.agentType,
+          agentId: liveSubagent.agentId,
+          endedAt: liveSubagent.endedAt!,
+        } satisfies SubagentStoppedPayload);
+      }
       const subagent = db
         .select({
           id: schema.subagents.id,
@@ -438,7 +460,7 @@ export async function dispatchHookEvent({
           ),
         )
         .get();
-      if (subagent) {
+      if (subagent && !liveSubagent) {
         broadcast(DOMAIN_EVENTS.SUBAGENT_STOPPED, {
           sessionId: subagent.sessionId,
           agentType: subagent.agentType ?? "",
@@ -461,12 +483,23 @@ export async function dispatchHookEvent({
       // SUBAGENT_STARTED delta, and re-broadcast the parent session summary
       // if it is already indexed.
       store.touchSession(event.session_id);
-      broadcast(DOMAIN_EVENTS.SUBAGENT_STARTED, {
-        sessionId: event.session_id,
+      const liveSubagent = addLiveSubagent({
+        parentSessionId: event.session_id,
         agentType: event.agent_type ?? "",
         agentId: event.agent_id ?? "",
         description: event.agent_config?.description ?? "",
-      } satisfies SubagentStartedPayload);
+      });
+      if (liveSubagent) {
+        broadcast(DOMAIN_EVENTS.SUBAGENT_STARTED, {
+          sessionId: liveSubagent.sessionId,
+          parentAgentId: liveSubagent.parentAgentId,
+          agentType: liveSubagent.agentType,
+          agentId: liveSubagent.agentId,
+          description: liveSubagent.description,
+          startedAt: liveSubagent.startedAt,
+          endedAt: null,
+        } satisfies SubagentStartedPayload);
+      }
       const summary = buildSessionSummaryPayloadFromDb(db, event.session_id);
       if (summary) {
         const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${summary.id}:${summary.mtime}`;

@@ -7,6 +7,8 @@ import { SubagentSequence } from "../components/subagent-sequence";
 import { SubagentTree } from "../components/subagent-tree";
 import { DetailTopBar, pillStyles } from "../components/detail-top-bar";
 import { useSettings } from "../components/settings-provider";
+import { useClaudeEvents } from "../hooks/use-claude-events";
+import { toSubagentSessionId } from "../lib/subagents";
 
 export const Route = createFileRoute("/session/$id_/subagents")({
   component: SubagentsPage,
@@ -23,6 +25,13 @@ function SubagentsPage() {
   const { data: agents } = useSuspenseQuery(sessionSubagentsQueryOptions(params.id));
   const { settings } = useSettings();
   const subagentView = settings.defaultSubagentView;
+  const { liveSubagents } = useClaudeEvents();
+  const subagentCount = new Set([
+    ...agents.map((agent) => toSubagentSessionId(agent.id)),
+    ...[...liveSubagents.values()]
+      .filter((node) => node.sessionId === params.id)
+      .map((node) => node.agentId),
+  ]).size;
 
   return (
     <div>
@@ -35,16 +44,18 @@ function SubagentsPage() {
 
       <h1 className="text-lg font-semibold flex items-center gap-2">
         <GitFork className="h-4 w-4 text-text-500" />
-        Subagents ({agents.length})
+        Subagents ({subagentCount})
       </h1>
 
-      {agents.length === 0 ? (
+      {subagentView === "tree" ? (
+        <div className="mt-3">
+          <SubagentTree agents={agents} sessionId={params.id} />
+        </div>
+      ) : agents.length === 0 ? (
         <p className="mt-4 text-sm text-text-500">No subagents for this session.</p>
       ) : (
         <div className="mt-3">
-          {subagentView === "tree" ? (
-            <SubagentTree agents={agents} />
-          ) : subagentView === "sequence" ? (
+          {subagentView === "sequence" ? (
             <SubagentSequence agents={agents} />
           ) : (
             <SubagentGantt agents={agents} />

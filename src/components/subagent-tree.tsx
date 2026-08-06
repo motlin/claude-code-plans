@@ -9,6 +9,9 @@ import {
   type SubagentTreeNode,
 } from "../lib/subagent-tree";
 import { formatDuration } from "./tool-renderers/shared";
+import { useClaudeEvents } from "../hooks/use-claude-events";
+import { mergeLiveSubagents } from "../lib/live-subagent-store";
+import { toSubagentSessionId } from "../lib/subagents";
 
 const AGENT_TYPE_STYLES: Record<string, string> = {
   Explore: "bg-blue-500/15 text-blue-400",
@@ -40,15 +43,28 @@ function formatTime(timestamp: string | null): string {
   return new Date(timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
-function TreeNode({ node }: { node: SubagentTreeNode }) {
+interface TreePresentation {
+  liveStatuses: Map<string, "running" | "ended">;
+  indexedAgentIds: Set<string>;
+}
+
+function TreeNode({
+  node,
+  presentation,
+}: {
+  node: SubagentTreeNode;
+  presentation: TreePresentation;
+}) {
   const hasChildren = node.children.length > 0;
   const [expanded, setExpanded] = useState(true);
   const agentDurationMs = getDurationMs(node.agent);
+  const canonicalId = toSubagentSessionId(node.agent.id);
+  const liveStatus = presentation.liveStatuses.get(canonicalId);
 
   return (
     <div>
       <div
-        className="group flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 hover:bg-bg-200/50"
+        className={`group flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 hover:bg-bg-200/50 ${liveStatus === "ended" ? "opacity-60" : ""}`}
         onClick={() => hasChildren && setExpanded((current) => !current)}
       >
         <span className="w-4 shrink-0 text-text-500">
@@ -62,6 +78,12 @@ function TreeNode({ node }: { node: SubagentTreeNode }) {
         <span className="min-w-0 truncate text-xs text-text-100">
           {node.agent.description ?? node.agent.slug ?? node.agent.id}
         </span>
+        {liveStatus === "running" && (
+          <span className="flex shrink-0 items-center gap-1 text-[10px] text-success-000">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success-000" />
+            running
+          </span>
+        )}
         {agentDurationMs !== null && (
           <span className="shrink-0 text-[10px] tabular-nums text-text-500">
             {formatDuration(agentDurationMs)}
@@ -70,26 +92,34 @@ function TreeNode({ node }: { node: SubagentTreeNode }) {
         <span className="ml-auto shrink-0 text-[10px] text-text-500">
           {formatTime(node.agent.startedAt)}
         </span>
-        <Link
-          to="/session/$id"
-          params={{ id: node.agent.id }}
-          className="hidden shrink-0 items-center gap-1 text-[10px] text-accent-100 hover:underline group-hover:inline-flex"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <Bot size={10} />
-          view
-        </Link>
+        {presentation.indexedAgentIds.has(canonicalId) && (
+          <Link
+            to="/session/$id"
+            params={{ id: node.agent.id }}
+            className="hidden shrink-0 items-center gap-1 text-[10px] text-accent-100 hover:underline group-hover:inline-flex"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <Bot size={10} />
+            view
+          </Link>
+        )}
       </div>
       {hasChildren && expanded && (
         <div className="ml-5 border-l border-border-300/20 pl-3">
-          <TreeEntries entries={node.children} />
+          <TreeEntries entries={node.children} presentation={presentation} />
         </div>
       )}
     </div>
   );
 }
 
-function ParallelGroupNode({ group }: { group: ParallelSubagentGroup }) {
+function ParallelGroupNode({
+  group,
+  presentation,
+}: {
+  group: ParallelSubagentGroup;
+  presentation: TreePresentation;
+}) {
   const [expanded, setExpanded] = useState(true);
 
   return (
@@ -114,7 +144,7 @@ function ParallelGroupNode({ group }: { group: ParallelSubagentGroup }) {
       {expanded && (
         <div className="ml-5 border-l border-accent-000/15 pl-3">
           {group.children.map((child) => (
-            <TreeNode key={child.agent.id} node={child} />
+            <TreeNode key={child.agent.id} node={child} presentation={presentation} />
           ))}
         </div>
       )}
@@ -132,18 +162,57 @@ function isParallelGroup(entry: SubagentTreeEntry): entry is ParallelSubagentGro
   return "type" in entry;
 }
 
-function TreeEntries({ entries }: { entries: SubagentTreeEntry[] }) {
+function TreeEntries({
+  entries,
+  presentation,
+}: {
+  entries: SubagentTreeEntry[];
+  presentation: TreePresentation;
+}) {
   return entries.map((entry, index) =>
     isParallelGroup(entry) ? (
-      <ParallelGroupNode key={`parallel-${index}`} group={entry} />
+      <ParallelGroupNode key={`parallel-${index}`} group={entry} presentation={presentation} />
     ) : (
-      <TreeNode key={entry.agent.id} node={entry} />
+      <TreeNode key={entry.agent.id} node={entry} presentation={presentation} />
     ),
   );
 }
 
-export function SubagentTree({ agents }: { agents: Subagent[] }) {
-  const tree = useMemo(() => buildSubagentTree(agents), [agents]);
-  if (tree.length === 0) return null;
-  return <TreeEntries entries={tree} />;
+export function SubagentTree({ agents, sessionId }: { agents: Subagent[]; sessionId?: string }) {
+  const { liveSubagents } = useClaudeEvents();
+  const indexedAgentIds = useMemo(
+    () => new Set(agents.map((agent) => toSubagentSessionId(agent.id))),
+    [agents],
+  );
+  const indexedSessionIds = useMemo(
+    () => new Set(agents.map((agent) => agent.sessionId)),
+    [agents],
+  );
+  const relevantLiveNodes = useMemo(
+    () =>
+      [...liveSubagents.values()].filter((node) =>
+        sessionId === undefined
+          ? indexedSessionIds.has(node.sessionId)
+          : node.sessionId === sessionId,
+      ),
+    [indexedSessionIds, liveSubagents, sessionId],
+  );
+  const mergedAgents = useMemo(
+    () => mergeLiveSubagents(agents, relevantLiveNodes),
+    [agents, relevantLiveNodes],
+  );
+  const liveStatuses = useMemo(
+    () =>
+      new Map(
+        relevantLiveNodes
+          .filter((node) => !indexedAgentIds.has(node.agentId))
+          .map((node) => [node.agentId, node.endedAt === null ? "running" : "ended"] as const),
+      ),
+    [indexedAgentIds, relevantLiveNodes],
+  );
+  const tree = useMemo(() => buildSubagentTree(mergedAgents), [mergedAgents]);
+  if (tree.length === 0) {
+    return <p className="mt-4 text-sm text-text-500">No subagents for this session.</p>;
+  }
+  return <TreeEntries entries={tree} presentation={{ indexedAgentIds, liveStatuses }} />;
 }

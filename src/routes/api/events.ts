@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { addClient, removeClient } from "../../lib/watcher";
+import { DOMAIN_EVENTS } from "../../lib/hook-events";
+import { getLiveSubagentNodes } from "../../lib/live-subagent-store";
 
 export const Route = createFileRoute("/api/events")({
   server: {
@@ -13,6 +15,11 @@ export const Route = createFileRoute("/api/events")({
           start(controller) {
             ctrl = controller;
             controller.enqueue(encoder.encode(":\n\n"));
+            controller.enqueue(
+              encoder.encode(
+                `event: ${DOMAIN_EVENTS.SUBAGENTS_SNAPSHOT}\ndata: ${JSON.stringify({ subagents: getLiveSubagentNodes() })}\n\n`,
+              ),
+            );
             addClient(controller);
 
             keepalive = setInterval(() => {

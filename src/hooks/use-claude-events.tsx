@@ -29,12 +29,18 @@ import {
   type SubagentStartedPayload,
 } from "../lib/hook-events";
 import {
+  reconcileLiveSubagents,
+  recordLiveSubagentStop,
+  sweepLiveSubagents,
+  type LiveSubagentNode,
+} from "../lib/live-subagent-store";
+import {
   groupedSessionsQueryOptions,
   recentSessionsInfiniteQueryOptions,
   type TranscriptData,
 } from "../lib/api/sessions";
 import { toMdSlug } from "../lib/md-slug";
-import { getSubagentLifecycleKey } from "../lib/subagents";
+import { getSubagentLifecycleKey, toSubagentSessionId } from "../lib/subagents";
 import { observeSessionState } from "../lib/unread-store";
 import type { ActivityState } from "../lib/session-state";
 import type { Statusline } from "../lib/api/statusline";
@@ -96,6 +102,8 @@ export interface ClaudeEventsState {
    * session ending.
    */
   runningSubagents: Map<string, SubagentStartedPayload>;
+  /** Live and recently-ended nodes received from the server's HMR store. */
+  liveSubagents: Map<string, LiveSubagentNode>;
 }
 
 // ---------------------------------------------------------------------------
@@ -110,6 +118,7 @@ export type ClaudeEventsAction =
       timestamp: number;
     }
   | { type: "DISMISS_DRIFT"; hookEventName: string }
+  | { type: "SWEEP_LIVE_SUBAGENTS"; timestamp: number }
   | { type: "RESET" };
 
 // ---------------------------------------------------------------------------
@@ -134,7 +143,14 @@ export function claudeEventsReducer(
       compactingSessions: new Set(),
       notifications: new Map(),
       runningSubagents: new Map(),
+      liveSubagents: new Map(),
     };
+  }
+
+  if (action.type === "SWEEP_LIVE_SUBAGENTS") {
+    const liveSubagents = new Map(state.liveSubagents);
+    sweepLiveSubagents(liveSubagents, action.timestamp);
+    return liveSubagents.size === state.liveSubagents.size ? state : { ...state, liveSubagents };
   }
 
   if (action.type === "DISMISS_DRIFT") {
@@ -170,6 +186,24 @@ export function claudeEventsReducer(
     const dismissedDrifts = new Set(state.dismissedDrifts);
     dismissedDrifts.delete(hookEventName);
     return { ...state, hookSchemaDrifts, dismissedDrifts };
+  }
+
+  if (action.eventType === DOMAIN_EVENTS.SUBAGENTS_SNAPSHOT) {
+    const nodes = action.data["subagents"];
+    if (!Array.isArray(nodes)) return state;
+    const liveSubagents = new Map<string, LiveSubagentNode>();
+    const runningSubagents = new Map<string, SubagentStartedPayload>();
+    for (const value of nodes) {
+      const node = value as LiveSubagentNode;
+      liveSubagents.set(node.agentId, node);
+      if (node.endedAt === null) {
+        runningSubagents.set(
+          getSubagentLifecycleKey(node.sessionId, node.agentId, node.agentType),
+          node,
+        );
+      }
+    }
+    return { ...state, liveSubagents, runningSubagents };
   }
 
   const sessionId =
@@ -223,6 +257,8 @@ export function claudeEventsReducer(
       for (const [key, sub] of runningSubagents) {
         if (sub.sessionId === sessionId) runningSubagents.delete(key);
       }
+      const liveSubagents = new Map(state.liveSubagents);
+      reconcileLiveSubagents(liveSubagents, sessionId, action.timestamp);
       return {
         ...state,
         activeSessions,
@@ -231,6 +267,7 @@ export function claudeEventsReducer(
         compactingSessions,
         notifications,
         runningSubagents,
+        liveSubagents,
       };
     }
     case DOMAIN_EVENTS.SESSION_UPDATED: {
@@ -313,24 +350,51 @@ export function claudeEventsReducer(
       if (!sessionId) return state;
       const agentType =
         typeof action.data["agentType"] === "string" ? action.data["agentType"] : "";
-      const agentId = typeof action.data["agentId"] === "string" ? action.data["agentId"] : "";
+      const rawAgentId = typeof action.data["agentId"] === "string" ? action.data["agentId"] : "";
       const description =
         typeof action.data["description"] === "string" ? action.data["description"] : "";
+      const parentAgentId =
+        typeof action.data["parentAgentId"] === "string" ? action.data["parentAgentId"] : null;
+      const startedAt =
+        typeof action.data["startedAt"] === "string"
+          ? action.data["startedAt"]
+          : new Date(action.timestamp).toISOString();
+      if (rawAgentId === "") return state;
+      const agentId = toSubagentSessionId(rawAgentId);
+      const node: LiveSubagentNode = {
+        sessionId,
+        parentAgentId,
+        agentType,
+        agentId,
+        description,
+        startedAt,
+        endedAt: null,
+      };
       const runningSubagents = new Map(state.runningSubagents);
       const key = getSubagentLifecycleKey(sessionId, agentId, agentType);
-      runningSubagents.set(key, { sessionId, agentType, agentId, description });
-      return { ...state, runningSubagents };
+      runningSubagents.set(key, node);
+      const liveSubagents = new Map(state.liveSubagents);
+      liveSubagents.set(agentId, node);
+      return { ...state, runningSubagents, liveSubagents };
     }
     case DOMAIN_EVENTS.SUBAGENT_STOPPED: {
       if (!sessionId) return state;
       const agentType =
         typeof action.data["agentType"] === "string" ? action.data["agentType"] : "";
-      const agentId = typeof action.data["agentId"] === "string" ? action.data["agentId"] : "";
+      const rawAgentId = typeof action.data["agentId"] === "string" ? action.data["agentId"] : "";
+      if (rawAgentId === "") return state;
+      const agentId = toSubagentSessionId(rawAgentId);
       const key = getSubagentLifecycleKey(sessionId, agentId, agentType);
-      if (!state.runningSubagents.has(key)) return state;
+      if (!state.runningSubagents.has(key) && !state.liveSubagents.has(agentId)) return state;
       const runningSubagents = new Map(state.runningSubagents);
       runningSubagents.delete(key);
-      return { ...state, runningSubagents };
+      const liveSubagents = new Map(state.liveSubagents);
+      const endedAt =
+        typeof action.data["endedAt"] === "string"
+          ? Date.parse(action.data["endedAt"])
+          : action.timestamp;
+      recordLiveSubagentStop(liveSubagents, agentId, endedAt);
+      return { ...state, runningSubagents, liveSubagents };
     }
     case DOMAIN_EVENTS.SESSION_ENDED: {
       // Domain SESSION_ENDED cleans up the same per-session state the
@@ -366,6 +430,8 @@ export function claudeEventsReducer(
       for (const [key, sub] of runningSubagents) {
         if (sub.sessionId === sessionId) runningSubagents.delete(key);
       }
+      const liveSubagents = new Map(state.liveSubagents);
+      reconcileLiveSubagents(liveSubagents, sessionId, action.timestamp);
       return {
         ...state,
         pendingTools,
@@ -373,6 +439,7 @@ export function claudeEventsReducer(
         compactingSessions,
         notifications,
         runningSubagents,
+        liveSubagents,
       };
     }
     default:
@@ -769,6 +836,7 @@ const DOMAIN_EVENT_TYPES = [
   DOMAIN_EVENTS.SESSION_COMPACTED,
   DOMAIN_EVENTS.SUBAGENT_STARTED,
   DOMAIN_EVENTS.SUBAGENT_STOPPED,
+  DOMAIN_EVENTS.SUBAGENTS_SNAPSHOT,
   DOMAIN_EVENTS.SESSION_CWD_CHANGED,
   DOMAIN_EVENTS.MESSAGE_DISPLAYED,
   DOMAIN_EVENTS.NOTIFICATION,
@@ -800,6 +868,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
     compactingSessions: new Set<string>(),
     notifications: new Map<string, NotificationPayload>(),
     runningSubagents: new Map<string, SubagentStartedPayload>(),
+    liveSubagents: new Map<string, LiveSubagentNode>(),
   }));
 
   const queryClient = useQueryClient();
@@ -864,6 +933,13 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
       for (const session of group.sessions) observeSessionState(session.id, session.state);
     }
   }, [queryClient]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      dispatch({ type: "SWEEP_LIVE_SUBAGENTS", timestamp: Date.now() });
+    }, 60_000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const es = new EventSource("/api/events");
@@ -1097,6 +1173,15 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
                 query.queryKey[0] === "projects" && query.queryKey[2] === "subagents",
             });
           }
+          break;
+        }
+        case DOMAIN_EVENTS.SUBAGENTS_SNAPSHOT: {
+          dispatch({
+            type: "SSE_EVENT",
+            eventType: e.type,
+            data,
+            timestamp: Date.now(),
+          });
           break;
         }
         case DOMAIN_EVENTS.SESSION_STARTED:
