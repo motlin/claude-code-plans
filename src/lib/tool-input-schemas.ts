@@ -339,7 +339,7 @@ const TaskOutputInputSchema = z
   })
   .strict();
 
-const LSPInputSchema = z
+export const LSPInputSchema = z
   .object({
     file_path: z.string().optional(),
     path: z.string().optional(),
@@ -350,7 +350,7 @@ const LSPInputSchema = z
   })
   .strict();
 
-const NotebookEditInputSchema = z
+export const NotebookEditInputSchema = z
   .object({
     notebook_path: z.string(),
     new_source: z.string(),
@@ -367,7 +367,7 @@ const NotebookReadInputSchema = z
   })
   .strict();
 
-const LSInputSchema = z
+export const LSInputSchema = z
   .object({
     path: z.string(),
     ignore: z.array(z.string()).optional(),
