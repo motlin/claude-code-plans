@@ -88,10 +88,6 @@
       "exports": ["SessionSubagentsResponse", "sessionSubagentsQueryOptions"]
     },
     {
-      "file": "src/lib/api/search.ts",
-      "exports": ["fileSearchQueryOptions"]
-    },
-    {
       "file": "src/lib/db/queries.ts",
       "exports": [
         "DbSearchResult",

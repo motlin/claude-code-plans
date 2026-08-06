@@ -1,0 +1,21 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { FileSearchRootsResponse } from "../../lib/api/search";
+
+const PRIVATE_NO_CACHE = "private, max-age=0, must-revalidate";
+
+export function fileSearchRootsResponse(roots: string[]): Response {
+  return Response.json(FileSearchRootsResponse.parse({ roots }), {
+    headers: { "Cache-Control": PRIVATE_NO_CACHE },
+  });
+}
+
+export const Route = createFileRoute("/api/search/file-roots")({
+  server: {
+    handlers: {
+      GET: async () => {
+        const { resolveConfiguredFileRoots } = await import("../../lib/config");
+        return fileSearchRootsResponse(await resolveConfiguredFileRoots());
+      },
+    },
+  },
+});

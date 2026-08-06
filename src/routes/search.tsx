@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { FileSearchResults, fileSearchViewerNavigation } from "../components/file-search-results";
 import {
   sessionSearchQueryOptions,
   messageSearchQueryOptions,
@@ -21,20 +22,70 @@ function formatDate(iso: string): string {
 
 export const Route = createFileRoute("/search")({
   component: SearchPage,
-  validateSearch: (search: Record<string, unknown>) => ({
-    q: (search["q"] as string) ?? "",
-    mode:
-      (search["mode"] as string) === "conversations"
-        ? ("conversations" as const)
-        : ("titles" as const),
-  }),
+  validateSearch: validateSearchParameters,
   head: () => ({
     meta: [{ title: "Search" }],
   }),
 });
 
+export function validateSearchParameters(search: Record<string, unknown>): {
+  q: string;
+  mode: "titles" | "conversations" | "files";
+} {
+  const mode = search["mode"];
+  return {
+    q: typeof search["q"] === "string" ? search["q"] : "",
+    mode: mode === "conversations" || mode === "files" ? mode : "titles",
+  };
+}
+
 function SearchPage() {
   const { q: submittedQuery, mode } = Route.useSearch();
+  const navigate = useNavigate();
+
+  if (mode === "files") {
+    return (
+      <div>
+        <h1 className="text-lg font-semibold">Search Files</h1>
+        <FileSearchResults
+          initialQuery={submittedQuery}
+          onQueryChange={(nextQuery) => {
+            void navigate({
+              to: "/search",
+              search: { q: nextQuery, mode: "files" },
+              replace: true,
+            });
+          }}
+          onOpen={(absolutePath, lineNumber) => {
+            const destination = fileSearchViewerNavigation(absolutePath, lineNumber);
+            void navigate({
+              to: "/file/$",
+              params: { _splat: destination.pathToken },
+              hash: destination.hash,
+            });
+          }}
+          onClose={() => {
+            void navigate({
+              to: "/search",
+              search: { q: submittedQuery, mode: "titles" },
+              replace: true,
+            });
+          }}
+        />
+      </div>
+    );
+  }
+
+  return <SessionSearch submittedQuery={submittedQuery} mode={mode} />;
+}
+
+function SessionSearch({
+  submittedQuery,
+  mode,
+}: {
+  submittedQuery: string;
+  mode: "titles" | "conversations";
+}) {
   const navigate = useNavigate();
   const [query, setQuery] = useState(submittedQuery);
 
@@ -122,6 +173,19 @@ function SearchPage() {
           }`}
         >
           Search conversations
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            void navigate({
+              to: "/search",
+              search: { q: submittedQuery, mode: "files" },
+              replace: true,
+            });
+          }}
+          className="rounded-full bg-bg-200 px-3 py-1 text-xs font-medium text-text-500 transition-colors hover:bg-bg-200/80"
+        >
+          Search files
         </button>
       </div>
 

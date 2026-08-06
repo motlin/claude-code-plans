@@ -57,6 +57,12 @@ export const FileSearchResponse = z
   .strict();
 export type FileSearchResult = z.infer<typeof FileSearchResponse>;
 
+export const FileSearchRootsResponse = z
+  .object({
+    roots: z.array(z.string()),
+  })
+  .strict();
+
 export const sessionSearchQueryOptions = (query: string) =>
   queryOptions({
     queryKey: ["search", "sessions", query] as const,
@@ -85,3 +91,10 @@ export const fileSearchQueryOptions = (query: string, scopeRoot: string) =>
     staleTime: 30_000,
     gcTime: 5 * 60_000,
   });
+
+export const fileSearchRootsQueryOptions = queryOptions({
+  queryKey: ["search", "file-roots"] as const,
+  queryFn: ({ signal }) => apiFetch("/api/search/file-roots", FileSearchRootsResponse, { signal }),
+  staleTime: 30_000,
+  gcTime: 5 * 60_000,
+});
