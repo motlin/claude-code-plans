@@ -1,6 +1,6 @@
-import { readdir, readFile, stat } from "node:fs/promises";
-import { createReadStream } from "node:fs";
-import { join, basename, relative, sep } from "node:path";
+import { lstat, readdir, readFile, realpath, stat } from "node:fs/promises";
+import { createReadStream, type Dirent } from "node:fs";
+import { join, basename, isAbsolute, relative, resolve, sep } from "node:path";
 import { createInterface } from "node:readline";
 import { eq, notInArray, sql } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
@@ -19,6 +19,164 @@ import * as schema from "./schema";
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
 const PLAN_PATH_RE = /\.claude\/plans\/([^/]+\.md)$/;
+const FILE_CONTENT_CACHE_PREFIX = "file-content:";
+export const FILE_CONTENT_SIZE_CAP_BYTES = 5 * 1024 * 1024;
+
+function fileContentCachePath(filePath: string): string {
+  // `indexed_files.path` is also consumed by transcript, plan, task, and
+  // memory indexers. A namespaced key gives file content its own exact
+  // ownership without letting one consumer short-circuit or delete another.
+  return `${FILE_CONTENT_CACHE_PREFIX}${filePath}`;
+}
+
+export function isPathInsideFileContentRoots(filePath: string, roots: readonly string[]): boolean {
+  const normalizedPath = resolve(filePath);
+  return roots.some((root) => {
+    const relativePath = relative(root, normalizedPath);
+    return (
+      relativePath === "" ||
+      (relativePath !== ".." && !relativePath.startsWith(`..${sep}`) && !isAbsolute(relativePath))
+    );
+  });
+}
+
+function deleteFileContentRows(db: IndexDb, filePath: string): void {
+  db.transaction((transaction) => {
+    transaction.run(sql`DELETE FROM file_content_fts WHERE path = ${filePath}`);
+    transaction
+      .delete(schema.indexedFiles)
+      .where(eq(schema.indexedFiles.path, fileContentCachePath(filePath)))
+      .run();
+  });
+}
+
+/** Remove content-search data owned by one exact filesystem path. */
+export function deleteFileContent(db: IndexDb, filePath: string): void {
+  deleteFileContentRows(db, resolve(filePath));
+}
+
+/** Index one regular text file after enforcing containment in configured roots. */
+export async function indexFileContent(
+  db: IndexDb,
+  filePath: string,
+  roots: readonly string[],
+): Promise<{ changed: boolean }> {
+  const normalizedPath = resolve(filePath);
+  if (!isPathInsideFileContentRoots(normalizedPath, roots)) return { changed: false };
+
+  let resolvedPath: string;
+  let fileStat: Awaited<ReturnType<typeof stat>>;
+  try {
+    // Do not follow symlinked entries. A link under an allowed root could
+    // otherwise make the content index read a target outside that root.
+    if (!(await lstat(normalizedPath)).isFile()) return { changed: false };
+    resolvedPath = await realpath(normalizedPath);
+    if (!isPathInsideFileContentRoots(resolvedPath, roots)) return { changed: false };
+    fileStat = await stat(resolvedPath);
+  } catch {
+    return { changed: false };
+  }
+
+  const cachePath = fileContentCachePath(resolvedPath);
+  const existing = db
+    .select()
+    .from(schema.indexedFiles)
+    .where(eq(schema.indexedFiles.path, cachePath))
+    .get();
+  if (existing && existing.mtimeMs === fileStat.mtimeMs && existing.sizeBytes === fileStat.size) {
+    return { changed: false };
+  }
+
+  if (fileStat.size > FILE_CONTENT_SIZE_CAP_BYTES) {
+    deleteFileContentRows(db, resolvedPath);
+    return { changed: true };
+  }
+
+  let contents: Buffer;
+  try {
+    contents = await readFile(resolvedPath);
+  } catch {
+    return { changed: false };
+  }
+  if (contents.byteLength > FILE_CONTENT_SIZE_CAP_BYTES || contents.subarray(0, 512).includes(0)) {
+    deleteFileContentRows(db, resolvedPath);
+    return { changed: true };
+  }
+
+  const indexedAt = Date.now();
+  db.transaction((transaction) => {
+    transaction.run(sql`DELETE FROM file_content_fts WHERE path = ${resolvedPath}`);
+    transaction.run(
+      sql`INSERT INTO file_content_fts(path, content) VALUES (${resolvedPath}, ${contents.toString("utf8")})`,
+    );
+    transaction
+      .insert(schema.indexedFiles)
+      .values({
+        path: cachePath,
+        mtimeMs: fileStat.mtimeMs,
+        sizeBytes: fileStat.size,
+        indexedAt,
+      })
+      .onConflictDoUpdate({
+        target: schema.indexedFiles.path,
+        set: {
+          mtimeMs: fileStat.mtimeMs,
+          sizeBytes: fileStat.size,
+          indexedAt,
+        },
+      })
+      .run();
+  });
+
+  return { changed: true };
+}
+
+function pathContainsIgnoredDirectory(path: string, ignoredDirNames: ReadonlySet<string>): boolean {
+  return path.split(sep).some((segment) => ignoredDirNames.has(segment));
+}
+
+/** Discover configured roots once at startup and reconcile their FTS rows. */
+export async function scanFileContentRoots(
+  db: IndexDb,
+  roots: readonly string[],
+  ignoredDirNames: ReadonlySet<string>,
+): Promise<void> {
+  const discoveredPaths = new Set<string>();
+  let scanComplete = true;
+
+  const walk = async (directoryPath: string): Promise<void> => {
+    let entries: Dirent[];
+    try {
+      entries = await readdir(directoryPath, { withFileTypes: true });
+    } catch {
+      scanComplete = false;
+      return;
+    }
+
+    for (const entry of entries) {
+      const entryPath = join(directoryPath, entry.name);
+      if (entry.isDirectory()) {
+        if (!ignoredDirNames.has(entry.name)) await walk(entryPath);
+      } else if (entry.isFile()) {
+        discoveredPaths.add(resolve(entryPath));
+        await indexFileContent(db, entryPath, roots);
+      }
+    }
+  };
+
+  for (const root of roots) {
+    if (pathContainsIgnoredDirectory(root, ignoredDirNames)) continue;
+    await walk(root);
+  }
+
+  const indexedPaths = db.all(sql`SELECT path FROM file_content_fts`) as Array<{ path: string }>;
+  for (const indexedPath of indexedPaths) {
+    const stillAllowed = isPathInsideFileContentRoots(indexedPath.path, roots);
+    if (!stillAllowed || (scanComplete && !discoveredPaths.has(indexedPath.path))) {
+      deleteFileContentRows(db, indexedPath.path);
+    }
+  }
+}
 
 function extractFirstUserText(line: string): string | null {
   try {

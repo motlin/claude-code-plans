@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
+import { realpath, stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { isAbsolute, join, relative, sep } from "node:path";
 import { z } from "zod";
 
 /**
@@ -32,6 +33,10 @@ const AppConfigSchema = z
     ignored_dirs: z.array(z.string().trim().min(1)).optional(),
     /** Absolute directory paths whose image files may be served by the app. */
     image_roots: z.array(z.string()).optional(),
+    /** Absolute directory paths whose text files are indexed for content search. */
+    file_roots: z
+      .array(z.string().trim().min(1).refine(isAbsolute, "File roots must be absolute paths"))
+      .optional(),
   })
   .strict();
 
@@ -57,4 +62,42 @@ export function readConfig(configPath: string = getConfigPath()): AppConfig | nu
   }
   const result = AppConfigSchema.safeParse(parsed);
   return result.success ? result.data : null;
+}
+
+function isContainedPath(path: string, root: string): boolean {
+  const relativePath = relative(root, path);
+  return (
+    relativePath === "" ||
+    (relativePath !== ".." && !relativePath.startsWith(`..${sep}`) && !isAbsolute(relativePath))
+  );
+}
+
+/** Resolve configured file roots to unique, existing, real directories. */
+export async function resolveConfiguredFileRoots(
+  configPath: string = getConfigPath(),
+): Promise<string[]> {
+  const configuredRoots = readConfig(configPath)?.file_roots ?? [];
+  const resolvedRoots: string[] = [];
+
+  for (const configuredRoot of configuredRoots) {
+    let resolvedRoot: string;
+    try {
+      resolvedRoot = await realpath(configuredRoot);
+      if (!(await stat(resolvedRoot)).isDirectory()) continue;
+    } catch {
+      continue;
+    }
+    if (resolvedRoots.some((root) => isContainedPath(resolvedRoot, root))) continue;
+
+    // Prefer the widest explicitly configured root when roots overlap, so
+    // chokidar and the initial scan traverse each file only once.
+    for (let index = resolvedRoots.length - 1; index >= 0; index -= 1) {
+      if (isContainedPath(resolvedRoots[index]!, resolvedRoot)) {
+        resolvedRoots.splice(index, 1);
+      }
+    }
+    resolvedRoots.push(resolvedRoot);
+  }
+
+  return resolvedRoots;
 }

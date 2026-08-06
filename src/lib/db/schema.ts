@@ -1,6 +1,6 @@
 import { sqliteTable, text, integer, index, primaryKey } from "drizzle-orm/sqlite-core";
 
-export const SCHEMA_VERSION = "16";
+export const SCHEMA_VERSION = "17";
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),

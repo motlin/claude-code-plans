@@ -2,11 +2,17 @@ import { watch } from "chokidar";
 import type { FSWatcher } from "chokidar";
 import type { Stats } from "node:fs";
 import { stat } from "node:fs/promises";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { eq } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { awaitInitialScan, getDb } from "./db";
-import { indexFile, deletePlan } from "./db/indexer";
+import {
+  deleteFileContent,
+  deletePlan,
+  indexFile,
+  indexFileContent,
+  isPathInsideFileContentRoots,
+} from "./db/indexer";
 import {
   listSessionsForProjectFromDb,
   getTasksForProject,
@@ -63,6 +69,7 @@ let watcher: FSWatcher | null = null;
 let projectsDir = "";
 let plansDir = "";
 let statuslineDir = "";
+let fileContentRoots: string[] = [];
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let lastFired = 0;
 
@@ -165,7 +172,7 @@ let ignoredDirPattern = buildIgnoredDirPattern(resolveIgnoredDirNames());
 export function shouldIgnoreWatch(path: string, stats?: Stats): boolean {
   if (ignoredDirPattern.test(path)) return true;
   if (stats && !stats.isFile() && !stats.isDirectory()) return true;
-  if (stats?.isFile()) {
+  if (stats?.isFile() && !isPathInsideFileContentRoots(path, fileContentRoots)) {
     const dot = path.lastIndexOf(".");
     const ext = dot >= 0 ? path.slice(dot) : "";
     if (!WATCHED_EXTENSIONS.has(ext)) return true;
@@ -462,8 +469,27 @@ async function indexSilently(
   }
 }
 
+async function handleFileContentChange(
+  db: IndexDb,
+  path: string,
+  roots: readonly string[],
+): Promise<void> {
+  await indexFileContent(db, path, roots);
+}
+
+function handleFileContentUnlink(db: IndexDb, path: string): void {
+  deleteFileContent(db, path);
+}
+
 async function handleFileChange(path: string): Promise<void> {
   await awaitInitialScan();
+  if (isPathInsideFileContentRoots(path, fileContentRoots)) {
+    try {
+      await handleFileContentChange(getDb().index, path, fileContentRoots);
+    } catch {
+      // A later watcher event or startup scan retries transient indexing failures.
+    }
+  }
   const ext = path.slice(path.lastIndexOf("."));
   if (!WATCHED_EXTENSIONS.has(ext)) return;
 
@@ -568,6 +594,13 @@ async function handleFileChange(path: string): Promise<void> {
 
 async function handleFileUnlink(path: string): Promise<void> {
   await awaitInitialScan();
+  if (isPathInsideFileContentRoots(path, fileContentRoots)) {
+    try {
+      handleFileContentUnlink(getDb().index, path);
+    } catch {
+      // A later startup scan reconciles transient deletion failures.
+    }
+  }
   const ext = path.slice(path.lastIndexOf("."));
   if (!WATCHED_EXTENSIONS.has(ext)) return;
 
@@ -610,10 +643,12 @@ export async function createWatcher(
   projDir?: string,
   plDir?: string,
   slDir?: string,
+  configuredFileContentRoots: string[] = [],
 ): Promise<FSWatcher> {
   if (projDir) projectsDir = projDir;
   if (plDir) plansDir = plDir;
   if (slDir) statuslineDir = slDir;
+  fileContentRoots = configuredFileContentRoots.map((root) => resolve(root));
 
   // Re-resolve ignored directories at boot so a config.json edit or env var
   // set after this module first loaded still takes effect on server restart.
@@ -626,7 +661,7 @@ export async function createWatcher(
   // together blow past that and emit EMFILE. Polling sidesteps the limit at
   // the cost of one stat() per watched file per `interval`. The aggressive
   // `ignored` predicate keeps the poll set small enough to be cheap.
-  watcher = watch(dirs, {
+  watcher = watch([...new Set([...dirs, ...fileContentRoots])], {
     ignoreInitial: true,
     awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 200 },
     usePolling: true,
@@ -654,6 +689,8 @@ export const __testing = {
   handleJsonlPlanLinks,
   handlePlanMdChange,
   handlePlanMdUnlink,
+  handleFileContentChange,
+  handleFileContentUnlink,
   readIgnoredDirsFromConfig,
   DEFAULT_IGNORED_DIR_NAMES,
   /** Override the resolved ignored-dir pattern so `shouldIgnoreWatch` is deterministic in tests. */
@@ -663,5 +700,8 @@ export const __testing = {
   /** Restore the pattern derived purely from the hard-coded defaults. */
   resetIgnoredDirPattern(): void {
     ignoredDirPattern = buildIgnoredDirPattern(new Set(DEFAULT_IGNORED_DIR_NAMES));
+  },
+  setFileContentRoots(roots: string[]): void {
+    fileContentRoots = roots.map((root) => resolve(root));
   },
 };

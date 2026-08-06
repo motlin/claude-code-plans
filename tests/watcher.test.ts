@@ -387,6 +387,7 @@ describe("shouldIgnoreWatch", () => {
   });
   afterEach(() => {
     __testing.resetIgnoredDirPattern();
+    __testing.setFileContentRoots([]);
   });
 
   it("ignores .git directories at any depth", () => {
@@ -523,6 +524,7 @@ describe("shouldIgnoreWatch with configured ignored dirs", () => {
 
   afterEach(() => {
     __testing.resetIgnoredDirPattern();
+    __testing.setFileContentRoots([]);
   });
 
   it("honors a custom ignored-dir set when applied via the resolved pattern", () => {
@@ -541,6 +543,20 @@ describe("shouldIgnoreWatch with configured ignored dirs", () => {
     expect(shouldIgnoreWatch("/foo/a+b/x")).toBe(true);
     // A literal '+' must not match as a regex quantifier.
     expect(shouldIgnoreWatch("/foo/aab/x.json", fileStats)).toBe(false);
+  });
+
+  it("watches every regular-file extension only inside configured file roots", () => {
+    __testing.setFileContentRoots(["/tmp/test/allowed"]);
+
+    expect({
+      ignoredInsideRoot: shouldIgnoreWatch("/tmp/test/allowed/alice.custom", fileStats),
+      ignoredOutsideRoot: shouldIgnoreWatch("/tmp/test/outside/alice.custom", fileStats),
+      ignoredSubtree: shouldIgnoreWatch("/tmp/test/allowed/node_modules/alice.custom", fileStats),
+    }).toStrictEqual({
+      ignoredInsideRoot: false,
+      ignoredOutsideRoot: true,
+      ignoredSubtree: true,
+    });
   });
 });
 

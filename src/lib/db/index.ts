@@ -1,5 +1,5 @@
 import { openAppDb, type AppDb } from "./connection";
-import { fullScan } from "./indexer";
+import { fullScan, scanFileContentRoots } from "./indexer";
 import { hmrPersist } from "../hmr-persist";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -31,7 +31,10 @@ export async function initDb(): Promise<AppDb> {
   return getDb();
 }
 
-export function runInitialScan(): Promise<void> {
+export function runInitialScan(
+  fileContentRoots: readonly string[] = [],
+  ignoredDirNames: ReadonlySet<string> = new Set(),
+): Promise<void> {
   const holder = getScanHolder();
   if (holder.promise === null) {
     holder.promise = (async () => {
@@ -40,6 +43,11 @@ export function runInitialScan(): Promise<void> {
         await fullScan(db.index, db.summaries, PROJECTS_DIR, TASKS_DIR, PLANS_DIR);
       } catch (err) {
         console.error("Initial database scan failed:", err);
+      }
+      try {
+        await scanFileContentRoots(db.index, fileContentRoots, ignoredDirNames);
+      } catch (err) {
+        console.error("Initial file-content scan failed:", err);
       }
     })();
   }

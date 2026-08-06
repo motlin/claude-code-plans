@@ -170,6 +170,12 @@ CREATE VIRTUAL TABLE IF NOT EXISTS message_content_fts USING fts5(
   content,
   tokenize='porter unicode61'
 );
+
+CREATE VIRTUAL TABLE IF NOT EXISTS file_content_fts USING fts5(
+  path UNINDEXED,
+  content,
+  tokenize='porter unicode61'
+);
 `;
 
 const CREATE_SUMMARIES_SQL = `
@@ -184,6 +190,7 @@ CREATE TABLE IF NOT EXISTS summaries (
 function dropAllTables(sqlite: Database.Database): void {
   sqlite.exec("DROP TABLE IF EXISTS sessions_fts");
   sqlite.exec("DROP TABLE IF EXISTS message_content_fts");
+  sqlite.exec("DROP TABLE IF EXISTS file_content_fts");
   sqlite.exec("DROP TABLE IF EXISTS tasks");
   sqlite.exec("DROP TABLE IF EXISTS todo_tasks");
   sqlite.exec("DROP TABLE IF EXISTS todo_files");
