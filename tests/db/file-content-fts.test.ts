@@ -253,7 +253,7 @@ describe("file content FTS", () => {
     );
     persistentDb.index
       .update(schema.metadata)
-      .set({ value: "16" })
+      .set({ value: "17" })
       .where(eq(schema.metadata.key, "schema_version"))
       .run();
     persistentDb.close();
@@ -273,7 +273,7 @@ describe("file content FTS", () => {
     expect({ rebuiltRows, table, version }).toStrictEqual({
       rebuiltRows: [],
       table: { name: "file_content_fts" },
-      version: { value: "17" },
+      version: { value: "18" },
     });
   });
 

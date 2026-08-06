@@ -129,6 +129,11 @@ CREATE TABLE IF NOT EXISTS plans (
 );
 CREATE INDEX IF NOT EXISTS plans_mtime_desc_idx ON plans(mtime_ms);
 
+CREATE TABLE IF NOT EXISTS reviews (
+  review_id TEXT PRIMARY KEY,
+  bundle TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS hook_schema_drift (
   hook_event_name TEXT NOT NULL,
   body_sha256 TEXT NOT NULL,
@@ -197,6 +202,7 @@ function dropAllTables(sqlite: Database.Database): void {
   sqlite.exec("DROP TABLE IF EXISTS memories");
   sqlite.exec("DROP TABLE IF EXISTS starred_sessions");
   sqlite.exec("DROP TABLE IF EXISTS plans");
+  sqlite.exec("DROP TABLE IF EXISTS reviews");
   sqlite.exec("DROP TABLE IF EXISTS hook_schema_drift");
   sqlite.exec("DROP TABLE IF EXISTS herdr_terminal_view_states");
   sqlite.exec("DROP TABLE IF EXISTS session_view_states");

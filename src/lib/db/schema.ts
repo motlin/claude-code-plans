@@ -1,6 +1,7 @@
 import { sqliteTable, text, integer, index, primaryKey } from "drizzle-orm/sqlite-core";
+import type { ReviewBundle } from "../api/reviews";
 
-export const SCHEMA_VERSION = "17";
+export const SCHEMA_VERSION = "18";
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),
@@ -150,6 +151,11 @@ export const summaries = sqliteTable("summaries", {
   lastMessageId: text("last_message_id").notNull(),
   summary: text("summary").notNull(),
   generatedAt: integer("generated_at").notNull(),
+});
+
+export const reviews = sqliteTable("reviews", {
+  reviewId: text("review_id").primaryKey(),
+  bundle: text("bundle", { mode: "json" }).$type<ReviewBundle>().notNull(),
 });
 
 export const hookSchemaDrift = sqliteTable(
