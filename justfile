@@ -67,6 +67,11 @@ build: install
 storybook *args: install
     vp run storybook {{args}}
 
+# Regenerate documentation screenshots
+[group('docs')]
+screenshots *args: install
+    vp exec tsx scripts/screenshots.ts {{args}}
+
 # Build static Storybook site
 build-storybook: install
     vp run build-storybook

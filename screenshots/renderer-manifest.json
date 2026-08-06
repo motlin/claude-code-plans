@@ -1,0 +1,67 @@
+{
+  "playwrightVersion": "1.62.1",
+  "chromiumVersion": "151.0.7922.34",
+  "viewport": {
+    "width": 1280,
+    "height": 718,
+    "deviceScaleFactor": 2
+  },
+  "colorScheme": "dark",
+  "timezone": "UTC",
+  "platform": {
+    "operatingSystem": "darwin",
+    "architecture": "arm64"
+  },
+  "fontResolution": {
+    "sans": {
+      "requested": [
+        "Inter",
+        "system-ui",
+        "-apple-system",
+        "Segoe UI",
+        "Roboto",
+        "Helvetica",
+        "Arial",
+        "sans-serif"
+      ],
+      "resolved": "system-ui"
+    },
+    "mono": {
+      "requested": [
+        "JetBrains Mono",
+        "ui-monospace",
+        "SFMono-Regular",
+        "Menlo",
+        "Monaco",
+        "Cascadia Code",
+        "monospace"
+      ],
+      "resolved": "ui-monospace"
+    }
+  },
+  "fontAvailability": {
+    "-apple-system": true,
+    "Arial": true,
+    "Cascadia Code": false,
+    "Helvetica": true,
+    "Inter": false,
+    "JetBrains Mono": false,
+    "Menlo": true,
+    "Monaco": true,
+    "Roboto": false,
+    "SFMono-Regular": false,
+    "Segoe UI": false,
+    "monospace": true,
+    "sans-serif": true,
+    "system-ui": true,
+    "ui-monospace": true
+  },
+  "fontsMissing": [
+    "Cascadia Code",
+    "Inter",
+    "JetBrains Mono",
+    "Roboto",
+    "SFMono-Regular",
+    "Segoe UI"
+  ]
+}
