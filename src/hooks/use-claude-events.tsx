@@ -36,6 +36,7 @@ import {
 import { toMdSlug } from "../lib/md-slug";
 import { getSubagentLifecycleKey } from "../lib/subagents";
 import { observeSessionState } from "../lib/unread-store";
+import type { ActivityState } from "../lib/session-state";
 
 // ---------------------------------------------------------------------------
 // State types
@@ -385,10 +386,22 @@ export function claudeEventsReducer(
 interface ClaudeEventsContextValue {
   state: ClaudeEventsState;
   subscribeStatusline: (listener: (sessionId: string) => void) => () => void;
-  subscribeNotifications: (
-    listener: (notification: NotificationEntryPayload) => void,
-  ) => () => void;
+  subscribeSessionStates: (listener: (session: SessionStateObservation) => void) => () => void;
   dismissHookSchemaDrift: (hookEventName: string) => void;
+}
+
+interface SessionStateObservation {
+  sessionId: string;
+  label: string;
+  state: ActivityState;
+}
+
+function toSessionStateObservation(summary: SessionSummaryPayload): SessionStateObservation {
+  return {
+    sessionId: summary.id,
+    label: summary.title.trim() || summary.projectName,
+    state: summary.state,
+  };
 }
 
 const ClaudeEventsContext = createContext<ClaudeEventsContextValue | null>(null);
@@ -401,12 +414,12 @@ export function useClaudeEvents(): ClaudeEventsState {
   return ctx.state;
 }
 
-export function useSubscribeNotifications(): ClaudeEventsContextValue["subscribeNotifications"] {
+export function useSubscribeSessionStates(): ClaudeEventsContextValue["subscribeSessionStates"] {
   const context = useContext(ClaudeEventsContext);
   if (!context) {
-    throw new Error("useSubscribeNotifications must be used within a ClaudeEventsProvider");
+    throw new Error("useSubscribeSessionStates must be used within a ClaudeEventsProvider");
   }
-  return context.subscribeNotifications;
+  return context.subscribeSessionStates;
 }
 
 /**
@@ -756,6 +769,7 @@ const DOMAIN_EVENT_TYPES = [
   DOMAIN_EVENTS.SUBAGENT_STARTED,
   DOMAIN_EVENTS.SUBAGENT_STOPPED,
   DOMAIN_EVENTS.SESSION_CWD_CHANGED,
+  DOMAIN_EVENTS.MESSAGE_DISPLAYED,
   DOMAIN_EVENTS.NOTIFICATION,
   DOMAIN_EVENTS.NOTIFICATION_ADDED,
   DOMAIN_EVENTS.NOTIFICATION_CLEARED,
@@ -789,9 +803,8 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
 
   const queryClient = useQueryClient();
   const statuslineListenersRef = useRef(new Set<(sessionId: string) => void>());
-  const notificationListenersRef = useRef(
-    new Set<(notification: NotificationEntryPayload) => void>(),
-  );
+  const sessionStateListenersRef = useRef(new Set<(session: SessionStateObservation) => void>());
+  const sessionStateObservationsRef = useRef(new Map<string, SessionStateObservation>());
 
   const subscribeStatusline = useCallback((listener: (sessionId: string) => void) => {
     statuslineListenersRef.current.add(listener);
@@ -800,14 +813,36 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const subscribeNotifications = useCallback(
-    (listener: (notification: NotificationEntryPayload) => void) => {
-      notificationListenersRef.current.add(listener);
+  const subscribeSessionStates = useCallback(
+    (listener: (session: SessionStateObservation) => void) => {
+      const recent = queryClient.getQueryData<{
+        pages: Array<{ sessions: SessionSummaryPayload[] }>;
+      }>(recentSessionsInfiniteQueryOptions().queryKey);
+      const grouped = queryClient.getQueryData<Array<{ sessions: SessionSummaryPayload[] }>>(
+        groupedSessionsQueryOptions().queryKey,
+      );
+      const summaries = [
+        ...(recent?.pages.flatMap((page) => page.sessions) ?? []),
+        ...(grouped?.flatMap((group) => group.sessions) ?? []),
+      ];
+      const seededSessionIds = new Set<string>();
+      for (const summary of summaries) {
+        if (seededSessionIds.has(summary.id)) continue;
+        seededSessionIds.add(summary.id);
+        const existing = sessionStateObservationsRef.current.get(summary.id);
+        const observation = existing
+          ? { ...existing, label: summary.title.trim() || summary.projectName }
+          : toSessionStateObservation(summary);
+        sessionStateObservationsRef.current.set(summary.id, observation);
+        listener(observation);
+      }
+
+      sessionStateListenersRef.current.add(listener);
       return () => {
-        notificationListenersRef.current.delete(listener);
+        sessionStateListenersRef.current.delete(listener);
       };
     },
-    [],
+    [queryClient],
   );
 
   const dismissHookSchemaDrift = useCallback((hookEventName: string) => {
@@ -831,6 +866,24 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const es = new EventSource("/api/events");
+
+    function publishSessionState(
+      sessionId: string,
+      state: ActivityState,
+      summary?: SessionSummaryPayload,
+    ): void {
+      observeSessionState(sessionId, state);
+      const existing = sessionStateObservationsRef.current.get(sessionId);
+      const observation = summary
+        ? toSessionStateObservation(summary)
+        : {
+            sessionId,
+            label: existing?.label ?? sessionId,
+            state,
+          };
+      sessionStateObservationsRef.current.set(sessionId, observation);
+      for (const listener of sessionStateListenersRef.current) listener(observation);
+    }
 
     function handleLifecycleEvent(e: Event) {
       const me = e as MessageEvent;
@@ -876,7 +929,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
         case DOMAIN_EVENTS.SESSION_ADDED: {
           const session = data["session"] as SessionSummaryPayload | undefined;
           if (session) {
-            observeSessionState(session.id, session.state);
+            publishSessionState(session.id, session.state, session);
             applySessionAdded(queryClient, session);
           }
           break;
@@ -892,7 +945,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
         case DOMAIN_EVENTS.SESSION_UPDATED: {
           const session = data["session"] as SessionSummaryPayload | undefined;
           if (session) {
-            observeSessionState(session.id, session.state);
+            publishSessionState(session.id, session.state, session);
             applySessionUpdated(queryClient, session);
           }
           // Also mirror into the activeSessions reducer so the "active" dot
@@ -936,6 +989,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
           // optimistically even before the refetch returns.
           const sessionId = data["sessionId"];
           if (typeof sessionId === "string") {
+            publishSessionState(sessionId, "working");
             void queryClient.invalidateQueries({
               queryKey: ["sessions", sessionId, "transcript"],
             });
@@ -954,10 +1008,65 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
           });
           break;
         }
-        case DOMAIN_EVENTS.SESSION_TOOL_PENDING:
-        case DOMAIN_EVENTS.SESSION_TOOL_FAILED:
-        case DOMAIN_EVENTS.SESSION_COMPACTING:
-        case DOMAIN_EVENTS.SESSION_COMPACTED:
+        case DOMAIN_EVENTS.SESSION_TOOL_PENDING: {
+          const sessionId = data["sessionId"];
+          const toolName = data["toolName"];
+          if (typeof sessionId === "string") {
+            publishSessionState(
+              sessionId,
+              toolName === "AskUserQuestion" || toolName === "ExitPlanMode" ? "waiting" : "working",
+            );
+          }
+          dispatch({
+            type: "SSE_EVENT",
+            eventType: e.type,
+            data,
+            timestamp: Date.now(),
+          });
+          break;
+        }
+        case DOMAIN_EVENTS.SESSION_TOOL_FAILED: {
+          const sessionId = data["sessionId"];
+          if (typeof sessionId === "string") publishSessionState(sessionId, "working");
+          dispatch({
+            type: "SSE_EVENT",
+            eventType: e.type,
+            data,
+            timestamp: Date.now(),
+          });
+          break;
+        }
+        case DOMAIN_EVENTS.SESSION_COMPACTING: {
+          const sessionId = data["sessionId"];
+          if (typeof sessionId === "string" && data["trigger"] === "manual") {
+            publishSessionState(sessionId, "working");
+          }
+          dispatch({
+            type: "SSE_EVENT",
+            eventType: e.type,
+            data,
+            timestamp: Date.now(),
+          });
+          break;
+        }
+        case DOMAIN_EVENTS.SESSION_COMPACTED: {
+          const sessionId = data["sessionId"];
+          if (typeof sessionId === "string" && data["reason"] === "manual") {
+            publishSessionState(sessionId, "idle");
+          }
+          dispatch({
+            type: "SSE_EVENT",
+            eventType: e.type,
+            data,
+            timestamp: Date.now(),
+          });
+          break;
+        }
+        case DOMAIN_EVENTS.MESSAGE_DISPLAYED: {
+          const sessionId = data["sessionId"];
+          if (typeof sessionId === "string") publishSessionState(sessionId, "working");
+          break;
+        }
         case DOMAIN_EVENTS.SUBAGENT_STARTED:
         case DOMAIN_EVENTS.SUBAGENT_STOPPED:
         case DOMAIN_EVENTS.NOTIFICATION: {
@@ -991,6 +1100,10 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
         }
         case DOMAIN_EVENTS.SESSION_STARTED:
         case DOMAIN_EVENTS.SESSION_ENDED: {
+          if (e.type === DOMAIN_EVENTS.SESSION_ENDED) {
+            const sessionId = data["sessionId"];
+            if (typeof sessionId === "string") publishSessionState(sessionId, "idle");
+          }
           invalidateActiveSessions(queryClient);
           invalidateTmuxWindows(queryClient);
           break;
@@ -1045,25 +1158,23 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
         case DOMAIN_EVENTS.APPROVAL_CHANGED: {
           const approval = data["approval"] as PendingApprovalPayload | undefined;
           if (approval) {
-            observeSessionState(approval.sessionId, "waiting");
+            publishSessionState(approval.sessionId, "waiting");
             applyApprovalChanged(queryClient, approval);
           }
           break;
         }
         case DOMAIN_EVENTS.APPROVAL_RESOLVED: {
           const sessionId = data["sessionId"];
-          if (typeof sessionId === "string") applyApprovalResolved(queryClient, sessionId);
+          if (typeof sessionId === "string") {
+            publishSessionState(sessionId, "working");
+            applyApprovalResolved(queryClient, sessionId);
+          }
           break;
         }
         case DOMAIN_EVENTS.NOTIFICATION_ADDED: {
           const notification = data["notification"] as NotificationEntryPayload | undefined;
           if (notification) {
             applyNotificationAdded(queryClient, notification);
-            // Fan the fresh entry out to the desktop-notification bridge so it
-            // can raise a native OS notification when the tab is backgrounded.
-            for (const listener of notificationListenersRef.current) {
-              listener(notification);
-            }
           }
           break;
         }
@@ -1125,8 +1236,8 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
   }, [queryClient]);
 
   const contextValue: ClaudeEventsContextValue = useMemo(
-    () => ({ state, subscribeStatusline, subscribeNotifications, dismissHookSchemaDrift }),
-    [state, subscribeStatusline, subscribeNotifications, dismissHookSchemaDrift],
+    () => ({ state, subscribeStatusline, subscribeSessionStates, dismissHookSchemaDrift }),
+    [state, subscribeStatusline, subscribeSessionStates, dismissHookSchemaDrift],
   );
 
   return (
