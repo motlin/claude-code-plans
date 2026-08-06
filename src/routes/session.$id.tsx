@@ -665,6 +665,7 @@ function SessionPage() {
           sessionId={params.id}
           lines={processed.lines}
           toolResultMap={processed.toolResultMap}
+          allowedImageRoots={data.imageRoots}
           subagents={subagents}
           showThinking={settings.showThinking}
           showTools={settings.showTools}

@@ -45,6 +45,7 @@ import {
   summarizeToolCallsStructured,
 } from "../lib/session-utils";
 import type { SummarySegment } from "../lib/session-utils";
+import { InlinePathImages, SESSION_IMAGE_CLASS_NAME } from "./inline-path-images";
 
 function getLineTimestamp(line: SessionLine): string | undefined {
   if ("timestamp" in line) return line.timestamp;
@@ -59,6 +60,7 @@ export interface SessionChatProps {
   sessionId: string;
   lines: SessionLine[];
   toolResultMap: Map<string, ToolResultInfo>;
+  allowedImageRoots?: readonly string[];
   subagents?: Subagent[];
   showThinking?: boolean;
   showTools?: boolean;
@@ -71,6 +73,7 @@ export interface SessionChatProps {
 }
 
 const autoScrolledSessions = hmrPersist("autoScrolledSessions", () => new Set<string>());
+const EMPTY_IMAGE_ROOTS: readonly string[] = [];
 
 function CopyToast({ visible }: { visible: boolean }) {
   return (
@@ -267,6 +270,7 @@ export const SessionChat = React.memo(function SessionChat({
   sessionId,
   lines,
   toolResultMap,
+  allowedImageRoots = EMPTY_IMAGE_ROOTS,
   subagents = [],
   showThinking = false,
   showTools = true,
@@ -295,6 +299,7 @@ export const SessionChat = React.memo(function SessionChat({
         lines={lines}
         sessionId={sessionId}
         toolResultMap={toolResultMap}
+        allowedImageRoots={allowedImageRoots}
         subagentLookup={subagentLookup}
         isSubagentSession={isSubagentSession}
         showThinking={showThinking}
@@ -330,6 +335,7 @@ function buildSkipSet(lines: SessionLine[]): Set<number> {
 interface LineRenderProps {
   sessionId: string;
   toolResultMap: Map<string, ToolResultInfo>;
+  allowedImageRoots: readonly string[];
   subagentLookup: SubagentLookup;
   isSubagentSession: boolean;
   showThinking: boolean;
@@ -701,6 +707,7 @@ function renderSessionMessage({
   showThinking,
   showTools,
   showCompactSummaries,
+  allowedImageRoots,
   nextLine,
 }: LineRenderProps & {
   line: SessionLine;
@@ -719,6 +726,7 @@ function renderSessionMessage({
           nextLine={nextLine}
           isSubagentSession={isSubagentSession}
           showCompactSummaries={showCompactSummaries}
+          allowedImageRoots={allowedImageRoots}
         />
       );
     case "assistant":
@@ -957,6 +965,7 @@ function UserEntry({
   nextLine,
   isSubagentSession,
   showCompactSummaries,
+  allowedImageRoots,
 }: {
   line: MessageSessionLine;
   index: number;
@@ -964,11 +973,19 @@ function UserEntry({
   nextLine?: SessionLine | undefined;
   isSubagentSession: boolean;
   showCompactSummaries: boolean;
+  allowedImageRoots: readonly string[];
 }) {
   const kind = classifyUserContent(line);
 
   if (line.isCompactSummary === true && !showCompactSummaries) {
-    return <CompactSummaryStub line={line} index={index} sessionId={sessionId} />;
+    return (
+      <CompactSummaryStub
+        line={line}
+        index={index}
+        sessionId={sessionId}
+        allowedImageRoots={allowedImageRoots}
+      />
+    );
   }
 
   if (kind === "command") {
@@ -996,12 +1013,20 @@ function UserEntry({
 
   if (kind in LABEL_BY_KIND) {
     const label = LABEL_BY_KIND[kind as LabeledKind];
-    return <LabeledAutomatedEntry line={line} index={index} sessionId={sessionId} label={label} />;
+    return (
+      <LabeledAutomatedEntry
+        line={line}
+        index={index}
+        sessionId={sessionId}
+        label={label}
+        allowedImageRoots={allowedImageRoots}
+      />
+    );
   }
 
   const timestamp = "timestamp" in line ? line.timestamp : undefined;
   const actionsProps = { line, index, ...(timestamp ? { timestamp } : {}) };
-  const { textNodes, mediaNodes } = renderUserContentBlocks(line, sessionId);
+  const { textNodes, mediaNodes } = renderUserContentBlocks(line, sessionId, allowedImageRoots);
 
   return (
     <div className="group/msg flex justify-start w-full">
@@ -1053,10 +1078,12 @@ function CompactSummaryStub({
   line,
   index,
   sessionId,
+  allowedImageRoots,
 }: {
   line: MessageSessionLine;
   index: number;
   sessionId: string;
+  allowedImageRoots: readonly string[];
 }) {
   const [expanded, setExpanded] = useState(false);
   const sizeKB = getCompactSummarySizeKB(line);
@@ -1064,7 +1091,7 @@ function CompactSummaryStub({
   if (expanded) {
     const timestamp = "timestamp" in line ? line.timestamp : undefined;
     const actionsProps = { line, index, ...(timestamp ? { timestamp } : {}) };
-    const { textNodes, mediaNodes } = renderUserContentBlocks(line, sessionId);
+    const { textNodes, mediaNodes } = renderUserContentBlocks(line, sessionId, allowedImageRoots);
 
     return (
       <div className="group/msg flex justify-start w-full">
@@ -1112,15 +1139,17 @@ function LabeledAutomatedEntry({
   index,
   sessionId,
   label,
+  allowedImageRoots,
 }: {
   line: MessageSessionLine;
   index: number;
   sessionId: string;
   label: string;
+  allowedImageRoots: readonly string[];
 }) {
   const timestamp = "timestamp" in line ? line.timestamp : undefined;
   const actionsProps = { line, index, ...(timestamp ? { timestamp } : {}) };
-  const { textNodes, mediaNodes } = renderUserContentBlocks(line, sessionId);
+  const { textNodes, mediaNodes } = renderUserContentBlocks(line, sessionId, allowedImageRoots);
 
   if (textNodes.length === 0 && mediaNodes.length === 0) return null;
 
@@ -1207,7 +1236,11 @@ interface UserContentBlocks {
   mediaNodes: React.ReactNode[];
 }
 
-function renderUserContentBlocks(line: MessageSessionLine, sessionId: string): UserContentBlocks {
+function renderUserContentBlocks(
+  line: MessageSessionLine,
+  sessionId: string,
+  allowedImageRoots: readonly string[],
+): UserContentBlocks {
   const content = line.message?.content;
   if (!content) return { textNodes: [], mediaNodes: [] };
 
@@ -1223,18 +1256,22 @@ function renderUserContentBlocks(line: MessageSessionLine, sessionId: string): U
           <DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
         </React.Fragment>,
       ],
-      mediaNodes: [],
+      mediaNodes: [
+        <InlinePathImages key="path-images" text={cleaned} allowedRoots={allowedImageRoots} />,
+      ],
     };
   }
 
   const textNodes: React.ReactNode[] = [];
   const mediaNodes: React.ReactNode[] = [];
+  const inlineImageText: string[] = [];
   for (let i = 0; i < content.length; i++) {
     const block = content[i]!;
     if (block.type === "text" && typeof block.text === "string") {
       if (/<local-command-caveat>/.test(block.text)) continue;
       const cleaned = stripCommandTags(block.text);
       if (!cleaned) continue;
+      inlineImageText.push(cleaned);
       textNodes.push(
         <React.Fragment key={`text-${i}`}>
           <TruncatedContent fadeColor="var(--bg-100)" variant="user">
@@ -1249,7 +1286,7 @@ function renderUserContentBlocks(line: MessageSessionLine, sessionId: string): U
           <img
             src={`data:${block.source.media_type};base64,${block.source.data}`}
             alt="Session image"
-            className="max-w-full max-h-96 rounded-lg border border-border-300/15 shadow-sm"
+            className={SESSION_IMAGE_CLASS_NAME}
           />
           <DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
         </div>,
@@ -1278,6 +1315,15 @@ function renderUserContentBlocks(line: MessageSessionLine, sessionId: string): U
       );
     }
     // tool_result blocks are intentionally skipped in user rendering
+  }
+  if (inlineImageText.length > 0) {
+    mediaNodes.push(
+      <InlinePathImages
+        key="path-images"
+        text={inlineImageText.join("\n")}
+        allowedRoots={allowedImageRoots}
+      />,
+    );
   }
   return { textNodes, mediaNodes };
 }

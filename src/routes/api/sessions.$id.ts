@@ -19,10 +19,12 @@ export const Route = createFileRoute("/api/sessions/$id")({
         const { getCurrentSessionMessageIndex, getSessionViewedState } =
           await import("../../lib/db/viewed-state");
         const { readSession } = await import("../../lib/sessions");
+        const { readConfig } = await import("../../lib/config");
         const { homedir } = await import("node:os");
         const { join } = await import("node:path");
 
         const homeRoot = homedir();
+        const imageRoots = readConfig()?.image_roots ?? [];
         const PROJECTS_DIR = join(homeRoot, ".claude", "projects");
 
         const { id } = params;
@@ -54,6 +56,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
             projectName: subagent.projectId,
             projectId: subagent.projectId,
             homeRoot,
+            imageRoots,
             starred: false,
             summary: null,
             projectPath: parentSessionProjectPath,
@@ -106,6 +109,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
           projectName: sessionMeta?.projectName ?? sessionRow.projectId,
           projectId: sessionRow.projectId,
           homeRoot,
+          imageRoots,
           starred,
           summary,
           projectPath,

@@ -57,6 +57,7 @@ export const SessionDetailResponse = z
     projectName: z.string(),
     projectId: z.string(),
     homeRoot: z.string(),
+    imageRoots: z.array(z.string()),
     starred: z.boolean(),
     summary: z.string().nullable(),
     projectPath: z.string().nullable(),
