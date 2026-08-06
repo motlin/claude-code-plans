@@ -15,6 +15,7 @@ import {
   getActiveSessionEntry,
   markSessionActive,
   markSessionEnded,
+  setSessionState,
   touchSession,
 } from "../../lib/active-session-store";
 import { getCacheDir } from "../../lib/db/connection";
@@ -223,6 +224,7 @@ export const Route = createFileRoute("/api/hook")({
           store: {
             markSessionActive,
             markSessionEnded,
+            setSessionState,
             touchSession,
             getActiveSessionEntry,
           },

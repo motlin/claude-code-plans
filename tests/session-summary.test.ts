@@ -30,6 +30,7 @@ describe("toActiveSessionPayload", () => {
   it("maps an ActiveSessionEntry into an ActiveSessionPayload 1:1", () => {
     const entry: ActiveSessionEntry = {
       sessionId: "abc-123",
+      state: "working",
       cwd: "/home/user/project",
       model: "claude-sonnet-4-6",
       startedAt: 946_598_400_000,

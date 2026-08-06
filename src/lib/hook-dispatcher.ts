@@ -31,6 +31,7 @@ import { resolveProjectName } from "./memory";
 import { recentlyBroadcast } from "./update-dedupe";
 import { toSubagentSessionId } from "./subagents";
 import { reportHookStateToHerdr } from "./herdr/report-state";
+import { stateForEvent, type ActivityState } from "./session-state";
 
 /**
  * TTL covering the gap between the hook fast-path broadcast and the chokidar
@@ -54,6 +55,7 @@ interface ActiveSessionStore {
     meta: { cwd: string; model?: string; claudeEnv?: Record<string, string> },
   ): void;
   markSessionEnded(sessionId: string): void;
+  setSessionState(sessionId: string, state: ActivityState): void;
   touchSession(sessionId: string, meta?: { claudeEnv?: Record<string, string> }): void;
   getActiveSessionEntry(sessionId: string): ActiveSessionEntry | null;
 }
@@ -333,6 +335,9 @@ export async function dispatchHookEvent({
   reportHerdrState = reportHookStateToHerdr,
 }: DispatchHookEventArgs): Promise<void> {
   const entryBeforeDispatch = store.getActiveSessionEntry(event.session_id);
+  const nextState = stateForEvent(event);
+  if (nextState !== null) store.setSessionState(event.session_id, nextState);
+
   switch (event.hook_event_name) {
     case "SessionStart": {
       const meta: {

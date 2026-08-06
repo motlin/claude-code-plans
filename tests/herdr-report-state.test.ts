@@ -19,6 +19,7 @@ const baseEvent = {
 function entry(): ActiveSessionEntry {
   return {
     sessionId: "session-test-100",
+    state: "working",
     cwd: "/tmp/test/project",
     model: "claude-test-model",
     startedAt: 0,

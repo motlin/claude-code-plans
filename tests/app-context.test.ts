@@ -71,6 +71,7 @@ describe("sweepSessions", () => {
 
     store.set("stale", {
       sessionId: "stale",
+      state: "idle",
       cwd: "/tmp",
       model: "test",
       startedAt: Date.now() - 20 * 60 * 1000,
@@ -85,6 +86,7 @@ describe("sweepSessions", () => {
 
     store.set("fresh", {
       sessionId: "fresh",
+      state: "working",
       cwd: "/tmp",
       model: "test",
       startedAt: Date.now(),

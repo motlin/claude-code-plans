@@ -10,6 +10,7 @@ import { createTmuxPlacementProvider } from "../src/lib/tmux-windows";
 function entry(overrides: Partial<ActiveSessionEntry>): ActiveSessionEntry {
   return {
     sessionId: "session-test-100",
+    state: "working",
     cwd: "/tmp/test/alice-project",
     model: "claude-test-model",
     startedAt: 0,

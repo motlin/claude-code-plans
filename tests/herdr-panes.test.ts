@@ -5,6 +5,7 @@ import { getHerdrPanes, type HerdrRequester } from "../src/lib/herdr/panes";
 function entry(overrides: Partial<ActiveSessionEntry>): ActiveSessionEntry {
   return {
     sessionId: "session-test-100",
+    state: "working",
     cwd: "/tmp/test/project",
     model: "claude-test-model",
     startedAt: 0,

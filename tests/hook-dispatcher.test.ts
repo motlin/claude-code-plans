@@ -9,6 +9,7 @@ import type { HookEvent } from "../src/lib/hook-events";
 import { getNotifications, clearAllNotifications } from "../src/lib/notifications-store";
 import * as schema from "../src/lib/db/schema";
 import type { ActiveSessionEntry } from "../src/lib/active-session-store";
+import type { ActivityState } from "../src/lib/session-state";
 
 const testDir = join(tmpdir(), "claude-hook-dispatcher-test-" + process.pid);
 let db: AppDb;
@@ -28,6 +29,7 @@ type StoreMeta = {
 function makeStore() {
   const activeCalls: Array<{ sessionId: string; meta: StoreMeta }> = [];
   const endedCalls: string[] = [];
+  const stateCalls: Array<{ sessionId: string; state: ActivityState }> = [];
   const touchedCalls: string[] = [];
   const touchCalls: Array<{
     sessionId: string;
@@ -36,6 +38,7 @@ function makeStore() {
   return {
     activeCalls,
     endedCalls,
+    stateCalls,
     touchedCalls,
     touchCalls,
     store: {
@@ -44,6 +47,9 @@ function makeStore() {
       },
       markSessionEnded: (sessionId: string) => {
         endedCalls.push(sessionId);
+      },
+      setSessionState: (sessionId: string, state: ActivityState) => {
+        stateCalls.push({ sessionId, state });
       },
       touchSession: (sessionId: string, meta?: { claudeEnv?: Record<string, string> }) => {
         touchedCalls.push(sessionId);
@@ -54,6 +60,9 @@ function makeStore() {
         if (!call) return null;
         return {
           sessionId,
+          state:
+            [...stateCalls].reverse().find((stateCall) => stateCall.sessionId === sessionId)
+              ?.state ?? "unknown",
           cwd: call.meta.cwd,
           model: call.meta.model ?? "",
           startedAt: 946_598_400_000,
@@ -305,9 +314,130 @@ describe("dispatchHookEvent", () => {
     });
   });
 
+  it("sets session state exactly once for every state-bearing event", async () => {
+    const { store, stateCalls } = makeStore();
+    const baseEvent = {
+      session_id: "session-test-100",
+      transcript_path: "/tmp/test/session-test-100.jsonl",
+      cwd: "/tmp/test/project",
+    } as const;
+    const events: HookEvent[] = [
+      { ...baseEvent, hook_event_name: "UserPromptSubmit", prompt: "Test prompt" },
+      {
+        ...baseEvent,
+        hook_event_name: "PreToolUse",
+        tool_name: "AskUserQuestion",
+        tool_input: { question: "Test question?" },
+      },
+      {
+        ...baseEvent,
+        hook_event_name: "PreToolUse",
+        tool_name: "ExitPlanMode",
+        tool_input: { plan: "Test plan" },
+      },
+      {
+        ...baseEvent,
+        hook_event_name: "PreToolUse",
+        tool_name: "Bash",
+        tool_input: { command: "true" },
+      },
+      {
+        ...baseEvent,
+        hook_event_name: "PostToolUse",
+        tool_name: "Bash",
+        tool_input: { command: "true" },
+      },
+      {
+        ...baseEvent,
+        hook_event_name: "PostToolUseFailure",
+        tool_name: "Bash",
+        tool_input: { command: "false" },
+        error: "Test failure",
+      },
+      { ...baseEvent, hook_event_name: "MessageDisplay", message: "Test response" },
+      { ...baseEvent, hook_event_name: "PreCompact", trigger: "manual" },
+      { ...baseEvent, hook_event_name: "PostCompact", reason: "manual" },
+      { ...baseEvent, hook_event_name: "Stop" },
+      { ...baseEvent, hook_event_name: "SessionEnd" },
+    ];
+
+    for (const event of events) {
+      await dispatchHookEvent({
+        event,
+        db: db.index,
+        store,
+        broadcast: () => {},
+        reportHerdrState: () => {},
+      });
+    }
+
+    expect(stateCalls).toStrictEqual([
+      { sessionId: "session-test-100", state: "working" },
+      { sessionId: "session-test-100", state: "waiting" },
+      { sessionId: "session-test-100", state: "waiting" },
+      { sessionId: "session-test-100", state: "working" },
+      { sessionId: "session-test-100", state: "working" },
+      { sessionId: "session-test-100", state: "working" },
+      { sessionId: "session-test-100", state: "working" },
+      { sessionId: "session-test-100", state: "working" },
+      { sessionId: "session-test-100", state: "idle" },
+      { sessionId: "session-test-100", state: "idle" },
+      { sessionId: "session-test-100", state: "idle" },
+    ]);
+  });
+
+  it("never sets session state for events carrying no state information", async () => {
+    clearAllNotifications();
+    const { store, stateCalls } = makeStore();
+    const baseEvent = {
+      session_id: "session-test-100",
+      transcript_path: "/tmp/test/session-test-100.jsonl",
+      cwd: "/tmp/test/project",
+    } as const;
+    const events: HookEvent[] = [
+      { ...baseEvent, hook_event_name: "SessionStart", source: "startup" },
+      { ...baseEvent, hook_event_name: "SubagentStart" },
+      { ...baseEvent, hook_event_name: "SubagentStop" },
+      { ...baseEvent, hook_event_name: "Notification", message: "Test notification" },
+      { ...baseEvent, hook_event_name: "PreCompact", trigger: "auto" },
+      { ...baseEvent, hook_event_name: "PreCompact" },
+      { ...baseEvent, hook_event_name: "PostCompact", reason: "auto" },
+      { ...baseEvent, hook_event_name: "PostCompact" },
+      { ...baseEvent, hook_event_name: "TaskCreated" },
+      { ...baseEvent, hook_event_name: "TaskCompleted" },
+      { ...baseEvent, hook_event_name: "WorktreeCreate" },
+      { ...baseEvent, hook_event_name: "WorktreeRemove" },
+      {
+        ...baseEvent,
+        hook_event_name: "CwdChanged",
+        old_cwd: "/tmp/test/old-project",
+        new_cwd: "/tmp/test/new-project",
+      },
+      {
+        ...baseEvent,
+        hook_event_name: "InstructionsLoaded",
+        file_path: "/tmp/test/project/CLAUDE.md",
+      },
+      { ...baseEvent, hook_event_name: "ConfigChange", config_source: "project_settings" },
+    ];
+
+    for (const event of events) {
+      await dispatchHookEvent({
+        event,
+        db: db.index,
+        store,
+        broadcast: () => {},
+        reportHerdrState: () => {},
+      });
+    }
+
+    expect(stateCalls).toStrictEqual([]);
+  });
+
   it("retains the session pane mapping for detached SessionEnd cleanup", async () => {
     const activeEntry: ActiveSessionEntry = {
       sessionId: "session-test-100",
+      state: "working",
       cwd: "/tmp/test/project",
       model: "claude-test-model",
       startedAt: 0,
@@ -334,6 +464,9 @@ describe("dispatchHookEvent", () => {
         markSessionActive: () => {},
         markSessionEnded: () => {
           currentEntry = null;
+        },
+        setSessionState: (_sessionId, state) => {
+          activeEntry.state = state;
         },
         touchSession: () => {},
         getActiveSessionEntry: () => currentEntry,
@@ -411,7 +544,7 @@ describe("dispatchHookEvent", () => {
 
   it("Notification broadcasts NOTIFICATION with message and optional title", async () => {
     const broadcasts: Broadcast[] = [];
-    const { store } = makeStore();
+    const { store, stateCalls, touchCalls } = makeStore();
     await dispatchHookEvent({
       event: {
         hook_event_name: "Notification",
@@ -426,6 +559,10 @@ describe("dispatchHookEvent", () => {
       broadcast: (type, data) => broadcasts.push({ type, data }),
     });
 
+    expect({ stateCalls, touchCalls }).toStrictEqual({
+      stateCalls: [],
+      touchCalls: [{ sessionId: "abc-123" }],
+    });
     const notif = broadcasts.find((b) => b.type === DOMAIN_EVENTS.NOTIFICATION);
     if (!notif) throw new Error("Expected notification broadcast");
     expect(notif.data).toStrictEqual({

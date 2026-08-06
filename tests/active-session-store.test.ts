@@ -1,18 +1,27 @@
-import { describe, expect, it, beforeEach } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import {
+  getActiveSessionEntry,
   markSessionActive,
   markSessionEnded,
+  setSessionState,
   touchSession,
   getActiveSessionEntries,
   isSessionActiveInStore,
   hasAnyActiveSessions,
 } from "../src/lib/active-session-store";
+import type { ActiveSessionEntry } from "../src/lib/active-session-store";
+
+const TEST_TIMESTAMP = 946_684_800_000;
 
 beforeEach(() => {
   // Clear store between tests
   for (const entry of getActiveSessionEntries()) {
     markSessionEnded(entry.sessionId);
   }
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe("active-session-store", () => {
@@ -29,6 +38,82 @@ describe("active-session-store", () => {
     expect(entries[0]!.sessionId).toBe("s1");
     expect(entries[0]!.cwd).toBe("/projects/foo");
     expect(entries[0]!.model).toBe("claude-sonnet-4-6");
+    expect(entries[0]!.state).toBe("unknown");
+  });
+
+  it("sets state without changing the existing session fields or terminal placement", () => {
+    vi.spyOn(Date, "now").mockReturnValue(TEST_TIMESTAMP);
+    markSessionActive("session-test-100", {
+      cwd: "/tmp/test/alice-project",
+      model: "claude-test-model",
+      claudeEnv: {
+        TMUX_PANE: "%100",
+        TMUX: "/tmp/test/tmux/default,100,0",
+        HERDR_PANE_ID: "w100:p100",
+        HERDR_WORKSPACE_ID: "w100",
+        HERDR_SOCKET_PATH: "/tmp/test/herdr.sock",
+      },
+    });
+
+    setSessionState("session-test-100", "waiting");
+    markSessionActive("session-test-100", { cwd: "/tmp/test/bob-project" });
+    touchSession("session-test-100");
+
+    expect(getActiveSessionEntry("session-test-100")).toStrictEqual({
+      sessionId: "session-test-100",
+      state: "waiting",
+      cwd: "/tmp/test/bob-project",
+      model: "claude-test-model",
+      startedAt: TEST_TIMESTAMP,
+      lastActivity: TEST_TIMESTAMP,
+      claudeEnv: {
+        TMUX_PANE: "%100",
+        TMUX: "/tmp/test/tmux/default,100,0",
+        HERDR_PANE_ID: "w100:p100",
+        HERDR_WORKSPACE_ID: "w100",
+        HERDR_SOCKET_PATH: "/tmp/test/herdr.sock",
+      },
+      tmuxPane: "%100",
+      tmuxServerSocket: "/tmp/test/tmux/default",
+      herdrPane: "w100:p100",
+      herdrWorkspace: "w100",
+      herdrSocketPath: "/tmp/test/herdr.sock",
+    });
+  });
+
+  it("normalizes a legacy HMR entry missing state without replacing its other fields", () => {
+    vi.spyOn(Date, "now").mockReturnValue(TEST_TIMESTAMP);
+    markSessionActive("session-test-100", {
+      cwd: "/tmp/test/project",
+      model: "claude-test-model",
+      claudeEnv: { HERDR_PANE_ID: "w100:p100" },
+    });
+    const legacyEntry = getActiveSessionEntry("session-test-100");
+    if (!legacyEntry) throw new Error("Expected active test session");
+    delete (legacyEntry as Partial<ActiveSessionEntry>).state;
+
+    const normalizedEntry = getActiveSessionEntry("session-test-100");
+
+    expect(normalizedEntry).toBe(legacyEntry);
+    expect(normalizedEntry).toStrictEqual({
+      sessionId: "session-test-100",
+      state: "unknown",
+      cwd: "/tmp/test/project",
+      model: "claude-test-model",
+      startedAt: TEST_TIMESTAMP,
+      lastActivity: TEST_TIMESTAMP,
+      claudeEnv: { HERDR_PANE_ID: "w100:p100" },
+      tmuxPane: "",
+      tmuxServerSocket: "",
+      herdrPane: "w100:p100",
+      herdrWorkspace: "",
+      herdrSocketPath: "",
+    });
+  });
+
+  it("setting state on an unknown session is a no-op", () => {
+    setSessionState("session-test-unknown", "working");
+    expect(getActiveSessionEntries()).toStrictEqual([]);
   });
 
   it("removes a session on end", () => {

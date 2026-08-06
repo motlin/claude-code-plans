@@ -1,7 +1,9 @@
 import { hmrPersist, hmrDispose } from "./hmr-persist";
+import type { ActivityState } from "./session-state";
 
 export interface ActiveSessionEntry {
   sessionId: string;
+  state: ActivityState;
   cwd: string;
   model: string;
   startedAt: number;
@@ -87,6 +89,17 @@ function applyClaudeEnv(entry: ActiveSessionEntry, claudeEnv: Record<string, str
 
 const store = hmrPersist("activeSessionStore", () => new Map<string, ActiveSessionEntry>());
 
+function normalizeEntryState(entry: ActiveSessionEntry): ActiveSessionEntry {
+  // HMR may retain entries created before the state field existed.
+  if (entry.state === undefined) entry.state = "unknown";
+  return entry;
+}
+
+function findSession(sessionId: string): ActiveSessionEntry | undefined {
+  const entry = store.get(sessionId);
+  return entry ? normalizeEntryState(entry) : undefined;
+}
+
 let sweepTimer: ReturnType<typeof setInterval> | null = null;
 
 hmrDispose(() => {
@@ -100,7 +113,7 @@ export function markSessionActive(
   sessionId: string,
   meta: { cwd: string; model?: string; claudeEnv?: Record<string, string> },
 ): void {
-  const existing = store.get(sessionId);
+  const existing = findSession(sessionId);
   if (existing) {
     existing.lastActivity = Date.now();
     existing.cwd = meta.cwd;
@@ -112,6 +125,7 @@ export function markSessionActive(
     const { herdrPane, herdrWorkspace, herdrSocketPath } = deriveHerdr(meta.claudeEnv);
     store.set(sessionId, {
       sessionId,
+      state: "unknown",
       cwd: meta.cwd,
       model: meta.model ?? "",
       startedAt: Date.now(),
@@ -130,11 +144,16 @@ export function markSessionEnded(sessionId: string): void {
   store.delete(sessionId);
 }
 
+export function setSessionState(sessionId: string, state: ActivityState): void {
+  const entry = findSession(sessionId);
+  if (entry) entry.state = state;
+}
+
 export function touchSession(
   sessionId: string,
   meta?: { claudeEnv?: Record<string, string> },
 ): void {
-  const entry = store.get(sessionId);
+  const entry = findSession(sessionId);
   if (entry) {
     entry.lastActivity = Date.now();
     // Re-stamp terminal mappings when a fresh claude_env is supplied (every
@@ -145,11 +164,11 @@ export function touchSession(
 }
 
 export function getActiveSessionEntries(): ActiveSessionEntry[] {
-  return [...store.values()];
+  return [...store.values()].map(normalizeEntryState);
 }
 
 export function getActiveSessionEntry(sessionId: string): ActiveSessionEntry | null {
-  return store.get(sessionId) ?? null;
+  return findSession(sessionId) ?? null;
 }
 
 export function isSessionActiveInStore(sessionId: string): boolean {

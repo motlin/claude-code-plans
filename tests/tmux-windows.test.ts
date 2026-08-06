@@ -5,6 +5,7 @@ import type { ActiveSessionEntry } from "../src/lib/active-session-store";
 function entry(overrides: Partial<ActiveSessionEntry>): ActiveSessionEntry {
   return {
     sessionId: "s1",
+    state: "working",
     cwd: "/Users/craig/projects/workflowy",
     model: "claude-sonnet-4-6",
     startedAt: 0,
