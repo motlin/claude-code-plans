@@ -182,6 +182,8 @@ describe("dispatchHookEvent", () => {
         messageCount: 1,
         gitBranch: undefined,
         starred: false,
+        state: "unknown",
+        blockedSince: null,
       },
     });
   });
@@ -234,6 +236,8 @@ describe("dispatchHookEvent", () => {
         messageCount: 12,
         gitBranch: undefined,
         starred: false,
+        state: "unknown",
+        blockedSince: null,
       },
     });
   });

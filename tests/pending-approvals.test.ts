@@ -244,6 +244,32 @@ describe("scanPendingApproval", () => {
 
     expect(result).toBeNull();
   });
+
+  it("does not treat a plain tool permission prompt as a durable approval", async () => {
+    const filePath = writeJsonl(
+      `${SESSION_ID}.jsonl`,
+      jsonl({
+        type: "assistant",
+        sessionId: SESSION_ID,
+        timestamp: "2000-01-01T00:00:00.000Z",
+        message: {
+          role: "assistant",
+          content: [
+            {
+              type: "tool_use",
+              id: "tool-test-permission-100",
+              name: "Bash",
+              input: { command: "echo test" },
+            },
+          ],
+        },
+      }),
+    );
+
+    const result = await scanPendingApproval(filePath);
+
+    expect(result).toBeNull();
+  });
 });
 
 describe("scanAllPendingApprovals", () => {

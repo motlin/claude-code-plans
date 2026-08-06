@@ -85,6 +85,8 @@ describe("toSessionSummaryPayload", () => {
       messageCount: 3,
       gitBranch: undefined,
       starred: false,
+      state: "unknown",
+      blockedSince: null,
     });
   });
 
@@ -126,6 +128,17 @@ describe("sessionSummariesEqual", () => {
     const a = toSessionSummaryPayload(makeSession(), false);
     const b = toSessionSummaryPayload(makeSession(), true);
     expect(sessionSummariesEqual(a, b)).toBe(false);
+  });
+
+  it("returns false when the fused activity state changes", () => {
+    const summary = toSessionSummaryPayload(makeSession(), false);
+    const waitingSummary = {
+      ...summary,
+      state: "waiting" as const,
+      blockedSince: "2000-01-01T00:00:00.000Z",
+    };
+
+    expect(sessionSummariesEqual(summary, waitingSummary)).toBe(false);
   });
 });
 

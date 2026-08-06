@@ -117,6 +117,9 @@ export async function scanPendingApproval(filePath: string): Promise<PendingAppr
         for (const block of content as JsonlContentBlock[]) {
           if (block.type !== "tool_use") continue;
           const name = block.name;
+          // Claude exposes no permission-request hook, so plain tool permission
+          // prompts cannot be reconstructed here. Only transcript-visible
+          // ExitPlanMode and AskUserQuestion approvals are durable signals.
           if (name !== "ExitPlanMode" && name !== "AskUserQuestion") continue;
           const id = typeof block.id === "string" ? block.id : "";
           if (!id) continue;

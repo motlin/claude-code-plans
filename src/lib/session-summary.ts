@@ -1,7 +1,8 @@
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { eq } from "drizzle-orm";
 import * as schema from "./db/schema";
-import type { ActiveSessionEntry } from "./active-session-store";
+import { getActiveSessionEntry, type ActiveSessionEntry } from "./active-session-store";
+import { getPendingApprovalsForProject } from "./db/pending-approvals-cache";
 import type { ActiveSessionPayload, SessionSummaryPayload } from "./hook-events";
 import type { SessionEntry } from "./sessions";
 
@@ -30,6 +31,11 @@ export function toSessionSummaryPayload(
   entry: SessionEntry,
   starred: boolean,
 ): SessionSummaryPayload {
+  const pendingApproval = getPendingApprovalsForProject(entry.project).find(
+    (approval) => approval.sessionId === entry.id,
+  );
+  const activeState = getActiveSessionEntry(entry.id)?.state ?? "unknown";
+
   return {
     id: entry.id,
     title: entry.title,
@@ -41,6 +47,9 @@ export function toSessionSummaryPayload(
     messageCount: entry.messageCount,
     gitBranch: entry.gitBranch,
     starred,
+    // Transcript-derived approvals survive server restarts, unlike activeState.
+    state: pendingApproval ? "waiting" : activeState,
+    blockedSince: pendingApproval?.blockedSince ?? null,
   };
 }
 

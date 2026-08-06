@@ -27,6 +27,8 @@ export const WithSessions: Story = {
           messageCount: 12,
           gitBranch: undefined,
           starred: false,
+          state: "unknown",
+          blockedSince: null,
         },
         {
           id: "sess-2",
@@ -39,6 +41,8 @@ export const WithSessions: Story = {
           messageCount: 8,
           gitBranch: undefined,
           starred: false,
+          state: "unknown",
+          blockedSince: null,
         },
         {
           id: "sess-3",
@@ -51,6 +55,8 @@ export const WithSessions: Story = {
           messageCount: 5,
           gitBranch: undefined,
           starred: false,
+          state: "unknown",
+          blockedSince: null,
         },
       ],
       nextCursor: null,

@@ -20,6 +20,8 @@ const SessionListItemSchema = z.object({
   messageCount: z.number(),
   gitBranch: z.string().optional(),
   starred: z.boolean(),
+  state: z.enum(["idle", "working", "waiting", "unknown"]),
+  blockedSince: z.string().nullable(),
 });
 export type SessionListItem = z.infer<typeof SessionListItemSchema>;
 /** Paginated, mtime-desc feed of recent sessions across all projects. */

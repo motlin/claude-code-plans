@@ -20,6 +20,8 @@ const sampleRecent = {
       messageCount: 24,
       gitBranch: "main" as string | undefined,
       starred: false,
+      state: "unknown" as const,
+      blockedSince: null,
     },
     {
       id: "sess-2",
@@ -32,6 +34,8 @@ const sampleRecent = {
       messageCount: 12,
       gitBranch: "fix/db" as string | undefined,
       starred: false,
+      state: "unknown" as const,
+      blockedSince: null,
     },
     {
       id: "sess-3",
@@ -44,6 +48,8 @@ const sampleRecent = {
       messageCount: 8,
       gitBranch: undefined,
       starred: false,
+      state: "unknown" as const,
+      blockedSince: null,
     },
   ],
   nextCursor: null,

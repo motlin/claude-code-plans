@@ -40,6 +40,8 @@ function makeSession(
     messageCount: 0,
     gitBranch: undefined,
     starred: false,
+    state: "unknown",
+    blockedSince: null,
     ...rest,
   };
 }

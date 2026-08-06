@@ -189,7 +189,9 @@ function sessionSummariesEqual(a: SessionSummaryPayload, b: SessionSummaryPayloa
     a.messageCount === b.messageCount &&
     a.gitBranch === b.gitBranch &&
     a.projectName === b.projectName &&
-    a.starred === b.starred
+    a.starred === b.starred &&
+    a.state === b.state &&
+    a.blockedSince === b.blockedSince
   );
 }
 
@@ -526,13 +528,6 @@ async function handleFileChange(path: string): Promise<void> {
 
       const { linkedPlans } = await indexSilently(path, projectsDir);
       const projectId = projectIdFromPath(path, projectsDir);
-      safeDiffSessions(projectId);
-      if (plansDir) {
-        for (const planFilename of linkedPlans) {
-          void broadcastPlanChanged(join(plansDir, planFilename));
-        }
-      }
-
       if (projectId) {
         try {
           const projectName = await resolveProjectName(projectId);
@@ -545,6 +540,12 @@ async function handleFileChange(path: string): Promise<void> {
           );
         } catch {
           // transient error scanning JSONL; next change will retry
+        }
+      }
+      safeDiffSessions(projectId);
+      if (plansDir) {
+        for (const planFilename of linkedPlans) {
+          void broadcastPlanChanged(join(plansDir, planFilename));
         }
       }
     };

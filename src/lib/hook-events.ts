@@ -120,6 +120,8 @@ export interface SessionSummaryPayload {
   messageCount: number;
   gitBranch: string | undefined;
   starred: boolean;
+  state: "idle" | "working" | "waiting" | "unknown";
+  blockedSince: string | null;
 }
 
 /**
