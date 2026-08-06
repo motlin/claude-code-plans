@@ -4,6 +4,11 @@ export type ActivityState = "idle" | "working" | "waiting" | "unknown";
 
 export type DisplayState = ActivityState | "review";
 
+export type WaitHeat = "" | "warm" | "hot";
+
+const WAIT_WARM_MS = 10 * 60 * 1000;
+const WAIT_HOT_MS = 30 * 60 * 1000;
+
 export const STATE_RANK: Record<DisplayState, number> = {
   waiting: 0,
   review: 1,
@@ -24,6 +29,19 @@ export function compareByUrgency(
   return (
     STATE_RANK[first.state] - STATE_RANK[second.state] || second.lastModified - first.lastModified
   );
+}
+
+export function waitHeat(
+  displayState: DisplayState,
+  blockedSince: string | null,
+  now: number,
+): WaitHeat {
+  if (displayState !== "waiting" || blockedSince === null) return "";
+
+  const elapsed = now - Date.parse(blockedSince);
+  if (elapsed >= WAIT_HOT_MS) return "hot";
+  if (elapsed >= WAIT_WARM_MS) return "warm";
+  return "";
 }
 
 export function stateForEvent(event: HookEvent): ActivityState | null {

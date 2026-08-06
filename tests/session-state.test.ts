@@ -6,6 +6,7 @@ import {
   STATE_RANK,
   compareByUrgency,
   stateForEvent,
+  waitHeat,
   type ActivityState,
   type DisplayState,
 } from "../src/lib/session-state";
@@ -247,5 +248,29 @@ describe("compareByUrgency", () => {
       "idle",
       "unknown-newest",
     ]);
+  });
+});
+
+describe("waitHeat", () => {
+  const now = Date.parse("2000-01-01T00:30:00.000Z");
+
+  it("is warm at the exact ten-minute boundary", () => {
+    expect(waitHeat("waiting", "2000-01-01T00:20:00.000Z", now)).toBe("warm");
+  });
+
+  it("is hot at the exact thirty-minute boundary", () => {
+    expect(waitHeat("waiting", "2000-01-01T00:00:00.000Z", now)).toBe("hot");
+  });
+
+  it("has no heat without a blocked-since timestamp", () => {
+    expect(waitHeat("waiting", null, now)).toBe("");
+  });
+
+  it("does not encode age for non-waiting states", () => {
+    expect(
+      DISPLAY_STATES.filter((state) => state !== "waiting").map((state) =>
+        waitHeat(state, "1999-12-31T00:00:00.000Z", now),
+      ),
+    ).toStrictEqual(["", "", "", ""]);
   });
 });
