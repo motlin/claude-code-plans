@@ -85,7 +85,7 @@ describe("herdr interrupt write handler", () => {
     );
 
     expect({ response: await describeResponse(response), calls }).toStrictEqual({
-      response: { body: "Forbidden", status: 403 },
+      response: { body: { error: "Forbidden" }, status: 403 },
       calls: ["guard"],
     });
   });

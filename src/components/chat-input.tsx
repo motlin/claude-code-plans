@@ -67,14 +67,9 @@ export function ChatInput({
           onKeyDown={handleKeyDown}
           placeholder="Send a follow-up message..."
           disabled={isStreaming || disabled}
-          rows={1}
-          className="flex-1 resize-none rounded-lg border border-border-300/15 bg-bg-100 px-3 py-2 text-sm text-text-000 placeholder:text-text-500 focus:border-accent-100 focus:outline-none disabled:opacity-50"
+          rows={2}
+          className="flex-1 resize-none overflow-y-auto rounded-lg border border-border-300/15 bg-bg-100 px-3 py-2 text-sm text-text-000 [field-sizing:content] placeholder:text-text-500 focus:border-accent-100 focus:outline-none disabled:opacity-50"
           style={{ minHeight: "38px", maxHeight: "120px" }}
-          onInput={(e) => {
-            const el = e.currentTarget;
-            el.style.height = "auto";
-            el.style.height = Math.min(el.scrollHeight, 120) + "px";
-          }}
         />
         {isStreaming ? (
           <button

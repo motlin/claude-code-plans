@@ -25,6 +25,23 @@ interface StreamEvent {
   is_error?: boolean;
 }
 
+async function readResponseError(response: Response): Promise<string> {
+  const fallback = `Request failed (${response.status})`;
+  const contentType = response.headers.get("Content-Type")?.toLowerCase();
+  if (!contentType?.startsWith("application/json")) return fallback;
+
+  const body: unknown = await response.json().catch(() => null);
+  if (
+    typeof body === "object" &&
+    body !== null &&
+    "error" in body &&
+    typeof body.error === "string"
+  ) {
+    return body.error;
+  }
+  return fallback;
+}
+
 export function useChatStream() {
   const [state, setState] = useState<ChatStreamState>({
     isStreaming: false,
@@ -54,12 +71,12 @@ export function useChatStream() {
       });
 
       if (!res.ok) {
-        const err = (await res.json()) as { error?: string };
+        const error = await readResponseError(res);
         setState((s) => ({
           ...s,
           isStreaming: false,
           isComplete: true,
-          error: err.error ?? "Request failed",
+          error,
         }));
         return;
       }

@@ -3,6 +3,7 @@
 import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vite-plus/test";
 import { ChatInput } from "../src/components/chat-input";
+import { useChatStream } from "../src/hooks/use-chat-stream";
 import {
   getSessionPromptBehavior,
   routeSessionPrompt,
@@ -89,6 +90,69 @@ describe("session live input", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
     expect(onSend.mock.calls).toStrictEqual([["Continue Alice's test"]]);
+  });
+
+  it("does not synchronously measure or resize the transcript textarea while typing", () => {
+    render(<ChatInput onSend={() => {}} onCancel={() => {}} isStreaming={false} />);
+    const textarea = screen.getByPlaceholderText<HTMLTextAreaElement>(
+      "Send a follow-up message...",
+    );
+    const readScrollHeight = vi.fn(() => 100);
+    Object.defineProperty(textarea, "scrollHeight", {
+      configurable: true,
+      get: readScrollHeight,
+    });
+
+    fireEvent.input(textarea, { target: { value: "Continue Alice's test" } });
+
+    expect({
+      height: textarea.style.height,
+      scrollHeightReads: readScrollHeight.mock.calls,
+      value: textarea.value,
+    }).toStrictEqual({
+      height: "",
+      scrollHeightReads: [],
+      value: "Continue Alice's test",
+    });
+  });
+
+  it("reports an HTTP status instead of a JSON parser error for a malformed rejection", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("Forbidden", {
+        status: 403,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const { result } = renderHook(() => useChatStream());
+
+    await act(async () => {
+      await result.current.send("session-test-100", "Continue Alice's test");
+    });
+
+    expect({ calls: fetchMock.mock.calls, state: result.current.state }).toStrictEqual({
+      calls: [
+        [
+          "/api/chat",
+          {
+            body: JSON.stringify({
+              sessionId: "session-test-100",
+              prompt: "Continue Alice's test",
+            }),
+            headers: { "Content-Type": "application/json" },
+            method: "POST",
+            signal: expect.any(AbortSignal),
+          },
+        ],
+      ],
+      state: {
+        error: "Request failed (403)",
+        isComplete: true,
+        isStreaming: false,
+        sentPrompt: "Continue Alice's test",
+        text: "",
+      },
+    });
+    fetchMock.mockRestore();
   });
 
   it("keeps a sent prompt pending until transcript delivery", async () => {

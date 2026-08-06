@@ -38,6 +38,23 @@ describe("rejectCrossSite", () => {
       },
       name: "both matching headers",
     },
+    {
+      headers: {
+        Host: "plans.m4.notlin.com",
+        Origin: "https://plans.m4.notlin.com",
+        "Sec-Fetch-Site": "same-origin",
+      },
+      name: "a matching public Host behind a TLS proxy",
+    },
+    {
+      headers: {
+        Host: "127.0.0.1:7526",
+        Origin: "https://plans.m4.notlin.com",
+        "Sec-Fetch-Site": "same-origin",
+        "X-Forwarded-Host": "plans.m4.notlin.com, internal-proxy.example",
+      },
+      name: "the first matching forwarded Host behind nested proxies",
+    },
   ])("allows $name", ({ headers }) => {
     expect(rejectCrossSite(createRequest(headers))).toBeNull();
   });
@@ -66,10 +83,35 @@ describe("rejectCrossSite", () => {
       },
       name: "both cross-site headers",
     },
+    {
+      headers: {
+        Host: "plans.m4.notlin.com",
+        Origin: "https://evil.example",
+        "Sec-Fetch-Site": "same-origin",
+      },
+      name: "a foreign Origin with same-origin fetch metadata",
+    },
+    {
+      headers: {
+        Host: "127.0.0.1:7526",
+        Origin: "https://plans.m4.notlin.com",
+        "Sec-Fetch-Site": "same-origin",
+        "X-Forwarded-Host": "other.example, plans.m4.notlin.com",
+      },
+      name: "a non-matching first forwarded Host",
+    },
+    {
+      headers: {
+        Host: "plans.m4.notlin.com",
+        Origin: "not an origin",
+        "Sec-Fetch-Site": "same-origin",
+      },
+      name: "a malformed Origin",
+    },
   ])("returns the exact forbidden response for $name", async ({ headers }) => {
     expect(await describeResponse(rejectCrossSite(createRequest(headers)))).toStrictEqual({
-      body: "Forbidden",
-      headers: { "content-type": "text/plain;charset=UTF-8" },
+      body: '{"error":"Forbidden"}',
+      headers: { "content-type": "application/json" },
       status: 403,
       statusText: "",
     });
