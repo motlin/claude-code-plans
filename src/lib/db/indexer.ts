@@ -20,6 +20,8 @@ type IndexDb = BetterSQLite3Database<typeof schema>;
 
 const PLAN_PATH_RE = /\.claude\/plans\/([^/]+\.md)$/;
 const FILE_CONTENT_CACHE_PREFIX = "file-content:";
+// Four bound values per row keep each insert below SQLite's historical 999-variable limit.
+const SESSION_MESSAGE_INSERT_BATCH_SIZE = 200;
 export const FILE_CONTENT_SIZE_CAP_BYTES = 5 * 1024 * 1024;
 
 function fileContentCachePath(filePath: string): string {
@@ -565,10 +567,22 @@ export async function indexJsonlFile(
   // Replace structured message rows alongside the search-only flattened FTS
   // blob. Role and order are retained here so consumers never need to tail
   // the JSONL to recover the latest substantive assistant response.
-  db.delete(schema.sessionMessages).where(eq(schema.sessionMessages.sessionId, sessionId)).run();
-  if (indexedMessages.length > 0) {
-    db.insert(schema.sessionMessages).values(indexedMessages).run();
-  }
+  db.transaction((transaction) => {
+    transaction
+      .delete(schema.sessionMessages)
+      .where(eq(schema.sessionMessages.sessionId, sessionId))
+      .run();
+    for (
+      let offset = 0;
+      offset < indexedMessages.length;
+      offset += SESSION_MESSAGE_INSERT_BATCH_SIZE
+    ) {
+      transaction
+        .insert(schema.sessionMessages)
+        .values(indexedMessages.slice(offset, offset + SESSION_MESSAGE_INSERT_BATCH_SIZE))
+        .run();
+    }
+  });
 
   // Update message content FTS
   db.run(sql`DELETE FROM message_content_fts WHERE session_id = ${sessionId}`);

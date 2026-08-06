@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { openTestDb, type AppDb } from "../src/lib/db/connection";
 import { indexJsonlFile } from "../src/lib/db/indexer";
@@ -102,6 +103,38 @@ describe("indexed review summary", () => {
         { sessionId: SESSION_ID, messageIndex: 3, role: "assistant", text: null },
       ],
       summary: "Implemented the safe path.",
+    });
+  });
+
+  it("indexes transcripts that exceed SQLite's variable limit", async () => {
+    const project = "-tmp-example";
+    const transcript = join(TEST_ROOT, `${SESSION_ID}.jsonl`);
+    const messageCount = 8_200;
+    const records = Array.from({ length: messageCount }, (_, messageIndex) => ({
+      type: messageIndex % 2 === 0 ? "user" : "assistant",
+      message: { content: `Message ${messageIndex}` },
+    }));
+    writeFileSync(transcript, records.map((record) => JSON.stringify(record)).join("\n"));
+
+    await indexJsonlFile(db.index, transcript, project);
+
+    expect({
+      aggregate: db.index
+        .select({
+          messageCount: sql<number>`count(*)`,
+          firstMessageIndex: sql<number>`min(${schema.sessionMessages.messageIndex})`,
+          lastMessageIndex: sql<number>`max(${schema.sessionMessages.messageIndex})`,
+        })
+        .from(schema.sessionMessages)
+        .get(),
+      lastAssistantText: getLastSubstantiveAssistantText(db.index, SESSION_ID),
+    }).toStrictEqual({
+      aggregate: {
+        messageCount,
+        firstMessageIndex: 0,
+        lastMessageIndex: messageCount - 1,
+      },
+      lastAssistantText: `Message ${messageCount - 1}`,
     });
   });
 });
