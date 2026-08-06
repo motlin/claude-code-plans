@@ -6,6 +6,7 @@ import { useSettings } from "./settings-provider";
 
 interface JumpChipsProps {
   occurrences: ResourceOccurrence[];
+  resourceLabel?: string;
 }
 
 function hiddenReason(
@@ -21,7 +22,7 @@ function hiddenReason(
   return undefined;
 }
 
-export function JumpChips({ occurrences }: JumpChipsProps) {
+export function JumpChips({ occurrences, resourceLabel = "file" }: JumpChipsProps) {
   const { settings } = useSettings();
   const orderedOccurrences = useMemo(
     () => [...occurrences].sort((left, right) => left.lineArrayIndex - right.lineArrayIndex),
@@ -29,7 +30,7 @@ export function JumpChips({ occurrences }: JumpChipsProps) {
   );
 
   return (
-    <div className="flex flex-wrap gap-1" aria-label="File mentions">
+    <div className="flex flex-wrap gap-1" aria-label={`${resourceLabel} mentions`}>
       {orderedOccurrences.map((occurrence, index) => {
         const reason = hiddenReason(occurrence, settings);
         const mentionNumber = index + 1;
@@ -39,7 +40,7 @@ export function JumpChips({ occurrences }: JumpChipsProps) {
             type="button"
             disabled={reason !== undefined}
             title={reason ?? `Jump to mention ${mentionNumber}`}
-            aria-label={`Jump to file mention ${mentionNumber}`}
+            aria-label={`Jump to ${resourceLabel} mention ${mentionNumber}`}
             onClick={() => jumpToMessage(occurrence.lineArrayIndex)}
             className="inline-flex min-w-6 items-center justify-center rounded-full border border-border-300/20 bg-bg-300 px-1.5 py-0.5 text-[10px] font-medium text-text-300 transition-colors hover:border-accent-100/60 hover:text-text-100 disabled:cursor-not-allowed disabled:border-border-300/10 disabled:text-text-500 disabled:opacity-50"
           >

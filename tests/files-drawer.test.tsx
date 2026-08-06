@@ -278,6 +278,7 @@ describe("files drawer state", () => {
     await waitFor(() => {
       expect((localStorage as FakeStorage).values).toStrictEqual(
         new Map([
+          [OPEN_DRAWER_STORAGE_KEY, "none"],
           [
             FILE_SOURCE_SELECTION_STORAGE_KEY,
             JSON.stringify({
@@ -291,7 +292,7 @@ describe("files drawer state", () => {
   });
 
   it("rejects malformed or incomplete stored checkbox records", async () => {
-    localStorage.setItem(OPEN_DRAWER_STORAGE_KEY, "links");
+    localStorage.setItem(OPEN_DRAWER_STORAGE_KEY, "drawer-example");
     localStorage.setItem(
       FILE_SOURCE_SELECTION_STORAGE_KEY,
       JSON.stringify({ ...DEFAULT_FILE_SOURCE_SELECTION, read: "yes" }),
@@ -304,7 +305,7 @@ describe("files drawer state", () => {
         openDrawer: result.current.openDrawer,
         sourceSelection: result.current.sourceSelection,
       }).toStrictEqual({
-        openDrawer: null,
+        openDrawer: "none",
         sourceSelection: DEFAULT_FILE_SOURCE_SELECTION,
       });
     });

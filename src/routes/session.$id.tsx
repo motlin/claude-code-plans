@@ -51,6 +51,13 @@ import {
   useExtractedSessionFiles,
   useFilesDrawerState,
 } from "../components/files-drawer";
+import {
+  LinksDrawer,
+  LinksDrawerToggle,
+  useExtractedSessionLinks,
+  useLinksDrawerState,
+  useSessionLinkDisplay,
+} from "../components/links-drawer";
 
 export const Route = createFileRoute("/session/$id")({
   component: SessionPage,
@@ -314,10 +321,23 @@ function SessionPage() {
   const { data: subagents } = useSuspenseQuery(sessionSubagentsQueryOptions(params.id));
   const { data: herdr } = useSuspenseQuery(herdrPanesQueryOptions);
   const viewedState = useSessionViewedState(params.id, transcript.records.length - 1);
+  const { settings, setSetting } = useSettings();
+  const [currentHost, setCurrentHost] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    setCurrentHost(typeof window !== "undefined" ? window.location.hostname : undefined);
+  }, []);
 
   const processed = useMemo(() => processTranscript(transcript.records), [transcript.records]);
   const sessionFiles = useExtractedSessionFiles(processed.lines, data?.homeRoot);
+  const sessionLinks = useExtractedSessionLinks(
+    processed.lines,
+    currentHost,
+    settings.linkCategoryRules,
+  );
   const filesDrawerState = useFilesDrawerState();
+  const linksDrawerState = useLinksDrawerState();
+  const linkDisplay = useSessionLinkDisplay(sessionLinks, linksDrawerState.includeToolsAndThinking);
   const { runningSubagents } = useClaudeEvents();
   const transcriptActiveSubagents = useMemo(
     () => extractPendingSubagents(transcript.records),
@@ -340,7 +360,6 @@ function SessionPage() {
   const [generating, setGenerating] = useState(false);
   const summaryMutation = useRequestSummary(params.id);
   const starMutation = useToggleSessionStar(params.id);
-  const { settings, setSetting } = useSettings();
   const chromeHidden = settings.chromeHidden;
   const setChromeHidden = useCallback((v: boolean) => setSetting("chromeHidden", v), [setSetting]);
   const chromeHiddenRef = useRef(chromeHidden);
@@ -530,6 +549,11 @@ function SessionPage() {
               isOpen={filesDrawerState.openDrawer === "files" && sessionFiles.totalCount > 0}
               onToggle={filesDrawerState.toggleFilesDrawer}
             />
+            <LinksDrawerToggle
+              count={linkDisplay.totalCount}
+              isOpen={filesDrawerState.openDrawer === "links" && sessionLinks.totalCount > 0}
+              onToggle={filesDrawerState.toggleLinksDrawer}
+            />
             <CopyButton title="Copy session ID" text={params.id} icon={Copy} />
             <CopyButton title="Copy resume command" text={sessionCommands.resume} icon={Terminal} />
             <CopyButton title="Copy fork command" text={sessionCommands.fork} icon={GitFork} />
@@ -681,6 +705,15 @@ function SessionPage() {
           sourceSelection={filesDrawerState.sourceSelection}
           onSourceSelected={filesDrawerState.setSourceSelected}
           onUnselectAllSources={filesDrawerState.unselectAllSources}
+          onClose={filesDrawerState.closeDrawer}
+        />
+      )}
+
+      {filesDrawerState.openDrawer === "links" && sessionLinks.totalCount > 0 && (
+        <LinksDrawer
+          display={linkDisplay}
+          includeToolsAndThinking={linksDrawerState.includeToolsAndThinking}
+          onIncludeToolsAndThinkingChange={linksDrawerState.setIncludeToolsAndThinking}
           onClose={filesDrawerState.closeDrawer}
         />
       )}

@@ -18,6 +18,7 @@ interface SessionDrawerProps {
   title: string;
   count: number;
   onClose: () => void;
+  headerContent?: ReactNode;
   children: ReactNode;
 }
 
@@ -32,7 +33,13 @@ function clampWidth(width: number): number {
   return Math.min(MAXIMUM_WIDTH, Math.max(MINIMUM_WIDTH, width));
 }
 
-export function SessionDrawer({ title, count, onClose, children }: SessionDrawerProps) {
+export function SessionDrawer({
+  title,
+  count,
+  onClose,
+  headerContent,
+  children,
+}: SessionDrawerProps) {
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const titleId = useId();
   const bodyId = useId();
@@ -127,6 +134,7 @@ export function SessionDrawer({ title, count, onClose, children }: SessionDrawer
         <h2 id={titleId} className="min-w-0 flex-1 truncate text-sm font-semibold">
           {title}
         </h2>
+        {headerContent}
         <span
           aria-label={`${count} items`}
           className="rounded-full bg-bg-300 px-2 py-0.5 text-xs font-medium text-text-300"

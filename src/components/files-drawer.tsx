@@ -15,7 +15,7 @@ import { JumpChips } from "./jump-chips";
 import { SessionDrawer } from "./session-drawer";
 
 export type FileSourceSelection = Record<FileSourceKey, boolean>;
-type OpenSessionDrawer = "files" | null;
+type OpenSessionDrawer = "none" | "files" | "links";
 
 export const OPEN_DRAWER_STORAGE_KEY = "ccp-session-open-drawer";
 export const FILE_SOURCE_SELECTION_STORAGE_KEY = "ccp-session-file-sources";
@@ -86,7 +86,7 @@ function parseFileSourceSelection(rawValue: string): FileSourceSelection | undef
 }
 
 export function useFilesDrawerState() {
-  const [openDrawer, setOpenDrawer] = useState<OpenSessionDrawer>(null);
+  const [openDrawer, setOpenDrawer] = useState<OpenSessionDrawer>("none");
   const [sourceSelection, setSourceSelection] = useState<FileSourceSelection>(
     DEFAULT_FILE_SOURCE_SELECTION,
   );
@@ -94,7 +94,11 @@ export function useFilesDrawerState() {
 
   useEffect(() => {
     const storedDrawer = localStorage.getItem(OPEN_DRAWER_STORAGE_KEY);
-    setOpenDrawer(storedDrawer === "files" ? "files" : null);
+    setOpenDrawer(
+      storedDrawer === "files" || storedDrawer === "links" || storedDrawer === "none"
+        ? storedDrawer
+        : "none",
+    );
 
     const storedSources = localStorage.getItem(FILE_SOURCE_SELECTION_STORAGE_KEY);
     if (storedSources !== null) {
@@ -106,15 +110,17 @@ export function useFilesDrawerState() {
 
   useEffect(() => {
     if (!storageHydrated) return;
-    if (openDrawer === null) localStorage.removeItem(OPEN_DRAWER_STORAGE_KEY);
-    else localStorage.setItem(OPEN_DRAWER_STORAGE_KEY, openDrawer);
+    localStorage.setItem(OPEN_DRAWER_STORAGE_KEY, openDrawer);
     localStorage.setItem(FILE_SOURCE_SELECTION_STORAGE_KEY, JSON.stringify(sourceSelection));
   }, [openDrawer, sourceSelection, storageHydrated]);
 
   const toggleFilesDrawer = useCallback(() => {
-    setOpenDrawer((current) => (current === "files" ? null : "files"));
+    setOpenDrawer((current) => (current === "files" ? "none" : "files"));
   }, []);
-  const closeDrawer = useCallback(() => setOpenDrawer(null), []);
+  const toggleLinksDrawer = useCallback(() => {
+    setOpenDrawer((current) => (current === "links" ? "none" : "links"));
+  }, []);
+  const closeDrawer = useCallback(() => setOpenDrawer("none"), []);
   const setSourceSelected = useCallback((source: FileSourceKey, selected: boolean) => {
     setSourceSelection((current) => ({ ...current, [source]: selected }));
   }, []);
@@ -126,6 +132,7 @@ export function useFilesDrawerState() {
     openDrawer,
     sourceSelection,
     toggleFilesDrawer,
+    toggleLinksDrawer,
     closeDrawer,
     setSourceSelected,
     unselectAllSources,
