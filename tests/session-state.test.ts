@@ -5,6 +5,7 @@ import type { HookEvent } from "../src/lib/hook-events";
 import {
   STATE_RANK,
   compareByUrgency,
+  displayState,
   stateForEvent,
   waitHeat,
   type ActivityState,
@@ -248,6 +249,27 @@ describe("compareByUrgency", () => {
       "idle",
       "unknown-newest",
     ]);
+  });
+});
+
+describe("displayState", () => {
+  it("turns unseen idle work into review", () => {
+    expect(displayState("idle", true)).toBe("review");
+  });
+
+  it("leaves every activity state unchanged without unseen work", () => {
+    expect(ACTIVITY_STATES.map((state) => displayState(state, false))).toStrictEqual([
+      "idle",
+      "working",
+      "waiting",
+      "unknown",
+    ]);
+  });
+
+  it("does not replace active states when unseen work is latched", () => {
+    expect(
+      ACTIVITY_STATES.filter((state) => state !== "idle").map((state) => displayState(state, true)),
+    ).toStrictEqual(["working", "waiting", "unknown"]);
   });
 });
 

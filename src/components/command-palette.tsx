@@ -1,6 +1,6 @@
 import { Command } from "cmdk";
 import { useNavigate } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   FileText,
@@ -11,8 +11,10 @@ import {
   Star,
   Home,
   SlidersHorizontal,
+  CircleCheckBig,
 } from "lucide-react";
 import { recentSessionsQueryOptions } from "../lib/api/sessions";
+import { clearAll, observeSessionState } from "../lib/unread-store";
 
 interface RecentSession {
   id: string;
@@ -50,6 +52,12 @@ export function CommandPalette({
     () => (data?.sessions ?? []).map((s) => ({ id: s.id, title: s.title, mtime: s.mtime })),
     [data],
   );
+
+  useEffect(() => {
+    for (const session of data?.sessions ?? []) {
+      observeSessionState(session.id, session.state);
+    }
+  }, [data]);
 
   function select(callback: () => void) {
     onOpenChange(false);
@@ -101,6 +109,12 @@ export function CommandPalette({
             shortcut="/"
           >
             Search
+          </CommandItem>
+          <CommandItem
+            icon={<CircleCheckBig className="h-4 w-4" />}
+            onSelect={() => select(clearAll)}
+          >
+            Mark all sessions seen
           </CommandItem>
         </Command.Group>
 

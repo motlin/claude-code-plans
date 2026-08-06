@@ -58,6 +58,8 @@ import {
   useLinksDrawerState,
   useSessionLinkDisplay,
 } from "../components/links-drawer";
+import { useHasUnseenWork } from "../components/session-unread-control";
+import { markSeen } from "../lib/unread-store";
 
 export const Route = createFileRoute("/session/$id")({
   component: SessionPage,
@@ -321,12 +323,37 @@ function SessionPage() {
   const { data: subagents } = useSuspenseQuery(sessionSubagentsQueryOptions(params.id));
   const { data: herdr } = useSuspenseQuery(herdrPanesQueryOptions);
   const viewedState = useSessionViewedState(params.id, transcript.records.length - 1);
+  const hasUnseen = useHasUnseenWork(params.id);
   const { settings, setSetting } = useSettings();
   const [currentHost, setCurrentHost] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     setCurrentHost(typeof window !== "undefined" ? window.location.hostname : undefined);
   }, []);
+
+  useEffect(() => {
+    if (!hasUnseen) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const updateDwell = (): void => {
+      if (document.visibilityState !== "visible") {
+        if (timer) clearTimeout(timer);
+        timer = null;
+        return;
+      }
+      if (timer) return;
+      timer = setTimeout(() => {
+        timer = null;
+        markSeen(params.id);
+      }, 2_000);
+    };
+
+    updateDwell();
+    document.addEventListener("visibilitychange", updateDwell);
+    return () => {
+      document.removeEventListener("visibilitychange", updateDwell);
+      if (timer) clearTimeout(timer);
+    };
+  }, [hasUnseen, params.id]);
 
   const processed = useMemo(() => processTranscript(transcript.records), [transcript.records]);
   const sessionFiles = useExtractedSessionFiles(processed.lines, data?.homeRoot);

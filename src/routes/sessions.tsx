@@ -6,6 +6,7 @@ import {
   type SessionListItem,
 } from "../lib/api/sessions";
 import { useClaudeEvents } from "../hooks/use-claude-events";
+import { SessionUnreadControl } from "../components/session-unread-control";
 
 export const Route = createFileRoute("/sessions")({
   component: SessionsPage,
@@ -148,11 +149,11 @@ function SessionsPage() {
 
 function SessionItem({ session, isActive }: { session: SessionListItem; isActive?: boolean }) {
   return (
-    <li>
+    <li className="relative">
       <Link
         to="/session/$id"
         params={{ id: session.id }}
-        className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-bg-200/50"
+        className="block rounded-md p-2 pr-28 cursor-pointer transition-colors hover:bg-bg-200/50"
       >
         <div
           className="flex items-center gap-1.5 truncate"
@@ -189,6 +190,9 @@ function SessionItem({ session, isActive }: { session: SessionListItem; isActive
           <div className="mt-0.5 truncate text-xs text-text-500 italic">{session.summary}</div>
         )}
       </Link>
+      <div className="absolute right-2 top-2.5">
+        <SessionUnreadControl sessionId={session.id} state={session.state} />
+      </div>
     </li>
   );
 }

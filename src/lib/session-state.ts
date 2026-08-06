@@ -17,6 +17,10 @@ export const STATE_RANK: Record<DisplayState, number> = {
   unknown: 4,
 };
 
+export function displayState(state: ActivityState, hasUnseenWork: boolean): DisplayState {
+  return state === "idle" && hasUnseenWork ? "review" : state;
+}
+
 export interface UrgencySortableSession {
   state: DisplayState;
   lastModified: number;

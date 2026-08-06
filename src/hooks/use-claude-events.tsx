@@ -28,9 +28,14 @@ import {
   type SessionToolFailedPayload,
   type SubagentStartedPayload,
 } from "../lib/hook-events";
-import type { TranscriptData } from "../lib/api/sessions";
+import {
+  groupedSessionsQueryOptions,
+  recentSessionsInfiniteQueryOptions,
+  type TranscriptData,
+} from "../lib/api/sessions";
 import { toMdSlug } from "../lib/md-slug";
 import { getSubagentLifecycleKey } from "../lib/subagents";
+import { observeSessionState } from "../lib/unread-store";
 
 // ---------------------------------------------------------------------------
 // State types
@@ -810,6 +815,21 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const recent = queryClient.getQueryData<{
+      pages: Array<{ sessions: SessionSummaryPayload[] }>;
+    }>(recentSessionsInfiniteQueryOptions().queryKey);
+    const grouped = queryClient.getQueryData<Array<{ sessions: SessionSummaryPayload[] }>>(
+      groupedSessionsQueryOptions().queryKey,
+    );
+    for (const page of recent?.pages ?? []) {
+      for (const session of page.sessions) observeSessionState(session.id, session.state);
+    }
+    for (const group of grouped ?? []) {
+      for (const session of group.sessions) observeSessionState(session.id, session.state);
+    }
+  }, [queryClient]);
+
+  useEffect(() => {
     const es = new EventSource("/api/events");
 
     function handleLifecycleEvent(e: Event) {
@@ -855,7 +875,10 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
       switch (e.type) {
         case DOMAIN_EVENTS.SESSION_ADDED: {
           const session = data["session"] as SessionSummaryPayload | undefined;
-          if (session) applySessionAdded(queryClient, session);
+          if (session) {
+            observeSessionState(session.id, session.state);
+            applySessionAdded(queryClient, session);
+          }
           break;
         }
         case DOMAIN_EVENTS.SESSION_REMOVED: {
@@ -868,7 +891,10 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
         }
         case DOMAIN_EVENTS.SESSION_UPDATED: {
           const session = data["session"] as SessionSummaryPayload | undefined;
-          if (session) applySessionUpdated(queryClient, session);
+          if (session) {
+            observeSessionState(session.id, session.state);
+            applySessionUpdated(queryClient, session);
+          }
           // Also mirror into the activeSessions reducer so the "active" dot
           // stays green while .jsonl / Stop deltas keep arriving.
           dispatch({
@@ -1018,7 +1044,10 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
         }
         case DOMAIN_EVENTS.APPROVAL_CHANGED: {
           const approval = data["approval"] as PendingApprovalPayload | undefined;
-          if (approval) applyApprovalChanged(queryClient, approval);
+          if (approval) {
+            observeSessionState(approval.sessionId, "waiting");
+            applyApprovalChanged(queryClient, approval);
+          }
           break;
         }
         case DOMAIN_EVENTS.APPROVAL_RESOLVED: {

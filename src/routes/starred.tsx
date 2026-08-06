@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { z } from "zod";
 import { apiFetch } from "../lib/api/client";
 import { starredSessionsQueryOptions } from "../lib/api/sessions";
+import { SessionUnreadControl } from "../components/session-unread-control";
 
 const StarredMutationResponse = z.object({ starred: z.boolean() });
 
@@ -62,7 +63,7 @@ function StarredPage() {
               <Link
                 to="/session/$id"
                 params={{ id: session.id }}
-                className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-bg-200/50"
+                className="block rounded-md p-2 pr-40 cursor-pointer transition-colors hover:bg-bg-200/50"
               >
                 <div className="truncate pr-8" style={{ fontSize: "14px", fontWeight: 430 }}>
                   {session.title}
@@ -84,6 +85,9 @@ function StarredPage() {
                   </div>
                 )}
               </Link>
+              <div className="absolute right-9 top-2.5">
+                <SessionUnreadControl sessionId={session.id} state={session.state} />
+              </div>
               <button
                 type="button"
                 onClick={(e) => {
