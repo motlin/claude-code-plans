@@ -1,4 +1,6 @@
 import { eq, desc, sql, and, inArray, isNotNull } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import { basename, dirname, relative, sep } from "node:path";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as schema from "./schema";
 import type { SessionEntry } from "../sessions";
@@ -593,6 +595,209 @@ export function searchMessageContentDb(
       rank: row.rank,
     };
   });
+}
+
+export interface DbFileSearchMatch {
+  lineNumber: number;
+  snippet: string;
+}
+
+export interface DbFileSearchFile {
+  path: string;
+  matchCount: number;
+  matches: DbFileSearchMatch[];
+  mtime: string;
+  rank: number;
+}
+
+export interface DbFileSearchResult {
+  files: DbFileSearchFile[];
+  totalResults: number;
+  totalFiles: number;
+  isTruncated: boolean;
+}
+
+interface FileSearchRow {
+  path: string;
+  highlighted_content: string;
+  fallback_snippet: string;
+  body_rank: number;
+  mtime_ms: number;
+}
+
+interface FileSearchPathRow {
+  path: string;
+  mtime_ms: number;
+}
+
+const FILE_SEARCH_FILE_LIMIT = 100;
+const FILE_SEARCH_MATCH_LIMIT = 50;
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function sanitizeFtsHighlight(value: string, highlightStart: string, highlightEnd: string): string {
+  return escapeHtml(value).replaceAll(highlightStart, "<mark>").replaceAll(highlightEnd, "</mark>");
+}
+
+function sanitizeFtsSnippet(value: string): string {
+  return escapeHtml(value)
+    .replaceAll("&lt;mark&gt;", "<mark>")
+    .replaceAll("&lt;/mark&gt;", "</mark>");
+}
+
+function tokenizeFileSearchQuery(query: string): string[] {
+  return query.normalize("NFKC").match(/[\p{L}\p{N}_]+/gu) ?? [];
+}
+
+function toFtsQuery(terms: readonly string[]): string {
+  return terms.map((term) => `"${term.replaceAll('"', '""')}"`).join(" AND ");
+}
+
+function pathBoost(path: string, scopeRoot: string, terms: readonly string[]): number {
+  const fileName = basename(path).toLowerCase();
+  const directory = relative(scopeRoot, dirname(path)).toLowerCase();
+  let boost = 0;
+  for (const term of terms) {
+    const normalizedTerm = term.toLowerCase();
+    if (fileName.includes(normalizedTerm)) boost += 1_000;
+    else if (directory.includes(normalizedTerm)) boost += 200;
+  }
+  return boost;
+}
+
+function boundedHighlightedLine(line: string, highlightStart: string): string {
+  const trimmedLine = line.trimEnd();
+  const tokens = trimmedLine.split(/\s+/);
+  if (tokens.length <= 48) return trimmedLine;
+
+  const matchIndex = tokens.findIndex((token) => token.includes(highlightStart));
+  const startIndex = Math.max(0, Math.min(matchIndex - 24, tokens.length - 48));
+  const endIndex = startIndex + 48;
+  const prefix = startIndex > 0 ? "..." : "";
+  const suffix = endIndex < tokens.length ? "..." : "";
+  return `${prefix}${tokens.slice(startIndex, endIndex).join(" ")}${suffix}`;
+}
+
+function lineMatches(
+  highlightedContent: string,
+  fallbackSnippet: string,
+  highlightStart: string,
+  highlightEnd: string,
+): DbFileSearchMatch[] {
+  const matches: DbFileSearchMatch[] = [];
+  const lines = highlightedContent.split(/\r?\n/);
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]!;
+    if (!line.includes(highlightStart)) continue;
+    matches.push({
+      lineNumber: index + 1,
+      snippet: sanitizeFtsHighlight(
+        boundedHighlightedLine(line, highlightStart),
+        highlightStart,
+        highlightEnd,
+      ),
+    });
+  }
+
+  if (matches.length === 0 && fallbackSnippet.includes("<mark>")) {
+    return [{ lineNumber: 1, snippet: sanitizeFtsSnippet(fallbackSnippet) }];
+  }
+  return matches;
+}
+
+/** Search indexed file contents within one already-authorized real directory. */
+export function searchFileContentDb(
+  db: IndexDb,
+  query: string,
+  scopeRoot: string,
+): DbFileSearchResult {
+  const terms = tokenizeFileSearchQuery(query);
+  if (terms.length === 0) {
+    return { files: [], totalResults: 0, totalFiles: 0, isTruncated: false };
+  }
+
+  const ftsQuery = toFtsQuery(terms);
+  const scopePrefix = `${scopeRoot}${sep}`;
+  const highlightIdentifier = randomUUID();
+  const highlightStart = `\uE000${highlightIdentifier}-start\uE001`;
+  const highlightEnd = `\uE000${highlightIdentifier}-end\uE001`;
+  const rows = db.all(
+    sql`SELECT file_content_fts.path AS path,
+			highlight(file_content_fts, 1, ${highlightStart}, ${highlightEnd}) AS highlighted_content,
+			snippet(file_content_fts, 1, '<mark>', '</mark>', '...', 48) AS fallback_snippet,
+			bm25(file_content_fts) AS body_rank,
+			COALESCE(indexed_files.mtime_ms, 0) AS mtime_ms
+		FROM file_content_fts
+		LEFT JOIN indexed_files ON indexed_files.path = 'file-content:' || file_content_fts.path
+		WHERE file_content_fts MATCH ${ftsQuery}
+			AND (file_content_fts.path = ${scopeRoot}
+				OR substr(file_content_fts.path, 1, ${scopePrefix.length}) = ${scopePrefix})`,
+  ) as FileSearchRow[];
+
+  const rowsByPath = new Map(rows.map((row) => [row.path, row]));
+  const pathRows = db.all(
+    sql`SELECT file_content_fts.path AS path,
+			COALESCE(indexed_files.mtime_ms, 0) AS mtime_ms
+		FROM file_content_fts
+		LEFT JOIN indexed_files ON indexed_files.path = 'file-content:' || file_content_fts.path
+		WHERE file_content_fts.path = ${scopeRoot}
+			OR substr(file_content_fts.path, 1, ${scopePrefix.length}) = ${scopePrefix}`,
+  ) as FileSearchPathRow[];
+  for (const row of pathRows) {
+    const relativePath = relative(scopeRoot, row.path).toLowerCase();
+    if (
+      !rowsByPath.has(row.path) &&
+      terms.every((term) => relativePath.includes(term.toLowerCase()))
+    ) {
+      rowsByPath.set(row.path, {
+        ...row,
+        highlighted_content: "",
+        fallback_snippet: "",
+        body_rank: 0,
+      });
+    }
+  }
+
+  const rankedFiles = [...rowsByPath.values()]
+    .map((row) => {
+      const allMatches = lineMatches(
+        row.highlighted_content,
+        row.fallback_snippet,
+        highlightStart,
+        highlightEnd,
+      );
+      return {
+        path: row.path,
+        matchCount: allMatches.length,
+        matches: allMatches.slice(0, FILE_SEARCH_MATCH_LIMIT),
+        mtime: new Date(row.mtime_ms).toISOString(),
+        rank: row.body_rank - pathBoost(row.path, scopeRoot, terms),
+      };
+    })
+    .sort((left, right) => {
+      if (left.rank !== right.rank) return left.rank - right.rank;
+      const mtimeComparison = right.mtime.localeCompare(left.mtime);
+      return mtimeComparison !== 0 ? mtimeComparison : left.path.localeCompare(right.path);
+    });
+
+  const totalResults = rankedFiles.reduce((total, file) => total + file.matchCount, 0);
+  const isTruncated =
+    rankedFiles.length > FILE_SEARCH_FILE_LIMIT ||
+    rankedFiles.some((file) => file.matchCount > FILE_SEARCH_MATCH_LIMIT);
+
+  return {
+    files: rankedFiles.slice(0, FILE_SEARCH_FILE_LIMIT),
+    totalResults,
+    totalFiles: rankedFiles.length,
+    isTruncated,
+  };
 }
 
 export function getSubagentById(db: IndexDb, agentId: string): DbSubagent | undefined {

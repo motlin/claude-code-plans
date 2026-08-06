@@ -101,3 +101,22 @@ export async function resolveConfiguredFileRoots(
 
   return resolvedRoots;
 }
+
+/** Resolve a requested search directory and prove it remains inside a configured real root. */
+export async function resolveFileSearchScope(
+  scopeRoot: string,
+  configPath: string = getConfigPath(),
+): Promise<string | null> {
+  let resolvedScope: string;
+  try {
+    resolvedScope = await realpath(scopeRoot);
+    if (!(await stat(resolvedScope)).isDirectory()) return null;
+  } catch {
+    return null;
+  }
+
+  const configuredRoots = await resolveConfiguredFileRoots(configPath);
+  return configuredRoots.some((root) => isContainedPath(resolvedScope, root))
+    ? resolvedScope
+    : null;
+}
