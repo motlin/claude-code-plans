@@ -50,7 +50,16 @@ const sessionStartSourceLabels = {
   resume: "Resume",
   clear: "Clear",
   compact: "Compact",
+  fork: "Fork",
 } satisfies Record<HookEventOf<"SessionStart">["source"], string>;
+
+const userPromptSourceLabels = {
+  user: "User",
+  sdk: "SDK",
+  system: "System",
+  loop_wakeup: "Loop wakeup",
+  schedule_wakeup: "Schedule wakeup",
+} satisfies Record<NonNullable<HookEventOf<"UserPromptSubmit">["source"]>, string>;
 
 const compactTriggerLabels = {
   manual: "Manual",
@@ -240,6 +249,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   ToolUseUnion: toolNames,
   HookEventEnvelope: hookEventNames,
   "HookEventEnvelope.<SessionStart>.source": sessionStartSourceLabels,
+  "HookEventEnvelope.<UserPromptSubmit>.source": userPromptSourceLabels,
   "HookEventEnvelope.<PreCompact>.trigger": compactTriggerLabels,
   "HookEventEnvelope.<PostCompact>.reason": compactTriggerLabels,
   "HookEventEnvelope.<InstructionsLoaded>.load_reason": instructionsLoadReasonLabels,

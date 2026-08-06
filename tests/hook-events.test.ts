@@ -459,6 +459,103 @@ describe("HookEventEnvelope", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  // Turn-scoped envelope fields Claude Code began sending on every event.
+  // Rejecting them fails the whole envelope, which drops the session out of
+  // the active-session store and empties every terminal-placement view.
+  describe("turn-scoped envelope fields", () => {
+    it("parses prompt_id and permission_mode on UserPromptSubmit", () => {
+      const result = HookEventEnvelope.safeParse({
+        ...baseEnvelope,
+        prompt_id: "361e5b4d-c597-42b1-b7cc-97498dddc938",
+        permission_mode: "auto",
+        hook_event_name: "UserPromptSubmit",
+        prompt: "just dev",
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("parses effort on a tool-use event", () => {
+      const result = HookEventEnvelope.safeParse({
+        ...baseEnvelope,
+        prompt_id: "361e5b4d-c597-42b1-b7cc-97498dddc938",
+        permission_mode: "auto",
+        effort: { level: "high" },
+        hook_event_name: "PreToolUse",
+        tool_name: "Bash",
+        tool_use_id: "toolu_01",
+        tool_input: { command: "ls", description: "List files" },
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("parses noOutputExpected on a Bash tool_response", () => {
+      const result = HookEventEnvelope.safeParse({
+        ...baseEnvelope,
+        hook_event_name: "PostToolUse",
+        tool_name: "Bash",
+        tool_input: { command: "ls", description: "List files" },
+        tool_response: {
+          stdout: "a\nb",
+          stderr: "",
+          interrupted: false,
+          isImage: false,
+          noOutputExpected: false,
+        },
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("parses duration_ms on PostToolUse", () => {
+      const result = HookEventEnvelope.safeParse({
+        ...baseEnvelope,
+        hook_event_name: "PostToolUse",
+        tool_name: "Bash",
+        tool_input: { command: "ls" },
+        tool_response: { stdout: "a\nb", stderr: "", interrupted: false, isImage: false },
+        duration_ms: 812,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("accepts an unrecognized permission_mode rather than dropping the event", () => {
+      const result = HookEventEnvelope.safeParse({
+        ...baseEnvelope,
+        permission_mode: "someFutureMode",
+        hook_event_name: "Stop",
+      });
+      expect(result.success).toBe(true);
+    });
+  });
+
+  it("parses Stop event with last_assistant_message, background_tasks, session_crons", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      prompt_id: "361e5b4d-c597-42b1-b7cc-97498dddc938",
+      permission_mode: "auto",
+      effort: { level: "high" },
+      hook_event_name: "Stop",
+      stop_hook_active: false,
+      last_assistant_message: "Server fine.",
+      background_tasks: [],
+      session_crons: [],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("parses streaming MessageDisplay event", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      prompt_id: "361e5b4d-c597-42b1-b7cc-97498dddc938",
+      hook_event_name: "MessageDisplay",
+      turn_id: "bd966670-87bf-424f-af2c-a8f3d8e9ba0a",
+      message_id: "d8a4970e-43d3-48c6-8f2f-bc66a407b26e",
+      index: 0,
+      final: false,
+      delta: "Server fine. ",
+    });
+    expect(result.success).toBe(true);
+  });
 });
 
 describe("DOMAIN_EVENTS", () => {

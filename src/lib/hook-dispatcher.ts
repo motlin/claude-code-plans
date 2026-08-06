@@ -693,7 +693,9 @@ export async function dispatchHookEvent({
       store.touchSession(event.session_id);
       broadcast(DOMAIN_EVENTS.MESSAGE_DISPLAYED, {
         sessionId: event.session_id,
-        message: event.message,
+        // Newer Claude Code streams the text as `delta` batches instead of a
+        // whole-`message` snapshot; prefer whichever this build sends.
+        message: event.message ?? event.delta,
         messageId: event.message_id,
       } satisfies MessageDisplayedPayload);
       break;

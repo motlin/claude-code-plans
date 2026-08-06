@@ -434,7 +434,51 @@ const BaseHookFields = {
   transcript_path: z.string(),
   cwd: z.string(),
   hook_event_name: z.string(),
+  /** UUID correlating a user prompt with every event until the next prompt. */
+  prompt_id: z.string().optional(),
+  // Freeform for the same reason as `Notification.notification_type`: a strict
+  // `z.enum` here rejects the entire envelope when a new mode ships, which
+  // drops every session out of the active-session store. Claude Code itself
+  // declares this field as a plain optional string.
+  permission_mode: z.string().optional(),
+  /** Present when the hook fires from inside a subagent. */
+  agent_id: z.string().optional(),
+  agent_type: z.string().optional(),
+  /** Reasoning effort for the current turn, after any per-model downgrade. */
+  effort: z.strictObject({ level: z.string() }).optional(),
   claude_env: z.record(z.string(), z.string()).optional(),
+} as const;
+
+/**
+ * In-flight background work registered in the session, reported on `Stop` and
+ * `SubagentStop` so hooks can tell "session is done" from "session is paused
+ * waiting on background work". Shapes mirror Claude Code's own hook schemas.
+ */
+const BackgroundTaskSchema = z.strictObject({
+  id: z.string(),
+  type: z.string(),
+  status: z.string(),
+  description: z.string(),
+  command: z.string().optional(),
+  agent_type: z.string().optional(),
+  server: z.string().optional(),
+  tool: z.string().optional(),
+  name: z.string().optional(),
+});
+
+/** Session-scoped crons (CronCreate, ScheduleWakeup, /loop) that wake it later. */
+const SessionCronSchema = z.strictObject({
+  id: z.string(),
+  schedule: z.string(),
+  recurring: z.boolean(),
+  prompt: z.string(),
+});
+
+/** Fields both stop events carry alongside `stop_hook_active`. */
+const StopSharedFields = {
+  last_assistant_message: z.string().optional(),
+  background_tasks: z.array(BackgroundTaskSchema).optional(),
+  session_crons: z.array(SessionCronSchema).optional(),
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -453,6 +497,8 @@ const BashToolResponseSchema = z
     isImage: z.boolean().optional(),
     sandbox: z.boolean().optional(),
     returnCodeInterpretation: z.string().optional(),
+    /** Set when the command is expected to succeed silently. */
+    noOutputExpected: z.boolean().optional(),
   })
   .strict();
 
@@ -635,8 +681,9 @@ export const ToolUseUnion = z.discriminatedUnion("tool_name", [
 const SessionStartHookEvent = z.strictObject({
   ...BaseHookFields,
   hook_event_name: z.literal("SessionStart"),
-  source: z.enum(["startup", "resume", "clear", "compact"]),
+  source: z.enum(["startup", "resume", "clear", "compact", "fork"]),
   model: z.string().optional(),
+  session_title: z.string().optional(),
 });
 
 const SessionEndHookEvent = z.strictObject({
@@ -649,12 +696,15 @@ const StopHookEvent = z.strictObject({
   ...BaseHookFields,
   hook_event_name: z.literal("Stop"),
   stop_hook_active: z.boolean().optional(),
+  ...StopSharedFields,
 });
 
 const SubagentStopHookEvent = z.strictObject({
   ...BaseHookFields,
   hook_event_name: z.literal("SubagentStop"),
   stop_hook_active: z.boolean().optional(),
+  agent_transcript_path: z.string().optional(),
+  ...StopSharedFields,
 });
 
 /**
@@ -696,6 +746,8 @@ const UserPromptSubmitHookEvent = z.strictObject({
   ...BaseHookFields,
   hook_event_name: z.literal("UserPromptSubmit"),
   prompt: z.string(),
+  /** What drove the turn; absent for ordinary typed prompts. */
+  source: z.enum(["user", "sdk", "system", "loop_wakeup", "schedule_wakeup"]).optional(),
 });
 
 const NotificationHookEvent = z.strictObject({
@@ -751,6 +803,8 @@ function buildToolUseEvent(eventName: "PreToolUse" | "PostToolUse") {
       tool_use_id: z.string().optional(),
       tool_input: toolVariant.shape.tool_input,
       tool_response: toolVariant.shape.tool_response,
+      /** Tool execution time; excludes permission-prompt and hook time. */
+      duration_ms: z.number().optional(),
     }),
   );
   return z.union(variants as [(typeof variants)[number], ...typeof variants]);
@@ -916,6 +970,11 @@ const MessageDisplayHookEvent = z.strictObject({
   hook_event_name: z.literal("MessageDisplay"),
   message: z.string().optional(),
   message_id: z.string().optional(),
+  /** Streaming shape: one event per batch of newly completed lines. */
+  turn_id: z.string().optional(),
+  index: z.number().int().optional(),
+  final: z.boolean().optional(),
+  delta: z.string().optional(),
 });
 
 /**
