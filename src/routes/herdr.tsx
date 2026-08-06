@@ -1,6 +1,6 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Monitor } from "lucide-react";
 import { StatusDot } from "../components/sidebar/primitives/StatusDot";
 import { terminalPlacementsQueryOptions } from "../lib/api/terminal-placements";
 import { updateSessionViewedState } from "../lib/api/viewed-state";
@@ -170,6 +170,15 @@ function TerminalFleetPage() {
                     capabilities={placement.capabilities}
                     writesEnabled={data.writesEnabled}
                   />
+                </Link>
+                <Link
+                  to="/herdr/terminal/$sessionId"
+                  params={{ sessionId: placement.sessionId }}
+                  className="mr-2 shrink-0 text-text-500 hover:text-text-000"
+                  title="Open live read-only terminal"
+                  aria-label={`Open live read-only terminal for ${placement.displayName}`}
+                >
+                  <Monitor className="h-4 w-4" />
                 </Link>
                 <button
                   type="button"

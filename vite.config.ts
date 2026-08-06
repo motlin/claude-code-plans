@@ -112,5 +112,10 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
-  plugins: [nitro(), tailwindcss(), tanstackStart(), viteReact()],
+  plugins: [
+    nitro({ features: { websocket: true }, serverDir: "./server" }),
+    tailwindcss(),
+    tanstackStart(),
+    viteReact(),
+  ],
 });

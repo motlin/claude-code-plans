@@ -1,6 +1,12 @@
 {
   "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
-  "entry": ["src/client.tsx", "src/server.ts", "scripts/field-presence.ts"],
+  "entry": [
+    "src/client.tsx",
+    "src/server.ts",
+    "server/plugins/**/*.ts",
+    "server/routes/**/*.ts",
+    "scripts/field-presence.ts"
+  ],
   "ignorePatterns": [".storybook/**", "src/routeTree.gen.ts"],
   "ignoreDependencies": ["@shikijs/core", "@shikijs/engine-javascript", "agentation"],
   "ignoreExports": [
