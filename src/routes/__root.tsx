@@ -20,6 +20,7 @@ import { IndexingBanner } from "../components/indexing-banner";
 import { HookSchemaDriftBanner } from "../components/hook-schema-drift-banner";
 import { ClaudeEventsProvider } from "../hooks/use-claude-events";
 import { DesktopNotificationBridge } from "../components/desktop-notification-bridge";
+import { AttentionBadgeBridge } from "../components/attention-badge-bridge";
 import { approvalsQueryOptions } from "../lib/api/approvals";
 import { notificationsQueryOptions } from "../lib/api/notifications";
 import { plansQueryOptions } from "../lib/api/plans";
@@ -142,6 +143,7 @@ function RootLayout() {
           <IndexingBanner />
           <HookSchemaDriftBanner />
           <DesktopNotificationBridge />
+          <AttentionBadgeBridge />
           <div className="flex min-h-9 items-center px-4 pt-3 sm:px-8">
             <button
               type="button"

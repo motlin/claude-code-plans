@@ -18,10 +18,18 @@ export function shouldNotify(
   viewedSessionId: string | null,
 ): boolean {
   return (
-    settings.desktopNotifications &&
-    permission === "granted" &&
-    (hidden || sessionId !== viewedSessionId)
+    permission === "granted" && sessionAlertsEnabled(settings, hidden, sessionId, viewedSessionId)
   );
+}
+
+/** Shared global and per-session gate for every surface that requests attention. */
+export function sessionAlertsEnabled(
+  settings: Settings,
+  hidden: boolean,
+  sessionId: string,
+  viewedSessionId: string | null,
+): boolean {
+  return settings.desktopNotifications && (hidden || sessionId !== viewedSessionId);
 }
 
 export function notificationCopy(
