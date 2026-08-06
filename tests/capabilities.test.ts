@@ -6,6 +6,7 @@ import {
   resolveServerCapabilities,
   type CapabilityRuntimeFactsById,
 } from "../src/lib/capabilities";
+import { handleCapabilitiesRequest } from "../src/routes/api/capabilities";
 
 const RUNTIME_FACTS: CapabilityRuntimeFactsById = {
   readOnlyMcpServer: { installed: true, available: true },
@@ -14,6 +15,33 @@ const RUNTIME_FACTS: CapabilityRuntimeFactsById = {
 };
 
 describe("capability resolution", () => {
+  it("rejects incomplete persisted settings without throwing", async () => {
+    const response = await handleCapabilitiesRequest(
+      new Request("http://127.0.0.1:7526/api/capabilities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      }),
+      {
+        pathExists: async () => {
+          throw new Error("invalid settings must not probe paths");
+        },
+        executableExists: async () => {
+          throw new Error("invalid settings must not probe executables");
+        },
+        databaseAvailable: async () => {
+          throw new Error("invalid settings must not probe the database");
+        },
+        projectRoot: "/fixture/alice-repository",
+      },
+    );
+
+    expect({ body: await response.json(), status: response.status }).toStrictEqual({
+      body: { error: "Invalid capabilities payload" },
+      status: 400,
+    });
+  });
+
   it("keeps persisted intent separate from fresh runtime facts", () => {
     const persisted = {
       ...DEFAULT_CAPABILITIES,

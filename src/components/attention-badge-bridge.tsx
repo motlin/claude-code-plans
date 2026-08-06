@@ -2,28 +2,10 @@ import { useEffect } from "react";
 import { useRouter } from "@tanstack/react-router";
 
 import { useSubscribeSessionStates } from "../hooks/use-claude-events";
-import { displayState, type ActivityState, type DisplayState } from "../lib/session-state";
+import { countSessionsNeedingAttention } from "../lib/attention";
+import { displayState, type ActivityState } from "../lib/session-state";
 import { hasUnseenWork, subscribeUnseenWork } from "../lib/unread-store";
-import { sessionAlertsEnabled } from "./desktop-notification-bridge";
-import { useSettings, type Settings } from "./settings-provider";
-
-export interface AttentionBadgeSession {
-  sessionId: string;
-  displayState: DisplayState;
-}
-
-export function countSessionsNeedingAttention(
-  sessions: AttentionBadgeSession[],
-  settings: Settings,
-  hidden: boolean,
-  viewedSessionId: string | null,
-): number {
-  return sessions.filter(
-    (session) =>
-      (session.displayState === "waiting" || session.displayState === "review") &&
-      sessionAlertsEnabled(settings, hidden, session.sessionId, viewedSessionId),
-  ).length;
-}
+import { useSettings } from "./settings-provider";
 
 function viewedSessionId(router: ReturnType<typeof useRouter>): string | null {
   const sessionMatch = router.state.matches.find((match) =>

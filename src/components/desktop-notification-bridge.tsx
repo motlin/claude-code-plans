@@ -2,46 +2,10 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "@tanstack/react-router";
 
 import { useSubscribeSessionStates } from "../hooks/use-claude-events";
+import { notificationCopy, shouldNotify } from "../lib/attention";
 import { displayState, type DisplayState } from "../lib/session-state";
 import { hasUnseenWork, subscribeUnseenWork } from "../lib/unread-store";
-import { useSettings, type Settings } from "./settings-provider";
-
-/**
- * A visible tab suppresses only the session already on screen. Notifications
- * from other sessions still need to get the user's attention.
- */
-export function shouldNotify(
-  settings: Settings,
-  hidden: boolean,
-  permission: NotificationPermission,
-  sessionId: string,
-  viewedSessionId: string | null,
-): boolean {
-  return (
-    permission === "granted" && sessionAlertsEnabled(settings, hidden, sessionId, viewedSessionId)
-  );
-}
-
-/** Shared global and per-session gate for every surface that requests attention. */
-export function sessionAlertsEnabled(
-  settings: Settings,
-  hidden: boolean,
-  sessionId: string,
-  viewedSessionId: string | null,
-): boolean {
-  return settings.desktopNotifications && (hidden || sessionId !== viewedSessionId);
-}
-
-export function notificationCopy(
-  previous: DisplayState | undefined,
-  next: DisplayState,
-  label: string,
-): string | null {
-  if (previous === next) return null;
-  if (next === "waiting") return `${label} is waiting on you`;
-  if (next === "review") return `${label} finished — needs review`;
-  return null;
-}
+import { useSettings } from "./settings-provider";
 
 function viewedSessionId(router: ReturnType<typeof useRouter>): string | null {
   const sessionMatch = router.state.matches.find((match) =>

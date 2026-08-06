@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { countSessionsNeedingAttention } from "../src/components/attention-badge-bridge";
 import { DEFAULTS, type Settings } from "../src/components/settings-provider";
+import { countSessionsNeedingAttention } from "../src/lib/attention";
 
 const enabled: Settings = { ...DEFAULTS, desktopNotifications: true };
 const disabled: Settings = { ...DEFAULTS, desktopNotifications: false };

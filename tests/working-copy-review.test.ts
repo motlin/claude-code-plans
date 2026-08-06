@@ -140,6 +140,31 @@ describe("indexed review summary", () => {
 });
 
 describe("review skill runner", () => {
+  it("rejects malformed cancellation JSON without throwing", async () => {
+    const response = await handleRunReviewRequest(
+      new Request("http://127.0.0.1:7526/api/reviews/review-test-100/run", {
+        method: "POST",
+        body: "oops",
+      }),
+      "review-test-100",
+      {
+        index: db.index,
+        spawn: () => {
+          throw new Error("invalid cancellation must not spawn");
+        },
+        kill: () => {
+          throw new Error("invalid cancellation must not kill");
+        },
+        origin: "http://127.0.0.1:7526",
+      },
+    );
+
+    expect({ body: await response.json(), status: response.status }).toStrictEqual({
+      body: { error: "Invalid review run payload" },
+      status: 400,
+    });
+  });
+
   it("spawns a marked Claude fork with the ccp review prompt and supports cancellation", async () => {
     insertSession(TEST_ROOT);
     db.index

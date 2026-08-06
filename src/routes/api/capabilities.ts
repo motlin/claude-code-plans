@@ -43,7 +43,7 @@ async function databaseAvailable(): Promise<boolean> {
   }
 }
 
-interface CapabilityProbeDependencies {
+export interface CapabilityProbeDependencies {
   pathExists(path: string): Promise<boolean>;
   executableExists(command: string): Promise<boolean>;
   databaseAvailable(): Promise<boolean>;
@@ -77,6 +77,22 @@ async function probeCapabilityRuntime(
   };
 }
 
+export async function handleCapabilitiesRequest(
+  request: Request,
+  dependencies: CapabilityProbeDependencies,
+): Promise<Response> {
+  const json: unknown = await request.json().catch(() => null);
+  const persisted = PersistedCapabilitiesSchema.safeParse(json);
+  if (!persisted.success) {
+    return Response.json({ error: "Invalid capabilities payload" }, { status: 400 });
+  }
+
+  const runtimeFacts = await probeCapabilityRuntime(dependencies);
+  return Response.json(resolveServerCapabilities(persisted.data, runtimeFacts), {
+    headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
+  });
+}
+
 export const Route = createFileRoute("/api/capabilities")({
   server: {
     handlers: {
@@ -84,15 +100,11 @@ export const Route = createFileRoute("/api/capabilities")({
         const rejection = rejectCrossSite(request);
         if (rejection) return rejection;
 
-        const persisted = PersistedCapabilitiesSchema.parse(await request.json());
-        const runtimeFacts = await probeCapabilityRuntime({
+        return handleCapabilitiesRequest(request, {
           pathExists,
           executableExists,
           databaseAvailable,
           projectRoot: process.cwd(),
-        });
-        return Response.json(resolveServerCapabilities(persisted, runtimeFacts), {
-          headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
         });
       },
     },

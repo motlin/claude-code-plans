@@ -119,7 +119,12 @@ export async function handleRunReviewRequest(
   const resolvedDependencies = dependencies ?? defaultRunDependencies();
   const bodyText = await request.text();
   if (bodyText !== "") {
-    const body: unknown = JSON.parse(bodyText);
+    let body: unknown = null;
+    try {
+      body = JSON.parse(bodyText);
+    } catch {
+      return errorResponse("Invalid review run payload", 400);
+    }
     const cancel = ReviewCancelRequestSchema.safeParse(body);
     if (!cancel.success) return errorResponse("Invalid review run payload", 400);
     return jsonResponse({ ok: resolvedDependencies.kill(cancel.data.processId) });
