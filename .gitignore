@@ -36,4 +36,8 @@ tree-view-*.png
 .junie/
 skills-lock.json
 skills/
+!/.claude/skills/
+/.claude/skills/*
+!/.claude/skills/review-working-copy/
+!/.claude/skills/review-working-copy/**
 .fallow/

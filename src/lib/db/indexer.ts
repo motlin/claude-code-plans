@@ -365,6 +365,13 @@ export async function indexJsonlFile(
   let anchoredSessionCwd: string | undefined;
   let sessionGitBranch: string | undefined;
   const textChunks: string[] = [];
+  const indexedMessages: Array<{
+    sessionId: string;
+    messageIndex: number;
+    role: "user" | "assistant";
+    text: string | null;
+  }> = [];
+  let messageIndex = 0;
 
   // Stream the file line-by-line to avoid loading entire JSONL into memory
   const rl = createInterface({
@@ -456,15 +463,26 @@ export async function indexJsonlFile(
         };
         if (obj.type === "user" || obj.type === "assistant") {
           const content = obj.message?.content;
+          const messageText: string[] = [];
           if (typeof content === "string") {
             textChunks.push(content);
+            messageText.push(content);
           } else if (Array.isArray(content)) {
             for (const block of content) {
               if (block.type === "text" && typeof block.text === "string") {
                 textChunks.push(block.text);
+                messageText.push(block.text);
               }
             }
           }
+          const substantiveText = messageText.join("\n").trim();
+          indexedMessages.push({
+            sessionId,
+            messageIndex,
+            role: obj.type,
+            text: substantiveText === "" ? null : substantiveText,
+          });
+          messageIndex++;
         }
       } catch {
         // skip malformed lines
@@ -544,10 +562,18 @@ export async function indexJsonlFile(
       .run();
   }
 
+  // Replace structured message rows alongside the search-only flattened FTS
+  // blob. Role and order are retained here so consumers never need to tail
+  // the JSONL to recover the latest substantive assistant response.
+  db.delete(schema.sessionMessages).where(eq(schema.sessionMessages.sessionId, sessionId)).run();
+  if (indexedMessages.length > 0) {
+    db.insert(schema.sessionMessages).values(indexedMessages).run();
+  }
+
   // Update message content FTS
+  db.run(sql`DELETE FROM message_content_fts WHERE session_id = ${sessionId}`);
   if (textChunks.length > 0) {
     const content = textChunks.join("\n");
-    db.run(sql`DELETE FROM message_content_fts WHERE session_id = ${sessionId}`);
     db.run(
       sql`INSERT INTO message_content_fts(session_id, content) VALUES (${sessionId}, ${content})`,
     );
@@ -1241,6 +1267,10 @@ function pruneDeletedSessions(
     summariesDb.delete(schema.summaries).where(eq(schema.summaries.sessionId, session.id)).run();
     indexDb.run(sql`DELETE FROM message_content_fts WHERE session_id = ${session.id}`);
     indexDb.delete(schema.sessions).where(eq(schema.sessions.id, session.id)).run();
+    indexDb
+      .delete(schema.sessionMessages)
+      .where(eq(schema.sessionMessages.sessionId, session.id))
+      .run();
   }
 
   // Re-indexing a moved session updates sessions.filePath before pruning runs,

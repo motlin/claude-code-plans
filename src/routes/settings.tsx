@@ -545,6 +545,16 @@ function SettingsPage() {
             description="Show the Generate Summary button on session detail pages"
             settingKey="showSummaryButton"
           />
+          <SelectRow
+            label="Working-copy review"
+            description="Choose whether a completed turn offers or automatically starts a diff review"
+            settingKey="workingCopyReviewMode"
+            options={[
+              { value: "off", label: "Off" },
+              { value: "offer", label: "Offer" },
+              { value: "auto", label: "Auto" },
+            ]}
+          />
         </Section>
 
         <Section icon={Wrench} title="Advanced">

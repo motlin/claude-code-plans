@@ -23,6 +23,7 @@ import {
   type InstructionsLoadedPayload,
   type ConfigChangedPayload,
   type MessageDisplayedPayload,
+  type ReviewOfferedPayload,
 } from "./hook-events";
 import { buildSessionSummaryPayloadFromDb, toActiveSessionPayload } from "./session-summary";
 import { addNotification } from "./notifications-store";
@@ -406,6 +407,11 @@ export async function dispatchHookEvent({
         const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${summary.id}:${summary.mtime}`;
         if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
           broadcast(DOMAIN_EVENTS.SESSION_UPDATED, { session: summary });
+        }
+        if (event.claude_env?.["CLAUDE_CCP_REVIEW_RUN"] !== "1") {
+          broadcast(DOMAIN_EVENTS.REVIEW_OFFERED, {
+            sessionId: event.session_id,
+          } satisfies ReviewOfferedPayload);
         }
       }
       break;

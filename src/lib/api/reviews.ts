@@ -36,6 +36,44 @@ export const ReviewIdResponseSchema = z.object({ reviewId: z.string() }).strict(
 export const ReviewFindingsRequestSchema = z.object({ findings: z.array(FindingSchema) }).strict();
 
 export const ReviewErrorResponseSchema = z.object({ error: z.string() }).strict();
+const ReviewCancelResponseSchema = z.object({ ok: z.boolean() }).strict();
+
+export async function createWorkingCopyReview(sessionId: string): Promise<string> {
+  const result = await apiFetch(
+    `/api/sessions/${encodeURIComponent(sessionId)}/review`,
+    ReviewIdResponseSchema,
+    { method: "POST" },
+  );
+  return result.reviewId;
+}
+
+export async function runWorkingCopyReview(reviewId: string): Promise<{
+  processId: string;
+  completion: Promise<string>;
+}> {
+  const url = `/api/reviews/${encodeURIComponent(reviewId)}/run`;
+  const response = await fetch(url, { method: "POST", credentials: "same-origin" });
+  if (!response.ok) throw new Error(`${url} -> ${response.status} ${response.statusText}`);
+  const processId = response.headers.get("X-Process-Id");
+  if (processId === null) throw new Error("Review runner did not return a process id");
+  return { processId, completion: response.text() };
+}
+
+export async function cancelWorkingCopyReview(
+  reviewId: string,
+  processId: string,
+): Promise<boolean> {
+  const result = await apiFetch(
+    `/api/reviews/${encodeURIComponent(reviewId)}/run`,
+    ReviewCancelResponseSchema,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "cancel", processId }),
+    },
+  );
+  return result.ok;
+}
 
 export const reviewQueryOptions = (reviewId: string) =>
   queryOptions({

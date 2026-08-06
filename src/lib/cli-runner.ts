@@ -4,11 +4,12 @@ interface SpawnOptions {
   sessionId: string;
   prompt: string;
   projectDir: string;
+  environment: Record<string, string>;
 }
 
 const activeProcesses = new Map<string, ChildProcess>();
 
-export function spawnClaude({ sessionId, prompt, projectDir }: SpawnOptions): {
+export function spawnClaude({ sessionId, prompt, projectDir, environment }: SpawnOptions): {
   stream: ReadableStream<Uint8Array>;
   processId: string;
 } {
@@ -29,7 +30,7 @@ export function spawnClaude({ sessionId, prompt, projectDir }: SpawnOptions): {
   const child = spawn("claude", args, {
     cwd: projectDir,
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env },
+    env: { ...process.env, ...environment },
   });
 
   activeProcesses.set(processId, child);

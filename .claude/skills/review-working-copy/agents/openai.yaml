@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Working Copy"
+  short_description: "Review the current uncommitted diff"
+  default_prompt: "Use $review-working-copy to review the ccp-provided working-copy bundle."

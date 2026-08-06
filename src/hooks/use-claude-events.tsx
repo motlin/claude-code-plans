@@ -455,6 +455,7 @@ interface ClaudeEventsContextValue {
   state: ClaudeEventsState;
   subscribeStatusline: (listener: (sessionId: string) => void) => () => void;
   subscribeSessionStates: (listener: (session: SessionStateObservation) => void) => () => void;
+  subscribeReviewOffers: (listener: (sessionId: string) => void) => () => void;
   dismissHookSchemaDrift: (hookEventName: string) => void;
 }
 
@@ -488,6 +489,14 @@ export function useSubscribeSessionStates(): ClaudeEventsContextValue["subscribe
     throw new Error("useSubscribeSessionStates must be used within a ClaudeEventsProvider");
   }
   return context.subscribeSessionStates;
+}
+
+export function useSubscribeReviewOffers(): ClaudeEventsContextValue["subscribeReviewOffers"] {
+  const context = useContext(ClaudeEventsContext);
+  if (!context) {
+    throw new Error("useSubscribeReviewOffers must be used within a ClaudeEventsProvider");
+  }
+  return context.subscribeReviewOffers;
 }
 
 /**
@@ -852,6 +861,7 @@ const DOMAIN_EVENT_TYPES = [
   DOMAIN_EVENTS.APPROVAL_CHANGED,
   DOMAIN_EVENTS.APPROVAL_RESOLVED,
   DOMAIN_EVENTS.HOOK_SCHEMA_DRIFT,
+  DOMAIN_EVENTS.REVIEW_OFFERED,
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -873,6 +883,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
 
   const queryClient = useQueryClient();
   const statuslineListenersRef = useRef(new Set<(sessionId: string) => void>());
+  const reviewOfferListenersRef = useRef(new Set<(sessionId: string) => void>());
   const sessionStateListenersRef = useRef(new Set<(session: SessionStateObservation) => void>());
   const sessionStateObservationsRef = useRef(new Map<string, SessionStateObservation>());
 
@@ -880,6 +891,13 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
     statuslineListenersRef.current.add(listener);
     return () => {
       statuslineListenersRef.current.delete(listener);
+    };
+  }, []);
+
+  const subscribeReviewOffers = useCallback((listener: (sessionId: string) => void) => {
+    reviewOfferListenersRef.current.add(listener);
+    return () => {
+      reviewOfferListenersRef.current.delete(listener);
     };
   }, []);
 
@@ -1282,6 +1300,13 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
           });
           break;
         }
+        case DOMAIN_EVENTS.REVIEW_OFFERED: {
+          const sessionId = data["sessionId"];
+          if (typeof sessionId === "string") {
+            for (const listener of reviewOfferListenersRef.current) listener(sessionId);
+          }
+          break;
+        }
         default:
           break;
       }
@@ -1322,8 +1347,20 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
   }, [queryClient]);
 
   const contextValue: ClaudeEventsContextValue = useMemo(
-    () => ({ state, subscribeStatusline, subscribeSessionStates, dismissHookSchemaDrift }),
-    [state, subscribeStatusline, subscribeSessionStates, dismissHookSchemaDrift],
+    () => ({
+      state,
+      subscribeStatusline,
+      subscribeSessionStates,
+      subscribeReviewOffers,
+      dismissHookSchemaDrift,
+    }),
+    [
+      state,
+      subscribeStatusline,
+      subscribeSessionStates,
+      subscribeReviewOffers,
+      dismissHookSchemaDrift,
+    ],
   );
 
   return (

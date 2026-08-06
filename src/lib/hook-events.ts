@@ -85,7 +85,12 @@ export const DOMAIN_EVENTS = {
   APPROVAL_CHANGED: "approval:changed",
   APPROVAL_RESOLVED: "approval:resolved",
   HOOK_SCHEMA_DRIFT: "hook:schema-drift",
+  REVIEW_OFFERED: "review:offered",
 } as const;
+
+export interface ReviewOfferedPayload {
+  sessionId: string;
+}
 
 /**
  * Payload broadcast when a hook event POSTed to /api/hook fails to parse

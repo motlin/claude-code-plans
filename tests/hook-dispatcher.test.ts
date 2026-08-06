@@ -245,6 +245,50 @@ describe("dispatchHookEvent", () => {
         blockedSince: null,
       },
     });
+    expect(
+      broadcasts.find((broadcast) => broadcast.type === DOMAIN_EVENTS.REVIEW_OFFERED),
+    ).toStrictEqual({
+      type: DOMAIN_EVENTS.REVIEW_OFFERED,
+      data: { sessionId: "abc-123" },
+    });
+  });
+
+  it("Stop from a spawned review fork does not recursively offer another review", async () => {
+    const projectDir = join(testDir, "-Users-alice-projects-example");
+    mkdirSync(projectDir, { recursive: true });
+    writeFileSync(
+      join(projectDir, "sessions-index.json"),
+      makeSessionsIndex([
+        {
+          sessionId: "session-test-100",
+          fullPath: join(projectDir, "session-test-100.jsonl"),
+          fileMtime: 946_598_400_000,
+          firstPrompt: "Review example",
+          messageCount: 1,
+          projectPath: "/Users/alice/projects/example",
+        },
+      ]),
+    );
+    await indexSessionsIndex(db.index, projectDir, "-Users-alice-projects-example");
+    const broadcasts: Broadcast[] = [];
+    const { store } = makeStore();
+
+    await dispatchHookEvent({
+      event: {
+        hook_event_name: "Stop",
+        session_id: "session-test-100",
+        transcript_path: join(projectDir, "session-test-100.jsonl"),
+        cwd: "/Users/alice/projects/example",
+        claude_env: { CLAUDE_CCP_REVIEW_RUN: "1" },
+      },
+      db: db.index,
+      store,
+      broadcast: (type, data) => broadcasts.push({ type, data }),
+    });
+
+    expect(broadcasts.map((broadcast) => broadcast.type)).toStrictEqual([
+      DOMAIN_EVENTS.SESSION_UPDATED,
+    ]);
   });
 
   it("Stop without an indexed session emits nothing on the wire", async () => {

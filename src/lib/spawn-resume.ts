@@ -45,6 +45,7 @@ export function spawnResumeStream({
     sessionId,
     prompt,
     projectDir: projectPath,
+    environment: {},
   });
 
   // Drain a copy of the stream so the spawned CLI runs to completion and we

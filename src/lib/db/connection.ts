@@ -50,6 +50,16 @@ CREATE INDEX IF NOT EXISTS sessions_project_id_idx ON sessions(project_id);
 CREATE INDEX IF NOT EXISTS sessions_mtime_desc_idx ON sessions(mtime_ms);
 CREATE INDEX IF NOT EXISTS sessions_git_branch_idx ON sessions(git_branch);
 
+CREATE TABLE IF NOT EXISTS session_messages (
+  session_id TEXT NOT NULL,
+  message_index INTEGER NOT NULL,
+  role TEXT NOT NULL,
+  text TEXT,
+  PRIMARY KEY (session_id, message_index)
+);
+CREATE INDEX IF NOT EXISTS session_messages_latest_idx
+  ON session_messages(session_id, role, message_index);
+
 CREATE TABLE IF NOT EXISTS session_view_states (
   session_id TEXT PRIMARY KEY,
   last_viewed_message_index INTEGER NOT NULL DEFAULT -1,
@@ -206,6 +216,7 @@ function dropAllTables(sqlite: Database.Database): void {
   sqlite.exec("DROP TABLE IF EXISTS hook_schema_drift");
   sqlite.exec("DROP TABLE IF EXISTS herdr_terminal_view_states");
   sqlite.exec("DROP TABLE IF EXISTS session_view_states");
+  sqlite.exec("DROP TABLE IF EXISTS session_messages");
   sqlite.exec("DROP TABLE IF EXISTS subagents");
   sqlite.exec("DROP TABLE IF EXISTS plan_sessions");
   sqlite.exec("DROP TABLE IF EXISTS sessions");

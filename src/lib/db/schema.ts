@@ -1,7 +1,7 @@
 import { sqliteTable, text, integer, index, primaryKey } from "drizzle-orm/sqlite-core";
 import type { ReviewBundle } from "../api/reviews";
 
-export const SCHEMA_VERSION = "18";
+export const SCHEMA_VERSION = "19";
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),
@@ -43,6 +43,20 @@ export const sessions = sqliteTable(
     index("sessions_project_id_idx").on(table.projectId),
     index("sessions_mtime_desc_idx").on(table.mtimeMs),
     index("sessions_git_branch_idx").on(table.gitBranch),
+  ],
+);
+
+export const sessionMessages = sqliteTable(
+  "session_messages",
+  {
+    sessionId: text("session_id").notNull(),
+    messageIndex: integer("message_index").notNull(),
+    role: text("role").$type<"user" | "assistant">().notNull(),
+    text: text("text"),
+  },
+  (table) => [
+    primaryKey({ columns: [table.sessionId, table.messageIndex] }),
+    index("session_messages_latest_idx").on(table.sessionId, table.role, table.messageIndex),
   ],
 );
 

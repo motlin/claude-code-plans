@@ -5,6 +5,7 @@ import { ACTIVE_SESSION_WINDOW_MS } from "../lib/active-session-window";
 
 type SubagentView = "tree" | "gantt" | "sequence";
 export type Verbosity = "normal" | "thinking" | "verbose";
+export type WorkingCopyReviewMode = "off" | "offer" | "auto";
 
 export interface LinkCategoryRule {
   label: string;
@@ -31,6 +32,7 @@ export interface Settings {
   statusFooterVisible: boolean;
 
   showSummaryButton: boolean;
+  workingCopyReviewMode: WorkingCopyReviewMode;
 
   activeTimeoutSec: number;
 
@@ -63,6 +65,7 @@ export const DEFAULTS: Settings = {
   statusFooterVisible: true,
 
   showSummaryButton: true,
+  workingCopyReviewMode: "offer",
 
   activeTimeoutSec: ACTIVE_SESSION_WINDOW_MS / 1000,
 
@@ -90,6 +93,7 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
   chromeHidden: "ccp-chrome-hidden",
   statusFooterVisible: "ccp-status-footer",
   showSummaryButton: "ccp-show-summary-button",
+  workingCopyReviewMode: "ccp-working-copy-review-mode",
   activeTimeoutSec: "ccp-active-timeout",
   sessionSort: "ccp-session-sort",
   desktopNotifications: "ccp-desktop-notifications",
@@ -105,6 +109,7 @@ const LINK_CATEGORY_RULES_SCHEMA = z.array(
     })
     .strict(),
 );
+const WORKING_COPY_REVIEW_MODE_SCHEMA = z.enum(["off", "offer", "auto"]);
 
 const VERBOSITY_PRESETS: Record<Verbosity, Partial<Settings>> = {
   normal: {
@@ -171,6 +176,10 @@ function readStoredValue<K extends keyof Settings>(key: K): Settings[K] | undefi
   if (typeof defaultValue === "number") {
     const parsed = Number(stored);
     return (Number.isFinite(parsed) ? parsed : undefined) as Settings[K] | undefined;
+  }
+  if (key === "workingCopyReviewMode") {
+    const parsed = WORKING_COPY_REVIEW_MODE_SCHEMA.safeParse(stored);
+    return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
   }
   return stored as Settings[K];
 }

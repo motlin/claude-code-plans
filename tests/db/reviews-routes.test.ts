@@ -44,6 +44,19 @@ function insertSession(cwd: string | null = SESSION_CWD): void {
       filePath: `/fixture/transcripts/${SESSION_ID}.jsonl`,
     })
     .run();
+  db.index
+    .insert(schema.sessionMessages)
+    .values({
+      sessionId: SESSION_ID,
+      messageIndex: 0,
+      role: "assistant",
+      text: "Alice changed the fabricated value.",
+    })
+    .onConflictDoUpdate({
+      target: [schema.sessionMessages.sessionId, schema.sessionMessages.messageIndex],
+      set: { text: "Alice changed the fabricated value." },
+    })
+    .run();
 }
 
 function dependencies(

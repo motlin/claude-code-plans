@@ -67,6 +67,7 @@ describe("SettingsProvider list persistence", () => {
     act(() => {
       firstRender.result.current.setSetting("defaultSubagentView", "sequence");
       firstRender.result.current.setSetting("sessionSort", "stable");
+      firstRender.result.current.setSetting("workingCopyReviewMode", "auto");
       firstRender.result.current.setSetting("showThinking", true);
       firstRender.result.current.setSetting("activeTimeoutSec", 120);
     });
@@ -74,11 +75,13 @@ describe("SettingsProvider list persistence", () => {
     expect({
       storedString: localStorage.getItem("ccp-subagent-view"),
       storedSessionSort: localStorage.getItem("ccp-session-sort"),
+      storedReviewMode: localStorage.getItem("ccp-working-copy-review-mode"),
       storedBoolean: localStorage.getItem("ccp-show-thinking"),
       storedNumber: localStorage.getItem("ccp-active-timeout"),
     }).toStrictEqual({
       storedString: "sequence",
       storedSessionSort: "stable",
+      storedReviewMode: "auto",
       storedBoolean: "true",
       storedNumber: "120",
     });
@@ -89,14 +92,25 @@ describe("SettingsProvider list persistence", () => {
       expect({
         stringValue: reloaded.result.current.settings.defaultSubagentView,
         sessionSort: reloaded.result.current.settings.sessionSort,
+        reviewMode: reloaded.result.current.settings.workingCopyReviewMode,
         booleanValue: reloaded.result.current.settings.showThinking,
         numericValue: reloaded.result.current.settings.activeTimeoutSec,
       }).toStrictEqual({
         stringValue: "sequence",
         sessionSort: "stable",
+        reviewMode: "auto",
         booleanValue: true,
         numericValue: 120,
       }),
+    );
+  });
+
+  it("rejects an unknown working-copy review mode", async () => {
+    localStorage.setItem("ccp-working-copy-review-mode", "sometimes");
+    const { result } = renderHook(() => useSettings(), { wrapper });
+
+    await waitFor(() =>
+      expect(result.current.settings.workingCopyReviewMode).toBe(DEFAULTS.workingCopyReviewMode),
     );
   });
 });

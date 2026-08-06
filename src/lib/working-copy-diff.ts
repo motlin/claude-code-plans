@@ -21,12 +21,15 @@ function runGit(cwd: string, arguments_: string[], allowDifferences = false): Pr
 
 /** Build a unified diff for every tracked, staged, and untracked working-tree change. */
 export async function buildWorkingCopyDiff(cwd: string): Promise<string> {
-  const tracked = await runGit(cwd, ["diff", "HEAD"]);
+  const stablePrefixes = ["--src-prefix=a/", "--dst-prefix=b/"];
+  const tracked = await runGit(cwd, ["diff", ...stablePrefixes, "HEAD"]);
   const untracked = await runGit(cwd, ["ls-files", "--others", "--exclude-standard", "-z"]);
   const parts = [tracked];
 
   for (const file of untracked.split("\0").filter(Boolean)) {
-    parts.push(await runGit(cwd, ["diff", "--no-index", "--", "/dev/null", file], true));
+    parts.push(
+      await runGit(cwd, ["diff", ...stablePrefixes, "--no-index", "--", "/dev/null", file], true),
+    );
   }
 
   return parts.filter(Boolean).join("\n");

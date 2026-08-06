@@ -916,6 +916,23 @@ export function getSessionProjectPath(db: IndexDb, sessionId: string): string | 
   return row?.projectPath ?? null;
 }
 
+/** Return the latest assistant text row that contains prose, skipping tool-only turns. */
+export function getLastSubstantiveAssistantText(db: IndexDb, sessionId: string): string | null {
+  const row = db
+    .select({ text: schema.sessionMessages.text })
+    .from(schema.sessionMessages)
+    .where(
+      and(
+        eq(schema.sessionMessages.sessionId, sessionId),
+        eq(schema.sessionMessages.role, "assistant"),
+        sql`length(trim(${schema.sessionMessages.text})) > 0`,
+      ),
+    )
+    .orderBy(desc(schema.sessionMessages.messageIndex))
+    .get();
+  return row?.text ?? null;
+}
+
 export function getSessionMeta(
   db: IndexDb,
   sessionId: string,
