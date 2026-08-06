@@ -79,7 +79,7 @@ describe("generateHooksConfig", () => {
   });
 
   it("adds a separate stdout-preserving context hook for startup and resume", () => {
-    const config = generateHooksConfig();
+    const config = generateHooksConfig({ includeContextBrief: true });
     expect(config.hooks["SessionStart"]?.[1]).toStrictEqual({
       matcher: "startup|resume",
       hooks: [
@@ -90,6 +90,20 @@ describe("generateHooksConfig", () => {
         },
       ],
     });
+  });
+
+  it("leaves the optional context hook out by default", () => {
+    expect(generateHooksConfig().hooks["SessionStart"]).toStrictEqual([
+      {
+        hooks: [
+          {
+            type: "command",
+            command:
+              'jq -c \'. + {claude_env: ($ENV | with_entries(select(.key | startswith("CLAUDE") or . == "TMUX" or . == "TMUX_PANE" or . == "HERDR_PANE_ID" or . == "HERDR_WORKSPACE_ID" or . == "HERDR_TAB_ID" or . == "HERDR_SOCKET_PATH" or . == "HERDR_ENV")))}\' | curl -sX POST --connect-timeout 0.1 http://localhost:7526/api/hook -H \'Content-Type: application/json\' --data-binary @- >/dev/null 2>&1 || true',
+          },
+        ],
+      },
+    ]);
   });
 
   it("forwards the full hook stdin payload via jq", () => {

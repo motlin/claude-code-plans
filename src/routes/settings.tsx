@@ -17,6 +17,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { useSettings, type Settings, type Verbosity } from "../components/settings-provider";
+import type { CapabilityId } from "../lib/capabilities";
 import { useTheme } from "../components/theme-provider";
 
 export const Route = createFileRoute("/settings")({
@@ -67,6 +68,80 @@ function ToggleRow({ label, description, settingKey }: ToggleRowProps) {
           }`}
         />
       </button>
+    </div>
+  );
+}
+
+function CapabilityToggleRow({
+  capabilityId,
+  label,
+  description,
+}: {
+  capabilityId: CapabilityId;
+  label: string;
+  description: string;
+}) {
+  const { settings, setSetting } = useSettings();
+  const checked = settings.capabilities[capabilityId].enabled;
+
+  return (
+    <div className="flex items-center justify-between gap-4 py-2">
+      <div>
+        <div className="text-sm font-medium text-text-100">{label}</div>
+        <div className="text-xs text-text-500">{description}</div>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-label={label}
+        aria-checked={checked}
+        onClick={() =>
+          setSetting("capabilities", {
+            ...settings.capabilities,
+            [capabilityId]: { ...settings.capabilities[capabilityId], enabled: !checked },
+          })
+        }
+        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
+          checked ? "bg-accent-100" : "bg-bg-300"
+        }`}
+      >
+        <span
+          className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${
+            checked ? "translate-x-[18px]" : "translate-x-[3px]"
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
+function WorkingCopyReviewModeRow() {
+  const { settings, setSetting } = useSettings();
+  const mode = settings.capabilities.workingCopyReview.config.offerMode;
+
+  return (
+    <div className="flex items-center justify-between gap-4 py-2 pl-4">
+      <div>
+        <div className="text-sm font-medium text-text-100">Review behavior</div>
+        <div className="text-xs text-text-500">Offer a review or start one automatically</div>
+      </div>
+      <select
+        aria-label="Review behavior"
+        value={mode}
+        onChange={(event) =>
+          setSetting("capabilities", {
+            ...settings.capabilities,
+            workingCopyReview: {
+              ...settings.capabilities.workingCopyReview,
+              config: { offerMode: event.target.value === "auto" ? "auto" : "offer" },
+            },
+          })
+        }
+        className="rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100"
+      >
+        <option value="offer">Offer</option>
+        <option value="auto">Auto</option>
+      </select>
     </div>
   );
 }
@@ -545,15 +620,21 @@ function SettingsPage() {
             description="Show the Generate Summary button on session detail pages"
             settingKey="showSummaryButton"
           />
-          <SelectRow
+          <CapabilityToggleRow
+            capabilityId="workingCopyReview"
             label="Working-copy review"
-            description="Choose whether a completed turn offers or automatically starts a diff review"
-            settingKey="workingCopyReviewMode"
-            options={[
-              { value: "off", label: "Off" },
-              { value: "offer", label: "Offer" },
-              { value: "auto", label: "Auto" },
-            ]}
+            description="Offer or run a diff review after a completed turn"
+          />
+          <WorkingCopyReviewModeRow />
+          <CapabilityToggleRow
+            capabilityId="sessionContextBrief"
+            label="Session context brief"
+            description="Inject indexed project context when Claude starts or resumes"
+          />
+          <CapabilityToggleRow
+            capabilityId="readOnlyMcpServer"
+            label="Read-only MCP server"
+            description="Expose the indexed session corpus to an explicitly launched MCP server"
           />
         </Section>
 

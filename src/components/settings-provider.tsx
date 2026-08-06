@@ -2,10 +2,14 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 import { z } from "zod";
 
 import { ACTIVE_SESSION_WINDOW_MS } from "../lib/active-session-window";
+import {
+  DEFAULT_CAPABILITIES,
+  PersistedCapabilitiesSchema,
+  type PersistedCapabilities,
+} from "../lib/capabilities";
 
 type SubagentView = "tree" | "gantt" | "sequence";
 export type Verbosity = "normal" | "thinking" | "verbose";
-export type WorkingCopyReviewMode = "off" | "offer" | "auto";
 
 export interface LinkCategoryRule {
   label: string;
@@ -32,7 +36,8 @@ export interface Settings {
   statusFooterVisible: boolean;
 
   showSummaryButton: boolean;
-  workingCopyReviewMode: WorkingCopyReviewMode;
+  // ccp preferences are browser-local; /api/settings reflects Claude's own files and is read-only.
+  capabilities: PersistedCapabilities;
 
   activeTimeoutSec: number;
 
@@ -65,7 +70,7 @@ export const DEFAULTS: Settings = {
   statusFooterVisible: true,
 
   showSummaryButton: true,
-  workingCopyReviewMode: "offer",
+  capabilities: DEFAULT_CAPABILITIES,
 
   activeTimeoutSec: ACTIVE_SESSION_WINDOW_MS / 1000,
 
@@ -93,7 +98,7 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
   chromeHidden: "ccp-chrome-hidden",
   statusFooterVisible: "ccp-status-footer",
   showSummaryButton: "ccp-show-summary-button",
-  workingCopyReviewMode: "ccp-working-copy-review-mode",
+  capabilities: "ccp-capabilities",
   activeTimeoutSec: "ccp-active-timeout",
   sessionSort: "ccp-session-sort",
   desktopNotifications: "ccp-desktop-notifications",
@@ -109,8 +114,6 @@ const LINK_CATEGORY_RULES_SCHEMA = z.array(
     })
     .strict(),
 );
-const WORKING_COPY_REVIEW_MODE_SCHEMA = z.enum(["off", "offer", "auto"]);
-
 const VERBOSITY_PRESETS: Record<Verbosity, Partial<Settings>> = {
   normal: {
     showTools: true,
@@ -162,6 +165,14 @@ function readStoredValue<K extends keyof Settings>(key: K): Settings[K] | undefi
   if (stored === null) return undefined;
 
   const defaultValue = DEFAULTS[key];
+  if (key === "capabilities") {
+    try {
+      const parsed = PersistedCapabilitiesSchema.safeParse(JSON.parse(stored));
+      return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
+    } catch {
+      return undefined;
+    }
+  }
   if (Array.isArray(defaultValue)) {
     try {
       const parsed = LINK_CATEGORY_RULES_SCHEMA.safeParse(JSON.parse(stored));
@@ -177,22 +188,19 @@ function readStoredValue<K extends keyof Settings>(key: K): Settings[K] | undefi
     const parsed = Number(stored);
     return (Number.isFinite(parsed) ? parsed : undefined) as Settings[K] | undefined;
   }
-  if (key === "workingCopyReviewMode") {
-    const parsed = WORKING_COPY_REVIEW_MODE_SCHEMA.safeParse(stored);
-    return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
-  }
   return stored as Settings[K];
 }
 
 function writeStoredValue<K extends keyof Settings>(key: K, value: Settings[K]): void {
   localStorage.setItem(
     STORAGE_KEYS[key],
-    Array.isArray(value) ? JSON.stringify(value) : String(value),
+    Array.isArray(value) || typeof value === "object" ? JSON.stringify(value) : String(value),
   );
 }
 
 interface SettingsContextValue {
   settings: Settings;
+  loaded: boolean;
   setSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
   setVerbosity: (verbosity: Verbosity) => void;
   resetAll: () => void;
@@ -200,6 +208,7 @@ interface SettingsContextValue {
 
 const SettingsContext = createContext<SettingsContextValue>({
   settings: DEFAULTS,
+  loaded: false,
   setSetting: () => undefined,
   setVerbosity: () => undefined,
   resetAll: () => undefined,
@@ -207,6 +216,7 @@ const SettingsContext = createContext<SettingsContextValue>({
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<Settings>(DEFAULTS);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     const loaded = { ...DEFAULTS };
@@ -229,6 +239,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     }
     loaded.verbosity = detectVerbosity(loaded);
     setSettings(loaded);
+    setLoaded(true);
   }, []);
 
   const setSetting = useCallback(<K extends keyof Settings>(key: K, value: Settings[K]) => {
@@ -263,7 +274,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <SettingsContext.Provider value={{ settings, setSetting, setVerbosity, resetAll }}>
+    <SettingsContext.Provider value={{ settings, loaded, setSetting, setVerbosity, resetAll }}>
       {children}
     </SettingsContext.Provider>
   );

@@ -3,8 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Check, Copy, Settings, Download, Trash2, AlertCircle } from "lucide-react";
 import { generateHooksJson, DEFAULT_HOOK_PORT } from "../lib/hook-config";
 import { hookStatusQueryOptions, useInstallHooks, useUninstallHooks } from "../lib/api/hooks";
+import { useSettings } from "./settings-provider";
 
 export function HookSetup() {
+  const { settings } = useSettings();
   const [port, setPort] = useState(DEFAULT_HOOK_PORT);
   const [copied, setCopied] = useState(false);
   const [message, setMessage] = useState<{
@@ -19,7 +21,8 @@ export function HookSetup() {
   const installing = installMutation.isPending;
   const uninstalling = uninstallMutation.isPending;
 
-  const json = generateHooksJson({ port });
+  const includeContextBrief = settings.capabilities.sessionContextBrief.enabled;
+  const json = generateHooksJson({ port, includeContextBrief });
 
   function handleCopy() {
     void navigator.clipboard.writeText(json);
@@ -30,7 +33,10 @@ export function HookSetup() {
   async function handleInstall() {
     setMessage(null);
     try {
-      const result = await installMutation.mutateAsync({ port });
+      const result = await installMutation.mutateAsync({
+        port,
+        capabilities: settings.capabilities,
+      });
       setMessage({
         type: "success",
         text: `Hooks installed to ${result.settingsPath}`,

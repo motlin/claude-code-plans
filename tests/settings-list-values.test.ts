@@ -67,7 +67,13 @@ describe("SettingsProvider list persistence", () => {
     act(() => {
       firstRender.result.current.setSetting("defaultSubagentView", "sequence");
       firstRender.result.current.setSetting("sessionSort", "stable");
-      firstRender.result.current.setSetting("workingCopyReviewMode", "auto");
+      firstRender.result.current.setSetting("capabilities", {
+        ...DEFAULTS.capabilities,
+        workingCopyReview: {
+          enabled: true,
+          config: { offerMode: "auto" },
+        },
+      });
       firstRender.result.current.setSetting("showThinking", true);
       firstRender.result.current.setSetting("activeTimeoutSec", 120);
     });
@@ -75,13 +81,19 @@ describe("SettingsProvider list persistence", () => {
     expect({
       storedString: localStorage.getItem("ccp-subagent-view"),
       storedSessionSort: localStorage.getItem("ccp-session-sort"),
-      storedReviewMode: localStorage.getItem("ccp-working-copy-review-mode"),
+      storedCapabilities: localStorage.getItem("ccp-capabilities"),
       storedBoolean: localStorage.getItem("ccp-show-thinking"),
       storedNumber: localStorage.getItem("ccp-active-timeout"),
     }).toStrictEqual({
       storedString: "sequence",
       storedSessionSort: "stable",
-      storedReviewMode: "auto",
+      storedCapabilities: JSON.stringify({
+        ...DEFAULTS.capabilities,
+        workingCopyReview: {
+          enabled: true,
+          config: { offerMode: "auto" },
+        },
+      }),
       storedBoolean: "true",
       storedNumber: "120",
     });
@@ -92,25 +104,42 @@ describe("SettingsProvider list persistence", () => {
       expect({
         stringValue: reloaded.result.current.settings.defaultSubagentView,
         sessionSort: reloaded.result.current.settings.sessionSort,
-        reviewMode: reloaded.result.current.settings.workingCopyReviewMode,
+        capabilities: reloaded.result.current.settings.capabilities,
         booleanValue: reloaded.result.current.settings.showThinking,
         numericValue: reloaded.result.current.settings.activeTimeoutSec,
       }).toStrictEqual({
         stringValue: "sequence",
         sessionSort: "stable",
-        reviewMode: "auto",
+        capabilities: {
+          ...DEFAULTS.capabilities,
+          workingCopyReview: {
+            enabled: true,
+            config: { offerMode: "auto" },
+          },
+        },
         booleanValue: true,
         numericValue: 120,
       }),
     );
   });
 
-  it("rejects an unknown working-copy review mode", async () => {
-    localStorage.setItem("ccp-working-copy-review-mode", "sometimes");
+  it("rejects capability runtime facts and unknown config values from persistence", async () => {
+    localStorage.setItem(
+      "ccp-capabilities",
+      JSON.stringify({
+        ...DEFAULTS.capabilities,
+        workingCopyReview: {
+          enabled: true,
+          available: true,
+          installed: true,
+          config: { offerMode: "sometimes" },
+        },
+      }),
+    );
     const { result } = renderHook(() => useSettings(), { wrapper });
 
     await waitFor(() =>
-      expect(result.current.settings.workingCopyReviewMode).toBe(DEFAULTS.workingCopyReviewMode),
+      expect(result.current.settings.capabilities).toStrictEqual(DEFAULTS.capabilities),
     );
   });
 });

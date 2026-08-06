@@ -6,9 +6,11 @@ import {
   runWorkingCopyReview,
 } from "../lib/api/reviews";
 import { useSubscribeReviewOffers } from "../hooks/use-claude-events";
-import { useSettings, type WorkingCopyReviewMode } from "./settings-provider";
+import { useSettings } from "./settings-provider";
+import type { Capabilities } from "../lib/capabilities";
 
 export type ReviewOfferAction = "ignore" | "offer" | "start";
+type WorkingCopyReviewMode = "off" | "offer" | "auto";
 
 export function reviewOfferAction(mode: WorkingCopyReviewMode): ReviewOfferAction {
   if (mode === "off") return "ignore";
@@ -23,12 +25,26 @@ interface ReviewBannerState {
   error: string | null;
 }
 
-export function WorkingCopyReviewBanner() {
+export function workingCopyReviewDegradedMessage(
+  capability: Capabilities["workingCopyReview"],
+): string | null {
+  if (!capability.enabled || capability.available) return null;
+  return capability.installed
+    ? "Working-copy review is enabled, but its local runtime is unreachable."
+    : "Working-copy review is enabled, but its review skill is not installed.";
+}
+
+export function WorkingCopyReviewBanner({
+  capability,
+}: {
+  capability: Capabilities["workingCopyReview"];
+}) {
   const { settings } = useSettings();
   const subscribeReviewOffers = useSubscribeReviewOffers();
   const [banner, setBanner] = useState<ReviewBannerState | null>(null);
   const runningSessions = useRef(new Set<string>());
   const cancelledSessions = useRef(new Set<string>());
+  const degradedMessage = workingCopyReviewDegradedMessage(capability);
 
   const startReview = useCallback(async (sessionId: string) => {
     if (runningSessions.current.has(sessionId)) return;
@@ -81,7 +97,8 @@ export function WorkingCopyReviewBanner() {
   useEffect(
     () =>
       subscribeReviewOffers((sessionId) => {
-        const action = reviewOfferAction(settings.workingCopyReviewMode);
+        if (!capability.available) return;
+        const action = reviewOfferAction(settings.capabilities.workingCopyReview.config.offerMode);
         if (action === "ignore") return;
         if (action === "start") {
           void startReview(sessionId);
@@ -89,8 +106,24 @@ export function WorkingCopyReviewBanner() {
         }
         setBanner({ sessionId, reviewId: null, processId: null, status: "offered", error: null });
       }),
-    [settings.workingCopyReviewMode, startReview, subscribeReviewOffers],
+    [
+      capability.available,
+      settings.capabilities.workingCopyReview.config.offerMode,
+      startReview,
+      subscribeReviewOffers,
+    ],
   );
+
+  if (degradedMessage !== null) {
+    return (
+      <div
+        role="alert"
+        className="mx-6 mt-4 rounded-md border border-red-500/50 bg-red-950/30 px-4 py-3 text-sm font-medium text-red-200"
+      >
+        {degradedMessage}
+      </div>
+    );
+  }
 
   if (banner === null) return null;
 

@@ -67,6 +67,7 @@ function curlContextBrief(port: number): string {
 
 interface GenerateOptions {
   port?: number;
+  includeContextBrief?: boolean;
 }
 
 export function generateHooksConfig(options?: GenerateOptions): HooksConfig {
@@ -87,19 +88,21 @@ export function generateHooksConfig(options?: GenerateOptions): HooksConfig {
     ];
   }
 
-  const sessionStartHooks = hooks["SessionStart"];
-  if (!sessionStartHooks) {
-    throw new Error("SessionStart must be a known hook event");
+  if (options?.includeContextBrief === true) {
+    const sessionStartHooks = hooks["SessionStart"];
+    if (!sessionStartHooks) {
+      throw new Error("SessionStart must be a known hook event");
+    }
+    sessionStartHooks.push({
+      matcher: "startup|resume",
+      hooks: [
+        {
+          type: "command",
+          command: curlContextBrief(port),
+        },
+      ],
+    });
   }
-  sessionStartHooks.push({
-    matcher: "startup|resume",
-    hooks: [
-      {
-        type: "command",
-        command: curlContextBrief(port),
-      },
-    ],
-  });
 
   return { hooks };
 }

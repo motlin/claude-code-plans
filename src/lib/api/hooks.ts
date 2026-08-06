@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "./client";
+import type { PersistedCapabilities } from "../capabilities";
 
 export const HookStatusResponse = z.object({
   installed: z.boolean(),
@@ -25,11 +26,11 @@ export const HookMutationResponse = z.object({
 export const useInstallHooks = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ port }: { port?: number }) =>
+    mutationFn: ({ port, capabilities }: { port?: number; capabilities: PersistedCapabilities }) =>
       apiFetch("/api/hooks", HookMutationResponse, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(port !== undefined ? { port } : {}),
+        body: JSON.stringify(port !== undefined ? { port, capabilities } : { capabilities }),
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["hooks", "status"] });

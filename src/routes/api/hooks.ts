@@ -2,13 +2,30 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { HookMutationResponse } from "../../lib/api/hooks";
 import { rejectCrossSite } from "../../lib/same-origin-guard";
+import { PersistedCapabilitiesSchema, capabilityIsEnabled } from "../../lib/capabilities";
 
-const HooksMutationBody = z.object({ port: z.number().optional() });
+const HooksMutationBody = z
+  .object({
+    port: z.number().optional(),
+    capabilities: PersistedCapabilitiesSchema.optional(),
+  })
+  .strict();
 
 async function claudeHomeJoin() {
   const { homedir } = await import("node:os");
   const { join } = await import("node:path");
   return { claudeHome: join(homedir(), ".claude"), join };
+}
+
+function containsManagedHook(entry: unknown): boolean {
+  const hooks = (entry as { hooks?: Array<{ command?: string }> }).hooks;
+  return (
+    hooks?.some(
+      (hook) =>
+        hook.command?.includes("/api/hook") === true ||
+        hook.command?.includes("/api/context-brief") === true,
+    ) === true
+  );
 }
 
 export const Route = createFileRoute("/api/hooks")({
@@ -23,9 +40,12 @@ export const Route = createFileRoute("/api/hooks")({
         const { readFile, writeFile, mkdir } = await import("node:fs/promises");
         const body = HooksMutationBody.parse(await request.json().catch(() => ({})));
         const settingsPath = join(claudeHome, "settings.json");
-        const config = generateHooksConfig(
-          body.port !== undefined ? { port: body.port } : undefined,
-        );
+        const config = generateHooksConfig({
+          ...(body.port !== undefined ? { port: body.port } : {}),
+          includeContextBrief:
+            body.capabilities !== undefined &&
+            capabilityIsEnabled(body.capabilities, "sessionContextBrief"),
+        });
 
         await mkdir(claudeHome, { recursive: true });
 
@@ -39,18 +59,11 @@ export const Route = createFileRoute("/api/hooks")({
 
         const existingHooks = (existing["hooks"] ?? {}) as Record<string, unknown[]>;
         for (const [eventName, matchers] of Object.entries(config.hooks)) {
-          const desiredCmd = matchers[0]?.hooks[0]?.command;
-          if (!desiredCmd) continue;
-
-          const cmdPrefix = desiredCmd.slice(0, desiredCmd.indexOf("/api/hook"));
           const eventEntries = Array.isArray(existingHooks[eventName])
             ? [...existingHooks[eventName]]
             : [];
 
-          const filtered = eventEntries.filter((e) => {
-            const entryHooks = (e as { hooks?: Array<{ command?: string }> }).hooks;
-            return !entryHooks?.some((h) => h.command?.includes(cmdPrefix + "/api/hook"));
-          });
+          const filtered = eventEntries.filter((entry) => !containsManagedHook(entry));
 
           filtered.push(...matchers);
           existingHooks[eventName] = filtered;
@@ -77,9 +90,10 @@ export const Route = createFileRoute("/api/hooks")({
           body = {};
         }
         const settingsPath = join(claudeHome, "settings.json");
-        const config = generateHooksConfig(
-          body.port !== undefined ? { port: body.port } : undefined,
-        );
+        const config = generateHooksConfig({
+          ...(body.port !== undefined ? { port: body.port } : {}),
+          includeContextBrief: true,
+        });
 
         let existing: Record<string, unknown>;
         try {
@@ -94,18 +108,11 @@ export const Route = createFileRoute("/api/hooks")({
         }
 
         const existingHooks = (existing["hooks"] ?? {}) as Record<string, unknown[]>;
-        for (const [eventName, matchers] of Object.entries(config.hooks)) {
-          const desiredCmd = matchers[0]?.hooks[0]?.command;
-          if (!desiredCmd) continue;
-
-          const cmdPrefix = desiredCmd.slice(0, desiredCmd.indexOf("/api/hook"));
+        for (const eventName of Object.keys(config.hooks)) {
           const eventEntries = existingHooks[eventName];
           if (!Array.isArray(eventEntries)) continue;
 
-          existingHooks[eventName] = eventEntries.filter((e) => {
-            const entryHooks = (e as { hooks?: Array<{ command?: string }> }).hooks;
-            return !entryHooks?.some((h) => h.command?.includes(cmdPrefix + "/api/hook"));
-          });
+          existingHooks[eventName] = eventEntries.filter((entry) => !containsManagedHook(entry));
 
           if ((existingHooks[eventName] as unknown[]).length === 0) {
             delete existingHooks[eventName];

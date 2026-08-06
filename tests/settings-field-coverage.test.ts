@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
 import { ClaudeSettingsSchema } from "../src/lib/schemas";
 import { COVERED_SETTINGS_KEYS } from "../src/lib/settings-fields";
+import {
+  CAPABILITY_IDS,
+  DEFAULT_CAPABILITIES,
+  PersistedCapabilitiesSchema,
+} from "../src/lib/capabilities";
 
 /**
  * Guard test (in the spirit of the schema-choices registry): every top-level
@@ -21,5 +26,32 @@ describe("settings field coverage", () => {
       .filter((key) => key !== "$schema" && !schemaKeys.has(key))
       .sort();
     expect(stale).toEqual([]);
+  });
+});
+
+describe("ccp capability settings coverage", () => {
+  it("keeps every capability schema entry pre-seeded and disabled", () => {
+    expect({
+      ids: CAPABILITY_IDS,
+      schemaKeys: Object.keys(PersistedCapabilitiesSchema.shape),
+      defaults: DEFAULT_CAPABILITIES,
+    }).toStrictEqual({
+      ids: ["readOnlyMcpServer", "workingCopyReview", "sessionContextBrief"],
+      schemaKeys: ["readOnlyMcpServer", "workingCopyReview", "sessionContextBrief"],
+      defaults: {
+        readOnlyMcpServer: {
+          enabled: false,
+          config: { includePendingApprovals: true },
+        },
+        workingCopyReview: {
+          enabled: false,
+          config: { offerMode: "offer" },
+        },
+        sessionContextBrief: {
+          enabled: false,
+          config: { includeDecisions: true },
+        },
+      },
+    });
   });
 });
