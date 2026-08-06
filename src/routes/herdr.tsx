@@ -2,37 +2,36 @@ import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Eye, EyeOff } from "lucide-react";
 import { StatusDot } from "../components/sidebar/primitives/StatusDot";
-import { herdrPanesQueryOptions } from "../lib/api/herdr";
+import { terminalPlacementsQueryOptions } from "../lib/api/terminal-placements";
 import { updateSessionViewedState } from "../lib/api/viewed-state";
 
 export const Route = createFileRoute("/herdr")({
-  component: HerdrFleetPage,
-  loader: ({ context: { queryClient } }) => queryClient.ensureQueryData(herdrPanesQueryOptions),
+  component: TerminalFleetPage,
+  loader: ({ context: { queryClient } }) =>
+    queryClient.ensureQueryData(terminalPlacementsQueryOptions),
   head: () => ({
-    meta: [{ title: "Herdr Fleet" }],
+    meta: [{ title: "Terminal Fleet" }],
   }),
 });
 
-function HerdrEmptyState() {
+function TerminalFleetEmptyState() {
   return (
     <div className="mx-auto mt-8 max-w-lg rounded-md border border-border-300/15 p-6 text-sm text-text-500">
-      <p className="text-text-000">No herdr panes are linked to Claude sessions yet.</p>
-      <p className="mt-3">Herdr is optional, so an empty fleet is expected until you enable it:</p>
+      <p className="text-text-000">No terminal placements are linked to Claude sessions yet.</p>
+      <p className="mt-3">Run Claude Code inside tmux or herdr, then:</p>
       <ul className="mt-2 list-disc space-y-1 pl-5">
-        <li>
-          Run Claude Code <span className="font-medium text-text-000">inside a herdr pane</span> so{" "}
-          <code className="rounded bg-bg-200/60 px-1 py-0.5 text-xs">HERDR_ENV</code> and{" "}
-          <code className="rounded bg-bg-200/60 px-1 py-0.5 text-xs">HERDR_PANE_ID</code> are set.
-        </li>
         <li>
           Re-install the hooks from{" "}
           <Link to="/setup" className="text-accent-100 hover:underline">
             Setup
           </Link>{" "}
-          so those variables are forwarded to ccp.
+          so terminal environment variables are forwarded to ccp.
         </li>
         <li>
-          Optionally run{" "}
+          Submit a prompt in the live session so its placement enters the active-session store.
+        </li>
+        <li>
+          For herdr identity cross-checks, optionally run{" "}
           <code className="rounded bg-bg-200/60 px-1 py-0.5 text-xs">
             herdr integration install claude
           </code>{" "}
@@ -43,10 +42,40 @@ function HerdrEmptyState() {
   );
 }
 
-function HerdrFleetPage() {
-  const { data } = useSuspenseQuery(herdrPanesQueryOptions);
+function CapabilityBadges({
+  capabilities,
+  writesEnabled,
+}: {
+  capabilities: {
+    supportsWrite: boolean;
+    supportsEvents: boolean;
+    supportsObserve: boolean;
+  };
+  writesEnabled: boolean;
+}) {
+  const labels = [
+    capabilities.supportsWrite ? (writesEnabled ? "write" : "write disabled") : null,
+    capabilities.supportsEvents ? "events" : null,
+    capabilities.supportsObserve ? "observe" : null,
+  ].filter((label): label is string => label !== null);
+
+  return (
+    <span className="ml-auto flex shrink-0 gap-1 text-[10px] text-text-500">
+      {labels.length === 0
+        ? "placement only"
+        : labels.map((label) => (
+            <span key={label} className="rounded bg-bg-200/60 px-1.5 py-0.5">
+              {label}
+            </span>
+          ))}
+    </span>
+  );
+}
+
+function TerminalFleetPage() {
+  const { data } = useSuspenseQuery(terminalPlacementsQueryOptions);
   const queryClient = useQueryClient();
-  const panes = data.panes;
+  const placements = data.placements;
 
   const setViewed = async (
     sessionId: string,
@@ -55,7 +84,7 @@ function HerdrFleetPage() {
   ): Promise<void> => {
     await updateSessionViewedState(sessionId, action, messageIndex);
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["herdr", "panes"] }),
+      queryClient.invalidateQueries({ queryKey: ["terminal", "placements"] }),
       queryClient.invalidateQueries({ queryKey: ["sessions", sessionId] }),
     ]);
   };
@@ -63,62 +92,106 @@ function HerdrFleetPage() {
   return (
     <div>
       <div className="flex items-center gap-3">
-        <h1 className="text-lg font-semibold">Herdr Fleet</h1>
-        <span className="text-sm text-text-500">{panes.length} panes</span>
+        <h1 className="text-lg font-semibold">Terminal Fleet</h1>
+        <span className="text-sm text-text-500">{placements.length} placements</span>
         <span className="text-xs text-text-500">(live updates via SSE)</span>
       </div>
 
-      {panes.length === 0 ? (
-        <HerdrEmptyState />
+      {placements.length === 0 ? (
+        <TerminalFleetEmptyState />
       ) : (
         <div className="mt-4 space-y-1">
-          {panes.map((pane) => (
-            <div
-              key={pane.terminalId}
-              className="flex items-center rounded-md border border-border-300/15 transition-colors hover:bg-bg-200/50"
-            >
-              <Link
-                to="/session/$id"
-                params={{ id: pane.sessionId }}
-                className="flex min-w-0 flex-1 items-center gap-2 p-3 no-underline"
-              >
-                <StatusDot active={pane.focused} />
-                <span className="sr-only">
-                  {pane.focused ? "Herdr pane focused" : "Herdr pane not focused"}
-                </span>
-                <span className="shrink-0 tabular-nums text-sm text-text-400">{pane.paneId}</span>
-                <span className="truncate text-sm font-medium text-text-000">
-                  {pane.terminalTitle ?? pane.foregroundCwd ?? pane.cwd ?? pane.terminalId}
-                </span>
-                <span className="ml-auto shrink-0 text-xs text-text-500">
-                  herdr&apos;s view: {pane.agentStatus} (advisory)
-                </span>
-                {!pane.viewedState.viewedAnywhere && (
-                  <span className="shrink-0 text-xs text-warning-000">
-                    review · {pane.viewedState.newMessageCount} new
+          {placements.map((placement) => {
+            if (placement.provider === "tmux") {
+              return (
+                <Link
+                  key={`tmux:${placement.scopeHandle}:${placement.paneHandle}:${placement.sessionId}`}
+                  to="/session/$id"
+                  params={{ id: placement.sessionId }}
+                  className="flex items-center gap-2 rounded-md border border-border-300/15 p-3 no-underline transition-colors hover:bg-bg-200/50"
+                >
+                  <StatusDot active={placement.active} />
+                  <span className="sr-only">
+                    {placement.active ? "Tmux window active" : "Tmux window not active"}
                   </span>
-                )}
-              </Link>
-              <button
-                type="button"
-                onClick={() =>
-                  void setViewed(
-                    pane.sessionId,
-                    pane.viewedState.viewedAnywhere ? "unreviewed" : "reviewed",
-                    pane.viewedState.currentMessageIndex,
-                  )
-                }
-                className="mr-3 shrink-0 cursor-pointer text-text-500 hover:text-text-000"
-                title={pane.viewedState.viewedAnywhere ? "Mark unreviewed" : "Mark reviewed"}
+                  <span className="shrink-0 rounded bg-bg-200/60 px-1.5 py-0.5 text-[10px] text-text-500">
+                    tmux
+                  </span>
+                  <span className="shrink-0 tabular-nums text-sm text-text-400">
+                    #{placement.tmuxWindow.windowIndex}
+                  </span>
+                  <span className="truncate text-sm font-medium text-text-000">
+                    {placement.displayName}
+                  </span>
+                  <span className="truncate text-xs text-text-500">
+                    {placement.tmuxWindow.projectName}
+                  </span>
+                  <CapabilityBadges
+                    capabilities={placement.capabilities}
+                    writesEnabled={data.writesEnabled}
+                  />
+                </Link>
+              );
+            }
+
+            const pane = placement.herdrPane;
+            return (
+              <div
+                key={`herdr:${placement.scopeHandle}:${placement.paneHandle}:${placement.sessionId}`}
+                className="flex items-center rounded-md border border-border-300/15 transition-colors hover:bg-bg-200/50"
               >
-                {pane.viewedState.viewedAnywhere ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </button>
-            </div>
-          ))}
+                <Link
+                  to="/session/$id"
+                  params={{ id: placement.sessionId }}
+                  className="flex min-w-0 flex-1 items-center gap-2 p-3 no-underline"
+                >
+                  <StatusDot active={placement.active} />
+                  <span className="sr-only">
+                    {placement.active ? "Herdr pane focused" : "Herdr pane not focused"}
+                  </span>
+                  <span className="shrink-0 rounded bg-bg-200/60 px-1.5 py-0.5 text-[10px] text-text-500">
+                    herdr
+                  </span>
+                  <span className="shrink-0 tabular-nums text-sm text-text-400">
+                    {placement.paneHandle}
+                  </span>
+                  <span className="truncate text-sm font-medium text-text-000">
+                    {placement.displayName}
+                  </span>
+                  <span className="shrink-0 text-xs text-text-500">
+                    herdr&apos;s view: {pane.agentStatus} (advisory)
+                  </span>
+                  {!pane.viewedState.viewedAnywhere && (
+                    <span className="shrink-0 text-xs text-warning-000">
+                      review · {pane.viewedState.newMessageCount} new
+                    </span>
+                  )}
+                  <CapabilityBadges
+                    capabilities={placement.capabilities}
+                    writesEnabled={data.writesEnabled}
+                  />
+                </Link>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void setViewed(
+                      placement.sessionId,
+                      pane.viewedState.viewedAnywhere ? "unreviewed" : "reviewed",
+                      pane.viewedState.currentMessageIndex,
+                    )
+                  }
+                  className="mr-3 shrink-0 cursor-pointer text-text-500 hover:text-text-000"
+                  title={pane.viewedState.viewedAnywhere ? "Mark unreviewed" : "Mark reviewed"}
+                >
+                  {pane.viewedState.viewedAnywhere ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

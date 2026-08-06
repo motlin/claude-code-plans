@@ -2,6 +2,7 @@ import type { z } from "zod";
 import { getActiveSessionEntries, type ActiveSessionEntry } from "../active-session-store";
 import { herdrRequest, type HerdrResult } from "./client";
 import { HerdrPaneInfoSchema, HerdrSessionSnapshotResultSchema } from "./schema";
+import type { TerminalPlacementBase, TerminalPlacementProvider } from "../terminal-placements";
 
 export type HerdrAgentStatus = z.infer<typeof HerdrPaneInfoSchema>["agent_status"];
 type HerdrWirePane = z.infer<typeof HerdrPaneInfoSchema>;
@@ -25,6 +26,17 @@ export interface HerdrPaneLink extends HerdrPane {
   sessionId: string;
   via: "env" | "agent-session" | "both";
 }
+
+export interface HerdrTerminalPlacement extends TerminalPlacementBase {
+  provider: "herdr";
+  herdrPane: HerdrPaneLink;
+}
+
+const HERDR_CAPABILITIES = {
+  supportsWrite: true,
+  supportsEvents: true,
+  supportsObserve: true,
+};
 
 export type HerdrRequester = (request: object, timeoutMs?: number) => Promise<HerdrResult<unknown>>;
 
@@ -127,4 +139,32 @@ export async function getHerdrPanes(
   }
 
   return links;
+}
+
+async function getHerdrPlacements(
+  entries: ActiveSessionEntry[] = getActiveSessionEntries(),
+  request: HerdrRequester = herdrRequest,
+): Promise<HerdrTerminalPlacement[]> {
+  const panes = await getHerdrPanes(entries, request);
+  return panes.map((pane) => ({
+    provider: "herdr",
+    sessionId: pane.sessionId,
+    displayName: pane.terminalTitle ?? pane.foregroundCwd ?? pane.cwd ?? pane.terminalId,
+    active: pane.focused,
+    paneHandle: pane.paneId,
+    scopeHandle: pane.workspaceId,
+    capabilities: HERDR_CAPABILITIES,
+    herdrPane: pane,
+  }));
+}
+
+export function createHerdrPlacementProvider(
+  entries: ActiveSessionEntry[] = getActiveSessionEntries(),
+  request: HerdrRequester = herdrRequest,
+): TerminalPlacementProvider {
+  return {
+    id: "herdr",
+    capabilities: HERDR_CAPABILITIES,
+    getPlacements: () => getHerdrPlacements(entries, request),
+  };
 }

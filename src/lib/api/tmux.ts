@@ -7,7 +7,7 @@ import { apiFetch } from "./client";
  * `getTmuxWindows` (`../tmux-windows`) — see there for how the fields map to
  * tmux. `.strict()` so any drift from that interface fails loudly at parse time.
  */
-const TmuxWindowSchema = z
+export const TmuxWindowSchema = z
   .object({
     sessionId: z.string(),
     projectName: z.string(),

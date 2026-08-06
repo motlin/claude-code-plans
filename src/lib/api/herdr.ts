@@ -8,7 +8,7 @@ import { SessionViewedStateSchema } from "./viewed-state";
  * `getHerdrPanes` (`../herdr/panes`). This ccp-owned boundary is strict so
  * drift between the producer and browser consumer fails loudly.
  */
-const HerdrPaneSchema = z
+export const HerdrPaneSchema = z
   .object({
     paneId: z.string(),
     terminalId: z.string(),

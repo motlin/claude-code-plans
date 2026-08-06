@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { basename } from "node:path";
 import { getActiveSessionEntries, type ActiveSessionEntry } from "./active-session-store";
+import type { TerminalPlacementBase, TerminalPlacementProvider } from "./terminal-placements";
 
 /**
  * A live tmux window running a mapped Claude session. Window numbers/names come
@@ -16,6 +17,17 @@ export interface TmuxWindow {
   tmuxPane: string;
   socket: string;
 }
+
+export interface TmuxTerminalPlacement extends TerminalPlacementBase {
+  provider: "tmux";
+  tmuxWindow: TmuxWindow;
+}
+
+const TMUX_CAPABILITIES = {
+  supportsWrite: false,
+  supportsEvents: false,
+  supportsObserve: false,
+};
 
 /**
  * `list-panes -a` output format. Tab-separated so window names containing spaces
@@ -133,4 +145,32 @@ export async function getTmuxWindows(
 
   windows.sort((a, b) => a.windowIndex - b.windowIndex);
   return windows;
+}
+
+async function getTmuxPlacements(
+  entries: ActiveSessionEntry[] = getActiveSessionEntries(),
+  runTmux: TmuxRunner = runTmuxListPanes,
+): Promise<TmuxTerminalPlacement[]> {
+  const windows = await getTmuxWindows(entries, runTmux);
+  return windows.map((window) => ({
+    provider: "tmux",
+    sessionId: window.sessionId,
+    displayName: window.windowName,
+    active: window.windowActive,
+    paneHandle: window.tmuxPane,
+    scopeHandle: window.socket,
+    capabilities: TMUX_CAPABILITIES,
+    tmuxWindow: window,
+  }));
+}
+
+export function createTmuxPlacementProvider(
+  entries: ActiveSessionEntry[] = getActiveSessionEntries(),
+  runTmux: TmuxRunner = runTmuxListPanes,
+): TerminalPlacementProvider {
+  return {
+    id: "tmux",
+    capabilities: TMUX_CAPABILITIES,
+    getPlacements: () => getTmuxPlacements(entries, runTmux),
+  };
 }

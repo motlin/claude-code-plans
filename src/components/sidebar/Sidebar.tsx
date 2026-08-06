@@ -192,6 +192,7 @@ export function Sidebar({
                 item.section !== "settings" &&
                 item.section !== "config" &&
                 item.section !== "setup" &&
+                item.section !== "fleet" &&
                 (item.section === "active" ? (
                   <ActiveSubList />
                 ) : item.section === "tmux" ? (
