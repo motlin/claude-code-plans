@@ -46,9 +46,20 @@ export const HerdrPaneInfoSchema = z
     agent: z.string().nullish(),
     agent_status: HerdrAgentStatusSchema,
     agent_session: HerdrAgentSessionSchema.nullish(),
+    display_agent: z.string().nullish(),
+    state_labels: z.record(z.string(), z.string()).optional(),
+    title: z.string().nullish(),
+    tokens: z.record(z.string(), z.string().nullable()).optional(),
     terminal_title: z.string().nullish(),
     scroll: HerdrPaneScrollSchema.nullish(),
     revision: NonnegativeIntegerSchema,
+  })
+  .loose();
+
+export const HerdrPaneInfoResultSchema = z
+  .object({
+    type: z.literal("pane_info"),
+    pane: HerdrPaneInfoSchema,
   })
   .loose();
 

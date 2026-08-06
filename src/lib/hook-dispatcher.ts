@@ -30,6 +30,7 @@ import { indexFile, indexJsonlFile } from "./db/indexer";
 import { resolveProjectName } from "./memory";
 import { recentlyBroadcast } from "./update-dedupe";
 import { toSubagentSessionId } from "./subagents";
+import { reportHookStateToHerdr } from "./herdr/report-state";
 
 /**
  * TTL covering the gap between the hook fast-path broadcast and the chokidar
@@ -89,6 +90,7 @@ interface DispatchHookEventArgs {
   broadcast: (type: string, data: Record<string, unknown>) => void;
   dirs?: HookDispatchDirs;
   state?: HookDispatchState;
+  reportHerdrState?: (event: HookEvent, entry: ActiveSessionEntry | null) => void;
 }
 
 /** True when `candidate` is the same as `dir` or a descendant. */
@@ -328,7 +330,9 @@ export async function dispatchHookEvent({
   broadcast,
   dirs,
   state,
+  reportHerdrState = reportHookStateToHerdr,
 }: DispatchHookEventArgs): Promise<void> {
+  const entryBeforeDispatch = store.getActiveSessionEntry(event.session_id);
   switch (event.hook_event_name) {
     case "SessionStart": {
       const meta: {
@@ -670,4 +674,11 @@ export async function dispatchHookEvent({
     default:
       assertNever(event);
   }
+
+  reportHerdrState(
+    event,
+    event.hook_event_name === "SessionEnd"
+      ? entryBeforeDispatch
+      : store.getActiveSessionEntry(event.session_id),
+  );
 }

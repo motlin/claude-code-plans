@@ -8,6 +8,7 @@ import { DOMAIN_EVENTS, SSE_EVENTS } from "../src/lib/hook-events";
 import type { HookEvent } from "../src/lib/hook-events";
 import { getNotifications, clearAllNotifications } from "../src/lib/notifications-store";
 import * as schema from "../src/lib/db/schema";
+import type { ActiveSessionEntry } from "../src/lib/active-session-store";
 
 const testDir = join(tmpdir(), "claude-hook-dispatcher-test-" + process.pid);
 let db: AppDb;
@@ -246,6 +247,40 @@ describe("dispatchHookEvent", () => {
     expect(broadcasts).toStrictEqual([]);
   });
 
+  it("does not await detached herdr reporting before completing dispatch", async () => {
+    const { store } = makeStore();
+    const reportCalls: Array<{ event: HookEvent; entry: ActiveSessionEntry | null }> = [];
+    const pendingReport = new Promise<void>(() => {});
+
+    await dispatchHookEvent({
+      event: {
+        hook_event_name: "Stop",
+        session_id: "session-test-100",
+        transcript_path: "/tmp/test/session-test-100.jsonl",
+        cwd: "/tmp/test/project",
+      },
+      db: db.index,
+      store,
+      broadcast: () => {},
+      reportHerdrState: async (event, activeEntry) => {
+        reportCalls.push({ event, entry: activeEntry });
+        await pendingReport;
+      },
+    });
+
+    expect(reportCalls).toStrictEqual([
+      {
+        event: {
+          hook_event_name: "Stop",
+          session_id: "session-test-100",
+          transcript_path: "/tmp/test/session-test-100.jsonl",
+          cwd: "/tmp/test/project",
+        },
+        entry: null,
+      },
+    ]);
+  });
+
   it("SessionEnd broadcasts both lifecycle SESSION_END and domain SESSION_ENDED", async () => {
     const broadcasts: Broadcast[] = [];
     const { store, endedCalls } = makeStore();
@@ -267,6 +302,61 @@ describe("dispatchHookEvent", () => {
     });
     expect(broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_ENDED)!.data).toStrictEqual({
       sessionId: "abc-123",
+    });
+  });
+
+  it("retains the session pane mapping for detached SessionEnd cleanup", async () => {
+    const activeEntry: ActiveSessionEntry = {
+      sessionId: "session-test-100",
+      cwd: "/tmp/test/project",
+      model: "claude-test-model",
+      startedAt: 0,
+      lastActivity: 0,
+      claudeEnv: { HERDR_PANE_ID: "w100:p100" },
+      tmuxPane: "",
+      tmuxServerSocket: "",
+      herdrPane: "w100:p100",
+      herdrWorkspace: "w100",
+      herdrSocketPath: "/tmp/test/herdr.sock",
+    };
+    let currentEntry: ActiveSessionEntry | null = activeEntry;
+    const reportCalls: Array<{ event: HookEvent; entry: ActiveSessionEntry | null }> = [];
+
+    await dispatchHookEvent({
+      event: {
+        hook_event_name: "SessionEnd",
+        session_id: "session-test-100",
+        transcript_path: "/tmp/test/session-test-100.jsonl",
+        cwd: "/tmp/test/project",
+      },
+      db: db.index,
+      store: {
+        markSessionActive: () => {},
+        markSessionEnded: () => {
+          currentEntry = null;
+        },
+        touchSession: () => {},
+        getActiveSessionEntry: () => currentEntry,
+      },
+      broadcast: () => {},
+      reportHerdrState: (event, entryValue) => {
+        reportCalls.push({ event, entry: entryValue });
+      },
+    });
+
+    expect({ currentEntry, reportCalls }).toStrictEqual({
+      currentEntry: null,
+      reportCalls: [
+        {
+          event: {
+            hook_event_name: "SessionEnd",
+            session_id: "session-test-100",
+            transcript_path: "/tmp/test/session-test-100.jsonl",
+            cwd: "/tmp/test/project",
+          },
+          entry: activeEntry,
+        },
+      ],
     });
   });
 
