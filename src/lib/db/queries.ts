@@ -514,6 +514,10 @@ export interface DbSearchResult {
 }
 
 export function searchSessionsFromDb(db: IndexDb, query: string): DbSearchResult[] {
+  const terms = tokenizeFileSearchQuery(query);
+  if (terms.length === 0) return [];
+
+  const ftsQuery = toFtsQuery(terms);
   const projectNames = getProjectNameMap(db);
 
   const rows = db.all(
@@ -522,7 +526,7 @@ export function searchSessionsFromDb(db: IndexDb, query: string): DbSearchResult
 				snippet(sessions_fts, 2, '<mark>', '</mark>', '...', 32) AS prompt_snippet,
 				snippet(sessions_fts, 3, '<mark>', '</mark>', '...', 32) AS summary_snippet
 			FROM sessions_fts
-			WHERE sessions_fts MATCH ${query}
+			WHERE sessions_fts MATCH ${ftsQuery}
 			ORDER BY rank
 			LIMIT 50`,
   ) as Array<{
@@ -591,13 +595,17 @@ export function searchMessageContentDb(
   query: string,
   limit = 50,
 ): DbMessageSearchResult[] {
+  const terms = tokenizeFileSearchQuery(query);
+  if (terms.length === 0) return [];
+
+  const ftsQuery = toFtsQuery(terms);
   const projectNames = getProjectNameMap(db);
 
   const rows = db.all(
     sql`SELECT session_id, rank,
 				snippet(message_content_fts, 1, '<mark>', '</mark>', '...', 48) AS snippet
 			FROM message_content_fts
-			WHERE message_content_fts MATCH ${query}
+			WHERE message_content_fts MATCH ${ftsQuery}
 			ORDER BY rank
 			LIMIT ${limit}`,
   ) as Array<{

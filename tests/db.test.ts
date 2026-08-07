@@ -1507,6 +1507,13 @@ describe("queries", () => {
     expect(results[0]!.sessionId).toBe("sess-2");
   });
 
+  it.each(['foo"bar', "a AND"])(
+    "searchSessionsFromDb returns no results for malformed query %s",
+    (query) => {
+      expect(searchSessionsFromDb(db.index, query)).toStrictEqual([]);
+    },
+  );
+
   it("escapes HTML in session search snippets while preserving highlights", () => {
     db.index
       .update(schema.sessions)
@@ -2262,6 +2269,10 @@ describe("message content FTS", () => {
   it("returns empty for non-matching query", () => {
     const results = searchMessageContentDb(db.index, "nonexistent");
     expect(results.length).toBe(0);
+  });
+
+  it.each(['foo"bar', "a AND"])("returns no message content for malformed query %s", (query) => {
+    expect(searchMessageContentDb(db.index, query)).toStrictEqual([]);
   });
 });
 
