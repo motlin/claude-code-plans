@@ -188,7 +188,7 @@ function NotFound() {
 
 function NotFoundContent({ detail }: Readonly<{ detail?: string }>) {
   return (
-    <div className="p-8">
+    <div>
       <h1 className="text-lg font-semibold">404 &mdash; Not Found</h1>
       <p className="mt-2 text-text-500">The requested page was not found.</p>
       {detail ? (
