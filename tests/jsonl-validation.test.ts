@@ -1,107 +1,38 @@
 import { createReadStream } from "node:fs";
-import { readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { JsonlRecordSchema } from "../src/lib/schemas";
+import {
+  collectJsonlFiles,
+  partitionIssues,
+  selectFilesForScan,
+  type JsonlFile,
+} from "./jsonl-corpus";
 
 /**
  * The default disk audit scans the 300 newest JSONL files changed in the last
- * two days. Run `FULL_JSONL_SCAN=1 just test tests/jsonl-validation.test.ts`
- * to validate the complete on-disk corpus during schema synchronization.
+ * two days, drawn from both session transcripts and the subagent transcripts
+ * nested beneath them. Run
+ * `FULL_JSONL_SCAN=1 just test tests/jsonl-validation.test.ts` to validate
+ * every JSONL file on disk during schema synchronization.
+ *
+ * Only record-shape mismatches fail the audit; those mean the schemas are
+ * behind what Claude Code writes. Malformed tool inputs are counted and
+ * reported instead, because they record a bad call the model made and no
+ * schema change can make them correct.
  */
 
-const RECENT_WINDOW_MILLISECONDS = 2 * 24 * 60 * 60 * 1000;
 const DEFAULT_FILE_LIMIT = 300;
-
-interface JsonlFile {
-  path: string;
-  relativePath: string;
-  modifiedAtMilliseconds: number;
-}
-
-interface FileSelection {
-  files: JsonlFile[];
-  skippedForAge: number;
-  skippedForLimit: number;
-}
-
-function selectFilesForScan(
-  files: JsonlFile[],
-  fullScan: boolean,
-  currentTimeMilliseconds: number,
-  fileLimit: number,
-): FileSelection {
-  const newestFirst = [...files].sort(
-    (left, right) =>
-      right.modifiedAtMilliseconds - left.modifiedAtMilliseconds ||
-      left.relativePath.localeCompare(right.relativePath),
-  );
-  if (fullScan) {
-    return { files: newestFirst, skippedForAge: 0, skippedForLimit: 0 };
-  }
-
-  const recentBoundary = currentTimeMilliseconds - RECENT_WINDOW_MILLISECONDS;
-  const recentFiles = newestFirst.filter((file) => file.modifiedAtMilliseconds >= recentBoundary);
-  return {
-    files: recentFiles.slice(0, fileLimit),
-    skippedForAge: newestFirst.length - recentFiles.length,
-    skippedForLimit: Math.max(0, recentFiles.length - fileLimit),
-  };
-}
-
-async function collectJsonlFiles(projectsDirectory: string): Promise<{
-  files: JsonlFile[];
-  skippedUnavailablePaths: number;
-}> {
-  let projectEntries;
-  try {
-    projectEntries = await readdir(projectsDirectory, { withFileTypes: true });
-  } catch {
-    return { files: [], skippedUnavailablePaths: 0 };
-  }
-
-  const files: JsonlFile[] = [];
-  let skippedUnavailablePaths = 0;
-  for (const projectEntry of projectEntries) {
-    if (!projectEntry.isDirectory()) continue;
-    const projectPath = join(projectsDirectory, projectEntry.name);
-    let fileEntries;
-    try {
-      fileEntries = await readdir(projectPath, { withFileTypes: true });
-    } catch {
-      skippedUnavailablePaths++;
-      continue;
-    }
-
-    const projectFiles: JsonlFile[] = [];
-    await Promise.all(
-      fileEntries.map(async (fileEntry) => {
-        if (!fileEntry.isFile() || !fileEntry.name.endsWith(".jsonl")) return;
-        const filePath = join(projectPath, fileEntry.name);
-        try {
-          const fileStat = await stat(filePath);
-          projectFiles.push({
-            path: filePath,
-            relativePath: join(projectEntry.name, fileEntry.name),
-            modifiedAtMilliseconds: fileStat.mtimeMs,
-          });
-        } catch {
-          skippedUnavailablePaths++;
-        }
-      }),
-    );
-    files.push(...projectFiles);
-  }
-  return { files, skippedUnavailablePaths };
-}
 
 async function validateFile(file: JsonlFile): Promise<{
   failures: string[];
+  toolInputMismatches: number;
   parsedLines: number;
   skippedUnparseableLines: number;
 }> {
   const failures: string[] = [];
+  let toolInputMismatches = 0;
   let parsedLines = 0;
   let skippedUnparseableLines = 0;
   let lineNumber = 0;
@@ -125,58 +56,18 @@ async function validateFile(file: JsonlFile): Promise<{
 
     parsedLines++;
     const result = JsonlRecordSchema.safeParse(parsed);
-    if (!result.success) {
-      const issues = result.error.issues
-        .map((issue) => `  ${issue.path.join(".")}: ${issue.message}`)
-        .join("\n");
+    if (result.success) continue;
+
+    const { recordIssues, toolInputIssues } = partitionIssues(result.error.issues);
+    if (toolInputIssues.length > 0) toolInputMismatches++;
+    if (recordIssues.length > 0) {
+      const issues = recordIssues.map((issue) => `  ${issue}`).join("\n");
       failures.push(`${file.relativePath}:${lineNumber}\n${issues}`);
     }
   }
 
-  return { failures, parsedLines, skippedUnparseableLines };
+  return { failures, toolInputMismatches, parsedLines, skippedUnparseableLines };
 }
-
-describe("JSONL disk scan selection", () => {
-  const currentTimeMilliseconds = Date.parse("2000-01-03T00:00:00.000Z");
-  const files: JsonlFile[] = [
-    {
-      path: "/tmp/test/alice-old.jsonl",
-      relativePath: "alice/alice-old.jsonl",
-      modifiedAtMilliseconds: Date.parse("1999-12-31T00:00:00.000Z"),
-    },
-    {
-      path: "/tmp/test/bob-recent.jsonl",
-      relativePath: "bob/bob-recent.jsonl",
-      modifiedAtMilliseconds: Date.parse("2000-01-02T00:00:00.000Z"),
-    },
-    {
-      path: "/tmp/test/alice-recent.jsonl",
-      relativePath: "alice/alice-recent.jsonl",
-      modifiedAtMilliseconds: Date.parse("2000-01-02T00:00:00.000Z"),
-    },
-    {
-      path: "/tmp/test/charlie-newest.jsonl",
-      relativePath: "charlie/charlie-newest.jsonl",
-      modifiedAtMilliseconds: Date.parse("2000-01-03T00:00:00.000Z"),
-    },
-  ];
-
-  it("selects recent files newest-first with a deterministic path tie-break and cap", () => {
-    expect(selectFilesForScan(files, false, currentTimeMilliseconds, 2)).toStrictEqual({
-      files: [files[3], files[2]],
-      skippedForAge: 1,
-      skippedForLimit: 1,
-    });
-  });
-
-  it("selects every file newest-first for a full scan", () => {
-    expect(selectFilesForScan(files, true, currentTimeMilliseconds, 2)).toStrictEqual({
-      files: [files[3], files[2], files[1], files[0]],
-      skippedForAge: 0,
-      skippedForLimit: 0,
-    });
-  });
-});
 
 describe("JsonlRecordSchema against disk", () => {
   const projectsDirectory = join(homedir(), ".claude", "projects");
@@ -186,6 +77,7 @@ describe("JsonlRecordSchema against disk", () => {
     const collected = await collectJsonlFiles(projectsDirectory);
     const selection = selectFilesForScan(collected.files, fullScan, Date.now(), DEFAULT_FILE_LIMIT);
     const failures: string[] = [];
+    let toolInputMismatches = 0;
     let parsedLines = 0;
     let skippedUnparseableLines = 0;
     let skippedUnavailableFiles = 0;
@@ -194,6 +86,7 @@ describe("JsonlRecordSchema against disk", () => {
       try {
         const validation = await validateFile(file);
         failures.push(...validation.failures);
+        toolInputMismatches += validation.toolInputMismatches;
         parsedLines += validation.parsedLines;
         skippedUnparseableLines += validation.skippedUnparseableLines;
       } catch {
@@ -207,7 +100,8 @@ describe("JsonlRecordSchema against disk", () => {
         `skipped ${selection.skippedForAge} stale files`,
         `${selection.skippedForLimit} files over the cap`,
         `${collected.skippedUnavailablePaths + skippedUnavailableFiles} unavailable paths`,
-        `and ${skippedUnparseableLines} unparseable lines`,
+        `${skippedUnparseableLines} unparseable lines`,
+        `and ${toolInputMismatches} malformed tool inputs`,
         `mode=${fullScan ? "full" : "recent"}`,
       ].join("; "),
     );
