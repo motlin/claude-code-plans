@@ -167,6 +167,9 @@ const BaseRecordFields = {
   leafUuid: z.string().optional(),
   agentId: z.string().optional(),
   sessionKind: z.string().optional(),
+  // Agent type that produced the record, e.g. "Explore" or "git:commit-handler".
+  // Written on subagent transcripts only.
+  attributionAgent: z.string().optional(),
 };
 
 export const PromptSourceSchema = z.enum(["typed", "system", "sdk", "queued"]);
@@ -623,6 +626,17 @@ const NestedMemoryAttachmentPayload = z
   })
   .strict();
 
+const TeamContextAttachmentPayload = z
+  .object({
+    type: z.literal("team_context"),
+    agentId: z.string().optional(),
+    agentName: z.string().optional(),
+    teamName: z.string().optional(),
+    teamConfigPath: z.string().optional(),
+    taskListPath: z.string().optional(),
+  })
+  .strict();
+
 export const AttachmentPayloadSchema = z.discriminatedUnion("type", [
   PlanModeAttachmentPayload,
   AutoModeAttachmentPayload,
@@ -663,6 +677,7 @@ export const AttachmentPayloadSchema = z.discriminatedUnion("type", [
   UltrathinkEffortAttachmentPayload,
   MaxTurnsReachedAttachmentPayload,
   WorkflowKeywordRequestAttachmentPayload,
+  TeamContextAttachmentPayload,
 ]);
 
 /**

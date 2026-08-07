@@ -260,6 +260,9 @@ const SendMessageInputSchema = z
     type: z.string().optional(),
     prompt: z.string().optional(),
     summary: z.string().optional(),
+    // Shutdown handshake between a team lead and its members.
+    request_id: z.string().optional(),
+    approve: z.boolean().optional(),
   })
   .strict();
 

@@ -229,6 +229,24 @@ describe("content block schemas", () => {
     expect(result.success).toBe(true);
   });
 
+  it("parses a tool_use block with a SendMessage shutdown response", () => {
+    const block = {
+      type: "tool_use",
+      id: "tu_123",
+      name: "SendMessage",
+      input: {
+        to: "team-lead",
+        message: { type: "shutdown_response", request_id: "shutdown-177@world2", approve: true },
+        type: "shutdown_response",
+        recipient: "team-lead",
+        request_id: "shutdown-177@world2",
+        approve: true,
+      },
+    };
+    const result = ContentBlockSchema.safeParse(block);
+    expect(result.success).toBe(true);
+  });
+
   it("parses a thinking block", () => {
     const block = {
       type: "thinking",
@@ -479,6 +497,35 @@ describe("JsonlRecordSchema", () => {
       },
     });
     expect(result.success).toBe(true);
+  });
+
+  it("parses team context attachments naming the agent and its team", () => {
+    const record = {
+      type: "attachment",
+      attachment: {
+        type: "team_context",
+        agentId: "item-refiner-2@session-2102dbaf",
+        agentName: "item-refiner-2",
+        teamName: "session-2102dbaf",
+        teamConfigPath: "/Users/craig/.claude/teams/session-2102dbaf/config.json",
+        taskListPath: "/Users/craig/.claude/tasks/session-2102dbaf/",
+      },
+    };
+
+    expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+  });
+
+  it("parses subagent assistant records carrying the attributing agent type", () => {
+    const record = {
+      type: "assistant",
+      ...baseFields,
+      isSidechain: true,
+      agentId: "abd1368f74dfe3095",
+      attributionAgent: "markdown-tasks:do-task",
+      message: { role: "assistant", content: [{ type: "text", text: "Working on it." }] },
+    };
+
+    expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
   });
 
   it("parses auto mode attachments with consent flow metadata", () => {

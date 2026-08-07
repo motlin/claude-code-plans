@@ -162,6 +162,7 @@ const attachmentVariants = {
   workflow_keyword_request: true,
   plan_file_reference: true,
   nested_memory: true,
+  team_context: true,
 } satisfies Record<z.infer<typeof AttachmentPayloadSchema>["type"], true>;
 
 /** Consumed selectively (text extraction etc.) — no single exhaustive handler. */

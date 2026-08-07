@@ -22,6 +22,7 @@ import {
   Pin,
   Plug,
   Search,
+  Users,
   Workflow,
   Wrench,
   Zap,
@@ -400,6 +401,15 @@ function AttachmentContent({
         <Banner
           icon={<Workflow className="h-3.5 w-3.5" />}
           label="Workflow keyword request"
+          sessionId={sessionId}
+          uuid={uuid}
+        />
+      );
+    case "team_context":
+      return (
+        <Banner
+          icon={<Users className="h-3.5 w-3.5" />}
+          label={`Team: ${attachment.agentName ?? attachment.agentId ?? "member"}${attachment.teamName ? ` (${attachment.teamName})` : ""}`}
           sessionId={sessionId}
           uuid={uuid}
         />

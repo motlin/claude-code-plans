@@ -13,6 +13,7 @@ const MINIMAL_BY_TYPE: Record<string, AttachmentPayload> = {
   auto_mode_exit: { type: "auto_mode_exit" },
   plan_file_reference: { type: "plan_file_reference" },
   nested_memory: { type: "nested_memory" },
+  team_context: { type: "team_context" },
   plan_mode_exit: { type: "plan_mode_exit" },
   plan_mode_reentry: { type: "plan_mode_reentry" },
   hook_success: {
