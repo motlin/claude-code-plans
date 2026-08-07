@@ -15,7 +15,7 @@ import {
   SubList,
 } from "./sublists";
 import { approvalsQueryOptions } from "../../lib/api/approvals";
-import { notificationsQueryOptions } from "../../lib/api/notifications";
+import { notificationsQueryOptions, useMarkNotificationsRead } from "../../lib/api/notifications";
 import { activeSessionsQueryOptions } from "../../lib/api/sessions";
 import { useSettings } from "../settings-provider";
 
@@ -38,13 +38,18 @@ export function Sidebar({
   const approvalsCount = approvalsData?.approvals.length ?? 0;
   const { data: notificationsData } = useQuery(notificationsQueryOptions());
   const unreadCount =
-    notificationsData?.notifications.filter((n) => n.notificationType === "agent_needs_input")
-      .length ?? 0;
+    notificationsData?.notifications.filter((notification) => notification.unread).length ?? 0;
+  const { mutate: markNotificationsRead } = useMarkNotificationsRead();
   const { settings } = useSettings();
   const { data: activeSessions } = useQuery(
     activeSessionsQueryOptions(settings.activeTimeoutSec * 1000),
   );
   const activeCount = activeSessions?.length ?? 0;
+
+  useEffect(() => {
+    if (!currentPath.startsWith("/notifications") || unreadCount === 0) return;
+    markNotificationsRead();
+  }, [currentPath, unreadCount, markNotificationsRead]);
 
   function toggleSection(section: Section) {
     setCollapsedSections((prev) => {
@@ -143,7 +148,7 @@ export function Sidebar({
               : item.section === "approvals"
                 ? { count: approvalsCount, title: `${approvalsCount} awaiting approval` }
                 : item.section === "notifications"
-                  ? { count: unreadCount, title: `${unreadCount} needing input` }
+                  ? { count: unreadCount, title: `${unreadCount} unread` }
                   : null;
           return (
             <div key={item.to}>

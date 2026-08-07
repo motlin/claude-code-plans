@@ -47,6 +47,7 @@ import { getSubagentLifecycleKey, toSubagentSessionId } from "../lib/subagents";
 import { observeSessionState } from "../lib/unread-store";
 import { isLiveSessionState, type ActivityState } from "../lib/session-state";
 import type { Statusline } from "../lib/api/statusline";
+import type { Notification, NotificationsData } from "../lib/api/notifications";
 
 // ---------------------------------------------------------------------------
 // State types
@@ -780,16 +781,14 @@ function applyApprovalResolved(queryClient: QueryClient, sessionId: string): voi
   }
 }
 
-type NotificationsData = { notifications: NotificationEntryPayload[] };
-
 function upsertNotification(
-  notifications: NotificationEntryPayload[],
+  notifications: Notification[],
   notification: NotificationEntryPayload,
-): NotificationEntryPayload[] {
+): Notification[] {
   // Newest-first: drop any existing entry with the same id, then prepend the
   // fresh one so the list matches the store's newest-first ordering.
   const rest = notifications.filter((n) => n.id !== notification.id);
-  return [notification, ...rest];
+  return [{ ...notification, unread: true }, ...rest];
 }
 
 export function applyNotificationAdded(

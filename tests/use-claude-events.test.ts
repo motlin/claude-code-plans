@@ -801,33 +801,44 @@ function makeNotification(
   };
 }
 
-type NotificationsData = { notifications: NotificationEntryPayload[] };
+type NotificationsData = {
+  notifications: Array<NotificationEntryPayload & { unread: boolean }>;
+};
 
 describe("applyNotificationAdded", () => {
   it("prepends the new notification newest-first into both the global and per-project slices", () => {
     const queryClient = new QueryClient();
     const existing = makeNotification({ id: "old", projectId: "proj-a" });
     queryClient.setQueryData<NotificationsData>(["notifications"], {
-      notifications: [existing],
+      notifications: [{ ...existing, unread: false }],
     });
     queryClient.setQueryData<NotificationsData>(["notifications", "proj-a"], {
-      notifications: [existing],
+      notifications: [{ ...existing, unread: false }],
     });
 
     applyNotificationAdded(queryClient, makeNotification({ id: "new", projectId: "proj-a" }));
 
     const global = queryClient.getQueryData<NotificationsData>(["notifications"]);
     const scoped = queryClient.getQueryData<NotificationsData>(["notifications", "proj-a"]);
-    expect(global?.notifications.map((n) => n.id)).toStrictEqual(["new", "old"]);
-    expect(scoped?.notifications.map((n) => n.id)).toStrictEqual(["new", "old"]);
+    expect(global?.notifications.map(({ id, unread }) => ({ id, unread }))).toStrictEqual([
+      { id: "new", unread: true },
+      { id: "old", unread: false },
+    ]);
+    expect(scoped?.notifications.map(({ id, unread }) => ({ id, unread }))).toStrictEqual([
+      { id: "new", unread: true },
+      { id: "old", unread: false },
+    ]);
   });
 
   it("replaces an existing entry with the same id and moves it to the front", () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData<NotificationsData>(["notifications"], {
       notifications: [
-        makeNotification({ id: "a", projectId: "proj-a", message: "old text" }),
-        makeNotification({ id: "b", projectId: "proj-a" }),
+        {
+          ...makeNotification({ id: "a", projectId: "proj-a", message: "old text" }),
+          unread: false,
+        },
+        { ...makeNotification({ id: "b", projectId: "proj-a" }), unread: false },
       ],
     });
 
@@ -837,8 +848,12 @@ describe("applyNotificationAdded", () => {
     );
 
     const global = queryClient.getQueryData<NotificationsData>(["notifications"]);
-    expect(global?.notifications.map((n) => n.id)).toStrictEqual(["a", "b"]);
-    expect(global?.notifications[0]?.message).toBe("new text");
+    expect(
+      global?.notifications.map(({ id, message, unread }) => ({ id, message, unread })),
+    ).toStrictEqual([
+      { id: "a", message: "new text", unread: true },
+      { id: "b", message: "Message b", unread: false },
+    ]);
   });
 
   it("is a no-op when a slice has never been populated", () => {
@@ -854,12 +869,12 @@ describe("applyNotificationCleared", () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData<NotificationsData>(["notifications"], {
       notifications: [
-        makeNotification({ id: "a", projectId: "proj-a" }),
-        makeNotification({ id: "b", projectId: "proj-b" }),
+        { ...makeNotification({ id: "a", projectId: "proj-a" }), unread: true },
+        { ...makeNotification({ id: "b", projectId: "proj-b" }), unread: false },
       ],
     });
     queryClient.setQueryData<NotificationsData>(["notifications", "proj-a"], {
-      notifications: [makeNotification({ id: "a", projectId: "proj-a" })],
+      notifications: [{ ...makeNotification({ id: "a", projectId: "proj-a" }), unread: true }],
     });
 
     applyNotificationCleared(queryClient, { id: "a" });
@@ -878,12 +893,12 @@ describe("applyNotificationCleared", () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData<NotificationsData>(["notifications"], {
       notifications: [
-        makeNotification({ id: "a", projectId: "proj-a" }),
-        makeNotification({ id: "b", projectId: "proj-b" }),
+        { ...makeNotification({ id: "a", projectId: "proj-a" }), unread: true },
+        { ...makeNotification({ id: "b", projectId: "proj-b" }), unread: false },
       ],
     });
     queryClient.setQueryData<NotificationsData>(["notifications", "proj-a"], {
-      notifications: [makeNotification({ id: "a", projectId: "proj-a" })],
+      notifications: [{ ...makeNotification({ id: "a", projectId: "proj-a" }), unread: true }],
     });
 
     applyNotificationCleared(queryClient, { all: true });

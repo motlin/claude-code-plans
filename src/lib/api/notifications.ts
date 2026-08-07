@@ -5,11 +5,12 @@ import { apiFetch } from "./client";
 
 /**
  * A single persisted agent notification as returned by `/api/notifications`.
- * Mirrors the server store's `NotificationEntry` / `NotificationEntryPayload`.
- * `notificationType` is the freeform discriminator (`agent_needs_input` /
- * `agent_completed` / unknown) classified in the presentation layer. `title` is
- * optional (absent when the hook carried none). `createdAt` is epoch ms;
- * `createdAtIso` is the ISO form used for relative-time rendering.
+ * Fields through `createdAtIso` mirror the server store's `NotificationEntry` /
+ * `NotificationEntryPayload`; `unread` is derived by the API. `notificationType`
+ * is the freeform discriminator (`agent_needs_input` / `agent_completed` /
+ * unknown) classified in the presentation layer. `title` is optional (absent
+ * when the hook carried none). `createdAt` is epoch ms; `createdAtIso` is the ISO
+ * form used for relative-time rendering.
  */
 const NotificationSchema = z.object({
   id: z.string(),
@@ -21,6 +22,7 @@ const NotificationSchema = z.object({
   notificationType: z.string(),
   createdAt: z.number(),
   createdAtIso: z.string(),
+  unread: z.boolean(),
 });
 export type Notification = z.infer<typeof NotificationSchema>;
 
@@ -75,6 +77,18 @@ function clearCache(qc: QueryClient): void {
   }
 }
 
+export function markNotificationsReadInCache(qc: QueryClient): void {
+  for (const [key, data] of qc.getQueriesData<NotificationsData>({ queryKey: ["notifications"] })) {
+    if (!data) continue;
+    qc.setQueryData<NotificationsData>(key, {
+      notifications: data.notifications.map((notification) => ({
+        ...notification,
+        unread: false,
+      })),
+    });
+  }
+}
+
 /** Dismiss a single notification (DELETE /api/notifications/:id) with optimistic removal. */
 export const useDismissNotification = () => {
   const qc = useQueryClient();
@@ -97,6 +111,18 @@ export const useClearNotifications = () => {
       apiFetch("/api/notifications", NotificationMutationResponse, { method: "DELETE" }),
     onMutate: () => {
       clearCache(qc);
+    },
+  });
+};
+
+/** Mark all notifications read (PATCH /api/notifications) while keeping their history visible. */
+export const useMarkNotificationsRead = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiFetch("/api/notifications", NotificationMutationResponse, { method: "PATCH" }),
+    onMutate: () => {
+      markNotificationsReadInCache(qc);
     },
   });
 };
