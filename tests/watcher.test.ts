@@ -479,6 +479,11 @@ describe("shouldIgnoreWatch", () => {
     expect(shouldIgnoreWatch("/foo/node_modules/react/package.json")).toBe(true);
   });
 
+  it("ignores agent context subtrees", () => {
+    expect(shouldIgnoreWatch("/foo/.llm")).toBe(true);
+    expect(shouldIgnoreWatch("/foo/.llm/cached-repository/src/index.ts")).toBe(true);
+  });
+
   it("ignores common build / cache / vendor directories", () => {
     expect(shouldIgnoreWatch("/foo/dist/bundle.js")).toBe(true);
     expect(shouldIgnoreWatch("/foo/build/output.json")).toBe(true);
@@ -622,16 +627,20 @@ describe("shouldIgnoreWatch with configured ignored dirs", () => {
     expect(shouldIgnoreWatch("/foo/aab/x.json", fileStats)).toBe(false);
   });
 
-  it("watches every regular-file extension only inside configured file roots", () => {
+  it("watches searchable file extensions only inside configured file roots", () => {
     __testing.setFileContentRoots(["/tmp/test/allowed"]);
 
     expect({
+      ignoredBinary: shouldIgnoreWatch("/tmp/test/allowed/diagram.png", fileStats),
       ignoredInsideRoot: shouldIgnoreWatch("/tmp/test/allowed/alice.custom", fileStats),
       ignoredOutsideRoot: shouldIgnoreWatch("/tmp/test/outside/alice.custom", fileStats),
+      ignoredSourceMap: shouldIgnoreWatch("/tmp/test/allowed/bundle.js.map", fileStats),
       ignoredSubtree: shouldIgnoreWatch("/tmp/test/allowed/node_modules/alice.custom", fileStats),
     }).toStrictEqual({
+      ignoredBinary: true,
       ignoredInsideRoot: false,
       ignoredOutsideRoot: true,
+      ignoredSourceMap: true,
       ignoredSubtree: true,
     });
   });

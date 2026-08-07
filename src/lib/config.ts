@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { realpath, stat } from "node:fs/promises";
-import { homedir } from "node:os";
-import { isAbsolute, join, relative, sep } from "node:path";
+import { homedir, tmpdir } from "node:os";
+import { isAbsolute, join, parse, relative, sep } from "node:path";
 import { z } from "zod";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { listFileSearchProjectPathsFromDb } from "./db/queries";
@@ -75,28 +75,41 @@ function isContainedPath(path: string, root: string): boolean {
   );
 }
 
-/** Resolve configured file roots to unique, existing, real directories. */
-export async function resolveConfiguredFileRoots(
-  configPath: string = getConfigPath(),
-  defaultRoots: readonly string[] = [],
+async function resolveDirectoryRoots(
+  roots: readonly string[],
+  excludedResolvedRoots: ReadonlySet<string> = new Set(),
+  overlapPreference: "widest" | "narrowest" = "widest",
 ): Promise<string[]> {
-  const configuredRoots = readConfig(configPath)?.file_roots ?? defaultRoots;
   const resolvedRoots: string[] = [];
 
-  for (const configuredRoot of configuredRoots) {
+  for (const root of roots) {
     let resolvedRoot: string;
     try {
-      resolvedRoot = await realpath(configuredRoot);
+      resolvedRoot = await realpath(root);
       if (!(await stat(resolvedRoot)).isDirectory()) continue;
     } catch {
       continue;
     }
-    if (resolvedRoots.some((root) => isContainedPath(resolvedRoot, root))) continue;
+    if (excludedResolvedRoots.has(resolvedRoot)) continue;
+    if (
+      resolvedRoots.some((root) =>
+        overlapPreference === "widest"
+          ? isContainedPath(resolvedRoot, root)
+          : isContainedPath(root, resolvedRoot),
+      )
+    ) {
+      continue;
+    }
 
-    // Prefer the widest explicitly configured root when roots overlap, so
-    // chokidar and the initial scan traverse each file only once.
+    // Keep roots non-overlapping so chokidar and the initial scan traverse
+    // each file only once.
     for (let index = resolvedRoots.length - 1; index >= 0; index -= 1) {
-      if (isContainedPath(resolvedRoots[index]!, resolvedRoot)) {
+      const existingRoot = resolvedRoots[index]!;
+      const shouldReplace =
+        overlapPreference === "widest"
+          ? isContainedPath(existingRoot, resolvedRoot)
+          : isContainedPath(resolvedRoot, existingRoot);
+      if (shouldReplace) {
         resolvedRoots.splice(index, 1);
       }
     }
@@ -106,12 +119,44 @@ export async function resolveConfiguredFileRoots(
   return resolvedRoots;
 }
 
+/** Resolve configured file roots to unique, existing, real directories. */
+export async function resolveConfiguredFileRoots(
+  configPath: string = getConfigPath(),
+  defaultRoots: readonly string[] = [],
+): Promise<string[]> {
+  return resolveDirectoryRoots(readConfig(configPath)?.file_roots ?? defaultRoots);
+}
+
 /** Resolve explicit file roots, or indexed project paths when the setting is absent. */
 export async function resolveFileSearchRoots(
   indexDatabase: BetterSQLite3Database<typeof schema>,
   configPath: string = getConfigPath(),
 ): Promise<string[]> {
-  return resolveConfiguredFileRoots(configPath, listFileSearchProjectPathsFromDb(indexDatabase));
+  const configuredRoots = readConfig(configPath)?.file_roots;
+  if (configuredRoots !== undefined) return resolveDirectoryRoots(configuredRoots);
+
+  const resolvedHome = await realpath(homedir());
+  const filesystemRoot = parse(resolvedHome).root;
+  const broadRootCandidates = [
+    resolvedHome,
+    filesystemRoot,
+    tmpdir(),
+    join(filesystemRoot, "tmp"),
+    join(filesystemRoot, "var", "tmp"),
+  ];
+  const broadRoots = new Set<string>();
+  for (const candidate of broadRootCandidates) {
+    try {
+      broadRoots.add(await realpath(candidate));
+    } catch {
+      // A platform may not provide every conventional temporary directory.
+    }
+  }
+  return resolveDirectoryRoots(
+    listFileSearchProjectPathsFromDb(indexDatabase),
+    broadRoots,
+    "narrowest",
+  );
 }
 
 /** Resolve a requested search directory and prove it remains inside a configured real root. */

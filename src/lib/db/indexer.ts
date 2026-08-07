@@ -1,6 +1,6 @@
 import { lstat, readdir, readFile, realpath, stat } from "node:fs/promises";
 import { createReadStream, type Dirent } from "node:fs";
-import { join, basename, isAbsolute, relative, resolve, sep } from "node:path";
+import { join, basename, extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { createInterface } from "node:readline";
 import { eq, notInArray, sql } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
@@ -20,9 +20,68 @@ type IndexDb = BetterSQLite3Database<typeof schema>;
 
 const PLAN_PATH_RE = /\.claude\/plans\/([^/]+\.md)$/;
 const FILE_CONTENT_CACHE_PREFIX = "file-content:";
+const FILE_CONTENT_CLEANUP_BATCH_SIZE = 100;
 // Four bound values per row keep each insert below SQLite's historical 999-variable limit.
 const SESSION_MESSAGE_INSERT_BATCH_SIZE = 200;
 export const FILE_CONTENT_SIZE_CAP_BYTES = 5 * 1024 * 1024;
+
+const NON_SEARCHABLE_FILE_EXTENSIONS = new Set([
+  ".7z",
+  ".a",
+  ".avi",
+  ".avif",
+  ".bin",
+  ".bmp",
+  ".bz2",
+  ".class",
+  ".db",
+  ".dll",
+  ".dmg",
+  ".doc",
+  ".docx",
+  ".eot",
+  ".exe",
+  ".flac",
+  ".gif",
+  ".gz",
+  ".ico",
+  ".icns",
+  ".jar",
+  ".jpeg",
+  ".jpg",
+  ".m4a",
+  ".map",
+  ".mkv",
+  ".mov",
+  ".mp3",
+  ".mp4",
+  ".o",
+  ".ogg",
+  ".otf",
+  ".pdf",
+  ".png",
+  ".rar",
+  ".so",
+  ".sqlite",
+  ".sqlite3",
+  ".tar",
+  ".tiff",
+  ".ttf",
+  ".wav",
+  ".webm",
+  ".webp",
+  ".woff",
+  ".woff2",
+  ".xls",
+  ".xlsx",
+  ".xz",
+  ".zip",
+]);
+
+/** Reject known binary files and generated source maps before opening them. */
+export function isFileContentIndexable(filePath: string): boolean {
+  return !NON_SEARCHABLE_FILE_EXTENSIONS.has(extname(filePath).toLowerCase());
+}
 
 function persistProject(
   db: IndexDb,
@@ -114,6 +173,7 @@ export async function indexFileContent(
 ): Promise<{ changed: boolean }> {
   const normalizedPath = resolve(filePath);
   if (!isPathInsideFileContentRoots(normalizedPath, roots)) return { changed: false };
+  if (!isFileContentIndexable(normalizedPath)) return { changed: false };
 
   let resolvedPath: string;
   let fileStat: Awaited<ReturnType<typeof stat>>;
@@ -194,6 +254,15 @@ export async function scanFileContentRoots(
 ): Promise<void> {
   const discoveredPaths = new Set<string>();
   let scanComplete = true;
+  const cachedFiles = db.all(
+    sql`SELECT path, mtime_ms, size_bytes FROM indexed_files WHERE path LIKE ${`${FILE_CONTENT_CACHE_PREFIX}%`}`,
+  ) as Array<{ path: string; mtime_ms: number; size_bytes: number }>;
+  const cachedMetadataByPath = new Map(
+    cachedFiles.map((file) => [
+      file.path.slice(FILE_CONTENT_CACHE_PREFIX.length),
+      { mtimeMs: file.mtime_ms, sizeBytes: file.size_bytes },
+    ]),
+  );
 
   const walk = async (directoryPath: string): Promise<void> => {
     let entries: Dirent[];
@@ -208,8 +277,21 @@ export async function scanFileContentRoots(
       const entryPath = join(directoryPath, entry.name);
       if (entry.isDirectory()) {
         if (!ignoredDirNames.has(entry.name)) await walk(entryPath);
-      } else if (entry.isFile()) {
-        discoveredPaths.add(resolve(entryPath));
+      } else if (entry.isFile() && isFileContentIndexable(entryPath)) {
+        const resolvedPath = resolve(entryPath);
+        discoveredPaths.add(resolvedPath);
+        try {
+          const fileStat = await stat(entryPath);
+          const cachedMetadata = cachedMetadataByPath.get(resolvedPath);
+          if (
+            cachedMetadata?.mtimeMs === fileStat.mtimeMs &&
+            cachedMetadata.sizeBytes === fileStat.size
+          ) {
+            continue;
+          }
+        } catch {
+          continue;
+        }
         await indexFileContent(db, entryPath, roots);
       }
     }
@@ -221,11 +303,25 @@ export async function scanFileContentRoots(
   }
 
   const indexedPaths = db.all(sql`SELECT path FROM file_content_fts`) as Array<{ path: string }>;
-  for (const indexedPath of indexedPaths) {
-    const stillAllowed = isPathInsideFileContentRoots(indexedPath.path, roots);
-    if (!stillAllowed || (scanComplete && !discoveredPaths.has(indexedPath.path))) {
-      deleteFileContentRows(db, indexedPath.path);
-    }
+  const stalePaths = indexedPaths
+    .map((indexedPath) => indexedPath.path)
+    .filter(
+      (indexedPath) =>
+        !isPathInsideFileContentRoots(indexedPath, roots) ||
+        (scanComplete && !discoveredPaths.has(indexedPath)),
+    );
+  for (let offset = 0; offset < stalePaths.length; offset += FILE_CONTENT_CLEANUP_BATCH_SIZE) {
+    const batch = stalePaths.slice(offset, offset + FILE_CONTENT_CLEANUP_BATCH_SIZE);
+    db.transaction((transaction) => {
+      for (const stalePath of batch) {
+        transaction.run(sql`DELETE FROM file_content_fts WHERE path = ${stalePath}`);
+        transaction
+          .delete(schema.indexedFiles)
+          .where(eq(schema.indexedFiles.path, fileContentCachePath(stalePath)))
+          .run();
+      }
+    });
+    await new Promise<void>((resolveYield) => setImmediate(resolveYield));
   }
 }
 

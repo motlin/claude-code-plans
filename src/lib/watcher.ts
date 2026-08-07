@@ -11,6 +11,7 @@ import {
   deletePlan,
   indexFile,
   indexFileContent,
+  isFileContentIndexable,
   isPathInsideFileContentRoots,
 } from "./db/indexer";
 import {
@@ -106,6 +107,7 @@ const DEFAULT_IGNORED_DIR_NAMES = [
   ".turbo",
   ".vite",
   ".cache",
+  ".llm",
   ".venv",
   "target",
   // Plugin cache runtime markers: each installed plugin holds 600+ tiny
@@ -179,7 +181,10 @@ let ignoredDirPattern = buildIgnoredDirPattern(resolveIgnoredDirNames());
 export function shouldIgnoreWatch(path: string, stats?: Stats): boolean {
   if (ignoredDirPattern.test(path)) return true;
   if (stats && !stats.isFile() && !stats.isDirectory()) return true;
-  if (stats?.isFile() && !isPathInsideFileContentRoots(path, fileContentRoots)) {
+  if (stats?.isFile() && isPathInsideFileContentRoots(path, fileContentRoots)) {
+    return !isFileContentIndexable(path);
+  }
+  if (stats?.isFile()) {
     const dot = path.lastIndexOf(".");
     const ext = dot >= 0 ? path.slice(dot) : "";
     if (!WATCHED_EXTENSIONS.has(ext)) return true;

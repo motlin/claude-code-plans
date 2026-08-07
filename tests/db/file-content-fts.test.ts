@@ -7,8 +7,8 @@ import {
   utimesSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { homedir, tmpdir } from "node:os";
+import { join, parse } from "node:path";
 import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { resolveConfiguredFileRoots, resolveFileSearchRoots } from "../../src/lib/config";
@@ -164,6 +164,28 @@ describe("file content FTS", () => {
     });
   });
 
+  it("skips generated source maps and known binary extensions", async () => {
+    const sourceMapPath = join(allowedRoot, "bundle.js.map");
+    const imagePath = join(allowedRoot, "diagram.png");
+    const sourcePath = join(allowedRoot, "source.ts");
+    writeFileSync(sourceMapPath, JSON.stringify({ sourcesContent: ["generated duplicate"] }));
+    writeFileSync(imagePath, Buffer.from([137, 80, 78, 71]));
+    writeFileSync(sourcePath, "export const source = 'searchable';\n");
+
+    expect({
+      image: await indexFileContent(db.index, imagePath, [allowedRoot]),
+      sourceMap: await indexFileContent(db.index, sourceMapPath, [allowedRoot]),
+    }).toStrictEqual({
+      image: { changed: false },
+      sourceMap: { changed: false },
+    });
+    await scanFileContentRoots(db.index, [allowedRoot], EMPTY_IGNORED_DIR_NAMES);
+
+    expect(rows()).toStrictEqual([
+      { path: sourcePath, content: "export const source = 'searchable';\n" },
+    ]);
+  });
+
   it("performs no SQLite write when file metadata is unchanged", async () => {
     const filePath = join(allowedRoot, "alice.txt");
     writeFileSync(filePath, "Stable content for Alice.\n");
@@ -180,24 +202,48 @@ describe("file content FTS", () => {
     });
   });
 
+  it("performs no SQLite write when a startup scan finds unchanged metadata", async () => {
+    const filePath = join(allowedRoot, "alice.txt");
+    writeFileSync(filePath, "Stable startup content for Alice.\n");
+    await scanFileContentRoots(db.index, [allowedRoot], EMPTY_IGNORED_DIR_NAMES);
+    const before = db.index.get(sql`SELECT total_changes() AS changes`) as { changes: number };
+
+    await scanFileContentRoots(db.index, [allowedRoot], EMPTY_IGNORED_DIR_NAMES);
+    const after = db.index.get(sql`SELECT total_changes() AS changes`) as { changes: number };
+
+    expect({ after, before, rows: rows() }).toStrictEqual({
+      after: before,
+      before,
+      rows: [{ path: filePath, content: "Stable startup content for Alice.\n" }],
+    });
+  });
+
   it("initially discovers nested files while excluding ignored and outside directories", async () => {
     const nestedDirectory = join(allowedRoot, "nested");
     const ignoredDirectory = join(allowedRoot, "vendor");
+    const agentContextDirectory = join(allowedRoot, ".llm", "cached-repository");
     const outsideDirectory = join(fixtureDirectory, "outside");
     mkdirSync(nestedDirectory);
     mkdirSync(ignoredDirectory);
+    mkdirSync(agentContextDirectory, { recursive: true });
     mkdirSync(outsideDirectory);
     const nestedPath = join(nestedDirectory, "alice.ts");
     const ignoredPath = join(ignoredDirectory, "bob.ts");
+    const agentContextPath = join(agentContextDirectory, "cached.ts");
     const outsidePath = join(outsideDirectory, "charlie.ts");
     writeFileSync(nestedPath, "export const alice = 'discoverable';\n");
     writeFileSync(ignoredPath, "export const bob = 'ignored';\n");
+    writeFileSync(agentContextPath, "export const cached = 'ignored';\n");
     writeFileSync(outsidePath, "export const charlie = 'outside';\n");
 
     expect(await indexFileContent(db.index, outsidePath, [allowedRoot])).toStrictEqual({
       changed: false,
     });
-    await scanFileContentRoots(db.index, [allowedRoot], new Set(["vendor"]));
+    await scanFileContentRoots(
+      db.index,
+      [allowedRoot],
+      new Set(["vendor", ...watcherTesting.DEFAULT_IGNORED_DIR_NAMES]),
+    );
 
     expect(rows()).toStrictEqual([
       { path: nestedPath, content: "export const alice = 'discoverable';\n" },
@@ -245,7 +291,7 @@ describe("file content FTS", () => {
     expect(await resolveConfiguredFileRoots(configPath)).toStrictEqual([]);
   });
 
-  it("uses distinct indexed project paths when file_roots is unset", async () => {
+  it("uses the most specific indexed project paths when file_roots is unset", async () => {
     const nestedRoot = join(allowedRoot, "nested");
     mkdirSync(nestedRoot);
     const configPath = join(fixtureDirectory, "config.json");
@@ -266,8 +312,58 @@ describe("file content FTS", () => {
     const explicitlyEmptyRoots = await resolveFileSearchRoots(db.index, configPath);
 
     expect({ defaultRoots, explicitlyEmptyRoots }).toStrictEqual({
-      defaultRoots: [allowedRoot],
+      defaultRoots: [nestedRoot],
       explicitlyEmptyRoots: [],
+    });
+  });
+
+  it("excludes broad inferred roots while preserving explicit configuration", async () => {
+    const configPath = join(fixtureDirectory, "config.json");
+    const userHome = realpathSync(homedir());
+    const filesystemRoot = parse(userHome).root;
+    db.index
+      .insert(schema.projects)
+      .values([
+        { id: "allowed", name: "Allowed", projectPath: allowedRoot, updatedAt: 3_000 },
+        { id: "home", name: "Home", projectPath: userHome, updatedAt: 2_000 },
+        { id: "root", name: "Root", projectPath: filesystemRoot, updatedAt: 1_000 },
+      ])
+      .run();
+
+    writeFileSync(configPath, JSON.stringify({}));
+    const inferredRoots = await resolveFileSearchRoots(db.index, configPath);
+
+    writeFileSync(configPath, JSON.stringify({ file_roots: [userHome] }));
+    const explicitRoots = await resolveFileSearchRoots(db.index, configPath);
+
+    expect({ inferredRoots, explicitRoots }).toStrictEqual({
+      inferredRoots: [allowedRoot],
+      explicitRoots: [userHome],
+    });
+  });
+
+  it("excludes a system temporary directory unless it is explicitly configured", async () => {
+    const configPath = join(fixtureDirectory, "config.json");
+    const systemTemporaryRoot = realpathSync(tmpdir());
+    db.index
+      .insert(schema.projects)
+      .values({
+        id: "temporary",
+        name: "Temporary",
+        projectPath: systemTemporaryRoot,
+        updatedAt: 1_000,
+      })
+      .run();
+
+    writeFileSync(configPath, JSON.stringify({}));
+    const inferredRoots = await resolveFileSearchRoots(db.index, configPath);
+
+    writeFileSync(configPath, JSON.stringify({ file_roots: [systemTemporaryRoot] }));
+    const explicitRoots = await resolveFileSearchRoots(db.index, configPath);
+
+    expect({ explicitRoots, inferredRoots }).toStrictEqual({
+      explicitRoots: [systemTemporaryRoot],
+      inferredRoots: [],
     });
   });
 
