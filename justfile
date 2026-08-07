@@ -55,10 +55,14 @@ format: install
 check: install
     vp check {{ if ci != "" { "" } else { "--fix" } }}
 
-# Run tests
-test *args: install
+[private]
+_test *args:
     {{ if ci != "" { "if test -x node_modules/.bin/playwright; then vp exec playwright install --with-deps chromium; fi" } else { "true" } }}
     vp run test:run {{args}}
+
+# Run tests
+test *args: install
+    just _test {{args}}
 
 # Type-check the project (build first to generate routeTree.gen.ts)
 typecheck: install build
@@ -97,7 +101,7 @@ pre-commit: install
 # Run all pre-commit checks
 [arg("quick", long, value="true", help="Skip tests")]
 verify quick="": check build fallow pre-commit
-    {{ if quick != "true" { "just test" } else { "true" } }}
+    {{ if quick != "true" { "just _test" } else { "true" } }}
     @echo "All pre-commit checks passed!"
 
 # Deprecated alias for `verify`
