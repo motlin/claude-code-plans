@@ -30,6 +30,7 @@ export interface PluginInfo {
   id: string;
   name: string;
   version: string;
+  versionKind: "commit" | "release";
   description: string;
   author: string;
   marketplace: string;
@@ -165,6 +166,10 @@ export function isOfficialMarketplace(marketplaceId: string): boolean {
   return marketplaceId === "claude-plugins-official" || marketplaceId === "anthropic-agent-skills";
 }
 
+export function getPluginVersionKind(version: string): PluginInfo["versionKind"] {
+  return /^[0-9a-f]{7,40}$/i.test(version) ? "commit" : "release";
+}
+
 export async function listPlugins(): Promise<PluginInfo[]> {
   const registryPath = join(homedir(), ".claude", "plugins", "installed_plugins.json");
   let registry: {
@@ -203,10 +208,13 @@ export async function listPlugins(): Promise<PluginInfo[]> {
     const commands = await readMdFiles(join(install.installPath, "commands"), "command");
     const skills = await scanSkills(join(install.installPath, "skills"));
 
+    const version = pluginJson.version || install.version;
+
     plugins.push({
       id,
       name: pluginJson.name || id.split("@")[0] || id,
-      version: pluginJson.version || install.version,
+      version,
+      versionKind: getPluginVersionKind(version),
       description: pluginJson.description || "",
       author: pluginJson.author?.name || "",
       marketplace: extractMarketplace(id),

@@ -24,6 +24,7 @@ import { useMemo, useState } from "react";
 import { FileTree } from "../components/file-tree";
 import { toMdSlug, toPluginFileSlug } from "../lib/md-slug";
 import { ListPageHeader } from "../components/list-page-header";
+import { PluginVersion } from "../components/plugin-version";
 
 export const Route = createFileRoute("/plugins")({
   component: PluginsPage,
@@ -110,7 +111,7 @@ function PluginCard({ plugin }: { plugin: PluginInfoData }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="font-semibold">{plugin.name}</span>
-            <span className="text-xs text-text-500">v{plugin.version}</span>
+            <PluginVersion version={plugin.version} versionKind={plugin.versionKind} />
           </div>
           {plugin.description && (
             <p className="mt-0.5 text-sm text-text-500 line-clamp-2">{plugin.description}</p>

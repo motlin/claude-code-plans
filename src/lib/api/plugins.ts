@@ -24,6 +24,7 @@ const PluginInfoSchema = z.object({
   id: z.string(),
   name: z.string(),
   version: z.string(),
+  versionKind: z.enum(["commit", "release"]),
   description: z.string(),
   author: z.string(),
   marketplace: z.string(),

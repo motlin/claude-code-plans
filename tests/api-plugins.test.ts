@@ -7,6 +7,7 @@ function makePlugin(id: string, name: string): PluginInfoData {
     id,
     name,
     version: "1.0.0",
+    versionKind: "release",
     description: "",
     author: "",
     marketplace,

@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { PluginFileSchema } from "./api/plugins";
+import type { PluginFileSchema, PluginListResponse } from "./api/plugins";
 import type { SessionSummaryStateSchema } from "./api/sessions";
 import type { SourceFileResponse } from "./api/source";
 import type { HookEvent, ToolUseUnion } from "./hook-events";
@@ -103,6 +103,11 @@ const pluginFileTypeLabels = {
   reference: "Reference",
   example: "Example",
 } satisfies Record<z.infer<typeof PluginFileSchema>["type"], string>;
+
+const pluginVersionKindLabels = {
+  commit: "Commit",
+  release: "Release",
+} satisfies Record<z.infer<typeof PluginListResponse>[number]["versionKind"], string>;
 
 const systemSubtypeLabels = {
   compact_boundary: "Compaction",
@@ -269,4 +274,5 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   "HookEventEnvelope.<PostToolUseFailure>": toolNames,
   "SourceFileResponse.language": sourceLanguageLabels,
   "PluginFileSchema.type": pluginFileTypeLabels,
+  "PluginListResponse[].versionKind": pluginVersionKindLabels,
 };
