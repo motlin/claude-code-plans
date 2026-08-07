@@ -8,6 +8,7 @@ import { DebugLink } from "../components/debug-link";
 import { MarkdownInline, MarkdownView } from "../components/markdown-view";
 import { TaskMetadata } from "../components/task-metadata";
 import { TaskOwner } from "../components/task-owner";
+import { ListPageHeader } from "../components/list-page-header";
 import { filterTasks } from "../lib/task-search";
 
 export const Route = createFileRoute("/tasks")({
@@ -37,6 +38,7 @@ function TasksPage() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [view, setView] = useState<View>("list");
   const [searchQuery, setSearchQuery] = useState("");
+  const taskCount = groups.reduce((total, group) => total + group.tasks.length, 0);
   const visibleGroups = useMemo(
     () =>
       groups
@@ -86,27 +88,31 @@ function TasksPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Tasks</h1>
-        <div className="flex items-center gap-1 rounded-md border border-border-300/30 p-0.5">
-          <button
-            type="button"
-            onClick={() => setView("list")}
-            className={`rounded px-2 py-1 text-xs transition-colors ${view === "list" ? "bg-bg-200 text-text-100" : "text-text-500 hover:text-text-300"}`}
-            title="List view"
-          >
-            <List className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("graph")}
-            className={`rounded px-2 py-1 text-xs transition-colors ${view === "graph" ? "bg-bg-200 text-text-100" : "text-text-500 hover:text-text-300"}`}
-            title="Dependency graph"
-          >
-            <GitBranch className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      </div>
+      <ListPageHeader
+        title="Tasks"
+        count={taskCount}
+        itemLabel="task"
+        actions={
+          <div className="flex items-center gap-1 rounded-md border border-border-300/30 p-0.5">
+            <button
+              type="button"
+              onClick={() => setView("list")}
+              className={`rounded px-2 py-1 text-xs transition-colors ${view === "list" ? "bg-bg-200 text-text-100" : "text-text-500 hover:text-text-300"}`}
+              title="List view"
+            >
+              <List className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("graph")}
+              className={`rounded px-2 py-1 text-xs transition-colors ${view === "graph" ? "bg-bg-200 text-text-100" : "text-text-500 hover:text-text-300"}`}
+              title="Dependency graph"
+            >
+              <GitBranch className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        }
+      />
 
       <input
         type="search"

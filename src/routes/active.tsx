@@ -6,6 +6,7 @@ import { ActiveSessionListResponse, activeSessionsQueryOptions } from "../lib/ap
 import { useClaudeEvents } from "../hooks/use-claude-events";
 import { DEFAULTS, useSettings } from "../components/settings-provider";
 import { StatusDot } from "../components/sidebar/primitives/StatusDot";
+import { ListPageHeader } from "../components/list-page-header";
 import {
   compareByStableCreation,
   compareByUrgency,
@@ -93,11 +94,7 @@ function ActivePage() {
 
   return (
     <div>
-      <div className="flex items-center gap-3">
-        <h1 className="text-lg font-semibold">Active Sessions</h1>
-        <span className="text-sm text-text-500">{sessions.length} sessions</span>
-        <span className="text-xs text-text-500">(live updates via SSE)</span>
-      </div>
+      <ListPageHeader title="Active Sessions" count={sessions.length} itemLabel="session" />
 
       {sessions.length === 0 ? (
         <p className="mt-8 text-center text-text-500">No active Claude Code sessions</p>

@@ -3,6 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { plansQueryOptions } from "../lib/api/plans";
 import { toMdSlug } from "../lib/md-slug";
 import { DebugLink } from "../components/debug-link";
+import { ListPageHeader } from "../components/list-page-header";
 
 export const Route = createFileRoute("/plans")({
   component: PlansPage,
@@ -27,12 +28,10 @@ function PlansPage() {
   const { data: plans } = useSuspenseQuery(plansQueryOptions());
   const now = Date.now();
   const count = plans.length;
-  const countLabel = count === 1 ? "1 plan" : `${count} plans`;
 
   return (
     <div>
-      <h1 className="text-lg font-semibold">Claude Plans</h1>
-      <p className="mt-1 text-sm text-text-500">{countLabel}</p>
+      <ListPageHeader title="Claude Plans" count={count} itemLabel="plan" />
 
       {count === 0 ? (
         <p className="mt-4 text-text-500">No plans found.</p>

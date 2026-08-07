@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { tmuxWindowsQueryOptions } from "../lib/api/tmux";
 import { StatusDot } from "../components/sidebar/primitives/StatusDot";
+import { ListPageHeader } from "../components/list-page-header";
 
 export const Route = createFileRoute("/tmux")({
   component: TmuxWindowsPage,
@@ -42,11 +43,7 @@ function TmuxWindowsPage() {
 
   return (
     <div>
-      <div className="flex items-center gap-3">
-        <h1 className="text-lg font-semibold">Tmux Windows</h1>
-        <span className="text-sm text-text-500">{windows.length} windows</span>
-        <span className="text-xs text-text-500">(live updates via SSE)</span>
-      </div>
+      <ListPageHeader title="Tmux Windows" count={windows.length} itemLabel="window" />
 
       {windows.length === 0 ? (
         <TmuxEmptyState />

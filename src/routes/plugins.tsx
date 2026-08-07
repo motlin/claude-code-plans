@@ -23,6 +23,7 @@ import {
 import { useMemo, useState } from "react";
 import { FileTree } from "../components/file-tree";
 import { toMdSlug, toPluginFileSlug } from "../lib/md-slug";
+import { ListPageHeader } from "../components/list-page-header";
 
 export const Route = createFileRoute("/plugins")({
   component: PluginsPage,
@@ -336,14 +337,7 @@ function PluginsPage() {
 
   return (
     <div>
-      <h1 className="text-lg font-semibold">Plugins</h1>
-      <p className="mt-1 text-sm text-text-500">
-        {pluginCount} installed plugin{pluginCount !== 1 && "s"}
-        {" across "}
-        {groups.length} marketplace{groups.length !== 1 && "s"}
-        {commandGroupCount > 0 &&
-          `, ${userCommands.reduce((n: number, g: UserCommandGroupData) => n + g.commands.length, 0)} user command${userCommands.reduce((n: number, g: UserCommandGroupData) => n + g.commands.length, 0) !== 1 ? "s" : ""}`}
-      </p>
+      <ListPageHeader title="Plugins" count={pluginCount} itemLabel="plugin" />
 
       {groups.length > 0 && (
         <div className="mt-6 space-y-4">

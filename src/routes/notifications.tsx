@@ -10,6 +10,7 @@ import {
 } from "../lib/api/notifications";
 import { sessionTitlesQueryOptions } from "../lib/api/sessions";
 import { formatRelativeTimeFromIso } from "../lib/relative-time";
+import { ListPageHeader } from "../components/list-page-header";
 
 export const Route = createFileRoute("/notifications")({
   component: NotificationsPage,
@@ -44,19 +45,22 @@ function NotificationsPage() {
 
   return (
     <div>
-      <div className="flex items-center gap-3">
-        <h1 className="text-lg font-semibold">Notifications</h1>
-        <span className="text-sm text-text-500">{notifications.length} total</span>
-        {notifications.length > 0 && (
-          <button
-            type="button"
-            onClick={() => clearAll.mutate()}
-            className="ml-auto text-xs text-text-500 hover:text-text-000"
-          >
-            Clear all
-          </button>
-        )}
-      </div>
+      <ListPageHeader
+        title="Notifications"
+        count={notifications.length}
+        itemLabel="notification"
+        actions={
+          notifications.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => clearAll.mutate()}
+              className="text-xs text-text-500 hover:text-text-000"
+            >
+              Clear all
+            </button>
+          ) : undefined
+        }
+      />
 
       {notifications.length === 0 ? (
         <p className="mt-8 text-center text-text-500">No notifications right now.</p>

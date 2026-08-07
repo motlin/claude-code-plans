@@ -5,6 +5,7 @@ import { z } from "zod";
 import { apiFetch } from "../lib/api/client";
 import { starredSessionsQueryOptions } from "../lib/api/sessions";
 import { SessionUnreadControl } from "../components/session-unread-control";
+import { ListPageHeader } from "../components/list-page-header";
 
 const StarredMutationResponse = z.object({ starred: z.boolean() });
 
@@ -50,7 +51,7 @@ function StarredPage() {
 
   return (
     <div>
-      <h1 className="text-lg font-semibold">Starred Sessions</h1>
+      <ListPageHeader title="Starred Sessions" count={sessions.length} itemLabel="session" />
 
       {sessions.length === 0 ? (
         <p className="mt-4 text-sm text-text-500">

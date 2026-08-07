@@ -6,6 +6,7 @@ import { sessionTitlesQueryOptions } from "../lib/api/sessions";
 import { toMdSlug } from "../lib/md-slug";
 import { formatRelativeTimeFromIso } from "../lib/relative-time";
 import { pillStyles } from "../components/detail-top-bar";
+import { ListPageHeader } from "../components/list-page-header";
 
 export const Route = createFileRoute("/approvals")({
   component: ApprovalsPage,
@@ -30,10 +31,7 @@ function ApprovalsPage() {
 
   return (
     <div>
-      <div className="flex items-center gap-3">
-        <h1 className="text-lg font-semibold">Approvals</h1>
-        <span className="text-sm text-text-500">{approvals.length} waiting</span>
-      </div>
+      <ListPageHeader title="Approvals" count={approvals.length} itemLabel="approval" />
 
       {approvals.length === 0 ? (
         <p className="mt-8 text-center text-text-500">Nothing waiting on you right now.</p>

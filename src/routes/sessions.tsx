@@ -7,6 +7,7 @@ import {
 } from "../lib/api/sessions";
 import { useClaudeEvents } from "../hooks/use-claude-events";
 import { SessionUnreadControl } from "../components/session-unread-control";
+import { ListPageHeader } from "../components/list-page-header";
 
 export const Route = createFileRoute("/sessions")({
   component: SessionsPage,
@@ -58,6 +59,7 @@ function SessionsPage() {
   const activeIds = new Set(activeSessions.keys());
 
   const allSessions = recent.pages.flatMap((p) => p.sessions);
+  const sessionCount = groups.reduce((total, group) => total + group.sessionCount, 0);
 
   const timePeriodGroups: Array<{
     period: string;
@@ -75,7 +77,7 @@ function SessionsPage() {
 
   return (
     <div>
-      <h1 className="text-lg font-semibold">Claude Sessions</h1>
+      <ListPageHeader title="Claude Sessions" count={sessionCount} itemLabel="session" />
 
       {allSessions.length === 0 ? (
         <p className="mt-4 text-text-500">No session files found.</p>

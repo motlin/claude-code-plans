@@ -4,6 +4,7 @@ import { projectsQueryOptions } from "../lib/api/projects";
 import { projectMemoriesQueryOptions, type MemoryListItem } from "../lib/api/memories";
 import { toMdSlug } from "../lib/md-slug";
 import { DebugLink } from "../components/debug-link";
+import { ListPageHeader } from "../components/list-page-header";
 
 export const Route = createFileRoute("/memories")({
   component: MemoriesPage,
@@ -52,10 +53,11 @@ function MemoriesPage() {
     const bMax = Math.max(...b.memories.map((m) => new Date(m.mtime).getTime()));
     return bMax - aMax;
   });
+  const memoryCount = groups.reduce((total, group) => total + group.memories.length, 0);
 
   return (
     <div>
-      <h1 className="text-lg font-semibold">Claude Memories</h1>
+      <ListPageHeader title="Claude Memories" count={memoryCount} itemLabel="memory" />
 
       {groups.length === 0 ? (
         <p className="mt-4 text-text-500">No memory files found.</p>
