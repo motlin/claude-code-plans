@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
-import { writeFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { appendFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { createServer, type Server } from "node:net";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -15,6 +15,7 @@ import * as schema from "../src/lib/db/schema";
 import { DOMAIN_EVENTS } from "../src/lib/hook-events";
 import { eq } from "drizzle-orm";
 import type { SessionEntry } from "../src/lib/sessions";
+import * as sessions from "../src/lib/sessions";
 import type { TaskRow } from "../src/lib/db/queries";
 import {
   markSessionActive,
@@ -74,6 +75,46 @@ function makeTask(overrides: Partial<TaskRow> = {}): TaskRow {
     ...overrides,
   };
 }
+
+describe("handleFileChange", () => {
+  const testDir = join(tmpdir(), "watcher-debounce-test-" + process.pid);
+
+  beforeEach(() => {
+    mkdirSync(testDir, { recursive: true });
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2000-01-01T00:00:00.000Z"));
+    __testing.resetJsonlThrottle();
+  });
+
+  afterEach(() => {
+    __testing.resetJsonlThrottle();
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+    rmSync(testDir, { recursive: true, force: true });
+  });
+
+  it("fires changes for two interleaved JSONL paths", async () => {
+    const alicePath = join(testDir, "alice-session.jsonl");
+    const bobPath = join(testDir, "bob-session.jsonl");
+    const aliceFirstLine = jsonl({ type: "user", sessionId: "alice-session" });
+    const aliceSecondLine = jsonl({ type: "assistant", sessionId: "alice-session" });
+    writeFileSync(alicePath, aliceFirstLine);
+    writeFileSync(bobPath, jsonl({ type: "user", sessionId: "bob-session" }));
+    const readNewJsonlLines = vi.spyOn(sessions, "readNewJsonlLines");
+
+    await __testing.handleFileChange(alicePath);
+    await vi.advanceTimersByTimeAsync(100);
+    await __testing.handleFileChange(bobPath);
+    await vi.advanceTimersByTimeAsync(100);
+    appendFileSync(alicePath, aliceSecondLine);
+    await __testing.handleFileChange(alicePath);
+    await vi.advanceTimersByTimeAsync(1_800);
+
+    expect(new Set(readNewJsonlLines.mock.calls.map(([path]) => path))).toStrictEqual(
+      new Set([alicePath, bobPath]),
+    );
+  });
+});
 
 describe("toSessionSummaryPayload", () => {
   it("serializes dates as ISO strings and preserves core fields", () => {

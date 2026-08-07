@@ -71,12 +71,18 @@ let projectsDir = "";
 let plansDir = "";
 let statuslineDir = "";
 let fileContentRoots: string[] = [];
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-let lastFired = 0;
+interface JsonlThrottleState {
+  timer?: ReturnType<typeof setTimeout>;
+  lastFired: number;
+}
+const jsonlThrottleByPath = new Map<string, JsonlThrottleState>();
 
 hmrDispose(async () => {
   if (watcher) await watcher.close();
-  if (debounceTimer) clearTimeout(debounceTimer);
+  for (const state of jsonlThrottleByPath.values()) {
+    if (state.timer !== undefined) clearTimeout(state.timer);
+  }
+  jsonlThrottleByPath.clear();
 });
 
 const WATCHED_EXTENSIONS = new Set([".md", ".jsonl", ".json"]);
@@ -503,11 +509,13 @@ async function handleFileChange(path: string): Promise<void> {
     // per JSONL_THROTTLE_MS. A trailing timer ensures the final batch of
     // changes is always processed even after writes stop.
     const now = Date.now();
-    const elapsed = now - lastFired;
+    const throttleState = jsonlThrottleByPath.get(path) ?? { lastFired: 0 };
+    jsonlThrottleByPath.set(path, throttleState);
+    const elapsed = now - throttleState.lastFired;
 
     const fire = async () => {
-      lastFired = Date.now();
-      debounceTimer = null;
+      throttleState.lastFired = Date.now();
+      delete throttleState.timer;
 
       const fromOffset = jsonlOffsets.get(path) ?? 0;
       try {
@@ -553,14 +561,14 @@ async function handleFileChange(path: string): Promise<void> {
       }
     };
 
-    if (debounceTimer) clearTimeout(debounceTimer);
+    if (throttleState.timer !== undefined) clearTimeout(throttleState.timer);
 
     if (elapsed >= JSONL_THROTTLE_MS) {
       // Enough time has passed -- fire immediately.
       void fire();
     } else {
       // Schedule a trailing fire for the remaining interval.
-      debounceTimer = setTimeout(() => void fire(), JSONL_THROTTLE_MS - elapsed);
+      throttleState.timer = setTimeout(() => void fire(), JSONL_THROTTLE_MS - elapsed);
     }
   } else if (ext === ".json" && statuslineDir && path.startsWith(statuslineDir)) {
     const filename = basename(path);
@@ -633,6 +641,9 @@ async function handleFileUnlink(path: string): Promise<void> {
     }
   } else if (ext === ".jsonl") {
     jsonlOffsets.delete(path);
+    const throttleState = jsonlThrottleByPath.get(path);
+    if (throttleState?.timer !== undefined) clearTimeout(throttleState.timer);
+    jsonlThrottleByPath.delete(path);
     safeDiffSessions(projectIdFromPath(path, projectsDir));
     removePendingApprovalForSession(sessionIdFromJsonlPath(path));
   } else if (ext === ".json" && path.endsWith("sessions-index.json")) {
@@ -695,6 +706,7 @@ export const __testing = {
   handlePlanMdUnlink,
   handleFileContentChange,
   handleFileContentUnlink,
+  handleFileChange,
   readIgnoredDirsFromConfig,
   DEFAULT_IGNORED_DIR_NAMES,
   /** Override the resolved ignored-dir pattern so `shouldIgnoreWatch` is deterministic in tests. */
@@ -707,5 +719,12 @@ export const __testing = {
   },
   setFileContentRoots(roots: string[]): void {
     fileContentRoots = roots.map((root) => resolve(root));
+  },
+  resetJsonlThrottle(): void {
+    for (const state of jsonlThrottleByPath.values()) {
+      if (state.timer !== undefined) clearTimeout(state.timer);
+    }
+    jsonlThrottleByPath.clear();
+    jsonlOffsets.clear();
   },
 };
