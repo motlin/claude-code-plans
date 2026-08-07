@@ -15,6 +15,7 @@ import {
 } from "./db/indexer";
 import {
   listSessionsForProjectFromDb,
+  getSessionProjectId,
   getTasksForProject,
   getStarredSessionIds,
 } from "./db/queries";
@@ -265,15 +266,15 @@ function diffAndBroadcastSessions(projectId: string): void {
  * and broadcast task:changed / task:completed deltas. A task transitioning to
  * status 'completed' gets a task:completed event in addition to task:changed.
  */
-function diffAndBroadcastTasks(projectDir: string): void {
+function diffAndBroadcastTasks(projectId: string): void {
   const { index } = getDb();
-  const rows = getTasksForProject(index, projectDir);
+  const rows = getTasksForProject(index, projectId);
   const next = new Map<string, TaskSummaryPayload>();
   for (const row of rows) {
     next.set(row.taskId, toTaskSummaryPayload(row));
   }
 
-  const previous = lastTasksByProject.get(projectDir) ?? new Map();
+  const previous = lastTasksByProject.get(projectId) ?? new Map();
   const { added, removed, updated } = diffEntityMaps(previous, next, tasksEqual);
 
   for (const task of added) {
@@ -308,7 +309,7 @@ function diffAndBroadcastTasks(projectDir: string): void {
     void taskId;
   }
 
-  lastTasksByProject.set(projectDir, next);
+  lastTasksByProject.set(projectId, next);
 }
 
 /**
@@ -436,11 +437,13 @@ function safeDiffSessions(projectId: string): void {
   }
 }
 
-/** Safely diff and broadcast tasks for a project; swallow indexing races. */
-function safeDiffTasks(projectDir: string): void {
-  if (!projectDir) return;
+/** Safely diff and broadcast tasks for a session's project; swallow indexing races. */
+function safeDiffTasks(sessionId: string): void {
+  if (!sessionId) return;
   try {
-    diffAndBroadcastTasks(projectDir);
+    const { index } = getDb();
+    const projectId = getSessionProjectId(index, sessionId);
+    if (projectId) diffAndBroadcastTasks(projectId);
   } catch {
     // transient DB error; next file event will retry
   }

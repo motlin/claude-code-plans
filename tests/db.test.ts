@@ -2301,8 +2301,25 @@ describe("scanTasksDir", () => {
 });
 
 describe("task queries", () => {
+  const projectId = "-Users-craig-projects-app";
+  const sessionId = "12345678-1234-1234-1234-123456789abc";
+
   beforeEach(async () => {
-    const tasksDir = join(testDir, "tasks", "app");
+    db.index
+      .insert(schema.sessions)
+      .values({
+        id: sessionId,
+        projectId,
+        title: "Task owner session",
+        messageCount: 1,
+        isSidechain: 0,
+        createdAt: 1000,
+        mtimeMs: 1000,
+        filePath: `/projects/${projectId}/${sessionId}.jsonl`,
+      })
+      .run();
+
+    const tasksDir = join(testDir, "tasks", sessionId);
     mkdirSync(tasksDir, { recursive: true });
 
     writeFileSync(
@@ -2348,12 +2365,13 @@ describe("task queries", () => {
   });
 
   it("getTasksForProject returns all tasks for a project", () => {
-    const tasks = getTasksForProject(db.index, "app");
+    const tasks = getTasksForProject(db.index, projectId);
     expect(tasks.map((t) => t.subject).sort()).toStrictEqual(["Deploy", "Fix bug", "Write tests"]);
+    expect(tasks.map((task) => task.projectDir)).toStrictEqual([sessionId, sessionId, sessionId]);
   });
 
   it("getTasksForProject parses blocks/blockedBy", () => {
-    const tasks = getTasksForProject(db.index, "app");
+    const tasks = getTasksForProject(db.index, projectId);
     const task1 = tasks.find((t) => t.taskId === "1");
     if (!task1) throw new Error("Expected task with id 1");
     expect(task1.blocks).toStrictEqual(["2"]);
@@ -2365,7 +2383,7 @@ describe("task queries", () => {
   });
 
   it("getTasksForProject parses metadata", () => {
-    const tasks = getTasksForProject(db.index, "app");
+    const tasks = getTasksForProject(db.index, projectId);
     const task = tasks.find((candidate) => candidate.taskId === "1");
     if (!task) throw new Error("Expected task with id 1");
     expect(task.metadata).toStrictEqual({
@@ -2375,7 +2393,7 @@ describe("task queries", () => {
   });
 
   it("getTasksForProject returns the indexed owner", () => {
-    const tasks = getTasksForProject(db.index, "app");
+    const tasks = getTasksForProject(db.index, projectId);
     expect(
       tasks
         .map(({ taskId, owner }) => ({ taskId, owner }))
@@ -2392,7 +2410,7 @@ describe("task queries", () => {
   });
 
   it("getTaskCountsForProject aggregates correctly", () => {
-    const counts = getTaskCountsForProject(db.index, "app");
+    const counts = getTaskCountsForProject(db.index, projectId);
     expect(counts.total).toBe(3);
     expect(counts.completed).toBe(1);
     expect(counts.pending).toBe(1);
@@ -2412,14 +2430,14 @@ describe("task queries", () => {
   it("getIncompleteTasksGroupedByProject groups correctly", () => {
     const groups = getIncompleteTasksGroupedByProject(db.index);
     if (groups.length !== 1) throw new Error(`Expected 1 group, got ${groups.length}`);
-    expect(groups[0]!.projectDir).toBe("app");
+    expect(groups[0]!.projectDir).toBe(sessionId);
     expect(groups[0]!.totalPending).toBe(1);
     expect(groups[0]!.totalInProgress).toBe(1);
     expect(groups[0]!.tasks.length).toBe(2);
   });
 
   it("getIncompleteTasksGroupedByProject returns empty when all completed", async () => {
-    const tasksDir = join(testDir, "tasks", "app");
+    const tasksDir = join(testDir, "tasks", sessionId);
     await new Promise((r) => setTimeout(r, 50));
     writeFileSync(
       join(tasksDir, "2.json"),

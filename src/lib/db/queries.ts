@@ -1089,7 +1089,8 @@ function parseTaskRow(row: {
   };
 }
 
-export function getTasksForProject(db: IndexDb, projectDir: string): TaskRow[] {
+/** Return all tasks owned by sessions in a project, including completed tasks. */
+export function getTasksForProject(db: IndexDb, projectId: string): TaskRow[] {
   const rows = db
     .select({
       taskId: schema.tasks.taskId,
@@ -1104,7 +1105,8 @@ export function getTasksForProject(db: IndexDb, projectDir: string): TaskRow[] {
       metadataJson: schema.tasks.metadataJson,
     })
     .from(schema.tasks)
-    .where(eq(schema.tasks.projectDir, projectDir))
+    .innerJoin(schema.sessions, eq(schema.sessions.id, schema.tasks.projectDir))
+    .where(eq(schema.sessions.projectId, projectId))
     .all();
 
   return rows.map(parseTaskRow);
@@ -1197,7 +1199,7 @@ export function getIncompleteTasksGroupedByProject(db: IndexDb): TaskProjectGrou
 
 export function getTaskCountsForProject(
   db: IndexDb,
-  projectDir: string,
+  projectId: string,
 ): { total: number; pending: number; inProgress: number; completed: number } {
   const rows = db
     .select({
@@ -1205,7 +1207,8 @@ export function getTaskCountsForProject(
       count: sql<number>`count(*)`,
     })
     .from(schema.tasks)
-    .where(eq(schema.tasks.projectDir, projectDir))
+    .innerJoin(schema.sessions, eq(schema.sessions.id, schema.tasks.projectDir))
+    .where(eq(schema.sessions.projectId, projectId))
     .groupBy(schema.tasks.status)
     .all();
 

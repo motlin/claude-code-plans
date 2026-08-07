@@ -38,7 +38,7 @@ export const Route = createFileRoute("/api/projects")({
 
         const enriched = await Promise.all(
           projects.map(async (p) => {
-            const taskCounts = getTaskCountsForProject(index, p.name);
+            const taskCounts = getTaskCountsForProject(index, p.id);
 
             return {
               id: p.id,

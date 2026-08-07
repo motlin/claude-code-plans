@@ -78,8 +78,8 @@ export const Route = createFileRoute("/api/sessions/$id")({
         const sessionMeta = getSessionMeta(index, id);
 
         let pendingTaskCount = 0;
-        if (sessionMeta?.projectName) {
-          const taskCounts = getTaskCountsForProject(index, sessionMeta.projectName);
+        if (sessionMeta) {
+          const taskCounts = getTaskCountsForProject(index, sessionRow.projectId);
           pendingTaskCount = taskCounts.pending + taskCounts.inProgress;
         }
 

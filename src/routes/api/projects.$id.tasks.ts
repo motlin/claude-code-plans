@@ -26,8 +26,8 @@ export const Route = createFileRoute("/api/projects/$id/tasks")({
           );
         }
 
-        const todos = getTasksForProject(index, detail.name);
-        const todoCounts = getTaskCountsForProject(index, detail.name);
+        const todos = getTasksForProject(index, detail.id);
+        const todoCounts = getTaskCountsForProject(index, detail.id);
 
         return Response.json(ProjectTasksResponse.parse({ todos, todoCounts }), {
           headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
