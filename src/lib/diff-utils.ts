@@ -103,15 +103,28 @@ export function computeDiffData(oldStr: string, newStr: string): DiffData {
 }
 
 /**
+ * Split diff input into lines, treating the empty string as zero lines rather
+ * than one empty line. `"".split("\n")` yields `[""]`, which would claim a side
+ * has a single blank line; @git-diff-view/core then cross-checks that phantom
+ * line against the (genuinely empty) file content and logs a mismatch warning.
+ */
+function splitDiffLines(text: string): string[] {
+  return text === "" ? [] : text.split("\n");
+}
+
+/**
  * Synthesize a complete unified diff string from the Edit tool's
  * `old_string` / `new_string` fragments, in the format @git-diff-view/core
  * expects (git-style header + hunks). Line numbers are relative to the
  * fragment (starting at 1) -- not the surrounding file -- because the tool
  * payload doesn't capture the full-file context.
+ *
+ * An empty side uses git's `0,0` convention (as for file creation, which is how
+ * the Write tool renders), since a missing side starts at line 0, not line 1.
  */
 export function buildUnifiedHunk(oldStr: string, newStr: string, filePath = "file"): string {
-  const oldLines = oldStr.split("\n");
-  const newLines = newStr.split("\n");
+  const oldLines = splitDiffLines(oldStr);
+  const newLines = splitDiffLines(newStr);
   const ops = computeDiff(oldLines, newLines);
 
   const body: string[] = [];
@@ -121,11 +134,14 @@ export function buildUnifiedHunk(oldStr: string, newStr: string, filePath = "fil
     else body.push("-" + line);
   }
 
+  const oldStart = oldLines.length === 0 ? 0 : 1;
+  const newStart = newLines.length === 0 ? 0 : 1;
+
   return [
     `diff --git a/${filePath} b/${filePath}`,
     `--- a/${filePath}`,
     `+++ b/${filePath}`,
-    `@@ -1,${oldLines.length} +1,${newLines.length} @@`,
+    `@@ -${oldStart},${oldLines.length} +${newStart},${newLines.length} @@`,
     ...body,
   ].join("\n");
 }
