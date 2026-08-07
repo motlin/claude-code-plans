@@ -41,43 +41,91 @@ const loadToml = () => import("shiki/langs/toml.mjs");
 const loadXml = () => import("shiki/langs/xml.mjs");
 const loadC = () => import("shiki/langs/c.mjs");
 const loadCpp = () => import("shiki/langs/cpp.mjs");
+const loadCsharp = () => import("shiki/langs/csharp.mjs");
+const loadKotlin = () => import("shiki/langs/kotlin.mjs");
+const loadSwift = () => import("shiki/langs/swift.mjs");
+const loadPhp = () => import("shiki/langs/php.mjs");
+const loadScss = () => import("shiki/langs/scss.mjs");
+const loadLess = () => import("shiki/langs/less.mjs");
+const loadJsonc = () => import("shiki/langs/jsonc.mjs");
+const loadGraphql = () => import("shiki/langs/graphql.mjs");
+const loadDocker = () => import("shiki/langs/docker.mjs");
+const loadLua = () => import("shiki/langs/lua.mjs");
+const loadR = () => import("shiki/langs/r.mjs");
+const loadVue = () => import("shiki/langs/vue.mjs");
+const loadSvelte = () => import("shiki/langs/svelte.mjs");
+const loadAstro = () => import("shiki/langs/astro.mjs");
+const loadZig = () => import("shiki/langs/zig.mjs");
+const loadElixir = () => import("shiki/langs/elixir.mjs");
+const loadErlang = () => import("shiki/langs/erlang.mjs");
+const loadHcl = () => import("shiki/langs/hcl.mjs");
+const loadIni = () => import("shiki/langs/ini.mjs");
+const loadDotenv = () => import("shiki/langs/dotenv.mjs");
+const loadFish = () => import("shiki/langs/fish.mjs");
 
 const shikiLanguageLoaders: Record<string, DynamicImportLanguageRegistration> = {
+  astro: loadAstro,
   bash: loadShellScript,
   c: loadC,
+  "c#": loadCsharp,
   "c++": loadCpp,
   cjs: loadJavaScript,
   cpp: loadCpp,
+  cs: loadCsharp,
+  csharp: loadCsharp,
   css: loadCss,
   cts: loadTypeScript,
+  docker: loadDocker,
+  dockerfile: loadDocker,
+  dotenv: loadDotenv,
+  elixir: loadElixir,
+  erl: loadErlang,
+  erlang: loadErlang,
+  fish: loadFish,
   go: loadGo,
+  gql: loadGraphql,
+  graphql: loadGraphql,
+  hcl: loadHcl,
   html: loadHtml,
+  ini: loadIni,
   java: loadJava,
   javascript: loadJavaScript,
   js: loadJavaScript,
   jsx: loadJsx,
   json: loadJson,
+  jsonc: loadJsonc,
+  kotlin: loadKotlin,
+  kt: loadKotlin,
+  less: loadLess,
+  lua: loadLua,
   markdown: loadMarkdown,
   md: loadMarkdown,
   mjs: loadJavaScript,
   mts: loadTypeScript,
+  php: loadPhp,
   py: loadPython,
   python: loadPython,
+  r: loadR,
   rb: loadRuby,
   rs: loadRust,
   ruby: loadRuby,
   rust: loadRust,
+  scss: loadScss,
   sh: loadShellScript,
   shell: loadShellScript,
   shellscript: loadShellScript,
   sql: loadSql,
+  svelte: loadSvelte,
+  swift: loadSwift,
   toml: loadToml,
   ts: loadTypeScript,
   tsx: loadTsx,
   typescript: loadTypeScript,
+  vue: loadVue,
   xml: loadXml,
   yaml: loadYaml,
   yml: loadYaml,
+  zig: loadZig,
   zsh: loadShellScript,
 };
 

@@ -172,7 +172,7 @@ export function extractLineNumbers(text: string): {
  * Map from file extension (without leading dot) to Shiki language identifier.
  * Only includes languages commonly seen in Claude Code tool results.
  */
-const EXTENSION_TO_LANGUAGE: Record<string, string> = {
+export const EXTENSION_TO_LANGUAGE: Record<string, string> = {
   ts: "typescript",
   tsx: "tsx",
   js: "javascript",

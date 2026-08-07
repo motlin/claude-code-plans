@@ -1,6 +1,7 @@
 import type { DiffAST } from "@git-diff-view/core";
 import { describe, expect, it } from "vite-plus/test";
-import { requestLanguage } from "../src/hooks/use-shiki";
+import { isShikiLanguageSupported, requestLanguage } from "../src/hooks/use-shiki";
+import { EXTENSION_TO_LANGUAGE } from "../src/lib/diff-utils";
 import { resolveDiffLanguage, shikiDiffHighlighter } from "../src/lib/diff-highlighter";
 
 function summarizeStyles(ast: DiffAST) {
@@ -23,7 +24,19 @@ describe("Shiki diff highlighter", () => {
         "/tmp/test/README.md",
         "/tmp/test/unknown.example",
       ].map(resolveDiffLanguage),
-    ).toStrictEqual(["tsx", "python", "cpp", "text", "text", "text"]);
+    ).toStrictEqual(["tsx", "python", "cpp", "csharp", "text", "text"]);
+  });
+
+  it("can load every language the extension map detects", () => {
+    const unloadable = [...new Set(Object.values(EXTENSION_TO_LANGUAGE))]
+      .filter((language) => !isShikiLanguageSupported(language))
+      .sort();
+    expect(unloadable).toStrictEqual([]);
+  });
+
+  it("registers a grammar requested by one of its aliases", async () => {
+    await requestLanguage("dockerfile");
+    expect(shikiDiffHighlighter.hasRegisteredCurrentLang("dockerfile")).toBe(true);
   });
 
   it("produces theme-specific inline styles and processed syntax lines", async () => {
