@@ -1,9 +1,22 @@
 import type { HighlighterCore } from "@shikijs/core";
+import { beforeEach, vi } from "vite-plus/test";
 import {
   renderMarkdownToHtml,
   renderMarkdownWithHighlighting,
   looksLikeMarkdown,
 } from "../src/lib/client-markdown";
+
+const { requestLanguageMock } = vi.hoisted(() => ({
+  requestLanguageMock: vi.fn(() => Promise.resolve()),
+}));
+
+vi.mock("../src/hooks/use-shiki", () => ({
+  requestLanguage: requestLanguageMock,
+}));
+
+beforeEach(() => {
+  requestLanguageMock.mockClear();
+});
 
 describe("looksLikeMarkdown", () => {
   it("returns true for text with 2+ markdown indicators", () => {
@@ -128,5 +141,44 @@ describe("renderMarkdownWithHighlighting", () => {
     expect(renderMarkdownWithHighlighting("<img src=x onerror=alert(1)>", highlighter)).toBe(
       "<p>&lt;img src=x onerror=alert(1)&gt;</p>\n",
     );
+  });
+
+  it("uses a grammar loaded after the cached markdown instance was created", () => {
+    const loadedLanguages: string[] = [];
+    const codeToHtml = vi.fn(() => '<pre class="shiki"><code>highlighted</code></pre>');
+    const highlighter = {
+      getLoadedLanguages: () => loadedLanguages,
+      codeToHtml,
+    } as unknown as HighlighterCore;
+    const markdown = "```typescript\nconst answer = 0;\n```";
+
+    const beforeLoad = renderMarkdownWithHighlighting(markdown, highlighter);
+    loadedLanguages.push("typescript");
+    const afterLoad = renderMarkdownWithHighlighting(markdown, highlighter);
+
+    expect({
+      beforeLoad,
+      afterLoad,
+      languageRequests: requestLanguageMock.mock.calls,
+      highlightingCalls: codeToHtml.mock.calls,
+    }).toStrictEqual({
+      beforeLoad: '<pre><code class="language-typescript">const answer = 0;\n</code></pre>\n',
+      afterLoad: '<pre class="shiki"><code>highlighted</code></pre>\n',
+      languageRequests: [["typescript"]],
+      highlightingCalls: [
+        [
+          "const answer = 0;",
+          {
+            lang: "typescript",
+            themes: {
+              light: "claude-light",
+              dark: "github-dark",
+            },
+            defaultColor: "light",
+            cssVariablePrefix: "--shiki-",
+          },
+        ],
+      ],
+    });
   });
 });

@@ -5,8 +5,12 @@
  * all components. Uses the JavaScript regex engine (no WASM) for a lighter
  * client bundle.
  */
-import type { HighlighterCore, ThemedToken } from "@shikijs/core";
-import { useMemo, useSyncExternalStore } from "react";
+import type {
+  DynamicImportLanguageRegistration,
+  HighlighterCore,
+  ThemedToken,
+} from "@shikijs/core";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { useResolvedTheme } from "../components/theme-provider";
 
 // ---------------------------------------------------------------------------
@@ -15,6 +19,67 @@ import { useResolvedTheme } from "../components/theme-provider";
 
 let highlighterPromise: Promise<HighlighterCore> | null = null;
 let highlighterInstance: HighlighterCore | null = null;
+const languageLoadPromises = new Map<DynamicImportLanguageRegistration, Promise<void>>();
+
+const loadTypeScript = () => import("shiki/langs/typescript.mjs");
+const loadTsx = () => import("shiki/langs/tsx.mjs");
+const loadJavaScript = () => import("shiki/langs/javascript.mjs");
+const loadJsx = () => import("shiki/langs/jsx.mjs");
+const loadJson = () => import("shiki/langs/json.mjs");
+const loadPython = () => import("shiki/langs/python.mjs");
+const loadCss = () => import("shiki/langs/css.mjs");
+const loadHtml = () => import("shiki/langs/html.mjs");
+const loadMarkdown = () => import("shiki/langs/markdown.mjs");
+const loadYaml = () => import("shiki/langs/yaml.mjs");
+const loadShellScript = () => import("shiki/langs/shellscript.mjs");
+const loadRust = () => import("shiki/langs/rust.mjs");
+const loadGo = () => import("shiki/langs/go.mjs");
+const loadRuby = () => import("shiki/langs/ruby.mjs");
+const loadJava = () => import("shiki/langs/java.mjs");
+const loadSql = () => import("shiki/langs/sql.mjs");
+const loadToml = () => import("shiki/langs/toml.mjs");
+const loadXml = () => import("shiki/langs/xml.mjs");
+const loadC = () => import("shiki/langs/c.mjs");
+const loadCpp = () => import("shiki/langs/cpp.mjs");
+
+const shikiLanguageLoaders: Record<string, DynamicImportLanguageRegistration> = {
+  bash: loadShellScript,
+  c: loadC,
+  "c++": loadCpp,
+  cjs: loadJavaScript,
+  cpp: loadCpp,
+  css: loadCss,
+  cts: loadTypeScript,
+  go: loadGo,
+  html: loadHtml,
+  java: loadJava,
+  javascript: loadJavaScript,
+  js: loadJavaScript,
+  jsx: loadJsx,
+  json: loadJson,
+  markdown: loadMarkdown,
+  md: loadMarkdown,
+  mjs: loadJavaScript,
+  mts: loadTypeScript,
+  py: loadPython,
+  python: loadPython,
+  rb: loadRuby,
+  rs: loadRust,
+  ruby: loadRuby,
+  rust: loadRust,
+  sh: loadShellScript,
+  shell: loadShellScript,
+  shellscript: loadShellScript,
+  sql: loadSql,
+  toml: loadToml,
+  ts: loadTypeScript,
+  tsx: loadTsx,
+  typescript: loadTypeScript,
+  xml: loadXml,
+  yaml: loadYaml,
+  yml: loadYaml,
+  zsh: loadShellScript,
+};
 
 /** Monotonically increasing version bumped each time the singleton resolves. */
 let version = 0;
@@ -39,37 +104,21 @@ function getVersion(): number {
 }
 
 async function initHighlighter(): Promise<HighlighterCore> {
-  const [{ createHighlighterCore }, { createJavaScriptRegexEngine }, { claudeLight }] =
-    await Promise.all([
-      import("@shikijs/core"),
-      import("@shikijs/engine-javascript"),
-      import("../lib/claude-light-theme"),
-    ]);
+  const [
+    { createHighlighterCore },
+    { createJavaScriptRegexEngine },
+    { claudeLight },
+    { default: githubDark },
+  ] = await Promise.all([
+    import("@shikijs/core"),
+    import("@shikijs/engine-javascript"),
+    import("../lib/claude-light-theme"),
+    import("shiki/themes/github-dark.mjs"),
+  ]);
 
   const highlighter = await createHighlighterCore({
-    themes: [claudeLight, import("shiki/themes/github-dark.mjs")],
-    langs: [
-      import("shiki/langs/typescript.mjs"),
-      import("shiki/langs/tsx.mjs"),
-      import("shiki/langs/javascript.mjs"),
-      import("shiki/langs/jsx.mjs"),
-      import("shiki/langs/json.mjs"),
-      import("shiki/langs/python.mjs"),
-      import("shiki/langs/css.mjs"),
-      import("shiki/langs/html.mjs"),
-      import("shiki/langs/markdown.mjs"),
-      import("shiki/langs/yaml.mjs"),
-      import("shiki/langs/shellscript.mjs"),
-      import("shiki/langs/rust.mjs"),
-      import("shiki/langs/go.mjs"),
-      import("shiki/langs/ruby.mjs"),
-      import("shiki/langs/java.mjs"),
-      import("shiki/langs/sql.mjs"),
-      import("shiki/langs/toml.mjs"),
-      import("shiki/langs/xml.mjs"),
-      import("shiki/langs/c.mjs"),
-      import("shiki/langs/cpp.mjs"),
-    ],
+    themes: [claudeLight, githubDark],
+    langs: [],
     engine: createJavaScriptRegexEngine(),
   });
 
@@ -87,6 +136,31 @@ function getHighlighterInstance(): Promise<HighlighterCore> {
     highlighterPromise = initHighlighter();
   }
   return highlighterPromise;
+}
+
+/** Load a supported grammar once and notify subscribers when it becomes available. */
+export function requestLanguage(language: string): Promise<void> {
+  if (highlighterInstance?.getLoadedLanguages().includes(language)) {
+    return Promise.resolve();
+  }
+
+  const loadLanguage = shikiLanguageLoaders[language];
+  if (!loadLanguage) return Promise.resolve();
+
+  const pendingLoad = languageLoadPromises.get(loadLanguage);
+  if (pendingLoad) return pendingLoad;
+
+  const languageLoad = Promise.all([getHighlighterInstance(), loadLanguage()])
+    .then(async ([highlighter, languageModule]) => {
+      if (highlighter.getLoadedLanguages().includes(language)) return;
+      await highlighter.loadLanguage(languageModule.default);
+      notify();
+    })
+    .finally(() => {
+      languageLoadPromises.delete(loadLanguage);
+    });
+  languageLoadPromises.set(loadLanguage, languageLoad);
+  return languageLoad;
 }
 
 // Kick off loading on first import so the highlighter is ready sooner.
@@ -130,13 +204,15 @@ export function useHighlightedLines(
   const resolvedTheme = useResolvedTheme();
 
   // Subscribe to highlighter readiness via useSyncExternalStore.
-  const ready = useSyncExternalStore(subscribe, getVersion, () => 0);
-  // `ready` is only used as a dependency to re-run the memo when the
-  // highlighter becomes available. The linter doesn't see that, so we
-  // reference it below to silence the warning.
+  const highlighterVersion = useSyncExternalStore(subscribe, getVersion, () => 0);
+
+  useEffect(() => {
+    if (!language || highlighterInstance?.getLoadedLanguages().includes(language)) return;
+    void requestLanguage(language);
+  }, [language, highlighterVersion]);
 
   return useMemo(() => {
-    void ready;
+    void highlighterVersion;
     if (!highlighterInstance || !language) return null;
 
     const themeName = forceDark || resolvedTheme === "dark" ? "github-dark" : "claude-light";
@@ -153,5 +229,5 @@ export function useHighlightedLines(
     } catch {
       return null;
     }
-  }, [code, language, forceDark, resolvedTheme, ready]);
+  }, [code, language, forceDark, resolvedTheme, highlighterVersion]);
 }

@@ -2,6 +2,7 @@ import type { HighlighterCore } from "@shikijs/core";
 import MarkdownIt from "markdown-it";
 import taskLists from "markdown-it-task-lists";
 import footnote from "markdown-it-footnote";
+import { requestLanguage } from "../hooks/use-shiki";
 
 let plainInstance: MarkdownIt | null = null;
 let highlightedInstance: MarkdownIt | null = null;
@@ -19,13 +20,16 @@ function getHighlightedMarkdownIt(highlighter: HighlighterCore): MarkdownIt {
   // Re-use the cached instance if the highlighter hasn't changed.
   if (highlightedInstance && boundHighlighter === highlighter) return highlightedInstance;
 
-  const loadedLanguages = highlighter.getLoadedLanguages();
   highlightedInstance = MarkdownIt({
     html: false,
     linkify: true,
     highlight(code: string, lang: string): string {
       const language = lang || "text";
-      if (language === "text" || !loadedLanguages.includes(language)) return "";
+      if (language === "text") return "";
+      if (!highlighter.getLoadedLanguages().includes(language)) {
+        void requestLanguage(language);
+        return "";
+      }
       try {
         let trimmed = code;
         if (trimmed.endsWith("\n")) trimmed = trimmed.slice(0, -1);
