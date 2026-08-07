@@ -24,6 +24,55 @@ const FILE_CONTENT_CACHE_PREFIX = "file-content:";
 const SESSION_MESSAGE_INSERT_BATCH_SIZE = 200;
 export const FILE_CONTENT_SIZE_CAP_BYTES = 5 * 1024 * 1024;
 
+function persistProject(
+  db: IndexDb,
+  project: string,
+  projectPath: string | null,
+  updatedAt: number,
+): void {
+  const existingProject = db
+    .select({ name: schema.projects.name })
+    .from(schema.projects)
+    .where(eq(schema.projects.id, project))
+    .get();
+  const fallbackName = decodeProjectDir(project, projectPath ?? undefined);
+  const projectName =
+    projectPath || !existingProject || existingProject.name.includes("/")
+      ? fallbackName
+      : existingProject.name;
+
+  db.insert(schema.projects)
+    .values({
+      id: project,
+      name: projectName,
+      projectPath,
+      updatedAt,
+    })
+    .onConflictDoUpdate({
+      target: schema.projects.id,
+      set: { name: projectName, projectPath, updatedAt },
+    })
+    .run();
+}
+
+function repairProjectDisplayNames(db: IndexDb): void {
+  const projects = db
+    .select({
+      id: schema.projects.id,
+      name: schema.projects.name,
+      projectPath: schema.projects.projectPath,
+      updatedAt: schema.projects.updatedAt,
+    })
+    .from(schema.projects)
+    .all();
+
+  for (const project of projects) {
+    if (project.name.includes("/")) {
+      persistProject(db, project.id, project.projectPath, project.updatedAt);
+    }
+  }
+}
+
 function fileContentCachePath(filePath: string): string {
   // `indexed_files.path` is also consumed by transcript, plan, task, and
   // memory indexers. A namespaced key gives file content its own exact
@@ -218,26 +267,9 @@ export async function indexSessionsIndex(
   if (!result.success) return;
 
   const firstEntry = result.data.entries[0];
-  const projectPath = firstEntry?.projectPath;
-  const projectName = decodeProjectDir(project, projectPath);
+  const projectPath = firstEntry?.projectPath ?? null;
 
-  // Upsert project
-  db.insert(schema.projects)
-    .values({
-      id: project,
-      name: projectName,
-      projectPath: projectPath ?? null,
-      updatedAt: fileStat.mtimeMs,
-    })
-    .onConflictDoUpdate({
-      target: schema.projects.id,
-      set: {
-        name: projectName,
-        projectPath: projectPath ?? null,
-        updatedAt: fileStat.mtimeMs,
-      },
-    })
-    .run();
+  persistProject(db, project, projectPath, fileStat.mtimeMs);
 
   // Upsert sessions
   for (const entry of result.data.entries) {
@@ -471,21 +503,8 @@ export async function indexJsonlFile(
     .get();
   const firstPrompt = await readFirstUserMessage(filePath);
   const projectPath = await resolveProjectPath(project);
-  const projectName = projectPath ? projectPath.split("/").pop()! : decodeProjectDir(project);
 
-  // Ensure project exists
-  db.insert(schema.projects)
-    .values({
-      id: project,
-      name: projectName,
-      projectPath,
-      updatedAt: fileStat.mtimeMs,
-    })
-    .onConflictDoUpdate({
-      target: schema.projects.id,
-      set: { name: projectName, projectPath, updatedAt: fileStat.mtimeMs },
-    })
-    .run();
+  persistProject(db, project, projectPath, fileStat.mtimeMs);
 
   if (existingSession) {
     const updates: Record<string, unknown> = { mtimeMs: fileStat.mtimeMs };
@@ -1281,6 +1300,8 @@ export async function fullScan(
 ): Promise<void> {
   indexingInProgress = true;
   try {
+    repairProjectDisplayNames(indexDb);
+
     let projectDirs: string[];
     try {
       projectDirs = await readDirectory(projectsDir);

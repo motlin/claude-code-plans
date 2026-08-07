@@ -27,10 +27,13 @@ export function decodeProjectDir(encoded: string, projectPath?: string): string 
     const last = segments[segments.length - 1];
     if (last) return last;
   }
-  // Return full decoded path — we can't reliably determine the last segment
-  // because hyphens are ambiguous (path separator vs part of dir name).
-  // Use resolveProjectName() for accurate short names.
-  return encoded.replace(/^-/, "/").replace(/-/g, "/");
+
+  const segments = encoded.split("-");
+  for (let index = segments.length - 1; index >= 0; index--) {
+    const segment = segments[index];
+    if (segment) return segment;
+  }
+  return encoded;
 }
 
 const resolvedProjectNames = new Map<string, string>();
@@ -45,35 +48,15 @@ export async function resolveProjectName(encoded: string, projectPath?: string):
   const cached = resolvedProjectNames.get(encoded);
   if (cached) return cached;
 
-  // The encoded dir name is the full path with / replaced by -.
-  // e.g. "-Users-craig-projects-claude-code-plans" -> "/Users/craig/projects/claude-code-plans"
-  // We need to find which hyphens are path separators vs part of dir names.
-  // Strategy: try stat-ing candidate paths from right to left to find the real directory,
-  // then return the last segment of the real path (preserving hyphens in dir names).
-  const chars = encoded.slice(1); // remove leading -
-  const hyphenPositions: number[] = [];
-  for (let i = 0; i < chars.length; i++) {
-    if (chars[i] === "-") hyphenPositions.push(i);
+  const resolvedPath = await resolveProjectPath(encoded);
+  if (resolvedPath) {
+    const segments = resolvedPath.split("/");
+    const name = segments[segments.length - 1]!;
+    resolvedProjectNames.set(encoded, name);
+    return name;
   }
 
-  // Try each hyphen position from right to left as the last path separator
-  for (let i = hyphenPositions.length - 1; i >= 0; i--) {
-    const pos = hyphenPositions[i]!;
-    const pathPart = "/" + chars.slice(0, pos).replace(/-/g, "/");
-    const namePart = chars.slice(pos + 1);
-    const candidate = pathPart + "/" + namePart;
-    try {
-      const s = await stat(candidate);
-      if (s.isDirectory()) {
-        resolvedProjectNames.set(encoded, namePart);
-        return namePart;
-      }
-    } catch {
-      // not a valid path, try next
-    }
-  }
-
-  // Fallback: full decoded path (hyphens are ambiguous without filesystem)
+  // The encoding is lossy, so only the final segment is safe as a display name.
   const name = decodeProjectDir(encoded);
   resolvedProjectNames.set(encoded, name);
   return name;

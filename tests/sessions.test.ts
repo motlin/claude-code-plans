@@ -490,7 +490,7 @@ describe("listSessions", () => {
     const groups = await listSessions(testDir);
     if (groups.length !== 1) throw new Error(`Expected 1 group, got ${groups.length}`);
     expect(groups[0]!.project).toBe("-Users-craig-projects-app");
-    expect(groups[0]!.projectName).toBe("/Users/craig/projects/app");
+    expect(groups[0]!.projectName).toBe("app");
     expect(groups[0]!.sessions.map((s) => s.title)).toStrictEqual(["Fix the login bug"]);
   });
 
@@ -645,7 +645,7 @@ describe("readSession", () => {
     const detail = await readSession(testDir, "test-session");
     if (!detail) throw new Error("Expected non-null detail");
     expect(detail.title).toBe("Hello");
-    expect(detail.projectName).toBe("/Users/craig/projects/app");
+    expect(detail.projectName).toBe("app");
     expect(detail.projectId).toBe("-Users-craig-projects-app");
     expect(detail.messages.map((m) => m.role)).toStrictEqual(["user", "assistant"]);
 

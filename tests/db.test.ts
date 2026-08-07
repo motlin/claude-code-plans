@@ -41,6 +41,7 @@ import {
 } from "../src/lib/db/queries";
 import * as schema from "../src/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
+import { encodeProjectPath } from "../src/lib/memory";
 
 const testDir = join(tmpdir(), "claude-db-test-" + process.pid);
 let db: AppDb;
@@ -751,10 +752,70 @@ describe("indexer", () => {
     await fullScan(db.index, db.summaries, testDir);
 
     const projects = listProjectsFromDb(db.index);
-    expect(projects.map((p) => p.name)).toStrictEqual(["/Users/craig/projects/app"]);
+    expect(projects.map((p) => p.name)).toStrictEqual(["app"]);
 
     const sessions = db.index.select().from(schema.sessions).all();
     expect(sessions.length).toBe(2);
+  });
+
+  it("preserves a resolved project name after its directory is deleted", async () => {
+    const sourceProjectPath = join(testDir, "source", "my-project");
+    const project = encodeProjectPath(sourceProjectPath);
+    const projectDir = join(testDir, project);
+    const sessionPath = join(projectDir, "session-alice.jsonl");
+    mkdirSync(sourceProjectPath, { recursive: true });
+    mkdirSync(projectDir, { recursive: true });
+    writeFileSync(
+      join(projectDir, "sessions-index.json"),
+      makeSessionsIndex([
+        {
+          sessionId: "session-alice",
+          fullPath: sessionPath,
+          fileMtime: 1_000,
+          firstPrompt: "Remember the project name",
+          projectPath: sourceProjectPath,
+        },
+      ]),
+    );
+    writeFileSync(
+      sessionPath,
+      jsonl({ type: "user", message: { content: "Remember the project name" } }),
+    );
+
+    await indexSessionsIndex(db.index, projectDir, project);
+    rmSync(sourceProjectPath, { recursive: true });
+    await indexJsonlFile(db.index, sessionPath, project);
+
+    const indexedProject = db.index
+      .select({ name: schema.projects.name, projectPath: schema.projects.projectPath })
+      .from(schema.projects)
+      .where(eq(schema.projects.id, project))
+      .get();
+    expect(indexedProject).toStrictEqual({ name: "my-project", projectPath: null });
+  });
+
+  it("repairs a legacy path-like project name when indexed files are unchanged", async () => {
+    const project = "-Users-craig-projects-klass-fix-739-rewrite-per-rule";
+    const projectDir = join(testDir, project);
+    const sessionPath = join(projectDir, "session-alice.jsonl");
+    mkdirSync(projectDir, { recursive: true });
+    writeFileSync(
+      sessionPath,
+      jsonl({ type: "user", message: { content: "Repair the display name" } }),
+    );
+
+    await fullScan(db.index, db.summaries, testDir);
+    db.index
+      .update(schema.projects)
+      .set({ name: "/Users/craig/projects/klass/fix/739/rewrite/per/rule" })
+      .where(eq(schema.projects.id, project))
+      .run();
+
+    await fullScan(db.index, db.summaries, testDir);
+
+    const projectNames = listProjectsFromDb(db.index).map((row) => row.name);
+    expect(projectNames).toStrictEqual(["rule"]);
+    expect(projectNames.every((name) => !name.startsWith("/Users/"))).toBe(true);
   });
 
   it("prunes a session whose primary transcript was deleted", async () => {

@@ -9,6 +9,7 @@ import {
   writeMemory,
   deleteMemory,
   getProjectsDir,
+  resolveProjectName,
 } from "../src/lib/memory.js";
 
 const testDir = join(tmpdir(), "claude-memory-test-" + process.pid);
@@ -28,20 +29,33 @@ describe("encodeProjectPath", () => {
 });
 
 describe("decodeProjectDir", () => {
-  it("returns full decoded path when no projectPath given", () => {
-    expect(decodeProjectDir("-Users-craig-projects-myapp")).toBe("/Users/craig/projects/myapp");
+  it("returns the final encoded segment when no projectPath is available", () => {
+    expect(decodeProjectDir("-Users-craig-projects-myapp")).toBe("myapp");
   });
 
-  it("returns full decoded path (hyphens are ambiguous without filesystem)", () => {
-    expect(decodeProjectDir("-Users-craig-deep-nested-project")).toBe(
-      "/Users/craig/deep/nested/project",
-    );
+  it("skips empty segments introduced by punctuation", () => {
+    expect(decodeProjectDir("-Users-craig--dotfiles")).toBe("dotfiles");
   });
 
   it("uses last segment of projectPath when provided", () => {
     expect(decodeProjectDir("-Users-craig-projects-my-app", "/Users/craig/projects/my-app")).toBe(
       "my-app",
     );
+  });
+});
+
+describe("resolveProjectName", () => {
+  it("uses a short fallback when the project directory no longer exists", async () => {
+    const names = await Promise.all([
+      resolveProjectName("-Users-craig--dotfiles"),
+      resolveProjectName(
+        "-Users-craig-projects-factorio-blueprint-playground--llm-worktrees-transformations-codex",
+      ),
+      resolveProjectName("-Users-craig-projects-klass-fix-739-rewrite-per-rule"),
+    ]);
+
+    expect(names).toStrictEqual(["dotfiles", "codex", "rule"]);
+    expect(names.every((name) => !name.startsWith("/Users/"))).toBe(true);
   });
 });
 
@@ -66,7 +80,7 @@ describe("listMemories", () => {
     const groups = await listMemories(testDir);
     if (groups.length !== 1) throw new Error(`Expected 1 group, got ${groups.length}`);
     expect(groups[0]!.project).toBe("-Users-craig-projects-app");
-    expect(groups[0]!.projectName).toBe("/Users/craig/projects/app");
+    expect(groups[0]!.projectName).toBe("app");
     expect(groups[0]!.memories.map((m) => m.filename).sort()).toStrictEqual([
       "MEMORY.md",
       "patterns.md",
