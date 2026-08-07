@@ -11,7 +11,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { PluginInfoData } from "../src/lib/api/plugins";
 import { pluginsQueryOptions, userCommandsQueryOptions } from "../src/lib/api/plugins";
-import { PluginCard, PluginsPage } from "../src/routes/plugins";
+import { PluginCard, PluginsPage } from "../src/components/plugins-page";
 
 const scrollIntoView = vi.fn();
 
