@@ -2,7 +2,7 @@ import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { ClaudeSettingsSchema, McpConfigSchema, SessionsIndexSchema } from "../src/lib/schemas";
-import { PersistedCapabilitiesSchema } from "../src/lib/capabilities";
+import { DEFAULT_CAPABILITIES, PersistedCapabilitiesSchema } from "../src/lib/capabilities";
 
 /**
  * Collect all project root directories under `~/projects`, scanning up to 2 levels deep.
@@ -233,6 +233,23 @@ describe("PersistedCapabilitiesSchema", () => {
 
   it("accepts only persisted enabled intent and pre-seeded config", () => {
     expect(PersistedCapabilitiesSchema.parse(capabilities)).toStrictEqual(capabilities);
+  });
+
+  it("accepts the default offer behavior while other optional capabilities remain disabled", () => {
+    expect(PersistedCapabilitiesSchema.parse(DEFAULT_CAPABILITIES)).toStrictEqual({
+      readOnlyMcpServer: {
+        enabled: false,
+        config: { includePendingApprovals: true },
+      },
+      workingCopyReview: {
+        enabled: true,
+        config: { offerMode: "offer" },
+      },
+      sessionContextBrief: {
+        enabled: false,
+        config: { includeDecisions: true },
+      },
+    });
   });
 
   it.each(["installed", "available"])("rejects the computed %s runtime axis", (runtimeKey) => {

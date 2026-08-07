@@ -30,7 +30,7 @@ describe("settings field coverage", () => {
 });
 
 describe("ccp capability settings coverage", () => {
-  it("keeps every capability schema entry pre-seeded and disabled", () => {
+  it("keeps every capability schema entry pre-seeded with intentional defaults", () => {
     expect({
       ids: CAPABILITY_IDS,
       schemaKeys: Object.keys(PersistedCapabilitiesSchema.shape),
@@ -44,7 +44,7 @@ describe("ccp capability settings coverage", () => {
           config: { includePendingApprovals: true },
         },
         workingCopyReview: {
-          enabled: false,
+          enabled: true,
           config: { offerMode: "offer" },
         },
         sessionContextBrief: {

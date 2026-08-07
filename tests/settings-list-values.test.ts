@@ -70,7 +70,7 @@ describe("SettingsProvider list persistence", () => {
       firstRender.result.current.setSetting("capabilities", {
         ...DEFAULTS.capabilities,
         workingCopyReview: {
-          enabled: true,
+          enabled: false,
           config: { offerMode: "auto" },
         },
       });
@@ -90,7 +90,7 @@ describe("SettingsProvider list persistence", () => {
       storedCapabilities: JSON.stringify({
         ...DEFAULTS.capabilities,
         workingCopyReview: {
-          enabled: true,
+          enabled: false,
           config: { offerMode: "auto" },
         },
       }),
@@ -113,7 +113,7 @@ describe("SettingsProvider list persistence", () => {
         capabilities: {
           ...DEFAULTS.capabilities,
           workingCopyReview: {
-            enabled: true,
+            enabled: false,
             config: { offerMode: "auto" },
           },
         },

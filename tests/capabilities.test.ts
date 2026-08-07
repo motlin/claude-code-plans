@@ -5,6 +5,7 @@ import {
   DEFAULT_CAPABILITIES,
   resolveServerCapabilities,
   type CapabilityRuntimeFactsById,
+  type PersistedCapabilities,
 } from "../src/lib/capabilities";
 import { handleCapabilitiesRequest } from "../src/routes/api/capabilities";
 
@@ -15,6 +16,23 @@ const RUNTIME_FACTS: CapabilityRuntimeFactsById = {
 };
 
 describe("capability resolution", () => {
+  it("offers working-copy reviews by default without enabling other optional capabilities", () => {
+    expect(DEFAULT_CAPABILITIES).toStrictEqual({
+      readOnlyMcpServer: {
+        enabled: false,
+        config: { includePendingApprovals: true },
+      },
+      workingCopyReview: {
+        enabled: true,
+        config: { offerMode: "offer" },
+      },
+      sessionContextBrief: {
+        enabled: false,
+        config: { includeDecisions: true },
+      },
+    });
+  });
+
   it("rejects malformed JSON without probing runtime capabilities", async () => {
     const probes: string[] = [];
     const response = await handleCapabilitiesRequest(
@@ -75,11 +93,12 @@ describe("capability resolution", () => {
   });
 
   it("keeps persisted intent separate from fresh runtime facts", () => {
-    const persisted = {
+    const persisted: PersistedCapabilities = {
       ...DEFAULT_CAPABILITIES,
       workingCopyReview: {
         ...DEFAULT_CAPABILITIES.workingCopyReview,
-        enabled: true,
+        enabled: false,
+        config: { offerMode: "auto" },
       },
     };
 
@@ -91,8 +110,8 @@ describe("capability resolution", () => {
         available: true,
       },
       workingCopyReview: {
-        enabled: true,
-        config: { offerMode: "offer" },
+        enabled: false,
+        config: { offerMode: "auto" },
         installed: true,
         available: false,
       },
@@ -106,12 +125,12 @@ describe("capability resolution", () => {
   });
 
   it("keeps an enabled feature visible before load and while degraded", () => {
-    const disabled = DEFAULT_CAPABILITIES;
-    const enabled = {
+    const enabled = DEFAULT_CAPABILITIES;
+    const disabled = {
       ...DEFAULT_CAPABILITIES,
       workingCopyReview: {
         ...DEFAULT_CAPABILITIES.workingCopyReview,
-        enabled: true,
+        enabled: false,
       },
     };
 

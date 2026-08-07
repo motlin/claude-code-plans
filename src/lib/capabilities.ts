@@ -57,7 +57,7 @@ export const DEFAULT_CAPABILITIES: PersistedCapabilities = {
     config: { includePendingApprovals: true },
   },
   workingCopyReview: {
-    enabled: false,
+    enabled: true,
     config: { offerMode: "offer" },
   },
   sessionContextBrief: {
