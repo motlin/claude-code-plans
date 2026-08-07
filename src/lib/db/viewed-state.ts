@@ -1,9 +1,11 @@
 import { and, eq, notInArray } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import { readFileSync } from "node:fs";
+import { closeSync, openSync, readSync } from "node:fs";
 import * as schema from "./schema";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
+
+const TRANSCRIPT_READ_BUFFER_SIZE = 64 * 1024;
 
 export interface DurableSessionViewedState {
   currentMessageIndex: number;
@@ -24,6 +26,37 @@ const EMPTY_SESSION_VIEWED_STATE: StoredSessionViewedState = {
   lastViewedMessageIndex: -1,
   reviewTargetMessageIndex: -1,
 };
+
+function isLineWhitespaceByte(byte: number): boolean {
+  return byte === 0x09 || byte === 0x0b || byte === 0x0c || byte === 0x0d || byte === 0x20;
+}
+
+function countTranscriptRecords(filePath: string): number {
+  const descriptor = openSync(filePath, "r");
+  try {
+    const buffer = Buffer.allocUnsafe(TRANSCRIPT_READ_BUFFER_SIZE);
+    let recordCount = 0;
+    let lineHasContent = false;
+    let bytesRead: number;
+
+    do {
+      bytesRead = readSync(descriptor, buffer, 0, buffer.length, null);
+      for (let index = 0; index < bytesRead; index += 1) {
+        const byte = buffer.readUInt8(index);
+        if (byte === 0x0a) {
+          if (lineHasContent) recordCount += 1;
+          lineHasContent = false;
+        } else if (!isLineWhitespaceByte(byte)) {
+          lineHasContent = true;
+        }
+      }
+    } while (bytesRead > 0);
+
+    return recordCount + (lineHasContent ? 1 : 0);
+  } finally {
+    closeSync(descriptor);
+  }
+}
 
 function getStoredSessionViewedState(db: IndexDb, sessionId: string): StoredSessionViewedState {
   return (
@@ -188,8 +221,7 @@ export function getCurrentSessionMessageIndex(db: IndexDb, sessionId: string): n
   if (!row) return -1;
 
   try {
-    const contents = readFileSync(row.filePath, "utf8");
-    return contents.split("\n").filter((line) => line.trim() !== "").length - 1;
+    return countTranscriptRecords(row.filePath) - 1;
   } catch {
     return -1;
   }

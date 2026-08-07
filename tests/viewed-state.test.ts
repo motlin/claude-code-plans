@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vite-plus/test";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { openAppDb, openTestDb } from "../src/lib/db/connection";
 import {
   getCurrentSessionMessageIndex,
@@ -14,12 +14,89 @@ import {
 } from "../src/lib/db/viewed-state";
 import * as schema from "../src/lib/db/schema";
 
+const filesystemReadState = vi.hoisted(() => ({
+  forbiddenWholeFilePaths: new Set<string>(),
+}));
+
+vi.mock("node:fs", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs")>();
+  return {
+    ...actual,
+    readFileSync: (...args: Parameters<typeof actual.readFileSync>) => {
+      if (typeof args[0] === "string" && filesystemReadState.forbiddenWholeFilePaths.has(args[0])) {
+        throw new Error(`Unexpected whole-file read: ${args[0]}`);
+      }
+      return actual.readFileSync(...args);
+    },
+  };
+});
+
 describe("durable session viewed state", () => {
   const temporaryDirectories: string[] = [];
 
   afterEach(() => {
+    filesystemReadState.forbiddenWholeFilePaths.clear();
     for (const directory of temporaryDirectories.splice(0)) {
       rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("counts transcript records in bounded reads with or without a trailing newline", () => {
+    const directory = mkdtempSync(join(tmpdir(), "viewed-state-test-"));
+    temporaryDirectories.push(directory);
+    const cases = [
+      { sessionId: "session-empty", contents: "", expectedMessageIndex: -1 },
+      {
+        sessionId: "session-trailing-newline",
+        contents: '{"type":"user"}\n{"type":"assistant"}\n',
+        expectedMessageIndex: 1,
+      },
+      {
+        sessionId: "session-no-trailing-newline",
+        contents: '{"type":"user"}\n{"type":"assistant"}',
+        expectedMessageIndex: 1,
+      },
+      {
+        sessionId: "session-multiple-chunks",
+        contents: `${JSON.stringify({ content: "x".repeat(70_000) })}\n{"type":"assistant"}`,
+        expectedMessageIndex: 1,
+      },
+    ];
+    const db = openTestDb();
+
+    try {
+      for (const testCase of cases) {
+        const transcriptPath = join(directory, `${testCase.sessionId}.jsonl`);
+        writeFileSync(transcriptPath, testCase.contents);
+        filesystemReadState.forbiddenWholeFilePaths.add(transcriptPath);
+        db.index
+          .insert(schema.sessions)
+          .values({
+            id: testCase.sessionId,
+            projectId: "project-test-100",
+            title: "Test session",
+            messageCount: 0,
+            isSidechain: 0,
+            createdAt: 1_000,
+            mtimeMs: 2_000,
+            filePath: transcriptPath,
+          })
+          .run();
+      }
+
+      expect(
+        cases.map((testCase) => ({
+          sessionId: testCase.sessionId,
+          messageIndex: getCurrentSessionMessageIndex(db.index, testCase.sessionId),
+        })),
+      ).toStrictEqual(
+        cases.map((testCase) => ({
+          sessionId: testCase.sessionId,
+          messageIndex: testCase.expectedMessageIndex,
+        })),
+      );
+    } finally {
+      db.close();
     }
   });
 
