@@ -18,6 +18,9 @@ const TaskItemSchema = z.object({
 
 const TaskGroupSchema = z.object({
   projectDir: z.string(),
+  projectId: z.string(),
+  projectName: z.string(),
+  sessionTitle: z.string(),
   tasks: z.array(TaskItemSchema),
   totalPending: z.number(),
   totalInProgress: z.number(),

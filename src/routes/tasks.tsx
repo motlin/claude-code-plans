@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useMemo, useState } from "react";
 import { ChevronRight, CheckCircle, Circle, Ban, List, GitBranch } from "lucide-react";
@@ -52,6 +52,25 @@ function TasksPage() {
         .filter((group) => group.tasks.length > 0),
     [groups, searchQuery],
   );
+  const visibleProjects = useMemo(() => {
+    const projectMap = new Map<
+      string,
+      { projectId: string; projectName: string; sessions: typeof visibleGroups }
+    >();
+    for (const group of visibleGroups) {
+      let project = projectMap.get(group.projectId);
+      if (!project) {
+        project = {
+          projectId: group.projectId,
+          projectName: group.projectName,
+          sessions: [],
+        };
+        projectMap.set(group.projectId, project);
+      }
+      project.sessions.push(group);
+    }
+    return [...projectMap.values()];
+  }, [visibleGroups]);
 
   function toggleGroup(projectDir: string) {
     setCollapsed((prev) => {
@@ -105,90 +124,112 @@ function TasksPage() {
       ) : view === "graph" ? (
         <TaskDependencyGraph groups={visibleGroups} />
       ) : (
-        <div className="mt-6 space-y-4">
-          {visibleGroups.map((group) => {
-            const isCollapsed = collapsed.has(group.projectDir);
-            return (
-              <div key={group.projectDir}>
-                <button
-                  type="button"
-                  onClick={() => toggleGroup(group.projectDir)}
-                  className="flex w-full items-center gap-2 border-b border-border-300/15 pb-1 cursor-pointer"
-                >
-                  <ChevronRight
-                    className="h-3 w-3 text-text-500 transition-transform duration-200"
-                    style={{
-                      transform: isCollapsed ? "rotate(0deg)" : "rotate(90deg)",
-                    }}
-                  />
-                  <span className="text-sm font-semibold">{group.projectDir}</span>
-                  <span className="flex items-center gap-2 text-xs text-text-500">
-                    {group.totalPending > 0 && (
-                      <span className="flex items-center gap-1">
-                        <Circle className="h-3 w-3" /> {group.totalPending} pending
-                      </span>
-                    )}
-                    {group.totalInProgress > 0 && (
-                      <span className="flex items-center gap-1 text-blue-500">
-                        <Circle className="h-3 w-3" /> {group.totalInProgress} in progress
-                      </span>
-                    )}
-                  </span>
-                </button>
-                {!isCollapsed && (
-                  <div className="mt-2 space-y-1">
-                    {group.tasks.map((task) => (
-                      <div key={task.taskId} className="flex items-start gap-2 rounded-md p-2">
-                        {task.status === "completed" ? (
-                          <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
-                        ) : (
-                          <Circle
-                            className={`mt-0.5 h-4 w-4 shrink-0 ${task.status === "in_progress" ? "text-blue-500" : "text-text-500"}`}
+        <div className="mt-6 space-y-6">
+          {visibleProjects.map((project) => (
+            <section key={project.projectId}>
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-text-400">
+                {project.projectName}
+              </h2>
+              <div className="mt-2 space-y-4">
+                {project.sessions.map((group) => {
+                  const isCollapsed = collapsed.has(group.projectDir);
+                  return (
+                    <div key={group.projectDir}>
+                      <div className="flex w-full items-center gap-2 border-b border-border-300/15 pb-1">
+                        <button
+                          type="button"
+                          aria-expanded={!isCollapsed}
+                          aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${group.sessionTitle}`}
+                          onClick={() => toggleGroup(group.projectDir)}
+                          className="cursor-pointer"
+                        >
+                          <ChevronRight
+                            className="h-3 w-3 text-text-500 transition-transform duration-200"
+                            style={{
+                              transform: isCollapsed ? "rotate(0deg)" : "rotate(90deg)",
+                            }}
                           />
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm text-text-100 flex items-center gap-1.5">
-                            <span>
-                              #{task.taskId}{" "}
-                              <Suspense fallback={null}>
-                                <MarkdownInline markdown={task.subject} />
-                              </Suspense>
+                        </button>
+                        <Link
+                          to="/session/$id"
+                          params={{ id: group.projectDir }}
+                          className="text-sm font-semibold text-text-100 no-underline hover:text-accent-100"
+                        >
+                          {group.sessionTitle}
+                        </Link>
+                        <span className="flex items-center gap-2 text-xs text-text-500">
+                          {group.totalPending > 0 && (
+                            <span className="flex items-center gap-1">
+                              <Circle className="h-3 w-3" /> {group.totalPending} pending
                             </span>
-                            <DebugLink
-                              kind="task"
-                              relativePath={`${group.projectDir}/${task.taskId}.json`}
-                            />
-                          </div>
-                          {task.description && task.description !== task.subject && (
-                            <div className="mt-0.5 text-xs text-text-500">
-                              <Suspense fallback={null}>
-                                <MarkdownView markdown={task.description} />
-                              </Suspense>
-                            </div>
                           )}
-                          <div className="mt-0.5 flex items-center gap-2">
-                            <span
-                              className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${statusBadgeClasses[task.status] ?? ""}`}
-                            >
-                              {statusLabel[task.status] ?? task.status}
+                          {group.totalInProgress > 0 && (
+                            <span className="flex items-center gap-1 text-blue-500">
+                              <Circle className="h-3 w-3" /> {group.totalInProgress} in progress
                             </span>
-                            {task.blockedBy.length > 0 && (
-                              <span className="flex items-center gap-1 text-[10px] text-orange-500">
-                                <Ban className="h-3 w-3" />
-                                blocked by #{task.blockedBy.join(", #")}
-                              </span>
-                            )}
-                            <TaskOwner owner={task.owner} />
-                          </div>
-                          <TaskMetadata metadata={task.metadata} />
-                        </div>
+                          )}
+                        </span>
                       </div>
-                    ))}
-                  </div>
-                )}
+                      {!isCollapsed && (
+                        <div className="mt-2 space-y-1">
+                          {group.tasks.map((task) => (
+                            <div
+                              key={task.taskId}
+                              className="flex items-start gap-2 rounded-md p-2"
+                            >
+                              {task.status === "completed" ? (
+                                <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
+                              ) : (
+                                <Circle
+                                  className={`mt-0.5 h-4 w-4 shrink-0 ${task.status === "in_progress" ? "text-blue-500" : "text-text-500"}`}
+                                />
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <div className="text-sm text-text-100 flex items-center gap-1.5">
+                                  <span>
+                                    #{task.taskId}{" "}
+                                    <Suspense fallback={null}>
+                                      <MarkdownInline markdown={task.subject} />
+                                    </Suspense>
+                                  </span>
+                                  <DebugLink
+                                    kind="task"
+                                    relativePath={`${group.projectDir}/${task.taskId}.json`}
+                                  />
+                                </div>
+                                {task.description && task.description !== task.subject && (
+                                  <div className="mt-0.5 text-xs text-text-500">
+                                    <Suspense fallback={null}>
+                                      <MarkdownView markdown={task.description} />
+                                    </Suspense>
+                                  </div>
+                                )}
+                                <div className="mt-0.5 flex items-center gap-2">
+                                  <span
+                                    className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${statusBadgeClasses[task.status] ?? ""}`}
+                                  >
+                                    {statusLabel[task.status] ?? task.status}
+                                  </span>
+                                  {task.blockedBy.length > 0 && (
+                                    <span className="flex items-center gap-1 text-[10px] text-orange-500">
+                                      <Ban className="h-3 w-3" />
+                                      blocked by #{task.blockedBy.join(", #")}
+                                    </span>
+                                  )}
+                                  <TaskOwner owner={task.owner} />
+                                </div>
+                                <TaskMetadata metadata={task.metadata} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            </section>
+          ))}
         </div>
       )}
     </div>

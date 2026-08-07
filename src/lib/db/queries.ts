@@ -1058,6 +1058,9 @@ export interface TaskRow {
 
 interface TaskProjectGroup {
   projectDir: string;
+  projectId: string;
+  projectName: string;
+  sessionTitle: string;
   tasks: TaskRow[];
   totalPending: number;
   totalInProgress: number;
@@ -1167,31 +1170,59 @@ export function getIncompleteTasksGroupedByProject(db: IndexDb): TaskProjectGrou
       blocksJson: schema.tasks.blocksJson,
       blockedByJson: schema.tasks.blockedByJson,
       metadataJson: schema.tasks.metadataJson,
+      projectId: schema.sessions.projectId,
+      projectName: schema.projects.name,
+      sessionTitle: sql<
+        string | null
+      >`coalesce(${schema.sessions.customTitle}, ${schema.sessions.title})`,
     })
     .from(schema.tasks)
+    .leftJoin(schema.sessions, eq(schema.sessions.id, schema.tasks.projectDir))
+    .leftJoin(schema.projects, eq(schema.projects.id, schema.sessions.projectId))
     .where(sql`${schema.tasks.status} IN ('pending', 'in_progress')`)
     .all();
 
-  const projectMap = new Map<string, TaskRow[]>();
+  const sessionMap = new Map<
+    string,
+    {
+      projectId: string;
+      projectName: string;
+      sessionTitle: string;
+      tasks: TaskRow[];
+    }
+  >();
   for (const row of rows) {
     const task = parseTaskRow(row);
-    let list = projectMap.get(row.projectDir);
-    if (!list) {
-      list = [];
-      projectMap.set(row.projectDir, list);
+    let session = sessionMap.get(row.projectDir);
+    if (!session) {
+      session = {
+        projectId: row.projectId ?? row.projectDir,
+        projectName: row.projectName ?? row.projectId ?? row.projectDir,
+        sessionTitle: row.sessionTitle ?? row.projectDir,
+        tasks: [],
+      };
+      sessionMap.set(row.projectDir, session);
     }
-    list.push(task);
+    session.tasks.push(task);
   }
 
   const result: TaskProjectGroup[] = [];
-  for (const [projectDir, tasks] of projectMap) {
+  for (const [projectDir, session] of sessionMap) {
     let totalPending = 0;
     let totalInProgress = 0;
-    for (const t of tasks) {
-      if (t.status === "pending") totalPending++;
-      if (t.status === "in_progress") totalInProgress++;
+    for (const task of session.tasks) {
+      if (task.status === "pending") totalPending++;
+      if (task.status === "in_progress") totalInProgress++;
     }
-    result.push({ projectDir, tasks, totalPending, totalInProgress });
+    result.push({
+      projectDir,
+      projectId: session.projectId,
+      projectName: session.projectName,
+      sessionTitle: session.sessionTitle,
+      tasks: session.tasks,
+      totalPending,
+      totalInProgress,
+    });
   }
 
   return result;

@@ -2306,11 +2306,15 @@ describe("task queries", () => {
 
   beforeEach(async () => {
     db.index
+      .insert(schema.projects)
+      .values({ id: projectId, name: "example-app", updatedAt: 1000 })
+      .run();
+    db.index
       .insert(schema.sessions)
       .values({
         id: sessionId,
         projectId,
-        title: "Task owner session",
+        title: "Example task owner session",
         messageCount: 1,
         isSidechain: 0,
         createdAt: 1000,
@@ -2429,11 +2433,67 @@ describe("task queries", () => {
 
   it("getIncompleteTasksGroupedByProject groups correctly", () => {
     const groups = getIncompleteTasksGroupedByProject(db.index);
-    if (groups.length !== 1) throw new Error(`Expected 1 group, got ${groups.length}`);
-    expect(groups[0]!.projectDir).toBe(sessionId);
-    expect(groups[0]!.totalPending).toBe(1);
-    expect(groups[0]!.totalInProgress).toBe(1);
-    expect(groups[0]!.tasks.length).toBe(2);
+    expect(
+      groups.map(({ tasks, ...group }) => ({
+        ...group,
+        taskIds: tasks.map((task) => task.taskId).sort(),
+      })),
+    ).toStrictEqual([
+      {
+        projectId,
+        projectName: "example-app",
+        projectDir: sessionId,
+        sessionTitle: "Example task owner session",
+        taskIds: ["2", "3"],
+        totalPending: 1,
+        totalInProgress: 1,
+      },
+    ]);
+  });
+
+  it("getIncompleteTasksGroupedByProject preserves tasks whose session is missing", () => {
+    const missingSessionId = "00000000-0000-0000-0000-000000000000";
+    db.index
+      .insert(schema.tasks)
+      .values({
+        taskId: "100",
+        projectDir: missingSessionId,
+        subject: "Orphaned task",
+        description: "Keep this visible",
+        status: "pending",
+        blocksJson: "[]",
+        blockedByJson: "[]",
+        metadataJson: "{}",
+        filePath: `/tasks/${missingSessionId}/100.json`,
+        mtimeMs: 1000,
+      })
+      .run();
+
+    const orphanedGroup = getIncompleteTasksGroupedByProject(db.index).find(
+      (group) => group.projectDir === missingSessionId,
+    );
+    expect(orphanedGroup).toStrictEqual({
+      projectId: missingSessionId,
+      projectName: missingSessionId,
+      projectDir: missingSessionId,
+      sessionTitle: missingSessionId,
+      tasks: [
+        {
+          taskId: "100",
+          projectDir: missingSessionId,
+          subject: "Orphaned task",
+          description: "Keep this visible",
+          status: "pending",
+          activeForm: null,
+          owner: null,
+          blocks: [],
+          blockedBy: [],
+          metadata: {},
+        },
+      ],
+      totalPending: 1,
+      totalInProgress: 0,
+    });
   });
 
   it("getIncompleteTasksGroupedByProject returns empty when all completed", async () => {
