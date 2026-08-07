@@ -5,6 +5,7 @@ default:
 
 ci := env("CI", "")
 port := "7526"
+preview_port := "7527"
 
 # Install dependencies
 [group('setup')]
@@ -37,6 +38,10 @@ dev *args: install
 # Run production server
 start *args: install build
     PORT={{port}} vp run start {{args}}
+
+# PORT=7527 vp run start
+start-preview *args: install build
+    PORT={{preview_port}} vp run start {{args}}
 
 # Run linter
 lint: install
