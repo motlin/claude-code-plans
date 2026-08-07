@@ -3,6 +3,9 @@ import { realpath, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { isAbsolute, join, relative, sep } from "node:path";
 import { z } from "zod";
+import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import { listFileSearchProjectPathsFromDb } from "./db/queries";
+import type * as schema from "./db/schema";
 
 /**
  * Directory holding this application's own configuration. Follows the XDG
@@ -75,8 +78,9 @@ function isContainedPath(path: string, root: string): boolean {
 /** Resolve configured file roots to unique, existing, real directories. */
 export async function resolveConfiguredFileRoots(
   configPath: string = getConfigPath(),
+  defaultRoots: readonly string[] = [],
 ): Promise<string[]> {
-  const configuredRoots = readConfig(configPath)?.file_roots ?? [];
+  const configuredRoots = readConfig(configPath)?.file_roots ?? defaultRoots;
   const resolvedRoots: string[] = [];
 
   for (const configuredRoot of configuredRoots) {
@@ -102,10 +106,19 @@ export async function resolveConfiguredFileRoots(
   return resolvedRoots;
 }
 
+/** Resolve explicit file roots, or indexed project paths when the setting is absent. */
+export async function resolveFileSearchRoots(
+  indexDatabase: BetterSQLite3Database<typeof schema>,
+  configPath: string = getConfigPath(),
+): Promise<string[]> {
+  return resolveConfiguredFileRoots(configPath, listFileSearchProjectPathsFromDb(indexDatabase));
+}
+
 /** Resolve a requested search directory and prove it remains inside a configured real root. */
 export async function resolveFileSearchScope(
   scopeRoot: string,
   configPath: string = getConfigPath(),
+  defaultRoots: readonly string[] = [],
 ): Promise<string | null> {
   let resolvedScope: string;
   try {
@@ -115,7 +128,7 @@ export async function resolveFileSearchScope(
     return null;
   }
 
-  const configuredRoots = await resolveConfiguredFileRoots(configPath);
+  const configuredRoots = await resolveConfiguredFileRoots(configPath, defaultRoots);
   return configuredRoots.some((root) => isContainedPath(resolvedScope, root))
     ? resolvedScope
     : null;

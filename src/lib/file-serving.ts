@@ -34,6 +34,7 @@ function isContainedPath(path: string, root: string): boolean {
 export async function readAllowedFile(
   requestedPath: string,
   configPath?: string,
+  defaultRoots: readonly string[] = [],
 ): Promise<ServedFile> {
   if (!isAbsolute(requestedPath)) {
     throw new FileServingError("An absolute file path is required", 400);
@@ -46,7 +47,7 @@ export async function readAllowedFile(
     throw new FileServingError("File not found", 404);
   }
 
-  const roots = await resolveConfiguredFileRoots(configPath);
+  const roots = await resolveConfiguredFileRoots(configPath, defaultRoots);
   if (!roots.some((root) => isContainedPath(resolvedPath, root))) {
     throw new FileServingError("File path is not allowed", 403);
   }

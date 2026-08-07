@@ -13,8 +13,9 @@ export const Route = createFileRoute("/api/search/file-roots")({
   server: {
     handlers: {
       GET: async () => {
-        const { resolveConfiguredFileRoots } = await import("../../lib/config");
-        return fileSearchRootsResponse(await resolveConfiguredFileRoots());
+        const { resolveFileSearchRoots } = await import("../../lib/config");
+        const { getDb } = await import("../../lib/db");
+        return fileSearchRootsResponse(await resolveFileSearchRoots(getDb().index));
       },
     },
   },

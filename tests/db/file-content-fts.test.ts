@@ -11,7 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
-import { resolveConfiguredFileRoots } from "../../src/lib/config";
+import { resolveConfiguredFileRoots, resolveFileSearchRoots } from "../../src/lib/config";
 import { openAppDb, openTestDb, type AppDb } from "../../src/lib/db/connection";
 import {
   deleteFileContent,
@@ -243,6 +243,32 @@ describe("file content FTS", () => {
 
     writeFileSync(configPath, JSON.stringify({ image_roots: [allowedRoot] }));
     expect(await resolveConfiguredFileRoots(configPath)).toStrictEqual([]);
+  });
+
+  it("uses distinct indexed project paths when file_roots is unset", async () => {
+    const nestedRoot = join(allowedRoot, "nested");
+    mkdirSync(nestedRoot);
+    const configPath = join(fixtureDirectory, "config.json");
+    db.index
+      .insert(schema.projects)
+      .values([
+        { id: "allowed", name: "Allowed", projectPath: allowedRoot, updatedAt: 4_000 },
+        { id: "duplicate", name: "Duplicate", projectPath: allowedRoot, updatedAt: 3_000 },
+        { id: "nested", name: "Nested", projectPath: nestedRoot, updatedAt: 2_000 },
+        { id: "unknown", name: "Unknown", projectPath: null, updatedAt: 1_000 },
+      ])
+      .run();
+
+    writeFileSync(configPath, JSON.stringify({ image_roots: [allowedRoot] }));
+    const defaultRoots = await resolveFileSearchRoots(db.index, configPath);
+
+    writeFileSync(configPath, JSON.stringify({ file_roots: [] }));
+    const explicitlyEmptyRoots = await resolveFileSearchRoots(db.index, configPath);
+
+    expect({ defaultRoots, explicitlyEmptyRoots }).toStrictEqual({
+      defaultRoots: [allowedRoot],
+      explicitlyEmptyRoots: [],
+    });
   });
 
   it("drops and recreates file_content_fts on a schema-version mismatch", () => {

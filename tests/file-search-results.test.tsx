@@ -348,6 +348,20 @@ describe("file search results", () => {
     expect((await screen.findByRole("alert")).textContent).toBe("File search failed. Try again.");
   });
 
+  it("links the empty roots state to the settings editor", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ roots: [] })),
+    );
+    renderSearch();
+
+    const link = await screen.findByRole("link", {
+      name: "Add at least one file_roots directory to the app config",
+    });
+
+    expect(link.getAttribute("href")).toBe("/settings/edit");
+  });
+
   it("restores a validated URL query and builds an encoded viewer hash target", () => {
     const search = validateSearchParameters({ q: "needle", mode: "files" });
     const invalidSearch = validateSearchParameters({ q: 100, mode: "fabricated" });

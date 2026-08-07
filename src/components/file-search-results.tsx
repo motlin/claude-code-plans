@@ -285,7 +285,10 @@ export function FileSearchResults({
 
       {rootsQuery.data?.roots.length === 0 ? (
         <p className="mt-8 text-center text-sm text-text-500">
-          Add at least one <code>file_roots</code> directory to the app config to search files.
+          <a className="text-accent-100 hover:underline" href="/settings/edit">
+            Add at least one <code>file_roots</code> directory to the app config
+          </a>{" "}
+          to search files.
         </p>
       ) : query.trim().length < MINIMUM_QUERY_LENGTH ? (
         <p className="mt-8 text-center text-sm text-text-500">

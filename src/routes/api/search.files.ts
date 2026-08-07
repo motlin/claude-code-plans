@@ -40,11 +40,12 @@ export const Route = createFileRoute("/api/search/files")({
       GET: async ({ request }: { request: Request }) => {
         const { getDb } = await import("../../lib/db");
         const { searchFileContentDb } = await import("../../lib/db/queries");
-        const { resolveFileSearchScope } = await import("../../lib/config");
+        const { resolveFileSearchRoots, resolveFileSearchScope } = await import("../../lib/config");
         const { index } = getDb();
+        const roots = await resolveFileSearchRoots(index);
 
         return handleFileSearchRequest(request, {
-          resolveScope: resolveFileSearchScope,
+          resolveScope: (scopeRoot) => resolveFileSearchScope(scopeRoot, undefined, roots),
           search: (query, scopeRoot) => searchFileContentDb(index, query, scopeRoot),
         });
       },

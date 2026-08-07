@@ -95,6 +95,27 @@ describe("file viewer API", () => {
     });
   });
 
+  it("opens a file under a default project root when file_roots is unset", async () => {
+    writeFileSync(configPath, JSON.stringify({}));
+    const filePath = join(allowedRoot, "indexer.ts");
+    writeFileSync(filePath, "export const indexer = 'available';\n");
+
+    const response = await handleFileRequest(
+      fileRequest(filePath),
+      encodeFilePath(filePath),
+      configPath,
+      [allowedRoot],
+    );
+
+    expect({ body: await response.json(), status: response.status }).toStrictEqual({
+      body: {
+        content: "export const indexer = 'available';\n",
+        path: realpathSync(filePath),
+      },
+      status: 200,
+    });
+  });
+
   it("round-trips spaces and Unicode through one opaque splat segment", async () => {
     const filePath = join(allowedRoot, "alice notes-你好.ts");
     writeFileSync(filePath, "const greeting = 'hello';\n");

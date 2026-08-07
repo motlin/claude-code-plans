@@ -7,6 +7,17 @@ import type { SessionEntry } from "../sessions";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
+/** Distinct non-null project paths available as zero-config file-search roots. */
+export function listFileSearchProjectPathsFromDb(db: IndexDb): string[] {
+  return db
+    .selectDistinct({ projectPath: schema.projects.projectPath })
+    .from(schema.projects)
+    .where(isNotNull(schema.projects.projectPath))
+    .orderBy(asc(schema.projects.projectPath))
+    .all()
+    .flatMap((row) => (row.projectPath === null ? [] : [row.projectPath]));
+}
+
 function getProjectNameMap(db: IndexDb): Map<string, string> {
   const rows = db
     .select({ id: schema.projects.id, name: schema.projects.name })

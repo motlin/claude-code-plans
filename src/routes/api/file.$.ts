@@ -14,13 +14,14 @@ export async function handleFileRequest(
   request: Request,
   pathToken: string,
   configPath?: string,
+  defaultRoots: readonly string[] = [],
 ): Promise<Response> {
   const requestedPath = decodeFilePath(pathToken);
   if (requestedPath === null) return errorResponse("A valid encoded file path is required", 400);
 
   const { FileServingError, readAllowedFile } = await import("../../lib/file-serving");
   try {
-    const file = await readAllowedFile(requestedPath, configPath);
+    const file = await readAllowedFile(requestedPath, configPath, defaultRoots);
     const etag = `"${file.modifiedAtMilliseconds}-${file.sizeBytes}"`;
     const headers = {
       "Cache-Control": PRIVATE_NO_CACHE,
@@ -42,8 +43,12 @@ export async function handleFileRequest(
 export const Route = createFileRoute("/api/file/$")({
   server: {
     handlers: {
-      GET: async ({ params, request }: { params: { _splat?: string }; request: Request }) =>
-        handleFileRequest(request, params._splat ?? ""),
+      GET: async ({ params, request }: { params: { _splat?: string }; request: Request }) => {
+        const { resolveFileSearchRoots } = await import("../../lib/config");
+        const { getDb } = await import("../../lib/db");
+        const roots = await resolveFileSearchRoots(getDb().index);
+        return handleFileRequest(request, params._splat ?? "", undefined, roots);
+      },
     },
   },
 });

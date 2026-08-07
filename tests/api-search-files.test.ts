@@ -10,10 +10,11 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
-import { resolveFileSearchScope } from "../src/lib/config";
+import { resolveFileSearchRoots, resolveFileSearchScope } from "../src/lib/config";
 import { openTestDb, type AppDb } from "../src/lib/db/connection";
 import { indexFileContent } from "../src/lib/db/indexer";
 import { searchFileContentDb } from "../src/lib/db/queries";
+import * as schema from "../src/lib/db/schema";
 import { handleFileSearchRequest } from "../src/routes/api/search.files";
 
 const FIRST_TEST_TIME = new Date("2000-01-01T00:00:00.000Z");
@@ -334,6 +335,37 @@ describe("file content search API", () => {
         isTruncated: false,
       },
       cacheControl: "private, max-age=0, must-revalidate",
+      status: 200,
+    });
+  });
+
+  it("searches an indexed project with no file_roots configuration", async () => {
+    writeFileSync(configPath, JSON.stringify({}));
+    db.index
+      .insert(schema.projects)
+      .values({ id: "allowed", name: "Allowed", projectPath: allowedRoot, updatedAt: 1_000 })
+      .run();
+    const roots = await resolveFileSearchRoots(db.index, configPath);
+    const filePath = join(allowedRoot, "indexer.ts");
+    writeFileSync(filePath, "export const indexer = 'available';\n");
+    await indexFileContent(db.index, filePath, roots);
+
+    const response = await handleFileSearchRequest(
+      request({ query: "indexer", scopeRoot: allowedRoot }),
+      {
+        resolveScope: (scopeRoot) => resolveFileSearchScope(scopeRoot, configPath, roots),
+        search: (query, scopeRoot) => searchFileContentDb(db.index, query, scopeRoot),
+      },
+    );
+    const body = (await response.json()) as { files: Array<{ path: string }> };
+
+    expect({
+      paths: body.files.map((file) => file.path),
+      roots,
+      status: response.status,
+    }).toStrictEqual({
+      paths: [realpathSync(filePath)],
+      roots: [allowedRoot],
       status: 200,
     });
   });
