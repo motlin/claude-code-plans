@@ -11,7 +11,7 @@ export interface AppDb {
   close(): void;
 }
 
-const CREATE_TABLES_SQL = `
+const CREATE_DERIVED_TABLES_SQL = `
 CREATE TABLE IF NOT EXISTS metadata (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -59,22 +59,6 @@ CREATE TABLE IF NOT EXISTS session_messages (
 );
 CREATE INDEX IF NOT EXISTS session_messages_latest_idx
   ON session_messages(session_id, role, message_index);
-
-CREATE TABLE IF NOT EXISTS session_view_states (
-  session_id TEXT PRIMARY KEY,
-  last_viewed_message_index INTEGER NOT NULL DEFAULT -1,
-  review_target_message_index INTEGER NOT NULL DEFAULT -1,
-  updated_at INTEGER NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS herdr_terminal_view_states (
-  terminal_id TEXT PRIMARY KEY,
-  session_id TEXT NOT NULL,
-  viewed INTEGER NOT NULL DEFAULT 0,
-  updated_at INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS herdr_terminal_view_states_session_idx
-  ON herdr_terminal_view_states(session_id);
 
 CREATE TABLE IF NOT EXISTS plan_sessions (
   plan_filename TEXT NOT NULL,
@@ -127,11 +111,6 @@ CREATE TABLE IF NOT EXISTS memories (
 );
 CREATE INDEX IF NOT EXISTS memories_project_id_idx ON memories(project_id);
 
-CREATE TABLE IF NOT EXISTS starred_sessions (
-  session_id TEXT PRIMARY KEY,
-  starred_at INTEGER NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS plans (
   filename TEXT PRIMARY KEY,
   title TEXT NOT NULL,
@@ -139,11 +118,25 @@ CREATE TABLE IF NOT EXISTS plans (
 );
 CREATE INDEX IF NOT EXISTS plans_mtime_desc_idx ON plans(mtime_ms);
 
-CREATE TABLE IF NOT EXISTS reviews (
-  review_id TEXT PRIMARY KEY,
-  bundle TEXT NOT NULL
-);
+`;
 
+interface DurableMigration {
+  schemaVersion: number;
+  statements: string;
+}
+
+const DURABLE_MIGRATIONS: readonly DurableMigration[] = [
+  {
+    schemaVersion: 2,
+    statements: `
+CREATE TABLE IF NOT EXISTS starred_sessions (
+  session_id TEXT PRIMARY KEY,
+  starred_at INTEGER NOT NULL
+);`,
+  },
+  {
+    schemaVersion: 12,
+    statements: `
 CREATE TABLE IF NOT EXISTS hook_schema_drift (
   hook_event_name TEXT NOT NULL,
   body_sha256 TEXT NOT NULL,
@@ -154,8 +147,36 @@ CREATE TABLE IF NOT EXISTS hook_schema_drift (
   last_seen_at INTEGER NOT NULL,
   PRIMARY KEY (hook_event_name, body_sha256)
 );
-CREATE INDEX IF NOT EXISTS hook_schema_drift_last_seen_idx ON hook_schema_drift(last_seen_at);
-`;
+CREATE INDEX IF NOT EXISTS hook_schema_drift_last_seen_idx ON hook_schema_drift(last_seen_at);`,
+  },
+  {
+    schemaVersion: 16,
+    statements: `
+CREATE TABLE IF NOT EXISTS session_view_states (
+  session_id TEXT PRIMARY KEY,
+  last_viewed_message_index INTEGER NOT NULL DEFAULT -1,
+  review_target_message_index INTEGER NOT NULL DEFAULT -1,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS herdr_terminal_view_states (
+  terminal_id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  viewed INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS herdr_terminal_view_states_session_idx
+  ON herdr_terminal_view_states(session_id);`,
+  },
+  {
+    schemaVersion: 18,
+    statements: `
+CREATE TABLE IF NOT EXISTS reviews (
+  review_id TEXT PRIMARY KEY,
+  bundle TEXT NOT NULL
+);`,
+  },
+];
 
 const CREATE_FTS_SQL = `
 CREATE VIRTUAL TABLE IF NOT EXISTS sessions_fts USING fts5(
@@ -202,46 +223,91 @@ CREATE TABLE IF NOT EXISTS summaries (
 );
 `;
 
-function dropAllTables(sqlite: Database.Database): void {
-  sqlite.exec("DROP TABLE IF EXISTS sessions_fts");
-  sqlite.exec("DROP TABLE IF EXISTS message_content_fts");
-  sqlite.exec("DROP TABLE IF EXISTS file_content_fts");
-  sqlite.exec("DROP TABLE IF EXISTS tasks");
-  sqlite.exec("DROP TABLE IF EXISTS todo_tasks");
-  sqlite.exec("DROP TABLE IF EXISTS todo_files");
-  sqlite.exec("DROP TABLE IF EXISTS memories");
-  sqlite.exec("DROP TABLE IF EXISTS starred_sessions");
-  sqlite.exec("DROP TABLE IF EXISTS plans");
-  sqlite.exec("DROP TABLE IF EXISTS reviews");
-  sqlite.exec("DROP TABLE IF EXISTS hook_schema_drift");
-  sqlite.exec("DROP TABLE IF EXISTS herdr_terminal_view_states");
-  sqlite.exec("DROP TABLE IF EXISTS session_view_states");
-  sqlite.exec("DROP TABLE IF EXISTS session_messages");
-  sqlite.exec("DROP TABLE IF EXISTS subagents");
-  sqlite.exec("DROP TABLE IF EXISTS plan_sessions");
-  sqlite.exec("DROP TABLE IF EXISTS sessions");
-  sqlite.exec("DROP TABLE IF EXISTS projects");
-  sqlite.exec("DROP TABLE IF EXISTS indexed_files");
-  sqlite.exec("DROP TABLE IF EXISTS metadata");
+const DERIVED_TABLE_NAMES = [
+  "sessions_fts",
+  "message_content_fts",
+  "file_content_fts",
+  "tasks",
+  "todo_tasks",
+  "todo_files",
+  "memories",
+  "plans",
+  "session_messages",
+  "subagents",
+  "plan_sessions",
+  "sessions",
+  "projects",
+  "indexed_files",
+  "metadata",
+] as const;
+
+function dropDerivedTables(sqlite: Database.Database): void {
+  for (const tableName of DERIVED_TABLE_NAMES) {
+    sqlite.exec(`DROP TABLE IF EXISTS ${tableName}`);
+  }
+}
+
+function parseSchemaVersion(value: string, source: string): number {
+  if (!/^(0|[1-9]\d*)$/.test(value)) {
+    throw new Error(`Invalid ${source} schema version: ${value}`);
+  }
+  const schemaVersion = Number(value);
+  if (!Number.isSafeInteger(schemaVersion)) {
+    throw new Error(`Invalid ${source} schema version: ${value}`);
+  }
+  return schemaVersion;
+}
+
+function readSchemaVersion(sqlite: Database.Database): number {
+  const metadataExists = sqlite
+    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='metadata'")
+    .get() as { name: string } | undefined;
+  if (!metadataExists) return 0;
+
+  const row = sqlite.prepare("SELECT value FROM metadata WHERE key = 'schema_version'").get() as
+    | { value: string }
+    | undefined;
+  if (!row) return 0;
+  return parseSchemaVersion(row.value, "database");
+}
+
+function migrateDurableTables(
+  sqlite: Database.Database,
+  previousSchemaVersion: number,
+  currentSchemaVersion: number,
+): void {
+  for (const migration of DURABLE_MIGRATIONS) {
+    if (
+      migration.schemaVersion > previousSchemaVersion &&
+      migration.schemaVersion <= currentSchemaVersion
+    ) {
+      sqlite.exec(migration.statements);
+    }
+  }
 }
 
 function initIndexDb(sqlite: Database.Database): void {
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("foreign_keys = ON");
 
-  const metadataExists = sqlite
-    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='metadata'")
-    .get() as { name: string } | undefined;
-  if (metadataExists) {
-    const row = sqlite.prepare("SELECT value FROM metadata WHERE key = 'schema_version'").get() as
-      | { value: string }
-      | undefined;
-    if (!row || row.value !== schema.SCHEMA_VERSION) {
-      dropAllTables(sqlite);
-    }
+  const previousSchemaVersion = readSchemaVersion(sqlite);
+  const currentSchemaVersion = parseSchemaVersion(schema.SCHEMA_VERSION, "application");
+  if (currentSchemaVersion < 1) {
+    throw new Error(`Invalid application schema version: ${schema.SCHEMA_VERSION}`);
+  }
+  if (previousSchemaVersion > currentSchemaVersion) {
+    throw new Error(
+      `Database schema version ${previousSchemaVersion} is newer than application schema version ${currentSchemaVersion}`,
+    );
+  }
+  if (previousSchemaVersion !== currentSchemaVersion) {
+    sqlite.transaction(() => {
+      migrateDurableTables(sqlite, previousSchemaVersion, currentSchemaVersion);
+      dropDerivedTables(sqlite);
+    })();
   }
 
-  sqlite.exec(CREATE_TABLES_SQL);
+  sqlite.exec(CREATE_DERIVED_TABLES_SQL);
   sqlite.exec(CREATE_FTS_SQL);
   sqlite
     .prepare("INSERT OR REPLACE INTO metadata (key, value) VALUES ('schema_version', ?)")
