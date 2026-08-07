@@ -15,6 +15,38 @@ const RUNTIME_FACTS: CapabilityRuntimeFactsById = {
 };
 
 describe("capability resolution", () => {
+  it("rejects malformed JSON without probing runtime capabilities", async () => {
+    const probes: string[] = [];
+    const response = await handleCapabilitiesRequest(
+      new Request("http://127.0.0.1:7526/api/capabilities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{not-json",
+      }),
+      {
+        pathExists: async () => {
+          probes.push("path");
+          return true;
+        },
+        executableExists: async () => {
+          probes.push("executable");
+          return true;
+        },
+        databaseAvailable: async () => {
+          probes.push("database");
+          return true;
+        },
+        projectRoot: "/fixture/alice-repository",
+      },
+    );
+
+    expect({ body: await response.json(), probes, status: response.status }).toStrictEqual({
+      body: { error: "Invalid capabilities payload" },
+      probes: [],
+      status: 400,
+    });
+  });
+
   it("rejects incomplete persisted settings without throwing", async () => {
     const response = await handleCapabilitiesRequest(
       new Request("http://127.0.0.1:7526/api/capabilities", {

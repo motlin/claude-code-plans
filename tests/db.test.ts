@@ -1899,6 +1899,35 @@ describe("subagents", () => {
     expect(agent.description).toBe("Map current render pipeline");
   });
 
+  it("updates the stored location when a subagent transcript moves projects", async () => {
+    const originalDirectory = join(testDir, "project-alice", "session-test-100", "subagents");
+    const movedDirectory = join(testDir, "project-bob", "session-test-100", "subagents");
+    mkdirSync(originalDirectory, { recursive: true });
+    mkdirSync(movedDirectory, { recursive: true });
+    const originalPath = join(originalDirectory, "agent-test-100.jsonl");
+    const movedPath = join(movedDirectory, "agent-test-100.jsonl");
+    writeFileSync(
+      originalPath,
+      jsonl({
+        type: "assistant",
+        timestamp: "2000-01-01T00:00:00.000Z",
+        message: { role: "assistant", content: "Alice fixture output" },
+      }),
+    );
+
+    await indexSubagentFile(db.index, originalPath, "session-test-100", "project-alice");
+    renameSync(originalPath, movedPath);
+    await indexSubagentFile(db.index, movedPath, "session-test-100", "project-bob");
+
+    expect(
+      db.index
+        .select({ filePath: schema.subagents.filePath, projectId: schema.subagents.projectId })
+        .from(schema.subagents)
+        .where(eq(schema.subagents.id, "agent-test-100"))
+        .get(),
+    ).toStrictEqual({ filePath: movedPath, projectId: "project-bob" });
+  });
+
   it("linkSubagentParents sets parentAgentId from Agent tool calls in parent JSONL", async () => {
     const projectDir = join(testDir, "-Users-craig-projects-app");
     mkdirSync(projectDir, { recursive: true });

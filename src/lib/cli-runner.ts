@@ -41,7 +41,7 @@ export function spawnClaude({ sessionId, prompt, projectDir, environment }: Spaw
     start(controller) {
       child.stdout!.on("data", (chunk: Buffer) => {
         try {
-          controller.enqueue(encoder.encode(chunk.toString()));
+          controller.enqueue(new Uint8Array(chunk));
         } catch {
           // stream closed
         }

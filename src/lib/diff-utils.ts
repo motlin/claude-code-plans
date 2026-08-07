@@ -16,9 +16,45 @@ interface DiffData {
   filePath?: string | undefined;
 }
 
+const MAX_LCS_MATRIX_CELLS = 250_000;
+
 function computeDiff(oldLines: string[], newLines: string[]): DiffOp[] {
-  const m = oldLines.length;
-  const n = newLines.length;
+  let prefixLength = 0;
+  while (
+    prefixLength < oldLines.length &&
+    prefixLength < newLines.length &&
+    oldLines[prefixLength] === newLines[prefixLength]
+  ) {
+    prefixLength++;
+  }
+
+  let suffixLength = 0;
+  while (
+    suffixLength < oldLines.length - prefixLength &&
+    suffixLength < newLines.length - prefixLength &&
+    oldLines[oldLines.length - suffixLength - 1] === newLines[newLines.length - suffixLength - 1]
+  ) {
+    suffixLength++;
+  }
+
+  const oldMiddle = oldLines.slice(prefixLength, oldLines.length - suffixLength);
+  const newMiddle = newLines.slice(prefixLength, newLines.length - suffixLength);
+  const prefix = oldLines.slice(0, prefixLength).map((line) => ["equal", line] as const);
+  const suffix = oldLines
+    .slice(oldLines.length - suffixLength)
+    .map((line) => ["equal", line] as const);
+
+  if ((oldMiddle.length + 1) * (newMiddle.length + 1) > MAX_LCS_MATRIX_CELLS) {
+    return [
+      ...prefix,
+      ...oldMiddle.map((line) => ["remove", line] as const),
+      ...newMiddle.map((line) => ["add", line] as const),
+      ...suffix,
+    ];
+  }
+
+  const m = oldMiddle.length;
+  const n = newMiddle.length;
 
   // LCS via dynamic programming
   const dp: number[][] = Array.from({ length: m + 1 }, () =>
@@ -26,7 +62,7 @@ function computeDiff(oldLines: string[], newLines: string[]): DiffOp[] {
   );
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
-      if (oldLines[i - 1] === newLines[j - 1]) {
+      if (oldMiddle[i - 1] === newMiddle[j - 1]) {
         dp[i]![j] = dp[i - 1]![j - 1]! + 1;
       } else {
         dp[i]![j] = Math.max(dp[i - 1]![j]!, dp[i]![j - 1]!);
@@ -39,20 +75,20 @@ function computeDiff(oldLines: string[], newLines: string[]): DiffOp[] {
   let i = m;
   let j = n;
   while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
-      ops.push(["equal", oldLines[i - 1]!]);
+    if (i > 0 && j > 0 && oldMiddle[i - 1] === newMiddle[j - 1]) {
+      ops.push(["equal", oldMiddle[i - 1]!]);
       i--;
       j--;
     } else if (j > 0 && (i === 0 || dp[i]![j - 1]! >= dp[i - 1]![j]!)) {
-      ops.push(["add", newLines[j - 1]!]);
+      ops.push(["add", newMiddle[j - 1]!]);
       j--;
     } else {
-      ops.push(["remove", oldLines[i - 1]!]);
+      ops.push(["remove", oldMiddle[i - 1]!]);
       i--;
     }
   }
   ops.reverse();
-  return ops;
+  return [...prefix, ...ops, ...suffix];
 }
 
 export function computeDiffData(oldStr: string, newStr: string): DiffData {

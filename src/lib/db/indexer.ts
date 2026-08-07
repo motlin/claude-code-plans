@@ -675,11 +675,13 @@ export async function indexSubagentFile(
     .onConflictDoUpdate({
       target: schema.subagents.id,
       set: {
+        projectId: project,
         agentType,
         slug,
         description: metaDescription,
         startedAt,
         finishedAt,
+        filePath,
         mtimeMs: fileStat.mtimeMs,
       },
     })

@@ -59,6 +59,30 @@ describe("computeDiffData", () => {
     expect(result.ops[1]).toStrictEqual(["remove", "b"]);
     expect(result.ops[2]).toStrictEqual(["add", "c"]);
   });
+
+  it("uses a bounded fallback when the LCS matrix would be oversized", () => {
+    const sharedLines = Array.from({ length: 501 }, (_, index) => `shared-${index}`);
+    const oldLines = [...sharedLines, "old-tail"];
+    const newLines = ["new-head", ...sharedLines];
+
+    const result = computeDiffData(oldLines.join("\n"), newLines.join("\n"));
+
+    expect({
+      added: result.added,
+      equal: result.ops.filter(([type]) => type === "equal").length,
+      firstOperation: result.ops[0],
+      lastOperation: result.ops.at(-1),
+      operationCount: result.ops.length,
+      removed: result.removed,
+    }).toStrictEqual({
+      added: 502,
+      equal: 0,
+      firstOperation: ["remove", "shared-0"],
+      lastOperation: ["add", "shared-500"],
+      operationCount: 1004,
+      removed: 502,
+    });
+  });
 });
 
 describe("extractLineNumbers", () => {

@@ -1,4 +1,4 @@
-import { writeFileSync, mkdirSync, rmSync } from "node:fs";
+import { writeFileSync, mkdirSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -234,5 +234,22 @@ describe("scanPluginTree", () => {
     expect(skillsNode!.path).toBe("skills");
     expect(mySkillNode!.path).toBe("skills/my-skill");
     expect(skillMd!.path).toBe("skills/my-skill/SKILL.md");
+  });
+
+  it("does not follow directory symlinks that form cycles", async () => {
+    const sourceDirectory = join(testDir, "src");
+    mkdirSync(sourceDirectory, { recursive: true });
+    writeFileSync(join(sourceDirectory, "alice.ts"), "export const alice = true;\n");
+    symlinkSync(sourceDirectory, join(sourceDirectory, "cycle"), "dir");
+
+    expect(await scanPluginTree(testDir)).toStrictEqual({
+      path: "",
+      children: [
+        {
+          path: "src",
+          children: [{ path: "src/alice.ts" }],
+        },
+      ],
+    });
   });
 });

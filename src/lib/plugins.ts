@@ -1,4 +1,4 @@
-import { readdir, readFile, stat } from "node:fs/promises";
+import { readdir, readFile, lstat, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { extractTitle } from "./markdown-utils.js";
@@ -319,7 +319,8 @@ export async function scanPluginTree(
     const entryRelative = relativePath ? `${relativePath}/${entry}` : entry;
 
     try {
-      const s = await stat(entryPath);
+      const s = await lstat(entryPath);
+      if (s.isSymbolicLink()) continue;
       if (s.isDirectory()) {
         if (EXCLUDED_DIRS.has(entry)) continue;
         const subtree = await scanPluginTree(entryPath, entryRelative);

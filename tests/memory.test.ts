@@ -1,4 +1,12 @@
-import { writeFileSync, mkdirSync, rmSync, utimesSync, readFileSync, existsSync } from "node:fs";
+import {
+  writeFileSync,
+  mkdirSync,
+  rmSync,
+  utimesSync,
+  readFileSync,
+  existsSync,
+  symlinkSync,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir, homedir } from "node:os";
 import {
@@ -141,6 +149,30 @@ describe("listMemories", () => {
 
     const groups = await listMemories(testDir);
     expect(groups[0]!.memories[0]!.title).toBe("Debug Notes");
+  });
+
+  it("keeps available memories when another directory entry vanishes", async () => {
+    const project = "-fixture-projects-alice";
+    const memoryDirectory = join(testDir, project, "memory");
+    mkdirSync(memoryDirectory, { recursive: true });
+    writeFileSync(join(memoryDirectory, "available.md"), "# Available memory\n");
+    symlinkSync(join(memoryDirectory, "missing.md"), join(memoryDirectory, "vanished.md"));
+
+    const groups = await listMemories(testDir);
+
+    expect(
+      groups.map((group) => ({
+        memories: group.memories.map(({ filename, title }) => ({ filename, title })),
+        project: group.project,
+        projectName: group.projectName,
+      })),
+    ).toStrictEqual([
+      {
+        memories: [{ filename: "available.md", title: "Available memory" }],
+        project,
+        projectName: "alice",
+      },
+    ]);
   });
 });
 

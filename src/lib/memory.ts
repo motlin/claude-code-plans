@@ -112,20 +112,26 @@ async function processProject(projectsDir: string, project: string): Promise<Pro
 
   const projectName = await resolveProjectName(project);
 
-  const memories: MemoryEntry[] = await Promise.all(
+  const entries = await Promise.all(
     mdFiles.map(async (filename) => {
       const filePath = join(memDir, filename);
-      const fileStat = await stat(filePath);
-      const title = await extractTitle(filePath, filename);
-      return {
-        filename,
-        title,
-        mtime: fileStat.mtime,
-        project,
-        projectName,
-      };
+      try {
+        const fileStat = await stat(filePath);
+        const title = await extractTitle(filePath, filename);
+        return {
+          filename,
+          title,
+          mtime: fileStat.mtime,
+          project,
+          projectName,
+        };
+      } catch {
+        return null;
+      }
     }),
   );
+  const memories = entries.filter((entry): entry is MemoryEntry => entry !== null);
+  if (memories.length === 0) return null;
 
   memories.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
   return { project, projectName, memories };

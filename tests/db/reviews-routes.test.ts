@@ -6,7 +6,9 @@ import {
   handleCreateReviewRequest,
   handleGetReviewRequest,
   handleReplaceReviewFindingsRequest,
+  handleRunReviewRequest,
   type ReviewHandlerDependencies,
+  type ReviewRunDependencies,
 } from "../../src/lib/reviews";
 
 const SESSION_ID = "session-test-100";
@@ -156,6 +158,35 @@ describe("review API contracts", () => {
 });
 
 describe("review route handlers", () => {
+  it("rejects malformed review-run JSON without invoking process controls", async () => {
+    const spawn = vi.fn<ReviewRunDependencies["spawn"]>();
+    const kill = vi.fn<ReviewRunDependencies["kill"]>();
+
+    const response = await handleRunReviewRequest(
+      new Request(`http://127.0.0.1:7526/api/reviews/${REVIEW_ID}/run`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{not-json",
+      }),
+      REVIEW_ID,
+      { index: db.index, kill, origin: "http://127.0.0.1:7526", spawn },
+    );
+
+    expect({
+      response: await describeResponse(response),
+      killCalls: kill.mock.calls,
+      spawnCalls: spawn.mock.calls,
+    }).toStrictEqual({
+      response: {
+        body: { error: "Invalid review run payload" },
+        cacheControl: "private, max-age=0, must-revalidate",
+        status: 400,
+      },
+      killCalls: [],
+      spawnCalls: [],
+    });
+  });
+
   it("creates and fetches a validated bundle from indexed session metadata", async () => {
     insertSession();
     const resolvedDirectories: string[] = [];
