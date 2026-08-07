@@ -17,6 +17,25 @@ interface VisibilityDwellDependencies {
   schedule: (callback: () => void, delayMs: number) => ReturnType<typeof setTimeout>;
 }
 
+/**
+ * Run a fire-and-forget presence sync without ever producing an unhandled
+ * promise rejection.
+ *
+ * Visibility pings and dwell auto-marking are best-effort: the next heartbeat
+ * re-reports the same state, so a single failed call costs nothing. Failures are
+ * routine (a tab closing aborts the in-flight request, and the dev server drops
+ * connections on every restart), and letting those bubble turns ordinary
+ * background churn into red console errors.
+ */
+export function runBackgroundSync(operation: string, call: () => Promise<unknown>): void {
+  // `.then(call)` also traps a synchronous throw from the factory itself.
+  void Promise.resolve()
+    .then(call)
+    .catch((error: unknown) => {
+      console.debug(`[session-viewed-state] background ${operation} failed`, error);
+    });
+}
+
 export function createVisibilityDwellController(dependencies: VisibilityDwellDependencies): {
   setVisible: (visible: boolean) => void;
   stop: () => void;
@@ -98,10 +117,12 @@ export function useSessionViewedState(
     const controller = createVisibilityDwellController({
       cancel: clearTimeout,
       onDwell: () => {
-        void markReviewedRef.current();
+        runBackgroundSync("mark-reviewed", () => markReviewedRef.current());
       },
       onVisibilityChange: (visible) => {
-        void updateSessionVisibility(sessionId, clientId, visible);
+        runBackgroundSync("visibility-update", () =>
+          updateSessionVisibility(sessionId, clientId, visible),
+        );
       },
       schedule: setTimeout,
     });
@@ -116,7 +137,9 @@ export function useSessionViewedState(
     document.addEventListener("visibilitychange", updateVisibility);
     const heartbeat = setInterval(() => {
       if (intersecting && document.visibilityState === "visible") {
-        void updateSessionVisibility(sessionId, clientId, true);
+        runBackgroundSync("visibility-heartbeat", () =>
+          updateSessionVisibility(sessionId, clientId, true),
+        );
       }
     }, VISIBILITY_HEARTBEAT_MS);
 
