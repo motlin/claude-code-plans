@@ -1,10 +1,34 @@
+// @vitest-environment jsdom
+
 import { describe, it, expect } from "vite-plus/test";
 import { renderToStaticMarkup } from "react-dom/server";
+import { render } from "@testing-library/react";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+  RouterProvider,
+} from "@tanstack/react-router";
 import { AttachmentBanner } from "../src/components/attachment-banner";
 import { AttachmentPayloadSchema, type AttachmentPayload } from "../src/lib/schemas";
 
 function renderBanner(payload: AttachmentPayload): string {
   return renderToStaticMarkup(<AttachmentBanner attachmentJson={JSON.stringify(payload)} />);
+}
+
+async function renderBannerWithRouter(payload: AttachmentPayload): Promise<string> {
+  const rootRoute = createRootRoute({
+    component: () => <AttachmentBanner attachmentJson={JSON.stringify(payload)} />,
+  });
+  const router = createRouter({
+    routeTree: rootRoute,
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
+  await router.load();
+  const view = render(<RouterProvider router={router} />);
+  const html = view.container.innerHTML;
+  view.unmount();
+  return html;
 }
 
 const MINIMAL_BY_TYPE: Record<string, AttachmentPayload> = {
@@ -181,5 +205,22 @@ describe("AttachmentBanner", () => {
       });
       expect(html).not.toContain("MCP server");
     });
+  });
+
+  it("links team context to tasks and identifies its source files", async () => {
+    const html = await renderBannerWithRouter({
+      type: "team_context",
+      agentId: "agent-100",
+      agentName: "alice",
+      teamName: "webapp",
+      teamConfigPath: "/Users/craig/.claude/teams/webapp/config.json",
+      taskListPath: "/Users/craig/.claude/tasks/webapp/tasks.json",
+    });
+
+    expect(html).toContain("Team: alice (webapp)");
+    expect(html).toContain('href="/tasks"');
+    expect(html).toContain("View tasks");
+    expect(html).toContain("/Users/craig/.claude/teams/webapp/config.json");
+    expect(html).toContain('title="/Users/craig/.claude/tasks/webapp/tasks.json"');
   });
 });

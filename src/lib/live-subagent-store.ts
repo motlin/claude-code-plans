@@ -179,6 +179,7 @@ export function mergeLiveSubagents(
       projectId,
       parentAgentId: node.parentAgentId,
       agentType: node.agentType || null,
+      attributionAgent: null,
       slug: null,
       description: node.description || null,
       startedAt: node.startedAt,

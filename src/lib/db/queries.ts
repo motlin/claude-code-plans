@@ -571,6 +571,7 @@ export interface DbSubagent {
   projectId: string;
   parentAgentId: string | null;
   agentType: string | null;
+  attributionAgent: string | null;
   slug: string | null;
   description: string | null;
   startedAt: string | null;

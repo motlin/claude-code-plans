@@ -6,6 +6,7 @@ export function makeAgent(overrides: Partial<Subagent> & { id: string }): Subage
     projectId: "project-1",
     parentAgentId: null,
     agentType: "general-purpose",
+    attributionAgent: null,
     slug: null,
     description: null,
     startedAt: "2026-04-19T10:00:00Z",

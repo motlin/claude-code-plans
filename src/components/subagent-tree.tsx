@@ -34,6 +34,32 @@ function getShortType(agentType: string | null): string {
   return agentType.split(":").at(-1)!;
 }
 
+export function SubagentTypeBadges({
+  agentType,
+  attributionAgent,
+}: {
+  agentType: string | null;
+  attributionAgent: string | null;
+}) {
+  return (
+    <>
+      <span
+        className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${getTypeStyle(agentType)}`}
+      >
+        {getShortType(agentType)}
+      </span>
+      {attributionAgent && (
+        <span
+          className="shrink-0 rounded bg-bg-300/60 px-1.5 py-0.5 font-mono text-[10px] text-text-500"
+          title="Transcript attribution agent"
+        >
+          {attributionAgent}
+        </span>
+      )}
+    </>
+  );
+}
+
 function getDurationMs(agent: Subagent): number | null {
   if (agent.startedAt === null || agent.finishedAt === null) return null;
   return new Date(agent.finishedAt).getTime() - new Date(agent.startedAt).getTime();
@@ -71,11 +97,10 @@ function TreeNode({
         <span className="w-4 shrink-0 text-text-500">
           {hasChildren ? expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} /> : null}
         </span>
-        <span
-          className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${getTypeStyle(node.agent.agentType)}`}
-        >
-          {getShortType(node.agent.agentType)}
-        </span>
+        <SubagentTypeBadges
+          agentType={node.agent.agentType}
+          attributionAgent={node.agent.attributionAgent}
+        />
         <span className="min-w-0 truncate text-xs text-text-100">
           {node.agent.description ?? node.agent.slug ?? node.agent.id}
         </span>

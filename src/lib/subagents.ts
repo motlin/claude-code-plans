@@ -21,6 +21,7 @@ export interface Subagent {
   projectId: string;
   parentAgentId: string | null;
   agentType: string | null;
+  attributionAgent: string | null;
   slug: string | null;
   description: string | null;
   startedAt: string | null;
@@ -62,6 +63,7 @@ export function toClientSubagent(row: DbSubagent): Subagent {
     projectId: row.projectId,
     parentAgentId: row.parentAgentId,
     agentType: row.agentType,
+    attributionAgent: row.attributionAgent,
     slug: row.slug,
     description: row.description,
     startedAt: row.startedAt,
@@ -171,6 +173,7 @@ function extractSubagentSnapshot(
           projectId,
           parentAgentId: null,
           agentType: pending.agentType,
+          attributionAgent: null,
           slug: null,
           description: pending.description,
           startedAt: pending.startedAt,

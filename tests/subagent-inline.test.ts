@@ -10,6 +10,7 @@ function makeAgent(overrides: Partial<Subagent> & { id: string }): Subagent {
     projectId: "proj-1",
     parentAgentId: null,
     agentType: null,
+    attributionAgent: null,
     slug: null,
     description: null,
     startedAt: null,

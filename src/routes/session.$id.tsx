@@ -32,6 +32,7 @@ import {
   ArrowLeft,
   ArrowUp,
   ArrowDown,
+  Bot,
   Copy,
   Terminal,
   GitFork,
@@ -545,6 +546,15 @@ function SessionPage() {
             {data.sessionKind && (
               <span className="inline-flex items-center rounded-full bg-bg-200 px-2 py-0.5 text-xs font-medium text-text-500">
                 {data.sessionKind}
+              </span>
+            )}
+            {data.attributionAgent && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full bg-bg-200 px-2 py-0.5 font-mono text-xs font-medium text-text-500"
+                title="Transcript attribution agent"
+              >
+                <Bot className="h-3 w-3" />
+                {data.attributionAgent}
               </span>
             )}
             {data.teamNames?.map((team) => (

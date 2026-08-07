@@ -1863,7 +1863,7 @@ describe("subagents", () => {
     expect(agent.finishedAt).toBe("1999-12-31T00:29:12.217Z");
   });
 
-  it("indexSubagentFile reads agentType and description from sibling meta.json", async () => {
+  it("indexSubagentFile preserves transcript attribution beside sibling metadata", async () => {
     const projectDir = join(testDir, "-Users-craig-projects-app");
     const sessionDir = join(projectDir, "sess-1", "subagents");
     mkdirSync(sessionDir, { recursive: true });
@@ -1873,6 +1873,7 @@ describe("subagents", () => {
       agentPath,
       jsonl({
         type: "user",
+        attributionAgent: "markdown-tasks:do-task",
         slug: "lemur-1",
         timestamp: "1999-12-31T00:28:53.000Z",
         message: { role: "user", content: "go" },
@@ -1896,7 +1897,39 @@ describe("subagents", () => {
       .get();
     if (!agent) throw new Error("Expected subagent agent-meta1");
     expect(agent.agentType).toBe("Explore");
+    expect(agent.attributionAgent).toBe("markdown-tasks:do-task");
     expect(agent.description).toBe("Map current render pipeline");
+  });
+
+  it("uses transcript attribution as the agent type when metadata is absent", async () => {
+    const projectDir = join(testDir, "-Users-craig-projects-app");
+    const sessionDir = join(projectDir, "sess-1", "subagents");
+    mkdirSync(sessionDir, { recursive: true });
+
+    const agentPath = join(sessionDir, "agent-attributed.jsonl");
+    writeFileSync(
+      agentPath,
+      jsonl({
+        type: "assistant",
+        attributionAgent: "workflow-subagent",
+        timestamp: "1999-12-31T00:28:53.000Z",
+        message: { role: "assistant", content: "go" },
+      }),
+    );
+
+    db.index.insert(schema.projects).values({ id: "proj-app", name: "App", updatedAt: 1000 }).run();
+    await indexSubagentFile(db.index, agentPath, "sess-1", "proj-app");
+
+    const agent = db.index
+      .select()
+      .from(schema.subagents)
+      .where(eq(schema.subagents.id, "agent-attributed"))
+      .get();
+    if (!agent) throw new Error("Expected subagent agent-attributed");
+    expect({ agentType: agent.agentType, attributionAgent: agent.attributionAgent }).toStrictEqual({
+      agentType: "workflow-subagent",
+      attributionAgent: "workflow-subagent",
+    });
   });
 
   it("updates the stored location when a subagent transcript moves projects", async () => {

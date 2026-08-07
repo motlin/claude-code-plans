@@ -1,7 +1,7 @@
 import { sqliteTable, text, integer, index, primaryKey } from "drizzle-orm/sqlite-core";
 import type { ReviewBundle } from "../api/reviews";
 
-export const SCHEMA_VERSION = "20";
+export const SCHEMA_VERSION = "21";
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),
@@ -100,6 +100,7 @@ export const subagents = sqliteTable(
     projectId: text("project_id").notNull(),
     parentAgentId: text("parent_agent_id"),
     agentType: text("agent_type"),
+    attributionAgent: text("attribution_agent"),
     slug: text("slug"),
     description: text("description"),
     startedAt: text("started_at"),

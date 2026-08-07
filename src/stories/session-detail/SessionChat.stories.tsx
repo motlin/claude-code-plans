@@ -163,6 +163,7 @@ export const WithSubagentInfo: Story = {
         projectId: "story-project",
         parentAgentId: null,
         agentType: "Explore",
+        attributionAgent: null,
         slug: "scan-codebase",
         description: "Scan the codebase",
         startedAt: "2026-04-19T10:00:02Z",

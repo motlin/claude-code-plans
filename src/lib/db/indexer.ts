@@ -731,6 +731,7 @@ export async function indexSubagentFile(
   }
 
   let slug: string | null = null;
+  let attributionAgent: string | null = null;
   let startedAt: string | null = null;
   let finishedAt: string | null = null;
   const rl = createInterface({
@@ -741,7 +742,14 @@ export async function indexSubagentFile(
     for await (const line of rl) {
       if (!line.trim()) continue;
       try {
-        const obj = JSON.parse(line) as { slug?: string; timestamp?: string };
+        const obj = JSON.parse(line) as {
+          attributionAgent?: string;
+          slug?: string;
+          timestamp?: string;
+        };
+        if (obj.attributionAgent && !attributionAgent) {
+          attributionAgent = obj.attributionAgent;
+        }
         if (obj.slug && !slug) slug = obj.slug;
         if (obj.timestamp) {
           if (!startedAt) startedAt = obj.timestamp;
@@ -760,7 +768,8 @@ export async function indexSubagentFile(
       id: agentFilename,
       sessionId,
       projectId: project,
-      agentType,
+      agentType: agentType ?? attributionAgent,
+      attributionAgent,
       slug,
       description: metaDescription,
       startedAt,
@@ -772,7 +781,8 @@ export async function indexSubagentFile(
       target: schema.subagents.id,
       set: {
         projectId: project,
-        agentType,
+        agentType: agentType ?? attributionAgent,
+        attributionAgent,
         slug,
         description: metaDescription,
         startedAt,

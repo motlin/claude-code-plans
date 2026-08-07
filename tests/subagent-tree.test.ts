@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { SubagentTypeBadges } from "../src/components/subagent-tree";
 import { openTestDb, type AppDb } from "../src/lib/db/connection";
 import { getSubagentsForSession } from "../src/lib/db/queries";
 import * as schema from "../src/lib/db/schema";
@@ -15,6 +18,7 @@ function makeAgent(overrides: Partial<Subagent> & { id: string }): Subagent {
     projectId: "project-test",
     parentAgentId: null,
     agentType: "general-purpose",
+    attributionAgent: null,
     slug: null,
     description: null,
     startedAt: null,
@@ -47,6 +51,21 @@ function summarizeTree(entries: SubagentTreeEntry[]): TreeSummary[] {
     };
   });
 }
+
+describe("SubagentTypeBadges", () => {
+  it("shows transcript attribution beside launch metadata", () => {
+    const html = renderToStaticMarkup(
+      createElement(SubagentTypeBadges, {
+        agentType: "Explore",
+        attributionAgent: "markdown-tasks:do-task",
+      }),
+    );
+
+    expect(html).toContain("Explore");
+    expect(html).toContain("markdown-tasks:do-task");
+    expect(html).toContain('title="Transcript attribution agent"');
+  });
+});
 
 describe("buildSubagentTree", () => {
   it("builds a flat list for serial agents", () => {
@@ -264,6 +283,7 @@ describe("DB-backed subagents", () => {
         projectId: "project-test",
         parentAgentId: "agent-parent",
         agentType: "Explore",
+        attributionAgent: "markdown-tasks:do-task",
         slug: "explore-test",
         description: "Inspect test files",
         startedAt: "1999-12-31T00:00:05.000Z",
@@ -281,6 +301,7 @@ describe("DB-backed subagents", () => {
         projectId: "project-test",
         parentAgentId: "agent-parent",
         agentType: "Explore",
+        attributionAgent: "markdown-tasks:do-task",
         slug: "explore-test",
         description: "Inspect test files",
         startedAt: "1999-12-31T00:00:05.000Z",

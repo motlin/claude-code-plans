@@ -84,6 +84,7 @@ const ProjectSubagentSchema = z.object({
   projectId: z.string(),
   parentAgentId: z.string().nullable(),
   agentType: z.string().nullable(),
+  attributionAgent: z.string().nullable(),
   slug: z.string().nullable(),
   description: z.string().nullable(),
   startedAt: z.string().nullable(),

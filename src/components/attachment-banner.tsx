@@ -412,7 +412,23 @@ function AttachmentContent({
           label={`Team: ${attachment.agentName ?? attachment.agentId ?? "member"}${attachment.teamName ? ` (${attachment.teamName})` : ""}`}
           sessionId={sessionId}
           uuid={uuid}
-        />
+        >
+          {attachment.taskListPath && (
+            <Link
+              to="/tasks"
+              className="inline-flex items-center gap-1 text-accent-500 hover:underline"
+              title={attachment.taskListPath}
+            >
+              <ClipboardList className="h-3 w-3" />
+              View tasks
+            </Link>
+          )}
+          {attachment.teamConfigPath && (
+            <span className="truncate font-mono text-[10px] text-text-600" title="Team config path">
+              {attachment.teamConfigPath}
+            </span>
+          )}
+        </Banner>
       );
 
     // -- Tool/MCP ecosystem --

@@ -68,6 +68,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
             pendingTaskCount: 0,
             viewedState: getSessionViewedState(index, id, -1),
             parentSessionId: subagent.sessionId,
+            ...(subagent.attributionAgent ? { attributionAgent: subagent.attributionAgent } : {}),
           };
           return Response.json(SessionDetailResponse.parse(detail), {
             headers: { "Cache-Control": "private, max-age=0, must-revalidate" },

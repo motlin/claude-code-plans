@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS subagents (
   project_id TEXT NOT NULL,
   parent_agent_id TEXT,
   agent_type TEXT,
+  attribution_agent TEXT,
   slug TEXT,
   description TEXT,
   started_at TEXT,

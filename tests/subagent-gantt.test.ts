@@ -8,6 +8,7 @@ function makeAgent(overrides: Partial<DbSubagent> & { id: string }): DbSubagent 
     projectId: "proj-1",
     parentAgentId: null,
     agentType: null,
+    attributionAgent: null,
     slug: null,
     description: null,
     startedAt: null,
