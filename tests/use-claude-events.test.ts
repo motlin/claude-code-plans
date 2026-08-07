@@ -23,7 +23,11 @@ import {
   type PlanSummaryPayload,
   type SessionSummaryPayload,
 } from "../src/lib/hook-events";
-import { transcriptQueryOptions, type TranscriptData } from "../src/lib/api/sessions";
+import {
+  sessionQueryKeys,
+  transcriptQueryOptions,
+  type TranscriptData,
+} from "../src/lib/api/sessions";
 import type { LiveSubagentNode } from "../src/lib/live-subagent-store";
 
 function makeSession(
@@ -441,82 +445,26 @@ describe("claudeEventsReducer", () => {
 });
 
 describe("applySessionAdded", () => {
-  it("prepends a new session to an existing project group", () => {
+  it("invalidates every registered session-list shape", () => {
     const queryClient = new QueryClient();
-    queryClient.setQueryData(
-      ["sessions"],
-      [
-        {
-          project: "proj-a",
-          projectName: "Project A",
-          sessions: [makeSession({ id: "old", project: "proj-a" })],
-        },
-      ],
-    );
+    const groupedKey = sessionQueryKeys.grouped();
+    const recentKey = sessionQueryKeys.recent(20);
+    const recentInfiniteKey = sessionQueryKeys.recentInfinite();
+    queryClient.setQueryData(groupedKey, []);
+    queryClient.setQueryData(recentKey, { sessions: [], nextCursor: null });
+    queryClient.setQueryData(recentInfiniteKey, { pages: [], pageParams: [] });
 
     applySessionAdded(queryClient, makeSession({ id: "new", project: "proj-a" }));
 
-    const groups = queryClient.getQueryData<
-      Array<{ project: string; sessions: SessionSummaryPayload[] }>
-    >(["sessions"]);
-    expect(groups?.length).toBe(1);
-    expect(groups?.[0]?.sessions.map((s) => s.id)).toStrictEqual(["new", "old"]);
-  });
-
-  it("creates a new project group when the session is from a new project", () => {
-    const queryClient = new QueryClient();
-    queryClient.setQueryData(
-      ["sessions"],
-      [
-        {
-          project: "proj-a",
-          projectName: "Project A",
-          sessions: [makeSession({ id: "a1", project: "proj-a" })],
-        },
-      ],
-    );
-
-    applySessionAdded(queryClient, makeSession({ id: "b1", project: "proj-b" }));
-
-    const groups = queryClient.getQueryData<
-      Array<{ project: string; sessions: SessionSummaryPayload[] }>
-    >(["sessions"]);
-    expect(groups?.map((g) => g.project)).toStrictEqual(["proj-a", "proj-b"]);
-  });
-
-  it("replaces an existing session in place when the id already exists", () => {
-    const queryClient = new QueryClient();
-    const existing = makeSession({
-      id: "a1",
-      project: "proj-a",
-      title: "Old title",
-    });
-    queryClient.setQueryData(
-      ["sessions"],
-      [{ project: "proj-a", projectName: "Project A", sessions: [existing] }],
-    );
-
-    applySessionAdded(
-      queryClient,
-      makeSession({ id: "a1", project: "proj-a", title: "New title" }),
-    );
-
-    const groups = queryClient.getQueryData<
-      Array<{ project: string; sessions: SessionSummaryPayload[] }>
-    >(["sessions"]);
-    expect(groups?.[0]?.sessions.length).toBe(1);
-    expect(groups?.[0]?.sessions[0]?.title).toBe("New title");
-  });
-
-  it("is a no-op when the sessions query has never been populated", () => {
-    const queryClient = new QueryClient();
-    applySessionAdded(queryClient, makeSession({ id: "a1", project: "proj-a" }));
-    expect(queryClient.getQueryData(["sessions"])).toBe(undefined);
+    expect([
+      queryClient.getQueryState(groupedKey)?.isInvalidated,
+      queryClient.getQueryState(recentKey)?.isInvalidated,
+      queryClient.getQueryState(recentInfiniteKey)?.isInvalidated,
+    ]).toStrictEqual([true, true, true]);
   });
 
   it("invalidates all plan link queries", () => {
     const queryClient = new QueryClient();
-    queryClient.setQueryData(["sessions"], []);
     queryClient.setQueryData(["plans", "plan-a.md", "links"], [{ sessionId: "s1" }]);
     queryClient.setQueryData(["plans", "plan-b.md", "links"], [{ sessionId: "s2" }]);
     queryClient.setQueryData(["plans", "plan-a.md"], { content: "keep" });
@@ -531,123 +479,94 @@ describe("applySessionAdded", () => {
 });
 
 describe("applySessionRemoved", () => {
-  it("removes the session from its project group", () => {
+  it("invalidates every registered session-list shape", () => {
     const queryClient = new QueryClient();
-    queryClient.setQueryData(
-      ["sessions"],
-      [
-        {
-          project: "proj-a",
-          projectName: "Project A",
-          sessions: [
-            makeSession({ id: "a1", project: "proj-a" }),
-            makeSession({ id: "a2", project: "proj-a" }),
-          ],
-        },
-      ],
-    );
+    const groupedKey = sessionQueryKeys.grouped();
+    const recentKey = sessionQueryKeys.recent(20);
+    const recentInfiniteKey = sessionQueryKeys.recentInfinite();
+    queryClient.setQueryData(groupedKey, []);
+    queryClient.setQueryData(recentKey, { sessions: [], nextCursor: null });
+    queryClient.setQueryData(recentInfiniteKey, { pages: [], pageParams: [] });
 
     applySessionRemoved(queryClient, "a1", "proj-a");
 
-    const groups = queryClient.getQueryData<
-      Array<{ project: string; sessions: SessionSummaryPayload[] }>
-    >(["sessions"]);
-    expect(groups?.[0]?.sessions.map((s) => s.id)).toStrictEqual(["a2"]);
+    expect([
+      queryClient.getQueryState(groupedKey)?.isInvalidated,
+      queryClient.getQueryState(recentKey)?.isInvalidated,
+      queryClient.getQueryState(recentInfiniteKey)?.isInvalidated,
+    ]).toStrictEqual([true, true, true]);
   });
 
-  it("drops the project group when its last session is removed", () => {
+  it("invalidates the factory-keyed session subtree without removing data", () => {
     const queryClient = new QueryClient();
-    queryClient.setQueryData(
-      ["sessions"],
-      [
-        {
-          project: "proj-a",
-          projectName: "Project A",
-          sessions: [makeSession({ id: "a1", project: "proj-a" })],
-        },
-      ],
-    );
+    const detailKey = sessionQueryKeys.detail("a1");
+    const transcriptKey = sessionQueryKeys.transcript("a1");
+    const subagentsKey = sessionQueryKeys.subagents("a1");
+    const unrelatedDetailKey = sessionQueryKeys.detail("a2");
+    queryClient.setQueryData(detailKey, { id: "a1" });
+    queryClient.setQueryData(transcriptKey, { records: [], byteOffset: 0 });
+    queryClient.setQueryData(subagentsKey, [{ name: "planner" }]);
+    queryClient.setQueryData(unrelatedDetailKey, { id: "a2" });
 
     applySessionRemoved(queryClient, "a1", "proj-a");
 
-    const groups = queryClient.getQueryData<
-      Array<{ project: string; sessions: SessionSummaryPayload[] }>
-    >(["sessions"]);
-    expect(groups).toStrictEqual([]);
-  });
-
-  it('invalidates per-session sub-caches under ["session", id, ...] without removing data', () => {
-    const queryClient = new QueryClient();
-    queryClient.setQueryData(["session", "a1", "detail"], { id: "a1" });
-    queryClient.setQueryData(["session", "a1", "subagents"], [{ name: "planner" }]);
-    queryClient.setQueryData(["session", "a1", "summary"], { text: "hello" });
-    queryClient.setQueryData(["session", "a1", "starred"], true);
-    // Unrelated session cache should survive.
-    queryClient.setQueryData(["session", "a2", "detail"], { id: "a2" });
-
-    applySessionRemoved(queryClient, "a1", "proj-a");
-
-    // Data remains in cache (invalidated, not removed) to prevent
-    // useSuspenseQuery re-suspension loops.
-    expect(queryClient.getQueryData(["session", "a1", "detail"])).toStrictEqual({ id: "a1" });
-    expect(queryClient.getQueryData(["session", "a1", "subagents"])).toStrictEqual([
-      { name: "planner" },
-    ]);
-    expect(queryClient.getQueryData(["session", "a1", "summary"])).toStrictEqual({ text: "hello" });
-    expect(queryClient.getQueryData(["session", "a1", "starred"])).toBe(true);
-    // Queries are invalidated (marked stale)
-    const detailQuery = queryClient.getQueryCache().find({ queryKey: ["session", "a1", "detail"] });
-    expect(detailQuery?.isStale()).toBe(true);
-    // Unrelated session cache survives unchanged.
-    expect(queryClient.getQueryData(["session", "a2", "detail"])).toStrictEqual({ id: "a2" });
+    expect({
+      detail: queryClient.getQueryData(detailKey),
+      detailInvalidated: queryClient.getQueryState(detailKey)?.isInvalidated,
+      subagents: queryClient.getQueryData(subagentsKey),
+      subagentsInvalidated: queryClient.getQueryState(subagentsKey)?.isInvalidated,
+      transcript: queryClient.getQueryData(transcriptKey),
+      transcriptInvalidated: queryClient.getQueryState(transcriptKey)?.isInvalidated,
+      unrelatedDetail: queryClient.getQueryData(unrelatedDetailKey),
+      unrelatedDetailInvalidated: queryClient.getQueryState(unrelatedDetailKey)?.isInvalidated,
+    }).toStrictEqual({
+      detail: { id: "a1" },
+      detailInvalidated: true,
+      subagents: [{ name: "planner" }],
+      subagentsInvalidated: true,
+      transcript: { records: [], byteOffset: 0 },
+      transcriptInvalidated: true,
+      unrelatedDetail: { id: "a2" },
+      unrelatedDetailInvalidated: false,
+    });
   });
 });
 
 describe("applySessionUpdated", () => {
-  it("replaces the matching session in the sessions group", () => {
+  it("invalidates every registered session-list shape", () => {
     const queryClient = new QueryClient();
-    queryClient.setQueryData(
-      ["sessions"],
-      [
-        {
-          project: "proj-a",
-          projectName: "Project A",
-          sessions: [makeSession({ id: "a1", project: "proj-a", title: "Old" })],
-        },
-      ],
-    );
+    const groupedKey = sessionQueryKeys.grouped();
+    const recentKey = sessionQueryKeys.recent(20);
+    const recentInfiniteKey = sessionQueryKeys.recentInfinite();
+    queryClient.setQueryData(groupedKey, []);
+    queryClient.setQueryData(recentKey, { sessions: [], nextCursor: null });
+    queryClient.setQueryData(recentInfiniteKey, { pages: [], pageParams: [] });
 
     applySessionUpdated(queryClient, makeSession({ id: "a1", project: "proj-a", title: "New" }));
 
-    const groups = queryClient.getQueryData<
-      Array<{ project: string; sessions: SessionSummaryPayload[] }>
-    >(["sessions"]);
-    expect(groups?.[0]?.sessions[0]?.title).toBe("New");
+    expect([
+      queryClient.getQueryState(groupedKey)?.isInvalidated,
+      queryClient.getQueryState(recentKey)?.isInvalidated,
+      queryClient.getQueryState(recentInfiniteKey)?.isInvalidated,
+    ]).toStrictEqual([true, true, true]);
   });
 
-  it("invalidates session detail and summary queries", () => {
+  it("invalidates session detail without invalidating its transcript", () => {
     const queryClient = new QueryClient();
-    queryClient.setQueryData(
-      ["sessions"],
-      [
-        {
-          project: "proj-a",
-          projectName: "Project A",
-          sessions: [makeSession({ id: "a1", project: "proj-a", title: "Old" })],
-        },
-      ],
-    );
-    queryClient.setQueryData(["session", "a1", "detail"], { lines: [] });
-    queryClient.setQueryData(["session", "a1", "summary"], {
-      text: "old summary",
-    });
+    const detailKey = sessionQueryKeys.detail("a1");
+    const transcriptKey = sessionQueryKeys.transcript("a1");
+    queryClient.setQueryData(detailKey, { title: "Old" });
+    queryClient.setQueryData(transcriptKey, { records: [], byteOffset: 0 });
 
     applySessionUpdated(queryClient, makeSession({ id: "a1", project: "proj-a", title: "New" }));
 
-    const detailState = queryClient.getQueryState(["session", "a1", "detail"]);
-    const summaryState = queryClient.getQueryState(["session", "a1", "summary"]);
-    expect(detailState?.isInvalidated).toBe(true);
-    expect(summaryState?.isInvalidated).toBe(true);
+    expect({
+      detailInvalidated: queryClient.getQueryState(detailKey)?.isInvalidated,
+      transcriptInvalidated: queryClient.getQueryState(transcriptKey)?.isInvalidated,
+    }).toStrictEqual({
+      detailInvalidated: true,
+      transcriptInvalidated: false,
+    });
   });
 });
 

@@ -41,6 +41,7 @@ import {
   groupedSessionsQueryOptions,
   mergeTranscriptData,
   recentSessionsInfiniteQueryOptions,
+  sessionQueryKeys,
   type TranscriptData,
 } from "../lib/api/sessions";
 import { toMdSlug } from "../lib/md-slug";
@@ -571,46 +572,20 @@ export function useHookSchemaDrifts(): {
 }
 
 // ---------------------------------------------------------------------------
-// Cache-patching helpers (exported for testing)
+// Cache-refresh helpers (exported for testing)
 //
-// Each handler applies a single domain event to the TanStack Query cache in
-// place with setQueryData. Data shapes mirror the API endpoints in
-// src/routes/api/ (groups of {project, projectName, entries}).
+// Each handler invalidates the registered TanStack Query keys affected by a
+// domain event. Session lists use multiple response shapes, so refetching
+// avoids patching one cache with data that does not match another.
 // ---------------------------------------------------------------------------
 
-type SessionsGroup = {
-  project: string;
-  projectName: string;
-  sessions: SessionSummaryPayload[];
-};
+function invalidateSessionLists(queryClient: QueryClient): void {
+  void queryClient.invalidateQueries({ queryKey: sessionQueryKeys.groupedLists() });
+  void queryClient.invalidateQueries({ queryKey: sessionQueryKeys.recentLists() });
+}
 
 export function applySessionAdded(queryClient: QueryClient, session: SessionSummaryPayload): void {
-  queryClient.setQueryData<SessionsGroup[]>(["sessions"], (old) => {
-    if (!old) return old;
-    const groupIndex = old.findIndex((g) => g.project === session.project);
-    if (groupIndex === -1) {
-      return [
-        ...old,
-        {
-          project: session.project,
-          projectName: session.projectName,
-          sessions: [session],
-        },
-      ];
-    }
-    return old.map((group, i) => {
-      if (i !== groupIndex) return group;
-      // If the session already exists, replace it; otherwise prepend (newest first).
-      const existingIndex = group.sessions.findIndex((s) => s.id === session.id);
-      if (existingIndex >= 0) {
-        return {
-          ...group,
-          sessions: group.sessions.map((s, j) => (j === existingIndex ? session : s)),
-        };
-      }
-      return { ...group, sessions: [session, ...group.sessions] };
-    });
-  });
+  invalidateSessionLists(queryClient);
   // Project session counts changed.
   void queryClient.invalidateQueries({ queryKey: ["projects"] });
   void queryClient.invalidateQueries({
@@ -628,25 +603,13 @@ export function applySessionRemoved(
   sessionId: string,
   projectDir: string,
 ): void {
-  queryClient.setQueryData<SessionsGroup[]>(["sessions"], (old) => {
-    if (!old) return old;
-    return old
-      .map((group) =>
-        group.project === projectDir
-          ? {
-              ...group,
-              sessions: group.sessions.filter((s) => s.id !== sessionId),
-            }
-          : group,
-      )
-      .filter((group) => group.sessions.length > 0);
-  });
+  invalidateSessionLists(queryClient);
   // Invalidate (don't remove) the session sub-caches so that any mounted
   // useSuspenseQuery keeps showing cached data while refetching in the
   // background. Removing queries would cause useSuspenseQuery to re-suspend,
   // which triggers the route loader. If the session is transiently missing
   // (e.g. during a DB rebuild) this can create a suspend/refetch loop.
-  void queryClient.invalidateQueries({ queryKey: ["session", sessionId] });
+  void queryClient.invalidateQueries({ queryKey: sessionQueryKeys.detail(sessionId) });
   void queryClient.invalidateQueries({ queryKey: ["projects"] });
   void queryClient.invalidateQueries({ queryKey: ["project", projectDir] });
 }
@@ -655,27 +618,15 @@ export function applySessionUpdated(
   queryClient: QueryClient,
   session: SessionSummaryPayload,
 ): void {
-  queryClient.setQueryData<SessionsGroup[]>(["sessions"], (old) => {
-    if (!old) return old;
-    return old.map((group) =>
-      group.project === session.project
-        ? {
-            ...group,
-            sessions: group.sessions.map((s) => (s.id === session.id ? session : s)),
-          }
-        : group,
-    );
-  });
-  // Invalidate session detail (metadata like messageCount, gitBranch) and summary.
+  invalidateSessionLists(queryClient);
+  // Invalidate session detail metadata like messageCount, gitBranch, and summary.
   // The transcript is NOT invalidated here because SESSION_LINES_APPENDED handles
   // incremental transcript updates. Invalidating the transcript would cause a
   // redundant full refetch that races with the incremental patch, potentially
   // triggering render loops when combined with useSuspenseQuery.
   void queryClient.invalidateQueries({
-    queryKey: ["session", session.id, "detail"],
-  });
-  void queryClient.invalidateQueries({
-    queryKey: ["session", session.id, "summary"],
+    queryKey: sessionQueryKeys.detail(session.id),
+    exact: true,
   });
 }
 

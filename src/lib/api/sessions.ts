@@ -140,11 +140,32 @@ export const SessionSourceResponse = z
   .nullable();
 
 const DEFAULT_RECENT_PAGE_SIZE = 50;
+const SESSION_QUERY_ROOT = ["sessions"] as const;
+const RECENT_SESSIONS_QUERY_ROOT = [...SESSION_QUERY_ROOT, "recent"] as const;
+const GROUPED_SESSIONS_QUERY_ROOT = [...SESSION_QUERY_ROOT, "grouped"] as const;
+
+export const sessionQueryKeys = {
+  all: () => SESSION_QUERY_ROOT,
+  recentLists: () => RECENT_SESSIONS_QUERY_ROOT,
+  recent: (limit: number) => [...RECENT_SESSIONS_QUERY_ROOT, limit] as const,
+  recentInfinite: (limit: number = DEFAULT_RECENT_PAGE_SIZE) =>
+    [...RECENT_SESSIONS_QUERY_ROOT, "infinite", limit] as const,
+  groupedLists: () => GROUPED_SESSIONS_QUERY_ROOT,
+  grouped: (perProject?: number) => [...GROUPED_SESSIONS_QUERY_ROOT, perProject ?? null] as const,
+  starred: () => [...SESSION_QUERY_ROOT, "starred"] as const,
+  titles: (ids: string[]) => [...SESSION_QUERY_ROOT, "titles", [...ids].sort()] as const,
+  active: (activeTimeoutMs?: number) => [...SESSION_QUERY_ROOT, "active", activeTimeoutMs] as const,
+  detail: (id: string) => [...SESSION_QUERY_ROOT, id] as const,
+  transcript: (id: string) => [...SESSION_QUERY_ROOT, id, "transcript"] as const,
+  source: (sessionId: string, uuid: string, contextN: number) =>
+    [...SESSION_QUERY_ROOT, sessionId, "source", uuid, contextN] as const,
+  subagents: (id: string) => [...SESSION_QUERY_ROOT, id, "subagents"] as const,
+};
 
 /** Single page of recent sessions (no pagination) — for compact previews. */
 export const recentSessionsQueryOptions = (limit: number) =>
   queryOptions({
-    queryKey: ["sessions", "recent", limit] as const,
+    queryKey: sessionQueryKeys.recent(limit),
     queryFn: () => apiFetch(`/api/sessions/recent?limit=${limit}`, RecentSessionsResponse),
     staleTime: Infinity,
     gcTime: Infinity,
@@ -153,7 +174,7 @@ export const recentSessionsQueryOptions = (limit: number) =>
 /** Infinite, cursor-paginated recent sessions — for the main sessions list. */
 export const recentSessionsInfiniteQueryOptions = (limit: number = DEFAULT_RECENT_PAGE_SIZE) =>
   infiniteQueryOptions({
-    queryKey: ["sessions", "recent", "infinite", limit] as const,
+    queryKey: sessionQueryKeys.recentInfinite(limit),
     queryFn: ({ pageParam }) => {
       const cursor = pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : "";
       return apiFetch(`/api/sessions/recent?limit=${limit}${cursor}`, RecentSessionsResponse);
@@ -166,7 +187,7 @@ export const recentSessionsInfiniteQueryOptions = (limit: number = DEFAULT_RECEN
 
 export const groupedSessionsQueryOptions = (perProject?: number) =>
   queryOptions({
-    queryKey: ["sessions", "grouped", perProject ?? null] as const,
+    queryKey: sessionQueryKeys.grouped(perProject),
     queryFn: () =>
       apiFetch(
         `/api/sessions/grouped${perProject ? `?perProject=${perProject}` : ""}`,
@@ -177,7 +198,7 @@ export const groupedSessionsQueryOptions = (perProject?: number) =>
   });
 
 export const starredSessionsQueryOptions = queryOptions({
-  queryKey: ["sessions", "starred"] as const,
+  queryKey: sessionQueryKeys.starred(),
   queryFn: () => apiFetch("/api/sessions/starred", StarredSessionsResponse),
   staleTime: Infinity,
   gcTime: Infinity,
@@ -185,7 +206,7 @@ export const starredSessionsQueryOptions = queryOptions({
 
 export const sessionTitlesQueryOptions = (ids: string[]) =>
   queryOptions({
-    queryKey: ["sessions", "titles", [...ids].sort()] as const,
+    queryKey: sessionQueryKeys.titles(ids),
     queryFn: () =>
       apiFetch(
         `/api/sessions/titles?ids=${encodeURIComponent(ids.join(","))}`,
@@ -202,7 +223,7 @@ export const activeSessionsQueryOptions = (activeTimeoutMs?: number) => {
       ? `/api/sessions/active?activeTimeoutMs=${activeTimeoutMs}`
       : "/api/sessions/active";
   return queryOptions({
-    queryKey: ["sessions", "active", activeTimeoutMs] as const,
+    queryKey: sessionQueryKeys.active(activeTimeoutMs),
     queryFn: () => apiFetch(url, ActiveSessionListResponse),
     staleTime: Infinity,
     gcTime: Infinity,
@@ -211,7 +232,7 @@ export const activeSessionsQueryOptions = (activeTimeoutMs?: number) => {
 
 export const sessionDetailQueryOptions = (id: string) =>
   queryOptions({
-    queryKey: ["sessions", id] as const,
+    queryKey: sessionQueryKeys.detail(id),
     queryFn: () => apiFetch(`/api/sessions/${encodeURIComponent(id)}`, SessionDetailResponse),
     staleTime: Infinity,
     gcTime: Infinity,
@@ -219,7 +240,7 @@ export const sessionDetailQueryOptions = (id: string) =>
 
 export const transcriptQueryOptions = (id: string) =>
   queryOptions({
-    queryKey: ["sessions", id, "transcript"] as const,
+    queryKey: sessionQueryKeys.transcript(id),
     queryFn: () =>
       apiFetch(`/api/sessions/${encodeURIComponent(id)}/transcript`, TranscriptResponse),
     structuralSharing: (oldData, newData) => {
@@ -233,7 +254,7 @@ export const transcriptQueryOptions = (id: string) =>
 
 export const sessionSourceQueryOptions = (sessionId: string, uuid: string, contextN = 5) =>
   queryOptions({
-    queryKey: ["sessions", sessionId, "source", uuid, contextN] as const,
+    queryKey: sessionQueryKeys.source(sessionId, uuid, contextN),
     queryFn: () =>
       apiFetch(
         `/api/sessions/${encodeURIComponent(sessionId)}/source/${encodeURIComponent(uuid)}?context=${contextN}`,
@@ -258,7 +279,7 @@ export const SessionSubagentsResponse = z.array(SessionSubagentSchema);
 
 export const sessionSubagentsQueryOptions = (id: string) =>
   queryOptions({
-    queryKey: ["sessions", id, "subagents"] as const,
+    queryKey: sessionQueryKeys.subagents(id),
     queryFn: () =>
       apiFetch(`/api/sessions/${encodeURIComponent(id)}/subagents`, SessionSubagentsResponse),
     staleTime: Infinity,
@@ -276,8 +297,8 @@ export const useToggleSessionStar = (sessionId: string) => {
         body: JSON.stringify({ starred }),
       }),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["sessions"] });
-      void qc.invalidateQueries({ queryKey: ["sessions", sessionId] });
+      void qc.invalidateQueries({ queryKey: sessionQueryKeys.all() });
+      void qc.invalidateQueries({ queryKey: sessionQueryKeys.detail(sessionId) });
     },
   });
 };
@@ -293,7 +314,7 @@ export const useRequestSummary = (sessionId: string) => {
         method: "POST",
       }),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["sessions", sessionId] });
+      void qc.invalidateQueries({ queryKey: sessionQueryKeys.detail(sessionId) });
     },
   });
 };
