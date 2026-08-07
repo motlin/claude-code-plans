@@ -39,6 +39,7 @@ import {
 } from "../lib/live-subagent-store";
 import {
   groupedSessionsQueryOptions,
+  mergeTranscriptData,
   recentSessionsInfiniteQueryOptions,
   type TranscriptData,
 } from "../lib/api/sessions";
@@ -843,10 +844,10 @@ export function applySessionLinesAppended(
 
   queryClient.setQueryData<TranscriptData>(queryKey, (old) => {
     if (!old) return old;
-    return {
-      records: [...old.records, ...payload.lines],
+    return mergeTranscriptData(old, {
+      records: payload.lines,
       byteOffset: old.byteOffset,
-    };
+    });
   });
 }
 

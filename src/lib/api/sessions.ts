@@ -89,6 +89,25 @@ export const TranscriptResponse = z.object({
 });
 export type TranscriptData = z.infer<typeof TranscriptResponse>;
 
+export function mergeTranscriptData(
+  primary: TranscriptData,
+  secondary: TranscriptData,
+): TranscriptData {
+  const records: TranscriptData["records"] = [];
+  const seenUuids = new Set<string>();
+
+  for (const record of [...primary.records, ...secondary.records]) {
+    const uuid = record["uuid"];
+    if (typeof uuid === "string") {
+      if (seenUuids.has(uuid)) continue;
+      seenUuids.add(uuid);
+    }
+    records.push(record);
+  }
+
+  return { records, byteOffset: primary.byteOffset };
+}
+
 const RawJsonlLineSchema = z.object({
   raw: z.string(),
   uuid: z.string().optional(),
@@ -203,6 +222,11 @@ export const transcriptQueryOptions = (id: string) =>
     queryKey: ["sessions", id, "transcript"] as const,
     queryFn: () =>
       apiFetch(`/api/sessions/${encodeURIComponent(id)}/transcript`, TranscriptResponse),
+    structuralSharing: (oldData, newData) => {
+      const refreshed = TranscriptResponse.parse(newData);
+      if (oldData === undefined) return refreshed;
+      return mergeTranscriptData(refreshed, TranscriptResponse.parse(oldData));
+    },
     staleTime: Infinity,
     gcTime: Infinity,
   });

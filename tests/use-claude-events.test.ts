@@ -23,7 +23,7 @@ import {
   type PlanSummaryPayload,
   type SessionSummaryPayload,
 } from "../src/lib/hook-events";
-import type { TranscriptData } from "../src/lib/api/sessions";
+import { transcriptQueryOptions, type TranscriptData } from "../src/lib/api/sessions";
 import type { LiveSubagentNode } from "../src/lib/live-subagent-store";
 
 function makeSession(
@@ -1014,6 +1014,84 @@ describe("applySessionLinesAppended", () => {
     expect(cached).toStrictEqual({
       records,
       byteOffset: 50,
+    });
+  });
+
+  it("preserves an appended line when an older in-flight refetch resolves afterward", async () => {
+    const queryClient = new QueryClient();
+    const queryKey = ["sessions", "session-test-100", "transcript"] as const;
+    const existingRecord = {
+      type: "user",
+      uuid: "user-test-100",
+      message: { role: "user", content: "hello" },
+    };
+    const appendedRecord = {
+      type: "assistant",
+      uuid: "assistant-test-100",
+      message: { role: "assistant", content: "response" },
+    };
+    queryClient.setQueryData(
+      queryKey,
+      makeTranscriptCache({ records: [existingRecord], byteOffset: 100 }),
+    );
+    let resolveRefetch: () => void = () => undefined;
+    const responseReady = new Promise<void>((resolve) => {
+      resolveRefetch = resolve;
+    });
+    const refetch = queryClient.fetchQuery({
+      ...transcriptQueryOptions("session-test-100"),
+      staleTime: 0,
+      queryFn: async () => {
+        await responseReady;
+        return makeTranscriptCache({ records: [existingRecord], byteOffset: 100 });
+      },
+    });
+
+    applySessionLinesAppended(queryClient, "session-test-100", {
+      sessionId: "session-test-100",
+      lines: [appendedRecord],
+    });
+    resolveRefetch();
+    await refetch;
+
+    expect(queryClient.getQueryData<TranscriptData>(queryKey)).toStrictEqual({
+      records: [existingRecord, appendedRecord],
+      byteOffset: 100,
+    });
+  });
+
+  it("does not duplicate a line appended after a refetch already returned it", async () => {
+    const queryClient = new QueryClient();
+    const queryKey = ["sessions", "session-test-100", "transcript"] as const;
+    const existingRecord = {
+      type: "user",
+      uuid: "user-test-100",
+      message: { role: "user", content: "hello" },
+    };
+    const appendedRecord = {
+      type: "assistant",
+      uuid: "assistant-test-100",
+      message: { role: "assistant", content: "response" },
+    };
+    queryClient.setQueryData(
+      queryKey,
+      makeTranscriptCache({ records: [existingRecord], byteOffset: 100 }),
+    );
+
+    await queryClient.fetchQuery({
+      ...transcriptQueryOptions("session-test-100"),
+      staleTime: 0,
+      queryFn: async () =>
+        makeTranscriptCache({ records: [existingRecord, appendedRecord], byteOffset: 200 }),
+    });
+    applySessionLinesAppended(queryClient, "session-test-100", {
+      sessionId: "session-test-100",
+      lines: [appendedRecord],
+    });
+
+    expect(queryClient.getQueryData<TranscriptData>(queryKey)).toStrictEqual({
+      records: [existingRecord, appendedRecord],
+      byteOffset: 200,
     });
   });
 });
