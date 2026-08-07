@@ -208,6 +208,7 @@ async function sendHookState(
 ): Promise<void> {
   const report = stateForHerdrHookEvent(event);
   if (!report && event.hook_event_name !== "SessionEnd") return;
+  const sequence = dependencies.nextSequence();
 
   const target = await dependencies.resolveTarget(
     event.session_id,
@@ -254,7 +255,6 @@ async function sendHookState(
     return;
   }
 
-  const sequence = dependencies.nextSequence();
   const requestId = `ccp:${sequence.timestamp}:${sequence.ordinal}`;
   if (event.hook_event_name === "SessionEnd") {
     const response = await dependencies.request({

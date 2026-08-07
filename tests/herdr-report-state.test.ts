@@ -133,6 +133,78 @@ describe("herdr hook-state reporting", () => {
     ]);
   });
 
+  it("preserves hook order when target snapshots resolve out of order", async () => {
+    let releaseFirstSnapshot: (() => void) | undefined;
+    const firstSnapshot = new Promise<void>((resolve) => {
+      releaseFirstSnapshot = resolve;
+    });
+    let snapshotCount = 0;
+    let settledSequence = -1;
+    let settledState: "idle" | "working" | "unknown" = "unknown";
+    const reports: Array<{ state: string; sequence: number }> = [];
+    const observations: HerdrReportObservation[] = [];
+    const hookDependencies = dependencies(async (requestValue) => {
+      const request = requestValue as {
+        method: string;
+        params: { state: "idle" | "working"; seq: number };
+      };
+      if (request.method === "pane.get") {
+        return {
+          ok: true,
+          value: paneInfo({
+            agent_status: settledState,
+            agent: settledState === "unknown" ? null : "claude",
+          }),
+        };
+      }
+      if (request.method === "pane.report_agent") {
+        const report = {
+          state: request.params.state,
+          sequence: request.params.seq,
+        };
+        reports.push(report);
+        if (report.sequence > settledSequence) {
+          settledSequence = report.sequence;
+          settledState = report.state;
+        }
+      }
+      return { ok: true, value: { type: "ok" } };
+    }, observations);
+    hookDependencies.resolveTarget = async () => {
+      snapshotCount += 1;
+      if (snapshotCount === 1) await firstSnapshot;
+      return {
+        ok: true,
+        value: { terminalId: "terminal-test-100", paneId: "w100:p100" },
+      };
+    };
+    hookDependencies.nextSequence = createHerdrSequence(() => 946_684_800_000);
+
+    reportHookStateToHerdr(
+      {
+        ...baseEvent,
+        hook_event_name: "PostToolUse",
+        tool_name: "Bash",
+        tool_input: { command: "printf test" },
+        tool_response: {},
+      },
+      entry(),
+      hookDependencies,
+    );
+    reportHookStateToHerdr({ ...baseEvent, hook_event_name: "Stop" }, entry(), hookDependencies);
+    await settleDetachedReport();
+    releaseFirstSnapshot?.();
+    await settleDetachedReport();
+
+    expect({ reports, settledState }).toStrictEqual({
+      reports: [
+        { state: "idle", sequence: 946_684_800_000_001 },
+        { state: "working", sequence: 946_684_800_000_000 },
+      ],
+      settledState: "idle",
+    });
+  });
+
   it("reports authoritative state with the ccp source and verifies it by pane.get", async () => {
     const requests: object[] = [];
     const observations: HerdrReportObservation[] = [];
