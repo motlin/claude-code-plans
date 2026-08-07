@@ -89,6 +89,7 @@ interface SessionDetail {
   projectName: string;
   projectId: string;
   messages: SessionMessage[];
+  messageCount: number;
   uuidToLine: Map<string, number>;
   entrypoint?: string | undefined;
   sessionKind?: string | undefined;
@@ -225,6 +226,42 @@ export async function readFirstUserMessage(filePath: string): Promise<string | n
   return null;
 }
 
+async function readSessionMessageCount(filePath: string): Promise<number> {
+  const rl = createInterface({
+    input: createReadStream(filePath, { encoding: "utf-8" }),
+    crlfDelay: Infinity,
+  });
+  let messageCount = 0;
+
+  try {
+    for await (const line of rl) {
+      if (!line.trim()) continue;
+      try {
+        const entry = JSON.parse(line) as JsonlEntry;
+        if (entry.type === "user" || entry.type === "assistant") messageCount++;
+      } catch {
+        // skip malformed lines
+      }
+    }
+  } finally {
+    rl.close();
+  }
+
+  return messageCount;
+}
+
+async function resolveMessageCount(
+  indexedMessageCount: number | undefined,
+  filePath: string,
+): Promise<number> {
+  if (indexedMessageCount !== undefined) return indexedMessageCount;
+  try {
+    return await readSessionMessageCount(filePath);
+  } catch {
+    return 0;
+  }
+}
+
 export async function resolveFirstPrompt(
   indexedPrompt: string | undefined,
   filePath: string,
@@ -301,7 +338,7 @@ async function listSessionsForProject(
       project,
       projectName,
       projectPath: entry.projectPath,
-      messageCount: entry.messageCount ?? 0,
+      messageCount: await resolveMessageCount(entry.messageCount, entry.fullPath),
       gitBranch: entry.gitBranch,
       isSidechain: entry.isSidechain ?? false,
     });
@@ -334,7 +371,7 @@ async function listSessionsForProject(
         project,
         projectName,
         projectPath: firstProjectPath,
-        messageCount: 0,
+        messageCount: await readSessionMessageCount(filePath),
         isSidechain: false,
       });
     } catch {
@@ -378,7 +415,7 @@ async function listSessionsFromJsonl(
         created: fileStat.birthtime,
         project,
         projectName,
-        messageCount: 0,
+        messageCount: await readSessionMessageCount(filePath),
         isSidechain: false,
       });
     } catch {
@@ -561,6 +598,7 @@ export async function readSession(
 
   const projectName = await resolveProjectName(project);
   const messages: SessionMessage[] = [];
+  let messageCount = 0;
   let title = sessionId;
   let customTitle: string | undefined;
   let entrypoint: string | undefined;
@@ -623,6 +661,7 @@ export async function readSession(
 
       const type = obj.type;
       if (type !== "user" && type !== "assistant") continue;
+      messageCount++;
 
       const message = obj.message;
       if (!message) continue;
@@ -802,6 +841,7 @@ export async function readSession(
     projectName,
     projectId: project,
     messages,
+    messageCount,
     uuidToLine,
   };
   if (entrypoint !== undefined) detail.entrypoint = entrypoint;

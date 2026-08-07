@@ -117,7 +117,10 @@ export function StatusFooter({
   // Duration + message count
   const durationMs = getNestedNumber(data, "cost", "total_duration_ms");
   if (durationMs !== undefined) {
-    const durationLabel = `${formatDuration(durationMs)} · ${messageCount} msgs`;
+    const durationLabel =
+      messageCount > 0
+        ? `${formatDuration(durationMs)} · ${messageCount} msgs`
+        : formatDuration(durationMs);
     segments.push({
       key: "dur",
       label: durationLabel,

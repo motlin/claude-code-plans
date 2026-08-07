@@ -605,6 +605,66 @@ describe("indexer", () => {
     expect(after.mtimeMs).toBeGreaterThan(oldMtime);
   });
 
+  it("persists transcript message counts when the sessions index omits them", async () => {
+    const project = "-Users-alice-projects-example";
+    const projectDir = join(testDir, project);
+    const transcriptPath = join(projectDir, "session-test-100.jsonl");
+    const indexPath = join(projectDir, "sessions-index.json");
+    mkdirSync(projectDir, { recursive: true });
+    writeFileSync(
+      indexPath,
+      makeSessionsIndex([
+        {
+          sessionId: "session-test-100",
+          fullPath: transcriptPath,
+          fileMtime: 946_598_400_000,
+          firstPrompt: "Count this prompt",
+        },
+      ]),
+    );
+    writeFileSync(
+      transcriptPath,
+      jsonl(
+        {
+          type: "user",
+          message: { role: "user", content: "Count this prompt" },
+        },
+        {
+          type: "assistant",
+          message: { role: "assistant", content: [{ type: "text", text: "First response" }] },
+        },
+        { type: "progress", subtype: "api_req_started" },
+        {
+          type: "assistant",
+          message: { role: "assistant", content: [{ type: "text", text: "Second response" }] },
+        },
+      ),
+    );
+
+    await indexSessionsIndex(db.index, projectDir, project);
+    await indexJsonlFile(db.index, transcriptPath, project);
+    writeFileSync(
+      indexPath,
+      makeSessionsIndex([
+        {
+          sessionId: "session-test-100",
+          fullPath: transcriptPath,
+          fileMtime: 946_598_401_000,
+          firstPrompt: "Count this prompt",
+        },
+      ]),
+    );
+    await indexSessionsIndex(db.index, projectDir, project);
+
+    expect(
+      db.index
+        .select({ id: schema.sessions.id, messageCount: schema.sessions.messageCount })
+        .from(schema.sessions)
+        .where(eq(schema.sessions.id, "session-test-100"))
+        .get(),
+    ).toStrictEqual({ id: "session-test-100", messageCount: 3 });
+  });
+
   it("updates the session location when its JSONL moves to another project", async () => {
     const sessionId = "00000000-0000-4000-8000-000000000001";
     const oldProject = "-tmp-a";

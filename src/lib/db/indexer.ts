@@ -277,7 +277,7 @@ export async function indexSessionsIndex(
     const summ = entry.summary as string | undefined;
     const branch = entry.gitBranch as string | undefined;
     const entryProjectPath = entry.projectPath as string | undefined;
-    const msgCount = (entry.messageCount as number | undefined) ?? 0;
+    const indexedMessageCount = entry.messageCount;
     const sidechain = entry.isSidechain as boolean | undefined;
     const title = summ ?? extractSessionTitle(fp ?? "", entry.sessionId);
     const createdAt = entry.created ? new Date(entry.created as string).getTime() : entry.fileMtime;
@@ -290,7 +290,7 @@ export async function indexSessionsIndex(
         firstPrompt: fp,
         summary: summ ?? null,
         customTitle: null,
-        messageCount: msgCount,
+        messageCount: indexedMessageCount ?? 0,
         gitBranch: branch ?? null,
         cwd: entryProjectPath ?? null,
         isSidechain: sidechain ? 1 : 0,
@@ -304,7 +304,7 @@ export async function indexSessionsIndex(
           title,
           firstPrompt: fp,
           summary: summ ?? null,
-          messageCount: msgCount,
+          ...(indexedMessageCount === undefined ? {} : { messageCount: indexedMessageCount }),
           gitBranch: branch ?? null,
           cwd: entryProjectPath ?? null,
           isSidechain: sidechain ? 1 : 0,
@@ -507,7 +507,10 @@ export async function indexJsonlFile(
   persistProject(db, project, projectPath, fileStat.mtimeMs);
 
   if (existingSession) {
-    const updates: Record<string, unknown> = { mtimeMs: fileStat.mtimeMs };
+    const updates: Record<string, unknown> = {
+      mtimeMs: fileStat.mtimeMs,
+      messageCount: messageIndex,
+    };
     updates["filePath"] = filePath;
     updates["projectId"] = project;
     updates["firstPrompt"] = firstPrompt;
@@ -535,7 +538,7 @@ export async function indexJsonlFile(
         firstPrompt,
         summary: null,
         customTitle: customTitle ?? null,
-        messageCount: 0,
+        messageCount: messageIndex,
         gitBranch: sessionGitBranch ?? null,
         cwd: sessionCwd ?? null,
         isSidechain: 0,

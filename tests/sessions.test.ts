@@ -491,7 +491,45 @@ describe("listSessions", () => {
     if (groups.length !== 1) throw new Error(`Expected 1 group, got ${groups.length}`);
     expect(groups[0]!.project).toBe("-Users-craig-projects-app");
     expect(groups[0]!.projectName).toBe("app");
-    expect(groups[0]!.sessions.map((s) => s.title)).toStrictEqual(["Fix the login bug"]);
+    expect(
+      groups[0]!.sessions.map(({ title, messageCount }) => ({ title, messageCount })),
+    ).toStrictEqual([{ title: "Fix the login bug", messageCount: 1 }]);
+  });
+
+  it("derives a missing index message count from the transcript", async () => {
+    const projectDir = join(testDir, "-Users-alice-projects-example");
+    const transcriptPath = join(projectDir, "session-test-100.jsonl");
+    mkdirSync(projectDir, { recursive: true });
+    writeFileSync(
+      transcriptPath,
+      jsonl(
+        userMessage("Count this prompt"),
+        assistantMessage([{ type: "text", text: "Count this response" }]),
+        { type: "progress", subtype: "api_req_started" },
+      ),
+    );
+    writeFileSync(
+      join(projectDir, "sessions-index.json"),
+      JSON.stringify({
+        version: 1,
+        entries: [
+          {
+            sessionId: "session-test-100",
+            fullPath: transcriptPath,
+            fileMtime: 946_598_400_000,
+            firstPrompt: "Count this prompt",
+          },
+        ],
+      }),
+    );
+
+    const groups = await listSessions(testDir);
+
+    expect(
+      groups.flatMap(({ sessions }) =>
+        sessions.map(({ id, messageCount }) => ({ id, messageCount })),
+      ),
+    ).toStrictEqual([{ id: "session-test-100", messageCount: 2 }]);
   });
 
   it("sorts by mtime desc", async () => {
@@ -647,6 +685,7 @@ describe("readSession", () => {
     expect(detail.title).toBe("Hello");
     expect(detail.projectName).toBe("app");
     expect(detail.projectId).toBe("-Users-craig-projects-app");
+    expect(detail.messageCount).toBe(2);
     expect(detail.messages.map((m) => m.role)).toStrictEqual(["user", "assistant"]);
 
     expect(detail.messages[0]!.textBlocks).toStrictEqual(["Hello"]);

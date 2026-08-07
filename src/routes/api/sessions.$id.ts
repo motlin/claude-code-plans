@@ -124,6 +124,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
 
         const provenance = await readSession(PROJECTS_DIR, id);
         if (provenance) {
+          if (detail.messageCount === 0) detail.messageCount = provenance.messageCount;
           if (provenance.entrypoint !== undefined) detail.entrypoint = provenance.entrypoint;
           if (provenance.sessionKind !== undefined) detail.sessionKind = provenance.sessionKind;
           if (provenance.teamNames !== undefined) detail.teamNames = provenance.teamNames;
