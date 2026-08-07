@@ -42,6 +42,18 @@ const CAPTURED_STATUSLINE = {
   exceeds_200k_tokens: false,
 };
 
+const CAPTURED_STATUSLINE_WITH_NULL_CONTEXT = {
+  ...CAPTURED_STATUSLINE,
+  context_window: {
+    total_input_tokens: 0,
+    total_output_tokens: 0,
+    context_window_size: 1_000_000,
+    current_usage: null,
+    used_percentage: null,
+    remaining_percentage: null,
+  },
+};
+
 describe("StatuslineSchema", () => {
   it("parses a captured statusline and maps its list metrics", () => {
     const statusline = StatuslineSchema.parse(CAPTURED_STATUSLINE);
@@ -51,6 +63,22 @@ describe("StatuslineSchema", () => {
       metrics: {
         model: "Claude Test Model",
         contextRemainingPct: 75,
+        costUsd: 2.5,
+        linesAdded: 100,
+        linesRemoved: 20,
+        elapsedMs: 120_000,
+      },
+    });
+  });
+
+  it("parses a captured statusline with null context percentages", () => {
+    const statusline = StatuslineSchema.parse(CAPTURED_STATUSLINE_WITH_NULL_CONTEXT);
+
+    expect({ statusline, metrics: toSessionMetrics(statusline) }).toStrictEqual({
+      statusline: CAPTURED_STATUSLINE_WITH_NULL_CONTEXT,
+      metrics: {
+        model: "Claude Test Model",
+        contextRemainingPct: null,
         costUsd: 2.5,
         linesAdded: 100,
         linesRemoved: 20,

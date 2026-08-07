@@ -18,7 +18,7 @@ export const StatuslineSchema = z
       .optional(),
     context_window: z
       .object({
-        remaining_percentage: z.number().optional(),
+        remaining_percentage: z.number().nullish(),
       })
       .loose()
       .optional(),
