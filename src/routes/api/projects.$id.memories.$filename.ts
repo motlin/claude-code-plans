@@ -20,11 +20,19 @@ export const Route = createFileRoute("/api/projects/$id/memories/$filename")({
         const { homedir } = await import("node:os");
         const { join } = await import("node:path");
         const { stat } = await import("node:fs/promises");
+        const { resolveMarkdownFilePath } = await import("../../lib/markdown-file-path");
         const { readMemory, decodeProjectDir } = await import("../../lib/memory");
 
         const projectsDir = join(homedir(), ".claude", "projects");
         const filename = fromMdSlug(params.filename);
-        const filePath = join(projectsDir, params.id, "memory", filename);
+        if (params.id.includes("..") || params.id.includes("/")) {
+          return new Response("Not Found", { status: 404 });
+        }
+        const memoryDir = join(projectsDir, params.id, "memory");
+        const filePath = resolveMarkdownFilePath(memoryDir, filename);
+        if (filePath === null) {
+          return new Response("Not Found", { status: 404 });
+        }
 
         let mtime: Date | null = null;
         try {

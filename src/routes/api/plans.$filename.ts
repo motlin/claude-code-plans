@@ -27,12 +27,16 @@ export const Route = createFileRoute("/api/plans/$filename")({
         const { homedir } = await import("node:os");
         const { join } = await import("node:path");
         const { stat } = await import("node:fs/promises");
+        const { resolveMarkdownFilePath } = await import("../../lib/markdown-file-path");
         const { readPlan } = await import("../../lib/plans");
         const { extractTitleFromContent } = await import("../../lib/markdown-utils");
 
         const plansDir = join(homedir(), ".claude", "plans");
         const filename = fromMdSlug(params.filename);
-        const filePath = join(plansDir, filename);
+        const filePath = resolveMarkdownFilePath(plansDir, filename);
+        if (filePath === null) {
+          return new Response("Not Found", { status: 404 });
+        }
 
         let mtime: Date | null = null;
         try {
