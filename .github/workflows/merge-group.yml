@@ -64,6 +64,23 @@ jobs:
           key: pnpm-${{ hashFiles('pnpm-lock.yaml') }}
       - run: just build
 
+  build-storybook:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@f10502fc09dadecfefb962fff68ce77213930204 # v4.2.2
+        with:
+          cache: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: just build-storybook
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -132,7 +149,7 @@ jobs:
   all-checks:
     name: All checks
     if: ${{ !cancelled() }}
-    needs: [pre-commit, check, build, test, markdownlint, yamllint, fallow]
+    needs: [pre-commit, check, build, build-storybook, test, markdownlint, yamllint, fallow]
     runs-on: ubuntu-latest
     steps:
       - uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe # v1.2.2

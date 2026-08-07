@@ -8,7 +8,14 @@
     "scripts/field-presence.ts"
   ],
   "ignorePatterns": [".storybook/**", "src/routeTree.gen.ts"],
-  "ignoreDependencies": ["@shikijs/core", "@shikijs/engine-javascript", "agentation"],
+  "ignoreDependencies": [
+    "@chromatic-com/storybook",
+    "@shikijs/core",
+    "@shikijs/engine-javascript",
+    "@storybook/addon-a11y",
+    "@storybook/addon-docs",
+    "agentation"
+  ],
   "ignoreExports": [
     {
       "file": "src/components/markdown-article.module.css",
