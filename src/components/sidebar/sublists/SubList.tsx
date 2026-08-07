@@ -1,15 +1,12 @@
 import { Link } from "@tanstack/react-router";
-import { useQueries, useQuery } from "@tanstack/react-query";
-import { projectsQueryOptions } from "../../../lib/api/projects";
-import { projectMemoriesQueryOptions } from "../../../lib/api/memories";
+import { useQuery } from "@tanstack/react-query";
 import { recentSessionsQueryOptions } from "../../../lib/api/sessions";
-import { toMdSlug } from "../../../lib/md-slug";
 import type { Section, SubItem } from "../types";
 import { LoadingBars } from "../primitives/LoadingBars";
 
 // SubList is the fallback renderer for sidebar sections without a dedicated
-// component. Sidebar.tsx routes active/projects/plans/plugins to their own
-// sublists, so only `memories` and `sessions` actually reach this component.
+// component. Sidebar.tsx routes sections with custom hierarchy to their own
+// sublists, so only `sessions` actually reaches this component.
 export function SubList({
   section,
   activeItemId,
@@ -17,19 +14,6 @@ export function SubList({
   section: Section;
   activeItemId: string | null;
 }) {
-  const projectsQuery = useQuery({
-    ...projectsQueryOptions(),
-    enabled: section === "memories",
-  });
-  const memoryQueries = useQueries({
-    queries:
-      section === "memories" && projectsQuery.data
-        ? projectsQuery.data.map((p) => ({
-            ...projectMemoriesQueryOptions(p.id),
-            enabled: true,
-          }))
-        : [],
-  });
   const sessionsQuery = useQuery({
     ...recentSessionsQueryOptions(20),
     enabled: section === "sessions",
@@ -37,21 +21,7 @@ export function SubList({
 
   let items: SubItem[] | null = null;
 
-  if (section === "memories") {
-    // every() returns true for an empty array, which correctly handles "no projects".
-    if (projectsQuery.data && memoryQueries.every((q) => q.data !== undefined)) {
-      items = memoryQueries
-        .flatMap((q) => q.data?.memories ?? [])
-        .sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime())
-        .slice(0, 20)
-        .map((m) => ({
-          id: `${m.project}/${m.filename}`,
-          label: m.title,
-          to: "/memory/$project/$filename",
-          params: { project: m.project, filename: toMdSlug(m.filename) },
-        }));
-    }
-  } else if (section === "sessions") {
+  if (section === "sessions") {
     if (sessionsQuery.data) {
       // Server returns the 20 most-recent sessions, already ordered.
       items = sessionsQuery.data.sessions.map((s) => ({
