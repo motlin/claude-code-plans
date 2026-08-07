@@ -54,8 +54,8 @@ const PUSH_EVENT_TO_SSE_EVENT: Readonly<Record<string, string>> = {
   pane_agent_status_changed: HERDR_EVENTS.PANE_AGENT_STATUS_CHANGED,
 };
 
-const INITIAL_RECONNECT_DELAY_MS = 250;
-const MAXIMUM_RECONNECT_DELAY_MS = 10_000;
+const INITIAL_RETRY_DELAY_MS = 250;
+const MAXIMUM_RETRY_DELAY_MS = 10_000;
 const CHANGE_HINT_RESYNC_DELAY_MS = 250;
 
 type Timer = ReturnType<typeof setTimeout>;
@@ -139,9 +139,11 @@ function createBridge(dependencies: BridgeDependencies): () => void {
   let stopped = false;
   let socket: Socket | null = null;
   let lineReader: ReadlineInterface | null = null;
+  let probeRetryTimer: Timer | null = null;
   let reconnectTimer: Timer | null = null;
   let resyncTimer: Timer | null = null;
-  let reconnectDelayMs = INITIAL_RECONNECT_DELAY_MS;
+  let probeRetryDelayMs = INITIAL_RETRY_DELAY_MS;
+  let reconnectDelayMs = INITIAL_RETRY_DELAY_MS;
   let reconnectPending = false;
   let resyncRunning = false;
   let resyncAgain = false;
@@ -200,12 +202,12 @@ function createBridge(dependencies: BridgeDependencies): () => void {
         reconnectTimer = null;
         void openSubscription();
       }, reconnectDelayMs);
-      reconnectDelayMs = Math.min(reconnectDelayMs * 2, MAXIMUM_RECONNECT_DELAY_MS);
+      reconnectDelayMs = Math.min(reconnectDelayMs * 2, MAXIMUM_RETRY_DELAY_MS);
     };
 
     nextSocket.once("connect", () => {
       if (stopped || socket !== nextSocket) return;
-      reconnectDelayMs = INITIAL_RECONNECT_DELAY_MS;
+      reconnectDelayMs = INITIAL_RETRY_DELAY_MS;
       nextSocket.write(subscriptionRequest(paneIds));
     });
     nextSocket.once("error", scheduleReconnect);
@@ -244,19 +246,33 @@ function createBridge(dependencies: BridgeDependencies): () => void {
     if (!stopped) connect(paneIds);
   };
 
-  void dependencies.probe().then((availability) => {
-    if (stopped || !availability.available) return;
+  const probeAndOpenSubscription = async (): Promise<void> => {
+    const availability = await dependencies.probe();
+    if (stopped) return;
+    if (!availability.available) {
+      probeRetryTimer = dependencies.schedule(() => {
+        probeRetryTimer = null;
+        void probeAndOpenSubscription();
+      }, probeRetryDelayMs);
+      probeRetryDelayMs = Math.min(probeRetryDelayMs * 2, MAXIMUM_RETRY_DELAY_MS);
+      return;
+    }
+
     socketPath = availability.socketPath;
     void openSubscription();
-  });
+  };
+
+  void probeAndOpenSubscription();
 
   return () => {
     if (stopped) return;
     stopped = true;
+    if (probeRetryTimer) dependencies.cancel(probeRetryTimer);
     if (reconnectTimer) dependencies.cancel(reconnectTimer);
     if (resyncTimer) dependencies.cancel(resyncTimer);
     lineReader?.close();
     socket?.destroy();
+    probeRetryTimer = null;
     reconnectTimer = null;
     resyncTimer = null;
     lineReader = null;

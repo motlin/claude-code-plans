@@ -74,14 +74,21 @@ describe("herdr event bridge", () => {
     vi.useRealTimers();
   });
 
-  it("does not subscribe when the availability probe reports no daemon", async () => {
+  it("retries unavailable probes with capped exponential backoff and recovers", async () => {
     const sockets: FakeSocket[] = [];
     const lineReaders: FakeLineReader[] = [];
+    const scheduledDelays: number[] = [];
     const getPanes = vi.fn(async () => []);
     const broadcasts: Broadcast[] = [];
+    const expectedBackoffs = [250, 500, 1_000, 2_000, 4_000, 8_000, 10_000, 10_000];
+    let probeAttempts = 0;
+    const probe = vi.fn(() => {
+      probeAttempts += 1;
+      return probeAttempts <= expectedBackoffs.length ? unavailable() : available();
+    });
 
     const stop = __testing.createBridge({
-      probe: unavailable,
+      probe,
       connect: () => {
         const socket = new FakeSocket();
         sockets.push(socket);
@@ -95,18 +102,62 @@ describe("herdr event bridge", () => {
       getPaneIds: async () => ["workspace-100:pane-100"],
       getPanes,
       broadcast: (type, data) => broadcasts.push({ type, data }),
-      schedule: setTimeout,
+      schedule: (callback, delayMs) => {
+        scheduledDelays.push(delayMs);
+        return setTimeout(callback, delayMs);
+      },
       cancel: clearTimeout,
       viewedStateTracker: viewedStateTracker(),
     });
     await flushPromises();
 
-    expect({ sockets, getPanesCalls: getPanes.mock.calls, broadcasts }).toStrictEqual({
-      sockets: [],
-      getPanesCalls: [],
-      broadcasts: [],
+    for (const delayMs of expectedBackoffs) await vi.advanceTimersByTimeAsync(delayMs);
+
+    expect({
+      probeCalls: probe.mock.calls,
+      scheduledDelays,
+      socketCount: sockets.length,
+      getPanesCalls: getPanes.mock.calls,
+      broadcasts,
+    }).toStrictEqual({
+      probeCalls: [[], [], [], [], [], [], [], [], []],
+      scheduledDelays: expectedBackoffs,
+      socketCount: 1,
+      getPanesCalls: [[]],
+      broadcasts: [{ type: HERDR_EVENTS.PANES_SNAPSHOT, data: { panes: [] } }],
     });
     stop();
+  });
+
+  it("cancels an unavailable probe retry during teardown", async () => {
+    const scheduledDelays: number[] = [];
+    const probe = vi.fn(unavailable);
+    const cancel = vi.fn((timer: ReturnType<typeof setTimeout>) => clearTimeout(timer));
+
+    const stop = __testing.createBridge({
+      probe,
+      connect: () => new FakeSocket() as unknown as Socket,
+      createLineReader: () => new FakeLineReader() as unknown as ReadlineInterface,
+      getPaneIds: async () => ["workspace-100:pane-100"],
+      getPanes: async () => [],
+      broadcast: () => {},
+      schedule: (callback, delayMs) => {
+        scheduledDelays.push(delayMs);
+        return setTimeout(callback, delayMs);
+      },
+      cancel,
+      viewedStateTracker: viewedStateTracker(),
+    });
+    await flushPromises();
+
+    stop();
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect({
+      probeCalls: probe.mock.calls,
+      scheduledDelays,
+      cancelCallCount: cancel.mock.calls.length,
+    }).toStrictEqual({ probeCalls: [[]], scheduledDelays: [250], cancelCallCount: 1 });
   });
 
   it("uses dot subscriptions, maps snake-case pushes, and coalesces snapshot resyncs", async () => {
