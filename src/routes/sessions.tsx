@@ -25,8 +25,7 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
-    year: "numeric",
-    hour: "2-digit",
+    hour: "numeric",
     minute: "2-digit",
   });
 }
@@ -169,20 +168,22 @@ function SessionItem({ session, isActive }: { session: SessionListItem; isActive
           )}
           <span className="truncate">{session.title}</span>
         </div>
-        <div className="mt-0.5 flex items-center gap-2 text-xs text-text-500">
-          <span>{session.projectName}</span>
-          <span>&middot;</span>
-          <span>{formatDate(session.mtime)}</span>
+        <div className="mt-0.5 flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-text-500">
+          <span className="min-w-0 flex-1 truncate">{session.projectName}</span>
+          <span className="shrink-0">&middot;</span>
+          <time dateTime={session.mtime} className="shrink-0">
+            {formatDate(session.mtime)}
+          </time>
           {session.messageCount > 0 && (
             <>
-              <span>&middot;</span>
-              <span>{session.messageCount} msgs</span>
+              <span className="shrink-0">&middot;</span>
+              <span className="shrink-0">{session.messageCount} msgs</span>
             </>
           )}
           {session.gitBranch && (
             <>
-              <span>&middot;</span>
-              <span className="rounded bg-bg-200 px-1.5 py-0.5 font-mono text-[10px]">
+              <span className="shrink-0">&middot;</span>
+              <span className="max-w-32 shrink truncate rounded bg-bg-200 px-1.5 py-0.5 font-mono text-[10px]">
                 {session.gitBranch}
               </span>
             </>

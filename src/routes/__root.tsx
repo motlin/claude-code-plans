@@ -173,7 +173,7 @@ function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
               <ModeToggle />
             </div>
           </div>
-          <div className="px-4 pb-8 sm:px-8">{children}</div>
+          <div className="px-4 pb-24 sm:px-8 sm:pb-8">{children}</div>
         </main>
       </div>
       <MobileSidebar open={mobileOpen} onClose={() => setMobileOpen(false)} />
