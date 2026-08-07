@@ -301,7 +301,7 @@ export async function indexSessionsIndex(
       .onConflictDoUpdate({
         target: schema.sessions.id,
         set: {
-          title,
+          title: sql<string>`coalesce(${schema.sessions.customTitle}, ${title})`,
           firstPrompt: fp,
           summary: summ ?? null,
           ...(indexedMessageCount === undefined ? {} : { messageCount: indexedMessageCount }),

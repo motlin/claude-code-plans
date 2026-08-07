@@ -1,4 +1,4 @@
-import { writeFileSync, mkdirSync, renameSync, rmSync } from "node:fs";
+import { writeFileSync, mkdirSync, renameSync, rmSync, utimesSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -553,6 +553,62 @@ describe("indexer", () => {
     if (!session) throw new Error("Expected session titled-sess");
     expect(session.customTitle).toBe("My Custom Title");
     expect(session.title).toBe("My Custom Title");
+  });
+
+  it("preserves a custom title when sessions-index.json is rewritten", async () => {
+    const project = "-Users-alice-projects-example";
+    const projectDir = join(testDir, project);
+    const sessionId = "session-test-100";
+    const sessionPath = join(projectDir, `${sessionId}.jsonl`);
+    const indexPath = join(projectDir, "sessions-index.json");
+    const initialIndexModifiedAt = new Date("2000-01-01T00:00:00.000Z");
+    const rewrittenIndexModifiedAt = new Date("2000-01-02T00:00:00.000Z");
+    mkdirSync(projectDir, { recursive: true });
+    writeFileSync(
+      indexPath,
+      makeSessionsIndex([
+        {
+          sessionId,
+          fullPath: sessionPath,
+          fileMtime: initialIndexModifiedAt.getTime(),
+          firstPrompt: "Original generated title",
+        },
+      ]),
+    );
+    utimesSync(indexPath, initialIndexModifiedAt, initialIndexModifiedAt);
+    writeFileSync(
+      sessionPath,
+      jsonl(
+        { type: "user", message: { role: "user", content: "Original generated title" } },
+        { type: "custom-title", customTitle: "Alice's custom title", sessionId },
+      ),
+    );
+
+    await indexSessionsIndex(db.index, projectDir, project);
+    await indexJsonlFile(db.index, sessionPath, project);
+
+    writeFileSync(
+      indexPath,
+      makeSessionsIndex([
+        {
+          sessionId,
+          fullPath: sessionPath,
+          fileMtime: rewrittenIndexModifiedAt.getTime(),
+          firstPrompt: "Original generated title",
+          summary: "Updated generated title",
+        },
+      ]),
+    );
+    utimesSync(indexPath, rewrittenIndexModifiedAt, rewrittenIndexModifiedAt);
+    await indexSessionsIndex(db.index, projectDir, project);
+
+    expect(
+      db.index
+        .select({ customTitle: schema.sessions.customTitle, title: schema.sessions.title })
+        .from(schema.sessions)
+        .where(eq(schema.sessions.id, sessionId))
+        .get(),
+    ).toStrictEqual({ customTitle: "Alice's custom title", title: "Alice's custom title" });
   });
 
   it("updates session mtime when JSONL is re-indexed", async () => {
