@@ -61,6 +61,7 @@ export const DOMAIN_EVENTS = {
   SESSION_ENDED: "session:ended",
   SESSION_LINES_APPENDED: "session:lines-appended",
   SESSION_PROMPT_SUBMITTED: "session:prompt-submitted",
+  SESSION_HOOK_CONTEXT_CHANGED: "session:hook-context-changed",
   SESSION_TOOL_PENDING: "session:tool-pending",
   SESSION_TOOL_FAILED: "session:tool-failed",
   SESSION_COMPACTING: "session:compacting",
@@ -206,6 +207,36 @@ export interface SessionPromptSubmittedPayload {
   sessionId: string;
   prompt: string;
   ts: string;
+}
+
+export interface HookBackgroundTaskPayload {
+  id: string;
+  type: string;
+  status: string;
+  description: string;
+  command?: string;
+  agentType?: string;
+  server?: string;
+  tool?: string;
+  name?: string;
+}
+
+export interface HookSessionCronPayload {
+  id: string;
+  schedule: string;
+  recurring: boolean;
+  prompt: string;
+}
+
+/** Live hook-only context that has not necessarily reached the JSONL yet. */
+export interface SessionHookContextPayload {
+  sessionId: string;
+  sessionTitle?: string;
+  promptId?: string;
+  permissionMode?: string;
+  effortLevel?: string;
+  backgroundTasks?: HookBackgroundTaskPayload[];
+  sessionCrons?: HookSessionCronPayload[];
 }
 
 /**

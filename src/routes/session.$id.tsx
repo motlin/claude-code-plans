@@ -12,6 +12,7 @@ import {
   type AskUserQuestionContextValue,
 } from "../components/ask-user-question-context";
 import { ActiveSubagents } from "../components/active-subagents";
+import { SessionHookContext } from "../components/session-hook-context";
 import {
   sessionDetailQueryOptions,
   sessionSubagentsQueryOptions,
@@ -365,7 +366,8 @@ function SessionPage() {
   const filesDrawerState = useFilesDrawerState();
   const linksDrawerState = useLinksDrawerState();
   const linkDisplay = useSessionLinkDisplay(sessionLinks, linksDrawerState.includeToolsAndThinking);
-  const { runningSubagents } = useClaudeEvents();
+  const { hookContexts, runningSubagents } = useClaudeEvents();
+  const hookContext = hookContexts.get(params.id);
   const transcriptActiveSubagents = useMemo(
     () => extractPendingSubagents(transcript.records),
     [transcript.records],
@@ -639,7 +641,7 @@ function SessionPage() {
               <Maximize2 className="h-3.5 w-3.5" />
             </button>
           </DetailTopBar>
-          <h1 className="text-lg font-semibold">{data.title}</h1>
+          <h1 className="text-lg font-semibold">{hookContext?.sessionTitle || data.title}</h1>
 
           {aiSummary ? (
             <p className="mt-1 text-sm text-text-500 italic">{aiSummary}</p>
@@ -668,6 +670,7 @@ function SessionPage() {
             </Link>
           )}
           <ActiveSubagents agents={activeSubagents} />
+          {hookContext && <SessionHookContext context={hookContext} />}
         </div>
       )}
 

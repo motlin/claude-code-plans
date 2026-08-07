@@ -13,6 +13,7 @@ import {
   type NotificationPayload,
   type TaskSummaryPayload,
   type SessionPromptSubmittedPayload,
+  type SessionHookContextPayload,
   type SessionToolPendingPayload,
   type SessionToolFailedPayload,
   type SessionCompactingPayload,
@@ -99,6 +100,29 @@ interface DispatchHookEventArgs {
   dirs?: HookDispatchDirs;
   state?: HookDispatchState;
   reportHerdrState?: (event: HookEvent, entry: ActiveSessionEntry | null) => void;
+}
+
+function broadcastHookContext(
+  event: HookEvent,
+  broadcast: (type: string, data: Record<string, unknown>) => void,
+  options?: { clearPausedWork?: boolean; clearTurnContext?: boolean; sessionTitle?: string },
+): void {
+  const payload: SessionHookContextPayload = { sessionId: event.session_id };
+  if (options?.sessionTitle !== undefined) payload.sessionTitle = options.sessionTitle;
+  if (options?.clearTurnContext === true) {
+    payload.promptId = "";
+    payload.permissionMode = "";
+    payload.effortLevel = "";
+  }
+  if (event.prompt_id !== undefined) payload.promptId = event.prompt_id;
+  if (event.permission_mode !== undefined) payload.permissionMode = event.permission_mode;
+  if (event.effort !== undefined) payload.effortLevel = event.effort.level;
+  if (options?.clearPausedWork === true) {
+    payload.backgroundTasks = [];
+    payload.sessionCrons = [];
+  }
+  if (Object.keys(payload).length === 1) return;
+  broadcast(DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED, { ...payload });
 }
 
 /** True when `candidate` is the same as `dir` or a descendant. */
@@ -360,6 +384,11 @@ export async function dispatchHookEvent({
         meta.claudeEnv = event.claude_env;
       }
       store.markSessionActive(event.session_id, meta);
+      broadcastHookContext(event, broadcast, {
+        clearPausedWork: true,
+        clearTurnContext: true,
+        ...(event.session_title !== undefined ? { sessionTitle: event.session_title } : {}),
+      });
 
       // Lifecycle signal for the active-session indicator.
       broadcast(SSE_EVENTS.SESSION_START, {
@@ -394,6 +423,31 @@ export async function dispatchHookEvent({
 
     case "Stop": {
       store.touchSession(event.session_id);
+      const context: SessionHookContextPayload = {
+        sessionId: event.session_id,
+        ...(event.background_tasks !== undefined
+          ? {
+              backgroundTasks: event.background_tasks.map((task) => ({
+                id: task.id,
+                type: task.type,
+                status: task.status,
+                description: task.description,
+                ...(task.command !== undefined ? { command: task.command } : {}),
+                ...(task.agent_type !== undefined ? { agentType: task.agent_type } : {}),
+                ...(task.server !== undefined ? { server: task.server } : {}),
+                ...(task.tool !== undefined ? { tool: task.tool } : {}),
+                ...(task.name !== undefined ? { name: task.name } : {}),
+              })),
+            }
+          : {}),
+        ...(event.session_crons !== undefined ? { sessionCrons: event.session_crons } : {}),
+        ...(event.prompt_id !== undefined ? { promptId: event.prompt_id } : {}),
+        ...(event.permission_mode !== undefined ? { permissionMode: event.permission_mode } : {}),
+        ...(event.effort !== undefined ? { effortLevel: event.effort.level } : {}),
+      };
+      if (Object.keys(context).length > 1) {
+        broadcast(DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED, { ...context });
+      }
       for (const node of reconcileStoredLiveSubagents(event.session_id)) {
         broadcast(DOMAIN_EVENTS.SUBAGENT_STOPPED, {
           sessionId: node.sessionId,
@@ -524,6 +578,7 @@ export async function dispatchHookEvent({
         event.session_id,
         event.claude_env !== undefined ? { claudeEnv: event.claude_env } : undefined,
       );
+      broadcastHookContext(event, broadcast, { clearPausedWork: true, clearTurnContext: true });
       broadcast(DOMAIN_EVENTS.SESSION_PROMPT_SUBMITTED, {
         sessionId: event.session_id,
         prompt: event.prompt,
@@ -534,6 +589,7 @@ export async function dispatchHookEvent({
 
     case "PreToolUse": {
       store.touchSession(event.session_id);
+      broadcastHookContext(event, broadcast);
       broadcast(DOMAIN_EVENTS.SESSION_TOOL_PENDING, {
         sessionId: event.session_id,
         toolName: event.tool_name,

@@ -105,6 +105,10 @@ describe("dispatchHookEvent", () => {
       cwd: "/home/user/project",
       model: "claude-sonnet-4-6",
       source: "startup",
+      session_title: "Test hook session",
+      prompt_id: "prompt-test-100",
+      permission_mode: "auto",
+      effort: { level: "high" },
     };
 
     await dispatchHookEvent({
@@ -137,6 +141,83 @@ describe("dispatchHookEvent", () => {
         startedAt: 946_598_400_000,
         lastActivity: 946_598_400_000,
       },
+    });
+    const context = broadcasts.find(
+      (broadcast) => broadcast.type === DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
+    );
+    if (!context) throw new Error("Expected session:hook-context-changed broadcast");
+    expect(context.data).toStrictEqual({
+      sessionId: "abc-123",
+      sessionTitle: "Test hook session",
+      promptId: "prompt-test-100",
+      permissionMode: "auto",
+      effortLevel: "high",
+      backgroundTasks: [],
+      sessionCrons: [],
+    });
+  });
+
+  it("Stop broadcasts the background work that keeps a session paused", async () => {
+    const broadcasts: Broadcast[] = [];
+    const { store } = makeStore();
+    await dispatchHookEvent({
+      event: {
+        hook_event_name: "Stop",
+        session_id: "session-test-100",
+        transcript_path: "/tmp/test/session-test-100.jsonl",
+        cwd: "/tmp/test/project",
+        prompt_id: "prompt-test-100",
+        permission_mode: "auto",
+        effort: { level: "high" },
+        background_tasks: [
+          {
+            id: "task-test-100",
+            type: "agent",
+            status: "running",
+            description: "Inspect the example project",
+            agent_type: "Explore",
+          },
+        ],
+        session_crons: [
+          {
+            id: "cron-test-100",
+            schedule: "0 * * * *",
+            recurring: true,
+            prompt: "Check the example service",
+          },
+        ],
+      },
+      db: db.index,
+      store,
+      broadcast: (type, data) => broadcasts.push({ type, data }),
+    });
+
+    const context = broadcasts.find(
+      (broadcast) => broadcast.type === DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
+    );
+    if (!context) throw new Error("Expected session:hook-context-changed broadcast");
+    expect(context.data).toStrictEqual({
+      sessionId: "session-test-100",
+      backgroundTasks: [
+        {
+          id: "task-test-100",
+          type: "agent",
+          status: "running",
+          description: "Inspect the example project",
+          agentType: "Explore",
+        },
+      ],
+      sessionCrons: [
+        {
+          id: "cron-test-100",
+          schedule: "0 * * * *",
+          recurring: true,
+          prompt: "Check the example service",
+        },
+      ],
+      promptId: "prompt-test-100",
+      permissionMode: "auto",
+      effortLevel: "high",
     });
   });
 
@@ -568,6 +649,18 @@ describe("dispatchHookEvent", () => {
     expect(submitted.data["sessionId"]).toBe("abc-123");
     expect(submitted.data["prompt"]).toBe("fix the login bug");
     expect(typeof submitted.data["ts"]).toBe("string");
+    const context = broadcasts.find(
+      (broadcast) => broadcast.type === DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
+    );
+    if (!context) throw new Error("Expected session:hook-context-changed broadcast");
+    expect(context.data).toStrictEqual({
+      sessionId: "abc-123",
+      promptId: "",
+      permissionMode: "",
+      effortLevel: "",
+      backgroundTasks: [],
+      sessionCrons: [],
+    });
   });
 
   it("UserPromptSubmit re-stamps the tmux pane by passing claude_env to touchSession", async () => {

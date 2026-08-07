@@ -15,6 +15,8 @@ import {
   HERDR_EVENTS,
   SSE_EVENTS,
   type HookSchemaDriftPayload,
+  type HookBackgroundTaskPayload,
+  type HookSessionCronPayload,
   type JsonValue,
   type MemorySummaryPayload,
   type NotificationPayload,
@@ -23,6 +25,7 @@ import {
   type PendingApprovalPayload,
   type PlanSummaryPayload,
   type SessionLinesAppendedPayload,
+  type SessionHookContextPayload,
   type SessionSummaryPayload,
   type SessionToolPendingPayload,
   type SessionToolFailedPayload,
@@ -59,6 +62,8 @@ interface ActiveSessionInfo {
 
 export interface ClaudeEventsState {
   activeSessions: Map<string, ActiveSessionInfo>;
+  /** Most recent turn settings and Stop-reported paused work for each session. */
+  hookContexts: Map<string, SessionHookContextPayload>;
   /**
    * Schema-drift notifications keyed by `hookEventName`. The latest payload
    * for each event name wins; older drifts for the same event are replaced
@@ -136,6 +141,7 @@ export function claudeEventsReducer(
   if (action.type === "RESET") {
     return {
       activeSessions: new Map(),
+      hookContexts: new Map(),
       hookSchemaDrifts: new Map(),
       dismissedDrifts: new Set(),
       pendingTools: new Map(),
@@ -225,6 +231,7 @@ export function claudeEventsReducer(
     case SSE_EVENTS.SESSION_END: {
       if (!sessionId) return state;
       const hadActive = state.activeSessions.has(sessionId);
+      const hadHookContext = state.hookContexts.has(sessionId);
       const hadPending = state.pendingTools.has(sessionId);
       const hadCompacting = state.compactingSessions.has(sessionId);
       const hadNotification = state.notifications.has(sessionId);
@@ -234,6 +241,7 @@ export function claudeEventsReducer(
       );
       if (
         !hadActive &&
+        !hadHookContext &&
         !hadPending &&
         !hadCompacting &&
         !hadNotification &&
@@ -243,6 +251,8 @@ export function claudeEventsReducer(
         return state;
       const activeSessions = new Map(state.activeSessions);
       activeSessions.delete(sessionId);
+      const hookContexts = new Map(state.hookContexts);
+      hookContexts.delete(sessionId);
       const pendingTools = new Map(state.pendingTools);
       pendingTools.delete(sessionId);
       const compactingSessions = new Set(state.compactingSessions);
@@ -262,6 +272,7 @@ export function claudeEventsReducer(
       return {
         ...state,
         activeSessions,
+        hookContexts,
         pendingTools,
         failedTools,
         compactingSessions,
@@ -281,6 +292,30 @@ export function claudeEventsReducer(
       const activeSessions = new Map(state.activeSessions);
       activeSessions.set(id, { ...existing, lastActivity: action.timestamp });
       return { ...state, activeSessions };
+    }
+    case DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED: {
+      if (!sessionId) return state;
+      const current = state.hookContexts.get(sessionId) ?? { sessionId };
+      const next: SessionHookContextPayload = { ...current };
+      if (typeof action.data["sessionTitle"] === "string") {
+        next.sessionTitle = action.data["sessionTitle"];
+      }
+      if (typeof action.data["promptId"] === "string") next.promptId = action.data["promptId"];
+      if (typeof action.data["permissionMode"] === "string") {
+        next.permissionMode = action.data["permissionMode"];
+      }
+      if (typeof action.data["effortLevel"] === "string") {
+        next.effortLevel = action.data["effortLevel"];
+      }
+      if (Array.isArray(action.data["backgroundTasks"])) {
+        next.backgroundTasks = action.data["backgroundTasks"] as HookBackgroundTaskPayload[];
+      }
+      if (Array.isArray(action.data["sessionCrons"])) {
+        next.sessionCrons = action.data["sessionCrons"] as HookSessionCronPayload[];
+      }
+      const hookContexts = new Map(state.hookContexts);
+      hookContexts.set(sessionId, next);
+      return { ...state, hookContexts };
     }
     case DOMAIN_EVENTS.SESSION_TOOL_PENDING: {
       if (!sessionId) return state;
@@ -408,6 +443,7 @@ export function claudeEventsReducer(
         (s) => s.sessionId === sessionId,
       );
       if (
+        !state.hookContexts.has(sessionId) &&
         !state.pendingTools.has(sessionId) &&
         !state.compactingSessions.has(sessionId) &&
         !state.notifications.has(sessionId) &&
@@ -418,6 +454,8 @@ export function claudeEventsReducer(
       }
       const pendingTools = new Map(state.pendingTools);
       pendingTools.delete(sessionId);
+      const hookContexts = new Map(state.hookContexts);
+      hookContexts.delete(sessionId);
       const compactingSessions = new Set(state.compactingSessions);
       compactingSessions.delete(sessionId);
       const notifications = new Map(state.notifications);
@@ -434,6 +472,7 @@ export function claudeEventsReducer(
       reconcileLiveSubagents(liveSubagents, sessionId, action.timestamp);
       return {
         ...state,
+        hookContexts,
         pendingTools,
         failedTools,
         compactingSessions,
@@ -839,6 +878,7 @@ const DOMAIN_EVENT_TYPES = [
   DOMAIN_EVENTS.SESSION_ENDED,
   DOMAIN_EVENTS.SESSION_LINES_APPENDED,
   DOMAIN_EVENTS.SESSION_PROMPT_SUBMITTED,
+  DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
   DOMAIN_EVENTS.SESSION_TOOL_PENDING,
   DOMAIN_EVENTS.SESSION_TOOL_FAILED,
   DOMAIN_EVENTS.SESSION_COMPACTING,
@@ -871,6 +911,7 @@ const DOMAIN_EVENT_TYPES = [
 export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(claudeEventsReducer, undefined, () => ({
     activeSessions: new Map<string, ActiveSessionInfo>(),
+    hookContexts: new Map<string, SessionHookContextPayload>(),
     hookSchemaDrifts: new Map<string, HookSchemaDriftPayload>(),
     dismissedDrifts: new Set<string>(),
     pendingTools: new Map<string, SessionToolPendingPayload>(),
@@ -1095,6 +1136,15 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
           // Surface the session on the /active page the moment a prompt is
           // submitted, before the JSONL flush and lifecycle events land.
           invalidateActiveSessions(queryClient);
+          dispatch({
+            type: "SSE_EVENT",
+            eventType: e.type,
+            data,
+            timestamp: Date.now(),
+          });
+          break;
+        }
+        case DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED: {
           dispatch({
             type: "SSE_EVENT",
             eventType: e.type,

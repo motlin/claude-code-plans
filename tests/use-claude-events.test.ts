@@ -64,6 +64,7 @@ function makeMemory(project: string, filename: string, title = filename): Memory
 function makeInitialState(): ClaudeEventsState {
   return {
     activeSessions: new Map(),
+    hookContexts: new Map(),
     hookSchemaDrifts: new Map(),
     dismissedDrifts: new Set(),
     pendingTools: new Map(),
@@ -76,6 +77,68 @@ function makeInitialState(): ClaudeEventsState {
 }
 
 describe("claudeEventsReducer", () => {
+  it("merges live turn context and clears paused work for the next prompt", () => {
+    const paused = claudeEventsReducer(makeInitialState(), {
+      type: "SSE_EVENT",
+      eventType: DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
+      data: {
+        sessionId: "session-test-100",
+        sessionTitle: "Test session",
+        promptId: "prompt-test-100",
+        permissionMode: "auto",
+        effortLevel: "high",
+        backgroundTasks: [
+          {
+            id: "task-test-100",
+            type: "agent",
+            status: "running",
+            description: "Inspect the example project",
+          },
+        ],
+        sessionCrons: [
+          {
+            id: "cron-test-100",
+            schedule: "0 * * * *",
+            recurring: true,
+            prompt: "Check the example service",
+          },
+        ],
+      },
+      timestamp: 1_000,
+    });
+
+    const resumed = claudeEventsReducer(paused, {
+      type: "SSE_EVENT",
+      eventType: DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
+      data: {
+        sessionId: "session-test-100",
+        promptId: "prompt-test-200",
+        permissionMode: "",
+        effortLevel: "",
+        backgroundTasks: [],
+        sessionCrons: [],
+      },
+      timestamp: 2_000,
+    });
+
+    expect(resumed.hookContexts).toStrictEqual(
+      new Map([
+        [
+          "session-test-100",
+          {
+            sessionId: "session-test-100",
+            sessionTitle: "Test session",
+            promptId: "prompt-test-200",
+            permissionMode: "",
+            effortLevel: "",
+            backgroundTasks: [],
+            sessionCrons: [],
+          },
+        ],
+      ]),
+    );
+  });
+
   it("hydrates running and recently-ended nodes from the SSE snapshot", () => {
     const runningNode: LiveSubagentNode = {
       sessionId: "session-test",
