@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vite-plus/test";
 import { z } from "zod";
-import { apiFetch, apiFetchOptional } from "../src/lib/api/client";
+import { ApiResponseError, apiFetch, apiFetchOptional } from "../src/lib/api/client";
 
 const Schema = z.object({ value: z.string() });
 
@@ -34,8 +34,10 @@ describe("apiFetchOptional", () => {
 });
 
 describe("apiFetch", () => {
-  it("throws on a 404 (the strict variant does not swallow absence)", async () => {
+  it("throws a status-aware error on a 404", async () => {
     mockFetch(404, "Not Found");
-    await expect(apiFetch("/api/plans/missing.md", Schema)).rejects.toThrow("404");
+    await expect(apiFetch("/api/plans/missing.md", Schema)).rejects.toStrictEqual(
+      new ApiResponseError("/api/plans/missing.md", new Response(null, { status: 404 })),
+    );
   });
 });

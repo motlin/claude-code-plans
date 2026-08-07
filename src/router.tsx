@@ -2,6 +2,7 @@ import { createRouter } from "@tanstack/react-router";
 import { QueryClient } from "@tanstack/react-query";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 import { routeTree } from "./routeTree.gen";
+import { DefaultErrorComponent } from "./routes/__root";
 
 export function getRouter() {
   const queryClient = new QueryClient();
@@ -10,6 +11,7 @@ export function getRouter() {
     routeTree,
     scrollRestoration: true,
     defaultPreload: "intent",
+    defaultErrorComponent: DefaultErrorComponent,
     // Query manages data freshness; always run loaders so ensureQueryData can serve from cache.
     defaultPreloadStaleTime: 0,
     context: { queryClient },

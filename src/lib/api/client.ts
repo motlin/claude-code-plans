@@ -1,5 +1,15 @@
 import type { z } from "zod";
 
+export class ApiResponseError extends Error {
+  readonly status: number;
+
+  constructor(url: string, response: Response) {
+    super(`${url} -> ${response.status} ${response.statusText}`);
+    this.name = "ApiResponseError";
+    this.status = response.status;
+  }
+}
+
 /**
  * Resolve a relative URL to an absolute one. In the browser, returns the URL
  * as-is. On the server (SSR loaders), `fetch` requires an absolute URL so we
@@ -19,7 +29,7 @@ async function parseOk<S extends z.ZodTypeAny>(
   res: Response,
 ): Promise<z.infer<S>> {
   if (!res.ok) {
-    throw new Error(`${url} -> ${res.status} ${res.statusText}`);
+    throw new ApiResponseError(url, res);
   }
   const json: unknown = await res.json();
   return schema.parse(json) as z.infer<S>;
