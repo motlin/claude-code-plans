@@ -12,6 +12,10 @@ import { clearLiveSubagents } from "../src/lib/live-subagent-store";
 import * as schema from "../src/lib/db/schema";
 import type { ActiveSessionEntry } from "../src/lib/active-session-store";
 import type { ActivityState } from "../src/lib/session-state";
+import {
+  getPendingApprovals,
+  initPendingApprovalsCache,
+} from "../src/lib/db/pending-approvals-cache";
 
 const testDir = join(tmpdir(), "claude-hook-dispatcher-test-" + process.pid);
 let db: AppDb;
@@ -447,6 +451,80 @@ describe("dispatchHookEvent", () => {
       sessionId: "abc-123",
     });
   });
+
+  it.each(["Stop", "SessionEnd"] as const)(
+    "%s excludes the session's pending approval",
+    async (hookEventName) => {
+      const projectId = "-Users-craig-projects-app";
+      const sessionId = `session-${hookEventName}`;
+      const transcriptPath = join(testDir, `${sessionId}.jsonl`);
+      writeFileSync(
+        transcriptPath,
+        `${JSON.stringify({
+          type: "assistant",
+          sessionId,
+          timestamp: "2026-08-06T12:00:00.000Z",
+          message: {
+            role: "assistant",
+            content: [
+              {
+                type: "tool_use",
+                id: `tool-${hookEventName}`,
+                name: "ExitPlanMode",
+                input: { plan: "## Plan" },
+              },
+            ],
+          },
+        })}\n`,
+      );
+      db.index
+        .insert(schema.projects)
+        .values({
+          id: projectId,
+          name: "app",
+          projectPath: "/Users/craig/projects/app",
+          updatedAt: 1,
+        })
+        .run();
+      db.index
+        .insert(schema.sessions)
+        .values({
+          id: sessionId,
+          projectId,
+          title: sessionId,
+          firstPrompt: null,
+          summary: null,
+          customTitle: null,
+          messageCount: 0,
+          gitBranch: null,
+          cwd: null,
+          isSidechain: 0,
+          createdAt: 1,
+          mtimeMs: 1,
+          filePath: transcriptPath,
+        })
+        .run();
+      await initPendingApprovalsCache(db.index);
+      expect(getPendingApprovals().map((approval) => approval.sessionId)).toStrictEqual([
+        sessionId,
+      ]);
+
+      const { store } = makeStore();
+      await dispatchHookEvent({
+        event: {
+          hook_event_name: hookEventName,
+          session_id: sessionId,
+          transcript_path: transcriptPath,
+          cwd: "/Users/craig/projects/app",
+        },
+        db: db.index,
+        store,
+        broadcast: () => {},
+      });
+
+      expect(getPendingApprovals()).toStrictEqual([]);
+    },
+  );
 
   it("sets session state exactly once for every state-bearing event", async () => {
     const { store, stateCalls } = makeStore();

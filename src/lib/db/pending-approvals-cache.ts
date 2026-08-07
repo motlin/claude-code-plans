@@ -13,6 +13,7 @@ import { broadcastTyped } from "../sse-broadcast";
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
 const cache = new Map<string, PendingApproval>();
+const expiredThroughBySession = new Map<string, string>();
 
 function approvalsEqual(a: PendingApproval, b: PendingApproval): boolean {
   return (
@@ -38,6 +39,7 @@ function lookupProjectName(db: IndexDb, projectId: string): string {
 
 export async function initPendingApprovalsCache(db: IndexDb): Promise<void> {
   cache.clear();
+  expiredThroughBySession.clear();
   const approvals = await scanAllPendingApprovals(db);
   for (const approval of approvals) {
     cache.set(approval.sessionId, approval);
@@ -70,6 +72,11 @@ export async function updatePendingApprovalForSession(
     return;
   }
 
+  const expiredThrough = expiredThroughBySession.get(sessionId);
+  if (expiredThrough !== undefined && scanned.blockedSince <= expiredThrough) {
+    return;
+  }
+
   const resolvedProjectName = projectName ?? lookupProjectName(db, projectId);
   const planFilename = scanned.planFilename ?? getPlanFilenameForSession(db, sessionId);
 
@@ -94,4 +101,13 @@ export function removePendingApprovalForSession(sessionId: string): void {
   if (!cache.has(sessionId)) return;
   cache.delete(sessionId);
   broadcastTyped(DOMAIN_EVENTS.APPROVAL_RESOLVED, { sessionId });
+}
+
+export function expirePendingApprovalForSession(sessionId: string): void {
+  expiredThroughBySession.set(sessionId, new Date().toISOString());
+  removePendingApprovalForSession(sessionId);
+}
+
+export function resumePendingApprovalsForSession(sessionId: string): void {
+  expiredThroughBySession.delete(sessionId);
 }

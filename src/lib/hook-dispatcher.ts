@@ -39,6 +39,10 @@ import { recentlyBroadcast } from "./update-dedupe";
 import { toSubagentSessionId } from "./subagents";
 import { reportHookStateToHerdr } from "./herdr/report-state";
 import { stateForEvent, type ActivityState } from "./session-state";
+import {
+  expirePendingApprovalForSession,
+  resumePendingApprovalsForSession,
+} from "./db/pending-approvals-cache";
 
 /**
  * TTL covering the gap between the hook fast-path broadcast and the chokidar
@@ -370,6 +374,7 @@ export async function dispatchHookEvent({
 
   switch (event.hook_event_name) {
     case "SessionStart": {
+      resumePendingApprovalsForSession(event.session_id);
       const meta: {
         cwd: string;
         model?: string;
@@ -415,6 +420,7 @@ export async function dispatchHookEvent({
     }
 
     case "SessionEnd": {
+      expirePendingApprovalForSession(event.session_id);
       store.markSessionEnded(event.session_id);
       broadcast(SSE_EVENTS.SESSION_END, { sessionId: event.session_id });
       broadcast(DOMAIN_EVENTS.SESSION_ENDED, { sessionId: event.session_id });
@@ -422,6 +428,7 @@ export async function dispatchHookEvent({
     }
 
     case "Stop": {
+      expirePendingApprovalForSession(event.session_id);
       store.touchSession(event.session_id);
       const context: SessionHookContextPayload = {
         sessionId: event.session_id,

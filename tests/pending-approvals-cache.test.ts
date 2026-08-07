@@ -341,4 +341,48 @@ describe("pending-approvals-cache", () => {
       broadcastSpy.mock.calls.filter((c) => c[0] === DOMAIN_EVENTS.APPROVAL_RESOLVED),
     ).toHaveLength(0);
   });
+
+  it("excludes an ended session when a delayed transcript scan still finds its approval", async () => {
+    seedProject();
+
+    const sessionId = "sess-ended";
+    const filePath = writeJsonl(
+      `${sessionId}.jsonl`,
+      jsonl({
+        type: "assistant",
+        sessionId,
+        timestamp: "2026-05-14T15:00:00.000Z",
+        message: {
+          role: "assistant",
+          content: [
+            {
+              type: "tool_use",
+              id: "toolu_ended",
+              name: "ExitPlanMode",
+              input: { plan: "## P" },
+            },
+          ],
+        },
+      }),
+    );
+    seedSession(sessionId, filePath);
+
+    const {
+      expirePendingApprovalForSession,
+      getPendingApprovals,
+      initPendingApprovalsCache,
+      updatePendingApprovalForSession,
+    } = await import("../src/lib/db/pending-approvals-cache");
+
+    await initPendingApprovalsCache(db.index);
+    expect(getPendingApprovals().map((approval) => approval.sessionId)).toStrictEqual([sessionId]);
+
+    expirePendingApprovalForSession(sessionId);
+    await updatePendingApprovalForSession(db.index, sessionId, filePath, PROJECT_ID);
+
+    expect(getPendingApprovals()).toStrictEqual([]);
+    expect(
+      broadcastSpy.mock.calls.filter((call) => call[0] === DOMAIN_EVENTS.APPROVAL_CHANGED),
+    ).toStrictEqual([]);
+  });
 });
