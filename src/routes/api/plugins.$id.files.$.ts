@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PluginFileResponse } from "../../lib/api/plugins";
+import { fromPluginFileSlug } from "../../lib/md-slug";
 
 export const Route = createFileRoute("/api/plugins/$id/files/$")({
   server: {
@@ -10,7 +11,7 @@ export const Route = createFileRoute("/api/plugins/$id/files/$")({
         const { extractTitleFromContent } = await import("../../lib/markdown-utils");
 
         const splat = params._splat ?? "";
-        const pathSegments = splat ? splat.split("/") : [];
+        const pathSegments = splat ? splat.split("/").map(fromPluginFileSlug) : [];
 
         const plugins = await listPlugins();
         const plugin = plugins.find((p) => p.id === params.id);

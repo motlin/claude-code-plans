@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vite-plus/test";
-import { toMdSlug, fromMdSlug } from "../src/lib/md-slug";
+import { toMdSlug, fromMdSlug, toPluginFileSlug, fromPluginFileSlug } from "../src/lib/md-slug";
 
 describe("toMdSlug / fromMdSlug", () => {
   it("strips a trailing .md to form a URL slug", () => {
@@ -18,5 +18,25 @@ describe("toMdSlug / fromMdSlug", () => {
   it("strips only the final .md, leaving dots inside the basename intact", () => {
     expect(toMdSlug("v1.2.3-notes.md")).toBe("v1.2.3-notes");
     expect(fromMdSlug("v1.2.3-notes")).toBe("v1.2.3-notes.md");
+  });
+});
+
+describe("toPluginFileSlug / fromPluginFileSlug", () => {
+  it("round-trips a dotted plugin path segment through a dot-free URL slug", () => {
+    const slug = toPluginFileSlug("README.md");
+
+    expect({ slug, pathSegment: fromPluginFileSlug(slug) }).toStrictEqual({
+      slug: "README~1md",
+      pathSegment: "README.md",
+    });
+  });
+
+  it("escapes dots and literal escape characters without collisions", () => {
+    const slug = toPluginFileSlug("v1.2~draft.md");
+
+    expect({ slug, pathSegment: fromPluginFileSlug(slug) }).toStrictEqual({
+      slug: "v1~12~0draft~1md",
+      pathSegment: "v1.2~draft.md",
+    });
   });
 });

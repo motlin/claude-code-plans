@@ -10,3 +10,15 @@
 export const toMdSlug = (filename: string): string => filename.replace(/\.md$/, "");
 
 export const fromMdSlug = (slug: string): string => `${slug}.md`;
+
+/**
+ * Plugin paths may contain dots in directory names as well as filenames, so
+ * dropping only a trailing `.md` is not enough. Escape every dot (and the
+ * escape character itself) to keep each route segment compatible with Vite's
+ * development server while preserving the exact on-disk path.
+ */
+export const toPluginFileSlug = (pathSegment: string): string =>
+  pathSegment.replaceAll("~", "~0").replaceAll(".", "~1");
+
+export const fromPluginFileSlug = (slug: string): string =>
+  slug.replaceAll("~1", ".").replaceAll("~0", "~");

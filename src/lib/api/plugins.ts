@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "./client";
+import { toPluginFileSlug } from "../md-slug";
 
 export const PluginFileSchema = z.object({
   filename: z.string(),
@@ -147,7 +148,7 @@ export const pluginFileQueryOptions = (pluginId: string, pathSegments: ReadonlyA
     queryKey: ["plugins", pluginId, "file", ...pathSegments] as const,
     queryFn: () =>
       apiFetch(
-        `/api/plugins/${encodeURIComponent(pluginId)}/files/${pathSegments.map(encodeURIComponent).join("/")}`,
+        `/api/plugins/${encodeURIComponent(pluginId)}/files/${pathSegments.map(toPluginFileSlug).map(encodeURIComponent).join("/")}`,
         PluginFileResponse,
       ),
     staleTime: PLUGINS_STALE_TIME_MS,

@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { FileTree } from "../components/file-tree";
-import { toMdSlug } from "../lib/md-slug";
+import { toMdSlug, toPluginFileSlug } from "../lib/md-slug";
 
 export const Route = createFileRoute("/plugins")({
   component: PluginsPage,
@@ -183,7 +183,7 @@ function PluginCard({ plugin }: { plugin: PluginInfoData }) {
                     params: {
                       id: plugin.id,
                       type: "agents",
-                      _splat: a.filename,
+                      _splat: toPluginFileSlug(a.filename),
                     },
                   }))}
                 />
@@ -198,7 +198,7 @@ function PluginCard({ plugin }: { plugin: PluginInfoData }) {
                     params: {
                       id: plugin.id,
                       type: "commands",
-                      _splat: c.filename,
+                      _splat: toPluginFileSlug(c.filename),
                     },
                   }))}
                 />
@@ -213,7 +213,7 @@ function PluginCard({ plugin }: { plugin: PluginInfoData }) {
                     params: {
                       id: plugin.id,
                       type: "skills",
-                      _splat: `${s.dirname}/SKILL.md`,
+                      _splat: [s.dirname, "SKILL.md"].map(toPluginFileSlug).join("/"),
                     },
                     children: [
                       ...s.references.map((r) => ({
@@ -222,7 +222,9 @@ function PluginCard({ plugin }: { plugin: PluginInfoData }) {
                         params: {
                           id: plugin.id,
                           type: "skills",
-                          _splat: `${s.dirname}/references/${r.filename}`,
+                          _splat: [s.dirname, "references", r.filename]
+                            .map(toPluginFileSlug)
+                            .join("/"),
                         },
                       })),
                       ...s.examples.map((e) => ({
@@ -231,7 +233,9 @@ function PluginCard({ plugin }: { plugin: PluginInfoData }) {
                         params: {
                           id: plugin.id,
                           type: "skills",
-                          _splat: `${s.dirname}/examples/${e.filename}`,
+                          _splat: [s.dirname, "examples", e.filename]
+                            .map(toPluginFileSlug)
+                            .join("/"),
                         },
                       })),
                     ],

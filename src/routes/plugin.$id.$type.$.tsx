@@ -5,9 +5,10 @@ import { pluginFileQueryOptions } from "../lib/api/plugins";
 import { MarkdownSkeleton, MarkdownView } from "../components/markdown-view";
 import { ArrowLeft } from "lucide-react";
 import { DetailTopBar, pillStyles } from "../components/detail-top-bar";
+import { fromPluginFileSlug } from "../lib/md-slug";
 
 function buildPathSegments(type: string, splat: string | undefined): string[] {
-  return [type, ...(splat ?? "").split("/")];
+  return [type, ...(splat ?? "").split("/").map(fromPluginFileSlug)];
 }
 
 export const Route = createFileRoute("/plugin/$id/$type/$")({

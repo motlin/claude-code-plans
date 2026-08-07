@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight, Folder, FileText, FileCode, FileJson, File } from "lucide-react";
 import type { FileTreeNodeData as FileTreeNode } from "../lib/api/plugins";
+import { toPluginFileSlug } from "../lib/md-slug";
 
 function getName(node: FileTreeNode) {
   const i = node.path.lastIndexOf("/");
@@ -77,7 +78,11 @@ function FileTreeItem({
     return (
       <Link
         to="/plugin/$id/$type/$"
-        params={{ id: pluginId, type, _splat: filePath }}
+        params={{
+          id: pluginId,
+          type,
+          _splat: filePath.split("/").map(toPluginFileSlug).join("/"),
+        }}
         className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-text-300 no-underline transition-colors hover:bg-bg-200/50 hover:text-text-200"
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
       >
