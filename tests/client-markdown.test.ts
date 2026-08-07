@@ -103,6 +103,12 @@ describe("renderMarkdownToHtml", () => {
     expect(result).toContain("const x = 1;");
   });
 
+  it("renders code blocks when the language is unspecified", () => {
+    expect(renderMarkdownToHtml("```\nplain code\n```")).toBe(
+      "<pre><code>plain code\n</code></pre>\n",
+    );
+  });
+
   it("renders task lists via markdown-it-task-lists plugin", () => {
     const result = renderMarkdownToHtml("- [ ] unchecked\n- [x] checked");
     expect(result).toContain('type="checkbox"');

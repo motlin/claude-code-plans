@@ -53,10 +53,6 @@
       "exports": ["claudeLight"]
     },
     {
-      "file": "src/lib/markdown.ts",
-      "exports": ["preloadMarkdown", "renderMarkdownPromise", "renderInlineMarkdownPromise"]
-    },
-    {
       "file": "src/lib/db/index.ts",
       "exports": ["runInitialScan", "awaitInitialScan"]
     },
