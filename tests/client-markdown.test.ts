@@ -1,6 +1,7 @@
 import type { HighlighterCore } from "@shikijs/core";
 import { beforeEach, vi } from "vite-plus/test";
 import {
+  renderInlineMarkdownToHtml,
   renderMarkdownToHtml,
   renderMarkdownWithHighlighting,
   looksLikeMarkdown,
@@ -16,6 +17,25 @@ vi.mock("../src/hooks/use-shiki", () => ({
 
 beforeEach(() => {
   requestLanguageMock.mockClear();
+});
+
+describe("renderInlineMarkdownToHtml", () => {
+  it("renders inline markdown without a paragraph wrapper", () => {
+    expect(renderInlineMarkdownToHtml("**bold** text")).toBe("<strong>bold</strong> text");
+  });
+
+  it("renders blank input as an empty string", () => {
+    expect([renderInlineMarkdownToHtml(""), renderInlineMarkdownToHtml("   \n")]).toStrictEqual([
+      "",
+      "",
+    ]);
+  });
+
+  it("linkifies URLs", () => {
+    expect(renderInlineMarkdownToHtml("see https://example.com")).toBe(
+      'see <a href="https://example.com">https://example.com</a>',
+    );
+  });
 });
 
 describe("looksLikeMarkdown", () => {
@@ -110,6 +130,25 @@ describe("renderMarkdownToHtml", () => {
     const result2 = renderMarkdownToHtml("# Test");
     expect(result1).toBe(result2);
   });
+
+  it("enables typographer without changing the default", () => {
+    expect([
+      renderMarkdownToHtml('He said "hi" -- ok', { typographer: true }),
+      renderMarkdownToHtml('He said "hi" -- ok'),
+    ]).toStrictEqual(["<p>He said “hi” – ok</p>\n", "<p>He said &quot;hi&quot; -- ok</p>\n"]);
+  });
+
+  it("caches plain markdown instances by typographer setting", () => {
+    expect([
+      renderMarkdownToHtml('He said "hi" -- ok'),
+      renderMarkdownToHtml('He said "hi" -- ok', { typographer: true }),
+      renderMarkdownToHtml('He said "hi" -- ok'),
+    ]).toStrictEqual([
+      "<p>He said &quot;hi&quot; -- ok</p>\n",
+      "<p>He said “hi” – ok</p>\n",
+      "<p>He said &quot;hi&quot; -- ok</p>\n",
+    ]);
+  });
 });
 
 describe("renderMarkdownWithHighlighting", () => {
@@ -123,6 +162,12 @@ describe("renderMarkdownWithHighlighting", () => {
   it("returns empty string for empty input even with null highlighter", () => {
     expect(renderMarkdownWithHighlighting("", null)).toBe("");
     expect(renderMarkdownWithHighlighting("   ", null)).toBe("");
+  });
+
+  it("forwards typographer options when the highlighter is null", () => {
+    expect(renderMarkdownWithHighlighting('a "b" -- c', null, { typographer: true })).toBe(
+      "<p>a “b” – c</p>\n",
+    );
   });
 
   it("renders non-code markdown the same with or without highlighter", () => {
@@ -180,5 +225,24 @@ describe("renderMarkdownWithHighlighting", () => {
         ],
       ],
     });
+  });
+
+  it("caches highlighted markdown instances by typographer setting", () => {
+    const highlighter = {
+      getLoadedLanguages: () => [],
+      codeToHtml: () => "",
+    } as unknown as HighlighterCore;
+
+    expect([
+      renderMarkdownWithHighlighting('He said "hi" -- ok', highlighter),
+      renderMarkdownWithHighlighting('He said "hi" -- ok', highlighter, {
+        typographer: true,
+      }),
+      renderMarkdownWithHighlighting('He said "hi" -- ok', highlighter),
+    ]).toStrictEqual([
+      "<p>He said &quot;hi&quot; -- ok</p>\n",
+      "<p>He said “hi” – ok</p>\n",
+      "<p>He said &quot;hi&quot; -- ok</p>\n",
+    ]);
   });
 });

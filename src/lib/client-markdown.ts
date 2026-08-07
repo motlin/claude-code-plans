@@ -4,25 +4,59 @@ import taskLists from "markdown-it-task-lists";
 import footnote from "markdown-it-footnote";
 import { requestLanguage } from "../hooks/use-shiki";
 
-let plainInstance: MarkdownIt | null = null;
-let highlightedInstance: MarkdownIt | null = null;
-let boundHighlighter: HighlighterCore | null = null;
-
-function getPlainMarkdownIt(): MarkdownIt {
-  if (plainInstance) return plainInstance;
-  plainInstance = MarkdownIt({ html: false, linkify: true });
-  plainInstance.use(taskLists);
-  plainInstance.use(footnote);
-  return plainInstance;
+interface MarkdownRenderOptions {
+  typographer?: boolean;
 }
 
-function getHighlightedMarkdownIt(highlighter: HighlighterCore): MarkdownIt {
-  // Re-use the cached instance if the highlighter hasn't changed.
-  if (highlightedInstance && boundHighlighter === highlighter) return highlightedInstance;
+type MarkdownVariant = "default" | "typographer";
 
-  highlightedInstance = MarkdownIt({
+const plainInstances: Record<MarkdownVariant, MarkdownIt | null> = {
+  default: null,
+  typographer: null,
+};
+const highlightedInstances: Record<MarkdownVariant, MarkdownIt | null> = {
+  default: null,
+  typographer: null,
+};
+const boundHighlighters: Record<MarkdownVariant, HighlighterCore | null> = {
+  default: null,
+  typographer: null,
+};
+
+function getMarkdownVariant(options?: MarkdownRenderOptions): MarkdownVariant {
+  return options?.typographer ? "typographer" : "default";
+}
+
+function getPlainMarkdownIt(options?: MarkdownRenderOptions): MarkdownIt {
+  const variant = getMarkdownVariant(options);
+  const cachedInstance = plainInstances[variant];
+  if (cachedInstance) return cachedInstance;
+
+  const instance = MarkdownIt({
     html: false,
     linkify: true,
+    typographer: options?.typographer ?? false,
+  });
+  instance.use(taskLists);
+  instance.use(footnote);
+  plainInstances[variant] = instance;
+  return instance;
+}
+
+function getHighlightedMarkdownIt(
+  highlighter: HighlighterCore,
+  options?: MarkdownRenderOptions,
+): MarkdownIt {
+  const variant = getMarkdownVariant(options);
+
+  // Re-use the cached instance if the highlighter hasn't changed.
+  const cachedInstance = highlightedInstances[variant];
+  if (cachedInstance && boundHighlighters[variant] === highlighter) return cachedInstance;
+
+  const instance = MarkdownIt({
+    html: false,
+    linkify: true,
+    typographer: options?.typographer ?? false,
     highlight(code: string, lang: string): string {
       const language = lang || "text";
       if (language === "text") return "";
@@ -47,16 +81,26 @@ function getHighlightedMarkdownIt(highlighter: HighlighterCore): MarkdownIt {
       }
     },
   });
-  highlightedInstance.use(taskLists);
-  highlightedInstance.use(footnote);
-  boundHighlighter = highlighter;
-  return highlightedInstance;
+  instance.use(taskLists);
+  instance.use(footnote);
+  highlightedInstances[variant] = instance;
+  boundHighlighters[variant] = highlighter;
+  return instance;
 }
 
 /** Render markdown to HTML without syntax highlighting. */
-export function renderMarkdownToHtml(markdown: string): string {
+export function renderMarkdownToHtml(markdown: string, options?: MarkdownRenderOptions): string {
   if (!markdown.trim()) return "";
-  return getPlainMarkdownIt().render(markdown);
+  return getPlainMarkdownIt(options).render(markdown);
+}
+
+/** Render markdown to inline HTML without a paragraph wrapper. */
+export function renderInlineMarkdownToHtml(
+  markdown: string,
+  options?: MarkdownRenderOptions,
+): string {
+  if (!markdown.trim()) return "";
+  return getPlainMarkdownIt(options).renderInline(markdown);
 }
 
 /**
@@ -66,10 +110,11 @@ export function renderMarkdownToHtml(markdown: string): string {
 export function renderMarkdownWithHighlighting(
   markdown: string,
   highlighter: HighlighterCore | null,
+  options?: MarkdownRenderOptions,
 ): string {
   if (!markdown.trim()) return "";
-  if (!highlighter) return renderMarkdownToHtml(markdown);
-  return getHighlightedMarkdownIt(highlighter).render(markdown);
+  if (!highlighter) return renderMarkdownToHtml(markdown, options);
+  return getHighlightedMarkdownIt(highlighter, options).render(markdown);
 }
 
 export function looksLikeMarkdown(text: string): boolean {
