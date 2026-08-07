@@ -1,6 +1,7 @@
 export type Section =
   | "active"
   | "fleet"
+  | "tmux"
   | "approvals"
   | "notifications"
   | "starred"

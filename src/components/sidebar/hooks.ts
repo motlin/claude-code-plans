@@ -16,6 +16,9 @@ export function useActiveSection(matches: ReturnType<typeof useMatches>): {
   if (path.startsWith("/herdr")) {
     return { section: "fleet", activeItemId: null };
   }
+  if (path.startsWith("/tmux")) {
+    return { section: "tmux", activeItemId: null };
+  }
   if (path.startsWith("/approvals")) {
     return { section: "approvals", activeItemId: null };
   }

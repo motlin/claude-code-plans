@@ -25,6 +25,12 @@ export const navItems = [
     section: "fleet" as Section,
   },
   {
+    to: "/tmux",
+    label: "Tmux Windows",
+    icon: SquareTerminal,
+    section: "tmux" as Section,
+  },
+  {
     to: "/approvals",
     label: "Approvals",
     icon: Inbox,
