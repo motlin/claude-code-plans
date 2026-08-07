@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useHydrated, useLocation } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import {
   groupPluginsByMarketplace,
@@ -20,7 +20,7 @@ import {
   Store,
   FolderTree,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FileTree } from "../components/file-tree";
 import { toMdSlug, toPluginFileSlug } from "../lib/md-slug";
 import { ListPageHeader } from "../components/list-page-header";
@@ -41,18 +41,28 @@ export const Route = createFileRoute("/plugins")({
 function MarketplaceGroup({
   group,
   defaultExpanded,
+  hashTargetPluginId,
 }: {
   group: PluginMarketplaceGroup;
   defaultExpanded: boolean;
+  hashTargetPluginId: string | null;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const pluginCount = group.plugins.length;
+  const containsHashTarget = group.plugins.some((plugin) => plugin.id === hashTargetPluginId);
+
+  useEffect(() => {
+    if (containsHashTarget) {
+      setExpanded(true);
+    }
+  }, [containsHashTarget]);
 
   return (
     <div className="rounded-lg border border-border-300/15">
       <button
         type="button"
-        onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
+        onClick={() => setExpanded((current) => !current)}
         className="flex w-full items-center gap-3 px-4 py-3 text-left"
       >
         <Store className="h-4 w-4 shrink-0 text-text-500" />
@@ -72,7 +82,11 @@ function MarketplaceGroup({
       {expanded && (
         <div className="border-t border-border-300/10 px-3 pb-3 pt-2 space-y-2">
           {group.plugins.map((plugin) => (
-            <PluginCard key={plugin.id} plugin={plugin} />
+            <PluginCard
+              key={plugin.id}
+              plugin={plugin}
+              isHashTarget={plugin.id === hashTargetPluginId}
+            />
           ))}
         </div>
       )}
@@ -82,11 +96,19 @@ function MarketplaceGroup({
 
 type PluginTab = "contents" | "files";
 
-function PluginCard({ plugin }: { plugin: PluginInfoData }) {
-  const [expanded, setExpanded] = useState(false);
+export function PluginCard({
+  plugin,
+  isHashTarget,
+}: {
+  plugin: PluginInfoData;
+  isHashTarget: boolean;
+}) {
+  const [expanded, setExpanded] = useState(isHashTarget);
   const [activeTab, setActiveTab] = useState<PluginTab>("contents");
   const [treeEnabled, setTreeEnabled] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
   const totalItems = plugin.agents.length + plugin.commands.length + plugin.skills.length;
+  const panelId = `${plugin.id}-contents`;
 
   const treeQuery = useQuery({
     ...pluginTreeQueryOptions(plugin.id),
@@ -100,11 +122,24 @@ function PluginCard({ plugin }: { plugin: PluginInfoData }) {
     }
   }
 
+  useEffect(() => {
+    if (isHashTarget) {
+      setExpanded(true);
+      cardRef.current?.scrollIntoView({ block: "center" });
+    }
+  }, [isHashTarget]);
+
   return (
-    <div className="rounded-lg border border-border-300/15 transition-colors hover:bg-bg-200/30">
+    <div
+      ref={cardRef}
+      id={plugin.id}
+      className="rounded-lg border border-border-300/15 transition-colors hover:bg-bg-200/30"
+    >
       <button
         type="button"
-        onClick={() => setExpanded(!expanded)}
+        aria-controls={panelId}
+        aria-expanded={expanded}
+        onClick={() => setExpanded((current) => !current)}
         className="flex w-full items-start gap-3 p-4 text-left"
       >
         <Blocks className="mt-0.5 h-5 w-5 shrink-0 text-text-500" />
@@ -145,7 +180,7 @@ function PluginCard({ plugin }: { plugin: PluginInfoData }) {
       </button>
 
       {expanded && (
-        <div className="border-t border-border-300/10 px-4 pb-3 pt-2">
+        <div id={panelId} className="border-t border-border-300/10 px-4 pb-3 pt-2">
           <div className="mb-2 flex gap-1">
             <button
               type="button"
@@ -329,12 +364,15 @@ function ContentSection({
   );
 }
 
-function PluginsPage() {
+export function PluginsPage() {
   const { data: plugins } = useSuspenseQuery(pluginsQueryOptions);
   const { data: userCommands } = useSuspenseQuery(userCommandsQueryOptions);
   const groups = useMemo(() => groupPluginsByMarketplace(plugins), [plugins]);
   const pluginCount = plugins.length;
   const commandGroupCount = userCommands.length;
+  const locationHash = useLocation({ select: (location) => location.hash });
+  const hydrated = useHydrated();
+  const hashTargetPluginId = hydrated && locationHash ? locationHash : null;
 
   return (
     <div>
@@ -347,6 +385,7 @@ function PluginsPage() {
               key={group.marketplace.id}
               group={group}
               defaultExpanded={!group.isOfficial}
+              hashTargetPluginId={hashTargetPluginId}
             />
           ))}
         </div>
