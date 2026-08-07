@@ -859,7 +859,7 @@ describe("applySessionLinesAppended", () => {
         },
       ],
     });
-    expect(queryClient.getQueryData(["sessions", "sess-1", "transcript"])).toBeUndefined();
+    expect(queryClient.getQueryData(sessionQueryKeys.transcript("sess-1"))).toBeUndefined();
   });
 
   it("appends new raw records to cached transcript data", () => {
@@ -870,7 +870,7 @@ describe("applySessionLinesAppended", () => {
       message: { role: "user", content: "hello" },
     };
     queryClient.setQueryData(
-      ["sessions", "sess-1", "transcript"],
+      sessionQueryKeys.transcript("sess-1"),
       makeTranscriptCache({ records: [existingRecord], byteOffset: 100 }),
     );
 
@@ -888,7 +888,7 @@ describe("applySessionLinesAppended", () => {
       lines: [newRecord],
     });
 
-    const cached = queryClient.getQueryData<TranscriptData>(["sessions", "sess-1", "transcript"])!;
+    const cached = queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript("sess-1"))!;
     expect(cached).toStrictEqual({
       records: [existingRecord, newRecord],
       byteOffset: 100,
@@ -898,21 +898,21 @@ describe("applySessionLinesAppended", () => {
   it("does not modify cache when lines array is empty", () => {
     const queryClient = new QueryClient();
     const original = makeTranscriptCache({ byteOffset: 50 });
-    queryClient.setQueryData(["sessions", "sess-1", "transcript"], original);
+    queryClient.setQueryData(sessionQueryKeys.transcript("sess-1"), original);
 
     applySessionLinesAppended(queryClient, "sess-1", {
       sessionId: "sess-1",
       lines: [],
     });
 
-    const cached = queryClient.getQueryData<TranscriptData>(["sessions", "sess-1", "transcript"])!;
+    const cached = queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript("sess-1"))!;
     expect(cached).toBe(original);
   });
 
   it("appends all record types including non-user/assistant", () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData(
-      ["sessions", "sess-1", "transcript"],
+      sessionQueryKeys.transcript("sess-1"),
       makeTranscriptCache({ byteOffset: 50 }),
     );
 
@@ -929,7 +929,7 @@ describe("applySessionLinesAppended", () => {
       lines: records,
     });
 
-    const cached = queryClient.getQueryData<TranscriptData>(["sessions", "sess-1", "transcript"])!;
+    const cached = queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript("sess-1"))!;
     expect(cached).toStrictEqual({
       records,
       byteOffset: 50,
@@ -938,7 +938,7 @@ describe("applySessionLinesAppended", () => {
 
   it("preserves an appended line when an older in-flight refetch resolves afterward", async () => {
     const queryClient = new QueryClient();
-    const queryKey = ["sessions", "session-test-100", "transcript"] as const;
+    const queryKey = sessionQueryKeys.transcript("session-test-100");
     const existingRecord = {
       type: "user",
       uuid: "user-test-100",
@@ -981,7 +981,7 @@ describe("applySessionLinesAppended", () => {
 
   it("does not duplicate a line appended after a refetch already returned it", async () => {
     const queryClient = new QueryClient();
-    const queryKey = ["sessions", "session-test-100", "transcript"] as const;
+    const queryKey = sessionQueryKeys.transcript("session-test-100");
     const existingRecord = {
       type: "user",
       uuid: "user-test-100",

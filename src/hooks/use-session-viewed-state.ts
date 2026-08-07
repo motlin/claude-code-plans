@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { sessionQueryKeys } from "../lib/api/sessions";
 import {
   updateSessionViewedState,
   updateSessionVisibility,
@@ -64,7 +65,7 @@ export function useSessionViewedState(
 
   const applyViewedState = useCallback(
     (viewedState: SessionViewedState): SessionViewedState => {
-      queryClient.setQueryData(["sessions", sessionId], (previous: unknown) => {
+      queryClient.setQueryData(sessionQueryKeys.detail(sessionId), (previous: unknown) => {
         if (previous === null || typeof previous !== "object") return previous;
         return { ...previous, viewedState };
       });

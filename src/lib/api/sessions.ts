@@ -143,6 +143,7 @@ const DEFAULT_RECENT_PAGE_SIZE = 50;
 const SESSION_QUERY_ROOT = ["sessions"] as const;
 const RECENT_SESSIONS_QUERY_ROOT = [...SESSION_QUERY_ROOT, "recent"] as const;
 const GROUPED_SESSIONS_QUERY_ROOT = [...SESSION_QUERY_ROOT, "grouped"] as const;
+const ACTIVE_SESSIONS_QUERY_ROOT = [...SESSION_QUERY_ROOT, "active"] as const;
 
 export const sessionQueryKeys = {
   all: () => SESSION_QUERY_ROOT,
@@ -154,7 +155,8 @@ export const sessionQueryKeys = {
   grouped: (perProject?: number) => [...GROUPED_SESSIONS_QUERY_ROOT, perProject ?? null] as const,
   starred: () => [...SESSION_QUERY_ROOT, "starred"] as const,
   titles: (ids: string[]) => [...SESSION_QUERY_ROOT, "titles", [...ids].sort()] as const,
-  active: (activeTimeoutMs?: number) => [...SESSION_QUERY_ROOT, "active", activeTimeoutMs] as const,
+  activeLists: () => ACTIVE_SESSIONS_QUERY_ROOT,
+  active: (activeTimeoutMs?: number) => [...ACTIVE_SESSIONS_QUERY_ROOT, activeTimeoutMs] as const,
   detail: (id: string) => [...SESSION_QUERY_ROOT, id] as const,
   transcript: (id: string) => [...SESSION_QUERY_ROOT, id, "transcript"] as const,
   source: (sessionId: string, uuid: string, contextN: number) =>

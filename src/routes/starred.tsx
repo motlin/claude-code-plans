@@ -3,7 +3,7 @@ import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { z } from "zod";
 import { apiFetch } from "../lib/api/client";
-import { starredSessionsQueryOptions } from "../lib/api/sessions";
+import { sessionQueryKeys, starredSessionsQueryOptions } from "../lib/api/sessions";
 import { SessionUnreadControl } from "../components/session-unread-control";
 import { ListPageHeader } from "../components/list-page-header";
 
@@ -46,7 +46,7 @@ function StarredPage() {
         body: JSON.stringify({ starred: false }),
       },
     );
-    void queryClient.invalidateQueries({ queryKey: ["sessions"] });
+    void queryClient.invalidateQueries({ queryKey: sessionQueryKeys.all() });
   }
 
   return (

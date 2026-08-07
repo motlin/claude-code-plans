@@ -786,7 +786,7 @@ export function applySessionLinesAppended(
   sessionId: string,
   payload: SessionLinesAppendedPayload,
 ): void {
-  const queryKey = ["sessions", sessionId, "transcript"] as const;
+  const queryKey = sessionQueryKeys.transcript(sessionId);
   const cached = queryClient.getQueryData<TranscriptData>(queryKey);
 
   if (!cached) return;
@@ -805,7 +805,7 @@ export function applySessionLinesAppended(
 function invalidateActiveSessions(queryClient: QueryClient): void {
   // The reducer owns activeSessions state; we only invalidate the query cache
   // here so components using the active-sessions query pick up changes.
-  void queryClient.invalidateQueries({ queryKey: ["sessions", "active"] });
+  void queryClient.invalidateQueries({ queryKey: sessionQueryKeys.activeLists() });
 }
 
 function invalidateTmuxWindows(queryClient: QueryClient): void {
@@ -1089,7 +1089,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
           if (typeof sessionId === "string") {
             publishSessionState(sessionId, "working");
             void queryClient.invalidateQueries({
-              queryKey: ["sessions", sessionId, "transcript"],
+              queryKey: sessionQueryKeys.transcript(sessionId),
             });
           }
           // A prompt re-stamps the session's tmux pane (survives a resume into
@@ -1190,11 +1190,11 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
             const sessionId = data["sessionId"];
             if (typeof sessionId === "string") {
               void queryClient.invalidateQueries({
-                queryKey: ["sessions", sessionId, "subagents"],
+                queryKey: sessionQueryKeys.subagents(sessionId),
               });
               if (e.type === DOMAIN_EVENTS.SUBAGENT_STOPPED) {
                 void queryClient.invalidateQueries({
-                  queryKey: ["sessions", sessionId, "transcript"],
+                  queryKey: sessionQueryKeys.transcript(sessionId),
                 });
               }
             }
@@ -1219,7 +1219,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
           if (e.type === DOMAIN_EVENTS.SESSION_ENDED) {
             const sessionId = data["sessionId"];
             if (typeof sessionId === "string") publishSessionState(sessionId, "idle");
-            void queryClient.invalidateQueries({ queryKey: ["sessions"] });
+            void queryClient.invalidateQueries({ queryKey: sessionQueryKeys.all() });
           }
           invalidateActiveSessions(queryClient);
           invalidateTmuxWindows(queryClient);
@@ -1327,7 +1327,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
 
     function handleHerdrEvent() {
       void queryClient.invalidateQueries({ queryKey: ["herdr", "panes"] });
-      void queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      void queryClient.invalidateQueries({ queryKey: sessionQueryKeys.all() });
     }
 
     for (const eventType of LIFECYCLE_EVENT_TYPES) {

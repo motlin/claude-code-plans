@@ -2,6 +2,7 @@ import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Eye, EyeOff, Monitor } from "lucide-react";
 import { StatusDot } from "../components/sidebar/primitives/StatusDot";
+import { sessionQueryKeys } from "../lib/api/sessions";
 import { terminalPlacementsQueryOptions } from "../lib/api/terminal-placements";
 import { updateSessionViewedState } from "../lib/api/viewed-state";
 
@@ -85,7 +86,7 @@ function TerminalFleetPage() {
     await updateSessionViewedState(sessionId, action, messageIndex);
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["terminal", "placements"] }),
-      queryClient.invalidateQueries({ queryKey: ["sessions", sessionId] }),
+      queryClient.invalidateQueries({ queryKey: sessionQueryKeys.detail(sessionId) }),
     ]);
   };
 
