@@ -15,10 +15,6 @@
       "exports": ["*"]
     },
     {
-      "file": "src/components/markdown-view.tsx",
-      "exports": ["MarkdownSkeleton"]
-    },
-    {
       "file": "src/components/session-chat.tsx",
       "exports": ["SessionChatProps"]
     },

@@ -1,7 +1,6 @@
-import { Suspense } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { MarkdownSkeleton, MarkdownView } from "../components/markdown-view";
+import { MarkdownView } from "../components/markdown-view";
 import { planQueryOptions, planLinksQueryOptions } from "../lib/api/plans";
 import { fromMdSlug } from "../lib/md-slug";
 import { stripLeadingTitleHeading } from "../lib/markdown-utils";
@@ -77,9 +76,7 @@ function PlanPage() {
       <h1 className="text-lg font-semibold">{plan.title}</h1>
       <p className="text-xs text-text-500">{filename}</p>
       <div className="mt-4">
-        <Suspense fallback={<MarkdownSkeleton />}>
-          <MarkdownView markdown={body} />
-        </Suspense>
+        <MarkdownView markdown={body} />
       </div>
 
       {links.length > 0 && (

@@ -1,8 +1,7 @@
-import { Suspense } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { pluginFileQueryOptions } from "../lib/api/plugins";
-import { MarkdownSkeleton, MarkdownView } from "../components/markdown-view";
+import { MarkdownView } from "../components/markdown-view";
 import { ArrowLeft } from "lucide-react";
 import { DetailTopBar, pillStyles } from "../components/detail-top-bar";
 import { fromPluginFileSlug } from "../lib/md-slug";
@@ -76,9 +75,7 @@ function PluginFilePage() {
       )}
 
       <div className="mt-4">
-        <Suspense fallback={<MarkdownSkeleton />}>
-          <MarkdownView markdown={data.markdown} />
-        </Suspense>
+        <MarkdownView markdown={data.markdown} />
       </div>
     </div>
   );
