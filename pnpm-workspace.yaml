@@ -16,6 +16,8 @@ overrides:
   # otherwise vitest startup fails with InvalidArg (mixed core JS/native).
   "@voidzero-dev/vite-plus-core": "0.2.5"
   "@tanstack/router-core": 1.171.7
+patchedDependencies:
+  "@git-diff-view/lowlight@0.1.7": patches/@git-diff-view__lowlight@0.1.7.patch
 peerDependencyRules:
   allowAny:
     - vite

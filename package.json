@@ -26,6 +26,7 @@
     "prepare": "VITE_GIT_HOOKS=0 vp config"
   },
   "dependencies": {
+    "@git-diff-view/core": "^0.1.7",
     "@git-diff-view/react": "^0.1.7",
     "@mdxeditor/editor": "^4.2.0",
     "@modelcontextprotocol/sdk": "^1.30.0",

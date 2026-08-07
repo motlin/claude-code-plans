@@ -81,6 +81,10 @@ const shikiLanguageLoaders: Record<string, DynamicImportLanguageRegistration> = 
   zsh: loadShellScript,
 };
 
+export function isShikiLanguageSupported(language: string): boolean {
+  return language in shikiLanguageLoaders;
+}
+
 /** Monotonically increasing version bumped each time the singleton resolves. */
 let version = 0;
 const subscribers = new Set<() => void>();

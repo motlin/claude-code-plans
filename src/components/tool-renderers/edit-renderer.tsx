@@ -5,61 +5,7 @@ import type { ToolRendererProps } from "./types";
 import { CopyButton } from "./shared";
 import { useResolvedTheme } from "../theme-provider";
 import { computeDiffData, buildUnifiedHunk } from "../../lib/diff-utils";
-
-const SUPPORTED_LANGS = new Set([
-  "bash",
-  "c",
-  "cpp",
-  "cs",
-  "css",
-  "diff",
-  "docker",
-  "dockerfile",
-  "go",
-  "html",
-  "java",
-  "javascript",
-  "json",
-  "jsx",
-  "kotlin",
-  "makefile",
-  "markdown",
-  "python",
-  "rust",
-  "shell",
-  "sql",
-  "swift",
-  "tsx",
-  "txt",
-  "typescript",
-  "xml",
-  "yaml",
-]);
-
-const EXT_TO_LANG: Record<string, string> = {
-  js: "javascript",
-  mjs: "javascript",
-  cjs: "javascript",
-  ts: "typescript",
-  mts: "typescript",
-  cts: "typescript",
-  py: "python",
-  rb: "ruby",
-  rs: "rust",
-  sh: "bash",
-  zsh: "bash",
-  yml: "yaml",
-  yaml: "yaml",
-  md: "markdown",
-  mdx: "markdown",
-};
-
-function resolveLang(filePath: string): string {
-  const name = filePath.split("/").pop() ?? "";
-  const ext = name.split(".").pop()?.toLowerCase() ?? "";
-  const mapped = EXT_TO_LANG[ext] ?? ext;
-  return SUPPORTED_LANGS.has(mapped) ? mapped : "txt";
-}
+import { resolveDiffLanguage, useShikiDiffHighlighter } from "../../lib/diff-highlighter";
 
 /**
  * Split a file path into a truncatable prefix and a non-truncatable suffix.
@@ -111,7 +57,7 @@ export function EditRenderer({ toolCall }: ToolRendererProps) {
 
   const viewData = useMemo(() => {
     if (!diffData?.unifiedHunk) return null;
-    const lang = resolveLang(diffData.filePath ?? filePath);
+    const lang = resolveDiffLanguage(diffData.filePath ?? filePath);
     return {
       oldFile: {
         fileName: filePath,
@@ -126,6 +72,7 @@ export function EditRenderer({ toolCall }: ToolRendererProps) {
       hunks: [diffData.unifiedHunk],
     };
   }, [diffData, filePath]);
+  const registerHighlighter = useShikiDiffHighlighter(viewData?.newFile.fileLang ?? "text");
 
   if (!diffData) {
     return (
@@ -164,6 +111,7 @@ export function EditRenderer({ toolCall }: ToolRendererProps) {
             diffViewHighlight
             diffViewWrap
             diffViewFontSize={12}
+            registerHighlighter={registerHighlighter}
           />
         </div>
       )}

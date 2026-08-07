@@ -1,0 +1,10 @@
+diff --git a/dist/esm/index.mjs b/dist/esm/index.mjs
+index a229f2f..4df4724 100644
+--- a/dist/esm/index.mjs
++++ b/dist/esm/index.mjs
+@@ -1 +1 @@
+-import { createLowlight, all } from 'lowlight';
++import { createLowlight, common } from 'lowlight';
+@@ -126 +126 @@
+-const lowlight = createLowlight(all);
++const lowlight = createLowlight(common);
