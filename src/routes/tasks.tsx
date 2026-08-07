@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ChevronRight, CheckCircle, Circle, Ban, List, GitBranch } from "lucide-react";
 import { tasksQueryOptions } from "../lib/api/tasks";
 import { TaskDependencyGraph } from "../components/task-dependency-graph";
@@ -193,10 +193,7 @@ function TasksPage() {
                               <div className="min-w-0 flex-1">
                                 <div className="text-sm text-text-100 flex items-center gap-1.5">
                                   <span>
-                                    #{task.taskId}{" "}
-                                    <Suspense fallback={null}>
-                                      <MarkdownInline markdown={task.subject} />
-                                    </Suspense>
+                                    #{task.taskId} <MarkdownInline markdown={task.subject} />
                                   </span>
                                   <DebugLink
                                     kind="task"
@@ -205,9 +202,7 @@ function TasksPage() {
                                 </div>
                                 {task.description && task.description !== task.subject && (
                                   <div className="mt-0.5 text-xs text-text-500">
-                                    <Suspense fallback={null}>
-                                      <MarkdownView markdown={task.description} />
-                                    </Suspense>
+                                    <MarkdownView markdown={task.description} />
                                   </div>
                                 )}
                                 <div className="mt-0.5 flex items-center gap-2">

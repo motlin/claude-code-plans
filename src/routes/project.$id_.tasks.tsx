@@ -1,4 +1,4 @@
-import { Suspense, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { ArrowLeft, CheckCircle, Circle, Ban } from "lucide-react";
@@ -106,18 +106,13 @@ function ProjectTasksPage() {
               <div className="min-w-0 flex-1">
                 <div className="text-sm text-text-100 flex items-center gap-1.5">
                   <span>
-                    #{task.taskId}{" "}
-                    <Suspense fallback={null}>
-                      <MarkdownInline markdown={task.subject} />
-                    </Suspense>
+                    #{task.taskId} <MarkdownInline markdown={task.subject} />
                   </span>
                   <DebugLink kind="task" relativePath={`${task.projectDir}/${task.taskId}.json`} />
                 </div>
                 {task.description && task.description !== task.subject && (
                   <div className="mt-0.5 text-xs text-text-500">
-                    <Suspense fallback={null}>
-                      <MarkdownView markdown={task.description} />
-                    </Suspense>
+                    <MarkdownView markdown={task.description} />
                   </div>
                 )}
                 <div className="mt-0.5 flex items-center gap-2">
