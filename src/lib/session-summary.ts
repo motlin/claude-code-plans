@@ -30,12 +30,11 @@ export function toActiveSessionPayload(entry: ActiveSessionEntry): ActiveSession
 export function toSessionSummaryPayload(
   entry: SessionEntry,
   starred: boolean,
+  activeSession: ActiveSessionEntry | null = getActiveSessionEntry(entry.id),
 ): SessionSummaryPayload {
   const pendingApproval = getPendingApprovalsForProject(entry.project).find(
     (approval) => approval.sessionId === entry.id,
   );
-  const activeState = getActiveSessionEntry(entry.id)?.state ?? "unknown";
-
   return {
     id: entry.id,
     title: entry.title,
@@ -47,9 +46,10 @@ export function toSessionSummaryPayload(
     messageCount: entry.messageCount,
     gitBranch: entry.gitBranch,
     starred,
-    // Transcript-derived approvals survive server restarts, unlike activeState.
-    state: pendingApproval ? "waiting" : activeState,
-    blockedSince: pendingApproval?.blockedSince ?? null,
+    // Only active-store entries are live. A missing entry is an ended session,
+    // even if a transcript-derived approval has survived a server restart.
+    state: activeSession === null ? "ended" : pendingApproval ? "waiting" : activeSession.state,
+    blockedSince: activeSession === null ? null : (pendingApproval?.blockedSince ?? null),
   };
 }
 
@@ -62,6 +62,7 @@ export function toSessionSummaryPayload(
 export function buildSessionSummaryPayloadFromDb(
   db: IndexDb,
   sessionId: string,
+  activeSessionLookup: (sessionId: string) => ActiveSessionEntry | null = getActiveSessionEntry,
 ): SessionSummaryPayload | null {
   const row = db.select().from(schema.sessions).where(eq(schema.sessions.id, sessionId)).get();
   if (!row) return null;
@@ -95,5 +96,6 @@ export function buildSessionSummaryPayloadFromDb(
       isSidechain: row.isSidechain === 1,
     },
     !!starredRow,
+    activeSessionLookup(sessionId),
   );
 }

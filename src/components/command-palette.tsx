@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { recentSessionsQueryOptions } from "../lib/api/sessions";
 import { clearAll, observeSessionState } from "../lib/unread-store";
+import { isLiveSessionState } from "../lib/session-state";
 
 interface RecentSession {
   id: string;
@@ -55,7 +56,7 @@ export function CommandPalette({
 
   useEffect(() => {
     for (const session of data?.sessions ?? []) {
-      observeSessionState(session.id, session.state);
+      if (isLiveSessionState(session.state)) observeSessionState(session.id, session.state);
     }
   }, [data]);
 

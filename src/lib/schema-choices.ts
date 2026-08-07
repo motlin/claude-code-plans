@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import type { PluginFileSchema } from "./api/plugins";
+import type { SessionSummaryStateSchema } from "./api/sessions";
 import type { SourceFileResponse } from "./api/source";
 import type { HookEvent, ToolUseUnion } from "./hook-events";
 import type {
@@ -44,6 +45,14 @@ const taskStatusLabels = {
   in_progress: "In progress",
   completed: "Completed",
 } satisfies Record<z.infer<typeof TaskStatusSchema>, string>;
+
+const sessionSummaryStateLabels = {
+  idle: "Idle",
+  working: "Working",
+  waiting: "Waiting",
+  unknown: "Unknown",
+  ended: "Ended",
+} satisfies Record<z.infer<typeof SessionSummaryStateSchema>, string>;
 
 const sessionStartSourceLabels = {
   startup: "Startup",
@@ -238,6 +247,7 @@ const toolNames = {
 /** Maps walker path keys (see tests/schema-choices.test.ts) to choice maps. */
 export const schemaChoiceRegistry: Record<string, Record<string, string | true>> = {
   TaskStatusSchema: taskStatusLabels,
+  SessionSummaryStateSchema: sessionSummaryStateLabels,
   ContentBlockSchema: contentBlockVariants,
   AttachmentPayloadSchema: attachmentVariants,
   "UserRecordSchema.promptSource": promptSourceLabels,

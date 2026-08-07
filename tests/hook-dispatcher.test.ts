@@ -326,7 +326,7 @@ describe("dispatchHookEvent", () => {
         messageCount: 12,
         gitBranch: undefined,
         starred: false,
-        state: "unknown",
+        state: "ended",
         blockedSince: null,
       },
     });

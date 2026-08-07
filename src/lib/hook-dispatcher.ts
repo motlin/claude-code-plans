@@ -409,7 +409,9 @@ export async function dispatchHookEvent({
           session: toActiveSessionPayload(active),
         });
       }
-      const summary = buildSessionSummaryPayloadFromDb(db, event.session_id);
+      const summary = buildSessionSummaryPayloadFromDb(db, event.session_id, (sessionId) =>
+        store.getActiveSessionEntry(sessionId),
+      );
       if (summary) {
         const key = `${DOMAIN_EVENTS.SESSION_ADDED}:${summary.id}:${summary.mtime}`;
         if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
@@ -463,7 +465,9 @@ export async function dispatchHookEvent({
           endedAt: node.endedAt!,
         } satisfies SubagentStoppedPayload);
       }
-      const summary = buildSessionSummaryPayloadFromDb(db, event.session_id);
+      const summary = buildSessionSummaryPayloadFromDb(db, event.session_id, (sessionId) =>
+        store.getActiveSessionEntry(sessionId),
+      );
       if (summary) {
         const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${summary.id}:${summary.mtime}`;
         if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
@@ -534,7 +538,9 @@ export async function dispatchHookEvent({
           agentId: subagent.id,
         } satisfies SubagentStoppedPayload);
       }
-      const summary = buildSessionSummaryPayloadFromDb(db, event.session_id);
+      const summary = buildSessionSummaryPayloadFromDb(db, event.session_id, (sessionId) =>
+        store.getActiveSessionEntry(sessionId),
+      );
       if (summary) {
         const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${summary.id}:${summary.mtime}`;
         if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
@@ -567,7 +573,9 @@ export async function dispatchHookEvent({
           endedAt: null,
         } satisfies SubagentStartedPayload);
       }
-      const summary = buildSessionSummaryPayloadFromDb(db, event.session_id);
+      const summary = buildSessionSummaryPayloadFromDb(db, event.session_id, (sessionId) =>
+        store.getActiveSessionEntry(sessionId),
+      );
       if (summary) {
         const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${summary.id}:${summary.mtime}`;
         if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {

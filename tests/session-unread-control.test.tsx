@@ -37,4 +37,20 @@ describe("SessionUnreadControl", () => {
       expect(screen.queryByRole("button")).toBe(null);
     },
   );
+
+  it("renders no status for an ended session", () => {
+    const { container } = render(
+      <SessionUnreadControl sessionId="session-test-ended" state="ended" />,
+    );
+
+    expect({
+      childElementCount: container.childElementCount,
+      textContent: container.textContent,
+      storedUnseenWork: localStorage.getItem("ccp-unseen-work"),
+    }).toStrictEqual({
+      childElementCount: 0,
+      textContent: "",
+      storedUnseenWork: null,
+    });
+  });
 });

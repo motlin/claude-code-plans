@@ -16,6 +16,11 @@ import { DOMAIN_EVENTS } from "../src/lib/hook-events";
 import { eq } from "drizzle-orm";
 import type { SessionEntry } from "../src/lib/sessions";
 import type { TaskRow } from "../src/lib/db/queries";
+import {
+  markSessionActive,
+  markSessionEnded,
+  setSessionState,
+} from "../src/lib/active-session-store";
 
 const {
   toSessionSummaryPayload,
@@ -85,9 +90,27 @@ describe("toSessionSummaryPayload", () => {
       messageCount: 3,
       gitBranch: undefined,
       starred: false,
-      state: "unknown",
+      state: "ended",
       blockedSince: null,
     });
+  });
+
+  it("reserves unknown for an active session whose state has not been reported", () => {
+    markSessionActive("sess-1", { cwd: "/tmp/test/project-1" });
+
+    try {
+      const unreportedState = toSessionSummaryPayload(makeSession(), false).state;
+
+      setSessionState("sess-1", "working");
+      const reportedState = toSessionSummaryPayload(makeSession(), false).state;
+
+      expect({ unreportedState, reportedState }).toStrictEqual({
+        unreportedState: "unknown",
+        reportedState: "working",
+      });
+    } finally {
+      markSessionEnded("sess-1");
+    }
   });
 
   it("reflects the starred flag from the caller", () => {

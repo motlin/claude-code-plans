@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 
-import { displayState, type ActivityState, type DisplayState } from "../lib/session-state";
+import {
+  displayState,
+  isLiveSessionState,
+  type ActivityState,
+  type DisplayState,
+  type SessionSummaryState,
+} from "../lib/session-state";
 import {
   hasUnseenWork,
   markSeen,
@@ -31,6 +37,18 @@ const STATE_STYLES: Record<DisplayState, string> = {
 };
 
 export function SessionUnreadControl({
+  sessionId,
+  state,
+}: {
+  sessionId: string;
+  state: SessionSummaryState;
+}) {
+  if (!isLiveSessionState(state)) return null;
+
+  return <LiveSessionUnreadControl sessionId={sessionId} state={state} />;
+}
+
+function LiveSessionUnreadControl({
   sessionId,
   state,
 }: {

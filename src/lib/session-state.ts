@@ -2,6 +2,12 @@ import type { HookEvent } from "./hook-events";
 
 export type ActivityState = "idle" | "working" | "waiting" | "unknown";
 
+export type SessionSummaryState = ActivityState | "ended";
+
+export function isLiveSessionState(state: SessionSummaryState): state is ActivityState {
+  return state !== "ended";
+}
+
 export type DisplayState = ActivityState | "review";
 
 export type WaitHeat = "" | "warm" | "hot";

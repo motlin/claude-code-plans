@@ -110,7 +110,7 @@ describe("buildSessionSummaryPayloadFromDb", () => {
       projectName: "alice-project",
       gitBranch: undefined,
       starred: false,
-      state: "unknown",
+      state: "ended",
       blockedSince: null,
     });
   });

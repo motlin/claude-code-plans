@@ -45,7 +45,7 @@ import {
 import { toMdSlug } from "../lib/md-slug";
 import { getSubagentLifecycleKey, toSubagentSessionId } from "../lib/subagents";
 import { observeSessionState } from "../lib/unread-store";
-import type { ActivityState } from "../lib/session-state";
+import { isLiveSessionState, type ActivityState } from "../lib/session-state";
 import type { Statusline } from "../lib/api/statusline";
 
 // ---------------------------------------------------------------------------
@@ -504,7 +504,8 @@ interface SessionStateObservation {
   state: ActivityState;
 }
 
-function toSessionStateObservation(summary: SessionSummaryPayload): SessionStateObservation {
+function toSessionStateObservation(summary: SessionSummaryPayload): SessionStateObservation | null {
+  if (!isLiveSessionState(summary.state)) return null;
   return {
     sessionId: summary.id,
     label: summary.title.trim() || summary.projectName,
@@ -962,6 +963,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
         const observation = existing
           ? { ...existing, label: summary.title.trim() || summary.projectName }
           : toSessionStateObservation(summary);
+        if (observation === null) continue;
         sessionStateObservationsRef.current.set(summary.id, observation);
         listener(observation);
       }
@@ -986,10 +988,14 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
       groupedSessionsQueryOptions().queryKey,
     );
     for (const page of recent?.pages ?? []) {
-      for (const session of page.sessions) observeSessionState(session.id, session.state);
+      for (const session of page.sessions) {
+        if (isLiveSessionState(session.state)) observeSessionState(session.id, session.state);
+      }
     }
     for (const group of grouped ?? []) {
-      for (const session of group.sessions) observeSessionState(session.id, session.state);
+      for (const session of group.sessions) {
+        if (isLiveSessionState(session.state)) observeSessionState(session.id, session.state);
+      }
     }
   }, [queryClient]);
 
@@ -1017,6 +1023,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
             label: existing?.label ?? sessionId,
             state,
           };
+      if (observation === null) return;
       sessionStateObservationsRef.current.set(sessionId, observation);
       for (const listener of sessionStateListenersRef.current) listener(observation);
     }
@@ -1065,7 +1072,9 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
         case DOMAIN_EVENTS.SESSION_ADDED: {
           const session = data["session"] as SessionSummaryPayload | undefined;
           if (session) {
-            publishSessionState(session.id, session.state, session);
+            if (isLiveSessionState(session.state)) {
+              publishSessionState(session.id, session.state, session);
+            }
             applySessionAdded(queryClient, session);
           }
           break;
@@ -1081,7 +1090,9 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
         case DOMAIN_EVENTS.SESSION_UPDATED: {
           const session = data["session"] as SessionSummaryPayload | undefined;
           if (session) {
-            publishSessionState(session.id, session.state, session);
+            if (isLiveSessionState(session.state)) {
+              publishSessionState(session.id, session.state, session);
+            }
             applySessionUpdated(queryClient, session);
           }
           // Also mirror into the activeSessions reducer so the "active" dot
@@ -1257,6 +1268,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
           if (e.type === DOMAIN_EVENTS.SESSION_ENDED) {
             const sessionId = data["sessionId"];
             if (typeof sessionId === "string") publishSessionState(sessionId, "idle");
+            void queryClient.invalidateQueries({ queryKey: ["sessions"] });
           }
           invalidateActiveSessions(queryClient);
           invalidateTmuxWindows(queryClient);

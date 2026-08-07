@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { SessionSummaryState } from "./session-state";
 import {
   BashInputSchema,
   ReadInputSchema,
@@ -127,7 +128,7 @@ export interface SessionSummaryPayload {
   messageCount: number;
   gitBranch: string | undefined;
   starred: boolean;
-  state: "idle" | "working" | "waiting" | "unknown";
+  state: SessionSummaryState;
   blockedSince: string | null;
 }
 
