@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { Subagent } from "../lib/subagents";
 import {
   buildSubagentTree,
+  groupSubagentTreeByDate,
   type ParallelSubagentGroup,
   type SubagentTreeEntry,
   type SubagentTreeNode,
@@ -211,8 +212,18 @@ export function SubagentTree({ agents, sessionId }: { agents: Subagent[]; sessio
     [indexedAgentIds, relevantLiveNodes],
   );
   const tree = useMemo(() => buildSubagentTree(mergedAgents), [mergedAgents]);
+  const dateGroups = useMemo(() => groupSubagentTreeByDate(tree), [tree]);
   if (tree.length === 0) {
     return <p className="mt-4 text-sm text-text-500">No subagents for this session.</p>;
   }
-  return <TreeEntries entries={tree} presentation={{ indexedAgentIds, liveStatuses }} />;
+  return dateGroups.map((group) => (
+    <section key={group.key}>
+      <h2 className="sticky top-0 z-10 border-b border-border-300/15 bg-bg-000 pb-1 pt-2 text-sm font-semibold text-text-500">
+        {group.label}
+      </h2>
+      <div className="mb-4 mt-2">
+        <TreeEntries entries={group.entries} presentation={{ indexedAgentIds, liveStatuses }} />
+      </div>
+    </section>
+  ));
 }

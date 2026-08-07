@@ -13,6 +13,12 @@ export interface ParallelSubagentGroup {
 
 export type SubagentTreeEntry = SubagentTreeNode | ParallelSubagentGroup;
 
+export interface SubagentDateGroup {
+  key: string;
+  label: string;
+  entries: SubagentTreeEntry[];
+}
+
 function compareStartedAt(left: Subagent, right: Subagent): number {
   if (left.startedAt === right.startedAt) return left.id.localeCompare(right.id);
   if (left.startedAt === null) return 1;
@@ -23,6 +29,58 @@ function compareStartedAt(left: Subagent, right: Subagent): number {
 function durationMs(agent: Subagent): number {
   if (agent.startedAt === null || agent.finishedAt === null) return 0;
   return new Date(agent.finishedAt).getTime() - new Date(agent.startedAt).getTime();
+}
+
+function entryStartedAt(entry: SubagentTreeEntry): string | null {
+  return "type" in entry ? entry.children[0]!.agent.startedAt : entry.agent.startedAt;
+}
+
+function localDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function dateGroupLabel(date: Date, now: Date): string {
+  const key = localDateKey(date);
+  if (key === localDateKey(now)) return "Today";
+
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  if (key === localDateKey(yesterday)) return "Yesterday";
+
+  return date.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+export function groupSubagentTreeByDate(
+  entries: SubagentTreeEntry[],
+  now = new Date(),
+): SubagentDateGroup[] {
+  const groups: SubagentDateGroup[] = [];
+
+  for (const entry of entries) {
+    const startedAt = entryStartedAt(entry);
+    const date = startedAt === null ? null : new Date(startedAt);
+    const key = date === null ? "unknown" : localDateKey(date);
+    const previousGroup = groups.at(-1);
+
+    if (previousGroup?.key === key) {
+      previousGroup.entries.push(entry);
+      continue;
+    }
+
+    groups.push({
+      key,
+      label: date === null ? "Unknown date" : dateGroupLabel(date, now),
+      entries: [entry],
+    });
+  }
+
+  return groups;
 }
 
 export function buildSubagentTree(agents: Subagent[]): SubagentTreeEntry[] {

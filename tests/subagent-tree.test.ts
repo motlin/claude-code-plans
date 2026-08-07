@@ -2,7 +2,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { openTestDb, type AppDb } from "../src/lib/db/connection";
 import { getSubagentsForSession } from "../src/lib/db/queries";
 import * as schema from "../src/lib/db/schema";
-import { buildSubagentTree, type SubagentTreeEntry } from "../src/lib/subagent-tree";
+import {
+  buildSubagentTree,
+  groupSubagentTreeByDate,
+  type SubagentTreeEntry,
+} from "../src/lib/subagent-tree";
 import { extractPendingSubagents, toClientSubagent, type Subagent } from "../src/lib/subagents";
 
 function makeAgent(overrides: Partial<Subagent> & { id: string }): Subagent {
@@ -165,6 +169,78 @@ describe("buildSubagentTree", () => {
 
   it("returns no entries for no agents", () => {
     expect(buildSubagentTree([])).toStrictEqual([]);
+  });
+});
+
+describe("groupSubagentTreeByDate", () => {
+  it("groups chronological entries under local date labels without changing their order", () => {
+    const tree = buildSubagentTree([
+      makeAgent({
+        id: "agent-yesterday-morning",
+        startedAt: "2026-08-05T09:00:00-04:00",
+        finishedAt: "2026-08-05T09:01:00-04:00",
+      }),
+      makeAgent({
+        id: "agent-yesterday-evening",
+        startedAt: "2026-08-05T18:00:00-04:00",
+        finishedAt: "2026-08-05T18:01:00-04:00",
+      }),
+      makeAgent({
+        id: "agent-today",
+        startedAt: "2026-08-06T10:00:00-04:00",
+        finishedAt: "2026-08-06T10:01:00-04:00",
+      }),
+    ]);
+
+    const groups = groupSubagentTreeByDate(tree, new Date("2026-08-06T12:00:00-04:00"));
+
+    expect(
+      groups.map((group) => ({
+        label: group.label,
+        entries: summarizeTree(group.entries),
+      })),
+    ).toStrictEqual([
+      {
+        label: "Yesterday",
+        entries: [
+          { kind: "agent", id: "agent-yesterday-morning", children: [] },
+          { kind: "agent", id: "agent-yesterday-evening", children: [] },
+        ],
+      },
+      {
+        label: "Today",
+        entries: [{ kind: "agent", id: "agent-today", children: [] }],
+      },
+    ]);
+  });
+
+  it("uses calendar dates for older entries and keeps missing timestamps visible", () => {
+    const tree = buildSubagentTree([
+      makeAgent({
+        id: "agent-older",
+        startedAt: "2026-07-31T10:00:00-04:00",
+        finishedAt: "2026-07-31T10:01:00-04:00",
+      }),
+      makeAgent({ id: "agent-unknown" }),
+    ]);
+
+    const groups = groupSubagentTreeByDate(tree, new Date("2026-08-06T12:00:00-04:00"));
+
+    expect(
+      groups.map((group) => ({
+        label: group.label,
+        entries: summarizeTree(group.entries),
+      })),
+    ).toStrictEqual([
+      {
+        label: "July 31, 2026",
+        entries: [{ kind: "agent", id: "agent-older", children: [] }],
+      },
+      {
+        label: "Unknown date",
+        entries: [{ kind: "agent", id: "agent-unknown", children: [] }],
+      },
+    ]);
   });
 });
 
