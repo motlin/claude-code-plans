@@ -213,7 +213,7 @@ function getUserStringContent(line: ProcessedLine): string | undefined {
 /**
  * Check whether a user message line is a slash command (contains `<command-name>`).
  */
-function isCommandLine(line: ProcessedLine): boolean {
+export function isCommandLine(line: ProcessedLine): boolean {
   const text = getUserStringContent(line);
   return text !== undefined && COMMAND_NAME_RE.test(text);
 }
@@ -221,7 +221,7 @@ function isCommandLine(line: ProcessedLine): boolean {
 /**
  * Check whether a user message line is a local-command-caveat.
  */
-function isCaveatLine(line: ProcessedLine): boolean {
+export function isCaveatLine(line: ProcessedLine): boolean {
   const text = getUserStringContent(line);
   return text !== undefined && LOCAL_COMMAND_CAVEAT_RE.test(text);
 }
@@ -229,7 +229,7 @@ function isCaveatLine(line: ProcessedLine): boolean {
 /**
  * Check whether a user message line is a local-command-stdout.
  */
-function isStdoutLine(line: ProcessedLine): boolean {
+export function isStdoutLine(line: ProcessedLine): boolean {
   const text = getUserStringContent(line);
   return text !== undefined && LOCAL_COMMAND_STDOUT_RE.test(text);
 }

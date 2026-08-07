@@ -670,6 +670,51 @@ describe("indexer", () => {
     expect(session.firstPrompt).toBe("Hello world");
   });
 
+  it("replaces an indexed caveat prompt with the first substantive JSONL prompt", async () => {
+    const project = "-Users-alice-projects-example";
+    const projectDir = join(testDir, project);
+    const sessionPath = join(projectDir, "caveat-session.jsonl");
+    mkdirSync(projectDir, { recursive: true });
+    writeFileSync(
+      sessionPath,
+      jsonl(
+        {
+          type: "user",
+          message: {
+            role: "user",
+            content:
+              "<local-command-caveat>Caveat: Fabricated local command context.</local-command-caveat>",
+          },
+        },
+        { type: "user", message: { role: "user", content: "Fix Alice's example session" } },
+      ),
+    );
+    writeFileSync(
+      join(projectDir, "sessions-index.json"),
+      makeSessionsIndex([
+        {
+          sessionId: "caveat-session",
+          fullPath: sessionPath,
+          fileMtime: 946_684_800_000,
+          firstPrompt:
+            "<local-command-caveat>Caveat: Fabricated local command context.</local-command-caveat>",
+        },
+      ]),
+    );
+
+    await indexSessionsIndex(db.index, projectDir, project);
+
+    const session = db.index
+      .select({ title: schema.sessions.title, firstPrompt: schema.sessions.firstPrompt })
+      .from(schema.sessions)
+      .where(eq(schema.sessions.id, "caveat-session"))
+      .get();
+    expect(session).toStrictEqual({
+      title: "Fix Alice's example session",
+      firstPrompt: "Fix Alice's example session",
+    });
+  });
+
   it("fullScan indexes a complete project directory", async () => {
     const projectDir = join(testDir, "-Users-craig-projects-app");
     mkdirSync(projectDir, { recursive: true });

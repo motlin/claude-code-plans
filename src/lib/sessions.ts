@@ -5,6 +5,7 @@ import { createInterface } from "node:readline";
 import { decodeProjectDir, resolveProjectName } from "./memory";
 import type { JsonValue } from "./hook-events";
 import { SessionsIndexSchema, CustomTitleRecordSchema } from "./schemas";
+import { isCaveatLine, isCommandLine, isStdoutLine } from "./transcript";
 
 export interface SessionEntry {
   id: string;
@@ -158,6 +159,27 @@ interface JsonlEntry {
   };
 }
 
+const SHELL_COMPLETION_RE = /^(?:Already up to date|Done in \d+(?:\.\d+)?(?:ms|s)(?: using \S+)?)/;
+
+function isPastedShellOutput(text: string): boolean {
+  const lines = text
+    .trim()
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return (
+    lines.length >= 3 &&
+    /^>\s+\S/.test(lines[0]!) &&
+    lines.slice(1).some((line) => SHELL_COMPLETION_RE.test(line))
+  );
+}
+
+function isSessionTitlePrompt(text: string): boolean {
+  if (!text.trim() || isPastedShellOutput(text)) return false;
+  const line = { type: "user" as const, message: { content: text }, lineIndex: 0 };
+  return !isCaveatLine(line) && !isCommandLine(line) && !isStdoutLine(line);
+}
+
 function extractFirstUserText(line: string): string | null {
   try {
     const obj = JSON.parse(line) as JsonlEntry;
@@ -166,11 +188,15 @@ function extractFirstUserText(line: string): string | null {
     const content = obj.message?.content;
     if (!content) return null;
 
-    if (typeof content === "string") return content;
+    if (typeof content === "string") return isSessionTitlePrompt(content) ? content : null;
 
     if (Array.isArray(content)) {
       for (const block of content) {
-        if (block.type === "text" && typeof block.text === "string") {
+        if (
+          block.type === "text" &&
+          typeof block.text === "string" &&
+          isSessionTitlePrompt(block.text)
+        ) {
           return block.text;
         }
       }
@@ -181,7 +207,7 @@ function extractFirstUserText(line: string): string | null {
   return null;
 }
 
-async function readFirstUserMessage(filePath: string): Promise<string | null> {
+export async function readFirstUserMessage(filePath: string): Promise<string | null> {
   const rl = createInterface({
     input: createReadStream(filePath, { encoding: "utf-8" }),
     crlfDelay: Infinity,
@@ -197,6 +223,18 @@ async function readFirstUserMessage(filePath: string): Promise<string | null> {
     rl.close();
   }
   return null;
+}
+
+export async function resolveFirstPrompt(
+  indexedPrompt: string | undefined,
+  filePath: string,
+): Promise<string | null> {
+  if (indexedPrompt && isSessionTitlePrompt(indexedPrompt)) return indexedPrompt;
+  try {
+    return await readFirstUserMessage(filePath);
+  } catch {
+    return null;
+  }
 }
 
 function resolveTitle(entry: {
@@ -245,16 +283,18 @@ async function listSessionsForProject(
     indexedIds.add(entry.sessionId);
     if (entry.isSidechain) continue;
 
+    const firstPrompt = await resolveFirstPrompt(entry.firstPrompt, entry.fullPath);
+
     const title = resolveTitle({
       summary: entry.summary,
-      firstPrompt: entry.firstPrompt,
+      firstPrompt: firstPrompt ?? undefined,
       sessionId: entry.sessionId,
     });
 
     sessions.push({
       id: entry.sessionId,
       title,
-      firstPrompt: entry.firstPrompt,
+      firstPrompt: firstPrompt ?? undefined,
       summary: entry.summary,
       mtime: new Date(entry.fileMtime),
       created: entry.created ? new Date(entry.created) : new Date(entry.fileMtime),

@@ -299,7 +299,7 @@ describe("file content FTS", () => {
     expect({ rebuiltRows, table, version }).toStrictEqual({
       rebuiltRows: [],
       table: { name: "file_content_fts" },
-      version: { value: "19" },
+      version: { value: schema.SCHEMA_VERSION },
     });
   });
 

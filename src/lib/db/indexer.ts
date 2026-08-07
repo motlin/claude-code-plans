@@ -12,7 +12,7 @@ import {
   TaskFileSchema,
 } from "../schemas";
 import { decodeProjectDir, encodeProjectPath, resolveProjectPath } from "../memory";
-import { extractSessionTitle } from "../sessions";
+import { extractSessionTitle, readFirstUserMessage, resolveFirstPrompt } from "../sessions";
 import { extractTitle, extractTitleFromContent } from "../markdown-utils";
 import * as schema from "./schema";
 
@@ -180,46 +180,6 @@ export async function scanFileContentRoots(
   }
 }
 
-function extractFirstUserText(line: string): string | null {
-  try {
-    const obj = JSON.parse(line) as {
-      type: string;
-      message?: { content?: string | Array<{ type: string; text?: string }> };
-    };
-    if (obj.type !== "user") return null;
-    const content = obj.message?.content;
-    if (!content) return null;
-    if (typeof content === "string") return content;
-    if (Array.isArray(content)) {
-      for (const block of content) {
-        if (block.type === "text" && typeof block.text === "string") {
-          return block.text;
-        }
-      }
-    }
-  } catch {
-    // skip malformed lines
-  }
-  return null;
-}
-
-async function readFirstUserMessage(filePath: string): Promise<string | null> {
-  const rl = createInterface({
-    input: createReadStream(filePath, { encoding: "utf-8" }),
-    crlfDelay: Infinity,
-  });
-  try {
-    for await (const line of rl) {
-      if (!line.trim()) continue;
-      const text = extractFirstUserText(line);
-      if (text !== null) return text;
-    }
-  } finally {
-    rl.close();
-  }
-  return null;
-}
-
 export async function indexSessionsIndex(
   db: IndexDb,
   projectDir: string,
@@ -281,13 +241,13 @@ export async function indexSessionsIndex(
 
   // Upsert sessions
   for (const entry of result.data.entries) {
-    const fp = entry.firstPrompt as string | undefined;
+    const fp = await resolveFirstPrompt(entry.firstPrompt, entry.fullPath);
     const summ = entry.summary as string | undefined;
     const branch = entry.gitBranch as string | undefined;
     const entryProjectPath = entry.projectPath as string | undefined;
     const msgCount = (entry.messageCount as number | undefined) ?? 0;
     const sidechain = entry.isSidechain as boolean | undefined;
-    const title = summ ?? (fp ? extractSessionTitle(fp, entry.sessionId) : entry.sessionId);
+    const title = summ ?? extractSessionTitle(fp ?? "", entry.sessionId);
     const createdAt = entry.created ? new Date(entry.created as string).getTime() : entry.fileMtime;
 
     db.insert(schema.sessions)
@@ -295,7 +255,7 @@ export async function indexSessionsIndex(
         id: entry.sessionId,
         projectId: project,
         title,
-        firstPrompt: fp ?? null,
+        firstPrompt: fp,
         summary: summ ?? null,
         customTitle: null,
         messageCount: msgCount,
@@ -310,7 +270,7 @@ export async function indexSessionsIndex(
         target: schema.sessions.id,
         set: {
           title,
-          firstPrompt: fp ?? null,
+          firstPrompt: fp,
           summary: summ ?? null,
           messageCount: msgCount,
           gitBranch: branch ?? null,
@@ -509,6 +469,7 @@ export async function indexJsonlFile(
     .from(schema.sessions)
     .where(eq(schema.sessions.id, sessionId))
     .get();
+  const firstPrompt = await readFirstUserMessage(filePath);
   const projectPath = await resolveProjectPath(project);
   const projectName = projectPath ? projectPath.split("/").pop()! : decodeProjectDir(project);
 
@@ -530,9 +491,12 @@ export async function indexJsonlFile(
     const updates: Record<string, unknown> = { mtimeMs: fileStat.mtimeMs };
     updates["filePath"] = filePath;
     updates["projectId"] = project;
+    updates["firstPrompt"] = firstPrompt;
     if (customTitle) {
       updates["customTitle"] = customTitle;
       updates["title"] = customTitle;
+    } else if (!existingSession.customTitle && !existingSession.summary) {
+      updates["title"] = extractSessionTitle(firstPrompt ?? "", sessionId);
     }
     if (sessionCwd) {
       updates["cwd"] = sessionCwd;
@@ -542,15 +506,14 @@ export async function indexJsonlFile(
     }
     db.update(schema.sessions).set(updates).where(eq(schema.sessions.id, sessionId)).run();
   } else {
-    const firstMsg = await readFirstUserMessage(filePath);
-    const title = customTitle ?? extractSessionTitle(firstMsg ?? "", sessionId);
+    const title = customTitle ?? extractSessionTitle(firstPrompt ?? "", sessionId);
 
     db.insert(schema.sessions)
       .values({
         id: sessionId,
         projectId: project,
         title,
-        firstPrompt: firstMsg ?? null,
+        firstPrompt,
         summary: null,
         customTitle: customTitle ?? null,
         messageCount: 0,

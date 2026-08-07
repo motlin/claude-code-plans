@@ -1,0 +1,4 @@
+{"type":"user","message":{"role":"user","content":"<local-command-caveat>Caveat: This fabricated message was generated while Alice ran a local command.</local-command-caveat>"}}
+{"type":"user","message":{"role":"user","content":"<command-name>/example</command-name>\n<command-args></command-args>"}}
+{"type":"user","message":{"role":"user","content":"<local-command-stdout>Fabricated command output</local-command-stdout>"}}
+{"type":"user","message":{"role":"user","content":"Build Alice's example dashboard"}}

@@ -1,4 +1,11 @@
-import { writeFileSync, appendFileSync, mkdirSync, rmSync, utimesSync } from "node:fs";
+import {
+  writeFileSync,
+  readFileSync,
+  appendFileSync,
+  mkdirSync,
+  rmSync,
+  utimesSync,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -526,6 +533,80 @@ describe("listSessions", () => {
 
     const groups = await listSessions(testDir);
     expect(groups[0]!.sessions[0]!.title).toBe("Implement the login page");
+  });
+
+  it("skips local command boilerplate when deriving the first prompt", async () => {
+    const projectDir = join(testDir, "-Users-alice-projects-example");
+    mkdirSync(projectDir, { recursive: true });
+    const fixture = readFileSync(
+      join(import.meta.dirname, "fixtures", "session-title-caveat.jsonl"),
+      "utf8",
+    );
+    writeFileSync(join(projectDir, "caveat-session.jsonl"), fixture);
+
+    const groups = await listSessions(testDir);
+    expect(
+      groups[0]!.sessions.map(({ id, title, firstPrompt }) => ({
+        id,
+        title,
+        firstPrompt,
+      })),
+    ).toStrictEqual([
+      {
+        id: "caveat-session",
+        title: "Build Alice's example dashboard",
+        firstPrompt: "Build Alice's example dashboard",
+      },
+    ]);
+  });
+
+  it("uses the session ID when caveat boilerplate is the only user content", async () => {
+    const projectDir = join(testDir, "-Users-alice-projects-example");
+    mkdirSync(projectDir, { recursive: true });
+    writeFileSync(
+      join(projectDir, "caveat-only.jsonl"),
+      jsonl(
+        userMessage(
+          "<local-command-caveat>Caveat: Fabricated local command context.</local-command-caveat>",
+        ),
+      ),
+    );
+
+    const groups = await listSessions(testDir);
+    expect(
+      groups[0]!.sessions.map(({ id, title, firstPrompt }) => ({
+        id,
+        title,
+        firstPrompt,
+      })),
+    ).toStrictEqual([{ id: "caveat-only", title: "caveat-only", firstPrompt: undefined }]);
+  });
+
+  it("skips an obvious pasted shell output block", async () => {
+    const projectDir = join(testDir, "-Users-alice-projects-example");
+    mkdirSync(projectDir, { recursive: true });
+    writeFileSync(
+      join(projectDir, "shell-output.jsonl"),
+      jsonl(
+        userMessage("> example dev\nAlready up to date\nDone in 100ms using pnpm v99.0.0"),
+        userMessage("Explain Alice's example failure"),
+      ),
+    );
+
+    const groups = await listSessions(testDir);
+    expect(
+      groups[0]!.sessions.map(({ id, title, firstPrompt }) => ({
+        id,
+        title,
+        firstPrompt,
+      })),
+    ).toStrictEqual([
+      {
+        id: "shell-output",
+        title: "Explain Alice's example failure",
+        firstPrompt: "Explain Alice's example failure",
+      },
+    ]);
   });
 
   it("falls back to session ID when no user message", async () => {
