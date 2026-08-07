@@ -242,6 +242,57 @@ describe("review skill runner", () => {
   });
 });
 
+describe("review diff parser", () => {
+  it("keeps header-like diff body lines attributed and numbered", () => {
+    const [file] = parseReviewDiff(
+      [
+        "diff --git a/example.sql b/example.sql",
+        "index 1111111..2222222 100644",
+        "--- a/example.sql",
+        "+++ b/example.sql",
+        "@@ -10,3 +10,3 @@",
+        "--- comment",
+        "+++ comment",
+        " SELECT 1;",
+      ].join("\n"),
+    );
+    if (!file) throw new Error("Expected a changed file");
+
+    const finding = {
+      id: "finding-test-100",
+      file: "example.sql",
+      side: "new" as const,
+      line: 11,
+      severity: "medium" as const,
+      title: "Example finding",
+      body: "The finding remains attached after header-like diff body lines.",
+      resolved: false,
+    };
+
+    expect({
+      file,
+      findings: findingsForDiffLine([finding], file.file, file.lines[2]!),
+    }).toStrictEqual({
+      file: {
+        file: "example.sql",
+        header: [
+          "diff --git a/example.sql b/example.sql",
+          "index 1111111..2222222 100644",
+          "--- a/example.sql",
+          "+++ b/example.sql",
+          "@@ -10,3 +10,3 @@",
+        ],
+        lines: [
+          { content: "-- comment", oldLine: 10, newLine: null, prefix: "-" },
+          { content: "++ comment", oldLine: null, newLine: 10, prefix: "+" },
+          { content: "SELECT 1;", oldLine: 11, newLine: 11, prefix: " " },
+        ],
+      },
+      findings: [finding],
+    });
+  });
+});
+
 describe("deterministic working-copy review forward test", () => {
   it("pins a fake review finding to the deliberately buggy changed line", async () => {
     const repository = join(TEST_ROOT, "repository");

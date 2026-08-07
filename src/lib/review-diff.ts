@@ -37,6 +37,26 @@ export function parseReviewDiff(diff: string): ReviewDiffFile[] {
       continue;
     }
     if (current === null) continue;
+    if (inHunk && rawLine !== "\\ No newline at end of file") {
+      const prefix = rawLine[0];
+      const content = rawLine.slice(1);
+      if (prefix === "+") {
+        current.lines.push({ content, oldLine: null, newLine, prefix });
+        newLine++;
+        continue;
+      }
+      if (prefix === "-") {
+        current.lines.push({ content, oldLine, newLine: null, prefix });
+        oldLine++;
+        continue;
+      }
+      if (prefix === " ") {
+        current.lines.push({ content, oldLine, newLine, prefix });
+        oldLine++;
+        newLine++;
+        continue;
+      }
+    }
     if (rawLine.startsWith("+++ ")) {
       const path = unprefixedPath(rawLine.slice(4));
       if (path !== "/dev/null") current.file = path;
@@ -59,20 +79,6 @@ export function parseReviewDiff(diff: string): ReviewDiffFile[] {
     if (!inHunk || rawLine === "\\ No newline at end of file") {
       if (rawLine !== "") current.header.push(rawLine);
       continue;
-    }
-
-    const prefix = rawLine[0];
-    const content = rawLine.slice(1);
-    if (prefix === "+") {
-      current.lines.push({ content, oldLine: null, newLine, prefix });
-      newLine++;
-    } else if (prefix === "-") {
-      current.lines.push({ content, oldLine, newLine: null, prefix });
-      oldLine++;
-    } else if (prefix === " ") {
-      current.lines.push({ content, oldLine, newLine, prefix });
-      oldLine++;
-      newLine++;
     }
   }
 
