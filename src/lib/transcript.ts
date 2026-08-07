@@ -139,6 +139,19 @@ const WorktreeLineSchema = z.object({
 });
 
 /**
+ * A record the schema rejected. Rendered as a visible gap so schema drift
+ * surfaces in the transcript instead of silently deleting messages.
+ */
+const UnparsedLineSchema = z.object({
+  type: z.literal("unparsed"),
+  recordType: z.string().optional(),
+  issues: z.array(z.string()),
+  uuid: z.string().optional(),
+  timestamp: z.string().optional(),
+  lineIndex: z.number(),
+});
+
+/**
  * Discriminated union of all rendered line types.
  * Each variant corresponds to a JSONL record type that produces visible output.
  */
@@ -151,6 +164,7 @@ export const RenderedLineSchema = z.discriminatedUnion("type", [
   AttachmentLineSchema,
   SystemLineSchema,
   WorktreeLineSchema,
+  UnparsedLineSchema,
 ]);
 
 // ---------------------------------------------------------------------------
@@ -180,6 +194,29 @@ export interface ProcessedTranscript {
 interface IncrementalResult {
   newSessionLines: ProcessedLine[];
   newToolResults: Map<string, ToolResultInfo>;
+}
+
+/**
+ * Describe a schema-rejected record well enough to render a placeholder and
+ * diagnose the drift, reading only fields we cannot trust to be present.
+ */
+function buildUnparsedLine(
+  obj: unknown,
+  lineIndex: number,
+  error: z.ZodError,
+): Extract<ProcessedLine, { type: "unparsed" }> {
+  const raw = typeof obj === "object" && obj !== null ? (obj as Record<string, unknown>) : {};
+  const line: Extract<ProcessedLine, { type: "unparsed" }> = {
+    type: "unparsed",
+    lineIndex,
+    issues: error.issues.map((issue) =>
+      issue.path.length > 0 ? `${issue.path.join(".")}: ${issue.message}` : issue.message,
+    ),
+  };
+  if (typeof raw["type"] === "string") line.recordType = raw["type"];
+  if (typeof raw["uuid"] === "string") line.uuid = raw["uuid"];
+  if (typeof raw["timestamp"] === "string") line.timestamp = raw["timestamp"];
+  return line;
 }
 
 function getRecordSessionId(record: z.infer<typeof JsonlRecordSchema>): string | undefined {
@@ -348,7 +385,10 @@ function processRecordBatch(
     const lineIndex = startLineIndex + i;
 
     const parsed = JsonlRecordSchema.safeParse(obj);
-    if (!parsed.success) continue;
+    if (!parsed.success) {
+      sessionLines.push(buildUnparsedLine(obj, lineIndex, parsed.error));
+      continue;
+    }
     const record = parsed.data;
 
     const uuid = "uuid" in record && typeof record.uuid === "string" ? record.uuid : undefined;

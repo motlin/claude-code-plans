@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Bot,
   Copy,
+  FileWarning,
   GitBranch,
   Link,
   Link2,
@@ -796,6 +797,17 @@ function renderSessionMessage({
             </span>
           )}
           {line.enteredExisting === true && <span className="text-text-600">entered existing</span>}
+        </Banner>
+      );
+    case "unparsed":
+      return (
+        <Banner
+          icon={<FileWarning className="h-3.5 w-3.5" />}
+          label={`Unreadable ${line.recordType ?? "record"}`}
+        >
+          <span className="font-mono text-text-600" title={line.issues.join("\n")}>
+            {line.issues[0] ?? "did not match the transcript schema"}
+          </span>
         </Banner>
       );
     default:

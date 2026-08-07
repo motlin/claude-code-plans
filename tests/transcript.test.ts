@@ -515,13 +515,13 @@ describe("processTranscript", () => {
     expect(result.title).toBe("simple text");
   });
 
-  it("skips malformed records", () => {
+  it("surfaces malformed records without dropping the records around them", () => {
     const records = [
       { type: "unknown-type-42" },
       userRecord([{ type: "text", text: "Hello" }], { uuid: "u-1" }),
     ];
     const result = processTranscript(records);
-    expect(result.lines).toHaveLength(1);
+    expect(result.lines.map((line) => line.type)).toStrictEqual(["unparsed", "user"]);
   });
 
   it("parses subagent records that contain agentId field", () => {
@@ -1167,5 +1167,49 @@ describe("worktree state lines", () => {
     ];
 
     expect(processTranscript(records).lines).toStrictEqual([]);
+  });
+});
+
+describe("schema-rejected records", () => {
+  it("emits a visible unparsed line instead of silently dropping the record", () => {
+    const result = processTranscript([
+      userRecord("Hello"),
+      { type: "assistant", uuid: "u-2", timestamp: "2026-08-07T00:00:00.000Z", unknownKey: 1 },
+      userRecord("Goodbye"),
+    ]);
+
+    expect(
+      result.lines.map((line) => (line.type === "unparsed" ? { ...line, issues: [] } : line.type)),
+    ).toStrictEqual([
+      "user",
+      {
+        type: "unparsed",
+        lineIndex: 1,
+        recordType: "assistant",
+        uuid: "u-2",
+        timestamp: "2026-08-07T00:00:00.000Z",
+        issues: [],
+      },
+      "user",
+    ]);
+  });
+
+  it("reports why the record was rejected", () => {
+    const result = processTranscript([
+      { type: "assistant", message: { role: "assistant", content: [] }, unknownKey: 1 },
+    ]);
+    const line = result.lines[0];
+
+    expect(line?.type === "unparsed" ? line.issues : []).toStrictEqual([
+      'Unrecognized key: "unknownKey"',
+    ]);
+  });
+
+  it("keeps records whose type is not rendered out of the transcript", () => {
+    const result = processTranscript([
+      { type: "file-history-snapshot", messageId: "m-1", snapshot: { trackedFileBackups: {} } },
+    ]);
+
+    expect(result.lines).toStrictEqual([]);
   });
 });

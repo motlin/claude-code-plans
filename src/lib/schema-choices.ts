@@ -208,6 +208,7 @@ const renderedLineVariants = {
   attachment: true,
   system: true,
   worktree: true,
+  unparsed: true,
 } satisfies Record<ProcessedLine["type"], true>;
 
 /** Exhaustive handler: switch in src/lib/hook-dispatcher.ts. */
