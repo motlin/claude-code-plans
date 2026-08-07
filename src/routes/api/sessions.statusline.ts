@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
+  SESSION_ID_PATTERN,
   SessionMetricsBatchResponse,
   StatuslineSchema,
   toSessionMetrics,
 } from "../../lib/api/statusline";
 
-const SESSION_ID_PATTERN = /^[a-z0-9-]+$/;
 const PRIVATE_NO_CACHE = "private, max-age=0, must-revalidate";
 
 interface StatuslineBatchDependencies {

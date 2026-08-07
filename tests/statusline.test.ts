@@ -4,6 +4,7 @@ import {
   StatuslineSchema,
   toSessionMetrics,
 } from "../src/lib/api/statusline";
+import { handleSessionStatuslineRequest } from "../src/routes/api/sessions.$id.statusline";
 import { handleStatuslineBatchRequest } from "../src/routes/api/sessions.statusline";
 
 // Captured Claude Code statusline shape with identifying values replaced.
@@ -120,6 +121,33 @@ describe("statusline batch API", () => {
       cacheControl: "private, max-age=0, must-revalidate",
       readCalls: [["alice-session"], ["bob-session"]],
       schemaResult: true,
+      status: 200,
+    });
+  });
+});
+
+describe("statusline session API", () => {
+  it("returns null without reading files for a traversal session id", async () => {
+    const fileContents = {
+      name: "fabricated-package",
+      private: true,
+    };
+    const readStatusline = vi.fn(async (): Promise<unknown> => fileContents);
+
+    const response = await handleSessionStatuslineRequest(
+      "../../../fixture/project/package/statusline",
+      { readStatusline },
+    );
+
+    expect({
+      body: await response.json(),
+      cacheControl: response.headers.get("Cache-Control"),
+      readCalls: readStatusline.mock.calls,
+      status: response.status,
+    }).toStrictEqual({
+      body: null,
+      cacheControl: "private, max-age=0, must-revalidate",
+      readCalls: [],
       status: 200,
     });
   });

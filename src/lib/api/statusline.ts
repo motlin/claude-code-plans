@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export const SESSION_ID_PATTERN = /^[a-z0-9-]+$/;
+
 export const StatuslineSchema = z
   .object({
     model: z
