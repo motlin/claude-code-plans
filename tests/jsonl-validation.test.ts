@@ -94,17 +94,16 @@ describe("JsonlRecordSchema against disk", () => {
       }
     }
 
-    console.log(
-      [
-        `Scanned ${selection.files.length - skippedUnavailableFiles} files and ${parsedLines} lines`,
-        `skipped ${selection.skippedForAge} stale files`,
-        `${selection.skippedForLimit} files over the cap`,
-        `${collected.skippedUnavailablePaths + skippedUnavailableFiles} unavailable paths`,
-        `${skippedUnparseableLines} unparseable lines`,
-        `and ${toolInputMismatches} malformed tool inputs`,
-        `mode=${fullScan ? "full" : "recent"}`,
-      ].join("; "),
-    );
+    const summary = [
+      `Scanned ${selection.files.length - skippedUnavailableFiles} files and ${parsedLines} lines`,
+      `skipped ${selection.skippedForAge} stale files`,
+      `${selection.skippedForLimit} files over the cap`,
+      `${collected.skippedUnavailablePaths + skippedUnavailableFiles} unavailable paths`,
+      `${skippedUnparseableLines} unparseable lines`,
+      `and ${toolInputMismatches} malformed tool inputs`,
+      `mode=${fullScan ? "full" : "recent"}`,
+    ].join("; ");
+    process.stderr.write(`${summary}\n`);
 
     if (failures.length > 0) {
       const uniquePatterns = new Map<string, string>();
