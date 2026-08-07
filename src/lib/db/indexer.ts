@@ -13,7 +13,7 @@ import {
 } from "../schemas";
 import { decodeProjectDir, encodeProjectPath, resolveProjectPath } from "../memory";
 import { extractSessionTitle, readFirstUserMessage, resolveFirstPrompt } from "../sessions";
-import { extractTitle, extractTitleFromContent } from "../markdown-utils";
+import { extractTitle, extractTitleFromContent } from "../markdown-utils.server";
 import * as schema from "./schema";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;

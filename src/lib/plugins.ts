@@ -1,7 +1,7 @@
 import { readdir, readFile, lstat, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
-import { extractTitle } from "./markdown-utils.js";
+import { extractTitle } from "./markdown-utils.server.js";
 import { resolveProjectName } from "./memory.js";
 
 export interface FileTreeNode {

@@ -26,7 +26,7 @@ import {
   removePendingApprovalForSession,
 } from "./db/pending-approvals-cache";
 import * as dbSchema from "./db/schema";
-import { extractTitle } from "./markdown-utils";
+import { extractTitle } from "./markdown-utils.server";
 import { resolveProjectName } from "./memory";
 import {
   DOMAIN_EVENTS,

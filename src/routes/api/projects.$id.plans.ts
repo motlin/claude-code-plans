@@ -10,7 +10,7 @@ export const Route = createFileRoute("/api/projects/$id/plans")({
         const { stat } = await import("node:fs/promises");
         const { getDb } = await import("../../lib/db");
         const { getProjectDetailFromDb } = await import("../../lib/db/queries");
-        const { extractTitle } = await import("../../lib/markdown-utils");
+        const { extractTitle } = await import("../../lib/markdown-utils.server");
 
         const plansDir = join(homedir(), ".claude", "plans");
         const { index } = getDb();

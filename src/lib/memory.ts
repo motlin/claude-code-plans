@@ -1,7 +1,7 @@
 import { readdir, readFile, stat, writeFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
-import { extractTitle } from "./markdown-utils.js";
+import { extractTitle } from "./markdown-utils.server.js";
 
 interface MemoryEntry {
   filename: string;
