@@ -9,7 +9,7 @@ let boundHighlighter: HighlighterCore | null = null;
 
 function getPlainMarkdownIt(): MarkdownIt {
   if (plainInstance) return plainInstance;
-  plainInstance = MarkdownIt({ html: true, linkify: true });
+  plainInstance = MarkdownIt({ html: false, linkify: true });
   plainInstance.use(taskLists);
   plainInstance.use(footnote);
   return plainInstance;
@@ -21,7 +21,7 @@ function getHighlightedMarkdownIt(highlighter: HighlighterCore): MarkdownIt {
 
   const loadedLanguages = highlighter.getLoadedLanguages();
   highlightedInstance = MarkdownIt({
-    html: true,
+    html: false,
     linkify: true,
     highlight(code: string, lang: string): string {
       const language = lang || "text";

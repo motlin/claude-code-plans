@@ -37,6 +37,12 @@ describe("renderMarkdown (lazy Shiki)", () => {
     expect(html).toContain('href="https://example.com"');
   });
 
+  it("renders raw HTML as escaped text", async () => {
+    expect(await renderMarkdown("<img src=x onerror=alert(1)>")).toBe(
+      "<p>&lt;img src=x onerror=alert(1)&gt;</p>\n",
+    );
+  });
+
   it("caches highlighter across calls (second call resolves quickly)", async () => {
     await renderMarkdown("# First");
     const start = Date.now();

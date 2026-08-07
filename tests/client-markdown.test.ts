@@ -1,3 +1,4 @@
+import type { HighlighterCore } from "@shikijs/core";
 import {
   renderMarkdownToHtml,
   renderMarkdownWithHighlighting,
@@ -85,6 +86,12 @@ describe("renderMarkdownToHtml", () => {
     expect(result).toContain('href="https://example.com"');
   });
 
+  it("renders raw HTML as escaped text", () => {
+    expect(renderMarkdownToHtml("<img src=x onerror=alert(1)>")).toBe(
+      "<p>&lt;img src=x onerror=alert(1)&gt;</p>\n",
+    );
+  });
+
   it("returns the same instance on repeated calls (singleton)", () => {
     const result1 = renderMarkdownToHtml("# Test");
     const result2 = renderMarkdownToHtml("# Test");
@@ -110,5 +117,16 @@ describe("renderMarkdownWithHighlighting", () => {
     const result = renderMarkdownWithHighlighting(markdown, null);
     expect(result).toContain("<strong>bold</strong>");
     expect(result).toContain("<em>italic</em>");
+  });
+
+  it("renders raw HTML as escaped text with a highlighter", () => {
+    const highlighter = {
+      getLoadedLanguages: () => [],
+      codeToHtml: () => "",
+    } as unknown as HighlighterCore;
+
+    expect(renderMarkdownWithHighlighting("<img src=x onerror=alert(1)>", highlighter)).toBe(
+      "<p>&lt;img src=x onerror=alert(1)&gt;</p>\n",
+    );
   });
 });

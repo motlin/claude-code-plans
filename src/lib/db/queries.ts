@@ -543,7 +543,9 @@ export function searchSessionsFromDb(db: IndexDb, query: string): DbSearchResult
 
   return rows.map((row) => {
     const session = sessionMap.get(row.session_id);
-    const snippet = row.title_snippet || row.summary_snippet || row.prompt_snippet || "";
+    const snippet = sanitizeFtsSnippet(
+      row.title_snippet || row.summary_snippet || row.prompt_snippet || "",
+    );
     return {
       sessionId: row.session_id,
       title: row.title,
@@ -614,7 +616,7 @@ export function searchMessageContentDb(
     return {
       sessionId: row.session_id,
       title: session?.title ?? row.session_id,
-      snippet: row.snippet,
+      snippet: sanitizeFtsSnippet(row.snippet),
       projectId: session?.projectId ?? "",
       projectName: session ? (projectNames.get(session.projectId) ?? session.projectId) : "",
       mtime: session ? new Date(session.mtimeMs).toISOString() : "",

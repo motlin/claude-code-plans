@@ -1507,6 +1507,18 @@ describe("queries", () => {
     expect(results[0]!.sessionId).toBe("sess-2");
   });
 
+  it("escapes HTML in session search snippets while preserving highlights", () => {
+    db.index
+      .update(schema.sessions)
+      .set({ title: "login <script>alert(1)</script>" })
+      .where(eq(schema.sessions.id, "sess-1"))
+      .run();
+
+    const result = searchSessionsFromDb(db.index, "login")[0];
+    if (!result) throw new Error("Expected a session search result");
+    expect(result.snippet).toBe("<mark>login</mark> &lt;script&gt;alert(1)&lt;/script&gt;");
+  });
+
   it("getSessionProjectPath returns project path for a session", () => {
     const path = getSessionProjectPath(db.index, "sess-1");
     expect(path).toBe("/projects/alpha");
@@ -2232,6 +2244,19 @@ describe("message content FTS", () => {
     const results = searchMessageContentDb(db.index, "login");
     expect(results.map((r) => r.sessionId)).toStrictEqual(["fts-sess-1"]);
     expect(results[0]!.snippet).toContain("<mark>");
+  });
+
+  it("escapes HTML in message search snippets while preserving highlights", () => {
+    db.index.run(
+      sql`INSERT INTO message_content_fts(session_id, content)
+          VALUES (${"fts-xss"}, ${"login <script>alert(1)</script>"})`,
+    );
+
+    const result = searchMessageContentDb(db.index, "login").find(
+      (searchResult) => searchResult.sessionId === "fts-xss",
+    );
+    if (!result) throw new Error("Expected an unsafe message search result");
+    expect(result.snippet).toBe("<mark>login</mark> &lt;script&gt;alert(1)&lt;/script&gt;");
   });
 
   it("returns empty for non-matching query", () => {

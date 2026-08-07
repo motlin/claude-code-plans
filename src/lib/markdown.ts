@@ -72,7 +72,7 @@ async function getMd(): Promise<MarkdownItLike> {
 
     const loadedLanguages = highlighter.getLoadedLanguages();
     const md = MarkdownIt({
-      html: true,
+      html: false,
       linkify: true,
       typographer: true,
       highlight(code: string, lang: string): string {
