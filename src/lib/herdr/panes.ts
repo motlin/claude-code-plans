@@ -43,8 +43,10 @@ const HERDR_CAPABILITIES = {
 export type HerdrRequester = (request: object, timeoutMs?: number) => Promise<HerdrResult<unknown>>;
 export type IndexedSessionFilter = (sessionIds: string[]) => Set<string>;
 
-const filterIndexedSessions: IndexedSessionFilter = (sessionIds) =>
-  getIndexedSessionIds(getDb().index, sessionIds);
+const filterIndexedSessions: IndexedSessionFilter = (sessionIds) => {
+  if (sessionIds.length === 0) return new Set();
+  return getIndexedSessionIds(getDb().index, sessionIds);
+};
 
 const SNAPSHOT_REQUEST = {
   id: "ccp:snap",

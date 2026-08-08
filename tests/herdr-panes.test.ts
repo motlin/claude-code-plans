@@ -1,10 +1,16 @@
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it, vi } from "vite-plus/test";
 import type { ActiveSessionEntry } from "../src/lib/active-session-store";
 import {
   getHerdrPanes,
   type HerdrRequester,
   type IndexedSessionFilter,
 } from "../src/lib/herdr/panes";
+
+vi.mock("../src/lib/db", () => ({
+  getDb: () => {
+    throw new Error("Database should not be initialized");
+  },
+}));
 
 function entry(overrides: Partial<ActiveSessionEntry>): ActiveSessionEntry {
   return {
@@ -275,5 +281,38 @@ describe("getHerdrPanes", () => {
     await expect(
       Promise.all([getHerdrPanes([], unavailable), getHerdrPanes([], invalid)]),
     ).resolves.toStrictEqual([[], []]);
+  });
+
+  it("returns an empty table without initializing the database when panes lack session ids", async () => {
+    const request: HerdrRequester = async () => ({
+      ok: true,
+      value: {
+        type: "session_snapshot",
+        snapshot: {
+          version: "99.0.0-test",
+          protocol: 100,
+          workspaces: [],
+          tabs: [],
+          panes: [
+            {
+              pane_id: "w100:p100",
+              terminal_id: "terminal-test-100",
+              workspace_id: "w100",
+              tab_id: "w100:t100",
+              focused: true,
+              agent_status: "idle",
+              revision: 100,
+            },
+          ],
+          layouts: [],
+          agents: [],
+          focused_workspace_id: "w100",
+          focused_tab_id: "w100:t100",
+          focused_pane_id: "w100:p100",
+        },
+      },
+    });
+
+    await expect(getHerdrPanes([], request)).resolves.toStrictEqual([]);
   });
 });
