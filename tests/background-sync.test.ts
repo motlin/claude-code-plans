@@ -48,6 +48,26 @@ describe("runBackgroundSync", () => {
     ]);
   });
 
+  it("logs failures at warning level and reports them to the error hook", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const reportedErrors: unknown[] = [];
+    const failure = new Error("background sync failed");
+
+    runBackgroundSync("mark-reviewed", () => Promise.reject(failure), {
+      level: "warn",
+      onError: (error) => reportedErrors.push(error),
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect({
+      reportedErrors,
+      warnCalls: warnSpy.mock.calls.map((call) => [call[0], call[1]]),
+    }).toStrictEqual({
+      reportedErrors: [failure],
+      warnCalls: [["[session-viewed-state] background mark-reviewed failed", failure]],
+    });
+  });
+
   it("stays silent when the background call succeeds", async () => {
     const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
 

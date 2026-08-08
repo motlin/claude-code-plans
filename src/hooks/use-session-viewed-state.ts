@@ -17,6 +17,11 @@ interface VisibilityDwellDependencies {
   schedule: (callback: () => void, delayMs: number) => ReturnType<typeof setTimeout>;
 }
 
+interface BackgroundSyncOptions {
+  level?: "debug" | "warn";
+  onError?: (error: unknown) => void;
+}
+
 /**
  * Run a fire-and-forget presence sync without ever producing an unhandled
  * promise rejection.
@@ -27,13 +32,41 @@ interface VisibilityDwellDependencies {
  * connections on every restart), and letting those bubble turns ordinary
  * background churn into red console errors.
  */
-export function runBackgroundSync(operation: string, call: () => Promise<unknown>): void {
+export function runBackgroundSync(
+  operation: string,
+  call: () => Promise<unknown>,
+  { level = "debug", onError }: BackgroundSyncOptions = {},
+): void {
   // `.then(call)` also traps a synchronous throw from the factory itself.
   void Promise.resolve()
     .then(call)
     .catch((error: unknown) => {
-      console.debug(`[session-viewed-state] background ${operation} failed`, error);
+      console[level](`[session-viewed-state] background ${operation} failed`, error);
+      onError?.(error);
     });
+}
+
+export function createRetryableSync(
+  call: () => Promise<unknown>,
+  run: typeof runBackgroundSync = runBackgroundSync,
+): { attempt: (operation: string) => void; retryIfFailed: (operation: string) => void } {
+  let failed = false;
+
+  const attempt = (operation: string): void => {
+    failed = false;
+    run(operation, call, {
+      level: "warn",
+      onError: () => {
+        failed = true;
+      },
+    });
+  };
+
+  const retryIfFailed = (operation: string): void => {
+    if (failed) attempt(operation);
+  };
+
+  return { attempt, retryIfFailed };
 }
 
 export function createVisibilityDwellController(dependencies: VisibilityDwellDependencies): {

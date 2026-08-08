@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
-import { createVisibilityDwellController } from "../src/hooks/use-session-viewed-state";
+import {
+  createRetryableSync,
+  createVisibilityDwellController,
+} from "../src/hooks/use-session-viewed-state";
 import {
   __testing as visibilityTesting,
   isSessionVisible,
@@ -49,5 +52,63 @@ describe("session viewed visibility dwell", () => {
       atExpiry: isSessionVisible("session-test-100", 31_000),
       unrelatedSession: isSessionVisible("session-test-200", 31_000),
     }).toStrictEqual({ beforeExpiry: true, atExpiry: false, unrelatedSession: false });
+  });
+});
+
+describe("retryable session viewed sync", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("does not retry after a successful attempt", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const operations: string[] = [];
+    const sync = createRetryableSync(() => {
+      operations.push("call");
+      return Promise.resolve();
+    });
+
+    sync.attempt("mark-reviewed");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    sync.retryIfFailed("mark-reviewed-retry");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(operations).toStrictEqual(["call"]);
+  });
+
+  it("retries after a failed attempt", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const operations: string[] = [];
+    const failure = new Error("mark reviewed failed");
+    const sync = createRetryableSync(() => {
+      operations.push("call");
+      return operations.length === 1 ? Promise.reject(failure) : Promise.resolve();
+    });
+
+    sync.attempt("mark-reviewed");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    sync.retryIfFailed("mark-reviewed-retry");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(operations).toStrictEqual(["call", "call"]);
+  });
+
+  it("stops retrying after a retry succeeds", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const operations: string[] = [];
+    const failure = new Error("mark reviewed failed");
+    const sync = createRetryableSync(() => {
+      operations.push("call");
+      return operations.length === 1 ? Promise.reject(failure) : Promise.resolve();
+    });
+
+    sync.attempt("mark-reviewed");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    sync.retryIfFailed("mark-reviewed-retry");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    sync.retryIfFailed("mark-reviewed-retry");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(operations).toStrictEqual(["call", "call"]);
   });
 });
