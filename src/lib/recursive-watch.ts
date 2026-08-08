@@ -65,7 +65,7 @@ class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
   }
 
   private async start(roots: readonly string[]): Promise<void> {
-    const resolvedRoots = await resolveDirectoryRoots(roots, new Set(), "narrowest");
+    const resolvedRoots = await resolveDirectoryRoots(roots, new Set(), "widest");
     if (this.closed) return;
 
     if (this.polling) {

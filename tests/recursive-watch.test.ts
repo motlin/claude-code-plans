@@ -107,6 +107,7 @@ describe.sequential("createRecursiveWatcher", () => {
 
   it("attaches one native watcher when roots overlap", async () => {
     const nestedDirectory = join(fixtureDirectory, "nested");
+    const filePath = join(fixtureDirectory, "alice.md");
     await mkdir(nestedDirectory);
 
     watcher = createRecursiveWatcher([fixtureDirectory, nestedDirectory], () => false);
@@ -114,10 +115,14 @@ describe.sequential("createRecursiveWatcher", () => {
 
     expect(watchMock.mock.calls.map(([root, options]) => ({ root, options }))).toStrictEqual([
       {
-        root: nestedDirectory,
+        root: fixtureDirectory,
         options: { recursive: true, persistent: true },
       },
     ]);
+
+    const changed = waitForPath(watcher, "change", filePath);
+    await writeFile(filePath, "created outside nested root\n", "utf8");
+    expect(await changed).toBe(filePath);
   });
 
   it("stops emitting events after close", async () => {
