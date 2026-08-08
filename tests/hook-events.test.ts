@@ -185,6 +185,152 @@ describe("HookEventEnvelope", () => {
     },
   );
 
+  it.each([
+    {
+      tool_name: "Skill",
+      tool_input: { skill: "code:code-quality" },
+      tool_response: {
+        success: true,
+        commandName: "code:code-quality",
+        allowedTools: ["Read", "Edit"],
+        model: "inherit",
+      },
+    },
+    {
+      tool_name: "TaskCreate",
+      tool_input: { subject: "Inspect the example" },
+      tool_response: { task: { id: "100", subject: "Inspect the example" } },
+    },
+    {
+      tool_name: "TaskGet",
+      tool_input: { taskId: "100" },
+      tool_response: {
+        task: {
+          id: "100",
+          subject: "Inspect the example",
+          description: "Inspect the example implementation.",
+          status: "in_progress",
+          blocks: [],
+          blockedBy: [],
+        },
+      },
+    },
+    {
+      tool_name: "TaskList",
+      tool_input: {},
+      tool_response: {
+        tasks: [
+          {
+            id: "100",
+            subject: "Inspect the example",
+            status: "in_progress",
+            owner: "alice",
+            blockedBy: [],
+          },
+        ],
+      },
+    },
+    {
+      tool_name: "SendMessage",
+      tool_input: { to: "alice", message: "Inspect the example." },
+      tool_response: {
+        success: true,
+        message: "Message queued.",
+        routing: { sender: "team-lead", target: "alice" },
+        msg_id: "message-100",
+        pin: { id: "agent-100", name: "alice", ref: "abc123" },
+        resumedAgentId: "agent-100",
+      },
+    },
+    {
+      tool_name: "TaskStop",
+      tool_input: { task_id: "task-100" },
+      tool_response: {
+        message: "Successfully stopped task: task-100",
+        task_id: "task-100",
+        task_type: "local_bash",
+        command: "example-server",
+      },
+    },
+    {
+      tool_name: "TaskOutput",
+      tool_input: { task_id: "task-100", block: true },
+      tool_response: {
+        retrieval_status: "complete",
+        task: {
+          description: "Run the example server",
+          exitCode: 0,
+          isRawTranscript: false,
+          output: "Ready",
+          prompt: "Run the example server.",
+          result: "Ready",
+          status: "completed",
+          task_id: "task-100",
+          task_type: "local_bash",
+        },
+      },
+    },
+    {
+      tool_name: "WebSearch",
+      tool_input: { query: "example query" },
+      tool_response: {
+        query: "example query",
+        results: [{ tool_use_id: "search-100", content: [] }],
+        durationSeconds: 0.5,
+        searchCount: 1,
+      },
+    },
+    {
+      tool_name: "ExitPlanMode",
+      tool_input: { plan: "Example plan" },
+      tool_response: {
+        plan: "Example plan",
+        isAgent: false,
+        filePath: "/tmp/example-plan.md",
+        hasTaskTool: true,
+        planWasEdited: false,
+      },
+    },
+    {
+      tool_name: "WebFetch",
+      tool_input: { url: "https://example.com", prompt: "Summarize the example." },
+      tool_response: {
+        url: "https://example.com",
+        bytes: 100,
+        code: 200,
+        codeText: "OK",
+        result: "Example response",
+        durationMs: 25,
+      },
+    },
+    {
+      tool_name: "EnterWorktree",
+      tool_input: { name: "example" },
+      tool_response: {
+        worktreePath: "/tmp/example-worktree",
+        worktreeBranch: "worktree-example",
+        message: "Created worktree.",
+      },
+    },
+    {
+      tool_name: "EnterPlanMode",
+      tool_input: {},
+      tool_response: { message: "Entered plan mode." },
+    },
+  ])(
+    "parses PostToolUse for the authored $tool_name response schema",
+    ({ tool_name, tool_input, tool_response }) => {
+      const result = HookEventEnvelope.safeParse({
+        ...baseEnvelope,
+        hook_event_name: "PostToolUse",
+        tool_name,
+        tool_input,
+        tool_response,
+      });
+      expect(result.success).toBe(true);
+    },
+  );
+
   it.fails("parses PostToolUseFailure with interruption and duration metadata", () => {
     const result = HookEventEnvelope.safeParse({
       ...baseEnvelope,
@@ -198,7 +344,7 @@ describe("HookEventEnvelope", () => {
     expect(result.success).toBe(true);
   });
 
-  it.fails("parses PostToolUse for AskUserQuestion with its resumed response", () => {
+  it("parses PostToolUse for AskUserQuestion with its resumed response", () => {
     const questions = [
       {
         question: "Which example should run?",
@@ -224,7 +370,7 @@ describe("HookEventEnvelope", () => {
     expect(result.success).toBe(true);
   });
 
-  it.fails("parses PostToolUse for Write with an unmodified new file response", () => {
+  it("parses PostToolUse for Write with an unmodified new file response", () => {
     const result = HookEventEnvelope.safeParse({
       ...baseEnvelope,
       hook_event_name: "PostToolUse",
@@ -242,7 +388,7 @@ describe("HookEventEnvelope", () => {
     expect(result.success).toBe(true);
   });
 
-  it.fails("parses PostToolUse for a background Bash task response", () => {
+  it("parses PostToolUse for a background Bash task response", () => {
     const result = HookEventEnvelope.safeParse({
       ...baseEnvelope,
       hook_event_name: "PostToolUse",
@@ -261,7 +407,7 @@ describe("HookEventEnvelope", () => {
     expect(result.success).toBe(true);
   });
 
-  it.fails("parses PostToolUse for Bash with a bare-string response", () => {
+  it("parses PostToolUse for Bash with a bare-string response", () => {
     const result = HookEventEnvelope.safeParse({
       ...baseEnvelope,
       hook_event_name: "PostToolUse",

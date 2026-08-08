@@ -508,7 +508,7 @@ const StopSharedFields = {
 // `tests/fixtures/`.
 // ---------------------------------------------------------------------------
 
-const BashToolResponseSchema = z
+const BashToolResponseObjectSchema = z
   .object({
     stdout: z.string().optional(),
     stderr: z.string().optional(),
@@ -518,10 +518,17 @@ const BashToolResponseSchema = z
     returnCodeInterpretation: z.string().optional(),
     /** Set when the command is expected to succeed silently. */
     noOutputExpected: z.boolean().optional(),
+    gitOperation: JsonValueSchema.optional(),
+    backgroundTaskId: z.string().optional(),
+    backgroundCwdHint: z.string().optional(),
+    staleReadFileStateHint: z.string().optional(),
+    persistedOutputPath: z.string().optional(),
   })
   .strict();
 
-const ReadToolResponseSchema = z
+const BashToolResponseSchema = z.union([BashToolResponseObjectSchema, z.string()]);
+
+const ReadToolResponseObjectSchema = z
   .object({
     type: z.string().optional(),
     file: z
@@ -534,10 +541,13 @@ const ReadToolResponseSchema = z
       })
       .strict()
       .optional(),
+    source: z.string().optional(),
   })
   .strict();
 
-const EditToolResponseSchema = z
+const ReadToolResponseSchema = z.union([ReadToolResponseObjectSchema, z.string()]);
+
+const EditToolResponseObjectSchema = z
   .object({
     filePath: z.string().optional(),
     oldString: z.string().optional(),
@@ -546,8 +556,12 @@ const EditToolResponseSchema = z
     structuredPatch: z.array(JsonValueSchema).optional(),
     userModified: z.boolean().optional(),
     replaceAll: z.boolean().optional(),
+    memdirStamped: z.boolean().optional(),
+    staleRecovered: z.boolean().optional(),
   })
   .strict();
+
+const EditToolResponseSchema = z.union([EditToolResponseObjectSchema, z.string()]);
 
 const MultiEditToolResponseSchema = z
   .object({
@@ -559,14 +573,19 @@ const MultiEditToolResponseSchema = z
   })
   .strict();
 
-const WriteToolResponseSchema = z
+const WriteToolResponseObjectSchema = z
   .object({
     type: z.string().optional(),
     filePath: z.string().optional(),
     content: z.string().optional(),
     structuredPatch: z.array(JsonValueSchema).optional(),
+    originalFile: z.union([z.string(), z.null()]).optional(),
+    userModified: z.boolean().optional(),
+    memdirStamped: z.boolean().optional(),
   })
   .strict();
+
+const WriteToolResponseSchema = z.union([WriteToolResponseObjectSchema, z.string()]);
 
 const GlobToolResponseSchema = z
   .object({
@@ -605,17 +624,222 @@ const TodoWriteToolResponseSchema = z
   })
   .strict();
 
-const ExitPlanModeToolResponseSchema = z
+const ExitPlanModeToolResponseObjectSchema = z
   .object({
     plan: z.string().optional(),
     approved: z.boolean().optional(),
+    isAgent: z.boolean().optional(),
+    filePath: z.string().optional(),
+    hasTaskTool: z.boolean().optional(),
+    planWasEdited: z.boolean().optional(),
   })
   .strict();
 
-const AskUserQuestionToolResponseSchema = z
+const ExitPlanModeToolResponseSchema = z.union([ExitPlanModeToolResponseObjectSchema, z.string()]);
+
+const AgentTeamToolResponseSchema = z
   .object({
-    answers: z.array(JsonValueSchema).optional(),
+    status: z.string().optional(),
+    prompt: z.string().optional(),
+    teammate_id: z.string().optional(),
+    agent_id: z.string().optional(),
+    model: z.string().optional(),
+    name: z.string().optional(),
+    color: z.string().optional(),
+    tmux_session_name: z.string().optional(),
+    tmux_window_name: z.string().optional(),
+    tmux_pane_id: z.string().optional(),
+    team_name: z.string().optional(),
+    is_splitpane: z.boolean().optional(),
+  })
+  .strict();
+
+const AgentBackgroundToolResponseSchema = z
+  .object({
+    status: z.string().optional(),
+    prompt: z.string().optional(),
+    agentId: z.string().optional(),
+    agentType: z.string().optional(),
+    description: z.string().optional(),
+    isAsync: z.boolean().optional(),
+    resolvedModel: z.string().optional(),
+    outputFile: z.string().optional(),
+    canReadOutputFile: z.boolean().optional(),
+    content: z.array(JsonValueSchema).optional(),
+    toolStats: JsonValueSchema.optional(),
+    usage: JsonValueSchema.optional(),
+    totalDurationMs: z.number().optional(),
+    totalTokens: z.number().optional(),
+    totalToolUseCount: z.number().optional(),
+  })
+  .strict();
+
+const AgentToolResponseSchema = z.union([
+  AgentTeamToolResponseSchema,
+  AgentBackgroundToolResponseSchema,
+]);
+
+const AskUserQuestionToolResponseObjectSchema = z
+  .object({
+    questions: toolInputSchemas.AskUserQuestion.shape.questions,
+    answers: z.record(z.string(), z.string()).optional(),
+    annotations: z.record(z.string(), JsonValueSchema).optional(),
     answer: z.string().optional(),
+  })
+  .strict();
+
+const AskUserQuestionToolResponseSchema = z.union([
+  AskUserQuestionToolResponseObjectSchema,
+  z.string(),
+]);
+
+const ToolSearchToolResponseSchema = z
+  .object({
+    matches: z.array(z.string()).optional(),
+    query: z.string().optional(),
+    total_deferred_tools: z.number().optional(),
+  })
+  .strict();
+
+const SendMessageToolResponseObjectSchema = z
+  .object({
+    success: z.boolean().optional(),
+    message: z.string().optional(),
+    routing: JsonValueSchema.optional(),
+    msg_id: z.string().optional(),
+    pin: JsonValueSchema.optional(),
+    resumedAgentId: z.string().optional(),
+  })
+  .strict();
+
+const SendMessageToolResponseSchema = z.union([SendMessageToolResponseObjectSchema, z.string()]);
+
+const SkillToolResponseSchema = z
+  .object({
+    success: z.boolean().optional(),
+    commandName: z.string().optional(),
+    allowedTools: z.array(z.string()).optional(),
+    model: z.string().optional(),
+  })
+  .strict();
+
+const TaskUpdateToolResponseSchema = z
+  .object({
+    success: z.boolean().optional(),
+    taskId: z.string().optional(),
+    updatedFields: z.array(z.string()).optional(),
+    statusChange: z
+      .object({
+        from: z.string().optional(),
+        to: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+
+const TaskCreateToolResponseSchema = z
+  .object({
+    task: z
+      .object({
+        id: z.string().optional(),
+        subject: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+
+const TaskGetToolResponseObjectSchema = z
+  .object({
+    task: z
+      .object({
+        id: z.string().optional(),
+        subject: z.string().optional(),
+        description: z.string().optional(),
+        status: z.string().optional(),
+        blocks: z.array(z.string()).optional(),
+        blockedBy: z.array(z.string()).optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+
+const TaskGetToolResponseSchema = z.union([TaskGetToolResponseObjectSchema, z.string()]);
+
+const TaskListToolResponseSchema = z
+  .object({
+    tasks: z
+      .array(
+        z
+          .object({
+            id: z.string().optional(),
+            subject: z.string().optional(),
+            status: z.string().optional(),
+            owner: z.string().optional(),
+            blockedBy: z.array(z.string()).optional(),
+          })
+          .strict(),
+      )
+      .optional(),
+  })
+  .strict();
+
+const TaskStopToolResponseSchema = z
+  .object({
+    message: z.string().optional(),
+    task_id: z.string().optional(),
+    task_type: z.string().optional(),
+    command: z.string().optional(),
+  })
+  .strict();
+
+const TaskOutputToolResponseSchema = z
+  .object({
+    retrieval_status: z.string().optional(),
+    task: z
+      .object({
+        description: z.string().optional(),
+        exitCode: z.union([z.number(), z.null()]).optional(),
+        isRawTranscript: z.boolean().optional(),
+        output: z.string().optional(),
+        prompt: z.string().optional(),
+        result: z.string().optional(),
+        status: z.string().optional(),
+        task_id: z.string().optional(),
+        task_type: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+
+const WebSearchToolResponseSchema = z
+  .object({
+    query: z.string().optional(),
+    results: z.array(JsonValueSchema).optional(),
+    durationSeconds: z.number().optional(),
+    searchCount: z.number().optional(),
+  })
+  .strict();
+
+const EnterWorktreeToolResponseObjectSchema = z
+  .object({
+    worktreePath: z.string().optional(),
+    worktreeBranch: z.string().optional(),
+    message: z.string().optional(),
+  })
+  .strict();
+
+const EnterWorktreeToolResponseSchema = z.union([
+  EnterWorktreeToolResponseObjectSchema,
+  z.string(),
+]);
+
+const EnterPlanModeToolResponseSchema = z
+  .object({
+    message: z.string().optional(),
   })
   .strict();
 
@@ -638,13 +862,13 @@ const TOOL_VARIANTS = {
   Write: { input: toolInputSchemas.Write, response: WriteToolResponseSchema },
   Glob: { input: toolInputSchemas.Glob, response: GlobToolResponseSchema },
   Grep: { input: toolInputSchemas.Grep, response: GrepToolResponseSchema },
-  Agent: { input: toolInputSchemas.Agent, response: JsonValueSchema },
+  Agent: { input: toolInputSchemas.Agent, response: AgentToolResponseSchema },
   WebFetch: { input: toolInputSchemas.WebFetch, response: WebFetchToolResponseSchema },
-  Skill: { input: toolInputSchemas.Skill, response: JsonValueSchema },
-  TaskCreate: { input: toolInputSchemas.TaskCreate, response: JsonValueSchema },
-  TaskUpdate: { input: toolInputSchemas.TaskUpdate, response: JsonValueSchema },
-  TaskGet: { input: toolInputSchemas.TaskGet, response: JsonValueSchema },
-  TaskList: { input: toolInputSchemas.TaskList, response: JsonValueSchema },
+  Skill: { input: toolInputSchemas.Skill, response: SkillToolResponseSchema },
+  TaskCreate: { input: toolInputSchemas.TaskCreate, response: TaskCreateToolResponseSchema },
+  TaskUpdate: { input: toolInputSchemas.TaskUpdate, response: TaskUpdateToolResponseSchema },
+  TaskGet: { input: toolInputSchemas.TaskGet, response: TaskGetToolResponseSchema },
+  TaskList: { input: toolInputSchemas.TaskList, response: TaskListToolResponseSchema },
   AskUserQuestion: {
     input: toolInputSchemas.AskUserQuestion,
     response: AskUserQuestionToolResponseSchema,
@@ -653,26 +877,32 @@ const TOOL_VARIANTS = {
     input: toolInputSchemas.ExitPlanMode,
     response: ExitPlanModeToolResponseSchema,
   },
-  EnterPlanMode: { input: toolInputSchemas.EnterPlanMode, response: JsonValueSchema },
-  ToolSearch: { input: toolInputSchemas.ToolSearch, response: JsonValueSchema },
+  EnterPlanMode: {
+    input: toolInputSchemas.EnterPlanMode,
+    response: EnterPlanModeToolResponseSchema,
+  },
+  ToolSearch: { input: toolInputSchemas.ToolSearch, response: ToolSearchToolResponseSchema },
   TodoWrite: { input: toolInputSchemas.TodoWrite, response: TodoWriteToolResponseSchema },
-  WebSearch: { input: toolInputSchemas.WebSearch, response: JsonValueSchema },
-  SendMessage: { input: toolInputSchemas.SendMessage, response: JsonValueSchema },
-  TaskStop: { input: toolInputSchemas.TaskStop, response: JsonValueSchema },
-  TaskOutput: { input: toolInputSchemas.TaskOutput, response: JsonValueSchema },
-  CronCreate: { input: toolInputSchemas.CronCreate, response: JsonValueSchema },
-  CronDelete: { input: toolInputSchemas.CronDelete, response: JsonValueSchema },
-  CronList: { input: toolInputSchemas.CronList, response: JsonValueSchema },
-  TeamCreate: { input: toolInputSchemas.TeamCreate, response: JsonValueSchema },
-  TeamDelete: { input: toolInputSchemas.TeamDelete, response: JsonValueSchema },
-  ScheduleWakeup: { input: toolInputSchemas.ScheduleWakeup, response: JsonValueSchema },
-  EnterWorktree: { input: toolInputSchemas.EnterWorktree, response: JsonValueSchema },
-  ExitWorktree: { input: toolInputSchemas.ExitWorktree, response: JsonValueSchema },
-  LSP: { input: toolInputSchemas.LSP, response: JsonValueSchema },
-  NotebookEdit: { input: toolInputSchemas.NotebookEdit, response: JsonValueSchema },
-  NotebookRead: { input: toolInputSchemas.NotebookRead, response: JsonValueSchema },
+  WebSearch: { input: toolInputSchemas.WebSearch, response: WebSearchToolResponseSchema },
+  SendMessage: { input: toolInputSchemas.SendMessage, response: SendMessageToolResponseSchema },
+  TaskStop: { input: toolInputSchemas.TaskStop, response: TaskStopToolResponseSchema },
+  TaskOutput: { input: toolInputSchemas.TaskOutput, response: TaskOutputToolResponseSchema },
+  CronCreate: { input: toolInputSchemas.CronCreate, response: JsonValueSchema }, // no samples observed yet
+  CronDelete: { input: toolInputSchemas.CronDelete, response: JsonValueSchema }, // no samples observed yet
+  CronList: { input: toolInputSchemas.CronList, response: JsonValueSchema }, // no samples observed yet
+  TeamCreate: { input: toolInputSchemas.TeamCreate, response: JsonValueSchema }, // no samples observed yet
+  TeamDelete: { input: toolInputSchemas.TeamDelete, response: JsonValueSchema }, // no samples observed yet
+  ScheduleWakeup: { input: toolInputSchemas.ScheduleWakeup, response: JsonValueSchema }, // no samples observed yet
+  EnterWorktree: {
+    input: toolInputSchemas.EnterWorktree,
+    response: EnterWorktreeToolResponseSchema,
+  },
+  ExitWorktree: { input: toolInputSchemas.ExitWorktree, response: JsonValueSchema }, // no samples observed yet
+  LSP: { input: toolInputSchemas.LSP, response: JsonValueSchema }, // no samples observed yet
+  NotebookEdit: { input: toolInputSchemas.NotebookEdit, response: JsonValueSchema }, // no samples observed yet
+  NotebookRead: { input: toolInputSchemas.NotebookRead, response: JsonValueSchema }, // no samples observed yet
   ReportFindings: { input: toolInputSchemas.ReportFindings, response: JsonValueSchema },
-  LS: { input: toolInputSchemas.LS, response: JsonValueSchema },
+  LS: { input: toolInputSchemas.LS, response: JsonValueSchema }, // no samples observed yet
 } satisfies Record<keyof typeof toolInputSchemas, ToolVariant>;
 
 type ToolName = keyof typeof TOOL_VARIANTS;
