@@ -83,7 +83,11 @@ describe("HookEventEnvelope", () => {
       hook_event_name: "PostToolUse",
       tool_name: "Bash",
       tool_input: { command: "ls" },
-      tool_response: { stdout: "a.txt\nb.txt", stderr: "" },
+      tool_response: {
+        stdout: "a.txt\nb.txt",
+        stderr: "",
+        dangerouslyDisableSandbox: true,
+      },
     });
     expect(result.success).toBe(true);
   });
@@ -357,15 +361,18 @@ describe("HookEventEnvelope", () => {
       },
     ];
     const answers = { "Which example should run?": "Alice" };
+    const annotations = {
+      "Which example should run?": { preview: "Alice's example" },
+    };
     const result = HookEventEnvelope.safeParse({
       ...baseEnvelope,
       hook_event_name: "PostToolUse",
       tool_name: "AskUserQuestion",
-      tool_input: { questions, answers, annotations: {} },
+      tool_input: { questions, answers, annotations },
       tool_response: {
         questions,
         answers,
-        annotations: {},
+        annotations,
       },
     });
     expect(result.success).toBe(true);

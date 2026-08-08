@@ -518,6 +518,7 @@ const BashToolResponseObjectSchema = z
     returnCodeInterpretation: z.string().optional(),
     /** Set when the command is expected to succeed silently. */
     noOutputExpected: z.boolean().optional(),
+    dangerouslyDisableSandbox: z.boolean().optional(),
     gitOperation: JsonValueSchema.optional(),
     backgroundTaskId: z.string().optional(),
     backgroundCwdHint: z.string().optional(),

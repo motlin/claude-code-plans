@@ -195,6 +195,13 @@ const OptionSchema = z
   })
   .strict();
 
+const AskUserQuestionAnnotationSchema = z
+  .object({
+    notes: z.string().optional(),
+    preview: z.string().optional(),
+  })
+  .strict();
+
 const AskUserQuestionInputSchema = z
   .object({
     question: z.string().optional(),
@@ -216,7 +223,7 @@ const AskUserQuestionInputSchema = z
       ])
       .optional(),
     answers: z.record(z.string(), z.string()).optional(),
-    annotations: z.object({}).strict().optional(),
+    annotations: z.record(z.string(), AskUserQuestionAnnotationSchema).optional(),
     multiSelect: z.boolean().optional(),
     header: z.string().optional(),
   })
