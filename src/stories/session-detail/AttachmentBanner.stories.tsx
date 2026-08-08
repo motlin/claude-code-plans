@@ -1,9 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { AttachmentBanner } from "../../components/attachment-banner";
+import { plansQueryOptions, type PlanListItem } from "../../lib/api/plans";
+import { createStoryQueryClient, StoryWrapper, withRouterAndQuery } from "../sidebar/decorators";
 
 const meta = {
   title: "Session Detail/AttachmentBanner",
   component: AttachmentBanner,
+  decorators: [withRouterAndQuery],
 } satisfies Meta<typeof AttachmentBanner>;
 export default meta;
 
@@ -170,6 +173,52 @@ export const PlanMode: Story = {
       planFilePath: "/Users/craig/.claude/plans/2026-04-21-my-plan.md",
       planExists: true,
     }),
+  },
+};
+
+export const PlanModeWithExistingPlan: Story = {
+  args: {
+    attachmentJson: JSON.stringify({
+      type: "plan_mode",
+      planFilePath: "/Users/craig/.claude/plans/2026-04-21-existing-plan.md",
+    }),
+  },
+  render: (args) => {
+    const queryClient = createStoryQueryClient();
+    const plans: PlanListItem[] = [
+      {
+        filename: "2026-04-21-existing-plan.md",
+        title: "Existing plan",
+        mtime: "2026-04-21T10:00:00Z",
+        projects: [],
+      },
+    ];
+    queryClient.setQueryData(plansQueryOptions().queryKey, plans);
+
+    return (
+      <StoryWrapper queryClient={queryClient}>
+        <AttachmentBanner {...args} />
+      </StoryWrapper>
+    );
+  },
+};
+
+export const PlanModeWithMissingPlan: Story = {
+  args: {
+    attachmentJson: JSON.stringify({
+      type: "plan_mode",
+      planFilePath: "/Users/craig/.claude/plans/2026-04-21-missing-plan.md",
+    }),
+  },
+  render: (args) => {
+    const queryClient = createStoryQueryClient();
+    queryClient.setQueryData<PlanListItem[]>(plansQueryOptions().queryKey, []);
+
+    return (
+      <StoryWrapper queryClient={queryClient}>
+        <AttachmentBanner {...args} />
+      </StoryWrapper>
+    );
   },
 };
 
