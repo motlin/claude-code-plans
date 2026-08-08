@@ -40,8 +40,6 @@ import {
   Maximize2,
   Minimize2,
   Users,
-  Eye,
-  EyeOff,
 } from "lucide-react";
 import { DetailTopBar, pillStyles } from "../components/detail-top-bar";
 import { useSettings } from "../components/settings-provider";
@@ -61,6 +59,7 @@ import {
   useSessionLinkDisplay,
 } from "../components/links-drawer";
 import { useHasUnseenWork } from "../components/session-unread-control";
+import { SessionReviewedToggle } from "../components/session-reviewed-toggle";
 import { markSeen } from "../lib/unread-store";
 
 export const Route = createFileRoute("/session/$id")({
@@ -596,21 +595,14 @@ function SessionPage() {
             <CopyButton title="Copy session ID" text={params.id} icon={Copy} />
             <CopyButton title="Copy resume command" text={sessionCommands.resume} icon={Terminal} />
             <CopyButton title="Copy fork command" text={sessionCommands.fork} icon={GitFork} />
-            <button
-              type="button"
-              onClick={() => {
-                if (data.viewedState.viewedAnywhere) void viewedState.markUnreviewed();
-                else void viewedState.markReviewed();
-              }}
-              className="shrink-0 cursor-pointer text-text-500 transition-colors hover:text-text-000"
-              title={data.viewedState.viewedAnywhere ? "Mark unreviewed" : "Mark reviewed"}
-            >
-              {data.viewedState.viewedAnywhere ? (
-                <EyeOff className="h-3.5 w-3.5" />
-              ) : (
-                <Eye className="h-3.5 w-3.5" />
-              )}
-            </button>
+            <SessionReviewedToggle
+              reviewed={data.viewedState.viewedAnywhere}
+              onToggle={
+                data.viewedState.viewedAnywhere
+                  ? viewedState.markUnreviewed
+                  : viewedState.markReviewed
+              }
+            />
             <a
               href={`/api/raw?sessionId=${params.id}`}
               download
