@@ -121,6 +121,7 @@ export function useSessionViewedState(
         return { ...previous, viewedState };
       });
       void queryClient.invalidateQueries({ queryKey: ["herdr", "panes"] });
+      void queryClient.invalidateQueries({ queryKey: ["terminal", "placements"] });
       return viewedState;
     },
     [queryClient, sessionId],

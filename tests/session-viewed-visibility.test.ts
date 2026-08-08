@@ -9,6 +9,7 @@ import {
   createVisibilityDwellController,
   useSessionViewedState,
 } from "../src/hooks/use-session-viewed-state";
+import { sessionQueryKeys } from "../src/lib/api/sessions";
 import {
   __testing as visibilityTesting,
   isSessionVisible,
@@ -66,6 +67,53 @@ describe("session viewed visibility dwell", () => {
       atExpiry: isSessionVisible("session-test-100", 31_000),
       unrelatedSession: isSessionVisible("session-test-200", 31_000),
     }).toStrictEqual({ beforeExpiry: true, atExpiry: false, unrelatedSession: false });
+  });
+
+  it("updates session detail and invalidates placement queries after marking reviewed", async () => {
+    const viewedState = {
+      currentMessageIndex: 100,
+      lastViewedMessageIndex: 100,
+      reviewTargetMessageIndex: 100,
+      newMessageCount: 0,
+      viewedInCcp: true,
+      viewedInHerdr: false,
+      viewedAnywhere: true,
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json(viewedState)),
+    );
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(sessionQueryKeys.detail("session-test-100"), {
+      id: "session-test-100",
+      title: "Test session",
+    });
+    client.setQueryData(["herdr", "panes"], []);
+    client.setQueryData(["terminal", "placements"], []);
+    const wrapper = ({ children }: PropsWithChildren) =>
+      createElement(QueryClientProvider, { client }, children);
+    const { result } = renderHook(() => useSessionViewedState("session-test-100", 100), {
+      wrapper,
+    });
+
+    await act(async () => {
+      await result.current.markReviewed();
+    });
+
+    expect({
+      detail: client.getQueryData(sessionQueryKeys.detail("session-test-100")),
+      herdrPanesInvalidated: client.getQueryState(["herdr", "panes"])?.isInvalidated,
+      terminalPlacementsInvalidated: client.getQueryState(["terminal", "placements"])
+        ?.isInvalidated,
+    }).toStrictEqual({
+      detail: {
+        id: "session-test-100",
+        title: "Test session",
+        viewedState,
+      },
+      herdrPanesInvalidated: true,
+      terminalPlacementsInvalidated: true,
+    });
   });
 
   it("retries a failed dwell auto-mark on the visibility heartbeat", async () => {

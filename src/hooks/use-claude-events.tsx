@@ -808,11 +808,11 @@ function invalidateActiveSessions(queryClient: QueryClient): void {
   void queryClient.invalidateQueries({ queryKey: sessionQueryKeys.activeLists() });
 }
 
-function invalidateTmuxWindows(queryClient: QueryClient): void {
-  // The tmux window → session mapping changes exactly when session lifecycle
-  // events fire (start/end re-panes; a prompt re-stamps the pane after a
-  // resume). Piggyback on those events rather than adding a server broadcast.
+function invalidateTerminalPlacements(queryClient: QueryClient): void {
+  // Terminal pane mappings change exactly when session lifecycle events fire
+  // (start/end re-panes; a prompt re-stamps the pane after a resume).
   void queryClient.invalidateQueries({ queryKey: ["tmux", "windows"] });
+  void queryClient.invalidateQueries({ queryKey: ["terminal", "placements"] });
 }
 
 // ---------------------------------------------------------------------------
@@ -1092,9 +1092,8 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
               queryKey: sessionQueryKeys.transcript(sessionId),
             });
           }
-          // A prompt re-stamps the session's tmux pane (survives a resume into
-          // a new pane), so refresh the tmux window mapping.
-          invalidateTmuxWindows(queryClient);
+          // A prompt re-stamps the session's terminal pane after a resume.
+          invalidateTerminalPlacements(queryClient);
           // Surface the session on the /active page the moment a prompt is
           // submitted, before the JSONL flush and lifecycle events land.
           invalidateActiveSessions(queryClient);
@@ -1222,7 +1221,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
             void queryClient.invalidateQueries({ queryKey: sessionQueryKeys.all() });
           }
           invalidateActiveSessions(queryClient);
-          invalidateTmuxWindows(queryClient);
+          invalidateTerminalPlacements(queryClient);
           break;
         }
         case DOMAIN_EVENTS.SESSION_CWD_CHANGED: {
@@ -1327,6 +1326,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
 
     function handleHerdrEvent() {
       void queryClient.invalidateQueries({ queryKey: ["herdr", "panes"] });
+      void queryClient.invalidateQueries({ queryKey: ["terminal", "placements"] });
       void queryClient.invalidateQueries({ queryKey: sessionQueryKeys.all() });
     }
 
