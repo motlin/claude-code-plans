@@ -75,7 +75,7 @@ function isContainedPath(path: string, root: string): boolean {
   );
 }
 
-async function resolveDirectoryRoots(
+export async function resolveDirectoryRoots(
   roots: readonly string[],
   excludedResolvedRoots: ReadonlySet<string> = new Set(),
   overlapPreference: "widest" | "narrowest" = "widest",
