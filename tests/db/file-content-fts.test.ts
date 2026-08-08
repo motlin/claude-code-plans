@@ -58,6 +58,7 @@ describe("file content FTS", () => {
     fixtureDirectory = mkdtempSync(join(tmpdir(), "file-content-fts-test-"));
     allowedRoot = join(fixtureDirectory, "allowed");
     mkdirSync(allowedRoot);
+    mkdirSync(join(allowedRoot, ".git"));
     allowedRoot = realpathSync(allowedRoot);
     db = openTestDb();
   });
@@ -291,9 +292,12 @@ describe("file content FTS", () => {
     expect(await resolveConfiguredFileRoots(configPath)).toStrictEqual([]);
   });
 
-  it("uses the most specific indexed project paths when file_roots is unset", async () => {
+  it("uses the most specific repository roots and filters non-repositories", async () => {
     const nestedRoot = join(allowedRoot, "nested");
+    const nonRepositoryRoot = join(fixtureDirectory, "plain");
     mkdirSync(nestedRoot);
+    mkdirSync(join(nestedRoot, ".git"));
+    mkdirSync(nonRepositoryRoot);
     const configPath = join(fixtureDirectory, "config.json");
     db.index
       .insert(schema.projects)
@@ -301,6 +305,12 @@ describe("file content FTS", () => {
         { id: "allowed", name: "Allowed", projectPath: allowedRoot, updatedAt: 4_000 },
         { id: "duplicate", name: "Duplicate", projectPath: allowedRoot, updatedAt: 3_000 },
         { id: "nested", name: "Nested", projectPath: nestedRoot, updatedAt: 2_000 },
+        {
+          id: "plain",
+          name: "Plain",
+          projectPath: nonRepositoryRoot,
+          updatedAt: 1_000,
+        },
         { id: "unknown", name: "Unknown", projectPath: null, updatedAt: 1_000 },
       ])
       .run();
@@ -308,16 +318,16 @@ describe("file content FTS", () => {
     writeFileSync(configPath, JSON.stringify({ image_roots: [allowedRoot] }));
     const defaultRoots = await resolveFileSearchRoots(db.index, configPath);
 
-    writeFileSync(configPath, JSON.stringify({ file_roots: [] }));
-    const explicitlyEmptyRoots = await resolveFileSearchRoots(db.index, configPath);
+    writeFileSync(configPath, JSON.stringify({ file_roots: [allowedRoot, nonRepositoryRoot] }));
+    const explicitRoots = await resolveFileSearchRoots(db.index, configPath);
 
-    expect({ defaultRoots, explicitlyEmptyRoots }).toStrictEqual({
+    expect({ defaultRoots, explicitRoots }).toStrictEqual({
       defaultRoots: [nestedRoot],
-      explicitlyEmptyRoots: [],
+      explicitRoots: [allowedRoot],
     });
   });
 
-  it("excludes broad inferred roots while preserving explicit configuration", async () => {
+  it("excludes broad inferred roots and non-repository explicit roots", async () => {
     const configPath = join(fixtureDirectory, "config.json");
     const userHome = realpathSync(homedir());
     const filesystemRoot = parse(userHome).root;
@@ -338,11 +348,11 @@ describe("file content FTS", () => {
 
     expect({ inferredRoots, explicitRoots }).toStrictEqual({
       inferredRoots: [allowedRoot],
-      explicitRoots: [userHome],
+      explicitRoots: [],
     });
   });
 
-  it("excludes a system temporary directory unless it is explicitly configured", async () => {
+  it("excludes a non-repository system temporary directory", async () => {
     const configPath = join(fixtureDirectory, "config.json");
     const systemTemporaryRoot = realpathSync(tmpdir());
     db.index
@@ -362,7 +372,7 @@ describe("file content FTS", () => {
     const explicitRoots = await resolveFileSearchRoots(db.index, configPath);
 
     expect({ explicitRoots, inferredRoots }).toStrictEqual({
-      explicitRoots: [systemTemporaryRoot],
+      explicitRoots: [],
       inferredRoots: [],
     });
   });

@@ -6,6 +6,7 @@ import { z } from "zod";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { listFileSearchProjectPathsFromDb } from "./db/queries";
 import type * as schema from "./db/schema";
+import { isGitRepository } from "./git-tracked";
 
 /**
  * Directory holding this application's own configuration. Follows the XDG
@@ -133,7 +134,9 @@ export async function resolveFileSearchRoots(
   configPath: string = getConfigPath(),
 ): Promise<string[]> {
   const configuredRoots = readConfig(configPath)?.file_roots;
-  if (configuredRoots !== undefined) return resolveDirectoryRoots(configuredRoots);
+  if (configuredRoots !== undefined) {
+    return resolveDirectoryRoots(configuredRoots.filter(isGitRepository));
+  }
 
   const resolvedHome = await realpath(homedir());
   const filesystemRoot = parse(resolvedHome).root;
@@ -153,7 +156,7 @@ export async function resolveFileSearchRoots(
     }
   }
   return resolveDirectoryRoots(
-    listFileSearchProjectPathsFromDb(indexDatabase),
+    listFileSearchProjectPathsFromDb(indexDatabase).filter(isGitRepository),
     broadRoots,
     "narrowest",
   );

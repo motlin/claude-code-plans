@@ -66,6 +66,7 @@ describe("file content search API", () => {
     outsideRoot = join(fixtureDirectory, "outside");
     configPath = join(fixtureDirectory, "config.json");
     mkdirSync(allowedRoot);
+    mkdirSync(join(allowedRoot, ".git"));
     mkdirSync(outsideRoot);
     allowedRoot = realpathSync(allowedRoot);
     outsideRoot = realpathSync(outsideRoot);
