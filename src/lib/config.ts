@@ -292,7 +292,10 @@ export async function resolveFileSearchScope(
     return null;
   }
 
-  const configuredRoots = await resolveConfiguredFileRoots(configPath, defaultRoots);
+  const explicitRoots = readConfig(configPath)?.file_roots;
+  const configuredRoots = await resolveDirectoryRoots(
+    explicitRoots === undefined ? defaultRoots : explicitRoots.filter(isGitRepository),
+  );
   return configuredRoots.some((root) => isContainedPath(resolvedScope, root))
     ? resolvedScope
     : null;

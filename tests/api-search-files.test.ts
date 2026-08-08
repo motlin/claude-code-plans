@@ -268,6 +268,17 @@ describe("file content search API", () => {
     ).toStrictEqual([realpathSync(nestedRoot), null, null, null, null]);
   });
 
+  it("rejects configured search scopes that are not Git repositories", async () => {
+    writeFileSync(configPath, JSON.stringify({ file_roots: [allowedRoot, outsideRoot] }));
+
+    expect(
+      await Promise.all([
+        resolveFileSearchScope(allowedRoot, configPath),
+        resolveFileSearchScope(outsideRoot, configPath),
+      ]),
+    ).toStrictEqual([allowedRoot, null]);
+  });
+
   it("rejects missing parameters without invoking scope or database dependencies", async () => {
     const resolveScope = vi.fn<(scopeRoot: string) => Promise<string | null>>();
     const search =
