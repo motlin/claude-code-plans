@@ -378,6 +378,28 @@ describe("HookEventEnvelope", () => {
     expect(result.success).toBe(true);
   });
 
+  it("parses PostToolUse for AskUserQuestion with array-valued response answers", () => {
+    const payload = {
+      ...baseEnvelope,
+      hook_event_name: "PostToolUse" as const,
+      tool_name: "AskUserQuestion" as const,
+      tool_input: {},
+      tool_response: {
+        answers: [
+          {
+            question: "Which example should run?",
+            answer: "Alice",
+          },
+        ],
+      },
+    };
+
+    expect(HookEventEnvelope.safeParse(payload)).toStrictEqual({
+      success: true,
+      data: payload,
+    });
+  });
+
   it("parses PostToolUse for Write with an unmodified new file response", () => {
     const result = HookEventEnvelope.safeParse({
       ...baseEnvelope,

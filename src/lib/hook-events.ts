@@ -683,7 +683,7 @@ const AgentToolResponseSchema = z.union([
 const AskUserQuestionToolResponseObjectSchema = z
   .object({
     questions: toolInputSchemas.AskUserQuestion.shape.questions,
-    answers: toolInputSchemas.AskUserQuestion.shape.answers,
+    answers: z.union([z.array(JsonValueSchema), z.record(z.string(), z.string())]).optional(),
     annotations: toolInputSchemas.AskUserQuestion.shape.annotations,
     answer: z.string().optional(),
   })
