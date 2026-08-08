@@ -49,7 +49,7 @@ export function listTrackedFiles(root: string): Promise<string[]> {
   });
 }
 
-function gitIndexPath(root: string): string {
+export function gitIndexPath(root: string): string {
   const gitMarker = join(root, ".git");
   const markerStat = statSync(gitMarker);
   if (markerStat.isDirectory()) return join(gitMarker, "index");

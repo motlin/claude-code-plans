@@ -49,7 +49,7 @@ import {
 import { broadcastTyped, broadcast, addClient, removeClient } from "./sse-broadcast";
 import { recentlyBroadcast } from "./update-dedupe";
 import { createRecursiveWatcher, type RecursiveWatcher } from "./recursive-watch";
-import { TrackedFileIndex } from "./git-tracked";
+import { gitIndexPath, TrackedFileIndex } from "./git-tracked";
 
 /**
  * TTL covering the gap between the hook fast-path broadcast and this
@@ -77,6 +77,7 @@ let projectsDir = "";
 let plansDir = "";
 let statuslineDir = "";
 let fileContentRoots: string[] = [];
+let fileContentRootByGitIndexPath = new Map<string, string>();
 const trackedFileIndex = new TrackedFileIndex();
 interface JsonlThrottleState {
   timer?: ReturnType<typeof setTimeout>;
@@ -142,13 +143,8 @@ let ignoredDirPattern = buildIgnoredDirPattern(resolveIgnoredDirNames());
  */
 export function shouldIgnoreWatch(path: string, stats?: Stats): boolean {
   const normalizedPath = resolve(path);
-  if (
-    fileContentRoots.some(
-      (root) =>
-        normalizedPath === join(root, ".git") || normalizedPath === join(root, ".git", "index"),
-    )
-  ) {
-    return false;
+  for (const indexPath of fileContentRootByGitIndexPath.keys()) {
+    if (isPathInsideFileContentRoots(indexPath, [normalizedPath])) return false;
   }
   if (ignoredDirPattern.test(path)) return true;
   if (stats && !stats.isFile() && !stats.isDirectory()) return true;
@@ -472,6 +468,13 @@ function fileContentRootForPath(path: string): string | undefined {
   return fileContentRoots.find((root) => isPathInsideFileContentRoots(path, [root]));
 }
 
+function setFileContentRoots(roots: readonly string[]): void {
+  fileContentRoots = roots.map((root) => resolve(root));
+  fileContentRootByGitIndexPath = new Map(
+    fileContentRoots.map((root) => [resolve(gitIndexPath(root)), root]),
+  );
+}
+
 async function refreshTrackedFileRoot(db: IndexDb, root: string): Promise<void> {
   const previouslyTrackedPaths = trackedFileIndex.snapshot(root);
   const currentlyTrackedPaths = await trackedFileIndex.refresh(root);
@@ -488,15 +491,17 @@ async function refreshTrackedFileRoot(db: IndexDb, root: string): Promise<void> 
 
 async function handleFileChange(path: string): Promise<void> {
   await awaitInitialScan();
-  const fileContentRoot = fileContentRootForPath(path);
-  if (fileContentRoot && resolve(path) === join(fileContentRoot, ".git", "index")) {
+  const normalizedPath = resolve(path);
+  const gitIndexRoot = fileContentRootByGitIndexPath.get(normalizedPath);
+  if (gitIndexRoot) {
     try {
-      await refreshTrackedFileRoot(getDb().index, fileContentRoot);
+      await refreshTrackedFileRoot(getDb().index, gitIndexRoot);
     } catch {
       // A later watcher event or startup scan retries transient indexing failures.
     }
     return;
   }
+  const fileContentRoot = fileContentRootForPath(path);
   if (fileContentRoot && trackedFileIndex.has(fileContentRoot, path)) {
     try {
       await handleFileContentChange(getDb().index, path, fileContentRoots);
@@ -666,7 +671,7 @@ export async function createWatcher(
   if (projDir) projectsDir = projDir;
   if (plDir) plansDir = plDir;
   if (slDir) statuslineDir = slDir;
-  fileContentRoots = configuredFileContentRoots.map((root) => resolve(root));
+  setFileContentRoots(configuredFileContentRoots);
 
   await Promise.all(
     fileContentRoots.map(async (root) => {
@@ -683,11 +688,14 @@ export async function createWatcher(
 
   if (watcher) await watcher.close();
 
-  watcher = createRecursiveWatcher(
-    [...new Set([...dirs, ...fileContentRoots])],
-    shouldIgnoreWatch,
-    watcherPollingEnabled(),
-  );
+  const watchedRoots = [...new Set([...dirs, ...fileContentRoots])];
+  for (const indexPath of fileContentRootByGitIndexPath.keys()) {
+    const indexDirectory = dirname(indexPath);
+    if (!isPathInsideFileContentRoots(indexDirectory, watchedRoots))
+      watchedRoots.push(indexDirectory);
+  }
+
+  watcher = createRecursiveWatcher(watchedRoots, shouldIgnoreWatch, watcherPollingEnabled());
 
   watcher.on("add", handleFileChange);
   watcher.on("change", handleFileChange);
@@ -722,7 +730,7 @@ export const __testing = {
     ignoredDirPattern = buildIgnoredDirPattern(new Set(DEFAULT_IGNORED_DIR_NAMES));
   },
   setFileContentRoots(roots: string[]): void {
-    fileContentRoots = roots.map((root) => resolve(root));
+    setFileContentRoots(roots);
   },
   resetJsonlThrottle(): void {
     for (const state of jsonlThrottleByPath.values()) {

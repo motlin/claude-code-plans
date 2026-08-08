@@ -1,8 +1,17 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vite-plus/test";
 import { execFileSync } from "node:child_process";
 import { appendFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { createServer, type Server } from "node:net";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import {
   __testing,
@@ -80,6 +89,39 @@ function makeTask(overrides: Partial<TaskRow> = {}): TaskRow {
   };
 }
 
+function createLinkedWorktree(
+  repositoryDirectory: string,
+  fixtureDirectory: string,
+): { repositoryIndexPath: string; worktreeDirectory: string } {
+  writeFileSync(join(repositoryDirectory, "initial.txt"), "Initial tracked content.\n");
+  execFileSync("git", ["add", "initial.txt"], { cwd: repositoryDirectory, stdio: "pipe" });
+  execFileSync(
+    "git",
+    [
+      "-c",
+      "user.name=Alice",
+      "-c",
+      "user.email=alice@example.com",
+      "commit",
+      "--quiet",
+      "--message=Initial test commit",
+    ],
+    { cwd: repositoryDirectory, stdio: "pipe" },
+  );
+
+  const worktreeDirectory = join(fixtureDirectory, "worktree");
+  execFileSync("git", ["worktree", "add", "--quiet", "--detach", worktreeDirectory], {
+    cwd: repositoryDirectory,
+    stdio: "pipe",
+  });
+  const repositoryIndexPath = execFileSync(
+    "git",
+    ["rev-parse", "--path-format=absolute", "--git-path", "index"],
+    { cwd: worktreeDirectory, encoding: "utf8" },
+  ).trim();
+  return { repositoryIndexPath, worktreeDirectory };
+}
+
 describe("handleFileChange", () => {
   const testDir = join(tmpdir(), "watcher-debounce-test-" + process.pid);
 
@@ -125,6 +167,11 @@ describe("handleFileChange file content", () => {
   let fixtureDirectory: string;
   let repositoryDirectory: string;
 
+  beforeAll(() => {
+    db = openTestDb();
+    hmrPersist("appDb", () => db);
+  });
+
   beforeEach(() => {
     const fixtureRoot = join(process.cwd(), ".llm");
     mkdirSync(fixtureRoot, { recursive: true });
@@ -135,15 +182,16 @@ describe("handleFileChange file content", () => {
       cwd: repositoryDirectory,
       stdio: "pipe",
     });
-    db = openTestDb();
-    hmrPersist("appDb", () => db);
     __testing.setFileContentRoots([repositoryDirectory]);
   });
 
   afterEach(() => {
     __testing.setFileContentRoots([]);
-    db.close();
     rmSync(fixtureDirectory, { recursive: true, force: true });
+  });
+
+  afterAll(() => {
+    db.close();
   });
 
   it("indexes an untracked file only after git add changes the repository index", async () => {
@@ -176,6 +224,28 @@ describe("handleFileChange file content", () => {
       rowsAfterAdd: [{ path: filePath, content: "Alice's searchable file content.\n" }],
       rowsAfterRemoval: [],
       rowsBeforeAdd: [],
+    });
+  });
+
+  it("indexes a newly tracked file when a linked worktree index changes", async () => {
+    const { repositoryIndexPath, worktreeDirectory } = createLinkedWorktree(
+      repositoryDirectory,
+      fixtureDirectory,
+    );
+    __testing.setFileContentRoots([worktreeDirectory]);
+    const filePath = join(worktreeDirectory, "alice.txt");
+    writeFileSync(filePath, "Alice's linked worktree content.\n");
+
+    execFileSync("git", ["add", "alice.txt"], { cwd: worktreeDirectory, stdio: "pipe" });
+    await __testing.handleFileChange(repositoryIndexPath);
+    const rows = db.index.all(sql`SELECT path, content FROM file_content_fts ORDER BY path`);
+
+    expect({ ignored: shouldIgnoreWatch(repositoryIndexPath), rows }).toStrictEqual({
+      ignored: false,
+      rows: [
+        { path: filePath, content: "Alice's linked worktree content.\n" },
+        { path: join(worktreeDirectory, "initial.txt"), content: "Initial tracked content.\n" },
+      ],
     });
   });
 });
@@ -686,27 +756,40 @@ describe("shouldIgnoreWatch with configured ignored dirs", () => {
   });
 
   it("watches searchable file extensions only inside configured file roots", () => {
-    __testing.setFileContentRoots(["/tmp/test/allowed"]);
+    const fixtureDirectory = mkdtempSync(join(process.cwd(), "watcher-ignore-test-"));
+    const fileContentRoot = join(fixtureDirectory, "allowed");
+    mkdirSync(join(fileContentRoot, ".git"), { recursive: true });
+    __testing.setFileContentRoots([fileContentRoot]);
 
-    expect({
-      ignoredBinary: shouldIgnoreWatch("/tmp/test/allowed/diagram.png", fileStats),
-      ignoredInsideRoot: shouldIgnoreWatch("/tmp/test/allowed/alice.custom", fileStats),
-      ignoredOutsideRoot: shouldIgnoreWatch("/tmp/test/outside/alice.custom", fileStats),
-      ignoredSourceMap: shouldIgnoreWatch("/tmp/test/allowed/bundle.js.map", fileStats),
-      ignoredSubtree: shouldIgnoreWatch("/tmp/test/allowed/node_modules/alice.custom", fileStats),
-      ignoredGitConfig: shouldIgnoreWatch("/tmp/test/allowed/.git/config", fileStats),
-      watchedGitDirectory: shouldIgnoreWatch("/tmp/test/allowed/.git", directoryStats),
-      watchedGitIndex: shouldIgnoreWatch("/tmp/test/allowed/.git/index", fileStats),
-    }).toStrictEqual({
-      ignoredBinary: true,
-      ignoredInsideRoot: false,
-      ignoredOutsideRoot: true,
-      ignoredSourceMap: true,
-      ignoredSubtree: true,
-      ignoredGitConfig: true,
-      watchedGitDirectory: false,
-      watchedGitIndex: false,
-    });
+    try {
+      expect({
+        ignoredBinary: shouldIgnoreWatch(join(fileContentRoot, "diagram.png"), fileStats),
+        ignoredInsideRoot: shouldIgnoreWatch(join(fileContentRoot, "alice.custom"), fileStats),
+        ignoredOutsideRoot: shouldIgnoreWatch(
+          join(fixtureDirectory, "outside", "alice.custom"),
+          fileStats,
+        ),
+        ignoredSourceMap: shouldIgnoreWatch(join(fileContentRoot, "bundle.js.map"), fileStats),
+        ignoredSubtree: shouldIgnoreWatch(
+          join(fileContentRoot, "node_modules", "alice.custom"),
+          fileStats,
+        ),
+        ignoredGitConfig: shouldIgnoreWatch(join(fileContentRoot, ".git", "config"), fileStats),
+        watchedGitDirectory: shouldIgnoreWatch(join(fileContentRoot, ".git"), directoryStats),
+        watchedGitIndex: shouldIgnoreWatch(join(fileContentRoot, ".git", "index"), fileStats),
+      }).toStrictEqual({
+        ignoredBinary: true,
+        ignoredInsideRoot: false,
+        ignoredOutsideRoot: true,
+        ignoredSourceMap: true,
+        ignoredSubtree: true,
+        ignoredGitConfig: true,
+        watchedGitDirectory: false,
+        watchedGitIndex: false,
+      });
+    } finally {
+      rmSync(fixtureDirectory, { recursive: true, force: true });
+    }
   });
 });
 
@@ -750,8 +833,13 @@ describe("createWatcher integration", () => {
   });
 
   it("creates a recursive watcher with the existing filter and handlers", async () => {
-    const watchedDirectory = join(tmpdir(), "watcher-integration-test");
-    const fileContentRoot = join(tmpdir(), "watcher-file-content-test");
+    const fixtureRoot = join(process.cwd(), ".llm");
+    mkdirSync(fixtureRoot, { recursive: true });
+    const fixtureDirectory = mkdtempSync(join(fixtureRoot, "watcher-integration-test-"));
+    const watchedDirectory = join(fixtureDirectory, "watched");
+    const fileContentRoot = join(fixtureDirectory, "file-content");
+    mkdirSync(watchedDirectory);
+    mkdirSync(join(fileContentRoot, ".git"), { recursive: true });
     let recursiveWatcher: RecursiveWatcher;
     const once = vi.fn((_event: "ready", _listener: () => void) => recursiveWatcher);
     const on = vi.fn(
@@ -766,22 +854,67 @@ describe("createWatcher integration", () => {
       .spyOn(recursiveWatch, "createRecursiveWatcher")
       .mockReturnValue(recursiveWatcher);
 
-    const result = await createWatcher([watchedDirectory], undefined, undefined, undefined, [
-      fileContentRoot,
-    ]);
+    try {
+      const result = await createWatcher([watchedDirectory], undefined, undefined, undefined, [
+        fileContentRoot,
+      ]);
 
-    expect({
-      result,
-      createCalls: createRecursiveWatcher.mock.calls,
-      onCalls: on.mock.calls.map(([event, listener]) => [event, listener.name]),
-    }).toStrictEqual({
-      result: recursiveWatcher,
-      createCalls: [[[watchedDirectory, fileContentRoot], shouldIgnoreWatch, false]],
-      onCalls: [
-        ["add", "handleFileChange"],
-        ["change", "handleFileChange"],
-        ["unlink", "handleFileUnlink"],
-      ],
+      expect({
+        result,
+        createCalls: createRecursiveWatcher.mock.calls,
+        onCalls: on.mock.calls.map(([event, listener]) => [event, listener.name]),
+      }).toStrictEqual({
+        result: recursiveWatcher,
+        createCalls: [[[watchedDirectory, fileContentRoot], shouldIgnoreWatch, false]],
+        onCalls: [
+          ["add", "handleFileChange"],
+          ["change", "handleFileChange"],
+          ["unlink", "handleFileUnlink"],
+        ],
+      });
+    } finally {
+      await recursiveWatcher.close();
+      __testing.setFileContentRoots([]);
+      rmSync(fixtureDirectory, { recursive: true, force: true });
+    }
+  });
+
+  it("watches the real index directory for a linked worktree", async () => {
+    const fixtureRoot = join(process.cwd(), ".llm");
+    mkdirSync(fixtureRoot, { recursive: true });
+    const fixtureDirectory = mkdtempSync(join(fixtureRoot, "watcher-worktree-test-"));
+    const repositoryDirectory = join(fixtureDirectory, "repository");
+    const worktreeDirectory = join(fixtureDirectory, "worktree");
+    mkdirSync(repositoryDirectory);
+    execFileSync("git", ["init", "--quiet", "--initial-branch=main"], {
+      cwd: repositoryDirectory,
+      stdio: "pipe",
     });
+    const { repositoryIndexPath } = createLinkedWorktree(repositoryDirectory, fixtureDirectory);
+    let recursiveWatcher: RecursiveWatcher;
+    const once = vi.fn((_event: "ready", _listener: () => void) => recursiveWatcher);
+    const on = vi.fn(
+      (_event: "add" | "change" | "unlink", _listener: (path: string) => void) => recursiveWatcher,
+    );
+    recursiveWatcher = {
+      once,
+      on,
+      close: vi.fn(async () => undefined),
+    } as unknown as RecursiveWatcher;
+    const createRecursiveWatcher = vi
+      .spyOn(recursiveWatch, "createRecursiveWatcher")
+      .mockReturnValue(recursiveWatcher);
+
+    try {
+      await createWatcher([], undefined, undefined, undefined, [worktreeDirectory]);
+
+      expect(createRecursiveWatcher.mock.calls).toStrictEqual([
+        [[worktreeDirectory, dirname(repositoryIndexPath)], shouldIgnoreWatch, false],
+      ]);
+    } finally {
+      await recursiveWatcher.close();
+      __testing.setFileContentRoots([]);
+      rmSync(fixtureDirectory, { recursive: true, force: true });
+    }
   });
 });
