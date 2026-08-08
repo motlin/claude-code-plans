@@ -215,6 +215,8 @@ const AskUserQuestionInputSchema = z
         z.string(),
       ])
       .optional(),
+    answers: z.record(z.string(), z.string()).optional(),
+    annotations: z.object({}).strict().optional(),
     multiSelect: z.boolean().optional(),
     header: z.string().optional(),
   })

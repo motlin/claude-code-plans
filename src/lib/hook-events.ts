@@ -682,8 +682,8 @@ const AgentToolResponseSchema = z.union([
 const AskUserQuestionToolResponseObjectSchema = z
   .object({
     questions: toolInputSchemas.AskUserQuestion.shape.questions,
-    answers: z.record(z.string(), z.string()).optional(),
-    annotations: z.record(z.string(), JsonValueSchema).optional(),
+    answers: toolInputSchemas.AskUserQuestion.shape.answers,
+    annotations: toolInputSchemas.AskUserQuestion.shape.annotations,
     answer: z.string().optional(),
   })
   .strict();
@@ -1096,6 +1096,8 @@ function buildPostToolUseFailureEvent() {
       tool_name: toolVariant.shape.tool_name,
       tool_use_id: z.string().optional(),
       tool_input: toolVariant.shape.tool_input,
+      is_interrupt: z.boolean().optional(),
+      duration_ms: z.number().optional(),
       error: z.string().optional(),
       hook_specific_output: PostToolUseFailureHookSpecificOutput.optional(),
     }),
@@ -1109,6 +1111,7 @@ function buildPostToolUseFailureEvent() {
     tool_use_id: z.string().optional(),
     tool_input: JsonValueSchema,
     tool_response: JsonValueSchema.optional(),
+    is_interrupt: z.boolean().optional(),
     duration_ms: z.number().optional(),
     error: z.string().optional(),
     hook_specific_output: PostToolUseFailureHookSpecificOutput.optional(),

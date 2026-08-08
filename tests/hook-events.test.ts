@@ -331,7 +331,7 @@ describe("HookEventEnvelope", () => {
     },
   );
 
-  it.fails("parses PostToolUseFailure with interruption and duration metadata", () => {
+  it("parses PostToolUseFailure with interruption and duration metadata", () => {
     const result = HookEventEnvelope.safeParse({
       ...baseEnvelope,
       hook_event_name: "PostToolUseFailure",
@@ -356,15 +356,16 @@ describe("HookEventEnvelope", () => {
         multiSelect: false,
       },
     ];
+    const answers = { "Which example should run?": "Alice" };
     const result = HookEventEnvelope.safeParse({
       ...baseEnvelope,
       hook_event_name: "PostToolUse",
       tool_name: "AskUserQuestion",
-      tool_input: { questions },
+      tool_input: { questions, answers, annotations: {} },
       tool_response: {
         questions,
-        answers: { "Which example should run?": "Alice" },
-        annotations: { "Which example should run?": { notes: "Use the example answer." } },
+        answers,
+        annotations: {},
       },
     });
     expect(result.success).toBe(true);
