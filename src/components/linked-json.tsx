@@ -1,6 +1,8 @@
 import { Bot, ExternalLink, FileText, Hash } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { toMdSlug } from "../lib/md-slug";
+
 export interface LinkedJsonContext {
   sessionId: string;
   projectId?: string | undefined;
@@ -145,7 +147,11 @@ const MEMORY_MD_RE = /^memories\/(.+\.md)$/;
 
 const ICON_SIZE = "h-3 w-3 inline-block ml-0.5 align-text-bottom";
 
-function resolveLink(value: string, key: string, ctx: LinkedJsonContext): ResolvedLink | null {
+export function resolveLink(
+  value: string,
+  key: string,
+  ctx: LinkedJsonContext,
+): ResolvedLink | null {
   if (key === "agentId" || key === "agent_id") {
     const agentSessionId = value.startsWith("agent-") ? value : `agent-${value}`;
     return {
@@ -201,7 +207,7 @@ function resolveLink(value: string, key: string, ctx: LinkedJsonContext): Resolv
   if (planMatch?.[1]) {
     const filename = planMatch[1];
     return {
-      href: `/plan/${encodeURIComponent(filename)}`,
+      href: `/plan/${encodeURIComponent(toMdSlug(filename))}`,
       title: `Plan: ${filename}`,
       icon: <FileText className={ICON_SIZE} />,
     };
