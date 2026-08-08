@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { execFileSync } from "node:child_process";
 import { appendFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { createServer, type Server } from "node:net";
 import { join } from "node:path";
@@ -12,8 +13,9 @@ import {
 } from "../src/lib/watcher";
 import { openTestDb, type AppDb } from "../src/lib/db/connection";
 import * as schema from "../src/lib/db/schema";
+import { hmrPersist } from "../src/lib/hmr-persist";
 import { DOMAIN_EVENTS } from "../src/lib/hook-events";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { SessionEntry } from "../src/lib/sessions";
 import * as sessions from "../src/lib/sessions";
 import type { TaskRow } from "../src/lib/db/queries";
@@ -115,6 +117,66 @@ describe("handleFileChange", () => {
     expect(new Set(readNewJsonlLines.mock.calls.map(([path]) => path))).toStrictEqual(
       new Set([alicePath, bobPath]),
     );
+  });
+});
+
+describe("handleFileChange file content", () => {
+  let db: AppDb;
+  let fixtureDirectory: string;
+  let repositoryDirectory: string;
+
+  beforeEach(() => {
+    const fixtureRoot = join(process.cwd(), ".llm");
+    mkdirSync(fixtureRoot, { recursive: true });
+    fixtureDirectory = mkdtempSync(join(fixtureRoot, "watcher-file-content-test-"));
+    repositoryDirectory = join(fixtureDirectory, "repository");
+    mkdirSync(repositoryDirectory);
+    execFileSync("git", ["init", "--quiet", "--initial-branch=main"], {
+      cwd: repositoryDirectory,
+      stdio: "pipe",
+    });
+    db = openTestDb();
+    hmrPersist("appDb", () => db);
+    __testing.setFileContentRoots([repositoryDirectory]);
+  });
+
+  afterEach(() => {
+    __testing.setFileContentRoots([]);
+    db.close();
+    rmSync(fixtureDirectory, { recursive: true, force: true });
+  });
+
+  it("indexes an untracked file only after git add changes the repository index", async () => {
+    const filePath = join(repositoryDirectory, "alice.txt");
+    const gitIndexPath = join(repositoryDirectory, ".git", "index");
+    writeFileSync(filePath, "Alice's searchable file content.\n");
+
+    await __testing.handleFileChange(gitIndexPath);
+    await __testing.handleFileChange(filePath);
+    const rowsBeforeAdd = db.index.all(
+      sql`SELECT path, content FROM file_content_fts ORDER BY path`,
+    );
+
+    execFileSync("git", ["add", "alice.txt"], { cwd: repositoryDirectory, stdio: "pipe" });
+    await __testing.handleFileChange(gitIndexPath);
+    const rowsAfterAdd = db.index.all(
+      sql`SELECT path, content FROM file_content_fts ORDER BY path`,
+    );
+
+    execFileSync("git", ["rm", "--cached", "alice.txt"], {
+      cwd: repositoryDirectory,
+      stdio: "pipe",
+    });
+    await __testing.handleFileChange(gitIndexPath);
+    const rowsAfterRemoval = db.index.all(
+      sql`SELECT path, content FROM file_content_fts ORDER BY path`,
+    );
+
+    expect({ rowsAfterAdd, rowsAfterRemoval, rowsBeforeAdd }).toStrictEqual({
+      rowsAfterAdd: [{ path: filePath, content: "Alice's searchable file content.\n" }],
+      rowsAfterRemoval: [],
+      rowsBeforeAdd: [],
+    });
   });
 });
 
@@ -605,6 +667,10 @@ describe("shouldIgnoreWatch with configured ignored dirs", () => {
     isFile: () => true,
     isDirectory: () => false,
   } as import("node:fs").Stats;
+  const directoryStats = {
+    isFile: () => false,
+    isDirectory: () => true,
+  } as import("node:fs").Stats;
 
   afterEach(() => {
     __testing.resetIgnoredDirPattern();
@@ -638,12 +704,18 @@ describe("shouldIgnoreWatch with configured ignored dirs", () => {
       ignoredOutsideRoot: shouldIgnoreWatch("/tmp/test/outside/alice.custom", fileStats),
       ignoredSourceMap: shouldIgnoreWatch("/tmp/test/allowed/bundle.js.map", fileStats),
       ignoredSubtree: shouldIgnoreWatch("/tmp/test/allowed/node_modules/alice.custom", fileStats),
+      ignoredGitConfig: shouldIgnoreWatch("/tmp/test/allowed/.git/config", fileStats),
+      watchedGitDirectory: shouldIgnoreWatch("/tmp/test/allowed/.git", directoryStats),
+      watchedGitIndex: shouldIgnoreWatch("/tmp/test/allowed/.git/index", fileStats),
     }).toStrictEqual({
       ignoredBinary: true,
       ignoredInsideRoot: false,
       ignoredOutsideRoot: true,
       ignoredSourceMap: true,
       ignoredSubtree: true,
+      ignoredGitConfig: true,
+      watchedGitDirectory: false,
+      watchedGitIndex: false,
     });
   });
 });

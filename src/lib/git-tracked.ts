@@ -90,6 +90,10 @@ export class TrackedFileIndex {
     return this.entriesByRoot.get(resolve(root))?.files.has(resolve(path)) ?? false;
   }
 
+  snapshot(root: string): Set<string> {
+    return new Set(this.entriesByRoot.get(resolve(root))?.files ?? []);
+  }
+
   refresh(root: string): Promise<Set<string>> {
     const resolvedRoot = resolve(root);
     const existingTimer = this.refreshTimersByRoot.get(resolvedRoot);

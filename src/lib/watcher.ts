@@ -44,6 +44,7 @@ import { getConfigPath, readConfig } from "./config";
 import { broadcastTyped, broadcast, addClient, removeClient } from "./sse-broadcast";
 import { recentlyBroadcast } from "./update-dedupe";
 import { createRecursiveWatcher, type RecursiveWatcher } from "./recursive-watch";
+import { TrackedFileIndex } from "./git-tracked";
 
 /**
  * TTL covering the gap between the hook fast-path broadcast and this
@@ -71,6 +72,7 @@ let projectsDir = "";
 let plansDir = "";
 let statuslineDir = "";
 let fileContentRoots: string[] = [];
+const trackedFileIndex = new TrackedFileIndex();
 interface JsonlThrottleState {
   timer?: ReturnType<typeof setTimeout>;
   lastFired: number;
@@ -178,6 +180,15 @@ let ignoredDirPattern = buildIgnoredDirPattern(resolveIgnoredDirNames());
  * - Defense in depth: skips non-regular files (sockets, FIFOs).
  */
 export function shouldIgnoreWatch(path: string, stats?: Stats): boolean {
+  const normalizedPath = resolve(path);
+  if (
+    fileContentRoots.some(
+      (root) =>
+        normalizedPath === join(root, ".git") || normalizedPath === join(root, ".git", "index"),
+    )
+  ) {
+    return false;
+  }
   if (ignoredDirPattern.test(path)) return true;
   if (stats && !stats.isFile() && !stats.isDirectory()) return true;
   if (stats?.isFile() && isPathInsideFileContentRoots(path, fileContentRoots)) {
@@ -496,9 +507,36 @@ function handleFileContentUnlink(db: IndexDb, path: string): void {
   deleteFileContent(db, path);
 }
 
+function fileContentRootForPath(path: string): string | undefined {
+  return fileContentRoots.find((root) => isPathInsideFileContentRoots(path, [root]));
+}
+
+async function refreshTrackedFileRoot(db: IndexDb, root: string): Promise<void> {
+  const previouslyTrackedPaths = trackedFileIndex.snapshot(root);
+  const currentlyTrackedPaths = await trackedFileIndex.refresh(root);
+
+  for (const path of currentlyTrackedPaths) {
+    if (!previouslyTrackedPaths.has(path)) {
+      await handleFileContentChange(db, path, fileContentRoots);
+    }
+  }
+  for (const path of previouslyTrackedPaths) {
+    if (!currentlyTrackedPaths.has(path)) handleFileContentUnlink(db, path);
+  }
+}
+
 async function handleFileChange(path: string): Promise<void> {
   await awaitInitialScan();
-  if (isPathInsideFileContentRoots(path, fileContentRoots)) {
+  const fileContentRoot = fileContentRootForPath(path);
+  if (fileContentRoot && resolve(path) === join(fileContentRoot, ".git", "index")) {
+    try {
+      await refreshTrackedFileRoot(getDb().index, fileContentRoot);
+    } catch {
+      // A later watcher event or startup scan retries transient indexing failures.
+    }
+    return;
+  }
+  if (fileContentRoot && trackedFileIndex.has(fileContentRoot, path)) {
     try {
       await handleFileContentChange(getDb().index, path, fileContentRoots);
     } catch {
@@ -668,6 +706,16 @@ export async function createWatcher(
   if (plDir) plansDir = plDir;
   if (slDir) statuslineDir = slDir;
   fileContentRoots = configuredFileContentRoots.map((root) => resolve(root));
+
+  await Promise.all(
+    fileContentRoots.map(async (root) => {
+      try {
+        await trackedFileIndex.refresh(root);
+      } catch {
+        // A later Git index event or startup scan retries transient discovery failures.
+      }
+    }),
+  );
 
   // Re-resolve ignored directories at boot so a config.json edit or env var
   // set after this module first loaded still takes effect on server restart.
