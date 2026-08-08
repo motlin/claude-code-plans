@@ -285,9 +285,9 @@ export async function scanFileContentRoots(
       }
 
       const resolvedPath = resolve(trackedPath);
-      discoveredPaths.add(resolvedPath);
       try {
         const fileStat = await stat(trackedPath);
+        discoveredPaths.add(resolvedPath);
         const cachedMetadata = cachedMetadataByPath.get(resolvedPath);
         if (
           cachedMetadata?.mtimeMs === fileStat.mtimeMs &&

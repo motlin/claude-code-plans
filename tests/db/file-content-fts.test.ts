@@ -274,6 +274,21 @@ describe("file content FTS", () => {
     });
   });
 
+  it("evicts a tracked file deleted while the watcher was stopped", async () => {
+    const filePath = join(allowedRoot, "alice.txt");
+    writeFileSync(filePath, "Present during the first startup scan.\n");
+    git("add", "alice.txt");
+    await scanFileContentRoots(db.index, [allowedRoot], EMPTY_IGNORED_DIR_NAMES);
+    rmSync(filePath);
+
+    await scanFileContentRoots(db.index, [allowedRoot], EMPTY_IGNORED_DIR_NAMES);
+
+    expect({ indexedPaths: indexedPaths(), rows: rows() }).toStrictEqual({
+      indexedPaths: [],
+      rows: [],
+    });
+  });
+
   it("indexes only Git-tracked files during a startup scan", async () => {
     const trackedPath = join(allowedRoot, "alice.txt");
     const untrackedPath = join(allowedRoot, "bob.txt");
