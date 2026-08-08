@@ -57,15 +57,14 @@ check: install
 
 [private]
 _test *args:
-    {{ if ci != "" { "if test -x node_modules/.bin/playwright; then vp exec playwright install --with-deps chromium; fi" } else { "true" } }}
     vp run test:run {{args}}
 
 # Run tests
 test *args: install
     just _test {{args}}
 
-# Type-check the project (build first to generate routeTree.gen.ts)
-typecheck: install build
+# vp run typecheck
+typecheck: install
     vp run typecheck
 
 # Build the project
@@ -79,6 +78,7 @@ storybook *args: install
 # Regenerate documentation screenshots
 [group('docs')]
 screenshots *args: install
+    vp exec playwright install --with-deps chromium
     vp exec tsx scripts/screenshots.ts {{args}}
 
 # Build static Storybook site

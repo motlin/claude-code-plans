@@ -116,19 +116,6 @@ jobs:
       - run: just install
       - run: vp exec markdownlint-cli2
 
-  yamllint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: jdx/mise-action@f10502fc09dadecfefb962fff68ce77213930204 # v4.2.2
-        with:
-          cache: true
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-      - run: pre-commit run yamllint --all-files
-
   fallow:
     runs-on: ubuntu-latest
     steps:
@@ -149,7 +136,7 @@ jobs:
   all-checks:
     name: All checks
     if: ${{ !cancelled() }}
-    needs: [pre-commit, check, build, build-storybook, test, markdownlint, yamllint, fallow]
+    needs: [pre-commit, check, build, build-storybook, test, markdownlint, fallow]
     runs-on: ubuntu-latest
     steps:
       - uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe # v1.2.2
