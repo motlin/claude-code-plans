@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { sql } from "drizzle-orm";
-import type { ZodError } from "zod";
+import type { core, ZodError } from "zod";
 import { DOMAIN_EVENTS, HookEventEnvelope } from "../../lib/hook-events";
 import { broadcastTyped } from "../../lib/watcher";
 import {
@@ -70,13 +70,58 @@ function hashBody(text: string): string {
  * `expected !== 'undefined'` and `received === 'undefined'`; unknown keys come
  * through as `'unrecognized_keys'`.
  */
-function classifyZodIssues(error: ZodError): {
+function walkZodIssues(
+  issues: core.$ZodIssue[],
+  output: core.$ZodIssue[],
+  state: { matchedToolArm: boolean },
+): void {
+  for (const issue of issues) {
+    if (issue.code !== "invalid_union") {
+      output.push(issue);
+      continue;
+    }
+
+    const isToolUnion = issue.errors.some((arm) =>
+      arm.some((armIssue) => armIssue.path[0] === "tool_name"),
+    );
+    for (const arm of issue.errors) {
+      const discriminatorFailed = arm.some(
+        (armIssue) => armIssue.path[0] === "hook_event_name" || armIssue.path[0] === "tool_name",
+      );
+      if (discriminatorFailed) continue;
+      if (isToolUnion) state.matchedToolArm = true;
+      walkZodIssues(arm, output, state);
+    }
+  }
+}
+
+function extractUnmatchedToolName(body: unknown, matchedToolArm: boolean): string | undefined {
+  if (matchedToolArm || typeof body !== "object" || body === null) return undefined;
+  const record = body as Record<string, unknown>;
+  if (
+    record["hook_event_name"] !== "PreToolUse" &&
+    record["hook_event_name"] !== "PostToolUse" &&
+    record["hook_event_name"] !== "PostToolUseFailure"
+  ) {
+    return undefined;
+  }
+  return typeof record["tool_name"] === "string" ? record["tool_name"] : undefined;
+}
+
+export function classifyZodIssues(
+  error: ZodError,
+  body: unknown,
+): {
   missingFields: string[];
   unknownFields: string[];
 } {
   const missingFields = new Set<string>();
   const unknownFields = new Set<string>();
-  for (const issue of error.issues) {
+  const relevantIssues: core.$ZodIssue[] = [];
+  const state = { matchedToolArm: false };
+  walkZodIssues(error.issues, relevantIssues, state);
+
+  for (const issue of relevantIssues) {
     const path = issue.path.join(".");
     if (issue.code === "unrecognized_keys") {
       const keys = (issue as { keys?: unknown }).keys;
@@ -96,6 +141,8 @@ function classifyZodIssues(error: ZodError): {
       }
     }
   }
+  const unmatchedToolName = extractUnmatchedToolName(body, state.matchedToolArm);
+  if (unmatchedToolName) unknownFields.add(`tool_name: ${unmatchedToolName}`);
   return {
     missingFields: [...missingFields].sort(),
     unknownFields: [...unknownFields].sort(),
@@ -180,7 +227,7 @@ export const Route = createFileRoute("/api/hook")({
           const { index } = getDb();
           const hookEventName = extractHookEventName(body);
           const bodySha256 = hashBody(rawText);
-          const { missingFields, unknownFields } = classifyZodIssues(result.error);
+          const { missingFields, unknownFields } = classifyZodIssues(result.error, body);
           const issuesJson = JSON.stringify(result.error.issues);
 
           let count = 1;
