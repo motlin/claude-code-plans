@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
 import type { ActiveSessionEntry } from "../src/lib/active-session-store";
-import { getHerdrPanes, type HerdrRequester } from "../src/lib/herdr/panes";
+import {
+  getHerdrPanes,
+  type HerdrRequester,
+  type IndexedSessionFilter,
+} from "../src/lib/herdr/panes";
 
 function entry(overrides: Partial<ActiveSessionEntry>): ActiveSessionEntry {
   return {
@@ -23,6 +27,11 @@ function entry(overrides: Partial<ActiveSessionEntry>): ActiveSessionEntry {
 describe("getHerdrPanes", () => {
   it("normalizes panes and joins sessions through both identity sources", async () => {
     const requests: object[] = [];
+    const indexedSessionIdBatches: string[][] = [];
+    const filterIndexedSessions: IndexedSessionFilter = (sessionIds) => {
+      indexedSessionIdBatches.push(sessionIds);
+      return new Set(["session-test-500"]);
+    };
     const request: HerdrRequester = async (requestValue) => {
       requests.push(requestValue);
       return {
@@ -91,6 +100,70 @@ describe("getHerdrPanes", () => {
                 agent_status: "done",
                 revision: 400,
               },
+              {
+                pane_id: "w500:p500",
+                terminal_id: "terminal-test-500",
+                workspace_id: "w500",
+                tab_id: "w500:t500",
+                focused: false,
+                agent_status: "idle",
+                agent: "claude",
+                agent_session: {
+                  source: "test-source",
+                  agent: "claude",
+                  kind: "id",
+                  value: "session-test-500",
+                },
+                revision: 500,
+              },
+              {
+                pane_id: "w600:p600",
+                terminal_id: "terminal-test-600",
+                workspace_id: "w600",
+                tab_id: "w600:t600",
+                focused: false,
+                agent_status: "idle",
+                agent: "claude",
+                agent_session: {
+                  source: "test-source",
+                  agent: "claude",
+                  kind: "id",
+                  value: "session-test-600",
+                },
+                revision: 600,
+              },
+              {
+                pane_id: "w700:p700",
+                terminal_id: "terminal-test-700",
+                workspace_id: "w700",
+                tab_id: "w700:t700",
+                focused: false,
+                agent_status: "idle",
+                agent: "claude",
+                agent_session: {
+                  source: "test-source",
+                  agent: "claude",
+                  kind: "path",
+                  value: "/tmp/test/session-test-700.jsonl",
+                },
+                revision: 700,
+              },
+              {
+                pane_id: "w800:p800",
+                terminal_id: "terminal-test-800",
+                workspace_id: "w800",
+                tab_id: "w800:t800",
+                focused: false,
+                agent_status: "idle",
+                agent: "codex",
+                agent_session: {
+                  source: "test-source",
+                  agent: "codex",
+                  kind: "id",
+                  value: "session-test-800",
+                },
+                revision: 800,
+              },
             ],
             layouts: [],
             agents: [],
@@ -107,9 +180,12 @@ describe("getHerdrPanes", () => {
       entry({ sessionId: "session-test-300", herdrPane: "w300:p300" }),
     ];
 
-    const links = await getHerdrPanes(entries, request);
+    const links = await getHerdrPanes(entries, request, filterIndexedSessions);
 
-    expect({ links, requests }).toStrictEqual({
+    expect({ indexedSessionIdBatches, links, requests }).toStrictEqual({
+      indexedSessionIdBatches: [
+        ["session-test-100", "session-test-200", "session-test-500", "session-test-600"],
+      ],
       links: [
         {
           paneId: "w100:p100",
@@ -158,6 +234,22 @@ describe("getHerdrPanes", () => {
           revision: 300,
           sessionId: "session-test-300",
           via: "env",
+        },
+        {
+          paneId: "w500:p500",
+          terminalId: "terminal-test-500",
+          workspaceId: "w500",
+          tabId: "w500:t500",
+          focused: false,
+          cwd: null,
+          foregroundCwd: null,
+          agentStatus: "idle",
+          agent: "claude",
+          terminalTitle: null,
+          agentSessionId: "session-test-500",
+          revision: 500,
+          sessionId: "session-test-500",
+          via: "agent-session",
         },
       ],
       requests: [

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
 import type { ActiveSessionEntry } from "../src/lib/active-session-store";
-import { createHerdrPlacementProvider, type HerdrRequester } from "../src/lib/herdr/panes";
+import {
+  createHerdrPlacementProvider,
+  type HerdrRequester,
+  type IndexedSessionFilter,
+} from "../src/lib/herdr/panes";
 import {
   getTerminalPlacements,
   type TerminalPlacementProvider,
@@ -80,9 +84,11 @@ function tmuxProvider(sessionId = "session-test-100"): TerminalPlacementProvider
 }
 
 function herdrProvider(sessionId = "session-test-200"): TerminalPlacementProvider {
+  const filterIndexedSessions: IndexedSessionFilter = () => new Set([sessionId]);
   return createHerdrPlacementProvider(
     [entry({ sessionId, herdrPane: "w200:p200" })],
     herdrSnapshot(sessionId),
+    filterIndexedSessions,
   );
 }
 
@@ -143,6 +149,46 @@ describe("terminal placement providers", () => {
           revision: 200,
           sessionId: "session-test-200",
           via: "both",
+        },
+      },
+    ]);
+  });
+
+  it("reports an indexed herdr pane without an active-session store entry", async () => {
+    const provider = createHerdrPlacementProvider(
+      [],
+      herdrSnapshot("session-test-500"),
+      () => new Set(["session-test-500"]),
+    );
+
+    await expect(getTerminalPlacements([provider])).resolves.toStrictEqual([
+      {
+        provider: "herdr",
+        sessionId: "session-test-500",
+        displayName: "Bob test terminal",
+        active: true,
+        paneHandle: "w200:p200",
+        scopeHandle: "w200",
+        capabilities: {
+          supportsWrite: true,
+          supportsEvents: true,
+          supportsObserve: true,
+        },
+        herdrPane: {
+          paneId: "w200:p200",
+          terminalId: "terminal-test-200",
+          workspaceId: "w200",
+          tabId: "w200:t200",
+          focused: true,
+          cwd: "/tmp/test/bob-project",
+          foregroundCwd: "/tmp/test/bob-project/src",
+          agentStatus: "working",
+          agent: "claude",
+          terminalTitle: "Bob test terminal",
+          agentSessionId: "session-test-500",
+          revision: 200,
+          sessionId: "session-test-500",
+          via: "agent-session",
         },
       },
     ]);
@@ -236,11 +282,15 @@ describe("terminal placement providers", () => {
   });
 
   it("isolates an unavailable herdr response from the tmux provider", async () => {
-    const unavailableHerdr = createHerdrPlacementProvider([], async () => ({
-      ok: false,
-      code: "connect-failed",
-      message: "Fabricated unavailable herdr service",
-    }));
+    const unavailableHerdr = createHerdrPlacementProvider(
+      [],
+      async () => ({
+        ok: false,
+        code: "connect-failed",
+        message: "Fabricated unavailable herdr service",
+      }),
+      () => new Set(),
+    );
 
     const placements = await getTerminalPlacements([unavailableHerdr, tmuxProvider()]);
 
