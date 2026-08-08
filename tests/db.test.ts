@@ -17,6 +17,7 @@ import {
   listProjectsFromDb,
   listSessionGroupsFromDb,
   listRecentSessionsFromDb,
+  getIndexedSessionIds,
   getSessionTitlesByIds,
   listSessionsForProjectFromDb,
   getPlanLinksFromDb,
@@ -1486,6 +1487,17 @@ describe("queries", () => {
       "sess-1": "Fix login",
       "sess-3": "Deploy",
     });
+  });
+
+  it("getIndexedSessionIds returns only ids for indexed sessions", () => {
+    expect(getIndexedSessionIds(db.index, ["sess-1", "sess-3"])).toStrictEqual(
+      new Set(["sess-1", "sess-3"]),
+    );
+    expect(getIndexedSessionIds(db.index, ["missing-a", "missing-b"])).toStrictEqual(new Set());
+    expect(getIndexedSessionIds(db.index, ["sess-2", "missing"])).toStrictEqual(
+      new Set(["sess-2"]),
+    );
+    expect(getIndexedSessionIds(db.index, [])).toStrictEqual(new Set());
   });
 
   it("listSessionsForProjectFromDb returns sessions for a project", () => {

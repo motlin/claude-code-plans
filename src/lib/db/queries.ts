@@ -252,6 +252,17 @@ export function getSessionTitlesByIds(db: IndexDb, ids: string[]): Record<string
   return out;
 }
 
+/** Subset of `ids` that exist in the sessions table. */
+export function getIndexedSessionIds(db: IndexDb, ids: string[]): Set<string> {
+  if (ids.length === 0) return new Set();
+  const rows = db
+    .select({ id: schema.sessions.id })
+    .from(schema.sessions)
+    .where(inArray(schema.sessions.id, ids))
+    .all();
+  return new Set(rows.map((row) => row.id));
+}
+
 export function listSessionsForProjectFromDb(db: IndexDb, projectId: string): SessionEntry[] {
   const projectRow = db
     .select()
