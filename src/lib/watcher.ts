@@ -40,7 +40,12 @@ type IndexDb = BetterSQLite3Database<typeof dbSchema>;
 type BroadcastFn = (type: string, data: Record<string, unknown>) => void;
 import { toSessionSummaryPayload } from "./session-summary";
 import { hmrPersist, hmrDispose } from "./hmr-persist";
-import { getConfigPath, readConfig } from "./config";
+import {
+  DEFAULT_IGNORED_DIR_NAMES,
+  getConfigPath,
+  readConfig,
+  watcherPollingEnabled,
+} from "./config";
 import { broadcastTyped, broadcast, addClient, removeClient } from "./sse-broadcast";
 import { recentlyBroadcast } from "./update-dedupe";
 import { createRecursiveWatcher, type RecursiveWatcher } from "./recursive-watch";
@@ -97,38 +102,6 @@ const JSONL_THROTTLE_MS = 2000;
  * ever holding anything we render. `.git` also contains unwatchable Unix
  * sockets like `fsmonitor--daemon.ipc` that crash `fs.watch` outright.
  */
-const DEFAULT_IGNORED_DIR_NAMES = [
-  ".git",
-  "node_modules",
-  "dist",
-  "build",
-  "out",
-  "coverage",
-  ".next",
-  ".turbo",
-  ".vite",
-  ".cache",
-  ".llm",
-  ".venv",
-  "target",
-  // Plugin cache runtime markers: each installed plugin holds 600+ tiny
-  // PID-named files in its `.in_use/` dir. We never render them, but every
-  // dir chokidar descends into costs a kqueue handle, and the aggregate
-  // across ~30 plugins pushes the watcher over fs.watch's process limit.
-  ".in_use",
-];
-
-/** Environment variable holding a comma-separated list of ignored directories. */
-const IGNORED_DIRS_ENV_VAR = "CCP_WATCHER_IGNORED_DIRS";
-
-/** Parse a comma-separated list into trimmed, non-empty directory names. */
-function parseDirList(raw: string): string[] {
-  return raw
-    .split(",")
-    .map((d) => d.trim())
-    .filter((d) => d.length > 0);
-}
-
 /**
  * Read the `ignored_dirs` array from this app's own config file
  * (`~/.config/claude-code-plans/config.json`). Returns `null` when the file
@@ -141,21 +114,10 @@ function readIgnoredDirsFromConfig(configPath: string): string[] | null {
 }
 
 /**
- * Resolve the directory basenames to ignore, in priority order:
- *
- * 1. The `CCP_WATCHER_IGNORED_DIRS` environment variable (comma-separated).
- * 2. The `ignored_dirs` array in `~/.config/claude-code-plans/config.json`.
- * 3. The hard-coded `DEFAULT_IGNORED_DIR_NAMES`.
+ * Resolve the directory basenames to ignore from persisted application
+ * settings, falling back to the built-in defaults.
  */
-export function resolveIgnoredDirNames(
-  env: NodeJS.ProcessEnv = process.env,
-  configPath: string = getConfigPath(),
-): Set<string> {
-  const envValue = env[IGNORED_DIRS_ENV_VAR];
-  if (envValue) {
-    const dirs = parseDirList(envValue);
-    if (dirs.length > 0) return new Set(dirs);
-  }
+export function resolveIgnoredDirNames(configPath: string = getConfigPath()): Set<string> {
   const fromConfig = readIgnoredDirsFromConfig(configPath);
   if (fromConfig) return new Set(fromConfig);
   return new Set(DEFAULT_IGNORED_DIR_NAMES);
@@ -167,8 +129,7 @@ export function buildIgnoredDirPattern(dirNames: Set<string>): RegExp {
   return new RegExp(`(?:^|/)(?:${escaped.join("|")})(?:/|$)`);
 }
 
-// Resolved once at module load. The env var and config file are read at
-// startup; restart the server to pick up changes.
+// Resolved once at module load. Watcher policy changes require a server restart.
 let ignoredDirPattern = buildIgnoredDirPattern(resolveIgnoredDirNames());
 
 /**
@@ -717,13 +678,16 @@ export async function createWatcher(
     }),
   );
 
-  // Re-resolve ignored directories at boot so a config.json edit or env var
-  // set after this module first loaded still takes effect on server restart.
+  // Re-resolve ignored directories at boot so config edits take effect on restart.
   ignoredDirPattern = buildIgnoredDirPattern(resolveIgnoredDirNames());
 
   if (watcher) await watcher.close();
 
-  watcher = createRecursiveWatcher([...new Set([...dirs, ...fileContentRoots])], shouldIgnoreWatch);
+  watcher = createRecursiveWatcher(
+    [...new Set([...dirs, ...fileContentRoots])],
+    shouldIgnoreWatch,
+    watcherPollingEnabled(),
+  );
 
   watcher.on("add", handleFileChange);
   watcher.on("change", handleFileChange);

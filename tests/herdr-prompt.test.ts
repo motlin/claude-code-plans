@@ -1,4 +1,7 @@
 import { describe, expect, it, vi } from "vite-plus/test";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { ActiveSessionEntry } from "../src/lib/active-session-store";
 import type { HerdrResult } from "../src/lib/herdr/client";
 import {
@@ -102,13 +105,18 @@ function dependencies(overrides: Partial<HerdrPromptDependencies> = {}): HerdrPr
 }
 
 describe("herdr prompt write handler", () => {
-  it("defaults the write feature flag to off", () => {
-    expect([
-      herdrWritesEnabled({}),
-      herdrWritesEnabled({ CCP_ENABLE_HERDR_WRITES: "0" }),
-      herdrWritesEnabled({ CCP_ENABLE_HERDR_WRITES: "true" }),
-      herdrWritesEnabled({ CCP_ENABLE_HERDR_WRITES: "1" }),
-    ]).toStrictEqual([false, false, false, true]);
+  it("reads write enablement from persisted application config", () => {
+    const directory = mkdtempSync(join(tmpdir(), "herdr-writes-test-"));
+    const configPath = join(directory, "config.json");
+    try {
+      expect(herdrWritesEnabled(configPath)).toBe(false);
+      writeFileSync(configPath, JSON.stringify({ herdr_writes_enabled: true }));
+      expect(herdrWritesEnabled(configPath)).toBe(true);
+      writeFileSync(configPath, JSON.stringify({ herdr_writes_enabled: false }));
+      expect(herdrWritesEnabled(configPath)).toBe(false);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 
   it("returns before parsing or resolving when writes are disabled", async () => {

@@ -39,10 +39,8 @@ function waitForPath(
 describe.sequential("createRecursiveWatcher", () => {
   let fixtureDirectory: string;
   let watcher: RecursiveWatcher | undefined;
-  const originalPollingSetting = process.env["CCP_WATCHER_POLLING"];
 
   beforeEach(async () => {
-    delete process.env["CCP_WATCHER_POLLING"];
     fixtureDirectory = await mkdtemp(join(process.cwd(), ".llm/recursive-watch-test-"));
     watchMock.mockClear();
   });
@@ -51,11 +49,6 @@ describe.sequential("createRecursiveWatcher", () => {
     await watcher?.close();
     watcher = undefined;
     await rm(fixtureDirectory, { recursive: true, force: true });
-    if (originalPollingSetting === undefined) {
-      delete process.env["CCP_WATCHER_POLLING"];
-    } else {
-      process.env["CCP_WATCHER_POLLING"] = originalPollingSetting;
-    }
   });
 
   it("emits change for created and modified files, then unlink when deleted", async () => {
@@ -140,5 +133,12 @@ describe.sequential("createRecursiveWatcher", () => {
     await new Promise((resolve) => setTimeout(resolve, 300));
 
     expect(events).toStrictEqual([]);
+  });
+
+  it("uses polling only when the persisted watcher option requests it", async () => {
+    watcher = createRecursiveWatcher([fixtureDirectory], () => false, true);
+    await waitForReady(watcher);
+
+    expect(watchMock.mock.calls).toStrictEqual([]);
   });
 });

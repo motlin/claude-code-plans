@@ -4,6 +4,9 @@ import { herdrRequest, type HerdrResult } from "./client";
 import type { HerdrRequester } from "./panes";
 import { HerdrSessionSnapshotResultSchema } from "./schema";
 import { z } from "zod";
+import { herdrWritesEnabled } from "../config";
+
+export { herdrWritesEnabled } from "../config";
 
 const HerdrPromptSchema = z.object({
   sessionId: z.string(),
@@ -25,10 +28,6 @@ export interface HerdrPromptDependencies {
 
 function failure(code: string, message: string): HerdrResult<never> {
   return { ok: false, code, message };
-}
-
-export function herdrWritesEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env["CCP_ENABLE_HERDR_WRITES"] === "1";
 }
 
 /** Resolve the session through a fresh snapshot so moved panes cannot leave a stale target. */

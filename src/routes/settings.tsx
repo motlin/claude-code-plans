@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import {
   ArrowDown,
@@ -11,6 +12,7 @@ import {
   Link2,
   Palette,
   Plus,
+  ServerCog,
   Sparkles,
   Trash2,
   Webhook,
@@ -19,6 +21,10 @@ import {
 import { useSettings, type Settings, type Verbosity } from "../components/settings-provider";
 import type { CapabilityId } from "../lib/capabilities";
 import { useTheme } from "../components/theme-provider";
+import {
+  applicationSettingsQueryOptions,
+  useSaveApplicationSettings,
+} from "../lib/api/application-settings";
 
 export const Route = createFileRoute("/settings")({
   component: SettingsPage,
@@ -508,6 +514,135 @@ export function LinkCategoryRulesSection() {
   );
 }
 
+export function ApplicationConfigurationSection() {
+  const applicationSettings = useQuery(applicationSettingsQueryOptions);
+  const saveSettings = useSaveApplicationSettings();
+  const [ignoredDirectories, setIgnoredDirectories] = useState("");
+
+  useEffect(() => {
+    if (applicationSettings.data) {
+      setIgnoredDirectories(applicationSettings.data.ignoredDirs.join("\n"));
+    }
+  }, [applicationSettings.data]);
+
+  if (applicationSettings.isPending) {
+    return (
+      <Section icon={ServerCog} title="Application">
+        <p className="py-2 text-sm text-text-500">Loading server settings…</p>
+      </Section>
+    );
+  }
+
+  if (applicationSettings.isError) {
+    return (
+      <Section icon={ServerCog} title="Application">
+        <p className="py-2 text-sm text-red-600">Could not load server settings.</p>
+      </Section>
+    );
+  }
+
+  const settings = applicationSettings.data;
+  const save = (next: typeof settings) => saveSettings.mutate(next);
+
+  return (
+    <Section icon={ServerCog} title="Application">
+      <div className="flex items-center justify-between gap-4 py-2">
+        <div>
+          <div className="text-sm font-medium text-text-100">Live Herdr input</div>
+          <div className="text-xs text-text-500">
+            Allow prompts, interrupts, and state reports for live Herdr terminals. Applies
+            immediately without a server restart.
+          </div>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-label="Live Herdr input"
+          aria-checked={settings.herdrWritesEnabled}
+          disabled={saveSettings.isPending}
+          onClick={() => save({ ...settings, herdrWritesEnabled: !settings.herdrWritesEnabled })}
+          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
+            settings.herdrWritesEnabled ? "bg-accent-100" : "bg-bg-300"
+          } ${saveSettings.isPending ? "cursor-wait opacity-50" : "cursor-pointer"}`}
+        >
+          <span
+            className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${
+              settings.herdrWritesEnabled ? "translate-x-[18px]" : "translate-x-[3px]"
+            }`}
+          />
+        </button>
+      </div>
+
+      <div className="flex items-center justify-between gap-4 py-2">
+        <div>
+          <div className="text-sm font-medium text-text-100">Polling file watcher</div>
+          <div className="text-xs text-text-500">
+            Use polling when native recursive watching is unavailable. Restart the server after
+            changing this setting.
+          </div>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-label="Polling file watcher"
+          aria-checked={settings.watcherPolling}
+          disabled={saveSettings.isPending}
+          onClick={() => save({ ...settings, watcherPolling: !settings.watcherPolling })}
+          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
+            settings.watcherPolling ? "bg-accent-100" : "bg-bg-300"
+          } ${saveSettings.isPending ? "cursor-wait opacity-50" : "cursor-pointer"}`}
+        >
+          <span
+            className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${
+              settings.watcherPolling ? "translate-x-[18px]" : "translate-x-[3px]"
+            }`}
+          />
+        </button>
+      </div>
+
+      <div className="py-2">
+        <label
+          htmlFor="application-ignored-directories"
+          className="text-sm font-medium text-text-100"
+        >
+          Ignored watcher directories
+        </label>
+        <p className="text-xs text-text-500">
+          One directory basename per line. Restart the server after saving changes.
+        </p>
+        <textarea
+          id="application-ignored-directories"
+          aria-label="Ignored watcher directories"
+          value={ignoredDirectories}
+          onChange={(event) => setIgnoredDirectories(event.target.value)}
+          rows={6}
+          className="mt-2 w-full rounded-md border border-border-300/15 bg-bg-100 px-3 py-2 font-mono text-sm text-text-100"
+        />
+        <button
+          type="button"
+          disabled={saveSettings.isPending}
+          onClick={() =>
+            save({
+              ...settings,
+              ignoredDirs: ignoredDirectories
+                .split("\n")
+                .map((directory) => directory.trim())
+                .filter(Boolean),
+            })
+          }
+          className="mt-2 rounded-md border border-border-300/15 px-3 py-1.5 text-sm text-text-300 transition-colors hover:bg-bg-200 disabled:cursor-wait disabled:opacity-50"
+        >
+          Save ignored directories
+        </button>
+      </div>
+
+      {saveSettings.isError ? (
+        <p className="py-2 text-xs text-red-600">Could not save application settings.</p>
+      ) : null}
+    </Section>
+  );
+}
+
 function SettingsPage() {
   const { resetAll } = useSettings();
   const [confirmReset, setConfirmReset] = useState(false);
@@ -520,6 +655,7 @@ function SettingsPage() {
       </div>
 
       <div className="mt-6 space-y-6">
+        <ApplicationConfigurationSection />
         <VerbositySection />
 
         <Section icon={Eye} title="Session Display">

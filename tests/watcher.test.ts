@@ -597,57 +597,47 @@ describe("resolveIgnoredDirNames", () => {
   });
 
   it("uses the hard-coded defaults when neither env var nor config provides values", () => {
-    const resolved = resolveIgnoredDirNames({}, missingPath);
+    const resolved = resolveIgnoredDirNames(missingPath);
     expect([...resolved].sort()).toStrictEqual([...__testing.DEFAULT_IGNORED_DIR_NAMES].sort());
-  });
-
-  it("overrides defaults with the CCP_WATCHER_IGNORED_DIRS env var", () => {
-    const resolved = resolveIgnoredDirNames(
-      { CCP_WATCHER_IGNORED_DIRS: "foo, bar ,baz" },
-      missingPath,
-    );
-    expect([...resolved].sort()).toStrictEqual(["bar", "baz", "foo"]);
-  });
-
-  it("ignores an empty CCP_WATCHER_IGNORED_DIRS and falls back to config", () => {
-    writeFileSync(configPath, JSON.stringify({ ignored_dirs: ["vendor"] }));
-    const resolved = resolveIgnoredDirNames({ CCP_WATCHER_IGNORED_DIRS: "  ,  " }, configPath);
-    expect([...resolved]).toStrictEqual(["vendor"]);
   });
 
   it("overrides defaults with the ignored_dirs array in config.json", () => {
     writeFileSync(configPath, JSON.stringify({ ignored_dirs: ["vendor", "tmp"] }));
-    const resolved = resolveIgnoredDirNames({}, configPath);
+    const resolved = resolveIgnoredDirNames(configPath);
     expect([...resolved].sort()).toStrictEqual(["tmp", "vendor"]);
   });
 
-  it("prefers the env var over config.json when both are present", () => {
+  it("ignores the retired environment alias when config is present", () => {
     writeFileSync(configPath, JSON.stringify({ ignored_dirs: ["from-config"] }));
-    const resolved = resolveIgnoredDirNames({ CCP_WATCHER_IGNORED_DIRS: "from-env" }, configPath);
-    expect([...resolved]).toStrictEqual(["from-env"]);
+    process.env["CCP_WATCHER_IGNORED_DIRS"] = "from-env";
+    try {
+      expect([...resolveIgnoredDirNames(configPath)]).toStrictEqual(["from-config"]);
+    } finally {
+      delete process.env["CCP_WATCHER_IGNORED_DIRS"];
+    }
   });
 
   it("falls back to defaults when config.json is malformed JSON", () => {
     writeFileSync(configPath, "{ not json");
-    const resolved = resolveIgnoredDirNames({}, configPath);
+    const resolved = resolveIgnoredDirNames(configPath);
     expect([...resolved].sort()).toStrictEqual([...__testing.DEFAULT_IGNORED_DIR_NAMES].sort());
   });
 
   it("falls back to defaults when ignored_dirs is not an array", () => {
     writeFileSync(configPath, JSON.stringify({ ignored_dirs: "node_modules" }));
-    const resolved = resolveIgnoredDirNames({}, configPath);
+    const resolved = resolveIgnoredDirNames(configPath);
     expect([...resolved].sort()).toStrictEqual([...__testing.DEFAULT_IGNORED_DIR_NAMES].sort());
   });
 
   it("rejects the whole file and falls back to defaults when an array entry is invalid", () => {
     writeFileSync(configPath, JSON.stringify({ ignored_dirs: ["keep", "", "  ", 42, null] }));
-    const resolved = resolveIgnoredDirNames({}, configPath);
+    const resolved = resolveIgnoredDirNames(configPath);
     expect([...resolved].sort()).toStrictEqual([...__testing.DEFAULT_IGNORED_DIR_NAMES].sort());
   });
 
   it("rejects the whole file and falls back to defaults on unknown config keys", () => {
     writeFileSync(configPath, JSON.stringify({ ignored_dirs: ["vendor"], bogus: true }));
-    const resolved = resolveIgnoredDirNames({}, configPath);
+    const resolved = resolveIgnoredDirNames(configPath);
     expect([...resolved].sort()).toStrictEqual([...__testing.DEFAULT_IGNORED_DIR_NAMES].sort());
   });
 
@@ -786,7 +776,7 @@ describe("createWatcher integration", () => {
       onCalls: on.mock.calls.map(([event, listener]) => [event, listener.name]),
     }).toStrictEqual({
       result: recursiveWatcher,
-      createCalls: [[[watchedDirectory, fileContentRoot], shouldIgnoreWatch]],
+      createCalls: [[[watchedDirectory, fileContentRoot], shouldIgnoreWatch, false]],
       onCalls: [
         ["add", "handleFileChange"],
         ["change", "handleFileChange"],

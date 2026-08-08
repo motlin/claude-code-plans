@@ -32,6 +32,7 @@ class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
   constructor(
     roots: readonly string[],
     private readonly ignored: (path: string, stats?: Stats) => boolean,
+    private readonly polling: boolean,
   ) {
     super();
     void this.start(roots);
@@ -67,7 +68,7 @@ class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
     const resolvedRoots = await resolveDirectoryRoots(roots, new Set(), "narrowest");
     if (this.closed) return;
 
-    if (process.env["CCP_WATCHER_POLLING"] === "1") {
+    if (this.polling) {
       this.startPolling(resolvedRoots);
       return;
     }
@@ -166,6 +167,7 @@ class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
 export function createRecursiveWatcher(
   roots: readonly string[],
   ignored: (path: string, stats?: Stats) => boolean,
+  polling = false,
 ): RecursiveWatcher {
-  return new RecursiveWatcherImpl(roots, ignored);
+  return new RecursiveWatcherImpl(roots, ignored, polling);
 }

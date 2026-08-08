@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { realpath, stat } from "node:fs/promises";
+import { mkdir, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { isAbsolute, join, parse, relative, sep } from "node:path";
 import { z } from "zod";
@@ -31,16 +31,20 @@ export function getConfigPath(): string {
  * rejected outright rather than coerced — callers fall back to defaults when
  * the whole file fails to validate. New settings must be added here.
  */
-const AppConfigSchema = z
+export const AppConfigSchema = z
   .object({
     /** Directory basenames the file watcher never descends into. */
-    ignored_dirs: z.array(z.string().trim().min(1)).optional(),
+    ignored_dirs: z.array(z.string().trim().min(1)).min(1).optional(),
     /** Absolute directory paths whose image files may be served by the app. */
     image_roots: z.array(z.string()).optional(),
     /** Absolute directory paths whose text files are indexed for content search. */
     file_roots: z
       .array(z.string().trim().min(1).refine(isAbsolute, "File roots must be absolute paths"))
       .optional(),
+    /** Permit ccp to send input and state updates to live Herdr panes. */
+    herdr_writes_enabled: z.boolean().optional(),
+    /** Use chokidar polling instead of the platform's recursive filesystem watcher. */
+    watcher_polling: z.boolean().optional(),
   })
   .strict();
 
@@ -66,6 +70,118 @@ export function readConfig(configPath: string = getConfigPath()): AppConfig | nu
   }
   const result = AppConfigSchema.safeParse(parsed);
   return result.success ? result.data : null;
+}
+
+/**
+ * Application policy formerly exposed through `CCP_*` environment variables.
+ *
+ * `CCP_ENABLE_HERDR_WRITES`, `CCP_WATCHER_POLLING`, and
+ * `CCP_WATCHER_IGNORED_DIRS` are intentionally no longer read. The persisted
+ * application config is the sole authority, so a setting changed through the
+ * UI cannot be silently overridden by the server process environment.
+ */
+const DEFAULT_APPLICATION_POLICY = {
+  herdrWritesEnabled: false,
+  watcherPolling: false,
+} as const;
+
+export const DEFAULT_IGNORED_DIR_NAMES = [
+  ".git",
+  "node_modules",
+  "dist",
+  "build",
+  "out",
+  "coverage",
+  ".next",
+  ".turbo",
+  ".vite",
+  ".cache",
+  ".llm",
+  ".venv",
+  "target",
+  ".in_use",
+] as const;
+
+export const ApplicationSettingsSchema = z
+  .object({
+    herdrWritesEnabled: z.boolean(),
+    watcherPolling: z.boolean(),
+    ignoredDirs: z.array(z.string().trim().min(1)).min(1),
+  })
+  .strict();
+
+export type ApplicationSettings = z.infer<typeof ApplicationSettingsSchema>;
+
+export function readApplicationSettings(configPath: string = getConfigPath()): ApplicationSettings {
+  const config = readConfig(configPath);
+  return {
+    herdrWritesEnabled:
+      config?.herdr_writes_enabled ?? DEFAULT_APPLICATION_POLICY.herdrWritesEnabled,
+    watcherPolling: config?.watcher_polling ?? DEFAULT_APPLICATION_POLICY.watcherPolling,
+    ignoredDirs: config?.ignored_dirs ?? [...DEFAULT_IGNORED_DIR_NAMES],
+  };
+}
+
+export function herdrWritesEnabled(configPath: string = getConfigPath()): boolean {
+  return readApplicationSettings(configPath).herdrWritesEnabled;
+}
+
+export function watcherPollingEnabled(configPath: string = getConfigPath()): boolean {
+  return readApplicationSettings(configPath).watcherPolling;
+}
+
+/** Atomically replace a valid config while preserving all fields outside the patch. */
+async function updateConfig(
+  patch: Partial<AppConfig>,
+  configPath: string = getConfigPath(),
+): Promise<AppConfig> {
+  const parsedPatch = AppConfigSchema.partial().parse(patch);
+  const current = readConfig(configPath);
+  if (current === null) {
+    let existing = false;
+    try {
+      await stat(configPath);
+      existing = true;
+    } catch {
+      // A missing config starts from an empty, valid document.
+    }
+    if (existing) {
+      throw new Error("Cannot update an invalid application config");
+    }
+  }
+
+  const next = AppConfigSchema.parse({ ...current, ...parsedPatch });
+  const directory = parse(configPath).dir;
+  const temporaryPath = join(directory, `.config-${crypto.randomUUID()}.tmp`);
+  await mkdir(directory, { recursive: true, mode: 0o700 });
+  try {
+    await writeFile(temporaryPath, `${JSON.stringify(next, null, 2)}\n`, {
+      encoding: "utf8",
+      mode: 0o600,
+      flag: "wx",
+    });
+    await rename(temporaryPath, configPath);
+  } catch (error) {
+    await rm(temporaryPath, { force: true });
+    throw error;
+  }
+  return next;
+}
+
+export async function updateApplicationSettings(
+  settings: ApplicationSettings,
+  configPath: string = getConfigPath(),
+): Promise<ApplicationSettings> {
+  const parsed = ApplicationSettingsSchema.parse(settings);
+  await updateConfig(
+    {
+      herdr_writes_enabled: parsed.herdrWritesEnabled,
+      watcher_polling: parsed.watcherPolling,
+      ignored_dirs: parsed.ignoredDirs,
+    },
+    configPath,
+  );
+  return readApplicationSettings(configPath);
 }
 
 function isContainedPath(path: string, root: string): boolean {
