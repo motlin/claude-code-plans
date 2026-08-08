@@ -135,7 +135,7 @@
     "minOccurrences": 3
   },
   "rules": {
-    "unused-dependencies": "warn",
+    "unused-dependencies": "error",
     "unused-types": "error",
     "unused-exports": "error",
     "duplicate-exports": "error"
