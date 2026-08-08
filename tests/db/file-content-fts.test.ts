@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import {
   mkdirSync,
   mkdtempSync,
@@ -54,12 +55,16 @@ describe("file content FTS", () => {
     utimesSync(filePath, nextTime, nextTime);
   }
 
+  function git(...arguments_: string[]): void {
+    execFileSync("git", arguments_, { cwd: allowedRoot, stdio: "pipe" });
+  }
+
   beforeEach(() => {
     fixtureDirectory = mkdtempSync(join(tmpdir(), "file-content-fts-test-"));
     allowedRoot = join(fixtureDirectory, "allowed");
     mkdirSync(allowedRoot);
-    mkdirSync(join(allowedRoot, ".git"));
     allowedRoot = realpathSync(allowedRoot);
+    git("init", "--quiet", "--initial-branch=main");
     db = openTestDb();
   });
 
@@ -172,6 +177,7 @@ describe("file content FTS", () => {
     writeFileSync(sourceMapPath, JSON.stringify({ sourcesContent: ["generated duplicate"] }));
     writeFileSync(imagePath, Buffer.from([137, 80, 78, 71]));
     writeFileSync(sourcePath, "export const source = 'searchable';\n");
+    git("add", "--force", "bundle.js.map", "diagram.png", "source.ts");
 
     expect({
       image: await indexFileContent(db.index, imagePath, [allowedRoot]),
@@ -206,6 +212,7 @@ describe("file content FTS", () => {
   it("performs no SQLite write when a startup scan finds unchanged metadata", async () => {
     const filePath = join(allowedRoot, "alice.txt");
     writeFileSync(filePath, "Stable startup content for Alice.\n");
+    git("add", "alice.txt");
     await scanFileContentRoots(db.index, [allowedRoot], EMPTY_IGNORED_DIR_NAMES);
     const before = db.index.get(sql`SELECT total_changes() AS changes`) as { changes: number };
 
@@ -236,6 +243,7 @@ describe("file content FTS", () => {
     writeFileSync(ignoredPath, "export const bob = 'ignored';\n");
     writeFileSync(agentContextPath, "export const cached = 'ignored';\n");
     writeFileSync(outsidePath, "export const charlie = 'outside';\n");
+    git("add", "--force", "nested/alice.ts", "vendor/bob.ts", ".llm/cached-repository/cached.ts");
 
     expect(await indexFileContent(db.index, outsidePath, [allowedRoot])).toStrictEqual({
       changed: false,
@@ -254,8 +262,39 @@ describe("file content FTS", () => {
   it("reconciles files removed while the watcher was stopped", async () => {
     const filePath = join(allowedRoot, "alice.txt");
     writeFileSync(filePath, "Present during the first startup scan.\n");
+    git("add", "alice.txt");
     await scanFileContentRoots(db.index, [allowedRoot], EMPTY_IGNORED_DIR_NAMES);
-    rmSync(filePath);
+    git("rm", "--force", "--quiet", "alice.txt");
+
+    await scanFileContentRoots(db.index, [allowedRoot], EMPTY_IGNORED_DIR_NAMES);
+
+    expect({ indexedPaths: indexedPaths(), rows: rows() }).toStrictEqual({
+      indexedPaths: [],
+      rows: [],
+    });
+  });
+
+  it("indexes only Git-tracked files during a startup scan", async () => {
+    const trackedPath = join(allowedRoot, "alice.txt");
+    const untrackedPath = join(allowedRoot, "bob.txt");
+    writeFileSync(trackedPath, "Alice's tracked content.\n");
+    writeFileSync(untrackedPath, "Bob's untracked content.\n");
+    git("add", "alice.txt");
+
+    await scanFileContentRoots(db.index, [allowedRoot], EMPTY_IGNORED_DIR_NAMES);
+
+    expect({ indexedPaths: indexedPaths(), rows: rows() }).toStrictEqual({
+      indexedPaths: [`file-content:${trackedPath}`],
+      rows: [{ path: trackedPath, content: "Alice's tracked content.\n" }],
+    });
+  });
+
+  it("evicts indexed content for a file that becomes untracked", async () => {
+    const filePath = join(allowedRoot, "alice.txt");
+    writeFileSync(filePath, "Alice's formerly tracked content.\n");
+    git("add", "alice.txt");
+    await scanFileContentRoots(db.index, [allowedRoot], EMPTY_IGNORED_DIR_NAMES);
+    git("rm", "--cached", "--quiet", "alice.txt");
 
     await scanFileContentRoots(db.index, [allowedRoot], EMPTY_IGNORED_DIR_NAMES);
 

@@ -1,5 +1,5 @@
 import { lstat, readdir, readFile, realpath, stat } from "node:fs/promises";
-import { createReadStream, type Dirent } from "node:fs";
+import { createReadStream } from "node:fs";
 import { join, basename, extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { createInterface } from "node:readline";
 import { eq, notInArray, sql } from "drizzle-orm";
@@ -14,6 +14,7 @@ import {
 import { decodeProjectDir, encodeProjectPath, resolveProjectPath } from "../memory";
 import { extractSessionTitle, readFirstUserMessage, resolveFirstPrompt } from "../sessions";
 import { extractTitle, extractTitleFromContent } from "../markdown-utils.server";
+import { listTrackedFiles } from "../git-tracked";
 import * as schema from "./schema";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
@@ -264,42 +265,41 @@ export async function scanFileContentRoots(
     ]),
   );
 
-  const walk = async (directoryPath: string): Promise<void> => {
-    let entries: Dirent[];
-    try {
-      entries = await readdir(directoryPath, { withFileTypes: true });
-    } catch {
-      scanComplete = false;
-      return;
-    }
-
-    for (const entry of entries) {
-      const entryPath = join(directoryPath, entry.name);
-      if (entry.isDirectory()) {
-        if (!ignoredDirNames.has(entry.name)) await walk(entryPath);
-      } else if (entry.isFile() && isFileContentIndexable(entryPath)) {
-        const resolvedPath = resolve(entryPath);
-        discoveredPaths.add(resolvedPath);
-        try {
-          const fileStat = await stat(entryPath);
-          const cachedMetadata = cachedMetadataByPath.get(resolvedPath);
-          if (
-            cachedMetadata?.mtimeMs === fileStat.mtimeMs &&
-            cachedMetadata.sizeBytes === fileStat.size
-          ) {
-            continue;
-          }
-        } catch {
-          continue;
-        }
-        await indexFileContent(db, entryPath, roots);
-      }
-    }
-  };
-
   for (const root of roots) {
     if (pathContainsIgnoredDirectory(root, ignoredDirNames)) continue;
-    await walk(root);
+
+    let trackedPaths: string[];
+    try {
+      trackedPaths = await listTrackedFiles(root);
+    } catch {
+      scanComplete = false;
+      continue;
+    }
+
+    for (const trackedPath of trackedPaths) {
+      if (
+        pathContainsIgnoredDirectory(relative(root, trackedPath), ignoredDirNames) ||
+        !isFileContentIndexable(trackedPath)
+      ) {
+        continue;
+      }
+
+      const resolvedPath = resolve(trackedPath);
+      discoveredPaths.add(resolvedPath);
+      try {
+        const fileStat = await stat(trackedPath);
+        const cachedMetadata = cachedMetadataByPath.get(resolvedPath);
+        if (
+          cachedMetadata?.mtimeMs === fileStat.mtimeMs &&
+          cachedMetadata.sizeBytes === fileStat.size
+        ) {
+          continue;
+        }
+      } catch {
+        continue;
+      }
+      await indexFileContent(db, trackedPath, roots);
+    }
   }
 
   const indexedPaths = db.all(sql`SELECT path FROM file_content_fts`) as Array<{ path: string }>;
