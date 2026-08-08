@@ -20,8 +20,8 @@ export function isGitRepository(directory: string): boolean {
   const gitMarker = join(resolve(directory), ".git");
   if (!existsSync(gitMarker)) return false;
 
-  const markerStat = statSync(gitMarker);
-  return markerStat.isDirectory() || markerStat.isFile();
+  const markerStat = statSync(gitMarker, { throwIfNoEntry: false });
+  return markerStat !== undefined && (markerStat.isDirectory() || markerStat.isFile());
 }
 
 /** List the cached Git index entries as absolute paths. */

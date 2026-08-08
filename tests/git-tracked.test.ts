@@ -1,7 +1,21 @@
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+
+const filesystemState = vi.hoisted(() => ({
+  vanishedGitMarkers: new Set<string>(),
+}));
+
+vi.mock("node:fs", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs")>();
+  return {
+    ...actual,
+    existsSync: (path: import("node:fs").PathLike) =>
+      filesystemState.vanishedGitMarkers.has(path.toString()) || actual.existsSync(path),
+  };
+});
+
 import { isGitRepository, listTrackedFiles, TrackedFileIndex } from "../src/lib/git-tracked";
 
 describe("git-tracked", () => {
@@ -22,6 +36,7 @@ describe("git-tracked", () => {
   });
 
   afterEach(() => {
+    filesystemState.vanishedGitMarkers.clear();
     rmSync(fixtureDirectory, { recursive: true, force: true });
   });
 
@@ -44,6 +59,13 @@ describe("git-tracked", () => {
       worktree: true,
       plain: false,
     });
+  });
+
+  it("returns false when a repository vanishes during inspection", () => {
+    const vanishedDirectory = join(fixtureDirectory, "vanished");
+    filesystemState.vanishedGitMarkers.add(join(vanishedDirectory, ".git"));
+
+    expect(isGitRepository(vanishedDirectory)).toBe(false);
   });
 
   it("lists only tracked files as absolute paths", async () => {
