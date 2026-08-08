@@ -29,9 +29,9 @@ import {
 } from "lucide-react";
 import { assertNever } from "../lib/assert-never";
 import { AttachmentPayloadSchema, type AttachmentPayload } from "../lib/schemas";
-import { toMdSlug } from "../lib/md-slug";
 import { formatTimestamp, formatRelativeTimestamp } from "../lib/timestamp-format";
 import { DebugLink } from "./debug-link";
+import { PlanLink } from "./plan-link";
 
 /**
  * Renders a JSONL attachment record as a compact informational banner.
@@ -286,7 +286,6 @@ function AttachmentContent({
 
     // -- Plan/mode transitions --
     case "plan_mode": {
-      const planFilename = attachment.planFilePath?.split("/").pop();
       return (
         <Banner
           icon={<ClipboardList className="h-3.5 w-3.5" />}
@@ -294,16 +293,7 @@ function AttachmentContent({
           sessionId={sessionId}
           uuid={uuid}
         >
-          {planFilename && (
-            <Link
-              to="/plan/$filename"
-              params={{ filename: toMdSlug(planFilename) }}
-              className="font-mono text-accent-500 hover:underline truncate max-w-xs"
-              title={attachment.planFilePath}
-            >
-              {planFilename}
-            </Link>
-          )}
+          {attachment.planFilePath && <PlanLink planFilePath={attachment.planFilePath} />}
         </Banner>
       );
     }
@@ -317,7 +307,6 @@ function AttachmentContent({
         />
       );
     case "plan_mode_reentry": {
-      const planFilename = attachment.planFilePath?.split("/").pop();
       return (
         <Banner
           icon={<ClipboardList className="h-3.5 w-3.5" />}
@@ -325,21 +314,11 @@ function AttachmentContent({
           sessionId={sessionId}
           uuid={uuid}
         >
-          {planFilename && (
-            <Link
-              to="/plan/$filename"
-              params={{ filename: toMdSlug(planFilename) }}
-              className="font-mono text-accent-500 hover:underline truncate max-w-xs"
-              title={attachment.planFilePath}
-            >
-              {planFilename}
-            </Link>
-          )}
+          {attachment.planFilePath && <PlanLink planFilePath={attachment.planFilePath} />}
         </Banner>
       );
     }
     case "plan_file_reference": {
-      const planFilename = attachment.planFilePath?.split("/").pop();
       return (
         <Banner
           icon={<ClipboardList className="h-3.5 w-3.5" />}
@@ -347,16 +326,7 @@ function AttachmentContent({
           sessionId={sessionId}
           uuid={uuid}
         >
-          {planFilename && (
-            <Link
-              to="/plan/$filename"
-              params={{ filename: toMdSlug(planFilename) }}
-              className="font-mono text-accent-500 hover:underline truncate max-w-xs"
-              title={attachment.planFilePath}
-            >
-              {planFilename}
-            </Link>
-          )}
+          {attachment.planFilePath && <PlanLink planFilePath={attachment.planFilePath} />}
         </Banner>
       );
     }
