@@ -88,6 +88,190 @@ describe("HookEventEnvelope", () => {
     expect(result.success).toBe(true);
   });
 
+  it.fails("parses PostToolUse for an MCP tool with content-block response", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "PostToolUse",
+      tool_name: "mcp__claude-in-chrome__javascript_tool",
+      tool_input: {
+        action: "javascript_exec",
+        text: "return 1 + 1",
+        tabId: 100,
+      },
+      tool_response: [
+        { type: "text", text: "2" },
+        { type: "text", text: "Script finished successfully" },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it.fails.each([
+    {
+      tool_name: "Agent",
+      tool_input: {
+        description: "Inspect the example project",
+        prompt: "Report the example project's module structure.",
+        subagent_type: "Explore",
+      },
+      tool_response: {
+        isAsync: true,
+        status: "async_launched",
+        agentId: "agent-100",
+        description: "Inspect the example project",
+        resolvedModel: "claude-test-model",
+        prompt: "Report the example project's module structure.",
+        outputFile: "/tmp/test/agent-output.txt",
+        canReadOutputFile: true,
+      },
+    },
+    {
+      tool_name: "ToolSearch",
+      tool_input: { query: "select:Bash", max_results: 1 },
+      tool_response: {
+        matches: ["Bash"],
+        query: "select:Bash",
+        total_deferred_tools: 100,
+      },
+    },
+    {
+      tool_name: "TaskUpdate",
+      tool_input: { taskId: "100", subject: "Update the example task" },
+      tool_response: { success: true, taskId: "100", updatedFields: ["subject"] },
+    },
+    {
+      tool_name: "ReportFindings",
+      tool_input: {
+        level: "high",
+        findings: [
+          {
+            file: "src/example.ts",
+            line: 100,
+            summary: "The example branch drops a requested value.",
+            short_summary: "Example value is dropped",
+            failure_scenario: "Alice requests the example value and receives no result.",
+            category: "correctness",
+            verdict: "CONFIRMED",
+          },
+        ],
+      },
+      tool_response: {
+        count: 1,
+        level: "high",
+        findings: [
+          {
+            file: "src/example.ts",
+            line: 100,
+            summary: "The example branch drops a requested value.",
+            short_summary: "Example value is dropped",
+            failure_scenario: "Alice requests the example value and receives no result.",
+            category: "correctness",
+            verdict: "CONFIRMED",
+          },
+        ],
+      },
+    },
+  ])(
+    "parses PostToolUse for the observed $tool_name tool",
+    ({ tool_name, tool_input, tool_response }) => {
+      const result = HookEventEnvelope.safeParse({
+        ...baseEnvelope,
+        hook_event_name: "PostToolUse",
+        tool_name,
+        tool_input,
+        tool_response,
+      });
+      expect(result.success).toBe(true);
+    },
+  );
+
+  it.fails("parses PostToolUseFailure with interruption and duration metadata", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "PostToolUseFailure",
+      tool_name: "Bash",
+      tool_input: { command: "exit 1" },
+      error: "Command exited with status 1",
+      is_interrupt: false,
+      duration_ms: 120017,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it.fails("parses PostToolUse for AskUserQuestion with its resumed response", () => {
+    const questions = [
+      {
+        question: "Which example should run?",
+        header: "Example",
+        options: [
+          { label: "Alice", description: "Run Alice's example." },
+          { label: "Bob", description: "Run Bob's example." },
+        ],
+        multiSelect: false,
+      },
+    ];
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "PostToolUse",
+      tool_name: "AskUserQuestion",
+      tool_input: { questions },
+      tool_response: {
+        questions,
+        answers: { "Which example should run?": "Alice" },
+        annotations: { "Which example should run?": { notes: "Use the example answer." } },
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it.fails("parses PostToolUse for Write with an unmodified new file response", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "PostToolUse",
+      tool_name: "Write",
+      tool_input: { file_path: "/tmp/test/example.ts", content: "export const example = true;" },
+      tool_response: {
+        type: "create",
+        filePath: "/tmp/test/example.ts",
+        content: "export const example = true;",
+        structuredPatch: [],
+        originalFile: null,
+        userModified: false,
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it.fails("parses PostToolUse for a background Bash task response", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "PostToolUse",
+      tool_name: "Bash",
+      tool_input: { command: "example-server", run_in_background: true },
+      tool_response: {
+        stdout: "",
+        stderr: "",
+        interrupted: false,
+        isImage: false,
+        noOutputExpected: false,
+        backgroundTaskId: "task-100",
+        backgroundCwdHint: "/tmp/test",
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it.fails("parses PostToolUse for Bash with a bare-string response", () => {
+    const result = HookEventEnvelope.safeParse({
+      ...baseEnvelope,
+      hook_event_name: "PostToolUse",
+      tool_name: "Bash",
+      tool_input: { command: "echo example" },
+      tool_response: "Example command completed.",
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("rejects PostToolUse with unknown tool_name", () => {
     const result = HookEventEnvelope.safeParse({
       ...baseEnvelope,
