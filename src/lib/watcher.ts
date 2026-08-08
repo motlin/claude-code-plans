@@ -1,5 +1,3 @@
-import { watch } from "chokidar";
-import type { FSWatcher } from "chokidar";
 import type { Stats } from "node:fs";
 import { stat } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
@@ -45,6 +43,7 @@ import { hmrPersist, hmrDispose } from "./hmr-persist";
 import { getConfigPath, readConfig } from "./config";
 import { broadcastTyped, broadcast, addClient, removeClient } from "./sse-broadcast";
 import { recentlyBroadcast } from "./update-dedupe";
+import { createRecursiveWatcher, type RecursiveWatcher } from "./recursive-watch";
 
 /**
  * TTL covering the gap between the hook fast-path broadcast and this
@@ -67,7 +66,7 @@ const lastTasksByProject = hmrPersist(
 const jsonlOffsets = hmrPersist("jsonlOffsets", () => new Map<string, number>());
 
 // Transient state: module-scoped, recreated on HMR
-let watcher: FSWatcher | null = null;
+let watcher: RecursiveWatcher | null = null;
 let projectsDir = "";
 let plansDir = "";
 let statuslineDir = "";
@@ -664,7 +663,7 @@ export async function createWatcher(
   plDir?: string,
   slDir?: string,
   configuredFileContentRoots: string[] = [],
-): Promise<FSWatcher> {
+): Promise<RecursiveWatcher> {
   if (projDir) projectsDir = projDir;
   if (plDir) plansDir = plDir;
   if (slDir) statuslineDir = slDir;
@@ -676,19 +675,7 @@ export async function createWatcher(
 
   if (watcher) await watcher.close();
 
-  // `usePolling: true` because fs.watch on macOS uses kqueue, which caps out
-  // around ~5k watched directories per process; the plugin cache + projects
-  // together blow past that and emit EMFILE. Polling sidesteps the limit at
-  // the cost of one stat() per watched file per `interval`. The aggressive
-  // `ignored` predicate keeps the poll set small enough to be cheap.
-  watcher = watch([...new Set([...dirs, ...fileContentRoots])], {
-    ignoreInitial: true,
-    awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 200 },
-    usePolling: true,
-    interval: 1000,
-    binaryInterval: 2000,
-    ignored: shouldIgnoreWatch,
-  });
+  watcher = createRecursiveWatcher([...new Set([...dirs, ...fileContentRoots])], shouldIgnoreWatch);
 
   watcher.on("add", handleFileChange);
   watcher.on("change", handleFileChange);

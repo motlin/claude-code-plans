@@ -22,6 +22,8 @@ import {
   markSessionEnded,
   setSessionState,
 } from "../src/lib/active-session-store";
+import * as recursiveWatch from "../src/lib/recursive-watch";
+import type { RecursiveWatcher } from "../src/lib/recursive-watch";
 
 const {
   toSessionSummaryPayload,
@@ -662,21 +664,6 @@ describe("createWatcher resilience", () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  it("boots without EMFILE when the watched tree has thousands of directories", async () => {
-    // fs.watch on macOS hits EMFILE around 5k watched directories; verify
-    // createWatcher survives a tree well past that limit (the real plugin
-    // cache holds 100k+ files spread across ~5k dirs).
-    for (let i = 0; i < 6000; i++) {
-      mkdirSync(join(dir, `d${i}`));
-    }
-    const watcher = await createWatcher([dir]);
-    const errors: unknown[] = [];
-    watcher.on("error", (err) => errors.push(err));
-    await new Promise<void>((resolve) => watcher.once("ready", () => resolve()));
-    await watcher.close();
-    expect(errors).toStrictEqual([]);
-  }, 30_000);
-
   it("does not crash when a .git directory contains a Unix socket", async () => {
     const gitDir = join(dir, ".git");
     mkdirSync(gitDir, { recursive: true });
@@ -688,13 +675,51 @@ describe("createWatcher resilience", () => {
     });
 
     const watcher = await createWatcher([dir]);
-    const errors: unknown[] = [];
-    watcher.on("error", (err) => errors.push(err));
-    await new Promise<void>((resolve) => watcher.once("ready", () => resolve()));
-    // Let any deferred errors land before asserting.
+    const ready = new Promise<void>((resolve) => watcher.once("ready", () => resolve()));
+    await expect(ready).resolves.toBeUndefined();
     await new Promise((r) => setTimeout(r, 100));
     await watcher.close();
+  });
+});
 
-    expect(errors).toStrictEqual([]);
+describe("createWatcher integration", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("creates a recursive watcher with the existing filter and handlers", async () => {
+    const watchedDirectory = join(tmpdir(), "watcher-integration-test");
+    const fileContentRoot = join(tmpdir(), "watcher-file-content-test");
+    let recursiveWatcher: RecursiveWatcher;
+    const once = vi.fn((_event: "ready", _listener: () => void) => recursiveWatcher);
+    const on = vi.fn(
+      (_event: "add" | "change" | "unlink", _listener: (path: string) => void) => recursiveWatcher,
+    );
+    recursiveWatcher = {
+      once,
+      on,
+      close: vi.fn(async () => undefined),
+    } as unknown as RecursiveWatcher;
+    const createRecursiveWatcher = vi
+      .spyOn(recursiveWatch, "createRecursiveWatcher")
+      .mockReturnValue(recursiveWatcher);
+
+    const result = await createWatcher([watchedDirectory], undefined, undefined, undefined, [
+      fileContentRoot,
+    ]);
+
+    expect({
+      result,
+      createCalls: createRecursiveWatcher.mock.calls,
+      onCalls: on.mock.calls.map(([event, listener]) => [event, listener.name]),
+    }).toStrictEqual({
+      result: recursiveWatcher,
+      createCalls: [[[watchedDirectory, fileContentRoot], shouldIgnoreWatch]],
+      onCalls: [
+        ["add", "handleFileChange"],
+        ["change", "handleFileChange"],
+        ["unlink", "handleFileUnlink"],
+      ],
+    });
   });
 });

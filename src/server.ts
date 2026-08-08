@@ -10,6 +10,7 @@ import { getCacheDir } from "./lib/db/connection";
 import { initPendingApprovalsCache } from "./lib/db/pending-approvals-cache";
 import { startHerdrEventBridge } from "./lib/herdr/subscribe";
 import { resolveFileSearchRoots } from "./lib/config";
+import type { RecursiveWatcher } from "./lib/recursive-watch";
 
 const PLANS_DIR = join(homedir(), ".claude", "plans");
 const PROJECTS_DIR = join(homedir(), ".claude", "projects");
@@ -32,7 +33,7 @@ void (async () => {
     console.error("Failed to initialize pending approvals cache:", err);
   }
 
-  let watcher;
+  let watcher: RecursiveWatcher;
   const fileContentRoots = await resolveFileSearchRoots(getDb().index);
   const ignoredDirNames = resolveIgnoredDirNames();
   try {
