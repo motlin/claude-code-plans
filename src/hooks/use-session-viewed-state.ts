@@ -23,14 +23,13 @@ interface BackgroundSyncOptions {
 }
 
 /**
- * Run a fire-and-forget presence sync without ever producing an unhandled
+ * Run a fire-and-forget background sync without producing an unhandled
  * promise rejection.
  *
- * Visibility pings and dwell auto-marking are best-effort: the next heartbeat
- * re-reports the same state, so a single failed call costs nothing. Failures are
- * routine (a tab closing aborts the in-flight request, and the dev server drops
- * connections on every restart), and letting those bubble turns ordinary
- * background churn into red console errors.
+ * Presence failures stay at debug because the next heartbeat re-reports the
+ * same state. Dwell auto-mark failures use the retryable wrapper so a heartbeat
+ * retries them and reports them at warn. A tab closing or dev-server restart can
+ * still abort either request, so neither failure becomes an unhandled rejection.
  */
 export function runBackgroundSync(
   operation: string,
@@ -146,15 +145,18 @@ export function useSessionViewedState(
     if (!visibilityElement) return;
     const clientId = `${Date.now().toString(36)}-${Math.random().toString(36)}`;
     let intersecting = false;
+    const { attempt, retryIfFailed } = createRetryableSync(() => markReviewedRef.current());
 
     const controller = createVisibilityDwellController({
       cancel: clearTimeout,
       onDwell: () => {
-        runBackgroundSync("mark-reviewed", () => markReviewedRef.current());
+        attempt("mark-reviewed");
       },
       onVisibilityChange: (visible) => {
-        runBackgroundSync("visibility-update", () =>
-          updateSessionVisibility(sessionId, clientId, visible),
+        runBackgroundSync(
+          "visibility-update",
+          () => updateSessionVisibility(sessionId, clientId, visible),
+          { level: "debug" },
         );
       },
       schedule: setTimeout,
@@ -170,9 +172,12 @@ export function useSessionViewedState(
     document.addEventListener("visibilitychange", updateVisibility);
     const heartbeat = setInterval(() => {
       if (intersecting && document.visibilityState === "visible") {
-        runBackgroundSync("visibility-heartbeat", () =>
-          updateSessionVisibility(sessionId, clientId, true),
+        runBackgroundSync(
+          "visibility-heartbeat",
+          () => updateSessionVisibility(sessionId, clientId, true),
+          { level: "debug" },
         );
+        retryIfFailed("mark-reviewed-retry");
       }
     }, VISIBILITY_HEARTBEAT_MS);
 
