@@ -115,6 +115,12 @@ describe("AttachmentBanner", () => {
     expect(fixtureTypes).toEqual([...schemaTypes].sort());
   });
 
+  it("keeps provider-less fixtures free of plan file paths", () => {
+    expect(
+      Object.entries(MINIMAL_BY_TYPE).filter(([, payload]) => "planFilePath" in payload),
+    ).toStrictEqual([]);
+  });
+
   for (const type of schemaTypes) {
     it(`renders ${type} without throwing`, () => {
       const payload = MINIMAL_BY_TYPE[type];
