@@ -1255,7 +1255,9 @@ describe("Per-tool input schemas", () => {
       "ToolSearch",
     ];
     for (const tool of expectedTools) {
-      if (!toolInputSchemas[tool]) throw new Error(`Missing schema for tool: ${tool}`);
+      if (!toolInputSchemas[tool as keyof typeof toolInputSchemas]) {
+        throw new Error(`Missing schema for tool: ${tool}`);
+      }
     }
   });
 });

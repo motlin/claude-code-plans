@@ -1,19 +1,6 @@
 import { z } from "zod";
 import type { SessionSummaryState } from "./session-state";
-import {
-  BashInputSchema,
-  ReadInputSchema,
-  EditInputSchema,
-  MultiEditInputSchema,
-  WriteInputSchema,
-  GlobInputSchema,
-  GrepInputSchema,
-  AgentInputSchema,
-  WebFetchInputSchema,
-  TodoWriteInputSchema,
-  ExitPlanModeInputSchema,
-  AskUserQuestionInputSchema,
-} from "./tool-input-schemas";
+import { toolInputSchemas } from "./tool-input-schemas";
 import { JsonValueSchema } from "./schemas";
 
 // ---------------------------------------------------------------------------
@@ -600,15 +587,6 @@ const GrepToolResponseSchema = z
   })
   .strict();
 
-const TaskToolResponseSchema = z
-  .object({
-    content: z.array(JsonValueSchema).optional(),
-    totalTokens: z.number().optional(),
-    totalToolUseCount: z.number().optional(),
-    wasInterrupted: z.boolean().optional(),
-  })
-  .strict();
-
 const WebFetchToolResponseSchema = z
   .object({
     url: z.string().optional(),
@@ -641,74 +619,78 @@ const AskUserQuestionToolResponseSchema = z
   })
   .strict();
 
+type ToolVariant = {
+  input: z.ZodType;
+  response: z.ZodType;
+};
+
 /**
- * Discriminated union over `tool_name` for every tool variant we render. Each
- * branch carries a strict `tool_input` and strict `tool_response`. New tools
- * are detected by the schema-drift recovery path in `routes/api/hook.ts` so
- * they fail loud instead of being silently accepted.
+ * Explicit input/response selection for every built-in tool. The registry key
+ * gate makes a newly added built-in a type error until its hook variant is
+ * declared here. Responses without an authored shape stay JSON-bounded until
+ * observed data supports a stricter schema.
  */
-export const ToolUseUnion = z.discriminatedUnion("tool_name", [
-  z.strictObject({
-    tool_name: z.literal("Bash"),
-    tool_input: BashInputSchema,
-    tool_response: BashToolResponseSchema.optional(),
-  }),
-  z.strictObject({
-    tool_name: z.literal("Read"),
-    tool_input: ReadInputSchema,
-    tool_response: ReadToolResponseSchema.optional(),
-  }),
-  z.strictObject({
-    tool_name: z.literal("Edit"),
-    tool_input: EditInputSchema,
-    tool_response: EditToolResponseSchema.optional(),
-  }),
-  z.strictObject({
-    tool_name: z.literal("MultiEdit"),
-    tool_input: MultiEditInputSchema,
-    tool_response: MultiEditToolResponseSchema.optional(),
-  }),
-  z.strictObject({
-    tool_name: z.literal("Write"),
-    tool_input: WriteInputSchema,
-    tool_response: WriteToolResponseSchema.optional(),
-  }),
-  z.strictObject({
-    tool_name: z.literal("Glob"),
-    tool_input: GlobInputSchema,
-    tool_response: GlobToolResponseSchema.optional(),
-  }),
-  z.strictObject({
-    tool_name: z.literal("Grep"),
-    tool_input: GrepInputSchema,
-    tool_response: GrepToolResponseSchema.optional(),
-  }),
-  z.strictObject({
-    tool_name: z.literal("Task"),
-    tool_input: AgentInputSchema,
-    tool_response: TaskToolResponseSchema.optional(),
-  }),
-  z.strictObject({
-    tool_name: z.literal("WebFetch"),
-    tool_input: WebFetchInputSchema,
-    tool_response: WebFetchToolResponseSchema.optional(),
-  }),
-  z.strictObject({
-    tool_name: z.literal("TodoWrite"),
-    tool_input: TodoWriteInputSchema,
-    tool_response: TodoWriteToolResponseSchema.optional(),
-  }),
-  z.strictObject({
-    tool_name: z.literal("ExitPlanMode"),
-    tool_input: ExitPlanModeInputSchema,
-    tool_response: ExitPlanModeToolResponseSchema.optional(),
-  }),
-  z.strictObject({
-    tool_name: z.literal("AskUserQuestion"),
-    tool_input: AskUserQuestionInputSchema,
-    tool_response: AskUserQuestionToolResponseSchema.optional(),
-  }),
-]);
+const TOOL_VARIANTS = {
+  Bash: { input: toolInputSchemas.Bash, response: BashToolResponseSchema },
+  Read: { input: toolInputSchemas.Read, response: ReadToolResponseSchema },
+  Edit: { input: toolInputSchemas.Edit, response: EditToolResponseSchema },
+  MultiEdit: { input: toolInputSchemas.MultiEdit, response: MultiEditToolResponseSchema },
+  Write: { input: toolInputSchemas.Write, response: WriteToolResponseSchema },
+  Glob: { input: toolInputSchemas.Glob, response: GlobToolResponseSchema },
+  Grep: { input: toolInputSchemas.Grep, response: GrepToolResponseSchema },
+  Agent: { input: toolInputSchemas.Agent, response: JsonValueSchema },
+  WebFetch: { input: toolInputSchemas.WebFetch, response: WebFetchToolResponseSchema },
+  Skill: { input: toolInputSchemas.Skill, response: JsonValueSchema },
+  TaskCreate: { input: toolInputSchemas.TaskCreate, response: JsonValueSchema },
+  TaskUpdate: { input: toolInputSchemas.TaskUpdate, response: JsonValueSchema },
+  TaskGet: { input: toolInputSchemas.TaskGet, response: JsonValueSchema },
+  TaskList: { input: toolInputSchemas.TaskList, response: JsonValueSchema },
+  AskUserQuestion: {
+    input: toolInputSchemas.AskUserQuestion,
+    response: AskUserQuestionToolResponseSchema,
+  },
+  ExitPlanMode: {
+    input: toolInputSchemas.ExitPlanMode,
+    response: ExitPlanModeToolResponseSchema,
+  },
+  EnterPlanMode: { input: toolInputSchemas.EnterPlanMode, response: JsonValueSchema },
+  ToolSearch: { input: toolInputSchemas.ToolSearch, response: JsonValueSchema },
+  TodoWrite: { input: toolInputSchemas.TodoWrite, response: TodoWriteToolResponseSchema },
+  WebSearch: { input: toolInputSchemas.WebSearch, response: JsonValueSchema },
+  SendMessage: { input: toolInputSchemas.SendMessage, response: JsonValueSchema },
+  TaskStop: { input: toolInputSchemas.TaskStop, response: JsonValueSchema },
+  TaskOutput: { input: toolInputSchemas.TaskOutput, response: JsonValueSchema },
+  CronCreate: { input: toolInputSchemas.CronCreate, response: JsonValueSchema },
+  CronDelete: { input: toolInputSchemas.CronDelete, response: JsonValueSchema },
+  CronList: { input: toolInputSchemas.CronList, response: JsonValueSchema },
+  TeamCreate: { input: toolInputSchemas.TeamCreate, response: JsonValueSchema },
+  TeamDelete: { input: toolInputSchemas.TeamDelete, response: JsonValueSchema },
+  ScheduleWakeup: { input: toolInputSchemas.ScheduleWakeup, response: JsonValueSchema },
+  EnterWorktree: { input: toolInputSchemas.EnterWorktree, response: JsonValueSchema },
+  ExitWorktree: { input: toolInputSchemas.ExitWorktree, response: JsonValueSchema },
+  LSP: { input: toolInputSchemas.LSP, response: JsonValueSchema },
+  NotebookEdit: { input: toolInputSchemas.NotebookEdit, response: JsonValueSchema },
+  NotebookRead: { input: toolInputSchemas.NotebookRead, response: JsonValueSchema },
+  ReportFindings: { input: toolInputSchemas.ReportFindings, response: JsonValueSchema },
+  LS: { input: toolInputSchemas.LS, response: JsonValueSchema },
+} satisfies Record<keyof typeof toolInputSchemas, ToolVariant>;
+
+type ToolName = keyof typeof TOOL_VARIANTS;
+
+const toolUseVariants = (Object.keys(TOOL_VARIANTS) as ToolName[]).map((toolName) => {
+  const { input, response } = TOOL_VARIANTS[toolName] as ToolVariant;
+  return z.strictObject({
+    tool_name: z.literal(toolName),
+    tool_input: input,
+    tool_response: response.optional(),
+  });
+});
+
+/** Discriminated union over every built-in tool declared in `toolInputSchemas`. */
+export const ToolUseUnion = z.discriminatedUnion(
+  "tool_name",
+  toolUseVariants as [(typeof toolUseVariants)[number], ...typeof toolUseVariants],
+);
 
 const SessionStartHookEvent = z.strictObject({
   ...BaseHookFields,
@@ -839,7 +821,21 @@ function buildToolUseEvent(eventName: "PreToolUse" | "PostToolUse") {
       duration_ms: z.number().optional(),
     }),
   );
-  return z.union(variants as [(typeof variants)[number], ...typeof variants]);
+  // MCP inputs and outputs belong to their server-defined protocol. This is
+  // the one deliberately unbounded tool namespace; see `isMcpTool`.
+  const mcpVariant = z.strictObject({
+    ...BaseHookFields,
+    hook_event_name: z.literal(eventName),
+    tool_name: z.string().startsWith("mcp__"),
+    tool_use_id: z.string().optional(),
+    tool_input: JsonValueSchema,
+    tool_response: JsonValueSchema.optional(),
+    duration_ms: z.number().optional(),
+  });
+  return z.union([...variants, mcpVariant] as unknown as [
+    (typeof variants)[number],
+    ...Array<(typeof variants)[number] | typeof mcpVariant>,
+  ]);
 }
 
 const PreToolUseHookEvent = buildToolUseEvent("PreToolUse");
@@ -874,7 +870,23 @@ function buildPostToolUseFailureEvent() {
       hook_specific_output: PostToolUseFailureHookSpecificOutput.optional(),
     }),
   );
-  return z.union(variants as [(typeof variants)[number], ...typeof variants]);
+  // MCP inputs and outputs belong to their server-defined protocol. This is
+  // the one deliberately unbounded tool namespace; see `isMcpTool`.
+  const mcpVariant = z.strictObject({
+    ...BaseHookFields,
+    hook_event_name: z.literal("PostToolUseFailure"),
+    tool_name: z.string().startsWith("mcp__"),
+    tool_use_id: z.string().optional(),
+    tool_input: JsonValueSchema,
+    tool_response: JsonValueSchema.optional(),
+    duration_ms: z.number().optional(),
+    error: z.string().optional(),
+    hook_specific_output: PostToolUseFailureHookSpecificOutput.optional(),
+  });
+  return z.union([...variants, mcpVariant] as unknown as [
+    (typeof variants)[number],
+    ...Array<(typeof variants)[number] | typeof mcpVariant>,
+  ]);
 }
 
 const PostToolUseFailureHookEvent = buildPostToolUseFailureEvent();

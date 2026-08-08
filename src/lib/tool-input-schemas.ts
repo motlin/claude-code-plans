@@ -124,7 +124,7 @@ export const AgentInputSchema = z
   })
   .strict();
 
-export const WebFetchInputSchema = z
+const WebFetchInputSchema = z
   .object({
     url: z.string(),
     prompt: z.string().optional(),
@@ -195,7 +195,7 @@ const OptionSchema = z
   })
   .strict();
 
-export const AskUserQuestionInputSchema = z
+const AskUserQuestionInputSchema = z
   .object({
     question: z.string().optional(),
     options: z.array(OptionSchema).optional(),
@@ -220,7 +220,7 @@ export const AskUserQuestionInputSchema = z
   })
   .strict();
 
-export const ExitPlanModeInputSchema = z
+const ExitPlanModeInputSchema = z
   .object({
     plan: z.string().optional(),
     planFilePath: z.string().optional(),
@@ -237,7 +237,7 @@ const ToolSearchInputSchema = z
   })
   .strict();
 
-export const TodoWriteInputSchema = z
+const TodoWriteInputSchema = z
   .object({
     todos: z.union([z.array(z.unknown()), z.string()]),
   })
@@ -370,6 +370,13 @@ const NotebookReadInputSchema = z
   })
   .strict();
 
+const ReportFindingsInputSchema = z
+  .object({
+    level: z.string(),
+    findings: z.array(JsonInputValueSchema),
+  })
+  .strict();
+
 export const LSInputSchema = z
   .object({
     path: z.string(),
@@ -377,7 +384,7 @@ export const LSInputSchema = z
   })
   .strict();
 
-export const toolInputSchemas: Record<string, z.ZodType> = {
+export const toolInputSchemas = {
   Bash: BashInputSchema,
   Read: ReadInputSchema,
   Edit: EditInputSchema,
@@ -412,8 +419,9 @@ export const toolInputSchemas: Record<string, z.ZodType> = {
   LSP: LSPInputSchema,
   NotebookEdit: NotebookEditInputSchema,
   NotebookRead: NotebookReadInputSchema,
+  ReportFindings: ReportFindingsInputSchema,
   LS: LSInputSchema,
-};
+} satisfies Record<string, z.ZodType>;
 
 // MCP tool inputs vary by server — skip strict validation for them.
 export function isMcpTool(name: string): boolean {

@@ -53,6 +53,9 @@ interface DefLike {
   innerType?: unknown;
   discriminator?: unknown;
   values?: unknown[];
+  checks?: Array<{
+    _zod?: { def?: { format?: string; prefix?: string } };
+  }>;
   element?: unknown;
   valueType?: unknown;
   getter?: () => unknown;
@@ -108,6 +111,11 @@ function tagsOfVariant(variant: unknown, discriminator: string): string[] {
   if (def.type === "enum") {
     return optionsOf(field).map(String);
   }
+  const startsWith = def.checks?.find((check) => check._zod?.def?.format === "starts_with")?._zod
+    ?.def?.prefix;
+  if (def.type === "string" && startsWith !== undefined) {
+    return [`${startsWith}*`];
+  }
   throw new Error(`Discriminator "${discriminator}" is neither literal nor enum`);
 }
 
@@ -127,7 +135,13 @@ function defactoDiscriminator(schema: unknown): string | undefined {
   let candidates: string[] | undefined;
   for (const arm of arms) {
     const literalKeys = Object.entries(shapeOf(arm))
-      .filter(([, field]) => defOf(unwrap(field)).type === "literal")
+      .filter(([, field]) => {
+        const def = defOf(unwrap(field));
+        return (
+          def.type === "literal" ||
+          def.checks?.some((check) => check._zod?.def?.format === "starts_with")
+        );
+      })
       .map(([key]) => key);
     candidates =
       candidates === undefined

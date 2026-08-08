@@ -130,7 +130,7 @@ export const ContentBlockSchema = z
 
     if (isMcpTool(name)) return;
 
-    const schema = toolInputSchemas[name];
+    const schema = toolInputSchemas[name as keyof typeof toolInputSchemas];
     if (!schema) return;
 
     const result = schema.safeParse(input);

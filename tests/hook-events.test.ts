@@ -88,7 +88,7 @@ describe("HookEventEnvelope", () => {
     expect(result.success).toBe(true);
   });
 
-  it.fails("parses PostToolUse for an MCP tool with content-block response", () => {
+  it("parses PostToolUse for an MCP tool with content-block response", () => {
     const result = HookEventEnvelope.safeParse({
       ...baseEnvelope,
       hook_event_name: "PostToolUse",
@@ -106,7 +106,7 @@ describe("HookEventEnvelope", () => {
     expect(result.success).toBe(true);
   });
 
-  it.fails.each([
+  it.each([
     {
       tool_name: "Agent",
       tool_input: {

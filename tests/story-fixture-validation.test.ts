@@ -206,7 +206,7 @@ describe("Story fixture validation against strict Zod schemas", () => {
             return;
           }
 
-          const schema = toolInputSchemas[toolName];
+          const schema = toolInputSchemas[toolName as keyof typeof toolInputSchemas];
           if (!schema) throw new Error(`No schema registered for tool "${toolName}"`);
 
           expect(schema.parse(input)).toStrictEqual(input);
@@ -238,7 +238,7 @@ describe("Story fixture validation against strict Zod schemas", () => {
         it(`TasksView/${storyName}[${index}] — ${toolName} input passes schema`, () => {
           if (isMcpTool(toolName)) return;
 
-          const schema = toolInputSchemas[toolName];
+          const schema = toolInputSchemas[toolName as keyof typeof toolInputSchemas];
           if (!schema) throw new Error(`No schema registered for tool "${toolName}"`);
 
           expect(schema.parse(input)).toStrictEqual(input);
