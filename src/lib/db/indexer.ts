@@ -2,7 +2,7 @@ import { lstat, readdir, readFile, realpath, stat } from "node:fs/promises";
 import { createReadStream, realpathSync } from "node:fs";
 import { join, basename, extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { createInterface } from "node:readline";
-import { eq, notInArray, sql } from "drizzle-orm";
+import { eq, ne, notInArray, sql } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import {
   SessionsIndexSchema,
@@ -11,7 +11,8 @@ import {
   AttachmentRecordSchema,
   TaskFileSchema,
 } from "../schemas";
-import { decodeProjectDir, encodeProjectPath, resolveProjectPath } from "../memory";
+import { encodeProjectPath, resolveProjectPath } from "../memory";
+import { deriveProjectDisplayName, lastEncodedSegment } from "../project-display-name";
 import { extractSessionTitle, readFirstUserMessage, resolveFirstPrompt } from "../sessions";
 import { extractTitle, extractTitleFromContent } from "../markdown-utils.server";
 import { listTrackedFiles } from "../git-tracked";
@@ -101,10 +102,26 @@ function persistProject(
     .from(schema.projects)
     .where(eq(schema.projects.id, project))
     .get();
-  const fallbackName = decodeProjectDir(project, projectPath ?? undefined);
+  const knownProjects = db
+    .select({
+      id: schema.projects.id,
+      name: schema.projects.name,
+      projectPath: schema.projects.projectPath,
+    })
+    .from(schema.projects)
+    .where(ne(schema.projects.id, project))
+    .all();
+  const derivedName = deriveProjectDisplayName(project, projectPath, knownProjects);
+  // Without a path the derivation is lossy, so keep an existing name that
+  // carries more information than the encoded id (e.g. one resolved from a
+  // since-deleted directory). Names we derived ourselves ("/" separators or
+  // the legacy final token) are always safe to recompute.
   const projectName =
-    projectPath || !existingProject || existingProject.name.includes("/")
-      ? fallbackName
+    projectPath ||
+    !existingProject ||
+    existingProject.name === lastEncodedSegment(project) ||
+    existingProject.name.includes("/")
+      ? derivedName
       : existingProject.name;
 
   db.insert(schema.projects)
@@ -125,17 +142,17 @@ function repairProjectDisplayNames(db: IndexDb): void {
   const projects = db
     .select({
       id: schema.projects.id,
-      name: schema.projects.name,
       projectPath: schema.projects.projectPath,
       updatedAt: schema.projects.updatedAt,
     })
     .from(schema.projects)
     .all();
 
+  // Shortest ids first, so a parent project's name is repaired before the
+  // worktrees and nested checkouts that derive their names from it.
+  projects.sort((a, b) => a.id.length - b.id.length);
   for (const project of projects) {
-    if (project.name.includes("/")) {
-      persistProject(db, project.id, project.projectPath, project.updatedAt);
-    }
+    persistProject(db, project.id, project.projectPath, project.updatedAt);
   }
 }
 
@@ -1581,6 +1598,11 @@ export async function fullScan(
       await scanPlansDir(indexDb, plansDir);
       await pruneStalePlanLinks(indexDb, plansDir);
     }
+
+    // The scan visits projects in recency order, so a worktree can be
+    // persisted before the parent project it derives its display name from.
+    // A final pass renames it once every parent is present.
+    repairProjectDisplayNames(indexDb);
   } finally {
     indexingInProgress = false;
   }

@@ -981,6 +981,59 @@ describe("indexer", () => {
     expect(projectNames.every((name) => !name.startsWith("/Users/"))).toBe(true);
   });
 
+  it("derives parent/worktree display names for worktree and nested checkout projects", async () => {
+    const repoPath = join(testDir, "repos", "eclipse-collections");
+    mkdirSync(repoPath, { recursive: true });
+    const parentProject = encodeProjectPath(repoPath);
+    const nestedProject = `${parentProject}-merge-4`;
+    const worktreeProject = `${parentProject}--claude-worktrees-String-format`;
+
+    for (const [project, prompt] of [
+      [parentProject, "parent"],
+      [nestedProject, "nested"],
+      [worktreeProject, "worktree"],
+    ] as const) {
+      const projectDir = join(testDir, project);
+      mkdirSync(projectDir, { recursive: true });
+      writeFileSync(
+        join(projectDir, `sess-${prompt}.jsonl`),
+        jsonl({ type: "user", message: { content: prompt } }),
+      );
+    }
+    // Only the parent has a resolved path; the children anchor to its id.
+    writeFileSync(
+      join(testDir, parentProject, "sessions-index.json"),
+      makeSessionsIndex([
+        {
+          sessionId: "sess-parent",
+          fullPath: join(testDir, parentProject, "sess-parent.jsonl"),
+          fileMtime: 1_000,
+          firstPrompt: "parent",
+          projectPath: repoPath,
+        },
+      ]),
+    );
+
+    await fullScan(db.index, db.summaries, testDir);
+
+    const names = new Map(
+      db.index
+        .select({ id: schema.projects.id, name: schema.projects.name })
+        .from(schema.projects)
+        .all()
+        .map((row) => [row.id, row.name]),
+    );
+    expect([
+      names.get(parentProject),
+      names.get(nestedProject),
+      names.get(worktreeProject),
+    ]).toStrictEqual([
+      "eclipse-collections",
+      "eclipse-collections/merge-4",
+      "eclipse-collections/String-format",
+    ]);
+  });
+
   it("prunes a session whose primary transcript was deleted", async () => {
     const project = "-tmp-alice-project";
     const projectDir = join(testDir, project);
