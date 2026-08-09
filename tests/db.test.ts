@@ -43,6 +43,7 @@ import {
   getStarredSessions,
   searchMessageContentDb,
   getTasksForProject,
+  getOpenTasksForProject,
   getIncompleteTasksGroupedByProject,
   getTaskCountsForProject,
   listBranchesForProject,
@@ -3004,6 +3005,92 @@ describe("task queries", () => {
       inProgress: 0,
       completed: 0,
     });
+  });
+
+  function insertUnmatchedDirTasks() {
+    db.index
+      .insert(schema.tasks)
+      .values([
+        {
+          taskId: "600",
+          projectDir: "example-app",
+          subject: "Project-dir task",
+          description: "desc",
+          status: "pending",
+          blocksJson: "[]",
+          blockedByJson: "[]",
+          metadataJson: "{}",
+          filePath: "/tasks/example-app/600.json",
+          mtimeMs: 1000,
+        },
+        {
+          taskId: "601",
+          projectDir: "session-12345678",
+          subject: "Prefixed-dir task",
+          description: "desc",
+          status: "in_progress",
+          blocksJson: "[]",
+          blockedByJson: "[]",
+          metadataJson: "{}",
+          filePath: "/tasks/session-12345678/601.json",
+          mtimeMs: 1000,
+        },
+      ])
+      .run();
+  }
+
+  it("getTaskCountsForProject counts tasks stored under project-name and session-prefix directories", () => {
+    insertUnmatchedDirTasks();
+
+    expect(getTaskCountsForProject(db.index, projectId)).toStrictEqual({
+      total: 5,
+      pending: 2,
+      inProgress: 2,
+      completed: 1,
+    });
+  });
+
+  it("getTasksForProject includes tasks stored under project-name and session-prefix directories", () => {
+    insertUnmatchedDirTasks();
+
+    const subjects = getTasksForProject(db.index, projectId)
+      .map((task) => task.subject)
+      .sort();
+    expect(subjects).toStrictEqual([
+      "Deploy",
+      "Fix bug",
+      "Prefixed-dir task",
+      "Project-dir task",
+      "Write tests",
+    ]);
+  });
+
+  it("getOpenTasksForProject includes tasks stored under project-name and session-prefix directories", () => {
+    insertUnmatchedDirTasks();
+
+    const subjects = getOpenTasksForProject(db.index, projectId, 10).map((task) => task.subject);
+    expect(subjects).toStrictEqual([
+      "Deploy",
+      "Prefixed-dir task",
+      "Write tests",
+      "Project-dir task",
+    ]);
+  });
+
+  it("project taskCount totals agree with the incomplete-task grouping", () => {
+    insertUnmatchedDirTasks();
+
+    const projects = db.index.select({ id: schema.projects.id }).from(schema.projects).all();
+    const summedTaskCount = projects.reduce((total, project) => {
+      const counts = getTaskCountsForProject(db.index, project.id);
+      return total + counts.pending + counts.inProgress;
+    }, 0);
+    const groupedTaskCount = getIncompleteTasksGroupedByProject(db.index).reduce(
+      (total, group) => total + group.tasks.length,
+      0,
+    );
+    expect(summedTaskCount).toBe(4);
+    expect(summedTaskCount).toBe(groupedTaskCount);
   });
 
   it("getIncompleteTasksGroupedByProject resolves a UUID-named task directory to its owning session", () => {

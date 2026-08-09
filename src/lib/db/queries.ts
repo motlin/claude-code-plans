@@ -1169,8 +1169,15 @@ function parseTaskRow(row: {
   };
 }
 
-/** Return all tasks owned by sessions in a project, including completed tasks. */
-export function getTasksForProject(db: IndexDb, projectId: string): TaskRow[] {
+/**
+ * Return the raw task rows attributed to a project. Claude usually stores task
+ * files under a session UUID, so tasks.projectDir joins sessions.id — but some
+ * directories are a `session-<idprefix>` shorthand or a plain project name, so
+ * unmatched rows fall back to resolveUnmatchedTaskDir. Every project-scoped
+ * task reader must go through this function so the /projects card count, the
+ * project detail list, and the /tasks grouping cannot disagree.
+ */
+function getRawTaskRowsForProject(db: IndexDb, projectId: string) {
   const rows = db
     .select({
       taskId: schema.tasks.taskId,
@@ -1183,55 +1190,46 @@ export function getTasksForProject(db: IndexDb, projectId: string): TaskRow[] {
       blocksJson: schema.tasks.blocksJson,
       blockedByJson: schema.tasks.blockedByJson,
       metadataJson: schema.tasks.metadataJson,
+      mtimeMs: schema.tasks.mtimeMs,
+      sessionProjectId: schema.sessions.projectId,
     })
     .from(schema.tasks)
-    .innerJoin(schema.sessions, eq(schema.sessions.id, schema.tasks.projectDir))
-    .where(eq(schema.sessions.projectId, projectId))
+    .leftJoin(schema.sessions, eq(schema.sessions.id, schema.tasks.projectDir))
     .all();
 
-  return rows.map(parseTaskRow);
+  const resolvedDirProjects = new Map<string, string>();
+  return rows.filter((row) => {
+    if (row.sessionProjectId !== null) return row.sessionProjectId === projectId;
+    let resolved = resolvedDirProjects.get(row.projectDir);
+    if (resolved === undefined) {
+      resolved = resolveUnmatchedTaskDir(db, row.projectDir).projectId;
+      resolvedDirProjects.set(row.projectDir, resolved);
+    }
+    return resolved === projectId;
+  });
 }
 
-/**
- * Return open tasks owned by sessions in a project. Claude stores task files
- * under a session UUID, so tasks.projectDir joins sessions.id rather than a
- * project name or filesystem path.
- */
+/** Return all tasks attributed to a project, including completed tasks. */
+export function getTasksForProject(db: IndexDb, projectId: string): TaskRow[] {
+  return getRawTaskRowsForProject(db, projectId).map(parseTaskRow);
+}
+
+/** Return open tasks attributed to a project, in-progress first, newest first. */
 export function getOpenTasksForProject(db: IndexDb, projectId: string, limit: number): TaskRow[] {
   if (!Number.isInteger(limit) || limit < 1) {
     throw new Error("Context brief task limit must be a positive integer");
   }
 
-  const rows = db
-    .select({
-      taskId: schema.tasks.taskId,
-      projectDir: schema.tasks.projectDir,
-      subject: schema.tasks.subject,
-      description: schema.tasks.description,
-      status: schema.tasks.status,
-      activeForm: schema.tasks.activeForm,
-      owner: schema.tasks.owner,
-      blocksJson: schema.tasks.blocksJson,
-      blockedByJson: schema.tasks.blockedByJson,
-      metadataJson: schema.tasks.metadataJson,
-    })
-    .from(schema.tasks)
-    .innerJoin(schema.sessions, eq(schema.sessions.id, schema.tasks.projectDir))
-    .where(
-      and(
-        eq(schema.sessions.projectId, projectId),
-        sql`${schema.tasks.status} IN ('pending', 'in_progress')`,
-      ),
+  return getRawTaskRowsForProject(db, projectId)
+    .filter((row) => row.status === "pending" || row.status === "in_progress")
+    .sort(
+      (left, right) =>
+        Number(left.status !== "in_progress") - Number(right.status !== "in_progress") ||
+        right.mtimeMs - left.mtimeMs ||
+        left.taskId.localeCompare(right.taskId),
     )
-    .orderBy(
-      sql`CASE ${schema.tasks.status} WHEN 'in_progress' THEN 0 ELSE 1 END`,
-      desc(schema.tasks.mtimeMs),
-      asc(schema.tasks.taskId),
-    )
-    .limit(limit)
-    .all();
-
-  return rows.map(parseTaskRow);
+    .slice(0, limit)
+    .map(parseTaskRow);
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -1384,26 +1382,15 @@ export function getTaskCountsForProject(
   db: IndexDb,
   projectId: string,
 ): { total: number; pending: number; inProgress: number; completed: number } {
-  const rows = db
-    .select({
-      status: schema.tasks.status,
-      count: sql<number>`count(*)`,
-    })
-    .from(schema.tasks)
-    .innerJoin(schema.sessions, eq(schema.sessions.id, schema.tasks.projectDir))
-    .where(eq(schema.sessions.projectId, projectId))
-    .groupBy(schema.tasks.status)
-    .all();
-
   let total = 0;
   let pending = 0;
   let inProgress = 0;
   let completed = 0;
-  for (const row of rows) {
-    total += row.count;
-    if (row.status === "pending") pending = row.count;
-    else if (row.status === "in_progress") inProgress = row.count;
-    else if (row.status === "completed") completed = row.count;
+  for (const row of getRawTaskRowsForProject(db, projectId)) {
+    total++;
+    if (row.status === "pending") pending++;
+    else if (row.status === "in_progress") inProgress++;
+    else if (row.status === "completed") completed++;
   }
 
   return { total, pending, inProgress, completed };
