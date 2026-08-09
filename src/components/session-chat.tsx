@@ -71,10 +71,13 @@ export interface SessionChatProps {
   showSystemBanners?: boolean;
   showCompactSummaries?: boolean;
   showTranscriptOnly?: boolean;
+  initialScrollKey?: string;
+  shouldScrollToEnd?: boolean;
 }
 
-const autoScrolledSessions = hmrPersist("autoScrolledSessions", () => new Set<string>());
+const autoScrolledLocations = hmrPersist("autoScrolledLocations", () => new Set<string>());
 const EMPTY_IMAGE_ROOTS: readonly string[] = [];
+const END_FOLLOW_THRESHOLD_PIXELS = 32;
 
 function CopyToast({ visible }: { visible: boolean }) {
   return (
@@ -281,21 +284,62 @@ export const SessionChat = React.memo(function SessionChat({
   showSystemBanners = false,
   showCompactSummaries = false,
   showTranscriptOnly = false,
+  initialScrollKey = sessionId,
+  shouldScrollToEnd = true,
 }: SessionChatProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const isSubagentSession = sessionId.startsWith("agent-");
   const subagentLookup = useMemo(() => buildSubagentLookup(subagents), [subagents]);
 
   useEffect(() => {
-    if (autoScrolledSessions.has(sessionId)) return;
-    autoScrolledSessions.add(sessionId);
-    requestAnimationFrame(() => {
-      endRef.current?.scrollIntoView({ block: "end" });
+    if (!shouldScrollToEnd || autoScrolledLocations.has(initialScrollKey)) return;
+
+    let followsEnd = false;
+    let initialFrame: number | undefined;
+    let paintedFrame: number | undefined;
+    let resizeFrame: number | undefined;
+
+    const updateFollowsEnd = () => {
+      const distanceFromEnd =
+        document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
+      followsEnd = distanceFromEnd <= END_FOLLOW_THRESHOLD_PIXELS;
+    };
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (!followsEnd || resizeFrame !== undefined) return;
+      resizeFrame = requestAnimationFrame(() => {
+        resizeFrame = undefined;
+        if (!followsEnd) return;
+        window.scrollTo({ top: document.documentElement.scrollHeight });
+      });
     });
-  }, [sessionId]);
+    const container = containerRef.current;
+    if (!container) throw new Error("Expected the session chat container to be mounted.");
+    resizeObserver.observe(container);
+    window.addEventListener("scroll", updateFollowsEnd, { passive: true });
+
+    initialFrame = requestAnimationFrame(() => {
+      paintedFrame = requestAnimationFrame(() => {
+        const end = endRef.current;
+        if (!end) return;
+        autoScrolledLocations.add(initialScrollKey);
+        end.scrollIntoView({ block: "end" });
+        followsEnd = true;
+      });
+    });
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("scroll", updateFollowsEnd);
+      if (initialFrame !== undefined) cancelAnimationFrame(initialFrame);
+      if (paintedFrame !== undefined) cancelAnimationFrame(paintedFrame);
+      if (resizeFrame !== undefined) cancelAnimationFrame(resizeFrame);
+    };
+  }, [initialScrollKey, shouldScrollToEnd]);
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-8 pt-4 pb-4">
+    <div ref={containerRef} className="mx-auto w-full max-w-3xl px-8 pt-4 pb-4">
       <SessionLineList
         lines={lines}
         sessionId={sessionId}

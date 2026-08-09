@@ -193,6 +193,7 @@ describe("SessionChat integration", () => {
         lines={lines}
         toolResultMap={new Map()}
         allowedImageRoots={[ALLOWED_ROOT]}
+        shouldScrollToEnd={false}
       />,
     );
 

@@ -1,4 +1,10 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  useElementScrollRestoration,
+  useLocation,
+  useRouter,
+} from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -320,6 +326,13 @@ export function routeSessionPrompt(
 function SessionPage() {
   const params = Route.useParams();
   const queryClient = useQueryClient();
+  const initialScrollKey = useLocation({
+    select: (location) => location.state.__TSR_key ?? location.href,
+  });
+  const locationHash = useLocation({ select: (location) => location.hash });
+  const restoredScrollPosition = useElementScrollRestoration({
+    getElement: () => (typeof window === "undefined" ? undefined : window),
+  });
   const { data } = useSuspenseQuery(sessionDetailQueryOptions(params.id));
   const { data: transcript } = useSuspenseQuery(transcriptQueryOptions(params.id));
   const { data: subagents } = useSuspenseQuery(sessionSubagentsQueryOptions(params.id));
@@ -714,6 +727,8 @@ function SessionPage() {
           showSystemBanners={settings.showSystemBanners}
           showCompactSummaries={settings.showCompactSummaries}
           showTranscriptOnly={settings.showTranscriptOnly}
+          initialScrollKey={initialScrollKey}
+          shouldScrollToEnd={restoredScrollPosition === undefined && locationHash === ""}
         />
       </AskUserQuestionProvider>
 
