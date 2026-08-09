@@ -5,9 +5,12 @@ import { FileSearchResults, fileSearchViewerNavigation } from "../components/fil
 import {
   sessionSearchQueryOptions,
   messageSearchQueryOptions,
+  SearchModeSchema,
+  type SearchMode,
   type SessionSearchItem,
   type MessageSearchItem,
 } from "../lib/api/search";
+import { searchModeLabels } from "../lib/schema-choices";
 
 type SearchResult = SessionSearchItem | MessageSearchItem;
 
@@ -88,12 +91,19 @@ export const Route = createFileRoute("/search")({
 
 export function validateSearchParameters(search: Record<string, unknown>): {
   q: string;
-  mode: "titles" | "conversations" | "files";
+  mode: SearchMode;
 } {
-  const mode = search["mode"];
+  const raw = search["mode"] ?? "titles";
+  // "messages" is an alias for "conversations" (the mode backed by /api/search/messages).
+  const parsed = SearchModeSchema.safeParse(raw === "messages" ? "conversations" : raw);
+  if (!parsed.success) {
+    throw new Error(
+      `Unknown search mode ${JSON.stringify(raw)}: expected ${SearchModeSchema.options.join(", ")}, or messages`,
+    );
+  }
   return {
     q: typeof search["q"] === "string" ? search["q"] : "",
-    mode: mode === "conversations" || mode === "files" ? mode : "titles",
+    mode: parsed.data,
   };
 }
 
@@ -142,7 +152,7 @@ function SessionSearch({
   mode,
 }: {
   submittedQuery: string;
-  mode: "titles" | "conversations";
+  mode: Exclude<SearchMode, "files">;
 }) {
   const navigate = useNavigate();
   const [query, setQuery] = useState(submittedQuery);
@@ -198,53 +208,26 @@ function SessionSearch({
       </form>
 
       <div className="mt-3 flex gap-1">
-        <button
-          type="button"
-          onClick={() => {
-            void navigate({
-              to: "/search",
-              search: { q: submittedQuery, mode: "titles" },
-              replace: true,
-            });
-          }}
-          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-            mode === "titles"
-              ? "bg-accent-100 text-bg-000"
-              : "bg-bg-200 text-text-500 hover:bg-bg-200/80"
-          }`}
-        >
-          Search titles
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            void navigate({
-              to: "/search",
-              search: { q: submittedQuery, mode: "conversations" },
-              replace: true,
-            });
-          }}
-          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-            mode === "conversations"
-              ? "bg-accent-100 text-bg-000"
-              : "bg-bg-200 text-text-500 hover:bg-bg-200/80"
-          }`}
-        >
-          Search conversations
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            void navigate({
-              to: "/search",
-              search: { q: submittedQuery, mode: "files" },
-              replace: true,
-            });
-          }}
-          className="rounded-full bg-bg-200 px-3 py-1 text-xs font-medium text-text-500 transition-colors hover:bg-bg-200/80"
-        >
-          Search files
-        </button>
+        {SearchModeSchema.options.map((option) => (
+          <button
+            key={option}
+            type="button"
+            onClick={() => {
+              void navigate({
+                to: "/search",
+                search: { q: submittedQuery, mode: option },
+                replace: true,
+              });
+            }}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              mode === option
+                ? "bg-accent-100 text-bg-000"
+                : "bg-bg-200 text-text-500 hover:bg-bg-200/80"
+            }`}
+          >
+            {searchModeLabels[option]}
+          </button>
+        ))}
       </div>
 
       {searched && results.length === 0 && (

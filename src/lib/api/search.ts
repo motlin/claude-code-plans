@@ -2,6 +2,9 @@ import { z } from "zod";
 import { queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 
+export const SearchModeSchema = z.enum(["titles", "conversations", "files"]);
+export type SearchMode = z.infer<typeof SearchModeSchema>;
+
 const SessionSearchItemSchema = z.object({
   sessionId: z.string(),
   title: z.string(),

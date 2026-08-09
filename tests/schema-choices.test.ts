@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import { HookEventEnvelope, ToolUseUnion } from "../src/lib/hook-events";
 import { PluginFileSchema, PluginListResponse } from "../src/lib/api/plugins";
+import { SearchModeSchema } from "../src/lib/api/search";
 import { SessionSummaryStateSchema } from "../src/lib/api/sessions";
 import { SourceFileResponse } from "../src/lib/api/source";
 import { schemaChoiceRegistry } from "../src/lib/schema-choices";
@@ -31,6 +32,7 @@ import { RenderedLineSchema } from "../src/lib/transcript";
 // claimed under their own exported names (the walker visits each node once).
 const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["TaskStatusSchema", TaskStatusSchema],
+  ["SearchModeSchema", SearchModeSchema],
   ["SessionSummaryStateSchema", SessionSummaryStateSchema],
   ["ContentBlockSchema", ContentBlockSchema],
   ["AttachmentPayloadSchema", AttachmentPayloadSchema],

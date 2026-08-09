@@ -364,18 +364,18 @@ describe("file search results", () => {
 
   it("restores a validated URL query and builds an encoded viewer hash target", () => {
     const search = validateSearchParameters({ q: "needle", mode: "files" });
-    const invalidSearch = validateSearchParameters({ q: 100, mode: "fabricated" });
+    const invalidQuerySearch = validateSearchParameters({ q: 100, mode: "files" });
     const navigation = fileSearchViewerNavigation("/tmp/test/with space/alice#notes.ts", 100);
 
     expect({
       decodedPath: decodeFilePath(navigation.pathToken),
-      invalidSearch,
+      invalidQuerySearch,
       navigation,
       search,
       target: fileSearchViewerTarget("/tmp/test/alice.ts", 200),
     }).toStrictEqual({
       decodedPath: "/tmp/test/with space/alice#notes.ts",
-      invalidSearch: { q: "", mode: "titles" },
+      invalidQuerySearch: { q: "", mode: "files" },
       navigation: {
         pathToken: "L3RtcC90ZXN0L3dpdGggc3BhY2UvYWxpY2Ujbm90ZXMudHM",
         hash: "L100",

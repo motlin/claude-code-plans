@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import type { PluginFileSchema, PluginListResponse } from "./api/plugins";
+import type { SearchModeSchema } from "./api/search";
 import type { SessionSummaryStateSchema } from "./api/sessions";
 import type { SourceFileResponse } from "./api/source";
 import type { HookEvent, ToolUseUnion } from "./hook-events";
@@ -53,6 +54,12 @@ const sessionSummaryStateLabels = {
   unknown: "Unknown",
   ended: "Ended",
 } satisfies Record<z.infer<typeof SessionSummaryStateSchema>, string>;
+
+export const searchModeLabels = {
+  titles: "Search titles",
+  conversations: "Search conversations",
+  files: "Search files",
+} satisfies Record<z.infer<typeof SearchModeSchema>, string>;
 
 const sessionStartSourceLabels = {
   startup: "Startup",
@@ -280,6 +287,7 @@ const toolNamesWithMcp = { ...toolNames, "mcp__*": true } as const;
 /** Maps walker path keys (see tests/schema-choices.test.ts) to choice maps. */
 export const schemaChoiceRegistry: Record<string, Record<string, string | true>> = {
   TaskStatusSchema: taskStatusLabels,
+  SearchModeSchema: searchModeLabels,
   SessionSummaryStateSchema: sessionSummaryStateLabels,
   ContentBlockSchema: contentBlockVariants,
   AttachmentPayloadSchema: attachmentVariants,
