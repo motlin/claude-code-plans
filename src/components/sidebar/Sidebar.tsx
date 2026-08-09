@@ -8,6 +8,7 @@ import { navItems } from "./navigation";
 import { SidebarToggleIcon, SearchInput } from "./primitives";
 import {
   ActiveSubList,
+  HerdrSubList,
   MemoriesSubList,
   PlansSubList,
   ProjectsSubList,
@@ -197,9 +198,10 @@ export function Sidebar({
                 item.section !== "settings" &&
                 item.section !== "config" &&
                 item.section !== "setup" &&
-                item.section !== "fleet" &&
                 (item.section === "active" ? (
                   <ActiveSubList />
+                ) : item.section === "herdr" ? (
+                  <HerdrSubList activeItemId={activeItemId} />
                 ) : item.section === "projects" ? (
                   <ProjectsSubList activeItemId={activeItemId} />
                 ) : item.section === "plans" ? (

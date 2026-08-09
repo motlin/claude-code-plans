@@ -594,6 +594,9 @@ const AutoModeAttachmentPayload = z
     type: z.literal("auto_mode"),
     reminderType: z.string().optional(),
     autoModeConsentFlow: z.boolean().optional(),
+    bashFirst: z.boolean().optional(),
+    steerOnly: z.boolean().optional(),
+    bypass: z.boolean().optional(),
   })
   .strict();
 

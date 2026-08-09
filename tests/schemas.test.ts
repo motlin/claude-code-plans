@@ -534,6 +534,9 @@ describe("JsonlRecordSchema", () => {
       attachment: {
         type: "auto_mode",
         autoModeConsentFlow: false,
+        bashFirst: false,
+        steerOnly: false,
+        bypass: false,
       },
     };
 

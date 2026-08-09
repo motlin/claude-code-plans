@@ -6,7 +6,7 @@ describe("sidebar navigation", () => {
   it("links to each top-level section", () => {
     expect(navItems.map(({ label, to }) => ({ label, to }))).toStrictEqual([
       { label: "Active", to: "/active" },
-      { label: "Terminal Fleet", to: "/herdr" },
+      { label: "Herdr", to: "/herdr" },
       { label: "Tmux Windows", to: "/tmux" },
       { label: "Approvals", to: "/approvals" },
       { label: "Notifications", to: "/notifications" },
@@ -29,5 +29,16 @@ describe("sidebar navigation", () => {
     >[0];
 
     expect(useActiveSection(matches)).toStrictEqual({ section: "tmux", activeItemId: null });
+  });
+
+  it("activates the Herdr section and terminal on a live terminal route", () => {
+    const matches = [
+      { fullPath: "/herdr/terminal/$sessionId", params: { sessionId: "session-test-100" } },
+    ] as unknown as Parameters<typeof useActiveSection>[0];
+
+    expect(useActiveSection(matches)).toStrictEqual({
+      section: "herdr",
+      activeItemId: "session-test-100",
+    });
   });
 });

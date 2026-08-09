@@ -37,11 +37,11 @@ const navEntries = {
     icon: Radio,
     description: "Live sessions currently running",
   },
-  fleet: {
+  herdr: {
     to: "/herdr",
-    label: "Terminal Fleet",
+    label: "Herdr",
     icon: SquareTerminal,
-    description: "Live terminals for every managed session",
+    description: "Live terminals managed by Herdr",
   },
   tmux: {
     to: "/tmux",

@@ -14,4 +14,14 @@ describe("home grid", () => {
       expect(card.description.length, `description for ${card.label}`).toBeGreaterThan(0);
     }
   });
+
+  it("uses the Herdr name for the terminal fleet card", () => {
+    expect(
+      cards
+        .filter((card) => card.to === "/herdr")
+        .map(({ label, to, description }) => ({ label, to, description })),
+    ).toStrictEqual([
+      { label: "Herdr", to: "/herdr", description: "Live terminals managed by Herdr" },
+    ]);
+  });
 });
