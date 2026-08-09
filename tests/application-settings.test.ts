@@ -28,6 +28,10 @@ describe("persisted application settings", () => {
     await rm(directory, { recursive: true, force: true });
   });
 
+  it("keeps the default ignored directory names in alphabetical order", () => {
+    expect(DEFAULT_IGNORED_DIR_NAMES).toStrictEqual([...DEFAULT_IGNORED_DIR_NAMES].sort());
+  });
+
   it("strictly validates every persisted setting", () => {
     expect([
       AppConfigSchema.safeParse({
@@ -77,7 +81,7 @@ describe("persisted application settings", () => {
     }
   });
 
-  it("atomically persists policy while preserving unrelated config fields", async () => {
+  it("sorts ignored directories while atomically preserving unrelated config fields", async () => {
     await writeFile(
       configPath,
       JSON.stringify({
@@ -106,12 +110,12 @@ describe("persisted application settings", () => {
         herdrWritesEnabled: true,
         showHerdrSection: false,
         showTmuxSection: true,
-        ignoredDirs: ["vendor", "output"],
+        ignoredDirs: ["output", "vendor"],
       },
       file: {
         image_roots: ["/tmp/images"],
         file_roots: ["/tmp/files"],
-        ignored_dirs: ["vendor", "output"],
+        ignored_dirs: ["output", "vendor"],
         herdr_writes_enabled: true,
         show_herdr_section: false,
         show_tmux_section: true,
@@ -166,18 +170,18 @@ describe("persisted application settings", () => {
         herdrWritesEnabled: true,
         showHerdrSection: false,
         showTmuxSection: true,
-        ignoredDirs: ["node_modules", "build"],
+        ignoredDirs: ["build", "node_modules"],
       },
       readStatus: 200,
       read: {
         herdrWritesEnabled: true,
         showHerdrSection: false,
         showTmuxSection: true,
-        ignoredDirs: ["node_modules", "build"],
+        ignoredDirs: ["build", "node_modules"],
       },
       persisted: {
         image_roots: ["/tmp/images"],
-        ignored_dirs: ["node_modules", "build"],
+        ignored_dirs: ["build", "node_modules"],
         herdr_writes_enabled: true,
         show_herdr_section: false,
         show_tmux_section: true,

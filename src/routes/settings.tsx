@@ -521,7 +521,7 @@ export function ApplicationConfigurationSection() {
 
   useEffect(() => {
     if (applicationSettings.data) {
-      setIgnoredDirectories(applicationSettings.data.ignoredDirs.join("\n"));
+      setIgnoredDirectories([...applicationSettings.data.ignoredDirs].sort().join("\n"));
     }
   }, [applicationSettings.data]);
 
@@ -542,7 +542,8 @@ export function ApplicationConfigurationSection() {
   }
 
   const settings = applicationSettings.data;
-  const save = (next: typeof settings) => saveSettings.mutate(next);
+  const save = (next: typeof settings) =>
+    saveSettings.mutate({ ...next, ignoredDirs: [...next.ignoredDirs].sort() });
 
   return (
     <Section icon={ServerCog} title="Application">

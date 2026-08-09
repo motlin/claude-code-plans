@@ -41,6 +41,9 @@ describe("application settings controls", () => {
     const herdrSectionToggle = await screen.findByRole("switch", { name: "Herdr section" });
     const tmuxSectionToggle = screen.getByRole("switch", { name: "Tmux section" });
     const herdrInputToggle = screen.getByRole("switch", { name: "Live Herdr input" });
+    const ignoredDirectories = screen.getByRole("textbox", {
+      name: "Ignored watcher directories",
+    }) as HTMLTextAreaElement;
     expect({
       checked: {
         herdrSection: herdrSectionToggle.getAttribute("aria-checked"),
@@ -50,12 +53,14 @@ describe("application settings controls", () => {
       immediate: screen.getByText(/Applies immediately without a server restart/).textContent,
       pollingToggle: screen.queryByRole("switch", { name: "Polling file watcher" }),
       restartNotices: screen.getAllByText(/Restart the server/).length,
+      ignoredDirectories: ignoredDirectories.value,
     }).toStrictEqual({
       checked: { herdrSection: "true", tmuxSection: "false", herdrInput: "false" },
       immediate:
         "Allow prompts, interrupts, and state reports for live Herdr terminals. Applies immediately without a server restart.",
       pollingToggle: null,
       restartNotices: 1,
+      ignoredDirectories: "dist\nnode_modules",
     });
 
     fireEvent.click(tmuxSectionToggle);
@@ -67,11 +72,12 @@ describe("application settings controls", () => {
     fireEvent.click(herdrInputToggle);
     await waitFor(() => expect(herdrInputToggle.getAttribute("aria-checked")).toBe("true"));
 
-    fireEvent.change(screen.getByRole("textbox", { name: "Ignored watcher directories" }), {
+    fireEvent.change(ignoredDirectories, {
       target: { value: "node_modules\ncustom-cache" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Save ignored directories" }));
     await waitFor(() => expect(requests).toHaveLength(4));
+    await waitFor(() => expect(ignoredDirectories.value).toBe("custom-cache\nnode_modules"));
 
     expect(requests).toStrictEqual([
       {
@@ -80,7 +86,7 @@ describe("application settings controls", () => {
           herdrWritesEnabled: false,
           showHerdrSection: true,
           showTmuxSection: true,
-          ignoredDirs: ["node_modules", "dist"],
+          ignoredDirs: ["dist", "node_modules"],
         },
       },
       {
@@ -89,7 +95,7 @@ describe("application settings controls", () => {
           herdrWritesEnabled: false,
           showHerdrSection: false,
           showTmuxSection: true,
-          ignoredDirs: ["node_modules", "dist"],
+          ignoredDirs: ["dist", "node_modules"],
         },
       },
       {
@@ -98,7 +104,7 @@ describe("application settings controls", () => {
           herdrWritesEnabled: true,
           showHerdrSection: false,
           showTmuxSection: true,
-          ignoredDirs: ["node_modules", "dist"],
+          ignoredDirs: ["dist", "node_modules"],
         },
       },
       {
@@ -107,7 +113,7 @@ describe("application settings controls", () => {
           herdrWritesEnabled: true,
           showHerdrSection: false,
           showTmuxSection: true,
-          ignoredDirs: ["node_modules", "custom-cache"],
+          ignoredDirs: ["custom-cache", "node_modules"],
         },
       },
     ]);

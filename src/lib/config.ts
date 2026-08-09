@@ -104,20 +104,20 @@ const DEFAULT_APPLICATION_POLICY = {
 } as const;
 
 export const DEFAULT_IGNORED_DIR_NAMES = [
+  ".cache",
   ".git",
-  "node_modules",
-  "dist",
-  "build",
-  "out",
-  "coverage",
+  ".in_use",
+  ".llm",
   ".next",
   ".turbo",
-  ".vite",
-  ".cache",
-  ".llm",
   ".venv",
+  ".vite",
+  "build",
+  "coverage",
+  "dist",
+  "node_modules",
+  "out",
   "target",
-  ".in_use",
 ] as const;
 
 export const ApplicationSettingsSchema = z
@@ -189,12 +189,13 @@ export async function updateApplicationSettings(
   configPath: string = getConfigPath(),
 ): Promise<ApplicationSettings> {
   const parsed = ApplicationSettingsSchema.parse(settings);
+  const ignoredDirs = [...parsed.ignoredDirs].sort();
   await updateConfig(
     {
       herdr_writes_enabled: parsed.herdrWritesEnabled,
       show_herdr_section: parsed.showHerdrSection,
       show_tmux_section: parsed.showTmuxSection,
-      ignored_dirs: parsed.ignoredDirs,
+      ignored_dirs: ignoredDirs,
     },
     configPath,
   );
