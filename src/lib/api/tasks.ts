@@ -20,6 +20,7 @@ const TaskGroupSchema = z.object({
   projectDir: z.string(),
   projectId: z.string(),
   projectName: z.string(),
+  sessionId: z.string().nullable(),
   sessionTitle: z.string(),
   tasks: z.array(TaskItemSchema),
   totalPending: z.number(),

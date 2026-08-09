@@ -156,13 +156,19 @@ function TasksPage() {
                             }}
                           />
                         </button>
-                        <Link
-                          to="/session/$id"
-                          params={{ id: group.projectDir }}
-                          className="text-sm font-semibold text-text-100 no-underline hover:text-accent-100"
-                        >
-                          {group.sessionTitle}
-                        </Link>
+                        {group.sessionId !== null ? (
+                          <Link
+                            to="/session/$id"
+                            params={{ id: group.sessionId }}
+                            className="text-sm font-semibold text-text-100 no-underline hover:text-accent-100"
+                          >
+                            {group.sessionTitle}
+                          </Link>
+                        ) : (
+                          <span className="text-sm font-semibold text-text-100">
+                            {group.sessionTitle}
+                          </span>
+                        )}
                         <span className="flex items-center gap-2 text-xs text-text-500">
                           {group.totalPending > 0 && (
                             <span className="flex items-center gap-1">

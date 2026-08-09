@@ -2809,7 +2809,7 @@ describe("task queries", () => {
     });
   });
 
-  it("getIncompleteTasksGroupedByProject groups correctly", () => {
+  it("getIncompleteTasksGroupedByProject resolves a UUID-named task directory to its owning session", () => {
     const groups = getIncompleteTasksGroupedByProject(db.index);
     expect(
       groups.map(({ tasks, ...group }) => ({
@@ -2821,6 +2821,7 @@ describe("task queries", () => {
         projectId,
         projectName: "example-app",
         projectDir: sessionId,
+        sessionId,
         sessionTitle: "Example task owner session",
         taskIds: ["2", "3"],
         totalPending: 1,
@@ -2851,10 +2852,11 @@ describe("task queries", () => {
       (group) => group.projectDir === missingSessionId,
     );
     expect(orphanedGroup).toStrictEqual({
-      projectId: missingSessionId,
-      projectName: missingSessionId,
+      projectId: "unknown",
+      projectName: "Unknown project",
       projectDir: missingSessionId,
-      sessionTitle: missingSessionId,
+      sessionId: null,
+      sessionTitle: "Session 00000000",
       tasks: [
         {
           taskId: "100",
@@ -2872,6 +2874,144 @@ describe("task queries", () => {
       totalPending: 1,
       totalInProgress: 0,
     });
+  });
+
+  it("getIncompleteTasksGroupedByProject never repeats one string as both project and session label", () => {
+    const missingSessionId = "deadbeef-0000-0000-0000-000000000000";
+    db.index
+      .insert(schema.tasks)
+      .values({
+        taskId: "101",
+        projectDir: missingSessionId,
+        subject: "Orphaned task",
+        description: "desc",
+        status: "pending",
+        blocksJson: "[]",
+        blockedByJson: "[]",
+        metadataJson: "{}",
+        filePath: `/tasks/${missingSessionId}/101.json`,
+        mtimeMs: 1000,
+      })
+      .run();
+
+    for (const group of getIncompleteTasksGroupedByProject(db.index)) {
+      expect(group.projectName).not.toBe(group.sessionTitle);
+    }
+  });
+
+  it("getIncompleteTasksGroupedByProject resolves a session-prefixed task directory by id prefix", () => {
+    db.index
+      .insert(schema.tasks)
+      .values({
+        taskId: "200",
+        projectDir: "session-12345678",
+        subject: "Prefixed task",
+        description: "desc",
+        status: "pending",
+        blocksJson: "[]",
+        blockedByJson: "[]",
+        metadataJson: "{}",
+        filePath: "/tasks/session-12345678/200.json",
+        mtimeMs: 1000,
+      })
+      .run();
+
+    const group = getIncompleteTasksGroupedByProject(db.index).find(
+      (candidate) => candidate.projectDir === "session-12345678",
+    );
+    if (!group) throw new Error("Expected group for session-12345678");
+    expect(group.projectId).toBe(projectId);
+    expect(group.projectName).toBe("example-app");
+    expect(group.sessionId).toBe(sessionId);
+    expect(group.sessionTitle).toBe("Example task owner session");
+  });
+
+  it("getIncompleteTasksGroupedByProject resolves a project-name task directory via the projects table", () => {
+    db.index
+      .insert(schema.tasks)
+      .values({
+        taskId: "300",
+        projectDir: "example-app",
+        subject: "Project-level task",
+        description: "desc",
+        status: "pending",
+        blocksJson: "[]",
+        blockedByJson: "[]",
+        metadataJson: "{}",
+        filePath: "/tasks/example-app/300.json",
+        mtimeMs: 1000,
+      })
+      .run();
+
+    const group = getIncompleteTasksGroupedByProject(db.index).find(
+      (candidate) => candidate.projectDir === "example-app",
+    );
+    if (!group) throw new Error("Expected group for example-app");
+    expect(group.projectId).toBe(projectId);
+    expect(group.projectName).toBe("example-app");
+    expect(group.sessionId).toBeNull();
+    expect(group.sessionTitle).toBe("Project tasks");
+  });
+
+  it("getIncompleteTasksGroupedByProject labels an unmatched plain-name task directory with the directory name", () => {
+    db.index
+      .insert(schema.tasks)
+      .values({
+        taskId: "400",
+        projectDir: "factorio-school",
+        subject: "Loose task",
+        description: "desc",
+        status: "pending",
+        blocksJson: "[]",
+        blockedByJson: "[]",
+        metadataJson: "{}",
+        filePath: "/tasks/factorio-school/400.json",
+        mtimeMs: 1000,
+      })
+      .run();
+
+    const group = getIncompleteTasksGroupedByProject(db.index).find(
+      (candidate) => candidate.projectDir === "factorio-school",
+    );
+    if (!group) throw new Error("Expected group for factorio-school");
+    expect(group.projectId).toBe("factorio-school");
+    expect(group.projectName).toBe("factorio-school");
+    expect(group.sessionId).toBeNull();
+    expect(group.sessionTitle).toBe("Project tasks");
+  });
+
+  it("getIncompleteTasksGroupedByProject leaves an ambiguous project-name directory unresolved", () => {
+    db.index
+      .insert(schema.projects)
+      .values([
+        { id: "-Users-craig-projects-a-dupe", name: "dupe", updatedAt: 1000 },
+        { id: "-Users-craig-projects-b-dupe", name: "dupe", updatedAt: 1000 },
+      ])
+      .run();
+    db.index
+      .insert(schema.tasks)
+      .values({
+        taskId: "500",
+        projectDir: "dupe",
+        subject: "Ambiguous task",
+        description: "desc",
+        status: "pending",
+        blocksJson: "[]",
+        blockedByJson: "[]",
+        metadataJson: "{}",
+        filePath: "/tasks/dupe/500.json",
+        mtimeMs: 1000,
+      })
+      .run();
+
+    const group = getIncompleteTasksGroupedByProject(db.index).find(
+      (candidate) => candidate.projectDir === "dupe",
+    );
+    if (!group) throw new Error("Expected group for dupe");
+    expect(group.projectId).toBe("dupe");
+    expect(group.projectName).toBe("dupe");
+    expect(group.sessionId).toBeNull();
+    expect(group.sessionTitle).toBe("Project tasks");
   });
 
   it("getIncompleteTasksGroupedByProject returns empty when all completed", async () => {

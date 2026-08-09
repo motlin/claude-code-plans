@@ -1,4 +1,4 @@
-import { eq, desc, asc, sql, and, inArray, isNotNull } from "drizzle-orm";
+import { eq, desc, asc, sql, and, inArray, isNotNull, like } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { basename, dirname, relative, sep } from "node:path";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
@@ -1093,6 +1093,7 @@ interface TaskProjectGroup {
   projectDir: string;
   projectId: string;
   projectName: string;
+  sessionId: string | null;
   sessionTitle: string;
   tasks: TaskRow[];
   totalPending: number;
@@ -1190,6 +1191,74 @@ export function getOpenTasksForProject(db: IndexDb, projectId: string, limit: nu
   return rows.map(parseTaskRow);
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const SESSION_PREFIX_PATTERN = /^session-([0-9a-f]{4,})$/i;
+
+interface ResolvedTaskDirLabels {
+  projectId: string;
+  projectName: string;
+  sessionId: string | null;
+  sessionTitle: string;
+}
+
+/**
+ * Label a task directory whose name did not match any sessions.id. Directories
+ * under ~/.claude/tasks/ are sometimes a `session-<idprefix>` shorthand, a
+ * plain project name, or a session UUID with no surviving JSONL. Never returns
+ * the same string for projectName and sessionTitle, so the /tasks page cannot
+ * render one identifier twice.
+ */
+function resolveUnmatchedTaskDir(db: IndexDb, projectDir: string): ResolvedTaskDirLabels {
+  const idPrefix = SESSION_PREFIX_PATTERN.exec(projectDir)?.[1];
+  if (idPrefix !== undefined) {
+    const candidates = db
+      .select({
+        sessionId: schema.sessions.id,
+        projectId: schema.sessions.projectId,
+        projectName: schema.projects.name,
+        sessionTitle: sql<
+          string | null
+        >`coalesce(${schema.sessions.customTitle}, ${schema.sessions.title})`,
+      })
+      .from(schema.sessions)
+      .leftJoin(schema.projects, eq(schema.projects.id, schema.sessions.projectId))
+      .where(like(schema.sessions.id, `${idPrefix}%`))
+      .limit(2)
+      .all();
+    const match = candidates.length === 1 ? candidates[0] : undefined;
+    if (match) {
+      return {
+        projectId: match.projectId,
+        projectName: match.projectName ?? match.projectId,
+        sessionId: match.sessionId,
+        sessionTitle: match.sessionTitle ?? `Session ${match.sessionId.slice(0, 8)}`,
+      };
+    }
+  }
+  if (idPrefix !== undefined || UUID_PATTERN.test(projectDir)) {
+    const shortId = idPrefix ?? projectDir.slice(0, 8);
+    return {
+      projectId: "unknown",
+      projectName: "Unknown project",
+      sessionId: null,
+      sessionTitle: `Session ${shortId}`,
+    };
+  }
+  const projects = db
+    .select({ id: schema.projects.id, name: schema.projects.name })
+    .from(schema.projects)
+    .where(eq(schema.projects.name, projectDir))
+    .limit(2)
+    .all();
+  const project = projects.length === 1 ? projects[0] : undefined;
+  return {
+    projectId: project?.id ?? projectDir,
+    projectName: project?.name ?? projectDir,
+    sessionId: null,
+    sessionTitle: "Project tasks",
+  };
+}
+
 export function getIncompleteTasksGroupedByProject(db: IndexDb): TaskProjectGroup[] {
   const rows = db
     .select({
@@ -1203,6 +1272,7 @@ export function getIncompleteTasksGroupedByProject(db: IndexDb): TaskProjectGrou
       blocksJson: schema.tasks.blocksJson,
       blockedByJson: schema.tasks.blockedByJson,
       metadataJson: schema.tasks.metadataJson,
+      sessionId: schema.sessions.id,
       projectId: schema.sessions.projectId,
       projectName: schema.projects.name,
       sessionTitle: sql<
@@ -1220,6 +1290,7 @@ export function getIncompleteTasksGroupedByProject(db: IndexDb): TaskProjectGrou
     {
       projectId: string;
       projectName: string;
+      sessionId: string | null;
       sessionTitle: string;
       tasks: TaskRow[];
     }
@@ -1228,12 +1299,16 @@ export function getIncompleteTasksGroupedByProject(db: IndexDb): TaskProjectGrou
     const task = parseTaskRow(row);
     let session = sessionMap.get(row.projectDir);
     if (!session) {
-      session = {
-        projectId: row.projectId ?? row.projectDir,
-        projectName: row.projectName ?? row.projectId ?? row.projectDir,
-        sessionTitle: row.sessionTitle ?? row.projectDir,
-        tasks: [],
-      };
+      const labels: ResolvedTaskDirLabels =
+        row.sessionId !== null && row.projectId !== null
+          ? {
+              projectId: row.projectId,
+              projectName: row.projectName ?? row.projectId,
+              sessionId: row.sessionId,
+              sessionTitle: row.sessionTitle ?? `Session ${row.sessionId.slice(0, 8)}`,
+            }
+          : resolveUnmatchedTaskDir(db, row.projectDir);
+      session = { ...labels, tasks: [] };
       sessionMap.set(row.projectDir, session);
     }
     session.tasks.push(task);
@@ -1251,6 +1326,7 @@ export function getIncompleteTasksGroupedByProject(db: IndexDb): TaskProjectGrou
       projectDir,
       projectId: session.projectId,
       projectName: session.projectName,
+      sessionId: session.sessionId,
       sessionTitle: session.sessionTitle,
       tasks: session.tasks,
       totalPending,
