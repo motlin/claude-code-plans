@@ -10,10 +10,12 @@ describe("application settings controls", () => {
     vi.unstubAllGlobals();
   });
 
-  it("persists Herdr and watcher policy through the server API", async () => {
+  it("persists navigation, Herdr, and watcher policy through the server API", async () => {
     const requests: Array<{ method: string; body: unknown }> = [];
     let settings = {
       herdrWritesEnabled: false,
+      showHerdrSection: true,
+      showTmuxSection: false,
       watcherPolling: false,
       ignoredDirs: ["node_modules", "dist"],
     };
@@ -37,20 +39,32 @@ describe("application settings controls", () => {
       </QueryClientProvider>,
     );
 
-    const herdrToggle = await screen.findByRole("switch", { name: "Live Herdr input" });
+    const herdrSectionToggle = await screen.findByRole("switch", { name: "Herdr section" });
+    const tmuxSectionToggle = screen.getByRole("switch", { name: "Tmux section" });
+    const herdrInputToggle = screen.getByRole("switch", { name: "Live Herdr input" });
     expect({
-      checked: herdrToggle.getAttribute("aria-checked"),
+      checked: {
+        herdrSection: herdrSectionToggle.getAttribute("aria-checked"),
+        tmuxSection: tmuxSectionToggle.getAttribute("aria-checked"),
+        herdrInput: herdrInputToggle.getAttribute("aria-checked"),
+      },
       immediate: screen.getByText(/Applies immediately without a server restart/).textContent,
       restartNotices: screen.getAllByText(/Restart the server/).length,
     }).toStrictEqual({
-      checked: "false",
+      checked: { herdrSection: "true", tmuxSection: "false", herdrInput: "false" },
       immediate:
         "Allow prompts, interrupts, and state reports for live Herdr terminals. Applies immediately without a server restart.",
       restartNotices: 2,
     });
 
-    fireEvent.click(herdrToggle);
-    await waitFor(() => expect(herdrToggle.getAttribute("aria-checked")).toBe("true"));
+    fireEvent.click(tmuxSectionToggle);
+    await waitFor(() => expect(tmuxSectionToggle.getAttribute("aria-checked")).toBe("true"));
+
+    fireEvent.click(herdrSectionToggle);
+    await waitFor(() => expect(herdrSectionToggle.getAttribute("aria-checked")).toBe("false"));
+
+    fireEvent.click(herdrInputToggle);
+    await waitFor(() => expect(herdrInputToggle.getAttribute("aria-checked")).toBe("true"));
 
     fireEvent.click(screen.getByRole("switch", { name: "Polling file watcher" }));
     await waitFor(() =>
@@ -63,13 +77,25 @@ describe("application settings controls", () => {
       target: { value: "node_modules\ncustom-cache" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Save ignored directories" }));
-    await waitFor(() => expect(requests).toHaveLength(3));
+    await waitFor(() => expect(requests).toHaveLength(5));
 
     expect(requests).toStrictEqual([
       {
         method: "PUT",
         body: {
-          herdrWritesEnabled: true,
+          herdrWritesEnabled: false,
+          showHerdrSection: true,
+          showTmuxSection: true,
+          watcherPolling: false,
+          ignoredDirs: ["node_modules", "dist"],
+        },
+      },
+      {
+        method: "PUT",
+        body: {
+          herdrWritesEnabled: false,
+          showHerdrSection: false,
+          showTmuxSection: true,
           watcherPolling: false,
           ignoredDirs: ["node_modules", "dist"],
         },
@@ -78,6 +104,18 @@ describe("application settings controls", () => {
         method: "PUT",
         body: {
           herdrWritesEnabled: true,
+          showHerdrSection: false,
+          showTmuxSection: true,
+          watcherPolling: false,
+          ignoredDirs: ["node_modules", "dist"],
+        },
+      },
+      {
+        method: "PUT",
+        body: {
+          herdrWritesEnabled: true,
+          showHerdrSection: false,
+          showTmuxSection: true,
           watcherPolling: true,
           ignoredDirs: ["node_modules", "dist"],
         },
@@ -86,6 +124,8 @@ describe("application settings controls", () => {
         method: "PUT",
         body: {
           herdrWritesEnabled: true,
+          showHerdrSection: false,
+          showTmuxSection: true,
           watcherPolling: true,
           ignoredDirs: ["node_modules", "custom-cache"],
         },

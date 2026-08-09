@@ -43,6 +43,8 @@ export const AppConfigSchema = z
       .optional(),
     /** Permit ccp to send input and state updates to live Herdr panes. */
     herdr_writes_enabled: z.boolean().optional(),
+    show_herdr_section: z.boolean().optional(),
+    show_tmux_section: z.boolean().optional(),
     /** Use chokidar polling instead of the platform's recursive filesystem watcher. */
     watcher_polling: z.boolean().optional(),
   })
@@ -82,6 +84,8 @@ export function readConfig(configPath: string = getConfigPath()): AppConfig | nu
  */
 const DEFAULT_APPLICATION_POLICY = {
   herdrWritesEnabled: false,
+  showHerdrSection: true,
+  showTmuxSection: false,
   watcherPolling: false,
 } as const;
 
@@ -105,6 +109,8 @@ export const DEFAULT_IGNORED_DIR_NAMES = [
 export const ApplicationSettingsSchema = z
   .object({
     herdrWritesEnabled: z.boolean(),
+    showHerdrSection: z.boolean(),
+    showTmuxSection: z.boolean(),
     watcherPolling: z.boolean(),
     ignoredDirs: z.array(z.string().trim().min(1)).min(1),
   })
@@ -117,6 +123,8 @@ export function readApplicationSettings(configPath: string = getConfigPath()): A
   return {
     herdrWritesEnabled:
       config?.herdr_writes_enabled ?? DEFAULT_APPLICATION_POLICY.herdrWritesEnabled,
+    showHerdrSection: config?.show_herdr_section ?? DEFAULT_APPLICATION_POLICY.showHerdrSection,
+    showTmuxSection: config?.show_tmux_section ?? DEFAULT_APPLICATION_POLICY.showTmuxSection,
     watcherPolling: config?.watcher_polling ?? DEFAULT_APPLICATION_POLICY.watcherPolling,
     ignoredDirs: config?.ignored_dirs ?? [...DEFAULT_IGNORED_DIR_NAMES],
   };
@@ -176,6 +184,8 @@ export async function updateApplicationSettings(
   await updateConfig(
     {
       herdr_writes_enabled: parsed.herdrWritesEnabled,
+      show_herdr_section: parsed.showHerdrSection,
+      show_tmux_section: parsed.showTmuxSection,
       watcher_polling: parsed.watcherPolling,
       ignored_dirs: parsed.ignoredDirs,
     },

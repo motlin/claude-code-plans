@@ -32,15 +32,19 @@ describe("persisted application settings", () => {
     expect([
       AppConfigSchema.safeParse({
         herdr_writes_enabled: true,
+        show_herdr_section: true,
+        show_tmux_section: false,
         watcher_polling: false,
         ignored_dirs: ["node_modules"],
       }).success,
       AppConfigSchema.safeParse({ herdr_writes_enabled: "1" }).success,
+      AppConfigSchema.safeParse({ show_herdr_section: "true" }).success,
+      AppConfigSchema.safeParse({ show_tmux_section: 1 }).success,
       AppConfigSchema.safeParse({ watcher_polling: 1 }).success,
       AppConfigSchema.safeParse({ ignored_dirs: [""] }).success,
       AppConfigSchema.safeParse({ ignored_dirs: [] }).success,
       AppConfigSchema.safeParse({ unknown_policy: true }).success,
-    ]).toStrictEqual([true, false, false, false, false, false]);
+    ]).toStrictEqual([true, false, false, false, false, false, false, false]);
   });
 
   it("uses safe defaults and ignores retired CCP environment aliases", () => {
@@ -55,6 +59,8 @@ describe("persisted application settings", () => {
       }).toStrictEqual({
         settings: {
           herdrWritesEnabled: false,
+          showHerdrSection: true,
+          showTmuxSection: false,
           watcherPolling: false,
           ignoredDirs: [...DEFAULT_IGNORED_DIR_NAMES],
         },
@@ -75,7 +81,13 @@ describe("persisted application settings", () => {
     );
 
     const saved = await updateApplicationSettings(
-      { herdrWritesEnabled: true, watcherPolling: true, ignoredDirs: ["vendor", "output"] },
+      {
+        herdrWritesEnabled: true,
+        showHerdrSection: false,
+        showTmuxSection: true,
+        watcherPolling: true,
+        ignoredDirs: ["vendor", "output"],
+      },
       configPath,
     );
 
@@ -86,6 +98,8 @@ describe("persisted application settings", () => {
     }).toStrictEqual({
       saved: {
         herdrWritesEnabled: true,
+        showHerdrSection: false,
+        showTmuxSection: true,
         watcherPolling: true,
         ignoredDirs: ["vendor", "output"],
       },
@@ -94,6 +108,8 @@ describe("persisted application settings", () => {
         file_roots: ["/tmp/files"],
         ignored_dirs: ["vendor", "output"],
         herdr_writes_enabled: true,
+        show_herdr_section: false,
+        show_tmux_section: true,
         watcher_polling: true,
       },
       temporaryFiles: ["config.json"],
@@ -108,6 +124,8 @@ describe("persisted application settings", () => {
       updateApplicationSettings(
         {
           herdrWritesEnabled: true,
+          showHerdrSection: true,
+          showTmuxSection: false,
           watcherPolling: false,
           ignoredDirs: ["node_modules"],
         },
@@ -124,6 +142,8 @@ describe("persisted application settings", () => {
       headers: { "Content-Type": "application/json", Origin: "http://127.0.0.1:7526" },
       body: JSON.stringify({
         herdrWritesEnabled: true,
+        showHerdrSection: false,
+        showTmuxSection: true,
         watcherPolling: false,
         ignoredDirs: ["node_modules", "build"],
       }),
@@ -142,12 +162,16 @@ describe("persisted application settings", () => {
       savedStatus: 200,
       saved: {
         herdrWritesEnabled: true,
+        showHerdrSection: false,
+        showTmuxSection: true,
         watcherPolling: false,
         ignoredDirs: ["node_modules", "build"],
       },
       readStatus: 200,
       read: {
         herdrWritesEnabled: true,
+        showHerdrSection: false,
+        showTmuxSection: true,
         watcherPolling: false,
         ignoredDirs: ["node_modules", "build"],
       },
@@ -155,6 +179,8 @@ describe("persisted application settings", () => {
         image_roots: ["/tmp/images"],
         ignored_dirs: ["node_modules", "build"],
         herdr_writes_enabled: true,
+        show_herdr_section: false,
+        show_tmux_section: true,
         watcher_polling: false,
       },
     });
@@ -168,6 +194,8 @@ describe("persisted application settings", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           herdrWritesEnabled: "yes",
+          showHerdrSection: true,
+          showTmuxSection: false,
           watcherPolling: false,
           ignoredDirs: [],
         }),

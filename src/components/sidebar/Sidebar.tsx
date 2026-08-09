@@ -4,7 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Section } from "./types";
 import { useActiveSection } from "./hooks";
-import { navItems } from "./navigation";
+import { useVisibleNavItems } from "./navigation";
 import { SidebarToggleIcon, SearchInput } from "./primitives";
 import {
   ActiveSubList,
@@ -32,8 +32,9 @@ export function Sidebar({
   const matches = useMatches();
   const currentPath = matches[matches.length - 1]?.fullPath ?? "/";
   const { section: activeSection, activeItemId } = useActiveSection(matches);
+  const navigationItems = useVisibleNavItems();
   const [collapsedSections, setCollapsedSections] = useState<Set<Section>>(
-    () => new Set(navItems.map((item) => item.section)),
+    () => new Set(navigationItems.map((item) => item.section)),
   );
   const { data: approvalsData } = useQuery(approvalsQueryOptions());
   const approvalsCount = approvalsData?.approvals.length ?? 0;
@@ -77,7 +78,7 @@ export function Sidebar({
       // Collapse sections that don't contain the current view when navigated to a
       // specific item.
       if (activeItemId) {
-        for (const item of navItems) {
+        for (const item of navigationItems) {
           if (item.section !== activeSection) {
             next.add(item.section);
           }
@@ -86,7 +87,7 @@ export function Sidebar({
 
       return next;
     });
-  }, [activeSection, activeItemId]);
+  }, [activeSection, activeItemId, navigationItems]);
 
   if (collapsed && !mobile) {
     return (
@@ -103,6 +104,7 @@ export function Sidebar({
 
   return (
     <nav
+      aria-label="Sidebar"
       className={
         mobile
           ? "relative flex h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border-300/15 bg-bg-200"
@@ -138,7 +140,7 @@ export function Sidebar({
       <SearchInput />
 
       <div className="flex-1 overflow-y-auto px-2">
-        {navItems.map((item) => {
+        {navigationItems.map((item) => {
           const isActive =
             item.to === "/settings" ? currentPath === "/settings" : currentPath.startsWith(item.to);
           const Icon = item.icon;

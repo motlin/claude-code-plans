@@ -15,6 +15,9 @@ import {
   SlidersHorizontal,
   type LucideIcon,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { applicationSettingsQueryOptions } from "../../lib/api/application-settings";
 import type { Section } from "./types";
 
 interface NavEntry {
@@ -127,3 +130,36 @@ export const navItems = (Object.keys(navEntries) as Section[]).map((section) => 
   section,
   ...(navEntries[section] as NavEntry),
 }));
+
+interface NavigationVisibilitySettings {
+  showHerdrSection: boolean;
+  showTmuxSection: boolean;
+}
+
+const DEFAULT_NAVIGATION_VISIBILITY = {
+  showHerdrSection: true,
+  showTmuxSection: false,
+} satisfies NavigationVisibilitySettings;
+
+function getVisibleNavItems(
+  settings: NavigationVisibilitySettings = DEFAULT_NAVIGATION_VISIBILITY,
+) {
+  return navItems.filter(
+    (item) =>
+      (item.section !== "herdr" || settings.showHerdrSection) &&
+      (item.section !== "tmux" || settings.showTmuxSection),
+  );
+}
+
+export function useVisibleNavItems() {
+  const applicationSettings = useQuery(applicationSettingsQueryOptions);
+  const showHerdrSection =
+    applicationSettings.data?.showHerdrSection ?? DEFAULT_NAVIGATION_VISIBILITY.showHerdrSection;
+  const showTmuxSection =
+    applicationSettings.data?.showTmuxSection ?? DEFAULT_NAVIGATION_VISIBILITY.showTmuxSection;
+
+  return useMemo(
+    () => getVisibleNavItems({ showHerdrSection, showTmuxSection }),
+    [showHerdrSection, showTmuxSection],
+  );
+}

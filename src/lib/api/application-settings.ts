@@ -5,6 +5,8 @@ import { apiFetch } from "./client";
 const ApplicationSettingsResponse = z
   .object({
     herdrWritesEnabled: z.boolean(),
+    showHerdrSection: z.boolean(),
+    showTmuxSection: z.boolean(),
     watcherPolling: z.boolean(),
     ignoredDirs: z.array(z.string().trim().min(1)).min(1),
   })

@@ -546,59 +546,37 @@ export function ApplicationConfigurationSection() {
 
   return (
     <Section icon={ServerCog} title="Application">
-      <div className="flex items-center justify-between gap-4 py-2">
-        <div>
-          <div className="text-sm font-medium text-text-100">Live Herdr input</div>
-          <div className="text-xs text-text-500">
-            Allow prompts, interrupts, and state reports for live Herdr terminals. Applies
-            immediately without a server restart.
-          </div>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-label="Live Herdr input"
-          aria-checked={settings.herdrWritesEnabled}
-          disabled={saveSettings.isPending}
-          onClick={() => save({ ...settings, herdrWritesEnabled: !settings.herdrWritesEnabled })}
-          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
-            settings.herdrWritesEnabled ? "bg-accent-100" : "bg-bg-300"
-          } ${saveSettings.isPending ? "cursor-wait opacity-50" : "cursor-pointer"}`}
-        >
-          <span
-            className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${
-              settings.herdrWritesEnabled ? "translate-x-[18px]" : "translate-x-[3px]"
-            }`}
-          />
-        </button>
-      </div>
+      <ApplicationToggleRow
+        label="Herdr section"
+        description="Show Herdr in the sidebar and home page."
+        checked={settings.showHerdrSection}
+        disabled={saveSettings.isPending}
+        onToggle={() => save({ ...settings, showHerdrSection: !settings.showHerdrSection })}
+      />
 
-      <div className="flex items-center justify-between gap-4 py-2">
-        <div>
-          <div className="text-sm font-medium text-text-100">Polling file watcher</div>
-          <div className="text-xs text-text-500">
-            Use polling when native recursive watching is unavailable. Restart the server after
-            changing this setting.
-          </div>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-label="Polling file watcher"
-          aria-checked={settings.watcherPolling}
-          disabled={saveSettings.isPending}
-          onClick={() => save({ ...settings, watcherPolling: !settings.watcherPolling })}
-          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
-            settings.watcherPolling ? "bg-accent-100" : "bg-bg-300"
-          } ${saveSettings.isPending ? "cursor-wait opacity-50" : "cursor-pointer"}`}
-        >
-          <span
-            className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${
-              settings.watcherPolling ? "translate-x-[18px]" : "translate-x-[3px]"
-            }`}
-          />
-        </button>
-      </div>
+      <ApplicationToggleRow
+        label="Tmux section"
+        description="Show Tmux Windows in the sidebar and home page."
+        checked={settings.showTmuxSection}
+        disabled={saveSettings.isPending}
+        onToggle={() => save({ ...settings, showTmuxSection: !settings.showTmuxSection })}
+      />
+
+      <ApplicationToggleRow
+        label="Live Herdr input"
+        description="Allow prompts, interrupts, and state reports for live Herdr terminals. Applies immediately without a server restart."
+        checked={settings.herdrWritesEnabled}
+        disabled={saveSettings.isPending}
+        onToggle={() => save({ ...settings, herdrWritesEnabled: !settings.herdrWritesEnabled })}
+      />
+
+      <ApplicationToggleRow
+        label="Polling file watcher"
+        description="Use polling when native recursive watching is unavailable. Restart the server after changing this setting."
+        checked={settings.watcherPolling}
+        disabled={saveSettings.isPending}
+        onToggle={() => save({ ...settings, watcherPolling: !settings.watcherPolling })}
+      />
 
       <div className="py-2">
         <label
@@ -640,6 +618,46 @@ export function ApplicationConfigurationSection() {
         <p className="py-2 text-xs text-red-600">Could not save application settings.</p>
       ) : null}
     </Section>
+  );
+}
+
+function ApplicationToggleRow({
+  label,
+  description,
+  checked,
+  disabled,
+  onToggle,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  disabled: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-2">
+      <div>
+        <div className="text-sm font-medium text-text-100">{label}</div>
+        <div className="text-xs text-text-500">{description}</div>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-label={label}
+        aria-checked={checked}
+        disabled={disabled}
+        onClick={onToggle}
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
+          checked ? "bg-accent-100" : "bg-bg-300"
+        } ${disabled ? "cursor-wait opacity-50" : "cursor-pointer"}`}
+      >
+        <span
+          className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${
+            checked ? "translate-x-[18px]" : "translate-x-[3px]"
+          }`}
+        />
+      </button>
+    </div>
   );
 }
 

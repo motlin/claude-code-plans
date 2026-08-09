@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { navItems } from "../components/sidebar/navigation";
+import { useVisibleNavItems } from "../components/sidebar/navigation";
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -8,13 +8,17 @@ export const Route = createFileRoute("/")({
   }),
 });
 
-export const cards = navItems;
-
 function Home() {
+  const cards = useVisibleNavItems();
+
   return (
     <div>
       <h1 className="text-lg font-semibold">Claude Code Browser</h1>
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div
+        role="region"
+        aria-label="Home sections"
+        className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+      >
         {cards.map((card) => {
           const Icon = card.icon;
           return (
