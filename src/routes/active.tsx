@@ -7,12 +7,7 @@ import { useClaudeEvents } from "../hooks/use-claude-events";
 import { DEFAULTS, useSettings } from "../components/settings-provider";
 import { StatusDot } from "../components/sidebar/primitives/StatusDot";
 import { ListPageHeader } from "../components/list-page-header";
-import {
-  compareByStableCreation,
-  compareByUrgency,
-  displayState,
-  waitHeat,
-} from "../lib/session-state";
+import { displayState, waitHeat } from "../lib/session-state";
 import { hasUnseenWork, subscribeUnseenWork } from "../lib/unread-store";
 
 type ActiveSession = z.infer<typeof ActiveSessionListResponse>[number];
@@ -73,6 +68,7 @@ function ActivePage() {
       sessionId,
       projectDir: info.cwd,
       projectName: labelFromCwd(info.cwd),
+      title: sessionId,
       createdAt: info.startedAt,
       lastModified: info.lastActivity,
       state: "unknown",
@@ -83,14 +79,8 @@ function ActivePage() {
     ...session,
     displayState: displayState(session.state, hasUnseenWork(session.sessionId)),
   }));
-  sessions.sort((first, second) =>
-    settings.sessionSort === "stable"
-      ? compareByStableCreation(first, second)
-      : compareByUrgency(
-          { state: first.displayState, lastModified: first.lastModified },
-          { state: second.displayState, lastModified: second.lastModified },
-        ),
-  );
+  // Newest activity first, so the "modified Xs ago" column decreases down the page.
+  sessions.sort((first, second) => second.lastModified - first.lastModified);
 
   return (
     <div>
@@ -112,10 +102,9 @@ function ActivePage() {
                   active
                   heat={waitHeat(session.displayState, session.blockedSince, now)}
                 />
-                <span className="truncate text-sm font-medium text-text-000">
-                  {session.projectName}
-                </span>
-                <span className="ml-auto text-xs text-text-500">
+                <span className="truncate text-sm font-medium text-text-000">{session.title}</span>
+                <span className="shrink-0 text-xs text-text-500">{session.projectName}</span>
+                <span className="ml-auto shrink-0 text-xs text-text-500">
                   {formatRelativeTime(session.lastModified)}
                 </span>
               </div>

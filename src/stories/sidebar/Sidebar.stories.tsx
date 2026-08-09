@@ -10,6 +10,7 @@ function createSeededQueryClient() {
       sessionId: "sess-1",
       projectDir: "/home/user/claude-code-plans",
       projectName: "claude-code-plans",
+      title: "Fix the session indexer",
       createdAt: Date.now() - 60_000,
       lastModified: Date.now(),
       state: "working",

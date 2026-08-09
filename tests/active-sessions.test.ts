@@ -2,6 +2,8 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vite-plus/test"
 import { mkdtempSync, mkdirSync, writeFileSync, utimesSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { openTestDb, type AppDb } from "../src/lib/db/connection";
+import * as schema from "../src/lib/db/schema";
 
 /**
  * Tests for `scanActiveSessions()` in `src/lib/active-sessions.ts`, which unions
@@ -16,6 +18,7 @@ import { join } from "node:path";
 
 let tempHome: string;
 let pendingApprovals: Array<{ sessionId: string; blockedSince: string }>;
+let testDb: AppDb | null;
 
 /** Encode a cwd into the `~/.claude/projects` directory-name form. */
 function encode(cwd: string): string {
@@ -38,6 +41,9 @@ function writeSessionFile(cwd: string, sessionId: string, mtime: Date): string {
 
 async function loadModules() {
   vi.resetModules();
+  const db = openTestDb();
+  testDb = db;
+  vi.doMock("../src/lib/db", () => ({ getDb: () => db }));
   vi.doMock("node:os", async () => {
     const actual = await vi.importActual<typeof import("node:os")>("node:os");
     return { ...actual, homedir: () => tempHome };
@@ -59,19 +65,37 @@ async function loadModules() {
   }));
   const scanMod = await import("../src/lib/active-sessions");
   const storeMod = await import("../src/lib/active-session-store");
-  return { scanMod, storeMod };
+  return { scanMod, storeMod, db };
+}
+
+/** Insert a minimal indexed session row so the title lookup finds it. */
+function seedSessionTitle(db: AppDb, sessionId: string, title: string): void {
+  db.index
+    .insert(schema.sessions)
+    .values({
+      id: sessionId,
+      projectId: "test-project",
+      title,
+      createdAt: 0,
+      mtimeMs: 0,
+      filePath: `/tmp/${sessionId}.jsonl`,
+    })
+    .run();
 }
 
 beforeEach(() => {
   tempHome = mkdtempSync(join(tmpdir(), "active-sessions-test-"));
   pendingApprovals = [];
+  testDb = null;
   mkdirSync(projectsDir(), { recursive: true });
 });
 
 afterEach(() => {
   rmSync(tempHome, { recursive: true, force: true });
+  testDb?.close();
   vi.doUnmock("node:os");
   vi.doUnmock("../src/lib/memory");
+  vi.doUnmock("../src/lib/db");
   vi.doUnmock("../src/lib/db/pending-approvals-cache");
   vi.resetModules();
 });
@@ -88,6 +112,7 @@ describe("scanActiveSessions", () => {
         sessionId: "fs-only",
         projectDir: encode("/Users/test/alpha"),
         projectName: "alpha",
+        title: "fs-only",
         createdAt: statSync(file).birthtimeMs,
         lastModified: statSync(file).mtimeMs,
         state: "unknown",
@@ -122,6 +147,7 @@ describe("scanActiveSessions", () => {
         sessionId: "shared",
         projectDir: encode("/Users/test/alpha"),
         projectName: "alpha",
+        title: "shared",
         createdAt: Math.min(entry.startedAt, statSync(file).birthtimeMs),
         lastModified: statSync(file).mtimeMs,
         state: "working",
@@ -158,5 +184,34 @@ describe("scanActiveSessions", () => {
       state: "waiting",
       blockedSince: "2000-01-01T00:00:00.000Z",
     });
+  });
+
+  it("attaches the indexed session title, falling back to the session id", async () => {
+    writeSessionFile("/Users/test/alpha", "titled", new Date(Date.now() - 10_000));
+    writeSessionFile("/Users/test/alpha", "untitled", new Date(Date.now() - 20_000));
+    const { scanMod, db } = await loadModules();
+    seedSessionTitle(db, "titled", "Fix the flaky watcher test");
+
+    const result = await scanMod.scanActiveSessions();
+
+    const titles = new Map(result.map((r) => [r.sessionId, r.title]));
+    expect(titles).toStrictEqual(
+      new Map([
+        ["titled", "Fix the flaky watcher test"],
+        ["untitled", "untitled"],
+      ]),
+    );
+  });
+
+  it("orders sessions by lastModified descending", async () => {
+    const now = Date.now();
+    writeSessionFile("/Users/test/alpha", "middle", new Date(now - 20_000));
+    writeSessionFile("/Users/test/beta", "newest", new Date(now - 5_000));
+    writeSessionFile("/Users/test/alpha", "oldest", new Date(now - 40_000));
+    const { scanMod } = await loadModules();
+
+    const result = await scanMod.scanActiveSessions();
+
+    expect(result.map((r) => r.sessionId)).toStrictEqual(["newest", "middle", "oldest"]);
   });
 });

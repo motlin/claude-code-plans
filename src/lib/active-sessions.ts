@@ -5,17 +5,24 @@ import { resolveProjectName } from "./memory";
 import { getActiveSessionEntries } from "./active-session-store";
 import { ACTIVE_SESSION_WINDOW_MS } from "./active-session-window";
 import { getPendingApprovals } from "./db/pending-approvals-cache";
+import { getDb } from "./db";
+import { getSessionTitlesByIds } from "./db/queries";
 import type { ActivityState } from "./session-state";
 
 export interface ActiveSession {
   sessionId: string;
   projectDir: string;
   projectName: string;
+  /** Indexed session title (customTitle > summary > firstPrompt), else the session id. */
+  title: string;
   createdAt: number;
   lastModified: number;
   state: ActivityState;
   blockedSince: string | null;
 }
+
+/** Scan result before the DB title lookup joins in. */
+type ActiveSessionCandidate = Omit<ActiveSession, "title">;
 
 export async function scanActiveSessions(
   activeTimeoutMs = ACTIVE_SESSION_WINDOW_MS,
@@ -31,7 +38,7 @@ export async function scanActiveSessions(
 
   // Dedup by sessionId, keeping the entry with the fresher lastModified. Store
   // entries are visited first, so on a tie they win (richer project/cwd info).
-  const bySessionId = new Map<string, ActiveSession>();
+  const bySessionId = new Map<string, ActiveSessionCandidate>();
   for (const session of [...storeSessions, ...fsSessions]) {
     const existing = bySessionId.get(session.sessionId);
     if (!existing) {
@@ -62,15 +69,23 @@ export async function scanActiveSessions(
     });
   }
 
-  return [...bySessionId.values()].sort((a, b) => b.lastModified - a.lastModified);
+  const candidates = [...bySessionId.values()].sort((a, b) => b.lastModified - a.lastModified);
+  const titles = getSessionTitlesByIds(
+    getDb().index,
+    candidates.map((candidate) => candidate.sessionId),
+  );
+  return candidates.map((candidate) => ({
+    ...candidate,
+    title: titles[candidate.sessionId] ?? candidate.sessionId,
+  }));
 }
 
 async function getActiveSessionsFromStore(
   entries: ReturnType<typeof getActiveSessionEntries>,
-): Promise<ActiveSession[]> {
+): Promise<ActiveSessionCandidate[]> {
   const sorted = [...entries].sort((a, b) => b.lastActivity - a.lastActivity);
   const nameCache = new Map<string, string>();
-  const result: ActiveSession[] = [];
+  const result: ActiveSessionCandidate[] = [];
 
   for (const entry of sorted) {
     // Resolve project dir from cwd — look for matching project dirs
@@ -121,10 +136,10 @@ async function findProjectDirForCwd(cwd: string): Promise<string | null> {
 
 async function getActiveSessionsFromFilesystem(
   activeThresholdMs: number,
-): Promise<ActiveSession[]> {
+): Promise<ActiveSessionCandidate[]> {
   const projectsDir = join(homedir(), ".claude", "projects");
   const now = Date.now();
-  const active: Array<Omit<ActiveSession, "projectName"> & { projectDir: string }> = [];
+  const active: Array<Omit<ActiveSessionCandidate, "projectName">> = [];
 
   let projectDirs: string[];
   try {
@@ -166,7 +181,7 @@ async function getActiveSessionsFromFilesystem(
   active.sort((a, b) => b.lastModified - a.lastModified);
 
   const nameCache = new Map<string, string>();
-  const result: ActiveSession[] = [];
+  const result: ActiveSessionCandidate[] = [];
   for (const s of active) {
     result.push({ ...s, projectName: await resolveProjectNameCached(nameCache, s.projectDir) });
   }

@@ -51,6 +51,7 @@ const ActiveSessionSchema = z.object({
   sessionId: z.string(),
   projectDir: z.string(),
   projectName: z.string(),
+  title: z.string(),
   createdAt: z.number(),
   lastModified: z.number(),
   state: z.enum(["idle", "working", "waiting", "unknown"]),
