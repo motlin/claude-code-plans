@@ -1464,6 +1464,94 @@ describe("indexer", () => {
     if (!after) throw new Error("Expected session update-branch after re-index");
     expect(after.gitBranch).toBe("main");
   });
+
+  it("normalizes detached-HEAD gitBranch to null when indexing JSONL", async () => {
+    const projectDir = join(testDir, "-Users-craig-projects-app");
+    mkdirSync(projectDir, { recursive: true });
+
+    writeFileSync(
+      join(projectDir, "detached-sess.jsonl"),
+      jsonl(
+        { type: "attachment", gitBranch: "HEAD", cwd: "/projects/app" },
+        {
+          type: "user",
+          message: { role: "user", content: "Hello from detached HEAD" },
+        },
+      ),
+    );
+
+    await indexJsonlFile(
+      db.index,
+      join(projectDir, "detached-sess.jsonl"),
+      "-Users-craig-projects-app",
+    );
+
+    const session = db.index
+      .select()
+      .from(schema.sessions)
+      .where(eq(schema.sessions.id, "detached-sess"))
+      .get();
+    if (!session) throw new Error("Expected session detached-sess");
+    expect(session.gitBranch).toBe(null);
+  });
+
+  it("prefers a later real branch over an earlier detached-HEAD line in JSONL", async () => {
+    const projectDir = join(testDir, "-Users-craig-projects-app");
+    mkdirSync(projectDir, { recursive: true });
+
+    writeFileSync(
+      join(projectDir, "reattached-sess.jsonl"),
+      jsonl(
+        { type: "attachment", gitBranch: "HEAD", cwd: "/projects/app" },
+        { type: "attachment", gitBranch: "feature-abc", cwd: "/projects/app" },
+        {
+          type: "user",
+          message: { role: "user", content: "Back on a branch" },
+        },
+      ),
+    );
+
+    await indexJsonlFile(
+      db.index,
+      join(projectDir, "reattached-sess.jsonl"),
+      "-Users-craig-projects-app",
+    );
+
+    const session = db.index
+      .select()
+      .from(schema.sessions)
+      .where(eq(schema.sessions.id, "reattached-sess"))
+      .get();
+    if (!session) throw new Error("Expected session reattached-sess");
+    expect(session.gitBranch).toBe("feature-abc");
+  });
+
+  it("normalizes detached-HEAD gitBranch to null when indexing sessions-index", async () => {
+    const projectDir = join(testDir, "-Users-craig-projects-app");
+    mkdirSync(projectDir, { recursive: true });
+
+    writeFileSync(
+      join(projectDir, "sessions-index.json"),
+      makeSessionsIndex([
+        {
+          sessionId: "detached-index-sess",
+          fullPath: join(projectDir, "detached-index-sess.jsonl"),
+          fileMtime: Date.now() - 1000,
+          firstPrompt: "Initial",
+          gitBranch: "HEAD",
+        },
+      ]),
+    );
+    await indexSessionsIndex(db.index, projectDir, "-Users-craig-projects-app");
+
+    const session = db.index
+      .select()
+      .from(schema.sessions)
+      .where(eq(schema.sessions.id, "detached-index-sess"))
+      .get();
+    if (!session) throw new Error("Expected session detached-index-sess");
+    expect(session.gitBranch).toBe(null);
+  });
 });
 
 describe("queries", () => {

@@ -14,6 +14,7 @@ import {
 import { encodeProjectPath, resolveProjectPath } from "../memory";
 import { isCountableMessageRecord } from "../message-count";
 import { deriveProjectDisplayName, lastEncodedSegment } from "../project-display-name";
+import { normalizeGitBranch } from "../git-branch";
 import { extractSessionTitle, readFirstUserMessage, resolveFirstPrompt } from "../sessions";
 import { extractTitle, extractTitleFromContent } from "../markdown-utils.server";
 import { listTrackedFiles } from "../git-tracked";
@@ -425,7 +426,7 @@ export async function indexSessionsIndex(
   for (const entry of result.data.entries) {
     const fp = await resolveFirstPrompt(entry.firstPrompt, entry.fullPath);
     const summ = entry.summary as string | undefined;
-    const branch = entry.gitBranch as string | undefined;
+    const branch = normalizeGitBranch(entry.gitBranch as string | undefined);
     const entryProjectPath = entry.projectPath as string | undefined;
     const sidechain = entry.isSidechain as boolean | undefined;
     const title = summ ?? extractSessionTitle(fp ?? "", entry.sessionId);
@@ -444,7 +445,7 @@ export async function indexSessionsIndex(
         // indexJsonlFile owns message_count; a fresh row starts at 0 until
         // the transcript itself is indexed.
         messageCount: 0,
-        gitBranch: branch ?? null,
+        gitBranch: branch,
         cwd: entryProjectPath ?? null,
         isSidechain: sidechain ? 1 : 0,
         createdAt,
@@ -457,7 +458,7 @@ export async function indexSessionsIndex(
           title: sql<string>`coalesce(${schema.sessions.customTitle}, ${title})`,
           firstPrompt: fp,
           summary: summ ?? null,
-          gitBranch: branch ?? null,
+          gitBranch: branch,
           cwd: entryProjectPath ?? null,
           isSidechain: sidechain ? 1 : 0,
           mtimeMs: entry.fileMtime,
@@ -519,7 +520,7 @@ export async function indexJsonlFile(
   let customTitle: string | undefined;
   let lastSessionCwd: string | undefined;
   let anchoredSessionCwd: string | undefined;
-  let sessionGitBranch: string | undefined;
+  let sessionGitBranch: string | null = null;
   const textChunks: string[] = [];
   const indexedMessages: Array<{
     sessionId: string;
@@ -586,12 +587,13 @@ export async function indexJsonlFile(
         }
       }
 
-      // Extract gitBranch from early lines
+      // Extract gitBranch from early lines. Detached-HEAD lines normalize to
+      // null, so keep scanning until a real branch name appears (if any).
       if (!sessionGitBranch && line.includes('"gitBranch"')) {
         try {
           const parsed = JSON.parse(line) as { gitBranch?: string };
           if (typeof parsed.gitBranch === "string") {
-            sessionGitBranch = parsed.gitBranch;
+            sessionGitBranch = normalizeGitBranch(parsed.gitBranch);
           }
         } catch {
           // skip
@@ -703,7 +705,7 @@ export async function indexJsonlFile(
         summary: null,
         customTitle: customTitle ?? null,
         messageCount,
-        gitBranch: sessionGitBranch ?? null,
+        gitBranch: sessionGitBranch,
         cwd: sessionCwd ?? null,
         isSidechain: 0,
         createdAt: fileStat.birthtimeMs,

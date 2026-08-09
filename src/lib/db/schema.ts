@@ -1,7 +1,9 @@
 import { sqliteTable, text, integer, index, primaryKey } from "drizzle-orm/sqlite-core";
 import type { ReviewBundle } from "../api/reviews";
 
-export const SCHEMA_VERSION = "22";
+// 23: detached-HEAD gitBranch values ("HEAD") normalize to null at index
+// time; bump forces a rebuild so previously indexed rows are cleaned up.
+export const SCHEMA_VERSION = "23";
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),

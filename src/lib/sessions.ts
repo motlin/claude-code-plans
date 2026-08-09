@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { decodeProjectDir, resolveProjectName } from "./memory";
 import type { JsonValue } from "./hook-events";
+import { normalizeGitBranch } from "./git-branch";
 import { SessionsIndexSchema, CustomTitleRecordSchema } from "./schemas";
 import { isCountableMessageRecord } from "./message-count";
 import { isCaveatLine, isCommandLine, isStdoutLine } from "./transcript";
@@ -341,7 +342,7 @@ async function listSessionsForProject(
       projectName,
       projectPath: entry.projectPath,
       messageCount: await resolveMessageCount(entry.fullPath),
-      gitBranch: entry.gitBranch,
+      gitBranch: normalizeGitBranch(entry.gitBranch) ?? undefined,
       isSidechain: entry.isSidechain ?? false,
     });
   }
