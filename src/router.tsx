@@ -5,7 +5,13 @@ import { routeTree } from "./routeTree.gen";
 import { DefaultErrorComponent } from "./routes/__root";
 
 export function getRouter() {
-  const queryClient = new QueryClient();
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        refetchOnWindowFocus: false,
+      },
+    },
+  });
 
   const router = createRouter({
     routeTree,
