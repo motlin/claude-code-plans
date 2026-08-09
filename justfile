@@ -35,9 +35,21 @@ ensure-sqlite-native:
 dev *args: install
     PORT={{port}} vp dev {{args}}
 
-# Run production server
-start *args: install build
-    PORT={{port}} vp run start {{args}}
+# Build and (re)start the production server in the background. Idempotent: stops any existing server first, so double-starting never leaves an orphan. No launchd service manages this — `just stop` is the only reaper.
+start: install build
+    PORT={{port}} scripts/server.sh start
+
+# Stop the production server
+stop:
+    PORT={{port}} scripts/server.sh stop
+
+# Restart the production server without rebuilding
+restart:
+    PORT={{port}} scripts/server.sh restart
+
+# Show production server status
+status:
+    PORT={{port}} scripts/server.sh status
 
 # PORT=7527 vp run start
 start-preview *args: install build
