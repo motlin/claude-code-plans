@@ -14,6 +14,7 @@ import {
 import { isSessionVisible } from "../session-visibility";
 import { probeHerdr, type HerdrAvailability } from "./availability";
 import { herdrRequest } from "./client";
+import { createHerdrPaneDiffer, extractPaneRevision, type PaneRevision } from "./pane-differ";
 import { getHerdrPanes, type HerdrPaneLink } from "./panes";
 import { HerdrSessionSnapshotResultSchema } from "./schema";
 import {
@@ -64,7 +65,7 @@ interface BridgeDependencies {
   probe: () => Promise<HerdrAvailability>;
   connect: (socketPath: string) => Socket;
   createLineReader: (socket: Socket) => ReadlineInterface;
-  getPaneIds: () => Promise<string[]>;
+  getPaneSnapshot: () => Promise<PaneRevision[]>;
   getPanes: () => Promise<HerdrPaneLink[]>;
   broadcast: (type: string, data: Record<string, unknown>) => void;
   schedule: (callback: () => void, delayMs: number) => Timer;
@@ -100,7 +101,7 @@ const defaultDependencies: BridgeDependencies = {
   probe: probeHerdr,
   connect: createConnection,
   createLineReader: (socket) => createInterface({ input: socket }),
-  getPaneIds: async () => {
+  getPaneSnapshot: async () => {
     const response = await herdrRequest<unknown>({
       id: "ccp:sub-snap",
       method: "session.snapshot",
@@ -108,7 +109,11 @@ const defaultDependencies: BridgeDependencies = {
     });
     if (!response.ok) return [];
     const parsed = HerdrSessionSnapshotResultSchema.safeParse(response.value);
-    return parsed.success ? parsed.data.snapshot.panes.map((pane) => pane.pane_id) : [];
+    if (!parsed.success) return [];
+    return parsed.data.snapshot.panes.map((pane) => ({
+      paneId: pane.pane_id,
+      revision: pane.revision,
+    }));
   },
   getPanes: () => getHerdrPanes(),
   broadcast: broadcastTyped,
@@ -148,6 +153,10 @@ function createBridge(dependencies: BridgeDependencies): () => void {
   let resyncRunning = false;
   let resyncAgain = false;
   let socketPath = "";
+  // herdr replays pane_created for every existing pane on each subscribe, so
+  // the bridge must remember what it has already announced across reconnects
+  // or each replay triggers a reconnect that triggers the next replay.
+  const paneDiffer = createHerdrPaneDiffer();
 
   const runResync = async (): Promise<void> => {
     if (stopped || resyncRunning) {
@@ -159,7 +168,9 @@ function createBridge(dependencies: BridgeDependencies): () => void {
     const panes = await dependencies.getPanes();
     if (!stopped) {
       dependencies.viewedStateTracker.syncPanes(panes);
-      dependencies.broadcast(HERDR_EVENTS.PANES_SNAPSHOT, { panes });
+      if (paneDiffer.shouldBroadcastSnapshot(panes)) {
+        dependencies.broadcast(HERDR_EVENTS.PANES_SNAPSHOT, { panes });
+      }
     }
     resyncRunning = false;
 
@@ -227,11 +238,33 @@ function createBridge(dependencies: BridgeDependencies): () => void {
       if (pushedEvent === "pane_agent_status_changed") {
         dependencies.viewedStateTracker.handleStatusEvent(data);
       }
-      dependencies.broadcast(sseEvent, data);
+
       if (pushedEvent === "pane_created" || pushedEvent === "pane_closed") {
-        scheduleReconnect();
+        const pane = extractPaneRevision(data);
+        if (pane) {
+          const changed =
+            pushedEvent === "pane_created"
+              ? paneDiffer.recordCreated(pane)
+              : paneDiffer.recordClosed(pane.paneId);
+          if (!changed) return;
+          dependencies.broadcast(sseEvent, data);
+          // Reconnect to rebuild the pane-scoped agent-status subscriptions.
+          scheduleReconnect();
+          return;
+        }
+        // Without a pane id the subscription list cannot change; a resync is
+        // enough and, unlike a reconnect, cannot fuel a replay loop.
+        dependencies.broadcast(sseEvent, data);
+        scheduleHintResync();
         return;
       }
+
+      if (pushedEvent === "pane_updated") {
+        const pane = extractPaneRevision(data);
+        if (pane && !paneDiffer.recordUpdated(pane)) return;
+      }
+
+      dependencies.broadcast(sseEvent, data);
       scheduleHintResync();
     });
   };
@@ -242,8 +275,10 @@ function createBridge(dependencies: BridgeDependencies): () => void {
     // fast done→idle push could arrive before its paneId→terminalId mapping.
     await runResync();
     if (stopped) return;
-    const paneIds = await dependencies.getPaneIds();
-    if (!stopped) connect(paneIds);
+    const panes = await dependencies.getPaneSnapshot();
+    if (stopped) return;
+    paneDiffer.seedKnownPanes(panes);
+    connect(panes.map((pane) => pane.paneId));
   };
 
   const probeAndOpenSubscription = async (): Promise<void> => {

@@ -99,7 +99,7 @@ describe("herdr event bridge", () => {
         lineReaders.push(lineReader);
         return lineReader as unknown as ReadlineInterface;
       },
-      getPaneIds: async () => ["workspace-100:pane-100"],
+      getPaneSnapshot: async () => [{ paneId: "workspace-100:pane-100", revision: 0 }],
       getPanes,
       broadcast: (type, data) => broadcasts.push({ type, data }),
       schedule: (callback, delayMs) => {
@@ -138,7 +138,7 @@ describe("herdr event bridge", () => {
       probe,
       connect: () => new FakeSocket() as unknown as Socket,
       createLineReader: () => new FakeLineReader() as unknown as ReadlineInterface,
-      getPaneIds: async () => ["workspace-100:pane-100"],
+      getPaneSnapshot: async () => [{ paneId: "workspace-100:pane-100", revision: 0 }],
       getPanes: async () => [],
       broadcast: () => {},
       schedule: (callback, delayMs) => {
@@ -178,7 +178,7 @@ describe("herdr event bridge", () => {
         lineReaders.push(lineReader);
         return lineReader as unknown as ReadlineInterface;
       },
-      getPaneIds: async () => ["workspace-100:pane-100"],
+      getPaneSnapshot: async () => [{ paneId: "workspace-100:pane-100", revision: 0 }],
       getPanes,
       broadcast: (type, data) => broadcasts.push({ type, data }),
       schedule: setTimeout,
@@ -192,6 +192,8 @@ describe("herdr event bridge", () => {
     socket.emit("connect");
     await flushPromises();
     lineReader.send({ id: "ccp:sub", result: { type: "subscription_started" } });
+    // Replayed create for the already-subscribed pane and a close for an
+    // unknown pane are both deduplicated away.
     lineReader.send({ event: "pane_created", data: { pane_id: "workspace-100:pane-100" } });
     lineReader.send({ event: "pane_closed", data: { pane_id: "workspace-100:pane-200" } });
     lineReader.send({ event: "pane_updated", data: { pane_id: "workspace-100:pane-300" } });
@@ -221,14 +223,6 @@ describe("herdr event bridge", () => {
       broadcasts: [
         { type: HERDR_EVENTS.PANES_SNAPSHOT, data: { panes: [] } },
         {
-          type: HERDR_EVENTS.PANE_CREATED,
-          data: { pane_id: "workspace-100:pane-100" },
-        },
-        {
-          type: HERDR_EVENTS.PANE_CLOSED,
-          data: { pane_id: "workspace-100:pane-200" },
-        },
-        {
           type: HERDR_EVENTS.PANE_UPDATED,
           data: { pane_id: "workspace-100:pane-300" },
         },
@@ -251,9 +245,14 @@ describe("herdr event bridge", () => {
     await vi.advanceTimersByTimeAsync(249);
     expect(getPanes.mock.calls).toStrictEqual([[]]);
     await vi.advanceTimersByTimeAsync(1);
+    // The coalesced resync runs but its payload is unchanged, so the
+    // identical snapshot is not rebroadcast.
     expect({ getPanesCalls: getPanes.mock.calls, lastBroadcast: broadcasts.at(-1) }).toStrictEqual({
       getPanesCalls: [[], []],
-      lastBroadcast: { type: HERDR_EVENTS.PANES_SNAPSHOT, data: { panes: [] } },
+      lastBroadcast: {
+        type: HERDR_EVENTS.PANE_AGENT_STATUS_CHANGED,
+        data: { pane_id: "workspace-100:pane-700" },
+      },
     });
     stop();
   });
@@ -274,7 +273,7 @@ describe("herdr event bridge", () => {
         lineReaders.push(lineReader);
         return lineReader as unknown as ReadlineInterface;
       },
-      getPaneIds: async () => ["workspace-100:pane-100"],
+      getPaneSnapshot: async () => [{ paneId: "workspace-100:pane-100", revision: 0 }],
       getPanes: async () => [],
       broadcast: () => {},
       schedule: (callback, delayMs) => {
@@ -327,7 +326,7 @@ describe("herdr event bridge", () => {
         lineReaders.push(lineReader);
         return lineReader as unknown as ReadlineInterface;
       },
-      getPaneIds: async () => ["workspace-100:pane-100"],
+      getPaneSnapshot: async () => [{ paneId: "workspace-100:pane-100", revision: 0 }],
       getPanes,
       broadcast: () => {},
       schedule: setTimeout,
@@ -350,5 +349,116 @@ describe("herdr event bridge", () => {
       getPanesCalls: getPanes.mock.calls,
       lineReaderClosed: lineReader.closed,
     }).toStrictEqual({ destroyedByBridge: true, getPanesCalls: [[]], lineReaderClosed: true });
+  });
+
+  it("announces a new pane once even though herdr replays its create on every resubscribe", async () => {
+    const sockets: FakeSocket[] = [];
+    const lineReaders: FakeLineReader[] = [];
+    const broadcasts: Broadcast[] = [];
+    let snapshotCalls = 0;
+    const replayedCreate = {
+      event: "pane_created",
+      data: { pane: { pane_id: "wE:p17", revision: 0 } },
+    };
+    const stop = __testing.createBridge({
+      probe: available,
+      connect: () => {
+        const socket = new FakeSocket();
+        sockets.push(socket);
+        return socket as unknown as Socket;
+      },
+      createLineReader: () => {
+        const lineReader = new FakeLineReader();
+        lineReaders.push(lineReader);
+        return lineReader as unknown as ReadlineInterface;
+      },
+      getPaneSnapshot: async () => {
+        snapshotCalls += 1;
+        return snapshotCalls === 1 ? [] : [{ paneId: "wE:p17", revision: 0 }];
+      },
+      getPanes: async () => [],
+      broadcast: (type, data) => broadcasts.push({ type, data }),
+      schedule: setTimeout,
+      cancel: clearTimeout,
+      viewedStateTracker: viewedStateTracker(),
+    });
+    await flushPromises();
+    sockets[0]!.emit("connect");
+    await flushPromises();
+
+    // A genuinely new pane: broadcast once and reconnect to subscribe to it.
+    lineReaders[0]!.send(replayedCreate);
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(250);
+    sockets[1]!.emit("connect");
+    await flushPromises();
+
+    // herdr replays the same create on the fresh subscription, forever.
+    for (let replay = 0; replay < 5; replay += 1) lineReaders[1]!.send(replayedCreate);
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    expect({
+      createBroadcasts: broadcasts.filter((b) => b.type === HERDR_EVENTS.PANE_CREATED),
+      snapshotBroadcasts: broadcasts.filter((b) => b.type === HERDR_EVENTS.PANES_SNAPSHOT),
+      socketCount: sockets.length,
+      replaySocketDestroyed: sockets[1]!.destroyedByBridge,
+    }).toStrictEqual({
+      createBroadcasts: [{ type: HERDR_EVENTS.PANE_CREATED, data: replayedCreate.data }],
+      snapshotBroadcasts: [{ type: HERDR_EVENTS.PANES_SNAPSHOT, data: { panes: [] } }],
+      socketCount: 2,
+      replaySocketDestroyed: false,
+    });
+    stop();
+  });
+
+  it("deduplicates pane_updated by revision", async () => {
+    const sockets: FakeSocket[] = [];
+    const lineReaders: FakeLineReader[] = [];
+    const broadcasts: Broadcast[] = [];
+    const stop = __testing.createBridge({
+      probe: available,
+      connect: () => {
+        const socket = new FakeSocket();
+        sockets.push(socket);
+        return socket as unknown as Socket;
+      },
+      createLineReader: () => {
+        const lineReader = new FakeLineReader();
+        lineReaders.push(lineReader);
+        return lineReader as unknown as ReadlineInterface;
+      },
+      getPaneSnapshot: async () => [{ paneId: "w19:p9", revision: 228 }],
+      getPanes: async () => [],
+      broadcast: (type, data) => broadcasts.push({ type, data }),
+      schedule: setTimeout,
+      cancel: clearTimeout,
+      viewedStateTracker: viewedStateTracker(),
+    });
+    await flushPromises();
+    sockets[0]!.emit("connect");
+    await flushPromises();
+
+    lineReaders[0]!.send({
+      event: "pane_updated",
+      data: { pane: { pane_id: "w19:p9", revision: 228 } },
+    });
+    lineReaders[0]!.send({
+      event: "pane_updated",
+      data: { pane: { pane_id: "w19:p9", revision: 229 } },
+    });
+    lineReaders[0]!.send({
+      event: "pane_updated",
+      data: { pane: { pane_id: "w19:p9", revision: 229 } },
+    });
+    await flushPromises();
+
+    expect(broadcasts.filter((b) => b.type === HERDR_EVENTS.PANE_UPDATED)).toStrictEqual([
+      {
+        type: HERDR_EVENTS.PANE_UPDATED,
+        data: { pane: { pane_id: "w19:p9", revision: 229 } },
+      },
+    ]);
+    stop();
   });
 });
