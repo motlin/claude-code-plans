@@ -27,7 +27,7 @@ import {
   type ReviewOfferedPayload,
 } from "./hook-events";
 import { buildSessionSummaryPayloadFromDb, toActiveSessionPayload } from "./session-summary";
-import { addNotification } from "./notifications-store";
+import { addNotification, clearNotificationsForSession } from "./notifications-store";
 import {
   addLiveSubagent,
   endLiveSubagent,
@@ -371,6 +371,11 @@ export async function dispatchHookEvent({
   const entryBeforeDispatch = store.getActiveSessionEntry(event.session_id);
   const nextState = stateForEvent(event);
   if (nextState !== null) store.setSessionState(event.session_id, nextState);
+  // A session that resumes working no longer needs its "waiting for input" /
+  // "needs your permission" notification — clear it so the badge tracks only
+  // sessions that still want attention. No-op (no broadcast) when the session
+  // has no persisted notifications.
+  if (nextState === "working") clearNotificationsForSession(event.session_id);
 
   switch (event.hook_event_name) {
     case "SessionStart": {

@@ -30,13 +30,22 @@ export interface NotificationEntry {
 }
 
 /**
- * Keyed by generated `id` (many notifications coexist per session). HMR-persisted
+ * Keyed by generated `id`; at most one entry per session, because a new state
+ * notification supersedes the previous one (see `addNotification`). HMR-persisted
  * so live entries survive dev hot-swaps, exactly like the active-session store.
  * Not backed by a DB table: a notification lands nowhere on disk and could never
  * be rebuilt by rescanning `~/.claude`, so it must not live in the rebuildable
  * index cache.
  */
 const store = hmrPersist("notificationsStore", () => new Map<string, NotificationEntry>());
+
+/**
+ * Ids the user has already seen (PATCH `/api/notifications` fires when the
+ * `/notifications` page is viewed). Kept beside the entry map so every code
+ * path that deletes an entry also drops its read mark, preventing unbounded
+ * growth of stale ids.
+ */
+const readIds = hmrPersist("notificationsReadIds", () => new Set<string>());
 
 let sweepTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -99,6 +108,23 @@ function enforceMaxEntries(): void {
     const oldestId = store.keys().next().value;
     if (oldestId === undefined) break;
     store.delete(oldestId);
+    readIds.delete(oldestId);
+  }
+}
+
+/**
+ * Remove every entry for `sessionId`, broadcasting NOTIFICATION_CLEARED per id
+ * so live clients drop the stale rows. Used both to supersede an old state
+ * notification when the session emits a new one, and to clear a session's
+ * notifications outright when it resumes working.
+ */
+export function clearNotificationsForSession(sessionId: string): void {
+  for (const [id, entry] of store) {
+    if (entry.sessionId === sessionId) {
+      store.delete(id);
+      readIds.delete(id);
+      broadcastTyped(DOMAIN_EVENTS.NOTIFICATION_CLEARED, { id });
+    }
   }
 }
 
@@ -126,6 +152,10 @@ export function addNotification(
   };
   if (input.title !== undefined) entry.title = input.title;
 
+  // Supersede rather than append: a session's newest state notification
+  // replaces its previous one, so repeated "waiting for your input" /
+  // "needs your permission" reminders never pile up per session.
+  clearNotificationsForSession(input.sessionId);
   store.set(entry.id, entry);
   enforceMaxEntries();
   broadcastTyped(DOMAIN_EVENTS.NOTIFICATION_ADDED, {
@@ -144,13 +174,26 @@ export function getNotificationsForProject(projectId: string): NotificationEntry
 
 export function dismissNotification(id: string): void {
   if (store.delete(id)) {
+    readIds.delete(id);
     broadcastTyped(DOMAIN_EVENTS.NOTIFICATION_CLEARED, { id });
   }
 }
 
 export function clearAllNotifications(): void {
   store.clear();
+  readIds.clear();
   broadcastTyped(DOMAIN_EVENTS.NOTIFICATION_CLEARED, { all: true });
+}
+
+/** Mark every current entry read; viewing `/notifications` drops the badge to 0. */
+export function markAllNotificationsRead(): void {
+  for (const id of store.keys()) {
+    readIds.add(id);
+  }
+}
+
+export function isNotificationUnread(id: string): boolean {
+  return !readIds.has(id);
 }
 
 /**
@@ -163,6 +206,7 @@ export function sweepNotifications(target: Map<string, NotificationEntry>): void
   for (const [id, entry] of target) {
     if (entry.createdAt < cutoff) {
       target.delete(id);
+      readIds.delete(id);
     }
   }
 }

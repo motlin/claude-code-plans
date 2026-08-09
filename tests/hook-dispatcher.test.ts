@@ -854,6 +854,46 @@ describe("dispatchHookEvent", () => {
     expect(stored[0] && "title" in stored[0]).toBe(false);
   });
 
+  it("a working-state event clears the session's persisted notifications but not other sessions'", async () => {
+    clearAllNotifications();
+    const { store } = makeStore();
+    for (const sessionId of ["abc-123", "other-456"]) {
+      await dispatchHookEvent({
+        event: {
+          hook_event_name: "Notification",
+          session_id: sessionId,
+          transcript_path: `/tmp/${sessionId}.jsonl`,
+          cwd: "/tmp/my-project",
+          message: "Claude is waiting for your input",
+          notification_type: "agent_needs_input",
+        },
+        db: db.index,
+        store,
+        broadcast: () => {},
+      });
+    }
+    expect(getNotifications()).toHaveLength(2);
+
+    // The user resumes the session: UserPromptSubmit derives state "working".
+    await dispatchHookEvent({
+      event: {
+        hook_event_name: "UserPromptSubmit",
+        session_id: "abc-123",
+        transcript_path: "/tmp/abc-123.jsonl",
+        cwd: "/tmp/my-project",
+        prompt: "continue",
+      },
+      db: db.index,
+      store,
+      broadcast: () => {},
+    });
+
+    const stored = getNotifications();
+    expect(stored).toHaveLength(1);
+    expect(stored[0]?.sessionId).toBe("other-456");
+    clearAllNotifications();
+  });
+
   it("PreCompact broadcasts SESSION_COMPACTING with optional trigger", async () => {
     const broadcasts: Broadcast[] = [];
     const { store } = makeStore();

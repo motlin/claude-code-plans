@@ -5,9 +5,12 @@ import { DOMAIN_EVENTS } from "../src/lib/hook-events";
 import {
   addNotification,
   clearAllNotifications,
+  clearNotificationsForSession,
   dismissNotification,
   getNotifications,
   getNotificationsForProject,
+  isNotificationUnread,
+  markAllNotificationsRead,
   sweepNotifications,
   type NotificationEntry,
 } from "../src/lib/notifications-store";
@@ -182,6 +185,133 @@ describe("addNotification", () => {
     expect(all).toHaveLength(200);
     // The very first (oldest) entry was evicted; the newest survive.
     expect(all.some((n) => n.id === firstId)).toBe(false);
+  });
+});
+
+describe("supersede per session", () => {
+  it("collapses two consecutive notifications for one session into the latest", () => {
+    const first = addNotification(db.index, {
+      sessionId: "sess-1",
+      cwd: "/tmp/app",
+      message: "Claude is waiting for your input",
+      notificationType: "agent_needs_input",
+    });
+    broadcastSpy.mockReset();
+    const second = addNotification(db.index, {
+      sessionId: "sess-1",
+      cwd: "/tmp/app",
+      message: "Claude needs your permission",
+      notificationType: "agent_needs_input",
+    });
+
+    const all = getNotifications();
+    expect(all).toHaveLength(1);
+    expect(all[0]!.id).toBe(second.id);
+    expect(all[0]!.message).toBe("Claude needs your permission");
+
+    // The stale entry is broadcast as cleared so live clients drop it.
+    const clearedCalls = broadcastSpy.mock.calls.filter(
+      (c) => c[0] === DOMAIN_EVENTS.NOTIFICATION_CLEARED,
+    );
+    expect(clearedCalls).toHaveLength(1);
+    expect(clearedCalls[0]![1]).toStrictEqual({ id: first.id });
+  });
+
+  it("does not touch other sessions' entries", () => {
+    const other = addNotification(db.index, {
+      sessionId: "sess-other",
+      cwd: "/tmp/app",
+      message: "other session",
+      notificationType: "agent_needs_input",
+    });
+    addNotification(db.index, {
+      sessionId: "sess-1",
+      cwd: "/tmp/app",
+      message: "first",
+      notificationType: "agent_needs_input",
+    });
+    addNotification(db.index, {
+      sessionId: "sess-1",
+      cwd: "/tmp/app",
+      message: "second",
+      notificationType: "agent_needs_input",
+    });
+
+    const all = getNotifications();
+    expect(all.map((n) => n.message).sort()).toStrictEqual(["other session", "second"]);
+    expect(all.some((n) => n.id === other.id)).toBe(true);
+  });
+});
+
+describe("clearNotificationsForSession", () => {
+  it("removes only the session's entries and broadcasts NOTIFICATION_CLEARED per id", () => {
+    const target = addNotification(db.index, {
+      sessionId: "sess-1",
+      cwd: "/tmp/app",
+      message: "waiting",
+      notificationType: "agent_needs_input",
+    });
+    const other = addNotification(db.index, {
+      sessionId: "sess-2",
+      cwd: "/tmp/app",
+      message: "other",
+      notificationType: "agent_needs_input",
+    });
+    broadcastSpy.mockReset();
+
+    clearNotificationsForSession("sess-1");
+
+    const all = getNotifications();
+    expect(all).toHaveLength(1);
+    expect(all[0]!.id).toBe(other.id);
+    const clearedCalls = broadcastSpy.mock.calls.filter(
+      (c) => c[0] === DOMAIN_EVENTS.NOTIFICATION_CLEARED,
+    );
+    expect(clearedCalls).toHaveLength(1);
+    expect(clearedCalls[0]![1]).toStrictEqual({ id: target.id });
+  });
+
+  it("does not broadcast when the session has no entries", () => {
+    clearNotificationsForSession("no-such-session");
+    expect(
+      broadcastSpy.mock.calls.filter((c) => c[0] === DOMAIN_EVENTS.NOTIFICATION_CLEARED),
+    ).toHaveLength(0);
+  });
+});
+
+describe("read state", () => {
+  it("viewing marks existing entries read; later arrivals are unread again", () => {
+    const first = addNotification(db.index, {
+      sessionId: "sess-1",
+      cwd: "/tmp/app",
+      message: "waiting",
+      notificationType: "agent_needs_input",
+    });
+    expect(isNotificationUnread(first.id)).toBe(true);
+
+    markAllNotificationsRead();
+    expect(isNotificationUnread(first.id)).toBe(false);
+
+    const second = addNotification(db.index, {
+      sessionId: "sess-2",
+      cwd: "/tmp/app",
+      message: "new arrival",
+      notificationType: "agent_needs_input",
+    });
+    expect(isNotificationUnread(second.id)).toBe(true);
+    expect(isNotificationUnread(first.id)).toBe(false);
+  });
+
+  it("clearAllNotifications resets read state so a re-added entry is unread", () => {
+    const entry = addNotification(db.index, {
+      sessionId: "sess-1",
+      cwd: "/tmp/app",
+      message: "waiting",
+      notificationType: "agent_needs_input",
+    });
+    markAllNotificationsRead();
+    clearAllNotifications();
+    expect(isNotificationUnread(entry.id)).toBe(true);
   });
 });
 
