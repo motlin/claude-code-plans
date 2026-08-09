@@ -6,6 +6,7 @@ import { z } from "zod";
 import { projectDetailQueryOptions, projectSessionsQueryOptions } from "../lib/api/projects";
 import { DetailTopBar, pillStyles } from "../components/detail-top-bar";
 import { useClaudeEvents } from "../hooks/use-claude-events";
+import { formatCount } from "../lib/pluralize";
 
 const sessionsSearchSchema = z.object({
   branch: z.string().optional(),
@@ -158,16 +159,13 @@ function ProjectSessionsPage() {
                     {sess.messageCount > 0 && (
                       <>
                         <span>&middot;</span>
-                        <span>{sess.messageCount} msgs</span>
+                        <span>{formatCount(sess.messageCount, "msg")}</span>
                       </>
                     )}
                     {sess.subagentCount > 0 && (
                       <>
                         <span>&middot;</span>
-                        <span>
-                          {sess.subagentCount} subagent
-                          {sess.subagentCount !== 1 ? "s" : ""}
-                        </span>
+                        <span>{formatCount(sess.subagentCount, "subagent")}</span>
                       </>
                     )}
                     {sess.gitBranch && (

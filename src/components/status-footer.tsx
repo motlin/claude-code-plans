@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { formatCount } from "../lib/pluralize";
 
 // Tokyo Night–inspired segment colors from claude-powerline.json
 const SEGMENT_COLORS = {
@@ -119,7 +120,7 @@ export function StatusFooter({
   if (durationMs !== undefined) {
     const durationLabel =
       messageCount > 0
-        ? `${formatDuration(durationMs)} · ${messageCount} msgs`
+        ? `${formatDuration(durationMs)} · ${formatCount(messageCount, "msg")}`
         : formatDuration(durationMs);
     segments.push({
       key: "dur",
@@ -129,7 +130,7 @@ export function StatusFooter({
   } else if (messageCount > 0) {
     segments.push({
       key: "msgs",
-      label: `${messageCount} msgs`,
+      label: formatCount(messageCount, "msg"),
       color: SEGMENT_COLORS.metrics,
     });
   }
@@ -175,7 +176,7 @@ export function StatusFooter({
   if (pendingTaskCount > 0) {
     segments.push({
       key: "tasks",
-      label: `${pendingTaskCount} tasks`,
+      label: formatCount(pendingTaskCount, "task"),
       color: SEGMENT_COLORS.metrics,
     });
   }

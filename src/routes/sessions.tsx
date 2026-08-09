@@ -8,6 +8,7 @@ import {
 import { useClaudeEvents } from "../hooks/use-claude-events";
 import { SessionUnreadControl } from "../components/session-unread-control";
 import { ListPageHeader } from "../components/list-page-header";
+import { formatCount } from "../lib/pluralize";
 
 export const Route = createFileRoute("/sessions")({
   component: SessionsPage,
@@ -177,7 +178,7 @@ function SessionItem({ session, isActive }: { session: SessionListItem; isActive
           {session.messageCount > 0 && (
             <>
               <span className="shrink-0">&middot;</span>
-              <span className="shrink-0">{session.messageCount} msgs</span>
+              <span className="shrink-0">{formatCount(session.messageCount, "msg")}</span>
             </>
           )}
           {session.gitBranch && (

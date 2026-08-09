@@ -16,6 +16,7 @@ import {
   type FileSearchResult,
 } from "../lib/api/search";
 import { encodeFilePath } from "../lib/api/file";
+import { formatCount } from "../lib/pluralize";
 
 const DEBOUNCE_MILLISECONDS = 200;
 const MINIMUM_QUERY_LENGTH = 2;
@@ -368,7 +369,8 @@ function ResultCards({
   return (
     <>
       <p className="mt-4 text-xs text-text-500">
-        {result.totalResults} matches in {result.totalFiles} files
+        {formatCount(result.totalResults, "match", "matches")} in{" "}
+        {formatCount(result.totalFiles, "file")}
         {result.isTruncated ? " (showing capped results)" : ""}
       </p>
       <ul className="mt-2 space-y-2">

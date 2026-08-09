@@ -11,6 +11,7 @@ import {
   type MessageSearchItem,
 } from "../lib/api/search";
 import { searchModeLabels } from "../lib/schema-choices";
+import { formatCount } from "../lib/pluralize";
 
 type SearchResult = SessionSearchItem | MessageSearchItem;
 
@@ -58,7 +59,7 @@ export function SearchResultCard({ result }: { result: SearchResult }) {
         {result.messageCount > 0 && (
           <>
             <span>&middot;</span>
-            <span>{result.messageCount} msgs</span>
+            <span>{formatCount(result.messageCount, "msg")}</span>
           </>
         )}
       </div>
@@ -237,7 +238,7 @@ function SessionSearch({
       )}
 
       {searched && results.length > 0 && (
-        <div className="mt-4 text-xs text-text-500">{results.length} results</div>
+        <div className="mt-4 text-xs text-text-500">{formatCount(results.length, "result")}</div>
       )}
 
       {results.length > 0 && (

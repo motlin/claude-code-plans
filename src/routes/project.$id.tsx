@@ -22,6 +22,7 @@ import { projectMemoriesQueryOptions } from "../lib/api/memories";
 import { projectApprovalsQueryOptions } from "../lib/api/approvals";
 import { toMdSlug } from "../lib/md-slug";
 import { formatRelativeTimeFromIso } from "../lib/relative-time";
+import { formatCount } from "../lib/pluralize";
 import { DetailTopBar, pillStyles } from "../components/detail-top-bar";
 import { MarkdownInline } from "../components/markdown-view";
 import { TaskOwner } from "../components/task-owner";
@@ -233,16 +234,13 @@ function ProjectPage() {
                     {sess.messageCount > 0 && (
                       <>
                         <span>&middot;</span>
-                        <span>{sess.messageCount} msgs</span>
+                        <span>{formatCount(sess.messageCount, "msg")}</span>
                       </>
                     )}
                     {sess.subagentCount > 0 && (
                       <>
                         <span>&middot;</span>
-                        <span>
-                          {sess.subagentCount} subagent
-                          {sess.subagentCount !== 1 ? "s" : ""}
-                        </span>
+                        <span>{formatCount(sess.subagentCount, "subagent")}</span>
                       </>
                     )}
                     {sess.gitBranch && (

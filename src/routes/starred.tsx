@@ -6,6 +6,7 @@ import { apiFetch } from "../lib/api/client";
 import { sessionQueryKeys, starredSessionsQueryOptions } from "../lib/api/sessions";
 import { SessionUnreadControl } from "../components/session-unread-control";
 import { ListPageHeader } from "../components/list-page-header";
+import { formatCount } from "../lib/pluralize";
 
 const StarredMutationResponse = z.object({ starred: z.boolean() });
 
@@ -76,7 +77,7 @@ function StarredPage() {
                   {session.messageCount > 0 && (
                     <>
                       <span>&middot;</span>
-                      <span>{session.messageCount} msgs</span>
+                      <span>{formatCount(session.messageCount, "msg")}</span>
                     </>
                   )}
                 </div>

@@ -14,4 +14,16 @@ describe("ListPageHeader", () => {
       '<header class="flex items-start justify-between gap-4"><div><h1 class="text-lg font-semibold">Items</h1><p class="mt-1 text-sm text-text-500">100 items</p></div></header>',
     ]);
   });
+
+  it("pluralizes consonant-y labels with -ies", () => {
+    const markup = renderToStaticMarkup(
+      <ListPageHeader title="Claude Memories" count={2} itemLabel="memory" />,
+    );
+    expect(markup).toContain("2 memories");
+
+    const singular = renderToStaticMarkup(
+      <ListPageHeader title="Claude Memories" count={1} itemLabel="memory" />,
+    );
+    expect(singular).toContain("1 memory");
+  });
 });
