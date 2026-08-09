@@ -18,7 +18,6 @@ const DEFAULT_APPLICATION_SETTINGS = {
   herdrWritesEnabled: false,
   showHerdrSection: true,
   showTmuxSection: false,
-  watcherPolling: false,
   ignoredDirs: ["node_modules"],
 };
 

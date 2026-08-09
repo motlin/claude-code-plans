@@ -570,14 +570,6 @@ export function ApplicationConfigurationSection() {
         onToggle={() => save({ ...settings, herdrWritesEnabled: !settings.herdrWritesEnabled })}
       />
 
-      <ApplicationToggleRow
-        label="Polling file watcher"
-        description="Use polling when native recursive watching is unavailable. Restart the server after changing this setting."
-        checked={settings.watcherPolling}
-        disabled={saveSettings.isPending}
-        onToggle={() => save({ ...settings, watcherPolling: !settings.watcherPolling })}
-      />
-
       <div className="py-2">
         <label
           htmlFor="application-ignored-directories"

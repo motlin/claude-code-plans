@@ -139,11 +139,4 @@ describe.sequential("createRecursiveWatcher", () => {
 
     expect(events).toStrictEqual([]);
   });
-
-  it("uses polling only when the persisted watcher option requests it", async () => {
-    watcher = createRecursiveWatcher([fixtureDirectory], () => false, true);
-    await waitForReady(watcher);
-
-    expect(watchMock.mock.calls).toStrictEqual([]);
-  });
 });

@@ -865,7 +865,7 @@ describe("createWatcher integration", () => {
         onCalls: on.mock.calls.map(([event, listener]) => [event, listener.name]),
       }).toStrictEqual({
         result: recursiveWatcher,
-        createCalls: [[[watchedDirectory, fileContentRoot], shouldIgnoreWatch, false]],
+        createCalls: [[[watchedDirectory, fileContentRoot], shouldIgnoreWatch]],
         onCalls: [
           ["add", "handleFileChange"],
           ["change", "handleFileChange"],
@@ -909,7 +909,7 @@ describe("createWatcher integration", () => {
       await createWatcher([], undefined, undefined, undefined, [worktreeDirectory]);
 
       expect(createRecursiveWatcher.mock.calls).toStrictEqual([
-        [[worktreeDirectory, dirname(repositoryIndexPath)], shouldIgnoreWatch, false],
+        [[worktreeDirectory, dirname(repositoryIndexPath)], shouldIgnoreWatch],
       ]);
     } finally {
       await recursiveWatcher.close();

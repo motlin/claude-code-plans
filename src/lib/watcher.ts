@@ -41,12 +41,7 @@ type IndexDb = BetterSQLite3Database<typeof dbSchema>;
 type BroadcastFn = (type: string, data: Record<string, unknown>) => void;
 import { toSessionSummaryPayload } from "./session-summary";
 import { hmrPersist, hmrDispose } from "./hmr-persist";
-import {
-  DEFAULT_IGNORED_DIR_NAMES,
-  getConfigPath,
-  readConfig,
-  watcherPollingEnabled,
-} from "./config";
+import { DEFAULT_IGNORED_DIR_NAMES, getConfigPath, readConfig } from "./config";
 import { broadcastTyped, broadcast, addClient, removeClient } from "./sse-broadcast";
 import { recentlyBroadcast } from "./update-dedupe";
 import { createRecursiveWatcher, type RecursiveWatcher } from "./recursive-watch";
@@ -699,7 +694,7 @@ export async function createWatcher(
       watchedRoots.push(indexDirectory);
   }
 
-  watcher = createRecursiveWatcher(watchedRoots, shouldIgnoreWatch, watcherPollingEnabled());
+  watcher = createRecursiveWatcher(watchedRoots, shouldIgnoreWatch);
 
   watcher.on("add", handleFileChange);
   watcher.on("change", handleFileChange);

@@ -7,8 +7,8 @@ import {
   DEFAULT_IGNORED_DIR_NAMES,
   herdrWritesEnabled,
   readApplicationSettings,
+  readConfig,
   updateApplicationSettings,
-  watcherPollingEnabled,
 } from "../src/lib/config";
 import {
   handleGetApplicationSettings,
@@ -34,7 +34,6 @@ describe("persisted application settings", () => {
         herdr_writes_enabled: true,
         show_herdr_section: true,
         show_tmux_section: false,
-        watcher_polling: false,
         ignored_dirs: ["node_modules"],
       }).success,
       AppConfigSchema.safeParse({ herdr_writes_enabled: "1" }).success,
@@ -47,29 +46,33 @@ describe("persisted application settings", () => {
     ]).toStrictEqual([true, false, false, false, false, false, false, false]);
   });
 
+  it("strips the legacy watcher polling key while parsing persisted config", async () => {
+    await writeFile(
+      configPath,
+      JSON.stringify({ watcher_polling: true, show_herdr_section: false }),
+    );
+
+    expect(readConfig(configPath)).toStrictEqual({ show_herdr_section: false });
+  });
+
   it("uses safe defaults and ignores retired CCP environment aliases", () => {
     process.env["CCP_ENABLE_HERDR_WRITES"] = "1";
-    process.env["CCP_WATCHER_POLLING"] = "1";
     process.env["CCP_WATCHER_IGNORED_DIRS"] = "vendor";
     try {
       expect({
         settings: readApplicationSettings(configPath),
         herdrWritesEnabled: herdrWritesEnabled(configPath),
-        watcherPollingEnabled: watcherPollingEnabled(configPath),
       }).toStrictEqual({
         settings: {
           herdrWritesEnabled: false,
           showHerdrSection: true,
           showTmuxSection: false,
-          watcherPolling: false,
           ignoredDirs: [...DEFAULT_IGNORED_DIR_NAMES],
         },
         herdrWritesEnabled: false,
-        watcherPollingEnabled: false,
       });
     } finally {
       delete process.env["CCP_ENABLE_HERDR_WRITES"];
-      delete process.env["CCP_WATCHER_POLLING"];
       delete process.env["CCP_WATCHER_IGNORED_DIRS"];
     }
   });
@@ -77,7 +80,11 @@ describe("persisted application settings", () => {
   it("atomically persists policy while preserving unrelated config fields", async () => {
     await writeFile(
       configPath,
-      JSON.stringify({ image_roots: ["/tmp/images"], file_roots: ["/tmp/files"] }),
+      JSON.stringify({
+        image_roots: ["/tmp/images"],
+        file_roots: ["/tmp/files"],
+        watcher_polling: true,
+      }),
     );
 
     const saved = await updateApplicationSettings(
@@ -85,7 +92,6 @@ describe("persisted application settings", () => {
         herdrWritesEnabled: true,
         showHerdrSection: false,
         showTmuxSection: true,
-        watcherPolling: true,
         ignoredDirs: ["vendor", "output"],
       },
       configPath,
@@ -100,7 +106,6 @@ describe("persisted application settings", () => {
         herdrWritesEnabled: true,
         showHerdrSection: false,
         showTmuxSection: true,
-        watcherPolling: true,
         ignoredDirs: ["vendor", "output"],
       },
       file: {
@@ -110,7 +115,6 @@ describe("persisted application settings", () => {
         herdr_writes_enabled: true,
         show_herdr_section: false,
         show_tmux_section: true,
-        watcher_polling: true,
       },
       temporaryFiles: ["config.json"],
     });
@@ -126,7 +130,6 @@ describe("persisted application settings", () => {
           herdrWritesEnabled: true,
           showHerdrSection: true,
           showTmuxSection: false,
-          watcherPolling: false,
           ignoredDirs: ["node_modules"],
         },
         configPath,
@@ -144,7 +147,6 @@ describe("persisted application settings", () => {
         herdrWritesEnabled: true,
         showHerdrSection: false,
         showTmuxSection: true,
-        watcherPolling: false,
         ignoredDirs: ["node_modules", "build"],
       }),
     });
@@ -164,7 +166,6 @@ describe("persisted application settings", () => {
         herdrWritesEnabled: true,
         showHerdrSection: false,
         showTmuxSection: true,
-        watcherPolling: false,
         ignoredDirs: ["node_modules", "build"],
       },
       readStatus: 200,
@@ -172,7 +173,6 @@ describe("persisted application settings", () => {
         herdrWritesEnabled: true,
         showHerdrSection: false,
         showTmuxSection: true,
-        watcherPolling: false,
         ignoredDirs: ["node_modules", "build"],
       },
       persisted: {
@@ -181,7 +181,6 @@ describe("persisted application settings", () => {
         herdr_writes_enabled: true,
         show_herdr_section: false,
         show_tmux_section: true,
-        watcher_polling: false,
       },
     });
   });
@@ -196,7 +195,6 @@ describe("persisted application settings", () => {
           herdrWritesEnabled: "yes",
           showHerdrSection: true,
           showTmuxSection: false,
-          watcherPolling: false,
           ignoredDirs: [],
         }),
       }),

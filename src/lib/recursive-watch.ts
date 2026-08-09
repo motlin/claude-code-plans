@@ -2,7 +2,6 @@ import { EventEmitter } from "node:events";
 import { watch as watchNative, type FSWatcher as NativeWatcher, type Stats } from "node:fs";
 import { stat } from "node:fs/promises";
 import { join } from "node:path";
-import { watch as watchPolling, type FSWatcher as PollingWatcher } from "chokidar";
 import { resolveDirectoryRoots } from "./config";
 
 const DEBOUNCE_MS = 100;
@@ -25,14 +24,12 @@ function hasErrorCode(error: unknown, code: string): boolean {
 class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
   private readonly debounceByPath = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly nativeWatchers = new Map<string, NativeWatcher>();
-  private pollingWatcher: PollingWatcher | undefined;
   private readyImmediate: ReturnType<typeof setImmediate> | undefined;
   private closed = false;
 
   constructor(
     roots: readonly string[],
     private readonly ignored: (path: string, stats?: Stats) => boolean,
-    private readonly polling: boolean,
   ) {
     super();
     void this.start(roots);
@@ -57,21 +54,12 @@ class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
     for (const watcher of this.nativeWatchers.values()) watcher.close();
     this.nativeWatchers.clear();
 
-    if (this.pollingWatcher !== undefined) {
-      await this.pollingWatcher.close();
-      this.pollingWatcher = undefined;
-    }
     this.removeAllListeners();
   }
 
   private async start(roots: readonly string[]): Promise<void> {
     const resolvedRoots = await resolveDirectoryRoots(roots, new Set(), "widest");
     if (this.closed) return;
-
-    if (this.polling) {
-      this.startPolling(resolvedRoots);
-      return;
-    }
 
     for (const root of resolvedRoots) {
       try {
@@ -83,12 +71,6 @@ class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
         watcher.on("error", (error) => this.handleNativeError(root, watcher, error));
         this.nativeWatchers.set(root, watcher);
       } catch (error) {
-        if (hasErrorCode(error, "ERR_FEATURE_UNAVAILABLE_ON_PLATFORM")) {
-          for (const watcher of this.nativeWatchers.values()) watcher.close();
-          this.nativeWatchers.clear();
-          this.startPolling(resolvedRoots);
-          return;
-        }
         console.error(`Recursive watcher failed for root ${root}:`, error);
       }
     }
@@ -97,31 +79,6 @@ class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
       this.readyImmediate = undefined;
       if (!this.closed) this.emit("ready");
     });
-  }
-
-  private startPolling(roots: readonly string[]): void {
-    const watcher = watchPolling([...roots], {
-      ignoreInitial: true,
-      awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 200 },
-      usePolling: true,
-      interval: 1000,
-      binaryInterval: 2000,
-      ignored: this.ignored,
-    });
-    this.pollingWatcher = watcher;
-    watcher.once("ready", () => {
-      if (!this.closed) this.emit("ready");
-    });
-    watcher.on("add", (path) => {
-      if (!this.closed) this.emit("add", path);
-    });
-    watcher.on("change", (path) => {
-      if (!this.closed) this.emit("change", path);
-    });
-    watcher.on("unlink", (path) => {
-      if (!this.closed) this.emit("unlink", path);
-    });
-    watcher.on("error", (error) => console.error("Polling watcher failed:", error));
   }
 
   private handleNativeEvent(root: string, relativePath: string | Buffer | null): void {
@@ -167,7 +124,6 @@ class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
 export function createRecursiveWatcher(
   roots: readonly string[],
   ignored: (path: string, stats?: Stats) => boolean,
-  polling = false,
 ): RecursiveWatcher {
-  return new RecursiveWatcherImpl(roots, ignored, polling);
+  return new RecursiveWatcherImpl(roots, ignored);
 }

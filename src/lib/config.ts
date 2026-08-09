@@ -31,7 +31,7 @@ export function getConfigPath(): string {
  * rejected outright rather than coerced — callers fall back to defaults when
  * the whole file fails to validate. New settings must be added here.
  */
-export const AppConfigSchema = z
+const AppConfigObjectSchema = z
   .object({
     /** Directory basenames the file watcher never descends into. */
     ignored_dirs: z.array(z.string().trim().min(1)).min(1).optional(),
@@ -45,10 +45,25 @@ export const AppConfigSchema = z
     herdr_writes_enabled: z.boolean().optional(),
     show_herdr_section: z.boolean().optional(),
     show_tmux_section: z.boolean().optional(),
-    /** Use chokidar polling instead of the platform's recursive filesystem watcher. */
-    watcher_polling: z.boolean().optional(),
   })
   .strict();
+
+function stripLegacyWatcherPolling(value: unknown): unknown {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    Array.isArray(value) ||
+    !("watcher_polling" in value) ||
+    typeof value.watcher_polling !== "boolean"
+  ) {
+    return value;
+  }
+
+  return Object.fromEntries(Object.entries(value).filter(([key]) => key !== "watcher_polling"));
+}
+
+export const AppConfigSchema = z.preprocess(stripLegacyWatcherPolling, AppConfigObjectSchema);
+const AppConfigPatchSchema = AppConfigObjectSchema.partial();
 
 export type AppConfig = z.infer<typeof AppConfigSchema>;
 
@@ -77,16 +92,15 @@ export function readConfig(configPath: string = getConfigPath()): AppConfig | nu
 /**
  * Application policy formerly exposed through `CCP_*` environment variables.
  *
- * `CCP_ENABLE_HERDR_WRITES`, `CCP_WATCHER_POLLING`, and
- * `CCP_WATCHER_IGNORED_DIRS` are intentionally no longer read. The persisted
- * application config is the sole authority, so a setting changed through the
- * UI cannot be silently overridden by the server process environment.
+ * `CCP_ENABLE_HERDR_WRITES` and `CCP_WATCHER_IGNORED_DIRS` are intentionally
+ * no longer read. The persisted application config is the sole authority, so
+ * a setting changed through the UI cannot be silently overridden by the
+ * server process environment.
  */
 const DEFAULT_APPLICATION_POLICY = {
   herdrWritesEnabled: false,
   showHerdrSection: true,
   showTmuxSection: false,
-  watcherPolling: false,
 } as const;
 
 export const DEFAULT_IGNORED_DIR_NAMES = [
@@ -111,7 +125,6 @@ export const ApplicationSettingsSchema = z
     herdrWritesEnabled: z.boolean(),
     showHerdrSection: z.boolean(),
     showTmuxSection: z.boolean(),
-    watcherPolling: z.boolean(),
     ignoredDirs: z.array(z.string().trim().min(1)).min(1),
   })
   .strict();
@@ -125,7 +138,6 @@ export function readApplicationSettings(configPath: string = getConfigPath()): A
       config?.herdr_writes_enabled ?? DEFAULT_APPLICATION_POLICY.herdrWritesEnabled,
     showHerdrSection: config?.show_herdr_section ?? DEFAULT_APPLICATION_POLICY.showHerdrSection,
     showTmuxSection: config?.show_tmux_section ?? DEFAULT_APPLICATION_POLICY.showTmuxSection,
-    watcherPolling: config?.watcher_polling ?? DEFAULT_APPLICATION_POLICY.watcherPolling,
     ignoredDirs: config?.ignored_dirs ?? [...DEFAULT_IGNORED_DIR_NAMES],
   };
 }
@@ -134,16 +146,12 @@ export function herdrWritesEnabled(configPath: string = getConfigPath()): boolea
   return readApplicationSettings(configPath).herdrWritesEnabled;
 }
 
-export function watcherPollingEnabled(configPath: string = getConfigPath()): boolean {
-  return readApplicationSettings(configPath).watcherPolling;
-}
-
 /** Atomically replace a valid config while preserving all fields outside the patch. */
 async function updateConfig(
   patch: Partial<AppConfig>,
   configPath: string = getConfigPath(),
 ): Promise<AppConfig> {
-  const parsedPatch = AppConfigSchema.partial().parse(patch);
+  const parsedPatch = AppConfigPatchSchema.parse(patch);
   const current = readConfig(configPath);
   if (current === null) {
     let existing = false;
@@ -186,7 +194,6 @@ export async function updateApplicationSettings(
       herdr_writes_enabled: parsed.herdrWritesEnabled,
       show_herdr_section: parsed.showHerdrSection,
       show_tmux_section: parsed.showTmuxSection,
-      watcher_polling: parsed.watcherPolling,
       ignored_dirs: parsed.ignoredDirs,
     },
     configPath,

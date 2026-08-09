@@ -10,13 +10,12 @@ describe("application settings controls", () => {
     vi.unstubAllGlobals();
   });
 
-  it("persists navigation, Herdr, and watcher policy through the server API", async () => {
+  it("persists navigation, Herdr, and watcher exclusions through the server API", async () => {
     const requests: Array<{ method: string; body: unknown }> = [];
     let settings = {
       herdrWritesEnabled: false,
       showHerdrSection: true,
       showTmuxSection: false,
-      watcherPolling: false,
       ignoredDirs: ["node_modules", "dist"],
     };
     const fetcher = vi.fn<typeof fetch>(async (_input, init) => {
@@ -49,12 +48,14 @@ describe("application settings controls", () => {
         herdrInput: herdrInputToggle.getAttribute("aria-checked"),
       },
       immediate: screen.getByText(/Applies immediately without a server restart/).textContent,
+      pollingToggle: screen.queryByRole("switch", { name: "Polling file watcher" }),
       restartNotices: screen.getAllByText(/Restart the server/).length,
     }).toStrictEqual({
       checked: { herdrSection: "true", tmuxSection: "false", herdrInput: "false" },
       immediate:
         "Allow prompts, interrupts, and state reports for live Herdr terminals. Applies immediately without a server restart.",
-      restartNotices: 2,
+      pollingToggle: null,
+      restartNotices: 1,
     });
 
     fireEvent.click(tmuxSectionToggle);
@@ -66,18 +67,11 @@ describe("application settings controls", () => {
     fireEvent.click(herdrInputToggle);
     await waitFor(() => expect(herdrInputToggle.getAttribute("aria-checked")).toBe("true"));
 
-    fireEvent.click(screen.getByRole("switch", { name: "Polling file watcher" }));
-    await waitFor(() =>
-      expect(
-        screen.getByRole("switch", { name: "Polling file watcher" }).getAttribute("aria-checked"),
-      ).toBe("true"),
-    );
-
     fireEvent.change(screen.getByRole("textbox", { name: "Ignored watcher directories" }), {
       target: { value: "node_modules\ncustom-cache" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Save ignored directories" }));
-    await waitFor(() => expect(requests).toHaveLength(5));
+    await waitFor(() => expect(requests).toHaveLength(4));
 
     expect(requests).toStrictEqual([
       {
@@ -86,7 +80,6 @@ describe("application settings controls", () => {
           herdrWritesEnabled: false,
           showHerdrSection: true,
           showTmuxSection: true,
-          watcherPolling: false,
           ignoredDirs: ["node_modules", "dist"],
         },
       },
@@ -96,7 +89,6 @@ describe("application settings controls", () => {
           herdrWritesEnabled: false,
           showHerdrSection: false,
           showTmuxSection: true,
-          watcherPolling: false,
           ignoredDirs: ["node_modules", "dist"],
         },
       },
@@ -106,7 +98,6 @@ describe("application settings controls", () => {
           herdrWritesEnabled: true,
           showHerdrSection: false,
           showTmuxSection: true,
-          watcherPolling: false,
           ignoredDirs: ["node_modules", "dist"],
         },
       },
@@ -116,17 +107,6 @@ describe("application settings controls", () => {
           herdrWritesEnabled: true,
           showHerdrSection: false,
           showTmuxSection: true,
-          watcherPolling: true,
-          ignoredDirs: ["node_modules", "dist"],
-        },
-      },
-      {
-        method: "PUT",
-        body: {
-          herdrWritesEnabled: true,
-          showHerdrSection: false,
-          showTmuxSection: true,
-          watcherPolling: true,
           ignoredDirs: ["node_modules", "custom-cache"],
         },
       },
