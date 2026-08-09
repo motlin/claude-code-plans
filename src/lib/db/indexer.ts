@@ -1,5 +1,5 @@
 import { lstat, readdir, readFile, realpath, stat } from "node:fs/promises";
-import { createReadStream } from "node:fs";
+import { createReadStream, realpathSync } from "node:fs";
 import { join, basename, extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { createInterface } from "node:readline";
 import { eq, notInArray, sql } from "drizzle-orm";
@@ -25,6 +25,12 @@ const FILE_CONTENT_CLEANUP_BATCH_SIZE = 100;
 // Four bound values per row keep each insert below SQLite's historical 999-variable limit.
 const SESSION_MESSAGE_INSERT_BATCH_SIZE = 200;
 export const FILE_CONTENT_SIZE_CAP_BYTES = 5 * 1024 * 1024;
+const resolvedProjectsDirectories = new Map<string, string>();
+
+interface NormalizedProjectFile {
+  project: string;
+  relativeParts: string[];
+}
 
 const NON_SEARCHABLE_FILE_EXTENSIONS = new Set([
   ".7z",
@@ -149,6 +155,36 @@ export function isPathInsideFileContentRoots(filePath: string, roots: readonly s
       (relativePath !== ".." && !relativePath.startsWith(`..${sep}`) && !isAbsolute(relativePath))
     );
   });
+}
+
+/** Resolve and cache the canonical projects root for the lifetime of the process. */
+export function resolveProjectsDirectory(projectsDir: string): string {
+  const unresolvedProjectsDir = resolve(projectsDir);
+  const cachedProjectsDir = resolvedProjectsDirectories.get(unresolvedProjectsDir);
+  if (cachedProjectsDir) return cachedProjectsDir;
+
+  const resolvedProjectsDir = realpathSync(unresolvedProjectsDir);
+  resolvedProjectsDirectories.set(unresolvedProjectsDir, resolvedProjectsDir);
+  return resolvedProjectsDir;
+}
+
+function normalizeProjectFile(filePath: string, projectsDir: string): NormalizedProjectFile | null {
+  const unresolvedProjectsDir = resolve(projectsDir);
+  const resolvedProjectsDir = resolveProjectsDirectory(unresolvedProjectsDir);
+  const unresolvedFilePath = resolve(filePath);
+  if (
+    !isPathInsideFileContentRoots(unresolvedFilePath, [unresolvedProjectsDir, resolvedProjectsDir])
+  ) {
+    return null;
+  }
+
+  const resolvedFilePath = realpathSync(unresolvedFilePath);
+  if (!isPathInsideFileContentRoots(resolvedFilePath, [resolvedProjectsDir])) return null;
+
+  const relativeParts = relative(resolvedProjectsDir, resolvedFilePath).split(sep);
+  const project = relativeParts[0];
+  if (!project || project === ".") return null;
+  return { project, relativeParts };
 }
 
 function deleteFileContentRows(db: IndexDb, filePath: string): void {
@@ -1574,60 +1610,46 @@ export async function indexFile(
     return { linkedPlans: [] };
   }
 
+  const normalizedProjectFile = normalizeProjectFile(filePath, projectsDir);
+  if (!normalizedProjectFile) return { linkedPlans: [] };
+
   // Memory markdown file: {projectsDir}/{project}/memory/{filename}.md
-  if (filePath.endsWith(".md") && filePath.startsWith(projectsDir + "/")) {
-    const rel = filePath.slice(projectsDir.length + 1);
-    const parts = rel.split("/");
-    if (parts.length === 3 && parts[1] === "memory") {
-      const project = parts[0]!;
-      await indexMemoryFile(db, filePath, project);
+  if (filePath.endsWith(".md")) {
+    if (
+      normalizedProjectFile.relativeParts.length === 3 &&
+      normalizedProjectFile.relativeParts[1] === "memory"
+    ) {
+      await indexMemoryFile(db, filePath, normalizedProjectFile.project);
       return { linkedPlans: [] };
     }
   }
 
   // Determine what kind of file changed and index accordingly
   if (filePath.endsWith("sessions-index.json")) {
-    const parts = filePath.split("/");
-    const projectIdx = parts.lastIndexOf("sessions-index.json") - 1;
-    if (projectIdx >= 0) {
-      const project = parts[projectIdx]!;
-      const projectDir = parts.slice(0, projectIdx + 1).join("/");
-      await indexSessionsIndex(db, projectDir, project);
-    }
+    const projectDir = join(projectsDir, normalizedProjectFile.project);
+    await indexSessionsIndex(db, projectDir, normalizedProjectFile.project);
     return { linkedPlans: [] };
   }
 
   if (filePath.endsWith(".jsonl")) {
     // Check if this is a subagent file
     if (filePath.includes("/subagents/") && basename(filePath).startsWith("agent-")) {
-      const parts = filePath.split("/");
-      const subagentsIdx = parts.indexOf("subagents");
+      const subagentsIdx = normalizedProjectFile.relativeParts.indexOf("subagents");
       if (subagentsIdx >= 2) {
-        const sessionId = parts[subagentsIdx - 1]!;
-        // Walk back to find project dir
-        const projectsDirParts = projectsDir.split("/");
-        const projectsEndIdx = projectsDirParts.length;
-        const project = parts[projectsEndIdx]!;
-        if (project) {
-          await indexSubagentFile(db, filePath, sessionId, project);
-          // Link nested parent-child relationships from this subagent's JSONL
-          const agentFilename = basename(filePath, ".jsonl");
-          await linkSubagentParents(db, filePath, agentFilename);
-        }
+        const sessionId = normalizedProjectFile.relativeParts[subagentsIdx - 1]!;
+        await indexSubagentFile(db, filePath, sessionId, normalizedProjectFile.project);
+        // Link nested parent-child relationships from this subagent's JSONL
+        const agentFilename = basename(filePath, ".jsonl");
+        await linkSubagentParents(db, filePath, agentFilename);
       }
       return { linkedPlans: [] };
     }
 
     // Regular session JSONL
-    const parts = filePath.split("/");
-    const projectsDirParts = projectsDir.split("/");
-    const project = parts[projectsDirParts.length];
-    if (project) {
-      const result = await indexJsonlFile(db, filePath, project);
-      // Link parent-child relationships from root session JSONL
-      await linkSubagentParents(db, filePath, null);
-      return result;
-    }
+    const result = await indexJsonlFile(db, filePath, normalizedProjectFile.project);
+    // Link parent-child relationships from root session JSONL
+    await linkSubagentParents(db, filePath, null);
+    return result;
   }
 
   return { linkedPlans: [] };

@@ -11,6 +11,7 @@ import {
   indexFileContent,
   isFileContentIndexable,
   isPathInsideFileContentRoots,
+  resolveProjectsDirectory,
 } from "./db/indexer";
 import {
   listSessionsForProjectFromDb,
@@ -668,7 +669,10 @@ export async function createWatcher(
   slDir?: string,
   configuredFileContentRoots: string[] = [],
 ): Promise<RecursiveWatcher> {
-  if (projDir) projectsDir = projDir;
+  if (projDir) {
+    resolveProjectsDirectory(projDir);
+    projectsDir = projDir;
+  }
   if (plDir) plansDir = plDir;
   if (slDir) statuslineDir = slDir;
   setFileContentRoots(configuredFileContentRoots);

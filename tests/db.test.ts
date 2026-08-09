@@ -1,10 +1,19 @@
-import { writeFileSync, mkdirSync, renameSync, rmSync, utimesSync } from "node:fs";
+import {
+  writeFileSync,
+  mkdirSync,
+  realpathSync,
+  renameSync,
+  rmSync,
+  symlinkSync,
+  utimesSync,
+} from "node:fs";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { openTestDb, type AppDb } from "../src/lib/db/connection";
 import {
   fullScan,
+  indexFile,
   indexJsonlFile,
   indexSessionsIndex,
   indexTaskFile,
@@ -91,6 +100,43 @@ describe("connection", () => {
 });
 
 describe("indexer", () => {
+  it("attributes resolved and unresolved symlink paths to the same project", async () => {
+    const claudeTarget = join(testDir, "elsewhere");
+    const unresolvedClaudeDir = join(testDir, ".claude");
+    const unresolvedProjectsDir = join(unresolvedClaudeDir, "projects");
+    const projectId = "-tmp-example-project";
+    const unresolvedSessionPath = join(unresolvedProjectsDir, projectId, "session-100.jsonl");
+    mkdirSync(join(claudeTarget, "projects", projectId), { recursive: true });
+    symlinkSync(claudeTarget, unresolvedClaudeDir, "dir");
+    writeFileSync(
+      unresolvedSessionPath,
+      jsonl({
+        type: "user",
+        ...baseFields,
+        uuid: "uuid-100",
+        sessionId: "session-100",
+        cwd: "/tmp/example-project",
+        message: { role: "user", content: "Test symlink indexing" },
+      }),
+    );
+
+    const indexedSessions: { id: string; projectId: string }[][] = [];
+    for (const sessionPath of [realpathSync(unresolvedSessionPath), unresolvedSessionPath]) {
+      await indexFile(db.index, sessionPath, unresolvedProjectsDir);
+      indexedSessions.push(
+        db.index
+          .select({ id: schema.sessions.id, projectId: schema.sessions.projectId })
+          .from(schema.sessions)
+          .all(),
+      );
+    }
+
+    expect(indexedSessions).toStrictEqual([
+      [{ id: "session-100", projectId }],
+      [{ id: "session-100", projectId }],
+    ]);
+  });
+
   it("indexes sessions-index.json", async () => {
     const projectDir = join(testDir, "-Users-craig-projects-app");
     mkdirSync(projectDir, { recursive: true });
