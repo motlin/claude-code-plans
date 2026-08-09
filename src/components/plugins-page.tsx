@@ -1,5 +1,5 @@
 import { Link, useHydrated, useLocation } from "@tanstack/react-router";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   groupPluginsByMarketplace,
   pluginTreeQueryOptions,
@@ -352,15 +352,46 @@ function ContentSection({
   );
 }
 
+function PluginsPageSkeleton() {
+  return (
+    <div>
+      <header>
+        <h1 className="text-lg font-semibold">Plugins</h1>
+        <div className="mt-2 h-4 w-24 animate-pulse rounded bg-bg-300/50" />
+      </header>
+      <div className="mt-6 space-y-4" data-testid="plugins-skeleton">
+        {[0, 1, 2, 3, 4].map((row) => (
+          <div
+            key={row}
+            className="flex items-center gap-3 rounded-lg border border-border-300/15 px-4 py-3"
+          >
+            <div className="h-4 w-4 shrink-0 animate-pulse rounded bg-bg-300/50" />
+            <div className="h-4 w-1/3 animate-pulse rounded bg-bg-300/50" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function PluginsPage() {
-  const { data: plugins } = useSuspenseQuery(pluginsQueryOptions);
-  const { data: userCommands } = useSuspenseQuery(userCommandsQueryOptions);
-  const groups = useMemo(() => groupPluginsByMarketplace(plugins), [plugins]);
-  const pluginCount = plugins.length;
-  const commandGroupCount = userCommands.length;
+  // Plain `useQuery` (not suspense) so the app shell stays painted and this
+  // page can show its own skeleton while the large plugins payload loads.
+  const pluginsQuery = useQuery(pluginsQueryOptions);
+  const userCommandsQuery = useQuery(userCommandsQueryOptions);
+  const plugins = pluginsQuery.data;
+  const userCommands = userCommandsQuery.data;
+  const groups = useMemo(() => (plugins ? groupPluginsByMarketplace(plugins) : []), [plugins]);
   const locationHash = useLocation({ select: (location) => location.hash });
   const hydrated = useHydrated();
   const hashTargetPluginId = hydrated && locationHash ? locationHash : null;
+
+  if (pluginsQuery.isError) throw pluginsQuery.error;
+  if (userCommandsQuery.isError) throw userCommandsQuery.error;
+  if (!plugins || !userCommands) return <PluginsPageSkeleton />;
+
+  const pluginCount = plugins.length;
+  const commandGroupCount = userCommands.length;
 
   return (
     <div>

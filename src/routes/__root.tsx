@@ -39,18 +39,22 @@ import appCss from "../styles/globals.css?url";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   ssr: false,
-  loader: ({ context: { queryClient } }) =>
-    Promise.all([
-      queryClient.ensureQueryData(projectsQueryOptions()),
-      queryClient.ensureQueryData(plansQueryOptions()),
-      queryClient.ensureInfiniteQueryData(recentSessionsInfiniteQueryOptions()),
-      queryClient.ensureQueryData(groupedSessionsQueryOptions()),
-      queryClient.ensureQueryData(pluginsQueryOptions),
-      queryClient.ensureQueryData(userCommandsQueryOptions),
-      queryClient.ensureQueryData(activeSessionsQueryOptions(60_000)),
-      queryClient.ensureQueryData(approvalsQueryOptions()),
-      queryClient.ensureQueryData(notificationsQueryOptions()),
-    ]),
+  // Fire-and-forget cache warming for the sidebar. Never await these: with
+  // `ssr: false` nothing paints until every matched loader resolves, so a
+  // blocking root loader holds the whole app on a blank white screen until
+  // all nine payloads arrive. Every route's own loader ensures the data it
+  // actually renders; the sidebar sublists use non-suspending `useQuery`.
+  loader: ({ context: { queryClient } }) => {
+    void queryClient.prefetchQuery(projectsQueryOptions());
+    void queryClient.prefetchQuery(plansQueryOptions());
+    void queryClient.prefetchInfiniteQuery(recentSessionsInfiniteQueryOptions());
+    void queryClient.prefetchQuery(groupedSessionsQueryOptions());
+    void queryClient.prefetchQuery(pluginsQueryOptions);
+    void queryClient.prefetchQuery(userCommandsQueryOptions);
+    void queryClient.prefetchQuery(activeSessionsQueryOptions(60_000));
+    void queryClient.prefetchQuery(approvalsQueryOptions());
+    void queryClient.prefetchQuery(notificationsQueryOptions());
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },

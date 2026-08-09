@@ -12,6 +12,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import type { PluginInfoData } from "../src/lib/api/plugins";
 import { pluginsQueryOptions, userCommandsQueryOptions } from "../src/lib/api/plugins";
 import { PluginCard, PluginsPage } from "../src/components/plugins-page";
+import { Route as PluginsRoute } from "../src/routes/plugins";
+import { Route as RootRoute } from "../src/routes/__root";
 
 const scrollIntoView = vi.fn();
 
@@ -64,6 +66,53 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
+});
+
+describe("blank-screen prevention on /plugins", () => {
+  it("renders the page header and a skeleton while the plugin queries are pending", async () => {
+    // A fetch that never resolves keeps both queries pending forever.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    try {
+      await renderWithRouter(<PluginsPage />);
+
+      expect({
+        heading: screen.getByRole("heading", { name: "Plugins" }).textContent,
+        skeleton: screen.getByTestId("plugins-skeleton") !== null,
+      }).toStrictEqual({ heading: "Plugins", skeleton: true });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("route loaders never block rendering on pending queries", () => {
+    // With `ssr: false` nothing paints until every matched loader resolves, so
+    // the root and plugins loaders must warm caches without awaiting them.
+    const never = new Promise<never>(() => {});
+    const queryClient = {
+      prefetchQuery: vi.fn(() => never),
+      prefetchInfiniteQuery: vi.fn(() => never),
+      ensureQueryData: vi.fn(() => never),
+      ensureInfiniteQueryData: vi.fn(() => never),
+    };
+
+    const context = { queryClient } as never;
+    const loaderResults = {
+      root: (RootRoute.options.loader as (args: { context: unknown }) => unknown)({ context }),
+      plugins: (PluginsRoute.options.loader as (args: { context: unknown }) => unknown)({
+        context,
+      }),
+    };
+
+    expect({
+      ...loaderResults,
+      awaitedQueries:
+        queryClient.ensureQueryData.mock.calls.length +
+        queryClient.ensureInfiniteQueryData.mock.calls.length,
+    }).toStrictEqual({ root: undefined, plugins: undefined, awaitedQueries: 0 });
+  });
 });
 
 describe("plugin cards", () => {
