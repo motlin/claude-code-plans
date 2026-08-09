@@ -1,16 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  FileText,
-  Brain,
-  MessageSquare,
-  FolderOpen,
-  Blocks,
-  Radio,
-  Star,
-  ListTodo,
-  SlidersHorizontal,
-  Settings,
-} from "lucide-react";
+import { navItems } from "../components/sidebar/navigation";
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -19,68 +8,7 @@ export const Route = createFileRoute("/")({
   }),
 });
 
-const cards = [
-  {
-    to: "/active",
-    label: "Active",
-    description: "Live sessions currently running",
-    icon: Radio,
-  },
-  {
-    to: "/starred",
-    label: "Starred",
-    description: "Sessions you have starred for quick access",
-    icon: Star,
-  },
-  {
-    to: "/tasks",
-    label: "Tasks",
-    description: "Built-in tasks across all projects",
-    icon: ListTodo,
-  },
-  {
-    to: "/projects",
-    label: "Projects",
-    description: "View sessions, memories, and plans by project",
-    icon: FolderOpen,
-  },
-  {
-    to: "/plans",
-    label: "Plans",
-    description: "Browse Claude Code plan files",
-    icon: FileText,
-  },
-  {
-    to: "/memories",
-    label: "Memories",
-    description: "Browse Claude Code memory files by project",
-    icon: Brain,
-  },
-  {
-    to: "/sessions",
-    label: "Sessions",
-    description: "Browse Claude Code session files",
-    icon: MessageSquare,
-  },
-  {
-    to: "/plugins",
-    label: "Plugins",
-    description: "Browse installed plugins, skills, agents, and commands",
-    icon: Blocks,
-  },
-  {
-    to: "/settings",
-    label: "Settings",
-    description: "Configure display, appearance, and behavior",
-    icon: SlidersHorizontal,
-  },
-  {
-    to: "/setup",
-    label: "Setup",
-    description: "Configure hooks for live session tracking",
-    icon: Settings,
-  },
-] as const;
+export const cards = navItems;
 
 function Home() {
   return (
