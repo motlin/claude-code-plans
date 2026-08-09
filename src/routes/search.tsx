@@ -11,6 +11,64 @@ import {
 
 type SearchResult = SessionSearchItem | MessageSearchItem;
 
+const MARK_CLASSES =
+  "[&_mark]:rounded-sm [&_mark]:bg-warning-100/30 [&_mark]:px-0.5 [&_mark]:text-text-100";
+
+function unescapeHtml(value: string): string {
+  return value
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&#39;", "'")
+    .replaceAll("&amp;", "&");
+}
+
+function snippetRepeatsTitle(snippetHtml: string, title: string): boolean {
+  const text = unescapeHtml(snippetHtml.replaceAll("<mark>", "").replaceAll("</mark>", ""));
+  return text === title;
+}
+
+export function SearchResultCard({ result }: { result: SearchResult }) {
+  const titleHtml = "titleHtml" in result ? result.titleHtml : null;
+  const titleStyle = { fontSize: "14px", fontWeight: 430 } as const;
+  return (
+    <>
+      {titleHtml === null ? (
+        <div className="truncate" style={titleStyle}>
+          {result.title}
+        </div>
+      ) : (
+        <div
+          className={`truncate ${MARK_CLASSES}`}
+          style={titleStyle}
+          dangerouslySetInnerHTML={{ __html: titleHtml }}
+        />
+      )}
+      <div className="mt-0.5 flex items-center gap-2 text-xs text-text-500">
+        <span>{result.projectName}</span>
+        {result.mtime && (
+          <>
+            <span>&middot;</span>
+            <span>{formatDate(result.mtime)}</span>
+          </>
+        )}
+        {result.messageCount > 0 && (
+          <>
+            <span>&middot;</span>
+            <span>{result.messageCount} msgs</span>
+          </>
+        )}
+      </div>
+      {result.snippet && !snippetRepeatsTitle(result.snippet, result.title) && (
+        <div
+          className={`mt-0.5 truncate text-xs text-text-500 ${MARK_CLASSES}`}
+          dangerouslySetInnerHTML={{ __html: result.snippet }}
+        />
+      )}
+    </>
+  );
+}
+
 function formatDate(iso: string): string {
   if (!iso) return "";
   return new Date(iso).toLocaleDateString("en-US", {
@@ -208,30 +266,7 @@ function SessionSearch({
                 params={{ id: result.sessionId }}
                 className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-bg-200/50"
               >
-                <div className="truncate" style={{ fontSize: "14px", fontWeight: 430 }}>
-                  {result.title}
-                </div>
-                <div className="mt-0.5 flex items-center gap-2 text-xs text-text-500">
-                  <span>{result.projectName}</span>
-                  {result.mtime && (
-                    <>
-                      <span>&middot;</span>
-                      <span>{formatDate(result.mtime)}</span>
-                    </>
-                  )}
-                  {result.messageCount > 0 && (
-                    <>
-                      <span>&middot;</span>
-                      <span>{result.messageCount} msgs</span>
-                    </>
-                  )}
-                </div>
-                {result.snippet && (
-                  <div
-                    className="mt-0.5 truncate text-xs text-text-500 [&_mark]:rounded-sm [&_mark]:bg-warning-100/30 [&_mark]:px-0.5 [&_mark]:text-text-100"
-                    dangerouslySetInnerHTML={{ __html: result.snippet }}
-                  />
-                )}
+                <SearchResultCard result={result} />
               </Link>
             </li>
           ))}

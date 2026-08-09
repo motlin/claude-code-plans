@@ -242,7 +242,7 @@ describe("read-only MCP corpus tools", () => {
           project: "Alice Project",
           updated: "2000-01-08T00:00:00.000Z",
           messages: 3,
-          snippet: "<mark>Ingest</mark> pipeline conclusion",
+          snippet: "Trace <mark>ingest</mark>",
           summary: "The queue was stale",
         },
       ],

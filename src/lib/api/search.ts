@@ -5,6 +5,7 @@ import { apiFetch } from "./client";
 const SessionSearchItemSchema = z.object({
   sessionId: z.string(),
   title: z.string(),
+  titleHtml: z.string(),
   firstPrompt: z.string().nullable(),
   summary: z.string().nullable(),
   snippet: z.string(),

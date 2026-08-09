@@ -1637,7 +1637,61 @@ describe("queries", () => {
 
     const result = searchSessionsFromDb(db.index, "login")[0];
     if (!result) throw new Error("Expected a session search result");
-    expect(result.snippet).toBe("<mark>login</mark> &lt;script&gt;alert(1)&lt;/script&gt;");
+    expect(result.titleHtml).toBe("<mark>login</mark> &lt;script&gt;alert(1)&lt;/script&gt;");
+    expect(result.snippet).toBe("Fix the <mark>login</mark> bug");
+  });
+
+  it("highlights the title and suppresses a snippet that only echoes the title prefix", () => {
+    db.index
+      .insert(schema.sessions)
+      .values({
+        id: "sess-echo",
+        projectId: "proj-a",
+        title: "release notes say SessionStart hooks can now...",
+        firstPrompt: "release notes say SessionStart hooks can now return context",
+        messageCount: 4,
+        isSidechain: 0,
+        createdAt: 1200,
+        mtimeMs: 2600,
+        filePath: "/path/sess-echo.jsonl",
+      })
+      .run();
+
+    const result = searchSessionsFromDb(db.index, "hooks").find((r) => r.sessionId === "sess-echo");
+    if (!result) throw new Error("Expected a session search result for sess-echo");
+    expect(result.titleHtml).toBe("release notes say SessionStart <mark>hooks</mark> can now...");
+    expect(result.snippet).toBe("");
+  });
+
+  it("keeps a highlighted excerpt that extends beyond the title echo", () => {
+    db.index
+      .insert(schema.sessions)
+      .values({
+        id: "sess-tail",
+        projectId: "proj-a",
+        title: "release notes say SessionStart hooks can now...",
+        firstPrompt: "release notes say SessionStart hooks can now return widget context",
+        messageCount: 4,
+        isSidechain: 0,
+        createdAt: 1300,
+        mtimeMs: 2700,
+        filePath: "/path/sess-tail.jsonl",
+      })
+      .run();
+
+    const result = searchSessionsFromDb(db.index, "widget").find(
+      (r) => r.sessionId === "sess-tail",
+    );
+    if (!result) throw new Error("Expected a session search result for sess-tail");
+    expect(result.titleHtml).toBe("release notes say SessionStart hooks can now...");
+    expect(result.snippet).toBe("...return <mark>widget</mark> context");
+  });
+
+  it("shows a highlighted summary snippet when only the summary matches", () => {
+    const result = searchSessionsFromDb(db.index, "auth").find((r) => r.sessionId === "sess-1");
+    if (!result) throw new Error("Expected a session search result for sess-1");
+    expect(result.titleHtml).toBe("Fix login");
+    expect(result.snippet).toBe("Fixed <mark>auth</mark>");
   });
 
   it("getSessionProjectPath returns project path for a session", () => {

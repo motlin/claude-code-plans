@@ -514,6 +514,7 @@ function getPlanLinksForProjectFromDb(db: IndexDb, projectId: string): DbPlanSes
 export interface DbSearchResult {
   sessionId: string;
   title: string;
+  titleHtml: string;
   firstPrompt: string | null;
   summary: string | null;
   snippet: string;
@@ -558,12 +559,14 @@ export function searchSessionsFromDb(db: IndexDb, query: string): DbSearchResult
 
   return rows.map((row) => {
     const session = sessionMap.get(row.session_id);
-    const snippet = sanitizeFtsSnippet(
-      row.title_snippet || row.summary_snippet || row.prompt_snippet || "",
-    );
+    const secondary =
+      differentiateSnippet(row.summary_snippet, row.title) ??
+      differentiateSnippet(row.prompt_snippet, row.title);
+    const snippet = secondary === null ? "" : sanitizeFtsSnippet(secondary);
     return {
       sessionId: row.session_id,
       title: row.title,
+      titleHtml: sanitizeFtsSnippet(row.title_snippet),
       firstPrompt: row.first_prompt || null,
       summary: row.summary || null,
       snippet,
@@ -693,6 +696,46 @@ function escapeHtml(value: string): string {
 
 function sanitizeFtsHighlight(value: string, highlightStart: string, highlightEnd: string): string {
   return escapeHtml(value).replaceAll(highlightStart, "<mark>").replaceAll(highlightEnd, "</mark>");
+}
+
+const MARK_OPEN = "<mark>";
+const MARK_CLOSE = "</mark>";
+const ELLIPSIS = "...";
+
+function stripMarkTags(value: string): string {
+  return value.replaceAll(MARK_OPEN, "").replaceAll(MARK_CLOSE, "");
+}
+
+/**
+ * Turns a raw FTS snippet into a secondary line that adds information beyond
+ * the result title. Returns null when the snippet has no highlighted match or
+ * is only an echo of the title prefix (titles are derived from the first
+ * prompt, so the leading prompt snippet often repeats the title verbatim).
+ */
+function differentiateSnippet(candidate: string, title: string): string | null {
+  if (!candidate.includes(MARK_OPEN)) return null;
+
+  const titlePrefix = title.endsWith(ELLIPSIS) ? title.slice(0, -ELLIPSIS.length) : title;
+  if (!stripMarkTags(candidate).startsWith(titlePrefix)) return candidate;
+
+  // Skip past the echoed title prefix, ignoring highlight tags along the way.
+  let index = 0;
+  let consumed = 0;
+  while (index < candidate.length && consumed < titlePrefix.length) {
+    if (candidate.startsWith(MARK_OPEN, index)) {
+      index += MARK_OPEN.length;
+    } else if (candidate.startsWith(MARK_CLOSE, index)) {
+      index += MARK_CLOSE.length;
+    } else {
+      index++;
+      consumed++;
+    }
+  }
+  if (candidate.startsWith(MARK_CLOSE, index)) index += MARK_CLOSE.length;
+
+  const remainder = candidate.slice(index).trim();
+  if (!remainder.includes(MARK_OPEN)) return null;
+  return ELLIPSIS + remainder;
 }
 
 function sanitizeFtsSnippet(value: string): string {
