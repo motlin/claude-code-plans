@@ -269,7 +269,9 @@ describe("dispatchHookEvent", () => {
         created: "1999-12-31T00:00:00.000Z",
         project: "-Users-craig-projects-app",
         projectName: "app",
-        messageCount: 1,
+        // indexSessionsIndex no longer trusts the sessions-index messageCount;
+        // no transcript was indexed, so the canonical count is 0.
+        messageCount: 0,
         gitBranch: undefined,
         starred: false,
         state: "unknown",
@@ -323,7 +325,9 @@ describe("dispatchHookEvent", () => {
         created: "1999-12-31T00:00:00.000Z",
         project: "-Users-craig-projects-app",
         projectName: "app",
-        messageCount: 12,
+        // indexSessionsIndex no longer trusts the sessions-index messageCount;
+        // no transcript was indexed, so the canonical count is 0.
+        messageCount: 0,
         gitBranch: undefined,
         starred: false,
         state: "ended",

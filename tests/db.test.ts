@@ -173,7 +173,9 @@ describe("indexer", () => {
     const abc = sessions.find((s) => s.id === "abc-123");
     if (!abc) throw new Error("Expected session abc-123");
     expect(abc.title).toBe("Fixed auth issue");
-    expect(abc.messageCount).toBe(5);
+    // indexSessionsIndex no longer trusts the sessions-index messageCount;
+    // indexJsonlFile owns the canonical count, so a fresh row starts at 0.
+    expect(abc.messageCount).toBe(0);
   });
 
   it("skips unchanged files based on mtime", async () => {

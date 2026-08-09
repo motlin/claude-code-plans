@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { afterEach, describe, expect, it } from "vite-plus/test";
 import { openAppDb, openTestDb } from "../src/lib/db/connection";
 import {
   getCurrentSessionMessageIndex,
@@ -14,72 +14,38 @@ import {
 } from "../src/lib/db/viewed-state";
 import * as schema from "../src/lib/db/schema";
 
-const filesystemReadState = vi.hoisted(() => ({
-  forbiddenWholeFilePaths: new Set<string>(),
-}));
-
-vi.mock("node:fs", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("node:fs")>();
-  return {
-    ...actual,
-    readFileSync: (...args: Parameters<typeof actual.readFileSync>) => {
-      if (typeof args[0] === "string" && filesystemReadState.forbiddenWholeFilePaths.has(args[0])) {
-        throw new Error(`Unexpected whole-file read: ${args[0]}`);
-      }
-      return actual.readFileSync(...args);
-    },
-  };
-});
-
 describe("durable session viewed state", () => {
   const temporaryDirectories: string[] = [];
 
   afterEach(() => {
-    filesystemReadState.forbiddenWholeFilePaths.clear();
     for (const directory of temporaryDirectories.splice(0)) {
       rmSync(directory, { recursive: true, force: true });
     }
   });
 
-  it("counts transcript records in bounded reads with or without a trailing newline", () => {
-    const directory = mkdtempSync(join(tmpdir(), "viewed-state-test-"));
-    temporaryDirectories.push(directory);
+  it("derives the current message index from the indexed messageCount without reading the transcript", () => {
     const cases = [
-      { sessionId: "session-empty", contents: "", expectedMessageIndex: -1 },
-      {
-        sessionId: "session-trailing-newline",
-        contents: '{"type":"user"}\n{"type":"assistant"}\n',
-        expectedMessageIndex: 1,
-      },
-      {
-        sessionId: "session-no-trailing-newline",
-        contents: '{"type":"user"}\n{"type":"assistant"}',
-        expectedMessageIndex: 1,
-      },
-      {
-        sessionId: "session-multiple-chunks",
-        contents: `${JSON.stringify({ content: "x".repeat(70_000) })}\n{"type":"assistant"}`,
-        expectedMessageIndex: 1,
-      },
+      { sessionId: "session-missing", messageCount: null, expectedMessageIndex: -1 },
+      { sessionId: "session-empty", messageCount: 0, expectedMessageIndex: -1 },
+      { sessionId: "session-two-messages", messageCount: 2, expectedMessageIndex: 1 },
+      { sessionId: "session-many-messages", messageCount: 40, expectedMessageIndex: 39 },
     ];
     const db = openTestDb();
 
     try {
       for (const testCase of cases) {
-        const transcriptPath = join(directory, `${testCase.sessionId}.jsonl`);
-        writeFileSync(transcriptPath, testCase.contents);
-        filesystemReadState.forbiddenWholeFilePaths.add(transcriptPath);
+        if (testCase.messageCount === null) continue;
         db.index
           .insert(schema.sessions)
           .values({
             id: testCase.sessionId,
             projectId: "project-test-100",
             title: "Test session",
-            messageCount: 0,
+            messageCount: testCase.messageCount,
             isSidechain: 0,
             createdAt: 1_000,
             mtimeMs: 2_000,
-            filePath: transcriptPath,
+            filePath: join("/nonexistent", `${testCase.sessionId}.jsonl`),
           })
           .run();
       }
@@ -160,7 +126,7 @@ describe("durable session viewed state", () => {
     }
   });
 
-  it("survives a SQLite close and reopen with the exact transcript record index", () => {
+  it("survives a SQLite close and reopen with the exact message index", () => {
     const cacheDirectory = mkdtempSync(join(tmpdir(), "viewed-state-test-"));
     temporaryDirectories.push(cacheDirectory);
     const projectDirectory = join(cacheDirectory, "project-test");
@@ -202,11 +168,13 @@ describe("durable session viewed state", () => {
         messageIndex: getCurrentSessionMessageIndex(reopened.index, "session-test-200"),
         viewedState: getSessionViewedState(reopened.index, "session-test-200", messageIndex),
       }).toStrictEqual({
-        messageIndex: 2,
+        // messageCount is 2, so the last message index is 1; the system
+        // record in the transcript does not count.
+        messageIndex: 1,
         viewedState: {
-          currentMessageIndex: 2,
-          lastViewedMessageIndex: 2,
-          reviewTargetMessageIndex: 2,
+          currentMessageIndex: 1,
+          lastViewedMessageIndex: 1,
+          reviewTargetMessageIndex: 1,
           newMessageCount: 0,
           viewedInCcp: true,
           viewedInHerdr: true,

@@ -105,7 +105,9 @@ describe("buildSessionSummaryPayloadFromDb", () => {
       summary: "Fixed the test auth issue",
       mtime: "1999-12-31T00:00:00.000Z",
       created: "1999-12-31T00:00:00.000Z",
-      messageCount: 5,
+      // indexSessionsIndex no longer trusts the sessions-index messageCount;
+      // the transcript is empty so the canonical count is 0.
+      messageCount: 0,
       project: PROJECT_ID,
       projectName: "alice-project",
       gitBranch: undefined,
@@ -128,7 +130,9 @@ describe("buildSessionSummaryPayloadFromDb", () => {
       summary: "Fixed the test auth issue",
       mtime: "1999-12-31T00:00:00.000Z",
       created: "1999-12-31T00:00:00.000Z",
-      messageCount: 5,
+      // indexSessionsIndex no longer trusts the sessions-index messageCount;
+      // the transcript is empty so the canonical count is 0.
+      messageCount: 0,
       project: PROJECT_ID,
       projectName: "alice-project",
       gitBranch: undefined,
@@ -169,7 +173,9 @@ describe("buildSessionSummaryPayloadFromDb", () => {
       summary: "Fixed the test auth issue",
       mtime: "1999-12-31T00:00:00.000Z",
       created: "1999-12-31T00:00:00.000Z",
-      messageCount: 5,
+      // indexSessionsIndex no longer trusts the sessions-index messageCount;
+      // the transcript is empty so the canonical count is 0.
+      messageCount: 0,
       project: PROJECT_ID,
       projectName: "alice-project",
       gitBranch: undefined,

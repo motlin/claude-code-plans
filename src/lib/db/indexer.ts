@@ -12,6 +12,7 @@ import {
   TaskFileSchema,
 } from "../schemas";
 import { encodeProjectPath, resolveProjectPath } from "../memory";
+import { isCountableMessageRecord } from "../message-count";
 import { deriveProjectDisplayName, lastEncodedSegment } from "../project-display-name";
 import { extractSessionTitle, readFirstUserMessage, resolveFirstPrompt } from "../sessions";
 import { extractTitle, extractTitleFromContent } from "../markdown-utils.server";
@@ -426,7 +427,6 @@ export async function indexSessionsIndex(
     const summ = entry.summary as string | undefined;
     const branch = entry.gitBranch as string | undefined;
     const entryProjectPath = entry.projectPath as string | undefined;
-    const indexedMessageCount = entry.messageCount;
     const sidechain = entry.isSidechain as boolean | undefined;
     const title = summ ?? extractSessionTitle(fp ?? "", entry.sessionId);
     const createdAt = entry.created ? new Date(entry.created as string).getTime() : entry.fileMtime;
@@ -439,7 +439,11 @@ export async function indexSessionsIndex(
         firstPrompt: fp,
         summary: summ ?? null,
         customTitle: null,
-        messageCount: indexedMessageCount ?? 0,
+        // sessions-index.json counts messages with Claude Code's own
+        // definition, which disagrees with ours (see message-count.ts).
+        // indexJsonlFile owns message_count; a fresh row starts at 0 until
+        // the transcript itself is indexed.
+        messageCount: 0,
         gitBranch: branch ?? null,
         cwd: entryProjectPath ?? null,
         isSidechain: sidechain ? 1 : 0,
@@ -453,7 +457,6 @@ export async function indexSessionsIndex(
           title: sql<string>`coalesce(${schema.sessions.customTitle}, ${title})`,
           firstPrompt: fp,
           summary: summ ?? null,
-          ...(indexedMessageCount === undefined ? {} : { messageCount: indexedMessageCount }),
           gitBranch: branch ?? null,
           cwd: entryProjectPath ?? null,
           isSidechain: sidechain ? 1 : 0,
@@ -494,14 +497,24 @@ export async function indexJsonlFile(
     return { linkedPlans: [] };
   }
 
+  const sessionId = basename(filePath, ".jsonl");
   const existing = db
     .select()
     .from(schema.indexedFiles)
     .where(eq(schema.indexedFiles.path, filePath))
     .get();
-  if (existing && existing.mtimeMs === fileStat.mtimeMs) return { linkedPlans: [] };
+  if (existing && existing.mtimeMs === fileStat.mtimeMs) {
+    // Only trust the mtime skip when the session row actually exists; a
+    // stale indexed_files row must not leave a re-inserted session at
+    // messageCount 0 forever.
+    const sessionRow = db
+      .select({ id: schema.sessions.id })
+      .from(schema.sessions)
+      .where(eq(schema.sessions.id, sessionId))
+      .get();
+    if (sessionRow) return { linkedPlans: [] };
+  }
 
-  const sessionId = basename(filePath, ".jsonl");
   const planFilenames = new Set<string>();
   let customTitle: string | undefined;
   let lastSessionCwd: string | undefined;
@@ -515,6 +528,7 @@ export async function indexJsonlFile(
     text: string | null;
   }> = [];
   let messageIndex = 0;
+  let messageCount = 0;
 
   // Stream the file line-by-line to avoid loading entire JSONL into memory
   const rl = createInterface({
@@ -604,6 +618,7 @@ export async function indexJsonlFile(
             content?: string | Array<{ type?: string; text?: string }>;
           };
         };
+        if (isCountableMessageRecord(obj)) messageCount++;
         if (obj.type === "user" || obj.type === "assistant") {
           const content = obj.message?.content;
           const messageText: string[] = [];
@@ -658,7 +673,7 @@ export async function indexJsonlFile(
   if (existingSession) {
     const updates: Record<string, unknown> = {
       mtimeMs: fileStat.mtimeMs,
-      messageCount: messageIndex,
+      messageCount,
     };
     updates["filePath"] = filePath;
     updates["projectId"] = project;
@@ -687,7 +702,7 @@ export async function indexJsonlFile(
         firstPrompt,
         summary: null,
         customTitle: customTitle ?? null,
-        messageCount: messageIndex,
+        messageCount,
         gitBranch: sessionGitBranch ?? null,
         cwd: sessionCwd ?? null,
         isSidechain: 0,

@@ -28,6 +28,7 @@ import {
 import { useClaudeEvents, useIsSessionActive, useStatusline } from "../hooks/use-claude-events";
 import { StatusFooter } from "../components/status-footer";
 import { processTranscript } from "../lib/transcript";
+import { countMessageRecords } from "../lib/message-count";
 import {
   ArrowLeft,
   ArrowUp,
@@ -323,7 +324,13 @@ function SessionPage() {
   const { data: transcript } = useSuspenseQuery(transcriptQueryOptions(params.id));
   const { data: subagents } = useSuspenseQuery(sessionSubagentsQueryOptions(params.id));
   const { data: herdr } = useSuspenseQuery(herdrPanesQueryOptions);
-  const viewedState = useSessionViewedState(params.id, transcript.records.length - 1);
+  // Viewed positions are stored in message units (see message-count.ts) so
+  // they line up with messageCount and newMessageCount on every surface.
+  const currentMessageIndex = useMemo(
+    () => countMessageRecords(transcript.records) - 1,
+    [transcript.records],
+  );
+  const viewedState = useSessionViewedState(params.id, currentMessageIndex);
   const hasUnseen = useHasUnseenWork(params.id);
   const { settings, setSetting } = useSettings();
   const [currentHost, setCurrentHost] = useState<string | undefined>(undefined);

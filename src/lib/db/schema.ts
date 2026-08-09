@@ -1,7 +1,7 @@
 import { sqliteTable, text, integer, index, primaryKey } from "drizzle-orm/sqlite-core";
 import type { ReviewBundle } from "../api/reviews";
 
-export const SCHEMA_VERSION = "21";
+export const SCHEMA_VERSION = "22";
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),

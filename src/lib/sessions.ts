@@ -5,6 +5,7 @@ import { createInterface } from "node:readline";
 import { decodeProjectDir, resolveProjectName } from "./memory";
 import type { JsonValue } from "./hook-events";
 import { SessionsIndexSchema, CustomTitleRecordSchema } from "./schemas";
+import { isCountableMessageRecord } from "./message-count";
 import { isCaveatLine, isCommandLine, isStdoutLine } from "./transcript";
 
 export interface SessionEntry {
@@ -237,8 +238,8 @@ async function readSessionMessageCount(filePath: string): Promise<number> {
     for await (const line of rl) {
       if (!line.trim()) continue;
       try {
-        const entry = JSON.parse(line) as JsonlEntry;
-        if (entry.type === "user" || entry.type === "assistant") messageCount++;
+        const entry: unknown = JSON.parse(line);
+        if (isCountableMessageRecord(entry)) messageCount++;
       } catch {
         // skip malformed lines
       }
@@ -250,11 +251,12 @@ async function readSessionMessageCount(filePath: string): Promise<number> {
   return messageCount;
 }
 
-async function resolveMessageCount(
-  indexedMessageCount: number | undefined,
-  filePath: string,
-): Promise<number> {
-  if (indexedMessageCount !== undefined) return indexedMessageCount;
+/**
+ * Count messages by streaming the transcript. The messageCount recorded in
+ * sessions-index.json is deliberately ignored: it counts with Claude Code's
+ * own definition, which disagrees with ours (see message-count.ts).
+ */
+async function resolveMessageCount(filePath: string): Promise<number> {
   try {
     return await readSessionMessageCount(filePath);
   } catch {
@@ -338,7 +340,7 @@ async function listSessionsForProject(
       project,
       projectName,
       projectPath: entry.projectPath,
-      messageCount: await resolveMessageCount(entry.messageCount, entry.fullPath),
+      messageCount: await resolveMessageCount(entry.fullPath),
       gitBranch: entry.gitBranch,
       isSidechain: entry.isSidechain ?? false,
     });
@@ -661,7 +663,7 @@ export async function readSession(
 
       const type = obj.type;
       if (type !== "user" && type !== "assistant") continue;
-      messageCount++;
+      if (isCountableMessageRecord(obj)) messageCount++;
 
       const message = obj.message;
       if (!message) continue;

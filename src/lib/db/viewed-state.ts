@@ -1,11 +1,8 @@
 import { and, eq, notInArray } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import { closeSync, openSync, readSync } from "node:fs";
 import * as schema from "./schema";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
-
-const TRANSCRIPT_READ_BUFFER_SIZE = 64 * 1024;
 
 export interface DurableSessionViewedState {
   currentMessageIndex: number;
@@ -26,37 +23,6 @@ const EMPTY_SESSION_VIEWED_STATE: StoredSessionViewedState = {
   lastViewedMessageIndex: -1,
   reviewTargetMessageIndex: -1,
 };
-
-function isLineWhitespaceByte(byte: number): boolean {
-  return byte === 0x09 || byte === 0x0b || byte === 0x0c || byte === 0x0d || byte === 0x20;
-}
-
-function countTranscriptRecords(filePath: string): number {
-  const descriptor = openSync(filePath, "r");
-  try {
-    const buffer = Buffer.allocUnsafe(TRANSCRIPT_READ_BUFFER_SIZE);
-    let recordCount = 0;
-    let lineHasContent = false;
-    let bytesRead: number;
-
-    do {
-      bytesRead = readSync(descriptor, buffer, 0, buffer.length, null);
-      for (let index = 0; index < bytesRead; index += 1) {
-        const byte = buffer.readUInt8(index);
-        if (byte === 0x0a) {
-          if (lineHasContent) recordCount += 1;
-          lineHasContent = false;
-        } else if (!isLineWhitespaceByte(byte)) {
-          lineHasContent = true;
-        }
-      }
-    } while (bytesRead > 0);
-
-    return recordCount + (lineHasContent ? 1 : 0);
-  } finally {
-    closeSync(descriptor);
-  }
-}
 
 function getStoredSessionViewedState(db: IndexDb, sessionId: string): StoredSessionViewedState {
   return (
@@ -201,28 +167,33 @@ export function getSessionViewedState(
   const viewedInCcp = stored.lastViewedMessageIndex >= stored.reviewTargetMessageIndex;
   const viewedInHerdr = terminalRows.some((row) => row.viewed === 1);
 
+  // Derived from the same counter as messageCount (currentMessageIndex is
+  // messageCount - 1), and clamped so "N new" can never exceed the total.
+  const totalMessages = currentMessageIndex + 1;
   return {
     currentMessageIndex,
     ...stored,
-    newMessageCount: Math.max(0, currentMessageIndex - stored.lastViewedMessageIndex),
+    newMessageCount: Math.min(
+      totalMessages,
+      Math.max(0, currentMessageIndex - stored.lastViewedMessageIndex),
+    ),
     viewedInCcp,
     viewedInHerdr,
     viewedAnywhere: viewedInCcp || viewedInHerdr,
   };
 }
 
-/** Return the final non-empty JSONL record index without parsing transcript contents. */
+/**
+ * Return the index of the last message in the session, in the same units as
+ * `sessions.message_count` (see message-count.ts). The indexer keeps that
+ * column current before SSE broadcasts, so this needs no transcript read.
+ */
 export function getCurrentSessionMessageIndex(db: IndexDb, sessionId: string): number {
   const row = db
-    .select({ filePath: schema.sessions.filePath })
+    .select({ messageCount: schema.sessions.messageCount })
     .from(schema.sessions)
     .where(eq(schema.sessions.id, sessionId))
     .get();
   if (!row) return -1;
-
-  try {
-    return countTranscriptRecords(row.filePath) - 1;
-  } catch {
-    return -1;
-  }
+  return row.messageCount - 1;
 }
