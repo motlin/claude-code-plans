@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { readFileSync } from "node:fs";
 import { getDb } from "../../lib/db";
 import { getSubagentById } from "../../lib/db/queries";
@@ -7,7 +8,7 @@ import { eq } from "drizzle-orm";
 
 export const Route = createFileRoute("/api/raw")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async ({ request }: { request: Request }) => {
         const url = new URL(request.url);
         const sessionId = url.searchParams.get("sessionId");
@@ -41,6 +42,6 @@ export const Route = createFileRoute("/api/raw")({
           return new Response("File not found", { status: 404 });
         }
       },
-    },
+    }),
   },
 });

@@ -2,6 +2,7 @@ import { delimiter, join } from "node:path";
 import { access } from "node:fs/promises";
 import { constants } from "node:fs";
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import {
   PersistedCapabilitiesSchema,
   resolveServerCapabilities,
@@ -95,7 +96,7 @@ export async function handleCapabilitiesRequest(
 
 export const Route = createFileRoute("/api/capabilities")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       POST: async ({ request }: { request: Request }) => {
         const rejection = rejectCrossSite(request);
         if (rejection) return rejection;
@@ -107,6 +108,6 @@ export const Route = createFileRoute("/api/capabilities")({
           projectRoot: process.cwd(),
         });
       },
-    },
+    }),
   },
 });

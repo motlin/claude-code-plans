@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { GroupedSessionsResponse } from "../../lib/api/sessions";
 
 function clampPerProject(raw: string | null): number | undefined {
@@ -10,7 +11,7 @@ function clampPerProject(raw: string | null): number | undefined {
 
 export const Route = createFileRoute("/api/sessions/grouped")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async ({ request }: { request: Request }) => {
         const { getDb } = await import("../../lib/db");
         const { listSessionGroupsFromDb, getStarredSessionIds } =
@@ -34,6 +35,6 @@ export const Route = createFileRoute("/api/sessions/grouped")({
           headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
         });
       },
-    },
+    }),
   },
 });

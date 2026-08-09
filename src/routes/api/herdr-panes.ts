@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { HerdrPaneIndexResponse } from "../../lib/api/herdr";
 
 export const Route = createFileRoute("/api/herdr-panes")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async () => {
         const [
           { getDb },
@@ -24,6 +25,6 @@ export const Route = createFileRoute("/api/herdr-panes")({
           },
         );
       },
-    },
+    }),
   },
 });

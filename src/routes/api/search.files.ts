@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { FileSearchResponse, type FileSearchResult } from "../../lib/api/search";
 
 const PRIVATE_NO_CACHE = "private, max-age=0, must-revalidate";
@@ -36,7 +37,7 @@ export async function handleFileSearchRequest(
 
 export const Route = createFileRoute("/api/search/files")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async ({ request }: { request: Request }) => {
         const { getDb } = await import("../../lib/db");
         const { searchFileContentDb } = await import("../../lib/db/queries");
@@ -49,6 +50,6 @@ export const Route = createFileRoute("/api/search/files")({
           search: (query, scopeRoot) => searchFileContentDb(index, query, scopeRoot),
         });
       },
-    },
+    }),
   },
 });

@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { ApprovalsResponse } from "../../lib/api/approvals";
 
 export const Route = createFileRoute("/api/approvals")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async ({ request }: { request: Request }) => {
         const { getPendingApprovals, getPendingApprovalsForProject } =
           await import("../../lib/db/pending-approvals-cache");
@@ -16,6 +17,6 @@ export const Route = createFileRoute("/api/approvals")({
           headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
         });
       },
-    },
+    }),
   },
 });

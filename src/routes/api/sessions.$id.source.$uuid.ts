@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { SessionSourceResponse } from "../../lib/api/sessions";
 
 const UUID_RE = /^[a-f0-9-]{36}$/i;
@@ -6,7 +7,7 @@ const SESSION_ID_RE = /^[a-z0-9-]+$/;
 
 export const Route = createFileRoute("/api/sessions/$id/source/$uuid")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async ({
         params,
         request,
@@ -80,7 +81,7 @@ export const Route = createFileRoute("/api/sessions/$id/source/$uuid")({
           headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
         });
       },
-    },
+    }),
   },
 });
 

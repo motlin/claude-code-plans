@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { rejectCrossSite } from "../../lib/same-origin-guard";
 
 export const Route = createFileRoute("/api/notifications/$id")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       DELETE: async ({ params, request }: { params: { id: string }; request: Request }) => {
         const rejection = rejectCrossSite(request);
         if (rejection) return rejection;
@@ -12,6 +13,6 @@ export const Route = createFileRoute("/api/notifications/$id")({
         dismissNotification(params.id);
         return Response.json({ ok: true });
       },
-    },
+    }),
   },
 });

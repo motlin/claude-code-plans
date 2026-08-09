@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { UserCommandFileResponse } from "../../lib/api/plugins";
 import { fromMdSlug } from "../../lib/md-slug";
 
 export const Route = createFileRoute("/api/plugins/user-commands/$source/$filename")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async ({ params }: { params: { source: string; filename: string } }) => {
         const { readUserCommandContent } = await import("../../lib/plugins");
         const { extractTitleFromContent } = await import("../../lib/markdown-utils");
@@ -32,6 +33,6 @@ export const Route = createFileRoute("/api/plugins/user-commands/$source/$filena
           },
         );
       },
-    },
+    }),
   },
 });

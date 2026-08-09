@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { SourceFileResponse } from "../../lib/api/source";
 
 export const Route = createFileRoute("/api/source/$kind/$")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async ({
         params,
         request,
@@ -70,6 +71,6 @@ export const Route = createFileRoute("/api/source/$kind/$")({
           },
         );
       },
-    },
+    }),
   },
 });

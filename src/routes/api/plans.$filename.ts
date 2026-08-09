@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { PlanDetailResponse } from "../../lib/api/plans";
 import { fromMdSlug } from "../../lib/md-slug";
 import { rejectCrossSite } from "../../lib/same-origin-guard";
@@ -22,7 +23,7 @@ export function isPlanNotModified(ifModifiedSince: string | null, mtime: Date): 
 
 export const Route = createFileRoute("/api/plans/$filename")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async ({ params, request }: { params: { filename: string }; request: Request }) => {
         const { homedir } = await import("node:os");
         const { join } = await import("node:path");
@@ -107,6 +108,6 @@ export const Route = createFileRoute("/api/plans/$filename")({
           },
         );
       },
-    },
+    }),
   },
 });

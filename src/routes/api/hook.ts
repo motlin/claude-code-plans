@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -208,7 +209,7 @@ function persistDrift(
 
 export const Route = createFileRoute("/api/hook")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       POST: async ({ request }: { request: Request }) => {
         const rejection = rejectCrossSite(request);
         if (rejection) return rejection;
@@ -282,6 +283,6 @@ export const Route = createFileRoute("/api/hook")({
 
         return Response.json({ ok: true });
       },
-    },
+    }),
   },
 });

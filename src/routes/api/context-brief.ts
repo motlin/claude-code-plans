@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import type { ContextBriefInput } from "../../lib/context-brief";
 
 const PRIVATE_NO_CACHE = "private, max-age=0, must-revalidate";
@@ -36,7 +37,7 @@ export function handleContextBriefRequest(
 
 export const Route = createFileRoute("/api/context-brief")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async ({ request }: { request: Request }) => {
         try {
           const [{ getDb }, queries, contextBrief] = await Promise.all([
@@ -70,6 +71,6 @@ export const Route = createFileRoute("/api/context-brief")({
           return textResponse("");
         }
       },
-    },
+    }),
   },
 });

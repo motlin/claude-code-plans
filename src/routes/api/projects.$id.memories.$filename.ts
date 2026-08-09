@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import {
   MemoryDeleteResponse,
   MemoryDetailResponse,
@@ -9,7 +10,7 @@ import { rejectCrossSite } from "../../lib/same-origin-guard";
 
 export const Route = createFileRoute("/api/projects/$id/memories/$filename")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async ({
         params,
         request,
@@ -125,6 +126,6 @@ export const Route = createFileRoute("/api/projects/$id/memories/$filename")({
           headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
         });
       },
-    },
+    }),
   },
 });

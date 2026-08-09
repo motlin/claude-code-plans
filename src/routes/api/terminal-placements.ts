@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { TerminalPlacementIndexResponse } from "../../lib/api/terminal-placements";
 
 function herdrPlacementKey(sessionId: string, terminalId: string): string {
@@ -7,7 +8,7 @@ function herdrPlacementKey(sessionId: string, terminalId: string): string {
 
 export const Route = createFileRoute("/api/terminal-placements")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async () => {
         const [
           { getDb },
@@ -52,6 +53,6 @@ export const Route = createFileRoute("/api/terminal-placements")({
           },
         );
       },
-    },
+    }),
   },
 });

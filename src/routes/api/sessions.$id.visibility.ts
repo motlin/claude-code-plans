@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { SessionVisibilityBodySchema } from "../../lib/api/viewed-state";
 import { rejectCrossSite } from "../../lib/same-origin-guard";
 
 export const Route = createFileRoute("/api/sessions/$id/visibility")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       PUT: async ({ params, request }: { params: { id: string }; request: Request }) => {
         const rejection = rejectCrossSite(request);
         if (rejection) return rejection;
@@ -14,6 +15,6 @@ export const Route = createFileRoute("/api/sessions/$id/visibility")({
         setSessionVisibility(body.clientId, params.id, body.visible);
         return new Response(null, { status: 204 });
       },
-    },
+    }),
   },
 });

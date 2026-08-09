@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 
 export const Route = createFileRoute("/api/count")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async () => {
         const { homedir } = await import("node:os");
         const { join } = await import("node:path");
@@ -11,6 +12,6 @@ export const Route = createFileRoute("/api/count")({
         const plans = await listPlans(plansDir);
         return Response.json({ count: plans.length });
       },
-    },
+    }),
   },
 });

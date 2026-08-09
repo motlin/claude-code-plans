@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { MessageSearchResponse } from "../../lib/api/search";
 
 export const Route = createFileRoute("/api/search/messages")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async ({ request }: { request: Request }) => {
         const url = new URL(request.url);
         const query = url.searchParams.get("query")?.trim() ?? "";
@@ -22,6 +23,6 @@ export const Route = createFileRoute("/api/search/messages")({
           headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
         });
       },
-    },
+    }),
   },
 });

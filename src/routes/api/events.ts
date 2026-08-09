@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { addClient, removeClient } from "../../lib/watcher";
 import { DOMAIN_EVENTS } from "../../lib/hook-events";
 import { getLiveSubagentNodes } from "../../lib/live-subagent-store";
 
 export const Route = createFileRoute("/api/events")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async () => {
         const encoder = new TextEncoder();
         let keepalive: ReturnType<typeof setInterval> | null = null;
@@ -52,6 +53,6 @@ export const Route = createFileRoute("/api/events")({
           },
         });
       },
-    },
+    }),
   },
 });

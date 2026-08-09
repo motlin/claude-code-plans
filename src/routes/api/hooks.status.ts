@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { HookStatusResponse } from "../../lib/api/hooks";
 
 export const Route = createFileRoute("/api/hooks/status")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async () => {
         const { homedir } = await import("node:os");
         const { join } = await import("node:path");
@@ -71,6 +72,6 @@ export const Route = createFileRoute("/api/hooks/status")({
           },
         );
       },
-    },
+    }),
   },
 });

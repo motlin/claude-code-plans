@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { z } from "zod";
 import { SettingsSaveResponse } from "../../lib/api/settings";
 import { rejectCrossSite } from "../../lib/same-origin-guard";
@@ -7,7 +8,7 @@ const SETTINGS_FILENAMES = ["settings.json", "settings.local.json"] as const;
 
 export const Route = createFileRoute("/api/settings/$filename")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       PUT: async ({ params, request }: { params: { filename: string }; request: Request }) => {
         const rejection = rejectCrossSite(request);
         if (rejection) return rejection;
@@ -46,6 +47,6 @@ export const Route = createFileRoute("/api/settings/$filename")({
           headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
         });
       },
-    },
+    }),
   },
 });

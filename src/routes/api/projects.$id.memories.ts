@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { MemoryListResponse } from "../../lib/api/memories";
 
 export const Route = createFileRoute("/api/projects/$id/memories")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async ({ params }: { params: { id: string } }) => {
         const { getDb } = await import("../../lib/db");
         const { getProjectDetailFromDb, getMemoriesForProject } =
@@ -39,6 +40,6 @@ export const Route = createFileRoute("/api/projects/$id/memories")({
           },
         );
       },
-    },
+    }),
   },
 });

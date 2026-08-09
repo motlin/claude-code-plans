@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { z } from "zod";
 import { HookMutationResponse } from "../../lib/api/hooks";
 import { rejectCrossSite } from "../../lib/same-origin-guard";
@@ -30,7 +31,7 @@ function containsManagedHook(entry: unknown): boolean {
 
 export const Route = createFileRoute("/api/hooks")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       POST: async ({ request }: { request: Request }) => {
         const rejection = rejectCrossSite(request);
         if (rejection) return rejection;
@@ -128,6 +129,6 @@ export const Route = createFileRoute("/api/hooks")({
           headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
         });
       },
-    },
+    }),
   },
 });

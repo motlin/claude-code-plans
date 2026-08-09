@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { SummaryMutationResponse } from "../../lib/api/sessions";
 import { rejectCrossSite } from "../../lib/same-origin-guard";
 
 export const Route = createFileRoute("/api/sessions/$id/summary")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       POST: async ({ params, request }: { params: { id: string }; request: Request }) => {
         const rejection = rejectCrossSite(request);
         if (rejection) return rejection;
@@ -17,6 +18,6 @@ export const Route = createFileRoute("/api/sessions/$id/summary")({
           headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
         });
       },
-    },
+    }),
   },
 });

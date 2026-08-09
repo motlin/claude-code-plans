@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { SettingsResponse } from "../../lib/api/settings";
 
 const SETTINGS_FILENAMES = ["settings.json", "settings.local.json"] as const;
 
 export const Route = createFileRoute("/api/settings")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async ({ request }: { request: Request }) => {
         const { homedir } = await import("node:os");
         const { join } = await import("node:path");
@@ -71,6 +72,6 @@ export const Route = createFileRoute("/api/settings")({
 
         return Response.json(SettingsResponse.parse(results), { headers });
       },
-    },
+    }),
   },
 });

@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { TaskListResponse } from "../../lib/api/tasks";
 
 export const Route = createFileRoute("/api/tasks")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async () => {
         const { getDb } = await import("../../lib/db");
         const { getIncompleteTasksGroupedByProject } = await import("../../lib/db/queries");
@@ -15,6 +16,6 @@ export const Route = createFileRoute("/api/tasks")({
           headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
         });
       },
-    },
+    }),
   },
 });

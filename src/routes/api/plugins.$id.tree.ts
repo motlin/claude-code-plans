@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { PluginTreeResponse } from "../../lib/api/plugins";
 
 export const Route = createFileRoute("/api/plugins/$id/tree")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async ({ params }: { params: { id: string } }) => {
         const { listPlugins, scanPluginTree } = await import("../../lib/plugins");
         const plugins = await listPlugins();
@@ -18,6 +19,6 @@ export const Route = createFileRoute("/api/plugins/$id/tree")({
           headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
         });
       },
-    },
+    }),
   },
 });

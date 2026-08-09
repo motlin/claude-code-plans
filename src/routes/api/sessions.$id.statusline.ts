@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { SESSION_ID_PATTERN, StatuslineResponse } from "../../lib/api/statusline";
 
 interface SessionStatuslineDependencies {
@@ -28,7 +29,7 @@ export async function handleSessionStatuslineRequest(
 
 export const Route = createFileRoute("/api/sessions/$id/statusline")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async ({ params }: { params: { id: string } }) => {
         const { join } = await import("node:path");
         const { getCacheDir } = await import("../../lib/db/connection");
@@ -41,6 +42,6 @@ export const Route = createFileRoute("/api/sessions/$id/statusline")({
           },
         });
       },
-    },
+    }),
   },
 });

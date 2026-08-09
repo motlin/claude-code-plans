@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { RecentSessionsResponse } from "../../lib/api/sessions";
 
 function parseCursor(raw: string | null): { mtimeMs: number; id: string } | undefined {
@@ -19,7 +20,7 @@ function clampLimit(raw: string | null): number {
 
 export const Route = createFileRoute("/api/sessions/recent")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async ({ request }: { request: Request }) => {
         const { getDb } = await import("../../lib/db");
         const { listRecentSessionsFromDb, getStarredSessionIds } =
@@ -42,6 +43,6 @@ export const Route = createFileRoute("/api/sessions/recent")({
           headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
         });
       },
-    },
+    }),
   },
 });

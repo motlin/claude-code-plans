@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { z } from "zod";
 import { rejectCrossSite } from "../../lib/same-origin-guard";
 import { handleCancel, spawnResumeStream } from "../../lib/spawn-resume";
@@ -10,7 +11,7 @@ const chatSchema = z.object({
 
 export const Route = createFileRoute("/api/chat")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       POST: async ({ request }: { request: Request }) => {
         const rejection = rejectCrossSite(request);
         if (rejection) return rejection;
@@ -27,6 +28,6 @@ export const Route = createFileRoute("/api/chat")({
 
         return spawnResumeStream(chatResult.data);
       },
-    },
+    }),
   },
 });

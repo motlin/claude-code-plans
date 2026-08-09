@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { z } from "zod";
 import { formatAnswerPrompt } from "../../lib/ask-user-question";
 import { rejectCrossSite } from "../../lib/same-origin-guard";
@@ -27,7 +28,7 @@ const answerSchema = z.object({
  */
 export const Route = createFileRoute("/api/answer-question")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       POST: async ({ request }: { request: Request }) => {
         const rejection = rejectCrossSite(request);
         if (rejection) return rejection;
@@ -49,6 +50,6 @@ export const Route = createFileRoute("/api/answer-question")({
         const prompt = formatAnswerPrompt(toolUseId, answers);
         return spawnResumeStream({ sessionId, prompt });
       },
-    },
+    }),
   },
 });

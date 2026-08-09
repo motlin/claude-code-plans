@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { NotificationsResponse } from "../../lib/api/notifications";
 import { rejectCrossSite } from "../../lib/same-origin-guard";
 
 export const Route = createFileRoute("/api/notifications")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async ({ request }: { request: Request }) => {
         const { getNotifications, getNotificationsForProject, isNotificationUnread } =
           await import("../../lib/notifications-store");
@@ -45,6 +46,6 @@ export const Route = createFileRoute("/api/notifications")({
           { headers: { "Cache-Control": "private, max-age=0, must-revalidate" } },
         );
       },
-    },
+    }),
   },
 });

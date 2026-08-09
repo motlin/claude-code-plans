@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { TranscriptResponse } from "../../lib/api/sessions";
 
 export const Route = createFileRoute("/api/sessions/$id/transcript")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async ({ params }: { params: { id: string } }) => {
         const { getDb } = await import("../../lib/db");
         const { readStructuredTranscript } = await import("../../lib/structured-transcript");
@@ -15,6 +16,6 @@ export const Route = createFileRoute("/api/sessions/$id/transcript")({
           },
         });
       },
-    },
+    }),
   },
 });

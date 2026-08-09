@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { SessionTitlesResponse } from "../../lib/api/sessions";
 
 export const Route = createFileRoute("/api/sessions/titles")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async ({ request }: { request: Request }) => {
         const { getDb } = await import("../../lib/db");
         const { getSessionTitlesByIds } = await import("../../lib/db/queries");
@@ -21,6 +22,6 @@ export const Route = createFileRoute("/api/sessions/titles")({
           headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
         });
       },
-    },
+    }),
   },
 });

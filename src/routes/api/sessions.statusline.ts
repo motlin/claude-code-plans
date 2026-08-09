@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import {
   SESSION_ID_PATTERN,
   SessionMetricsBatchResponse,
@@ -45,7 +46,7 @@ export async function handleStatuslineBatchRequest(
 
 export const Route = createFileRoute("/api/sessions/statusline")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async ({ request }: { request: Request }) => {
         const [{ readFile }, { join }, { getCacheDir }] = await Promise.all([
           import("node:fs/promises"),
@@ -61,6 +62,6 @@ export const Route = createFileRoute("/api/sessions/statusline")({
           },
         });
       },
-    },
+    }),
   },
 });

@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { PluginFileResponse } from "../../lib/api/plugins";
 import { fromPluginFileSlug } from "../../lib/md-slug";
 
 export const Route = createFileRoute("/api/plugins/$id/files/$")({
   server: {
-    handlers: {
+    handlers: withMethodNotAllowed({
       GET: async ({ params }: { params: { id: string; _splat?: string } }) => {
         const { listPlugins, readPluginFileContent, parseFrontmatter } =
           await import("../../lib/plugins");
@@ -43,6 +44,6 @@ export const Route = createFileRoute("/api/plugins/$id/files/$")({
           },
         );
       },
-    },
+    }),
   },
 });
