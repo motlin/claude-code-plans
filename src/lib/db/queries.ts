@@ -1242,6 +1242,40 @@ interface ResolvedTaskDirLabels {
   sessionTitle: string;
 }
 
+interface TaskDirProject {
+  id: string;
+  name: string;
+}
+
+/**
+ * Find the project a plain-named task directory belongs to, by display name and
+ * then by encoded id. Display names restore dots that path encoding turned into
+ * dashes (dir `factorio-school` vs project name `factorio.school`), so the name
+ * match alone misses those; the encoded id keeps the dashed form. Ambiguous
+ * matches resolve to undefined rather than guessing.
+ */
+function findProjectForTaskDir(db: IndexDb, projectDir: string): TaskDirProject | undefined {
+  const columns = { id: schema.projects.id, name: schema.projects.name };
+  const namedProjects = db
+    .select(columns)
+    .from(schema.projects)
+    .where(eq(schema.projects.name, projectDir))
+    .limit(2)
+    .all();
+  if (namedProjects.length === 1) return namedProjects[0];
+
+  const idSuffix = `-${projectDir}`;
+  // endsWith re-checks the LIKE hits because a dir name may contain LIKE
+  // wildcard characters.
+  const idTailProjects = db
+    .select(columns)
+    .from(schema.projects)
+    .where(like(schema.projects.id, `%${idSuffix}`))
+    .all()
+    .filter((candidate) => candidate.id.endsWith(idSuffix));
+  return idTailProjects.length === 1 ? idTailProjects[0] : undefined;
+}
+
 /**
  * Label a task directory whose name did not match any sessions.id. Directories
  * under ~/.claude/tasks/ are sometimes a `session-<idprefix>` shorthand, a
@@ -1285,13 +1319,7 @@ function resolveUnmatchedTaskDir(db: IndexDb, projectDir: string): ResolvedTaskD
       sessionTitle: `Session ${shortId}`,
     };
   }
-  const projects = db
-    .select({ id: schema.projects.id, name: schema.projects.name })
-    .from(schema.projects)
-    .where(eq(schema.projects.name, projectDir))
-    .limit(2)
-    .all();
-  const project = projects.length === 1 ? projects[0] : undefined;
+  const project = findProjectForTaskDir(db, projectDir);
   return {
     projectId: project?.id ?? projectDir,
     projectName: project?.name ?? projectDir,

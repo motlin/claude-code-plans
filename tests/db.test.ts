@@ -3264,6 +3264,41 @@ describe("task queries", () => {
     expect(group.sessionTitle).toBe("Project tasks");
   });
 
+  it("getIncompleteTasksGroupedByProject resolves a dashed task directory whose project name contains a dot", () => {
+    const dottedProjectId = "-Users-craig-projects-factorio-school";
+    db.index
+      .insert(schema.projects)
+      .values({ id: dottedProjectId, name: "factorio.school", updatedAt: 1000 })
+      .run();
+    db.index
+      .insert(schema.tasks)
+      .values({
+        taskId: "450",
+        projectDir: "factorio-school",
+        subject: "Dotted-name task",
+        description: "desc",
+        status: "pending",
+        blocksJson: "[]",
+        blockedByJson: "[]",
+        metadataJson: "{}",
+        filePath: "/tasks/factorio-school/450.json",
+        mtimeMs: 1000,
+      })
+      .run();
+
+    const group = getIncompleteTasksGroupedByProject(db.index).find(
+      (candidate) => candidate.projectDir === "factorio-school",
+    );
+    if (!group) throw new Error("Expected group for factorio-school");
+    expect(group.projectId).toBe(dottedProjectId);
+    expect(group.projectName).toBe("factorio.school");
+    expect(group.sessionId).toBeNull();
+    expect(group.sessionTitle).toBe("Project tasks");
+
+    const projectTasks = getTasksForProject(db.index, dottedProjectId);
+    expect(projectTasks.map((task) => task.taskId)).toStrictEqual(["450"]);
+  });
+
   it("getIncompleteTasksGroupedByProject leaves an ambiguous project-name directory unresolved", () => {
     db.index
       .insert(schema.projects)
