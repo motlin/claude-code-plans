@@ -3,7 +3,7 @@ import { HerdrTerminal } from "../components/herdr-terminal";
 
 export const Route = createFileRoute("/herdr/terminal/$sessionId")({
   component: HerdrTerminalPage,
-  head: () => ({ meta: [{ title: "Live herdr terminal" }] }),
+  head: () => ({ meta: [{ title: "Live Herdr terminal" }] }),
 });
 
 function HerdrTerminalPage() {
@@ -12,7 +12,7 @@ function HerdrTerminalPage() {
     <div>
       <div className="flex items-center gap-3">
         <Link to="/herdr" className="text-sm text-text-500 hover:text-text-000">
-          Terminal Fleet
+          Herdr
         </Link>
         <span className="text-text-500">/</span>
         <h1 className="text-lg font-semibold">Live terminal</h1>

@@ -9,11 +9,21 @@ import {
 } from "@tanstack/react-router";
 import { cleanup, render, screen } from "@testing-library/react";
 import { createElement } from "react";
-import { afterEach, describe, expect, it } from "vite-plus/test";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { terminalPlacementsQueryOptions } from "../src/lib/api/terminal-placements";
 import { Route as HerdrRoute } from "../src/routes/herdr";
+import { Route as HerdrTerminalRoute } from "../src/routes/herdr.terminal.$sessionId";
 
-afterEach(cleanup);
+vi.mock("../src/components/herdr-terminal", () => ({
+  HerdrTerminal: ({ sessionId }: { sessionId: string }) => (
+    <section aria-label="Live read-only terminal">{sessionId}</section>
+  ),
+}));
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 function placement({
   active,
@@ -64,10 +74,15 @@ function placement({
   };
 }
 
-describe("TerminalFleetPage", () => {
+function routeMeta(route: typeof HerdrRoute | typeof HerdrTerminalRoute) {
+  const head = route.options.head as () => { meta: Array<{ title: string }> };
+  return head().meta;
+}
+
+describe("HerdrPage", () => {
   it("uses Herdr agent state rather than pane focus for each row's status color", async () => {
-    const TerminalFleetPage = HerdrRoute.options.component;
-    if (!TerminalFleetPage) throw new Error("Expected the Herdr route component");
+    const HerdrPage = HerdrRoute.options.component;
+    if (!HerdrPage) throw new Error("Expected the Herdr route component");
 
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     queryClient.setQueryData(terminalPlacementsQueryOptions.queryKey, {
@@ -79,9 +94,7 @@ describe("TerminalFleetPage", () => {
     });
     const rootRoute = createRootRoute({
       component: () => (
-        <QueryClientProvider client={queryClient}>
-          {createElement(TerminalFleetPage)}
-        </QueryClientProvider>
+        <QueryClientProvider client={queryClient}>{createElement(HerdrPage)}</QueryClientProvider>
       ),
     });
     const router = createRouter({
@@ -110,5 +123,80 @@ describe("TerminalFleetPage", () => {
         label: "working",
       },
     ]);
+  });
+
+  it("names the page and explains why its tracked Claude session count excludes panes", async () => {
+    const HerdrPage = HerdrRoute.options.component;
+    if (!HerdrPage) throw new Error("Expected the Herdr route component");
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    queryClient.setQueryData(terminalPlacementsQueryOptions.queryKey, {
+      placements: [
+        placement({ active: true, agentStatus: "working", number: 100 }),
+        placement({ active: false, agentStatus: "idle", number: 200 }),
+      ],
+      writesEnabled: true,
+    });
+    const rootRoute = createRootRoute({
+      component: () => (
+        <QueryClientProvider client={queryClient}>{createElement(HerdrPage)}</QueryClientProvider>
+      ),
+    });
+    const router = createRouter({
+      routeTree: rootRoute,
+      history: createMemoryHistory({ initialEntries: ["/herdr"] }),
+    });
+    await router.load();
+
+    render(<RouterProvider router={router} />);
+
+    const scopeExplanation =
+      "This page lists Herdr panes linked to indexed Claude transcripts. It intentionally excludes Codex sessions and shell panes that are not linked to a Claude transcript.";
+    expect({
+      heading: screen.getByRole("heading", { level: 1 }).textContent,
+      count: screen.getByText("2 tracked Claude sessions").textContent,
+      scopeExplanation: screen.getByRole("img", { name: scopeExplanation }).getAttribute("title"),
+      routeMeta: routeMeta(HerdrRoute),
+      terminalRouteMeta: routeMeta(HerdrTerminalRoute),
+    }).toStrictEqual({
+      heading: "Herdr",
+      count: "2 tracked Claude sessions",
+      scopeExplanation,
+      routeMeta: [{ title: "Herdr" }],
+      terminalRouteMeta: [{ title: "Live Herdr terminal" }],
+    });
+    expect(document.body.textContent?.includes("Terminal Fleet")).toBe(false);
+  });
+
+  it("uses Herdr for the live terminal breadcrumb and route metadata", async () => {
+    const HerdrTerminalPage = HerdrTerminalRoute.options.component;
+    if (!HerdrTerminalPage) throw new Error("Expected the Herdr terminal route component");
+    vi.spyOn(HerdrTerminalRoute, "useParams").mockReturnValue({
+      sessionId: "session-test-100",
+    });
+
+    const rootRoute = createRootRoute({ component: HerdrTerminalPage });
+    const router = createRouter({
+      routeTree: rootRoute,
+      history: createMemoryHistory({ initialEntries: ["/herdr/terminal/session-test-100"] }),
+    });
+    await router.load();
+
+    render(<RouterProvider router={router} />);
+
+    expect({
+      breadcrumb: screen.getByRole("link").textContent,
+      breadcrumbHref: screen.getByRole("link").getAttribute("href"),
+      heading: screen.getByRole("heading", { level: 1 }).textContent,
+      routeMeta: routeMeta(HerdrTerminalRoute),
+      terminal: screen.getByRole("region", { name: "Live read-only terminal" }).textContent,
+    }).toStrictEqual({
+      breadcrumb: "Herdr",
+      breadcrumbHref: "/herdr",
+      heading: "Live terminal",
+      routeMeta: [{ title: "Live Herdr terminal" }],
+      terminal: "session-test-100",
+    });
+    expect(document.body.textContent?.includes("Terminal Fleet")).toBe(false);
   });
 });

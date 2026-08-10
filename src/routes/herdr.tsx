@@ -1,6 +1,6 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Eye, EyeOff, Monitor } from "lucide-react";
+import { Eye, EyeOff, Info, Monitor } from "lucide-react";
 import { HerdrStatusIndicator } from "../components/herdr-status-indicator";
 import { StatusDot } from "../components/sidebar/primitives/StatusDot";
 import { sessionQueryKeys } from "../lib/api/sessions";
@@ -8,15 +8,18 @@ import { terminalPlacementsQueryOptions } from "../lib/api/terminal-placements";
 import { updateSessionViewedState } from "../lib/api/viewed-state";
 
 export const Route = createFileRoute("/herdr")({
-  component: TerminalFleetPage,
+  component: HerdrPage,
   loader: ({ context: { queryClient } }) =>
     queryClient.ensureQueryData(terminalPlacementsQueryOptions),
   head: () => ({
-    meta: [{ title: "Terminal Fleet" }],
+    meta: [{ title: "Herdr" }],
   }),
 });
 
-function TerminalFleetEmptyState() {
+const TRACKED_CLAUDE_SCOPE =
+  "This page lists Herdr panes linked to indexed Claude transcripts. It intentionally excludes Codex sessions and shell panes that are not linked to a Claude transcript.";
+
+function HerdrEmptyState() {
   return (
     <div className="mx-auto mt-8 max-w-lg rounded-md border border-border-300/15 p-6 text-sm text-text-500">
       <p className="text-text-000">No terminal placements are linked to Claude sessions yet.</p>
@@ -74,7 +77,7 @@ function CapabilityBadges({
   );
 }
 
-function TerminalFleetPage() {
+function HerdrPage() {
   const { data } = useSuspenseQuery(terminalPlacementsQueryOptions);
   const queryClient = useQueryClient();
   const placements = data.placements;
@@ -94,13 +97,21 @@ function TerminalFleetPage() {
   return (
     <div>
       <div className="flex items-center gap-3">
-        <h1 className="text-lg font-semibold">Terminal Fleet</h1>
-        <span className="text-sm text-text-500">{placements.length} placements</span>
+        <h1 className="text-lg font-semibold">Herdr</h1>
+        <span className="text-sm text-text-500">{placements.length} tracked Claude sessions</span>
+        <span
+          role="img"
+          aria-label={TRACKED_CLAUDE_SCOPE}
+          title={TRACKED_CLAUDE_SCOPE}
+          className="text-text-500"
+        >
+          <Info aria-hidden="true" className="h-3.5 w-3.5" />
+        </span>
         <span className="text-xs text-text-500">(live updates via SSE)</span>
       </div>
 
       {placements.length === 0 ? (
-        <TerminalFleetEmptyState />
+        <HerdrEmptyState />
       ) : (
         <div className="mt-4 space-y-1">
           {placements.map((placement) => {
