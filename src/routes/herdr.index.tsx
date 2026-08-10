@@ -8,7 +8,7 @@ import { sessionQueryKeys } from "../lib/api/sessions";
 import { terminalPlacementsQueryOptions } from "../lib/api/terminal-placements";
 import { updateSessionViewedState } from "../lib/api/viewed-state";
 
-export const Route = createFileRoute("/herdr")({
+export const Route = createFileRoute("/herdr/")({
   component: HerdrPage,
   loader: ({ context: { queryClient } }) =>
     queryClient.ensureQueryData(terminalPlacementsQueryOptions),

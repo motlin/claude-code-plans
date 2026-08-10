@@ -13,7 +13,7 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { sessionQueryKeys } from "../src/lib/api/sessions";
 import { terminalPlacementsQueryOptions } from "../src/lib/api/terminal-placements";
 import { updateSessionViewedState } from "../src/lib/api/viewed-state";
-import { Route as HerdrRoute } from "../src/routes/herdr";
+import { Route as HerdrRoute } from "../src/routes/herdr.index";
 import { Route as HerdrTerminalRoute } from "../src/routes/herdr.terminal.$sessionId";
 
 vi.mock("../src/components/herdr-terminal", () => ({
