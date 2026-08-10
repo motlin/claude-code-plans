@@ -114,14 +114,14 @@ export function WriteRenderer({ toolCall }: ToolRendererProps) {
 
       {/* Body: unified diff view (all additions) */}
       {viewData && (
-        <div className="overflow-hidden text-xs">
+        <div className="overflow-hidden text-code">
           <DiffView
             data={viewData}
             diffViewMode={DiffModeEnum.Unified}
             diffViewTheme={theme}
             diffViewHighlight
             diffViewWrap
-            diffViewFontSize={12}
+            diffViewFontSize={13}
             registerHighlighter={registerHighlighter}
           />
         </div>

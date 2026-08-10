@@ -115,9 +115,9 @@ export function ReadRenderer({ toolCall }: ToolRendererProps) {
                 {parsedLines.map((line, index) => (
                   <div
                     key={index}
-                    className="h-[17px] text-right"
+                    className="h-[var(--upstream-leading-code)] text-right"
                     style={{
-                      padding: "0 7.2px 0 14.4px",
+                      padding: "0 0.6em 0 1.2em",
                       color: "rgb(153, 157, 161)",
                     }}
                   >
@@ -129,8 +129,8 @@ export function ReadRenderer({ toolCall }: ToolRendererProps) {
                 {parsedLines.map((line, index) => (
                   <div
                     key={index}
-                    className="h-[17px] whitespace-pre"
-                    style={{ padding: "0 7.2px" }}
+                    className="h-[var(--upstream-leading-code)] whitespace-pre"
+                    style={{ padding: "0 0.6em" }}
                   >
                     {tokens?.[index] ? (
                       <HighlightedLine tokens={tokens[index]} />

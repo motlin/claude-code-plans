@@ -176,8 +176,8 @@
   /* Upstream claude.ai/code — typography */
   --upstream-text-body: 14px;
   --upstream-leading-body: 20px;
-  --upstream-text-code: 12px;
-  --upstream-leading-code: 17px;
+  --upstream-text-code: 13px;
+  --upstream-leading-code: 20px;
 }
 
 .dark {
