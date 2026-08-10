@@ -1,6 +1,7 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Eye, EyeOff, Monitor } from "lucide-react";
+import { HerdrStatusIndicator } from "../components/herdr-status-indicator";
 import { StatusDot } from "../components/sidebar/primitives/StatusDot";
 import { sessionQueryKeys } from "../lib/api/sessions";
 import { terminalPlacementsQueryOptions } from "../lib/api/terminal-placements";
@@ -146,7 +147,6 @@ function TerminalFleetPage() {
                   params={{ id: placement.sessionId }}
                   className="flex min-w-0 flex-1 items-center gap-2 p-3 no-underline"
                 >
-                  <StatusDot active={placement.active} />
                   <span className="sr-only">
                     {placement.active ? "Herdr pane focused" : "Herdr pane not focused"}
                   </span>
@@ -159,9 +159,7 @@ function TerminalFleetPage() {
                   <span className="truncate text-sm font-medium text-text-000">
                     {placement.displayName}
                   </span>
-                  <span className="shrink-0 text-xs text-text-500">
-                    herdr&apos;s view: {pane.agentStatus} (advisory)
-                  </span>
+                  <HerdrStatusIndicator status={pane.agentStatus} />
                   {!pane.viewedState.viewedAnywhere && (
                     <span className="shrink-0 text-xs text-warning-000">
                       review · {pane.viewedState.newMessageCount} new
