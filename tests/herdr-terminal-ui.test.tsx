@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { HerdrTerminal } from "../src/components/herdr-terminal";
 
@@ -10,7 +10,8 @@ const terminalState = vi.hoisted(() => ({
   socketUrls: [] as string[],
 }));
 
-vi.mock("@xterm/xterm", () => ({
+vi.mock("ghostty-web", () => ({
+  init: vi.fn().mockResolvedValue(undefined),
   Terminal: class {
     cols = 80;
     rows = 24;
@@ -27,9 +28,6 @@ vi.mock("@xterm/xterm", () => ({
     write() {}
     dispose() {}
   },
-}));
-
-vi.mock("@xterm/addon-fit", () => ({
   FitAddon: class {
     fit() {}
   },
@@ -63,8 +61,11 @@ describe("live herdr terminal UI", () => {
     vi.unstubAllGlobals();
   });
 
-  it("labels the view as read-only and never exposes an input channel", () => {
+  it("labels the view as read-only and never exposes an input channel", async () => {
     const view = render(<HerdrTerminal sessionId="session-test-100" />);
+
+    // Ghostty instantiates its WebAssembly parser before the terminal exists.
+    await waitFor(() => expect(terminalState.socketUrls.length).toBe(1));
 
     expect({
       regionName: screen.getByRole("region").getAttribute("aria-label"),
@@ -81,7 +82,6 @@ describe("live herdr terminal UI", () => {
       inputs: 0,
       terminalOptions: [
         {
-          allowProposedApi: false,
           convertEol: false,
           cursorBlink: false,
           disableStdin: true,
