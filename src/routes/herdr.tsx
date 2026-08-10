@@ -148,24 +148,30 @@ function HerdrPage() {
             }
 
             const pane = placement.herdrPane;
+            const capabilityLabels = [
+              placement.capabilities.supportsWrite
+                ? data.writesEnabled
+                  ? "write"
+                  : "write disabled"
+                : null,
+              placement.capabilities.supportsEvents ? "events" : null,
+              placement.capabilities.supportsObserve ? "observe" : null,
+            ].filter((label): label is string => label !== null);
+            const technicalDetails = `Workspace ${pane.workspaceId} · Pane ${pane.paneId} · Terminal ${pane.terminalId} · Capabilities: ${capabilityLabels.length === 0 ? "placement only" : capabilityLabels.join(", ")}`;
             return (
               <div
                 key={`herdr:${placement.scopeHandle}:${placement.paneHandle}:${placement.sessionId}`}
-                className="flex items-center rounded-md border border-border-300/15 transition-colors hover:bg-bg-200/50"
+                className="flex items-center rounded-md border border-border-300/15"
               >
                 <Link
                   to="/session/$id"
                   params={{ id: placement.sessionId }}
-                  className="flex min-w-0 flex-1 items-center gap-2 p-3 no-underline"
+                  aria-label={`Open session transcript for ${placement.displayName}`}
+                  title={`Open session transcript for ${placement.displayName}. ${technicalDetails}`}
+                  className="flex min-w-0 flex-1 items-center gap-2 rounded-md p-3 no-underline transition-colors hover:bg-bg-200/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
                 >
                   <span className="sr-only">
                     {placement.active ? "Herdr pane focused" : "Herdr pane not focused"}
-                  </span>
-                  <span className="shrink-0 rounded bg-bg-200/60 px-1.5 py-0.5 text-[10px] text-text-500">
-                    herdr
-                  </span>
-                  <span className="shrink-0 tabular-nums text-sm text-text-400">
-                    {placement.paneHandle}
                   </span>
                   <span className="truncate text-sm font-medium text-text-000">
                     {placement.displayName}
@@ -176,19 +182,16 @@ function HerdrPage() {
                       review · {pane.viewedState.newMessageCount} new
                     </span>
                   )}
-                  <CapabilityBadges
-                    capabilities={placement.capabilities}
-                    writesEnabled={data.writesEnabled}
-                  />
                 </Link>
                 <Link
                   to="/herdr/terminal/$sessionId"
                   params={{ sessionId: placement.sessionId }}
-                  className="mr-2 shrink-0 text-text-500 hover:text-text-000"
-                  title="Open live read-only terminal"
+                  onClick={(event) => event.stopPropagation()}
+                  className="mr-2 flex size-8 shrink-0 items-center justify-center rounded-md text-text-500 transition-colors hover:bg-bg-200/50 hover:text-text-000 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
+                  title={`Open live read-only terminal for ${placement.displayName}`}
                   aria-label={`Open live read-only terminal for ${placement.displayName}`}
                 >
-                  <Monitor className="h-4 w-4" />
+                  <Monitor aria-hidden="true" className="h-4 w-4" />
                 </Link>
                 <button
                   type="button"

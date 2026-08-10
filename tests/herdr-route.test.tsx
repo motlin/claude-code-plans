@@ -28,16 +28,18 @@ afterEach(() => {
 function placement({
   active,
   agentStatus,
+  displayName,
   number,
 }: {
   active: boolean;
   agentStatus: string;
+  displayName?: string;
   number: number;
 }) {
   return {
     provider: "herdr" as const,
     sessionId: `session-test-${number}`,
-    displayName: `Terminal ${number}`,
+    displayName: displayName ?? `Terminal ${number}`,
     active,
     paneHandle: `pane-test-${number}`,
     scopeHandle: `workspace-test-${number}`,
@@ -166,6 +168,83 @@ describe("HerdrPage", () => {
       terminalRouteMeta: [{ title: "Live Herdr terminal" }],
     });
     expect(document.body.textContent?.includes("Terminal Fleet")).toBe(false);
+  });
+
+  it("makes transcript and live terminal navigation distinct without visible technical metadata", async () => {
+    const HerdrPage = HerdrRoute.options.component;
+    if (!HerdrPage) throw new Error("Expected the Herdr route component");
+
+    const displayName = "* ✓ $ Alice terminal";
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    queryClient.setQueryData(terminalPlacementsQueryOptions.queryKey, {
+      placements: [placement({ active: true, agentStatus: "working", displayName, number: 100 })],
+      writesEnabled: true,
+    });
+    const rootRoute = createRootRoute({
+      component: () => (
+        <QueryClientProvider client={queryClient}>{createElement(HerdrPage)}</QueryClientProvider>
+      ),
+    });
+    const router = createRouter({
+      routeTree: rootRoute,
+      history: createMemoryHistory({ initialEntries: ["/herdr"] }),
+    });
+    await router.load();
+
+    render(<RouterProvider router={router} />);
+
+    const transcriptLink = screen.getByRole("link", {
+      name: `Open session transcript for ${displayName}`,
+    });
+    const terminalLink = screen.getByRole("link", {
+      name: `Open live read-only terminal for ${displayName}`,
+    });
+    const row = transcriptLink.parentElement;
+    expect({
+      transcript: {
+        href: transcriptLink.getAttribute("href"),
+        title: transcriptLink.getAttribute("title"),
+        className: transcriptLink.className,
+      },
+      terminal: {
+        href: terminalLink.getAttribute("href"),
+        title: terminalLink.getAttribute("title"),
+        className: terminalLink.className,
+      },
+      displayName: transcriptLink.textContent?.includes(displayName),
+      visibleTechnicalMetadata: {
+        provider: row?.textContent?.includes("herdr"),
+        workspaceId: row?.textContent?.includes("workspace-test-100"),
+        paneId: row?.textContent?.includes("pane-test-100"),
+        terminalId: row?.textContent?.includes("terminal-test-100"),
+        capabilityBadges: ["write", "events", "observe"].filter((label) =>
+          Array.from(row?.querySelectorAll("span") ?? []).some(
+            (element) => element.textContent === label,
+          ),
+        ),
+      },
+    }).toStrictEqual({
+      transcript: {
+        href: "/session/session-test-100",
+        title: `Open session transcript for ${displayName}. Workspace workspace-test-100 · Pane pane-test-100 · Terminal terminal-test-100 · Capabilities: write, events, observe`,
+        className:
+          "flex min-w-0 flex-1 items-center gap-2 rounded-md p-3 no-underline transition-colors hover:bg-bg-200/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100",
+      },
+      terminal: {
+        href: "/herdr/terminal/session-test-100",
+        title: `Open live read-only terminal for ${displayName}`,
+        className:
+          "mr-2 flex size-8 shrink-0 items-center justify-center rounded-md text-text-500 transition-colors hover:bg-bg-200/50 hover:text-text-000 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100",
+      },
+      displayName: true,
+      visibleTechnicalMetadata: {
+        provider: false,
+        workspaceId: false,
+        paneId: false,
+        terminalId: false,
+        capabilityBadges: [],
+      },
+    });
   });
 
   it("uses Herdr for the live terminal breadcrumb and route metadata", async () => {
