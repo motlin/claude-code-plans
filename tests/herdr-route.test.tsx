@@ -7,10 +7,12 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { sessionQueryKeys } from "../src/lib/api/sessions";
 import { terminalPlacementsQueryOptions } from "../src/lib/api/terminal-placements";
+import { updateSessionViewedState } from "../src/lib/api/viewed-state";
 import { Route as HerdrRoute } from "../src/routes/herdr";
 import { Route as HerdrTerminalRoute } from "../src/routes/herdr.terminal.$sessionId";
 
@@ -20,8 +22,14 @@ vi.mock("../src/components/herdr-terminal", () => ({
   ),
 }));
 
+vi.mock("../src/lib/api/viewed-state", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/lib/api/viewed-state")>()),
+  updateSessionViewedState: vi.fn(),
+}));
+
 afterEach(() => {
   cleanup();
+  vi.mocked(updateSessionViewedState).mockReset();
   vi.restoreAllMocks();
 });
 
@@ -29,12 +37,16 @@ function placement({
   active,
   agentStatus,
   displayName,
+  newMessageCount = 0,
   number,
+  viewedAnywhere = true,
 }: {
   active: boolean;
   agentStatus: string;
   displayName?: string;
+  newMessageCount?: number;
   number: number;
+  viewedAnywhere?: boolean;
 }) {
   return {
     provider: "herdr" as const,
@@ -67,13 +79,37 @@ function placement({
         currentMessageIndex: number,
         lastViewedMessageIndex: number,
         reviewTargetMessageIndex: number,
-        newMessageCount: 0,
-        viewedInCcp: true,
-        viewedInHerdr: true,
-        viewedAnywhere: true,
+        newMessageCount,
+        viewedInCcp: viewedAnywhere,
+        viewedInHerdr: viewedAnywhere,
+        viewedAnywhere,
       },
     },
   };
+}
+
+async function renderHerdrPage(placements: ReturnType<typeof placement>[]) {
+  const HerdrPage = HerdrRoute.options.component;
+  if (!HerdrPage) throw new Error("Expected the Herdr route component");
+
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  queryClient.setQueryData(terminalPlacementsQueryOptions.queryKey, {
+    placements,
+    writesEnabled: true,
+  });
+  const rootRoute = createRootRoute({
+    component: () => (
+      <QueryClientProvider client={queryClient}>{createElement(HerdrPage)}</QueryClientProvider>
+    ),
+  });
+  const router = createRouter({
+    routeTree: rootRoute,
+    history: createMemoryHistory({ initialEntries: ["/herdr"] }),
+  });
+  await router.load();
+  render(<RouterProvider router={router} />);
+
+  return queryClient;
 }
 
 function routeMeta(route: typeof HerdrRoute | typeof HerdrTerminalRoute) {
@@ -82,6 +118,160 @@ function routeMeta(route: typeof HerdrRoute | typeof HerdrTerminalRoute) {
 }
 
 describe("HerdrPage", () => {
+  it("shows contextual review actions without zero-count or reviewed-row chrome", async () => {
+    await renderHerdrPage([
+      placement({
+        active: false,
+        agentStatus: "done",
+        newMessageCount: 3,
+        number: 100,
+        viewedAnywhere: false,
+      }),
+      placement({
+        active: false,
+        agentStatus: "done",
+        newMessageCount: 0,
+        number: 200,
+        viewedAnywhere: false,
+      }),
+      placement({ active: false, agentStatus: "idle", number: 300, viewedAnywhere: true }),
+    ]);
+
+    const positiveCountRow = screen.getByRole("link", {
+      name: "Open session transcript for Terminal 100",
+    }).parentElement;
+    const zeroCountRow = screen.getByRole("link", {
+      name: "Open session transcript for Terminal 200",
+    }).parentElement;
+    const reviewedRow = screen.getByRole("link", {
+      name: "Open session transcript for Terminal 300",
+    }).parentElement;
+    if (!positiveCountRow || !zeroCountRow || !reviewedRow) {
+      throw new Error("Expected every Herdr transcript link to have a fleet row");
+    }
+
+    expect({
+      positiveCount: {
+        marker: within(positiveCountRow).getByText("Needs review · 3 new").textContent,
+        action: within(positiveCountRow).getByRole("button", { name: "Mark reviewed" }).textContent,
+      },
+      zeroCount: {
+        marker: within(zeroCountRow).getByText("Needs review").textContent,
+        action: within(zeroCountRow).getByRole("button", { name: "Mark reviewed" }).textContent,
+      },
+      reviewed: {
+        marker: within(reviewedRow).queryByText(/Needs review/),
+        markReviewedAction: within(reviewedRow).queryByRole("button", {
+          name: "Mark reviewed",
+        }),
+        markUnreviewedAction: within(reviewedRow).queryByRole("button", {
+          name: "Mark unreviewed",
+        }),
+      },
+      zeroNewCopy: screen.queryByText(/0 new/),
+      markUnreviewedActions: screen.queryAllByRole("button", { name: "Mark unreviewed" }),
+    }).toStrictEqual({
+      positiveCount: { marker: "Needs review · 3 new", action: "Mark reviewed" },
+      zeroCount: { marker: "Needs review", action: "Mark reviewed" },
+      reviewed: { marker: null, markReviewedAction: null, markUnreviewedAction: null },
+      zeroNewCopy: null,
+      markUnreviewedActions: [],
+    });
+  });
+
+  it("marks an unseen session reviewed and invalidates its fleet and detail queries", async () => {
+    vi.mocked(updateSessionViewedState).mockResolvedValue({
+      currentMessageIndex: 100,
+      lastViewedMessageIndex: 100,
+      reviewTargetMessageIndex: 100,
+      newMessageCount: 0,
+      viewedInCcp: true,
+      viewedInHerdr: true,
+      viewedAnywhere: true,
+    });
+    const queryClient = await renderHerdrPage([
+      placement({
+        active: false,
+        agentStatus: "done",
+        newMessageCount: 3,
+        number: 100,
+        viewedAnywhere: false,
+      }),
+    ]);
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
+
+    fireEvent.click(screen.getByRole("button", { name: "Mark reviewed" }));
+
+    await waitFor(() =>
+      expect({
+        marker: screen.queryByText(/Needs review/),
+        action: screen.queryByRole("button", { name: "Mark reviewed" }),
+        updateCalls: vi.mocked(updateSessionViewedState).mock.calls,
+        invalidationCalls: invalidateQueries.mock.calls,
+      }).toStrictEqual({
+        marker: null,
+        action: null,
+        updateCalls: [["session-test-100", "reviewed", 100]],
+        invalidationCalls: [
+          [{ queryKey: ["terminal", "placements"] }],
+          [{ queryKey: sessionQueryKeys.detail("session-test-100") }],
+        ],
+      }),
+    );
+  });
+
+  it("shows a retryable error when marking an unseen session reviewed fails", async () => {
+    vi.mocked(updateSessionViewedState)
+      .mockRejectedValueOnce(new Error("fabricated review failure"))
+      .mockResolvedValueOnce({
+        currentMessageIndex: 100,
+        lastViewedMessageIndex: 100,
+        reviewTargetMessageIndex: 100,
+        newMessageCount: 0,
+        viewedInCcp: true,
+        viewedInHerdr: true,
+        viewedAnywhere: true,
+      });
+    const queryClient = await renderHerdrPage([
+      placement({
+        active: false,
+        agentStatus: "done",
+        number: 100,
+        viewedAnywhere: false,
+      }),
+    ]);
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
+
+    fireEvent.click(screen.getByRole("button", { name: "Mark reviewed" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("Failed to mark reviewed");
+    expect({
+      retryAction: screen.getByRole("button", { name: "Retry mark reviewed" }).textContent,
+      invalidationCalls: invalidateQueries.mock.calls,
+    }).toStrictEqual({ retryAction: "Retry mark reviewed", invalidationCalls: [] });
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry mark reviewed" }));
+
+    await waitFor(() =>
+      expect({
+        error: screen.queryByRole("alert"),
+        action: screen.queryByRole("button", { name: /mark reviewed/i }),
+        updateCalls: vi.mocked(updateSessionViewedState).mock.calls,
+        invalidationCalls: invalidateQueries.mock.calls,
+      }).toStrictEqual({
+        error: null,
+        action: null,
+        updateCalls: [
+          ["session-test-100", "reviewed", 100],
+          ["session-test-100", "reviewed", 100],
+        ],
+        invalidationCalls: [
+          [{ queryKey: ["terminal", "placements"] }],
+          [{ queryKey: sessionQueryKeys.detail("session-test-100") }],
+        ],
+      }),
+    );
+  });
+
   it("uses Herdr agent state rather than pane focus for each row's status color", async () => {
     const HerdrPage = HerdrRoute.options.component;
     if (!HerdrPage) throw new Error("Expected the Herdr route component");

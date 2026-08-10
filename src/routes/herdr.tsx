@@ -1,7 +1,8 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Eye, EyeOff, Info, Monitor } from "lucide-react";
+import { Info, Monitor } from "lucide-react";
 import { HerdrStatusIndicator } from "../components/herdr-status-indicator";
+import { SessionReviewAction } from "../components/session-reviewed-toggle";
 import { StatusDot } from "../components/sidebar/primitives/StatusDot";
 import { sessionQueryKeys } from "../lib/api/sessions";
 import { terminalPlacementsQueryOptions } from "../lib/api/terminal-placements";
@@ -82,12 +83,22 @@ function HerdrPage() {
   const queryClient = useQueryClient();
   const placements = data.placements;
 
-  const setViewed = async (
-    sessionId: string,
-    action: "reviewed" | "unreviewed",
-    messageIndex: number,
-  ): Promise<void> => {
-    await updateSessionViewedState(sessionId, action, messageIndex);
+  const markReviewed = async (sessionId: string, messageIndex: number): Promise<void> => {
+    const viewedState = await updateSessionViewedState(sessionId, "reviewed", messageIndex);
+    queryClient.setQueryData(terminalPlacementsQueryOptions.queryKey, (previous) => {
+      if (!previous) return previous;
+      return {
+        ...previous,
+        placements: previous.placements.map((placement) =>
+          placement.provider === "herdr" && placement.sessionId === sessionId
+            ? {
+                ...placement,
+                herdrPane: { ...placement.herdrPane, viewedState },
+              }
+            : placement,
+        ),
+      };
+    });
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["terminal", "placements"] }),
       queryClient.invalidateQueries({ queryKey: sessionQueryKeys.detail(sessionId) }),
@@ -179,7 +190,10 @@ function HerdrPage() {
                   <HerdrStatusIndicator status={pane.agentStatus} />
                   {!pane.viewedState.viewedAnywhere && (
                     <span className="shrink-0 text-xs text-warning-000">
-                      review · {pane.viewedState.newMessageCount} new
+                      Needs review
+                      {pane.viewedState.newMessageCount > 0
+                        ? ` · ${pane.viewedState.newMessageCount} new`
+                        : ""}
                     </span>
                   )}
                 </Link>
@@ -193,24 +207,13 @@ function HerdrPage() {
                 >
                   <Monitor aria-hidden="true" className="h-4 w-4" />
                 </Link>
-                <button
-                  type="button"
-                  onClick={() =>
-                    void setViewed(
-                      placement.sessionId,
-                      pane.viewedState.viewedAnywhere ? "unreviewed" : "reviewed",
-                      pane.viewedState.currentMessageIndex,
-                    )
-                  }
-                  className="mr-3 shrink-0 cursor-pointer text-text-500 hover:text-text-000"
-                  title={pane.viewedState.viewedAnywhere ? "Mark unreviewed" : "Mark reviewed"}
-                >
-                  {pane.viewedState.viewedAnywhere ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
+                {!pane.viewedState.viewedAnywhere && (
+                  <SessionReviewAction
+                    onReview={() =>
+                      markReviewed(placement.sessionId, pane.viewedState.currentMessageIndex)
+                    }
+                  />
+                )}
               </div>
             );
           })}
