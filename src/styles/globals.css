@@ -174,7 +174,7 @@
   --upstream-t9: hsl(0 0% 4% / 1);
 
   /* Upstream claude.ai/code — typography */
-  --upstream-text-body: 13px;
+  --upstream-text-body: 14px;
   --upstream-leading-body: 20px;
   --upstream-text-code: 12px;
   --upstream-leading-code: 17px;

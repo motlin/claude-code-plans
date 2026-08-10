@@ -4,12 +4,16 @@ import { fileURLToPath } from "node:url";
 import { describe, it, expect, vi } from "vite-plus/test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { SessionChat } from "../src/components/session-chat";
+import { StreamingMessage } from "../src/components/streaming-message";
 import { processTranscript } from "../src/lib/transcript";
 
 vi.mock("../src/components/settings-provider", () => ({
   useSettings: () => ({
     settings: { showDebug: true },
   }),
+}));
+vi.mock("../src/hooks/use-claude-events", () => ({
+  useClaudeEvents: () => ({ failedTools: new Map() }),
 }));
 
 // ---------------------------------------------------------------------------
@@ -21,6 +25,7 @@ const FIXTURE_PATH = join(
   fileURLToPath(new URL("./fixtures/user-message-shapes.json", import.meta.url)),
 );
 const SHAPES = JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as Record<string, unknown>;
+const GLOBAL_STYLES_PATH = fileURLToPath(new URL("../src/styles/globals.css", import.meta.url));
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -58,6 +63,10 @@ function renderShape(shapeKey: string, overrides: RenderOverrides = {}): string 
   });
 }
 
+function findClassName(html: string, marker: string): string | null {
+  return html.match(new RegExp(`<div class="([^"]*${marker}[^"]*)"`))?.[1] ?? null;
+}
+
 // Labels that should never leak onto user-initiated bubbles (shapes A and F).
 // 'Automated' is the legacy badge from the bug; the other four are the labels
 // LabeledAutomatedEntry renders for the four labeled kinds.
@@ -68,6 +77,58 @@ const AUTOMATED_LABELS = [
   "Stop hook feedback",
   "Slash command body",
 ];
+
+describe("SessionChat body typography", () => {
+  it("renders transcript and streaming prose with the upstream 14px/20px body token", () => {
+    const styles = readFileSync(GLOBAL_STYLES_PATH, "utf8");
+    const userHtml = renderRecord(
+      {
+        type: "user",
+        message: { role: "user", content: "Fabricated user message" },
+      },
+      {},
+      { showCompactSummaries: true, showTranscriptOnly: true },
+    );
+    const assistantHtml = renderRecord(
+      {
+        type: "assistant",
+        message: {
+          role: "assistant",
+          content: [{ type: "text", text: "Fabricated assistant response" }],
+        },
+      },
+      {},
+      { showCompactSummaries: true, showTranscriptOnly: true },
+    );
+    const streamingHtml = renderToStaticMarkup(
+      <StreamingMessage
+        text="Fabricated streaming response"
+        isComplete={false}
+        sentPrompt="Fabricated streaming prompt"
+      />,
+    );
+
+    expect({
+      bodyFontSize: styles.match(/--upstream-text-body:\s*([^;]+);/)?.[1] ?? null,
+      bodyLineHeight: styles.match(/--upstream-leading-body:\s*([^;]+);/)?.[1] ?? null,
+      sessionColumnClassName: findClassName(userHtml, "max-w-3xl"),
+      userBubbleClassName: findClassName(userHtml, "user-message-bubble"),
+      assistantProseClassName: findClassName(assistantHtml, "relative min-w-0 text-body"),
+      streamingBubbleClassName: findClassName(streamingHtml, "user-message-bubble"),
+      streamingProseClassName: findClassName(streamingHtml, "min-w-0 text-body"),
+    }).toStrictEqual({
+      bodyFontSize: "14px",
+      bodyLineHeight: "20px",
+      sessionColumnClassName: "mx-auto w-full max-w-3xl px-8 pt-4 pb-4 text-body",
+      userBubbleClassName:
+        "user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] rounded-bl-[2px] bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text",
+      assistantProseClassName: "relative min-w-0 text-body text-text-100",
+      streamingBubbleClassName:
+        "user-message-bubble flex flex-col gap-[5px] rounded-[10px] rounded-bl-[2px] px-3 py-2 break-words min-w-0 overflow-hidden bg-user-msg-bg text-user-msg-text max-w-[75%] text-body whitespace-pre-wrap select-text",
+      streamingProseClassName: "min-w-0 text-body text-text-100",
+    });
+  });
+});
 
 describe("SessionChat user-message shapes", () => {
   it("Shape A — plain text renders the regular blue user bubble with no automated label", () => {

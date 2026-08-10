@@ -49,7 +49,7 @@ export function StreamingMessage({
     <div className="mx-auto w-full max-w-3xl px-8 py-4">
       {sentPrompt && (
         <div className="flex flex-col items-start gap-1 mb-6">
-          <div className="user-message-bubble flex flex-col gap-[5px] rounded-[10px] rounded-bl-[2px] px-3 py-2 break-words min-w-0 overflow-hidden bg-user-msg-bg text-user-msg-text max-w-[75%] text-[13px] leading-[20px] whitespace-pre-wrap select-text">
+          <div className="user-message-bubble flex flex-col gap-[5px] rounded-[10px] rounded-bl-[2px] px-3 py-2 break-words min-w-0 overflow-hidden bg-user-msg-bg text-user-msg-text max-w-[75%] text-body whitespace-pre-wrap select-text">
             {sentPrompt}
           </div>
         </div>
@@ -67,7 +67,7 @@ export function StreamingMessage({
               {pendingLabel}
             </div>
           ) : (
-            <div className="min-w-0 text-sm leading-relaxed text-text-100">
+            <div className="min-w-0 text-body text-text-100">
               {renderedHtml ? (
                 <article
                   className={styles["markdown"]}

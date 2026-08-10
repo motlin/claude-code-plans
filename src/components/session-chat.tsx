@@ -339,7 +339,7 @@ export const SessionChat = React.memo(function SessionChat({
   }, [initialScrollKey, shouldScrollToEnd]);
 
   return (
-    <div ref={containerRef} className="mx-auto w-full max-w-3xl px-8 pt-4 pb-4">
+    <div ref={containerRef} className="mx-auto w-full max-w-3xl px-8 pt-4 pb-4 text-body">
       <SessionLineList
         lines={lines}
         sessionId={sessionId}
@@ -1094,7 +1094,7 @@ function UserEntry({
           </span>
         )}
         {textNodes.length > 0 && (
-          <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] rounded-bl-[2px] bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-[13px] leading-[20px] select-text">
+          <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] rounded-bl-[2px] bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
             {textNodes}
           </div>
         )}
@@ -1165,7 +1165,7 @@ function CompactSummaryStub({
             </button>
           </div>
           {textNodes.length > 0 && (
-            <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] rounded-bl-[2px] bg-auto-msg-bg text-auto-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-[13px] leading-[20px] select-text">
+            <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] rounded-bl-[2px] bg-auto-msg-bg text-auto-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
               {textNodes}
             </div>
           )}
@@ -1218,7 +1218,7 @@ function LabeledAutomatedEntry({
           </span>
         </div>
         {textNodes.length > 0 && (
-          <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] rounded-bl-[2px] bg-auto-msg-bg text-auto-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-[13px] leading-[20px] select-text">
+          <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] rounded-bl-[2px] bg-auto-msg-bg text-auto-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
             {textNodes}
           </div>
         )}
@@ -1257,7 +1257,7 @@ function SubagentPromptEntry({ line, sessionId }: { line: MessageSessionLine; se
             &#x2191; Parent Agent
           </span>
         </div>
-        <div className="text-sm leading-relaxed text-text-100">
+        <div className="text-body text-text-100">
           <TruncatedContent>
             <MarkdownArticle markdown={textBlocks.join("\n\n")} />
           </TruncatedContent>
@@ -1425,7 +1425,7 @@ function CommandEntry({
   return (
     <div className="group/msg flex justify-start w-full">
       <div className="flex flex-col items-start gap-1 max-w-[75%] min-w-0">
-        <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] rounded-bl-[2px] bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-[13px] leading-[20px] select-text">
+        <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] rounded-bl-[2px] bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
           <TruncatedContent fadeColor="var(--bg-100)" variant="user">
             <MarkdownArticle markdown={commandText} />
           </TruncatedContent>
@@ -1716,7 +1716,7 @@ function ContentBlock({
   if (block.type === "text" && typeof block.text === "string") {
     if (!block.text.trim()) return null;
     return (
-      <div className="relative min-w-0 text-sm leading-relaxed text-text-100">
+      <div className="relative min-w-0 text-body text-text-100">
         <MarkdownArticle markdown={block.text} />
         <DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-0 right-0" />
       </div>
