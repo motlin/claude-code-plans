@@ -16,6 +16,26 @@ function viewedSessionId(router: ReturnType<typeof useRouter>): string | null {
   return typeof id === "string" ? id : null;
 }
 
+const COUNT_PREFIX = /^\(\d+\) /;
+
+/**
+ * Title the current route asks for, resolved innermost-first the way `HeadContent` does.
+ * Snapshotting `document.title` instead would pin the badge to whichever route was hard
+ * loaded and re-assert it over every later route's title.
+ */
+function routeTitle(router: ReturnType<typeof useRouter>): string {
+  const { matches } = router.state;
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const meta = matches[i]?.meta;
+    if (!meta) continue;
+    for (let j = meta.length - 1; j >= 0; j--) {
+      const title = meta[j]?.title;
+      if (title) return title;
+    }
+  }
+  return document.title.replace(COUNT_PREFIX, "");
+}
+
 function setAppBadge(count: number): void {
   if (count > 0 && typeof navigator.setAppBadge === "function") {
     navigator.setAppBadge(count).catch(() => {});
@@ -33,7 +53,6 @@ export function AttentionBadgeBridge(): null {
   useEffect(() => {
     if (typeof document === "undefined" || typeof navigator === "undefined") return;
 
-    const originalTitle = document.title;
     const activityStates = new Map<string, ActivityState>();
 
     const updateBadge = () => {
@@ -47,7 +66,8 @@ export function AttentionBadgeBridge(): null {
         document.hidden,
         viewedSessionId(router),
       );
-      document.title = count > 0 ? `(${count}) ${originalTitle}` : originalTitle;
+      const title = routeTitle(router);
+      document.title = count > 0 ? `(${count}) ${title}` : title;
       setAppBadge(count);
     };
 
@@ -65,7 +85,7 @@ export function AttentionBadgeBridge(): null {
       unsubscribeUnseenWork();
       unsubscribeRouter();
       document.removeEventListener("visibilitychange", updateBadge);
-      document.title = originalTitle;
+      document.title = routeTitle(router);
       if (typeof navigator.clearAppBadge === "function") {
         navigator.clearAppBadge().catch(() => {});
       }
