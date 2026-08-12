@@ -1,5 +1,5 @@
 import type { ToolRendererProps } from "./types";
-import { ErrorBorder, KeyValueCard } from "./shared";
+import { KeyValueCard } from "./shared";
 
 export function SkillRenderer({ toolCall }: ToolRendererProps) {
   const skill = (toolCall.input["skill"] as string) ?? "";
@@ -10,9 +10,5 @@ export function SkillRenderer({ toolCall }: ToolRendererProps) {
   if (skill) params.push({ key: "skill", value: skill });
   if (args) params.push({ key: "args", value: args });
 
-  return (
-    <ErrorBorder isError={isError}>
-      <KeyValueCard params={params} result={result ?? undefined} />
-    </ErrorBorder>
-  );
+  return <KeyValueCard isError={isError} params={params} result={result ?? undefined} />;
 }

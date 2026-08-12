@@ -2,7 +2,7 @@ import type { ThemedToken } from "@shikijs/core";
 import { extractLineNumbers, detectLanguage } from "../../lib/diff-utils";
 import { useHighlightedLines } from "../../hooks/use-shiki";
 import type { ToolRendererProps } from "./types";
-import { CopyButton, ErrorBorder } from "./shared";
+import { CopyButton } from "./shared";
 
 interface ParsedLine {
   lineNum: string | null;
@@ -75,15 +75,28 @@ export function ReadRenderer({ toolCall }: ToolRendererProps) {
   const filePath = (toolCall.input["file_path"] as string) ?? "";
   const { result, isError } = toolCall;
 
-  const parsedLines = result ? parseLineNumbers(result) : [];
+  const code = result && !isError ? result : "";
+  const parsedLines = code ? parseLineNumbers(code) : [];
 
-  const { text: cleanCode } = result ? extractLineNumbers(result) : { text: "" };
+  const { text: cleanCode } = code ? extractLineNumbers(code) : { text: "" };
   const language = detectLanguage(filePath);
   const tokens = useHighlightedLines(cleanCode, language, true);
   const { prefix, suffix } = splitPath(filePath);
 
+  // A failed read has no file content to highlight -- upstream just prints the
+  // failure message in the error color.
+  if (isError) {
+    return (
+      <div className="px-p6 py-p5">
+        <pre className="max-h-[400px] overflow-y-auto text-code font-mono whitespace-pre-wrap break-all text-extended-pink">
+          {result}
+        </pre>
+      </div>
+    );
+  }
+
   return (
-    <ErrorBorder isError={isError}>
+    <>
       {/* Header: smart-truncated file path + hover copy button */}
       <div className="flex items-center gap-g3 px-p6 py-p5">
         <span className="flex flex-1 min-w-0 text-body text-assistant-secondary">
@@ -137,6 +150,6 @@ export function ReadRenderer({ toolCall }: ToolRendererProps) {
           </code>
         </pre>
       )}
-    </ErrorBorder>
+    </>
   );
 }

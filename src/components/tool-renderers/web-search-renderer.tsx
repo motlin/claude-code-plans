@@ -1,5 +1,5 @@
 import type { ToolRendererProps } from "./types";
-import { ErrorBorder, KeyValueCard } from "./shared";
+import { KeyValueCard } from "./shared";
 
 export function WebSearchRenderer({ toolCall }: ToolRendererProps) {
   const query = (toolCall.input["query"] as string) ?? "";
@@ -16,9 +16,5 @@ export function WebSearchRenderer({ toolCall }: ToolRendererProps) {
     params.push({ key: "blocked_domains", value: blockedDomains.join(", ") });
   }
 
-  return (
-    <ErrorBorder isError={isError}>
-      <KeyValueCard params={params} result={result ?? undefined} />
-    </ErrorBorder>
-  );
+  return <KeyValueCard isError={isError} params={params} result={result ?? undefined} />;
 }

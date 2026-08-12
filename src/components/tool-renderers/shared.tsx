@@ -248,6 +248,11 @@ export function DiffStats({ added, removed }: { added: number; removed: number }
   );
 }
 
+/**
+ * Upstream recolors a failed tool body instead of indenting it behind a rail:
+ * the whole body renders in `text-extended-pink`, with no border or padding
+ * shift anywhere.
+ */
 export function ErrorBorder({
   isError,
   children,
@@ -256,7 +261,7 @@ export function ErrorBorder({
   children: ReactNode;
 }) {
   if (!isError) return <>{children}</>;
-  return <div className="border-l-2 border-danger-100 pl-2">{children}</div>;
+  return <div className="text-extended-pink">{children}</div>;
 }
 
 export function TerminalOutput({ content, maxLines = 20 }: { content: string; maxLines?: number }) {
@@ -456,14 +461,18 @@ export interface KeyValueParam {
  * Layout:
  *   flex w-full
  *     flex-1 column
- *       max-h-[400px] scroller (params + result + children)
+ *       max-h-[400px] scroller (error + params + result + children)
  *     CopyButton (hover-visible, outside the scroller)
+ *
+ * A failed call drops the column's `text-assistant-secondary` and renders the
+ * result as a pink error message above the params, matching upstream.
  */
 export function KeyValueCard({
   params,
   result,
   markdownResult,
   copyText,
+  isError,
   children,
 }: {
   params: KeyValueParam[];
@@ -471,17 +480,24 @@ export function KeyValueCard({
   markdownResult?: boolean | undefined;
   /** Overrides the default params + result copy payload. */
   copyText?: string | undefined;
+  /** Renders the result as the failure message: pink, above the params. */
+  isError?: boolean | undefined;
   children?: ReactNode;
 }) {
   const derivedCopyText = [
     ...params.map((p) => `${p.key}: ${p.value}`),
     ...(result ? [result] : []),
   ].join("\n");
+  const errorMessage = isError ? result : undefined;
+  const body = isError ? undefined : result;
 
   return (
     <div className="flex w-full">
-      <div className="flex-1 min-w-0 flex flex-col gap-g4 text-body text-assistant-secondary whitespace-pre-wrap break-words">
+      <div
+        className={`flex-1 min-w-0 flex flex-col gap-g4 text-body${isError ? "" : " text-assistant-secondary"} whitespace-pre-wrap break-words`}
+      >
         <div className="max-h-[400px] overflow-y-auto flex flex-col gap-g4">
+          {errorMessage && <div className="text-extended-pink">{errorMessage}</div>}
           {params.length > 0 && (
             <div className="text-assistant-secondary">
               {params.map((p) => (
@@ -500,7 +516,7 @@ export function KeyValueCard({
               ))}
             </div>
           )}
-          {result && (markdownResult ? <InlineMarkdown text={result} /> : <div>{result}</div>)}
+          {body && (markdownResult ? <InlineMarkdown text={body} /> : <div>{body}</div>)}
           {children}
         </div>
       </div>

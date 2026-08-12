@@ -1,5 +1,5 @@
 import type { ToolRendererProps } from "./types";
-import { ErrorBorder, KeyValueCard } from "./shared";
+import { KeyValueCard } from "./shared";
 
 export function CronCreateRenderer({ toolCall }: ToolRendererProps) {
   const cron = (toolCall.input["cron"] as string) ?? "";
@@ -14,8 +14,10 @@ export function CronCreateRenderer({ toolCall }: ToolRendererProps) {
   if (durable !== undefined) params.push({ key: "durable", value: String(durable) });
 
   return (
-    <ErrorBorder isError={toolCall.isError}>
-      <KeyValueCard params={params} result={toolCall.result ?? undefined} />
-    </ErrorBorder>
+    <KeyValueCard
+      isError={toolCall.isError}
+      params={params}
+      result={toolCall.result ?? undefined}
+    />
   );
 }

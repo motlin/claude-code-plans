@@ -1920,6 +1920,9 @@ function ToolCallRow({ call, sessionId }: { call: ClientToolCall; sessionId: str
   const diffStats = useEditDiffStats(call);
   const isCardStyle = CARD_STYLE_TOOLS.has(call.name);
   const isCodeCard = CODE_CARD_TOOLS.has(call.name);
+  // Upstream recolors the whole label of a failed tool row, except a file path,
+  // which stays primary.
+  const labelClass = call.isError ? "text-extended-pink" : "text-assistant-secondary";
 
   const displayParam = RENDERER_HANDLES_PARAM.has(call.name)
     ? ""
@@ -1941,10 +1944,10 @@ function ToolCallRow({ call, sessionId }: { call: ClientToolCall; sessionId: str
         }}
         className="relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left cursor-pointer hide-focus-ring rounded-r3"
       >
-        <span className="shrink-0 text-body text-assistant-secondary">{verb}</span>
+        <span className={`shrink-0 text-body ${labelClass}`}>{verb}</span>
         {displayParam && (
           <span
-            className={`truncate min-w-0 ${isFileParam ? "text-code text-assistant-primary" : "text-body text-assistant-secondary"}`}
+            className={`truncate min-w-0 ${isFileParam ? "text-code text-assistant-primary" : `text-body ${labelClass}`}`}
           >
             {displayParam}
           </span>

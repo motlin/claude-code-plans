@@ -1,5 +1,5 @@
 import type { ToolRendererProps } from "./types";
-import { ErrorBorder, KeyValueCard } from "./shared";
+import { KeyValueCard } from "./shared";
 import type { KeyValueParam } from "./shared";
 
 interface TodoItem {
@@ -29,8 +29,10 @@ export function TodoWriteRenderer({ toolCall }: ToolRendererProps) {
   }
 
   return (
-    <ErrorBorder isError={toolCall.isError}>
-      <KeyValueCard params={params} result={toolCall.result ?? undefined} />
-    </ErrorBorder>
+    <KeyValueCard
+      isError={toolCall.isError}
+      params={params}
+      result={toolCall.result ?? undefined}
+    />
   );
 }

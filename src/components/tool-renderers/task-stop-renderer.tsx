@@ -1,5 +1,5 @@
 import type { ToolRendererProps } from "./types";
-import { ErrorBorder, KeyValueCard } from "./shared";
+import { KeyValueCard } from "./shared";
 
 export function TaskStopRenderer({ toolCall }: ToolRendererProps) {
   const taskId = (toolCall.input["task_id"] as string) ?? "";
@@ -8,8 +8,10 @@ export function TaskStopRenderer({ toolCall }: ToolRendererProps) {
   if (taskId) params.push({ key: "task_id", value: `#${taskId}` });
 
   return (
-    <ErrorBorder isError={toolCall.isError}>
-      <KeyValueCard params={params} result={toolCall.result ?? undefined} />
-    </ErrorBorder>
+    <KeyValueCard
+      isError={toolCall.isError}
+      params={params}
+      result={toolCall.result ?? undefined}
+    />
   );
 }

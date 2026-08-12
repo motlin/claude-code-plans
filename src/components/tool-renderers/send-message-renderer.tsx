@@ -1,5 +1,5 @@
 import type { ToolRendererProps } from "./types";
-import { ErrorBorder, KeyValueCard } from "./shared";
+import { KeyValueCard } from "./shared";
 
 export function SendMessageRenderer({ toolCall }: ToolRendererProps) {
   const recipient =
@@ -17,8 +17,10 @@ export function SendMessageRenderer({ toolCall }: ToolRendererProps) {
   if (message) params.push({ key: "message", value: message });
 
   return (
-    <ErrorBorder isError={toolCall.isError}>
-      <KeyValueCard params={params} result={toolCall.result ?? undefined} />
-    </ErrorBorder>
+    <KeyValueCard
+      isError={toolCall.isError}
+      params={params}
+      result={toolCall.result ?? undefined}
+    />
   );
 }

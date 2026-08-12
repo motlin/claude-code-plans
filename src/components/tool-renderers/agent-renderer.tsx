@@ -1,7 +1,7 @@
 import { Bot } from "lucide-react";
 import type { ToolRendererProps } from "./types";
 import type { KeyValueParam } from "./shared";
-import { ErrorBorder, KeyValueCard } from "./shared";
+import { KeyValueCard } from "./shared";
 import { getAgentTypeFromInput } from "../../lib/tool-utils";
 
 const AGENT_ID_RE = /agentId:\s*(\S+)/;
@@ -48,7 +48,7 @@ export function AgentRenderer({ toolCall }: ToolRendererProps) {
   if (parameter) params.push({ key: "parameter", value: parameter });
 
   return (
-    <ErrorBorder isError={isError}>
+    <>
       {(status || (parallelSize && parallelSize > 1)) && (
         <div className="mb-1 flex items-center gap-1.5">
           {status && (
@@ -65,7 +65,7 @@ export function AgentRenderer({ toolCall }: ToolRendererProps) {
           )}
         </div>
       )}
-      <KeyValueCard params={params} result={displayResult ?? undefined} />
+      <KeyValueCard isError={isError} params={params} result={displayResult ?? undefined} />
       {agentSessionId && (
         <a
           href={`/session/${agentSessionId}`}
@@ -75,6 +75,6 @@ export function AgentRenderer({ toolCall }: ToolRendererProps) {
           View subagent session
         </a>
       )}
-    </ErrorBorder>
+    </>
   );
 }

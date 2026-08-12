@@ -1,5 +1,5 @@
 import type { ToolRendererProps } from "./types";
-import { ErrorBorder, KeyValueCard } from "./shared";
+import { KeyValueCard } from "./shared";
 
 export function ToolSearchRenderer({ toolCall }: ToolRendererProps) {
   const query = (toolCall.input["query"] as string) ?? "";
@@ -10,9 +10,5 @@ export function ToolSearchRenderer({ toolCall }: ToolRendererProps) {
   if (query) params.push({ key: "query", value: query });
   if (maxResults !== undefined) params.push({ key: "max_results", value: String(maxResults) });
 
-  return (
-    <ErrorBorder isError={isError}>
-      <KeyValueCard params={params} result={result ?? undefined} />
-    </ErrorBorder>
-  );
+  return <KeyValueCard isError={isError} params={params} result={result ?? undefined} />;
 }

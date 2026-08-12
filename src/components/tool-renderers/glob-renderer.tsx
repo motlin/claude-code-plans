@@ -1,5 +1,5 @@
 import type { ToolRendererProps } from "./types";
-import { ErrorBorder, KeyValueCard } from "./shared";
+import { KeyValueCard } from "./shared";
 
 export function GlobRenderer({ toolCall }: ToolRendererProps) {
   const pattern = (toolCall.input["pattern"] as string) ?? "";
@@ -10,9 +10,5 @@ export function GlobRenderer({ toolCall }: ToolRendererProps) {
   if (pattern) params.push({ key: "pattern", value: pattern });
   if (path) params.push({ key: "path", value: path });
 
-  return (
-    <ErrorBorder isError={isError}>
-      <KeyValueCard params={params} result={result ?? undefined} />
-    </ErrorBorder>
-  );
+  return <KeyValueCard isError={isError} params={params} result={result ?? undefined} />;
 }

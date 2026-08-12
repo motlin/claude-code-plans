@@ -1,5 +1,5 @@
 import type { ToolRendererProps } from "./types";
-import { ErrorBorder, KeyValueCard } from "./shared";
+import { KeyValueCard } from "./shared";
 import { getTaskCreateDisplaySubject } from "../../lib/tool-utils";
 
 export function getTaskCreateParams(
@@ -21,11 +21,10 @@ export function getTaskCreateParams(
 
 export function TaskCreateRenderer({ toolCall }: ToolRendererProps) {
   return (
-    <ErrorBorder isError={toolCall.isError}>
-      <KeyValueCard
-        params={getTaskCreateParams(toolCall.input)}
-        result={toolCall.result ?? undefined}
-      />
-    </ErrorBorder>
+    <KeyValueCard
+      isError={toolCall.isError}
+      params={getTaskCreateParams(toolCall.input)}
+      result={toolCall.result ?? undefined}
+    />
   );
 }

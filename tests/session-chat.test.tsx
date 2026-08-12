@@ -511,3 +511,58 @@ describe("SessionChat tool card chrome", () => {
     });
   });
 });
+
+/** One tool call plus its result, so the row renders with a known isError flag. */
+function failedToolCallRecords(isError: boolean): unknown[] {
+  return [
+    {
+      type: "assistant",
+      uuid: "a1",
+      message: {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "t1", name: "Grep", input: { pattern: "alice" } }],
+      },
+    },
+    {
+      type: "user",
+      uuid: "r-t1",
+      parentUuid: "a1",
+      message: {
+        role: "user",
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: "t1",
+            content: "rg exited with code 2",
+            is_error: isError,
+          },
+        ],
+      },
+    },
+  ];
+}
+
+describe("SessionChat failed tool row label", () => {
+  it("recolors a failed tool row label extended-pink and leaves a successful one secondary", () => {
+    const failedHtml = renderTranscript(failedToolCallRecords(true));
+    const okHtml = renderTranscript(failedToolCallRecords(false));
+
+    expect({
+      failedVerb: failedHtml.includes('<span class="shrink-0 text-body text-extended-pink">'),
+      failedParam: failedHtml.includes(
+        '<span class="truncate min-w-0 text-body text-extended-pink">',
+      ),
+      failedKeepsSecondaryLabel: failedHtml.includes(
+        '<span class="shrink-0 text-body text-assistant-secondary">',
+      ),
+      okVerb: okHtml.includes('<span class="shrink-0 text-body text-assistant-secondary">'),
+      okPink: okHtml.includes("text-extended-pink"),
+    }).toStrictEqual({
+      failedVerb: true,
+      failedParam: true,
+      failedKeepsSecondaryLabel: false,
+      okVerb: true,
+      okPink: false,
+    });
+  });
+});

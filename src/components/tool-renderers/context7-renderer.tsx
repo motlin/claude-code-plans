@@ -1,5 +1,5 @@
 import type { ToolRendererProps } from "./types";
-import { ErrorBorder, KeyValueCard } from "./shared";
+import { KeyValueCard } from "./shared";
 import { MarkdownArticle } from "../markdown-article";
 import { looksLikeMarkdown } from "../../lib/client-markdown";
 
@@ -16,14 +16,16 @@ export function Context7Renderer({ toolCall }: ToolRendererProps) {
   const isMarkdownResult = resultText.length > 0 && looksLikeMarkdown(resultText);
 
   return (
-    <ErrorBorder isError={isError}>
-      <KeyValueCard params={params} result={isMarkdownResult ? undefined : resultText || undefined}>
-        {isMarkdownResult && (
-          <div className="text-xs text-text-100 leading-relaxed">
-            <MarkdownArticle markdown={resultText} />
-          </div>
-        )}
-      </KeyValueCard>
-    </ErrorBorder>
+    <KeyValueCard
+      isError={isError}
+      params={params}
+      result={isMarkdownResult ? undefined : resultText || undefined}
+    >
+      {isMarkdownResult && (
+        <div className="text-xs text-text-100 leading-relaxed">
+          <MarkdownArticle markdown={resultText} />
+        </div>
+      )}
+    </KeyValueCard>
   );
 }

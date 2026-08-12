@@ -1,5 +1,5 @@
 import type { ToolRendererProps } from "./types";
-import { ErrorBorder, KeyValueCard } from "./shared";
+import { KeyValueCard } from "./shared";
 
 export function McpRenderer({ toolCall }: ToolRendererProps) {
   const { input, result, isError } = toolCall;
@@ -10,9 +10,5 @@ export function McpRenderer({ toolCall }: ToolRendererProps) {
     value: typeof value === "string" ? value : JSON.stringify(value),
   }));
 
-  return (
-    <ErrorBorder isError={isError}>
-      <KeyValueCard params={params} result={result ?? undefined} />
-    </ErrorBorder>
-  );
+  return <KeyValueCard isError={isError} params={params} result={result ?? undefined} />;
 }

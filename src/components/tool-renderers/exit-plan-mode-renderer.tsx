@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { FileText } from "lucide-react";
 import type { ToolRendererProps } from "./types";
-import { ErrorBorder, KeyValueCard } from "./shared";
+import { KeyValueCard } from "./shared";
 import { MarkdownArticle } from "../markdown-article";
 import { toMdSlug } from "../../lib/md-slug";
 import {
@@ -28,35 +28,33 @@ export function ExitPlanModeRenderer({ toolCall }: ToolRendererProps) {
   const status = describeExitPlanModeResult(result, toolCall.isError);
 
   return (
-    <ErrorBorder isError={toolCall.isError}>
-      <KeyValueCard params={[]} copyText={plan || result || ""}>
-        {planMatch && (
-          <Link
-            to="/plan/$filename"
-            params={{ filename: toMdSlug(planMatch[1]!) }}
-            className="inline-flex items-center gap-1 text-body text-accent-100 hover:underline"
-          >
-            <FileText size={12} />
-            Plan created
-          </Link>
-        )}
-        {plan && <MarkdownArticle markdown={plan} />}
-        {allowedPrompts.length > 0 && (
-          <div className="flex flex-col text-body text-assistant-secondary">
-            {allowedPrompts.map((allowed, index) => (
-              <div key={`${allowed.tool}-${index}`} data-allowed-prompt>
-                <span className="text-assistant-primary">{allowed.tool}</span> — {allowed.prompt}
-              </div>
-            ))}
-          </div>
-        )}
-        {status && (
-          <div className={TONE_CLASS[status.tone]}>
-            <div>{status.text}</div>
-            {status.detail && <div className="text-assistant-secondary">{status.detail}</div>}
-          </div>
-        )}
-      </KeyValueCard>
-    </ErrorBorder>
+    <KeyValueCard isError={toolCall.isError} params={[]} copyText={plan || result || ""}>
+      {planMatch && (
+        <Link
+          to="/plan/$filename"
+          params={{ filename: toMdSlug(planMatch[1]!) }}
+          className="inline-flex items-center gap-1 text-body text-accent-100 hover:underline"
+        >
+          <FileText size={12} />
+          Plan created
+        </Link>
+      )}
+      {plan && <MarkdownArticle markdown={plan} />}
+      {allowedPrompts.length > 0 && (
+        <div className="flex flex-col text-body text-assistant-secondary">
+          {allowedPrompts.map((allowed, index) => (
+            <div key={`${allowed.tool}-${index}`} data-allowed-prompt>
+              <span className="text-assistant-primary">{allowed.tool}</span> — {allowed.prompt}
+            </div>
+          ))}
+        </div>
+      )}
+      {status && (
+        <div className={TONE_CLASS[status.tone]}>
+          <div>{status.text}</div>
+          {status.detail && <div className="text-assistant-secondary">{status.detail}</div>}
+        </div>
+      )}
+    </KeyValueCard>
   );
 }

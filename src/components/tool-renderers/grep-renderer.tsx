@@ -1,5 +1,5 @@
 import type { ToolRendererProps } from "./types";
-import { ErrorBorder, KeyValueCard } from "./shared";
+import { KeyValueCard } from "./shared";
 
 export function GrepRenderer({ toolCall }: ToolRendererProps) {
   const pattern = (toolCall.input["pattern"] as string) ?? "";
@@ -20,9 +20,5 @@ export function GrepRenderer({ toolCall }: ToolRendererProps) {
   if (caseInsensitive) params.push({ key: "-i", value: "true" });
   if (headLimit !== undefined) params.push({ key: "head_limit", value: String(headLimit) });
 
-  return (
-    <ErrorBorder isError={isError}>
-      <KeyValueCard params={params} result={result ?? undefined} />
-    </ErrorBorder>
-  );
+  return <KeyValueCard isError={isError} params={params} result={result ?? undefined} />;
 }
