@@ -12,6 +12,7 @@ import {
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { LiveTerminalLink } from "../src/components/session-terminal-links";
 import { herdrWorkspacesQueryOptions } from "../src/lib/api/herdr-workspaces";
 import { sessionQueryKeys } from "../src/lib/api/sessions";
 import { terminalPlacementsQueryOptions } from "../src/lib/api/terminal-placements";
@@ -545,9 +546,10 @@ describe("HerdrPage", () => {
 
     render(<RouterProvider router={router} />);
 
+    const breadcrumb = screen.getByRole("link", { name: "Herdr" });
     expect({
-      breadcrumb: screen.getByRole("link").textContent,
-      breadcrumbHref: screen.getByRole("link").getAttribute("href"),
+      breadcrumb: breadcrumb.textContent,
+      breadcrumbHref: breadcrumb.getAttribute("href"),
       heading: screen.getByRole("heading", { level: 1 }).textContent,
       routeMeta: routeMeta(HerdrTerminalRoute),
       terminal: screen.getByRole("region", { name: "Live read-only terminal" }).textContent,
@@ -559,6 +561,70 @@ describe("HerdrPage", () => {
       terminal: "session-test-100",
     });
     expect(document.body.textContent?.includes("Terminal Fleet")).toBe(false);
+  });
+});
+
+/**
+ * The live terminal and the transcript are two views of the same Claude
+ * session, so each one links to the other. The transcript side is conditional:
+ * `/api/herdr/observe` throws when no live pane is linked to the session, so a
+ * finished session must not offer a terminal link that lands on an error page.
+ */
+describe("session and live terminal two-way navigation", () => {
+  async function renderWithRouter(element: React.ReactNode, path: string) {
+    const rootRoute = createRootRoute({ component: () => element });
+    const router = createRouter({
+      routeTree: rootRoute,
+      history: createMemoryHistory({ initialEntries: [path] }),
+    });
+    await router.load();
+    render(<RouterProvider router={router} />);
+  }
+
+  it("links the live terminal page back to the same session's transcript", async () => {
+    const HerdrTerminalPage = HerdrTerminalRoute.options.component;
+    if (!HerdrTerminalPage) throw new Error("Expected the Herdr terminal route component");
+    vi.spyOn(HerdrTerminalRoute, "useParams").mockReturnValue({
+      sessionId: "session-test-100",
+    });
+
+    await renderWithRouter(createElement(HerdrTerminalPage), "/herdr/terminal/session-test-100");
+
+    const transcriptLink = screen.getByRole("link", {
+      name: "Open session transcript for session-test-100",
+    });
+    expect({
+      href: transcriptLink.getAttribute("href"),
+      title: transcriptLink.getAttribute("title"),
+    }).toStrictEqual({
+      href: "/session/session-test-100",
+      title: "Open session transcript for session-test-100",
+    });
+  });
+
+  it("offers the terminal link only while the session has a live herdr pane", async () => {
+    await renderWithRouter(
+      <>
+        <LiveTerminalLink sessionId="session-test-100" sessionTitle="Alice" hasLivePane={true} />
+        <LiveTerminalLink sessionId="session-test-200" sessionTitle="Bob" hasLivePane={false} />
+      </>,
+      "/session/session-test-100",
+    );
+
+    const terminalLink = screen.getByRole("link", {
+      name: "Open live read-only terminal for Alice",
+    });
+    expect({
+      href: terminalLink.getAttribute("href"),
+      title: terminalLink.getAttribute("title"),
+      withoutLivePane: screen.queryByRole("link", {
+        name: "Open live read-only terminal for Bob",
+      }),
+    }).toStrictEqual({
+      href: "/herdr/terminal/session-test-100",
+      title: "Open live read-only terminal for Alice",
+      withoutLivePane: null,
+    });
   });
 });
 

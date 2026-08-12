@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { HerdrTerminal } from "../components/herdr-terminal";
+import { SessionTranscriptLink } from "../components/session-terminal-links";
 
 export const Route = createFileRoute("/herdr/terminal/$sessionId")({
   component: HerdrTerminalPage,
@@ -16,6 +17,7 @@ function HerdrTerminalPage() {
         </Link>
         <span className="text-text-500">/</span>
         <h1 className="text-lg font-semibold">Live terminal</h1>
+        <SessionTranscriptLink sessionId={sessionId} />
       </div>
       <HerdrTerminal sessionId={sessionId} />
     </div>

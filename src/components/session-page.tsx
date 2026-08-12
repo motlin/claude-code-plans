@@ -22,6 +22,7 @@ import { SessionHookContext } from "./session-hook-context";
 import { DetailTopBar, pillStyles } from "./detail-top-bar";
 import { useSettings } from "./settings-provider";
 import { SessionReviewedToggle } from "./session-reviewed-toggle";
+import { LiveTerminalLink } from "./session-terminal-links";
 import { useHasUnseenWork } from "./session-unread-control";
 import {
   AskUserQuestionProvider,
@@ -175,6 +176,7 @@ export function createSessionCommands(sessionId: string, projectPath: string | n
 interface SessionPromptBehavior {
   disabled: boolean;
   deliveryHint: string | undefined;
+  hasLivePane: boolean;
   usesHerdr: boolean;
 }
 
@@ -186,18 +188,20 @@ export function getSessionPromptBehavior(
   const hasLivePane = herdr.panes.some((pane) => pane.sessionId === sessionId);
 
   if (!hasLivePane) {
-    return { disabled: isActive, deliveryHint: undefined, usesHerdr: false };
+    return { disabled: isActive, deliveryHint: undefined, hasLivePane, usesHerdr: false };
   }
   if (!herdr.writesEnabled) {
     return {
       disabled: true,
       deliveryHint: "- live herdr input is disabled",
+      hasLivePane,
       usesHerdr: false,
     };
   }
   return {
     disabled: false,
     deliveryHint: "- sends to live herdr session",
+    hasLivePane,
     usesHerdr: true,
   };
 }
@@ -621,6 +625,11 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
             <CopyButton title="Copy session ID" text={sessionId} icon={Copy} />
             <CopyButton title="Copy resume command" text={sessionCommands.resume} icon={Terminal} />
             <CopyButton title="Copy fork command" text={sessionCommands.fork} icon={GitFork} />
+            <LiveTerminalLink
+              sessionId={sessionId}
+              sessionTitle={hookContext?.sessionTitle || data.title}
+              hasLivePane={promptBehavior.hasLivePane}
+            />
             <SessionReviewedToggle
               reviewed={data.viewedState.viewedAnywhere}
               onToggle={

@@ -27,15 +27,17 @@ describe("session live input", () => {
       {
         disabled: false,
         deliveryHint: "- sends to live herdr session",
+        hasLivePane: true,
         usesHerdr: true,
       },
       {
         disabled: true,
         deliveryHint: "- live herdr input is disabled",
+        hasLivePane: true,
         usesHerdr: false,
       },
-      { disabled: false, deliveryHint: undefined, usesHerdr: false },
-      { disabled: true, deliveryHint: undefined, usesHerdr: false },
+      { disabled: false, deliveryHint: undefined, hasLivePane: false, usesHerdr: false },
+      { disabled: true, deliveryHint: undefined, hasLivePane: false, usesHerdr: false },
     ]);
   });
 
