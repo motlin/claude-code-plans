@@ -321,27 +321,26 @@ export function ErrorBorder({
   return <div className="text-extended-pink">{children}</div>;
 }
 
-export function TerminalOutput({ content, maxLines = 20 }: { content: string; maxLines?: number }) {
+/**
+ * Output of a local `!command`. Upstream has no badge and no filled code slab:
+ * failure reads as pink body text, so the exit code renders as one more line of
+ * the same mono `text-code` type and the output takes the Bash card's body
+ * treatment — wrapped, and capped at 400px with its own scroller.
+ */
+export function TerminalOutput({ content }: { content: string }) {
   // Extract exit code if present at the start of the content
   const exitCodeMatch = content.match(/^Exit code (\d+)\n?/);
   const exitCode = exitCodeMatch?.[1] ? parseInt(exitCodeMatch[1], 10) : null;
   const contentWithoutExitCode = exitCodeMatch ? content.replace(/^Exit code \d+\n?/, "") : content;
-  const lineCount = contentWithoutExitCode.split("\n").length;
+  const inkClass =
+    exitCode !== null && exitCode !== 0 ? "text-extended-pink" : "text-assistant-secondary";
 
   return (
-    <div>
-      {exitCode !== null && (
-        <div className="mb-2 flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 bg-danger-900 text-danger-000 px-2.5 py-1 rounded text-xs font-bold">
-            Exit code <span className="font-mono">{exitCode}</span>
-          </span>
-        </div>
-      )}
-      <ExpandableBlock lineCount={lineCount} maxLines={maxLines}>
-        <pre className="bg-bg-200 text-text-100 rounded text-xs leading-relaxed p-2 whitespace-pre-wrap break-all">
-          <AnsiText content={contentWithoutExitCode} />
-        </pre>
-      </ExpandableBlock>
+    <div className="text-code font-mono">
+      {exitCode !== null && <div className={inkClass}>Exit code {exitCode}</div>}
+      <pre className={`max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all ${inkClass}`}>
+        <AnsiText content={contentWithoutExitCode} />
+      </pre>
     </div>
   );
 }
