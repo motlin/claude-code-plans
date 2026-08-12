@@ -678,7 +678,10 @@ describe("SessionChat failed tool row label text", () => {
 function rowHeaderSpanClasses(html: string): string[] {
   const start = html.indexOf('class="relative group/tool');
   expect(start, "no tool row header in html").toBeGreaterThan(-1);
-  const region = html.slice(start, html.indexOf('<div class="grid', start));
+  // The disclosure body follows the header; it is the first `grid-rows-*` div.
+  const bodyStart = html.indexOf("grid-rows-", start);
+  expect(bodyStart, "no disclosure body after tool row header").toBeGreaterThan(-1);
+  const region = html.slice(start, bodyStart);
   return [...region.matchAll(/<span(?: class="([^"]*)")?[ >]/g)].map((match) => match[1] ?? "");
 }
 

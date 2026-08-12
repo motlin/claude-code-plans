@@ -1,4 +1,4 @@
-import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Bot,
@@ -1538,12 +1538,15 @@ function ThinkingBlock({
   sourceUuid?: string | undefined;
 }) {
   const [open, setOpen] = useState(false);
+  const bodyId = useId();
 
   return (
     <div className="border-l-2 border-warning-100 pl-3 my-1">
       <div className="flex items-center gap-2">
         <button
           type="button"
+          aria-expanded={open}
+          aria-controls={bodyId}
           onClick={() => setOpen(!open)}
           className="text-xs text-warning-100 cursor-pointer flex items-center gap-1 leading-tight"
         >
@@ -1552,7 +1555,7 @@ function ThinkingBlock({
         </button>
         {sessionId && <DebugLink sessionId={sessionId} uuid={sourceUuid} />}
       </div>
-      <div className={`grid ${open ? "grid-rows-expand" : "grid-rows-collapse"}`}>
+      <div id={bodyId} className={`grid ${open ? "grid-rows-expand" : "grid-rows-collapse"}`}>
         <div className="overflow-hidden">
           <div className="mt-1 text-xs italic text-text-500 whitespace-pre-wrap bg-bg-200/50 rounded p-2 max-h-64 overflow-auto leading-relaxed">
             {thinking}
@@ -1938,6 +1941,7 @@ function InlineDiffStats({ added, removed }: { added: number; removed: number })
 
 function ToolCallRow({ call, sessionId }: { call: ClientToolCall; sessionId: string }) {
   const [expanded, setExpanded] = useState(false);
+  const bodyId = useId();
   const Renderer = getToolRenderer(call.name);
   const verb = toolCallVerb(call.name);
   const isFileParam = FILE_PARAM_TOOLS.has(call.name);
@@ -1972,6 +1976,8 @@ function ToolCallRow({ call, sessionId }: { call: ClientToolCall; sessionId: str
       <div
         role="button"
         tabIndex={0}
+        aria-expanded={expanded}
+        aria-controls={bodyId}
         onClick={() => setExpanded(!expanded)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -1998,7 +2004,7 @@ function ToolCallRow({ call, sessionId }: { call: ClientToolCall; sessionId: str
           <ChevronIcon expanded={expanded} size={14} />
         </span>
       </div>
-      <div className={`grid ${expanded ? "grid-rows-expand" : "grid-rows-collapse"}`}>
+      <div id={bodyId} className={`grid ${expanded ? "grid-rows-expand" : "grid-rows-collapse"}`}>
         <div className="overflow-hidden">
           {isCardStyle ? (
             <div className="group/body py-p6">
@@ -2050,6 +2056,7 @@ function SummarySpans({ segments }: { segments: SummarySegment[] }) {
 
 function ToolCallSummary({ calls, sessionId }: { calls: ClientToolCall[]; sessionId: string }) {
   const [expanded, setExpanded] = useState(false);
+  const bodyId = useId();
   const taskCalls = calls.filter((c) => TASK_TOOLS.has(c.name));
   const hasTasksView = taskCalls.length >= 3;
   const displayCalls = hasTasksView ? calls.filter((c) => !TASK_TOOLS.has(c.name)) : calls;
@@ -2066,6 +2073,8 @@ function ToolCallSummary({ calls, sessionId }: { calls: ClientToolCall[]; sessio
         <>
           <button
             type="button"
+            aria-expanded={expanded}
+            aria-controls={bodyId}
             onClick={() => setExpanded(!expanded)}
             className="relative group/tool flex self-start max-w-full items-center py-0 gap-g1 text-left hide-focus-ring rounded-r3"
           >
@@ -2078,7 +2087,10 @@ function ToolCallSummary({ calls, sessionId }: { calls: ClientToolCall[]; sessio
               <ChevronIcon expanded={expanded} size={14} />
             </span>
           </button>
-          <div className={`grid ${expanded ? "grid-rows-expand" : "grid-rows-collapse"}`}>
+          <div
+            id={bodyId}
+            className={`grid ${expanded ? "grid-rows-expand" : "grid-rows-collapse"}`}
+          >
             <div className="overflow-hidden">
               <div className="flex flex-col gap-g3 bg-t1 rounded-r6 p-p7 mt-p3">
                 {displayCalls.map((call, i) => (
