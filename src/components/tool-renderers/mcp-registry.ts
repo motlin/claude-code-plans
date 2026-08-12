@@ -23,12 +23,10 @@ const Context7Renderer = lazy(() =>
   import("./context7-renderer").then((m) => ({ default: m.Context7Renderer })),
 );
 const McpRenderer = lazy(() => import("./mcp-renderer").then((m) => ({ default: m.McpRenderer })));
-const FallbackRenderer = lazy(() =>
-  import("./fallback-renderer").then((m) => ({ default: m.FallbackRenderer })),
-);
 
 const mcpRegistry: Record<string, ComponentType<ToolRendererProps>> = {
   "chrome-devtools": ChromeDevtoolsRenderer,
+  "plugin_chrome-devtools-mcp_chrome-devtools": ChromeDevtoolsRenderer,
   plugin_github_github: GithubRenderer,
   plugin_playwright_playwright: PlaywrightRenderer,
   "claude-in-chrome": ClaudeInChromeRenderer,
@@ -36,5 +34,5 @@ const mcpRegistry: Record<string, ComponentType<ToolRendererProps>> = {
 };
 
 export function getMcpRenderer(serverName: string): ComponentType<ToolRendererProps> {
-  return mcpRegistry[serverName] ?? McpRenderer ?? FallbackRenderer;
+  return mcpRegistry[serverName] ?? McpRenderer;
 }

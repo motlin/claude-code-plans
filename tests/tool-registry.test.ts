@@ -29,6 +29,14 @@ describe("getToolRenderer", () => {
     expect(navigate).toBe(networkList);
   });
 
+  it("routes plugin-prefixed chrome-devtools MCP tools to the chrome-devtools renderer", () => {
+    const pluginNavigate = getToolRenderer(
+      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__navigate_page",
+    );
+    expect(pluginNavigate).toBe(getToolRenderer("mcp__chrome-devtools__navigate_page"));
+    expect(pluginNavigate).not.toBe(getToolRenderer("mcp__unknown_server__some_tool"));
+  });
+
   it("routes chrome-devtools MCP tools differently from generic unknown MCP tools", () => {
     expect(getToolRenderer("mcp__chrome-devtools__navigate_page")).not.toBe(
       getToolRenderer("mcp__unknown_server__some_tool"),
