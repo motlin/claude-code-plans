@@ -27,6 +27,7 @@ function renderProvider(): { client: QueryClient; eventSource: TestEventSource }
   client.setQueryData(["terminal", "placements"], []);
   client.setQueryData(["tmux", "windows"], []);
   client.setQueryData(["herdr", "panes"], []);
+  client.setQueryData(["herdr", "workspaces"], []);
 
   render(
     <QueryClientProvider client={client}>
@@ -44,6 +45,7 @@ function renderProvider(): { client: QueryClient; eventSource: TestEventSource }
 function invalidationState(client: QueryClient) {
   return {
     herdrPanes: client.getQueryState(["herdr", "panes"])?.isInvalidated,
+    herdrWorkspaces: client.getQueryState(["herdr", "workspaces"])?.isInvalidated,
     terminalPlacements: client.getQueryState(["terminal", "placements"])?.isInvalidated,
     tmuxWindows: client.getQueryState(["tmux", "windows"])?.isInvalidated,
   };
@@ -72,6 +74,7 @@ describe("ClaudeEventsProvider terminal placement invalidation", () => {
 
     expect(invalidationState(client)).toStrictEqual({
       herdrPanes: false,
+      herdrWorkspaces: false,
       terminalPlacements: true,
       tmuxWindows: true,
     });
@@ -88,12 +91,13 @@ describe("ClaudeEventsProvider terminal placement invalidation", () => {
 
     expect(invalidationState(client)).toStrictEqual({
       herdrPanes: false,
+      herdrWorkspaces: false,
       terminalPlacements: true,
       tmuxWindows: true,
     });
   });
 
-  it("invalidates terminal placements and the legacy Herdr panes query on Herdr events", () => {
+  it("invalidates terminal placements and both Herdr read models on Herdr events", () => {
     const { client, eventSource } = renderProvider();
 
     act(() => {
@@ -102,6 +106,7 @@ describe("ClaudeEventsProvider terminal placement invalidation", () => {
 
     expect(invalidationState(client)).toStrictEqual({
       herdrPanes: true,
+      herdrWorkspaces: true,
       terminalPlacements: true,
       tmuxWindows: false,
     });

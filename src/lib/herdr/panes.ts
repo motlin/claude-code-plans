@@ -7,7 +7,8 @@ import { HerdrPaneInfoSchema, HerdrSessionSnapshotResultSchema } from "./schema"
 import type { TerminalPlacementBase, TerminalPlacementProvider } from "../terminal-placements";
 
 export type HerdrAgentStatus = z.infer<typeof HerdrPaneInfoSchema>["agent_status"];
-type HerdrWirePane = z.infer<typeof HerdrPaneInfoSchema>;
+export type HerdrWirePane = z.infer<typeof HerdrPaneInfoSchema>;
+type HerdrSnapshot = z.infer<typeof HerdrSessionSnapshotResultSchema>["snapshot"];
 
 export interface HerdrPane {
   paneId: string;
@@ -43,7 +44,7 @@ const HERDR_CAPABILITIES = {
 export type HerdrRequester = (request: object, timeoutMs?: number) => Promise<HerdrResult<unknown>>;
 export type IndexedSessionFilter = (sessionIds: string[]) => Set<string>;
 
-const filterIndexedSessions: IndexedSessionFilter = (sessionIds) => {
+export const filterIndexedSessions: IndexedSessionFilter = (sessionIds) => {
   if (sessionIds.length === 0) return new Set();
   return getIndexedSessionIds(getDb().index, sessionIds);
 };
@@ -54,7 +55,33 @@ const SNAPSHOT_REQUEST = {
   params: {},
 };
 
-function normalizePane(pane: HerdrWirePane): HerdrPane {
+/**
+ * Fetch and decode herdr's live session snapshot for every read model above it.
+ *
+ * Transport and protocol failures are normal when herdr is absent or has
+ * changed release, so both collapse to `null` and each caller degrades to an
+ * empty result instead of failing.
+ */
+export async function readHerdrSnapshot(request: HerdrRequester): Promise<HerdrSnapshot | null> {
+  const response = await request(SNAPSHOT_REQUEST);
+  if (!response.ok) return null;
+  const parsed = HerdrSessionSnapshotResultSchema.safeParse(response.value);
+  return parsed.success ? parsed.data.snapshot : null;
+}
+
+/** The Claude transcript id herdr resolved for a pane, if the pane runs Claude at all. */
+export function claudeSessionId(pane: HerdrWirePane): string | null {
+  const session = pane.agent_session;
+  if (!session || session.kind !== "id" || session.agent !== "claude") return null;
+  return session.value;
+}
+
+/** Single naming policy so a pane reads the same in every Herdr view. */
+export function herdrPaneDisplayName(pane: HerdrPane): string {
+  return pane.terminalTitle ?? pane.foregroundCwd ?? pane.cwd ?? pane.terminalId;
+}
+
+export function normalizePane(pane: HerdrWirePane): HerdrPane {
   return {
     paneId: pane.pane_id,
     terminalId: pane.terminal_id,
@@ -84,11 +111,8 @@ export async function getHerdrPanes(
   request: HerdrRequester = herdrRequest,
   indexedSessionFilter: IndexedSessionFilter = filterIndexedSessions,
 ): Promise<HerdrPaneLink[]> {
-  const response = await request(SNAPSHOT_REQUEST);
-  if (!response.ok) return [];
-
-  const parsed = HerdrSessionSnapshotResultSchema.safeParse(response.value);
-  if (!parsed.success) return [];
+  const snapshot = await readHerdrSnapshot(request);
+  if (snapshot === null) return [];
 
   const entriesByPaneId = new Map<string, ActiveSessionEntry[]>();
   const entriesBySessionId = new Map(entries.map((entry) => [entry.sessionId, entry]));
@@ -99,15 +123,14 @@ export async function getHerdrPanes(
     else entriesByPaneId.set(entry.herdrPane, [entry]);
   }
 
-  const indexedSessionCandidates = parsed.data.snapshot.panes.flatMap((pane) =>
-    pane.agent_session?.kind === "id" && pane.agent_session.agent === "claude"
-      ? [pane.agent_session.value]
-      : [],
-  );
+  const indexedSessionCandidates = snapshot.panes.flatMap((pane) => {
+    const sessionId = claudeSessionId(pane);
+    return sessionId === null ? [] : [sessionId];
+  });
   const indexedSessionIds = indexedSessionFilter(indexedSessionCandidates);
 
   const links: HerdrPaneLink[] = [];
-  for (const wirePane of parsed.data.snapshot.panes) {
+  for (const wirePane of snapshot.panes) {
     const pane = normalizePane(wirePane);
     const matches = new Map<
       string,
@@ -138,13 +161,13 @@ export async function getHerdrPanes(
       }
     }
 
+    const indexedClaudeSessionId = claudeSessionId(wirePane);
     if (
-      wirePane.agent_session?.kind === "id" &&
-      wirePane.agent_session.agent === "claude" &&
-      indexedSessionIds.has(wirePane.agent_session.value) &&
-      !matches.has(wirePane.agent_session.value)
+      indexedClaudeSessionId !== null &&
+      indexedSessionIds.has(indexedClaudeSessionId) &&
+      !matches.has(indexedClaudeSessionId)
     ) {
-      matches.set(wirePane.agent_session.value, {
+      matches.set(indexedClaudeSessionId, {
         matchedByEnvironment: false,
         matchedByAgentSession: true,
       });
@@ -176,7 +199,7 @@ async function getHerdrPlacements(
   return panes.map((pane) => ({
     provider: "herdr",
     sessionId: pane.sessionId,
-    displayName: pane.terminalTitle ?? pane.foregroundCwd ?? pane.cwd ?? pane.terminalId,
+    displayName: herdrPaneDisplayName(pane),
     active: pane.focused,
     paneHandle: pane.paneId,
     scopeHandle: pane.workspaceId,

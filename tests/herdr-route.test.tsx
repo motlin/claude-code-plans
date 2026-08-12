@@ -4,15 +4,19 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   createMemoryHistory,
   createRootRoute,
+  createRoute,
   createRouter,
+  Outlet,
   RouterProvider,
 } from "@tanstack/react-router";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { herdrWorkspacesQueryOptions } from "../src/lib/api/herdr-workspaces";
 import { sessionQueryKeys } from "../src/lib/api/sessions";
 import { terminalPlacementsQueryOptions } from "../src/lib/api/terminal-placements";
 import { updateSessionViewedState } from "../src/lib/api/viewed-state";
+import { Route as HerdrLayoutRoute } from "../src/routes/herdr";
 import { Route as HerdrRoute } from "../src/routes/herdr.index";
 import { Route as HerdrTerminalRoute } from "../src/routes/herdr.terminal.$sessionId";
 
@@ -555,5 +559,111 @@ describe("HerdrPage", () => {
       terminal: "session-test-100",
     });
     expect(document.body.textContent?.includes("Terminal Fleet")).toBe(false);
+  });
+});
+
+/**
+ * Flat file routing nests `herdr.index` and `herdr.terminal.$sessionId` under
+ * `herdr`, so the layout has to hand rendering down through `<Outlet />`. This
+ * exact regression shipped once: the URL and title changed while the child
+ * never mounted and the parent rendered in its place.
+ */
+describe("Herdr master-detail layout", () => {
+  function renderLayoutAt(path: string) {
+    const HerdrLayout = HerdrLayoutRoute.options.component;
+    const HerdrIndex = HerdrRoute.options.component;
+    const HerdrTerminal = HerdrTerminalRoute.options.component;
+    if (!HerdrLayout || !HerdrIndex || !HerdrTerminal) {
+      throw new Error("Expected every Herdr route to declare a component");
+    }
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    queryClient.setQueryData(terminalPlacementsQueryOptions.queryKey, {
+      placements: [placement({ active: false, agentStatus: "idle", number: 100 })],
+      writesEnabled: true,
+    });
+    queryClient.setQueryData(herdrWorkspacesQueryOptions.queryKey, {
+      workspaces: [
+        {
+          workspaceId: "workspace-test-100",
+          number: 1,
+          label: "kalshi",
+          agentStatus: "idle",
+          worktreeName: null,
+          agentPanes: [
+            {
+              paneId: "pane-test-100",
+              title: "Terminal 100",
+              agent: "claude",
+              agentStatus: "idle",
+              sessionId: "session-test-100",
+            },
+          ],
+          shellPanes: [],
+        },
+      ],
+    });
+
+    const rootRoute = createRootRoute({
+      component: () => (
+        <QueryClientProvider client={queryClient}>
+          <Outlet />
+        </QueryClientProvider>
+      ),
+    });
+    const layoutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/herdr",
+      component: HerdrLayout,
+    });
+    const indexRoute = createRoute({
+      getParentRoute: () => layoutRoute,
+      path: "/",
+      component: HerdrIndex,
+    });
+    const terminalRoute = createRoute({
+      getParentRoute: () => layoutRoute,
+      path: "/terminal/$sessionId",
+      component: HerdrTerminal,
+    });
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([layoutRoute.addChildren([indexRoute, terminalRoute])]),
+      history: createMemoryHistory({ initialEntries: [path] }),
+    });
+    return { router };
+  }
+
+  it("shows the flat list beside the rail at the index", async () => {
+    const { router } = renderLayoutAt("/herdr");
+    await router.load();
+    render(<RouterProvider router={router} />);
+
+    expect({
+      rail: screen.getByRole("navigation", { name: "Herdr workspaces" }).textContent,
+      list: screen.getByRole("heading", { level: 1 }).textContent,
+      terminal: screen.queryByRole("region", { name: "Live read-only terminal" }),
+    }).toStrictEqual({ rail: "1kalshiidleTerminal 100idle", list: "Herdr", terminal: null });
+  });
+
+  it("renders the pane detail through the outlet on a deep link, keeping the rail", async () => {
+    const { router } = renderLayoutAt("/herdr/terminal/session-test-100");
+    await router.load();
+    render(<RouterProvider router={router} />);
+
+    expect({
+      rail: screen.getByRole("navigation", { name: "Herdr workspaces" }).getAttribute("aria-label"),
+      selectedRailLink: screen
+        .getByRole("link", { name: "Open live terminal for Terminal 100 in workspace kalshi" })
+        .getAttribute("aria-current"),
+      heading: screen.getByRole("heading", { level: 1 }).textContent,
+      terminal: screen.getByRole("region", { name: "Live read-only terminal" }).textContent,
+      flatList: screen.queryByText("1 tracked Claude sessions"),
+    }).toStrictEqual({
+      rail: "Herdr workspaces",
+      selectedRailLink: "page",
+      heading: "Live terminal",
+      terminal: "session-test-100",
+      flatList: null,
+    });
   });
 });

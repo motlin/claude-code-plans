@@ -8,7 +8,6 @@ import { useVisibleNavItems } from "./navigation";
 import { SidebarToggleIcon, SearchInput } from "./primitives";
 import {
   ActiveSubList,
-  HerdrSubList,
   MemoriesSubList,
   PlansSubList,
   ProjectsSubList,
@@ -195,6 +194,7 @@ export function Sidebar({
               </div>
               {isExpanded &&
                 item.section !== "starred" &&
+                item.section !== "herdr" &&
                 item.section !== "approvals" &&
                 item.section !== "notifications" &&
                 item.section !== "settings" &&
@@ -202,8 +202,6 @@ export function Sidebar({
                 item.section !== "setup" &&
                 (item.section === "active" ? (
                   <ActiveSubList />
-                ) : item.section === "herdr" ? (
-                  <HerdrSubList activeItemId={activeItemId} />
                 ) : item.section === "projects" ? (
                   <ProjectsSubList activeItemId={activeItemId} />
                 ) : item.section === "plans" ? (
