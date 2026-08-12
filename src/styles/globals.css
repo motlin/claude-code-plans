@@ -329,6 +329,46 @@
   }
 }
 
+/* Repaint @git-diff-view's GitHub palette with upstream claude.ai/code's git
+   tokens: added rows match upstream's --cds-bg-git-added (extended green at
+   20%), removed rows match its --cds-bg-git-removed (extended pink at 20%),
+   and the unchanged rows, gutters and expanders let the card surface show
+   through instead of painting their own near-white/near-black wash.
+
+   The extra attribute selectors are load-bearing: the library defines these
+   variables on `.diff-tailwindcss-wrapper[data-theme="light"] .diff-style-root`
+   from a stylesheet imported by the renderer components, so the override has to
+   out-specify it rather than rely on stylesheet order. Both themes share one
+   rule because --upstream-extended-green/pink already flip in `.dark`.
+
+   The library's remaining --diff-hunk-* and --diff-add-widget* colors stay at
+   their GitHub defaults on purpose: our hunks cover the whole fragment, so the
+   hunk header row never renders, and the renderers never enable add widgets. */
+.diff-tailwindcss-wrapper[data-component="git-diff-view"][data-theme] .diff-style-root {
+  --diff-border--: var(--card-outline);
+  --diff-add-content--: color-mix(in srgb, var(--upstream-extended-green) 20%, transparent);
+  --diff-add-lineNumber--: color-mix(in srgb, var(--upstream-extended-green) 28%, transparent);
+  --diff-add-content-highlight--: color-mix(
+    in srgb,
+    var(--upstream-extended-green) 35%,
+    transparent
+  );
+  --diff-del-content--: color-mix(in srgb, var(--upstream-extended-pink) 20%, transparent);
+  --diff-del-lineNumber--: color-mix(in srgb, var(--upstream-extended-pink) 28%, transparent);
+  --diff-del-content-highlight--: color-mix(
+    in srgb,
+    var(--upstream-extended-pink) 35%,
+    transparent
+  );
+  --diff-plain-content--: transparent;
+  --diff-plain-lineNumber--: transparent;
+  --diff-expand-content--: transparent;
+  --diff-expand-lineNumber--: transparent;
+  --diff-empty-content--: transparent;
+  --diff-plain-lineNumber-color--: var(--upstream-text-assistant-secondary);
+  --diff-expand-lineNumber-color--: var(--upstream-text-assistant-secondary);
+}
+
 /* Hide the old line number column in unified diff view to avoid showing
    duplicate numbers (old and new are identical for our Edit tool fragments
    which always start at line 1). */
