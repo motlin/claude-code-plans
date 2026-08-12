@@ -162,56 +162,17 @@
   border-radius: 0.5rem;
 }
 
-/* User message bubble overrides — readable on blue backgrounds */
+/* User message bubble — the bubble is a neutral wash over the page background,
+   so markdown inside it keeps the standard chrome. Only wrapping is constrained,
+   because the bubble is a flex child that must not be widened by long tokens. */
 :global(.user-message-bubble) .markdown {
-  color: var(--user-msg-text);
   overflow-wrap: anywhere;
   min-width: 0;
 }
 
-:global(.user-message-bubble) .markdown code {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.2);
-  color: var(--user-msg-text);
-}
-
 :global(.user-message-bubble) .markdown pre {
-  background: rgba(0, 0, 0, 0.2);
-  border-color: rgba(255, 255, 255, 0.15);
   max-width: 100%;
   overflow-wrap: normal;
-}
-
-:global(.user-message-bubble) .markdown pre code {
-  background: none;
-  border: none;
-  color: inherit;
-}
-
-:global(.user-message-bubble) .markdown blockquote {
-  border-left-color: rgba(255, 255, 255, 0.4);
-}
-
-:global(.user-message-bubble) .markdown th,
-:global(.user-message-bubble) .markdown td {
-  border-color: rgba(255, 255, 255, 0.25);
-}
-
-:global(.user-message-bubble) .markdown th {
-  background: rgba(0, 0, 0, 0.15);
-}
-
-:global(.user-message-bubble) .markdown a {
-  color: var(--user-msg-text);
-  text-decoration: underline;
-}
-
-:global(.user-message-bubble) .markdown hr {
-  border-top-color: rgba(255, 255, 255, 0.3);
-}
-
-:global(.user-message-bubble) .markdown :global(.task-list-item-checkbox) {
-  accent-color: var(--user-msg-text);
 }
 
 /* Shiki dual theme support:

@@ -161,9 +161,12 @@
   --accent-100: hsl(210 70.9% 51.6%);
   --accent-900: hsl(211 72% 90%);
 
-  /* User message bubble — matches claude.ai/code: 7% accent tint + blue text */
-  --user-msg-bg: hsl(210 100% 45% / 0.07);
-  --user-msg-text: hsl(210 100% 40%);
+  /* User message bubble — matches claude.ai/code: neutral t2 wash + body ink */
+  --user-msg-bg: var(--upstream-t2);
+  --user-msg-text: var(--upstream-text-assistant-primary);
+
+  /* Jump-to-message flash — accent tint, so it reads against the neutral bubble */
+  --message-highlight-bg: hsl(210 100% 45% / 0.07);
 
   /* Automated (external) message bubble — neutral gray tint */
   --auto-msg-bg: hsl(0 0% 50% / 0.08);
@@ -237,9 +240,12 @@
   --accent-100: hsl(210 70.9% 51.6%);
   --accent-900: hsl(210 55.9% 24.6%);
 
-  /* User message bubble — matches claude.ai/code: accent tint + blue text */
-  --user-msg-bg: hsl(210 100% 55% / 0.1);
-  --user-msg-text: hsl(210 80% 68%);
+  /* User message bubble — matches claude.ai/code: neutral t2 wash + body ink */
+  --user-msg-bg: var(--upstream-t2);
+  --user-msg-text: var(--upstream-text-assistant-primary);
+
+  /* Jump-to-message flash — accent tint, so it reads against the neutral bubble */
+  --message-highlight-bg: hsl(210 100% 55% / 0.1);
 
   /* Automated (external) message bubble — neutral gray tint */
   --auto-msg-bg: hsl(0 0% 100% / 0.08);
@@ -294,7 +300,7 @@
 }
 
 .message-highlight {
-  background-color: var(--user-msg-bg);
+  background-color: var(--message-highlight-bg);
 }
 
 @layer base {

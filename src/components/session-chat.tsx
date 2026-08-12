@@ -1101,7 +1101,7 @@ function UserEntry({
           </span>
         )}
         {textNodes.length > 0 && (
-          <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] rounded-bl-[2px] bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
+          <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
             {textNodes}
           </div>
         )}
@@ -1172,7 +1172,7 @@ function CompactSummaryStub({
             </button>
           </div>
           {textNodes.length > 0 && (
-            <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] rounded-bl-[2px] bg-auto-msg-bg text-auto-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
+            <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] bg-auto-msg-bg text-auto-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
               {textNodes}
             </div>
           )}
@@ -1225,7 +1225,7 @@ function LabeledAutomatedEntry({
           </span>
         </div>
         {textNodes.length > 0 && (
-          <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] rounded-bl-[2px] bg-auto-msg-bg text-auto-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
+          <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] bg-auto-msg-bg text-auto-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
             {textNodes}
           </div>
         )}
@@ -1432,7 +1432,7 @@ function CommandEntry({
   return (
     <div className="group/msg flex justify-start w-full">
       <div className="flex flex-col items-start gap-1 max-w-[75%] min-w-0">
-        <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] rounded-bl-[2px] bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
+        <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
           <TruncatedContent fadeColor="var(--bg-100)" variant="user">
             <MarkdownArticle markdown={commandText} />
           </TruncatedContent>
