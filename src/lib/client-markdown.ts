@@ -27,6 +27,19 @@ function getMarkdownVariant(options?: MarkdownRenderOptions): MarkdownVariant {
   return options?.typographer ? "typographer" : "default";
 }
 
+/** The plugins and renderer overrides every cached instance shares. */
+function applyPlugins(instance: MarkdownIt): void {
+  instance.use(taskLists);
+  instance.use(footnote);
+
+  // Upstream renders every table inside an `overflow-x-auto` div so a table wider
+  // than the transcript column scrolls on its own instead of stretching the column.
+  instance.renderer.rules["table_open"] = (tokens, idx, options, _env, self) =>
+    `<div class="markdown-table-wrapper">${self.renderToken(tokens, idx, options)}`;
+  instance.renderer.rules["table_close"] = (tokens, idx, options, _env, self) =>
+    `${self.renderToken(tokens, idx, options)}</div>`;
+}
+
 function getPlainMarkdownIt(options?: MarkdownRenderOptions): MarkdownIt {
   const variant = getMarkdownVariant(options);
   const cachedInstance = plainInstances[variant];
@@ -37,8 +50,7 @@ function getPlainMarkdownIt(options?: MarkdownRenderOptions): MarkdownIt {
     linkify: true,
     typographer: options?.typographer ?? false,
   });
-  instance.use(taskLists);
-  instance.use(footnote);
+  applyPlugins(instance);
   plainInstances[variant] = instance;
   return instance;
 }
@@ -81,8 +93,7 @@ function getHighlightedMarkdownIt(
       }
     },
   });
-  instance.use(taskLists);
-  instance.use(footnote);
+  applyPlugins(instance);
   highlightedInstances[variant] = instance;
   boundHighlighters[variant] = highlighter;
   return instance;

@@ -1,8 +1,13 @@
+/* Upstream's `epitaxy-markdown` root is a flex column whose 10px gap is the only
+   spacing between top-level blocks, so nothing here relies on collapsing margins. */
 .markdown {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   font-family: var(--font-sans);
   font-size: 14px;
-  font-weight: 430;
-  line-height: 19.6px;
+  font-weight: 400;
+  line-height: 20px;
   color: var(--text-100);
   white-space: normal;
 }
@@ -16,15 +21,11 @@
   font-size: 14px;
   font-weight: 600;
   line-height: 20px;
-  margin-top: 8px;
-  margin-bottom: 4px;
 }
 
 .markdown h1 {
   font-size: 18px;
   line-height: 24px;
-  margin-top: 0;
-  margin-bottom: 8px;
 }
 
 .markdown p {
@@ -46,9 +47,6 @@
 
 .markdown ul > li,
 .markdown ol > li {
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 20px;
   margin-top: 2px;
   margin-bottom: 2px;
 }
@@ -88,7 +86,11 @@
   border-radius: 8px;
   padding: 8px;
   margin: 8px 0;
-  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  overflow-x: visible;
+  width: fit-content;
+  max-width: 100%;
 }
 
 :global(.dark) .markdown pre {
@@ -132,10 +134,15 @@
   opacity: 0.7;
 }
 
+/* Upstream sits every table in an `overflow-x-auto` div so a wide table scrolls
+   on its own instead of stretching the transcript column. */
+.markdown :global(.markdown-table-wrapper) {
+  overflow-x: auto;
+}
+
 .markdown table {
   border-collapse: collapse;
   width: 100%;
-  margin: 8px 0;
   font-size: 13px;
 }
 
@@ -162,17 +169,21 @@
   border-radius: 0.5rem;
 }
 
+/* Top-level blocks are spaced by the flex gap, so their own block margins would
+   only double it. Nested blocks (a `p` inside a `li` or `blockquote`) are not
+   flex children and keep the margins declared above, which is why this reset is
+   scoped to direct children and declared after them. `hr` keeps its own wider
+   spacing. */
+.markdown > :not(hr) {
+  margin-block: 0;
+}
+
 /* User message bubble — the bubble is a neutral wash over the page background,
    so markdown inside it keeps the standard chrome. Only wrapping is constrained,
    because the bubble is a flex child that must not be widened by long tokens. */
 :global(.user-message-bubble) .markdown {
   overflow-wrap: anywhere;
   min-width: 0;
-}
-
-:global(.user-message-bubble) .markdown pre {
-  max-width: 100%;
-  overflow-wrap: normal;
 }
 
 /* Shiki dual theme support:
