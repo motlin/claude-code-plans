@@ -33,7 +33,7 @@ describe("BashRenderer nested body", () => {
       body: classNames(container, ":scope > div:first-child"),
       childCount: container.children.length,
       copyButton: container.querySelector("button[aria-label='Copy']") !== null,
-      command: container.textContent?.includes("$ git status"),
+      command: container.textContent?.includes("git status"),
       output: container.textContent?.includes("nothing to commit"),
     }).toStrictEqual({
       header: [],

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { ThemedToken } from "@shikijs/core";
 import { useHighlightedLines } from "../../hooks/use-shiki";
 import type { ToolRendererProps } from "./types";
@@ -29,16 +30,27 @@ function McpCliBashRenderer({
   return <Renderer toolCall={{ ...toolCall, name: syntheticName }} />;
 }
 
+// The prompt is a select-none gutter beside the command column, so copying the
+// rendered text yields the bare command and wrapped lines stay left-aligned
+// under the command rather than under the `$`.
+function CommandRow({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex">
+      <span className="select-none text-assistant-secondary">$&nbsp;</span>
+      <div className="min-w-0 flex-1 whitespace-pre-wrap">{children}</div>
+    </div>
+  );
+}
+
 function HighlightedCommand({ command }: { command: string }) {
   const tokens = useHighlightedLines(command, "shellscript");
 
   if (!tokens) {
-    return <div className="whitespace-pre-wrap">$ {command}</div>;
+    return <CommandRow>{command}</CommandRow>;
   }
 
   return (
-    <div className="whitespace-pre-wrap">
-      <span>$ </span>
+    <CommandRow>
       {tokens.map((lineTokens: ThemedToken[], lineIndex: number) => (
         <span key={lineIndex}>
           {lineIndex > 0 && "\n"}
@@ -49,7 +61,7 @@ function HighlightedCommand({ command }: { command: string }) {
           ))}
         </span>
       ))}
-    </div>
+    </CommandRow>
   );
 }
 
@@ -63,7 +75,7 @@ export function BashRenderer({ toolCall, nested = false }: ToolRendererProps) {
     return <McpCliBashRenderer toolCall={toolCall} server={mcpMatch[1]!} tool={mcpMatch[2]!} />;
   }
 
-  const copyText = resultContent ? `$ ${command}\n${resultContent}` : `$ ${command}`;
+  const copyText = resultContent ? `${command}\n${resultContent}` : command;
 
   const body = (
     <>
