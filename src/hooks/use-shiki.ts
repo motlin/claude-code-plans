@@ -248,11 +248,7 @@ export function getHighlighterVersion(): number {
  * Returns `null` while the highlighter is loading or when `language` is null.
  * Falls back to null for unknown/unloaded languages.
  */
-export function useHighlightedLines(
-  code: string,
-  language: string | null,
-  forceDark?: boolean,
-): ThemedToken[][] | null {
+export function useHighlightedLines(code: string, language: string | null): ThemedToken[][] | null {
   const resolvedTheme = useResolvedTheme();
 
   // Subscribe to highlighter readiness via useSyncExternalStore.
@@ -267,7 +263,7 @@ export function useHighlightedLines(
     void highlighterVersion;
     if (!highlighterInstance || !language) return null;
 
-    const themeName = forceDark || resolvedTheme === "dark" ? "github-dark" : "claude-light";
+    const themeName = resolvedTheme === "dark" ? "github-dark" : "claude-light";
 
     try {
       const loadedLanguages = highlighterInstance.getLoadedLanguages();
@@ -281,5 +277,5 @@ export function useHighlightedLines(
     } catch {
       return null;
     }
-  }, [code, language, forceDark, resolvedTheme, highlighterVersion]);
+  }, [code, language, resolvedTheme, highlighterVersion]);
 }

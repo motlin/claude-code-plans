@@ -80,7 +80,7 @@ export function ReadRenderer({ toolCall }: ToolRendererProps) {
 
   const { text: cleanCode } = code ? extractLineNumbers(code) : { text: "" };
   const language = detectLanguage(filePath);
-  const tokens = useHighlightedLines(cleanCode, language, true);
+  const tokens = useHighlightedLines(cleanCode, language);
   const { prefix, suffix } = splitPath(filePath);
 
   // A failed read has no file content to highlight -- upstream just prints the
@@ -108,25 +108,16 @@ export function ReadRenderer({ toolCall }: ToolRendererProps) {
         <CopyButton text={result ?? filePath} />
       </div>
 
-      {/* Body: syntax-highlighted code with dark background, capped at 400px */}
+      {/* Body: syntax-highlighted code on the card background, capped at 400px */}
       {result && (
-        <pre
-          className="m-0 max-h-[400px] overflow-y-auto overflow-x-auto font-mono text-code leading-code"
-          style={{
-            backgroundColor: "rgb(36, 41, 46)",
-            color: "rgb(225, 228, 232)",
-          }}
-        >
+        <pre className="m-0 max-h-[400px] overflow-y-auto overflow-x-auto font-mono text-code leading-code text-assistant-primary">
           <code className="grid py-1" style={{ gridTemplateColumns: "auto 1fr" }}>
             <div data-gutter="" className="select-none">
               {parsedLines.map((line, index) => (
                 <div
                   key={index}
-                  className="h-[var(--upstream-leading-code)] text-right"
-                  style={{
-                    padding: "0 0.6em 0 1.2em",
-                    color: "rgb(153, 157, 161)",
-                  }}
+                  className="h-[var(--upstream-leading-code)] text-right text-assistant-secondary"
+                  style={{ padding: "0 0.6em 0 1.2em" }}
                 >
                   {line.lineNum || ""}
                 </div>

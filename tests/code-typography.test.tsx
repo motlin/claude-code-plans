@@ -115,7 +115,7 @@ describe("code typography", () => {
       },
     }).toStrictEqual({
       gutter: {
-        className: "h-[var(--upstream-leading-code)] text-right",
+        className: "h-[var(--upstream-leading-code)] text-right text-assistant-secondary",
         padding: "0px 0.6em 0px 1.2em",
       },
       content: {
