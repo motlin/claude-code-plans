@@ -2,7 +2,7 @@
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vite-plus/test";
-import { CopyButton } from "../src/routes/session.$id";
+import { CopyButton } from "../src/components/session-page";
 import { writeClipboardText } from "../src/lib/clipboard";
 
 vi.mock("../src/lib/clipboard", () => ({

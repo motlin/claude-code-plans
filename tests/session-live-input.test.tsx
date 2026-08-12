@@ -8,7 +8,7 @@ import {
   getSessionPromptBehavior,
   routeSessionPrompt,
   useLiveHerdrPrompt,
-} from "../src/routes/session.$id";
+} from "../src/components/session-page";
 
 vi.mock("../src/components/session-chat", () => ({
   SessionChat: () => null,

@@ -85,6 +85,8 @@ export const SessionDetailResponse = z
   })
   .nullable();
 
+export type SessionDetailData = NonNullable<z.infer<typeof SessionDetailResponse>>;
+
 export const TranscriptResponse = z.object({
   records: z.array(z.record(z.string(), JsonValueSchema)),
   byteOffset: z.number(),
@@ -281,6 +283,7 @@ const SessionSubagentSchema = z.object({
   finishedAt: z.string().nullable(),
 });
 export const SessionSubagentsResponse = z.array(SessionSubagentSchema);
+export type SessionSubagentsData = z.infer<typeof SessionSubagentsResponse>;
 
 export const sessionSubagentsQueryOptions = (id: string) =>
   queryOptions({

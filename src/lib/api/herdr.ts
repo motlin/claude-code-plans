@@ -37,6 +37,8 @@ export const HerdrPaneIndexResponse = z
   })
   .strict();
 
+export type HerdrPaneIndexData = z.infer<typeof HerdrPaneIndexResponse>;
+
 const HerdrPromptSuccessResponse = z.object({ ok: z.literal(true) }).strict();
 const HerdrPromptErrorResponse = z.object({ error: z.string() }).strict();
 
