@@ -241,6 +241,8 @@ function getToolParam(name: string, input: Record<string, unknown>): string {
   if (name === "ToolSearch")
     return typeof input["query"] === "string" ? truncate(input["query"]) : "";
   if (name === "TaskCreate") return truncate(getTaskCreateDisplaySubject(input));
+  // The schedule, not the prompt, is what "Scheduled ..." reads as upstream.
+  if (name === "CronCreate") return typeof input["cron"] === "string" ? input["cron"] : "";
   if (typeof input["file_path"] === "string") return input["file_path"];
   const description = getToolDescription(name, input);
   if (description !== null) return description;

@@ -674,6 +674,65 @@ describe("SessionChat failed tool row label text", () => {
   });
 });
 
+describe("SessionChat tool row verbs", () => {
+  const SECONDARY =
+    "shrink-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary";
+  const SECONDARY_PARAM =
+    "truncate min-w-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary";
+
+  it("labels every row with an upstream verb phrase instead of the raw tool name", () => {
+    const label = (call: { name: string; input: unknown }) =>
+      toolRowLabelSpans(renderTranscript(failedToolCallRecords(false, call)));
+
+    expect({
+      glob: label({ name: "Glob", input: { pattern: ".github/workflows/*.yml" } }),
+      todoWrite: label({
+        name: "TodoWrite",
+        input: { todos: [{ content: "ship it", status: "pending", activeForm: "Shipping it" }] },
+      }),
+      enterPlanMode: label({ name: "EnterPlanMode", input: {} }),
+      exitPlanMode: label({ name: "ExitPlanMode", input: { plan: "## Plan\n\nDo the thing" } }),
+      cronCreate: label({
+        name: "CronCreate",
+        input: { cron: "0 9 * * 1", prompt: "Review the weekly metrics", recurring: true },
+      }),
+    }).toStrictEqual({
+      glob: [
+        [SECONDARY, "Searched"],
+        [SECONDARY_PARAM, ".github/workflows/*.yml"],
+      ],
+      todoWrite: [[SECONDARY, "Updated todos"]],
+      enterPlanMode: [[SECONDARY, "Entered plan mode"]],
+      exitPlanMode: [[SECONDARY, "Presented plan"]],
+      cronCreate: [
+        [SECONDARY, "Scheduled"],
+        [SECONDARY_PARAM, "0 9 * * 1"],
+      ],
+    });
+  });
+
+  it('rewrites those rows to "Failed to ..." when the call errored', () => {
+    const label = (call: { name: string; input: unknown }) =>
+      toolRowLabelSpans(renderTranscript(failedToolCallRecords(true, call))).map(
+        ([, text]) => text,
+      );
+
+    expect({
+      glob: label({ name: "Glob", input: { pattern: "*.yml" } }),
+      todoWrite: label({ name: "TodoWrite", input: { todos: [] } }),
+      enterPlanMode: label({ name: "EnterPlanMode", input: {} }),
+      exitPlanMode: label({ name: "ExitPlanMode", input: { plan: "p" } }),
+      cronCreate: label({ name: "CronCreate", input: { cron: "0 9 * * 1", prompt: "p" } }),
+    }).toStrictEqual({
+      glob: ["Failed to search", "*.yml"],
+      todoWrite: ["Failed to update todos"],
+      enterPlanMode: ["Failed to enter plan mode"],
+      exitPlanMode: ["Failed to present plan"],
+      cronCreate: ["Failed to schedule", "0 9 * * 1"],
+    });
+  });
+});
+
 /** Class list of every `<span>` in the clickable row header (classless spans -> ""). */
 function rowHeaderSpanClasses(html: string): string[] {
   const start = html.indexOf('class="relative group/tool');

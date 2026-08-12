@@ -79,6 +79,10 @@ const TOOL_CATEGORIES = [
   "toolsearch",
   "skill",
   "task",
+  "todo",
+  "planenter",
+  "planexit",
+  "cron",
 ] as const;
 type ToolCategory = (typeof TOOL_CATEGORIES)[number];
 
@@ -176,6 +180,10 @@ function categorize(call: ToolCallLike): ToolCategory | null {
     call.name === "TaskStop"
   )
     return "task";
+  if (call.name === "TodoWrite") return "todo";
+  if (call.name === "EnterPlanMode") return "planenter";
+  if (call.name === "ExitPlanMode") return "planexit";
+  if (call.name === "CronCreate") return "cron";
   return null;
 }
 
@@ -375,6 +383,30 @@ function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
         segments.push({
           verb: "Managed",
           rest: pluralize(count, "a task", "{n} tasks"),
+        });
+        break;
+      case "todo":
+        segments.push({
+          verb: "Updated",
+          rest: pluralize(count, "todos", "todos ({n} times)"),
+        });
+        break;
+      case "planenter":
+        segments.push({
+          verb: "Entered",
+          rest: pluralize(count, "plan mode", "plan mode ({n} times)"),
+        });
+        break;
+      case "planexit":
+        segments.push({
+          verb: "Presented",
+          rest: pluralize(count, "a plan", "{n} plans"),
+        });
+        break;
+      case "cron":
+        segments.push({
+          verb: "Scheduled",
+          rest: pluralize(count, "a job", "{n} jobs"),
         });
         break;
     }

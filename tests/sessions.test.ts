@@ -452,6 +452,28 @@ describe("summarizeToolCallsStructured", () => {
       { verb: "Loaded", rest: "2 tool schemas" },
     ]);
   });
+
+  it("gives plan-mode, todo and cron tools verbs instead of Called segments", () => {
+    expect({
+      todoWrite: summarizeToolCallsStructured([
+        { name: "TodoWrite", input: { todos: [] } },
+        { name: "TodoWrite", input: { todos: [] } },
+      ]),
+      enterPlanMode: summarizeToolCallsStructured([{ name: "EnterPlanMode", input: {} }]),
+      exitPlanMode: summarizeToolCallsStructured([
+        { name: "ExitPlanMode", input: { plan: "a" } },
+        { name: "ExitPlanMode", input: { plan: "b" } },
+      ]),
+      cronCreate: summarizeToolCallsStructured([
+        { name: "CronCreate", input: { cron: "0 9 * * 1", prompt: "p" } },
+      ]),
+    }).toEqual({
+      todoWrite: [{ verb: "Updated", rest: "todos (2 times)" }],
+      enterPlanMode: [{ verb: "Entered", rest: "plan mode" }],
+      exitPlanMode: [{ verb: "Presented", rest: "2 plans" }],
+      cronCreate: [{ verb: "Scheduled", rest: "a job" }],
+    });
+  });
 });
 
 describe("formatToolName", () => {

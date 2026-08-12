@@ -1801,7 +1801,7 @@ const TOOL_VERBS: Record<string, { past: string; failed: string }> = {
   Bash: { past: "Ran", failed: "Failed to run" },
   Read: { past: "Read", failed: "Failed to read" },
   Grep: { past: "Searched", failed: "Failed to search" },
-  Glob: { past: "Globbed", failed: "Failed to glob" },
+  Glob: { past: "Searched", failed: "Failed to search" },
   Agent: { past: "Ran agent", failed: "Failed to run agent" },
   WebFetch: { past: "Fetched", failed: "Failed to fetch" },
   WebSearch: { past: "Searched web", failed: "Failed to search web" },
@@ -1812,6 +1812,10 @@ const TOOL_VERBS: Record<string, { past: string; failed: string }> = {
   TaskGet: { past: "Got task", failed: "Failed to get task" },
   TaskList: { past: "Listed tasks", failed: "Failed to list tasks" },
   TaskStop: { past: "Stopped task", failed: "Failed to stop task" },
+  TodoWrite: { past: "Updated todos", failed: "Failed to update todos" },
+  EnterPlanMode: { past: "Entered plan mode", failed: "Failed to enter plan mode" },
+  ExitPlanMode: { past: "Presented plan", failed: "Failed to present plan" },
+  CronCreate: { past: "Scheduled", failed: "Failed to schedule" },
 };
 
 function toolCallVerb(name: string): string {
