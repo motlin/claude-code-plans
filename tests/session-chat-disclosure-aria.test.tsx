@@ -116,21 +116,4 @@ describe("SessionChat disclosure accessibility", () => {
       TOGGLES_AND_CONTROLS_ITS_BODY,
     );
   });
-
-  it("exposes aria-expanded and aria-controls on the thinking disclosure, toggling on click", () => {
-    const container = renderTranscript([
-      {
-        type: "assistant",
-        uuid: "a1",
-        message: {
-          role: "assistant",
-          content: [{ type: "thinking", thinking: "Fabricated reasoning" }],
-        },
-      },
-    ]);
-
-    expect(statesAroundClick(container.querySelector("button"))).toStrictEqual(
-      TOGGLES_AND_CONTROLS_ITS_BODY,
-    );
-  });
 });

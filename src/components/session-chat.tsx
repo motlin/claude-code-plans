@@ -25,7 +25,12 @@ import type { ClientToolCall } from "./tool-renderers";
 import type { LiveToolFailure, SubagentLookup } from "./tool-renderers/types";
 import type { Subagent } from "../lib/subagents";
 import { useClaudeEvents } from "../hooks/use-claude-events";
-import { ChevronIcon, CollapsibleSection, TerminalOutput } from "./tool-renderers/shared";
+import {
+  ChevronIcon,
+  CollapsibleSection,
+  CopyButton,
+  TerminalOutput,
+} from "./tool-renderers/shared";
 import { SystemBanner, formatTokens } from "./system-banner";
 import { promptSourceLabels } from "../lib/schema-choices";
 import { computeDiffData } from "../lib/diff-utils";
@@ -1529,39 +1534,31 @@ function BashEntry({
   );
 }
 
+/**
+ * Thinking text, rendered the way upstream claude.ai/code does: always visible,
+ * inline italic body type in the 50%-ink layer. `pr-6` reserves the gutter the
+ * hover-revealed controls sit in.
+ *
+ * The group is named `body` rather than upstream's `thinking` so the shared
+ * `CopyButton` hover reveal applies unchanged.
+ */
 function ThinkingBlock({
   thinking,
   sessionId,
   sourceUuid,
 }: {
   thinking: string;
-  sessionId?: string;
-  sourceUuid?: string | undefined;
+  sessionId: string;
+  sourceUuid: string | undefined;
 }) {
-  const [open, setOpen] = useState(false);
-  const bodyId = useId();
-
   return (
-    <div className="border-l-2 border-warning-100 pl-3 my-1">
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-controls={bodyId}
-          onClick={() => setOpen(!open)}
-          className="text-xs text-warning-100 cursor-pointer flex items-center gap-1 leading-tight"
-        >
-          <ChevronIcon expanded={open} size={12} />
-          Thinking...
-        </button>
-        {sessionId && <DebugLink sessionId={sessionId} uuid={sourceUuid} />}
+    <div className="group/body relative">
+      <div className="text-body text-t6 italic whitespace-pre-wrap break-words pr-6">
+        {thinking}
       </div>
-      <div id={bodyId} className={`grid ${open ? "grid-rows-expand" : "grid-rows-collapse"}`}>
-        <div className="overflow-hidden">
-          <div className="mt-1 text-xs italic text-text-500 whitespace-pre-wrap bg-bg-200/50 rounded p-2 max-h-64 overflow-auto leading-relaxed">
-            {thinking}
-          </div>
-        </div>
+      <div className="absolute right-0 top-0 flex items-center gap-g3">
+        <DebugLink sessionId={sessionId} uuid={sourceUuid} />
+        <CopyButton text={thinking} />
       </div>
     </div>
   );
