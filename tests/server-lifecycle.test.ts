@@ -45,9 +45,39 @@ function serverPids(): string[] {
   }
 }
 
+function darwinListeners(): Array<{ address: string; processId: string }> {
+  return execFileSync("netstat", ["-anv", "-p", "tcp"], { encoding: "utf8" })
+    .split("\n")
+    .map((line) => line.trim().split(/\s+/))
+    .filter(
+      (fields) =>
+        fields[0]?.startsWith("tcp") === true &&
+        fields[3]?.endsWith(`.${PORT}`) === true &&
+        fields[5] === "LISTEN",
+    )
+    .map((fields) => {
+      const address = fields[3];
+      const processId = fields[10];
+      if (address === undefined || processId === undefined) {
+        throw new Error(`Unexpected netstat listener row: ${fields.join(" ")}`);
+      }
+      return {
+        address: `${address.slice(0, -PORT.length - 1)}:${PORT}`,
+        processId,
+      };
+    });
+}
+
 function portOwners(): string[] {
+  if (process.platform === "darwin") {
+    return darwinListeners()
+      .map(({ processId }) => processId)
+      .sort();
+  }
   try {
-    return execSync(`lsof -t -iTCP:${PORT} -sTCP:LISTEN`, { encoding: "utf8" })
+    return execFileSync("lsof", ["-nP", "-t", `-iTCP:${PORT}`, "-sTCP:LISTEN"], {
+      encoding: "utf8",
+    })
       .trim()
       .split("\n")
       .filter(Boolean)
@@ -58,6 +88,9 @@ function portOwners(): string[] {
 }
 
 function listenerAddresses(): string[] {
+  if (process.platform === "darwin") {
+    return darwinListeners().map(({ address }) => address);
+  }
   return execFileSync("lsof", ["-a", `-iTCP:${PORT}`, "-sTCP:LISTEN", "-P", "-n", "-Fn"], {
     encoding: "utf8",
   })

@@ -566,22 +566,40 @@ function AttachmentContent({
   }
 }
 
+/**
+ * `pill` is the bordered, icon-led card upstream claude.ai/code reserves for
+ * rows that expand into a body. `status` is its inline status line: no icon,
+ * no background, no border, footnote type in the muted `t6` ink.
+ */
+export type BannerVariant = "pill" | "status";
+
 export function Banner({
   icon,
   label,
   children,
   sessionId,
   uuid,
+  variant = "pill",
 }: {
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   label?: string;
   children?: React.ReactNode;
   sessionId?: string | undefined;
   uuid?: string | undefined;
+  variant?: BannerVariant;
 }) {
+  if (variant === "status") {
+    return (
+      <div className="flex items-center gap-1.5 min-w-0 text-footnote text-t6 select-none">
+        {label && <span className="truncate min-w-0">{label}</span>}
+        {children}
+        {sessionId && <DebugLink sessionId={sessionId} uuid={uuid} className="ml-auto" />}
+      </div>
+    );
+  }
   return (
     <div className="flex flex-wrap items-center gap-2 py-1.5 px-3 text-xs text-text-500 bg-bg-100 rounded-md border border-border-300/10">
-      <span className="shrink-0">{icon}</span>
+      {icon && <span className="shrink-0">{icon}</span>}
       {label && <span>{label}</span>}
       {children}
       {sessionId && <DebugLink sessionId={sessionId} uuid={uuid} className="ml-auto" />}

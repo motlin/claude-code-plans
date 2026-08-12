@@ -9,6 +9,13 @@ function renderBanner(line: SystemLine): string {
   return renderToStaticMarkup(<SystemBanner line={line} />);
 }
 
+/** The class list of the banner's outermost element. */
+function rootClassName(html: string): string | null {
+  return /^<[a-z]+ class="([^"]*)"/.exec(html)?.[1] ?? null;
+}
+
+const STATUS_CLASS = "flex items-center gap-1.5 min-w-0 text-footnote text-t6 select-none";
+
 describe("SystemBanner", () => {
   it("renders compact_boundary with token stats", () => {
     const html = renderBanner({
@@ -118,5 +125,72 @@ describe("SystemBanner", () => {
     });
     expect(html).toContain("Turn took 46.4s");
     expect(html).toContain("2 background agents pending");
+  });
+});
+
+describe("SystemBanner variants", () => {
+  it("draws single-line informational subtypes as borderless status lines", () => {
+    const compact = renderBanner({
+      type: "system",
+      subtype: "compact_boundary",
+      content: "Conversation compacted",
+      lineIndex: 0,
+    });
+    const apiError = renderBanner({
+      type: "system",
+      subtype: "api_error",
+      error: "Overloaded",
+      lineIndex: 0,
+    });
+    const turnDuration = renderBanner({
+      type: "system",
+      subtype: "turn_duration",
+      durationMs: 1000,
+      lineIndex: 0,
+    });
+
+    expect({
+      compactBoundary: rootClassName(compact),
+      apiError: rootClassName(apiError),
+      turnDuration: rootClassName(turnDuration),
+    }).toStrictEqual({
+      compactBoundary: STATUS_CLASS,
+      apiError: STATUS_CLASS,
+      turnDuration: STATUS_CLASS,
+    });
+  });
+
+  it("keeps the bordered pill for the subtype with expandable children", () => {
+    const html = renderBanner({
+      type: "system",
+      subtype: "stop_hook_summary",
+      hookCount: 2,
+      hookErrors: ["boom"],
+      lineIndex: 0,
+    });
+
+    expect(rootClassName(html)).toStrictEqual(
+      "flex flex-wrap items-center gap-2 py-1.5 px-3 text-xs text-text-500 bg-bg-100 rounded-md border border-border-300/10",
+    );
+  });
+
+  it("drops the icon from status lines and keeps it on pills", () => {
+    const status = renderBanner({
+      type: "system",
+      subtype: "turn_duration",
+      durationMs: 1000,
+      lineIndex: 0,
+    });
+    const pill = renderBanner({
+      type: "system",
+      subtype: "stop_hook_summary",
+      hookCount: 1,
+      lineIndex: 0,
+    });
+
+    expect({ status: status.includes("<svg"), pill: pill.includes("<svg") }).toStrictEqual({
+      status: false,
+      pill: true,
+    });
   });
 });

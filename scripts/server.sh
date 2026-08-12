@@ -24,7 +24,12 @@ LOG_FILE=${LOG_FILE:-"${XDG_CACHE_HOME:-$HOME/.cache}/claude-code-plans/server.l
 
 # PIDs listening on the port, including wildcard and IPv6 bindings.
 port_pids() {
-    lsof -t -iTCP:"$PORT" -sTCP:LISTEN 2>/dev/null || true
+    if [ "$(uname -s)" = "Darwin" ]; then
+        netstat -anv -p tcp | awk -v port="$PORT" \
+            '$1 ~ /^tcp/ && $4 ~ ("[.:]" port "$") && $6 == "LISTEN" { print $11 }'
+        return
+    fi
+    lsof -nP -t -iTCP:"$PORT" -sTCP:LISTEN 2>/dev/null || true
 }
 
 # PIDs of server processes we own: command line matches SERVER_MATCH and cwd

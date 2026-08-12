@@ -595,6 +595,69 @@ function GroupedToolCallEntry({
   );
 }
 
+/**
+ * The session metadata upstream claude.ai/code folds into one collapsed
+ * "Initialized session" disclosure at the head of a transcript. Only the
+ * leading run folds -- a worktree switch mid-session is news, not setup.
+ */
+const SESSION_INIT_LINE_TYPES = new Set([
+  "agent-name",
+  "agent-color",
+  "permission-mode",
+  "worktree",
+]);
+
+/**
+ * Upstream's collapsed session-init row: a bare disclosure button with a
+ * truncating primary label and a secondary chevron, holding the individual
+ * metadata banners as its expanded body.
+ */
+function SessionInitEntry({
+  lines,
+  indices,
+  ...renderProps
+}: LineRenderProps & {
+  lines: SessionLine[];
+  indices: number[];
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const bodyId = useId();
+
+  return (
+    <div className={`flex flex-col w-full ${TURN_GAP_CLASS}`}>
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-controls={bodyId}
+        onClick={() => setExpanded(!expanded)}
+        className="group/tool flex self-start max-w-full items-center gap-g2 text-left hide-focus-ring rounded-r3"
+      >
+        <span className="text-body min-w-0 truncate text-assistant-primary">
+          Initialized session
+        </span>
+        <span className="shrink-0 text-assistant-secondary group-hover/tool:text-assistant-primary">
+          <ChevronIcon expanded={expanded} size={14} />
+        </span>
+      </button>
+      <div id={bodyId} className={`grid ${expanded ? "grid-rows-expand" : "grid-rows-collapse"}`}>
+        <div className="overflow-hidden">
+          <div className="flex flex-col pt-p6">
+            {indices.map((index) => (
+              <LineEntry
+                key={`line-${index}`}
+                line={lines[index]!}
+                index={index}
+                nextLine={lines[index + 1]}
+                {...renderProps}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const BANNER_LINE_TYPES = new Set([
   "agent-name",
   "agent-color",
@@ -634,6 +697,24 @@ function SessionLineList({
   const elements: React.ReactNode[] = [];
   let prevVisibleType: string | null = null;
   let i = 0;
+
+  const initIndices: number[] = [];
+  while (i < lines.length) {
+    const line = lines[i]!;
+    if (skipSet.has(i) || !isLineVisible(line, renderProps)) {
+      i++;
+      continue;
+    }
+    if (!SESSION_INIT_LINE_TYPES.has(line.type)) break;
+    initIndices.push(i);
+    i++;
+  }
+  if (initIndices.length > 0) {
+    elements.push(
+      <SessionInitEntry key="session-init" lines={lines} indices={initIndices} {...renderProps} />,
+    );
+    prevVisibleType = "session-init";
+  }
 
   while (i < lines.length) {
     const line = lines[i]!;

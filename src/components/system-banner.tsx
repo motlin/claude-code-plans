@@ -1,4 +1,4 @@
-import { AlertTriangle, Bot, Hourglass, Scissors, Webhook } from "lucide-react";
+import { Webhook } from "lucide-react";
 import { assertNever } from "../lib/assert-never";
 import type { ProcessedLine } from "../lib/transcript";
 import { Banner, Pre } from "./attachment-banner";
@@ -51,13 +51,13 @@ export function SystemBanner({
       const segment = meta?.preservedSegment;
       return (
         <Banner
-          icon={<Scissors className="h-3.5 w-3.5" />}
+          variant="status"
           label={line.content ?? "Conversation compacted"}
           sessionId={sessionId}
           uuid={line.uuid}
         >
           {meta && (
-            <span className="text-text-600">
+            <span className="truncate min-w-0">
               {meta.trigger === "auto" ? "auto" : "manual"}
               {" · "}
               {formatTokens(meta.preTokens)}
@@ -68,7 +68,7 @@ export function SystemBanner({
             </span>
           )}
           {segment && (
-            <span className="basis-full font-mono text-[10px] text-text-600">
+            <span className="font-mono truncate min-w-0">
               head {segment.headUuid.slice(0, 8)} · anchor {segment.anchorUuid.slice(0, 8)} · tail{" "}
               {segment.tailUuid.slice(0, 8)}
             </span>
@@ -117,25 +117,25 @@ export function SystemBanner({
     case "api_error":
       return (
         <Banner
-          icon={<AlertTriangle className="h-3.5 w-3.5" />}
+          variant="status"
           label={errorHeadline(line.error) ?? "API error"}
           sessionId={sessionId}
           uuid={line.uuid}
         >
           {line.retryAttempt !== undefined && line.maxRetries !== undefined && (
-            <span className="text-text-600">
+            <span className="shrink-0">
               retry {line.retryAttempt}/{line.maxRetries}
             </span>
           )}
           {line.retryInMs !== undefined && (
-            <span className="text-text-600">in {formatMs(line.retryInMs)}</span>
+            <span className="shrink-0">in {formatMs(line.retryInMs)}</span>
           )}
         </Banner>
       );
     case "turn_duration":
       return (
         <Banner
-          icon={<Hourglass className="h-3.5 w-3.5" />}
+          variant="status"
           label={
             line.durationMs !== undefined
               ? `Turn took ${formatMs(line.durationMs)}`
@@ -146,8 +146,7 @@ export function SystemBanner({
         >
           {line.pendingBackgroundAgentCount !== undefined &&
             line.pendingBackgroundAgentCount > 0 && (
-              <span className="inline-flex items-center gap-1 text-text-600">
-                <Bot className="h-3 w-3" />
+              <span className="shrink-0">
                 {line.pendingBackgroundAgentCount} background agent
                 {line.pendingBackgroundAgentCount === 1 ? "" : "s"} pending
               </span>
