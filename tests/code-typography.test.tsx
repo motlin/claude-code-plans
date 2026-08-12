@@ -88,7 +88,10 @@ describe("code typography", () => {
         .map((element) => element.parentElement?.className),
     }).toStrictEqual({
       fontSizes: [13, 13],
-      wrappers: ["overflow-hidden text-code", "overflow-hidden text-code"],
+      wrappers: [
+        "max-h-[400px] overflow-y-auto text-code",
+        "max-h-[400px] overflow-y-auto text-code",
+      ],
     });
   });
 

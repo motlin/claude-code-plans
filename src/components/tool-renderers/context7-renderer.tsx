@@ -19,7 +19,7 @@ export function Context7Renderer({ toolCall }: ToolRendererProps) {
     <ErrorBorder isError={isError}>
       <KeyValueCard params={params} result={isMarkdownResult ? undefined : resultText || undefined}>
         {isMarkdownResult && (
-          <div className="text-xs text-text-100 leading-relaxed max-h-64 overflow-auto">
+          <div className="text-xs text-text-100 leading-relaxed">
             <MarkdownArticle markdown={resultText} />
           </div>
         )}

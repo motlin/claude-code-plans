@@ -78,7 +78,7 @@ export function BashRenderer({ toolCall }: ToolRendererProps) {
         {command && <HighlightedCommand command={command} />}
         {resultContent && (
           <div
-            className={`whitespace-pre-wrap break-all ${isError ? "text-extended-pink" : "text-assistant-secondary"}`}
+            className={`max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all ${isError ? "text-extended-pink" : "text-assistant-secondary"}`}
           >
             <AnsiText content={resultContent} />
           </div>

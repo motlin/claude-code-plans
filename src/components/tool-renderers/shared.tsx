@@ -292,13 +292,10 @@ export function TerminalOutput({ content, maxLines = 20 }: { content: string; ma
 export function ExpandableBlock({
   lineCount,
   maxLines = 20,
-  gradientFromClass,
   children,
 }: {
   lineCount: number;
   maxLines?: number;
-  /** Override the gradient start color class (default: from-bg-000). */
-  gradientFromClass?: string | undefined;
   children: ReactNode;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -316,9 +313,7 @@ export function ExpandableBlock({
     <div>
       <div className="relative overflow-hidden" style={{ maxHeight }}>
         {children}
-        <div
-          className={`absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t ${gradientFromClass ?? "from-bg-000"} to-transparent pointer-events-none`}
-        />
+        <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-bg-000 to-transparent pointer-events-none" />
       </div>
       <button
         type="button"
@@ -460,8 +455,9 @@ export interface KeyValueParam {
  *
  * Layout:
  *   flex w-full
- *     flex-1 content (params + result)
- *     CopyButton (hover-visible)
+ *     flex-1 column
+ *       max-h-[400px] scroller (params + result + children)
+ *     CopyButton (hover-visible, outside the scroller)
  */
 export function KeyValueCard({
   params,
@@ -485,26 +481,28 @@ export function KeyValueCard({
   return (
     <div className="flex w-full">
       <div className="flex-1 min-w-0 flex flex-col gap-g4 text-body text-assistant-secondary whitespace-pre-wrap break-words">
-        {params.length > 0 && (
-          <div className="text-assistant-secondary">
-            {params.map((p) => (
-              <div key={p.key}>
-                {p.markdown ? (
-                  <>
-                    <span className="font-semibold">{p.key}:</span>
-                    <InlineMarkdown text={p.value} />
-                  </>
-                ) : (
-                  <>
-                    {p.key}: {p.value}
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-        {result && (markdownResult ? <InlineMarkdown text={result} /> : <div>{result}</div>)}
-        {children}
+        <div className="max-h-[400px] overflow-y-auto flex flex-col gap-g4">
+          {params.length > 0 && (
+            <div className="text-assistant-secondary">
+              {params.map((p) => (
+                <div key={p.key}>
+                  {p.markdown ? (
+                    <>
+                      <span className="font-semibold">{p.key}:</span>
+                      <InlineMarkdown text={p.value} />
+                    </>
+                  ) : (
+                    <>
+                      {p.key}: {p.value}
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          {result && (markdownResult ? <InlineMarkdown text={result} /> : <div>{result}</div>)}
+          {children}
+        </div>
       </div>
       <CopyButton text={copyText ?? derivedCopyText} />
     </div>

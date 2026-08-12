@@ -2,7 +2,7 @@ import type { ThemedToken } from "@shikijs/core";
 import { extractLineNumbers, detectLanguage } from "../../lib/diff-utils";
 import { useHighlightedLines } from "../../hooks/use-shiki";
 import type { ToolRendererProps } from "./types";
-import { CopyButton, ErrorBorder, ExpandableBlock } from "./shared";
+import { CopyButton, ErrorBorder } from "./shared";
 
 interface ParsedLine {
   lineNum: string | null;
@@ -74,7 +74,6 @@ function splitPath(filePath: string): { prefix: string; suffix: string } {
 export function ReadRenderer({ toolCall }: ToolRendererProps) {
   const filePath = (toolCall.input["file_path"] as string) ?? "";
   const { result, isError } = toolCall;
-  const lineCount = result ? result.split("\n").length : 0;
 
   const parsedLines = result ? parseLineNumbers(result) : [];
 
@@ -96,53 +95,47 @@ export function ReadRenderer({ toolCall }: ToolRendererProps) {
         <CopyButton text={result ?? filePath} />
       </div>
 
-      {/* Body: syntax-highlighted code with dark background */}
+      {/* Body: syntax-highlighted code with dark background, capped at 400px */}
       {result && (
-        <ExpandableBlock
-          lineCount={lineCount}
-          maxLines={20}
-          gradientFromClass="from-[rgb(36,41,46)]"
+        <pre
+          className="m-0 max-h-[400px] overflow-y-auto overflow-x-auto font-mono text-code leading-code"
+          style={{
+            backgroundColor: "rgb(36, 41, 46)",
+            color: "rgb(225, 228, 232)",
+          }}
         >
-          <pre
-            className="m-0 overflow-x-auto overflow-y-hidden font-mono text-code leading-code"
-            style={{
-              backgroundColor: "rgb(36, 41, 46)",
-              color: "rgb(225, 228, 232)",
-            }}
-          >
-            <code className="grid py-1" style={{ gridTemplateColumns: "auto 1fr" }}>
-              <div data-gutter="" className="select-none">
-                {parsedLines.map((line, index) => (
-                  <div
-                    key={index}
-                    className="h-[var(--upstream-leading-code)] text-right"
-                    style={{
-                      padding: "0 0.6em 0 1.2em",
-                      color: "rgb(153, 157, 161)",
-                    }}
-                  >
-                    {line.lineNum || ""}
-                  </div>
-                ))}
-              </div>
-              <div data-content="">
-                {parsedLines.map((line, index) => (
-                  <div
-                    key={index}
-                    className="h-[var(--upstream-leading-code)] whitespace-pre"
-                    style={{ padding: "0 0.6em" }}
-                  >
-                    {tokens?.[index] ? (
-                      <HighlightedLine tokens={tokens[index]} />
-                    ) : (
-                      <PlainLine content={line.content} />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </code>
-          </pre>
-        </ExpandableBlock>
+          <code className="grid py-1" style={{ gridTemplateColumns: "auto 1fr" }}>
+            <div data-gutter="" className="select-none">
+              {parsedLines.map((line, index) => (
+                <div
+                  key={index}
+                  className="h-[var(--upstream-leading-code)] text-right"
+                  style={{
+                    padding: "0 0.6em 0 1.2em",
+                    color: "rgb(153, 157, 161)",
+                  }}
+                >
+                  {line.lineNum || ""}
+                </div>
+              ))}
+            </div>
+            <div data-content="">
+              {parsedLines.map((line, index) => (
+                <div
+                  key={index}
+                  className="h-[var(--upstream-leading-code)] whitespace-pre"
+                  style={{ padding: "0 0.6em" }}
+                >
+                  {tokens?.[index] ? (
+                    <HighlightedLine tokens={tokens[index]} />
+                  ) : (
+                    <PlainLine content={line.content} />
+                  )}
+                </div>
+              ))}
+            </div>
+          </code>
+        </pre>
       )}
     </ErrorBorder>
   );

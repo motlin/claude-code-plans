@@ -78,7 +78,7 @@ export function EditRenderer({ toolCall }: ToolRendererProps) {
     return (
       <div className="px-p6 py-p5">
         <pre
-          className={`text-code font-mono whitespace-pre-wrap break-all ${isError ? "text-extended-pink" : "text-assistant-secondary"}`}
+          className={`max-h-[400px] overflow-y-auto text-code font-mono whitespace-pre-wrap break-all ${isError ? "text-extended-pink" : "text-assistant-secondary"}`}
         >
           {result}
         </pre>
@@ -103,7 +103,7 @@ export function EditRenderer({ toolCall }: ToolRendererProps) {
 
       {/* Body: unified diff view */}
       {viewData && (
-        <div className="overflow-hidden text-code">
+        <div className="max-h-[400px] overflow-y-auto text-code">
           <DiffView
             data={viewData}
             diffViewMode={DiffModeEnum.Unified}
@@ -119,7 +119,7 @@ export function EditRenderer({ toolCall }: ToolRendererProps) {
       {/* Error result text (shown below diff when edit failed) */}
       {isError && result && (
         <div className="px-p6 pb-p8">
-          <pre className="text-code font-mono whitespace-pre-wrap break-all text-extended-pink">
+          <pre className="max-h-[400px] overflow-y-auto text-code font-mono whitespace-pre-wrap break-all text-extended-pink">
             {result}
           </pre>
         </div>
