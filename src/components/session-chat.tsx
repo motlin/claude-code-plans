@@ -2034,6 +2034,42 @@ function bashRowLabel(call: ClientToolCall): string {
   return description === null ? call.param : pastTense(description);
 }
 
+/**
+ * A Read bound (`offset`/`limit`) as a positive integer. Claude Code has
+ * written these as strings on disk (`"offset": "55, "`), so parse rather than
+ * cast, and treat anything non-positive as absent.
+ */
+function readBound(value: unknown): number | null {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number.parseInt(value, 10)
+        : NaN;
+  if (!Number.isFinite(parsed) || parsed < 1) return null;
+  return Math.trunc(parsed);
+}
+
+/**
+ * The line range of a partial Read, as upstream appends it to the row
+ * ("Read archive-completed.ts (220-239)"), so a slice is distinguishable from
+ * a whole-file read. Null when the call read the whole file.
+ *
+ * Upstream also merges the ranges of repeated reads of one file into a single
+ * row ("(220-239, 465-47...)"); we keep every call on its own row instead, so
+ * that no per-call duration, result, or debug link is lost.
+ */
+function readRangeLabel(call: ClientToolCall): string | null {
+  if (call.name !== "Read") return null;
+  const offset = readBound(call.input["offset"]);
+  const limit = readBound(call.input["limit"]);
+  if (offset === null && limit === null) return null;
+  const start = offset ?? 1;
+  if (limit === null) return `(${start}–)`;
+  const end = start + limit - 1;
+  return end === start ? `(${start})` : `(${start}–${end})`;
+}
+
 function lowercaseFirst(text: string): string {
   return text.charAt(0).toLowerCase() + text.slice(1);
 }
@@ -2230,6 +2266,7 @@ function ToolCallRow({
       : isFileParam
         ? (call.param.split("/").pop() ?? call.param)
         : call.param;
+  const rangeLabel = displayParam ? readRangeLabel(call) : null;
 
   const rowLabel = (
     <>
@@ -2250,6 +2287,9 @@ function ToolCallRow({
         >
           {displayParam}
         </span>
+      )}
+      {rangeLabel && (
+        <span className={`text-body ${labelClass} truncate min-w-0`}>{rangeLabel}</span>
       )}
       {diffStats && <DiffStats added={diffStats.added} removed={diffStats.removed} />}
     </>

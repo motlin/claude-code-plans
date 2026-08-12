@@ -916,6 +916,76 @@ describe("SessionChat file-param tool row argument", () => {
       [ARGUMENT, "schema.ts"],
     ]);
   });
+
+  // Upstream labels a partial read with the line range beside the filename
+  // ("Read archive-completed.ts (220-239)"), in its own secondary span, so a
+  // slice is distinguishable from a whole-file read.
+  const RANGE =
+    "text-body text-assistant-secondary group-hover/tool:text-assistant-primary truncate min-w-0";
+
+  function readRow(input: unknown): [string, string][] {
+    return toolRowLabelSpans(
+      renderTranscript(toolCallRecords([{ id: "t1", name: "Read", input }])),
+    );
+  }
+
+  it("appends the line range of a partial read to the row", () => {
+    expect(readRow({ file_path: "/repo/src/cache.ts", offset: 220, limit: 20 })).toStrictEqual([
+      [VERB, "Read"],
+      [ARGUMENT, "cache.ts"],
+      [RANGE, "(220–239)"],
+    ]);
+  });
+
+  it("counts a limit with no offset from the first line", () => {
+    expect(readRow({ file_path: "/repo/src/cache.ts", limit: 50 })).toStrictEqual([
+      [VERB, "Read"],
+      [ARGUMENT, "cache.ts"],
+      [RANGE, "(1–50)"],
+    ]);
+  });
+
+  it("leaves an offset with no limit open-ended", () => {
+    expect(readRow({ file_path: "/repo/src/cache.ts", offset: 220 })).toStrictEqual([
+      [VERB, "Read"],
+      [ARGUMENT, "cache.ts"],
+      [RANGE, "(220–)"],
+    ]);
+  });
+
+  it("names a single-line read once instead of as an empty range", () => {
+    expect(readRow({ file_path: "/repo/src/cache.ts", offset: 220, limit: 1 })).toStrictEqual([
+      [VERB, "Read"],
+      [ARGUMENT, "cache.ts"],
+      [RANGE, "(220)"],
+    ]);
+  });
+
+  // Claude Code has written `"offset": "55, "` on disk, so the row parses the
+  // bounds rather than trusting them to be numbers.
+  it("parses string bounds and ignores unparseable ones", () => {
+    expect({
+      stringy: readRow({ file_path: "/repo/src/cache.ts", offset: "55, ", limit: "45" }),
+      junk: readRow({ file_path: "/repo/src/cache.ts", offset: "start", limit: 0 }),
+    }).toStrictEqual({
+      stringy: [
+        [VERB, "Read"],
+        [ARGUMENT, "cache.ts"],
+        [RANGE, "(55–99)"],
+      ],
+      junk: [
+        [VERB, "Read"],
+        [ARGUMENT, "cache.ts"],
+      ],
+    });
+  });
+
+  it("leaves a whole-file read unranged", () => {
+    expect(readRow({ file_path: "/repo/src/cache.ts" })).toStrictEqual([
+      [VERB, "Read"],
+      [ARGUMENT, "cache.ts"],
+    ]);
+  });
 });
 
 describe("SessionChat Agent row label", () => {
