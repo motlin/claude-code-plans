@@ -1868,7 +1868,7 @@ const TOOL_VERBS: Record<string, { past?: string; failed: string }> = {
   Agent: { failed: "Failed to run agent" },
   WebFetch: { past: "Fetched", failed: "Failed to fetch" },
   WebSearch: { past: "Searched web", failed: "Failed to search web" },
-  ToolSearch: { past: "Used ToolSearch", failed: "Failed to use ToolSearch" },
+  ToolSearch: { past: "Searched tools", failed: "Failed to search tools" },
   Skill: { past: "Loaded skill", failed: "Failed to load skill" },
   TaskCreate: { past: "Created task", failed: "Failed to create task" },
   TaskUpdate: { past: "Updated task", failed: "Failed to update task" },
@@ -2007,7 +2007,6 @@ const FILE_PARAM_TOOLS = new Set(["Read", "Edit", "MultiEdit", "Write"]);
  * so we suppress it from the ToolCallRow header to avoid duplication.
  */
 const RENDERER_HANDLES_PARAM = new Set([
-  "ToolSearch",
   "mcp__claude-in-chrome__navigate",
   "mcp__chrome-devtools__navigate_page",
   "mcp__plugin_playwright_playwright__browser_navigate",
@@ -2049,6 +2048,24 @@ const CODE_CARD_TOOLS = new Set(["Read", "Edit", "MultiEdit", "Write"]);
 const NON_EXPANDING_TOOLS = new Set(["TodoWrite", "EnterPlanMode"]);
 
 /**
+ * Tools whose renderer body is nothing but the call's result plus the input
+ * keys listed here. With no result and none of those keys, the renderer draws
+ * an empty card, so the row has nothing to disclose -- upstream renders such a
+ * row bare, with no chevron and no expander.
+ */
+const RESULT_ONLY_BODY_INPUT_KEYS: Record<string, readonly string[]> = {
+  TaskList: [],
+  TaskGet: ["taskId", "id"],
+};
+
+function rendersEmptyBody(call: ClientToolCall): boolean {
+  const inputKeys = RESULT_ONLY_BODY_INPUT_KEYS[call.name];
+  if (inputKeys === undefined) return false;
+  if (call.result) return false;
+  return !inputKeys.some((key) => call.input[key] !== undefined);
+}
+
+/**
  * Tools that show inline diff stats (+N -M) in the clickable row.
  */
 const EDIT_TOOLS = new Set(["Edit", "MultiEdit"]);
@@ -2085,7 +2102,8 @@ function ToolCallRow({
   const bodyId = useId();
   const { settings } = useSettings();
   const verbose = settings.verbosity === "verbose";
-  const expandable = !NON_EXPANDING_TOOLS.has(call.name);
+  const hasBody = !rendersEmptyBody(call);
+  const expandable = hasBody && !NON_EXPANDING_TOOLS.has(call.name);
   const Renderer = getToolRenderer(call.name);
   const verb = toolCallVerb(call.name);
   const isFileParam = FILE_PARAM_TOOLS.has(call.name);
@@ -2156,7 +2174,7 @@ function ToolCallRow({
     </>
   );
 
-  const body = isCardStyle ? (
+  const body = !hasBody ? null : isCardStyle ? (
     <div className="group/body py-p6">
       <div
         className={`card-outline ${isCodeCard ? "code-card " : ""}rounded-r6 overflow-clip flex flex-col relative`}

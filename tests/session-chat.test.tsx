@@ -1061,6 +1061,7 @@ describe("SessionChat tool row verbs", () => {
         name: "CronCreate",
         input: { cron: "0 9 * * 1", prompt: "Review the weekly metrics", recurring: true },
       }),
+      toolSearch: label({ name: "ToolSearch", input: { query: "select:Read,Edit" } }),
     }).toStrictEqual({
       glob: [
         [SECONDARY, "Searched"],
@@ -1072,6 +1073,10 @@ describe("SessionChat tool row verbs", () => {
       cronCreate: [
         [SECONDARY, "Scheduled"],
         [SECONDARY_PARAM, "0 9 * * 1"],
+      ],
+      toolSearch: [
+        [SECONDARY, "Searched tools"],
+        [SECONDARY_PARAM, "select:Read,Edit"],
       ],
     });
   });
@@ -1088,12 +1093,14 @@ describe("SessionChat tool row verbs", () => {
       enterPlanMode: label({ name: "EnterPlanMode", input: {} }),
       exitPlanMode: label({ name: "ExitPlanMode", input: { plan: "p" } }),
       cronCreate: label({ name: "CronCreate", input: { cron: "0 9 * * 1", prompt: "p" } }),
+      toolSearch: label({ name: "ToolSearch", input: { query: "select:Read" } }),
     }).toStrictEqual({
       glob: ["Failed to search", "*.yml"],
       todoWrite: ["Failed to update todos"],
       enterPlanMode: ["Failed to enter plan mode"],
       exitPlanMode: ["Failed to present plan"],
       cronCreate: ["Failed to schedule", "0 9 * * 1"],
+      toolSearch: ["Failed to search tools", "select:Read"],
     });
   });
 });
@@ -1221,6 +1228,46 @@ describe("SessionChat non-expanding tool rows", () => {
       chevron: false,
       label: true,
       instructions: false,
+    });
+  });
+
+  it("draws a TaskList call that returned nothing as a bare label row", () => {
+    const html = renderTranscript(toolResultRecords({ name: "TaskList", input: {} }, ""));
+
+    expect({ ...toolRowChrome(html), label: html.includes(">Listed tasks<") }).toStrictEqual({
+      bareHeaderClass:
+        "relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left",
+      roleButton: false,
+      ariaExpanded: false,
+      disclosureGrid: false,
+      chevron: false,
+      label: true,
+    });
+  });
+
+  it("keeps the disclosure chrome on a TaskList call that returned tasks", () => {
+    const html = renderTranscript(toolResultRecords({ name: "TaskList", input: {} }, "#1 Ship it"));
+
+    expect(toolRowChrome(html)).toStrictEqual({
+      bareHeaderClass: null,
+      roleButton: true,
+      ariaExpanded: true,
+      disclosureGrid: true,
+      chevron: true,
+    });
+  });
+
+  it("keeps the disclosure chrome on a resultless TaskGet that still carries a task id", () => {
+    const html = renderTranscript(
+      toolResultRecords({ name: "TaskGet", input: { taskId: "42" } }, ""),
+    );
+
+    expect(toolRowChrome(html)).toStrictEqual({
+      bareHeaderClass: null,
+      roleButton: true,
+      ariaExpanded: true,
+      disclosureGrid: true,
+      chevron: true,
     });
   });
 
