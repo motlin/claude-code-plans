@@ -54,14 +54,14 @@ function HighlightedJson({ code }: { code: string }) {
 
   if (!tokens) {
     return (
-      <pre className="bg-bg-200 text-text-100 rounded text-xs leading-relaxed p-2 whitespace-pre-wrap break-all font-mono">
+      <pre className="bg-bg-200 text-text-100 rounded-r6 leading-relaxed p-2 whitespace-pre-wrap break-all text-code font-mono">
         {code}
       </pre>
     );
   }
 
   return (
-    <pre className="bg-bg-200 rounded text-xs leading-relaxed p-2 whitespace-pre-wrap break-all font-mono">
+    <pre className="bg-bg-200 rounded-r6 leading-relaxed p-2 whitespace-pre-wrap break-all text-code font-mono">
       {tokens.map((line: ThemedToken[], lineIndex: number) => (
         <div key={lineIndex}>
           {line.map((token: ThemedToken, tokenIndex: number) => (
@@ -86,7 +86,7 @@ function SmartResultContent({ text, maxLines = 20 }: { text: string; maxLines?: 
     const lineCount = text.split("\n").length;
     return (
       <ExpandableBlock lineCount={lineCount} maxLines={maxLines}>
-        <div className="text-xs text-text-100 leading-relaxed">
+        <div className="text-body text-text-100 leading-relaxed">
           <MarkdownArticle markdown={text} />
         </div>
       </ExpandableBlock>
@@ -106,7 +106,7 @@ function SmartResultContent({ text, maxLines = 20 }: { text: string; maxLines?: 
   const lines = text.split("\n");
   return (
     <ExpandableBlock lineCount={lines.length} maxLines={maxLines}>
-      <pre className="bg-bg-200 text-text-100 rounded text-xs leading-relaxed p-2 whitespace-pre-wrap break-all font-mono">
+      <pre className="bg-bg-200 text-text-100 rounded-r6 leading-relaxed p-2 whitespace-pre-wrap break-all text-code font-mono">
         {text}
       </pre>
     </ExpandableBlock>
@@ -119,8 +119,8 @@ function ResultSummary({ resultText, maxLines = 10 }: { resultText: string; maxL
   const preview = lines.slice(0, maxLines).join("\n");
   const hasMore = lines.length > maxLines;
   return (
-    <div className="bg-muted rounded p-2 max-h-48 overflow-auto">
-      <pre className="text-xs text-muted-foreground font-mono whitespace-pre-wrap">
+    <div className="bg-t1 rounded-r6 p-2 max-h-48 overflow-auto">
+      <pre className="text-assistant-secondary text-code font-mono whitespace-pre-wrap">
         {preview}
         {hasMore && `\n... (${lines.length - maxLines} more lines)`}
       </pre>
@@ -138,7 +138,7 @@ function logLevelIcon(level: string) {
     case "info":
       return <Info className="h-4 w-4 text-cyan-500" />;
     default:
-      return <MessageSquare className="h-4 w-4 text-muted-foreground" />;
+      return <MessageSquare className="h-4 w-4 text-assistant-secondary" />;
   }
 }
 
@@ -199,7 +199,7 @@ function NavigateRenderer({
         ) : (
           <Globe className="h-4 w-4 text-blue-500" />
         )}
-        <span className="text-sm text-foreground">
+        <span className="text-body text-assistant-primary">
           {isSuccess ? "Navigated to" : "Navigate to"}
         </span>
         {url && (
@@ -207,7 +207,7 @@ function NavigateRenderer({
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-accent-100 hover:underline truncate min-w-0"
+            className="text-body text-accent-100 hover:underline truncate min-w-0"
           >
             {url}
           </a>
@@ -223,8 +223,8 @@ function ReadPageRenderer({ resultText }: { resultText: string }) {
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <FileText className="h-4 w-4 text-blue-500" />
-        <span className="text-sm text-foreground">Read page content</span>
-        <span className="text-xs text-text-500">{resultText.split("\n").length} lines</span>
+        <span className="text-body text-assistant-primary">Read page content</span>
+        <span className="text-body text-text-500">{resultText.split("\n").length} lines</span>
       </div>
       <CollapsibleSection label="Page content">
         <SmartResultContent text={resultText} maxLines={30} />
@@ -256,8 +256,8 @@ function ComputerRenderer({
       <div className="px-2 py-2 space-y-2">
         <div className="flex items-center gap-2">
           <MousePointer className="h-4 w-4 text-blue-500" />
-          <span className="text-sm text-foreground">Computer action</span>
-          {detail && <span className="text-xs text-text-500 font-mono truncate">{detail}</span>}
+          <span className="text-body text-assistant-primary">Computer action</span>
+          {detail && <span className="text-text-500 text-code font-mono truncate">{detail}</span>}
         </div>
         <SmartResultContent text={resultText} />
       </div>
@@ -278,9 +278,11 @@ function FindRenderer({
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <Search className="h-4 w-4 text-amber-500" />
-        <span className="text-sm text-foreground">Find elements</span>
+        <span className="text-body text-assistant-primary">Find elements</span>
         {description && (
-          <span className="text-xs text-muted-foreground truncate">&quot;{description}&quot;</span>
+          <span className="text-body text-assistant-secondary truncate">
+            &quot;{description}&quot;
+          </span>
         )}
       </div>
       <ResultSummary resultText={resultText} />
@@ -297,11 +299,11 @@ function TabsContextRenderer({ resultText }: { resultText: string }) {
   return (
     <div className="px-2 py-2 space-y-1">
       <div className="flex items-center gap-2 mb-2">
-        <Globe className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm text-foreground">{lines.length} tab(s)</span>
+        <Globe className="h-4 w-4 text-assistant-secondary" />
+        <span className="text-body text-assistant-primary">{lines.length} tab(s)</span>
       </div>
-      <div className="bg-muted rounded p-2 max-h-48 overflow-auto">
-        <pre className="text-xs text-muted-foreground font-mono whitespace-pre-wrap">
+      <div className="bg-t1 rounded-r6 p-2 max-h-48 overflow-auto">
+        <pre className="text-assistant-secondary text-code font-mono whitespace-pre-wrap">
           {resultText}
         </pre>
       </div>
@@ -326,16 +328,16 @@ function JavaScriptToolRenderer({
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <Code className="h-4 w-4 text-amber-500" />
-        <span className="text-sm text-foreground">Execute JavaScript</span>
+        <span className="text-body text-assistant-primary">Execute JavaScript</span>
       </div>
       {code && (
-        <pre className="bg-bg-200 rounded p-2 text-xs text-text-100 font-mono whitespace-pre-wrap max-h-32 overflow-auto">
+        <pre className="bg-bg-200 rounded-r6 p-2 text-text-100 text-code font-mono whitespace-pre-wrap max-h-32 overflow-auto">
           {code}
         </pre>
       )}
       {resultText && (
-        <div className="border-l-2 border-green-200 dark:border-green-800 pl-3">
-          <div className="text-xs text-text-500 font-medium mb-1">Result</div>
+        <div className="border-l-2 border-extended-green pl-3">
+          <div className="text-body text-text-500 font-medium mb-1">Result</div>
           <SmartResultContent text={resultText} />
         </div>
       )}
@@ -360,19 +362,19 @@ function ReadConsoleMessagesRenderer({ resultText }: { resultText: string }) {
 
   return (
     <div className="space-y-1 max-h-64 overflow-auto px-2 py-2">
-      <div className="text-xs text-muted-foreground mb-1 flex items-center gap-2">
+      <div className="text-body text-assistant-secondary mb-1 flex items-center gap-2">
         <MessageSquare className="h-3 w-3" />
         {messages.length} console message(s)
       </div>
       {messages.map((msg) => (
-        <div key={msg.id} className="flex items-start gap-2 px-2 py-1 hover:bg-muted/50 rounded">
+        <div key={msg.id} className="flex items-start gap-2 px-2 py-1 hover:bg-t2 rounded-r6">
           {logLevelIcon(msg.level)}
           <span
-            className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${logLevelBadgeClasses(msg.level)}`}
+            className={`text-xs px-1.5 py-0.5 rounded-r6 shrink-0 ${logLevelBadgeClasses(msg.level)}`}
           >
             {msg.level}
           </span>
-          <span className="text-xs text-foreground truncate flex-1" title={msg.message}>
+          <span className="text-body text-assistant-primary truncate flex-1" title={msg.message}>
             {msg.message.length > 80 ? msg.message.slice(0, 77) + "..." : msg.message}
           </span>
         </div>
@@ -382,7 +384,7 @@ function ReadConsoleMessagesRenderer({ resultText }: { resultText: string }) {
 }
 
 function DefaultRenderer({ resultText }: { resultText: string }) {
-  if (!resultText) return <span className="text-xs text-text-500">Action completed</span>;
+  if (!resultText) return <span className="text-body text-text-500">Action completed</span>;
   return <SmartResultContent text={resultText} />;
 }
 

@@ -49,8 +49,8 @@ function ResultSummary({ resultText }: { resultText: string }) {
   const preview = lines.slice(0, 5).join("\n");
   const hasMore = lines.length > 5;
   return (
-    <div className="bg-muted rounded p-2 max-h-48 overflow-auto">
-      <pre className="text-xs text-muted-foreground font-mono whitespace-pre-wrap">
+    <div className="bg-t1 rounded-r6 p-2 max-h-48 overflow-auto">
+      <pre className="text-assistant-secondary text-code font-mono whitespace-pre-wrap">
         {preview}
         {hasMore && `\n... (${lines.length - 5} more lines)`}
       </pre>
@@ -73,9 +73,9 @@ function ActionResult({
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         {icon}
-        <span className="text-sm text-foreground">{label}</span>
+        <span className="text-body text-assistant-primary">{label}</span>
         {detail && (
-          <span className="text-xs text-muted-foreground font-mono truncate">{detail}</span>
+          <span className="text-assistant-secondary text-code font-mono truncate">{detail}</span>
         )}
       </div>
       <ResultSummary resultText={resultText} />
@@ -124,7 +124,7 @@ function NavigateRenderer({
         ) : (
           <Globe className="h-4 w-4 text-blue-500" />
         )}
-        <span className="text-sm text-foreground">
+        <span className="text-body text-assistant-primary">
           {isSuccess ? "Navigated to" : "Navigate to"}
         </span>
         {url && (
@@ -132,7 +132,7 @@ function NavigateRenderer({
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-accent-100 hover:underline truncate min-w-0"
+            className="text-body text-accent-100 hover:underline truncate min-w-0"
           >
             {url}
           </a>
@@ -157,9 +157,9 @@ function SnapshotRenderer({ resultText }: { resultText: string }) {
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <Network className="h-4 w-4 text-indigo-500" />
-        <span className="text-sm text-foreground">Accessibility snapshot</span>
+        <span className="text-body text-assistant-primary">Accessibility snapshot</span>
         {title && (
-          <span className="text-xs text-muted-foreground truncate">&quot;{title}&quot;</span>
+          <span className="text-body text-assistant-secondary truncate">&quot;{title}&quot;</span>
         )}
       </div>
       {url && (
@@ -167,13 +167,13 @@ function SnapshotRenderer({ resultText }: { resultText: string }) {
           href={url}
           target="_blank"
           rel="noreferrer"
-          className="text-xs text-blue-600 hover:underline block truncate"
+          className="text-body text-accent-100 hover:underline block truncate"
         >
           {url}
         </a>
       )}
-      <div className="bg-muted rounded p-2 max-h-48 overflow-auto">
-        <pre className="text-xs text-muted-foreground font-mono whitespace-pre">
+      <div className="bg-t1 rounded-r6 p-2 max-h-48 overflow-auto">
+        <pre className="text-assistant-secondary text-code font-mono whitespace-pre">
           {displayedLines.join("\n")}
           {remainingCount > 0 && `\n... (${remainingCount} more nodes)`}
         </pre>
@@ -191,14 +191,16 @@ function ScreenshotRenderer({ resultText }: { resultText: string }) {
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <Camera className="h-4 w-4 text-purple-500" />
-        <span className="text-sm text-foreground">Screenshot captured</span>
-        {path && <span className="text-xs text-muted-foreground font-mono truncate">{path}</span>}
+        <span className="text-body text-assistant-primary">Screenshot captured</span>
+        {path && (
+          <span className="text-assistant-secondary text-code font-mono truncate">{path}</span>
+        )}
       </div>
       {path && (
         <img
           src={`file://${path}`}
           alt="Screenshot"
-          className="max-w-full rounded border border-border"
+          className="max-w-full rounded-r6 border border-border"
           style={{ maxHeight: 300 }}
           onError={(e) => {
             (e.target as HTMLImageElement).style.display = "none";
@@ -335,11 +337,11 @@ function TabsRenderer({ resultText }: { resultText: string }) {
   return (
     <div className="px-2 py-2 space-y-1">
       <div className="flex items-center gap-2 mb-2">
-        <Globe className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm text-foreground">{lines.length} tab(s) open</span>
+        <Globe className="h-4 w-4 text-assistant-secondary" />
+        <span className="text-body text-assistant-primary">{lines.length} tab(s) open</span>
       </div>
-      <div className="bg-muted rounded p-2 max-h-48 overflow-auto">
-        <pre className="text-xs text-muted-foreground font-mono whitespace-pre-wrap">
+      <div className="bg-t1 rounded-r6 p-2 max-h-48 overflow-auto">
+        <pre className="text-assistant-secondary text-code font-mono whitespace-pre-wrap">
           {resultText}
         </pre>
       </div>
@@ -356,7 +358,7 @@ function logLevelIcon(level: string) {
     case "info":
       return <Info className="h-4 w-4 text-cyan-500" />;
     default:
-      return <MessageSquare className="h-4 w-4 text-muted-foreground" />;
+      return <MessageSquare className="h-4 w-4 text-assistant-secondary" />;
   }
 }
 
@@ -390,19 +392,19 @@ function ConsoleMessagesRenderer({ resultText }: { resultText: string }) {
 
   return (
     <div className="space-y-1 max-h-64 overflow-auto px-2 py-2">
-      <div className="text-xs text-muted-foreground mb-1 flex items-center gap-2">
+      <div className="text-body text-assistant-secondary mb-1 flex items-center gap-2">
         <MessageSquare className="h-3 w-3" />
         {messages.length} console message(s)
       </div>
       {messages.map((msg) => (
-        <div key={msg.id} className="flex items-start gap-2 px-2 py-1 hover:bg-muted/50 rounded">
+        <div key={msg.id} className="flex items-start gap-2 px-2 py-1 hover:bg-t2 rounded-r6">
           {logLevelIcon(msg.level)}
           <span
-            className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${logLevelBadgeClasses(msg.level)}`}
+            className={`text-xs px-1.5 py-0.5 rounded-r6 shrink-0 ${logLevelBadgeClasses(msg.level)}`}
           >
             {msg.level}
           </span>
-          <span className="text-xs text-foreground truncate flex-1" title={msg.message}>
+          <span className="text-body text-assistant-primary truncate flex-1" title={msg.message}>
             {msg.message.length > 80 ? msg.message.slice(0, 77) + "..." : msg.message}
           </span>
         </div>
@@ -445,23 +447,23 @@ function NetworkRequestsRenderer({ resultText }: { resultText: string }) {
 
   return (
     <div className="space-y-1 max-h-64 overflow-auto px-2 py-2">
-      <div className="text-xs text-muted-foreground mb-1 flex items-center gap-2">
+      <div className="text-body text-assistant-secondary mb-1 flex items-center gap-2">
         <Network className="h-3 w-3" />
         {requests.length} network request(s)
       </div>
       {requests.map((req) => (
         <div
           key={req.id}
-          className="flex items-center gap-2 px-2 py-1 hover:bg-muted/50 rounded text-xs"
+          className="flex items-center gap-2 px-2 py-1 hover:bg-t2 rounded-r6 text-body"
         >
           {req.method && (
-            <span className={`px-1.5 py-0.5 rounded font-mono ${httpMethodClasses(req.method)}`}>
+            <span className={`px-1.5 py-0.5 rounded-r6 font-mono ${httpMethodClasses(req.method)}`}>
               {req.method}
             </span>
           )}
           {req.status > 0 && (
             <span
-              className={`px-1.5 py-0.5 rounded ${
+              className={`px-1.5 py-0.5 rounded-r6 ${
                 req.status >= 400
                   ? "bg-red-100 text-red-700"
                   : req.status >= 300
@@ -472,7 +474,7 @@ function NetworkRequestsRenderer({ resultText }: { resultText: string }) {
               {req.status}
             </span>
           )}
-          <span className="text-muted-foreground truncate flex-1 font-mono">
+          <span className="text-assistant-secondary truncate flex-1 text-code font-mono">
             {truncateUrl(req.url, 60)}
           </span>
         </div>
@@ -493,17 +495,17 @@ function EvaluateRenderer({
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <Code className="h-4 w-4 text-amber-500" />
-        <span className="text-sm text-foreground">Evaluated JavaScript</span>
+        <span className="text-body text-assistant-primary">Evaluated JavaScript</span>
       </div>
       {expression && (
-        <pre className="bg-muted rounded p-2 text-xs text-muted-foreground font-mono whitespace-pre-wrap max-h-32 overflow-auto">
+        <pre className="bg-t1 rounded-r6 p-2 text-assistant-secondary text-code font-mono whitespace-pre-wrap max-h-32 overflow-auto">
           {expression}
         </pre>
       )}
       {resultText && (
-        <div className="border-l-2 border-green-200 dark:border-green-800 pl-3">
-          <div className="text-xs text-muted-foreground font-medium mb-1">Result</div>
-          <pre className="bg-muted rounded p-2 text-xs text-muted-foreground font-mono whitespace-pre-wrap max-h-32 overflow-auto">
+        <div className="border-l-2 border-extended-green pl-3">
+          <div className="text-body text-assistant-secondary font-medium mb-1">Result</div>
+          <pre className="bg-t1 rounded-r6 p-2 text-assistant-secondary text-code font-mono whitespace-pre-wrap max-h-32 overflow-auto">
             {resultText}
           </pre>
         </div>
@@ -513,10 +515,11 @@ function EvaluateRenderer({
 }
 
 function DefaultPlaywrightRenderer({ resultText }: { resultText: string }) {
-  if (!resultText) return <span className="text-xs text-muted-foreground">Action completed</span>;
+  if (!resultText)
+    return <span className="text-body text-assistant-secondary">Action completed</span>;
   return (
-    <div className="bg-muted rounded p-2 max-h-48 overflow-auto">
-      <pre className="text-xs text-muted-foreground font-mono whitespace-pre-wrap">
+    <div className="bg-t1 rounded-r6 p-2 max-h-48 overflow-auto">
+      <pre className="text-assistant-secondary text-code font-mono whitespace-pre-wrap">
         {resultText}
       </pre>
     </div>

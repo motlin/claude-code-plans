@@ -117,7 +117,7 @@ function logLevelIcon(level: string) {
     case "info":
       return <Info className="h-4 w-4 text-cyan-500" />;
     default:
-      return <MessageSquare className="h-4 w-4 text-muted-foreground" />;
+      return <MessageSquare className="h-4 w-4 text-assistant-secondary" />;
   }
 }
 
@@ -171,30 +171,30 @@ function PageList({ pages }: { pages: PageInfo[] }) {
       {pages.map((page) => (
         <div
           key={page.index}
-          className={`flex items-center gap-2 px-2 py-1 rounded text-xs ${
-            page.selected ? "bg-blue-50 dark:bg-blue-950/30" : "hover:bg-muted/50"
+          className={`flex items-center gap-2 px-2 py-1 rounded-r6 text-body ${
+            page.selected ? "bg-blue-50 dark:bg-blue-950/30" : "hover:bg-t2"
           }`}
         >
           <File
-            className={`h-3 w-3 ${page.selected ? "text-blue-500" : "text-muted-foreground"}`}
+            className={`h-3 w-3 ${page.selected ? "text-blue-500" : "text-assistant-secondary"}`}
           />
-          <span className="text-muted-foreground w-4">{page.index}</span>
+          <span className="text-assistant-secondary w-4">{page.index}</span>
           {isHttpUrl(page.url) ? (
             <a
               href={page.url}
               target="_blank"
               rel="noreferrer"
-              className={`hover:text-blue-600 hover:underline truncate ${
-                page.selected ? "text-foreground" : "text-muted-foreground"
+              className={`hover:text-accent-100 hover:underline truncate ${
+                page.selected ? "text-assistant-primary" : "text-assistant-secondary"
               }`}
             >
               {page.url}
             </a>
           ) : (
-            <span className="text-muted-foreground italic truncate">{page.url}</span>
+            <span className="text-assistant-secondary italic truncate">{page.url}</span>
           )}
           {page.selected && (
-            <span className="text-xs text-blue-600 font-medium ml-auto">active</span>
+            <span className="text-body text-accent-100 font-medium ml-auto">active</span>
           )}
         </div>
       ))}
@@ -220,13 +220,13 @@ function NavigatePageRenderer({
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <CheckCircle className="h-4 w-4 text-green-500" />
-        <span className="text-sm text-foreground">Navigated to</span>
+        <span className="text-body text-assistant-primary">Navigated to</span>
         {url && (
           <a
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-accent-100 hover:underline truncate min-w-0"
+            className="text-body text-accent-100 hover:underline truncate min-w-0"
           >
             {url}
           </a>
@@ -243,7 +243,7 @@ function NewPageRenderer({ resultText }: { resultText: string }) {
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <CheckCircle className="h-4 w-4 text-green-500" />
-        <span className="text-sm text-foreground">New page created</span>
+        <span className="text-body text-assistant-primary">New page created</span>
       </div>
       <PageList pages={pages} />
     </div>
@@ -256,7 +256,7 @@ function ClosePageRenderer({ resultText }: { resultText: string }) {
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <CheckCircle className="h-4 w-4 text-green-500" />
-        <span className="text-sm text-foreground">Page closed</span>
+        <span className="text-body text-assistant-primary">Page closed</span>
       </div>
       <PageList pages={pages} />
     </div>
@@ -268,8 +268,8 @@ function ListPagesRenderer({ resultText }: { resultText: string }) {
   return (
     <div className="px-2 py-2">
       <div className="flex items-center gap-2 mb-2">
-        <Globe className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm text-foreground">{pages.length} page(s) open</span>
+        <Globe className="h-4 w-4 text-assistant-secondary" />
+        <span className="text-body text-assistant-primary">{pages.length} page(s) open</span>
       </div>
       <PageList pages={pages} />
     </div>
@@ -292,16 +292,16 @@ function ListConsoleMessagesRenderer({ resultText }: { resultText: string }) {
 
   return (
     <div className="space-y-1 max-h-64 overflow-auto">
-      {totalLine && <div className="text-xs text-muted-foreground px-2 py-1">{totalLine}</div>}
+      {totalLine && <div className="text-body text-assistant-secondary px-2 py-1">{totalLine}</div>}
       {messages.map((msg) => (
-        <div key={msg.msgid} className="flex items-start gap-2 px-2 py-1 hover:bg-muted/50 rounded">
-          <span className="text-xs text-muted-foreground w-6 shrink-0">#{msg.msgid}</span>
+        <div key={msg.msgid} className="flex items-start gap-2 px-2 py-1 hover:bg-t2 rounded-r6">
+          <span className="text-body text-assistant-secondary w-6 shrink-0">#{msg.msgid}</span>
           <span
-            className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${logLevelBadgeClasses(msg.level)}`}
+            className={`text-xs px-1.5 py-0.5 rounded-r6 shrink-0 ${logLevelBadgeClasses(msg.level)}`}
           >
             {msg.level}
           </span>
-          <span className="text-xs text-foreground truncate flex-1" title={msg.message}>
+          <span className="text-body text-assistant-primary truncate flex-1" title={msg.message}>
             {msg.message.length > 80 ? msg.message.slice(0, 77) + "..." : msg.message}
           </span>
         </div>
@@ -332,15 +332,15 @@ function GetConsoleMessageRenderer({ resultText }: { resultText: string }) {
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-start gap-2">
         {logLevelIcon(level)}
-        <span className="text-xs text-muted-foreground">#{msgid}</span>
-        <span className={`text-xs px-1.5 py-0.5 rounded ${logLevelBadgeClasses(level)}`}>
+        <span className="text-body text-assistant-secondary">#{msgid}</span>
+        <span className={`text-xs px-1.5 py-0.5 rounded-r6 ${logLevelBadgeClasses(level)}`}>
           {level}
         </span>
       </div>
-      <div className="text-sm text-foreground font-mono break-words">{message}</div>
+      <div className="text-assistant-primary text-code font-mono break-words">{message}</div>
       {args.length > 0 && (
         <div className="space-y-1 border-l-2 border-border pl-3 mt-2">
-          <div className="text-xs text-muted-foreground font-medium">Arguments</div>
+          <div className="text-body text-assistant-secondary font-medium">Arguments</div>
           {args.map((arg) => {
             let isJson = false;
             let formatted = arg.value;
@@ -352,14 +352,14 @@ function GetConsoleMessageRenderer({ resultText }: { resultText: string }) {
               // plain text
             }
             return (
-              <div key={arg.index} className="text-xs">
-                <span className="text-muted-foreground">arg[{arg.index}]: </span>
+              <div key={arg.index} className="text-body">
+                <span className="text-assistant-secondary">arg[{arg.index}]: </span>
                 {isJson ? (
-                  <pre className="text-muted-foreground font-mono whitespace-pre-wrap bg-muted rounded p-1 mt-0.5 text-xs overflow-auto max-h-32">
+                  <pre className="text-assistant-secondary text-code font-mono whitespace-pre-wrap bg-t1 rounded-r6 p-1 mt-0.5 overflow-auto max-h-32">
                     {formatted}
                   </pre>
                 ) : (
-                  <span className="text-foreground font-mono">{formatted}</span>
+                  <span className="text-assistant-primary text-code font-mono">{formatted}</span>
                 )}
               </div>
             );
@@ -378,14 +378,16 @@ function TakeScreenshotRenderer({ resultText }: { resultText: string }) {
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <Camera className="h-4 w-4 text-purple-500" />
-        <span className="text-sm text-foreground">Screenshot captured</span>
-        {path && <span className="text-xs text-muted-foreground font-mono truncate">{path}</span>}
+        <span className="text-body text-assistant-primary">Screenshot captured</span>
+        {path && (
+          <span className="text-assistant-secondary text-code font-mono truncate">{path}</span>
+        )}
       </div>
       {path && (
         <img
           src={`file://${path}`}
           alt="Screenshot"
-          className="max-w-full rounded border border-border"
+          className="max-w-full rounded-r6 border border-border"
           style={{ maxHeight: 300 }}
           onError={(e) => {
             (e.target as HTMLImageElement).style.display = "none";
@@ -401,13 +403,13 @@ function ScreenshotRenderer({ path }: { path: string }) {
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <Camera className="h-4 w-4 text-purple-500" />
-        <span className="text-sm text-foreground">Screenshot</span>
-        <span className="text-xs text-muted-foreground font-mono truncate">{path}</span>
+        <span className="text-body text-assistant-primary">Screenshot</span>
+        <span className="text-assistant-secondary text-code font-mono truncate">{path}</span>
       </div>
       <img
         src={`file://${path}`}
         alt="Screenshot"
-        className="max-w-full rounded border border-border"
+        className="max-w-full rounded-r6 border border-border"
         style={{ maxHeight: 300 }}
         onError={(e) => {
           (e.target as HTMLImageElement).style.display = "none";
@@ -432,9 +434,9 @@ function TakeSnapshotRenderer({ resultText }: { resultText: string }) {
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <Network className="h-4 w-4 text-indigo-500" />
-        <span className="text-sm text-foreground">Accessibility snapshot</span>
+        <span className="text-body text-assistant-primary">Accessibility snapshot</span>
         {title && (
-          <span className="text-xs text-muted-foreground truncate">&quot;{title}&quot;</span>
+          <span className="text-body text-assistant-secondary truncate">&quot;{title}&quot;</span>
         )}
       </div>
       {url && (
@@ -442,13 +444,13 @@ function TakeSnapshotRenderer({ resultText }: { resultText: string }) {
           href={url}
           target="_blank"
           rel="noreferrer"
-          className="text-xs text-blue-600 hover:underline block truncate"
+          className="text-body text-accent-100 hover:underline block truncate"
         >
           {url}
         </a>
       )}
-      <div className="bg-muted rounded p-2 max-h-48 overflow-auto">
-        <pre className="text-xs text-muted-foreground font-mono whitespace-pre">
+      <div className="bg-t1 rounded-r6 p-2 max-h-48 overflow-auto">
+        <pre className="text-assistant-secondary text-code font-mono whitespace-pre">
           {displayedLines.join("\n")}
           {remainingCount > 0 && `\n... (${remainingCount} more nodes)`}
         </pre>
@@ -470,22 +472,22 @@ function ListNetworkRequestsRenderer({ resultText }: { resultText: string }) {
 
   return (
     <div className="space-y-1 max-h-64 overflow-auto">
-      <div className="text-xs text-muted-foreground px-2 py-1 flex items-center gap-2">
+      <div className="text-body text-assistant-secondary px-2 py-1 flex items-center gap-2">
         <Plug className="h-3 w-3" />
         {requests.length} requests
       </div>
       {requests.map((req) => (
         <div
           key={req.reqid}
-          className="flex items-center gap-2 px-2 py-1 hover:bg-muted/50 rounded text-xs"
+          className="flex items-center gap-2 px-2 py-1 hover:bg-t2 rounded-r6 text-body"
         >
-          <span className="text-muted-foreground w-8">#{req.reqid}</span>
-          <span className={`px-1.5 py-0.5 rounded font-mono ${httpMethodClasses(req.method)}`}>
+          <span className="text-assistant-secondary w-8">#{req.reqid}</span>
+          <span className={`px-1.5 py-0.5 rounded-r6 font-mono ${httpMethodClasses(req.method)}`}>
             {req.method}
           </span>
           {req.statusCode !== undefined && (
             <span
-              className={`px-1.5 py-0.5 rounded ${statusCodeClasses(req.status, req.statusCode)}`}
+              className={`px-1.5 py-0.5 rounded-r6 ${statusCodeClasses(req.status, req.statusCode)}`}
             >
               {req.statusCode}
             </span>
@@ -495,12 +497,12 @@ function ListNetworkRequestsRenderer({ resultText }: { resultText: string }) {
               href={req.url}
               target="_blank"
               rel="noreferrer"
-              className="text-muted-foreground hover:text-blue-600 hover:underline truncate flex-1 font-mono"
+              className="text-assistant-secondary hover:text-accent-100 hover:underline truncate flex-1 text-code font-mono"
             >
               {truncateUrlEnd(req.url, 60)}
             </a>
           ) : (
-            <span className="text-muted-foreground truncate flex-1 font-mono">
+            <span className="text-assistant-secondary truncate flex-1 text-code font-mono">
               {truncateUrlEnd(req.url, 60)}
             </span>
           )}
@@ -557,11 +559,11 @@ function GetNetworkRequestRenderer({ resultText }: { resultText: string }) {
 
   function HeadersList({ headers }: { headers: Array<{ name: string; value: string }> }) {
     return (
-      <div className="mt-1 bg-muted rounded p-2 max-h-32 overflow-auto">
+      <div className="mt-1 bg-t1 rounded-r6 p-2 max-h-32 overflow-auto">
         {headers.map((h, i) => (
-          <div key={i} className="font-mono">
-            <span className="text-muted-foreground">{h.name}:</span>
-            <span className="text-foreground"> {h.value}</span>
+          <div key={i} className="text-code font-mono">
+            <span className="text-assistant-secondary">{h.name}:</span>
+            <span className="text-assistant-primary"> {h.value}</span>
           </div>
         ))}
       </div>
@@ -578,14 +580,14 @@ function GetNetworkRequestRenderer({ resultText }: { resultText: string }) {
             href={url}
             target="_blank"
             rel="noreferrer"
-            className="text-sm text-blue-600 hover:underline font-mono break-all"
+            className="text-accent-100 hover:underline text-code font-mono break-all"
           >
             {url}
           </a>
         )}
         {statusLabel && (
           <span
-            className={`inline-block px-2 py-0.5 rounded text-xs ${statusCodeClasses(status, statusCode)}`}
+            className={`inline-block px-2 py-0.5 rounded-r6 text-xs ${statusCodeClasses(status, statusCode)}`}
           >
             {statusLabel}
           </span>
@@ -594,24 +596,24 @@ function GetNetworkRequestRenderer({ resultText }: { resultText: string }) {
 
       {/* Request section */}
       {(reqHeaders.length > 0 || reqBody) && (
-        <div className="border-l-2 border-blue-200 dark:border-blue-800 pl-3 space-y-2">
-          <div className="flex items-center gap-1 text-xs font-medium text-blue-600">
+        <div className="border-l-2 border-accent-100 pl-3 space-y-2">
+          <div className="flex items-center gap-1 text-body font-medium text-accent-100">
             <ArrowRight className="h-3 w-3" /> Request
           </div>
           {reqHeaders.length > 0 && (
-            <details className="text-xs">
-              <summary className="text-muted-foreground cursor-pointer hover:text-foreground">
+            <details className="text-body">
+              <summary className="text-assistant-secondary cursor-pointer hover:text-assistant-primary">
                 Headers ({reqHeaders.length})
               </summary>
               <HeadersList headers={reqHeaders} />
             </details>
           )}
           {reqBody && (
-            <details className="text-xs">
-              <summary className="text-muted-foreground cursor-pointer hover:text-foreground">
+            <details className="text-body">
+              <summary className="text-assistant-secondary cursor-pointer hover:text-assistant-primary">
                 Body
               </summary>
-              <pre className="mt-1 bg-muted rounded p-2 max-h-32 overflow-auto text-muted-foreground font-mono whitespace-pre-wrap">
+              <pre className="mt-1 bg-t1 rounded-r6 p-2 max-h-32 overflow-auto text-assistant-secondary text-code font-mono whitespace-pre-wrap">
                 {formatBody(reqBody)}
               </pre>
             </details>
@@ -621,24 +623,24 @@ function GetNetworkRequestRenderer({ resultText }: { resultText: string }) {
 
       {/* Response section */}
       {(resHeaders.length > 0 || resBody) && (
-        <div className="border-l-2 border-green-200 dark:border-green-800 pl-3 space-y-2">
-          <div className="flex items-center gap-1 text-xs font-medium text-green-600">
+        <div className="border-l-2 border-extended-green pl-3 space-y-2">
+          <div className="flex items-center gap-1 text-body font-medium text-extended-green">
             <ArrowLeft className="h-3 w-3" /> Response
           </div>
           {resHeaders.length > 0 && (
-            <details className="text-xs">
-              <summary className="text-muted-foreground cursor-pointer hover:text-foreground">
+            <details className="text-body">
+              <summary className="text-assistant-secondary cursor-pointer hover:text-assistant-primary">
                 Headers ({resHeaders.length})
               </summary>
               <HeadersList headers={resHeaders} />
             </details>
           )}
           {resBody && (
-            <details className="text-xs" open>
-              <summary className="text-muted-foreground cursor-pointer hover:text-foreground">
+            <details className="text-body" open>
+              <summary className="text-assistant-secondary cursor-pointer hover:text-assistant-primary">
                 Body
               </summary>
-              <pre className="mt-1 bg-muted rounded p-2 max-h-48 overflow-auto text-muted-foreground font-mono whitespace-pre-wrap text-xs">
+              <pre className="mt-1 bg-t1 rounded-r6 p-2 max-h-48 overflow-auto text-assistant-secondary text-code font-mono whitespace-pre-wrap">
                 {formatBody(resBody)}
               </pre>
             </details>
@@ -651,8 +653,10 @@ function GetNetworkRequestRenderer({ resultText }: { resultText: string }) {
 
 function DefaultCdpRenderer({ resultText }: { resultText: string }) {
   return (
-    <div className="bg-gray-900 rounded p-3 max-h-64 overflow-auto">
-      <pre className="text-xs text-gray-100 font-mono whitespace-pre-wrap">{resultText}</pre>
+    <div className="bg-t1 rounded-r6 p-3 max-h-64 overflow-auto">
+      <pre className="text-assistant-primary text-code font-mono whitespace-pre-wrap">
+        {resultText}
+      </pre>
     </div>
   );
 }
@@ -696,7 +700,7 @@ function ChromeDevtoolsContent({
     return <ScreenshotRenderer path={screenshotPath} />;
   }
 
-  if (!resultText) return <span className="text-xs text-muted-foreground">No result</span>;
+  if (!resultText) return <span className="text-body text-assistant-secondary">No result</span>;
 
   switch (tool) {
     case "navigate_page":
