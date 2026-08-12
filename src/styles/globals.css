@@ -194,6 +194,11 @@
   --upstream-leading-body: 20px;
   --upstream-text-code: 13px;
   --upstream-leading-code: 20px;
+
+  /* Upstream claude.ai/code — transcript rhythm. Gap between turns, and
+     between the content blocks inside one turn (half the body line box). */
+  --chat-turn-gap: 15px;
+  --chat-item-gap: 10px;
 }
 
 .dark {

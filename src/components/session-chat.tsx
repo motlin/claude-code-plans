@@ -393,6 +393,12 @@ interface LineRenderProps {
   showTranscriptOnly: boolean;
 }
 
+/**
+ * Upstream claude.ai/code pads every turn wrapper by --chat-turn-gap and
+ * collapses that padding when the turn renders nothing.
+ */
+const TURN_GAP_CLASS = "pb-[var(--chat-turn-gap)] empty:pb-0";
+
 function LineEntry({
   line,
   index,
@@ -417,11 +423,18 @@ function LineEntry({
   const rawTimestamp = getLineTimestamp(line);
   const absoluteTimestamp = formatTimestamp(rawTimestamp);
   const timestampTitle = absoluteTimestamp;
+  const wrapperClassName = [
+    isAssistant ? "group/msg flex flex-col w-full" : "group relative",
+    TURN_GAP_CLASS,
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
   return (
     <div
       key={`line-${index}`}
       id={`msg-${index}`}
-      className={`${isAssistant ? "group/msg flex flex-col w-full" : "group relative"} ${className ?? ""}`}
+      className={wrapperClassName}
       title={line.type !== "user" ? (timestampTitle ?? undefined) : undefined}
     >
       {content}
@@ -460,14 +473,12 @@ function useLiveToolFailures(sessionId: string): Map<string, LiveToolFailure> {
 function GroupedToolCallEntry({
   lines,
   indices,
-  className,
   sessionId,
   toolResultMap,
   subagentLookup,
 }: {
   lines: SessionLine[];
   indices: number[];
-  className?: string;
   sessionId: string;
   toolResultMap: Map<string, ToolResultInfo>;
   subagentLookup: SubagentLookup;
@@ -499,7 +510,7 @@ function GroupedToolCallEntry({
   const sourceSessionId = getSourceSessionId(lines[0]!, sessionId);
 
   return (
-    <div id={`msg-${indices[0]}`} className={`group/msg flex flex-col w-full ${className ?? ""}`}>
+    <div id={`msg-${indices[0]}`} className={`group/msg flex flex-col w-full ${TURN_GAP_CLASS}`}>
       <ToolCallSection calls={allToolCalls} sessionId={sourceSessionId} />
     </div>
   );
@@ -576,7 +587,6 @@ function SessionLineList({
         }
       }
 
-      const isNewTurn = prevVisibleType !== null && prevVisibleType !== "assistant";
       prevVisibleType = "assistant";
 
       if (groupIndices.length === 1) {
@@ -586,7 +596,6 @@ function SessionLineList({
             line={line}
             index={groupStart}
             nextLine={lines[groupStart + 1]}
-            className={isNewTurn ? "pb-4" : ""}
             {...renderProps}
           />,
         );
@@ -596,7 +605,6 @@ function SessionLineList({
             key={`group-${groupStart}`}
             lines={groupIndices.map((idx) => lines[idx]!)}
             indices={groupIndices}
-            className={isNewTurn ? "pb-4" : ""}
             {...renderProps}
           />,
         );
@@ -605,7 +613,6 @@ function SessionLineList({
       continue;
     }
 
-    const isNewTurn = prevVisibleType !== null && prevVisibleType !== line.type;
     const isBannerAfterBanner =
       BANNER_LINE_TYPES.has(line.type) &&
       prevVisibleType !== null &&
@@ -619,7 +626,7 @@ function SessionLineList({
         line={line}
         index={i}
         nextLine={lines[i + 1]}
-        className={`${isNewTurn ? "pb-4" : ""} ${isBannerAfterBanner ? "mt-1" : ""}`}
+        {...(isBannerAfterBanner ? { className: "mt-1" } : {})}
         {...renderProps}
       />,
     );
@@ -1250,7 +1257,7 @@ function SubagentPromptEntry({ line, sessionId }: { line: MessageSessionLine; se
   if (textBlocks.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-1.5 min-w-0">
+    <div className="flex flex-col gap-[var(--chat-item-gap)] min-w-0 select-text">
       <div className="relative border-l-2 border-accent-100 pl-3">
         <div className="flex items-center gap-1.5 mb-1">
           <span className="text-[11px] font-medium text-accent-100 bg-accent-000/10 rounded-full px-2 py-0.5">
@@ -1619,7 +1626,7 @@ function AssistantEntry({
 
   // Mixed content: render each block in original order
   return (
-    <div className="flex flex-col gap-1.5 min-w-0">
+    <div className="flex flex-col gap-[var(--chat-item-gap)] min-w-0 select-text">
       {attributionRow}
       {line.isApiErrorMessage === true && <ApiErrorCallout line={line} />}
       {content.map((block, i) => (

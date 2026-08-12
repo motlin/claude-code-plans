@@ -323,3 +323,70 @@ describe("SessionChat transcript-only suppression", () => {
     expect(html).toContain("bg-auto-msg-bg");
   });
 });
+
+function renderTranscript(records: unknown[]): string {
+  const { lines, toolResultMap } = processTranscript(records);
+  return renderToStaticMarkup(
+    <SessionChat
+      sessionId="test-session"
+      lines={lines}
+      toolResultMap={toolResultMap}
+      showCompactSummaries
+      showTranscriptOnly
+    />,
+  );
+}
+
+/** Class list of every turn wrapper (`<div id="msg-N">`), in document order. */
+function turnWrapperClassNames(html: string): string[] {
+  return [...html.matchAll(/<div id="msg-\d+" class="([^"]*)"/g)].map((match) => match[1] ?? "");
+}
+
+describe("SessionChat turn spacing", () => {
+  it("pads every turn wrapper with --chat-turn-gap and spaces intra-turn blocks with --chat-item-gap", () => {
+    const styles = readFileSync(GLOBAL_STYLES_PATH, "utf8");
+    const html = renderTranscript([
+      {
+        type: "user",
+        uuid: "u1",
+        message: { role: "user", content: "Fabricated user message" },
+      },
+      {
+        type: "assistant",
+        uuid: "a1",
+        parentUuid: "u1",
+        message: {
+          role: "assistant",
+          content: [{ type: "text", text: "Fabricated first assistant response" }],
+        },
+      },
+      {
+        type: "assistant",
+        uuid: "a2",
+        parentUuid: "a1",
+        message: {
+          role: "assistant",
+          content: [{ type: "text", text: "Fabricated second assistant response" }],
+        },
+      },
+    ]);
+
+    expect({
+      turnGap: styles.match(/--chat-turn-gap:\s*([^;]+);/)?.[1] ?? null,
+      itemGap: styles.match(/--chat-item-gap:\s*([^;]+);/)?.[1] ?? null,
+      // Every turn is padded, including the second assistant turn that follows
+      // another assistant turn -- the old code only padded turn boundaries.
+      turnWrappers: turnWrapperClassNames(html),
+      itemGapColumns: (html.match(/gap-\[var\(--chat-item-gap\)\]/g) ?? []).length,
+    }).toStrictEqual({
+      turnGap: "15px",
+      itemGap: "10px",
+      turnWrappers: [
+        "group relative pb-[var(--chat-turn-gap)] empty:pb-0",
+        "group/msg flex flex-col w-full pb-[var(--chat-turn-gap)] empty:pb-0",
+        "group/msg flex flex-col w-full pb-[var(--chat-turn-gap)] empty:pb-0",
+      ],
+      itemGapColumns: 2,
+    });
+  });
+});
