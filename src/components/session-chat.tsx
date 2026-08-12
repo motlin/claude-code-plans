@@ -135,7 +135,7 @@ function MessageToolbar({
   }
 
   return (
-    <div className="flex gap-g2 pt-[4px] -mt-[8px] opacity-0 pointer-events-none group-hover/msg:opacity-100 group-hover/msg:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-opacity duration-150">
+    <div className="flex items-center gap-g2 pt-[4px] opacity-0 pointer-events-none group-hover/msg:opacity-100 group-hover/msg:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-opacity duration-150">
       <div className="relative">
         <button
           type="button"
@@ -160,22 +160,19 @@ function MessageToolbar({
       </div>
       {relativeTimestamp && (
         <span
-          className="text-[11px] text-assistant-secondary tabular-nums self-center pl-p1"
+          className="text-[11px] text-assistant-secondary tabular-nums pl-p1"
           title={timestampTitle}
         >
           {relativeTimestamp}
         </span>
       )}
       {line.stopReason === "max_tokens" && (
-        <span className="text-[10px] text-warning-100 self-center rounded-full bg-bg-200 px-1.5">
+        <span className="text-[10px] text-warning-100 rounded-full bg-bg-200 px-1.5">
           truncated · max tokens
         </span>
       )}
       {usage && (
-        <span
-          className="text-[11px] text-assistant-secondary tabular-nums self-center"
-          title={usage.title}
-        >
+        <span className="text-[11px] text-assistant-secondary tabular-nums" title={usage.title}>
           {usage.summary}
         </span>
       )}
@@ -248,16 +245,16 @@ function UserMessageActions({
   const timestampTitle = absoluteTimestamp ?? undefined;
 
   return (
-    <div className="flex items-center gap-2 px-1 pt-0.5 text-[11px] text-text-500 opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150">
+    <div className="flex items-center gap-g2 pt-[4px] -mt-[8px] text-[11px] text-text-500 opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150">
       <div className="relative">
         <button
           type="button"
           title="Copy message"
+          aria-label="Copy message"
           onClick={copyText}
-          className="flex items-center gap-0.5 hover:text-text-000 cursor-pointer"
+          className="flex items-center p-1 hover:text-text-000 cursor-pointer"
         >
           <Copy className="h-3 w-3" />
-          <span>Copy</span>
         </button>
         <CopyToast visible={copied === "text"} />
       </div>
@@ -265,11 +262,11 @@ function UserMessageActions({
         <button
           type="button"
           title="Copy link"
+          aria-label="Copy link"
           onClick={copyLink}
-          className="flex items-center gap-0.5 hover:text-text-000 cursor-pointer"
+          className="flex items-center p-1 hover:text-text-000 cursor-pointer"
         >
           <Link2 className="h-3 w-3" />
-          <span>Link</span>
         </button>
         <CopyToast visible={copied === "link"} />
       </div>
@@ -1149,7 +1146,7 @@ function UserEntry({
 
   return (
     <div className="group/msg flex justify-start w-full">
-      <div className="flex flex-col items-start gap-1 max-w-[75%] min-w-0">
+      <div className="flex flex-col items-end gap-g6 max-w-[75%] min-w-0">
         {line.promptSource !== undefined && (
           <span className="text-[11px] text-text-500">
             {promptSourceLabels[line.promptSource]} prompt
@@ -1214,7 +1211,7 @@ function CompactSummaryStub({
 
     return (
       <div className="group/msg flex justify-start w-full">
-        <div className="flex flex-col items-start gap-1 max-w-[85%] min-w-0">
+        <div className="flex flex-col items-end gap-g6 max-w-[85%] min-w-0">
           <div className="flex items-center gap-1.5 px-1">
             <span className="text-[10px] font-medium text-text-500 bg-bg-200 rounded-full px-2 py-0.5">
               Compact summary
@@ -1274,7 +1271,7 @@ function LabeledAutomatedEntry({
 
   return (
     <div className="group/msg flex justify-start w-full">
-      <div className="flex flex-col items-start gap-1 max-w-[85%] min-w-0">
+      <div className="flex flex-col items-end gap-g6 max-w-[85%] min-w-0">
         <div className="flex items-center gap-1.5 px-1">
           <span className="text-[10px] font-medium text-text-500 bg-bg-200 rounded-full px-2 py-0.5">
             {label}
@@ -1487,7 +1484,7 @@ function CommandEntry({
 
   return (
     <div className="group/msg flex justify-start w-full">
-      <div className="flex flex-col items-start gap-1 max-w-[75%] min-w-0">
+      <div className="flex flex-col items-end gap-g6 max-w-[75%] min-w-0">
         <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
           <TruncatedContent fadeColor="var(--bg-100)" variant="user">
             <MarkdownArticle markdown={commandText} />
