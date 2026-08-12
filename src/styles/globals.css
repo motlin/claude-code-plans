@@ -202,6 +202,12 @@
      between the content blocks inside one turn (half the body line box). */
   --chat-turn-gap: 15px;
   --chat-item-gap: 10px;
+
+  /* Upstream claude.ai/code — card surfaces. Tool cards are drawn as a
+     hairline outline over the page rather than a filled wash; the code cards
+     (Read/Edit/Write) additionally sit on the page color. */
+  --card-outline: hsl(0 0% 4% / 0.1);
+  --code-card-bg: hsl(60 14% 99%);
 }
 
 .dark {
@@ -270,6 +276,10 @@
   --upstream-t7: hsl(0 0% 100% / 0.7);
   --upstream-t8: hsl(0 0% 100% / 0.8);
   --upstream-t9: hsl(0 0% 100% / 1);
+
+  /* Upstream claude.ai/code — card surfaces (light-alpha ring, page color) */
+  --card-outline: hsl(0 0% 100% / 0.12);
+  --code-card-bg: hsl(60 2.7% 14.5%);
 }
 
 @layer utilities {
@@ -280,6 +290,13 @@
   .grid-rows-expand {
     grid-template-rows: 1fr;
     transition: grid-template-rows 200ms ease-out;
+  }
+  .card-outline {
+    background-color: transparent;
+    box-shadow: inset 0 0 0 1px var(--card-outline);
+  }
+  .code-card {
+    background-color: var(--code-card-bg);
   }
 }
 

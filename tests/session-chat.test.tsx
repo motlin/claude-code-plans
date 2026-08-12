@@ -437,3 +437,77 @@ describe("SessionChat turn spacing", () => {
     });
   });
 });
+
+/** Class list of every tool card shell, in document order. */
+function toolCardClassNames(html: string): string[] {
+  return [...html.matchAll(/<div class="([^"]*card-outline[^"]*)"/g)].map(
+    (match) => match[1] ?? "",
+  );
+}
+
+function toolCallRecords(calls: { id: string; name: string; input: unknown }[]): unknown[] {
+  return [
+    {
+      type: "assistant",
+      uuid: "a1",
+      message: {
+        role: "assistant",
+        content: calls.map((call) => ({ type: "tool_use", ...call })),
+      },
+    },
+    ...calls.map((call) => ({
+      type: "user",
+      uuid: `r-${call.id}`,
+      parentUuid: "a1",
+      message: {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: call.id, content: "Fabricated tool result" }],
+      },
+    })),
+  ];
+}
+
+describe("SessionChat tool card chrome", () => {
+  it("outlines tool cards with a hairline ring instead of filling them, and paints only code cards", () => {
+    const styles = readFileSync(GLOBAL_STYLES_PATH, "utf8");
+    const bashHtml = renderTranscript(
+      toolCallRecords([{ id: "t1", name: "Bash", input: { command: "ls -la" } }]),
+    );
+    const editHtml = renderTranscript(
+      toolCallRecords([
+        {
+          id: "t2",
+          name: "Edit",
+          input: { file_path: "/repo/src/a.ts", old_string: "a", new_string: "b" },
+        },
+      ]),
+    );
+    const readHtml = renderTranscript(
+      toolCallRecords([{ id: "t3", name: "Read", input: { file_path: "/repo/src/a.ts" } }]),
+    );
+
+    expect({
+      lightOutline: readToken(extractBlock(styles, ":root"), "--card-outline"),
+      darkOutline: readToken(extractBlock(styles, ".dark"), "--card-outline"),
+      lightCodeCardBg: readToken(extractBlock(styles, ":root"), "--code-card-bg"),
+      darkCodeCardBg: readToken(extractBlock(styles, ".dark"), "--code-card-bg"),
+      outlineRing: styles.includes("box-shadow: inset 0 0 0 1px var(--card-outline);"),
+      codeCardFill: styles.includes("background-color: var(--code-card-bg);"),
+      bashCard: toolCardClassNames(bashHtml),
+      editCard: toolCardClassNames(editHtml),
+      readCard: toolCardClassNames(readHtml),
+      fillsAnyCardWithT1: bashHtml.includes("bg-t1") || editHtml.includes("bg-t1"),
+    }).toStrictEqual({
+      lightOutline: "hsl(0 0% 4% / 0.1)",
+      darkOutline: "hsl(0 0% 100% / 0.12)",
+      lightCodeCardBg: "hsl(60 14% 99%)",
+      darkCodeCardBg: "hsl(60 2.7% 14.5%)",
+      outlineRing: true,
+      codeCardFill: true,
+      bashCard: ["card-outline rounded-r6 overflow-clip flex flex-col relative"],
+      editCard: ["card-outline code-card rounded-r6 overflow-clip flex flex-col relative"],
+      readCard: ["card-outline code-card rounded-r6 overflow-clip flex flex-col relative"],
+      fillsAnyCardWithT1: false,
+    });
+  });
+});

@@ -1858,13 +1858,22 @@ const RENDERER_HANDLES_PARAM = new Set([
 ]);
 
 /**
- * Tools whose renderer provides its own bg-t1 card shell (header + body).
- * These get a `group/body py-p6` wrapper with a `bg-t1 rounded-r6` inner div.
+ * Tools whose renderer provides its own card shell (header + body).
+ * These get a `group/body py-p6` wrapper with a `card-outline rounded-r6` inner
+ * div -- a transparent panel drawn with a hairline ring, matching upstream's
+ * `epitaxy-card-outline`.
  *
  * All other tools (KeyValueCard-style) get `group/body relative flex flex-col w-full pt-p3`
  * with no inner wrapper, matching upstream claude.ai/code.
  */
 const CARD_STYLE_TOOLS = new Set(["Bash", "Read", "Edit", "MultiEdit", "Write"]);
+
+/**
+ * Card-style tools whose body is source code. Upstream sits those on the page
+ * color (`epitaxy-code-card`) instead of leaving them transparent; Bash, whose
+ * body is terminal output, keeps the transparent card.
+ */
+const CODE_CARD_TOOLS = new Set(["Read", "Edit", "MultiEdit", "Write"]);
 
 /**
  * Tools that show inline diff stats (+N -M) in the clickable row.
@@ -1910,6 +1919,7 @@ function ToolCallRow({ call, sessionId }: { call: ClientToolCall; sessionId: str
   const isFileParam = FILE_PARAM_TOOLS.has(call.name);
   const diffStats = useEditDiffStats(call);
   const isCardStyle = CARD_STYLE_TOOLS.has(call.name);
+  const isCodeCard = CODE_CARD_TOOLS.has(call.name);
 
   const displayParam = RENDERER_HANDLES_PARAM.has(call.name)
     ? ""
@@ -1948,7 +1958,9 @@ function ToolCallRow({ call, sessionId }: { call: ClientToolCall; sessionId: str
         <div className="overflow-hidden">
           {isCardStyle ? (
             <div className="group/body py-p6">
-              <div className="bg-t1 rounded-r6 overflow-clip flex flex-col relative">
+              <div
+                className={`card-outline ${isCodeCard ? "code-card " : ""}rounded-r6 overflow-clip flex flex-col relative`}
+              >
                 <Suspense fallback={null}>
                   <Renderer toolCall={call} />
                 </Suspense>
