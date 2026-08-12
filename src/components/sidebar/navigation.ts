@@ -141,7 +141,7 @@ const DEFAULT_NAVIGATION_VISIBILITY = {
   showTmuxSection: false,
 } satisfies NavigationVisibilitySettings;
 
-function getVisibleNavItems(
+export function getVisibleNavItems(
   settings: NavigationVisibilitySettings = DEFAULT_NAVIGATION_VISIBILITY,
 ) {
   return navItems.filter(

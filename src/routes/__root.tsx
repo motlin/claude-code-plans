@@ -15,6 +15,7 @@ import { ThemeProvider } from "../components/theme-provider";
 import { SettingsProvider } from "../components/settings-provider";
 import { ModeToggle } from "../components/mode-toggle";
 import { Sidebar } from "../components/sidebar/index";
+import { AppShellFallback } from "../components/app-shell-fallback";
 import { CommandPalette } from "../components/command-palette";
 import { useCommandPalette } from "../hooks/use-command-palette";
 import { IndexingBanner } from "../components/indexing-banner";
@@ -36,6 +37,7 @@ import {
   groupedSessionsQueryOptions,
 } from "../lib/api/sessions";
 import appCss from "../styles/globals.css?url";
+import { THEME_INIT_SCRIPT } from "../lib/theme-init";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   ssr: false,
@@ -247,11 +249,19 @@ export function DefaultErrorComponent({ error }: ErrorComponentProps) {
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en">
+    // THEME_INIT_SCRIPT adds the resolved theme class and color-scheme to <html>
+    // before React loads, which is by definition an attribute the server markup
+    // did not carry; suppressHydrationWarning keeps that expected difference from
+    // logging a hydration error.
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
+        {/* Static constant, no interpolation: this is the only way to run the
+            theme resolver synchronously before the first paint. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body>
+        <AppShellFallback />
         {children}
         <Scripts />
       </body>
