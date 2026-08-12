@@ -114,7 +114,11 @@ const LINK_CATEGORY_RULES_SCHEMA = z.array(
     })
     .strict(),
 );
-const VERBOSITY_PRESETS: Record<Verbosity, Partial<Settings>> = {
+// Presets gate whole content categories, never individual tool rows. The
+// 2026-08-10 claude.ai/code captures are all view:"verbose", so they carry no
+// evidence about upstream's Normal view; adding per-row gating here needs a
+// Normal-view specimen to diff against first.
+export const VERBOSITY_PRESETS: Record<Verbosity, Partial<Settings>> = {
   normal: {
     showTools: true,
     showThinking: false,

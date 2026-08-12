@@ -1,11 +1,87 @@
 import {
   DEFAULTS,
   VERBOSITY_KEYS,
+  VERBOSITY_PRESETS,
   detectVerbosity,
   type Settings,
+  type Verbosity,
 } from "../src/components/settings-provider";
 
 describe("settings-provider", () => {
+  // Pins the preset key set against upstream-parity churn. The 2026-08-10
+  // claude.ai/code captures in .llm/ui-sync/upstream/ are ALL view:"verbose"
+  // (code-rich-verbose.tree.json, code-rich-verbose.styles.json and
+  // code-rich-exemplars.json each declare it), so they cannot show which rows
+  // upstream hides in its Normal view. The verbose dump also still contains 10
+  // expanded tool-group rows, so Verbose demonstrably does not flatten
+  // grouping. Until a matching Normal-view specimen is captured, no per-row
+  // gating may be added to VERBOSITY_PRESETS on the strength of those dumps.
+  describe("VERBOSITY_PRESETS", () => {
+    it("gates exactly the eight content keys, with no per-row gating added", () => {
+      expect(VERBOSITY_KEYS).toEqual([
+        "showTools",
+        "showThinking",
+        "showPassedHooks",
+        "showHookWarnings",
+        "showHookErrors",
+        "showSystemBanners",
+        "showCompactSummaries",
+        "showTranscriptOnly",
+      ]);
+    });
+
+    it("keeps every preset on the same key set", () => {
+      for (const verbosity of ["normal", "thinking", "verbose"] satisfies Verbosity[]) {
+        expect(Object.keys(VERBOSITY_PRESETS[verbosity])).toEqual(VERBOSITY_KEYS);
+      }
+    });
+
+    it("keeps the normal preset unchanged", () => {
+      expect(VERBOSITY_PRESETS.normal).toEqual({
+        showTools: true,
+        showThinking: false,
+        showPassedHooks: false,
+        showHookWarnings: true,
+        showHookErrors: true,
+        showSystemBanners: false,
+        showCompactSummaries: false,
+        showTranscriptOnly: false,
+      });
+    });
+
+    it("keeps the thinking preset unchanged", () => {
+      expect(VERBOSITY_PRESETS.thinking).toEqual({
+        showTools: true,
+        showThinking: true,
+        showPassedHooks: false,
+        showHookWarnings: true,
+        showHookErrors: true,
+        showSystemBanners: false,
+        showCompactSummaries: false,
+        showTranscriptOnly: false,
+      });
+    });
+
+    it("keeps the verbose preset unchanged", () => {
+      expect(VERBOSITY_PRESETS.verbose).toEqual({
+        showTools: true,
+        showThinking: true,
+        showPassedHooks: true,
+        showHookWarnings: true,
+        showHookErrors: true,
+        showSystemBanners: true,
+        showCompactSummaries: true,
+        showTranscriptOnly: true,
+      });
+    });
+
+    it("defaults to the normal preset", () => {
+      for (const key of VERBOSITY_KEYS) {
+        expect(DEFAULTS[key]).toEqual(VERBOSITY_PRESETS.normal[key]);
+      }
+    });
+  });
+
   describe("VERBOSITY_KEYS", () => {
     it("does not include showDebug", () => {
       expect(VERBOSITY_KEYS).not.toContain("showDebug");
