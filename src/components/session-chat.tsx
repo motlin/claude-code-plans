@@ -408,6 +408,29 @@ interface LineRenderProps {
  */
 const TURN_GAP_CLASS = "pb-[var(--chat-turn-gap)] empty:pb-0";
 
+/**
+ * Upstream claude.ai/code opens every turn wrapper with a visually hidden
+ * heading naming the speaker, giving screen readers a heading list to navigate
+ * the transcript turn by turn. It is hidden from sight and from text selection,
+ * so copying a turn never picks the speaker name up.
+ */
+function TurnHeading({ speaker }: { speaker: "User" | "Claude" }) {
+  return <h2 className="sr-only select-none">{speaker}</h2>;
+}
+
+/**
+ * The row wrapper every user-side entry shares, heading included, so a new
+ * entry variant cannot render a user turn without naming the speaker.
+ */
+function UserTurn({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="group/msg flex justify-start w-full">
+      <TurnHeading speaker="User" />
+      {children}
+    </div>
+  );
+}
+
 function LineEntry({
   line,
   index,
@@ -446,6 +469,7 @@ function LineEntry({
       className={wrapperClassName}
       title={line.type !== "user" ? (timestampTitle ?? undefined) : undefined}
     >
+      {isAssistant && <TurnHeading speaker="Claude" />}
       {content}
       {isAssistant && (
         <MessageToolbar
@@ -561,6 +585,7 @@ function GroupedToolCallEntry({
 
   return (
     <div className={`group/msg flex flex-col w-full gap-[var(--chat-item-gap)] ${TURN_GAP_CLASS}`}>
+      <TurnHeading speaker="Claude" />
       {batches.map((batch) => (
         <div key={batch.index} id={`msg-${batch.index}`} className="flex flex-col w-full">
           <ToolCallSection calls={batch.calls} sessionId={batch.sourceSessionId} />
@@ -1145,7 +1170,7 @@ function UserEntry({
   const { textNodes, mediaNodes } = renderUserContentBlocks(line, sessionId, allowedImageRoots);
 
   return (
-    <div className="group/msg flex justify-start w-full">
+    <UserTurn>
       <div className="flex flex-col items-end gap-g6 max-w-[75%] min-w-0">
         {line.promptSource !== undefined && (
           <span className="text-[11px] text-text-500">
@@ -1161,7 +1186,7 @@ function UserEntry({
         {mediaNodes}
         <UserMessageActions {...actionsProps} />
       </div>
-    </div>
+    </UserTurn>
   );
 }
 
@@ -1210,7 +1235,7 @@ function CompactSummaryStub({
     const { textNodes, mediaNodes } = renderUserContentBlocks(line, sessionId, allowedImageRoots);
 
     return (
-      <div className="group/msg flex justify-start w-full">
+      <UserTurn>
         <div className="flex flex-col items-end gap-g6 max-w-[85%] min-w-0">
           <div className="flex items-center gap-1.5 px-1">
             <span className="text-[10px] font-medium text-text-500 bg-bg-200 rounded-full px-2 py-0.5">
@@ -1232,12 +1257,12 @@ function CompactSummaryStub({
           {mediaNodes}
           <UserMessageActions {...actionsProps} />
         </div>
-      </div>
+      </UserTurn>
     );
   }
 
   return (
-    <div className="group/msg flex justify-start w-full">
+    <UserTurn>
       <button
         type="button"
         onClick={() => setExpanded(true)}
@@ -1246,7 +1271,7 @@ function CompactSummaryStub({
         <span className="font-medium">Compact summary (~{sizeKB} KB)</span>
         <span>— click to expand</span>
       </button>
-    </div>
+    </UserTurn>
   );
 }
 
@@ -1270,7 +1295,7 @@ function LabeledAutomatedEntry({
   if (textNodes.length === 0 && mediaNodes.length === 0) return null;
 
   return (
-    <div className="group/msg flex justify-start w-full">
+    <UserTurn>
       <div className="flex flex-col items-end gap-g6 max-w-[85%] min-w-0">
         <div className="flex items-center gap-1.5 px-1">
           <span className="text-[10px] font-medium text-text-500 bg-bg-200 rounded-full px-2 py-0.5">
@@ -1285,7 +1310,7 @@ function LabeledAutomatedEntry({
         {mediaNodes}
         <UserMessageActions {...actionsProps} />
       </div>
-    </div>
+    </UserTurn>
   );
 }
 
@@ -1483,7 +1508,7 @@ function CommandEntry({
   const actionsProps = { line, index, ...(timestamp ? { timestamp } : {}) };
 
   return (
-    <div className="group/msg flex justify-start w-full">
+    <UserTurn>
       <div className="flex flex-col items-end gap-g6 max-w-[75%] min-w-0">
         <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
           <TruncatedContent fadeColor="var(--bg-100)" variant="user">
@@ -1493,7 +1518,7 @@ function CommandEntry({
         </div>
         <UserMessageActions {...actionsProps} />
       </div>
-    </div>
+    </UserTurn>
   );
 }
 
