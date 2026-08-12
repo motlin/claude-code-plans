@@ -35,6 +35,9 @@ export function Sidebar({
   const [collapsedSections, setCollapsedSections] = useState<Set<Section>>(
     () => new Set(navigationItems.map((item) => item.section)),
   );
+  // Sublists unmount whenever their section collapses, so per-group collapse
+  // state has to be held here, in the sidebar that outlives every navigation.
+  const [collapsedMemoryGroups, setCollapsedMemoryGroups] = useState<Set<string>>(() => new Set());
   const { data: approvalsData } = useQuery(approvalsQueryOptions());
   const approvalsCount = approvalsData?.approvals.length ?? 0;
   const { data: notificationsData } = useQuery(notificationsQueryOptions());
@@ -51,6 +54,18 @@ export function Sidebar({
     if (!currentPath.startsWith("/notifications") || unreadCount === 0) return;
     markNotificationsRead();
   }, [currentPath, unreadCount, markNotificationsRead]);
+
+  function toggleMemoryGroup(projectId: string) {
+    setCollapsedMemoryGroups((previous) => {
+      const next = new Set(previous);
+      if (next.has(projectId)) {
+        next.delete(projectId);
+      } else {
+        next.add(projectId);
+      }
+      return next;
+    });
+  }
 
   function toggleSection(section: Section) {
     setCollapsedSections((prev) => {
@@ -207,7 +222,11 @@ export function Sidebar({
                 ) : item.section === "plans" ? (
                   <PlansSubList activeItemId={activeItemId} />
                 ) : item.section === "memories" ? (
-                  <MemoriesSubList activeItemId={activeItemId} />
+                  <MemoriesSubList
+                    activeItemId={activeItemId}
+                    collapsedGroups={collapsedMemoryGroups}
+                    onToggleGroup={toggleMemoryGroup}
+                  />
                 ) : item.section === "plugins" ? (
                   <PluginsSubList />
                 ) : (

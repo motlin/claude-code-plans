@@ -1,8 +1,32 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useState } from "react";
 import { MemoriesSubList } from "../../components/sidebar/sublists/MemoriesSubList";
 import { MemoryListResponse, projectMemoriesQueryOptions } from "../../lib/api/memories";
 import { projectsQueryOptions } from "../../lib/api/projects";
 import { createStoryQueryClient, StoryWrapper } from "./decorators";
+
+// The sidebar owns the collapse state in the app; this mirrors that wiring so
+// the group toggles stay interactive in Storybook.
+function CollapsibleMemories({ activeItemId }: { activeItemId: string | null }) {
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set());
+  return (
+    <MemoriesSubList
+      activeItemId={activeItemId}
+      collapsedGroups={collapsedGroups}
+      onToggleGroup={(projectId) =>
+        setCollapsedGroups((previous) => {
+          const next = new Set(previous);
+          if (next.has(projectId)) {
+            next.delete(projectId);
+          } else {
+            next.add(projectId);
+          }
+          return next;
+        })
+      }
+    />
+  );
+}
 
 const meta = {
   title: "Sidebar/MemoriesSubList",
@@ -84,7 +108,7 @@ export const MultipleProjects: Story = {
 
     return (
       <StoryWrapper queryClient={queryClient}>
-        <MemoriesSubList activeItemId={null} />
+        <CollapsibleMemories activeItemId={null} />
       </StoryWrapper>
     );
   },
@@ -95,7 +119,7 @@ export const Loading: Story = {
     const queryClient = createStoryQueryClient({ enabled: false });
     return (
       <StoryWrapper queryClient={queryClient}>
-        <MemoriesSubList activeItemId={null} />
+        <CollapsibleMemories activeItemId={null} />
       </StoryWrapper>
     );
   },

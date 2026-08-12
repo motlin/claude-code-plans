@@ -1,7 +1,6 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
-import { useEffect, useState } from "react";
 import { projectMemoriesQueryOptions, type MemoryListItem } from "../../../lib/api/memories";
 import { projectsQueryOptions } from "../../../lib/api/projects";
 import { toMdSlug } from "../../../lib/md-slug";
@@ -17,12 +16,25 @@ function latestMemoryTime(group: MemoryGroup): number {
   return Math.max(...group.memories.map((memory) => new Date(memory.mtime).getTime()));
 }
 
-export function MemoriesSubList({ activeItemId }: { activeItemId: string | null }) {
+/**
+ * `collapsedGroups` lives in `Sidebar` because opening an item in another
+ * section collapses — and unmounts — this sublist; local state would come back
+ * expand-all'd. The group holding the open memory is revealed without being
+ * removed from the set, so an explicit collapse survives the visit.
+ */
+export function MemoriesSubList({
+  activeItemId,
+  collapsedGroups,
+  onToggleGroup,
+}: {
+  activeItemId: string | null;
+  collapsedGroups: ReadonlySet<string>;
+  onToggleGroup: (projectId: string) => void;
+}) {
   const { data: projects } = useQuery(projectsQueryOptions());
   const memoryQueries = useQueries({
     queries: projects?.map((project) => projectMemoriesQueryOptions(project.id)) ?? [],
   });
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   let groups: MemoryGroup[] | undefined;
   if (projects && memoryQueries.every((query) => query.data !== undefined)) {
@@ -44,28 +56,6 @@ export function MemoriesSubList({ activeItemId }: { activeItemId: string | null 
   const activeGroupId = groups?.find((group) =>
     group.memories.some((memory) => `${memory.project}/${memory.filename}` === activeItemId),
   )?.projectId;
-
-  useEffect(() => {
-    if (!activeGroupId) return;
-    setCollapsedGroups((previous) => {
-      if (!previous.has(activeGroupId)) return previous;
-      const next = new Set(previous);
-      next.delete(activeGroupId);
-      return next;
-    });
-  }, [activeGroupId]);
-
-  function toggleGroup(projectId: string) {
-    setCollapsedGroups((previous) => {
-      const next = new Set(previous);
-      if (next.has(projectId)) {
-        next.delete(projectId);
-      } else {
-        next.add(projectId);
-      }
-      return next;
-    });
-  }
 
   if (groups === undefined) {
     return (
@@ -94,12 +84,13 @@ export function MemoriesSubList({ activeItemId }: { activeItemId: string | null 
   return (
     <div className="pl-10">
       {groups.map((group) => {
-        const isExpanded = !collapsedGroups.has(group.projectId);
+        const isExpanded =
+          !collapsedGroups.has(group.projectId) || group.projectId === activeGroupId;
         return (
           <div key={group.projectId}>
             <button
               type="button"
-              onClick={() => toggleGroup(group.projectId)}
+              onClick={() => onToggleGroup(group.projectId)}
               className="mb-px flex w-full items-center gap-1 rounded-[4px] px-2 py-1 text-xs text-text-500 transition-colors hover:bg-bg-300/50 hover:text-text-200"
             >
               <ChevronRight
