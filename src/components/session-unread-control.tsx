@@ -14,6 +14,7 @@ import {
   observeSessionState,
   subscribeUnseenWork,
 } from "../lib/unread-store";
+import { DISPLAY_STATE_STYLES } from "./session-status-indicator";
 
 export function useHasUnseenWork(sessionId: string): boolean {
   const getSnapshot = useCallback(() => hasUnseenWork(sessionId), [sessionId]);
@@ -27,14 +28,6 @@ function useSessionDisplayState(sessionId: string, state: ActivityState): Displa
 
   return displayState(state, unseen);
 }
-
-const STATE_STYLES: Record<DisplayState, string> = {
-  waiting: "text-amber-500",
-  review: "text-sky-500",
-  working: "text-green-500",
-  idle: "text-text-500",
-  unknown: "text-text-500",
-};
 
 export function SessionUnreadControl({
   sessionId,
@@ -63,7 +56,7 @@ function LiveSessionUnreadControl({
 
   return (
     <div className="flex items-center gap-1.5 text-[10px]" data-session-state={shownState}>
-      <span className={STATE_STYLES[shownState]}>
+      <span className={DISPLAY_STATE_STYLES[shownState]}>
         {shownState === "review" ? "needs review" : shownState}
       </span>
       {canToggle && (

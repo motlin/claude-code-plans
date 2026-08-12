@@ -5,10 +5,11 @@ import type { z } from "zod";
 import { ActiveSessionListResponse, activeSessionsQueryOptions } from "../lib/api/sessions";
 import { useClaudeEvents } from "../hooks/use-claude-events";
 import { DEFAULTS, useSettings } from "../components/settings-provider";
-import { StatusDot } from "../components/sidebar/primitives/StatusDot";
+import { NeedsReviewMarker, SessionReviewAction } from "../components/session-reviewed-toggle";
+import { SessionStatusIndicator } from "../components/session-status-indicator";
 import { ListPageHeader } from "../components/list-page-header";
 import { displayState, waitHeat } from "../lib/session-state";
-import { hasUnseenWork, subscribeUnseenWork } from "../lib/unread-store";
+import { hasUnseenWork, markSeen, subscribeUnseenWork } from "../lib/unread-store";
 
 type ActiveSession = z.infer<typeof ActiveSessionListResponse>[number];
 
@@ -28,6 +29,20 @@ function formatRelativeTime(lastModified: number): string {
   const minutes = Math.floor(seconds / 60);
   return `modified ${minutes}m ago`;
 }
+
+/**
+ * Same fixed-column row treatment as the Herdr list: every column but the title
+ * is fixed-width, and the trailing review-action column is reserved even when a
+ * row has nothing to review, so dots, status words, and timestamps line up down
+ * the whole list. The columns themselves are session-scoped — /active is fed by
+ * `/api/sessions/active` alone and stays readable with no terminal multiplexer
+ * running at all.
+ */
+const ACTIVE_ROW_COLUMNS =
+  "grid grid-cols-[minmax(0,1fr)_5rem_8.5rem_7rem_9rem] items-center rounded-md border border-border-300/15";
+
+const ACTIVE_TRANSCRIPT_COLUMNS =
+  "grid grid-cols-[minmax(0,1fr)_minmax(0,8rem)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-bg-200/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100";
 
 function labelFromCwd(cwd: string): string {
   const trimmed = cwd.replace(/\/+$/, "");
@@ -91,24 +106,35 @@ function ActivePage() {
       ) : (
         <div className="mt-4 space-y-1">
           {sessions.map((session) => (
-            <Link
-              key={session.sessionId}
-              to="/session/$id"
-              params={{ id: session.sessionId }}
-              className="block rounded-md border border-border-300/15 p-3 no-underline transition-colors hover:bg-bg-200/50"
-            >
-              <div className="flex items-center gap-2">
-                <StatusDot
-                  active
-                  heat={waitHeat(session.displayState, session.blockedSince, now)}
-                />
+            <div key={session.sessionId} className={ACTIVE_ROW_COLUMNS}>
+              <Link
+                to="/session/$id"
+                params={{ id: session.sessionId }}
+                aria-label={`Open session transcript for ${session.title}`}
+                title={`Open session transcript for ${session.title}. Project ${session.projectName}`}
+                className={ACTIVE_TRANSCRIPT_COLUMNS}
+              >
                 <span className="truncate text-sm font-medium text-text-000">{session.title}</span>
-                <span className="shrink-0 text-xs text-text-500">{session.projectName}</span>
-                <span className="ml-auto shrink-0 text-xs text-text-500">
-                  {formatRelativeTime(session.lastModified)}
-                </span>
+                <span className="truncate text-xs text-text-500">{session.projectName}</span>
+              </Link>
+              <SessionStatusIndicator
+                state={session.state}
+                heat={waitHeat(session.displayState, session.blockedSince, now)}
+              />
+              <NeedsReviewMarker needsReview={session.displayState === "review"} />
+              <span className="truncate text-xs tabular-nums text-text-500">
+                {formatRelativeTime(session.lastModified)}
+              </span>
+              <div className="justify-self-end">
+                {session.displayState === "review" && (
+                  <SessionReviewAction
+                    onReview={async () => {
+                      markSeen(session.sessionId);
+                    }}
+                  />
+                )}
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       )}

@@ -2,7 +2,7 @@ import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Info, MessagesSquare } from "lucide-react";
 import { HerdrStatusIndicator } from "../components/herdr-status-indicator";
-import { SessionReviewAction } from "../components/session-reviewed-toggle";
+import { NeedsReviewMarker, SessionReviewAction } from "../components/session-reviewed-toggle";
 import { StatusDot } from "../components/sidebar/primitives/StatusDot";
 import { sessionQueryKeys } from "../lib/api/sessions";
 import { terminalPlacementsQueryOptions } from "../lib/api/terminal-placements";
@@ -207,15 +207,10 @@ function HerdrPage() {
                   <span className="truncate text-sm font-medium text-text-000">{title}</span>
                 </Link>
                 <HerdrStatusIndicator status={pane.agentStatus} />
-                <span className="truncate text-xs text-warning-000">
-                  {pane.viewedState.viewedAnywhere
-                    ? null
-                    : `Needs review${
-                        pane.viewedState.newMessageCount > 0
-                          ? ` · ${pane.viewedState.newMessageCount} new`
-                          : ""
-                      }`}
-                </span>
+                <NeedsReviewMarker
+                  needsReview={!pane.viewedState.viewedAnywhere}
+                  newMessageCount={pane.viewedState.newMessageCount}
+                />
                 <Link
                   to="/session/$id"
                   params={{ id: placement.sessionId }}

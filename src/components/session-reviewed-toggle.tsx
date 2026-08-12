@@ -40,6 +40,24 @@ export function SessionReviewedToggle({
   );
 }
 
+/**
+ * Always renders its span so the marker keeps its grid cell on reviewed rows and
+ * the columns to its right stay aligned down the whole list.
+ */
+export function NeedsReviewMarker({
+  needsReview,
+  newMessageCount = 0,
+}: {
+  needsReview: boolean;
+  newMessageCount?: number;
+}) {
+  return (
+    <span className="truncate text-xs text-warning-000">
+      {needsReview ? `Needs review${newMessageCount > 0 ? ` · ${newMessageCount} new` : ""}` : null}
+    </span>
+  );
+}
+
 export function SessionReviewAction({ onReview }: { onReview: () => Promise<unknown> }) {
   const { error, run } = useRetryableAction(onReview, "Failed to mark reviewed");
 
