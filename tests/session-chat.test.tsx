@@ -661,14 +661,30 @@ describe("SessionChat failed tool row label", () => {
   });
 });
 
-/** [class, text] of every label span in the first tool row, in document order. */
-function toolRowLabelSpans(html: string): [string, string][] {
-  // Matches both the disclosure row and the bare non-expanding row, whose
-  // class list stops before `cursor-pointer hide-focus-ring rounded-r3`.
-  const row = /group\/tool[^"]*">([\s\S]*?)<\/div>/.exec(html)?.[1] ?? "";
+// Matches both the disclosure row and the bare non-expanding row, whose class
+// list stops before `cursor-pointer hide-focus-ring rounded-r3`.
+const TOOL_ROW = /group\/tool[^"]*">([\s\S]*?)<\/div>/g;
+
+/** [class, text] of every label span in one tool row's markup. */
+function labelSpans(row: string): [string, string][] {
   return [...row.matchAll(/<span class="([^"]+)">([^<]*)<\/span>/g)]
     .filter((match) => match[1]!.includes("text-body") || match[1]!.includes("text-code"))
-    .map((match) => [match[1]!, match[2]!]);
+    .map((match): [string, string] => [match[1]!, match[2]!]);
+}
+
+/** The markup of every tool row, in document order. */
+function toolRows(html: string): string[] {
+  return [...html.matchAll(TOOL_ROW)].map((match) => match[1]!);
+}
+
+/** [class, text] of every label span in the first tool row, in document order. */
+function toolRowLabelSpans(html: string): [string, string][] {
+  return labelSpans(toolRows(html)[0] ?? "");
+}
+
+/** [class, text] of every label span in every tool row, in document order. */
+function allToolRowLabelSpans(html: string): [string, string][] {
+  return toolRows(html).flatMap((row) => labelSpans(row));
 }
 
 describe("SessionChat failed tool row label text", () => {
@@ -691,14 +707,14 @@ describe("SessionChat failed tool row label text", () => {
     }).toStrictEqual({
       failedEdit: [
         ["shrink-0 text-body text-extended-pink", "Failed to edit"],
-        ["truncate min-w-0 text-code text-assistant-primary", "cache.ts"],
+        ["text-body text-assistant-primary truncate min-w-0", "cache.ts"],
       ],
       okEdit: [
         [
           "shrink-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary",
           "Edited",
         ],
-        ["truncate min-w-0 text-code text-assistant-primary", "cache.ts"],
+        ["text-body text-assistant-primary truncate min-w-0", "cache.ts"],
       ],
       failedGrep: [
         ["shrink-0 text-body text-extended-pink", "Failed to search"],
@@ -757,6 +773,39 @@ describe("SessionChat failed tool row label text", () => {
     expect(toolRowLabelSpans(html)).toStrictEqual([
       ["shrink-0 text-body text-extended-pink", "Failed to use sentry"],
       ["truncate min-w-0 text-body text-extended-pink", "unhandled"],
+    ]);
+  });
+});
+
+describe("SessionChat file-param tool row argument", () => {
+  const VERB =
+    "shrink-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary";
+  const ARGUMENT = "text-body text-assistant-primary truncate min-w-0";
+
+  it("sets a file argument in the sans body face, matching upstream Read/Edit rows", () => {
+    const html = renderTranscript(
+      toolCallRecords([{ id: "t1", name: "Read", input: { file_path: "/repo/src/cache.ts" } }]),
+    );
+
+    expect(toolRowLabelSpans(html)).toStrictEqual([
+      [VERB, "Read"],
+      [ARGUMENT, "cache.ts"],
+    ]);
+  });
+
+  it("sets nested file arguments in the same face as a top-level one", () => {
+    const html = renderTranscript(
+      toolCallRecords([
+        { id: "t1", name: "Read", input: { file_path: "/repo/src/cache.ts" } },
+        { id: "t2", name: "Read", input: { file_path: "/repo/src/schema.ts" } },
+      ]),
+    );
+
+    expect(
+      allToolRowLabelSpans(html).filter(([className]) => className === ARGUMENT),
+    ).toStrictEqual([
+      [ARGUMENT, "cache.ts"],
+      [ARGUMENT, "schema.ts"],
     ]);
   });
 });

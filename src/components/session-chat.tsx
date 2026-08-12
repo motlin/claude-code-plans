@@ -1935,7 +1935,8 @@ function ToolCallSection({ calls, sessionId }: { calls: ClientToolCall[]; sessio
 }
 
 /**
- * Tools whose param is a file path -- shown as filename-only in mono/primary style.
+ * Tools whose param is a file path -- shown as filename-only, in the row's own
+ * sans body face but primary rather than secondary, as upstream draws it.
  */
 const FILE_PARAM_TOOLS = new Set(["Read", "Edit", "MultiEdit", "Write"]);
 
@@ -2089,7 +2090,11 @@ function ToolCallRow({
       </span>
       {displayParam && (
         <span
-          className={`truncate min-w-0 ${isFileParam ? "text-code text-assistant-primary" : `text-body ${labelClass}`}`}
+          className={
+            isFileParam
+              ? "text-body text-assistant-primary truncate min-w-0"
+              : `truncate min-w-0 text-body ${labelClass}`
+          }
         >
           {displayParam}
         </span>
