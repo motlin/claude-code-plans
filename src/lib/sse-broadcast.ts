@@ -29,3 +29,8 @@ export function addClient(controller: ReadableStreamDefaultController): void {
 export function removeClient(controller: ReadableStreamDefaultController): void {
   clients.delete(controller);
 }
+
+/** Number of SSE clients currently subscribed to `/api/events`. */
+export function sseClientCount(): number {
+  return clients.size;
+}
