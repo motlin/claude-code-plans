@@ -10,6 +10,7 @@
  */
 
 import { KNOWN_HOOK_EVENTS } from "./hook-events";
+import type { HookEventName } from "./hook-events";
 
 export const DEFAULT_HOOK_PORT = 7526;
 
@@ -105,6 +106,37 @@ export function generateHooksConfig(options?: GenerateOptions): HooksConfig {
   }
 
   return { hooks };
+}
+
+/** A hook matcher as it appears in an already-written settings.json. */
+interface InstalledHookMatcher {
+  hooks?: Array<{ command?: string }>;
+}
+
+/**
+ * Which hook events are absent from an existing settings.json `hooks` block —
+ * an event counts as installed only when one of its matchers carries the exact
+ * command we would generate, so hooks pointed at another port (or another
+ * tool's script) read as missing. Pass `undefined` for a settings file that has
+ * no `hooks` key at all; every event is then missing.
+ *
+ * Drives both the aggregate `/api/hooks/status` counts and the per-event copy
+ * on pages fed by one specific event — `/notifications` is empty forever
+ * without `Notification`, and says so.
+ */
+export function missingHookEvents(
+  installed: Record<string, unknown> | undefined,
+  options?: GenerateOptions,
+): HookEventName[] {
+  const desired = generateHooksConfig(options);
+  return HOOK_EVENT_NAMES.filter((eventName) => {
+    const entries = installed?.[eventName];
+    if (!Array.isArray(entries)) return true;
+    const desiredCommand = desired.hooks[eventName]?.[0]?.hooks[0]?.command;
+    return !entries.some((entry) =>
+      (entry as InstalledHookMatcher).hooks?.some((hook) => hook.command === desiredCommand),
+    );
+  });
 }
 
 /**

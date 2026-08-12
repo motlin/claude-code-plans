@@ -3,11 +3,17 @@ import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query
 import { apiFetch } from "./client";
 import type { PersistedCapabilities } from "../capabilities";
 
+/**
+ * Install state of the ccp hook block in ~/.claude/settings.json.
+ * `missingEvents` names the events that are absent, so a page fed by one
+ * specific event can explain its own emptiness without re-reading settings.
+ */
 export const HookStatusResponse = z.object({
   installed: z.boolean(),
   partial: z.boolean(),
-  installedCount: z.number().optional(),
-  totalCount: z.number().optional(),
+  installedCount: z.number(),
+  totalCount: z.number(),
+  missingEvents: z.array(z.string()),
   settingsPath: z.string(),
 });
 

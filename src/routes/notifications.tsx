@@ -8,6 +8,7 @@ import {
   useDismissNotification,
   type Notification,
 } from "../lib/api/notifications";
+import { hookStatusQueryOptions } from "../lib/api/hooks";
 import { sessionTitlesQueryOptions } from "../lib/api/sessions";
 import { formatRelativeTimeFromIso } from "../lib/relative-time";
 import { ListPageHeader } from "../components/list-page-header";
@@ -30,6 +31,42 @@ function TypeIcon({ notificationType }: { notificationType: string }) {
     return <CheckCircle2 className={`${className} text-green-500`} />;
   }
   return <Info className={`${className} text-text-500`} />;
+}
+
+/**
+ * Why the list is empty, rather than a bare "nothing here". Entries only ever
+ * come from Claude Code's `Notification` hook and are never rebuilt by
+ * rescanning `~/.claude`, so an install with that hook missing shows an empty
+ * page forever — say so and link to the installer instead of looking broken.
+ */
+function EmptyNotifications() {
+  const { data: hookStatus } = useQuery(hookStatusQueryOptions);
+  const notificationHookMissing = hookStatus?.missingEvents.includes("Notification") === true;
+
+  return (
+    <section
+      aria-label="Why there are no notifications"
+      className="mt-8 space-y-3 text-sm text-text-500"
+    >
+      <p>
+        Claude Code posts one here through its Notification hook, when a session is waiting on you
+        or has finished a turn.
+      </p>
+      {notificationHookMissing ? (
+        <p>
+          That hook is not installed in Claude Code&rsquo;s settings, so no notification can reach
+          this page.{" "}
+          <Link to="/setup" className="text-accent-100 hover:underline">
+            Install hooks
+          </Link>
+        </p>
+      ) : null}
+      <p>
+        Notifications are held in this server&rsquo;s memory only: each one expires after 24 hours,
+        and restarting the server clears them all.
+      </p>
+    </section>
+  );
 }
 
 function NotificationsPage() {
@@ -63,7 +100,7 @@ function NotificationsPage() {
       />
 
       {notifications.length === 0 ? (
-        <p className="mt-8 text-center text-text-500">No notifications right now.</p>
+        <EmptyNotifications />
       ) : (
         <ul className="mt-4 space-y-1">
           {notifications.map((notification: Notification) => {

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
-import { generateHooksConfig, DEFAULT_HOOK_PORT, HOOK_EVENT_NAMES } from "../src/lib/hook-config";
+import {
+  generateHooksConfig,
+  missingHookEvents,
+  DEFAULT_HOOK_PORT,
+  HOOK_EVENT_NAMES,
+} from "../src/lib/hook-config";
 
 describe("HOOK_EVENT_NAMES", () => {
   it("contains all expected Claude hook event names", () => {
@@ -151,5 +156,45 @@ describe("generateHooksConfig", () => {
       expect(command).toContain("|| true");
       expect(command).toContain("--connect-timeout 0.1");
     }
+  });
+});
+
+describe("missingHookEvents", () => {
+  it("reports every event as missing when settings.json has no hooks block", () => {
+    expect(missingHookEvents(undefined)).toStrictEqual([...HOOK_EVENT_NAMES]);
+  });
+
+  it("reports no missing events for a full install", () => {
+    expect(missingHookEvents(generateHooksConfig().hooks)).toStrictEqual([]);
+  });
+
+  it("names the events a partial install left out", () => {
+    const { hooks } = generateHooksConfig();
+    const partial: Record<string, unknown> = {
+      SessionStart: hooks["SessionStart"],
+      Stop: hooks["Stop"],
+    };
+    const missing = missingHookEvents(partial);
+    expect({
+      includesNotification: missing.includes("Notification"),
+      includesInstalled: missing.includes("SessionStart") || missing.includes("Stop"),
+      count: missing.length,
+    }).toStrictEqual({
+      includesNotification: true,
+      includesInstalled: false,
+      count: HOOK_EVENT_NAMES.length - 2,
+    });
+  });
+
+  it("treats an unrelated command under a known event name as missing", () => {
+    const foreign: Record<string, unknown> = {
+      Notification: [{ hooks: [{ type: "command", command: "bash ~/.claude/hooks/other.sh" }] }],
+    };
+    expect(missingHookEvents(foreign).includes("Notification")).toBe(true);
+  });
+
+  it("treats hooks installed on a different port as missing", () => {
+    const otherPort = generateHooksConfig({ port: 9000 }).hooks;
+    expect(missingHookEvents(otherPort)).toStrictEqual([...HOOK_EVENT_NAMES]);
   });
 });
