@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import type { ThemedToken } from "@shikijs/core";
 import type { ToolRendererProps } from "./types";
-import { CollapsibleSection, ErrorBorder, ExpandableBlock } from "./shared";
+import { CollapsibleSection, CopyableBody, ErrorBorder, ExpandableBlock } from "./shared";
 import { MarkdownArticle } from "../markdown-article";
 import { looksLikeMarkdown } from "../../lib/client-markdown";
 import { useHighlightedLines } from "../../hooks/use-shiki";
@@ -398,9 +398,11 @@ export function ClaudeInChromeRenderer({ toolCall }: ToolRendererProps) {
   const input = toolCall.input as Record<string, unknown>;
 
   return (
-    <ErrorBorder isError={toolCall.isError}>
-      <ClaudeInChromeContent tool={tool} input={input} resultText={resultText} />
-    </ErrorBorder>
+    <CopyableBody copyText={resultText}>
+      <ErrorBorder isError={toolCall.isError}>
+        <ClaudeInChromeContent tool={tool} input={input} resultText={resultText} />
+      </ErrorBorder>
+    </CopyableBody>
   );
 }
 

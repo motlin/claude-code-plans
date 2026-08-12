@@ -454,6 +454,24 @@ export function CopyButton({ text }: { text: string }) {
   );
 }
 
+/**
+ * Outer layout for renderers that draw their own body instead of going through
+ * KeyValueCard. Upstream attaches a copy control to every expanded body, so the
+ * custom MCP renderers mirror KeyValueCard's row here: content column plus a
+ * hover-revealed CopyButton sibling.
+ *
+ * The button sits outside any `ErrorBorder`, so a failed call recolors its body
+ * without recoloring the copy affordance.
+ */
+export function CopyableBody({ copyText, children }: { copyText: string; children: ReactNode }) {
+  return (
+    <div className="flex w-full">
+      <div className="flex-1 min-w-0">{children}</div>
+      <CopyButton text={copyText} />
+    </div>
+  );
+}
+
 export function CollapsibleSection({
   label,
   defaultOpen = false,

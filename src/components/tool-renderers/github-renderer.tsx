@@ -14,7 +14,7 @@ import {
   GitMerge,
 } from "lucide-react";
 import type { ToolRendererProps } from "./types";
-import { CollapsibleSection, ErrorBorder } from "./shared";
+import { CollapsibleSection, CopyableBody, ErrorBorder } from "./shared";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -674,10 +674,12 @@ export function GithubRenderer({ toolCall }: ToolRendererProps) {
   };
 
   return (
-    <ErrorBorder isError={toolCall.isError}>
-      <CollapsibleSection label={label} defaultOpen={true}>
-        {renderResult()}
-      </CollapsibleSection>
-    </ErrorBorder>
+    <CopyableBody copyText={resultText}>
+      <ErrorBorder isError={toolCall.isError}>
+        <CollapsibleSection label={label} defaultOpen={true}>
+          {renderResult()}
+        </CollapsibleSection>
+      </ErrorBorder>
+    </CopyableBody>
   );
 }

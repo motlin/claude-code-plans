@@ -20,7 +20,7 @@ import {
   Info,
 } from "lucide-react";
 import type { ToolRendererProps } from "./types";
-import { ErrorBorder } from "./shared";
+import { CopyableBody, ErrorBorder } from "./shared";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -537,9 +537,11 @@ export function PlaywrightRenderer({ toolCall }: ToolRendererProps) {
   const input = toolCall.input as Record<string, unknown>;
 
   return (
-    <ErrorBorder isError={toolCall.isError}>
-      <PlaywrightContent tool={tool} input={input} resultText={resultText} />
-    </ErrorBorder>
+    <CopyableBody copyText={resultText}>
+      <ErrorBorder isError={toolCall.isError}>
+        <PlaywrightContent tool={tool} input={input} resultText={resultText} />
+      </ErrorBorder>
+    </CopyableBody>
   );
 }
 

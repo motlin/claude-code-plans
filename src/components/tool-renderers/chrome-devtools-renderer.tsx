@@ -13,7 +13,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import type { ToolRendererProps } from "./types";
-import { ErrorBorder } from "./shared";
+import { CopyableBody, ErrorBorder } from "./shared";
 
 // ---------------------------------------------------------------------------
 // Shared parsers
@@ -671,9 +671,11 @@ export function ChromeDevtoolsRenderer({ toolCall }: ToolRendererProps) {
   const input = toolCall.input as Record<string, unknown>;
 
   return (
-    <ErrorBorder isError={toolCall.isError}>
-      <ChromeDevtoolsContent tool={tool} input={input} resultText={resultText} />
-    </ErrorBorder>
+    <CopyableBody copyText={resultText}>
+      <ErrorBorder isError={toolCall.isError}>
+        <ChromeDevtoolsContent tool={tool} input={input} resultText={resultText} />
+      </ErrorBorder>
+    </CopyableBody>
   );
 }
 
