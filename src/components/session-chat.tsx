@@ -2123,7 +2123,10 @@ function ToolCallSummary({ calls, sessionId }: { calls: ClientToolCall[]; sessio
             className={`grid ${expanded ? "grid-rows-expand" : "grid-rows-collapse"}`}
           >
             <div className="overflow-hidden">
-              <div className="flex flex-col gap-g3 bg-t1 rounded-r6 p-p7 mt-p3">
+              {/* Upstream separates the grouped rows with hairline dividers and
+                  per-child padding inside one outlined card, not with gaps
+                  between rows floating on a tinted panel. */}
+              <div className="flex flex-col card-outline rounded-r6 overflow-clip mt-p6 divide-y divide-t3 [&>*]:px-p7 [&>*]:py-p6">
                 {displayCalls.map((call, i) => (
                   <ToolCallRow key={i} call={call} sessionId={sessionId} nested />
                 ))}

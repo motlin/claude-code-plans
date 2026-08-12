@@ -438,10 +438,15 @@ describe("SessionChat turn spacing", () => {
   });
 });
 
+/** Arbitrary Tailwind variants like `[&>*]:px-p7` come back HTML-escaped. */
+function decodeClassAttr(value: string): string {
+  return value.replaceAll("&amp;", "&").replaceAll("&gt;", ">");
+}
+
 /** Class list of every tool card shell, in document order. */
 function toolCardClassNames(html: string): string[] {
-  return [...html.matchAll(/<div class="([^"]*card-outline[^"]*)"/g)].map(
-    (match) => match[1] ?? "",
+  return [...html.matchAll(/<div class="([^"]*card-outline[^"]*)"/g)].map((match) =>
+    decodeClassAttr(match[1] ?? ""),
   );
 }
 
@@ -512,6 +517,14 @@ describe("SessionChat tool card chrome", () => {
   });
 });
 
+/**
+ * Upstream's expanded "Read 3 files" / "Ran 3 commands" body: an outlined,
+ * divided card whose children carry their own padding, not a tinted panel with
+ * gaps between free-floating rows.
+ */
+const GROUP_CONTAINER_CLASS =
+  "flex flex-col card-outline rounded-r6 overflow-clip mt-p6 divide-y divide-t3 [&>*]:px-p7 [&>*]:py-p6";
+
 /** Class list of every expanding-body wrapper (`group/body ...`), in document order. */
 function toolBodyClassNames(html: string): string[] {
   return [...html.matchAll(/<div class="(group\/body[^"]*)"/g)].map((match) => match[1] ?? "");
@@ -543,18 +556,46 @@ describe("SessionChat nested tool rows", () => {
       singleBashCards: toolCardClassNames(singleBash),
       singleBashBodies: toolBodyClassNames(singleBash),
     }).toStrictEqual({
-      groupedBashCards: [],
+      // The only outline in a grouped card is the group container's own; the
+      // rows inside it are bare.
+      groupedBashCards: [GROUP_CONTAINER_CLASS],
       groupedBashBodies: [
         "group/body relative flex w-full pt-p3",
         "group/body relative flex w-full pt-p3",
       ],
-      groupedReadCards: [],
+      groupedReadCards: [GROUP_CONTAINER_CLASS],
       groupedReadBodies: [
         "group/body relative flex w-full flex-col pt-p3",
         "group/body relative flex w-full flex-col pt-p3",
       ],
       singleBashCards: ["card-outline rounded-r6 overflow-clip flex flex-col relative"],
       singleBashBodies: ["group/body py-p6"],
+    });
+  });
+});
+
+/** Class of the expanded grouped-tool-call container. */
+function groupContainerClassNames(html: string): string[] {
+  return [...html.matchAll(/<div class="(flex flex-col [^"]*rounded-r6[^"]*)"/g)].map((match) =>
+    decodeClassAttr(match[1] ?? ""),
+  );
+}
+
+describe("SessionChat grouped tool card", () => {
+  it("renders the expanded group as an outlined, divided card instead of a filled panel", () => {
+    const groupedBash = renderTranscript(
+      toolCallRecords([
+        { id: "t1", name: "Bash", input: { command: "git status" } },
+        { id: "t2", name: "Bash", input: { command: "git log --oneline" } },
+      ]),
+    );
+
+    expect({
+      containers: groupContainerClassNames(groupedBash),
+      fillsWithT1: groupedBash.includes("bg-t1"),
+    }).toStrictEqual({
+      containers: [GROUP_CONTAINER_CLASS],
+      fillsWithT1: false,
     });
   });
 });
