@@ -13,6 +13,31 @@ const OVERRIDE_SELECTOR =
   '.diff-tailwindcss-wrapper[data-component="git-diff-view"][data-theme] .diff-style-root';
 
 /**
+ * The library hard-codes its own mono stack as an *inline* style on the table
+ * wrapper, so only `!important` can pull diff text onto the app font.
+ */
+const FONT_SELECTOR = ".diff-tailwindcss-wrapper .diff-table-scroll-container";
+
+/**
+ * The row leading override has to beat the library's own `leading-[1.6]` rule
+ * (0,2,0) regardless of stylesheet order, so it carries an extra attribute.
+ */
+const LEADING_SELECTOR =
+  '.diff-tailwindcss-wrapper[data-component="git-diff-view"] .diff-table-body';
+
+/** The library build whose inline styles and class names the overrides target. */
+const LIBRARY_BUNDLE = resolve(
+  __dirname,
+  "..",
+  "node_modules",
+  "@git-diff-view",
+  "react",
+  "dist",
+  "esm",
+  "index.mjs",
+);
+
+/**
  * The declarations of one CSS rule. Values are whitespace-normalized onto a
  * single line so that Prettier's wrapping of long `color-mix()` arguments does
  * not change what this test sees.
@@ -91,5 +116,29 @@ describe("diff view row colors", () => {
       root: tokensMissingFrom(css, ":root", tokens),
       dark: tokensMissingFrom(css, ".dark", tokens),
     }).toStrictEqual({ root: [], dark: [] });
+  });
+});
+
+describe("diff view typography", () => {
+  it("sets diff rows in the app mono face on upstream's code leading", () => {
+    const css = readFileSync(GLOBALS_CSS, "utf8");
+
+    expect({
+      font: ruleDeclarations(css, FONT_SELECTOR),
+      leading: ruleDeclarations(css, LEADING_SELECTOR),
+    }).toStrictEqual({
+      font: { "font-family": "var(--font-mono) !important" },
+      leading: { "line-height": "var(--upstream-leading-code)" },
+    });
+  });
+
+  it("targets the wrapper and row classes @git-diff-view actually renders", () => {
+    const bundle = readFileSync(LIBRARY_BUNDLE, "utf8");
+
+    expect({
+      wrapper: bundle.includes('"unified-diff-table-wrapper diff-table-scroll-container'),
+      rows: bundle.includes('"diff-table-body leading-[1.6]"'),
+      inlineFont: bundle.includes('fontFamily: "Menlo, Consolas, monospace"'),
+    }).toStrictEqual({ wrapper: true, rows: true, inlineFont: true });
   });
 });

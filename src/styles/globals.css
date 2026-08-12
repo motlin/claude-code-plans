@@ -374,6 +374,26 @@
   --diff-expand-lineNumber-color--: var(--upstream-text-assistant-secondary);
 }
 
+/* Set diff text in the app's mono face instead of @git-diff-view's built-in
+   `Menlo, Consolas, monospace`, so a diff card and the Shiki `pre` a few rows
+   above it in the same transcript render in the same typeface.
+
+   `!important` is load-bearing: the library writes that stack as an *inline*
+   style on the scroll container it renders, which no plain author rule can
+   beat. That container carries the font for every view mode we render, since
+   both renderers ask for `DiffModeEnum.Unified`. */
+.diff-tailwindcss-wrapper .diff-table-scroll-container {
+  font-family: var(--font-mono) !important;
+}
+
+/* Row leading: upstream's diff cards run 13px/20px, while the library sizes
+   rows off a 1.6 ratio (20.8px at our 13px). The extra attribute selector
+   out-specifies the library's own `leading-[1.6]` rule (0,2,0) rather than
+   relying on stylesheet order, same as the color override above. */
+.diff-tailwindcss-wrapper[data-component="git-diff-view"] .diff-table-body {
+  line-height: var(--upstream-leading-code);
+}
+
 /* Hide the old line number column in unified diff view to avoid showing
    duplicate numbers (old and new are identical for our Edit tool fragments
    which always start at line 1). */
