@@ -40,9 +40,9 @@ afterEach(() => {
 
 const HERDR_ROW_COLUMNS =
   "grid grid-cols-[minmax(0,1fr)_5rem_8.5rem_2rem_9rem] items-center rounded-md border border-border-300/15";
-const HERDR_TRANSCRIPT_COLUMNS =
+const HERDR_TERMINAL_COLUMNS =
   "grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-bg-200/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100";
-const HERDR_TERMINAL_CELL =
+const HERDR_TRANSCRIPT_CELL =
   "flex size-8 items-center justify-center justify-self-center rounded-md text-text-500 transition-colors hover:bg-bg-200/50 hover:text-text-000 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100";
 const HERDR_ACTION_CELL = "justify-self-end";
 
@@ -214,7 +214,7 @@ describe("HerdrPage", () => {
     const rows = ["✳ Teammate availability notification", "✓ kalshi", "claude-code-plans"].map(
       (displayName) => {
         const row = screen.getByRole("link", {
-          name: `Open session transcript for ${displayName}`,
+          name: `Open live read-only terminal for ${displayName}`,
         }).parentElement;
         if (!row) throw new Error(`Expected a fleet row for ${displayName}`);
         return row;
@@ -223,17 +223,17 @@ describe("HerdrPage", () => {
 
     expect(
       rows.map((row) => {
-        const [transcript, status, review, terminal, action] = Array.from(row.children);
-        const [, glyph, title] = Array.from(transcript?.children ?? []);
+        const [terminal, status, review, transcript, action] = Array.from(row.children);
+        const [, glyph, title] = Array.from(terminal?.children ?? []);
         return {
           rowColumns: row.className,
           cells: row.children.length,
-          transcriptColumns: transcript?.className,
+          terminalColumns: terminal?.className,
           glyph: glyph?.textContent,
           title: title?.textContent,
           status: status?.getAttribute("aria-label"),
           review: review?.textContent,
-          terminal: terminal?.getAttribute("aria-label"),
+          transcript: transcript?.getAttribute("aria-label"),
           actionCell: action?.className,
         };
       }),
@@ -241,34 +241,34 @@ describe("HerdrPage", () => {
       {
         rowColumns: HERDR_ROW_COLUMNS,
         cells: 5,
-        transcriptColumns: HERDR_TRANSCRIPT_COLUMNS,
+        terminalColumns: HERDR_TERMINAL_COLUMNS,
         glyph: "✳",
         title: "Teammate availability notification",
         status: "Herdr agent status: working",
         review: "Needs review · 2 new",
-        terminal: "Open live read-only terminal for ✳ Teammate availability notification",
+        transcript: "Open session transcript for ✳ Teammate availability notification",
         actionCell: HERDR_ACTION_CELL,
       },
       {
         rowColumns: HERDR_ROW_COLUMNS,
         cells: 5,
-        transcriptColumns: HERDR_TRANSCRIPT_COLUMNS,
+        terminalColumns: HERDR_TERMINAL_COLUMNS,
         glyph: "✓",
         title: "kalshi",
         status: "Herdr agent status: idle",
         review: "",
-        terminal: "Open live read-only terminal for ✓ kalshi",
+        transcript: "Open session transcript for ✓ kalshi",
         actionCell: HERDR_ACTION_CELL,
       },
       {
         rowColumns: HERDR_ROW_COLUMNS,
         cells: 5,
-        transcriptColumns: HERDR_TRANSCRIPT_COLUMNS,
+        terminalColumns: HERDR_TERMINAL_COLUMNS,
         glyph: "",
         title: "claude-code-plans",
         status: "Herdr agent status: done",
         review: "",
-        terminal: "Open live read-only terminal for claude-code-plans",
+        transcript: "Open session transcript for claude-code-plans",
         actionCell: HERDR_ACTION_CELL,
       },
     ]);
@@ -496,7 +496,7 @@ describe("HerdrPage", () => {
         title: terminalLink.getAttribute("title"),
         className: terminalLink.className,
       },
-      displayName: Array.from(transcriptLink.children).map((cell) => cell.textContent),
+      displayName: Array.from(terminalLink.children).map((cell) => cell.textContent),
       visibleTechnicalMetadata: {
         provider: row?.textContent?.includes("herdr"),
         workspaceId: row?.textContent?.includes("workspace-test-100"),
@@ -511,13 +511,13 @@ describe("HerdrPage", () => {
     }).toStrictEqual({
       transcript: {
         href: "/session/session-test-100",
-        title: `Open session transcript for ${displayName}. Workspace workspace-test-100 · Pane pane-test-100 · Terminal terminal-test-100 · Capabilities: write, events, observe`,
-        className: HERDR_TRANSCRIPT_COLUMNS,
+        title: `Open session transcript for ${displayName}`,
+        className: HERDR_TRANSCRIPT_CELL,
       },
       terminal: {
         href: "/herdr/terminal/session-test-100",
-        title: `Open live read-only terminal for ${displayName}`,
-        className: HERDR_TERMINAL_CELL,
+        title: `Open live read-only terminal for ${displayName}. Workspace workspace-test-100 · Pane pane-test-100 · Terminal terminal-test-100 · Capabilities: write, events, observe`,
+        className: HERDR_TERMINAL_COLUMNS,
       },
       displayName: ["Herdr pane focused", "*", "✓ $ Alice terminal"],
       visibleTechnicalMetadata: {
@@ -709,6 +709,35 @@ describe("Herdr master-detail layout", () => {
       list: screen.getByRole("heading", { level: 1 }).textContent,
       terminal: screen.queryByRole("region", { name: "Live read-only terminal" }),
     }).toStrictEqual({ rail: "1kalshiidleTerminal 100idle", list: "Herdr", terminal: null });
+  });
+
+  /**
+   * The rail and the flat list show the same panes, so clicking a pane in one
+   * has to land where clicking it in the other does. They disagreed once: the
+   * rail opened the live terminal while the list row opened the transcript.
+   */
+  it("sends the rail and the flat list to the same view for one pane", async () => {
+    const { router } = renderLayoutAt("/herdr");
+    await router.load();
+    render(<RouterProvider router={router} />);
+
+    const transcriptLink = screen.getByRole("link", {
+      name: "Open session transcript for Terminal 100",
+    });
+    const [rowPrimary] = Array.from(transcriptLink.parentElement?.children ?? []);
+    expect({
+      rail: screen
+        .getByRole("link", { name: "Open live terminal for Terminal 100 in workspace kalshi" })
+        .getAttribute("href"),
+      rowPrimary: rowPrimary?.getAttribute("href"),
+      rowPrimaryLabel: rowPrimary?.getAttribute("aria-label"),
+      rowSecondary: transcriptLink.getAttribute("href"),
+    }).toStrictEqual({
+      rail: "/herdr/terminal/session-test-100",
+      rowPrimary: "/herdr/terminal/session-test-100",
+      rowPrimaryLabel: "Open live read-only terminal for Terminal 100",
+      rowSecondary: "/session/session-test-100",
+    });
   });
 
   it("renders the pane detail through the outlet on a deep link, keeping the rail", async () => {

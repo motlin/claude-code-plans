@@ -1,6 +1,6 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Info, Monitor } from "lucide-react";
+import { Info, MessagesSquare } from "lucide-react";
 import { HerdrStatusIndicator } from "../components/herdr-status-indicator";
 import { SessionReviewAction } from "../components/session-reviewed-toggle";
 import { StatusDot } from "../components/sidebar/primitives/StatusDot";
@@ -24,7 +24,11 @@ const TRACKED_CLAUDE_SCOPE =
 /**
  * Every column but the title is fixed-width, and the trailing review-action
  * column is reserved even when a row has nothing to review, so the glyphs,
- * status dots, status words, and terminal icons line up down the whole list.
+ * status dots, status words, and transcript icons line up down the whole list.
+ *
+ * Clicking the wide title cell opens the pane's live terminal, matching where
+ * the workspace rail sends the same pane; the transcript is the secondary
+ * affordance in the trailing icon cell.
  */
 const HERDR_ROW_COLUMNS =
   "grid grid-cols-[minmax(0,1fr)_5rem_8.5rem_2rem_9rem] items-center rounded-md border border-border-300/15";
@@ -188,10 +192,10 @@ function HerdrPage() {
                 className={HERDR_ROW_COLUMNS}
               >
                 <Link
-                  to="/session/$id"
-                  params={{ id: placement.sessionId }}
-                  aria-label={`Open session transcript for ${placement.displayName}`}
-                  title={`Open session transcript for ${placement.displayName}. ${technicalDetails}`}
+                  to="/herdr/terminal/$sessionId"
+                  params={{ sessionId: placement.sessionId }}
+                  aria-label={`Open live read-only terminal for ${placement.displayName}`}
+                  title={`Open live read-only terminal for ${placement.displayName}. ${technicalDetails}`}
                   className="grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-bg-200/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
                 >
                   <span className="sr-only">
@@ -213,14 +217,13 @@ function HerdrPage() {
                       }`}
                 </span>
                 <Link
-                  to="/herdr/terminal/$sessionId"
-                  params={{ sessionId: placement.sessionId }}
-                  onClick={(event) => event.stopPropagation()}
+                  to="/session/$id"
+                  params={{ id: placement.sessionId }}
                   className="flex size-8 items-center justify-center justify-self-center rounded-md text-text-500 transition-colors hover:bg-bg-200/50 hover:text-text-000 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
-                  title={`Open live read-only terminal for ${placement.displayName}`}
-                  aria-label={`Open live read-only terminal for ${placement.displayName}`}
+                  title={`Open session transcript for ${placement.displayName}`}
+                  aria-label={`Open session transcript for ${placement.displayName}`}
                 >
-                  <Monitor aria-hidden="true" className="h-4 w-4" />
+                  <MessagesSquare aria-hidden="true" className="h-4 w-4" />
                 </Link>
                 <div className="justify-self-end">
                   {!pane.viewedState.viewedAnywhere && (
