@@ -13,8 +13,8 @@ describe("formatAnswerPrompt", () => {
     const result = formatAnswerPrompt("toolu_abc", [{ question: "Continue?", answer: "Yes" }]);
     expect(result).toContain("toolu_abc");
     expect(result).toContain('"Continue?"="Yes"');
-    expect(result).toContain("User has answered your questions:");
-    expect(result).toContain("with the user's answers in mind");
+    expect(result).toContain("Your questions have been answered:");
+    expect(result).toContain("with these answers in mind");
   });
 
   it("joins multiple question/answer pairs with commas", () => {
@@ -270,5 +270,54 @@ describe("parseAnswerResult", () => {
     expect(result![0]!.notes).toBe(longAnswer1);
     expect(result![1]!.answer).toBe(longAnswer2);
     expect(result![1]!.notes).toBe(longAnswer2);
+  });
+});
+
+describe("parseAnswerResult with the current answer envelope", () => {
+  const q = (question: string, options: Array<{ label: string }> = []): QuestionLike => ({
+    question,
+    options,
+  });
+
+  it("parses a single Q/A pair", () => {
+    const text =
+      'Your questions have been answered: "Continue?"="Yes".' +
+      " You can now continue with these answers in mind.";
+    const result = parseAnswerResult(text, [q("Continue?", [{ label: "Yes" }, { label: "No" }])]);
+    expect(result).toStrictEqual([{ question: "Continue?", answer: "Yes", notes: null }]);
+  });
+
+  it("parses multiple Q/A pairs where notes contain commas", () => {
+    const text =
+      'Your questions have been answered: "Q1"="Other" user notes: foo, bar, baz, "Q2"="A2".' +
+      " You can now continue with these answers in mind.";
+    const result = parseAnswerResult(text, [q("Q1"), q("Q2")]);
+    expect(result).toStrictEqual([
+      { question: "Q1", answer: "Other", notes: "foo, bar, baz" },
+      { question: "Q2", answer: "A2", notes: null },
+    ]);
+  });
+
+  it('handles " selected preview:" annotations in the remainder', () => {
+    const preview =
+      "\u250c\u2500 user side \u2500\u2510\n\u2502 $ git status \u2502\n\u2514\u2500\u2500\u2518";
+    const text =
+      'Your questions have been answered: "How should it render?"="Combined bubble" selected preview:\n' +
+      preview +
+      ', "How should stderr render?"="Red error styling".' +
+      " You can now continue with these answers in mind.";
+    const result = parseAnswerResult(text, [
+      q("How should it render?", [{ label: "Combined bubble" }]),
+      q("How should stderr render?", [{ label: "Red error styling" }]),
+    ]);
+    expect(result).toStrictEqual([
+      { question: "How should it render?", answer: "Combined bubble", notes: null },
+      { question: "How should stderr render?", answer: "Red error styling", notes: null },
+    ]);
+  });
+
+  it("returns null when the current prefix appears without its suffix", () => {
+    const text = 'Your questions have been answered: "Q1"="A1"';
+    expect(parseAnswerResult(text, [q("Q1")])).toBe(null);
   });
 });

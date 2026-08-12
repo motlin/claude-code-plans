@@ -15,12 +15,30 @@ interface AnswerEntry {
   answer: string;
 }
 
+interface Envelope {
+  prefix: string;
+  suffix: string;
+}
+
+const CURRENT_ENVELOPE: Envelope = {
+  prefix: "Your questions have been answered: ",
+  suffix: ". You can now continue with these answers in mind.",
+};
+
+/** Wording written by older Claude Code versions, still on disk in old sessions. */
+const LEGACY_ENVELOPE: Envelope = {
+  prefix: "User has answered your questions: ",
+  suffix: ". You can now continue with the user's answers in mind.",
+};
+
+const ENVELOPES: readonly Envelope[] = [CURRENT_ENVELOPE, LEGACY_ENVELOPE];
+
 /**
  * Format an AskUserQuestion answer set into the user-prompt text that the
  * resumed Claude Code session will receive. The wording mirrors the format
  * Claude Code itself produces in the `tool_result` content when the user
  * answers via the TUI:
- *   "User has answered your questions: \"Q1\"=\"A1\". You can now continue..."
+ *   "Your questions have been answered: \"Q1\"=\"A1\". You can now continue..."
  *
  * Including the toolUseId in the message helps the resumed model correlate
  * the answer back to the still-pending tool call. Custom 'Other' entries are
@@ -30,8 +48,7 @@ export function formatAnswerPrompt(toolUseId: string, answers: AnswerEntry[]): s
   const pieces = answers.map((a) => `"${escapeQuote(a.question)}"="${escapeQuote(a.answer)}"`);
   return [
     `(Answering AskUserQuestion ${toolUseId} from the web viewer.)`,
-    `User has answered your questions: ${pieces.join(", ")}.`,
-    "You can now continue with the user's answers in mind.",
+    `${CURRENT_ENVELOPE.prefix}${pieces.join(", ")}${CURRENT_ENVELOPE.suffix}`,
   ].join(" ");
 }
 
@@ -93,8 +110,6 @@ export interface ParsedAnswer {
   notes: string | null;
 }
 
-const ENVELOPE_PREFIX = "User has answered your questions: ";
-const ENVELOPE_SUFFIX = ". You can now continue with the user's answers in mind.";
 const NOTES_MARKER = " user notes: ";
 const PREVIEW_MARKER = " selected preview:";
 const PAIR_SEPARATOR = ", ";
@@ -105,7 +120,8 @@ const PAIR_SEPARATOR = ", ";
  * text does not match the expected envelope or no questions were supplied.
  *
  * The text format mirrors what Claude Code's CLI writes back to the model:
- *   User has answered your questions: "Q1"="A1"[ user notes: N1], "Q2"="A2"[...]. You can now continue with the user's answers in mind.
+ *   Your questions have been answered: "Q1"="A1"[ user notes: N1], "Q2"="A2"[...]. You can now continue with these answers in mind.
+ * Both the current and legacy envelope wordings in ENVELOPES are accepted.
  *
  * Question titles are matched against the supplied `questions` array (whose
  * text comes from the original tool_use input) so we can correctly tokenize
@@ -113,10 +129,9 @@ const PAIR_SEPARATOR = ", ";
  */
 export function parseAnswerResult(text: string, questions: QuestionLike[]): ParsedAnswer[] | null {
   if (questions.length === 0) return null;
-  if (!text.startsWith(ENVELOPE_PREFIX)) return null;
-  const suffixStart = text.lastIndexOf(ENVELOPE_SUFFIX);
-  if (suffixStart < 0) return null;
-  let body = text.slice(ENVELOPE_PREFIX.length, suffixStart);
+  const envelopeBody = matchEnvelope(text);
+  if (envelopeBody === null) return null;
+  let body = envelopeBody;
 
   const result: ParsedAnswer[] = [];
   for (let i = 0; i < questions.length; i++) {
@@ -147,6 +162,20 @@ export function parseAnswerResult(text: string, questions: QuestionLike[]): Pars
   }
   if (body.length !== 0) return null;
   return result;
+}
+
+/**
+ * Strip whichever known envelope wraps the result text, returning the inner
+ * question/answer body. Returns null when no envelope matches.
+ */
+function matchEnvelope(text: string): string | null {
+  for (const envelope of ENVELOPES) {
+    if (!text.startsWith(envelope.prefix)) continue;
+    const suffixStart = text.lastIndexOf(envelope.suffix);
+    if (suffixStart < envelope.prefix.length) continue;
+    return text.slice(envelope.prefix.length, suffixStart);
+  }
+  return null;
 }
 
 /**

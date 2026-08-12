@@ -49,6 +49,13 @@ export const jsonlRecordFixtures = {
       trackedFileBackups: {},
     },
   },
+  "fork-context-ref": {
+    type: "fork-context-ref",
+    agentId: "agent-alice-100",
+    parentSessionId: "session-alice-100",
+    parentLastUuid: "message-alice-100",
+    contextLength: 100,
+  },
   attachment: {
     type: "attachment",
     ...baseRecordFields,

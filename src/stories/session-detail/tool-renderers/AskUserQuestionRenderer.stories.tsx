@@ -64,7 +64,7 @@ export const Answered: Story = {
         ],
       },
       result:
-        'User has answered your questions: "Which testing framework should we use?"="Vitest". You can now continue with the user\'s answers in mind.',
+        'Your questions have been answered: "Which testing framework should we use?"="Vitest". You can now continue with these answers in mind.',
     }),
   },
 };
@@ -132,10 +132,10 @@ export const AnsweredWithPreviewAnnotation: Story = {
         ],
       },
       result:
-        'User has answered your questions: "How should bash-mode commands render?"="Combined bubble" selected preview:\n' +
+        'Your questions have been answered: "How should bash-mode commands render?"="Combined bubble" selected preview:\n' +
         "$ git status\nOn branch main\nnothing to commit" +
         ', "How should stderr render?"="Red error styling".' +
-        " You can now continue with the user's answers in mind.",
+        " You can now continue with these answers in mind.",
     }),
   },
 };
@@ -152,7 +152,24 @@ export const AnsweredOther: Story = {
         ],
       },
       result:
-        'User has answered your questions: "Which testing framework should we use?"="bun:test". You can now continue with the user\'s answers in mind.',
+        'Your questions have been answered: "Which testing framework should we use?"="bun:test". You can now continue with these answers in mind.',
+    }),
+  },
+};
+
+export const AnsweredLegacyEnvelope: Story = {
+  args: {
+    toolCall: makeToolCall({
+      input: {
+        question: "Which testing framework should we use?",
+        options: [
+          { label: "Vitest", description: "Fast Vite-native test runner" },
+          { label: "Jest", description: "Widely adopted, large ecosystem" },
+          { label: "Mocha", description: "Flexible and extensible" },
+        ],
+      },
+      result:
+        'User has answered your questions: "Which testing framework should we use?"="Vitest". You can now continue with the user\'s answers in mind.',
     }),
   },
 };

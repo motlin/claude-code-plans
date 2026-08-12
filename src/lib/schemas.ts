@@ -264,6 +264,16 @@ export const FileHistorySnapshotSchema = z
   })
   .strict();
 
+const ForkContextRefRecordSchema = z
+  .object({
+    type: z.literal("fork-context-ref"),
+    agentId: z.string(),
+    parentSessionId: z.string(),
+    parentLastUuid: z.string(),
+    contextLength: z.number().int().nonnegative(),
+  })
+  .strict();
+
 // ---------------------------------------------------------------------------
 // Attachment sub-types (discriminated on attachment.type)
 // ---------------------------------------------------------------------------
@@ -451,6 +461,13 @@ const TaskStatusAttachmentPayload = z
 
 const TodoReminderAttachmentPayload = z
   .object({ type: z.literal("todo_reminder"), ...ReminderBaseFields })
+  .strict();
+
+const TotalTokensReminderAttachmentPayload = z
+  .object({
+    type: z.literal("total_tokens_reminder"),
+    text: z.string(),
+  })
   .strict();
 
 const EditedTextFileAttachmentPayload = z
@@ -663,6 +680,7 @@ export const AttachmentPayloadSchema = z.discriminatedUnion("type", [
   TaskReminderAttachmentPayload,
   TaskStatusAttachmentPayload,
   TodoReminderAttachmentPayload,
+  TotalTokensReminderAttachmentPayload,
   EditedTextFileAttachmentPayload,
   FileAttachmentPayload,
   AlreadyReadFileAttachmentPayload,
@@ -895,6 +913,7 @@ export const JsonlRecordSchema = z.discriminatedUnion("type", [
   AssistantRecordSchema,
   CustomTitleRecordSchema,
   FileHistorySnapshotSchema,
+  ForkContextRefRecordSchema,
   AttachmentRecordSchema,
   ProgressRecordSchema,
   SystemRecordSchema,

@@ -797,6 +797,31 @@ describe("JsonlRecordSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("parses total token reminder attachments", () => {
+    const record = {
+      type: "attachment",
+      ...baseFields,
+      attachment: {
+        type: "total_tokens_reminder",
+        text: "<total_tokens>10000000 tokens left</total_tokens>",
+      },
+    };
+
+    expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+  });
+
+  it("parses fork context references", () => {
+    const record = {
+      type: "fork-context-ref",
+      agentId: "agent-alice-100",
+      parentSessionId: "session-alice-100",
+      parentLastUuid: "message-alice-100",
+      contextLength: 100,
+    };
+
+    expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+  });
+
   it("parses relocated records", () => {
     const result = JsonlRecordSchema.safeParse({
       type: "relocated",

@@ -486,6 +486,17 @@ function AttachmentContent({
         />
       );
     }
+    case "total_tokens_reminder":
+      return (
+        <Banner
+          icon={<Hourglass className="h-3.5 w-3.5" />}
+          label="Token budget reminder"
+          sessionId={sessionId}
+          uuid={uuid}
+        >
+          <Pre>{attachment.text}</Pre>
+        </Banner>
+      );
     case "task_status": {
       const completed = attachment.status === "completed";
       return (
