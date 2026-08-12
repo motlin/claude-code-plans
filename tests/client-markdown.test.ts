@@ -19,6 +19,13 @@ beforeEach(() => {
   requestLanguageMock.mockClear();
 });
 
+/** Drops the copy-button chrome the fence renderer wraps every code block in. */
+function withoutCopyChrome(html: string): string {
+  return html
+    .replaceAll('<div class="markdown-codeblock">', "")
+    .replaceAll(/<div class="markdown-code-copy">[\s\S]*?<\/div><\/div>/g, "");
+}
+
 describe("renderInlineMarkdownToHtml", () => {
   it("renders inline markdown without a paragraph wrapper", () => {
     expect(renderInlineMarkdownToHtml("**bold** text")).toBe("<strong>bold</strong> text");
@@ -104,7 +111,7 @@ describe("renderMarkdownToHtml", () => {
   });
 
   it("renders code blocks when the language is unspecified", () => {
-    expect(renderMarkdownToHtml("```\nplain code\n```")).toBe(
+    expect(withoutCopyChrome(renderMarkdownToHtml("```\nplain code\n```"))).toBe(
       "<pre><code>plain code\n</code></pre>\n",
     );
   });
@@ -208,8 +215,8 @@ describe("renderMarkdownWithHighlighting", () => {
     const afterLoad = renderMarkdownWithHighlighting(markdown, highlighter);
 
     expect({
-      beforeLoad,
-      afterLoad,
+      beforeLoad: withoutCopyChrome(beforeLoad),
+      afterLoad: withoutCopyChrome(afterLoad),
       languageRequests: requestLanguageMock.mock.calls,
       highlightingCalls: codeToHtml.mock.calls,
     }).toStrictEqual({

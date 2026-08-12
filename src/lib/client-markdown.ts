@@ -3,6 +3,7 @@ import MarkdownIt from "markdown-it";
 import taskLists from "markdown-it-task-lists";
 import footnote from "markdown-it-footnote";
 import { requestLanguage } from "../hooks/use-shiki";
+import { COPY_ICON_SVG } from "./icon-paths";
 
 interface MarkdownRenderOptions {
   typographer?: boolean;
@@ -27,10 +28,26 @@ function getMarkdownVariant(options?: MarkdownRenderOptions): MarkdownVariant {
   return options?.typographer ? "typographer" : "default";
 }
 
+/** Marks the wrapper `<div>` a fenced code block and its copy button share. */
+export const CODEBLOCK_CLASS = "markdown-codeblock";
+/** Marks the absolutely positioned control strip holding the copy button. */
+const CODEBLOCK_COPY_CLASS = "markdown-code-copy";
+/** Marks the copy button itself, so one delegated listener can find it. */
+export const CODEBLOCK_COPY_ATTR = "data-copy-code";
+
+const COPY_STRIP = `<div class="${CODEBLOCK_COPY_CLASS}"><button type="button" ${CODEBLOCK_COPY_ATTR} aria-label="Copy">${COPY_ICON_SVG}</button></div>`;
+
 /** The plugins and renderer overrides every cached instance shares. */
 function applyPlugins(instance: MarkdownIt): void {
   instance.use(taskLists);
   instance.use(footnote);
+
+  // Upstream wraps every fence in a relative box carrying an absolutely
+  // positioned top-right control strip with an icon-only copy button; a bare
+  // markdown-it `<pre>` has nowhere to anchor one.
+  const renderFence = instance.renderer.rules["fence"]!;
+  instance.renderer.rules["fence"] = (tokens, idx, options, env, self) =>
+    `<div class="${CODEBLOCK_CLASS}">${renderFence(tokens, idx, options, env, self).trimEnd()}${COPY_STRIP}</div>\n`;
 
   // Upstream renders every table inside an `overflow-x-auto` div so a table wider
   // than the transcript column scrolls on its own instead of stretching the column.

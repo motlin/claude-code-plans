@@ -5,6 +5,7 @@ import {
   getHighlighterVersion,
   subscribeHighlighter,
 } from "../hooks/use-shiki";
+import { handleCodeCopyClick } from "../lib/code-copy";
 import styles from "./markdown-article.module.css";
 
 type MarkdownArticleProps =
@@ -26,5 +27,11 @@ export function MarkdownArticle(props: MarkdownArticleProps) {
     });
   }, [props.html, props.markdown, props.typographer, highlighterVersion]);
 
-  return <article className={styles["markdown"]} dangerouslySetInnerHTML={{ __html: rendered }} />;
+  return (
+    <article
+      className={styles["markdown"]}
+      onClick={handleCodeCopyClick}
+      dangerouslySetInnerHTML={{ __html: rendered }}
+    />
+  );
 }

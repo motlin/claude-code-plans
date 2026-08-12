@@ -5,6 +5,7 @@ import {
   getHighlighterVersion,
   subscribeHighlighter,
 } from "../hooks/use-shiki";
+import { handleCodeCopyClick } from "../lib/code-copy";
 import styles from "./markdown-article.module.css";
 
 interface StreamingMessageProps {
@@ -71,6 +72,7 @@ export function StreamingMessage({
               {renderedHtml ? (
                 <article
                   className={styles["markdown"]}
+                  onClick={handleCodeCopyClick}
                   dangerouslySetInnerHTML={{ __html: renderedHtml }}
                 />
               ) : null}

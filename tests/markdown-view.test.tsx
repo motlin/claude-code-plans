@@ -91,8 +91,8 @@ describe("MarkdownView", () => {
       <MarkdownView markdown={"```typescript\nconst alice = 100;\n```"} />,
     );
 
-    expect(container.querySelector("article")?.innerHTML).toBe(
-      '<pre><code class="language-typescript">const alice = 100;\n</code></pre>\n',
+    expect(container.querySelector("pre")?.outerHTML).toBe(
+      '<pre><code class="language-typescript">const alice = 100;\n</code></pre>',
     );
 
     shikiMocks.state.highlighter = shikiMocks.highlighter;
@@ -100,8 +100,8 @@ describe("MarkdownView", () => {
     shikiMocks.state.version++;
     act(() => shikiMocks.state.subscriber?.());
 
-    expect(container.querySelector("article")?.innerHTML).toBe(
-      '<pre class="shiki"><code>highlighted</code></pre>\n',
+    expect(container.querySelector("pre")?.outerHTML).toBe(
+      '<pre class="shiki"><code>highlighted</code></pre>',
     );
   });
 });
