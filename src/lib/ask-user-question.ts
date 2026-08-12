@@ -3,6 +3,8 @@
  * answering a pending prompt in an active session.
  */
 
+import { parseToolRejection } from "./tool-rejection";
+
 export interface QuestionLike {
   question: string;
   header?: string;
@@ -108,6 +110,44 @@ export interface ParsedAnswer {
   question: string;
   answer: string;
   notes: string | null;
+}
+
+export interface AskUserQuestionStatus {
+  tone: "rejected" | "timeout";
+  text: string;
+  /** The user's own words, when they dismissed the question with feedback. */
+  detail?: string;
+}
+
+const TIMEOUT_PREFIX = "No response after 60s";
+
+/**
+ * Collapse the two non-answer `AskUserQuestion` outcomes -- the user dismissing
+ * the prompt, and the 60s no-response timeout -- to a status line.
+ *
+ * Both results are boilerplate addressed to the model ("STOP what you are
+ * doing", "Proceed using your best judgment"), so only the outcome and any
+ * words the user typed while dismissing carry information for a human reading
+ * the transcript. Anything else returns null and is left to the caller.
+ */
+export function describeAskUserQuestionResult(
+  result: string | undefined,
+): AskUserQuestionStatus | null {
+  const trimmed = result?.trim();
+  if (!trimmed) return null;
+
+  const rejection = parseToolRejection(trimmed);
+  if (rejection) {
+    const status: AskUserQuestionStatus = { tone: "rejected", text: "Question dismissed" };
+    if (rejection.feedback) status.detail = rejection.feedback;
+    return status;
+  }
+
+  if (trimmed.startsWith(TIMEOUT_PREFIX)) {
+    return { tone: "timeout", text: "No response after 60s" };
+  }
+
+  return null;
 }
 
 const NOTES_MARKER = " user notes: ";

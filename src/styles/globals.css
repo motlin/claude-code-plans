@@ -120,6 +120,8 @@
   --text-body--line-height: var(--upstream-leading-body);
   --text-code: var(--upstream-text-code);
   --text-code--line-height: var(--upstream-leading-code);
+  --text-footnote: var(--upstream-text-footnote);
+  --text-footnote--line-height: var(--upstream-leading-footnote);
 }
 
 :root {
@@ -197,6 +199,9 @@
   --upstream-leading-body: 20px;
   --upstream-text-code: 13px;
   --upstream-leading-code: 20px;
+  /* Secondary label size (upstream --cds-font-size-footnote). */
+  --upstream-text-footnote: 13px;
+  --upstream-leading-footnote: 18px;
 
   /* Upstream claude.ai/code — transcript rhythm. Gap between turns, and
      between the content blocks inside one turn (half the body line box). */

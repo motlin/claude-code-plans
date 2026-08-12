@@ -1895,6 +1895,11 @@ function lowercaseFirst(text: string): string {
   return text.charAt(0).toLowerCase() + text.slice(1);
 }
 
+/**
+ * Tools drawn in full rather than collapsed into a summary row. Their renderer
+ * owns the card shell -- upstream draws a card once per body, so the wrapper
+ * here stays a bare positioning context for the DebugLink.
+ */
 const PROMINENT_TOOLS = new Set(["AskUserQuestion"]);
 const TASK_TOOLS = new Set(["TaskCreate", "TaskUpdate", "TaskGet", "TaskList", "TaskStop"]);
 
@@ -1913,10 +1918,7 @@ function ToolCallSection({ calls, sessionId }: { calls: ClientToolCall[]; sessio
       {prominentCalls.map((call, i) => {
         const Renderer = getToolRenderer(call.name);
         return (
-          <div
-            key={`prominent-${i}`}
-            className="relative rounded-lg border border-border-300/15 bg-bg-000 p-4 text-sm shadow-sm"
-          >
+          <div key={`prominent-${i}`} className="relative">
             <Suspense fallback={null}>
               <Renderer toolCall={call} />
             </Suspense>

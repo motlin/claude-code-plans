@@ -1,23 +1,33 @@
-import { useState, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import type { ToolRendererProps } from "./types";
 import { useAskUserQuestionContext } from "../ask-user-question-context";
 import { MarkdownArticle } from "../markdown-article";
 import {
   answerForQuestion,
+  describeAskUserQuestionResult,
   makeInitialDraft,
   normalizeQuestions,
   parseAnswerResult,
+  type AskUserQuestionStatus,
   type ParsedAnswer,
   type QuestionDraft,
   type QuestionLike,
 } from "../../lib/ask-user-question";
 
+/**
+ * Upstream's list-in-card idiom: a hairline-outlined card that clips its rows,
+ * separates them with a divider, and pays their padding from the container so
+ * every row is full-bleed and content-height.
+ */
+const CARD_SHELL =
+  "flex flex-col card-outline rounded-r6 overflow-clip divide-y divide-t3 [&>*]:px-p7 [&>*]:py-p6";
+
 function IndexBadge({ children, focused }: { children: ReactNode; focused?: boolean }) {
   return (
     <span
-      className={`relative flex size-[30px] shrink-0 items-center justify-center rounded-[10px] overflow-hidden text-sm ${
-        focused ? "bg-bg-400 text-text-100" : "bg-bg-300 text-text-500"
+      className={`relative flex size-[30px] shrink-0 items-center justify-center rounded-r4 overflow-hidden text-body ${
+        focused ? "bg-t4 text-assistant-primary" : "bg-t2 text-assistant-secondary"
       }`}
     >
       {children}
@@ -25,30 +35,28 @@ function IndexBadge({ children, focused }: { children: ReactNode; focused?: bool
   );
 }
 
-function OptionDivider({ hidden }: { hidden?: boolean }) {
-  return (
-    <div
-      aria-hidden="true"
-      className={`h-[0.5px] bg-border-300 mx-3 transition-opacity duration-150 ${hidden ? "opacity-0" : ""}`}
-    />
-  );
-}
-
 function ReadOnlyAnswer({
   label,
   description,
   index,
+  notes,
 }: {
   label: string;
   description?: string | undefined;
   index: number;
+  notes: string | null | undefined;
 }) {
   return (
-    <div className="group/row flex w-full items-center gap-3 h-[3.5rem] px-3 text-left bg-bg-200 rounded-2xl">
+    <div className="flex w-full items-center gap-g6 text-left bg-t2">
       <IndexBadge focused>{index}</IndexBadge>
       <div className="flex flex-col flex-1 min-w-0">
-        <span className="text-sm text-text-000 truncate">{label}</span>
-        {description && <span className="text-xs text-text-500 truncate">{description}</span>}
+        <span className="text-body text-assistant-primary truncate">{label}</span>
+        {description && (
+          <span className="text-footnote text-assistant-secondary truncate">{description}</span>
+        )}
+        {notes !== null && notes !== undefined && notes.trim() !== "" && (
+          <NotesLine notes={notes} />
+        )}
       </div>
     </div>
   );
@@ -64,11 +72,13 @@ function ReadOnlyOption({
   index: number;
 }) {
   return (
-    <div className="group/row flex w-full items-center gap-3 h-[3.5rem] px-3 text-left rounded-2xl opacity-50">
+    <div className="flex w-full items-center gap-g6 text-left opacity-50">
       <IndexBadge>{index}</IndexBadge>
       <div className="flex flex-col flex-1 min-w-0">
-        <span className="text-sm text-text-300 truncate">{label}</span>
-        {description && <span className="text-xs text-text-500 truncate">{description}</span>}
+        <span className="text-body text-assistant-primary truncate">{label}</span>
+        {description && (
+          <span className="text-footnote text-assistant-secondary truncate">{description}</span>
+        )}
       </div>
     </div>
   );
@@ -76,8 +86,8 @@ function ReadOnlyOption({
 
 function NotesLine({ notes }: { notes: string }) {
   return (
-    <p className="text-text-500 mt-1 ml-3 italic whitespace-pre-wrap text-xs">
-      <span className="text-text-300">Notes: </span>
+    <p className="text-footnote text-assistant-secondary italic whitespace-pre-wrap">
+      <span className="text-assistant-primary">Notes: </span>
       {notes}
     </p>
   );
@@ -96,14 +106,14 @@ function notesAddInformation(notes: string | null | undefined, answerValue: stri
 
 function ReadOnlyOtherAnswer({ value, notes }: { value: string; notes?: string | null }) {
   return (
-    <div className="group/row flex w-full items-center gap-3 h-[3.5rem] px-3 text-left bg-bg-200 rounded-2xl">
+    <div className="flex w-full items-center gap-g6 text-left bg-t2">
       <IndexBadge focused>
         <PencilIcon />
       </IndexBadge>
       <div className="flex flex-col flex-1 min-w-0">
-        <span className="text-sm text-text-000 truncate">{value}</span>
+        <span className="text-body text-assistant-primary truncate">{value}</span>
+        {notesAddInformation(notes, value) && <NotesLine notes={notes!} />}
       </div>
-      {notesAddInformation(notes, value) && <NotesLine notes={notes!} />}
     </div>
   );
 }
@@ -120,6 +130,9 @@ function PencilIcon() {
  * Render a question after it has been answered (or when no submission UI is
  * active). Uses the parsed answer (when available) to figure out which option
  * was chosen and whether to surface supplementary user notes.
+ *
+ * Emits its blocks as siblings so the enclosing card divides and pads every row
+ * itself, matching upstream's list-in-card idiom.
  */
 function AnsweredQuestion({
   question,
@@ -133,47 +146,41 @@ function AnsweredQuestion({
   const notes = parsed?.notes;
 
   return (
-    <div>
-      {header && <p className="text-xs text-text-500 mb-1 pl-3">{header}</p>}
-      <div className="mb-2 pl-3">
+    <>
+      <div>
+        {header && <p className="text-footnote text-assistant-secondary mb-g3">{header}</p>}
         <MarkdownArticle markdown={question} />
       </div>
-      <div className="flex flex-col">
-        {options.map((opt, optionIndex) => {
-          const isLast = optionIndex === options.length - 1 && !isOther;
-          if (opt.label === answerValue) {
-            return (
-              <div key={opt.label}>
-                <ReadOnlyAnswer
-                  label={opt.label}
-                  description={opt.description}
-                  index={optionIndex + 1}
-                />
-                {notes !== null && notes !== undefined && notes.trim() !== "" && (
-                  <NotesLine notes={notes} />
-                )}
-                {!isLast && <OptionDivider hidden />}
-              </div>
-            );
-          }
-          return (
-            <div key={opt.label}>
-              <ReadOnlyOption
-                label={opt.label}
-                description={opt.description}
-                index={optionIndex + 1}
-              />
-              {!isLast && <OptionDivider />}
-            </div>
-          );
-        })}
-        {isOther && (
-          <>
-            <OptionDivider hidden />
-            <ReadOnlyOtherAnswer value={answerValue} notes={notes ?? null} />
-          </>
-        )}
-      </div>
+      {options.map((opt, optionIndex) =>
+        opt.label === answerValue ? (
+          <ReadOnlyAnswer
+            key={opt.label}
+            label={opt.label}
+            description={opt.description}
+            index={optionIndex + 1}
+            notes={notes}
+          />
+        ) : (
+          <ReadOnlyOption
+            key={opt.label}
+            label={opt.label}
+            description={opt.description}
+            index={optionIndex + 1}
+          />
+        ),
+      )}
+      {isOther && <ReadOnlyOtherAnswer value={answerValue} notes={notes ?? null} />}
+    </>
+  );
+}
+
+function StatusLine({ status }: { status: AskUserQuestionStatus }) {
+  return (
+    <div className="text-body text-extended-pink">
+      <div>{status.text}</div>
+      {status.detail && (
+        <div className="text-assistant-secondary whitespace-pre-wrap">{status.detail}</div>
+      )}
     </div>
   );
 }
@@ -272,123 +279,112 @@ function AnswerForm({
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-[20px] bg-bg-000/90 backdrop-blur-md pt-4 shadow-[0_0.25rem_1.25rem_rgba(0,0,0,0.075),0_0_0_0.5px_hsla(var(--border-200)/0.3)] overflow-hidden">
+    <div className={CARD_SHELL}>
       {questions.map((q, index) => {
         const draft = drafts[index]!;
         const isMulti = q.multiSelect ?? false;
         return (
-          <div key={index}>
-            <div className="flex items-start gap-2 pl-5 pb-2 pr-3">
+          <Fragment key={index}>
+            <div className="flex items-start gap-g6">
               <div className="flex-1 min-w-0">
                 <MarkdownArticle markdown={q.question} />
               </div>
-              {q.header && <span className="text-xs text-text-500 shrink-0">{q.header}</span>}
+              {q.header && (
+                <span className="text-footnote text-assistant-secondary shrink-0">{q.header}</span>
+              )}
             </div>
-            <div className="flex-1 p-1.5">
-              <div className="flex flex-col">
-                {q.options.map((opt, optionIndex) => {
-                  const selected = draft.selected.has(opt.label) && !draft.useOther;
-                  const isLast = optionIndex === q.options.length - 1;
-                  return (
-                    <div key={opt.label}>
-                      <button
-                        type="button"
-                        onClick={() => toggleOption(index, opt.label)}
-                        disabled={submitting}
-                        className={`group/row flex w-full items-center gap-3 h-[3.5rem] px-3 text-left cursor-pointer transition-colors rounded-2xl ${
-                          selected ? "bg-bg-200" : "hover:bg-bg-100"
-                        } disabled:cursor-not-allowed disabled:opacity-50`}
-                      >
-                        {isMulti ? (
-                          <div className="flex size-[30px] shrink-0 items-center justify-center">
-                            <input
-                              type="checkbox"
-                              checked={selected}
-                              readOnly
-                              className="w-5 h-5 pointer-events-none"
-                            />
-                          </div>
-                        ) : (
-                          <IndexBadge focused={selected}>{optionIndex + 1}</IndexBadge>
-                        )}
-                        <div className="flex flex-col flex-1 min-w-0">
-                          <span
-                            className={`text-sm truncate ${selected ? "text-text-000" : "text-text-300"}`}
-                          >
-                            {opt.label}
-                          </span>
-                          {opt.description && (
-                            <span className="text-xs text-text-500 truncate">
-                              {opt.description}
-                            </span>
-                          )}
-                        </div>
-                        {selected && !isMulti && (
-                          <span
-                            className="text-text-100/50 text-sm shrink-0 mr-2"
-                            aria-hidden="true"
-                          >
-                            ⏎
-                          </span>
-                        )}
-                      </button>
-                      {!isLast && <OptionDivider hidden={selected} />}
-                    </div>
-                  );
-                })}
-                <OptionDivider hidden={draft.useOther} />
-                <div
-                  className={`group/row flex w-full items-center gap-3 h-[3.5rem] px-3 text-left cursor-text rounded-2xl ${
-                    draft.useOther ? "bg-bg-200" : "hover:bg-bg-100"
-                  }`}
-                  onClick={() => selectOther(index)}
+            {q.options.map((opt, optionIndex) => {
+              const selected = draft.selected.has(opt.label) && !draft.useOther;
+              return (
+                <button
+                  key={opt.label}
+                  type="button"
+                  onClick={() => toggleOption(index, opt.label)}
+                  disabled={submitting}
+                  className={`flex w-full items-center gap-g6 text-left cursor-pointer transition-colors ${
+                    selected ? "bg-t2" : "hover:bg-t1"
+                  } disabled:cursor-not-allowed disabled:opacity-50`}
                 >
                   {isMulti ? (
                     <div className="flex size-[30px] shrink-0 items-center justify-center">
                       <input
                         type="checkbox"
-                        checked={draft.useOther && draft.otherText.trim().length > 0}
+                        checked={selected}
                         readOnly
                         className="w-5 h-5 pointer-events-none"
                       />
                     </div>
                   ) : (
-                    <IndexBadge focused={draft.useOther}>
-                      <PencilIcon />
-                    </IndexBadge>
+                    <IndexBadge focused={selected}>{optionIndex + 1}</IndexBadge>
                   )}
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <span
+                      className={`text-body truncate ${selected ? "text-assistant-primary" : "text-assistant-secondary"}`}
+                    >
+                      {opt.label}
+                    </span>
+                    {opt.description && (
+                      <span className="text-footnote text-assistant-secondary truncate">
+                        {opt.description}
+                      </span>
+                    )}
+                  </div>
+                  {selected && !isMulti && (
+                    <span
+                      className="text-assistant-secondary text-body shrink-0"
+                      aria-hidden="true"
+                    >
+                      ⏎
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+            <div
+              className={`flex w-full items-center gap-g6 text-left cursor-text ${
+                draft.useOther ? "bg-t2" : "hover:bg-t1"
+              }`}
+              onClick={() => selectOther(index)}
+            >
+              {isMulti ? (
+                <div className="flex size-[30px] shrink-0 items-center justify-center">
                   <input
-                    type="text"
-                    value={draft.otherText}
-                    onChange={(e) => setOtherText(index, e.target.value)}
-                    onFocus={() => selectOther(index)}
-                    disabled={submitting}
-                    placeholder="Type your answer"
-                    className="flex-1 min-w-0 w-full bg-transparent text-sm text-text-100 placeholder:text-text-500 placeholder:opacity-60 outline-none ring-0 border-0 shadow-none focus:ring-0 focus:!outline-none focus:border-0 focus:shadow-none"
+                    type="checkbox"
+                    checked={draft.useOther && draft.otherText.trim().length > 0}
+                    readOnly
+                    className="w-5 h-5 pointer-events-none"
                   />
                 </div>
-              </div>
+              ) : (
+                <IndexBadge focused={draft.useOther}>
+                  <PencilIcon />
+                </IndexBadge>
+              )}
+              <input
+                type="text"
+                value={draft.otherText}
+                onChange={(e) => setOtherText(index, e.target.value)}
+                onFocus={() => selectOther(index)}
+                disabled={submitting}
+                placeholder="Type your answer"
+                className="flex-1 min-w-0 w-full bg-transparent text-body text-assistant-primary placeholder:text-assistant-secondary outline-none ring-0 border-0 shadow-none focus:ring-0 focus:!outline-none focus:border-0 focus:shadow-none"
+              />
             </div>
             {isMulti && (
-              <p className="mt-1 text-[10px] text-text-500 italic pl-5">
+              <p className="text-footnote text-assistant-secondary italic">
                 Select one or more options.
               </p>
             )}
-          </div>
+          </Fragment>
         );
       })}
-      {error && (
-        <div className="rounded border border-danger-000/30 bg-danger-000/10 px-2.5 py-1.5 text-xs text-danger-000 mx-3">
-          {error}
-        </div>
-      )}
-      <div className="h-[0.5px] bg-border-300 mx-0" />
-      <div className="flex items-center justify-end gap-2 px-4 pb-3">
+      {error && <div className="text-footnote text-extended-pink">{error}</div>}
+      <div className="flex items-center justify-end gap-g6">
         <button
           type="button"
           onClick={handleSkip}
           disabled={submitting}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border-300/15 px-3 py-1.5 text-xs font-medium text-text-300 hover:bg-bg-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          className="inline-flex items-center gap-g3 rounded-r4 card-outline px-p7 py-p5 text-footnote font-medium text-assistant-secondary hover:bg-t1 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
           Skip
         </button>
@@ -396,7 +392,7 @@ function AnswerForm({
           type="button"
           onClick={handleSubmit}
           disabled={!completed || submitting}
-          className="inline-flex items-center gap-1.5 rounded-md bg-accent-100 px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-100/80 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          className="inline-flex items-center gap-g3 rounded-r4 bg-accent-100 px-p7 py-p5 text-footnote font-medium text-white hover:bg-accent-100/80 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
           {submitting ? <Loader2 size={12} className="animate-spin" /> : null}
           {submitting ? "Submitting..." : "Submit"}
@@ -422,12 +418,19 @@ export function AskUserQuestionRenderer({ toolCall }: ToolRendererProps) {
     );
   }
 
+  const status = describeAskUserQuestionResult(result);
+
   if (!questions) {
     const singleQuestion = (toolCall.input["question"] as string) ?? "";
     return (
-      <div>
-        <MarkdownArticle markdown={singleQuestion} />
-        {result && <p className="text-sm text-text-500 mt-1 whitespace-pre-wrap">{result}</p>}
+      <div className={CARD_SHELL}>
+        <div>
+          <MarkdownArticle markdown={singleQuestion} />
+        </div>
+        {status && <StatusLine status={status} />}
+        {!status && result !== undefined && (
+          <p className="text-body text-assistant-secondary whitespace-pre-wrap">{result}</p>
+        )}
       </div>
     );
   }
@@ -443,23 +446,22 @@ export function AskUserQuestionRenderer({ toolCall }: ToolRendererProps) {
   // Parsing can fail when the result text predates the canonical envelope
   // or has an unexpected shape. Fall back to displaying the raw text so we
   // don't silently lose information.
-  const showRawFallback = result !== undefined && parsed === null;
-
-  const questionElements = questions.map((q, i) => (
-    <AnsweredQuestion
-      key={i}
-      question={q.question}
-      {...(q.header ? { header: q.header } : {})}
-      options={q.options}
-      parsed={parsedByQuestion.get(q.question)}
-    />
-  ));
+  const showRawFallback = result !== undefined && parsed === null && status === null;
 
   return (
-    <div className="flex flex-col gap-4 rounded-[20px] bg-bg-000/90 backdrop-blur-md pt-4 pb-4 shadow-[0_0.25rem_1.25rem_rgba(0,0,0,0.075),0_0_0_0.5px_hsla(var(--border-200)/0.3)] overflow-hidden">
-      {questionElements}
+    <div className={CARD_SHELL}>
+      {questions.map((q, i) => (
+        <AnsweredQuestion
+          key={i}
+          question={q.question}
+          {...(q.header ? { header: q.header } : {})}
+          options={q.options}
+          parsed={parsedByQuestion.get(q.question)}
+        />
+      ))}
+      {status && <StatusLine status={status} />}
       {showRawFallback && (
-        <p className="text-sm text-text-500 mt-1 whitespace-pre-wrap px-5">{result}</p>
+        <p className="text-body text-assistant-secondary whitespace-pre-wrap">{result}</p>
       )}
     </div>
   );

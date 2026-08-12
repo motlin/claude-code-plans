@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ExitPlanModeAllowedPromptSchema } from "./tool-input-schemas";
+import { parseToolRejection } from "./tool-rejection";
 
 export type ExitPlanModeAllowedPrompt = z.infer<typeof ExitPlanModeAllowedPromptSchema>;
 
@@ -24,8 +25,6 @@ export interface ExitPlanModeStatus {
 }
 
 const APPROVAL_PREFIX = "User has approved";
-const REJECTION_PREFIX = "The user doesn't want to proceed with this tool use.";
-const USER_FEEDBACK_RE = /To tell you how to proceed, the user said:\s*([\s\S]*)$/;
 
 /**
  * Collapse an `ExitPlanMode` tool result to a status line.
@@ -47,10 +46,10 @@ export function describeExitPlanModeResult(
     return { tone: "approved", text: "Plan approved" };
   }
 
-  if (trimmed.startsWith(REJECTION_PREFIX)) {
-    const feedback = USER_FEEDBACK_RE.exec(trimmed)?.[1]?.trim();
+  const rejection = parseToolRejection(trimmed);
+  if (rejection) {
     const status: ExitPlanModeStatus = { tone: "rejected", text: "Plan rejected" };
-    if (feedback) status.detail = feedback;
+    if (rejection.feedback) status.detail = rejection.feedback;
     return status;
   }
 
