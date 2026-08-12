@@ -287,11 +287,20 @@ export function TruncatedFilePathHeader({ filePath }: { filePath: string }) {
   );
 }
 
+/**
+ * Inline diff stats matching upstream claude.ai/code:
+ *   span.inline-flex > span.flex.gap-g1 > span.text-extended-green "+N"
+ *                                       > span.text-extended-pink  "-M"
+ * `tabular-nums` keeps the digits aligned when Edit rows stack.
+ */
 export function DiffStats({ added, removed }: { added: number; removed: number }) {
+  if (added === 0 && removed === 0) return null;
   return (
-    <span className="inline-flex gap-1 font-mono text-xs shrink-0">
-      {added > 0 && <span className="text-success-000">+{added}</span>}
-      {removed > 0 && <span className="text-danger-000">-{removed}</span>}
+    <span className="inline-flex">
+      <span className="flex gap-g1 items-center text-body tabular-nums shrink-0">
+        {added > 0 && <span className="text-extended-green">+{added}</span>}
+        {removed > 0 && <span className="text-extended-pink">-{removed}</span>}
+      </span>
     </span>
   );
 }

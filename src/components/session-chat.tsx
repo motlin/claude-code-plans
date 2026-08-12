@@ -29,6 +29,7 @@ import {
   ChevronIcon,
   CollapsibleSection,
   CopyButton,
+  DiffStats,
   TerminalOutput,
 } from "./tool-renderers/shared";
 import { SystemBanner, formatTokens } from "./system-banner";
@@ -2011,23 +2012,6 @@ function useEditDiffStats(call: ClientToolCall): { added: number; removed: numbe
   }, [call.name, call.input]);
 }
 
-/**
- * Inline diff stats matching upstream claude.ai/code:
- *   span.inline-flex > span.flex.gap-g1 > span.text-extended-green "+N"
- *                                        > span.text-extended-pink  "-M"
- */
-function InlineDiffStats({ added, removed }: { added: number; removed: number }) {
-  if (added === 0 && removed === 0) return null;
-  return (
-    <span className="inline-flex">
-      <span className="flex gap-g1 items-center text-body shrink-0">
-        {added > 0 && <span className="text-extended-green">+{added}</span>}
-        {removed > 0 && <span className="text-extended-pink">-{removed}</span>}
-      </span>
-    </span>
-  );
-}
-
 function ToolCallRow({
   call,
   sessionId,
@@ -2108,7 +2092,7 @@ function ToolCallRow({
           {displayParam}
         </span>
       )}
-      {diffStats && <InlineDiffStats added={diffStats.added} removed={diffStats.removed} />}
+      {diffStats && <DiffStats added={diffStats.added} removed={diffStats.removed} />}
     </>
   );
 
