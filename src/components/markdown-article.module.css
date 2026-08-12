@@ -159,30 +159,32 @@
   background: hsl(0 0% 100% / 0.08);
 }
 
+/* Upstream's `epitaxy-code-chip` is a borderless neutral tint that inherits the
+   prose color, not the red bordered chip claude.ai Home uses in its own prose. */
 .markdown code {
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 430;
-  line-height: 20px;
-  background: hsl(48 33.3% 97.1% / 0.5);
-  border: 0.5px solid rgba(31, 30, 29, 0.15);
-  color: var(--danger-000);
-  border-radius: 0.4rem;
-  padding: 1px 4px;
+  line-height: 18.2px;
+  background: rgb(11 11 11 / 0.04);
+  border: none;
+  color: inherit;
+  border-radius: 4px;
+  padding: 1px 2px;
 }
 
 :global(.dark) .markdown code {
-  background: hsl(30 3.3% 11.8% / 0.5);
-  color: var(--danger-000);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgb(255 255 255 / 0.06);
 }
 
+/* Fences keep the 20px code line-height; only the inline chip is tightened. */
 .markdown pre code {
   background: none;
   border: none;
   color: inherit;
   padding: 0;
   font-weight: 400;
+  line-height: 20px;
   border-radius: 0;
 }
 
