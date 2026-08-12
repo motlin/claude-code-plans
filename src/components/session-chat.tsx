@@ -1793,7 +1793,8 @@ function ContentBlock({
  * Row label per tool: `past` for a call that succeeded, `failed` for the
  * "Failed to ..." form upstream swaps in when the call errored. A tool with no
  * `past` labels its successful rows some other way -- Bash past-tenses the
- * call's own description instead of prefixing a verb.
+ * call's own description instead of prefixing a verb, and Agent drops the verb
+ * altogether, leaving the description to name the row on its own.
  */
 const TOOL_VERBS: Record<string, { past?: string; failed: string }> = {
   Edit: { past: "Edited", failed: "Failed to edit" },
@@ -1803,7 +1804,7 @@ const TOOL_VERBS: Record<string, { past?: string; failed: string }> = {
   Read: { past: "Read", failed: "Failed to read" },
   Grep: { past: "Searched", failed: "Failed to search" },
   Glob: { past: "Searched", failed: "Failed to search" },
-  Agent: { past: "Ran agent", failed: "Failed to run agent" },
+  Agent: { failed: "Failed to run agent" },
   WebFetch: { past: "Fetched", failed: "Failed to fetch" },
   WebSearch: { past: "Searched web", failed: "Failed to search web" },
   ToolSearch: { past: "Used ToolSearch", failed: "Failed to use ToolSearch" },
@@ -1820,8 +1821,8 @@ const TOOL_VERBS: Record<string, { past?: string; failed: string }> = {
 };
 
 function toolCallVerb(name: string): string {
-  const past = TOOL_VERBS[name]?.past;
-  if (past) return past;
+  const verbs = TOOL_VERBS[name];
+  if (verbs) return verbs.past ?? "";
   if (name.startsWith("mcp__")) return formatToolName(name);
   return name;
 }
@@ -2059,6 +2060,12 @@ function ToolCallRow({
   const labelClass = call.isError
     ? "text-extended-pink"
     : "text-assistant-secondary group-hover/tool:text-assistant-primary";
+  // A subagent row's chevron sits in the flat `t6` token upstream gives it,
+  // rather than the hover-reactive secondary every other tool row uses.
+  const chevronClass =
+    call.name === "Agent"
+      ? "shrink-0 self-center text-t6"
+      : "shrink-0 text-assistant-secondary group-hover/tool:text-assistant-primary";
   // A failed call whose param is its own description reads as one phrase
   // ("Failed to install dependencies and build"), so upstream drops the verb
   // and the separate param span; every other failed row keeps both
@@ -2083,11 +2090,13 @@ function ToolCallRow({
 
   const rowLabel = (
     <>
-      <span
-        className={`${isPhraseLabel ? "truncate min-w-0" : "shrink-0"} text-body ${labelClass}`}
-      >
-        {label}
-      </span>
+      {label && (
+        <span
+          className={`${isPhraseLabel ? "truncate min-w-0" : "shrink-0"} text-body ${labelClass}`}
+        >
+          {label}
+        </span>
+      )}
       {displayParam && (
         <span
           className={
@@ -2154,7 +2163,7 @@ function ToolCallRow({
         className="relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left cursor-pointer hide-focus-ring rounded-r3"
       >
         {rowLabel}
-        <span className="shrink-0 text-assistant-secondary group-hover/tool:text-assistant-primary">
+        <span className={chevronClass}>
           <ChevronIcon expanded={expanded} size={14} />
         </span>
       </div>

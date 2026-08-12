@@ -810,6 +810,54 @@ describe("SessionChat file-param tool row argument", () => {
   });
 });
 
+describe("SessionChat Agent row label", () => {
+  const DESCRIPTION =
+    "truncate min-w-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary";
+
+  const agentRecords = toolCallRecords([
+    {
+      id: "t1",
+      name: "Agent",
+      input: {
+        description: "Implement pending approvals fix",
+        prompt: "Fix the pending approvals bug",
+        subagent_type: "Code",
+      },
+    },
+  ]);
+
+  it("labels an agent row with its description alone, with no leading verb span", () => {
+    expect(toolRowLabelSpans(renderTranscript(agentRecords))).toStrictEqual([
+      [DESCRIPTION, "Implement pending approvals fix"],
+    ]);
+  });
+
+  it("draws the agent row chevron in the flat t6 token upstream uses", () => {
+    expect(rowHeaderSpanClasses(renderTranscript(agentRecords))).toStrictEqual([
+      DESCRIPTION,
+      "shrink-0 self-center text-t6",
+    ]);
+  });
+
+  it("still labels a failed agent row with the failure phrase", () => {
+    expect(
+      toolRowLabelSpans(
+        renderTranscript(
+          failedToolCallRecords(true, {
+            name: "Agent",
+            input: { description: "Implement pending approvals fix", prompt: "Fix it" },
+          }),
+        ),
+      ),
+    ).toStrictEqual([
+      [
+        "truncate min-w-0 text-body text-extended-pink",
+        "Failed to implement pending approvals fix",
+      ],
+    ]);
+  });
+});
+
 describe("SessionChat Bash row label", () => {
   const PHRASE =
     "truncate min-w-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary";

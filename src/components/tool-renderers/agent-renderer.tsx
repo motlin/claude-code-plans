@@ -6,18 +6,6 @@ import { getAgentTypeFromInput } from "../../lib/tool-utils";
 
 const AGENT_ID_RE = /agentId:\s*(\S+)/;
 
-const STATUS_LABELS: Record<"running" | "done" | "error", string> = {
-  running: "running",
-  done: "done",
-  error: "error",
-};
-
-const STATUS_STYLES: Record<"running" | "done" | "error", string> = {
-  running: "bg-accent-000/12 text-accent-100",
-  done: "bg-success-900 text-success-000",
-  error: "bg-danger-900 text-danger-000",
-};
-
 export function AgentRenderer({ toolCall }: ToolRendererProps) {
   const prompt = (toolCall.input["prompt"] as string) ?? "";
   const agentType = getAgentTypeFromInput(toolCall.input);
@@ -47,23 +35,18 @@ export function AgentRenderer({ toolCall }: ToolRendererProps) {
   if (slug) params.push({ key: "slug", value: slug });
   if (parameter) params.push({ key: "parameter", value: parameter });
 
+  // Upstream labels no subagent status: a finished agent needs no "done" badge
+  // and a failed one already reads pink. A still-running agent is the one state
+  // a session reviewer can't infer, so it stays -- as plain body text, not a
+  // pill, since upstream has no pill anywhere in a transcript body.
+  const notes: string[] = [];
+  if (status === "running") notes.push("running");
+  if (parallelSize !== undefined && parallelSize > 1) notes.push(`parallel ×${parallelSize}`);
+
   return (
     <>
-      {(status || (parallelSize && parallelSize > 1)) && (
-        <div className="mb-1 flex items-center gap-1.5">
-          {status && (
-            <span
-              className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_STYLES[status]}`}
-            >
-              {STATUS_LABELS[status]}
-            </span>
-          )}
-          {parallelSize && parallelSize > 1 && (
-            <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-accent-000/12 text-accent-100">
-              parallel &times;{parallelSize}
-            </span>
-          )}
-        </div>
+      {notes.length > 0 && (
+        <div className="mb-1 text-body text-assistant-secondary">{notes.join(" · ")}</div>
       )}
       <KeyValueCard isError={isError} params={params} result={displayResult ?? undefined} />
       {agentSessionId && (
