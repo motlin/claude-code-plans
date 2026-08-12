@@ -4,7 +4,7 @@ import { FileText } from "lucide-react";
 import { DiffView, DiffModeEnum } from "@git-diff-view/react";
 import "@git-diff-view/react/styles/diff-view.css";
 import type { ToolRendererProps } from "./types";
-import { CopyButton } from "./shared";
+import { CopyButton, TruncatedFilePathHeader } from "./shared";
 import { useResolvedTheme } from "../theme-provider";
 import { buildUnifiedHunk } from "../../lib/diff-utils";
 import { resolveDiffLanguage, useShikiDiffHighlighter } from "../../lib/diff-highlighter";
@@ -12,39 +12,11 @@ import { toMdSlug } from "../../lib/md-slug";
 
 const PLAN_RE = /\.claude\/plans\/([^/]+\.md)$/;
 
-/**
- * Split a file path into a truncatable prefix and a non-truncatable suffix.
- */
-function splitPath(filePath: string): { prefix: string; suffix: string } {
-  const lastSlash = filePath.lastIndexOf("/");
-  if (lastSlash === -1) return { prefix: "", suffix: filePath };
-
-  const midpoint = Math.floor(filePath.length / 2);
-  let splitIndex = -1;
-
-  for (let i = midpoint; i >= 0; i--) {
-    if (filePath[i] === "/") {
-      splitIndex = i;
-      break;
-    }
-  }
-
-  if (splitIndex <= 0) {
-    return { prefix: "", suffix: filePath };
-  }
-
-  return {
-    prefix: filePath.slice(0, splitIndex + 1),
-    suffix: filePath.slice(splitIndex + 1),
-  };
-}
-
 export function WriteRenderer({ toolCall }: ToolRendererProps) {
   const filePath = (toolCall.input["file_path"] as string) ?? "";
   const content = toolCall.input["content"] as string | undefined;
   const { result, isError } = toolCall;
   const planMatch = filePath.match(PLAN_RE);
-  const { prefix, suffix } = splitPath(filePath);
   const copyText = content ?? result ?? filePath;
   const theme = useResolvedTheme();
 
@@ -93,12 +65,7 @@ export function WriteRenderer({ toolCall }: ToolRendererProps) {
     <>
       {/* Header: smart-truncated file path + hover copy button */}
       <div className="flex items-center gap-g3 px-p6 py-p5">
-        <span className="flex flex-1 min-w-0 text-body text-assistant-secondary">
-          <span className="contents" title={filePath}>
-            <span className="truncate">{prefix}</span>
-            <span className="shrink-0">{suffix}</span>
-          </span>
-        </span>
+        <TruncatedFilePathHeader filePath={filePath} />
         {planMatch && (
           <Link
             to="/plan/$filename"

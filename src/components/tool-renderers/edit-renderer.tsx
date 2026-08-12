@@ -2,40 +2,11 @@ import { useMemo } from "react";
 import { DiffView, DiffModeEnum } from "@git-diff-view/react";
 import "@git-diff-view/react/styles/diff-view.css";
 import type { ToolRendererProps } from "./types";
-import { CopyButton } from "./shared";
+import { CopyButton, TruncatedFilePathHeader } from "./shared";
 import { useResolvedTheme } from "../theme-provider";
 import { buildUnifiedHunk } from "../../lib/diff-utils";
 import { resolveDiffLanguage, useShikiDiffHighlighter } from "../../lib/diff-highlighter";
 import { editDiffEntries } from "../../lib/session-utils";
-
-/**
- * Split a file path into a truncatable prefix and a non-truncatable suffix.
- * The suffix always includes the filename and enough parent directories
- * to land near the midpoint of the full path on a `/` boundary.
- */
-function splitPath(filePath: string): { prefix: string; suffix: string } {
-  const lastSlash = filePath.lastIndexOf("/");
-  if (lastSlash === -1) return { prefix: "", suffix: filePath };
-
-  const midpoint = Math.floor(filePath.length / 2);
-  let splitIndex = -1;
-
-  for (let i = midpoint; i >= 0; i--) {
-    if (filePath[i] === "/") {
-      splitIndex = i;
-      break;
-    }
-  }
-
-  if (splitIndex <= 0) {
-    return { prefix: "", suffix: filePath };
-  }
-
-  return {
-    prefix: filePath.slice(0, splitIndex + 1),
-    suffix: filePath.slice(splitIndex + 1),
-  };
-}
 
 /**
  * One replacement: a smart-truncated file-path header with a hover copy button
@@ -56,7 +27,6 @@ function EditDiffCard({
   separated: boolean;
 }) {
   const theme = useResolvedTheme();
-  const { prefix, suffix } = splitPath(filePath);
 
   const viewData = useMemo(() => {
     const lang = resolveDiffLanguage(filePath);
@@ -71,12 +41,7 @@ function EditDiffCard({
   return (
     <div className={separated ? "border-t border-[var(--card-outline)]" : undefined}>
       <div className="flex items-center gap-g3 px-p6 py-p5">
-        <span className="flex flex-1 min-w-0 text-body text-assistant-secondary">
-          <span className="contents" title={filePath}>
-            <span className="truncate">{prefix}</span>
-            <span className="shrink-0">{suffix}</span>
-          </span>
-        </span>
+        <TruncatedFilePathHeader filePath={filePath} />
         <CopyButton text={copyText} />
       </div>
 

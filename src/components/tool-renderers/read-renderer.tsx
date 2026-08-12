@@ -2,7 +2,7 @@ import type { ThemedToken } from "@shikijs/core";
 import { extractLineNumbers, detectLanguage } from "../../lib/diff-utils";
 import { useHighlightedLines } from "../../hooks/use-shiki";
 import type { ToolRendererProps } from "./types";
-import { CopyButton } from "./shared";
+import { CopyButton, TruncatedFilePathHeader } from "./shared";
 
 interface ParsedLine {
   lineNum: string | null;
@@ -42,35 +42,6 @@ function PlainLine({ content }: { content: string }) {
   return <>{content}</>;
 }
 
-/**
- * Split a file path into a truncatable prefix and a non-truncatable suffix.
- * The suffix always includes the filename and enough parent directories
- * to land near the midpoint of the full path on a `/` boundary.
- */
-function splitPath(filePath: string): { prefix: string; suffix: string } {
-  const lastSlash = filePath.lastIndexOf("/");
-  if (lastSlash === -1) return { prefix: "", suffix: filePath };
-
-  const midpoint = Math.floor(filePath.length / 2);
-  let splitIndex = -1;
-
-  for (let i = midpoint; i >= 0; i--) {
-    if (filePath[i] === "/") {
-      splitIndex = i;
-      break;
-    }
-  }
-
-  if (splitIndex <= 0) {
-    return { prefix: "", suffix: filePath };
-  }
-
-  return {
-    prefix: filePath.slice(0, splitIndex + 1),
-    suffix: filePath.slice(splitIndex + 1),
-  };
-}
-
 export function ReadRenderer({ toolCall }: ToolRendererProps) {
   const filePath = (toolCall.input["file_path"] as string) ?? "";
   const { result, isError } = toolCall;
@@ -81,7 +52,6 @@ export function ReadRenderer({ toolCall }: ToolRendererProps) {
   const { text: cleanCode } = code ? extractLineNumbers(code) : { text: "" };
   const language = detectLanguage(filePath);
   const tokens = useHighlightedLines(cleanCode, language);
-  const { prefix, suffix } = splitPath(filePath);
 
   // A failed read has no file content to highlight -- upstream just prints the
   // failure message in the error color.
@@ -99,12 +69,7 @@ export function ReadRenderer({ toolCall }: ToolRendererProps) {
     <>
       {/* Header: smart-truncated file path + hover copy button */}
       <div className="flex items-center gap-g3 px-p6 py-p5">
-        <span className="flex flex-1 min-w-0 text-body text-assistant-secondary">
-          <span className="contents" title={filePath}>
-            <span className="truncate">{prefix}</span>
-            <span className="shrink-0">{suffix}</span>
-          </span>
-        </span>
+        <TruncatedFilePathHeader filePath={filePath} />
         <CopyButton text={result ?? filePath} />
       </div>
 

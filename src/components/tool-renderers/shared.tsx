@@ -239,6 +239,52 @@ export function FilePath({ path }: { path: string }) {
   return <code className="text-xs font-mono bg-bg-200 px-1.5 py-0.5 rounded truncate">{path}</code>;
 }
 
+/**
+ * Split a file path into a truncatable prefix and a suffix.
+ * The suffix always includes the filename and enough parent directories
+ * to land near the midpoint of the full path on a `/` boundary.
+ */
+function splitPath(filePath: string): { prefix: string; suffix: string } {
+  const midpoint = Math.floor(filePath.length / 2);
+  let splitIndex = -1;
+
+  for (let i = midpoint; i >= 0; i--) {
+    if (filePath[i] === "/") {
+      splitIndex = i;
+      break;
+    }
+  }
+
+  if (splitIndex <= 0) {
+    return { prefix: "", suffix: filePath };
+  }
+
+  return {
+    prefix: filePath.slice(0, splitIndex + 1),
+    suffix: filePath.slice(splitIndex + 1),
+  };
+}
+
+/**
+ * File-path header for a tool card: the path splits near its midpoint so the
+ * leading directories ellipsize first. Both halves are truncatable — upstream
+ * lets the tail ellipsize too, so a long final segment shrinks instead of
+ * pushing the copy button out of the card.
+ */
+export function TruncatedFilePathHeader({ filePath }: { filePath: string }) {
+  const { prefix, suffix } = splitPath(filePath);
+
+  return (
+    <span
+      className="flex flex-1 min-w-0 overflow-hidden whitespace-nowrap text-body text-assistant-secondary"
+      title={filePath}
+    >
+      <span className="min-w-0 truncate">{prefix}</span>
+      <span className="max-w-full shrink-0 truncate">{suffix}</span>
+    </span>
+  );
+}
+
 export function DiffStats({ added, removed }: { added: number; removed: number }) {
   return (
     <span className="inline-flex gap-1 font-mono text-xs shrink-0">
