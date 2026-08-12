@@ -22,9 +22,13 @@ SERVER_CMD=${SERVER_CMD:-"node .output/server/index.mjs"}
 SERVER_MATCH=${SERVER_MATCH:-'\.output/server/index\.mjs'}
 LOG_FILE=${LOG_FILE:-"${XDG_CACHE_HOME:-$HOME/.cache}/claude-code-plans/server.log"}
 
+# PIDs listening on the port, including wildcard and IPv6 bindings.
+port_pids() {
+    lsof -t -iTCP:"$PORT" -sTCP:LISTEN 2>/dev/null || true
+}
+
 # PIDs of server processes we own: command line matches SERVER_MATCH and cwd
-# is PROJECT_DIR (so other projects' servers are left alone), plus anything
-# listening on our port.
+# is PROJECT_DIR (so other projects' servers are left alone), plus port holders.
 server_pids() {
     local pid cwd
     for pid in $(pgrep -f "$SERVER_MATCH" || true); do
@@ -33,7 +37,21 @@ server_pids() {
             echo "$pid"
         fi
     done
-    lsof -t -iTCP:"$PORT" -sTCP:LISTEN 2>/dev/null || true
+    port_pids
+}
+
+dev_server() {
+    local pids
+    pids=$(port_pids | sort -u)
+    if [ -n "$pids" ]; then
+        echo "Port $PORT is already in use by pid(s): $pids. Run 'just stop' before 'just dev'." >&2
+        return 1
+    fi
+    if [ "$#" -eq 0 ]; then
+        echo "Usage: $0 dev <command> [args...]" >&2
+        return 64
+    fi
+    exec env PORT="$PORT" "$@"
 }
 
 stop_server() {
@@ -76,7 +94,7 @@ start_server() {
     )
     local i pid
     for i in $(seq 1 100); do
-        pid=$(lsof -t -iTCP:"$PORT" -sTCP:LISTEN 2>/dev/null | head -n 1 || true)
+        pid=$(port_pids | head -n 1 || true)
         if [ -n "$pid" ] && curl -sI -o /dev/null --max-time 5 "http://localhost:$PORT/"; then
             echo "Server pid $pid listening on port $PORT (log: $LOG_FILE)"
             return 0
@@ -100,6 +118,10 @@ status_server() {
 }
 
 case "${1:-}" in
+dev)
+    shift
+    dev_server "$@"
+    ;;
 start)
     start_server
     ;;
@@ -113,7 +135,7 @@ status)
     status_server
     ;;
 *)
-    echo "Usage: $0 {start|stop|restart|status}" >&2
+    echo "Usage: $0 {dev <command> [args...]|start|stop|restart|status}" >&2
     exit 64
     ;;
 esac

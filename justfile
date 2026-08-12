@@ -33,7 +33,7 @@ ensure-sqlite-native:
 
 # Run dev server with Vite
 dev *args: install
-    PORT={{port}} vp dev {{args}}
+    PORT={{port}} scripts/server.sh dev vp dev {{args}}
 
 # Build and (re)start the production server in the background. Idempotent: stops any existing server first, so double-starting never leaves an orphan. No launchd service manages this — `just stop` is the only reaper.
 start: install build

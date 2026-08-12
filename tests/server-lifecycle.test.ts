@@ -1,4 +1,4 @@
-import { execFileSync, execSync } from "node:child_process";
+import { execFileSync, execSync, spawnSync } from "node:child_process";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -57,6 +57,15 @@ function portOwners(): string[] {
   }
 }
 
+function listenerAddresses(): string[] {
+  return execFileSync("lsof", ["-a", `-iTCP:${PORT}`, "-sTCP:LISTEN", "-P", "-n", "-Fn"], {
+    encoding: "utf8",
+  })
+    .split("\n")
+    .filter((line) => line.startsWith("n"))
+    .map((line) => line.slice(1));
+}
+
 afterAll(() => {
   run("stop");
 });
@@ -65,24 +74,46 @@ describe("scripts/server.sh", () => {
   it("starting twice leaves exactly one process and it owns the port", () => {
     run("start");
     const firstPids = serverPids();
-    expect(firstPids).toHaveLength(1);
+    expect(firstPids.length).toBe(1);
 
     run("start");
     const secondPids = serverPids();
-    expect(secondPids).toHaveLength(1);
-    expect(portOwners()).toEqual(secondPids);
+    expect(secondPids.length).toBe(1);
+    expect(portOwners()).toStrictEqual(secondPids);
     // The second start replaced the first process rather than piling on.
-    expect(secondPids).not.toEqual(firstPids);
+    expect(secondPids).not.toStrictEqual(firstPids);
+  }, 30_000);
+
+  it("dev refuses to compete with a wildcard-bound production listener", () => {
+    run("start");
+    const productionPids = serverPids();
+    expect(productionPids.length).toBe(1);
+    expect(portOwners()).toStrictEqual(productionPids);
+    expect(listenerAddresses()).toStrictEqual([`*:${PORT}`]);
+
+    const result = spawnSync("bash", [script, "dev", "node", fixture], {
+      cwd: projectRoot,
+      encoding: "utf8",
+      env,
+    });
+
+    expect({ status: result.status, stdout: result.stdout, stderr: result.stderr }).toStrictEqual({
+      status: 1,
+      stdout: "",
+      stderr: `Port ${PORT} is already in use by pid(s): ${productionPids[0]}. Run 'just stop' before 'just dev'.\n`,
+    });
+    expect(serverPids()).toStrictEqual(productionPids);
+    expect(portOwners()).toStrictEqual(productionPids);
   }, 30_000);
 
   it("stop terminates the server and is a no-op when nothing is running", () => {
     run("start");
     run("stop");
-    expect(serverPids()).toEqual([]);
-    expect(portOwners()).toEqual([]);
+    expect(serverPids()).toStrictEqual([]);
+    expect(portOwners()).toStrictEqual([]);
 
     // Stopping again must succeed without error.
     run("stop");
-    expect(serverPids()).toEqual([]);
+    expect(serverPids()).toStrictEqual([]);
   }, 30_000);
 });
