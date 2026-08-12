@@ -662,7 +662,9 @@ describe("SessionChat failed tool row label", () => {
 
 /** [class, text] of every label span in the first tool row, in document order. */
 function toolRowLabelSpans(html: string): [string, string][] {
-  const row = /hide-focus-ring rounded-r3">([\s\S]*?)<\/div>/.exec(html)?.[1] ?? "";
+  // Matches both the disclosure row and the bare non-expanding row, whose
+  // class list stops before `cursor-pointer hide-focus-ring rounded-r3`.
+  const row = /group\/tool[^"]*">([\s\S]*?)<\/div>/.exec(html)?.[1] ?? "";
   return [...row.matchAll(/<span class="([^"]+)">([^<]*)<\/span>/g)]
     .filter((match) => match[1]!.includes("text-body") || match[1]!.includes("text-code"))
     .map((match) => [match[1]!, match[2]!]);
@@ -952,5 +954,53 @@ describe("SessionChat tool row hover treatment", () => {
       "",
       "shrink-0 text-assistant-secondary group-hover/tool:text-assistant-primary",
     ]);
+  });
+});
+
+/** The chevron svg's viewBox, unique to `ChevronIcon` among the row's markup. */
+const CHEVRON_MARKER = 'viewBox="0 0 16 16"';
+
+function toolRowChrome(html: string): Record<string, unknown> {
+  return {
+    // Only a non-expanding row puts `class` first; the disclosure row leads
+    // with role/tabindex/aria attributes.
+    bareHeaderClass: html.match(/<div class="(relative group\/tool[^"]*)"/)?.[1] ?? null,
+    roleButton: html.includes('role="button"'),
+    ariaExpanded: html.includes("aria-expanded"),
+    disclosureGrid: html.includes("grid-rows-"),
+    chevron: html.includes(CHEVRON_MARKER),
+  };
+}
+
+describe("SessionChat non-expanding tool rows", () => {
+  it("draws a TodoWrite call as a bare label row with no chevron or disclosure", () => {
+    const html = renderTranscript(
+      failedToolCallRecords(false, {
+        name: "TodoWrite",
+        input: {
+          todos: [{ content: "Fix login bug", status: "in_progress", activeForm: "Fixing bug" }],
+        },
+      }),
+    );
+
+    expect({ ...toolRowChrome(html), label: html.includes(">Updated todos<") }).toStrictEqual({
+      bareHeaderClass:
+        "relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left",
+      roleButton: false,
+      ariaExpanded: false,
+      disclosureGrid: false,
+      chevron: false,
+      label: true,
+    });
+  });
+
+  it("keeps the disclosure chrome on every other tool row", () => {
+    expect(toolRowChrome(renderTranscript(failedToolCallRecords(false)))).toStrictEqual({
+      bareHeaderClass: null,
+      roleButton: true,
+      ariaExpanded: true,
+      disclosureGrid: true,
+      chevron: true,
+    });
   });
 });

@@ -123,6 +123,53 @@ export const WithToolCalls: Story = {
   },
 };
 
+/**
+ * Upstream claude.ai/code draws a TodoWrite call as a bare "Updated todos"
+ * label -- no chevron, no disclosure, clicking it does nothing. Only the
+ * in-progress item's activeForm survives beneath it.
+ */
+export const WithTodoWrite: Story = {
+  args: {
+    sessionId: "story-session-todos",
+    lines: [
+      line(0, "user", "Fix the login bug and write tests", "2026-04-19T09:30:00Z"),
+      assistantBlocks(
+        1,
+        [
+          {
+            type: "tool_use",
+            id: "tool-todo-1",
+            name: "TodoWrite",
+            input: {
+              todos: [
+                { content: "Update docs", status: "completed", activeForm: "Updating docs" },
+                {
+                  content: "Fix login bug",
+                  status: "in_progress",
+                  activeForm: "Fixing login bug",
+                },
+                { content: "Write tests", status: "pending", activeForm: "Writing tests" },
+              ],
+            } as ToolUseBlock["input"],
+          },
+        ],
+        "2026-04-19T09:30:04Z",
+      ),
+    ],
+    toolResultMap: new Map([
+      [
+        "tool-todo-1",
+        {
+          result: "Todos have been modified successfully.",
+          isError: false,
+          resultUuid: "result-todo-1",
+          duration: 12,
+        },
+      ],
+    ]),
+  },
+};
+
 export const WithSubagentInfo: Story = {
   args: {
     sessionId: "story-session-subagent",

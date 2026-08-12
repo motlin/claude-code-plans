@@ -36,6 +36,7 @@ import { promptSourceLabels } from "../lib/schema-choices";
 import { computeDiffData } from "../lib/diff-utils";
 import { TasksView } from "./tasks-view";
 import { DebugLink } from "./debug-link";
+import { useSettings } from "./settings-provider";
 import { hmrPersist } from "../lib/hmr-persist";
 import { writeClipboardText } from "../lib/clipboard";
 import type {
@@ -1976,6 +1977,13 @@ const ROW_BODY_TOOLS = new Set(["Bash"]);
 const CODE_CARD_TOOLS = new Set(["Read", "Edit", "MultiEdit", "Write"]);
 
 /**
+ * Tools upstream claude.ai/code draws as a bare label row: no chevron, no
+ * aria-expanded, no disclosure -- clicking one does nothing. Their body (when
+ * we still have something worth showing) renders inline, always visible.
+ */
+const NON_EXPANDING_TOOLS = new Set(["TodoWrite"]);
+
+/**
  * Tools that show inline diff stats (+N -M) in the clickable row.
  */
 const EDIT_TOOLS = new Set(["Edit", "MultiEdit"]);
@@ -2027,16 +2035,22 @@ function ToolCallRow({
 }) {
   const [expanded, setExpanded] = useState(false);
   const bodyId = useId();
+  const { settings } = useSettings();
+  const verbose = settings.verbosity === "verbose";
+  const expandable = !NON_EXPANDING_TOOLS.has(call.name);
   const Renderer = getToolRenderer(call.name);
   const verb = toolCallVerb(call.name);
   const isFileParam = FILE_PARAM_TOOLS.has(call.name);
   const diffStats = useEditDiffStats(call);
   const isCardStyle = CARD_STYLE_TOOLS.has(call.name) && !nested;
   const isCodeCard = CODE_CARD_TOOLS.has(call.name);
+  // An always-visible body needs `empty:hidden` so a renderer that draws
+  // nothing (TodoWrite with no in-progress item) leaves no padded gap; a
+  // collapsed disclosure hides its own empty body already.
   const bodyClass =
-    nested && ROW_BODY_TOOLS.has(call.name)
+    (nested && ROW_BODY_TOOLS.has(call.name)
       ? "group/body relative flex w-full pt-p3"
-      : "group/body relative flex w-full flex-col pt-p3";
+      : "group/body relative flex w-full flex-col pt-p3") + (expandable ? "" : " empty:hidden");
   // Upstream recolors the whole label of a failed tool row, except a file path,
   // which stays primary.
   const labelClass = call.isError
@@ -2064,6 +2078,58 @@ function ToolCallRow({
         ? (call.param.split("/").pop() ?? call.param)
         : call.param;
 
+  const rowLabel = (
+    <>
+      <span
+        className={`${isPhraseLabel ? "truncate min-w-0" : "shrink-0"} text-body ${labelClass}`}
+      >
+        {label}
+      </span>
+      {displayParam && (
+        <span
+          className={`truncate min-w-0 ${isFileParam ? "text-code text-assistant-primary" : `text-body ${labelClass}`}`}
+        >
+          {displayParam}
+        </span>
+      )}
+      {diffStats && <InlineDiffStats added={diffStats.added} removed={diffStats.removed} />}
+    </>
+  );
+
+  const body = isCardStyle ? (
+    <div className="group/body py-p6">
+      <div
+        className={`card-outline ${isCodeCard ? "code-card " : ""}rounded-r6 overflow-clip flex flex-col relative`}
+      >
+        <Suspense fallback={null}>
+          <Renderer toolCall={call} verbose={verbose} />
+        </Suspense>
+        <DebugLink
+          sessionId={sessionId}
+          uuid={call.sourceUuid}
+          className="absolute top-1 right-1"
+        />
+      </div>
+    </div>
+  ) : (
+    <div className={bodyClass}>
+      <Suspense fallback={null}>
+        <Renderer toolCall={call} nested={nested} verbose={verbose} />
+      </Suspense>
+    </div>
+  );
+
+  if (!expandable) {
+    return (
+      <div className="flex flex-col w-full">
+        <div className="relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left">
+          {rowLabel}
+        </div>
+        {body}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col w-full">
       <div
@@ -2080,48 +2146,13 @@ function ToolCallRow({
         }}
         className="relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left cursor-pointer hide-focus-ring rounded-r3"
       >
-        <span
-          className={`${isPhraseLabel ? "truncate min-w-0" : "shrink-0"} text-body ${labelClass}`}
-        >
-          {label}
-        </span>
-        {displayParam && (
-          <span
-            className={`truncate min-w-0 ${isFileParam ? "text-code text-assistant-primary" : `text-body ${labelClass}`}`}
-          >
-            {displayParam}
-          </span>
-        )}
-        {diffStats && <InlineDiffStats added={diffStats.added} removed={diffStats.removed} />}
+        {rowLabel}
         <span className="shrink-0 text-assistant-secondary group-hover/tool:text-assistant-primary">
           <ChevronIcon expanded={expanded} size={14} />
         </span>
       </div>
       <div id={bodyId} className={`grid ${expanded ? "grid-rows-expand" : "grid-rows-collapse"}`}>
-        <div className="overflow-hidden">
-          {isCardStyle ? (
-            <div className="group/body py-p6">
-              <div
-                className={`card-outline ${isCodeCard ? "code-card " : ""}rounded-r6 overflow-clip flex flex-col relative`}
-              >
-                <Suspense fallback={null}>
-                  <Renderer toolCall={call} />
-                </Suspense>
-                <DebugLink
-                  sessionId={sessionId}
-                  uuid={call.sourceUuid}
-                  className="absolute top-1 right-1"
-                />
-              </div>
-            </div>
-          ) : (
-            <div className={bodyClass}>
-              <Suspense fallback={null}>
-                <Renderer toolCall={call} nested={nested} />
-              </Suspense>
-            </div>
-          )}
-        </div>
+        <div className="overflow-hidden">{body}</div>
       </div>
     </div>
   );

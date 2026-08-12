@@ -53,6 +53,13 @@ export interface ToolRendererProps {
    * and card padding so the group never renders a card inside a card.
    */
   nested?: boolean | undefined;
+  /**
+   * True when the viewer is on the `verbose` verbosity preset. Renderers that
+   * match upstream by hiding detail (TodoWrite's checklist, which upstream
+   * never draws in the transcript) restore it here, so the reviewer can still
+   * read data a live console would have shown elsewhere.
+   */
+  verbose?: boolean | undefined;
 }
 
 const AGENT_ID_RE = /agentId:\s*(\S+)/;
