@@ -1790,13 +1790,15 @@ function ContentBlock({
 
 /**
  * Row label per tool: `past` for a call that succeeded, `failed` for the
- * "Failed to ..." form upstream swaps in when the call errored.
+ * "Failed to ..." form upstream swaps in when the call errored. A tool with no
+ * `past` labels its successful rows some other way -- Bash past-tenses the
+ * call's own description instead of prefixing a verb.
  */
-const TOOL_VERBS: Record<string, { past: string; failed: string }> = {
+const TOOL_VERBS: Record<string, { past?: string; failed: string }> = {
   Edit: { past: "Edited", failed: "Failed to edit" },
   MultiEdit: { past: "Edited", failed: "Failed to edit" },
   Write: { past: "Wrote", failed: "Failed to write" },
-  Bash: { past: "Ran", failed: "Failed to run" },
+  Bash: { failed: "Failed to run" },
   Read: { past: "Read", failed: "Failed to read" },
   Grep: { past: "Searched", failed: "Failed to search" },
   Glob: { past: "Searched", failed: "Failed to search" },
@@ -1817,16 +1819,75 @@ const TOOL_VERBS: Record<string, { past: string; failed: string }> = {
 };
 
 function toolCallVerb(name: string): string {
-  const verbs = TOOL_VERBS[name];
-  if (verbs) return verbs.past;
+  const past = TOOL_VERBS[name]?.past;
+  if (past) return past;
   if (name.startsWith("mcp__")) return formatToolName(name);
   return name;
+}
+
+/**
+ * Past-tense forms for verbs that don't take an -ed/-d suffix.
+ */
+const IRREGULAR_PAST_TENSE: Record<string, string> = {
+  build: "built",
+  cut: "cut",
+  find: "found",
+  get: "got",
+  keep: "kept",
+  leave: "left",
+  make: "made",
+  put: "put",
+  read: "read",
+  rerun: "reran",
+  run: "ran",
+  see: "saw",
+  send: "sent",
+  set: "set",
+  show: "showed",
+  split: "split",
+  take: "took",
+  tell: "told",
+  write: "wrote",
+};
+
+function capitalizeFirst(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/**
+ * Past-tense a description's leading verb, the way upstream labels a Bash row:
+ * "Check git status" -> "Checked git status", "See what's new" -> "Saw what's
+ * new". Text that doesn't start with a word, or that is already past tense, is
+ * left verbatim.
+ */
+function pastTense(description: string): string {
+  const match = /^([A-Za-z]+)([\s\S]*)$/.exec(description);
+  if (!match) return description;
+  const word = match[1]!;
+  const rest = match[2]!;
+  const lower = word.toLowerCase();
+  const irregular = IRREGULAR_PAST_TENSE[lower];
+  if (irregular) return capitalizeFirst(irregular) + rest;
+  if (lower.endsWith("ed")) return capitalizeFirst(lower) + rest;
+  if (lower.endsWith("e")) return capitalizeFirst(`${lower}d`) + rest;
+  if (/[^aeiou]y$/.test(lower)) return capitalizeFirst(`${lower.slice(0, -1)}ied`) + rest;
+  return capitalizeFirst(`${lower}ed`) + rest;
 }
 
 function toolCallFailedVerb(name: string): string {
   const verbs = TOOL_VERBS[name];
   if (verbs) return verbs.failed;
   return `Failed to use ${toolCallVerb(name)}`;
+}
+
+/**
+ * Upstream gives a Bash row a single label span holding the past-tensed
+ * description ("Checked git status") rather than a "Ran" verb plus the
+ * description; a call with no description falls back to its raw command.
+ */
+function bashRowLabel(call: ClientToolCall): string {
+  const description = getToolDescription(call.name, call.input);
+  return description === null ? call.param : pastTense(description);
 }
 
 function lowercaseFirst(text: string): string {
@@ -1986,14 +2047,18 @@ function ToolCallRow({
   // and the separate param span; every other failed row keeps both
   // ("Failed to edit" + "cache.ts").
   const failedDescription = call.isError ? getToolDescription(call.name, call.input) : null;
+  const bashLabel = call.name === "Bash" && !call.isError ? bashRowLabel(call) : null;
   const label = call.isError
     ? failedDescription === null
       ? toolCallFailedVerb(call.name)
       : `Failed to ${lowercaseFirst(failedDescription)}`
-    : verb;
+    : (bashLabel ?? verb);
+  // A label that is a whole phrase owns the row and truncates; a bare verb
+  // keeps its width so the param beside it truncates instead.
+  const isPhraseLabel = failedDescription !== null || bashLabel !== null;
 
   const displayParam =
-    RENDERER_HANDLES_PARAM.has(call.name) || failedDescription !== null
+    RENDERER_HANDLES_PARAM.has(call.name) || isPhraseLabel
       ? ""
       : isFileParam
         ? (call.param.split("/").pop() ?? call.param)
@@ -2016,7 +2081,7 @@ function ToolCallRow({
         className="relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left cursor-pointer hide-focus-ring rounded-r3"
       >
         <span
-          className={`${failedDescription === null ? "shrink-0" : "truncate min-w-0"} text-body ${labelClass}`}
+          className={`${isPhraseLabel ? "truncate min-w-0" : "shrink-0"} text-body ${labelClass}`}
         >
           {label}
         </span>

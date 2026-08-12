@@ -736,12 +736,8 @@ describe("SessionChat failed tool row label text", () => {
       ],
       ok: [
         [
-          "shrink-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary",
-          "Ran",
-        ],
-        [
           "truncate min-w-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary",
-          "Install dependencies and build",
+          "Installed dependencies and build",
         ],
       ],
     });
@@ -758,6 +754,79 @@ describe("SessionChat failed tool row label text", () => {
     expect(toolRowLabelSpans(html)).toStrictEqual([
       ["shrink-0 text-body text-extended-pink", "Failed to use sentry"],
       ["truncate min-w-0 text-body text-extended-pink", "unhandled"],
+    ]);
+  });
+});
+
+describe("SessionChat Bash row label", () => {
+  const PHRASE =
+    "truncate min-w-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary";
+
+  const bashLabel = (input: Record<string, unknown>) =>
+    toolRowLabelSpans(renderTranscript(failedToolCallRecords(false, { name: "Bash", input })));
+
+  it("renders one label span holding the past-tensed description, with no separate verb span", () => {
+    expect(
+      bashLabel({ command: "git status --short", description: "Check git status" }),
+    ).toStrictEqual([[PHRASE, "Checked git status"]]);
+  });
+
+  it("past-tenses irregular leading verbs the way upstream does", () => {
+    const label = (description: string) =>
+      bashLabel({ command: "true", description }).map(([, text]) => text);
+
+    expect({
+      run: label("Run tests to verify migration"),
+      see: label("See new cache.ts structure"),
+      find: label("Find conflict markers in cache.ts"),
+      build: label("Build project to check for type errors"),
+      show: label("Show changed files summary"),
+      write: label("Write release notes"),
+    }).toStrictEqual({
+      run: ["Ran tests to verify migration"],
+      see: ["Saw new cache.ts structure"],
+      find: ["Found conflict markers in cache.ts"],
+      build: ["Built project to check for type errors"],
+      show: ["Showed changed files summary"],
+      write: ["Wrote release notes"],
+    });
+  });
+
+  it("suffixes regular verbs and leaves anything already past tense alone", () => {
+    const label = (description: string) =>
+      bashLabel({ command: "true", description }).map(([, text]) => text);
+
+    expect({
+      consonant: label("List files in current directory"),
+      silentE: label("Create the release branch"),
+      consonantY: label("Copy the fixture into place"),
+      vowelY: label("Deploy the preview build"),
+      alreadyPast: label("Checked git status"),
+      nonWord: label("`git status` in the worktree"),
+    }).toStrictEqual({
+      consonant: ["Listed files in current directory"],
+      silentE: ["Created the release branch"],
+      consonantY: ["Copied the fixture into place"],
+      vowelY: ["Deployed the preview build"],
+      alreadyPast: ["Checked git status"],
+      nonWord: ["`git status` in the worktree"],
+    });
+  });
+
+  it("falls back to the raw command when the call carries no description", () => {
+    expect(bashLabel({ command: "pnpm run build" })).toStrictEqual([[PHRASE, "pnpm run build"]]);
+  });
+
+  it('still reads "Failed to run" when an undescribed call errors', () => {
+    expect(
+      toolRowLabelSpans(
+        renderTranscript(
+          failedToolCallRecords(true, { name: "Bash", input: { command: "pnpm run build" } }),
+        ),
+      ),
+    ).toStrictEqual([
+      ["shrink-0 text-body text-extended-pink", "Failed to run"],
+      ["truncate min-w-0 text-body text-extended-pink", "pnpm run build"],
     ]);
   });
 });
