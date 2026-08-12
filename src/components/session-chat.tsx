@@ -482,48 +482,93 @@ function useLiveToolFailures(sessionId: string): Map<string, LiveToolFailure> {
   }, [failedTools, sessionId]);
 }
 
+/** The tool_use blocks of one message line, built into renderable calls. */
+function buildLineToolCalls(
+  line: MessageSessionLine,
+  toolResultMap: Map<string, ToolResultInfo>,
+  liveFailures: Map<string, LiveToolFailure>,
+  subagentLookup: SubagentLookup,
+): ClientToolCall[] {
+  const content = line.message?.content;
+  if (!Array.isArray(content)) return [];
+  return content
+    .filter((b): b is ToolUseBlock => b.type === "tool_use")
+    .map((block) =>
+      buildClientToolCall(block, line.uuid ?? "", toolResultMap, liveFailures, subagentLookup),
+    );
+}
+
+/** One line of a grouped run, paired with its index in the full line array. */
+interface GroupedToolLine {
+  line: SessionLine;
+  index: number;
+}
+
+/** One assistant message's parallel tool_use batch, ready to summarize. */
+interface ToolCallBatch {
+  index: number;
+  sourceSessionId: string;
+  calls: ClientToolCall[];
+}
+
+/**
+ * A run of consecutive tool-only assistant messages, drawn as one turn so the
+ * rows sit an item gap apart rather than a turn gap.
+ *
+ * The run is split back into API messages before summarizing. Claude Code
+ * writes one JSONL record per content block, so a parallel batch arrives as
+ * several records sharing a `message.id`; sequentially issued calls carry
+ * different ids. Upstream claude.ai/code summarizes one batch per row ("Read 3
+ * files") and draws sequential calls as separate sibling rows -- flattening the
+ * whole run into one summary would produce multi-verb labels ("Read 3 files,
+ * Ran 2 commands") that upstream never emits.
+ */
 function GroupedToolCallEntry({
-  lines,
-  indices,
+  entries,
   sessionId,
   toolResultMap,
   subagentLookup,
 }: {
-  lines: SessionLine[];
-  indices: number[];
+  entries: GroupedToolLine[];
   sessionId: string;
   toolResultMap: Map<string, ToolResultInfo>;
   subagentLookup: SubagentLookup;
 }) {
   const liveFailures = useLiveToolFailures(sessionId);
-  const allToolCalls = useMemo(
-    () =>
-      lines.flatMap((line) => {
-        if (line.type !== "assistant") return [];
-        const content = line.message?.content;
-        if (!Array.isArray(content)) return [];
-        return content
-          .filter((b): b is ToolUseBlock => b.type === "tool_use")
-          .map((block) =>
-            buildClientToolCall(
-              block,
-              line.uuid ?? "",
-              toolResultMap,
-              liveFailures,
-              subagentLookup,
-            ),
-          );
-      }),
-    [lines, toolResultMap, liveFailures, subagentLookup],
-  );
+  const batches = useMemo(() => {
+    const result: ToolCallBatch[] = [];
+    let openBatch: ToolCallBatch | undefined;
+    let openMessageId: string | undefined;
+    for (const { line, index } of entries) {
+      if (line.type !== "assistant") continue;
+      const calls = buildLineToolCalls(line, toolResultMap, liveFailures, subagentLookup);
+      if (calls.length === 0) continue;
+      // A missing id cannot prove two records belong to the same message, so
+      // those rows never merge.
+      if (
+        openBatch !== undefined &&
+        line.messageId !== undefined &&
+        line.messageId === openMessageId
+      ) {
+        openBatch.calls.push(...calls);
+        continue;
+      }
+      openMessageId = line.messageId;
+      openBatch = { index, sourceSessionId: getSourceSessionId(line, sessionId), calls };
+      result.push(openBatch);
+    }
+    return result;
+  }, [entries, sessionId, toolResultMap, liveFailures, subagentLookup]);
 
-  if (allToolCalls.length === 0) return null;
-
-  const sourceSessionId = getSourceSessionId(lines[0]!, sessionId);
+  if (batches.length === 0) return null;
 
   return (
-    <div id={`msg-${indices[0]}`} className={`group/msg flex flex-col w-full ${TURN_GAP_CLASS}`}>
-      <ToolCallSection calls={allToolCalls} sessionId={sourceSessionId} />
+    <div className={`group/msg flex flex-col w-full gap-[var(--chat-item-gap)] ${TURN_GAP_CLASS}`}>
+      {batches.map((batch) => (
+        <div key={batch.index} id={`msg-${batch.index}`} className="flex flex-col w-full">
+          <ToolCallSection calls={batch.calls} sessionId={batch.sourceSessionId} />
+        </div>
+      ))}
     </div>
   );
 }
@@ -615,8 +660,7 @@ function SessionLineList({
         elements.push(
           <GroupedToolCallEntry
             key={`group-${groupStart}`}
-            lines={groupIndices.map((idx) => lines[idx]!)}
-            indices={groupIndices}
+            entries={groupIndices.map((index) => ({ line: lines[index]!, index }))}
             {...renderProps}
           />,
         );
@@ -1584,23 +1628,17 @@ function AssistantEntry({
   showThinking: boolean;
   showTools: boolean;
 }) {
-  const content = line.message?.content;
+  const liveFailures = useLiveToolFailures(sessionId);
+  const toolCalls = useMemo(
+    () => buildLineToolCalls(line, toolResultMap, liveFailures, subagentLookup),
+    [line, toolResultMap, liveFailures, subagentLookup],
+  );
 
+  const content = line.message?.content;
   if (!Array.isArray(content) || content.length === 0) {
     return null;
   }
 
-  // Collect tool_use blocks for the tool summary and section
-  const liveFailures = useLiveToolFailures(sessionId);
-  const toolCalls = useMemo(
-    () =>
-      content
-        .filter((b): b is ToolUseBlock => b.type === "tool_use")
-        .map((block) =>
-          buildClientToolCall(block, line.uuid ?? "", toolResultMap, liveFailures, subagentLookup),
-        ),
-    [content, line, toolResultMap, liveFailures, subagentLookup],
-  );
   const hasVisibleNonToolContent = content.some(
     (b) =>
       (b.type === "text" && typeof b.text === "string" && b.text.trim() !== "") ||

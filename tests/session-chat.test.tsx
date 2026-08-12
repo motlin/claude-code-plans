@@ -450,6 +450,19 @@ function toolCardClassNames(html: string): string[] {
   );
 }
 
+/** The tool_result record answering one call, parented to the record that made it. */
+function toolResultRecord(callId: string, parentUuid: string): unknown {
+  return {
+    type: "user",
+    uuid: `r-${callId}`,
+    parentUuid,
+    message: {
+      role: "user",
+      content: [{ type: "tool_result", tool_use_id: callId, content: "Fabricated tool result" }],
+    },
+  };
+}
+
 function toolCallRecords(calls: { id: string; name: string; input: unknown }[]): unknown[] {
   return [
     {
@@ -460,15 +473,7 @@ function toolCallRecords(calls: { id: string; name: string; input: unknown }[]):
         content: calls.map((call) => ({ type: "tool_use", ...call })),
       },
     },
-    ...calls.map((call) => ({
-      type: "user",
-      uuid: `r-${call.id}`,
-      parentUuid: "a1",
-      message: {
-        role: "user",
-        content: [{ type: "tool_result", tool_use_id: call.id, content: "Fabricated tool result" }],
-      },
-    })),
+    ...calls.map((call) => toolResultRecord(call.id, "a1")),
   ];
 }
 
@@ -600,6 +605,136 @@ describe("SessionChat grouped tool card", () => {
   });
 });
 
+// Matches both the disclosure row and the bare non-expanding row, whose class
+// list stops before `cursor-pointer hide-focus-ring rounded-r3`.
+const TOOL_ROW = /group\/tool[^"]*">([\s\S]*?)<\/div>/g;
+
+/** Class of a tool row's argument span, e.g. the filename on a Read row. */
+const ARGUMENT = "text-body text-assistant-primary truncate min-w-0";
+
+/** [class, text] of every label span in one tool row's markup. */
+function labelSpans(row: string): [string, string][] {
+  return [...row.matchAll(/<span class="([^"]+)">([^<]*)<\/span>/g)]
+    .filter((match) => match[1]!.includes("text-body") || match[1]!.includes("text-code"))
+    .map((match): [string, string] => [match[1]!, match[2]!]);
+}
+
+/** The markup of every tool row, in document order. */
+function toolRows(html: string): string[] {
+  return [...html.matchAll(TOOL_ROW)].map((match) => match[1]!);
+}
+
+/** [class, text] of every label span in the first tool row, in document order. */
+function toolRowLabelSpans(html: string): [string, string][] {
+  return labelSpans(toolRows(html)[0] ?? "");
+}
+
+/** [class, text] of every label span in every tool row, in document order. */
+function allToolRowLabelSpans(html: string): [string, string][] {
+  return toolRows(html).flatMap((row) => labelSpans(row));
+}
+
+/**
+ * A run of consecutive tool-only assistant records followed by their
+ * tool_results -- the shape Claude Code writes on disk, where every content
+ * block is its own JSONL record and the records of one API message repeat that
+ * message's `id`.
+ */
+function batchedToolCallRecords(
+  batches: { messageId: string; calls: { id: string; name: string; input: unknown }[] }[],
+): unknown[] {
+  return batches.flatMap((batch) => [
+    ...batch.calls.map((call) => ({
+      type: "assistant",
+      uuid: `a-${call.id}`,
+      message: {
+        role: "assistant",
+        id: batch.messageId,
+        content: [{ type: "tool_use", ...call }],
+      },
+    })),
+    ...batch.calls.map((call) => toolResultRecord(call.id, `a-${call.id}`)),
+  ]);
+}
+
+/** Text of every collapsed summary label (`Read 3 files`), in document order. */
+function summaryLabels(html: string): string[] {
+  return [
+    ...html.matchAll(/<span class="text-body truncate min-w-0">([\s\S]*?)<\/span><\/span>/g),
+  ].map((match) => (match[1] ?? "").replaceAll(/<[^>]+>/g, ""));
+}
+
+describe("SessionChat sequential tool batches", () => {
+  it("summarizes each API message's batch on its own row instead of merging the run into a multi-verb label", () => {
+    const html = renderTranscript(
+      batchedToolCallRecords([
+        {
+          messageId: "msg_read",
+          calls: [
+            { id: "t1", name: "Read", input: { file_path: "/repo/src/a.ts" } },
+            { id: "t2", name: "Read", input: { file_path: "/repo/src/b.ts" } },
+            { id: "t3", name: "Read", input: { file_path: "/repo/src/c.ts" } },
+          ],
+        },
+        {
+          messageId: "msg_bash",
+          calls: [
+            { id: "t4", name: "Bash", input: { command: "git status" } },
+            { id: "t5", name: "Bash", input: { command: "git log --oneline" } },
+          ],
+        },
+      ]),
+    );
+
+    expect({
+      // Records sharing a message id still collapse into one summary; the two
+      // messages never merge into "Read 3 files, Ran 2 commands".
+      labels: summaryLabels(html),
+      // The whole run stays one turn, so the two rows sit an item gap apart
+      // rather than a turn gap.
+      turnWrappers: (html.match(/pb-\[var\(--chat-turn-gap\)\]/g) ?? []).length,
+      // Each batch keeps its own `msg-N` anchor.
+      anchors: [...html.matchAll(/<div id="(msg-\d+)"/g)].map((match) => match[1]),
+    }).toStrictEqual({
+      labels: ["Read 3 files", "Ran 2 commands"],
+      turnWrappers: 1,
+      anchors: ["msg-0", "msg-6"],
+    });
+  });
+
+  it("keeps records with no message id on separate rows rather than assuming one batch", () => {
+    const html = renderTranscript([
+      {
+        type: "assistant",
+        uuid: "a1",
+        message: {
+          role: "assistant",
+          content: [{ type: "tool_use", id: "t1", name: "Read", input: { file_path: "/a.ts" } }],
+        },
+      },
+      {
+        type: "assistant",
+        uuid: "a2",
+        message: {
+          role: "assistant",
+          content: [{ type: "tool_use", id: "t2", name: "Read", input: { file_path: "/b.ts" } }],
+        },
+      },
+    ]);
+
+    expect({
+      labels: summaryLabels(html),
+      rowArguments: allToolRowLabelSpans(html).filter(([className]) => className === ARGUMENT),
+    }).toStrictEqual({
+      labels: [],
+      rowArguments: [
+        [ARGUMENT, "a.ts"],
+        [ARGUMENT, "b.ts"],
+      ],
+    });
+  });
+});
+
 /** One tool call plus its result, so the row renders with a known isError flag. */
 function toolResultRecords(
   call: { name: string; input: unknown },
@@ -660,32 +795,6 @@ describe("SessionChat failed tool row label", () => {
     });
   });
 });
-
-// Matches both the disclosure row and the bare non-expanding row, whose class
-// list stops before `cursor-pointer hide-focus-ring rounded-r3`.
-const TOOL_ROW = /group\/tool[^"]*">([\s\S]*?)<\/div>/g;
-
-/** [class, text] of every label span in one tool row's markup. */
-function labelSpans(row: string): [string, string][] {
-  return [...row.matchAll(/<span class="([^"]+)">([^<]*)<\/span>/g)]
-    .filter((match) => match[1]!.includes("text-body") || match[1]!.includes("text-code"))
-    .map((match): [string, string] => [match[1]!, match[2]!]);
-}
-
-/** The markup of every tool row, in document order. */
-function toolRows(html: string): string[] {
-  return [...html.matchAll(TOOL_ROW)].map((match) => match[1]!);
-}
-
-/** [class, text] of every label span in the first tool row, in document order. */
-function toolRowLabelSpans(html: string): [string, string][] {
-  return labelSpans(toolRows(html)[0] ?? "");
-}
-
-/** [class, text] of every label span in every tool row, in document order. */
-function allToolRowLabelSpans(html: string): [string, string][] {
-  return toolRows(html).flatMap((row) => labelSpans(row));
-}
 
 describe("SessionChat failed tool row label text", () => {
   it('rewrites a failed row to "Failed to <verb>", keeping the file path primary', () => {
@@ -780,7 +889,6 @@ describe("SessionChat failed tool row label text", () => {
 describe("SessionChat file-param tool row argument", () => {
   const VERB =
     "shrink-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary";
-  const ARGUMENT = "text-body text-assistant-primary truncate min-w-0";
 
   it("sets a file argument in the sans body face, matching upstream Read/Edit rows", () => {
     const html = renderTranscript(

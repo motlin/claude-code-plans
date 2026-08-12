@@ -53,6 +53,10 @@ const MessageLineSchema = z.object({
   isApiErrorMessage: z.boolean().optional(),
   apiErrorStatus: z.union([z.number(), z.string()]).optional(),
   errorDetails: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
+  // The API message id (`message.id`). Claude Code writes one JSONL record per
+  // content block, so every record of a single assistant message -- including
+  // each call of a parallel tool_use batch -- repeats the same id.
+  messageId: z.string().optional(),
   stopReason: z.literal("max_tokens").optional(),
   usage: z.record(z.string(), JsonValueSchema).optional(),
   attributionSkill: z.string().optional(),
@@ -607,6 +611,7 @@ function processRecordBatch(
       if (record.isApiErrorMessage === true) processedLine.isApiErrorMessage = true;
       if (record.apiErrorStatus !== undefined) processedLine.apiErrorStatus = record.apiErrorStatus;
       if (record.errorDetails !== undefined) processedLine.errorDetails = record.errorDetails;
+      if (record.message.id !== undefined) processedLine.messageId = record.message.id;
       if (record.message.stop_reason === "max_tokens") processedLine.stopReason = "max_tokens";
       if (record.message.usage !== undefined) processedLine.usage = record.message.usage;
       // Attribution repeats on every turn of a skill/MCP block; only carry it
