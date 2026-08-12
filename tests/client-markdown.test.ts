@@ -164,6 +164,87 @@ describe("renderMarkdownToHtml", () => {
   });
 });
 
+describe("mdLinkBase rewriting", () => {
+  it("rewrites a relative .md link to the slug-based in-app route", () => {
+    expect(
+      renderMarkdownToHtml("[worktrees](always-work-in-worktree.md)", {
+        mdLinkBase: "/memory/proj",
+      }),
+    ).toBe('<p><a href="/memory/proj/always-work-in-worktree">worktrees</a></p>\n');
+  });
+
+  it("leaves an external https link untouched", () => {
+    expect(
+      renderMarkdownToHtml("[spec](https://example.com/notes.md)", {
+        mdLinkBase: "/memory/proj",
+      }),
+    ).toBe('<p><a href="https://example.com/notes.md">spec</a></p>\n');
+  });
+
+  it("leaves relative .md links alone when no base is supplied", () => {
+    expect(renderMarkdownToHtml("[worktrees](always-work-in-worktree.md)")).toBe(
+      '<p><a href="always-work-in-worktree.md">worktrees</a></p>\n',
+    );
+  });
+
+  it("re-reads the base on every render instead of caching the first one", () => {
+    expect([
+      renderMarkdownToHtml("[n](notes.md)", { mdLinkBase: "/memory/a" }),
+      renderMarkdownToHtml("[n](notes.md)", { mdLinkBase: "/memory/b" }),
+      renderMarkdownToHtml("[n](notes.md)"),
+    ]).toStrictEqual([
+      '<p><a href="/memory/a/notes">n</a></p>\n',
+      '<p><a href="/memory/b/notes">n</a></p>\n',
+      '<p><a href="notes.md">n</a></p>\n',
+    ]);
+  });
+
+  it("rewrites relative .md links when a highlighter is bound", () => {
+    const highlighter = {
+      getLoadedLanguages: () => [],
+      codeToHtml: () => "",
+    } as unknown as HighlighterCore;
+
+    expect(
+      renderMarkdownWithHighlighting("[n](notes.md)", highlighter, {
+        mdLinkBase: "/memory/proj",
+      }),
+    ).toBe('<p><a href="/memory/proj/notes">n</a></p>\n');
+  });
+
+  it("links wiki-style cross references to sibling memories", () => {
+    expect(
+      renderMarkdownToHtml("See [[dotfiles-branch-topology]] and [[zsh-startup.md]].", {
+        mdLinkBase: "/memory/proj",
+      }),
+    ).toBe(
+      '<p>See <a href="/memory/proj/dotfiles-branch-topology">dotfiles-branch-topology</a>' +
+        ' and <a href="/memory/proj/zsh-startup">zsh-startup.md</a>.</p>\n',
+    );
+  });
+
+  it("leaves wiki-style references as literal text when no base is supplied", () => {
+    expect(renderMarkdownToHtml("See [[dotfiles-branch-topology]].")).toBe(
+      "<p>See [[dotfiles-branch-topology]].</p>\n",
+    );
+  });
+
+  it("leaves bracket syntax inside code spans and fences alone", () => {
+    expect(
+      withoutCopyChrome(
+        renderMarkdownToHtml("`[[raw]]`\n\n```\n[[fenced]]\n```", { mdLinkBase: "/memory/proj" }),
+      ),
+    ).toBe("<p><code>[[raw]]</code></p>\n<pre><code>[[fenced]]\n</code></pre>\n");
+  });
+
+  it("ignores unterminated and empty wiki-style brackets", () => {
+    expect([
+      renderMarkdownToHtml("[[unterminated", { mdLinkBase: "/memory/proj" }),
+      renderMarkdownToHtml("[[]]", { mdLinkBase: "/memory/proj" }),
+    ]).toStrictEqual(["<p>[[unterminated</p>\n", "<p>[[]]</p>\n"]);
+  });
+});
+
 describe("renderMarkdownWithHighlighting", () => {
   it("falls back to plain rendering when highlighter is null", () => {
     const markdown = "# Hello\n\n```js\nconst x = 1;\n```";

@@ -78,6 +78,20 @@ describe("MarkdownView", () => {
     expect(container.querySelector("article")?.innerHTML).toBe("<p>He said “hi” – ok</p>\n");
   });
 
+  it("rewrites relative .md links against the supplied base but leaves external ones", () => {
+    const { container } = render(
+      <MarkdownView
+        markdown="[a](notes.md) [b](https://example.com/notes.md)"
+        mdLinkBase="/memory/proj"
+      />,
+    );
+
+    expect([...container.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toStrictEqual([
+      "/memory/proj/notes",
+      "https://example.com/notes.md",
+    ]);
+  });
+
   it("requests an unloaded fence language", () => {
     shikiMocks.state.highlighter = shikiMocks.highlighter;
 

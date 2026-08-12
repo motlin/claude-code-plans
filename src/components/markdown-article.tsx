@@ -9,8 +9,8 @@ import { handleCodeCopyClick } from "../lib/code-copy";
 import styles from "./markdown-article.module.css";
 
 type MarkdownArticleProps =
-  | { html: string; markdown?: never; typographer?: boolean }
-  | { html?: never; markdown: string; typographer?: boolean };
+  | { html: string; markdown?: never; typographer?: boolean; mdLinkBase?: string | undefined }
+  | { html?: never; markdown: string; typographer?: boolean; mdLinkBase?: string | undefined };
 
 export function MarkdownArticle(props: MarkdownArticleProps) {
   const highlighterVersion = useSyncExternalStore(
@@ -24,8 +24,9 @@ export function MarkdownArticle(props: MarkdownArticleProps) {
     if (props.html !== undefined) return props.html;
     return renderMarkdownWithHighlighting(props.markdown!, getHighlighterSync(), {
       typographer: props.typographer ?? false,
+      ...(props.mdLinkBase === undefined ? {} : { mdLinkBase: props.mdLinkBase }),
     });
-  }, [props.html, props.markdown, props.typographer, highlighterVersion]);
+  }, [props.html, props.markdown, props.typographer, props.mdLinkBase, highlighterVersion]);
 
   return (
     <article

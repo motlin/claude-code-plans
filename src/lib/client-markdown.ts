@@ -1,12 +1,29 @@
 import type { HighlighterCore } from "@shikijs/core";
 import MarkdownIt from "markdown-it";
+import type StateInline from "markdown-it/lib/rules_inline/state_inline.mjs";
 import taskLists from "markdown-it-task-lists";
 import footnote from "markdown-it-footnote";
 import { requestLanguage } from "../hooks/use-shiki";
 import { COPY_ICON_SVG } from "./icon-paths";
+import { mdFileHref, resolveRelativeMdHref } from "./md-links";
 
 interface MarkdownRenderOptions {
   typographer?: boolean;
+  /**
+   * Route prefix that sibling `.md` files are addressed under, e.g.
+   * `/memory/<project>`. Supplying it turns relative `.md` links and
+   * `[[wiki-style]]` cross references inside the body into in-app links.
+   */
+  mdLinkBase?: string;
+}
+
+/** Per-render state; the MarkdownIt instances themselves are cached and shared. */
+interface MarkdownEnv {
+  mdLinkBase?: string;
+}
+
+function toEnv(options?: MarkdownRenderOptions): MarkdownEnv {
+  return options?.mdLinkBase === undefined ? {} : { mdLinkBase: options.mdLinkBase };
 }
 
 type MarkdownVariant = "default" | "typographer";
@@ -37,10 +54,53 @@ export const CODEBLOCK_COPY_ATTR = "data-copy-code";
 
 const COPY_STRIP = `<div class="${CODEBLOCK_COPY_CLASS}"><button type="button" ${CODEBLOCK_COPY_ATTR} aria-label="Copy">${COPY_ICON_SVG}</button></div>`;
 
+/**
+ * Memory files cross-reference each other with `[[name]]`, which plain markdown
+ * leaves as literal text. Resolve it to the sibling memory when the caller told
+ * us where siblings live; otherwise decline so the text renders unchanged.
+ */
+function wikiLink(state: StateInline, silent: boolean): boolean {
+  const base = (state.env as MarkdownEnv | undefined)?.mdLinkBase;
+  if (base === undefined) return false;
+
+  const start = state.pos;
+  if (state.src.charCodeAt(start) !== 0x5b /* [ */) return false;
+  if (state.src.charCodeAt(start + 1) !== 0x5b) return false;
+
+  const end = state.src.indexOf("]]", start + 2);
+  if (end === -1 || end > state.posMax) return false;
+
+  const label = state.src.slice(start + 2, end);
+  if (!label || /[[\]\n]/.test(label)) return false;
+
+  if (!silent) {
+    state.push("link_open", "a", 1).attrs = [["href", mdFileHref(base, label)]];
+    state.push("text", "", 0).content = label;
+    state.push("link_close", "a", -1);
+  }
+  state.pos = end + 2;
+  return true;
+}
+
 /** The plugins and renderer overrides every cached instance shares. */
 function applyPlugins(instance: MarkdownIt): void {
   instance.use(taskLists);
   instance.use(footnote);
+  instance.inline.ruler.before("link", "wikilink", wikiLink);
+
+  // Links written inside a memory file keep their `.md` extension, but the
+  // route that serves them is keyed by the extension-less slug, so an
+  // unrewritten link is a hard 404 rather than a redirect.
+  instance.renderer.rules["link_open"] = (tokens, idx, options, env, self) => {
+    const base = (env as MarkdownEnv | undefined)?.mdLinkBase;
+    if (base !== undefined) {
+      const token = tokens[idx]!;
+      const href = token.attrGet("href");
+      const resolved = href === null ? null : resolveRelativeMdHref(href, base);
+      if (resolved !== null) token.attrSet("href", resolved);
+    }
+    return self.renderToken(tokens, idx, options);
+  };
 
   // Upstream wraps every fence in a relative box carrying an absolutely
   // positioned top-right control strip with an icon-only copy button; a bare
@@ -119,7 +179,7 @@ function getHighlightedMarkdownIt(
 /** Render markdown to HTML without syntax highlighting. */
 export function renderMarkdownToHtml(markdown: string, options?: MarkdownRenderOptions): string {
   if (!markdown.trim()) return "";
-  return getPlainMarkdownIt(options).render(markdown);
+  return getPlainMarkdownIt(options).render(markdown, toEnv(options));
 }
 
 /** Render markdown to inline HTML without a paragraph wrapper. */
@@ -128,7 +188,7 @@ export function renderInlineMarkdownToHtml(
   options?: MarkdownRenderOptions,
 ): string {
   if (!markdown.trim()) return "";
-  return getPlainMarkdownIt(options).renderInline(markdown);
+  return getPlainMarkdownIt(options).renderInline(markdown, toEnv(options));
 }
 
 /**
@@ -142,7 +202,7 @@ export function renderMarkdownWithHighlighting(
 ): string {
   if (!markdown.trim()) return "";
   if (!highlighter) return renderMarkdownToHtml(markdown, options);
-  return getHighlightedMarkdownIt(highlighter, options).render(markdown);
+  return getHighlightedMarkdownIt(highlighter, options).render(markdown, toEnv(options));
 }
 
 export function looksLikeMarkdown(text: string): boolean {

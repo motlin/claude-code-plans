@@ -2,8 +2,15 @@ import { useMemo } from "react";
 import { renderInlineMarkdownToHtml } from "../lib/client-markdown";
 import { MarkdownArticle } from "./markdown-article";
 
-export function MarkdownView({ markdown }: { markdown: string }) {
-  return <MarkdownArticle markdown={markdown} typographer />;
+export function MarkdownView({
+  markdown,
+  mdLinkBase,
+}: {
+  markdown: string;
+  /** Route prefix sibling `.md` files are addressed under, e.g. `/memory/<project>`. */
+  mdLinkBase?: string | undefined;
+}) {
+  return <MarkdownArticle markdown={markdown} typographer mdLinkBase={mdLinkBase} />;
 }
 
 export function MarkdownInline({ markdown }: { markdown: string }) {

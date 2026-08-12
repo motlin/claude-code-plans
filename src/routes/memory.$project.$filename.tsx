@@ -102,7 +102,10 @@ function MemoryPage() {
         )}
       </DetailTopBar>
       <div className="mt-4">
-        <MarkdownView markdown={data.markdown} />
+        <MarkdownView
+          markdown={data.markdown}
+          mdLinkBase={`/memory/${encodeURIComponent(project)}`}
+        />
       </div>
     </div>
   );
