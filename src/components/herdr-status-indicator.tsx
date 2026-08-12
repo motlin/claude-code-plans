@@ -18,19 +18,23 @@ function statusPresentation(status: string): HerdrStatusPresentation {
   }
 }
 
+/**
+ * Fixed two-column grid so the dot and the status word land at the same x on
+ * every fleet row, regardless of which label the row shows.
+ */
 export function HerdrStatusIndicator({ status }: { status: string }) {
   const presentation = statusPresentation(status);
 
   return (
     <span
-      className="inline-flex shrink-0 items-center gap-1.5 text-xs text-text-500"
+      className="grid grid-cols-[0.625rem_minmax(0,1fr)] items-center gap-1.5 text-xs text-text-500"
       aria-label={`Herdr agent status: ${presentation.label}`}
     >
       <span
         className={`h-2.5 w-2.5 rounded-full ${presentation.colorClassName}`}
         aria-hidden="true"
       />
-      <span>{presentation.label}</span>
+      <span className="truncate">{presentation.label}</span>
     </span>
   );
 }

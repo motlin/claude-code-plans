@@ -44,7 +44,7 @@ export function SessionReviewAction({ onReview }: { onReview: () => Promise<unkn
   const { error, run } = useRetryableAction(onReview, "Failed to mark reviewed");
 
   return (
-    <div className="mr-3 flex shrink-0 items-center gap-2">
+    <div className="mr-3 flex shrink-0 flex-col items-end gap-1">
       {error && (
         <span role="alert" className="text-xs text-danger-000">
           {error}

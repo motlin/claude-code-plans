@@ -33,6 +33,14 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+const HERDR_ROW_COLUMNS =
+  "grid grid-cols-[minmax(0,1fr)_5rem_8.5rem_2rem_9rem] items-center rounded-md border border-border-300/15";
+const HERDR_TRANSCRIPT_COLUMNS =
+  "grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-bg-200/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100";
+const HERDR_TERMINAL_CELL =
+  "flex size-8 items-center justify-center justify-self-center rounded-md text-text-500 transition-colors hover:bg-bg-200/50 hover:text-text-000 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100";
+const HERDR_ACTION_CELL = "justify-self-end";
+
 function placement({
   active,
   agentStatus,
@@ -177,6 +185,88 @@ describe("HerdrPage", () => {
       zeroNewCopy: null,
       markUnreviewedActions: [],
     });
+  });
+
+  it("gives every row the same fixed columns so only the title is variable-width", async () => {
+    await renderHerdrPage([
+      placement({
+        active: true,
+        agentStatus: "working",
+        displayName: "✳ Teammate availability notification",
+        newMessageCount: 2,
+        number: 100,
+        viewedAnywhere: false,
+      }),
+      placement({ active: false, agentStatus: "idle", displayName: "✓ kalshi", number: 200 }),
+      placement({
+        active: false,
+        agentStatus: "done",
+        displayName: "claude-code-plans",
+        number: 300,
+      }),
+    ]);
+
+    const rows = ["✳ Teammate availability notification", "✓ kalshi", "claude-code-plans"].map(
+      (displayName) => {
+        const row = screen.getByRole("link", {
+          name: `Open session transcript for ${displayName}`,
+        }).parentElement;
+        if (!row) throw new Error(`Expected a fleet row for ${displayName}`);
+        return row;
+      },
+    );
+
+    expect(
+      rows.map((row) => {
+        const [transcript, status, review, terminal, action] = Array.from(row.children);
+        const [, glyph, title] = Array.from(transcript?.children ?? []);
+        return {
+          rowColumns: row.className,
+          cells: row.children.length,
+          transcriptColumns: transcript?.className,
+          glyph: glyph?.textContent,
+          title: title?.textContent,
+          status: status?.getAttribute("aria-label"),
+          review: review?.textContent,
+          terminal: terminal?.getAttribute("aria-label"),
+          actionCell: action?.className,
+        };
+      }),
+    ).toStrictEqual([
+      {
+        rowColumns: HERDR_ROW_COLUMNS,
+        cells: 5,
+        transcriptColumns: HERDR_TRANSCRIPT_COLUMNS,
+        glyph: "✳",
+        title: "Teammate availability notification",
+        status: "Herdr agent status: working",
+        review: "Needs review · 2 new",
+        terminal: "Open live read-only terminal for ✳ Teammate availability notification",
+        actionCell: HERDR_ACTION_CELL,
+      },
+      {
+        rowColumns: HERDR_ROW_COLUMNS,
+        cells: 5,
+        transcriptColumns: HERDR_TRANSCRIPT_COLUMNS,
+        glyph: "✓",
+        title: "kalshi",
+        status: "Herdr agent status: idle",
+        review: "",
+        terminal: "Open live read-only terminal for ✓ kalshi",
+        actionCell: HERDR_ACTION_CELL,
+      },
+      {
+        rowColumns: HERDR_ROW_COLUMNS,
+        cells: 5,
+        transcriptColumns: HERDR_TRANSCRIPT_COLUMNS,
+        glyph: "",
+        title: "claude-code-plans",
+        status: "Herdr agent status: done",
+        review: "",
+        terminal: "Open live read-only terminal for claude-code-plans",
+        actionCell: HERDR_ACTION_CELL,
+      },
+    ]);
   });
 
   it("marks an unseen session reviewed and invalidates its fleet and detail queries", async () => {
@@ -401,7 +491,7 @@ describe("HerdrPage", () => {
         title: terminalLink.getAttribute("title"),
         className: terminalLink.className,
       },
-      displayName: transcriptLink.textContent?.includes(displayName),
+      displayName: Array.from(transcriptLink.children).map((cell) => cell.textContent),
       visibleTechnicalMetadata: {
         provider: row?.textContent?.includes("herdr"),
         workspaceId: row?.textContent?.includes("workspace-test-100"),
@@ -417,16 +507,14 @@ describe("HerdrPage", () => {
       transcript: {
         href: "/session/session-test-100",
         title: `Open session transcript for ${displayName}. Workspace workspace-test-100 · Pane pane-test-100 · Terminal terminal-test-100 · Capabilities: write, events, observe`,
-        className:
-          "flex min-w-0 flex-1 items-center gap-2 rounded-md p-3 no-underline transition-colors hover:bg-bg-200/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100",
+        className: HERDR_TRANSCRIPT_COLUMNS,
       },
       terminal: {
         href: "/herdr/terminal/session-test-100",
         title: `Open live read-only terminal for ${displayName}`,
-        className:
-          "mr-2 flex size-8 shrink-0 items-center justify-center rounded-md text-text-500 transition-colors hover:bg-bg-200/50 hover:text-text-000 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100",
+        className: HERDR_TERMINAL_CELL,
       },
-      displayName: true,
+      displayName: ["Herdr pane focused", "*", "✓ $ Alice terminal"],
       visibleTechnicalMetadata: {
         provider: false,
         workspaceId: false,

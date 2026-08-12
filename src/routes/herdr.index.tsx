@@ -7,6 +7,7 @@ import { StatusDot } from "../components/sidebar/primitives/StatusDot";
 import { sessionQueryKeys } from "../lib/api/sessions";
 import { terminalPlacementsQueryOptions } from "../lib/api/terminal-placements";
 import { updateSessionViewedState } from "../lib/api/viewed-state";
+import { splitTerminalTitleGlyph } from "../lib/herdr/terminal-title";
 
 export const Route = createFileRoute("/herdr/")({
   component: HerdrPage,
@@ -19,6 +20,17 @@ export const Route = createFileRoute("/herdr/")({
 
 const TRACKED_CLAUDE_SCOPE =
   "This page lists Herdr panes linked to indexed Claude transcripts. It intentionally excludes Codex sessions and shell panes that are not linked to a Claude transcript.";
+
+/**
+ * Every column but the title is fixed-width, and the trailing review-action
+ * column is reserved even when a row has nothing to review, so the glyphs,
+ * status dots, status words, and terminal icons line up down the whole list.
+ */
+const HERDR_ROW_COLUMNS =
+  "grid grid-cols-[minmax(0,1fr)_5rem_8.5rem_2rem_9rem] items-center rounded-md border border-border-300/15";
+
+const TMUX_ROW_COLUMNS =
+  "grid grid-cols-[0.625rem_2.75rem_2.5rem_minmax(0,1fr)_minmax(0,8rem)_auto] items-center gap-2 rounded-md border border-border-300/15 p-3 no-underline transition-colors hover:bg-bg-200/50";
 
 function HerdrEmptyState() {
   return (
@@ -132,16 +144,16 @@ function HerdrPage() {
                   key={`tmux:${placement.scopeHandle}:${placement.paneHandle}:${placement.sessionId}`}
                   to="/session/$id"
                   params={{ id: placement.sessionId }}
-                  className="flex items-center gap-2 rounded-md border border-border-300/15 p-3 no-underline transition-colors hover:bg-bg-200/50"
+                  className={TMUX_ROW_COLUMNS}
                 >
                   <StatusDot active={placement.active} />
                   <span className="sr-only">
                     {placement.active ? "Tmux window active" : "Tmux window not active"}
                   </span>
-                  <span className="shrink-0 rounded bg-bg-200/60 px-1.5 py-0.5 text-[10px] text-text-500">
+                  <span className="rounded bg-bg-200/60 px-1.5 py-0.5 text-center text-[10px] text-text-500">
                     tmux
                   </span>
-                  <span className="shrink-0 tabular-nums text-sm text-text-400">
+                  <span className="tabular-nums text-sm text-text-400">
                     #{placement.tmuxWindow.windowIndex}
                   </span>
                   <span className="truncate text-sm font-medium text-text-000">
@@ -169,51 +181,56 @@ function HerdrPage() {
               placement.capabilities.supportsObserve ? "observe" : null,
             ].filter((label): label is string => label !== null);
             const technicalDetails = `Workspace ${pane.workspaceId} · Pane ${pane.paneId} · Terminal ${pane.terminalId} · Capabilities: ${capabilityLabels.length === 0 ? "placement only" : capabilityLabels.join(", ")}`;
+            const { glyph, title } = splitTerminalTitleGlyph(placement.displayName);
             return (
               <div
                 key={`herdr:${placement.scopeHandle}:${placement.paneHandle}:${placement.sessionId}`}
-                className="flex items-center rounded-md border border-border-300/15"
+                className={HERDR_ROW_COLUMNS}
               >
                 <Link
                   to="/session/$id"
                   params={{ id: placement.sessionId }}
                   aria-label={`Open session transcript for ${placement.displayName}`}
                   title={`Open session transcript for ${placement.displayName}. ${technicalDetails}`}
-                  className="flex min-w-0 flex-1 items-center gap-2 rounded-md p-3 no-underline transition-colors hover:bg-bg-200/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
+                  className="grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-bg-200/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
                 >
                   <span className="sr-only">
                     {placement.active ? "Herdr pane focused" : "Herdr pane not focused"}
                   </span>
-                  <span className="truncate text-sm font-medium text-text-000">
-                    {placement.displayName}
+                  <span aria-hidden="true" className="truncate text-sm text-text-500">
+                    {glyph}
                   </span>
-                  <HerdrStatusIndicator status={pane.agentStatus} />
-                  {!pane.viewedState.viewedAnywhere && (
-                    <span className="shrink-0 text-xs text-warning-000">
-                      Needs review
-                      {pane.viewedState.newMessageCount > 0
-                        ? ` · ${pane.viewedState.newMessageCount} new`
-                        : ""}
-                    </span>
-                  )}
+                  <span className="truncate text-sm font-medium text-text-000">{title}</span>
                 </Link>
+                <HerdrStatusIndicator status={pane.agentStatus} />
+                <span className="truncate text-xs text-warning-000">
+                  {pane.viewedState.viewedAnywhere
+                    ? null
+                    : `Needs review${
+                        pane.viewedState.newMessageCount > 0
+                          ? ` · ${pane.viewedState.newMessageCount} new`
+                          : ""
+                      }`}
+                </span>
                 <Link
                   to="/herdr/terminal/$sessionId"
                   params={{ sessionId: placement.sessionId }}
                   onClick={(event) => event.stopPropagation()}
-                  className="mr-2 flex size-8 shrink-0 items-center justify-center rounded-md text-text-500 transition-colors hover:bg-bg-200/50 hover:text-text-000 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
+                  className="flex size-8 items-center justify-center justify-self-center rounded-md text-text-500 transition-colors hover:bg-bg-200/50 hover:text-text-000 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
                   title={`Open live read-only terminal for ${placement.displayName}`}
                   aria-label={`Open live read-only terminal for ${placement.displayName}`}
                 >
                   <Monitor aria-hidden="true" className="h-4 w-4" />
                 </Link>
-                {!pane.viewedState.viewedAnywhere && (
-                  <SessionReviewAction
-                    onReview={() =>
-                      markReviewed(placement.sessionId, pane.viewedState.currentMessageIndex)
-                    }
-                  />
-                )}
+                <div className="justify-self-end">
+                  {!pane.viewedState.viewedAnywhere && (
+                    <SessionReviewAction
+                      onReview={() =>
+                        markReviewed(placement.sessionId, pane.viewedState.currentMessageIndex)
+                      }
+                    />
+                  )}
+                </div>
               </div>
             );
           })}
