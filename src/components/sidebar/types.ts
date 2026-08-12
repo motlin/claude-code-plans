@@ -15,13 +15,6 @@ export type Section =
   | "config"
   | "setup";
 
-export interface SubItem {
-  id: string;
-  label: string;
-  to: string;
-  params: Record<string, string>;
-}
-
 export interface SidebarProjectDetail {
   sessions: Array<{
     id: string;

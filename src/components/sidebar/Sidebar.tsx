@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Section } from "./types";
-import { useActiveSection } from "./hooks";
+import { useActiveSection, useCollapsedGroups } from "./hooks";
 import { useVisibleNavItems } from "./navigation";
 import { SidebarToggleIcon, SearchInput } from "./primitives";
 import {
@@ -12,7 +12,7 @@ import {
   PlansSubList,
   ProjectsSubList,
   PluginsSubList,
-  SubList,
+  SessionsSubList,
 } from "./sublists";
 import { approvalsQueryOptions } from "../../lib/api/approvals";
 import { notificationsQueryOptions, useMarkNotificationsRead } from "../../lib/api/notifications";
@@ -37,7 +37,8 @@ export function Sidebar({
   );
   // Sublists unmount whenever their section collapses, so per-group collapse
   // state has to be held here, in the sidebar that outlives every navigation.
-  const [collapsedMemoryGroups, setCollapsedMemoryGroups] = useState<Set<string>>(() => new Set());
+  const [collapsedMemoryGroups, toggleMemoryGroup] = useCollapsedGroups();
+  const [collapsedSessionGroups, toggleSessionGroup] = useCollapsedGroups();
   const { data: approvalsData } = useQuery(approvalsQueryOptions());
   const approvalsCount = approvalsData?.approvals.length ?? 0;
   const { data: notificationsData } = useQuery(notificationsQueryOptions());
@@ -54,18 +55,6 @@ export function Sidebar({
     if (!currentPath.startsWith("/notifications") || unreadCount === 0) return;
     markNotificationsRead();
   }, [currentPath, unreadCount, markNotificationsRead]);
-
-  function toggleMemoryGroup(projectId: string) {
-    setCollapsedMemoryGroups((previous) => {
-      const next = new Set(previous);
-      if (next.has(projectId)) {
-        next.delete(projectId);
-      } else {
-        next.add(projectId);
-      }
-      return next;
-    });
-  }
 
   function toggleSection(section: Section) {
     setCollapsedSections((prev) => {
@@ -229,9 +218,13 @@ export function Sidebar({
                   />
                 ) : item.section === "plugins" ? (
                   <PluginsSubList />
-                ) : (
-                  <SubList section={item.section} activeItemId={activeItemId} />
-                ))}
+                ) : item.section === "sessions" ? (
+                  <SessionsSubList
+                    activeItemId={activeItemId}
+                    collapsedGroups={collapsedSessionGroups}
+                    onToggleGroup={toggleSessionGroup}
+                  />
+                ) : null)}
             </div>
           );
         })}

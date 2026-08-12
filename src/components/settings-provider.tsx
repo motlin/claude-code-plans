@@ -43,6 +43,9 @@ export interface Settings {
 
   sessionSort: "urgency" | "stable";
 
+  /** How /sessions organizes its list. "project" matches the sidebar's tree. */
+  sessionsGrouping: "project" | "time";
+
   desktopNotifications: boolean;
 
   verbosity: Verbosity;
@@ -76,6 +79,8 @@ export const DEFAULTS: Settings = {
 
   sessionSort: "urgency",
 
+  sessionsGrouping: "project",
+
   desktopNotifications: false,
 
   verbosity: "normal",
@@ -101,6 +106,7 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
   capabilities: "ccp-capabilities",
   activeTimeoutSec: "ccp-active-timeout",
   sessionSort: "ccp-session-sort",
+  sessionsGrouping: "ccp-sessions-grouping",
   desktopNotifications: "ccp-desktop-notifications",
   verbosity: "ccp-verbosity",
   linkCategoryRules: "ccp-link-category-rules",

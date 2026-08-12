@@ -39,6 +39,7 @@ const SessionGroupSummarySchema = z.object({
   sessionCount: z.number(),
   sessions: z.array(SessionListItemSchema),
 });
+export type ProjectSessionGroup = z.infer<typeof SessionGroupSummarySchema>;
 export const GroupedSessionsResponse = z.array(SessionGroupSummarySchema);
 
 export const StarredSessionsResponse = z.array(SessionListItemSchema);
@@ -144,6 +145,14 @@ export const SessionSourceResponse = z
   .nullable();
 
 const DEFAULT_RECENT_PAGE_SIZE = 50;
+/**
+ * Sessions kept per project group. Deep enough to show what a project was
+ * recently doing, shallow enough that seventeen projects still fit a scroll or
+ * two; groups past it link out to the project's own session list. Both
+ * `/sessions` and the sidebar's Sessions tree share this one query, so they can
+ * never disagree about which sessions a project's group holds.
+ */
+const SESSION_GROUP_PAGE_SIZE = 5;
 const SESSION_QUERY_ROOT = ["sessions"] as const;
 const RECENT_SESSIONS_QUERY_ROOT = [...SESSION_QUERY_ROOT, "recent"] as const;
 const GROUPED_SESSIONS_QUERY_ROOT = [...SESSION_QUERY_ROOT, "grouped"] as const;
@@ -156,7 +165,8 @@ export const sessionQueryKeys = {
   recentInfinite: (limit: number = DEFAULT_RECENT_PAGE_SIZE) =>
     [...RECENT_SESSIONS_QUERY_ROOT, "infinite", limit] as const,
   groupedLists: () => GROUPED_SESSIONS_QUERY_ROOT,
-  grouped: (perProject?: number) => [...GROUPED_SESSIONS_QUERY_ROOT, perProject ?? null] as const,
+  grouped: (perProject: number = SESSION_GROUP_PAGE_SIZE) =>
+    [...GROUPED_SESSIONS_QUERY_ROOT, perProject] as const,
   starred: () => [...SESSION_QUERY_ROOT, "starred"] as const,
   titles: (ids: string[]) => [...SESSION_QUERY_ROOT, "titles", [...ids].sort()] as const,
   activeLists: () => ACTIVE_SESSIONS_QUERY_ROOT,
@@ -191,14 +201,11 @@ export const recentSessionsInfiniteQueryOptions = (limit: number = DEFAULT_RECEN
     gcTime: Infinity,
   });
 
-export const groupedSessionsQueryOptions = (perProject?: number) =>
+export const groupedSessionsQueryOptions = (perProject: number = SESSION_GROUP_PAGE_SIZE) =>
   queryOptions({
     queryKey: sessionQueryKeys.grouped(perProject),
     queryFn: () =>
-      apiFetch(
-        `/api/sessions/grouped${perProject ? `?perProject=${perProject}` : ""}`,
-        GroupedSessionsResponse,
-      ),
+      apiFetch(`/api/sessions/grouped?perProject=${perProject}`, GroupedSessionsResponse),
     staleTime: Infinity,
     gcTime: Infinity,
   });

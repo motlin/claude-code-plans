@@ -4,6 +4,7 @@ type StatusDotProps = {
   active: boolean;
   heat?: WaitHeat;
   size?: "sm" | "md";
+  title?: string;
 };
 
 const OUTER_SIZE = {
@@ -35,13 +36,13 @@ const ACTIVE_COLORS = {
  * Live-session status indicator: a pulsing green dot when active, a small muted
  * dot when idle. `sm` suits the sidebar sublists, `md` the full-page lists.
  */
-export function StatusDot({ active, heat = "", size = "md" }: StatusDotProps) {
+export function StatusDot({ active, heat = "", size = "md", title }: StatusDotProps) {
   const outer = OUTER_SIZE[size];
 
   if (active) {
     const color = ACTIVE_COLORS[heat];
     return (
-      <span className={`relative flex ${outer} shrink-0`}>
+      <span className={`relative flex ${outer} shrink-0`} title={title}>
         <span
           className={`absolute inline-flex h-full w-full animate-ping rounded-full ${color.pulse} opacity-75`}
         />
@@ -51,7 +52,7 @@ export function StatusDot({ active, heat = "", size = "md" }: StatusDotProps) {
   }
 
   return (
-    <span className={`flex ${outer} shrink-0 items-center justify-center`}>
+    <span className={`flex ${outer} shrink-0 items-center justify-center`} title={title}>
       <span className={`${IDLE_INNER_SIZE[size]} rounded-full bg-text-400/40`} />
     </span>
   );

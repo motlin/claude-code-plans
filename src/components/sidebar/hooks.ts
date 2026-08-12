@@ -1,6 +1,30 @@
 import type { useMatches } from "@tanstack/react-router";
+import { useCallback, useState } from "react";
 import { fromMdSlug } from "../../lib/md-slug";
 import type { Section } from "./types";
+
+/**
+ * Set of collapsed group ids plus its toggle. Sublists unmount whenever their
+ * section collapses, so this has to be owned by the sidebar itself — state held
+ * inside a sublist would come back expand-all'd after every navigation.
+ */
+export function useCollapsedGroups(): [ReadonlySet<string>, (groupId: string) => void] {
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set());
+
+  const toggle = useCallback((groupId: string) => {
+    setCollapsed((previous) => {
+      const next = new Set(previous);
+      if (next.has(groupId)) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
+      }
+      return next;
+    });
+  }, []);
+
+  return [collapsed, toggle];
+}
 
 export function useActiveSection(matches: ReturnType<typeof useMatches>): {
   section: Section | null;

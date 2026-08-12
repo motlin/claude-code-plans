@@ -18,7 +18,7 @@ import { approvalsQueryOptions } from "../src/lib/api/approvals";
 import { MemoryListResponse, projectMemoriesQueryOptions } from "../src/lib/api/memories";
 import { notificationsQueryOptions } from "../src/lib/api/notifications";
 import { projectsQueryOptions } from "../src/lib/api/projects";
-import { activeSessionsQueryOptions, recentSessionsQueryOptions } from "../src/lib/api/sessions";
+import { activeSessionsQueryOptions, groupedSessionsQueryOptions } from "../src/lib/api/sessions";
 import { installLocalStorage } from "./fake-storage";
 
 function project(id: string, name: string, lastActivity: string) {
@@ -70,10 +70,7 @@ function seedQueryClient(): QueryClient {
     projectMemoriesQueryOptions("gamma").queryKey,
     memoryList("gamma", "Gamma", [["gamma-notes.md", "Gamma notes", "2026-08-07T10:00:00Z"]]),
   );
-  queryClient.setQueryData(recentSessionsQueryOptions(20).queryKey, {
-    sessions: [],
-    nextCursor: null,
-  });
+  queryClient.setQueryData(groupedSessionsQueryOptions().queryKey, []);
   queryClient.setQueryData(approvalsQueryOptions().queryKey, { approvals: [] });
   queryClient.setQueryData(notificationsQueryOptions().queryKey, { notifications: [] });
   queryClient.setQueryData(
