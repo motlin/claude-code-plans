@@ -1946,7 +1946,9 @@ function ToolCallRow({ call, sessionId }: { call: ClientToolCall; sessionId: str
   const isCodeCard = CODE_CARD_TOOLS.has(call.name);
   // Upstream recolors the whole label of a failed tool row, except a file path,
   // which stays primary.
-  const labelClass = call.isError ? "text-extended-pink" : "text-assistant-secondary";
+  const labelClass = call.isError
+    ? "text-extended-pink"
+    : "text-assistant-secondary group-hover/tool:text-assistant-primary";
   // A failed call whose param is its own description reads as one phrase
   // ("Failed to install dependencies and build"), so upstream drops the verb
   // and the separate param span; every other failed row keeps both
@@ -1992,7 +1994,7 @@ function ToolCallRow({ call, sessionId }: { call: ClientToolCall; sessionId: str
           </span>
         )}
         {diffStats && <InlineDiffStats added={diffStats.added} removed={diffStats.removed} />}
-        <span className="shrink-0 text-assistant-secondary">
+        <span className="shrink-0 text-assistant-secondary group-hover/tool:text-assistant-primary">
           <ChevronIcon expanded={expanded} size={14} />
         </span>
       </div>
@@ -2028,18 +2030,18 @@ function ToolCallRow({ call, sessionId }: { call: ClientToolCall; sessionId: str
 
 /**
  * Renders the structured summary as verb spans matching upstream claude.ai/code:
- *   <span class="text-body text-assistant-secondary">{verb}</span>
- *   <span class="text-assistant-secondary"> {rest}</span>
- * with commas between segments.
+ *   <span class="text-body">{verb}</span>
+ *   <span> {rest}</span>
+ * with commas between segments; the color comes from the hover-aware wrapper.
  */
 function SummarySpans({ segments }: { segments: SummarySegment[] }) {
   return (
     <>
       {segments.map((segment, i) => (
         <React.Fragment key={i}>
-          {i > 0 && <span className="text-assistant-secondary">, </span>}
-          <span className="text-body text-assistant-secondary">{segment.verb}</span>
-          <span className="text-assistant-secondary"> {segment.rest}</span>
+          {i > 0 && <span>, </span>}
+          <span className="text-body">{segment.verb}</span>
+          <span> {segment.rest}</span>
         </React.Fragment>
       ))}
     </>
@@ -2067,12 +2069,12 @@ function ToolCallSummary({ calls, sessionId }: { calls: ClientToolCall[]; sessio
             onClick={() => setExpanded(!expanded)}
             className="relative group/tool flex self-start max-w-full items-center py-0 gap-g1 text-left hide-focus-ring rounded-r3"
           >
-            <span className="inline-flex items-center gap-g3 min-w-0">
+            <span className="inline-flex items-center gap-g3 min-w-0 text-assistant-secondary group-hover/tool:text-assistant-primary">
               <span className="text-body truncate min-w-0">
                 <SummarySpans segments={segments} />
               </span>
             </span>
-            <span className="shrink-0 text-assistant-secondary">
+            <span className="shrink-0 text-assistant-secondary group-hover/tool:text-assistant-primary">
               <ChevronIcon expanded={expanded} size={14} />
             </span>
           </button>

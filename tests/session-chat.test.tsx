@@ -556,9 +556,11 @@ describe("SessionChat failed tool row label", () => {
         '<span class="truncate min-w-0 text-body text-extended-pink">',
       ),
       failedKeepsSecondaryLabel: failedHtml.includes(
-        '<span class="shrink-0 text-body text-assistant-secondary">',
+        '<span class="shrink-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary">',
       ),
-      okVerb: okHtml.includes('<span class="shrink-0 text-body text-assistant-secondary">'),
+      okVerb: okHtml.includes(
+        '<span class="shrink-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary">',
+      ),
       okPink: okHtml.includes("text-extended-pink"),
     }).toStrictEqual({
       failedVerb: true,
@@ -601,7 +603,10 @@ describe("SessionChat failed tool row label text", () => {
         ["truncate min-w-0 text-code text-assistant-primary", "cache.ts"],
       ],
       okEdit: [
-        ["shrink-0 text-body text-assistant-secondary", "Edited"],
+        [
+          "shrink-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary",
+          "Edited",
+        ],
         ["truncate min-w-0 text-code text-assistant-primary", "cache.ts"],
       ],
       failedGrep: [
@@ -609,8 +614,14 @@ describe("SessionChat failed tool row label text", () => {
         ["truncate min-w-0 text-body text-extended-pink", "alice"],
       ],
       okGrep: [
-        ["shrink-0 text-body text-assistant-secondary", "Searched"],
-        ["truncate min-w-0 text-body text-assistant-secondary", "alice"],
+        [
+          "shrink-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary",
+          "Searched",
+        ],
+        [
+          "truncate min-w-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary",
+          "alice",
+        ],
       ],
     });
   });
@@ -636,8 +647,14 @@ describe("SessionChat failed tool row label text", () => {
         ],
       ],
       ok: [
-        ["shrink-0 text-body text-assistant-secondary", "Ran"],
-        ["truncate min-w-0 text-body text-assistant-secondary", "Install dependencies and build"],
+        [
+          "shrink-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary",
+          "Ran",
+        ],
+        [
+          "truncate min-w-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary",
+          "Install dependencies and build",
+        ],
       ],
     });
   });
@@ -653,6 +670,68 @@ describe("SessionChat failed tool row label text", () => {
     expect(toolRowLabelSpans(html)).toStrictEqual([
       ["shrink-0 text-body text-extended-pink", "Failed to use sentry"],
       ["truncate min-w-0 text-body text-extended-pink", "unhandled"],
+    ]);
+  });
+});
+
+/** Class list of every `<span>` in the clickable row header (classless spans -> ""). */
+function rowHeaderSpanClasses(html: string): string[] {
+  const start = html.indexOf('class="relative group/tool');
+  expect(start, "no tool row header in html").toBeGreaterThan(-1);
+  const region = html.slice(start, html.indexOf('<div class="grid', start));
+  return [...region.matchAll(/<span(?: class="([^"]*)")?[ >]/g)].map((match) => match[1] ?? "");
+}
+
+/** Two tool calls in one assistant turn, so the collapsed group summary renders. */
+function groupedToolCallRecords(): unknown[] {
+  return [
+    {
+      type: "assistant",
+      uuid: "a1",
+      message: {
+        role: "assistant",
+        content: [
+          { type: "tool_use", id: "t1", name: "Grep", input: { pattern: "alice" } },
+          { type: "tool_use", id: "t2", name: "Grep", input: { pattern: "bob" } },
+        ],
+      },
+    },
+    ...["t1", "t2"].map((id) => ({
+      type: "user",
+      uuid: `r-${id}`,
+      parentUuid: "a1",
+      message: {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: id, content: "1 match" }],
+      },
+    })),
+  ];
+}
+
+describe("SessionChat tool row hover treatment", () => {
+  it("brightens a successful row's verb, param and chevron on group hover", () => {
+    expect(rowHeaderSpanClasses(renderTranscript(failedToolCallRecords(false)))).toStrictEqual([
+      "shrink-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary",
+      "truncate min-w-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary",
+      "shrink-0 text-assistant-secondary group-hover/tool:text-assistant-primary",
+    ]);
+  });
+
+  it("keeps a failed row's label pink on hover while its chevron still brightens", () => {
+    expect(rowHeaderSpanClasses(renderTranscript(failedToolCallRecords(true)))).toStrictEqual([
+      "shrink-0 text-body text-extended-pink",
+      "truncate min-w-0 text-body text-extended-pink",
+      "shrink-0 text-assistant-secondary group-hover/tool:text-assistant-primary",
+    ]);
+  });
+
+  it("colors the group summary from its wrapper so the whole label brightens on hover", () => {
+    expect(rowHeaderSpanClasses(renderTranscript(groupedToolCallRecords()))).toStrictEqual([
+      "inline-flex items-center gap-g3 min-w-0 text-assistant-secondary group-hover/tool:text-assistant-primary",
+      "text-body truncate min-w-0",
+      "text-body",
+      "",
+      "shrink-0 text-assistant-secondary group-hover/tool:text-assistant-primary",
     ]);
   });
 });
