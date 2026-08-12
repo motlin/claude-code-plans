@@ -26,7 +26,18 @@ export const Default: Story = {
   args: {
     toolCall: makeToolCall({
       input: {},
-      result: "success",
+      result:
+        "Entered plan mode. You should now focus on exploring the codebase and designing an implementation approach.\n\nIn plan mode, you should:\n1. Thoroughly explore the codebase to understand existing patterns\n2. Identify similar features and architectural approaches\n\nRemember: DO NOT write or edit any files yet.",
+    }),
+  },
+};
+
+export const Failed: Story = {
+  args: {
+    toolCall: makeToolCall({
+      input: {},
+      result: "You are already in plan mode.",
+      isError: true,
     }),
   },
 };

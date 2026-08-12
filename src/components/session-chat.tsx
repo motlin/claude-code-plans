@@ -1981,7 +1981,7 @@ const CODE_CARD_TOOLS = new Set(["Read", "Edit", "MultiEdit", "Write"]);
  * aria-expanded, no disclosure -- clicking one does nothing. Their body (when
  * we still have something worth showing) renders inline, always visible.
  */
-const NON_EXPANDING_TOOLS = new Set(["TodoWrite"]);
+const NON_EXPANDING_TOOLS = new Set(["TodoWrite", "EnterPlanMode"]);
 
 /**
  * Tools that show inline diff stats (+N -M) in the clickable row.

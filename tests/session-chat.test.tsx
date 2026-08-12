@@ -601,9 +601,10 @@ describe("SessionChat grouped tool card", () => {
 });
 
 /** One tool call plus its result, so the row renders with a known isError flag. */
-function failedToolCallRecords(
-  isError: boolean,
-  call: { name: string; input: unknown } = { name: "Grep", input: { pattern: "alice" } },
+function toolResultRecords(
+  call: { name: string; input: unknown },
+  content: string,
+  isError = false,
 ): unknown[] {
   return [
     {
@@ -620,17 +621,17 @@ function failedToolCallRecords(
       parentUuid: "a1",
       message: {
         role: "user",
-        content: [
-          {
-            type: "tool_result",
-            tool_use_id: "t1",
-            content: "rg exited with code 2",
-            is_error: isError,
-          },
-        ],
+        content: [{ type: "tool_result", tool_use_id: "t1", content, is_error: isError }],
       },
     },
   ];
+}
+
+function failedToolCallRecords(
+  isError: boolean,
+  call: { name: string; input: unknown } = { name: "Grep", input: { pattern: "alice" } },
+): unknown[] {
+  return toolResultRecords(call, "rg exited with code 2", isError);
 }
 
 describe("SessionChat failed tool row label", () => {
@@ -991,6 +992,30 @@ describe("SessionChat non-expanding tool rows", () => {
       disclosureGrid: false,
       chevron: false,
       label: true,
+    });
+  });
+
+  it("draws an EnterPlanMode call as a bare label row with no instruction block", () => {
+    const html = renderTranscript(
+      toolResultRecords(
+        { name: "EnterPlanMode", input: {} },
+        "Entered plan mode. You should now focus on exploring the codebase and designing an implementation approach.\n\nRemember: DO NOT write or edit any files yet.",
+      ),
+    );
+
+    expect({
+      ...toolRowChrome(html),
+      label: html.includes(">Entered plan mode<"),
+      instructions: html.includes("DO NOT write or edit any files yet"),
+    }).toStrictEqual({
+      bareHeaderClass:
+        "relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left",
+      roleButton: false,
+      ariaExpanded: false,
+      disclosureGrid: false,
+      chevron: false,
+      label: true,
+      instructions: false,
     });
   });
 
