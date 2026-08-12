@@ -16,7 +16,11 @@ import { assertNever } from "../lib/assert-never";
 import { formatTimestamp, formatRelativeTimestamp } from "../lib/timestamp-format";
 import { MarkdownArticle } from "./markdown-article";
 import { getToolRenderer } from "./tool-renderers";
-import { buildClientToolCall, buildSubagentLookup } from "./tool-renderers/types";
+import {
+  buildClientToolCall,
+  buildSubagentLookup,
+  getToolDescription,
+} from "./tool-renderers/types";
 import type { ClientToolCall } from "./tool-renderers";
 import type { LiveToolFailure, SubagentLookup } from "./tool-renderers/types";
 import type { Subagent } from "../lib/subagents";
@@ -1783,25 +1787,45 @@ function ContentBlock({
   return null;
 }
 
+/**
+ * Row label per tool: `past` for a call that succeeded, `failed` for the
+ * "Failed to ..." form upstream swaps in when the call errored.
+ */
+const TOOL_VERBS: Record<string, { past: string; failed: string }> = {
+  Edit: { past: "Edited", failed: "Failed to edit" },
+  MultiEdit: { past: "Edited", failed: "Failed to edit" },
+  Write: { past: "Wrote", failed: "Failed to write" },
+  Bash: { past: "Ran", failed: "Failed to run" },
+  Read: { past: "Read", failed: "Failed to read" },
+  Grep: { past: "Searched", failed: "Failed to search" },
+  Glob: { past: "Globbed", failed: "Failed to glob" },
+  Agent: { past: "Ran agent", failed: "Failed to run agent" },
+  WebFetch: { past: "Fetched", failed: "Failed to fetch" },
+  WebSearch: { past: "Searched web", failed: "Failed to search web" },
+  ToolSearch: { past: "Used ToolSearch", failed: "Failed to use ToolSearch" },
+  Skill: { past: "Loaded skill", failed: "Failed to load skill" },
+  TaskCreate: { past: "Created task", failed: "Failed to create task" },
+  TaskUpdate: { past: "Updated task", failed: "Failed to update task" },
+  TaskGet: { past: "Got task", failed: "Failed to get task" },
+  TaskList: { past: "Listed tasks", failed: "Failed to list tasks" },
+  TaskStop: { past: "Stopped task", failed: "Failed to stop task" },
+};
+
 function toolCallVerb(name: string): string {
-  if (name === "Edit" || name === "MultiEdit") return "Edited";
-  if (name === "Write") return "Wrote";
-  if (name === "Bash") return "Ran";
-  if (name === "Read") return "Read";
-  if (name === "Grep") return "Searched";
-  if (name === "Glob") return "Globbed";
-  if (name === "Agent") return "Ran agent";
-  if (name === "WebFetch") return "Fetched";
-  if (name === "WebSearch") return "Searched web";
-  if (name === "ToolSearch") return "Used ToolSearch";
-  if (name === "Skill") return "Loaded skill";
-  if (name === "TaskCreate") return "Created task";
-  if (name === "TaskUpdate") return "Updated task";
-  if (name === "TaskGet") return "Got task";
-  if (name === "TaskList") return "Listed tasks";
-  if (name === "TaskStop") return "Stopped task";
+  const verbs = TOOL_VERBS[name];
+  if (verbs) return verbs.past;
   if (name.startsWith("mcp__")) return formatToolName(name);
   return name;
+}
+
+function toolCallFailedVerb(name: string): string {
+  const verbs = TOOL_VERBS[name];
+  if (verbs) return verbs.failed;
+  return `Failed to use ${toolCallVerb(name)}`;
+}
+
+function lowercaseFirst(text: string): string {
+  return text.charAt(0).toLowerCase() + text.slice(1);
 }
 
 const PROMINENT_TOOLS = new Set(["AskUserQuestion"]);
@@ -1923,12 +1947,23 @@ function ToolCallRow({ call, sessionId }: { call: ClientToolCall; sessionId: str
   // Upstream recolors the whole label of a failed tool row, except a file path,
   // which stays primary.
   const labelClass = call.isError ? "text-extended-pink" : "text-assistant-secondary";
+  // A failed call whose param is its own description reads as one phrase
+  // ("Failed to install dependencies and build"), so upstream drops the verb
+  // and the separate param span; every other failed row keeps both
+  // ("Failed to edit" + "cache.ts").
+  const failedDescription = call.isError ? getToolDescription(call.name, call.input) : null;
+  const label = call.isError
+    ? failedDescription === null
+      ? toolCallFailedVerb(call.name)
+      : `Failed to ${lowercaseFirst(failedDescription)}`
+    : verb;
 
-  const displayParam = RENDERER_HANDLES_PARAM.has(call.name)
-    ? ""
-    : isFileParam
-      ? (call.param.split("/").pop() ?? call.param)
-      : call.param;
+  const displayParam =
+    RENDERER_HANDLES_PARAM.has(call.name) || failedDescription !== null
+      ? ""
+      : isFileParam
+        ? (call.param.split("/").pop() ?? call.param)
+        : call.param;
 
   return (
     <div className="flex flex-col w-full">
@@ -1944,7 +1979,11 @@ function ToolCallRow({ call, sessionId }: { call: ClientToolCall; sessionId: str
         }}
         className="relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left cursor-pointer hide-focus-ring rounded-r3"
       >
-        <span className={`shrink-0 text-body ${labelClass}`}>{verb}</span>
+        <span
+          className={`${failedDescription === null ? "shrink-0" : "truncate min-w-0"} text-body ${labelClass}`}
+        >
+          {label}
+        </span>
         {displayParam && (
           <span
             className={`truncate min-w-0 ${isFileParam ? "text-code text-assistant-primary" : `text-body ${labelClass}`}`}

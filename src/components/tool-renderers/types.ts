@@ -225,12 +225,25 @@ function truncate(value: string, maxLength = 60): string {
   return value.length > maxLength ? value.slice(0, maxLength) + "..." : value;
 }
 
+/**
+ * The call's own free-text description, when that is what the row shows as its
+ * param (Bash and friends). Null when the param comes from somewhere else --
+ * a file path, a query, a pattern.
+ */
+export function getToolDescription(name: string, input: Record<string, unknown>): string | null {
+  if (name === "ToolSearch" || name === "TaskCreate") return null;
+  if (typeof input["file_path"] === "string") return null;
+  if (typeof input["description"] !== "string") return null;
+  return truncate(input["description"]);
+}
+
 function getToolParam(name: string, input: Record<string, unknown>): string {
   if (name === "ToolSearch")
     return typeof input["query"] === "string" ? truncate(input["query"]) : "";
   if (name === "TaskCreate") return truncate(getTaskCreateDisplaySubject(input));
   if (typeof input["file_path"] === "string") return input["file_path"];
-  if (typeof input["description"] === "string") return truncate(input["description"]);
+  const description = getToolDescription(name, input);
+  if (description !== null) return description;
   if (typeof input["command"] === "string") return input["command"];
   if (typeof input["pattern"] === "string") return input["pattern"];
   if (typeof input["query"] === "string") return input["query"];

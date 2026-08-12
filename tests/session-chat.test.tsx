@@ -513,14 +513,17 @@ describe("SessionChat tool card chrome", () => {
 });
 
 /** One tool call plus its result, so the row renders with a known isError flag. */
-function failedToolCallRecords(isError: boolean): unknown[] {
+function failedToolCallRecords(
+  isError: boolean,
+  call: { name: string; input: unknown } = { name: "Grep", input: { pattern: "alice" } },
+): unknown[] {
   return [
     {
       type: "assistant",
       uuid: "a1",
       message: {
         role: "assistant",
-        content: [{ type: "tool_use", id: "t1", name: "Grep", input: { pattern: "alice" } }],
+        content: [{ type: "tool_use", id: "t1", name: call.name, input: call.input }],
       },
     },
     {
@@ -564,5 +567,92 @@ describe("SessionChat failed tool row label", () => {
       okVerb: true,
       okPink: false,
     });
+  });
+});
+
+/** [class, text] of every label span in the first tool row, in document order. */
+function toolRowLabelSpans(html: string): [string, string][] {
+  const row = /hide-focus-ring rounded-r3">([\s\S]*?)<\/div>/.exec(html)?.[1] ?? "";
+  return [...row.matchAll(/<span class="([^"]+)">([^<]*)<\/span>/g)]
+    .filter((match) => match[1]!.includes("text-body") || match[1]!.includes("text-code"))
+    .map((match) => [match[1]!, match[2]!]);
+}
+
+describe("SessionChat failed tool row label text", () => {
+  it('rewrites a failed row to "Failed to <verb>", keeping the file path primary', () => {
+    const editInput = {
+      file_path: "/repo/src/cache.ts",
+      old_string: "a",
+      new_string: "b",
+    };
+
+    expect({
+      failedEdit: toolRowLabelSpans(
+        renderTranscript(failedToolCallRecords(true, { name: "Edit", input: editInput })),
+      ),
+      okEdit: toolRowLabelSpans(
+        renderTranscript(failedToolCallRecords(false, { name: "Edit", input: editInput })),
+      ),
+      failedGrep: toolRowLabelSpans(renderTranscript(failedToolCallRecords(true))),
+      okGrep: toolRowLabelSpans(renderTranscript(failedToolCallRecords(false))),
+    }).toStrictEqual({
+      failedEdit: [
+        ["shrink-0 text-body text-extended-pink", "Failed to edit"],
+        ["truncate min-w-0 text-code text-assistant-primary", "cache.ts"],
+      ],
+      okEdit: [
+        ["shrink-0 text-body text-assistant-secondary", "Edited"],
+        ["truncate min-w-0 text-code text-assistant-primary", "cache.ts"],
+      ],
+      failedGrep: [
+        ["shrink-0 text-body text-extended-pink", "Failed to search"],
+        ["truncate min-w-0 text-body text-extended-pink", "alice"],
+      ],
+      okGrep: [
+        ["shrink-0 text-body text-assistant-secondary", "Searched"],
+        ["truncate min-w-0 text-body text-assistant-secondary", "alice"],
+      ],
+    });
+  });
+
+  it("folds the verb into the description on a failed call that carries one", () => {
+    const bashInput = {
+      command: "pnpm install && pnpm build",
+      description: "Install dependencies and build",
+    };
+
+    expect({
+      failed: toolRowLabelSpans(
+        renderTranscript(failedToolCallRecords(true, { name: "Bash", input: bashInput })),
+      ),
+      ok: toolRowLabelSpans(
+        renderTranscript(failedToolCallRecords(false, { name: "Bash", input: bashInput })),
+      ),
+    }).toStrictEqual({
+      failed: [
+        [
+          "truncate min-w-0 text-body text-extended-pink",
+          "Failed to install dependencies and build",
+        ],
+      ],
+      ok: [
+        ["shrink-0 text-body text-assistant-secondary", "Ran"],
+        ["truncate min-w-0 text-body text-assistant-secondary", "Install dependencies and build"],
+      ],
+    });
+  });
+
+  it('falls back to "Failed to use <tool>" for tools with no verb of their own', () => {
+    const html = renderTranscript(
+      failedToolCallRecords(true, {
+        name: "mcp__sentry__search_issues",
+        input: { query: "unhandled" },
+      }),
+    );
+
+    expect(toolRowLabelSpans(html)).toStrictEqual([
+      ["shrink-0 text-body text-extended-pink", "Failed to use sentry"],
+      ["truncate min-w-0 text-body text-extended-pink", "unhandled"],
+    ]);
   });
 });
