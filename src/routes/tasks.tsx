@@ -10,6 +10,7 @@ import { TaskMetadata } from "../components/task-metadata";
 import { TaskOwner } from "../components/task-owner";
 import { ListPageHeader } from "../components/list-page-header";
 import { filterTasks } from "../lib/task-search";
+import { ORPHANED_TASKS_DESCRIPTION, ORPHANED_TASKS_PROJECT_ID } from "../lib/task-groups";
 
 export const Route = createFileRoute("/tasks")({
   component: TasksPage,
@@ -136,6 +137,9 @@ function TasksPage() {
               <h2 className="text-xs font-semibold uppercase tracking-wider text-text-400">
                 {project.projectName}
               </h2>
+              {project.projectId === ORPHANED_TASKS_PROJECT_ID && (
+                <p className="mt-1 text-xs text-text-500">{ORPHANED_TASKS_DESCRIPTION}</p>
+              )}
               <div className="mt-2 space-y-4">
                 {project.sessions.map((group) => {
                   const isCollapsed = collapsed.has(group.projectDir);

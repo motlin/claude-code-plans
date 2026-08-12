@@ -50,6 +50,7 @@ import {
   listSessionsForBranch,
   listCwdsForProject,
 } from "../src/lib/db/queries";
+import { ORPHANED_TASKS_PROJECT_ID } from "../src/lib/task-groups";
 import * as schema from "../src/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { encodeProjectPath } from "../src/lib/memory";
@@ -3136,11 +3137,11 @@ describe("task queries", () => {
       (group) => group.projectDir === missingSessionId,
     );
     expect(orphanedGroup).toStrictEqual({
-      projectId: "unknown",
-      projectName: "Unknown project",
+      projectId: ORPHANED_TASKS_PROJECT_ID,
+      projectName: "Orphaned tasks",
       projectDir: missingSessionId,
       sessionId: null,
-      sessionTitle: "Session 00000000",
+      sessionTitle: "Unindexed session 00000000",
       tasks: [
         {
           taskId: "100",
@@ -3181,6 +3182,84 @@ describe("task queries", () => {
     for (const group of getIncompleteTasksGroupedByProject(db.index)) {
       expect(group.projectName).not.toBe(group.sessionTitle);
     }
+  });
+
+  it("getIncompleteTasksGroupedByProject labels an unresolvable session-prefixed directory as orphaned", () => {
+    db.index
+      .insert(schema.tasks)
+      .values({
+        taskId: "102",
+        projectDir: "session-fedcba98",
+        subject: "Orphaned prefixed task",
+        description: "desc",
+        status: "pending",
+        blocksJson: "[]",
+        blockedByJson: "[]",
+        metadataJson: "{}",
+        filePath: "/tasks/session-fedcba98/102.json",
+        mtimeMs: 1000,
+      })
+      .run();
+
+    const group = getIncompleteTasksGroupedByProject(db.index).find(
+      (candidate) => candidate.projectDir === "session-fedcba98",
+    );
+    if (!group) throw new Error("Expected group for session-fedcba98");
+    expect({
+      projectId: group.projectId,
+      projectName: group.projectName,
+      sessionId: group.sessionId,
+      sessionTitle: group.sessionTitle,
+    }).toStrictEqual({
+      projectId: ORPHANED_TASKS_PROJECT_ID,
+      projectName: "Orphaned tasks",
+      sessionId: null,
+      sessionTitle: "Unindexed session fedcba98",
+    });
+  });
+
+  it("getIncompleteTasksGroupedByProject sorts orphaned groups after resolved ones", () => {
+    db.index
+      .insert(schema.tasks)
+      .values([
+        {
+          taskId: "103",
+          projectDir: "11111111-1111-1111-1111-111111111111",
+          subject: "Orphaned task",
+          description: "desc",
+          status: "pending",
+          blocksJson: "[]",
+          blockedByJson: "[]",
+          metadataJson: "{}",
+          filePath: "/tasks/11111111-1111-1111-1111-111111111111/103.json",
+          mtimeMs: 1000,
+        },
+        {
+          taskId: "104",
+          projectDir: "example-app",
+          subject: "Project-dir task",
+          description: "desc",
+          status: "pending",
+          blocksJson: "[]",
+          blockedByJson: "[]",
+          metadataJson: "{}",
+          filePath: "/tasks/example-app/104.json",
+          mtimeMs: 1000,
+        },
+      ])
+      .run();
+
+    const groups = getIncompleteTasksGroupedByProject(db.index);
+    expect(
+      groups.map((group) => ({ projectDir: group.projectDir, projectId: group.projectId })),
+    ).toStrictEqual([
+      { projectDir: sessionId, projectId },
+      { projectDir: "example-app", projectId },
+      {
+        projectDir: "11111111-1111-1111-1111-111111111111",
+        projectId: ORPHANED_TASKS_PROJECT_ID,
+      },
+    ]);
   });
 
   it("getIncompleteTasksGroupedByProject resolves a session-prefixed task directory by id prefix", () => {

@@ -4,6 +4,7 @@ import { basename, dirname, relative, sep } from "node:path";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as schema from "./schema";
 import type { SessionEntry } from "../sessions";
+import { ORPHANED_TASKS_PROJECT_ID, ORPHANED_TASKS_PROJECT_NAME } from "../task-groups";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
@@ -1279,7 +1280,10 @@ function findProjectForTaskDir(db: IndexDb, projectDir: string): TaskDirProject 
 /**
  * Label a task directory whose name did not match any sessions.id. Directories
  * under ~/.claude/tasks/ are sometimes a `session-<idprefix>` shorthand, a
- * plain project name, or a session UUID with no surviving JSONL. Never returns
+ * plain project name, or a session UUID with no surviving JSONL. A session id
+ * that resolves to nothing is orphaned rather than "unknown": its transcript
+ * was never indexed, so no project owns it and nothing links back to it, and
+ * its short id is labelled as an id instead of posing as a title. Never returns
  * the same string for projectName and sessionTitle, so the /tasks page cannot
  * render one identifier twice.
  */
@@ -1313,10 +1317,10 @@ function resolveUnmatchedTaskDir(db: IndexDb, projectDir: string): ResolvedTaskD
   if (idPrefix !== undefined || UUID_PATTERN.test(projectDir)) {
     const shortId = idPrefix ?? projectDir.slice(0, 8);
     return {
-      projectId: "unknown",
-      projectName: "Unknown project",
+      projectId: ORPHANED_TASKS_PROJECT_ID,
+      projectName: ORPHANED_TASKS_PROJECT_NAME,
       sessionId: null,
-      sessionTitle: `Session ${shortId}`,
+      sessionTitle: `Unindexed session ${shortId}`,
     };
   }
   const project = findProjectForTaskDir(db, projectDir);
@@ -1403,7 +1407,13 @@ export function getIncompleteTasksGroupedByProject(db: IndexDb): TaskProjectGrou
     });
   }
 
-  return result;
+  // Orphaned groups name no project the user can act on, so they sink below
+  // every real project instead of interleaving with them.
+  return result.sort(
+    (left, right) =>
+      Number(left.projectId === ORPHANED_TASKS_PROJECT_ID) -
+      Number(right.projectId === ORPHANED_TASKS_PROJECT_ID),
+  );
 }
 
 export function getTaskCountsForProject(
