@@ -499,18 +499,16 @@ export function KeyValueCard({
         <div className="max-h-[400px] overflow-y-auto flex flex-col gap-g4">
           {errorMessage && <div className="text-extended-pink">{errorMessage}</div>}
           {params.length > 0 && (
-            <div className="text-assistant-secondary">
+            <div className="text-assistant-secondary flex flex-col gap-g2">
               {params.map((p) => (
-                <div key={p.key}>
+                <div key={p.key} className="break-words">
+                  <span className="text-code font-mono opacity-70">{`${p.key}: `}</span>
                   {p.markdown ? (
-                    <>
-                      <span className="font-semibold">{p.key}:</span>
-                      <InlineMarkdown text={p.value} />
-                    </>
+                    <InlineMarkdown text={p.value} />
                   ) : (
-                    <>
-                      {p.key}: {p.value}
-                    </>
+                    <span className="text-code font-mono whitespace-pre-wrap break-all">
+                      {p.value}
+                    </span>
                   )}
                 </div>
               ))}

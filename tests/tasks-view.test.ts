@@ -6,6 +6,11 @@ import { getTaskCreateParams } from "../src/components/tool-renderers/task-creat
 import { extractTasks, TasksView } from "../src/components/tasks-view";
 import type { ClientToolCall } from "../src/components/tool-renderers/types";
 
+/** Params render as separate key and value spans, so match on text rather than markup. */
+function visibleText(html: string): string {
+  return html.replace(/<[^>]*>/g, "");
+}
+
 function makeToolCall(name: string, input: ClientToolCall["input"]): ClientToolCall {
   return {
     id: crypto.randomUUID(),
@@ -127,7 +132,7 @@ describe("Agent effort rendering", () => {
       }),
     );
 
-    expect(html).toContain("effort: high");
+    expect(visibleText(html)).toContain("effort: high");
   });
 
   it("shows effort on agent cards in the Tasks view", () => {

@@ -93,7 +93,10 @@ describe("failed tool bodies", () => {
       columnClass: "flex-1 min-w-0 flex flex-col gap-g4 text-body whitespace-pre-wrap break-words",
       children: [
         { className: PINK, text: "rg: unrecognized flag" },
-        { className: "text-assistant-secondary", text: "pattern: alice" },
+        {
+          className: "text-assistant-secondary flex flex-col gap-g2",
+          text: "pattern: alice",
+        },
       ],
       rails: 0,
     });
