@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createTerminalFrameConsumer } from "../lib/herdr/terminal-protocol";
+import { getGhosttyAppearance, type GhosttyAppearance } from "../lib/server-fns";
 
 type ConnectionStatus = "connecting" | "live" | "reconnecting" | "closed" | "error";
 
@@ -16,6 +17,7 @@ export function HerdrTerminal({ sessionId }: { sessionId: string }) {
   const container = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
   const [error, setError] = useState("");
+  const [appearance, setAppearance] = useState<GhosttyAppearance | null>(null);
 
   useEffect(() => {
     const element = container.current;
@@ -29,15 +31,18 @@ export function HerdrTerminal({ sessionId }: { sessionId: string }) {
      * instantiating before a terminal can be constructed. Everything below runs
      * once that resolves, and is skipped outright if the view unmounted first.
      */
-    const start = (ghostty: typeof import("ghostty-web")): (() => void) => {
+    const start = (
+      ghostty: typeof import("ghostty-web"),
+      ghosttyAppearance: GhosttyAppearance,
+    ): (() => void) => {
       const terminal = new ghostty.Terminal({
         convertEol: false,
         cursorBlink: false,
         disableStdin: true,
-        fontFamily: '"JetBrains Mono", monospace',
-        fontSize: 13,
+        fontFamily: ghosttyAppearance.fontFamily,
+        fontSize: ghosttyAppearance.fontSize,
         scrollback: 0,
-        theme: { background: "#111318", foreground: "#e6e6e6" },
+        theme: ghosttyAppearance.theme,
       });
       const fitAddon = new ghostty.FitAddon();
       terminal.loadAddon(fitAddon);
@@ -115,10 +120,27 @@ export function HerdrTerminal({ sessionId }: { sessionId: string }) {
     };
 
     void (async () => {
-      const ghostty = await import("ghostty-web");
+      const [ghostty, ghosttyAppearance] = await Promise.all([
+        import("ghostty-web"),
+        getGhosttyAppearance(),
+      ]);
       await ghostty.init();
+      /**
+       * Ghostty rasterizes glyphs into a canvas that never reflows, so a
+       * webfont still in flight paints Nerd Font symbols as tofu forever.
+       * Canvas text alone does not pull in a self-hosted face, hence the
+       * explicit request for the whole stack before waiting on the set. A
+       * stack the browser rejects costs glyph fidelity, never the terminal.
+       */
+      await Promise.all([
+        document.fonts
+          .load(`${ghosttyAppearance.fontSize}px ${ghosttyAppearance.fontFamily}`)
+          .catch(() => []),
+        document.fonts.ready,
+      ]);
       if (disposed) return;
-      teardown = start(ghostty);
+      setAppearance(ghosttyAppearance);
+      teardown = start(ghostty, ghosttyAppearance);
     })().catch((cause: unknown) => {
       if (disposed) return;
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -143,7 +165,8 @@ export function HerdrTerminal({ sessionId }: { sessionId: string }) {
       {error && <p className="mb-2 text-xs text-danger-000">{error}</p>}
       <div
         ref={container}
-        className="h-[min(70vh,48rem)] overflow-hidden rounded-md border border-border-300/20 bg-[#111318] p-2"
+        className="h-[min(70vh,48rem)] overflow-hidden rounded-md border border-border-300/20 p-2"
+        style={appearance ? { backgroundColor: appearance.theme.background } : undefined}
       />
     </section>
   );

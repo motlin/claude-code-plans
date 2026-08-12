@@ -6,7 +6,7 @@ const DEFAULT_FONT_FAMILY = '"JetBrains Mono", monospace';
 const NERD_FONT_FALLBACKS =
   '"MesloLGS Nerd Font Mono", "MesloLGS NF Web", "JetBrains Mono", monospace';
 
-interface GhosttyAppearance {
+export interface GhosttyAppearance {
   fontFamily: string;
   fontSize: number;
   theme: ITheme & {
