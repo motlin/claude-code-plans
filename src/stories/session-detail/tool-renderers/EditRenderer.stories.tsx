@@ -36,6 +36,29 @@ export const DiffView: Story = {
   },
 };
 
+export const MultiEditDiffViews: Story = {
+  args: {
+    toolCall: makeToolCall({
+      name: "MultiEdit",
+      input: {
+        file_path: "/Users/craig/projects/app/src/server.ts",
+        edits: [
+          {
+            old_string: "const PORT = 3000;",
+            new_string: "const PORT = process.env.PORT ?? 3000;",
+          },
+          {
+            old_string: "app.listen(PORT);",
+            new_string: "app.listen(PORT, () => {\n  console.log(`listening on ${PORT}`);\n});",
+          },
+        ],
+      },
+      param: "/Users/craig/projects/app/src/server.ts",
+      result: "Applied 2 edits to /Users/craig/projects/app/src/server.ts",
+    }),
+  },
+};
+
 export const EditFailure: Story = {
   args: {
     toolCall: makeToolCall({

@@ -116,40 +116,55 @@ function countDiffLines(oldStr: string, newStr: string): { added: number; remove
   return { added, removed };
 }
 
+/** One old/new string pair applied by an `Edit` or `MultiEdit` tool call. */
+export interface EditDiffEntry {
+  oldStr: string;
+  newStr: string;
+}
+
+function asString(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+/**
+ * The replacements a file-editing tool call performs, in order. `Edit` carries a
+ * single pair at the top level; `MultiEdit` carries an `edits[]` array and falls
+ * back to the top-level pair when that array is absent or empty.
+ */
+export function editDiffEntries(input: Record<string, unknown>): EditDiffEntry[] {
+  const edits = input["edits"];
+  if (Array.isArray(edits)) {
+    const entries = edits
+      .filter((edit): edit is Record<string, unknown> => typeof edit === "object" && edit !== null)
+      .map((edit) => ({
+        oldStr: asString(edit["old_string"]),
+        newStr: asString(edit["new_string"]),
+      }));
+    if (entries.length > 0) return entries;
+  }
+  if (typeof input["old_string"] !== "string") return [];
+  return [{ oldStr: asString(input["old_string"]), newStr: asString(input["new_string"]) }];
+}
+
 function diffStatsForEditCall(call: ToolCallLike): {
   added: number;
   removed: number;
 } {
   const input = call.input;
   if (call.name === "Write") {
-    const content = typeof input["content"] === "string" ? (input["content"] as string) : "";
+    const content = asString(input["content"]);
     const added = content === "" ? 0 : content.split("\n").length;
     return { added, removed: 0 };
   }
-  if (call.name === "Edit") {
-    const oldStr = typeof input["old_string"] === "string" ? (input["old_string"] as string) : "";
-    const newStr = typeof input["new_string"] === "string" ? (input["new_string"] as string) : "";
-    return countDiffLines(oldStr, newStr);
-  }
-  if (call.name === "MultiEdit") {
-    const edits = Array.isArray(input["edits"])
-      ? (input["edits"] as Array<Record<string, unknown>>)
-      : [];
+  if (call.name === "Edit" || call.name === "MultiEdit") {
     let added = 0;
     let removed = 0;
-    if (edits.length > 0) {
-      for (const e of edits) {
-        const oldStr = typeof e["old_string"] === "string" ? (e["old_string"] as string) : "";
-        const newStr = typeof e["new_string"] === "string" ? (e["new_string"] as string) : "";
-        const stats = countDiffLines(oldStr, newStr);
-        added += stats.added;
-        removed += stats.removed;
-      }
-      return { added, removed };
+    for (const entry of editDiffEntries(input)) {
+      const stats = countDiffLines(entry.oldStr, entry.newStr);
+      added += stats.added;
+      removed += stats.removed;
     }
-    const oldStr = typeof input["old_string"] === "string" ? (input["old_string"] as string) : "";
-    const newStr = typeof input["new_string"] === "string" ? (input["new_string"] as string) : "";
-    return countDiffLines(oldStr, newStr);
+    return { added, removed };
   }
   return { added: 0, removed: 0 };
 }

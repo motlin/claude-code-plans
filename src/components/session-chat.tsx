@@ -48,6 +48,7 @@ import {
   parseBashOutput,
   formatToolName,
   summarizeToolCallsStructured,
+  editDiffEntries,
 } from "../lib/session-utils";
 import type { SummarySegment } from "../lib/session-utils";
 import { InlinePathImages, SESSION_IMAGE_CLASS_NAME } from "./inline-path-images";
@@ -1917,12 +1918,16 @@ const EDIT_TOOLS = new Set(["Edit", "MultiEdit"]);
 function useEditDiffStats(call: ClientToolCall): { added: number; removed: number } | null {
   return useMemo(() => {
     if (!EDIT_TOOLS.has(call.name)) return null;
-    const rawOldStr = call.input["old_string"];
-    if (rawOldStr === undefined) return null;
-    const oldStr = (rawOldStr as string) ?? "";
-    const newStr = (call.input["new_string"] as string) ?? "";
-    const data = computeDiffData(oldStr, newStr);
-    return { added: data.added, removed: data.removed };
+    const entries = editDiffEntries(call.input);
+    if (entries.length === 0) return null;
+    let added = 0;
+    let removed = 0;
+    for (const entry of entries) {
+      const data = computeDiffData(entry.oldStr, entry.newStr);
+      added += data.added;
+      removed += data.removed;
+    }
+    return { added, removed };
   }, [call.name, call.input]);
 }
 
