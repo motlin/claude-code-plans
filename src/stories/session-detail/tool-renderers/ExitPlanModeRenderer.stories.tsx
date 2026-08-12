@@ -3,6 +3,29 @@ import { ExitPlanModeRenderer } from "../../../components/tool-renderers/exit-pl
 import type { ClientToolCall } from "../../../components/tool-renderers/types";
 import { withRouterAndQuery } from "../../sidebar/decorators";
 
+const PLAN = `# Switch git pager from delta to hunk
+
+## Context
+
+The git config currently uses delta as the global \`core.pager\`. The user wants
+to switch the pager to hunk, a review-first terminal diff TUI.
+
+## Change
+
+Replace the \`core.pager\` value only. Leave \`interactive.diffFilter\` untouched.
+
+\`\`\`ini
+[core]
+    pager = hunk pager
+\`\`\`
+`;
+
+const APPROVED_RESULT =
+  "User has approved your plan. You can now start coding. Start with updating your todo list if applicable\n\nYour plan has been saved to: /Users/craig/.claude/plans/switch-git-pager.md\nYou can refer back to it if needed during implementation.";
+
+const REJECTED_RESULT =
+  "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). To tell you how to proceed, the user said:\nalso plan on working in a new worktree";
+
 function makeToolCall(
   overrides: Partial<ClientToolCall> & { input: ClientToolCall["input"] },
 ): ClientToolCall {
@@ -24,11 +47,40 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Success: Story = {
+export const Approved: Story = {
   args: {
     toolCall: makeToolCall({
-      input: {},
-      result: "Plan saved to ~/.claude/plans/refactor-auth-module.md",
+      input: {
+        plan: PLAN,
+        planFilePath: "/Users/craig/.claude/plans/switch-git-pager.md",
+      },
+      result: APPROVED_RESULT,
+    }),
+  },
+};
+
+export const WithAllowedPrompts: Story = {
+  args: {
+    toolCall: makeToolCall({
+      input: {
+        plan: PLAN,
+        planFilePath: "/Users/craig/.claude/plans/switch-git-pager.md",
+        allowedPrompts: [
+          { tool: "Bash", prompt: "verify git pager config (git config --get, git log)" },
+          { tool: "Bash", prompt: "stage and commit git changes" },
+        ],
+      },
+      result: APPROVED_RESULT,
+    }),
+  },
+};
+
+export const Rejected: Story = {
+  args: {
+    toolCall: makeToolCall({
+      input: { plan: PLAN },
+      result: REJECTED_RESULT,
+      isError: true,
     }),
   },
 };
@@ -36,8 +88,10 @@ export const Success: Story = {
 export const Error: Story = {
   args: {
     toolCall: makeToolCall({
-      input: {},
-      result: "Exited plan mode without saving.",
+      input: { plan: PLAN },
+      result:
+        "You are not in plan mode. To enter plan mode, call the EnterPlanMode tool first. If your plan was already approved, continue with implementation.",
+      isError: true,
     }),
   },
 };

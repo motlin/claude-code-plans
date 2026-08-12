@@ -467,16 +467,20 @@ export function KeyValueCard({
   params,
   result,
   markdownResult,
+  copyText,
   children,
 }: {
   params: KeyValueParam[];
   result?: string | undefined;
   markdownResult?: boolean | undefined;
+  /** Overrides the default params + result copy payload. */
+  copyText?: string | undefined;
   children?: ReactNode;
 }) {
-  const copyText = [...params.map((p) => `${p.key}: ${p.value}`), ...(result ? [result] : [])].join(
-    "\n",
-  );
+  const derivedCopyText = [
+    ...params.map((p) => `${p.key}: ${p.value}`),
+    ...(result ? [result] : []),
+  ].join("\n");
 
   return (
     <div className="flex w-full">
@@ -502,7 +506,7 @@ export function KeyValueCard({
         {result && (markdownResult ? <InlineMarkdown text={result} /> : <div>{result}</div>)}
         {children}
       </div>
-      <CopyButton text={copyText} />
+      <CopyButton text={copyText ?? derivedCopyText} />
     </div>
   );
 }

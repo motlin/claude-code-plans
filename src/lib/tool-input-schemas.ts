@@ -229,11 +229,22 @@ const AskUserQuestionInputSchema = z
   })
   .strict();
 
+/**
+ * One pre-approved follow-up action attached to a plan: the tool the model may
+ * call after approval, and a description of what it will do with it.
+ */
+export const ExitPlanModeAllowedPromptSchema = z
+  .object({
+    tool: z.string(),
+    prompt: z.string(),
+  })
+  .strict();
+
 const ExitPlanModeInputSchema = z
   .object({
     plan: z.string().optional(),
     planFilePath: z.string().optional(),
-    allowedPrompts: z.array(z.union([z.string(), z.record(z.string(), z.unknown())])).optional(),
+    allowedPrompts: z.array(ExitPlanModeAllowedPromptSchema).optional(),
   })
   .strict();
 
