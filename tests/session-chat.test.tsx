@@ -512,6 +512,53 @@ describe("SessionChat tool card chrome", () => {
   });
 });
 
+/** Class list of every expanding-body wrapper (`group/body ...`), in document order. */
+function toolBodyClassNames(html: string): string[] {
+  return [...html.matchAll(/<div class="(group\/body[^"]*)"/g)].map((match) => match[1] ?? "");
+}
+
+describe("SessionChat nested tool rows", () => {
+  it("drops the card shell from rows nested inside a grouped tool card", () => {
+    const groupedBash = renderTranscript(
+      toolCallRecords([
+        { id: "t1", name: "Bash", input: { command: "git status" } },
+        { id: "t2", name: "Bash", input: { command: "git log --oneline" } },
+      ]),
+    );
+    const groupedRead = renderTranscript(
+      toolCallRecords([
+        { id: "t1", name: "Read", input: { file_path: "/repo/src/a.ts" } },
+        { id: "t2", name: "Read", input: { file_path: "/repo/src/b.ts" } },
+      ]),
+    );
+    const singleBash = renderTranscript(
+      toolCallRecords([{ id: "t1", name: "Bash", input: { command: "git status" } }]),
+    );
+
+    expect({
+      groupedBashCards: toolCardClassNames(groupedBash),
+      groupedBashBodies: toolBodyClassNames(groupedBash),
+      groupedReadCards: toolCardClassNames(groupedRead),
+      groupedReadBodies: toolBodyClassNames(groupedRead),
+      singleBashCards: toolCardClassNames(singleBash),
+      singleBashBodies: toolBodyClassNames(singleBash),
+    }).toStrictEqual({
+      groupedBashCards: [],
+      groupedBashBodies: [
+        "group/body relative flex w-full pt-p3",
+        "group/body relative flex w-full pt-p3",
+      ],
+      groupedReadCards: [],
+      groupedReadBodies: [
+        "group/body relative flex w-full flex-col pt-p3",
+        "group/body relative flex w-full flex-col pt-p3",
+      ],
+      singleBashCards: ["card-outline rounded-r6 overflow-clip flex flex-col relative"],
+      singleBashBodies: ["group/body py-p6"],
+    });
+  });
+});
+
 /** One tool call plus its result, so the row renders with a known isError flag. */
 function failedToolCallRecords(
   isError: boolean,

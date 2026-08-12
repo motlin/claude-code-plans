@@ -53,7 +53,7 @@ function HighlightedCommand({ command }: { command: string }) {
   );
 }
 
-export function BashRenderer({ toolCall }: ToolRendererProps) {
+export function BashRenderer({ toolCall, nested = false }: ToolRendererProps) {
   const command = (toolCall.input["command"] as string) ?? "";
   const { result, isError } = toolCall;
   const resultContent = result ? stripCommandPrefix(result, command) : null;
@@ -65,6 +65,30 @@ export function BashRenderer({ toolCall }: ToolRendererProps) {
 
   const copyText = resultContent ? `$ ${command}\n${resultContent}` : `$ ${command}`;
 
+  const body = (
+    <>
+      {command && <HighlightedCommand command={command} />}
+      {resultContent && (
+        <div
+          className={`max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all ${isError ? "text-extended-pink" : "text-assistant-secondary"}`}
+        >
+          <AnsiText content={resultContent} />
+        </div>
+      )}
+    </>
+  );
+
+  // Nested in a grouped card: no card chrome, so the "Bash" header disappears
+  // and the copy button sits beside the body instead of above it.
+  if (nested) {
+    return (
+      <>
+        <div className="flex-1 min-w-0 flex flex-col gap-g8 text-code font-mono">{body}</div>
+        <CopyButton text={copyText} />
+      </>
+    );
+  }
+
   return (
     <>
       {/* Header: "Bash" label + hover copy button */}
@@ -74,16 +98,7 @@ export function BashRenderer({ toolCall }: ToolRendererProps) {
       </div>
 
       {/* Body: command + output in mono text-code */}
-      <div className="flex flex-col gap-g8 px-p6 pb-p8 text-code font-mono">
-        {command && <HighlightedCommand command={command} />}
-        {resultContent && (
-          <div
-            className={`max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all ${isError ? "text-extended-pink" : "text-assistant-secondary"}`}
-          >
-            <AnsiText content={resultContent} />
-          </div>
-        )}
-      </div>
+      <div className="flex flex-col gap-g8 px-p6 pb-p8 text-code font-mono">{body}</div>
     </>
   );
 }

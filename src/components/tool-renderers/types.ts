@@ -47,6 +47,12 @@ export interface ClientToolCall {
 
 export interface ToolRendererProps {
   toolCall: ClientToolCall;
+  /**
+   * True when the row is nested inside a grouped tool card, which already draws
+   * the card chrome and names the tool. Nested renderers drop their own header
+   * and card padding so the group never renders a card inside a card.
+   */
+  nested?: boolean | undefined;
 }
 
 const AGENT_ID_RE = /agentId:\s*(\S+)/;

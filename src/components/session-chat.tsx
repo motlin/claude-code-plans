@@ -1895,10 +1895,20 @@ const RENDERER_HANDLES_PARAM = new Set([
  * div -- a transparent panel drawn with a hairline ring, matching upstream's
  * `epitaxy-card-outline`.
  *
- * All other tools (KeyValueCard-style) get `group/body relative flex flex-col w-full pt-p3`
+ * All other tools (KeyValueCard-style) get `group/body relative flex w-full flex-col pt-p3`
  * with no inner wrapper, matching upstream claude.ai/code.
+ *
+ * A row nested inside a grouped tool card never gets a card either: upstream
+ * draws the card once, around the group.
  */
 const CARD_STYLE_TOOLS = new Set(["Bash", "Read", "Edit", "MultiEdit", "Write"]);
+
+/**
+ * Nested bodies whose renderer emits its copy button as a row sibling of the
+ * content, so the body wrapper stays a row (upstream `group/body relative flex
+ * w-full pt-p3`). Every other body stacks its children in a column.
+ */
+const ROW_BODY_TOOLS = new Set(["Bash"]);
 
 /**
  * Card-style tools whose body is source code. Upstream sits those on the page
@@ -1948,15 +1958,27 @@ function InlineDiffStats({ added, removed }: { added: number; removed: number })
   );
 }
 
-function ToolCallRow({ call, sessionId }: { call: ClientToolCall; sessionId: string }) {
+function ToolCallRow({
+  call,
+  sessionId,
+  nested = false,
+}: {
+  call: ClientToolCall;
+  sessionId: string;
+  nested?: boolean;
+}) {
   const [expanded, setExpanded] = useState(false);
   const bodyId = useId();
   const Renderer = getToolRenderer(call.name);
   const verb = toolCallVerb(call.name);
   const isFileParam = FILE_PARAM_TOOLS.has(call.name);
   const diffStats = useEditDiffStats(call);
-  const isCardStyle = CARD_STYLE_TOOLS.has(call.name);
+  const isCardStyle = CARD_STYLE_TOOLS.has(call.name) && !nested;
   const isCodeCard = CODE_CARD_TOOLS.has(call.name);
+  const bodyClass =
+    nested && ROW_BODY_TOOLS.has(call.name)
+      ? "group/body relative flex w-full pt-p3"
+      : "group/body relative flex w-full flex-col pt-p3";
   // Upstream recolors the whole label of a failed tool row, except a file path,
   // which stays primary.
   const labelClass = call.isError
@@ -2031,9 +2053,9 @@ function ToolCallRow({ call, sessionId }: { call: ClientToolCall; sessionId: str
               </div>
             </div>
           ) : (
-            <div className="group/body relative flex flex-col w-full pt-p3">
+            <div className={bodyClass}>
               <Suspense fallback={null}>
-                <Renderer toolCall={call} />
+                <Renderer toolCall={call} nested={nested} />
               </Suspense>
             </div>
           )}
@@ -2103,7 +2125,7 @@ function ToolCallSummary({ calls, sessionId }: { calls: ClientToolCall[]; sessio
             <div className="overflow-hidden">
               <div className="flex flex-col gap-g3 bg-t1 rounded-r6 p-p7 mt-p3">
                 {displayCalls.map((call, i) => (
-                  <ToolCallRow key={i} call={call} sessionId={sessionId} />
+                  <ToolCallRow key={i} call={call} sessionId={sessionId} nested />
                 ))}
               </div>
             </div>
