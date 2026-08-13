@@ -131,6 +131,56 @@ describe("fetchEarlierTranscript", () => {
     });
   });
 
+  it("serves concurrent callers one request for the same page", async () => {
+    // The scroll sentinel and the deep-link anchor both page backwards, and
+    // they page over the same window, so two overlapping asks for the page
+    // before it must not become two trips to the server.
+    const queryClient = new QueryClient();
+    const queryKey = sessionQueryKeys.transcript("sess-1");
+    queryClient.setQueryData(queryKey, window_(3, 2, { byteOffset: 900 }));
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify(window_(0, 3)), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+    await Promise.all([
+      fetchEarlierTranscript(queryClient, "sess-1"),
+      fetchEarlierTranscript(queryClient, "sess-1"),
+    ]);
+
+    expect(fetchSpy.mock.calls.length).toBe(1);
+    expect(queryClient.getQueryData<TranscriptData>(queryKey)).toStrictEqual({
+      records: [record(0), record(1), record(2), record(3), record(4)],
+      byteOffset: 900,
+      startIndex: 0,
+      precedingMessageCount: 0,
+    });
+  });
+
+  it("pages again once the previous page has landed", async () => {
+    const queryClient = new QueryClient();
+    const queryKey = sessionQueryKeys.transcript("sess-1");
+    queryClient.setQueryData(queryKey, window_(4, 1));
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const before = Number(new URL(String(input)).searchParams.get("before"));
+      return Promise.resolve(
+        new Response(JSON.stringify(window_(before - 2, 2)), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    });
+
+    await fetchEarlierTranscript(queryClient, "sess-1");
+    await fetchEarlierTranscript(queryClient, "sess-1");
+
+    expect(queryClient.getQueryData<TranscriptData>(queryKey)?.startIndex).toBe(0);
+  });
+
   it("does not call the endpoint when the window already starts at the first record", async () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData(sessionQueryKeys.transcript("sess-1"), window_(0, 3));

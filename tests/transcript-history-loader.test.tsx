@@ -68,6 +68,26 @@ function mockEarlierPage(page: TranscriptData) {
   );
 }
 
+/** Serves a two-record page for whatever `?before=` the client asks for. */
+function mockPagedHistory() {
+  return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+    const before = Number(new URL(String(input), "http://localhost").searchParams.get("before"));
+    const startIndex = Math.max(0, before - 2);
+    const page: TranscriptData = {
+      records: Array.from({ length: before - startIndex }, (_, i) => record(startIndex + i)),
+      byteOffset: 900,
+      startIndex,
+      precedingMessageCount: startIndex,
+    };
+    return Promise.resolve(
+      new Response(JSON.stringify(page), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  });
+}
+
 const TAIL: TranscriptData = {
   records: [record(2), record(3)],
   byteOffset: 900,
@@ -162,6 +182,38 @@ describe("TranscriptHistoryLoader", () => {
         queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript("sess-1"))?.startIndex,
       ).toBe(0),
     );
+  });
+
+  it("keeps paging when the landed page is too short to move the sentinel out of view", async () => {
+    // A page that renders shorter than the 600px rootMargin leaves the sentinel
+    // intersecting, so the observer watching the next page has only its opening
+    // delivery to go on -- and that delivery says "still intersecting".
+    const fetchSpy = mockPagedHistory();
+    const { rerenderWithStartIndex } = renderLoader({ ...TAIL, startIndex: 6 });
+
+    intersect(false);
+    intersect(true);
+    await waitFor(() => expect(fetchSpy.mock.calls.length).toBe(1));
+    rerenderWithStartIndex(4);
+    intersect(true);
+
+    await waitFor(() => expect(fetchSpy.mock.calls.length).toBe(2));
+  });
+
+  it("still ignores the opening frame after a page lands without the reader scrolling", async () => {
+    // The deep-link path pages backwards on its own. Those landings re-run the
+    // observer effect, but the reader never scrolled, so the sentinel sitting
+    // in view is still the opening frame and must not fetch.
+    const fetchSpy = mockPagedHistory();
+    const { rerenderWithStartIndex } = renderLoader({ ...TAIL, startIndex: 6 });
+
+    rerenderWithStartIndex(4);
+    intersect(true);
+
+    await waitFor(() =>
+      expect(screen.getByRole("button").textContent).toBe("Load 4 earlier records"),
+    );
+    expect(fetchSpy.mock.calls).toStrictEqual([]);
   });
 
   it("surfaces a failure instead of silently leaving the history unreachable", async () => {

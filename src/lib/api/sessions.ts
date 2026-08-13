@@ -316,25 +316,55 @@ export const transcriptQueryOptions = (id: string) =>
   });
 
 /**
+ * Pages already on the wire, keyed by session and by the window edge they were
+ * asked for. Two independent readers page backwards -- the scroll sentinel at
+ * the top of the transcript and a `#msg-<n>` deep link walking towards its
+ * record -- and they read the same window, so without this they would both ask
+ * for the same page at the same time. Held per QueryClient so one client's
+ * request is never handed to another's cache.
+ */
+const earlierTranscriptRequests = new WeakMap<QueryClient, Map<string, Promise<void>>>();
+
+function inFlightEarlierPages(queryClient: QueryClient): Map<string, Promise<void>> {
+  const existing = earlierTranscriptRequests.get(queryClient);
+  if (existing) return existing;
+  const created = new Map<string, Promise<void>>();
+  earlierTranscriptRequests.set(queryClient, created);
+  return created;
+}
+
+/**
  * Pull the page of records immediately before the cached window and splice it
  * in, so scrolling back through a long session keeps walking towards its first
- * message. A no-op once the window already starts at record 0.
+ * message. A no-op once the window already starts at record 0. Callers that
+ * overlap on the same page share one request; each landed page moves the
+ * window, so the next call is a fresh request for the page before it.
  */
-export async function fetchEarlierTranscript(
-  queryClient: QueryClient,
-  sessionId: string,
-): Promise<void> {
+export function fetchEarlierTranscript(queryClient: QueryClient, sessionId: string): Promise<void> {
   const queryKey = sessionQueryKeys.transcript(sessionId);
   const cached = queryClient.getQueryData<TranscriptData>(queryKey);
-  if (!cached || cached.startIndex === 0) return;
+  if (!cached || cached.startIndex === 0) return Promise.resolve();
 
-  const page = await apiFetch(
-    `/api/sessions/${encodeURIComponent(sessionId)}/transcript?before=${cached.startIndex}`,
+  const inFlight = inFlightEarlierPages(queryClient);
+  const before = cached.startIndex;
+  const key = `${sessionId}:${before}`;
+  const existing = inFlight.get(key);
+  if (existing) return existing;
+
+  const request = apiFetch(
+    `/api/sessions/${encodeURIComponent(sessionId)}/transcript?before=${before}`,
     TranscriptResponse,
-  );
-  queryClient.setQueryData<TranscriptData>(queryKey, (old) =>
-    old ? mergeTranscriptData(old, page) : page,
-  );
+  )
+    .then((page) => {
+      queryClient.setQueryData<TranscriptData>(queryKey, (old) =>
+        old ? mergeTranscriptData(old, page) : page,
+      );
+    })
+    .finally(() => {
+      inFlight.delete(key);
+    });
+  inFlight.set(key, request);
+  return request;
 }
 
 export const sessionSourceQueryOptions = (sessionId: string, uuid: string, contextN = 5) =>

@@ -47,6 +47,15 @@ export function TranscriptHistoryLoader({ sessionId, startIndex }: TranscriptHis
   const [error, setError] = useState("");
   const inFlightRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  /**
+   * Whether seeing the sentinel counts as the reader asking for history. The
+   * session view opens scrolled to the newest message, but it renders at the
+   * top first -- auto-loading on that opening frame would fetch history nobody
+   * asked for, on every visit. So wait until the sentinel has been out of view
+   * once; from then on, seeing it means the reader scrolled to it. This
+   * outlives the observer below, which is rebuilt around every landed page.
+   */
+  const armedRef = useRef(false);
   const anchorRef = useRef<{ scroller: Element; scrollHeight: number; scrollTop: number } | null>(
     null,
   );
@@ -92,18 +101,16 @@ export function TranscriptHistoryLoader({ sessionId, startIndex }: TranscriptHis
 
   /**
    * Watch the top of the transcript. Re-running on every landed page is what
-   * makes repeat paging work: a fresh observer re-delivers the current state,
-   * so the next trip back to the top reads as an arrival even if the
-   * intersection never toggled in between.
+   * keeps paging going when the page that landed was too short to push the
+   * sentinel back out of view: nothing about the intersection changed, so a
+   * standing observer would say nothing, while a fresh one opens by
+   * re-delivering the current state -- and that state is "still at the top,
+   * still wanting more". Arming has to survive that rebuild for the
+   * re-delivery to read as an ask rather than as another opening frame.
    */
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
-    // The session view opens scrolled to the newest message, but it renders at
-    // the top first -- auto-loading on that opening frame would fetch history
-    // nobody asked for, on every visit. So wait until the sentinel has been out
-    // of view once; from then on, seeing it means the reader scrolled to it.
-    let armed = false;
     const observer = new IntersectionObserver(
       (entries) => {
         // A fast scroll down and back up arrives as one callback carrying both
@@ -111,10 +118,10 @@ export function TranscriptHistoryLoader({ sessionId, startIndex }: TranscriptHis
         // only the first entry and throwing the arrival away.
         for (const entry of entries) {
           if (!entry.isIntersecting) {
-            armed = true;
+            armedRef.current = true;
             continue;
           }
-          if (armed) void loadEarlier();
+          if (armedRef.current) void loadEarlier();
         }
       },
       {
