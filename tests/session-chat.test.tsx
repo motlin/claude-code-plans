@@ -664,8 +664,64 @@ function summaryLabels(html: string): string[] {
   ].map((match) => (match[1] ?? "").replaceAll(/<[^>]+>/g, ""));
 }
 
+/** One tool-only assistant record, with an optional source session id. */
+function toolCallRecord(
+  call: { id: string; name: string; input: unknown },
+  sessionId?: string,
+): unknown {
+  return {
+    type: "assistant",
+    uuid: `a-${call.id}`,
+    ...(sessionId === undefined ? {} : { sessionId }),
+    message: {
+      role: "assistant",
+      content: [{ type: "tool_use", ...call }],
+    },
+  };
+}
+
 describe("SessionChat sequential tool batches", () => {
-  it("summarizes each API message's batch on its own row instead of merging the run into a multi-verb label", () => {
+  // Upstream claude.ai/code Normal folds a whole run of tool calls into one
+  // cross-tool summary row -- "Ran 2 commands, read cache.ts", "Updated todos,
+  // read 3 files" (.llm/ui-sync/upstream/code-rich-normal.tree.json, class 41).
+  it("merges a run of different tools into one summary row naming every tool", () => {
+    const html = renderTranscript(
+      batchedToolCallRecords([
+        {
+          messageId: "msg_read",
+          calls: [{ id: "t1", name: "Read", input: { file_path: "/repo/src/a.ts" } }],
+        },
+        {
+          messageId: "msg_edit",
+          calls: [
+            {
+              id: "t2",
+              name: "Edit",
+              input: { file_path: "/repo/src/b.ts", old_string: "a", new_string: "b" },
+            },
+          ],
+        },
+        {
+          messageId: "msg_grep",
+          calls: [{ id: "t3", name: "Grep", input: { pattern: "alice" } }],
+        },
+      ]),
+    );
+
+    expect({
+      labels: summaryLabels(html),
+      // Every call keeps its own row inside the collapsed body, so nothing is lost.
+      rowArguments: allToolRowLabelSpans(html).filter(([className]) => className === ARGUMENT),
+    }).toStrictEqual({
+      labels: ["Edited b.ts +1 -1, Searched for a pattern, Read a.ts"],
+      rowArguments: [
+        [ARGUMENT, "a.ts"],
+        [ARGUMENT, "b.ts"],
+      ],
+    });
+  });
+
+  it("merges parallel batches from separate API messages, anchoring the row at the run's first line", () => {
     const html = renderTranscript(
       batchedToolCallRecords([
         {
@@ -687,51 +743,46 @@ describe("SessionChat sequential tool batches", () => {
     );
 
     expect({
-      // Records sharing a message id still collapse into one summary; the two
-      // messages never merge into "Read 3 files, Ran 2 commands".
       labels: summaryLabels(html),
-      // The whole run stays one turn, so the two rows sit an item gap apart
-      // rather than a turn gap.
+      // The whole run stays one turn, so the row sits inside a single turn gap.
       turnWrappers: (html.match(/pb-\[var\(--chat-turn-gap\)\]/g) ?? []).length,
-      // Each batch keeps its own `msg-N` anchor.
+      // jumpToMessage() walks back from a missing index, so the run's first
+      // line carries the only anchor.
       anchors: [...html.matchAll(/<div id="(msg-\d+)"/g)].map((match) => match[1]),
     }).toStrictEqual({
-      labels: ["Read 3 files", "Ran 2 commands"],
+      labels: ["Read 3 files, Ran 2 commands"],
       turnWrappers: 1,
-      anchors: ["msg-0", "msg-6"],
+      anchors: ["msg-0"],
     });
   });
 
-  it("keeps records with no message id on separate rows rather than assuming one batch", () => {
+  it("merges records with no message id, since grouping no longer depends on batch identity", () => {
     const html = renderTranscript([
-      {
-        type: "assistant",
-        uuid: "a1",
-        message: {
-          role: "assistant",
-          content: [{ type: "tool_use", id: "t1", name: "Read", input: { file_path: "/a.ts" } }],
-        },
-      },
-      {
-        type: "assistant",
-        uuid: "a2",
-        message: {
-          role: "assistant",
-          content: [{ type: "tool_use", id: "t2", name: "Read", input: { file_path: "/b.ts" } }],
-        },
-      },
+      toolCallRecord({ id: "t1", name: "Read", input: { file_path: "/a.ts" } }),
+      toolCallRecord({ id: "t2", name: "Read", input: { file_path: "/b.ts" } }),
     ]);
 
     expect({
       labels: summaryLabels(html),
       rowArguments: allToolRowLabelSpans(html).filter(([className]) => className === ARGUMENT),
     }).toStrictEqual({
-      labels: [],
+      labels: ["Read 2 files"],
       rowArguments: [
         [ARGUMENT, "a.ts"],
         [ARGUMENT, "b.ts"],
       ],
     });
+  });
+
+  it("splits the run where the source session changes, so a row's debug links stay in one session", () => {
+    const html = renderTranscript([
+      toolCallRecord({ id: "t1", name: "Read", input: { file_path: "/a.ts" } }, "sess-parent"),
+      toolCallRecord({ id: "t2", name: "Read", input: { file_path: "/b.ts" } }, "sess-parent"),
+      toolCallRecord({ id: "t3", name: "Bash", input: { command: "git status" } }, "sess-child"),
+      toolCallRecord({ id: "t4", name: "Bash", input: { command: "git log" } }, "sess-child"),
+    ]);
+
+    expect(summaryLabels(html)).toStrictEqual(["Read 2 files", "Ran 2 commands"]);
   });
 });
 

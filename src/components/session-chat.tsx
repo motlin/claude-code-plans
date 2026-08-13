@@ -525,7 +525,7 @@ interface GroupedToolLine {
   index: number;
 }
 
-/** One assistant message's parallel tool_use batch, ready to summarize. */
+/** A run of tool calls sharing one source session, ready to summarize. */
 interface ToolCallBatch {
   index: number;
   sourceSessionId: string;
@@ -536,13 +536,15 @@ interface ToolCallBatch {
  * A run of consecutive tool-only assistant messages, drawn as one turn so the
  * rows sit an item gap apart rather than a turn gap.
  *
- * The run is split back into API messages before summarizing. Claude Code
- * writes one JSONL record per content block, so a parallel batch arrives as
- * several records sharing a `message.id`; sequentially issued calls carry
- * different ids. Upstream claude.ai/code summarizes one batch per row ("Read 3
- * files") and draws sequential calls as separate sibling rows -- flattening the
- * whole run into one summary would produce multi-verb labels ("Read 3 files,
- * Ran 2 commands") that upstream never emits.
+ * The whole run collapses into one summary row, spanning tool types the way
+ * upstream claude.ai/code Normal does: its group labels read "Ran 2 commands,
+ * read cache.ts" and "Updated todos, read 3 files", merging calls issued across
+ * several API messages (.llm/ui-sync/upstream/code-rich-normal.tree.json). No
+ * information is lost -- every call keeps its own row inside the collapsed body.
+ *
+ * The one boundary that still splits a run is a change of source session: an
+ * inlined subagent's rows carry their own session id, and a row's debug links
+ * are resolved against the single session id passed down with it.
  */
 function GroupedToolCallEntry({
   entries,
@@ -559,23 +561,16 @@ function GroupedToolCallEntry({
   const batches = useMemo(() => {
     const result: ToolCallBatch[] = [];
     let openBatch: ToolCallBatch | undefined;
-    let openMessageId: string | undefined;
     for (const { line, index } of entries) {
       if (line.type !== "assistant") continue;
       const calls = buildLineToolCalls(line, toolResultMap, liveFailures, subagentLookup);
       if (calls.length === 0) continue;
-      // A missing id cannot prove two records belong to the same message, so
-      // those rows never merge.
-      if (
-        openBatch !== undefined &&
-        line.messageId !== undefined &&
-        line.messageId === openMessageId
-      ) {
+      const sourceSessionId = getSourceSessionId(line, sessionId);
+      if (openBatch !== undefined && openBatch.sourceSessionId === sourceSessionId) {
         openBatch.calls.push(...calls);
         continue;
       }
-      openMessageId = line.messageId;
-      openBatch = { index, sourceSessionId: getSourceSessionId(line, sessionId), calls };
+      openBatch = { index, sourceSessionId, calls };
       result.push(openBatch);
     }
     return result;
