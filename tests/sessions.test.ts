@@ -104,6 +104,58 @@ describe("extractSessionTitle", () => {
     expect(result.endsWith("...")).toBe(true);
     expect(result).not.toContain("boundary");
   });
+
+  it("collapses multi-line prompts onto a single line", () => {
+    expect(extractSessionTitle("Fix the bug\n\nIt crashes on startup")).toBe(
+      "Fix the bug It crashes on startup",
+    );
+  });
+
+  it("does not spend the length budget on runs of whitespace", () => {
+    expect(extractSessionTitle("Fix" + "\n".repeat(90) + "the login bug")).toBe(
+      "Fix the login bug",
+    );
+  });
+
+  it("uses the argument block of an expanded slash command", () => {
+    const text = [
+      "Add a task to the project task list.",
+      "",
+      "<description>",
+      "cherry pick all the upstream commits",
+      "</description>",
+      "",
+      "If no description was provided, ask the user for one.",
+    ].join("\n");
+    expect(extractSessionTitle(text)).toBe("cherry pick all the upstream commits");
+  });
+
+  it("falls back to the command's first line when the argument block is empty", () => {
+    const text = [
+      "Process all tasks automatically.",
+      "",
+      "Repeatedly work through incomplete tasks from the project task list.",
+      "",
+      "If the user provided additional instructions, they will appear here:",
+      "",
+      "<instructions>",
+      "",
+      "</instructions>",
+    ].join("\n");
+    expect(extractSessionTitle(text)).toBe("Process all tasks automatically.");
+  });
+
+  it("keeps the trailing prompt when an empty argument block opens the text", () => {
+    expect(extractSessionTitle("<instructions>\n\n</instructions>\nship the release")).toBe(
+      "ship the release",
+    );
+  });
+
+  it("drops a stray argument tag that has no closing partner", () => {
+    expect(extractSessionTitle("Review this <description> the login flow")).toBe(
+      "Review this the login flow",
+    );
+  });
 });
 
 describe("parseCommandBlock", () => {

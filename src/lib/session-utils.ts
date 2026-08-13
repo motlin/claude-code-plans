@@ -51,8 +51,30 @@ export function parseCommandBlock(text: string): { name: string; args?: string }
   return result;
 }
 
+const ARG_BLOCK_RE = /<(description|instructions|arguments|args|user-request)>([\s\S]*?)<\/\1>/;
+const ARG_TAG_RE = /<\/?(?:description|instructions|arguments|args|user-request)>/g;
+
+/**
+ * Reduce an expanded slash-command prompt to the user's own words. Command
+ * bodies wrap `$ARGUMENTS` in a block such as `<description>`, so that block is
+ * the intent and everything around it is template boilerplate. When the user
+ * passed no arguments the block is empty and the command's own opening line is
+ * the best summary available.
+ */
+function stripCommandBoilerplate(text: string): string {
+  const match = text.match(ARG_BLOCK_RE);
+  if (match) {
+    const args = match[2]!.trim();
+    if (args) return args;
+
+    const openingLine = text.slice(0, match.index!).trim().split("\n")[0];
+    if (openingLine) return openingLine;
+  }
+  return text.replace(ARG_TAG_RE, "");
+}
+
 export function extractSessionTitle(text: string, fallback?: string): string {
-  const cleaned = cleanCommandText(text);
+  const cleaned = stripCommandBoilerplate(cleanCommandText(text)).replace(/\s+/g, " ").trim();
   if (!cleaned) return fallback ?? "Untitled Session";
 
   if (cleaned.length <= 80) return cleaned;

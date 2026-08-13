@@ -1,9 +1,9 @@
 import { sqliteTable, text, integer, index, primaryKey } from "drizzle-orm/sqlite-core";
 import type { ReviewBundle } from "../api/reviews";
 
-// 23: detached-HEAD gitBranch values ("HEAD") normalize to null at index
-// time; bump forces a rebuild so previously indexed rows are cleaned up.
-export const SCHEMA_VERSION = "23";
+// 24: extractSessionTitle now collapses whitespace and drops slash-command
+// boilerplate; titles are stored at index time, so bump to rebuild them.
+export const SCHEMA_VERSION = "24";
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),
