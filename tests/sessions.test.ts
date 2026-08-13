@@ -228,6 +228,15 @@ describe("summarizeToolCalls", () => {
     expect(summarizeToolCalls(calls)).toBe("edited 3 files, read a file, ran 2 commands");
   });
 
+  it("mixed tools follow the order the tools were first called", () => {
+    const calls = [
+      { name: "Bash", input: {} },
+      { name: "Read", input: {} },
+      { name: "Edit", input: {} },
+    ];
+    expect(summarizeToolCalls(calls)).toBe("ran a command, read a file, edited a file");
+  });
+
   it("groups Edit and Write together", () => {
     const calls = [
       { name: "Edit", input: {} },
@@ -465,7 +474,35 @@ describe("summarizeToolCallsStructured", () => {
     ]);
   });
 
-  it("mixed tools return segments in category order", () => {
+  // Upstream Normal labels both "Updated todos, read 3 files" and "Read
+  // index.ts, updated todos" (.llm/ui-sync/upstream/code-rich-normal.tree.json,
+  // class 41), so segments follow the order the tools were first called and
+  // only the leading verb keeps its capital.
+  it("orders segments by first call, Read before TodoWrite", () => {
+    const calls = [
+      { name: "Read", input: {} },
+      { name: "TodoWrite", input: { todos: [] } },
+      { name: "Read", input: {} },
+    ];
+    expect(summarizeToolCallsStructured(calls)).toEqual([
+      { verb: "Read", rest: "2 files" },
+      { verb: "updated", rest: "todos" },
+    ]);
+  });
+
+  it("orders segments by first call, TodoWrite before Read", () => {
+    const calls = [
+      { name: "TodoWrite", input: { todos: [] } },
+      { name: "Read", input: {} },
+      { name: "Read", input: {} },
+    ];
+    expect(summarizeToolCallsStructured(calls)).toEqual([
+      { verb: "Updated", rest: "todos" },
+      { verb: "read", rest: "2 files" },
+    ]);
+  });
+
+  it("mixed tools return segments in first-call order with lowercase later verbs", () => {
     const calls = [
       { name: "Edit", input: {} },
       { name: "Read", input: {} },
@@ -474,8 +511,8 @@ describe("summarizeToolCallsStructured", () => {
     ];
     expect(summarizeToolCallsStructured(calls)).toEqual([
       { verb: "Edited", rest: "a file" },
-      { verb: "Read", rest: "a file" },
-      { verb: "Ran", rest: "2 commands" },
+      { verb: "read", rest: "a file" },
+      { verb: "ran", rest: "2 commands" },
     ]);
   });
 

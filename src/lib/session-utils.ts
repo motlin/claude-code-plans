@@ -87,26 +87,24 @@ export function extractSessionTitle(text: string, fallback?: string): string {
   return truncated + "...";
 }
 
-const TOOL_CATEGORIES = [
-  "edit",
-  "grep",
-  "read",
-  "glob",
-  "webfetch",
-  "websearch",
-  "agent",
-  "bash",
-  "recall",
-  "memwrite",
-  "toolsearch",
-  "skill",
-  "task",
-  "todo",
-  "planenter",
-  "planexit",
-  "cron",
-] as const;
-type ToolCategory = (typeof TOOL_CATEGORIES)[number];
+type ToolCategory =
+  | "edit"
+  | "grep"
+  | "read"
+  | "glob"
+  | "webfetch"
+  | "websearch"
+  | "agent"
+  | "bash"
+  | "recall"
+  | "memwrite"
+  | "toolsearch"
+  | "skill"
+  | "task"
+  | "todo"
+  | "planenter"
+  | "planexit"
+  | "cron";
 
 const EDIT_TOOLS = new Set(["Edit", "MultiEdit", "Write"]);
 
@@ -311,6 +309,9 @@ function singleFileBasename(call: ToolCallLike | undefined): string | null {
 }
 
 function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
+  // Insertion order carries the summary order: upstream Normal writes both
+  // "Updated todos, read 3 files" and "Read index.ts, updated todos", so
+  // segments follow the order each tool was first called.
   const counts = new Map<ToolCategory, number>();
   const firstCall = new Map<ToolCategory, ToolCallLike>();
   const editStats = { added: 0, removed: 0 };
@@ -334,9 +335,7 @@ function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
   }
 
   const segments: SummarySegment[] = [];
-  for (const cat of TOOL_CATEGORIES) {
-    const count = counts.get(cat) ?? 0;
-    if (count === 0) continue;
+  for (const [cat, count] of counts) {
     switch (cat) {
       case "edit": {
         const singleFilename = count === 1 ? singleFileBasename(firstCall.get(cat)) : null;
@@ -457,7 +456,10 @@ function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
     }
   }
 
-  return segments;
+  // Upstream capitalizes only the leading verb: "Ran 2 commands, read cache.ts".
+  return segments.map((segment, i) =>
+    i === 0 ? segment : { verb: segment.verb.toLowerCase(), rest: segment.rest },
+  );
 }
 
 export function summarizeToolCallsStructured(calls: ToolCallLike[]): SummarySegment[] {

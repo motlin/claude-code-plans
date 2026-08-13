@@ -713,7 +713,7 @@ describe("SessionChat sequential tool batches", () => {
       // Every call keeps its own row inside the collapsed body, so nothing is lost.
       rowArguments: allToolRowLabelSpans(html).filter(([className]) => className === ARGUMENT),
     }).toStrictEqual({
-      labels: ["Edited b.ts +1 -1, Searched for a pattern, Read a.ts"],
+      labels: ["Read a.ts, edited b.ts +1 -1, searched for a pattern"],
       rowArguments: [
         [ARGUMENT, "a.ts"],
         [ARGUMENT, "b.ts"],
@@ -750,7 +750,7 @@ describe("SessionChat sequential tool batches", () => {
       // line carries the only anchor.
       anchors: [...html.matchAll(/<div id="(msg-\d+)"/g)].map((match) => match[1]),
     }).toStrictEqual({
-      labels: ["Read 3 files, Ran 2 commands"],
+      labels: ["Read 3 files, ran 2 commands"],
       turnWrappers: 1,
       anchors: ["msg-0"],
     });
