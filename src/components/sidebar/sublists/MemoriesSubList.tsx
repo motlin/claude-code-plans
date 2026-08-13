@@ -1,6 +1,7 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
+import { useEffect } from "react";
 import { projectMemoriesQueryOptions, type MemoryListItem } from "../../../lib/api/memories";
 import { projectsQueryOptions } from "../../../lib/api/projects";
 import { toMdSlug } from "../../../lib/md-slug";
@@ -19,17 +20,19 @@ function latestMemoryTime(group: MemoryGroup): number {
 /**
  * `collapsedGroups` lives in `Sidebar` because opening an item in another
  * section collapses — and unmounts — this sublist; local state would come back
- * expand-all'd. The group holding the open memory is revealed without being
- * removed from the set, so an explicit collapse survives the visit.
+ * expand-all'd. The group holding the open memory reveals itself through
+ * `onRevealGroup`, which leaves it collapsible again afterwards.
  */
 export function MemoriesSubList({
   activeItemId,
   collapsedGroups,
   onToggleGroup,
+  onRevealGroup,
 }: {
   activeItemId: string | null;
   collapsedGroups: ReadonlySet<string>;
   onToggleGroup: (projectId: string) => void;
+  onRevealGroup: (projectId: string) => void;
 }) {
   const { data: projects } = useQuery(projectsQueryOptions());
   const memoryQueries = useQueries({
@@ -56,6 +59,14 @@ export function MemoriesSubList({
   const activeGroupId = groups?.find((group) =>
     group.memories.some((memory) => `${memory.project}/${memory.filename}` === activeItemId),
   )?.projectId;
+
+  // Reveal the group holding the open memory once, rather than deriving its
+  // expansion — a derived reveal would swallow every click on that group's
+  // chevron, the one group the reader is most likely to reach for.
+  useEffect(() => {
+    if (!activeGroupId) return;
+    onRevealGroup(activeGroupId);
+  }, [activeGroupId, onRevealGroup]);
 
   if (groups === undefined) {
     return (
@@ -84,8 +95,7 @@ export function MemoriesSubList({
   return (
     <div className="pl-10">
       {groups.map((group) => {
-        const isExpanded =
-          !collapsedGroups.has(group.projectId) || group.projectId === activeGroupId;
+        const isExpanded = !collapsedGroups.has(group.projectId);
         return (
           <div key={group.projectId}>
             <button

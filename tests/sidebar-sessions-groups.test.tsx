@@ -182,7 +182,7 @@ describe("sidebar sessions tree", () => {
     expect(screen.queryByRole("link", { name: "Beta only" })).toBeNull();
   });
 
-  it("reveals the collapsed group holding the open session without discarding the collapse", async () => {
+  it("reveals the collapsed group holding the open session", async () => {
     const { navigate } = await renderSidebar();
 
     await waitFor(() => expect(screen.getByRole("button", { name: /^Gamma/ })).toBeTruthy());
@@ -193,6 +193,28 @@ describe("sidebar sessions tree", () => {
     await navigate({ to: "/session/$id", params: { id: "g1" } });
     await waitFor(() => expect(screen.getByRole("link", { name: "Gamma newest" })).toBeTruthy());
 
+    // The reveal spends the collapse rather than overriding it, so the group
+    // stays open on the way back out — the same deal the Projects tree offers.
+    await navigate({ to: "/sessions" });
+
+    await waitFor(() => expect(screen.getByRole("link", { name: "Alpha only" })).toBeTruthy());
+    expect(screen.getByRole("link", { name: "Gamma newest" })).toBeTruthy();
+  });
+
+  it("lets the revealed group be collapsed by hand while its session is open", async () => {
+    const { navigate } = await renderSidebar();
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Gamma/ })).toBeTruthy());
+
+    await navigate({ to: "/session/$id", params: { id: "g1" } });
+    await waitFor(() => expect(screen.getByRole("link", { name: "Gamma newest" })).toBeTruthy());
+
+    collapseGroup("Gamma");
+
+    await waitFor(() => expect(screen.queryByRole("link", { name: "Gamma newest" })).toBeNull());
+
+    // Leaving the section unmounts this sublist; the hand collapse still holds.
+    await navigate({ to: "/project/$id", params: { id: "beta" } });
     await navigate({ to: "/sessions" });
 
     await waitFor(() => expect(screen.getByRole("link", { name: "Alpha only" })).toBeTruthy());

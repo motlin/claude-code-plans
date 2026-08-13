@@ -7,6 +7,7 @@ function useGroupIdSet(): {
   ids: ReadonlySet<string>;
   toggle: (groupId: string) => void;
   add: (groupId: string) => void;
+  remove: (groupId: string) => void;
 } {
   const [ids, setIds] = useState<ReadonlySet<string>>(() => new Set());
 
@@ -26,17 +27,36 @@ function useGroupIdSet(): {
     setIds((previous) => (previous.has(groupId) ? previous : new Set(previous).add(groupId)));
   }, []);
 
-  return { ids, toggle, add };
+  const remove = useCallback((groupId: string) => {
+    setIds((previous) => {
+      if (!previous.has(groupId)) return previous;
+      const next = new Set(previous);
+      next.delete(groupId);
+      return next;
+    });
+  }, []);
+
+  return { ids, toggle, add, remove };
 }
 
 /**
- * Set of collapsed group ids plus its toggle. Sublists unmount whenever their
- * section collapses, so this has to be owned by the sidebar itself — state held
- * inside a sublist would come back expand-all'd after every navigation.
+ * Set of collapsed group ids, its toggle, and an idempotent reveal for groups
+ * that open themselves (the one holding the item being viewed). Sublists unmount
+ * whenever their section collapses, so this has to be owned by the sidebar
+ * itself — state held inside a sublist would come back expand-all'd after every
+ * navigation.
+ *
+ * Reveal drops the group from the set once instead of forcing it expanded on
+ * every render: a derived reveal would leave the chevron of the group you are
+ * looking at inert, which reads as a broken control.
  */
-export function useCollapsedGroups(): [ReadonlySet<string>, (groupId: string) => void] {
-  const { ids, toggle } = useGroupIdSet();
-  return [ids, toggle];
+export function useCollapsedGroups(): [
+  ReadonlySet<string>,
+  (groupId: string) => void,
+  (groupId: string) => void,
+] {
+  const { ids, toggle, remove } = useGroupIdSet();
+  return [ids, toggle, remove];
 }
 
 /**

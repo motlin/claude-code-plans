@@ -1,28 +1,19 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { useState } from "react";
+import { useCollapsedGroups } from "../../components/sidebar/hooks";
 import { SessionsSubList } from "../../components/sidebar/sublists/SessionsSubList";
 import { groupedSessionsQueryOptions, GroupedSessionsResponse } from "../../lib/api/sessions";
 import { createStoryQueryClient, StoryWrapper } from "./decorators";
 
-// The sidebar owns the collapse state in the app; this mirrors that wiring so
-// the group toggles stay interactive in Storybook.
+// The sidebar owns the collapse state in the app; this reuses that hook so the
+// group toggles stay interactive in Storybook.
 function CollapsibleSessions({ activeItemId }: { activeItemId: string | null }) {
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set());
+  const [collapsedGroups, toggleGroup, revealGroup] = useCollapsedGroups();
   return (
     <SessionsSubList
       activeItemId={activeItemId}
       collapsedGroups={collapsedGroups}
-      onToggleGroup={(projectId) =>
-        setCollapsedGroups((previous) => {
-          const next = new Set(previous);
-          if (next.has(projectId)) {
-            next.delete(projectId);
-          } else {
-            next.add(projectId);
-          }
-          return next;
-        })
-      }
+      onToggleGroup={toggleGroup}
+      onRevealGroup={revealGroup}
     />
   );
 }

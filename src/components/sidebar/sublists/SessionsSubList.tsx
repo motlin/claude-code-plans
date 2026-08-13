@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
+import { useEffect } from "react";
 import {
   activeSessionsQueryOptions,
   groupedSessionsQueryOptions,
@@ -26,16 +27,19 @@ import { StatusDot } from "../primitives/StatusDot";
  *
  * `collapsedGroups` lives in `Sidebar` because opening an item in another
  * section collapses — and unmounts — this sublist; local state would come back
- * expand-all'd.
+ * expand-all'd. The group holding the open session reveals itself through
+ * `onRevealGroup`, which leaves it collapsible again afterwards.
  */
 export function SessionsSubList({
   activeItemId,
   collapsedGroups,
   onToggleGroup,
+  onRevealGroup,
 }: {
   activeItemId: string | null;
   collapsedGroups: ReadonlySet<string>;
   onToggleGroup: (projectId: string) => void;
+  onRevealGroup: (projectId: string) => void;
 }) {
   const { settings } = useSettings();
   const { data: groups } = useQuery(groupedSessionsQueryOptions());
@@ -47,6 +51,14 @@ export function SessionsSubList({
   const activeGroupId = groups?.find((group) =>
     group.sessions.some((session) => session.id === activeItemId),
   )?.project;
+
+  // Reveal the group holding the open session once, rather than deriving its
+  // expansion — a derived reveal would swallow every click on that group's
+  // chevron, the one group the reader is most likely to reach for.
+  useEffect(() => {
+    if (!activeGroupId) return;
+    onRevealGroup(activeGroupId);
+  }, [activeGroupId, onRevealGroup]);
 
   if (groups === undefined) {
     return (
@@ -76,7 +88,7 @@ export function SessionsSubList({
   return (
     <div className="pl-10">
       {shown.map((group) => {
-        const isExpanded = !collapsedGroups.has(group.project) || group.project === activeGroupId;
+        const isExpanded = !collapsedGroups.has(group.project);
         return (
           <div key={group.project}>
             <button

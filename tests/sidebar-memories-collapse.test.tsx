@@ -181,12 +181,13 @@ describe("sidebar memories tree", () => {
     expect(screen.queryByRole("link", { name: "Beta notes" })).toBeNull();
   });
 
-  it("reveals the collapsed group holding the open memory without discarding the collapse", async () => {
+  it("reveals the collapsed group holding the open memory", async () => {
     const { navigate } = await renderSidebar();
 
     await waitFor(() => expect(screen.getByRole("button", { name: /^Alpha/ })).toBeTruthy());
 
     collapseGroup("Alpha");
+    expect(screen.queryByRole("link", { name: "Alpha notes" })).toBeNull();
 
     await navigate({
       to: "/memory/$project/$filename",
@@ -194,6 +195,31 @@ describe("sidebar memories tree", () => {
     });
     await waitFor(() => expect(screen.getByRole("link", { name: "Alpha notes" })).toBeTruthy());
 
+    // The reveal spends the collapse rather than overriding it, so the group
+    // stays open on the way back out — the same deal the Projects tree offers.
+    await navigate({ to: "/memories" });
+
+    await waitFor(() => expect(screen.getByRole("link", { name: "Gamma notes" })).toBeTruthy());
+    expect(screen.getByRole("link", { name: "Alpha notes" })).toBeTruthy();
+  });
+
+  it("lets the revealed group be collapsed by hand while its memory is open", async () => {
+    const { navigate } = await renderSidebar();
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Alpha/ })).toBeTruthy());
+
+    await navigate({
+      to: "/memory/$project/$filename",
+      params: { project: "alpha", filename: "alpha-notes" },
+    });
+    await waitFor(() => expect(screen.getByRole("link", { name: "Alpha notes" })).toBeTruthy());
+
+    collapseGroup("Alpha");
+
+    await waitFor(() => expect(screen.queryByRole("link", { name: "Alpha notes" })).toBeNull());
+
+    // Leaving the section unmounts this sublist; the hand collapse still holds.
+    await navigate({ to: "/session/$id", params: { id: "session-1" } });
     await navigate({ to: "/memories" });
 
     await waitFor(() => expect(screen.getByRole("link", { name: "Gamma notes" })).toBeTruthy());

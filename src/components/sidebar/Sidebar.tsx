@@ -37,8 +37,8 @@ export function Sidebar({
   );
   // Sublists unmount whenever their section collapses, so per-group collapse
   // state has to be held here, in the sidebar that outlives every navigation.
-  const [collapsedMemoryGroups, toggleMemoryGroup] = useCollapsedGroups();
-  const [collapsedSessionGroups, toggleSessionGroup] = useCollapsedGroups();
+  const [collapsedMemoryGroups, toggleMemoryGroup, revealMemoryGroup] = useCollapsedGroups();
+  const [collapsedSessionGroups, toggleSessionGroup, revealSessionGroup] = useCollapsedGroups();
   const [expandedProjects, toggleProject, expandProject] = useExpandedGroups();
   const { data: approvalsData } = useQuery(approvalsQueryOptions());
   const approvalsCount = approvalsData?.approvals.length ?? 0;
@@ -221,6 +221,7 @@ export function Sidebar({
                     activeItemId={activeItemId}
                     collapsedGroups={collapsedMemoryGroups}
                     onToggleGroup={toggleMemoryGroup}
+                    onRevealGroup={revealMemoryGroup}
                   />
                 ) : item.section === "plugins" ? (
                   <PluginsSubList />
@@ -229,6 +230,7 @@ export function Sidebar({
                     activeItemId={activeItemId}
                     collapsedGroups={collapsedSessionGroups}
                     onToggleGroup={toggleSessionGroup}
+                    onRevealGroup={revealSessionGroup}
                   />
                 ) : null)}
             </div>
