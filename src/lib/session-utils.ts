@@ -301,11 +301,44 @@ function basenameFromPath(path: string): string {
   return path.slice(lastSlash + 1);
 }
 
-function singleFileBasename(call: ToolCallLike | undefined): string | null {
+function filePathOf(call: ToolCallLike | undefined): string | null {
   if (!call) return null;
   const filePath = call.input["file_path"];
   if (typeof filePath !== "string" || filePath === "") return null;
-  return basenameFromPath(filePath);
+  return filePath;
+}
+
+function singleFileBasename(call: ToolCallLike | undefined): string | null {
+  const filePath = filePathOf(call);
+  return filePath === null ? null : basenameFromPath(filePath);
+}
+
+function appendEditStats(rest: string, stats: { added: number; removed: number }): string {
+  const { added, removed } = stats;
+  if (added > 0 && removed > 0) return `${rest} +${added} -${removed}`;
+  if (added > 0) return `${rest} +${added}`;
+  if (removed > 0) return `${rest} -${removed}`;
+  return rest;
+}
+
+/**
+ * Upstream Normal collapses a read and a write of the SAME file into a single
+ * segment whose verb names both actions in the order they happened -- "Read and
+ * edited cache.ts", "Edited and read cache.ts" -- rather than two segments.
+ */
+function coalescedReadEdit(
+  counts: Map<ToolCategory, number>,
+  firstCall: Map<ToolCategory, ToolCallLike>,
+): { verb: string; emitter: ToolCategory; basename: string } | null {
+  if (counts.get("read") !== 1 || counts.get("edit") !== 1) return null;
+  const readPath = filePathOf(firstCall.get("read"));
+  if (readPath === null || readPath !== filePathOf(firstCall.get("edit"))) return null;
+  const basename = basenameFromPath(readPath);
+  for (const cat of counts.keys()) {
+    if (cat === "read") return { verb: "Read and edited", emitter: "read", basename };
+    if (cat === "edit") return { verb: "Edited and read", emitter: "edit", basename };
+  }
+  return null;
 }
 
 function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
@@ -334,16 +367,28 @@ function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
     }
   }
 
+  // A read and an edit of the same file collapse into one compound segment,
+  // emitted in place of whichever of the two categories came first.
+  const compound = coalescedReadEdit(counts, firstCall);
+
   const segments: SummarySegment[] = [];
   for (const [cat, count] of counts) {
+    if (compound !== null && (cat === "read" || cat === "edit")) {
+      if (cat === compound.emitter) {
+        segments.push({
+          verb: compound.verb,
+          rest: appendEditStats(compound.basename, editStats),
+        });
+      }
+      continue;
+    }
     switch (cat) {
       case "edit": {
         const singleFilename = count === 1 ? singleFileBasename(firstCall.get(cat)) : null;
-        let rest = singleFilename ?? pluralize(count, "a file", "{n} files");
-        const { added, removed } = editStats;
-        if (added > 0 && removed > 0) rest += ` +${added} -${removed}`;
-        else if (added > 0) rest += ` +${added}`;
-        else if (removed > 0) rest += ` -${removed}`;
+        const rest = appendEditStats(
+          singleFilename ?? pluralize(count, "a file", "{n} files"),
+          editStats,
+        );
         segments.push({ verb: "Edited", rest });
         break;
       }

@@ -516,6 +516,53 @@ describe("summarizeToolCallsStructured", () => {
     ]);
   });
 
+  // Upstream Normal collapses a read and a write of the SAME file into one
+  // segment with a compound verb naming both actions in the order they
+  // happened: "Read and edited cache.ts", "Edited and read cache.ts"
+  // (.llm/ui-sync/upstream/code-rich-normal.tree.json, class 41).
+  it("collapses Read then Edit of the same file into one compound segment", () => {
+    const calls = [
+      { name: "Read", input: { file_path: "/src/lib/cache.ts" } },
+      { name: "Edit", input: { file_path: "/src/lib/cache.ts", old_string: "a", new_string: "b" } },
+    ];
+    expect(summarizeToolCallsStructured(calls)).toEqual([
+      { verb: "Read and edited", rest: "cache.ts +1 -1" },
+    ]);
+  });
+
+  it("collapses Edit then Read of the same file into one compound segment", () => {
+    const calls = [
+      { name: "Edit", input: { file_path: "/src/lib/cache.ts", old_string: "a", new_string: "b" } },
+      { name: "Read", input: { file_path: "/src/lib/cache.ts" } },
+    ];
+    expect(summarizeToolCallsStructured(calls)).toEqual([
+      { verb: "Edited and read", rest: "cache.ts +1 -1" },
+    ]);
+  });
+
+  it("keeps read and edit of different files as separate segments", () => {
+    const calls = [
+      { name: "Read", input: { file_path: "/src/lib/cache.ts" } },
+      { name: "Edit", input: { file_path: "/src/lib/index.ts", old_string: "a", new_string: "b" } },
+    ];
+    expect(summarizeToolCallsStructured(calls)).toEqual([
+      { verb: "Read", rest: "cache.ts" },
+      { verb: "edited", rest: "index.ts +1 -1" },
+    ]);
+  });
+
+  it("lowercases a compound read-and-edit verb that is not the leading segment", () => {
+    const calls = [
+      { name: "Bash", input: { command: "ls" } },
+      { name: "Read", input: { file_path: "/src/lib/cache.ts" } },
+      { name: "Write", input: { file_path: "/src/lib/cache.ts", content: "one\ntwo" } },
+    ];
+    expect(summarizeToolCallsStructured(calls)).toEqual([
+      { verb: "Ran", rest: "a command" },
+      { verb: "read and edited", rest: "cache.ts +2" },
+    ]);
+  });
+
   it("unknown tools produce Called segments", () => {
     const calls = [
       { name: "CustomTool", input: {} },
