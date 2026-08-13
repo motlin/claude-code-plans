@@ -237,15 +237,15 @@ describe("summarizeToolCalls", () => {
     expect(summarizeToolCalls(calls)).toBe("ran a command, read a file, edited a file");
   });
 
-  it("groups Edit and Write together", () => {
+  it("keeps Edit and Write in separate segments with their own stats", () => {
     const calls = [
-      { name: "Edit", input: {} },
+      { name: "Edit", input: { old_string: "a", new_string: "b" } },
       {
         name: "Write",
         input: { file_path: "/some/code.ts", content: "one\ntwo" },
       },
     ];
-    expect(summarizeToolCalls(calls)).toBe("edited 2 files +2");
+    expect(summarizeToolCalls(calls)).toBe("edited a file +1 -1, created code.ts +2");
   });
 
   it("single Edit shows filename with diff stats", () => {
@@ -272,7 +272,7 @@ describe("summarizeToolCalls", () => {
         },
       },
     ];
-    expect(summarizeToolCalls(calls)).toBe("edited new-file.ts +3");
+    expect(summarizeToolCalls(calls)).toBe("created new-file.ts +3");
   });
 
   it("single Grep", () => {
@@ -551,7 +551,7 @@ describe("summarizeToolCallsStructured", () => {
     ]);
   });
 
-  it("lowercases a compound read-and-edit verb that is not the leading segment", () => {
+  it("lowercases a compound read-and-created verb that is not the leading segment", () => {
     const calls = [
       { name: "Bash", input: { command: "ls" } },
       { name: "Read", input: { file_path: "/src/lib/cache.ts" } },
@@ -559,7 +559,59 @@ describe("summarizeToolCallsStructured", () => {
     ];
     expect(summarizeToolCallsStructured(calls)).toEqual([
       { verb: "Ran", rest: "a command" },
-      { verb: "read and edited", rest: "cache.ts +2" },
+      { verb: "read and created", rest: "cache.ts +2" },
+    ]);
+  });
+
+  // Upstream Normal says "Created <file>" for a Write and reserves "Edited" for
+  // Edit/MultiEdit, so the compound form follows suit: "Read and created
+  // index.ts" (.llm/ui-sync/upstream/code-rich-normal.tree.json, class 41).
+  it("gives a lone Write its own Created segment", () => {
+    const calls = [{ name: "Write", input: { file_path: "/src/lib/cache.ts", content: "a\nb" } }];
+    expect(summarizeToolCallsStructured(calls)).toEqual([{ verb: "Created", rest: "cache.ts +2" }]);
+  });
+
+  it("keeps a Write and an Edit in separate segments with their own stats", () => {
+    const calls = [
+      { name: "Write", input: { file_path: "/src/lib/cache.ts", content: "a\nb" } },
+      { name: "Edit", input: { file_path: "/src/lib/index.ts", old_string: "a", new_string: "b" } },
+    ];
+    expect(summarizeToolCallsStructured(calls)).toEqual([
+      { verb: "Created", rest: "cache.ts +2" },
+      { verb: "edited", rest: "index.ts +1 -1" },
+    ]);
+  });
+
+  it("collapses Read then Write of the same file into one compound segment", () => {
+    const calls = [
+      { name: "Read", input: { file_path: "/src/lib/index.ts" } },
+      { name: "Write", input: { file_path: "/src/lib/index.ts", content: "a\nb" } },
+    ];
+    expect(summarizeToolCallsStructured(calls)).toEqual([
+      { verb: "Read and created", rest: "index.ts +2" },
+    ]);
+  });
+
+  it("collapses Write then Read of the same file into one compound segment", () => {
+    const calls = [
+      { name: "Write", input: { file_path: "/src/lib/index.ts", content: "a\nb" } },
+      { name: "Read", input: { file_path: "/src/lib/index.ts" } },
+    ];
+    expect(summarizeToolCallsStructured(calls)).toEqual([
+      { verb: "Created and read", rest: "index.ts +2" },
+    ]);
+  });
+
+  it("does not coalesce a read when both an Edit and a Write touched the file", () => {
+    const calls = [
+      { name: "Read", input: { file_path: "/src/lib/index.ts" } },
+      { name: "Edit", input: { file_path: "/src/lib/index.ts", old_string: "a", new_string: "b" } },
+      { name: "Write", input: { file_path: "/src/lib/index.ts", content: "a\nb" } },
+    ];
+    expect(summarizeToolCallsStructured(calls)).toEqual([
+      { verb: "Read", rest: "index.ts" },
+      { verb: "edited", rest: "index.ts +1 -1" },
+      { verb: "created", rest: "index.ts +2" },
     ]);
   });
 

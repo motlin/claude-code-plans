@@ -1,5 +1,5 @@
 /**
- * Minimal shape needed by summarizeToolCalls, categorize, and diffStatsForEditCall.
+ * Minimal shape needed by summarizeToolCalls, categorize, and diffStatsForCall.
  * Satisfied by raw content blocks, readSession tool call objects, and test data alike.
  */
 export interface ToolCallLike {
@@ -89,6 +89,7 @@ export function extractSessionTitle(text: string, fallback?: string): string {
 
 type ToolCategory =
   | "edit"
+  | "write"
   | "grep"
   | "read"
   | "glob"
@@ -106,7 +107,18 @@ type ToolCategory =
   | "planexit"
   | "cron";
 
-const EDIT_TOOLS = new Set(["Edit", "MultiEdit", "Write"]);
+/**
+ * Categories whose calls change a file, each with the verb upstream Normal uses
+ * for it: a `Write` creates a file ("Created cache.ts") while `Edit` and
+ * `MultiEdit` change one that exists ("Edited cache.ts").
+ */
+const MUTATION_VERBS = { edit: "Edited", write: "Created" } as const;
+
+type MutationCategory = keyof typeof MUTATION_VERBS;
+
+function isMutation(cat: ToolCategory): cat is MutationCategory {
+  return cat === "edit" || cat === "write";
+}
 
 function isMemoryPath(filePath: string): boolean {
   if (!filePath.endsWith(".md")) return false;
@@ -166,7 +178,7 @@ export function editDiffEntries(input: Record<string, unknown>): EditDiffEntry[]
   return [{ oldStr: asString(input["old_string"]), newStr: asString(input["new_string"]) }];
 }
 
-function diffStatsForEditCall(call: ToolCallLike): {
+function diffStatsForCall(call: ToolCallLike): {
   added: number;
   removed: number;
 } {
@@ -196,9 +208,9 @@ function categorize(call: ToolCallLike): ToolCategory | null {
     return isMemoryPath(filePath) ? "recall" : "read";
   }
   if (call.name === "Write") {
-    return isMemoryPath(filePath) ? "memwrite" : "edit";
+    return isMemoryPath(filePath) ? "memwrite" : "write";
   }
-  if (EDIT_TOOLS.has(call.name)) return "edit";
+  if (call.name === "Edit" || call.name === "MultiEdit") return "edit";
   if (call.name === "Bash") return "bash";
   if (call.name === "Grep") return "grep";
   if (call.name === "Glob") return "glob";
@@ -313,7 +325,7 @@ function singleFileBasename(call: ToolCallLike | undefined): string | null {
   return filePath === null ? null : basenameFromPath(filePath);
 }
 
-function appendEditStats(rest: string, stats: { added: number; removed: number }): string {
+function appendDiffStats(rest: string, stats: { added: number; removed: number }): string {
   const { added, removed } = stats;
   if (added > 0 && removed > 0) return `${rest} +${added} -${removed}`;
   if (added > 0) return `${rest} +${added}`;
@@ -322,21 +334,48 @@ function appendEditStats(rest: string, stats: { added: number; removed: number }
 }
 
 /**
- * Upstream Normal collapses a read and a write of the SAME file into a single
- * segment whose verb names both actions in the order they happened -- "Read and
- * edited cache.ts", "Edited and read cache.ts" -- rather than two segments.
+ * The one file-changing category eligible for coalescing: exactly one call, and
+ * the other mutation category absent, so the compound verb names it without
+ * dropping a segment.
  */
-function coalescedReadEdit(
+function soleMutationCategory(counts: Map<ToolCategory, number>): MutationCategory | null {
+  const present = (Object.keys(MUTATION_VERBS) as MutationCategory[]).filter((cat) =>
+    counts.has(cat),
+  );
+  const only = present[0];
+  if (present.length !== 1 || counts.get(only!) !== 1) return null;
+  return only!;
+}
+
+/**
+ * Upstream Normal collapses a read and a change of the SAME file into a single
+ * segment whose verb names both actions in the order they happened -- "Read and
+ * edited cache.ts", "Read and created index.ts", "Edited and read cache.ts" --
+ * rather than two segments.
+ */
+function coalescedReadMutation(
   counts: Map<ToolCategory, number>,
   firstCall: Map<ToolCategory, ToolCallLike>,
-): { verb: string; emitter: ToolCategory; basename: string } | null {
-  if (counts.get("read") !== 1 || counts.get("edit") !== 1) return null;
+): { verb: string; emitter: ToolCategory; basename: string; mutation: MutationCategory } | null {
+  if (counts.get("read") !== 1) return null;
+  const mutation = soleMutationCategory(counts);
+  if (mutation === null) return null;
   const readPath = filePathOf(firstCall.get("read"));
-  if (readPath === null || readPath !== filePathOf(firstCall.get("edit"))) return null;
+  if (readPath === null || readPath !== filePathOf(firstCall.get(mutation))) return null;
   const basename = basenameFromPath(readPath);
+  const mutationVerb = MUTATION_VERBS[mutation];
   for (const cat of counts.keys()) {
-    if (cat === "read") return { verb: "Read and edited", emitter: "read", basename };
-    if (cat === "edit") return { verb: "Edited and read", emitter: "edit", basename };
+    if (cat === "read") {
+      return {
+        verb: `Read and ${mutationVerb.toLowerCase()}`,
+        emitter: "read",
+        basename,
+        mutation,
+      };
+    }
+    if (cat === mutation) {
+      return { verb: `${mutationVerb} and read`, emitter: mutation, basename, mutation };
+    }
   }
   return null;
 }
@@ -347,8 +386,10 @@ function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
   // segments follow the order each tool was first called.
   const counts = new Map<ToolCategory, number>();
   const firstCall = new Map<ToolCategory, ToolCallLike>();
-  const editStats = { added: 0, removed: 0 };
+  const diffStats = new Map<MutationCategory, { added: number; removed: number }>();
   const unknownTools = new Map<string, number>();
+
+  const statsFor = (cat: MutationCategory) => diffStats.get(cat) ?? { added: 0, removed: 0 };
 
   for (const call of calls) {
     const cat = categorize(call);
@@ -359,37 +400,38 @@ function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
       const prev = counts.get(cat) ?? 0;
       counts.set(cat, prev + 1);
       if (prev === 0) firstCall.set(cat, call);
-      if (cat === "edit") {
-        const s = diffStatsForEditCall(call);
-        editStats.added += s.added;
-        editStats.removed += s.removed;
+      if (isMutation(cat)) {
+        const s = diffStatsForCall(call);
+        const total = statsFor(cat);
+        diffStats.set(cat, { added: total.added + s.added, removed: total.removed + s.removed });
       }
     }
   }
 
-  // A read and an edit of the same file collapse into one compound segment,
+  // A read and a change of the same file collapse into one compound segment,
   // emitted in place of whichever of the two categories came first.
-  const compound = coalescedReadEdit(counts, firstCall);
+  const compound = coalescedReadMutation(counts, firstCall);
 
   const segments: SummarySegment[] = [];
   for (const [cat, count] of counts) {
-    if (compound !== null && (cat === "read" || cat === "edit")) {
+    if (compound !== null && (cat === "read" || cat === compound.mutation)) {
       if (cat === compound.emitter) {
         segments.push({
           verb: compound.verb,
-          rest: appendEditStats(compound.basename, editStats),
+          rest: appendDiffStats(compound.basename, statsFor(compound.mutation)),
         });
       }
       continue;
     }
     switch (cat) {
-      case "edit": {
+      case "edit":
+      case "write": {
         const singleFilename = count === 1 ? singleFileBasename(firstCall.get(cat)) : null;
-        const rest = appendEditStats(
+        const rest = appendDiffStats(
           singleFilename ?? pluralize(count, "a file", "{n} files"),
-          editStats,
+          statsFor(cat),
         );
-        segments.push({ verb: "Edited", rest });
+        segments.push({ verb: MUTATION_VERBS[cat], rest });
         break;
       }
       case "grep":
