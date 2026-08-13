@@ -24,7 +24,7 @@ describe("extractSessionFiles", () => {
           occurrences: [
             {
               source: "visible",
-              lineArrayIndex: 0,
+              anchorIndex: 100,
               role: "user",
             },
           ],
@@ -35,7 +35,7 @@ describe("extractSessionFiles", () => {
           occurrences: [
             {
               source: "visible",
-              lineArrayIndex: 0,
+              anchorIndex: 100,
               role: "user",
             },
           ],
@@ -84,7 +84,7 @@ describe("extractSessionFiles", () => {
           occurrences: [
             {
               source: "tool",
-              lineArrayIndex: 0,
+              anchorIndex: 100,
               role: "assistant",
               tool: "Bash",
             },
@@ -96,7 +96,7 @@ describe("extractSessionFiles", () => {
           occurrences: [
             {
               source: "tool",
-              lineArrayIndex: 0,
+              anchorIndex: 100,
               role: "assistant",
               tool: "Bash",
             },
@@ -199,7 +199,7 @@ describe("extractSessionFiles", () => {
           occurrences: [
             {
               source: "tool",
-              lineArrayIndex: 0,
+              anchorIndex: 100,
               role: "assistant",
               tool: "Edit",
             },
@@ -211,7 +211,7 @@ describe("extractSessionFiles", () => {
           occurrences: [
             {
               source: "tool",
-              lineArrayIndex: 0,
+              anchorIndex: 100,
               role: "assistant",
               tool: "Glob",
             },
@@ -223,7 +223,7 @@ describe("extractSessionFiles", () => {
           occurrences: [
             {
               source: "tool",
-              lineArrayIndex: 0,
+              anchorIndex: 100,
               role: "assistant",
               tool: "Grep",
             },
@@ -235,7 +235,7 @@ describe("extractSessionFiles", () => {
           occurrences: [
             {
               source: "tool",
-              lineArrayIndex: 0,
+              anchorIndex: 100,
               role: "assistant",
               tool: "LS",
             },
@@ -247,7 +247,7 @@ describe("extractSessionFiles", () => {
           occurrences: [
             {
               source: "tool",
-              lineArrayIndex: 0,
+              anchorIndex: 100,
               role: "assistant",
               tool: "LSP",
             },
@@ -259,7 +259,7 @@ describe("extractSessionFiles", () => {
           occurrences: [
             {
               source: "tool",
-              lineArrayIndex: 0,
+              anchorIndex: 100,
               role: "assistant",
               tool: "MultiEdit",
             },
@@ -271,7 +271,7 @@ describe("extractSessionFiles", () => {
           occurrences: [
             {
               source: "tool",
-              lineArrayIndex: 0,
+              anchorIndex: 100,
               role: "assistant",
               tool: "NotebookEdit",
             },
@@ -283,7 +283,7 @@ describe("extractSessionFiles", () => {
           occurrences: [
             {
               source: "tool",
-              lineArrayIndex: 0,
+              anchorIndex: 100,
               role: "assistant",
               tool: "Read",
             },
@@ -295,7 +295,7 @@ describe("extractSessionFiles", () => {
           occurrences: [
             {
               source: "tool",
-              lineArrayIndex: 0,
+              anchorIndex: 100,
               role: "assistant",
               tool: "Write",
             },
@@ -343,7 +343,7 @@ describe("extractSessionFiles", () => {
           occurrences: [
             {
               source: "tool",
-              lineArrayIndex: 0,
+              anchorIndex: 100,
               role: "assistant",
               tool: "Read",
             },
@@ -384,7 +384,7 @@ describe("extractSessionFiles", () => {
           occurrences: [
             {
               source: "visible",
-              lineArrayIndex: 0,
+              anchorIndex: 100,
               role: "assistant",
             },
           ],
@@ -466,7 +466,7 @@ describe("extractSessionFiles", () => {
             occurrences: [
               {
                 source: "tool",
-                lineArrayIndex: 1,
+                anchorIndex: 200,
                 role: "assistant",
                 tool: "Read",
               },
@@ -478,28 +478,28 @@ describe("extractSessionFiles", () => {
             occurrences: [
               {
                 source: "visible",
-                lineArrayIndex: 0,
+                anchorIndex: 100,
                 role: "user",
               },
               {
                 source: "visible",
-                lineArrayIndex: 1,
+                anchorIndex: 200,
                 role: "assistant",
               },
               {
                 source: "thinking",
-                lineArrayIndex: 1,
+                anchorIndex: 200,
                 role: "assistant",
               },
               {
                 source: "tool",
-                lineArrayIndex: 1,
+                anchorIndex: 200,
                 role: "assistant",
                 tool: "Bash",
               },
               {
                 source: "tool",
-                lineArrayIndex: 1,
+                anchorIndex: 200,
                 role: "user",
                 tool: "Bash",
               },
@@ -525,28 +525,28 @@ describe("extractSessionFiles", () => {
           occurrences: [
             {
               source: "visible",
-              lineArrayIndex: 0,
+              anchorIndex: 100,
               role: "user",
             },
             {
               source: "visible",
-              lineArrayIndex: 1,
+              anchorIndex: 200,
               role: "assistant",
             },
             {
               source: "thinking",
-              lineArrayIndex: 1,
+              anchorIndex: 200,
               role: "assistant",
             },
             {
               source: "tool",
-              lineArrayIndex: 1,
+              anchorIndex: 200,
               role: "assistant",
               tool: "Bash",
             },
             {
               source: "tool",
-              lineArrayIndex: 1,
+              anchorIndex: 200,
               role: "user",
               tool: "Bash",
             },

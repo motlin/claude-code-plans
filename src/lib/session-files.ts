@@ -68,7 +68,7 @@ function normalizePath(candidate: string, homeRoot: string): NormalizedPath | un
 
 function occurrenceKey(occurrence: ResourceOccurrence): string {
   return JSON.stringify([
-    occurrence.lineArrayIndex,
+    occurrence.anchorIndex,
     occurrence.source,
     occurrence.role,
     occurrence.tool ?? null,
@@ -78,7 +78,7 @@ function occurrenceKey(occurrence: ResourceOccurrence): string {
 function chunkKey(chunk: TextChunk): string {
   return JSON.stringify([
     chunk.text,
-    chunk.lineArrayIndex,
+    chunk.anchorIndex,
     chunk.source,
     chunk.role,
     chunk.tool ?? null,
@@ -88,15 +88,15 @@ function chunkKey(chunk: TextChunk): string {
 function occurrenceFromChunk(chunk: TextChunk): ResourceOccurrence {
   return {
     source: chunk.source,
-    lineArrayIndex: chunk.lineArrayIndex,
+    anchorIndex: chunk.anchorIndex,
     role: chunk.role,
     ...(chunk.tool === undefined ? {} : { tool: chunk.tool }),
   };
 }
 
 function compareOccurrences(left: ResourceOccurrence, right: ResourceOccurrence): number {
-  if (left.lineArrayIndex !== right.lineArrayIndex) {
-    return left.lineArrayIndex - right.lineArrayIndex;
+  if (left.anchorIndex !== right.anchorIndex) {
+    return left.anchorIndex - right.anchorIndex;
   }
   if (left.source !== right.source) return sourceOrder[left.source] - sourceOrder[right.source];
   if (left.role !== right.role) return left.role < right.role ? -1 : 1;
@@ -203,7 +203,7 @@ export function extractSessionFiles(lines: SessionLine[], homeRoot: string): Ses
     return normalized;
   };
 
-  for (const [lineArrayIndex, line] of lines.entries()) {
+  for (const line of lines) {
     if (line.type !== "user" && line.type !== "assistant") continue;
     const content = line.message?.content;
     if (!Array.isArray(content)) continue;
@@ -215,7 +215,7 @@ export function extractSessionFiles(lines: SessionLine[], homeRoot: string): Ses
 
       const occurrence: ResourceOccurrence = {
         source: "tool",
-        lineArrayIndex,
+        anchorIndex: line.lineIndex,
         role: line.type,
         tool: block.name,
       };

@@ -46,6 +46,7 @@ import { TranscriptHistoryLoader } from "./transcript-history-loader";
 import { useChatStream } from "../hooks/use-chat-stream";
 import { useClaudeEvents, useIsSessionActive, useStatusline } from "../hooks/use-claude-events";
 import { useSessionViewedState } from "../hooks/use-session-viewed-state";
+import { useMessageAnchorDeepLink } from "../hooks/use-message-anchor-deep-link";
 import { herdrPanesQueryOptions, sendHerdrPrompt } from "../lib/api/herdr";
 import type { HerdrPaneIndexData } from "../lib/api/herdr";
 import {
@@ -376,6 +377,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
   // leaves it alone, so it stays a reliable "did new work land?" signal.
   const endIndex = transcriptEndIndex(transcript);
   const viewedState = useSessionViewedState(sessionId, currentMessageIndex);
+  useMessageAnchorDeepLink(sessionId, transcript.startIndex, locationHash);
   const hasUnseen = useHasUnseenWork(sessionId);
   const { settings, setSetting } = useSettings();
   const [currentHost, setCurrentHost] = useState<string | undefined>(undefined);
@@ -408,7 +410,13 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
     };
   }, [hasUnseen, sessionId]);
 
-  const processed = useMemo(() => processTranscript(transcript.records), [transcript.records]);
+  // Keyed off the window's startIndex so every line carries its session-absolute
+  // JSONL record index: that index is the `#msg-<n>` anchor, and a copied link
+  // has to keep meaning the same message after the tail window slides forward.
+  const processed = useMemo(
+    () => processTranscript(transcript.records, transcript.startIndex),
+    [transcript.records, transcript.startIndex],
+  );
   const sessionFiles = useExtractedSessionFiles(processed.lines, data.homeRoot);
   const sessionLinks = useExtractedSessionLinks(
     processed.lines,

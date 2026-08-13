@@ -49,7 +49,7 @@ const EXTERNAL_CATEGORY: LinkCategory = { categoryId: "External", label: "Extern
 function occurrenceFromChunk(chunk: TextChunk): ResourceOccurrence {
   return {
     source: chunk.source,
-    lineArrayIndex: chunk.lineArrayIndex,
+    anchorIndex: chunk.anchorIndex,
     role: chunk.role,
     ...(chunk.tool === undefined ? {} : { tool: chunk.tool }),
   };

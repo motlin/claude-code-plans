@@ -657,12 +657,18 @@ function processRecordBatch(
  *
  * Takes the raw JSON objects from the transcript API and returns everything
  * the renderer needs: lines, toolResultMap, uuidToLine, title, customTitle.
+ *
+ * @param startLineIndex - JSONL record index of `records[0]`. The transcript
+ *   endpoint serves a window over the tail of the file, so pass the window's
+ *   `startIndex` to keep every `lineIndex` session-absolute. Message anchors
+ *   are built from `lineIndex`, and an anchor has to survive the window
+ *   boundary moving as the session grows.
  */
-export function processTranscript(records: unknown[]): ProcessedTranscript {
+export function processTranscript(records: unknown[], startLineIndex = 0): ProcessedTranscript {
   const uuidToLine = new Map<string, number>();
   const { sessionLines, toolResults, title, customTitle } = processRecordBatch(
     records,
-    0,
+    startLineIndex,
     uuidToLine,
   );
   return {

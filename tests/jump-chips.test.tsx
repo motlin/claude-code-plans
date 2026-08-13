@@ -18,9 +18,9 @@ vi.mock("../src/lib/jump-to-message", () => ({
 }));
 
 const OCCURRENCES: ResourceOccurrence[] = [
-  { source: "visible", lineArrayIndex: 30, role: "user" },
-  { source: "tool", lineArrayIndex: 10, role: "assistant", tool: "Read" },
-  { source: "thinking", lineArrayIndex: 20, role: "assistant" },
+  { source: "visible", anchorIndex: 30, role: "user" },
+  { source: "tool", anchorIndex: 10, role: "assistant", tool: "Read" },
+  { source: "thinking", anchorIndex: 20, role: "assistant" },
 ];
 
 describe("JumpChips", () => {

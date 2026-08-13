@@ -4,8 +4,11 @@ export type ContentSource = "visible" | "tool" | "thinking";
 
 export interface ResourceOccurrence {
   source: ContentSource;
-  /** Index into the lines array, matching the msg-<n> DOM anchor convention. */
-  lineArrayIndex: number;
+  /**
+   * Session-absolute JSONL record index of the owning message, which is what
+   * the `#msg-<n>` DOM anchor is keyed by (see lib/message-anchor.ts).
+   */
+  anchorIndex: number;
   role: "user" | "assistant";
   /** Tool name, back-filled onto tool_result chunks from the owning tool_use. */
   tool?: string;
@@ -17,7 +20,7 @@ export interface TextChunk extends ResourceOccurrence {
 }
 
 interface ToolUseOwner {
-  lineArrayIndex: number;
+  anchorIndex: number;
   toolName: string;
 }
 
@@ -51,35 +54,36 @@ function getToolResultText(block: Extract<SessionContentBlock, { type: "tool_res
 export function scanSessionContent(lines: SessionLine[]): TextChunk[] {
   const toolUseOwners = new Map<string, ToolUseOwner>();
 
-  for (const [lineArrayIndex, line] of lines.entries()) {
+  for (const line of lines) {
     for (const block of getContentBlocks(line)) {
       if (block.type === "tool_use") {
-        toolUseOwners.set(block.id, { lineArrayIndex, toolName: block.name });
+        toolUseOwners.set(block.id, { anchorIndex: line.lineIndex, toolName: block.name });
       }
     }
   }
 
   const chunks: TextChunk[] = [];
 
-  for (const [lineArrayIndex, line] of lines.entries()) {
+  for (const line of lines) {
     if (line.type !== "user" && line.type !== "assistant") continue;
 
+    const anchorIndex = line.lineIndex;
     const content = line.message?.content;
     if (typeof content === "string") {
-      chunks.push({ text: content, source: "visible", lineArrayIndex, role: line.type });
+      chunks.push({ text: content, source: "visible", anchorIndex, role: line.type });
       continue;
     }
 
     for (const block of getContentBlocks(line)) {
       switch (block.type) {
         case "text":
-          chunks.push({ text: block.text, source: "visible", lineArrayIndex, role: line.type });
+          chunks.push({ text: block.text, source: "visible", anchorIndex, role: line.type });
           break;
         case "thinking":
           chunks.push({
             text: block.thinking,
             source: "thinking",
-            lineArrayIndex,
+            anchorIndex,
             role: line.type,
           });
           break;
@@ -87,7 +91,7 @@ export function scanSessionContent(lines: SessionLine[]): TextChunk[] {
           chunks.push({
             text: JSON.stringify(block.input),
             source: "tool",
-            lineArrayIndex,
+            anchorIndex,
             role: line.type,
             tool: block.name,
           });
@@ -100,7 +104,7 @@ export function scanSessionContent(lines: SessionLine[]): TextChunk[] {
           chunks.push({
             text,
             source: "tool",
-            lineArrayIndex: owner?.lineArrayIndex ?? lineArrayIndex,
+            anchorIndex: owner?.anchorIndex ?? anchorIndex,
             role: line.type,
             ...(owner ? { tool: owner.toolName } : {}),
           });

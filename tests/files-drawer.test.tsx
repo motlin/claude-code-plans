@@ -66,8 +66,8 @@ const SESSION_FILES = {
       path: "~/example/agent.ts",
       absolutePath: "/home/alice/example/agent.ts",
       occurrences: [
-        { source: "visible", lineArrayIndex: 10, role: "assistant" },
-        { source: "tool", lineArrayIndex: 20, role: "assistant", tool: "Read" },
+        { source: "visible", anchorIndex: 10, role: "assistant" },
+        { source: "tool", anchorIndex: 20, role: "assistant", tool: "Read" },
       ],
     },
     {
@@ -76,7 +76,7 @@ const SESSION_FILES = {
       occurrences: [
         {
           source: "tool",
-          lineArrayIndex: 30,
+          anchorIndex: 30,
           role: "assistant",
           tool: "Read",
         },
@@ -85,7 +85,7 @@ const SESSION_FILES = {
     {
       path: "~/notes/user.md",
       absolutePath: "/home/alice/notes/user.md",
-      occurrences: [{ source: "visible", lineArrayIndex: 40, role: "user" }],
+      occurrences: [{ source: "visible", anchorIndex: 40, role: "user" }],
     },
   ],
   totalCount: 3,
