@@ -1685,8 +1685,8 @@ function BashEntry({
 
 /**
  * Thinking text, rendered the way upstream claude.ai/code does: always visible,
- * inline italic body type in the 50%-ink layer. `pr-6` reserves the gutter the
- * hover-revealed controls sit in.
+ * inline italic body type in the 50%-ink layer. The right padding reserves the
+ * gutter the hover-revealed controls sit in.
  *
  * The group is named `body` rather than upstream's `thinking` so the shared
  * `CopyButton` hover reveal applies unchanged.
@@ -1700,9 +1700,13 @@ function ThinkingBlock({
   sessionId: string;
   sourceUuid: string | undefined;
 }) {
+  const { settings } = useSettings();
+  // Upstream's pr-6 fits the copy button alone. When DebugLink renders it
+  // shares the overlay, so the gutter has to grow or long lines run under it.
+  const gutterClass = settings.showDebug && sourceUuid ? "pr-10" : "pr-6";
   return (
     <div className="group/body relative">
-      <div className="text-body text-t6 italic whitespace-pre-wrap break-words pr-6">
+      <div className={`text-body text-t6 italic whitespace-pre-wrap break-words ${gutterClass}`}>
         {thinking}
       </div>
       <div className="absolute right-0 top-0 flex items-center gap-g3">

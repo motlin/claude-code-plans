@@ -5,8 +5,10 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { SessionChat } from "../src/components/session-chat";
 import { processTranscript } from "../src/lib/transcript";
 
+let showDebug = false;
+
 vi.mock("../src/components/settings-provider", () => ({
-  useSettings: () => ({ settings: { showDebug: false } }),
+  useSettings: () => ({ settings: { showDebug } }),
 }));
 vi.mock("../src/lib/hmr-persist", () => ({
   hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
@@ -30,7 +32,8 @@ afterEach(cleanup);
 
 const THINKING = "Fabricated reasoning about the next step";
 
-function renderThinking(): HTMLElement {
+function renderThinking(options: { showDebug?: boolean } = {}): HTMLElement {
+  showDebug = options.showDebug ?? false;
   const { lines, toolResultMap } = processTranscript([
     {
       type: "assistant",
@@ -77,6 +80,18 @@ describe("thinking block", () => {
       expandables: container.querySelectorAll("[aria-expanded]").length,
       thinkingLabels: screen.queryAllByText("Thinking...").length,
     }).toStrictEqual({ expandables: 0, thinkingLabels: 0 });
+  });
+
+  it("widens the reserved gutter when the debug link shares the overlay", () => {
+    const container = renderThinking({ showDebug: true });
+
+    expect({
+      className: screen.getByText(THINKING).className,
+      debugLinks: container.querySelectorAll('a[href^="/session/test-session/source/"]').length,
+    }).toStrictEqual({
+      className: "text-body text-t6 italic whitespace-pre-wrap break-words pr-10",
+      debugLinks: 1,
+    });
   });
 
   it("offers a copy button for the thinking text", () => {
