@@ -8,14 +8,21 @@ import {
 } from "../src/components/settings-provider";
 
 describe("settings-provider", () => {
-  // Pins the preset key set against upstream-parity churn. The 2026-08-10
-  // claude.ai/code captures in .llm/ui-sync/upstream/ are ALL view:"verbose"
-  // (code-rich-verbose.tree.json, code-rich-verbose.styles.json and
-  // code-rich-exemplars.json each declare it), so they cannot show which rows
-  // upstream hides in its Normal view. The verbose dump also still contains 10
-  // expanded tool-group rows, so Verbose demonstrably does not flatten
-  // grouping. Until a matching Normal-view specimen is captured, no per-row
-  // gating may be added to VERBOSITY_PRESETS on the strength of those dumps.
+  // Pins the preset key set against upstream-parity churn. Settled on
+  // 2026-08-12 by capturing the missing Normal-view specimen from the same
+  // claude.ai/code session and same 12 turns as the 2026-08-10 verbose dumps:
+  // .llm/ui-sync/upstream/code-rich-normal.tree.json next to
+  // code-rich-verbose.tree.json. Row counts across those 12 turns:
+  //   verbose  112 tool rows + 10 group rows + 42 thinking blocks
+  //   normal    14 tool rows + 26 group rows +  0 thinking blocks
+  // So upstream's Normal view gates exactly one kind of content, thinking,
+  // which normal already gates via showThinking:false. It does not drop tool
+  // rows -- it merges consecutive calls into denser cross-tool group rows
+  // ("Ran 3 commands, updated todos", "Read and edited cache.ts, searched
+  // code") that stay expandable, whereas Verbose groups only same-tool runs
+  // ("Read 3 files"). That is a grouping-density difference in the renderer,
+  // not a per-row visibility flag, so no per-row gating may be added to
+  // VERBOSITY_PRESETS on the strength of these dumps.
   describe("VERBOSITY_PRESETS", () => {
     it("gates exactly the eight content keys, with no per-row gating added", () => {
       expect(VERBOSITY_KEYS).toEqual([
