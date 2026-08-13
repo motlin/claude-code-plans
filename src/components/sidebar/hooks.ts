@@ -3,16 +3,15 @@ import { useCallback, useState } from "react";
 import { fromMdSlug } from "../../lib/md-slug";
 import type { Section } from "./types";
 
-/**
- * Set of collapsed group ids plus its toggle. Sublists unmount whenever their
- * section collapses, so this has to be owned by the sidebar itself — state held
- * inside a sublist would come back expand-all'd after every navigation.
- */
-export function useCollapsedGroups(): [ReadonlySet<string>, (groupId: string) => void] {
-  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set());
+function useGroupIdSet(): {
+  ids: ReadonlySet<string>;
+  toggle: (groupId: string) => void;
+  add: (groupId: string) => void;
+} {
+  const [ids, setIds] = useState<ReadonlySet<string>>(() => new Set());
 
   const toggle = useCallback((groupId: string) => {
-    setCollapsed((previous) => {
+    setIds((previous) => {
       const next = new Set(previous);
       if (next.has(groupId)) {
         next.delete(groupId);
@@ -23,7 +22,36 @@ export function useCollapsedGroups(): [ReadonlySet<string>, (groupId: string) =>
     });
   }, []);
 
-  return [collapsed, toggle];
+  const add = useCallback((groupId: string) => {
+    setIds((previous) => (previous.has(groupId) ? previous : new Set(previous).add(groupId)));
+  }, []);
+
+  return { ids, toggle, add };
+}
+
+/**
+ * Set of collapsed group ids plus its toggle. Sublists unmount whenever their
+ * section collapses, so this has to be owned by the sidebar itself — state held
+ * inside a sublist would come back expand-all'd after every navigation.
+ */
+export function useCollapsedGroups(): [ReadonlySet<string>, (groupId: string) => void] {
+  const { ids, toggle } = useGroupIdSet();
+  return [ids, toggle];
+}
+
+/**
+ * Set of expanded group ids, its toggle, and an idempotent expand for groups
+ * that open themselves (the project being viewed). Owned by the sidebar for the
+ * same reason as useCollapsedGroups: state held inside a sublist would come back
+ * collapse-all'd after every navigation.
+ */
+export function useExpandedGroups(): [
+  ReadonlySet<string>,
+  (groupId: string) => void,
+  (groupId: string) => void,
+] {
+  const { ids, toggle, add } = useGroupIdSet();
+  return [ids, toggle, add];
 }
 
 export function useActiveSection(matches: ReturnType<typeof useMatches>): {

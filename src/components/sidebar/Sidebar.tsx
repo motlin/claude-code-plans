@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Section } from "./types";
-import { useActiveSection, useCollapsedGroups } from "./hooks";
+import { useActiveSection, useCollapsedGroups, useExpandedGroups } from "./hooks";
 import { useVisibleNavItems } from "./navigation";
 import { SidebarToggleIcon, SearchInput } from "./primitives";
 import {
@@ -39,6 +39,7 @@ export function Sidebar({
   // state has to be held here, in the sidebar that outlives every navigation.
   const [collapsedMemoryGroups, toggleMemoryGroup] = useCollapsedGroups();
   const [collapsedSessionGroups, toggleSessionGroup] = useCollapsedGroups();
+  const [expandedProjects, toggleProject, expandProject] = useExpandedGroups();
   const { data: approvalsData } = useQuery(approvalsQueryOptions());
   const approvalsCount = approvalsData?.approvals.length ?? 0;
   const { data: notificationsData } = useQuery(notificationsQueryOptions());
@@ -207,7 +208,12 @@ export function Sidebar({
                 (item.section === "active" ? (
                   <ActiveSubList />
                 ) : item.section === "projects" ? (
-                  <ProjectsSubList activeItemId={activeItemId} />
+                  <ProjectsSubList
+                    activeItemId={activeItemId}
+                    expandedProjects={expandedProjects}
+                    onToggleProject={toggleProject}
+                    onExpandProject={expandProject}
+                  />
                 ) : item.section === "plans" ? (
                   <PlansSubList activeItemId={activeItemId} />
                 ) : item.section === "memories" ? (

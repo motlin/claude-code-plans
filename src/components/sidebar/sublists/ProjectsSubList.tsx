@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, GitBranch } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import {
   projectsQueryOptions,
   projectSessionsQueryOptions,
@@ -21,10 +21,25 @@ function prefetchProjectDetail(queryClient: ReturnType<typeof useQueryClient>, p
   void queryClient.prefetchQuery(projectMemoriesQueryOptions(projectId));
 }
 
-export function ProjectsSubList({ activeItemId }: { activeItemId: string | null }) {
+/**
+ * `expandedProjects` lives in `Sidebar` because opening an item in another
+ * section collapses — and unmounts — this sublist; local state would come back
+ * collapse-all'd. The project being viewed expands itself through
+ * `onExpandProject`, which leaves it collapsible again afterwards.
+ */
+export function ProjectsSubList({
+  activeItemId,
+  expandedProjects,
+  onToggleProject,
+  onExpandProject,
+}: {
+  activeItemId: string | null;
+  expandedProjects: ReadonlySet<string>;
+  onToggleProject: (projectId: string) => void;
+  onExpandProject: (projectId: string) => void;
+}) {
   const { data: projects } = useQuery(projectsQueryOptions());
   const queryClient = useQueryClient();
-  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 
   // Auto-expand the active project and prefetch its sub-resources into the
   // shared TanStack Query cache so sidebar + /project/$id share data.
@@ -34,24 +49,15 @@ export function ProjectsSubList({ activeItemId }: { activeItemId: string | null 
     const activeProject = projects.find((p) => p.id === activeItemId);
     if (!activeProject) return;
 
-    setExpandedProjects((prev) =>
-      prev.has(activeProject.id) ? prev : new Set(prev).add(activeProject.id),
-    );
+    onExpandProject(activeProject.id);
     prefetchProjectDetail(queryClient, activeProject.id);
-  }, [activeItemId, projects, queryClient]);
+  }, [activeItemId, projects, queryClient, onExpandProject]);
 
   function toggleProject(projectId: string) {
-    if (expandedProjects.has(projectId)) {
-      setExpandedProjects((prev) => {
-        const next = new Set(prev);
-        next.delete(projectId);
-        return next;
-      });
-      return;
+    onToggleProject(projectId);
+    if (!expandedProjects.has(projectId)) {
+      prefetchProjectDetail(queryClient, projectId);
     }
-
-    setExpandedProjects((prev) => new Set(prev).add(projectId));
-    prefetchProjectDetail(queryClient, projectId);
   }
 
   if (projects === undefined) {
@@ -89,6 +95,7 @@ export function ProjectsSubList({ activeItemId }: { activeItemId: string | null 
                 type="button"
                 onClick={() => toggleProject(project.id)}
                 className="flex h-5 w-4 shrink-0 items-center justify-center text-text-500 transition-colors hover:text-text-200"
+                title={`${isExpanded ? "Collapse" : "Expand"} ${project.name}`}
               >
                 <ChevronRight
                   className="h-2.5 w-2.5 transition-transform duration-200"

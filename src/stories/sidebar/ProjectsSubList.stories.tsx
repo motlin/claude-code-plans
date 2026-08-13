@@ -1,7 +1,22 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useExpandedGroups } from "../../components/sidebar/hooks";
 import { ProjectsSubList } from "../../components/sidebar/sublists/ProjectsSubList";
 import { projectsQueryOptions } from "../../lib/api/projects";
 import { createStoryQueryClient, StoryWrapper } from "./decorators";
+
+// The sidebar owns the expansion state in the app; this reuses that hook so the
+// project toggles stay interactive in Storybook.
+function ExpandableProjects({ activeItemId }: { activeItemId: string | null }) {
+  const [expandedProjects, toggleProject, expandProject] = useExpandedGroups();
+  return (
+    <ProjectsSubList
+      activeItemId={activeItemId}
+      expandedProjects={expandedProjects}
+      onToggleProject={toggleProject}
+      onExpandProject={expandProject}
+    />
+  );
+}
 
 const meta = {
   title: "Sidebar/ProjectsSubList",
@@ -40,7 +55,7 @@ export const WithProjects: Story = {
     ]);
     return (
       <StoryWrapper queryClient={queryClient}>
-        <ProjectsSubList activeItemId="proj-1" />
+        <ExpandableProjects activeItemId="proj-1" />
       </StoryWrapper>
     );
   },
@@ -52,7 +67,7 @@ export const Empty: Story = {
     queryClient.setQueryData(projectsQueryOptions().queryKey, [] as never[]);
     return (
       <StoryWrapper queryClient={queryClient}>
-        <ProjectsSubList activeItemId={null} />
+        <ExpandableProjects activeItemId={null} />
       </StoryWrapper>
     );
   },
@@ -63,7 +78,7 @@ export const Loading: Story = {
     const queryClient = createStoryQueryClient({ enabled: false });
     return (
       <StoryWrapper queryClient={queryClient}>
-        <ProjectsSubList activeItemId={null} />
+        <ExpandableProjects activeItemId={null} />
       </StoryWrapper>
     );
   },
