@@ -42,6 +42,7 @@ import {
   mergeTranscriptData,
   recentSessionsInfiniteQueryOptions,
   sessionQueryKeys,
+  transcriptEndIndex,
   type TranscriptData,
 } from "../lib/api/sessions";
 import { toMdSlug } from "../lib/md-slug";
@@ -798,6 +799,10 @@ export function applySessionLinesAppended(
     return mergeTranscriptData(old, {
       records: payload.lines,
       byteOffset: old.byteOffset,
+      // The cached window always runs to the end of the JSONL, so appended
+      // lines start exactly where it stops.
+      startIndex: transcriptEndIndex(old),
+      precedingMessageCount: old.precedingMessageCount,
     });
   });
 }

@@ -839,6 +839,8 @@ function makeTranscriptCache(overrides?: Partial<TranscriptData>): TranscriptDat
   return {
     records: [],
     byteOffset: 0,
+    startIndex: 0,
+    precedingMessageCount: 0,
     ...overrides,
   };
 }
@@ -892,6 +894,8 @@ describe("applySessionLinesAppended", () => {
     expect(cached).toStrictEqual({
       records: [existingRecord, newRecord],
       byteOffset: 100,
+      startIndex: 0,
+      precedingMessageCount: 0,
     });
   });
 
@@ -933,6 +937,8 @@ describe("applySessionLinesAppended", () => {
     expect(cached).toStrictEqual({
       records,
       byteOffset: 50,
+      startIndex: 0,
+      precedingMessageCount: 0,
     });
   });
 
@@ -976,6 +982,8 @@ describe("applySessionLinesAppended", () => {
     expect(queryClient.getQueryData<TranscriptData>(queryKey)).toStrictEqual({
       records: [existingRecord, appendedRecord],
       byteOffset: 100,
+      startIndex: 0,
+      precedingMessageCount: 0,
     });
   });
 
@@ -1011,6 +1019,8 @@ describe("applySessionLinesAppended", () => {
     expect(queryClient.getQueryData<TranscriptData>(queryKey)).toStrictEqual({
       records: [existingRecord, appendedRecord],
       byteOffset: 200,
+      startIndex: 0,
+      precedingMessageCount: 0,
     });
   });
 });

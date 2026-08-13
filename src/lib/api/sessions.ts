@@ -4,6 +4,7 @@ import {
   infiniteQueryOptions,
   useMutation,
   useQueryClient,
+  type QueryClient,
 } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 import { JsonValueSchema } from "../schemas";
@@ -88,20 +89,53 @@ export const SessionDetailResponse = z
 
 export type SessionDetailData = NonNullable<z.infer<typeof SessionDetailResponse>>;
 
+/**
+ * One window over a session's JSONL, not the whole file: the endpoint serves
+ * the tail so a megabyte-scale session paints its newest messages immediately,
+ * and the client pages backwards from `startIndex`.
+ */
 export const TranscriptResponse = z.object({
   records: z.array(z.record(z.string(), JsonValueSchema)),
   byteOffset: z.number(),
+  /** Index of `records[0]` within the session's full JSONL record list. */
+  startIndex: z.number(),
+  /** Countable messages (message-count.ts) in the records before `startIndex`. */
+  precedingMessageCount: z.number(),
 });
 export type TranscriptData = z.infer<typeof TranscriptResponse>;
 
+/** Index just past the newest record the window holds. */
+export function transcriptEndIndex(transcript: TranscriptData): number {
+  return transcript.startIndex + transcript.records.length;
+}
+
+/**
+ * Merge two windows into one, keyed by each record's index in the JSONL so an
+ * earlier page lands ahead of the tail it was paged back from. `primary` wins
+ * every conflict and supplies `byteOffset`.
+ *
+ * Only the contiguous run ending at the newest record survives: if a refetch
+ * returns a tail that starts past where the cached window ended, the records in
+ * between were never fetched, and rendering across that hole would splice
+ * unrelated turns together.
+ */
 export function mergeTranscriptData(
   primary: TranscriptData,
   secondary: TranscriptData,
 ): TranscriptData {
+  const byIndex = new Map<number, TranscriptData["records"][number]>();
+  for (const source of [secondary, primary]) {
+    source.records.forEach((record, offset) => byIndex.set(source.startIndex + offset, record));
+  }
+  const indices = [...byIndex.keys()].sort((a, b) => a - b);
+  let runStart = indices.length - 1;
+  while (runStart > 0 && indices[runStart - 1] === indices[runStart]! - 1) runStart -= 1;
+  const contiguous = indices.slice(Math.max(runStart, 0));
+
   const records: TranscriptData["records"] = [];
   const seenUuids = new Set<string>();
-
-  for (const record of [...primary.records, ...secondary.records]) {
+  for (const index of contiguous) {
+    const record = byIndex.get(index)!;
     const uuid = record["uuid"];
     if (typeof uuid === "string") {
       if (seenUuids.has(uuid)) continue;
@@ -110,7 +144,16 @@ export function mergeTranscriptData(
     records.push(record);
   }
 
-  return { records, byteOffset: primary.byteOffset };
+  const startIndex = contiguous[0] ?? primary.startIndex;
+  // The surviving run always begins at one of the two windows' first records,
+  // and that window is the one that knows how many messages precede it.
+  const origin = primary.startIndex === startIndex ? primary : secondary;
+  return {
+    records,
+    byteOffset: primary.byteOffset,
+    startIndex,
+    precedingMessageCount: origin.precedingMessageCount,
+  };
 }
 
 const RawJsonlLineSchema = z.object({
@@ -264,6 +307,28 @@ export const transcriptQueryOptions = (id: string) =>
     staleTime: Infinity,
     gcTime: Infinity,
   });
+
+/**
+ * Pull the page of records immediately before the cached window and splice it
+ * in, so scrolling back through a long session keeps walking towards its first
+ * message. A no-op once the window already starts at record 0.
+ */
+export async function fetchEarlierTranscript(
+  queryClient: QueryClient,
+  sessionId: string,
+): Promise<void> {
+  const queryKey = sessionQueryKeys.transcript(sessionId);
+  const cached = queryClient.getQueryData<TranscriptData>(queryKey);
+  if (!cached || cached.startIndex === 0) return;
+
+  const page = await apiFetch(
+    `/api/sessions/${encodeURIComponent(sessionId)}/transcript?before=${cached.startIndex}`,
+    TranscriptResponse,
+  );
+  queryClient.setQueryData<TranscriptData>(queryKey, (old) =>
+    old ? mergeTranscriptData(old, page) : page,
+  );
+}
 
 export const sessionSourceQueryOptions = (sessionId: string, uuid: string, contextN = 5) =>
   queryOptions({

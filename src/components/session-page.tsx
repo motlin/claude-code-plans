@@ -42,6 +42,7 @@ import {
   useSessionLinkDisplay,
 } from "./links-drawer";
 import { StatusFooter } from "./status-footer";
+import { TranscriptHistoryLoader } from "./transcript-history-loader";
 import { useChatStream } from "../hooks/use-chat-stream";
 import { useClaudeEvents, useIsSessionActive, useStatusline } from "../hooks/use-claude-events";
 import { useSessionViewedState } from "../hooks/use-session-viewed-state";
@@ -50,6 +51,7 @@ import type { HerdrPaneIndexData } from "../lib/api/herdr";
 import {
   sessionDetailQueryOptions,
   sessionSubagentsQueryOptions,
+  transcriptEndIndex,
   transcriptQueryOptions,
   useRequestSummary,
   useToggleSessionStar,
@@ -363,11 +365,16 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
     getElement: () => (typeof window === "undefined" ? undefined : window),
   });
   // Viewed positions are stored in message units (see message-count.ts) so
-  // they line up with messageCount and newMessageCount on every surface.
+  // they line up with messageCount and newMessageCount on every surface. The
+  // transcript is only a window over the JSONL, so the messages the server
+  // trimmed off the front still count towards the position.
   const currentMessageIndex = useMemo(
-    () => countMessageRecords(transcript.records) - 1,
-    [transcript.records],
+    () => transcript.precedingMessageCount + countMessageRecords(transcript.records) - 1,
+    [transcript.precedingMessageCount, transcript.records],
   );
+  // Grows only when the session appends; paging backwards through history
+  // leaves it alone, so it stays a reliable "did new work land?" signal.
+  const endIndex = transcriptEndIndex(transcript);
   const viewedState = useSessionViewedState(sessionId, currentMessageIndex);
   const hasUnseen = useHasUnseenWork(sessionId);
   const { settings, setSetting } = useSettings();
@@ -489,7 +496,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
     [isActive, submitAnswer],
   );
   const chatStream = useChatStream();
-  const liveHerdrPrompt = useLiveHerdrPrompt(sessionId, transcript.records.length);
+  const liveHerdrPrompt = useLiveHerdrPrompt(sessionId, endIndex);
   const promptBehavior = getSessionPromptBehavior(sessionId, isActive, herdr);
   const prevSessionIdRef = useRef(sessionId);
 
@@ -511,19 +518,14 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
     }
     if (!chatStream.state.isComplete) return;
     if (completionRecordCountRef.current === null) {
-      completionRecordCountRef.current = transcript.records.length;
+      completionRecordCountRef.current = endIndex;
       return;
     }
-    if (transcript.records.length > completionRecordCountRef.current) {
+    if (endIndex > completionRecordCountRef.current) {
       completionRecordCountRef.current = null;
       chatStream.reset();
     }
-  }, [
-    chatStream,
-    chatStream.state.isStreaming,
-    chatStream.state.isComplete,
-    transcript.records.length,
-  ]);
+  }, [chatStream, chatStream.state.isStreaming, chatStream.state.isComplete, endIndex]);
 
   useEffect(() => {
     setAiSummary(data.summary ?? null);
@@ -728,6 +730,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
 
       {/* Chat messages */}
       <AskUserQuestionProvider value={askUserQuestionCtx}>
+        <TranscriptHistoryLoader sessionId={sessionId} startIndex={transcript.startIndex} />
         <SessionChat
           sessionId={sessionId}
           lines={processed.lines}
