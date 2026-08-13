@@ -403,15 +403,16 @@ function processRecordBatch(
     // Extract title from first user text
     if (record.type === "user" && !title) {
       const { content } = record.message;
+      const titleOptions = { isMeta: record.isMeta === true };
       if (typeof content === "string") {
         const cleaned = stripCommandTags(content);
-        if (cleaned) title = extractSessionTitle(cleaned);
+        if (cleaned) title = extractSessionTitle(cleaned, undefined, titleOptions);
       } else if (Array.isArray(content)) {
         for (const block of content) {
           if (block.type === "text") {
             const cleaned = stripCommandTags(block.text);
             if (cleaned) {
-              title = extractSessionTitle(cleaned);
+              title = extractSessionTitle(cleaned, undefined, titleOptions);
               break;
             }
           }

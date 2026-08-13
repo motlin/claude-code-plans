@@ -60,6 +60,11 @@ const ARG_TAG_RE = /<\/?(?:description|instructions|arguments|args|user-request)
  * the intent and everything around it is template boilerplate. When the user
  * passed no arguments the block is empty and the command's own opening line is
  * the best summary available.
+ *
+ * Only ever applied to `isMeta` prompts. A command body is injected by the CLI
+ * rather than typed, and it carries no markers of its own — the `<command-name>`
+ * header lands in a separate record — so `isMeta` is the only signal that these
+ * tags are template scaffolding and not something the user pasted.
  */
 function stripCommandBoilerplate(text: string): string {
   const match = text.match(ARG_BLOCK_RE);
@@ -73,8 +78,14 @@ function stripCommandBoilerplate(text: string): string {
   return text.replace(ARG_TAG_RE, "");
 }
 
-export function extractSessionTitle(text: string, fallback?: string): string {
-  const cleaned = stripCommandBoilerplate(cleanCommandText(text)).replace(/\s+/g, " ").trim();
+export function extractSessionTitle(
+  text: string,
+  fallback?: string,
+  options?: { isMeta?: boolean },
+): string {
+  const command = cleanCommandText(text);
+  const boilerplateFree = options?.isMeta === true ? stripCommandBoilerplate(command) : command;
+  const cleaned = boilerplateFree.replace(/\s+/g, " ").trim();
   if (!cleaned) return fallback ?? "Untitled Session";
 
   if (cleaned.length <= 80) return cleaned;

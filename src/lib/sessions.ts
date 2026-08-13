@@ -156,6 +156,7 @@ interface JsonlEntry {
   sessionKind?: string;
   teamName?: string;
   forkedFrom?: string | Record<string, unknown>;
+  isMeta?: boolean;
   message?: {
     role?: string;
     content?: string | RawContentBlock[];
@@ -183,7 +184,17 @@ function isSessionTitlePrompt(text: string): boolean {
   return !isCaveatLine(line) && !isCommandLine(line) && !isStdoutLine(line);
 }
 
-function extractFirstUserText(line: string): string | null {
+/**
+ * A session's opening prompt plus whether the CLI injected it. `isMeta` marks a
+ * record the user did not type — a slash-command body or stop-hook feedback —
+ * and only those may have their template boilerplate stripped for the title.
+ */
+export interface FirstUserPrompt {
+  text: string;
+  isMeta: boolean;
+}
+
+function extractFirstUserText(line: string): FirstUserPrompt | null {
   try {
     const obj = JSON.parse(line) as JsonlEntry;
     if (obj.type !== "user") return null;
@@ -191,7 +202,11 @@ function extractFirstUserText(line: string): string | null {
     const content = obj.message?.content;
     if (!content) return null;
 
-    if (typeof content === "string") return isSessionTitlePrompt(content) ? content : null;
+    const isMeta = obj.isMeta === true;
+
+    if (typeof content === "string") {
+      return isSessionTitlePrompt(content) ? { text: content, isMeta } : null;
+    }
 
     if (Array.isArray(content)) {
       for (const block of content) {
@@ -200,7 +215,7 @@ function extractFirstUserText(line: string): string | null {
           typeof block.text === "string" &&
           isSessionTitlePrompt(block.text)
         ) {
-          return block.text;
+          return { text: block.text, isMeta };
         }
       }
     }
@@ -210,7 +225,7 @@ function extractFirstUserText(line: string): string | null {
   return null;
 }
 
-export async function readFirstUserMessage(filePath: string): Promise<string | null> {
+export async function readFirstUserMessage(filePath: string): Promise<FirstUserPrompt | null> {
   const rl = createInterface({
     input: createReadStream(filePath, { encoding: "utf-8" }),
     crlfDelay: Infinity,
@@ -219,8 +234,8 @@ export async function readFirstUserMessage(filePath: string): Promise<string | n
   try {
     for await (const line of rl) {
       if (!line.trim()) continue;
-      const text = extractFirstUserText(line);
-      if (text !== null) return text;
+      const prompt = extractFirstUserText(line);
+      if (prompt !== null) return prompt;
     }
   } finally {
     rl.close();
@@ -268,8 +283,12 @@ async function resolveMessageCount(filePath: string): Promise<number> {
 export async function resolveFirstPrompt(
   indexedPrompt: string | undefined,
   filePath: string,
-): Promise<string | null> {
-  if (indexedPrompt && isSessionTitlePrompt(indexedPrompt)) return indexedPrompt;
+): Promise<FirstUserPrompt | null> {
+  // sessions-index.json records the typed `/command` line, never the body the
+  // CLI expands it into, so an indexed prompt is never a meta record.
+  if (indexedPrompt && isSessionTitlePrompt(indexedPrompt)) {
+    return { text: indexedPrompt, isMeta: false };
+  }
   try {
     return await readFirstUserMessage(filePath);
   } catch {
@@ -280,12 +299,16 @@ export async function resolveFirstPrompt(
 function resolveTitle(entry: {
   customTitle?: string | undefined;
   summary?: string | undefined;
-  firstPrompt?: string | undefined;
+  firstPrompt?: FirstUserPrompt | undefined;
   sessionId: string;
 }): string {
   if (entry.customTitle) return entry.customTitle;
   if (entry.summary) return entry.summary;
-  if (entry.firstPrompt) return extractSessionTitle(entry.firstPrompt, entry.sessionId);
+  if (entry.firstPrompt) {
+    return extractSessionTitle(entry.firstPrompt.text, entry.sessionId, {
+      isMeta: entry.firstPrompt.isMeta,
+    });
+  }
   return entry.sessionId;
 }
 
@@ -334,7 +357,7 @@ async function listSessionsForProject(
     sessions.push({
       id: entry.sessionId,
       title,
-      firstPrompt: firstPrompt ?? undefined,
+      firstPrompt: firstPrompt?.text,
       summary: entry.summary,
       mtime: new Date(entry.fileMtime),
       created: entry.created ? new Date(entry.created) : new Date(entry.fileMtime),
@@ -363,12 +386,14 @@ async function listSessionsForProject(
     const filePath = join(projectDir, file);
     try {
       const fileStat = await stat(filePath);
-      const text = await readFirstUserMessage(filePath);
-      const title = extractSessionTitle(text ?? "", id);
+      const prompt = await readFirstUserMessage(filePath);
+      const title = extractSessionTitle(prompt?.text ?? "", id, {
+        isMeta: prompt?.isMeta === true,
+      });
       sessions.push({
         id,
         title,
-        firstPrompt: text ?? undefined,
+        firstPrompt: prompt?.text,
         mtime: fileStat.mtime,
         created: fileStat.birthtime,
         project,
@@ -408,12 +433,14 @@ async function listSessionsFromJsonl(
     try {
       const fileStat = await stat(filePath);
       const id = file.replace(/\.jsonl$/, "");
-      const text = await readFirstUserMessage(filePath);
-      const title = extractSessionTitle(text ?? "", id);
+      const prompt = await readFirstUserMessage(filePath);
+      const title = extractSessionTitle(prompt?.text ?? "", id, {
+        isMeta: prompt?.isMeta === true,
+      });
       sessions.push({
         id,
         title,
-        firstPrompt: text ?? undefined,
+        firstPrompt: prompt?.text,
         mtime: fileStat.mtime,
         created: fileStat.birthtime,
         project,
@@ -807,7 +834,7 @@ export async function readSession(
       if (textBlocks.length === 0 && toolCalls.length === 0 && contentBlocks.length === 0) continue;
 
       if (type === "user" && textBlocks.length > 0 && title === sessionId) {
-        title = extractSessionTitle(textBlocks[0]!, sessionId);
+        title = extractSessionTitle(textBlocks[0]!, sessionId, { isMeta: obj.isMeta === true });
       }
 
       const last = messages[messages.length - 1];

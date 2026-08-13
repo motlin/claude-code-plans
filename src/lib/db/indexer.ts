@@ -429,7 +429,8 @@ export async function indexSessionsIndex(
     const branch = normalizeGitBranch(entry.gitBranch as string | undefined);
     const entryProjectPath = entry.projectPath as string | undefined;
     const sidechain = entry.isSidechain as boolean | undefined;
-    const title = summ ?? extractSessionTitle(fp ?? "", entry.sessionId);
+    const title =
+      summ ?? extractSessionTitle(fp?.text ?? "", entry.sessionId, { isMeta: fp?.isMeta === true });
     const createdAt = entry.created ? new Date(entry.created as string).getTime() : entry.fileMtime;
 
     db.insert(schema.sessions)
@@ -437,7 +438,7 @@ export async function indexSessionsIndex(
         id: entry.sessionId,
         projectId: project,
         title,
-        firstPrompt: fp,
+        firstPrompt: fp?.text ?? null,
         summary: summ ?? null,
         customTitle: null,
         // sessions-index.json counts messages with Claude Code's own
@@ -456,7 +457,7 @@ export async function indexSessionsIndex(
         target: schema.sessions.id,
         set: {
           title: sql<string>`coalesce(${schema.sessions.customTitle}, ${title})`,
-          firstPrompt: fp,
+          firstPrompt: fp?.text ?? null,
           summary: summ ?? null,
           gitBranch: branch,
           cwd: entryProjectPath ?? null,
@@ -679,12 +680,14 @@ export async function indexJsonlFile(
     };
     updates["filePath"] = filePath;
     updates["projectId"] = project;
-    updates["firstPrompt"] = firstPrompt;
+    updates["firstPrompt"] = firstPrompt?.text ?? null;
     if (customTitle) {
       updates["customTitle"] = customTitle;
       updates["title"] = customTitle;
     } else if (!existingSession.customTitle && !existingSession.summary) {
-      updates["title"] = extractSessionTitle(firstPrompt ?? "", sessionId);
+      updates["title"] = extractSessionTitle(firstPrompt?.text ?? "", sessionId, {
+        isMeta: firstPrompt?.isMeta === true,
+      });
     }
     if (sessionCwd) {
       updates["cwd"] = sessionCwd;
@@ -694,14 +697,18 @@ export async function indexJsonlFile(
     }
     db.update(schema.sessions).set(updates).where(eq(schema.sessions.id, sessionId)).run();
   } else {
-    const title = customTitle ?? extractSessionTitle(firstPrompt ?? "", sessionId);
+    const title =
+      customTitle ??
+      extractSessionTitle(firstPrompt?.text ?? "", sessionId, {
+        isMeta: firstPrompt?.isMeta === true,
+      });
 
     db.insert(schema.sessions)
       .values({
         id: sessionId,
         projectId: project,
         title,
-        firstPrompt,
+        firstPrompt: firstPrompt?.text ?? null,
         summary: null,
         customTitle: customTitle ?? null,
         messageCount,

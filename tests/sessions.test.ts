@@ -127,7 +127,9 @@ describe("extractSessionTitle", () => {
       "",
       "If no description was provided, ask the user for one.",
     ].join("\n");
-    expect(extractSessionTitle(text)).toBe("cherry pick all the upstream commits");
+    expect(extractSessionTitle(text, undefined, { isMeta: true })).toBe(
+      "cherry pick all the upstream commits",
+    );
   });
 
   it("falls back to the command's first line when the argument block is empty", () => {
@@ -142,18 +144,40 @@ describe("extractSessionTitle", () => {
       "",
       "</instructions>",
     ].join("\n");
-    expect(extractSessionTitle(text)).toBe("Process all tasks automatically.");
-  });
-
-  it("keeps the trailing prompt when an empty argument block opens the text", () => {
-    expect(extractSessionTitle("<instructions>\n\n</instructions>\nship the release")).toBe(
-      "ship the release",
+    expect(extractSessionTitle(text, undefined, { isMeta: true })).toBe(
+      "Process all tasks automatically.",
     );
   });
 
+  it("keeps the trailing prompt when an empty argument block opens the text", () => {
+    expect(
+      extractSessionTitle("<instructions>\n\n</instructions>\nship the release", undefined, {
+        isMeta: true,
+      }),
+    ).toBe("ship the release");
+  });
+
   it("drops a stray argument tag that has no closing partner", () => {
-    expect(extractSessionTitle("Review this <description> the login flow")).toBe(
-      "Review this the login flow",
+    expect(
+      extractSessionTitle("Review this <description> the login flow", undefined, { isMeta: true }),
+    ).toBe("Review this the login flow");
+  });
+
+  it("keeps an argument-like element the user typed instead of reducing the title to it", () => {
+    const text = "Why does <description>the payload</description> break the parser?";
+    expect(extractSessionTitle(text)).toBe(text);
+  });
+
+  it("keeps a pasted multi-line element the user typed", () => {
+    const text = [
+      "Explain this config",
+      "",
+      "<description>",
+      "internal notes",
+      "</description>",
+    ].join("\n");
+    expect(extractSessionTitle(text)).toBe(
+      "Explain this config <description> internal notes </description>",
     );
   });
 });
