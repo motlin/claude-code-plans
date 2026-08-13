@@ -101,7 +101,13 @@ const SESSION_FILES = {
   },
 } satisfies SessionFiles;
 
-function DrawerHarness({ sessionFiles = SESSION_FILES }: { sessionFiles?: SessionFiles }) {
+function DrawerHarness({
+  sessionFiles = SESSION_FILES,
+  unscannedRecordCount = 0,
+}: {
+  sessionFiles?: SessionFiles;
+  unscannedRecordCount?: number;
+}) {
   const [sourceSelection, setSourceSelection] = useState<FileSourceSelection>(
     DEFAULT_FILE_SOURCE_SELECTION,
   );
@@ -126,6 +132,7 @@ function DrawerHarness({ sessionFiles = SESSION_FILES }: { sessionFiles?: Sessio
   return (
     <FilesDrawer
       sessionFiles={sessionFiles}
+      unscannedRecordCount={unscannedRecordCount}
       sourceSelection={sourceSelection}
       onSourceSelected={setSourceSelected}
       onUnselectAllSources={unselectAll}
@@ -162,6 +169,18 @@ describe("FilesDrawer", () => {
         "Thinking (0)",
         "Other (0)",
       ],
+    });
+  });
+
+  it("reports source counts as floors when the transcript window hides earlier records", () => {
+    render(<DrawerHarness unscannedRecordCount={3200} />);
+
+    expect({
+      count: screen.getByLabelText("3 items in the loaded messages").textContent,
+      note: screen.getByRole("note").textContent,
+    }).toStrictEqual({
+      count: "3+",
+      note: "Counted from the loaded messages only — 3200 earlier records have not been scanned. Load earlier messages to include them.",
     });
   });
 
@@ -229,6 +248,22 @@ describe("FilesDrawer", () => {
       ["/home/alice/example/agent.ts"],
       ["/home/alice/example/agent.ts"],
     ]);
+  });
+
+  it("marks the Files pill as a floor while earlier records are unscanned", () => {
+    render(
+      <FilesDrawerToggle
+        count={12}
+        unscannedRecordCount={3200}
+        isOpen={false}
+        onToggle={vi.fn()}
+      />,
+    );
+
+    const pill = screen.getByRole("button", { name: "Files 12+" });
+    expect(pill.getAttribute("title")).toBe(
+      "Counted from the loaded messages only — 3200 earlier records have not been scanned. Load earlier messages to include them.",
+    );
   });
 
   it("disables the Files pill when extraction found no files", () => {

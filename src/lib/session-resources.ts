@@ -24,6 +24,30 @@ interface ToolUseOwner {
   toolName: string;
 }
 
+/**
+ * Files and links are extracted from the transcript window the client holds,
+ * not from the whole JSONL (see lib/structured-transcript.ts): a session longer
+ * than the window has records nobody has scanned yet. So every surface that
+ * shows one of these counts renders it as a floor -- `12+` -- and explains the
+ * remainder, rather than passing a partial tally off as the session's total.
+ * Paging history in shrinks `unscannedRecordCount` towards zero, at which point
+ * the count is the whole session's and the marks disappear.
+ */
+export function formatResourceCount(count: number, unscannedRecordCount: number): string {
+  return unscannedRecordCount > 0 ? `${count}+` : String(count);
+}
+
+export function resourceCoverageNote(unscannedRecordCount: number): string | undefined {
+  if (unscannedRecordCount <= 0) return undefined;
+
+  const records =
+    unscannedRecordCount === 1
+      ? "1 earlier record has"
+      : `${unscannedRecordCount} earlier records have`;
+  const included = unscannedRecordCount === 1 ? "it" : "them";
+  return `Counted from the loaded messages only — ${records} not been scanned. Load earlier messages to include ${included}.`;
+}
+
 function getContentBlocks(line: SessionLine): SessionContentBlock[] {
   if (line.type !== "user" && line.type !== "assistant") return [];
   const content = line.message?.content;

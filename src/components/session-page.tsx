@@ -417,6 +417,9 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
     () => processTranscript(transcript.records, transcript.startIndex),
     [transcript.records, transcript.startIndex],
   );
+  // Both extractions see only the loaded window, so every surface that shows
+  // one of their counts also takes `transcript.startIndex` -- the records still
+  // on the server -- and reports the count as a floor rather than a total.
   const sessionFiles = useExtractedSessionFiles(processed.lines, data.homeRoot);
   const sessionLinks = useExtractedSessionLinks(
     processed.lines,
@@ -624,11 +627,13 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
             )}
             <FilesDrawerToggle
               count={sessionFiles.totalCount}
+              unscannedRecordCount={transcript.startIndex}
               isOpen={filesDrawerState.openDrawer === "files" && sessionFiles.totalCount > 0}
               onToggle={filesDrawerState.toggleFilesDrawer}
             />
             <LinksDrawerToggle
               count={linkDisplay.totalCount}
+              unscannedRecordCount={transcript.startIndex}
               isOpen={filesDrawerState.openDrawer === "links" && sessionLinks.totalCount > 0}
               onToggle={filesDrawerState.toggleLinksDrawer}
             />
@@ -783,6 +788,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
       {filesDrawerState.openDrawer === "files" && sessionFiles.totalCount > 0 && (
         <FilesDrawer
           sessionFiles={sessionFiles}
+          unscannedRecordCount={transcript.startIndex}
           sourceSelection={filesDrawerState.sourceSelection}
           onSourceSelected={filesDrawerState.setSourceSelected}
           onUnselectAllSources={filesDrawerState.unselectAllSources}
@@ -793,6 +799,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
       {filesDrawerState.openDrawer === "links" && sessionLinks.totalCount > 0 && (
         <LinksDrawer
           display={linkDisplay}
+          unscannedRecordCount={transcript.startIndex}
           includeToolsAndThinking={linksDrawerState.includeToolsAndThinking}
           onIncludeToolsAndThinkingChange={linksDrawerState.setIncludeToolsAndThinking}
           onClose={filesDrawerState.closeDrawer}

@@ -82,13 +82,20 @@ const SESSION_LINKS = {
   totalCount: 4,
 } satisfies SessionLinks;
 
-function DrawerHarness({ sessionLinks = SESSION_LINKS }: { sessionLinks?: SessionLinks }) {
+function DrawerHarness({
+  sessionLinks = SESSION_LINKS,
+  unscannedRecordCount = 0,
+}: {
+  sessionLinks?: SessionLinks;
+  unscannedRecordCount?: number;
+}) {
   const [includeToolsAndThinking, setIncludeToolsAndThinking] = useState(false);
   const display = useSessionLinkDisplay(sessionLinks, includeToolsAndThinking);
 
   return (
     <LinksDrawer
       display={display}
+      unscannedRecordCount={unscannedRecordCount}
       includeToolsAndThinking={includeToolsAndThinking}
       onIncludeToolsAndThinkingChange={setIncludeToolsAndThinking}
       onClose={vi.fn()}
@@ -126,6 +133,18 @@ describe("LinksDrawer", () => {
     }).toStrictEqual({
       count: "4",
       labels: ["alice/project#100", "bob/project#200", "Design notes", "Example guide"],
+    });
+  });
+
+  it("reports the link count as a floor when the transcript window hides earlier records", () => {
+    render(<DrawerHarness unscannedRecordCount={3200} />);
+
+    expect({
+      count: screen.getByLabelText("2 items in the loaded messages").textContent,
+      note: screen.getByRole("note").textContent,
+    }).toStrictEqual({
+      count: "2+",
+      note: "Counted from the loaded messages only — 3200 earlier records have not been scanned. Load earlier messages to include them.",
     });
   });
 
@@ -262,6 +281,17 @@ describe("LinksDrawer", () => {
       ],
       jumpCalls: [[10]],
     });
+  });
+
+  it("marks the Links pill as a floor while earlier records are unscanned", () => {
+    render(
+      <LinksDrawerToggle count={3} unscannedRecordCount={3200} isOpen={false} onToggle={vi.fn()} />,
+    );
+
+    const pill = screen.getByRole("button", { name: "Links 3+" });
+    expect(pill.getAttribute("title")).toBe(
+      "Counted from the loaded messages only — 3200 earlier records have not been scanned. Load earlier messages to include them.",
+    );
   });
 
   it("exports no credentialed enrichers and disables a zero-count pill", () => {

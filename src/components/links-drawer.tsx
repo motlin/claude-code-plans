@@ -18,6 +18,7 @@ import {
 } from "react";
 
 import { writeClipboardText } from "../lib/clipboard";
+import { formatResourceCount, resourceCoverageNote } from "../lib/session-resources";
 import {
   extractSessionLinks,
   type LinkEntry,
@@ -116,21 +117,29 @@ export function useSessionLinkDisplay(
 
 interface LinksDrawerToggleProps {
   count: number;
+  /** JSONL records before the loaded window, which `count` never saw. */
+  unscannedRecordCount?: number;
   isOpen: boolean;
   onToggle: () => void;
 }
 
-export function LinksDrawerToggle({ count, isOpen, onToggle }: LinksDrawerToggleProps) {
+export function LinksDrawerToggle({
+  count,
+  unscannedRecordCount = 0,
+  isOpen,
+  onToggle,
+}: LinksDrawerToggleProps) {
   return (
     <button
       type="button"
       disabled={count === 0}
       aria-expanded={isOpen}
+      title={resourceCoverageNote(unscannedRecordCount)}
       onClick={onToggle}
       className={`${pillStyles.outline} disabled:cursor-not-allowed disabled:opacity-40 ${isOpen ? "bg-bg-200 text-text-100" : ""}`}
     >
       <LinkIcon className="h-3.5 w-3.5" aria-hidden="true" />
-      Links {count}
+      Links {formatResourceCount(count, unscannedRecordCount)}
     </button>
   );
 }
@@ -177,6 +186,8 @@ function LinkRow({ entry, copied, onCopy }: LinkRowProps) {
 
 interface LinksDrawerProps {
   display: SessionLinkDisplay;
+  /** JSONL records before the loaded window, which extraction never saw. */
+  unscannedRecordCount?: number;
   includeToolsAndThinking: boolean;
   onIncludeToolsAndThinkingChange: (include: boolean) => void;
   onClose: () => void;
@@ -184,6 +195,7 @@ interface LinksDrawerProps {
 
 export function LinksDrawer({
   display,
+  unscannedRecordCount = 0,
   includeToolsAndThinking,
   onIncludeToolsAndThinkingChange,
   onClose,
@@ -256,6 +268,7 @@ export function LinksDrawer({
     <SessionDrawer
       title="Links"
       count={display.totalCount}
+      unscannedRecordCount={unscannedRecordCount}
       onClose={onClose}
       headerContent={
         <label className="flex shrink-0 items-center gap-1.5 text-[11px] text-text-300">

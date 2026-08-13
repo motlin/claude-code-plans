@@ -9,6 +9,8 @@ import {
   useState,
 } from "react";
 
+import { formatResourceCount, resourceCoverageNote } from "../lib/session-resources";
+
 const DEFAULT_WIDTH = 360;
 const MINIMUM_WIDTH = 280;
 const MAXIMUM_WIDTH = 720;
@@ -17,6 +19,8 @@ const KEYBOARD_RESIZE_STEP = 10;
 interface SessionDrawerProps {
   title: string;
   count: number;
+  /** JSONL records before the loaded window, which `count` never saw. */
+  unscannedRecordCount?: number;
   onClose: () => void;
   headerContent?: ReactNode;
   children: ReactNode;
@@ -36,10 +40,12 @@ function clampWidth(width: number): number {
 export function SessionDrawer({
   title,
   count,
+  unscannedRecordCount = 0,
   onClose,
   headerContent,
   children,
 }: SessionDrawerProps) {
+  const coverageNote = resourceCoverageNote(unscannedRecordCount);
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const titleId = useId();
   const bodyId = useId();
@@ -136,10 +142,12 @@ export function SessionDrawer({
         </h2>
         {headerContent}
         <span
-          aria-label={`${count} items`}
+          aria-label={
+            coverageNote === undefined ? `${count} items` : `${count} items in the loaded messages`
+          }
           className="rounded-full bg-bg-300 px-2 py-0.5 text-xs font-medium text-text-300"
         >
-          {count}
+          {formatResourceCount(count, unscannedRecordCount)}
         </span>
         <button
           type="button"
@@ -157,6 +165,14 @@ export function SessionDrawer({
         aria-label={`${title} contents`}
         className="min-h-0 flex-1 overflow-y-auto"
       >
+        {coverageNote !== undefined && (
+          <p
+            role="note"
+            className="border-b border-border-300/15 bg-bg-300/40 px-4 py-2 text-[11px] text-text-400"
+          >
+            {coverageNote}
+          </p>
+        )}
         {children}
       </div>
     </aside>

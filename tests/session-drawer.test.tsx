@@ -62,6 +62,28 @@ describe("SessionDrawer", () => {
     });
   });
 
+  it("flags a windowed count as a floor and says how much is unscanned", () => {
+    render(
+      <SessionDrawer title="Session files" count={24} unscannedRecordCount={3200} onClose={vi.fn()}>
+        <div>First resource</div>
+      </SessionDrawer>,
+    );
+
+    expect({
+      count: screen.getByLabelText("24 items in the loaded messages").textContent,
+      note: screen.getByRole("note").textContent,
+    }).toStrictEqual({
+      count: "24+",
+      note: "Counted from the loaded messages only — 3200 earlier records have not been scanned. Load earlier messages to include them.",
+    });
+  });
+
+  it("omits the coverage note once the whole session is loaded", () => {
+    renderDrawer();
+
+    expect(screen.queryByRole("note")).toBe(null);
+  });
+
   it("resizes from the starting pointer position and clamps to exact boundaries", () => {
     renderDrawer();
     const drawer = screen.getByRole("complementary", { name: "Session files" });

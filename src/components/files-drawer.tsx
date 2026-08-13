@@ -2,6 +2,7 @@ import { Copy, Files as FilesIcon, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 
 import { writeClipboardText } from "../lib/clipboard";
+import { formatResourceCount, resourceCoverageNote } from "../lib/session-resources";
 import {
   extractSessionFiles,
   getFileSourceKey,
@@ -151,27 +152,37 @@ export function useExtractedSessionFiles(
 
 interface FilesDrawerToggleProps {
   count: number;
+  /** JSONL records before the loaded window, which `count` never saw. */
+  unscannedRecordCount?: number;
   isOpen: boolean;
   onToggle: () => void;
 }
 
-export function FilesDrawerToggle({ count, isOpen, onToggle }: FilesDrawerToggleProps) {
+export function FilesDrawerToggle({
+  count,
+  unscannedRecordCount = 0,
+  isOpen,
+  onToggle,
+}: FilesDrawerToggleProps) {
   return (
     <button
       type="button"
       disabled={count === 0}
       aria-expanded={isOpen}
+      title={resourceCoverageNote(unscannedRecordCount)}
       onClick={onToggle}
       className={`${pillStyles.outline} disabled:cursor-not-allowed disabled:opacity-40 ${isOpen ? "bg-bg-200 text-text-100" : ""}`}
     >
       <FilesIcon className="h-3.5 w-3.5" aria-hidden="true" />
-      Files {count}
+      Files {formatResourceCount(count, unscannedRecordCount)}
     </button>
   );
 }
 
 interface FilesDrawerProps {
   sessionFiles: SessionFiles;
+  /** JSONL records before the loaded window, which extraction never saw. */
+  unscannedRecordCount?: number;
   sourceSelection: FileSourceSelection;
   onSourceSelected: (source: FileSourceKey, selected: boolean) => void;
   onUnselectAllSources: () => void;
@@ -214,6 +225,7 @@ function FileRow({ file, copied, onCopy }: FileRowProps) {
 
 export function FilesDrawer({
   sessionFiles,
+  unscannedRecordCount = 0,
   sourceSelection,
   onSourceSelected,
   onUnselectAllSources,
@@ -272,7 +284,12 @@ export function FilesDrawer({
       : `No files match “${searchText}”.`;
 
   return (
-    <SessionDrawer title="Files" count={sessionFiles.totalCount} onClose={onClose}>
+    <SessionDrawer
+      title="Files"
+      count={sessionFiles.totalCount}
+      unscannedRecordCount={unscannedRecordCount}
+      onClose={onClose}
+    >
       <section className="border-b border-border-300/15 p-4" aria-labelledby="file-sources-heading">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h3 id="file-sources-heading" className="text-xs font-semibold text-text-200">
