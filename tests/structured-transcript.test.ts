@@ -139,6 +139,73 @@ describe("readStructuredTranscript", () => {
     expect(transcript.precedingMessageCount).toBe(1);
   });
 
+  it("counts every countable record type before the window and no other", () => {
+    // One row per record shape a real session puts in front of the window. The
+    // preceding records are never parsed for their content -- only counted --
+    // so this fixture is what stops the count from drifting when the scan that
+    // produces it changes.
+    const preceding: Record<string, unknown>[] = [
+      { type: "user", uuid: "p-0", message: { role: "user", content: "string content" } },
+      {
+        type: "user",
+        uuid: "p-1",
+        message: { role: "user", content: [{ type: "text", text: "array content" }] },
+      },
+      {
+        type: "assistant",
+        uuid: "p-2",
+        message: { role: "assistant", content: [{ type: "text", text: "reply" }] },
+      },
+      {
+        type: "assistant",
+        uuid: "p-3",
+        message: { role: "assistant", content: [{ type: "thinking", thinking: "hmm" }] },
+      },
+      {
+        type: "assistant",
+        uuid: "p-4",
+        message: { role: "assistant", content: [{ type: "tool_use", id: "t-1", name: "Bash" }] },
+      },
+      {
+        // A tool result alongside text still carries a message.
+        type: "user",
+        uuid: "p-5",
+        message: {
+          role: "user",
+          content: [
+            { type: "tool_result", tool_use_id: "t-1" },
+            { type: "text", text: "and" },
+          ],
+        },
+      },
+      // Everything below is not a message.
+      {
+        type: "user",
+        uuid: "p-6",
+        message: { role: "user", content: [{ type: "tool_result", tool_use_id: "t-1" }] },
+      },
+      {
+        type: "assistant",
+        uuid: "p-7",
+        isSidechain: true,
+        message: { role: "assistant", content: [{ type: "text", text: "sidechain" }] },
+      },
+      { type: "summary", uuid: "p-8", summary: "summary" },
+      { type: "system", uuid: "p-9", subtype: "turn_duration", durationMs: 12 },
+      { type: "attachment", uuid: "p-10", attachment: { type: "file", content: "text" } },
+      { type: "queue-operation", uuid: "p-11", operation: "enqueue" },
+      { type: "user", uuid: "p-12", message: { role: "user" } },
+    ];
+    const windowRecords = [userMessage(0), userMessage(1)];
+    seedSession("every-type", [...preceding, ...windowRecords]);
+
+    const transcript = readStructuredTranscript(db.index, "every-type", { maxRecords: 2 });
+
+    expect(transcript.records).toStrictEqual(windowRecords);
+    expect(transcript.startIndex).toBe(preceding.length);
+    expect(transcript.precedingMessageCount).toBe(6);
+  });
+
   it("reports an empty window for an unknown session", () => {
     expect(readStructuredTranscript(db.index, "missing")).toStrictEqual({
       records: [],

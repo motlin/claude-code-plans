@@ -5,7 +5,11 @@ import { openTestDb, type AppDb } from "../src/lib/db/connection";
 import { indexJsonlFile, indexSessionsIndex } from "../src/lib/db/indexer";
 import { listRecentSessionsFromDb, getSessionMeta } from "../src/lib/db/queries";
 import { getCurrentSessionMessageIndex, getSessionViewedState } from "../src/lib/db/viewed-state";
-import { countMessageRecords, isCountableMessageRecord } from "../src/lib/message-count";
+import {
+  countMessageRecords,
+  isCountableMessageRecord,
+  mightBeCountableMessageLine,
+} from "../src/lib/message-count";
 import { listSessions, readSession } from "../src/lib/sessions";
 import * as schema from "../src/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -122,6 +126,39 @@ describe("single message-count definition", () => {
       false,
     ]);
     expect(countMessageRecords(fixtureRecords)).toBe(EXPECTED_MESSAGE_COUNT);
+  });
+
+  it("the line prefilter accepts every line the record predicate would count", () => {
+    // The prefilter exists only to skip a JSON.parse, so a false positive is
+    // harmless but a false negative silently undercounts. Pin the direction
+    // that matters against every fixture record, in the compact encoding the
+    // CLI writes and in a whitespace-padded one it is still allowed to write.
+    const encodings = fixtureRecords.flatMap((record) => [
+      JSON.stringify(record),
+      JSON.stringify(record).replaceAll('"type":', '"type" : '),
+    ]);
+
+    const undercounted = encodings.filter(
+      (line) =>
+        isCountableMessageRecord(JSON.parse(line)) === true &&
+        mightBeCountableMessageLine(line) === false,
+    );
+
+    expect(undercounted).toStrictEqual([]);
+  });
+
+  it("the line prefilter skips the record types that can never be messages", () => {
+    const skipped = [
+      { type: "summary", summary: "A short summary", leafUuid: "uuid-6" },
+      { type: "system", subtype: "turn_duration", durationMs: 1200, uuid: "uuid-7" },
+      { type: "attachment", uuid: "uuid-8", attachment: { type: "file", content: "text" } },
+      { type: "queue-operation", uuid: "uuid-9", operation: "enqueue" },
+      { type: "file-history-snapshot", uuid: "uuid-10", snapshot: { messageId: "m" } },
+    ];
+
+    expect(
+      skipped.map((record) => mightBeCountableMessageLine(JSON.stringify(record))),
+    ).toStrictEqual([false, false, false, false, false]);
   });
 
   it("every surface reports the same count for the fixture transcript", async () => {

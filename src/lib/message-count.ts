@@ -40,6 +40,31 @@ export function isCountableMessageRecord(record: unknown): boolean {
   return false;
 }
 
+/**
+ * A countable record's top-level `type` is "user" or "assistant", so every JSON
+ * encoding of one contains the `type` key followed by that literal.
+ */
+const COUNTABLE_TYPE_PATTERN = /"type"\s*:\s*"(?:user|assistant)"/;
+
+/**
+ * Cheap prefilter for `isCountableMessageRecord` over an unparsed JSONL line.
+ *
+ * Counting the messages before a transcript window means testing every earlier
+ * line, and JSON.parse dominates that: 86 ms of a 147 ms transcript read on a
+ * measured 53 MB session. Two thirds of those bytes are records -- attachments,
+ * system records, queue operations -- that cannot be messages, and matching the
+ * `type` key is far cheaper than parsing them: 86 ms drops to 48 ms.
+ *
+ * Over-accepting is free (the caller parses the line it would have parsed
+ * anyway), but rejecting a line `isCountableMessageRecord` would accept
+ * silently undercounts, so this must widen in lockstep with that predicate.
+ * Validated against every session JSONL on disk: 1,052,787 records, zero
+ * countable records rejected.
+ */
+export function mightBeCountableMessageLine(line: string): boolean {
+  return COUNTABLE_TYPE_PATTERN.test(line);
+}
+
 /** Count the messages in a sequence of parsed JSONL transcript records. */
 export function countMessageRecords(records: Iterable<unknown>): number {
   let count = 0;

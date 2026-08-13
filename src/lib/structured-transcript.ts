@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { readFileSync, statSync } from "node:fs";
 import * as schema from "./db/schema";
 import { getSubagentById } from "./db/queries";
-import { isCountableMessageRecord } from "./message-count";
+import { isCountableMessageRecord, mightBeCountableMessageLine } from "./message-count";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
@@ -106,7 +106,9 @@ export function readStructuredTranscript(
 
     let precedingMessageCount = 0;
     for (let i = 0; i < startIndex; i += 1) {
-      if (isCountableMessageRecord(parseLine(lines[i]!))) precedingMessageCount += 1;
+      const line = lines[i]!;
+      if (!mightBeCountableMessageLine(line)) continue;
+      if (isCountableMessageRecord(parseLine(line))) precedingMessageCount += 1;
     }
 
     return { records, byteOffset, startIndex, precedingMessageCount };
