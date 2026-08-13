@@ -104,7 +104,14 @@ export const TranscriptResponse = z.object({
 });
 export type TranscriptData = z.infer<typeof TranscriptResponse>;
 
-/** Index just past the newest record the window holds. */
+/**
+ * Index just past the newest record the window holds. `records.length` is the
+ * right basis even though `mergeTranscriptData` may have dropped duplicates:
+ * merging re-keys every survivor contiguously from `startIndex`, so a dropped
+ * record leaves no hole to account for. Keying an append past this — at the
+ * pre-dedupe span instead — would open a gap that the contiguity gate then
+ * resolves by discarding the whole window.
+ */
 export function transcriptEndIndex(transcript: TranscriptData): number {
   return transcript.startIndex + transcript.records.length;
 }

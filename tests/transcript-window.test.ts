@@ -4,6 +4,7 @@ import {
   fetchEarlierTranscript,
   mergeTranscriptData,
   sessionQueryKeys,
+  transcriptEndIndex,
   type TranscriptData,
 } from "../src/lib/api/sessions";
 
@@ -73,6 +74,32 @@ describe("mergeTranscriptData", () => {
       record(0),
       record(1),
     ]);
+  });
+
+  it("keeps every held record when a re-broadcast of already-seen lines precedes an append", () => {
+    // The watcher re-sends lines the window already holds, so the dedupe drops
+    // them; the next append must not land on top of the records that survived.
+    const cached = window_(0, 5);
+
+    const rebroadcast = mergeTranscriptData(cached, {
+      records: [record(3), record(4)],
+      byteOffset: cached.byteOffset,
+      startIndex: transcriptEndIndex(cached),
+      precedingMessageCount: cached.precedingMessageCount,
+    });
+    const appended = mergeTranscriptData(rebroadcast, {
+      records: [record(5), record(6)],
+      byteOffset: rebroadcast.byteOffset,
+      startIndex: transcriptEndIndex(rebroadcast),
+      precedingMessageCount: rebroadcast.precedingMessageCount,
+    });
+
+    expect(appended).toStrictEqual({
+      records: [record(0), record(1), record(2), record(3), record(4), record(5), record(6)],
+      byteOffset: 0,
+      startIndex: 0,
+      precedingMessageCount: 0,
+    });
   });
 });
 
