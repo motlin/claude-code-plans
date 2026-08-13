@@ -82,9 +82,9 @@ describe("server functions", () => {
     });
   });
 
-  it("returns the current terminal defaults when Ghostty omits appearance settings", async () => {
+  it("keeps the Nerd Font stack when Ghostty omits appearance settings", async () => {
     await expect(getGhosttyAppearance()).resolves.toStrictEqual({
-      fontFamily: '"JetBrains Mono", monospace',
+      fontFamily: '"MesloLGS Nerd Font Mono", "MesloLGS NF Web", "JetBrains Mono", monospace',
       fontSize: 13,
       theme: {
         background: "#111318",

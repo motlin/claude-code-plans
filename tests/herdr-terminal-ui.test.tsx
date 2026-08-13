@@ -6,13 +6,14 @@ import { HerdrTerminal } from "../src/components/herdr-terminal";
 import type { GhosttyAppearance } from "../src/lib/server-fns";
 
 const DEFAULT_APPEARANCE: GhosttyAppearance = {
-  fontFamily: '"JetBrains Mono", monospace',
+  fontFamily: '"MesloLGS Nerd Font Mono", "MesloLGS NF Web", "JetBrains Mono", monospace',
   fontSize: 13,
   theme: { background: "#111318", foreground: "#e6e6e6" },
 };
 
 const GHOSTTY_APPEARANCE: GhosttyAppearance = {
-  fontFamily: '"MesloLGS Nerd Font Mono", "MesloLGS NF Web", "JetBrains Mono", monospace',
+  fontFamily:
+    '"Alice Mono", "MesloLGS Nerd Font Mono", "MesloLGS NF Web", "JetBrains Mono", monospace',
   fontSize: 16,
   theme: {
     background: "#1d1f21",
@@ -184,7 +185,7 @@ describe("live herdr terminal UI", () => {
           convertEol: false,
           cursorBlink: false,
           disableStdin: true,
-          fontFamily: '"JetBrains Mono", monospace',
+          fontFamily: DEFAULT_APPEARANCE.fontFamily,
           fontSize: 13,
           scrollback: 0,
           theme: { background: "#111318", foreground: "#e6e6e6" },

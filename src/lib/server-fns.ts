@@ -2,7 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import type { ITheme } from "ghostty-web";
 import { readGhosttyConfig, type GhosttyConfig } from "./ghostty/config";
 
-const DEFAULT_FONT_FAMILY = '"JetBrains Mono", monospace';
+/**
+ * Glyph coverage has to survive a machine with no Ghostty config at all, so the
+ * Nerd Font stack is the floor rather than an addition to a configured face.
+ */
 const NERD_FONT_FALLBACKS =
   '"MesloLGS Nerd Font Mono", "MesloLGS NF Web", "JetBrains Mono", monospace';
 
@@ -27,7 +30,7 @@ function resolveGhosttyAppearance(config: GhosttyConfig): GhosttyAppearance {
   return {
     fontFamily: config.fontFamily
       ? `"${config.fontFamily}", ${NERD_FONT_FALLBACKS}`
-      : DEFAULT_FONT_FAMILY,
+      : NERD_FONT_FALLBACKS,
     fontSize: config.fontSize ?? 13,
     theme: {
       ...theme,
