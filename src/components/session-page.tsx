@@ -377,7 +377,6 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
   // leaves it alone, so it stays a reliable "did new work land?" signal.
   const endIndex = transcriptEndIndex(transcript);
   const viewedState = useSessionViewedState(sessionId, currentMessageIndex);
-  useMessageAnchorDeepLink(sessionId, transcript.startIndex, locationHash);
   const hasUnseen = useHasUnseenWork(sessionId);
   const { settings, setSetting } = useSettings();
   const [currentHost, setCurrentHost] = useState<string | undefined>(undefined);
@@ -411,12 +410,15 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
   }, [hasUnseen, sessionId]);
 
   // Keyed off the window's startIndex so every line carries its session-absolute
-  // JSONL record index: that index is the `#msg-<n>` anchor, and a copied link
-  // has to keep meaning the same message after the tail window slides forward.
+  // JSONL record index, which locates a row whose record was collapsed into a
+  // neighbour and resolves links copied before anchors moved to message uuids.
   const processed = useMemo(
     () => processTranscript(transcript.records, transcript.startIndex),
     [transcript.records, transcript.startIndex],
   );
+  // `uuidToLine` is the set of messages the window holds, which is how a
+  // `#msg-<uuid>` link decides whether to scroll or to page history in first.
+  useMessageAnchorDeepLink(sessionId, transcript.startIndex, locationHash, processed.uuidToLine);
   // Both extractions see only the loaded window, so every surface that shows
   // one of their counts also takes `transcript.startIndex` -- the records still
   // on the server -- and reports the count as a floor rather than a total.

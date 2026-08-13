@@ -50,6 +50,7 @@ function occurrenceFromChunk(chunk: TextChunk): ResourceOccurrence {
   return {
     source: chunk.source,
     anchorIndex: chunk.anchorIndex,
+    ...(chunk.anchorUuid === undefined ? {} : { anchorUuid: chunk.anchorUuid }),
     role: chunk.role,
     ...(chunk.tool === undefined ? {} : { tool: chunk.tool }),
   };

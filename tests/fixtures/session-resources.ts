@@ -6,10 +6,12 @@ export const sessionResourceLines = [
     subtype: "turn_duration",
     durationMs: 1_000,
     lineIndex: 100,
+    uuid: "uuid-100",
   },
   {
     type: "user",
     lineIndex: 200,
+    uuid: "uuid-200",
     message: {
       role: "user",
       content: "Inspect the example resources.",
@@ -18,6 +20,7 @@ export const sessionResourceLines = [
   {
     type: "assistant",
     lineIndex: 300,
+    uuid: "uuid-300",
     message: {
       role: "assistant",
       content: [
@@ -43,6 +46,7 @@ export const sessionResourceLines = [
   {
     type: "user",
     lineIndex: 400,
+    uuid: "uuid-400",
     message: {
       role: "user",
       content: [
@@ -57,6 +61,7 @@ export const sessionResourceLines = [
   {
     type: "assistant",
     lineIndex: 500,
+    uuid: "uuid-500",
     message: {
       role: "assistant",
       content: [
@@ -72,6 +77,7 @@ export const sessionResourceLines = [
   {
     type: "user",
     lineIndex: 600,
+    uuid: "uuid-600",
     message: {
       role: "user",
       content: [

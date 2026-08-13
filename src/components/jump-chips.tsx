@@ -41,7 +41,12 @@ export function JumpChips({ occurrences, resourceLabel = "file" }: JumpChipsProp
             disabled={reason !== undefined}
             title={reason ?? `Jump to mention ${mentionNumber}`}
             aria-label={`Jump to ${resourceLabel} mention ${mentionNumber}`}
-            onClick={() => jumpToMessage(occurrence.anchorIndex)}
+            onClick={() =>
+              jumpToMessage({
+                ...(occurrence.anchorUuid === undefined ? {} : { uuid: occurrence.anchorUuid }),
+                recordIndex: occurrence.anchorIndex,
+              })
+            }
             className="inline-flex min-w-6 items-center justify-center rounded-full border border-border-300/20 bg-bg-300 px-1.5 py-0.5 text-[10px] font-medium text-text-300 transition-colors hover:border-accent-100/60 hover:text-text-100 disabled:cursor-not-allowed disabled:border-border-300/10 disabled:text-text-500 disabled:opacity-50"
           >
             {mentionNumber}

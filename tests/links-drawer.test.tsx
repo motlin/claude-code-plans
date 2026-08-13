@@ -279,7 +279,7 @@ describe("LinksDrawer", () => {
         ["https://github.com/alice/project/pull/100"],
         ["https://github.com/alice/project/pull/100"],
       ],
-      jumpCalls: [[10]],
+      jumpCalls: [[{ recordIndex: 10 }]],
     });
   });
 

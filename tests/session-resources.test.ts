@@ -35,24 +35,28 @@ describe("scanSessionContent", () => {
         text: "Inspect the example resources.",
         source: "visible",
         anchorIndex: 200,
+        anchorUuid: "uuid-200",
         role: "user",
       },
       {
         text: "I will inspect the example file.",
         source: "visible",
         anchorIndex: 300,
+        anchorUuid: "uuid-300",
         role: "assistant",
       },
       {
         text: "Choose the example read tool.",
         source: "thinking",
         anchorIndex: 300,
+        anchorUuid: "uuid-300",
         role: "assistant",
       },
       {
         text: '{"file_path":"/tmp/test/alice.txt"}',
         source: "tool",
         anchorIndex: 300,
+        anchorUuid: "uuid-300",
         role: "assistant",
         tool: "Read",
       },
@@ -60,6 +64,7 @@ describe("scanSessionContent", () => {
         text: "Example file contents",
         source: "tool",
         anchorIndex: 300,
+        anchorUuid: "uuid-300",
         role: "user",
         tool: "Read",
       },
@@ -67,6 +72,7 @@ describe("scanSessionContent", () => {
         text: '{"command":"printf \'example\'"}',
         source: "tool",
         anchorIndex: 500,
+        anchorUuid: "uuid-500",
         role: "assistant",
         tool: "Bash",
       },
@@ -74,9 +80,24 @@ describe("scanSessionContent", () => {
         text: "First example line\nSecond example line",
         source: "tool",
         anchorIndex: 500,
+        anchorUuid: "uuid-500",
         role: "user",
         tool: "Bash",
       },
+    ]);
+  });
+
+  it("leaves the anchor uuid off a record that carries none, so the record index still locates it", () => {
+    expect(
+      scanSessionContent([
+        {
+          type: "user",
+          lineIndex: 12,
+          message: { role: "user", content: "Fabricated uuidless question" },
+        },
+      ]),
+    ).toStrictEqual([
+      { text: "Fabricated uuidless question", source: "visible", anchorIndex: 12, role: "user" },
     ]);
   });
 });

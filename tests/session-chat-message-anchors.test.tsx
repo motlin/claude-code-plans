@@ -108,16 +108,35 @@ function copyLinkOf(container: HTMLElement, text: string): string {
 }
 
 describe("SessionChat message anchors", () => {
-  it("anchors on the session-absolute record index, not the window position", () => {
+  it("anchors on the message's own uuid, not on its position in the file", () => {
     const wholeFile = renderWindow(RECORDS, 0);
     const wholeFileIds = anchorIds(wholeFile);
     cleanup();
     const tailWindow = renderWindow(RECORDS.slice(2), 2);
 
     expect({ wholeFileIds, tailWindowIds: anchorIds(tailWindow) }).toStrictEqual({
-      wholeFileIds: ["msg-0", "msg-1", "msg-2", "msg-3"],
-      tailWindowIds: ["msg-2", "msg-3"],
+      wholeFileIds: ["msg-u-1", "msg-a-1", "msg-u-2", "msg-a-2"],
+      tailWindowIds: ["msg-u-2", "msg-a-2"],
     });
+  });
+
+  it("keeps each turn's session-absolute record index on the row, for jumps at records that render no row of their own", () => {
+    const tailWindow = renderWindow(RECORDS.slice(2), 2);
+
+    expect(
+      Array.from(tailWindow.querySelectorAll("[id^='msg-']")).map((element) =>
+        element.getAttribute("data-record-index"),
+      ),
+    ).toStrictEqual(["2", "3"]);
+  });
+
+  it("falls back to the record index for a record that carries no uuid", () => {
+    const container = renderWindow(
+      [{ type: "user", message: { role: "user", content: "Fabricated uuidless question" } }],
+      7,
+    );
+
+    expect(anchorIds(container)).toStrictEqual(["msg-7"]);
   });
 
   it("copies the same link for a message whether or not the window has moved past it", () => {
@@ -130,8 +149,8 @@ describe("SessionChat message anchors", () => {
       wholeFileLink,
       tailWindowLink: copyLinkOf(tailWindow, "Fabricated second answer"),
     }).toStrictEqual({
-      wholeFileLink: "http://localhost:3000/#msg-3",
-      tailWindowLink: "http://localhost:3000/#msg-3",
+      wholeFileLink: "http://localhost:3000/#msg-a-2",
+      tailWindowLink: "http://localhost:3000/#msg-a-2",
     });
   });
 

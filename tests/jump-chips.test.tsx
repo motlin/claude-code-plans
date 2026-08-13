@@ -18,8 +18,8 @@ vi.mock("../src/lib/jump-to-message", () => ({
 }));
 
 const OCCURRENCES: ResourceOccurrence[] = [
-  { source: "visible", anchorIndex: 30, role: "user" },
-  { source: "tool", anchorIndex: 10, role: "assistant", tool: "Read" },
+  { source: "visible", anchorIndex: 30, anchorUuid: "u-30", role: "user" },
+  { source: "tool", anchorIndex: 10, anchorUuid: "u-10", role: "assistant", tool: "Read" },
   { source: "thinking", anchorIndex: 20, role: "assistant" },
 ];
 
@@ -30,7 +30,7 @@ describe("JumpChips", () => {
     vi.mocked(jumpToMessage).mockReset();
   });
 
-  it("numbers mentions in transcript order and dispatches their array indices", () => {
+  it("numbers mentions in transcript order and jumps to each mention's own message", () => {
     render(<JumpChips occurrences={OCCURRENCES} />);
 
     for (const mentionNumber of [1, 2, 3]) {
@@ -42,7 +42,14 @@ describe("JumpChips", () => {
     expect({
       chipLabels: screen.getAllByRole("button").map((button) => button.textContent),
       jumpCalls: vi.mocked(jumpToMessage).mock.calls,
-    }).toStrictEqual({ chipLabels: ["1", "2", "3"], jumpCalls: [[10], [20], [30]] });
+    }).toStrictEqual({
+      chipLabels: ["1", "2", "3"],
+      jumpCalls: [
+        [{ uuid: "u-10", recordIndex: 10 }],
+        [{ recordIndex: 20 }],
+        [{ uuid: "u-30", recordIndex: 30 }],
+      ],
+    });
   });
 
   it("disables tool and thinking mentions with settings explanations", () => {
@@ -66,7 +73,7 @@ describe("JumpChips", () => {
         "This mention is hidden because thinking is disabled in display settings.",
         "Jump to mention 3",
       ],
-      jumpCalls: [[30]],
+      jumpCalls: [[{ uuid: "u-30", recordIndex: 30 }]],
     });
   });
 });

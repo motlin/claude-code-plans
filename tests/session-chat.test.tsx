@@ -384,9 +384,11 @@ function renderTranscript(records: unknown[]): string {
   );
 }
 
-/** Class list of every turn wrapper (`<div id="msg-N">`), in document order. */
+/** Class list of every turn wrapper (`<div id="msg-UUID">`), in document order. */
 function turnWrapperClassNames(html: string): string[] {
-  return [...html.matchAll(/<div id="msg-\d+" class="([^"]*)"/g)].map((match) => match[1] ?? "");
+  return [...html.matchAll(/<div id="msg-[^"]+" data-record-index="\d+" class="([^"]*)"/g)].map(
+    (match) => match[1] ?? "",
+  );
 }
 
 describe("SessionChat turn spacing", () => {
@@ -746,13 +748,13 @@ describe("SessionChat sequential tool batches", () => {
       labels: summaryLabels(html),
       // The whole run stays one turn, so the row sits inside a single turn gap.
       turnWrappers: (html.match(/pb-\[var\(--chat-turn-gap\)\]/g) ?? []).length,
-      // jumpToMessage() walks back from a missing index, so the run's first
-      // line carries the only anchor.
-      anchors: [...html.matchAll(/<div id="(msg-\d+)"/g)].map((match) => match[1]),
+      // jumpToMessage() walks back from the record index a swallowed line
+      // carries, so the run's first line carries the only anchor.
+      anchors: [...html.matchAll(/<div id="(msg-[^"]+)"/g)].map((match) => match[1]),
     }).toStrictEqual({
       labels: ["Read 3 files, ran 2 commands"],
       turnWrappers: 1,
-      anchors: ["msg-0"],
+      anchors: ["msg-a-t1"],
     });
   });
 

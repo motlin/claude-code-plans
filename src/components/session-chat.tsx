@@ -13,7 +13,7 @@ import {
   Zap,
 } from "lucide-react";
 import { assertNever } from "../lib/assert-never";
-import { messageAnchorId } from "../lib/message-anchor";
+import { messageAnchorId, messageAnchorValue } from "../lib/message-anchor";
 import { formatTimestamp, formatRelativeTimestamp } from "../lib/timestamp-format";
 import { MarkdownArticle } from "./markdown-article";
 import { getToolRenderer } from "./tool-renderers";
@@ -102,15 +102,7 @@ function CopyToast({ visible }: { visible: boolean }) {
   );
 }
 
-function MessageToolbar({
-  line,
-  anchorIndex,
-  timestamp,
-}: {
-  line: MessageSessionLine;
-  anchorIndex: number;
-  timestamp?: string;
-}) {
+function MessageToolbar({ line, timestamp }: { line: MessageSessionLine; timestamp?: string }) {
   const [copied, setCopied] = useState<"text" | "link" | null>(null);
   const usage = summarizeUsage(line.usage);
   const relativeTimestamp = formatRelativeTimestamp(timestamp);
@@ -127,7 +119,7 @@ function MessageToolbar({
   }
 
   async function copyLink() {
-    const url = `${window.location.origin}${window.location.pathname}#${messageAnchorId(anchorIndex)}`;
+    const url = `${window.location.origin}${window.location.pathname}#${messageAnchorId(messageAnchorValue(line))}`;
     const ok = await writeClipboardText(url);
     if (ok) {
       setCopied("link");
@@ -212,15 +204,7 @@ function extractTextFromLine(line: MessageSessionLine): string[] {
     .map((b) => b.text);
 }
 
-function UserMessageActions({
-  line,
-  anchorIndex,
-  timestamp,
-}: {
-  line: MessageSessionLine;
-  anchorIndex: number;
-  timestamp?: string;
-}) {
+function UserMessageActions({ line, timestamp }: { line: MessageSessionLine; timestamp?: string }) {
   const [copied, setCopied] = useState<"text" | "link" | null>(null);
 
   async function copyText() {
@@ -233,7 +217,7 @@ function UserMessageActions({
   }
 
   async function copyLink() {
-    const url = `${window.location.origin}${window.location.pathname}#${messageAnchorId(anchorIndex)}`;
+    const url = `${window.location.origin}${window.location.pathname}#${messageAnchorId(messageAnchorValue(line))}`;
     const ok = await writeClipboardText(url);
     if (ok) {
       setCopied("link");
@@ -434,19 +418,16 @@ function UserTurn({ children }: { children: React.ReactNode }) {
 
 function LineEntry({
   line,
-  anchorIndex,
   nextLine,
   className,
   ...renderProps
 }: LineRenderProps & {
   line: SessionLine;
-  anchorIndex: number;
   nextLine: SessionLine | undefined;
   className?: string;
 }) {
   const content = renderSessionMessage({
     line,
-    anchorIndex,
     ...renderProps,
     nextLine,
   });
@@ -465,19 +446,16 @@ function LineEntry({
     .join(" ");
   return (
     <div
-      key={`line-${anchorIndex}`}
-      id={messageAnchorId(anchorIndex)}
+      key={`line-${line.lineIndex}`}
+      id={messageAnchorId(messageAnchorValue(line))}
+      data-record-index={line.lineIndex}
       className={wrapperClassName}
       title={line.type !== "user" ? (timestampTitle ?? undefined) : undefined}
     >
       {isAssistant && <TurnHeading speaker="Claude" />}
       {content}
       {isAssistant && (
-        <MessageToolbar
-          line={line}
-          anchorIndex={anchorIndex}
-          {...(rawTimestamp ? { timestamp: rawTimestamp } : {})}
-        />
+        <MessageToolbar line={line} {...(rawTimestamp ? { timestamp: rawTimestamp } : {})} />
       )}
     </div>
   );
@@ -520,15 +498,10 @@ function buildLineToolCalls(
     );
 }
 
-/** One line of a grouped run, paired with the anchor its row is addressed by. */
-interface GroupedToolLine {
-  line: SessionLine;
-  anchorIndex: number;
-}
-
 /** A run of tool calls sharing one source session, ready to summarize. */
 interface ToolCallBatch {
-  anchorIndex: number;
+  /** The run's first line: the row is anchored on it and carries its record index. */
+  head: SessionLine;
   sourceSessionId: string;
   calls: ClientToolCall[];
 }
@@ -553,7 +526,7 @@ function GroupedToolCallEntry({
   toolResultMap,
   subagentLookup,
 }: {
-  entries: GroupedToolLine[];
+  entries: SessionLine[];
   sessionId: string;
   toolResultMap: Map<string, ToolResultInfo>;
   subagentLookup: SubagentLookup;
@@ -562,7 +535,7 @@ function GroupedToolCallEntry({
   const batches = useMemo(() => {
     const result: ToolCallBatch[] = [];
     let openBatch: ToolCallBatch | undefined;
-    for (const { line, anchorIndex } of entries) {
+    for (const line of entries) {
       if (line.type !== "assistant") continue;
       const calls = buildLineToolCalls(line, toolResultMap, liveFailures, subagentLookup);
       if (calls.length === 0) continue;
@@ -571,7 +544,7 @@ function GroupedToolCallEntry({
         openBatch.calls.push(...calls);
         continue;
       }
-      openBatch = { anchorIndex, sourceSessionId, calls };
+      openBatch = { head: line, sourceSessionId, calls };
       result.push(openBatch);
     }
     return result;
@@ -584,8 +557,9 @@ function GroupedToolCallEntry({
       <TurnHeading speaker="Claude" />
       {batches.map((batch) => (
         <div
-          key={batch.anchorIndex}
-          id={messageAnchorId(batch.anchorIndex)}
+          key={batch.head.lineIndex}
+          id={messageAnchorId(messageAnchorValue(batch.head))}
+          data-record-index={batch.head.lineIndex}
           className="flex flex-col w-full"
         >
           <ToolCallSection calls={batch.calls} sessionId={batch.sourceSessionId} />
@@ -646,7 +620,6 @@ function SessionInitEntry({
               <LineEntry
                 key={`line-${index}`}
                 line={lines[index]!}
-                anchorIndex={lines[index]!.lineIndex}
                 nextLine={lines[index + 1]}
                 {...renderProps}
               />
@@ -754,7 +727,6 @@ function SessionLineList({
           <LineEntry
             key={`line-${groupStart}`}
             line={line}
-            anchorIndex={line.lineIndex}
             nextLine={lines[groupStart + 1]}
             {...renderProps}
           />,
@@ -763,10 +735,7 @@ function SessionLineList({
         elements.push(
           <GroupedToolCallEntry
             key={`group-${groupStart}`}
-            entries={groupIndices.map((index) => ({
-              line: lines[index]!,
-              anchorIndex: lines[index]!.lineIndex,
-            }))}
+            entries={groupIndices.map((index) => lines[index]!)}
             {...renderProps}
           />,
         );
@@ -786,7 +755,6 @@ function SessionLineList({
       <LineEntry
         key={`line-${i}`}
         line={line}
-        anchorIndex={line.lineIndex}
         nextLine={lines[i + 1]}
         {...(isBannerAfterBanner ? { className: "mt-1" } : {})}
         {...renderProps}
@@ -913,7 +881,6 @@ function isLineVisible(
  */
 function renderSessionMessage({
   line,
-  anchorIndex,
   sessionId,
   toolResultMap,
   subagentLookup,
@@ -925,7 +892,6 @@ function renderSessionMessage({
   nextLine,
 }: LineRenderProps & {
   line: SessionLine;
-  anchorIndex: number;
   nextLine?: SessionLine | undefined;
 }) {
   const sourceSessionId = getSourceSessionId(line, sessionId);
@@ -935,7 +901,6 @@ function renderSessionMessage({
       return (
         <UserEntry
           line={line}
-          anchorIndex={anchorIndex}
           sessionId={sourceSessionId}
           nextLine={nextLine}
           isSubagentSession={isSubagentSession}
@@ -1185,7 +1150,6 @@ function classifyUserContent(line: MessageSessionLine): UserContentKind {
 
 function UserEntry({
   line,
-  anchorIndex,
   sessionId,
   nextLine,
   isSubagentSession,
@@ -1193,7 +1157,6 @@ function UserEntry({
   allowedImageRoots,
 }: {
   line: MessageSessionLine;
-  anchorIndex: number;
   sessionId: string;
   nextLine?: SessionLine | undefined;
   isSubagentSession: boolean;
@@ -1204,17 +1167,12 @@ function UserEntry({
 
   if (line.isCompactSummary === true && !showCompactSummaries) {
     return (
-      <CompactSummaryStub
-        line={line}
-        anchorIndex={anchorIndex}
-        sessionId={sessionId}
-        allowedImageRoots={allowedImageRoots}
-      />
+      <CompactSummaryStub line={line} sessionId={sessionId} allowedImageRoots={allowedImageRoots} />
     );
   }
 
   if (kind === "command") {
-    return <CommandEntry line={line} anchorIndex={anchorIndex} sessionId={sessionId} />;
+    return <CommandEntry line={line} sessionId={sessionId} />;
   }
 
   if (kind === "bash") {
@@ -1241,7 +1199,6 @@ function UserEntry({
     return (
       <LabeledAutomatedEntry
         line={line}
-        anchorIndex={anchorIndex}
         sessionId={sessionId}
         label={label}
         allowedImageRoots={allowedImageRoots}
@@ -1250,7 +1207,7 @@ function UserEntry({
   }
 
   const timestamp = "timestamp" in line ? line.timestamp : undefined;
-  const actionsProps = { line, anchorIndex, ...(timestamp ? { timestamp } : {}) };
+  const actionsProps = { line, ...(timestamp ? { timestamp } : {}) };
   const { textNodes, mediaNodes } = renderUserContentBlocks(line, sessionId, allowedImageRoots);
 
   return (
@@ -1301,12 +1258,10 @@ function getCompactSummarySizeKB(line: MessageSessionLine): number {
 
 function CompactSummaryStub({
   line,
-  anchorIndex,
   sessionId,
   allowedImageRoots,
 }: {
   line: MessageSessionLine;
-  anchorIndex: number;
   sessionId: string;
   allowedImageRoots: readonly string[];
 }) {
@@ -1315,7 +1270,7 @@ function CompactSummaryStub({
 
   if (expanded) {
     const timestamp = "timestamp" in line ? line.timestamp : undefined;
-    const actionsProps = { line, anchorIndex, ...(timestamp ? { timestamp } : {}) };
+    const actionsProps = { line, ...(timestamp ? { timestamp } : {}) };
     const { textNodes, mediaNodes } = renderUserContentBlocks(line, sessionId, allowedImageRoots);
 
     return (
@@ -1361,19 +1316,17 @@ function CompactSummaryStub({
 
 function LabeledAutomatedEntry({
   line,
-  anchorIndex,
   sessionId,
   label,
   allowedImageRoots,
 }: {
   line: MessageSessionLine;
-  anchorIndex: number;
   sessionId: string;
   label: string;
   allowedImageRoots: readonly string[];
 }) {
   const timestamp = "timestamp" in line ? line.timestamp : undefined;
-  const actionsProps = { line, anchorIndex, ...(timestamp ? { timestamp } : {}) };
+  const actionsProps = { line, ...(timestamp ? { timestamp } : {}) };
   const { textNodes, mediaNodes } = renderUserContentBlocks(line, sessionId, allowedImageRoots);
 
   if (textNodes.length === 0 && mediaNodes.length === 0) return null;
@@ -1553,15 +1506,7 @@ function renderUserContentBlocks(
   return { textNodes, mediaNodes };
 }
 
-function CommandEntry({
-  line,
-  anchorIndex,
-  sessionId,
-}: {
-  line: MessageSessionLine;
-  anchorIndex: number;
-  sessionId: string;
-}) {
+function CommandEntry({ line, sessionId }: { line: MessageSessionLine; sessionId: string }) {
   const content = line.message?.content;
   let cmdName = "";
   let cmdArgs: string | undefined;
@@ -1589,7 +1534,7 @@ function CommandEntry({
   const commandText = cmdArgs ? `${displayName} ${cmdArgs}` : displayName;
 
   const timestamp = "timestamp" in line ? line.timestamp : undefined;
-  const actionsProps = { line, anchorIndex, ...(timestamp ? { timestamp } : {}) };
+  const actionsProps = { line, ...(timestamp ? { timestamp } : {}) };
 
   return (
     <UserTurn>

@@ -89,6 +89,7 @@ function occurrenceFromChunk(chunk: TextChunk): ResourceOccurrence {
   return {
     source: chunk.source,
     anchorIndex: chunk.anchorIndex,
+    ...(chunk.anchorUuid === undefined ? {} : { anchorUuid: chunk.anchorUuid }),
     role: chunk.role,
     ...(chunk.tool === undefined ? {} : { tool: chunk.tool }),
   };
@@ -216,6 +217,7 @@ export function extractSessionFiles(lines: SessionLine[], homeRoot: string): Ses
       const occurrence: ResourceOccurrence = {
         source: "tool",
         anchorIndex: line.lineIndex,
+        ...(line.uuid === undefined ? {} : { anchorUuid: line.uuid }),
         role: line.type,
         tool: block.name,
       };

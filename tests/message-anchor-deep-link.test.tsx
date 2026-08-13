@@ -20,13 +20,21 @@ function wrapper({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
-function renderDeepLink(hash: string, windowStartIndex: number) {
+interface WindowProps {
+  startIndex: number;
+  uuidToLine: ReadonlyMap<string, number>;
+}
+
+function renderDeepLink(hash: string, initialProps: WindowProps) {
   return renderHook(
-    ({ startIndex }: { startIndex: number }) =>
-      useMessageAnchorDeepLink("session-1", startIndex, hash),
-    { wrapper, initialProps: { startIndex: windowStartIndex } },
+    ({ startIndex, uuidToLine }: WindowProps) =>
+      useMessageAnchorDeepLink("session-1", startIndex, hash, uuidToLine),
+    { wrapper, initialProps },
   );
 }
+
+const HELD = new Map([["u-1700", 1_700]]);
+const NOT_HELD = new Map<string, number>();
 
 beforeEach(() => {
   vi.mocked(fetchEarlierTranscript).mockClear();
@@ -44,24 +52,27 @@ afterEach(() => {
 });
 
 describe("useMessageAnchorDeepLink", () => {
-  it("scrolls straight to an anchor that is already inside the window", () => {
-    renderDeepLink("#msg-1700", 1_500);
+  it("scrolls straight to a uuid the loaded records already hold", () => {
+    renderDeepLink("#msg-u-1700", { startIndex: 1_500, uuidToLine: HELD });
 
     expect({
       jumps: vi.mocked(jumpToMessage).mock.calls,
       fetches: vi.mocked(fetchEarlierTranscript).mock.calls.length,
-    }).toStrictEqual({ jumps: [[1_700]], fetches: 0 });
+    }).toStrictEqual({ jumps: [[{ uuid: "u-1700", recordIndex: 1_700 }]], fetches: 0 });
   });
 
-  it("pages history back for an anchor older than the window, then scrolls to it", () => {
-    const { rerender } = renderDeepLink("#msg-1200", 1_500);
+  it("pages history back for a uuid the loaded records do not hold, then scrolls to it", () => {
+    const { rerender } = renderDeepLink("#msg-u-1700", {
+      startIndex: 1_500,
+      uuidToLine: NOT_HELD,
+    });
 
     const afterFirstRender = {
       jumps: vi.mocked(jumpToMessage).mock.calls.length,
       fetches: vi.mocked(fetchEarlierTranscript).mock.calls.length,
     };
 
-    rerender({ startIndex: 1_100 });
+    rerender({ startIndex: 1_100, uuidToLine: HELD });
 
     expect({
       afterFirstRender,
@@ -69,31 +80,56 @@ describe("useMessageAnchorDeepLink", () => {
       fetches: vi.mocked(fetchEarlierTranscript).mock.calls.length,
     }).toStrictEqual({
       afterFirstRender: { jumps: 0, fetches: 1 },
-      jumps: [[1_200]],
+      jumps: [[{ uuid: "u-1700", recordIndex: 1_700 }]],
       fetches: 1,
     });
   });
 
+  it("asks for one page at a time while a request is still in flight", () => {
+    const { rerender } = renderDeepLink("#msg-u-1700", {
+      startIndex: 1_500,
+      uuidToLine: NOT_HELD,
+    });
+
+    rerender({ startIndex: 1_500, uuidToLine: new Map() });
+
+    expect(vi.mocked(fetchEarlierTranscript).mock.calls.length).toBe(1);
+  });
+
   it("stops asking for history once the window covers the whole file", () => {
-    renderDeepLink("#msg-1200", 0);
+    renderDeepLink("#msg-u-1700", { startIndex: 0, uuidToLine: NOT_HELD });
 
     expect({
-      jumps: vi.mocked(jumpToMessage).mock.calls,
+      jumps: vi.mocked(jumpToMessage).mock.calls.length,
       fetches: vi.mocked(fetchEarlierTranscript).mock.calls.length,
-    }).toStrictEqual({ jumps: [[1_200]], fetches: 0 });
+    }).toStrictEqual({ jumps: 0, fetches: 0 });
   });
 
   it("jumps once, so paging further back does not yank the reader off what they scrolled to", () => {
-    const { rerender } = renderDeepLink("#msg-1700", 1_500);
+    const { rerender } = renderDeepLink("#msg-u-1700", { startIndex: 1_500, uuidToLine: HELD });
 
-    rerender({ startIndex: 1_100 });
-    rerender({ startIndex: 700 });
+    rerender({ startIndex: 1_100, uuidToLine: new Map(HELD) });
+    rerender({ startIndex: 700, uuidToLine: new Map(HELD) });
 
-    expect(vi.mocked(jumpToMessage).mock.calls).toStrictEqual([[1_700]]);
+    expect(vi.mocked(jumpToMessage).mock.calls).toStrictEqual([
+      [{ uuid: "u-1700", recordIndex: 1_700 }],
+    ]);
+  });
+
+  it("resolves a legacy record-index link against the window boundary", () => {
+    const { rerender } = renderDeepLink("#msg-1200", { startIndex: 1_500, uuidToLine: NOT_HELD });
+
+    const afterFirstRender = vi.mocked(fetchEarlierTranscript).mock.calls.length;
+    rerender({ startIndex: 1_100, uuidToLine: NOT_HELD });
+
+    expect({ afterFirstRender, jumps: vi.mocked(jumpToMessage).mock.calls }).toStrictEqual({
+      afterFirstRender: 1,
+      jumps: [[{ recordIndex: 1_200 }]],
+    });
   });
 
   it("leaves a hash that is not a message anchor alone", () => {
-    renderDeepLink("#files", 1_500);
+    renderDeepLink("#files", { startIndex: 1_500, uuidToLine: NOT_HELD });
 
     expect({
       jumps: vi.mocked(jumpToMessage).mock.calls.length,
