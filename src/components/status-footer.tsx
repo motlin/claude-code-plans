@@ -220,7 +220,7 @@ export function StatusFooter({
 
   return (
     <div className="border-t border-border bg-surface-2">
-      <div className="flex items-center gap-1.5 px-4 py-2 overflow-x-auto">
+      <div className="flex flex-wrap items-center gap-1.5 px-4 py-2">
         {segments.map((seg) => (
           <Segment key={seg.key} label={seg.label} color={seg.color} />
         ))}
