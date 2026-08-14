@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS subagents (
   attribution_agent TEXT,
   slug TEXT,
   description TEXT,
+  model TEXT,
   started_at TEXT,
   finished_at TEXT,
   file_path TEXT NOT NULL,

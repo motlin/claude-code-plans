@@ -21,6 +21,8 @@ export interface SubagentInlineInfo {
   agentType: string | null;
   slug: string | null;
   description: string | null;
+  /** Raw model id the agent ran on, e.g. `claude-haiku-4-5-20251001`. */
+  model: string | null;
   startedAt: string | null;
   finishedAt: string | null;
   status: "running" | "done" | "error";
@@ -101,6 +103,7 @@ export function buildSubagentLookup(agents: Subagent[]): SubagentLookup {
       agentType: node.agent.agentType,
       slug: node.agent.slug,
       description: node.agent.description,
+      model: node.agent.model,
       startedAt: node.agent.startedAt,
       finishedAt: node.agent.finishedAt,
       status: statusForAgent(node.agent),

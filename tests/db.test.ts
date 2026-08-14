@@ -2189,6 +2189,102 @@ describe("subagents", () => {
     });
   });
 
+  it("records the model a subagent ran on, preferring the resolved id over the request", async () => {
+    const projectDir = join(testDir, "-Users-craig-projects-app");
+    const sessionDir = join(projectDir, "sess-1", "subagents");
+    mkdirSync(sessionDir, { recursive: true });
+
+    const agentPath = join(sessionDir, "agent-modeled.jsonl");
+    writeFileSync(
+      agentPath,
+      jsonl(
+        {
+          type: "user",
+          timestamp: "1999-12-31T00:28:53.000Z",
+          message: { role: "user", content: "go" },
+        },
+        {
+          type: "assistant",
+          timestamp: "1999-12-31T00:28:55.000Z",
+          message: { role: "assistant", model: "claude-haiku-4-5-20251001", content: "done" },
+        },
+      ),
+    );
+    writeFileSync(
+      agentPath.replace(/\.jsonl$/, ".meta.json"),
+      JSON.stringify({ agentType: "Explore", description: "Map it", model: "haiku" }),
+    );
+
+    db.index.insert(schema.projects).values({ id: "proj-app", name: "App", updatedAt: 1000 }).run();
+    await indexSubagentFile(db.index, agentPath, "sess-1", "proj-app");
+
+    const agent = db.index
+      .select()
+      .from(schema.subagents)
+      .where(eq(schema.subagents.id, "agent-modeled"))
+      .get();
+    if (!agent) throw new Error("Expected subagent agent-modeled");
+    expect(agent.model).toStrictEqual("claude-haiku-4-5-20251001");
+  });
+
+  it("falls back to the requested model when every transcript record is synthetic", async () => {
+    const projectDir = join(testDir, "-Users-craig-projects-app");
+    const sessionDir = join(projectDir, "sess-1", "subagents");
+    mkdirSync(sessionDir, { recursive: true });
+
+    const agentPath = join(sessionDir, "agent-synthetic.jsonl");
+    writeFileSync(
+      agentPath,
+      jsonl({
+        type: "assistant",
+        timestamp: "1999-12-31T00:28:53.000Z",
+        message: { role: "assistant", model: "<synthetic>", content: "done" },
+      }),
+    );
+    writeFileSync(
+      agentPath.replace(/\.jsonl$/, ".meta.json"),
+      JSON.stringify({ agentType: "Explore", description: "Map it", model: "opus[1m]" }),
+    );
+
+    db.index.insert(schema.projects).values({ id: "proj-app", name: "App", updatedAt: 1000 }).run();
+    await indexSubagentFile(db.index, agentPath, "sess-1", "proj-app");
+
+    const agent = db.index
+      .select()
+      .from(schema.subagents)
+      .where(eq(schema.subagents.id, "agent-synthetic"))
+      .get();
+    if (!agent) throw new Error("Expected subagent agent-synthetic");
+    expect(agent.model).toStrictEqual("opus[1m]");
+  });
+
+  it("leaves the model unset when neither the transcript nor the metadata names one", async () => {
+    const projectDir = join(testDir, "-Users-craig-projects-app");
+    const sessionDir = join(projectDir, "sess-1", "subagents");
+    mkdirSync(sessionDir, { recursive: true });
+
+    const agentPath = join(sessionDir, "agent-modelless.jsonl");
+    writeFileSync(
+      agentPath,
+      jsonl({
+        type: "assistant",
+        timestamp: "1999-12-31T00:28:53.000Z",
+        message: { role: "assistant", content: "done" },
+      }),
+    );
+
+    db.index.insert(schema.projects).values({ id: "proj-app", name: "App", updatedAt: 1000 }).run();
+    await indexSubagentFile(db.index, agentPath, "sess-1", "proj-app");
+
+    const agent = db.index
+      .select()
+      .from(schema.subagents)
+      .where(eq(schema.subagents.id, "agent-modelless"))
+      .get();
+    if (!agent) throw new Error("Expected subagent agent-modelless");
+    expect(agent.model).toStrictEqual(null);
+  });
+
   it("updates the stored location when a subagent transcript moves projects", async () => {
     const originalDirectory = join(testDir, "project-alice", "session-test-100", "subagents");
     const movedDirectory = join(testDir, "project-bob", "session-test-100", "subagents");

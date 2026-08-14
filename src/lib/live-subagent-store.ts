@@ -182,6 +182,7 @@ export function mergeLiveSubagents(
       attributionAgent: null,
       slug: null,
       description: node.description || null,
+      model: null,
       startedAt: node.startedAt,
       finishedAt: node.endedAt,
     });

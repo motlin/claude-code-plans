@@ -8,6 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { SessionChat } from "../src/components/session-chat";
 import { StreamingMessage } from "../src/components/streaming-message";
 import { processTranscript } from "../src/lib/transcript";
+import type { Subagent } from "../src/lib/subagents";
 
 vi.mock("../src/components/settings-provider", () => ({
   useSettings: () => ({
@@ -1105,6 +1106,7 @@ describe("SessionChat file-param tool row argument", () => {
 
 describe("SessionChat Agent row label", () => {
   const DESCRIPTION = "truncate min-w-0 text-body text-secondary group-hover/tool:text-primary";
+  const MODEL = "shrink-0 text-body text-t6";
 
   const agentRecords = toolCallRecords([
     {
@@ -1118,6 +1120,39 @@ describe("SessionChat Agent row label", () => {
     },
   ]);
 
+  /** The one subagent `agentRecords` spawns, resolved by (agentType, description). */
+  function spawnedAgent(model: string | null): Subagent[] {
+    return [
+      {
+        id: "agent-abc123",
+        sessionId: "test-session",
+        projectId: "proj-1",
+        parentAgentId: null,
+        agentType: "Code",
+        attributionAgent: null,
+        slug: null,
+        description: "Implement pending approvals fix",
+        model,
+        startedAt: "2026-01-01T00:00:00.000Z",
+        finishedAt: "2026-01-01T00:00:05.000Z",
+      },
+    ];
+  }
+
+  function renderWithSubagents(subagents: Subagent[]): string {
+    const { lines, toolResultMap } = processTranscript(agentRecords);
+    return renderToStaticMarkup(
+      <SessionChat
+        sessionId="test-session"
+        lines={lines}
+        toolResultMap={toolResultMap}
+        subagents={subagents}
+        showCompactSummaries
+        showTranscriptOnly
+      />,
+    );
+  }
+
   it("labels an agent row with its description alone, with no leading verb span", () => {
     expect(toolRowLabelSpans(renderTranscript(agentRecords))).toStrictEqual([
       [DESCRIPTION, "Implement pending approvals fix"],
@@ -1128,6 +1163,27 @@ describe("SessionChat Agent row label", () => {
     expect(rowHeaderSpanClasses(renderTranscript(agentRecords))).toStrictEqual([
       DESCRIPTION,
       "shrink-0 self-center text-t6",
+    ]);
+  });
+
+  it("trails the row with the model the subagent ran on, outside the truncating description", () => {
+    expect(
+      toolRowLabelSpans(renderWithSubagents(spawnedAgent("claude-haiku-4-5-20251001"))),
+    ).toStrictEqual([
+      [DESCRIPTION, "Implement pending approvals fix"],
+      [MODEL, "Haiku 4.5"],
+    ]);
+  });
+
+  it("keeps the model between the description and the chevron", () => {
+    expect(
+      rowHeaderSpanClasses(renderWithSubagents(spawnedAgent("claude-haiku-4-5-20251001"))),
+    ).toStrictEqual([DESCRIPTION, MODEL, "shrink-0 self-center text-t6"]);
+  });
+
+  it("trails nothing when the resolved subagent names no model", () => {
+    expect(toolRowLabelSpans(renderWithSubagents(spawnedAgent(null)))).toStrictEqual([
+      [DESCRIPTION, "Implement pending approvals fix"],
     ]);
   });
 

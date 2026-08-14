@@ -9,6 +9,7 @@ function makeSubagentInfo(overrides: Partial<SubagentInlineInfo> = {}): Subagent
     agentType: "Code",
     slug: "fix-auth-tests",
     description: "Fix auth test failures",
+    model: null,
     startedAt: "2026-04-19T10:00:00Z",
     finishedAt: "2026-04-19T10:00:45Z",
     status: "done",

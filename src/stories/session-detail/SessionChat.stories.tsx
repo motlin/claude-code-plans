@@ -213,6 +213,7 @@ export const WithSubagentInfo: Story = {
         attributionAgent: null,
         slug: "scan-codebase",
         description: "Scan the codebase",
+        model: "claude-haiku-4-5-20251001",
         startedAt: "2026-04-19T10:00:02Z",
         finishedAt: "2026-04-19T10:00:34Z",
       },

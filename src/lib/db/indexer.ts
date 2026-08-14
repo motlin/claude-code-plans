@@ -15,6 +15,7 @@ import { encodeProjectPath, resolveProjectPath } from "../memory";
 import { isCountableMessageRecord } from "../message-count";
 import { deriveProjectDisplayName, lastEncodedSegment } from "../project-display-name";
 import { normalizeGitBranch } from "../git-branch";
+import { SYNTHETIC_MODEL } from "../model-name";
 import { extractSessionTitle, readFirstUserMessage, resolveFirstPrompt } from "../sessions";
 import { extractTitle, extractTitleFromContent } from "../markdown-utils.server";
 import { listTrackedFiles } from "../git-tracked";
@@ -796,19 +797,23 @@ export async function indexSubagentFile(
   const metaPath = filePath.replace(/\.jsonl$/, ".meta.json");
   let agentType: string | null = null;
   let metaDescription: string | null = null;
+  let requestedModel: string | null = null;
   try {
     const meta = JSON.parse(await readFile(metaPath, "utf-8")) as {
       agentType?: string;
       description?: string;
+      model?: string;
     };
     agentType = meta.agentType ?? null;
     metaDescription = meta.description ?? null;
+    requestedModel = meta.model ?? null;
   } catch {
     // no meta file
   }
 
   let slug: string | null = null;
   let attributionAgent: string | null = null;
+  let resolvedModel: string | null = null;
   let startedAt: string | null = null;
   let finishedAt: string | null = null;
   const rl = createInterface({
@@ -823,11 +828,16 @@ export async function indexSubagentFile(
           attributionAgent?: string;
           slug?: string;
           timestamp?: string;
+          message?: { model?: string };
         };
         if (obj.attributionAgent && !attributionAgent) {
           attributionAgent = obj.attributionAgent;
         }
         if (obj.slug && !slug) slug = obj.slug;
+        const recordModel = obj.message?.model;
+        if (recordModel && recordModel !== SYNTHETIC_MODEL && !resolvedModel) {
+          resolvedModel = recordModel;
+        }
         if (obj.timestamp) {
           if (!startedAt) startedAt = obj.timestamp;
           finishedAt = obj.timestamp;
@@ -849,6 +859,7 @@ export async function indexSubagentFile(
       attributionAgent,
       slug,
       description: metaDescription,
+      model: resolvedModel ?? requestedModel,
       startedAt,
       finishedAt,
       filePath,
@@ -862,6 +873,7 @@ export async function indexSubagentFile(
         attributionAgent,
         slug,
         description: metaDescription,
+        model: resolvedModel ?? requestedModel,
         startedAt,
         finishedAt,
         filePath,

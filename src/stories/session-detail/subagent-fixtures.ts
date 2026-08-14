@@ -9,6 +9,7 @@ export function makeAgent(overrides: Partial<Subagent> & { id: string }): Subage
     attributionAgent: null,
     slug: null,
     description: null,
+    model: null,
     startedAt: "2026-04-19T10:00:00Z",
     finishedAt: "2026-04-19T10:01:00Z",
     ...overrides,

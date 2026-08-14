@@ -13,6 +13,7 @@ function makeAgent(overrides: Partial<Subagent> & { id: string }): Subagent {
     attributionAgent: null,
     slug: null,
     description: null,
+    model: null,
     startedAt: null,
     finishedAt: null,
     ...overrides,
@@ -55,6 +56,27 @@ describe("buildSubagentLookup + resolveSubagentInfo (inline)", () => {
     expect(call.subagentInfo?.agentId).toBe("agent-abc123");
     expect(call.subagentInfo?.slug).toBe("explore");
     expect(call.subagentInfo?.status).toBe("done");
+  });
+
+  it("carries the model the resolved agent ran on onto the inline decoration", () => {
+    const lookup = buildSubagentLookup([
+      makeAgent({
+        id: "agent-abc123",
+        agentType: "Explore",
+        description: "Find the thing",
+        model: "claude-haiku-4-5-20251001",
+      }),
+    ]);
+
+    const call = buildClientToolCall(
+      agentBlock("tu-1", { subagent_type: "Explore", description: "Find the thing" }),
+      "src-uuid",
+      resultMap({ "tu-1": "agentId: abc123\nDone." }),
+      undefined,
+      lookup,
+    );
+
+    expect(call.subagentInfo?.model).toStrictEqual("claude-haiku-4-5-20251001");
   });
 
   it("falls back to (agentType, description) when the result has no agentId", () => {

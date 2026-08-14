@@ -11,6 +11,7 @@ function makeAgent(overrides: Partial<DbSubagent> & { id: string }): DbSubagent 
     attributionAgent: null,
     slug: null,
     description: null,
+    model: null,
     startedAt: null,
     finishedAt: null,
     filePath: `/path/${overrides.id}.jsonl`,

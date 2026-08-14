@@ -589,6 +589,7 @@ export interface DbSubagent {
   attributionAgent: string | null;
   slug: string | null;
   description: string | null;
+  model: string | null;
   startedAt: string | null;
   finishedAt: string | null;
   filePath: string;

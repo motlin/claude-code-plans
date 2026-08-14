@@ -87,6 +87,7 @@ const ProjectSubagentSchema = z.object({
   attributionAgent: z.string().nullable(),
   slug: z.string().nullable(),
   description: z.string().nullable(),
+  model: z.string().nullable(),
   startedAt: z.string().nullable(),
   finishedAt: z.string().nullable(),
 });

@@ -24,6 +24,8 @@ export interface Subagent {
   attributionAgent: string | null;
   slug: string | null;
   description: string | null;
+  /** Raw model id the agent ran on, e.g. `claude-haiku-4-5-20251001`. */
+  model: string | null;
   startedAt: string | null;
   finishedAt: string | null;
 }
@@ -66,6 +68,7 @@ export function toClientSubagent(row: DbSubagent): Subagent {
     attributionAgent: row.attributionAgent,
     slug: row.slug,
     description: row.description,
+    model: row.model,
     startedAt: row.startedAt,
     finishedAt: row.finishedAt,
   };
@@ -176,6 +179,7 @@ function extractSubagentSnapshot(
           attributionAgent: null,
           slug: null,
           description: pending.description,
+          model: null,
           startedAt: pending.startedAt,
           finishedAt: record.timestamp ?? null,
         });

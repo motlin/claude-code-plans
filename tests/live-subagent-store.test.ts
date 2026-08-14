@@ -195,6 +195,7 @@ describe("mergeLiveSubagents", () => {
       attributionAgent: "workflow-subagent",
       slug: "planning",
       description: "Indexed description",
+      model: null,
       startedAt: "1999-12-31T00:00:02.000Z",
       finishedAt: "1999-12-31T00:00:08.000Z",
     };
@@ -230,6 +231,7 @@ describe("mergeLiveSubagents", () => {
         attributionAgent: null,
         slug: null,
         description: "Live child",
+        model: null,
         startedAt: "1999-12-31T00:00:03.000Z",
         finishedAt: null,
       },

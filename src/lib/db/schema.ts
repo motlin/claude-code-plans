@@ -1,9 +1,9 @@
 import { sqliteTable, text, integer, index, primaryKey } from "drizzle-orm/sqlite-core";
 import type { ReviewBundle } from "../api/reviews";
 
-// 24: extractSessionTitle now collapses whitespace and drops slash-command
-// boilerplate; titles are stored at index time, so bump to rebuild them.
-export const SCHEMA_VERSION = "24";
+// 25: subagents now record the model the agent ran on, which existing rows
+// were indexed without.
+export const SCHEMA_VERSION = "25";
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),
@@ -105,6 +105,7 @@ export const subagents = sqliteTable(
     attributionAgent: text("attribution_agent"),
     slug: text("slug"),
     description: text("description"),
+    model: text("model"),
     startedAt: text("started_at"),
     finishedAt: text("finished_at"),
     filePath: text("file_path").notNull(),

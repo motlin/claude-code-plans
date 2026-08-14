@@ -34,6 +34,7 @@ import {
 import type { ClientToolCall } from "./tool-renderers";
 import type { LiveToolFailure, SubagentLookup } from "./tool-renderers/types";
 import type { Subagent } from "../lib/subagents";
+import { formatModelName } from "../lib/model-name";
 import { useClaudeEvents } from "../hooks/use-claude-events";
 import {
   ChevronIcon,
@@ -2478,6 +2479,11 @@ function ToolCallRow({
     call.name === "Agent"
       ? "shrink-0 self-center text-t6"
       : "shrink-0 text-secondary group-hover/tool:text-primary";
+  // Upstream trails a subagent row with the model the agent ran on
+  // ("Explore Drizzle ORM setup  Haiku 4.5"), in the same flat `t6` meta
+  // treatment as the chevron beside it. It sits outside the description span so
+  // a long description truncates without ever eating the model.
+  const modelLabel = call.name === "Agent" ? formatModelName(call.subagentInfo?.model) : null;
   // A failed call whose param is its own description reads as one phrase
   // ("Failed to install dependencies and build"), so upstream drops the verb
   // and the separate param span; every other failed row keeps both
@@ -2525,6 +2531,7 @@ function ToolCallRow({
         <span className={`text-body ${labelClass} truncate min-w-0`}>{rangeLabel}</span>
       )}
       {diffStats && <DiffStats added={diffStats.added} removed={diffStats.removed} />}
+      {modelLabel && <span className="shrink-0 text-body text-t6">{modelLabel}</span>}
     </>
   );
 
