@@ -21,6 +21,8 @@ import { writeClipboardText } from "../lib/clipboard";
 import { formatResourceCount, resourceCoverageNote } from "../lib/session-resources";
 import {
   extractSessionLinks,
+  groupSessionLinks,
+  type CollectedLink,
   type LinkEntry,
   type LinkGroup,
   type SessionLinks,
@@ -72,6 +74,22 @@ export function useExtractedSessionLinks(
   return useMemo(
     () => extractSessionLinks(lines, currentHost, userRules),
     [currentHost, lines, userRules],
+  );
+}
+
+/**
+ * Group links the server already collected over the whole session. Returns
+ * undefined until that scan lands, which is the caller's signal to keep showing
+ * the window-only extraction and its `12+` floors.
+ */
+export function useGroupedSessionLinks(
+  links: CollectedLink[] | undefined,
+  currentHost: string | undefined,
+  userRules: Array<{ label: string; hostPattern: string }>,
+): SessionLinks | undefined {
+  return useMemo(
+    () => (links === undefined ? undefined : groupSessionLinks(links, currentHost, userRules)),
+    [currentHost, links, userRules],
   );
 }
 

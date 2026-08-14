@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { extractSessionLinks } from "../src/lib/session-links";
+import { collectSessionLinks, extractSessionLinks } from "../src/lib/session-links";
 import type { SessionLine } from "../src/lib/transcript";
 
 function userLine(text: string, lineIndex: number): SessionLine {
@@ -169,7 +169,7 @@ describe("extractSessionLinks", () => {
     });
   });
 
-  it("strips tracking parameters before deduplication and appends every occurrence", () => {
+  it("strips tracking parameters before deduplication and keeps one occurrence per message", () => {
     const lines = [
       userLine(
         "https://example.com/article?topic=fake&utm_source=alice#section https://example.com/article?topic=fake#section",
@@ -187,16 +187,76 @@ describe("extractSessionLinks", () => {
               url: "https://example.com/article?topic=fake#section",
               label: "example.com/article?topic=fake#section",
               categoryId: "External",
-              occurrences: [
-                { source: "visible", anchorIndex: 100, role: "user" },
-                { source: "visible", anchorIndex: 100, role: "user" },
-              ],
+              occurrences: [{ source: "visible", anchorIndex: 100, role: "user" }],
             },
           ],
         },
       ],
       totalCount: 1,
     });
+  });
+
+  it("collapses a URL repeated inside one tool result into a single jumpable mention", () => {
+    const lines = [
+      {
+        type: "assistant",
+        lineIndex: 100,
+        uuid: "uuid-100",
+        message: {
+          role: "assistant",
+          content: [
+            {
+              type: "tool_use",
+              id: "tool-use-bash-example",
+              name: "Bash",
+              input: { command: "gh pr view https://github.com/alice/project/pull/7" },
+            },
+          ],
+        },
+      },
+      {
+        type: "user",
+        lineIndex: 101,
+        uuid: "uuid-101",
+        message: {
+          role: "user",
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: "tool-use-bash-example",
+              content: [
+                "https://github.com/alice/project/pull/7",
+                "https://github.com/alice/project/pull/7",
+                "https://github.com/alice/project/pull/7",
+              ].join("\n"),
+            },
+          ],
+        },
+      },
+    ] satisfies SessionLine[];
+
+    expect(collectSessionLinks(lines)).toStrictEqual([
+      {
+        url: "https://github.com/alice/project/pull/7",
+        label: "alice/project#7",
+        occurrences: [
+          {
+            source: "tool",
+            anchorIndex: 100,
+            anchorUuid: "uuid-100",
+            role: "assistant",
+            tool: "Bash",
+          },
+          {
+            source: "tool",
+            anchorIndex: 100,
+            anchorUuid: "uuid-100",
+            role: "user",
+            tool: "Bash",
+          },
+        ],
+      },
+    ]);
   });
 
   it("applies MyHost before built-ins and user rules in declared order", () => {

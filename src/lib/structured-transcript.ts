@@ -49,7 +49,8 @@ const EMPTY_TRANSCRIPT: StructuredTranscript = {
   precedingMessageCount: 0,
 };
 
-function parseLine(line: string): Record<string, unknown> | undefined {
+/** One JSONL line as a record, or undefined when the line is not valid JSON. */
+export function parseTranscriptLine(line: string): Record<string, unknown> | undefined {
   try {
     return JSON.parse(line) as Record<string, unknown>;
   } catch {
@@ -74,17 +75,26 @@ function findWindowStart(lines: string[], end: number, maxBytes: number, maxReco
   return start;
 }
 
-export function readStructuredTranscript(
-  db: IndexDb,
-  id: string,
-  options: TranscriptWindowOptions = {},
-): StructuredTranscript {
+/**
+ * The JSONL backing an id, which names either a session or one of its
+ * subagents. Both kinds are read through the same endpoints, so every reader of
+ * a transcript file resolves its path here.
+ */
+export function transcriptFilePath(db: IndexDb, id: string): string | undefined {
   const session = db
     .select({ filePath: schema.sessions.filePath })
     .from(schema.sessions)
     .where(eq(schema.sessions.id, id))
     .get();
-  const filePath = session?.filePath ?? getSubagentById(db, id)?.filePath;
+  return session?.filePath ?? getSubagentById(db, id)?.filePath;
+}
+
+export function readStructuredTranscript(
+  db: IndexDb,
+  id: string,
+  options: TranscriptWindowOptions = {},
+): StructuredTranscript {
+  const filePath = transcriptFilePath(db, id);
   if (!filePath) return EMPTY_TRANSCRIPT;
 
   const maxBytes = options.maxBytes ?? TRANSCRIPT_WINDOW_MAX_BYTES;
@@ -100,7 +110,7 @@ export function readStructuredTranscript(
 
     const records: Record<string, unknown>[] = [];
     for (const line of lines.slice(startIndex, end)) {
-      const record = parseLine(line);
+      const record = parseTranscriptLine(line);
       if (record) records.push(record);
     }
 
@@ -108,7 +118,7 @@ export function readStructuredTranscript(
     for (let i = 0; i < startIndex; i += 1) {
       const line = lines[i]!;
       if (!mightBeCountableMessageLine(line)) continue;
-      if (isCountableMessageRecord(parseLine(line))) precedingMessageCount += 1;
+      if (isCountableMessageRecord(parseTranscriptLine(line))) precedingMessageCount += 1;
     }
 
     return { records, byteOffset, startIndex, precedingMessageCount };

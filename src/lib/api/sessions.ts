@@ -163,6 +163,55 @@ export function mergeTranscriptData(
   };
 }
 
+const ResourceOccurrenceSchema = z.object({
+  source: z.enum(["visible", "tool", "thinking"]),
+  anchorIndex: z.number(),
+  anchorUuid: z.string().optional(),
+  role: z.enum(["user", "assistant"]),
+  tool: z.string().optional(),
+});
+
+const SessionFilesSchema = z.object({
+  files: z.array(
+    z.object({
+      path: z.string(),
+      absolutePath: z.string(),
+      occurrences: z.array(ResourceOccurrenceSchema),
+    }),
+  ),
+  totalCount: z.number(),
+  counts: z.object({
+    userMessage: z.number(),
+    agentMessage: z.number(),
+    read: z.number(),
+    editWrite: z.number(),
+    bash: z.number(),
+    grepGlob: z.number(),
+    thinking: z.number(),
+    other: z.number(),
+  }),
+});
+
+/**
+ * The whole session's file and link inventory, scanned on demand.
+ *
+ * The transcript endpoint serves a window, so the browser's own extraction can
+ * only report a floor. A drawer opening asks for this instead. Links arrive
+ * uncategorized: which category a URL falls into depends on the host serving
+ * this page and on the reader's `linkCategoryRules`, neither of which the
+ * server knows, so the browser groups them with `groupSessionLinks`.
+ */
+export const SessionResourcesResponse = z.object({
+  files: SessionFilesSchema,
+  links: z.array(
+    z.object({
+      url: z.string(),
+      label: z.string(),
+      occurrences: z.array(ResourceOccurrenceSchema),
+    }),
+  ),
+});
+
 const RawJsonlLineSchema = z.object({
   raw: z.string(),
   uuid: z.string().optional(),
@@ -223,6 +272,7 @@ export const sessionQueryKeys = {
   active: (activeTimeoutMs?: number) => [...ACTIVE_SESSIONS_QUERY_ROOT, activeTimeoutMs] as const,
   detail: (id: string) => [...SESSION_QUERY_ROOT, id] as const,
   transcript: (id: string) => [...SESSION_QUERY_ROOT, id, "transcript"] as const,
+  resources: (id: string) => [...SESSION_QUERY_ROOT, id, "resources"] as const,
   source: (sessionId: string, uuid: string, contextN: number) =>
     [...SESSION_QUERY_ROOT, sessionId, "source", uuid, contextN] as const,
   subagents: (id: string) => [...SESSION_QUERY_ROOT, id, "subagents"] as const,
@@ -311,6 +361,25 @@ export const transcriptQueryOptions = (id: string) =>
       if (oldData === undefined) return refreshed;
       return mergeTranscriptData(refreshed, TranscriptResponse.parse(oldData));
     },
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+
+/**
+ * Whole-session file and link inventory, fetched only once a drawer wants it.
+ *
+ * `enabled` is the point of the option: the scan reads and processes the entire
+ * JSONL, so it must not run for every session the reader merely opens. A live
+ * session's appends invalidate this key (see `applySessionLinesAppended`), and
+ * because an inactive query is only marked stale, a closed drawer costs
+ * nothing -- the refetch happens when it is next open.
+ */
+export const sessionResourcesQueryOptions = (id: string, enabled: boolean) =>
+  queryOptions({
+    queryKey: sessionQueryKeys.resources(id),
+    queryFn: () =>
+      apiFetch(`/api/sessions/${encodeURIComponent(id)}/resources`, SessionResourcesResponse),
+    enabled,
     staleTime: Infinity,
     gcTime: Infinity,
   });

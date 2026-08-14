@@ -4,6 +4,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { JumpChips } from "../src/components/jump-chips";
+import { JumpTargetProvider } from "../src/components/jump-target-context";
 import { jumpToMessage } from "../src/lib/jump-to-message";
 import type { ResourceOccurrence } from "../src/lib/session-resources";
 
@@ -74,6 +75,59 @@ describe("JumpChips", () => {
         "Jump to mention 3",
       ],
       jumpCalls: [[{ uuid: "u-30", recordIndex: 30 }]],
+    });
+  });
+
+  it("routes a mention outside the loaded window through its message anchor", () => {
+    const openMessageAnchor = vi.fn();
+    render(
+      <JumpTargetProvider value={{ windowStartIndex: 25, openMessageAnchor }}>
+        <JumpChips occurrences={OCCURRENCES} />
+      </JumpTargetProvider>,
+    );
+
+    const buttons = screen.getAllByRole("button");
+    for (const button of buttons) fireEvent.click(button);
+
+    expect({
+      disabled: buttons.map((button) => (button as HTMLButtonElement).disabled),
+      titles: buttons.map((button) => button.getAttribute("title")),
+      anchorCalls: openMessageAnchor.mock.calls,
+      jumpCalls: vi.mocked(jumpToMessage).mock.calls,
+    }).toStrictEqual({
+      disabled: [false, true, false],
+      titles: [
+        "Jump to mention 1",
+        "This mention is in an earlier part of the session that cannot be linked to.",
+        "Jump to mention 3",
+      ],
+      // The uuid-less record at 20 has no anchor to link to, so its chip is
+      // disabled rather than scrolling to whatever sits at index 20 today.
+      anchorCalls: [["u-10"]],
+      jumpCalls: [[{ uuid: "u-30", recordIndex: 30 }]],
+    });
+  });
+
+  it("keeps jumping straight at the DOM once the window holds the mention", () => {
+    const openMessageAnchor = vi.fn();
+    render(
+      <JumpTargetProvider value={{ windowStartIndex: 10, openMessageAnchor }}>
+        <JumpChips occurrences={OCCURRENCES} />
+      </JumpTargetProvider>,
+    );
+
+    for (const button of screen.getAllByRole("button")) fireEvent.click(button);
+
+    expect({
+      anchorCalls: openMessageAnchor.mock.calls,
+      jumpCalls: vi.mocked(jumpToMessage).mock.calls,
+    }).toStrictEqual({
+      anchorCalls: [],
+      jumpCalls: [
+        [{ uuid: "u-10", recordIndex: 10 }],
+        [{ recordIndex: 20 }],
+        [{ uuid: "u-30", recordIndex: 30 }],
+      ],
     });
   });
 });

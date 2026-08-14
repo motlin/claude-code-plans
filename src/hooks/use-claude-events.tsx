@@ -805,6 +805,12 @@ export function applySessionLinesAppended(
       precedingMessageCount: old.precedingMessageCount,
     });
   });
+
+  // The whole-session file and link inventory was scanned from the JSONL as it
+  // stood, so appended lines make it stale. An open drawer refetches; a closed
+  // one only marks the query stale, so a live session costs nothing until
+  // somebody is actually looking at an inventory.
+  void queryClient.invalidateQueries({ queryKey: sessionQueryKeys.resources(sessionId) });
 }
 
 function invalidateActiveSessions(queryClient: QueryClient): void {

@@ -16,6 +16,7 @@ import {
   LinksDrawer,
   LinksDrawerToggle,
   useExtractedSessionLinks,
+  useGroupedSessionLinks,
   useLinksDrawerState,
   useSessionLinkDisplay,
 } from "../src/components/links-drawer";
@@ -198,6 +199,46 @@ describe("LinksDrawer", () => {
       userRules: [{ label: "Documentation", hostPattern: "docs.example.com" }],
     });
     expect(result.current.groups.map((group) => group.categoryId)).toStrictEqual(["MyHost"]);
+  });
+
+  it("categorizes server-collected links in the browser, and holds off until they land", () => {
+    const collected = [
+      {
+        url: "https://docs.example.com/alice",
+        label: "docs.example.com/alice",
+        occurrences: [{ source: "visible" as const, anchorIndex: 100, role: "user" as const }],
+      },
+    ];
+    const { result, rerender } = renderHook(
+      ({ links }) =>
+        useGroupedSessionLinks(links, "docs.example.com", [
+          { label: "Documentation", hostPattern: "docs.*" },
+        ]),
+      { initialProps: { links: undefined as typeof collected | undefined } },
+    );
+
+    // Undefined until the whole-session scan lands, which is the caller's
+    // signal to keep showing the window's own extraction and its `12+` floors.
+    expect(result.current).toBeUndefined();
+
+    rerender({ links: collected });
+    expect(result.current).toStrictEqual({
+      groups: [
+        {
+          categoryId: "MyHost",
+          label: "My Host",
+          entries: [
+            {
+              url: "https://docs.example.com/alice",
+              label: "docs.example.com/alice",
+              categoryId: "MyHost",
+              occurrences: [{ source: "visible", anchorIndex: 100, role: "user" }],
+            },
+          ],
+        },
+      ],
+      totalCount: 1,
+    });
   });
 
   it("filters case-insensitively by URL or compact label", () => {

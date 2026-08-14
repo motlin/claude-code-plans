@@ -1,12 +1,22 @@
 import type { ResourceOccurrence, TextChunk } from "./session-resources";
-import { scanSessionContent } from "./session-resources";
+import { occurrenceKey, scanSessionContent } from "./session-resources";
 import type { SessionLine } from "./transcript";
 
-export interface LinkEntry {
+/**
+ * One URL and every message that mentions it, before it is filed under a
+ * category. Categorization is the half of link extraction that cannot run on
+ * the server: it depends on the host the page is being served from and on the
+ * reader's own `linkCategoryRules`. So a whole-session scan collects these and
+ * the browser groups them (see `groupSessionLinks`).
+ */
+export interface CollectedLink {
   url: string;
   label: string;
-  categoryId: string;
   occurrences: ResourceOccurrence[];
+}
+
+export interface LinkEntry extends CollectedLink {
+  categoryId: string;
 }
 
 export interface LinkGroup {
@@ -181,12 +191,22 @@ function getLinkLabel(
   );
 }
 
-export function extractSessionLinks(
-  lines: SessionLine[],
-  currentHost: string | undefined,
-  userRules: Array<{ label: string; hostPattern: string }>,
-): SessionLinks {
-  const links = new Map<string, LinkEntry>();
+interface CollectedLinkBuilder {
+  url: string;
+  label: string;
+  occurrences: Map<string, ResourceOccurrence>;
+}
+
+/**
+ * Every URL the session mentions, with one occurrence per mentioning message.
+ *
+ * The occurrences are keyed rather than appended: a single tool result can
+ * repeat the same URL hundreds of times, and each repeat would otherwise be its
+ * own chip pointing at the row the reader is already looking at. On the largest
+ * measured session the de-duplicated payload is a fraction of the raw one.
+ */
+export function collectSessionLinks(lines: SessionLine[]): CollectedLink[] {
+  const links = new Map<string, CollectedLinkBuilder>();
 
   const addUrl = (
     candidate: string,
@@ -196,16 +216,14 @@ export function extractSessionLinks(
     const normalized = normalizeUrl(trimUrl(candidate));
     const existing = links.get(normalized.url);
     if (existing !== undefined) {
-      existing.occurrences.push(occurrence);
+      existing.occurrences.set(occurrenceKey(occurrence), occurrence);
       return;
     }
 
-    const category = categorizeUrl(normalized.parsedUrl, currentHost, userRules);
     links.set(normalized.url, {
       url: normalized.url,
       label: getLinkLabel(normalized.url, normalized.parsedUrl, markdownLabel),
-      categoryId: category.categoryId,
-      occurrences: [occurrence],
+      occurrences: new Map([[occurrenceKey(occurrence), occurrence]]),
     });
   };
 
@@ -220,6 +238,34 @@ export function extractSessionLinks(
     }
   }
 
+  return Array.from(links.values(), (link) => ({
+    url: link.url,
+    label: link.label,
+    occurrences: Array.from(link.occurrences.values()),
+  }));
+}
+
+function parseUrl(url: string): URL | undefined {
+  try {
+    return new URL(url);
+  } catch {
+    return undefined;
+  }
+}
+
+/** File collected URLs under their categories, in the drawer's display order. */
+export function groupSessionLinks(
+  links: CollectedLink[],
+  currentHost: string | undefined,
+  userRules: Array<{ label: string; hostPattern: string }>,
+): SessionLinks {
+  const entries = links.map(
+    (link): LinkEntry => ({
+      ...link,
+      categoryId: categorizeUrl(parseUrl(link.url), currentHost, userRules).categoryId,
+    }),
+  );
+
   const categoryOrder = [
     ...BUILT_IN_CATEGORIES,
     ...userRules.map((rule) => ({ categoryId: rule.label, label: rule.label })),
@@ -232,11 +278,17 @@ export function extractSessionLinks(
     if (emittedCategories.has(category.categoryId)) continue;
     emittedCategories.add(category.categoryId);
 
-    const entries = Array.from(links.values()).filter(
-      (entry) => entry.categoryId === category.categoryId,
-    );
-    if (entries.length > 0) groups.push({ ...category, entries });
+    const categoryEntries = entries.filter((entry) => entry.categoryId === category.categoryId);
+    if (categoryEntries.length > 0) groups.push({ ...category, entries: categoryEntries });
   }
 
-  return { groups, totalCount: links.size };
+  return { groups, totalCount: entries.length };
+}
+
+export function extractSessionLinks(
+  lines: SessionLine[],
+  currentHost: string | undefined,
+  userRules: Array<{ label: string; hostPattern: string }>,
+): SessionLinks {
+  return groupSessionLinks(collectSessionLinks(lines), currentHost, userRules);
 }

@@ -1,4 +1,9 @@
-import { Link, useElementScrollRestoration, useLocation } from "@tanstack/react-router";
+import {
+  Link,
+  useElementScrollRestoration,
+  useLocation,
+  useNavigate,
+} from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -34,10 +39,12 @@ import {
   useExtractedSessionFiles,
   useFilesDrawerState,
 } from "./files-drawer";
+import { JumpTargetProvider, type JumpTargetWindow } from "./jump-target-context";
 import {
   LinksDrawer,
   LinksDrawerToggle,
   useExtractedSessionLinks,
+  useGroupedSessionLinks,
   useLinksDrawerState,
   useSessionLinkDisplay,
 } from "./links-drawer";
@@ -51,6 +58,7 @@ import { herdrPanesQueryOptions, sendHerdrPrompt } from "../lib/api/herdr";
 import type { HerdrPaneIndexData } from "../lib/api/herdr";
 import {
   sessionDetailQueryOptions,
+  sessionResourcesQueryOptions,
   sessionSubagentsQueryOptions,
   transcriptEndIndex,
   transcriptQueryOptions,
@@ -59,6 +67,7 @@ import {
 } from "../lib/api/sessions";
 import type { SessionDetailData, SessionSubagentsData, TranscriptData } from "../lib/api/sessions";
 import { writeClipboardText } from "../lib/clipboard";
+import { messageAnchorId } from "../lib/message-anchor";
 import { countMessageRecords } from "../lib/message-count";
 import {
   getSubagentLifecycleKey,
@@ -419,18 +428,47 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
   // `uuidToLine` is the set of messages the window holds, which is how a
   // `#msg-<uuid>` link decides whether to scroll or to page history in first.
   useMessageAnchorDeepLink(sessionId, transcript.startIndex, locationHash, processed.uuidToLine);
-  // Both extractions see only the loaded window, so every surface that shows
-  // one of their counts also takes `transcript.startIndex` -- the records still
-  // on the server -- and reports the count as a floor rather than a total.
-  const sessionFiles = useExtractedSessionFiles(processed.lines, data.homeRoot);
-  const sessionLinks = useExtractedSessionLinks(
+  const filesDrawerState = useFilesDrawerState();
+  const linksDrawerState = useLinksDrawerState();
+  // A whole-session inventory costs a full pass over the JSONL, so it is only
+  // worth asking for once a reader has opened a drawer to look at one.
+  const resourcesQuery = useQuery(
+    sessionResourcesQueryOptions(sessionId, filesDrawerState.openDrawer !== "none"),
+  );
+  const resources = resourcesQuery.data;
+  // Until that scan lands, both drawers fall back to extraction over the loaded
+  // window, whose counts are floors: every surface showing one also takes
+  // `transcript.startIndex`, the records still on the server, and marks the
+  // count `12+` rather than passing a partial tally off as the total.
+  const windowFiles = useExtractedSessionFiles(processed.lines, data.homeRoot);
+  const windowLinks = useExtractedSessionLinks(
     processed.lines,
     currentHost,
     settings.linkCategoryRules,
   );
-  const filesDrawerState = useFilesDrawerState();
-  const linksDrawerState = useLinksDrawerState();
+  const fullLinks = useGroupedSessionLinks(
+    resources?.links,
+    currentHost,
+    settings.linkCategoryRules,
+  );
+  const sessionFiles = resources?.files ?? windowFiles;
+  const sessionLinks = fullLinks ?? windowLinks;
+  const unscannedRecordCount = resources === undefined ? transcript.startIndex : 0;
   const linkDisplay = useSessionLinkDisplay(sessionLinks, linksDrawerState.includeToolsAndThinking);
+  const navigate = useNavigate();
+  // A mention the window does not hold has no row to scroll to, so its chip
+  // routes through the location hash and lets `useMessageAnchorDeepLink` page
+  // history in until the message arrives.
+  const openMessageAnchor = useCallback(
+    (uuid: string) => {
+      void navigate({ to: ".", hash: messageAnchorId(uuid), replace: true });
+    },
+    [navigate],
+  );
+  const jumpTargetWindow = useMemo<JumpTargetWindow>(
+    () => ({ windowStartIndex: transcript.startIndex, openMessageAnchor }),
+    [openMessageAnchor, transcript.startIndex],
+  );
   const { hookContexts, runningSubagents } = useClaudeEvents();
   const hookContext = hookContexts.get(sessionId);
   const transcriptActiveSubagents = useMemo(
@@ -629,13 +667,13 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
             )}
             <FilesDrawerToggle
               count={sessionFiles.totalCount}
-              unscannedRecordCount={transcript.startIndex}
+              unscannedRecordCount={unscannedRecordCount}
               isOpen={filesDrawerState.openDrawer === "files" && sessionFiles.totalCount > 0}
               onToggle={filesDrawerState.toggleFilesDrawer}
             />
             <LinksDrawerToggle
               count={linkDisplay.totalCount}
-              unscannedRecordCount={transcript.startIndex}
+              unscannedRecordCount={unscannedRecordCount}
               isOpen={filesDrawerState.openDrawer === "links" && sessionLinks.totalCount > 0}
               onToggle={filesDrawerState.toggleLinksDrawer}
             />
@@ -787,26 +825,28 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
 
       <FloatingScrollButtons />
 
-      {filesDrawerState.openDrawer === "files" && sessionFiles.totalCount > 0 && (
-        <FilesDrawer
-          sessionFiles={sessionFiles}
-          unscannedRecordCount={transcript.startIndex}
-          sourceSelection={filesDrawerState.sourceSelection}
-          onSourceSelected={filesDrawerState.setSourceSelected}
-          onUnselectAllSources={filesDrawerState.unselectAllSources}
-          onClose={filesDrawerState.closeDrawer}
-        />
-      )}
+      <JumpTargetProvider value={jumpTargetWindow}>
+        {filesDrawerState.openDrawer === "files" && sessionFiles.totalCount > 0 && (
+          <FilesDrawer
+            sessionFiles={sessionFiles}
+            unscannedRecordCount={unscannedRecordCount}
+            sourceSelection={filesDrawerState.sourceSelection}
+            onSourceSelected={filesDrawerState.setSourceSelected}
+            onUnselectAllSources={filesDrawerState.unselectAllSources}
+            onClose={filesDrawerState.closeDrawer}
+          />
+        )}
 
-      {filesDrawerState.openDrawer === "links" && sessionLinks.totalCount > 0 && (
-        <LinksDrawer
-          display={linkDisplay}
-          unscannedRecordCount={transcript.startIndex}
-          includeToolsAndThinking={linksDrawerState.includeToolsAndThinking}
-          onIncludeToolsAndThinkingChange={linksDrawerState.setIncludeToolsAndThinking}
-          onClose={filesDrawerState.closeDrawer}
-        />
-      )}
+        {filesDrawerState.openDrawer === "links" && sessionLinks.totalCount > 0 && (
+          <LinksDrawer
+            display={linkDisplay}
+            unscannedRecordCount={unscannedRecordCount}
+            includeToolsAndThinking={linksDrawerState.includeToolsAndThinking}
+            onIncludeToolsAndThinkingChange={linksDrawerState.setIncludeToolsAndThinking}
+            onClose={filesDrawerState.closeDrawer}
+          />
+        )}
+      </JumpTargetProvider>
 
       {/* Sticky footer: chat input + status bar */}
       {((!chromeHidden && data.projectPath) || statusline) && (

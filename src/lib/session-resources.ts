@@ -15,10 +15,26 @@ export interface ResourceOccurrence {
    * keyed by (see lib/message-anchor.ts). Absent for the rare record that
    * carries no uuid, which is anchored on its record index instead.
    */
-  anchorUuid?: string;
+  anchorUuid?: string | undefined;
   role: "user" | "assistant";
   /** Tool name, back-filled onto tool_result chunks from the owning tool_use. */
-  tool?: string;
+  tool?: string | undefined;
+}
+
+/**
+ * Identity of a mention within one resource: which message it sits in and how
+ * it got there. A single message mentions the same file or URL over and over --
+ * a path repeated through a diff, a link echoed in a tool result -- and every
+ * repeat produces an identical chip. Collapsing them on this key is what keeps
+ * a whole-session inventory to a payload worth serving.
+ */
+export function occurrenceKey(occurrence: ResourceOccurrence): string {
+  return JSON.stringify([
+    occurrence.anchorIndex,
+    occurrence.source,
+    occurrence.role,
+    occurrence.tool ?? null,
+  ]);
 }
 
 /** One flattened content block, ready to scan. */

@@ -1,5 +1,5 @@
 import type { ResourceOccurrence, TextChunk } from "./session-resources";
-import { scanSessionContent } from "./session-resources";
+import { occurrenceKey, scanSessionContent } from "./session-resources";
 import {
   EditInputSchema,
   GlobInputSchema,
@@ -64,15 +64,6 @@ function normalizePath(candidate: string, homeRoot: string): NormalizedPath | un
     path: `~/${candidate.slice(homePrefix.length)}`,
     absolutePath: candidate,
   };
-}
-
-function occurrenceKey(occurrence: ResourceOccurrence): string {
-  return JSON.stringify([
-    occurrence.anchorIndex,
-    occurrence.source,
-    occurrence.role,
-    occurrence.tool ?? null,
-  ]);
 }
 
 function chunkKey(chunk: TextChunk): string {
