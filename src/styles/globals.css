@@ -270,16 +270,22 @@
   }
 }
 
-/* Upstream claude.ai/code focus ring utilities:
+/* Upstream claude.ai/code focus ring utilities. Rows carry the trio
+   `outline-none hide-focus-ring focus:ring-focus`: `hide-focus-ring` reserves a
+   transparent 2px outline, `focus:ring-focus` colours it in.
+   The colour travels through --focus-ring-color rather than a second
+   `outline-color` declaration, because the shorthand below would otherwise win
+   over any Tailwind-layered utility no matter the source order.
    Tailwind v4 uses --tw-outline-style to control outline-style globally,
    so we set that variable instead of fighting with the shorthand. */
 .hide-focus-ring {
   --tw-outline-style: solid;
-  outline: 2px solid transparent;
+  outline: 2px solid var(--focus-ring-color, transparent);
   outline-offset: 2px;
 }
-.hide-focus-ring:focus-visible {
-  outline-color: var(--color-accent-100);
+
+@utility ring-focus {
+  --focus-ring-color: var(--color-accent-100);
 }
 
 [id^="msg-"] {

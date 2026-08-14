@@ -644,10 +644,10 @@ function SessionInitEntry({
         aria-expanded={expanded}
         aria-controls={bodyId}
         onClick={() => setExpanded(!expanded)}
-        className="group/tool flex self-start max-w-full items-center gap-g2 text-left hide-focus-ring rounded-r3"
+        className="flex self-start max-w-full items-center gap-g2 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3"
       >
         <span className="text-body min-w-0 truncate text-primary">Initialized session</span>
-        <span className="shrink-0 text-secondary group-hover/tool:text-primary">
+        <span className="shrink-0 text-secondary">
           <ChevronIcon expanded={expanded} size={14} />
         </span>
       </button>
@@ -2576,7 +2576,7 @@ function ToolCallRow({
             setExpanded(!expanded);
           }
         }}
-        className="relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left cursor-pointer hide-focus-ring rounded-r3"
+        className="relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3"
       >
         {rowLabel}
         <span className={chevronClass}>
@@ -2634,7 +2634,7 @@ function ToolCallSummary({ calls, sessionId }: { calls: ClientToolCall[]; sessio
             aria-expanded={expanded}
             aria-controls={bodyId}
             onClick={() => setExpanded(!expanded)}
-            className="relative group/tool flex self-start max-w-full items-center py-0 gap-g1 text-left hide-focus-ring rounded-r3"
+            className="relative group/tool flex self-start max-w-full items-center py-0 gap-g1 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3"
           >
             <span className="inline-flex items-center gap-g3 min-w-0 text-secondary group-hover/tool:text-primary">
               <span className="text-body truncate min-w-0">

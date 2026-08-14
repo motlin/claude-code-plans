@@ -165,3 +165,23 @@ describe("session init disclosure", () => {
     expect(initButton(container)).toStrictEqual(null);
   });
 });
+
+describe("session init disclosure chrome", () => {
+  // Upstream claude.ai/code renders this row as a bare button -- no `group/tool`
+  // wrapper, no hover-coloured chevron, and the `outline-none hide-focus-ring
+  // focus:ring-focus` focus trio (.llm/ui-sync/upstream/code-rich-exemplars.dict.json).
+  it("matches upstream's init-row button and chevron classes", () => {
+    const container = renderRecords([AGENT_NAME, USER_TEXT]);
+    const button = initButton(container);
+    if (!button) throw new Error("Expected an init disclosure row");
+
+    expect({
+      button: button.className,
+      chevron: button.querySelectorAll("span")[1]?.className,
+    }).toStrictEqual({
+      button:
+        "flex self-start max-w-full items-center gap-g2 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3",
+      chevron: "shrink-0 text-secondary",
+    });
+  });
+});

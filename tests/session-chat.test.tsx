@@ -690,7 +690,7 @@ describe("SessionChat grouped tool card", () => {
 });
 
 // Matches both the disclosure row and the bare non-expanding row, whose class
-// list stops before `cursor-pointer hide-focus-ring rounded-r3`.
+// list stops before `cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3`.
 const TOOL_ROW = /group\/tool[^"]*">([\s\S]*?)<\/div>/g;
 
 /** Class of a tool row's argument span, e.g. the filename on a Read row. */
@@ -1460,6 +1460,58 @@ describe("SessionChat non-expanding tool rows", () => {
       ariaExpanded: true,
       bodyMounted: false,
       chevron: true,
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Focus treatment: upstream claude.ai/code gives every disclosure row the
+// `outline-none hide-focus-ring focus:ring-focus` trio -- a transparent outline
+// reserved by `hide-focus-ring`, coloured in by `focus:ring-focus`.
+// See .llm/ui-sync/upstream/code-rich-exemplars.dict.json.
+// ---------------------------------------------------------------------------
+
+/** Class list of the one disclosure control in a rendered transcript. */
+function disclosureClassName(container: HTMLElement): string | null {
+  const controls = disclosureControls(container);
+  if (controls.length !== 1) throw new Error(`Expected one disclosure, found ${controls.length}`);
+  return controls[0]!.className;
+}
+
+describe("SessionChat disclosure focus treatment", () => {
+  it("gives the single tool row and the group summary upstream's focus-ring classes", () => {
+    const singleBash = renderTranscriptElement(
+      toolCallRecords([{ id: "t1", name: "Bash", input: { command: "git status" } }]),
+    );
+    const groupedBash = renderTranscriptElement(
+      toolCallRecords([
+        { id: "t1", name: "Bash", input: { command: "git status" } },
+        { id: "t2", name: "Bash", input: { command: "git log --oneline" } },
+      ]),
+    );
+
+    expect({
+      row: disclosureClassName(singleBash),
+      summary: disclosureClassName(groupedBash),
+    }).toStrictEqual({
+      row: "relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
+      summary:
+        "relative group/tool flex self-start max-w-full items-center py-0 gap-g1 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3",
+    });
+  });
+
+  it("reserves the outline on hide-focus-ring and colours it from ring-focus", () => {
+    const styles = readFileSync(GLOBAL_STYLES_PATH, "utf8");
+
+    expect({
+      reservesOutline: styles.includes("outline: 2px solid var(--focus-ring-color, transparent)"),
+      definesRingFocus:
+        /@utility ring-focus \{\s*--focus-ring-color: var\(--color-accent-100\);/.test(styles),
+      keepsFocusVisibleOverride: styles.includes(".hide-focus-ring:focus-visible"),
+    }).toStrictEqual({
+      reservesOutline: true,
+      definesRingFocus: true,
+      keepsFocusVisibleOverride: false,
     });
   });
 });
