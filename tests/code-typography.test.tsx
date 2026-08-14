@@ -101,8 +101,8 @@ describe("code typography", () => {
         toolCall={toolCall("Read", { file_path: "/test/alice.ts" }, "1→const alice = 100;")}
       />,
     );
-    const gutterRow = container.querySelector("[data-gutter] > div");
-    const contentRow = container.querySelector("[data-content] > div");
+    const gutterRow = container.querySelector("[data-gutter]");
+    const contentRow = container.querySelector("[data-content]");
 
     expect({
       gutter: {
@@ -115,11 +115,11 @@ describe("code typography", () => {
       },
     }).toStrictEqual({
       gutter: {
-        className: "h-[var(--upstream-leading-code)] text-right text-secondary",
+        className: "min-h-[var(--upstream-leading-code)] select-none text-right text-secondary",
         padding: "0px 0.6em 0px 1.2em",
       },
       content: {
-        className: "h-[var(--upstream-leading-code)] whitespace-pre",
+        className: "min-h-[var(--upstream-leading-code)] min-w-0 whitespace-pre-wrap break-words",
         padding: "0px 0.6em",
       },
     });

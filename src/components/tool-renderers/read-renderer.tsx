@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import type { ThemedToken } from "@shikijs/core";
 import { extractLineNumbers, detectLanguage } from "../../lib/diff-utils";
 import { useHighlightedLines } from "../../hooks/use-shiki";
@@ -75,24 +76,20 @@ export function ReadRenderer({ toolCall }: ToolRendererProps) {
 
       {/* Body: syntax-highlighted code on the card background, capped at 400px */}
       {result && (
-        <pre className="m-0 max-h-[400px] overflow-y-auto overflow-x-auto font-mono text-code leading-code text-primary">
-          <code className="grid py-1" style={{ gridTemplateColumns: "auto 1fr" }}>
-            <div data-gutter="" className="select-none">
-              {parsedLines.map((line, index) => (
+        <pre className="m-0 max-h-[400px] overflow-y-auto font-mono text-code leading-code text-primary">
+          <code className="grid py-1" style={{ gridTemplateColumns: "auto minmax(0, 1fr)" }}>
+            {parsedLines.map((line, index) => (
+              <Fragment key={index}>
                 <div
-                  key={index}
-                  className="h-[var(--upstream-leading-code)] text-right text-secondary"
+                  data-gutter=""
+                  className="min-h-[var(--upstream-leading-code)] select-none text-right text-secondary"
                   style={{ padding: "0 0.6em 0 1.2em" }}
                 >
                   {line.lineNum || ""}
                 </div>
-              ))}
-            </div>
-            <div data-content="">
-              {parsedLines.map((line, index) => (
                 <div
-                  key={index}
-                  className="h-[var(--upstream-leading-code)] whitespace-pre"
+                  data-content=""
+                  className="min-h-[var(--upstream-leading-code)] min-w-0 whitespace-pre-wrap break-words"
                   style={{ padding: "0 0.6em" }}
                 >
                   {tokens?.[index] ? (
@@ -101,8 +98,8 @@ export function ReadRenderer({ toolCall }: ToolRendererProps) {
                     <PlainLine content={line.content} />
                   )}
                 </div>
-              ))}
-            </div>
+              </Fragment>
+            ))}
           </code>
         </pre>
       )}

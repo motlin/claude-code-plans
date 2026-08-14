@@ -29,8 +29,8 @@ describe("Read body follows the active theme", () => {
     const { container } = render(<ReadRenderer toolCall={readToolCall} />);
 
     const pre = container.querySelector("pre");
-    const gutterRow = container.querySelector<HTMLElement>("[data-gutter] > div");
-    const contentRow = container.querySelector<HTMLElement>("[data-content] > div");
+    const gutterRow = container.querySelector<HTMLElement>("[data-gutter]");
+    const contentRow = container.querySelector<HTMLElement>("[data-content]");
 
     expect({
       preClassName: pre?.className,
@@ -41,10 +41,10 @@ describe("Read body follows the active theme", () => {
       contentColor: contentRow?.style.color,
     }).toStrictEqual({
       preClassName:
-        "m-0 max-h-[400px] overflow-y-auto overflow-x-auto font-mono text-code leading-code text-primary",
+        "m-0 max-h-[400px] overflow-y-auto font-mono text-code leading-code text-primary",
       preBackgroundColor: "",
       preColor: "",
-      gutterClassName: "h-[var(--upstream-leading-code)] text-right text-secondary",
+      gutterClassName: "min-h-[var(--upstream-leading-code)] select-none text-right text-secondary",
       gutterColor: "",
       contentColor: "",
     });

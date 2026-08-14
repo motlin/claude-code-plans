@@ -131,10 +131,10 @@ describe("expanded tool bodies cap at 400px", () => {
 
     expect({
       classNames: cappedClassNames(container),
-      renderedLines: container.querySelectorAll("[data-content] > div").length,
+      renderedLines: container.querySelectorAll("[data-content]").length,
       expandButtons: container.querySelectorAll("button").length,
     }).toStrictEqual({
-      classNames: [`m-0 ${CAP} overflow-x-auto font-mono text-code leading-code text-primary`],
+      classNames: [`m-0 ${CAP} font-mono text-code leading-code text-primary`],
       renderedLines: 60,
       expandButtons: 1,
     });
