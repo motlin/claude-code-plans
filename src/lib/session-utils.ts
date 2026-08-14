@@ -78,14 +78,123 @@ function stripCommandBoilerplate(text: string): string {
   return text.replace(ARG_TAG_RE, "");
 }
 
+const REQUEST_INTERRUPTED_RE = /^\[Request interrupted by user.*\]\s*$/;
+
+/**
+ * Whether a user record is the marker the CLI writes in place of the turn the
+ * user cut short with ESC. Nothing in it came from the keyboard.
+ */
+export function isRequestInterrupted(text: string): boolean {
+  return REQUEST_INTERRUPTED_RE.test(text.trim());
+}
+
+/** The user's own words, with command scaffolding and line breaks removed. */
+function titleText(text: string, options?: { isMeta?: boolean }): string {
+  const command = cleanCommandText(text);
+  const boilerplateFree = options?.isMeta === true ? stripCommandBoilerplate(command) : command;
+  return boilerplateFree.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Words that name no work of their own: bare affirmations, acknowledgements,
+ * and continuations. A prompt built only from these is an answer to something
+ * the assistant asked, not a request.
+ */
+const CONTINUATION_WORDS = new Set([
+  "again",
+  "ahead",
+  "all",
+  "and",
+  "any",
+  "carry",
+  "continue",
+  "cool",
+  "correct",
+  "do",
+  "done",
+  "exactly",
+  "fine",
+  "go",
+  "going",
+  "good",
+  "great",
+  "hm",
+  "hmm",
+  "indeed",
+  "it",
+  "k",
+  "keep",
+  "more",
+  "n",
+  "nah",
+  "next",
+  "nice",
+  "no",
+  "nope",
+  "now",
+  "of",
+  "ok",
+  "okay",
+  "on",
+  "one",
+  "perfect",
+  "please",
+  "proceed",
+  "resume",
+  "right",
+  "sounds",
+  "still",
+  "sure",
+  "thank",
+  "thanks",
+  "that",
+  "the",
+  "them",
+  "then",
+  "these",
+  "this",
+  "those",
+  "thx",
+  "to",
+  "try",
+  "up",
+  "x",
+  "y",
+  "ya",
+  "yeah",
+  "yep",
+  "yes",
+  "you",
+  "yup",
+]);
+
+/** Shorter than this and a prompt cannot say what a session is for. */
+const MIN_INFORMATIVE_LENGTH = 3;
+
+/**
+ * Whether a user message says anything about the work a session does. A
+ * session resumed or continued opens with the user answering an earlier
+ * question -- "yes", "x", "resume" -- and a title built from that record names
+ * nothing, so the title falls through to the next message that does.
+ *
+ * Word matching is deliberately ASCII-only: a prompt written in a script this
+ * list cannot spell has no continuation words to find and counts as informative
+ * on its length alone.
+ */
+export function isInformativePrompt(text: string, options?: { isMeta?: boolean }): boolean {
+  const cleaned = titleText(text, options);
+  if (cleaned.length < MIN_INFORMATIVE_LENGTH) return false;
+  const words = cleaned.toLowerCase().match(/[a-z0-9']+/g);
+  if (words === null) return true;
+  return !words.every((word) => CONTINUATION_WORDS.has(word));
+}
+
 export function extractSessionTitle(
   text: string,
   fallback?: string,
   options?: { isMeta?: boolean },
 ): string {
-  const command = cleanCommandText(text);
-  const boilerplateFree = options?.isMeta === true ? stripCommandBoilerplate(command) : command;
-  const cleaned = boilerplateFree.replace(/\s+/g, " ").trim();
+  const cleaned = titleText(text, options);
   if (!cleaned) return fallback ?? "Untitled Session";
 
   if (cleaned.length <= 80) return cleaned;

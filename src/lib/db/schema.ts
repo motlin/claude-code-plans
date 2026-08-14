@@ -1,9 +1,11 @@
 import { sqliteTable, text, integer, index, primaryKey } from "drizzle-orm/sqlite-core";
 import type { ReviewBundle } from "../api/reviews";
 
-// 25: subagents now record the model the agent ran on, which existing rows
-// were indexed without.
-export const SCHEMA_VERSION = "25";
+// 26: a session opened with a bare "yes" or an interrupt marker now takes its
+// title from the first message that names the work. Titles are stored at index
+// time and the sessions this corrects are finished, so nothing but a rebuild
+// revisits them.
+export const SCHEMA_VERSION = "26";
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),

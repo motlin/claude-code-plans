@@ -19,6 +19,7 @@ import {
   readNewJsonlLines,
   parseCommandBlock,
 } from "../src/lib/sessions";
+import { isInformativePrompt } from "../src/lib/session-utils";
 
 const testDir = join(tmpdir(), "claude-sessions-test-" + process.pid);
 
@@ -179,6 +180,27 @@ describe("extractSessionTitle", () => {
     expect(extractSessionTitle(text)).toBe(
       "Explain this config <description> internal notes </description>",
     );
+  });
+});
+
+describe("isInformativePrompt", () => {
+  it.each(["yes", "Yes.", "x", "resume", "I", "ok, go ahead", "sure, do it", "keep going"])(
+    "rejects the bare continuation %j",
+    (text) => {
+      expect(isInformativePrompt(text)).toBe(false);
+    },
+  );
+
+  it.each(["Fix the login bug", "resume the failed deploy", "why?", "修复登录错误"])(
+    "accepts %j",
+    (text) => {
+      expect(isInformativePrompt(text)).toBe(true);
+    },
+  );
+
+  it("judges a slash command by the arguments the user passed", () => {
+    const text = "<description>\nRebuild the search index\n</description>\nBoilerplate follows.";
+    expect(isInformativePrompt(text, { isMeta: true })).toBe(true);
   });
 });
 
@@ -878,6 +900,97 @@ describe("listSessions", () => {
         title: "Explain Alice's example failure",
         firstPrompt: "Explain Alice's example failure",
       },
+    ]);
+  });
+
+  it.each(["yes", "x", "resume"])(
+    "skips the bare continuation %j that opens a resumed session",
+    async (opener) => {
+      const projectDir = join(testDir, "-Users-alice-projects-example");
+      mkdirSync(projectDir, { recursive: true });
+      writeFileSync(
+        join(projectDir, "resumed.jsonl"),
+        jsonl(
+          userMessage(opener),
+          assistantMessage([{ type: "text", text: "Continuing the audit" }]),
+          userMessage("Audit the photo library for duplicates"),
+        ),
+      );
+
+      const groups = await listSessions(testDir);
+      expect(
+        groups[0]!.sessions.map(({ id, title, firstPrompt }) => ({ id, title, firstPrompt })),
+      ).toStrictEqual([
+        {
+          id: "resumed",
+          title: "Audit the photo library for duplicates",
+          firstPrompt: "Audit the photo library for duplicates",
+        },
+      ]);
+    },
+  );
+
+  it("skips the marker left by an interrupted request", async () => {
+    const projectDir = join(testDir, "-Users-alice-projects-example");
+    mkdirSync(projectDir, { recursive: true });
+    writeFileSync(
+      join(projectDir, "interrupted.jsonl"),
+      jsonl(
+        userMessage("[Request interrupted by user for tool use]"),
+        userMessage("Kill the processes draining the battery"),
+      ),
+    );
+
+    const groups = await listSessions(testDir);
+    expect(groups[0]!.sessions.map(({ id, title }) => ({ id, title }))).toStrictEqual([
+      { id: "interrupted", title: "Kill the processes draining the battery" },
+    ]);
+  });
+
+  it("keeps the continuation when the session never asks for anything else", async () => {
+    const projectDir = join(testDir, "-Users-alice-projects-example");
+    mkdirSync(projectDir, { recursive: true });
+    writeFileSync(
+      join(projectDir, "only-yes.jsonl"),
+      jsonl(
+        userMessage("yes"),
+        assistantMessage([{ type: "text", text: "Done" }]),
+        userMessage("ok, thanks"),
+      ),
+    );
+
+    const groups = await listSessions(testDir);
+    expect(groups[0]!.sessions.map(({ id, title }) => ({ id, title }))).toStrictEqual([
+      { id: "only-yes", title: "yes" },
+    ]);
+  });
+
+  it("re-reads the transcript when the indexed first prompt is a bare continuation", async () => {
+    const projectDir = join(testDir, "-Users-alice-projects-example");
+    const transcriptPath = join(projectDir, "indexed-yes.jsonl");
+    mkdirSync(projectDir, { recursive: true });
+    writeFileSync(
+      transcriptPath,
+      jsonl(userMessage("yes"), userMessage("Rename the schema-sync branch")),
+    );
+    writeFileSync(
+      join(projectDir, "sessions-index.json"),
+      JSON.stringify({
+        version: 1,
+        entries: [
+          {
+            sessionId: "indexed-yes",
+            fullPath: transcriptPath,
+            fileMtime: 946_598_400_000,
+            firstPrompt: "yes",
+          },
+        ],
+      }),
+    );
+
+    const groups = await listSessions(testDir);
+    expect(groups[0]!.sessions.map(({ id, title }) => ({ id, title }))).toStrictEqual([
+      { id: "indexed-yes", title: "Rename the schema-sync branch" },
     ]);
   });
 

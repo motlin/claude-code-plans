@@ -65,6 +65,7 @@ import {
   formatToolName,
   summarizeToolCallsStructured,
   editDiffEntries,
+  isRequestInterrupted,
 } from "../lib/session-utils";
 import type { SummarySegment } from "../lib/session-utils";
 import { InlinePathImages, SESSION_IMAGE_CLASS_NAME } from "./inline-path-images";
@@ -1297,8 +1298,6 @@ type UserContentKind =
   | "stop-hook"
   | "slash-command-body";
 
-const REQUEST_INTERRUPTED_RE = /^\[Request interrupted by user.*\]\s*$/;
-
 function getUserContentText(line: MessageSessionLine): string {
   const content = line.message?.content;
   if (!content) return "";
@@ -1333,7 +1332,7 @@ function classifyUserContent(line: MessageSessionLine): UserContentKind {
   }
 
   // Request-interrupted: detect by content text shape.
-  if (text && REQUEST_INTERRUPTED_RE.test(text)) {
+  if (text && isRequestInterrupted(text)) {
     return "request-interrupted";
   }
 

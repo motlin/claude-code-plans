@@ -117,6 +117,8 @@ import {
   parseBashOutput,
   parseCommandBlock,
   extractSessionTitle,
+  isInformativePrompt,
+  isRequestInterrupted,
   summarizeToolCalls,
   summarizeToolCallsStructured,
   formatToolName,
@@ -179,7 +181,7 @@ function isPastedShellOutput(text: string): boolean {
 }
 
 function isSessionTitlePrompt(text: string): boolean {
-  if (!text.trim() || isPastedShellOutput(text)) return false;
+  if (!text.trim() || isPastedShellOutput(text) || isRequestInterrupted(text)) return false;
   const line = { type: "user" as const, message: { content: text }, lineIndex: 0 };
   return !isCaveatLine(line) && !isCommandLine(line) && !isStdoutLine(line);
 }
@@ -225,22 +227,42 @@ function extractFirstUserText(line: string): FirstUserPrompt | null {
   return null;
 }
 
+/**
+ * How many opening user records to weigh before settling for the first one. A
+ * session whose user turns are all acknowledgements would otherwise stream to
+ * the end of a multi-megabyte transcript looking for a request that is not
+ * there.
+ */
+const MAX_TITLE_CANDIDATES = 20;
+
+/**
+ * The opening user message that says what a session is for. That is usually
+ * the first one, but a resumed session opens with the user answering an
+ * earlier question -- "yes", "x", "resume" -- so those are passed over for the
+ * next message that asks for something. When none does, the acknowledgement
+ * still beats titling the session with its id.
+ */
 export async function readFirstUserMessage(filePath: string): Promise<FirstUserPrompt | null> {
   const rl = createInterface({
     input: createReadStream(filePath, { encoding: "utf-8" }),
     crlfDelay: Infinity,
   });
 
+  let fallback: FirstUserPrompt | null = null;
+  let examined = 0;
   try {
     for await (const line of rl) {
       if (!line.trim()) continue;
       const prompt = extractFirstUserText(line);
-      if (prompt !== null) return prompt;
+      if (prompt === null) continue;
+      if (isInformativePrompt(prompt.text, { isMeta: prompt.isMeta })) return prompt;
+      fallback ??= prompt;
+      if (++examined >= MAX_TITLE_CANDIDATES) break;
     }
   } finally {
     rl.close();
   }
-  return null;
+  return fallback;
 }
 
 async function readSessionMessageCount(filePath: string): Promise<number> {
@@ -285,14 +307,18 @@ export async function resolveFirstPrompt(
   filePath: string,
 ): Promise<FirstUserPrompt | null> {
   // sessions-index.json records the typed `/command` line, never the body the
-  // CLI expands it into, so an indexed prompt is never a meta record.
-  if (indexedPrompt && isSessionTitlePrompt(indexedPrompt)) {
-    return { text: indexedPrompt, isMeta: false };
-  }
+  // CLI expands it into, so an indexed prompt is never a meta record. It also
+  // records a bare "yes" as faithfully as a request, so an uninformative one
+  // sends us to the transcript for a message that names the work.
+  const indexed =
+    indexedPrompt && isSessionTitlePrompt(indexedPrompt)
+      ? { text: indexedPrompt, isMeta: false }
+      : null;
+  if (indexed !== null && isInformativePrompt(indexed.text)) return indexed;
   try {
-    return await readFirstUserMessage(filePath);
+    return (await readFirstUserMessage(filePath)) ?? indexed;
   } catch {
-    return null;
+    return indexed;
   }
 }
 
@@ -630,6 +656,7 @@ export async function readSession(
   const messages: SessionMessage[] = [];
   let messageCount = 0;
   let title = sessionId;
+  let titleNamesWork = false;
   let customTitle: string | undefined;
   let entrypoint: string | undefined;
   let sessionKind: string | undefined;
@@ -833,8 +860,14 @@ export async function readSession(
 
       if (textBlocks.length === 0 && toolCalls.length === 0 && contentBlocks.length === 0) continue;
 
-      if (type === "user" && textBlocks.length > 0 && title === sessionId) {
-        title = extractSessionTitle(textBlocks[0]!, sessionId, { isMeta: obj.isMeta === true });
+      // A session resumed with a bare "yes" keeps looking for the message that
+      // names the work, and settles for the acknowledgement only if none does.
+      if (type === "user" && textBlocks.length > 0 && !titleNamesWork) {
+        const isMeta = obj.isMeta === true;
+        titleNamesWork = isInformativePrompt(textBlocks[0]!, { isMeta });
+        if (titleNamesWork || title === sessionId) {
+          title = extractSessionTitle(textBlocks[0]!, sessionId, { isMeta });
+        }
       }
 
       const last = messages[messages.length - 1];
