@@ -39,10 +39,10 @@ function formatRelativeTime(lastModified: number): string {
  * running at all.
  */
 const ACTIVE_ROW_COLUMNS =
-  "grid grid-cols-[minmax(0,1fr)_5rem_8.5rem_7rem_9rem] items-center rounded-md border border-border-300/15";
+  "grid grid-cols-[minmax(0,1fr)_5rem_8.5rem_7rem_9rem] items-center rounded-md border border-border";
 
 const ACTIVE_TRANSCRIPT_COLUMNS =
-  "grid grid-cols-[minmax(0,1fr)_minmax(0,8rem)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-bg-200/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100";
+  "grid grid-cols-[minmax(0,1fr)_minmax(0,8rem)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-surface-0/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100";
 
 function labelFromCwd(cwd: string): string {
   const trimmed = cwd.replace(/\/+$/, "");
@@ -102,7 +102,7 @@ function ActivePage() {
       <ListPageHeader title="Active Sessions" count={sessions.length} itemLabel="session" />
 
       {sessions.length === 0 ? (
-        <p className="mt-8 text-center text-text-500">No active Claude Code sessions</p>
+        <p className="mt-8 text-center text-t6">No active Claude Code sessions</p>
       ) : (
         <div className="mt-4 space-y-1">
           {sessions.map((session) => (
@@ -114,15 +114,15 @@ function ActivePage() {
                 title={`Open session transcript for ${session.title}. Project ${session.projectName}`}
                 className={ACTIVE_TRANSCRIPT_COLUMNS}
               >
-                <span className="truncate text-sm font-medium text-text-000">{session.title}</span>
-                <span className="truncate text-xs text-text-500">{session.projectName}</span>
+                <span className="truncate text-sm font-medium text-primary">{session.title}</span>
+                <span className="truncate text-xs text-t6">{session.projectName}</span>
               </Link>
               <SessionStatusIndicator
                 state={session.state}
                 heat={waitHeat(session.displayState, session.blockedSince, now)}
               />
               <NeedsReviewMarker needsReview={session.displayState === "review"} />
-              <span className="truncate text-xs tabular-nums text-text-500">
+              <span className="truncate text-xs tabular-nums text-t6">
                 {formatRelativeTime(session.lastModified)}
               </span>
               <div className="justify-self-end">

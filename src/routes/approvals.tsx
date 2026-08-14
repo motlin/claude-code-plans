@@ -34,7 +34,7 @@ function ApprovalsPage() {
       <ListPageHeader title="Approvals" count={approvals.length} itemLabel="approval" />
 
       {approvals.length === 0 ? (
-        <p className="mt-8 text-center text-text-500">Nothing waiting on you right now.</p>
+        <p className="mt-8 text-center text-t6">Nothing waiting on you right now.</p>
       ) : (
         <ul className="mt-4 space-y-1">
           {approvals.map((approval) => {
@@ -53,20 +53,20 @@ function ApprovalsPage() {
               <li key={`${approval.sessionId}:${approval.toolUseId}`}>
                 <Link
                   {...linkProps}
-                  className="block rounded-md border border-border-300/15 p-3 no-underline transition-colors hover:bg-bg-200/50"
+                  className="block rounded-md border border-border p-3 no-underline transition-colors hover:bg-surface-0/50"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="truncate text-sm font-medium text-text-000">
+                    <span className="truncate text-sm font-medium text-primary">
                       {approval.projectName}
                     </span>
                     <span className={pillStyles.outline}>{approval.toolName}</span>
-                    <span className="ml-auto text-xs text-text-500">
+                    <span className="ml-auto text-xs text-t6">
                       {formatRelativeTimeFromIso(approval.blockedSince)}
                     </span>
                   </div>
-                  <div className="mt-1 truncate text-xs text-text-500">{sessionTitle}</div>
+                  <div className="mt-1 truncate text-xs text-t6">{sessionTitle}</div>
                   {approval.questionPreview && approval.toolName === "AskUserQuestion" && (
-                    <div className="mt-1 truncate text-xs text-text-400 italic">
+                    <div className="mt-1 truncate text-xs text-t6 italic">
                       {truncate(approval.questionPreview, 120)}
                     </div>
                   )}

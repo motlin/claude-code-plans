@@ -15,7 +15,7 @@ const severityStyles: Record<ReviewFinding["severity"], string> = {
   high: "border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300",
   medium: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300",
   low: "border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-300",
-  nit: "border-border-300/20 bg-bg-200 text-text-400",
+  nit: "border-strong bg-surface-0 text-t6",
 };
 
 function FindingCard({ finding }: { finding: ReviewFinding }) {
@@ -36,7 +36,7 @@ function FindingCard({ finding }: { finding: ReviewFinding }) {
       </div>
       <p className="mt-1 whitespace-pre-wrap">{finding.body}</p>
       {finding.suggestion && (
-        <pre className="mt-2 overflow-x-auto rounded bg-bg-100/70 p-2 font-mono text-[11px]">
+        <pre className="mt-2 overflow-x-auto rounded bg-surface-1/70 p-2 font-mono text-[11px]">
           {finding.suggestion}
         </pre>
       )}
@@ -52,13 +52,13 @@ function ReviewPage() {
   return (
     <main className="mx-auto max-w-[min(100%,110rem)] py-6">
       <header className="mb-5">
-        <h1 className="text-lg font-semibold text-text-100">Working-copy review</h1>
-        <p className="mt-1 break-all font-mono text-xs text-text-500">{review.cwd}</p>
-        {review.summary && <p className="mt-2 max-w-4xl text-sm text-text-400">{review.summary}</p>}
+        <h1 className="text-lg font-semibold text-primary">Working-copy review</h1>
+        <p className="mt-1 break-all font-mono text-xs text-t6">{review.cwd}</p>
+        {review.summary && <p className="mt-2 max-w-4xl text-sm text-t6">{review.summary}</p>}
       </header>
 
       {files.length === 0 ? (
-        <div className="rounded-md border border-border-300/15 bg-bg-100 p-4 text-sm text-text-500">
+        <div className="rounded-md border border-border bg-surface-1 p-4 text-sm text-t6">
           No uncommitted changes were present when this review was created.
         </div>
       ) : (
@@ -66,9 +66,9 @@ function ReviewPage() {
           {files.map((file) => (
             <section
               key={file.file}
-              className="overflow-hidden rounded-md border border-border-300/15 bg-bg-100"
+              className="overflow-hidden rounded-md border border-border bg-surface-1"
             >
-              <h2 className="border-b border-border-300/15 px-4 py-2 font-mono text-xs font-semibold text-text-200">
+              <h2 className="border-b border-border px-4 py-2 font-mono text-xs font-semibold text-secondary">
                 {file.file}
               </h2>
               <div className="overflow-x-auto">
@@ -84,25 +84,25 @@ function ReviewPage() {
                     return (
                       <div
                         key={`${line.oldLine ?? ""}:${line.newLine ?? ""}:${index}`}
-                        className="grid grid-cols-[4rem_4rem_minmax(30rem,1fr)_minmax(18rem,30rem)] border-b border-border-300/5 last:border-b-0"
+                        className="grid grid-cols-[4rem_4rem_minmax(30rem,1fr)_minmax(18rem,30rem)] border-b border-subtle last:border-b-0"
                       >
                         <span
-                          className={`px-2 py-0.5 text-right font-mono text-[11px] text-text-600 ${background}`}
+                          className={`px-2 py-0.5 text-right font-mono text-[11px] text-t6 ${background}`}
                         >
                           {line.oldLine}
                         </span>
                         <span
-                          className={`px-2 py-0.5 text-right font-mono text-[11px] text-text-600 ${background}`}
+                          className={`px-2 py-0.5 text-right font-mono text-[11px] text-t6 ${background}`}
                         >
                           {line.newLine}
                         </span>
                         <pre
-                          className={`px-2 py-0.5 font-mono text-xs text-text-200 ${background}`}
+                          className={`px-2 py-0.5 font-mono text-xs text-secondary ${background}`}
                         >
                           {line.prefix}
                           {line.content}
                         </pre>
-                        <div className="border-l border-border-300/10">
+                        <div className="border-l border-subtle">
                           {findings.map((finding) => (
                             <FindingCard key={finding.id} finding={finding} />
                           ))}

@@ -54,14 +54,14 @@ function HighlightedJson({ code }: { code: string }) {
 
   if (!tokens) {
     return (
-      <pre className="bg-bg-200 text-text-100 rounded-r6 leading-relaxed p-2 whitespace-pre-wrap break-all text-code font-mono">
+      <pre className="bg-surface-0 text-primary rounded-r6 leading-relaxed p-2 whitespace-pre-wrap break-all text-code font-mono">
         {code}
       </pre>
     );
   }
 
   return (
-    <pre className="bg-bg-200 rounded-r6 leading-relaxed p-2 whitespace-pre-wrap break-all text-code font-mono">
+    <pre className="bg-surface-0 rounded-r6 leading-relaxed p-2 whitespace-pre-wrap break-all text-code font-mono">
       {tokens.map((line: ThemedToken[], lineIndex: number) => (
         <div key={lineIndex}>
           {line.map((token: ThemedToken, tokenIndex: number) => (
@@ -86,7 +86,7 @@ function SmartResultContent({ text, maxLines = 20 }: { text: string; maxLines?: 
     const lineCount = text.split("\n").length;
     return (
       <ExpandableBlock lineCount={lineCount} maxLines={maxLines}>
-        <div className="text-body text-text-100 leading-relaxed">
+        <div className="text-body text-primary leading-relaxed">
           <MarkdownArticle markdown={text} />
         </div>
       </ExpandableBlock>
@@ -106,7 +106,7 @@ function SmartResultContent({ text, maxLines = 20 }: { text: string; maxLines?: 
   const lines = text.split("\n");
   return (
     <ExpandableBlock lineCount={lines.length} maxLines={maxLines}>
-      <pre className="bg-bg-200 text-text-100 rounded-r6 leading-relaxed p-2 whitespace-pre-wrap break-all text-code font-mono">
+      <pre className="bg-surface-0 text-primary rounded-r6 leading-relaxed p-2 whitespace-pre-wrap break-all text-code font-mono">
         {text}
       </pre>
     </ExpandableBlock>
@@ -222,7 +222,7 @@ function ReadPageRenderer({ resultText }: { resultText: string }) {
       <div className="flex items-center gap-2">
         <FileText className="h-4 w-4 text-blue-500" />
         <span className="text-body text-primary">Read page content</span>
-        <span className="text-body text-text-500">{resultText.split("\n").length} lines</span>
+        <span className="text-body text-t6">{resultText.split("\n").length} lines</span>
       </div>
       <CollapsibleSection label="Page content">
         <SmartResultContent text={resultText} maxLines={30} />
@@ -255,7 +255,7 @@ function ComputerRenderer({
         <div className="flex items-center gap-2">
           <MousePointer className="h-4 w-4 text-blue-500" />
           <span className="text-body text-primary">Computer action</span>
-          {detail && <span className="text-text-500 text-code font-mono truncate">{detail}</span>}
+          {detail && <span className="text-t6 text-code font-mono truncate">{detail}</span>}
         </div>
         <SmartResultContent text={resultText} />
       </div>
@@ -325,13 +325,13 @@ function JavaScriptToolRenderer({
         <span className="text-body text-primary">Execute JavaScript</span>
       </div>
       {code && (
-        <pre className="bg-bg-200 rounded-r6 p-2 text-text-100 text-code font-mono whitespace-pre-wrap max-h-32 overflow-auto">
+        <pre className="bg-surface-0 rounded-r6 p-2 text-primary text-code font-mono whitespace-pre-wrap max-h-32 overflow-auto">
           {code}
         </pre>
       )}
       {resultText && (
         <div className="border-l-2 border-extended-green pl-3">
-          <div className="text-body text-text-500 font-medium mb-1">Result</div>
+          <div className="text-body text-t6 font-medium mb-1">Result</div>
           <SmartResultContent text={resultText} />
         </div>
       )}
@@ -378,7 +378,7 @@ function ReadConsoleMessagesRenderer({ resultText }: { resultText: string }) {
 }
 
 function DefaultRenderer({ resultText }: { resultText: string }) {
-  if (!resultText) return <span className="text-body text-text-500">Action completed</span>;
+  if (!resultText) return <span className="text-body text-t6">Action completed</span>;
   return <SmartResultContent text={resultText} />;
 }
 

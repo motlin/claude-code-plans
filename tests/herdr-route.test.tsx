@@ -39,11 +39,11 @@ afterEach(() => {
 });
 
 const HERDR_ROW_COLUMNS =
-  "grid grid-cols-[minmax(0,1fr)_5rem_8.5rem_2rem_9rem] items-center rounded-md border border-border-300/15";
+  "grid grid-cols-[minmax(0,1fr)_5rem_8.5rem_2rem_9rem] items-center rounded-md border border-border";
 const HERDR_TERMINAL_COLUMNS =
-  "grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-bg-200/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100";
+  "grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-surface-0/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100";
 const HERDR_TRANSCRIPT_CELL =
-  "flex size-8 items-center justify-center justify-self-center rounded-md text-text-500 transition-colors hover:bg-bg-200/50 hover:text-text-000 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100";
+  "flex size-8 items-center justify-center justify-self-center rounded-md text-t6 transition-colors hover:bg-surface-0/50 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100";
 const HERDR_ACTION_CELL = "justify-self-end";
 
 function placement({

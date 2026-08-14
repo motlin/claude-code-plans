@@ -6,10 +6,10 @@ function ActiveSubagentContent({ agent }: { agent: ActiveSubagent }) {
   return (
     <>
       <Bot className="h-3.5 w-3.5 shrink-0 text-success-000" />
-      <span className="shrink-0 rounded bg-bg-200 px-1.5 py-0.5 text-[10px] font-medium text-text-300">
+      <span className="shrink-0 rounded bg-surface-0 px-1.5 py-0.5 text-[10px] font-medium text-secondary">
         {agent.agentType || "agent"}
       </span>
-      <span className="min-w-0 truncate text-text-100">
+      <span className="min-w-0 truncate text-primary">
         {agent.description || agent.agentId || "Active subagent"}
       </span>
     </>

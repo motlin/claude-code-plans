@@ -43,7 +43,7 @@ function SubagentsPage() {
       </DetailTopBar>
 
       <h1 className="text-lg font-semibold flex items-center gap-2">
-        <GitFork className="h-4 w-4 text-text-500" />
+        <GitFork className="h-4 w-4 text-t6" />
         Subagents ({subagentCount})
       </h1>
 
@@ -52,7 +52,7 @@ function SubagentsPage() {
           <SubagentTree agents={agents} sessionId={params.id} />
         </div>
       ) : agents.length === 0 ? (
-        <p className="mt-4 text-sm text-text-500">No subagents for this session.</p>
+        <p className="mt-4 text-sm text-t6">No subagents for this session.</p>
       ) : (
         <div className="mt-3">
           {subagentView === "sequence" ? (

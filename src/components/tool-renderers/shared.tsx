@@ -238,7 +238,9 @@ export function AnsiText({ content }: { content: string }) {
 }
 
 export function FilePath({ path }: { path: string }) {
-  return <code className="text-xs font-mono bg-bg-200 px-1.5 py-0.5 rounded truncate">{path}</code>;
+  return (
+    <code className="text-xs font-mono bg-surface-0 px-1.5 py-0.5 rounded truncate">{path}</code>
+  );
 }
 
 /**
@@ -373,12 +375,12 @@ export function ExpandableBlock({
     <div>
       <div className="relative overflow-hidden" style={{ maxHeight }}>
         {children}
-        <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-bg-000 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-surface-2 to-transparent pointer-events-none" />
       </div>
       <button
         type="button"
         onClick={() => setExpanded(true)}
-        className="mt-1 text-xs text-text-500 hover:text-text-100 transition cursor-pointer"
+        className="mt-1 text-xs text-t6 hover:text-primary transition cursor-pointer"
       >
         Show all {lineCount} lines
       </button>
@@ -486,7 +488,7 @@ export function CollapsibleSection({
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1 text-xs text-text-500 hover:text-text-100 cursor-pointer"
+        className="flex items-center gap-1 text-xs text-t6 hover:text-primary cursor-pointer"
       >
         <ChevronIcon expanded={open} />
         {label}
@@ -600,7 +602,7 @@ export function KeyValueCard({
 }
 
 export function ToolMeta({ children }: { children: ReactNode }) {
-  return <span className="text-xs text-text-500">{children}</span>;
+  return <span className="text-xs text-t6">{children}</span>;
 }
 
 export function formatDuration(ms: number): string {
@@ -612,5 +614,5 @@ export function formatDuration(ms: number): string {
 }
 
 export function DurationBadge({ duration }: { duration: number }) {
-  return <span className="text-xs text-text-500 ml-1.5">{formatDuration(duration)}</span>;
+  return <span className="text-xs text-t6 ml-1.5">{formatDuration(duration)}</span>;
 }

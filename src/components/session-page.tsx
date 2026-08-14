@@ -127,7 +127,7 @@ function FloatingScrollButtons({ anchorRef }: { anchorRef: React.RefObject<HTMLE
       <button
         type="button"
         onClick={() => scrollTo("start")}
-        className="h-9 w-9 rounded-full bg-bg-200 border border-border-300/15 shadow-md flex items-center justify-center text-text-500 hover:text-text-000 hover:bg-bg-200/80 transition-all cursor-pointer"
+        className="h-9 w-9 rounded-full bg-surface-0 border border-border shadow-md flex items-center justify-center text-t6 hover:text-primary hover:bg-surface-0/80 transition-all cursor-pointer"
         style={{
           opacity: showUp ? 1 : 0,
           pointerEvents: showUp ? "auto" : "none",
@@ -139,7 +139,7 @@ function FloatingScrollButtons({ anchorRef }: { anchorRef: React.RefObject<HTMLE
       <button
         type="button"
         onClick={() => scrollTo("end")}
-        className="h-9 w-9 rounded-full bg-bg-200 border border-border-300/15 shadow-md flex items-center justify-center text-text-500 hover:text-text-000 hover:bg-bg-200/80 transition-all cursor-pointer"
+        className="h-9 w-9 rounded-full bg-surface-0 border border-border shadow-md flex items-center justify-center text-t6 hover:text-primary hover:bg-surface-0/80 transition-all cursor-pointer"
         style={{
           opacity: showDown ? 1 : 0,
           pointerEvents: showDown ? "auto" : "none",
@@ -175,12 +175,12 @@ export function CopyButton({
             setTimeout(() => setCopied(false), 1500);
           }
         }}
-        className="text-text-500 hover:text-text-000 transition-colors cursor-pointer"
+        className="text-t6 hover:text-primary transition-colors cursor-pointer"
       >
         <Icon className="h-3.5 w-3.5" />
       </button>
       <span
-        className={`absolute -bottom-6 left-1/2 -translate-x-1/2 rounded bg-bg-200 px-1.5 py-0.5 text-[10px] text-text-300 shadow-sm transition-opacity whitespace-nowrap ${copied ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+        className={`absolute -bottom-6 left-1/2 -translate-x-1/2 rounded bg-surface-0 px-1.5 py-0.5 text-[10px] text-secondary shadow-sm transition-opacity whitespace-nowrap ${copied ? "opacity-100" : "opacity-0 pointer-events-none"}`}
       >
         Copied!
       </span>
@@ -315,13 +315,13 @@ function SessionChrome({ children }: { children: React.ReactNode }) {
 function SessionSkeleton() {
   return (
     <SessionChrome>
-      <div className="mt-4 h-6 w-1/3 animate-pulse rounded bg-bg-300/50" />
+      <div className="mt-4 h-6 w-1/3 animate-pulse rounded bg-fill-ghost-hover" />
       <div className="mt-6 space-y-4" data-testid="session-skeleton">
         {[0, 1, 2, 3, 4, 5].map((row) => (
-          <div key={row} className="rounded-lg border border-border-300/15 p-4">
-            <div className="h-3 w-24 animate-pulse rounded bg-bg-300/50" />
-            <div className="mt-3 h-3 w-full animate-pulse rounded bg-bg-300/50" />
-            <div className="mt-2 h-3 w-4/5 animate-pulse rounded bg-bg-300/50" />
+          <div key={row} className="rounded-lg border border-border p-4">
+            <div className="h-3 w-24 animate-pulse rounded bg-fill-ghost-hover" />
+            <div className="mt-3 h-3 w-full animate-pulse rounded bg-fill-ghost-hover" />
+            <div className="mt-2 h-3 w-4/5 animate-pulse rounded bg-fill-ghost-hover" />
           </div>
         ))}
       </div>
@@ -333,7 +333,7 @@ function SessionNotFound() {
   return (
     <SessionChrome>
       <h1 className="mt-4 text-lg font-semibold">Session Not Found</h1>
-      <p className="mt-2 text-text-500">This session could not be found.</p>
+      <p className="mt-2 text-t6">This session could not be found.</p>
     </SessionChrome>
   );
 }
@@ -620,7 +620,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
     <div ref={sessionViewRef}>
       {/* Sticky header: top bar + title + subagent link */}
       {!chromeHidden && (
-        <div className="sticky top-0 z-10 bg-bg-000 pb-2 -mx-4 px-4 sm:-mx-8 sm:px-8 border-b border-border-300/15">
+        <div className="sticky top-0 z-10 bg-surface-2 pb-2 -mx-4 px-4 sm:-mx-8 sm:px-8 border-b border-border">
           <DetailTopBar>
             {data.parentSessionId ? (
               <Link
@@ -637,22 +637,22 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
                 All Sessions
               </Link>
             )}
-            <span className="text-xs text-text-500" title={data.projectPath ?? undefined}>
+            <span className="text-xs text-t6" title={data.projectPath ?? undefined}>
               {data.projectName}
             </span>
             {data.entrypoint && data.entrypoint !== "cli" && (
-              <span className="inline-flex items-center rounded-full bg-bg-200 px-2 py-0.5 text-xs font-medium text-text-500">
+              <span className="inline-flex items-center rounded-full bg-surface-0 px-2 py-0.5 text-xs font-medium text-t6">
                 {data.entrypoint}
               </span>
             )}
             {data.sessionKind && (
-              <span className="inline-flex items-center rounded-full bg-bg-200 px-2 py-0.5 text-xs font-medium text-text-500">
+              <span className="inline-flex items-center rounded-full bg-surface-0 px-2 py-0.5 text-xs font-medium text-t6">
                 {data.sessionKind}
               </span>
             )}
             {data.attributionAgent && (
               <span
-                className="inline-flex items-center gap-1 rounded-full bg-bg-200 px-2 py-0.5 font-mono text-xs font-medium text-text-500"
+                className="inline-flex items-center gap-1 rounded-full bg-surface-0 px-2 py-0.5 font-mono text-xs font-medium text-t6"
                 title="Transcript attribution agent"
               >
                 <Bot className="h-3 w-3" />
@@ -662,7 +662,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
             {data.teamNames?.map((team) => (
               <span
                 key={team}
-                className="inline-flex items-center gap-1 rounded-full bg-bg-200 px-2 py-0.5 text-xs font-medium text-text-500"
+                className="inline-flex items-center gap-1 rounded-full bg-surface-0 px-2 py-0.5 text-xs font-medium text-t6"
               >
                 <Users className="h-3 w-3" />
                 {team}
@@ -672,7 +672,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
               <Link
                 to="/session/$id"
                 params={{ id: data.forkedFromSessionId }}
-                className="inline-flex items-center gap-1 rounded-full bg-bg-200 px-2 py-0.5 text-xs font-medium text-text-500 no-underline transition-colors hover:bg-bg-300/70"
+                className="inline-flex items-center gap-1 rounded-full bg-surface-0 px-2 py-0.5 text-xs font-medium text-t6 no-underline transition-colors hover:bg-fill-control"
                 title={`Forked from ${data.forkedFromSessionId}`}
               >
                 <GitFork className="h-3 w-3" />
@@ -716,7 +716,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
             <a
               href={`/api/raw?sessionId=${sessionId}`}
               download
-              className="text-text-500 hover:text-text-000 transition-colors"
+              className="text-t6 hover:text-primary transition-colors"
               title="Download raw JSONL"
             >
               <Download className="h-3.5 w-3.5" />
@@ -730,7 +730,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
                   queryKey: ["starred-sessions"],
                 });
               }}
-              className="shrink-0 cursor-pointer text-text-500 transition-colors hover:text-warning-000"
+              className="shrink-0 cursor-pointer text-t6 transition-colors hover:text-warning-000"
               title={starred ? "Unstar session" : "Star session"}
             >
               <svg
@@ -747,7 +747,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
             <button
               type="button"
               onClick={() => setChromeHidden(true)}
-              className="ml-auto shrink-0 cursor-pointer text-text-500 transition-colors hover:text-text-000"
+              className="ml-auto shrink-0 cursor-pointer text-t6 transition-colors hover:text-primary"
               title="Expand chat (Ctrl+Shift+F)"
             >
               <Maximize2 className="h-3.5 w-3.5" />
@@ -756,7 +756,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
           <h1 className="text-lg font-semibold">{hookContext?.sessionTitle || data.title}</h1>
 
           {aiSummary ? (
-            <p className="mt-1 text-sm text-text-500 italic">{aiSummary}</p>
+            <p className="mt-1 text-sm text-t6 italic">{aiSummary}</p>
           ) : (
             summaryLoaded &&
             settings.showSummaryButton && (
@@ -792,7 +792,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
           <button
             type="button"
             onClick={() => setChromeHidden(false)}
-            className="rounded-md bg-bg-200 border border-border-300/15 px-2 py-1 text-xs text-text-500 hover:text-text-000 hover:bg-bg-300/70 transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
+            className="rounded-md bg-surface-0 border border-border px-2 py-1 text-xs text-t6 hover:text-primary hover:bg-fill-control transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
             title="Show header and footer (Ctrl+Shift+F)"
           >
             <Minimize2 className="h-3 w-3" />

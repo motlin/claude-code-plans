@@ -130,7 +130,7 @@ function scrollMetrics(scroller: Element): {
 function CopyToast({ visible }: { visible: boolean }) {
   return (
     <span
-      className={`absolute -top-6 left-1/2 -translate-x-1/2 rounded bg-bg-200 px-1.5 py-0.5 text-[10px] text-text-300 shadow-sm transition-opacity whitespace-nowrap pointer-events-none ${visible ? "opacity-100" : "opacity-0"}`}
+      className={`absolute -top-6 left-1/2 -translate-x-1/2 rounded bg-surface-0 px-1.5 py-0.5 text-[10px] text-secondary shadow-sm transition-opacity whitespace-nowrap pointer-events-none ${visible ? "opacity-100" : "opacity-0"}`}
     >
       Copied!
     </span>
@@ -169,7 +169,7 @@ function MessageToolbar({ line, timestamp }: { line: MessageSessionLine; timesta
           type="button"
           aria-label="Copy message"
           onClick={copyText}
-          className="p-1 text-text-500 hover:text-text-000 cursor-pointer"
+          className="p-1 text-t6 hover:text-primary cursor-pointer"
         >
           <Copy className="h-3 w-3" />
         </button>
@@ -180,7 +180,7 @@ function MessageToolbar({ line, timestamp }: { line: MessageSessionLine; timesta
           type="button"
           aria-label="Copy link"
           onClick={copyLink}
-          className="p-1 text-text-500 hover:text-text-000 cursor-pointer"
+          className="p-1 text-t6 hover:text-primary cursor-pointer"
         >
           <Link2 className="h-3 w-3" />
         </button>
@@ -192,7 +192,7 @@ function MessageToolbar({ line, timestamp }: { line: MessageSessionLine; timesta
         </span>
       )}
       {line.stopReason === "max_tokens" && (
-        <span className="text-[10px] text-warning-100 rounded-full bg-bg-200 px-1.5">
+        <span className="text-[10px] text-warning-100 rounded-full bg-surface-0 px-1.5">
           truncated · max tokens
         </span>
       )}
@@ -262,14 +262,14 @@ function UserMessageActions({ line, timestamp }: { line: MessageSessionLine; tim
   const timestampTitle = absoluteTimestamp ?? undefined;
 
   return (
-    <div className="flex items-center gap-g2 pt-[4px] -mt-[8px] text-[11px] text-text-500 opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150">
+    <div className="flex items-center gap-g2 pt-[4px] -mt-[8px] text-[11px] text-t6 opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150">
       <div className="relative">
         <button
           type="button"
           title="Copy message"
           aria-label="Copy message"
           onClick={copyText}
-          className="flex items-center p-1 hover:text-text-000 cursor-pointer"
+          className="flex items-center p-1 hover:text-primary cursor-pointer"
         >
           <Copy className="h-3 w-3" />
         </button>
@@ -281,14 +281,14 @@ function UserMessageActions({ line, timestamp }: { line: MessageSessionLine; tim
           title="Copy link"
           aria-label="Copy link"
           onClick={copyLink}
-          className="flex items-center p-1 hover:text-text-000 cursor-pointer"
+          className="flex items-center p-1 hover:text-primary cursor-pointer"
         >
           <Link2 className="h-3 w-3" />
         </button>
         <CopyToast visible={copied === "link"} />
       </div>
       {relativeTimestamp && (
-        <span className="text-text-500" title={timestampTitle}>
+        <span className="text-t6" title={timestampTitle}>
           {relativeTimestamp}
         </span>
       )}
@@ -1247,17 +1247,17 @@ function renderSessionMessage({
           icon={<GitBranch className="h-3.5 w-3.5" />}
           label={`Worktree: ${line.worktreeName}`}
         >
-          <span className="font-mono text-text-600" title={`main repo: ${line.originalCwd}`}>
+          <span className="font-mono text-t6" title={`main repo: ${line.originalCwd}`}>
             {line.originalBranch !== undefined && line.originalBranch !== line.worktreeBranch
               ? `${line.originalBranch} → ${line.worktreeBranch}`
               : line.worktreeBranch}
           </span>
           {line.originalHeadCommit !== undefined && (
-            <span className="font-mono text-text-600" title={line.originalHeadCommit}>
+            <span className="font-mono text-t6" title={line.originalHeadCommit}>
               {line.originalHeadCommit.slice(0, 7)}
             </span>
           )}
-          {line.enteredExisting === true && <span className="text-text-600">entered existing</span>}
+          {line.enteredExisting === true && <span className="text-t6">entered existing</span>}
         </Banner>
       );
     case "unparsed":
@@ -1266,7 +1266,7 @@ function renderSessionMessage({
           icon={<FileWarning className="h-3.5 w-3.5" />}
           label={`Unreadable ${line.recordType ?? "record"}`}
         >
-          <span className="font-mono text-text-600" title={line.issues.join("\n")}>
+          <span className="font-mono text-t6" title={line.issues.join("\n")}>
             {line.issues[0] ?? "did not match the transcript schema"}
           </span>
         </Banner>
@@ -1313,7 +1313,7 @@ function TruncatedContent({
             aria-label="Show more"
             className="absolute inset-x-0 bottom-0 h-16 cursor-pointer"
             style={{
-              background: `linear-gradient(to bottom, transparent, ${fadeColor ?? "var(--bg-100)"})`,
+              background: `linear-gradient(to bottom, transparent, ${fadeColor ?? "var(--color-surface-1)"})`,
             }}
           />
         )}
@@ -1326,7 +1326,7 @@ function TruncatedContent({
             className={
               variant === "user"
                 ? "text-xs font-medium cursor-pointer rounded-full px-2 py-0.5 bg-accent-100/15 text-user-msg-text"
-                : "text-xs font-medium text-accent-100 hover:text-accent-000 cursor-pointer rounded-full bg-bg-200 px-2 py-0.5"
+                : "text-xs font-medium text-accent-100 hover:text-accent-000 cursor-pointer rounded-full bg-surface-0 px-2 py-0.5"
             }
           >
             Show more
@@ -1497,13 +1497,13 @@ function UserEntry({
     <UserTurn>
       <div className="flex flex-col items-end gap-g6 max-w-[75%] min-w-0">
         {line.promptSource !== undefined && (
-          <span className="text-[11px] text-text-500">
+          <span className="text-[11px] text-t6">
             {promptSourceLabels[line.promptSource]} prompt
             {line.queuePriority === "later" && " · queued for later"}
           </span>
         )}
         {textNodes.length > 0 && (
-          <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
+          <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
             {textNodes}
           </div>
         )}
@@ -1560,19 +1560,19 @@ function CompactSummaryStub({
       <UserTurn>
         <div className="flex flex-col items-end gap-g6 max-w-[85%] min-w-0">
           <div className="flex items-center gap-1.5 px-1">
-            <span className="text-[10px] font-medium text-text-500 bg-bg-200 rounded-full px-2 py-0.5">
+            <span className="text-[10px] font-medium text-t6 bg-surface-0 rounded-full px-2 py-0.5">
               Compact summary
             </span>
             <button
               type="button"
               onClick={() => setExpanded(false)}
-              className="text-[10px] text-text-500 hover:text-text-000 cursor-pointer"
+              className="text-[10px] text-t6 hover:text-primary cursor-pointer"
             >
               Collapse
             </button>
           </div>
           {textNodes.length > 0 && (
-            <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] bg-auto-msg-bg text-auto-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
+            <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-auto-msg-bg text-auto-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
               {textNodes}
             </div>
           )}
@@ -1588,7 +1588,7 @@ function CompactSummaryStub({
       <button
         type="button"
         onClick={() => setExpanded(true)}
-        className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-bg-200 text-[11px] text-text-500 hover:text-text-000 cursor-pointer"
+        className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-surface-0 text-[11px] text-t6 hover:text-primary cursor-pointer"
       >
         <span className="font-medium">Compact summary (~{sizeKB} KB)</span>
         <span>— click to expand</span>
@@ -1618,12 +1618,12 @@ function LabeledAutomatedEntry({
     <UserTurn>
       <div className="flex flex-col items-end gap-g6 max-w-[85%] min-w-0">
         <div className="flex items-center gap-1.5 px-1">
-          <span className="text-[10px] font-medium text-text-500 bg-bg-200 rounded-full px-2 py-0.5">
+          <span className="text-[10px] font-medium text-t6 bg-surface-0 rounded-full px-2 py-0.5">
             {label}
           </span>
         </div>
         {textNodes.length > 0 && (
-          <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] bg-auto-msg-bg text-auto-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
+          <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-auto-msg-bg text-auto-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
             {textNodes}
           </div>
         )}
@@ -1662,7 +1662,7 @@ function SubagentPromptEntry({ line, sessionId }: { line: MessageSessionLine; se
             &#x2191; Parent Agent
           </span>
         </div>
-        <div className="text-body text-text-100">
+        <div className="text-body text-primary">
           <TruncatedContent>
             <MarkdownArticle markdown={textBlocks.join("\n\n")} />
           </TruncatedContent>
@@ -1711,7 +1711,7 @@ function renderUserContentBlocks(
     return {
       textNodes: [
         <React.Fragment key={0}>
-          <TruncatedContent fadeColor="var(--bg-100)" variant="user">
+          <TruncatedContent fadeColor="var(--color-surface-1)" variant="user">
             <MarkdownArticle markdown={cleaned} />
           </TruncatedContent>
           <DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
@@ -1735,7 +1735,7 @@ function renderUserContentBlocks(
       inlineImageText.push(cleaned);
       textNodes.push(
         <React.Fragment key={`text-${i}`}>
-          <TruncatedContent fadeColor="var(--bg-100)" variant="user">
+          <TruncatedContent fadeColor="var(--color-surface-1)" variant="user">
             <MarkdownArticle markdown={cleaned} />
           </TruncatedContent>
           <DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
@@ -1756,7 +1756,7 @@ function renderUserContentBlocks(
       mediaNodes.push(
         <div
           key={`doc-${i}`}
-          className="relative rounded-lg px-3 py-2 bg-bg-100 text-text-000 flex items-center gap-1.5"
+          className="relative rounded-lg px-3 py-2 bg-surface-1 text-primary flex items-center gap-1.5"
         >
           <svg
             width="16"
@@ -1822,8 +1822,8 @@ function CommandEntry({ line, sessionId }: { line: MessageSessionLine; sessionId
   return (
     <UserTurn>
       <div className="flex flex-col items-end gap-g6 max-w-[75%] min-w-0">
-        <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
-          <TruncatedContent fadeColor="var(--bg-100)" variant="user">
+        <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
+          <TruncatedContent fadeColor="var(--color-surface-1)" variant="user">
             <MarkdownArticle markdown={commandText} />
           </TruncatedContent>
           <DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
@@ -1879,10 +1879,10 @@ function BashEntry({
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <div className="relative rounded-lg p-2 bg-bg-100 text-text-000 max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] min-w-0">
+      <div className="relative rounded-lg p-2 bg-surface-1 text-primary max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] min-w-0">
         {command && (
-          <div className="bg-bg-200 rounded px-2 py-1.5 font-mono text-xs flex items-start gap-2">
-            <span className="text-text-500">! </span>
+          <div className="bg-surface-0 rounded px-2 py-1.5 font-mono text-xs flex items-start gap-2">
+            <span className="text-t6">! </span>
             <span className="text-success-000 break-all flex-1">{command}</span>
             <DebugLink sessionId={sessionId} uuid={line.uuid} />
           </div>
@@ -2042,13 +2042,13 @@ function AttributionRow({ line }: { line: MessageSessionLine }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {skillLabel && (
-        <span className="inline-flex items-center gap-1 text-[11px] text-text-500 bg-bg-100 rounded-full px-2 py-0.5">
+        <span className="inline-flex items-center gap-1 text-[11px] text-t6 bg-surface-1 rounded-full px-2 py-0.5">
           <Zap className="h-3 w-3" />
           {skillLabel}
         </span>
       )}
       {mcpLabel && (
-        <span className="inline-flex items-center gap-1 text-[11px] text-text-500 bg-bg-100 rounded-full px-2 py-0.5">
+        <span className="inline-flex items-center gap-1 text-[11px] text-t6 bg-surface-1 rounded-full px-2 py-0.5">
           <Plug className="h-3 w-3" />
           {mcpLabel}
         </span>
@@ -2106,7 +2106,7 @@ function ContentBlock({
   if (block.type === "text" && typeof block.text === "string") {
     if (!block.text.trim()) return null;
     return (
-      <div className="relative min-w-0 text-body text-text-100">
+      <div className="relative min-w-0 text-body text-primary">
         <MarkdownArticle markdown={block.text} />
         <DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-0 right-0" />
       </div>
@@ -2135,7 +2135,7 @@ function ContentBlock({
         <img
           src={`data:${block.source.media_type};base64,${block.source.data}`}
           alt="Session image"
-          className="max-w-full max-h-96 rounded-lg border border-border-300/15 shadow-sm"
+          className="max-w-full max-h-96 rounded-lg border border-border shadow-sm"
         />
         <DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
       </div>
@@ -2144,7 +2144,7 @@ function ContentBlock({
 
   if (block.type === "document" && block.source) {
     return (
-      <div className="relative rounded-lg px-3 py-2 bg-bg-100 text-text-000 flex items-center gap-1.5">
+      <div className="relative rounded-lg px-3 py-2 bg-surface-1 text-primary flex items-center gap-1.5">
         <svg
           width="16"
           height="16"

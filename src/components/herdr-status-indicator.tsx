@@ -27,7 +27,7 @@ export function HerdrStatusIndicator({ status }: { status: string }) {
 
   return (
     <span
-      className="grid grid-cols-[0.625rem_minmax(0,1fr)] items-center gap-1.5 text-xs text-text-500"
+      className="grid grid-cols-[0.625rem_minmax(0,1fr)] items-center gap-1.5 text-xs text-t6"
       aria-label={`Herdr agent status: ${presentation.label}`}
     >
       <span

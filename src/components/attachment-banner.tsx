@@ -77,7 +77,7 @@ function AttachmentContent({
           uuid={uuid}
         >
           {attachment.durationMs !== undefined && (
-            <span className="text-text-600">{attachment.durationMs}ms</span>
+            <span className="text-t6">{attachment.durationMs}ms</span>
           )}
         </Banner>
       );
@@ -129,7 +129,7 @@ function AttachmentContent({
           sessionId={sessionId}
           uuid={uuid}
         >
-          {blockingMessage && <span className="text-text-600">{blockingMessage}</span>}
+          {blockingMessage && <span className="text-t6">{blockingMessage}</span>}
         </Banner>
       );
     }
@@ -155,7 +155,7 @@ function AttachmentContent({
           uuid={uuid}
         >
           {attachment.exitCode !== undefined && (
-            <span className="text-text-600">exit {attachment.exitCode}</span>
+            <span className="text-t6">exit {attachment.exitCode}</span>
           )}
         </Banner>
       );
@@ -261,7 +261,7 @@ function AttachmentContent({
           uuid={uuid}
         >
           {attachment.allowedTools && attachment.allowedTools.length > 0 && (
-            <span className="text-text-600">{attachment.allowedTools.length} tools allowed</span>
+            <span className="text-t6">{attachment.allowedTools.length} tools allowed</span>
           )}
         </Banner>
       );
@@ -394,7 +394,7 @@ function AttachmentContent({
             </Link>
           )}
           {attachment.teamConfigPath && (
-            <span className="truncate font-mono text-[10px] text-text-600" title="Team config path">
+            <span className="truncate font-mono text-[10px] text-t6" title="Team config path">
               {attachment.teamConfigPath}
             </span>
           )}
@@ -512,7 +512,7 @@ function AttachmentContent({
           sessionId={sessionId}
           uuid={uuid}
         >
-          <span className="text-text-600">#{attachment.taskId}</span>
+          <span className="text-t6">#{attachment.taskId}</span>
         </Banner>
       );
     }
@@ -529,14 +529,14 @@ function AttachmentContent({
           uuid={uuid}
         >
           {typeof attachment.prompt === "string" && attachment.prompt.length > 0 && (
-            <span className="text-text-600 truncate max-w-sm" title={attachment.prompt}>
+            <span className="text-t6 truncate max-w-sm" title={attachment.prompt}>
               {attachment.prompt.length > 80
                 ? `${attachment.prompt.slice(0, 80)}...`
                 : attachment.prompt}
             </span>
           )}
           {queuedRelative && (
-            <span className="text-text-500" title={queuedAbsolute ?? undefined}>
+            <span className="text-t6" title={queuedAbsolute ?? undefined}>
               {queuedRelative}
             </span>
           )}
@@ -554,7 +554,7 @@ function AttachmentContent({
           uuid={uuid}
         >
           {attachment.files && attachment.files.length > 0 && (
-            <span className="text-text-600">
+            <span className="text-t6">
               {attachment.files.length} file
               {attachment.files.length === 1 ? "" : "s"}
             </span>
@@ -598,7 +598,7 @@ export function Banner({
     );
   }
   return (
-    <div className="flex flex-wrap items-center gap-2 py-1.5 px-3 text-xs text-text-500 bg-bg-100 rounded-md border border-border-300/10">
+    <div className="flex flex-wrap items-center gap-2 py-1.5 px-3 text-xs text-t6 bg-surface-1 rounded-md border border-subtle">
       {icon && <span className="shrink-0">{icon}</span>}
       {label && <span>{label}</span>}
       {children}
@@ -609,7 +609,7 @@ export function Banner({
 
 export function Pre({ children }: { children: React.ReactNode }) {
   return (
-    <pre className="w-full mt-1 text-[10px] leading-tight text-text-600 bg-bg-200 rounded px-2 py-1 whitespace-pre-wrap break-all">
+    <pre className="w-full mt-1 text-[10px] leading-tight text-t6 bg-surface-0 rounded px-2 py-1 whitespace-pre-wrap break-all">
       {children}
     </pre>
   );

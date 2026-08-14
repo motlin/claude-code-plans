@@ -62,7 +62,7 @@ function LiveSessionUnreadControl({
       {canToggle && (
         <button
           type="button"
-          className="cursor-pointer text-xs text-text-500 transition-colors hover:text-text-000"
+          className="cursor-pointer text-xs text-t6 transition-colors hover:text-primary"
           title={shownState === "review" ? "Mark seen" : "Mark unseen"}
           aria-label={shownState === "review" ? "Mark seen" : "Mark unseen"}
           onClick={(event) => {

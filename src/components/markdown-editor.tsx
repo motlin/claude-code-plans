@@ -27,7 +27,7 @@ interface Props {
 
 export function MarkdownEditor({ markdown, onChange }: Props) {
   return (
-    <div className="mdx-editor-wrapper [&_.mdxeditor]:bg-bg-000 [&_.mdxeditor]:text-text-100 [&_.mdxeditor-toolbar]:bg-bg-200 [&_.mdxeditor-toolbar]:border-border-300/15">
+    <div className="mdx-editor-wrapper [&_.mdxeditor]:bg-surface-2 [&_.mdxeditor]:text-primary [&_.mdxeditor-toolbar]:bg-surface-0 [&_.mdxeditor-toolbar]:border-border">
       <MDXEditor
         markdown={markdown}
         onChange={onChange}

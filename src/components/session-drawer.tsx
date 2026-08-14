@@ -110,7 +110,7 @@ export function SessionDrawer({
   return (
     <aside
       aria-labelledby={titleId}
-      className="fixed inset-y-0 right-0 z-40 flex flex-col border-l border-border-300/15 bg-bg-200 text-text-100 shadow-xl"
+      className="fixed inset-y-0 right-0 z-40 flex flex-col border-l border-border bg-surface-0 text-primary shadow-xl"
       style={{ width }}
     >
       <div
@@ -136,7 +136,7 @@ export function SessionDrawer({
         }}
       />
 
-      <header className="flex min-h-14 shrink-0 items-center gap-3 border-b border-border-300/15 px-4">
+      <header className="flex min-h-14 shrink-0 items-center gap-3 border-b border-border px-4">
         <h2 id={titleId} className="min-w-0 flex-1 truncate text-sm font-semibold">
           {title}
         </h2>
@@ -145,7 +145,7 @@ export function SessionDrawer({
           aria-label={
             coverageNote === undefined ? `${count} items` : `${count} items in the loaded messages`
           }
-          className="rounded-full bg-bg-300 px-2 py-0.5 text-xs font-medium text-text-300"
+          className="rounded-full bg-fill-control px-2 py-0.5 text-xs font-medium text-secondary"
         >
           {formatResourceCount(count, unscannedRecordCount)}
         </span>
@@ -153,7 +153,7 @@ export function SessionDrawer({
           type="button"
           aria-label={`Close ${title} drawer`}
           onClick={() => onClose()}
-          className="flex size-8 shrink-0 items-center justify-center rounded-md text-text-400 transition-colors hover:bg-bg-300/70 hover:text-text-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
+          className="flex size-8 shrink-0 items-center justify-center rounded-md text-t6 transition-colors hover:bg-fill-control hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
         >
           <X className="size-4" aria-hidden="true" />
         </button>
@@ -168,7 +168,7 @@ export function SessionDrawer({
         {coverageNote !== undefined && (
           <p
             role="note"
-            className="border-b border-border-300/15 bg-bg-300/40 px-4 py-2 text-[11px] text-text-400"
+            className="border-b border-border bg-fill-ghost-hover px-4 py-2 text-[11px] text-t6"
           >
             {coverageNote}
           </p>

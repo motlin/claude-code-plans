@@ -12,10 +12,10 @@ function HerdrTerminalPage() {
   return (
     <div>
       <div className="flex items-center gap-3">
-        <Link to="/herdr" className="text-sm text-text-500 hover:text-text-000">
+        <Link to="/herdr" className="text-sm text-t6 hover:text-primary">
           Herdr
         </Link>
-        <span className="text-text-500">/</span>
+        <span className="text-t6">/</span>
         <h1 className="text-lg font-semibold">Live terminal</h1>
         <SessionTranscriptLink sessionId={sessionId} />
       </div>

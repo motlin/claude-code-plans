@@ -31,7 +31,7 @@ export function SessionRow({
       <Link
         to="/session/$id"
         params={{ id: session.id }}
-        className="block rounded-md p-2 pr-28 cursor-pointer transition-colors hover:bg-bg-200/50"
+        className="block rounded-md p-2 pr-28 cursor-pointer transition-colors hover:bg-surface-0/50"
       >
         <div
           className="flex items-center gap-1.5 truncate"
@@ -40,7 +40,7 @@ export function SessionRow({
           {isActive && <StatusDot active size="sm" title="Active" />}
           <span className="truncate">{session.title}</span>
         </div>
-        <div className="mt-0.5 flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-text-500">
+        <div className="mt-0.5 flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-t6">
           {showProject && (
             <>
               <span className="min-w-0 shrink truncate">{session.projectName}</span>
@@ -59,7 +59,7 @@ export function SessionRow({
           {session.gitBranch && (
             <>
               <span className="shrink-0">&middot;</span>
-              <span className="max-w-32 shrink truncate rounded bg-bg-200 px-1.5 py-0.5 font-mono text-[10px]">
+              <span className="max-w-32 shrink truncate rounded bg-surface-0 px-1.5 py-0.5 font-mono text-[10px]">
                 {session.gitBranch}
               </span>
             </>
@@ -69,7 +69,7 @@ export function SessionRow({
           <span className="min-w-0 flex-1" />
         </div>
         {session.summary && session.summary !== session.title && (
-          <div className="mt-0.5 truncate text-xs text-text-500 italic">{session.summary}</div>
+          <div className="mt-0.5 truncate text-xs text-t6 italic">{session.summary}</div>
         )}
       </Link>
       <div className="absolute right-2 top-2.5">

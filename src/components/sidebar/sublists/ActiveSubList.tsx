@@ -39,9 +39,7 @@ export function ActiveSubList() {
   }
 
   if (sessions.length === 0) {
-    return (
-      <div className="pl-10 px-2 py-1 text-[10px] italic text-text-400">No active sessions</div>
-    );
+    return <div className="pl-10 px-2 py-1 text-[10px] italic text-t6">No active sessions</div>;
   }
 
   const displayedSessions = sessions.map((session) => ({
@@ -64,7 +62,7 @@ export function ActiveSubList() {
           key={session.sessionId}
           to="/session/$id"
           params={{ id: session.sessionId }}
-          className="mb-px flex items-center gap-2 rounded-[4px] px-2 py-1 text-xs text-text-500 no-underline transition-colors hover:bg-bg-300/50 hover:text-text-200"
+          className="mb-px flex items-center gap-2 rounded-r3 px-2 py-1 text-xs text-t6 no-underline transition-colors hover:bg-fill-ghost-hover hover:text-secondary"
         >
           <StatusDot
             active

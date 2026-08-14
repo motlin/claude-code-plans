@@ -12,7 +12,7 @@ function SetupPage() {
   return (
     <div className="max-w-3xl">
       <h1 className="text-lg font-semibold">Setup</h1>
-      <p className="mt-1 text-sm text-text-500">
+      <p className="mt-1 text-sm text-t6">
         Configure Claude Code to send hook events to this server for live updates.
       </p>
       <div className="mt-6">

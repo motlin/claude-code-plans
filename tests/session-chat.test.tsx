@@ -150,17 +150,17 @@ describe("SessionChat body typography", () => {
     }).toStrictEqual({
       bodyFontSize: "14px",
       bodyLineHeight: "20px",
-      primaryTextColor: "var(--upstream-text-assistant-primary)",
-      secondaryTextColor: "var(--upstream-text-assistant-secondary)",
+      primaryTextColor: "var(--upstream-text-primary)",
+      secondaryTextColor: "var(--upstream-text-secondary)",
       legacyPrimaryTextColor: null,
       legacySecondaryTextColor: null,
       sessionColumnClassName: "mx-auto w-full max-w-3xl px-8 pt-4 pb-4 text-body",
       userBubbleClassName:
-        "user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text",
-      assistantProseClassName: "relative min-w-0 text-body text-text-100",
+        "user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text",
+      assistantProseClassName: "relative min-w-0 text-body text-primary",
       streamingBubbleClassName:
-        "user-message-bubble flex flex-col gap-[5px] rounded-[10px] px-3 py-2 break-words min-w-0 overflow-hidden bg-user-msg-bg text-user-msg-text max-w-[75%] text-body whitespace-pre-wrap select-text",
-      streamingProseClassName: "min-w-0 text-body text-text-100",
+        "user-message-bubble flex flex-col gap-[5px] rounded-r7 px-3 py-2 break-words min-w-0 overflow-hidden bg-user-msg-bg text-user-msg-text max-w-[75%] text-body whitespace-pre-wrap select-text",
+      streamingProseClassName: "min-w-0 text-body text-primary",
     });
   });
 });
@@ -186,12 +186,12 @@ describe("SessionChat user bubble chrome", () => {
       streamingCorners: cornerClasses(findClassName(streamingHtml, "user-message-bubble")),
     }).toStrictEqual({
       lightBg: "var(--upstream-t2)",
-      lightText: "var(--upstream-text-assistant-primary)",
+      lightText: "var(--upstream-text-primary)",
       darkBg: "var(--upstream-t2)",
-      darkText: "var(--upstream-text-assistant-primary)",
-      userCorners: ["rounded-[10px]"],
-      automatedCorners: ["rounded-[10px]"],
-      streamingCorners: ["rounded-[10px]"],
+      darkText: "var(--upstream-text-primary)",
+      userCorners: ["rounded-r7"],
+      automatedCorners: ["rounded-r7"],
+      streamingCorners: ["rounded-r7"],
     });
   });
 });
@@ -297,7 +297,7 @@ describe("SessionChat prompt metadata", () => {
     );
 
     const labels = Array.from(
-      html.matchAll(/<span class="text-\[11px\] text-text-500">([^<]+)<\/span>/g),
+      html.matchAll(/<span class="text-\[11px\] text-t6">([^<]+)<\/span>/g),
       ([, label]) => label,
     );
     expect(labels).toStrictEqual(["System prompt · queued for later"]);

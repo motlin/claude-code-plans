@@ -5,7 +5,7 @@ export function ModeToggle() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className="flex gap-0.5 rounded-lg border border-border-300/15 bg-bg-000/80 p-0.5 backdrop-blur-sm">
+    <div className="flex gap-0.5 rounded-lg border border-border bg-surface-2/80 p-0.5 backdrop-blur-sm">
       <ToggleButton active={theme === "light"} onClick={() => setTheme("light")} title="Light">
         <Sun className="h-4 w-4" />
       </ToggleButton>
@@ -37,8 +37,8 @@ function ToggleButton({
       title={title}
       className={`flex items-center justify-center rounded-md p-1.5 transition-all ${
         active
-          ? "bg-bg-000 text-text-100 shadow-sm"
-          : "text-text-500 hover:text-text-100 hover:bg-bg-200/50"
+          ? "bg-surface-2 text-primary shadow-sm"
+          : "text-t6 hover:text-primary hover:bg-surface-0/50"
       }`}
     >
       {children}

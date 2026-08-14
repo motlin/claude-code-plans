@@ -73,14 +73,14 @@ export function ProjectsSubList({
   }
 
   const linkClass = (isActive: boolean) =>
-    `mb-px block truncate rounded-[4px] px-2 py-1 text-xs no-underline transition-colors ${
+    `mb-px block truncate rounded-r3 px-2 py-1 text-xs no-underline transition-colors ${
       isActive
-        ? "bg-bg-300/50 font-medium text-text-000"
-        : "text-text-500 hover:bg-bg-300/50 hover:text-text-200"
+        ? "bg-fill-ghost-hover font-medium text-primary"
+        : "text-t6 hover:bg-fill-ghost-hover hover:text-secondary"
     }`;
 
   const labelClass =
-    "mb-px flex w-full items-center gap-1 rounded-[4px] px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-text-400";
+    "mb-px flex w-full items-center gap-1 rounded-r3 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-t6";
 
   return (
     <div className="pl-10">
@@ -94,7 +94,7 @@ export function ProjectsSubList({
               <button
                 type="button"
                 onClick={() => toggleProject(project.id)}
-                className="flex h-5 w-4 shrink-0 items-center justify-center text-text-500 transition-colors hover:text-text-200"
+                className="flex h-5 w-4 shrink-0 items-center justify-center text-t6 transition-colors hover:text-secondary"
                 title={`${isExpanded ? "Collapse" : "Expand"} ${project.name}`}
               >
                 <ChevronRight
@@ -193,7 +193,7 @@ function ExpandedProjectDetail({
                 >
                   <span className="flex items-center gap-1.5">
                     <span className="truncate">{b.branch}</span>
-                    <span className="shrink-0 text-[10px] text-text-400">({b.sessionCount})</span>
+                    <span className="shrink-0 text-[10px] text-t6">({b.sessionCount})</span>
                   </span>
                 </Link>
               ))}
@@ -201,7 +201,7 @@ function ExpandedProjectDetail({
                 <Link
                   to="/project/$id"
                   params={{ id: projectId }}
-                  className="mb-px block truncate rounded-[4px] py-1 text-[10px] italic text-text-400 no-underline hover:text-text-500"
+                  className="mb-px block truncate rounded-r3 py-1 text-[10px] italic text-t6 no-underline hover:text-t6"
                   style={{ paddingLeft: "1.5rem", paddingRight: "0.5rem" }}
                 >
                   +{branches.length - 8} more...
@@ -227,7 +227,7 @@ function ExpandedProjectDetail({
                 <Link
                   to="/project/$id"
                   params={{ id: projectId }}
-                  className="mb-px block truncate rounded-[4px] py-1 text-[10px] italic text-text-400 no-underline hover:text-text-500"
+                  className="mb-px block truncate rounded-r3 py-1 text-[10px] italic text-t6 no-underline hover:text-t6"
                   style={{ paddingLeft: "1.5rem", paddingRight: "0.5rem" }}
                 >
                   +{detail.sessions.length - 10} more...
@@ -286,7 +286,7 @@ function ExpandedProjectDetail({
             detail.plans.length === 0 &&
             detail.memories.length === 0 &&
             detail.todoCounts.total === 0 && (
-              <div className="px-2 py-1 text-[10px] italic text-text-400">No items</div>
+              <div className="px-2 py-1 text-[10px] italic text-t6">No items</div>
             )}
         </>
       )}

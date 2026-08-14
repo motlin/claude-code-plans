@@ -26,7 +26,7 @@ export function LiveTerminalLink({
     <Link
       to="/herdr/terminal/$sessionId"
       params={{ sessionId }}
-      className="shrink-0 text-text-500 transition-colors hover:text-text-000"
+      className="shrink-0 text-t6 transition-colors hover:text-primary"
       aria-label={label}
       title={label}
     >
@@ -41,7 +41,7 @@ export function SessionTranscriptLink({ sessionId }: { sessionId: string }) {
     <Link
       to="/session/$id"
       params={{ id: sessionId }}
-      className="ml-auto flex size-8 items-center justify-center rounded-md text-text-500 transition-colors hover:bg-bg-200/50 hover:text-text-000 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
+      className="ml-auto flex size-8 items-center justify-center rounded-md text-t6 transition-colors hover:bg-surface-0/50 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
       aria-label={label}
       title={label}
     >

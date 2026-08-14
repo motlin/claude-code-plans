@@ -50,7 +50,7 @@ function SessionErrorComponent({ error, reset }: ErrorComponentProps) {
       <h1 className="text-lg font-semibold text-red-600 dark:text-red-400">
         Failed to load session
       </h1>
-      <pre className="mt-3 max-w-2xl overflow-auto rounded-md border border-border-300/15 bg-bg-200 p-3 font-mono text-sm text-text-500">
+      <pre className="mt-3 max-w-2xl overflow-auto rounded-md border border-border bg-surface-0 p-3 font-mono text-sm text-t6">
         {message}
       </pre>
       <div className="mt-4 flex gap-2">
@@ -64,7 +64,7 @@ function SessionErrorComponent({ error, reset }: ErrorComponentProps) {
         <button
           type="button"
           onClick={() => router.navigate({ to: "/sessions" })}
-          className="rounded-md border border-border-300/15 px-3 py-1.5 text-sm font-medium text-text-300 hover:bg-bg-200"
+          className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-secondary hover:bg-surface-0"
         >
           Back to sessions
         </button>

@@ -158,7 +158,7 @@ function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
     <>
       <div className="flex h-screen">
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((c) => !c)} />
-        <main data-scroll-restoration-id="main" className="flex-1 overflow-y-auto bg-bg-000">
+        <main data-scroll-restoration-id="main" className="flex-1 overflow-y-auto bg-surface-2">
           <IndexingBanner />
           <HookSchemaDriftBanner />
           {capabilities.showWorkingCopyReview && (
@@ -170,7 +170,7 @@ function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
-              className="flex h-8 w-8 items-center justify-center rounded-[6px] text-text-200 transition-colors hover:bg-bg-300/50 md:hidden"
+              className="flex h-8 w-8 items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover md:hidden"
               title="Open menu"
             >
               <HamburgerIcon />
@@ -196,9 +196,9 @@ function NotFoundContent({ detail }: Readonly<{ detail?: string }>) {
   return (
     <div>
       <h1 className="text-lg font-semibold">404 &mdash; Not Found</h1>
-      <p className="mt-2 text-text-500">The requested page was not found.</p>
+      <p className="mt-2 text-t6">The requested page was not found.</p>
       {detail ? (
-        <pre className="mt-3 max-w-2xl overflow-auto font-mono text-xs text-text-500">{detail}</pre>
+        <pre className="mt-3 max-w-2xl overflow-auto font-mono text-xs text-t6">{detail}</pre>
       ) : null}
       <Link to="/" className="mt-4 inline-block text-sm text-accent-100 hover:underline">
         Back to home
@@ -227,8 +227,8 @@ export function DefaultErrorComponent({ error }: ErrorComponentProps) {
   return (
     <div className="p-8">
       <h1 className="text-lg font-semibold text-red-600 dark:text-red-400">Something went wrong</h1>
-      <p className="mt-2 text-sm text-text-500">We couldn&apos;t load this page.</p>
-      <pre className="mt-3 max-w-2xl overflow-auto rounded-md border border-border-300/15 bg-bg-200 p-3 font-mono text-xs text-text-500">
+      <p className="mt-2 text-sm text-t6">We couldn&apos;t load this page.</p>
+      <pre className="mt-3 max-w-2xl overflow-auto rounded-md border border-border bg-surface-0 p-3 font-mono text-xs text-t6">
         {message}
       </pre>
       <div className="mt-4 flex items-center gap-3">

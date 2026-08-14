@@ -32,7 +32,7 @@ export function SessionReviewedToggle({
     <button
       type="button"
       onClick={run}
-      className={`shrink-0 cursor-pointer ${error ? "text-danger-000" : "text-text-500"} transition-colors hover:text-text-000`}
+      className={`shrink-0 cursor-pointer ${error ? "text-danger-000" : "text-t6"} transition-colors hover:text-primary`}
       title={error ?? `Mark ${reviewed ? "unreviewed" : "reviewed"}`}
     >
       {reviewed ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}

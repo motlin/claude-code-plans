@@ -60,11 +60,11 @@ function MemoriesPage() {
       <ListPageHeader title="Claude Memories" count={memoryCount} itemLabel="memory" />
 
       {groups.length === 0 ? (
-        <p className="mt-4 text-text-500">No memory files found.</p>
+        <p className="mt-4 text-t6">No memory files found.</p>
       ) : (
         groups.map((group) => (
           <div key={group.project} className="mt-6">
-            <h2 className="border-b border-border-300/15 pb-1 text-sm font-semibold">
+            <h2 className="border-b border-border pb-1 text-sm font-semibold">
               {group.projectName}
             </h2>
             <ul className="mt-2 space-y-2">
@@ -73,12 +73,10 @@ function MemoriesPage() {
                   <Link
                     to="/memory/$project/$filename"
                     params={{ project: mem.project, filename: toMdSlug(mem.filename) }}
-                    className="flex items-center justify-between rounded-md border border-border-300/15 px-4 py-3 transition-colors hover:bg-bg-200/50"
+                    className="flex items-center justify-between rounded-md border border-border px-4 py-3 transition-colors hover:bg-surface-0/50"
                   >
                     <span className="text-sm font-medium">{mem.title}</span>
-                    <span className="ml-4 shrink-0 text-xs text-text-500">
-                      {formatDate(mem.mtime)}
-                    </span>
+                    <span className="ml-4 shrink-0 text-xs text-t6">{formatDate(mem.mtime)}</span>
                   </Link>
                   <DebugLink
                     kind="memory"

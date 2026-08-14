@@ -28,7 +28,7 @@ describe("plugin versions", () => {
       textContent: element.textContent,
       title: element.getAttribute("title"),
     }).toStrictEqual({
-      className: "font-mono text-xs text-text-500",
+      className: "font-mono text-xs text-t6",
       tagName: "CODE",
       textContent: "abcdef123456",
       title: "Pinned to commit abcdef123456abcdef123456abcdef123456abcd",
@@ -45,7 +45,7 @@ describe("plugin versions", () => {
       textContent: element.textContent,
       title: element.getAttribute("title"),
     }).toStrictEqual({
-      className: "text-xs text-text-500",
+      className: "text-xs text-t6",
       tagName: "SPAN",
       textContent: "v3.1.0",
       title: null,

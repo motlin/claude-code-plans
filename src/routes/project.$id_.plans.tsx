@@ -61,12 +61,12 @@ function ProjectPlansPage() {
       </DetailTopBar>
 
       <h1 className="text-lg font-semibold">{project.name} plans</h1>
-      <p className="mt-0.5 text-xs text-text-500">
+      <p className="mt-0.5 text-xs text-t6">
         {count} {count === 1 ? "plan" : "plans"}
       </p>
 
       {count === 0 ? (
-        <p className="mt-4 text-text-500">No plans linked to this project.</p>
+        <p className="mt-4 text-t6">No plans linked to this project.</p>
       ) : (
         <ul className="mt-4 space-y-2">
           {plans.map((plan) => (
@@ -74,13 +74,11 @@ function ProjectPlansPage() {
               <Link
                 to="/plan/$filename"
                 params={{ filename: toMdSlug(plan.filename) }}
-                className="flex items-center justify-between rounded-md border border-border-300/15 px-4 py-3 transition-colors hover:bg-bg-200/50"
+                className="flex items-center justify-between rounded-md border border-border px-4 py-3 transition-colors hover:bg-surface-0/50"
               >
                 <span className="text-sm font-medium">{plan.title}</span>
                 {plan.mtime && (
-                  <span className="ml-4 shrink-0 text-xs text-text-500">
-                    {formatDate(plan.mtime)}
-                  </span>
+                  <span className="ml-4 shrink-0 text-xs text-t6">{formatDate(plan.mtime)}</span>
                 )}
               </Link>
               <DebugLink

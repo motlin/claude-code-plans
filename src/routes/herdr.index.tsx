@@ -31,15 +31,15 @@ const TRACKED_CLAUDE_SCOPE =
  * affordance in the trailing icon cell.
  */
 const HERDR_ROW_COLUMNS =
-  "grid grid-cols-[minmax(0,1fr)_5rem_8.5rem_2rem_9rem] items-center rounded-md border border-border-300/15";
+  "grid grid-cols-[minmax(0,1fr)_5rem_8.5rem_2rem_9rem] items-center rounded-md border border-border";
 
 const TMUX_ROW_COLUMNS =
-  "grid grid-cols-[0.625rem_2.75rem_2.5rem_minmax(0,1fr)_minmax(0,8rem)_auto] items-center gap-2 rounded-md border border-border-300/15 p-3 no-underline transition-colors hover:bg-bg-200/50";
+  "grid grid-cols-[0.625rem_2.75rem_2.5rem_minmax(0,1fr)_minmax(0,8rem)_auto] items-center gap-2 rounded-md border border-border p-3 no-underline transition-colors hover:bg-surface-0/50";
 
 function HerdrEmptyState() {
   return (
-    <div className="mx-auto mt-8 max-w-lg rounded-md border border-border-300/15 p-6 text-sm text-text-500">
-      <p className="text-text-000">No terminal placements are linked to Claude sessions yet.</p>
+    <div className="mx-auto mt-8 max-w-lg rounded-md border border-border p-6 text-sm text-t6">
+      <p className="text-primary">No terminal placements are linked to Claude sessions yet.</p>
       <p className="mt-3">Run Claude Code inside tmux or herdr, then:</p>
       <ul className="mt-2 list-disc space-y-1 pl-5">
         <li>
@@ -54,7 +54,7 @@ function HerdrEmptyState() {
         </li>
         <li>
           For herdr identity cross-checks, optionally run{" "}
-          <code className="rounded bg-bg-200/60 px-1 py-0.5 text-xs">
+          <code className="rounded bg-surface-0/60 px-1 py-0.5 text-xs">
             herdr integration install claude
           </code>{" "}
           to add herdr&apos;s authoritative session-id cross-check.
@@ -82,11 +82,11 @@ function CapabilityBadges({
   ].filter((label): label is string => label !== null);
 
   return (
-    <span className="ml-auto flex shrink-0 gap-1 text-[10px] text-text-500">
+    <span className="ml-auto flex shrink-0 gap-1 text-[10px] text-t6">
       {labels.length === 0
         ? "placement only"
         : labels.map((label) => (
-            <span key={label} className="rounded bg-bg-200/60 px-1.5 py-0.5">
+            <span key={label} className="rounded bg-surface-0/60 px-1.5 py-0.5">
               {label}
             </span>
           ))}
@@ -125,16 +125,16 @@ function HerdrPage() {
     <div>
       <div className="flex items-center gap-3">
         <h1 className="text-lg font-semibold">Herdr</h1>
-        <span className="text-sm text-text-500">{placements.length} tracked Claude sessions</span>
+        <span className="text-sm text-t6">{placements.length} tracked Claude sessions</span>
         <span
           role="img"
           aria-label={TRACKED_CLAUDE_SCOPE}
           title={TRACKED_CLAUDE_SCOPE}
-          className="text-text-500"
+          className="text-t6"
         >
           <Info aria-hidden="true" className="h-3.5 w-3.5" />
         </span>
-        <span className="text-xs text-text-500">(live updates via SSE)</span>
+        <span className="text-xs text-t6">(live updates via SSE)</span>
       </div>
 
       {placements.length === 0 ? (
@@ -154,16 +154,16 @@ function HerdrPage() {
                   <span className="sr-only">
                     {placement.active ? "Tmux window active" : "Tmux window not active"}
                   </span>
-                  <span className="rounded bg-bg-200/60 px-1.5 py-0.5 text-center text-[10px] text-text-500">
+                  <span className="rounded bg-surface-0/60 px-1.5 py-0.5 text-center text-[10px] text-t6">
                     tmux
                   </span>
-                  <span className="tabular-nums text-sm text-text-400">
+                  <span className="tabular-nums text-sm text-t6">
                     #{placement.tmuxWindow.windowIndex}
                   </span>
-                  <span className="truncate text-sm font-medium text-text-000">
+                  <span className="truncate text-sm font-medium text-primary">
                     {placement.displayName}
                   </span>
-                  <span className="truncate text-xs text-text-500">
+                  <span className="truncate text-xs text-t6">
                     {placement.tmuxWindow.projectName}
                   </span>
                   <CapabilityBadges
@@ -196,15 +196,15 @@ function HerdrPage() {
                   params={{ sessionId: placement.sessionId }}
                   aria-label={`Open live read-only terminal for ${placement.displayName}`}
                   title={`Open live read-only terminal for ${placement.displayName}. ${technicalDetails}`}
-                  className="grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-bg-200/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
+                  className="grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-surface-0/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
                 >
                   <span className="sr-only">
                     {placement.active ? "Herdr pane focused" : "Herdr pane not focused"}
                   </span>
-                  <span aria-hidden="true" className="truncate text-sm text-text-500">
+                  <span aria-hidden="true" className="truncate text-sm text-t6">
                     {glyph}
                   </span>
-                  <span className="truncate text-sm font-medium text-text-000">{title}</span>
+                  <span className="truncate text-sm font-medium text-primary">{title}</span>
                 </Link>
                 <HerdrStatusIndicator status={pane.agentStatus} />
                 <NeedsReviewMarker
@@ -214,7 +214,7 @@ function HerdrPage() {
                 <Link
                   to="/session/$id"
                   params={{ id: placement.sessionId }}
-                  className="flex size-8 items-center justify-center justify-self-center rounded-md text-text-500 transition-colors hover:bg-bg-200/50 hover:text-text-000 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
+                  className="flex size-8 items-center justify-center justify-self-center rounded-md text-t6 transition-colors hover:bg-surface-0/50 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
                   title={`Open session transcript for ${placement.displayName}`}
                   aria-label={`Open session transcript for ${placement.displayName}`}
                 >

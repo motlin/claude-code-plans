@@ -89,7 +89,7 @@ function ProjectSessionsPage() {
       </DetailTopBar>
 
       <h1 className="text-lg font-semibold">{project.name} sessions</h1>
-      <p className="mt-0.5 text-xs text-text-500">
+      <p className="mt-0.5 text-xs text-t6">
         {sessions.length} {sessions.length === 1 ? "session" : "sessions"}
         {branch && ` on ${branch}`}
       </p>
@@ -119,18 +119,18 @@ function ProjectSessionsPage() {
                     replace: true,
                   })
                 }
-                className="flex items-center gap-1 rounded-full border border-border-300 px-2 py-0.5 text-[11px] text-text-300 transition-colors hover:bg-bg-200"
+                className="flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[11px] text-secondary transition-colors hover:bg-surface-0"
               >
                 <GitBranch className="h-3 w-3" />
                 {b}
-                <span className="text-text-400">({count})</span>
+                <span className="text-t6">({count})</span>
               </button>
             ))}
         </div>
       )}
 
       {sessions.length === 0 ? (
-        <p className="mt-4 text-text-500">No sessions for this project.</p>
+        <p className="mt-4 text-t6">No sessions for this project.</p>
       ) : (
         <ul className="mt-4 space-y-1">
           {sessions.map((sess) => {
@@ -140,7 +140,7 @@ function ProjectSessionsPage() {
                 <Link
                   to="/session/$id"
                   params={{ id: sess.id }}
-                  className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-bg-200/50"
+                  className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-surface-0/50"
                 >
                   <div
                     className="flex items-center gap-1.5 truncate"
@@ -154,7 +154,7 @@ function ProjectSessionsPage() {
                     )}
                     <span className="truncate">{sess.title}</span>
                   </div>
-                  <div className="mt-0.5 flex items-center gap-2 text-xs text-text-500">
+                  <div className="mt-0.5 flex items-center gap-2 text-xs text-t6">
                     <span>{formatDate(sess.mtime)}</span>
                     {sess.messageCount > 0 && (
                       <>
@@ -171,16 +171,14 @@ function ProjectSessionsPage() {
                     {sess.gitBranch && (
                       <>
                         <span>&middot;</span>
-                        <span className="rounded bg-bg-200 px-1.5 py-0.5 font-mono text-[10px]">
+                        <span className="rounded bg-surface-0 px-1.5 py-0.5 font-mono text-[10px]">
                           {sess.gitBranch}
                         </span>
                       </>
                     )}
                   </div>
                   {sess.summary && sess.summary !== sess.title && (
-                    <div className="mt-0.5 truncate text-xs text-text-500 italic">
-                      {sess.summary}
-                    </div>
+                    <div className="mt-0.5 truncate text-xs text-t6 italic">{sess.summary}</div>
                   )}
                 </Link>
               </li>

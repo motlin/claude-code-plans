@@ -62,8 +62,8 @@ export function FileViewer({ file }: { file: FileViewerData }) {
   };
 
   return (
-    <div ref={containerRef} className="overflow-x-auto rounded-lg border border-border-300/20">
-      <div className="min-w-max bg-bg-100 py-2 font-mono text-xs leading-5" role="table">
+    <div ref={containerRef} className="overflow-x-auto rounded-lg border border-strong">
+      <div className="min-w-max bg-surface-1 py-2 font-mono text-xs leading-5" role="table">
         {lines.map((line, index) => {
           const lineNumber = index + 1;
           const lineId = `L${lineNumber}`;
@@ -80,7 +80,7 @@ export function FileViewer({ file }: { file: FileViewerData }) {
                 href={`#${lineId}`}
                 aria-current={isHighlighted ? "location" : undefined}
                 aria-label={`Go to line ${lineNumber}`}
-                className="w-14 shrink-0 select-none border-r border-border-300/20 pr-3 text-right text-text-500 hover:text-accent-100"
+                className="w-14 shrink-0 select-none border-r border-strong pr-3 text-right text-t6 hover:text-accent-100"
                 onClick={(event) => {
                   event.preventDefault();
                   selectLine(lineNumber);
@@ -89,7 +89,7 @@ export function FileViewer({ file }: { file: FileViewerData }) {
               >
                 {lineNumber}
               </a>
-              <code className="block flex-1 whitespace-pre px-4 text-text-100" role="cell">
+              <code className="block flex-1 whitespace-pre px-4 text-primary" role="cell">
                 {tokens?.[index] ? <HighlightedLine tokens={tokens[index]} /> : line}
               </code>
             </div>

@@ -43,17 +43,15 @@ export function SessionProjectGroups({
         const relative = lastActivity(group);
         return (
           <section key={group.project} className="mt-5 first:mt-0">
-            <h2 className="sticky top-0 z-10 flex items-baseline gap-2 border-b border-border-300/15 bg-bg-000 pb-1 pt-2 text-sm font-semibold">
+            <h2 className="sticky top-0 z-10 flex items-baseline gap-2 border-b border-border bg-surface-2 pb-1 pt-2 text-sm font-semibold">
               <Link to="/project/$id" params={{ id: group.project }} className="hover:underline">
                 {group.projectName}
               </Link>
-              <span className="text-xs font-normal text-text-500">{group.sessionCount}</span>
+              <span className="text-xs font-normal text-t6">{group.sessionCount}</span>
               {activeCount > 0 && (
                 <span className="text-xs font-normal text-success-000">{activeCount} live</span>
               )}
-              {relative && (
-                <span className="ml-auto text-xs font-normal text-text-500">{relative}</span>
-              )}
+              {relative && <span className="ml-auto text-xs font-normal text-t6">{relative}</span>}
             </h2>
             <ul className="mt-1 space-y-1">
               {group.sessions.map((session) => (

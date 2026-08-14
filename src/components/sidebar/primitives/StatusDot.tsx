@@ -53,7 +53,7 @@ export function StatusDot({ active, heat = "", size = "md", title }: StatusDotPr
 
   return (
     <span className={`flex ${outer} shrink-0 items-center justify-center`} title={title}>
-      <span className={`${IDLE_INNER_SIZE[size]} rounded-full bg-text-400/40`} />
+      <span className={`${IDLE_INNER_SIZE[size]} rounded-full bg-t6/40`} />
     </span>
   );
 }

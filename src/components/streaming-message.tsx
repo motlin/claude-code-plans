@@ -50,7 +50,7 @@ export function StreamingMessage({
     <div className="mx-auto w-full max-w-3xl px-8 py-4">
       {sentPrompt && (
         <div className="flex flex-col items-start gap-1 mb-6">
-          <div className="user-message-bubble flex flex-col gap-[5px] rounded-[10px] px-3 py-2 break-words min-w-0 overflow-hidden bg-user-msg-bg text-user-msg-text max-w-[75%] text-body whitespace-pre-wrap select-text">
+          <div className="user-message-bubble flex flex-col gap-[5px] rounded-r7 px-3 py-2 break-words min-w-0 overflow-hidden bg-user-msg-bg text-user-msg-text max-w-[75%] text-body whitespace-pre-wrap select-text">
             {sentPrompt}
           </div>
         </div>
@@ -63,12 +63,12 @@ export function StreamingMessage({
       ) : (
         <div className="min-w-0">
           {!text && !isComplete ? (
-            <div className="flex items-center gap-2 text-sm text-text-500">
+            <div className="flex items-center gap-2 text-sm text-t6">
               <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-accent-100" />
               {pendingLabel}
             </div>
           ) : (
-            <div className="min-w-0 text-body text-text-100">
+            <div className="min-w-0 text-body text-primary">
               {renderedHtml ? (
                 <article
                   className={styles["markdown"]}
@@ -77,7 +77,7 @@ export function StreamingMessage({
                 />
               ) : null}
               {!isComplete && (
-                <span className="inline-block h-3 w-0.5 animate-pulse bg-text-500 ml-0.5" />
+                <span className="inline-block h-3 w-0.5 animate-pulse bg-t6 ml-0.5" />
               )}
             </div>
           )}

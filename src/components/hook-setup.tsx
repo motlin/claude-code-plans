@@ -62,11 +62,11 @@ export function HookSetup() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <Settings className="h-5 w-5 text-text-300" />
-        <h2 className="text-base font-semibold text-text-000">Hook Configuration</h2>
+        <Settings className="h-5 w-5 text-secondary" />
+        <h2 className="text-base font-semibold text-primary">Hook Configuration</h2>
       </div>
 
-      <p className="text-sm text-text-300">
+      <p className="text-sm text-secondary">
         Hooks enable real-time session tracking and push-based updates. Each hook fires a
         lightweight POST to the local server whenever Claude starts/ends sessions, completes tools,
         or finishes tasks.
@@ -79,7 +79,7 @@ export function HookSetup() {
               ? "border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300"
               : status.partial
                 ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
-                : "border-border-300/15 bg-bg-200 text-text-300"
+                : "border-border bg-surface-0 text-secondary"
           }`}
         >
           {status.installed ? (
@@ -102,7 +102,7 @@ export function HookSetup() {
       )}
 
       <div className="flex items-center gap-3">
-        <label htmlFor="hook-port" className="text-sm text-text-300">
+        <label htmlFor="hook-port" className="text-sm text-secondary">
           Server port
         </label>
         <input
@@ -110,7 +110,7 @@ export function HookSetup() {
           type="number"
           value={port}
           onChange={(e) => setPort(Number(e.target.value) || DEFAULT_HOOK_PORT)}
-          className="w-24 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-000 focus:outline-none focus:ring-1 focus:ring-accent-100"
+          className="w-24 rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
         />
       </div>
 
@@ -139,7 +139,7 @@ export function HookSetup() {
         <button
           type="button"
           onClick={() => setShowJson(!showJson)}
-          className="rounded-md border border-border-300/15 px-3 py-1.5 text-sm text-text-300 transition-colors hover:bg-bg-200"
+          className="rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0"
         >
           {showJson ? "Hide JSON" : "Show JSON"}
         </button>
@@ -162,7 +162,7 @@ export function HookSetup() {
           <button
             type="button"
             onClick={handleCopy}
-            className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md border border-border-300/15 bg-bg-200 px-2.5 py-1 text-xs text-text-300 transition-colors hover:bg-bg-300/50 hover:text-text-000"
+            className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md border border-border bg-surface-0 px-2.5 py-1 text-xs text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary"
             title="Copy to clipboard"
           >
             {copied ? (
@@ -177,7 +177,7 @@ export function HookSetup() {
               </>
             )}
           </button>
-          <pre className="overflow-auto rounded-md border border-border-300/15 bg-bg-200 p-4 pr-24 font-mono text-xs leading-relaxed text-text-300">
+          <pre className="overflow-auto rounded-md border border-border bg-surface-0 p-4 pr-24 font-mono text-xs leading-relaxed text-secondary">
             {json}
           </pre>
         </div>

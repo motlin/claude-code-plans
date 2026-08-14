@@ -141,13 +141,13 @@ export function TranscriptHistoryLoader({ sessionId, startIndex }: TranscriptHis
     <div
       ref={sentinelRef}
       data-testid="transcript-history-loader"
-      className="mx-auto flex w-full max-w-3xl flex-col items-center gap-1 px-8 pt-4 text-xs text-text-500"
+      className="mx-auto flex w-full max-w-3xl flex-col items-center gap-1 px-8 pt-4 text-xs text-t6"
     >
       <button
         type="button"
         onClick={() => void loadEarlier()}
         disabled={isLoading}
-        className="cursor-pointer rounded-md border border-border-300/15 bg-bg-200 px-3 py-1.5 transition-colors hover:text-text-000 disabled:cursor-default disabled:opacity-60"
+        className="cursor-pointer rounded-md border border-border bg-surface-0 px-3 py-1.5 transition-colors hover:text-primary disabled:cursor-default disabled:opacity-60"
       >
         {isLoading ? "Loading earlier messages…" : `Load ${startIndex} earlier records`}
       </button>

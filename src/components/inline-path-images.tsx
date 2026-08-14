@@ -1,7 +1,7 @@
 import type { SyntheticEvent } from "react";
 
 export const SESSION_IMAGE_CLASS_NAME =
-  "max-w-full max-h-96 rounded-lg border border-border-300/15 shadow-sm";
+  "max-w-full max-h-96 rounded-lg border border-border shadow-sm";
 
 const IMAGE_PATH_PATTERN = /(?<![\w/])@?(\/[^\s'"`<>]+\.(?:png|jpe?g|webp|gif))/gi;
 

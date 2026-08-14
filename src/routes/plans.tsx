@@ -34,7 +34,7 @@ function PlansPage() {
       <ListPageHeader title="Claude Plans" count={count} itemLabel="plan" />
 
       {count === 0 ? (
-        <p className="mt-4 text-text-500">No plans found.</p>
+        <p className="mt-4 text-t6">No plans found.</p>
       ) : (
         <ul className="mt-4 space-y-2">
           {plans.map((plan, index) => {
@@ -45,7 +45,7 @@ function PlansPage() {
                   to="/plan/$filename"
                   params={{ filename: toMdSlug(plan.filename) }}
                   preload={index < 2 ? "render" : "intent"}
-                  className="flex items-center justify-between rounded-md border border-border-300/15 px-4 py-3 transition-colors hover:bg-bg-200/50"
+                  className="flex items-center justify-between rounded-md border border-border px-4 py-3 transition-colors hover:bg-surface-0/50"
                 >
                   <span className="flex items-center gap-2 text-sm font-medium">
                     {plan.title}
@@ -55,9 +55,7 @@ function PlansPage() {
                       </span>
                     )}
                   </span>
-                  <span className="ml-4 shrink-0 text-xs text-text-500">
-                    {formatDate(plan.mtime)}
-                  </span>
+                  <span className="ml-4 shrink-0 text-xs text-t6">{formatDate(plan.mtime)}</span>
                 </Link>
                 <DebugLink
                   kind="plan"

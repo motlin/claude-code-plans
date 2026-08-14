@@ -50,7 +50,7 @@ export function SubagentTypeBadges({
       </span>
       {attributionAgent && (
         <span
-          className="shrink-0 rounded bg-bg-300/60 px-1.5 py-0.5 font-mono text-[10px] text-text-500"
+          className="shrink-0 rounded bg-fill-control px-1.5 py-0.5 font-mono text-[10px] text-t6"
           title="Transcript attribution agent"
         >
           {attributionAgent}
@@ -91,17 +91,17 @@ function TreeNode({
   return (
     <div>
       <div
-        className={`group flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 hover:bg-bg-200/50 ${liveStatus === "ended" ? "opacity-60" : ""}`}
+        className={`group flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 hover:bg-surface-0/50 ${liveStatus === "ended" ? "opacity-60" : ""}`}
         onClick={() => hasChildren && setExpanded((current) => !current)}
       >
-        <span className="w-4 shrink-0 text-text-500">
+        <span className="w-4 shrink-0 text-t6">
           {hasChildren ? expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} /> : null}
         </span>
         <SubagentTypeBadges
           agentType={node.agent.agentType}
           attributionAgent={node.agent.attributionAgent}
         />
-        <span className="min-w-0 truncate text-xs text-text-100">
+        <span className="min-w-0 truncate text-xs text-primary">
           {node.agent.description ?? node.agent.slug ?? node.agent.id}
         </span>
         {liveStatus === "running" && (
@@ -111,11 +111,11 @@ function TreeNode({
           </span>
         )}
         {agentDurationMs !== null && (
-          <span className="shrink-0 text-[10px] tabular-nums text-text-500">
+          <span className="shrink-0 text-[10px] tabular-nums text-t6">
             {formatDuration(agentDurationMs)}
           </span>
         )}
-        <span className="ml-auto shrink-0 text-[10px] text-text-500">
+        <span className="ml-auto shrink-0 text-[10px] text-t6">
           {formatTime(node.agent.startedAt)}
         </span>
         {presentation.indexedAgentIds.has(canonicalId) && (
@@ -131,7 +131,7 @@ function TreeNode({
         )}
       </div>
       {hasChildren && expanded && (
-        <div className="ml-5 border-l border-border-300/20 pl-3">
+        <div className="ml-5 border-l border-strong pl-3">
           <TreeEntries entries={node.children} presentation={presentation} />
         </div>
       )}
@@ -151,19 +151,17 @@ function ParallelGroupNode({
   return (
     <div>
       <div
-        className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 hover:bg-bg-200/50"
+        className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 hover:bg-surface-0/50"
         onClick={() => setExpanded((current) => !current)}
       >
-        <span className="w-4 shrink-0 text-text-500">
+        <span className="w-4 shrink-0 text-t6">
           {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </span>
         <span className="shrink-0 rounded bg-accent-000/12 px-1.5 py-0.5 text-[10px] font-medium text-accent-100">
           parallel &times;{group.children.length}
         </span>
-        <span className="min-w-0 truncate text-xs text-text-500">
-          {summarizeParallelGroup(group)}
-        </span>
-        <span className="ml-auto shrink-0 text-[10px] tabular-nums text-text-500">
+        <span className="min-w-0 truncate text-xs text-t6">{summarizeParallelGroup(group)}</span>
+        <span className="ml-auto shrink-0 text-[10px] tabular-nums text-t6">
           {formatDuration(group.wallClockMs)}
         </span>
       </div>
@@ -239,11 +237,11 @@ export function SubagentTree({ agents, sessionId }: { agents: Subagent[]; sessio
   const tree = useMemo(() => buildSubagentTree(mergedAgents), [mergedAgents]);
   const dateGroups = useMemo(() => groupSubagentTreeByDate(tree), [tree]);
   if (tree.length === 0) {
-    return <p className="mt-4 text-sm text-text-500">No subagents for this session.</p>;
+    return <p className="mt-4 text-sm text-t6">No subagents for this session.</p>;
   }
   return dateGroups.map((group) => (
     <section key={group.key}>
-      <h2 className="sticky top-0 z-10 border-b border-border-300/15 bg-bg-000 pb-1 pt-2 text-sm font-semibold text-text-500">
+      <h2 className="sticky top-0 z-10 border-b border-border bg-surface-2 pb-1 pt-2 text-sm font-semibold text-t6">
         {group.label}
       </h2>
       <div className="mb-4 mt-2">

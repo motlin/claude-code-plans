@@ -136,7 +136,7 @@ export function WorkingCopyReviewBanner({
   }
 
   return (
-    <div className="mx-6 mt-4 flex items-center gap-3 rounded-md border border-accent-100/30 bg-bg-100 px-4 py-2.5 text-sm text-text-200 shadow-sm">
+    <div className="mx-6 mt-4 flex items-center gap-3 rounded-md border border-accent-100/30 bg-surface-1 px-4 py-2.5 text-sm text-secondary shadow-sm">
       {banner.status === "running" ? (
         <Loader2 className="h-4 w-4 shrink-0 animate-spin text-accent-100" />
       ) : (
@@ -174,7 +174,7 @@ export function WorkingCopyReviewBanner({
         <button
           type="button"
           onClick={() => void cancel(banner)}
-          className="rounded-md border border-border-300/20 px-3 py-1.5 text-xs text-text-300 hover:bg-bg-200"
+          className="rounded-md border border-strong px-3 py-1.5 text-xs text-secondary hover:bg-surface-0"
         >
           Cancel
         </button>
@@ -189,7 +189,7 @@ export function WorkingCopyReviewBanner({
           }
         }}
         aria-label="Dismiss working-copy review"
-        className="text-text-500 hover:text-text-200"
+        className="text-t6 hover:text-secondary"
       >
         <X className="h-4 w-4" />
       </button>

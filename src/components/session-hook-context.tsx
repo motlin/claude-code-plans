@@ -3,9 +3,9 @@ import type { SessionHookContextPayload } from "../lib/hook-events";
 
 function ContextPill({ label, value }: { label: string; value: string }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-bg-200 px-2 py-0.5 text-xs text-text-500">
-      <span className="text-text-600">{label}</span>
-      <span className="font-medium text-text-300">{value}</span>
+    <span className="inline-flex items-center gap-1 rounded-full bg-surface-0 px-2 py-0.5 text-xs text-t6">
+      <span className="text-t6">{label}</span>
+      <span className="font-medium text-secondary">{value}</span>
     </span>
   );
 }
@@ -26,13 +26,13 @@ export function SessionHookContext({ context }: { context: SessionHookContextPay
           )}
           {context.effortLevel && (
             <span className="inline-flex items-center gap-1">
-              <Gauge className="h-3 w-3 text-text-600" />
+              <Gauge className="h-3 w-3 text-t6" />
               <ContextPill label="Effort" value={context.effortLevel} />
             </span>
           )}
           {context.promptId && (
             <span className="inline-flex items-center gap-1" title={context.promptId}>
-              <KeyRound className="h-3 w-3 text-text-600" />
+              <KeyRound className="h-3 w-3 text-t6" />
               <ContextPill label="Prompt" value={context.promptId.slice(0, 8)} />
             </span>
           )}
@@ -46,10 +46,10 @@ export function SessionHookContext({ context }: { context: SessionHookContextPay
             Paused with {backgroundTasks.length} background task
             {backgroundTasks.length === 1 ? "" : "s"}
           </div>
-          <ul className="mt-1 space-y-1 text-text-500">
+          <ul className="mt-1 space-y-1 text-t6">
             {backgroundTasks.map((task) => (
               <li key={task.id} className="flex min-w-0 items-center gap-2">
-                <span className="shrink-0 rounded bg-bg-200 px-1.5 py-0.5 text-[10px]">
+                <span className="shrink-0 rounded bg-surface-0 px-1.5 py-0.5 text-[10px]">
                   {task.status}
                 </span>
                 <span className="truncate">{task.description || task.name || task.type}</span>
@@ -60,20 +60,18 @@ export function SessionHookContext({ context }: { context: SessionHookContextPay
       )}
 
       {sessionCrons.length > 0 && (
-        <div className="rounded-md border border-accent-100/20 bg-bg-100 px-2.5 py-2 text-xs">
-          <div className="flex items-center gap-1.5 font-medium text-text-300">
+        <div className="rounded-md border border-accent-100/20 bg-surface-1 px-2.5 py-2 text-xs">
+          <div className="flex items-center gap-1.5 font-medium text-secondary">
             <CalendarClock className="h-3.5 w-3.5 text-accent-100" />
             Paused until {sessionCrons.length} scheduled wakeup
             {sessionCrons.length === 1 ? "" : "s"}
           </div>
-          <ul className="mt-1 space-y-1 text-text-500">
+          <ul className="mt-1 space-y-1 text-t6">
             {sessionCrons.map((cron) => (
               <li key={cron.id} className="flex min-w-0 items-center gap-2">
-                <span className="shrink-0 font-mono text-[10px] text-text-600">
-                  {cron.schedule}
-                </span>
+                <span className="shrink-0 font-mono text-[10px] text-t6">{cron.schedule}</span>
                 <span className="truncate">{cron.prompt}</span>
-                {cron.recurring && <span className="shrink-0 text-text-600">recurring</span>}
+                {cron.recurring && <span className="shrink-0 text-t6">recurring</span>}
               </li>
             ))}
           </ul>

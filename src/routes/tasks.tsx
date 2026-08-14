@@ -94,11 +94,11 @@ function TasksPage() {
         count={taskCount}
         itemLabel="task"
         actions={
-          <div className="flex items-center gap-1 rounded-md border border-border-300/30 p-0.5">
+          <div className="flex items-center gap-1 rounded-md border border-strong p-0.5">
             <button
               type="button"
               onClick={() => setView("list")}
-              className={`rounded px-2 py-1 text-xs transition-colors ${view === "list" ? "bg-bg-200 text-text-100" : "text-text-500 hover:text-text-300"}`}
+              className={`rounded px-2 py-1 text-xs transition-colors ${view === "list" ? "bg-surface-0 text-primary" : "text-t6 hover:text-secondary"}`}
               title="List view"
             >
               <List className="h-3.5 w-3.5" />
@@ -106,7 +106,7 @@ function TasksPage() {
             <button
               type="button"
               onClick={() => setView("graph")}
-              className={`rounded px-2 py-1 text-xs transition-colors ${view === "graph" ? "bg-bg-200 text-text-100" : "text-text-500 hover:text-text-300"}`}
+              className={`rounded px-2 py-1 text-xs transition-colors ${view === "graph" ? "bg-surface-0 text-primary" : "text-t6 hover:text-secondary"}`}
               title="Dependency graph"
             >
               <GitBranch className="h-3.5 w-3.5" />
@@ -121,31 +121,31 @@ function TasksPage() {
         onChange={(event) => setSearchQuery(event.target.value)}
         placeholder="Search tasks by title, description, active form, or owner..."
         aria-label="Search tasks"
-        className="mt-4 w-full rounded-md border border-border-300/15 bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent-100"
+        className="mt-4 w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent-100"
       />
 
       {groups.length === 0 ? (
-        <p className="mt-4 text-text-500">No incomplete tasks across any projects.</p>
+        <p className="mt-4 text-t6">No incomplete tasks across any projects.</p>
       ) : visibleGroups.length === 0 ? (
-        <p className="mt-4 text-text-500">No tasks match &ldquo;{searchQuery.trim()}&rdquo;.</p>
+        <p className="mt-4 text-t6">No tasks match &ldquo;{searchQuery.trim()}&rdquo;.</p>
       ) : view === "graph" ? (
         <TaskDependencyGraph groups={visibleGroups} />
       ) : (
         <div className="mt-6 space-y-6">
           {visibleProjects.map((project) => (
             <section key={project.projectId}>
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-text-400">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-t6">
                 {project.projectName}
               </h2>
               {project.projectId === ORPHANED_TASKS_PROJECT_ID && (
-                <p className="mt-1 text-xs text-text-500">{ORPHANED_TASKS_DESCRIPTION}</p>
+                <p className="mt-1 text-xs text-t6">{ORPHANED_TASKS_DESCRIPTION}</p>
               )}
               <div className="mt-2 space-y-4">
                 {project.sessions.map((group) => {
                   const isCollapsed = collapsed.has(group.projectDir);
                   return (
                     <div key={group.projectDir}>
-                      <div className="flex w-full items-center gap-2 border-b border-border-300/15 pb-1">
+                      <div className="flex w-full items-center gap-2 border-b border-border pb-1">
                         <button
                           type="button"
                           aria-expanded={!isCollapsed}
@@ -154,7 +154,7 @@ function TasksPage() {
                           className="cursor-pointer"
                         >
                           <ChevronRight
-                            className="h-3 w-3 text-text-500 transition-transform duration-200"
+                            className="h-3 w-3 text-t6 transition-transform duration-200"
                             style={{
                               transform: isCollapsed ? "rotate(0deg)" : "rotate(90deg)",
                             }}
@@ -164,16 +164,16 @@ function TasksPage() {
                           <Link
                             to="/session/$id"
                             params={{ id: group.sessionId }}
-                            className="text-sm font-semibold text-text-100 no-underline hover:text-accent-100"
+                            className="text-sm font-semibold text-primary no-underline hover:text-accent-100"
                           >
                             {group.sessionTitle}
                           </Link>
                         ) : (
-                          <span className="text-sm font-semibold text-text-100">
+                          <span className="text-sm font-semibold text-primary">
                             {group.sessionTitle}
                           </span>
                         )}
-                        <span className="flex items-center gap-2 text-xs text-text-500">
+                        <span className="flex items-center gap-2 text-xs text-t6">
                           {group.totalPending > 0 && (
                             <span className="flex items-center gap-1">
                               <Circle className="h-3 w-3" /> {group.totalPending} pending
@@ -197,11 +197,11 @@ function TasksPage() {
                                 <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
                               ) : (
                                 <Circle
-                                  className={`mt-0.5 h-4 w-4 shrink-0 ${task.status === "in_progress" ? "text-blue-500" : "text-text-500"}`}
+                                  className={`mt-0.5 h-4 w-4 shrink-0 ${task.status === "in_progress" ? "text-blue-500" : "text-t6"}`}
                                 />
                               )}
                               <div className="min-w-0 flex-1">
-                                <div className="text-sm text-text-100 flex items-center gap-1.5">
+                                <div className="text-sm text-primary flex items-center gap-1.5">
                                   <span>
                                     #{task.taskId} <MarkdownInline markdown={task.subject} />
                                   </span>
@@ -211,7 +211,7 @@ function TasksPage() {
                                   />
                                 </div>
                                 {task.description && task.description !== task.subject && (
-                                  <div className="mt-0.5 text-xs text-text-500">
+                                  <div className="mt-0.5 text-xs text-t6">
                                     <MarkdownView markdown={task.description} />
                                   </div>
                                 )}

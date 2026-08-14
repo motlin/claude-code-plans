@@ -98,7 +98,7 @@ export function Sidebar({
       <button
         type="button"
         onClick={onToggle}
-        className="absolute left-2 top-2 z-10 hidden h-8 w-8 items-center justify-center rounded-[6px] text-text-000 transition-colors hover:bg-bg-300/50 md:flex"
+        className="absolute left-2 top-2 z-10 hidden h-8 w-8 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover md:flex"
         title="Open sidebar"
       >
         <SidebarToggleIcon />
@@ -111,14 +111,14 @@ export function Sidebar({
       aria-label="Sidebar"
       className={
         mobile
-          ? "relative flex h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border-300/15 bg-bg-200"
-          : "relative hidden h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border-300/15 bg-bg-200 md:flex"
+          ? "relative flex h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border bg-surface-0"
+          : "relative hidden h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border bg-surface-0 md:flex"
       }
     >
       <div className="flex items-center justify-between px-4 pt-3 pb-3">
         <Link
           to="/"
-          className="flex items-center gap-2.5 text-base font-bold text-text-000 no-underline"
+          className="flex items-center gap-2.5 text-base font-bold text-primary no-underline"
         >
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#C87B3A]">
             <svg viewBox="0 0 32 32" className="h-4 w-4">
@@ -134,7 +134,7 @@ export function Sidebar({
         <button
           type="button"
           onClick={onToggle}
-          className="flex h-8 w-8 items-center justify-center rounded-[6px] text-text-000 transition-colors hover:bg-bg-300/50"
+          className="flex h-8 w-8 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover"
           title="Close sidebar"
         >
           <SidebarToggleIcon />
@@ -163,7 +163,7 @@ export function Sidebar({
                 <button
                   type="button"
                   onClick={() => toggleSection(item.section)}
-                  className="flex h-8 w-6 shrink-0 items-center justify-center text-text-500 transition-colors hover:text-text-200"
+                  className="flex h-8 w-6 shrink-0 items-center justify-center text-t6 transition-colors hover:text-secondary"
                   title={isExpanded ? `Collapse ${item.label}` : `Expand ${item.label}`}
                 >
                   <ChevronRight
@@ -175,10 +175,10 @@ export function Sidebar({
                 </button>
                 <Link
                   to={item.to}
-                  className={`mb-0.5 flex h-8 flex-1 items-center gap-2 rounded-[6px] px-2 py-1.5 text-xs no-underline transition-colors ${
+                  className={`mb-0.5 flex h-8 flex-1 items-center gap-2 rounded-r5 px-2 py-1.5 text-xs no-underline transition-colors ${
                     isActive
-                      ? "bg-bg-300/50 font-medium text-text-000"
-                      : "text-text-200 hover:bg-bg-300/50"
+                      ? "bg-fill-ghost-hover font-medium text-primary"
+                      : "text-secondary hover:bg-fill-ghost-hover"
                   }`}
                   style={{
                     fontWeight: isActive ? 500 : 430,

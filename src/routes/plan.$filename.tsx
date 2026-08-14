@@ -47,7 +47,7 @@ function PlanPage() {
           </Link>
         </DetailTopBar>
         <h1 className="mt-4 text-lg font-semibold">Plan Not Found</h1>
-        <p className="mt-2 text-text-500">This plan could not be found.</p>
+        <p className="mt-2 text-t6">This plan could not be found.</p>
       </div>
     );
   }
@@ -68,20 +68,20 @@ function PlanPage() {
         <DebugLink kind="plan" relativePath={filename} />
       </DetailTopBar>
       {plan.mtime && (
-        <div className="mt-3 flex items-center gap-1.5 text-xs text-text-500">
+        <div className="mt-3 flex items-center gap-1.5 text-xs text-t6">
           <Clock className="h-3 w-3" />
           Last modified {formatDate(plan.mtime)}
         </div>
       )}
       <h1 className="text-lg font-semibold">{plan.title}</h1>
-      <p className="text-xs text-text-500">{filename}</p>
+      <p className="text-xs text-t6">{filename}</p>
       <div className="mt-4">
         <MarkdownView markdown={body} />
       </div>
 
       {links.length > 0 && (
-        <section className="mt-8 border-t border-border-300/15 pt-6">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-400">
+        <section className="mt-8 border-t border-border pt-6">
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-t6">
             Related Sessions
           </h2>
           {(() => {
@@ -101,11 +101,11 @@ function PlanPage() {
                 <Link
                   to="/project/$id"
                   params={{ id: projectId }}
-                  className="mb-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium text-text-200 no-underline transition-colors hover:bg-bg-200/50"
+                  className="mb-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium text-secondary no-underline transition-colors hover:bg-surface-0/50"
                 >
-                  <FolderOpen className="h-3.5 w-3.5 shrink-0 text-text-400" />
+                  <FolderOpen className="h-3.5 w-3.5 shrink-0 text-t6" />
                   {group.projectName}
-                  <span className="ml-auto text-[10px] text-text-500">
+                  <span className="ml-auto text-[10px] text-t6">
                     {group.sessions.length} {group.sessions.length === 1 ? "session" : "sessions"}
                   </span>
                 </Link>
@@ -115,9 +115,9 @@ function PlanPage() {
                       key={link.sessionId}
                       to="/session/$id"
                       params={{ id: link.sessionId }}
-                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-300 no-underline transition-colors hover:bg-bg-200/50 hover:text-text-100"
+                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-secondary no-underline transition-colors hover:bg-surface-0/50 hover:text-primary"
                     >
-                      <MessageSquare className="h-3 w-3 shrink-0 text-text-500" />
+                      <MessageSquare className="h-3 w-3 shrink-0 text-t6" />
                       <span className="truncate">{link.sessionTitle || "Untitled session"}</span>
                     </Link>
                   ))}

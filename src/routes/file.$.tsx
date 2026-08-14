@@ -21,8 +21,8 @@ function FileViewerPage() {
   return (
     <main className="mx-auto max-w-[min(100%,96rem)] p-6">
       <header className="mb-4">
-        <h1 className="text-lg font-medium text-text-100">Read-only file</h1>
-        <p className="mt-1 break-all font-mono text-xs text-text-500">{data.path}</p>
+        <h1 className="text-lg font-medium text-primary">Read-only file</h1>
+        <p className="mt-1 break-all font-mono text-xs text-t6">{data.path}</p>
       </header>
       <FileViewer file={data} />
     </main>

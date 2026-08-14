@@ -155,8 +155,8 @@ export function HerdrTerminal({ sessionId }: { sessionId: string }) {
 
   return (
     <section aria-label="Live read-only terminal" className="mt-4">
-      <div className="mb-2 flex items-center gap-2 text-xs text-text-500">
-        <span className="rounded bg-bg-200/60 px-1.5 py-0.5 text-text-300">
+      <div className="mb-2 flex items-center gap-2 text-xs text-t6">
+        <span className="rounded bg-surface-0/60 px-1.5 py-0.5 text-secondary">
           Live read-only view
         </span>
         <span aria-live="polite">{status}</span>
@@ -165,7 +165,7 @@ export function HerdrTerminal({ sessionId }: { sessionId: string }) {
       {error && <p className="mb-2 text-xs text-danger-000">{error}</p>}
       <div
         ref={container}
-        className="h-[min(70vh,48rem)] overflow-hidden rounded-md border border-border-300/20 p-2"
+        className="h-[min(70vh,48rem)] overflow-hidden rounded-md border border-strong p-2"
         style={appearance ? { backgroundColor: appearance.theme.background } : undefined}
       />
     </section>

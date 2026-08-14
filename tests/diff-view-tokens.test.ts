@@ -103,8 +103,8 @@ describe("diff view row colors", () => {
       "--diff-expand-content--": "transparent",
       "--diff-expand-lineNumber--": "transparent",
       "--diff-empty-content--": "transparent",
-      "--diff-plain-lineNumber-color--": "var(--upstream-text-assistant-secondary)",
-      "--diff-expand-lineNumber-color--": "var(--upstream-text-assistant-secondary)",
+      "--diff-plain-lineNumber-color--": "var(--upstream-text-secondary)",
+      "--diff-expand-lineNumber-color--": "var(--upstream-text-secondary)",
     });
   });
 

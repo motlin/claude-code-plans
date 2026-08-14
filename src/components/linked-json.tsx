@@ -20,7 +20,7 @@ interface LinkedJsonProps {
  */
 export function LinkedJson({ value, context }: LinkedJsonProps) {
   return (
-    <pre className="bg-bg-100 text-text-000 text-xs font-mono whitespace-pre-wrap break-all rounded p-3 overflow-x-auto leading-relaxed">
+    <pre className="bg-surface-1 text-primary text-xs font-mono whitespace-pre-wrap break-all rounded p-3 overflow-x-auto leading-relaxed">
       <JsonValue value={value} path={[]} ctx={context} indent={0} />
     </pre>
   );
@@ -43,8 +43,8 @@ function JsonValue({
   ctx: LinkedJsonContext;
   indent: number;
 }) {
-  if (value === null) return <span className="text-text-500 italic">null</span>;
-  if (value === undefined) return <span className="text-text-500 italic">undefined</span>;
+  if (value === null) return <span className="text-t6 italic">null</span>;
+  if (value === undefined) return <span className="text-t6 italic">undefined</span>;
 
   switch (typeof value) {
     case "string":
@@ -61,7 +61,7 @@ function JsonValue({
         <JsonObject obj={value as Record<string, unknown>} path={path} ctx={ctx} indent={indent} />
       );
     default:
-      return <span className="text-text-300">{JSON.stringify(value)}</span>;
+      return <span className="text-secondary">{JSON.stringify(value)}</span>;
   }
 }
 
@@ -76,22 +76,22 @@ function JsonArray({
   ctx: LinkedJsonContext;
   indent: number;
 }) {
-  if (items.length === 0) return <span className="text-text-300">[]</span>;
+  if (items.length === 0) return <span className="text-secondary">[]</span>;
 
   return (
     <>
-      <span className="text-text-300">{"["}</span>
+      <span className="text-secondary">{"["}</span>
       {"\n"}
       {items.map((item, i) => (
         <span key={i}>
           {indentStr(indent + 1)}
           <JsonValue value={item} path={[...path, String(i)]} ctx={ctx} indent={indent + 1} />
-          {i < items.length - 1 ? <span className="text-text-300">,</span> : null}
+          {i < items.length - 1 ? <span className="text-secondary">,</span> : null}
           {"\n"}
         </span>
       ))}
       {indentStr(indent)}
-      <span className="text-text-300">{"]"}</span>
+      <span className="text-secondary">{"]"}</span>
     </>
   );
 }
@@ -108,24 +108,24 @@ function JsonObject({
   indent: number;
 }) {
   const keys = Object.keys(obj);
-  if (keys.length === 0) return <span className="text-text-300">{"{}"}</span>;
+  if (keys.length === 0) return <span className="text-secondary">{"{}"}</span>;
 
   return (
     <>
-      <span className="text-text-300">{"{"}</span>
+      <span className="text-secondary">{"{"}</span>
       {"\n"}
       {keys.map((key, i) => (
         <span key={key}>
           {indentStr(indent + 1)}
           <span className="text-[#9cdcfe]">"{key}"</span>
-          <span className="text-text-300">: </span>
+          <span className="text-secondary">: </span>
           <JsonValue value={obj[key]} path={[...path, key]} ctx={ctx} indent={indent + 1} />
-          {i < keys.length - 1 ? <span className="text-text-300">,</span> : null}
+          {i < keys.length - 1 ? <span className="text-secondary">,</span> : null}
           {"\n"}
         </span>
       ))}
       {indentStr(indent)}
-      <span className="text-text-300">{"}"}</span>
+      <span className="text-secondary">{"}"}</span>
     </>
   );
 }

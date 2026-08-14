@@ -170,7 +170,7 @@ describe("SystemBanner variants", () => {
     });
 
     expect(rootClassName(html)).toStrictEqual(
-      "flex flex-wrap items-center gap-2 py-1.5 px-3 text-xs text-text-500 bg-bg-100 rounded-md border border-border-300/10",
+      "flex flex-wrap items-center gap-2 py-1.5 px-3 text-xs text-t6 bg-surface-1 rounded-md border border-subtle",
     );
   });
 

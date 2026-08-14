@@ -66,8 +66,8 @@ function SessionsPage() {
             onClick={() => setSetting("sessionsGrouping", grouping)}
             className={`cursor-pointer rounded-md px-2.5 py-1 transition-colors ${
               settings.sessionsGrouping === grouping
-                ? "bg-bg-300/50 font-medium text-text-000"
-                : "text-text-500 hover:bg-bg-300/50 hover:text-text-200"
+                ? "bg-fill-ghost-hover font-medium text-primary"
+                : "text-t6 hover:bg-fill-ghost-hover hover:text-secondary"
             }`}
           >
             {grouping === "project" ? "By project" : "By time"}
@@ -76,7 +76,7 @@ function SessionsPage() {
       </div>
 
       {groups.length === 0 ? (
-        <p className="mt-4 text-text-500">No session files found.</p>
+        <p className="mt-4 text-t6">No session files found.</p>
       ) : (
         <div className="mt-4">
           {settings.sessionsGrouping === "project" ? (
@@ -114,7 +114,7 @@ function SessionsByTime({ activeIds }: { activeIds: ReadonlySet<string> }) {
     <div>
       {timePeriodGroups.map((group) => (
         <section key={group.period}>
-          <h2 className="sticky top-0 z-10 border-b border-border-300/15 bg-bg-000 pb-1 pt-2 text-sm font-semibold text-text-500">
+          <h2 className="sticky top-0 z-10 border-b border-border bg-surface-2 pb-1 pt-2 text-sm font-semibold text-t6">
             {group.period}
           </h2>
           <ul className="mt-2 mb-4 space-y-1">

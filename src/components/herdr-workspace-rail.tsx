@@ -23,7 +23,7 @@ function PaneTitle({ title }: { title: string }) {
   return (
     <span className="truncate">
       {glyph === null ? null : (
-        <span aria-hidden="true" className="mr-1 text-text-500">
+        <span aria-hidden="true" className="mr-1 text-t6">
           {glyph}
         </span>
       )}
@@ -57,7 +57,7 @@ function PaneRow({
   if (pane.sessionId === null) {
     return (
       <div
-        className={`${RAIL_ROW} pl-4 text-text-500`}
+        className={`${RAIL_ROW} pl-4 text-t6`}
         title={`${pane.title} has no indexed Claude transcript to open`}
       >
         {body}
@@ -71,10 +71,10 @@ function PaneRow({
       params={{ sessionId: pane.sessionId }}
       aria-label={`Open live terminal for ${pane.title} in workspace ${workspaceLabel}`}
       {...(selected ? { "aria-current": "page" as const } : {})}
-      className={`${RAIL_ROW} rounded-[4px] pl-4 pr-1 no-underline transition-colors ${
+      className={`${RAIL_ROW} rounded-r3 pl-4 pr-1 no-underline transition-colors ${
         selected
-          ? "bg-bg-300/50 font-medium text-text-000"
-          : "text-text-200 hover:bg-bg-300/50 hover:text-text-000"
+          ? "bg-fill-ghost-hover font-medium text-primary"
+          : "text-secondary hover:bg-fill-ghost-hover hover:text-primary"
       }`}
     >
       {body}
@@ -105,7 +105,7 @@ function WorkspaceGroup({
             ? undefined
             : `Linked worktree of ${workspace.worktreeName}`
         }
-        className={`${RAIL_ROW} w-full rounded-[4px] px-1 text-left text-text-000 transition-colors hover:bg-bg-300/50`}
+        className={`${RAIL_ROW} w-full rounded-r3 px-1 text-left text-primary transition-colors hover:bg-fill-ghost-hover`}
       >
         <ChevronRight
           aria-hidden="true"
@@ -113,7 +113,7 @@ function WorkspaceGroup({
           style={{ transform: expanded ? "rotate(90deg)" : "rotate(0deg)" }}
         />
         <span className="truncate font-medium">
-          <span className="mr-1.5 tabular-nums font-normal text-text-500">{workspace.number}</span>
+          <span className="mr-1.5 tabular-nums font-normal text-t6">{workspace.number}</span>
           {workspace.label}
         </span>
         <HerdrStatusIndicator status={workspace.agentStatus} />
@@ -138,7 +138,7 @@ function WorkspaceGroup({
                 aria-label={`${shellsShown ? "Hide" : "Show"} ${shellCount} shell pane${
                   shellCount === 1 ? "" : "s"
                 } in ${workspace.label}`}
-                className="ml-4 rounded-[4px] px-1 py-0.5 text-[10px] text-text-500 transition-colors hover:bg-bg-300/50 hover:text-text-200"
+                className="ml-4 rounded-r3 px-1 py-0.5 text-[10px] text-t6 transition-colors hover:bg-fill-ghost-hover hover:text-secondary"
               >
                 {shellCount} shell{shellCount === 1 ? "" : "s"}
               </button>
@@ -170,12 +170,12 @@ export function HerdrWorkspaceRail({ selectedSessionId }: { selectedSessionId: s
   return (
     <nav
       aria-label="Herdr workspaces"
-      className="sticky top-0 hidden h-[calc(100dvh-4rem)] w-72 shrink-0 self-start overflow-y-auto border-r border-border-300/15 px-2 py-1 md:block"
+      className="sticky top-0 hidden h-[calc(100dvh-4rem)] w-72 shrink-0 self-start overflow-y-auto border-r border-border px-2 py-1 md:block"
     >
       {data === undefined ? (
         <LoadingBars />
       ) : data.workspaces.length === 0 ? (
-        <p className="px-1 py-2 text-xs italic text-text-400">No Herdr workspaces</p>
+        <p className="px-1 py-2 text-xs italic text-t6">No Herdr workspaces</p>
       ) : (
         data.workspaces.map((workspace) => (
           <WorkspaceGroup

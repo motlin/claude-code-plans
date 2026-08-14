@@ -59,12 +59,12 @@ function ProjectMemoriesPage() {
       </DetailTopBar>
 
       <h1 className="text-lg font-semibold">{project.name} memories</h1>
-      <p className="mt-0.5 text-xs text-text-500">
+      <p className="mt-0.5 text-xs text-t6">
         {memories.length} {memories.length === 1 ? "memory" : "memories"}
       </p>
 
       {memories.length === 0 ? (
-        <p className="mt-4 text-text-500">No memories for this project.</p>
+        <p className="mt-4 text-t6">No memories for this project.</p>
       ) : (
         <ul className="mt-4 space-y-2">
           {memories.map((mem) => (
@@ -72,10 +72,10 @@ function ProjectMemoriesPage() {
               <Link
                 to="/memory/$project/$filename"
                 params={{ project: mem.project, filename: toMdSlug(mem.filename) }}
-                className="flex items-center justify-between rounded-md border border-border-300/15 px-4 py-3 transition-colors hover:bg-bg-200/50"
+                className="flex items-center justify-between rounded-md border border-border px-4 py-3 transition-colors hover:bg-surface-0/50"
               >
                 <span className="text-sm font-medium">{mem.title}</span>
-                <span className="ml-4 shrink-0 text-xs text-text-500">{formatDate(mem.mtime)}</span>
+                <span className="ml-4 shrink-0 text-xs text-t6">{formatDate(mem.mtime)}</span>
               </Link>
               <DebugLink
                 kind="memory"

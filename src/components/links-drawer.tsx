@@ -154,7 +154,7 @@ export function LinksDrawerToggle({
       aria-expanded={isOpen}
       title={resourceCoverageNote(unscannedRecordCount)}
       onClick={onToggle}
-      className={`${pillStyles.outline} disabled:cursor-not-allowed disabled:opacity-40 ${isOpen ? "bg-bg-200 text-text-100" : ""}`}
+      className={`${pillStyles.outline} disabled:cursor-not-allowed disabled:opacity-40 ${isOpen ? "bg-surface-0 text-primary" : ""}`}
     >
       <LinkIcon className="h-3.5 w-3.5" aria-hidden="true" />
       Links {formatResourceCount(count, unscannedRecordCount)}
@@ -170,9 +170,9 @@ interface LinkRowProps {
 
 function LinkRow({ entry, copied, onCopy }: LinkRowProps) {
   return (
-    <li className="border-b border-border-300/10 px-4 py-3 last:border-b-0">
+    <li className="border-b border-subtle px-4 py-3 last:border-b-0">
       <div className="flex items-center gap-2">
-        <span title={entry.url} className="min-w-0 flex-1 truncate text-xs text-text-200">
+        <span title={entry.url} className="min-w-0 flex-1 truncate text-xs text-secondary">
           {entry.label}
         </span>
         <a
@@ -181,7 +181,7 @@ function LinkRow({ entry, copied, onCopy }: LinkRowProps) {
           rel="noopener noreferrer"
           aria-label={`Open ${entry.label} in a new tab`}
           title="Open in a new tab"
-          className="flex size-7 shrink-0 items-center justify-center rounded text-text-500 transition-colors hover:bg-bg-300/70 hover:text-text-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
+          className="flex size-7 shrink-0 items-center justify-center rounded text-t6 transition-colors hover:bg-fill-control hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
         >
           <ExternalLink className="size-3.5" aria-hidden="true" />
         </a>
@@ -190,7 +190,7 @@ function LinkRow({ entry, copied, onCopy }: LinkRowProps) {
           aria-label={`Copy ${entry.label}`}
           title={copied ? "Copied" : "Copy URL"}
           onClick={() => void onCopy(entry.url)}
-          className="flex size-7 shrink-0 items-center justify-center rounded text-text-500 transition-colors hover:bg-bg-300/70 hover:text-text-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
+          className="flex size-7 shrink-0 items-center justify-center rounded text-t6 transition-colors hover:bg-fill-control hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
         >
           <Copy className="size-3.5" aria-hidden="true" />
         </button>
@@ -289,7 +289,7 @@ export function LinksDrawer({
       unscannedRecordCount={unscannedRecordCount}
       onClose={onClose}
       headerContent={
-        <label className="flex shrink-0 items-center gap-1.5 text-[11px] text-text-300">
+        <label className="flex shrink-0 items-center gap-1.5 text-[11px] text-secondary">
           <input
             type="checkbox"
             checked={includeToolsAndThinking}
@@ -300,11 +300,11 @@ export function LinksDrawer({
         </label>
       }
     >
-      <div className="sticky top-0 z-20 border-b border-border-300/15 bg-bg-200 p-3">
+      <div className="sticky top-0 z-20 border-b border-border bg-surface-0 p-3">
         <label className="relative block">
           <span className="sr-only">Filter links</span>
           <Search
-            className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-text-500"
+            className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-t6"
             aria-hidden="true"
           />
           <input
@@ -312,13 +312,13 @@ export function LinksDrawer({
             value={filterText}
             onChange={handleFilterChange}
             placeholder="Filter links"
-            className="w-full rounded-md border border-border-300/20 bg-bg-100 py-2 pl-8 pr-3 text-xs text-text-100 outline-none placeholder:text-text-500 focus:border-accent-100/60"
+            className="w-full rounded-md border border-strong bg-surface-1 py-2 pl-8 pr-3 text-xs text-primary outline-none placeholder:text-t6 focus:border-accent-100/60"
           />
         </label>
       </div>
 
       {filteredGroups.length === 0 ? (
-        <p className="px-4 py-8 text-center text-xs text-text-500">{emptyMessage}</p>
+        <p className="px-4 py-8 text-center text-xs text-t6">{emptyMessage}</p>
       ) : (
         filteredGroups.map((group) => {
           const isCollapsed = query === "" && collapsed.has(group.categoryId);
@@ -329,7 +329,7 @@ export function LinksDrawer({
                 id={`links-${group.categoryId}`}
                 aria-expanded={!isCollapsed}
                 onClick={() => toggleCategory(group.categoryId)}
-                className="sticky top-[57px] z-10 flex w-full items-center gap-2 border-b border-border-300/15 bg-bg-200 px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-text-300 hover:bg-bg-300/40"
+                className="sticky top-[57px] z-10 flex w-full items-center gap-2 border-b border-border bg-surface-0 px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-secondary hover:bg-fill-ghost-hover"
               >
                 {isCollapsed ? (
                   <ChevronRight className="size-3.5" aria-hidden="true" />

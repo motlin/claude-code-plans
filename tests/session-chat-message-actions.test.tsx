@@ -134,7 +134,7 @@ describe("SessionChat user action row", () => {
     }).toStrictEqual({
       column: "flex flex-col items-end gap-g6 max-w-[75%] min-w-0",
       actionRow:
-        "flex items-center gap-g2 pt-[4px] -mt-[8px] text-[11px] text-text-500 opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150",
+        "flex items-center gap-g2 pt-[4px] -mt-[8px] text-[11px] text-t6 opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150",
       buttonLabels: ["", ""],
     });
   });

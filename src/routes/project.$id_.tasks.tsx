@@ -68,7 +68,7 @@ function ProjectTasksPage() {
       </DetailTopBar>
 
       <h1 className="text-lg font-semibold">{project.name} tasks</h1>
-      <p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-text-500">
+      <p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-t6">
         <span>{todoCounts.total} total</span>
         {todoCounts.pending > 0 && <span>{todoCounts.pending} pending</span>}
         {todoCounts.inProgress > 0 && (
@@ -85,13 +85,13 @@ function ProjectTasksPage() {
         onChange={(event) => setSearchQuery(event.target.value)}
         placeholder="Search tasks by title, description, active form, or owner..."
         aria-label="Search tasks"
-        className="mt-4 w-full rounded-md border border-border-300/15 bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent-100"
+        className="mt-4 w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent-100"
       />
 
       {todos.length === 0 ? (
-        <p className="mt-4 text-text-500">No tasks for this project.</p>
+        <p className="mt-4 text-t6">No tasks for this project.</p>
       ) : visibleTodos.length === 0 ? (
-        <p className="mt-4 text-text-500">No tasks match &ldquo;{searchQuery.trim()}&rdquo;.</p>
+        <p className="mt-4 text-t6">No tasks match &ldquo;{searchQuery.trim()}&rdquo;.</p>
       ) : (
         <div className="mt-4 space-y-1">
           {visibleTodos.map((task) => (
@@ -100,18 +100,18 @@ function ProjectTasksPage() {
                 <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
               ) : (
                 <Circle
-                  className={`mt-0.5 h-4 w-4 shrink-0 ${task.status === "in_progress" ? "text-blue-500" : "text-text-500"}`}
+                  className={`mt-0.5 h-4 w-4 shrink-0 ${task.status === "in_progress" ? "text-blue-500" : "text-t6"}`}
                 />
               )}
               <div className="min-w-0 flex-1">
-                <div className="text-sm text-text-100 flex items-center gap-1.5">
+                <div className="text-sm text-primary flex items-center gap-1.5">
                   <span>
                     #{task.taskId} <MarkdownInline markdown={task.subject} />
                   </span>
                   <DebugLink kind="task" relativePath={`${task.projectDir}/${task.taskId}.json`} />
                 </div>
                 {task.description && task.description !== task.subject && (
-                  <div className="mt-0.5 text-xs text-text-500">
+                  <div className="mt-0.5 text-xs text-t6">
                     <MarkdownView markdown={task.description} />
                   </div>
                 )}

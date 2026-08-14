@@ -16,7 +16,7 @@ import { formatCount } from "../lib/pluralize";
 type SearchResult = SessionSearchItem | MessageSearchItem;
 
 const MARK_CLASSES =
-  "[&_mark]:rounded-sm [&_mark]:bg-warning-100/30 [&_mark]:px-0.5 [&_mark]:text-text-100";
+  "[&_mark]:rounded-sm [&_mark]:bg-warning-100/30 [&_mark]:px-0.5 [&_mark]:text-primary";
 
 function unescapeHtml(value: string): string {
   return value
@@ -48,7 +48,7 @@ export function SearchResultCard({ result }: { result: SearchResult }) {
           dangerouslySetInnerHTML={{ __html: titleHtml }}
         />
       )}
-      <div className="mt-0.5 flex items-center gap-2 text-xs text-text-500">
+      <div className="mt-0.5 flex items-center gap-2 text-xs text-t6">
         <span>{result.projectName}</span>
         {result.mtime && (
           <>
@@ -65,7 +65,7 @@ export function SearchResultCard({ result }: { result: SearchResult }) {
       </div>
       {result.snippet && !snippetRepeatsTitle(result.snippet, result.title) && (
         <div
-          className={`mt-0.5 truncate text-xs text-text-500 ${MARK_CLASSES}`}
+          className={`mt-0.5 truncate text-xs text-t6 ${MARK_CLASSES}`}
           dangerouslySetInnerHTML={{ __html: result.snippet }}
         />
       )}
@@ -196,13 +196,13 @@ function SessionSearch({
           placeholder={
             mode === "conversations" ? "Search conversations..." : "Search session titles..."
           }
-          className="flex-1 rounded-md border border-border-300/15 bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent-100"
+          className="flex-1 rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent-100"
           autoFocus
         />
         <button
           type="submit"
           disabled={loading || !query.trim()}
-          className="rounded-md bg-accent-100 px-4 py-2 text-sm font-medium text-bg-000 disabled:opacity-50"
+          className="rounded-md bg-fill-primary px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-fill-primary-hover disabled:opacity-50"
         >
           {loading ? "Searching..." : "Search"}
         </button>
@@ -222,8 +222,8 @@ function SessionSearch({
             }}
             className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
               mode === option
-                ? "bg-accent-100 text-bg-000"
-                : "bg-bg-200 text-text-500 hover:bg-bg-200/80"
+                ? "bg-fill-primary text-on-primary"
+                : "bg-surface-0 text-t6 hover:bg-surface-0/80"
             }`}
           >
             {searchModeLabels[option]}
@@ -232,13 +232,11 @@ function SessionSearch({
       </div>
 
       {searched && results.length === 0 && (
-        <p className="mt-6 text-sm text-text-500">
-          No results found for &ldquo;{submittedQuery}&rdquo;
-        </p>
+        <p className="mt-6 text-sm text-t6">No results found for &ldquo;{submittedQuery}&rdquo;</p>
       )}
 
       {searched && results.length > 0 && (
-        <div className="mt-4 text-xs text-text-500">{formatCount(results.length, "result")}</div>
+        <div className="mt-4 text-xs text-t6">{formatCount(results.length, "result")}</div>
       )}
 
       {results.length > 0 && (
@@ -248,7 +246,7 @@ function SessionSearch({
               <Link
                 to="/session/$id"
                 params={{ id: result.sessionId }}
-                className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-bg-200/50"
+                className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-surface-0/50"
               >
                 <SearchResultCard result={result} />
               </Link>

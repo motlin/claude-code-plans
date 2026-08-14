@@ -147,33 +147,60 @@ describe("ClaudeSettingsSchema", () => {
   });
 
   it("parses settings with hooks", () => {
-    const result = ClaudeSettingsSchema.safeParse({
+    const settings = {
       hooks: {
         PostToolUse: [
           {
             matcher: "Bash",
-            hooks: [{ type: "command", command: "echo hello" }],
+            hooks: [
+              {
+                type: "command" as const,
+                command: "echo hello",
+                args: ["--verbose"],
+                async: true,
+                asyncRewake: true,
+                shell: "bash" as const,
+                if: "Bash(git *)",
+                statusMessage: "Checking command",
+                once: true,
+              },
+            ],
           },
         ],
         SessionStart: [
           {
-            hooks: [{ type: "command", command: "echo start", timeout: 5000 }],
+            hooks: [{ type: "command" as const, command: "echo start", timeout: 5000 }],
+          },
+        ],
+        PermissionRequest: [
+          {
+            hooks: [
+              {
+                type: "http" as const,
+                url: "https://example.com/api/v1/hook",
+                headers: { Authorization: "Bearer $TEST_TOKEN" },
+                allowedEnvVars: ["TEST_TOKEN"],
+                timeout: 600,
+              },
+            ],
           },
         ],
       },
-    });
-    expect(result.success).toBe(true);
+    };
+    expect(ClaudeSettingsSchema.parse(settings)).toStrictEqual(settings);
   });
 
   it("parses settings with statusLine", () => {
-    const result = ClaudeSettingsSchema.safeParse({
+    const settings = {
       statusLine: {
         type: "command",
         command: "~/.claude/statusline.sh",
         padding: 0,
+        refreshInterval: 10,
+        hideVimModeIndicator: true,
       },
-    });
-    expect(result.success).toBe(true);
+    };
+    expect(ClaudeSettingsSchema.parse(settings)).toStrictEqual(settings);
   });
 
   it("parses settings with enabledPlugins", () => {

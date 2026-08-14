@@ -31,7 +31,7 @@ interface ProjectCounts {
 
 export function ProjectCardCounts({ project }: { project: ProjectCounts }) {
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-text-500">
+    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-t6">
       {project.activeCount > 0 && (
         <>
           <span className="flex items-center gap-1 text-green-500">
@@ -74,7 +74,7 @@ function ProjectsPage() {
       <ListPageHeader title="Projects" count={projects.length} itemLabel="project" />
 
       {projects.length === 0 ? (
-        <p className="mt-4 text-text-500">No projects found.</p>
+        <p className="mt-4 text-t6">No projects found.</p>
       ) : (
         <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {projects.map((project) => (
@@ -82,13 +82,13 @@ function ProjectsPage() {
               key={project.id}
               to="/project/$id"
               params={{ id: project.id }}
-              className="group block rounded-lg border border-border-300/15 p-4 transition-colors hover:bg-bg-200/50"
+              className="group block rounded-lg border border-border p-4 transition-colors hover:bg-surface-0/50"
             >
               <div className="truncate font-medium" style={{ fontSize: "14px", fontWeight: 500 }}>
                 {project.projectPath ? project.projectPath.split("/").pop() : project.name}
               </div>
               {project.projectPath && (
-                <div className="mt-0.5 truncate text-xs text-text-500">{project.projectPath}</div>
+                <div className="mt-0.5 truncate text-xs text-t6">{project.projectPath}</div>
               )}
               <ProjectCardCounts project={project} />
             </Link>

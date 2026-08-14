@@ -225,12 +225,12 @@ export function SubagentGantt({ agents }: { agents: Subagent[] }) {
   return (
     <div className="mt-3">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="text-xs font-semibold text-text-500 uppercase tracking-wide flex items-center gap-2">
+        <h2 className="text-xs font-semibold text-t6 uppercase tracking-wide flex items-center gap-2">
           <Activity size={12} />
           Subagent timeline
         </h2>
         <div
-          className="flex items-center gap-1 text-[10px] text-text-500"
+          className="flex items-center gap-1 text-[10px] text-t6"
           role="group"
           aria-label="Zoom level"
         >
@@ -242,7 +242,7 @@ export function SubagentGantt({ agents }: { agents: Subagent[] }) {
               onClick={() => setZoom(z)}
               aria-pressed={zoom === z}
               className={`rounded px-1.5 py-0.5 tabular-nums ${
-                zoom === z ? "bg-accent-000/15 text-accent-100" : "hover:bg-bg-200/50 text-text-500"
+                zoom === z ? "bg-accent-000/15 text-accent-100" : "hover:bg-surface-0/50 text-t6"
               }`}
             >
               {z}x
@@ -250,7 +250,7 @@ export function SubagentGantt({ agents }: { agents: Subagent[] }) {
           ))}
         </div>
       </div>
-      <div className="overflow-auto rounded-md border border-border-300/30 bg-bg-100/40">
+      <div className="overflow-auto rounded-md border border-strong bg-surface-1/40">
         <svg
           width={totalWidth}
           height={totalHeight}
@@ -273,15 +273,12 @@ export function SubagentGantt({ agents }: { agents: Subagent[] }) {
                 y2="6"
                 stroke="currentColor"
                 strokeWidth="2"
-                className="text-text-500/40"
+                className="text-t6/40"
               />
             </pattern>
           </defs>
 
-          <g
-            transform={`translate(${LABEL_COL_W + PADDING_X}, ${PADDING_Y})`}
-            className="text-text-500"
-          >
+          <g transform={`translate(${LABEL_COL_W + PADDING_X}, ${PADDING_Y})`} className="text-t6">
             {layout.ticks.map((tick, i) => {
               const x = timeAt(tick.offsetMs, layout.totalMs, plotWidth);
               return (
@@ -334,7 +331,7 @@ export function SubagentGantt({ agents }: { agents: Subagent[] }) {
                     y={y + LANE_HEIGHT / 2 + 4}
                     fontSize={11}
                     fill="currentColor"
-                    className="text-text-100"
+                    className="text-primary"
                   >
                     {truncate(getShortType(lane.agent.agentType), 12)}
                   </text>
@@ -343,7 +340,7 @@ export function SubagentGantt({ agents }: { agents: Subagent[] }) {
                     y={y + LANE_HEIGHT / 2 + 4}
                     fontSize={10}
                     fill="currentColor"
-                    className="text-text-500"
+                    className="text-t6"
                   >
                     {truncate(lane.agent.description ?? lane.agent.slug ?? "", 14)}
                   </text>
@@ -355,7 +352,7 @@ export function SubagentGantt({ agents }: { agents: Subagent[] }) {
                     height={LANE_HEIGHT}
                     fill="currentColor"
                     fillOpacity={0.03}
-                    className="text-text-500"
+                    className="text-t6"
                   />
 
                   <g transform={`translate(${LABEL_COL_W + PADDING_X}, 0)`}>
@@ -401,7 +398,7 @@ export function SubagentGantt({ agents }: { agents: Subagent[] }) {
           </g>
         </svg>
       </div>
-      <div className="mt-2 flex items-center gap-3 text-[10px] text-text-500">
+      <div className="mt-2 flex items-center gap-3 text-[10px] text-t6">
         <span className="flex items-center gap-1">
           <span
             className="inline-block w-3 h-3 rounded-sm"
@@ -411,7 +408,7 @@ export function SubagentGantt({ agents }: { agents: Subagent[] }) {
         </span>
         <span className="flex items-center gap-1">
           <span
-            className="inline-block w-3 h-3 rounded-sm border border-text-500/30"
+            className="inline-block w-3 h-3 rounded-sm border border-t6/30"
             style={{
               backgroundImage:
                 "repeating-linear-gradient(45deg, currentColor 0 1px, transparent 1px 4px)",

@@ -94,7 +94,7 @@ export function SessionsSubList({
             <button
               type="button"
               onClick={() => onToggleGroup(group.project)}
-              className="mb-px flex w-full items-center gap-1 rounded-[4px] px-2 py-1 text-xs text-text-500 transition-colors hover:bg-bg-300/50 hover:text-text-200"
+              className="mb-px flex w-full items-center gap-1 rounded-r3 px-2 py-1 text-xs text-t6 transition-colors hover:bg-fill-ghost-hover hover:text-secondary"
             >
               <ChevronRight
                 className="h-2.5 w-2.5 shrink-0 transition-transform duration-200"
@@ -117,7 +117,7 @@ export function SessionsSubList({
       {hiddenProjects > 0 && (
         <Link
           to="/sessions"
-          className="mb-px block truncate rounded-[4px] px-2 py-1 text-[10px] text-text-400 no-underline transition-colors hover:bg-bg-300/50 hover:text-text-200"
+          className="mb-px block truncate rounded-r3 px-2 py-1 text-[10px] text-t6 no-underline transition-colors hover:bg-fill-ghost-hover hover:text-secondary"
         >
           {hiddenProjects} more projects &rarr;
         </Link>
@@ -153,7 +153,7 @@ function SessionGroupBody({
         <Link
           to="/project/$id/sessions"
           params={{ id: group.project }}
-          className={`mb-px block truncate rounded-[4px] py-1 text-[10px] text-text-400 no-underline transition-colors hover:bg-bg-300/50 hover:text-text-200 ${
+          className={`mb-px block truncate rounded-r3 py-1 text-[10px] text-t6 no-underline transition-colors hover:bg-fill-ghost-hover hover:text-secondary ${
             nested ? "pl-5 pr-2" : "px-2"
           }`}
         >
@@ -179,12 +179,12 @@ function SessionLink({
     <Link
       to="/session/$id"
       params={{ id: session.id }}
-      className={`mb-px flex items-center gap-1.5 rounded-[4px] py-1 text-xs no-underline transition-colors ${
+      className={`mb-px flex items-center gap-1.5 rounded-r3 py-1 text-xs no-underline transition-colors ${
         nested ? "pl-5 pr-2" : "px-2"
       } ${
         isActive
-          ? "bg-bg-300/50 font-medium text-text-000"
-          : "text-text-500 hover:bg-bg-300/50 hover:text-text-200"
+          ? "bg-fill-ghost-hover font-medium text-primary"
+          : "text-t6 hover:bg-fill-ghost-hover hover:text-secondary"
       }`}
     >
       {isLive && <StatusDot active size="sm" title="Active" />}

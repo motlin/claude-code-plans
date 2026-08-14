@@ -46,14 +46,14 @@ function FileTreeItem({
         <button
           type="button"
           onClick={() => setExpanded(!expanded)}
-          className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-sm text-text-200 transition-colors hover:bg-bg-200/50"
+          className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-sm text-secondary transition-colors hover:bg-surface-0/50"
           style={{ paddingLeft: `${depth * 16 + 8}px` }}
         >
           <ChevronRight
-            className="h-3 w-3 shrink-0 text-text-500 transition-transform duration-200"
+            className="h-3 w-3 shrink-0 text-t6 transition-transform duration-200"
             style={{ transform: expanded ? "rotate(90deg)" : "rotate(0deg)" }}
           />
-          <Folder className="h-3.5 w-3.5 shrink-0 text-text-400" />
+          <Folder className="h-3.5 w-3.5 shrink-0 text-t6" />
           <span className="truncate">{name}</span>
         </button>
         {expanded && (
@@ -83,11 +83,11 @@ function FileTreeItem({
           type,
           _splat: filePath.split("/").map(toPluginFileSlug).join("/"),
         }}
-        className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-text-300 no-underline transition-colors hover:bg-bg-200/50 hover:text-text-200"
+        className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-secondary no-underline transition-colors hover:bg-surface-0/50 hover:text-secondary"
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
       >
         <span className="w-3" />
-        <Icon className="h-3.5 w-3.5 shrink-0 text-text-500" />
+        <Icon className="h-3.5 w-3.5 shrink-0 text-t6" />
         <span className="truncate">{name}</span>
       </Link>
     );
@@ -95,11 +95,11 @@ function FileTreeItem({
 
   return (
     <div
-      className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-text-500"
+      className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-t6"
       style={{ paddingLeft: `${depth * 16 + 8}px` }}
     >
       <span className="w-3" />
-      <Icon className="h-3.5 w-3.5 shrink-0 text-text-500" />
+      <Icon className="h-3.5 w-3.5 shrink-0 text-t6" />
       <span className="truncate">{name}</span>
     </div>
   );
@@ -107,7 +107,7 @@ function FileTreeItem({
 
 export function FileTree({ tree, pluginId }: { tree: FileTreeNode; pluginId: string }) {
   if (!tree.children || tree.children.length === 0) {
-    return <p className="px-2 py-1 text-xs text-text-500">No files found.</p>;
+    return <p className="px-2 py-1 text-xs text-t6">No files found.</p>;
   }
 
   return (

@@ -72,24 +72,24 @@ export function CommandPalette({
       label="Command palette"
       loop
       overlayClassName="fixed inset-0 z-50 bg-black/50"
-      contentClassName="fixed left-1/2 top-[20%] z-50 w-full max-w-[600px] -translate-x-1/2 rounded-xl border border-border-300/15 bg-bg-100 shadow-2xl"
+      contentClassName="fixed left-1/2 top-[20%] z-50 w-full max-w-[600px] -translate-x-1/2 rounded-xl border border-border bg-surface-1 shadow-2xl"
     >
-      <div className="flex items-center border-b border-border-300/15 px-3">
-        <Search className="mr-2 h-4 w-4 shrink-0 text-text-500" />
+      <div className="flex items-center border-b border-border px-3">
+        <Search className="mr-2 h-4 w-4 shrink-0 text-t6" />
         <Command.Input
           placeholder="Search or jump to..."
-          className="flex h-11 w-full bg-transparent py-3 text-sm text-text-000 outline-none placeholder:text-text-500"
+          className="flex h-11 w-full bg-transparent py-3 text-sm text-primary outline-none placeholder:text-t6"
         />
       </div>
 
       <Command.List className="max-h-[320px] overflow-y-auto px-2 py-2">
-        <Command.Empty className="px-3 py-6 text-center text-sm text-text-500">
+        <Command.Empty className="px-3 py-6 text-center text-sm text-t6">
           No results found.
         </Command.Empty>
 
         <Command.Group
           heading="Quick Actions"
-          className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-text-500"
+          className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-t6"
         >
           <CommandItem
             icon={<Home className="h-4 w-4" />}
@@ -122,7 +122,7 @@ export function CommandPalette({
         {recentSessions.length > 0 && (
           <Command.Group
             heading="Recent Sessions"
-            className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-text-500"
+            className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-t6"
           >
             {recentSessions.map((session) => (
               <CommandItem
@@ -147,7 +147,7 @@ export function CommandPalette({
 
         <Command.Group
           heading="Navigation"
-          className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-text-500"
+          className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-t6"
         >
           <CommandItem
             icon={<Star className="h-4 w-4" />}
@@ -188,22 +188,22 @@ export function CommandPalette({
         </Command.Group>
       </Command.List>
 
-      <div className="flex items-center gap-3 border-t border-border-300/15 px-3 py-2">
-        <span className="flex items-center gap-1 text-[11px] text-text-500">
+      <div className="flex items-center gap-3 border-t border-border px-3 py-2">
+        <span className="flex items-center gap-1 text-[11px] text-t6">
           Select{" "}
-          <kbd className="rounded bg-bg-300/50 px-1.5 py-0.5 font-mono text-[10px] font-medium text-text-300">
+          <kbd className="rounded bg-fill-ghost-hover px-1.5 py-0.5 font-mono text-[10px] font-medium text-secondary">
             &uarr;&darr;
           </kbd>
         </span>
-        <span className="flex items-center gap-1 text-[11px] text-text-500">
+        <span className="flex items-center gap-1 text-[11px] text-t6">
           Open{" "}
-          <kbd className="rounded bg-bg-300/50 px-1.5 py-0.5 font-mono text-[10px] font-medium text-text-300">
+          <kbd className="rounded bg-fill-ghost-hover px-1.5 py-0.5 font-mono text-[10px] font-medium text-secondary">
             &crarr;
           </kbd>
         </span>
-        <span className="flex items-center gap-1 text-[11px] text-text-500">
+        <span className="flex items-center gap-1 text-[11px] text-t6">
           Close{" "}
-          <kbd className="rounded bg-bg-300/50 px-1.5 py-0.5 font-mono text-[10px] font-medium text-text-300">
+          <kbd className="rounded bg-fill-ghost-hover px-1.5 py-0.5 font-mono text-[10px] font-medium text-secondary">
             Esc
           </kbd>
         </span>
@@ -231,15 +231,13 @@ function CommandItem({
     <Command.Item
       onSelect={onSelect}
       {...(keywords ? { keywords } : {})}
-      className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-text-200 transition-colors select-none data-[selected=true]:bg-bg-300/50 data-[selected=true]:text-text-000"
+      className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-secondary transition-colors select-none data-[selected=true]:bg-fill-ghost-hover data-[selected=true]:text-primary"
     >
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center text-text-500">
-        {icon}
-      </span>
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center text-t6">{icon}</span>
       <span className="flex-1 truncate">{children}</span>
-      {metadata && <span className="shrink-0 text-xs text-text-500">{metadata}</span>}
+      {metadata && <span className="shrink-0 text-xs text-t6">{metadata}</span>}
       {shortcut && (
-        <kbd className="shrink-0 rounded bg-bg-300/50 px-1.5 py-0.5 font-mono text-[10px] font-medium text-text-400">
+        <kbd className="shrink-0 rounded bg-fill-ghost-hover px-1.5 py-0.5 font-mono text-[10px] font-medium text-t6">
           {shortcut}
         </kbd>
       )}

@@ -41,9 +41,9 @@ export function ChatInput({
   }
 
   return (
-    <div className="border-t border-border-300/15 bg-bg-000 px-4 py-3 sm:px-8">
+    <div className="border-t border-border bg-surface-2 px-4 py-3 sm:px-8">
       {projectPath && (
-        <div className="mb-2 flex items-center gap-1.5 text-xs text-text-500">
+        <div className="mb-2 flex items-center gap-1.5 text-xs text-t6">
           <svg
             width="12"
             height="12"
@@ -56,7 +56,7 @@ export function ChatInput({
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
           </svg>
           <span className="truncate font-mono">{projectPath}</span>
-          <span className="text-text-500/60">{deliveryHint}</span>
+          <span className="text-t6/60">{deliveryHint}</span>
         </div>
       )}
       <div className="flex items-end gap-2">
@@ -68,7 +68,7 @@ export function ChatInput({
           placeholder="Send a follow-up message..."
           disabled={isStreaming || disabled}
           rows={2}
-          className="flex-1 resize-none overflow-y-auto rounded-lg border border-border-300/15 bg-bg-100 px-3 py-2 text-sm text-text-000 [field-sizing:content] placeholder:text-text-500 focus:border-accent-100 focus:outline-none disabled:opacity-50"
+          className="flex-1 resize-none overflow-y-auto rounded-lg border border-border bg-surface-1 px-3 py-2 text-sm text-primary [field-sizing:content] placeholder:text-t6 focus:border-accent-100 focus:outline-none disabled:opacity-50"
           style={{ minHeight: "38px", maxHeight: "120px" }}
         />
         {isStreaming ? (

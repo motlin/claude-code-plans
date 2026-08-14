@@ -35,9 +35,9 @@ afterEach(() => {
 });
 
 const ACTIVE_ROW_COLUMNS =
-  "grid grid-cols-[minmax(0,1fr)_5rem_8.5rem_7rem_9rem] items-center rounded-md border border-border-300/15";
+  "grid grid-cols-[minmax(0,1fr)_5rem_8.5rem_7rem_9rem] items-center rounded-md border border-border";
 const ACTIVE_TRANSCRIPT_COLUMNS =
-  "grid grid-cols-[minmax(0,1fr)_minmax(0,8rem)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-bg-200/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100";
+  "grid grid-cols-[minmax(0,1fr)_minmax(0,8rem)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-surface-0/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100";
 const ACTIVE_ACTION_CELL = "justify-self-end";
 
 const MINUTE_MS = 60_000;

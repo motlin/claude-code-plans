@@ -88,12 +88,12 @@ function MemoryEditPage() {
         >
           Preview
         </button>
-        <span className="text-xs text-text-500">{data.projectName}</span>
+        <span className="text-xs text-t6">{data.projectName}</span>
         <button
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="rounded bg-accent-100 px-3 py-1 text-sm text-bg-000 hover:bg-accent-100/90 disabled:opacity-50"
+          className="rounded bg-accent-100 px-3 py-1 text-sm text-on-primary hover:bg-accent-100/90 disabled:opacity-50"
         >
           {saving ? "Saving..." : "Save"}
         </button>
@@ -105,7 +105,7 @@ function MemoryEditPage() {
           </span>
         )}
       </div>
-      <Suspense fallback={<div className="text-text-500 text-sm">Loading editor...</div>}>
+      <Suspense fallback={<div className="text-t6 text-sm">Loading editor...</div>}>
         <MarkdownEditor key={initialMarkdown} markdown={initialMarkdown} onChange={handleChange} />
       </Suspense>
     </div>

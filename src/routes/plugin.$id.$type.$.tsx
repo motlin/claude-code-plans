@@ -23,9 +23,9 @@ export const Route = createFileRoute("/plugin/$id/$type/$")({
 
 function FrontmatterBadge({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center gap-1.5 rounded-md bg-bg-200/60 px-2.5 py-1 text-xs">
-      <span className="font-medium text-text-400">{label}</span>
-      <span className="text-text-200">{value}</span>
+    <div className="flex items-center gap-1.5 rounded-md bg-surface-0/60 px-2.5 py-1 text-xs">
+      <span className="font-medium text-t6">{label}</span>
+      <span className="text-secondary">{value}</span>
     </div>
   );
 }
@@ -44,7 +44,7 @@ function PluginFilePage() {
           </Link>
         </DetailTopBar>
         <h1 className="mt-4 text-lg font-semibold">File Not Found</h1>
-        <p className="mt-2 text-text-500">This plugin file could not be found.</p>
+        <p className="mt-2 text-t6">This plugin file could not be found.</p>
       </div>
     );
   }
@@ -61,10 +61,10 @@ function PluginFilePage() {
           <ArrowLeft className="h-3.5 w-3.5" />
           All Plugins
         </Link>
-        <span className="text-xs text-text-500">{id.split("@")[0]}</span>
+        <span className="text-xs text-t6">{id.split("@")[0]}</span>
       </DetailTopBar>
 
-      {fm["description"] && <p className="mt-3 text-sm text-text-400">{fm["description"]}</p>}
+      {fm["description"] && <p className="mt-3 text-sm text-t6">{fm["description"]}</p>}
 
       {badges.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">

@@ -13,7 +13,7 @@ export function ListPageHeader({ title, count, itemLabel, actions }: ListPageHea
     <header className="flex items-start justify-between gap-4">
       <div>
         <h1 className="text-lg font-semibold">{title}</h1>
-        <p className="mt-1 text-sm text-text-500">{formatCount(count, itemLabel)}</p>
+        <p className="mt-1 text-sm text-t6">{formatCount(count, itemLabel)}</p>
       </div>
       {actions}
     </header>

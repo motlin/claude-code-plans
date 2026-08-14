@@ -56,8 +56,8 @@ function ToggleRow({ label, description, settingKey }: ToggleRowProps) {
   return (
     <div className="flex items-center justify-between gap-4 py-2">
       <div>
-        <div className="text-sm font-medium text-text-100">{label}</div>
-        <div className="text-xs text-text-500">{description}</div>
+        <div className="text-sm font-medium text-primary">{label}</div>
+        <div className="text-xs text-t6">{description}</div>
       </div>
       <button
         type="button"
@@ -65,7 +65,7 @@ function ToggleRow({ label, description, settingKey }: ToggleRowProps) {
         aria-checked={checked}
         onClick={() => setSetting(settingKey, !checked)}
         className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-          checked ? "bg-accent-100" : "bg-bg-300"
+          checked ? "bg-fill-primary" : "bg-fill-control"
         }`}
       >
         <span
@@ -93,8 +93,8 @@ function CapabilityToggleRow({
   return (
     <div className="flex items-center justify-between gap-4 py-2">
       <div>
-        <div className="text-sm font-medium text-text-100">{label}</div>
-        <div className="text-xs text-text-500">{description}</div>
+        <div className="text-sm font-medium text-primary">{label}</div>
+        <div className="text-xs text-t6">{description}</div>
       </div>
       <button
         type="button"
@@ -108,7 +108,7 @@ function CapabilityToggleRow({
           })
         }
         className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-          checked ? "bg-accent-100" : "bg-bg-300"
+          checked ? "bg-fill-primary" : "bg-fill-control"
         }`}
       >
         <span
@@ -128,8 +128,8 @@ function WorkingCopyReviewModeRow() {
   return (
     <div className="flex items-center justify-between gap-4 py-2 pl-4">
       <div>
-        <div className="text-sm font-medium text-text-100">Review behavior</div>
-        <div className="text-xs text-text-500">Offer a review or start one automatically</div>
+        <div className="text-sm font-medium text-primary">Review behavior</div>
+        <div className="text-xs text-t6">Offer a review or start one automatically</div>
       </div>
       <select
         aria-label="Review behavior"
@@ -143,7 +143,7 @@ function WorkingCopyReviewModeRow() {
             },
           })
         }
-        className="rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100"
+        className="rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary"
       >
         <option value="offer">Offer</option>
         <option value="auto">Auto</option>
@@ -181,8 +181,8 @@ function DesktopNotificationsRow() {
   return (
     <div className="flex items-center justify-between gap-4 py-2">
       <div>
-        <div className="text-sm font-medium text-text-100">Desktop notifications</div>
-        <div className="text-xs text-text-500">
+        <div className="text-sm font-medium text-primary">Desktop notifications</div>
+        <div className="text-xs text-t6">
           Show native OS notifications when an agent needs input or finishes while this tab is in
           the background
         </div>
@@ -204,7 +204,7 @@ function DesktopNotificationsRow() {
         disabled={!supported || blocked}
         onClick={() => void handleToggle()}
         className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
-          checked ? "bg-accent-100" : "bg-bg-300"
+          checked ? "bg-fill-primary" : "bg-fill-control"
         } ${!supported || blocked ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
       >
         <span
@@ -231,13 +231,13 @@ function SelectRow({ label, description, settingKey, options }: SelectRowProps) 
   return (
     <div className="flex items-center justify-between gap-4 py-2">
       <div>
-        <div className="text-sm font-medium text-text-100">{label}</div>
-        <div className="text-xs text-text-500">{description}</div>
+        <div className="text-sm font-medium text-primary">{label}</div>
+        <div className="text-xs text-t6">{description}</div>
       </div>
       <select
         value={current}
         onChange={(e) => setSetting(settingKey, e.target.value as Settings[StringSettingKey])}
-        className="rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+        className="rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -264,8 +264,8 @@ function NumberRow({ label, description, settingKey, min, max }: NumberRowProps)
   return (
     <div className="flex items-center justify-between gap-4 py-2">
       <div>
-        <div className="text-sm font-medium text-text-100">{label}</div>
-        <div className="text-xs text-text-500">{description}</div>
+        <div className="text-sm font-medium text-primary">{label}</div>
+        <div className="text-xs text-t6">{description}</div>
       </div>
       <input
         type="number"
@@ -278,7 +278,7 @@ function NumberRow({ label, description, settingKey, min, max }: NumberRowProps)
             setSetting(settingKey, parsed as Settings[NumberSettingKey]);
           }
         }}
-        className="w-20 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+        className="w-20 rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
       />
     </div>
   );
@@ -296,10 +296,10 @@ function Section({
   return (
     <section className="space-y-1">
       <div className="flex items-center gap-2 pb-1">
-        <Icon className="h-4 w-4 text-text-500" />
-        <h2 className="text-sm font-semibold text-text-100">{title}</h2>
+        <Icon className="h-4 w-4 text-t6" />
+        <h2 className="text-sm font-semibold text-primary">{title}</h2>
       </div>
-      <div className="divide-y divide-border-300/10">{children}</div>
+      <div className="divide-y divide-subtle">{children}</div>
     </section>
   );
 }
@@ -344,20 +344,20 @@ function VerbositySection() {
               title={preset.description}
               className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                 verbosity === preset.value
-                  ? "bg-accent-100 text-white"
-                  : "border border-border-300/15 text-text-300 hover:bg-bg-200"
+                  ? "bg-fill-primary text-on-primary"
+                  : "border border-border text-secondary hover:bg-surface-0"
               }`}
             >
               {preset.label}
             </button>
           ))}
           {isCustom && (
-            <span className="flex items-center rounded-md bg-bg-300/50 px-3 py-1.5 text-sm text-text-500">
+            <span className="flex items-center rounded-md bg-fill-ghost-hover px-3 py-1.5 text-sm text-t6">
               Custom
             </span>
           )}
         </div>
-        <p className="mt-2 text-xs text-text-500">
+        <p className="mt-2 text-xs text-t6">
           {isCustom
             ? "Individual toggles have been customized below."
             : presets.find((p) => p.value === verbosity)?.description}
@@ -378,13 +378,13 @@ function ThemeRow() {
   return (
     <div className="flex items-center justify-between gap-4 py-2">
       <div>
-        <div className="text-sm font-medium text-text-100">Theme</div>
-        <div className="text-xs text-text-500">Color scheme for the interface</div>
+        <div className="text-sm font-medium text-primary">Theme</div>
+        <div className="text-xs text-t6">Color scheme for the interface</div>
       </div>
       <select
         value={theme}
         onChange={(e) => setTheme(e.target.value as typeof theme)}
-        className="rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+        className="rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -422,12 +422,12 @@ export function LinkCategoryRulesSection() {
   return (
     <Section icon={Link2} title="Link categories">
       <div className="py-2">
-        <p className="text-xs text-text-500">
+        <p className="text-xs text-t6">
           Match hostnames to custom categories in the order shown. Patterns can include globs such
           as
-          <code className="mx-1 rounded bg-bg-200 px-1 py-0.5">*.example.com</code>
+          <code className="mx-1 rounded bg-surface-0 px-1 py-0.5">*.example.com</code>
           or exact hosts such as
-          <code className="ml-1 rounded bg-bg-200 px-1 py-0.5">internal-wiki</code>.
+          <code className="ml-1 rounded bg-surface-0 px-1 py-0.5">internal-wiki</code>.
         </p>
 
         <div className="mt-3 space-y-2">
@@ -436,18 +436,18 @@ export function LinkCategoryRulesSection() {
               key={index}
               role="group"
               aria-label={`Link category rule ${index + 1}`}
-              className="grid grid-cols-1 gap-2 rounded-md border border-border-300/15 bg-bg-100 p-2 sm:grid-cols-[1fr_1fr_auto]"
+              className="grid grid-cols-1 gap-2 rounded-md border border-border bg-surface-1 p-2 sm:grid-cols-[1fr_1fr_auto]"
             >
-              <label className="text-xs text-text-500">
+              <label className="text-xs text-t6">
                 Label for rule {index + 1}
                 <input
                   type="text"
                   value={rule.label}
                   onChange={(event) => replaceRule(index, { ...rule, label: event.target.value })}
-                  className="mt-1 block w-full rounded-md border border-border-300/15 bg-bg-100 px-2 py-1.5 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+                  className="mt-1 block w-full rounded-md border border-border bg-surface-1 px-2 py-1.5 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
                 />
               </label>
-              <label className="text-xs text-text-500">
+              <label className="text-xs text-t6">
                 Host pattern for rule {index + 1}
                 <input
                   type="text"
@@ -456,7 +456,7 @@ export function LinkCategoryRulesSection() {
                   onChange={(event) =>
                     replaceRule(index, { ...rule, hostPattern: event.target.value })
                   }
-                  className="mt-1 block w-full rounded-md border border-border-300/15 bg-bg-100 px-2 py-1.5 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+                  className="mt-1 block w-full rounded-md border border-border bg-surface-1 px-2 py-1.5 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
                 />
               </label>
               <div className="flex items-end gap-1">
@@ -466,7 +466,7 @@ export function LinkCategoryRulesSection() {
                   title="Move up"
                   disabled={index === 0}
                   onClick={() => moveRule(index, index - 1)}
-                  className="rounded-md border border-border-300/15 p-1.5 text-text-300 transition-colors hover:bg-bg-200 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-md border border-border p-1.5 text-secondary transition-colors hover:bg-surface-0 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ArrowUp className="h-4 w-4" />
                 </button>
@@ -476,7 +476,7 @@ export function LinkCategoryRulesSection() {
                   title="Move down"
                   disabled={index === rules.length - 1}
                   onClick={() => moveRule(index, index + 1)}
-                  className="rounded-md border border-border-300/15 p-1.5 text-text-300 transition-colors hover:bg-bg-200 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-md border border-border p-1.5 text-secondary transition-colors hover:bg-surface-0 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ArrowDown className="h-4 w-4" />
                 </button>
@@ -490,7 +490,7 @@ export function LinkCategoryRulesSection() {
                       rules.filter((_, ruleIndex) => ruleIndex !== index),
                     )
                   }
-                  className="rounded-md border border-border-300/15 p-1.5 text-red-600 transition-colors hover:bg-red-600/10"
+                  className="rounded-md border border-border p-1.5 text-red-600 transition-colors hover:bg-red-600/10"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -504,7 +504,7 @@ export function LinkCategoryRulesSection() {
           onClick={() =>
             setSetting("linkCategoryRules", [...rules, { label: "", hostPattern: "" }])
           }
-          className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-border-300/15 px-3 py-1.5 text-sm text-text-300 transition-colors hover:bg-bg-200"
+          className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0"
         >
           <Plus className="h-4 w-4" />
           Add rule
@@ -528,7 +528,7 @@ export function ApplicationConfigurationSection() {
   if (applicationSettings.isPending) {
     return (
       <Section icon={ServerCog} title="Application">
-        <p className="py-2 text-sm text-text-500">Loading server settings…</p>
+        <p className="py-2 text-sm text-t6">Loading server settings…</p>
       </Section>
     );
   }
@@ -574,11 +574,11 @@ export function ApplicationConfigurationSection() {
       <div className="py-2">
         <label
           htmlFor="application-ignored-directories"
-          className="text-sm font-medium text-text-100"
+          className="text-sm font-medium text-primary"
         >
           Ignored watcher directories
         </label>
-        <p className="text-xs text-text-500">
+        <p className="text-xs text-t6">
           One directory basename per line. Restart the server after saving changes.
         </p>
         <textarea
@@ -587,7 +587,7 @@ export function ApplicationConfigurationSection() {
           value={ignoredDirectories}
           onChange={(event) => setIgnoredDirectories(event.target.value)}
           rows={6}
-          className="mt-2 w-full rounded-md border border-border-300/15 bg-bg-100 px-3 py-2 font-mono text-sm text-text-100"
+          className="mt-2 w-full rounded-md border border-border bg-surface-1 px-3 py-2 font-mono text-sm text-primary"
         />
         <button
           type="button"
@@ -601,7 +601,7 @@ export function ApplicationConfigurationSection() {
                 .filter(Boolean),
             })
           }
-          className="mt-2 rounded-md border border-border-300/15 px-3 py-1.5 text-sm text-text-300 transition-colors hover:bg-bg-200 disabled:cursor-wait disabled:opacity-50"
+          className="mt-2 rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0 disabled:cursor-wait disabled:opacity-50"
         >
           Save ignored directories
         </button>
@@ -630,8 +630,8 @@ function ApplicationToggleRow({
   return (
     <div className="flex items-center justify-between gap-4 py-2">
       <div>
-        <div className="text-sm font-medium text-text-100">{label}</div>
-        <div className="text-xs text-text-500">{description}</div>
+        <div className="text-sm font-medium text-primary">{label}</div>
+        <div className="text-xs text-t6">{description}</div>
       </div>
       <button
         type="button"
@@ -641,7 +641,7 @@ function ApplicationToggleRow({
         disabled={disabled}
         onClick={onToggle}
         className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
-          checked ? "bg-accent-100" : "bg-bg-300"
+          checked ? "bg-accent-100" : "bg-fill-control"
         } ${disabled ? "cursor-wait opacity-50" : "cursor-pointer"}`}
       >
         <span
@@ -662,7 +662,7 @@ function SettingsPage() {
     <div className="max-w-3xl">
       <div>
         <h1 className="text-lg font-semibold">Settings</h1>
-        <p className="mt-1 text-sm text-text-500">Configure display, appearance, and behavior.</p>
+        <p className="mt-1 text-sm text-t6">Configure display, appearance, and behavior.</p>
       </div>
 
       <div className="mt-6 space-y-6">
@@ -805,10 +805,10 @@ function SettingsPage() {
         </Section>
       </div>
 
-      <div className="mt-8 border-t border-border-300/15 pt-6">
+      <div className="mt-8 border-t border-border pt-6">
         {confirmReset ? (
           <div className="flex items-center gap-3">
-            <span className="text-sm text-text-300">Reset all settings to defaults?</span>
+            <span className="text-sm text-secondary">Reset all settings to defaults?</span>
             <button
               type="button"
               onClick={() => {
@@ -822,7 +822,7 @@ function SettingsPage() {
             <button
               type="button"
               onClick={() => setConfirmReset(false)}
-              className="rounded-md border border-border-300/15 px-3 py-1.5 text-sm text-text-300 transition-colors hover:bg-bg-200"
+              className="rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0"
             >
               Cancel
             </button>
@@ -831,7 +831,7 @@ function SettingsPage() {
           <button
             type="button"
             onClick={() => setConfirmReset(true)}
-            className="rounded-md border border-border-300/15 px-3 py-1.5 text-sm text-text-300 transition-colors hover:bg-bg-200"
+            className="rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0"
           >
             Reset all to defaults
           </button>

@@ -6,6 +6,7 @@ import type { SourceFileResponse } from "./api/source";
 import type { HookEvent, ToolUseUnion } from "./hook-events";
 import type {
   AttachmentPayloadSchema,
+  ClaudeSettingsSchema,
   ContentBlockSchema,
   JsonlRecordSchema,
   TaskStatusSchema,
@@ -29,6 +30,10 @@ import type { MessageProcessedLine, ProcessedLine } from "./transcript";
  */
 
 type PromptSource = NonNullable<z.infer<typeof UserRecordSchema>["promptSource"]>;
+type ClaudeHook = NonNullable<
+  z.infer<typeof ClaudeSettingsSchema>["hooks"]
+>[string][number]["hooks"][number];
+type ClaudeCommandHook = Extract<ClaudeHook, { type: "command" }>;
 type HookEventOf<Name extends HookEvent["hook_event_name"]> = Extract<
   HookEvent,
   { hook_event_name: Name }
@@ -115,6 +120,16 @@ const pluginVersionKindLabels = {
   commit: "Commit",
   release: "Release",
 } satisfies Record<z.infer<typeof PluginListResponse>[number]["versionKind"], string>;
+
+const claudeHookVariants = {
+  command: true,
+  http: true,
+} satisfies Record<ClaudeHook["type"], true>;
+
+const claudeHookShellLabels = {
+  bash: "Bash",
+  powershell: "PowerShell",
+} satisfies Record<NonNullable<ClaudeCommandHook["shell"]>, string>;
 
 const systemSubtypeLabels = {
   compact_boundary: "Compaction",
@@ -299,6 +314,8 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   "RenderedLineSchema.<assistant|user>.type": messageLineTypeLabels,
   "RenderedLineSchema.<system>.subtype": systemSubtypeLabels,
   "JsonlRecordSchema.<system>.compactMetadata.trigger": compactTriggerLabels,
+  "ClaudeSettingsSchema.hooks{}[].hooks[]": claudeHookVariants,
+  "ClaudeSettingsSchema.hooks{}[].hooks[].<command>.shell": claudeHookShellLabels,
   ToolUseUnion: toolNames,
   HookEventEnvelope: hookEventNames,
   "HookEventEnvelope.<SessionStart>.source": sessionStartSourceLabels,

@@ -219,7 +219,7 @@ export function StatusFooter({
   if (segments.length === 0) return null;
 
   return (
-    <div className="border-t border-border-300/15 bg-bg-000">
+    <div className="border-t border-border bg-surface-2">
       <div className="flex items-center gap-1.5 px-4 py-2 overflow-x-auto">
         {segments.map((seg) => (
           <Segment key={seg.key} label={seg.label} color={seg.color} />
@@ -227,7 +227,7 @@ export function StatusFooter({
         <button
           type="button"
           onClick={() => setExpanded(!expanded)}
-          className="ml-auto shrink-0 p-1 text-text-500 hover:text-text-000 transition-colors cursor-pointer"
+          className="ml-auto shrink-0 p-1 text-t6 hover:text-primary transition-colors cursor-pointer"
           title={expanded ? "Collapse raw JSON" : "Expand raw JSON"}
         >
           {expanded ? (
@@ -238,8 +238,8 @@ export function StatusFooter({
         </button>
       </div>
       {expanded && (
-        <div className="border-t border-border-300/15 max-h-80 overflow-auto">
-          <pre className="px-4 py-3 text-xs font-mono text-text-300 leading-relaxed">
+        <div className="border-t border-border max-h-80 overflow-auto">
+          <pre className="px-4 py-3 text-xs font-mono text-secondary leading-relaxed">
             {JSON.stringify(data, null, 2)}
           </pre>
         </div>

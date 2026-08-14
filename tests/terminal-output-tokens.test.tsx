@@ -66,8 +66,8 @@ describe("TerminalOutput", () => {
       [
         "bg-danger-900",
         "text-danger-000",
-        "bg-bg-200",
-        "text-text-100",
+        "bg-surface-0",
+        "text-primary",
         "text-xs",
         "font-bold",
         "rounded",

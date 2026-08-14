@@ -41,7 +41,7 @@ describe("SessionReviewedToggle", () => {
       fireEvent.click(screen.getByTitle("Mark reviewed"));
       await waitFor(() =>
         expect(screen.getByTitle("Failed to mark reviewed").className).toBe(
-          "shrink-0 cursor-pointer text-danger-000 transition-colors hover:text-text-000",
+          "shrink-0 cursor-pointer text-danger-000 transition-colors hover:text-primary",
         ),
       );
       await new Promise((resolve) => setTimeout(resolve, 10));

@@ -24,27 +24,23 @@
   --font-mono:
     "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, "Cascadia Code", monospace;
 
-  /* Background tokens */
-  --color-bg-000: var(--bg-000);
-  --color-bg-100: var(--bg-100);
-  --color-bg-200: var(--bg-200);
-  --color-bg-300: var(--bg-300);
-  --color-bg-400: var(--bg-400);
-  --color-bg-500: var(--bg-500);
+  /* Upstream claude.ai/code semantic surfaces and fills */
+  --color-page: var(--upstream-page);
+  --color-surface-0: var(--upstream-surface-0);
+  --color-surface-1: var(--upstream-surface-1);
+  --color-surface-2: var(--upstream-surface-2);
+  --color-fill-control: var(--upstream-fill-control);
+  --color-fill-ghost-hover: var(--upstream-fill-ghost-hover);
+  --color-fill-primary: var(--upstream-fill-primary);
+  --color-fill-primary-hover: var(--upstream-fill-primary-hover);
 
-  /* Text tokens */
-  --color-text-000: var(--text-000);
-  --color-text-100: var(--text-100);
-  --color-text-200: var(--text-200);
-  --color-text-300: var(--text-300);
-  --color-text-400: var(--text-400);
-  --color-text-500: var(--text-500);
-
-  /* Border tokens */
-  --color-border-100: var(--border-100);
-  --color-border-200: var(--border-200);
-  --color-border-300: var(--border-300);
-  --color-border-400: var(--border-400);
+  /* Upstream claude.ai/code semantic text and borders */
+  --color-primary: var(--upstream-text-primary);
+  --color-secondary: var(--upstream-text-secondary);
+  --color-on-primary: var(--upstream-on-primary);
+  --color-border: var(--upstream-border);
+  --color-subtle: var(--upstream-border-subtle);
+  --color-strong: var(--upstream-border-strong);
 
   /* Semantic colors */
   --color-danger-000: var(--danger-000);
@@ -71,10 +67,6 @@
   /* Upstream claude.ai/code — extended diff stat colors */
   --color-extended-green: var(--upstream-extended-green);
   --color-extended-pink: var(--upstream-extended-pink);
-
-  /* Upstream claude.ai/code — transcript text colors */
-  --color-primary: var(--upstream-text-assistant-primary);
-  --color-secondary: var(--upstream-text-assistant-secondary);
 
   /* Upstream claude.ai/code — transparency layers (bg-t1, bg-t2, etc.) */
   --color-t0: var(--upstream-t0);
@@ -109,6 +101,7 @@
   --radius-r4: 5px;
   --radius-r5: 6px;
   --radius-r6: 8px;
+  --radius-r7: 10px;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -127,27 +120,21 @@
 :root {
   --radius: 0.625rem;
 
-  /* Backgrounds */
-  --bg-000: hsl(0 0% 100%);
-  --bg-100: hsl(48 33.3% 97.1%);
-  --bg-200: hsl(53 28.6% 94.5%);
-  --bg-300: hsl(48 25% 92.2%);
-  --bg-400: hsl(50 20.7% 88.6%);
-  --bg-500: hsl(50 20.7% 88.6%);
-
-  /* Text */
-  --text-000: hsl(60 2.6% 7.6%);
-  --text-100: hsl(60 2.6% 7.6%);
-  --text-200: hsl(60 2.5% 23.3%);
-  --text-300: hsl(60 2.5% 23.3%);
-  --text-400: hsl(51 3.1% 43.7%);
-  --text-500: hsl(51 3.1% 43.7%);
-
-  /* Borders */
-  --border-100: hsl(30 3.3% 11.8%);
-  --border-200: hsl(30 3.3% 11.8%);
-  --border-300: hsl(30 3.3% 11.8%);
-  --border-400: hsl(30 3.3% 11.8%);
+  /* Upstream semantic palette */
+  --upstream-page: hsl(60 14% 99%);
+  --upstream-surface-0: hsl(60 14% 97%);
+  --upstream-surface-1: hsl(60 14% 99%);
+  --upstream-surface-2: hsl(0 0% 100%);
+  --upstream-fill-control: hsl(0 0% 4% / 0.1);
+  --upstream-fill-ghost-hover: hsl(0 0% 4% / 0.05);
+  --upstream-fill-primary: hsl(0 0% 4%);
+  --upstream-fill-primary-hover: hsl(60 2% 17%);
+  --upstream-text-primary: hsl(0 0% 4%);
+  --upstream-text-secondary: hsl(40 3% 31%);
+  --upstream-on-primary: hsl(0 0% 100%);
+  --upstream-border-subtle: hsl(0 0% 4% / 0.06);
+  --upstream-border: hsl(0 0% 4% / 0.1);
+  --upstream-border-strong: hsl(0 0% 4% / 0.2);
 
   /* Semantic colors */
   --danger-000: hsl(0 58.6% 34.1%);
@@ -165,7 +152,7 @@
 
   /* User message bubble — matches claude.ai/code: neutral t2 wash + body ink */
   --user-msg-bg: var(--upstream-t2);
-  --user-msg-text: var(--upstream-text-assistant-primary);
+  --user-msg-text: var(--upstream-text-primary);
 
   /* Jump-to-message flash — accent tint, so it reads against the neutral bubble */
   --message-highlight-bg: hsl(210 100% 45% / 0.07);
@@ -173,10 +160,6 @@
   /* Automated (external) message bubble — neutral gray tint */
   --auto-msg-bg: hsl(0 0% 50% / 0.08);
   --auto-msg-text: hsl(0 0% 35%);
-
-  /* Upstream claude.ai/code — assistant text colors */
-  --upstream-text-assistant-primary: hsl(0 0% 4%);
-  --upstream-text-assistant-secondary: hsl(40 3% 42%);
 
   /* Upstream claude.ai/code — extended diff stat colors */
   --upstream-extended-green: hsl(134 68% 37%);
@@ -216,27 +199,21 @@
 }
 
 .dark {
-  /* Backgrounds */
-  --bg-000: hsl(60 2.1% 18.4%);
-  --bg-100: hsl(60 2.7% 14.5%);
-  --bg-200: hsl(30 3.3% 11.8%);
-  --bg-300: hsl(60 2.6% 7.6%);
-  --bg-400: hsl(0 0% 0%);
-  --bg-500: hsl(0 0% 0%);
-
-  /* Text */
-  --text-000: hsl(48 33.3% 97.1%);
-  --text-100: hsl(48 33.3% 97.1%);
-  --text-200: hsl(50 9% 73.7%);
-  --text-300: hsl(50 9% 73.7%);
-  --text-400: hsl(48 4.8% 59.2%);
-  --text-500: hsl(48 4.8% 59.2%);
-
-  /* Borders */
-  --border-100: hsl(51 16.5% 84.5%);
-  --border-200: hsl(51 16.5% 84.5%);
-  --border-300: hsl(51 16.5% 84.5%);
-  --border-400: hsl(51 16.5% 84.5%);
+  /* Upstream semantic palette */
+  --upstream-page: hsl(60 3% 15%);
+  --upstream-surface-0: hsl(30 3% 12%);
+  --upstream-surface-1: hsl(60 3% 15%);
+  --upstream-surface-2: hsl(60 2% 18%);
+  --upstream-fill-control: hsl(0 0% 100% / 0.1);
+  --upstream-fill-ghost-hover: hsl(0 0% 100% / 0.08);
+  --upstream-fill-primary: hsl(53 12% 87%);
+  --upstream-fill-primary-hover: hsl(50 9% 74%);
+  --upstream-text-primary: hsl(53 12% 87%);
+  --upstream-text-secondary: hsl(50 9% 74%);
+  --upstream-on-primary: hsl(60 3% 15%);
+  --upstream-border-subtle: hsl(0 0% 100% / 0.08);
+  --upstream-border: hsl(0 0% 100% / 0.12);
+  --upstream-border-strong: hsl(0 0% 100% / 0.2);
 
   /* Semantic colors */
   --danger-000: hsl(0 98.4% 75.1%);
@@ -253,7 +230,7 @@
 
   /* User message bubble — matches claude.ai/code: neutral t2 wash + body ink */
   --user-msg-bg: var(--upstream-t2);
-  --user-msg-text: var(--upstream-text-assistant-primary);
+  --user-msg-text: var(--upstream-text-primary);
 
   /* Jump-to-message flash — accent tint, so it reads against the neutral bubble */
   --message-highlight-bg: hsl(210 100% 55% / 0.1);
@@ -261,10 +238,6 @@
   /* Automated (external) message bubble — neutral gray tint */
   --auto-msg-bg: hsl(0 0% 100% / 0.08);
   --auto-msg-text: hsl(0 0% 70%);
-
-  /* Upstream claude.ai/code — assistant text colors (inverted gray scale) */
-  --upstream-text-assistant-primary: hsl(53 12% 87%);
-  --upstream-text-assistant-secondary: hsl(55 6% 63%);
 
   /* Upstream claude.ai/code — extended diff stat colors (dark mode) */
   --upstream-extended-green: hsl(134 60% 52%);
@@ -319,10 +292,10 @@
 
 @layer base {
   * {
-    @apply border-border-300/15;
+    @apply border-border;
   }
   body {
-    @apply bg-bg-100 text-text-100 font-sans;
+    @apply bg-page text-primary font-sans;
   }
 }
 
@@ -362,8 +335,8 @@
   --diff-expand-content--: transparent;
   --diff-expand-lineNumber--: transparent;
   --diff-empty-content--: transparent;
-  --diff-plain-lineNumber-color--: var(--upstream-text-assistant-secondary);
-  --diff-expand-lineNumber-color--: var(--upstream-text-assistant-secondary);
+  --diff-plain-lineNumber-color--: var(--upstream-text-secondary);
+  --diff-expand-lineNumber-color--: var(--upstream-text-secondary);
 }
 
 /* Set diff text in the app's mono face instead of @git-diff-view's built-in

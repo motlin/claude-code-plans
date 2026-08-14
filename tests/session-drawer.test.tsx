@@ -54,7 +54,7 @@ describe("SessionDrawer", () => {
     }).toStrictEqual({
       drawerStyle: "width: 360px;",
       drawerClasses:
-        "fixed inset-y-0 right-0 z-40 flex flex-col border-l border-border-300/15 bg-bg-200 text-text-100 shadow-xl",
+        "fixed inset-y-0 right-0 z-40 flex flex-col border-l border-border bg-surface-0 text-primary shadow-xl",
       heading: "Session files",
       count: "24",
       bodyClasses: "min-h-0 flex-1 overflow-y-auto",

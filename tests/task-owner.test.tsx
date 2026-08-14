@@ -5,7 +5,7 @@ import { TaskOwner } from "../src/components/task-owner";
 describe("TaskOwner", () => {
   it("renders the owner label", () => {
     expect(renderToStaticMarkup(<TaskOwner owner="alice" />)).toBe(
-      '<span class="text-[10px] text-text-500" title="Owned by alice">Owner: alice</span>',
+      '<span class="text-[10px] text-t6" title="Owned by alice">Owner: alice</span>',
     );
   });
 

@@ -5,8 +5,8 @@ export const DISPLAY_STATE_STYLES: Record<DisplayState, string> = {
   waiting: "text-amber-500",
   review: "text-sky-500",
   working: "text-green-500",
-  idle: "text-text-500",
-  unknown: "text-text-500",
+  idle: "text-t6",
+  unknown: "text-t6",
 };
 
 /**

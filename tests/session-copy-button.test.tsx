@@ -30,7 +30,7 @@ describe("session CopyButton", () => {
       expect(mockedWriteClipboardText.mock.calls).toStrictEqual([["example text"]]);
     });
     expect(screen.getByText("Copied!").className).toBe(
-      "absolute -bottom-6 left-1/2 -translate-x-1/2 rounded bg-bg-200 px-1.5 py-0.5 text-[10px] text-text-300 shadow-sm transition-opacity whitespace-nowrap opacity-0 pointer-events-none",
+      "absolute -bottom-6 left-1/2 -translate-x-1/2 rounded bg-surface-0 px-1.5 py-0.5 text-[10px] text-secondary shadow-sm transition-opacity whitespace-nowrap opacity-0 pointer-events-none",
     );
   });
 });

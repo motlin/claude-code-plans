@@ -71,7 +71,7 @@ describe("PlanLink", () => {
       title: link.getAttribute("title"),
     }).toStrictEqual({
       className:
-        "inline-flex items-center gap-1 font-mono max-w-xs text-text-500 opacity-60 underline decoration-dotted hover:decoration-solid",
+        "inline-flex items-center gap-1 font-mono max-w-xs text-t6 opacity-60 underline decoration-dotted hover:decoration-solid",
       hasWarningIcon: true,
       missing: "true",
       title: "/tmp/test/plans/alpha.md — no plan file on disk yet",

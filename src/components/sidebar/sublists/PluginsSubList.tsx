@@ -37,7 +37,7 @@ export function PluginsSubList() {
       ))}
       {commands.length > 0 && (
         <div className={marketplaceGroups.length > 0 ? "mt-2" : undefined}>
-          <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-text-400">
+          <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-t6">
             User Commands
           </div>
           {commands.map((group) => (
@@ -66,7 +66,7 @@ function MarketplaceSubListGroup({ group }: { group: PluginMarketplaceGroup }) {
             key={plugin.id}
             to="/plugins"
             hash={plugin.id}
-            className="mb-px block truncate rounded-[4px] py-1 pl-5 pr-2 text-xs text-text-500 no-underline transition-colors hover:bg-bg-300/50 hover:text-text-200"
+            className="mb-px block truncate rounded-r3 py-1 pl-5 pr-2 text-xs text-t6 no-underline transition-colors hover:bg-fill-ghost-hover hover:text-secondary"
           >
             {plugin.name}
           </Link>
@@ -92,7 +92,7 @@ function CommandSubListGroup({ group }: { group: UserCommandGroupData }) {
             key={command.filename}
             to="/command/$source/$filename"
             params={{ source: group.source, filename: toMdSlug(command.filename) }}
-            className="mb-px block truncate rounded-[4px] py-1 pl-5 pr-2 text-xs text-text-500 no-underline transition-colors hover:bg-bg-300/50 hover:text-text-200"
+            className="mb-px block truncate rounded-r3 py-1 pl-5 pr-2 text-xs text-t6 no-underline transition-colors hover:bg-fill-ghost-hover hover:text-secondary"
           >
             {command.name}
           </Link>
@@ -116,7 +116,7 @@ function GroupButton({
     <button
       type="button"
       onClick={onToggle}
-      className="mb-px flex w-full items-center gap-1 rounded-[4px] px-2 py-1 text-xs text-text-500 transition-colors hover:bg-bg-300/50 hover:text-text-200"
+      className="mb-px flex w-full items-center gap-1 rounded-r3 px-2 py-1 text-xs text-t6 transition-colors hover:bg-fill-ghost-hover hover:text-secondary"
     >
       <ChevronRight
         className="h-2.5 w-2.5 shrink-0 transition-transform duration-200"

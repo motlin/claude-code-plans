@@ -9,9 +9,9 @@ describe("ListPageHeader", () => {
     );
 
     expect(markup).toStrictEqual([
-      '<header class="flex items-start justify-between gap-4"><div><h1 class="text-lg font-semibold">Items</h1><p class="mt-1 text-sm text-text-500">0 items</p></div></header>',
-      '<header class="flex items-start justify-between gap-4"><div><h1 class="text-lg font-semibold">Items</h1><p class="mt-1 text-sm text-text-500">1 item</p></div></header>',
-      '<header class="flex items-start justify-between gap-4"><div><h1 class="text-lg font-semibold">Items</h1><p class="mt-1 text-sm text-text-500">100 items</p></div></header>',
+      '<header class="flex items-start justify-between gap-4"><div><h1 class="text-lg font-semibold">Items</h1><p class="mt-1 text-sm text-t6">0 items</p></div></header>',
+      '<header class="flex items-start justify-between gap-4"><div><h1 class="text-lg font-semibold">Items</h1><p class="mt-1 text-sm text-t6">1 item</p></div></header>',
+      '<header class="flex items-start justify-between gap-4"><div><h1 class="text-lg font-semibold">Items</h1><p class="mt-1 text-sm text-t6">100 items</p></div></header>',
     ]);
   });
 

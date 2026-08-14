@@ -143,8 +143,9 @@ describe("AttachmentBanner", () => {
         hookEvent: "PreToolUse",
         blockingError: { message: "Command rejected by policy" },
       });
-      expect(html).toContain("Command rejected by policy");
-      expect(html).toContain("text-text-600");
+      expect(html.match(/<span class="text-t6">[^<]+<\/span>/g) ?? []).toStrictEqual([
+        '<span class="text-t6">Command rejected by policy</span>',
+      ]);
     });
 
     it("does not render a blocking message when blockingError is absent", () => {
@@ -153,7 +154,7 @@ describe("AttachmentBanner", () => {
         hookName: "policy-guard",
         hookEvent: "PreToolUse",
       });
-      expect(html).not.toContain("text-text-600");
+      expect(html.match(/<span class="text-t6">[^<]+<\/span>/g) ?? []).toStrictEqual([]);
     });
   });
 
@@ -165,7 +166,7 @@ describe("AttachmentBanner", () => {
     });
 
     expect(html).toStrictEqual(
-      '<div class="flex flex-wrap items-center gap-2 py-1.5 px-3 text-xs text-text-500 bg-bg-100 rounded-md border border-border-300/10"><span class="shrink-0"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-triangle-alert h-3.5 w-3.5" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span><span>Read output truncated</span><pre class="w-full mt-1 text-[10px] leading-tight text-text-600 bg-bg-200 rounded px-2 py-1 whitespace-pre-wrap break-all">[Truncated: showing lines 1-100 of 200 total.]</pre></div>',
+      '<div class="flex flex-wrap items-center gap-2 py-1.5 px-3 text-xs text-t6 bg-surface-1 rounded-md border border-subtle"><span class="shrink-0"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-triangle-alert h-3.5 w-3.5" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span><span>Read output truncated</span><pre class="w-full mt-1 text-[10px] leading-tight text-t6 bg-surface-0 rounded px-2 py-1 whitespace-pre-wrap break-all">[Truncated: showing lines 1-100 of 200 total.]</pre></div>',
     );
   });
 
@@ -176,7 +177,7 @@ describe("AttachmentBanner", () => {
     });
 
     expect(html).toStrictEqual(
-      '<div class="flex flex-wrap items-center gap-2 py-1.5 px-3 text-xs text-text-500 bg-bg-100 rounded-md border border-border-300/10"><span class="shrink-0"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-hourglass h-3.5 w-3.5" aria-hidden="true"><path d="M5 22h14"></path><path d="M5 2h14"></path><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"></path><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"></path></svg></span><span>Token budget reminder</span><pre class="w-full mt-1 text-[10px] leading-tight text-text-600 bg-bg-200 rounded px-2 py-1 whitespace-pre-wrap break-all">&lt;total_tokens&gt;10000000 tokens left&lt;/total_tokens&gt;</pre></div>',
+      '<div class="flex flex-wrap items-center gap-2 py-1.5 px-3 text-xs text-t6 bg-surface-1 rounded-md border border-subtle"><span class="shrink-0"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-hourglass h-3.5 w-3.5" aria-hidden="true"><path d="M5 22h14"></path><path d="M5 2h14"></path><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"></path><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"></path></svg></span><span>Token budget reminder</span><pre class="w-full mt-1 text-[10px] leading-tight text-t6 bg-surface-0 rounded px-2 py-1 whitespace-pre-wrap break-all">&lt;total_tokens&gt;10000000 tokens left&lt;/total_tokens&gt;</pre></div>',
     );
   });
 

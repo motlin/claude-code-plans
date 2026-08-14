@@ -59,12 +59,12 @@ function ProjectSubagentsPage() {
       </DetailTopBar>
 
       <h1 className="text-lg font-semibold">{project.name} subagents</h1>
-      <p className="mt-0.5 text-xs text-text-500">
+      <p className="mt-0.5 text-xs text-t6">
         {subagentCount} {subagentCount === 1 ? "subagent" : "subagents"}
       </p>
 
       {subagentCount === 0 ? (
-        <p className="mt-4 text-text-500">No subagents for this project.</p>
+        <p className="mt-4 text-t6">No subagents for this project.</p>
       ) : (
         <section className="mt-4">
           {subagentView === "tree" ? (

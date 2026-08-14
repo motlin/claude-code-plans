@@ -22,7 +22,7 @@ export function Context7Renderer({ toolCall }: ToolRendererProps) {
       result={isMarkdownResult ? undefined : resultText || undefined}
     >
       {isMarkdownResult && (
-        <div className="text-xs text-text-100 leading-relaxed">
+        <div className="text-xs text-primary leading-relaxed">
           <MarkdownArticle markdown={resultText} />
         </div>
       )}

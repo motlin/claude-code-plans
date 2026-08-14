@@ -32,10 +32,10 @@ export function AppShellFallback() {
     >
       <div
         aria-label="Sidebar"
-        className="relative hidden h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border-300/15 bg-bg-200 md:flex"
+        className="relative hidden h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border bg-surface-0 md:flex"
       >
         <div className="flex items-center justify-between px-4 pt-3 pb-3">
-          <span className="flex items-center gap-2.5 text-base font-bold text-text-000">
+          <span className="flex items-center gap-2.5 text-base font-bold text-primary">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#C87B3A]">
               <svg viewBox="0 0 32 32" className="h-4 w-4">
                 <path
@@ -51,8 +51,8 @@ export function AppShellFallback() {
 
         <div className="px-4 pb-2">
           <div className="relative">
-            <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-500" />
-            <div className="w-full rounded-md border border-border-300/10 bg-bg-000/50 py-1.5 pl-7 pr-2 text-xs text-text-500">
+            <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-t6" />
+            <div className="w-full rounded-md border border-subtle bg-surface-2/50 py-1.5 pl-7 pr-2 text-xs text-t6">
               Search...
             </div>
           </div>
@@ -65,7 +65,7 @@ export function AppShellFallback() {
               <div key={item.to} className="flex items-center">
                 <span className="h-8 w-6 shrink-0" />
                 <span
-                  className="mb-0.5 flex h-8 flex-1 items-center gap-2 rounded-[6px] px-2 py-1.5 text-xs text-text-200"
+                  className="mb-0.5 flex h-8 flex-1 items-center gap-2 rounded-r5 px-2 py-1.5 text-xs text-secondary"
                   style={{ fontWeight: 430, lineHeight: "16px" }}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
@@ -77,12 +77,12 @@ export function AppShellFallback() {
         </div>
       </div>
 
-      <div className="flex-1 bg-bg-000">
+      <div className="flex-1 bg-surface-2">
         <div className="min-h-9 px-4 pt-3 sm:px-8" />
         <div className="px-4 pb-24 sm:px-8 sm:pb-8">
           <div className="animate-pulse space-y-4 pt-4">
             {CONTENT_PLACEHOLDER_WIDTHS.map((width) => (
-              <div key={width} className={`h-5 rounded bg-bg-300/50 ${width}`} />
+              <div key={width} className={`h-5 rounded bg-fill-ghost-hover ${width}`} />
             ))}
           </div>
         </div>

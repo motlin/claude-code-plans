@@ -14,16 +14,16 @@ export const Route = createFileRoute("/tmux")({
 
 function TmuxEmptyState() {
   return (
-    <div className="mx-auto mt-8 max-w-lg rounded-md border border-border-300/15 p-6 text-sm text-text-500">
-      <p className="text-text-000">No tmux windows are linked to Claude sessions yet.</p>
+    <div className="mx-auto mt-8 max-w-lg rounded-md border border-border p-6 text-sm text-t6">
+      <p className="text-primary">No tmux windows are linked to Claude sessions yet.</p>
       <p className="mt-3">
         This live view only shows windows once a session reports its pane. To enable it:
       </p>
       <ul className="mt-2 list-disc space-y-1 pl-5">
         <li>
-          Run Claude Code <span className="font-medium text-text-000">inside tmux</span> so{" "}
-          <code className="rounded bg-bg-200/60 px-1 py-0.5 text-xs">TMUX</code> and{" "}
-          <code className="rounded bg-bg-200/60 px-1 py-0.5 text-xs">TMUX_PANE</code> are set.
+          Run Claude Code <span className="font-medium text-primary">inside tmux</span> so{" "}
+          <code className="rounded bg-surface-0/60 px-1 py-0.5 text-xs">TMUX</code> and{" "}
+          <code className="rounded bg-surface-0/60 px-1 py-0.5 text-xs">TMUX_PANE</code> are set.
         </li>
         <li>
           Re-install the hooks from{" "}
@@ -54,15 +54,13 @@ function TmuxWindowsPage() {
               key={win.tmuxPane}
               to="/session/$id"
               params={{ id: win.sessionId }}
-              className="block rounded-md border border-border-300/15 p-3 no-underline transition-colors hover:bg-bg-200/50"
+              className="block rounded-md border border-border p-3 no-underline transition-colors hover:bg-surface-0/50"
             >
               <div className="flex items-center gap-2">
                 <StatusDot active={win.windowActive} />
-                <span className="shrink-0 tabular-nums text-sm text-text-400">
-                  #{win.windowIndex}
-                </span>
-                <span className="truncate text-sm font-medium text-text-000">{win.windowName}</span>
-                <span className="ml-auto truncate text-xs text-text-500">{win.projectName}</span>
+                <span className="shrink-0 tabular-nums text-sm text-t6">#{win.windowIndex}</span>
+                <span className="truncate text-sm font-medium text-primary">{win.windowName}</span>
+                <span className="ml-auto truncate text-xs text-t6">{win.projectName}</span>
               </div>
             </Link>
           ))}

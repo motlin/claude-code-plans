@@ -27,7 +27,7 @@ function CopyButton({ text }: { text: string }) {
           // clipboard not available
         }
       }}
-      className="text-xs px-2 py-1 rounded bg-bg-200 hover:bg-bg-300 text-text-200"
+      className="text-xs px-2 py-1 rounded bg-surface-0 hover:bg-fill-control text-secondary"
     >
       {copied ? "Copied" : "Copy"}
     </button>
@@ -66,8 +66,8 @@ function GenericSourcePage() {
   if (!data) {
     return (
       <div className="mx-auto max-w-3xl p-6">
-        <h1 className="text-lg font-medium text-text-100 mb-2">Source not found</h1>
-        <p className="text-sm text-text-500 mb-4">
+        <h1 className="text-lg font-medium text-primary mb-2">Source not found</h1>
+        <p className="text-sm text-t6 mb-4">
           No {kindLabel.toLowerCase()} source file at{" "}
           <code className="font-mono">{relativePath}</code>.
         </p>
@@ -92,20 +92,20 @@ function GenericSourcePage() {
             ← {back.label}
           </Link>
         )}
-        <h1 className="text-lg font-medium text-text-100 mt-1">
+        <h1 className="text-lg font-medium text-primary mt-1">
           {kindLabel} source · {data.relativePath}
         </h1>
-        <p className="text-xs text-text-500 mt-1 font-mono break-all">{data.absolutePath}</p>
+        <p className="text-xs text-t6 mt-1 font-mono break-all">{data.absolutePath}</p>
       </div>
 
       <section>
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-medium text-text-200">
+          <h2 className="text-sm font-medium text-secondary">
             Raw {data.language === "json" ? "JSON" : "markdown"}
           </h2>
           <CopyButton text={data.content} />
         </div>
-        <pre className="bg-bg-100 text-text-000 text-xs font-mono whitespace-pre-wrap break-all rounded p-3 overflow-x-auto leading-relaxed">
+        <pre className="bg-surface-1 text-primary text-xs font-mono whitespace-pre-wrap break-all rounded p-3 overflow-x-auto leading-relaxed">
           {shown}
         </pre>
       </section>

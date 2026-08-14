@@ -176,13 +176,13 @@ function JsonEditor({
   return (
     <section className="space-y-3">
       <div>
-        <h2 className="text-sm font-semibold text-text-100">{FILE_LABELS[filename] ?? filename}</h2>
-        <p className="text-xs text-text-500 mt-0.5">
+        <h2 className="text-sm font-semibold text-primary">{FILE_LABELS[filename] ?? filename}</h2>
+        <p className="text-xs text-t6 mt-0.5">
           {FILE_DESCRIPTIONS[filename]} <span className="font-mono">{path}</span>
         </p>
       </div>
 
-      <div className="relative rounded-md bg-bg-100">
+      <div className="relative rounded-md bg-surface-1">
         {tokens && (
           <div
             ref={highlightRef}
@@ -203,12 +203,12 @@ function JsonEditor({
           spellCheck={false}
           className={`relative w-full rounded-md border p-4 font-mono text-xs leading-relaxed focus:outline-none focus:ring-1 resize-y ${
             tokens
-              ? "bg-transparent text-transparent caret-text-100 selection:bg-accent-100/30"
-              : "bg-bg-100 text-text-100"
+              ? "bg-transparent text-transparent caret-primary selection:bg-accent-100/30"
+              : "bg-surface-1 text-primary"
           } ${
             validationError
               ? "border-danger-000 focus:ring-danger-000"
-              : "border-border-300/15 focus:ring-accent-100"
+              : "border-border focus:ring-accent-100"
           }`}
           rows={Math.min(Math.max(lineCount + 2, 10), 40)}
         />
@@ -252,8 +252,8 @@ function JsonEditor({
           type="button"
           onClick={handleFormat}
           disabled={validationError !== null}
-          className={`flex items-center gap-1.5 rounded-md border border-border-300/15 px-3 py-1.5 text-sm transition-colors hover:bg-bg-200 disabled:opacity-50 ${
-            formatFeedback ? "text-green-600 dark:text-green-400" : "text-text-300"
+          className={`flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm transition-colors hover:bg-surface-0 disabled:opacity-50 ${
+            formatFeedback ? "text-green-600 dark:text-green-400" : "text-secondary"
           }`}
         >
           {formatFeedback && <Check className="h-3.5 w-3.5" />}
@@ -263,7 +263,7 @@ function JsonEditor({
           <button
             type="button"
             onClick={handleReset}
-            className="flex items-center gap-1.5 rounded-md border border-border-300/15 px-3 py-1.5 text-sm text-text-300 transition-colors hover:bg-bg-200"
+            className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             Reset
@@ -304,7 +304,7 @@ function FormToggle({
       aria-checked={checked}
       onClick={() => onChange(!checked)}
       className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-        checked ? "bg-accent-100" : "bg-bg-300"
+        checked ? "bg-fill-primary" : "bg-fill-control"
       }`}
     >
       <span
@@ -330,8 +330,8 @@ function FormField({
       return (
         <div className="flex items-center justify-between gap-4 py-2">
           <div>
-            <div className="text-sm font-medium text-text-100">{field.label}</div>
-            <div className="text-xs text-text-500">{field.description}</div>
+            <div className="text-sm font-medium text-primary">{field.label}</div>
+            <div className="text-xs text-t6">{field.description}</div>
           </div>
           <FormToggle
             checked={value === true}
@@ -344,13 +344,13 @@ function FormField({
       return (
         <div className="flex items-center justify-between gap-4 py-2">
           <div>
-            <div className="text-sm font-medium text-text-100">{field.label}</div>
-            <div className="text-xs text-text-500">{field.description}</div>
+            <div className="text-sm font-medium text-primary">{field.label}</div>
+            <div className="text-xs text-t6">{field.description}</div>
           </div>
           <select
             value={typeof value === "string" ? value : ""}
             onChange={(event) => onChange(field.key, event.target.value)}
-            className="rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+            className="rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
           >
             {!field.options?.some((o) => o.value === value) && (
               <option value={typeof value === "string" ? value : ""}>
@@ -370,8 +370,8 @@ function FormField({
       return (
         <div className="flex items-center justify-between gap-4 py-2">
           <div>
-            <div className="text-sm font-medium text-text-100">{field.label}</div>
-            <div className="text-xs text-text-500">{field.description}</div>
+            <div className="text-sm font-medium text-primary">{field.label}</div>
+            <div className="text-xs text-t6">{field.description}</div>
           </div>
           <input
             type="number"
@@ -384,7 +384,7 @@ function FormField({
                 onChange(field.key, parsed);
               }
             }}
-            className="w-24 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+            className="w-24 rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
           />
         </div>
       );
@@ -393,14 +393,14 @@ function FormField({
       return (
         <div className="flex items-center justify-between gap-4 py-2">
           <div>
-            <div className="text-sm font-medium text-text-100">{field.label}</div>
-            <div className="text-xs text-text-500">{field.description}</div>
+            <div className="text-sm font-medium text-primary">{field.label}</div>
+            <div className="text-xs text-t6">{field.description}</div>
           </div>
           <input
             type="text"
             value={typeof value === "string" ? value : ""}
             onChange={(event) => onChange(field.key, event.target.value)}
-            className="w-48 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+            className="w-48 rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
           />
         </div>
       );
@@ -462,8 +462,8 @@ function EnvEditor({
   return (
     <div className="py-2">
       <div className="mb-2">
-        <div className="text-sm font-medium text-text-100">Environment variables</div>
-        <div className="text-xs text-text-500">
+        <div className="text-sm font-medium text-primary">Environment variables</div>
+        <div className="text-xs text-t6">
           Key-value pairs injected into Claude Code's environment
         </div>
       </div>
@@ -474,21 +474,21 @@ function EnvEditor({
               type="text"
               value={entryKey}
               onChange={(event) => handleEntryChange(entryKey, "key", event.target.value)}
-              className="w-48 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+              className="w-48 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
               placeholder="KEY"
             />
-            <span className="text-text-500">=</span>
+            <span className="text-t6">=</span>
             <input
               type="text"
               value={entryValue}
               onChange={(event) => handleEntryChange(entryKey, "value", event.target.value)}
-              className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+              className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
               placeholder="value"
             />
             <button
               type="button"
               onClick={() => handleRemove(entryKey)}
-              className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
+              className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
               title="Remove"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -503,10 +503,10 @@ function EnvEditor({
             onKeyDown={(event) => {
               if (event.key === "Enter") handleAdd();
             }}
-            className="w-48 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
+            className="w-48 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-secondary focus:outline-none focus:ring-1 focus:ring-accent-100"
             placeholder="NEW_KEY"
           />
-          <span className="text-text-500">=</span>
+          <span className="text-t6">=</span>
           <input
             type="text"
             value={newValue}
@@ -514,14 +514,14 @@ function EnvEditor({
             onKeyDown={(event) => {
               if (event.key === "Enter") handleAdd();
             }}
-            className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
+            className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-secondary focus:outline-none focus:ring-1 focus:ring-accent-100"
             placeholder="value"
           />
           <button
             type="button"
             onClick={handleAdd}
             disabled={!newKey.trim()}
-            className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200 disabled:opacity-50"
+            className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-secondary transition-colors hover:bg-surface-0 disabled:opacity-50"
           >
             <Plus className="h-3 w-3" />
             Add
@@ -571,8 +571,8 @@ function PermissionListEditor({
   return (
     <div className="py-2">
       <div className="mb-2">
-        <div className="text-sm font-medium text-text-100">{label}</div>
-        <div className="text-xs text-text-500">{description}</div>
+        <div className="text-sm font-medium text-primary">{label}</div>
+        <div className="text-xs text-t6">{description}</div>
       </div>
       <div className="space-y-1">
         {entries.map((entry, index) => (
@@ -581,12 +581,12 @@ function PermissionListEditor({
               type="text"
               value={entry}
               onChange={(event) => handleChange(index, event.target.value)}
-              className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+              className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
             />
             <button
               type="button"
               onClick={() => handleRemove(index)}
-              className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
+              className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
               title="Remove"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -601,14 +601,14 @@ function PermissionListEditor({
             onKeyDown={(event) => {
               if (event.key === "Enter") handleAdd();
             }}
-            className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
+            className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-secondary focus:outline-none focus:ring-1 focus:ring-accent-100"
             placeholder="e.g. Bash(ls:*)"
           />
           <button
             type="button"
             onClick={handleAdd}
             disabled={!newEntry.trim()}
-            className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200 disabled:opacity-50"
+            className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-secondary transition-colors hover:bg-surface-0 disabled:opacity-50"
           >
             <Plus className="h-3 w-3" />
             Add
@@ -660,8 +660,8 @@ function PermissionsEditor({
       />
       <div className="flex items-center justify-between gap-4 py-2">
         <div>
-          <div className="text-sm font-medium text-text-100">Default mode</div>
-          <div className="text-xs text-text-500">Permission mode when not otherwise specified</div>
+          <div className="text-sm font-medium text-primary">Default mode</div>
+          <div className="text-xs text-t6">Permission mode when not otherwise specified</div>
         </div>
         <select
           value={defaultMode}
@@ -671,7 +671,7 @@ function PermissionsEditor({
               defaultMode: event.target.value || undefined,
             })
           }
-          className="rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+          className="rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
         >
           <option value="">(not set)</option>
           <option value="plan">Plan</option>
@@ -703,35 +703,33 @@ function StatusLineEditor({
   return (
     <div className="py-2">
       <div className="mb-2">
-        <div className="text-sm font-medium text-text-100">Status line</div>
-        <div className="text-xs text-text-500">
-          Custom status line displayed at the bottom of the TUI
-        </div>
+        <div className="text-sm font-medium text-primary">Status line</div>
+        <div className="text-xs text-t6">Custom status line displayed at the bottom of the TUI</div>
       </div>
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-4">
-          <label className="text-xs text-text-300">Type</label>
+          <label className="text-xs text-secondary">Type</label>
           <select
             value={statusType}
             onChange={(event) => update("type", event.target.value || undefined)}
-            className="rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+            className="rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
           >
             <option value="">(not set)</option>
             <option value="command">Command</option>
           </select>
         </div>
         <div className="flex items-center justify-between gap-4">
-          <label className="text-xs text-text-300">Command</label>
+          <label className="text-xs text-secondary">Command</label>
           <input
             type="text"
             value={command}
             onChange={(event) => update("command", event.target.value || undefined)}
-            className="flex-1 max-w-sm rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+            className="flex-1 max-w-sm rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
             placeholder="~/.claude/statusline.sh"
           />
         </div>
         <div className="flex items-center justify-between gap-4">
-          <label className="text-xs text-text-300">Padding</label>
+          <label className="text-xs text-secondary">Padding</label>
           <input
             type="number"
             value={padding}
@@ -740,7 +738,7 @@ function StatusLineEditor({
               const parsed = Number(event.target.value);
               if (Number.isFinite(parsed)) update("padding", parsed);
             }}
-            className="w-20 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+            className="w-20 rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
           />
         </div>
       </div>
@@ -879,8 +877,8 @@ function HooksEditor({
   return (
     <div className="py-2">
       <div className="mb-2">
-        <div className="text-sm font-medium text-text-100">Hooks</div>
-        <div className="text-xs text-text-500">
+        <div className="text-sm font-medium text-primary">Hooks</div>
+        <div className="text-xs text-t6">
           Event-driven commands that run before/after tool use and other events
         </div>
       </div>
@@ -889,12 +887,12 @@ function HooksEditor({
           const matchers = value[eventName] ?? [];
           const isExpanded = expandedEvent === eventName;
           return (
-            <div key={eventName} className="rounded-md border border-border-300/15">
+            <div key={eventName} className="rounded-md border border-border">
               <div className="flex items-center justify-between px-3 py-2">
                 <button
                   type="button"
                   onClick={() => setExpandedEvent(isExpanded ? null : eventName)}
-                  className="flex items-center gap-1.5 text-sm font-medium text-text-100 hover:text-accent-100"
+                  className="flex items-center gap-1.5 text-sm font-medium text-primary hover:text-accent-100"
                 >
                   {isExpanded ? (
                     <ChevronDown className="h-3.5 w-3.5" />
@@ -902,29 +900,29 @@ function HooksEditor({
                     <ChevronRight className="h-3.5 w-3.5" />
                   )}
                   {eventName}
-                  <span className="font-normal text-text-500">
+                  <span className="font-normal text-t6">
                     ({matchers.length} {matchers.length === 1 ? "rule" : "rules"})
                   </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleRemoveEvent(eventName)}
-                  className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
+                  className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
                   title="Remove event"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
               {isExpanded && (
-                <div className="border-t border-border-300/15 px-3 py-2 space-y-3">
+                <div className="border-t border-border px-3 py-2 space-y-3">
                   {matchers.map((matcher, matcherIndex) => (
                     <div
                       key={matcherIndex}
-                      className="rounded-md border border-border-300/10 bg-bg-100 p-2 space-y-2"
+                      className="rounded-md border border-subtle bg-surface-1 p-2 space-y-2"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 flex-1">
-                          <span className="text-xs text-text-300 shrink-0">Matcher:</span>
+                          <span className="text-xs text-secondary shrink-0">Matcher:</span>
                           <input
                             type="text"
                             value={matcher.matcher ?? ""}
@@ -936,21 +934,21 @@ function HooksEditor({
                                 event.target.value,
                               )
                             }
-                            className="flex-1 rounded-md border border-border-300/15 bg-bg-000 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+                            className="flex-1 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
                             placeholder="e.g. Bash (optional)"
                           />
                         </div>
                         <button
                           type="button"
                           onClick={() => handleRemoveMatcher(eventName, matcherIndex)}
-                          className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
+                          className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
                           title="Remove rule"
                         >
                           <Trash2 className="h-3 w-3" />
                         </button>
                       </div>
                       <div className="space-y-1">
-                        <span className="text-xs text-text-300">Commands:</span>
+                        <span className="text-xs text-secondary">Commands:</span>
                         {matcher.hooks.map((hook, hookIndex) => (
                           <div key={hookIndex} className="flex items-start gap-2">
                             <textarea
@@ -963,7 +961,7 @@ function HooksEditor({
                                   event.target.value,
                                 )
                               }
-                              className="flex-1 rounded-md border border-border-300/15 bg-bg-000 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100 resize-y"
+                              className="flex-1 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100 resize-y"
                               rows={Math.min(Math.max(hook.command.split("\n").length, 1), 4)}
                               placeholder="command..."
                             />
@@ -972,7 +970,7 @@ function HooksEditor({
                               onClick={() =>
                                 handleRemoveHookCommand(eventName, matcherIndex, hookIndex)
                               }
-                              className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000 mt-0.5"
+                              className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000 mt-0.5"
                               title="Remove command"
                             >
                               <X className="h-3 w-3" />
@@ -982,7 +980,7 @@ function HooksEditor({
                         <button
                           type="button"
                           onClick={() => handleAddHookCommand(eventName, matcherIndex)}
-                          className="flex items-center gap-1 text-xs text-text-300 hover:text-accent-100"
+                          className="flex items-center gap-1 text-xs text-secondary hover:text-accent-100"
                         >
                           <Plus className="h-3 w-3" />
                           Add command
@@ -993,7 +991,7 @@ function HooksEditor({
                   <button
                     type="button"
                     onClick={() => handleAddMatcher(eventName)}
-                    className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200"
+                    className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-secondary transition-colors hover:bg-surface-0"
                   >
                     <Plus className="h-3 w-3" />
                     Add rule
@@ -1008,7 +1006,7 @@ function HooksEditor({
             <select
               value={newEventName}
               onChange={(event) => setNewEventName(event.target.value)}
-              className="rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
+              className="rounded-md border border-border bg-surface-1 px-2 py-1 text-xs text-secondary focus:outline-none focus:ring-1 focus:ring-accent-100"
             >
               <option value="">Select event...</option>
               {availableEvents.map((e) => (
@@ -1021,7 +1019,7 @@ function HooksEditor({
               type="button"
               onClick={handleAddEvent}
               disabled={!newEventName}
-              className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200 disabled:opacity-50"
+              className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-secondary transition-colors hover:bg-surface-0 disabled:opacity-50"
             >
               <Plus className="h-3 w-3" />
               Add event
@@ -1068,13 +1066,13 @@ function PluginsEditor({
   return (
     <div className="py-2">
       <div className="mb-2">
-        <div className="text-sm font-medium text-text-100">Enabled plugins</div>
-        <div className="text-xs text-text-500">Toggle marketplace plugins on or off</div>
+        <div className="text-sm font-medium text-primary">Enabled plugins</div>
+        <div className="text-xs text-t6">Toggle marketplace plugins on or off</div>
       </div>
       <div className="space-y-1">
         {entries.map(([pluginName, enabled]) => (
           <div key={pluginName} className="flex items-center justify-between gap-2 py-1">
-            <span className="font-mono text-xs text-text-100 truncate">{pluginName}</span>
+            <span className="font-mono text-xs text-primary truncate">{pluginName}</span>
             <div className="flex items-center gap-2 shrink-0">
               <FormToggle
                 checked={enabled}
@@ -1083,7 +1081,7 @@ function PluginsEditor({
               <button
                 type="button"
                 onClick={() => handleRemove(pluginName)}
-                className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
+                className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
                 title="Remove"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -1099,14 +1097,14 @@ function PluginsEditor({
             onKeyDown={(event) => {
               if (event.key === "Enter") handleAdd();
             }}
-            className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
+            className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-secondary focus:outline-none focus:ring-1 focus:ring-accent-100"
             placeholder="plugin-name@marketplace"
           />
           <button
             type="button"
             onClick={handleAdd}
             disabled={!newPlugin.trim()}
-            className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200 disabled:opacity-50"
+            className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-secondary transition-colors hover:bg-surface-0 disabled:opacity-50"
           >
             <Plus className="h-3 w-3" />
             Add
@@ -1160,8 +1158,8 @@ export function StringListEditor({
   return (
     <div className="py-2">
       <div className="mb-2">
-        <div className="text-sm font-medium text-text-100">{label}</div>
-        <div className="text-xs text-text-500">{description}</div>
+        <div className="text-sm font-medium text-primary">{label}</div>
+        <div className="text-xs text-t6">{description}</div>
       </div>
       <div className="space-y-1">
         {entries.map((entry, index) => (
@@ -1170,12 +1168,12 @@ export function StringListEditor({
               type="text"
               value={entry}
               onChange={(event) => handleChange(index, event.target.value)}
-              className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+              className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
             />
             <button
               type="button"
               onClick={() => handleRemove(index)}
-              className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
+              className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
               title="Remove"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -1190,14 +1188,14 @@ export function StringListEditor({
             onKeyDown={(event) => {
               if (event.key === "Enter") handleAdd();
             }}
-            className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
+            className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-secondary focus:outline-none focus:ring-1 focus:ring-accent-100"
             placeholder={placeholder ?? "Add entry..."}
           />
           <button
             type="button"
             onClick={handleAdd}
             disabled={!newEntry.trim()}
-            className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200 disabled:opacity-50"
+            className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-secondary transition-colors hover:bg-surface-0 disabled:opacity-50"
           >
             <Plus className="h-3 w-3" />
             Add
@@ -1225,7 +1223,7 @@ function ObjectSummary({ label, value }: { label: string; value: unknown }) {
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1.5 text-sm font-medium text-text-100 hover:text-accent-100"
+        className="flex items-center gap-1.5 text-sm font-medium text-primary hover:text-accent-100"
       >
         {expanded ? (
           <ChevronDown className="h-3.5 w-3.5" />
@@ -1233,10 +1231,10 @@ function ObjectSummary({ label, value }: { label: string; value: unknown }) {
           <ChevronRight className="h-3.5 w-3.5" />
         )}
         {label}
-        <span className="font-normal text-text-500">({summary})</span>
+        <span className="font-normal text-t6">({summary})</span>
       </button>
       {expanded && (
-        <pre className="mt-2 max-h-64 overflow-auto rounded-md border border-border-300/15 bg-bg-100 p-3 font-mono text-xs text-text-300">
+        <pre className="mt-2 max-h-64 overflow-auto rounded-md border border-border bg-surface-1 p-3 font-mono text-xs text-secondary">
           {JSON.stringify(value, null, 2)}
         </pre>
       )}
@@ -1272,8 +1270,8 @@ export function ObjectFieldsEditor({
   return (
     <div className="py-2">
       <div className="mb-2">
-        <div className="text-sm font-medium text-text-100">{def.label}</div>
-        <div className="text-xs text-text-500">{def.description}</div>
+        <div className="text-sm font-medium text-primary">{def.label}</div>
+        <div className="text-xs text-t6">{def.description}</div>
       </div>
       <div className="space-y-2">
         {def.fields.map((subField) => {
@@ -1282,7 +1280,7 @@ export function ObjectFieldsEditor({
             case "boolean": {
               return (
                 <div key={subField.key} className="flex items-center justify-between gap-4">
-                  <label className="text-xs text-text-300">{subField.label}</label>
+                  <label className="text-xs text-secondary">{subField.label}</label>
                   <FormToggle
                     checked={subValue === true}
                     onChange={(checked) => update(subField.key, checked)}
@@ -1293,7 +1291,7 @@ export function ObjectFieldsEditor({
             case "number": {
               return (
                 <div key={subField.key} className="flex items-center justify-between gap-4">
-                  <label className="text-xs text-text-300">{subField.label}</label>
+                  <label className="text-xs text-secondary">{subField.label}</label>
                   <input
                     type="number"
                     value={typeof subValue === "number" ? subValue : ""}
@@ -1306,7 +1304,7 @@ export function ObjectFieldsEditor({
                       const parsed = Number(raw);
                       if (Number.isFinite(parsed)) update(subField.key, parsed);
                     }}
-                    className="w-24 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+                    className="w-24 rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
                   />
                 </div>
               );
@@ -1326,7 +1324,7 @@ export function ObjectFieldsEditor({
             case "string": {
               return (
                 <div key={subField.key} className="flex items-center justify-between gap-4">
-                  <label className="text-xs text-text-300">{subField.label}</label>
+                  <label className="text-xs text-secondary">{subField.label}</label>
                   <input
                     type="text"
                     value={typeof subValue === "string" ? subValue : ""}
@@ -1338,7 +1336,7 @@ export function ObjectFieldsEditor({
                         update(subField.key, raw);
                       }
                     }}
-                    className="w-48 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-sm text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+                    className="w-48 rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
                   />
                 </div>
               );
@@ -1438,19 +1436,19 @@ export function MarketplacesEditor({
   return (
     <div className="py-2">
       <div className="mb-2">
-        <div className="text-sm font-medium text-text-100">Marketplaces</div>
-        <div className="text-xs text-text-500">Extra known plugin marketplaces</div>
+        <div className="text-sm font-medium text-primary">Marketplaces</div>
+        <div className="text-xs text-t6">Extra known plugin marketplaces</div>
       </div>
       <div className="space-y-2">
         {entries.map(([name, entry]) => {
           const isExpanded = expanded === name;
           return (
-            <div key={name} className="rounded-md border border-border-300/15">
+            <div key={name} className="rounded-md border border-border">
               <div className="flex items-center justify-between px-3 py-2">
                 <button
                   type="button"
                   onClick={() => setExpanded(isExpanded ? null : name)}
-                  className="flex items-center gap-1.5 text-sm font-medium text-text-100 hover:text-accent-100"
+                  className="flex items-center gap-1.5 text-sm font-medium text-primary hover:text-accent-100"
                 >
                   {isExpanded ? (
                     <ChevronDown className="h-3.5 w-3.5" />
@@ -1462,68 +1460,68 @@ export function MarketplacesEditor({
                 <button
                   type="button"
                   onClick={() => handleRemove(name)}
-                  className="rounded p-1 text-text-500 hover:bg-bg-200 hover:text-danger-000"
+                  className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
                   title="Remove marketplace"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
               {isExpanded && (
-                <div className="border-t border-border-300/15 px-3 py-2 space-y-2">
+                <div className="border-t border-border px-3 py-2 space-y-2">
                   <div className="flex items-center justify-between gap-4">
-                    <label className="text-xs text-text-300">Source type</label>
+                    <label className="text-xs text-secondary">Source type</label>
                     <input
                       type="text"
                       value={entry.source.source}
                       onChange={(event) => updateSourceField(name, "source", event.target.value)}
-                      className="w-48 rounded-md border border-border-300/15 bg-bg-000 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+                      className="w-48 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
                       placeholder="github"
                     />
                   </div>
                   <div className="flex items-center justify-between gap-4">
-                    <label className="text-xs text-text-300">Repo</label>
+                    <label className="text-xs text-secondary">Repo</label>
                     <input
                       type="text"
                       value={entry.source.repo ?? ""}
                       onChange={(event) => updateSourceField(name, "repo", event.target.value)}
-                      className="w-48 rounded-md border border-border-300/15 bg-bg-000 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+                      className="w-48 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
                       placeholder="owner/repo"
                     />
                   </div>
                   <div className="flex items-center justify-between gap-4">
-                    <label className="text-xs text-text-300">Path</label>
+                    <label className="text-xs text-secondary">Path</label>
                     <input
                       type="text"
                       value={entry.source.path ?? ""}
                       onChange={(event) => updateSourceField(name, "path", event.target.value)}
-                      className="w-48 rounded-md border border-border-300/15 bg-bg-000 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+                      className="w-48 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
                       placeholder="/path"
                     />
                   </div>
                   <div className="flex items-center justify-between gap-4">
-                    <label className="text-xs text-text-300">Source URL</label>
+                    <label className="text-xs text-secondary">Source URL</label>
                     <input
                       type="text"
                       value={entry.source.url ?? ""}
                       onChange={(event) => updateSourceField(name, "url", event.target.value)}
-                      className="w-48 rounded-md border border-border-300/15 bg-bg-000 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+                      className="w-48 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
                       placeholder="https://..."
                     />
                   </div>
                   <div className="flex items-center justify-between gap-4">
-                    <label className="text-xs text-text-300">Auto-update</label>
+                    <label className="text-xs text-secondary">Auto-update</label>
                     <FormToggle
                       checked={entry.autoUpdate === true}
                       onChange={(checked) => updateAutoUpdate(name, checked)}
                     />
                   </div>
                   <div className="flex items-center justify-between gap-4">
-                    <label className="text-xs text-text-300">URL</label>
+                    <label className="text-xs text-secondary">URL</label>
                     <input
                       type="text"
                       value={entry.url ?? ""}
                       onChange={(event) => updateUrl(name, event.target.value)}
-                      className="w-48 rounded-md border border-border-300/15 bg-bg-000 px-2 py-1 font-mono text-xs text-text-100 focus:outline-none focus:ring-1 focus:ring-accent-100"
+                      className="w-48 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
                       placeholder="https://..."
                     />
                   </div>
@@ -1540,14 +1538,14 @@ export function MarketplacesEditor({
             onKeyDown={(event) => {
               if (event.key === "Enter") handleAdd();
             }}
-            className="flex-1 rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 font-mono text-xs text-text-300 focus:outline-none focus:ring-1 focus:ring-accent-100"
+            className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-secondary focus:outline-none focus:ring-1 focus:ring-accent-100"
             placeholder="marketplace-name"
           />
           <button
             type="button"
             onClick={handleAdd}
             disabled={!newName.trim()}
-            className="flex items-center gap-1 rounded-md border border-border-300/15 px-2 py-1 text-xs text-text-300 transition-colors hover:bg-bg-200 disabled:opacity-50"
+            className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-secondary transition-colors hover:bg-surface-0 disabled:opacity-50"
           >
             <Plus className="h-3 w-3" />
             Add
@@ -1629,8 +1627,8 @@ function FormEditor({
   return (
     <section className="space-y-3">
       <div>
-        <h2 className="text-sm font-semibold text-text-100">{FILE_LABELS[filename] ?? filename}</h2>
-        <p className="text-xs text-text-500 mt-0.5">
+        <h2 className="text-sm font-semibold text-primary">{FILE_LABELS[filename] ?? filename}</h2>
+        <p className="text-xs text-t6 mt-0.5">
           {FILE_DESCRIPTIONS[filename]} <span className="font-mono">{path}</span>
         </p>
       </div>
@@ -1641,10 +1639,10 @@ function FormEditor({
           if (relevantFields.length === 0) return null;
           return (
             <div key={section}>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-t6 mb-1">
                 {section}
               </h3>
-              <div className="divide-y divide-border-300/10">
+              <div className="divide-y divide-subtle">
                 {relevantFields.map((field) => (
                   <FormField
                     key={field.key}
@@ -1659,7 +1657,7 @@ function FormEditor({
         })}
 
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-t6 mb-1">
             Environment
           </h3>
           <EnvEditor
@@ -1673,7 +1671,7 @@ function FormEditor({
         </div>
 
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-t6 mb-1">
             Permissions
           </h3>
           <PermissionsEditor
@@ -1687,7 +1685,7 @@ function FormEditor({
         </div>
 
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-t6 mb-1">
             Status Line
           </h3>
           <StatusLineEditor
@@ -1701,9 +1699,7 @@ function FormEditor({
         </div>
 
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
-            Hooks
-          </h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-t6 mb-1">Hooks</h3>
           <HooksEditor
             value={
               (typeof data["hooks"] === "object" && data["hooks"] !== null
@@ -1725,9 +1721,7 @@ function FormEditor({
         </div>
 
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
-            Plugins
-          </h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-t6 mb-1">Plugins</h3>
           <PluginsEditor
             value={
               (typeof data["enabledPlugins"] === "object" && data["enabledPlugins"] !== null
@@ -1739,7 +1733,7 @@ function FormEditor({
         </div>
 
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-t6 mb-1">
             MCP Servers
           </h3>
           <StringListEditor
@@ -1769,7 +1763,7 @@ function FormEditor({
         </div>
 
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-t6 mb-1">
             Marketplaces
           </h3>
           <MarketplacesEditor
@@ -1785,7 +1779,7 @@ function FormEditor({
 
         {OBJECT_EDITORS.map((def) => (
           <div key={def.key}>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-t6 mb-1">
               {def.label}
             </h3>
             <ObjectFieldsEditor
@@ -1802,10 +1796,8 @@ function FormEditor({
 
         {unknownKeys.length > 0 && (
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-text-500 mb-1">
-              Other
-            </h3>
-            <div className="divide-y divide-border-300/10">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-t6 mb-1">Other</h3>
+            <div className="divide-y divide-subtle">
               {unknownKeys.map((key) => (
                 <ObjectSummary key={key} label={key} value={data[key]} />
               ))}
@@ -1845,7 +1837,7 @@ function FormEditor({
           <button
             type="button"
             onClick={handleReset}
-            className="flex items-center gap-1.5 rounded-md border border-border-300/15 px-3 py-1.5 text-sm text-text-300 transition-colors hover:bg-bg-200"
+            className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             Reset
@@ -1867,18 +1859,20 @@ function SettingsEditPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold">Edit Settings</h1>
-          <p className="mt-1 text-sm text-text-500">
+          <p className="mt-1 text-sm text-t6">
             Edit Claude Code configuration files from{" "}
             <code className="font-mono text-xs">~/.claude/</code>
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex rounded-md border border-border-300/15">
+          <div className="flex rounded-md border border-border">
             <button
               type="button"
               onClick={() => setActiveTab("form")}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors first:rounded-l-md ${
-                activeTab === "form" ? "bg-accent-100 text-white" : "text-text-300 hover:bg-bg-200"
+                activeTab === "form"
+                  ? "bg-accent-100 text-white"
+                  : "text-secondary hover:bg-surface-0"
               }`}
             >
               <SlidersHorizontal className="h-3.5 w-3.5" />
@@ -1888,7 +1882,9 @@ function SettingsEditPage() {
               type="button"
               onClick={() => setActiveTab("json")}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors last:rounded-r-md ${
-                activeTab === "json" ? "bg-accent-100 text-white" : "text-text-300 hover:bg-bg-200"
+                activeTab === "json"
+                  ? "bg-accent-100 text-white"
+                  : "text-secondary hover:bg-surface-0"
               }`}
             >
               <Code className="h-3.5 w-3.5" />
@@ -1897,7 +1893,7 @@ function SettingsEditPage() {
           </div>
           <Link
             to="/settings"
-            className="flex items-center gap-1.5 rounded-md border border-border-300/15 px-3 py-1.5 text-sm text-text-300 transition-colors hover:bg-bg-200"
+            className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0"
           >
             <X className="h-3.5 w-3.5" />
             Cancel

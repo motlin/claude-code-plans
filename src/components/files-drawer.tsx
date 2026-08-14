@@ -171,7 +171,7 @@ export function FilesDrawerToggle({
       aria-expanded={isOpen}
       title={resourceCoverageNote(unscannedRecordCount)}
       onClick={onToggle}
-      className={`${pillStyles.outline} disabled:cursor-not-allowed disabled:opacity-40 ${isOpen ? "bg-bg-200 text-text-100" : ""}`}
+      className={`${pillStyles.outline} disabled:cursor-not-allowed disabled:opacity-40 ${isOpen ? "bg-surface-0 text-primary" : ""}`}
     >
       <FilesIcon className="h-3.5 w-3.5" aria-hidden="true" />
       Files {formatResourceCount(count, unscannedRecordCount)}
@@ -197,12 +197,12 @@ interface FileRowProps {
 
 function FileRow({ file, copied, onCopy }: FileRowProps) {
   return (
-    <li className="border-b border-border-300/10 px-4 py-3 last:border-b-0">
+    <li className="border-b border-subtle px-4 py-3 last:border-b-0">
       <div className="flex items-center gap-2">
         <span
           dir="rtl"
           title={file.path}
-          className="min-w-0 flex-1 overflow-hidden whitespace-nowrap text-left font-mono text-xs text-text-200"
+          className="min-w-0 flex-1 overflow-hidden whitespace-nowrap text-left font-mono text-xs text-secondary"
         >
           <bdi>{file.path}</bdi>
         </span>
@@ -211,7 +211,7 @@ function FileRow({ file, copied, onCopy }: FileRowProps) {
           aria-label={`Copy ${file.path}`}
           title={copied ? "Copied" : "Copy absolute path"}
           onClick={() => void onCopy(file.absolutePath)}
-          className="flex size-7 shrink-0 items-center justify-center rounded text-text-500 transition-colors hover:bg-bg-300/70 hover:text-text-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
+          className="flex size-7 shrink-0 items-center justify-center rounded text-t6 transition-colors hover:bg-fill-control hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
         >
           <Copy className="size-3.5" aria-hidden="true" />
         </button>
@@ -290,15 +290,15 @@ export function FilesDrawer({
       unscannedRecordCount={unscannedRecordCount}
       onClose={onClose}
     >
-      <section className="border-b border-border-300/15 p-4" aria-labelledby="file-sources-heading">
+      <section className="border-b border-border p-4" aria-labelledby="file-sources-heading">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h3 id="file-sources-heading" className="text-xs font-semibold text-text-200">
+          <h3 id="file-sources-heading" className="text-xs font-semibold text-secondary">
             Sources
           </h3>
           <button
             type="button"
             onClick={onUnselectAllSources}
-            className="text-xs text-text-500 transition-colors hover:text-text-100"
+            className="text-xs text-t6 transition-colors hover:text-primary"
           >
             Unselect all
           </button>
@@ -307,7 +307,7 @@ export function FilesDrawer({
           {FILE_SOURCE_OPTIONS.map((option) => (
             <label
               key={option.key}
-              className="flex min-w-0 items-center gap-2 text-xs text-text-300"
+              className="flex min-w-0 items-center gap-2 text-xs text-secondary"
             >
               <input
                 type="checkbox"
@@ -323,11 +323,11 @@ export function FilesDrawer({
         </div>
       </section>
 
-      <div className="sticky top-0 z-10 border-b border-border-300/15 bg-bg-200 p-3">
+      <div className="sticky top-0 z-10 border-b border-border bg-surface-0 p-3">
         <label className="relative block">
           <span className="sr-only">Filter files</span>
           <Search
-            className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-text-500"
+            className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-t6"
             aria-hidden="true"
           />
           <input
@@ -335,13 +335,13 @@ export function FilesDrawer({
             value={searchText}
             onChange={handleSearchChange}
             placeholder="Filter files"
-            className="w-full rounded-md border border-border-300/20 bg-bg-100 py-2 pl-8 pr-3 text-xs text-text-100 outline-none placeholder:text-text-500 focus:border-accent-100/60"
+            className="w-full rounded-md border border-strong bg-surface-1 py-2 pl-8 pr-3 text-xs text-primary outline-none placeholder:text-t6 focus:border-accent-100/60"
           />
         </label>
       </div>
 
       {visibleFiles.length === 0 ? (
-        <p className="px-4 py-8 text-center text-xs text-text-500">{emptyMessage}</p>
+        <p className="px-4 py-8 text-center text-xs text-t6">{emptyMessage}</p>
       ) : (
         <ul>
           {visibleFiles.map((file) => (

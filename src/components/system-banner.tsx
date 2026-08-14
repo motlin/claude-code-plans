@@ -95,7 +95,7 @@ export function SystemBanner({
             <span className="text-danger-000">blocked continuation</span>
           )}
           {contextCount > 0 && (
-            <span className="text-text-600">
+            <span className="text-t6">
               {contextCount} context item{contextCount === 1 ? "" : "s"}
             </span>
           )}

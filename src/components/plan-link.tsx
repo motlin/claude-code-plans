@@ -35,7 +35,7 @@ export function PlanLink({ planFilePath }: { planFilePath: string }) {
       className={`inline-flex items-center gap-1 font-mono max-w-xs ${
         exists
           ? "text-accent-500 hover:underline"
-          : "text-text-500 opacity-60 underline decoration-dotted hover:decoration-solid"
+          : "text-t6 opacity-60 underline decoration-dotted hover:decoration-solid"
       }`}
       {...(exists ? {} : { "data-plan-missing": "true" })}
     >

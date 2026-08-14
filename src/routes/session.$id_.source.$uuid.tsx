@@ -85,7 +85,7 @@ function CodeBlock({ content, max = 50_000 }: { content: string; max?: number })
   const truncated = content.length > max;
   const display = truncated ? content.slice(0, max) + "\n\n... [truncated]" : content;
   return (
-    <pre className="bg-bg-100 text-text-000 text-xs font-mono whitespace-pre-wrap break-all rounded p-3 overflow-x-auto leading-relaxed">
+    <pre className="bg-surface-1 text-primary text-xs font-mono whitespace-pre-wrap break-all rounded p-3 overflow-x-auto leading-relaxed">
       {display}
     </pre>
   );
@@ -144,7 +144,7 @@ function recordTypeIcon(type: string) {
     case "system":
       return <Cpu className={`${iconClass} text-yellow-400`} />;
     default:
-      return <FileText className={`${iconClass} text-text-500`} />;
+      return <FileText className={`${iconClass} text-t6`} />;
   }
 }
 
@@ -174,15 +174,15 @@ function NeighborLink({
     : "";
 
   const inner = (
-    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded border border-border-300/15 bg-bg-200/30 hover:bg-bg-200/60 transition-colors text-xs group">
+    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded border border-border bg-surface-0/30 hover:bg-surface-0/60 transition-colors text-xs group">
       {recordTypeIcon(summary.type)}
-      <span className="font-mono text-text-300 shrink-0">L{entry.lineIndex}</span>
-      <span className="font-medium text-text-200 shrink-0">{summary.type}</span>
+      <span className="font-mono text-secondary shrink-0">L{entry.lineIndex}</span>
+      <span className="font-medium text-secondary shrink-0">{summary.type}</span>
       {entry.parseError && <AlertTriangle className="h-3 w-3 text-danger-000 shrink-0" />}
-      {toolLabel && <span className="text-text-400 font-mono truncate">{toolLabel}</span>}
-      {preview && !toolLabel && <span className="text-text-500 truncate italic">{preview}</span>}
+      {toolLabel && <span className="text-t6 font-mono truncate">{toolLabel}</span>}
+      {preview && !toolLabel && <span className="text-t6 truncate italic">{preview}</span>}
       {entry.uuid && (
-        <span className="ml-auto font-mono text-text-500 opacity-60 group-hover:opacity-100 shrink-0">
+        <span className="ml-auto font-mono text-t6 opacity-60 group-hover:opacity-100 shrink-0">
           {entry.uuid.slice(0, 8)}
         </span>
       )}
@@ -214,7 +214,7 @@ function CopyButton({ text }: { text: string }) {
           // clipboard not available
         }
       }}
-      className="text-xs px-2 py-1 rounded bg-bg-200 hover:bg-bg-300 text-text-200"
+      className="text-xs px-2 py-1 rounded bg-surface-0 hover:bg-fill-control text-secondary"
     >
       {copied ? "Copied" : "Copy"}
     </button>
@@ -228,8 +228,8 @@ function SourceViewPage() {
   if (!data) {
     return (
       <div className="mx-auto max-w-3xl p-6">
-        <h1 className="text-lg font-medium text-text-100 mb-2">Source not found</h1>
-        <p className="text-sm text-text-500">
+        <h1 className="text-lg font-medium text-primary mb-2">Source not found</h1>
+        <p className="text-sm text-t6">
           No JSONL entry with uuid {params.uuid} in session {params.id}.
         </p>
         <Link
@@ -276,14 +276,14 @@ function SourceViewPage() {
         >
           ← {sessionTitle}
         </Link>
-        <h1 className="text-lg font-medium text-text-100 mt-1">
+        <h1 className="text-lg font-medium text-primary mt-1">
           JSONL source · line {rawWindow.focal.lineIndex} · {params.uuid}
         </h1>
       </div>
 
       <section>
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-medium text-text-200">Focal raw JSONL</h2>
+          <h2 className="text-sm font-medium text-secondary">Focal raw JSONL</h2>
           <CopyButton text={focalRaw} />
         </div>
         {focalParsed !== undefined ? (
@@ -296,7 +296,7 @@ function SourceViewPage() {
       {paired && (
         <section>
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-medium text-text-200">
+            <h2 className="text-sm font-medium text-secondary">
               Paired tool_result · line {paired.resultLineIndex}
             </h2>
             {paired.resultEntry.uuid && (
@@ -319,11 +319,11 @@ function SourceViewPage() {
       )}
 
       <section>
-        <h2 className="text-sm font-medium text-text-200 mb-2">
+        <h2 className="text-sm font-medium text-secondary mb-2">
           Parsed MessageContent block{parsedBlocksCount === 1 ? "" : "s"} ({parsedBlocksCount})
         </h2>
         {parsedBlocksCount === 0 ? (
-          <p className="text-xs text-text-500 italic">
+          <p className="text-xs text-t6 italic">
             No parsed block — this entry was skipped by the parser (e.g. system,
             file-history-snapshot).
           </p>
@@ -335,12 +335,12 @@ function SourceViewPage() {
       </section>
 
       <section>
-        <h2 className="text-sm font-medium text-text-200 mb-2">
+        <h2 className="text-sm font-medium text-secondary mb-2">
           Before ({rawWindow.before.length} line
           {rawWindow.before.length === 1 ? "" : "s"})
         </h2>
         {rawWindow.before.length === 0 ? (
-          <p className="text-xs text-text-500 italic">No preceding lines.</p>
+          <p className="text-xs text-t6 italic">No preceding lines.</p>
         ) : (
           rawWindow.before.map((entry) => (
             <NeighborLink key={entry.lineIndex} entry={entry} sessionId={params.id} />
@@ -349,12 +349,12 @@ function SourceViewPage() {
       </section>
 
       <section>
-        <h2 className="text-sm font-medium text-text-200 mb-2">
+        <h2 className="text-sm font-medium text-secondary mb-2">
           After ({rawWindow.after.length} line
           {rawWindow.after.length === 1 ? "" : "s"})
         </h2>
         {rawWindow.after.length === 0 ? (
-          <p className="text-xs text-text-500 italic">No following lines.</p>
+          <p className="text-xs text-t6 italic">No following lines.</p>
         ) : (
           rawWindow.after.map((entry) => (
             <NeighborLink key={entry.lineIndex} entry={entry} sessionId={params.id} />

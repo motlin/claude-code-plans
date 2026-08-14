@@ -219,7 +219,7 @@ export function FileSearchResults({
     <section aria-label="File content search" className="mt-4">
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-500" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-t6" />
           <input
             ref={inputRef}
             aria-label="Search file contents"
@@ -232,21 +232,21 @@ export function FileSearchResults({
             }}
             onKeyDown={handleInputKeyDown}
             placeholder="Search file contents..."
-            className="w-full rounded-md border border-border-300/15 bg-transparent py-2 pl-9 pr-3 text-sm outline-none focus:ring-1 focus:ring-accent-100"
+            className="w-full rounded-md border border-border bg-transparent py-2 pl-9 pr-3 text-sm outline-none focus:ring-1 focus:ring-accent-100"
           />
         </div>
         <button
           type="button"
           aria-label="Close file search"
           onClick={onClose}
-          className="rounded-md p-2 text-text-500 hover:bg-bg-200 hover:text-text-100"
+          className="rounded-md p-2 text-t6 hover:bg-surface-0 hover:text-primary"
         >
           <X className="h-4 w-4" />
         </button>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-        <label htmlFor="file-search-root" className="text-text-500">
+        <label htmlFor="file-search-root" className="text-t6">
           Root
         </label>
         <select
@@ -255,7 +255,7 @@ export function FileSearchResults({
           disabled={rootsQuery.isPending || rootsQuery.isError}
           value={activeRoot ?? ""}
           onChange={(event) => selectRoot(event.target.value)}
-          className="max-w-full rounded-md border border-border-300/15 bg-bg-100 px-2 py-1 text-text-100"
+          className="max-w-full rounded-md border border-border bg-surface-1 px-2 py-1 text-primary"
         >
           {rootsQuery.isPending ? <option value="">Loading roots...</option> : null}
           {rootsQuery.isError ? <option value="">Unable to load roots</option> : null}
@@ -266,14 +266,14 @@ export function FileSearchResults({
           ))}
         </select>
         {activeRoot && scope ? (
-          <nav aria-label="Search scope" className="flex min-w-0 items-center gap-1 text-text-500">
+          <nav aria-label="Search scope" className="flex min-w-0 items-center gap-1 text-t6">
             {scopeSegments(activeRoot, scope).map((segment, index) => (
               <Fragment key={segment.path}>
                 {index > 0 ? <ChevronRight className="h-3 w-3 shrink-0" /> : null}
                 <button
                   type="button"
                   onClick={() => selectScope(segment.path)}
-                  className="max-w-40 truncate rounded px-1 py-0.5 hover:bg-bg-200 hover:text-text-100"
+                  className="max-w-40 truncate rounded px-1 py-0.5 hover:bg-surface-0 hover:text-primary"
                   title={segment.path}
                 >
                   {segment.label}
@@ -285,21 +285,16 @@ export function FileSearchResults({
       </div>
 
       {rootsQuery.data?.roots.length === 0 ? (
-        <p className="mt-8 text-center text-sm text-text-500">
+        <p className="mt-8 text-center text-sm text-t6">
           <a className="text-accent-100 hover:underline" href="/settings/edit">
             Add at least one <code>file_roots</code> directory to the app config
           </a>{" "}
           to search files.
         </p>
       ) : query.trim().length < MINIMUM_QUERY_LENGTH ? (
-        <p className="mt-8 text-center text-sm text-text-500">
-          Type at least 2 characters to search.
-        </p>
+        <p className="mt-8 text-center text-sm text-t6">Type at least 2 characters to search.</p>
       ) : searchQuery.isFetching && result === undefined ? (
-        <div
-          className="mt-8 flex items-center justify-center gap-2 text-sm text-text-500"
-          role="status"
-        >
+        <div className="mt-8 flex items-center justify-center gap-2 text-sm text-t6" role="status">
           <LoaderCircle className="h-4 w-4 animate-spin" /> Searching files...
         </div>
       ) : searchQuery.isError ? (
@@ -307,7 +302,7 @@ export function FileSearchResults({
           File search failed. Try again.
         </p>
       ) : result && result.files.length === 0 ? (
-        <p className="mt-8 text-center text-sm text-text-500">
+        <p className="mt-8 text-center text-sm text-t6">
           No file matches for &ldquo;{debouncedQuery}&rdquo;.
         </p>
       ) : result ? (
@@ -368,7 +363,7 @@ function ResultCards({
 }: ResultCardsProps) {
   return (
     <>
-      <p className="mt-4 text-xs text-text-500">
+      <p className="mt-4 text-xs text-t6">
         {formatCount(result.totalResults, "match", "matches")} in{" "}
         {formatCount(result.totalFiles, "file")}
         {result.isTruncated ? " (showing capped results)" : ""}
@@ -384,10 +379,7 @@ function ResultCards({
           );
           const firstLineNumber = file.matches[0]?.lineNumber ?? 1;
           return (
-            <li
-              key={file.path}
-              className="relative rounded-lg border border-border-300/15 bg-bg-100"
-            >
+            <li key={file.path} className="relative rounded-lg border border-border bg-surface-1">
               <button
                 ref={registerResult(file.path)}
                 type="button"
@@ -402,24 +394,24 @@ function ResultCards({
                   const lineNumber = Number(lineElement?.dataset["lineNumber"] ?? firstLineNumber);
                   onOpen(file.path, lineNumber);
                 }}
-                className="block w-full rounded-lg p-3 text-left transition-colors hover:bg-bg-200/50 focus:outline-none focus:ring-1 focus:ring-accent-100"
+                className="block w-full rounded-lg p-3 text-left transition-colors hover:bg-surface-0/50 focus:outline-none focus:ring-1 focus:ring-accent-100"
               >
                 <span className="flex items-start justify-between gap-3 pr-8">
                   <span className="min-w-0">
-                    <span className="block truncate text-xs text-text-500 [&_mark]:bg-warning-100/30 [&_mark]:text-text-100">
+                    <span className="block truncate text-xs text-t6 [&_mark]:bg-warning-100/30 [&_mark]:text-primary">
                       {highlightedText(directory, query)}
                     </span>
-                    <strong className="block truncate text-sm font-semibold text-text-100 [&_mark]:bg-warning-100/30">
+                    <strong className="block truncate text-sm font-semibold text-primary [&_mark]:bg-warning-100/30">
                       {highlightedText(pathBasename(file.path), query)}
                     </strong>
                   </span>
-                  <span className="shrink-0 text-xs text-text-500">
+                  <span className="shrink-0 text-xs text-t6">
                     {file.matchCount} {file.matchCount === 1 ? "match" : "matches"}
                   </span>
                 </span>
                 <span className="mt-2 block space-y-1">
                   {shownMatches.length === 0 ? (
-                    <span data-line-number="1" className="block text-xs text-text-500">
+                    <span data-line-number="1" className="block text-xs text-t6">
                       Filename or directory match · open at line 1
                     </span>
                   ) : (
@@ -427,13 +419,11 @@ function ResultCards({
                       <span
                         key={`${file.path}:${match.lineNumber}`}
                         data-line-number={match.lineNumber}
-                        className="grid grid-cols-[3rem_minmax(0,1fr)] gap-2 rounded px-1 py-0.5 text-xs hover:bg-bg-300/40"
+                        className="grid grid-cols-[3rem_minmax(0,1fr)] gap-2 rounded px-1 py-0.5 text-xs hover:bg-fill-ghost-hover"
                       >
-                        <span className="text-right font-mono text-text-500">
-                          {match.lineNumber}
-                        </span>
+                        <span className="text-right font-mono text-t6">{match.lineNumber}</span>
                         <span
-                          className="truncate text-text-300 [&_mark]:rounded-sm [&_mark]:bg-warning-100/30 [&_mark]:px-0.5 [&_mark]:text-text-100"
+                          className="truncate text-secondary [&_mark]:rounded-sm [&_mark]:bg-warning-100/30 [&_mark]:px-0.5 [&_mark]:text-primary"
                           dangerouslySetInnerHTML={{ __html: match.snippet }}
                         />
                       </span>
@@ -447,7 +437,7 @@ function ResultCards({
                   aria-label={`Search within ${directory}`}
                   title="Search within this directory"
                   onClick={() => onScopeChange(directory)}
-                  className="absolute right-2 top-2 rounded p-1 text-text-500 hover:bg-bg-300/50 hover:text-text-100"
+                  className="absolute right-2 top-2 rounded p-1 text-t6 hover:bg-fill-ghost-hover hover:text-primary"
                 >
                   <FolderSearch className="h-3.5 w-3.5" />
                 </button>
@@ -457,7 +447,7 @@ function ResultCards({
                   type="button"
                   aria-expanded={expanded}
                   onClick={() => onExpand(file.path)}
-                  className="mx-3 mb-2 flex items-center gap-1 rounded px-1 py-0.5 text-xs text-accent-100 hover:bg-bg-200"
+                  className="mx-3 mb-2 flex items-center gap-1 rounded px-1 py-0.5 text-xs text-accent-100 hover:bg-surface-0"
                 >
                   {expanded ? (
                     <ChevronDown className="h-3 w-3" />

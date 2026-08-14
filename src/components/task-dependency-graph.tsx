@@ -150,7 +150,7 @@ export function TaskDependencyGraph({ groups }: { groups: TaskGraphGroup[] }) {
   const handleMouseLeave = useCallback(() => setHoveredId(null), []);
 
   if (allTasks.length === 0) {
-    return <p className="mt-4 text-text-500">No tasks to display.</p>;
+    return <p className="mt-4 text-t6">No tasks to display.</p>;
   }
 
   const edgeColor = isDark ? "#4b5563" : "#d1d5db";
@@ -159,7 +159,7 @@ export function TaskDependencyGraph({ groups }: { groups: TaskGraphGroup[] }) {
   const arrowHighlightId = "dep-arrow-hl";
 
   return (
-    <div className="mt-4 overflow-auto rounded-lg border border-border-300/30">
+    <div className="mt-4 overflow-auto rounded-lg border border-strong">
       <svg width={width} height={height} className="block">
         <defs>
           <marker

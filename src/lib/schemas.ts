@@ -954,13 +954,35 @@ export const TaskFileSchema = z
 // Claude Code Settings (~/.claude/settings.json, settings.local.json)
 // ---------------------------------------------------------------------------
 
-const HookEntrySchema = z
-  .object({
-    type: z.literal("command"),
-    command: z.string(),
-    timeout: z.number().optional(),
-  })
-  .strict();
+const HookCommonFields = {
+  if: z.string().optional(),
+  timeout: z.number().optional(),
+  statusMessage: z.string().optional(),
+  once: z.boolean().optional(),
+};
+
+const HookEntrySchema = z.discriminatedUnion("type", [
+  z
+    .object({
+      type: z.literal("command"),
+      command: z.string(),
+      args: z.array(z.string()).optional(),
+      async: z.boolean().optional(),
+      asyncRewake: z.boolean().optional(),
+      shell: z.enum(["bash", "powershell"]).optional(),
+      ...HookCommonFields,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("http"),
+      url: z.string(),
+      headers: z.record(z.string(), z.string()).optional(),
+      allowedEnvVars: z.array(z.string()).optional(),
+      ...HookCommonFields,
+    })
+    .strict(),
+]);
 
 const HookMatcherSchema = z
   .object({
@@ -987,6 +1009,8 @@ const StatusLineSchema = z
     type: z.string().optional(),
     command: z.string().optional(),
     padding: z.number().optional(),
+    refreshInterval: z.number().min(1).optional(),
+    hideVimModeIndicator: z.boolean().optional(),
   })
   .strict();
 

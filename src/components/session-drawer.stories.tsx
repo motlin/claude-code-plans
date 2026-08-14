@@ -18,16 +18,16 @@ function ResizableNonModalExample(arguments_: Story["args"]) {
   const [isOpen, setIsOpen] = useState(true);
 
   return (
-    <main className="min-h-screen bg-bg-000 p-8 text-text-100">
+    <main className="min-h-screen bg-surface-2 p-8 text-primary">
       <div className="max-w-md space-y-4">
         <h1 className="text-xl font-semibold">Transcript behind the drawer</h1>
-        <p className="text-sm text-text-400">
+        <p className="text-sm text-t6">
           This content remains clickable and scrollable while the drawer is open.
         </p>
         <button
           type="button"
           onClick={() => setBackgroundClicks((clicks) => clicks + 1)}
-          className="rounded-md border border-border-300/15 bg-bg-200 px-3 py-2 text-sm"
+          className="rounded-md border border-border bg-surface-0 px-3 py-2 text-sm"
         >
           Background clicks: {backgroundClicks}
         </button>
@@ -35,7 +35,7 @@ function ResizableNonModalExample(arguments_: Story["args"]) {
           <button
             type="button"
             onClick={() => setIsOpen(true)}
-            className="ml-2 rounded-md border border-border-300/15 px-3 py-2 text-sm"
+            className="ml-2 rounded-md border border-border px-3 py-2 text-sm"
           >
             Reopen drawer
           </button>
@@ -44,7 +44,7 @@ function ResizableNonModalExample(arguments_: Story["args"]) {
 
       {isOpen && (
         <SessionDrawer {...arguments_} onClose={() => setIsOpen(false)}>
-          <ol className="divide-y divide-border-300/15">
+          <ol className="divide-y divide-border">
             {Array.from({ length: 24 }, (_, index) => (
               <li key={index} className="px-4 py-3 text-sm">
                 Session resource {index + 1}

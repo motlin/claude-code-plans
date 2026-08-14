@@ -14,7 +14,7 @@ describe("markdown block layout", () => {
       "font-size": "14px",
       "font-weight": "400",
       "line-height": "20px",
-      color: "var(--text-100)",
+      color: "var(--color-primary)",
       "white-space": "normal",
     });
   });

@@ -49,7 +49,7 @@ function MemoryPage() {
           </Link>
         </DetailTopBar>
         <h1 className="mt-4 text-lg font-semibold">Memory Not Found</h1>
-        <p className="mt-2 text-text-500">This memory file could not be found.</p>
+        <p className="mt-2 text-t6">This memory file could not be found.</p>
       </div>
     );
   }
@@ -61,7 +61,7 @@ function MemoryPage() {
           <ArrowLeft className="h-3.5 w-3.5" />
           All Memories
         </Link>
-        <span className="text-xs text-text-500">{data.projectName}</span>
+        <span className="text-xs text-t6">{data.projectName}</span>
         <Link
           to="/memory/$project/$filename/edit"
           params={{ project, filename: slug }}

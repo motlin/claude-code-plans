@@ -14,7 +14,7 @@ export const Expanded: Story = {
     label: <span>Details</span>,
     defaultOpen: true,
     children: (
-      <pre className="text-xs text-text-500">
+      <pre className="text-xs text-t6">
         Line 1: some output\nLine 2: more output\nLine 3: final line
       </pre>
     ),
@@ -25,6 +25,6 @@ export const Collapsed: Story = {
   args: {
     label: <span>Hidden content</span>,
     defaultOpen: false,
-    children: <pre className="text-xs text-text-500">This content is initially hidden.</pre>,
+    children: <pre className="text-xs text-t6">This content is initially hidden.</pre>,
   },
 };

@@ -83,7 +83,7 @@ export function JumpChips({ occurrences, resourceLabel = "file" }: JumpChipsProp
                 recordIndex: occurrence.anchorIndex,
               });
             }}
-            className="inline-flex min-w-6 items-center justify-center rounded-full border border-border-300/20 bg-bg-300 px-1.5 py-0.5 text-[10px] font-medium text-text-300 transition-colors hover:border-accent-100/60 hover:text-text-100 disabled:cursor-not-allowed disabled:border-border-300/10 disabled:text-text-500 disabled:opacity-50"
+            className="inline-flex min-w-6 items-center justify-center rounded-full border border-strong bg-fill-control px-1.5 py-0.5 text-[10px] font-medium text-secondary transition-colors hover:border-accent-100/60 hover:text-primary disabled:cursor-not-allowed disabled:border-subtle disabled:text-t6 disabled:opacity-50"
           >
             {mentionNumber}
           </button>
