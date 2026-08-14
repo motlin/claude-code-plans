@@ -10,6 +10,7 @@ import {
   type SubagentTreeNode,
 } from "../lib/subagent-tree";
 import { formatDuration } from "./tool-renderers/shared";
+import { formatModelName } from "../lib/model-name";
 import { useClaudeEvents } from "../hooks/use-claude-events";
 import { mergeLiveSubagents } from "../lib/live-subagent-store";
 import { toSubagentSessionId } from "../lib/subagents";
@@ -37,10 +38,13 @@ function getShortType(agentType: string | null): string {
 export function SubagentTypeBadges({
   agentType,
   attributionAgent,
+  model,
 }: {
   agentType: string | null;
   attributionAgent: string | null;
+  model: string | null;
 }) {
+  const modelLabel = formatModelName(model);
   return (
     <>
       <span
@@ -56,6 +60,9 @@ export function SubagentTypeBadges({
           {attributionAgent}
         </span>
       )}
+      {/* The model the agent itself ran on, in the flat meta token the row's
+          other metadata uses rather than a badge of its own. */}
+      {modelLabel && <span className="shrink-0 text-[10px] text-t6">{modelLabel}</span>}
     </>
   );
 }
@@ -100,6 +107,7 @@ function TreeNode({
         <SubagentTypeBadges
           agentType={node.agent.agentType}
           attributionAgent={node.agent.attributionAgent}
+          model={node.agent.model}
         />
         <span className="min-w-0 truncate text-xs text-primary">
           {node.agent.description ?? node.agent.slug ?? node.agent.id}

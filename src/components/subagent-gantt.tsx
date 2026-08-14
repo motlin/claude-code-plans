@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Activity } from "lucide-react";
 import type { Subagent } from "../lib/subagents";
 import { formatDuration } from "./tool-renderers/shared";
+import { formatModelName } from "../lib/model-name";
 
 interface TimeRange {
   startMs: number;
@@ -191,7 +192,9 @@ export function layoutSwimlanes(agents: Subagent[]): SwimlaneLayout {
   };
 }
 
-const LABEL_COL_W = 200;
+// Wide enough for the indented type, the description, and the model name the
+// lane ends with, which is right-aligned so the models read as their own column.
+const LABEL_COL_W = 270;
 const LANE_HEIGHT = 28;
 const LANE_GAP = 6;
 const HEADER_HEIGHT = 24;
@@ -315,6 +318,7 @@ export function SubagentGantt({ agents }: { agents: Subagent[] }) {
               const widthRaw = timeAt(lane.endMs - lane.startMs, layout.totalMs, plotWidth);
               const width = Math.max(widthRaw, MIN_BAR_WIDTH);
               const color = getBarColor(lane.agent.agentType);
+              const modelLabel = formatModelName(lane.agent.model);
               const dimmed = hoveredId !== null && hoveredId !== lane.agent.id;
               return (
                 <g
@@ -344,6 +348,18 @@ export function SubagentGantt({ agents }: { agents: Subagent[] }) {
                   >
                     {truncate(lane.agent.description ?? lane.agent.slug ?? "", 14)}
                   </text>
+                  {modelLabel && (
+                    <text
+                      x={LABEL_COL_W - 8}
+                      y={y + LANE_HEIGHT / 2 + 4}
+                      fontSize={10}
+                      textAnchor="end"
+                      fill="currentColor"
+                      className="text-t6"
+                    >
+                      {truncate(modelLabel, 12)}
+                    </text>
+                  )}
 
                   <rect
                     x={LABEL_COL_W + PADDING_X}

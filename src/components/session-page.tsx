@@ -64,6 +64,7 @@ import {
 import type { SessionDetailData, SessionSubagentsData, TranscriptData } from "../lib/api/sessions";
 import { writeClipboardText } from "../lib/clipboard";
 import { countMessageRecords } from "../lib/message-count";
+import { formatModelName } from "../lib/model-name";
 import {
   getSubagentLifecycleKey,
   extractPendingSubagents,
@@ -605,6 +606,8 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
     }
   }
 
+  const modelLabel = formatModelName(data.model);
+
   return (
     <div ref={sessionViewRef}>
       {/* Sticky header: top bar + title + subagent link */}
@@ -646,6 +649,13 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
               >
                 <Bot className="h-3 w-3" />
                 {data.attributionAgent}
+              </span>
+            )}
+            {/* A subagent session names the model it ran on, which is its own
+                rather than the parent session's. */}
+            {modelLabel && (
+              <span className="inline-flex items-center rounded-full bg-surface-0 px-2 py-0.5 text-xs font-medium text-t6">
+                {modelLabel}
               </span>
             )}
             {data.teamNames?.map((team) => (

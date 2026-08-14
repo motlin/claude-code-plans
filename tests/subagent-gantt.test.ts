@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
-import { layoutSwimlanes, type SwimlaneLayout } from "../src/components/subagent-gantt";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import {
+  layoutSwimlanes,
+  SubagentGantt,
+  type SwimlaneLayout,
+} from "../src/components/subagent-gantt";
 import type { DbSubagent } from "../src/lib/db/queries";
 
 function makeAgent(overrides: Partial<DbSubagent> & { id: string }): DbSubagent {
@@ -232,5 +238,50 @@ describe("layoutSwimlanes", () => {
     expect(layout.ticks.length).toBeGreaterThanOrEqual(2);
     expect(layout.ticks[0]!.offsetMs).toBe(0);
     expect(layout.ticks[layout.ticks.length - 1]!.offsetMs).toBeLessThanOrEqual(layout.totalMs);
+  });
+});
+
+describe("SubagentGantt", () => {
+  it("names each swimlane's own model rather than its raw id", () => {
+    const html = renderToStaticMarkup(
+      createElement(SubagentGantt, {
+        agents: [
+          makeAgent({
+            id: "a",
+            model: "claude-haiku-4-5-20251001",
+            startedAt: "1999-12-31T00:00:00.000Z",
+            finishedAt: "1999-12-31T00:00:10.000Z",
+          }),
+          makeAgent({
+            id: "b",
+            model: "opus[1m]",
+            startedAt: "1999-12-31T00:00:15.000Z",
+            finishedAt: "1999-12-31T00:00:25.000Z",
+          }),
+        ],
+      }),
+    );
+
+    expect(html).toContain("Haiku 4.5");
+    expect(html).toContain("Opus");
+    expect(html).not.toContain("claude-haiku-4-5-20251001");
+    expect(html).not.toContain("opus[1m]");
+  });
+
+  it("leaves the label blank for a lane whose agent names no model", () => {
+    const html = renderToStaticMarkup(
+      createElement(SubagentGantt, {
+        agents: [
+          makeAgent({
+            id: "a",
+            model: "<synthetic>",
+            startedAt: "1999-12-31T00:00:00.000Z",
+            finishedAt: "1999-12-31T00:00:10.000Z",
+          }),
+        ],
+      }),
+    );
+
+    expect(html).not.toContain("synthetic");
   });
 });

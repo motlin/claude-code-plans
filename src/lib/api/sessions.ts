@@ -80,6 +80,8 @@ export const SessionDetailResponse = z
     viewedState: SessionViewedStateSchema,
     parentSessionId: z.string().optional(),
     attributionAgent: z.string().optional(),
+    /** Raw model id a subagent session ran on, e.g. `claude-haiku-4-5-20251001`. */
+    model: z.string().optional(),
     entrypoint: z.string().optional(),
     sessionKind: z.string().optional(),
     teamNames: z.array(z.string()).optional(),

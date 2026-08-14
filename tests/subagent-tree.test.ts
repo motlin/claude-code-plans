@@ -59,12 +59,46 @@ describe("SubagentTypeBadges", () => {
       createElement(SubagentTypeBadges, {
         agentType: "Explore",
         attributionAgent: "markdown-tasks:do-task",
+        model: null,
       }),
     );
 
     expect(html).toContain("Explore");
     expect(html).toContain("markdown-tasks:do-task");
     expect(html).toContain('title="Transcript attribution agent"');
+  });
+
+  it("names the model the agent ran on rather than its raw id", () => {
+    const html = renderToStaticMarkup(
+      createElement(SubagentTypeBadges, {
+        agentType: "Explore",
+        attributionAgent: null,
+        model: "claude-haiku-4-5-20251001",
+      }),
+    );
+
+    expect(html).toContain("Haiku 4.5");
+    expect(html).not.toContain("claude-haiku-4-5-20251001");
+  });
+
+  it("shows no model when the record names none", () => {
+    const synthetic = renderToStaticMarkup(
+      createElement(SubagentTypeBadges, {
+        agentType: "Explore",
+        attributionAgent: null,
+        model: "<synthetic>",
+      }),
+    );
+    const missing = renderToStaticMarkup(
+      createElement(SubagentTypeBadges, {
+        agentType: "Explore",
+        attributionAgent: null,
+        model: null,
+      }),
+    );
+
+    expect(synthetic).toStrictEqual(missing);
+    expect(missing).not.toContain("text-t6");
   });
 });
 
