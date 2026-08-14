@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import { resolveProjectName } from "./memory";
 import { getActiveSessionEntries } from "./active-session-store";
 import { ACTIVE_SESSION_WINDOW_MS } from "./active-session-window";
-import { getPendingApprovals } from "./db/pending-approvals-cache";
+import { getPendingApprovals, revalidatePendingApprovals } from "./db/pending-approvals-cache";
 import { getDb } from "./db";
 import { getSessionTitlesByIds } from "./db/queries";
 import type { ActivityState } from "./session-state";
@@ -56,6 +56,8 @@ export async function scanActiveSessions(
     });
   }
 
+  // Heal entries the watcher never got an event for before reading them.
+  await revalidatePendingApprovals(getDb().index);
   const approvals = new Map(
     getPendingApprovals().map((approval) => [approval.sessionId, approval] as const),
   );

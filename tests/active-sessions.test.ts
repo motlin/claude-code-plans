@@ -62,6 +62,7 @@ async function loadModules() {
   });
   vi.doMock("../src/lib/db/pending-approvals-cache", () => ({
     getPendingApprovals: () => pendingApprovals,
+    revalidatePendingApprovals: async (): Promise<void> => {},
   }));
   const scanMod = await import("../src/lib/active-sessions");
   const storeMod = await import("../src/lib/active-session-store");

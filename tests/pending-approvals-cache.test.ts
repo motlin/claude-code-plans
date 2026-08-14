@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, unlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openTestDb, type AppDb } from "../src/lib/db/connection";
@@ -340,6 +340,114 @@ describe("pending-approvals-cache", () => {
     expect(
       broadcastSpy.mock.calls.filter((c) => c[0] === DOMAIN_EVENTS.APPROVAL_RESOLVED),
     ).toHaveLength(0);
+  });
+
+  /** Push a file's mtime forward so a rewrite is unambiguously newer than the cached stat. */
+  function touchAhead(filePath: string, secondsAhead: number): void {
+    const when = new Date(Date.now() + secondsAhead * 1000);
+    utimesSync(filePath, when, when);
+  }
+
+  function blockedJsonl(sessionId: string): string {
+    return jsonl({
+      type: "assistant",
+      sessionId,
+      timestamp: "2026-05-14T16:00:00.000Z",
+      message: {
+        role: "assistant",
+        content: [
+          {
+            type: "tool_use",
+            id: "toolu_missed",
+            name: "AskUserQuestion",
+            input: { question: "Continue?" },
+          },
+        ],
+      },
+    });
+  }
+
+  function answeredJsonl(sessionId: string): string {
+    return (
+      blockedJsonl(sessionId) +
+      jsonl({
+        type: "user",
+        sessionId,
+        timestamp: "2026-05-14T16:01:00.000Z",
+        message: {
+          role: "user",
+          content: [{ type: "tool_result", tool_use_id: "toolu_missed", content: "yes" }],
+        },
+      })
+    );
+  }
+
+  it("revalidatePendingApprovals drops an approval answered on disk when no watcher event arrived", async () => {
+    seedProject();
+
+    const sessionId = "sess-missed-event";
+    const filePath = writeJsonl(`${sessionId}.jsonl`, blockedJsonl(sessionId));
+    seedSession(sessionId, filePath);
+
+    const { initPendingApprovalsCache, getPendingApprovals, revalidatePendingApprovals } =
+      await import("../src/lib/db/pending-approvals-cache");
+
+    await initPendingApprovalsCache(db.index);
+    expect(getPendingApprovals().map((approval) => approval.sessionId)).toStrictEqual([sessionId]);
+    broadcastSpy.mockReset();
+
+    // The answer lands on disk but the watcher never fires updatePendingApprovalForSession.
+    writeFileSync(filePath, answeredJsonl(sessionId));
+    touchAhead(filePath, 2);
+
+    await revalidatePendingApprovals(db.index);
+
+    expect(getPendingApprovals()).toStrictEqual([]);
+    expect(
+      broadcastSpy.mock.calls.filter((call) => call[0] === DOMAIN_EVENTS.APPROVAL_RESOLVED),
+    ).toStrictEqual([[DOMAIN_EVENTS.APPROVAL_RESOLVED, { sessionId }]]);
+  });
+
+  it("revalidatePendingApprovals keeps an untouched approval and rescans nothing", async () => {
+    seedProject();
+
+    const sessionId = "sess-untouched";
+    const filePath = writeJsonl(`${sessionId}.jsonl`, blockedJsonl(sessionId));
+    seedSession(sessionId, filePath);
+
+    const { initPendingApprovalsCache, getPendingApprovals, revalidatePendingApprovals } =
+      await import("../src/lib/db/pending-approvals-cache");
+
+    await initPendingApprovalsCache(db.index);
+    broadcastSpy.mockReset();
+
+    await revalidatePendingApprovals(db.index);
+
+    expect(getPendingApprovals().map((approval) => approval.sessionId)).toStrictEqual([sessionId]);
+    expect(broadcastSpy.mock.calls).toStrictEqual([]);
+  });
+
+  it("revalidatePendingApprovals drops an approval whose session file was deleted", async () => {
+    seedProject();
+
+    const sessionId = "sess-deleted";
+    const filePath = writeJsonl(`${sessionId}.jsonl`, blockedJsonl(sessionId));
+    seedSession(sessionId, filePath);
+
+    const { initPendingApprovalsCache, getPendingApprovals, revalidatePendingApprovals } =
+      await import("../src/lib/db/pending-approvals-cache");
+
+    await initPendingApprovalsCache(db.index);
+    broadcastSpy.mockReset();
+
+    unlinkSync(filePath);
+
+    await revalidatePendingApprovals(db.index);
+
+    expect(getPendingApprovals()).toStrictEqual([]);
+    expect(
+      broadcastSpy.mock.calls.filter((call) => call[0] === DOMAIN_EVENTS.APPROVAL_RESOLVED),
+    ).toStrictEqual([[DOMAIN_EVENTS.APPROVAL_RESOLVED, { sessionId }]]);
   });
 
   it("excludes an ended session when a delayed transcript scan still finds its approval", async () => {
