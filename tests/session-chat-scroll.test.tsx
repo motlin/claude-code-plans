@@ -3,6 +3,7 @@
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { SessionChat } from "../src/components/session-chat";
+import { jumpToMessage } from "../src/lib/jump-to-message";
 import type { SessionLine } from "../src/lib/sessions";
 
 vi.mock("../src/components/settings-provider", () => ({
@@ -23,14 +24,19 @@ class FakeResizeObserver {
   static instances: FakeResizeObserver[] = [];
 
   readonly callback: ResizeObserverCallback;
+  readonly observedElements = new Set<Element>();
 
   constructor(callback: ResizeObserverCallback) {
     this.callback = callback;
     FakeResizeObserver.instances.push(this);
   }
 
-  observe() {}
-  unobserve() {}
+  observe(element: Element) {
+    this.observedElements.add(element);
+  }
+  unobserve(element: Element) {
+    this.observedElements.delete(element);
+  }
   disconnect() {}
   takeRecords() {
     return [];
@@ -58,6 +64,22 @@ function flushAnimationFrames() {
     const pendingFrames = animationFrames.splice(0);
     for (const callback of pendingFrames) callback(0);
   }
+}
+
+function observerFor(element: Element): FakeResizeObserver {
+  const observer = FakeResizeObserver.instances.find((candidate) =>
+    candidate.observedElements.has(element),
+  );
+  if (!observer) throw new Error("No resize observer watches the session chat container.");
+  return observer;
+}
+
+function followObserverCount(): number {
+  return FakeResizeObserver.instances.filter((observer) =>
+    [...observer.observedElements].some((element) =>
+      element.querySelector("[data-testid='virtualized-transcript']"),
+    ),
+  ).length;
 }
 
 beforeEach(() => {
@@ -100,6 +122,43 @@ afterEach(() => {
 });
 
 describe("SessionChat initial scrolling", () => {
+  it("mounts a viewport-sized turn window and reveals an unmounted jump target", () => {
+    const view = render(
+      <SessionChat
+        sessionId="session-100"
+        shouldScrollToEnd={false}
+        lines={messages(100)}
+        toolResultMap={new Map()}
+      />,
+    );
+    const spacers = [...view.container.querySelectorAll<HTMLElement>("[data-transcript-spacer]")];
+    const initialState = {
+      mountedTurns: view.container.querySelectorAll(".group\\/msg").length,
+      spacerHeights: spacers.map((spacer) => spacer.style.height),
+    };
+
+    let jumpRequested = true;
+    act(() => {
+      jumpRequested = jumpToMessage({ uuid: "message-90", recordIndex: 90 });
+    });
+
+    expect({
+      initialState,
+      mountedJumpWindowTurns: view.container.querySelectorAll(".group\\/msg").length,
+      jumpRequested,
+      spacerHeights: spacers.map((spacer) => spacer.style.height),
+    }).toStrictEqual({
+      initialState: { mountedTurns: 5, spacerHeights: ["0px", "14400px"] },
+      mountedJumpWindowTurns: 3,
+      jumpRequested: false,
+      spacerHeights: ["14080px", "960px"],
+    });
+
+    act(flushAnimationFrames);
+
+    expect(scrollIntoView.mock.calls).toStrictEqual([[{ block: "center", behavior: "smooth" }]]);
+  });
+
   it("scrolls a long session to its end once and does not follow an append after the user scrolls up", () => {
     const initialLines = messages(100);
     const view = render(
@@ -112,7 +171,7 @@ describe("SessionChat initial scrolling", () => {
     );
 
     act(flushAnimationFrames);
-    act(() => FakeResizeObserver.instances[0]!.resize());
+    act(() => observerFor(view.container.firstElementChild!).resize());
     act(flushAnimationFrames);
 
     Object.defineProperty(window, "scrollY", { configurable: true, value: 100, writable: true });
@@ -125,7 +184,7 @@ describe("SessionChat initial scrolling", () => {
         toolResultMap={new Map()}
       />,
     );
-    act(() => FakeResizeObserver.instances[0]!.resize());
+    act(() => observerFor(view.container.firstElementChild!).resize());
     act(flushAnimationFrames);
 
     expect({
@@ -151,11 +210,11 @@ describe("SessionChat initial scrolling", () => {
     act(flushAnimationFrames);
 
     expect({
-      resizeObservers: FakeResizeObserver.instances.length,
+      followObservers: followObserverCount(),
       scrollIntoViewCalls: scrollIntoView.mock.calls,
       scrollToCalls: scrollTo.mock.calls,
     }).toStrictEqual({
-      resizeObservers: 0,
+      followObservers: 0,
       scrollIntoViewCalls: [],
       scrollToCalls: [],
     });
@@ -195,10 +254,10 @@ describe("SessionChat initial scrolling", () => {
     act(flushAnimationFrames);
 
     expect({
-      resizeObservers: FakeResizeObserver.instances.length,
+      followObservers: followObserverCount(),
       scrollIntoViewCalls: scrollIntoView.mock.calls,
     }).toStrictEqual({
-      resizeObservers: 2,
+      followObservers: 2,
       scrollIntoViewCalls: [[{ block: "end" }], [{ block: "end" }]],
     });
   });

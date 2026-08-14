@@ -49,7 +49,7 @@ import {
   useSessionLinkDisplay,
 } from "./links-drawer";
 import { StatusFooter } from "./status-footer";
-import { TranscriptHistoryLoader } from "./transcript-history-loader";
+import { TranscriptHistoryLoader, findScrollContainer } from "./transcript-history-loader";
 import { useChatStream } from "../hooks/use-chat-stream";
 import { useClaudeEvents, useIsSessionActive, useStatusline } from "../hooks/use-claude-events";
 import { useSessionViewedState } from "../hooks/use-session-viewed-state";
@@ -77,38 +77,56 @@ import {
 import { processTranscript } from "../lib/transcript";
 import { markSeen } from "../lib/unread-store";
 
-function useScrollButtons() {
+const TRANSCRIPT_SCROLL_CONTAINER_CLASSES =
+  "h-full overflow-y-auto overflow-x-hidden [contain:strict] [overflow-anchor:none] [scrollbar-gutter:stable_both_edges]";
+
+function useScrollButtons(anchorRef: React.RefObject<HTMLElement | null>) {
   const [showUp, setShowUp] = useState(false);
   const [showDown, setShowDown] = useState(false);
+  const scrollerRef = useRef<Element | null>(null);
 
   useEffect(() => {
+    const scroller = findScrollContainer(anchorRef.current);
+    scrollerRef.current = scroller;
+    const addedClasses = TRANSCRIPT_SCROLL_CONTAINER_CLASSES.split(" ").filter(
+      (className) => !scroller.classList.contains(className),
+    );
+    scroller.classList.add(...addedClasses);
     function check() {
-      const scrollTop = window.scrollY;
-      const scrollHeight = document.documentElement.scrollHeight;
-      const clientHeight = window.innerHeight;
-      setShowUp(scrollTop > 300);
-      setShowDown(scrollTop + clientHeight < scrollHeight - 300);
+      setShowUp(scroller.scrollTop > 300);
+      setShowDown(scroller.scrollTop + scroller.clientHeight < scroller.scrollHeight - 300);
     }
     check();
-    window.addEventListener("scroll", check, { passive: true });
+    scroller.addEventListener("scroll", check, { passive: true });
     window.addEventListener("resize", check, { passive: true });
     return () => {
-      window.removeEventListener("scroll", check);
+      scroller.removeEventListener("scroll", check);
       window.removeEventListener("resize", check);
+      scroller.classList.remove(...addedClasses);
+      scrollerRef.current = null;
     };
+  }, [anchorRef]);
+
+  const scrollTo = useCallback((position: "start" | "end") => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    scroller.scrollTo({
+      top: position === "start" ? 0 : scroller.scrollHeight,
+      behavior: "smooth",
+    });
   }, []);
 
-  return { showUp, showDown };
+  return { showUp, showDown, scrollTo };
 }
 
-function FloatingScrollButtons() {
-  const { showUp, showDown } = useScrollButtons();
+function FloatingScrollButtons({ anchorRef }: { anchorRef: React.RefObject<HTMLElement | null> }) {
+  const { showUp, showDown, scrollTo } = useScrollButtons(anchorRef);
 
   return (
     <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-20">
       <button
         type="button"
-        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        onClick={() => scrollTo("start")}
         className="h-9 w-9 rounded-full bg-bg-200 border border-border-300/15 shadow-md flex items-center justify-center text-text-500 hover:text-text-000 hover:bg-bg-200/80 transition-all cursor-pointer"
         style={{
           opacity: showUp ? 1 : 0,
@@ -120,12 +138,7 @@ function FloatingScrollButtons() {
       </button>
       <button
         type="button"
-        onClick={() =>
-          window.scrollTo({
-            top: document.documentElement.scrollHeight,
-            behavior: "smooth",
-          })
-        }
+        onClick={() => scrollTo("end")}
         className="h-9 w-9 rounded-full bg-bg-200 border border-border-300/15 shadow-md flex items-center justify-center text-text-500 hover:text-text-000 hover:bg-bg-200/80 transition-all cursor-pointer"
         style={{
           opacity: showDown ? 1 : 0,
@@ -367,13 +380,12 @@ interface SessionViewProps {
 
 function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionViewProps) {
   const queryClient = useQueryClient();
+  const scrollAnchorRef = useRef<HTMLDivElement>(null);
   const initialScrollKey = useLocation({
     select: (location) => location.state.__TSR_key ?? location.href,
   });
   const locationHash = useLocation({ select: (location) => location.hash });
-  const restoredScrollPosition = useElementScrollRestoration({
-    getElement: () => (typeof window === "undefined" ? undefined : window),
-  });
+  const restoredScrollPosition = useElementScrollRestoration({ id: "main" });
   // Viewed positions are stored in message units (see message-count.ts) so
   // they line up with messageCount and newMessageCount on every surface. The
   // transcript is only a window over the JSONL, so the messages the server
@@ -386,6 +398,14 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
   // leaves it alone, so it stays a reliable "did new work land?" signal.
   const endIndex = transcriptEndIndex(transcript);
   const viewedState = useSessionViewedState(sessionId, currentMessageIndex);
+  const { visibilityRef } = viewedState;
+  const sessionViewRef = useCallback(
+    (element: HTMLDivElement | null) => {
+      scrollAnchorRef.current = element;
+      visibilityRef(element);
+    },
+    [visibilityRef],
+  );
   const hasUnseen = useHasUnseenWork(sessionId);
   const { settings, setSetting } = useSettings();
   const [currentHost, setCurrentHost] = useState<string | undefined>(undefined);
@@ -597,7 +617,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
   }
 
   return (
-    <div ref={viewedState.visibilityRef}>
+    <div ref={sessionViewRef}>
       {/* Sticky header: top bar + title + subagent link */}
       {!chromeHidden && (
         <div className="sticky top-0 z-10 bg-bg-000 pb-2 -mx-4 px-4 sm:-mx-8 sm:px-8 border-b border-border-300/15">
@@ -823,7 +843,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
         />
       )}
 
-      <FloatingScrollButtons />
+      <FloatingScrollButtons anchorRef={scrollAnchorRef} />
 
       <JumpTargetProvider value={jumpTargetWindow}>
         {filesDrawerState.openDrawer === "files" && sessionFiles.totalCount > 0 && (

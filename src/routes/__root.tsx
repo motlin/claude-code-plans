@@ -158,7 +158,7 @@ function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
     <>
       <div className="flex h-screen">
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((c) => !c)} />
-        <main className="flex-1 overflow-y-auto bg-bg-000">
+        <main data-scroll-restoration-id="main" className="flex-1 overflow-y-auto bg-bg-000">
           <IndexingBanner />
           <HookSchemaDriftBanner />
           {capabilities.showWorkingCopyReview && (

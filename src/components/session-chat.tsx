@@ -1,4 +1,13 @@
-import React, { Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import React, {
+  Suspense,
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   AlertTriangle,
   Bot,
@@ -60,6 +69,13 @@ import {
 } from "../lib/session-utils";
 import type { SummarySegment } from "../lib/session-utils";
 import { InlinePathImages, SESSION_IMAGE_CLASS_NAME } from "./inline-path-images";
+import { findScrollContainer } from "./transcript-history-loader";
+import {
+  jumpToMessage,
+  TRANSCRIPT_JUMP_REQUEST_EVENT,
+  type JumpTarget,
+  type TranscriptJumpRequestEvent,
+} from "../lib/jump-to-message";
 
 function getLineTimestamp(line: SessionLine): string | undefined {
   if ("timestamp" in line) return line.timestamp;
@@ -91,6 +107,25 @@ export interface SessionChatProps {
 const autoScrolledLocations = hmrPersist("autoScrolledLocations", () => new Set<string>());
 const EMPTY_IMAGE_ROOTS: readonly string[] = [];
 const END_FOLLOW_THRESHOLD_PIXELS = 32;
+
+function isDocumentScrollContainer(scroller: Element): boolean {
+  return scroller === document.documentElement || scroller === document.scrollingElement;
+}
+
+function scrollMetrics(scroller: Element): {
+  scrollTop: number;
+  scrollHeight: number;
+  clientHeight: number;
+} {
+  if (isDocumentScrollContainer(scroller)) {
+    return {
+      scrollTop: window.scrollY,
+      scrollHeight: document.documentElement.scrollHeight,
+      clientHeight: window.innerHeight,
+    };
+  }
+  return scroller;
+}
 
 function CopyToast({ visible }: { visible: boolean }) {
   return (
@@ -295,8 +330,9 @@ export const SessionChat = React.memo(function SessionChat({
     let resizeFrame: number | undefined;
 
     const updateFollowsEnd = () => {
-      const distanceFromEnd =
-        document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
+      const scroller = findScrollContainer(containerRef.current);
+      const { scrollHeight, scrollTop, clientHeight } = scrollMetrics(scroller);
+      const distanceFromEnd = scrollHeight - scrollTop - clientHeight;
       followsEnd = distanceFromEnd <= END_FOLLOW_THRESHOLD_PIXELS;
     };
 
@@ -305,13 +341,18 @@ export const SessionChat = React.memo(function SessionChat({
       resizeFrame = requestAnimationFrame(() => {
         resizeFrame = undefined;
         if (!followsEnd) return;
-        window.scrollTo({ top: document.documentElement.scrollHeight });
+        const scroller = findScrollContainer(containerRef.current);
+        const { scrollHeight } = scrollMetrics(scroller);
+        if (isDocumentScrollContainer(scroller)) window.scrollTo({ top: scrollHeight });
+        else scroller.scrollTo({ top: scrollHeight });
       });
     });
     const container = containerRef.current;
     if (!container) throw new Error("Expected the session chat container to be mounted.");
+    const scroller = findScrollContainer(container);
+    const scrollEventTarget = isDocumentScrollContainer(scroller) ? window : scroller;
     resizeObserver.observe(container);
-    window.addEventListener("scroll", updateFollowsEnd, { passive: true });
+    scrollEventTarget.addEventListener("scroll", updateFollowsEnd, { passive: true });
 
     initialFrame = requestAnimationFrame(() => {
       paintedFrame = requestAnimationFrame(() => {
@@ -325,7 +366,7 @@ export const SessionChat = React.memo(function SessionChat({
 
     return () => {
       resizeObserver.disconnect();
-      window.removeEventListener("scroll", updateFollowsEnd);
+      scrollEventTarget.removeEventListener("scroll", updateFollowsEnd);
       if (initialFrame !== undefined) cancelAnimationFrame(initialFrame);
       if (paintedFrame !== undefined) cancelAnimationFrame(paintedFrame);
       if (resizeFrame !== undefined) cancelAnimationFrame(resizeFrame);
@@ -335,6 +376,7 @@ export const SessionChat = React.memo(function SessionChat({
   return (
     <div ref={containerRef} className="mx-auto w-full max-w-3xl px-8 pt-4 pb-4 text-body">
       <SessionLineList
+        key={sessionId}
         lines={lines}
         sessionId={sessionId}
         toolResultMap={toolResultMap}
@@ -349,6 +391,7 @@ export const SessionChat = React.memo(function SessionChat({
         showSystemBanners={showSystemBanners}
         showCompactSummaries={showCompactSummaries}
         showTranscriptOnly={showTranscriptOnly}
+        shouldScrollToEnd={shouldScrollToEnd}
       />
       <div ref={endRef} />
     </div>
@@ -659,15 +702,62 @@ function isToolResultOnlyUserLine(line: SessionLine): boolean {
   return content.every((b) => b.type === "tool_result");
 }
 
-function SessionLineList({
-  lines,
-  ...renderProps
-}: LineRenderProps & {
-  lines: SessionLine[];
-}) {
-  const skipSet = useMemo(() => buildSkipSet(lines), [lines]);
+interface SessionListEntry {
+  key: string;
+  startRecordIndex: number;
+  endRecordIndex: number;
+  element: React.ReactNode;
+}
 
-  const elements: React.ReactNode[] = [];
+interface VirtualRange {
+  startIndex: number;
+  endIndex: number;
+}
+
+const ESTIMATED_TURN_HEIGHT_PIXELS = 320;
+const TRANSCRIPT_OVERSCAN_PIXELS = 320;
+const INITIAL_MOUNTED_TURN_COUNT = 8;
+
+function entryIndexAtOffset(prefixHeights: readonly number[], offset: number): number {
+  let lower = 0;
+  let upper = prefixHeights.length - 1;
+  while (lower < upper) {
+    const middle = Math.floor((lower + upper + 1) / 2);
+    if (prefixHeights[middle]! <= offset) lower = middle;
+    else upper = middle - 1;
+  }
+  return Math.min(lower, prefixHeights.length - 2);
+}
+
+function rangeForViewport(
+  prefixHeights: readonly number[],
+  viewportStart: number,
+  viewportEnd: number,
+): VirtualRange {
+  const lastEntryIndex = prefixHeights.length - 2;
+  if (lastEntryIndex < 0) return { startIndex: 0, endIndex: 0 };
+  const startOffset = Math.max(0, viewportStart - TRANSCRIPT_OVERSCAN_PIXELS);
+  const endOffset = viewportEnd + TRANSCRIPT_OVERSCAN_PIXELS;
+  return {
+    startIndex: entryIndexAtOffset(prefixHeights, startOffset),
+    endIndex: Math.min(lastEntryIndex + 1, entryIndexAtOffset(prefixHeights, endOffset) + 1),
+  };
+}
+
+function scrollerViewport(scroller: Element): { top: number; height: number } {
+  if (scroller === document.documentElement || scroller === document.scrollingElement) {
+    return { top: 0, height: window.innerHeight };
+  }
+  const rect = scroller.getBoundingClientRect();
+  return { top: rect.top, height: scroller.clientHeight || rect.height || window.innerHeight };
+}
+
+function buildSessionListEntries(
+  lines: SessionLine[],
+  renderProps: LineRenderProps,
+): SessionListEntry[] {
+  const skipSet = buildSkipSet(lines);
+  const entries: Omit<SessionListEntry, "endRecordIndex">[] = [];
   let prevVisibleType: string | null = null;
   let i = 0;
 
@@ -683,9 +773,13 @@ function SessionLineList({
     i++;
   }
   if (initIndices.length > 0) {
-    elements.push(
-      <SessionInitEntry key="session-init" lines={lines} indices={initIndices} {...renderProps} />,
-    );
+    entries.push({
+      key: "session-init",
+      startRecordIndex: lines[initIndices[0]!]!.lineIndex,
+      element: (
+        <SessionInitEntry key="session-init" lines={lines} indices={initIndices} {...renderProps} />
+      ),
+    });
     prevVisibleType = "session-init";
   }
 
@@ -723,22 +817,22 @@ function SessionLineList({
       prevVisibleType = "assistant";
 
       if (groupIndices.length === 1) {
-        elements.push(
-          <LineEntry
-            key={`line-${groupStart}`}
-            line={line}
-            nextLine={lines[groupStart + 1]}
-            {...renderProps}
-          />,
-        );
+        entries.push({
+          key: `line-${line.lineIndex}`,
+          startRecordIndex: line.lineIndex,
+          element: <LineEntry line={line} nextLine={lines[groupStart + 1]} {...renderProps} />,
+        });
       } else {
-        elements.push(
-          <GroupedToolCallEntry
-            key={`group-${groupStart}`}
-            entries={groupIndices.map((index) => lines[index]!)}
-            {...renderProps}
-          />,
-        );
+        entries.push({
+          key: `group-${line.lineIndex}`,
+          startRecordIndex: line.lineIndex,
+          element: (
+            <GroupedToolCallEntry
+              entries={groupIndices.map((index) => lines[index]!)}
+              {...renderProps}
+            />
+          ),
+        });
       }
       i = j;
       continue;
@@ -751,19 +845,213 @@ function SessionLineList({
 
     prevVisibleType = line.type;
 
-    elements.push(
-      <LineEntry
-        key={`line-${i}`}
-        line={line}
-        nextLine={lines[i + 1]}
-        {...(isBannerAfterBanner ? { className: "mt-1" } : {})}
-        {...renderProps}
-      />,
-    );
+    entries.push({
+      key: `line-${line.lineIndex}`,
+      startRecordIndex: line.lineIndex,
+      element: (
+        <LineEntry
+          line={line}
+          nextLine={lines[i + 1]}
+          {...(isBannerAfterBanner ? { className: "mt-1" } : {})}
+          {...renderProps}
+        />
+      ),
+    });
     i++;
   }
 
-  return <>{elements}</>;
+  const finalRecordIndex = lines.at(-1)?.lineIndex ?? 0;
+  return entries.map((entry, index) => ({
+    ...entry,
+    endRecordIndex: (entries[index + 1]?.startRecordIndex ?? finalRecordIndex + 1) - 1,
+  }));
+}
+
+function VirtualizedSessionEntries({
+  entries,
+  shouldScrollToEnd,
+}: {
+  entries: SessionListEntry[];
+  shouldScrollToEnd: boolean;
+}) {
+  const listRef = useRef<HTMLDivElement>(null);
+  const scrollerRef = useRef<Element | null>(null);
+  const measuredHeightsRef = useRef(new Map<string, number>());
+  const visibleAnchorIndexRef = useRef(0);
+  const pendingScrollAdjustmentRef = useRef(0);
+  const pendingJumpRef = useRef<JumpTarget | null>(null);
+  const [measuredHeights, setMeasuredHeights] = useState(measuredHeightsRef.current);
+  const [jumpVersion, setJumpVersion] = useState(0);
+  const [range, setRange] = useState<VirtualRange>(() => {
+    if (typeof window === "undefined" || entries.length <= INITIAL_MOUNTED_TURN_COUNT) {
+      return { startIndex: 0, endIndex: entries.length };
+    }
+    return shouldScrollToEnd
+      ? {
+          startIndex: entries.length - INITIAL_MOUNTED_TURN_COUNT,
+          endIndex: entries.length,
+        }
+      : { startIndex: 0, endIndex: INITIAL_MOUNTED_TURN_COUNT };
+  });
+  const prefixHeights = useMemo(() => {
+    const result = [0];
+    for (const entry of entries) {
+      const height = measuredHeights.get(entry.key) ?? ESTIMATED_TURN_HEIGHT_PIXELS;
+      result.push(result.at(-1)! + height);
+    }
+    return result;
+  }, [entries, measuredHeights]);
+
+  const updateVisibleRange = useCallback(() => {
+    const list = listRef.current;
+    const scroller = scrollerRef.current;
+    if (!list || !scroller || entries.length === 0) return;
+    const viewport = scrollerViewport(scroller);
+    const listTop = list.getBoundingClientRect().top;
+    const viewportStart = Math.max(0, viewport.top - listTop);
+    const viewportEnd = Math.max(viewportStart, viewport.top + viewport.height - listTop);
+    visibleAnchorIndexRef.current = entryIndexAtOffset(prefixHeights, viewportStart);
+    const nextRange = rangeForViewport(prefixHeights, viewportStart, viewportEnd);
+    setRange((current) =>
+      current.startIndex === nextRange.startIndex && current.endIndex === nextRange.endIndex
+        ? current
+        : nextRange,
+    );
+  }, [entries.length, prefixHeights]);
+
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const scroller = findScrollContainer(list);
+    scrollerRef.current = scroller;
+    updateVisibleRange();
+    scroller.addEventListener("scroll", updateVisibleRange, { passive: true });
+    window.addEventListener("resize", updateVisibleRange, { passive: true });
+    return () => {
+      scroller.removeEventListener("scroll", updateVisibleRange);
+      window.removeEventListener("resize", updateVisibleRange);
+      scrollerRef.current = null;
+    };
+  }, [updateVisibleRange]);
+
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    if (!list || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((observations) => {
+      let changed = false;
+      for (const observation of observations) {
+        const element = observation.target as HTMLElement;
+        const index = Number(element.dataset["transcriptEntryIndex"]);
+        const entry = entries[index];
+        if (!entry) continue;
+        const height =
+          observation.borderBoxSize[0]?.blockSize ?? element.getBoundingClientRect().height;
+        const previousHeight =
+          measuredHeightsRef.current.get(entry.key) ?? ESTIMATED_TURN_HEIGHT_PIXELS;
+        if (Math.abs(previousHeight - height) < 0.5) continue;
+        measuredHeightsRef.current.set(entry.key, height);
+        if (index < visibleAnchorIndexRef.current) {
+          pendingScrollAdjustmentRef.current += height - previousHeight;
+        }
+        changed = true;
+      }
+      if (changed) setMeasuredHeights(new Map(measuredHeightsRef.current));
+    });
+    for (const element of list.querySelectorAll<HTMLElement>("[data-transcript-entry-index]")) {
+      observer.observe(element);
+    }
+    return () => observer.disconnect();
+  }, [entries, range.startIndex, range.endIndex]);
+
+  useLayoutEffect(() => {
+    const scroller = scrollerRef.current;
+    const adjustment = pendingScrollAdjustmentRef.current;
+    pendingScrollAdjustmentRef.current = 0;
+    if (scroller && adjustment !== 0) scroller.scrollTop += adjustment;
+    updateVisibleRange();
+  }, [measuredHeights, updateVisibleRange]);
+
+  useEffect(() => {
+    function requestJump(event: Event) {
+      const target = (event as TranscriptJumpRequestEvent).detail;
+      if (target.recordIndex === undefined) return;
+      const entryIndex = entries.findIndex(
+        (entry) =>
+          entry.startRecordIndex <= target.recordIndex! &&
+          entry.endRecordIndex >= target.recordIndex!,
+      );
+      if (entryIndex < 0) return;
+      pendingJumpRef.current = target;
+      setRange({
+        startIndex: Math.max(0, entryIndex - 1),
+        endIndex: Math.min(entries.length, entryIndex + 2),
+      });
+      setJumpVersion((version) => version + 1);
+    }
+    window.addEventListener(TRANSCRIPT_JUMP_REQUEST_EVENT, requestJump);
+    return () => window.removeEventListener(TRANSCRIPT_JUMP_REQUEST_EVENT, requestJump);
+  }, [entries]);
+
+  useLayoutEffect(() => {
+    const target = pendingJumpRef.current;
+    const list = listRef.current;
+    const scroller = scrollerRef.current;
+    if (!target || !list || !scroller || target.recordIndex === undefined) return;
+    const entryIndex = entries.findIndex(
+      (entry) =>
+        entry.startRecordIndex <= target.recordIndex! &&
+        entry.endRecordIndex >= target.recordIndex!,
+    );
+    if (entryIndex < range.startIndex || entryIndex >= range.endIndex) return;
+    const viewport = scrollerViewport(scroller);
+    const listOffset = list.getBoundingClientRect().top - viewport.top + scroller.scrollTop;
+    scroller.scrollTop = Math.max(0, listOffset + prefixHeights[entryIndex]! - viewport.height / 2);
+    const frame = requestAnimationFrame(() => {
+      pendingJumpRef.current = null;
+      jumpToMessage(target);
+      updateVisibleRange();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [entries, jumpVersion, prefixHeights, range.endIndex, range.startIndex, updateVisibleRange]);
+
+  const startIndex = Math.min(range.startIndex, entries.length);
+  const endIndex = Math.max(startIndex, Math.min(range.endIndex, entries.length));
+  const totalHeight = prefixHeights.at(-1) ?? 0;
+
+  return (
+    <div ref={listRef} data-testid="virtualized-transcript">
+      <div
+        aria-hidden="true"
+        data-transcript-spacer="before"
+        style={{ height: prefixHeights[startIndex] }}
+      />
+      {entries.slice(startIndex, endIndex).map((entry, offset) => {
+        const index = startIndex + offset;
+        return (
+          <div key={entry.key} data-transcript-entry-index={index}>
+            {entry.element}
+          </div>
+        );
+      })}
+      <div
+        aria-hidden="true"
+        data-transcript-spacer="after"
+        style={{ height: totalHeight - prefixHeights[endIndex]! }}
+      />
+    </div>
+  );
+}
+
+function SessionLineList({
+  lines,
+  shouldScrollToEnd,
+  ...renderProps
+}: LineRenderProps & {
+  lines: SessionLine[];
+  shouldScrollToEnd: boolean;
+}) {
+  const entries = buildSessionListEntries(lines, renderProps);
+  return <VirtualizedSessionEntries entries={entries} shouldScrollToEnd={shouldScrollToEnd} />;
 }
 
 const HOOK_WARNING_SUBTYPES = new Set(["hook_non_blocking_error", "hook_additional_context"]);

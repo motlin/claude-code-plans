@@ -18,6 +18,12 @@ export interface JumpTarget {
   recordIndex?: number;
 }
 
+export const TRANSCRIPT_JUMP_REQUEST_EVENT = "transcript-jump-request";
+
+export interface TranscriptJumpRequestEvent extends CustomEvent<JumpTarget> {
+  type: typeof TRANSCRIPT_JUMP_REQUEST_EVENT;
+}
+
 function flash(element: Element): true {
   element.scrollIntoView({ block: "center", behavior: "smooth" });
   element.classList.add("message-highlight");
@@ -52,6 +58,10 @@ export function jumpToMessage(target: JumpTarget): boolean {
     const element = document.querySelector(`[data-record-index="${candidateIndex}"]`);
     if (element) return flash(element);
   }
+
+  window.dispatchEvent(
+    new CustomEvent<JumpTarget>(TRANSCRIPT_JUMP_REQUEST_EVENT, { detail: target }),
+  );
 
   return false;
 }
