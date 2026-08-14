@@ -2,8 +2,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { fetchEarlierTranscript } from "../lib/api/sessions";
 import { assertNever } from "../lib/assert-never";
+import type { JumpTarget } from "../lib/jump-to-message";
 import { jumpToMessage } from "../lib/jump-to-message";
-import type { MessageAnchor } from "../lib/message-anchor";
 import { messageAnchorAction, parseMessageAnchor } from "../lib/message-anchor";
 
 /**
@@ -31,9 +31,9 @@ export function useMessageAnchorDeepLink(
   const jumpedToRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    const anchor = parseMessageAnchor(hash);
-    if (anchor === undefined) return;
-    const action = messageAnchorAction(anchor, {
+    const uuid = parseMessageAnchor(hash);
+    if (uuid === undefined) return;
+    const action = messageAnchorAction(uuid, {
       startIndex: windowStartIndex,
       uuids: uuidToLine,
     });
@@ -48,7 +48,10 @@ export function useMessageAnchorDeepLink(
         // the reader straight back to the link they arrived on.
         if (jumpedToRef.current === hash) return;
         jumpedToRef.current = hash;
-        const target = resolveAnchor(anchor, uuidToLine);
+        // Pair the uuid with its record index, so a message swallowed by a
+        // collapsed row is still reachable from the row that swallowed it.
+        const recordIndex = uuidToLine.get(uuid);
+        const target: JumpTarget = recordIndex === undefined ? { uuid } : { uuid, recordIndex };
         // One frame late so the scroll measures the transcript React has just
         // committed rather than the layout it is replacing.
         const frame = requestAnimationFrame(() => jumpToMessage(target));
@@ -66,14 +69,4 @@ export function useMessageAnchorDeepLink(
         return assertNever(action);
     }
   }, [hash, windowStartIndex, uuidToLine, sessionId, queryClient]);
-}
-
-/** Pair the anchored uuid with its record index, so a swallowed row is still reachable. */
-function resolveAnchor(
-  anchor: MessageAnchor,
-  uuidToLine: ReadonlyMap<string, number>,
-): MessageAnchor {
-  if (anchor.uuid === undefined) return anchor;
-  const recordIndex = uuidToLine.get(anchor.uuid);
-  return recordIndex === undefined ? { uuid: anchor.uuid } : { uuid: anchor.uuid, recordIndex };
 }

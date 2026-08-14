@@ -116,16 +116,13 @@ describe("useMessageAnchorDeepLink", () => {
     ]);
   });
 
-  it("resolves a legacy record-index link against the window boundary", () => {
-    const { rerender } = renderDeepLink("#msg-1200", { startIndex: 1_500, uuidToLine: NOT_HELD });
+  it("leaves an all-digit hash alone rather than scrolling to whatever record it numbers", () => {
+    renderDeepLink("#msg-1200", { startIndex: 1_500, uuidToLine: NOT_HELD });
 
-    const afterFirstRender = vi.mocked(fetchEarlierTranscript).mock.calls.length;
-    rerender({ startIndex: 1_100, uuidToLine: NOT_HELD });
-
-    expect({ afterFirstRender, jumps: vi.mocked(jumpToMessage).mock.calls }).toStrictEqual({
-      afterFirstRender: 1,
-      jumps: [[{ recordIndex: 1_200 }]],
-    });
+    expect({
+      jumps: vi.mocked(jumpToMessage).mock.calls.length,
+      fetches: vi.mocked(fetchEarlierTranscript).mock.calls.length,
+    }).toStrictEqual({ jumps: 0, fetches: 0 });
   });
 
   it("leaves a hash that is not a message anchor alone", () => {

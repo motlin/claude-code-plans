@@ -318,7 +318,7 @@ export const transcriptQueryOptions = (id: string) =>
 /**
  * Pages already on the wire, keyed by session and by the window edge they were
  * asked for. Two independent readers page backwards -- the scroll sentinel at
- * the top of the transcript and a `#msg-<n>` deep link walking towards its
+ * the top of the transcript and a `#msg-<uuid>` deep link walking towards its
  * record -- and they read the same window, so without this they would both ask
  * for the same page at the same time. Held per QueryClient so one client's
  * request is never handed to another's cache.

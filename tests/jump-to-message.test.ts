@@ -52,7 +52,7 @@ describe("jumpToMessage", () => {
     expect(element.className).toBe("message-highlight");
   });
 
-  it("resolves a legacy record-index anchor with no uuid at all", () => {
+  it("finds the row from a record index alone, for a mention whose record carries no uuid", () => {
     const { element } = addMessageAnchor("u-100", 100);
 
     expect(jumpToMessage({ recordIndex: 100 })).toBe(true);

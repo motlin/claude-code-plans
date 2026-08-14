@@ -130,13 +130,13 @@ describe("SessionChat message anchors", () => {
     ).toStrictEqual(["2", "3"]);
   });
 
-  it("falls back to the record index for a record that carries no uuid", () => {
+  it("anchors a record that carries no uuid on an id no bare-number link can name", () => {
     const container = renderWindow(
       [{ type: "user", message: { role: "user", content: "Fabricated uuidless question" } }],
       7,
     );
 
-    expect(anchorIds(container)).toStrictEqual(["msg-7"]);
+    expect(anchorIds(container)).toStrictEqual(["msg-line-7"]);
   });
 
   it("copies the same link for a message whether or not the window has moved past it", () => {

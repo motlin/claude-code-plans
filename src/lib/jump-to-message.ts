@@ -1,8 +1,22 @@
-import type { MessageAnchor } from "./message-anchor";
 import { messageAnchorId } from "./message-anchor";
 
 const MAX_PRECEDING_INDICES = 50;
 const HIGHLIGHT_DURATION_MS = 2_000;
+
+/**
+ * How a rendered row is found -- which is not the same as how it is addressed.
+ *
+ * The anchor value finds the row directly, when the record renders one. The
+ * `recordIndex` is the fallback: a run of tool calls collapses into a single
+ * row carrying the run's first record, so the record being jumped to may render
+ * no row of its own and has to be found from the row that swallowed it.
+ */
+export interface JumpTarget {
+  /** The value the row is anchored on: the record's uuid, where it has one. */
+  uuid?: string;
+  /** Session-absolute JSONL index of the record, for the swallowed-row walk. */
+  recordIndex?: number;
+}
 
 function flash(element: Element): true {
   element.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -12,27 +26,27 @@ function flash(element: Element): true {
 }
 
 /**
- * Scroll to the turn `anchor` addresses and flash it.
+ * Scroll to the turn `target` names and flash it.
  *
- * The uuid finds the row directly. Not every record renders its own row
+ * The anchor value finds the row directly. Not every record renders its own row
  * though: a run of tool calls collapses into one row carrying the run's first
  * record, bash output folds into the command above it, and tool_result records
- * render nothing at all. So when the uuid names no row, walk backwards a
+ * render nothing at all. So when the anchor names no row, walk backwards a
  * bounded distance over the record indices the rows carry to find the row that
  * swallowed it. Returns false when nothing matched -- which is also what a deep
  * link into a record the client has not paged in yet does, and is why the
  * caller must not treat false as "close enough".
  */
-export function jumpToMessage(anchor: MessageAnchor): boolean {
-  if (anchor.uuid !== undefined) {
-    const element = document.getElementById(messageAnchorId(anchor.uuid));
+export function jumpToMessage(target: JumpTarget): boolean {
+  if (target.uuid !== undefined) {
+    const element = document.getElementById(messageAnchorId(target.uuid));
     if (element) return flash(element);
   }
 
-  if (anchor.recordIndex === undefined) return false;
+  if (target.recordIndex === undefined) return false;
 
   for (let offset = 0; offset <= MAX_PRECEDING_INDICES; offset += 1) {
-    const candidateIndex = anchor.recordIndex - offset;
+    const candidateIndex = target.recordIndex - offset;
     if (candidateIndex < 0) break;
 
     const element = document.querySelector(`[data-record-index="${candidateIndex}"]`);
