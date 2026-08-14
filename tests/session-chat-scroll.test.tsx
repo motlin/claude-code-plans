@@ -139,7 +139,7 @@ describe("SessionChat initial scrolling", () => {
 
     let jumpRequested = true;
     act(() => {
-      jumpRequested = jumpToMessage({ uuid: "message-90", recordIndex: 90 });
+      jumpRequested = jumpToMessage(90);
     });
 
     expect({

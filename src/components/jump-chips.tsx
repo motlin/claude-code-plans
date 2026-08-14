@@ -31,22 +31,22 @@ function isInWindow(occurrence: ResourceOccurrence, window: JumpTargetWindow): b
 /**
  * Why an out-of-window mention cannot be reached.
  *
- * A mention outside the loaded window is reachable through its `#msg-<uuid>`
- * deep link, which pages the history in on its way. The records that carry no
- * uuid -- permission-mode switches, pr links, worktree changes -- have no such
- * link: nothing names them but their position, and a hash naming a position
- * scrolls to whatever record sits there today. Those chips say so instead of
- * scrolling somewhere plausible and wrong.
+ * A mention outside the loaded window is reached by paging history in until its
+ * message arrives, which is recognized by uuid. The records that carry no uuid
+ * -- permission-mode switches, pr links, worktree changes -- cannot be
+ * recognized that way: nothing names them but their position, and the record
+ * sitting at a position shifts as history is paged in. Those chips say so
+ * instead of scrolling somewhere plausible and wrong.
  */
 function unreachableReason(
   occurrence: ResourceOccurrence,
   window: JumpTargetWindow,
 ): string | undefined {
   if (isInWindow(occurrence, window)) return undefined;
-  if (occurrence.anchorUuid !== undefined && window.openMessageAnchor !== undefined) {
+  if (occurrence.anchorUuid !== undefined && window.requestMessageJump !== undefined) {
     return undefined;
   }
-  return "This mention is in an earlier part of the session that cannot be linked to.";
+  return "This mention is in an earlier part of the session that cannot be reached.";
 }
 
 export function JumpChips({ occurrences, resourceLabel = "file" }: JumpChipsProps) {
@@ -72,16 +72,13 @@ export function JumpChips({ occurrences, resourceLabel = "file" }: JumpChipsProp
             title={reason ?? `Jump to mention ${mentionNumber}`}
             aria-label={`Jump to ${resourceLabel} mention ${mentionNumber}`}
             onClick={() => {
-              // Out of window: hand it to the deep link rather than to the DOM,
-              // which holds no row for a message the page has not loaded.
+              // Out of window: hand it to the paging jump rather than to the
+              // DOM, which holds no row for a message the page has not loaded.
               if (!isInWindow(occurrence, jumpWindow)) {
-                if (anchorUuid !== undefined) jumpWindow.openMessageAnchor?.(anchorUuid);
+                if (anchorUuid !== undefined) jumpWindow.requestMessageJump?.(anchorUuid);
                 return;
               }
-              jumpToMessage({
-                ...(anchorUuid === undefined ? {} : { uuid: anchorUuid }),
-                recordIndex: occurrence.anchorIndex,
-              });
+              jumpToMessage(occurrence.anchorIndex);
             }}
             className="inline-flex min-w-6 items-center justify-center rounded-full border border-strong bg-fill-control px-1.5 py-0.5 text-[10px] font-medium text-secondary transition-colors hover:border-accent-100/60 hover:text-primary disabled:cursor-not-allowed disabled:border-subtle disabled:text-t6 disabled:opacity-50"
           >

@@ -3,16 +3,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { jumpToMessage } from "../src/lib/jump-to-message";
 
-interface Anchor {
+interface Row {
   element: HTMLDivElement;
   scrollIntoView: ReturnType<typeof vi.fn>;
 }
 
-/** A rendered turn: addressed by its uuid, carrying its record index for the walk. */
-function addMessageAnchor(uuid: string | undefined, recordIndex: number): Anchor {
+/** A rendered turn, carrying the session-absolute record index it starts at. */
+function addTurnRow(recordIndex: number): Row {
   const element = document.createElement("div");
   const scrollIntoView = vi.fn();
-  if (uuid !== undefined) element.id = `msg-${uuid}`;
   element.dataset["recordIndex"] = String(recordIndex);
   element.scrollIntoView = scrollIntoView;
   document.body.appendChild(element);
@@ -30,10 +29,10 @@ describe("jumpToMessage", () => {
     document.body.replaceChildren();
   });
 
-  it("scrolls to the turn carrying the anchored uuid and removes its highlight after two seconds", () => {
-    const { element, scrollIntoView } = addMessageAnchor("u-100", 100);
+  it("scrolls to the turn carrying the record index and removes its highlight after two seconds", () => {
+    const { element, scrollIntoView } = addTurnRow(100);
 
-    expect(jumpToMessage({ uuid: "u-100", recordIndex: 100 })).toBe(true);
+    expect(jumpToMessage(100)).toBe(true);
     expect(scrollIntoView.mock.calls).toStrictEqual([[{ block: "center", behavior: "smooth" }]]);
     expect(element.className).toBe("message-highlight");
 
@@ -44,33 +43,24 @@ describe("jumpToMessage", () => {
     expect(element.className).toBe("");
   });
 
-  it("walks back to the row that swallowed the record when its uuid renders no row of its own", () => {
-    const { element, scrollIntoView } = addMessageAnchor("u-50", 50);
+  it("walks back to the row that swallowed the record when it renders no row of its own", () => {
+    const { element, scrollIntoView } = addTurnRow(50);
 
-    expect(jumpToMessage({ uuid: "u-100", recordIndex: 100 })).toBe(true);
+    expect(jumpToMessage(100)).toBe(true);
     expect(scrollIntoView.mock.calls).toStrictEqual([[{ block: "center", behavior: "smooth" }]]);
     expect(element.className).toBe("message-highlight");
   });
 
-  it("finds the row from a record index alone, for a mention whose record carries no uuid", () => {
-    const { element } = addMessageAnchor("u-100", 100);
-
-    expect(jumpToMessage({ recordIndex: 100 })).toBe(true);
-    expect(element.className).toBe("message-highlight");
-  });
-
   it("returns false when the nearest row is 51 preceding indices away", () => {
-    const { element, scrollIntoView } = addMessageAnchor("u-49", 49);
+    const { element, scrollIntoView } = addTurnRow(49);
 
-    expect(jumpToMessage({ uuid: "u-100", recordIndex: 100 })).toBe(false);
+    expect(jumpToMessage(100)).toBe(false);
     expect(scrollIntoView.mock.calls).toStrictEqual([]);
     expect(element.className).toBe("");
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it("returns false for a uuid with no record index to walk back from", () => {
-    addMessageAnchor("u-100", 100);
-
-    expect(jumpToMessage({ uuid: "u-99" })).toBe(false);
+  it("returns false when the transcript holds no rows at all", () => {
+    expect(jumpToMessage(0)).toBe(false);
   });
 });

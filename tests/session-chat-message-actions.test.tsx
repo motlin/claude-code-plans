@@ -71,7 +71,7 @@ function actionRowClassName(container: HTMLElement, title: string): string | nul
 
 function actionButtonLabels(container: HTMLElement): string[] {
   return Array.from(container.querySelectorAll("button"))
-    .filter((button) => /^Copy (message|link)$/.test(button.title || button.ariaLabel || ""))
+    .filter((button) => /^Copy message$/.test(button.title || button.ariaLabel || ""))
     .map((button) => button.textContent ?? "");
 }
 
@@ -135,7 +135,7 @@ describe("SessionChat user action row", () => {
       column: "flex flex-col items-end gap-g6 max-w-[75%] min-w-0",
       actionRow:
         "flex items-center gap-g2 pt-[4px] -mt-[8px] text-[11px] text-t6 opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150",
-      buttonLabels: ["", ""],
+      buttonLabels: [""],
     });
   });
 

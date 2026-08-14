@@ -288,7 +288,7 @@
   --focus-ring-color: var(--color-accent-100);
 }
 
-[id^="msg-"] {
+[data-record-index] {
   transition: background-color 200ms ease-out;
 }
 

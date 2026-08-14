@@ -15,14 +15,12 @@ import {
   FileWarning,
   GitBranch,
   Link,
-  Link2,
   Lock,
   Palette,
   Plug,
   Zap,
 } from "lucide-react";
 import { assertNever } from "../lib/assert-never";
-import { messageAnchorId, messageAnchorValue } from "../lib/message-anchor";
 import { formatTimestamp, formatRelativeTimestamp } from "../lib/timestamp-format";
 import { MarkdownArticle } from "./markdown-article";
 import { getToolRenderer } from "./tool-renderers";
@@ -74,7 +72,6 @@ import { findScrollContainer } from "./transcript-history-loader";
 import {
   jumpToMessage,
   TRANSCRIPT_JUMP_REQUEST_EVENT,
-  type JumpTarget,
   type TranscriptJumpRequestEvent,
 } from "../lib/jump-to-message";
 
@@ -139,7 +136,7 @@ function CopyToast({ visible }: { visible: boolean }) {
 }
 
 function MessageToolbar({ line, timestamp }: { line: MessageSessionLine; timestamp?: string }) {
-  const [copied, setCopied] = useState<"text" | "link" | null>(null);
+  const [copied, setCopied] = useState(false);
   const usage = summarizeUsage(line.usage);
   const relativeTimestamp = formatRelativeTimestamp(timestamp);
   const absoluteTimestamp = formatTimestamp(timestamp);
@@ -149,17 +146,8 @@ function MessageToolbar({ line, timestamp }: { line: MessageSessionLine; timesta
     const texts = extractTextFromLine(line);
     const ok = await writeClipboardText(texts.join("\n\n"));
     if (ok) {
-      setCopied("text");
-      setTimeout(() => setCopied(null), 1500);
-    }
-  }
-
-  async function copyLink() {
-    const url = `${window.location.origin}${window.location.pathname}#${messageAnchorId(messageAnchorValue(line))}`;
-    const ok = await writeClipboardText(url);
-    if (ok) {
-      setCopied("link");
-      setTimeout(() => setCopied(null), 1500);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
     }
   }
 
@@ -174,18 +162,7 @@ function MessageToolbar({ line, timestamp }: { line: MessageSessionLine; timesta
         >
           <Copy className="h-3 w-3" />
         </button>
-        <CopyToast visible={copied === "text"} />
-      </div>
-      <div className="relative">
-        <button
-          type="button"
-          aria-label="Copy link"
-          onClick={copyLink}
-          className="p-1 text-t6 hover:text-primary cursor-pointer"
-        >
-          <Link2 className="h-3 w-3" />
-        </button>
-        <CopyToast visible={copied === "link"} />
+        <CopyToast visible={copied} />
       </div>
       {relativeTimestamp && (
         <span className="text-[11px] text-secondary tabular-nums pl-p1" title={timestampTitle}>
@@ -238,23 +215,14 @@ function extractTextFromLine(line: MessageSessionLine): string[] {
 }
 
 function UserMessageActions({ line, timestamp }: { line: MessageSessionLine; timestamp?: string }) {
-  const [copied, setCopied] = useState<"text" | "link" | null>(null);
+  const [copied, setCopied] = useState(false);
 
   async function copyText() {
     const texts = extractTextFromLine(line);
     const ok = await writeClipboardText(texts.join("\n\n"));
     if (ok) {
-      setCopied("text");
-      setTimeout(() => setCopied(null), 1500);
-    }
-  }
-
-  async function copyLink() {
-    const url = `${window.location.origin}${window.location.pathname}#${messageAnchorId(messageAnchorValue(line))}`;
-    const ok = await writeClipboardText(url);
-    if (ok) {
-      setCopied("link");
-      setTimeout(() => setCopied(null), 1500);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
     }
   }
 
@@ -274,19 +242,7 @@ function UserMessageActions({ line, timestamp }: { line: MessageSessionLine; tim
         >
           <Copy className="h-3 w-3" />
         </button>
-        <CopyToast visible={copied === "text"} />
-      </div>
-      <div className="relative">
-        <button
-          type="button"
-          title="Copy link"
-          aria-label="Copy link"
-          onClick={copyLink}
-          className="flex items-center p-1 hover:text-primary cursor-pointer"
-        >
-          <Link2 className="h-3 w-3" />
-        </button>
-        <CopyToast visible={copied === "link"} />
+        <CopyToast visible={copied} />
       </div>
       {relativeTimestamp && (
         <span className="text-t6" title={timestampTitle}>
@@ -488,7 +444,6 @@ function LineEntry({
   return (
     <div
       key={`line-${line.lineIndex}`}
-      id={messageAnchorId(messageAnchorValue(line))}
       data-record-index={line.lineIndex}
       className={wrapperClassName}
       title={line.type !== "user" ? (timestampTitle ?? undefined) : undefined}
@@ -599,7 +554,6 @@ function GroupedToolCallEntry({
       {batches.map((batch) => (
         <div
           key={batch.head.lineIndex}
-          id={messageAnchorId(messageAnchorValue(batch.head))}
           data-record-index={batch.head.lineIndex}
           className="flex flex-col w-full"
         >
@@ -875,7 +829,7 @@ function VirtualizedSessionEntries({
   const measuredHeightsRef = useRef(new Map<string, number>());
   const visibleAnchorIndexRef = useRef(0);
   const pendingScrollAdjustmentRef = useRef(0);
-  const pendingJumpRef = useRef<JumpTarget | null>(null);
+  const pendingJumpRef = useRef<number | null>(null);
   const [measuredHeights, setMeasuredHeights] = useState(measuredHeightsRef.current);
   const [jumpVersion, setJumpVersion] = useState(0);
   const [range, setRange] = useState<VirtualRange>(() => {
@@ -969,15 +923,12 @@ function VirtualizedSessionEntries({
 
   useEffect(() => {
     function requestJump(event: Event) {
-      const target = (event as TranscriptJumpRequestEvent).detail;
-      if (target.recordIndex === undefined) return;
+      const recordIndex = (event as TranscriptJumpRequestEvent).detail;
       const entryIndex = entries.findIndex(
-        (entry) =>
-          entry.startRecordIndex <= target.recordIndex! &&
-          entry.endRecordIndex >= target.recordIndex!,
+        (entry) => entry.startRecordIndex <= recordIndex && entry.endRecordIndex >= recordIndex,
       );
       if (entryIndex < 0) return;
-      pendingJumpRef.current = target;
+      pendingJumpRef.current = recordIndex;
       setRange({
         startIndex: Math.max(0, entryIndex - 1),
         endIndex: Math.min(entries.length, entryIndex + 2),
@@ -989,14 +940,12 @@ function VirtualizedSessionEntries({
   }, [entries]);
 
   useLayoutEffect(() => {
-    const target = pendingJumpRef.current;
+    const recordIndex = pendingJumpRef.current;
     const list = listRef.current;
     const scroller = scrollerRef.current;
-    if (!target || !list || !scroller || target.recordIndex === undefined) return;
+    if (recordIndex === null || !list || !scroller) return;
     const entryIndex = entries.findIndex(
-      (entry) =>
-        entry.startRecordIndex <= target.recordIndex! &&
-        entry.endRecordIndex >= target.recordIndex!,
+      (entry) => entry.startRecordIndex <= recordIndex && entry.endRecordIndex >= recordIndex,
     );
     if (entryIndex < range.startIndex || entryIndex >= range.endIndex) return;
     const viewport = scrollerViewport(scroller);
@@ -1004,7 +953,7 @@ function VirtualizedSessionEntries({
     scroller.scrollTop = Math.max(0, listOffset + prefixHeights[entryIndex]! - viewport.height / 2);
     const frame = requestAnimationFrame(() => {
       pendingJumpRef.current = null;
-      jumpToMessage(target);
+      jumpToMessage(recordIndex);
       updateVisibleRange();
     });
     return () => cancelAnimationFrame(frame);

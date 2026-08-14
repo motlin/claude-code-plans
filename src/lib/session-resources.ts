@@ -11,9 +11,10 @@ export interface ResourceOccurrence {
    */
   anchorIndex: number;
   /**
-   * uuid of the owning message, which is what the `#msg-<uuid>` DOM anchor is
-   * keyed by (see lib/message-anchor.ts). Absent for the rare record that
-   * carries no uuid, which is anchored on its record index instead.
+   * uuid of the owning message, which is how a mention still on the server is
+   * recognized once history is paged in (see hooks/use-pending-message-jump.ts).
+   * Absent for the rare record that carries no uuid, whose mentions are only
+   * reachable while the window already holds them.
    */
   anchorUuid?: string | undefined;
   role: "user" | "assistant";

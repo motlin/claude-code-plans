@@ -6,14 +6,14 @@ import { createContext, useContext } from "react";
  * The drawers now list mentions from the whole session while the page holds
  * only a window of it, so a chip can name a message that is not on the page.
  * `windowStartIndex` is how a chip tells the two cases apart, and
- * `openMessageAnchor` is how it hands the out-of-window case to the
- * `#msg-<uuid>` deep link, which pages history in until the message arrives.
+ * `requestMessageJump` is how it hands the out-of-window case to the jump that
+ * pages history in until the message arrives.
  */
 export interface JumpTargetWindow {
   /** Session-absolute JSONL index of the first record the page holds. */
   windowStartIndex: number;
-  /** Point the location hash at a message's anchor, or absent when unroutable. */
-  openMessageAnchor?: ((uuid: string) => void) | undefined;
+  /** Ask for a message by uuid, or absent when the page cannot page history in. */
+  requestMessageJump?: ((uuid: string) => void) | undefined;
 }
 
 /**

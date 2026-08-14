@@ -45,11 +45,7 @@ describe("JumpChips", () => {
       jumpCalls: vi.mocked(jumpToMessage).mock.calls,
     }).toStrictEqual({
       chipLabels: ["1", "2", "3"],
-      jumpCalls: [
-        [{ uuid: "u-10", recordIndex: 10 }],
-        [{ recordIndex: 20 }],
-        [{ uuid: "u-30", recordIndex: 30 }],
-      ],
+      jumpCalls: [[10], [20], [30]],
     });
   });
 
@@ -74,14 +70,14 @@ describe("JumpChips", () => {
         "This mention is hidden because thinking is disabled in display settings.",
         "Jump to mention 3",
       ],
-      jumpCalls: [[{ uuid: "u-30", recordIndex: 30 }]],
+      jumpCalls: [[30]],
     });
   });
 
-  it("routes a mention outside the loaded window through its message anchor", () => {
-    const openMessageAnchor = vi.fn();
+  it("hands a mention outside the loaded window to the jump that pages history in", () => {
+    const requestMessageJump = vi.fn();
     render(
-      <JumpTargetProvider value={{ windowStartIndex: 25, openMessageAnchor }}>
+      <JumpTargetProvider value={{ windowStartIndex: 25, requestMessageJump }}>
         <JumpChips occurrences={OCCURRENCES} />
       </JumpTargetProvider>,
     );
@@ -92,26 +88,27 @@ describe("JumpChips", () => {
     expect({
       disabled: buttons.map((button) => (button as HTMLButtonElement).disabled),
       titles: buttons.map((button) => button.getAttribute("title")),
-      anchorCalls: openMessageAnchor.mock.calls,
+      pagedJumps: requestMessageJump.mock.calls,
       jumpCalls: vi.mocked(jumpToMessage).mock.calls,
     }).toStrictEqual({
       disabled: [false, true, false],
       titles: [
         "Jump to mention 1",
-        "This mention is in an earlier part of the session that cannot be linked to.",
+        "This mention is in an earlier part of the session that cannot be reached.",
         "Jump to mention 3",
       ],
-      // The uuid-less record at 20 has no anchor to link to, so its chip is
-      // disabled rather than scrolling to whatever sits at index 20 today.
-      anchorCalls: [["u-10"]],
-      jumpCalls: [[{ uuid: "u-30", recordIndex: 30 }]],
+      // The uuid-less record at 20 is unrecognizable once it is paged in, so
+      // its chip is disabled rather than scrolling to whatever sits at index
+      // 20 today.
+      pagedJumps: [["u-10"]],
+      jumpCalls: [[30]],
     });
   });
 
   it("keeps jumping straight at the DOM once the window holds the mention", () => {
-    const openMessageAnchor = vi.fn();
+    const requestMessageJump = vi.fn();
     render(
-      <JumpTargetProvider value={{ windowStartIndex: 10, openMessageAnchor }}>
+      <JumpTargetProvider value={{ windowStartIndex: 10, requestMessageJump }}>
         <JumpChips occurrences={OCCURRENCES} />
       </JumpTargetProvider>,
     );
@@ -119,15 +116,11 @@ describe("JumpChips", () => {
     for (const button of screen.getAllByRole("button")) fireEvent.click(button);
 
     expect({
-      anchorCalls: openMessageAnchor.mock.calls,
+      pagedJumps: requestMessageJump.mock.calls,
       jumpCalls: vi.mocked(jumpToMessage).mock.calls,
     }).toStrictEqual({
-      anchorCalls: [],
-      jumpCalls: [
-        [{ uuid: "u-10", recordIndex: 10 }],
-        [{ recordIndex: 20 }],
-        [{ uuid: "u-30", recordIndex: 30 }],
-      ],
+      pagedJumps: [],
+      jumpCalls: [[10], [20], [30]],
     });
   });
 });

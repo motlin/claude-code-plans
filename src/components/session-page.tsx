@@ -1,9 +1,4 @@
-import {
-  Link,
-  useElementScrollRestoration,
-  useLocation,
-  useNavigate,
-} from "@tanstack/react-router";
+import { Link, useElementScrollRestoration, useLocation } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -40,6 +35,7 @@ import {
   useFilesDrawerState,
 } from "./files-drawer";
 import { JumpTargetProvider, type JumpTargetWindow } from "./jump-target-context";
+import { LegacyMessageLinkNotice } from "./legacy-message-link-notice";
 import {
   LinksDrawer,
   LinksDrawerToggle,
@@ -53,7 +49,7 @@ import { TranscriptHistoryLoader, findScrollContainer } from "./transcript-histo
 import { useChatStream } from "../hooks/use-chat-stream";
 import { useClaudeEvents, useIsSessionActive, useStatusline } from "../hooks/use-claude-events";
 import { useSessionViewedState } from "../hooks/use-session-viewed-state";
-import { useMessageAnchorDeepLink } from "../hooks/use-message-anchor-deep-link";
+import { usePendingMessageJump } from "../hooks/use-pending-message-jump";
 import { herdrPanesQueryOptions, sendHerdrPrompt } from "../lib/api/herdr";
 import type { HerdrPaneIndexData } from "../lib/api/herdr";
 import {
@@ -67,7 +63,6 @@ import {
 } from "../lib/api/sessions";
 import type { SessionDetailData, SessionSubagentsData, TranscriptData } from "../lib/api/sessions";
 import { writeClipboardText } from "../lib/clipboard";
-import { messageAnchorId } from "../lib/message-anchor";
 import { countMessageRecords } from "../lib/message-count";
 import {
   getSubagentLifecycleKey,
@@ -445,9 +440,13 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
     () => processTranscript(transcript.records, transcript.startIndex),
     [transcript.records, transcript.startIndex],
   );
-  // `uuidToLine` is the set of messages the window holds, which is how a
-  // `#msg-<uuid>` link decides whether to scroll or to page history in first.
-  useMessageAnchorDeepLink(sessionId, transcript.startIndex, locationHash, processed.uuidToLine);
+  // `uuidToLine` is the set of messages the window holds, which is how a jump
+  // decides whether to scroll or to page history in first.
+  const requestMessageJump = usePendingMessageJump(
+    sessionId,
+    transcript.startIndex,
+    processed.uuidToLine,
+  );
   const filesDrawerState = useFilesDrawerState();
   const linksDrawerState = useLinksDrawerState();
   // A whole-session inventory costs a full pass over the JSONL, so it is only
@@ -475,19 +474,9 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
   const sessionLinks = fullLinks ?? windowLinks;
   const unscannedRecordCount = resources === undefined ? transcript.startIndex : 0;
   const linkDisplay = useSessionLinkDisplay(sessionLinks, linksDrawerState.includeToolsAndThinking);
-  const navigate = useNavigate();
-  // A mention the window does not hold has no row to scroll to, so its chip
-  // routes through the location hash and lets `useMessageAnchorDeepLink` page
-  // history in until the message arrives.
-  const openMessageAnchor = useCallback(
-    (uuid: string) => {
-      void navigate({ to: ".", hash: messageAnchorId(uuid), replace: true });
-    },
-    [navigate],
-  );
   const jumpTargetWindow = useMemo<JumpTargetWindow>(
-    () => ({ windowStartIndex: transcript.startIndex, openMessageAnchor }),
-    [openMessageAnchor, transcript.startIndex],
+    () => ({ windowStartIndex: transcript.startIndex, requestMessageJump }),
+    [requestMessageJump, transcript.startIndex],
   );
   const { hookContexts, runningSubagents } = useClaudeEvents();
   const hookContext = hookContexts.get(sessionId);
@@ -800,6 +789,8 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
           </button>
         </div>
       )}
+
+      <LegacyMessageLinkNotice hash={locationHash} />
 
       {/* Chat messages */}
       <AskUserQuestionProvider value={askUserQuestionCtx}>
