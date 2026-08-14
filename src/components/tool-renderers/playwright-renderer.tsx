@@ -50,7 +50,7 @@ function ResultSummary({ resultText }: { resultText: string }) {
   const hasMore = lines.length > 5;
   return (
     <div className="bg-t1 rounded-r6 p-2 max-h-48 overflow-auto">
-      <pre className="text-assistant-secondary text-code font-mono whitespace-pre-wrap">
+      <pre className="text-secondary text-code font-mono whitespace-pre-wrap">
         {preview}
         {hasMore && `\n... (${lines.length - 5} more lines)`}
       </pre>
@@ -73,10 +73,8 @@ function ActionResult({
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         {icon}
-        <span className="text-body text-assistant-primary">{label}</span>
-        {detail && (
-          <span className="text-assistant-secondary text-code font-mono truncate">{detail}</span>
-        )}
+        <span className="text-body text-primary">{label}</span>
+        {detail && <span className="text-secondary text-code font-mono truncate">{detail}</span>}
       </div>
       <ResultSummary resultText={resultText} />
     </div>
@@ -124,9 +122,7 @@ function NavigateRenderer({
         ) : (
           <Globe className="h-4 w-4 text-blue-500" />
         )}
-        <span className="text-body text-assistant-primary">
-          {isSuccess ? "Navigated to" : "Navigate to"}
-        </span>
+        <span className="text-body text-primary">{isSuccess ? "Navigated to" : "Navigate to"}</span>
         {url && (
           <a
             href={url}
@@ -157,10 +153,8 @@ function SnapshotRenderer({ resultText }: { resultText: string }) {
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <Network className="h-4 w-4 text-indigo-500" />
-        <span className="text-body text-assistant-primary">Accessibility snapshot</span>
-        {title && (
-          <span className="text-body text-assistant-secondary truncate">&quot;{title}&quot;</span>
-        )}
+        <span className="text-body text-primary">Accessibility snapshot</span>
+        {title && <span className="text-body text-secondary truncate">&quot;{title}&quot;</span>}
       </div>
       {url && (
         <a
@@ -173,7 +167,7 @@ function SnapshotRenderer({ resultText }: { resultText: string }) {
         </a>
       )}
       <div className="bg-t1 rounded-r6 p-2 max-h-48 overflow-auto">
-        <pre className="text-assistant-secondary text-code font-mono whitespace-pre">
+        <pre className="text-secondary text-code font-mono whitespace-pre">
           {displayedLines.join("\n")}
           {remainingCount > 0 && `\n... (${remainingCount} more nodes)`}
         </pre>
@@ -191,10 +185,8 @@ function ScreenshotRenderer({ resultText }: { resultText: string }) {
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <Camera className="h-4 w-4 text-purple-500" />
-        <span className="text-body text-assistant-primary">Screenshot captured</span>
-        {path && (
-          <span className="text-assistant-secondary text-code font-mono truncate">{path}</span>
-        )}
+        <span className="text-body text-primary">Screenshot captured</span>
+        {path && <span className="text-secondary text-code font-mono truncate">{path}</span>}
       </div>
       {path && (
         <img
@@ -337,13 +329,11 @@ function TabsRenderer({ resultText }: { resultText: string }) {
   return (
     <div className="px-2 py-2 space-y-1">
       <div className="flex items-center gap-2 mb-2">
-        <Globe className="h-4 w-4 text-assistant-secondary" />
-        <span className="text-body text-assistant-primary">{lines.length} tab(s) open</span>
+        <Globe className="h-4 w-4 text-secondary" />
+        <span className="text-body text-primary">{lines.length} tab(s) open</span>
       </div>
       <div className="bg-t1 rounded-r6 p-2 max-h-48 overflow-auto">
-        <pre className="text-assistant-secondary text-code font-mono whitespace-pre-wrap">
-          {resultText}
-        </pre>
+        <pre className="text-secondary text-code font-mono whitespace-pre-wrap">{resultText}</pre>
       </div>
     </div>
   );
@@ -358,7 +348,7 @@ function logLevelIcon(level: string) {
     case "info":
       return <Info className="h-4 w-4 text-cyan-500" />;
     default:
-      return <MessageSquare className="h-4 w-4 text-assistant-secondary" />;
+      return <MessageSquare className="h-4 w-4 text-secondary" />;
   }
 }
 
@@ -392,7 +382,7 @@ function ConsoleMessagesRenderer({ resultText }: { resultText: string }) {
 
   return (
     <div className="space-y-1 max-h-64 overflow-auto px-2 py-2">
-      <div className="text-body text-assistant-secondary mb-1 flex items-center gap-2">
+      <div className="text-body text-secondary mb-1 flex items-center gap-2">
         <MessageSquare className="h-3 w-3" />
         {messages.length} console message(s)
       </div>
@@ -404,7 +394,7 @@ function ConsoleMessagesRenderer({ resultText }: { resultText: string }) {
           >
             {msg.level}
           </span>
-          <span className="text-body text-assistant-primary truncate flex-1" title={msg.message}>
+          <span className="text-body text-primary truncate flex-1" title={msg.message}>
             {msg.message.length > 80 ? msg.message.slice(0, 77) + "..." : msg.message}
           </span>
         </div>
@@ -447,7 +437,7 @@ function NetworkRequestsRenderer({ resultText }: { resultText: string }) {
 
   return (
     <div className="space-y-1 max-h-64 overflow-auto px-2 py-2">
-      <div className="text-body text-assistant-secondary mb-1 flex items-center gap-2">
+      <div className="text-body text-secondary mb-1 flex items-center gap-2">
         <Network className="h-3 w-3" />
         {requests.length} network request(s)
       </div>
@@ -474,7 +464,7 @@ function NetworkRequestsRenderer({ resultText }: { resultText: string }) {
               {req.status}
             </span>
           )}
-          <span className="text-assistant-secondary truncate flex-1 text-code font-mono">
+          <span className="text-secondary truncate flex-1 text-code font-mono">
             {truncateUrl(req.url, 60)}
           </span>
         </div>
@@ -495,17 +485,17 @@ function EvaluateRenderer({
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <Code className="h-4 w-4 text-amber-500" />
-        <span className="text-body text-assistant-primary">Evaluated JavaScript</span>
+        <span className="text-body text-primary">Evaluated JavaScript</span>
       </div>
       {expression && (
-        <pre className="bg-t1 rounded-r6 p-2 text-assistant-secondary text-code font-mono whitespace-pre-wrap max-h-32 overflow-auto">
+        <pre className="bg-t1 rounded-r6 p-2 text-secondary text-code font-mono whitespace-pre-wrap max-h-32 overflow-auto">
           {expression}
         </pre>
       )}
       {resultText && (
         <div className="border-l-2 border-extended-green pl-3">
-          <div className="text-body text-assistant-secondary font-medium mb-1">Result</div>
-          <pre className="bg-t1 rounded-r6 p-2 text-assistant-secondary text-code font-mono whitespace-pre-wrap max-h-32 overflow-auto">
+          <div className="text-body text-secondary font-medium mb-1">Result</div>
+          <pre className="bg-t1 rounded-r6 p-2 text-secondary text-code font-mono whitespace-pre-wrap max-h-32 overflow-auto">
             {resultText}
           </pre>
         </div>
@@ -515,13 +505,10 @@ function EvaluateRenderer({
 }
 
 function DefaultPlaywrightRenderer({ resultText }: { resultText: string }) {
-  if (!resultText)
-    return <span className="text-body text-assistant-secondary">Action completed</span>;
+  if (!resultText) return <span className="text-body text-secondary">Action completed</span>;
   return (
     <div className="bg-t1 rounded-r6 p-2 max-h-48 overflow-auto">
-      <pre className="text-assistant-secondary text-code font-mono whitespace-pre-wrap">
-        {resultText}
-      </pre>
+      <pre className="text-secondary text-code font-mono whitespace-pre-wrap">{resultText}</pre>
     </div>
   );
 }

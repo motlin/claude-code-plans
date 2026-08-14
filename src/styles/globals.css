@@ -72,9 +72,9 @@
   --color-extended-green: var(--upstream-extended-green);
   --color-extended-pink: var(--upstream-extended-pink);
 
-  /* Upstream claude.ai/code — assistant text colors */
-  --color-assistant-primary: var(--upstream-text-assistant-primary);
-  --color-assistant-secondary: var(--upstream-text-assistant-secondary);
+  /* Upstream claude.ai/code — transcript text colors */
+  --color-primary: var(--upstream-text-assistant-primary);
+  --color-secondary: var(--upstream-text-assistant-secondary);
 
   /* Upstream claude.ai/code — transparency layers (bg-t1, bg-t2, etc.) */
   --color-t0: var(--upstream-t0);

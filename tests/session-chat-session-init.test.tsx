@@ -107,7 +107,7 @@ describe("session init disclosure", () => {
       hasChevron: row?.hasChevron,
       bodyText: row?.bodyText,
     }).toStrictEqual({
-      labelClassName: "text-body min-w-0 truncate text-assistant-primary",
+      labelClassName: "text-body min-w-0 truncate text-primary",
       ariaExpanded: "false",
       hasChevron: true,
       bodyText: null,
@@ -124,13 +124,13 @@ describe("session init disclosure", () => {
 
     expect({ collapsed, expanded: initRow(container) }).toStrictEqual({
       collapsed: {
-        labelClassName: "text-body min-w-0 truncate text-assistant-primary",
+        labelClassName: "text-body min-w-0 truncate text-primary",
         ariaExpanded: "false",
         hasChevron: true,
         bodyText: null,
       },
       expanded: {
-        labelClassName: "text-body min-w-0 truncate text-assistant-primary",
+        labelClassName: "text-body min-w-0 truncate text-primary",
         ariaExpanded: "true",
         hasChevron: true,
         bodyText: "Alice",

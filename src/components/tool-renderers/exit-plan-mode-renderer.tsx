@@ -16,7 +16,7 @@ const TONE_CLASS: Record<ExitPlanModeStatusTone, string> = {
   approved: "text-success-000",
   rejected: "text-danger-000",
   error: "text-danger-000",
-  info: "text-assistant-secondary",
+  info: "text-secondary",
 };
 
 export function ExitPlanModeRenderer({ toolCall }: ToolRendererProps) {
@@ -41,10 +41,10 @@ export function ExitPlanModeRenderer({ toolCall }: ToolRendererProps) {
       )}
       {plan && <MarkdownArticle markdown={plan} />}
       {allowedPrompts.length > 0 && (
-        <div className="flex flex-col text-body text-assistant-secondary">
+        <div className="flex flex-col text-body text-secondary">
           {allowedPrompts.map((allowed, index) => (
             <div key={`${allowed.tool}-${index}`} data-allowed-prompt>
-              <span className="text-assistant-primary">{allowed.tool}</span> — {allowed.prompt}
+              <span className="text-primary">{allowed.tool}</span> — {allowed.prompt}
             </div>
           ))}
         </div>
@@ -52,7 +52,7 @@ export function ExitPlanModeRenderer({ toolCall }: ToolRendererProps) {
       {status && (
         <div className={TONE_CLASS[status.tone]}>
           <div>{status.text}</div>
-          {status.detail && <div className="text-assistant-secondary">{status.detail}</div>}
+          {status.detail && <div className="text-secondary">{status.detail}</div>}
         </div>
       )}
     </KeyValueCard>

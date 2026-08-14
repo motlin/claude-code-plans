@@ -278,7 +278,7 @@ export function TruncatedFilePathHeader({ filePath }: { filePath: string }) {
 
   return (
     <span
-      className="flex flex-1 min-w-0 overflow-hidden whitespace-nowrap text-body text-assistant-secondary"
+      className="flex flex-1 min-w-0 overflow-hidden whitespace-nowrap text-body text-secondary"
       title={filePath}
     >
       <span className="min-w-0 truncate">{prefix}</span>
@@ -332,8 +332,7 @@ export function TerminalOutput({ content }: { content: string }) {
   const exitCodeMatch = content.match(/^Exit code (\d+)\n?/);
   const exitCode = exitCodeMatch?.[1] ? parseInt(exitCodeMatch[1], 10) : null;
   const contentWithoutExitCode = exitCodeMatch ? content.replace(/^Exit code \d+\n?/, "") : content;
-  const inkClass =
-    exitCode !== null && exitCode !== 0 ? "text-extended-pink" : "text-assistant-secondary";
+  const inkClass = exitCode !== null && exitCode !== 0 ? "text-extended-pink" : "text-secondary";
 
   return (
     <div className="text-code font-mono">
@@ -445,7 +444,7 @@ export function CopyButton({ text }: { text: string }) {
         type="button"
         aria-label="Copy"
         onClick={handleClick}
-        className="inline-flex items-center justify-center aspect-square border-0 cursor-default select-none rounded-r4 px-p3 text-assistant-secondary hover:text-assistant-primary hover:bg-t2 transition-colors"
+        className="inline-flex items-center justify-center aspect-square border-0 cursor-default select-none rounded-r4 px-p3 text-secondary hover:text-primary hover:bg-t2 transition-colors"
       >
         {copied ? <CheckIcon /> : <CopyIcon />}
       </button>
@@ -541,7 +540,7 @@ export interface KeyValueParam {
  *       max-h-[400px] scroller (error + params + result + children)
  *     CopyButton (hover-visible, outside the scroller)
  *
- * A failed call drops the column's `text-assistant-secondary` and renders the
+ * A failed call drops the column's `text-secondary` and renders the
  * result as a pink error message above the params, matching upstream.
  */
 export function KeyValueCard({
@@ -571,12 +570,12 @@ export function KeyValueCard({
   return (
     <div className="flex w-full">
       <div
-        className={`flex-1 min-w-0 flex flex-col gap-g4 text-body${isError ? "" : " text-assistant-secondary"} whitespace-pre-wrap break-words`}
+        className={`flex-1 min-w-0 flex flex-col gap-g4 text-body${isError ? "" : " text-secondary"} whitespace-pre-wrap break-words`}
       >
         <div className="max-h-[400px] overflow-y-auto flex flex-col gap-g4">
           {errorMessage && <div className="text-extended-pink">{errorMessage}</div>}
           {params.length > 0 && (
-            <div className="text-assistant-secondary flex flex-col gap-g2">
+            <div className="text-secondary flex flex-col gap-g2">
               {params.map((p) => (
                 <div key={p.key} className="break-words">
                   <span className="text-code font-mono opacity-70">{`${p.key}: `}</span>

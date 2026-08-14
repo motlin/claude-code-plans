@@ -36,7 +36,7 @@ function McpCliBashRenderer({
 function CommandRow({ children }: { children: ReactNode }) {
   return (
     <div className="flex">
-      <span className="select-none text-assistant-secondary">$&nbsp;</span>
+      <span className="select-none text-secondary">$&nbsp;</span>
       <div className="min-w-0 flex-1 whitespace-pre-wrap">{children}</div>
     </div>
   );
@@ -82,7 +82,7 @@ export function BashRenderer({ toolCall, nested = false }: ToolRendererProps) {
       {command && <HighlightedCommand command={command} />}
       {resultContent && (
         <div
-          className={`max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all ${isError ? "text-extended-pink" : "text-assistant-secondary"}`}
+          className={`max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all ${isError ? "text-extended-pink" : "text-secondary"}`}
         >
           <AnsiText content={resultContent} />
         </div>
@@ -105,7 +105,7 @@ export function BashRenderer({ toolCall, nested = false }: ToolRendererProps) {
     <>
       {/* Header: "Bash" label + hover copy button */}
       <div className="flex items-center px-p6 py-p5">
-        <span className="flex-1 text-body text-assistant-secondary">Bash</span>
+        <span className="flex-1 text-body text-secondary">Bash</span>
         <CopyButton text={copyText} />
       </div>
 

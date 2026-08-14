@@ -94,7 +94,7 @@ describe("failed tool bodies", () => {
       children: [
         { className: PINK, text: "rg: unrecognized flag" },
         {
-          className: "text-assistant-secondary flex flex-col gap-g2",
+          className: "text-secondary flex flex-col gap-g2",
           text: "pattern: alice",
         },
       ],
@@ -114,7 +114,7 @@ describe("failed tool bodies", () => {
       texts: [...(scroller?.children ?? [])].map((child) => child.textContent),
     }).toStrictEqual({
       columnClass:
-        "flex-1 min-w-0 flex flex-col gap-g4 text-body text-assistant-secondary whitespace-pre-wrap break-words",
+        "flex-1 min-w-0 flex flex-col gap-g4 text-body text-secondary whitespace-pre-wrap break-words",
       texts: ["pattern: alice", "alice.ts"],
     });
   });

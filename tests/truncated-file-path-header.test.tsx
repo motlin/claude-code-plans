@@ -48,8 +48,7 @@ function headerMarkup(container: HTMLElement): HeaderMarkup {
 }
 
 const EXPECTED: HeaderMarkup = {
-  wrapperClass:
-    "flex flex-1 min-w-0 overflow-hidden whitespace-nowrap text-body text-assistant-secondary",
+  wrapperClass: "flex flex-1 min-w-0 overflow-hidden whitespace-nowrap text-body text-secondary",
   prefixClass: "min-w-0 truncate",
   prefixText: "/Users/craig/projects/claude-code-plans/",
   suffixClass: "max-w-full shrink-0 truncate",

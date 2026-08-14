@@ -75,13 +75,13 @@ export function ReadRenderer({ toolCall }: ToolRendererProps) {
 
       {/* Body: syntax-highlighted code on the card background, capped at 400px */}
       {result && (
-        <pre className="m-0 max-h-[400px] overflow-y-auto overflow-x-auto font-mono text-code leading-code text-assistant-primary">
+        <pre className="m-0 max-h-[400px] overflow-y-auto overflow-x-auto font-mono text-code leading-code text-primary">
           <code className="grid py-1" style={{ gridTemplateColumns: "auto 1fr" }}>
             <div data-gutter="" className="select-none">
               {parsedLines.map((line, index) => (
                 <div
                   key={index}
-                  className="h-[var(--upstream-leading-code)] text-right text-assistant-secondary"
+                  className="h-[var(--upstream-leading-code)] text-right text-secondary"
                   style={{ padding: "0 0.6em 0 1.2em" }}
                 >
                   {line.lineNum || ""}

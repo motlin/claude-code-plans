@@ -44,7 +44,7 @@ describe("BashRenderer command prompt", () => {
 
     expect(promptLayout(container)).toStrictEqual({
       rowClass: "flex",
-      promptClass: "select-none text-assistant-secondary",
+      promptClass: "select-none text-secondary",
       promptText: `$${NBSP}`,
       commandClass: "min-w-0 flex-1 whitespace-pre-wrap",
       commandText: "git status",
@@ -63,7 +63,7 @@ describe("BashRenderer command prompt", () => {
 
     expect(promptLayout(container)).toStrictEqual({
       rowClass: "flex",
-      promptClass: "select-none text-assistant-secondary",
+      promptClass: "select-none text-secondary",
       promptText: `$${NBSP}`,
       commandClass: "min-w-0 flex-1 whitespace-pre-wrap",
       commandText: "git status",

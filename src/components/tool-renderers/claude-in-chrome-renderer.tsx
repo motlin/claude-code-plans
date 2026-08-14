@@ -120,7 +120,7 @@ function ResultSummary({ resultText, maxLines = 10 }: { resultText: string; maxL
   const hasMore = lines.length > maxLines;
   return (
     <div className="bg-t1 rounded-r6 p-2 max-h-48 overflow-auto">
-      <pre className="text-assistant-secondary text-code font-mono whitespace-pre-wrap">
+      <pre className="text-secondary text-code font-mono whitespace-pre-wrap">
         {preview}
         {hasMore && `\n... (${lines.length - maxLines} more lines)`}
       </pre>
@@ -138,7 +138,7 @@ function logLevelIcon(level: string) {
     case "info":
       return <Info className="h-4 w-4 text-cyan-500" />;
     default:
-      return <MessageSquare className="h-4 w-4 text-assistant-secondary" />;
+      return <MessageSquare className="h-4 w-4 text-secondary" />;
   }
 }
 
@@ -199,9 +199,7 @@ function NavigateRenderer({
         ) : (
           <Globe className="h-4 w-4 text-blue-500" />
         )}
-        <span className="text-body text-assistant-primary">
-          {isSuccess ? "Navigated to" : "Navigate to"}
-        </span>
+        <span className="text-body text-primary">{isSuccess ? "Navigated to" : "Navigate to"}</span>
         {url && (
           <a
             href={url}
@@ -223,7 +221,7 @@ function ReadPageRenderer({ resultText }: { resultText: string }) {
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <FileText className="h-4 w-4 text-blue-500" />
-        <span className="text-body text-assistant-primary">Read page content</span>
+        <span className="text-body text-primary">Read page content</span>
         <span className="text-body text-text-500">{resultText.split("\n").length} lines</span>
       </div>
       <CollapsibleSection label="Page content">
@@ -256,7 +254,7 @@ function ComputerRenderer({
       <div className="px-2 py-2 space-y-2">
         <div className="flex items-center gap-2">
           <MousePointer className="h-4 w-4 text-blue-500" />
-          <span className="text-body text-assistant-primary">Computer action</span>
+          <span className="text-body text-primary">Computer action</span>
           {detail && <span className="text-text-500 text-code font-mono truncate">{detail}</span>}
         </div>
         <SmartResultContent text={resultText} />
@@ -278,11 +276,9 @@ function FindRenderer({
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <Search className="h-4 w-4 text-amber-500" />
-        <span className="text-body text-assistant-primary">Find elements</span>
+        <span className="text-body text-primary">Find elements</span>
         {description && (
-          <span className="text-body text-assistant-secondary truncate">
-            &quot;{description}&quot;
-          </span>
+          <span className="text-body text-secondary truncate">&quot;{description}&quot;</span>
         )}
       </div>
       <ResultSummary resultText={resultText} />
@@ -299,13 +295,11 @@ function TabsContextRenderer({ resultText }: { resultText: string }) {
   return (
     <div className="px-2 py-2 space-y-1">
       <div className="flex items-center gap-2 mb-2">
-        <Globe className="h-4 w-4 text-assistant-secondary" />
-        <span className="text-body text-assistant-primary">{lines.length} tab(s)</span>
+        <Globe className="h-4 w-4 text-secondary" />
+        <span className="text-body text-primary">{lines.length} tab(s)</span>
       </div>
       <div className="bg-t1 rounded-r6 p-2 max-h-48 overflow-auto">
-        <pre className="text-assistant-secondary text-code font-mono whitespace-pre-wrap">
-          {resultText}
-        </pre>
+        <pre className="text-secondary text-code font-mono whitespace-pre-wrap">{resultText}</pre>
       </div>
     </div>
   );
@@ -328,7 +322,7 @@ function JavaScriptToolRenderer({
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <Code className="h-4 w-4 text-amber-500" />
-        <span className="text-body text-assistant-primary">Execute JavaScript</span>
+        <span className="text-body text-primary">Execute JavaScript</span>
       </div>
       {code && (
         <pre className="bg-bg-200 rounded-r6 p-2 text-text-100 text-code font-mono whitespace-pre-wrap max-h-32 overflow-auto">
@@ -362,7 +356,7 @@ function ReadConsoleMessagesRenderer({ resultText }: { resultText: string }) {
 
   return (
     <div className="space-y-1 max-h-64 overflow-auto px-2 py-2">
-      <div className="text-body text-assistant-secondary mb-1 flex items-center gap-2">
+      <div className="text-body text-secondary mb-1 flex items-center gap-2">
         <MessageSquare className="h-3 w-3" />
         {messages.length} console message(s)
       </div>
@@ -374,7 +368,7 @@ function ReadConsoleMessagesRenderer({ resultText }: { resultText: string }) {
           >
             {msg.level}
           </span>
-          <span className="text-body text-assistant-primary truncate flex-1" title={msg.message}>
+          <span className="text-body text-primary truncate flex-1" title={msg.message}>
             {msg.message.length > 80 ? msg.message.slice(0, 77) + "..." : msg.message}
           </span>
         </div>

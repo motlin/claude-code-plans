@@ -41,7 +41,7 @@ describe("TerminalOutput", () => {
       rootClass: "text-code font-mono",
       exitCodeClass: null,
       exitCodeText: null,
-      preClass: `${BODY_CLASS} text-assistant-secondary`,
+      preClass: `${BODY_CLASS} text-secondary`,
       preText: "Compiled 42 modules",
     });
   });
@@ -51,9 +51,9 @@ describe("TerminalOutput", () => {
 
     expect(layout(container)).toStrictEqual({
       rootClass: "text-code font-mono",
-      exitCodeClass: "text-assistant-secondary",
+      exitCodeClass: "text-secondary",
       exitCodeText: "Exit code 0",
-      preClass: `${BODY_CLASS} text-assistant-secondary`,
+      preClass: `${BODY_CLASS} text-secondary`,
       preText: "all good",
     });
   });

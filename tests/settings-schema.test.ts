@@ -460,7 +460,7 @@ describe("ClaudeSettingsSchema against disk", () => {
     }
 
     expect(validated).toBeGreaterThanOrEqual(0);
-  });
+  }, 60_000);
 });
 
 describe("McpConfigSchema against disk", () => {

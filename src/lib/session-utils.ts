@@ -310,8 +310,8 @@ export function truncateResult(text: string, maxLines: number): string {
 /**
  * Structured summary segment: a verb and its rest text, for span-based rendering.
  * Upstream claude.ai/code renders each segment as:
- *   <span class="text-body text-assistant-secondary">{verb}</span>
- *   <span class="text-assistant-secondary"> {rest}</span>
+ *   <span class="text-body text-secondary">{verb}</span>
+ *   <span class="text-secondary"> {rest}</span>
  */
 export interface SummarySegment {
   verb: string;

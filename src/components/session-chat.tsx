@@ -187,10 +187,7 @@ function MessageToolbar({ line, timestamp }: { line: MessageSessionLine; timesta
         <CopyToast visible={copied === "link"} />
       </div>
       {relativeTimestamp && (
-        <span
-          className="text-[11px] text-assistant-secondary tabular-nums pl-p1"
-          title={timestampTitle}
-        >
+        <span className="text-[11px] text-secondary tabular-nums pl-p1" title={timestampTitle}>
           {relativeTimestamp}
         </span>
       )}
@@ -200,7 +197,7 @@ function MessageToolbar({ line, timestamp }: { line: MessageSessionLine; timesta
         </span>
       )}
       {usage && (
-        <span className="text-[11px] text-assistant-secondary tabular-nums" title={usage.title}>
+        <span className="text-[11px] text-secondary tabular-nums" title={usage.title}>
           {usage.summary}
         </span>
       )}
@@ -649,10 +646,8 @@ function SessionInitEntry({
         onClick={() => setExpanded(!expanded)}
         className="group/tool flex self-start max-w-full items-center gap-g2 text-left hide-focus-ring rounded-r3"
       >
-        <span className="text-body min-w-0 truncate text-assistant-primary">
-          Initialized session
-        </span>
-        <span className="shrink-0 text-assistant-secondary group-hover/tool:text-assistant-primary">
+        <span className="text-body min-w-0 truncate text-primary">Initialized session</span>
+        <span className="shrink-0 text-secondary group-hover/tool:text-primary">
           <ChevronIcon expanded={expanded} size={14} />
         </span>
       </button>
@@ -2476,13 +2471,13 @@ function ToolCallRow({
   // which stays primary.
   const labelClass = call.isError
     ? "text-extended-pink"
-    : "text-assistant-secondary group-hover/tool:text-assistant-primary";
+    : "text-secondary group-hover/tool:text-primary";
   // A subagent row's chevron sits in the flat `t6` token upstream gives it,
   // rather than the hover-reactive secondary every other tool row uses.
   const chevronClass =
     call.name === "Agent"
       ? "shrink-0 self-center text-t6"
-      : "shrink-0 text-assistant-secondary group-hover/tool:text-assistant-primary";
+      : "shrink-0 text-secondary group-hover/tool:text-primary";
   // A failed call whose param is its own description reads as one phrase
   // ("Failed to install dependencies and build"), so upstream drops the verb
   // and the separate param span; every other failed row keeps both
@@ -2519,7 +2514,7 @@ function ToolCallRow({
         <span
           className={
             isFileParam
-              ? "text-body text-assistant-primary truncate min-w-0"
+              ? "text-body text-primary truncate min-w-0"
               : `truncate min-w-0 text-body ${labelClass}`
           }
         >
@@ -2641,12 +2636,12 @@ function ToolCallSummary({ calls, sessionId }: { calls: ClientToolCall[]; sessio
             onClick={() => setExpanded(!expanded)}
             className="relative group/tool flex self-start max-w-full items-center py-0 gap-g1 text-left hide-focus-ring rounded-r3"
           >
-            <span className="inline-flex items-center gap-g3 min-w-0 text-assistant-secondary group-hover/tool:text-assistant-primary">
+            <span className="inline-flex items-center gap-g3 min-w-0 text-secondary group-hover/tool:text-primary">
               <span className="text-body truncate min-w-0">
                 <SummarySpans segments={segments} />
               </span>
             </span>
-            <span className="shrink-0 text-assistant-secondary group-hover/tool:text-assistant-primary">
+            <span className="shrink-0 text-secondary group-hover/tool:text-primary">
               <ChevronIcon expanded={expanded} size={14} />
             </span>
           </button>
@@ -2655,7 +2650,7 @@ function ToolCallSummary({ calls, sessionId }: { calls: ClientToolCall[]; sessio
               {/* Upstream separates the grouped rows with hairline dividers and
                   per-child padding inside one outlined card, not with gaps
                   between rows floating on a tinted panel. */}
-              <div className="flex flex-col card-outline rounded-r6 overflow-clip mt-p6 divide-y divide-t3 [&>*]:px-p7 [&>*]:py-p6">
+              <div className="flex flex-col card-outline rounded-r6 overflow-clip mt-p6 divide-y [&>*]:px-p7 [&>*]:py-p6">
                 {displayCalls.map((call, i) => (
                   <ToolCallRow key={i} call={call} sessionId={sessionId} nested />
                 ))}

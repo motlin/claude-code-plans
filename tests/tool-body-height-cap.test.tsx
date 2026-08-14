@@ -76,7 +76,7 @@ describe("expanded tool bodies cap at 400px", () => {
       scrollerCount: 1,
       scrollerClass: `${CAP} flex flex-col gap-g4`,
       columnClass:
-        "flex-1 min-w-0 flex flex-col gap-g4 text-body text-assistant-secondary whitespace-pre-wrap break-words",
+        "flex-1 min-w-0 flex flex-col gap-g4 text-body text-secondary whitespace-pre-wrap break-words",
       holdsParams: true,
       holdsResult: true,
       holdsChildren: true,
@@ -96,7 +96,7 @@ describe("expanded tool bodies cap at 400px", () => {
       classNames: cappedClassNames(container),
       capsOutput: scrollers[0]?.textContent,
     }).toStrictEqual({
-      classNames: [`${CAP} whitespace-pre-wrap break-all text-assistant-secondary`],
+      classNames: [`${CAP} whitespace-pre-wrap break-all text-secondary`],
       capsOutput: "alice.ts",
     });
   });
@@ -134,9 +134,7 @@ describe("expanded tool bodies cap at 400px", () => {
       renderedLines: container.querySelectorAll("[data-content] > div").length,
       expandButtons: container.querySelectorAll("button").length,
     }).toStrictEqual({
-      classNames: [
-        `m-0 ${CAP} overflow-x-auto font-mono text-code leading-code text-assistant-primary`,
-      ],
+      classNames: [`m-0 ${CAP} overflow-x-auto font-mono text-code leading-code text-primary`],
       renderedLines: 60,
       expandButtons: 1,
     });

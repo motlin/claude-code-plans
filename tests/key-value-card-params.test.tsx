@@ -41,7 +41,7 @@ describe("KeyValueCard params", () => {
         })),
       })),
     }).toStrictEqual({
-      containerClass: "text-assistant-secondary flex flex-col gap-g2",
+      containerClass: "text-secondary flex flex-col gap-g2",
       rows: [
         {
           className: "break-words",

@@ -132,6 +132,16 @@ describe("SessionChat body typography", () => {
     expect({
       bodyFontSize: styles.match(/--upstream-text-body:\s*([^;]+);/)?.[1] ?? null,
       bodyLineHeight: styles.match(/--upstream-leading-body:\s*([^;]+);/)?.[1] ?? null,
+      primaryTextColor: readToken(extractBlock(styles, "@theme inline"), "--color-primary"),
+      secondaryTextColor: readToken(extractBlock(styles, "@theme inline"), "--color-secondary"),
+      legacyPrimaryTextColor: readToken(
+        extractBlock(styles, "@theme inline"),
+        "--color-assistant-primary",
+      ),
+      legacySecondaryTextColor: readToken(
+        extractBlock(styles, "@theme inline"),
+        "--color-assistant-secondary",
+      ),
       sessionColumnClassName: findClassName(userHtml, "max-w-3xl"),
       userBubbleClassName: findClassName(userHtml, "user-message-bubble"),
       assistantProseClassName: findClassName(assistantHtml, "relative min-w-0 text-body"),
@@ -140,6 +150,10 @@ describe("SessionChat body typography", () => {
     }).toStrictEqual({
       bodyFontSize: "14px",
       bodyLineHeight: "20px",
+      primaryTextColor: "var(--upstream-text-assistant-primary)",
+      secondaryTextColor: "var(--upstream-text-assistant-secondary)",
+      legacyPrimaryTextColor: null,
+      legacySecondaryTextColor: null,
       sessionColumnClassName: "mx-auto w-full max-w-3xl px-8 pt-4 pb-4 text-body",
       userBubbleClassName:
         "user-message-bubble relative flex flex-col gap-[5px] rounded-[10px] bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text",
@@ -623,14 +637,14 @@ describe("SessionChat nested tool rows", () => {
     }).toStrictEqual({
       collapsedBodies: { groupedBash: [], groupedRead: [], singleBash: [] },
       groupedBashCards: [
-        "flex flex-col card-outline rounded-r6 overflow-clip mt-p6 divide-y divide-t3 [&>*]:px-p7 [&>*]:py-p6",
+        "flex flex-col card-outline rounded-r6 overflow-clip mt-p6 divide-y [&>*]:px-p7 [&>*]:py-p6",
       ],
       groupedBashBodies: [
         "group/body relative flex w-full pt-p3 empty:hidden",
         "group/body relative flex w-full pt-p3 empty:hidden",
       ],
       groupedReadCards: [
-        "flex flex-col card-outline rounded-r6 overflow-clip mt-p6 divide-y divide-t3 [&>*]:px-p7 [&>*]:py-p6",
+        "flex flex-col card-outline rounded-r6 overflow-clip mt-p6 divide-y [&>*]:px-p7 [&>*]:py-p6",
       ],
       groupedReadBodies: [
         "group/body relative flex w-full flex-col pt-p3 empty:hidden",
@@ -668,7 +682,7 @@ describe("SessionChat grouped tool card", () => {
     }).toStrictEqual({
       collapsed: [],
       expanded: [
-        "flex flex-col card-outline rounded-r6 overflow-clip mt-p6 divide-y divide-t3 [&>*]:px-p7 [&>*]:py-p6",
+        "flex flex-col card-outline rounded-r6 overflow-clip mt-p6 divide-y [&>*]:px-p7 [&>*]:py-p6",
       ],
       fillsWithT1: false,
     });
@@ -680,7 +694,7 @@ describe("SessionChat grouped tool card", () => {
 const TOOL_ROW = /group\/tool[^"]*">([\s\S]*?)<\/div>/g;
 
 /** Class of a tool row's argument span, e.g. the filename on a Read row. */
-const ARGUMENT = "text-body text-assistant-primary truncate min-w-0";
+const ARGUMENT = "text-body text-primary truncate min-w-0";
 
 /** [class, text] of every label span in one tool row's markup. */
 function labelSpans(row: string): [string, string][] {
@@ -895,10 +909,10 @@ describe("SessionChat failed tool row label", () => {
         '<span class="truncate min-w-0 text-body text-extended-pink">',
       ),
       failedKeepsSecondaryLabel: failedHtml.includes(
-        '<span class="shrink-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary">',
+        '<span class="shrink-0 text-body text-secondary group-hover/tool:text-primary">',
       ),
       okVerb: okHtml.includes(
-        '<span class="shrink-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary">',
+        '<span class="shrink-0 text-body text-secondary group-hover/tool:text-primary">',
       ),
       okPink: okHtml.includes("text-extended-pink"),
     }).toStrictEqual({
@@ -931,28 +945,19 @@ describe("SessionChat failed tool row label text", () => {
     }).toStrictEqual({
       failedEdit: [
         ["shrink-0 text-body text-extended-pink", "Failed to edit"],
-        ["text-body text-assistant-primary truncate min-w-0", "cache.ts"],
+        ["text-body text-primary truncate min-w-0", "cache.ts"],
       ],
       okEdit: [
-        [
-          "shrink-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary",
-          "Edited",
-        ],
-        ["text-body text-assistant-primary truncate min-w-0", "cache.ts"],
+        ["shrink-0 text-body text-secondary group-hover/tool:text-primary", "Edited"],
+        ["text-body text-primary truncate min-w-0", "cache.ts"],
       ],
       failedGrep: [
         ["shrink-0 text-body text-extended-pink", "Failed to search"],
         ["truncate min-w-0 text-body text-extended-pink", "alice"],
       ],
       okGrep: [
-        [
-          "shrink-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary",
-          "Searched",
-        ],
-        [
-          "truncate min-w-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary",
-          "alice",
-        ],
+        ["shrink-0 text-body text-secondary group-hover/tool:text-primary", "Searched"],
+        ["truncate min-w-0 text-body text-secondary group-hover/tool:text-primary", "alice"],
       ],
     });
   });
@@ -979,7 +984,7 @@ describe("SessionChat failed tool row label text", () => {
       ],
       ok: [
         [
-          "truncate min-w-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary",
+          "truncate min-w-0 text-body text-secondary group-hover/tool:text-primary",
           "Installed dependencies and build",
         ],
       ],
@@ -1002,8 +1007,7 @@ describe("SessionChat failed tool row label text", () => {
 });
 
 describe("SessionChat file-param tool row argument", () => {
-  const VERB =
-    "shrink-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary";
+  const VERB = "shrink-0 text-body text-secondary group-hover/tool:text-primary";
 
   it("sets a file argument in the sans body face, matching upstream Read/Edit rows", () => {
     const html = renderTranscript(
@@ -1032,8 +1036,7 @@ describe("SessionChat file-param tool row argument", () => {
   // Upstream labels a partial read with the line range beside the filename
   // ("Read archive-completed.ts (220-239)"), in its own secondary span, so a
   // slice is distinguishable from a whole-file read.
-  const RANGE =
-    "text-body text-assistant-secondary group-hover/tool:text-assistant-primary truncate min-w-0";
+  const RANGE = "text-body text-secondary group-hover/tool:text-primary truncate min-w-0";
 
   function readRow(input: unknown): [string, string][] {
     return toolRowLabelSpans(
@@ -1101,8 +1104,7 @@ describe("SessionChat file-param tool row argument", () => {
 });
 
 describe("SessionChat Agent row label", () => {
-  const DESCRIPTION =
-    "truncate min-w-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary";
+  const DESCRIPTION = "truncate min-w-0 text-body text-secondary group-hover/tool:text-primary";
 
   const agentRecords = toolCallRecords([
     {
@@ -1149,8 +1151,7 @@ describe("SessionChat Agent row label", () => {
 });
 
 describe("SessionChat Bash row label", () => {
-  const PHRASE =
-    "truncate min-w-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary";
+  const PHRASE = "truncate min-w-0 text-body text-secondary group-hover/tool:text-primary";
 
   const bashLabel = (input: Record<string, unknown>) =>
     toolRowLabelSpans(renderTranscript(failedToolCallRecords(false, { name: "Bash", input })));
@@ -1222,10 +1223,8 @@ describe("SessionChat Bash row label", () => {
 });
 
 describe("SessionChat tool row verbs", () => {
-  const SECONDARY =
-    "shrink-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary";
-  const SECONDARY_PARAM =
-    "truncate min-w-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary";
+  const SECONDARY = "shrink-0 text-body text-secondary group-hover/tool:text-primary";
+  const SECONDARY_PARAM = "truncate min-w-0 text-body text-secondary group-hover/tool:text-primary";
 
   it("labels every row with an upstream verb phrase instead of the raw tool name", () => {
     const label = (call: { name: string; input: unknown }) =>
@@ -1328,9 +1327,9 @@ function groupedToolCallRecords(): unknown[] {
 describe("SessionChat tool row hover treatment", () => {
   it("brightens a successful row's verb, param and chevron on group hover", () => {
     expect(rowHeaderSpanClasses(renderTranscript(failedToolCallRecords(false)))).toStrictEqual([
-      "shrink-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary",
-      "truncate min-w-0 text-body text-assistant-secondary group-hover/tool:text-assistant-primary",
-      "shrink-0 text-assistant-secondary group-hover/tool:text-assistant-primary",
+      "shrink-0 text-body text-secondary group-hover/tool:text-primary",
+      "truncate min-w-0 text-body text-secondary group-hover/tool:text-primary",
+      "shrink-0 text-secondary group-hover/tool:text-primary",
     ]);
   });
 
@@ -1338,17 +1337,17 @@ describe("SessionChat tool row hover treatment", () => {
     expect(rowHeaderSpanClasses(renderTranscript(failedToolCallRecords(true)))).toStrictEqual([
       "shrink-0 text-body text-extended-pink",
       "truncate min-w-0 text-body text-extended-pink",
-      "shrink-0 text-assistant-secondary group-hover/tool:text-assistant-primary",
+      "shrink-0 text-secondary group-hover/tool:text-primary",
     ]);
   });
 
   it("colors the group summary from its wrapper so the whole label brightens on hover", () => {
     expect(rowHeaderSpanClasses(renderTranscript(groupedToolCallRecords()))).toStrictEqual([
-      "inline-flex items-center gap-g3 min-w-0 text-assistant-secondary group-hover/tool:text-assistant-primary",
+      "inline-flex items-center gap-g3 min-w-0 text-secondary group-hover/tool:text-primary",
       "text-body truncate min-w-0",
       "text-body",
       "",
-      "shrink-0 text-assistant-secondary group-hover/tool:text-assistant-primary",
+      "shrink-0 text-secondary group-hover/tool:text-primary",
     ]);
   });
 });

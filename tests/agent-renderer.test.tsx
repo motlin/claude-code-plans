@@ -39,7 +39,7 @@ function aboveCard(html: string): string {
   return html.slice(0, cardStart);
 }
 
-const NOTE = '<div class="mb-1 text-body text-assistant-secondary">';
+const NOTE = '<div class="mb-1 text-body text-secondary">';
 
 describe("AgentRenderer status chrome", () => {
   it("draws no status pill for a finished agent, which upstream never labels", () => {

@@ -117,7 +117,7 @@ function logLevelIcon(level: string) {
     case "info":
       return <Info className="h-4 w-4 text-cyan-500" />;
     default:
-      return <MessageSquare className="h-4 w-4 text-assistant-secondary" />;
+      return <MessageSquare className="h-4 w-4 text-secondary" />;
   }
 }
 
@@ -175,23 +175,21 @@ function PageList({ pages }: { pages: PageInfo[] }) {
             page.selected ? "bg-blue-50 dark:bg-blue-950/30" : "hover:bg-t2"
           }`}
         >
-          <File
-            className={`h-3 w-3 ${page.selected ? "text-blue-500" : "text-assistant-secondary"}`}
-          />
-          <span className="text-assistant-secondary w-4">{page.index}</span>
+          <File className={`h-3 w-3 ${page.selected ? "text-blue-500" : "text-secondary"}`} />
+          <span className="text-secondary w-4">{page.index}</span>
           {isHttpUrl(page.url) ? (
             <a
               href={page.url}
               target="_blank"
               rel="noreferrer"
               className={`hover:text-accent-100 hover:underline truncate ${
-                page.selected ? "text-assistant-primary" : "text-assistant-secondary"
+                page.selected ? "text-primary" : "text-secondary"
               }`}
             >
               {page.url}
             </a>
           ) : (
-            <span className="text-assistant-secondary italic truncate">{page.url}</span>
+            <span className="text-secondary italic truncate">{page.url}</span>
           )}
           {page.selected && (
             <span className="text-body text-accent-100 font-medium ml-auto">active</span>
@@ -220,7 +218,7 @@ function NavigatePageRenderer({
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <CheckCircle className="h-4 w-4 text-green-500" />
-        <span className="text-body text-assistant-primary">Navigated to</span>
+        <span className="text-body text-primary">Navigated to</span>
         {url && (
           <a
             href={url}
@@ -243,7 +241,7 @@ function NewPageRenderer({ resultText }: { resultText: string }) {
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <CheckCircle className="h-4 w-4 text-green-500" />
-        <span className="text-body text-assistant-primary">New page created</span>
+        <span className="text-body text-primary">New page created</span>
       </div>
       <PageList pages={pages} />
     </div>
@@ -256,7 +254,7 @@ function ClosePageRenderer({ resultText }: { resultText: string }) {
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <CheckCircle className="h-4 w-4 text-green-500" />
-        <span className="text-body text-assistant-primary">Page closed</span>
+        <span className="text-body text-primary">Page closed</span>
       </div>
       <PageList pages={pages} />
     </div>
@@ -268,8 +266,8 @@ function ListPagesRenderer({ resultText }: { resultText: string }) {
   return (
     <div className="px-2 py-2">
       <div className="flex items-center gap-2 mb-2">
-        <Globe className="h-4 w-4 text-assistant-secondary" />
-        <span className="text-body text-assistant-primary">{pages.length} page(s) open</span>
+        <Globe className="h-4 w-4 text-secondary" />
+        <span className="text-body text-primary">{pages.length} page(s) open</span>
       </div>
       <PageList pages={pages} />
     </div>
@@ -292,16 +290,16 @@ function ListConsoleMessagesRenderer({ resultText }: { resultText: string }) {
 
   return (
     <div className="space-y-1 max-h-64 overflow-auto">
-      {totalLine && <div className="text-body text-assistant-secondary px-2 py-1">{totalLine}</div>}
+      {totalLine && <div className="text-body text-secondary px-2 py-1">{totalLine}</div>}
       {messages.map((msg) => (
         <div key={msg.msgid} className="flex items-start gap-2 px-2 py-1 hover:bg-t2 rounded-r6">
-          <span className="text-body text-assistant-secondary w-6 shrink-0">#{msg.msgid}</span>
+          <span className="text-body text-secondary w-6 shrink-0">#{msg.msgid}</span>
           <span
             className={`text-xs px-1.5 py-0.5 rounded-r6 shrink-0 ${logLevelBadgeClasses(msg.level)}`}
           >
             {msg.level}
           </span>
-          <span className="text-body text-assistant-primary truncate flex-1" title={msg.message}>
+          <span className="text-body text-primary truncate flex-1" title={msg.message}>
             {msg.message.length > 80 ? msg.message.slice(0, 77) + "..." : msg.message}
           </span>
         </div>
@@ -332,15 +330,15 @@ function GetConsoleMessageRenderer({ resultText }: { resultText: string }) {
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-start gap-2">
         {logLevelIcon(level)}
-        <span className="text-body text-assistant-secondary">#{msgid}</span>
+        <span className="text-body text-secondary">#{msgid}</span>
         <span className={`text-xs px-1.5 py-0.5 rounded-r6 ${logLevelBadgeClasses(level)}`}>
           {level}
         </span>
       </div>
-      <div className="text-assistant-primary text-code font-mono break-words">{message}</div>
+      <div className="text-primary text-code font-mono break-words">{message}</div>
       {args.length > 0 && (
         <div className="space-y-1 border-l-2 border-border pl-3 mt-2">
-          <div className="text-body text-assistant-secondary font-medium">Arguments</div>
+          <div className="text-body text-secondary font-medium">Arguments</div>
           {args.map((arg) => {
             let isJson = false;
             let formatted = arg.value;
@@ -353,13 +351,13 @@ function GetConsoleMessageRenderer({ resultText }: { resultText: string }) {
             }
             return (
               <div key={arg.index} className="text-body">
-                <span className="text-assistant-secondary">arg[{arg.index}]: </span>
+                <span className="text-secondary">arg[{arg.index}]: </span>
                 {isJson ? (
-                  <pre className="text-assistant-secondary text-code font-mono whitespace-pre-wrap bg-t1 rounded-r6 p-1 mt-0.5 overflow-auto max-h-32">
+                  <pre className="text-secondary text-code font-mono whitespace-pre-wrap bg-t1 rounded-r6 p-1 mt-0.5 overflow-auto max-h-32">
                     {formatted}
                   </pre>
                 ) : (
-                  <span className="text-assistant-primary text-code font-mono">{formatted}</span>
+                  <span className="text-primary text-code font-mono">{formatted}</span>
                 )}
               </div>
             );
@@ -378,10 +376,8 @@ function TakeScreenshotRenderer({ resultText }: { resultText: string }) {
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <Camera className="h-4 w-4 text-purple-500" />
-        <span className="text-body text-assistant-primary">Screenshot captured</span>
-        {path && (
-          <span className="text-assistant-secondary text-code font-mono truncate">{path}</span>
-        )}
+        <span className="text-body text-primary">Screenshot captured</span>
+        {path && <span className="text-secondary text-code font-mono truncate">{path}</span>}
       </div>
       {path && (
         <img
@@ -403,8 +399,8 @@ function ScreenshotRenderer({ path }: { path: string }) {
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <Camera className="h-4 w-4 text-purple-500" />
-        <span className="text-body text-assistant-primary">Screenshot</span>
-        <span className="text-assistant-secondary text-code font-mono truncate">{path}</span>
+        <span className="text-body text-primary">Screenshot</span>
+        <span className="text-secondary text-code font-mono truncate">{path}</span>
       </div>
       <img
         src={`file://${path}`}
@@ -434,10 +430,8 @@ function TakeSnapshotRenderer({ resultText }: { resultText: string }) {
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <Network className="h-4 w-4 text-indigo-500" />
-        <span className="text-body text-assistant-primary">Accessibility snapshot</span>
-        {title && (
-          <span className="text-body text-assistant-secondary truncate">&quot;{title}&quot;</span>
-        )}
+        <span className="text-body text-primary">Accessibility snapshot</span>
+        {title && <span className="text-body text-secondary truncate">&quot;{title}&quot;</span>}
       </div>
       {url && (
         <a
@@ -450,7 +444,7 @@ function TakeSnapshotRenderer({ resultText }: { resultText: string }) {
         </a>
       )}
       <div className="bg-t1 rounded-r6 p-2 max-h-48 overflow-auto">
-        <pre className="text-assistant-secondary text-code font-mono whitespace-pre">
+        <pre className="text-secondary text-code font-mono whitespace-pre">
           {displayedLines.join("\n")}
           {remainingCount > 0 && `\n... (${remainingCount} more nodes)`}
         </pre>
@@ -472,7 +466,7 @@ function ListNetworkRequestsRenderer({ resultText }: { resultText: string }) {
 
   return (
     <div className="space-y-1 max-h-64 overflow-auto">
-      <div className="text-body text-assistant-secondary px-2 py-1 flex items-center gap-2">
+      <div className="text-body text-secondary px-2 py-1 flex items-center gap-2">
         <Plug className="h-3 w-3" />
         {requests.length} requests
       </div>
@@ -481,7 +475,7 @@ function ListNetworkRequestsRenderer({ resultText }: { resultText: string }) {
           key={req.reqid}
           className="flex items-center gap-2 px-2 py-1 hover:bg-t2 rounded-r6 text-body"
         >
-          <span className="text-assistant-secondary w-8">#{req.reqid}</span>
+          <span className="text-secondary w-8">#{req.reqid}</span>
           <span className={`px-1.5 py-0.5 rounded-r6 font-mono ${httpMethodClasses(req.method)}`}>
             {req.method}
           </span>
@@ -497,12 +491,12 @@ function ListNetworkRequestsRenderer({ resultText }: { resultText: string }) {
               href={req.url}
               target="_blank"
               rel="noreferrer"
-              className="text-assistant-secondary hover:text-accent-100 hover:underline truncate flex-1 text-code font-mono"
+              className="text-secondary hover:text-accent-100 hover:underline truncate flex-1 text-code font-mono"
             >
               {truncateUrlEnd(req.url, 60)}
             </a>
           ) : (
-            <span className="text-assistant-secondary truncate flex-1 text-code font-mono">
+            <span className="text-secondary truncate flex-1 text-code font-mono">
               {truncateUrlEnd(req.url, 60)}
             </span>
           )}
@@ -562,8 +556,8 @@ function GetNetworkRequestRenderer({ resultText }: { resultText: string }) {
       <div className="mt-1 bg-t1 rounded-r6 p-2 max-h-32 overflow-auto">
         {headers.map((h, i) => (
           <div key={i} className="text-code font-mono">
-            <span className="text-assistant-secondary">{h.name}:</span>
-            <span className="text-assistant-primary"> {h.value}</span>
+            <span className="text-secondary">{h.name}:</span>
+            <span className="text-primary"> {h.value}</span>
           </div>
         ))}
       </div>
@@ -602,7 +596,7 @@ function GetNetworkRequestRenderer({ resultText }: { resultText: string }) {
           </div>
           {reqHeaders.length > 0 && (
             <details className="text-body">
-              <summary className="text-assistant-secondary cursor-pointer hover:text-assistant-primary">
+              <summary className="text-secondary cursor-pointer hover:text-primary">
                 Headers ({reqHeaders.length})
               </summary>
               <HeadersList headers={reqHeaders} />
@@ -610,10 +604,8 @@ function GetNetworkRequestRenderer({ resultText }: { resultText: string }) {
           )}
           {reqBody && (
             <details className="text-body">
-              <summary className="text-assistant-secondary cursor-pointer hover:text-assistant-primary">
-                Body
-              </summary>
-              <pre className="mt-1 bg-t1 rounded-r6 p-2 max-h-32 overflow-auto text-assistant-secondary text-code font-mono whitespace-pre-wrap">
+              <summary className="text-secondary cursor-pointer hover:text-primary">Body</summary>
+              <pre className="mt-1 bg-t1 rounded-r6 p-2 max-h-32 overflow-auto text-secondary text-code font-mono whitespace-pre-wrap">
                 {formatBody(reqBody)}
               </pre>
             </details>
@@ -629,7 +621,7 @@ function GetNetworkRequestRenderer({ resultText }: { resultText: string }) {
           </div>
           {resHeaders.length > 0 && (
             <details className="text-body">
-              <summary className="text-assistant-secondary cursor-pointer hover:text-assistant-primary">
+              <summary className="text-secondary cursor-pointer hover:text-primary">
                 Headers ({resHeaders.length})
               </summary>
               <HeadersList headers={resHeaders} />
@@ -637,10 +629,8 @@ function GetNetworkRequestRenderer({ resultText }: { resultText: string }) {
           )}
           {resBody && (
             <details className="text-body" open>
-              <summary className="text-assistant-secondary cursor-pointer hover:text-assistant-primary">
-                Body
-              </summary>
-              <pre className="mt-1 bg-t1 rounded-r6 p-2 max-h-48 overflow-auto text-assistant-secondary text-code font-mono whitespace-pre-wrap">
+              <summary className="text-secondary cursor-pointer hover:text-primary">Body</summary>
+              <pre className="mt-1 bg-t1 rounded-r6 p-2 max-h-48 overflow-auto text-secondary text-code font-mono whitespace-pre-wrap">
                 {formatBody(resBody)}
               </pre>
             </details>
@@ -654,9 +644,7 @@ function GetNetworkRequestRenderer({ resultText }: { resultText: string }) {
 function DefaultCdpRenderer({ resultText }: { resultText: string }) {
   return (
     <div className="bg-t1 rounded-r6 p-3 max-h-64 overflow-auto">
-      <pre className="text-assistant-primary text-code font-mono whitespace-pre-wrap">
-        {resultText}
-      </pre>
+      <pre className="text-primary text-code font-mono whitespace-pre-wrap">{resultText}</pre>
     </div>
   );
 }
@@ -702,7 +690,7 @@ function ChromeDevtoolsContent({
     return <ScreenshotRenderer path={screenshotPath} />;
   }
 
-  if (!resultText) return <span className="text-body text-assistant-secondary">No result</span>;
+  if (!resultText) return <span className="text-body text-secondary">No result</span>;
 
   switch (tool) {
     case "navigate_page":

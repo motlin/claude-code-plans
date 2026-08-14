@@ -94,26 +94,26 @@ function ItemList({ items, icon }: { items: ListItem[]; icon: "pr" | "issue" }) 
             key={item.number ?? i}
             className="flex items-center gap-2 px-2 py-1 hover:bg-t2 rounded-r6 text-body"
           >
-            <Icon className="h-3.5 w-3.5 text-assistant-secondary shrink-0" />
-            <span className="text-assistant-secondary shrink-0">#{item.number}</span>
+            <Icon className="h-3.5 w-3.5 text-secondary shrink-0" />
+            <span className="text-secondary shrink-0">#{item.number}</span>
             {effectiveState && stateBadge(effectiveState)}
             {item.html_url ? (
               <a
                 href={item.html_url}
                 target="_blank"
                 rel="noreferrer"
-                className="text-assistant-primary hover:text-accent-100 hover:underline truncate flex-1"
+                className="text-primary hover:text-accent-100 hover:underline truncate flex-1"
                 title={item.title}
               >
                 {truncate(item.title ?? "", 80)}
               </a>
             ) : (
-              <span className="text-assistant-primary truncate flex-1" title={item.title}>
+              <span className="text-primary truncate flex-1" title={item.title}>
                 {truncate(item.title ?? "", 80)}
               </span>
             )}
             {item.user?.login && (
-              <span className="text-assistant-secondary shrink-0 flex items-center gap-1">
+              <span className="text-secondary shrink-0 flex items-center gap-1">
                 <User className="h-3 w-3" />
                 {item.user.login}
               </span>
@@ -130,8 +130,8 @@ function ListPullRequestsRenderer({ data }: { data: unknown }) {
   return (
     <div className="px-2 py-2">
       <div className="flex items-center gap-2 mb-2">
-        <GitPullRequest className="h-4 w-4 text-assistant-secondary" />
-        <span className="text-body text-assistant-primary">{items.length} pull request(s)</span>
+        <GitPullRequest className="h-4 w-4 text-secondary" />
+        <span className="text-body text-primary">{items.length} pull request(s)</span>
       </div>
       <ItemList items={items} icon="pr" />
     </div>
@@ -143,8 +143,8 @@ function ListIssuesRenderer({ data }: { data: unknown }) {
   return (
     <div className="px-2 py-2">
       <div className="flex items-center gap-2 mb-2">
-        <CircleAlert className="h-4 w-4 text-assistant-secondary" />
-        <span className="text-body text-assistant-primary">{items.length} issue(s)</span>
+        <CircleAlert className="h-4 w-4 text-secondary" />
+        <span className="text-body text-primary">{items.length} issue(s)</span>
       </div>
       <ItemList items={items} icon="issue" />
     </div>
@@ -174,14 +174,14 @@ function SingleItemRenderer({ data, icon }: { data: DetailData; icon: "pr" | "is
   return (
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-start gap-2">
-        <Icon className="h-4 w-4 text-assistant-secondary mt-0.5 shrink-0" />
+        <Icon className="h-4 w-4 text-secondary mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-body font-medium text-assistant-primary">{data.title}</span>
-            <span className="text-body text-assistant-secondary">#{data.number}</span>
+            <span className="text-body font-medium text-primary">{data.title}</span>
+            <span className="text-body text-secondary">#{data.number}</span>
             {effectiveState && stateBadge(effectiveState)}
           </div>
-          <div className="flex items-center gap-3 mt-1 text-body text-assistant-secondary">
+          <div className="flex items-center gap-3 mt-1 text-body text-secondary">
             {data.user?.login && (
               <span className="flex items-center gap-1">
                 <User className="h-3 w-3" />
@@ -208,7 +208,7 @@ function SingleItemRenderer({ data, icon }: { data: DetailData; icon: "pr" | "is
             href={data.html_url}
             target="_blank"
             rel="noreferrer"
-            className="text-assistant-secondary hover:text-accent-100 shrink-0"
+            className="text-secondary hover:text-accent-100 shrink-0"
           >
             <ExternalLink className="h-3.5 w-3.5" />
           </a>
@@ -216,7 +216,7 @@ function SingleItemRenderer({ data, icon }: { data: DetailData; icon: "pr" | "is
       </div>
       {previewBody && (
         <CollapsibleSection label="Body">
-          <pre className="text-assistant-secondary text-code font-mono whitespace-pre-wrap bg-t1 rounded-r6 p-2 max-h-48 overflow-auto">
+          <pre className="text-secondary text-code font-mono whitespace-pre-wrap bg-t1 rounded-r6 p-2 max-h-48 overflow-auto">
             {previewBody}
           </pre>
         </CollapsibleSection>
@@ -237,8 +237,8 @@ function CommitListRenderer({ data }: { data: unknown }) {
   return (
     <div className="px-2 py-2">
       <div className="flex items-center gap-2 mb-2">
-        <GitCommit className="h-4 w-4 text-assistant-secondary" />
-        <span className="text-body text-assistant-primary">{commits.length} commit(s)</span>
+        <GitCommit className="h-4 w-4 text-secondary" />
+        <span className="text-body text-primary">{commits.length} commit(s)</span>
       </div>
       <div className="space-y-0.5">
         {commits.map((c, i) => {
@@ -250,7 +250,7 @@ function CommitListRenderer({ data }: { data: unknown }) {
               key={c.sha ?? i}
               className="flex items-center gap-2 px-2 py-1 hover:bg-t2 rounded-r6 text-body"
             >
-              <GitCommit className="h-3.5 w-3.5 text-assistant-secondary shrink-0" />
+              <GitCommit className="h-3.5 w-3.5 text-secondary shrink-0" />
               {c.html_url ? (
                 <a
                   href={c.html_url}
@@ -261,12 +261,12 @@ function CommitListRenderer({ data }: { data: unknown }) {
                   {sha}
                 </a>
               ) : (
-                <span className="text-code font-mono text-assistant-secondary shrink-0">{sha}</span>
+                <span className="text-code font-mono text-secondary shrink-0">{sha}</span>
               )}
-              <span className="text-assistant-primary truncate flex-1" title={message}>
+              <span className="text-primary truncate flex-1" title={message}>
                 {truncate(message, 80)}
               </span>
-              {author && <span className="text-assistant-secondary shrink-0">{author}</span>}
+              {author && <span className="text-secondary shrink-0">{author}</span>}
             </div>
           );
         })}
@@ -283,7 +283,7 @@ function SingleCommitRenderer({ data }: { data: CommitData }) {
   return (
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
-        <GitCommit className="h-4 w-4 text-assistant-secondary" />
+        <GitCommit className="h-4 w-4 text-secondary" />
         {data.html_url ? (
           <a
             href={data.html_url}
@@ -294,16 +294,16 @@ function SingleCommitRenderer({ data }: { data: CommitData }) {
             {sha}
           </a>
         ) : (
-          <span className="text-code font-mono text-assistant-secondary">{sha}</span>
+          <span className="text-code font-mono text-secondary">{sha}</span>
         )}
         {author && (
-          <span className="text-body text-assistant-secondary flex items-center gap-1">
+          <span className="text-body text-secondary flex items-center gap-1">
             <User className="h-3 w-3" />
             {author}
           </span>
         )}
       </div>
-      <pre className="text-assistant-primary text-code font-mono whitespace-pre-wrap bg-t1 rounded-r6 p-2 max-h-48 overflow-auto">
+      <pre className="text-primary text-code font-mono whitespace-pre-wrap bg-t1 rounded-r6 p-2 max-h-48 overflow-auto">
         {message}
       </pre>
     </div>
@@ -334,23 +334,21 @@ function FileContentsRenderer({ data }: { data: FileContentsData }) {
   return (
     <div className="px-2 py-2 space-y-2">
       <div className="flex items-center gap-2">
-        <FileCode className="h-4 w-4 text-assistant-secondary" />
-        <span className="text-code font-mono text-assistant-primary">
-          {data.path ?? data.name ?? "file"}
-        </span>
+        <FileCode className="h-4 w-4 text-secondary" />
+        <span className="text-code font-mono text-primary">{data.path ?? data.name ?? "file"}</span>
         {data.html_url && (
           <a
             href={data.html_url}
             target="_blank"
             rel="noreferrer"
-            className="text-assistant-secondary hover:text-accent-100 shrink-0"
+            className="text-secondary hover:text-accent-100 shrink-0"
           >
             <ExternalLink className="h-3.5 w-3.5" />
           </a>
         )}
       </div>
       {displayContent && (
-        <pre className="text-assistant-secondary text-code font-mono whitespace-pre-wrap bg-t1 rounded-r6 p-2 max-h-64 overflow-auto">
+        <pre className="text-secondary text-code font-mono whitespace-pre-wrap bg-t1 rounded-r6 p-2 max-h-64 overflow-auto">
           {displayContent}
         </pre>
       )}
@@ -378,8 +376,8 @@ function SearchResultsRenderer({ data }: { data: unknown }) {
   return (
     <div className="px-2 py-2">
       <div className="flex items-center gap-2 mb-2">
-        <Search className="h-4 w-4 text-assistant-secondary" />
-        <span className="text-body text-assistant-primary">
+        <Search className="h-4 w-4 text-secondary" />
+        <span className="text-body text-primary">
           {total !== undefined ? `${total} result(s)` : `${items.length} result(s)`}
         </span>
       </div>
@@ -391,35 +389,35 @@ function SearchResultsRenderer({ data }: { data: unknown }) {
           >
             {item.number !== undefined ? (
               <>
-                <CircleAlert className="h-3.5 w-3.5 text-assistant-secondary shrink-0" />
-                <span className="text-assistant-secondary shrink-0">#{item.number}</span>
+                <CircleAlert className="h-3.5 w-3.5 text-secondary shrink-0" />
+                <span className="text-secondary shrink-0">#{item.number}</span>
                 {item.state && stateBadge(item.state)}
               </>
             ) : (
-              <FileCode className="h-3.5 w-3.5 text-assistant-secondary shrink-0" />
+              <FileCode className="h-3.5 w-3.5 text-secondary shrink-0" />
             )}
             {item.html_url ? (
               <a
                 href={item.html_url}
                 target="_blank"
                 rel="noreferrer"
-                className="text-assistant-primary hover:text-accent-100 hover:underline truncate flex-1"
+                className="text-primary hover:text-accent-100 hover:underline truncate flex-1"
                 title={item.title ?? item.path}
               >
                 {truncate(item.title ?? item.path ?? item.name ?? "", 80)}
               </a>
             ) : (
-              <span className="text-assistant-primary truncate flex-1">
+              <span className="text-primary truncate flex-1">
                 {truncate(item.title ?? item.path ?? item.name ?? "", 80)}
               </span>
             )}
             {item.repository?.full_name && (
-              <span className="text-assistant-secondary shrink-0 text-code font-mono">
+              <span className="text-secondary shrink-0 text-code font-mono">
                 {item.repository.full_name}
               </span>
             )}
             {item.user?.login && (
-              <span className="text-assistant-secondary shrink-0 flex items-center gap-1">
+              <span className="text-secondary shrink-0 flex items-center gap-1">
                 <User className="h-3 w-3" />
                 {item.user.login}
               </span>
@@ -442,8 +440,8 @@ function BranchListRenderer({ data }: { data: unknown }) {
   return (
     <div className="px-2 py-2">
       <div className="flex items-center gap-2 mb-2">
-        <GitBranch className="h-4 w-4 text-assistant-secondary" />
-        <span className="text-body text-assistant-primary">{branches.length} branch(es)</span>
+        <GitBranch className="h-4 w-4 text-secondary" />
+        <span className="text-body text-primary">{branches.length} branch(es)</span>
       </div>
       <div className="space-y-0.5">
         {branches.map((b, i) => (
@@ -451,12 +449,10 @@ function BranchListRenderer({ data }: { data: unknown }) {
             key={b.name ?? i}
             className="flex items-center gap-2 px-2 py-1 hover:bg-t2 rounded-r6 text-body"
           >
-            <GitBranch className="h-3.5 w-3.5 text-assistant-secondary shrink-0" />
-            <span className="text-assistant-primary text-code font-mono">{b.name}</span>
+            <GitBranch className="h-3.5 w-3.5 text-secondary shrink-0" />
+            <span className="text-primary text-code font-mono">{b.name}</span>
             {b.commit?.sha && (
-              <span className="text-assistant-secondary text-code font-mono">
-                {b.commit.sha.slice(0, 7)}
-              </span>
+              <span className="text-secondary text-code font-mono">{b.commit.sha.slice(0, 7)}</span>
             )}
             {b.protected && (
               <span className="text-xs px-1.5 py-0.5 rounded-r6 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
@@ -480,11 +476,11 @@ function SuccessActionRenderer({ data, action }: { data: unknown; action: string
     <div className="px-2 py-2">
       <div className="flex items-center gap-2">
         <CheckCircle className="h-4 w-4 text-green-500" />
-        <span className="text-body text-assistant-primary">{action}</span>
+        <span className="text-body text-primary">{action}</span>
       </div>
       {(title || number) && (
         <div className="flex items-center gap-2 mt-1 text-body">
-          {number !== undefined && <span className="text-assistant-secondary">#{number}</span>}
+          {number !== undefined && <span className="text-secondary">#{number}</span>}
           {htmlUrl ? (
             <a
               href={htmlUrl}
@@ -495,7 +491,7 @@ function SuccessActionRenderer({ data, action }: { data: unknown; action: string
               {title ?? htmlUrl}
             </a>
           ) : (
-            title && <span className="text-assistant-primary">{title}</span>
+            title && <span className="text-primary">{title}</span>
           )}
         </div>
       )}
@@ -516,9 +512,7 @@ function DefaultGithubRenderer({ resultText }: { resultText: string }) {
 
   return (
     <div className="bg-t1 rounded-r6 p-2 max-h-64 overflow-auto">
-      <pre className="text-assistant-secondary text-code font-mono whitespace-pre-wrap">
-        {displayText}
-      </pre>
+      <pre className="text-secondary text-code font-mono whitespace-pre-wrap">{displayText}</pre>
     </div>
   );
 }
@@ -552,7 +546,7 @@ function InputSummary({ tool, input }: { tool: string; input: Record<string, unk
 
   if (parts.length === 0) return null;
 
-  return <span className="text-assistant-secondary ml-1">{parts.join(" ")}</span>;
+  return <span className="text-secondary ml-1">{parts.join(" ")}</span>;
 }
 
 // ---------------------------------------------------------------------------
@@ -579,7 +573,7 @@ export function GithubRenderer({ toolCall }: ToolRendererProps) {
     }
 
     if (!resultText) {
-      return <span className="text-body text-assistant-secondary">No result</span>;
+      return <span className="text-body text-secondary">No result</span>;
     }
 
     switch (tool) {

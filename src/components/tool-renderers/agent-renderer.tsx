@@ -45,9 +45,7 @@ export function AgentRenderer({ toolCall }: ToolRendererProps) {
 
   return (
     <>
-      {notes.length > 0 && (
-        <div className="mb-1 text-body text-assistant-secondary">{notes.join(" · ")}</div>
-      )}
+      {notes.length > 0 && <div className="mb-1 text-body text-secondary">{notes.join(" · ")}</div>}
       <KeyValueCard isError={isError} params={params} result={displayResult ?? undefined} />
       {agentSessionId && (
         <a

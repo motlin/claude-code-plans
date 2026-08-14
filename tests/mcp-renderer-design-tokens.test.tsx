@@ -89,6 +89,14 @@ describe("undefined shadcn tokens", () => {
 });
 
 describe("MCP renderers use transcript design tokens", () => {
+  it("no source file uses the retired assistant-prefixed text utilities", () => {
+    const retiredUtility = /text-assistant-(?:primary|secondary)/;
+    const offenders = collectSourceFiles(SRC_DIR)
+      .filter((file) => retiredUtility.test(readFileSync(file, "utf8")))
+      .map((file) => relative(SRC_DIR, file));
+    expect(offenders).toStrictEqual([]);
+  });
+
   it("renders chrome-devtools console output with token classes", () => {
     const { container } = render(
       <ChromeDevtoolsRenderer
@@ -100,7 +108,7 @@ describe("MCP renderers use transcript design tokens", () => {
       />,
     );
     const html = container.innerHTML;
-    expect(html).toContain("text-assistant-secondary");
+    expect(html).toContain("text-secondary");
     expect(html).not.toContain("text-muted-foreground");
     expect(html).not.toContain("text-foreground");
   });
@@ -113,7 +121,7 @@ describe("MCP renderers use transcript design tokens", () => {
     );
     const html = container.innerHTML;
     expect(html).toContain("bg-t1 rounded-r6");
-    expect(html).toContain("text-assistant-secondary text-code font-mono");
+    expect(html).toContain("text-secondary text-code font-mono");
     expect(html).not.toContain("bg-muted");
     expect(html).not.toContain("text-muted-foreground");
   });
@@ -130,7 +138,7 @@ describe("MCP renderers use transcript design tokens", () => {
     );
     const html = container.innerHTML;
     expect(html).toContain("hover:bg-t2 rounded-r6");
-    expect(html).toContain("text-assistant-secondary");
+    expect(html).toContain("text-secondary");
     expect(html).not.toContain("hover:bg-muted");
     expect(html).not.toContain("text-muted-foreground");
   });
@@ -142,7 +150,7 @@ describe("MCP renderers use transcript design tokens", () => {
       />,
     );
     const html = container.innerHTML;
-    expect(html).toContain("text-assistant-secondary");
+    expect(html).toContain("text-secondary");
     expect(html).not.toContain("text-muted-foreground");
     expect(html).not.toContain("text-foreground");
   });

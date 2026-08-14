@@ -67,7 +67,7 @@ describe("TodoWriteRenderer", () => {
       markerClass: classNames(container, ":scope > div > div > span:first-child")[0],
       contentClass: classNames(container, ":scope > div > div > span:last-child")[0],
     }).toStrictEqual({
-      list: ["flex flex-col gap-g2 text-body text-assistant-secondary"],
+      list: ["flex flex-col gap-g2 text-body text-secondary"],
       markers: ["[x]", "[-]", "[ ]"],
       rows: ["[x]Update docs", "[-]Fix login bug", "[ ]Write tests"],
       markerClass: "shrink-0 font-mono text-t6",

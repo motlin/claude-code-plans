@@ -38,7 +38,7 @@ export function TodoWriteRenderer({ toolCall, verbose }: ToolRendererProps) {
   if (verbose) {
     if (todos.length === 0) return null;
     return (
-      <div className="flex flex-col gap-g2 text-body text-assistant-secondary">
+      <div className="flex flex-col gap-g2 text-body text-secondary">
         {todos.map((todo, i) => (
           <div key={i} className="flex gap-g2">
             <span className="shrink-0 font-mono text-t6">{statusMarker(todo.status)}</span>
