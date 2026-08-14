@@ -218,15 +218,25 @@ describe("FilesDrawer", () => {
     }).toStrictEqual({ visiblePaths: [], emptyMessage: "No files match “alice”." });
   });
 
-  it("left-truncates labels with rtl and bdi without adding file navigation", () => {
+  it("left-truncates labels with an ellipsis and exposes the full path", () => {
     render(<DrawerHarness />);
 
     const label = screen.getByText("~/example/agent.ts");
+    const pathContainer = label.parentElement;
     expect({
       labelElement: label.tagName,
-      direction: label.parentElement?.getAttribute("dir"),
+      direction: pathContainer?.getAttribute("dir"),
+      className: pathContainer?.className,
+      title: pathContainer?.getAttribute("title"),
       links: screen.queryAllByRole("link").length,
-    }).toStrictEqual({ labelElement: "BDI", direction: "rtl", links: 0 });
+    }).toStrictEqual({
+      labelElement: "BDI",
+      direction: "rtl",
+      className:
+        "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left font-mono text-xs text-secondary",
+      title: "~/example/agent.ts",
+      links: 0,
+    });
   });
 
   it("copies the absolute path and confirms only a successful write", async () => {

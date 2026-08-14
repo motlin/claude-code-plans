@@ -202,7 +202,7 @@ function FileRow({ file, copied, onCopy }: FileRowProps) {
         <span
           dir="rtl"
           title={file.path}
-          className="min-w-0 flex-1 overflow-hidden whitespace-nowrap text-left font-mono text-xs text-secondary"
+          className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left font-mono text-xs text-secondary"
         >
           <bdi>{file.path}</bdi>
         </span>
