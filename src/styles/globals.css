@@ -288,17 +288,6 @@
 }
 
 @layer utilities {
-  /*
-   * No transition: tool bodies mount behind `<Suspense fallback={null}>`, so
-   * when the class flips to expanded the subtree is still empty, `1fr` resolves
-   * to 0px, and an animation would freeze the track at 0px forever.
-   */
-  .grid-rows-collapse {
-    grid-template-rows: 0fr;
-  }
-  .grid-rows-expand {
-    grid-template-rows: 1fr;
-  }
   .card-outline {
     background-color: transparent;
     box-shadow: inset 0 0 0 1px var(--card-outline);

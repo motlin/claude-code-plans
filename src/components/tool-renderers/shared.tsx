@@ -492,11 +492,11 @@ export function CollapsibleSection({
         <ChevronIcon expanded={open} />
         {label}
       </button>
-      <div className={`grid ${open ? "grid-rows-expand" : "grid-rows-collapse"}`}>
-        <div className="overflow-hidden">
+      {open && (
+        <div className="flow-root">
           <div className="mt-1">{children}</div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

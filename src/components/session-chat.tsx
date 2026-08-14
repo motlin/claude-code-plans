@@ -613,8 +613,8 @@ function SessionInitEntry({
           <ChevronIcon expanded={expanded} size={14} />
         </span>
       </button>
-      <div id={bodyId} className={`grid ${expanded ? "grid-rows-expand" : "grid-rows-collapse"}`}>
-        <div className="overflow-hidden">
+      {expanded && (
+        <div id={bodyId} className="flow-root">
           <div className="flex flex-col pt-p6">
             {indices.map((index) => (
               <LineEntry
@@ -626,7 +626,7 @@ function SessionInitEntry({
             ))}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -2179,13 +2179,11 @@ function ToolCallRow({
   const diffStats = useEditDiffStats(call);
   const isCardStyle = CARD_STYLE_TOOLS.has(call.name) && !nested;
   const isCodeCard = CODE_CARD_TOOLS.has(call.name);
-  // An always-visible body needs `empty:hidden` so a renderer that draws
-  // nothing (TodoWrite with no in-progress item) leaves no padded gap; a
-  // collapsed disclosure hides its own empty body already.
+  // Renderers that draw nothing leave no padded gap.
   const bodyClass =
     (nested && ROW_BODY_TOOLS.has(call.name)
       ? "group/body relative flex w-full pt-p3"
-      : "group/body relative flex w-full flex-col pt-p3") + (expandable ? "" : " empty:hidden");
+      : "group/body relative flex w-full flex-col pt-p3") + " empty:hidden";
   // Upstream recolors the whole label of a failed tool row, except a file path,
   // which stays primary.
   const labelClass = call.isError
@@ -2302,9 +2300,11 @@ function ToolCallRow({
           <ChevronIcon expanded={expanded} size={14} />
         </span>
       </div>
-      <div id={bodyId} className={`grid ${expanded ? "grid-rows-expand" : "grid-rows-collapse"}`}>
-        <div className="overflow-hidden">{body}</div>
-      </div>
+      {expanded && (
+        <div id={bodyId} className="flow-root">
+          {body}
+        </div>
+      )}
     </div>
   );
 }
@@ -2362,11 +2362,8 @@ function ToolCallSummary({ calls, sessionId }: { calls: ClientToolCall[]; sessio
               <ChevronIcon expanded={expanded} size={14} />
             </span>
           </button>
-          <div
-            id={bodyId}
-            className={`grid ${expanded ? "grid-rows-expand" : "grid-rows-collapse"}`}
-          >
-            <div className="overflow-hidden">
+          {expanded && (
+            <div id={bodyId} className="flow-root">
               {/* Upstream separates the grouped rows with hairline dividers and
                   per-child padding inside one outlined card, not with gaps
                   between rows floating on a tinted panel. */}
@@ -2376,7 +2373,7 @@ function ToolCallSummary({ calls, sessionId }: { calls: ClientToolCall[]; sessio
                 ))}
               </div>
             </div>
-          </div>
+          )}
         </>
       )}
     </div>

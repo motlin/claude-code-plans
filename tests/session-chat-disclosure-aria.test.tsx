@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { SessionChat } from "../src/components/session-chat";
 import { processTranscript } from "../src/lib/transcript";
@@ -67,6 +67,7 @@ function renderTranscript(records: unknown[]): HTMLElement {
       showCompactSummaries
       showTranscriptOnly
       showThinking
+      shouldScrollToEnd={false}
     />,
   ).container;
 }
@@ -74,46 +75,84 @@ function renderTranscript(records: unknown[]): HTMLElement {
 interface DisclosureState {
   ariaExpanded: string | null;
   controlsBody: boolean;
+  bodyClassName: string | null;
+  bodyText: string | null;
 }
 
 /** The disclosure state a screen reader would read off `element`. */
 function disclosureState(element: Element | null): DisclosureState {
   const controlled = element?.getAttribute("aria-controls") ?? "";
+  const body = controlled === "" ? null : document.getElementById(controlled);
   return {
     ariaExpanded: element?.getAttribute("aria-expanded") ?? null,
-    controlsBody: controlled !== "" && document.getElementById(controlled) !== null,
+    controlsBody: body !== null,
+    bodyClassName: body?.className ?? null,
+    bodyText: body?.textContent ?? null,
   };
 }
 
-/** Clicks the disclosure control and reports its state on either side of the click. */
-function statesAroundClick(element: Element | null): {
-  collapsed: DisclosureState;
-  expanded: DisclosureState;
-} {
-  const collapsed = disclosureState(element);
-  fireEvent.click(element as Element);
-  return { collapsed, expanded: disclosureState(element) };
-}
-
-const TOGGLES_AND_CONTROLS_ITS_BODY = {
-  collapsed: { ariaExpanded: "false", controlsBody: true },
-  expanded: { ariaExpanded: "true", controlsBody: true },
-};
-
 describe("SessionChat disclosure accessibility", () => {
-  it("exposes aria-expanded and aria-controls on a single tool row, toggling on click", () => {
+  it("mounts a single tool row body only while its disclosure is expanded", async () => {
     const container = renderTranscript(toolCallRecords(1));
+    const control = container.querySelector('[role="button"]');
+    const collapsed = disclosureState(control);
 
-    expect(statesAroundClick(container.querySelector('[role="button"]'))).toStrictEqual(
-      TOGGLES_AND_CONTROLS_ITS_BODY,
-    );
+    fireEvent.click(control as Element);
+
+    await waitFor(() => {
+      expect(disclosureState(control)).toStrictEqual({
+        ariaExpanded: "true",
+        controlsBody: true,
+        bodyClassName: "flow-root",
+        bodyText: "pattern: pattern-t11 match",
+      });
+    });
+
+    const expanded = disclosureState(control);
+    fireEvent.click(control as Element);
+
+    expect({ collapsed, expanded, collapsedAgain: disclosureState(control) }).toStrictEqual({
+      collapsed: {
+        ariaExpanded: "false",
+        controlsBody: false,
+        bodyClassName: null,
+        bodyText: null,
+      },
+      expanded: {
+        ariaExpanded: "true",
+        controlsBody: true,
+        bodyClassName: "flow-root",
+        bodyText: "pattern: pattern-t11 match",
+      },
+      collapsedAgain: {
+        ariaExpanded: "false",
+        controlsBody: false,
+        bodyClassName: null,
+        bodyText: null,
+      },
+    });
   });
 
   it("exposes aria-expanded and aria-controls on the grouped tool summary button, toggling on click", () => {
     const container = renderTranscript(toolCallRecords(2));
+    const control = container.querySelector("button");
+    const collapsed = disclosureState(control);
 
-    expect(statesAroundClick(container.querySelector("button"))).toStrictEqual(
-      TOGGLES_AND_CONTROLS_ITS_BODY,
-    );
+    fireEvent.click(control as Element);
+
+    expect({ collapsed, expanded: disclosureState(control) }).toStrictEqual({
+      collapsed: {
+        ariaExpanded: "false",
+        controlsBody: false,
+        bodyClassName: null,
+        bodyText: null,
+      },
+      expanded: {
+        ariaExpanded: "true",
+        controlsBody: true,
+        bodyClassName: "flow-root",
+        bodyText: "Searchedpattern-t1Searchedpattern-t2",
+      },
+    });
   });
 });

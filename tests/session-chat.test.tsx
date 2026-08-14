@@ -1,7 +1,9 @@
+// @vitest-environment jsdom
+
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { describe, it, expect, vi } from "vite-plus/test";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { afterEach, describe, it, expect, vi } from "vite-plus/test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { SessionChat } from "../src/components/session-chat";
 import { StreamingMessage } from "../src/components/streaming-message";
@@ -12,20 +14,23 @@ vi.mock("../src/components/settings-provider", () => ({
     settings: { showDebug: true },
   }),
 }));
+vi.mock("../src/lib/hmr-persist", () => ({
+  hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
+}));
 vi.mock("../src/hooks/use-claude-events", () => ({
   useClaudeEvents: () => ({ failedTools: new Map() }),
 }));
+
+afterEach(cleanup);
 
 // ---------------------------------------------------------------------------
 // Fixtures: real JSONL records captured from ~/.claude/projects (see
 // tests/fixtures/user-message-shapes.json). Each shape is one user record.
 // ---------------------------------------------------------------------------
 
-const FIXTURE_PATH = join(
-  fileURLToPath(new URL("./fixtures/user-message-shapes.json", import.meta.url)),
-);
+const FIXTURE_PATH = join(process.cwd(), "tests", "fixtures", "user-message-shapes.json");
 const SHAPES = JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as Record<string, unknown>;
-const GLOBAL_STYLES_PATH = fileURLToPath(new URL("../src/styles/globals.css", import.meta.url));
+const GLOBAL_STYLES_PATH = join(process.cwd(), "src", "styles", "globals.css");
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -384,6 +389,20 @@ function renderTranscript(records: unknown[]): string {
   );
 }
 
+function renderTranscriptElement(records: unknown[]): HTMLElement {
+  const { lines, toolResultMap } = processTranscript(records);
+  return render(
+    <SessionChat
+      sessionId="test-session"
+      lines={lines}
+      toolResultMap={toolResultMap}
+      showCompactSummaries
+      showTranscriptOnly
+      shouldScrollToEnd={false}
+    />,
+  ).container;
+}
+
 /** Class list of every turn wrapper (`<div id="msg-UUID">`), in document order. */
 function turnWrapperClassNames(html: string): string[] {
   return [...html.matchAll(/<div id="msg-[^"]+" data-record-index="\d+" class="([^"]*)"/g)].map(
@@ -440,16 +459,30 @@ describe("SessionChat turn spacing", () => {
   });
 });
 
-/** Arbitrary Tailwind variants like `[&>*]:px-p7` come back HTML-escaped. */
-function decodeClassAttr(value: string): string {
-  return value.replaceAll("&amp;", "&").replaceAll("&gt;", ">");
+/** Class list of every tool card shell, in document order. */
+function toolCardClassNames(container: HTMLElement): string[] {
+  return [...container.querySelectorAll("div.card-outline")].map((element) => element.className);
 }
 
-/** Class list of every tool card shell, in document order. */
-function toolCardClassNames(html: string): string[] {
-  return [...html.matchAll(/<div class="([^"]*card-outline[^"]*)"/g)].map((match) =>
-    decodeClassAttr(match[1] ?? ""),
-  );
+function disclosureControls(container: HTMLElement): HTMLElement[] {
+  return [...container.querySelectorAll<HTMLElement>('[aria-expanded="false"]')];
+}
+
+async function expandSingleToolRow(container: HTMLElement): Promise<void> {
+  const [control] = disclosureControls(container);
+  if (!control) throw new Error("Expected one collapsed tool disclosure.");
+  fireEvent.click(control);
+  await waitFor(() => {
+    if (container.querySelector(".group\\/body") === null) {
+      throw new Error("Expected the expanded renderer body to mount.");
+    }
+  });
+}
+
+function expandGroupSummary(container: HTMLElement): void {
+  const [control] = disclosureControls(container);
+  if (!control) throw new Error("Expected one collapsed tool group.");
+  fireEvent.click(control);
 }
 
 /** The tool_result record answering one call, parented to the record that made it. */
@@ -480,12 +513,12 @@ function toolCallRecords(calls: { id: string; name: string; input: unknown }[]):
 }
 
 describe("SessionChat tool card chrome", () => {
-  it("outlines tool cards with a hairline ring instead of filling them, and paints only code cards", () => {
+  it("mounts the correct tool card surface only after its row expands", async () => {
     const styles = readFileSync(GLOBAL_STYLES_PATH, "utf8");
-    const bashHtml = renderTranscript(
+    const bash = renderTranscriptElement(
       toolCallRecords([{ id: "t1", name: "Bash", input: { command: "ls -la" } }]),
     );
-    const editHtml = renderTranscript(
+    const edit = renderTranscriptElement(
       toolCallRecords([
         {
           id: "t2",
@@ -494,9 +527,20 @@ describe("SessionChat tool card chrome", () => {
         },
       ]),
     );
-    const readHtml = renderTranscript(
+    const read = renderTranscriptElement(
       toolCallRecords([{ id: "t3", name: "Read", input: { file_path: "/repo/src/a.ts" } }]),
     );
+    const collapsedCards = {
+      bash: toolCardClassNames(bash),
+      edit: toolCardClassNames(edit),
+      read: toolCardClassNames(read),
+    };
+
+    await Promise.all([
+      expandSingleToolRow(bash),
+      expandSingleToolRow(edit),
+      expandSingleToolRow(read),
+    ]);
 
     expect({
       lightOutline: readToken(extractBlock(styles, ":root"), "--card-outline"),
@@ -505,10 +549,12 @@ describe("SessionChat tool card chrome", () => {
       darkCodeCardBg: readToken(extractBlock(styles, ".dark"), "--code-card-bg"),
       outlineRing: styles.includes("box-shadow: inset 0 0 0 1px var(--card-outline);"),
       codeCardFill: styles.includes("background-color: var(--code-card-bg);"),
-      bashCard: toolCardClassNames(bashHtml),
-      editCard: toolCardClassNames(editHtml),
-      readCard: toolCardClassNames(readHtml),
-      fillsAnyCardWithT1: bashHtml.includes("bg-t1") || editHtml.includes("bg-t1"),
+      collapsedCards,
+      bashCard: toolCardClassNames(bash),
+      editCard: toolCardClassNames(edit),
+      readCard: toolCardClassNames(read),
+      fillsAnyCardWithT1:
+        bash.querySelector(".bg-t1") !== null || edit.querySelector(".bg-t1") !== null,
     }).toStrictEqual({
       lightOutline: "hsl(0 0% 4% / 0.1)",
       darkOutline: "hsl(0 0% 100% / 0.12)",
@@ -516,6 +562,7 @@ describe("SessionChat tool card chrome", () => {
       darkCodeCardBg: "hsl(60 2.7% 14.5%)",
       outlineRing: true,
       codeCardFill: true,
+      collapsedCards: { bash: [], edit: [], read: [] },
       bashCard: ["card-outline rounded-r6 overflow-clip flex flex-col relative"],
       editCard: ["card-outline code-card rounded-r6 overflow-clip flex flex-col relative"],
       readCard: ["card-outline code-card rounded-r6 overflow-clip flex flex-col relative"],
@@ -524,38 +571,49 @@ describe("SessionChat tool card chrome", () => {
   });
 });
 
-/**
- * Upstream's expanded "Read 3 files" / "Ran 3 commands" body: an outlined,
- * divided card whose children carry their own padding, not a tinted panel with
- * gaps between free-floating rows.
- */
-const GROUP_CONTAINER_CLASS =
-  "flex flex-col card-outline rounded-r6 overflow-clip mt-p6 divide-y divide-t3 [&>*]:px-p7 [&>*]:py-p6";
-
 /** Class list of every expanding-body wrapper (`group/body ...`), in document order. */
-function toolBodyClassNames(html: string): string[] {
-  return [...html.matchAll(/<div class="(group\/body[^"]*)"/g)].map((match) => match[1] ?? "");
+function toolBodyClassNames(container: HTMLElement): string[] {
+  return [...container.querySelectorAll(".group\\/body")].map((element) => element.className);
 }
 
 describe("SessionChat nested tool rows", () => {
-  it("drops the card shell from rows nested inside a grouped tool card", () => {
-    const groupedBash = renderTranscript(
+  it("mounts nested bodies without nested card shells after each row expands", async () => {
+    const groupedBash = renderTranscriptElement(
       toolCallRecords([
         { id: "t1", name: "Bash", input: { command: "git status" } },
         { id: "t2", name: "Bash", input: { command: "git log --oneline" } },
       ]),
     );
-    const groupedRead = renderTranscript(
+    const groupedRead = renderTranscriptElement(
       toolCallRecords([
         { id: "t1", name: "Read", input: { file_path: "/repo/src/a.ts" } },
         { id: "t2", name: "Read", input: { file_path: "/repo/src/b.ts" } },
       ]),
     );
-    const singleBash = renderTranscript(
+    const singleBash = renderTranscriptElement(
       toolCallRecords([{ id: "t1", name: "Bash", input: { command: "git status" } }]),
     );
 
+    const collapsedBodies = {
+      groupedBash: toolBodyClassNames(groupedBash),
+      groupedRead: toolBodyClassNames(groupedRead),
+      singleBash: toolBodyClassNames(singleBash),
+    };
+    expandGroupSummary(groupedBash);
+    expandGroupSummary(groupedRead);
+    for (const control of disclosureControls(groupedBash)) fireEvent.click(control);
+    for (const control of disclosureControls(groupedRead)) fireEvent.click(control);
+    await expandSingleToolRow(singleBash);
+    await waitFor(() => {
+      if (
+        toolBodyClassNames(groupedBash).length !== 2 ||
+        toolBodyClassNames(groupedRead).length !== 2
+      )
+        throw new Error("Expected each nested renderer body to mount.");
+    });
+
     expect({
+      collapsedBodies,
       groupedBashCards: toolCardClassNames(groupedBash),
       groupedBashBodies: toolBodyClassNames(groupedBash),
       groupedReadCards: toolCardClassNames(groupedRead),
@@ -563,17 +621,20 @@ describe("SessionChat nested tool rows", () => {
       singleBashCards: toolCardClassNames(singleBash),
       singleBashBodies: toolBodyClassNames(singleBash),
     }).toStrictEqual({
-      // The only outline in a grouped card is the group container's own; the
-      // rows inside it are bare.
-      groupedBashCards: [GROUP_CONTAINER_CLASS],
-      groupedBashBodies: [
-        "group/body relative flex w-full pt-p3",
-        "group/body relative flex w-full pt-p3",
+      collapsedBodies: { groupedBash: [], groupedRead: [], singleBash: [] },
+      groupedBashCards: [
+        "flex flex-col card-outline rounded-r6 overflow-clip mt-p6 divide-y divide-t3 [&>*]:px-p7 [&>*]:py-p6",
       ],
-      groupedReadCards: [GROUP_CONTAINER_CLASS],
+      groupedBashBodies: [
+        "group/body relative flex w-full pt-p3 empty:hidden",
+        "group/body relative flex w-full pt-p3 empty:hidden",
+      ],
+      groupedReadCards: [
+        "flex flex-col card-outline rounded-r6 overflow-clip mt-p6 divide-y divide-t3 [&>*]:px-p7 [&>*]:py-p6",
+      ],
       groupedReadBodies: [
-        "group/body relative flex w-full flex-col pt-p3",
-        "group/body relative flex w-full flex-col pt-p3",
+        "group/body relative flex w-full flex-col pt-p3 empty:hidden",
+        "group/body relative flex w-full flex-col pt-p3 empty:hidden",
       ],
       singleBashCards: ["card-outline rounded-r6 overflow-clip flex flex-col relative"],
       singleBashBodies: ["group/body py-p6"],
@@ -582,26 +643,33 @@ describe("SessionChat nested tool rows", () => {
 });
 
 /** Class of the expanded grouped-tool-call container. */
-function groupContainerClassNames(html: string): string[] {
-  return [...html.matchAll(/<div class="(flex flex-col [^"]*rounded-r6[^"]*)"/g)].map((match) =>
-    decodeClassAttr(match[1] ?? ""),
+function groupContainerClassNames(container: HTMLElement): string[] {
+  return [...container.querySelectorAll("div.card-outline.rounded-r6")].map(
+    (element) => element.className,
   );
 }
 
 describe("SessionChat grouped tool card", () => {
-  it("renders the expanded group as an outlined, divided card instead of a filled panel", () => {
-    const groupedBash = renderTranscript(
+  it("mounts the outlined, divided group card only after the summary expands", () => {
+    const groupedBash = renderTranscriptElement(
       toolCallRecords([
         { id: "t1", name: "Bash", input: { command: "git status" } },
         { id: "t2", name: "Bash", input: { command: "git log --oneline" } },
       ]),
     );
 
+    const collapsed = groupContainerClassNames(groupedBash);
+    expandGroupSummary(groupedBash);
+
     expect({
-      containers: groupContainerClassNames(groupedBash),
-      fillsWithT1: groupedBash.includes("bg-t1"),
+      collapsed,
+      expanded: groupContainerClassNames(groupedBash),
+      fillsWithT1: groupedBash.querySelector(".bg-t1") !== null,
     }).toStrictEqual({
-      containers: [GROUP_CONTAINER_CLASS],
+      collapsed: [],
+      expanded: [
+        "flex flex-col card-outline rounded-r6 overflow-clip mt-p6 divide-y divide-t3 [&>*]:px-p7 [&>*]:py-p6",
+      ],
       fillsWithT1: false,
     });
   });
@@ -712,14 +780,11 @@ describe("SessionChat sequential tool batches", () => {
 
     expect({
       labels: summaryLabels(html),
-      // Every call keeps its own row inside the collapsed body, so nothing is lost.
+      // Nested rows are not mounted until the summary is expanded.
       rowArguments: allToolRowLabelSpans(html).filter(([className]) => className === ARGUMENT),
     }).toStrictEqual({
       labels: ["Read a.ts, edited b.ts +1 -1, searched for a pattern"],
-      rowArguments: [
-        [ARGUMENT, "a.ts"],
-        [ARGUMENT, "b.ts"],
-      ],
+      rowArguments: [],
     });
   });
 
@@ -769,10 +834,7 @@ describe("SessionChat sequential tool batches", () => {
       rowArguments: allToolRowLabelSpans(html).filter(([className]) => className === ARGUMENT),
     }).toStrictEqual({
       labels: ["Read 2 files"],
-      rowArguments: [
-        [ARGUMENT, "a.ts"],
-        [ARGUMENT, "b.ts"],
-      ],
+      rowArguments: [],
     });
   });
 
@@ -954,7 +1016,7 @@ describe("SessionChat file-param tool row argument", () => {
     ]);
   });
 
-  it("sets nested file arguments in the same face as a top-level one", () => {
+  it("does not mount nested file rows until the group summary is expanded", () => {
     const html = renderTranscript(
       toolCallRecords([
         { id: "t1", name: "Read", input: { file_path: "/repo/src/cache.ts" } },
@@ -964,10 +1026,7 @@ describe("SessionChat file-param tool row argument", () => {
 
     expect(
       allToolRowLabelSpans(html).filter(([className]) => className === ARGUMENT),
-    ).toStrictEqual([
-      [ARGUMENT, "cache.ts"],
-      [ARGUMENT, "schema.ts"],
-    ]);
+    ).toStrictEqual([]);
   });
 
   // Upstream labels a partial read with the line range beside the filename
@@ -1232,10 +1291,11 @@ describe("SessionChat tool row verbs", () => {
 function rowHeaderSpanClasses(html: string): string[] {
   const start = html.indexOf('class="relative group/tool');
   expect(start, "no tool row header in html").toBeGreaterThan(-1);
-  // The disclosure body follows the header; it is the first `grid-rows-*` div.
-  const bodyStart = html.indexOf("grid-rows-", start);
-  expect(bodyStart, "no disclosure body after tool row header").toBeGreaterThan(-1);
-  const region = html.slice(start, bodyStart);
+  const tagStart = html.lastIndexOf("<", start);
+  const endTag = html.startsWith("<button", tagStart) ? "</button>" : "</div>";
+  const end = html.indexOf(endTag, start);
+  expect(end, "no end tag for tool row header").toBeGreaterThan(-1);
+  const region = html.slice(start, end);
   return [...region.matchAll(/<span(?: class="([^"]*)")?[ >]/g)].map((match) => match[1] ?? "");
 }
 
@@ -1303,7 +1363,7 @@ function toolRowChrome(html: string): Record<string, unknown> {
     bareHeaderClass: html.match(/<div class="(relative group\/tool[^"]*)"/)?.[1] ?? null,
     roleButton: html.includes('role="button"'),
     ariaExpanded: html.includes("aria-expanded"),
-    disclosureGrid: html.includes("grid-rows-"),
+    bodyMounted: html.includes('class="flow-root"'),
     chevron: html.includes(CHEVRON_MARKER),
   };
 }
@@ -1324,7 +1384,7 @@ describe("SessionChat non-expanding tool rows", () => {
         "relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left",
       roleButton: false,
       ariaExpanded: false,
-      disclosureGrid: false,
+      bodyMounted: false,
       chevron: false,
       label: true,
     });
@@ -1347,7 +1407,7 @@ describe("SessionChat non-expanding tool rows", () => {
         "relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left",
       roleButton: false,
       ariaExpanded: false,
-      disclosureGrid: false,
+      bodyMounted: false,
       chevron: false,
       label: true,
       instructions: false,
@@ -1362,7 +1422,7 @@ describe("SessionChat non-expanding tool rows", () => {
         "relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left",
       roleButton: false,
       ariaExpanded: false,
-      disclosureGrid: false,
+      bodyMounted: false,
       chevron: false,
       label: true,
     });
@@ -1375,7 +1435,7 @@ describe("SessionChat non-expanding tool rows", () => {
       bareHeaderClass: null,
       roleButton: true,
       ariaExpanded: true,
-      disclosureGrid: true,
+      bodyMounted: false,
       chevron: true,
     });
   });
@@ -1389,7 +1449,7 @@ describe("SessionChat non-expanding tool rows", () => {
       bareHeaderClass: null,
       roleButton: true,
       ariaExpanded: true,
-      disclosureGrid: true,
+      bodyMounted: false,
       chevron: true,
     });
   });
@@ -1399,7 +1459,7 @@ describe("SessionChat non-expanding tool rows", () => {
       bareHeaderClass: null,
       roleButton: true,
       ariaExpanded: true,
-      disclosureGrid: true,
+      bodyMounted: false,
       chevron: true,
     });
   });

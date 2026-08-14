@@ -76,7 +76,7 @@ function initButton(container: HTMLElement): HTMLButtonElement | null {
   return buttons[0] ?? null;
 }
 
-/** The label span, chevron presence, aria state, and folded body text of the init row. */
+/** The label span, chevron presence, aria state, and mounted body text of the init row. */
 function initRow(container: HTMLElement) {
   const button = initButton(container);
   if (!button) return null;
@@ -91,7 +91,7 @@ function initRow(container: HTMLElement) {
 }
 
 describe("session init disclosure", () => {
-  it("folds leading session metadata into one collapsed disclosure row", () => {
+  it("folds leading session metadata into one collapsed disclosure row without mounting its body", () => {
     const container = renderRecords([
       AGENT_NAME,
       AGENT_COLOR,
@@ -105,18 +105,12 @@ describe("session init disclosure", () => {
       labelClassName: row?.labelClassName,
       ariaExpanded: row?.ariaExpanded,
       hasChevron: row?.hasChevron,
-      mentionsAgentName: row?.bodyText?.includes("Alice"),
-      mentionsAgentColor: row?.bodyText?.includes("Agent color: blue"),
-      mentionsPermissionMode: row?.bodyText?.includes("Permission mode: acceptEdits"),
-      mentionsWorktree: row?.bodyText?.includes("Worktree: alice-worktree"),
+      bodyText: row?.bodyText,
     }).toStrictEqual({
       labelClassName: "text-body min-w-0 truncate text-assistant-primary",
       ariaExpanded: "false",
       hasChevron: true,
-      mentionsAgentName: true,
-      mentionsAgentColor: true,
-      mentionsPermissionMode: true,
-      mentionsWorktree: true,
+      bodyText: null,
     });
   });
 
@@ -125,9 +119,23 @@ describe("session init disclosure", () => {
     const button = initButton(container);
     if (!button) throw new Error("Expected an init disclosure row");
 
+    const collapsed = initRow(container);
     fireEvent.click(button);
 
-    expect(button.getAttribute("aria-expanded")).toStrictEqual("true");
+    expect({ collapsed, expanded: initRow(container) }).toStrictEqual({
+      collapsed: {
+        labelClassName: "text-body min-w-0 truncate text-assistant-primary",
+        ariaExpanded: "false",
+        hasChevron: true,
+        bodyText: null,
+      },
+      expanded: {
+        labelClassName: "text-body min-w-0 truncate text-assistant-primary",
+        ariaExpanded: "true",
+        hasChevron: true,
+        bodyText: "Alice",
+      },
+    });
   });
 
   it("leaves metadata that follows a message unfolded", () => {
