@@ -26,6 +26,20 @@ export const HerdrTerminalRecordSchema = z.union([
 
 export type HerdrTerminalRecord = z.infer<typeof HerdrTerminalRecordSchema>;
 
+const TerminalObserverConnectedSchema = z.object({ type: z.literal("connected") }).strict();
+const TerminalObserverErrorSchema = z
+  .object({
+    type: z.literal("observer.error"),
+    message: z.string().min(1),
+  })
+  .strict();
+const TerminalObserverMessageSchema = z.union([
+  HerdrTerminalRecordSchema,
+  TerminalObserverConnectedSchema,
+  TerminalObserverErrorSchema,
+]);
+type TerminalObserverMessage = z.infer<typeof TerminalObserverMessageSchema>;
+
 export interface TerminalFrameWriter {
   reset: () => void;
   resize: (columns: number, rows: number) => void;
@@ -33,7 +47,7 @@ export interface TerminalFrameWriter {
 }
 
 export interface TerminalFrameConsumer {
-  consume: (message: string) => HerdrTerminalRecord;
+  consume: (message: string) => TerminalObserverMessage;
   sequence: () => number | null;
 }
 
@@ -49,8 +63,8 @@ export function createTerminalFrameConsumer(writer: TerminalFrameWriter): Termin
 
   return {
     consume(message) {
-      const record = HerdrTerminalRecordSchema.parse(JSON.parse(message));
-      if (record.type === "terminal.closed") return record;
+      const record = TerminalObserverMessageSchema.parse(JSON.parse(message));
+      if (record.type !== "terminal.frame") return record;
 
       if (lastSequence === null && !record.full) {
         throw new Error("terminal observer did not begin with a full keyframe");

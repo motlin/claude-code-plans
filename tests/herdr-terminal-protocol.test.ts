@@ -22,6 +22,34 @@ function createWriter() {
 }
 
 describe("browser terminal frame consumer", () => {
+  it("accepts observer connection and error records without writing terminal bytes", () => {
+    const writer = createWriter();
+    const consumer = createTerminalFrameConsumer(writer);
+    const messages = [
+      JSON.stringify({ type: "connected" }),
+      JSON.stringify({ type: "observer.error", message: "Alice terminal is unavailable" }),
+    ];
+
+    const records = messages.map((message) => consumer.consume(message));
+
+    expect({
+      records,
+      sequence: consumer.sequence(),
+      reset: writer.reset.mock.calls,
+      resize: writer.resize.mock.calls,
+      writes: writer.write.mock.calls,
+    }).toStrictEqual({
+      records: [
+        { type: "connected" },
+        { type: "observer.error", message: "Alice terminal is unavailable" },
+      ],
+      sequence: null,
+      reset: [],
+      resize: [],
+      writes: [],
+    });
+  });
+
   it("decodes ANSI bytes and tracks monotonic sequence state", () => {
     const writer = createWriter();
     const consumer = createTerminalFrameConsumer(writer);

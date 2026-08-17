@@ -74,14 +74,20 @@ export function HerdrTerminal({ sessionId }: { sessionId: string }) {
         nextSocket.addEventListener("message", (event) => {
           try {
             const record = consumer.consume(String(event.data));
-            if (record.type === "terminal.frame") {
+            if (record.type === "connected") return;
+            if (record.type === "observer.error") {
+              stopped = true;
+              setError(record.message);
+              setStatus("error");
+            } else if (record.type === "terminal.frame") {
               setError("");
               setStatus("live");
             } else setStatus("closed");
           } catch (cause) {
+            stopped = true;
             setError(cause instanceof Error ? cause.message : String(cause));
             setStatus("error");
-            nextSocket.close(1002, "invalid terminal stream");
+            nextSocket.close(4000, "invalid terminal stream");
           }
         });
         nextSocket.addEventListener("close", (event) => {

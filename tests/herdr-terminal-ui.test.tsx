@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { HerdrTerminal } from "../src/components/herdr-terminal";
 import type { GhosttyAppearance } from "../src/lib/server-fns";
@@ -30,6 +30,7 @@ const terminalState = vi.hoisted(() => ({
   constructorOptions: [] as unknown[],
   closeCalls: [] as unknown[][],
   socketUrls: [] as string[],
+  webSockets: [] as EventTarget[],
 }));
 
 const appearanceState = vi.hoisted(() => ({
@@ -71,6 +72,7 @@ class FakeResizeObserver {
 class FakeWebSocket extends EventTarget {
   constructor(url: string | URL) {
     super();
+    terminalState.webSockets.push(this);
     terminalState.socketUrls.push(String(url));
   }
   close(...arguments_: unknown[]) {
@@ -92,6 +94,12 @@ function terminalSurface(): HTMLElement {
   return surface;
 }
 
+function currentWebSocket(): FakeWebSocket {
+  const webSocket = terminalState.webSockets.at(-1);
+  if (!(webSocket instanceof FakeWebSocket)) throw new Error("Expected a WebSocket connection");
+  return webSocket;
+}
+
 async function flushPendingWork(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
@@ -101,6 +109,7 @@ describe("live herdr terminal UI", () => {
     terminalState.constructorOptions = [];
     terminalState.closeCalls = [];
     terminalState.socketUrls = [];
+    terminalState.webSockets = [];
     appearanceState.appearance = DEFAULT_APPEARANCE;
     vi.stubGlobal("ResizeObserver", FakeResizeObserver);
     vi.stubGlobal("WebSocket", FakeWebSocket);
@@ -192,6 +201,74 @@ describe("live herdr terminal UI", () => {
         },
       ],
       surfaceBackground: "rgb(17, 19, 24)",
+    });
+  });
+
+  it("stops reconnecting when the terminal observer reports an unavailable session", async () => {
+    render(<HerdrTerminal sessionId="session-test-100" />);
+    releaseFonts();
+    await waitFor(() => expect(terminalState.socketUrls.length).toBe(1));
+
+    const webSocket = currentWebSocket();
+    act(() => {
+      webSocket.dispatchEvent(
+        new MessageEvent("message", { data: JSON.stringify({ type: "connected" }) }),
+      );
+      webSocket.dispatchEvent(
+        new MessageEvent("message", {
+          data: JSON.stringify({
+            type: "observer.error",
+            message: "Alice terminal is unavailable",
+          }),
+        }),
+      );
+      webSocket.dispatchEvent(
+        new CloseEvent("close", { code: 1011, reason: "terminal observer failed" }),
+      );
+    });
+    await new Promise((resolve) => setTimeout(resolve, 800));
+
+    expect({
+      status: screen.getByText("error").textContent,
+      errorMessages: screen
+        .getAllByText("Alice terminal is unavailable")
+        .map((element) => element.textContent),
+      socketUrls: terminalState.socketUrls,
+      closeCalls: terminalState.closeCalls,
+    }).toStrictEqual({
+      status: "error",
+      errorMessages: ["Alice terminal is unavailable"],
+      socketUrls: [
+        "ws://localhost:3000/api/herdr/observe?sessionId=session-test-100&columns=80&rows=24",
+      ],
+      closeCalls: [],
+    });
+  });
+
+  it("uses a browser-valid application close code for a malformed observer record", async () => {
+    render(<HerdrTerminal sessionId="session-test-100" />);
+    releaseFonts();
+    await waitFor(() => expect(terminalState.socketUrls.length).toBe(1));
+
+    act(() => {
+      currentWebSocket().dispatchEvent(
+        new MessageEvent("message", {
+          data: JSON.stringify({ type: "alice.malformed" }),
+        }),
+      );
+    });
+    await waitFor(() => expect(screen.getByText("error").textContent).toBe("error"));
+
+    expect({
+      status: screen.getByText("error").textContent,
+      closeCalls: terminalState.closeCalls,
+      socketUrls: terminalState.socketUrls,
+    }).toStrictEqual({
+      status: "error",
+      closeCalls: [[4000, "invalid terminal stream"]],
+      socketUrls: [
+        "ws://localhost:3000/api/herdr/observe?sessionId=session-test-100&columns=80&rows=24",
+      ],
     });
   });
 
