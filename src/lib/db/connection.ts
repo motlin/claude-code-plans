@@ -11,6 +11,18 @@ export interface AppDb {
   close(): void;
 }
 
+export class DatabaseSchemaTooNewError extends Error {
+  constructor(
+    public readonly databaseSchemaVersion: number,
+    public readonly applicationSchemaVersion: number,
+  ) {
+    super(
+      `Database schema version ${databaseSchemaVersion} is newer than application schema version ${applicationSchemaVersion}`,
+    );
+    this.name = "DatabaseSchemaTooNewError";
+  }
+}
+
 const CREATE_DERIVED_TABLES_SQL = `
 CREATE TABLE IF NOT EXISTS metadata (
   key TEXT PRIMARY KEY,
@@ -298,9 +310,7 @@ function initIndexDb(sqlite: Database.Database): void {
     throw new Error(`Invalid application schema version: ${schema.SCHEMA_VERSION}`);
   }
   if (previousSchemaVersion > currentSchemaVersion) {
-    throw new Error(
-      `Database schema version ${previousSchemaVersion} is newer than application schema version ${currentSchemaVersion}`,
-    );
+    throw new DatabaseSchemaTooNewError(previousSchemaVersion, currentSchemaVersion);
   }
   if (previousSchemaVersion !== currentSchemaVersion) {
     sqlite.transaction(() => {

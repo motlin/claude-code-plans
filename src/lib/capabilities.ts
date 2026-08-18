@@ -66,10 +66,25 @@ export const DEFAULT_CAPABILITIES: PersistedCapabilities = {
   },
 };
 
+const RuntimeUnavailabilityReasonSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("claude-not-found") }).strict(),
+  z
+    .object({
+      type: z.literal("database-schema-too-new"),
+      databaseSchemaVersion: z.number().int().nonnegative(),
+      applicationSchemaVersion: z.number().int().nonnegative(),
+    })
+    .strict(),
+  z.object({ type: z.literal("database-unavailable") }).strict(),
+]);
+
+export type RuntimeUnavailabilityReason = z.infer<typeof RuntimeUnavailabilityReasonSchema>;
+
 const CapabilityRuntimeFactsSchema = z
   .object({
     installed: z.boolean(),
     available: z.boolean(),
+    unavailabilityReason: RuntimeUnavailabilityReasonSchema.nullable(),
   })
   .strict();
 
@@ -88,14 +103,17 @@ export const CapabilitiesSchema = z
     readOnlyMcpServer: PersistedCapabilitiesSchema.shape.readOnlyMcpServer.extend({
       installed: z.boolean(),
       available: z.boolean(),
+      unavailabilityReason: RuntimeUnavailabilityReasonSchema.nullable(),
     }),
     workingCopyReview: PersistedCapabilitiesSchema.shape.workingCopyReview.extend({
       installed: z.boolean(),
       available: z.boolean(),
+      unavailabilityReason: RuntimeUnavailabilityReasonSchema.nullable(),
     }),
     sessionContextBrief: PersistedCapabilitiesSchema.shape.sessionContextBrief.extend({
       installed: z.boolean(),
       available: z.boolean(),
+      unavailabilityReason: RuntimeUnavailabilityReasonSchema.nullable(),
     }),
   })
   .strict();

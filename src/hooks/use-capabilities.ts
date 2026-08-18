@@ -9,21 +9,56 @@ import {
 
 export interface CapabilityFlags {
   loaded: boolean;
+  pending: boolean;
+  error: Error | null;
   states: Capabilities;
   showReadOnlyMcpServer: boolean;
   showWorkingCopyReview: boolean;
   showSessionContextBrief: boolean;
 }
 
-function unresolvedCapabilities(
-  persisted: PersistedCapabilities,
-  installed: boolean,
-  available: boolean,
-): Capabilities {
+function unresolvedCapabilities(persisted: PersistedCapabilities): Capabilities {
   return {
-    readOnlyMcpServer: { ...persisted.readOnlyMcpServer, installed, available },
-    workingCopyReview: { ...persisted.workingCopyReview, installed, available },
-    sessionContextBrief: { ...persisted.sessionContextBrief, installed, available },
+    readOnlyMcpServer: {
+      ...persisted.readOnlyMcpServer,
+      installed: true,
+      available: false,
+      unavailabilityReason: null,
+    },
+    workingCopyReview: {
+      ...persisted.workingCopyReview,
+      installed: true,
+      available: false,
+      unavailabilityReason: null,
+    },
+    sessionContextBrief: {
+      ...persisted.sessionContextBrief,
+      installed: true,
+      available: false,
+      unavailabilityReason: null,
+    },
+  };
+}
+
+export interface CapabilityQueryState {
+  data: Capabilities | undefined;
+  isPending: boolean;
+  error: Error | null;
+}
+
+export function resolveCapabilityFlags(
+  persisted: PersistedCapabilities,
+  loaded: boolean,
+  query: CapabilityQueryState,
+): CapabilityFlags {
+  return {
+    loaded,
+    pending: loaded && query.isPending,
+    error: loaded ? query.error : null,
+    states: query.data ?? unresolvedCapabilities(persisted),
+    showReadOnlyMcpServer: capabilityVisible(loaded, persisted, "readOnlyMcpServer"),
+    showWorkingCopyReview: capabilityVisible(loaded, persisted, "workingCopyReview"),
+    showSessionContextBrief: capabilityVisible(loaded, persisted, "sessionContextBrief"),
   };
 }
 
@@ -42,18 +77,5 @@ export function useCapabilities(): CapabilityFlags {
     ...capabilitiesQueryOptions(settings.capabilities),
     enabled: loaded,
   });
-  const states =
-    query.data ?? unresolvedCapabilities(settings.capabilities, true, !loaded || query.isPending);
-
-  return {
-    loaded,
-    states,
-    showReadOnlyMcpServer: capabilityVisible(loaded, settings.capabilities, "readOnlyMcpServer"),
-    showWorkingCopyReview: capabilityVisible(loaded, settings.capabilities, "workingCopyReview"),
-    showSessionContextBrief: capabilityVisible(
-      loaded,
-      settings.capabilities,
-      "sessionContextBrief",
-    ),
-  };
+  return resolveCapabilityFlags(settings.capabilities, loaded, query);
 }

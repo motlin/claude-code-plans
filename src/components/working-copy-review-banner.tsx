@@ -29,9 +29,18 @@ export function workingCopyReviewDegradedMessage(
   capability: Capabilities["workingCopyReview"],
 ): string | null {
   if (!capability.enabled || capability.available) return null;
-  return capability.installed
-    ? "Working-copy review is enabled, but its local runtime is unreachable."
-    : "Working-copy review is enabled, but its review skill is not installed.";
+  if (!capability.installed) {
+    return "Working-copy review is enabled, but its review skill is not installed.";
+  }
+  const reason = capability.unavailabilityReason;
+  if (reason === null) return null;
+  if (reason.type === "claude-not-found") {
+    return "Working-copy review is enabled, but the Claude executable was not found. Install Claude Code or add claude to PATH, then restart just dev.";
+  }
+  if (reason.type === "database-schema-too-new") {
+    return `Working-copy review is enabled, but database schema version ${reason.databaseSchemaVersion} is newer than application schema version ${reason.applicationSchemaVersion}. Check out a revision that supports schema version ${reason.databaseSchemaVersion}, then restart just dev.`;
+  }
+  return "Working-copy review is enabled, but its database is unavailable. Check the server logs, then restart just dev.";
 }
 
 export function WorkingCopyReviewBanner({

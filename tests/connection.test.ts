@@ -1,9 +1,10 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import Database from "better-sqlite3";
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vite-plus/test";
-import { openAppDb } from "../src/lib/db/connection";
+import { DatabaseSchemaTooNewError, openAppDb } from "../src/lib/db/connection";
 import * as schema from "../src/lib/db/schema";
 
 describe("openAppDb", () => {
@@ -24,6 +25,30 @@ describe("openAppDb", () => {
     tempDirs.push(cacheDir);
     const db = openAppDb({ cacheDir });
     db.close();
+  });
+
+  it("refuses a database created by a newer application schema", () => {
+    const cacheDir = mkdtempSync(join(tmpdir(), "open-app-db-test-"));
+    tempDirs.push(cacheDir);
+    const applicationSchemaVersion = Number(schema.SCHEMA_VERSION);
+    const databaseSchemaVersion = applicationSchemaVersion + 1;
+    const sqlite = new Database(join(cacheDir, "index.db"));
+    sqlite.exec("CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
+    sqlite
+      .prepare("INSERT INTO metadata (key, value) VALUES ('schema_version', ?)")
+      .run(String(databaseSchemaVersion));
+    sqlite.close();
+
+    let error: unknown;
+    try {
+      openAppDb({ cacheDir });
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error).toStrictEqual(
+      new DatabaseSchemaTooNewError(databaseSchemaVersion, applicationSchemaVersion),
+    );
   });
 
   it("preserves durable user data while rebuilding derived tables", () => {

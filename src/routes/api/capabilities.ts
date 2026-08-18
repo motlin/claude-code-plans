@@ -7,7 +7,9 @@ import {
   PersistedCapabilitiesSchema,
   resolveServerCapabilities,
   type CapabilityRuntimeFactsById,
+  type RuntimeUnavailabilityReason,
 } from "../../lib/capabilities";
+import { DatabaseSchemaTooNewError } from "../../lib/db/connection";
 import { rejectCrossSite } from "../../lib/same-origin-guard";
 
 async function pathExists(path: string): Promise<boolean> {
@@ -35,12 +37,47 @@ async function executableExists(command: string): Promise<boolean> {
 }
 
 async function databaseAvailable(): Promise<boolean> {
+  const { getDb } = await import("../../lib/db");
+  getDb();
+  return true;
+}
+
+type DatabaseUnavailabilityReason = Extract<
+  RuntimeUnavailabilityReason,
+  { type: "database-schema-too-new" | "database-unavailable" }
+>;
+
+type DatabaseProbeResult =
+  | { available: true; unavailabilityReason: null }
+  | { available: false; unavailabilityReason: DatabaseUnavailabilityReason };
+
+async function probeDatabaseAvailability(
+  checkAvailability: () => Promise<boolean>,
+): Promise<DatabaseProbeResult> {
   try {
-    const { getDb } = await import("../../lib/db");
-    getDb();
-    return true;
-  } catch {
-    return false;
+    if (await checkAvailability()) {
+      return { available: true, unavailabilityReason: null };
+    }
+    return {
+      available: false,
+      unavailabilityReason: { type: "database-unavailable" },
+    };
+  } catch (error) {
+    console.error("Capability database probe failed:", error);
+    if (error instanceof DatabaseSchemaTooNewError) {
+      return {
+        available: false,
+        unavailabilityReason: {
+          type: "database-schema-too-new",
+          databaseSchemaVersion: error.databaseSchemaVersion,
+          applicationSchemaVersion: error.applicationSchemaVersion,
+        },
+      };
+    }
+    return {
+      available: false,
+      unavailabilityReason: { type: "database-unavailable" },
+    };
   }
 }
 
@@ -54,26 +91,41 @@ export interface CapabilityProbeDependencies {
 async function probeCapabilityRuntime(
   dependencies: CapabilityProbeDependencies,
 ): Promise<CapabilityRuntimeFactsById> {
-  const [mcpInstalled, reviewSkillInstalled, contextBriefInstalled, claudeAvailable, dbAvailable] =
-    await Promise.all([
-      dependencies.pathExists(join(dependencies.projectRoot, "mcp-server", "index.ts")),
-      dependencies.pathExists(
-        join(dependencies.projectRoot, ".claude", "skills", "review-working-copy", "SKILL.md"),
-      ),
-      dependencies.pathExists(join(dependencies.projectRoot, "src", "lib", "context-brief.ts")),
-      dependencies.executableExists("claude"),
-      dependencies.databaseAvailable(),
-    ]);
+  const [
+    mcpInstalled,
+    reviewSkillInstalled,
+    contextBriefInstalled,
+    claudeAvailable,
+    databaseProbe,
+  ] = await Promise.all([
+    dependencies.pathExists(join(dependencies.projectRoot, "mcp-server", "index.ts")),
+    dependencies.pathExists(
+      join(dependencies.projectRoot, ".claude", "skills", "review-working-copy", "SKILL.md"),
+    ),
+    dependencies.pathExists(join(dependencies.projectRoot, "src", "lib", "context-brief.ts")),
+    dependencies.executableExists("claude"),
+    probeDatabaseAvailability(() => dependencies.databaseAvailable()),
+  ]);
+
+  const databaseReason = databaseProbe.unavailabilityReason;
+  const reviewReason: RuntimeUnavailabilityReason | null =
+    databaseReason ?? (claudeAvailable ? null : { type: "claude-not-found" });
 
   return {
-    readOnlyMcpServer: { installed: mcpInstalled, available: mcpInstalled && dbAvailable },
+    readOnlyMcpServer: {
+      installed: mcpInstalled,
+      available: mcpInstalled && databaseProbe.available,
+      unavailabilityReason: databaseReason,
+    },
     workingCopyReview: {
       installed: reviewSkillInstalled,
-      available: reviewSkillInstalled && claudeAvailable && dbAvailable,
+      available: reviewSkillInstalled && claudeAvailable && databaseProbe.available,
+      unavailabilityReason: reviewReason,
     },
     sessionContextBrief: {
       installed: contextBriefInstalled,
-      available: contextBriefInstalled && dbAvailable,
+      available: contextBriefInstalled && databaseProbe.available,
+      unavailabilityReason: databaseReason,
     },
   };
 }
