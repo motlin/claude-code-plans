@@ -27,7 +27,7 @@
   "dependencies": {
     "@git-diff-view/core": "^0.1.7",
     "@git-diff-view/react": "^0.1.7",
-    "@mdxeditor/editor": "^4.2.1",
+    "@mdxeditor/editor": "^4.2.3",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@tanstack/react-query": "^5.102.8",
     "@tanstack/react-query-devtools": "^5.102.3",
