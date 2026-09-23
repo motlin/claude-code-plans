@@ -33,27 +33,27 @@ ensure-sqlite-native:
 
 # Run dev server with Vite
 dev *args: install
-    PORT={{port}} scripts/server.sh dev vp dev {{args}}
+    PORT={{ port }} scripts/server.sh dev vp dev {{ args }}
 
 # Build and (re)start the production server in the background. Idempotent: stops any existing server first, so double-starting never leaves an orphan. No launchd service manages this — `just stop` is the only reaper.
 start: install build
-    PORT={{port}} scripts/server.sh start
+    PORT={{ port }} scripts/server.sh start
 
 # Stop the production server
 stop:
-    PORT={{port}} scripts/server.sh stop
+    PORT={{ port }} scripts/server.sh stop
 
 # Restart the production server without rebuilding
 restart:
-    PORT={{port}} scripts/server.sh restart
+    PORT={{ port }} scripts/server.sh restart
 
 # Show production server status
 status:
-    PORT={{port}} scripts/server.sh status
+    PORT={{ port }} scripts/server.sh status
 
 # PORT=7527 vp run start
 start-preview *args: install build
-    PORT={{preview_port}} vp run start {{args}}
+    PORT={{ preview_port }} vp run start {{ args }}
 
 # Run linter
 lint: install
@@ -61,6 +61,7 @@ lint: install
 
 # Run formatter
 format: install
+    pre-commit run just-fmt --all-files
     vp fmt {{ if ci != "" { "--check" } else { "" } }}
 
 # Run checks (format + lint + typecheck)
@@ -69,11 +70,11 @@ check: install
 
 [private]
 _test *args:
-    vp run test:run {{args}}
+    vp run test:run {{ args }}
 
 # Run tests
 test *args: install
-    just _test {{args}}
+    just _test {{ args }}
 
 # vp run typecheck
 typecheck: install
@@ -85,13 +86,13 @@ build: install
 
 # Run Storybook dev server
 storybook *args: install
-    vp run storybook {{args}}
+    vp run storybook {{ args }}
 
 # Regenerate documentation screenshots
 [group('docs')]
 screenshots *args: install
     vp exec playwright install --with-deps chromium
-    vp exec tsx scripts/screenshots.ts {{args}}
+    vp exec tsx scripts/screenshots.ts {{ args }}
 
 # Build static Storybook site
 build-storybook: install
