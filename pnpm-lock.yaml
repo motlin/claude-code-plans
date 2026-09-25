@@ -139,8 +139,8 @@ importers:
         specifier: ^6.1.1
         version: 6.1.1(@voidzero-dev/vite-plus-core@0.2.5(@types/node@26.6.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2))
       agentation:
-        specifier: ^3.1.1
-        version: 3.1.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        specifier: ^3.1.2
+        version: 3.1.2(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       fallow:
         specifier: ^3.28.0
         version: 3.28.0
@@ -3132,8 +3132,8 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
-  agentation@3.1.1:
-    resolution: {integrity: sha512-AaP9/72QLrwpJQegyUaWF2PGNXA4HKh/izLqTFjwOJt3lGODsgKTUJW0HO6CwU5cwa31QxX/7tN63LS4FbQVzQ==}
+  agentation@3.1.2:
+    resolution: {integrity: sha512-ZZr6PRgX3ussGbvC9NVh5vFfKKFkQyHL6KuxOfBAAM/mJS3bM2XyhZ7wLPakDwU3pqkzq7u6vEfLikFsCOu5+Q==}
     peerDependencies:
       react: '>=18.0.0'
       react-dom: '>=18.0.0'
@@ -8378,7 +8378,7 @@ snapshots:
 
   acorn@8.18.0: {}
 
-  agentation@3.1.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
+  agentation@3.1.2(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
     optionalDependencies:
       react: 19.3.0
       react-dom: 19.3.0(react@19.3.0)
