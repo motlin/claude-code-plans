@@ -9,6 +9,7 @@ import {
 import { apiFetch } from "./client";
 import { JsonValueSchema } from "../schemas";
 import { SessionViewedStateSchema } from "./viewed-state";
+import { SessionBucketSchema } from "../session-state";
 
 export const SessionSummaryStateSchema = z.enum(["idle", "working", "waiting", "unknown", "ended"]);
 
@@ -24,6 +25,8 @@ const SessionListItemSchema = z.object({
   gitBranch: z.string().optional(),
   starred: z.boolean(),
   state: SessionSummaryStateSchema,
+  bucket: SessionBucketSchema,
+  liveAgentCount: z.number(),
   blockedSince: z.string().nullable(),
 });
 export type SessionListItem = z.infer<typeof SessionListItemSchema>;

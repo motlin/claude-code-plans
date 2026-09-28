@@ -29,6 +29,8 @@ function session(id: string, title: string, projectName: string, mtime: string) 
     messageCount: 12,
     starred: false,
     state: "unknown",
+    bucket: "done",
+    liveAgentCount: 0,
     blockedSince: null,
   };
 }

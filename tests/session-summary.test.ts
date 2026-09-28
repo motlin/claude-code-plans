@@ -15,6 +15,7 @@ import {
   toActiveSessionPayload,
 } from "../src/lib/session-summary";
 import { initPendingApprovalsCache } from "../src/lib/db/pending-approvals-cache";
+import { addLiveSubagent, clearLiveSubagents } from "../src/lib/live-subagent-store";
 
 const testDir = join(tmpdir(), "claude-session-summary-test-" + process.pid);
 const PROJECT_ID = "-tmp-test-alice-project";
@@ -28,6 +29,7 @@ function makeSessionsIndex(entries: Record<string, unknown>[]): string {
 beforeEach(async () => {
   mkdirSync(testDir, { recursive: true });
   db = openTestDb();
+  clearLiveSubagents();
   for (const entry of getActiveSessionEntries()) {
     markSessionEnded(entry.sessionId);
   }
@@ -38,6 +40,7 @@ afterEach(() => {
   for (const entry of getActiveSessionEntries()) {
     markSessionEnded(entry.sessionId);
   }
+  clearLiveSubagents();
   db.close();
   rmSync(testDir, { recursive: true, force: true });
 });
@@ -115,6 +118,8 @@ describe("buildSessionSummaryPayloadFromDb", () => {
       gitBranch: undefined,
       starred: false,
       state: "ended",
+      bucket: "done",
+      liveAgentCount: 0,
       blockedSince: null,
     });
   });
@@ -140,6 +145,8 @@ describe("buildSessionSummaryPayloadFromDb", () => {
       gitBranch: undefined,
       starred: false,
       state: "working",
+      bucket: "working",
+      liveAgentCount: 0,
       blockedSince: null,
     });
   });
@@ -183,7 +190,40 @@ describe("buildSessionSummaryPayloadFromDb", () => {
       gitBranch: undefined,
       starred: false,
       state: "waiting",
+      bucket: "blocked",
+      liveAgentCount: 0,
       blockedSince: "2000-01-01T00:00:00.000Z",
+    });
+  });
+
+  it("keeps an idle session working while its subagents are live", async () => {
+    await indexSession();
+    markSessionActive("session-test-100", { cwd: PROJECT_PATH, model: "claude-test-model" });
+    setSessionState("session-test-100", "idle");
+    addLiveSubagent({
+      parentSessionId: "session-test-100",
+      agentId: "agent-test-1",
+      agentType: "Explore",
+      description: "Search the test fixtures",
+    });
+
+    const payload = buildSessionSummaryPayloadFromDb(db.index, "session-test-100");
+
+    expect(payload).toStrictEqual({
+      id: "session-test-100",
+      title: "Fixed the test auth issue",
+      summary: "Fixed the test auth issue",
+      mtime: "1999-12-31T00:00:00.000Z",
+      created: "1999-12-31T00:00:00.000Z",
+      messageCount: 0,
+      project: PROJECT_ID,
+      projectName: "alice-project",
+      gitBranch: undefined,
+      starred: false,
+      state: "idle",
+      bucket: "working",
+      liveAgentCount: 1,
+      blockedSince: null,
     });
   });
 

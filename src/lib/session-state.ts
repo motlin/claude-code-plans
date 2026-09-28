@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { HookEvent } from "./hook-events";
 
 export type ActivityState = "idle" | "working" | "waiting" | "unknown";
@@ -89,4 +90,95 @@ export function stateForEvent(event: HookEvent): ActivityState | null {
     default:
       return null;
   }
+}
+
+export const SessionBucketSchema = z.enum(["blocked", "review", "working", "done"]);
+export type SessionBucket = z.infer<typeof SessionBucketSchema>;
+
+export const SessionBucketReasonSchema = z.enum([
+  "ended",
+  "pending-input",
+  "waiting",
+  "error",
+  "main-working",
+  "live-agents",
+  "background-tasks",
+  "subagent-activity",
+  "herdr-working",
+  "recent-file",
+  "pull-request",
+  "unseen",
+  "idle",
+  "stale-file",
+]);
+export type SessionBucketReason = z.infer<typeof SessionBucketReasonSchema>;
+
+export type PullRequestState = "open" | "draft" | "merged" | "closed";
+
+export interface SessionBucketSignals {
+  /** Main-thread state from hooks without `agent_id`; "ended" after SessionEnd or timeout. */
+  mainState: SessionSummaryState;
+  /** A pending approval / question / permission prompt from S or any of its subagents. */
+  pendingInput: boolean;
+  unseenError: boolean;
+  liveAgentCount: number;
+  /** Entries from the last Stop's `background_tasks`. */
+  backgroundTasks: readonly { status: string }[];
+  lastSubagentActivityAt: number | null;
+  herdrStatus: string | null;
+  prState: PullRequestState | null;
+  unseen: boolean;
+  /** Transcript mtime, consulted only for fs-only (`unknown`) sessions. */
+  fileMtime: number;
+  now: number;
+}
+
+export interface SessionBucketResolution {
+  bucket: SessionBucket;
+  reason: SessionBucketReason;
+}
+
+/** Subagent hooks and fs-only transcript writes count as live for this long. */
+const RECENT_ACTIVITY_MS = 60 * 1000;
+const TERMINAL_BACKGROUND_TASK_STATUSES = new Set(["completed", "failed", "killed"]);
+
+export function isRunningBackgroundTask(task: { status: string }): boolean {
+  return !TERMINAL_BACKGROUND_TASK_STATUSES.has(task.status);
+}
+
+/**
+ * Pure mapping from a root session's signals to its display bucket. Unlike
+ * upstream, running subagents and background tasks keep a session Working
+ * after the main turn has stopped.
+ */
+export function resolveSessionBucket(signals: SessionBucketSignals): SessionBucketResolution {
+  const { mainState, now } = signals;
+  if (mainState === "ended" && !signals.pendingInput) return { bucket: "done", reason: "ended" };
+  if (signals.pendingInput) return { bucket: "blocked", reason: "pending-input" };
+  if (mainState === "waiting") return { bucket: "blocked", reason: "waiting" };
+  if (signals.unseenError) return { bucket: "blocked", reason: "error" };
+
+  if (mainState === "working") return { bucket: "working", reason: "main-working" };
+  if (signals.liveAgentCount > 0) return { bucket: "working", reason: "live-agents" };
+  if (signals.backgroundTasks.some(isRunningBackgroundTask)) {
+    return { bucket: "working", reason: "background-tasks" };
+  }
+  if (
+    signals.lastSubagentActivityAt !== null &&
+    now - signals.lastSubagentActivityAt < RECENT_ACTIVITY_MS
+  ) {
+    return { bucket: "working", reason: "subagent-activity" };
+  }
+  if (signals.herdrStatus === "working") return { bucket: "working", reason: "herdr-working" };
+  if (mainState === "unknown") {
+    return now - signals.fileMtime < RECENT_ACTIVITY_MS
+      ? { bucket: "working", reason: "recent-file" }
+      : { bucket: "done", reason: "stale-file" };
+  }
+
+  if (signals.prState === "open" || signals.prState === "draft") {
+    return { bucket: "review", reason: "pull-request" };
+  }
+  if (signals.unseen) return { bucket: "review", reason: "unseen" };
+  return { bucket: "done", reason: "idle" };
 }

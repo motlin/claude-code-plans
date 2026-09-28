@@ -1,5 +1,6 @@
 import { hmrDispose, hmrPersist } from "./hmr-persist";
 import type { HookBackgroundTaskPayload } from "./hook-events";
+import { isRunningBackgroundTask } from "./session-state";
 import type { Subagent } from "./subagents";
 import { toSubagentSessionId } from "./subagents";
 
@@ -27,7 +28,6 @@ export const ENDED_SUBAGENT_TTL_MS = 5 * 60 * 1000;
  * pin the root session as working forever.
  */
 export const STALE_RUNNING_SUBAGENT_MS = 10 * 60 * 1000;
-const TERMINAL_BACKGROUND_TASK_STATUSES = new Set(["completed", "failed", "killed"]);
 const LIVE_SUBAGENT_SWEEP_INTERVAL_MS = 60 * 1000;
 
 let sweepTimer: ReturnType<typeof setInterval> | null = null;
@@ -150,7 +150,7 @@ export function runningBackgroundAgentIds(
     (node) => node.sessionId === sessionId && node.endedAt === null,
   );
   const runningAgentTasks = backgroundTasks.filter(
-    (task) => task.type === "local_agent" && !TERMINAL_BACKGROUND_TASK_STATUSES.has(task.status),
+    (task) => task.type === "local_agent" && isRunningBackgroundTask(task),
   );
   const keepIds = new Set<string>();
   for (const task of runningAgentTasks) {

@@ -266,6 +266,8 @@ describe("toSessionSummaryPayload", () => {
       gitBranch: undefined,
       starred: false,
       state: "ended",
+      bucket: "done",
+      liveAgentCount: 0,
       blockedSince: null,
     });
   });

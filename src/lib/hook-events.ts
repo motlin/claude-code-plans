@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { SessionSummaryState } from "./session-state";
+import type { SessionBucket, SessionSummaryState } from "./session-state";
 import { toolInputSchemas } from "./tool-input-schemas";
 import { JsonValueSchema } from "./schemas";
 
@@ -116,6 +116,10 @@ export interface SessionSummaryPayload {
   gitBranch: string | undefined;
   starred: boolean;
   state: SessionSummaryState;
+  /** Display bucket from `resolveSessionBucket`. */
+  bucket: SessionBucket;
+  /** Running subagent nodes (`endedAt === null`) rooted at this session. */
+  liveAgentCount: number;
   blockedSince: string | null;
 }
 

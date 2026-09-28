@@ -290,6 +290,8 @@ describe("dispatchHookEvent", () => {
         gitBranch: undefined,
         starred: false,
         state: "unknown",
+        bucket: "done",
+        liveAgentCount: 0,
         blockedSince: null,
       },
     });
@@ -346,6 +348,8 @@ describe("dispatchHookEvent", () => {
         gitBranch: undefined,
         starred: false,
         state: "ended",
+        bucket: "done",
+        liveAgentCount: 0,
         blockedSince: null,
       },
     });

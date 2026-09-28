@@ -4,6 +4,8 @@ import * as schema from "./db/schema";
 import { getActiveSessionEntry, type ActiveSessionEntry } from "./active-session-store";
 import { getPendingApprovalsForProject } from "./db/pending-approvals-cache";
 import type { ActiveSessionPayload, SessionSummaryPayload } from "./hook-events";
+import { getLiveSubagentNodes } from "./live-subagent-store";
+import { resolveSessionBucket } from "./session-state";
 import type { SessionEntry } from "./sessions";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
@@ -31,10 +33,30 @@ export function toSessionSummaryPayload(
   entry: SessionEntry,
   starred: boolean,
   activeSession: ActiveSessionEntry | null = getActiveSessionEntry(entry.id),
+  now: number = Date.now(),
 ): SessionSummaryPayload {
   const pendingApproval = getPendingApprovalsForProject(entry.project).find(
     (approval) => approval.sessionId === entry.id,
   );
+  const liveAgentCount = getLiveSubagentNodes().filter(
+    (node) => node.sessionId === entry.id && node.endedAt === null,
+  ).length;
+  // Only active-store entries are live. A missing entry is an ended session,
+  // even if a transcript-derived approval has survived a server restart.
+  const pendingInput = activeSession !== null && pendingApproval !== undefined;
+  const { bucket } = resolveSessionBucket({
+    mainState: activeSession?.state ?? "ended",
+    pendingInput,
+    unseenError: false,
+    liveAgentCount,
+    backgroundTasks: activeSession?.backgroundTasks ?? [],
+    lastSubagentActivityAt: activeSession?.lastSubagentActivityAt ?? null,
+    herdrStatus: null,
+    prState: null,
+    unseen: false,
+    fileMtime: entry.mtime.getTime(),
+    now,
+  });
   return {
     id: entry.id,
     title: entry.title,
@@ -46,9 +68,9 @@ export function toSessionSummaryPayload(
     messageCount: entry.messageCount,
     gitBranch: entry.gitBranch,
     starred,
-    // Only active-store entries are live. A missing entry is an ended session,
-    // even if a transcript-derived approval has survived a server restart.
-    state: activeSession === null ? "ended" : pendingApproval ? "waiting" : activeSession.state,
+    state: activeSession === null ? "ended" : pendingInput ? "waiting" : activeSession.state,
+    bucket,
+    liveAgentCount,
     blockedSince: activeSession === null ? null : (pendingApproval?.blockedSince ?? null),
   };
 }

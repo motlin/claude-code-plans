@@ -36,6 +36,8 @@ function session(id: string, title: string, project: string, mtime: string) {
     messageCount: 4,
     starred: false,
     state: "ended",
+    bucket: "done",
+    liveAgentCount: 0,
     blockedSince: null,
   };
 }

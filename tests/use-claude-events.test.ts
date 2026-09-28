@@ -46,6 +46,8 @@ function makeSession(
     gitBranch: undefined,
     starred: false,
     state: "unknown",
+    bucket: "done",
+    liveAgentCount: 0,
     blockedSince: null,
     ...rest,
   };

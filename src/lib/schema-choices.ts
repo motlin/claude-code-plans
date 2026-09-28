@@ -12,6 +12,7 @@ import type {
   TaskStatusSchema,
   UserRecordSchema,
 } from "./schemas";
+import type { SessionBucketReasonSchema, SessionBucketSchema } from "./session-state";
 import type { MessageProcessedLine, ProcessedLine } from "./transcript";
 
 /**
@@ -60,6 +61,31 @@ const sessionSummaryStateLabels = {
   unknown: "Unknown",
   ended: "Ended",
 } satisfies Record<z.infer<typeof SessionSummaryStateSchema>, string>;
+
+/** Upstream claude.ai/code sidebar group names. */
+const sessionBucketLabels = {
+  blocked: "Needs input",
+  review: "Ready for review",
+  working: "Working",
+  done: "Completed",
+} satisfies Record<z.infer<typeof SessionBucketSchema>, string>;
+
+const sessionBucketReasonLabels = {
+  ended: "Session ended",
+  "pending-input": "Waiting on input",
+  waiting: "Waiting on a question",
+  error: "Error",
+  "main-working": "Working",
+  "live-agents": "Subagents running",
+  "background-tasks": "Background tasks running",
+  "subagent-activity": "Recent subagent activity",
+  "herdr-working": "Working in herdr",
+  "recent-file": "Transcript recently updated",
+  "pull-request": "Open pull request",
+  unseen: "Unseen work",
+  idle: "Idle",
+  "stale-file": "Transcript not recently updated",
+} satisfies Record<z.infer<typeof SessionBucketReasonSchema>, string>;
 
 export const searchModeLabels = {
   titles: "Search titles",
@@ -331,6 +357,8 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   TaskStatusSchema: taskStatusLabels,
   SearchModeSchema: searchModeLabels,
   SessionSummaryStateSchema: sessionSummaryStateLabels,
+  SessionBucketSchema: sessionBucketLabels,
+  SessionBucketReasonSchema: sessionBucketReasonLabels,
   ContentBlockSchema: contentBlockVariants,
   AttachmentPayloadSchema: attachmentVariants,
   "UserRecordSchema.promptSource": promptSourceLabels,

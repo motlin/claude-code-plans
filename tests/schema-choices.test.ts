@@ -5,6 +5,7 @@ import { SearchModeSchema } from "../src/lib/api/search";
 import { SessionSummaryStateSchema } from "../src/lib/api/sessions";
 import { SourceFileResponse } from "../src/lib/api/source";
 import { schemaChoiceRegistry } from "../src/lib/schema-choices";
+import { SessionBucketReasonSchema, SessionBucketSchema } from "../src/lib/session-state";
 import {
   AttachmentPayloadSchema,
   ClaudeSettingsSchema,
@@ -34,6 +35,8 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["TaskStatusSchema", TaskStatusSchema],
   ["SearchModeSchema", SearchModeSchema],
   ["SessionSummaryStateSchema", SessionSummaryStateSchema],
+  ["SessionBucketSchema", SessionBucketSchema],
+  ["SessionBucketReasonSchema", SessionBucketReasonSchema],
   ["ContentBlockSchema", ContentBlockSchema],
   ["AttachmentPayloadSchema", AttachmentPayloadSchema],
   ["UserRecordSchema", UserRecordSchema],

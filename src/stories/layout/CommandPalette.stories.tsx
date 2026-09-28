@@ -21,6 +21,8 @@ const sampleRecent = {
       gitBranch: "main" as string | undefined,
       starred: false,
       state: "unknown" as const,
+      bucket: "done" as const,
+      liveAgentCount: 0,
       blockedSince: null,
     },
     {
@@ -35,6 +37,8 @@ const sampleRecent = {
       gitBranch: "fix/db" as string | undefined,
       starred: false,
       state: "unknown" as const,
+      bucket: "done" as const,
+      liveAgentCount: 0,
       blockedSince: null,
     },
     {
@@ -49,6 +53,8 @@ const sampleRecent = {
       gitBranch: undefined,
       starred: false,
       state: "unknown" as const,
+      bucket: "done" as const,
+      liveAgentCount: 0,
       blockedSince: null,
     },
   ],
