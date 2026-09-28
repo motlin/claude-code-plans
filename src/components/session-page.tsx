@@ -46,6 +46,7 @@ import {
 } from "./links-drawer";
 import { StatusFooter } from "./status-footer";
 import { TranscriptHistoryLoader, findScrollContainer } from "./transcript-history-loader";
+import { ViewportPortal } from "./viewport-portal";
 import { useChatStream } from "../hooks/use-chat-stream";
 import { useClaudeEvents, useIsSessionActive, useStatusline } from "../hooks/use-claude-events";
 import { useSessionViewedState } from "../hooks/use-session-viewed-state";
@@ -119,32 +120,34 @@ function FloatingScrollButtons({ anchorRef }: { anchorRef: React.RefObject<HTMLE
   const { showUp, showDown, scrollTo } = useScrollButtons(anchorRef);
 
   return (
-    <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-20">
-      <button
-        type="button"
-        onClick={() => scrollTo("start")}
-        className="h-9 w-9 rounded-full bg-surface-0 border border-border shadow-md flex items-center justify-center text-t6 hover:text-primary hover:bg-surface-0/80 transition-all cursor-pointer"
-        style={{
-          opacity: showUp ? 1 : 0,
-          pointerEvents: showUp ? "auto" : "none",
-        }}
-        title="Scroll to top"
-      >
-        <ArrowUp className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => scrollTo("end")}
-        className="h-9 w-9 rounded-full bg-surface-0 border border-border shadow-md flex items-center justify-center text-t6 hover:text-primary hover:bg-surface-0/80 transition-all cursor-pointer"
-        style={{
-          opacity: showDown ? 1 : 0,
-          pointerEvents: showDown ? "auto" : "none",
-        }}
-        title="Scroll to bottom"
-      >
-        <ArrowDown className="h-4 w-4" />
-      </button>
-    </div>
+    <ViewportPortal>
+      <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-20">
+        <button
+          type="button"
+          onClick={() => scrollTo("start")}
+          className="h-9 w-9 rounded-full bg-surface-0 border border-border shadow-md flex items-center justify-center text-t6 hover:text-primary hover:bg-surface-0/80 transition-all cursor-pointer"
+          style={{
+            opacity: showUp ? 1 : 0,
+            pointerEvents: showUp ? "auto" : "none",
+          }}
+          title="Scroll to top"
+        >
+          <ArrowUp className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => scrollTo("end")}
+          className="h-9 w-9 rounded-full bg-surface-0 border border-border shadow-md flex items-center justify-center text-t6 hover:text-primary hover:bg-surface-0/80 transition-all cursor-pointer"
+          style={{
+            opacity: showDown ? 1 : 0,
+            pointerEvents: showDown ? "auto" : "none",
+          }}
+          title="Scroll to bottom"
+        >
+          <ArrowDown className="h-4 w-4" />
+        </button>
+      </div>
+    </ViewportPortal>
   );
 }
 
@@ -209,7 +212,12 @@ export function getSessionPromptBehavior(
   const hasLivePane = herdr.panes.some((pane) => pane.sessionId === sessionId);
 
   if (!hasLivePane) {
-    return { disabled: isActive, deliveryHint: undefined, hasLivePane, usesHerdr: false };
+    return {
+      disabled: isActive,
+      deliveryHint: undefined,
+      hasLivePane,
+      usesHerdr: false,
+    };
   }
   if (!herdr.writesEnabled) {
     return {
@@ -846,28 +854,30 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
 
       <FloatingScrollButtons anchorRef={scrollAnchorRef} />
 
-      <JumpTargetProvider value={jumpTargetWindow}>
-        {filesDrawerState.openDrawer === "files" && sessionFiles.totalCount > 0 && (
-          <FilesDrawer
-            sessionFiles={sessionFiles}
-            unscannedRecordCount={unscannedRecordCount}
-            sourceSelection={filesDrawerState.sourceSelection}
-            onSourceSelected={filesDrawerState.setSourceSelected}
-            onUnselectAllSources={filesDrawerState.unselectAllSources}
-            onClose={filesDrawerState.closeDrawer}
-          />
-        )}
+      <ViewportPortal>
+        <JumpTargetProvider value={jumpTargetWindow}>
+          {filesDrawerState.openDrawer === "files" && sessionFiles.totalCount > 0 && (
+            <FilesDrawer
+              sessionFiles={sessionFiles}
+              unscannedRecordCount={unscannedRecordCount}
+              sourceSelection={filesDrawerState.sourceSelection}
+              onSourceSelected={filesDrawerState.setSourceSelected}
+              onUnselectAllSources={filesDrawerState.unselectAllSources}
+              onClose={filesDrawerState.closeDrawer}
+            />
+          )}
 
-        {filesDrawerState.openDrawer === "links" && sessionLinks.totalCount > 0 && (
-          <LinksDrawer
-            display={linkDisplay}
-            unscannedRecordCount={unscannedRecordCount}
-            includeToolsAndThinking={linksDrawerState.includeToolsAndThinking}
-            onIncludeToolsAndThinkingChange={linksDrawerState.setIncludeToolsAndThinking}
-            onClose={filesDrawerState.closeDrawer}
-          />
-        )}
-      </JumpTargetProvider>
+          {filesDrawerState.openDrawer === "links" && sessionLinks.totalCount > 0 && (
+            <LinksDrawer
+              display={linkDisplay}
+              unscannedRecordCount={unscannedRecordCount}
+              includeToolsAndThinking={linksDrawerState.includeToolsAndThinking}
+              onIncludeToolsAndThinkingChange={linksDrawerState.setIncludeToolsAndThinking}
+              onClose={filesDrawerState.closeDrawer}
+            />
+          )}
+        </JumpTargetProvider>
+      </ViewportPortal>
 
       {/* Sticky footer: chat input + status bar */}
       {((!chromeHidden && data.projectPath) || statusline) && (
