@@ -837,12 +837,12 @@ export function searchFileContentDb(
 
   const rowsByPath = new Map(rows.map((row) => [row.path, row]));
   const pathRows = db.all(
-    sql`SELECT file_content_fts.path AS path,
+    sql`SELECT file_content.path AS path,
 			COALESCE(indexed_files.mtime_ms, 0) AS mtime_ms
-		FROM file_content_fts
-		LEFT JOIN indexed_files ON indexed_files.path = 'file-content:' || file_content_fts.path
-		WHERE file_content_fts.path = ${scopeRoot}
-			OR substr(file_content_fts.path, 1, ${scopePrefix.length}) = ${scopePrefix}`,
+		FROM file_content
+		LEFT JOIN indexed_files ON indexed_files.path = 'file-content:' || file_content.path
+		WHERE file_content.path = ${scopeRoot}
+			OR substr(file_content.path, 1, ${scopePrefix.length}) = ${scopePrefix}`,
   ) as FileSearchPathRow[];
   for (const row of pathRows) {
     const relativePath = relative(scopeRoot, row.path).toLowerCase();

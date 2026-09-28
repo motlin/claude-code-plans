@@ -5,7 +5,7 @@ import type { ReviewBundle } from "../api/reviews";
 // title from the first message that names the work. Titles are stored at index
 // time and the sessions this corrects are finished, so nothing but a rebuild
 // revisits them.
-export const SCHEMA_VERSION = "26";
+export const SCHEMA_VERSION = "27";
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),

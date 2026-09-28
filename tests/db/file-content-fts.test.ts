@@ -435,7 +435,7 @@ describe("file content FTS", () => {
     const cacheDirectory = join(fixtureDirectory, "cache");
     const persistentDb = openAppDb({ cacheDir: cacheDirectory });
     persistentDb.index.run(
-      sql`INSERT INTO file_content_fts(path, content) VALUES (${"/tmp/test/alice.txt"}, ${"old content"})`,
+      sql`INSERT INTO file_content(path, content) VALUES (${"/tmp/test/alice.txt"}, ${"old content"})`,
     );
     persistentDb.index
       .update(schema.metadata)

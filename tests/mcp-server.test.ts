@@ -160,7 +160,7 @@ beforeEach(() => {
     })
     .run();
   writable.index.run(
-    sql`INSERT INTO message_content_fts(session_id, content)
+    sql`INSERT INTO message_content(session_id, content)
         VALUES ('session-alice', 'The ingest pipeline concluded that the queue was stale')`,
   );
   writable.close();

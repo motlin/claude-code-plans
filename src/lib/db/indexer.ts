@@ -209,7 +209,7 @@ function normalizeProjectFile(filePath: string, projectsDir: string): Normalized
 
 function deleteFileContentRows(db: IndexDb, filePath: string): void {
   db.transaction((transaction) => {
-    transaction.run(sql`DELETE FROM file_content_fts WHERE path = ${filePath}`);
+    transaction.run(sql`DELETE FROM file_content WHERE path = ${filePath}`);
     transaction
       .delete(schema.indexedFiles)
       .where(eq(schema.indexedFiles.path, fileContentCachePath(filePath)))
@@ -273,9 +273,9 @@ export async function indexFileContent(
 
   const indexedAt = Date.now();
   db.transaction((transaction) => {
-    transaction.run(sql`DELETE FROM file_content_fts WHERE path = ${resolvedPath}`);
+    transaction.run(sql`DELETE FROM file_content WHERE path = ${resolvedPath}`);
     transaction.run(
-      sql`INSERT INTO file_content_fts(path, content) VALUES (${resolvedPath}, ${contents.toString("utf8")})`,
+      sql`INSERT INTO file_content(path, content) VALUES (${resolvedPath}, ${contents.toString("utf8")})`,
     );
     transaction
       .insert(schema.indexedFiles)
@@ -358,7 +358,7 @@ export async function scanFileContentRoots(
     }
   }
 
-  const indexedPaths = db.all(sql`SELECT path FROM file_content_fts`) as Array<{ path: string }>;
+  const indexedPaths = db.all(sql`SELECT path FROM file_content`) as Array<{ path: string }>;
   const stalePaths = indexedPaths
     .map((indexedPath) => indexedPath.path)
     .filter(
@@ -370,7 +370,7 @@ export async function scanFileContentRoots(
     const batch = stalePaths.slice(offset, offset + FILE_CONTENT_CLEANUP_BATCH_SIZE);
     db.transaction((transaction) => {
       for (const stalePath of batch) {
-        transaction.run(sql`DELETE FROM file_content_fts WHERE path = ${stalePath}`);
+        transaction.run(sql`DELETE FROM file_content WHERE path = ${stalePath}`);
         transaction
           .delete(schema.indexedFiles)
           .where(eq(schema.indexedFiles.path, fileContentCachePath(stalePath)))
@@ -744,12 +744,10 @@ export async function indexJsonlFile(
   });
 
   // Update message content FTS
-  db.run(sql`DELETE FROM message_content_fts WHERE session_id = ${sessionId}`);
+  db.run(sql`DELETE FROM message_content WHERE session_id = ${sessionId}`);
   if (textChunks.length > 0) {
     const content = textChunks.join("\n");
-    db.run(
-      sql`INSERT INTO message_content_fts(session_id, content) VALUES (${sessionId}, ${content})`,
-    );
+    db.run(sql`INSERT INTO message_content(session_id, content) VALUES (${sessionId}, ${content})`);
   }
 
   // Update indexed_files
@@ -1461,7 +1459,7 @@ function pruneDeletedSessions(
       .where(eq(schema.starredSessions.sessionId, session.id))
       .run();
     summariesDb.delete(schema.summaries).where(eq(schema.summaries.sessionId, session.id)).run();
-    indexDb.run(sql`DELETE FROM message_content_fts WHERE session_id = ${session.id}`);
+    indexDb.run(sql`DELETE FROM message_content WHERE session_id = ${session.id}`);
     indexDb.delete(schema.sessions).where(eq(schema.sessions.id, session.id)).run();
     indexDb
       .delete(schema.sessionMessages)

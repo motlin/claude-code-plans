@@ -192,40 +192,102 @@ CREATE TABLE IF NOT EXISTS reviews (
   },
 ];
 
+// FTS5 tables can only seek by rowid or MATCH, so a `DELETE ... WHERE path = ?`
+// on an FTS table scans every row of the (multi-GB) index. Each FTS table is
+// therefore external-content over a regular table with an indexed key column;
+// deletes go through the content table and its triggers remove FTS rows by rowid.
 const CREATE_FTS_SQL = `
+CREATE TABLE IF NOT EXISTS sessions_search (
+  id INTEGER PRIMARY KEY,
+  session_id TEXT NOT NULL UNIQUE,
+  title TEXT NOT NULL,
+  first_prompt TEXT NOT NULL,
+  summary TEXT NOT NULL
+);
+
 CREATE VIRTUAL TABLE IF NOT EXISTS sessions_fts USING fts5(
   session_id UNINDEXED,
   title,
   first_prompt,
-  summary
+  summary,
+  content='sessions_search',
+  content_rowid='id'
 );
 
+CREATE TRIGGER IF NOT EXISTS sessions_search_fts_insert AFTER INSERT ON sessions_search BEGIN
+  INSERT INTO sessions_fts(rowid, session_id, title, first_prompt, summary)
+  VALUES (NEW.id, NEW.session_id, NEW.title, NEW.first_prompt, NEW.summary);
+END;
+
+CREATE TRIGGER IF NOT EXISTS sessions_search_fts_delete AFTER DELETE ON sessions_search BEGIN
+  INSERT INTO sessions_fts(sessions_fts, rowid, session_id, title, first_prompt, summary)
+  VALUES ('delete', OLD.id, OLD.session_id, OLD.title, OLD.first_prompt, OLD.summary);
+END;
+
 CREATE TRIGGER IF NOT EXISTS sessions_fts_insert AFTER INSERT ON sessions BEGIN
-  INSERT INTO sessions_fts(session_id, title, first_prompt, summary)
+  DELETE FROM sessions_search WHERE session_id = NEW.id;
+  INSERT INTO sessions_search(session_id, title, first_prompt, summary)
   VALUES (NEW.id, NEW.title, COALESCE(NEW.first_prompt, ''), COALESCE(NEW.summary, ''));
 END;
 
 CREATE TRIGGER IF NOT EXISTS sessions_fts_update AFTER UPDATE ON sessions BEGIN
-  DELETE FROM sessions_fts WHERE session_id = OLD.id;
-  INSERT INTO sessions_fts(session_id, title, first_prompt, summary)
+  DELETE FROM sessions_search WHERE session_id = OLD.id;
+  DELETE FROM sessions_search WHERE session_id = NEW.id;
+  INSERT INTO sessions_search(session_id, title, first_prompt, summary)
   VALUES (NEW.id, NEW.title, COALESCE(NEW.first_prompt, ''), COALESCE(NEW.summary, ''));
 END;
 
 CREATE TRIGGER IF NOT EXISTS sessions_fts_delete AFTER DELETE ON sessions BEGIN
-  DELETE FROM sessions_fts WHERE session_id = OLD.id;
+  DELETE FROM sessions_search WHERE session_id = OLD.id;
 END;
+
+CREATE TABLE IF NOT EXISTS message_content (
+  id INTEGER PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  content TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS message_content_session_idx ON message_content(session_id);
 
 CREATE VIRTUAL TABLE IF NOT EXISTS message_content_fts USING fts5(
   session_id UNINDEXED,
   content,
+  content='message_content',
+  content_rowid='id',
   tokenize='porter unicode61'
+);
+
+CREATE TRIGGER IF NOT EXISTS message_content_fts_insert AFTER INSERT ON message_content BEGIN
+  INSERT INTO message_content_fts(rowid, session_id, content)
+  VALUES (NEW.id, NEW.session_id, NEW.content);
+END;
+
+CREATE TRIGGER IF NOT EXISTS message_content_fts_delete AFTER DELETE ON message_content BEGIN
+  INSERT INTO message_content_fts(message_content_fts, rowid, session_id, content)
+  VALUES ('delete', OLD.id, OLD.session_id, OLD.content);
+END;
+
+CREATE TABLE IF NOT EXISTS file_content (
+  id INTEGER PRIMARY KEY,
+  path TEXT NOT NULL UNIQUE,
+  content TEXT NOT NULL
 );
 
 CREATE VIRTUAL TABLE IF NOT EXISTS file_content_fts USING fts5(
   path UNINDEXED,
   content,
+  content='file_content',
+  content_rowid='id',
   tokenize='porter unicode61'
 );
+
+CREATE TRIGGER IF NOT EXISTS file_content_fts_insert AFTER INSERT ON file_content BEGIN
+  INSERT INTO file_content_fts(rowid, path, content) VALUES (NEW.id, NEW.path, NEW.content);
+END;
+
+CREATE TRIGGER IF NOT EXISTS file_content_fts_delete AFTER DELETE ON file_content BEGIN
+  INSERT INTO file_content_fts(file_content_fts, rowid, path, content)
+  VALUES ('delete', OLD.id, OLD.path, OLD.content);
+END;
 `;
 
 const CREATE_SUMMARIES_SQL = `
@@ -241,6 +303,9 @@ const DERIVED_TABLE_NAMES = [
   "sessions_fts",
   "message_content_fts",
   "file_content_fts",
+  "sessions_search",
+  "message_content",
+  "file_content",
   "tasks",
   "todo_tasks",
   "todo_files",

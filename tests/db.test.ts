@@ -2726,7 +2726,7 @@ describe("message content FTS", () => {
 
   it("escapes HTML in message search snippets while preserving highlights", () => {
     db.index.run(
-      sql`INSERT INTO message_content_fts(session_id, content)
+      sql`INSERT INTO message_content(session_id, content)
           VALUES (${"fts-xss"}, ${"login <script>alert(1)</script>"})`,
     );
 
