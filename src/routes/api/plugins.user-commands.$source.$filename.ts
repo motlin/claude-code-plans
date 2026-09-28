@@ -8,11 +8,19 @@ export const Route = createFileRoute("/api/plugins/user-commands/$source/$filena
     handlers: withMethodNotAllowed({
       GET: async ({ params }: { params: { source: string; filename: string } }) => {
         const { readUserCommandContent } = await import("../../lib/plugins");
+        const { getDb } = await import("../../lib/db");
+        const { listProjectCommandSourcesFromDb } = await import("../../lib/db/queries");
         const { extractTitleFromContent } = await import("../../lib/markdown-utils");
         const { decodeProjectDir } = await import("../../lib/memory");
 
         const filename = fromMdSlug(params.filename);
-        const content = await readUserCommandContent(params.source, filename);
+        const projectPath =
+          params.source === "global"
+            ? null
+            : (listProjectCommandSourcesFromDb(getDb().index).find(
+                (project) => project.id === params.source,
+              )?.projectPath ?? null);
+        const content = await readUserCommandContent(params.source, filename, projectPath);
         if (!content) {
           return Response.json(UserCommandFileResponse.parse(null), {
             headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
@@ -20,7 +28,10 @@ export const Route = createFileRoute("/api/plugins/user-commands/$source/$filena
         }
 
         const title = extractTitleFromContent(content, filename);
-        const sourceName = params.source === "global" ? "Global" : decodeProjectDir(params.source);
+        const sourceName =
+          params.source === "global"
+            ? "Global"
+            : decodeProjectDir(params.source, projectPath ?? undefined);
 
         return Response.json(
           UserCommandFileResponse.parse({

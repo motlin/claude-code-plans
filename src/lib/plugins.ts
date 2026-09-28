@@ -1,5 +1,5 @@
 import { readdir, readFile, lstat, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { homedir } from "node:os";
 import { extractTitle } from "./markdown-utils.server.js";
 import { resolveProjectName } from "./memory.js";
@@ -229,7 +229,18 @@ export async function listPlugins(): Promise<PluginInfo[]> {
   return plugins;
 }
 
-export async function listUserCommands(): Promise<UserCommandGroup[]> {
+export interface ProjectCommandSource {
+  id: string;
+  projectPath: string | null;
+}
+
+function projectCommandsDir(projectPath: string): string {
+  return join(projectPath, ".claude", "commands");
+}
+
+export async function listUserCommands(
+  projects: readonly ProjectCommandSource[],
+): Promise<UserCommandGroup[]> {
   const globalDir = join(homedir(), ".claude", "commands");
   const globalCmds = await readMdFiles(globalDir, "command");
 
@@ -242,20 +253,12 @@ export async function listUserCommands(): Promise<UserCommandGroup[]> {
     });
   }
 
-  const projectsDir = join(homedir(), ".claude", "projects");
-  let projectDirs: string[];
-  try {
-    projectDirs = await readdir(projectsDir);
-  } catch {
-    return groups;
-  }
-
-  for (const project of projectDirs) {
-    const cmdDir = join(projectsDir, project, "commands");
-    const cmds = await readMdFiles(cmdDir, "command");
+  for (const project of projects) {
+    if (project.projectPath === null) continue;
+    const cmds = await readMdFiles(projectCommandsDir(project.projectPath), "command");
     if (cmds.length > 0) {
-      const projectName = await resolveProjectName(project);
-      groups.push({ source: project, sourceName: projectName, commands: cmds });
+      const projectName = await resolveProjectName(project.id, project.projectPath);
+      groups.push({ source: project.id, sourceName: projectName, commands: cmds });
     }
   }
 
@@ -281,6 +284,7 @@ export async function readPluginFileContent(
 export async function readUserCommandContent(
   source: string,
   filename: string,
+  projectPath: string | null = null,
 ): Promise<string | null> {
   if (filename.includes("..") || filename.includes("/") || !filename.endsWith(".md")) return null;
 
@@ -288,12 +292,15 @@ export async function readUserCommandContent(
   if (source === "global") {
     dir = join(homedir(), ".claude", "commands");
   } else {
-    if (source.includes("..") || source.includes("/")) return null;
-    dir = join(homedir(), ".claude", "projects", source, "commands");
+    if (source.includes("..") || source.includes("/") || projectPath === null) return null;
+    dir = projectCommandsDir(projectPath);
   }
 
+  const filePath = resolve(dir, filename);
+  if (dirname(filePath) !== resolve(dir)) return null;
+
   try {
-    return await readFile(join(dir, filename), "utf-8");
+    return await readFile(filePath, "utf-8");
   } catch {
     return null;
   }

@@ -5,6 +5,7 @@ import {
   parseFrontmatter,
   readPluginFileContent,
   readUserCommandContent,
+  listUserCommands,
   extractMarketplace,
   formatMarketplaceName,
   isOfficialMarketplace,
@@ -251,5 +252,74 @@ describe("scanPluginTree", () => {
         },
       ],
     });
+  });
+});
+
+describe("project slash commands", () => {
+  const homeDir = join(testDir, "home");
+  const projectDir = join(testDir, "work", "my-app");
+  const encoded = "-work-my-app";
+
+  beforeEach(() => {
+    vi.stubEnv("HOME", homeDir);
+    mkdirSync(join(projectDir, ".claude", "commands"), { recursive: true });
+    writeFileSync(
+      join(projectDir, ".claude", "commands", "foo.md"),
+      "---\ndescription: Foo it\n---\n# Foo\n",
+    );
+    mkdirSync(join(homeDir, ".claude", "projects", encoded, "commands"), { recursive: true });
+    writeFileSync(join(homeDir, ".claude", "projects", encoded, "commands", "bar.md"), "# Bar\n");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("lists commands from <cwd>/.claude/commands and ignores the transcript directory", async () => {
+    const groups = await listUserCommands([
+      { id: encoded, projectPath: projectDir },
+      { id: "-gone", projectPath: join(testDir, "gone") },
+      { id: "-no-path", projectPath: null },
+    ]);
+    expect(groups).toEqual([
+      {
+        source: encoded,
+        sourceName: "my-app",
+        commands: [
+          {
+            filename: "foo.md",
+            name: "Foo",
+            description: "Foo it",
+            type: "command",
+            frontmatter: { description: "Foo it" },
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("keeps listing global commands from ~/.claude/commands", async () => {
+    mkdirSync(join(homeDir, ".claude", "commands"), { recursive: true });
+    writeFileSync(join(homeDir, ".claude", "commands", "g.md"), "# Global\n");
+    const groups = await listUserCommands([]);
+    expect(groups).toEqual([
+      {
+        source: "global",
+        sourceName: "Global",
+        commands: [
+          { filename: "g.md", name: "Global", description: "", type: "command", frontmatter: {} },
+        ],
+      },
+    ]);
+  });
+
+  it("reads project command content from the project cwd", async () => {
+    const content = await readUserCommandContent(encoded, "foo.md", projectDir);
+    expect(content).toBe("---\ndescription: Foo it\n---\n# Foo\n");
+  });
+
+  it("does not read from the transcript directory", async () => {
+    expect(await readUserCommandContent(encoded, "bar.md", projectDir)).toBe(null);
+    expect(await readUserCommandContent(encoded, "foo.md", null)).toBe(null);
   });
 });

@@ -6,8 +6,13 @@ export const Route = createFileRoute("/api/plugins/user-commands")({
   server: {
     handlers: withMethodNotAllowed({
       GET: async () => {
-        const { listUserCommands } = await import("../../lib/plugins");
-        const groups = await listUserCommands();
+        const [{ listUserCommands }, { getDb }, { listProjectCommandSourcesFromDb }] =
+          await Promise.all([
+            import("../../lib/plugins"),
+            import("../../lib/db"),
+            import("../../lib/db/queries"),
+          ]);
+        const groups = await listUserCommands(listProjectCommandSourcesFromDb(getDb().index));
         return Response.json(UserCommandListResponse.parse(groups), {
           headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
         });

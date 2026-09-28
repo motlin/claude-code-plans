@@ -19,6 +19,21 @@ export function listFileSearchProjectPathsFromDb(db: IndexDb): string[] {
     .flatMap((row) => (row.projectPath === null ? [] : [row.projectPath]));
 }
 
+/** Indexed projects with their working directory, for scanning `<cwd>/.claude/commands`. */
+export function listProjectCommandSourcesFromDb(
+  db: IndexDb,
+): { id: string; projectPath: string }[] {
+  return db
+    .select({ id: schema.projects.id, projectPath: schema.projects.projectPath })
+    .from(schema.projects)
+    .where(isNotNull(schema.projects.projectPath))
+    .orderBy(asc(schema.projects.id))
+    .all()
+    .flatMap((row) =>
+      row.projectPath === null ? [] : [{ id: row.id, projectPath: row.projectPath }],
+    );
+}
+
 function getProjectNameMap(db: IndexDb): Map<string, string> {
   const rows = db
     .select({ id: schema.projects.id, name: schema.projects.name })
