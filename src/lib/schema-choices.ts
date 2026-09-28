@@ -44,6 +44,7 @@ export const promptSourceLabels = {
   system: "System",
   sdk: "SDK",
   queued: "Queued",
+  suggestion_accepted: "Suggestion accepted",
 } satisfies Record<PromptSource, string>;
 
 const taskStatusLabels = {
@@ -186,6 +187,24 @@ const attachmentVariants = {
   plan_file_reference: true,
   nested_memory: true,
   team_context: true,
+  bash_output_audience_note: true,
+  batching_reminder_sent: true,
+  credential_org: true,
+  date: true,
+  deferred_tools_record: true,
+  environment: true,
+  fork_briefing: true,
+  hook_permission_decision: true,
+  instructions: true,
+  model: true,
+  output_style: true,
+  output_style_instructions: true,
+  prompt_snapshot: true,
+  remote_session_change: true,
+  session_context: true,
+  silent_turn_reminder: true,
+  thinking_drop: true,
+  thinking_stripped: true,
 } satisfies Record<z.infer<typeof AttachmentPayloadSchema>["type"], true>;
 
 /** Consumed selectively (text extraction etc.) — no single exhaustive handler. */
@@ -219,6 +238,12 @@ const jsonlRecordVariants = {
   relocated: true,
   "pr-link": true,
   mode: true,
+  "atis-latch": true,
+  "bridge-session": true,
+  "cost-state": true,
+  "frame-link": true,
+  "artifact-comment-monitor": true,
+  "artifact-autoreact-ledger": true,
 } satisfies Record<z.infer<typeof JsonlRecordSchema>["type"], true>;
 
 /** Exhaustive handler: renderSessionMessage switch in src/components/session-chat.tsx. */

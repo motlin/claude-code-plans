@@ -166,6 +166,20 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
     section: "General",
   },
   {
+    key: "remoteControlAtStartup",
+    label: "Remote Control at startup",
+    description: "Start Remote Control automatically when a session starts",
+    type: "boolean",
+    section: "General",
+  },
+  {
+    key: "agentPushNotifEnabled",
+    label: "Agent push notifications",
+    description: "Allow Claude to send push notifications",
+    type: "boolean",
+    section: "General",
+  },
+  {
     key: "skipWorkflowUsageWarning",
     label: "Skip workflow usage warning",
     description: "Skip the warning shown for workflow usage",
@@ -190,6 +204,8 @@ export const DEDICATED_EDITOR_KEYS = new Set([
   "remote",
   "worktree",
   "spinnerVerbs",
+  "attribution",
+  "autoMode",
 ]);
 
 const SUMMARY_SETTINGS_KEYS = new Set(["skillOverrides"]);
@@ -252,6 +268,20 @@ export const OBJECT_EDITORS: ObjectEditorDef[] = [
       { key: "mode", label: "Mode", type: "string" },
       { key: "verbs", label: "Verbs", type: "stringList" },
     ],
+  },
+  {
+    key: "attribution",
+    label: "Attribution",
+    description: "Attribution added to commits and pull requests",
+    section: "Advanced",
+    fields: [{ key: "sessionUrl", label: "Session URL", type: "boolean" }],
+  },
+  {
+    key: "autoMode",
+    label: "Auto mode",
+    description: "Auto mode classifier context",
+    section: "Permissions",
+    fields: [{ key: "environment", label: "Environment", type: "stringList" }],
   },
 ];
 

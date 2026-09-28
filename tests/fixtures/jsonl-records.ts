@@ -138,4 +138,44 @@ export const jsonlRecordFixtures = {
     mode: "default",
     sessionId: "session-alice-100",
   },
+  "atis-latch": {
+    type: "atis-latch",
+    atis: "v1.test-latch",
+    sessionId: "session-alice-100",
+  },
+  "bridge-session": {
+    type: "bridge-session",
+    sessionId: "session-alice-100",
+    bridgeSessionId: "cse_alice_100",
+    lastSequenceNum: 100,
+  },
+  "cost-state": {
+    type: "cost-state",
+    sessionId: "session-alice-100",
+    totalCostUSD: 1,
+    modelUsage: { "claude-test": { inputTokens: 100, outputTokens: 100, costUSD: 1 } },
+  },
+  "frame-link": {
+    type: "frame-link",
+    sessionId: "session-alice-100",
+    path: "/tmp/test/alice-page.html",
+    frameUrl: "https://example.com/artifact/alice-100",
+    title: "Alice page",
+    artifactCount: 1,
+    timestamp: "2000-01-01T00:00:00.000Z",
+  },
+  "artifact-comment-monitor": {
+    type: "artifact-comment-monitor",
+    v: 1,
+    sessionId: "session-alice-100",
+    artifacts: {
+      "https://example.com/artifact/alice-100": { state: "armed", title: "Alice page" },
+    },
+  },
+  "artifact-autoreact-ledger": {
+    type: "artifact-autoreact-ledger",
+    v: 1,
+    sessionId: "session-alice-100",
+    artifacts: { "https://example.com/artifact/alice-100": { savedAt: 1, stampHighWater: null } },
+  },
 } satisfies JsonlRecordFixtures;

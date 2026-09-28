@@ -890,6 +890,439 @@ describe("JsonlRecordSchema", () => {
   });
 });
 
+describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
+  const rendered = [
+    { content: "<system-reminder>\nToday's date is 2026-09-28.\n</system-reminder>" },
+  ];
+
+  function attachmentRecord(attachment: Record<string, unknown>) {
+    return { type: "attachment", ...baseFields, attachment, rendered };
+  }
+
+  it("parses assistant records carrying wire metadata, per-turn effort, and input transformations", () => {
+    const record = {
+      type: "assistant",
+      ...baseFields,
+      requestId: "req_1",
+      advisorModel: "claude-opus-5-5",
+      apiBlockIndex: 2,
+      perTurnEffort: null,
+      serverClassifierRequest: "931e5375-552d-4f2d-9c4c-4a60cd3903d0",
+      truncatedAfterOutput: true,
+      wireIngestContext: { toolu_1: { cwd: "/Users/test/project" } },
+      wireToolInputs: { toolu_1: { command: "ls", description: "List files" } },
+      message: {
+        role: "assistant",
+        content: [{ type: "text", text: "Done." }],
+        input_transformations: [
+          {
+            type: "thinking_dropped",
+            path: "messages.2.content.0",
+            reason: "prefix_binding_mismatch",
+          },
+        ],
+        safeguard_results: [
+          {
+            type: "dangerous_tool_use",
+            status: {
+              type: "available",
+              tool_uses: { toolu_1: { type: "evaluated", outcome: "not_flagged" } },
+            },
+          },
+        ],
+      },
+    };
+
+    expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+  });
+
+  it("parses user records carrying turn origin, scheduled-task, and classifier context fields", () => {
+    const record = {
+      type: "user",
+      ...baseFields,
+      message: { role: "user", content: "hello" },
+      promptSource: "suggestion_accepted",
+      turnOrigin: "scheduled",
+      turnPosition: { promptIndex: 1, turnIndex: 1 },
+      turnCompanion: true,
+      queueSkipAttachments: true,
+      scheduledTaskId: "cdaf9a4d",
+      scheduledFireId: "26b2889b-5fe9-4a7b-ad8c-ed24a3678f56",
+      classifierMetaLines: '{"meta":{"gitStatus":{"clean":true}}}\n',
+      serverClassifierContext: {
+        request: "931e5375-552d-4f2d-9c4c-4a60cd3903d0",
+        context: {
+          git_state: {
+            cwd: "/Users/test/project",
+            root: "/Users/test/project",
+            branch: "main",
+            default_branch: "main",
+            status: {
+              clean: false,
+              counts: { staged: 0, modified: 2, untracked: null, untracked_normal: 1 },
+              porcelain: null,
+              truncated: false,
+            },
+            visibility: {
+              origin: { host: "github.com", remote: "test/project", visibility: "public" },
+              push_remote: "origin",
+              remotes: [
+                {
+                  name: "origin",
+                  host: "github.com",
+                  remote: "test/project",
+                  visibility: "public",
+                },
+              ],
+              visibility_cache: [
+                { host: "github.com", remote: "test/project", visibility: "public" },
+              ],
+            },
+          },
+          live_cwd: "/Users/test/project",
+          platform: "macos",
+        },
+      },
+    };
+
+    expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+  });
+
+  it("parses classifier context whose git state is still pending", () => {
+    const record = {
+      type: "user",
+      ...baseFields,
+      message: { role: "user", content: "hello" },
+      serverClassifierContext: {
+        request: "r1",
+        context: {
+          git_state: {
+            cwd: "/tmp",
+            root: null,
+            branch: null,
+            default_branch: null,
+            status: null,
+            visibility: null,
+            error: "pending",
+          },
+          live_cwd: "/tmp",
+          platform: "macos",
+        },
+      },
+    };
+
+    expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+  });
+
+  it("parses system records for local commands, bridge status, and scheduled task fires", () => {
+    const records = [
+      {
+        type: "system",
+        ...baseFields,
+        subtype: "local_command",
+        content: "<command-name>/rename</command-name>",
+        commandRun: { command: "rename", args: "daily" },
+      },
+      {
+        type: "system",
+        ...baseFields,
+        subtype: "bridge_status",
+        content: "Remote Control connected",
+        url: "https://claude.ai/code/session_01",
+      },
+      {
+        type: "system",
+        ...baseFields,
+        subtype: "scheduled_task_fire",
+        content: "Scheduled task fired",
+        taskId: "cdaf9a4d",
+        cron: "45 15 * * *",
+        prompt: "/loop Check the PR",
+        taskKind: "loop",
+        cronKind: "loop",
+        noOpStreak: 2,
+        streakStartedAt: "2026-09-28T19:45:00.751Z",
+        foldedUuids: ["26b2889b-5fe9-4a7b-ad8c-ed24a3678f56"],
+      },
+    ];
+
+    expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
+  });
+
+  it("parses queue removals that record why the prompt left the queue", () => {
+    const record = {
+      type: "queue-operation",
+      operation: "remove",
+      timestamp: "2026-09-28T00:00:00.000Z",
+      sessionId: "s1",
+      content: "queued prompt",
+      reason: "absorbed_mid_turn",
+    };
+
+    expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+  });
+
+  it("parses session bookkeeping records for bridges, costs, artifacts, and ATIS latches", () => {
+    const records = [
+      { type: "atis-latch", atis: "v1.f775a7368a120dff.MKr6", sessionId: "s1" },
+      {
+        type: "bridge-session",
+        sessionId: "s1",
+        bridgeSessionId: "cse_01",
+        lastSequenceNum: 87,
+        ownerAccountUuid: "acct-1",
+        ownerOrganizationUuid: "org-1",
+      },
+      {
+        type: "cost-state",
+        sessionId: "s1",
+        totalCostUSD: 1.5,
+        totalAPIDuration: 1000,
+        totalAPIDurationWithoutRetries: 990,
+        totalToolDuration: 200,
+        totalLinesAdded: 10,
+        totalLinesRemoved: 2,
+        totalDuration: 5000,
+        startTime: 1790602944268,
+        modelUsage: {
+          "claude-opus-5-5": {
+            inputTokens: 10,
+            outputTokens: 20,
+            thinkingTokens: 5,
+            cacheReadInputTokens: 100,
+            cacheCreationInputTokens: 50,
+            webSearchRequests: 0,
+            costUSD: 1.5,
+          },
+        },
+        hasUnknownModelCost: false,
+      },
+      {
+        type: "frame-link",
+        sessionId: "s1",
+        path: "/tmp/page.html",
+        frameUrl: "https://claude.ai/code/artifact/abc",
+        title: "Board Styles",
+        artifactCount: 1,
+        timestamp: "2026-09-28T17:22:33.770Z",
+      },
+      {
+        type: "artifact-comment-monitor",
+        v: 1,
+        sessionId: "s1",
+        artifacts: {
+          "https://claude.ai/code/artifact/abc": { state: "armed", writtenAtMs: 1, title: "Board" },
+        },
+      },
+      {
+        type: "artifact-autoreact-ledger",
+        v: 1,
+        sessionId: "s1",
+        accountUuid: "acct-1",
+        artifacts: {
+          "https://claude.ai/code/artifact/abc": {
+            savedAt: 1,
+            stampHighWater: null,
+            everBaselined: true,
+            everHadThreads: false,
+            turnTimestamps: [],
+            threads: [],
+            interrupted: true,
+          },
+        },
+      },
+    ];
+
+    expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
+  });
+
+  it("parses rendered context attachments for environment, instructions, model, and session context", () => {
+    const records = [
+      attachmentRecord({ type: "date", date: "2026-09-28", changed: true }),
+      attachmentRecord({
+        type: "environment",
+        snapshot: {
+          workingDirectory: "/Users/test/project",
+          isWorktree: false,
+          isGitRepo: true,
+          additionalWorkingDirectories: ["/Users/test/.claude"],
+          platform: "darwin",
+          shell: "zsh",
+          osVersion: "Darwin 24.6.0",
+          scratchpadDirectory: "/tmp/scratch",
+        },
+        changes: [
+          { field: "workingDirectory", from: "/Users/test/other" },
+          { field: "additionalWorkingDirectories", added: ["/Users/test/Downloads"], removed: [] },
+        ],
+      }),
+      attachmentRecord({
+        type: "instructions",
+        files: [{ path: "/Users/test/.claude/CLAUDE.md", type: "User", content: "Be terse." }],
+        changed: true,
+        reason: "session_start",
+        removed: ["/Users/test/project/AGENTS.md"],
+      }),
+      attachmentRecord({
+        type: "model",
+        identity: {
+          modelId: "claude-opus-5-5",
+          marketingName: "Opus 5.5",
+          knowledgeCutoff: "June 2026",
+        },
+        text: "You are powered by the model named Opus 5.5.",
+      }),
+      attachmentRecord({
+        type: "session_context",
+        context: { userEmail: "The user's email is test@example.com." },
+      }),
+      attachmentRecord({ type: "credential_org", organizationUuid: "org-1" }),
+      attachmentRecord({ type: "output_style", style: "Concise", turnReminder: "Be concise." }),
+      attachmentRecord({
+        type: "output_style_instructions",
+        style: { name: "Concise", prompt: "Keep it short." },
+      }),
+      attachmentRecord({
+        type: "remote_session_change",
+        url: null,
+        commit: "",
+        pr: "",
+        sendUserFileHint: true,
+        managedCommit: false,
+        managedPr: false,
+      }),
+      attachmentRecord({ type: "fork_briefing", text: "This conversation was forked." }),
+    ];
+
+    expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
+  });
+
+  it("parses prompt snapshot and deferred tool record attachments", () => {
+    const records = [
+      attachmentRecord({
+        type: "prompt_snapshot",
+        systemPrompt: ["You are an interactive agent.", "__SYSTEM_PROMPT_DYNAMIC_BOUNDARY__"],
+        reminderFold: false,
+        echoWireToolInputs: true,
+        contextRendering: "announced",
+        tools: [{ name: "Bash", description: "Run a command", schema: { type: "object" } }],
+        cliPrefix: "You are Claude Code.",
+        systemTurns: true,
+        toolChangeHeader: true,
+        inlineTools: false,
+        keptReminders: true,
+        hostPrompt: "f7a1a5925fe3c21c",
+      }),
+      attachmentRecord({
+        type: "deferred_tools_record",
+        entries: [
+          {
+            name: "mcp__docs__guide",
+            description: "Docs guides",
+            input_schema: { type: "object", properties: {} },
+            eager_input_streaming: true,
+            defer_loading: true,
+          },
+        ],
+        toolInputCopies: [{ id: "toolu_1", copy: "wire" }],
+        nameOnlyAnnouncements: ["e1a46492-d54a-4f2b-94a3-82a1c5c174cf"],
+      }),
+    ];
+
+    expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
+  });
+
+  it("parses turn-level reminder and thinking attachments", () => {
+    const records = [
+      attachmentRecord({ type: "bash_output_audience_note", toolUseID: "toolu_1" }),
+      attachmentRecord({
+        type: "batching_reminder_sent",
+        text: "First privately list what you need next.",
+        model: "claude-fable-5-1",
+        clearAt: "next_user_message",
+      }),
+      attachmentRecord({ type: "silent_turn_reminder", text: "Say what you're doing." }),
+      attachmentRecord({
+        type: "hook_permission_decision",
+        decision: "allow",
+        toolUseID: "toolu_1",
+        hookEvent: "PermissionRequest",
+      }),
+      attachmentRecord({ type: "thinking_stripped", scope: "all" }),
+      attachmentRecord({
+        type: "thinking_drop",
+        requestId: "req_1",
+        model: "claude-opus-5-5",
+        querySource: "repl_main_thread",
+        thinkingBlocksSent: 15,
+        thinkingTurnsSent: 14,
+        newlyDropped: {
+          blockCount: 15,
+          turnCount: 14,
+          reason: "prefix_mismatch",
+          first: { messageIndex: 2, blockIndex: 0 },
+          last: { messageIndex: 87, blockIndex: 1 },
+          reasonCounts: { prefix_mismatch: 15 },
+        },
+        blockHashes: ["2gdd6tokolerh"],
+        firstReportForThreadInProcess: false,
+        clientChange: {
+          kinds: "toolSchemasChanged",
+          firstChangedMessageIndex: -1,
+          baseline: "memory",
+          callNumber: 33,
+        },
+      }),
+    ];
+
+    expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
+  });
+
+  it("parses new fields on existing attachment types", () => {
+    const records = [
+      attachmentRecord({ type: "auto_mode", bashFirstSteer: "relaxed" }),
+      attachmentRecord({ type: "auto_mode_exit", bashFirst: true, steerOnly: true }),
+      attachmentRecord({
+        type: "deferred_tools_delta",
+        addedNames: ["Edit"],
+        wireHiddenNames: [],
+        surfacedNames: ["Edit"],
+        restoredNames: ["Edit"],
+        retractedTools: [{ name: "Edit", cause: "denied" }],
+        failedMcpServers: [{ name: "imcp", errorCode: "CONNECT_TIMEOUT", error: "timed out" }],
+      }),
+      attachmentRecord({
+        type: "file",
+        filename: "/Users/test/.claude/memory/note.md",
+        readNotes: { memoryNote: "This memory is 7 days old." },
+      }),
+      attachmentRecord({
+        type: "task_status",
+        taskId: "b80edgxim",
+        status: "running",
+        shell: { command: "sleep 300", kind: "bash", toolUseId: "toolu_1" },
+      }),
+      attachmentRecord({
+        type: "team_context",
+        agentName: "commit-handler",
+        hasTaskListTools: false,
+      }),
+      {
+        ...attachmentRecord({
+          type: "queued_command",
+          prompt: "notification",
+          source_uuid: "c42a1d7d-1f5e-421f-84d3-437bde0eadb1",
+          humanTurn: true,
+          usage: { totalTokens: 83518, toolUses: 3, durationMs: 21780 },
+        }),
+        renderedInHumanTurn: [{ content: "<system-reminder>\nnotification\n</system-reminder>" }],
+      },
+    ];
+
+    expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
+  });
+});
+
 describe("parseJsonlRecord", () => {
   it("parses valid JSON and returns typed record", () => {
     const line = JSON.stringify({

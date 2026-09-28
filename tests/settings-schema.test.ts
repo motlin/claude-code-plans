@@ -234,6 +234,17 @@ describe("ClaudeSettingsSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("parses settings with attribution, remote control, push notification, and auto mode keys", () => {
+    const settings = {
+      attribution: { sessionUrl: false },
+      remoteControlAtStartup: true,
+      agentPushNotifEnabled: true,
+      autoMode: { environment: ["### Org-wide", "**Organization**: None configured"] },
+    };
+
+    expect(ClaudeSettingsSchema.parse(settings)).toStrictEqual(settings);
+  });
+
   it("rejects unknown top-level fields", () => {
     const result = ClaudeSettingsSchema.safeParse({
       unknownField: "value",

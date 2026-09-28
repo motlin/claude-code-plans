@@ -561,10 +561,130 @@ function AttachmentContent({
           )}
         </Banner>
       );
+    // -- Context injected into the model's turn --
+    case "date":
+      return (
+        <Banner
+          icon={<Calendar className="h-3.5 w-3.5" />}
+          label={`${attachment.changed ? "Date changed" : "Date"}${attachment.date ? `: ${attachment.date}` : ""}`}
+          sessionId={sessionId}
+          uuid={uuid}
+        />
+      );
+    case "environment":
+      return (
+        <Banner
+          icon={<FolderOpen className="h-3.5 w-3.5" />}
+          label={`Environment${attachment.snapshot?.workingDirectory ? `: ${attachment.snapshot.workingDirectory}` : attachment.changes?.length ? " update" : ""}`}
+          sessionId={sessionId}
+          uuid={uuid}
+        />
+      );
+    case "instructions":
+      return (
+        <Banner
+          icon={<FileText className="h-3.5 w-3.5" />}
+          label={`Instructions${attachment.files ? ` (${attachment.files.length} file${attachment.files.length === 1 ? "" : "s"})` : ""}`}
+          sessionId={sessionId}
+          uuid={uuid}
+        />
+      );
+    case "model":
+      return (
+        <Banner
+          icon={<Bot className="h-3.5 w-3.5" />}
+          label={`Model${attachment.identity?.marketingName ? `: ${attachment.identity.marketingName}` : ""}`}
+          sessionId={sessionId}
+          uuid={uuid}
+        />
+      );
+    case "output_style":
+    case "output_style_instructions": {
+      const style =
+        typeof attachment.style === "string" ? attachment.style : attachment.style?.name;
+      return (
+        <Banner
+          icon={<Pencil className="h-3.5 w-3.5" />}
+          label={`Output style${style ? `: ${style}` : ""}`}
+          sessionId={sessionId}
+          uuid={uuid}
+        />
+      );
+    }
+    case "session_context":
+    case "credential_org":
+    case "remote_session_change":
+    case "fork_briefing":
+      return (
+        <Banner
+          icon={<Paperclip className="h-3.5 w-3.5" />}
+          label={CONTEXT_ATTACHMENT_LABELS[attachment.type]}
+          sessionId={sessionId}
+          uuid={uuid}
+        />
+      );
+    case "prompt_snapshot":
+    case "deferred_tools_record":
+      return (
+        <Banner
+          icon={<Wrench className="h-3.5 w-3.5" />}
+          label={
+            attachment.type === "prompt_snapshot"
+              ? `Prompt snapshot${attachment.tools ? ` (${attachment.tools.length} tools)` : ""}`
+              : `Deferred tools${attachment.entries ? ` (${attachment.entries.length})` : ""}`
+          }
+          sessionId={sessionId}
+          uuid={uuid}
+        />
+      );
+    case "bash_output_audience_note":
+    case "batching_reminder_sent":
+    case "silent_turn_reminder":
+      return (
+        <Banner
+          icon={<Pin className="h-3.5 w-3.5" />}
+          label={CONTEXT_ATTACHMENT_LABELS[attachment.type]}
+          sessionId={sessionId}
+          uuid={uuid}
+        />
+      );
+    case "hook_permission_decision":
+      return (
+        <Banner
+          icon={<Key className="h-3.5 w-3.5" />}
+          label={`Permission hook${attachment.decision ? `: ${attachment.decision}` : ""}`}
+          sessionId={sessionId}
+          uuid={uuid}
+        />
+      );
+    case "thinking_drop":
+    case "thinking_stripped":
+      return (
+        <Banner
+          icon={<Brain className="h-3.5 w-3.5" />}
+          label={
+            attachment.type === "thinking_drop"
+              ? `Thinking dropped${attachment.newlyDropped?.blockCount !== undefined ? ` (${attachment.newlyDropped.blockCount} blocks)` : ""}`
+              : "Thinking stripped"
+          }
+          sessionId={sessionId}
+          uuid={uuid}
+        />
+      );
     default:
       return assertNever(attachment);
   }
 }
+
+const CONTEXT_ATTACHMENT_LABELS = {
+  session_context: "Session context",
+  credential_org: "Credential organization",
+  remote_session_change: "Remote session attribution",
+  fork_briefing: "Fork briefing",
+  bash_output_audience_note: "Bash output audience note",
+  batching_reminder_sent: "Batching reminder",
+  silent_turn_reminder: "Silent turn reminder",
+} satisfies Partial<Record<AttachmentPayload["type"], string>>;
 
 /**
  * `pill` is the bordered, icon-led card upstream claude.ai/code reserves for
