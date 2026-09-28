@@ -7,7 +7,6 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import {
   SessionsIndexSchema,
   FileHistorySnapshotSchema,
-  CustomTitleRecordSchema,
   AttachmentRecordSchema,
   TaskFileSchema,
 } from "../schemas";
@@ -16,7 +15,12 @@ import { isCountableMessageRecord } from "../message-count";
 import { deriveProjectDisplayName, lastEncodedSegment } from "../project-display-name";
 import { normalizeGitBranch } from "../git-branch";
 import { SYNTHETIC_MODEL } from "../model-name";
-import { extractSessionTitle, readFirstUserMessage, resolveFirstPrompt } from "../sessions";
+import {
+  readFirstUserMessage,
+  resolveFirstPrompt,
+  resolveSessionTitle,
+  TitleRecordCollector,
+} from "../sessions";
 import { extractTitle, extractTitleFromContent } from "../markdown-utils.server";
 import { listTrackedFiles } from "../git-tracked";
 import * as schema from "./schema";
@@ -430,8 +434,13 @@ export async function indexSessionsIndex(
     const branch = normalizeGitBranch(entry.gitBranch as string | undefined);
     const entryProjectPath = entry.projectPath as string | undefined;
     const sidechain = entry.isSidechain as boolean | undefined;
-    const title =
-      summ ?? extractSessionTitle(fp?.text ?? "", entry.sessionId, { isMeta: fp?.isMeta === true });
+    // Transcript-derived titles (custom, then ai) outrank anything
+    // sessions-index.json knows; the coalesce below keeps them on rewrite.
+    const title = resolveSessionTitle({
+      summary: summ,
+      firstPrompt: fp ?? undefined,
+      sessionId: entry.sessionId,
+    });
     const createdAt = entry.created ? new Date(entry.created as string).getTime() : entry.fileMtime;
 
     db.insert(schema.sessions)
@@ -442,6 +451,7 @@ export async function indexSessionsIndex(
         firstPrompt: fp?.text ?? null,
         summary: summ ?? null,
         customTitle: null,
+        aiTitle: null,
         // sessions-index.json counts messages with Claude Code's own
         // definition, which disagrees with ours (see message-count.ts).
         // indexJsonlFile owns message_count; a fresh row starts at 0 until
@@ -457,7 +467,7 @@ export async function indexSessionsIndex(
       .onConflictDoUpdate({
         target: schema.sessions.id,
         set: {
-          title: sql<string>`coalesce(${schema.sessions.customTitle}, ${title})`,
+          title: sql<string>`coalesce(${schema.sessions.customTitle}, ${schema.sessions.aiTitle}, ${title})`,
           firstPrompt: fp?.text ?? null,
           summary: summ ?? null,
           gitBranch: branch,
@@ -519,7 +529,7 @@ export async function indexJsonlFile(
   }
 
   const planFilenames = new Set<string>();
-  let customTitle: string | undefined;
+  const titleRecords = new TitleRecordCollector();
   let lastSessionCwd: string | undefined;
   let anchoredSessionCwd: string | undefined;
   let sessionGitBranch: string | null = null;
@@ -602,13 +612,9 @@ export async function indexJsonlFile(
         }
       }
 
-      if (line.includes("custom-title")) {
+      if (line.includes('"custom-title"') || line.includes('"ai-title"')) {
         try {
-          const parsed = JSON.parse(line);
-          const result = CustomTitleRecordSchema.safeParse(parsed);
-          if (result.success) {
-            customTitle = result.data.customTitle;
-          }
+          titleRecords.add(JSON.parse(line));
         } catch {
           // skip
         }
@@ -654,6 +660,7 @@ export async function indexJsonlFile(
     rl.close();
   }
 
+  const { customTitle, aiTitle } = await titleRecords.finish(filePath);
   const sessionCwd = anchoredSessionCwd ?? lastSessionCwd;
 
   // Upsert plan links
@@ -682,14 +689,15 @@ export async function indexJsonlFile(
     updates["filePath"] = filePath;
     updates["projectId"] = project;
     updates["firstPrompt"] = firstPrompt?.text ?? null;
-    if (customTitle) {
-      updates["customTitle"] = customTitle;
-      updates["title"] = customTitle;
-    } else if (!existingSession.customTitle && !existingSession.summary) {
-      updates["title"] = extractSessionTitle(firstPrompt?.text ?? "", sessionId, {
-        isMeta: firstPrompt?.isMeta === true,
-      });
-    }
+    updates["customTitle"] = customTitle ?? null;
+    updates["aiTitle"] = aiTitle ?? null;
+    updates["title"] = resolveSessionTitle({
+      customTitle,
+      aiTitle,
+      summary: existingSession.summary ?? undefined,
+      firstPrompt: firstPrompt ?? undefined,
+      sessionId,
+    });
     if (sessionCwd) {
       updates["cwd"] = sessionCwd;
     }
@@ -698,11 +706,12 @@ export async function indexJsonlFile(
     }
     db.update(schema.sessions).set(updates).where(eq(schema.sessions.id, sessionId)).run();
   } else {
-    const title =
-      customTitle ??
-      extractSessionTitle(firstPrompt?.text ?? "", sessionId, {
-        isMeta: firstPrompt?.isMeta === true,
-      });
+    const title = resolveSessionTitle({
+      customTitle,
+      aiTitle,
+      firstPrompt: firstPrompt ?? undefined,
+      sessionId,
+    });
 
     db.insert(schema.sessions)
       .values({
@@ -712,6 +721,7 @@ export async function indexJsonlFile(
         firstPrompt: firstPrompt?.text ?? null,
         summary: null,
         customTitle: customTitle ?? null,
+        aiTitle: aiTitle ?? null,
         messageCount,
         gitBranch: sessionGitBranch,
         cwd: sessionCwd ?? null,

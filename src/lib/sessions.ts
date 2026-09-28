@@ -1,11 +1,16 @@
 import { createReadStream } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { createInterface } from "node:readline";
 import { decodeProjectDir, resolveProjectName } from "./memory";
 import type { JsonValue } from "./hook-events";
 import { normalizeGitBranch } from "./git-branch";
-import { SessionsIndexSchema, CustomTitleRecordSchema } from "./schemas";
+import {
+  AiTitleRecordSchema,
+  CustomTitleRecordSchema,
+  CustomTitleSidecarSchema,
+  SessionsIndexSchema,
+} from "./schemas";
 import { isCountableMessageRecord } from "./message-count";
 import { isCaveatLine, isCommandLine, isStdoutLine } from "./transcript";
 
@@ -322,13 +327,21 @@ export async function resolveFirstPrompt(
   }
 }
 
-function resolveTitle(entry: {
+/**
+ * Title precedence matches the `claude --resume` picker: a user-set custom
+ * title, then the CLI's generated ai-title, then the sessions-index summary,
+ * then the first prompt. The `title` column in the index mirrors this order
+ * (see indexSessionsIndex's coalesce).
+ */
+export function resolveSessionTitle(entry: {
   customTitle?: string | undefined;
+  aiTitle?: string | undefined;
   summary?: string | undefined;
   firstPrompt?: FirstUserPrompt | undefined;
   sessionId: string;
 }): string {
   if (entry.customTitle) return entry.customTitle;
+  if (entry.aiTitle) return entry.aiTitle;
   if (entry.summary) return entry.summary;
   if (entry.firstPrompt) {
     return extractSessionTitle(entry.firstPrompt.text, entry.sessionId, {
@@ -336,6 +349,85 @@ function resolveTitle(entry: {
     });
   }
   return entry.sessionId;
+}
+
+export interface SessionTitleSources {
+  customTitle: string | undefined;
+  aiTitle: string | undefined;
+}
+
+/**
+ * Accumulates custom-title and ai-title records while a caller streams a
+ * transcript. Both are last-wins; an empty custom-title clears the name.
+ */
+export class TitleRecordCollector {
+  private customTitle: string | undefined;
+  private sawCustomTitle = false;
+  private aiTitle: string | undefined;
+
+  add(record: unknown): void {
+    const custom = CustomTitleRecordSchema.safeParse(record);
+    if (custom.success) {
+      this.sawCustomTitle = true;
+      this.customTitle = custom.data.customTitle || undefined;
+      return;
+    }
+    const ai = AiTitleRecordSchema.safeParse(record);
+    if (ai.success) {
+      this.aiTitle = ai.data.aiTitle || undefined;
+    }
+  }
+
+  /** The sidecar is consulted only when the transcript never named the session. */
+  async finish(transcriptPath: string): Promise<SessionTitleSources> {
+    const customTitle = this.sawCustomTitle
+      ? this.customTitle
+      : await readCustomTitleSidecar(transcriptPath);
+    return { customTitle, aiTitle: this.aiTitle };
+  }
+}
+
+async function readCustomTitleSidecar(transcriptPath: string): Promise<string | undefined> {
+  const sidecarPath = join(
+    dirname(transcriptPath),
+    basename(transcriptPath, ".jsonl"),
+    "custom-title.json",
+  );
+  let raw: string;
+  try {
+    raw = await readFile(sidecarPath, "utf-8");
+  } catch {
+    return undefined;
+  }
+  try {
+    const parsed = CustomTitleSidecarSchema.safeParse(JSON.parse(raw));
+    return parsed.success ? parsed.data.customTitle || undefined : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export async function readSessionTitleSources(filePath: string): Promise<SessionTitleSources> {
+  const collector = new TitleRecordCollector();
+  const rl = createInterface({
+    input: createReadStream(filePath, { encoding: "utf-8" }),
+    crlfDelay: Infinity,
+  });
+  try {
+    for await (const line of rl) {
+      if (!line.includes('"custom-title"') && !line.includes('"ai-title"')) continue;
+      try {
+        collector.add(JSON.parse(line));
+      } catch {
+        // skip malformed lines
+      }
+    }
+  } catch {
+    // unreadable transcript: fall through to the sidecar
+  } finally {
+    rl.close();
+  }
+  return collector.finish(filePath);
 }
 
 async function listSessionsForProject(
@@ -374,7 +466,8 @@ async function listSessionsForProject(
 
     const firstPrompt = await resolveFirstPrompt(entry.firstPrompt, entry.fullPath);
 
-    const title = resolveTitle({
+    const title = resolveSessionTitle({
+      ...(await readSessionTitleSources(entry.fullPath)),
       summary: entry.summary,
       firstPrompt: firstPrompt ?? undefined,
       sessionId: entry.sessionId,
@@ -413,8 +506,10 @@ async function listSessionsForProject(
     try {
       const fileStat = await stat(filePath);
       const prompt = await readFirstUserMessage(filePath);
-      const title = extractSessionTitle(prompt?.text ?? "", id, {
-        isMeta: prompt?.isMeta === true,
+      const title = resolveSessionTitle({
+        ...(await readSessionTitleSources(filePath)),
+        firstPrompt: prompt ?? undefined,
+        sessionId: id,
       });
       sessions.push({
         id,
@@ -460,8 +555,10 @@ async function listSessionsFromJsonl(
       const fileStat = await stat(filePath);
       const id = file.replace(/\.jsonl$/, "");
       const prompt = await readFirstUserMessage(filePath);
-      const title = extractSessionTitle(prompt?.text ?? "", id, {
-        isMeta: prompt?.isMeta === true,
+      const title = resolveSessionTitle({
+        ...(await readSessionTitleSources(filePath)),
+        firstPrompt: prompt ?? undefined,
+        sessionId: id,
       });
       sessions.push({
         id,
@@ -657,7 +754,7 @@ export async function readSession(
   let messageCount = 0;
   let title = sessionId;
   let titleNamesWork = false;
-  let customTitle: string | undefined;
+  const titleRecords = new TitleRecordCollector();
   let entrypoint: string | undefined;
   let sessionKind: string | undefined;
   let forkedFromSessionId: string | undefined;
@@ -708,11 +805,8 @@ export async function readSession(
         }
       }
 
-      if (obj.type === "custom-title") {
-        const parsed = CustomTitleRecordSchema.safeParse(obj);
-        if (parsed.success) {
-          customTitle = parsed.data.customTitle;
-        }
+      if (obj.type === "custom-title" || obj.type === "ai-title") {
+        titleRecords.add(obj);
         continue;
       }
 
@@ -896,7 +990,8 @@ export async function readSession(
     rl.close();
   }
 
-  if (customTitle) title = customTitle;
+  const { customTitle, aiTitle } = await titleRecords.finish(filePath);
+  title = customTitle ?? aiTitle ?? title;
 
   const detail: SessionDetail = {
     id: sessionId,

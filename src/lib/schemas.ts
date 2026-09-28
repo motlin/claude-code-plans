@@ -376,6 +376,14 @@ export const CustomTitleRecordSchema = z
   })
   .strict();
 
+// `<projectDir>/<sessionId>/custom-title.json`, written by the CLI when a
+// session is renamed outside the transcript.
+export const CustomTitleSidecarSchema = z
+  .object({
+    customTitle: z.string(),
+  })
+  .strict();
+
 export const FileHistorySnapshotSchema = z
   .object({
     type: z.literal("file-history-snapshot"),
@@ -1234,7 +1242,7 @@ export const SystemRecordSchema = z
   })
   .strict();
 
-const AiTitleRecordSchema = z
+export const AiTitleRecordSchema = z
   .object({
     type: z.literal("ai-title"),
     aiTitle: z.string(),

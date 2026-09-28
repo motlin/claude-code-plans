@@ -662,6 +662,125 @@ describe("indexer", () => {
     ).toStrictEqual({ customTitle: "Alice's custom title", title: "Alice's custom title" });
   });
 
+  describe("session title sources", () => {
+    const project = "-Users-alice-projects-example";
+    const sessionId = "session-test-200";
+
+    async function indexTitle(
+      lines: Record<string, unknown>[],
+      options: { summary?: string; sidecar?: string } = {},
+    ) {
+      const projectDir = join(testDir, project);
+      const sessionPath = join(projectDir, `${sessionId}.jsonl`);
+      mkdirSync(projectDir, { recursive: true });
+      writeFileSync(
+        join(projectDir, "sessions-index.json"),
+        makeSessionsIndex([
+          {
+            sessionId,
+            fullPath: sessionPath,
+            fileMtime: Date.now(),
+            firstPrompt: "Fix the login bug",
+            ...(options.summary === undefined ? {} : { summary: options.summary }),
+          },
+        ]),
+      );
+      writeFileSync(
+        sessionPath,
+        jsonl({ type: "user", message: { role: "user", content: "Fix the login bug" } }, ...lines),
+      );
+      if (options.sidecar !== undefined) {
+        mkdirSync(join(projectDir, sessionId), { recursive: true });
+        writeFileSync(
+          join(projectDir, sessionId, "custom-title.json"),
+          JSON.stringify({ customTitle: options.sidecar }),
+        );
+      }
+      await indexSessionsIndex(db.index, projectDir, project);
+      await indexJsonlFile(db.index, sessionPath, project);
+      // A later sessions-index.json rewrite must not clobber the resolved title.
+      await indexSessionsIndex(db.index, projectDir, project);
+      return db.index
+        .select({
+          customTitle: schema.sessions.customTitle,
+          aiTitle: schema.sessions.aiTitle,
+          title: schema.sessions.title,
+        })
+        .from(schema.sessions)
+        .where(eq(schema.sessions.id, sessionId))
+        .get();
+    }
+
+    it("titles by ai-title over the index summary", async () => {
+      expect(
+        await indexTitle([{ type: "ai-title", aiTitle: "Fix login", sessionId }], {
+          summary: "Index summary",
+        }),
+      ).toStrictEqual({ customTitle: null, aiTitle: "Fix login", title: "Fix login" });
+    });
+
+    it("keeps a custom title over a later ai-title", async () => {
+      expect(
+        await indexTitle([
+          { type: "custom-title", customTitle: "Alice's title", sessionId },
+          { type: "ai-title", aiTitle: "Fix login", sessionId },
+        ]),
+      ).toStrictEqual({
+        customTitle: "Alice's title",
+        aiTitle: "Fix login",
+        title: "Alice's title",
+      });
+    });
+
+    it("takes the last ai-title", async () => {
+      expect(
+        await indexTitle([
+          { type: "ai-title", aiTitle: "First guess", sessionId },
+          { type: "ai-title", aiTitle: "Second guess", sessionId },
+        ]),
+      ).toStrictEqual({ customTitle: null, aiTitle: "Second guess", title: "Second guess" });
+    });
+
+    it("reads the custom-title.json sidecar", async () => {
+      expect(await indexTitle([], { sidecar: "From sidecar" })).toStrictEqual({
+        customTitle: "From sidecar",
+        aiTitle: null,
+        title: "From sidecar",
+      });
+    });
+
+    it("falls back to the ai-title when the custom title is cleared", async () => {
+      expect(
+        await indexTitle([
+          { type: "custom-title", customTitle: "Old name", sessionId },
+          { type: "ai-title", aiTitle: "Fix login", sessionId },
+          { type: "custom-title", customTitle: "", sessionId },
+        ]),
+      ).toStrictEqual({ customTitle: null, aiTitle: "Fix login", title: "Fix login" });
+    });
+
+    it("titles a session indexed without sessions-index.json by its ai-title", async () => {
+      const projectDir = join(testDir, project);
+      const sessionPath = join(projectDir, `${sessionId}.jsonl`);
+      mkdirSync(projectDir, { recursive: true });
+      writeFileSync(
+        sessionPath,
+        jsonl(
+          { type: "user", message: { role: "user", content: "Fix the login bug" } },
+          { type: "ai-title", aiTitle: "Fix login", sessionId },
+        ),
+      );
+      await indexJsonlFile(db.index, sessionPath, project);
+      expect(
+        db.index
+          .select({ aiTitle: schema.sessions.aiTitle, title: schema.sessions.title })
+          .from(schema.sessions)
+          .where(eq(schema.sessions.id, sessionId))
+          .get(),
+      ).toStrictEqual({ aiTitle: "Fix login", title: "Fix login" });
+    });
+  });
+
   it("updates session mtime when JSONL is re-indexed", async () => {
     const projectDir = join(testDir, "-Users-craig-projects-app");
     mkdirSync(projectDir, { recursive: true });

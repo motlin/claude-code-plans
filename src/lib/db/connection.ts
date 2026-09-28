@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   first_prompt TEXT,
   summary TEXT,
   custom_title TEXT,
+  ai_title TEXT,
   message_count INTEGER NOT NULL DEFAULT 0,
   git_branch TEXT,
   cwd TEXT,

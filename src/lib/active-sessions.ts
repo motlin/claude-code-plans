@@ -13,7 +13,7 @@ export interface ActiveSession {
   sessionId: string;
   projectDir: string;
   projectName: string;
-  /** Indexed session title (customTitle > summary > firstPrompt), else the session id. */
+  /** Indexed session title (customTitle > aiTitle > summary > firstPrompt), else the session id. */
   title: string;
   createdAt: number;
   lastModified: number;

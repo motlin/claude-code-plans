@@ -18,6 +18,8 @@ import {
   readSessionRawWindow,
   readNewJsonlLines,
   parseCommandBlock,
+  readSessionTitleSources,
+  resolveSessionTitle,
 } from "../src/lib/sessions";
 import { isInformativePrompt } from "../src/lib/session-utils";
 
@@ -1007,7 +1009,135 @@ describe("listSessions", () => {
   });
 });
 
+describe("resolveSessionTitle", () => {
+  const firstPrompt = { text: "Fix the login bug", isMeta: false };
+
+  it("prefers customTitle over every other source", () => {
+    expect(
+      resolveSessionTitle({
+        customTitle: "Custom",
+        aiTitle: "AI",
+        summary: "Summary",
+        firstPrompt,
+        sessionId: "session-test-1",
+      }),
+    ).toBe("Custom");
+  });
+
+  it("prefers aiTitle over summary and first prompt", () => {
+    expect(
+      resolveSessionTitle({
+        aiTitle: "AI",
+        summary: "Summary",
+        firstPrompt,
+        sessionId: "session-test-1",
+      }),
+    ).toBe("AI");
+  });
+
+  it("falls back to summary, then first prompt, then session id", () => {
+    expect(
+      resolveSessionTitle({ summary: "Summary", firstPrompt, sessionId: "session-test-1" }),
+    ).toBe("Summary");
+    expect(resolveSessionTitle({ firstPrompt, sessionId: "session-test-1" })).toBe(
+      "Fix the login bug",
+    );
+    expect(resolveSessionTitle({ sessionId: "session-test-1" })).toBe("session-test-1");
+  });
+});
+
+describe("readSessionTitleSources", () => {
+  const sessionId = "session-test-1";
+
+  function writeSession(...lines: Record<string, unknown>[]): string {
+    const filePath = join(testDir, `${sessionId}.jsonl`);
+    writeFileSync(filePath, jsonl(userMessage("Fix the login bug"), ...lines));
+    return filePath;
+  }
+
+  function writeSidecar(customTitle: string): void {
+    mkdirSync(join(testDir, sessionId), { recursive: true });
+    writeFileSync(join(testDir, sessionId, "custom-title.json"), JSON.stringify({ customTitle }));
+  }
+
+  it("reads an ai-title record", async () => {
+    const filePath = writeSession({ type: "ai-title", aiTitle: "Fix login", sessionId });
+    expect(await readSessionTitleSources(filePath)).toStrictEqual({
+      customTitle: undefined,
+      aiTitle: "Fix login",
+    });
+  });
+
+  it("keeps the custom title alongside a later ai-title", async () => {
+    const filePath = writeSession(
+      { type: "custom-title", customTitle: "Alice's title", sessionId },
+      { type: "ai-title", aiTitle: "Fix login", sessionId },
+    );
+    expect(await readSessionTitleSources(filePath)).toStrictEqual({
+      customTitle: "Alice's title",
+      aiTitle: "Fix login",
+    });
+  });
+
+  it("takes the last ai-title record", async () => {
+    const filePath = writeSession(
+      { type: "ai-title", aiTitle: "First guess", sessionId },
+      { type: "ai-title", aiTitle: "Second guess", sessionId },
+    );
+    expect(await readSessionTitleSources(filePath)).toStrictEqual({
+      customTitle: undefined,
+      aiTitle: "Second guess",
+    });
+  });
+
+  it("reads the custom-title.json sidecar when the transcript has no custom-title", async () => {
+    const filePath = writeSession();
+    writeSidecar("From sidecar");
+    expect(await readSessionTitleSources(filePath)).toStrictEqual({
+      customTitle: "From sidecar",
+      aiTitle: undefined,
+    });
+  });
+
+  it("prefers a transcript custom-title over the sidecar", async () => {
+    const filePath = writeSession({ type: "custom-title", customTitle: "From JSONL", sessionId });
+    writeSidecar("From sidecar");
+    expect(await readSessionTitleSources(filePath)).toStrictEqual({
+      customTitle: "From JSONL",
+      aiTitle: undefined,
+    });
+  });
+
+  it("treats an empty custom-title as cleared so the ai title shows", async () => {
+    const filePath = writeSession(
+      { type: "custom-title", customTitle: "Old name", sessionId },
+      { type: "ai-title", aiTitle: "Fix login", sessionId },
+      { type: "custom-title", customTitle: "", sessionId },
+    );
+    expect(await readSessionTitleSources(filePath)).toStrictEqual({
+      customTitle: undefined,
+      aiTitle: "Fix login",
+    });
+  });
+});
+
 describe("readSession", () => {
+  it("titles the session by its ai-title when no custom title exists", async () => {
+    const projDir = join(testDir, "-Users-craig-projects-app");
+    mkdirSync(projDir, { recursive: true });
+    writeFileSync(
+      join(projDir, "ai-titled.jsonl"),
+      jsonl(userMessage("Hello"), {
+        type: "ai-title",
+        aiTitle: "Greeting",
+        sessionId: "ai-titled",
+      }),
+    );
+
+    const detail = await readSession(testDir, "ai-titled");
+    expect(detail?.title).toBe("Greeting");
+  });
+
   it("returns messages with text and tool calls", async () => {
     const projDir = join(testDir, "-Users-craig-projects-app");
     mkdirSync(projDir, { recursive: true });

@@ -5,7 +5,9 @@ import type { ReviewBundle } from "../api/reviews";
 // title from the first message that names the work. Titles are stored at index
 // time and the sessions this corrects are finished, so nothing but a rebuild
 // revisits them.
-export const SCHEMA_VERSION = "27";
+// 28: sessions gain ai_title, and title follows the `claude --resume` order
+// (custom > ai > summary > first prompt), so every stored title is recomputed.
+export const SCHEMA_VERSION = "28";
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),
@@ -35,6 +37,7 @@ export const sessions = sqliteTable(
     firstPrompt: text("first_prompt"),
     summary: text("summary"),
     customTitle: text("custom_title"),
+    aiTitle: text("ai_title"),
     messageCount: integer("message_count").notNull().default(0),
     gitBranch: text("git_branch"),
     cwd: text("cwd"),
