@@ -1,19 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+
+import { useShortcut } from "./use-shortcut";
 
 export function useCommandPalette() {
   const [open, setOpen] = useState(false);
+  const toggle = useCallback(() => setOpen((prev) => !prev), []);
 
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        setOpen((prev) => !prev);
-      }
-    }
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  useShortcut("search_or_start", toggle, { allowInModal: true });
 
   return { open, setOpen };
 }
