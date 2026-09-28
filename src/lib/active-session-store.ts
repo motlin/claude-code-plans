@@ -1,5 +1,7 @@
 import { hmrPersist, hmrDispose } from "./hmr-persist";
 import type { ActivityState } from "./session-state";
+import type { HookBackgroundTaskPayload } from "./hook-events";
+import { touchStoredLiveSubagent } from "./live-subagent-store";
 
 export interface ActiveSessionEntry {
   sessionId: string;
@@ -40,6 +42,14 @@ export interface ActiveSessionEntry {
    * Empty when outside herdr.
    */
   herdrSocketPath: string;
+  /**
+   * Epoch ms of the last hook fired from inside one of this session's
+   * subagents (`agent_id` present), or null when none has been seen. A
+   * liveness heartbeat that never changes the root session's `state`.
+   */
+  lastSubagentActivityAt: number | null;
+  /** Background work the session's last `Stop` reported (empty before any Stop). */
+  backgroundTasks: HookBackgroundTaskPayload[];
 }
 
 /**
@@ -90,8 +100,10 @@ function applyClaudeEnv(entry: ActiveSessionEntry, claudeEnv: Record<string, str
 const store = hmrPersist("activeSessionStore", () => new Map<string, ActiveSessionEntry>());
 
 function normalizeEntryState(entry: ActiveSessionEntry): ActiveSessionEntry {
-  // HMR may retain entries created before the state field existed.
+  // HMR may retain entries created before these fields existed.
   if (entry.state === undefined) entry.state = "unknown";
+  if (entry.lastSubagentActivityAt === undefined) entry.lastSubagentActivityAt = null;
+  if (entry.backgroundTasks === undefined) entry.backgroundTasks = [];
   return entry;
 }
 
@@ -136,6 +148,8 @@ export function markSessionActive(
       herdrPane,
       herdrWorkspace,
       herdrSocketPath,
+      lastSubagentActivityAt: null,
+      backgroundTasks: [],
     });
   }
 }
@@ -161,6 +175,28 @@ export function touchSession(
     // Touches without an env (Stop, PostToolUse, …) leave mappings untouched.
     if (meta?.claudeEnv) applyClaudeEnv(entry, meta.claudeEnv);
   }
+}
+
+/**
+ * Record a hook fired from inside subagent `agentId` of `sessionId`. Keeps the
+ * root session and the live subagent node alive (the latter feeds the stale
+ * sweep) without touching the root's `state`, which only main-turn hooks own.
+ */
+export function touchSubagentActivity(sessionId: string, agentId: string): void {
+  touchStoredLiveSubagent(agentId);
+  const entry = findSession(sessionId);
+  if (!entry) return;
+  const now = Date.now();
+  entry.lastActivity = now;
+  entry.lastSubagentActivityAt = now;
+}
+
+export function setBackgroundTasks(
+  sessionId: string,
+  backgroundTasks: HookBackgroundTaskPayload[],
+): void {
+  const entry = findSession(sessionId);
+  if (entry) entry.backgroundTasks = backgroundTasks;
 }
 
 export function getActiveSessionEntries(): ActiveSessionEntry[] {

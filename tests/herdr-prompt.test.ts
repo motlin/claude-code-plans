@@ -50,6 +50,8 @@ function entry(overrides: Partial<ActiveSessionEntry> = {}): ActiveSessionEntry 
     herdrPane: "w100:p100",
     herdrWorkspace: "w100",
     herdrSocketPath: "/tmp/test/herdr.sock",
+    lastSubagentActivityAt: null,
+    backgroundTasks: [],
     ...overrides,
   };
 }

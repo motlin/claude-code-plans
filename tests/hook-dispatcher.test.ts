@@ -6,7 +6,7 @@ import { openTestDb, type AppDb } from "../src/lib/db/connection";
 import { indexSessionsIndex } from "../src/lib/db/indexer";
 import { dispatchHookEvent } from "../src/lib/hook-dispatcher";
 import { DOMAIN_EVENTS, SSE_EVENTS } from "../src/lib/hook-events";
-import type { HookEvent } from "../src/lib/hook-events";
+import type { HookBackgroundTaskPayload, HookEvent } from "../src/lib/hook-events";
 import { getNotifications, clearAllNotifications } from "../src/lib/notifications-store";
 import { clearLiveSubagents } from "../src/lib/live-subagent-store";
 import * as schema from "../src/lib/db/schema";
@@ -41,13 +41,26 @@ function makeStore() {
     sessionId: string;
     meta?: { claudeEnv?: Record<string, string> };
   }> = [];
+  const subagentActivityCalls: Array<{ sessionId: string; agentId: string }> = [];
+  const backgroundTaskCalls: Array<{
+    sessionId: string;
+    backgroundTasks: HookBackgroundTaskPayload[];
+  }> = [];
   return {
     activeCalls,
     endedCalls,
     stateCalls,
     touchedCalls,
     touchCalls,
+    subagentActivityCalls,
+    backgroundTaskCalls,
     store: {
+      touchSubagentActivity: (sessionId: string, agentId: string) => {
+        subagentActivityCalls.push({ sessionId, agentId });
+      },
+      setBackgroundTasks: (sessionId: string, backgroundTasks: HookBackgroundTaskPayload[]) => {
+        backgroundTaskCalls.push({ sessionId, backgroundTasks });
+      },
       markSessionActive: (sessionId: string, meta: StoreMeta) => {
         activeCalls.push({ sessionId, meta });
       },
@@ -79,6 +92,8 @@ function makeStore() {
           herdrPane: call.meta.claudeEnv?.["HERDR_PANE_ID"] ?? "",
           herdrWorkspace: call.meta.claudeEnv?.["HERDR_WORKSPACE_ID"] ?? "",
           herdrSocketPath: call.meta.claudeEnv?.["HERDR_SOCKET_PATH"] ?? "",
+          lastSubagentActivityAt: null,
+          backgroundTasks: [],
         };
       },
     },
@@ -664,6 +679,8 @@ describe("dispatchHookEvent", () => {
       herdrPane: "w100:p100",
       herdrWorkspace: "w100",
       herdrSocketPath: "/tmp/test/herdr.sock",
+      lastSubagentActivityAt: null,
+      backgroundTasks: [],
     };
     let currentEntry: ActiveSessionEntry | null = activeEntry;
     const reportCalls: Array<{ event: HookEvent; entry: ActiveSessionEntry | null }> = [];
@@ -685,6 +702,8 @@ describe("dispatchHookEvent", () => {
           activeEntry.state = state;
         },
         touchSession: () => {},
+        touchSubagentActivity: () => {},
+        setBackgroundTasks: () => {},
         getActiveSessionEntry: () => currentEntry,
       },
       broadcast: () => {},
@@ -1128,6 +1147,169 @@ describe("dispatchHookEvent", () => {
         },
       },
     ]);
+  });
+
+  describe("subagent-scoped hook events", () => {
+    const parentEvent = {
+      session_id: "parent-test-100",
+      transcript_path: "/tmp/test/parent-test-100.jsonl",
+      cwd: "/tmp/test/project",
+    } as const;
+    const subagentFields = { agent_id: "alice", agent_type: "Explore" } as const;
+
+    it("a subagent PreToolUse after the parent Stop leaves the parent idle", async () => {
+      const { store, stateCalls, subagentActivityCalls } = makeStore();
+      const events: HookEvent[] = [
+        { ...parentEvent, hook_event_name: "Stop" },
+        {
+          ...parentEvent,
+          ...subagentFields,
+          hook_event_name: "PreToolUse",
+          tool_name: "Bash",
+          tool_input: { command: "true" },
+        },
+        {
+          ...parentEvent,
+          ...subagentFields,
+          hook_event_name: "PostToolUse",
+          tool_name: "Bash",
+          tool_input: { command: "true" },
+        },
+      ];
+      for (const event of events) {
+        await dispatchHookEvent({
+          event,
+          db: db.index,
+          store,
+          broadcast: () => {},
+          reportHerdrState: () => {},
+        });
+      }
+
+      expect({ stateCalls, subagentActivityCalls }).toStrictEqual({
+        stateCalls: [{ sessionId: "parent-test-100", state: "idle" }],
+        subagentActivityCalls: [
+          { sessionId: "parent-test-100", agentId: "alice" },
+          { sessionId: "parent-test-100", agentId: "alice" },
+        ],
+      });
+    });
+
+    it("a subagent AskUserQuestion does not set the parent waiting or clear its notifications, but a subagent permission prompt surfaces for the parent", async () => {
+      clearAllNotifications();
+      const { store, stateCalls } = makeStore();
+      const events: HookEvent[] = [
+        {
+          ...parentEvent,
+          ...subagentFields,
+          hook_event_name: "Notification",
+          message: "Claude needs your permission to use Bash",
+          notification_type: "permission_prompt",
+        },
+        {
+          ...parentEvent,
+          ...subagentFields,
+          hook_event_name: "PreToolUse",
+          tool_name: "AskUserQuestion",
+          tool_input: { questions: [] },
+        },
+      ];
+      for (const event of events) {
+        await dispatchHookEvent({
+          event,
+          db: db.index,
+          store,
+          broadcast: () => {},
+          reportHerdrState: () => {},
+        });
+      }
+
+      expect({
+        stateCalls,
+        notifications: getNotifications().map((notification) => ({
+          sessionId: notification.sessionId,
+          notificationType: notification.notificationType,
+        })),
+      }).toStrictEqual({
+        stateCalls: [],
+        notifications: [{ sessionId: "parent-test-100", notificationType: "permission_prompt" }],
+      });
+      clearAllNotifications();
+    });
+
+    it("Stop keeps live subagents that are still running as background tasks and stores the tasks", async () => {
+      const broadcasts: Broadcast[] = [];
+      const { store, backgroundTaskCalls } = makeStore();
+      vi.spyOn(Date, "now").mockReturnValue(Date.UTC(1999, 11, 31));
+      for (const agentId of ["alice", "bob"]) {
+        await dispatchHookEvent({
+          event: {
+            ...parentEvent,
+            hook_event_name: "SubagentStart",
+            agent_type: "Explore",
+            agent_id: agentId,
+            agent_config: { description: `Inspect ${agentId}` },
+          },
+          db: db.index,
+          store,
+          broadcast: () => {},
+          reportHerdrState: () => {},
+        });
+      }
+
+      await dispatchHookEvent({
+        event: {
+          ...parentEvent,
+          hook_event_name: "Stop",
+          background_tasks: [
+            {
+              id: "alice",
+              type: "local_agent",
+              status: "running",
+              description: "Inspect alice",
+              agent_type: "Explore",
+            },
+          ],
+        },
+        db: db.index,
+        store,
+        broadcast: (type, data) => broadcasts.push({ type, data }),
+        reportHerdrState: () => {},
+      });
+
+      expect({
+        stopped: broadcasts.filter(
+          (broadcast) => broadcast.type === DOMAIN_EVENTS.SUBAGENT_STOPPED,
+        ),
+        backgroundTaskCalls,
+      }).toStrictEqual({
+        stopped: [
+          {
+            type: DOMAIN_EVENTS.SUBAGENT_STOPPED,
+            data: {
+              sessionId: "parent-test-100",
+              agentType: "Explore",
+              agentId: "agent-bob",
+              endedAt: "1999-12-31T00:00:00.000Z",
+            },
+          },
+        ],
+        backgroundTaskCalls: [
+          {
+            sessionId: "parent-test-100",
+            backgroundTasks: [
+              {
+                id: "alice",
+                type: "local_agent",
+                status: "running",
+                description: "Inspect alice",
+                agentType: "Explore",
+              },
+            ],
+          },
+        ],
+      });
+    });
   });
 
   it("CwdChanged updates the active-session store cwd and broadcasts SESSION_CWD_CHANGED", async () => {

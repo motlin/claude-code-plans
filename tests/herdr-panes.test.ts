@@ -26,6 +26,8 @@ function entry(overrides: Partial<ActiveSessionEntry>): ActiveSessionEntry {
     herdrPane: "",
     herdrWorkspace: "",
     herdrSocketPath: "",
+    lastSubagentActivityAt: null,
+    backgroundTasks: [],
     ...overrides,
   };
 }

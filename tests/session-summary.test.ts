@@ -79,6 +79,8 @@ describe("toActiveSessionPayload", () => {
       herdrPane: "",
       herdrWorkspace: "",
       herdrSocketPath: "",
+      lastSubagentActivityAt: null,
+      backgroundTasks: [],
     };
 
     const payload = toActiveSessionPayload(entry);

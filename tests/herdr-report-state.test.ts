@@ -30,6 +30,8 @@ function entry(): ActiveSessionEntry {
     herdrPane: "w100:p100",
     herdrWorkspace: "w100",
     herdrSocketPath: "/tmp/test/herdr.sock",
+    lastSubagentActivityAt: null,
+    backgroundTasks: [],
   };
 }
 
@@ -115,6 +117,35 @@ describe("herdr hook-state reporting", () => {
       { state: "idle", message: "ready" },
       null,
     ]);
+  });
+
+  it("does not map agent-scoped hook events to a herdr state", () => {
+    const subagentFields = { agent_id: "agent-test-100", agent_type: "Explore" };
+    const events: HookEvent[] = [
+      {
+        ...baseEvent,
+        ...subagentFields,
+        hook_event_name: "PreToolUse",
+        tool_name: "Bash",
+        tool_input: { command: "printf test" },
+      },
+      {
+        ...baseEvent,
+        ...subagentFields,
+        hook_event_name: "PreToolUse",
+        tool_name: "AskUserQuestion",
+        tool_input: { questions: [] },
+      },
+      {
+        ...baseEvent,
+        ...subagentFields,
+        hook_event_name: "PostToolUse",
+        tool_name: "Bash",
+        tool_input: { command: "printf test" },
+      },
+    ];
+
+    expect(events.map(stateForHerdrHookEvent)).toStrictEqual([null, null, null]);
   });
 
   it("keeps source sequence numbers increasing within a millisecond and across clock rewind", () => {

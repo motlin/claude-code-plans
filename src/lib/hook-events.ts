@@ -1294,6 +1294,20 @@ export type HookEvent = z.infer<typeof HookEventEnvelope>;
 export type HookEventName = HookEvent["hook_event_name"];
 
 /**
+ * True for hooks fired from inside a subagent. They carry the root session's
+ * `session_id` plus the agent's `agent_id`, so they describe the subagent's
+ * activity, not the root session's main turn. SubagentStart/SubagentStop also
+ * carry `agent_id` but are lifecycle edges the root session owns.
+ */
+export function isSubagentScopedEvent(event: HookEvent): event is HookEvent & { agent_id: string } {
+  return (
+    event.agent_id !== undefined &&
+    event.hook_event_name !== "SubagentStart" &&
+    event.hook_event_name !== "SubagentStop"
+  );
+}
+
+/**
  * The set of hook event names handled by the receiver, derived directly from
  * the discriminated union above so there's no second list to keep in sync.
  * Each variant declares `hook_event_name: z.literal('...')` — we read that

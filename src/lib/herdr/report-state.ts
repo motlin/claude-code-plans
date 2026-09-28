@@ -1,5 +1,5 @@
 import type { ActiveSessionEntry } from "../active-session-store";
-import type { HookEvent } from "../hook-events";
+import { isSubagentScopedEvent, type HookEvent } from "../hook-events";
 import type { HerdrResult } from "./client";
 import { herdrRequest } from "./client";
 import { herdrWritesEnabled, resolveHerdrPromptTarget } from "./prompt";
@@ -53,6 +53,8 @@ export function createHerdrSequence(clock: () => number = Date.now): () => Herdr
 
 /** Map hook lifecycle edges to the four states accepted by herdr's reporting API. */
 export function stateForHerdrHookEvent(event: HookEvent): HerdrHookState | null {
+  // Subagent activity says nothing about whether the root pane is working.
+  if (isSubagentScopedEvent(event)) return null;
   switch (event.hook_event_name) {
     case "UserPromptSubmit":
       return { state: "working", message: "responding to prompt" };

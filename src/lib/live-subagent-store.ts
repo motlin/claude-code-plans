@@ -1,4 +1,5 @@
 import { hmrDispose, hmrPersist } from "./hmr-persist";
+import type { HookBackgroundTaskPayload } from "./hook-events";
 import type { Subagent } from "./subagents";
 import { toSubagentSessionId } from "./subagents";
 
@@ -20,6 +21,13 @@ export interface LiveSubagentNode {
  */
 export const MAX_LIVE_SUBAGENTS_PER_SESSION = 100;
 export const ENDED_SUBAGENT_TTL_MS = 5 * 60 * 1000;
+/**
+ * A running node with no agent-scoped hook for this long is presumed lost (a
+ * dropped SubagentStop, or a server restart mid-run) and is ended so it cannot
+ * pin the root session as working forever.
+ */
+export const STALE_RUNNING_SUBAGENT_MS = 10 * 60 * 1000;
+const TERMINAL_BACKGROUND_TASK_STATUSES = new Set(["completed", "failed", "killed"]);
 const LIVE_SUBAGENT_SWEEP_INTERVAL_MS = 60 * 1000;
 
 let sweepTimer: ReturnType<typeof setInterval> | null = null;
@@ -34,6 +42,11 @@ function canonicalAgentId(agentId: string): string {
 
 function getStore(): Map<string, LiveSubagentNode> {
   return hmrPersist("liveSubagentStore", () => new Map<string, LiveSubagentNode>());
+}
+
+/** Last agent-scoped hook time per canonical agent id; kept off the wire node. */
+function getActivity(): Map<string, number> {
+  return hmrPersist("liveSubagentActivity", () => new Map<string, number>());
 }
 
 function enforceSessionCap(target: Map<string, LiveSubagentNode>, sessionId: string): void {
@@ -99,23 +112,88 @@ export function recordLiveSubagentStop(
 }
 
 /**
- * Close every still-running descendant when the parent session emits `Stop`.
+ * Close every still-running descendant when the parent session emits `Stop`,
+ * except `keepIds` (agents the Stop still lists as running background tasks).
  * Cancelled agents emit no `SubagentStop`, so this is their terminal census.
  */
 export function reconcileLiveSubagents(
   target: Map<string, LiveSubagentNode>,
   sessionId: string,
   now: number = Date.now(),
+  keepIds: ReadonlySet<string> = new Set(),
 ): LiveSubagentNode[] {
   const endedAt = new Date(now).toISOString();
   const reconciled: LiveSubagentNode[] = [];
   for (const node of target.values()) {
     if (node.sessionId !== sessionId || node.endedAt !== null) continue;
+    if (keepIds.has(node.agentId)) continue;
     const ended = { ...node, endedAt };
     target.set(node.agentId, ended);
     reconciled.push(ended);
   }
   return reconciled;
+}
+
+/**
+ * Live node ids of `sessionId` that a Stop's `background_tasks` still lists as
+ * running agents. A task matches a node by its id or by agent type plus
+ * description. When any running agent task cannot be matched, every live node
+ * of the session is kept, because ending a still-running agent is worse than
+ * leaving a finished one open until its SubagentStop or the stale sweep.
+ */
+export function runningBackgroundAgentIds(
+  target: Map<string, LiveSubagentNode>,
+  sessionId: string,
+  backgroundTasks: readonly HookBackgroundTaskPayload[],
+): Set<string> {
+  const liveNodes = [...target.values()].filter(
+    (node) => node.sessionId === sessionId && node.endedAt === null,
+  );
+  const runningAgentTasks = backgroundTasks.filter(
+    (task) => task.type === "local_agent" && !TERMINAL_BACKGROUND_TASK_STATUSES.has(task.status),
+  );
+  const keepIds = new Set<string>();
+  for (const task of runningAgentTasks) {
+    const match =
+      liveNodes.find((node) => node.agentId === canonicalAgentId(task.id)) ??
+      liveNodes.find(
+        (node) => node.agentType === task.agentType && node.description === task.description,
+      );
+    if (!match) return new Set(liveNodes.map((node) => node.agentId));
+    keepIds.add(match.agentId);
+  }
+  return keepIds;
+}
+
+/** Record an agent-scoped hook for the node addressed by a raw or canonical id. */
+export function touchLiveSubagent(
+  activity: Map<string, number>,
+  agentId: string,
+  now: number = Date.now(),
+): void {
+  activity.set(canonicalAgentId(agentId), now);
+}
+
+/**
+ * End running nodes whose last agent-scoped hook (or start, when none was
+ * seen) is more than `STALE_RUNNING_SUBAGENT_MS` old.
+ */
+export function endStaleLiveSubagents(
+  target: Map<string, LiveSubagentNode>,
+  activity: ReadonlyMap<string, number>,
+  now: number = Date.now(),
+): LiveSubagentNode[] {
+  const endedAt = new Date(now).toISOString();
+  const ended: LiveSubagentNode[] = [];
+  for (const node of target.values()) {
+    if (node.endedAt !== null) continue;
+    const lastActivity = activity.get(node.agentId) ?? Date.parse(node.startedAt);
+    if (now - lastActivity <= STALE_RUNNING_SUBAGENT_MS) continue;
+    const endedNode = { ...node, endedAt };
+    target.set(node.agentId, endedNode);
+    ended.push(endedNode);
+  }
+  return ended;
 }
 
 /** Remove ended nodes after the five-minute grace period; running nodes stay. */
@@ -137,6 +215,7 @@ export function getLiveSubagentNodes(): LiveSubagentNode[] {
 
 export function clearLiveSubagents(): void {
   getStore().clear();
+  getActivity().clear();
 }
 
 export function addLiveSubagent(input: {
@@ -152,13 +231,36 @@ export function endLiveSubagent(agentSessionId: string): LiveSubagentNode | null
   return recordLiveSubagentStop(getStore(), agentSessionId);
 }
 
-export function reconcileStoredLiveSubagents(sessionId: string): LiveSubagentNode[] {
-  return reconcileLiveSubagents(getStore(), sessionId);
+export function reconcileStoredLiveSubagents(
+  sessionId: string,
+  backgroundTasks: readonly HookBackgroundTaskPayload[] = [],
+): LiveSubagentNode[] {
+  const store = getStore();
+  const keepIds = runningBackgroundAgentIds(store, sessionId, backgroundTasks);
+  return reconcileLiveSubagents(store, sessionId, Date.now(), keepIds);
 }
 
-export function startLiveSubagentSweep(): void {
+export function touchStoredLiveSubagent(agentId: string): void {
+  touchLiveSubagent(getActivity(), agentId);
+}
+
+function sweepStoredLiveSubagents(onStaleEnded: (node: LiveSubagentNode) => void): void {
+  const store = getStore();
+  const activity = getActivity();
+  for (const node of endStaleLiveSubagents(store, activity)) onStaleEnded(node);
+  sweepLiveSubagents(store);
+  for (const agentId of activity.keys()) {
+    if (!store.has(agentId)) activity.delete(agentId);
+  }
+}
+
+/** `onStaleEnded` receives each running node the stale sweep ends. */
+export function startLiveSubagentSweep(onStaleEnded: (node: LiveSubagentNode) => void): void {
   if (sweepTimer) clearInterval(sweepTimer);
-  sweepTimer = setInterval(() => sweepLiveSubagents(getStore()), LIVE_SUBAGENT_SWEEP_INTERVAL_MS);
+  sweepTimer = setInterval(
+    () => sweepStoredLiveSubagents(onStaleEnded),
+    LIVE_SUBAGENT_SWEEP_INTERVAL_MS,
+  );
 }
 
 /**

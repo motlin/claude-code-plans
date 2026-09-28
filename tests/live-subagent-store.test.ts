@@ -6,7 +6,11 @@ import {
   reconcileLiveSubagents,
   recordLiveSubagentStart,
   recordLiveSubagentStop,
+  endStaleLiveSubagents,
+  runningBackgroundAgentIds,
+  STALE_RUNNING_SUBAGENT_MS,
   sweepLiveSubagents,
+  touchLiveSubagent,
   type LiveSubagentNode,
 } from "../src/lib/live-subagent-store";
 import type { Subagent } from "../src/lib/subagents";
@@ -180,6 +184,150 @@ describe("live subagent store", () => {
           },
         ],
       ]),
+    });
+  });
+});
+
+describe("background-aware reconcile and stale sweep", () => {
+  it("keeps the listed ids open when the parent Stop reconciles", () => {
+    const target = new Map<string, LiveSubagentNode>();
+    startNode(target, "session-parent", "alice", Date.UTC(1999, 11, 31));
+    startNode(target, "session-parent", "bob", Date.UTC(1999, 11, 31, 0, 0, 1));
+
+    const reconciled = reconcileLiveSubagents(
+      target,
+      "session-parent",
+      Date.UTC(1999, 11, 31, 0, 0, 4),
+      new Set(["agent-alice"]),
+    );
+
+    expect({ reconciled, target }).toStrictEqual({
+      reconciled: [
+        {
+          agentId: "agent-bob",
+          sessionId: "session-parent",
+          parentAgentId: null,
+          agentType: "Explore",
+          description: "Inspect bob",
+          startedAt: "1999-12-31T00:00:01.000Z",
+          endedAt: "1999-12-31T00:00:04.000Z",
+        },
+      ],
+      target: new Map([
+        [
+          "agent-alice",
+          {
+            agentId: "agent-alice",
+            sessionId: "session-parent",
+            parentAgentId: null,
+            agentType: "Explore",
+            description: "Inspect alice",
+            startedAt: "1999-12-31T00:00:00.000Z",
+            endedAt: null,
+          },
+        ],
+        [
+          "agent-bob",
+          {
+            agentId: "agent-bob",
+            sessionId: "session-parent",
+            parentAgentId: null,
+            agentType: "Explore",
+            description: "Inspect bob",
+            startedAt: "1999-12-31T00:00:01.000Z",
+            endedAt: "1999-12-31T00:00:04.000Z",
+          },
+        ],
+      ]),
+    });
+  });
+
+  it("matches running local_agent background tasks by id or by agent type and description", () => {
+    const target = new Map<string, LiveSubagentNode>();
+    startNode(target, "session-parent", "alice", 0);
+    startNode(target, "session-parent", "bob", 1);
+    startNode(target, "session-parent", "charlie", 2);
+
+    expect(
+      runningBackgroundAgentIds(target, "session-parent", [
+        { id: "alice", type: "local_agent", status: "running", description: "Task alice" },
+        {
+          id: "task-test-100",
+          type: "local_agent",
+          status: "running",
+          description: "Inspect bob",
+          agentType: "Explore",
+        },
+        { id: "charlie", type: "local_agent", status: "completed", description: "Done" },
+        { id: "shell-test-100", type: "local_bash", status: "running", description: "sleep" },
+      ]),
+    ).toStrictEqual(new Set(["agent-alice", "agent-bob"]));
+  });
+
+  it("keeps every live node open when a running local_agent task cannot be matched", () => {
+    const target = new Map<string, LiveSubagentNode>();
+    startNode(target, "session-parent", "alice", 0);
+    startNode(target, "session-parent", "bob", 1);
+    startNode(target, "session-other", "charlie", 2);
+
+    expect(
+      runningBackgroundAgentIds(target, "session-parent", [
+        {
+          id: "task-test-100",
+          type: "local_agent",
+          status: "running",
+          description: "Unmatched description",
+        },
+      ]),
+    ).toStrictEqual(new Set(["agent-alice", "agent-bob"]));
+  });
+
+  it("ends running nodes idle for more than ten minutes and keeps recently active ones", () => {
+    const now = Date.UTC(2000, 0, 1);
+    const target = new Map<string, LiveSubagentNode>();
+    const activity = new Map<string, number>();
+    startNode(target, "session-parent", "alice", now - STALE_RUNNING_SUBAGENT_MS - 1);
+    startNode(target, "session-parent", "bob", now - STALE_RUNNING_SUBAGENT_MS - 1);
+    startNode(target, "session-parent", "charlie", now - STALE_RUNNING_SUBAGENT_MS);
+    touchLiveSubagent(activity, "bob", now - 1000);
+
+    const ended = endStaleLiveSubagents(target, activity, now);
+
+    expect({
+      ended,
+      running: [...target.values()].filter((node) => node.endedAt === null),
+    }).toStrictEqual({
+      ended: [
+        {
+          agentId: "agent-alice",
+          sessionId: "session-parent",
+          parentAgentId: null,
+          agentType: "Explore",
+          description: "Inspect alice",
+          startedAt: new Date(now - STALE_RUNNING_SUBAGENT_MS - 1).toISOString(),
+          endedAt: new Date(now).toISOString(),
+        },
+      ],
+      running: [
+        {
+          agentId: "agent-bob",
+          sessionId: "session-parent",
+          parentAgentId: null,
+          agentType: "Explore",
+          description: "Inspect bob",
+          startedAt: new Date(now - STALE_RUNNING_SUBAGENT_MS - 1).toISOString(),
+          endedAt: null,
+        },
+        {
+          agentId: "agent-charlie",
+          sessionId: "session-parent",
+          parentAgentId: null,
+          agentType: "Explore",
+          description: "Inspect charlie",
+          startedAt: new Date(now - STALE_RUNNING_SUBAGENT_MS).toISOString(),
+          endedAt: null,
+        },
+      ],
     });
   });
 });

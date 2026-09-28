@@ -82,6 +82,8 @@ describe("sweepSessions", () => {
       herdrPane: "",
       herdrWorkspace: "",
       herdrSocketPath: "",
+      lastSubagentActivityAt: null,
+      backgroundTasks: [],
     });
 
     store.set("fresh", {
@@ -97,6 +99,8 @@ describe("sweepSessions", () => {
       herdrPane: "",
       herdrWorkspace: "",
       herdrSocketPath: "",
+      lastSubagentActivityAt: null,
+      backgroundTasks: [],
     });
 
     sweepSessions(store);

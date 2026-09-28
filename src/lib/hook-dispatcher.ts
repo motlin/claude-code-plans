@@ -7,6 +7,8 @@ import type { ActiveSessionEntry } from "./active-session-store";
 import {
   DOMAIN_EVENTS,
   SSE_EVENTS,
+  isSubagentScopedEvent,
+  type HookBackgroundTaskPayload,
   type HookEvent,
   type PlanSummaryPayload,
   type MemorySummaryPayload,
@@ -68,6 +70,8 @@ interface ActiveSessionStore {
   markSessionEnded(sessionId: string): void;
   setSessionState(sessionId: string, state: ActivityState): void;
   touchSession(sessionId: string, meta?: { claudeEnv?: Record<string, string> }): void;
+  touchSubagentActivity(sessionId: string, agentId: string): void;
+  setBackgroundTasks(sessionId: string, backgroundTasks: HookBackgroundTaskPayload[]): void;
   getActiveSessionEntry(sessionId: string): ActiveSessionEntry | null;
 }
 
@@ -369,13 +373,22 @@ export async function dispatchHookEvent({
   reportHerdrState = reportHookStateToHerdr,
 }: DispatchHookEventArgs): Promise<void> {
   const entryBeforeDispatch = store.getActiveSessionEntry(event.session_id);
-  const nextState = stateForEvent(event);
-  if (nextState !== null) store.setSessionState(event.session_id, nextState);
-  // A session that resumes working no longer needs its "waiting for input" /
-  // "needs your permission" notification — clear it so the badge tracks only
-  // sessions that still want attention. No-op (no broadcast) when the session
-  // has no persisted notifications.
-  if (nextState === "working") clearNotificationsForSession(event.session_id);
+  // Subagent hooks carry the root session_id plus agent_id. They describe the
+  // subagent, so they must not flip an idle root back to working (or to
+  // waiting on a subagent AskUserQuestion), nor clear the root's pending
+  // notifications — a subagent permission prompt still reaches the root via
+  // the Notification path below.
+  if (isSubagentScopedEvent(event)) {
+    store.touchSubagentActivity(event.session_id, event.agent_id);
+  } else {
+    const nextState = stateForEvent(event);
+    if (nextState !== null) store.setSessionState(event.session_id, nextState);
+    // A session that resumes working no longer needs its "waiting for input" /
+    // "needs your permission" notification — clear it so the badge tracks only
+    // sessions that still want attention. No-op (no broadcast) when the
+    // session has no persisted notifications.
+    if (nextState === "working") clearNotificationsForSession(event.session_id);
+  }
 
   switch (event.hook_event_name) {
     case "SessionStart": {
@@ -437,23 +450,23 @@ export async function dispatchHookEvent({
     case "Stop": {
       expirePendingApprovalForSession(event.session_id);
       store.touchSession(event.session_id);
+      const backgroundTasks: HookBackgroundTaskPayload[] | undefined = event.background_tasks?.map(
+        (task) => ({
+          id: task.id,
+          type: task.type,
+          status: task.status,
+          description: task.description,
+          ...(task.command !== undefined ? { command: task.command } : {}),
+          ...(task.agent_type !== undefined ? { agentType: task.agent_type } : {}),
+          ...(task.server !== undefined ? { server: task.server } : {}),
+          ...(task.tool !== undefined ? { tool: task.tool } : {}),
+          ...(task.name !== undefined ? { name: task.name } : {}),
+        }),
+      );
+      store.setBackgroundTasks(event.session_id, backgroundTasks ?? []);
       const context: SessionHookContextPayload = {
         sessionId: event.session_id,
-        ...(event.background_tasks !== undefined
-          ? {
-              backgroundTasks: event.background_tasks.map((task) => ({
-                id: task.id,
-                type: task.type,
-                status: task.status,
-                description: task.description,
-                ...(task.command !== undefined ? { command: task.command } : {}),
-                ...(task.agent_type !== undefined ? { agentType: task.agent_type } : {}),
-                ...(task.server !== undefined ? { server: task.server } : {}),
-                ...(task.tool !== undefined ? { tool: task.tool } : {}),
-                ...(task.name !== undefined ? { name: task.name } : {}),
-              })),
-            }
-          : {}),
+        ...(backgroundTasks !== undefined ? { backgroundTasks } : {}),
         ...(event.session_crons !== undefined ? { sessionCrons: event.session_crons } : {}),
         ...(event.prompt_id !== undefined ? { promptId: event.prompt_id } : {}),
         ...(event.permission_mode !== undefined ? { permissionMode: event.permission_mode } : {}),
@@ -462,7 +475,8 @@ export async function dispatchHookEvent({
       if (Object.keys(context).length > 1) {
         broadcast(DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED, { ...context });
       }
-      for (const node of reconcileStoredLiveSubagents(event.session_id)) {
+      // Agents still running in the background outlive the main turn's Stop.
+      for (const node of reconcileStoredLiveSubagents(event.session_id, backgroundTasks)) {
         broadcast(DOMAIN_EVENTS.SUBAGENT_STOPPED, {
           sessionId: node.sessionId,
           agentType: node.agentType,

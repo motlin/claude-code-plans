@@ -8,6 +8,8 @@ import {
   getActiveSessionEntries,
   isSessionActiveInStore,
   hasAnyActiveSessions,
+  setBackgroundTasks,
+  touchSubagentActivity,
 } from "../src/lib/active-session-store";
 import type { ActiveSessionEntry } from "../src/lib/active-session-store";
 
@@ -78,6 +80,8 @@ describe("active-session-store", () => {
       herdrPane: "w100:p100",
       herdrWorkspace: "w100",
       herdrSocketPath: "/tmp/test/herdr.sock",
+      lastSubagentActivityAt: null,
+      backgroundTasks: [],
     });
   });
 
@@ -108,6 +112,35 @@ describe("active-session-store", () => {
       herdrPane: "w100:p100",
       herdrWorkspace: "",
       herdrSocketPath: "",
+      lastSubagentActivityAt: null,
+      backgroundTasks: [],
+    });
+  });
+
+  it("records subagent activity and background tasks without changing the root state", () => {
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(TEST_TIMESTAMP);
+    markSessionActive("session-test-100", { cwd: "/tmp/test/project" });
+    setSessionState("session-test-100", "idle");
+    nowSpy.mockReturnValue(TEST_TIMESTAMP + 1000);
+
+    touchSubagentActivity("session-test-100", "agent-test-100");
+    setBackgroundTasks("session-test-100", [
+      { id: "agent-test-100", type: "local_agent", status: "running", description: "Inspect" },
+    ]);
+
+    const entry = getActiveSessionEntry("session-test-100");
+    expect({
+      state: entry?.state,
+      lastActivity: entry?.lastActivity,
+      lastSubagentActivityAt: entry?.lastSubagentActivityAt,
+      backgroundTasks: entry?.backgroundTasks,
+    }).toStrictEqual({
+      state: "idle",
+      lastActivity: TEST_TIMESTAMP + 1000,
+      lastSubagentActivityAt: TEST_TIMESTAMP + 1000,
+      backgroundTasks: [
+        { id: "agent-test-100", type: "local_agent", status: "running", description: "Inspect" },
+      ],
     });
   });
 
