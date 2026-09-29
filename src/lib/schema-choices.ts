@@ -14,6 +14,7 @@ import type {
   JsonlRecordSchema,
   TaskStatusSchema,
   UserRecordSchema,
+  WriteToolUseResultTypeSchema,
 } from "./schemas";
 import type {
   SessionBucketReasonSchema,
@@ -61,6 +62,11 @@ const taskStatusLabels = {
   in_progress: "In progress",
   completed: "Completed",
 } satisfies Record<z.infer<typeof TaskStatusSchema>, string>;
+
+const writeToolUseResultTypeLabels = {
+  create: "Created",
+  update: "Updated",
+} satisfies Record<z.infer<typeof WriteToolUseResultTypeSchema>, string>;
 
 const sessionSummaryStateLabels = {
   idle: "Idle",
@@ -454,6 +460,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   AttachmentPayloadSchema: attachmentVariants,
   "UserRecordSchema.promptSource": promptSourceLabels,
   JsonlRecordSchema: jsonlRecordVariants,
+  "FileEditToolUseResultSchema|0.type": writeToolUseResultTypeLabels,
   RenderedLineSchema: renderedLineVariants,
   "RenderedLineSchema.<assistant|user>.type": messageLineTypeLabels,
   "RenderedLineSchema.<system>.subtype": systemSubtypeLabels,

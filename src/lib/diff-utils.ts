@@ -146,6 +146,119 @@ export function buildUnifiedHunk(oldStr: string, newStr: string, filePath = "fil
   ].join("\n");
 }
 
+interface FilePatch {
+  patch: string;
+  additions: number;
+  deletions: number;
+}
+
+/** File content as lines; a single trailing newline terminates the last line rather than adding an empty one. */
+function contentLines(text: string): string[] {
+  if (text === "") return [];
+  return (text.endsWith("\n") ? text.slice(0, -1) : text).split("\n");
+}
+
+/**
+ * Build a git-style unified diff of two full file versions with `context`
+ * lines around each change, merging changes whose context would overlap.
+ * `oldText === null` marks a newly created file.
+ */
+export function buildFilePatch(
+  oldText: string | null,
+  newText: string,
+  filePath: string,
+  context = 3,
+): FilePatch {
+  const ops = computeDiff(contentLines(oldText ?? ""), contentLines(newText));
+
+  const oldLineBefore: number[] = [];
+  const newLineBefore: number[] = [];
+  const changed: number[] = [];
+  let oldLine = 0;
+  let newLine = 0;
+  let additions = 0;
+  let deletions = 0;
+  ops.forEach(([type], index) => {
+    oldLineBefore.push(oldLine);
+    newLineBefore.push(newLine);
+    if (type !== "add") oldLine++;
+    if (type !== "remove") newLine++;
+    if (type === "add") additions++;
+    if (type === "remove") deletions++;
+    if (type !== "equal") changed.push(index);
+  });
+
+  const groups: Array<{ first: number; last: number }> = [];
+  for (const index of changed) {
+    const current = groups.at(-1);
+    if (current !== undefined && index - current.last - 1 <= 2 * context) {
+      current.last = index;
+    } else {
+      groups.push({ first: index, last: index });
+    }
+  }
+
+  const body: string[] = [];
+  for (const { first, last } of groups) {
+    const from = Math.max(0, first - context);
+    const to = Math.min(ops.length - 1, last + context);
+    const hunkOps = ops.slice(from, to + 1);
+    const oldCount = hunkOps.filter(([type]) => type !== "add").length;
+    const newCount = hunkOps.filter(([type]) => type !== "remove").length;
+    const oldStart = oldLineBefore[from]! + (oldCount === 0 ? 0 : 1);
+    const newStart = newLineBefore[from]! + (newCount === 0 ? 0 : 1);
+    body.push(`@@ -${oldStart},${oldCount} +${newStart},${newCount} @@`);
+    for (const [type, line] of hunkOps) {
+      body.push((type === "equal" ? " " : type === "add" ? "+" : "-") + line);
+    }
+  }
+
+  const path = filePath.replace(/^\/+/, "");
+  const header =
+    oldText === null
+      ? [`diff --git a/${path} b/${path}`, "new file mode 100644", "--- /dev/null"]
+      : [`diff --git a/${path} b/${path}`, `--- a/${path}`];
+  return {
+    patch: [...header, `+++ b/${path}`, ...body, ""].join("\n"),
+    additions,
+    deletions,
+  };
+}
+
+/**
+ * Render tool-reported `structuredPatch` hunks as a git-style unified diff.
+ */
+export function buildPatchFromHunks(
+  hunks: ReadonlyArray<{
+    oldStart: number;
+    oldLines: number;
+    newStart: number;
+    newLines: number;
+    lines: readonly string[];
+  }>,
+  filePath: string,
+): FilePatch {
+  const path = filePath.replace(/^\/+/, "");
+  const body: string[] = [];
+  let additions = 0;
+  let deletions = 0;
+  for (const hunk of hunks) {
+    body.push(`@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@`);
+    for (const line of hunk.lines) {
+      body.push(line);
+      if (line.startsWith("+")) additions++;
+      else if (line.startsWith("-")) deletions++;
+    }
+  }
+  return {
+    patch: [`diff --git a/${path} b/${path}`, `--- a/${path}`, `+++ b/${path}`, ...body, ""].join(
+      "\n",
+    ),
+    additions,
+    deletions,
+  };
+}
+
 /**
  * Extracts line numbers from Read tool prefixes (e.g., "1→content" -> {content: "content", lineNumber: 1})
  * and removes the prefix from the line.

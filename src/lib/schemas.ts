@@ -145,6 +145,79 @@ export const ContentBlockSchema = z
   });
 
 // ---------------------------------------------------------------------------
+// File-edit tool results (user record `toolUseResult` for Edit/Write/MultiEdit)
+// ---------------------------------------------------------------------------
+
+/** One hunk of the `structuredPatch` the file-edit tools report. */
+export const StructuredPatchHunkSchema = z
+  .object({
+    oldStart: z.number(),
+    oldLines: z.number(),
+    newStart: z.number(),
+    newLines: z.number(),
+    lines: z.array(z.string()),
+  })
+  .strict();
+
+/**
+ * `originalFile` is the file before the edit; Claude Code writes null when it
+ * kept no snapshot (e.g. `contentNotInModelContext`).
+ */
+const EditToolUseResultSchema = z
+  .object({
+    filePath: z.string(),
+    oldString: z.string(),
+    newString: z.string(),
+    originalFile: z.union([z.string(), z.null()]).optional(),
+    structuredPatch: z.array(StructuredPatchHunkSchema),
+    userModified: z.boolean().optional(),
+    replaceAll: z.boolean().optional(),
+    contentNotInModelContext: z.boolean().optional(),
+    memdirStamped: z.boolean().optional(),
+    staleRecovered: z.boolean().optional(),
+  })
+  .strict();
+
+const MultiEditToolUseResultSchema = z
+  .object({
+    filePath: z.string(),
+    edits: z.array(
+      z
+        .object({
+          old_string: z.string(),
+          new_string: z.string(),
+          replace_all: z.boolean().optional(),
+        })
+        .strict(),
+    ),
+    originalFileContents: z.union([z.string(), z.null()]).optional(),
+    structuredPatch: z.array(StructuredPatchHunkSchema),
+    userModified: z.boolean().optional(),
+  })
+  .strict();
+
+export const WriteToolUseResultTypeSchema = z.enum(["create", "update"]);
+
+/** `originalFile` is null for a created file (and for an unsnapshotted update). */
+const WriteToolUseResultSchema = z
+  .object({
+    type: WriteToolUseResultTypeSchema,
+    filePath: z.string(),
+    content: z.string(),
+    structuredPatch: z.array(StructuredPatchHunkSchema).optional(),
+    originalFile: z.union([z.string(), z.null()]).optional(),
+    userModified: z.boolean().optional(),
+    memdirStamped: z.boolean().optional(),
+  })
+  .strict();
+
+export const FileEditToolUseResultSchema = z.union([
+  WriteToolUseResultSchema,
+  EditToolUseResultSchema,
+  MultiEditToolUseResultSchema,
+]);
+
+// ---------------------------------------------------------------------------
 // JSONL Record Types
 // ---------------------------------------------------------------------------
 
@@ -1723,7 +1796,7 @@ export const ClaudeJsonProjectMcpSchema = z
 
 export type AttachmentPayload = z.infer<typeof AttachmentPayloadSchema>;
 export type ToolUseBlock = z.infer<typeof ToolUseBlockSchema>;
-type JsonlRecord = z.infer<typeof JsonlRecordSchema>;
+export type JsonlRecord = z.infer<typeof JsonlRecordSchema>;
 
 // ---------------------------------------------------------------------------
 // Utility
