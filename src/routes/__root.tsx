@@ -20,6 +20,7 @@ import { AppShellFallback } from "../components/app-shell-fallback";
 import { CommandPalette } from "../components/command-palette";
 import { SettingsDialog } from "../components/settings/settings-dialog";
 import { KeyboardShortcutsDialog } from "../components/keyboard-shortcuts-dialog";
+import { RecentsSwitcher } from "../components/recents-switcher";
 import { useCommandPalette } from "../hooks/use-command-palette";
 import { useRecentsRecorder } from "../hooks/use-recents-recorder";
 import { useSidebarState, useSidebarToggleShortcut } from "../lib/sidebar-store";
@@ -196,6 +197,7 @@ function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
       <MobileSidebar open={mobileOpen} onClose={() => setMobileOpen(false)} />
       <CommandPalette {...commandPalette} />
       <KeyboardShortcutsDialog />
+      <RecentsSwitcher />
       <SettingsDialog />
     </>
   );

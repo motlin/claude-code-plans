@@ -7,7 +7,8 @@
  */
 
 export type ShortcutModifier = "cmd" | "ctrl" | "alt" | "shift";
-export type ShortcutPlatform = "mac" | "non-mac";
+/** "non-mac" covers both Windows and Linux; "windows" and "linux" narrow it. */
+export type ShortcutPlatform = "mac" | "non-mac" | "windows" | "linux";
 export type ShortcutGroup = "general" | "panes" | "composer";
 
 export interface Binding {
@@ -84,9 +85,13 @@ export const SHORTCUTS = {
   switch_recents: {
     description: "Switch between recents",
     group: "general",
-    bindings: ctrlEverywhere("q"),
+    bindings: [
+      { key: "q", code: "KeyQ", modifiers: ["ctrl"], platform: "mac" },
+      { key: "q", code: "KeyQ", modifiers: ["ctrl"], platform: "linux" },
+      { key: "q", code: "KeyQ", modifiers: ["alt"], platform: "windows" },
+    ],
     ownerSlug: "switch-recents",
-    enabled: false,
+    enabled: true,
   },
   toggle_sidebar: {
     description: "Toggle sidebar",

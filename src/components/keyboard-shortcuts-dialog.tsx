@@ -2,7 +2,7 @@ import { Dialog } from "@base-ui/react/dialog";
 import { X } from "lucide-react";
 import { useCallback, useRef, useSyncExternalStore } from "react";
 
-import { useIsMac } from "../hooks/use-is-mac";
+import { useIsMac, useIsWindows } from "../hooks/use-is-mac";
 import { useShortcut } from "../hooks/use-shortcut";
 import { bindingsFor } from "../lib/shortcuts/match";
 import {
@@ -60,9 +60,17 @@ function getServerOpen(): boolean {
   return false;
 }
 
-function ShortcutRow({ id, isMac }: { id: ShortcutId; isMac: boolean }) {
+function ShortcutRow({
+  id,
+  isMac,
+  isWindows,
+}: {
+  id: ShortcutId;
+  isMac: boolean;
+  isWindows: boolean;
+}) {
   const definition = SHORTCUTS[id];
-  const binding = bindingsFor(id, isMac)[0];
+  const binding = bindingsFor(id, isMac, isWindows)[0];
   const keys =
     "displayKeys" in definition
       ? definition.displayKeys
@@ -85,6 +93,7 @@ function ShortcutRow({ id, isMac }: { id: ShortcutId; isMac: boolean }) {
 export function KeyboardShortcutsDialog() {
   const isOpen = useSyncExternalStore(subscribe, getOpen, getServerOpen);
   const isMac = useIsMac();
+  const isWindows = useIsWindows();
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
   if (isOpen && returnFocusRef.current === null) {
@@ -141,7 +150,7 @@ export function KeyboardShortcutsDialog() {
                 <div key={section.title}>
                   <div className="mt-5 py-2 text-body">{section.title}</div>
                   {section.ids.map((id) => (
-                    <ShortcutRow key={id} id={id} isMac={isMac} />
+                    <ShortcutRow key={id} id={id} isMac={isMac} isWindows={isWindows} />
                   ))}
                 </div>
               ))}

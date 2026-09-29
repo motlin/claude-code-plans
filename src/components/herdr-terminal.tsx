@@ -171,6 +171,7 @@ export function HerdrTerminal({ sessionId }: { sessionId: string }) {
       {error && <p className="mb-2 text-xs text-danger-000">{error}</p>}
       <div
         ref={container}
+        data-terminal=""
         className="h-[min(70vh,48rem)] overflow-hidden rounded-md border border-strong p-2"
         style={appearance ? { backgroundColor: appearance.theme.background } : undefined}
       />

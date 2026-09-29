@@ -121,6 +121,7 @@ describe("KeyboardShortcutsDialog", () => {
       rows: [
         "Search or start a session",
         "Search",
+        "Switch between recents",
         "Toggle sidebar",
         "Keyboard shortcuts",
         "Settings",

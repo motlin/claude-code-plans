@@ -18,6 +18,10 @@ export function isMacPlatform(): boolean {
   return typeof navigator !== "undefined" && /mac|iphone|ipad|ipod/i.test(navigator.userAgent);
 }
 
+export function isWindowsPlatform(): boolean {
+  return typeof navigator !== "undefined" && /windows/i.test(navigator.userAgent);
+}
+
 /** Code-first key match with strict modifier equality and an AltGraph guard. */
 export function matchBinding(event: ShortcutKeyEvent, binding: Binding): boolean {
   const keyMatches =
@@ -73,9 +77,9 @@ export function isInModalLayer(element: Element | null): boolean {
   return layer !== null && layer.getAttribute("aria-modal") !== "false";
 }
 
-export function bindingsFor(id: ShortcutId, isMac: boolean): Binding[] {
-  const platform = isMac ? "mac" : "non-mac";
+export function bindingsFor(id: ShortcutId, isMac: boolean, isWindows = false): Binding[] {
+  const platforms = isMac ? ["mac"] : ["non-mac", isWindows ? "windows" : "linux"];
   return getShortcut(id).bindings.filter(
-    (b) => b.platform === undefined || b.platform === platform,
+    (b) => b.platform === undefined || platforms.includes(b.platform),
   );
 }
