@@ -4,6 +4,7 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   type KeyboardEvent,
   type ReactNode,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -36,10 +37,13 @@ import {
   Pencil,
   Terminal,
   GitFork,
+  Code,
 } from "lucide-react";
+import { useActiveSessionsIfAvailable } from "../hooks/use-claude-events";
 import type { PaletteMode } from "../hooks/use-command-palette";
 import { useDebouncedValue } from "../hooks/use-debounced-value";
 import { encodeFilePath } from "../lib/api/file";
+import { launchHerdrSession } from "../lib/api/herdr";
 import { assertNever } from "../lib/assert-never";
 import { projectsQueryOptions } from "../lib/api/projects";
 import { unifiedSearchQueryOptions, type UnifiedSearchItem } from "../lib/api/search";
@@ -50,6 +54,7 @@ import {
   type SessionDetailData,
   type SessionListItem,
 } from "../lib/api/sessions";
+import { buildClaudeCopyCommand } from "../lib/claude-launch-command";
 import { writeClipboardText } from "../lib/clipboard";
 import {
   PALETTE_FILTER_TOKENS,
@@ -65,6 +70,12 @@ import {
   type PaletteTokens,
   type PaletteType,
 } from "../lib/palette-tokens";
+import {
+  findLaunchedSession,
+  startSessionProjects,
+  type PendingLaunch,
+  type StartProject,
+} from "../lib/palette-start-session";
 import { paletteFilterLabels, paletteTypeLabels } from "../lib/schema-choices";
 import { relativeBucket, titleMatches, type Snippet, type TextMatch } from "../lib/search-text";
 import { createSessionCommands } from "../lib/session-commands";
@@ -356,6 +367,13 @@ function currentSessionCommands(detail: SessionDetailData): SessionCommand[] {
   ];
 }
 
+function startProjectValue(project: StartProject): string {
+  return `start-project:${project.id}`;
+}
+
+/** The "New session" flow: the typed text, then a project picker, then the herdr launch. */
+type StartStep = "idle" | "picker" | "launching";
+
 interface PaletteAction {
   label: string;
   icon: ReactNode;
@@ -431,6 +449,11 @@ function PalettePopup({
   const currentDetail = currentSessionId === undefined ? null : (detailQuery.data ?? null);
   const star = useToggleSessionStar(currentSessionId ?? "");
   const toast = useToast();
+  const activeSessions = useActiveSessionsIfAvailable();
+  const [startStep, setStartStep] = useState<StartStep>("idle");
+  const [pendingLaunch, setPendingLaunch] = useState<PendingLaunch | null>(null);
+  // Controlled so the picker can preselect its first project; cmdk selects the first row otherwise.
+  const [selectedValue, setSelectedValue] = useState("");
   // Rename hands focus to the page title, so closing must not pull it back to the old element.
   const restoreFocusRef = useRef(true);
 
@@ -444,9 +467,10 @@ function PalettePopup({
   const tokens = useMemo(() => parsePaletteTokens(trimmedQuery), [trimmedQuery]);
   const type = tokens.type ?? tab;
   const filtered = type !== "all" || tokens.project !== undefined || tokens.date !== undefined;
+  const canStart = trimmedQuery !== "" && hints === null;
   const projectsQuery = useQuery({
     ...projectsQueryOptions(),
-    enabled: type === "projects" || tokens.project !== undefined,
+    enabled: type === "projects" || tokens.project !== undefined || startStep === "picker",
   });
   const projects = projectsQuery.data ?? NO_PROJECTS;
   const searchesSessions = hints === null && (type === "all" || type === "sessions");
@@ -597,6 +621,50 @@ function PalettePopup({
     }
   }
 
+  const startProjects = useMemo(
+    () =>
+      startSessionProjects(
+        projects,
+        (data?.sessions ?? []).map((session) => session.project),
+        currentDetail?.projectId,
+      ),
+    [projects, data, currentDetail],
+  );
+  const startProjectName = currentDetail?.projectName ?? data?.sessions[0]?.projectName;
+
+  function openStartPicker() {
+    setStartStep("picker");
+    const first = startProjects[0];
+    setSelectedValue(first === undefined ? "" : startProjectValue(first));
+  }
+
+  async function launchSession(project: StartProject) {
+    const launch = { cwd: project.projectPath, prompt: trimmedQuery };
+    const since = Date.now();
+    setStartStep("launching");
+    try {
+      const { sessionId } = await launchHerdrSession(launch);
+      setPendingLaunch({ cwd: launch.cwd, since, sessionId });
+    } catch {
+      const copied = await writeClipboardText(buildClaudeCopyCommand(launch));
+      toast(
+        copied
+          ? { kind: "success", message: "Copied command — herdr unavailable" }
+          : { kind: "error", message: "Couldn’t start a session. Try again." },
+      );
+      onOpenChange(false);
+    }
+  }
+
+  // The launched session opens once its SessionStart hook arrives over SSE.
+  useEffect(() => {
+    if (pendingLaunch === null) return;
+    const id = findLaunchedSession(activeSessions.values(), pendingLaunch);
+    if (id === null) return;
+    onOpenChange(false);
+    void navigate({ to: "/session/$id", params: { id } });
+  }, [pendingLaunch, activeSessions, onOpenChange, navigate]);
+
   function seeAllResults(apiType: Exclude<PaletteType, "projects">) {
     void navigate({ to: "/search", search: { q: tokens.text, mode: "titles", type: apiType } });
   }
@@ -616,7 +684,7 @@ function PalettePopup({
     chooseTab("all");
   }
 
-  // Upstream's Actions minus the cloud-only ones; "New session…" joins once herdr launch exists.
+  // Upstream's Actions minus the cloud-only ones; New session lives in Quick actions once text is typed.
   const actions = (
     [
       {
@@ -661,6 +729,19 @@ function PalettePopup({
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape" && startStep === "picker") {
+      event.preventDefault();
+      event.stopPropagation();
+      setStartStep("idle");
+      setSelectedValue("");
+      inputRef.current?.focus();
+      return;
+    }
+    if (event.key === "Enter" && event.metaKey && canStart && startStep === "idle") {
+      event.preventDefault();
+      openStartPicker();
+      return;
+    }
     if (event.key === "ArrowRight") {
       openSelectedRowActions(event);
       return;
@@ -712,8 +793,9 @@ function PalettePopup({
     matchedActions.length +
     matchedCommands.length +
     serverRows.length;
-  const showEmptyState = !compose && trimmedQuery === "" && tab === "all";
-  const showResults = !compose && hints === null && !showEmptyState;
+  const idle = startStep === "idle";
+  const showEmptyState = idle && !compose && trimmedQuery === "" && tab === "all";
+  const showResults = idle && !compose && hints === null && !showEmptyState;
   const label = MODE_LABELS[mode];
 
   return (
@@ -749,6 +831,8 @@ function PalettePopup({
           label={label}
           loop
           shouldFilter={false}
+          value={selectedValue}
+          onValueChange={setSelectedValue}
           onKeyDown={handleKeyDown}
           className="flex flex-col"
         >
@@ -767,6 +851,7 @@ function PalettePopup({
               <textarea
                 ref={inputRef}
                 placeholder={label}
+                disabled={startStep === "launching"}
                 rows={compose ? 2 : 1}
                 wrap={compose ? undefined : "off"}
                 className={`relative max-h-24 min-w-[5rem] flex-1 resize-none border-none bg-transparent py-1.5 text-sm leading-5 text-primary outline-none placeholder:text-ink-muted ${
@@ -794,7 +879,41 @@ function PalettePopup({
           <div className="h-[0.5px] w-full bg-border" />
 
           <Command.List className="max-h-[440px] overflow-y-auto p-2.5">
-            {!compose && hints !== null && (
+            {startStep === "launching" && (
+              <Command.Group heading="Quick actions" className={GROUP_CLASS}>
+                <CommandItem
+                  value="start:new-session"
+                  icon={<LoaderCircle className="animate-spin" />}
+                  onSelect={() => {}}
+                >
+                  Starting session…
+                </CommandItem>
+              </Command.Group>
+            )}
+            {startStep === "picker" && (
+              <Command.Group heading="Choose a project" className={GROUP_CLASS}>
+                {startProjects.map((project) => (
+                  <CommandItem
+                    key={project.id}
+                    value={startProjectValue(project)}
+                    icon={<FolderOpen />}
+                    onSelect={() => void launchSession(project)}
+                  >
+                    {project.name}
+                  </CommandItem>
+                ))}
+              </Command.Group>
+            )}
+            {idle && canStart && (
+              <Command.Group heading="Quick actions" className={GROUP_CLASS}>
+                <NewSessionItem
+                  prompt={trimmedQuery}
+                  projectName={startProjectName}
+                  onSelect={openStartPicker}
+                />
+              </Command.Group>
+            )}
+            {idle && !compose && hints !== null && (
               <div role="group" aria-label="Filters" className="flex flex-col gap-1">
                 {hints.map((filter) => (
                   <CommandItem
@@ -1216,6 +1335,42 @@ function SearchResultItem({
     </Command.Item>
   );
   return session ? <SessionRowActions onOpen={onRowActions}>{item}</SessionRowActions> : item;
+}
+
+/** Upstream's Quick actions "New session" row: the typed prompt plus the project it will start in. */
+function NewSessionItem({
+  prompt,
+  projectName,
+  onSelect,
+}: {
+  prompt: string;
+  projectName: string | undefined;
+  onSelect: () => void;
+}) {
+  return (
+    <Command.Item value="start:new-session" onSelect={onSelect} className={ROW_CLASS}>
+      <span className="flex min-w-0 flex-1 items-center gap-2">
+        <span className="flex size-5 shrink-0 items-center justify-center [&_svg]:size-[18px]">
+          <Code />
+        </span>
+        <span data-palette-label="" className="shrink-0">
+          New session
+        </span>
+        <span data-palette-prompt="" className="min-w-0 truncate text-xs text-ink-muted">
+          {prompt}
+        </span>
+      </span>
+      {projectName !== undefined && (
+        <span
+          data-palette-project-chip=""
+          className="shrink-0 rounded bg-fill-ghost-hover px-1.5 py-px text-xs text-secondary"
+        >
+          {projectName}
+        </span>
+      )}
+      <ReturnGlyph />
+    </Command.Item>
+  );
 }
 
 function CommandItem({

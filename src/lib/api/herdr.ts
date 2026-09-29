@@ -66,3 +66,34 @@ export async function sendHerdrPrompt(
 
   HerdrPromptSuccessResponse.parse(json);
 }
+
+const HerdrLaunchSuccessResponse = z
+  .object({
+    ok: z.literal(true),
+    tabId: z.string(),
+    paneId: z.string(),
+    sessionId: z.string().nullable(),
+  })
+  .strict();
+
+export type HerdrLaunchResponse = z.infer<typeof HerdrLaunchSuccessResponse>;
+
+/** Start `claude` with `prompt` in a new herdr tab rooted at `cwd`; throws when herdr cannot. */
+export async function launchHerdrSession(
+  launch: { cwd: string; prompt: string },
+  fetcher: typeof fetch = fetch,
+): Promise<HerdrLaunchResponse> {
+  const response = await fetcher("/api/herdr/launch", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(launch),
+  });
+  const json: unknown = await response.json();
+
+  if (!response.ok) {
+    throw new Error(HerdrPromptErrorResponse.parse(json).error);
+  }
+
+  return HerdrLaunchSuccessResponse.parse(json);
+}

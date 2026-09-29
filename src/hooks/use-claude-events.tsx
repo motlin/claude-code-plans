@@ -546,6 +546,13 @@ export function useSubscribeReviewOffers(): ClaudeEventsContextValue["subscribeR
   return context.subscribeReviewOffers;
 }
 
+const NO_ACTIVE_SESSIONS: ReadonlyMap<string, ActiveSessionInfo> = new Map();
+
+/** Sessions seen starting over SSE, or none when rendered outside a ClaudeEventsProvider. */
+export function useActiveSessionsIfAvailable(): ReadonlyMap<string, ActiveSessionInfo> {
+  return useContext(ClaudeEventsContext)?.state.activeSessions ?? NO_ACTIVE_SESSIONS;
+}
+
 /**
  * Convenience hook: returns true if the given session ID is in the active sessions map.
  */
