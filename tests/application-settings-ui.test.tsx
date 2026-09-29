@@ -87,4 +87,37 @@ describe("application settings controls", () => {
       },
     ]);
   });
+
+  it("renders the saved ignored directories in the same commit that first shows the form", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async () =>
+        Response.json({
+          herdrWritesEnabled: false,
+          visibleNavSections: ["herdr"],
+          ignoredDirs: ["node_modules", "dist"],
+        }),
+      ),
+    );
+    const firstCommittedValues: string[] = [];
+    const observer = new MutationObserver(() => {
+      const textarea = document.querySelector("textarea");
+      if (textarea !== null && firstCommittedValues.length === 0) {
+        firstCommittedValues.push(textarea.value);
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    render(
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <ApplicationConfigurationSection />
+      </QueryClientProvider>,
+    );
+    await screen.findByRole("textbox", { name: "Ignored watcher directories" });
+    observer.disconnect();
+
+    expect(firstCommittedValues).toStrictEqual(["dist\nnode_modules"]);
+  });
 });

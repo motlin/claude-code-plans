@@ -431,13 +431,6 @@ export function LinkCategoryRulesSection() {
 export function ApplicationConfigurationSection() {
   const applicationSettings = useQuery(applicationSettingsQueryOptions);
   const saveSettings = useSaveApplicationSettings();
-  const [ignoredDirectories, setIgnoredDirectories] = useState("");
-
-  useEffect(() => {
-    if (applicationSettings.data) {
-      setIgnoredDirectories([...applicationSettings.data.ignoredDirs].sort().join("\n"));
-    }
-  }, [applicationSettings.data]);
 
   if (applicationSettings.isPending) {
     return (
@@ -458,6 +451,7 @@ export function ApplicationConfigurationSection() {
   const settings = applicationSettings.data;
   const save = (next: typeof settings) =>
     saveSettings.mutate({ ...next, ignoredDirs: [...next.ignoredDirs].sort() });
+  const savedIgnoredDirectories = [...settings.ignoredDirs].sort().join("\n");
 
   return (
     <SettingsSection title="Application">
@@ -474,43 +468,68 @@ export function ApplicationConfigurationSection() {
         }
       />
 
-      <div className="py-2">
-        <label htmlFor="application-ignored-directories" className="text-body text-primary">
-          Ignored watcher directories
-        </label>
-        <p className="mt-1 text-body text-[var(--settings-muted)]">
-          One directory basename per line. Restart the server after saving changes.
-        </p>
-        <textarea
-          id="application-ignored-directories"
-          aria-label="Ignored watcher directories"
-          value={ignoredDirectories}
-          onChange={(event) => setIgnoredDirectories(event.target.value)}
-          rows={6}
-          className="mt-2 w-full rounded-md border border-border bg-surface-1 px-3 py-2 font-mono text-sm text-primary"
-        />
-        <button
-          type="button"
-          disabled={saveSettings.isPending}
-          onClick={() =>
-            save({
-              ...settings,
-              ignoredDirs: ignoredDirectories
-                .split("\n")
-                .map((directory) => directory.trim())
-                .filter(Boolean),
-            })
-          }
-          className="mt-2 rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0 disabled:cursor-wait disabled:opacity-50"
-        >
-          Save ignored directories
-        </button>
-      </div>
+      <IgnoredDirectoriesField
+        savedIgnoredDirectories={savedIgnoredDirectories}
+        disabled={saveSettings.isPending}
+        onSave={(ignoredDirs) => save({ ...settings, ignoredDirs })}
+      />
 
       {saveSettings.isError ? (
         <p className="py-2 text-xs text-red-600">Could not save application settings.</p>
       ) : null}
     </SettingsSection>
+  );
+}
+
+function IgnoredDirectoriesField({
+  savedIgnoredDirectories,
+  disabled,
+  onSave,
+}: {
+  savedIgnoredDirectories: string;
+  disabled: boolean;
+  onSave: (ignoredDirs: string[]) => void;
+}) {
+  const [ignoredDirectories, setIgnoredDirectories] = useState(savedIgnoredDirectories);
+  const [renderedSavedIgnoredDirectories, setRenderedSavedIgnoredDirectories] =
+    useState(savedIgnoredDirectories);
+  if (renderedSavedIgnoredDirectories !== savedIgnoredDirectories) {
+    setRenderedSavedIgnoredDirectories(savedIgnoredDirectories);
+    setIgnoredDirectories(savedIgnoredDirectories);
+  }
+
+  return (
+    <div className="py-2">
+      <label htmlFor="application-ignored-directories" className="text-body text-primary">
+        Ignored watcher directories
+      </label>
+      <p className="mt-1 text-body text-[var(--settings-muted)]">
+        One directory basename per line. Restart the server after saving changes.
+      </p>
+      <textarea
+        id="application-ignored-directories"
+        aria-label="Ignored watcher directories"
+        value={ignoredDirectories}
+        onChange={(event) => setIgnoredDirectories(event.target.value)}
+        rows={6}
+        className="mt-2 w-full rounded-md border border-border bg-surface-1 px-3 py-2 font-mono text-sm text-primary"
+      />
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() =>
+          onSave(
+            ignoredDirectories
+              .split("\n")
+              .map((directory) => directory.trim())
+              .filter(Boolean),
+          )
+        }
+        className="mt-2 rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0 disabled:cursor-wait disabled:opacity-50"
+      >
+        Save ignored directories
+      </button>
+    </div>
   );
 }
 
