@@ -1,6 +1,7 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef } from "react";
 import { CornerDownLeft, Square } from "lucide-react";
 
+import { useComposerDraft } from "../hooks/use-composer-draft";
 import { Tooltip } from "./ui/tooltip";
 
 type ComposerVariant = "session" | "home";
@@ -21,6 +22,8 @@ const ICON_BUTTON_CLASS =
 
 interface ComposerProps {
   variant: ComposerVariant;
+  /** Draft storage key: the session id, or `"home"` for the new-session composer. */
+  draftKey: string;
   onSend: (prompt: string) => void;
   onCancel?: () => void;
   isStreaming?: boolean;
@@ -34,13 +37,14 @@ interface ComposerProps {
  */
 export function Composer({
   variant,
+  draftKey,
   onSend,
   onCancel,
   isStreaming = false,
   disabled = false,
   deliveryHint,
 }: ComposerProps) {
-  const [prompt, setPrompt] = useState("");
+  const { text: prompt, setText: setPrompt, clear: clearDraft } = useComposerDraft(draftKey);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const hintId = useId();
   const canSend = prompt.trim() !== "" && !isStreaming && !disabled;
@@ -52,7 +56,7 @@ export function Composer({
   function handleSubmit() {
     if (!canSend) return;
     onSend(prompt.trim());
-    setPrompt("");
+    clearDraft();
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {

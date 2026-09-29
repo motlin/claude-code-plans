@@ -85,7 +85,12 @@ describe("session live input", () => {
     const onSend = vi.fn<(prompt: string) => void>();
 
     render(
-      <Composer variant="session" onSend={onSend} deliveryHint="Sends to the live terminal" />,
+      <Composer
+        variant="session"
+        draftKey="session-alice"
+        onSend={onSend}
+        deliveryHint="Sends to the live terminal"
+      />,
     );
 
     const send = screen.getByRole("button", { name: "Send" });
@@ -100,7 +105,7 @@ describe("session live input", () => {
   });
 
   it("does not synchronously measure or resize the transcript textarea while typing", () => {
-    render(<Composer variant="session" onSend={() => {}} />);
+    render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
     const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Prompt" });
     const readScrollHeight = vi.fn(() => 100);
     Object.defineProperty(textarea, "scrollHeight", {

@@ -684,6 +684,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
                 <div className="mx-auto w-full max-w-[768px]">
                   <Composer
                     variant="session"
+                    draftKey={sessionId}
                     onSend={(prompt) =>
                       routeSessionPrompt(
                         promptBehavior.usesHerdr,

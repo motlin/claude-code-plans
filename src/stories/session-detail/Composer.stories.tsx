@@ -8,6 +8,7 @@ const meta = {
   component: Composer,
   args: {
     variant: "session",
+    draftKey: "storybook-session",
     onSend: noop,
     onCancel: noop,
   },
@@ -31,5 +32,6 @@ export const Streaming: Story = {
 export const Home: Story = {
   args: {
     variant: "home",
+    draftKey: "storybook-home",
   },
 };

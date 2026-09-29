@@ -10,10 +10,12 @@ afterEach(() => {
 
 describe("Composer", () => {
   it("uses the upstream placeholder for each variant", () => {
-    const { unmount } = render(<Composer variant="session" onSend={() => {}} />);
+    const { unmount } = render(
+      <Composer variant="session" draftKey="session-alice" onSend={() => {}} />,
+    );
     const session = screen.getByRole("textbox", { name: "Prompt" }).getAttribute("placeholder");
     unmount();
-    render(<Composer variant="home" onSend={() => {}} />);
+    render(<Composer variant="home" draftKey="home" onSend={() => {}} />);
     const home = screen.getByRole("textbox", { name: "Prompt" }).getAttribute("placeholder");
 
     expect({ session, home }).toStrictEqual({
@@ -23,7 +25,7 @@ describe("Composer", () => {
   });
 
   it("disables Send while the prompt is blank and enables it once text is typed", () => {
-    render(<Composer variant="session" onSend={() => {}} />);
+    render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
     const send = screen.getByRole<HTMLButtonElement>("button", { name: "Send" });
     const before = send.disabled;
 
@@ -44,7 +46,7 @@ describe("Composer", () => {
 
   it("sends the trimmed prompt on Enter and keeps Shift+Enter for newlines", () => {
     const onSend = vi.fn<(prompt: string) => void>();
-    render(<Composer variant="session" onSend={onSend} />);
+    render(<Composer variant="session" draftKey="session-alice" onSend={onSend} />);
     const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Prompt" });
 
     fireEvent.change(textarea, { target: { value: "  Continue Bob's test  " } });
@@ -63,7 +65,7 @@ describe("Composer", () => {
 
   it("does not send while disabled", () => {
     const onSend = vi.fn<(prompt: string) => void>();
-    render(<Composer variant="session" onSend={onSend} disabled />);
+    render(<Composer variant="session" draftKey="session-alice" onSend={onSend} disabled />);
     const textarea = screen.getByRole("textbox", { name: "Prompt" });
 
     fireEvent.change(textarea, { target: { value: "Continue Alice's test" } });
@@ -73,7 +75,7 @@ describe("Composer", () => {
   });
 
   it("grows with content up to the upstream max height", () => {
-    render(<Composer variant="session" onSend={() => {}} />);
+    render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
     const textarea = screen.getByRole("textbox", { name: "Prompt" });
 
     expect({
@@ -89,7 +91,12 @@ describe("Composer", () => {
 
   it("exposes the delivery hint as the Send button description", () => {
     render(
-      <Composer variant="session" onSend={() => {}} deliveryHint="Sends to the live terminal" />,
+      <Composer
+        variant="session"
+        draftKey="session-alice"
+        onSend={() => {}}
+        deliveryHint="Sends to the live terminal"
+      />,
     );
     const send = screen.getByRole("button", { name: "Send" });
     const describedBy = send.getAttribute("aria-describedby") ?? "";
@@ -104,7 +111,14 @@ describe("Composer", () => {
 
   it("shows the Send ⏎ tooltip alongside the delivery hint", () => {
     vi.useFakeTimers();
-    render(<Composer variant="session" onSend={() => {}} deliveryHint="Starts a forked session" />);
+    render(
+      <Composer
+        variant="session"
+        draftKey="session-alice"
+        onSend={() => {}}
+        deliveryHint="Starts a forked session"
+      />,
+    );
     const send = screen.getByRole("button", { name: "Send" });
 
     fireEvent.pointerEnter(send);
@@ -123,7 +137,7 @@ describe("Composer", () => {
   });
 
   it("uses a 16px font on coarse pointers to avoid iOS zoom", () => {
-    render(<Composer variant="home" onSend={() => {}} />);
+    render(<Composer variant="home" draftKey="home" onSend={() => {}} />);
 
     expect(
       screen
@@ -135,7 +149,15 @@ describe("Composer", () => {
 
   it("swaps Send for Stop response while streaming", () => {
     const onCancel = vi.fn<() => void>();
-    render(<Composer variant="session" onSend={() => {}} onCancel={onCancel} isStreaming />);
+    render(
+      <Composer
+        variant="session"
+        draftKey="session-alice"
+        onSend={() => {}}
+        onCancel={onCancel}
+        isStreaming
+      />,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Stop response" }));
 
