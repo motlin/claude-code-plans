@@ -86,6 +86,7 @@ beforeEach(() => {
 describe("sidebar navigation", () => {
   it("links to each top-level section", () => {
     expect(navItems.map(({ label, to }) => ({ label, to }))).toStrictEqual([
+      { label: "Artifacts", to: "/artifacts" },
       { label: "Active", to: "/active" },
       { label: "Herdr", to: "/herdr" },
       { label: "Tmux Windows", to: "/tmux" },
@@ -111,6 +112,14 @@ describe("sidebar navigation", () => {
         .map(({ label, to }) => ({ label, to })),
       plugins: navItems.filter((item) => item.label === "Plugins" || item.to === "/plugins"),
     }).toStrictEqual({ customize: [{ label: "Customize", to: "/customize" }], plugins: [] });
+  });
+
+  it("activates the Artifacts section on the gallery", () => {
+    expect(
+      useActiveSection([{ fullPath: "/artifacts", params: {} }] as unknown as Parameters<
+        typeof useActiveSection
+      >[0]),
+    ).toStrictEqual({ section: "artifacts", activeItemId: null });
   });
 
   it("activates the Customize section on Customize and legacy plugin routes", () => {

@@ -1,5 +1,6 @@
 import {
   FileJson,
+  Shapes,
   FileText,
   Brain,
   MessageSquare,
@@ -35,6 +36,12 @@ interface NavEntry {
  * both derive from `navItems` and cannot drift apart.
  */
 const navEntries = {
+  artifacts: {
+    to: "/artifacts",
+    label: "Artifacts",
+    icon: Shapes,
+    description: "Artifacts Claude published to claude.ai from your sessions",
+  },
   active: {
     to: "/active",
     label: "Active",

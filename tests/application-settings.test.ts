@@ -72,7 +72,7 @@ describe("persisted application settings", () => {
       }).toStrictEqual({
         settings: {
           herdrWritesEnabled: false,
-          visibleNavSections: ["plans", "memories", "customize"],
+          visibleNavSections: ["artifacts", "plans", "memories", "customize"],
           ignoredDirs: [...DEFAULT_IGNORED_DIR_NAMES],
         },
         herdrWritesEnabled: false,
@@ -90,6 +90,7 @@ describe("persisted application settings", () => {
     );
 
     expect(readApplicationSettings(configPath).visibleNavSections).toStrictEqual([
+      "artifacts",
       "herdr",
       "tmux",
       "plans",

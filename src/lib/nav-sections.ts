@@ -5,6 +5,7 @@ import { z } from "zod";
  * absent because, like upstream's session list, it cannot be toggled.
  */
 export const NAV_SECTIONS = [
+  "artifacts",
   "active",
   "herdr",
   "tmux",
@@ -37,6 +38,7 @@ export function renameLegacyNavSections(value: unknown): unknown {
 
 /** Upstream pins New, Artifacts and Customize; Plans and Memories stay local. */
 export const DEFAULT_VISIBLE_NAV_SECTIONS: readonly NavSection[] = [
+  "artifacts",
   "plans",
   "memories",
   "customize",

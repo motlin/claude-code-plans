@@ -1,4 +1,5 @@
 export type Section =
+  | "artifacts"
   | "active"
   | "herdr"
   | "tmux"

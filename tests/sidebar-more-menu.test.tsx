@@ -61,7 +61,7 @@ function stubFetch() {
 }
 
 async function renderSidebar(
-  visibleNavSections: NavSection[] = ["plans", "memories", "customize"],
+  visibleNavSections: NavSection[] = ["artifacts", "plans", "memories", "customize"],
 ) {
   const queryClient = seedQueryClient(visibleNavSections);
   const rootRoute = createRootRoute({
@@ -125,7 +125,13 @@ describe("sidebar More menu", () => {
   it("shows only the pinned sections as sidebar rows", async () => {
     await renderSidebar();
 
-    expect(sidebarNavLabels()).toStrictEqual(["Plans", "Memories", "Sessions", "Customize"]);
+    expect(sidebarNavLabels()).toStrictEqual([
+      "Artifacts",
+      "Plans",
+      "Memories",
+      "Sessions",
+      "Customize",
+    ]);
   });
 
   it("lists hidden sections, a separator, then Edit sidebar…", async () => {
@@ -178,6 +184,7 @@ describe("Edit sidebar dialog", () => {
           checked: checkbox.getAttribute("aria-checked"),
         })),
     ).toStrictEqual([
+      { label: "Artifacts", checked: "true" },
       { label: "Active", checked: "false" },
       { label: "Herdr", checked: "false" },
       { label: "Tmux Windows", checked: "false" },
@@ -206,10 +213,13 @@ describe("Edit sidebar dialog", () => {
 
     expect({ puts, sidebar: sidebarNavLabels() }).toStrictEqual({
       puts: [
-        { ...BASE_SETTINGS, visibleNavSections: ["herdr", "plans", "memories", "customize"] },
-        { ...BASE_SETTINGS, visibleNavSections: ["herdr", "plans", "customize"] },
+        {
+          ...BASE_SETTINGS,
+          visibleNavSections: ["artifacts", "herdr", "plans", "memories", "customize"],
+        },
+        { ...BASE_SETTINGS, visibleNavSections: ["artifacts", "herdr", "plans", "customize"] },
       ],
-      sidebar: ["Herdr", "Plans", "Sessions", "Customize"],
+      sidebar: ["Artifacts", "Herdr", "Plans", "Sessions", "Customize"],
     });
   });
 

@@ -12,11 +12,11 @@ function labels(items: ReadonlyArray<{ label: string }>): string[] {
 }
 
 describe("getVisibleNavItems", () => {
-  it("pins Plans, Memories, Sessions and Customize by default and overflows the rest", () => {
+  it("pins Artifacts, Plans, Memories, Sessions and Customize by default and overflows the rest", () => {
     const { pinned, overflow } = getVisibleNavItems(navItems, DEFAULT_VISIBLE_NAV_SECTIONS);
 
     expect({ pinned: labels(pinned), overflow: labels(overflow) }).toStrictEqual({
-      pinned: ["Plans", "Memories", "Sessions", "Customize"],
+      pinned: ["Artifacts", "Plans", "Memories", "Sessions", "Customize"],
       overflow: [
         "Active",
         "Herdr",
@@ -38,7 +38,7 @@ describe("getVisibleNavItems", () => {
 
     expect({ pinned: labels(pinned), overflowCount: overflow.length }).toStrictEqual({
       pinned: ["Active", "Sessions", "Setup"],
-      overflowCount: 12,
+      overflowCount: 13,
     });
   });
 
@@ -47,7 +47,7 @@ describe("getVisibleNavItems", () => {
 
     expect({ pinned: labels(pinned), overflowCount: overflow.length }).toStrictEqual({
       pinned: ["Sessions"],
-      overflowCount: 14,
+      overflowCount: 15,
     });
   });
 });
@@ -71,11 +71,17 @@ describe("visibleNavSections schema", () => {
 
 describe("migrateLegacyNavFlags", () => {
   it("uses the defaults when neither legacy flag was set", () => {
-    expect(migrateLegacyNavFlags({})).toStrictEqual(["plans", "memories", "customize"]);
+    expect(migrateLegacyNavFlags({})).toStrictEqual([
+      "artifacts",
+      "plans",
+      "memories",
+      "customize",
+    ]);
   });
 
   it("keeps Herdr and Tmux pinned when the old flags showed them", () => {
     expect(migrateLegacyNavFlags({ showHerdrSection: true, showTmuxSection: true })).toStrictEqual([
+      "artifacts",
       "herdr",
       "tmux",
       "plans",
@@ -87,6 +93,6 @@ describe("migrateLegacyNavFlags", () => {
   it("moves sections the old flags hid under More", () => {
     expect(
       migrateLegacyNavFlags({ showHerdrSection: false, showTmuxSection: false }),
-    ).toStrictEqual(["plans", "memories", "customize"]);
+    ).toStrictEqual(["artifacts", "plans", "memories", "customize"]);
   });
 });

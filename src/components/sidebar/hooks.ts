@@ -82,6 +82,9 @@ export function useActiveSection(matches: ReturnType<typeof useMatches>): {
   const path = lastMatch?.fullPath ?? "/";
   const params = lastMatch?.params as Record<string, string> | undefined;
 
+  if (path.startsWith("/artifacts")) {
+    return { section: "artifacts", activeItemId: null };
+  }
   if (path.startsWith("/active")) {
     return { section: "active", activeItemId: null };
   }

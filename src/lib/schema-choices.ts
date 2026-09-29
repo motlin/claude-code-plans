@@ -590,6 +590,7 @@ export const sessionMenuItemLabels = {
 
 /** Sidebar sections toggleable in the Edit sidebar dialog, in nav order. */
 const navSectionLabels = {
+  artifacts: "Artifacts",
   active: "Active",
   herdr: "Herdr",
   tmux: "Tmux Windows",
