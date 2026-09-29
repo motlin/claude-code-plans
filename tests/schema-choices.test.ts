@@ -51,7 +51,11 @@ import {
   TaskStatusSchema,
   UserRecordSchema,
 } from "../src/lib/schemas";
-import { ReportFindingsVerdictSchema } from "../src/lib/tool-input-schemas";
+import {
+  ExitWorktreeActionSchema,
+  RemoteTriggerActionSchema,
+  ReportFindingsVerdictSchema,
+} from "../src/lib/tool-input-schemas";
 import { RenderedLineSchema } from "../src/lib/transcript";
 import { TranscriptModeSchema } from "../src/lib/transcript-mode";
 
@@ -98,6 +102,8 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["ArtifactLiveSubscriptionSchema", ArtifactLiveSubscriptionSchema],
   ["ArtifactToolResultSchema", ArtifactToolResultSchema],
   ["ReportFindingsVerdictSchema", ReportFindingsVerdictSchema],
+  ["RemoteTriggerActionSchema", RemoteTriggerActionSchema],
+  ["ExitWorktreeActionSchema", ExitWorktreeActionSchema],
   ["ToolUseUnion", ToolUseUnion],
   ["HookEventEnvelope", HookEventEnvelope],
   ["SourceFileResponse", SourceFileResponse],

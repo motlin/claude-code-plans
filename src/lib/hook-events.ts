@@ -917,6 +917,10 @@ const TOOL_VARIANTS = {
   ReportFindings: { input: toolInputSchemas.ReportFindings, response: JsonValueSchema },
   LS: { input: toolInputSchemas.LS, response: JsonValueSchema }, // no samples observed yet
   Artifact: { input: toolInputSchemas.Artifact, response: JsonValueSchema }, // no hook samples observed yet
+  RemoteTrigger: { input: toolInputSchemas.RemoteTrigger, response: JsonValueSchema }, // no hook samples observed yet
+  SendUserFile: { input: toolInputSchemas.SendUserFile, response: JsonValueSchema }, // no hook samples observed yet
+  PushNotification: { input: toolInputSchemas.PushNotification, response: JsonValueSchema }, // no hook samples observed yet
+  Workflow: { input: toolInputSchemas.Workflow, response: JsonValueSchema }, // no hook samples observed yet
 } satisfies Record<keyof typeof toolInputSchemas, ToolVariant>;
 
 type ToolName = keyof typeof TOOL_VARIANTS;

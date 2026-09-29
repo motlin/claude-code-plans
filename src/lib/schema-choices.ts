@@ -50,7 +50,11 @@ import type { SettingsTab } from "./settings-hash";
 import type { MessageProcessedLine, ProcessedLine } from "./transcript";
 import type { RecentKind } from "./recents-history";
 import type { TranscriptMode } from "./transcript-mode";
-import type { ReportFindingsVerdictSchema } from "./tool-input-schemas";
+import type {
+  ExitWorktreeActionSchema,
+  RemoteTriggerActionSchema,
+  ReportFindingsVerdictSchema,
+} from "./tool-input-schemas";
 
 /**
  * Registry of every enumerable "choice" in the Zod schemas (enum values,
@@ -508,6 +512,10 @@ const toolNames = {
   ReportFindings: true,
   LS: true,
   Artifact: true,
+  RemoteTrigger: true,
+  SendUserFile: true,
+  PushNotification: true,
+  Workflow: true,
 } satisfies Record<z.infer<typeof ToolUseUnion>["tool_name"], true>;
 
 /** Side-pane tile kinds of the session pane host (src/lib/pane-layout.ts); labels match upstream pane titles. */
@@ -667,6 +675,30 @@ export const reportFindingsVerdictLabels = {
   PLAUSIBLE: "Plausible",
 } satisfies Record<z.infer<typeof ReportFindingsVerdictSchema>, string>;
 
+/** `RemoteTrigger` `action` (src/lib/tool-input-schemas.ts); row verbs match upstream's routine verbs. */
+export const remoteTriggerActionLabels = {
+  list: "Listed routines",
+  get: "Read routine",
+  create: "Created routine",
+  update: "Updated routine",
+  run: "Ran routine",
+} satisfies Record<z.infer<typeof RemoteTriggerActionSchema>, string>;
+
+/** Failed-row verbs for each `RemoteTrigger` `action`. */
+export const remoteTriggerActionFailedLabels = {
+  list: "Failed to list routines",
+  get: "Failed to read routine",
+  create: "Failed to create routine",
+  update: "Failed to update routine",
+  run: "Failed to run routine",
+} satisfies Record<z.infer<typeof RemoteTriggerActionSchema>, string>;
+
+/** `ExitWorktree` `action` (src/lib/tool-input-schemas.ts); the failed-row verb per action. */
+export const exitWorktreeActionFailedLabels = {
+  keep: "Failed to leave the worktree",
+  remove: "Failed to remove the worktree",
+} satisfies Record<z.infer<typeof ExitWorktreeActionSchema>, string>;
+
 const toolNamesWithMcp = { ...toolNames, "mcp__*": true } as const;
 
 /** Maps walker path keys (see tests/schema-choices.test.ts) to choice maps. */
@@ -734,4 +766,6 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   ArtifactDbOpSchema: artifactDbOpLabels,
   ArtifactLiveSubscriptionSchema: artifactLiveSubscriptionLabels,
   ReportFindingsVerdictSchema: reportFindingsVerdictLabels,
+  RemoteTriggerActionSchema: remoteTriggerActionLabels,
+  ExitWorktreeActionSchema: exitWorktreeActionFailedLabels,
 };

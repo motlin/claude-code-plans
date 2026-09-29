@@ -1308,8 +1308,8 @@ describe("SessionChat tool row verbs", () => {
       enterPlanMode: [[SECONDARY, "Started planning"]],
       exitPlanMode: [[SECONDARY, "Proposed plan"]],
       cronCreate: [
-        [SECONDARY, "Scheduled"],
-        [SECONDARY_PARAM, "0 9 * * 1"],
+        [SECONDARY, "Started loop"],
+        [SECONDARY_PARAM, "Review the weekly metrics"],
       ],
       toolSearch: [
         [SECONDARY, "Searched tools"],
@@ -1336,7 +1336,7 @@ describe("SessionChat tool row verbs", () => {
       todoWrite: ["Failed to update todos"],
       enterPlanMode: ["Failed to start planning"],
       exitPlanMode: ["Failed to propose plan"],
-      cronCreate: ["Failed to schedule", "0 9 * * 1"],
+      cronCreate: ["Failed to start loop", "p"],
       toolSearch: ["Failed to search tools", "select:Read"],
     });
   });

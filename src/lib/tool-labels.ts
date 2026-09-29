@@ -1,5 +1,13 @@
 import { FileEditToolUseResultSchema, GitOperationSchema, type GitOperation } from "./schemas";
-import { gitBranchActionLabels, gitCommitKindLabels, gitPrActionLabels } from "./schema-choices";
+import {
+  exitWorktreeActionFailedLabels,
+  gitBranchActionLabels,
+  gitCommitKindLabels,
+  gitPrActionLabels,
+  remoteTriggerActionFailedLabels,
+  remoteTriggerActionLabels,
+} from "./schema-choices";
+import { ExitWorktreeActionSchema, RemoteTriggerActionSchema } from "./tool-input-schemas";
 
 /**
  * What a tool row needs from the call's `toolUseResult`, pulled out through
@@ -118,7 +126,6 @@ const FIXED_LABELS: Record<string, { verb: string; failedVerb: string }> = {
   ExitPlanMode: { verb: "Proposed plan", failedVerb: "Failed to propose plan" },
   // Not in upstream's table (claude.ai/code has no deferred tools); kept local.
   ToolSearch: { verb: "Searched tools", failedVerb: "Failed to search tools" },
-  CronCreate: { verb: "Scheduled", failedVerb: "Failed to schedule" },
   ReportFindings: {
     verb: "Reported review findings",
     failedVerb: "Failed to report review findings",
@@ -141,6 +148,9 @@ const FIXED_LABELS: Record<string, { verb: string; failedVerb: string }> = {
   RefreshMcpTools: { verb: "Refreshed tools", failedVerb: "Failed to refresh tools" },
   Workflow: { verb: "Ran workflow", failedVerb: "Failed to run workflow" },
   SendFeedback: { verb: "Sent feedback", failedVerb: "Failed to send feedback" },
+  SendUserMessage: { verb: "Sent", failedVerb: "Failed to send" },
+  SendUserFile: { verb: "Sent", failedVerb: "Failed to send" },
+  PushNotification: { verb: "Sent notification", failedVerb: "Failed to send notification" },
 };
 
 const TASK_STATUS_VERBS: Record<string, string> = {
@@ -170,6 +180,63 @@ function askedMeta(input: Record<string, unknown>): string | null {
   const first: unknown = questions[0];
   if (typeof first !== "object" || first === null || !("header" in first)) return null;
   return typeof first.header === "string" && first.header !== "" ? first.header : null;
+}
+
+function withMeta(label: ToolLabel, meta: string | null): ToolLabel {
+  return meta === null ? label : { ...label, meta };
+}
+
+function basename(path: string): string {
+  return path.replace(/\/+$/, "").split("/").pop() ?? path;
+}
+
+function enterWorktreeLabel(input: Record<string, unknown>): ToolLabel {
+  const path = stringInput(input, "path");
+  if (path !== null) {
+    return {
+      verb: "Entered a worktree",
+      meta: basename(path),
+      failedVerb: "Failed to enter a worktree",
+    };
+  }
+  return withMeta(
+    { verb: "Created a worktree", failedVerb: "Failed to create a worktree" },
+    stringInput(input, "name"),
+  );
+}
+
+function exitWorktreeLabel(input: Record<string, unknown>): ToolLabel {
+  const action = ExitWorktreeActionSchema.safeParse(input["action"]);
+  const failedVerb = exitWorktreeActionFailedLabels[action.success ? action.data : "keep"];
+  return { verb: "Left the worktree", failedVerb };
+}
+
+function scheduleWakeupLabel(input: Record<string, unknown>): ToolLabel {
+  if (input["stop"] === true) return { verb: "Stopped loop", failedVerb: "Failed to stop loop" };
+  return withMeta(
+    { verb: "Scheduled check-in", failedVerb: "Failed to schedule check-in" },
+    stringInput(input, "reason"),
+  );
+}
+
+/** A `<<...>>` prompt is a loop sentinel, not text worth showing as meta. */
+function cronCreateLabel(input: Record<string, unknown>): ToolLabel {
+  const prompt = stringInput(input, "prompt");
+  const meta = prompt !== null && /^<<[\s\S]*>>$/.test(prompt) ? null : prompt;
+  const label =
+    input["recurring"] === false
+      ? { verb: "Scheduled prompt", failedVerb: "Failed to schedule prompt" }
+      : { verb: "Started loop", failedVerb: "Failed to start loop" };
+  return withMeta(label, meta);
+}
+
+function remoteTriggerLabel(input: Record<string, unknown>): ToolLabel {
+  const action = RemoteTriggerActionSchema.safeParse(input["action"]);
+  if (!action.success) return { verb: "Used routines", failedVerb: "Failed to use routines" };
+  return {
+    verb: remoteTriggerActionLabels[action.data],
+    failedVerb: remoteTriggerActionFailedLabels[action.data],
+  };
 }
 
 function gitLabel(git: GitOperation): Omit<ToolLabel, "failedVerb"> | null {
@@ -236,6 +303,16 @@ export function toolLabel(call: ToolLabelCall): ToolLabel {
       if (skill === null) return { verb: "Ran skill", failedVerb };
       return { verb: "Ran skill", meta: `/${skill}`, metaIsCode: true, failedVerb };
     }
+    case "EnterWorktree":
+      return enterWorktreeLabel(input);
+    case "ExitWorktree":
+      return exitWorktreeLabel(input);
+    case "ScheduleWakeup":
+      return scheduleWakeupLabel(input);
+    case "CronCreate":
+      return cronCreateLabel(input);
+    case "RemoteTrigger":
+      return remoteTriggerLabel(input);
     case "TaskUpdate":
       return { verb: taskUpdateVerb(input), failedVerb: "Failed to update task" };
     case "TodoWrite": {

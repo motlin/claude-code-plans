@@ -306,6 +306,7 @@ const CronCreateInputSchema = z
     cron: z.string(),
     prompt: z.string(),
     recurring: z.boolean().optional(),
+    durable: z.boolean().optional(),
   })
   .strict();
 
@@ -337,13 +338,10 @@ const TeamDeleteInputSchema = z
 const ScheduleWakeupInputSchema = z
   .object({
     delaySeconds: z.number().optional(),
-    delay_seconds: z.number().optional(),
-    delay: z.union([z.number(), z.string()]).optional(),
-    timestamp: z.union([z.number(), z.string()]).optional(),
-    cron: z.string().optional(),
-    recurring: z.boolean().optional(),
+    noop: z.boolean().optional(),
     prompt: z.string().optional(),
     reason: z.string().optional(),
+    stop: z.boolean().optional(),
   })
   .strict();
 
@@ -354,9 +352,12 @@ const EnterWorktreeInputSchema = z
   })
   .strict();
 
+/** What ExitWorktree does with the worktree it leaves. */
+export const ExitWorktreeActionSchema = z.enum(["keep", "remove"]);
+
 const ExitWorktreeInputSchema = z
   .object({
-    action: z.string().optional(),
+    action: ExitWorktreeActionSchema.optional(),
     discard_changes: z.boolean().optional(),
   })
   .strict();
@@ -428,6 +429,42 @@ const MonitorInputSchema = z
     timeout_ms: z.number().optional(),
     timeout: z.string().optional(),
     persistent: z.boolean().optional(),
+  })
+  .strict();
+
+/** The routine (remote trigger) operation a RemoteTrigger call performs. */
+export const RemoteTriggerActionSchema = z.enum(["list", "get", "create", "update", "run"]);
+
+const RemoteTriggerInputSchema = z
+  .object({
+    action: RemoteTriggerActionSchema,
+    trigger_id: z.string().optional(),
+    body: z.record(z.string(), JsonInputValueSchema).optional(),
+  })
+  .strict();
+
+const SendUserFileInputSchema = z
+  .object({
+    files: z.array(z.string()),
+    caption: z.string().optional(),
+    status: z.string().optional(),
+    display: z.string().optional(),
+  })
+  .strict();
+
+const PushNotificationInputSchema = z
+  .object({
+    message: z.string(),
+    status: z.string().optional(),
+  })
+  .strict();
+
+const WorkflowInputSchema = z
+  .object({
+    script: z.string().optional(),
+    scriptPath: z.string().optional(),
+    args: z.array(JsonInputValueSchema).optional(),
+    resumeFromRunId: z.string().optional(),
   })
   .strict();
 
@@ -532,6 +569,10 @@ export const toolInputSchemas = {
   ReportFindings: ReportFindingsInputSchema,
   LS: LSInputSchema,
   Artifact: ArtifactInputSchema,
+  RemoteTrigger: RemoteTriggerInputSchema,
+  SendUserFile: SendUserFileInputSchema,
+  PushNotification: PushNotificationInputSchema,
+  Workflow: WorkflowInputSchema,
 } satisfies Record<string, z.ZodType>;
 
 // MCP tool inputs vary by server — skip strict validation for them.
