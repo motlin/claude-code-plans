@@ -102,6 +102,7 @@
   --radius-r5: 6px;
   --radius-r6: 8px;
   --radius-r7: 10px;
+  --radius-card: 12px;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -205,6 +206,14 @@
   --tooltip-bg: #20201f;
   --tooltip-fg: #f0efec;
   --tooltip-shortcut-ink: #898781;
+
+  /* Upstream claude.ai/code — Menu / ContextMenu popups (bg-surface-3, shadow-panel) */
+  --menu-bg: #fff;
+  --menu-shadow:
+    0 0 0 1px rgb(11 11 11 / 0.1), 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
+  --menu-muted: #898781;
+  --menu-danger-fill: #d03b3b;
+  --menu-on-danger: #fff;
 }
 
 .dark {
@@ -271,6 +280,12 @@
   /* Upstream claude.ai/code — <Shortcut> keycaps */
   --shortcut-cap-ink: #a5a49a;
   --shortcut-cap-line: color-mix(in srgb, currentColor 22%, transparent);
+
+  /* Upstream claude.ai/code — Menu / ContextMenu popups */
+  --menu-bg: hsl(60 2% 18%);
+  --menu-shadow:
+    0 0 0 1px hsl(0 0% 100% / 0.12), 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --menu-muted: #a5a49a;
 }
 
 @layer utilities {
