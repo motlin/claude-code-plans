@@ -8,7 +8,11 @@ import { SourceFileResponse } from "../src/lib/api/source";
 import { NavSectionSchema } from "../src/lib/nav-sections";
 import { PaneLayoutStateSchema } from "../src/lib/pane-layout";
 import { schemaChoiceRegistry } from "../src/lib/schema-choices";
-import { SessionBucketReasonSchema, SessionBucketSchema } from "../src/lib/session-state";
+import {
+  SessionBucketReasonSchema,
+  SessionBucketSchema,
+  SessionStateKindSchema,
+} from "../src/lib/session-state";
 import { SettingsTabSchema } from "../src/lib/settings-hash";
 import {
   AttachmentPayloadSchema,
@@ -41,6 +45,7 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["SessionSummaryStateSchema", SessionSummaryStateSchema],
   ["SessionBucketSchema", SessionBucketSchema],
   ["SessionBucketReasonSchema", SessionBucketReasonSchema],
+  ["SessionStateKindSchema", SessionStateKindSchema],
   ["ContentBlockSchema", ContentBlockSchema],
   ["AttachmentPayloadSchema", AttachmentPayloadSchema],
   ["UserRecordSchema", UserRecordSchema],

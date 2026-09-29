@@ -118,6 +118,7 @@ function ActivePage() {
                 <span className="truncate text-xs text-t6">{session.projectName}</span>
               </Link>
               <SessionStatusIndicator
+                displayState={session.displayState}
                 state={session.state}
                 heat={waitHeat(session.displayState, session.blockedSince, now)}
               />

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useSyncExternalStore } from "react";
 import {
   displayState,
   isLiveSessionState,
+  sessionStateKind,
   type ActivityState,
   type DisplayState,
   type SessionSummaryState,
@@ -15,6 +16,7 @@ import {
   subscribeUnseenWork,
 } from "../lib/unread-store";
 import { DISPLAY_STATE_STYLES } from "./session-status-indicator";
+import { SessionStateIcon } from "./status-dot";
 
 export function useHasUnseenWork(sessionId: string): boolean {
   const getSnapshot = useCallback(() => hasUnseenWork(sessionId), [sessionId]);
@@ -27,6 +29,22 @@ function useSessionDisplayState(sessionId: string, state: ActivityState): Displa
   useEffect(() => observeSessionState(sessionId, state), [sessionId, state]);
 
   return displayState(state, unseen);
+}
+
+/**
+ * Upstream row icon for a session the active-session feed reports as live. A list row whose
+ * summary state has not caught up yet (still "ended") shows as running.
+ */
+export function LiveSessionStateIcon({
+  sessionId,
+  state,
+}: {
+  sessionId: string;
+  state: SessionSummaryState;
+}) {
+  const unseen = useHasUnseenWork(sessionId);
+  const shown = isLiveSessionState(state) ? displayState(state, unseen) : "working";
+  return <SessionStateIcon kind={sessionStateKind(shown)} />;
 }
 
 export function SessionUnreadControl({

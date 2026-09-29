@@ -73,6 +73,15 @@
   --color-extended-green: var(--upstream-extended-green);
   --color-extended-pink: var(--upstream-extended-pink);
 
+  /* Upstream claude.ai/code — session row icons (src/components/status-dot.tsx) */
+  --color-ink-muted: var(--upstream-text-muted);
+  --color-git-opened: #1e9e3c;
+  --color-git-draft: #737373;
+  --color-git-merged: #8e6bd9;
+  --color-git-closed: #ff3a30;
+  --color-git-conflicting: #c5621b;
+  --color-git-queued: #98801f;
+
   /* Upstream claude.ai/code — transparency layers (bg-t1, bg-t2, etc.) */
   --color-t0: var(--upstream-t0);
   --color-t1: var(--upstream-t1);
@@ -233,6 +242,12 @@
     0 0 0 1px rgb(11 11 11 / 0.1), 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
   --menu-muted: #898781;
 
+  /* Upstream claude.ai/code — row status dots (--cds-text-muted / fill-warning|accent|danger) */
+  --upstream-text-muted: #898781;
+  --status-dot-awaiting: #fab219;
+  --status-dot-ready: #2a78d6;
+  --status-dot-error: #d03b3b;
+
   /* Upstream claude.ai/code — Settings controls (Switch, SegmentedControl, text field) */
   --settings-muted: #898781;
   --settings-switch-track: rgb(11 11 11 / 0.15);
@@ -342,6 +357,8 @@
   --menu-shadow:
     0 0 0 1px hsl(0 0% 100% / 0.12), 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.3);
   --menu-muted: #a5a49a;
+
+  --upstream-text-muted: #a5a49a;
 
   /* Upstream claude.ai/code — Settings controls */
   --settings-muted: #a5a49a;
@@ -512,6 +529,48 @@
 @media (prefers-reduced-motion: reduce) {
   .sidebar-peek-motion {
     transition: none;
+  }
+}
+
+/* Upstream claude.ai/code session row icons: 6px dots keyed by data-kind. */
+.status-dot {
+  position: relative;
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.status-dot[data-kind="awaiting"] {
+  background: var(--status-dot-awaiting);
+}
+
+.status-dot[data-kind="running"] {
+  background: var(--color-ink-muted);
+  animation: dot-blink 1.2s ease-in-out infinite;
+}
+
+.status-dot[data-kind="ready"] {
+  background: var(--status-dot-ready);
+}
+
+.status-dot[data-kind="error"] {
+  background: var(--status-dot-error);
+}
+
+@keyframes dot-blink {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-dot[data-kind="running"] {
+    animation: none;
   }
 }
 

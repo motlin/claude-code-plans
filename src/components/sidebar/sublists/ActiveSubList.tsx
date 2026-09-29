@@ -6,24 +6,18 @@ import {
   compareByStableCreation,
   compareByUrgency,
   displayState,
-  waitHeat,
+  sessionStateKind,
 } from "../../../lib/session-state";
 import { hasUnseenWork, subscribeUnseenWork } from "../../../lib/unread-store";
 import { LoadingBars } from "../primitives/LoadingBars";
-import { StatusDot } from "../primitives/StatusDot";
+import { SessionStateIcon } from "../../status-dot";
 import { useSettings } from "../../settings-provider";
 
 export function ActiveSubList() {
   const { settings } = useSettings();
-  const [now, setNow] = useState(Date.now);
   const [, setUnseenWorkVersion] = useState(0);
   const activeTimeoutMs = settings.activeTimeoutSec * 1000;
   const { data: sessions } = useQuery(activeSessionsQueryOptions(activeTimeoutMs));
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     setUnseenWorkVersion((version) => version + 1);
@@ -64,11 +58,7 @@ export function ActiveSubList() {
           params={{ id: session.sessionId }}
           className="mb-px flex items-center gap-2 rounded-r3 px-2 py-1 text-xs text-t6 no-underline transition-colors hover:bg-fill-ghost-hover hover:text-secondary"
         >
-          <StatusDot
-            active
-            heat={waitHeat(session.displayState, session.blockedSince, now)}
-            size="sm"
-          />
+          <SessionStateIcon kind={sessionStateKind(session.displayState)} />
           <span className="truncate">{session.projectName}</span>
         </Link>
       ))}

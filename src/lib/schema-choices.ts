@@ -15,7 +15,11 @@ import type {
   TaskStatusSchema,
   UserRecordSchema,
 } from "./schemas";
-import type { SessionBucketReasonSchema, SessionBucketSchema } from "./session-state";
+import type {
+  SessionBucketReasonSchema,
+  SessionBucketSchema,
+  SessionStateKindSchema,
+} from "./session-state";
 import type { SettingsTab } from "./settings-hash";
 import type { MessageProcessedLine, ProcessedLine } from "./transcript";
 
@@ -90,6 +94,16 @@ const sessionBucketReasonLabels = {
   idle: "Idle",
   "stale-file": "Transcript not recently updated",
 } satisfies Record<z.infer<typeof SessionBucketReasonSchema>, string>;
+
+/** Default accessible labels of the upstream row icons (src/components/status-dot.tsx). */
+export const sessionStateKindLabels = {
+  awaiting: "Awaiting input",
+  running: "Running",
+  ready: "Ready",
+  error: "Error",
+  pr: "Pull request",
+  idle: "Idle",
+} satisfies Record<z.infer<typeof SessionStateKindSchema>, string>;
 
 export const searchModeLabels = {
   titles: "Search titles",
@@ -435,6 +449,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   SessionSummaryStateSchema: sessionSummaryStateLabels,
   SessionBucketSchema: sessionBucketLabels,
   SessionBucketReasonSchema: sessionBucketReasonLabels,
+  SessionStateKindSchema: sessionStateKindLabels,
   ContentBlockSchema: contentBlockVariants,
   AttachmentPayloadSchema: attachmentVariants,
   "UserRecordSchema.promptSource": promptSourceLabels,

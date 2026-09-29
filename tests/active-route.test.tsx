@@ -171,7 +171,7 @@ describe("ActivePage rows", () => {
     ]);
   });
 
-  it("keeps heating the status dot the longer a waiting session stays blocked", async () => {
+  it("keeps heating the status word the longer a waiting session stays blocked", async () => {
     await renderActivePage([
       activeSession({
         blockedSince: new Date(Date.now() - 40 * MINUTE_MS).toISOString(),
@@ -189,14 +189,17 @@ describe("ActivePage rows", () => {
     ]);
 
     expect(
-      ["Blocked for ages", "Blocked a while", "Not blocked"].map(
-        (title) =>
-          Array.from(rowFor(title).children)[1]?.firstElementChild?.lastElementChild?.className,
-      ),
+      ["Blocked for ages", "Blocked a while", "Not blocked"].map((title) => {
+        const status = Array.from(rowFor(title).children)[1];
+        return {
+          icon: status?.firstElementChild?.firstElementChild?.getAttribute("data-kind"),
+          word: status?.lastElementChild?.className,
+        };
+      }),
     ).toStrictEqual([
-      "relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500",
-      "relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500",
-      "relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500",
+      { icon: "awaiting", word: "truncate text-red-500" },
+      { icon: "awaiting", word: "truncate text-amber-600" },
+      { icon: "running", word: "truncate text-green-500" },
     ]);
   });
 

@@ -1,8 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { SessionListItem } from "../lib/api/sessions";
 import { formatCount } from "../lib/pluralize";
-import { SessionUnreadControl } from "./session-unread-control";
-import { StatusDot } from "./sidebar/primitives/StatusDot";
+import { LiveSessionStateIcon, SessionUnreadControl } from "./session-unread-control";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -37,7 +36,7 @@ export function SessionRow({
           className="flex items-center gap-1.5 truncate"
           style={{ fontSize: "14px", fontWeight: 430 }}
         >
-          {isActive && <StatusDot active size="sm" title="Active" />}
+          {isActive && <LiveSessionStateIcon sessionId={session.id} state={session.state} />}
           <span className="truncate">{session.title}</span>
         </div>
         <div className="mt-0.5 flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-t6">

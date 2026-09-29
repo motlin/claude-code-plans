@@ -11,7 +11,7 @@ import {
 import { SESSION_PROJECT_PREVIEW_LIMIT } from "../../session-project-groups";
 import { useSettings } from "../../settings-provider";
 import { LoadingBars } from "../primitives/LoadingBars";
-import { StatusDot } from "../primitives/StatusDot";
+import { LiveSessionStateIcon } from "../../session-unread-control";
 
 /**
  * Sessions tree, grouped by project and ordered newest-project-first — the same
@@ -187,7 +187,7 @@ function SessionLink({
           : "text-t6 hover:bg-fill-ghost-hover hover:text-secondary"
       }`}
     >
-      {isLive && <StatusDot active size="sm" title="Active" />}
+      {isLive && <LiveSessionStateIcon sessionId={session.id} state={session.state} />}
       <span className="truncate">{session.title}</span>
     </Link>
   );

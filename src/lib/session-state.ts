@@ -95,6 +95,29 @@ export function stateForEvent(event: HookEvent): ActivityState | null {
 export const SessionBucketSchema = z.enum(["blocked", "review", "working", "done"]);
 export type SessionBucket = z.infer<typeof SessionBucketSchema>;
 
+/** Upstream claude.ai/code row icon kinds (`.status-dot[data-kind]` plus the PR glyph and idle ring). */
+export const SessionStateKindSchema = z.enum([
+  "awaiting",
+  "running",
+  "ready",
+  "error",
+  "pr",
+  "idle",
+]);
+export type SessionStateKind = z.infer<typeof SessionStateKindSchema>;
+
+const DISPLAY_STATE_KINDS = {
+  waiting: "awaiting",
+  working: "running",
+  review: "ready",
+  idle: "idle",
+  unknown: "idle",
+} as const satisfies Record<DisplayState, SessionStateKind>;
+
+export function sessionStateKind(state: DisplayState): SessionStateKind {
+  return DISPLAY_STATE_KINDS[state];
+}
+
 export const SessionBucketReasonSchema = z.enum([
   "ended",
   "pending-input",

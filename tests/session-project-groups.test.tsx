@@ -98,7 +98,12 @@ describe("SessionProjectGroups", () => {
   it("marks live sessions with an active indicator", async () => {
     await renderGroups(new Set(["g1"]));
 
-    expect(screen.getAllByTitle("Active").length).toBe(1);
+    expect(
+      screen.getAllByRole("status").map((icon) => ({
+        label: icon.getAttribute("aria-label"),
+        kind: icon.firstElementChild?.getAttribute("data-kind"),
+      })),
+    ).toStrictEqual([{ label: "Running", kind: "running" }]);
   });
 
   it("holds back projects past the preview limit until asked", async () => {
