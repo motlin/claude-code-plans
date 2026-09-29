@@ -4,9 +4,13 @@ import { Ellipsis } from "lucide-react";
 import { createContext, type ReactNode, useContext, useRef } from "react";
 
 import { herdrPanesQueryOptions } from "../lib/api/herdr";
-import { useToggleSessionStar, type SessionListItem } from "../lib/api/sessions";
+import {
+  openSessionInFinder,
+  sessionOpenInQueryOptions,
+  useToggleSessionStar,
+  type SessionListItem,
+} from "../lib/api/sessions";
 import { assertNever } from "../lib/assert-never";
-import { writeClipboardText } from "../lib/clipboard";
 import { useSessionArchive } from "../hooks/use-session-archive";
 import { type SessionRename, useSessionRename } from "../hooks/use-session-rename";
 import {
@@ -17,6 +21,12 @@ import {
   type SessionMenuReadState,
   type SessionMenuSession,
 } from "../lib/session-menu-items";
+import {
+  claudeAiSessionUrl,
+  copySessionLink,
+  copySessionResumeCommand,
+  vscodeFolderUrl,
+} from "../lib/session-open-in";
 import { markSeen, markUnseen } from "../lib/unread-store";
 import { InlineRenameInput } from "./inline-rename-input";
 import { useHasUnseenWork } from "./session-unread-control";
@@ -37,6 +47,10 @@ import {
 /** Actions wired locally so far; the rest appear as their features land. */
 const LOCAL_CAPABILITIES: ReadonlySet<SessionMenuCapability> = new Set<SessionMenuCapability>([
   "openLiveTerminal",
+  "openTerminal",
+  "openVsCode",
+  "openFinder",
+  "openClaudeAi",
   "pin",
   "readState",
   "rename",
@@ -81,6 +95,9 @@ function readStateOf(session: SessionListItem, unseen: boolean): SessionMenuRead
 function useSessionMenu(session: SessionListItem) {
   const unseen = useHasUnseenWork(session.id);
   const { data: herdr } = useQuery(herdrPanesQueryOptions);
+  const { data: openIn } = useQuery(sessionOpenInQueryOptions(session.id));
+  const cwd = openIn?.cwd ?? null;
+  const bridgeSessionId = openIn?.bridgeSessionId ?? null;
   const star = useToggleSessionStar(session.id);
   const toast = useToast();
   const setArchived = useSessionArchive(session.id);
@@ -95,22 +112,34 @@ function useSessionMenu(session: SessionListItem) {
     prUrl: null,
     hasLivePane: herdr?.panes.some((pane) => pane.sessionId === session.id) ?? false,
     forkDisabledReason: null,
+    cwd,
+    bridgeSessionId,
   };
 
-  const copyLink = async () => {
-    const link = `${window.location.origin}/session/${encodeURIComponent(session.id)}`;
-    const copied = await writeClipboardText(link);
-    toast(
-      copied
-        ? { kind: "success", message: "Link copied to clipboard." }
-        : { kind: "error", message: "Couldn’t copy the link. Try again." },
-    );
+  const revealInFinder = () => {
+    openSessionInFinder(session.id).catch(() => {
+      toast({ kind: "error", message: "Couldn’t open the folder in Finder." });
+    });
   };
 
   const run = (id: SessionMenuItemId): void => {
     switch (id) {
       case "open-live-terminal":
         void navigate({ to: "/herdr/terminal/$sessionId", params: { sessionId: session.id } });
+        return;
+      case "open-terminal":
+        if (cwd !== null) void copySessionResumeCommand(session.id, cwd, toast);
+        return;
+      case "open-vscode":
+        if (cwd !== null) window.open(vscodeFolderUrl(cwd), "_self");
+        return;
+      case "open-finder":
+        revealInFinder();
+        return;
+      case "open-claude-ai":
+        if (bridgeSessionId !== null) {
+          window.open(claudeAiSessionUrl(bridgeSessionId), "_blank", "noopener,noreferrer");
+        }
         return;
       case "pin":
       case "unpin":
@@ -123,7 +152,7 @@ function useSessionMenu(session: SessionListItem) {
         markUnseen(session.id);
         return;
       case "copy-link":
-        void copyLink();
+        void copySessionLink(session.id, toast);
         return;
       case "rename":
         requestRename();

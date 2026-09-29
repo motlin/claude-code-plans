@@ -12,6 +12,10 @@ import { sessionMenuItemLabels } from "./schema-choices";
 export const SessionMenuItemIdSchema = z.enum([
   "open-in",
   "open-live-terminal",
+  "open-terminal",
+  "open-vscode",
+  "open-finder",
+  "open-claude-ai",
   "open-pr",
   "pin",
   "unpin",
@@ -29,6 +33,10 @@ export type SessionMenuItemId = z.infer<typeof SessionMenuItemIdSchema>;
 
 export type SessionMenuCapability =
   | "openLiveTerminal"
+  | "openTerminal"
+  | "openVsCode"
+  | "openFinder"
+  | "openClaudeAi"
   | "openPr"
   | "pin"
   | "readState"
@@ -52,6 +60,10 @@ export interface SessionMenuSession {
   prUrl: string | null;
   hasLivePane: boolean;
   forkDisabledReason: string | null;
+  /** Directory the session runs in; Terminal, VS Code and Finder need it. */
+  cwd: string | null;
+  /** claude.ai/code session the transcript's `bridge-session` record points at. */
+  bridgeSessionId: string | null;
 }
 
 export interface SessionMenuItem {
@@ -117,14 +129,16 @@ export function getSessionMenuItems(
     accelerator: ACCELERATORS[id],
   });
 
-  const openIn: SessionMenuItem[] = [];
-  if (session.hasLivePane && has("openLiveTerminal")) {
-    openIn.push({
-      kind: "item",
-      id: "open-live-terminal",
-      label: sessionMenuItemLabels["open-live-terminal"],
-    });
-  }
+  const openInTargets: Array<[SessionMenuItemId, boolean]> = [
+    ["open-live-terminal", session.hasLivePane && has("openLiveTerminal")],
+    ["open-terminal", session.cwd !== null && has("openTerminal")],
+    ["open-vscode", session.cwd !== null && has("openVsCode")],
+    ["open-finder", session.cwd !== null && has("openFinder")],
+    ["open-claude-ai", session.bridgeSessionId !== null && has("openClaudeAi")],
+  ];
+  const openIn = openInTargets.flatMap(([id, offered]): SessionMenuItem[] =>
+    offered ? [{ kind: "item", id, label: sessionMenuItemLabels[id] }] : [],
+  );
 
   const navigation: SessionMenuItem[] = [];
   if (openIn.length > 0) {

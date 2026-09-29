@@ -1092,6 +1092,11 @@ export function getSessionProjectPath(db: IndexDb, sessionId: string): string | 
   return row?.projectPath ?? null;
 }
 
+/** The directory a session runs in: its anchored cwd, else its project's path. */
+export function getSessionDirectory(db: IndexDb, sessionId: string): string | null {
+  return getSessionMeta(db, sessionId)?.cwd ?? getSessionProjectPath(db, sessionId);
+}
+
 /** Return the latest assistant text row that contains prose, skipping tool-only turns. */
 export function getLastSubstantiveAssistantText(db: IndexDb, sessionId: string): string | null {
   const row = db

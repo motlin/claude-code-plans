@@ -1444,7 +1444,7 @@ const AtisLatchRecordSchema = z
   })
   .strict();
 
-const BridgeSessionRecordSchema = z
+export const BridgeSessionRecordSchema = z
   .object({
     type: z.literal("bridge-session"),
     sessionId: z.string().optional(),

@@ -4,8 +4,8 @@ import { type KeyboardEvent, useEffect, useRef } from "react";
 import { useSessionArchive } from "../hooks/use-session-archive";
 import { useToggleSessionStar } from "../lib/api/sessions";
 import { assertNever } from "../lib/assert-never";
-import { writeClipboardText } from "../lib/clipboard";
 import { relativeBucket } from "../lib/search-text";
+import { copySessionLink, sessionUrl } from "../lib/session-open-in";
 import {
   getSessionMenuItems,
   type SessionMenuCapability,
@@ -39,22 +39,6 @@ function readStateOf(bucket: SessionBucket | undefined, unseen: boolean): Sessio
   if (bucket === "working") return "working";
   if (bucket === "blocked") return "awaiting";
   return unseen ? "unread" : "read";
-}
-
-function sessionUrl(id: string): string {
-  return `${window.location.origin}/session/${encodeURIComponent(id)}`;
-}
-
-export async function copySessionLink(
-  id: string,
-  toast: ReturnType<typeof useToast>,
-): Promise<void> {
-  const copied = await writeClipboardText(sessionUrl(id));
-  toast(
-    copied
-      ? { kind: "success", message: "Link copied to clipboard." }
-      : { kind: "error", message: "Couldn’t copy the link. Try again." },
-  );
 }
 
 /**
@@ -91,6 +75,8 @@ export function PaletteRowActionsCard({
       prUrl: null,
       hasLivePane: false,
       forkDisabledReason: null,
+      cwd: null,
+      bridgeSessionId: null,
     },
     capabilities,
     { surface: "palette-card" },
@@ -134,6 +120,10 @@ export function PaletteRowActionsCard({
         return;
       case "open-in":
       case "open-live-terminal":
+      case "open-terminal":
+      case "open-vscode":
+      case "open-finder":
+      case "open-claude-ai":
       case "open-pr":
       case "mark-completed":
       case "rename":

@@ -127,6 +127,7 @@ describe("KeyboardShortcutsDialog", () => {
         "Settings",
         "Rename session",
         "Archive session",
+        "Copy session link",
         "Toggle changes",
         "Toggle file list in changes or files",
         "Go to file in changes",

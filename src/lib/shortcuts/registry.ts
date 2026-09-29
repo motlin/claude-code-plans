@@ -147,7 +147,7 @@ export const SHORTCUTS = {
     group: "general",
     bindings: cmdOrCtrl("l", ["alt"], letterCode("l")),
     ownerSlug: "session-row-actions",
-    enabled: false,
+    enabled: true,
   },
   open_session_pr: {
     description: "Open session PR",

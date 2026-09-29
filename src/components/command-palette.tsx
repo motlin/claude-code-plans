@@ -83,6 +83,7 @@ import { paletteFilterLabels, paletteTypeLabels } from "../lib/schema-choices";
 import { relativeBucket, titleMatches, type Snippet, type TextMatch } from "../lib/search-text";
 import { createSessionCommands } from "../lib/session-commands";
 import { getSessionMenuItems, type SessionMenuCapability } from "../lib/session-menu-items";
+import { copySessionLink } from "../lib/session-open-in";
 import { requestSessionRename } from "../lib/session-rename-request";
 import type { SessionBucket } from "../lib/session-state";
 import { SHORTCUTS, type ShortcutId } from "../lib/shortcuts/registry";
@@ -91,7 +92,6 @@ import { type ShortcutKeys, useShortcutKeys } from "../hooks/use-shortcut";
 import { clearAll } from "../lib/unread-store";
 import { HighlightRuns } from "./highlight-runs";
 import {
-  copySessionLink,
   type PaletteCardSession,
   PaletteRowActionsButton,
   PaletteRowActionsCard,
@@ -360,6 +360,8 @@ function currentSessionCommands(detail: SessionDetailData): SessionCommand[] {
       prUrl: null,
       hasLivePane: false,
       forkDisabledReason: null,
+      cwd: null,
+      bridgeSessionId: null,
     },
     SESSION_COMMAND_CAPABILITIES,
     { surface: "palette" },

@@ -7,6 +7,7 @@ import type { JsonValue } from "./hook-events";
 import { normalizeGitBranch } from "./git-branch";
 import {
   AiTitleRecordSchema,
+  BridgeSessionRecordSchema,
   CustomTitleRecordSchema,
   CustomTitleSidecarSchema,
   SessionsIndexSchema,
@@ -428,6 +429,33 @@ export async function readSessionTitleSources(filePath: string): Promise<Session
     rl.close();
   }
   return collector.finish(filePath);
+}
+
+/** The claude.ai/code session a transcript was bridged to (Remote Control), from its latest `bridge-session` record. */
+export async function readBridgeSessionId(filePath: string): Promise<string | null> {
+  let bridgeSessionId: string | null = null;
+  const rl = createInterface({
+    input: createReadStream(filePath, { encoding: "utf-8" }),
+    crlfDelay: Infinity,
+  });
+  try {
+    for await (const line of rl) {
+      if (!line.includes('"bridge-session"')) continue;
+      try {
+        const parsed = BridgeSessionRecordSchema.safeParse(JSON.parse(line));
+        if (parsed.success && parsed.data.bridgeSessionId !== undefined) {
+          bridgeSessionId = parsed.data.bridgeSessionId;
+        }
+      } catch {
+        // skip malformed lines
+      }
+    }
+  } catch {
+    return null;
+  } finally {
+    rl.close();
+  }
+  return bridgeSessionId;
 }
 
 async function listSessionsForProject(

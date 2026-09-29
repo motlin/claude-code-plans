@@ -17,6 +17,10 @@ const ALL: ReadonlySet<SessionMenuCapability> = new Set<SessionMenuCapability>([
   "copyLink",
   "fork",
   "archive",
+  "openTerminal",
+  "openVsCode",
+  "openFinder",
+  "openClaudeAi",
 ]);
 
 const LOCAL: ReadonlySet<SessionMenuCapability> = new Set<SessionMenuCapability>([
@@ -35,6 +39,8 @@ function session(overrides: Partial<SessionMenuSession> = {}): SessionMenuSessio
     prUrl: null,
     hasLivePane: false,
     forkDisabledReason: null,
+    cwd: null,
+    bridgeSessionId: null,
     ...overrides,
   };
 }

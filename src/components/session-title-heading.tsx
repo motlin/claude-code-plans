@@ -1,14 +1,16 @@
 import { useSessionArchive } from "../hooks/use-session-archive";
 import { useShortcut } from "../hooks/use-shortcut";
 import { useSessionRename } from "../hooks/use-session-rename";
+import { copySessionLink } from "../lib/session-open-in";
 import { useSessionRenameRequest } from "../lib/session-rename-request";
 import { ArchivedBadge } from "./archived-badge";
 import { InlineRenameInput } from "./inline-rename-input";
+import { useToast } from "./toast";
 
 /**
  * The session page title, which is also claude.ai/code's rename button:
  * clicking it (or ⌥⌘R anywhere on the page, or ⌘K's Rename command) swaps it for an inline input.
- * ⌥⌘A archives the session (or unarchives it when it already is).
+ * ⌥⌘A archives the session (or unarchives it when it already is); ⌥⌘L copies its link.
  */
 export function SessionTitleHeading({
   sessionId,
@@ -21,8 +23,10 @@ export function SessionTitleHeading({
 }) {
   const rename = useSessionRename(sessionId, title);
   const setArchived = useSessionArchive(sessionId);
+  const toast = useToast();
   useShortcut("rename_session", () => rename.startEditing());
   useShortcut("archive_session", () => setArchived(!archived));
+  useShortcut("copy_session_link", () => void copySessionLink(sessionId, toast));
   useSessionRenameRequest(sessionId, rename.startEditing);
 
   return (

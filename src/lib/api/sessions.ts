@@ -97,6 +97,10 @@ export const SessionDetailResponse = z
   })
   .nullable();
 
+export const SessionOpenInResponse = z
+  .object({ cwd: z.string().nullable(), bridgeSessionId: z.string().nullable() })
+  .strict();
+
 export type SessionDetailData = NonNullable<z.infer<typeof SessionDetailResponse>>;
 
 /**
@@ -288,6 +292,7 @@ export const sessionQueryKeys = {
   source: (sessionId: string, uuid: string, contextN: number) =>
     [...SESSION_QUERY_ROOT, sessionId, "source", uuid, contextN] as const,
   subagents: (id: string) => [...SESSION_QUERY_ROOT, id, "subagents"] as const,
+  openIn: (id: string) => [...SESSION_QUERY_ROOT, id, "open-in"] as const,
 };
 
 /** Single page of recent sessions (no pagination) — for compact previews. */
@@ -369,6 +374,22 @@ export const sessionDetailQueryOptions = (id: string) =>
     staleTime: Infinity,
     gcTime: Infinity,
   });
+
+export const sessionOpenInQueryOptions = (id: string) =>
+  queryOptions({
+    queryKey: sessionQueryKeys.openIn(id),
+    queryFn: () =>
+      apiFetch(`/api/sessions/${encodeURIComponent(id)}/open-in`, SessionOpenInResponse),
+  });
+
+/** Reveal the session's own directory in Finder; the server resolves the path from the index. */
+export function openSessionInFinder(sessionId: string): Promise<unknown> {
+  return apiFetch("/api/open-in-finder", z.object({ ok: z.literal(true) }).strict(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sessionId }),
+  });
+}
 
 export const transcriptQueryOptions = (id: string) =>
   queryOptions({

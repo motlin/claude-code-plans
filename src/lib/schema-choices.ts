@@ -528,6 +528,10 @@ export const settingsTabLabels = {
 export const sessionMenuItemLabels = {
   "open-in": "Open in",
   "open-live-terminal": "Live terminal",
+  "open-terminal": "Terminal",
+  "open-vscode": "VS Code",
+  "open-finder": "Finder",
+  "open-claude-ai": "claude.ai",
   "open-pr": "Open PR",
   pin: "Pin",
   unpin: "Unpin",

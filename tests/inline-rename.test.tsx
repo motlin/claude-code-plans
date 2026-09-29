@@ -15,7 +15,7 @@ import { SessionActionsMenu, SessionRowTitle } from "../src/components/session-a
 import { SessionTitleHeading } from "../src/components/session-title-heading";
 import { ToastProvider } from "../src/components/toast";
 import { herdrPanesQueryOptions } from "../src/lib/api/herdr";
-import type { SessionListItem } from "../src/lib/api/sessions";
+import { sessionOpenInQueryOptions, type SessionListItem } from "../src/lib/api/sessions";
 import { __unreadStoreTesting } from "../src/lib/unread-store";
 
 const SESSION_ID = "8f0c2c7e-1111-4222-8333-944445555666";
@@ -50,6 +50,10 @@ async function renderWithProviders(content: ReactNode) {
     },
   });
   queryClient.setQueryData(herdrPanesQueryOptions.queryKey, { panes: [], writesEnabled: false });
+  queryClient.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
+    cwd: null,
+    bridgeSessionId: null,
+  });
   const rootRoute = createRootRoute({
     component: () => (
       <QueryClientProvider client={queryClient}>
