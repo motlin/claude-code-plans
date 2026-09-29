@@ -172,6 +172,8 @@ describe("SessionActionsMenu", () => {
       "Mark as unreadU [u]",
       "RenameR [r]",
       "Copy linkC [c]",
+      "---",
+      "ArchiveA [a]",
     ]);
   });
 
@@ -189,6 +191,8 @@ describe("SessionActionsMenu", () => {
       "Mark as readU [u]",
       "RenameR [r]",
       "Copy linkC [c]",
+      "---",
+      "ArchiveA [a]",
     ]);
   });
 
@@ -203,6 +207,8 @@ describe("SessionActionsMenu", () => {
       "PinP [p]",
       "RenameR [r]",
       "Copy linkC [c]",
+      "---",
+      "ArchiveA [a]",
     ]);
   });
 

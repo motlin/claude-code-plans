@@ -35,6 +35,7 @@ function detail(overrides: Partial<SessionDetailData> = {}): SessionDetailData {
     homeRoot: "/users/dev",
     imageRoots: [],
     starred: false,
+    archived: false,
     summary: null,
     projectPath: "/users/dev/project-a",
     gitBranch: null,
@@ -60,7 +61,7 @@ function Harness() {
 
 function SessionRoute() {
   const { id } = useParams({ strict: false });
-  return <SessionTitleHeading sessionId={id ?? ""} title={TITLE} />;
+  return <SessionTitleHeading sessionId={id ?? ""} title={TITLE} archived={false} />;
 }
 
 async function openPalette(initialPath: string, sessionDetail: SessionDetailData = detail()) {
@@ -156,11 +157,12 @@ describe("palette contextual session commands", () => {
     fireEvent.change(input, { target: { value: "session" } });
 
     await within(dialog).findByRole("option", { name: `Pin ${QUOTED}` });
-    expect(optionLabels(dialog).slice(0, 6)).toStrictEqual([
+    expect(optionLabels(dialog).slice(0, 7)).toStrictEqual([
       "New session",
       `Pin ${QUOTED}`,
       `Rename ${QUOTED}`,
       `Copy link to ${QUOTED}`,
+      `Archive ${QUOTED}`,
       "Copy resume command",
       "Copy fork command",
     ]);
@@ -172,6 +174,28 @@ describe("palette contextual session commands", () => {
     fireEvent.change(input, { target: { value: "pin" } });
 
     await within(dialog).findByRole("option", { name: `Unpin ${QUOTED}` });
+  });
+
+  it("offers Unarchive for an archived session", async () => {
+    const { dialog, input } = await openPalette("/session/sess-1", detail({ archived: true }));
+
+    fireEvent.change(input, { target: { value: "archive" } });
+
+    await within(dialog).findByRole("option", { name: `Unarchive ${QUOTED}` });
+    expect(within(dialog).queryByRole("option", { name: `Archive ${QUOTED}` })).toBeNull();
+  });
+
+  it("archives the current session from its command", async () => {
+    const { dialog, input } = await openPalette("/session/sess-1");
+    fireEvent.change(input, { target: { value: "archive" } });
+
+    fireEvent.click(await within(dialog).findByRole("option", { name: `Archive ${QUOTED}` }));
+
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.filter(([url]) => url === "/api/sessions/sess-1/archived"),
+      ).toEqual([["/api/sessions/sess-1/archived", expect.objectContaining({ method: "PUT" })]]),
+    );
   });
 
   it("hides the commands in the empty state", async () => {

@@ -77,6 +77,7 @@ const detail: SessionDetailData = {
   homeRoot: "/home/alice",
   imageRoots: [],
   starred: false,
+  archived: false,
   summary: null,
   projectPath: null,
   gitBranch: null,

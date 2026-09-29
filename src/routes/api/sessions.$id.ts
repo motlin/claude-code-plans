@@ -12,6 +12,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
           getSessionMeta,
           getTaskCountsForProject,
           getSubagentById,
+          isSessionArchived,
           isSessionStarred,
         } = await import("../../lib/db/queries");
         const { sessions } = await import("../../lib/db/schema");
@@ -59,6 +60,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
             homeRoot,
             imageRoots,
             starred: false,
+            archived: false,
             summary: null,
             projectPath: parentSessionProjectPath,
             gitBranch: null,
@@ -114,6 +116,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
           homeRoot,
           imageRoots,
           starred,
+          archived: isSessionArchived(index, id),
           summary,
           projectPath,
           gitBranch: sessionMeta?.gitBranch ?? null,

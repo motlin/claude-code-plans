@@ -128,7 +128,7 @@ export const SHORTCUTS = {
     group: "general",
     bindings: cmdOrCtrl("a", ["alt"], letterCode("a")),
     ownerSlug: "session-row-actions",
-    enabled: false,
+    enabled: true,
   },
   toggle_read_session: {
     description: "Mark session as read/unread",

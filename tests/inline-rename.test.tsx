@@ -67,7 +67,9 @@ async function renderWithProviders(content: ReactNode) {
 }
 
 function renderHeading() {
-  return renderWithProviders(<SessionTitleHeading sessionId={SESSION_ID} title={OLD_TITLE} />);
+  return renderWithProviders(
+    <SessionTitleHeading sessionId={SESSION_ID} title={OLD_TITLE} archived={false} />,
+  );
 }
 
 function openHeadingRename(): HTMLInputElement {

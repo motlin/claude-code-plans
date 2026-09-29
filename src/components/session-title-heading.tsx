@@ -1,19 +1,32 @@
+import { useSessionArchive } from "../hooks/use-session-archive";
 import { useShortcut } from "../hooks/use-shortcut";
 import { useSessionRename } from "../hooks/use-session-rename";
 import { useSessionRenameRequest } from "../lib/session-rename-request";
+import { ArchivedBadge } from "./archived-badge";
 import { InlineRenameInput } from "./inline-rename-input";
 
 /**
  * The session page title, which is also claude.ai/code's rename button:
  * clicking it (or ⌥⌘R anywhere on the page, or ⌘K's Rename command) swaps it for an inline input.
+ * ⌥⌘A archives the session (or unarchives it when it already is).
  */
-export function SessionTitleHeading({ sessionId, title }: { sessionId: string; title: string }) {
+export function SessionTitleHeading({
+  sessionId,
+  title,
+  archived,
+}: {
+  sessionId: string;
+  title: string;
+  archived: boolean;
+}) {
   const rename = useSessionRename(sessionId, title);
+  const setArchived = useSessionArchive(sessionId);
   useShortcut("rename_session", () => rename.startEditing());
+  useShortcut("archive_session", () => setArchived(!archived));
   useSessionRenameRequest(sessionId, rename.startEditing);
 
   return (
-    <h1 className="flex min-w-0 text-lg font-semibold">
+    <h1 className="flex min-w-0 items-center gap-2 text-lg font-semibold">
       {rename.editing ? (
         <InlineRenameInput value={rename.title} onCommit={rename.commit} onCancel={rename.cancel} />
       ) : (
@@ -27,6 +40,7 @@ export function SessionTitleHeading({ sessionId, title }: { sessionId: string; t
           {rename.title}
         </button>
       )}
+      {archived && <ArchivedBadge />}
     </h1>
   );
 }

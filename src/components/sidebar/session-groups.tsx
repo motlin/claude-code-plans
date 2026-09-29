@@ -13,6 +13,7 @@ import {
 } from "../../lib/session-groups";
 import type { SessionBucket, SessionStateKind } from "../../lib/session-state";
 import { toggleSidebarGroup, useSidebarState } from "../../lib/sidebar-store";
+import { ArchivedBadge } from "../archived-badge";
 import { SessionActionsMenu, SessionRowTitle } from "../session-actions-menu";
 import { SessionStateIcon } from "../status-dot";
 import { LoadingBars } from "./primitives/LoadingBars";
@@ -194,6 +195,7 @@ function SessionRowLink({ row, selected }: { row: SidebarSessionRow; selected: b
         <span data-row-label className="min-w-0 flex-1">
           <SessionRowTitle render={(title) => <FadeLabel text={title} />} />
         </span>
+        {row.archived && <ArchivedBadge />}
       </Link>
     </SessionActionsMenu>
   );

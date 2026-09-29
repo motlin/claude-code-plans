@@ -155,7 +155,8 @@ describe("palette row actions card", () => {
         ["Open in new tab2", "2"],
         ["Copy link3", "3"],
         ["Pin4", "4"],
-        ["Mark as unread5", "5"],
+        ["Archive5", "5"],
+        ["Mark as unread6", "6"],
       ],
       inputFocused: false,
     });
@@ -189,9 +190,21 @@ describe("palette row actions card", () => {
   it("marks the session unread from the card", async () => {
     const { card } = await openCard();
 
-    fireEvent.keyDown(card, { key: "5", code: "Digit5" });
+    fireEvent.keyDown(card, { key: "6", code: "Digit6" });
 
     expect(hasUnseenWork("sess-1")).toBe(true);
+  });
+
+  it("archives the session from the card", async () => {
+    const { card } = await openCard();
+
+    fireEvent.keyDown(card, { key: "5", code: "Digit5" });
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(fetchMock.mock.calls.at(-1)).toStrictEqual([
+      "/api/sessions/sess-1/archived",
+      expect.objectContaining({ method: "PUT" }),
+    ]);
   });
 
   it("stars the session from the card", async () => {

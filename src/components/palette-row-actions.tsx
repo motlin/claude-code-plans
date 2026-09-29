@@ -1,6 +1,7 @@
 import { Ellipsis } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef } from "react";
 
+import { useSessionArchive } from "../hooks/use-session-archive";
 import { useToggleSessionStar } from "../lib/api/sessions";
 import { assertNever } from "../lib/assert-never";
 import { writeClipboardText } from "../lib/clipboard";
@@ -17,12 +18,13 @@ import { useHasUnseenWork } from "./session-unread-control";
 import { useToast } from "./toast";
 import { Shortcut } from "./ui/shortcut";
 
-/** A session row the → card can act on; `starred`/`bucket` are unknown for server-only hits. */
+/** A session row the → card can act on; `starred`/`archived`/`bucket` are unknown for server-only hits. */
 export interface PaletteCardSession {
   id: string;
   title: string;
   mtime: string;
   starred: boolean | undefined;
+  archived: boolean | undefined;
   bucket: SessionBucket | undefined;
 }
 
@@ -75,15 +77,17 @@ export function PaletteRowActionsCard({
   const unseen = useHasUnseenWork(session.id);
   const star = useToggleSessionStar(session.id);
   const toast = useToast();
+  const setArchived = useSessionArchive(session.id);
 
   const capabilities = new Set<SessionMenuCapability>(["readState", "copyLink"]);
   if (session.starred !== undefined) capabilities.add("pin");
+  if (session.archived !== undefined) capabilities.add("archive");
   const sessionItems = getSessionMenuItems(
     {
       title: session.title,
       pinned: session.starred ?? false,
       readState: readStateOf(session.bucket, unseen),
-      archived: false,
+      archived: session.archived ?? false,
       prUrl: null,
       hasLivePane: false,
       forkDisabledReason: null,
@@ -124,14 +128,16 @@ export function PaletteRowActionsCard({
       case "mark-unread":
         markUnseen(session.id);
         return;
+      case "archive":
+      case "unarchive":
+        setArchived(id === "archive");
+        return;
       case "open-in":
       case "open-live-terminal":
       case "open-pr":
       case "mark-completed":
       case "rename":
       case "fork":
-      case "archive":
-      case "unarchive":
         return;
       default:
         assertNever(id);

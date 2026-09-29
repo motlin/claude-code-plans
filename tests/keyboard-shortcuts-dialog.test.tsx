@@ -125,6 +125,7 @@ describe("KeyboardShortcutsDialog", () => {
         "Keyboard shortcuts",
         "Settings",
         "Rename session",
+        "Archive session",
         "Close pane",
         "Expand or collapse pane",
       ],

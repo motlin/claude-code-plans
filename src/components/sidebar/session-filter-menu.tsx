@@ -79,8 +79,8 @@ function RadioSubmenu<Schema extends z.ZodEnum>({
 }
 
 /**
- * claude.ai/code's Filter & group menu, minus Environment (cloud-only), the
- * Archived status (no archive yet) and Show PR status (no PR data yet).
+ * claude.ai/code's Filter & group menu, minus Environment (cloud-only) and
+ * Show PR status (no PR data yet).
  */
 function SessionFilterMenu({
   prefs,

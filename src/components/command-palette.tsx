@@ -38,10 +38,13 @@ import {
   Terminal,
   GitFork,
   Code,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react";
 import { useActiveSessionsIfAvailable } from "../hooks/use-claude-events";
 import type { PaletteMode } from "../hooks/use-command-palette";
 import { useDebouncedValue } from "../hooks/use-debounced-value";
+import { useSessionArchive } from "../hooks/use-session-archive";
 import { encodeFilePath } from "../lib/api/file";
 import { launchHerdrSession } from "../lib/api/herdr";
 import { assertNever } from "../lib/assert-never";
@@ -301,7 +304,15 @@ const NAV_COMMANDS = [
   { to: "/customize", label: "Customize", icon: <Puzzle />, keywords: ["skill", "plugin"] },
 ] as const;
 
-type SessionCommandId = "pin" | "unpin" | "rename" | "copy-link" | "copy-resume" | "copy-fork";
+type SessionCommandId =
+  | "pin"
+  | "unpin"
+  | "rename"
+  | "copy-link"
+  | "archive"
+  | "unarchive"
+  | "copy-resume"
+  | "copy-fork";
 
 interface SessionCommand {
   id: SessionCommandId;
@@ -313,6 +324,8 @@ const SESSION_COMMAND_ICONS = {
   unpin: <PinOff />,
   rename: <Pencil />,
   "copy-link": <Link />,
+  archive: <Archive />,
+  unarchive: <ArchiveRestore />,
   "copy-resume": <Terminal />,
   "copy-fork": <GitFork />,
 } as const satisfies Record<SessionCommandId, ReactNode>;
@@ -323,6 +336,8 @@ const SESSION_COMMAND_KEYWORDS = {
   unpin: ["session", "unpin", "pin", "star"],
   rename: ["session", "rename", "title"],
   "copy-link": ["session", "copy", "link", "url"],
+  archive: ["session", "archive", "hide"],
+  unarchive: ["session", "unarchive", "archive", "restore"],
   "copy-resume": ["session", "copy", "resume", "command"],
   "copy-fork": ["session", "copy", "fork", "command"],
 } as const satisfies Record<SessionCommandId, readonly string[]>;
@@ -331,6 +346,7 @@ const SESSION_COMMAND_CAPABILITIES: ReadonlySet<SessionMenuCapability> = new Set
   "pin",
   "rename",
   "copyLink",
+  "archive",
 ]);
 
 /** The session on screen as ⌘K commands: the shared menu model's quoted titles, then the CLI copies. */
@@ -340,7 +356,7 @@ function currentSessionCommands(detail: SessionDetailData): SessionCommand[] {
       title: detail.title,
       pinned: detail.starred,
       readState: "read",
-      archived: false,
+      archived: detail.archived,
       prUrl: null,
       hasLivePane: false,
       forkDisabledReason: null,
@@ -355,6 +371,8 @@ function currentSessionCommands(detail: SessionDetailData): SessionCommand[] {
       case "unpin":
       case "rename":
       case "copy-link":
+      case "archive":
+      case "unarchive":
         return [{ id: entry.id, label: entry.label }];
       default:
         return [];
@@ -448,6 +466,7 @@ function PalettePopup({
   });
   const currentDetail = currentSessionId === undefined ? null : (detailQuery.data ?? null);
   const star = useToggleSessionStar(currentSessionId ?? "");
+  const setArchived = useSessionArchive(currentSessionId ?? "");
   const toast = useToast();
   const activeSessions = useActiveSessionsIfAvailable();
   const [startStep, setStartStep] = useState<StartStep>("idle");
@@ -542,6 +561,7 @@ function PalettePopup({
         title: row.title,
         mtime: row.mtime,
         starred: undefined,
+        archived: undefined,
         bucket: undefined,
       });
     }
@@ -551,6 +571,7 @@ function PalettePopup({
         title: session.title,
         mtime: session.mtime,
         starred: session.starred,
+        archived: session.archived,
         bucket: session.bucket,
       });
     }
@@ -609,6 +630,10 @@ function PalettePopup({
         return;
       case "copy-link":
         void copySessionLink(currentSessionId, toast);
+        return;
+      case "archive":
+      case "unarchive":
+        setArchived(id === "archive");
         return;
       case "copy-resume":
         void copyCommand(shell.resume);

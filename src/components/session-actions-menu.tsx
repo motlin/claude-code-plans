@@ -7,6 +7,7 @@ import { herdrPanesQueryOptions } from "../lib/api/herdr";
 import { useToggleSessionStar, type SessionListItem } from "../lib/api/sessions";
 import { assertNever } from "../lib/assert-never";
 import { writeClipboardText } from "../lib/clipboard";
+import { useSessionArchive } from "../hooks/use-session-archive";
 import { type SessionRename, useSessionRename } from "../hooks/use-session-rename";
 import {
   getSessionMenuItems,
@@ -40,6 +41,7 @@ const LOCAL_CAPABILITIES: ReadonlySet<SessionMenuCapability> = new Set<SessionMe
   "readState",
   "rename",
   "copyLink",
+  "archive",
 ]);
 
 interface RowRename {
@@ -81,6 +83,7 @@ function useSessionMenu(session: SessionListItem) {
   const { data: herdr } = useQuery(herdrPanesQueryOptions);
   const star = useToggleSessionStar(session.id);
   const toast = useToast();
+  const setArchived = useSessionArchive(session.id);
   const navigate = useNavigate();
   const { requestRename } = useRowRename();
 
@@ -125,12 +128,14 @@ function useSessionMenu(session: SessionListItem) {
       case "rename":
         requestRename();
         return;
+      case "archive":
+      case "unarchive":
+        setArchived(id === "archive");
+        return;
       case "open-in":
       case "open-pr":
       case "mark-completed":
       case "fork":
-      case "archive":
-      case "unarchive":
         return;
       default:
         assertNever(id);

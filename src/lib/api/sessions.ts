@@ -76,6 +76,7 @@ export const SessionDetailResponse = z
     homeRoot: z.string(),
     imageRoots: z.array(z.string()),
     starred: z.boolean(),
+    archived: z.boolean(),
     summary: z.string().nullable(),
     projectPath: z.string().nullable(),
     gitBranch: z.string().nullable(),
@@ -493,6 +494,29 @@ export const sessionSubagentsQueryOptions = (id: string) =>
 
 export const StarredMutationResponse = z.object({ starred: z.boolean() });
 export const ArchivedMutationResponse = z.object({ archived: z.boolean() });
+
+/** Set or clear the app-side archive flag, then refetch every list and the session's detail. */
+export async function requestSessionArchived(
+  qc: QueryClient,
+  sessionId: string,
+  archived: boolean,
+): Promise<void> {
+  await apiFetch(
+    `/api/sessions/${encodeURIComponent(sessionId)}/archived`,
+    ArchivedMutationResponse,
+    {
+      method: archived ? "PUT" : "DELETE",
+    },
+  );
+  for (const queryKey of [
+    sessionQueryKeys.all(),
+    sessionQueryKeys.recentLists(),
+    sessionQueryKeys.groupedLists(),
+    sessionQueryKeys.activeLists(),
+  ]) {
+    void qc.invalidateQueries({ queryKey });
+  }
+}
 export const RenameSessionBody = z.object({ title: z.string() }).strict();
 export const RenameSessionResponse = z
   .object({ customTitle: z.string().nullable(), title: z.string() })

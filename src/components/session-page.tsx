@@ -738,7 +738,11 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
                 </button>
               </Tooltip>
             </DetailTopBar>
-            <SessionTitleHeading sessionId={sessionId} title={data.title} />
+            <SessionTitleHeading
+              sessionId={sessionId}
+              title={data.title}
+              archived={data.archived}
+            />
 
             {aiSummary ? (
               <p className="mt-1 text-sm text-t6 italic">{aiSummary}</p>
