@@ -19,7 +19,6 @@
     "typecheck": "tsgo --noEmit",
     "test": "node node_modules/vitest/dist/cli.js",
     "test:ui": "node node_modules/vitest/dist/cli.js --ui",
-    "test:run": "node node_modules/vitest/dist/cli.js run",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "prepare": "VITE_GIT_HOOKS=0 vp config"

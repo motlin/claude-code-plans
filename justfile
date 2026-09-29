@@ -65,24 +65,24 @@ format: install
     vp fmt {{ if ci != "" { "--check" } else { "" } }}
 
 # Run checks (format + lint + typecheck)
-check: install
-    vp check {{ if ci != "" { "" } else { "--fix" } }}
+check *args: install
+    vp run --cache check {{ if ci != "" { "" } else { "--fix" } }} {{ args }}
 
 [private]
 _test *args:
-    vp run test:run {{ args }}
+    vp run --cache test:run {{ args }}
 
 # Run tests
 test *args: install
     just _test {{ args }}
 
-# vp run typecheck
+# Type-check the project
 typecheck: install
-    vp run typecheck
+    vp run --cache typecheck
 
 # Build the project
 build: install
-    vp run build
+    vp run --cache build
 
 # Run Storybook dev server
 storybook *args: install
@@ -110,6 +110,10 @@ fallow-check: install
 # Run pre-commit hooks on all files (same as CI's pre-commit job)
 pre-commit: install
     pre-commit run --all-files
+
+# Audit public singular recipe parameters for documented options
+audit-just-options:
+    python3 scripts/audit-just-options.py
 
 # Run all pre-commit checks
 [arg("quick", long, value="true", help="Skip tests")]

@@ -11,7 +11,7 @@ This command automates the loop.
 1. Run the disk-validation suite and capture output:
 
    ```bash
-   npm run test:run -- -t "against disk" 2>&1
+   vp run test:run -- -t "against disk" 2>&1
    ```
 
    Tests covered by this filter:
@@ -45,7 +45,7 @@ This command automates the loop.
    - Enum that has a new variant → add the variant to the enum
    - Surface anything weirder as a question before editing.
 
-6. Re-run `npm run test:run -- -t "against disk"` to confirm green. If new failures appear (cascading), repeat.
+6. Re-run `vp run test:run -- -t "against disk"` to confirm green. If new failures appear (cascading), repeat.
 
 7. Stage the schema files. Commit message format follows existing precedent — see `git log --oneline -- src/lib/schemas.ts src/lib/tool-input-schemas.ts`. The canonical title is "Add missing optional fields to JSONL schemas to match real-world data on disk." — vary the wording if the touched files are different (settings, hooks, tool inputs).
 
