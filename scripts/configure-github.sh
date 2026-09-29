@@ -21,6 +21,24 @@ confirm() {
     [[ "$response" =~ ^[Yy]$ ]]
 }
 
+# Helper to prompt for a boolean setting that is not already at its desired value.
+# Succeeds only when the value differs and the user agrees to change it.
+confirm_toggle() {
+    local current="$1"
+    local desired="$2"
+    local description="$3"
+
+    if [[ "$current" == "$desired" ]]; then
+        return 1
+    fi
+
+    if [[ "$desired" == "true" ]]; then
+        confirm "Enable $description? (currently disabled)"
+    else
+        confirm "Disable $description? (currently enabled)"
+    fi
+}
+
 # Helper to check and prompt for a boolean repo setting
 check_repo_setting() {
     local setting="$1"
@@ -29,20 +47,7 @@ check_repo_setting() {
     local current
     current=$(echo "$CURRENT_SETTINGS" | jq -r ".$setting")
 
-    if [[ "$current" == "$desired" ]]; then
-        return
-    fi
-
-    local action current_desc
-    if [[ "$desired" == "true" ]]; then
-        action="Enable"
-        current_desc="currently disabled"
-    else
-        action="Disable"
-        current_desc="currently enabled"
-    fi
-
-    if confirm "$action $description? ($current_desc)"; then
+    if confirm_toggle "$current" "$desired" "$description"; then
         gh api "repos/${REPO}" --method PATCH --field "$setting=$desired" > /dev/null
         echo "  Updated."
     fi
@@ -90,22 +95,8 @@ check_protection_bool() {
     local var_name="$1"
     local desired="$2"
     local description="$3"
-    local current="${!var_name}"
 
-    if [[ "$current" == "$desired" ]]; then
-        return
-    fi
-
-    local action current_desc
-    if [[ "$desired" == "true" ]]; then
-        action="Enable"
-        current_desc="currently disabled"
-    else
-        action="Disable"
-        current_desc="currently enabled"
-    fi
-
-    if confirm "$action $description? ($current_desc)"; then
+    if confirm_toggle "${!var_name}" "$desired" "$description"; then
         UPDATE_PROTECTION=true
         printf -v "$var_name" '%s' "$desired"
     fi
@@ -133,7 +124,9 @@ if [[ "$UPDATE_PROTECTION" == "true" ]]; then
     BP_REVIEWS=$(echo "$CURRENT_PROTECTION" | jq -c '.required_pull_request_reviews // null')
     BP_RESTRICTIONS=$(echo "$CURRENT_PROTECTION" | jq -c '.restrictions // null')
 
-    cat << EOF | gh api "repos/${REPO}/branches/${BRANCH}/protection" --method PUT --input -
+    # A 403 means a private repo without GitHub Pro/Team, where branch protection is a paid
+    # feature. Warn and continue so the remaining settings still apply.
+    if PROTECTION_ERROR=$(gh api "repos/${REPO}/branches/${BRANCH}/protection" --method PUT --input - 2>&1 > /dev/null << EOF
 {
   "required_status_checks": {"strict": $BP_STRICT, "contexts": $BP_CONTEXTS},
   "enforce_admins": $BP_ENFORCE_ADMINS,
@@ -143,7 +136,14 @@ if [[ "$UPDATE_PROTECTION" == "true" ]]; then
   "allow_force_pushes": $BP_ALLOW_FORCE_PUSHES
 }
 EOF
-    echo "  Branch protection updated."
+    ); then
+        echo "  Branch protection updated."
+    elif [[ "$PROTECTION_ERROR" == *"HTTP 403"* ]]; then
+        echo "  WARNING: branch protection returned 403 (private repo without GitHub Pro/Team?). Skipping."
+    else
+        echo "$PROTECTION_ERROR" >&2
+        exit 1
+    fi
 fi
 
 echo ""
@@ -158,10 +158,9 @@ echo ""
 check_security_setting() {
     local endpoint="$1"
     local description="$2"
-    local current
-    current=$(gh api "repos/${REPO}/$endpoint" --silent && echo "true" || echo "false")
 
-    if [[ "$current" == "true" ]]; then
+    # A 404 means the setting is disabled; its error output is expected, not a failure.
+    if gh api "repos/${REPO}/$endpoint" --silent 2>/dev/null; then
         return
     fi
 
@@ -173,6 +172,62 @@ check_security_setting() {
 
 check_security_setting "vulnerability-alerts"      "vulnerability alerts"
 check_security_setting "automated-security-fixes"  "automated security fixes (Dependabot)"
+
+echo ""
+
+# ============================================================================
+# Actions Workflow Permissions
+# ============================================================================
+
+echo "=== Actions Workflow Permissions ==="
+echo ""
+
+WORKFLOW_PERMS=$(gh api "repos/${REPO}/actions/permissions/workflow")
+DEFAULT_PERMS=$(echo "$WORKFLOW_PERMS" | jq -r '.default_workflow_permissions')
+CAN_APPROVE=$(echo "$WORKFLOW_PERMS" | jq -r '.can_approve_pull_request_reviews')
+
+if [[ "$DEFAULT_PERMS" != "read" ]]; then
+    if confirm "Reset default workflow token permissions to read-only? (currently: $DEFAULT_PERMS; workflows needing write should declare a permissions: block)"; then
+        gh api "repos/${REPO}/actions/permissions/workflow" --method PUT --field default_workflow_permissions=read > /dev/null
+        echo "  Updated."
+    fi
+fi
+
+if [[ "$CAN_APPROVE" == "true" ]]; then
+    if confirm "Disallow Actions from approving pull request reviews? (currently allowed)"; then
+        gh api "repos/${REPO}/actions/permissions/workflow" --method PUT --field can_approve_pull_request_reviews=false > /dev/null
+        echo "  Updated."
+    fi
+fi
+
+echo ""
+
+# ============================================================================
+# Secrets Audit
+# ============================================================================
+
+echo "=== Secrets Audit ==="
+echo ""
+
+# Warn about secrets referenced by workflows that don't exist on the repo.
+# Secrets can't be restored by script (e.g. after repo recreation), but the gap
+# should be surfaced.
+WORKFLOWS_DIR="$(git rev-parse --show-toplevel)/.github/workflows"
+REFERENCED_SECRETS=$(grep -rhoE 'secrets\.[A-Za-z_][A-Za-z0-9_]*' "$WORKFLOWS_DIR" 2>/dev/null | sed 's/^secrets\.//' | sort -u | grep -vx 'GITHUB_TOKEN' || true)
+EXISTING_SECRETS=$(gh api "repos/${REPO}/actions/secrets" --jq '.secrets[].name' 2>/dev/null || true)
+
+if [[ -z "$REFERENCED_SECRETS" ]]; then
+    echo "  No secrets referenced by workflows."
+else
+    MISSING=false
+    while IFS= read -r secret; do
+        if ! grep -qx "$secret" <<< "$EXISTING_SECRETS"; then
+            echo "  WARNING: workflows reference secrets.$secret but no such repo secret exists"
+            MISSING=true
+        fi
+    done <<< "$REFERENCED_SECRETS"
+    [[ "$MISSING" == "false" ]] && echo "  All referenced secrets exist."
+fi
 
 echo ""
 
