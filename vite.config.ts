@@ -8,6 +8,13 @@ import tailwindcss from "@tailwindcss/vite";
 process.title = "claude-code-browser";
 
 export default defineConfig({
+  run: {
+    tasks: {
+      check: {
+        command: "vp check",
+      },
+    },
+  },
   lint: {
     plugins: ["oxc", "typescript", "unicorn", "react"],
     categories: {
