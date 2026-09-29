@@ -148,7 +148,14 @@ export function createCorpusMcpServer(context: ToolContext): McpServer {
   return server;
 }
 
+export const MCP_PROCESS_TITLE = "claude-code-browser-mcp";
+
+export function setMcpProcessTitle(): void {
+  process.title = MCP_PROCESS_TITLE;
+}
+
 async function main(): Promise<void> {
+  setMcpProcessTitle();
   const database = openCorpusDatabase();
   await initPendingApprovalsCache(database.index);
   const context: ToolContext = {
