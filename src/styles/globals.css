@@ -269,6 +269,7 @@
   --sb-row-gap: 8px;
   --sb-row-font: 14px;
   --sb-group-font: 13px;
+  --sb-group-pt: 16px;
   --sb-icon: 20px;
   --sb-leading-slot: 28px;
   --sb-row-ctl: 24px;
@@ -590,6 +591,24 @@
   flex-shrink: 0;
   width: var(--sb-icon);
   height: var(--sb-icon);
+}
+
+/* Upstream .df-label-inset: group labels line up with the row icons (6px at comfortable density). */
+.df-label-inset {
+  padding-left: calc(var(--sb-row-px) + (var(--sb-leading-slot) - var(--sb-icon)) / 2);
+}
+
+/* Upstream .dframe-fade-label: an overflowing row title fades out instead of ending in an ellipsis. */
+.dframe-fade-label {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.dframe-fade-label[data-overflowing] {
+  mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
 }
 
 /* Upstream .df-tail-mark: a row-ctl box at the row's end for trailing marks. */

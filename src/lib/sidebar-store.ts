@@ -73,6 +73,15 @@ export function setSidebarWidth(width: number): void {
   writeSidebarState({ ...readSidebarState(), width });
 }
 
+/** Collapse or expand one session-list group, keyed like upstream's `collapsedGroups`. */
+export function toggleSidebarGroup(key: string): void {
+  const state = readSidebarState();
+  const collapsedGroups = state.collapsedGroups.includes(key)
+    ? state.collapsedGroups.filter((collapsed) => collapsed !== key)
+    : [...state.collapsedGroups, key];
+  writeSidebarState({ ...state, collapsedGroups });
+}
+
 function subscribe(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);

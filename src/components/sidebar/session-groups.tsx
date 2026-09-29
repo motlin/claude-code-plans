@@ -1,0 +1,218 @@
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
+import { ChevronRight } from "lucide-react";
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+
+import { recentSessionsInfiniteQueryOptions, type SessionListItem } from "../../lib/api/sessions";
+import {
+  buildGroups,
+  DEFAULT_SESSION_LIST_PREFS,
+  type SessionGroup,
+  type SessionGroupRow,
+  type SessionListPrefs,
+} from "../../lib/session-groups";
+import type { SessionBucket, SessionStateKind } from "../../lib/session-state";
+import { toggleSidebarGroup, useSidebarState } from "../../lib/sidebar-store";
+import { SessionStateIcon } from "../status-dot";
+import { LoadingBars } from "./primitives/LoadingBars";
+
+const BUCKET_ICON_KINDS = {
+  blocked: "awaiting",
+  review: "ready",
+  working: "running",
+  done: "idle",
+} as const satisfies Record<SessionBucket, SessionStateKind>;
+
+interface SidebarSessionRow extends SessionGroupRow {
+  session: SessionListItem;
+}
+
+function toGroupRow(session: SessionListItem): SidebarSessionRow {
+  return {
+    session,
+    sessionId: session.id,
+    title: session.title,
+    bucket: session.bucket,
+    project: session.projectName,
+    archived: false,
+    createdAt: Date.parse(session.created),
+    lastActivityAt: Date.parse(session.mtime),
+  };
+}
+
+const ROW_CLASS =
+  "flex h-[var(--sb-row-h)] w-full shrink-0 items-center gap-[var(--sb-row-gap)] rounded-[var(--sb-radius)] px-[var(--sb-row-px)] text-left text-[length:var(--sb-row-font)] no-underline";
+
+/**
+ * The sidebar session list, grouped like claude.ai/code's recents: Needs input,
+ * Ready for review, Working and Completed by default. Collapsed groups persist in
+ * the sidebar store; "Show N more" uncaps a group in place until remount.
+ */
+export function SessionGroups({
+  activeItemId,
+  filterSlot,
+  prefs = DEFAULT_SESSION_LIST_PREFS,
+}: {
+  activeItemId: string | null;
+  /** Rendered at the end of the first group header, wherever that group is. */
+  filterSlot?: ReactNode;
+  prefs?: SessionListPrefs;
+}) {
+  const { data, hasNextPage, isFetchingNextPage, fetchNextPage } = useInfiniteQuery(
+    recentSessionsInfiniteQueryOptions(),
+  );
+  const { collapsedGroups } = useSidebarState();
+  const [uncapped, setUncapped] = useState<ReadonlySet<string>>(() => new Set());
+
+  const groups = useMemo(() => {
+    if (data === undefined) return undefined;
+    const rows = data.pages.flatMap((page) => page.sessions.map(toGroupRow));
+    return buildGroups(rows, prefs, Date.now(), uncapped);
+  }, [data, prefs, uncapped]);
+
+  if (groups === undefined) {
+    return (
+      <div className="px-2">
+        <LoadingBars />
+      </div>
+    );
+  }
+
+  const collapsed = new Set(collapsedGroups);
+
+  return (
+    <div data-testid="sidebar-recents" className="flex min-h-[120px] shrink-0 grow flex-col">
+      {groups.map((group, index) => (
+        <GroupSection
+          key={group.key}
+          group={group}
+          expanded={!collapsed.has(group.key)}
+          activeItemId={activeItemId}
+          filterSlot={index === 0 ? filterSlot : undefined}
+          onShowMore={() => setUncapped((previous) => new Set(previous).add(group.key))}
+        />
+      ))}
+      {hasNextPage && (
+        <button
+          type="button"
+          aria-label="Load more sessions"
+          aria-disabled={isFetchingNextPage || undefined}
+          onClick={() => void fetchNextPage()}
+          className={`${ROW_CLASS} df-label-inset mt-[var(--sb-group-pt)] text-ink-muted hover:bg-[var(--sb-hover)] hover:text-secondary aria-disabled:pointer-events-none aria-disabled:opacity-70`}
+        >
+          Load more sessions
+        </button>
+      )}
+    </div>
+  );
+}
+
+function GroupSection({
+  group,
+  expanded,
+  activeItemId,
+  filterSlot,
+  onShowMore,
+}: {
+  group: SessionGroup<SidebarSessionRow>;
+  expanded: boolean;
+  activeItemId: string | null;
+  filterSlot: ReactNode;
+  onShowMore: () => void;
+}) {
+  return (
+    <div data-group-key={group.key} className="group/section relative isolate flex flex-col gap-px">
+      <div
+        data-sidebar-group-label
+        className="group/labelrow df-label-inset flex min-h-[calc(var(--sb-group-pt)+var(--sb-row-h)-4px)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[calc((var(--sb-row-h)-24px)/2)] pb-1 text-[length:var(--sb-group-font)] leading-4 text-ink-muted"
+      >
+        <button
+          type="button"
+          data-group-toggle
+          aria-expanded={expanded}
+          onClick={() => toggleSidebarGroup(group.key)}
+          className="group/label -my-1 -ml-1 flex min-w-0 flex-1 items-center gap-1 rounded-[var(--sb-radius)] py-1 pl-1 text-left hover:text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
+        >
+          <span data-group-name className="min-w-0 truncate">
+            {group.label}
+          </span>
+          <ChevronRight
+            aria-hidden="true"
+            data-group-caret
+            className={`h-3 w-3 shrink-0 transition-transform duration-150 motion-reduce:transition-none ${
+              expanded
+                ? "rotate-90 opacity-0 group-hover/section:opacity-100 group-focus-visible/label:opacity-100"
+                : "opacity-100"
+            }`}
+          />
+        </button>
+        {filterSlot}
+      </div>
+      {expanded && (
+        <>
+          {group.rows.map((row) => (
+            <SessionRowLink
+              key={row.sessionId}
+              row={row}
+              selected={row.sessionId === activeItemId}
+            />
+          ))}
+          {group.hiddenCount > 0 && (
+            <button
+              type="button"
+              data-row
+              aria-label={`Show ${group.hiddenCount} more in ${group.label}`}
+              onClick={onShowMore}
+              className={`${ROW_CLASS} text-ink-muted hover:bg-[var(--sb-hover)] hover:text-secondary`}
+            >
+              <span className="df-leading-slot" />
+              Show {group.hiddenCount} more
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function SessionRowLink({ row, selected }: { row: SidebarSessionRow; selected: boolean }) {
+  return (
+    <Link
+      to="/session/$id"
+      params={{ id: row.sessionId }}
+      data-row-main-button
+      data-selected={selected ? "focused" : undefined}
+      className={`${ROW_CLASS} text-secondary hover:bg-[var(--sb-hover)] focus-visible:bg-[var(--sb-hover)] data-[selected=focused]:bg-[var(--sb-selected)] data-[selected=focused]:text-primary`}
+    >
+      <span className="df-leading-slot text-secondary">
+        <SessionStateIcon kind={BUCKET_ICON_KINDS[row.bucket]} />
+      </span>
+      <span data-row-label className="min-w-0 flex-1">
+        <FadeLabel text={row.title} />
+      </span>
+    </Link>
+  );
+}
+
+/** Marks itself `data-overflowing` when the title is clipped, so CSS fades its end. */
+function FadeLabel({ text }: { text: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [overflowing, setOverflowing] = useState(false);
+
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (element === null) return;
+    const measure = () => setOverflowing(element.scrollWidth > element.clientWidth);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [text]);
+
+  return (
+    <span ref={ref} className="dframe-fade-label" data-overflowing={overflowing ? "" : undefined}>
+      <span className="inline-block align-top whitespace-nowrap">{text}</span>
+    </span>
+  );
+}

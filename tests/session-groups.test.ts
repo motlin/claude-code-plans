@@ -102,6 +102,21 @@ describe("buildGroups state mode", () => {
     ]);
   });
 
+  it("leaves groups whose Show N more was clicked uncapped", () => {
+    const rows = Array.from({ length: 23 }, (_, index) =>
+      row(`done-${index}`, { bucket: "done", lastActivityAt: NOW - (index + 1) * 60_000 }),
+    );
+
+    expect(summarize(buildGroups(rows, prefs(), NOW, new Set(["state-done"])))).toStrictEqual([
+      {
+        key: "state-done",
+        label: "Completed",
+        rows: Array.from({ length: 23 }, (_, index) => `done-${index}`),
+        hiddenCount: 0,
+      },
+    ]);
+  });
+
   it("hides non-Working rows older than the Last activity window but keeps Working rows", () => {
     const rows = [
       row("old-working", { bucket: "working", lastActivityAt: NOW - 10 * DAY }),

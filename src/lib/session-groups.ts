@@ -135,6 +135,7 @@ function dateGroupFor(time: number, todayStart: number): { key: string; label: s
 function buildDateGroups<Row extends SessionGroupRow>(
   rows: Row[],
   now: number,
+  uncapped: ReadonlySet<string>,
 ): SessionGroup<Row>[] {
   const todayStart = startOfLocalDay(now);
   const byDay = new Map<string, { label: string; dayStart: number; rows: Row[] }>();
@@ -147,7 +148,9 @@ function buildDateGroups<Row extends SessionGroupRow>(
   }
   return [...byDay.entries()]
     .sort(([, first], [, second]) => second.dayStart - first.dayStart)
-    .map(([key, entry]) => group(key, entry.label, entry.rows, key === "date-older"));
+    .map(([key, entry]) =>
+      group(key, entry.label, entry.rows, key === "date-older" && !uncapped.has(key)),
+    );
 }
 
 function buildProjectGroups<Row extends SessionGroupRow>(
@@ -187,12 +190,14 @@ function buildProjectGroups<Row extends SessionGroupRow>(
 /**
  * Pure model behind the sidebar session list and its Filter & group menu,
  * mirroring claude.ai/code's groupings. Empty groups are omitted except in
- * Project mode with Show empty groups on.
+ * Project mode with Show empty groups on. Groups keyed in `uncapped` (their
+ * "Show N more" was clicked) show every row.
  */
 export function buildGroups<Row extends SessionGroupRow>(
   rows: readonly Row[],
   prefs: SessionListPrefs,
   now: number,
+  uncapped: ReadonlySet<string> = new Set(),
 ): SessionGroup<Row>[] {
   const visible = rows
     .filter((row) => isVisible(row, prefs, now))
@@ -205,15 +210,17 @@ export function buildGroups<Row extends SessionGroupRow>(
           `state-${bucket}`,
           sessionBucketLabels[bucket],
           visible.filter((row) => row.bucket === bucket),
-          bucket === "done",
+          bucket === "done" && !uncapped.has(`state-${bucket}`),
         ),
       ).filter((stateGroup) => stateGroup.rows.length > 0);
     case "date":
-      return buildDateGroups(visible, now);
+      return buildDateGroups(visible, now, uncapped);
     case "project":
       return buildProjectGroups(rows, visible, prefs.showEmptyGroups);
     case "none":
-      return visible.length === 0 ? [] : [group("recents", "Recents", visible, true)];
+      return visible.length === 0
+        ? []
+        : [group("recents", "Recents", visible, !uncapped.has("recents"))];
   }
 }
 

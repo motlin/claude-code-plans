@@ -9,14 +9,8 @@ import { useVisibleNavItems } from "./navigation";
 import { NavScroll } from "./nav-scroll";
 import { SidebarFooter } from "./sidebar-footer";
 import { SidebarToggleButton } from "./sidebar-toggle";
-import {
-  ActiveSubList,
-  MemoriesSubList,
-  PlansSubList,
-  ProjectsSubList,
-  PluginsSubList,
-  SessionsSubList,
-} from "./sublists";
+import { SessionGroups } from "./session-groups";
+import { MemoriesSubList, PlansSubList, ProjectsSubList, PluginsSubList } from "./sublists";
 import { approvalsQueryOptions } from "../../lib/api/approvals";
 import { notificationsQueryOptions, useMarkNotificationsRead } from "../../lib/api/notifications";
 import { activeSessionsQueryOptions } from "../../lib/api/sessions";
@@ -55,7 +49,6 @@ export function Sidebar({
   // Sublists unmount whenever their section collapses, so per-group collapse
   // state has to be held here, in the sidebar that outlives every navigation.
   const [collapsedMemoryGroups, toggleMemoryGroup, revealMemoryGroup] = useCollapsedGroups();
-  const [collapsedSessionGroups, toggleSessionGroup, revealSessionGroup] = useCollapsedGroups();
   const [expandedProjects, toggleProject, expandProject] = useExpandedGroups();
   const { data: approvalsData } = useQuery(approvalsQueryOptions());
   const approvalsCount = approvalsData?.approvals.length ?? 0;
@@ -180,9 +173,7 @@ export function Sidebar({
           {navigationItems.map((item) => {
             if (collapsedSections.has(item.section)) return null;
             const subList =
-              item.section === "active" ? (
-                <ActiveSubList />
-              ) : item.section === "projects" ? (
+              item.section === "projects" ? (
                 <ProjectsSubList
                   activeItemId={activeItemId}
                   expandedProjects={expandedProjects}
@@ -200,16 +191,10 @@ export function Sidebar({
                 />
               ) : item.section === "plugins" ? (
                 <PluginsSubList />
-              ) : item.section === "sessions" ? (
-                <SessionsSubList
-                  activeItemId={activeItemId}
-                  collapsedGroups={collapsedSessionGroups}
-                  onToggleGroup={toggleSessionGroup}
-                  onRevealGroup={revealSessionGroup}
-                />
               ) : null;
             return subList && <div key={item.to}>{subList}</div>;
           })}
+          <SessionGroups activeItemId={activeItemId} />
         </NavScroll>
       </div>
       <SidebarFooter />
