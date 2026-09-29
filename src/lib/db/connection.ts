@@ -73,6 +73,13 @@ CREATE TABLE IF NOT EXISTS session_messages (
 CREATE INDEX IF NOT EXISTS session_messages_latest_idx
   ON session_messages(session_id, role, message_index);
 
+CREATE TABLE IF NOT EXISTS session_mcp_tools (
+  session_id TEXT NOT NULL,
+  tool_name TEXT NOT NULL,
+  PRIMARY KEY (session_id, tool_name)
+);
+CREATE INDEX IF NOT EXISTS session_mcp_tools_tool_name_idx ON session_mcp_tools(tool_name);
+
 CREATE TABLE IF NOT EXISTS plan_sessions (
   plan_filename TEXT NOT NULL,
   session_id TEXT NOT NULL,
@@ -346,6 +353,7 @@ const DERIVED_TABLE_NAMES = [
   "memories",
   "plans",
   "session_messages",
+  "session_mcp_tools",
   "subagents",
   "plan_sessions",
   "sessions",

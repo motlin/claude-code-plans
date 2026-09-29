@@ -1485,3 +1485,13 @@ export function getMemoriesForProject(db: IndexDb, projectId: string): MemoryRow
     .orderBy(desc(schema.memories.mtimeMs), asc(schema.memories.filename))
     .all();
 }
+
+/** Every distinct `mcp__<server>__<tool>` name any indexed transcript called, sorted. */
+export function listMcpToolNames(db: IndexDb): string[] {
+  return db
+    .selectDistinct({ toolName: schema.sessionMcpTools.toolName })
+    .from(schema.sessionMcpTools)
+    .orderBy(asc(schema.sessionMcpTools.toolName))
+    .all()
+    .map((row) => row.toolName);
+}

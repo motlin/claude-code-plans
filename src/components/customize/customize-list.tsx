@@ -4,7 +4,7 @@ import { NoSearchMatches } from "./customize-empty";
 import { ListRow } from "./list-row";
 import { SectionHeader } from "./section-header";
 
-export interface CustomizeListItem {
+interface CustomizeListItem {
   key: string;
   title: string;
   source: string;
@@ -14,7 +14,7 @@ export interface CustomizeListItem {
   onView?: () => void;
 }
 
-export interface CustomizeListGroup {
+interface CustomizeListGroup {
   key: string;
   title: string;
   items: readonly CustomizeListItem[];
@@ -62,25 +62,6 @@ export function CustomizeList({ groups, icon, noun, searching, empty }: Customiz
       ))}
     </div>
   );
-}
-
-/** Group items by a key while keeping first-seen group order. */
-export function groupBy<T>(
-  items: readonly T[],
-  keyOf: (item: T) => { key: string; title: string },
-  toItem: (item: T) => CustomizeListItem,
-): CustomizeListGroup[] {
-  const groups = new Map<string, { key: string; title: string; items: CustomizeListItem[] }>();
-  for (const item of items) {
-    const { key, title } = keyOf(item);
-    let group = groups.get(key);
-    if (group === undefined) {
-      group = { key, title, items: [] };
-      groups.set(key, group);
-    }
-    group.items.push(toItem(item));
-  }
-  return [...groups.values()];
 }
 
 export function ShortDate({ ms }: { ms: number }) {

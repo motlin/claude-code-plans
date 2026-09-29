@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { McpScopeSchema, SkillSourceSchema } from "./api/customize";
+import type { McpScopeSchema, PermissionBehaviorSchema, SkillSourceSchema } from "./api/customize";
 import type { PluginFileSchema, PluginListResponse } from "./api/plugins";
 import type {
   SearchModeSchema,
@@ -244,6 +244,12 @@ const mcpScopeLabels = {
   project: "Project",
   plugin: "Plugin",
 } satisfies Record<z.infer<typeof McpScopeSchema>, string>;
+
+const permissionBehaviorLabels = {
+  allow: "Always allow",
+  ask: "Needs approval",
+  deny: "Blocked",
+} satisfies Record<z.infer<typeof PermissionBehaviorSchema>, string>;
 
 const claudeHookVariants = {
   command: true,
@@ -567,6 +573,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   "PluginListResponse[].versionKind": pluginVersionKindLabels,
   "SkillListResponse[].source": skillSourceLabels,
   "McpServerListResponse[].scope": mcpScopeLabels,
+  "McpServerDetailResponse.tools[].behavior": permissionBehaviorLabels,
   "PaneLayoutStateSchema.expanded": paneKindLabels,
   "PaneLayoutStateSchema.root.children[]": paneLayoutNodeVariants,
   "PaneLayoutStateSchema.root.children[].<tile>.tileId": tileIdLabels,

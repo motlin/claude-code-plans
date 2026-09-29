@@ -8,7 +8,8 @@ import type { ReviewBundle } from "../api/reviews";
 // 28: sessions gain ai_title, and title follows the `claude --resume` order
 // (custom > ai > summary > first prompt), so every stored title is recomputed.
 // 29: plans and memories are indexed in docs_fts, which only a rebuild backfills.
-export const SCHEMA_VERSION = "29";
+// 30: session_mcp_tools records the mcp__ tool names each transcript used.
+export const SCHEMA_VERSION = "30";
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),
@@ -84,6 +85,19 @@ export const herdrTerminalViewStates = sqliteTable(
     updatedAt: integer("updated_at").notNull(),
   },
   (table) => [index("herdr_terminal_view_states_session_idx").on(table.sessionId)],
+);
+
+/** Distinct `mcp__<server>__<tool>` names each primary transcript called. */
+export const sessionMcpTools = sqliteTable(
+  "session_mcp_tools",
+  {
+    sessionId: text("session_id").notNull(),
+    toolName: text("tool_name").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.sessionId, table.toolName] }),
+    index("session_mcp_tools_tool_name_idx").on(table.toolName),
+  ],
 );
 
 export const planSessions = sqliteTable(

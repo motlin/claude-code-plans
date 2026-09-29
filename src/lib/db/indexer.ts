@@ -534,6 +534,7 @@ export async function indexJsonlFile(
   let anchoredSessionCwd: string | undefined;
   let sessionGitBranch: string | null = null;
   const textChunks: string[] = [];
+  const mcpToolNames = new Set<string>();
   const indexedMessages: Array<{
     sessionId: string;
     messageIndex: number;
@@ -625,7 +626,7 @@ export async function indexJsonlFile(
         const obj = JSON.parse(line) as {
           type?: string;
           message?: {
-            content?: string | Array<{ type?: string; text?: string }>;
+            content?: string | Array<{ type?: string; text?: string; name?: string }>;
           };
         };
         if (isCountableMessageRecord(obj)) messageCount++;
@@ -640,6 +641,12 @@ export async function indexJsonlFile(
               if (block.type === "text" && typeof block.text === "string") {
                 textChunks.push(block.text);
                 messageText.push(block.text);
+              } else if (
+                block.type === "tool_use" &&
+                typeof block.name === "string" &&
+                block.name.startsWith("mcp__")
+              ) {
+                mcpToolNames.add(block.name);
               }
             }
           }
@@ -749,6 +756,19 @@ export async function indexJsonlFile(
       transaction
         .insert(schema.sessionMessages)
         .values(indexedMessages.slice(offset, offset + SESSION_MESSAGE_INSERT_BATCH_SIZE))
+        .run();
+    }
+  });
+
+  db.transaction((transaction) => {
+    transaction
+      .delete(schema.sessionMcpTools)
+      .where(eq(schema.sessionMcpTools.sessionId, sessionId))
+      .run();
+    if (mcpToolNames.size > 0) {
+      transaction
+        .insert(schema.sessionMcpTools)
+        .values(Array.from(mcpToolNames, (toolName) => ({ sessionId, toolName })))
         .run();
     }
   });
@@ -1536,6 +1556,10 @@ function pruneDeletedSessions(
     indexDb
       .delete(schema.sessionMessages)
       .where(eq(schema.sessionMessages.sessionId, session.id))
+      .run();
+    indexDb
+      .delete(schema.sessionMcpTools)
+      .where(eq(schema.sessionMcpTools.sessionId, session.id))
       .run();
   }
 

@@ -55,6 +55,34 @@ export type McpServerSummary = z.infer<typeof McpServerSummarySchema>;
 
 export const McpServerListResponse = z.array(McpServerSummarySchema);
 
+export const PermissionBehaviorSchema = z.enum(["allow", "ask", "deny"]);
+
+const McpToolPermissionSchema = z.strictObject({
+  name: z.string(),
+  /** The winning settings.json rule list, or null when no rule names the tool. */
+  behavior: PermissionBehaviorSchema.nullable(),
+  rule: z.string().nullable(),
+  readOnly: z.boolean(),
+});
+export type McpToolPermission = z.infer<typeof McpToolPermissionSchema>;
+
+export const McpServerDetailResponse = z.strictObject({
+  server: McpServerSummarySchema,
+  /** The `<server>` segment of `mcp__<server>__<tool>`. */
+  serverKey: z.string(),
+  tools: z.array(McpToolPermissionSchema),
+});
+export type McpServerDetail = z.infer<typeof McpServerDetailResponse>;
+
+const ClaudeAiConnectorSchema = z.strictObject({
+  key: z.string(),
+  name: z.string(),
+  tools: z.array(z.string()),
+});
+export type ClaudeAiConnectorSummary = z.infer<typeof ClaudeAiConnectorSchema>;
+
+export const ClaudeAiConnectorListResponse = z.array(ClaudeAiConnectorSchema);
+
 const CUSTOMIZE_STALE_TIME_MS = 30_000;
 
 export const customizeSkillsQueryOptions = queryOptions({
@@ -86,5 +114,22 @@ export const customizeSkillFileQueryOptions = (skillId: string, path: string) =>
 export const customizeMcpServersQueryOptions = queryOptions({
   queryKey: ["customize", "mcp-servers"] as const,
   queryFn: () => apiFetch("/api/customize/mcp-servers", McpServerListResponse),
+  staleTime: CUSTOMIZE_STALE_TIME_MS,
+});
+
+export const customizeMcpServerDetailQueryOptions = (serverSlug: string) =>
+  queryOptions({
+    queryKey: ["customize", "mcp-servers", serverSlug] as const,
+    queryFn: () =>
+      apiFetch(
+        `/api/customize/mcp-servers/${encodeURIComponent(serverSlug)}`,
+        McpServerDetailResponse,
+      ),
+    staleTime: CUSTOMIZE_STALE_TIME_MS,
+  });
+
+export const customizeClaudeAiConnectorsQueryOptions = queryOptions({
+  queryKey: ["customize", "claude-ai-connectors"] as const,
+  queryFn: () => apiFetch("/api/customize/claude-ai-connectors", ClaudeAiConnectorListResponse),
   staleTime: CUSTOMIZE_STALE_TIME_MS,
 });

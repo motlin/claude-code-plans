@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
 import { HookEventEnvelope, ToolUseUnion } from "../src/lib/hook-events";
-import { McpServerListResponse, SkillListResponse } from "../src/lib/api/customize";
+import {
+  McpServerDetailResponse,
+  McpServerListResponse,
+  SkillListResponse,
+} from "../src/lib/api/customize";
 import { PluginFileSchema, PluginListResponse } from "../src/lib/api/plugins";
 import {
   SearchModeSchema,
@@ -77,6 +81,7 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["PluginListResponse", PluginListResponse],
   ["SkillListResponse", SkillListResponse],
   ["McpServerListResponse", McpServerListResponse],
+  ["McpServerDetailResponse", McpServerDetailResponse],
   ["PaneLayoutStateSchema", PaneLayoutStateSchema],
   ["SettingsTabSchema", SettingsTabSchema],
   ["NavSectionSchema", NavSectionSchema],

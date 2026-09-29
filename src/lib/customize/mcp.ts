@@ -1,7 +1,12 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { z } from "zod";
-import type { McpScope, McpServerSummary } from "../api/customize";
+import type {
+  ClaudeAiConnectorSummary,
+  McpScope,
+  McpServerDetail,
+  McpServerSummary,
+} from "../api/customize";
 import {
   ClaudeJsonMcpSchema,
   ClaudeJsonProjectMcpSchema,
@@ -9,6 +14,14 @@ import {
   McpConfigSchema,
   McpServersSchema,
 } from "../schemas";
+import {
+  claudeAiConnectors,
+  isReadOnlyToolName,
+  mcpServerKey,
+  mcpToolsForServer,
+  type PermissionRules,
+  resolveToolPermission,
+} from "./mcp-tool-permissions";
 import { readInstalledPlugins, readJson } from "./skills";
 
 type McpServers = z.infer<typeof McpServersSchema>;
@@ -96,6 +109,13 @@ async function readPluginServers(installPath: string): Promise<McpServers> {
   return bare.success ? bare.data : {};
 }
 
+type ClaudeSettings = z.infer<typeof ClaudeSettingsSchema>;
+
+async function readSettings(claudeDir: string): Promise<ClaudeSettings> {
+  const parsed = ClaudeSettingsSchema.safeParse(await readJson(join(claudeDir, "settings.json")));
+  return parsed.success ? parsed.data : {};
+}
+
 export interface ListMcpServersOptions {
   /** Defaults to ~/.claude. */
   claudeDir?: string;
@@ -119,10 +139,7 @@ export async function listMcpServers({
   claudeJsonPath = join(homedir(), ".claude.json"),
 }: ListMcpServersOptions = {}): Promise<McpServerSummary[]> {
   const claudeJson = await readClaudeJson(claudeJsonPath);
-  const settingsParsed = ClaudeSettingsSchema.safeParse(
-    await readJson(join(claudeDir, "settings.json")),
-  );
-  const settings = settingsParsed.success ? settingsParsed.data : {};
+  const settings = await readSettings(claudeDir);
 
   const result: McpServerSummary[] = [];
 
@@ -163,4 +180,46 @@ export async function listMcpServers({
   }
 
   return result;
+}
+
+export interface McpToolOptions extends ListMcpServersOptions {
+  /** Every `mcp__…` tool name seen in indexed transcripts. */
+  toolNames: readonly string[];
+}
+
+function permissionRuleNames(rules: PermissionRules): string[] {
+  return [...(rules.allow ?? []), ...(rules.ask ?? []), ...(rules.deny ?? [])];
+}
+
+/**
+ * One server plus the permission state of each of its tools. Tools are the
+ * names seen in transcripts together with any named by a settings.json rule;
+ * state comes from ~/.claude/settings.json permissions (deny > ask > allow).
+ */
+export async function readMcpServerDetail(
+  id: string,
+  { toolNames, ...options }: McpToolOptions,
+): Promise<McpServerDetail | null> {
+  const server = (await listMcpServers(options)).find((candidate) => candidate.id === id);
+  if (server === undefined) return null;
+  const claudeDir = options.claudeDir ?? join(homedir(), ".claude");
+  const rules: PermissionRules = (await readSettings(claudeDir)).permissions ?? {};
+  const serverKey = mcpServerKey(server);
+  const tools = mcpToolsForServer([...toolNames, ...permissionRuleNames(rules)], serverKey).map(
+    (name) => ({
+      name,
+      ...resolveToolPermission(rules, serverKey, name),
+      readOnly: isReadOnlyToolName(name),
+    }),
+  );
+  return { server, serverKey, tools };
+}
+
+/** claude.ai connectors seen in transcripts or permission rules; managed in the cloud. */
+export async function listClaudeAiConnectors({
+  toolNames,
+  claudeDir = join(homedir(), ".claude"),
+}: McpToolOptions): Promise<ClaudeAiConnectorSummary[]> {
+  const rules: PermissionRules = (await readSettings(claudeDir)).permissions ?? {};
+  return claudeAiConnectors([...toolNames, ...permissionRuleNames(rules)]);
 }
