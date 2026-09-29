@@ -1,4 +1,4 @@
-import { execFileSync, execSync, spawnSync } from "node:child_process";
+import { execFileSync, execSync, spawn, spawnSync } from "node:child_process";
 import { mkdtempSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -19,6 +19,9 @@ const fixture = join(projectRoot, "tests", "fixtures", "fake-server.mjs");
 const runDir = mkdtempSync(join(tmpdir(), "server-lifecycle-"));
 const instance = basename(runDir);
 const MATCH = `fixtures/fake-server\\.mjs ${instance}`;
+// The real server renames itself via process.title; this per-run title stands
+// in for it so the script's default SERVER_MATCH can be tested concurrently.
+const TITLE = `claude-code-browser-server-${instance}`;
 
 let PORT = "";
 let env: NodeJS.ProcessEnv = {};
@@ -69,6 +72,29 @@ function serverPids(): string[] {
   } catch {
     return [];
   }
+}
+
+function titledPids(): string[] {
+  try {
+    // macOS pgrep -f sees environment data after a rewritten title, so the
+    // title is anchored with ( |$) rather than $.
+    return execFileSync("pgrep", ["-f", `^${TITLE}( |$)`], { encoding: "utf8" })
+      .trim()
+      .split("\n")
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+async function waitFor(condition: () => boolean): Promise<void> {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    if (condition()) {
+      return;
+    }
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+  }
+  throw new Error("Timed out waiting for condition");
 }
 
 function darwinListeners(): Array<{ address: string; processId: string }> {
@@ -163,6 +189,31 @@ describe("scripts/server.sh", () => {
     });
     expect(serverPids()).toStrictEqual(productionPids);
     expect(portOwners()).toStrictEqual(productionPids);
+  }, 30_000);
+
+  it("stop finds a server renamed by process.title via the default SERVER_MATCH", async () => {
+    // Listen on a different port so only the command-line match, not the
+    // port fallback, can find this process.
+    const otherPort = await freePort();
+    const child = spawn("node", [fixture, instance], {
+      cwd: projectRoot,
+      detached: true,
+      stdio: "ignore",
+      env: { ...process.env, PORT: otherPort, FAKE_SERVER_TITLE: TITLE },
+    });
+    child.unref();
+    try {
+      await waitFor(() => titledPids().length === 1);
+      const { SERVER_MATCH: _unused, ...defaultMatchEnv } = env;
+      execFileSync("bash", [script, "stop"], {
+        cwd: projectRoot,
+        encoding: "utf8",
+        env: { ...defaultMatchEnv, SERVER_TITLE: TITLE },
+      });
+      expect(titledPids()).toStrictEqual([]);
+    } finally {
+      child.kill("SIGKILL");
+    }
   }, 30_000);
 
   it("stop terminates the server and is a no-op when nothing is running", () => {

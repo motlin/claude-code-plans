@@ -10,6 +10,7 @@
 # Environment overrides (used by tests/server-lifecycle.test.ts):
 #   PORT          port to serve on (default 7526)
 #   SERVER_CMD    command that launches the server (default: node .output/server/index.mjs)
+#   SERVER_TITLE  process.title the server sets (src/lib/server-process-title.ts)
 #   SERVER_MATCH  pgrep -f pattern identifying server processes
 #   PROJECT_DIR   only matched processes with this cwd are managed
 #   LOG_FILE      server stdout/stderr log
@@ -19,7 +20,11 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 PROJECT_DIR=${PROJECT_DIR:-$(dirname "$SCRIPT_DIR")}
 PORT=${PORT:-7526}
 SERVER_CMD=${SERVER_CMD:-"node .output/server/index.mjs"}
-SERVER_MATCH=${SERVER_MATCH:-'\.output/server/index\.mjs'}
+SERVER_TITLE=${SERVER_TITLE:-claude-code-browser-server}
+# The server renames itself to SERVER_TITLE once its Nitro plugins run; the
+# command-line alternative catches it before then. macOS pgrep -f sees
+# environment data after a rewritten title, hence ( |$) instead of $.
+SERVER_MATCH=${SERVER_MATCH:-"^${SERVER_TITLE}( |\$)|\\.output/server/index\\.mjs"}
 LOG_FILE=${LOG_FILE:-"${XDG_CACHE_HOME:-$HOME/.cache}/claude-code-plans/server.log"}
 
 # PIDs listening on the port, including wildcard and IPv6 bindings.
