@@ -26,6 +26,7 @@ import {
 } from "../src/lib/artifact-schemas";
 import { ChangedFileKindSchema } from "../src/lib/changed-file-kind";
 import { CodeThemeDarkSchema, CodeThemeLightSchema } from "../src/lib/code-themes";
+import { GroupColorSchema, GroupIconSchema } from "../src/lib/group-appearance";
 import { HomeAttentionKindSchema } from "../src/lib/home-attention";
 import { NavSectionSchema } from "../src/lib/nav-sections";
 import { PaletteFilterSchema, PaletteTypeSchema } from "../src/lib/palette-tokens";
@@ -87,6 +88,8 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["SessionStateKindSchema", SessionStateKindSchema],
   ["HomeAttentionKindSchema", HomeAttentionKindSchema],
   ["SessionListPrefsSchema", SessionListPrefsSchema],
+  ["GroupIconSchema", GroupIconSchema],
+  ["GroupColorSchema", GroupColorSchema],
   ["ContentBlockSchema", ContentBlockSchema],
   ["AttachmentPayloadSchema", AttachmentPayloadSchema],
   ["UserRecordSchema", UserRecordSchema],

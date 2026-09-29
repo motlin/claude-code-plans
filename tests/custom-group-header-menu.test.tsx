@@ -147,6 +147,7 @@ describe("custom group header menu items", () => {
 
     expect(menuOutline(await openHeaderMenu("GTD"))).toEqual([
       "Rename group",
+      "Icon and color",
       "New group…",
       "---",
       "Move up",
@@ -163,6 +164,7 @@ describe("custom group header menu items", () => {
 
     expect(menuOutline(await openHeaderMenu("Blog"))).toEqual([
       "Rename group",
+      "Icon and color",
       "New group…",
       "---",
       "Move down",
@@ -178,6 +180,7 @@ describe("custom group header menu items", () => {
 
     expect(menuOutline(await openHeaderMenu("Alpha"))).toEqual([
       "Rename group",
+      "Icon and color",
       "New group…",
       "---",
       "Move up",
@@ -196,6 +199,7 @@ describe("custom group header menu items", () => {
 
     expect(menuOutline(await openHeaderMenu("Blog"))).toEqual([
       "Rename group",
+      "Icon and color",
       "New group…",
       "---",
       "Delete group",
@@ -214,6 +218,7 @@ describe("custom group header menu items", () => {
 
     expect(menuOutline(await waitFor(() => screen.getByRole("menu")))).toEqual([
       "Rename group",
+      "Icon and color",
       "New group…",
       "---",
       "Move up",
@@ -234,6 +239,7 @@ describe("custom group header menu items", () => {
 
     expect(menuOutline(await openHeaderMenu("GTD"))).toEqual([
       "Rename group",
+      "Icon and color",
       "New group…",
       "---",
       "Move up",

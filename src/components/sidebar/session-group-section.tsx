@@ -4,8 +4,12 @@ import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode 
 
 import type { SidebarDragRowProps } from "../../hooks/use-sidebar-drag";
 import type { SessionListItem } from "../../lib/api/sessions";
+import type { GroupAppearance } from "../../lib/group-appearance";
+import { useProjectAppearance } from "../../lib/project-appearance-store";
+import { useSessionGroups } from "../../lib/session-group-store";
 import {
   customGroupIdOfKey,
+  isProjectGroupKey,
   type SessionGroup,
   type SessionGroupRow,
 } from "../../lib/session-groups";
@@ -21,6 +25,8 @@ import { SessionActionsMenu, SessionRowTitle } from "../session-actions-menu";
 import { SessionRowStatusDot } from "../session-unread-control";
 import { Tooltip } from "../ui/tooltip";
 import { CustomGroupHeader } from "./custom-group-header";
+import { GroupAppearanceMark } from "./group-appearance";
+import { ProjectGroupHeader } from "./project-group-header";
 
 export interface SidebarSessionRow extends SessionGroupRow {
   id: string;
@@ -90,6 +96,8 @@ export function GroupSection({
   dropHot?: boolean;
 }) {
   const customGroupId = customGroupIdOfKey(group.key);
+  const isProject = isProjectGroupKey(group.key);
+  const appearance = useSectionAppearance(group.key, customGroupId, isProject);
   const toggle = (
     <button
       type="button"
@@ -98,6 +106,7 @@ export function GroupSection({
       onClick={() => toggleSidebarGroup(group.key)}
       className="group/label -my-1 -ml-1 flex min-w-0 flex-1 items-center gap-1 rounded-[var(--sb-radius)] py-1 pl-1 text-left hover:text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
     >
+      <GroupAppearanceMark appearance={appearance} />
       <span data-group-name className="min-w-0 truncate">
         {group.label}
       </span>
@@ -126,7 +135,13 @@ export function GroupSection({
         className="group/labelrow df-label-inset rounded-[var(--sb-radius)] data-[drop-hot]:bg-[var(--sb-hover)] flex min-h-[calc(var(--sb-group-pt)+var(--sb-row-h)-4px)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[calc((var(--sb-row-h)-24px)/2)] pb-1 text-[length:var(--sb-group-font)] leading-4 text-ink-muted"
       >
         {customGroupId === null ? (
-          toggle
+          isProject ? (
+            <ProjectGroupHeader groupKey={group.key} label={group.label}>
+              {toggle}
+            </ProjectGroupHeader>
+          ) : (
+            toggle
+          )
         ) : (
           <CustomGroupHeader
             groupId={customGroupId}
@@ -180,6 +195,18 @@ export function GroupSection({
       )}
     </div>
   );
+}
+
+/** The header icon and color of a custom group or project section. */
+function useSectionAppearance(
+  key: string,
+  customGroupId: string | null,
+  isProject: boolean,
+): GroupAppearance | undefined {
+  const { groups } = useSessionGroups();
+  const projects = useProjectAppearance();
+  if (customGroupId !== null) return groups.find((entry) => entry.id === customGroupId);
+  return isProject ? projects[key] : undefined;
 }
 
 /**

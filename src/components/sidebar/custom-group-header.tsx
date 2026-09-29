@@ -7,13 +7,16 @@ import {
   deleteGroup,
   moveGroup,
   renameGroup,
+  setGroupAppearance,
   sortGroupsByName,
   useSessionGroups,
 } from "../../lib/session-group-store";
 import { readSidebarState, toggleSidebarGroup } from "../../lib/sidebar-store";
+import type { GroupAppearance, GroupAppearancePatch } from "../../lib/group-appearance";
 import { ConfirmDialog } from "../confirm-dialog";
 import { InlineRenameInput } from "../inline-rename-input";
 import { NewGroupDialog } from "../new-group-dialog";
+import { GroupAppearanceSubmenu } from "./group-appearance";
 import {
   ContextMenu,
   ContextMenuTrigger,
@@ -24,7 +27,7 @@ import {
   MenuTrigger,
 } from "../ui/menu";
 
-const KEBAB_CLASS =
+export const KEBAB_CLASS =
   "flex size-6 shrink-0 items-center justify-center rounded-r6 text-ink-muted opacity-0 transition-opacity hover:bg-fill-ghost-hover hover:text-primary focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 group-hover/labelrow:opacity-100 data-[popup-open]:opacity-100 data-[popup-open]:bg-fill-ghost-hover pointer-coarse:opacity-100";
 
 type Dialog = "new-group" | "delete" | "archive-all";
@@ -41,7 +44,7 @@ function deleteGroupBody(name: string, count: number): string {
 /**
  * The label of a Custom groups section with claude.ai/code's header menu,
  * opened by right-clicking the label or by its hover kebab: Rename group
- * (inline), New group…, Move up / Move down / Sort A to Z, Archive all (N)
+ * (inline), Icon and color ▸, New group…, Move up / Move down / Sort A to Z, Archive all (N)
  * and Delete group behind a confirm.
  */
 export function CustomGroupHeader({
@@ -71,6 +74,7 @@ export function CustomGroupHeader({
   const keepFocus = useRef(false);
 
   const index = groups.findIndex((group) => group.id === groupId);
+  const appearance = groups[index];
   const assignedCount = Object.values(assignments).filter((id) => id === groupId).length;
 
   const later = (action: () => void) => () => {
@@ -100,6 +104,8 @@ export function CustomGroupHeader({
       index={index}
       count={groups.length}
       archiveCount={archivableIds.length}
+      appearance={appearance}
+      onAppearance={(patch) => setGroupAppearance(groupId, patch)}
       onRename={later(() => setRenaming(true))}
       onNewGroup={later(() => setDialog("new-group"))}
       onMove={(delta) => moveGroup(groupId, index + delta)}
@@ -176,6 +182,8 @@ function CustomGroupMenuItems({
   index,
   count,
   archiveCount,
+  appearance,
+  onAppearance,
   onRename,
   onNewGroup,
   onMove,
@@ -187,6 +195,8 @@ function CustomGroupMenuItems({
   index: number;
   count: number;
   archiveCount: number;
+  appearance: GroupAppearance | undefined;
+  onAppearance: (patch: GroupAppearancePatch) => void;
   onRename: () => void;
   onNewGroup: () => void;
   onMove: (delta: -1 | 1) => void;
@@ -198,6 +208,7 @@ function CustomGroupMenuItems({
   return (
     <>
       <MenuItem onSelect={onRename}>Rename group</MenuItem>
+      <GroupAppearanceSubmenu appearance={appearance} onChange={onAppearance} />
       <MenuItem onSelect={onNewGroup}>New group…</MenuItem>
       {canReorder && (
         <>

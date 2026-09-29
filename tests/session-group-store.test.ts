@@ -11,6 +11,7 @@ import {
   moveGroup,
   readSessionGroupState,
   renameGroup,
+  setGroupAppearance,
   setGroupOrder,
   useSessionGroups,
 } from "../src/lib/session-group-store";
@@ -84,6 +85,42 @@ describe("session group store", () => {
       final: {
         groups: [{ id: "cg-00000000-0000-4000-8000-000000000002", name: "Getting things done" }],
         assignments: { "session-carol": "cg-00000000-0000-4000-8000-000000000002" },
+        order: {},
+      },
+    });
+  });
+
+  it("sets, merges and clears a group's icon and color, round-tripping through storage", () => {
+    const a = createGroup("A");
+    const b = createGroup("B");
+    setGroupAppearance(a.id, { icon: "rocket", color: "blue" });
+    const both = stored();
+    setGroupAppearance(a.id, { color: "red" });
+    const recolored = readSessionGroupState().groups[0];
+    setGroupAppearance(a.id, { icon: null });
+    const iconCleared = readSessionGroupState().groups[0];
+    setGroupAppearance(a.id, { color: null });
+    setGroupAppearance("cg-missing", { icon: "star" });
+    setGroupAppearance(b.id, { icon: "star" });
+    renameGroup(b.id, "Bee");
+
+    expect({ both, recolored, iconCleared, final: readSessionGroupState() }).toStrictEqual({
+      both: {
+        groups: [
+          { id: a.id, name: "A", icon: "rocket", color: "blue" },
+          { id: b.id, name: "B" },
+        ],
+        assignments: {},
+        order: {},
+      },
+      recolored: { id: a.id, name: "A", icon: "rocket", color: "red" },
+      iconCleared: { id: a.id, name: "A", color: "red" },
+      final: {
+        groups: [
+          { id: a.id, name: "A" },
+          { id: b.id, name: "Bee", icon: "star" },
+        ],
+        assignments: {},
         order: {},
       },
     });
@@ -201,6 +238,14 @@ describe("session group store", () => {
       "unknown group keys",
       JSON.stringify({
         groups: [{ id: "cg-1", name: "A", icon: "x" }],
+        assignments: {},
+        order: {},
+      }),
+    ],
+    [
+      "an unknown group color",
+      JSON.stringify({
+        groups: [{ id: "cg-1", name: "A", color: "chartreuse" }],
         assignments: {},
         order: {},
       }),

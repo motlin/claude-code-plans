@@ -1,16 +1,26 @@
 import { useSyncExternalStore } from "react";
 import { z } from "zod";
 
+import {
+  applyAppearancePatch,
+  GroupColorSchema,
+  GroupIconSchema,
+  type GroupAppearancePatch,
+} from "./group-appearance";
+
 /**
  * Per-browser custom session groups, like claude.ai/code's `customGroupsByScope`:
  * ordered `groups`, at most one group per session in `assignments`, and an
  * optional manual in-group `order` (sessions not listed follow the Sort by).
+ * Each group may carry an `icon` and `color` shown on its section header.
  */
 export const SESSION_GROUP_STORAGE_KEY = "ccp-session-groups";
 
 const CustomSessionGroupSchema = z.strictObject({
   id: z.string().min(1),
   name: z.string().min(1),
+  icon: GroupIconSchema.optional(),
+  color: GroupColorSchema.optional(),
 });
 
 const SessionGroupStateSchema = z
@@ -117,6 +127,18 @@ export function renameGroup(id: string, name: string): void {
   write({
     ...state,
     groups: state.groups.map((group) => (group.id === id ? { ...group, name: trimmed } : group)),
+  });
+}
+
+/** Set or clear a group's header icon and color; unknown ids are ignored. */
+export function setGroupAppearance(id: string, patch: GroupAppearancePatch): void {
+  const state = readSessionGroupState();
+  if (!state.groups.some((group) => group.id === id)) return;
+  write({
+    ...state,
+    groups: state.groups.map((group) =>
+      group.id === id ? applyAppearancePatch(group, patch) : group,
+    ),
   });
 }
 

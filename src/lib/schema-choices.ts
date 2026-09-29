@@ -18,6 +18,7 @@ import type {
 } from "./api/search";
 import type { SessionSummaryStateSchema } from "./api/sessions";
 import type { SourceFileResponse } from "./api/source";
+import type { GroupColorSchema, GroupIconSchema } from "./group-appearance";
 import type { HookEvent, ToolUseUnion } from "./hook-events";
 import type { HomeAttentionKindSchema } from "./home-attention";
 import type { NavSection } from "./nav-sections";
@@ -154,6 +155,35 @@ export const sessionGroupByLabels = {
   custom: "Custom groups",
   none: "None",
 } satisfies Record<z.infer<typeof SessionGroupBySchema>, string>;
+
+/** Section header icon choices (src/lib/group-appearance.ts). */
+export const groupIconLabels = {
+  folder: "Folder",
+  star: "Star",
+  heart: "Heart",
+  flag: "Flag",
+  bookmark: "Bookmark",
+  zap: "Bolt",
+  code: "Code",
+  bug: "Bug",
+  rocket: "Rocket",
+  book: "Book",
+  briefcase: "Briefcase",
+  home: "Home",
+} satisfies Record<z.infer<typeof GroupIconSchema>, string>;
+
+/** Section header color choices (src/lib/group-appearance.ts). */
+export const groupColorLabels = {
+  gray: "Gray",
+  red: "Red",
+  orange: "Orange",
+  yellow: "Yellow",
+  green: "Green",
+  teal: "Teal",
+  blue: "Blue",
+  purple: "Purple",
+  pink: "Pink",
+} satisfies Record<z.infer<typeof GroupColorSchema>, string>;
 
 export const sessionSortByLabels = {
   name: "Name",
@@ -822,6 +852,8 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   ChangedFileKindSchema: changedFileKindLabels,
   "RecentsHistorySchema[].kind": recentKindLabels,
   TranscriptModeSchema: transcriptModeLabels,
+  GroupIconSchema: groupIconLabels,
+  GroupColorSchema: groupColorLabels,
   PinDropOutcomeSchema: pinDropOutcomeLabels,
   ArtifactActionSchema: artifactActionLabels,
   ArtifactIntentSchema: artifactIntentLabels,

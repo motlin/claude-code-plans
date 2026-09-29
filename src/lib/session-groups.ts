@@ -78,6 +78,11 @@ export function customGroupIdOfKey(key: string): string | null {
   return key.slice(CUSTOM_GROUP_KEY_PREFIX.length);
 }
 
+/** Whether a section key is a Project mode section (including "Other"). */
+export function isProjectGroupKey(key: string): boolean {
+  return key.startsWith("project-");
+}
+
 /** Completed, Older and Recents show this many rows before "Show N more". */
 const GROUP_ROW_CAP = 20;
 
