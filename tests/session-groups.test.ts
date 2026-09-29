@@ -10,6 +10,7 @@ import {
   type SessionGroupRow,
   type SessionListPrefs,
 } from "../src/lib/session-groups";
+import { splitPinned } from "../src/lib/pinned-sessions";
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
@@ -258,6 +259,111 @@ describe("buildGroups project mode", () => {
   });
 });
 
+describe("buildGroups custom mode", () => {
+  const custom = {
+    groups: [
+      { id: "cg-blog", name: "Blog" },
+      { id: "cg-gtd", name: "GTD" },
+      { id: "cg-empty", name: "Someday" },
+    ],
+    assignments: {
+      "gtd-old": "cg-gtd",
+      "gtd-new": "cg-gtd",
+      "gtd-manual": "cg-gtd",
+      "blog-1": "cg-blog",
+      "gtd-archived": "cg-gtd",
+    },
+    order: { "cg-gtd": ["gtd-manual", "gtd-gone"] },
+  };
+  const rows = [
+    row("gtd-old", { lastActivityAt: NOW - 3 * HOUR }),
+    row("loose-1", { lastActivityAt: NOW - 2 * HOUR }),
+    row("gtd-new", { lastActivityAt: NOW - HOUR }),
+    row("gtd-manual", { lastActivityAt: NOW - 5 * HOUR }),
+    row("blog-1"),
+    row("gtd-archived", { archived: true }),
+  ];
+
+  it("lists the groups in order, then Ungrouped, ordering rows manually first then by Sort by", () => {
+    expect(
+      summarize(buildGroups(rows, prefs({ groupBy: "custom" }), NOW, new Set(), custom)),
+    ).toStrictEqual([
+      { key: "custom-cg-blog", label: "Blog", rows: ["blog-1"], hiddenCount: 0 },
+      {
+        key: "custom-cg-gtd",
+        label: "GTD",
+        rows: ["gtd-manual", "gtd-new", "gtd-old"],
+        hiddenCount: 0,
+      },
+      { key: "custom-ungrouped", label: "Ungrouped", rows: ["loose-1"], hiddenCount: 0 },
+    ]);
+  });
+
+  it("shows empty groups when Show empty groups is on", () => {
+    expect(
+      summarize(
+        buildGroups(
+          rows,
+          prefs({ groupBy: "custom", sortBy: "name", showEmptyGroups: true }),
+          NOW,
+          new Set(),
+          custom,
+        ),
+      ),
+    ).toStrictEqual([
+      { key: "custom-cg-blog", label: "Blog", rows: ["blog-1"], hiddenCount: 0 },
+      {
+        key: "custom-cg-gtd",
+        label: "GTD",
+        rows: ["gtd-manual", "gtd-new", "gtd-old"],
+        hiddenCount: 0,
+      },
+      { key: "custom-cg-empty", label: "Someday", rows: [], hiddenCount: 0 },
+      { key: "custom-ungrouped", label: "Ungrouped", rows: ["loose-1"], hiddenCount: 0 },
+    ]);
+  });
+
+  it("omits Ungrouped when every row is grouped and treats unknown groups as Ungrouped", () => {
+    expect(
+      summarize(
+        buildGroups([row("blog-1"), row("stray")], prefs({ groupBy: "custom" }), NOW, new Set(), {
+          ...custom,
+          assignments: { "blog-1": "cg-blog", stray: "cg-deleted" },
+        }),
+      ),
+    ).toStrictEqual([
+      { key: "custom-cg-blog", label: "Blog", rows: ["blog-1"], hiddenCount: 0 },
+      { key: "custom-ungrouped", label: "Ungrouped", rows: ["stray"], hiddenCount: 0 },
+    ]);
+    expect(
+      summarize(buildGroups([row("blog-1")], prefs({ groupBy: "custom" }), NOW, new Set(), custom)),
+    ).toStrictEqual([{ key: "custom-cg-blog", label: "Blog", rows: ["blog-1"], hiddenCount: 0 }]);
+  });
+
+  it("puts every row in Ungrouped when no groups are given", () => {
+    expect(
+      summarize(buildGroups([row("loose-1")], prefs({ groupBy: "custom" }), NOW)),
+    ).toStrictEqual([
+      { key: "custom-ungrouped", label: "Ungrouped", rows: ["loose-1"], hiddenCount: 0 },
+    ]);
+  });
+
+  it("leaves pinned rows out of their group once split into the Pinned section", () => {
+    const withIds = rows.map((groupRow) => ({ ...groupRow, id: groupRow.sessionId }));
+    const { rest } = splitPinned(
+      withIds,
+      { pinnedIds: ["gtd-new", "blog-1"], pinnedOrder: [] },
+      () => 0,
+    );
+    expect(
+      summarize(buildGroups(rest, prefs({ groupBy: "custom" }), NOW, new Set(), custom)),
+    ).toStrictEqual([
+      { key: "custom-cg-gtd", label: "GTD", rows: ["gtd-manual", "gtd-old"], hiddenCount: 0 },
+      { key: "custom-ungrouped", label: "Ungrouped", rows: ["loose-1"], hiddenCount: 0 },
+    ]);
+  });
+});
+
 describe("buildGroups none mode", () => {
   it("puts every row in Recents capped at 20", () => {
     const rows = Array.from({ length: 21 }, (_, index) =>
@@ -300,7 +406,7 @@ describe("SessionListPrefsSchema", () => {
       SessionListPrefsSchema.safeParse({ ...DEFAULT_SESSION_LIST_PREFS, extra: 1 }).success,
     ).toBe(false);
     expect(
-      SessionListPrefsSchema.safeParse({ ...DEFAULT_SESSION_LIST_PREFS, groupBy: "custom" })
+      SessionListPrefsSchema.safeParse({ ...DEFAULT_SESSION_LIST_PREFS, groupBy: "folder" })
         .success,
     ).toBe(false);
   });

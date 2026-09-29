@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Ellipsis } from "lucide-react";
-import { createContext, type ReactNode, useContext, useRef } from "react";
+import { createContext, type ReactNode, useContext, useRef, useState } from "react";
 
 import { herdrPanesQueryOptions } from "../lib/api/herdr";
 import {
@@ -17,6 +17,7 @@ import {
   getSessionMenuItems,
   type SessionMenuCapability,
   type SessionMenuEntry,
+  type SessionMenuItem,
   type SessionMenuItemId,
   type SessionMenuSession,
   sessionMenuReadState,
@@ -30,9 +31,12 @@ import {
 } from "../lib/session-open-in";
 import { forkDisabledReason } from "../lib/session-fork";
 import { pin, readPinState, unpin, usePins, writePinState } from "../lib/pin-store";
+import { assign, createGroup, useSessionGroups } from "../lib/session-group-store";
 import { placePin } from "../lib/pinned-sessions";
 import { markSeen, markUnseen } from "../lib/unread-store";
 import { InlineRenameInput } from "./inline-rename-input";
+import { NewGroupDialog } from "./new-group-dialog";
+import { useSettings } from "./settings-provider";
 import { useHasUnseenWork } from "./session-unread-control";
 import { useToast } from "./toast";
 import {
@@ -42,6 +46,8 @@ import {
   MenuContent,
   MenuHotkey,
   MenuItem,
+  MenuRadioGroup,
+  MenuRadioItem,
   MenuSeparator,
   MenuSub,
   MenuSubContent,
@@ -64,6 +70,7 @@ export const SESSION_MENU_CAPABILITIES: ReadonlySet<SessionMenuCapability> =
     "rename",
     "copyLink",
     "fork",
+    "customGroups",
     "archive",
   ]);
 
@@ -71,6 +78,8 @@ interface RowRename {
   rename: SessionRename;
   /** Opens the inline input once the menu has finished closing. */
   requestRename: () => void;
+  /** Opens the New group dialog once the menu has finished closing. */
+  requestNewGroup: () => void;
 }
 
 const RowRenameContext = createContext<RowRename | null>(null);
@@ -106,7 +115,12 @@ export interface SessionMenuRunnerOptions {
   setPinned?: (pinned: boolean) => void;
   /** Move up / Move down within the sidebar Pinned section. */
   movePinned?: (delta: -1 | 1) => void;
+  /** Opens the New group dialog for Move to group ▸ New group…. */
+  requestNewGroup?: () => void;
 }
+
+/** Runs a menu item; Move to group radios also pass the group they target. */
+export type SessionMenuRun = (id: SessionMenuItemId, groupId?: string) => void;
 
 /** Runs one session menu item; shared by the row menu and the titlebar chevron menu. */
 export function useSessionMenuRunner({
@@ -117,7 +131,8 @@ export function useSessionMenuRunner({
   requestRename,
   setPinned,
   movePinned,
-}: SessionMenuRunnerOptions): (id: SessionMenuItemId) => void {
+  requestNewGroup,
+}: SessionMenuRunnerOptions): SessionMenuRun {
   const toast = useToast();
   const setArchived = useSessionArchive(sessionId);
   const navigate = useNavigate();
@@ -129,7 +144,7 @@ export function useSessionMenuRunner({
     });
   };
 
-  return (id: SessionMenuItemId): void => {
+  return (id, groupId): void => {
     switch (id) {
       case "open-live-terminal":
         void navigate({
@@ -183,7 +198,17 @@ export function useSessionMenuRunner({
       case "fork":
         if (cwd !== null) fork({ sessionId, cwd });
         return;
+      case "move-to-custom-group":
+        if (groupId !== undefined) assign(sessionId, groupId);
+        return;
+      case "ungroup":
+        assign(sessionId, null);
+        return;
+      case "new-group":
+        requestNewGroup?.();
+        return;
       case "open-in":
+      case "move-to-group":
         return;
       default:
         assertNever(id);
@@ -205,7 +230,8 @@ function useSessionMenu(session: SessionListItem, pinnedRow: PinnedRowContext | 
   const cwd = openIn?.cwd ?? null;
   const bridgeSessionId = openIn?.bridgeSessionId ?? null;
   const pins = usePins();
-  const { requestRename } = useRowRename();
+  const customGroups = useSessionGroups();
+  const { requestRename, requestNewGroup } = useRowRename();
   const pinIndex = pinnedRow?.pinnedIds.indexOf(session.id) ?? -1;
 
   const menuSession: SessionMenuSession = {
@@ -218,6 +244,7 @@ function useSessionMenu(session: SessionListItem, pinnedRow: PinnedRowContext | 
     forkDisabledReason: forkDisabledReason({ working: session.bucket === "working", cwd }),
     cwd,
     bridgeSessionId,
+    customGroup: { groups: customGroups.groups, current: customGroups.groupOf(session.id) },
   };
   if (pinnedRow !== undefined && pinIndex !== -1) {
     menuSession.pinPosition = { index: pinIndex, count: pinnedRow.pinnedIds.length };
@@ -229,6 +256,7 @@ function useSessionMenu(session: SessionListItem, pinnedRow: PinnedRowContext | 
     bridgeSessionId,
     prUrl: session.pr?.url ?? null,
     requestRename,
+    requestNewGroup,
     setPinned: (pinned) => (pinned ? pin(session.id) : unpin(session.id)),
     movePinned: (delta) => {
       if (pinnedRow === undefined || pinIndex === -1) return;
@@ -243,13 +271,44 @@ function useSessionMenu(session: SessionListItem, pinnedRow: PinnedRowContext | 
   };
 }
 
+/** Upstream's test hooks on the Move to group trigger and its New group… item. */
+const MENU_TEST_IDS: Partial<Record<SessionMenuItemId, string>> = {
+  "move-to-group": "move-to-group-trigger",
+  "new-group": "new-custom-group",
+};
+
+function testIdProps(id: SessionMenuItemId) {
+  const testId = MENU_TEST_IDS[id];
+  return testId === undefined ? {} : { "data-testid": testId };
+}
+
+/** Radio value of a Move to group entry: its group, or the Ungrouped item's id. */
+function radioValue(entry: SessionMenuItem): string {
+  return entry.groupId ?? entry.id;
+}
+
 export function MenuEntries({
   entries,
   run,
 }: {
   entries: SessionMenuEntry[];
-  run: (id: SessionMenuItemId) => void;
+  run: SessionMenuRun;
 }) {
+  const radios = entries.filter(
+    (entry): entry is SessionMenuItem => entry.kind === "item" && entry.checked !== undefined,
+  );
+  if (radios.length > 0) {
+    const current = radios.find((entry) => entry.checked);
+    return (
+      <MenuRadioGroup value={current === undefined ? null : radioValue(current)}>
+        <MenuEntryList entries={entries} run={run} />
+      </MenuRadioGroup>
+    );
+  }
+  return <MenuEntryList entries={entries} run={run} />;
+}
+
+function MenuEntryList({ entries, run }: { entries: SessionMenuEntry[]; run: SessionMenuRun }) {
   return entries.map((entry, index) => {
     if (entry.kind === "separator") return <MenuSeparator key={`separator-${index}`} />;
     if (entry.kind === "hotkey") {
@@ -264,16 +323,30 @@ export function MenuEntries({
     if (entry.submenu !== undefined) {
       return (
         <MenuSub key={entry.id}>
-          <MenuSubTrigger>{entry.label}</MenuSubTrigger>
+          <MenuSubTrigger {...testIdProps(entry.id)}>{entry.label}</MenuSubTrigger>
           <MenuSubContent>
             <MenuEntries entries={entry.submenu} run={run} />
           </MenuSubContent>
         </MenuSub>
       );
     }
+    if (entry.checked !== undefined) {
+      return (
+        <MenuRadioItem
+          key={radioValue(entry)}
+          value={radioValue(entry)}
+          closeOnClick
+          {...(entry.accelerator === undefined ? {} : { accelerator: entry.accelerator })}
+          onClick={() => run(entry.id, entry.groupId)}
+        >
+          {entry.label}
+        </MenuRadioItem>
+      );
+    }
     return (
       <MenuItem
         key={entry.id}
+        {...testIdProps(entry.id)}
         {...(entry.accelerator === undefined ? {} : { accelerator: entry.accelerator })}
         {...(entry.hiddenAccelerator ? { hideAccelerator: true } : {})}
         {...(entry.disabled ? { disabled: true } : {})}
@@ -340,16 +413,28 @@ export function SessionActionsMenu({
   const rename = useSessionRename(session.id, session.title);
   const renameAfterClose = useRenameAfterMenuClose(rename.startEditing);
   const { requestRename } = renameAfterClose;
+  const [newGroupOpen, setNewGroupOpen] = useState(false);
+  const newGroupAfterClose = useRenameAfterMenuClose(() => setNewGroupOpen(true));
+  const { settings, setSetting } = useSettings();
+  const listPrefs = settings.sessionListPrefs;
+  const createGroupWithRow = (name: string) => {
+    assign(session.id, createGroup(name).id);
+    if (listPrefs.groupBy !== "custom") {
+      setSetting("sessionListPrefs", { ...listPrefs, groupBy: "custom" });
+    }
+  };
   const rowRef = useRef<HTMLDivElement>(null);
   // After Move up / Move down the row itself takes focus, like upstream's movePinned.
   const focusRowAfterClose = useRef(false);
   const onOpenChangeComplete = (open: boolean) => {
     renameAfterClose.onOpenChangeComplete(open);
+    newGroupAfterClose.onOpenChangeComplete(open);
     if (open || !focusRowAfterClose.current) return;
     focusRowAfterClose.current = false;
     rowRef.current?.querySelector<HTMLElement>("[data-row-main-button]")?.focus();
   };
-  const finalFocus = () => renameAfterClose.finalFocus() && !focusRowAfterClose.current;
+  const finalFocus = () =>
+    renameAfterClose.finalFocus() && newGroupAfterClose.finalFocus() && !focusRowAfterClose.current;
   const pinnedRow: PinnedRowContext | undefined =
     pinnedIds === undefined
       ? undefined
@@ -360,7 +445,9 @@ export function SessionActionsMenu({
           },
         };
   return (
-    <RowRenameContext.Provider value={{ rename, requestRename }}>
+    <RowRenameContext.Provider
+      value={{ rename, requestRename, requestNewGroup: newGroupAfterClose.requestRename }}
+    >
       <div ref={rowRef} className={`group/session-row relative ${className ?? ""}`}>
         <ContextMenu onOpenChangeComplete={onOpenChangeComplete}>
           <ContextMenuTrigger>{children}</ContextMenuTrigger>
@@ -381,6 +468,12 @@ export function SessionActionsMenu({
           </MenuContent>
         </Menu>
       </div>
+      <NewGroupDialog
+        open={newGroupOpen}
+        onOpenChange={setNewGroupOpen}
+        switchesGroupBy={listPrefs.groupBy !== "custom"}
+        onCreate={createGroupWithRow}
+      />
     </RowRenameContext.Provider>
   );
 }

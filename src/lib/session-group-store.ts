@@ -8,14 +8,14 @@ import { z } from "zod";
  */
 export const SESSION_GROUP_STORAGE_KEY = "ccp-session-groups";
 
-const SessionGroupSchema = z.strictObject({
+const CustomSessionGroupSchema = z.strictObject({
   id: z.string().min(1),
   name: z.string().min(1),
 });
 
 const SessionGroupStateSchema = z
   .strictObject({
-    groups: z.array(SessionGroupSchema),
+    groups: z.array(CustomSessionGroupSchema),
     assignments: z.record(z.string(), z.string()),
     order: z.record(z.string(), z.array(z.string())),
   })
@@ -32,7 +32,7 @@ const SessionGroupStateSchema = z
     }
   });
 
-export type SessionGroup = z.infer<typeof SessionGroupSchema>;
+export type CustomSessionGroup = z.infer<typeof CustomSessionGroupSchema>;
 export type SessionGroupState = z.infer<typeof SessionGroupStateSchema>;
 
 const EMPTY_STATE: SessionGroupState = { groups: [], assignments: {}, order: {} };
@@ -95,16 +95,16 @@ function withoutOrdered(
   return next;
 }
 
-export function listGroups(): SessionGroup[] {
+export function listGroups(): CustomSessionGroup[] {
   return readSessionGroupState().groups;
 }
 
 /** Append a new group named `name` (trimmed) as the last section. A blank name throws. */
-export function createGroup(name: string): SessionGroup {
+export function createGroup(name: string): CustomSessionGroup {
   const trimmed = name.trim();
   if (trimmed === "") throw new Error("Group name must not be blank");
   const state = readSessionGroupState();
-  const group: SessionGroup = { id: `cg-${crypto.randomUUID()}`, name: trimmed };
+  const group: CustomSessionGroup = { id: `cg-${crypto.randomUUID()}`, name: trimmed };
   write({ ...state, groups: [...state.groups, group] });
   return group;
 }

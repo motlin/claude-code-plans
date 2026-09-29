@@ -134,7 +134,7 @@ function SessionFilterMenu({
           prefs={prefs}
           onChange={onChange}
         />
-        {prefs.groupBy === "project" && (
+        {(prefs.groupBy === "project" || prefs.groupBy === "custom") && (
           <>
             <MenuSeparator />
             <MenuCheckboxItem

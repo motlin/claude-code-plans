@@ -193,6 +193,41 @@ describe("sidebar Filter & group menu", () => {
     ]);
   });
 
+  it("shows Show empty groups in Custom groups mode", async () => {
+    storePrefs({ groupBy: "custom" });
+    await renderSidebarGroups();
+    const menu = await openFilterMenu();
+
+    expect(menuOutline(menu)).toEqual([
+      "StatusActive",
+      "---",
+      "Group byCustom groups",
+      "Sort byLast activity",
+      "---",
+      "Show empty groups",
+      "---",
+      "Clear filters",
+    ]);
+  });
+
+  it("groups the list by this browser's custom groups in Custom groups mode", async () => {
+    localStorage.setItem(
+      "ccp-session-groups",
+      JSON.stringify({
+        groups: [
+          { id: "cg-blog", name: "Blog" },
+          { id: "cg-empty", name: "Someday" },
+        ],
+        assignments: { d1: "cg-blog" },
+        order: {},
+      }),
+    );
+    storePrefs({ groupBy: "custom" });
+    const { container } = await renderSidebarGroups();
+
+    expect(groupNames(container)).toEqual(["Blog", "Ungrouped"]);
+  });
+
   it("marks non-default trailing values in accent", async () => {
     storePrefs({ groupBy: "project" });
     await renderSidebarGroups();
@@ -220,6 +255,7 @@ describe("sidebar Filter & group menu", () => {
       ["Date", "false"],
       ["Project", "false"],
       ["State", "true"],
+      ["Custom groups", "false"],
       ["None", "false"],
     ]);
   });

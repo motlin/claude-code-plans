@@ -12,6 +12,7 @@ import {
   sessionRowComparator,
   type SessionListPrefs,
 } from "../../lib/session-groups";
+import { useSessionGroups } from "../../lib/session-group-store";
 import { slotToIndex } from "../../lib/sidebar-drag";
 import { useSidebarState } from "../../lib/sidebar-store";
 import { assertNever } from "../../lib/assert-never";
@@ -67,9 +68,17 @@ export function SessionGroups({
     getScrollContainer: () => recentsRef.current?.closest("[data-testid=nav-scroll]") ?? null,
   });
 
+  const { groups: customGroups, assignments, order } = useSessionGroups();
   const groups = useMemo(
-    () => (split === undefined ? undefined : buildGroups(split.rest, prefs, Date.now(), uncapped)),
-    [split, prefs, uncapped],
+    () =>
+      split === undefined
+        ? undefined
+        : buildGroups(split.rest, prefs, Date.now(), uncapped, {
+            groups: customGroups,
+            assignments,
+            order,
+          }),
+    [split, prefs, uncapped, customGroups, assignments, order],
   );
 
   if (split === undefined || groups === undefined) {

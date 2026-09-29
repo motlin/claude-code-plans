@@ -3,7 +3,7 @@ import { z } from "zod";
 import { sessionBucketLabels } from "./schema-choices";
 import type { SessionBucket } from "./session-state";
 
-export const SessionGroupBySchema = z.enum(["date", "project", "state", "none"]);
+export const SessionGroupBySchema = z.enum(["date", "project", "state", "custom", "none"]);
 type SessionGroupBy = z.infer<typeof SessionGroupBySchema>;
 
 export const SessionSortBySchema = z.enum(["name", "created", "activity"]);
@@ -52,6 +52,19 @@ export interface SessionGroup<Row extends SessionGroupRow> {
   /** Rows past the cap, revealed by the "Show N more" row. */
   hiddenCount: number;
 }
+
+/** The user's custom groups (src/lib/session-group-store.ts) as Custom groups mode needs them. */
+export interface CustomGroups {
+  groups: readonly { id: string; name: string }[];
+  /** sessionId → groupId; at most one group per session. */
+  assignments: Readonly<Record<string, string>>;
+  /** groupId → manual in-group order; unlisted sessions follow the Sort by. */
+  order: Readonly<Record<string, readonly string[]>>;
+}
+
+const NO_CUSTOM_GROUPS: CustomGroups = { groups: [], assignments: {}, order: {} };
+
+const CUSTOM_UNGROUPED_KEY = "custom-ungrouped";
 
 /** Completed, Older and Recents show this many rows before "Show N more". */
 const GROUP_ROW_CAP = 20;
@@ -213,17 +226,51 @@ function buildProjectGroups<Row extends SessionGroupRow>(
   return groups;
 }
 
+function buildCustomGroups<Row extends SessionGroupRow>(
+  visibleRows: Row[],
+  custom: CustomGroups,
+  showEmptyGroups: boolean,
+): SessionGroup<Row>[] {
+  const byGroup = new Map<string, Row[]>(custom.groups.map((entry) => [entry.id, []]));
+  const ungrouped: Row[] = [];
+  for (const row of visibleRows) {
+    const groupId = custom.assignments[row.sessionId];
+    const groupRows = groupId === undefined ? undefined : byGroup.get(groupId);
+    if (groupRows === undefined) ungrouped.push(row);
+    else groupRows.push(row);
+  }
+  const sections = custom.groups.flatMap((entry) => {
+    const manual = custom.order[entry.id] ?? [];
+    const rank = (row: Row) => {
+      const index = manual.indexOf(row.sessionId);
+      return index === -1 ? manual.length : index;
+    };
+    // Array.sort is stable, so rows outside the manual order keep the Sort by order.
+    const groupRows = (byGroup.get(entry.id) ?? []).sort(
+      (first, second) => rank(first) - rank(second),
+    );
+    if (groupRows.length === 0 && !showEmptyGroups) return [];
+    return [group(`custom-${entry.id}`, entry.name, groupRows, false)];
+  });
+  if (ungrouped.length > 0)
+    sections.push(group(CUSTOM_UNGROUPED_KEY, "Ungrouped", ungrouped, false));
+  return sections;
+}
+
 /**
  * Pure model behind the sidebar session list and its Filter & group menu,
  * mirroring claude.ai/code's groupings. Empty groups are omitted except in
- * Project mode with Show empty groups on. Groups keyed in `uncapped` (their
- * "Show N more" was clicked) show every row.
+ * Project and Custom groups modes with Show empty groups on. Groups keyed in
+ * `uncapped` (their "Show N more" was clicked) show every row. Custom groups
+ * mode lists `custom` groups in order, then Ungrouped; callers pass rows with
+ * pinned sessions already split out.
  */
 export function buildGroups<Row extends SessionGroupRow>(
   rows: readonly Row[],
   prefs: SessionListPrefs,
   now: number,
   uncapped: ReadonlySet<string> = new Set(),
+  custom: CustomGroups = NO_CUSTOM_GROUPS,
 ): SessionGroup<Row>[] {
   const visible = rows
     .filter((row) => isVisible(row, prefs, now))
@@ -243,6 +290,8 @@ export function buildGroups<Row extends SessionGroupRow>(
       return buildDateGroups(visible, now, uncapped);
     case "project":
       return buildProjectGroups(rows, visible, prefs.showEmptyGroups);
+    case "custom":
+      return buildCustomGroups(visible, custom, prefs.showEmptyGroups);
     case "none":
       return visible.length === 0
         ? []

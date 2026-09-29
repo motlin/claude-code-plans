@@ -150,6 +150,7 @@ export const sessionGroupByLabels = {
   date: "Date",
   project: "Project",
   state: "State",
+  custom: "Custom groups",
   none: "None",
 } satisfies Record<z.infer<typeof SessionGroupBySchema>, string>;
 
@@ -595,6 +596,10 @@ export const sessionMenuItemLabels = {
   rename: "Rename",
   "copy-link": "Copy link",
   fork: "Fork",
+  "move-to-group": "Move to group",
+  "move-to-custom-group": "Custom group",
+  ungroup: "Ungrouped",
+  "new-group": "New group…",
   archive: "Archive",
   unarchive: "Unarchive",
 } satisfies Record<z.infer<typeof SessionMenuItemIdSchema>, string>;

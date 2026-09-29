@@ -28,6 +28,10 @@ export const SessionMenuItemIdSchema = z.enum([
   "rename",
   "copy-link",
   "fork",
+  "move-to-group",
+  "move-to-custom-group",
+  "ungroup",
+  "new-group",
   "archive",
   "unarchive",
 ]);
@@ -47,6 +51,7 @@ export type SessionMenuCapability =
   | "rename"
   | "copyLink"
   | "fork"
+  | "customGroups"
   | "archive";
 
 /** "palette-card" is the ⌘K → row-actions card, which numbers its items 1…N itself. */
@@ -79,6 +84,8 @@ export interface SessionMenuSession {
   bridgeSessionId: string | null;
   /** Where a pinned row sits in the sidebar Pinned section; enables Move up / Move down. */
   pinPosition?: { index: number; count: number };
+  /** This browser's custom groups and the row's current one; enables Move to group. */
+  customGroup?: { groups: readonly { id: string; name: string }[]; current: string | null };
 }
 
 export interface SessionMenuItem {
@@ -91,7 +98,11 @@ export interface SessionMenuItem {
   hiddenAccelerator?: true;
   disabled?: true;
   disabledReason?: string;
-  submenu?: SessionMenuItem[];
+  /** Present on radio items; true for the current choice. */
+  checked?: boolean;
+  /** The custom group a Move to group radio targets. */
+  groupId?: string;
+  submenu?: SessionMenuEntry[];
 }
 
 export interface SessionMenuSeparator {
@@ -136,6 +147,51 @@ const PALETTE_LABELS = {
 
 const PALETTE_TITLE_LENGTH = 39;
 
+/** Maximum accelerator digit in a numbered submenu (Open in, Move to group). */
+const MAX_DIGIT = 9;
+
+function numbered(entries: SessionMenuEntry[]): SessionMenuEntry[] {
+  let digit = 0;
+  return entries.map((entry) => {
+    if (entry.kind !== "item") return entry;
+    digit += 1;
+    return digit > MAX_DIGIT ? entry : { ...entry, accelerator: String(digit) };
+  });
+}
+
+/**
+ * Upstream's "Move to group ▸": the groups as radios, a separator, Ungrouped
+ * (only when the row is grouped) and New group…, numbered 1…9 in that order.
+ */
+function moveToGroupItem({
+  groups,
+  current,
+}: NonNullable<SessionMenuSession["customGroup"]>): SessionMenuItem {
+  const entries: SessionMenuEntry[] = groups.map((group) => ({
+    kind: "item",
+    id: "move-to-custom-group",
+    label: group.name,
+    groupId: group.id,
+    checked: group.id === current,
+  }));
+  if (entries.length > 0) entries.push({ kind: "separator" });
+  if (current !== null) {
+    entries.push({
+      kind: "item",
+      id: "ungroup",
+      label: sessionMenuItemLabels.ungroup,
+      checked: false,
+    });
+  }
+  entries.push({ kind: "item", id: "new-group", label: sessionMenuItemLabels["new-group"] });
+  return {
+    kind: "item",
+    id: "move-to-group",
+    label: sessionMenuItemLabels["move-to-group"],
+    submenu: numbered(entries),
+  };
+}
+
 function paletteName(title: string): string {
   return title.length > PALETTE_TITLE_LENGTH ? `${title.slice(0, PALETTE_TITLE_LENGTH)}…` : title;
 }
@@ -172,7 +228,7 @@ export function getSessionMenuItems(
       kind: "item",
       id: "open-in",
       label: sessionMenuItemLabels["open-in"],
-      submenu: openIn.map((entry, index) => ({ ...entry, accelerator: String(index + 1) })),
+      submenu: numbered(openIn),
     });
     // Upstream keeps `g` live even when Open in takes the Open PR slot.
     if (offersPr)
@@ -215,6 +271,11 @@ export function getSessionMenuItems(
     );
   }
 
+  const grouping: SessionMenuItem[] = [];
+  if (surface === "row" && has("customGroups") && session.customGroup !== undefined) {
+    grouping.push(moveToGroupItem(session.customGroup));
+  }
+
   const lifecycle: SessionMenuItem[] = [];
   if (has("archive")) lifecycle.push(item(session.archived ? "unarchive" : "archive"));
 
@@ -244,7 +305,7 @@ export function getSessionMenuItems(
     });
   }
 
-  const sections = [navigation, pinReorder, actions, lifecycle].filter(
+  const sections = [navigation, pinReorder, actions, grouping, lifecycle].filter(
     (section) => section.length > 0,
   );
   return [

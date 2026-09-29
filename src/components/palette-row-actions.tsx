@@ -128,6 +128,10 @@ export function PaletteRowActionsCard({
       case "move-down":
       case "rename":
       case "fork":
+      case "move-to-group":
+      case "move-to-custom-group":
+      case "ungroup":
+      case "new-group":
         return;
       default:
         assertNever(id);

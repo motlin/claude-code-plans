@@ -189,6 +189,8 @@ describe("SessionActionsMenu", () => {
       "Copy linkC [c]",
       "ForkF [f]",
       "---",
+      "Move to group []",
+      "---",
       "ArchiveA [a]",
     ]);
   });
@@ -225,6 +227,8 @@ describe("SessionActionsMenu", () => {
       "Copy linkC [c]",
       "ForkF [f]",
       "---",
+      "Move to group []",
+      "---",
       "ArchiveA [a]",
     ]);
   });
@@ -241,6 +245,8 @@ describe("SessionActionsMenu", () => {
       "RenameR [r]",
       "Copy linkC [c]",
       "ForkF [f]",
+      "---",
+      "Move to group []",
       "---",
       "ArchiveA [a]",
     ]);

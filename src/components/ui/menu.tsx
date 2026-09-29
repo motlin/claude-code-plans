@@ -303,6 +303,7 @@ export function MenuRadioItem({ children, accelerator, ...props }: MenuRadioItem
       className={`${ITEM_BASE_CLASS} ${ITEM_VARIANT_CLASS.default}`}
     >
       <span className={LABEL_CLASS}>{children}</span>
+      {accelerator !== undefined && <ItemTrailing accelerator={accelerator} />}
       <BaseMenu.RadioItemIndicator className={CHECK_SLOT_CLASS}>
         <Check aria-hidden="true" className="size-4" />
       </BaseMenu.RadioItemIndicator>
