@@ -10,7 +10,14 @@ import { skillInvocation } from "./skills-view";
  * browser cannot open Finder or delete files, so "Open folder" copies the
  * skill directory and "Copy /name" copies the slash command.
  */
-export function SkillRowActions({ skill }: { skill: SkillSummary }) {
+export function SkillRowActions({
+  skill,
+  triggerLabel = `More actions for ${skill.name}`,
+}: {
+  skill: SkillSummary;
+  /** Rows say "More actions for <name>"; the detail header says "More options for <name>". */
+  triggerLabel?: string;
+}) {
   const toast = useToast();
   const invocation = skillInvocation(skill);
 
@@ -22,7 +29,7 @@ export function SkillRowActions({ skill }: { skill: SkillSummary }) {
   return (
     <Menu>
       <MenuTrigger
-        aria-label={`More actions for ${skill.name}`}
+        aria-label={triggerLabel}
         className="inline-flex size-7 shrink-0 items-center justify-center rounded-r6 text-t6 transition-colors hover:bg-fill-ghost-hover hover:text-primary aria-expanded:text-primary"
       >
         <Ellipsis aria-hidden="true" className="size-4" />

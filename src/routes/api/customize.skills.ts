@@ -6,13 +6,8 @@ export const Route = createFileRoute("/api/customize/skills")({
   server: {
     handlers: withMethodNotAllowed({
       GET: async () => {
-        const { getDb } = await import("../../lib/db");
-        const { listProjectsFromDb } = await import("../../lib/db/queries");
-        const { listSkills } = await import("../../lib/customize/skills");
-        const projects = listProjectsFromDb(getDb().index).flatMap(({ id, projectPath }) =>
-          projectPath === null ? [] : [{ id, projectPath }],
-        );
-        const skills = await listSkills({ projects });
+        const { listIndexedSkills } = await import("../../lib/customize/indexed-skills");
+        const skills = await listIndexedSkills();
         return Response.json(SkillListResponse.parse(skills), {
           headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
         });

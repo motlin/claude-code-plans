@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { SkillListResponse } from "../src/lib/api/customize";
-import { listSkills, parseSkillFrontmatter } from "../src/lib/customize/skills";
+import { listSkills, parseSkillFrontmatter, readSkillDetail } from "../src/lib/customize/skills";
 
 let root: string;
 let claudeDir: string;
@@ -264,5 +264,56 @@ describe("listSkills", () => {
         enabled: true,
       },
     ]);
+  });
+});
+
+describe("readSkillDetail", () => {
+  it("reads invocation flags, allowed tools and the file tree", async () => {
+    const dir = join(pluginPath, "skills", "lint");
+    writeSkill(
+      dir,
+      [
+        "---",
+        "name: lint",
+        "description: Lint code",
+        "allowed-tools: Read, Bash(git diff:*)",
+        "argument-hint: <path>",
+        "disable-model-invocation: true",
+        "---",
+        "Body",
+      ].join("\n"),
+    );
+    mkdirSync(join(dir, "scripts"), { recursive: true });
+    writeFileSync(join(dir, "scripts", "run.py"), "print()\n");
+
+    const detail = await readSkillDetail({
+      id: "plugin:tools@market:lint",
+      name: "lint",
+      description: "Lint code",
+      source: "plugin",
+      sourceLabel: "tools",
+      dir,
+      mtime: MTIME.getTime(),
+      enabled: true,
+    });
+
+    expect(detail).toStrictEqual({
+      skill: {
+        id: "plugin:tools@market:lint",
+        name: "lint",
+        description: "Lint code",
+        source: "plugin",
+        sourceLabel: "tools",
+        dir,
+        mtime: MTIME.getTime(),
+        enabled: true,
+      },
+      pluginId: "tools@market",
+      userInvocable: true,
+      modelInvocable: false,
+      allowedTools: ["Read", "Bash(git diff:*)"],
+      argumentHint: "<path>",
+      tree: [{ path: "scripts", children: [{ path: "scripts/run.py" }] }, { path: "SKILL.md" }],
+    });
   });
 });

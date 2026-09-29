@@ -1,5 +1,5 @@
 import { readFile, realpath, stat } from "node:fs/promises";
-import { isAbsolute, relative, sep } from "node:path";
+import { isAbsolute, join, relative, sep } from "node:path";
 import { resolveConfiguredFileRoots } from "./config";
 import { FILE_CONTENT_SIZE_CAP_BYTES } from "./db/indexer";
 
@@ -52,6 +52,41 @@ export async function readAllowedFile(
     throw new FileServingError("File path is not allowed", 403);
   }
 
+  return readResolvedTextFile(resolvedPath);
+}
+
+/**
+ * Read one regular text file named by a path relative to `root`. Absolute
+ * paths and `..` segments are refused outright, and the fully resolved path
+ * (after symlinks) must still sit inside the resolved root.
+ */
+export async function readFileUnderRoot(root: string, relativePath: string): Promise<ServedFile> {
+  const segments = relativePath.split(/[/\\]/);
+  if (
+    relativePath === "" ||
+    isAbsolute(relativePath) ||
+    relativePath.includes("\0") ||
+    segments.some((segment) => segment === "..")
+  ) {
+    throw new FileServingError("A relative path inside the root is required", 400);
+  }
+
+  let resolvedRoot: string;
+  let resolvedPath: string;
+  try {
+    resolvedRoot = await realpath(root);
+    resolvedPath = await realpath(join(resolvedRoot, relativePath));
+  } catch {
+    throw new FileServingError("File not found", 404);
+  }
+  if (!isContainedPath(resolvedPath, resolvedRoot)) {
+    throw new FileServingError("File path is not allowed", 403);
+  }
+
+  return readResolvedTextFile(resolvedPath);
+}
+
+async function readResolvedTextFile(resolvedPath: string): Promise<ServedFile> {
   let fileStat: Awaited<ReturnType<typeof stat>>;
   try {
     fileStat = await stat(resolvedPath);

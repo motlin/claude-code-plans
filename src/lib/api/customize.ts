@@ -1,6 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 import { z } from "zod";
 import { apiFetch } from "./client";
+import { FileTreeNodeSchema } from "./plugins";
 
 export const SkillSourceSchema = z.enum(["personal", "project", "plugin"]);
 export type SkillSource = z.infer<typeof SkillSourceSchema>;
@@ -18,6 +19,23 @@ const SkillSummarySchema = z.strictObject({
 export type SkillSummary = z.infer<typeof SkillSummarySchema>;
 
 export const SkillListResponse = z.array(SkillSummarySchema);
+
+export const SkillDetailResponse = z.strictObject({
+  skill: SkillSummarySchema,
+  pluginId: z.string().optional(),
+  userInvocable: z.boolean(),
+  modelInvocable: z.boolean(),
+  allowedTools: z.array(z.string()),
+  argumentHint: z.string().optional(),
+  /** Children of the skill directory, paths relative to it. */
+  tree: z.array(FileTreeNodeSchema),
+});
+export type SkillDetail = z.infer<typeof SkillDetailResponse>;
+
+export const CustomizeFileResponse = z.strictObject({
+  path: z.string(),
+  content: z.string(),
+});
 
 export const McpScopeSchema = z.enum(["user", "local", "project", "plugin"]);
 export type McpScope = z.infer<typeof McpScopeSchema>;
@@ -44,6 +62,26 @@ export const customizeSkillsQueryOptions = queryOptions({
   queryFn: () => apiFetch("/api/customize/skills", SkillListResponse),
   staleTime: CUSTOMIZE_STALE_TIME_MS,
 });
+
+export const customizeSkillDetailQueryOptions = (skillId: string) =>
+  queryOptions({
+    queryKey: ["customize", "skills", skillId] as const,
+    queryFn: () =>
+      apiFetch(`/api/customize/skills/${encodeURIComponent(skillId)}`, SkillDetailResponse),
+    staleTime: CUSTOMIZE_STALE_TIME_MS,
+  });
+
+/** One file inside a skill directory, `path` relative to it. */
+export const customizeSkillFileQueryOptions = (skillId: string, path: string) =>
+  queryOptions({
+    queryKey: ["customize", "skills", skillId, "file", path] as const,
+    queryFn: () =>
+      apiFetch(
+        `/api/customize/file?${new URLSearchParams({ skill: skillId, path }).toString()}`,
+        CustomizeFileResponse,
+      ),
+    staleTime: 0,
+  });
 
 export const customizeMcpServersQueryOptions = queryOptions({
   queryKey: ["customize", "mcp-servers"] as const,

@@ -2,7 +2,8 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { z } from "zod";
-import type { SkillSource, SkillSummary } from "../api/customize";
+import type { SkillDetail, SkillSource, SkillSummary } from "../api/customize";
+import { scanPluginTree } from "../plugins";
 import { ClaudeSettingsSchema } from "../schemas";
 
 type FrontmatterValue = string | string[] | Record<string, string>;
@@ -279,4 +280,63 @@ export async function listSkills({
   }
 
   return result;
+}
+
+/**
+ * SKILL.md `allowed-tools` is either a YAML list or one string separated by
+ * commas and/or spaces; spaces inside `Bash(git add:*)` belong to the rule.
+ */
+export function splitAllowedTools(value: string | readonly string[] | undefined): string[] {
+  if (value === undefined) return [];
+  if (typeof value !== "string") return [...value];
+  const tools: string[] = [];
+  let current = "";
+  let depth = 0;
+  for (const char of value) {
+    if (char === "(") depth++;
+    if (char === ")") depth = Math.max(0, depth - 1);
+    if (depth === 0 && (char === "," || /\s/.test(char))) {
+      if (current !== "") tools.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  if (current !== "") tools.push(current);
+  return tools;
+}
+
+/**
+ * The detail view of one listed skill: SKILL.md invocation frontmatter plus
+ * the skill directory tree (symlinks skipped, paths relative to the dir).
+ */
+export async function readSkillDetail(skill: SkillSummary): Promise<SkillDetail> {
+  let content = "";
+  try {
+    content = await readFile(join(skill.dir, "SKILL.md"), "utf-8");
+  } catch {
+    // Listed a moment ago; treat a vanished SKILL.md as empty frontmatter.
+  }
+  const raw = parseSkillFrontmatter(content);
+  const parsed = raw === null ? undefined : SkillFrontmatterSchema.safeParse(raw);
+  const frontmatter = parsed?.success === true ? parsed.data : {};
+  const tree = await scanPluginTree(skill.dir);
+
+  const pluginPrefix = "plugin:";
+  const pluginId =
+    skill.source === "plugin" && skill.id.startsWith(pluginPrefix)
+      ? skill.id.slice(pluginPrefix.length, skill.id.length - skill.name.length - 1)
+      : undefined;
+
+  return {
+    skill,
+    ...(pluginId === undefined ? {} : { pluginId }),
+    userInvocable: frontmatter["user-invocable"] !== "false",
+    modelInvocable: frontmatter["disable-model-invocation"] !== "true",
+    allowedTools: splitAllowedTools(frontmatter["allowed-tools"]),
+    ...(frontmatter["argument-hint"] === undefined
+      ? {}
+      : { argumentHint: frontmatter["argument-hint"] }),
+    tree: tree?.children ?? [],
+  };
 }

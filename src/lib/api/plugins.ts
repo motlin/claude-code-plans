@@ -51,7 +51,7 @@ export interface FileTreeNodeData {
   path: string;
   children?: FileTreeNodeData[] | undefined;
 }
-const FileTreeNodeSchema: z.ZodType<FileTreeNodeData> = z.lazy(() =>
+export const FileTreeNodeSchema: z.ZodType<FileTreeNodeData> = z.lazy(() =>
   z.object({
     path: z.string(),
     children: z.array(FileTreeNodeSchema).optional(),

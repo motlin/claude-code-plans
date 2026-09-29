@@ -8,7 +8,6 @@ import { CUSTOMIZE_SECTIONS, resolveOption } from "../components/customize/secti
 import { SkillRowActions } from "../components/customize/skill-row-actions";
 import { filterSkills, groupSkills, sortSkills } from "../components/customize/skills-view";
 import { customizeSkillsQueryOptions } from "../lib/api/customize";
-import { encodeFilePath } from "../lib/api/file";
 
 export const Route = createFileRoute("/customize/skills")({
   component: CustomizeSkills,
@@ -72,8 +71,8 @@ function CustomizeSkills() {
             actions: <SkillRowActions skill={skill} />,
             onView: () =>
               void navigate({
-                to: "/file/$",
-                params: { _splat: encodeFilePath(`${skill.dir}/SKILL.md`) },
+                to: "/customize/skills/id/$skillId",
+                params: { skillId: skill.id },
               }),
           })),
         }))}
