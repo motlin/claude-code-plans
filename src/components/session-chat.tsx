@@ -625,35 +625,68 @@ const SESSION_INIT_LINE_TYPES = new Set([
 ]);
 
 /**
- * Upstream's collapsed session-init row: a bare disclosure button with a
- * truncating primary label and a secondary chevron, holding the individual
- * metadata banners as its expanded body.
+ * Upstream's collapsed transcript marker row: a bare disclosure button with a
+ * truncating primary label and a secondary chevron.
  */
+function MarkerDisclosureButton({
+  label,
+  expanded,
+  bodyId,
+  onToggle,
+}: {
+  label: string;
+  expanded: boolean;
+  bodyId: string;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-expanded={expanded}
+      aria-controls={bodyId}
+      onClick={onToggle}
+      className="flex self-start max-w-full items-center gap-g2 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3"
+    >
+      <span className="text-body min-w-0 truncate text-primary">{label}</span>
+      <span className="shrink-0 text-secondary">
+        <ChevronIcon expanded={expanded} size={14} />
+      </span>
+    </button>
+  );
+}
+
+/**
+ * A transcript whose first records carry another session's id was carried
+ * over from an earlier session, which upstream heads "Resumed session".
+ */
+function isResumedTranscript(lines: SessionLine[], renderProps: LineRenderProps): boolean {
+  if (renderProps.isSubagentSession) return false;
+  const first = lines.find((line) => "sessionId" in line && line.sessionId !== undefined);
+  return first !== undefined && "sessionId" in first && first.sessionId !== renderProps.sessionId;
+}
+
+/** Upstream's session head marker, holding the individual metadata banners as its body. */
 function SessionInitEntry({
   lines,
   indices,
+  resumed,
   ...renderProps
 }: LineRenderProps & {
   lines: SessionLine[];
   indices: number[];
+  resumed: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const bodyId = useId();
 
   return (
     <div className={`flex flex-col w-full ${TURN_GAP_CLASS}`}>
-      <button
-        type="button"
-        aria-expanded={expanded}
-        aria-controls={bodyId}
-        onClick={() => setExpanded(!expanded)}
-        className="flex self-start max-w-full items-center gap-g2 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3"
-      >
-        <span className="text-body min-w-0 truncate text-primary">Initialized session</span>
-        <span className="shrink-0 text-secondary">
-          <ChevronIcon expanded={expanded} size={14} />
-        </span>
-      </button>
+      <MarkerDisclosureButton
+        label={resumed ? "Resumed session" : "Initialized session"}
+        expanded={expanded}
+        bodyId={bodyId}
+        onToggle={() => setExpanded(!expanded)}
+      />
       {expanded && (
         <div id={bodyId} className="flow-root">
           <div className="flex flex-col pt-p6">
@@ -776,7 +809,13 @@ function buildSessionListEntries(
       key: "session-init",
       startRecordIndex: lines[initIndices[0]!]!.lineIndex,
       element: (
-        <SessionInitEntry key="session-init" lines={lines} indices={initIndices} {...renderProps} />
+        <SessionInitEntry
+          key="session-init"
+          lines={lines}
+          indices={initIndices}
+          resumed={isResumedTranscript(lines, renderProps)}
+          {...renderProps}
+        />
       ),
     });
     prevVisibleType = "session-init";
@@ -1554,22 +1593,10 @@ const LABEL_BY_KIND: Record<LabeledKind, string> = {
   "slash-command-body": "Slash command body",
 };
 
-function getCompactSummarySizeKB(line: MessageSessionLine): number {
-  const content = line.message?.content;
-  if (!content) return 0;
-  let bytes = 0;
-  if (typeof content === "string") {
-    bytes = content.length;
-  } else {
-    for (const block of content) {
-      if (block.type === "text" && typeof block.text === "string") {
-        bytes += block.text.length;
-      }
-    }
-  }
-  return Math.max(1, Math.round(bytes / 1024));
-}
-
+/**
+ * Upstream's "Compacted conversation" marker row, keeping the local
+ * compact-summary text behind it as the expandable body.
+ */
 function CompactSummaryStub({
   line,
   sessionId,
@@ -1580,51 +1607,57 @@ function CompactSummaryStub({
   allowedImageRoots: readonly string[];
 }) {
   const [expanded, setExpanded] = useState(false);
-  const sizeKB = getCompactSummarySizeKB(line);
-
-  if (expanded) {
-    const timestamp = "timestamp" in line ? line.timestamp : undefined;
-    const actionsProps = { line, ...(timestamp ? { timestamp } : {}) };
-    const { textNodes, mediaNodes } = renderUserContentBlocks(line, sessionId, allowedImageRoots);
-
-    return (
-      <UserTurn>
-        <div className="flex flex-col items-end gap-g6 max-w-[85%] min-w-0">
-          <div className="flex items-center gap-1.5 px-1">
-            <span className="text-[10px] font-medium text-t6 bg-surface-0 rounded-full px-2 py-0.5">
-              Compact summary
-            </span>
-            <button
-              type="button"
-              onClick={() => setExpanded(false)}
-              className="text-[10px] text-t6 hover:text-primary cursor-pointer"
-            >
-              Collapse
-            </button>
-          </div>
-          {textNodes.length > 0 && (
-            <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-auto-msg-bg text-auto-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
-              {textNodes}
-            </div>
-          )}
-          {mediaNodes}
-          <UserMessageActions {...actionsProps} />
-        </div>
-      </UserTurn>
-    );
-  }
+  const bodyId = useId();
 
   return (
     <UserTurn>
-      <button
-        type="button"
-        onClick={() => setExpanded(true)}
-        className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-surface-0 text-[11px] text-t6 hover:text-primary cursor-pointer"
-      >
-        <span className="font-medium">Compact summary (~{sizeKB} KB)</span>
-        <span>— click to expand</span>
-      </button>
+      <div className="flex flex-col w-full min-w-0">
+        <MarkerDisclosureButton
+          label="Compacted conversation"
+          expanded={expanded}
+          bodyId={bodyId}
+          onToggle={() => setExpanded(!expanded)}
+        />
+        {expanded && (
+          <CompactSummaryBody
+            id={bodyId}
+            line={line}
+            sessionId={sessionId}
+            allowedImageRoots={allowedImageRoots}
+          />
+        )}
+      </div>
     </UserTurn>
+  );
+}
+
+function CompactSummaryBody({
+  id,
+  line,
+  sessionId,
+  allowedImageRoots,
+}: {
+  id: string;
+  line: MessageSessionLine;
+  sessionId: string;
+  allowedImageRoots: readonly string[];
+}) {
+  const timestamp = "timestamp" in line ? line.timestamp : undefined;
+  const actionsProps = { line, ...(timestamp ? { timestamp } : {}) };
+  const { textNodes, mediaNodes } = renderUserContentBlocks(line, sessionId, allowedImageRoots);
+
+  return (
+    <div id={id} className="flow-root pt-p6">
+      <div className="flex flex-col items-end gap-g6 max-w-[85%] min-w-0">
+        {textNodes.length > 0 && (
+          <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-auto-msg-bg text-auto-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
+            {textNodes}
+          </div>
+        )}
+        {mediaNodes}
+        <UserMessageActions {...actionsProps} />
+      </div>
+    </div>
   );
 }
 

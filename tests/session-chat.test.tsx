@@ -246,9 +246,8 @@ describe("SessionChat user-message shapes", () => {
   it("Shape C — compact summary collapses to a stub when showCompactSummaries=false", () => {
     const html = renderShape("C", { showCompactSummaries: false });
 
-    // Stub label appears with the size hint and call-to-action.
-    expect(html).toContain("Compact summary (~");
-    expect(html).toContain("click to expand");
+    // Upstream's collapsed marker row stands in for the summary.
+    expect(html).toContain(">Compacted conversation<");
     // Full automated bubble is NOT rendered.
     expect(html).not.toContain("bg-auto-msg-bg");
   });
@@ -259,8 +258,8 @@ describe("SessionChat user-message shapes", () => {
     // Full automated bubble IS rendered.
     expect(html).toContain("bg-auto-msg-bg");
     expect(html).toContain(">Compact summary<");
-    // Stub call-to-action is NOT shown.
-    expect(html).not.toContain("click to expand");
+    // The collapsed marker row is NOT shown.
+    expect(html).not.toContain("Compacted conversation");
   });
 
   it("Shape F — document attachment renders the regular user bubble path with no automated label", () => {

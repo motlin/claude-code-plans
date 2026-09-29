@@ -187,3 +187,125 @@ describe("session init disclosure chrome", () => {
     });
   });
 });
+
+describe("session head marker", () => {
+  it("labels the head marker 'Resumed session' when the leading records came from an earlier session", () => {
+    const priorSession = "session-bob-099";
+    const container = renderRecords([
+      { ...AGENT_NAME, sessionId: priorSession },
+      { ...USER_TEXT, sessionId: priorSession },
+    ]);
+
+    expect({
+      initialized: initButton(container),
+      resumed: markerButtons(container, "Resumed session").map((button) => ({
+        label: button.querySelector("span")?.textContent,
+        ariaExpanded: button.getAttribute("aria-expanded"),
+      })),
+    }).toStrictEqual({
+      initialized: null,
+      resumed: [{ label: "Resumed session", ariaExpanded: "false" }],
+    });
+  });
+
+  it("keeps 'Initialized session' when every leading record belongs to this session", () => {
+    const container = renderRecords([AGENT_NAME, { ...USER_TEXT, sessionId: SESSION_ID }]);
+
+    expect({
+      initialized: initButton(container)?.querySelector("span")?.textContent,
+      resumed: markerButtons(container, "Resumed session"),
+    }).toStrictEqual({ initialized: "Initialized session", resumed: [] });
+  });
+});
+
+const COMPACT_BOUNDARY_BASE = {
+  type: "system",
+  subtype: "compact_boundary",
+  content: "Conversation compacted",
+  uuid: "system-compact-1",
+  timestamp: "1999-12-31T00:00:00Z",
+};
+
+const COMPACT_SUMMARY = {
+  type: "user",
+  uuid: "user-compact-1",
+  isCompactSummary: true,
+  message: { role: "user", content: "Fabricated compact summary" },
+};
+
+/** Buttons whose text includes the given marker label. */
+function markerButtons(container: HTMLElement, label: string): HTMLButtonElement[] {
+  return Array.from(container.querySelectorAll("button")).filter((button) =>
+    button.textContent?.includes(label),
+  );
+}
+
+/** Text of every element that carries a compaction marker label. */
+function compactionLabels(container: HTMLElement): string[] {
+  return Array.from(container.querySelectorAll("span"))
+    .map((span) => span.textContent ?? "")
+    .filter((text) => text.startsWith("Compacted"));
+}
+
+describe("compaction markers", () => {
+  it("labels a boundary with before and after token counts as 'saved N tokens'", () => {
+    const container = renderRecords([
+      USER_TEXT,
+      {
+        ...COMPACT_BOUNDARY_BASE,
+        compactMetadata: { trigger: "auto", preTokens: 261187, postTokens: 10827 },
+      },
+    ]);
+
+    expect(compactionLabels(container)).toStrictEqual(["Compacted session · saved 250.4k tokens"]);
+  });
+
+  it("labels a boundary with only a before count as 'from N tokens'", () => {
+    const container = renderRecords([
+      USER_TEXT,
+      { ...COMPACT_BOUNDARY_BASE, compactMetadata: { trigger: "manual", preTokens: 180000 } },
+    ]);
+
+    expect(compactionLabels(container)).toStrictEqual(["Compacted session · from 180.0k tokens"]);
+  });
+
+  it("labels a boundary without metadata 'Compacted session'", () => {
+    const container = renderRecords([USER_TEXT, COMPACT_BOUNDARY_BASE]);
+
+    expect(compactionLabels(container)).toStrictEqual(["Compacted session"]);
+  });
+
+  it("collapses the compact summary behind a 'Compacted conversation' marker that expands to the summary", () => {
+    const container = renderRecords([USER_TEXT, COMPACT_SUMMARY]);
+    const [button, ...rest] = markerButtons(container, "Compacted conversation");
+    if (!button || rest.length > 0) throw new Error("Expected one compacted-conversation marker");
+
+    const collapsed = {
+      label: button.querySelector("span")?.textContent,
+      className: button.className,
+      ariaExpanded: button.getAttribute("aria-expanded"),
+      hasChevron: button.querySelector("svg") !== null,
+      showsSummary: container.textContent?.includes("Fabricated compact summary"),
+    };
+    fireEvent.click(button);
+    const expandedButton = markerButtons(container, "Compacted conversation")[0];
+
+    expect({
+      collapsed,
+      expanded: {
+        ariaExpanded: expandedButton?.getAttribute("aria-expanded"),
+        showsSummary: container.textContent?.includes("Fabricated compact summary"),
+      },
+    }).toStrictEqual({
+      collapsed: {
+        label: "Compacted conversation",
+        className:
+          "flex self-start max-w-full items-center gap-g2 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3",
+        ariaExpanded: "false",
+        hasChevron: true,
+        showsSummary: false,
+      },
+      expanded: { ariaExpanded: "true", showsSummary: true },
+    });
+  });
+});

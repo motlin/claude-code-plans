@@ -28,6 +28,18 @@ function errorHeadline(error: SystemLine["error"]): string | undefined {
   return undefined;
 }
 
+/**
+ * Upstream claude.ai/code's compaction marker copy: the tokens saved when both
+ * counts are known, the starting size when only that is, else the bare verb.
+ */
+function compactBoundaryLabel(meta: SystemLine["compactMetadata"]): string {
+  if (meta === undefined) return "Compacted session";
+  if (meta.postTokens !== undefined) {
+    return `Compacted session · saved ${formatTokens(meta.preTokens - meta.postTokens)} tokens`;
+  }
+  return `Compacted session · from ${formatTokens(meta.preTokens)} tokens`;
+}
+
 function jsonText(value: unknown): string {
   return typeof value === "string" ? value : JSON.stringify(value, null, 2);
 }
@@ -52,7 +64,7 @@ export function SystemBanner({
       return (
         <Banner
           variant="status"
-          label={line.content ?? "Conversation compacted"}
+          label={compactBoundaryLabel(meta)}
           sessionId={sessionId}
           uuid={line.uuid}
         >

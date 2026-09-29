@@ -30,7 +30,8 @@ describe("SystemBanner", () => {
       },
       lineIndex: 0,
     });
-    expect(html).toContain("Conversation compacted");
+    expect(html).toContain("Compacted session · saved 250.4k tokens");
+    expect(html).not.toContain("Conversation compacted");
     expect(html).toContain("auto");
     expect(html).toContain("261.2k");
     expect(html).toContain("10.8k");
