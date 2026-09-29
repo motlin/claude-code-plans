@@ -169,7 +169,7 @@ function moveRowFocus(event: KeyboardEvent<HTMLElement>, selector: string): void
   rows[next]?.focus();
 }
 
-function DiffCounts({ additions, deletions }: { additions: number; deletions: number }) {
+export function DiffCounts({ additions, deletions }: { additions: number; deletions: number }) {
   return (
     <span className="flex shrink-0 items-center gap-0.5 text-footnote tabular-nums">
       <span className="text-extended-green">+{additions}</span>

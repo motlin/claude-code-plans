@@ -192,7 +192,7 @@ export const SHORTCUTS = {
     group: "panes",
     bindings: cmdOrCtrl("p"),
     ownerSlug: "panes-changes",
-    enabled: false,
+    enabled: true,
   },
   toggle_preview: {
     description: "Toggle preview",

@@ -80,7 +80,6 @@ function renderPane(files: SessionDiffFile[]) {
         diff={diffOf(files)}
         scopes={SCOPES}
         controls={<button type="button">Close</button>}
-        goToFile={<button type="button">Go to file</button>}
         onRefresh={() => {}}
       />
     </SettingsProvider>,
@@ -293,6 +292,117 @@ describe("ChangesPaneView file list", () => {
         ["greet.ts+2−1", "true"],
       ],
       selectedScopes: [["commit:07bc05d1111111111111111111111111111111111"]],
+    });
+  });
+
+  describe("Go to file", () => {
+    function openGoToFile() {
+      fireEvent.click(screen.getByRole("button", { name: "Go to file" }));
+      return screen.getByRole("combobox", { name: "Search changed files" });
+    }
+
+    function optionTexts() {
+      return screen.queryAllByRole("option").map((option) => option.textContent);
+    }
+
+    it("highlights matched characters and hides non-matching files", () => {
+      renderPane([GREET_FILE, LOGO_FILE]);
+      fireEvent.change(openGoToFile(), { target: { value: "grt" } });
+
+      expect({
+        options: optionTexts(),
+        lit: [...document.querySelectorAll("[role=option] span[data-lit]")].map((span) => [
+          span.textContent,
+          span.className,
+        ]),
+      }).toEqual({
+        options: ["greet.tssrc+2−1"],
+        lit: [
+          ["gr", "font-semibold text-primary"],
+          ["t", "font-semibold text-primary"],
+        ],
+      });
+    });
+
+    it("shows No matching files when nothing matches", () => {
+      renderPane([GREET_FILE]);
+      fireEvent.change(openGoToFile(), { target: { value: "zzz" } });
+
+      expect({
+        options: optionTexts(),
+        empty: screen.getByText("No matching files").tagName,
+      }).toEqual({ options: [], empty: "P" });
+    });
+
+    it("caps the list at 100 files with a keep-typing footer", () => {
+      const files = Array.from({ length: 103 }, (_, index) => ({
+        ...GREET_FILE,
+        path: `src/f${index}.ts`,
+      }));
+      renderPane(files);
+      openGoToFile();
+
+      expect({
+        count: optionTexts().length,
+        footer: screen.getByText("3 more files. Keep typing to narrow.").tagName,
+      }).toEqual({ count: 100, footer: "P" });
+    });
+
+    it("scrolls to the file, marks it active and closes on Enter", () => {
+      const scrollIntoView = vi.fn();
+      Element.prototype.scrollIntoView = scrollIntoView;
+      renderPane([LOGO_FILE, GREET_FILE]);
+      fireEvent.click(screen.getByRole("button", { name: "Show files" }));
+      const input = openGoToFile();
+      fireEvent.change(input, { target: { value: "greet" } });
+      fireEvent.keyDown(input, { key: "Enter" });
+
+      expect({
+        scrolled: scrollIntoView.mock.contexts.map((element) =>
+          (element as HTMLElement)
+            .closest("[data-diff-file-header]")
+            ?.getAttribute("data-diff-file-header"),
+        ),
+        active: screen
+          .getAllByRole("treeitem")
+          .filter((row) => row.getAttribute("aria-current") === "true")
+          .map((row) => row.textContent),
+        open: screen.queryByRole("combobox", { name: "Search changed files" }),
+      }).toEqual({ scrolled: ["src/greet.ts"], active: ["greet.ts+2−1"], open: null });
+    });
+
+    it("moves the highlighted row with the arrow keys", () => {
+      renderPane([GREET_FILE, LOGO_FILE]);
+      const input = openGoToFile();
+      fireEvent.keyDown(input, { key: "ArrowDown" });
+
+      expect(
+        screen
+          .getAllByRole("option")
+          .map((option) => [option.textContent, option.getAttribute("aria-selected")]),
+      ).toEqual([
+        ["greet.tssrc+2−1", "false"],
+        ["logo.pngassets+0−0", "true"],
+      ]);
+    });
+
+    it("opens on Ctrl+P (⌘P on mac) and prevents the print dialog", () => {
+      renderPane([GREET_FILE]);
+      const event = new KeyboardEvent("keydown", {
+        key: "p",
+        code: "KeyP",
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      act(() => {
+        document.body.dispatchEvent(event);
+      });
+
+      expect({
+        prevented: event.defaultPrevented,
+        open: screen.getByRole("combobox", { name: "Search changed files" }).tagName,
+      }).toEqual({ prevented: true, open: "INPUT" });
     });
   });
 });

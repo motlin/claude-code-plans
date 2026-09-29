@@ -36,6 +36,7 @@ import { useToast } from "../toast";
 import { Tooltip } from "../ui/tooltip";
 import { ChangedFilesSidebar } from "./changes-file-tree";
 import { DiffFile, DiffFileHeader } from "./diff-file";
+import { GoToFile } from "./go-to-file";
 
 /**
  * Large-diff thresholds. Upstream collapses every file of a large diff but its
@@ -541,8 +542,6 @@ export interface ChangesPaneViewProps {
   /** Host Expand/Close controls, placed at the right end of the header. */
   controls: ReactNode;
   moveHandle?: ReactNode;
-  /** Go to file (⌘P) combobox; shown only when the diff has files. */
-  goToFile?: ReactNode;
   onRefresh: () => void;
   onOpenFile?: (path: string) => void;
   /** Enables lazy loading of files whose patch was too large to inline. */
@@ -565,7 +564,6 @@ export function ChangesPaneView({
   message,
   controls,
   moveHandle,
-  goToFile,
   onRefresh,
   onOpenFile,
   fetchContext,
@@ -695,7 +693,7 @@ export function ChangesPaneView({
         </div>
         {moveHandle}
         <div className="relative z-[1] flex shrink-0 items-center gap-0.5">
-          {hasFiles && goToFile}
+          {hasFiles && <GoToFile files={files} onSelectFile={selectFile} />}
           <SettingsMenu
             hasFiles={hasFiles}
             large={large}

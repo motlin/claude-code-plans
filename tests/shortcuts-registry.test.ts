@@ -63,6 +63,7 @@ describe("shortcut registry", () => {
       "settings",
       "rename_session",
       "archive_session",
+      "go_to_file_in_changes",
       "close_pane",
       "expand_collapse_pane",
     ]);
