@@ -11,7 +11,11 @@ import {
   type FileTabsState,
   fileTabsReducer,
 } from "../../lib/file-tabs";
-import { requestAttachContext } from "../../lib/context-attach";
+import {
+  type AttachContextHandler,
+  attachContext,
+  requestComposerInsert,
+} from "../../lib/context-attach";
 import { EMPTY_EDIT_GUARD, type EditGuardEvent, editGuardReducer } from "../../lib/file-edit";
 import { onFileOpenRequest, takePendingFileOpen } from "../../lib/file-open-requests";
 import type { FileRef } from "../../lib/file-refs";
@@ -264,7 +268,8 @@ interface WorkspaceOrSessionListProps {
   activeRelPath: string | null;
   pinnedRelPaths: ReadonlySet<string>;
   cwd: string | undefined;
-  onAttachContext: ((snippet: string) => void) | undefined;
+  onAttachContext: AttachContextHandler | undefined;
+  onAsk: ((prompt: string) => void) | undefined;
 }
 
 /**
@@ -285,6 +290,7 @@ function WorkspaceOrSessionList({
   pinnedRelPaths,
   cwd,
   onAttachContext,
+  onAsk,
 }: WorkspaceOrSessionListProps) {
   const { settings } = useSettings();
   // Same key as the tree's root listing, so this shares its request.
@@ -313,6 +319,7 @@ function WorkspaceOrSessionList({
             pinnedRelPaths={pinnedRelPaths}
             cwd={cwd}
             onAttachContext={onAttachContext}
+            onAsk={onAsk}
           />
         )}
       </div>
@@ -522,11 +529,17 @@ export function FilesPaneView({
     filterRef.current?.select();
   }, [focusRequest]);
 
-  const attachContext =
+  const attachToChat: AttachContextHandler | undefined =
     sessionId === undefined
       ? undefined
-      : (snippet: string) => {
-          requestAttachContext(sessionId, snippet);
+      : (attachment) => {
+          attachContext(sessionId, attachment);
+        };
+  const askInChat =
+    sessionId === undefined
+      ? undefined
+      : (prompt: string) => {
+          requestComposerInsert(sessionId, prompt);
         };
 
   function revealInTree(path: string): void {
@@ -560,7 +573,7 @@ export function FilesPaneView({
               state={fileTabs}
               dispatch={dispatchFileTabs}
               cwd={cwd}
-              onAttachContext={attachContext}
+              onAttachContext={attachToChat}
               onRevealInTree={revealInTree}
             />
           )}
@@ -619,7 +632,8 @@ export function FilesPaneView({
                 activeRelPath={openPath === null ? null : relativeToCwd(cwd, openPath)}
                 pinnedRelPaths={pinnedRelPaths}
                 cwd={cwd}
-                onAttachContext={attachContext}
+                onAttachContext={attachToChat}
+                onAsk={askInChat}
               />
             )}
           </FilesTreeColumn>
@@ -636,7 +650,7 @@ export function FilesPaneView({
               endLine={target?.endLine}
               findQuery={target?.findQuery}
               onOpenFile={(path) => openFile(path, { pin: false })}
-              onAttachContext={attachContext}
+              onAttachContext={attachToChat}
               onEditStart={() => dispatchTabs({ type: "pin", path: openPath })}
               onDirtyChange={(dirty) => editGuard.reportDirty(openPath, dirty)}
             />

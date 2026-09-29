@@ -1,5 +1,14 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { CornerDownLeft, Ellipsis, MessageSquare, Square, X } from "lucide-react";
+import {
+  CornerDownLeft,
+  Ellipsis,
+  FileText,
+  MessageSquare,
+  Square,
+  SquareTerminal,
+  TextQuote,
+  X,
+} from "lucide-react";
 
 import { useComposerDraft } from "../hooks/use-composer-draft";
 import { useFileMentionSuggestions } from "../hooks/use-file-mention-suggestions";
@@ -9,8 +18,14 @@ import type { ComposerState } from "../lib/composer-state";
 import { type QueuedPrompt, queuedStatusText } from "../lib/composer-queue";
 import {
   appendAttachment,
-  onAttachContextRequest,
-  prependReviewComments,
+  type ContextChip,
+  composePrompt,
+  contextChipLabel,
+  formatContextAttachment,
+  registerComposer,
+  removeContextChip,
+  takeContextChips,
+  useContextChips,
 } from "../lib/context-attach";
 import {
   type QueuedDiffComment,
@@ -56,24 +71,55 @@ function chipLabel({ path, line, endLine }: QueuedDiffComment): string {
   return `${name}:${endLine === undefined || endLine === line ? line : `${line}-${endLine}`}`;
 }
 
-/** Changes pane comments waiting for the next prompt, as removable chips above the card. */
-function QueuedCommentChips({
+const CHIP_CLASS =
+  "flex h-6 max-w-[16rem] min-w-0 items-center gap-1 rounded-r6 border border-border bg-surface-3 ps-1.5 pe-0.5 text-footnote text-secondary";
+
+const CHIP_REMOVE_CLASS =
+  "flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-r5 hover:bg-fill-ghost-hover hover:text-primary";
+
+const CONTEXT_CHIP_ICON = {
+  file: FileText,
+  selection: TextQuote,
+  terminal: SquareTerminal,
+} satisfies Record<ContextChip["kind"], unknown>;
+
+/**
+ * The strip above the card: ⇧⌘L context chips in attach order, then Changes
+ * pane comments, all waiting for the next prompt and each removable.
+ */
+function AttachedContextChips({
   sessionId,
+  context,
   comments,
 }: {
   sessionId: string;
+  context: readonly ContextChip[];
   comments: readonly QueuedDiffComment[];
 }) {
   return (
-    <ul aria-label="Queued comments" className="mb-1.5 flex flex-wrap gap-1">
+    <ul aria-label="Attached context" className="mb-1.5 flex flex-wrap gap-1">
+      {context.map((chip) => {
+        const label = contextChipLabel(chip);
+        const Icon = CONTEXT_CHIP_ICON[chip.kind];
+        return (
+          <li key={chip.id} title={formatContextAttachment(chip)} className={CHIP_CLASS}>
+            <Icon aria-hidden="true" className="size-3 shrink-0" />
+            <span className="min-w-0 truncate text-primary">{label}</span>
+            <button
+              type="button"
+              aria-label={`Remove ${label}`}
+              onClick={() => removeContextChip(sessionId, chip.id)}
+              className={CHIP_REMOVE_CLASS}
+            >
+              <X aria-hidden="true" className="size-3" />
+            </button>
+          </li>
+        );
+      })}
       {comments.map((comment) => {
         const label = chipLabel(comment);
         return (
-          <li
-            key={comment.id}
-            title={comment.text}
-            className="flex h-6 max-w-[16rem] min-w-0 items-center gap-1 rounded-r6 border border-border bg-surface-3 ps-1.5 pe-0.5 text-footnote text-secondary"
-          >
+          <li key={comment.id} title={comment.text} className={CHIP_CLASS}>
             <MessageSquare aria-hidden="true" className="size-3 shrink-0" />
             <span className="shrink-0 text-primary">{label}</span>
             <span className="min-w-0 truncate">{comment.text}</span>
@@ -81,7 +127,7 @@ function QueuedCommentChips({
               type="button"
               aria-label={`Remove comment on ${label}`}
               onClick={() => removeQueuedDiffComment(sessionId, comment.id)}
-              className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-r5 hover:bg-fill-ghost-hover hover:text-primary"
+              className={CHIP_REMOVE_CLASS}
             >
               <X aria-hidden="true" className="size-3" />
             </button>
@@ -221,7 +267,11 @@ export function Composer({
   const [caret, setCaret] = useState(0);
   const pendingCaretRef = useRef<number | null>(null);
   const { queued: queuedComments } = useDiffComments(draftKey);
-  const canSend = (prompt.trim() !== "" || queuedComments.length > 0) && !isStreaming && !disabled;
+  const contextChips = useContextChips(draftKey);
+  const canSend =
+    (prompt.trim() !== "" || queuedComments.length > 0 || contextChips.length > 0) &&
+    !isStreaming &&
+    !disabled;
   const [launch, setLaunch] = useState<{ draftKey: string; options: LaunchOptions }>({
     draftKey,
     options: {},
@@ -243,11 +293,14 @@ export function Composer({
   promptRef.current = prompt;
   useEffect(
     () =>
-      onAttachContextRequest(draftKey, (snippet) => {
-        const next = appendAttachment(promptRef.current, snippet);
-        promptRef.current = next;
-        setPrompt(next);
-        textareaRef.current?.focus();
+      registerComposer(draftKey, {
+        insertText: (text) => {
+          const next = appendAttachment(promptRef.current, text);
+          promptRef.current = next;
+          setPrompt(next);
+          textareaRef.current?.focus();
+        },
+        focus: () => textareaRef.current?.focus(),
       }),
     [draftKey, setPrompt],
   );
@@ -343,10 +396,10 @@ export function Composer({
   ): void {
     if (!canSend) return;
     const trimmed = prompt.trim();
-    // Slash commands run as typed; queued comments wait for the next real prompt.
+    // Slash commands run as typed; attached context and comments wait for the next real prompt.
     const text = trimmed.startsWith("/")
       ? trimmed
-      : prependReviewComments(trimmed, takeQueuedDiffComments(draftKey));
+      : composePrompt(trimmed, takeContextChips(draftKey), takeQueuedDiffComments(draftKey));
     send(text);
     clearDraft();
   }
@@ -409,8 +462,12 @@ export function Composer({
           if (discardId !== null) queue?.remove(discardId);
         }}
       />
-      {queuedComments.length > 0 && (
-        <QueuedCommentChips sessionId={draftKey} comments={queuedComments} />
+      {(contextChips.length > 0 || queuedComments.length > 0) && (
+        <AttachedContextChips
+          sessionId={draftKey}
+          context={contextChips}
+          comments={queuedComments}
+        />
       )}
       <div className={CARD_CLASS} onClick={() => textareaRef.current?.focus()}>
         <div className="relative pr-[30px]">

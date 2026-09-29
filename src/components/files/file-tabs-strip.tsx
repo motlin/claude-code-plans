@@ -1,6 +1,7 @@
 import { X } from "lucide-react";
 import type { KeyboardEvent } from "react";
 
+import type { AttachContextHandler } from "../../lib/context-attach";
 import type { FileTabsAction, FileTabsState } from "../../lib/file-tabs";
 import { getFileIcon } from "../file-tree";
 import { ContextMenu, ContextMenuTrigger, MenuContent } from "../ui/menu";
@@ -15,7 +16,7 @@ interface FileTabsStripProps {
   dispatch: (action: FileTabsAction) => void;
   /** The working directory; paths inside it copy and attach relative to it. */
   cwd?: string | undefined;
-  onAttachContext?: ((snippet: string) => void) | undefined;
+  onAttachContext?: AttachContextHandler | undefined;
   /** Shows the file's folder in the tree column. */
   onRevealInTree?: ((path: string) => void) | undefined;
 }

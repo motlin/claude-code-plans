@@ -14,6 +14,7 @@ import {
 import { useDebouncedValue } from "../../hooks/use-debounced-value";
 import { useResizableWidth } from "../../hooks/use-resizable-width";
 import { type SessionFilesResponse, sessionFilesQueryOptions } from "../../lib/api/session-files";
+import type { AttachContextHandler } from "../../lib/context-attach";
 import { parseContentSearchQuery } from "../../lib/files-content-search";
 import { getFileIcon } from "../file-tree";
 import { settingStorageKey, useSettings } from "../settings-provider";
@@ -134,7 +135,9 @@ interface FilesTreeProps {
   onQueryChange?: (query: string) => void;
   /** The listed working directory; rows get a context menu once it is known. */
   cwd?: string | undefined;
-  onAttachContext?: ((snippet: string) => void) | undefined;
+  onAttachContext?: AttachContextHandler | undefined;
+  /** "Ask about this" on a content search match: puts a question in the chat input. */
+  onAsk?: ((prompt: string) => void) | undefined;
 }
 
 /**
@@ -153,6 +156,7 @@ export function FilesTree({
   onQueryChange,
   cwd,
   onAttachContext,
+  onAsk,
 }: FilesTreeProps) {
   const { settings } = useSettings();
   const [localQuery, setLocalQuery] = useState("");
@@ -360,7 +364,7 @@ export function FilesTree({
           inputRef={inputRef}
           focusFirstRef={focusFirstMatchRef}
           onOpenFile={onOpenFile}
-          onAsk={onAttachContext}
+          onAsk={onAsk}
         />
       ) : (
         <>

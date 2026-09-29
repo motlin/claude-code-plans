@@ -46,6 +46,7 @@ import { NavSectionSchema } from "../src/lib/nav-sections";
 import { PaletteFilterSchema, PaletteTypeSchema } from "../src/lib/palette-tokens";
 import { PaneLayoutStateSchema } from "../src/lib/pane-layout";
 import { PinDropOutcomeSchema } from "../src/lib/pinned-sessions";
+import { ContextAttachmentKindSchema } from "../src/lib/context-attach";
 import {
   GhPrReviewDecisionSchema,
   GhPrStateSchema,
@@ -181,6 +182,7 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["EffortLevelSchema", EffortLevelSchema],
   ["LiveOptionChangeSchema", LiveOptionChangeSchema],
   ["PinDropOutcomeSchema", PinDropOutcomeSchema],
+  ["ContextAttachmentKindSchema", ContextAttachmentKindSchema],
   ["UnifiedSearchParamsSchema", UnifiedSearchParamsSchema],
   ["UnifiedSearchResponse", UnifiedSearchResponse],
 ];

@@ -34,7 +34,7 @@ import {
   type ChangesScopeRequest,
 } from "../../lib/changes-scope-request";
 import { writeClipboardText } from "../../lib/clipboard";
-import { requestAttachContext } from "../../lib/context-attach";
+import { requestComposerInsert } from "../../lib/context-attach";
 import { loadChangesScope, saveChangesScope } from "../../lib/pane-layout";
 import type { ReviewFinding } from "../../lib/review-diff";
 import { CoachMark } from "../coach-mark";
@@ -908,7 +908,7 @@ function useReviewFindings(sessionId: string, scope: string) {
   const findings = review?.data?.findings ?? NO_FINDINGS;
 
   function fix(finding: ReviewFinding): void {
-    if (!requestAttachContext(sessionId, formatFixFindingPrompt(finding))) {
+    if (!requestComposerInsert(sessionId, formatFixFindingPrompt(finding))) {
       toast({ kind: "error", message: "Open the chat input to send this fix." });
     }
   }

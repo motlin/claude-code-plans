@@ -16,7 +16,7 @@ import { useShortcut, useShortcutKeys } from "../../hooks/use-shortcut";
 import { ApiResponseError } from "../../lib/api/client";
 import { fileContentUrl, fileViewQueryOptions } from "../../lib/api/file";
 import { writeClipboardText } from "../../lib/clipboard";
-import { formatAttachContext } from "../../lib/context-attach";
+import type { AttachContextHandler, ContextAttachment } from "../../lib/context-attach";
 import {
   formatFileSize,
   imageContentType,
@@ -68,7 +68,7 @@ export interface FileViewProps {
   /** Opens another file, such as a sibling `.md` link in rendered markdown. */
   onOpenFile?: ((path: string) => void) | undefined;
   /** Sends an "Attach as context" snippet to the chat input; without it the viewer offers none. */
-  onAttachContext?: ((snippet: string) => void) | undefined;
+  onAttachContext?: AttachContextHandler | undefined;
   /** Starting an edit of a plan or memory; the Files pane pins the tab. */
   onEditStart?: (() => void) | undefined;
   /** Whether the file has unsaved edits, for the pane's leave-tab guard. */
@@ -185,16 +185,16 @@ function lineNumberOf(node: Node): number | null {
 }
 
 /**
- * The attach snippet for the page selection when it lies inside `container`:
+ * The attachment for the page selection when it lies inside `container`:
  * whole source lines with their `#L` range, or the selected text of rendered
  * markdown. Null without such a selection.
  */
-function selectionSnippet(
+function selectionAttachment(
   container: HTMLElement | null,
   path: string,
   cwd: string | undefined,
   content: string | undefined,
-): string | null {
+): ContextAttachment | null {
   const selection = window.getSelection();
   if (container === null || selection === null || selection.rangeCount === 0) return null;
   const range = selection.getRangeAt(0);
@@ -203,7 +203,8 @@ function selectionSnippet(
   const start = lineNumberOf(range.startContainer);
   const end = lineNumberOf(range.endContainer);
   if (start !== null && end !== null && content !== undefined) {
-    return formatAttachContext({
+    return {
+      kind: "selection",
       path: mention,
       range: { start, end },
       text: content
@@ -211,11 +212,11 @@ function selectionSnippet(
         .slice(start - 1, end)
         .join("\n"),
       language: fileViewerLanguage(path),
-    });
+    };
   }
   const text = selection.toString();
   if (text.trim() === "") return null;
-  return formatAttachContext({ path: mention, text, language: null });
+  return { kind: "selection", path: mention, text, language: null };
 }
 
 function errorTitle(error: unknown): string {
@@ -399,7 +400,7 @@ export function FileView({
   const markdown = isMarkdownPath(path);
   const file = useQuery({ ...fileViewQueryOptions(path, forceText), enabled: !isImage });
   const viewerRef = useRef<HTMLDivElement>(null);
-  const [menuSelection, setMenuSelection] = useState<string | null>(null);
+  const [menuSelection, setMenuSelection] = useState<ContextAttachment | null>(null);
   const attachKeys = useShortcutKeys("attach_selection");
   const content = file.data?.kind === "text" ? file.data.content : undefined;
   const edit = useMarkdownEdit({
@@ -419,9 +420,9 @@ export function FileView({
   useShortcut(
     "attach_selection",
     () => {
-      const snippet = selectionSnippet(viewerRef.current, path, cwd, content);
-      if (snippet === null) return false;
-      onAttachContext?.(snippet);
+      const attachment = selectionAttachment(viewerRef.current, path, cwd, content);
+      if (attachment === null) return false;
+      onAttachContext?.(attachment);
       return true;
     },
     { disabled: onAttachContext === undefined },
@@ -532,7 +533,7 @@ export function FileView({
             data-find-query={findQuery}
             className="min-h-0 flex-1 overflow-auto outline-none select-text"
             onContextMenu={() =>
-              setMenuSelection(selectionSnippet(viewerRef.current, path, cwd, content))
+              setMenuSelection(selectionAttachment(viewerRef.current, path, cwd, content))
             }
           >
             {body()}
@@ -543,7 +544,7 @@ export function FileView({
               cwd={cwd}
               content={content}
               line={line ?? 1}
-              attachSnippet={() => menuSelection ?? `@${mentionPath(path, cwd)}`}
+              attachment={() => menuSelection ?? { kind: "file", path: mentionPath(path, cwd) }}
               onAttachContext={onAttachContext}
               attachShortcut={attachKeys.keys}
             />

@@ -19,8 +19,12 @@ import { decodeFilePath } from "../src/lib/api/file";
 import { writeClipboardText } from "../src/lib/clipboard";
 import {
   appendAttachment,
+  type AttachContextHandler,
+  attachContext,
   formatAttachContext,
-  requestAttachContext,
+  getContextChips,
+  requestComposerInsert,
+  takeContextChips,
 } from "../src/lib/context-attach";
 import type { FileTabsState } from "../src/lib/file-tabs";
 import { handleRevealInFinder } from "../src/lib/open-in-finder";
@@ -242,7 +246,7 @@ describe("tree row context menu", () => {
       rows: ["Attach as context", "Copy"],
       copyRows: ["Absolute path", "Relative path", "Filename"],
       copied: [[`${CWD}/README.md`]],
-      attached: [["@README.md"]],
+      attached: [[{ kind: "file", path: "README.md" }]],
     });
   });
 });
@@ -365,13 +369,21 @@ describe("viewer context menu", () => {
     clickItem("Attach as context");
 
     expect(onAttachContext.mock.calls).toStrictEqual([
-      ["@src/agent.ts#L1-2\n```typescript\nconst alice = 1;\nconst bob = 2;\n```"],
+      [
+        {
+          kind: "selection",
+          path: "src/agent.ts",
+          range: { start: 1, end: 2 },
+          text: "const alice = 1;\nconst bob = 2;",
+          language: "typescript",
+        },
+      ],
     ]);
   });
 });
 
 describe("⇧⌘L attach selection", () => {
-  async function renderLoaded(onAttachContext: (snippet: string) => void) {
+  async function renderLoaded(onAttachContext: AttachContextHandler) {
     render(
       wrap(
         <>
@@ -397,7 +409,17 @@ describe("⇧⌘L attach selection", () => {
       attached: onAttachContext.mock.calls,
     }).toStrictEqual({
       prevented: true,
-      attached: [["@src/agent.ts#L2-3\n```typescript\nconst bob = 2;\nconst carol = 3;\n```"]],
+      attached: [
+        [
+          {
+            kind: "selection",
+            path: "src/agent.ts",
+            range: { start: 2, end: 3 },
+            text: "const bob = 2;\nconst carol = 3;",
+            language: "typescript",
+          },
+        ],
+      ],
     });
   });
 
@@ -422,21 +444,71 @@ describe("⇧⌘L attach selection", () => {
 });
 
 describe("composer attach requests", () => {
-  it("appends an attached snippet to the session's prompt", () => {
+  afterEach(() => {
+    takeContextChips("alice-session");
+  });
+
+  it("appends requested text, such as a fix prompt, to the session's prompt", () => {
     render(<Composer variant="session" draftKey="alice-session" onSend={() => {}} />);
     const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Prompt" });
     fireEvent.change(textarea, { target: { value: "Look at" } });
 
     let delivered = false;
     act(() => {
-      delivered = requestAttachContext("alice-session", "@src/agent.ts");
+      delivered = requestComposerInsert("alice-session", "@src/agent.ts");
     });
-    const otherSession = requestAttachContext("bob-session", "@src/bob.ts");
+    const otherSession = requestComposerInsert("bob-session", "@src/bob.ts");
 
     expect({ delivered, otherSession, value: textarea.value }).toStrictEqual({
       delivered: true,
       otherSession: false,
       value: "Look at @src/agent.ts ",
+    });
+  });
+
+  it("shows attached context as removable chips and sends it ahead of the prompt", () => {
+    const onSend = vi.fn();
+    render(<Composer variant="session" draftKey="alice-session" onSend={onSend} />);
+    const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Prompt" });
+
+    act(() => {
+      attachContext("alice-session", { kind: "file", path: "src/alice.ts" });
+      attachContext("alice-session", {
+        kind: "selection",
+        path: "src/agent.ts",
+        range: { start: 2, end: 3 },
+        text: "const bob = 2;\nconst carol = 3;",
+        language: "typescript",
+      });
+      attachContext("alice-session", { kind: "terminal", text: "$ ls" });
+    });
+    const strip = screen.getByRole("list", { name: "Attached context" });
+    const chips = Array.from(strip.querySelectorAll("li")).map((chip) => chip.textContent);
+    const sendEnabled = !screen.getByRole<HTMLButtonElement>("button", { name: "Send" }).disabled;
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove Terminal output" }));
+    fireEvent.change(textarea, { target: { value: "Explain" } });
+    fireEvent.keyDown(textarea, { key: "Enter" });
+
+    expect({
+      chips,
+      sendEnabled,
+      prompt: textarea.value,
+      sent: onSend.mock.calls,
+      stripAfter: screen.queryByRole("list", { name: "Attached context" }),
+      left: getContextChips("alice-session"),
+    }).toStrictEqual({
+      chips: ["alice.ts", "agent.ts:2-3", "Terminal output"],
+      sendEnabled: true,
+      prompt: "",
+      sent: [
+        [
+          "@src/alice.ts\n\n@src/agent.ts#L2-3\n```typescript\nconst bob = 2;\nconst carol = 3;\n```\n\nExplain",
+          {},
+        ],
+      ],
+      stripAfter: null,
+      left: [],
     });
   });
 });

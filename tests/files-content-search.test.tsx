@@ -248,7 +248,7 @@ function stubFetch(): void {
 
 function renderTree() {
   const onOpenFile = vi.fn();
-  const onAttachContext = vi.fn();
+  const onAsk = vi.fn();
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
@@ -258,13 +258,13 @@ function renderTree() {
             sessionId="content-session"
             cwd="/repo"
             onOpenFile={onOpenFile}
-            onAttachContext={onAttachContext}
+            onAsk={onAsk}
           />
         </FilesTreeColumn>
       </SettingsProvider>
     </QueryClientProvider>,
   );
-  return { onOpenFile, onAttachContext };
+  return { onOpenFile, onAsk };
 }
 
 function filterInput(): HTMLInputElement {
@@ -297,7 +297,7 @@ describe("FilesTree content search", () => {
   });
 
   it("routes a ? query to the file content search scoped to the working directory", async () => {
-    const { onOpenFile, onAttachContext } = renderTree();
+    const { onOpenFile, onAsk } = renderTree();
     fireEvent.change(filterInput(), { target: { value: "?needle" } });
     await screen.findByText("a.ts");
 
@@ -318,7 +318,7 @@ describe("FilesTree content search", () => {
       ),
       groups,
       opens: onOpenFile.mock.calls,
-      asks: onAttachContext.mock.calls,
+      asks: onAsk.mock.calls,
     }).toStrictEqual({
       contentRequests: ["/api/search/files?query=needle&scopeRoot=%2Frepo"],
       treeRequestedQuestion: false,

@@ -1,5 +1,5 @@
 import type { ILink, ILinkProvider } from "ghostty-web";
-import { formatFencedExcerpt, requestAttachContext } from "./context-attach";
+import { attachContext } from "./context-attach";
 
 /**
  * Terminal selections and links as on claude.ai/code: ⌘C (or ⌃⇧C) copies the
@@ -62,7 +62,7 @@ export function handleTerminalSelectionKey(
 
 /** Send terminal output to the session's composer; false when none is mounted. */
 export function attachTerminalSelection(sessionId: string, text: string): boolean {
-  return requestAttachContext(sessionId, formatFencedExcerpt(text));
+  return attachContext(sessionId, { kind: "terminal", text });
 }
 
 function httpUrl(href: string): URL | null {

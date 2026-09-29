@@ -8,7 +8,7 @@ import { Composer } from "../src/components/composer";
 import { SettingsProvider } from "../src/components/settings-provider";
 import { ToastProvider } from "../src/components/toast";
 import type { SessionDiffResponse } from "../src/lib/api/session-diff";
-import { onAttachContextRequest } from "../src/lib/context-attach";
+import { registerComposer, takeContextChips } from "../src/lib/context-attach";
 import { clearDiffComments, getDiffComments, openDiffCommentDraft } from "../src/lib/diff-comments";
 import { installLocalStorage } from "./fake-storage";
 
@@ -151,7 +151,7 @@ describe("Changes pane line comments", () => {
     });
     fireEvent.click(within(card).getByRole("button", { name: "Save comment" }));
 
-    const chips = screen.getByRole("list", { name: "Queued comments" });
+    const chips = screen.getByRole("list", { name: "Attached context" });
     const queued = {
       chips: within(chips)
         .getAllByRole("listitem")
@@ -168,7 +168,7 @@ describe("Changes pane line comments", () => {
     expect({
       queued,
       sent: onSend.mock.calls,
-      chipsAfter: screen.queryByRole("list", { name: "Queued comments" }),
+      chipsAfter: screen.queryByRole("list", { name: "Attached context" }),
       comments: getDiffComments(SESSION),
     }).toStrictEqual({
       queued: {
@@ -198,7 +198,7 @@ describe("Changes pane line comments", () => {
     fireEvent.click(screen.getByRole("button", { name: "Remove comment on greet.ts:5" }));
 
     expect({
-      chips: screen.queryByRole("list", { name: "Queued comments" }),
+      chips: screen.queryByRole("list", { name: "Attached context" }),
       comments: getDiffComments(SESSION),
     }).toStrictEqual({ chips: null, comments: { drafts: [], queued: [] } });
   });
@@ -233,15 +233,20 @@ describe("Changes pane right-click menu", () => {
   });
 
   it("attaches the clicked line as @path#L with its code fenced", async () => {
-    const snippets: string[] = [];
-    const stop = onAttachContextRequest(SESSION, (snippet) => snippets.push(snippet));
+    const stop = registerComposer(SESSION, { insertText: () => {}, focus: () => {} });
     const { container } = renderPane();
     await rightClickLine(container, 3);
     fireEvent.click(await screen.findByRole("menuitem", { name: /Attach as context/ }));
     stop();
 
-    expect(snippets).toStrictEqual([
-      '@src/greet.ts#L3\n```typescript\n  return greeting + " " + name;\n```',
+    expect(takeContextChips(SESSION).map(({ id: _id, ...chip }) => chip)).toStrictEqual([
+      {
+        kind: "selection",
+        path: "src/greet.ts",
+        range: { start: 3, end: 3 },
+        text: '  return greeting + " " + name;',
+        language: "typescript",
+      },
     ]);
   });
 

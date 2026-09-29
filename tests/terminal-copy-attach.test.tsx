@@ -5,6 +5,7 @@ import type { ILink, ILinkProvider } from "ghostty-web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { Composer } from "../src/components/composer";
+import { formatContextAttachment, takeContextChips } from "../src/lib/context-attach";
 import {
   attachTerminalSelection,
   guardTerminalLinks,
@@ -99,7 +100,7 @@ describe("handleTerminalSelectionKey", () => {
 });
 
 describe("attachTerminalSelection", () => {
-  it("adds the selection to the session's composer as a fenced excerpt", () => {
+  it("adds the selection to the session's composer as a terminal output chip", () => {
     render(<Composer variant="session" draftKey="alice-session" onSend={() => {}} />);
     const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Prompt" });
 
@@ -109,15 +110,23 @@ describe("attachTerminalSelection", () => {
     });
     const otherSession = attachTerminalSelection("bob-session", "bob");
 
+    const chips = takeContextChips("alice-session").map((chip) => ({
+      kind: chip.kind,
+      text: chip.text,
+      sent: formatContextAttachment(chip),
+    }));
+
     expect({
       delivered,
       otherSession,
       value: textarea.value,
+      chips,
       message: TERMINAL_ATTACHED_MESSAGE,
     }).toStrictEqual({
       delivered: true,
       otherSession: false,
-      value: "````\n$ echo ```\n```\n````\n",
+      value: "",
+      chips: [{ kind: "terminal", text: "$ echo ```\n```", sent: "````\n$ echo ```\n```\n````" }],
       message: "Terminal output attached to chat",
     });
   });

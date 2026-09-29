@@ -1,7 +1,7 @@
 import { type MouseEvent, type ReactNode, useState } from "react";
 
 import { writeClipboardText } from "../../lib/clipboard";
-import { formatAttachContext, requestAttachContext } from "../../lib/context-attach";
+import { attachContext } from "../../lib/context-attach";
 import { type DiffSide, openDiffCommentDraft } from "../../lib/diff-comments";
 import { detectLanguage } from "../../lib/diff-utils";
 import { useToast } from "../toast";
@@ -107,13 +107,14 @@ export function DiffContextMenu({
   const toast = useToast();
 
   function attach(lines: DiffLineSelection) {
-    const snippet = formatAttachContext({
+    const attached = attachContext(sessionId, {
+      kind: "selection",
       path,
       range: { start: lines.line, end: lines.endLine },
       text: lines.text,
       language: detectLanguage(path),
     });
-    if (!requestAttachContext(sessionId, snippet)) {
+    if (!attached) {
       toast({ kind: "error", message: "Open the chat input to attach context." });
     }
   }

@@ -9,6 +9,7 @@ import type {
 } from "./artifact-schemas";
 import type { ChangedFileKindSchema } from "./changed-file-kind";
 import type { CodeThemeDark, CodeThemeLight } from "./code-themes";
+import type { ContextAttachmentKindSchema } from "./context-attach";
 import type { TerminalAppearance } from "./terminal-theme";
 import type { McpScopeSchema, PermissionBehaviorSchema, SkillSourceSchema } from "./api/customize";
 import type { PluginFileSchema, PluginListResponse } from "./api/plugins";
@@ -871,6 +872,13 @@ const liveOptionChangeVariants = {
   mode: true,
 } satisfies Record<LiveOptionChange["kind"], true>;
 
+/** Composer context chip kinds attached with ⇧⌘L (src/lib/context-attach.ts). */
+const contextAttachmentKindLabels = {
+  file: "File",
+  selection: "Selection",
+  terminal: "Terminal output",
+} satisfies Record<z.infer<typeof ContextAttachmentKindSchema>, string>;
+
 /** Sidebar row drag release outcomes (src/lib/pinned-sessions.ts). */
 const pinDropOutcomeLabels = {
   pin: "Pin",
@@ -1047,6 +1055,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   GroupIconSchema: groupIconLabels,
   GroupColorSchema: groupColorLabels,
   PinDropOutcomeSchema: pinDropOutcomeLabels,
+  ContextAttachmentKindSchema: contextAttachmentKindLabels,
   ArtifactActionSchema: artifactActionLabels,
   ArtifactIntentSchema: artifactIntentLabels,
   ArtifactListScopeSchema: artifactListScopeLabels,

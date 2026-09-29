@@ -1,5 +1,6 @@
 import { fileContentUrl, revealFileInFinder } from "../../lib/api/file";
 import { writeClipboardText } from "../../lib/clipboard";
+import type { AttachContextHandler, ContextAttachment } from "../../lib/context-attach";
 import type { FileTabsAction } from "../../lib/file-tabs";
 import { vscodeFolderUrl } from "../../lib/session-open-in";
 import { useToast } from "../toast";
@@ -49,28 +50,22 @@ interface SharedItemsProps {
   /** Absolute path of the file or folder. */
   path: string;
   cwd: string | undefined;
-  /** The snippet "Attach as context" sends; the item is hidden without `onAttachContext`. */
-  attachSnippet: () => string;
-  onAttachContext: ((snippet: string) => void) | undefined;
+  /** What "Attach as context" attaches; the item is hidden without `onAttachContext`. */
+  attachment: () => ContextAttachment;
+  onAttachContext: AttachContextHandler | undefined;
   /** Show ⇧⌘L beside "Attach as context", where the shortcut applies. */
   attachShortcut?: string | undefined;
 }
 
 /** Attach as context · Copy ▸ {Absolute path, Relative path, Filename}. */
-function SharedItems({
-  path,
-  cwd,
-  attachSnippet,
-  onAttachContext,
-  attachShortcut,
-}: SharedItemsProps) {
+function SharedItems({ path, cwd, attachment, onAttachContext, attachShortcut }: SharedItemsProps) {
   const copy = useCopyText();
   const relPath = relativeToCwd(path, cwd);
   return (
     <>
       {onAttachContext !== undefined && (
         <MenuItem
-          onSelect={() => onAttachContext(attachSnippet())}
+          onSelect={() => onAttachContext(attachment())}
           {...(attachShortcut === undefined ? {} : { shortcut: attachShortcut })}
         >
           Attach as context
@@ -99,7 +94,7 @@ interface TreeRowMenuItemsProps {
   path: string;
   cwd: string;
   isDirectory: boolean;
-  onAttachContext: ((snippet: string) => void) | undefined;
+  onAttachContext: AttachContextHandler | undefined;
 }
 
 export function TreeRowMenuItems({
@@ -113,7 +108,7 @@ export function TreeRowMenuItems({
     <SharedItems
       path={path}
       cwd={cwd}
-      attachSnippet={() => `@${mention}${isDirectory ? "/" : ""}`}
+      attachment={() => ({ kind: "file", path: `${mention}${isDirectory ? "/" : ""}` })}
       onAttachContext={onAttachContext}
     />
   );
@@ -122,7 +117,7 @@ export function TreeRowMenuItems({
 interface TabMenuItemsProps {
   path: string;
   cwd: string | undefined;
-  onAttachContext: ((snippet: string) => void) | undefined;
+  onAttachContext: AttachContextHandler | undefined;
   onRevealInTree: ((path: string) => void) | undefined;
   dispatch: (action: FileTabsAction) => void;
 }
@@ -139,7 +134,7 @@ export function TabMenuItems({
       <SharedItems
         path={path}
         cwd={cwd}
-        attachSnippet={() => `@${mentionPath(path, cwd)}`}
+        attachment={() => ({ kind: "file", path: mentionPath(path, cwd) })}
         onAttachContext={onAttachContext}
       />
       <MenuSeparator />
@@ -166,8 +161,8 @@ interface ViewerMenuItemsProps {
   content: string | undefined;
   /** The line VS Code opens at. */
   line: number;
-  attachSnippet: () => string;
-  onAttachContext: ((snippet: string) => void) | undefined;
+  attachment: () => ContextAttachment;
+  onAttachContext: AttachContextHandler | undefined;
   attachShortcut: string;
 }
 
@@ -176,7 +171,7 @@ export function ViewerMenuItems({
   cwd,
   content,
   line,
-  attachSnippet,
+  attachment,
   onAttachContext,
   attachShortcut,
 }: ViewerMenuItemsProps) {
@@ -192,7 +187,7 @@ export function ViewerMenuItems({
       <SharedItems
         path={path}
         cwd={cwd}
-        attachSnippet={attachSnippet}
+        attachment={attachment}
         onAttachContext={onAttachContext}
         attachShortcut={attachShortcut}
       />
