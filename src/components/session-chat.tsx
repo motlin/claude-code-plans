@@ -49,6 +49,8 @@ import { promptSourceLabels } from "../lib/schema-choices";
 import { computeDiffData } from "../lib/diff-utils";
 import { TasksView } from "./tasks-view";
 import { DebugLink } from "./debug-link";
+import { TurnChangesCard } from "./turn-changes-card";
+import { collectTurnChanges, type TurnChanges } from "../lib/turn-changes";
 import { useSettings } from "./settings-provider";
 import type { TranscriptMode } from "../lib/transcript-mode";
 import { hmrPersist } from "../lib/hmr-persist";
@@ -442,11 +444,14 @@ function LineEntry({
   line,
   nextLine,
   className,
+  turnChanges,
   ...renderProps
 }: LineRenderProps & {
   line: SessionLine;
   nextLine: SessionLine | undefined;
   className?: string;
+  /** The end-of-turn changes card this line closes, shown after its content. */
+  turnChanges?: TurnChanges | undefined;
 }) {
   const content = renderSessionMessage({
     line,
@@ -475,6 +480,7 @@ function LineEntry({
     >
       {isAssistant && <TurnHeading speaker="Claude" />}
       {content}
+      {turnChanges && <TurnChangesCard sessionId={renderProps.sessionId} changes={turnChanges} />}
       {isAssistant && (
         <MessageToolbar line={line} {...(rawTimestamp ? { timestamp: rawTimestamp } : {})} />
       )}
@@ -732,6 +738,7 @@ function buildSessionListEntries(
   renderProps: LineRenderProps,
 ): SessionListEntry[] {
   const skipSet = buildSkipSet(lines);
+  const turnChangesByLine = collectTurnChanges(lines, renderProps.toolResultMap);
   const entries: Omit<SessionListEntry, "endRecordIndex">[] = [];
   let prevVisibleType: string | null = null;
   let i = 0;
@@ -795,17 +802,32 @@ function buildSessionListEntries(
         entries.push({
           key: `line-${line.lineIndex}`,
           startRecordIndex: line.lineIndex,
-          element: <LineEntry line={line} nextLine={lines[groupStart + 1]} {...renderProps} />,
+          element: (
+            <LineEntry
+              line={line}
+              nextLine={lines[groupStart + 1]}
+              turnChanges={turnChangesByLine.get(line.lineIndex)}
+              {...renderProps}
+            />
+          ),
         });
       } else {
+        const groupLines = groupIndices.map((index) => lines[index]!);
+        const groupChanges = groupLines
+          .map((groupLine) => turnChangesByLine.get(groupLine.lineIndex))
+          .find((changes) => changes !== undefined);
         entries.push({
           key: `group-${line.lineIndex}`,
           startRecordIndex: line.lineIndex,
           element: (
-            <GroupedToolCallEntry
-              entries={groupIndices.map((index) => lines[index]!)}
-              {...renderProps}
-            />
+            <>
+              <GroupedToolCallEntry entries={groupLines} {...renderProps} />
+              {groupChanges && (
+                <div className={TURN_GAP_CLASS}>
+                  <TurnChangesCard sessionId={renderProps.sessionId} changes={groupChanges} />
+                </div>
+              )}
+            </>
           ),
         });
       }
@@ -827,6 +849,7 @@ function buildSessionListEntries(
         <LineEntry
           line={line}
           nextLine={lines[i + 1]}
+          turnChanges={turnChangesByLine.get(line.lineIndex)}
           {...(isBannerAfterBanner ? { className: "mt-1" } : {})}
           {...renderProps}
         />

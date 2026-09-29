@@ -66,6 +66,11 @@ export function usePaneHost(): PaneHostApi {
   return host;
 }
 
+/** The pane host, or null outside a `<TileHost>` (e.g. a transcript shown on its own). */
+export function useOptionalPaneHost(): PaneHostApi | null {
+  return useContext(PaneHostContext);
+}
+
 interface InternalHost {
   definitions: ReadonlyMap<PaneKind, PaneDefinition>;
   update: (fn: LayoutUpdate) => void;

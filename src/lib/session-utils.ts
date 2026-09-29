@@ -301,7 +301,7 @@ export function editDiffEntries(input: Record<string, unknown>): EditDiffEntry[]
   return [{ oldStr: asString(input["old_string"]), newStr: asString(input["new_string"]) }];
 }
 
-function diffStatsForCall(call: ToolCallLike): {
+export function diffStatsForCall(call: ToolCallLike): {
   added: number;
   removed: number;
 } {

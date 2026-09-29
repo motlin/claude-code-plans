@@ -14,6 +14,10 @@ import {
   sessionDiffQueryOptions,
   sessionDiffScopesQueryOptions,
 } from "../../lib/api/session-diff";
+import {
+  CHANGES_SCOPE_REQUEST_EVENT,
+  type ChangesScopeRequest,
+} from "../../lib/changes-scope-request";
 import { writeClipboardText } from "../../lib/clipboard";
 import { loadChangesScope, saveChangesScope } from "../../lib/pane-layout";
 import { type PaneChrome, registerPane } from "../panes/pane-registry";
@@ -721,6 +725,14 @@ function usePersistedScope(sessionId: string): [string, (scope: string) => void]
     },
     [sessionId],
   );
+  useEffect(() => {
+    function onRequest(event: Event) {
+      const { detail } = event as CustomEvent<ChangesScopeRequest>;
+      if (detail.sessionId === sessionId) setEntry({ sessionId, scope: detail.scope });
+    }
+    window.addEventListener(CHANGES_SCOPE_REQUEST_EVENT, onRequest);
+    return () => window.removeEventListener(CHANGES_SCOPE_REQUEST_EVENT, onRequest);
+  }, [sessionId]);
   return [current, setScope];
 }
 
