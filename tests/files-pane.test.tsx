@@ -330,10 +330,42 @@ describe("Files pane header", () => {
         ["Show file tree⌃Control⇧ShiftY", "true"],
         ["Preview tabs", "true"],
         ["Hide ignored files", "false"],
+        ["Word wrap", "true"],
+        ["Tab size4", null],
         ["Show files from", null],
       ],
       stored: "true",
       checked: "true",
+    });
+  });
+
+  it("Files settings toggles Word wrap and picks a Tab size, both persisted", async () => {
+    registerFilesPane();
+    renderSession();
+    press(CMD_SHIFT_F);
+
+    fireEvent.click(within(filesPane()).getByRole("button", { name: "Files settings" }));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Word wrap" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /^Tab size/ }));
+    fireEvent.click(await screen.findByRole("menuitemradio", { name: "8" }));
+
+    expect({
+      wrap: localStorage.getItem("ccp-files-word-wrap"),
+      tabSize: localStorage.getItem("ccp-files-tab-size"),
+      radios: screen
+        .getAllByRole("menuitemradio")
+        .map((item) => [item.textContent, item.getAttribute("aria-checked")]),
+    }).toStrictEqual({
+      wrap: "false",
+      tabSize: "8",
+      radios: [
+        ["2", "false"],
+        ["4", "false"],
+        ["8", "true"],
+      ],
     });
   });
 

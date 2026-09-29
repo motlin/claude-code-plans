@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { z } from "zod";
-import { apiFetch } from "./client";
+import { ApiResponseError, resolveUrl } from "./client";
 
 export const FileViewerResponse = z
   .object({
@@ -10,11 +10,17 @@ export const FileViewerResponse = z
   .strict();
 export type FileViewerData = z.infer<typeof FileViewerResponse>;
 
-export const FileViewerErrorResponse = z
-  .object({
-    error: z.string(),
-  })
-  .strict();
+const FilePreviewUnavailableSchema = z.strictObject({
+  kind: z.enum(["binary", "too-large"]),
+  size: z.number().int().nonnegative(),
+  type: z.string(),
+});
+export type FilePreviewUnavailable = z.infer<typeof FilePreviewUnavailableSchema>;
+
+export const FileViewerErrorResponse = z.union([
+  z.strictObject({ error: z.string() }),
+  FilePreviewUnavailableSchema.extend({ error: z.string() }),
+]);
 
 /** Encode an absolute path as one opaque, traversal-free route segment. */
 export function encodeFilePath(path: string): string {
@@ -44,13 +50,49 @@ export function fileViewerPath(path: string): string {
   return `/file/${encodeFilePath(path)}`;
 }
 
-export const fileViewerQueryOptions = (pathToken: string) =>
+/**
+ * The file API URL for one absolute path: JSON text by default, the text of a
+ * binary file with `forceText`, or the raw bytes as an attachment with `download`.
+ * Image paths always stream their bytes.
+ */
+export function fileContentUrl(
+  path: string,
+  options: { forceText?: boolean; download?: boolean } = {},
+): string {
+  const query = options.download ? "?download=1" : options.forceText ? "?force=text" : "";
+  return `/api/file/${encodeFilePath(path)}${query}`;
+}
+
+/** A file the viewer can show as text, or why it can't. */
+type FileViewContent =
+  | { kind: "text"; content: string; path: string }
+  | { kind: "binary"; size: number; type: string }
+  | { kind: "too-large"; size: number; type: string };
+
+async function fetchFileView(
+  path: string,
+  forceText: boolean,
+  signal: AbortSignal,
+): Promise<FileViewContent> {
+  const url = fileContentUrl(path, { forceText });
+  const response = await fetch(resolveUrl(url), { credentials: "same-origin", signal });
+  if (response.ok) return { kind: "text", ...FileViewerResponse.parse(await response.json()) };
+  if (response.status === 413 || response.status === 415) {
+    const body = FileViewerErrorResponse.parse(await response.json());
+    if ("kind" in body) {
+      const { size, type } = body;
+      return body.kind === "binary"
+        ? { kind: "binary", size, type }
+        : { kind: "too-large", size, type };
+    }
+  }
+  throw new ApiResponseError(url, response);
+}
+
+export const fileViewQueryOptions = (path: string, forceText = false) =>
   queryOptions({
-    queryKey: ["file", pathToken] as const,
-    queryFn: ({ signal }) =>
-      apiFetch(`/api/file/${pathToken}`, FileViewerResponse, {
-        signal,
-      }),
+    queryKey: ["file", path, forceText ? "text" : "auto"] as const,
+    queryFn: ({ signal }) => fetchFileView(path, forceText, signal),
     staleTime: 0,
     gcTime: 5 * 60_000,
   });

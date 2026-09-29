@@ -16,7 +16,7 @@ export class ApiResponseError extends Error {
  * prepend the local server origin. The port is read from the `PORT`
  * environment variable, falling back to 7526 (the project's default).
  */
-function resolveUrl(url: string): string {
+export function resolveUrl(url: string): string {
   if (typeof window !== "undefined") return url;
   if (/^https?:\/\//.test(url)) return url;
   const port = process.env["PORT"] ?? "7526";

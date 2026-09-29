@@ -15,7 +15,8 @@ import { loadFileTabs, saveFileTabs } from "../../lib/pane-layout";
 import { formatResourceCount, resourceCoverageNote } from "../../lib/session-resources";
 import type { SessionFiles } from "../../lib/session-files";
 import { pillStyles } from "../detail-top-bar";
-import { FilePaneViewer } from "../files/file-pane-viewer";
+import { FILE_TAB_SIZES, normalizeFileTabSize } from "../../lib/file-preview";
+import { FileView } from "../files/file-view";
 import { FileTabsStrip } from "../files/file-tabs-strip";
 import { FilesTree, FilesTreeColumn } from "../files/files-tree";
 import { JumpTargetProvider, type JumpTargetWindow } from "../jump-target-context";
@@ -25,6 +26,8 @@ import {
   MenuCheckboxItem,
   MenuContent,
   MenuItem,
+  MenuRadioGroup,
+  MenuRadioItem,
   MenuSeparator,
   MenuSub,
   MenuSubContent,
@@ -146,6 +149,32 @@ function FilesSettingsMenu({
         >
           Hide ignored files
         </MenuCheckboxItem>
+        <MenuSeparator />
+        <MenuCheckboxItem
+          checked={settings.filesWordWrap}
+          onCheckedChange={(checked) => setSetting("filesWordWrap", checked)}
+        >
+          Word wrap
+        </MenuCheckboxItem>
+        <MenuSub>
+          <MenuSubTrigger value={normalizeFileTabSize(settings.filesTabSize)}>
+            Tab size
+          </MenuSubTrigger>
+          <MenuSubContent>
+            <MenuRadioGroup
+              value={normalizeFileTabSize(settings.filesTabSize)}
+              onValueChange={(value: unknown) =>
+                setSetting("filesTabSize", normalizeFileTabSize(Number(value)))
+              }
+            >
+              {FILE_TAB_SIZES.map((size) => (
+                <MenuRadioItem key={size} value={size}>
+                  {size}
+                </MenuRadioItem>
+              ))}
+            </MenuRadioGroup>
+          </MenuSubContent>
+        </MenuSub>
         <MenuSeparator />
         <MenuSub>
           <MenuSubTrigger>Show files from</MenuSubTrigger>
@@ -483,7 +512,12 @@ export function FilesPaneView({
           {openPath === null ? (
             <FilesEmpty hasTree={treeShown} tabCount={fileTabs.tabs.length} />
           ) : (
-            <FilePaneViewer path={openPath} />
+            <FileView
+              key={openPath}
+              path={openPath}
+              cwd={cwd}
+              onOpenFile={(path) => openFile(path, { pin: false })}
+            />
           )}
         </div>
       </div>

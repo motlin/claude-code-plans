@@ -1,12 +1,16 @@
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { FileViewer } from "../components/file-viewer";
-import { decodeFilePath, fileViewerQueryOptions } from "../lib/api/file";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { FileView } from "../components/files/file-view";
+import { decodeFilePath, encodeFilePath, fileViewQueryOptions } from "../lib/api/file";
+import { imageContentType } from "../lib/file-preview";
 
 export const Route = createFileRoute("/file/$")({
   component: FileViewerPage,
-  loader: ({ context: { queryClient }, params }) =>
-    queryClient.ensureQueryData(fileViewerQueryOptions(params._splat ?? "")),
+  loader: async ({ context: { queryClient }, params }) => {
+    const path = decodeFilePath(params._splat ?? "");
+    if (path !== null && imageContentType(path) === null) {
+      await queryClient.prefetchQuery(fileViewQueryOptions(path));
+    }
+  },
   head: ({ params }) => {
     const path = decodeFilePath(params._splat ?? "");
     const filename = path?.split("/").at(-1) ?? "Invalid path";
@@ -16,15 +20,24 @@ export const Route = createFileRoute("/file/$")({
 
 function FileViewerPage() {
   const { _splat: pathToken = "" } = Route.useParams();
-  const { data } = useSuspenseQuery(fileViewerQueryOptions(pathToken));
+  const navigate = useNavigate();
+  const path = decodeFilePath(pathToken);
 
+  if (path === null) {
+    return (
+      <main className="p-6 text-body text-primary">A valid encoded file path is required.</main>
+    );
+  }
   return (
-    <main className="mx-auto max-w-[min(100%,96rem)] p-6">
-      <header className="mb-4">
-        <h1 className="text-lg font-medium text-primary">Read-only file</h1>
-        <p className="mt-1 break-all font-mono text-xs text-t6">{data.path}</p>
-      </header>
-      <FileViewer file={data} />
+    <main className="mx-auto flex h-full max-w-[min(100%,96rem)] flex-col p-3">
+      <FileView
+        key={path}
+        path={path}
+        hashNavigation
+        onOpenFile={(sibling) =>
+          void navigate({ to: "/file/$", params: { _splat: encodeFilePath(sibling) } })
+        }
+      />
     </main>
   );
 }

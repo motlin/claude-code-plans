@@ -213,13 +213,23 @@ describe("file viewer API", () => {
         status: 403,
       },
       {
-        body: { error: "Binary files are not supported" },
+        body: {
+          error: "Binary files are not supported",
+          kind: "binary",
+          size: 3,
+          type: "BIN file",
+        },
         cacheControl: "private, max-age=0, must-revalidate",
         etag: null,
         status: 415,
       },
       {
-        body: { error: "File exceeds the 5 MiB size limit" },
+        body: {
+          error: "File exceeds the 5 MiB size limit",
+          kind: "too-large",
+          size: FILE_CONTENT_SIZE_CAP_BYTES + 1,
+          type: "TXT file",
+        },
         cacheControl: "private, max-age=0, must-revalidate",
         etag: null,
         status: 413,
@@ -231,6 +241,80 @@ describe("file viewer API", () => {
         status: 404,
       },
     ]);
+  });
+
+  it("serves a binary file as text when forced", async () => {
+    const binaryPath = join(allowedRoot, "alice.bin");
+    writeFileSync(binaryPath, Buffer.from([65, 0, 66]));
+    const token = encodeFilePath(binaryPath);
+
+    const response = await handleFileRequest(
+      new Request(`http://127.0.0.1:7526/api/file/${token}?force=text`),
+      token,
+      configPath,
+    );
+
+    expect({ body: await response.json(), status: response.status }).toStrictEqual({
+      body: { content: "A\u0000B", path: realpathSync(binaryPath) },
+      status: 200,
+    });
+  });
+
+  it("streams images with their content type and refuses them outside the roots", async () => {
+    const imagePath = join(allowedRoot, "bg.png");
+    const outsideImage = join(outsideRoot, "bob.png");
+    const bytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1, 2]);
+    writeFileSync(imagePath, bytes);
+    writeFileSync(outsideImage, bytes);
+
+    const [inside, outside] = await Promise.all(
+      [imagePath, outsideImage].map((path) =>
+        handleFileRequest(fileRequest(path), encodeFilePath(path), configPath),
+      ),
+    );
+
+    expect({
+      inside: {
+        body: [...new Uint8Array(await inside!.arrayBuffer())],
+        contentType: inside!.headers.get("Content-Type"),
+        nosniff: inside!.headers.get("X-Content-Type-Options"),
+        status: inside!.status,
+      },
+      outside: { body: await outside!.json(), status: outside!.status },
+    }).toStrictEqual({
+      inside: {
+        body: [...bytes],
+        contentType: "image/png",
+        nosniff: "nosniff",
+        status: 200,
+      },
+      outside: { body: { error: "File path is not allowed" }, status: 403 },
+    });
+  });
+
+  it("downloads oversized files as attachments", async () => {
+    const oversizedPath = join(allowedRoot, "alice large.txt");
+    writeFileSync(oversizedPath, "");
+    truncateSync(oversizedPath, FILE_CONTENT_SIZE_CAP_BYTES + 1);
+    const token = encodeFilePath(oversizedPath);
+
+    const response = await handleFileRequest(
+      new Request(`http://127.0.0.1:7526/api/file/${token}?download=1`),
+      token,
+      configPath,
+    );
+
+    expect({
+      disposition: response.headers.get("Content-Disposition"),
+      contentType: response.headers.get("Content-Type"),
+      length: (await response.arrayBuffer()).byteLength,
+      status: response.status,
+    }).toStrictEqual({
+      disposition: "attachment; filename*=UTF-8''alice%20large.txt",
+      contentType: "application/octet-stream",
+      length: FILE_CONTENT_SIZE_CAP_BYTES + 1,
+      status: 200,
+    });
   });
 
   it("rejects relative paths and malformed path tokens without exposing a raw-path endpoint", async () => {

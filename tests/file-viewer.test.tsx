@@ -55,6 +55,19 @@ describe("read-only file viewer", () => {
     });
   });
 
+  it("highlights an #L<start>-L<end> range and scrolls to its first line", () => {
+    window.history.replaceState(null, "", "/file/fabricated-token#L2-L3");
+    renderViewer("first\nsecond\nthird\nfourth");
+
+    expect({
+      highlightedLineIds: highlightedLineIds(),
+      scrollCalls: scrollIntoView.mock.calls,
+    }).toStrictEqual({
+      highlightedLineIds: ["L2", "L3"],
+      scrollCalls: [[{ block: "center" }]],
+    });
+  });
+
   it("updates the hash from an accessible gutter and preserves source whitespace safely", () => {
     const { container } = renderViewer("<img src=x onerror=alert(1)>\n\tconst alice = 100;");
 

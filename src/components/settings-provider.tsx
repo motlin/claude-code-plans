@@ -79,6 +79,10 @@ export interface Settings {
   filesPreviewTabs: boolean;
   /** The Files pane's tree column width in pixels, clamped to 160–640 where it is used. */
   filesTreeWidth: number;
+  /** Source view word wrap, on by default like upstream. */
+  filesWordWrap: boolean;
+  /** Source view tab width: 2, 4 or 8, normalized where it is used. */
+  filesTabSize: number;
 }
 
 export const DEFAULTS: Settings = {
@@ -128,6 +132,8 @@ export const DEFAULTS: Settings = {
   filesHideIgnored: false,
   filesPreviewTabs: true,
   filesTreeWidth: 240,
+  filesWordWrap: true,
+  filesTabSize: 4,
 };
 
 const STORAGE_KEYS: Record<keyof Settings, string> = {
@@ -163,6 +169,8 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
   filesHideIgnored: "ccp-files-hide-ignored",
   filesPreviewTabs: "ccp-files-preview-tabs",
   filesTreeWidth: "ccp-files-tree-width",
+  filesWordWrap: "ccp-files-word-wrap",
+  filesTabSize: "ccp-files-tab-size",
 };
 
 /** The localStorage key a setting persists under. */

@@ -14,6 +14,7 @@ import { sessionFileLabel } from "../src/components/panes/session-files-list";
 import { registerPane } from "../src/components/panes/pane-registry";
 import { TileHost } from "../src/components/panes/tile-host";
 import { SettingsProvider } from "../src/components/settings-provider";
+import { ToastProvider } from "../src/components/toast";
 import { decodeFilePath } from "../src/lib/api/file";
 import type { SessionFilesResponse } from "../src/lib/api/session-files";
 import { writeClipboardText } from "../src/lib/clipboard";
@@ -143,9 +144,11 @@ async function openPane({
   render(
     <QueryClientProvider client={queryClient}>
       <SettingsProvider>
-        <TileHost sessionId={SESSION_ID} onExpandWithoutPane={() => {}}>
-          <FilesPaneShortcut />
-        </TileHost>
+        <ToastProvider>
+          <TileHost sessionId={SESSION_ID} onExpandWithoutPane={() => {}}>
+            <FilesPaneShortcut />
+          </TileHost>
+        </ToastProvider>
       </SettingsProvider>
     </QueryClientProvider>,
   );
