@@ -27,12 +27,14 @@ const RecordSchema = z.object({
   message: z.object({ content: z.union([z.string(), z.array(BlockSchema)]).optional() }).optional(),
 });
 
-/**
- * The main thread's last assistant tool_use when it is an AskUserQuestion that
- * has no tool_result yet, or null. This is the question upstream docks above
- * the composer as a "needs input" card.
- */
-export function findPendingAskUserQuestion(records: readonly unknown[]): PendingQuestion | null {
+export interface PendingToolUse {
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+}
+
+/** The main thread's last assistant tool_use when it has no tool_result yet, or null. */
+export function findLastPendingToolUse(records: readonly unknown[]): PendingToolUse | null {
   let last: z.infer<typeof BlockSchema> | null = null;
   const answered = new Set<string>();
   for (const raw of records) {
@@ -47,11 +49,20 @@ export function findPendingAskUserQuestion(records: readonly unknown[]): Pending
       }
     }
   }
-  if (last?.name !== "AskUserQuestion" || last.id === undefined || answered.has(last.id)) {
-    return null;
-  }
-  const questions = normalizeQuestions(last.input ?? {});
-  return questions === null ? null : { toolUseId: last.id, questions };
+  if (last?.id === undefined || last.name === undefined || answered.has(last.id)) return null;
+  return { id: last.id, name: last.name, input: last.input ?? {} };
+}
+
+/**
+ * The main thread's last assistant tool_use when it is an AskUserQuestion that
+ * has no tool_result yet, or null. This is the question upstream docks above
+ * the composer as a "needs input" card.
+ */
+export function findPendingAskUserQuestion(records: readonly unknown[]): PendingQuestion | null {
+  const pending = findLastPendingToolUse(records);
+  if (pending?.name !== "AskUserQuestion") return null;
+  const questions = normalizeQuestions(pending.input);
+  return questions === null ? null : { toolUseId: pending.id, questions };
 }
 
 export interface ApprovalDockState {

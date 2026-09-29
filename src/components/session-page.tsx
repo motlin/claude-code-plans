@@ -34,6 +34,7 @@ import {
 import { TerminalPaneShortcut, useRegisterTerminalPane } from "./panes/terminal-pane";
 import { StatusFooter } from "./status-footer";
 import { ApprovalDock } from "./approval-dock";
+import { PermissionCard } from "./permission-card";
 import { BranchStrip } from "./branch-strip";
 import { TranscriptHistoryLoader, findScrollContainer } from "./transcript-history-loader";
 import { Tooltip } from "./ui/tooltip";
@@ -63,7 +64,13 @@ import { usePendingMessageJump } from "../hooks/use-pending-message-jump";
 import { postAnswerQuestion } from "../lib/api/answer-question";
 import { findPendingAskUserQuestion } from "../lib/approval-dock";
 import { applicationSettingsQueryOptions } from "../lib/api/application-settings";
-import { herdrPanesQueryOptions, sendHerdrPrompt } from "../lib/api/herdr";
+import {
+  herdrPanesQueryOptions,
+  sendHerdrPermissionDecision,
+  sendHerdrPrompt,
+} from "../lib/api/herdr";
+import { notificationsQueryOptions } from "../lib/api/notifications";
+import { findPendingPermission, type PermissionDecision } from "../lib/permission-card";
 import type { HerdrPaneIndexData } from "../lib/api/herdr";
 import type { PaneKind } from "../lib/pane-layout";
 import {
@@ -490,9 +497,29 @@ function SessionView({
       }),
     [toast],
   );
+  const notifications = useQuery({
+    ...notificationsQueryOptions(),
+    select: (data) => data.notifications,
+  }).data;
+  const pendingPermission = useMemo(
+    () =>
+      isActive && dockedQuestion === null
+        ? findPendingPermission({
+            sessionId,
+            notifications: notifications ?? [],
+            records: transcript.records,
+          })
+        : null,
+    [isActive, dockedQuestion, sessionId, notifications, transcript.records],
+  );
+  const answerPermission = useCallback(
+    (decision: PermissionDecision) => sendHerdrPermissionDecision(sessionId, decision),
+    [sessionId],
+  );
   const stopResponse = useStopResponse({
     sessionId,
-    enabled: stopAvailable,
+    // Esc denies the docked permission prompt instead of stopping the turn.
+    enabled: stopAvailable && pendingPermission === null,
     onInterrupt,
     onError: onInterruptError,
   });
@@ -706,6 +733,15 @@ function SessionView({
                   questions={dockedQuestion.questions}
                   onSubmit={submitAnswer}
                   onDismiss={() => setDismissedToolUseId(dockedQuestion.toolUseId)}
+                />
+              )}
+              {pendingPermission && (
+                <PermissionCard
+                  key={pendingPermission.notificationId}
+                  title={pendingPermission.title}
+                  command={pendingPermission.command}
+                  canAnswer={promptBehavior.hasLivePane && herdr.writesEnabled}
+                  onDecision={answerPermission}
                 />
               )}
               {!chromeHidden && data.projectPath && (

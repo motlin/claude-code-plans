@@ -99,6 +99,27 @@ export async function launchHerdrSession(
 }
 
 /** Interrupt the session's live herdr pane: Esc, or ctrl+c when `force`. */
+/** Answer the CLI's pending tool permission prompt in the session's live herdr pane. */
+export async function sendHerdrPermissionDecision(
+  sessionId: string,
+  decision: "allow" | "deny",
+  fetcher: typeof fetch = fetch,
+): Promise<void> {
+  const response = await fetcher("/api/herdr/permission", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sessionId, decision }),
+  });
+  const json: unknown = await response.json();
+
+  if (!response.ok) {
+    throw new Error(HerdrPromptErrorResponse.parse(json).error);
+  }
+
+  HerdrPromptSuccessResponse.parse(json);
+}
+
 export async function sendHerdrInterrupt(
   sessionId: string,
   force: boolean,

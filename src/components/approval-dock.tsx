@@ -10,6 +10,7 @@ import {
   type ApprovalDockState,
 } from "../lib/approval-dock";
 import type { QuestionLike } from "../lib/ask-user-question";
+import { dockKeyAllowed } from "../lib/dock-keys";
 import { Shortcut } from "./ui/shortcut";
 
 export interface ApprovalDockSubmission {
@@ -22,25 +23,6 @@ const ICON_BUTTON =
 
 const ACTION_BUTTON =
   "inline-flex h-8 cursor-pointer items-center justify-center gap-1 rounded-r5 px-3 text-body disabled:cursor-not-allowed disabled:opacity-50 @max-[500px]/approval-dock:w-full";
-
-/**
- * True when a bare digit key should pick an option: nothing else is being
- * typed into, apart from the composer while it is still empty.
- */
-function digitKeyAllowed(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return true;
-  if (target.closest('[role="dialog"], [role="menu"], [role="listbox"]')) return false;
-  const editable =
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLTextAreaElement ||
-    target.isContentEditable;
-  if (!editable) return true;
-  return (
-    target instanceof HTMLTextAreaElement &&
-    target.value === "" &&
-    target.closest('[data-focus-region="composer"]') !== null
-  );
-}
 
 /**
  * The needs-input card docked above the composer for a pending AskUserQuestion,
@@ -93,7 +75,7 @@ export function ApprovalDock({
     if (!open || submitting) return;
     function onKeyDown(event: KeyboardEvent) {
       if (event.metaKey || event.ctrlKey || event.altKey || event.defaultPrevented) return;
-      if (!/^[1-9]$/.test(event.key) || !digitKeyAllowed(event.target)) return;
+      if (!/^[1-9]$/.test(event.key) || !dockKeyAllowed(event.target)) return;
       const option = Number(event.key) - 1;
       if (option < question.options.length) {
         event.preventDefault();
