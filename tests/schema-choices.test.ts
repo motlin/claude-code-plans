@@ -28,6 +28,7 @@ import { ChangedFileKindSchema } from "../src/lib/changed-file-kind";
 import { NavSectionSchema } from "../src/lib/nav-sections";
 import { PaletteFilterSchema, PaletteTypeSchema } from "../src/lib/palette-tokens";
 import { PaneLayoutStateSchema } from "../src/lib/pane-layout";
+import { PinDropOutcomeSchema } from "../src/lib/pinned-sessions";
 import { RecentsHistorySchema } from "../src/lib/recents-history";
 import { schemaChoiceRegistry } from "../src/lib/schema-choices";
 import {
@@ -119,6 +120,7 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["ChangedFileKindSchema", ChangedFileKindSchema],
   ["RecentsHistorySchema", RecentsHistorySchema],
   ["TranscriptModeSchema", TranscriptModeSchema],
+  ["PinDropOutcomeSchema", PinDropOutcomeSchema],
   ["UnifiedSearchParamsSchema", UnifiedSearchParamsSchema],
   ["UnifiedSearchResponse", UnifiedSearchResponse],
 ];

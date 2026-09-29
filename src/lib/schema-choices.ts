@@ -19,6 +19,7 @@ import type { SessionSummaryStateSchema } from "./api/sessions";
 import type { SourceFileResponse } from "./api/source";
 import type { HookEvent, ToolUseUnion } from "./hook-events";
 import type { NavSection } from "./nav-sections";
+import type { PinDropOutcome } from "./pinned-sessions";
 import type { PaletteFilter, PaletteType } from "./palette-tokens";
 import type { Direction, LayoutNode, PaneKind, TileId } from "./pane-layout";
 import type {
@@ -624,6 +625,14 @@ const transcriptModeLabels = {
   verbose: "Verbose",
 } satisfies Record<TranscriptMode, string>;
 
+/** Sidebar row drag release outcomes (src/lib/pinned-sessions.ts). */
+const pinDropOutcomeLabels = {
+  pin: "Pin",
+  reorder: "Reorder",
+  unpin: "Unpin",
+  cancel: "Cancel",
+} satisfies Record<PinDropOutcome, string>;
+
 /** `Artifact` tool `action` (src/lib/artifact-schemas.ts); omitted means publish. */
 const artifactActionLabels = {
   publish: "Publish",
@@ -760,6 +769,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   ChangedFileKindSchema: changedFileKindLabels,
   "RecentsHistorySchema[].kind": recentKindLabels,
   TranscriptModeSchema: transcriptModeLabels,
+  PinDropOutcomeSchema: pinDropOutcomeLabels,
   ArtifactActionSchema: artifactActionLabels,
   ArtifactIntentSchema: artifactIntentLabels,
   ArtifactListScopeSchema: artifactListScopeLabels,
