@@ -104,6 +104,9 @@
   --radius-r7: 10px;
   --radius-card: 12px;
 
+  /* Upstream claude.ai/code — side pane surface (shadow-panel-sm) */
+  --shadow-panel-sm: var(--pane-shadow);
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -212,6 +215,9 @@
   --menu-shadow:
     0 0 0 1px rgb(11 11 11 / 0.1), 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
   --menu-muted: #898781;
+
+  /* Upstream claude.ai/code — side pane surface (light: shadow-panel-sm) */
+  --pane-shadow: 0 0 0 1px rgb(11 11 11 / 0.06), 0 1px 3px rgba(0, 0, 0, 0.06);
   --menu-danger-fill: #d03b3b;
   --menu-on-danger: #fff;
 }
@@ -286,6 +292,9 @@
   --menu-shadow:
     0 0 0 1px hsl(0 0% 100% / 0.12), 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.3);
   --menu-muted: #a5a49a;
+
+  /* Upstream claude.ai/code — side pane surface (dark: shadow-sm + outline-alpha-2) */
+  --pane-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 0 1px hsl(0 0% 100% / 0.08);
 }
 
 @layer utilities {

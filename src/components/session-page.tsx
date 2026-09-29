@@ -44,12 +44,13 @@ import {
   useLinksDrawerState,
   useSessionLinkDisplay,
 } from "./links-drawer";
+import { TileHost } from "./panes/tile-host";
 import { StatusFooter } from "./status-footer";
 import { TranscriptHistoryLoader, findScrollContainer } from "./transcript-history-loader";
 import { Tooltip } from "./ui/tooltip";
 import { ViewportPortal } from "./viewport-portal";
 import { useChatStream } from "../hooks/use-chat-stream";
-import { useShortcut, useShortcutKeys } from "../hooks/use-shortcut";
+import { useShortcutKeys } from "../hooks/use-shortcut";
 import { useClaudeEvents, useIsSessionActive, useStatusline } from "../hooks/use-claude-events";
 import { useSessionViewedState } from "../hooks/use-session-viewed-state";
 import { usePendingMessageJump } from "../hooks/use-pending-message-jump";
@@ -515,7 +516,10 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
   const chromeHidden = settings.chromeHidden;
   const setChromeHidden = useCallback((v: boolean) => setSetting("chromeHidden", v), [setSetting]);
   const chromeShortcut = useShortcutKeys("expand_collapse_pane");
-  useShortcut("expand_collapse_pane", () => setChromeHidden(!chromeHidden));
+  const toggleChromeHidden = useCallback(
+    () => setChromeHidden(!chromeHidden),
+    [chromeHidden, setChromeHidden],
+  );
 
   const submitAnswer = useCallback(
     async ({
@@ -609,309 +613,315 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
 
   return (
     <div ref={sessionViewRef}>
-      {/* Sticky header: top bar + title + subagent link */}
-      {!chromeHidden && (
-        <div className="sticky top-0 z-10 bg-surface-2 pb-2 -mx-4 px-4 sm:-mx-8 sm:px-8 border-b border-border">
-          <DetailTopBar>
-            {data.parentSessionId ? (
-              <Link
-                to="/session/$id"
-                params={{ id: data.parentSessionId }}
-                className={pillStyles.primary}
-              >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                Parent Session
-              </Link>
-            ) : (
-              <Link to="/sessions" className={pillStyles.primary}>
-                <ArrowLeft className="h-3.5 w-3.5" />
-                All Sessions
-              </Link>
-            )}
-            <span className="text-xs text-t6" title={data.projectPath ?? undefined}>
-              {data.projectName}
-            </span>
-            {data.entrypoint && data.entrypoint !== "cli" && (
-              <span className="inline-flex items-center rounded-full bg-surface-0 px-2 py-0.5 text-xs font-medium text-t6">
-                {data.entrypoint}
+      <TileHost sessionId={sessionId} onExpandWithoutPane={toggleChromeHidden}>
+        {/* Sticky header: top bar + title + subagent link */}
+        {!chromeHidden && (
+          <div className="sticky top-0 z-10 bg-surface-2 pb-2 -mx-4 px-4 sm:-mx-8 sm:px-8 border-b border-border">
+            <DetailTopBar>
+              {data.parentSessionId ? (
+                <Link
+                  to="/session/$id"
+                  params={{ id: data.parentSessionId }}
+                  className={pillStyles.primary}
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Parent Session
+                </Link>
+              ) : (
+                <Link to="/sessions" className={pillStyles.primary}>
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  All Sessions
+                </Link>
+              )}
+              <span className="text-xs text-t6" title={data.projectPath ?? undefined}>
+                {data.projectName}
               </span>
-            )}
-            {data.sessionKind && (
-              <span className="inline-flex items-center rounded-full bg-surface-0 px-2 py-0.5 text-xs font-medium text-t6">
-                {data.sessionKind}
-              </span>
-            )}
-            {data.attributionAgent && (
-              <span
-                className="inline-flex items-center gap-1 rounded-full bg-surface-0 px-2 py-0.5 font-mono text-xs font-medium text-t6"
-                title="Transcript attribution agent"
-              >
-                <Bot className="h-3 w-3" />
-                {data.attributionAgent}
-              </span>
-            )}
-            {/* A subagent session names the model it ran on, which is its own
+              {data.entrypoint && data.entrypoint !== "cli" && (
+                <span className="inline-flex items-center rounded-full bg-surface-0 px-2 py-0.5 text-xs font-medium text-t6">
+                  {data.entrypoint}
+                </span>
+              )}
+              {data.sessionKind && (
+                <span className="inline-flex items-center rounded-full bg-surface-0 px-2 py-0.5 text-xs font-medium text-t6">
+                  {data.sessionKind}
+                </span>
+              )}
+              {data.attributionAgent && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full bg-surface-0 px-2 py-0.5 font-mono text-xs font-medium text-t6"
+                  title="Transcript attribution agent"
+                >
+                  <Bot className="h-3 w-3" />
+                  {data.attributionAgent}
+                </span>
+              )}
+              {/* A subagent session names the model it ran on, which is its own
                 rather than the parent session's. */}
-            {modelLabel && (
-              <span className="inline-flex items-center rounded-full bg-surface-0 px-2 py-0.5 text-xs font-medium text-t6">
-                {modelLabel}
-              </span>
-            )}
-            {data.teamNames?.map((team) => (
-              <span
-                key={team}
-                className="inline-flex items-center gap-1 rounded-full bg-surface-0 px-2 py-0.5 text-xs font-medium text-t6"
+              {modelLabel && (
+                <span className="inline-flex items-center rounded-full bg-surface-0 px-2 py-0.5 text-xs font-medium text-t6">
+                  {modelLabel}
+                </span>
+              )}
+              {data.teamNames?.map((team) => (
+                <span
+                  key={team}
+                  className="inline-flex items-center gap-1 rounded-full bg-surface-0 px-2 py-0.5 text-xs font-medium text-t6"
+                >
+                  <Users className="h-3 w-3" />
+                  {team}
+                </span>
+              ))}
+              {data.forkedFromSessionId && (
+                <Link
+                  to="/session/$id"
+                  params={{ id: data.forkedFromSessionId }}
+                  className="inline-flex items-center gap-1 rounded-full bg-surface-0 px-2 py-0.5 text-xs font-medium text-t6 no-underline transition-colors hover:bg-fill-control"
+                  title={`Forked from ${data.forkedFromSessionId}`}
+                >
+                  <GitFork className="h-3 w-3" />
+                  Forked from {data.forkedFromSessionId.slice(0, 8)}
+                </Link>
+              )}
+              {isActive && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-success-900 px-2 py-0.5 text-xs font-medium text-success-000">
+                  <span className="h-1.5 w-1.5 rounded-full bg-success-000 animate-pulse" />
+                  Active
+                </span>
+              )}
+              <FilesDrawerToggle
+                count={sessionFiles.totalCount}
+                unscannedRecordCount={unscannedRecordCount}
+                isOpen={filesDrawerState.openDrawer === "files" && sessionFiles.totalCount > 0}
+                onToggle={filesDrawerState.toggleFilesDrawer}
+              />
+              <LinksDrawerToggle
+                count={linkDisplay.totalCount}
+                unscannedRecordCount={unscannedRecordCount}
+                isOpen={filesDrawerState.openDrawer === "links" && sessionLinks.totalCount > 0}
+                onToggle={filesDrawerState.toggleLinksDrawer}
+              />
+              <CopyButton title="Copy session ID" text={sessionId} icon={Copy} />
+              <CopyButton
+                title="Copy resume command"
+                text={sessionCommands.resume}
+                icon={Terminal}
+              />
+              <CopyButton title="Copy fork command" text={sessionCommands.fork} icon={GitFork} />
+              <LiveTerminalLink
+                sessionId={sessionId}
+                sessionTitle={hookContext?.sessionTitle || data.title}
+                hasLivePane={promptBehavior.hasLivePane}
+              />
+              <SessionReviewedToggle
+                reviewed={data.viewedState.viewedAnywhere}
+                onToggle={
+                  data.viewedState.viewedAnywhere
+                    ? viewedState.markUnreviewed
+                    : viewedState.markReviewed
+                }
+              />
+              <a
+                href={`/api/raw?sessionId=${sessionId}`}
+                download
+                className="text-t6 hover:text-primary transition-colors"
+                title="Download raw JSONL"
               >
-                <Users className="h-3 w-3" />
-                {team}
-              </span>
-            ))}
-            {data.forkedFromSessionId && (
+                <Download className="h-3.5 w-3.5" />
+              </a>
+              <button
+                type="button"
+                onClick={async () => {
+                  const result = await starMutation.mutateAsync(!starred);
+                  setStarred(result.starred);
+                  void queryClient.invalidateQueries({
+                    queryKey: ["starred-sessions"],
+                  });
+                }}
+                className="shrink-0 cursor-pointer text-t6 transition-colors hover:text-warning-000"
+                title={starred ? "Unstar session" : "Star session"}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-5 w-5"
+                  fill={starred ? "currentColor" : "none"}
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  style={{ color: starred ? "rgb(234, 179, 8)" : undefined }}
+                >
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+              </button>
+              <Tooltip
+                content="Expand chat"
+                shortcut={chromeShortcut.keys}
+                className="ml-auto shrink-0"
+              >
+                <button
+                  type="button"
+                  onClick={() => setChromeHidden(true)}
+                  className="cursor-pointer text-t6 transition-colors hover:text-primary"
+                  aria-label="Expand chat"
+                  aria-keyshortcuts={chromeShortcut.ariaKeyShortcuts}
+                >
+                  <Maximize2 className="h-3.5 w-3.5" />
+                </button>
+              </Tooltip>
+            </DetailTopBar>
+            <h1 className="text-lg font-semibold">{hookContext?.sessionTitle || data.title}</h1>
+
+            {aiSummary ? (
+              <p className="mt-1 text-sm text-t6 italic">{aiSummary}</p>
+            ) : (
+              summaryLoaded &&
+              settings.showSummaryButton && (
+                <button
+                  type="button"
+                  onClick={handleGenerateSummary}
+                  disabled={generating}
+                  className="mt-1 text-xs text-accent-100 hover:underline disabled:opacity-50 disabled:no-underline"
+                >
+                  {generating ? "Generating summary..." : "Generate AI summary"}
+                </button>
+              )
+            )}
+
+            {subagents.length > 0 && (
               <Link
-                to="/session/$id"
-                params={{ id: data.forkedFromSessionId }}
-                className="inline-flex items-center gap-1 rounded-full bg-surface-0 px-2 py-0.5 text-xs font-medium text-t6 no-underline transition-colors hover:bg-fill-control"
-                title={`Forked from ${data.forkedFromSessionId}`}
+                to="/session/$id/subagents"
+                params={{ id: sessionId }}
+                className="mt-2 inline-flex items-center gap-1.5 text-xs text-accent-100 hover:underline"
               >
                 <GitFork className="h-3 w-3" />
-                Forked from {data.forkedFromSessionId.slice(0, 8)}
+                {subagents.length} subagent{subagents.length === 1 ? "" : "s"}
               </Link>
             )}
-            {isActive && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-success-900 px-2 py-0.5 text-xs font-medium text-success-000">
-                <span className="h-1.5 w-1.5 rounded-full bg-success-000 animate-pulse" />
-                Active
-              </span>
-            )}
-            <FilesDrawerToggle
-              count={sessionFiles.totalCount}
-              unscannedRecordCount={unscannedRecordCount}
-              isOpen={filesDrawerState.openDrawer === "files" && sessionFiles.totalCount > 0}
-              onToggle={filesDrawerState.toggleFilesDrawer}
-            />
-            <LinksDrawerToggle
-              count={linkDisplay.totalCount}
-              unscannedRecordCount={unscannedRecordCount}
-              isOpen={filesDrawerState.openDrawer === "links" && sessionLinks.totalCount > 0}
-              onToggle={filesDrawerState.toggleLinksDrawer}
-            />
-            <CopyButton title="Copy session ID" text={sessionId} icon={Copy} />
-            <CopyButton title="Copy resume command" text={sessionCommands.resume} icon={Terminal} />
-            <CopyButton title="Copy fork command" text={sessionCommands.fork} icon={GitFork} />
-            <LiveTerminalLink
-              sessionId={sessionId}
-              sessionTitle={hookContext?.sessionTitle || data.title}
-              hasLivePane={promptBehavior.hasLivePane}
-            />
-            <SessionReviewedToggle
-              reviewed={data.viewedState.viewedAnywhere}
-              onToggle={
-                data.viewedState.viewedAnywhere
-                  ? viewedState.markUnreviewed
-                  : viewedState.markReviewed
-              }
-            />
-            <a
-              href={`/api/raw?sessionId=${sessionId}`}
-              download
-              className="text-t6 hover:text-primary transition-colors"
-              title="Download raw JSONL"
-            >
-              <Download className="h-3.5 w-3.5" />
-            </a>
-            <button
-              type="button"
-              onClick={async () => {
-                const result = await starMutation.mutateAsync(!starred);
-                setStarred(result.starred);
-                void queryClient.invalidateQueries({
-                  queryKey: ["starred-sessions"],
-                });
-              }}
-              className="shrink-0 cursor-pointer text-t6 transition-colors hover:text-warning-000"
-              title={starred ? "Unstar session" : "Star session"}
-            >
-              <svg
-                viewBox="0 0 24 24"
-                className="h-5 w-5"
-                fill={starred ? "currentColor" : "none"}
-                stroke="currentColor"
-                strokeWidth="2"
-                style={{ color: starred ? "rgb(234, 179, 8)" : undefined }}
-              >
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-              </svg>
-            </button>
-            <Tooltip
-              content="Expand chat"
-              shortcut={chromeShortcut.keys}
-              className="ml-auto shrink-0"
-            >
+            <ActiveSubagents agents={activeSubagents} />
+            {hookContext && <SessionHookContext context={hookContext} />}
+          </div>
+        )}
+
+        {/* Floating restore button when chrome is hidden */}
+        {chromeHidden && (
+          <div className="sticky top-0 z-10 flex justify-end py-1">
+            <Tooltip content="Show header and footer" shortcut={chromeShortcut.keys}>
               <button
                 type="button"
-                onClick={() => setChromeHidden(true)}
-                className="cursor-pointer text-t6 transition-colors hover:text-primary"
-                aria-label="Expand chat"
+                onClick={() => setChromeHidden(false)}
+                className="rounded-md bg-surface-0 border border-border px-2 py-1 text-xs text-t6 hover:text-primary hover:bg-fill-control transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
                 aria-keyshortcuts={chromeShortcut.ariaKeyShortcuts}
               >
-                <Maximize2 className="h-3.5 w-3.5" />
+                <Minimize2 className="h-3 w-3" />
+                Show chrome
               </button>
             </Tooltip>
-          </DetailTopBar>
-          <h1 className="text-lg font-semibold">{hookContext?.sessionTitle || data.title}</h1>
+          </div>
+        )}
 
-          {aiSummary ? (
-            <p className="mt-1 text-sm text-t6 italic">{aiSummary}</p>
-          ) : (
-            summaryLoaded &&
-            settings.showSummaryButton && (
-              <button
-                type="button"
-                onClick={handleGenerateSummary}
-                disabled={generating}
-                className="mt-1 text-xs text-accent-100 hover:underline disabled:opacity-50 disabled:no-underline"
-              >
-                {generating ? "Generating summary..." : "Generate AI summary"}
-              </button>
-            )
-          )}
+        <LegacyMessageLinkNotice hash={locationHash} />
 
-          {subagents.length > 0 && (
-            <Link
-              to="/session/$id/subagents"
-              params={{ id: sessionId }}
-              className="mt-2 inline-flex items-center gap-1.5 text-xs text-accent-100 hover:underline"
-            >
-              <GitFork className="h-3 w-3" />
-              {subagents.length} subagent{subagents.length === 1 ? "" : "s"}
-            </Link>
-          )}
-          <ActiveSubagents agents={activeSubagents} />
-          {hookContext && <SessionHookContext context={hookContext} />}
-        </div>
-      )}
+        {/* Chat messages */}
+        <AskUserQuestionProvider value={askUserQuestionCtx}>
+          <TranscriptHistoryLoader sessionId={sessionId} startIndex={transcript.startIndex} />
+          <SessionChat
+            sessionId={sessionId}
+            lines={processed.lines}
+            toolResultMap={processed.toolResultMap}
+            allowedImageRoots={data.imageRoots}
+            subagents={subagents}
+            showThinking={settings.showThinking}
+            showTools={settings.showTools}
+            showPassedHooks={settings.showPassedHooks}
+            showHookWarnings={settings.showHookWarnings}
+            showHookErrors={settings.showHookErrors}
+            showSystemBanners={settings.showSystemBanners}
+            showCompactSummaries={settings.showCompactSummaries}
+            showTranscriptOnly={settings.showTranscriptOnly}
+            initialScrollKey={initialScrollKey}
+            shouldScrollToEnd={restoredScrollPosition === undefined && locationHash === ""}
+          />
+        </AskUserQuestionProvider>
 
-      {/* Floating restore button when chrome is hidden */}
-      {chromeHidden && (
-        <div className="sticky top-0 z-10 flex justify-end py-1">
-          <Tooltip content="Show header and footer" shortcut={chromeShortcut.keys}>
-            <button
-              type="button"
-              onClick={() => setChromeHidden(false)}
-              className="rounded-md bg-surface-0 border border-border px-2 py-1 text-xs text-t6 hover:text-primary hover:bg-fill-control transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
-              aria-keyshortcuts={chromeShortcut.ariaKeyShortcuts}
-            >
-              <Minimize2 className="h-3 w-3" />
-              Show chrome
-            </button>
-          </Tooltip>
-        </div>
-      )}
+        {(chatStream.state.isStreaming || chatStream.state.isComplete) && (
+          <StreamingMessage
+            text={chatStream.state.text}
+            isComplete={chatStream.state.isComplete}
+            error={chatStream.state.error}
+            forkedSessionId={chatStream.state.forkedSessionId}
+            sentPrompt={chatStream.state.sentPrompt}
+          />
+        )}
 
-      <LegacyMessageLinkNotice hash={locationHash} />
+        {liveHerdrPrompt.state.prompt !== "" && (
+          <StreamingMessage
+            text=""
+            isComplete={!liveHerdrPrompt.state.isPending}
+            error={liveHerdrPrompt.state.error || undefined}
+            sentPrompt={liveHerdrPrompt.state.prompt}
+            pendingLabel="Sent to live session — waiting for transcript..."
+          />
+        )}
 
-      {/* Chat messages */}
-      <AskUserQuestionProvider value={askUserQuestionCtx}>
-        <TranscriptHistoryLoader sessionId={sessionId} startIndex={transcript.startIndex} />
-        <SessionChat
-          sessionId={sessionId}
-          lines={processed.lines}
-          toolResultMap={processed.toolResultMap}
-          allowedImageRoots={data.imageRoots}
-          subagents={subagents}
-          showThinking={settings.showThinking}
-          showTools={settings.showTools}
-          showPassedHooks={settings.showPassedHooks}
-          showHookWarnings={settings.showHookWarnings}
-          showHookErrors={settings.showHookErrors}
-          showSystemBanners={settings.showSystemBanners}
-          showCompactSummaries={settings.showCompactSummaries}
-          showTranscriptOnly={settings.showTranscriptOnly}
-          initialScrollKey={initialScrollKey}
-          shouldScrollToEnd={restoredScrollPosition === undefined && locationHash === ""}
-        />
-      </AskUserQuestionProvider>
+        <FloatingScrollButtons anchorRef={scrollAnchorRef} />
 
-      {(chatStream.state.isStreaming || chatStream.state.isComplete) && (
-        <StreamingMessage
-          text={chatStream.state.text}
-          isComplete={chatStream.state.isComplete}
-          error={chatStream.state.error}
-          forkedSessionId={chatStream.state.forkedSessionId}
-          sentPrompt={chatStream.state.sentPrompt}
-        />
-      )}
+        <ViewportPortal>
+          <JumpTargetProvider value={jumpTargetWindow}>
+            {filesDrawerState.openDrawer === "files" && sessionFiles.totalCount > 0 && (
+              <FilesDrawer
+                sessionFiles={sessionFiles}
+                unscannedRecordCount={unscannedRecordCount}
+                sourceSelection={filesDrawerState.sourceSelection}
+                onSourceSelected={filesDrawerState.setSourceSelected}
+                onUnselectAllSources={filesDrawerState.unselectAllSources}
+                onClose={filesDrawerState.closeDrawer}
+              />
+            )}
 
-      {liveHerdrPrompt.state.prompt !== "" && (
-        <StreamingMessage
-          text=""
-          isComplete={!liveHerdrPrompt.state.isPending}
-          error={liveHerdrPrompt.state.error || undefined}
-          sentPrompt={liveHerdrPrompt.state.prompt}
-          pendingLabel="Sent to live session — waiting for transcript..."
-        />
-      )}
+            {filesDrawerState.openDrawer === "links" && sessionLinks.totalCount > 0 && (
+              <LinksDrawer
+                display={linkDisplay}
+                unscannedRecordCount={unscannedRecordCount}
+                includeToolsAndThinking={linksDrawerState.includeToolsAndThinking}
+                onIncludeToolsAndThinkingChange={linksDrawerState.setIncludeToolsAndThinking}
+                onClose={filesDrawerState.closeDrawer}
+              />
+            )}
+          </JumpTargetProvider>
+        </ViewportPortal>
 
-      <FloatingScrollButtons anchorRef={scrollAnchorRef} />
-
-      <ViewportPortal>
-        <JumpTargetProvider value={jumpTargetWindow}>
-          {filesDrawerState.openDrawer === "files" && sessionFiles.totalCount > 0 && (
-            <FilesDrawer
-              sessionFiles={sessionFiles}
-              unscannedRecordCount={unscannedRecordCount}
-              sourceSelection={filesDrawerState.sourceSelection}
-              onSourceSelected={filesDrawerState.setSourceSelected}
-              onUnselectAllSources={filesDrawerState.unselectAllSources}
-              onClose={filesDrawerState.closeDrawer}
-            />
-          )}
-
-          {filesDrawerState.openDrawer === "links" && sessionLinks.totalCount > 0 && (
-            <LinksDrawer
-              display={linkDisplay}
-              unscannedRecordCount={unscannedRecordCount}
-              includeToolsAndThinking={linksDrawerState.includeToolsAndThinking}
-              onIncludeToolsAndThinkingChange={linksDrawerState.setIncludeToolsAndThinking}
-              onClose={filesDrawerState.closeDrawer}
-            />
-          )}
-        </JumpTargetProvider>
-      </ViewportPortal>
-
-      {/* Sticky footer: chat input + status bar */}
-      {((!chromeHidden && data.projectPath) || statusline) && (
-        <div className="sticky bottom-0 z-10 -mx-4 -mb-8 sm:-mx-8">
-          {!chromeHidden && data.projectPath && (
-            <ChatInput
-              onSend={(prompt) =>
-                routeSessionPrompt(
-                  promptBehavior.usesHerdr,
-                  sessionId,
-                  prompt,
-                  liveHerdrPrompt.send,
-                  chatStream.send,
-                )
-              }
-              onCancel={chatStream.cancel}
-              isStreaming={!promptBehavior.usesHerdr && chatStream.state.isStreaming}
-              disabled={promptBehavior.disabled || liveHerdrPrompt.state.isPending}
-              projectPath={data.projectPath}
-              deliveryHint={promptBehavior.deliveryHint}
-            />
-          )}
-          {statusline && (
-            <StatusFooter
-              data={statusline}
-              gitBranch={data.gitBranch}
-              gitSha={data.gitSha}
-              gitClean={data.gitClean}
-              messageCount={data.messageCount}
-              pendingTaskCount={data.pendingTaskCount}
-            />
-          )}
-        </div>
-      )}
+        {/* Sticky footer: chat input + status bar */}
+        {((!chromeHidden && data.projectPath) || statusline) && (
+          <div className="sticky bottom-0 z-10 -mx-4 -mb-8 sm:-mx-8">
+            {!chromeHidden && data.projectPath && (
+              <ChatInput
+                onSend={(prompt) =>
+                  routeSessionPrompt(
+                    promptBehavior.usesHerdr,
+                    sessionId,
+                    prompt,
+                    liveHerdrPrompt.send,
+                    chatStream.send,
+                  )
+                }
+                onCancel={chatStream.cancel}
+                isStreaming={!promptBehavior.usesHerdr && chatStream.state.isStreaming}
+                disabled={promptBehavior.disabled || liveHerdrPrompt.state.isPending}
+                projectPath={data.projectPath}
+                deliveryHint={promptBehavior.deliveryHint}
+              />
+            )}
+            {statusline && (
+              <StatusFooter
+                data={statusline}
+                gitBranch={data.gitBranch}
+                gitSha={data.gitSha}
+                gitClean={data.gitClean}
+                messageCount={data.messageCount}
+                pendingTaskCount={data.pendingTaskCount}
+              />
+            )}
+          </div>
+        )}
+      </TileHost>
     </div>
   );
 }

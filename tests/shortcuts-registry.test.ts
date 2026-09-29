@@ -57,6 +57,7 @@ describe("shortcut registry", () => {
   it("only enables the shortcuts wired today", () => {
     expect(SHORTCUT_IDS.filter((id) => SHORTCUTS[id].enabled)).toEqual([
       "search_or_start",
+      "close_pane",
       "expand_collapse_pane",
     ]);
   });

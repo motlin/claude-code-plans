@@ -234,7 +234,7 @@ export const SHORTCUTS = {
     group: "panes",
     bindings: cmdOrCtrl("\\", [], "Backslash"),
     ownerSlug: "panes-mgmt",
-    enabled: false,
+    enabled: true,
   },
   expand_collapse_pane: {
     description: "Expand or collapse pane",
