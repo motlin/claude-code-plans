@@ -29,13 +29,15 @@ import { __unreadStoreTesting } from "../src/lib/unread-store";
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 const SESSION_ID = "8f0c2c7e-1111-4222-8333-944445555666";
 const ARCHIVED_URL = `/api/sessions/${SESSION_ID}/archived`;
+// One clock reading for every fixture: per-call Date.now() gives later rows a newer mtime whenever a millisecond ticks between calls, which reorders the activity sort.
+const FIXTURE_NOW = Date.now();
 
 function listItem(overrides: Partial<SessionListItem> = {}): SessionListItem {
   return {
     id: SESSION_ID,
     title: "Fix the flaky test",
-    mtime: new Date(Date.now() - 60_000).toISOString(),
-    created: new Date(Date.now() - 120_000).toISOString(),
+    mtime: new Date(FIXTURE_NOW - 60_000).toISOString(),
+    created: new Date(FIXTURE_NOW - 120_000).toISOString(),
     project: "-projects-alpha",
     projectName: "alpha",
     messageCount: 4,
