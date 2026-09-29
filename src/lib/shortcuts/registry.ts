@@ -280,9 +280,11 @@ export const SHORTCUTS = {
   select_menu_item: {
     description: "Select menu item",
     group: "composer",
-    bindings: DIGITS.map(
-      (digit): Binding => ({ key: digit, code: `Digit${digit}`, modifiers: [] }),
-    ),
+    bindings: DIGITS.map((digit): Binding => ({
+      key: digit,
+      code: `Digit${digit}`,
+      modifiers: [],
+    })),
     ownerSlug: "composer",
     enabled: false,
     displayKeys: "1…9",

@@ -259,12 +259,10 @@ export function groupSessionLinks(
   currentHost: string | undefined,
   userRules: Array<{ label: string; hostPattern: string }>,
 ): SessionLinks {
-  const entries = links.map(
-    (link): LinkEntry => ({
-      ...link,
-      categoryId: categorizeUrl(parseUrl(link.url), currentHost, userRules).categoryId,
-    }),
-  );
+  const entries = links.map((link): LinkEntry => ({
+    ...link,
+    categoryId: categorizeUrl(parseUrl(link.url), currentHost, userRules).categoryId,
+  }));
 
   const categoryOrder = [
     ...BUILT_IN_CATEGORIES,

@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { Composer } from "../src/components/composer";
 import type { ComposerState } from "../src/lib/composer-state";
 
 afterEach(() => {
+  cleanup();
+  localStorage.clear();
   vi.useRealTimers();
 });
 

@@ -173,16 +173,14 @@ async function sessionEditsDiff(
     uuids = found;
   }
   const edits = aggregateSessionEdits(records, uuids === undefined ? {} : { turnUuids: uuids });
-  const files = edits.map(
-    (file): DiffFile => ({
-      path: displayPath(file.path, location.cwd),
-      status: file.status,
-      additions: file.additions,
-      deletions: file.deletions,
-      binary: false,
-      patch: file.patch,
-    }),
-  );
+  const files = edits.map((file): DiffFile => ({
+    path: displayPath(file.path, location.cwd),
+    status: file.status,
+    additions: file.additions,
+    deletions: file.deletions,
+    binary: false,
+    patch: file.patch,
+  }));
   return { kind: "ok", scope: formatDiffScope(scope), source: "session-edits", files };
 }
 

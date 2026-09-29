@@ -66,7 +66,7 @@ function waitForPath(
   });
 }
 
-describe.sequential("createRecursiveWatcher", () => {
+describe("createRecursiveWatcher", () => {
   let fixtureDirectory: string;
   let watcher: RecursiveWatcher | undefined;
 

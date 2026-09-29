@@ -277,11 +277,11 @@ describe("session header menu", () => {
 
   it("wires each local item to its handler", async () => {
     const clicks: Array<{ href: string; download: string }> = [];
-    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
-      function (this: HTMLAnchorElement) {
-        clicks.push({ href: this.getAttribute("href") ?? "", download: this.download });
-      },
-    );
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      clicks.push({ href: this.getAttribute("href") ?? "", download: this.download });
+    });
     const router = await renderTitlebar(localActions());
 
     await select("Copy session ID");
