@@ -359,7 +359,10 @@ export const SessionChat = React.memo(function SessionChat({
 
   return (
     <TranscriptModeContext.Provider value={transcriptMode}>
-      <div ref={containerRef} className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body`}>
+      <div
+        ref={containerRef}
+        className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}
+      >
         {summary !== null && summary !== "" && (
           <p
             data-testid="session-summary-row"

@@ -21,6 +21,13 @@ import {
   type CodeThemeLight,
 } from "../lib/code-themes";
 import { TranscriptWidthSchema, type TranscriptWidth } from "../lib/transcript-width";
+import {
+  appearanceCssVars,
+  InterfaceFontSchema,
+  TranscriptTextSizeSchema,
+  type InterfaceFont,
+  type TranscriptTextSize,
+} from "../lib/appearance";
 
 type SubagentView = "tree" | "gantt" | "sequence";
 
@@ -60,6 +67,10 @@ export interface Settings {
   motion: Motion;
   /** The transcript and composer column measure: 768, 960 or 1280px. */
   transcriptWidth: TranscriptWidth;
+  /** Interface font: the bundled sans, or the OS UI font via `--font-sans` on <html>. */
+  interfaceFont: InterfaceFont;
+  /** Transcript body text size, set as `--transcript-text-size` on <html>. */
+  transcriptTextSize: TranscriptTextSize;
   /** Local-only "Recent plans" and "Memories updated" home sections; off matches claude.ai/code. */
   homeShowLocalSections: boolean;
   /** Shiki theme for code in light mode. */
@@ -133,6 +144,8 @@ export const DEFAULTS: Settings = {
   statusFooterVisible: true,
   motion: "system",
   transcriptWidth: "narrow",
+  interfaceFont: "sans",
+  transcriptTextSize: "md",
   homeShowLocalSections: false,
   codeThemeLight: DEFAULT_CODE_THEMES.light,
   codeThemeDark: DEFAULT_CODE_THEMES.dark,
@@ -187,6 +200,8 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
   statusFooterVisible: "ccp-status-footer",
   motion: "ccp-motion",
   transcriptWidth: "ccp-transcript-width",
+  interfaceFont: "ccp-interface-font",
+  transcriptTextSize: "ccp-transcript-text-size",
   homeShowLocalSections: "ccp-home-show-local-sections",
   codeThemeLight: "ccp-code-theme-light",
   codeThemeDark: "ccp-code-theme-dark",
@@ -285,14 +300,19 @@ export const VERBOSITY_PRESETS: Record<Verbosity, Partial<Settings>> = {
 
 export const VERBOSITY_KEYS = Object.keys(VERBOSITY_PRESETS.normal) as Array<keyof Settings>;
 
-export function detectVerbosity(settings: Settings): Verbosity {
+/** The preset the transcript toggles match, or null when they have been customized. */
+export function matchedVerbosityPreset(settings: Settings): Verbosity | null {
   for (const preset of ["normal", "thinking", "verbose"] as const) {
     const values = VERBOSITY_PRESETS[preset];
     if (VERBOSITY_KEYS.every((key) => settings[key] === values[key])) {
       return preset;
     }
   }
-  return settings.verbosity;
+  return null;
+}
+
+export function detectVerbosity(settings: Settings): Verbosity {
+  return matchedVerbosityPreset(settings) ?? settings.verbosity;
 }
 
 function readStoredValue<K extends keyof Settings>(key: K): Settings[K] | undefined {
@@ -334,6 +354,14 @@ function readStoredValue<K extends keyof Settings>(key: K): Settings[K] | undefi
   }
   if (key === "transcriptWidth") {
     const parsed = TranscriptWidthSchema.safeParse(stored);
+    return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
+  }
+  if (key === "interfaceFont") {
+    const parsed = InterfaceFontSchema.safeParse(stored);
+    return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
+  }
+  if (key === "transcriptTextSize") {
+    const parsed = TranscriptTextSizeSchema.safeParse(stored);
     return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
   }
   if (Array.isArray(defaultValue)) {
@@ -418,6 +446,19 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     if (family === null) style.removeProperty("--font-mono");
     else style.setProperty("--font-mono", family);
   }, [settings.codeFont]);
+
+  useEffect(() => {
+    const style = document.documentElement.style;
+    const vars = appearanceCssVars({
+      interfaceFont: settings.interfaceFont,
+      transcriptTextSize: settings.transcriptTextSize,
+      transcriptWidth: settings.transcriptWidth,
+    });
+    for (const [name, value] of Object.entries(vars)) {
+      if (value === null) style.removeProperty(name);
+      else style.setProperty(name, value);
+    }
+  }, [settings.interfaceFont, settings.transcriptTextSize, settings.transcriptWidth]);
 
   const setSetting = useCallback(<K extends keyof Settings>(key: K, value: Settings[K]) => {
     setSettings((previous) => {

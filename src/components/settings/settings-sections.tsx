@@ -2,7 +2,14 @@ import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, Monitor, Moon, Plus, Sun, Trash2 } from "lucide-react";
-import { useSettings, type Motion, type Settings, type Verbosity } from "../settings-provider";
+import {
+  matchedVerbosityPreset,
+  useSettings,
+  type Motion,
+  type Settings,
+  type Verbosity,
+} from "../settings-provider";
+import type { InterfaceFont, TranscriptTextSize } from "../../lib/appearance";
 import type { CapabilityId } from "../../lib/capabilities";
 import {
   CodeThemeDarkSchema,
@@ -271,26 +278,21 @@ function NumberRow({ label, description, settingKey, min, max }: NumberRowProps)
   );
 }
 
-const VERBOSITY_PRESETS: ReadonlyArray<{
-  value: Verbosity;
-  label: string;
-  description: string;
-}> = [
-  {
-    value: "normal",
-    label: "Normal",
-    description: "Show tools, hook warnings, and errors (default)",
-  },
-  {
-    value: "thinking",
-    label: "Thinking",
-    description: "Show tools, thinking, hook warnings, and errors",
-  },
-  {
-    value: "verbose",
-    label: "Verbose",
-    description: "Show tools, thinking, hooks, and system content",
-  },
+const VERBOSITY_OPTIONS: Array<{ value: Verbosity; label: string }> = [
+  { value: "normal", label: "Normal" },
+  { value: "thinking", label: "Thinking" },
+  { value: "verbose", label: "Verbose" },
+];
+
+const INTERFACE_FONT_OPTIONS: Array<{ value: InterfaceFont; label: string }> = [
+  { value: "sans", label: "Sans" },
+  { value: "system", label: "System" },
+];
+
+const TRANSCRIPT_TEXT_SIZE_OPTIONS: Array<{ value: TranscriptTextSize; label: string }> = [
+  { value: "sm", label: "Small" },
+  { value: "md", label: "Medium" },
+  { value: "lg", label: "Large" },
 ];
 
 const TRANSCRIPT_WIDTH_OPTIONS: Array<{ value: TranscriptWidth; label: string }> = [
@@ -299,47 +301,69 @@ const TRANSCRIPT_WIDTH_OPTIONS: Array<{ value: TranscriptWidth; label: string }>
   { value: "wide", label: "Wide" },
 ];
 
-function TranscriptWidthRow() {
-  const { settings, setSetting } = useSettings();
+function AppearanceSection() {
+  const { settings, setSetting, setVerbosity } = useSettings();
 
   return (
-    <SettingsRow
-      slug="transcript-width"
-      title="Transcript width"
-      description="Maximum width of the transcript and composer columns."
-    >
-      <SegmentedControl
-        value={settings.transcriptWidth}
-        options={TRANSCRIPT_WIDTH_OPTIONS}
-        onValueChange={(next) => setSetting("transcriptWidth", next)}
-      />
-    </SettingsRow>
-  );
-}
-
-function VerbositySection() {
-  const { settings, setVerbosity } = useSettings();
-  const verbosity = settings.verbosity;
-  const preset = VERBOSITY_PRESETS.find((p) => p.value === verbosity);
-
-  return (
-    <SettingsSection title="Verbosity">
+    <SettingsSection title="Appearance">
+      <SettingsRow
+        slug="interface-font"
+        title="Interface font"
+        description="Font for the whole interface — menus, sidebars, and panels."
+      >
+        <SegmentedControl
+          value={settings.interfaceFont}
+          options={INTERFACE_FONT_OPTIONS}
+          onValueChange={(next) => setSetting("interfaceFont", next)}
+        />
+      </SettingsRow>
+      <SettingsRow
+        slug="transcript-text-size"
+        title="Transcript text size"
+        description="Size of the conversation transcript text."
+      >
+        <SegmentedControl
+          value={settings.transcriptTextSize}
+          options={TRANSCRIPT_TEXT_SIZE_OPTIONS}
+          onValueChange={(next) => setSetting("transcriptTextSize", next)}
+        />
+      </SettingsRow>
+      <SettingsRow
+        slug="transcript-width"
+        title="Transcript width"
+        description="Maximum width of the transcript and composer columns."
+      >
+        <SegmentedControl
+          value={settings.transcriptWidth}
+          options={TRANSCRIPT_WIDTH_OPTIONS}
+          onValueChange={(next) => setSetting("transcriptWidth", next)}
+        />
+      </SettingsRow>
       <SettingsRow
         slug="default-transcript-view"
         title="Default transcript view"
-        description={
-          preset === undefined
-            ? "Individual toggles have been customized in the Transcript tab."
-            : preset.description
-        }
+        description="The view sessions open in. Picking a view from a session’s Transcript view menu changes only that session."
       >
         <SegmentedControl
-          value={verbosity}
-          options={VERBOSITY_PRESETS}
+          value={settings.verbosity}
+          options={VERBOSITY_OPTIONS}
           onValueChange={setVerbosity}
         />
       </SettingsRow>
     </SettingsSection>
+  );
+}
+
+function CustomTranscriptViewNote() {
+  const { settings } = useSettings();
+  if (matchedVerbosityPreset(settings) !== null) return null;
+  const preset = VERBOSITY_OPTIONS.find((option) => option.value === settings.verbosity);
+
+  return (
+    <p role="status" className="py-3 text-body text-[var(--settings-muted)]">
+      Custom: these toggles differ from the {preset?.label} default transcript view (Claude Code ▸
+      Appearance).
+    </p>
   );
 }
 
@@ -687,7 +711,6 @@ export function GeneralSettings() {
       <SettingsSection title="Appearance">
         <ThemeRow />
         <MotionRow />
-        <TranscriptWidthRow />
         <ToggleRow
           label="Hide chrome"
           description="Hide the sidebar and header for a focused view"
@@ -783,7 +806,7 @@ export function ClaudeCodeSettings() {
   return (
     <>
       <CodeAppearanceSection />
-      <VerbositySection />
+      <AppearanceSection />
     </>
   );
 }
@@ -792,6 +815,7 @@ export function TranscriptSettings() {
   return (
     <>
       <SettingsSection title="Session Display">
+        <CustomTranscriptViewNote />
         <ToggleRow
           label="Thinking"
           description="Show Claude's extended thinking blocks"

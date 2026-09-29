@@ -136,7 +136,7 @@ describe("SessionChat column measure", () => {
     );
 
     expect(view.container.firstElementChild?.className).toBe(
-      `${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body`,
+      `${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`,
     );
   });
 });
