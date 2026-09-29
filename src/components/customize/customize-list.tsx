@@ -10,6 +10,8 @@ export interface CustomizeListItem {
   source: string;
   subtitle: string;
   meta?: ReactNode;
+  actions?: ReactNode;
+  onView?: () => void;
 }
 
 export interface CustomizeListGroup {
@@ -52,6 +54,8 @@ export function CustomizeList({ groups, icon, noun, searching, empty }: Customiz
               source={item.source}
               subtitle={item.subtitle}
               {...(item.meta === undefined ? {} : { meta: item.meta })}
+              {...(item.actions === undefined ? {} : { actions: item.actions })}
+              {...(item.onView === undefined ? {} : { onView: item.onView })}
             />
           ))}
         </section>

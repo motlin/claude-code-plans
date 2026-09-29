@@ -1,10 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, useSearch } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { Scroll } from "lucide-react";
 import { CustomizeNotice } from "../components/customize/customize-empty";
-import { CustomizeList, groupBy, ShortDate } from "../components/customize/customize-list";
-import { CUSTOMIZE_SECTIONS, matchesQuery, resolveOption } from "../components/customize/sections";
-import { customizeSkillsQueryOptions, type SkillSummary } from "../lib/api/customize";
+import { CustomizeList, ShortDate } from "../components/customize/customize-list";
+import { useSectionSort } from "../components/customize/persisted-sort";
+import { CUSTOMIZE_SECTIONS, resolveOption } from "../components/customize/sections";
+import { SkillRowActions } from "../components/customize/skill-row-actions";
+import { filterSkills, groupSkills, sortSkills } from "../components/customize/skills-view";
+import { customizeSkillsQueryOptions } from "../lib/api/customize";
+import { encodeFilePath } from "../lib/api/file";
 
 export const Route = createFileRoute("/customize/skills")({
   component: CustomizeSkills,
@@ -16,13 +20,10 @@ export const Route = createFileRoute("/customize/skills")({
 
 const SECTION = CUSTOMIZE_SECTIONS[0]!;
 
-function compareSkills(sort: string): (a: SkillSummary, b: SkillSummary) => number {
-  if (sort === "name") return (a, b) => a.name.localeCompare(b.name);
-  return (a, b) => b.mtime - a.mtime || a.name.localeCompare(b.name);
-}
-
 function CustomizeSkills() {
   const search = useSearch({ from: "/customize" });
+  const navigate = useNavigate();
+  const sortValue = useSectionSort(SECTION.sortStorageKey, search.sort);
   const { data: skills, isPending } = useQuery(customizeSkillsQueryOptions);
 
   if (search.view === "discover") {
@@ -38,34 +39,53 @@ function CustomizeSkills() {
 
   const searching = (search.q ?? "") !== "";
   const source = searching ? "all" : resolveOption(SECTION.filter.options, search.filter).value;
-  const sort = resolveOption(SECTION.sort ?? [], search.sort).value;
-  const visible = skills
-    .filter((skill) => source === "all" || skill.source === source)
-    .filter((skill) => matchesQuery(search.q, skill.name, skill.description, skill.sourceLabel))
-    .sort(compareSkills(sort));
+  const sort = resolveOption(SECTION.sort ?? [], sortValue).value;
+  const groups = groupSkills(sortSkills(filterSkills(skills, source, search.q), sort));
+  const showOnboarding =
+    !searching &&
+    (source === "all" || source === "personal") &&
+    !skills.some((skill) => skill.source === "personal");
 
   return (
-    <CustomizeList
-      icon={Scroll}
-      noun={SECTION.noun}
-      searching={searching}
-      groups={groupBy(
-        visible,
-        (skill) => ({ key: skill.sourceLabel, title: skill.sourceLabel }),
-        (skill) => ({
-          key: skill.id,
-          title: skill.name,
-          source: `from ${skill.sourceLabel}`,
-          subtitle: skill.description,
-          meta: <ShortDate ms={skill.mtime} />,
-        }),
+    <div className="flex flex-col gap-6">
+      {showOnboarding && (
+        <div data-testid="customize-skills-onboarding">
+          <CustomizeNotice
+            title="Add your first skills"
+            body="Personal skills live in ~/.claude/skills."
+          />
+        </div>
       )}
-      empty={
-        <CustomizeNotice
-          title="No skills yet"
-          body="Personal skills live in ~/.claude/skills; project skills live in <project>/.claude/skills."
-        />
-      }
-    />
+      <CustomizeList
+        icon={Scroll}
+        noun={SECTION.noun}
+        searching={searching}
+        groups={groups.map((group) => ({
+          key: group.key,
+          title: group.title,
+          items: group.skills.map((skill) => ({
+            key: skill.id,
+            title: skill.name,
+            source: `from ${skill.sourceLabel}`,
+            subtitle: skill.description,
+            meta: <ShortDate ms={skill.mtime} />,
+            actions: <SkillRowActions skill={skill} />,
+            onView: () =>
+              void navigate({
+                to: "/file/$",
+                params: { _splat: encodeFilePath(`${skill.dir}/SKILL.md`) },
+              }),
+          })),
+        }))}
+        empty={
+          showOnboarding ? null : (
+            <CustomizeNotice
+              title="No skills yet"
+              body="Personal skills live in ~/.claude/skills; project skills live in <project>/.claude/skills."
+            />
+          )
+        }
+      />
+    </div>
   );
 }

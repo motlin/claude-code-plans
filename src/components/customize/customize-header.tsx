@@ -9,6 +9,7 @@ import {
   MenuRadioItem,
   MenuTrigger,
 } from "../ui/menu";
+import { useSectionSort, writeStoredSort } from "./persisted-sort";
 import {
   CUSTOMIZE_SECTIONS,
   type CustomizeSearch,
@@ -39,6 +40,8 @@ interface CustomizeHeaderProps {
 export function CustomizeHeader({ section, search }: CustomizeHeaderProps) {
   const navigate = useNavigate();
   const searching = (search.q ?? "") !== "";
+  const sortOptions = section.sort;
+  const sort = useSectionSort(section.sortStorageKey, search.sort);
 
   const updateSearch = (patch: Partial<CustomizeSearch>) =>
     void navigate({
@@ -121,15 +124,21 @@ export function CustomizeHeader({ section, search }: CustomizeHeaderProps) {
           disabled={searching}
           onChange={(filter) => updateSearch({ filter })}
         />
-        {section.sort !== null && (
+        {sortOptions !== null && (
           <OptionMenu
-            label={`Sort by ${resolveOption(section.sort, search.sort).label}`}
+            label={`Sort by ${resolveOption(sortOptions, sort).label}`}
             groupLabel="Sort by"
             icon={<ArrowDownUp aria-hidden="true" className="size-5" />}
-            options={section.sort}
-            value={search.sort}
+            options={sortOptions}
+            value={sort}
             disabled={searching}
-            onChange={(sort) => updateSearch({ sort })}
+            onChange={(next) => {
+              const { sortStorageKey } = section;
+              if (sortStorageKey !== undefined) {
+                writeStoredSort(sortStorageKey, resolveOption(sortOptions, next).value);
+              }
+              updateSearch({ sort: next });
+            }}
           />
         )}
       </div>

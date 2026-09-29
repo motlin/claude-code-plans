@@ -10,7 +10,8 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { ToastProvider } from "../src/components/toast";
 import {
   customizeMcpServersQueryOptions,
   customizeSkillsQueryOptions,
@@ -22,10 +23,21 @@ import { Route as CustomizeLayoutRoute } from "../src/routes/customize";
 import { Route as CustomizeConnectorsRoute } from "../src/routes/customize.connectors";
 import { Route as CustomizePluginsRoute } from "../src/routes/customize.plugins";
 import { Route as CustomizeSkillsRoute } from "../src/routes/customize.skills";
+import { installLocalStorage } from "./fake-storage";
+
+beforeEach(() => {
+  installLocalStorage();
+});
 
 afterEach(() => {
   cleanup();
 });
+
+async function flush() {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
 
 const SKILLS: SkillSummary[] = [
   {
@@ -36,6 +48,29 @@ const SKILLS: SkillSummary[] = [
     sourceLabel: "Personal",
     dir: "/Users/test/.claude/skills/deploy-checklist",
     mtime: Date.parse("2026-09-15T12:00:00Z"),
+    enabled: true,
+  },
+];
+
+const EXTRA_SKILLS: SkillSummary[] = [
+  {
+    id: "project:-Users-test-web:lint",
+    name: "lint",
+    description: "Lint the web app.",
+    source: "project",
+    sourceLabel: "web",
+    dir: "/Users/test/web/.claude/skills/lint",
+    mtime: Date.parse("2026-09-20T12:00:00Z"),
+    enabled: true,
+  },
+  {
+    id: "plugin:document-skills@anthropic:pdf",
+    name: "pdf",
+    description: "Read and write PDFs.",
+    source: "plugin",
+    sourceLabel: "document-skills",
+    dir: "/Users/test/.claude/plugins/cache/document-skills/skills/pdf",
+    mtime: Date.parse("2026-09-10T12:00:00Z"),
     enabled: true,
   },
 ];
@@ -58,16 +93,18 @@ function component<T>(value: T | undefined, name: string): T {
   return value;
 }
 
-async function renderCustomize(initialEntry: string) {
+async function renderCustomize(initialEntry: string, skills: SkillSummary[] = SKILLS) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  queryClient.setQueryData(customizeSkillsQueryOptions.queryKey, SKILLS);
+  queryClient.setQueryData(customizeSkillsQueryOptions.queryKey, skills);
   queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, MCP_SERVERS);
   queryClient.setQueryData(pluginsQueryOptions.queryKey, []);
 
   const rootRoute = createRootRoute({
     component: () => (
       <QueryClientProvider client={queryClient}>
-        <Outlet />
+        <ToastProvider>
+          <Outlet />
+        </ToastProvider>
       </QueryClientProvider>
     ),
   });
@@ -210,7 +247,7 @@ describe("customize shell", () => {
 
   it("shows the no-match state when the search finds no skills", async () => {
     await renderCustomize("/customize/skills?q=zzz-nothing");
-    const empty = screen.getByRole("status");
+    const empty = within(screen.getByRole("tabpanel")).getByRole("status");
 
     expect([...empty.querySelectorAll("h3, p")].map((node) => node.textContent)).toStrictEqual([
       "No skills match your search",
@@ -224,5 +261,94 @@ describe("customize shell", () => {
     expect(screen.getAllByTestId("customize-list-row").map((row) => row.textContent)).toStrictEqual(
       ["deploy-checklistfrom Personal·Walk the release checklist before shipping.Sep 15"],
     );
+  });
+
+  it("labels each skill row View <name> with a More actions kebab", async () => {
+    await renderCustomize("/customize/skills");
+
+    expect({
+      view: screen
+        .getAllByRole("button", { name: /^View / })
+        .map((button) => button.getAttribute("aria-label")),
+      kebab: screen
+        .getAllByRole("button", { name: /^More actions for / })
+        .map((button) => button.getAttribute("aria-label")),
+    }).toStrictEqual({
+      view: ["View deploy-checklist"],
+      kebab: ["More actions for deploy-checklist"],
+    });
+  });
+
+  it("offers Open folder and Copy /name in the row kebab", async () => {
+    await renderCustomize("/customize/skills");
+    fireEvent.click(screen.getByRole("button", { name: "More actions for deploy-checklist" }));
+    await flush();
+
+    expect(
+      within(screen.getByRole("menu"))
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toStrictEqual(["Open folder", "Copy /deploy-checklist"]);
+  });
+
+  it("groups skills under Personal, Project and From plugins headers with counters", async () => {
+    await renderCustomize("/customize/skills", [...SKILLS, ...EXTRA_SKILLS]);
+
+    expect(
+      screen
+        .getAllByRole("heading", { level: 3 })
+        .map((heading) => heading.parentElement?.textContent),
+    ).toStrictEqual(["Personal1", "Project · web1", "From plugins1"]);
+    expect(screen.getAllByTestId("customize-list-row").map((row) => row.textContent)).toStrictEqual(
+      [
+        "deploy-checklistfrom Personal·Walk the release checklist before shipping.Sep 15",
+        "lintfrom web·Lint the web app.Sep 20",
+        "pdffrom document-skills·Read and write PDFs.Sep 10",
+      ],
+    );
+  });
+
+  it("shows the onboarding card when there are no personal skills", async () => {
+    await renderCustomize("/customize/skills", EXTRA_SKILLS);
+    const card = screen.getByTestId("customize-skills-onboarding");
+
+    expect([...card.querySelectorAll("h3, p")].map((node) => node.textContent)).toStrictEqual([
+      "Add your first skills",
+      "Personal skills live in ~/.claude/skills.",
+    ]);
+  });
+
+  it("hides the onboarding card while personal skills exist", async () => {
+    await renderCustomize("/customize/skills");
+    expect(screen.queryByTestId("customize-skills-onboarding")).toBeNull();
+  });
+
+  it("restores the persisted sort from localStorage", async () => {
+    localStorage.setItem("ccb-customize-skills-sort", "name");
+    await renderCustomize("/customize/skills", [...SKILLS, ...EXTRA_SKILLS]);
+    await flush();
+
+    expect(screen.getByRole("button", { name: "Sort by Name" })).toBeTruthy();
+  });
+
+  it("ignores an unknown persisted sort", async () => {
+    localStorage.setItem("ccb-customize-skills-sort", "bogus");
+    await renderCustomize("/customize/skills");
+    await flush();
+
+    expect(screen.getByRole("button", { name: "Sort by Last edited" })).toBeTruthy();
+  });
+
+  it("persists the chosen sort to localStorage", async () => {
+    await renderCustomize("/customize/skills");
+    fireEvent.click(screen.getByRole("button", { name: "Sort by Last edited" }));
+    await flush();
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Name" }));
+    await flush();
+
+    expect({
+      stored: localStorage.getItem("ccb-customize-skills-sort"),
+      label: screen.getByRole("button", { name: "Sort by Name" }).getAttribute("aria-label"),
+    }).toStrictEqual({ stored: "name", label: "Sort by Name" });
   });
 });

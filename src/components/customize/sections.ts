@@ -27,6 +27,8 @@ export interface CustomizeSectionConfig {
   filter: { label: string; options: readonly MenuOption[] };
   /** Connectors omits Sort upstream. */
   sort: readonly MenuOption[] | null;
+  /** localStorage key that remembers the last Sort choice when `?sort=` is absent. */
+  sortStorageKey?: string;
 }
 
 export const CUSTOMIZE_SECTIONS: readonly CustomizeSectionConfig[] = [
@@ -50,6 +52,7 @@ export const CUSTOMIZE_SECTIONS: readonly CustomizeSectionConfig[] = [
       { value: "edited", label: "Last edited" },
       { value: "name", label: "Name" },
     ],
+    sortStorageKey: "ccb-customize-skills-sort",
   },
   {
     id: "connectors",
