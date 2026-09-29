@@ -6,7 +6,7 @@
     "server/plugins/**/*.ts",
     "server/routes/**/*.ts",
     "scripts/field-presence.ts",
-    "tests/fixtures/fake-server.mjs"
+    "tests/fixtures/fake-server.mjs",
   ],
   "ignorePatterns": [".storybook/**", "src/routeTree.gen.ts"],
   "ignoreDependencies": [
@@ -15,36 +15,36 @@
     "@shikijs/engine-javascript",
     "@storybook/addon-a11y",
     "@storybook/addon-docs",
-    "agentation"
+    "agentation",
   ],
   "ignoreExports": [
     {
       "file": "src/components/markdown-article.module.css",
-      "exports": ["*"]
+      "exports": ["*"],
     },
     {
       "file": "src/components/session-chat.tsx",
-      "exports": ["SessionChatProps"]
+      "exports": ["SessionChatProps"],
     },
     {
       "file": "src/components/settings-provider.tsx",
-      "exports": ["SettingsProvider"]
+      "exports": ["SettingsProvider"],
     },
     {
       "file": "src/lib/active-sessions.ts",
-      "exports": ["ActiveSession"]
+      "exports": ["ActiveSession"],
     },
     {
       "file": "src/lib/hook-events.ts",
       "exports": [
         "PendingApprovalPayload",
         "NotificationEntryPayload",
-        "NotificationClearedPayload"
-      ]
+        "NotificationClearedPayload",
+      ],
     },
     {
       "file": "src/lib/pending-approvals.ts",
-      "exports": ["scanAllPendingApprovals", "PendingApprovalToolName", "PendingApproval"]
+      "exports": ["scanAllPendingApprovals", "PendingApprovalToolName", "PendingApproval"],
     },
     {
       "file": "src/lib/db/pending-approvals-cache.ts",
@@ -53,20 +53,20 @@
         "getPendingApprovals",
         "getPendingApprovalsForProject",
         "updatePendingApprovalForSession",
-        "removePendingApprovalForSession"
-      ]
+        "removePendingApprovalForSession",
+      ],
     },
     {
       "file": "src/lib/claude-light-theme.ts",
-      "exports": ["claudeLight"]
+      "exports": ["claudeLight"],
     },
     {
       "file": "src/lib/db/index.ts",
-      "exports": ["runInitialScan", "awaitInitialScan"]
+      "exports": ["runInitialScan", "awaitInitialScan"],
     },
     {
       "file": "src/lib/api/approvals.ts",
-      "exports": ["ApprovalsResponse", "approvalsQueryOptions", "projectApprovalsQueryOptions"]
+      "exports": ["ApprovalsResponse", "approvalsQueryOptions", "projectApprovalsQueryOptions"],
     },
     {
       "file": "src/lib/api/notifications.ts",
@@ -76,16 +76,16 @@
         "notificationsQueryOptions",
         "projectNotificationsQueryOptions",
         "useDismissNotification",
-        "useClearNotifications"
-      ]
+        "useClearNotifications",
+      ],
     },
     {
       "file": "src/lib/api/tmux.ts",
-      "exports": ["tmuxWindowsQueryOptions"]
+      "exports": ["tmuxWindowsQueryOptions"],
     },
     {
       "file": "src/lib/api/sessions.ts",
-      "exports": ["SessionSubagentsResponse", "sessionSubagentsQueryOptions"]
+      "exports": ["SessionSubagentsResponse", "sessionSubagentsQueryOptions"],
     },
     {
       "file": "src/lib/db/queries.ts",
@@ -96,53 +96,53 @@
         "getMemoryCountsForProjects",
         "getMemoriesForProject",
         "MemoryRow",
-        "getPlanFilenameForSession"
-      ]
+        "getPlanFilenameForSession",
+      ],
     },
     {
       "file": "src/lib/sessions.ts",
-      "exports": ["RawWindow", "readSessionLines"]
+      "exports": ["RawWindow", "readSessionLines"],
     },
     {
       "file": "src/routes/session.$id_.source.$uuid.tsx",
-      "exports": ["PairedResult"]
+      "exports": ["PairedResult"],
     },
     {
       "file": "src/components/tool-renderers/shared.tsx",
-      "exports": ["CopyButton"]
+      "exports": ["CopyButton"],
     },
     {
       "file": "src/lib/settings-fields.ts",
-      "exports": ["OBJECT_EDITORS", "COVERED_SETTINGS_KEYS"]
+      "exports": ["OBJECT_EDITORS", "COVERED_SETTINGS_KEYS"],
     },
     {
       "file": "src/lib/update-dedupe.ts",
-      "exports": ["*"]
+      "exports": ["*"],
     },
     {
       "file": "src/lib/watcher.ts",
-      "exports": ["*"]
+      "exports": ["*"],
     },
     {
       "file": "src/lib/herdr/availability.ts",
-      "exports": ["*"]
+      "exports": ["*"],
     },
     {
       "file": "src/lib/herdr/subscribe.ts",
-      "exports": ["*"]
+      "exports": ["*"],
     },
     {
       "file": "src/lib/local-account.ts",
-      "exports": ["getLocalAccount"]
-    }
+      "exports": ["getLocalAccount"],
+    },
   ],
   "duplicates": {
-    "minOccurrences": 3
+    "minOccurrences": 3,
   },
   "rules": {
     "unused-dependencies": "error",
     "unused-types": "error",
     "unused-exports": "error",
-    "duplicate-exports": "error"
-  }
+    "duplicate-exports": "error",
+  },
 }
