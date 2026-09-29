@@ -665,6 +665,9 @@ export const sessionMenuItemLabels = {
   "move-to-custom-group": "Custom group",
   ungroup: "Ungrouped",
   "new-group": "New group…",
+  "transcript-view": "Transcript view",
+  "transcript-mode": "Transcript mode",
+  "make-default-transcript-mode": "Make default",
   archive: "Archive",
   unarchive: "Unarchive",
 } satisfies Record<z.infer<typeof SessionMenuItemIdSchema>, string>;
@@ -695,7 +698,7 @@ const recentKindLabels = {
 } satisfies Record<RecentKind, string>;
 
 /** Per-session transcript views (src/lib/transcript-mode.ts), cycled by ⌃O. */
-const transcriptModeLabels = {
+export const transcriptModeLabels = {
   normal: "Normal",
   thinking: "Thinking",
   verbose: "Verbose",

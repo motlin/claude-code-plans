@@ -150,3 +150,58 @@ export function sessionHasThinking(
     );
   });
 }
+
+export const TRANSCRIPT_VIEW_NUDGE_STORAGE_KEY = "ccp-transcript-view-nudge";
+
+/** Per mode: the session it was first picked in, or `true` once the nudge has shown. */
+export type TranscriptViewNudgeState = Readonly<Partial<Record<TranscriptMode, string | true>>>;
+
+const StoredNudgeSchema = z.partialRecord(
+  TranscriptModeSchema,
+  z.union([z.string().min(1), z.literal(true)]),
+);
+
+/**
+ * Upstream's "Make {mode} your default view?" nudge: picking the same non-default mode in a
+ * second session makes it due, and it shows once per mode.
+ */
+export function recordTranscriptViewPick(
+  state: TranscriptViewNudgeState,
+  {
+    sessionId,
+    mode,
+    defaultMode,
+  }: { sessionId: string; mode: TranscriptMode; defaultMode: TranscriptMode },
+): { state: TranscriptViewNudgeState; due: boolean } {
+  const seen = state[mode];
+  if (mode === defaultMode || seen === true || seen === sessionId) return { state, due: false };
+  if (seen === undefined) return { state: { ...state, [mode]: sessionId }, due: false };
+  return { state: { ...state, [mode]: true }, due: true };
+}
+
+export function loadTranscriptViewNudge(
+  storage: Storage | null = browserLocalStorage(),
+): TranscriptViewNudgeState {
+  if (!storage) return {};
+  try {
+    const raw = storage.getItem(TRANSCRIPT_VIEW_NUDGE_STORAGE_KEY);
+    if (raw === null) return {};
+    const parsed = StoredNudgeSchema.safeParse(JSON.parse(raw));
+    return parsed.success ? parsed.data : {};
+  } catch {
+    // localStorage can be denied or hold corrupt JSON; the nudge is best-effort.
+    return {};
+  }
+}
+
+export function saveTranscriptViewNudge(
+  state: TranscriptViewNudgeState,
+  storage: Storage | null = browserLocalStorage(),
+): void {
+  if (!storage) return;
+  try {
+    storage.setItem(TRANSCRIPT_VIEW_NUDGE_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // localStorage can be denied or full; the nudge is best-effort.
+  }
+}

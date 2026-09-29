@@ -132,6 +132,9 @@ export function PaletteRowActionsCard({
       case "move-to-custom-group":
       case "ungroup":
       case "new-group":
+      case "transcript-view":
+      case "transcript-mode":
+      case "make-default-transcript-mode":
         return;
       default:
         assertNever(id);

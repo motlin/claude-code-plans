@@ -29,6 +29,7 @@ import { ArchivedBadge } from "./archived-badge";
 import {
   MenuEntries,
   SESSION_MENU_CAPABILITIES,
+  type TranscriptViewActions,
   useRenameAfterMenuClose,
   useSessionMenuRunner,
 } from "./session-actions-menu";
@@ -269,6 +270,7 @@ function HeaderMenuBody({
   isActive,
   requestRename,
   local,
+  transcriptView,
 }: {
   sessionId: string;
   data: SessionDetailData;
@@ -276,6 +278,7 @@ function HeaderMenuBody({
   isActive: boolean;
   requestRename: () => void;
   local: SessionHeaderLocalActions | undefined;
+  transcriptView: SessionHeaderTranscriptView | undefined;
 }) {
   const { data: herdr } = useQuery(herdrPanesQueryOptions);
   const { data: openIn } = useQuery(sessionOpenInQueryOptions(sessionId));
@@ -296,7 +299,21 @@ function HeaderMenuBody({
     cwd,
     bridgeSessionId,
   };
-  const run = useSessionMenuRunner({ sessionId, cwd, bridgeSessionId, prUrl, requestRename });
+  if (transcriptView !== undefined) {
+    menuSession.transcriptView = {
+      mode: transcriptView.mode,
+      defaultMode: transcriptView.defaultMode,
+      hasThinking: transcriptView.hasThinking,
+    };
+  }
+  const run = useSessionMenuRunner({
+    sessionId,
+    cwd,
+    bridgeSessionId,
+    prUrl,
+    requestRename,
+    ...(transcriptView === undefined ? {} : { transcriptView }),
+  });
   return (
     <>
       <MenuEntries
@@ -315,6 +332,11 @@ function HeaderMenuBody({
   );
 }
 
+/** The session's transcript view, which the header's Transcript view submenu shows and sets. */
+export interface SessionHeaderTranscriptView extends TranscriptViewActions {
+  hasThinking: boolean;
+}
+
 export interface SessionTitlebarProps {
   sessionId: string;
   data: SessionDetailData;
@@ -327,6 +349,8 @@ export interface SessionTitlebarProps {
   viewOptions?: ReactNode;
   /** The AI summary, shown as the title button's tooltip and description. */
   summary?: string | null;
+  /** Adds the Transcript view ▸ submenu to the header menu. */
+  transcriptView?: SessionHeaderTranscriptView;
 }
 
 /**
@@ -343,6 +367,7 @@ export function SessionTitlebar({
   local,
   viewOptions,
   summary = null,
+  transcriptView,
 }: SessionTitlebarProps) {
   const rename = useSessionRename(sessionId, data.title);
   const cwd = data.cwd ?? data.projectPath;
@@ -398,6 +423,7 @@ export function SessionTitlebar({
                 isActive={isActive}
                 requestRename={menuRename.requestRename}
                 local={local}
+                transcriptView={transcriptView}
               />
             </MenuContent>
           </Menu>

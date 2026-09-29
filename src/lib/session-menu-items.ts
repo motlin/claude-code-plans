@@ -1,7 +1,8 @@
 import { z } from "zod";
 
-import { sessionMenuItemLabels } from "./schema-choices";
+import { sessionMenuItemLabels, transcriptModeLabels } from "./schema-choices";
 import type { SessionBucket } from "./session-state";
+import { TRANSCRIPT_MODES, type TranscriptMode } from "./transcript-mode";
 
 /**
  * The claude.ai/code session actions menu as data. The sidebar row menu, the
@@ -32,6 +33,9 @@ export const SessionMenuItemIdSchema = z.enum([
   "move-to-custom-group",
   "ungroup",
   "new-group",
+  "transcript-view",
+  "transcript-mode",
+  "make-default-transcript-mode",
   "archive",
   "unarchive",
 ]);
@@ -86,6 +90,14 @@ export interface SessionMenuSession {
   pinPosition?: { index: number; count: number };
   /** This browser's custom groups and the row's current one; enables Move to group. */
   customGroup?: { groups: readonly { id: string; name: string }[]; current: string | null };
+  /** The session's transcript view; enables the header's Transcript view submenu. */
+  transcriptView?: TranscriptViewState;
+}
+
+export interface TranscriptViewState {
+  mode: TranscriptMode;
+  defaultMode: TranscriptMode;
+  hasThinking: boolean;
 }
 
 export interface SessionMenuItem {
@@ -102,6 +114,8 @@ export interface SessionMenuItem {
   checked?: boolean;
   /** The custom group a Move to group radio targets. */
   groupId?: string;
+  /** The mode a Transcript view radio selects. */
+  transcriptMode?: TranscriptMode;
   submenu?: SessionMenuEntry[];
 }
 
@@ -192,6 +206,42 @@ function moveToGroupItem({
   };
 }
 
+/**
+ * Upstream's "Transcript view ▸": Normal · Thinking (only when the session has some) ·
+ * Verbose as radios, then "Make {Mode} the default" when the session differs from it.
+ */
+export function transcriptViewMenuItem({
+  mode,
+  defaultMode,
+  hasThinking,
+}: TranscriptViewState): SessionMenuItem {
+  const entries: SessionMenuEntry[] = TRANSCRIPT_MODES.filter(
+    (option) => hasThinking || option !== "thinking",
+  ).map((option) => ({
+    kind: "item",
+    id: "transcript-mode",
+    label: transcriptModeLabels[option],
+    transcriptMode: option,
+    checked: option === mode,
+  }));
+  if (mode !== defaultMode) {
+    entries.push(
+      { kind: "separator" },
+      {
+        kind: "item",
+        id: "make-default-transcript-mode",
+        label: `Make ${transcriptModeLabels[mode]} the default`,
+      },
+    );
+  }
+  return {
+    kind: "item",
+    id: "transcript-view",
+    label: sessionMenuItemLabels["transcript-view"],
+    submenu: entries,
+  };
+}
+
 function paletteName(title: string): string {
   return title.length > PALETTE_TITLE_LENGTH ? `${title.slice(0, PALETTE_TITLE_LENGTH)}…` : title;
 }
@@ -276,6 +326,11 @@ export function getSessionMenuItems(
     grouping.push(moveToGroupItem(session.customGroup));
   }
 
+  const settingsBlock: SessionMenuItem[] = [];
+  if (surface === "header" && session.transcriptView !== undefined) {
+    settingsBlock.push(transcriptViewMenuItem(session.transcriptView));
+  }
+
   const lifecycle: SessionMenuItem[] = [];
   if (has("archive")) lifecycle.push(item(session.archived ? "unarchive" : "archive"));
 
@@ -305,7 +360,7 @@ export function getSessionMenuItems(
     });
   }
 
-  const sections = [navigation, pinReorder, actions, grouping, lifecycle].filter(
+  const sections = [navigation, pinReorder, actions, grouping, settingsBlock, lifecycle].filter(
     (section) => section.length > 0,
   );
   return [

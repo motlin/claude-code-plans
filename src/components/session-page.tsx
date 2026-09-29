@@ -347,9 +347,8 @@ function SessionView({
     [transcript.records, transcript.startIndex],
   );
   const hasThinking = useMemo(() => sessionHasThinking(processed.lines), [processed.lines]);
-  const { mode: transcriptMode, flags: transcriptFlags } = useTranscriptModeShortcut(sessionId, {
-    hasThinking,
-  });
+  const transcriptView = useTranscriptModeShortcut(sessionId, { hasThinking });
+  const { mode: transcriptMode, flags: transcriptFlags } = transcriptView;
   // `uuidToLine` is the set of messages the window holds, which is how a jump
   // decides whether to scroll or to page history in first.
   const requestMessageJump = usePendingMessageJump(
@@ -557,6 +556,7 @@ function SessionView({
                 generatingSummary: generating,
               }}
               summary={aiSummary}
+              transcriptView={transcriptView}
               paneToggles={
                 <SessionPaneControls
                   facts={{

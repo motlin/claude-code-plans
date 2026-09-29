@@ -50,9 +50,13 @@ export type TranscriptFlags = Pick<
 
 export interface SessionTranscriptMode {
   mode: TranscriptMode;
+  defaultMode: TranscriptMode;
   isDefault: boolean;
+  hasThinking: boolean;
   flags: TranscriptFlags;
   setMode: (mode: TranscriptMode) => void;
+  /** Makes `mode` the default view and drops this session's override. */
+  makeDefault: (mode: TranscriptMode) => void;
   cycle: () => void;
 }
 
@@ -64,7 +68,7 @@ function useSessionTranscriptMode(
   sessionId: string,
   { hasThinking = true }: { hasThinking?: boolean } = {},
 ): SessionTranscriptMode {
-  const { settings } = useSettings();
+  const { settings, setVerbosity } = useSettings();
   const defaultMode = settings.verbosity;
   const current = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const mode = resolveTranscriptMode({ sessionId, overrides: current, defaultMode, hasThinking });
@@ -88,12 +92,28 @@ function useSessionTranscriptMode(
     (next: TranscriptMode) => update(setSessionMode(getSnapshot(), sessionId, next, defaultMode)),
     [sessionId, defaultMode],
   );
+  const makeDefault = useCallback(
+    (next: TranscriptMode) => {
+      setVerbosity(next);
+      update(setSessionMode(getSnapshot(), sessionId, next, next));
+    },
+    [sessionId, setVerbosity],
+  );
   const cycle = useCallback(
     () => setMode(nextTranscriptMode(mode, { hasThinking })),
     [setMode, mode, hasThinking],
   );
 
-  return { mode, isDefault: mode === defaultMode, flags, setMode, cycle };
+  return {
+    mode,
+    defaultMode,
+    isDefault: mode === defaultMode,
+    hasThinking,
+    flags,
+    setMode,
+    makeDefault,
+    cycle,
+  };
 }
 
 /**

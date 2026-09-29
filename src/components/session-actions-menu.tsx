@@ -30,6 +30,14 @@ import {
   vscodeFolderUrl,
 } from "../lib/session-open-in";
 import { forkDisabledReason } from "../lib/session-fork";
+import { transcriptModeLabels } from "../lib/schema-choices";
+import {
+  loadTranscriptViewNudge,
+  recordTranscriptViewPick,
+  saveTranscriptViewNudge,
+  type TranscriptMode,
+  TranscriptModeSchema,
+} from "../lib/transcript-mode";
 import { maybeShowDragPinHint } from "../lib/drag-pin-hint";
 import { pin, readPinState, unpin, usePins, writePinState } from "../lib/pin-store";
 import { assign, createGroup, useSessionGroups } from "../lib/session-group-store";
@@ -118,10 +126,52 @@ export interface SessionMenuRunnerOptions {
   movePinned?: (delta: -1 | 1) => void;
   /** Opens the New group dialog for Move to group ▸ New group…. */
   requestNewGroup?: () => void;
+  /** The session's transcript view, for the header's Transcript view submenu. */
+  transcriptView?: TranscriptViewActions;
 }
 
-/** Runs a menu item; Move to group radios also pass the group they target. */
-export type SessionMenuRun = (id: SessionMenuItemId, groupId?: string) => void;
+export interface TranscriptViewActions {
+  mode: TranscriptMode;
+  defaultMode: TranscriptMode;
+  setMode: (mode: TranscriptMode) => void;
+  makeDefault: (mode: TranscriptMode) => void;
+}
+
+/** Runs a menu item; radios also pass their value (a Move to group target or a transcript mode). */
+export type SessionMenuRun = (id: SessionMenuItemId, value?: string) => void;
+
+/** Transcript view ▸ radios and Make default, with upstream's toasts and default-view nudge. */
+function useTranscriptViewRunner(sessionId: string, view: TranscriptViewActions | undefined) {
+  const toast = useToast();
+  const makeDefault = (mode: TranscriptMode) => {
+    view?.makeDefault(mode);
+    toast({ kind: "success", message: `${transcriptModeLabels[mode]} is now the default view.` });
+  };
+  const pick = (value: string | undefined) => {
+    const parsed = TranscriptModeSchema.safeParse(value);
+    if (view === undefined || !parsed.success || parsed.data === view.mode) return;
+    const mode = parsed.data;
+    view.setMode(mode);
+    const { state, due } = recordTranscriptViewPick(loadTranscriptViewNudge(), {
+      sessionId,
+      mode,
+      defaultMode: view.defaultMode,
+    });
+    saveTranscriptViewNudge(state);
+    if (!due) return;
+    const label = transcriptModeLabels[mode];
+    toast({
+      kind: "success",
+      message: `Make ${label} your default view?`,
+      description: `You’ve picked ${label} in more than one session. You can change the default anytime in Settings.`,
+      action: { label: "Make default", onAction: () => makeDefault(mode) },
+    });
+  };
+  const makeCurrentDefault = () => {
+    if (view !== undefined) makeDefault(view.mode);
+  };
+  return { pick, makeCurrentDefault };
+}
 
 /** Runs one session menu item; shared by the row menu and the titlebar chevron menu. */
 export function useSessionMenuRunner({
@@ -133,8 +183,10 @@ export function useSessionMenuRunner({
   setPinned,
   movePinned,
   requestNewGroup,
+  transcriptView,
 }: SessionMenuRunnerOptions): SessionMenuRun {
   const toast = useToast();
+  const transcriptViewRunner = useTranscriptViewRunner(sessionId, transcriptView);
   const setArchived = useSessionArchive(sessionId);
   const navigate = useNavigate();
   const fork = useSessionFork();
@@ -145,7 +197,7 @@ export function useSessionMenuRunner({
     });
   };
 
-  return (id, groupId): void => {
+  return (id, value): void => {
     switch (id) {
       case "open-live-terminal":
         void navigate({
@@ -200,7 +252,7 @@ export function useSessionMenuRunner({
         if (cwd !== null) fork({ sessionId, cwd });
         return;
       case "move-to-custom-group":
-        if (groupId !== undefined) assign(sessionId, groupId);
+        if (value !== undefined) assign(sessionId, value);
         return;
       case "ungroup":
         assign(sessionId, null);
@@ -208,8 +260,15 @@ export function useSessionMenuRunner({
       case "new-group":
         requestNewGroup?.();
         return;
+      case "transcript-mode":
+        transcriptViewRunner.pick(value);
+        return;
+      case "make-default-transcript-mode":
+        transcriptViewRunner.makeCurrentDefault();
+        return;
       case "open-in":
       case "move-to-group":
+      case "transcript-view":
         return;
       default:
         assertNever(id);
@@ -290,9 +349,9 @@ function testIdProps(id: SessionMenuItemId) {
   return testId === undefined ? {} : { "data-testid": testId };
 }
 
-/** Radio value of a Move to group entry: its group, or the Ungrouped item's id. */
+/** Radio value: a Move to group entry's group, a transcript mode, or the Ungrouped item's id. */
 function radioValue(entry: SessionMenuItem): string {
-  return entry.groupId ?? entry.id;
+  return entry.groupId ?? entry.transcriptMode ?? entry.id;
 }
 
 export function MenuEntries({
@@ -345,7 +404,7 @@ function MenuEntryList({ entries, run }: { entries: SessionMenuEntry[]; run: Ses
           value={radioValue(entry)}
           closeOnClick
           {...(entry.accelerator === undefined ? {} : { accelerator: entry.accelerator })}
-          onClick={() => run(entry.id, entry.groupId)}
+          onClick={() => run(entry.id, entry.groupId ?? entry.transcriptMode)}
         >
           {entry.label}
         </MenuRadioItem>
