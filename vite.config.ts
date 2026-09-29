@@ -4,6 +4,9 @@ import { nitro } from "nitro/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
+// Names the dev process in ps; production uses SERVER_PROCESS_TITLE instead.
+process.title = "claude-code-browser";
+
 export default defineConfig({
   lint: {
     plugins: ["oxc", "typescript", "unicorn", "react"],
