@@ -15,6 +15,15 @@ import {
 } from "../src/lib/api/search";
 import { SessionSummaryStateSchema } from "../src/lib/api/sessions";
 import { SourceFileResponse } from "../src/lib/api/source";
+import {
+  ArtifactActionSchema,
+  ArtifactAutoOpenSchema,
+  ArtifactDbOpSchema,
+  ArtifactIntentSchema,
+  ArtifactListScopeSchema,
+  ArtifactLiveSubscriptionSchema,
+  ArtifactToolResultSchema,
+} from "../src/lib/artifact-schemas";
 import { ChangedFileKindSchema } from "../src/lib/changed-file-kind";
 import { NavSectionSchema } from "../src/lib/nav-sections";
 import { PaletteFilterSchema, PaletteTypeSchema } from "../src/lib/palette-tokens";
@@ -80,6 +89,13 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["ClaudeSettingsSchema", ClaudeSettingsSchema],
   ["McpConfigSchema", McpConfigSchema],
   ["RenderedLineSchema", RenderedLineSchema],
+  ["ArtifactActionSchema", ArtifactActionSchema],
+  ["ArtifactIntentSchema", ArtifactIntentSchema],
+  ["ArtifactListScopeSchema", ArtifactListScopeSchema],
+  ["ArtifactAutoOpenSchema", ArtifactAutoOpenSchema],
+  ["ArtifactDbOpSchema", ArtifactDbOpSchema],
+  ["ArtifactLiveSubscriptionSchema", ArtifactLiveSubscriptionSchema],
+  ["ArtifactToolResultSchema", ArtifactToolResultSchema],
   ["ToolUseUnion", ToolUseUnion],
   ["HookEventEnvelope", HookEventEnvelope],
   ["SourceFileResponse", SourceFileResponse],

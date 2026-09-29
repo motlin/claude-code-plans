@@ -915,6 +915,7 @@ const TOOL_VARIANTS = {
   NotebookRead: { input: toolInputSchemas.NotebookRead, response: JsonValueSchema }, // no samples observed yet
   ReportFindings: { input: toolInputSchemas.ReportFindings, response: JsonValueSchema },
   LS: { input: toolInputSchemas.LS, response: JsonValueSchema }, // no samples observed yet
+  Artifact: { input: toolInputSchemas.Artifact, response: JsonValueSchema }, // no hook samples observed yet
 } satisfies Record<keyof typeof toolInputSchemas, ToolVariant>;
 
 type ToolName = keyof typeof TOOL_VARIANTS;

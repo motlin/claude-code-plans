@@ -1,4 +1,12 @@
 import { z } from "zod";
+import {
+  ArtifactActionSchema,
+  ArtifactAutoOpenSchema,
+  ArtifactCapabilitiesSchema,
+  ArtifactDbOpSchema,
+  ArtifactIntentSchema,
+  ArtifactListScopeSchema,
+} from "./artifact-schemas";
 
 const JsonInputValueSchema: z.ZodType<unknown> = z.lazy(() =>
   z.union([
@@ -404,6 +412,61 @@ export const LSInputSchema = z
   })
   .strict();
 
+const ArtifactFileSourceSchema = z.union([
+  z.string(),
+  z.strictObject({ from: z.string(), contentType: z.string().optional() }),
+  z.strictObject({ artifact: z.string(), path: z.string(), ver: z.string().optional() }),
+  z.null(),
+]);
+
+/** Omitting `action` means publish; `read_db` is the older shape of the ArtifactData read. */
+export const ArtifactInputSchema = z
+  .object({
+    action: ArtifactActionSchema.optional(),
+    file_path: z.string().optional(),
+    file_paths: z.array(z.string()).optional(),
+    url: z.string().optional(),
+    title: z.string().optional(),
+    description: z.string().optional(),
+    label: z.string().optional(),
+    note: z.string().optional(),
+    icon: z.string().optional(),
+    favicon: z.string().optional(),
+    capabilities: ArtifactCapabilitiesSchema.optional(),
+    files: z
+      .union([
+        z.record(z.string(), ArtifactFileSourceSchema),
+        z.array(z.strictObject({ path: z.string(), contentType: z.string().optional() })),
+      ])
+      .optional(),
+    root: z.string().optional(),
+    pin: z.boolean().optional(),
+    contract: z.string().optional(),
+    force: z.boolean().optional(),
+    overwrite_unread: z.array(z.string()).optional(),
+    type_url: z.string().optional(),
+    auto_open: ArtifactAutoOpenSchema.optional(),
+    asset: z.boolean().optional(),
+    from_url: z.string().optional(),
+    asset_ids: z.array(z.string()).optional(),
+    path: z.string().optional(),
+    paths: z.array(z.string()).optional(),
+    prompt: z.string().optional(),
+    page: z.boolean().optional(),
+    out_dir: z.string().optional(),
+    limit: z.number().optional(),
+    scope: ArtifactListScopeSchema.optional(),
+    type: z.string().optional(),
+    type_query: z.string().optional(),
+    after: z.string().optional(),
+    intent: ArtifactIntentSchema.optional(),
+    design_systems: z.boolean().optional(),
+    db_op: ArtifactDbOpSchema.optional(),
+    collection: z.string().optional(),
+    doc_id: z.string().optional(),
+  })
+  .strict();
+
 export const toolInputSchemas = {
   Bash: BashInputSchema,
   Read: ReadInputSchema,
@@ -441,6 +504,7 @@ export const toolInputSchemas = {
   NotebookRead: NotebookReadInputSchema,
   ReportFindings: ReportFindingsInputSchema,
   LS: LSInputSchema,
+  Artifact: ArtifactInputSchema,
 } satisfies Record<string, z.ZodType>;
 
 // MCP tool inputs vary by server — skip strict validation for them.

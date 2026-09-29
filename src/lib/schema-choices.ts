@@ -1,4 +1,12 @@
 import type { z } from "zod";
+import type {
+  ArtifactActionSchema,
+  ArtifactAutoOpenSchema,
+  ArtifactDbOpSchema,
+  ArtifactIntentSchema,
+  ArtifactListScopeSchema,
+  ArtifactLiveSubscriptionSchema,
+} from "./artifact-schemas";
 import type { ChangedFileKindSchema } from "./changed-file-kind";
 import type { McpScopeSchema, PermissionBehaviorSchema, SkillSourceSchema } from "./api/customize";
 import type { PluginFileSchema, PluginListResponse } from "./api/plugins";
@@ -497,6 +505,7 @@ const toolNames = {
   NotebookRead: true,
   ReportFindings: true,
   LS: true,
+  Artifact: true,
 } satisfies Record<z.infer<typeof ToolUseUnion>["tool_name"], true>;
 
 /** Side-pane tile kinds of the session pane host (src/lib/pane-layout.ts); labels match upstream pane titles. */
@@ -604,6 +613,52 @@ const transcriptModeLabels = {
   verbose: "Verbose",
 } satisfies Record<TranscriptMode, string>;
 
+/** `Artifact` tool `action` (src/lib/artifact-schemas.ts); omitted means publish. */
+const artifactActionLabels = {
+  publish: "Publish",
+  read: "Read",
+  list: "List",
+  delete: "Delete",
+  open: "Open",
+  pin: "Pin",
+  unpin: "Unpin",
+  quickstart: "Quickstart",
+  read_db: "Read database",
+} satisfies Record<z.infer<typeof ArtifactActionSchema>, string>;
+
+const artifactIntentLabels = {
+  document: "Document",
+  slides: "Slides",
+  design: "Design",
+  other: "Other",
+} satisfies Record<z.infer<typeof ArtifactIntentSchema>, string>;
+
+const artifactListScopeLabels = {
+  mine: "Mine",
+  shared: "Shared",
+  all: "All",
+  types: "Types",
+  files: "Files",
+  assets: "Assets",
+} satisfies Record<z.infer<typeof ArtifactListScopeSchema>, string>;
+
+const artifactAutoOpenLabels = {
+  at_create: "At create",
+  after_first_write: "After first write",
+} satisfies Record<z.infer<typeof ArtifactAutoOpenSchema>, string>;
+
+const artifactDbOpLabels = {
+  get: "Get",
+  list: "List",
+} satisfies Record<z.infer<typeof ArtifactDbOpSchema>, string>;
+
+const artifactLiveSubscriptionLabels = {
+  arming: "Arming",
+  connected: "Connected",
+  publish_context: "Publish context",
+  flag_off: "Flag off",
+} satisfies Record<z.infer<typeof ArtifactLiveSubscriptionSchema>, string>;
+
 const toolNamesWithMcp = { ...toolNames, "mcp__*": true } as const;
 
 /** Maps walker path keys (see tests/schema-choices.test.ts) to choice maps. */
@@ -664,4 +719,10 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   ChangedFileKindSchema: changedFileKindLabels,
   "RecentsHistorySchema[].kind": recentKindLabels,
   TranscriptModeSchema: transcriptModeLabels,
+  ArtifactActionSchema: artifactActionLabels,
+  ArtifactIntentSchema: artifactIntentLabels,
+  ArtifactListScopeSchema: artifactListScopeLabels,
+  ArtifactAutoOpenSchema: artifactAutoOpenLabels,
+  ArtifactDbOpSchema: artifactDbOpLabels,
+  ArtifactLiveSubscriptionSchema: artifactLiveSubscriptionLabels,
 };
