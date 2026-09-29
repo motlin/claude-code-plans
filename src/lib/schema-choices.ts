@@ -37,6 +37,7 @@ import type {
 import type { SessionMenuItemIdSchema } from "./session-menu-items";
 import type { SettingsTab } from "./settings-hash";
 import type { MessageProcessedLine, ProcessedLine } from "./transcript";
+import type { RecentKind } from "./recents-history";
 
 /**
  * Registry of every enumerable "choice" in the Zod schemas (enum values,
@@ -557,6 +558,16 @@ const navSectionLabels = {
   setup: "Setup",
 } satisfies Record<NavSection, string>;
 
+/** Page kinds recorded in the per-tab ⌃Q recents history (src/lib/recents-history.ts). */
+const recentKindLabels = {
+  session: "Session",
+  subagents: "Subagents",
+  plan: "Plan",
+  memory: "Memory",
+  project: "Project",
+  command: "Command",
+} satisfies Record<RecentKind, string>;
+
 const toolNamesWithMcp = { ...toolNames, "mcp__*": true } as const;
 
 /** Maps walker path keys (see tests/schema-choices.test.ts) to choice maps. */
@@ -612,4 +623,5 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   NavSectionSchema: navSectionLabels,
   SessionMenuItemIdSchema: sessionMenuItemLabels,
   ChangedFileKindSchema: changedFileKindLabels,
+  "RecentsHistorySchema[].kind": recentKindLabels,
 };
