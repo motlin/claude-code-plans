@@ -105,8 +105,7 @@ export function computeDiffData(oldStr: string, newStr: string): DiffData {
 /**
  * Split diff input into lines, treating the empty string as zero lines rather
  * than one empty line. `"".split("\n")` yields `[""]`, which would claim a side
- * has a single blank line; @git-diff-view/core then cross-checks that phantom
- * line against the (genuinely empty) file content and logs a mismatch warning.
+ * has a single blank line that the diff renderer would show as a changed row.
  */
 function splitDiffLines(text: string): string[] {
   return text === "" ? [] : text.split("\n");
@@ -114,8 +113,8 @@ function splitDiffLines(text: string): string[] {
 
 /**
  * Synthesize a complete unified diff string from the Edit tool's
- * `old_string` / `new_string` fragments, in the format @git-diff-view/core
- * expects (git-style header + hunks). Line numbers are relative to the
+ * `old_string` / `new_string` fragments, in the git-style format (header +
+ * hunks) that `@pierre/diffs` parses. Line numbers are relative to the
  * fragment (starting at 1) -- not the surrounding file -- because the tool
  * payload doesn't capture the full-file context.
  *
@@ -301,7 +300,7 @@ export function extractLineNumbers(text: string): {
  * Map from file extension (without leading dot) to Shiki language identifier.
  * Only includes languages commonly seen in Claude Code tool results.
  */
-export const EXTENSION_TO_LANGUAGE: Record<string, string> = {
+const EXTENSION_TO_LANGUAGE: Record<string, string> = {
   ts: "typescript",
   tsx: "tsx",
   js: "javascript",

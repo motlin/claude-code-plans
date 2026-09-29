@@ -3,24 +3,14 @@
 import { readFileSync } from "node:fs";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { DIFFS_STYLE_OVERRIDES } from "../src/components/changes/diff-file";
 import { EditRenderer } from "../src/components/tool-renderers/edit-renderer";
 import { ReadRenderer } from "../src/components/tool-renderers/read-renderer";
 import { WriteRenderer } from "../src/components/tool-renderers/write-renderer";
 import type { ClientToolCall } from "../src/components/tool-renderers/types";
 
-const diffViewFontSizes = vi.hoisted(() => [] as number[]);
-
-vi.mock("@git-diff-view/react", () => ({
-  DiffModeEnum: { Unified: 4 },
-  DiffView: ({ diffViewFontSize }: { diffViewFontSize: number }) => {
-    diffViewFontSizes.push(diffViewFontSize);
-    return <div data-testid="diff-view" />;
-  },
-}));
-
-vi.mock("../src/lib/diff-highlighter", () => ({
-  resolveDiffLanguage: () => "typescript",
-  useShikiDiffHighlighter: () => undefined,
+vi.mock("../src/components/tool-renderers/inline-diff", () => ({
+  InlineDiff: () => <div data-testid="diff-view" />,
 }));
 
 vi.mock("../src/hooks/use-shiki", () => ({
@@ -44,10 +34,7 @@ function customProperty(styles: string, name: string): string {
   return match[1].trim();
 }
 
-afterEach(() => {
-  cleanup();
-  diffViewFontSizes.length = 0;
-});
+afterEach(cleanup);
 
 describe("code typography", () => {
   it("pins the upstream code font size and line height tokens", () => {
@@ -82,12 +69,12 @@ describe("code typography", () => {
     );
 
     expect({
-      fontSizes: diffViewFontSizes,
+      fontSize: (DIFFS_STYLE_OVERRIDES as Record<string, string>)["--diffs-font-size"],
       wrappers: screen
         .getAllByTestId("diff-view")
         .map((element) => element.parentElement?.className),
     }).toStrictEqual({
-      fontSizes: [13, 13],
+      fontSize: "var(--upstream-text-code)",
       wrappers: [
         "max-h-[400px] overflow-y-auto text-code",
         "max-h-[400px] overflow-y-auto text-code",

@@ -25,8 +25,6 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
-    "@git-diff-view/core": "^0.1.7",
-    "@git-diff-view/react": "^0.1.7",
     "@mdxeditor/editor": "^4.2.5",
     "@modelcontextprotocol/sdk": "^1.30.1",
     "@pierre/diffs": "^1.5.1",

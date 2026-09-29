@@ -1,11 +1,7 @@
 import { useMemo } from "react";
-import { DiffView, DiffModeEnum } from "@git-diff-view/react";
-import "@git-diff-view/react/styles/diff-view.css";
 import type { ToolRendererProps } from "./types";
+import { InlineDiff } from "./inline-diff";
 import { CopyButton, TruncatedFilePathHeader } from "./shared";
-import { useResolvedTheme } from "../theme-provider";
-import { buildUnifiedHunk } from "../../lib/diff-utils";
-import { resolveDiffLanguage, useShikiDiffHighlighter } from "../../lib/diff-highlighter";
 import { editDiffEntries } from "../../lib/session-utils";
 
 /**
@@ -26,18 +22,6 @@ function EditDiffCard({
   copyText: string;
   separated: boolean;
 }) {
-  const theme = useResolvedTheme();
-
-  const viewData = useMemo(() => {
-    const lang = resolveDiffLanguage(filePath);
-    return {
-      oldFile: { fileName: filePath, fileLang: lang, content: oldStr },
-      newFile: { fileName: filePath, fileLang: lang, content: newStr },
-      hunks: [buildUnifiedHunk(oldStr, newStr, filePath)],
-    };
-  }, [filePath, oldStr, newStr]);
-  const registerHighlighter = useShikiDiffHighlighter(viewData.newFile.fileLang);
-
   return (
     <div className={separated ? "border-t border-[var(--card-outline)]" : undefined}>
       <div className="flex items-center gap-g3 px-p6 py-p5">
@@ -46,15 +30,7 @@ function EditDiffCard({
       </div>
 
       <div className="max-h-[400px] overflow-y-auto text-code">
-        <DiffView
-          data={viewData}
-          diffViewMode={DiffModeEnum.Unified}
-          diffViewTheme={theme}
-          diffViewHighlight
-          diffViewWrap
-          diffViewFontSize={13}
-          registerHighlighter={registerHighlighter}
-        />
+        <InlineDiff filePath={filePath} oldStr={oldStr} newStr={newStr} />
       </div>
     </div>
   );

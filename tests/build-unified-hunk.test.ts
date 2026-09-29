@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vite-plus/test";
-import { DiffFile } from "@git-diff-view/core";
+import { getSingularPatch } from "@pierre/diffs";
+import { describe, expect, it } from "vite-plus/test";
 import { buildUnifiedHunk } from "../src/lib/diff-utils.js";
 
 function parseHunk(hunk: string): { header: string; body: string[] } {
@@ -26,43 +26,21 @@ function reconstruct(body: string[]): { old: string[]; next: string[] } {
   return { old, next };
 }
 
-/**
- * `@git-diff-view/core` cross-checks `oldFileContent`/`newFileContent` against the
- * supplied hunk and warns on any mismatch, but only when NODE_ENV is "development".
- * Collect those warnings the way a dev-server browser session would surface them.
- */
-function collectDiffViewWarnings(oldStr: string, newStr: string, filePath: string): string[] {
-  const warnings: string[] = [];
-  const warnSpy = vi.spyOn(console, "warn").mockImplementation((...args: unknown[]) => {
-    warnings.push(args.join(" "));
-  });
-  vi.stubEnv("NODE_ENV", "development");
-  try {
-    const diffFile = new DiffFile(
-      filePath,
-      oldStr,
-      filePath,
-      newStr,
-      [buildUnifiedHunk(oldStr, newStr, filePath)],
-      "text",
-      "text",
-    );
-    diffFile.init();
-    diffFile.buildSplitDiffLines();
-    diffFile.buildUnifiedDiffLines();
-  } finally {
-    vi.unstubAllEnvs();
-    warnSpy.mockRestore();
-  }
-  return warnings;
+/** What `@pierre/diffs` (the inline diff renderer) parses out of the patch. */
+function parsedByRenderer(oldStr: string, newStr: string, filePath: string) {
+  const fileDiff = getSingularPatch(buildUnifiedHunk(oldStr, newStr, filePath));
+  return {
+    name: fileDiff.name,
+    hunks: fileDiff.hunks.map((hunk) => ({
+      additionStart: hunk.additionStart,
+      additionLines: hunk.additionLines,
+      deletionStart: hunk.deletionStart,
+      deletionLines: hunk.deletionLines,
+    })),
+  };
 }
 
 describe("buildUnifiedHunk", () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
-    vi.restoreAllMocks();
-  });
-
   it("uses the git new-file convention when the old side is empty", () => {
     const { header, body } = parseHunk(buildUnifiedHunk("", "alpha\nbeta\n", "notes.md"));
     expect({ header, markers: [...new Set(body.map((line) => line[0]))] }).toStrictEqual({
@@ -95,13 +73,19 @@ describe("buildUnifiedHunk", () => {
     expect({ header, body }).toStrictEqual({ header: "@@ -0,0 +0,0 @@", body: [] });
   });
 
-  it("does not make @git-diff-view/core warn when a Write creates a new file", () => {
-    expect(collectDiffViewWarnings("", "# Title\n\nBody text\n", "plan.md")).toStrictEqual([]);
+  it("parses as one all-additions hunk when a Write creates a new file", () => {
+    expect(parsedByRenderer("", "# Title\n\nBody text\n", "plan.md")).toStrictEqual({
+      name: "plan.md",
+      hunks: [{ additionStart: 1, additionLines: 4, deletionStart: 0, deletionLines: 0 }],
+    });
   });
 
-  it("does not make @git-diff-view/core warn for an Edit fragment", () => {
+  it("parses an Edit fragment as one hunk counting only the changed lines", () => {
     expect(
-      collectDiffViewWarnings("const a = 1;\nconst b = 2;", "const a = 1;\nconst b = 3;", "a.ts"),
-    ).toStrictEqual([]);
+      parsedByRenderer("const a = 1;\nconst b = 2;", "const a = 1;\nconst b = 3;", "a.ts"),
+    ).toStrictEqual({
+      name: "a.ts",
+      hunks: [{ additionStart: 1, additionLines: 1, deletionStart: 1, deletionLines: 1 }],
+    });
   });
 });

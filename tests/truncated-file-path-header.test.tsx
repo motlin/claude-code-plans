@@ -8,14 +8,8 @@ import { EditRenderer } from "../src/components/tool-renderers/edit-renderer";
 import { TruncatedFilePathHeader } from "../src/components/tool-renderers/shared";
 import type { ClientToolCall } from "../src/components/tool-renderers/types";
 
-vi.mock("@git-diff-view/react", () => ({
-  DiffModeEnum: { Unified: 4 },
-  DiffView: () => <div data-testid="diff-view" />,
-}));
-
-vi.mock("../src/lib/diff-highlighter", () => ({
-  resolveDiffLanguage: () => "typescript",
-  useShikiDiffHighlighter: () => undefined,
+vi.mock("../src/components/tool-renderers/inline-diff", () => ({
+  InlineDiff: () => <div data-testid="diff-view" />,
 }));
 
 vi.mock("../src/hooks/use-shiki", () => ({ useHighlightedLines: () => null }));

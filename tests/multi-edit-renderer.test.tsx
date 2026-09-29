@@ -8,17 +8,20 @@ import { SessionChat } from "../src/components/session-chat";
 import { processTranscript } from "../src/lib/transcript";
 import { summarizeToolCallStats } from "../src/lib/session-utils";
 
-vi.mock("@git-diff-view/react", () => ({
-  DiffModeEnum: { Unified: 4 },
-  DiffView: ({ data }: { data: { hunks: string[] } }) => (
-    <div data-testid="diff-view">{data.hunks.join("\n")}</div>
-  ),
-}));
-
-vi.mock("../src/lib/diff-highlighter", () => ({
-  resolveDiffLanguage: () => "typescript",
-  useShikiDiffHighlighter: () => undefined,
-}));
+vi.mock("../src/components/tool-renderers/inline-diff", async () => {
+  const { buildUnifiedHunk } = await import("../src/lib/diff-utils");
+  return {
+    InlineDiff: ({
+      filePath,
+      oldStr,
+      newStr,
+    }: {
+      filePath: string;
+      oldStr: string;
+      newStr: string;
+    }) => <div data-testid="diff-view">{buildUnifiedHunk(oldStr, newStr, filePath)}</div>,
+  };
+});
 
 vi.mock("../src/components/settings-provider", () => ({
   useSettings: () => ({ settings: { showDebug: false } }),

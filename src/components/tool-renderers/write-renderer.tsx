@@ -1,13 +1,8 @@
-import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { FileText } from "lucide-react";
-import { DiffView, DiffModeEnum } from "@git-diff-view/react";
-import "@git-diff-view/react/styles/diff-view.css";
 import type { ToolRendererProps } from "./types";
+import { InlineDiff } from "./inline-diff";
 import { CopyButton, TruncatedFilePathHeader } from "./shared";
-import { useResolvedTheme } from "../theme-provider";
-import { buildUnifiedHunk } from "../../lib/diff-utils";
-import { resolveDiffLanguage, useShikiDiffHighlighter } from "../../lib/diff-highlighter";
 import { toMdSlug } from "../../lib/md-slug";
 
 const PLAN_RE = /\.claude\/plans\/([^/]+\.md)$/;
@@ -18,36 +13,6 @@ export function WriteRenderer({ toolCall }: ToolRendererProps) {
   const { result, isError } = toolCall;
   const planMatch = filePath.match(PLAN_RE);
   const copyText = content ?? result ?? filePath;
-  const theme = useResolvedTheme();
-
-  const diffData = useMemo(() => {
-    if (content === undefined) return null;
-    return {
-      unifiedHunk: buildUnifiedHunk("", content, filePath),
-      oldContent: "",
-      newContent: content,
-      filePath,
-    };
-  }, [content, filePath]);
-
-  const viewData = useMemo(() => {
-    if (!diffData?.unifiedHunk) return null;
-    const lang = resolveDiffLanguage(diffData.filePath);
-    return {
-      oldFile: {
-        fileName: filePath,
-        fileLang: lang,
-        content: diffData.oldContent,
-      },
-      newFile: {
-        fileName: filePath,
-        fileLang: lang,
-        content: diffData.newContent,
-      },
-      hunks: [diffData.unifiedHunk],
-    };
-  }, [diffData, filePath]);
-  const registerHighlighter = useShikiDiffHighlighter(viewData?.newFile.fileLang ?? "text");
 
   if (!content) {
     return (
@@ -80,19 +45,9 @@ export function WriteRenderer({ toolCall }: ToolRendererProps) {
       </div>
 
       {/* Body: unified diff view (all additions) */}
-      {viewData && (
-        <div className="max-h-[400px] overflow-y-auto text-code">
-          <DiffView
-            data={viewData}
-            diffViewMode={DiffModeEnum.Unified}
-            diffViewTheme={theme}
-            diffViewHighlight
-            diffViewWrap
-            diffViewFontSize={13}
-            registerHighlighter={registerHighlighter}
-          />
-        </div>
-      )}
+      <div className="max-h-[400px] overflow-y-auto text-code">
+        <InlineDiff filePath={filePath} oldStr="" newStr={content} />
+      </div>
 
       {/* Error result text (shown below diff when write failed) */}
       {isError && result && (

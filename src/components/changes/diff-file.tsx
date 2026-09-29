@@ -19,7 +19,7 @@ registerCustomTheme("claude-light", () => Promise.resolve(claudeLight));
  * through the `<diffs-container>` shadow boundary, so setting them on the host
  * reaches the library's internal stylesheet.
  */
-const DIFFS_STYLE_OVERRIDES = {
+export const DIFFS_STYLE_OVERRIDES = {
   "--diffs-font-family": "var(--font-mono)",
   "--diffs-header-font-family": "var(--font-sans)",
   "--diffs-font-size": "var(--upstream-text-code)",
