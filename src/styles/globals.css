@@ -216,6 +216,14 @@
     0 0 0 1px rgb(11 11 11 / 0.1), 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
   --menu-muted: #898781;
 
+  /* Upstream claude.ai/code — Settings controls (Switch, SegmentedControl, text field) */
+  --settings-muted: #898781;
+  --settings-switch-track: rgb(11 11 11 / 0.15);
+  --settings-switch-track-hover: rgb(11 11 11 / 0.2);
+  --settings-segmented-track: rgb(11 11 11 / 0.05);
+  --settings-segmented-thumb: #fff;
+  --settings-field-bg: rgba(255, 255, 255, 0.5);
+
   /* Upstream claude.ai/code — side pane surface (light: shadow-panel-sm) */
   --pane-shadow: 0 0 0 1px rgb(11 11 11 / 0.06), 0 1px 3px rgba(0, 0, 0, 0.06);
   --menu-danger-fill: #d03b3b;
@@ -292,6 +300,14 @@
   --menu-shadow:
     0 0 0 1px hsl(0 0% 100% / 0.12), 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.3);
   --menu-muted: #a5a49a;
+
+  /* Upstream claude.ai/code — Settings controls */
+  --settings-muted: #a5a49a;
+  --settings-switch-track: hsl(0 0% 100% / 0.18);
+  --settings-switch-track-hover: hsl(0 0% 100% / 0.24);
+  --settings-segmented-track: hsl(0 0% 100% / 0.06);
+  --settings-segmented-thumb: hsl(60 2% 24%);
+  --settings-field-bg: hsl(0 0% 100% / 0.04);
 
   /* Upstream claude.ai/code — side pane surface (dark: shadow-sm + outline-alpha-2) */
   --pane-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 0 1px hsl(0 0% 100% / 0.08);

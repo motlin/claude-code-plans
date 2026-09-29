@@ -1,27 +1,15 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import {
-  ArrowDown,
-  ArrowUp,
-  Bell,
-  Eye,
-  Gauge,
-  GitFork,
-  Info,
-  Link2,
-  Palette,
-  Plus,
-  ServerCog,
-  Settings2,
-  Sparkles,
-  Trash2,
-  Webhook,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, Monitor, Moon, Plus, Sun, Trash2 } from "lucide-react";
 import { useSettings, type Settings, type Verbosity } from "../settings-provider";
 import type { CapabilityId } from "../../lib/capabilities";
 import { useTheme } from "../theme-provider";
 import { HookSetup } from "../hook-setup";
+import { SegmentedControl } from "./segmented-control";
+import { SettingsRow, SettingsSection } from "./settings-row";
+import { Switch } from "./switch";
+import { ThemedCombobox } from "./themed-combobox";
 import {
   applicationSettingsQueryOptions,
   useSaveApplicationSettings,
@@ -42,6 +30,13 @@ type StringSettingKey = {
   [K in keyof Settings]: Settings[K] extends string ? K : never;
 }[keyof Settings];
 
+function toSlug(label: string): string {
+  return label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 interface ToggleRowProps {
   label: string;
   description: string;
@@ -53,27 +48,9 @@ function ToggleRow({ label, description, settingKey }: ToggleRowProps) {
   const checked = settings[settingKey];
 
   return (
-    <div className="flex items-center justify-between gap-4 py-2">
-      <div>
-        <div className="text-sm font-medium text-primary">{label}</div>
-        <div className="text-xs text-t6">{description}</div>
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => setSetting(settingKey, !checked)}
-        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-          checked ? "bg-fill-primary" : "bg-fill-control"
-        }`}
-      >
-        <span
-          className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${
-            checked ? "translate-x-[18px]" : "translate-x-[3px]"
-          }`}
-        />
-      </button>
-    </div>
+    <SettingsRow slug={toSlug(label)} title={label} description={description}>
+      <Switch checked={checked} onCheckedChange={(next) => setSetting(settingKey, next)} />
+    </SettingsRow>
   );
 }
 
@@ -90,64 +67,49 @@ function CapabilityToggleRow({
   const checked = settings.capabilities[capabilityId].enabled;
 
   return (
-    <div className="flex items-center justify-between gap-4 py-2">
-      <div>
-        <div className="text-sm font-medium text-primary">{label}</div>
-        <div className="text-xs text-t6">{description}</div>
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-label={label}
-        aria-checked={checked}
-        onClick={() =>
+    <SettingsRow slug={toSlug(label)} title={label} description={description}>
+      <Switch
+        checked={checked}
+        onCheckedChange={(enabled) =>
           setSetting("capabilities", {
             ...settings.capabilities,
-            [capabilityId]: { ...settings.capabilities[capabilityId], enabled: !checked },
+            [capabilityId]: { ...settings.capabilities[capabilityId], enabled },
           })
         }
-        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-          checked ? "bg-fill-primary" : "bg-fill-control"
-        }`}
-      >
-        <span
-          className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${
-            checked ? "translate-x-[18px]" : "translate-x-[3px]"
-          }`}
-        />
-      </button>
-    </div>
+      />
+    </SettingsRow>
   );
 }
+
+const REVIEW_MODE_OPTIONS = [
+  { value: "offer", label: "Offer" },
+  { value: "auto", label: "Auto" },
+] as const;
 
 function WorkingCopyReviewModeRow() {
   const { settings, setSetting } = useSettings();
   const mode = settings.capabilities.workingCopyReview.config.offerMode;
 
   return (
-    <div className="flex items-center justify-between gap-4 py-2 pl-4">
-      <div>
-        <div className="text-sm font-medium text-primary">Review behavior</div>
-        <div className="text-xs text-t6">Offer a review or start one automatically</div>
-      </div>
-      <select
-        aria-label="Review behavior"
+    <SettingsRow
+      slug="review-behavior"
+      title="Review behavior"
+      description="Offer a review or start one automatically"
+    >
+      <SegmentedControl
         value={mode}
-        onChange={(event) =>
+        options={REVIEW_MODE_OPTIONS}
+        onValueChange={(offerMode) =>
           setSetting("capabilities", {
             ...settings.capabilities,
             workingCopyReview: {
               ...settings.capabilities.workingCopyReview,
-              config: { offerMode: event.target.value === "auto" ? "auto" : "offer" },
+              config: { offerMode },
             },
           })
         }
-        className="rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary"
-      >
-        <option value="offer">Offer</option>
-        <option value="auto">Auto</option>
-      </select>
-    </div>
+      />
+    </SettingsRow>
   );
 }
 
@@ -164,9 +126,8 @@ function DesktopNotificationsRow() {
     }
   }, []);
 
-  const handleToggle = async () => {
+  const handleToggle = async (next: boolean) => {
     if (!supported) return;
-    const next = !checked;
     if (next && Notification.permission !== "granted") {
       const result = await Notification.requestPermission();
       setPermission(result);
@@ -178,41 +139,28 @@ function DesktopNotificationsRow() {
   const blocked = supported && permission === "denied";
 
   return (
-    <div className="flex items-center justify-between gap-4 py-2">
-      <div>
-        <div className="text-sm font-medium text-primary">Desktop notifications</div>
-        <div className="text-xs text-t6">
-          Show native OS notifications when an agent needs input or finishes while this tab is in
-          the background
-        </div>
-        {!supported && (
-          <div className="mt-1 text-xs text-amber-600">
+    <SettingsRow
+      slug="desktop-notifications"
+      title="Desktop notifications"
+      description="Show native OS notifications when an agent needs input or finishes while this tab is in the background"
+      footnote={
+        !supported ? (
+          <div className="text-body text-amber-600">
             This browser does not support desktop notifications.
           </div>
-        )}
-        {blocked && (
-          <div className="mt-1 text-xs text-amber-600">
+        ) : blocked ? (
+          <div className="text-body text-amber-600">
             Notifications are blocked. Allow them for this site in your browser settings to enable.
           </div>
-        )}
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
+        ) : null
+      }
+    >
+      <Switch
+        checked={checked}
         disabled={!supported || blocked}
-        onClick={() => void handleToggle()}
-        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
-          checked ? "bg-fill-primary" : "bg-fill-control"
-        } ${!supported || blocked ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
-      >
-        <span
-          className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${
-            checked ? "translate-x-[18px]" : "translate-x-[3px]"
-          }`}
-        />
-      </button>
-    </div>
+        onCheckedChange={(next) => void handleToggle(next)}
+      />
+    </SettingsRow>
   );
 }
 
@@ -225,26 +173,16 @@ interface SelectRowProps {
 
 function SelectRow({ label, description, settingKey, options }: SelectRowProps) {
   const { settings, setSetting } = useSettings();
-  const current = settings[settingKey];
 
   return (
-    <div className="flex items-center justify-between gap-4 py-2">
-      <div>
-        <div className="text-sm font-medium text-primary">{label}</div>
-        <div className="text-xs text-t6">{description}</div>
-      </div>
-      <select
-        value={current}
-        onChange={(e) => setSetting(settingKey, e.target.value as Settings[StringSettingKey])}
-        className="rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </div>
+    <SettingsRow slug={toSlug(label)} title={label} description={description}>
+      <ThemedCombobox
+        aria-label={label}
+        value={settings[settingKey]}
+        options={options}
+        onValueChange={(next) => setSetting(settingKey, next)}
+      />
+    </SettingsRow>
   );
 }
 
@@ -261,13 +199,10 @@ function NumberRow({ label, description, settingKey, min, max }: NumberRowProps)
   const current = settings[settingKey];
 
   return (
-    <div className="flex items-center justify-between gap-4 py-2">
-      <div>
-        <div className="text-sm font-medium text-primary">{label}</div>
-        <div className="text-xs text-t6">{description}</div>
-      </div>
+    <SettingsRow slug={toSlug(label)} title={label} description={description}>
       <input
         type="number"
+        aria-label={label}
         value={current}
         min={min}
         max={max}
@@ -277,121 +212,73 @@ function NumberRow({ label, description, settingKey, min, max }: NumberRowProps)
             setSetting(settingKey, parsed as Settings[NumberSettingKey]);
           }
         }}
-        className="w-20 rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
+        className="h-8 w-24 rounded-r6 border border-border bg-[var(--settings-field-bg)] px-3 text-body text-primary outline-none focus-visible:ring-2 focus-visible:ring-accent-100/40"
       />
-    </div>
+    </SettingsRow>
   );
 }
 
-function Section({
-  icon: Icon,
-  title,
-  children,
-}: {
-  icon: React.ElementType;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="space-y-1">
-      <div className="flex items-center gap-2 pb-1">
-        <Icon className="h-4 w-4 text-t6" />
-        <h3 className="text-sm font-semibold text-primary">{title}</h3>
-      </div>
-      <div className="divide-y divide-subtle">{children}</div>
-    </section>
-  );
-}
+const VERBOSITY_PRESETS: ReadonlyArray<{
+  value: Verbosity;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "normal",
+    label: "Normal",
+    description: "Show tools, hook warnings, and errors (default)",
+  },
+  {
+    value: "thinking",
+    label: "Thinking",
+    description: "Show tools, thinking, hook warnings, and errors",
+  },
+  {
+    value: "verbose",
+    label: "Verbose",
+    description: "Show tools, thinking, hooks, and system content",
+  },
+];
 
 function VerbositySection() {
   const { settings, setVerbosity } = useSettings();
   const verbosity = settings.verbosity;
-
-  const presets: Array<{
-    value: Verbosity;
-    label: string;
-    description: string;
-  }> = [
-    {
-      value: "normal",
-      label: "Normal",
-      description: "Show tools, hook warnings, and errors (default)",
-    },
-    {
-      value: "thinking",
-      label: "Thinking",
-      description: "Show tools, thinking, hook warnings, and errors",
-    },
-    {
-      value: "verbose",
-      label: "Verbose",
-      description: "Show tools, thinking, hooks, and system content",
-    },
-  ];
-
-  const isCustom = !presets.some((p) => p.value === verbosity);
+  const preset = VERBOSITY_PRESETS.find((p) => p.value === verbosity);
 
   return (
-    <Section icon={Gauge} title="Verbosity">
-      <div className="py-2">
-        <div className="flex gap-2">
-          {presets.map((preset) => (
-            <button
-              key={preset.value}
-              type="button"
-              onClick={() => setVerbosity(preset.value)}
-              title={preset.description}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                verbosity === preset.value
-                  ? "bg-fill-primary text-on-primary"
-                  : "border border-border text-secondary hover:bg-surface-0"
-              }`}
-            >
-              {preset.label}
-            </button>
-          ))}
-          {isCustom && (
-            <span className="flex items-center rounded-md bg-fill-ghost-hover px-3 py-1.5 text-sm text-t6">
-              Custom
-            </span>
-          )}
-        </div>
-        <p className="mt-2 text-xs text-t6">
-          {isCustom
-            ? "Individual toggles have been customized below."
-            : presets.find((p) => p.value === verbosity)?.description}
-        </p>
-      </div>
-    </Section>
+    <SettingsSection title="Verbosity">
+      <SettingsRow
+        slug="default-transcript-view"
+        title="Default transcript view"
+        description={
+          preset === undefined
+            ? "Individual toggles have been customized in the Transcript tab."
+            : preset.description
+        }
+      >
+        <SegmentedControl
+          value={verbosity}
+          options={VERBOSITY_PRESETS}
+          onValueChange={setVerbosity}
+        />
+      </SettingsRow>
+    </SettingsSection>
   );
 }
 
+const THEME_OPTIONS = [
+  { value: "system", label: "System", icon: <Monitor aria-hidden="true" /> },
+  { value: "light", label: "Light", icon: <Sun aria-hidden="true" /> },
+  { value: "dark", label: "Dark", icon: <Moon aria-hidden="true" /> },
+] as const;
+
 function ThemeRow() {
   const { theme, setTheme } = useTheme();
-  const options: Array<{ value: typeof theme; label: string }> = [
-    { value: "light", label: "Light" },
-    { value: "system", label: "System" },
-    { value: "dark", label: "Dark" },
-  ];
 
   return (
-    <div className="flex items-center justify-between gap-4 py-2">
-      <div>
-        <div className="text-sm font-medium text-primary">Theme</div>
-        <div className="text-xs text-t6">Color scheme for the interface</div>
-      </div>
-      <select
-        value={theme}
-        onChange={(e) => setTheme(e.target.value as typeof theme)}
-        className="rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </div>
+    <SettingsRow slug="theme" title="Theme" description="Color scheme for the interface">
+      <SegmentedControl iconOnly value={theme} options={THEME_OPTIONS} onValueChange={setTheme} />
+    </SettingsRow>
   );
 }
 
@@ -419,9 +306,9 @@ export function LinkCategoryRulesSection() {
   }
 
   return (
-    <Section icon={Link2} title="Link categories">
-      <div className="py-2">
-        <p className="text-xs text-t6">
+    <SettingsSection title="Link categories">
+      <div className="py-3">
+        <p className="text-body text-[var(--settings-muted)]">
           Match hostnames to custom categories in the order shown. Patterns can include globs such
           as
           <code className="mx-1 rounded bg-surface-0 px-1 py-0.5">*.example.com</code>
@@ -453,7 +340,10 @@ export function LinkCategoryRulesSection() {
                   value={rule.hostPattern}
                   placeholder="*.example.com"
                   onChange={(event) =>
-                    replaceRule(index, { ...rule, hostPattern: event.target.value })
+                    replaceRule(index, {
+                      ...rule,
+                      hostPattern: event.target.value,
+                    })
                   }
                   className="mt-1 block w-full rounded-md border border-border bg-surface-1 px-2 py-1.5 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
                 />
@@ -509,7 +399,7 @@ export function LinkCategoryRulesSection() {
           Add rule
         </button>
       </div>
-    </Section>
+    </SettingsSection>
   );
 }
 
@@ -526,17 +416,17 @@ export function ApplicationConfigurationSection() {
 
   if (applicationSettings.isPending) {
     return (
-      <Section icon={ServerCog} title="Application">
+      <SettingsSection title="Application">
         <p className="py-2 text-sm text-t6">Loading server settings…</p>
-      </Section>
+      </SettingsSection>
     );
   }
 
   if (applicationSettings.isError) {
     return (
-      <Section icon={ServerCog} title="Application">
+      <SettingsSection title="Application">
         <p className="py-2 text-sm text-red-600">Could not load server settings.</p>
-      </Section>
+      </SettingsSection>
     );
   }
 
@@ -545,7 +435,7 @@ export function ApplicationConfigurationSection() {
     saveSettings.mutate({ ...next, ignoredDirs: [...next.ignoredDirs].sort() });
 
   return (
-    <Section icon={ServerCog} title="Application">
+    <SettingsSection title="Application">
       <ApplicationToggleRow
         label="Herdr section"
         description="Show Herdr in the sidebar and home page."
@@ -567,17 +457,19 @@ export function ApplicationConfigurationSection() {
         description="Allow prompts, interrupts, and state reports for live Herdr terminals. Applies immediately without a server restart."
         checked={settings.herdrWritesEnabled}
         disabled={saveSettings.isPending}
-        onToggle={() => save({ ...settings, herdrWritesEnabled: !settings.herdrWritesEnabled })}
+        onToggle={() =>
+          save({
+            ...settings,
+            herdrWritesEnabled: !settings.herdrWritesEnabled,
+          })
+        }
       />
 
       <div className="py-2">
-        <label
-          htmlFor="application-ignored-directories"
-          className="text-sm font-medium text-primary"
-        >
+        <label htmlFor="application-ignored-directories" className="text-body text-primary">
           Ignored watcher directories
         </label>
-        <p className="text-xs text-t6">
+        <p className="mt-1 text-body text-[var(--settings-muted)]">
           One directory basename per line. Restart the server after saving changes.
         </p>
         <textarea
@@ -609,7 +501,7 @@ export function ApplicationConfigurationSection() {
       {saveSettings.isError ? (
         <p className="py-2 text-xs text-red-600">Could not save application settings.</p>
       ) : null}
-    </Section>
+    </SettingsSection>
   );
 }
 
@@ -627,29 +519,9 @@ function ApplicationToggleRow({
   onToggle: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 py-2">
-      <div>
-        <div className="text-sm font-medium text-primary">{label}</div>
-        <div className="text-xs text-t6">{description}</div>
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-label={label}
-        aria-checked={checked}
-        disabled={disabled}
-        onClick={onToggle}
-        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
-          checked ? "bg-accent-100" : "bg-fill-control"
-        } ${disabled ? "cursor-wait opacity-50" : "cursor-pointer"}`}
-      >
-        <span
-          className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${
-            checked ? "translate-x-[18px]" : "translate-x-[3px]"
-          }`}
-        />
-      </button>
-    </div>
+    <SettingsRow slug={toSlug(label)} title={label} description={description}>
+      <Switch checked={checked} disabled={disabled} onCheckedChange={onToggle} />
+    </SettingsRow>
   );
 }
 
@@ -696,7 +568,7 @@ function ResetAllSettings() {
 export function GeneralSettings() {
   return (
     <>
-      <Section icon={Palette} title="Appearance">
+      <SettingsSection title="Appearance">
         <ThemeRow />
         <ToggleRow
           label="Hide chrome"
@@ -708,7 +580,7 @@ export function GeneralSettings() {
           description="Show the status bar at the bottom of session views"
           settingKey="statusFooterVisible"
         />
-      </Section>
+      </SettingsSection>
       <ResetAllSettings />
     </>
   );
@@ -729,7 +601,7 @@ export function ClaudeCodeSettings() {
 export function TranscriptSettings() {
   return (
     <>
-      <Section icon={Eye} title="Session Display">
+      <SettingsSection title="Session Display">
         <ToggleRow
           label="Thinking"
           description="Show Claude's extended thinking blocks"
@@ -746,9 +618,9 @@ export function TranscriptSettings() {
           description="Show debug information and raw JSONL data"
           settingKey="showDebug"
         />
-      </Section>
+      </SettingsSection>
 
-      <Section icon={Webhook} title="Hooks">
+      <SettingsSection title="Hooks">
         <ToggleRow
           label="Passed hooks"
           description="Show hooks that passed without issues"
@@ -764,9 +636,9 @@ export function TranscriptSettings() {
           description="Show blocking hook errors and cancellations"
           settingKey="showHookErrors"
         />
-      </Section>
+      </SettingsSection>
 
-      <Section icon={Info} title="System Content">
+      <SettingsSection title="System Content">
         <ToggleRow
           label="System banners"
           description="Show system-level banner messages"
@@ -782,7 +654,7 @@ export function TranscriptSettings() {
           description="Render synthesized records that Claude never saw as input"
           settingKey="showTranscriptOnly"
         />
-      </Section>
+      </SettingsSection>
 
       <LinkCategoryRulesSection />
     </>
@@ -792,7 +664,7 @@ export function TranscriptSettings() {
 export function SessionsSettings() {
   return (
     <>
-      <Section icon={Eye} title="Active sessions">
+      <SettingsSection title="Active sessions">
         <SelectRow
           label="Active session order"
           description="Prioritize sessions needing attention or keep creation order stable"
@@ -809,9 +681,9 @@ export function SessionsSettings() {
           min={10}
           max={600}
         />
-      </Section>
+      </SettingsSection>
 
-      <Section icon={GitFork} title="Sub-agents">
+      <SettingsSection title="Sub-agents">
         <SelectRow
           label="Default view"
           description="Initial view mode for sub-agent visualizations"
@@ -822,22 +694,22 @@ export function SessionsSettings() {
             { value: "sequence", label: "Sequence" },
           ]}
         />
-      </Section>
+      </SettingsSection>
     </>
   );
 }
 
 export function NotificationsSettings() {
   return (
-    <Section icon={Bell} title="Notifications">
+    <SettingsSection title="Notifications">
       <DesktopNotificationsRow />
-    </Section>
+    </SettingsSection>
   );
 }
 
 export function AiFeaturesSettings() {
   return (
-    <Section icon={Sparkles} title="AI Features">
+    <SettingsSection title="AI Features">
       <ToggleRow
         label="Summary button"
         description="Show the Generate Summary button on session detail pages"
@@ -859,28 +731,26 @@ export function AiFeaturesSettings() {
         label="Read-only MCP server"
         description="Expose the indexed session corpus to an explicitly launched MCP server"
       />
-    </Section>
+    </SettingsSection>
   );
 }
 
 export function ClaudeConfigSettings() {
   return (
-    <Section icon={Settings2} title="Claude Config">
-      <div className="flex items-center justify-between gap-4 py-2">
-        <div>
-          <div className="text-sm font-medium text-primary">Claude Code settings files</div>
-          <div className="text-xs text-t6">
-            Edit settings.json, permissions, hooks, and environment for Claude Code
-          </div>
-        </div>
+    <SettingsSection title="Claude Config">
+      <SettingsRow
+        slug="claude-code-settings-files"
+        title="Claude Code settings files"
+        description="Edit settings.json, permissions, hooks, and environment for Claude Code"
+      >
         <Link
           to="/settings/edit"
-          className="shrink-0 rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0"
+          className="inline-flex h-8 shrink-0 items-center rounded-r6 border border-border px-3 text-body text-secondary transition-colors hover:bg-fill-ghost-hover"
         >
           Open editor
         </Link>
-      </div>
-    </Section>
+      </SettingsRow>
+    </SettingsSection>
   );
 }
 
