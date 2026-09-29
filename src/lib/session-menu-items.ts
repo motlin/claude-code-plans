@@ -38,7 +38,8 @@ export type SessionMenuCapability =
   | "fork"
   | "archive";
 
-export type SessionMenuSurface = "row" | "header" | "palette";
+/** "palette-card" is the ⌘K → row-actions card, which numbers its items 1…N itself. */
+export type SessionMenuSurface = "row" | "header" | "palette" | "palette-card";
 
 /** Waiting rows get "Mark as completed"; working rows get no read-state item. */
 export type SessionMenuReadState = "working" | "awaiting" | "unread" | "read";
@@ -139,13 +140,15 @@ export function getSessionMenuItems(
 
   const actions: SessionMenuItem[] = [];
   if (surface !== "header" && has("pin")) actions.push(item(session.pinned ? "unpin" : "pin"));
-  if (surface === "row") {
+  const readState: SessionMenuItem[] = [];
+  if (surface === "row" || surface === "palette-card") {
     if (session.readState === "awaiting") {
-      if (has("ackAwaiting")) actions.push(item("mark-completed"));
+      if (has("ackAwaiting")) readState.push(item("mark-completed"));
     } else if (session.readState !== "working" && has("readState")) {
-      actions.push(item(session.readState === "unread" ? "mark-read" : "mark-unread"));
+      readState.push(item(session.readState === "unread" ? "mark-read" : "mark-unread"));
     }
   }
+  if (surface === "row") actions.push(...readState);
   if (has("rename")) actions.push(item("rename"));
   if (has("copyLink")) actions.push(item("copy-link"));
   if (has("fork")) {
@@ -158,6 +161,18 @@ export function getSessionMenuItems(
 
   const lifecycle: SessionMenuItem[] = [];
   if (has("archive")) lifecycle.push(item(session.archived ? "unarchive" : "archive"));
+
+  if (surface === "palette-card") {
+    const pick = (...ids: SessionMenuItemId[]) =>
+      [...actions, ...lifecycle].filter((entry) => ids.includes(entry.id));
+    return [
+      ...pick("copy-link"),
+      ...pick("pin", "unpin"),
+      ...pick("rename"),
+      ...pick("archive", "unarchive"),
+      ...readState,
+    ].map(({ kind, id, label }) => ({ kind, id, label }));
+  }
 
   if (surface === "palette") {
     const name = paletteName(session.title);

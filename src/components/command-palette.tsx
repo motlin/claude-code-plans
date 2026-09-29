@@ -59,6 +59,11 @@ import { toggleSidebarCollapsed } from "../lib/sidebar-store";
 import { type ShortcutKeys, useShortcutKeys } from "../hooks/use-shortcut";
 import { clearAll } from "../lib/unread-store";
 import { HighlightRuns } from "./highlight-runs";
+import {
+  type PaletteCardSession,
+  PaletteRowActionsButton,
+  PaletteRowActionsCard,
+} from "./palette-row-actions";
 import { Shortcut } from "./ui/shortcut";
 import { useOpenSettings } from "./settings/settings-dialog";
 import { setKeyboardShortcutsOpen } from "./keyboard-shortcuts-dialog";
@@ -324,7 +329,11 @@ function PalettePopup({
   const navigate = useNavigate();
   const openSettings = useOpenSettings();
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const [rowActions, setRowActions] = useState<{ session: PaletteCardSession; top: number } | null>(
+    null,
+  );
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<PaletteType>("all");
   const [settledHeight, setSettledHeight] = useState<number | null>(null);
@@ -405,6 +414,48 @@ function PalettePopup({
       .filter((row) => !shown.has(rowKey(row)));
   }, [serverActive, serverSearch.data, debouncedQuery, trimmedQuery, instant, currentSessionId]);
 
+  // Sessions the → card can act on: recents carry star/bucket state, server hits do not.
+  const cardSessions = useMemo(() => {
+    const byId = new Map<string, PaletteCardSession>();
+    for (const row of serverRows) {
+      if (row.kind !== "session") continue;
+      byId.set(row.id, {
+        id: row.id,
+        title: row.title,
+        mtime: row.mtime,
+        starred: undefined,
+        bucket: undefined,
+      });
+    }
+    for (const session of data?.sessions ?? []) {
+      byId.set(session.id, {
+        id: session.id,
+        title: session.title,
+        mtime: session.mtime,
+        starred: session.starred,
+        bucket: session.bucket,
+      });
+    }
+    return byId;
+  }, [data, serverRows]);
+
+  function openRowActions(id: string) {
+    const session = cardSessions.get(id);
+    const popup = popupRef.current;
+    if (session === undefined || popup === null) return;
+    const row = [...popup.querySelectorAll<HTMLElement>("[cmdk-item]")].find(
+      (item) => item.dataset["value"] === `session:${id}`,
+    );
+    const top =
+      row === undefined ? 0 : row.getBoundingClientRect().top - popup.getBoundingClientRect().top;
+    setRowActions({ session, top });
+  }
+
+  function closeRowActions({ refocus }: { refocus: boolean }) {
+    setRowActions(null);
+    if (refocus) inputRef.current?.focus();
+  }
+
   function openSession(id: string) {
     void navigate({ to: "/session/$id", params: { id } });
   }
@@ -481,11 +532,33 @@ function PalettePopup({
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "ArrowRight") {
+      openSelectedRowActions(event);
+      return;
+    }
     if (event.key !== "Tab" || event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) {
       return;
     }
     event.preventDefault();
     onModeChange(mode === "search" ? "compose" : "search");
+  }
+
+  // → at the end of the input opens the row-actions card for the selected session row.
+  function openSelectedRowActions(event: KeyboardEvent<HTMLDivElement>) {
+    const input = inputRef.current;
+    if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+    if (input === null || event.target !== input) return;
+    if (input.selectionStart !== input.value.length || input.selectionEnd !== input.value.length) {
+      return;
+    }
+    const selected = cardRef.current?.querySelector<HTMLElement>(
+      '[cmdk-item][data-selected="true"]',
+    )?.dataset["value"];
+    if (selected?.startsWith("session:") !== true) return;
+    const id = selected.slice("session:".length);
+    if (!cardSessions.has(id)) return;
+    event.preventDefault();
+    openRowActions(id);
   }
 
   const compose = mode === "compose";
@@ -509,6 +582,7 @@ function PalettePopup({
 
   return (
     <Dialog.Popup
+      ref={popupRef}
       data-command-palette=""
       initialFocus={inputRef}
       className={`fixed left-1/2 z-50 w-[calc(100vw-2rem)] max-w-2xl -translate-x-1/2 outline-none md:w-[calc(100vw-5rem)] ${PALETTE_RADIUS}`}
@@ -523,8 +597,17 @@ function PalettePopup({
       <ModeSwitch mode={mode} onModeChange={onModeChange} />
       <div
         ref={cardRef}
-        className={`overflow-hidden border-[0.5px] border-strong bg-surface-3 shadow-2xl ${PALETTE_RADIUS}`}
+        className={`relative overflow-hidden border-[0.5px] border-strong bg-surface-3 shadow-2xl transition-transform duration-150 ease-out motion-reduce:transition-none ${
+          rowActions === null ? "" : "scale-[.97]"
+        } ${PALETTE_RADIUS}`}
       >
+        <div
+          aria-hidden="true"
+          data-palette-recede-veil=""
+          className={`pointer-events-none absolute inset-0 z-10 bg-backdrop transition-opacity duration-150 ease-out ${
+            rowActions === null ? "opacity-0" : "opacity-20"
+          }`}
+        />
         <Command
           label={label}
           loop
@@ -597,15 +680,17 @@ function PalettePopup({
                 {attention.length > 0 && (
                   <Command.Group heading="Needs attention" className={GROUP_CLASS}>
                     {attention.map((session) => (
-                      <CommandItem
-                        key={session.id}
-                        icon={<AttentionIcon />}
-                        value={`session:${session.id}`}
-                        onSelect={() => select(() => openSession(session.id))}
-                      >
-                        {session.title}
-                        <span className="sr-only"> {ATTENTION_LABELS[session.bucket]}</span>
-                      </CommandItem>
+                      <SessionRowActions key={session.id} onOpen={() => openRowActions(session.id)}>
+                        <CommandItem
+                          icon={<AttentionIcon />}
+                          value={`session:${session.id}`}
+                          onSelect={() => select(() => openSession(session.id))}
+                          rowActions
+                        >
+                          {session.title}
+                          <span className="sr-only"> {ATTENTION_LABELS[session.bucket]}</span>
+                        </CommandItem>
+                      </SessionRowActions>
                     ))}
                   </Command.Group>
                 )}
@@ -613,14 +698,16 @@ function PalettePopup({
                 {recents.length > 0 && (
                   <Command.Group heading="Recents" className={GROUP_CLASS}>
                     {recents.map((session) => (
-                      <CommandItem
-                        key={session.id}
-                        icon={<MessageSquare />}
-                        value={`session:${session.id}`}
-                        onSelect={() => select(() => openSession(session.id))}
-                      >
-                        {session.title}
-                      </CommandItem>
+                      <SessionRowActions key={session.id} onOpen={() => openRowActions(session.id)}>
+                        <CommandItem
+                          icon={<MessageSquare />}
+                          value={`session:${session.id}`}
+                          onSelect={() => select(() => openSession(session.id))}
+                          rowActions
+                        >
+                          {session.title}
+                        </CommandItem>
+                      </SessionRowActions>
                     ))}
                   </Command.Group>
                 )}
@@ -666,6 +753,7 @@ function PalettePopup({
                     row={row}
                     now={now}
                     onSelect={() => select(() => openRow(row))}
+                    onRowActions={() => openRowActions(row.id)}
                   />
                 ))}
                 {instant.map((row) => (
@@ -674,6 +762,7 @@ function PalettePopup({
                     row={row}
                     now={now}
                     onSelect={() => select(() => openRow(row))}
+                    onRowActions={() => openRowActions(row.id)}
                   />
                 ))}
                 {matchedActions.map((action) =>
@@ -714,6 +803,7 @@ function PalettePopup({
                     row={row}
                     now={now}
                     onSelect={() => select(() => openRow(row))}
+                    onRowActions={() => openRowActions(row.id)}
                   />
                 ))}
                 {searching &&
@@ -788,6 +878,15 @@ function PalettePopup({
           )}
         </Command>
       </div>
+      {rowActions !== null && (
+        <PaletteRowActionsCard
+          key={rowActions.session.id}
+          session={rowActions.session}
+          top={rowActions.top}
+          onOpen={(id) => select(() => openSession(id))}
+          onClose={closeRowActions}
+        />
+      )}
     </Dialog.Popup>
   );
 }
@@ -896,7 +995,7 @@ function ShortcutCommandItem({
 }
 
 const ROW_CLASS =
-  "group flex w-full cursor-pointer items-center justify-between gap-3 truncate rounded-lg px-3 py-2 text-sm leading-5 text-secondary select-none data-[selected=true]:bg-fill-ghost-hover data-[selected=true]:text-primary";
+  "peer group flex w-full cursor-pointer items-center justify-between gap-3 truncate rounded-lg px-3 py-2 text-sm leading-5 text-secondary select-none data-[selected=true]:bg-fill-ghost-hover data-[selected=true]:text-primary";
 
 function ReturnGlyph() {
   return (
@@ -906,24 +1005,42 @@ function ReturnGlyph() {
   );
 }
 
+/** A session row with upstream's hover "…" that opens the → row-actions card. */
+function SessionRowActions({ children, onOpen }: { children: ReactNode; onOpen: () => void }) {
+  return (
+    <div className="group/palette-row relative">
+      {children}
+      <PaletteRowActionsButton onOpen={onOpen} />
+    </div>
+  );
+}
+
+const ROW_ACTIONS_LABEL_CLASS = "mr-7 pointer-coarse:mr-0";
+
 /** Upstream's search row: kind icon, bold title runs, quoted snippet, bucket meta, ⏎ when selected. */
 function SearchResultItem({
   row,
   now,
   onSelect,
+  onRowActions,
 }: {
   row: SearchRow;
   now: number;
   onSelect: () => void;
+  onRowActions: () => void;
 }) {
-  return (
+  const session = row.kind === "session";
+  const item = (
     <Command.Item
       value={rowKey(row)}
       onSelect={onSelect}
       data-item-type={row.kind}
+      {...(session ? { "aria-keyshortcuts": "ArrowRight" } : {})}
       className={ROW_CLASS}
     >
-      <span className="flex min-w-0 flex-1 items-center gap-2">
+      <span
+        className={`flex min-w-0 flex-1 items-center gap-2 ${session ? ROW_ACTIONS_LABEL_CLASS : ""}`}
+      >
         <span className="flex size-5 shrink-0 items-center justify-center [&_svg]:size-[18px]">
           {row.awaiting ? <AttentionIcon /> : KIND_ICONS[row.kind]}
         </span>
@@ -951,6 +1068,7 @@ function SearchResultItem({
       <ReturnGlyph />
     </Command.Item>
   );
+  return session ? <SessionRowActions onOpen={onRowActions}>{item}</SessionRowActions> : item;
 }
 
 function CommandItem({
@@ -959,21 +1077,26 @@ function CommandItem({
   icon,
   onSelect,
   shortcut,
+  rowActions = false,
 }: {
   children: ReactNode;
   value: string;
   icon: ReactNode;
   onSelect: () => void;
   shortcut?: ShortcutKeys;
+  rowActions?: boolean;
 }) {
+  const keyShortcuts = rowActions ? "ArrowRight" : shortcut?.ariaKeyShortcuts;
   return (
     <Command.Item
       value={value}
       onSelect={onSelect}
-      {...(shortcut ? { "aria-keyshortcuts": shortcut.ariaKeyShortcuts } : {})}
+      {...(keyShortcuts === undefined ? {} : { "aria-keyshortcuts": keyShortcuts })}
       className={ROW_CLASS}
     >
-      <span className="flex min-w-0 flex-1 items-center gap-2">
+      <span
+        className={`flex min-w-0 flex-1 items-center gap-2 ${rowActions ? ROW_ACTIONS_LABEL_CLASS : ""}`}
+      >
         <span className="flex size-5 shrink-0 items-center justify-center [&_svg]:size-[18px]">
           {icon}
         </span>

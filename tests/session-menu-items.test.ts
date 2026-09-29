@@ -188,6 +188,30 @@ describe("getSessionMenuItems", () => {
     ]);
   });
 
+  it("lists the palette row-actions card items unnumbered in upstream card order", () => {
+    expect(
+      getSessionMenuItems(session({ hasLivePane: true }), ALL, { surface: "palette-card" }),
+    ).toEqual([
+      { kind: "item", id: "copy-link", label: "Copy link" },
+      { kind: "item", id: "pin", label: "Pin" },
+      { kind: "item", id: "rename", label: "Rename" },
+      { kind: "item", id: "archive", label: "Archive" },
+      { kind: "item", id: "mark-unread", label: "Mark as unread" },
+    ]);
+  });
+
+  it("offers local palette card items for a pinned unread session", () => {
+    expect(
+      getSessionMenuItems(session({ pinned: true, readState: "unread" }), LOCAL, {
+        surface: "palette-card",
+      }),
+    ).toEqual([
+      { kind: "item", id: "copy-link", label: "Copy link" },
+      { kind: "item", id: "unpin", label: "Unpin" },
+      { kind: "item", id: "mark-read", label: "Mark as read" },
+    ]);
+  });
+
   it("names the session in flat palette commands, truncated to 39 characters", () => {
     const title = "A very long session title that keeps going on";
     expect(
