@@ -319,6 +319,37 @@ export interface SessionTitlebarProps {
   local?: SessionHeaderLocalActions;
   /** The trailing View options menu trigger. */
   viewOptions?: ReactNode;
+  /** The AI summary, shown as the title button's tooltip and description. */
+  summary?: string | null;
+  /** Subagent counts for the compact "N subagents" pill; hidden when there are none. */
+  subagents?: { total: number; running: number };
+}
+
+function SubagentsPill({
+  sessionId,
+  total,
+  running,
+  compact,
+}: {
+  sessionId: string;
+  total: number;
+  running: number;
+  compact: boolean;
+}) {
+  const count = Math.max(total, running);
+  if (count === 0) return null;
+  const label = `${count} subagent${count === 1 ? "" : "s"}${running > 0 ? ` · ${running} running` : ""}`;
+  return (
+    <Link
+      to="/session/$id/subagents"
+      params={{ id: sessionId }}
+      data-origin-pill="subagents"
+      title={label}
+      className={`${PILL_CLASS} cursor-pointer`}
+    >
+      <PillContent icon={GitFork} label={label} compact={compact} />
+    </Link>
+  );
 }
 
 /**
@@ -334,6 +365,8 @@ export function SessionTitlebar({
   paneToggles,
   local,
   viewOptions,
+  summary = null,
+  subagents,
 }: SessionTitlebarProps) {
   const rename = useSessionRename(sessionId, data.title);
   const cwd = data.cwd ?? data.projectPath;
@@ -371,7 +404,7 @@ export function SessionTitlebar({
           </Link>
         )}
         <div className="flex min-w-[32px] items-center">
-          <SessionTitleButton rename={rename} className={TITLE_CLASS} />
+          <SessionTitleButton rename={rename} className={TITLE_CLASS} summary={summary} />
           <Menu onOpenChangeComplete={menuRename.onOpenChangeComplete}>
             <Tooltip content="More options" side="bottom">
               <MenuTrigger
@@ -439,6 +472,14 @@ export function SessionTitlebar({
                 compact={compact}
               />
             </Link>
+          )}
+          {subagents !== undefined && (
+            <SubagentsPill
+              sessionId={sessionId}
+              total={subagents.total}
+              running={subagents.running}
+              compact={compact}
+            />
           )}
           {isActive && (
             <span

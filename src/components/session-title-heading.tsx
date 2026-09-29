@@ -55,14 +55,20 @@ export function useSessionTitleShortcuts({
   useSessionRenameRequest(sessionId, startEditing);
 }
 
-/** claude.ai/code's rename button: clicking it swaps the title for an inline input. */
+/**
+ * claude.ai/code's rename button: clicking it swaps the title for an inline input.
+ * A session summary rides along as the button's description and in its tooltip.
+ */
 export function SessionTitleButton({
   rename,
   className,
+  summary = null,
 }: {
   rename: SessionRename;
   className: string;
+  summary?: string | null;
 }) {
+  const hasSummary = summary !== null && summary !== "";
   if (rename.editing) {
     return (
       <InlineRenameInput value={rename.title} onCommit={rename.commit} onCancel={rename.cancel} />
@@ -72,7 +78,8 @@ export function SessionTitleButton({
     <button
       type="button"
       aria-label={`${rename.title}, rename session`}
-      title="Rename"
+      title={hasSummary ? `Rename\n\n${summary}` : "Rename"}
+      {...(hasSummary ? { "aria-description": summary } : {})}
       onClick={rename.startEditing}
       className={className}
     >

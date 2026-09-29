@@ -110,6 +110,8 @@ export interface SessionChatProps {
   transcriptMode?: TranscriptMode;
   initialScrollKey?: string;
   shouldScrollToEnd?: boolean;
+  /** The AI summary, shown once as a muted subtitle before the first message. */
+  summary?: string | null;
 }
 
 const TranscriptModeContext = createContext<TranscriptMode>("normal");
@@ -294,6 +296,7 @@ export const SessionChat = React.memo(function SessionChat({
   transcriptMode = "normal",
   initialScrollKey = sessionId,
   shouldScrollToEnd = true,
+  summary = null,
 }: SessionChatProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -355,6 +358,15 @@ export const SessionChat = React.memo(function SessionChat({
   return (
     <TranscriptModeContext.Provider value={transcriptMode}>
       <div ref={containerRef} className="mx-auto w-full max-w-3xl px-8 pt-4 pb-4 text-body">
+        {summary !== null && summary !== "" && (
+          <p
+            data-testid="session-summary-row"
+            title={summary}
+            className="mb-4 truncate text-sm text-t6"
+          >
+            {summary}
+          </p>
+        )}
         <SessionLineList
           key={sessionId}
           lines={lines}

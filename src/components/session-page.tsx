@@ -1,11 +1,10 @@
-import { Link, useElementScrollRestoration, useLocation } from "@tanstack/react-router";
+import { useElementScrollRestoration, useLocation } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUp, ArrowDown, GitFork, Maximize2, Minimize2 } from "lucide-react";
+import { ArrowUp, ArrowDown, Maximize2, Minimize2 } from "lucide-react";
 import { SessionChat } from "./session-chat";
 import { ChatInput } from "./chat-input";
 import { StreamingMessage } from "./streaming-message";
-import { ActiveSubagents } from "./active-subagents";
 import { SessionHookContext } from "./session-hook-context";
 import { useSettings } from "./settings-provider";
 import { useTranscriptModeShortcut } from "../hooks/use-session-transcript-mode";
@@ -533,7 +532,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
     <div ref={sessionViewRef}>
       <TileHost sessionId={sessionId} onExpandWithoutPane={toggleChromeHidden}>
         <FilesPaneShortcut />
-        {/* Sticky header: top bar + title + subagent link */}
+        {/* Sticky header: titlebar + hook context */}
         {!chromeHidden && (
           <div className="sticky top-0 z-10 bg-surface-2 pb-1 -mx-4 px-4 sm:-mx-8 sm:px-8 border-b border-border">
             <SessionTitlebar
@@ -551,6 +550,8 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
                     : undefined,
                 generatingSummary: generating,
               }}
+              summary={aiSummary}
+              subagents={{ total: subagents.length, running: activeSubagents.length }}
               paneToggles={
                 <>
                   <ChangesPaneToggle />
@@ -579,21 +580,6 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
               }
             />
 
-            {aiSummary !== null && aiSummary !== "" && (
-              <p className="mt-1 text-sm text-t6 italic">{aiSummary}</p>
-            )}
-
-            {subagents.length > 0 && (
-              <Link
-                to="/session/$id/subagents"
-                params={{ id: sessionId }}
-                className="mt-2 inline-flex items-center gap-1.5 text-xs text-accent-100 hover:underline"
-              >
-                <GitFork className="h-3 w-3" />
-                {subagents.length} subagent{subagents.length === 1 ? "" : "s"}
-              </Link>
-            )}
-            <ActiveSubagents agents={activeSubagents} />
             {hookContext && <SessionHookContext context={hookContext} />}
           </div>
         )}
@@ -637,6 +623,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
             transcriptMode={transcriptMode}
             initialScrollKey={initialScrollKey}
             shouldScrollToEnd={restoredScrollPosition === undefined && locationHash === ""}
+            summary={aiSummary}
           />
         </AskUserQuestionProvider>
 
