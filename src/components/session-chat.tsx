@@ -30,6 +30,7 @@ import {
   buildClientToolCall,
   buildSubagentLookup,
   getToolDescription,
+  isArtifactCard,
 } from "./tool-renderers/types";
 import type { ClientToolCall } from "./tool-renderers";
 import type { LiveToolFailure, SubagentLookup } from "./tool-renderers/types";
@@ -2337,7 +2338,9 @@ function ToolCallRow({
   const bodyId = useId();
   const verbose = useContext(TranscriptModeContext) === "verbose";
   const hasBody = !rendersEmptyBody(call);
-  const expandable = hasBody && !NON_EXPANDING_TOOLS.has(call.name);
+  // An artifact card is the row's whole body and stays visible, as upstream
+  // draws it under the "Published artifact" label.
+  const expandable = hasBody && !NON_EXPANDING_TOOLS.has(call.name) && !isArtifactCard(call);
   const Renderer = getToolRenderer(call.name);
   const toolRowLabel = toolLabel(call);
   const isFileParam = FILE_PARAM_TOOLS.has(call.name);

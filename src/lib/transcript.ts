@@ -11,6 +11,8 @@
 import { z } from "zod";
 import type { ToolResultInfo } from "./sessions";
 import { toolResultMetaFrom } from "./tool-labels";
+import { parseArtifactOutput } from "./artifact-output";
+import { ArtifactToolResultSchema } from "./artifact-schemas";
 import {
   CompactMetadataSchema,
   ContentBlockSchema,
@@ -363,6 +365,30 @@ function deduplicateCommandGroups(lines: ProcessedLine[]): ProcessedLine[] {
   return lines.filter((_, index) => !indicesToRemove.has(index));
 }
 
+/**
+ * Decorates a successful `Artifact` result with the artifact it points at, or
+ * the artifacts a `list` returned. A result is an Artifact one when its
+ * tool_use was seen in this batch, or when its structured `toolUseResult`
+ * matches the strict Artifact result schemas (the tool_use arrived earlier).
+ */
+function addArtifactDecoration(
+  info: ToolResultInfo,
+  resultText: string,
+  toolUseResult: unknown,
+  toolName: string | undefined,
+): void {
+  const structured = ArtifactToolResultSchema.safeParse(toolUseResult);
+  const structuredObject =
+    structured.success && typeof structured.data === "object" ? structured.data : undefined;
+  if (toolName !== "Artifact" && structuredObject === undefined) return;
+  if (structuredObject !== undefined && "artifacts" in structuredObject) {
+    info.artifactList = structuredObject.artifacts;
+    return;
+  }
+  const artifact = parseArtifactOutput(resultText, toolUseResult);
+  if (artifact !== undefined) info.artifact = artifact;
+}
+
 function processRecordBatch(
   records: unknown[],
   startLineIndex: number,
@@ -376,6 +402,7 @@ function processRecordBatch(
   const sessionLines: ProcessedLine[] = [];
   const toolResults = new Map<string, ToolResultInfo>();
   const toolStartTimes = new Map<string, number>();
+  const toolNames = new Map<string, string>();
   let title = "";
   let lastWorktreeKey: string | undefined;
   let lastAttributionKey: string | undefined;
@@ -428,6 +455,7 @@ function processRecordBatch(
       if (Array.isArray(content)) {
         for (const block of content) {
           if (block.type === "tool_use") {
+            toolNames.set(block.id, block.name);
             if (timestamp) {
               const t = new Date(timestamp).getTime();
               if (!isNaN(t)) toolStartTimes.set(block.id, t);
@@ -454,6 +482,14 @@ function processRecordBatch(
               };
               const resultMeta = toolResultMetaFrom(record.toolUseResult);
               if (resultMeta !== undefined) info.resultMeta = resultMeta;
+              if (!info.isError) {
+                addArtifactDecoration(
+                  info,
+                  resultText,
+                  record.toolUseResult,
+                  toolNames.get(block.tool_use_id),
+                );
+              }
               const startTime = toolStartTimes.get(block.tool_use_id);
               if (startTime && timestamp) {
                 const resultTime = new Date(timestamp).getTime();

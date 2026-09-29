@@ -102,15 +102,18 @@ const ArtifactTypeCreateResultSchema = z.strictObject({
   instructions_chars: z.number(),
 });
 
+const ArtifactListEntrySchema = z.strictObject({
+  title: z.string(),
+  url: z.string(),
+  favicon: z.string().optional(),
+  updatedAt: z.string(),
+});
+
+/** One artifact returned by `Artifact` `action: "list"`. */
+export type ArtifactListEntry = z.infer<typeof ArtifactListEntrySchema>;
+
 const ArtifactListResultSchema = z.strictObject({
-  artifacts: z.array(
-    z.strictObject({
-      title: z.string(),
-      url: z.string(),
-      favicon: z.string().optional(),
-      updatedAt: z.string(),
-    }),
-  ),
+  artifacts: z.array(ArtifactListEntrySchema),
   truncated: z.boolean(),
 });
 

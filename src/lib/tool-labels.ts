@@ -266,6 +266,35 @@ function bashLabel(call: ToolLabelCall): ToolLabel {
 }
 
 /**
+ * Upstream's Artifact row: "Published artifact" with the file's basename,
+ * "Pinned/Unpinned artifact", "Listed artifacts", and otherwise "Used artifact
+ * tool" with the action as meta.
+ */
+function artifactLabel(input: Record<string, unknown>): ToolLabel {
+  const action = stringInput(input, "action");
+  switch (action) {
+    case null:
+    case "publish": {
+      const filePath = stringInput(input, "file_path");
+      const label = { verb: "Published artifact", failedVerb: "Failed to publish artifact" };
+      return filePath === null ? label : { ...label, meta: filePath.split("/").pop()! };
+    }
+    case "pin":
+      return { verb: "Pinned artifact", failedVerb: "Failed to pin artifact" };
+    case "unpin":
+      return { verb: "Unpinned artifact", failedVerb: "Failed to unpin artifact" };
+    case "list":
+      return { verb: "Listed artifacts", failedVerb: "Failed to list artifacts" };
+    default:
+      return {
+        verb: "Used artifact tool",
+        meta: action,
+        failedVerb: "Failed to use artifact tool",
+      };
+  }
+}
+
+/**
  * "Server: tool name" for `mcp__server__tool`, dropping a `plugin_<pkg>_`
  * prefix from the server and spacing the tool's underscores.
  */
@@ -323,6 +352,8 @@ export function toolLabel(call: ToolLabelCall): ToolLabel {
         failedVerb: "Failed to update todos",
       };
     }
+    case "Artifact":
+      return artifactLabel(input);
     case "AskUserQuestion": {
       const meta = askedMeta(input);
       const failedVerb = "Failed to ask";

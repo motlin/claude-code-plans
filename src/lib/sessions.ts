@@ -125,9 +125,15 @@ export interface ToolResultInfo {
   duration?: number | undefined;
   /** Label-relevant bits of the record's `toolUseResult`; see `toolResultMetaFrom`. */
   resultMeta?: ToolResultMeta | undefined;
+  /** The artifact an `Artifact` publish/open result points at; see `parseArtifactOutput`. */
+  artifact?: ParsedArtifact | undefined;
+  /** The artifacts an `Artifact` `list` call returned. */
+  artifactList?: ArtifactListEntry[] | undefined;
 }
 
 import type { ToolResultMeta } from "./tool-labels";
+import type { ParsedArtifact } from "./artifact-output";
+import type { ArtifactListEntry } from "./artifact-schemas";
 import {
   stripCommandTags,
   parseBashInput,

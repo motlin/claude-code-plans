@@ -1,6 +1,8 @@
 import type { ToolResultInfo } from "../../lib/sessions";
 import type { ToolUseBlock } from "../../lib/schemas";
 import type { ToolResultMeta } from "../../lib/tool-labels";
+import { isArtifactCardCall, type ParsedArtifact } from "../../lib/artifact-output";
+import type { ArtifactListEntry } from "../../lib/artifact-schemas";
 import type { Subagent } from "../../lib/subagents";
 import { getAgentTypeOrNull, getTaskCreateDisplaySubject } from "../../lib/tool-utils";
 import { buildSubagentTree } from "../../lib/subagent-tree";
@@ -47,6 +49,20 @@ export interface ClientToolCall {
   resultUuid?: string | undefined;
   subagentInfo?: SubagentInlineInfo | undefined;
   resultMeta?: ToolResultMeta | undefined;
+  artifact?: ParsedArtifact | undefined;
+  artifactList?: ArtifactListEntry[] | undefined;
+}
+
+/**
+ * Whether the call renders as an artifact card: a successful publish or open
+ * whose output names a claude.ai artifact.
+ */
+export function isArtifactCard(call: ClientToolCall): boolean {
+  return (
+    call.name === "Artifact" &&
+    call.artifact !== undefined &&
+    isArtifactCardCall(call.input, call.isError === true)
+  );
 }
 
 export interface ToolRendererProps {
@@ -215,6 +231,8 @@ export function buildClientToolCall(
     call.resultUuid = resultInfo.resultUuid;
     if (resultInfo.duration !== undefined) call.duration = resultInfo.duration;
     if (resultInfo.resultMeta !== undefined) call.resultMeta = resultInfo.resultMeta;
+    if (resultInfo.artifact !== undefined) call.artifact = resultInfo.artifact;
+    if (resultInfo.artifactList !== undefined) call.artifactList = resultInfo.artifactList;
   }
 
   // Live failure override: if SSE told us this tool_use_id failed but the

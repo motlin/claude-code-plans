@@ -88,6 +88,9 @@ const ToolSearchRenderer = lazy(() =>
     default: m.ToolSearchRenderer,
   })),
 );
+const ArtifactRenderer = lazy(() =>
+  import("./artifact-renderer").then((m) => ({ default: m.ArtifactRenderer })),
+);
 const ReportFindingsRenderer = lazy(() =>
   import("./report-findings-renderer").then((m) => ({
     default: m.ReportFindingsRenderer,
@@ -122,6 +125,7 @@ const registry: Record<string, ComponentType<ToolRendererProps>> = {
   WebFetch: WebFetchRenderer,
   ToolSearch: ToolSearchRenderer,
   ReportFindings: ReportFindingsRenderer,
+  Artifact: ArtifactRenderer,
   __fallback__: FallbackRenderer,
 };
 
