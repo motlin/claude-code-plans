@@ -30,6 +30,8 @@ export interface ShortcutDefinition {
   enabled: boolean;
   /** Keys string for display when the bindings are a range, e.g. "1…9". */
   displayKeys?: string;
+  /** Registered and bound, but upstream's ⌘/ dialog has no row for it. */
+  hiddenFromDialog?: true;
 }
 
 function macAndNonMac(
@@ -58,6 +60,11 @@ function ctrlEverywhere(
 ): Binding[] {
   const modifiers: ShortcutModifier[] = ["ctrl", ...extra];
   return macAndNonMac(key, modifiers, modifiers, code);
+}
+
+/** One binding shared by every platform. */
+function everywhere(key: string, modifiers: readonly ShortcutModifier[], code?: string): Binding {
+  return code === undefined ? { key, modifiers } : { key, code, modifiers };
 }
 
 function letterCode(letter: string): string {
@@ -169,6 +176,22 @@ export const SHORTCUTS = {
     bindings: ctrlEverywhere("o", [], letterCode("o")),
     ownerSlug: "transcript-view",
     enabled: true,
+  },
+  focus_next_region: {
+    description: "Focus next region",
+    group: "general",
+    bindings: [everywhere("f6", [], "F6"), ...cmdOrCtrl("f6", [], "F6")],
+    ownerSlug: "focus-regions",
+    enabled: true,
+    hiddenFromDialog: true,
+  },
+  focus_previous_region: {
+    description: "Focus previous region",
+    group: "general",
+    bindings: [everywhere("f6", ["shift"], "F6")],
+    ownerSlug: "focus-regions",
+    enabled: true,
+    hiddenFromDialog: true,
   },
   stop_response: {
     description: "Stop Claude's response",

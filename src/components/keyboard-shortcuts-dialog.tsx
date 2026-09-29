@@ -117,7 +117,10 @@ export function KeyboardShortcutsDialog() {
     return target !== null && target.isConnected ? target : true;
   }, []);
 
-  const sections = shortcutSections(SHORTCUT_IDS, (id) => SHORTCUTS[id].enabled);
+  const sections = shortcutSections(
+    SHORTCUT_IDS,
+    (id) => SHORTCUTS[id].enabled && !("hiddenFromDialog" in SHORTCUTS[id]),
+  );
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={setKeyboardShortcutsOpen}>

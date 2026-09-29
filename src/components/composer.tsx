@@ -91,12 +91,17 @@ export function Composer({
   }
 
   return (
-    <div data-cds="ChatComposer" className="flex w-full min-w-0 flex-col font-sans">
+    <div
+      data-cds="ChatComposer"
+      data-focus-region="composer"
+      className="flex w-full min-w-0 flex-col font-sans"
+    >
       <div className={CARD_CLASS} onClick={() => textareaRef.current?.focus()}>
         <div className="relative pr-[30px]">
           <textarea
             ref={textareaRef}
             aria-label="Prompt"
+            data-focus-region-entry
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={handleKeyDown}

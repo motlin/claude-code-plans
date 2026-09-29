@@ -358,6 +358,7 @@ function PaneSurface({
     <section
       data-pane-root
       data-pane-kind={kind}
+      data-focus-region="pane"
       aria-label={definition.title}
       className="relative isolate flex h-full min-w-0 flex-col rounded-card bg-surface-2 shadow-panel-sm"
     >

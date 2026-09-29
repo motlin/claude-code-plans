@@ -15,8 +15,8 @@ function chord(binding: Binding): string {
 }
 
 describe("shortcut registry", () => {
-  it("lists all 32 upstream web entries", () => {
-    expect(SHORTCUT_IDS).toHaveLength(32);
+  it("lists all 34 upstream web entries", () => {
+    expect(SHORTCUT_IDS).toHaveLength(34);
   });
 
   it.each(SHORTCUT_IDS)("%s has mac and non-mac bindings", (id) => {
@@ -70,6 +70,8 @@ describe("shortcut registry", () => {
       "open_session_pr",
       "fork_session",
       "transcript_view",
+      "focus_next_region",
+      "focus_previous_region",
       "toggle_changes",
       "toggle_changes_file_list",
       "go_to_file_in_changes",
@@ -80,6 +82,24 @@ describe("shortcut registry", () => {
       "expand_collapse_pane",
       "toggle_side_chat",
     ]);
+  });
+
+  it("binds F6 (plus ⌘F6 / Ctrl+F6) forward and ⇧F6 backward", () => {
+    expect({
+      nextMac: bindingsFor("focus_next_region", true),
+      nextNonMac: bindingsFor("focus_next_region", false),
+      previous: bindingsFor("focus_previous_region", true),
+    }).toStrictEqual({
+      nextMac: [
+        { key: "f6", code: "F6", modifiers: [] },
+        { key: "f6", code: "F6", modifiers: ["cmd"], platform: "mac" },
+      ],
+      nextNonMac: [
+        { key: "f6", code: "F6", modifiers: [] },
+        { key: "f6", code: "F6", modifiers: ["ctrl"], platform: "non-mac" },
+      ],
+      previous: [{ key: "f6", code: "F6", modifiers: ["shift"] }],
+    });
   });
 
   it("binds ⌘K strictly on mac and Ctrl+K elsewhere", () => {

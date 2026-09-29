@@ -24,6 +24,7 @@ import { RecentsSwitcher } from "../components/recents-switcher";
 import { NewSessionShortcut } from "../components/new-session-shortcut";
 import { ForkNavigator } from "../components/fork-navigator";
 import { useCommandPalette } from "../hooks/use-command-palette";
+import { useFocusRegionShortcuts } from "../hooks/use-focus-regions";
 import { useRecentsRecorder } from "../hooks/use-recents-recorder";
 import { useSidebarState, useSidebarToggleShortcut } from "../lib/sidebar-store";
 import { IndexingBanner } from "../components/indexing-banner";
@@ -161,6 +162,7 @@ function RootApplication({ children }: Readonly<{ children: ReactNode }>) {
 function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   const { collapsed: sidebarCollapsed } = useSidebarState();
   useSidebarToggleShortcut();
+  useFocusRegionShortcuts();
   useRecentsRecorder();
   const [mobileOpen, setMobileOpen] = useState(false);
   const commandPalette = useCommandPalette();
@@ -175,6 +177,7 @@ function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
         <Sidebar collapsed={sidebarCollapsed} />
         <main
           data-scroll-restoration-id="main"
+          data-focus-region="main"
           className={`flex-1 overflow-y-auto bg-surface-2 ${fullBleed ? "flex flex-col" : ""}`}
         >
           <IndexingBanner />

@@ -206,6 +206,7 @@ export function Sidebar({
   return (
     <nav
       aria-label="Sidebar"
+      data-focus-region="navigation"
       style={mobile ? undefined : ({ "--sidebar-width": `${width}px` } as CSSProperties)}
       className={
         mobile
@@ -290,6 +291,7 @@ function CollapsedSidebar({ children }: { children: ReactNode }) {
       <nav
         data-testid="sidebar-peek"
         aria-label="Sidebar"
+        data-focus-region="navigation"
         aria-hidden={hovering ? undefined : true}
         inert={!hovering}
         className="pointer-events-none absolute top-[calc(100%+8px)] -left-0.5 flex max-h-[70vh] w-[288px] origin-top-left -translate-y-1.5 scale-[.98] flex-col overflow-hidden rounded-card bg-surface-popover pt-2 pb-3 opacity-0 shadow-pop sidebar-peek-motion group-data-[hovering]/peek:pointer-events-auto group-data-[hovering]/peek:translate-y-0 group-data-[hovering]/peek:scale-100 group-data-[hovering]/peek:opacity-100"

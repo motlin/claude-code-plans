@@ -102,6 +102,7 @@ export function SideChat({ sessionId, messageCount }: { sessionId: string; messa
     <ViewportPortal>
       <aside
         aria-label="Side chat"
+        data-focus-region="side-chat"
         data-open={open ? "" : undefined}
         aria-hidden={open ? undefined : true}
         inert={!open}
