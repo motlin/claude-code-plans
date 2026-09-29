@@ -619,7 +619,7 @@ export async function listSessions(projectsDir: string): Promise<SessionProjectG
 
 const SESSION_ID_RE = /^[a-z0-9-]+$/;
 
-async function resolveSessionFilePath(
+export async function resolveSessionFilePath(
   projectsDir: string,
   sessionId: string,
 ): Promise<{ filePath: string; project: string } | null> {

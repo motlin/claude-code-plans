@@ -481,6 +481,10 @@ export const sessionSubagentsQueryOptions = (id: string) =>
   });
 
 export const StarredMutationResponse = z.object({ starred: z.boolean() });
+export const RenameSessionBody = z.object({ title: z.string() }).strict();
+export const RenameSessionResponse = z
+  .object({ customTitle: z.string().nullable(), title: z.string() })
+  .strict();
 export const useToggleSessionStar = (sessionId: string) => {
   const qc = useQueryClient();
   return useMutation({
