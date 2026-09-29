@@ -1930,8 +1930,8 @@ function BashEntry({
 
 /**
  * Thinking text, rendered the way upstream claude.ai/code does: always visible,
- * inline italic body type in the 50%-ink layer. The right padding reserves the
- * gutter the hover-revealed controls sit in.
+ * inline italic body type in the 50%-ink layer behind a left rail. The right
+ * padding reserves the gutter the hover-revealed controls sit in.
  *
  * The group is named `body` rather than upstream's `thinking` so the shared
  * `CopyButton` hover reveal applies unchanged.
@@ -1950,16 +1950,25 @@ function ThinkingBlock({
   // shares the overlay, so the gutter has to grow or long lines run under it.
   const gutterClass = settings.showDebug && sourceUuid ? "pr-10" : "pr-6";
   return (
-    <div className="group/body relative">
-      <div className={`text-body text-t6 italic whitespace-pre-wrap break-words ${gutterClass}`}>
-        {thinking}
-      </div>
-      <div className="absolute right-0 top-0 flex items-center gap-g3">
-        <DebugLink sessionId={sessionId} uuid={sourceUuid} />
-        <CopyButton text={thinking} />
+    <div className="border-l-2 border-t2 pl-3">
+      <div className="group/body relative">
+        <div className={`text-body text-t6 italic whitespace-pre-wrap break-words ${gutterClass}`}>
+          {thinking}
+        </div>
+        <div className="absolute right-0 top-0 flex items-center gap-g3">
+          <DebugLink sessionId={sessionId} uuid={sourceUuid} />
+          <CopyButton text={toMarkdownQuote(thinking)} label="Copy as quote" />
+        </div>
       </div>
     </div>
   );
+}
+
+function toMarkdownQuote(text: string): string {
+  return text
+    .split("\n")
+    .map((line) => `> ${line}`)
+    .join("\n");
 }
 
 /**

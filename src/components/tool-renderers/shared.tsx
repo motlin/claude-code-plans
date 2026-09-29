@@ -431,7 +431,7 @@ function CheckIcon() {
  * Requires a `group/body` ancestor for the hover reveal.
  * Copies the provided `text` to the clipboard on click.
  */
-export function CopyButton({ text }: { text: string }) {
+export function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
   const [copied, setCopied] = useState(false);
 
   const handleClick = useCallback(() => {
@@ -444,7 +444,7 @@ export function CopyButton({ text }: { text: string }) {
     <div className="opacity-0 group-hover/body:opacity-100 focus-within:opacity-100 [transition:opacity_150ms_cubic-bezier(0.215,0.61,0.355,1)] motion-reduce:transition-none">
       <button
         type="button"
-        aria-label="Copy"
+        aria-label={label}
         onClick={handleClick}
         className="inline-flex items-center justify-center aspect-square border-0 cursor-default select-none rounded-r4 px-p3 text-secondary hover:text-primary hover:bg-t2 transition-colors"
       >
