@@ -48,11 +48,15 @@ export interface SessionLinkDisplay {
   hiddenCount: number;
 }
 
+export const OPEN_DRAWER_STORAGE_KEY = "ccp-session-open-drawer";
+
 export function useLinksDrawerState() {
+  const [open, setOpen] = useState(false);
   const [includeToolsAndThinking, setIncludeToolsAndThinking] = useState(false);
   const [storageHydrated, setStorageHydrated] = useState(false);
 
   useEffect(() => {
+    setOpen(localStorage.getItem(OPEN_DRAWER_STORAGE_KEY) === "links");
     const stored = localStorage.getItem(INCLUDE_TOOLS_AND_THINKING_STORAGE_KEY);
     setIncludeToolsAndThinking(stored === "true");
     setStorageHydrated(true);
@@ -60,10 +64,14 @@ export function useLinksDrawerState() {
 
   useEffect(() => {
     if (!storageHydrated) return;
+    localStorage.setItem(OPEN_DRAWER_STORAGE_KEY, open ? "links" : "none");
     localStorage.setItem(INCLUDE_TOOLS_AND_THINKING_STORAGE_KEY, String(includeToolsAndThinking));
-  }, [includeToolsAndThinking, storageHydrated]);
+  }, [open, includeToolsAndThinking, storageHydrated]);
 
-  return { includeToolsAndThinking, setIncludeToolsAndThinking };
+  const toggleOpen = useCallback(() => setOpen((current) => !current), []);
+  const close = useCallback(() => setOpen(false), []);
+
+  return { open, toggleOpen, close, includeToolsAndThinking, setIncludeToolsAndThinking };
 }
 
 export function useExtractedSessionLinks(

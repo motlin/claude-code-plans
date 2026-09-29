@@ -109,6 +109,7 @@ function seededQueryClient() {
         message: {
           role: "assistant",
           content: [
+            { type: "text", text: "Docs live at https://example.com/docs" },
             {
               type: "tool_use",
               id: "tool-use-read-example",
@@ -173,12 +174,12 @@ describe("fixed-position session UI and the contained transcript scroller", () =
     );
 
     const scroller = await renderSessionInScroller();
-    const filesToggle = await screen.findByRole("button", { name: /Files/ });
+    const linksToggle = await screen.findByRole("button", { name: /^Links/ });
     await act(async () => {
-      fireEvent.click(filesToggle);
+      fireEvent.click(linksToggle);
     });
 
-    const drawer = screen.getByRole("complementary", { name: /files/i });
+    const drawer = screen.getByRole("complementary", { name: /links/i });
     const scrollToTop = screen.getByTitle("Scroll to top");
     const containedElements = [...document.querySelectorAll("*")].filter((element) =>
       element.classList.contains("[contain:strict]"),

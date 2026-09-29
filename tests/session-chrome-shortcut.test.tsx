@@ -195,7 +195,11 @@ describe("session page chrome toggle shortcut", () => {
     await renderSession();
     const initial = chromeState();
     press({ key: "f", code: "KeyF", metaKey: true, shiftKey: true });
-    const afterCmdShiftF = chromeState();
+    const afterCmdShiftF = {
+      ...chromeState(),
+      filesPane: screen.queryByRole("region", { name: "Files" }) !== null,
+    };
+    press({ key: "f", code: "KeyF", metaKey: true, shiftKey: true });
     press({ key: "|", code: "Backslash", metaKey: true, shiftKey: true });
     const afterHide = chromeState();
     press({ key: "|", code: "Backslash", metaKey: true, shiftKey: true });
@@ -203,7 +207,7 @@ describe("session page chrome toggle shortcut", () => {
 
     expect({ initial, afterCmdShiftF, afterHide, afterShow }).toStrictEqual({
       initial: { expandButton: true, showChromeButton: false },
-      afterCmdShiftF: { expandButton: true, showChromeButton: false },
+      afterCmdShiftF: { expandButton: true, showChromeButton: false, filesPane: true },
       afterHide: { expandButton: false, showChromeButton: true },
       afterShow: { expandButton: true, showChromeButton: false },
     });

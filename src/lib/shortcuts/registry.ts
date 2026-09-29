@@ -218,7 +218,7 @@ export const SHORTCUTS = {
     group: "panes",
     bindings: cmdOrCtrl("f", ["shift"]),
     ownerSlug: "panes-files",
-    enabled: false,
+    enabled: true,
   },
   attach_selection: {
     description: "Attach selection as context",

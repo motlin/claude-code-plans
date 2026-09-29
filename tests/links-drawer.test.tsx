@@ -5,16 +5,11 @@ import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {
-  DEFAULT_FILE_SOURCE_SELECTION,
-  FILE_SOURCE_SELECTION_STORAGE_KEY,
-  OPEN_DRAWER_STORAGE_KEY,
-  useFilesDrawerState,
-} from "../src/components/files-drawer";
-import {
   INCLUDE_TOOLS_AND_THINKING_STORAGE_KEY,
   LINK_ENRICHERS,
   LinksDrawer,
   LinksDrawerToggle,
+  OPEN_DRAWER_STORAGE_KEY,
   useExtractedSessionLinks,
   useGroupedSessionLinks,
   useLinksDrawerState,
@@ -349,45 +344,45 @@ describe("LinksDrawer", () => {
   });
 });
 
-describe("session drawer persistence", () => {
+describe("links drawer persistence", () => {
   beforeEach(() => {
     installLocalStorage();
   });
 
-  it("hydrates one validated drawer value and keeps Files and Links mutually exclusive", async () => {
-    localStorage.setItem(OPEN_DRAWER_STORAGE_KEY, "files");
-    localStorage.setItem(
-      FILE_SOURCE_SELECTION_STORAGE_KEY,
-      JSON.stringify(DEFAULT_FILE_SOURCE_SELECTION),
-    );
+  it("hydrates the open Links drawer, treats the retired Files value as closed, and persists", async () => {
+    localStorage.setItem(OPEN_DRAWER_STORAGE_KEY, "links");
     localStorage.setItem(INCLUDE_TOOLS_AND_THINKING_STORAGE_KEY, "true");
 
-    const { result } = renderHook(() => ({
-      drawers: useFilesDrawerState(),
-      links: useLinksDrawerState(),
-    }));
+    const { result } = renderHook(() => useLinksDrawerState());
     await waitFor(() => {
       expect({
-        openDrawer: result.current.drawers.openDrawer,
-        includeToolsAndThinking: result.current.links.includeToolsAndThinking,
-      }).toStrictEqual({ openDrawer: "files", includeToolsAndThinking: true });
+        open: result.current.open,
+        includeToolsAndThinking: result.current.includeToolsAndThinking,
+      }).toStrictEqual({ open: true, includeToolsAndThinking: true });
     });
 
-    act(() => result.current.drawers.toggleLinksDrawer());
+    act(() => result.current.close());
     await waitFor(() =>
       expect({
-        openDrawer: result.current.drawers.openDrawer,
-        storedDrawer: localStorage.getItem(OPEN_DRAWER_STORAGE_KEY),
-      }).toStrictEqual({ openDrawer: "links", storedDrawer: "links" }),
-    );
-
-    act(() => result.current.drawers.toggleFilesDrawer());
-    await waitFor(() =>
-      expect({
-        openDrawer: result.current.drawers.openDrawer,
+        open: result.current.open,
         storedDrawer: localStorage.getItem(OPEN_DRAWER_STORAGE_KEY),
         storedInclude: localStorage.getItem(INCLUDE_TOOLS_AND_THINKING_STORAGE_KEY),
-      }).toStrictEqual({ openDrawer: "files", storedDrawer: "files", storedInclude: "true" }),
+      }).toStrictEqual({ open: false, storedDrawer: "none", storedInclude: "true" }),
     );
+  });
+
+  it("opens closed when the stored drawer is the retired Files drawer", async () => {
+    localStorage.setItem(OPEN_DRAWER_STORAGE_KEY, "files");
+
+    const { result } = renderHook(() => useLinksDrawerState());
+    await waitFor(() =>
+      expect({
+        open: result.current.open,
+        storedDrawer: localStorage.getItem(OPEN_DRAWER_STORAGE_KEY),
+      }).toStrictEqual({ open: false, storedDrawer: "none" }),
+    );
+
+    act(() => result.current.toggleOpen());
+    await waitFor(() => expect(localStorage.getItem(OPEN_DRAWER_STORAGE_KEY)).toBe("links"));
   });
 });

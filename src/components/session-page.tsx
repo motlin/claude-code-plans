@@ -32,12 +32,6 @@ import {
   AskUserQuestionProvider,
   type AskUserQuestionContextValue,
 } from "./ask-user-question-context";
-import {
-  FilesDrawer,
-  FilesDrawerToggle,
-  useExtractedSessionFiles,
-  useFilesDrawerState,
-} from "./files-drawer";
 import { JumpTargetProvider, type JumpTargetWindow } from "./jump-target-context";
 import { LegacyMessageLinkNotice } from "./legacy-message-link-notice";
 import {
@@ -50,6 +44,12 @@ import {
 } from "./links-drawer";
 import { TileHost } from "./panes/tile-host";
 import { ChangesPaneToggle, useRegisterChangesPane } from "./changes/changes-pane";
+import {
+  FilesPaneShortcut,
+  FilesPaneToggle,
+  useExtractedSessionFiles,
+  useRegisterFilesPane,
+} from "./panes/files-pane";
 import { StatusFooter } from "./status-footer";
 import { TranscriptHistoryLoader, findScrollContainer } from "./transcript-history-loader";
 import { Tooltip } from "./ui/tooltip";
@@ -439,13 +439,11 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
     processed.uuidToLine,
   );
   useRegisterChangesPane(sessionId);
-  const filesDrawerState = useFilesDrawerState();
   const linksDrawerState = useLinksDrawerState();
   // A whole-session inventory costs a full pass over the JSONL, so it is only
-  // worth asking for once a reader has opened a drawer to look at one.
-  const resourcesQuery = useQuery(
-    sessionResourcesQueryOptions(sessionId, filesDrawerState.openDrawer !== "none"),
-  );
+  // worth asking for once the Links drawer or the Files pane (which runs the
+  // same query) is open to look at one.
+  const resourcesQuery = useQuery(sessionResourcesQueryOptions(sessionId, linksDrawerState.open));
   const resources = resourcesQuery.data;
   // Until that scan lands, both drawers fall back to extraction over the loaded
   // window, whose counts are floors: every surface showing one also takes
@@ -470,6 +468,12 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
     () => ({ windowStartIndex: transcript.startIndex, requestMessageJump }),
     [requestMessageJump, transcript.startIndex],
   );
+  useRegisterFilesPane({
+    sessionId,
+    windowFiles,
+    windowStartIndex: transcript.startIndex,
+    jumpTargetWindow,
+  });
   const { hookContexts, runningSubagents } = useClaudeEvents();
   const hookContext = hookContexts.get(sessionId);
   const transcriptActiveSubagents = useMemo(
@@ -594,6 +598,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
   return (
     <div ref={sessionViewRef}>
       <TileHost sessionId={sessionId} onExpandWithoutPane={toggleChromeHidden}>
+        <FilesPaneShortcut />
         {/* Sticky header: top bar + title + subagent link */}
         {!chromeHidden && (
           <div className="sticky top-0 z-10 bg-surface-2 pb-2 -mx-4 px-4 sm:-mx-8 sm:px-8 border-b border-border">
@@ -669,17 +674,15 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
                 </span>
               )}
               <ChangesPaneToggle />
-              <FilesDrawerToggle
+              <FilesPaneToggle
                 count={sessionFiles.totalCount}
                 unscannedRecordCount={unscannedRecordCount}
-                isOpen={filesDrawerState.openDrawer === "files" && sessionFiles.totalCount > 0}
-                onToggle={filesDrawerState.toggleFilesDrawer}
               />
               <LinksDrawerToggle
                 count={linkDisplay.totalCount}
                 unscannedRecordCount={unscannedRecordCount}
-                isOpen={filesDrawerState.openDrawer === "links" && sessionLinks.totalCount > 0}
-                onToggle={filesDrawerState.toggleLinksDrawer}
+                isOpen={linksDrawerState.open && sessionLinks.totalCount > 0}
+                onToggle={linksDrawerState.toggleOpen}
               />
               <CopyButton title="Copy session ID" text={sessionId} icon={Copy} />
               <CopyButton
@@ -847,24 +850,13 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
 
         <ViewportPortal>
           <JumpTargetProvider value={jumpTargetWindow}>
-            {filesDrawerState.openDrawer === "files" && sessionFiles.totalCount > 0 && (
-              <FilesDrawer
-                sessionFiles={sessionFiles}
-                unscannedRecordCount={unscannedRecordCount}
-                sourceSelection={filesDrawerState.sourceSelection}
-                onSourceSelected={filesDrawerState.setSourceSelected}
-                onUnselectAllSources={filesDrawerState.unselectAllSources}
-                onClose={filesDrawerState.closeDrawer}
-              />
-            )}
-
-            {filesDrawerState.openDrawer === "links" && sessionLinks.totalCount > 0 && (
+            {linksDrawerState.open && sessionLinks.totalCount > 0 && (
               <LinksDrawer
                 display={linkDisplay}
                 unscannedRecordCount={unscannedRecordCount}
                 includeToolsAndThinking={linksDrawerState.includeToolsAndThinking}
                 onIncludeToolsAndThinkingChange={linksDrawerState.setIncludeToolsAndThinking}
-                onClose={filesDrawerState.closeDrawer}
+                onClose={linksDrawerState.close}
               />
             )}
           </JumpTargetProvider>

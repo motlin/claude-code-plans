@@ -1,24 +1,28 @@
-import { Copy, Files as FilesIcon, Search } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { Copy, Search } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type RefObject,
+} from "react";
 
-import { writeClipboardText } from "../lib/clipboard";
-import { formatResourceCount, resourceCoverageNote } from "../lib/session-resources";
+import { writeClipboardText } from "../../lib/clipboard";
+import { formatResourceCount, resourceCoverageNote } from "../../lib/session-resources";
 import {
   extractSessionFiles,
   getFileSourceKey,
   type FileEntry,
   type FileSourceKey,
   type SessionFiles,
-} from "../lib/session-files";
-import type { SessionLine } from "../lib/transcript";
-import { pillStyles } from "./detail-top-bar";
-import { JumpChips } from "./jump-chips";
-import { SessionDrawer } from "./session-drawer";
+} from "../../lib/session-files";
+import type { SessionLine } from "../../lib/transcript";
+import { JumpChips } from "../jump-chips";
 
 export type FileSourceSelection = Record<FileSourceKey, boolean>;
-type OpenSessionDrawer = "none" | "files" | "links";
 
-export const OPEN_DRAWER_STORAGE_KEY = "ccp-session-open-drawer";
 export const FILE_SOURCE_SELECTION_STORAGE_KEY = "ccp-session-file-sources";
 
 const FILE_SOURCE_OPTIONS: ReadonlyArray<{ key: FileSourceKey; label: string }> = [
@@ -86,21 +90,14 @@ function parseFileSourceSelection(rawValue: string): FileSourceSelection | undef
   return Object.fromEntries(keys.map((key) => [key, record[key]])) as FileSourceSelection;
 }
 
-export function useFilesDrawerState() {
-  const [openDrawer, setOpenDrawer] = useState<OpenSessionDrawer>("none");
+/** The session-files source checkboxes, hydrated from and persisted to localStorage. */
+function useFileSourceSelection() {
   const [sourceSelection, setSourceSelection] = useState<FileSourceSelection>(
     DEFAULT_FILE_SOURCE_SELECTION,
   );
   const [storageHydrated, setStorageHydrated] = useState(false);
 
   useEffect(() => {
-    const storedDrawer = localStorage.getItem(OPEN_DRAWER_STORAGE_KEY);
-    setOpenDrawer(
-      storedDrawer === "files" || storedDrawer === "links" || storedDrawer === "none"
-        ? storedDrawer
-        : "none",
-    );
-
     const storedSources = localStorage.getItem(FILE_SOURCE_SELECTION_STORAGE_KEY);
     if (storedSources !== null) {
       const parsedSources = parseFileSourceSelection(storedSources);
@@ -111,17 +108,9 @@ export function useFilesDrawerState() {
 
   useEffect(() => {
     if (!storageHydrated) return;
-    localStorage.setItem(OPEN_DRAWER_STORAGE_KEY, openDrawer);
     localStorage.setItem(FILE_SOURCE_SELECTION_STORAGE_KEY, JSON.stringify(sourceSelection));
-  }, [openDrawer, sourceSelection, storageHydrated]);
+  }, [sourceSelection, storageHydrated]);
 
-  const toggleFilesDrawer = useCallback(() => {
-    setOpenDrawer((current) => (current === "files" ? "none" : "files"));
-  }, []);
-  const toggleLinksDrawer = useCallback(() => {
-    setOpenDrawer((current) => (current === "links" ? "none" : "links"));
-  }, []);
-  const closeDrawer = useCallback(() => setOpenDrawer("none"), []);
   const setSourceSelected = useCallback((source: FileSourceKey, selected: boolean) => {
     setSourceSelection((current) => ({ ...current, [source]: selected }));
   }, []);
@@ -129,15 +118,7 @@ export function useFilesDrawerState() {
     setSourceSelection(UNSELECTED_FILE_SOURCES);
   }, []);
 
-  return {
-    openDrawer,
-    sourceSelection,
-    toggleFilesDrawer,
-    toggleLinksDrawer,
-    closeDrawer,
-    setSourceSelected,
-    unselectAllSources,
-  };
+  return { sourceSelection, setSourceSelected, unselectAllSources };
 }
 
 export function useExtractedSessionFiles(
@@ -150,45 +131,6 @@ export function useExtractedSessionFiles(
   );
 }
 
-interface FilesDrawerToggleProps {
-  count: number;
-  /** JSONL records before the loaded window, which `count` never saw. */
-  unscannedRecordCount?: number;
-  isOpen: boolean;
-  onToggle: () => void;
-}
-
-export function FilesDrawerToggle({
-  count,
-  unscannedRecordCount = 0,
-  isOpen,
-  onToggle,
-}: FilesDrawerToggleProps) {
-  return (
-    <button
-      type="button"
-      disabled={count === 0}
-      aria-expanded={isOpen}
-      title={resourceCoverageNote(unscannedRecordCount)}
-      onClick={onToggle}
-      className={`${pillStyles.outline} disabled:cursor-not-allowed disabled:opacity-40 ${isOpen ? "bg-surface-0 text-primary" : ""}`}
-    >
-      <FilesIcon className="h-3.5 w-3.5" aria-hidden="true" />
-      Files {formatResourceCount(count, unscannedRecordCount)}
-    </button>
-  );
-}
-
-interface FilesDrawerProps {
-  sessionFiles: SessionFiles;
-  /** JSONL records before the loaded window, which extraction never saw. */
-  unscannedRecordCount?: number;
-  sourceSelection: FileSourceSelection;
-  onSourceSelected: (source: FileSourceKey, selected: boolean) => void;
-  onUnselectAllSources: () => void;
-  onClose: () => void;
-}
-
 interface FileRowProps {
   file: FileEntry;
   copied: boolean;
@@ -197,7 +139,7 @@ interface FileRowProps {
 
 function FileRow({ file, copied, onCopy }: FileRowProps) {
   return (
-    <li className="border-b border-subtle px-4 py-3 last:border-b-0">
+    <li className="border-b border-subtle px-3 py-2 last:border-b-0">
       <div className="flex items-center gap-2">
         <span
           dir="rtl"
@@ -211,29 +153,40 @@ function FileRow({ file, copied, onCopy }: FileRowProps) {
           aria-label={`Copy ${file.path}`}
           title={copied ? "Copied" : "Copy absolute path"}
           onClick={() => void onCopy(file.absolutePath)}
-          className="flex size-7 shrink-0 items-center justify-center rounded text-t6 transition-colors hover:bg-fill-control hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
+          className="flex size-6 shrink-0 items-center justify-center rounded text-t6 transition-colors hover:bg-fill-control hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
         >
           <Copy className="size-3.5" aria-hidden="true" />
         </button>
       </div>
-      <div className="mt-2">
+      <div className="mt-1.5">
         <JumpChips occurrences={file.occurrences} />
       </div>
     </li>
   );
 }
 
-export function FilesDrawer({
+interface SessionFilesListProps {
+  sessionFiles: SessionFiles;
+  /** JSONL records before the loaded window, which extraction never saw. */
+  unscannedRecordCount: number;
+  filterRef: RefObject<HTMLInputElement | null>;
+}
+
+/**
+ * The Files pane's local-only "Session files" column: every path the session
+ * mentioned, filtered by source and by a substring of the canonical path, with
+ * copy and jump-to-occurrence chips.
+ */
+export function SessionFilesList({
   sessionFiles,
-  unscannedRecordCount = 0,
-  sourceSelection,
-  onSourceSelected,
-  onUnselectAllSources,
-  onClose,
-}: FilesDrawerProps) {
+  unscannedRecordCount,
+  filterRef,
+}: SessionFilesListProps) {
+  const { sourceSelection, setSourceSelected, unselectAllSources } = useFileSourceSelection();
   const [searchText, setSearchText] = useState("");
   const [copiedPath, setCopiedPath] = useState<string | null>(null);
   const copiedTimeoutReference = useRef<number | undefined>(undefined);
+  const coverageNote = resourceCoverageNote(unscannedRecordCount);
 
   const sourceFilteredFiles = useMemo(
     () =>
@@ -284,76 +237,94 @@ export function FilesDrawer({
       : `No files match “${searchText}”.`;
 
   return (
-    <SessionDrawer
-      title="Files"
-      count={sessionFiles.totalCount}
-      unscannedRecordCount={unscannedRecordCount}
-      onClose={onClose}
-    >
-      <section className="border-b border-border p-4" aria-labelledby="file-sources-heading">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h3 id="file-sources-heading" className="text-xs font-semibold text-secondary">
-            Sources
-          </h3>
-          <button
-            type="button"
-            onClick={onUnselectAllSources}
-            className="text-xs text-t6 transition-colors hover:text-primary"
-          >
-            Unselect all
-          </button>
-        </div>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-          {FILE_SOURCE_OPTIONS.map((option) => (
-            <label
-              key={option.key}
-              className="flex min-w-0 items-center gap-2 text-xs text-secondary"
-            >
-              <input
-                type="checkbox"
-                checked={sourceSelection[option.key]}
-                onChange={(event) => onSourceSelected(option.key, event.target.checked)}
-                className="size-3.5 shrink-0 accent-accent-100"
-              />
-              <span className="min-w-0 truncate">
-                {option.label} ({sessionFiles.counts[option.key]})
-              </span>
-            </label>
-          ))}
-        </div>
-      </section>
-
-      <div className="sticky top-0 z-10 border-b border-border bg-surface-0 p-3">
-        <label className="relative block">
-          <span className="sr-only">Filter files</span>
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex h-8 shrink-0 items-center px-2">
+        <label className="relative block w-full">
           <Search
-            className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-t6"
+            className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-t6"
             aria-hidden="true"
           />
           <input
+            ref={filterRef}
             type="search"
+            aria-label="Filter files"
+            spellCheck={false}
+            autoComplete="off"
             value={searchText}
             onChange={handleSearchChange}
-            placeholder="Filter files"
-            className="w-full rounded-md border border-strong bg-surface-1 py-2 pl-8 pr-3 text-xs text-primary outline-none placeholder:text-t6 focus:border-accent-100/60"
+            placeholder="Search files…"
+            className="h-6 w-full rounded-md border border-strong bg-surface-1 pl-7 pr-2 text-xs text-primary outline-none placeholder:text-t6 focus:border-accent-100/60"
           />
         </label>
       </div>
 
-      {visibleFiles.length === 0 ? (
-        <p className="px-4 py-8 text-center text-xs text-t6">{emptyMessage}</p>
-      ) : (
-        <ul>
-          {visibleFiles.map((file) => (
-            <FileRow
-              key={file.path}
-              file={file}
-              copied={copiedPath === file.absolutePath}
-              onCopy={copyPath}
-            />
-          ))}
-        </ul>
-      )}
-    </SessionDrawer>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {coverageNote !== undefined && (
+          <p
+            role="note"
+            className="border-b border-border bg-fill-ghost-hover px-3 py-2 text-[11px] text-t6"
+          >
+            {coverageNote}
+          </p>
+        )}
+        <section className="border-b border-border p-3" aria-labelledby="file-sources-heading">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h3 id="file-sources-heading" className="text-xs font-semibold text-secondary">
+              Session files{" "}
+              <span
+                aria-label={
+                  coverageNote === undefined
+                    ? `${sessionFiles.totalCount} items`
+                    : `${sessionFiles.totalCount} items in the loaded messages`
+                }
+                className="rounded-full bg-fill-control px-1.5 py-0.5 font-medium"
+              >
+                {formatResourceCount(sessionFiles.totalCount, unscannedRecordCount)}
+              </span>
+            </h3>
+            <button
+              type="button"
+              onClick={unselectAllSources}
+              className="text-xs text-t6 transition-colors hover:text-primary"
+            >
+              Unselect all
+            </button>
+          </div>
+          <div className="grid grid-cols-1 gap-y-1.5">
+            {FILE_SOURCE_OPTIONS.map((option) => (
+              <label
+                key={option.key}
+                className="flex min-w-0 items-center gap-2 text-xs text-secondary"
+              >
+                <input
+                  type="checkbox"
+                  checked={sourceSelection[option.key]}
+                  onChange={(event) => setSourceSelected(option.key, event.target.checked)}
+                  className="size-3.5 shrink-0 accent-accent-100"
+                />
+                <span className="min-w-0 truncate">
+                  {option.label} ({sessionFiles.counts[option.key]})
+                </span>
+              </label>
+            ))}
+          </div>
+        </section>
+
+        {visibleFiles.length === 0 ? (
+          <p className="px-3 py-6 text-center text-xs text-t6">{emptyMessage}</p>
+        ) : (
+          <ul>
+            {visibleFiles.map((file) => (
+              <FileRow
+                key={file.path}
+                file={file}
+                copied={copiedPath === file.absolutePath}
+                onCopy={copyPath}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
   );
 }
