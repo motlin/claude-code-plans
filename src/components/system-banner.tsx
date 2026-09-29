@@ -1,4 +1,4 @@
-import { Webhook } from "lucide-react";
+import { Clock, SquareTerminal, Webhook } from "lucide-react";
 import { assertNever } from "../lib/assert-never";
 import type { ProcessedLine } from "../lib/transcript";
 import { Banner, Pre } from "./attachment-banner";
@@ -40,13 +40,23 @@ function compactBoundaryLabel(meta: SystemLine["compactMetadata"]): string {
   return `Compacted session · from ${formatTokens(meta.preTokens)} tokens`;
 }
 
+const LOCAL_COMMAND_OUTPUT_RE =
+  /<local-command-(?:stdout|stderr)>([\s\S]*?)<\/local-command-(?:stdout|stderr)>/g;
+
+/** The text inside a local command's stdout/stderr tags, or the raw content. */
+function localCommandOutput(content: string | undefined): string {
+  if (content === undefined) return "";
+  const parts = Array.from(content.matchAll(LOCAL_COMMAND_OUTPUT_RE), ([, text]) => text ?? "");
+  return (parts.length > 0 ? parts.join("\n") : content).trim();
+}
+
 function jsonText(value: unknown): string {
   return typeof value === "string" ? value : JSON.stringify(value, null, 2);
 }
 
 /**
  * Renders a system JSONL record (compact_boundary, stop_hook_summary,
- * api_error, turn_duration) as a compact informational banner, mirroring
+ * api_error, turn_duration, scheduled_task_fire, local_command) as a compact informational banner, mirroring
  * the visual language of AttachmentBanner.
  */
 export function SystemBanner({
@@ -165,6 +175,53 @@ export function SystemBanner({
             )}
         </Banner>
       );
+    case "scheduled_task_fire": {
+      const streak = line.noOpStreak ?? 0;
+      return (
+        <Banner
+          icon={<Clock className="h-3.5 w-3.5" />}
+          label={line.content ?? "Scheduled task fired"}
+          sessionId={sessionId}
+          uuid={line.uuid}
+        >
+          {line.cron !== undefined && (
+            <span
+              className="font-mono"
+              {...(line.taskId !== undefined ? { title: `task ${line.taskId}` } : {})}
+            >
+              {line.cron}
+            </span>
+          )}
+          {line.taskKind !== undefined && <span>{line.taskKind}</span>}
+          {streak > 0 && (
+            <span>
+              {streak} quiet fire{streak === 1 ? "" : "s"}
+            </span>
+          )}
+          {line.prompt !== undefined && (
+            <span className="basis-full line-clamp-2 min-w-0 text-t5" title={line.prompt}>
+              {line.prompt}
+            </span>
+          )}
+        </Banner>
+      );
+    }
+    case "local_command": {
+      const run = line.commandRun;
+      const commandText =
+        run === undefined ? "Local command" : `/${run.command}${run.args ? ` ${run.args}` : ""}`;
+      const output = localCommandOutput(line.content);
+      return (
+        <Banner
+          icon={<SquareTerminal className="h-3.5 w-3.5" />}
+          sessionId={sessionId}
+          uuid={line.uuid}
+        >
+          <span className="font-mono">{commandText}</span>
+          {output !== "" && <Pre>{output}</Pre>}
+        </Banner>
+      );
+    }
     default:
       return assertNever(line.subtype);
   }

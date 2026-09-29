@@ -45,6 +45,7 @@ import type {
   RenderedRoleSchema,
   SkillOverrideValueSchema,
   TaskStatusSchema,
+  TurnOriginSchema,
   UserRecordSchema,
   WriteToolUseResultTypeSchema,
 } from "./schemas";
@@ -115,6 +116,13 @@ export const promptSourceLabels = {
   queued: "Queued",
   suggestion_accepted: "Suggestion accepted",
 } satisfies Record<PromptSource, string>;
+
+export const turnOriginLabels = {
+  human: "Human",
+  peer: "From another session",
+  task_notification: "Task notification",
+  scheduled: "Scheduled task",
+} satisfies Record<z.infer<typeof TurnOriginSchema>, string>;
 
 const taskStatusLabels = {
   pending: "Pending",
@@ -424,6 +432,8 @@ const systemSubtypeLabels = {
   stop_hook_summary: "Stop hooks",
   api_error: "API error",
   turn_duration: "Turn duration",
+  scheduled_task_fire: "Scheduled task fire",
+  local_command: "Local command",
 } satisfies Record<Extract<ProcessedLine, { type: "system" }>["subtype"], string>;
 
 const messageLineTypeLabels = {
@@ -947,6 +957,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   ContentBlockSchema: contentBlockVariants,
   AttachmentPayloadSchema: attachmentVariants,
   "UserRecordSchema.promptSource": promptSourceLabels,
+  "UserRecordSchema.turnOrigin": turnOriginLabels,
   JsonlRecordSchema: jsonlRecordVariants,
   "FileEditToolUseResultSchema|0.type": writeToolUseResultTypeLabels,
   "GitOperationSchema.commit.kind": gitCommitKindLabels,

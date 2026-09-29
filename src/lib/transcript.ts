@@ -19,6 +19,7 @@ import {
   JsonValueSchema,
   JsonlRecordSchema,
   PromptSourceSchema,
+  TurnOriginSchema,
 } from "./schemas";
 import {
   extractSessionTitle,
@@ -52,6 +53,8 @@ const MessageLineSchema = z.object({
   sessionId: z.string().optional(),
   lineIndex: z.number(),
   promptSource: PromptSourceSchema.optional(),
+  turnOrigin: TurnOriginSchema.optional(),
+  scheduledTaskId: z.string().optional(),
   queuePriority: z.literal("later").optional(),
   isApiErrorMessage: z.boolean().optional(),
   apiErrorStatus: z.union([z.number(), z.string()]).optional(),
@@ -106,6 +109,8 @@ const RenderedSystemSubtypeSchema = z.enum([
   "stop_hook_summary",
   "api_error",
   "turn_duration",
+  "scheduled_task_fire",
+  "local_command",
 ]);
 
 const SystemLineSchema = z.object({
@@ -124,6 +129,13 @@ const SystemLineSchema = z.object({
   pendingBackgroundAgentCount: z.number().optional(),
   durationMs: z.number().optional(),
   error: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
+  taskId: z.string().optional(),
+  cron: z.string().optional(),
+  prompt: z.string().optional(),
+  taskKind: z.string().optional(),
+  cronKind: z.string().optional(),
+  noOpStreak: z.number().optional(),
+  commandRun: z.object({ command: z.string(), args: z.string().optional() }).optional(),
   uuid: z.string().optional(),
   timestamp: z.string().optional(),
   sessionId: z.string().optional(),
@@ -558,6 +570,9 @@ function processRecordBatch(
     if (record.type === "system") {
       const subtype = RenderedSystemSubtypeSchema.safeParse(record.subtype);
       if (!subtype.success) continue;
+      // The input-echo half of a local command carries no commandRun; the
+      // output half names the command, so render only that one.
+      if (subtype.data === "local_command" && record.commandRun === undefined) continue;
       const systemLine: z.infer<typeof SystemLineSchema> = {
         type: "system",
         subtype: subtype.data,
@@ -582,6 +597,13 @@ function processRecordBatch(
       }
       if (record.durationMs !== undefined) systemLine.durationMs = record.durationMs;
       if (record.error !== undefined) systemLine.error = record.error;
+      if (record.taskId !== undefined) systemLine.taskId = record.taskId;
+      if (record.cron !== undefined) systemLine.cron = record.cron;
+      if (record.prompt !== undefined) systemLine.prompt = record.prompt;
+      if (record.taskKind !== undefined) systemLine.taskKind = record.taskKind;
+      if (record.cronKind !== undefined) systemLine.cronKind = record.cronKind;
+      if (record.noOpStreak !== undefined) systemLine.noOpStreak = record.noOpStreak;
+      if (record.commandRun !== undefined) systemLine.commandRun = record.commandRun;
       if (uuid !== undefined) systemLine.uuid = uuid;
       if (record.timestamp !== undefined) systemLine.timestamp = record.timestamp;
       if (sessionId !== undefined) systemLine.sessionId = sessionId;
@@ -641,6 +663,12 @@ function processRecordBatch(
       }
       if (record.queuePriority !== undefined) {
         processedLine.queuePriority = record.queuePriority;
+      }
+      if (record.turnOrigin !== undefined && record.turnOrigin !== "human") {
+        processedLine.turnOrigin = record.turnOrigin;
+      }
+      if (record.scheduledTaskId !== undefined) {
+        processedLine.scheduledTaskId = record.scheduledTaskId;
       }
     }
     if (record.type === "assistant") {

@@ -46,7 +46,7 @@ import {
   TerminalOutput,
 } from "./tool-renderers/shared";
 import { SystemBanner, formatTokens } from "./system-banner";
-import { promptSourceLabels } from "../lib/schema-choices";
+import { promptSourceLabels, turnOriginLabels } from "../lib/schema-choices";
 import { computeDiffData } from "../lib/diff-utils";
 import { TasksView } from "./tasks-view";
 import { DebugLink } from "./debug-link";
@@ -1614,12 +1614,7 @@ function UserEntry({
   return (
     <UserTurn>
       <div className="flex flex-col items-end gap-g6 max-w-[75%] min-w-0">
-        {line.promptSource !== undefined && (
-          <span className="text-[11px] text-t6">
-            {promptSourceLabels[line.promptSource]} prompt
-            {line.queuePriority === "later" && " · queued for later"}
-          </span>
-        )}
+        <UserTurnMeta line={line} />
         {textNodes.length > 0 && (
           <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
             {textNodes}
@@ -1901,6 +1896,29 @@ function renderUserContentBlocks(
   return { textNodes, mediaNodes };
 }
 
+/**
+ * Small caption above a user bubble saying where the turn came from (a peer
+ * session, a task notification, a scheduled task) and how the prompt was
+ * submitted. Ordinary typed human turns get no caption.
+ */
+function UserTurnMeta({ line }: { line: MessageSessionLine }) {
+  const parts: string[] = [];
+  if (line.turnOrigin !== undefined && line.turnOrigin !== "human") {
+    const origin = turnOriginLabels[line.turnOrigin];
+    parts.push(
+      line.turnOrigin === "scheduled" && line.scheduledTaskId !== undefined
+        ? `${origin} ${line.scheduledTaskId}`
+        : origin,
+    );
+  }
+  if (line.promptSource !== undefined) {
+    parts.push(`${promptSourceLabels[line.promptSource]} prompt`);
+  }
+  if (line.queuePriority === "later" && parts.length > 0) parts.push("queued for later");
+  if (parts.length === 0) return null;
+  return <span className="text-[11px] text-t6">{parts.join(" · ")}</span>;
+}
+
 function CommandEntry({ line, sessionId }: { line: MessageSessionLine; sessionId: string }) {
   const content = line.message?.content;
   let cmdName = "";
@@ -1934,6 +1952,7 @@ function CommandEntry({ line, sessionId }: { line: MessageSessionLine; sessionId
   return (
     <UserTurn>
       <div className="flex flex-col items-end gap-g6 max-w-[75%] min-w-0">
+        <UserTurnMeta line={line} />
         <div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
           <TruncatedContent fadeColor="var(--color-surface-1)" variant="user">
             <MarkdownArticle markdown={commandText} />

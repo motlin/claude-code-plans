@@ -873,6 +873,34 @@ describe("extractSessionTitle", () => {
 // ---------------------------------------------------------------------------
 
 describe("message metadata fields", () => {
+  it("carries non-human turnOrigin and scheduledTaskId on user lines", () => {
+    const records = [
+      userRecord("from a peer", { turnOrigin: "peer" }),
+      userRecord("/loop check", { turnOrigin: "scheduled", scheduledTaskId: "e283ee16" }),
+      userRecord("typed by a human", { turnOrigin: "human" }),
+    ];
+    expect(processTranscript(records).lines).toStrictEqual([
+      {
+        type: "user",
+        lineIndex: 0,
+        turnOrigin: "peer",
+        message: { role: "user", content: "from a peer" },
+      },
+      {
+        type: "user",
+        lineIndex: 1,
+        turnOrigin: "scheduled",
+        scheduledTaskId: "e283ee16",
+        message: { role: "user", content: "/loop check" },
+      },
+      {
+        type: "user",
+        lineIndex: 2,
+        message: { role: "user", content: "typed by a human" },
+      },
+    ]);
+  });
+
   it("carries promptSource and queuePriority on user lines except typed prompt sources", () => {
     const records = [
       userRecord("Background agents were stopped by the user.", {
@@ -1029,13 +1057,70 @@ describe("system record lines", () => {
     });
   });
 
-  it("skips unrendered system subtypes", () => {
+  it("skips unrendered system subtypes and local_command echoes without commandRun", () => {
     const records = [
       { type: "system", subtype: "informational", content: "x" },
       { type: "system", subtype: "local_command", content: "y" },
-      { type: "system", subtype: "scheduled_task_fire", content: "z" },
     ];
     expect(processTranscript(records).lines).toStrictEqual([]);
+  });
+
+  it("emits scheduled_task_fire with its task, cron, prompt, and no-op streak", () => {
+    const records = [
+      {
+        type: "system",
+        subtype: "scheduled_task_fire",
+        content: "Running scheduled task (Sep 14 9:19am)",
+        uuid: "fire-1",
+        timestamp: "2026-09-14T13:19:28.170Z",
+        taskId: "e283ee16",
+        cron: "*/1 * * * *",
+        prompt: "Check the dev server",
+        taskKind: "loop",
+        cronKind: "loop",
+        noOpStreak: 2,
+        streakStartedAt: "2026-09-14T13:00:00.000Z",
+        foldedUuids: ["a", "b"],
+      },
+    ];
+    expect(processTranscript(records).lines).toStrictEqual([
+      {
+        type: "system",
+        subtype: "scheduled_task_fire",
+        content: "Running scheduled task (Sep 14 9:19am)",
+        taskId: "e283ee16",
+        cron: "*/1 * * * *",
+        prompt: "Check the dev server",
+        taskKind: "loop",
+        cronKind: "loop",
+        noOpStreak: 2,
+        uuid: "fire-1",
+        timestamp: "2026-09-14T13:19:28.170Z",
+        lineIndex: 0,
+      },
+    ]);
+  });
+
+  it("emits local_command records that name the slash command they ran", () => {
+    const records = [
+      {
+        type: "system",
+        subtype: "local_command",
+        content: "<local-command-stdout>Session renamed to: daily</local-command-stdout>",
+        uuid: "cmd-1",
+        commandRun: { command: "rename", args: "daily" },
+      },
+    ];
+    expect(processTranscript(records).lines).toStrictEqual([
+      {
+        type: "system",
+        subtype: "local_command",
+        content: "<local-command-stdout>Session renamed to: daily</local-command-stdout>",
+        commandRun: { command: "rename", args: "daily" },
+        uuid: "cmd-1",
+        lineIndex: 0,
+      },
+    ]);
   });
 
   it("emits stop_hook_summary with hook fields", () => {

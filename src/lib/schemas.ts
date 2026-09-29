@@ -293,6 +293,9 @@ export const PromptSourceSchema = z.enum([
   "suggestion_accepted",
 ]);
 
+/** Who started a user turn; `human` is the ordinary typed-at-the-keyboard case. */
+export const TurnOriginSchema = z.enum(["human", "peer", "task_notification", "scheduled"]);
+
 const GitRemoteVisibilitySchema = z
   .object({
     name: z.string().optional(),
@@ -387,7 +390,7 @@ export const UserRecordSchema = z
     interruptedMessageId: z.string().optional(),
     interruptedByShutdown: z.boolean().optional(),
     userFeedback: z.string().optional(),
-    turnOrigin: z.string().optional(),
+    turnOrigin: TurnOriginSchema.optional(),
     turnPosition: z
       .object({ promptIndex: z.number().optional(), turnIndex: z.number().optional() })
       .strict()

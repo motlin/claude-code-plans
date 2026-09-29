@@ -129,6 +129,74 @@ describe("SystemBanner", () => {
   });
 });
 
+describe("SystemBanner scheduled fires and local commands", () => {
+  it("renders scheduled_task_fire with its cron, kind, no-op streak, and prompt", () => {
+    const html = renderBanner({
+      type: "system",
+      subtype: "scheduled_task_fire",
+      content: "Running scheduled task (Sep 14 9:19am)",
+      taskId: "e283ee16",
+      cron: "*/1 * * * *",
+      prompt: "Check the kalshi web dev server",
+      taskKind: "loop",
+      cronKind: "loop",
+      noOpStreak: 3,
+      lineIndex: 0,
+    });
+    const text = html
+      .replace(/<[^>]+>/g, "|")
+      .split("|")
+      .filter((part) => part.trim() !== "");
+    expect(text).toStrictEqual([
+      "Running scheduled task (Sep 14 9:19am)",
+      "*/1 * * * *",
+      "loop",
+      "3 quiet fires",
+      "Check the kalshi web dev server",
+    ]);
+    expect(html).toContain('title="task e283ee16"');
+  });
+
+  it("falls back to a generic label for a bare scheduled_task_fire", () => {
+    const html = renderBanner({ type: "system", subtype: "scheduled_task_fire", lineIndex: 0 });
+    const text = html
+      .replace(/<[^>]+>/g, "|")
+      .split("|")
+      .filter((part) => part.trim() !== "");
+    expect(text).toStrictEqual(["Scheduled task fired"]);
+  });
+
+  it("renders local_command with the slash command and its output", () => {
+    const html = renderBanner({
+      type: "system",
+      subtype: "local_command",
+      content: "<local-command-stdout>Session renamed to: daily</local-command-stdout>",
+      commandRun: { command: "rename", args: "daily" },
+      lineIndex: 0,
+    });
+    const text = html
+      .replace(/<[^>]+>/g, "|")
+      .split("|")
+      .filter((part) => part.trim() !== "");
+    expect(text).toStrictEqual(["/rename daily", "Session renamed to: daily"]);
+  });
+
+  it("renders local_command with empty output as just the command", () => {
+    const html = renderBanner({
+      type: "system",
+      subtype: "local_command",
+      content: "<local-command-stdout></local-command-stdout>",
+      commandRun: { command: "remote-control", args: "" },
+      lineIndex: 0,
+    });
+    const text = html
+      .replace(/<[^>]+>/g, "|")
+      .split("|")
+      .filter((part) => part.trim() !== "");
+    expect(text).toStrictEqual(["/remote-control"]);
+  });
+});
+
 describe("SystemBanner variants", () => {
   it("draws single-line informational subtypes as borderless status lines", () => {
     const compact = renderBanner({
