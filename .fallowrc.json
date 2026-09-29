@@ -130,6 +130,10 @@
     {
       "file": "src/lib/herdr/subscribe.ts",
       "exports": ["*"]
+    },
+    {
+      "file": "src/lib/local-account.ts",
+      "exports": ["getLocalAccount"]
     }
   ],
   "duplicates": {

@@ -1839,6 +1839,18 @@ export const ClaudeJsonProjectMcpSchema = z
   })
   .strict();
 
+// The identity keys picked out of ~/.claude.json `oauthAccount`. Plan fields stay
+// plain strings so an unfamiliar plan still yields a name and email.
+export const ClaudeJsonOauthAccountSchema = z
+  .object({
+    displayName: z.string().optional(),
+    fullName: z.string().optional(),
+    emailAddress: z.string().optional(),
+    organizationType: z.string().optional(),
+    organizationRateLimitTier: z.string().optional(),
+  })
+  .strict();
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
