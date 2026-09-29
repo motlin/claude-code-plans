@@ -28,6 +28,11 @@ import {
   useSessionLinkDisplay,
 } from "./links-drawer";
 import { TileHost } from "./panes/tile-host";
+import {
+  ArtifactsPaneToggle,
+  useRegisterArtifactsPane,
+  useSessionArtifacts,
+} from "./panes/artifacts-pane";
 import { ChangesPaneToggle, useRegisterChangesPane } from "./changes/changes-pane";
 import {
   FilesPaneShortcut,
@@ -412,6 +417,8 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
     windowStartIndex: transcript.startIndex,
     jumpTargetWindow,
   });
+  const sessionArtifacts = useSessionArtifacts(sessionId);
+  useRegisterArtifactsPane(sessionArtifacts);
   const { hookContexts, runningSubagents } = useClaudeEvents();
   const hookContext = hookContexts.get(sessionId);
   const transcriptActiveSubagents = useMemo(
@@ -559,6 +566,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
                     count={sessionFiles.totalCount}
                     unscannedRecordCount={unscannedRecordCount}
                   />
+                  <ArtifactsPaneToggle count={sessionArtifacts.length} />
                   <LinksDrawerToggle
                     count={linkDisplay.totalCount}
                     unscannedRecordCount={unscannedRecordCount}

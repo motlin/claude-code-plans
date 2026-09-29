@@ -31,7 +31,7 @@ function previewableSource(artifact: ParsedArtifact, input: ClientToolCall["inpu
  * A publish from a local HTML or Markdown file also gets a "Preview source"
  * link to the sandboxed local preview.
  */
-function ArtifactCard({
+export function ArtifactCard({
   url,
   label,
   previewHref,

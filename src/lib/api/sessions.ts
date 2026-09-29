@@ -296,6 +296,7 @@ export const sessionQueryKeys = {
   detail: (id: string) => [...SESSION_QUERY_ROOT, id] as const,
   transcript: (id: string) => [...SESSION_QUERY_ROOT, id, "transcript"] as const,
   resources: (id: string) => [...SESSION_QUERY_ROOT, id, "resources"] as const,
+  artifacts: (id: string) => [...SESSION_QUERY_ROOT, id, "artifacts"] as const,
   source: (sessionId: string, uuid: string, contextN: number) =>
     [...SESSION_QUERY_ROOT, sessionId, "source", uuid, contextN] as const,
   subagents: (id: string) => [...SESSION_QUERY_ROOT, id, "subagents"] as const,

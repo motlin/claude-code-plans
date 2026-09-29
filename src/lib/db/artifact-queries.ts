@@ -1,8 +1,8 @@
 import { statSync } from "node:fs";
 import { basename } from "node:path";
-import { desc, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import type { ArtifactSummary } from "../api/artifacts";
+import type { ArtifactSummary, SessionArtifact } from "../api/artifacts";
 import { artifactMatchesSearch } from "../artifact-gallery";
 import { isPreviewableSourcePath } from "../artifact-source-paths";
 import * as schema from "./schema";
@@ -62,4 +62,57 @@ export function getArtifacts(
       };
     })
     .filter((artifact) => artifactMatchesSearch(artifact.title, q));
+}
+
+const SESSION_ARTIFACT_ACTIONS = ["publish", "open"];
+
+/**
+ * The artifacts a session (or its subagents) published or opened, one row per
+ * URL, most recently touched first: upstream's session Artifacts pane frames.
+ * The title prefers the session's own latest title, then the artifact's.
+ */
+export function getSessionArtifacts(db: IndexDb, sessionId: string): SessionArtifact[] {
+  const rows = db
+    .select({
+      event: schema.artifactEvents,
+      artifact: schema.artifacts,
+    })
+    .from(schema.artifactEvents)
+    .innerJoin(schema.artifacts, eq(schema.artifacts.url, schema.artifactEvents.url))
+    .where(
+      and(
+        eq(schema.artifactEvents.sessionId, sessionId),
+        inArray(schema.artifactEvents.action, SESSION_ARTIFACT_ACTIONS),
+      ),
+    )
+    .orderBy(desc(schema.artifactEvents.ts), desc(schema.artifactEvents.toolUseId))
+    .all();
+
+  type Row = (typeof rows)[number];
+  const byUrl = new Map<string, { latest: Row; rows: Row[] }>();
+  for (const row of rows) {
+    const entry = byUrl.get(row.event.url);
+    if (entry === undefined) byUrl.set(row.event.url, { latest: row, rows: [row] });
+    else entry.rows.push(row);
+  }
+
+  return [...byUrl.values()].map(
+    ({ latest: { event, artifact }, rows: urlRows }): SessionArtifact => {
+      const sourcePath =
+        urlRows.find((row) => row.event.sourcePath !== null)?.event.sourcePath ??
+        artifact.sourcePath;
+      const title =
+        urlRows.find((row) => row.event.title !== null)?.event.title ??
+        artifact.title ??
+        (sourcePath !== null ? basename(sourcePath) : artifact.id);
+      return {
+        url: event.url,
+        id: artifact.id,
+        kind: artifact.urlKind === "slug" ? "docs" : "html",
+        title,
+        previewable: sourcePath !== null && isPreviewableSourcePath(sourcePath),
+        lastEventAt: event.ts,
+      };
+    },
+  );
 }
