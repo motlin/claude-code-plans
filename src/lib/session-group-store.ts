@@ -1,0 +1,206 @@
+import { useSyncExternalStore } from "react";
+import { z } from "zod";
+
+/**
+ * Per-browser custom session groups, like claude.ai/code's `customGroupsByScope`:
+ * ordered `groups`, at most one group per session in `assignments`, and an
+ * optional manual in-group `order` (sessions not listed follow the Sort by).
+ */
+export const SESSION_GROUP_STORAGE_KEY = "ccp-session-groups";
+
+const SessionGroupSchema = z.strictObject({
+  id: z.string().min(1),
+  name: z.string().min(1),
+});
+
+const SessionGroupStateSchema = z
+  .strictObject({
+    groups: z.array(SessionGroupSchema),
+    assignments: z.record(z.string(), z.string()),
+    order: z.record(z.string(), z.array(z.string())),
+  })
+  .superRefine((state, ctx) => {
+    const ids = new Set(state.groups.map((group) => group.id));
+    if (ids.size !== state.groups.length) {
+      ctx.addIssue({ code: "custom", message: "Duplicate group id" });
+    }
+    for (const groupId of Object.values(state.assignments)) {
+      if (!ids.has(groupId)) ctx.addIssue({ code: "custom", message: "Unknown assigned group" });
+    }
+    for (const groupId of Object.keys(state.order)) {
+      if (!ids.has(groupId)) ctx.addIssue({ code: "custom", message: "Unknown ordered group" });
+    }
+  });
+
+export type SessionGroup = z.infer<typeof SessionGroupSchema>;
+export type SessionGroupState = z.infer<typeof SessionGroupStateSchema>;
+
+const EMPTY_STATE: SessionGroupState = { groups: [], assignments: {}, order: {} };
+
+const listeners = new Set<() => void>();
+let cachedRaw: string | null | undefined;
+let cachedState: SessionGroupState = EMPTY_STATE;
+
+function readRaw(): string | null {
+  try {
+    return localStorage.getItem(SESSION_GROUP_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function parse(raw: string | null): SessionGroupState {
+  if (raw === null) return EMPTY_STATE;
+  try {
+    const result = SessionGroupStateSchema.safeParse(JSON.parse(raw));
+    return result.success ? result.data : EMPTY_STATE;
+  } catch {
+    return EMPTY_STATE;
+  }
+}
+
+/** Current groups; absent, corrupt or unreadable storage yields no groups. */
+export function readSessionGroupState(): SessionGroupState {
+  const raw = readRaw();
+  if (raw !== cachedRaw) {
+    cachedRaw = raw;
+    cachedState = parse(raw);
+  }
+  return cachedState;
+}
+
+function notify(): void {
+  for (const listener of listeners) listener();
+}
+
+function write(state: SessionGroupState): void {
+  try {
+    localStorage.setItem(SESSION_GROUP_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Storage can be denied or full; groups are best-effort per browser.
+  }
+  notify();
+}
+
+/** `order` with `sessionId` removed from every list, dropping lists that become empty. */
+function withoutOrdered(
+  order: SessionGroupState["order"],
+  sessionId: string,
+): SessionGroupState["order"] {
+  const next: SessionGroupState["order"] = {};
+  for (const [groupId, ids] of Object.entries(order)) {
+    const rest = ids.filter((id) => id !== sessionId);
+    if (rest.length > 0) next[groupId] = rest;
+  }
+  return next;
+}
+
+export function listGroups(): SessionGroup[] {
+  return readSessionGroupState().groups;
+}
+
+/** Append a new group named `name` (trimmed) as the last section. A blank name throws. */
+export function createGroup(name: string): SessionGroup {
+  const trimmed = name.trim();
+  if (trimmed === "") throw new Error("Group name must not be blank");
+  const state = readSessionGroupState();
+  const group: SessionGroup = { id: `cg-${crypto.randomUUID()}`, name: trimmed };
+  write({ ...state, groups: [...state.groups, group] });
+  return group;
+}
+
+/** Rename a group; a blank name or unknown id is ignored. */
+export function renameGroup(id: string, name: string): void {
+  const trimmed = name.trim();
+  const state = readSessionGroupState();
+  if (trimmed === "" || !state.groups.some((group) => group.id === id)) return;
+  write({
+    ...state,
+    groups: state.groups.map((group) => (group.id === id ? { ...group, name: trimmed } : group)),
+  });
+}
+
+/** Delete a group, returning its sessions to Ungrouped. Returns how many were released. */
+export function deleteGroup(id: string): number {
+  const state = readSessionGroupState();
+  if (!state.groups.some((group) => group.id === id)) return 0;
+  const assignments: SessionGroupState["assignments"] = {};
+  let released = 0;
+  for (const [sessionId, groupId] of Object.entries(state.assignments)) {
+    if (groupId === id) released += 1;
+    else assignments[sessionId] = groupId;
+  }
+  const { [id]: _removed, ...order } = state.order;
+  write({ groups: state.groups.filter((group) => group.id !== id), assignments, order });
+  return released;
+}
+
+export interface AssignOptions {
+  /**
+   * Place the session in the group's manual order just before this session, or
+   * at the end of it when null or not ordered. Omit to leave it unordered.
+   */
+  before?: string | null;
+}
+
+/** Move a session into a group (leaving any other), or to Ungrouped with null. */
+export function assign(
+  sessionId: string,
+  groupId: string | null,
+  options: AssignOptions = {},
+): void {
+  const state = readSessionGroupState();
+  if (groupId !== null && !state.groups.some((group) => group.id === groupId)) return;
+  const { [sessionId]: _previous, ...assignments } = state.assignments;
+  const order = withoutOrdered(state.order, sessionId);
+  if (groupId !== null) {
+    assignments[sessionId] = groupId;
+    const { before } = options;
+    if (before !== undefined) {
+      const rest = order[groupId] ?? [];
+      const index = before === null ? -1 : rest.indexOf(before);
+      order[groupId] =
+        index === -1
+          ? [...rest, sessionId]
+          : [...rest.slice(0, index), sessionId, ...rest.slice(index)];
+    }
+  }
+  write({ groups: state.groups, assignments, order });
+}
+
+/** Move a group section to `toIndex`, clamped to the list. */
+export function moveGroup(id: string, toIndex: number): void {
+  const state = readSessionGroupState();
+  const group = state.groups.find((candidate) => candidate.id === id);
+  if (group === undefined) return;
+  const rest = state.groups.filter((candidate) => candidate.id !== id);
+  const index = Math.max(0, Math.min(toIndex, rest.length));
+  write({ ...state, groups: [...rest.slice(0, index), group, ...rest.slice(index)] });
+}
+
+function onStorage(event: StorageEvent): void {
+  if (event.key === null || event.key === SESSION_GROUP_STORAGE_KEY) notify();
+}
+
+function subscribe(listener: () => void): () => void {
+  if (listeners.size === 0) window.addEventListener("storage", onStorage);
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+    if (listeners.size === 0) window.removeEventListener("storage", onStorage);
+  };
+}
+
+function getServerSnapshot(): SessionGroupState {
+  return EMPTY_STATE;
+}
+
+export interface SessionGroupsSnapshot extends SessionGroupState {
+  groupOf: (sessionId: string) => string | null;
+}
+
+/** Live custom groups for this browser, kept in sync across tabs via the `storage` event. */
+export function useSessionGroups(): SessionGroupsSnapshot {
+  const state = useSyncExternalStore(subscribe, readSessionGroupState, getServerSnapshot);
+  return { ...state, groupOf: (sessionId) => state.assignments[sessionId] ?? null };
+}
