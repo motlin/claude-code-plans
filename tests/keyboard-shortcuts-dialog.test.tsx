@@ -140,6 +140,17 @@ describe("KeyboardShortcutsDialog", () => {
     ).toStrictEqual(["⇧Shift", "⌘Command", ","]);
   });
 
+  it("lists Search with ⇧⌘K keycaps", async () => {
+    const composer = renderWithComposer();
+    pressShortcutsKey(composer);
+
+    const dialog = await screen.findByRole("dialog", { name: "Keyboard shortcuts" });
+    const row = within(dialog).getByText("Search").parentElement;
+    expect(
+      [...(row?.querySelectorAll("kbd") ?? [])].map((kbd) => kbd.textContent ?? ""),
+    ).toStrictEqual(["⇧Shift", "⌘Command", "K"]);
+  });
+
   it("closes on Escape and returns focus to the composer", async () => {
     const composer = renderWithComposer();
     pressShortcutsKey(composer);

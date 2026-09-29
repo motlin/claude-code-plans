@@ -13,6 +13,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { DEFAULTS, SettingsProvider } from "../src/components/settings-provider";
 import { Sidebar } from "../src/components/sidebar/Sidebar";
+import { useCommandPalette } from "../src/hooks/use-command-palette";
 import { applicationSettingsQueryOptions } from "../src/lib/api/application-settings";
 import { approvalsQueryOptions } from "../src/lib/api/approvals";
 import { localUserQueryOptions } from "../src/lib/api/local-user";
@@ -20,6 +21,15 @@ import { notificationsQueryOptions } from "../src/lib/api/notifications";
 import { activeSessionsQueryOptions } from "../src/lib/api/sessions";
 import { installLocalStorage } from "./fake-storage";
 import { NAV_SECTIONS } from "../src/lib/nav-sections";
+
+function PaletteProbe() {
+  const palette = useCommandPalette();
+  return (
+    <div data-testid="palette-probe">
+      {palette.open ? "open" : "closed"}:{palette.entrypoint}
+    </div>
+  );
+}
 
 function seedQueryClient(username: string | null): QueryClient {
   const queryClient = new QueryClient({
@@ -49,6 +59,7 @@ async function renderSidebar(username: string | null = "craig") {
       <QueryClientProvider client={queryClient}>
         <SettingsProvider>
           <Sidebar collapsed={false} />
+          <PaletteProbe />
           <Outlet />
         </SettingsProvider>
       </QueryClientProvider>
@@ -105,14 +116,16 @@ describe("sidebar footer", () => {
     expect(account.textContent).toBe("LLocal");
   });
 
-  it("opens search from the footer Search button", async () => {
+  it("opens the palette in Search mode from the footer Search button", async () => {
     const router = await renderSidebar();
 
     const search = await waitFor(() => screen.getByRole("button", { name: "Search" }));
     fireEvent.click(search);
 
-    await waitFor(() => screen.getByTestId("search-page"));
-    expect(router.state.location.pathname).toBe("/search");
+    await waitFor(() =>
+      expect(screen.getByTestId("palette-probe").textContent).toBe("open:search"),
+    );
+    expect(router.state.location.pathname).toBe("/");
   });
 
   it("has no inline search input and no feedback button", async () => {

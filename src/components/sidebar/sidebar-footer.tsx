@@ -1,6 +1,7 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
+import { openCommandPalette } from "../../hooks/use-command-palette";
 import { useShortcutKeys } from "../../hooks/use-shortcut";
 import { localUserQueryOptions } from "../../lib/api/local-user";
 import { Tooltip } from "../ui/tooltip";
@@ -47,7 +48,6 @@ function AccountButton() {
 }
 
 function SearchButton() {
-  const navigate = useNavigate();
   const { keys, ariaKeyShortcuts } = useShortcutKeys("search");
 
   return (
@@ -56,7 +56,7 @@ function SearchButton() {
         type="button"
         aria-label="Search"
         aria-keyshortcuts={ariaKeyShortcuts}
-        onClick={() => void navigate({ to: "/search", search: { q: "", mode: "titles" } })}
+        onClick={() => openCommandPalette("search")}
         className="flex h-8 w-8 items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary"
       >
         <Search className="h-4 w-4" aria-hidden="true" />

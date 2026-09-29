@@ -252,6 +252,54 @@ describe("CommandPalette shell", () => {
     within(dialog).getByRole("combobox", { name: "Search" });
   });
 
+  it("keeps the palette open on a second ⇧⌘K", async () => {
+    const composer = await renderPalette();
+    pressK(composer, { metaKey: true, shiftKey: true, key: "K" });
+    const dialog = await screen.findByRole("dialog", { name: "Search" });
+
+    pressK(within(dialog).getByRole("combobox"), { metaKey: true, shiftKey: true, key: "K" });
+
+    await act(async () => {});
+    expect(screen.getByRole("dialog", { name: "Search" })).toBe(dialog);
+  });
+
+  it("does not run the ⌘K toggle on ⇧⌘K", async () => {
+    const dialog = await openPalette();
+
+    pressK(within(dialog).getByRole("combobox"), { metaKey: true, shiftKey: true, key: "K" });
+
+    await act(async () => {});
+    expect(screen.getByRole("dialog", { name: "Search" })).toBe(dialog);
+  });
+
+  it("does not open on Ctrl+Shift+K on mac", async () => {
+    const composer = await renderPalette();
+
+    pressK(composer, { ctrlKey: true, shiftKey: true, key: "K" });
+
+    await act(async () => {});
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("forces Search on ⇧⌘K without overwriting the remembered Compose tab", async () => {
+    const dialog = await openPalette();
+    fireEvent.keyDown(within(dialog).getByRole("combobox"), { key: "Tab", code: "Tab" });
+    const composer = await within(dialog).findByRole("combobox", { name: "Write a message…" });
+    fireEvent.keyDown(composer, { key: "Escape", code: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    const outside = screen.getByRole("textbox", { name: "Composer" });
+
+    pressK(outside, { metaKey: true, shiftKey: true, key: "K" });
+    const searchDialog = await screen.findByRole("dialog", { name: "Search" });
+    const searchInput = await within(searchDialog).findByRole("combobox", { name: "Search" });
+    fireEvent.keyDown(searchInput, { key: "Escape", code: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    pressK(outside, { metaKey: true });
+    const reopened = await screen.findByRole("dialog", { name: "Search" });
+    await within(reopened).findByRole("combobox", { name: "Write a message…" });
+  });
+
   it("shows Needs attention, Recents and Actions in the empty state", async () => {
     const dialog = await openPalette(
       [
