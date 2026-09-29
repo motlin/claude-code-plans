@@ -13,7 +13,8 @@ import type { ReviewBundle } from "../api/reviews";
 // 32: sessions gain pr_number/pr_url/pr_repository from the latest `pr-link` record.
 // 33: artifacts and artifact_events index every claude.ai Artifact tool call.
 // 35: home_dismissals (durable) hides home action-center rows until newer activity.
-export const SCHEMA_VERSION = "35";
+// 36: sessions gain forked_from_session_id from the first `forkedFrom` record.
+export const SCHEMA_VERSION = "36";
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),
@@ -47,6 +48,7 @@ export const sessions = sqliteTable(
     prNumber: integer("pr_number"),
     prUrl: text("pr_url"),
     prRepository: text("pr_repository"),
+    forkedFromSessionId: text("forked_from_session_id"),
     messageCount: integer("message_count").notNull().default(0),
     gitBranch: text("git_branch"),
     cwd: text("cwd"),

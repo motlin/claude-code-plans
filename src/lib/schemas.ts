@@ -254,6 +254,13 @@ export type GitOperation = z.infer<typeof GitOperationSchema>;
 // JSONL Record Types
 // ---------------------------------------------------------------------------
 
+// Fork lineage stamped on every record of a branched session. Older writers
+// used a bare parent session id; the CLI now writes `{sessionId, messageUuid}`.
+export const ForkedFromSchema = z.union([
+  z.string(),
+  z.strictObject({ sessionId: z.string(), messageUuid: z.string().optional() }),
+]);
+
 // Shared fields present on most JSONL records (user, assistant, progress, system, attachment)
 const BaseRecordFields = {
   uuid: z.string().optional(),
@@ -268,7 +275,7 @@ const BaseRecordFields = {
   slug: z.string().optional(),
   version: z.string().optional(),
   entrypoint: z.string().optional(),
-  forkedFrom: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
+  forkedFrom: ForkedFromSchema.optional(),
   teamName: z.string().optional(),
   leafUuid: z.string().optional(),
   agentId: z.string().optional(),

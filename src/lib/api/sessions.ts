@@ -31,6 +31,7 @@ const SessionListItemSchema = z.object({
   messageCount: z.number(),
   gitBranch: z.string().optional(),
   pr: SessionPrLinkSchema.optional(),
+  forkedFromSessionId: z.string().optional(),
   archived: z.boolean(),
   state: SessionSummaryStateSchema,
   bucket: SessionBucketSchema,

@@ -82,6 +82,9 @@ export function toSessionSummaryPayload(
     messageCount: entry.messageCount,
     gitBranch: entry.gitBranch,
     ...(entry.pr === undefined ? {} : { pr: entry.pr }),
+    ...(entry.forkedFromSessionId === undefined
+      ? {}
+      : { forkedFromSessionId: entry.forkedFromSessionId }),
     archived,
     state: activeSession === null ? "ended" : pendingInput ? "waiting" : activeSession.state,
     bucket,
@@ -126,6 +129,7 @@ export function buildSessionSummaryPayloadFromDb(
       messageCount: row.messageCount,
       gitBranch: row.gitBranch ?? undefined,
       isSidechain: row.isSidechain === 1,
+      forkedFromSessionId: row.forkedFromSessionId ?? undefined,
       pr: getSessionPrLink(db, sessionId) ?? undefined,
     },
     {

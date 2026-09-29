@@ -9,6 +9,7 @@ import {
   FileHistorySnapshotSchema,
   AttachmentRecordSchema,
   PrLinkRecordSchema,
+  ForkedFromSchema,
   TaskFileSchema,
 } from "../schemas";
 import { encodeProjectPath, resolveProjectPath } from "../memory";
@@ -537,6 +538,7 @@ export async function indexJsonlFile(
   const planFilenames = new Set<string>();
   const titleRecords = new TitleRecordCollector();
   let latestPrLink: { prNumber: number; prUrl: string; prRepository: string } | null = null;
+  let forkedFromSessionId: string | null = null;
   let lastSessionCwd: string | undefined;
   let anchoredSessionCwd: string | undefined;
   let sessionGitBranch: string | null = null;
@@ -631,6 +633,20 @@ export async function indexJsonlFile(
         }
       }
 
+      // First wins: every record of a branched session carries the same lineage.
+      if (forkedFromSessionId === null && line.includes('"forkedFrom"')) {
+        try {
+          const parsed = JSON.parse(line) as { forkedFrom?: unknown };
+          const result = ForkedFromSchema.safeParse(parsed.forkedFrom);
+          if (result.success) {
+            forkedFromSessionId =
+              typeof result.data === "string" ? result.data : result.data.sessionId;
+          }
+        } catch {
+          // skip
+        }
+      }
+
       if (line.includes('"custom-title"') || line.includes('"ai-title"')) {
         try {
           titleRecords.add(JSON.parse(line));
@@ -720,6 +736,7 @@ export async function indexJsonlFile(
     updates["prNumber"] = latestPrLink?.prNumber ?? null;
     updates["prUrl"] = latestPrLink?.prUrl ?? null;
     updates["prRepository"] = latestPrLink?.prRepository ?? null;
+    updates["forkedFromSessionId"] = forkedFromSessionId;
     updates["title"] = resolveSessionTitle({
       customTitle,
       aiTitle,
@@ -754,6 +771,7 @@ export async function indexJsonlFile(
         prNumber: latestPrLink?.prNumber ?? null,
         prUrl: latestPrLink?.prUrl ?? null,
         prRepository: latestPrLink?.prRepository ?? null,
+        forkedFromSessionId,
         messageCount,
         gitBranch: sessionGitBranch,
         cwd: sessionCwd ?? null,

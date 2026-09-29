@@ -90,6 +90,7 @@ function rowToSessionEntry(row: SessionRow, projectNames: Map<string, string>): 
     gitBranch: row.gitBranch ?? undefined,
     cwd: row.cwd ?? undefined,
     isSidechain: row.isSidechain === 1,
+    forkedFromSessionId: row.forkedFromSessionId ?? undefined,
     pr: sessionPrLink(row),
   };
 }
