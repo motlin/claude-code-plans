@@ -423,3 +423,22 @@
     transform: translateY(0);
   }
 }
+
+/* Sidebar pointer drag (src/hooks/use-sidebar-drag.ts). Rows only animate while a drag is in
+   progress so the reset on drop snaps instead of sliding from the old slot. */
+[data-session-dragging],
+[data-session-dragging] * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-session-dragging] .df-drag-shiftable {
+    transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1);
+  }
+}
+
+[data-drag-ghost] {
+  opacity: 0.9;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
+}
