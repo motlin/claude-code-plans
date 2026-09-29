@@ -61,6 +61,7 @@ import {
   ReportFindingsVerdictSchema,
 } from "../src/lib/tool-input-schemas";
 import { RenderedLineSchema } from "../src/lib/transcript";
+import { TerminalAppearanceSchema } from "../src/lib/terminal-theme";
 import { TranscriptModeSchema } from "../src/lib/transcript-mode";
 
 /**
@@ -123,6 +124,7 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["SettingsTabSchema", SettingsTabSchema],
   ["CodeThemeLightSchema", CodeThemeLightSchema],
   ["CodeThemeDarkSchema", CodeThemeDarkSchema],
+  ["TerminalAppearanceSchema", TerminalAppearanceSchema],
   ["NavSectionSchema", NavSectionSchema],
   ["SessionMenuItemIdSchema", SessionMenuItemIdSchema],
   ["ChangedFileKindSchema", ChangedFileKindSchema],

@@ -20,6 +20,11 @@ import {
   type CodeThemeDark,
   type CodeThemeLight,
 } from "../lib/code-themes";
+import {
+  DEFAULT_TERMINAL_APPEARANCE,
+  TerminalAppearanceSchema,
+  type TerminalAppearance,
+} from "../lib/terminal-theme";
 import { TranscriptWidthSchema, type TranscriptWidth } from "../lib/transcript-width";
 import {
   appearanceCssVars,
@@ -79,6 +84,8 @@ export interface Settings {
   codeThemeDark: CodeThemeDark;
   /** Custom monospace font family for code and terminal; empty keeps the built-in stack. */
   codeFont: string;
+  /** Terminal colors: the light/dark code theme (upstream's behavior) or the Ghostty config. */
+  terminalAppearance: TerminalAppearance;
 
   showSummaryButton: boolean;
   // ccp preferences are browser-local; /api/settings reflects Claude's own files and is read-only.
@@ -153,6 +160,7 @@ export const DEFAULTS: Settings = {
   codeThemeLight: DEFAULT_CODE_THEMES.light,
   codeThemeDark: DEFAULT_CODE_THEMES.dark,
   codeFont: "",
+  terminalAppearance: DEFAULT_TERMINAL_APPEARANCE,
 
   showSummaryButton: true,
   capabilities: DEFAULT_CAPABILITIES,
@@ -211,6 +219,7 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
   codeThemeLight: "ccp-code-theme-light",
   codeThemeDark: "ccp-code-theme-dark",
   codeFont: "ccp-code-font",
+  terminalAppearance: "ccp-terminal-appearance",
   showSummaryButton: "ccp-show-summary-button",
   capabilities: "ccp-capabilities",
   activeTimeoutSec: "ccp-active-timeout",
@@ -356,6 +365,10 @@ function readStoredValue<K extends keyof Settings>(key: K): Settings[K] | undefi
   }
   if (key === "codeThemeDark") {
     const parsed = CodeThemeDarkSchema.safeParse(stored);
+    return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
+  }
+  if (key === "terminalAppearance") {
+    const parsed = TerminalAppearanceSchema.safeParse(stored);
     return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
   }
   if (key === "transcriptWidth") {

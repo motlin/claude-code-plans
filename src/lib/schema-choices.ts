@@ -9,6 +9,7 @@ import type {
 } from "./artifact-schemas";
 import type { ChangedFileKindSchema } from "./changed-file-kind";
 import type { CodeThemeDark, CodeThemeLight } from "./code-themes";
+import type { TerminalAppearance } from "./terminal-theme";
 import type { McpScopeSchema, PermissionBehaviorSchema, SkillSourceSchema } from "./api/customize";
 import type { PluginFileSchema, PluginListResponse } from "./api/plugins";
 import type {
@@ -642,6 +643,12 @@ export const codeThemeDarkLabels = {
   "slack-dark": "Slack Dark",
 } satisfies Record<CodeThemeDark, string>;
 
+/** Settings ▸ Code appearance ▸ Terminal colors (src/lib/terminal-theme.ts). */
+export const terminalAppearanceLabels = {
+  "code-theme": "Code theme",
+  ghostty: "Ghostty config",
+} satisfies Record<TerminalAppearance, string>;
+
 /** Session actions menu labels (src/lib/session-menu-items.ts), copied from claude.ai/code. */
 export const sessionMenuItemLabels = {
   "open-in": "Open in",
@@ -846,6 +853,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   SettingsTabSchema: settingsTabLabels,
   CodeThemeLightSchema: codeThemeLightLabels,
   CodeThemeDarkSchema: codeThemeDarkLabels,
+  TerminalAppearanceSchema: terminalAppearanceLabels,
   NavSectionSchema: navSectionLabels,
   SessionMenuItemIdSchema: sessionMenuItemLabels,
   ChangedFileKindSchema: changedFileKindLabels,

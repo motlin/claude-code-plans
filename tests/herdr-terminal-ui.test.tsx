@@ -52,6 +52,14 @@ const appearanceState = vi.hoisted(() => ({
   appearance: {} as unknown,
 }));
 
+const terminalThemeState = vi.hoisted(() => ({
+  value: { ready: true, theme: null } as { ready: boolean; theme: Record<string, string> | null },
+}));
+
+vi.mock("../src/hooks/use-terminal-theme", () => ({
+  useTerminalTheme: () => terminalThemeState.value,
+}));
+
 vi.mock("../src/lib/server-fns", () => ({
   getGhosttyAppearance: vi.fn(() => Promise.resolve(appearanceState.appearance)),
 }));
@@ -154,6 +162,7 @@ describe("live herdr terminal UI", () => {
     terminalState.resizeCallbacks = [];
     shortcutState.dispatched = [];
     appearanceState.appearance = DEFAULT_APPEARANCE;
+    terminalThemeState.value = { ready: true, theme: null };
     vi.stubGlobal("ResizeObserver", FakeResizeObserver);
     vi.stubGlobal("WebSocket", FakeWebSocket);
     const ready = new Promise<void>((resolve) => {
@@ -421,6 +430,64 @@ describe("live herdr terminal UI", () => {
     expect({ results, dispatched: shortcutState.dispatched }).toStrictEqual({
       results: { toggleTerminal: true, plainKey: false },
       dispatched: ["Backquote"],
+    });
+  });
+
+  it("paints the code theme's terminal colours over the Ghostty font", async () => {
+    appearanceState.appearance = GHOSTTY_APPEARANCE;
+    terminalThemeState.value = {
+      ready: true,
+      theme: { background: "#ffffff", foreground: "#24292e", red: "#d73a49" },
+    };
+
+    render(<HerdrTerminal sessionId="session-test-100" />);
+    releaseFonts();
+    await waitFor(() => expect(terminalState.socketUrls.length).toBe(1));
+
+    expect({
+      terminalOptions: terminalState.constructorOptions,
+      surfaceBackground: terminalSurface().style.backgroundColor,
+    }).toStrictEqual({
+      terminalOptions: [
+        {
+          convertEol: false,
+          cursorBlink: false,
+          disableStdin: true,
+          fontFamily: GHOSTTY_APPEARANCE.fontFamily,
+          fontSize: 16,
+          scrollback: 0,
+          theme: { background: "#ffffff", foreground: "#24292e", red: "#d73a49" },
+        },
+      ],
+      surfaceBackground: "rgb(255, 255, 255)",
+    });
+  });
+
+  it("waits for the code theme before building the terminal, and rebuilds it when the theme changes", async () => {
+    terminalThemeState.value = { ready: false, theme: null };
+    const view = render(<HerdrTerminal sessionId="session-test-100" />);
+    releaseFonts();
+    await flushPendingWork();
+    const beforeReady = terminalState.constructorOptions.length;
+
+    terminalThemeState.value = { ready: true, theme: { background: "#ffffff" } };
+    view.rerender(<HerdrTerminal sessionId="session-test-100" />);
+    await waitFor(() => expect(terminalState.socketUrls.length).toBe(1));
+
+    terminalThemeState.value = { ready: true, theme: { background: "#000000" } };
+    view.rerender(<HerdrTerminal sessionId="session-test-100" />);
+    await waitFor(() => expect(terminalState.socketUrls.length).toBe(2));
+
+    expect({
+      beforeReady,
+      backgrounds: terminalState.constructorOptions.map(
+        (options) => (options as { theme: { background: string } }).theme.background,
+      ),
+      closeCalls: terminalState.closeCalls,
+    }).toStrictEqual({
+      beforeReady: 0,
+      backgrounds: ["#ffffff", "#000000"],
+      closeCalls: [[1000, "terminal view closed"]],
     });
   });
 });

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createTerminalFrameConsumer } from "../lib/herdr/terminal-protocol";
+import { useTerminalTheme } from "../hooks/use-terminal-theme";
 import { getGhosttyAppearance, type GhosttyAppearance } from "../lib/server-fns";
+import { applyTerminalTheme } from "../lib/terminal-theme";
 import { TerminalPlaceholder } from "./terminal-placeholder";
 import {
   installTerminalInput,
@@ -69,10 +71,11 @@ export function HerdrTerminal({
   const [error, setError] = useState("");
   const [appearance, setAppearance] = useState<GhosttyAppearance | null>(null);
   const { actions: selectionActions, announcement } = useTerminalSelectionActions(sessionId);
+  const { ready: themeReady, theme: codeTheme } = useTerminalTheme();
 
   useEffect(() => {
     const element = container.current;
-    if (!element) return;
+    if (!element || !themeReady) return;
 
     let disposed = false;
     let teardown: (() => void) | null = null;
@@ -193,10 +196,11 @@ export function HerdrTerminal({
     };
 
     void (async () => {
-      const { ghostty, appearance: ghosttyAppearance } = await loadGhostty();
+      const loaded = await loadGhostty();
       if (disposed) return;
+      const ghosttyAppearance = applyTerminalTheme(loaded.appearance, codeTheme);
       setAppearance(ghosttyAppearance);
-      teardown = start(ghostty, ghosttyAppearance);
+      teardown = start(loaded.ghostty, ghosttyAppearance);
     })().catch((cause: unknown) => {
       if (disposed) return;
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -207,7 +211,7 @@ export function HerdrTerminal({
       disposed = true;
       teardown?.();
     };
-  }, [sessionId, interactive, selectionActions]);
+  }, [sessionId, interactive, selectionActions, themeReady, codeTheme]);
 
   useEffect(() => {
     onStatusChange?.(status);

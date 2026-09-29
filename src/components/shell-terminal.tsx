@@ -5,7 +5,9 @@ import {
   parseShellServerFrame,
   type ShellClientFrame,
 } from "../lib/herdr/terminal-protocol";
+import { useTerminalTheme } from "../hooks/use-terminal-theme";
 import type { GhosttyAppearance } from "../lib/server-fns";
+import { applyTerminalTheme } from "../lib/terminal-theme";
 import {
   formatLinkMessage,
   INITIAL_TERMINAL_LIFECYCLE,
@@ -73,10 +75,11 @@ export function ShellTerminal({
   const [restarting, setRestarting] = useState(false);
   const [appearance, setAppearance] = useState<GhosttyAppearance | null>(null);
   const { actions: selectionActions, announcement } = useTerminalSelectionActions(sessionId);
+  const { ready: themeReady, theme: codeTheme } = useTerminalTheme();
 
   useEffect(() => {
     const element = container.current;
-    if (!element) return;
+    if (!element || !themeReady) return;
 
     let disposed = false;
     let teardown: (() => void) | null = null;
@@ -221,8 +224,9 @@ export function ShellTerminal({
     };
 
     void loadGhostty()
-      .then(({ ghostty, appearance: ghosttyAppearance }) => {
+      .then(({ ghostty, appearance: loadedAppearance }) => {
         if (disposed) return;
+        const ghosttyAppearance = applyTerminalTheme(loadedAppearance, codeTheme);
         setAppearance(ghosttyAppearance);
         dispatch({ type: "loaded" });
         teardown = start(ghostty, ghosttyAppearance);
@@ -233,7 +237,7 @@ export function ShellTerminal({
       disposed = true;
       teardown?.();
     };
-  }, [ptyKey, selectionActions]);
+  }, [ptyKey, selectionActions, themeReady, codeTheme]);
 
   useEffect(() => {
     if (!closeRequested) return;

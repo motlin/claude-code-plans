@@ -17,7 +17,12 @@ import {
   type CodeThemeDark,
   type CodeThemeLight,
 } from "../../lib/code-themes";
-import { codeThemeDarkLabels, codeThemeLightLabels } from "../../lib/schema-choices";
+import {
+  codeThemeDarkLabels,
+  codeThemeLightLabels,
+  terminalAppearanceLabels,
+} from "../../lib/schema-choices";
+import { TerminalAppearanceSchema } from "../../lib/terminal-theme";
 import type { TranscriptWidth } from "../../lib/transcript-width";
 import { useTheme } from "../theme-provider";
 import { HookSetup } from "../hook-setup";
@@ -776,6 +781,15 @@ function CodeAppearanceSection() {
           </Suspense>
         </div>
       </div>
+      <SelectRow
+        label="Terminal colors"
+        description="Follow the light and dark code theme, or use your Ghostty config."
+        settingKey="terminalAppearance"
+        options={TerminalAppearanceSchema.options.map((value) => ({
+          value,
+          label: terminalAppearanceLabels[value],
+        }))}
+      />
       <SettingsRow
         slug="code-font"
         title="Code font"

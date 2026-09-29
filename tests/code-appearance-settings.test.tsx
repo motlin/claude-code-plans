@@ -101,4 +101,26 @@ describe("Claude Code settings ▸ Code appearance", () => {
       stored: "",
     });
   });
+
+  it("lets the terminal use the Ghostty config instead of the code theme", async () => {
+    await renderClaudeCode();
+    const select = screen.getByRole("combobox", { name: "Terminal colors" });
+    const initial = select.textContent;
+
+    fireEvent.click(select);
+    const options = screen.getAllByRole("option").map((option) => option.textContent);
+    fireEvent.click(screen.getByRole("option", { name: "Ghostty config" }));
+
+    expect({
+      initial,
+      options,
+      selected: screen.getByRole("combobox", { name: "Terminal colors" }).textContent,
+      stored: localStorage.getItem("ccp-terminal-appearance"),
+    }).toStrictEqual({
+      initial: "Code theme",
+      options: ["Code theme", "Ghostty config"],
+      selected: "Ghostty config",
+      stored: "ghostty",
+    });
+  });
 });
