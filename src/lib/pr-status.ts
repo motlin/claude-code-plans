@@ -3,11 +3,48 @@ import { z } from "zod";
 import { PullRequestStateSchema, type PullRequestState } from "./session-state";
 import type { SessionPrLink } from "./sessions";
 
-/** A session's pull request: its number and a normalized state. */
+/** `review` values in the statusline's `~/.claude/gh-pr-status-cache.json`. */
+export const GhPrReviewDecisionSchema = z.enum([
+  "APPROVED",
+  "CHANGES_REQUESTED",
+  "REVIEW_REQUIRED",
+]);
+
+const PrChecksSchema = z
+  .object({ passed: z.number().int(), failed: z.number().int(), pending: z.number().int() })
+  .strict();
+export type PrChecks = z.infer<typeof PrChecksSchema>;
+
+/**
+ * A session's pull request: its number and a normalized state, plus the url, title, CI checks
+ * and review decision when a pr-link record or the statusline PR cache knows them.
+ */
 export const PrStatusSchema = z
-  .object({ number: z.number().int().positive(), state: PullRequestStateSchema })
+  .object({
+    number: z.number().int().positive(),
+    state: PullRequestStateSchema,
+    url: z.string().optional(),
+    title: z.string().optional(),
+    checks: PrChecksSchema.optional(),
+    review: GhPrReviewDecisionSchema.nullable().optional(),
+  })
   .strict();
 export type PrStatus = z.infer<typeof PrStatusSchema>;
+
+/** Field-by-field equality, so a checks or review change counts as a change. */
+export function samePrStatus(a: PrStatus | null | undefined, b: PrStatus | null | undefined) {
+  if (a == null || b == null) return a == null && b == null;
+  return (
+    a.number === b.number &&
+    a.state === b.state &&
+    a.url === b.url &&
+    a.title === b.title &&
+    a.review === b.review &&
+    a.checks?.passed === b.checks?.passed &&
+    a.checks?.failed === b.checks?.failed &&
+    a.checks?.pending === b.checks?.pending
+  );
+}
 
 /** One row of `gh pr list|view --json number,state,isDraft`. */
 export const GhPrStateSchema = z.enum(["OPEN", "CLOSED", "MERGED"]);
@@ -47,20 +84,13 @@ export function parseGhPrList(stdout: string): PrStatus | null {
 
 /** `state` values in the statusline's `~/.claude/gh-pr-status-cache.json`. */
 export const GhPrStatusCacheStateSchema = z.enum(["OPEN", "DRAFT", "MERGED", "CLOSED"]);
-export const GhPrReviewDecisionSchema = z.enum([
-  "APPROVED",
-  "CHANGES_REQUESTED",
-  "REVIEW_REQUIRED",
-]);
 
 const GhPrStatusCacheEntrySchema = z
   .object({
     number: z.number().int().positive(),
     title: z.string(),
     state: GhPrStatusCacheStateSchema,
-    checks: z
-      .object({ passed: z.number().int(), failed: z.number().int(), pending: z.number().int() })
-      .strict(),
+    checks: PrChecksSchema,
     review: GhPrReviewDecisionSchema.nullable(),
     additions: z.number().int(),
     deletions: z.number().int(),
@@ -90,7 +120,8 @@ export function parseGhPrStatusCache(text: string): Map<string, PrStatus> {
   for (const [url, value] of Object.entries(raw)) {
     const parsed = GhPrStatusCacheEntrySchema.safeParse(value);
     if (parsed.success) {
-      statuses.set(url, { number: parsed.data.number, state: CACHE_STATES[parsed.data.state] });
+      const { number, title, state, checks, review } = parsed.data;
+      statuses.set(url, { number, state: CACHE_STATES[state], url, title, checks, review });
     }
   }
   return statuses;
@@ -110,8 +141,9 @@ export function resolvePrStatus({
   gh: PrStatus | null | undefined;
 }): PrStatus | null {
   if (prLink !== undefined) {
-    const state = cacheFile.get(prLink.url)?.state ?? gh?.state;
-    return state === undefined ? null : { number: prLink.number, state };
+    const cached = cacheFile.get(prLink.url);
+    if (cached !== undefined) return { ...cached, number: prLink.number, url: prLink.url };
+    return gh == null ? null : { number: prLink.number, state: gh.state, url: prLink.url };
   }
   return gh ?? null;
 }

@@ -9,6 +9,7 @@ import {
   parseGhPrStatusCache,
   parseGhPrView,
   resolvePrStatus,
+  samePrStatus,
   type PrStatus,
 } from "./pr-status";
 import type { SessionEntry, SessionPrLink } from "./sessions";
@@ -45,10 +46,6 @@ interface GhEntry {
   failures: number;
   pending: boolean;
   projects: Set<string>;
-}
-
-function sameStatus(a: PrStatus | null, b: PrStatus | null): boolean {
-  return a?.number === b?.number && a?.state === b?.state;
 }
 
 /**
@@ -90,7 +87,7 @@ export function createPrStatusService({
         const next = text === null ? new Map<string, PrStatus>() : parseGhPrStatusCache(text);
         const changed = new Set<string>();
         for (const url of new Set([...cacheFile.keys(), ...next.keys()])) {
-          if (sameStatus(cacheFile.get(url) ?? null, next.get(url) ?? null)) continue;
+          if (samePrStatus(cacheFile.get(url) ?? null, next.get(url) ?? null)) continue;
           for (const projectId of projectsByUrl.get(url) ?? []) changed.add(projectId);
         }
         cacheFile = next;
@@ -123,7 +120,7 @@ export function createPrStatusService({
       entry.retryAt =
         now() +
         (value?.state === "merged" || value?.state === "closed" ? FINAL_TTL_MS : OPEN_TTL_MS);
-      if (!sameStatus(entry.value, value)) {
+      if (!samePrStatus(entry.value, value)) {
         entry.value = value;
         for (const projectId of entry.projects) onChange(projectId);
       }

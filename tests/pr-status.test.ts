@@ -92,8 +92,28 @@ describe("parseGhPrStatusCache", () => {
       "https://github.com/alice/widgets/pull/40": { number: 40, state: "BOGUS" },
     });
     expect([...parseGhPrStatusCache(text)]).toStrictEqual([
-      [PR_LINK.url, { number: 42, state: "draft" }],
-      ["https://github.com/alice/widgets/pull/41", { number: 41, state: "merged" }],
+      [
+        PR_LINK.url,
+        {
+          number: 42,
+          state: "draft",
+          url: PR_LINK.url,
+          title: "Add widgets",
+          checks: { passed: 1, failed: 0, pending: 0 },
+          review: null,
+        },
+      ],
+      [
+        "https://github.com/alice/widgets/pull/41",
+        {
+          number: 41,
+          state: "merged",
+          url: "https://github.com/alice/widgets/pull/41",
+          title: "Old",
+          checks: { passed: 0, failed: 0, pending: 0 },
+          review: "APPROVED",
+        },
+      ],
     ]);
   });
 
@@ -103,24 +123,43 @@ describe("parseGhPrStatusCache", () => {
 });
 
 describe("resolvePrStatus", () => {
-  const cacheFile = new Map<string, PrStatus>([[PR_LINK.url, { number: 42, state: "merged" }]]);
+  const cacheFile = new Map<string, PrStatus>([
+    [
+      PR_LINK.url,
+      {
+        number: 41,
+        state: "open",
+        url: PR_LINK.url,
+        title: "Add widgets",
+        checks: { passed: 2, failed: 0, pending: 1 },
+        review: "APPROVED",
+      },
+    ],
+  ]);
 
-  it("uses the pr-link number with the cache file state first", () => {
+  it("uses the pr-link number and url with the cache file state and details first", () => {
     expect(
-      resolvePrStatus({ prLink: PR_LINK, cacheFile, gh: { number: 42, state: "open" } }),
-    ).toStrictEqual({ number: 42, state: "merged" });
+      resolvePrStatus({ prLink: PR_LINK, cacheFile, gh: { number: 42, state: "merged" } }),
+    ).toStrictEqual({
+      number: 42,
+      state: "open",
+      url: PR_LINK.url,
+      title: "Add widgets",
+      checks: { passed: 2, failed: 0, pending: 1 },
+      review: "APPROVED",
+    });
   });
 
   it("falls back to gh when the cache file has no entry for the pr-link", () => {
     expect(
       resolvePrStatus({ prLink: PR_LINK, cacheFile: new Map(), gh: { number: 42, state: "open" } }),
-    ).toStrictEqual({ number: 42, state: "open" });
+    ).toStrictEqual({ number: 42, state: "open", url: PR_LINK.url });
   });
 
   it("keeps the pr-link number over a gh branch lookup", () => {
     expect(
       resolvePrStatus({ prLink: PR_LINK, cacheFile: new Map(), gh: { number: 7, state: "draft" } }),
-    ).toStrictEqual({ number: 42, state: "draft" });
+    ).toStrictEqual({ number: 42, state: "draft", url: PR_LINK.url });
   });
 
   it("uses gh alone without a pr-link, and nothing without any source", () => {
@@ -273,8 +312,56 @@ describe("createPrStatusService", () => {
     await service.idle();
 
     expect({ status: service.lookup(linked), calls: runGh.mock.calls.length }).toStrictEqual({
-      status: { number: 42, state: "open" },
+      status: {
+        number: 42,
+        state: "open",
+        url: PR_LINK.url,
+        title: "Add widgets",
+        checks: { passed: 0, failed: 0, pending: 0 },
+        review: null,
+      },
       calls: 0,
+    });
+  });
+
+  it("reports a change when only a cached PR's checks or review change", async () => {
+    const entry = (failed: number) =>
+      JSON.stringify({
+        [PR_LINK.url]: {
+          number: 42,
+          title: "Add widgets",
+          state: "OPEN",
+          checks: { passed: 1, failed, pending: 0 },
+          review: null,
+          additions: 0,
+          deletions: 0,
+        },
+      });
+    let cacheText = entry(0);
+    let now = NOW;
+    const onChange = vi.fn<(projectId: string) => void>();
+    const service = createPrStatusService({
+      runGh: () => Promise.resolve("{}"),
+      readCacheFile: () => Promise.resolve(cacheText),
+      now: () => now,
+      onChange,
+    });
+    const linked = { ...target, prLink: PR_LINK };
+
+    service.lookup(linked);
+    await service.idle();
+    onChange.mockClear();
+    cacheText = entry(1);
+    now += 2 * MINUTE;
+    service.lookup(linked);
+    await service.idle();
+
+    expect({
+      checks: service.lookup(linked)?.checks,
+      changed: onChange.mock.calls,
+    }).toStrictEqual({
+      checks: { passed: 1, failed: 1, pending: 0 },
+      changed: [["-repo"]],
     });
   });
 

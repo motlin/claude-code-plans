@@ -47,6 +47,7 @@ import { broadcastTyped, broadcast, addClient, removeClient } from "./sse-broadc
 import { recentlyBroadcast } from "./update-dedupe";
 import { createRecursiveWatcher, type RecursiveWatcher } from "./recursive-watch";
 import { gitIndexPath, TrackedFileIndex } from "./git-tracked";
+import { samePrStatus } from "./pr-status";
 
 /**
  * TTL covering the gap between the hook fast-path broadcast and this
@@ -165,8 +166,7 @@ function sessionSummariesEqual(a: SessionSummaryPayload, b: SessionSummaryPayloa
     a.messageCount === b.messageCount &&
     a.gitBranch === b.gitBranch &&
     a.pr?.url === b.pr?.url &&
-    a.prStatus?.number === b.prStatus?.number &&
-    a.prStatus?.state === b.prStatus?.state &&
+    samePrStatus(a.prStatus, b.prStatus) &&
     a.projectName === b.projectName &&
     a.archived === b.archived &&
     a.state === b.state &&

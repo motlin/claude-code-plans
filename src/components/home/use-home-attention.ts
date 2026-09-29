@@ -14,6 +14,7 @@ import {
   type HomeAttentionItem,
   type HomeAttentionRow,
 } from "../../lib/home-attention";
+import { selectHomePrs, type HomePrRow } from "../../lib/home-prs";
 import { usePins } from "../../lib/pin-store";
 import { toGroupRow } from "../sidebar/session-group-section";
 
@@ -33,6 +34,8 @@ function toAttentionRow(
 
 export interface HomeAttention {
   items: HomeAttentionItem<HomeAttentionRow>[];
+  /** Active PRs from the same sessions, for the Pull requests section. */
+  prs: HomePrRow[];
   rowLimit: number;
   now: number;
   onOpen: (sessionId: string) => void;
@@ -40,7 +43,7 @@ export interface HomeAttention {
 }
 
 /**
- * The home action center's Sessions rows, fed by the sidebar's recent sessions, pins and
+ * The home action center's Sessions and Pull requests rows, fed by the sidebar's recent sessions, pins and
  * dismissals; undefined until those have loaded.
  */
 export function useHomeAttention(): HomeAttention | undefined {
@@ -65,20 +68,31 @@ export function useHomeAttention(): HomeAttention | undefined {
   if (recent === undefined || dismissals === undefined) return undefined;
 
   const now = Date.now();
+  const sessions = recent.pages.flatMap((page) => page.sessions);
   const approvalTools = new Map(
     (approvals?.approvals ?? []).map((approval) => [approval.sessionId, approval.toolName]),
   );
   const items = selectHomeAttention({
-    rows: recent.pages.flatMap((page) =>
-      page.sessions.map((session) => toAttentionRow(session, approvalTools)),
-    ),
+    rows: sessions.map((session) => toAttentionRow(session, approvalTools)),
     pinnedIds: new Set(pinnedIds),
     dismissed: dismissals.dismissals,
     now,
   });
 
+  const prs = selectHomePrs(
+    sessions
+      .filter((session) => !session.archived)
+      .map((session) => ({
+        sessionId: session.id,
+        sessionTitle: session.title,
+        lastActivityAt: Date.parse(session.mtime),
+        pr: session.prStatus,
+      })),
+  );
+
   return {
     items,
+    prs,
     rowLimit,
     now,
     onOpen: (id) => void navigate({ to: "/session/$id", params: { id } }),
