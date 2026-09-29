@@ -571,6 +571,27 @@ describe("Shell tabs", () => {
   });
 });
 
+describe("Terminal pane header menu", () => {
+  it("pops the terminal out to its /herdr page with Open in new window", async () => {
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    renderSession(true);
+    act(() => screen.getByRole("button", { name: "Terminal" }).click());
+
+    fireEvent.click(screen.getByRole("button", { name: "More options" }));
+    const menu = await waitFor(() => screen.getByRole("menu"));
+    const items = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+    fireEvent.click(items.find((node) => node.textContent === "Open in new window")!);
+
+    expect({
+      items: items.map((node) => node.textContent),
+      opened: open.mock.calls,
+    }).toStrictEqual({
+      items: ["Open in new window"],
+      opened: [[`/herdr/terminal/${SESSION_ID}`, "_blank", "noopener"]],
+    });
+  });
+});
+
 describe("Claude tab lifecycle", () => {
   it("shows Session ended with a transcript link when the herdr pane closes", () => {
     const view = renderSession(true);

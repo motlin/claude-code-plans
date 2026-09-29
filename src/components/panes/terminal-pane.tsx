@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { Ellipsis, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
@@ -9,9 +9,10 @@ import { CLAUDE_TAB_ID, type CloseGuard, closeGuard } from "../../lib/terminal-t
 import { ConfirmDialog } from "../confirm-dialog";
 import { type ConnectionStatus, HerdrTerminal } from "../herdr-terminal";
 import { ShellTerminal } from "../shell-terminal";
+import { Menu, MenuContent, MenuItem, MenuTrigger } from "../ui/menu";
 import { type PaneChrome, registerPane } from "./pane-registry";
 import { GHOST_ICON_BUTTON, type TerminalTabActions, TerminalTabStrip } from "./terminal-tab-strip";
-import { usePaneHost } from "./tile-host";
+import { useOptionalPaneHost, usePaneHost } from "./tile-host";
 
 export type TerminalShortcutAction = "noop" | "open" | "focus" | "close" | "caret";
 
@@ -135,13 +136,14 @@ const PANEL_CLASS =
 
 /** The Claude tab once herdr closes the session's pane: the TUI is gone, the transcript stays. */
 function SessionEnded({ sessionId }: { sessionId: string }) {
-  const host = usePaneHost();
+  const host = useOptionalPaneHost();
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-1 p-4 text-center">
       <p className="text-body text-primary">Session ended</p>
       <a
         href={`/session/${encodeURIComponent(sessionId)}`}
         onClick={(event) => {
+          if (host === null) return;
           if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) return;
           event.preventDefault();
           host.closePane("terminal");
@@ -154,22 +156,48 @@ function SessionEnded({ sessionId }: { sessionId: string }) {
   );
 }
 
+/** The `/herdr/terminal/$sessionId` pop-out of a session's Terminal pane. */
+function terminalPopOutHref(sessionId: string): string {
+  return `/herdr/terminal/${encodeURIComponent(sessionId)}`;
+}
+
+/** Upstream's pane header menu; locally only "Open in new window" applies. */
+function PaneHeaderMenu({ sessionId }: { sessionId: string }) {
+  return (
+    <Menu>
+      <MenuTrigger aria-label="More options" title="More options" className={GHOST_ICON_BUTTON}>
+        <Ellipsis aria-hidden="true" className="size-4" />
+      </MenuTrigger>
+      <MenuContent>
+        <MenuItem onSelect={() => window.open(terminalPopOutHref(sessionId), "_blank", "noopener")}>
+          Open in new window
+        </MenuItem>
+      </MenuContent>
+    </Menu>
+  );
+}
+
 /**
  * The session Terminal pane. Upstream's tabs are plain shells, and so are
  * the **Shell** tabs here. Locally the first tab is **Claude**, the live
  * herdr pane running this session's TUI, whenever herdr has one; once herdr
  * closes that pane the tab stays behind as "Session ended".
+ *
+ * `standalone` places it outside the tile host, as the full-bleed
+ * `/herdr/terminal/$sessionId` pop-out: no Move, Expand, Close or header menu.
  */
-function TerminalPane({
+export function TerminalPane({
   sessionId,
   availability,
   claudeEnded,
   chrome,
+  standalone = false,
 }: {
   sessionId: string;
   availability: TerminalPaneAvailability;
   claudeEnded: boolean;
-  chrome: PaneChrome;
+  chrome?: PaneChrome;
+  standalone?: boolean;
 }) {
   const { livePane, interactive, shells } = availability;
   const showClaude = livePane || claudeEnded;
@@ -285,7 +313,7 @@ function TerminalPane({
         ? null
         : (shellStatuses[active] ?? "connecting");
 
-  return (
+  const surface = (
     <>
       <div className="relative flex h-8 shrink-0 items-center justify-between gap-2 px-1">
         <div className="flex min-w-0 items-center gap-1.5">
@@ -310,8 +338,13 @@ function TerminalPane({
           )}
           {activeStatus !== null && <StatusChip status={activeStatus} />}
         </div>
-        {chrome.moveHandle}
-        <div className="relative z-[1] flex shrink-0 items-center gap-0.5">{chrome.controls}</div>
+        {chrome?.moveHandle}
+        {!standalone && (
+          <div className="relative z-[1] flex shrink-0 items-center gap-0.5">
+            <PaneHeaderMenu sessionId={sessionId} />
+            {chrome?.controls}
+          </div>
+        )}
       </div>
       {error && (
         <p role="alert" className="px-3 py-1 text-caption text-danger-000">
@@ -375,6 +408,18 @@ function TerminalPane({
         onConfirm={() => pendingClose?.apply()}
       />
     </>
+  );
+
+  if (!standalone) return surface;
+  return (
+    <section
+      data-pane-kind="terminal"
+      data-terminal-standalone=""
+      aria-label="Terminal"
+      className="relative isolate flex h-full min-h-0 flex-col rounded-card bg-surface-2 shadow-panel-sm"
+    >
+      {surface}
+    </section>
   );
 }
 

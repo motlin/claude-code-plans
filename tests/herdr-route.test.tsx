@@ -11,7 +11,9 @@ import {
 } from "@tanstack/react-router";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { createElement } from "react";
-import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { herdrPanesQueryOptions } from "../src/lib/api/herdr";
+import { applicationSettingsQueryOptions } from "../src/lib/api/application-settings";
 import { herdrWorkspacesQueryOptions } from "../src/lib/api/herdr-workspaces";
 import { sessionQueryKeys } from "../src/lib/api/sessions";
 import { terminalPlacementsQueryOptions } from "../src/lib/api/terminal-placements";
@@ -21,8 +23,10 @@ import { Route as HerdrRoute } from "../src/routes/herdr.index";
 import { Route as HerdrTerminalRoute } from "../src/routes/herdr.terminal.$sessionId";
 
 vi.mock("../src/components/herdr-terminal", () => ({
-  HerdrTerminal: ({ sessionId }: { sessionId: string }) => (
-    <section aria-label="Live read-only terminal">{sessionId}</section>
+  HerdrTerminal: ({ sessionId, interactive }: { sessionId: string; interactive?: boolean }) => (
+    <section aria-label="Live read-only terminal" data-interactive={String(interactive ?? false)}>
+      {sessionId}
+    </section>
   ),
 }));
 
@@ -31,8 +35,19 @@ vi.mock("../src/lib/api/viewed-state", async (importOriginal) => ({
   updateSessionViewedState: vi.fn(),
 }));
 
+class FakeResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+beforeEach(() => {
+  vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+});
+
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   vi.mocked(updateSessionViewedState).mockReset();
   vi.restoreAllMocks();
 });
@@ -122,6 +137,52 @@ async function renderHerdrPage(placements: ReturnType<typeof placement>[]) {
   render(<RouterProvider router={router} />);
 
   return queryClient;
+}
+
+/** Seeds what the pop-out reads to pick its tabs: herdr's panes and the Shell tabs setting. */
+function seedTerminalQueries(
+  queryClient: QueryClient,
+  { livePane, writesEnabled }: { livePane: boolean; writesEnabled: boolean },
+) {
+  queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {
+    panes: livePane
+      ? [placement({ active: true, agentStatus: "idle", number: 100 }).herdrPane]
+      : [],
+    writesEnabled,
+  });
+  queryClient.setQueryData(applicationSettingsQueryOptions.queryKey, {
+    herdrWritesEnabled: writesEnabled,
+    shellPaneEnabled: false,
+    visibleNavSections: [],
+    ignoredDirs: ["node_modules"],
+  });
+}
+
+async function renderTerminalPage({
+  livePane = true,
+  writesEnabled = false,
+}: { livePane?: boolean; writesEnabled?: boolean } = {}) {
+  const HerdrTerminalPage = HerdrTerminalRoute.options.component;
+  if (!HerdrTerminalPage) throw new Error("Expected the Herdr terminal route component");
+  vi.spyOn(HerdrTerminalRoute, "useParams").mockReturnValue({
+    sessionId: "session-test-100",
+  });
+
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  seedTerminalQueries(queryClient, { livePane, writesEnabled });
+  const rootRoute = createRootRoute({
+    component: () => (
+      <QueryClientProvider client={queryClient}>
+        {createElement(HerdrTerminalPage)}
+      </QueryClientProvider>
+    ),
+  });
+  const router = createRouter({
+    routeTree: rootRoute,
+    history: createMemoryHistory({ initialEntries: ["/herdr/terminal/session-test-100"] }),
+  });
+  await router.load();
+  render(<RouterProvider router={router} />);
 }
 
 function routeMeta(route: typeof HerdrRoute | typeof HerdrTerminalRoute) {
@@ -530,20 +591,7 @@ describe("HerdrPage", () => {
   });
 
   it("uses Herdr for the live terminal breadcrumb and route metadata", async () => {
-    const HerdrTerminalPage = HerdrTerminalRoute.options.component;
-    if (!HerdrTerminalPage) throw new Error("Expected the Herdr terminal route component");
-    vi.spyOn(HerdrTerminalRoute, "useParams").mockReturnValue({
-      sessionId: "session-test-100",
-    });
-
-    const rootRoute = createRootRoute({ component: HerdrTerminalPage });
-    const router = createRouter({
-      routeTree: rootRoute,
-      history: createMemoryHistory({ initialEntries: ["/herdr/terminal/session-test-100"] }),
-    });
-    await router.load();
-
-    render(<RouterProvider router={router} />);
+    await renderTerminalPage();
 
     const breadcrumb = screen.getByRole("link", { name: "Herdr" });
     expect({
@@ -570,24 +618,8 @@ describe("HerdrPage", () => {
  * finished session must not offer a terminal link that lands on an error page.
  */
 describe("session and live terminal two-way navigation", () => {
-  async function renderWithRouter(element: React.ReactNode, path: string) {
-    const rootRoute = createRootRoute({ component: () => element });
-    const router = createRouter({
-      routeTree: rootRoute,
-      history: createMemoryHistory({ initialEntries: [path] }),
-    });
-    await router.load();
-    render(<RouterProvider router={router} />);
-  }
-
   it("links the live terminal page back to the same session's transcript", async () => {
-    const HerdrTerminalPage = HerdrTerminalRoute.options.component;
-    if (!HerdrTerminalPage) throw new Error("Expected the Herdr terminal route component");
-    vi.spyOn(HerdrTerminalRoute, "useParams").mockReturnValue({
-      sessionId: "session-test-100",
-    });
-
-    await renderWithRouter(createElement(HerdrTerminalPage), "/herdr/terminal/session-test-100");
+    await renderTerminalPage();
 
     const transcriptLink = screen.getByRole("link", {
       name: "Open session transcript for session-test-100",
@@ -598,6 +630,56 @@ describe("session and live terminal two-way navigation", () => {
     }).toStrictEqual({
       href: "/session/session-test-100",
       title: "Open session transcript for session-test-100",
+    });
+  });
+});
+
+/**
+ * The route is a pop-out of the session's Terminal pane (upstream's "Open in
+ * new window"): one `TerminalPane`, placed full-bleed without the tile host's
+ * Move, Expand, Close or header menu.
+ */
+describe("Herdr terminal pop-out", () => {
+  it("renders the Terminal pane standalone with its Claude tab", async () => {
+    await renderTerminalPage({ writesEnabled: true });
+
+    const pane = document.querySelector<HTMLElement>('[data-pane-kind="terminal"]');
+    expect({
+      standalone: pane?.getAttribute("data-terminal-standalone"),
+      label: pane?.getAttribute("aria-label"),
+      tabs: screen.getAllByRole("tab").map((tab) => ({
+        name: tab.textContent,
+        selected: tab.getAttribute("aria-selected"),
+      })),
+      terminal: {
+        text: screen.getByRole("region", { name: "Live read-only terminal" }).textContent,
+        interactive: screen
+          .getByRole("region", { name: "Live read-only terminal" })
+          .getAttribute("data-interactive"),
+      },
+      hostChrome: ["Move", "Expand", "Close", "More options"].filter(
+        (name) => screen.queryByRole("button", { name }) !== null,
+      ),
+    }).toStrictEqual({
+      standalone: "",
+      label: "Terminal",
+      tabs: [{ name: "Claude", selected: "true" }],
+      terminal: { text: "session-test-100", interactive: "true" },
+      hostChrome: [],
+    });
+  });
+
+  it("shows Session ended when herdr no longer has the session's pane", async () => {
+    await renderTerminalPage({ livePane: false });
+
+    expect({
+      text: screen.getByRole("tabpanel", { name: "Claude terminal" }).textContent,
+      link: screen.getByRole("link", { name: "View transcript" }).getAttribute("href"),
+      terminal: screen.queryByRole("region", { name: "Live read-only terminal" }),
+    }).toStrictEqual({
+      text: "Session endedView transcript",
+      link: "/session/session-test-100",
+      terminal: null,
     });
   });
 });
@@ -622,6 +704,7 @@ describe("Herdr master-detail layout", () => {
       placements: [placement({ active: false, agentStatus: "idle", number: 100 })],
       writesEnabled: true,
     });
+    seedTerminalQueries(queryClient, { livePane: true, writesEnabled: false });
     queryClient.setQueryData(herdrWorkspacesQueryOptions.queryKey, {
       workspaces: [
         {
@@ -725,12 +808,16 @@ describe("Herdr master-detail layout", () => {
         .getByRole("link", { name: "Open live terminal for Terminal 100 in workspace kalshi" })
         .getAttribute("aria-current"),
       heading: screen.getByRole("heading", { level: 1 }).textContent,
+      standalonePane: document
+        .querySelector('[data-pane-kind="terminal"]')
+        ?.getAttribute("data-terminal-standalone"),
       terminal: screen.getByRole("region", { name: "Live read-only terminal" }).textContent,
       flatList: screen.queryByText("1 tracked Claude sessions"),
     }).toStrictEqual({
       rail: "Herdr workspaces",
       selectedRailLink: "page",
       heading: "Live terminal",
+      standalonePane: "",
       terminal: "session-test-100",
       flatList: null,
     });
