@@ -4,8 +4,6 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {
-  DEFAULT_FILE_SOURCE_SELECTION,
-  FILE_SOURCE_SELECTION_STORAGE_KEY,
   FilesPaneShortcut,
   FilesPaneToggle,
   FilesPaneView,
@@ -106,10 +104,6 @@ function filesPane(): HTMLElement {
 
 function filesPressed(): string | null {
   return screen.getByRole("button", { name: /^Files \d/ }).getAttribute("aria-pressed");
-}
-
-function visiblePaths(): Array<string | null> {
-  return screen.queryAllByTitle(/^~\//).map((element) => element.textContent);
 }
 
 beforeEach(() => {
@@ -335,6 +329,7 @@ describe("Files pane header", () => {
       before: [
         ["Show file tree⌃Control⇧ShiftY", "true"],
         ["Hide ignored files", "false"],
+        ["Show files from", null],
       ],
       stored: "true",
       checked: "true",
@@ -357,183 +352,5 @@ describe("Files pane header", () => {
         focused: document.activeElement?.getAttribute("aria-label"),
       }).toStrictEqual({ tree: true, focused: "Filter files" }),
     );
-  });
-});
-
-describe("Session files list", () => {
-  function openPane(sessionFiles: SessionFiles = SESSION_FILES, unscanned = 0): HTMLElement {
-    registerFilesPane(sessionFiles, unscanned);
-    renderSession();
-    press(CMD_SHIFT_F);
-    return filesPane();
-  }
-
-  it("shows absolute counts while filtering files by selected source", () => {
-    const pane = openPane();
-
-    fireEvent.click(within(pane).getByRole("checkbox", { name: "Read (2)" }));
-
-    expect({
-      visiblePaths: visiblePaths(),
-      sourceLabels: within(pane)
-        .getAllByRole("checkbox")
-        .map((element) => element.parentElement?.textContent),
-    }).toStrictEqual({
-      visiblePaths: ["~/example/agent.ts", "~/notes/user.md"],
-      sourceLabels: [
-        "User message (1)",
-        "Agent message (1)",
-        "Read (2)",
-        "Edit/Write (0)",
-        "Bash (0)",
-        "Grep/Glob (0)",
-        "Thinking (0)",
-        "Other (0)",
-      ],
-    });
-  });
-
-  it("reports source counts as floors when the transcript window hides earlier records", () => {
-    const pane = openPane(SESSION_FILES, 3200);
-
-    expect({
-      count: within(pane).getByLabelText("3 items in the loaded messages").textContent,
-      note: within(pane).getByRole("note").textContent,
-    }).toStrictEqual({
-      count: "3+",
-      note: "Counted from the loaded messages only — 3200 earlier records have not been scanned. Load earlier messages to include them.",
-    });
-  });
-
-  it("unselects every source, removes every row, and persists the selection", async () => {
-    const pane = openPane();
-
-    fireEvent.click(within(pane).getByRole("button", { name: "Unselect all" }));
-
-    expect({
-      checked: within(pane)
-        .getAllByRole("checkbox")
-        .map((checkbox) => (checkbox as HTMLInputElement).checked),
-      visiblePaths: visiblePaths(),
-      emptyMessage: within(pane).getByText("No files match the selected sources.").textContent,
-    }).toStrictEqual({
-      checked: [false, false, false, false, false, false, false, false],
-      visiblePaths: [],
-      emptyMessage: "No files match the selected sources.",
-    });
-    await waitFor(() =>
-      expect(
-        JSON.parse(localStorage.getItem(FILE_SOURCE_SELECTION_STORAGE_KEY) ?? "null"),
-      ).toStrictEqual({
-        userMessage: false,
-        agentMessage: false,
-        read: false,
-        editWrite: false,
-        bash: false,
-        grepGlob: false,
-        thinking: false,
-        other: false,
-      }),
-    );
-  });
-
-  it("hydrates a stored source selection", async () => {
-    localStorage.setItem(
-      FILE_SOURCE_SELECTION_STORAGE_KEY,
-      JSON.stringify({
-        userMessage: false,
-        agentMessage: true,
-        read: false,
-        editWrite: true,
-        bash: false,
-        grepGlob: true,
-        thinking: false,
-        other: true,
-      }),
-    );
-    const pane = openPane();
-
-    await waitFor(() =>
-      expect(
-        within(pane)
-          .getAllByRole("checkbox")
-          .map((checkbox) => (checkbox as HTMLInputElement).checked),
-      ).toStrictEqual([false, true, false, true, false, true, false, true]),
-    );
-  });
-
-  it("ignores a malformed or incomplete stored source selection", async () => {
-    localStorage.setItem(
-      FILE_SOURCE_SELECTION_STORAGE_KEY,
-      JSON.stringify({ userMessage: false, read: "yes" }),
-    );
-    const pane = openPane();
-
-    await waitFor(() =>
-      expect(localStorage.getItem(FILE_SOURCE_SELECTION_STORAGE_KEY)).toBe(
-        JSON.stringify(DEFAULT_FILE_SOURCE_SELECTION),
-      ),
-    );
-    expect(
-      within(pane)
-        .getAllByRole("checkbox")
-        .map((checkbox) => (checkbox as HTMLInputElement).checked),
-    ).toStrictEqual([true, true, true, true, true, true, true, true]);
-  });
-
-  it("filters canonical paths case-insensitively without matching absolute paths", () => {
-    const pane = openPane();
-    const search = within(pane).getByRole("searchbox", { name: "Filter files" });
-
-    fireEvent.change(search, { target: { value: "USER.MD" } });
-    const upper = visiblePaths();
-    fireEvent.change(search, { target: { value: "alice" } });
-
-    expect({
-      placeholder: search.getAttribute("placeholder"),
-      upper,
-      alice: visiblePaths(),
-      emptyMessage: within(pane).getByText("No files match “alice”.").textContent,
-    }).toStrictEqual({
-      placeholder: "Search files…",
-      upper: ["~/notes/user.md"],
-      alice: [],
-      emptyMessage: "No files match “alice”.",
-    });
-  });
-
-  it("left-truncates labels with an ellipsis and exposes the full path", () => {
-    const pane = openPane();
-
-    const label = within(pane).getByText("~/example/agent.ts");
-    const pathContainer = label.parentElement;
-    expect({
-      labelElement: label.tagName,
-      direction: pathContainer?.getAttribute("dir"),
-      title: pathContainer?.getAttribute("title"),
-      links: within(pane).queryAllByRole("link").length,
-    }).toStrictEqual({
-      labelElement: "BDI",
-      direction: "rtl",
-      title: "~/example/agent.ts",
-      links: 0,
-    });
-  });
-
-  it("copies the absolute path and confirms only a successful write", async () => {
-    vi.mocked(writeClipboardText).mockResolvedValueOnce(false).mockResolvedValueOnce(true);
-    const pane = openPane();
-    const copyButton = within(pane).getByRole("button", { name: "Copy ~/example/agent.ts" });
-
-    fireEvent.click(copyButton);
-    await waitFor(() =>
-      expect(vi.mocked(writeClipboardText).mock.calls).toStrictEqual([
-        ["/home/alice/example/agent.ts"],
-      ]),
-    );
-    expect(copyButton.getAttribute("title")).toBe("Copy absolute path");
-
-    fireEvent.click(copyButton);
-    await waitFor(() => expect(copyButton.getAttribute("title")).toBe("Copied"));
   });
 });

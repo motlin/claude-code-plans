@@ -1,19 +1,36 @@
 import { useQuery } from "@tanstack/react-query";
 import { EllipsisVertical, Files as FilesIcon, Folder, PanelLeft, Search } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 
 import { useShortcut, useShortcutKeys } from "../../hooks/use-shortcut";
+import { sessionFilesQueryOptions } from "../../lib/api/session-files";
 import { sessionResourcesQueryOptions } from "../../lib/api/sessions";
 import { formatResourceCount, resourceCoverageNote } from "../../lib/session-resources";
 import type { SessionFiles } from "../../lib/session-files";
 import { pillStyles } from "../detail-top-bar";
+import { FilePaneViewer } from "../files/file-pane-viewer";
 import { FilesTree, FilesTreeColumn } from "../files/files-tree";
 import { JumpTargetProvider, type JumpTargetWindow } from "../jump-target-context";
 import { useSettings } from "../settings-provider";
-import { Menu, MenuCheckboxItem, MenuContent, MenuTrigger } from "../ui/menu";
+import {
+  Menu,
+  MenuCheckboxItem,
+  MenuContent,
+  MenuItem,
+  MenuSeparator,
+  MenuSub,
+  MenuSubContent,
+  MenuSubTrigger,
+  MenuTrigger,
+} from "../ui/menu";
 import { Tooltip } from "../ui/tooltip";
 import { type PaneChrome, registerPane } from "./pane-registry";
-import { SessionFilesList } from "./session-files-list";
+import {
+  FILE_SOURCE_OPTIONS,
+  type FileSourceSelection,
+  SessionFilesList,
+  useFileSourceSelection,
+} from "./session-files-list";
 import { usePaneHost } from "./tile-host";
 
 export {
@@ -77,12 +94,21 @@ function TreeToggle({ shown, onToggle }: { shown: boolean; onToggle: () => void 
   );
 }
 
+interface FileSourcesMenuProps {
+  counts: SessionFiles["counts"];
+  sourceSelection: FileSourceSelection;
+  onSourceSelectedChange: (source: keyof FileSourceSelection, selected: boolean) => void;
+  onUnselectAll: () => void;
+}
+
 function FilesSettingsMenu({
   treeShown,
   onTreeShownChange,
+  sources,
 }: {
   treeShown: boolean;
   onTreeShownChange: (shown: boolean) => void;
+  sources: FileSourcesMenuProps;
 }) {
   const treeKeys = useShortcutKeys("toggle_changes_file_list");
   const { settings, setSetting } = useSettings();
@@ -105,6 +131,23 @@ function FilesSettingsMenu({
         >
           Hide ignored files
         </MenuCheckboxItem>
+        <MenuSeparator />
+        <MenuSub>
+          <MenuSubTrigger>Show files from</MenuSubTrigger>
+          <MenuSubContent>
+            {FILE_SOURCE_OPTIONS.map((option) => (
+              <MenuCheckboxItem
+                key={option.key}
+                checked={sources.sourceSelection[option.key]}
+                onCheckedChange={(checked) => sources.onSourceSelectedChange(option.key, checked)}
+              >
+                {option.label} ({sources.counts[option.key]})
+              </MenuCheckboxItem>
+            ))}
+            <MenuSeparator />
+            <MenuItem onSelect={sources.onUnselectAll}>Unselect all</MenuItem>
+          </MenuSubContent>
+        </MenuSub>
       </MenuContent>
     </Menu>
   );
@@ -123,6 +166,97 @@ function FilesEmpty({ hasTree, tabCount }: { hasTree: boolean; tabCount: number 
   );
 }
 
+type FilesListMode = "workspace" | "session";
+
+const FILES_LIST_MODES: ReadonlyArray<{ mode: FilesListMode; label: string }> = [
+  { mode: "workspace", label: "Workspace" },
+  { mode: "session", label: "Session" },
+];
+
+function FilesModeSwitch({
+  mode,
+  onModeChange,
+}: {
+  mode: FilesListMode;
+  onModeChange: (mode: FilesListMode) => void;
+}) {
+  return (
+    <div className="shrink-0 px-2 pt-1.5">
+      <div
+        role="radiogroup"
+        aria-label="File list"
+        className="flex h-6 items-center gap-0.5 rounded-r5 bg-fill-control p-0.5"
+      >
+        {FILES_LIST_MODES.map((option) => (
+          <button
+            key={option.mode}
+            type="button"
+            role="radio"
+            aria-checked={mode === option.mode}
+            onClick={() => onModeChange(option.mode)}
+            className="flex h-5 flex-1 cursor-pointer items-center justify-center rounded-r3 text-footnote text-secondary transition-colors hover:text-primary aria-checked:bg-surface-0 aria-checked:text-primary aria-checked:shadow-sm"
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+interface WorkspaceOrSessionListProps {
+  sessionId: string;
+  mode: FilesListMode;
+  onModeChange: (mode: FilesListMode) => void;
+  query: string;
+  onQueryChange: (query: string) => void;
+  filterRef: RefObject<HTMLInputElement | null>;
+  sessionList: ReactNode;
+}
+
+/**
+ * The tree column with a working directory to list: a Workspace | Session
+ * switch over the workspace tree or the session's files. A session without a
+ * working directory only has the Session list.
+ */
+function WorkspaceOrSessionList({
+  sessionId,
+  mode,
+  onModeChange,
+  query,
+  onQueryChange,
+  filterRef,
+  sessionList,
+}: WorkspaceOrSessionListProps) {
+  const { settings } = useSettings();
+  // Same key as the tree's root listing, so this shares its request.
+  const root = useQuery(
+    sessionFilesQueryOptions(sessionId, {
+      dir: "",
+      query: "",
+      hideIgnored: settings.filesHideIgnored,
+    }),
+  );
+  if (root.data?.kind === "no-cwd") return sessionList;
+  return (
+    <>
+      <FilesModeSwitch mode={mode} onModeChange={onModeChange} />
+      <div className="min-h-0 flex-1">
+        {mode === "session" ? (
+          sessionList
+        ) : (
+          <FilesTree
+            sessionId={sessionId}
+            filterRef={filterRef}
+            query={query}
+            onQueryChange={onQueryChange}
+          />
+        )}
+      </div>
+    </>
+  );
+}
+
 interface FilesPaneViewProps {
   chrome: PaneChrome;
   /**
@@ -131,6 +265,8 @@ interface FilesPaneViewProps {
    * session touched.
    */
   sessionId?: string;
+  /** The session's working directory; Session rows are shown relative to it. */
+  cwd?: string;
   sessionFiles: SessionFiles;
   /** JSONL records before the loaded window, which extraction never saw. */
   unscannedRecordCount: number;
@@ -144,18 +280,29 @@ interface FilesPaneViewProps {
 export function FilesPaneView({
   chrome,
   sessionId,
+  cwd,
   sessionFiles,
   unscannedRecordCount,
 }: FilesPaneViewProps) {
   const host = usePaneHost();
   const [treeShown, setTreeShown] = useState(true);
   const [focusRequest, setFocusRequest] = useState(0);
+  const [mode, setMode] = useState<FilesListMode>("workspace");
+  const [query, setQuery] = useState("");
+  const [openPath, setOpenPath] = useState<string | null>(null);
   const filterRef = useRef<HTMLInputElement>(null);
+  const { sourceSelection, setSourceSelected, unselectAllSources } = useFileSourceSelection();
   const sessionFilesList = (
     <SessionFilesList
       sessionFiles={sessionFiles}
       unscannedRecordCount={unscannedRecordCount}
+      sourceSelection={sourceSelection}
+      cwd={cwd}
+      query={query}
+      onQueryChange={setQuery}
       filterRef={filterRef}
+      openPath={openPath}
+      onOpenFile={setOpenPath}
     />
   );
 
@@ -208,7 +355,16 @@ export function FilesPaneView({
               <Search aria-hidden="true" className="size-4" />
             </button>
           </Tooltip>
-          <FilesSettingsMenu treeShown={treeShown} onTreeShownChange={setTreeShown} />
+          <FilesSettingsMenu
+            treeShown={treeShown}
+            onTreeShownChange={setTreeShown}
+            sources={{
+              counts: sessionFiles.counts,
+              sourceSelection,
+              onSourceSelectedChange: setSourceSelected,
+              onUnselectAll: unselectAllSources,
+            }}
+          />
           {chrome.controls}
         </div>
       </div>
@@ -218,16 +374,24 @@ export function FilesPaneView({
             {sessionId === undefined ? (
               sessionFilesList
             ) : (
-              <FilesTree
+              <WorkspaceOrSessionList
                 sessionId={sessionId}
+                mode={mode}
+                onModeChange={setMode}
+                query={query}
+                onQueryChange={setQuery}
                 filterRef={filterRef}
-                noCwdFallback={sessionFilesList}
+                sessionList={sessionFilesList}
               />
             )}
           </FilesTreeColumn>
         )}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <FilesEmpty hasTree={treeShown} tabCount={0} />
+          {openPath === null ? (
+            <FilesEmpty hasTree={treeShown} tabCount={0} />
+          ) : (
+            <FilePaneViewer path={openPath} />
+          )}
         </div>
       </div>
     </>
@@ -236,6 +400,8 @@ export function FilesPaneView({
 
 interface FilesPaneProps {
   sessionId: string;
+  /** The session's working directory, when known. */
+  cwd: string | undefined;
   chrome: PaneChrome;
   /** Extraction over the loaded transcript window, used until the full-session scan lands. */
   windowFiles: SessionFiles;
@@ -246,6 +412,7 @@ interface FilesPaneProps {
 
 function FilesPane({
   sessionId,
+  cwd,
   chrome,
   windowFiles,
   windowStartIndex,
@@ -259,6 +426,7 @@ function FilesPane({
       <FilesPaneView
         chrome={chrome}
         sessionId={sessionId}
+        {...(cwd === undefined ? {} : { cwd })}
         sessionFiles={resources?.files ?? windowFiles}
         unscannedRecordCount={resources === undefined ? windowStartIndex : 0}
       />
@@ -269,6 +437,7 @@ function FilesPane({
 /** Registers the `files` pane kind for this session while mounted. */
 export function useRegisterFilesPane({
   sessionId,
+  cwd,
   windowFiles,
   windowStartIndex,
   jumpTargetWindow,
@@ -281,6 +450,7 @@ export function useRegisterFilesPane({
         render: (chrome) => (
           <FilesPane
             sessionId={sessionId}
+            cwd={cwd}
             chrome={chrome}
             windowFiles={windowFiles}
             windowStartIndex={windowStartIndex}
@@ -288,7 +458,7 @@ export function useRegisterFilesPane({
           />
         ),
       }),
-    [sessionId, windowFiles, windowStartIndex, jumpTargetWindow],
+    [sessionId, cwd, windowFiles, windowStartIndex, jumpTargetWindow],
   );
 }
 

@@ -470,6 +470,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
   );
   useRegisterFilesPane({
     sessionId,
+    cwd: data.projectPath ?? undefined,
     windowFiles,
     windowStartIndex: transcript.startIndex,
     jumpTargetWindow,

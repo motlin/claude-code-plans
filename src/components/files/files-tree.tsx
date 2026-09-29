@@ -123,6 +123,9 @@ interface FilesTreeProps {
   onOpenFile?: (relPath: string, options: OpenFileOptions) => void;
   /** Shown instead of the "No working directory" state when the session has no `cwd`. */
   noCwdFallback?: ReactNode;
+  /** Controls the filter from outside, so the Files pane can keep it across modes. */
+  query?: string;
+  onQueryChange?: (query: string) => void;
 }
 
 /**
@@ -130,9 +133,18 @@ interface FilesTreeProps {
  * one folder of the working directory. Clicking a folder drills in by setting
  * the filter to "folder/"; typing fuzzy-searches paths inside that folder.
  */
-export function FilesTree({ sessionId, filterRef, onOpenFile, noCwdFallback }: FilesTreeProps) {
+export function FilesTree({
+  sessionId,
+  filterRef,
+  onOpenFile,
+  noCwdFallback,
+  query: controlledQuery,
+  onQueryChange,
+}: FilesTreeProps) {
   const { settings } = useSettings();
-  const [query, setQuery] = useState("");
+  const [localQuery, setLocalQuery] = useState("");
+  const query = controlledQuery ?? localQuery;
+  const setQuery = onQueryChange ?? setLocalQuery;
   const debouncedQuery = useDebouncedValue(query, QUERY_DEBOUNCE_MS);
   const localInputRef = useRef<HTMLInputElement>(null);
   const inputRef = filterRef ?? localInputRef;
