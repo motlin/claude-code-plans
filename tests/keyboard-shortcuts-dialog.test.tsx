@@ -133,6 +133,8 @@ describe("KeyboardShortcutsDialog", () => {
         "Open session PR",
         "Fork session",
         "Transcript view",
+        "Jump to previous prompt",
+        "Jump to next prompt",
         "Toggle changes",
         "Toggle file list in changes or files",
         "Go to file in changes",

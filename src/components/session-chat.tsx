@@ -78,6 +78,7 @@ import type { SummarySegment } from "../lib/session-utils";
 import { failedDescriptionLabel, toolLabel } from "../lib/tool-labels";
 import { InlinePathImages, SESSION_IMAGE_CLASS_NAME } from "./inline-path-images";
 import { findScrollContainer } from "./transcript-history-loader";
+import { usePromptJump } from "../hooks/use-prompt-jump";
 import { CHAT_COLUMN_CLASS } from "../lib/transcript-width";
 import {
   jumpToMessage,
@@ -737,7 +738,22 @@ interface SessionListEntry {
   key: string;
   startRecordIndex: number;
   endRecordIndex: number;
+  /** A user prompt, a stop for ⌥⌘↑ / ⌥⌘↓. */
+  isPrompt: boolean;
   element: React.ReactNode;
+}
+
+const PROMPT_KINDS: ReadonlySet<UserContentKind> = new Set(["text", "command", "bash"]);
+
+function isPromptLine(line: SessionLine): boolean {
+  return line.type === "user" && PROMPT_KINDS.has(classifyUserContent(line));
+}
+
+/** Height of the sticky session header that covers the top of the scroller. */
+function stickyHeaderInset(scroller: Element): number {
+  return (
+    scroller.querySelector("[data-transcript-sticky-header]")?.getBoundingClientRect().height ?? 0
+  );
 }
 
 interface VirtualRange {
@@ -808,6 +824,7 @@ function buildSessionListEntries(
     entries.push({
       key: "session-init",
       startRecordIndex: lines[initIndices[0]!]!.lineIndex,
+      isPrompt: false,
       element: (
         <SessionInitEntry
           key="session-init"
@@ -858,6 +875,7 @@ function buildSessionListEntries(
         entries.push({
           key: `line-${line.lineIndex}`,
           startRecordIndex: line.lineIndex,
+          isPrompt: false,
           element: (
             <LineEntry
               line={line}
@@ -875,6 +893,7 @@ function buildSessionListEntries(
         entries.push({
           key: `group-${line.lineIndex}`,
           startRecordIndex: line.lineIndex,
+          isPrompt: false,
           element: (
             <>
               <GroupedToolCallEntry entries={groupLines} {...renderProps} />
@@ -901,6 +920,7 @@ function buildSessionListEntries(
     entries.push({
       key: `line-${line.lineIndex}`,
       startRecordIndex: line.lineIndex,
+      isPrompt: isPromptLine(line),
       element: (
         <LineEntry
           line={line}
@@ -1062,6 +1082,34 @@ function VirtualizedSessionEntries({
     });
     return () => cancelAnimationFrame(frame);
   }, [entries, jumpVersion, prefixHeights, range.endIndex, range.startIndex, updateVisibleRange]);
+
+  const promptIndices = useMemo(
+    () => entries.flatMap((entry, index) => (entry.isPrompt ? [index] : [])),
+    [entries],
+  );
+  usePromptJump({
+    promptIndices,
+    entryOffset: (index) => prefixHeights[index]!,
+    viewportOffset: () => {
+      const list = listRef.current;
+      const scroller = scrollerRef.current;
+      if (!list || !scroller) return 0;
+      const viewport = scrollerViewport(scroller);
+      return viewport.top + stickyHeaderInset(scroller) - list.getBoundingClientRect().top;
+    },
+    scrollToEntry: (index) => {
+      const list = listRef.current;
+      const scroller = scrollerRef.current;
+      if (!list || !scroller) return;
+      const viewport = scrollerViewport(scroller);
+      const listOffset = list.getBoundingClientRect().top - viewport.top + scroller.scrollTop;
+      scroller.scrollTop = Math.max(
+        0,
+        listOffset + prefixHeights[index]! - stickyHeaderInset(scroller),
+      );
+      updateVisibleRange();
+    },
+  });
 
   const startIndex = Math.min(range.startIndex, entries.length);
   const endIndex = Math.max(startIndex, Math.min(range.endIndex, entries.length));

@@ -519,7 +519,10 @@ function SessionView({
         <ChangesPaneShortcut />
         {/* Sticky header: titlebar + hook context */}
         {!chromeHidden && (
-          <div className="sticky top-0 z-10 bg-surface-2 pb-1 -mx-4 px-4 sm:-mx-8 sm:px-8 border-b border-border">
+          <div
+            data-transcript-sticky-header
+            className="sticky top-0 z-10 bg-surface-2 pb-1 -mx-4 px-4 sm:-mx-8 sm:px-8 border-b border-border"
+          >
             <SessionTitlebar
               sessionId={sessionId}
               data={data}

@@ -177,6 +177,20 @@ export const SHORTCUTS = {
     ownerSlug: "transcript-view",
     enabled: true,
   },
+  jump_prev_prompt: {
+    description: "Jump to previous prompt",
+    group: "general",
+    bindings: macAndNonMac("arrowup", ["cmd", "alt"], ["alt"], "ArrowUp"),
+    ownerSlug: "prompt-jump",
+    enabled: true,
+  },
+  jump_next_prompt: {
+    description: "Jump to next prompt",
+    group: "general",
+    bindings: macAndNonMac("arrowdown", ["cmd", "alt"], ["alt"], "ArrowDown"),
+    ownerSlug: "prompt-jump",
+    enabled: true,
+  },
   focus_next_region: {
     description: "Focus next region",
     group: "general",

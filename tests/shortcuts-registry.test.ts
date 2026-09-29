@@ -15,8 +15,8 @@ function chord(binding: Binding): string {
 }
 
 describe("shortcut registry", () => {
-  it("lists all 34 upstream web entries", () => {
-    expect(SHORTCUT_IDS).toHaveLength(34);
+  it("lists all 36 upstream web entries", () => {
+    expect(SHORTCUT_IDS).toHaveLength(36);
   });
 
   it.each(SHORTCUT_IDS)("%s has mac and non-mac bindings", (id) => {
@@ -70,6 +70,8 @@ describe("shortcut registry", () => {
       "open_session_pr",
       "fork_session",
       "transcript_view",
+      "jump_prev_prompt",
+      "jump_next_prompt",
       "focus_next_region",
       "focus_previous_region",
       "toggle_changes",
@@ -99,6 +101,24 @@ describe("shortcut registry", () => {
         { key: "f6", code: "F6", modifiers: ["ctrl"], platform: "non-mac" },
       ],
       previous: [{ key: "f6", code: "F6", modifiers: ["shift"] }],
+    });
+  });
+
+  it("binds ⌥⌘↑ / ⌥⌘↓ on mac and Alt+↑ / Alt+↓ elsewhere", () => {
+    expect({
+      prevMac: bindingsFor("jump_prev_prompt", true),
+      prevNonMac: bindingsFor("jump_prev_prompt", false),
+      nextMac: bindingsFor("jump_next_prompt", true),
+      nextNonMac: bindingsFor("jump_next_prompt", false),
+    }).toStrictEqual({
+      prevMac: [{ key: "arrowup", code: "ArrowUp", modifiers: ["cmd", "alt"], platform: "mac" }],
+      prevNonMac: [{ key: "arrowup", code: "ArrowUp", modifiers: ["alt"], platform: "non-mac" }],
+      nextMac: [
+        { key: "arrowdown", code: "ArrowDown", modifiers: ["cmd", "alt"], platform: "mac" },
+      ],
+      nextNonMac: [
+        { key: "arrowdown", code: "ArrowDown", modifiers: ["alt"], platform: "non-mac" },
+      ],
     });
   });
 
