@@ -65,6 +65,7 @@ describe("shortcut registry", () => {
       "rename_session",
       "archive_session",
       "copy_session_link",
+      "transcript_view",
       "toggle_changes",
       "toggle_changes_file_list",
       "go_to_file_in_changes",

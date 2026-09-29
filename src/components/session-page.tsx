@@ -21,7 +21,7 @@ import { ActiveSubagents } from "./active-subagents";
 import { SessionHookContext } from "./session-hook-context";
 import { DetailTopBar, pillStyles } from "./detail-top-bar";
 import { useSettings } from "./settings-provider";
-import { useSessionTranscriptMode } from "../hooks/use-session-transcript-mode";
+import { useTranscriptModeShortcut } from "../hooks/use-session-transcript-mode";
 import { sessionHasThinking } from "../lib/transcript-mode";
 import { SessionReviewedToggle } from "./session-reviewed-toggle";
 import { SessionTitleHeading } from "./session-title-heading";
@@ -428,7 +428,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
     [transcript.records, transcript.startIndex],
   );
   const hasThinking = useMemo(() => sessionHasThinking(processed.lines), [processed.lines]);
-  const { flags: transcriptFlags } = useSessionTranscriptMode(sessionId, { hasThinking });
+  const { flags: transcriptFlags } = useTranscriptModeShortcut(sessionId, { hasThinking });
   // `uuidToLine` is the set of messages the window holds, which is how a jump
   // decides whether to scroll or to page history in first.
   const requestMessageJump = usePendingMessageJump(

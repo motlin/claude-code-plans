@@ -166,9 +166,9 @@ export const SHORTCUTS = {
   transcript_view: {
     description: "Transcript view",
     group: "general",
-    bindings: ctrlEverywhere("o"),
+    bindings: ctrlEverywhere("o", [], letterCode("o")),
     ownerSlug: "transcript-view",
-    enabled: false,
+    enabled: true,
   },
   stop_response: {
     description: "Stop Claude's response",

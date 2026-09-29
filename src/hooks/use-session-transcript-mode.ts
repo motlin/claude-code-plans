@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { useShortcut } from "./use-shortcut";
 import { VERBOSITY_PRESETS, type Settings, useSettings } from "../components/settings-provider";
 import {
   type TranscriptMode,
@@ -59,7 +60,7 @@ export interface SessionTranscriptMode {
  * The transcript view for one session: its own override if it has one, else the global
  * verbosity default. `flags` are meant for SessionChat only; other surfaces keep the globals.
  */
-export function useSessionTranscriptMode(
+function useSessionTranscriptMode(
   sessionId: string,
   { hasThinking = true }: { hasThinking?: boolean } = {},
 ): SessionTranscriptMode {
@@ -93,4 +94,21 @@ export function useSessionTranscriptMode(
   );
 
   return { mode, isDefault: mode === defaultMode, flags, setMode, cycle };
+}
+
+/**
+ * `useSessionTranscriptMode` plus ⌃O, which cycles this session's mode. It fires from the
+ * composer too and prevents the default, since Ctrl+O is "open file" on Windows and Linux.
+ */
+export function useTranscriptModeShortcut(
+  sessionId: string,
+  options: { hasThinking?: boolean } = {},
+): SessionTranscriptMode {
+  const transcriptMode = useSessionTranscriptMode(sessionId, options);
+  useShortcut("transcript_view", (event) => {
+    if (event.isComposing) return false;
+    transcriptMode.cycle();
+    return true;
+  });
+  return transcriptMode;
 }
