@@ -38,8 +38,11 @@ describe("persisted application settings", () => {
         herdr_writes_enabled: true,
         show_herdr_section: true,
         show_tmux_section: false,
+        visible_nav_sections: ["herdr", "plans"],
         ignored_dirs: ["node_modules"],
       }).success,
+      AppConfigSchema.safeParse({ visible_nav_sections: ["sessions"] }).success,
+      AppConfigSchema.safeParse({ visible_nav_sections: ["plans", "plans"] }).success,
       AppConfigSchema.safeParse({ herdr_writes_enabled: "1" }).success,
       AppConfigSchema.safeParse({ show_herdr_section: "true" }).success,
       AppConfigSchema.safeParse({ show_tmux_section: 1 }).success,
@@ -47,7 +50,7 @@ describe("persisted application settings", () => {
       AppConfigSchema.safeParse({ ignored_dirs: [""] }).success,
       AppConfigSchema.safeParse({ ignored_dirs: [] }).success,
       AppConfigSchema.safeParse({ unknown_policy: true }).success,
-    ]).toStrictEqual([true, false, false, false, false, false, false, false]);
+    ]).toStrictEqual([true, false, false, false, false, false, false, false, false, false]);
   });
 
   it("strips the legacy watcher polling key while parsing persisted config", async () => {
@@ -69,8 +72,7 @@ describe("persisted application settings", () => {
       }).toStrictEqual({
         settings: {
           herdrWritesEnabled: false,
-          showHerdrSection: true,
-          showTmuxSection: false,
+          visibleNavSections: ["plans", "memories", "plugins"],
           ignoredDirs: [...DEFAULT_IGNORED_DIR_NAMES],
         },
         herdrWritesEnabled: false,
@@ -79,6 +81,48 @@ describe("persisted application settings", () => {
       delete process.env["CCP_ENABLE_HERDR_WRITES"];
       delete process.env["CCP_WATCHER_IGNORED_DIRS"];
     }
+  });
+
+  it("migrates the retired Herdr and Tmux flags into the pinned nav sections", async () => {
+    await writeFile(
+      configPath,
+      JSON.stringify({ show_herdr_section: true, show_tmux_section: true }),
+    );
+
+    expect(readApplicationSettings(configPath).visibleNavSections).toStrictEqual([
+      "herdr",
+      "tmux",
+      "plans",
+      "memories",
+      "plugins",
+    ]);
+  });
+
+  it("prefers saved nav sections over the retired flags", async () => {
+    await writeFile(
+      configPath,
+      JSON.stringify({ show_herdr_section: true, visible_nav_sections: ["setup"] }),
+    );
+
+    expect(readApplicationSettings(configPath).visibleNavSections).toStrictEqual(["setup"]);
+  });
+
+  it("drops the retired flags on the next save", async () => {
+    await writeFile(
+      configPath,
+      JSON.stringify({ show_herdr_section: true, show_tmux_section: false }),
+    );
+
+    await updateApplicationSettings(
+      { ...readApplicationSettings(configPath), visibleNavSections: ["herdr", "plans"] },
+      configPath,
+    );
+
+    expect(JSON.parse(await readFile(configPath, "utf8"))).toStrictEqual({
+      herdr_writes_enabled: false,
+      ignored_dirs: [...DEFAULT_IGNORED_DIR_NAMES],
+      visible_nav_sections: ["herdr", "plans"],
+    });
   });
 
   it("sorts ignored directories while atomically preserving unrelated config fields", async () => {
@@ -94,8 +138,7 @@ describe("persisted application settings", () => {
     const saved = await updateApplicationSettings(
       {
         herdrWritesEnabled: true,
-        showHerdrSection: false,
-        showTmuxSection: true,
+        visibleNavSections: ["tmux", "plans"],
         ignoredDirs: ["vendor", "output"],
       },
       configPath,
@@ -108,8 +151,7 @@ describe("persisted application settings", () => {
     }).toStrictEqual({
       saved: {
         herdrWritesEnabled: true,
-        showHerdrSection: false,
-        showTmuxSection: true,
+        visibleNavSections: ["tmux", "plans"],
         ignoredDirs: ["output", "vendor"],
       },
       file: {
@@ -117,8 +159,7 @@ describe("persisted application settings", () => {
         file_roots: ["/tmp/files"],
         ignored_dirs: ["output", "vendor"],
         herdr_writes_enabled: true,
-        show_herdr_section: false,
-        show_tmux_section: true,
+        visible_nav_sections: ["tmux", "plans"],
       },
       temporaryFiles: ["config.json"],
     });
@@ -132,8 +173,7 @@ describe("persisted application settings", () => {
       updateApplicationSettings(
         {
           herdrWritesEnabled: true,
-          showHerdrSection: true,
-          showTmuxSection: false,
+          visibleNavSections: ["plans"],
           ignoredDirs: ["node_modules"],
         },
         configPath,
@@ -149,8 +189,7 @@ describe("persisted application settings", () => {
       headers: { "Content-Type": "application/json", Origin: "http://127.0.0.1:7526" },
       body: JSON.stringify({
         herdrWritesEnabled: true,
-        showHerdrSection: false,
-        showTmuxSection: true,
+        visibleNavSections: ["tmux", "plans"],
         ignoredDirs: ["node_modules", "build"],
       }),
     });
@@ -168,23 +207,20 @@ describe("persisted application settings", () => {
       savedStatus: 200,
       saved: {
         herdrWritesEnabled: true,
-        showHerdrSection: false,
-        showTmuxSection: true,
+        visibleNavSections: ["tmux", "plans"],
         ignoredDirs: ["build", "node_modules"],
       },
       readStatus: 200,
       read: {
         herdrWritesEnabled: true,
-        showHerdrSection: false,
-        showTmuxSection: true,
+        visibleNavSections: ["tmux", "plans"],
         ignoredDirs: ["build", "node_modules"],
       },
       persisted: {
         image_roots: ["/tmp/images"],
         ignored_dirs: ["build", "node_modules"],
         herdr_writes_enabled: true,
-        show_herdr_section: false,
-        show_tmux_section: true,
+        visible_nav_sections: ["tmux", "plans"],
       },
     });
   });
@@ -197,8 +233,7 @@ describe("persisted application settings", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           herdrWritesEnabled: "yes",
-          showHerdrSection: true,
-          showTmuxSection: false,
+          visibleNavSections: ["plans"],
           ignoredDirs: [],
         }),
       }),

@@ -24,6 +24,7 @@ import {
   GroupedSessionsResponse,
 } from "../src/lib/api/sessions";
 import { installLocalStorage } from "./fake-storage";
+import { NAV_SECTIONS } from "../src/lib/nav-sections";
 
 function session(id: string, title: string, project: string, mtime: string) {
   return {
@@ -83,8 +84,7 @@ function seedQueryClient(): QueryClient {
   );
   queryClient.setQueryData(applicationSettingsQueryOptions.queryKey, {
     herdrWritesEnabled: false,
-    showHerdrSection: false,
-    showTmuxSection: false,
+    visibleNavSections: NAV_SECTIONS.filter((section) => section !== "herdr" && section !== "tmux"),
     ignoredDirs: ["node_modules"],
   });
   return queryClient;

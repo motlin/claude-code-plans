@@ -4,6 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import type { Section } from "./types";
 import { useActiveSection, useCollapsedGroups, useExpandedGroups } from "./hooks";
+import { MoreNavMenu, type NavBadge } from "./more-menu";
 import { useVisibleNavItems } from "./navigation";
 import { NavScroll } from "./nav-scroll";
 import { SidebarFooter } from "./sidebar-footer";
@@ -43,7 +44,11 @@ export function Sidebar({
   const matches = useMatches();
   const currentPath = matches[matches.length - 1]?.fullPath ?? "/";
   const { section: activeSection, activeItemId } = useActiveSection(matches);
-  const navigationItems = useVisibleNavItems();
+  const {
+    pinned: navigationItems,
+    overflow: overflowItems,
+    visibleNavSections,
+  } = useVisibleNavItems();
   const [collapsedSections, setCollapsedSections] = useState<Set<Section>>(
     () => new Set(navigationItems.map((item) => item.section)),
   );
@@ -63,6 +68,15 @@ export function Sidebar({
     activeSessionsQueryOptions(settings.activeTimeoutSec * 1000),
   );
   const activeCount = activeSessions?.length ?? 0;
+
+  function badgeFor(section: Section): NavBadge | null {
+    if (section === "active") return { count: activeCount, title: `${activeCount} active` };
+    if (section === "approvals") {
+      return { count: approvalsCount, title: `${approvalsCount} awaiting approval` };
+    }
+    if (section === "notifications") return { count: unreadCount, title: `${unreadCount} unread` };
+    return null;
+  }
 
   useEffect(() => {
     if (!currentPath.startsWith("/notifications") || unreadCount === 0) return;
@@ -116,14 +130,7 @@ export function Sidebar({
                 : currentPath.startsWith(item.to);
             const Icon = item.icon;
             const isExpanded = !collapsedSections.has(item.section);
-            const badge =
-              item.section === "active"
-                ? { count: activeCount, title: `${activeCount} active` }
-                : item.section === "approvals"
-                  ? { count: approvalsCount, title: `${approvalsCount} awaiting approval` }
-                  : item.section === "notifications"
-                    ? { count: unreadCount, title: `${unreadCount} unread` }
-                    : null;
+            const badge = badgeFor(item.section);
             return (
               <div key={item.to} className="flex items-center">
                 <button
@@ -162,6 +169,11 @@ export function Sidebar({
               </div>
             );
           })}
+          <MoreNavMenu
+            overflow={overflowItems}
+            visibleNavSections={visibleNavSections}
+            badgeFor={badgeFor}
+          />
           <div className="h-1 shrink-0" />
         </div>
         <NavScroll>

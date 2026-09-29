@@ -1,6 +1,7 @@
 import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getVisibleNavItems } from "./sidebar/navigation";
+import { DEFAULT_VISIBLE_NAV_SECTIONS } from "../lib/nav-sections";
+import { getVisibleNavItems, navItems } from "./sidebar/navigation";
 
 const CONTENT_PLACEHOLDER_WIDTHS = ["w-1/3", "w-full", "w-5/6", "w-2/3", "w-3/4", "w-1/2"];
 
@@ -59,7 +60,7 @@ export function AppShellFallback() {
         </div>
 
         <div className="flex-1 px-2">
-          {getVisibleNavItems().map((item) => {
+          {getVisibleNavItems(navItems, DEFAULT_VISIBLE_NAV_SECTIONS).pinned.map((item) => {
             const Icon = item.icon;
             return (
               <div key={item.to} className="flex items-center">

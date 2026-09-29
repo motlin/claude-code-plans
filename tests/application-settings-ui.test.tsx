@@ -10,12 +10,11 @@ describe("application settings controls", () => {
     vi.unstubAllGlobals();
   });
 
-  it("persists navigation, Herdr, and watcher exclusions through the server API", async () => {
+  it("persists Herdr input and watcher exclusions through the server API", async () => {
     const requests: Array<{ method: string; body: unknown }> = [];
     let settings = {
       herdrWritesEnabled: false,
-      showHerdrSection: true,
-      showTmuxSection: false,
+      visibleNavSections: ["herdr", "plans", "memories", "plugins"],
       ignoredDirs: ["node_modules", "dist"],
     };
     const fetcher = vi.fn<typeof fetch>(async (_input, init) => {
@@ -38,36 +37,26 @@ describe("application settings controls", () => {
       </QueryClientProvider>,
     );
 
-    const herdrSectionToggle = await screen.findByRole("switch", { name: "Herdr section" });
-    const tmuxSectionToggle = screen.getByRole("switch", { name: "Tmux section" });
-    const herdrInputToggle = screen.getByRole("switch", { name: "Live Herdr input" });
+    const herdrInputToggle = await screen.findByRole("switch", { name: "Live Herdr input" });
     const ignoredDirectories = screen.getByRole("textbox", {
       name: "Ignored watcher directories",
     }) as HTMLTextAreaElement;
     expect({
-      checked: {
-        herdrSection: herdrSectionToggle.getAttribute("aria-checked"),
-        tmuxSection: tmuxSectionToggle.getAttribute("aria-checked"),
-        herdrInput: herdrInputToggle.getAttribute("aria-checked"),
-      },
+      herdrInput: herdrInputToggle.getAttribute("aria-checked"),
+      sectionToggles: screen.queryAllByRole("switch", { name: /section$/ }),
       immediate: screen.getByText(/Applies immediately without a server restart/).textContent,
       pollingToggle: screen.queryByRole("switch", { name: "Polling file watcher" }),
       restartNotices: screen.getAllByText(/Restart the server/).length,
       ignoredDirectories: ignoredDirectories.value,
     }).toStrictEqual({
-      checked: { herdrSection: "true", tmuxSection: "false", herdrInput: "false" },
+      herdrInput: "false",
+      sectionToggles: [],
       immediate:
         "Allow prompts, interrupts, and state reports for live Herdr terminals. Applies immediately without a server restart.",
       pollingToggle: null,
       restartNotices: 1,
       ignoredDirectories: "dist\nnode_modules",
     });
-
-    fireEvent.click(tmuxSectionToggle);
-    await waitFor(() => expect(tmuxSectionToggle.getAttribute("aria-checked")).toBe("true"));
-
-    fireEvent.click(herdrSectionToggle);
-    await waitFor(() => expect(herdrSectionToggle.getAttribute("aria-checked")).toBe("false"));
 
     fireEvent.click(herdrInputToggle);
     await waitFor(() => expect(herdrInputToggle.getAttribute("aria-checked")).toBe("true"));
@@ -76,25 +65,15 @@ describe("application settings controls", () => {
       target: { value: "node_modules\ncustom-cache" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Save ignored directories" }));
-    await waitFor(() => expect(requests).toHaveLength(4));
+    await waitFor(() => expect(requests).toHaveLength(2));
     await waitFor(() => expect(ignoredDirectories.value).toBe("custom-cache\nnode_modules"));
 
     expect(requests).toStrictEqual([
       {
         method: "PUT",
         body: {
-          herdrWritesEnabled: false,
-          showHerdrSection: true,
-          showTmuxSection: true,
-          ignoredDirs: ["dist", "node_modules"],
-        },
-      },
-      {
-        method: "PUT",
-        body: {
-          herdrWritesEnabled: false,
-          showHerdrSection: false,
-          showTmuxSection: true,
+          herdrWritesEnabled: true,
+          visibleNavSections: ["herdr", "plans", "memories", "plugins"],
           ignoredDirs: ["dist", "node_modules"],
         },
       },
@@ -102,17 +81,7 @@ describe("application settings controls", () => {
         method: "PUT",
         body: {
           herdrWritesEnabled: true,
-          showHerdrSection: false,
-          showTmuxSection: true,
-          ignoredDirs: ["dist", "node_modules"],
-        },
-      },
-      {
-        method: "PUT",
-        body: {
-          herdrWritesEnabled: true,
-          showHerdrSection: false,
-          showTmuxSection: true,
+          visibleNavSections: ["herdr", "plans", "memories", "plugins"],
           ignoredDirs: ["custom-cache", "node_modules"],
         },
       },

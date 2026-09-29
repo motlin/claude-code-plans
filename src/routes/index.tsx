@@ -9,7 +9,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
-  const cards = useVisibleNavItems();
+  const cards = useVisibleNavItems().pinned;
 
   return (
     <div>

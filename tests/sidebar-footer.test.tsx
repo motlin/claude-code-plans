@@ -19,6 +19,7 @@ import { localUserQueryOptions } from "../src/lib/api/local-user";
 import { notificationsQueryOptions } from "../src/lib/api/notifications";
 import { activeSessionsQueryOptions } from "../src/lib/api/sessions";
 import { installLocalStorage } from "./fake-storage";
+import { NAV_SECTIONS } from "../src/lib/nav-sections";
 
 function seedQueryClient(username: string | null): QueryClient {
   const queryClient = new QueryClient({
@@ -34,8 +35,7 @@ function seedQueryClient(username: string | null): QueryClient {
   );
   queryClient.setQueryData(applicationSettingsQueryOptions.queryKey, {
     herdrWritesEnabled: false,
-    showHerdrSection: false,
-    showTmuxSection: false,
+    visibleNavSections: NAV_SECTIONS.filter((section) => section !== "herdr" && section !== "tmux"),
     ignoredDirs: ["node_modules"],
   });
   queryClient.setQueryData(localUserQueryOptions.queryKey, { username });

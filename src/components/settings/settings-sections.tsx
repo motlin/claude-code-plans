@@ -437,22 +437,6 @@ export function ApplicationConfigurationSection() {
   return (
     <SettingsSection title="Application">
       <ApplicationToggleRow
-        label="Herdr section"
-        description="Show Herdr in the sidebar and home page."
-        checked={settings.showHerdrSection}
-        disabled={saveSettings.isPending}
-        onToggle={() => save({ ...settings, showHerdrSection: !settings.showHerdrSection })}
-      />
-
-      <ApplicationToggleRow
-        label="Tmux section"
-        description="Show Tmux Windows in the sidebar and home page."
-        checked={settings.showTmuxSection}
-        disabled={saveSettings.isPending}
-        onToggle={() => save({ ...settings, showTmuxSection: !settings.showTmuxSection })}
-      />
-
-      <ApplicationToggleRow
         label="Live Herdr input"
         description="Allow prompts, interrupts, and state reports for live Herdr terminals. Applies immediately without a server restart."
         checked={settings.herdrWritesEnabled}

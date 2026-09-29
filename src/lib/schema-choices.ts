@@ -5,6 +5,7 @@ import type { SearchModeSchema } from "./api/search";
 import type { SessionSummaryStateSchema } from "./api/sessions";
 import type { SourceFileResponse } from "./api/source";
 import type { HookEvent, ToolUseUnion } from "./hook-events";
+import type { NavSection } from "./nav-sections";
 import type { Direction, LayoutNode, PaneKind, TileId } from "./pane-layout";
 import type {
   AttachmentPayloadSchema,
@@ -400,6 +401,24 @@ export const settingsTabLabels = {
   setup: "Setup",
 } satisfies Record<SettingsTab, string>;
 
+/** Sidebar sections toggleable in the Edit sidebar dialog, in nav order. */
+const navSectionLabels = {
+  active: "Active",
+  herdr: "Herdr",
+  tmux: "Tmux Windows",
+  approvals: "Approvals",
+  notifications: "Notifications",
+  starred: "Starred",
+  tasks: "Tasks",
+  projects: "Projects",
+  plans: "Plans",
+  memories: "Memories",
+  plugins: "Plugins",
+  settings: "Settings",
+  config: "Claude Config",
+  setup: "Setup",
+} satisfies Record<NavSection, string>;
+
 const toolNamesWithMcp = { ...toolNames, "mcp__*": true } as const;
 
 /** Maps walker path keys (see tests/schema-choices.test.ts) to choice maps. */
@@ -439,4 +458,5 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   "PaneLayoutStateSchema.root.children[].<tile>.tileId": tileIdLabels,
   "PaneLayoutStateSchema.root.direction": paneStackDirectionLabels,
   SettingsTabSchema: settingsTabLabels,
+  NavSectionSchema: navSectionLabels,
 };

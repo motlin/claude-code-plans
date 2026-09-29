@@ -18,6 +18,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { applicationSettingsQueryOptions } from "../../lib/api/application-settings";
+import { DEFAULT_VISIBLE_NAV_SECTIONS, type NavSection } from "../../lib/nav-sections";
 import type { Section } from "./types";
 
 interface NavEntry {
@@ -131,35 +132,33 @@ export const navItems = (Object.keys(navEntries) as Section[]).map((section) => 
   ...(navEntries[section] as NavEntry),
 }));
 
-interface NavigationVisibilitySettings {
-  showHerdrSection: boolean;
-  showTmuxSection: boolean;
-}
+export type NavItem = (typeof navItems)[number];
 
-const DEFAULT_NAVIGATION_VISIBILITY = {
-  showHerdrSection: true,
-  showTmuxSection: false,
-} satisfies NavigationVisibilitySettings;
-
-export function getVisibleNavItems(
-  settings: NavigationVisibilitySettings = DEFAULT_NAVIGATION_VISIBILITY,
-) {
-  return navItems.filter(
-    (item) =>
-      (item.section !== "herdr" || settings.showHerdrSection) &&
-      (item.section !== "tmux" || settings.showTmuxSection),
-  );
+/**
+ * Split the nav into sidebar rows and the More ▸ overflow, both in nav order. The session list is
+ * always pinned because it is not toggleable.
+ */
+export function getVisibleNavItems<T extends { section: Section }>(
+  all: readonly T[],
+  visible: readonly NavSection[],
+): { pinned: T[]; overflow: T[] } {
+  const visibleSet = new Set<Section>(visible);
+  const pinned: T[] = [];
+  const overflow: T[] = [];
+  for (const item of all) {
+    if (item.section === "sessions" || visibleSet.has(item.section)) pinned.push(item);
+    else overflow.push(item);
+  }
+  return { pinned, overflow };
 }
 
 export function useVisibleNavItems() {
   const applicationSettings = useQuery(applicationSettingsQueryOptions);
-  const showHerdrSection =
-    applicationSettings.data?.showHerdrSection ?? DEFAULT_NAVIGATION_VISIBILITY.showHerdrSection;
-  const showTmuxSection =
-    applicationSettings.data?.showTmuxSection ?? DEFAULT_NAVIGATION_VISIBILITY.showTmuxSection;
+  const visibleNavSections =
+    applicationSettings.data?.visibleNavSections ?? DEFAULT_VISIBLE_NAV_SECTIONS;
 
   return useMemo(
-    () => getVisibleNavItems({ showHerdrSection, showTmuxSection }),
-    [showHerdrSection, showTmuxSection],
+    () => ({ ...getVisibleNavItems(navItems, visibleNavSections), visibleNavSections }),
+    [visibleNavSections],
   );
 }

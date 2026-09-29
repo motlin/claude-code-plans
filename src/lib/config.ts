@@ -7,6 +7,7 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { listFileSearchProjectPathsFromDb } from "./db/queries";
 import type * as schema from "./db/schema";
 import { isGitRepository } from "./git-tracked";
+import { migrateLegacyNavFlags, VisibleNavSectionsSchema } from "./nav-sections";
 
 /**
  * Directory holding this application's own configuration. Follows the XDG
@@ -43,7 +44,11 @@ const AppConfigObjectSchema = z
       .optional(),
     /** Permit ccp to send input and state updates to live Herdr panes. */
     herdr_writes_enabled: z.boolean().optional(),
+    /** Sidebar sections pinned outside the More ▸ menu, in nav order. */
+    visible_nav_sections: VisibleNavSectionsSchema.optional(),
+    /** Retired by `visible_nav_sections`; read only to migrate, dropped on the next save. */
     show_herdr_section: z.boolean().optional(),
+    /** Retired by `visible_nav_sections`; read only to migrate, dropped on the next save. */
     show_tmux_section: z.boolean().optional(),
   })
   .strict();
@@ -99,8 +104,6 @@ export function readConfig(configPath: string = getConfigPath()): AppConfig | nu
  */
 const DEFAULT_APPLICATION_POLICY = {
   herdrWritesEnabled: false,
-  showHerdrSection: true,
-  showTmuxSection: false,
 } as const;
 
 export const DEFAULT_IGNORED_DIR_NAMES = [
@@ -123,8 +126,7 @@ export const DEFAULT_IGNORED_DIR_NAMES = [
 export const ApplicationSettingsSchema = z
   .object({
     herdrWritesEnabled: z.boolean(),
-    showHerdrSection: z.boolean(),
-    showTmuxSection: z.boolean(),
+    visibleNavSections: VisibleNavSectionsSchema,
     ignoredDirs: z.array(z.string().trim().min(1)).min(1),
   })
   .strict();
@@ -136,8 +138,12 @@ export function readApplicationSettings(configPath: string = getConfigPath()): A
   return {
     herdrWritesEnabled:
       config?.herdr_writes_enabled ?? DEFAULT_APPLICATION_POLICY.herdrWritesEnabled,
-    showHerdrSection: config?.show_herdr_section ?? DEFAULT_APPLICATION_POLICY.showHerdrSection,
-    showTmuxSection: config?.show_tmux_section ?? DEFAULT_APPLICATION_POLICY.showTmuxSection,
+    visibleNavSections:
+      config?.visible_nav_sections ??
+      migrateLegacyNavFlags({
+        showHerdrSection: config?.show_herdr_section,
+        showTmuxSection: config?.show_tmux_section,
+      }),
     ignoredDirs: config?.ignored_dirs ?? [...DEFAULT_IGNORED_DIR_NAMES],
   };
 }
@@ -193,8 +199,9 @@ export async function updateApplicationSettings(
   await updateConfig(
     {
       herdr_writes_enabled: parsed.herdrWritesEnabled,
-      show_herdr_section: parsed.showHerdrSection,
-      show_tmux_section: parsed.showTmuxSection,
+      visible_nav_sections: parsed.visibleNavSections,
+      show_herdr_section: undefined,
+      show_tmux_section: undefined,
       ignored_dirs: ignoredDirs,
     },
     configPath,

@@ -16,8 +16,7 @@ import { Route as HomeRoute } from "../src/routes/index";
 
 const DEFAULT_APPLICATION_SETTINGS = {
   herdrWritesEnabled: false,
-  showHerdrSection: true,
-  showTmuxSection: false,
+  visibleNavSections: ["herdr", "plans", "memories", "plugins"],
   ignoredDirs: ["node_modules"],
 };
 
@@ -88,7 +87,7 @@ describe("home grid", () => {
       act(() => {
         queryClient.setQueryData(["application-settings"], {
           ...DEFAULT_APPLICATION_SETTINGS,
-          showTmuxSection: true,
+          visibleNavSections: ["herdr", "tmux", "plans", "memories", "plugins"],
         });
       });
       await waitFor(() =>
@@ -101,8 +100,7 @@ describe("home grid", () => {
       act(() => {
         queryClient.setQueryData(["application-settings"], {
           ...DEFAULT_APPLICATION_SETTINGS,
-          showHerdrSection: false,
-          showTmuxSection: true,
+          visibleNavSections: ["tmux", "plans", "memories", "plugins"],
         });
       });
       await waitFor(() =>
