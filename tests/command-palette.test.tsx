@@ -15,6 +15,7 @@ import { CommandPalette, PALETTE_RECENT_LIMIT } from "../src/components/command-
 import { ToastProvider } from "../src/components/toast";
 import { useCommandPalette } from "../src/hooks/use-command-palette";
 import { recentSessionsQueryOptions } from "../src/lib/api/sessions";
+import { saveRecents, type RecentEntry } from "../src/lib/recents-history";
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 
@@ -50,6 +51,8 @@ function Harness() {
   );
 }
 
+let currentRouter: { state: { location: { pathname: string } } } | null = null;
+
 async function renderPalette(
   sessions = [recentSession("sess-1", "Refactor auth module")],
   initialPath = "/",
@@ -79,6 +82,7 @@ async function renderPalette(
     history: createMemoryHistory({ initialEntries: [initialPath] }),
   });
   await router.load();
+  currentRouter = router;
   render(<RouterProvider router={router} />);
   const composer = await screen.findByRole("textbox", { name: "Composer" });
   composer.focus();
@@ -375,5 +379,132 @@ describe("CommandPalette shell", () => {
       starred: within(dialog).queryByRole("option", { name: "Starred" }),
       pinned: pinned.textContent,
     }).toStrictEqual({ starred: null, pinned: "Pinned" });
+  });
+});
+
+describe("CommandPalette Recents from the per-tab visit MRU", () => {
+  beforeEach(() => {
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
+    vi.stubGlobal("fetch", () => new Promise(() => {}));
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    Element.prototype.scrollIntoView = () => {};
+    window.sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    window.sessionStorage.clear();
+  });
+
+  function entry(kind: RecentEntry["kind"], id: string, href: string, title?: string): RecentEntry {
+    return title === undefined
+      ? { key: `${kind}:${id}`, kind, href }
+      : { key: `${kind}:${id}`, kind, href, title };
+  }
+
+  function recentsGroup(dialog: HTMLElement): Array<{ value: string; label: string }> {
+    const group = [...dialog.querySelectorAll("[cmdk-group]")].find(
+      (candidate) => candidate.querySelector("[cmdk-group-heading]")?.textContent === "Recents",
+    );
+    return [...(group?.querySelectorAll<HTMLElement>("[cmdk-item]") ?? [])].map((item) => ({
+      value: item.dataset["value"] ?? "",
+      label: item.querySelector("[data-palette-label]")?.textContent ?? "",
+    }));
+  }
+
+  it("lists visited pages of every kind in MRU order, skipping the current page and subagents", async () => {
+    saveRecents([
+      entry("session", "s-current", "/session/s-current", "Current page"),
+      entry("plan", "big-plan", "/plan/big-plan", "Big plan"),
+      entry("subagents", "s-current", "/session/s-current/subagents", "Subagents"),
+      entry("memory", "proj/notes", "/memory/proj/notes", "Notes"),
+      entry("project", "proj", "/project/proj", "proj"),
+      entry("command", "user/deploy", "/command/user/deploy", "deploy"),
+      entry("session", "s-2", "/session/s-2", "Visited session"),
+    ]);
+    const dialog = await openPalette(
+      [recentSession("s-9", "Newest by mtime"), recentSession("s-2", "Renamed session")],
+      "/session/s-current",
+    );
+
+    await within(dialog).findByRole("option", { name: /Big plan/ });
+    expect(recentsGroup(dialog)).toStrictEqual([
+      { value: "recent:plan:big-plan", label: "Big plan" },
+      { value: "recent:memory:proj/notes", label: "Notes" },
+      { value: "recent:project:proj", label: "proj" },
+      { value: "recent:command:user/deploy", label: "deploy" },
+      { value: "session:s-2", label: "Renamed session" },
+    ]);
+  });
+
+  it("caps Needs attention plus Recents at the organic total of 7, without repeating attention sessions", async () => {
+    saveRecents([
+      entry("session", "s-blocked", "/session/s-blocked", "Blocked one"),
+      ...Array.from({ length: 8 }, (_, index) =>
+        entry("plan", `plan-${index}`, `/plan/plan-${index}`, `Plan ${index}`),
+      ),
+    ]);
+    const dialog = await openPalette([
+      recentSession("s-blocked", "Blocked one", "blocked"),
+      recentSession("s-review", "Review one", "review"),
+    ]);
+
+    await within(dialog).findByRole("option", { name: /Plan 0/ });
+    expect(groupLabels(dialog).slice(0, 2)).toStrictEqual([
+      ["Needs attention", ["Blocked one Awaiting input", "Review one Needs review"]],
+      ["Recents", ["Plan 0", "Plan 1", "Plan 2", "Plan 3", "Plan 4"]],
+    ]);
+  });
+
+  it("labels an untitled visit Untitled", async () => {
+    saveRecents([entry("plan", "no-title", "/plan/no-title")]);
+    const dialog = await openPalette();
+
+    await within(dialog).findByRole("option", { name: /Untitled/ });
+    expect(recentsGroup(dialog)).toStrictEqual([
+      { value: "recent:plan:no-title", label: "Untitled" },
+    ]);
+  });
+
+  it("falls back to mtime-ordered sessions when the MRU is empty", async () => {
+    const dialog = await openPalette([
+      recentSession("s-1", "Newest"),
+      recentSession("s-2", "Older"),
+    ]);
+
+    await within(dialog).findByRole("option", { name: /Newest/ });
+    expect(recentsGroup(dialog)).toStrictEqual([
+      { value: "session:s-1", label: "Newest" },
+      { value: "session:s-2", label: "Older" },
+    ]);
+  });
+
+  it("falls back to mtime-ordered sessions when the MRU holds only the current page", async () => {
+    saveRecents([entry("session", "s-current", "/session/s-current", "Current page")]);
+    const dialog = await openPalette(
+      [recentSession("s-current", "Current page"), recentSession("s-1", "Newest")],
+      "/session/s-current",
+    );
+
+    await within(dialog).findByRole("option", { name: /Newest/ });
+    expect(recentsGroup(dialog)).toStrictEqual([{ value: "session:s-1", label: "Newest" }]);
+  });
+
+  it("navigates to a recent page on select", async () => {
+    saveRecents([entry("plan", "big-plan", "/plan/big-plan", "Big plan")]);
+    const dialog = await openPalette();
+
+    fireEvent.click(await within(dialog).findByRole("option", { name: /Big plan/ }));
+
+    await waitFor(() => expect(currentRouter?.state.location.pathname).toBe("/plan/big-plan"));
   });
 });

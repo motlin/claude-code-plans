@@ -39,6 +39,7 @@ import {
   Code,
   Archive,
   ArchiveRestore,
+  SquareSlash,
 } from "lucide-react";
 import { useActiveSessionsIfAvailable } from "../hooks/use-claude-events";
 import type { PaletteMode } from "../hooks/use-command-palette";
@@ -78,6 +79,7 @@ import {
   type StartProject,
 } from "../lib/palette-start-session";
 import { pin, unpin, usePins } from "../lib/pin-store";
+import { loadRecents, routeToRecent, type RecentEntry } from "../lib/recents-history";
 import { paletteFilterLabels, paletteTypeLabels } from "../lib/schema-choices";
 import { relativeBucket, titleMatches, type Snippet, type TextMatch } from "../lib/search-text";
 import { createSessionCommands } from "../lib/session-commands";
@@ -268,22 +270,78 @@ function isAttentionBucket(bucket: SessionBucket): bucket is AttentionBucket {
   return bucket === "blocked" || bucket === "review";
 }
 
-/** Split the recent feed into upstream's empty-state groups, dropping the session on screen. */
-function paletteSessionGroups(
+/** A Recents row: a visited page from the per-tab MRU, or an mtime-ordered session fallback. */
+type PaletteRecent =
+  | { kind: "session"; id: string; title: string }
+  | { kind: "page"; entry: PalettePageEntry; title: string };
+
+type PalettePageKind = "plan" | "memory" | "project" | "command";
+type PalettePageEntry = RecentEntry & { kind: PalettePageKind };
+
+const PAGE_ICONS = {
+  plan: <FileText />,
+  memory: <Brain />,
+  project: <FolderOpen />,
+  command: <SquareSlash />,
+} as const satisfies Record<PalettePageKind, ReactNode>;
+
+function isPageEntry(entry: RecentEntry): entry is PalettePageEntry {
+  return entry.kind in PAGE_ICONS;
+}
+
+/** The visited pages Recents shows: sessions and page kinds, not subagent lists or the page on screen. */
+function mruRecents(
+  history: readonly RecentEntry[],
+  currentKey: string | undefined,
+  sessionTitles: ReadonlyMap<string, string>,
+  attentionIds: ReadonlySet<string>,
+): PaletteRecent[] {
+  const recents: PaletteRecent[] = [];
+  for (const entry of history) {
+    if (entry.key === currentKey) continue;
+    if (entry.kind === "session") {
+      const id = entry.key.slice("session:".length);
+      if (attentionIds.has(id)) continue;
+      recents.push({
+        kind: "session",
+        id,
+        title: sessionTitles.get(id) ?? entry.title ?? "Untitled",
+      });
+    } else if (isPageEntry(entry)) {
+      recents.push({ kind: "page", entry, title: entry.title ?? "Untitled" });
+    }
+  }
+  return recents;
+}
+
+/**
+ * Split into upstream's empty-state groups, dropping the page on screen. Recents follow the per-tab
+ * visit MRU, falling back to mtime-ordered sessions until the tab has visited anything else.
+ */
+function paletteGroups(
   sessions: readonly SessionListItem[],
+  history: readonly RecentEntry[],
+  currentKey: string | undefined,
   currentSessionId: string | undefined,
-): { attention: AttentionSession[]; recents: PaletteSession[] } {
+): { attention: AttentionSession[]; recents: PaletteRecent[] } {
   const attention: AttentionSession[] = [];
-  const recents: PaletteSession[] = [];
+  const fallback: PaletteRecent[] = [];
   for (const session of sessions) {
     if (session.id === currentSessionId) continue;
     if (isAttentionBucket(session.bucket)) {
       attention.push({ id: session.id, title: session.title, bucket: session.bucket });
     } else {
-      recents.push({ id: session.id, title: session.title });
+      fallback.push({ kind: "session", id: session.id, title: session.title });
     }
   }
   const cappedAttention = attention.slice(0, ORGANIC_LIMIT);
+  const visited = mruRecents(
+    history,
+    currentKey,
+    new Map(sessions.map((session) => [session.id, session.title])),
+    new Set(attention.map((session) => session.id)),
+  );
+  const recents = visited.length > 0 ? visited : fallback;
   return {
     attention: cappedAttention,
     recents: recents.slice(0, ORGANIC_LIMIT - cappedAttention.length),
@@ -477,9 +535,13 @@ function PalettePopup({
   // Rename hands focus to the page title, so closing must not pull it back to the old element.
   const restoreFocusRef = useRef(true);
 
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  // Read once per open: the popup mounts only while the palette is open.
+  const [history] = useState(loadRecents);
   const { attention, recents } = useMemo(
-    () => paletteSessionGroups(data?.sessions ?? [], currentSessionId),
-    [data, currentSessionId],
+    () =>
+      paletteGroups(data?.sessions ?? [], history, routeToRecent(pathname)?.key, currentSessionId),
+    [data, history, pathname, currentSessionId],
   );
 
   const trimmedQuery = query.trim();
@@ -979,18 +1041,29 @@ function PalettePopup({
 
                 {recents.length > 0 && (
                   <Command.Group heading="Recents" className={GROUP_CLASS}>
-                    {recents.map((session) => (
-                      <SessionRowActions key={session.id} onOpen={() => openRowActions(session.id)}>
+                    {recents.map((recent) =>
+                      recent.kind === "session" ? (
+                        <SessionRowActions key={recent.id} onOpen={() => openRowActions(recent.id)}>
+                          <CommandItem
+                            icon={<MessageSquare />}
+                            value={`session:${recent.id}`}
+                            onSelect={() => select(() => openSession(recent.id))}
+                            rowActions
+                          >
+                            {recent.title}
+                          </CommandItem>
+                        </SessionRowActions>
+                      ) : (
                         <CommandItem
-                          icon={<MessageSquare />}
-                          value={`session:${session.id}`}
-                          onSelect={() => select(() => openSession(session.id))}
-                          rowActions
+                          key={recent.entry.key}
+                          icon={PAGE_ICONS[recent.entry.kind]}
+                          value={`recent:${recent.entry.key}`}
+                          onSelect={() => select(() => void navigate({ href: recent.entry.href }))}
                         >
-                          {session.title}
+                          {recent.title}
                         </CommandItem>
-                      </SessionRowActions>
-                    ))}
+                      ),
+                    )}
                   </Command.Group>
                 )}
 
