@@ -1,7 +1,7 @@
 import { Link, useMatches } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import type { Section } from "./types";
 import { useActiveSection, useCollapsedGroups, useExpandedGroups } from "./hooks";
 import { useVisibleNavItems } from "./navigation";
@@ -19,6 +19,14 @@ import {
 import { approvalsQueryOptions } from "../../lib/api/approvals";
 import { notificationsQueryOptions, useMarkNotificationsRead } from "../../lib/api/notifications";
 import { activeSessionsQueryOptions } from "../../lib/api/sessions";
+import {
+  setSidebarWidth,
+  SIDEBAR_MAX_WIDTH,
+  SIDEBAR_MIN_WIDTH,
+  SIDEBAR_RESIZE_STEP,
+  useSidebarState,
+} from "../../lib/sidebar-store";
+import { useResizableWidth } from "../../hooks/use-resizable-width";
 import { useSettings } from "../settings-provider";
 
 export function Sidebar({
@@ -31,6 +39,7 @@ export function Sidebar({
   onToggle?: () => void;
   mobile?: boolean;
 }) {
+  const { width } = useSidebarState();
   const matches = useMatches();
   const currentPath = matches[matches.length - 1]?.fullPath ?? "/";
   const { section: activeSection, activeItemId } = useActiveSection(matches);
@@ -206,10 +215,11 @@ export function Sidebar({
   return (
     <nav
       aria-label="Sidebar"
+      style={mobile ? undefined : ({ "--sidebar-width": `${width}px` } as CSSProperties)}
       className={
         mobile
           ? "group/sidebar relative flex h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border bg-surface-0"
-          : "group/sidebar relative hidden h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border bg-surface-0 md:flex"
+          : "group/sidebar relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[0.5px] border-border bg-surface-0 md:flex"
       }
     >
       <div data-testid="sidebar-titlebar" className="flex h-11 shrink-0 items-center px-2">
@@ -232,7 +242,36 @@ export function Sidebar({
       </div>
 
       {body}
+      {!mobile && <SidebarResizeHandle width={width} />}
     </nav>
+  );
+}
+
+/**
+ * Upstream's 12px `dframe-resize-handle` straddling the sidebar's right edge: its inner half is
+ * clipped away unless focus-visible, and hovering reveals a 3x48 grip pill.
+ */
+function SidebarResizeHandle({ width }: { width: number }) {
+  const handleProps = useResizableWidth({
+    label: "Resize sidebar",
+    min: SIDEBAR_MIN_WIDTH,
+    max: SIDEBAR_MAX_WIDTH,
+    step: SIDEBAR_RESIZE_STEP,
+    edge: "end",
+    value: width,
+    onChange: setSidebarWidth,
+  });
+
+  return (
+    <div
+      {...handleProps}
+      className="group/resize absolute inset-y-0 end-[-6px] z-10 flex w-3 cursor-col-resize touch-none items-center justify-center [clip-path:inset(0_0_0_37.5%)] focus-visible:outline-none focus-visible:[clip-path:none]"
+    >
+      <span
+        aria-hidden="true"
+        className="h-12 w-[3px] rounded-full bg-border opacity-0 transition-opacity duration-[120ms] group-hover/resize:opacity-100 group-focus-visible/resize:bg-accent-100 group-focus-visible/resize:opacity-100"
+      />
+    </div>
   );
 }
 

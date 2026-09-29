@@ -5,8 +5,9 @@ import { useShortcut } from "../hooks/use-shortcut";
 
 export const SIDEBAR_STORAGE_KEY = "ccb-sidebar";
 
-const SIDEBAR_MIN_WIDTH = 232;
-const SIDEBAR_MAX_WIDTH = 420;
+export const SIDEBAR_MIN_WIDTH = 232;
+export const SIDEBAR_MAX_WIDTH = 420;
+export const SIDEBAR_RESIZE_STEP = 8;
 
 const SidebarStateSchema = z.strictObject({
   collapsed: z.boolean(),
@@ -66,6 +67,10 @@ export function writeSidebarState(state: SidebarState): void {
 export function toggleSidebarCollapsed(): void {
   const state = readSidebarState();
   writeSidebarState({ ...state, collapsed: !state.collapsed });
+}
+
+export function setSidebarWidth(width: number): void {
+  writeSidebarState({ ...readSidebarState(), width });
 }
 
 function subscribe(listener: () => void): () => void {

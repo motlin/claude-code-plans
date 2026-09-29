@@ -1,14 +1,7 @@
 import { X } from "lucide-react";
-import {
-  type KeyboardEvent as ReactKeyboardEvent,
-  type PointerEvent as ReactPointerEvent,
-  type ReactNode,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-} from "react";
+import { type ReactNode, useId, useState } from "react";
 
+import { useResizableWidth } from "../hooks/use-resizable-width";
 import { formatResourceCount, resourceCoverageNote } from "../lib/session-resources";
 
 const DEFAULT_WIDTH = 360;
@@ -26,17 +19,6 @@ interface SessionDrawerProps {
   children: ReactNode;
 }
 
-interface ActiveResize {
-  pointerId: number;
-  resizeHandle: HTMLDivElement;
-  startingClientX: number;
-  startingWidth: number;
-}
-
-function clampWidth(width: number): number {
-  return Math.min(MAXIMUM_WIDTH, Math.max(MINIMUM_WIDTH, width));
-}
-
 export function SessionDrawer({
   title,
   count,
@@ -49,63 +31,15 @@ export function SessionDrawer({
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const titleId = useId();
   const bodyId = useId();
-  const activeResizeReference = useRef<ActiveResize>(null);
-
-  useEffect(() => {
-    return () => {
-      const activeResize = activeResizeReference.current;
-      if (activeResize?.resizeHandle.hasPointerCapture(activeResize.pointerId)) {
-        activeResize.resizeHandle.releasePointerCapture(activeResize.pointerId);
-      }
-      activeResizeReference.current = null;
-    };
-  }, []);
-
-  function finishResize(pointerId: number, resizeHandle: HTMLDivElement): void {
-    if (activeResizeReference.current?.pointerId !== pointerId) return;
-
-    activeResizeReference.current = null;
-    if (resizeHandle.hasPointerCapture(pointerId)) {
-      resizeHandle.releasePointerCapture(pointerId);
-    }
-  }
-
-  function handlePointerDown(event: ReactPointerEvent<HTMLDivElement>): void {
-    if (activeResizeReference.current) return;
-
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    activeResizeReference.current = {
-      pointerId: event.pointerId,
-      resizeHandle: event.currentTarget,
-      startingClientX: event.clientX,
-      startingWidth: width,
-    };
-  }
-
-  function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>): void {
-    const activeResize = activeResizeReference.current;
-    if (activeResize?.pointerId !== event.pointerId) return;
-
-    const distance = activeResize.startingClientX - event.clientX;
-    setWidth(clampWidth(activeResize.startingWidth + distance));
-  }
-
-  function handleResizeKeyDown(event: ReactKeyboardEvent<HTMLDivElement>): void {
-    if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      setWidth((currentWidth) => clampWidth(currentWidth + KEYBOARD_RESIZE_STEP));
-    } else if (event.key === "ArrowRight") {
-      event.preventDefault();
-      setWidth((currentWidth) => clampWidth(currentWidth - KEYBOARD_RESIZE_STEP));
-    } else if (event.key === "Home") {
-      event.preventDefault();
-      setWidth(MINIMUM_WIDTH);
-    } else if (event.key === "End") {
-      event.preventDefault();
-      setWidth(MAXIMUM_WIDTH);
-    }
-  }
+  const resizeHandleProps = useResizableWidth({
+    label: "Resize session drawer",
+    min: MINIMUM_WIDTH,
+    max: MAXIMUM_WIDTH,
+    step: KEYBOARD_RESIZE_STEP,
+    edge: "start",
+    value: width,
+    onChange: setWidth,
+  });
 
   return (
     <aside
@@ -114,26 +48,9 @@ export function SessionDrawer({
       style={{ width }}
     >
       <div
-        role="separator"
-        aria-label="Resize session drawer"
+        {...resizeHandleProps}
         aria-controls={bodyId}
-        aria-orientation="vertical"
-        aria-valuemin={MINIMUM_WIDTH}
-        aria-valuemax={MAXIMUM_WIDTH}
-        aria-valuenow={width}
-        aria-valuetext={`${width} pixels`}
-        tabIndex={0}
         className="absolute inset-y-0 left-0 z-10 w-1 cursor-col-resize touch-none transition-colors hover:bg-accent-100/40 focus-visible:bg-accent-100/40 focus-visible:outline-none"
-        onKeyDown={handleResizeKeyDown}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={(event) => finishResize(event.pointerId, event.currentTarget)}
-        onPointerCancel={(event) => finishResize(event.pointerId, event.currentTarget)}
-        onLostPointerCapture={(event) => {
-          if (activeResizeReference.current?.pointerId === event.pointerId) {
-            activeResizeReference.current = null;
-          }
-        }}
       />
 
       <header className="flex min-h-14 shrink-0 items-center gap-3 border-b border-border px-4">

@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { DEFAULTS, SettingsProvider } from "../src/components/settings-provider";
 import { NavScroll } from "../src/components/sidebar/nav-scroll";
 import { Sidebar } from "../src/components/sidebar/Sidebar";
+import { readSidebarState } from "../src/lib/sidebar-store";
 import { applicationSettingsQueryOptions } from "../src/lib/api/application-settings";
 import { approvalsQueryOptions } from "../src/lib/api/approvals";
 import { notificationsQueryOptions } from "../src/lib/api/notifications";
@@ -80,6 +81,28 @@ describe("sidebar header", () => {
       text: "Claude Code Browser",
       href: "/",
     });
+  });
+});
+
+describe("sidebar resize handle", () => {
+  it("persists the width to the sidebar store and exposes it as --sidebar-width", async () => {
+    await renderSidebar();
+    const handle = await waitFor(() => screen.getByRole("separator", { name: "Resize sidebar" }));
+    const nav = screen.getByRole("navigation", { name: "Sidebar" });
+
+    expect({
+      now: handle.getAttribute("aria-valuenow"),
+      cssVar: nav.style.getPropertyValue("--sidebar-width"),
+      insideNav: nav.contains(handle),
+    }).toStrictEqual({ now: "288", cssVar: "288px", insideNav: true });
+
+    fireEvent.keyDown(handle, { key: "ArrowRight" });
+
+    expect({
+      now: handle.getAttribute("aria-valuenow"),
+      cssVar: nav.style.getPropertyValue("--sidebar-width"),
+      stored: readSidebarState().width,
+    }).toStrictEqual({ now: "296", cssVar: "296px", stored: 296 });
   });
 });
 
