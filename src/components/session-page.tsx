@@ -30,6 +30,7 @@ import {
 } from "./links-drawer";
 import { TileHost } from "./panes/tile-host";
 import { useRegisterArtifactsPane, useSessionArtifacts } from "./panes/artifacts-pane";
+import { useRegisterBackgroundTasksPane } from "./panes/background-tasks-pane";
 import { ChangesPaneShortcut, useRegisterChangesPane } from "./changes/changes-pane";
 import {
   FilesPaneShortcut,
@@ -79,6 +80,7 @@ import {
   type ActiveSubagent,
 } from "../lib/subagents";
 import { processTranscript } from "../lib/transcript";
+import { backgroundTasksFacts, extractBackgroundTasks } from "../lib/background-tasks";
 import { createSessionCommands } from "../lib/session-commands";
 
 const TRANSCRIPT_SCROLL_CONTAINER_CLASSES =
@@ -408,6 +410,18 @@ function SessionView({
   }, [sessionId, runningSubagents, transcriptActiveSubagents]);
   const [aiSummary, setAiSummary] = useState<string | null>(data.summary ?? null);
   const isActive = useIsSessionActive(sessionId);
+  const backgroundTasks = useMemo(
+    () =>
+      extractBackgroundTasks(transcript.records, {
+        sessionActive: isActive,
+        runningSubagents: activeSubagents,
+        ...(hookContext?.backgroundTasks === undefined
+          ? {}
+          : { hookTasks: hookContext.backgroundTasks }),
+      }),
+    [transcript.records, isActive, activeSubagents, hookContext?.backgroundTasks],
+  );
+  useRegisterBackgroundTasksPane(sessionId, backgroundTasks, subagents.length);
   const statusline = useStatusline(sessionId);
   const composerServerState = useComposerServerState(sessionId);
   const composerChin = useMemo(
@@ -562,11 +576,11 @@ function SessionView({
                 generatingSummary: generating,
               }}
               summary={aiSummary}
-              subagents={{ total: subagents.length, running: activeSubagents.length }}
               paneToggles={
                 <SessionPaneControls
                   facts={{
                     artifactCount: sessionArtifacts.length,
+                    backgroundTasks: backgroundTasksFacts(backgroundTasks, subagents.length),
                     subagentCount: subagents.length,
                   }}
                   extras={

@@ -12,7 +12,6 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { SessionPage } from "../src/components/session-page";
-import { SessionTitlebar } from "../src/components/session-titlebar";
 import { SettingsProvider } from "../src/components/settings-provider";
 import { ToastProvider } from "../src/components/toast";
 import { ClaudeEventsProvider } from "../src/hooks/use-claude-events";
@@ -235,40 +234,28 @@ describe("AI summary placement", () => {
 });
 
 describe("subagents placement", () => {
-  it("replaces the header's subagents box with a compact titlebar pill", async () => {
+  it("moves the subagent count out of the titlebar into the Background tasks pane", async () => {
     await renderSessionPage(detail, [subagent("a1"), subagent("a2")]);
-
-    const titlebar = screen.getByTestId("session-titlebar");
-    const pill = titlebar.querySelector('[data-origin-pills] [data-origin-pill="subagents"]');
-
-    expect({
-      pill: pill?.textContent,
-      href: pill?.getAttribute("href"),
-      activeBox: screen.queryByRole("region", { name: "Active subagents" }),
-      links: screen.getAllByText(/subagents?$/).length,
-    }).toStrictEqual({
-      pill: "2 subagents",
-      href: `/session/${SESSION_ID}/subagents`,
-      activeBox: null,
-      links: 1,
-    });
-  });
-
-  it("counts running subagents in the pill", async () => {
-    await renderInRouter(
-      newQueryClient(),
-      <SessionTitlebar
-        sessionId={SESSION_ID}
-        data={detail}
-        isActive
-        subagents={{ total: 1, running: 1 }}
-      />,
-    );
 
     const pill = screen
       .getByTestId("session-titlebar")
       .querySelector('[data-origin-pill="subagents"]');
+    fireEvent.click(screen.getByRole("button", { name: "View options" }));
+    await flush();
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Background tasks" }));
+    await flush();
+    const link = screen.getByRole("link", { name: "2 subagents" });
 
-    expect(pill?.textContent).toBe("1 subagent · 1 running");
+    expect({
+      pill,
+      href: link.getAttribute("href"),
+      activeBox: screen.queryByRole("region", { name: "Active subagents" }),
+      links: screen.getAllByText(/subagents?$/).length,
+    }).toStrictEqual({
+      pill: null,
+      href: `/session/${SESSION_ID}/subagents`,
+      activeBox: null,
+      links: 1,
+    });
   });
 });
