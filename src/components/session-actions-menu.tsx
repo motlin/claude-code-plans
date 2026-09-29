@@ -1,7 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Ellipsis } from "lucide-react";
-import { createContext, type ReactNode, useContext, useRef, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
 import { herdrPanesQueryOptions } from "../lib/api/herdr";
 import {
@@ -10,10 +18,11 @@ import {
   type SessionListItem,
 } from "../lib/api/sessions";
 import { assertNever } from "../lib/assert-never";
-import { useSessionArchive } from "../hooks/use-session-archive";
+import { useArchiveSessions, useSessionArchive } from "../hooks/use-session-archive";
 import { useSessionFork } from "../hooks/use-session-fork";
 import { type SessionRename, useSessionRename } from "../hooks/use-session-rename";
 import {
+  getBulkSessionMenuItems,
   getSessionMenuItems,
   type SessionMenuCapability,
   type SessionMenuEntry,
@@ -42,9 +51,14 @@ import { maybeShowDragPinHint } from "../lib/drag-pin-hint";
 import { pin, readPinState, unpin, usePins, writePinState } from "../lib/pin-store";
 import { assign, createGroup, useSessionGroups } from "../lib/session-group-store";
 import { placePin } from "../lib/pinned-sessions";
-import { markSeen, markUnseen } from "../lib/unread-store";
+import { hasUnseenWork, markSeen, markUnseen, subscribeUnseenWork } from "../lib/unread-store";
 import { InlineRenameInput } from "./inline-rename-input";
 import { NewGroupDialog } from "./new-group-dialog";
+import {
+  bulkSelectionFor,
+  type SidebarSelectionApi,
+  useSidebarSelection,
+} from "./sidebar/selection-context";
 import { useSettings } from "./settings-provider";
 import { useHasUnseenWork } from "./session-unread-control";
 import { useToast } from "./toast";
@@ -438,6 +452,101 @@ function SessionMenuBody({
   return <MenuEntries entries={entries} run={run} />;
 }
 
+/** Opens the New group dialog, which then moves `ids` into the new group. */
+type RequestBulkNewGroup = (ids: readonly string[]) => void;
+
+/** True while every one of `ids` is unread. */
+function useAllUnseen(ids: readonly string[]): boolean {
+  const key = ids.join("\n");
+  const getSnapshot = useCallback(() => key.split("\n").every((id) => hasUnseenWork(id)), [key]);
+  return useSyncExternalStore(subscribeUnseenWork, getSnapshot, () => false);
+}
+
+/**
+ * The multi-select row menu: Mark as unread (or read), Move {count} to group ▸ and
+ * Archive, each applied to every selected row. Mounted only while the menu is open.
+ */
+function BulkMenuBody({
+  ids,
+  selection,
+  requestNewGroup,
+}: {
+  ids: readonly string[];
+  selection: SidebarSelectionApi;
+  requestNewGroup: RequestBulkNewGroup;
+}) {
+  const allUnread = useAllUnseen(ids);
+  const customGroups = useSessionGroups();
+  const archiveSessions = useArchiveSessions();
+  const sessions = ids.flatMap((id) => {
+    const session = selection.sessions.get(id);
+    return session === undefined ? [] : [session];
+  });
+  const groupIds = ids.map((id) => customGroups.groupOf(id));
+  const [firstGroup = null] = groupIds;
+  const entries = getBulkSessionMenuItems({
+    count: ids.length,
+    allUnread,
+    anyUnarchived: sessions.some((session) => !session.archived),
+    customGroup: {
+      groups: customGroups.groups,
+      current: groupIds.every((id) => id === firstGroup) ? firstGroup : null,
+      anyGrouped: groupIds.some((id) => id !== null),
+    },
+  });
+  const run: SessionMenuRun = (id, value) => {
+    switch (id) {
+      case "mark-read":
+        for (const sessionId of ids) markSeen(sessionId);
+        break;
+      case "mark-unread":
+        for (const sessionId of ids) markUnseen(sessionId);
+        break;
+      case "archive":
+        archiveSessions(sessions.filter((session) => !session.archived).map(({ id }) => id));
+        break;
+      case "move-to-custom-group":
+        if (value === undefined) return;
+        for (const sessionId of ids) assign(sessionId, value);
+        break;
+      case "ungroup":
+        for (const sessionId of ids) assign(sessionId, null);
+        break;
+      case "new-group":
+        requestNewGroup(ids);
+        break;
+      default:
+        return;
+    }
+    selection.clear();
+  };
+  return <MenuEntries entries={entries} run={run} />;
+}
+
+/**
+ * The row menu's items: the bulk menu when the row is part of a multi-row selection,
+ * else the row's own. The choice is fixed when the menu opens (this mounts then),
+ * so clearing the selection on a bulk action doesn't swap items in the closing menu.
+ */
+function RowMenuBody({
+  session,
+  pinnedRow,
+  requestBulkNewGroup,
+}: {
+  session: SessionListItem;
+  pinnedRow: PinnedRowContext | undefined;
+  requestBulkNewGroup: RequestBulkNewGroup;
+}) {
+  const selection = useSidebarSelection();
+  const [bulkIds] = useState(() => bulkSelectionFor(selection, session.id));
+  if (bulkIds !== null && selection !== null) {
+    return (
+      <BulkMenuBody ids={bulkIds} selection={selection} requestNewGroup={requestBulkNewGroup} />
+    );
+  }
+  return <SessionMenuBody session={session} pinnedRow={pinnedRow} />;
+}
+
 /**
  * The open menu holds focus, so the rename input may only mount (and take
  * focus) once the menu has closed; the closing menu must not hand focus back.
@@ -484,8 +593,17 @@ export function SessionActionsMenu({
   const newGroupAfterClose = useRenameAfterMenuClose(() => setNewGroupOpen(true));
   const { settings, setSetting } = useSettings();
   const listPrefs = settings.sessionListPrefs;
+  // The rows a bulk New group… moves, captured when the menu asked for the dialog.
+  const newGroupIds = useRef<readonly string[] | null>(null);
+  const requestBulkNewGroup: RequestBulkNewGroup = (ids) => {
+    newGroupIds.current = ids;
+    newGroupAfterClose.requestRename();
+  };
   const createGroupWithRow = (name: string) => {
-    assign(session.id, createGroup(name).id);
+    const groupId = createGroup(name).id;
+    const ids = newGroupIds.current ?? [session.id];
+    newGroupIds.current = null;
+    for (const id of ids) assign(id, groupId);
     if (listPrefs.groupBy !== "custom") {
       setSetting("sessionListPrefs", { ...listPrefs, groupBy: "custom" });
     }
@@ -496,6 +614,7 @@ export function SessionActionsMenu({
   const onOpenChangeComplete = (open: boolean) => {
     renameAfterClose.onOpenChangeComplete(open);
     newGroupAfterClose.onOpenChangeComplete(open);
+
     if (open || !focusRowAfterClose.current) return;
     focusRowAfterClose.current = false;
     rowRef.current?.querySelector<HTMLElement>("[data-row-main-button]")?.focus();
@@ -511,16 +630,28 @@ export function SessionActionsMenu({
             focusRowAfterClose.current = true;
           },
         };
+  const menuBody = (
+    <RowMenuBody
+      session={session}
+      pinnedRow={pinnedRow}
+      requestBulkNewGroup={requestBulkNewGroup}
+    />
+  );
   return (
     <RowRenameContext.Provider
-      value={{ rename, requestRename, requestNewGroup: newGroupAfterClose.requestRename }}
+      value={{
+        rename,
+        requestRename,
+        requestNewGroup: () => {
+          newGroupIds.current = null;
+          newGroupAfterClose.requestRename();
+        },
+      }}
     >
       <div ref={rowRef} className={`group/session-row relative ${className ?? ""}`}>
         <ContextMenu onOpenChangeComplete={onOpenChangeComplete}>
           <ContextMenuTrigger>{children}</ContextMenuTrigger>
-          <MenuContent finalFocus={finalFocus}>
-            <SessionMenuBody session={session} pinnedRow={pinnedRow} />
-          </MenuContent>
+          <MenuContent finalFocus={finalFocus}>{menuBody}</MenuContent>
         </ContextMenu>
         <Menu onOpenChangeComplete={onOpenChangeComplete}>
           <MenuTrigger
@@ -531,7 +662,7 @@ export function SessionActionsMenu({
             <Ellipsis aria-hidden="true" className="size-4" />
           </MenuTrigger>
           <MenuContent align="end" finalFocus={finalFocus}>
-            <SessionMenuBody session={session} pinnedRow={pinnedRow} />
+            {menuBody}
           </MenuContent>
         </Menu>
       </div>

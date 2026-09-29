@@ -177,10 +177,14 @@ function numbered(entries: SessionMenuEntry[]): SessionMenuEntry[] {
  * Upstream's "Move to group ▸": the groups as radios, a separator, Ungrouped
  * (only when the row is grouped) and New group…, numbered 1…9 in that order.
  */
-function moveToGroupItem({
-  groups,
-  current,
-}: NonNullable<SessionMenuSession["customGroup"]>): SessionMenuItem {
+function moveToGroupItem(
+  {
+    groups,
+    current,
+    grouped = current !== null,
+  }: NonNullable<SessionMenuSession["customGroup"]> & { grouped?: boolean },
+  label: string = sessionMenuItemLabels["move-to-group"],
+): SessionMenuItem {
   const entries: SessionMenuEntry[] = groups.map((group) => ({
     kind: "item",
     id: "move-to-custom-group",
@@ -189,7 +193,7 @@ function moveToGroupItem({
     checked: group.id === current,
   }));
   if (entries.length > 0) entries.push({ kind: "separator" });
-  if (current !== null) {
+  if (grouped) {
     entries.push({
       kind: "item",
       id: "ungroup",
@@ -198,12 +202,62 @@ function moveToGroupItem({
     });
   }
   entries.push({ kind: "item", id: "new-group", label: sessionMenuItemLabels["new-group"] });
-  return {
-    kind: "item",
-    id: "move-to-group",
-    label: sessionMenuItemLabels["move-to-group"],
-    submenu: numbered(entries),
+  return { kind: "item", id: "move-to-group", label, submenu: numbered(entries) };
+}
+
+export interface BulkSessionMenuSelection {
+  /** How many sessions are selected (two or more). */
+  count: number;
+  /** Every selected session is unread, so the read-state item marks them read. */
+  allUnread: boolean;
+  /** Some selected session is not archived yet, so Archive has work to do. */
+  anyUnarchived: boolean;
+  /**
+   * This browser's custom groups; `current` is the group every selected session
+   * shares (or null), and `anyGrouped` offers Ungrouped.
+   */
+  customGroup?: {
+    groups: readonly { id: string; name: string }[];
+    current: string | null;
+    anyGrouped: boolean;
   };
+}
+
+/**
+ * claude.ai/code's multi-select row menu, limited to the actions the app has:
+ * Mark as unread (or read), Move {count} to group ▸ (with New group…) and Archive.
+ * Delete is never offered, and neither are per-session items like Rename or Pin.
+ */
+export function getBulkSessionMenuItems({
+  count,
+  allUnread,
+  anyUnarchived,
+  customGroup,
+}: BulkSessionMenuSelection): SessionMenuEntry[] {
+  const readId = allUnread ? "mark-read" : "mark-unread";
+  const sections: SessionMenuItem[][] = [
+    [{ kind: "item", id: readId, label: sessionMenuItemLabels[readId], accelerator: "u" }],
+  ];
+  if (customGroup !== undefined) {
+    sections.push([
+      moveToGroupItem(
+        {
+          groups: customGroup.groups,
+          current: customGroup.current,
+          grouped: customGroup.anyGrouped,
+        },
+        `Move ${count} to group`,
+      ),
+    ]);
+  }
+  if (anyUnarchived) {
+    sections.push([
+      { kind: "item", id: "archive", label: sessionMenuItemLabels.archive, accelerator: "a" },
+    ]);
+  }
+  return sections.flatMap((section, index): SessionMenuEntry[] =>
+    index === 0 ? section : [{ kind: "separator" }, ...section],
+  );
 }
 
 /**

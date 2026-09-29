@@ -1,10 +1,10 @@
 import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 
 import { Ungroup } from "lucide-react";
 
 import { type SidebarDrop, useSidebarDrag } from "../../hooks/use-sidebar-drag";
-import { recentSessionsInfiniteQueryOptions } from "../../lib/api/sessions";
+import { recentSessionsInfiniteQueryOptions, type SessionListItem } from "../../lib/api/sessions";
 import { closeDragPinHint } from "../../lib/drag-pin-hint";
 import { readPinState, unpin, usePins, writePinState } from "../../lib/pin-store";
 import { dropOutcome, placePin, splitPinned, type SplitPinned } from "../../lib/pinned-sessions";
@@ -13,6 +13,7 @@ import {
   groupHeaderZoneId,
   groupListId,
   type GroupDropGeometry,
+  multiGroupDropOutcome,
   sectionDragId,
   sectionDropOutcome,
   sectionOfDragId,
@@ -36,7 +37,13 @@ import {
   useSessionGroups,
 } from "../../lib/session-group-store";
 import { slotToIndex } from "../../lib/sidebar-drag";
-import { useSidebarState } from "../../lib/sidebar-store";
+import {
+  EMPTY_SELECTION,
+  selectionClickKind,
+  sidebarSelectionReducer,
+  visibleSelection,
+} from "../../lib/sidebar-selection";
+import { familyKey, useSidebarState } from "../../lib/sidebar-store";
 import { assertNever } from "../../lib/assert-never";
 import { useSettings } from "../settings-provider";
 import { useToast } from "../toast";
@@ -47,6 +54,7 @@ import {
   type SidebarSessionRow,
   toGroupRow,
 } from "./session-group-section";
+import { SidebarSelectionContext, type SidebarSelectionApi } from "./selection-context";
 import { PinnedSubList } from "./sublists";
 
 /**
@@ -57,6 +65,8 @@ import { PinnedSubList } from "./sublists";
  * pins it at a Pinned slot, reorders a pinned row, or (dropped below Pinned) unpins it.
  * In Custom groups mode a row dropped on a group header or row slot joins that group
  * there, a grouped row dropped on "Ungroup" leaves it, and headers drag to reorder.
+ * ⌘-click and ⇧-click select several rows for the bulk row menu; dragging a
+ * selected row moves the whole selection, which can only drop on a custom group.
  */
 export function SessionGroups({
   activeItemId,
@@ -73,7 +83,18 @@ export function SessionGroups({
     // Keep the current rows (and the filter button) up while a new Status loads.
     placeholderData: keepPreviousData,
   });
-  const { collapsedGroups } = useSidebarState();
+  const { collapsedGroups, collapsedFamilies } = useSidebarState();
+  const [selection, dispatchSelection] = useReducer(sidebarSelectionReducer, EMPTY_SELECTION);
+  const hasSelection = selection.ids.length > 0;
+  useEffect(() => {
+    if (!hasSelection) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") dispatchSelection({ type: "clear" });
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [hasSelection]);
+  const latestSelected = useRef<readonly string[]>([]);
   const [uncapped, setUncapped] = useState<ReadonlySet<string>>(() => new Set());
 
   const { pinnedIds, pinnedOrder } = usePins();
@@ -101,6 +122,14 @@ export function SessionGroups({
       const sectionGroupId = sectionOfDragId(drop.srcId);
       if (sectionGroupId !== null) {
         applySectionDrop(sectionGroupId, drop);
+        return;
+      }
+      const selected = latestSelected.current;
+      if (selected.length > 1 && selected.includes(drop.srcId)) {
+        const applied =
+          custom &&
+          applyMultiGroupDrop(selected, drop, latestGroups.current ?? [], latestSplit.current);
+        if (applied) dispatchSelection({ type: "clear" });
         return;
       }
       if (custom && applyGroupDrop(drop, latestGroups.current ?? [], latestSplit.current)) return;
@@ -133,9 +162,37 @@ export function SessionGroups({
 
   const collapsed = new Set(collapsedGroups);
   const familyHeadIds = groups.flatMap((group) => [...group.nested.keys()]);
+  const displayOrder = displayedRowIds(split, groups, collapsed, new Set(collapsedFamilies));
+  const selectedIds = visibleSelection(selection, displayOrder);
+  latestSelected.current = selectedIds;
+  const selectionApi: SidebarSelectionApi = {
+    selectedIds,
+    sessions: new Map(
+      [...split.pinned, ...split.rest].map((row): [string, SessionListItem] => [
+        row.id,
+        row.session,
+      ]),
+    ),
+    onRowClick: (id, modifiers) => {
+      const kind = selectionClickKind(modifiers);
+      if (kind === "plain") {
+        dispatchSelection({ type: "clear" });
+        return false;
+      }
+      dispatchSelection(
+        kind === "toggle"
+          ? { type: "toggle", id, order: displayOrder }
+          : { type: "extend", id, order: displayOrder, focusedId: activeItemId },
+      );
+      return true;
+    },
+    clear: () => dispatchSelection({ type: "clear" }),
+  };
   const sectionDrag = drag !== null && sectionOfDragId(drag.srcId) !== null;
   const rowDrag = drag !== null && !sectionDrag;
-  const showUngroupRow = custom && rowDrag && assignments[drag.srcId] !== undefined;
+  const multiDrag = rowDrag && selectedIds.length > 1 && selectedIds.includes(drag.srcId);
+  const draggedIds = !rowDrag ? [] : multiDrag ? selectedIds : [drag.srcId];
+  const showUngroupRow = custom && draggedIds.some((id) => assignments[id] !== undefined);
   const target = drag?.target ?? null;
   const hotGroupId = groups
     .map((group) => customGroupIdOfKey(group.key))
@@ -158,15 +215,17 @@ export function SessionGroups({
   ) : null;
 
   return (
-    <>
+    <SidebarSelectionContext.Provider value={selectionApi}>
       <PinnedSubList
         rows={split.pinned}
         expanded={!collapsed.has(PINNED_GROUP_KEY)}
         activeItemId={activeItemId}
-        dragging={rowDrag}
+        dragging={rowDrag && !multiDrag}
         dropRowHot={drag?.target?.type === "zone" && drag.target.zoneId === PIN_DROP_ZONE}
-        listRef={listRef(PINNED_LIST)}
-        dropRowRef={zoneRef(PIN_DROP_ZONE)}
+        // A multi-row drag cannot pin, so Pinned is no drop target while one is under way.
+        {...(multiDrag
+          ? {}
+          : { listRef: listRef(PINNED_LIST), dropRowRef: zoneRef(PIN_DROP_ZONE) })}
         dragRowProps={rowProps}
       />
       <div
@@ -218,7 +277,7 @@ export function SessionGroups({
           </button>
         )}
       </div>
-    </>
+    </SidebarSelectionContext.Provider>
   );
 }
 
@@ -226,6 +285,30 @@ const PINNED_LIST = "pinned";
 const PIN_DROP_ZONE = "pin-drop";
 /** The recents list below Pinned: dropping a pinned row here unpins it. */
 const UNPIN_ZONE = "unpin";
+
+/**
+ * Every session row the sidebar shows, in display order: Pinned, then each expanded
+ * section's rows with their expanded families. ⇧-click ranges run over this.
+ */
+function displayedRowIds(
+  split: SplitPinned<SidebarSessionRow>,
+  groups: readonly SessionGroup<SidebarSessionRow>[],
+  collapsed: ReadonlySet<string>,
+  collapsedFamilies: ReadonlySet<string>,
+): string[] {
+  const pinned = collapsed.has(PINNED_GROUP_KEY) ? [] : split.pinned.map((row) => row.id);
+  const sections = groups
+    .filter((group) => !collapsed.has(group.key))
+    .flatMap((group) =>
+      group.rows.flatMap((row) => [
+        row.sessionId,
+        ...(collapsedFamilies.has(familyKey(row.sessionId))
+          ? []
+          : (group.nested.get(row.sessionId) ?? []).map((child) => child.sessionId)),
+      ]),
+    );
+  return [...pinned, ...sections];
+}
 
 /** Move a dragged custom group header to the section it was dropped on. */
 function applySectionDrop(groupId: string, { target }: SidebarDrop): void {
@@ -237,16 +320,10 @@ function applySectionDrop(groupId: string, { target }: SidebarDrop): void {
   if (outcome !== null) moveGroup(outcome.groupId, outcome.toIndex);
 }
 
-/**
- * Apply a released row drag to the custom groups. A drop at a slot pins the group's
- * displayed order first so the row lands exactly there; a pinned row placed in a
- * group is unpinned so it shows where it was dropped. False when it is not a group drop.
- */
-function applyGroupDrop(
-  { srcId, target }: SidebarDrop,
+/** Each custom group's displayed rows in DOM order, families included. */
+function groupLists(
   groups: readonly SessionGroup<SidebarSessionRow>[],
-  split: SplitPinned<SidebarSessionRow> | undefined,
-): boolean {
+): Record<string, GroupDropGeometry["lists"][string]> {
   const lists: Record<string, GroupDropGeometry["lists"][string]> = {};
   for (const group of groups) {
     const groupId = customGroupIdOfKey(group.key);
@@ -259,6 +336,62 @@ function applyGroupDrop(
       })),
     ]);
   }
+  return lists;
+}
+
+/**
+ * Apply a released multi-row drag: every selected row joins the group it was dropped
+ * on (in display order, at the slot) or leaves its group on Ungroup. Pinned rows
+ * among them are unpinned so they show where they were dropped. False when nothing moved.
+ */
+function applyMultiGroupDrop(
+  srcIds: readonly string[],
+  { target }: SidebarDrop,
+  groups: readonly SessionGroup<SidebarSessionRow>[],
+  split: SplitPinned<SidebarSessionRow> | undefined,
+): boolean {
+  const lists = groupLists(groups);
+  const { assignments } = readSessionGroupState();
+  const outcome = multiGroupDropOutcome({
+    srcIds,
+    srcGroupIds: srcIds.map((id) => assignments[id] ?? null),
+    target,
+    lists,
+  });
+  if (outcome === null) return false;
+  const pinned = new Set(split?.pinned.map((row) => row.id));
+  for (const id of srcIds) if (pinned.has(id)) unpin(id);
+  switch (outcome.type) {
+    case "ungroup":
+      for (const id of srcIds) assign(id, null);
+      return true;
+    case "group": {
+      const selected = new Set(srcIds);
+      setGroupOrder(
+        outcome.groupId,
+        (lists[outcome.groupId] ?? [])
+          .filter((row) => !row.nested && !selected.has(row.id))
+          .map((row) => row.id),
+      );
+      for (const id of srcIds) assign(id, outcome.groupId, { before: outcome.before });
+      return true;
+    }
+    default:
+      return assertNever(outcome);
+  }
+}
+
+/**
+ * Apply a released row drag to the custom groups. A drop at a slot pins the group's
+ * displayed order first so the row lands exactly there; a pinned row placed in a
+ * group is unpinned so it shows where it was dropped. False when it is not a group drop.
+ */
+function applyGroupDrop(
+  { srcId, target }: SidebarDrop,
+  groups: readonly SessionGroup<SidebarSessionRow>[],
+  split: SplitPinned<SidebarSessionRow> | undefined,
+): boolean {
+  const lists = groupLists(groups);
   const srcGroupId = readSessionGroupState().assignments[srcId] ?? null;
   const outcome = groupDropOutcome({ srcId, srcGroupId, target, lists });
   if (outcome === null) return false;

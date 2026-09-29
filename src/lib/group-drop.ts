@@ -111,6 +111,43 @@ export function groupDropOutcome(geometry: GroupDropGeometry): GroupDropOutcome 
   return place(geometry, groupId, headFrom(lists[groupId] ?? [], target.slot, srcId));
 }
 
+export interface MultiGroupDropGeometry {
+  /** The selected sessions being dragged, in display order. */
+  readonly srcIds: readonly string[];
+  /** Each dragged session's current group, or null when ungrouped. */
+  readonly srcGroupIds: readonly (string | null)[];
+  readonly target: SidebarDropTarget | null;
+  readonly lists: GroupDropGeometry["lists"];
+}
+
+/**
+ * What releasing a multi-row drag does: like upstream, a selection can only drop
+ * on a custom group (header or row slot) or on Ungroup; it can never pin.
+ */
+export function multiGroupDropOutcome({
+  srcIds,
+  srcGroupIds,
+  target,
+  lists,
+}: MultiGroupDropGeometry): GroupDropOutcome {
+  if (target === null) return null;
+  const selected = new Set(srcIds);
+  const firstHead = (groupId: string, slot: number) =>
+    (lists[groupId] ?? []).slice(slot).find((row) => !row.nested && !selected.has(row.id))?.id ??
+    null;
+  if (target.type === "zone") {
+    if (target.zoneId === UNGROUP_ZONE || target.zoneId === UNGROUPED_SECTION_ZONE) {
+      return srcGroupIds.some((id) => id !== null) ? { type: "ungroup" } : null;
+    }
+    const groupId = stripPrefix(target.zoneId, HEADER_PREFIX);
+    return groupId === null ? null : { type: "group", groupId, before: firstHead(groupId, 0) };
+  }
+  const groupId = stripPrefix(target.listId, LIST_PREFIX);
+  return groupId === null
+    ? null
+    : { type: "group", groupId, before: firstHead(groupId, target.slot) };
+}
+
 export interface SectionDropGeometry {
   /** The dragged section's group. */
   readonly groupId: string;

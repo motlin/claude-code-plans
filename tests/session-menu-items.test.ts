@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  getBulkSessionMenuItems,
   getSessionMenuItems,
   SessionMenuItemIdSchema,
   type SessionMenuCapability,
@@ -289,6 +290,96 @@ describe("getSessionMenuItems", () => {
       },
       { kind: "item", id: "fork", label: "Fork “A very long session title that keeps go…”" },
       { kind: "item", id: "archive", label: "Archive “A very long session title that keeps go…”" },
+    ]);
+  });
+});
+
+describe("getBulkSessionMenuItems", () => {
+  const GROUPS = [
+    { id: "cg-a", name: "Alpha" },
+    { id: "cg-b", name: "Beta" },
+  ];
+
+  it("offers Mark as unread, Move {count} to group and Archive, never Delete", () => {
+    expect(
+      getBulkSessionMenuItems({
+        count: 3,
+        allUnread: false,
+        anyUnarchived: true,
+        customGroup: { groups: GROUPS, current: null, anyGrouped: false },
+      }),
+    ).toStrictEqual([
+      { kind: "item", id: "mark-unread", label: "Mark as unread", accelerator: "u" },
+      SEPARATOR,
+      {
+        kind: "item",
+        id: "move-to-group",
+        label: "Move 3 to group",
+        submenu: [
+          {
+            kind: "item",
+            id: "move-to-custom-group",
+            label: "Alpha",
+            groupId: "cg-a",
+            checked: false,
+            accelerator: "1",
+          },
+          {
+            kind: "item",
+            id: "move-to-custom-group",
+            label: "Beta",
+            groupId: "cg-b",
+            checked: false,
+            accelerator: "2",
+          },
+          SEPARATOR,
+          { kind: "item", id: "new-group", label: "New group…", accelerator: "3" },
+        ],
+      },
+      SEPARATOR,
+      { kind: "item", id: "archive", label: "Archive", accelerator: "a" },
+    ]);
+  });
+
+  it("checks the shared group, offers Ungrouped, Mark as read when all unread, and no Archive when all archived", () => {
+    expect(
+      getBulkSessionMenuItems({
+        count: 2,
+        allUnread: true,
+        anyUnarchived: false,
+        customGroup: { groups: [GROUPS[1]!], current: "cg-b", anyGrouped: true },
+      }),
+    ).toStrictEqual([
+      { kind: "item", id: "mark-read", label: "Mark as read", accelerator: "u" },
+      SEPARATOR,
+      {
+        kind: "item",
+        id: "move-to-group",
+        label: "Move 2 to group",
+        submenu: [
+          {
+            kind: "item",
+            id: "move-to-custom-group",
+            label: "Beta",
+            groupId: "cg-b",
+            checked: true,
+            accelerator: "1",
+          },
+          SEPARATOR,
+          { kind: "item", id: "ungroup", label: "Ungrouped", checked: false, accelerator: "2" },
+          { kind: "item", id: "new-group", label: "New group…", accelerator: "3" },
+        ],
+      },
+    ]);
+  });
+
+  it("leaves Move to group out without custom groups", () => {
+    expect(
+      getBulkSessionMenuItems({ count: 2, allUnread: false, anyUnarchived: true }),
+    ).toStrictEqual([
+      { kind: "item", id: "mark-unread", label: "Mark as unread", accelerator: "u" },
+      SEPARATOR,
+      { kind: "item", id: "archive", label: "Archive", accelerator: "a" },
     ]);
   });
 });

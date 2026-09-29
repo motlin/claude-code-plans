@@ -28,6 +28,7 @@ import { Tooltip } from "../ui/tooltip";
 import { CustomGroupHeader } from "./custom-group-header";
 import { GroupAppearanceMark } from "./group-appearance";
 import { ProjectGroupHeader } from "./project-group-header";
+import { useSidebarSelection } from "./selection-context";
 
 export interface SidebarSessionRow extends SessionGroupRow {
   id: string;
@@ -368,6 +369,8 @@ function SessionRowLink({
   lineage?: string;
 }) {
   const navigate = useNavigate();
+  const selection = useSidebarSelection();
+  const multiSelected = selection?.selectedIds.includes(row.sessionId) === true;
   return (
     <SessionHoverCard
       sessionId={row.sessionId}
@@ -383,7 +386,11 @@ function SessionRowLink({
           params={{ id: row.sessionId }}
           data-row-main-button
           data-selected={selected ? "focused" : undefined}
-          className={`${ROW_CLASS} text-secondary hover:bg-[var(--sb-hover)] focus-visible:bg-[var(--sb-hover)] data-[selected=focused]:bg-[var(--sb-selected)] data-[selected=focused]:text-primary`}
+          data-multi-selected={multiSelected ? "" : undefined}
+          onClick={(event) => {
+            if (selection?.onRowClick(row.sessionId, event) === true) event.preventDefault();
+          }}
+          className={`${ROW_CLASS} text-secondary hover:bg-[var(--sb-hover)] focus-visible:bg-[var(--sb-hover)] data-[selected=focused]:bg-[var(--sb-selected)] data-[selected=focused]:text-primary data-[multi-selected]:bg-[var(--sb-selected)] data-[multi-selected]:text-primary`}
         >
           <span className="df-leading-slot text-secondary">
             <SessionRowStatusDot session={row.session} />

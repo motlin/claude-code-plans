@@ -6,6 +6,7 @@ import {
   groupHeaderZoneId,
   groupListId,
   type GroupDropGeometry,
+  multiGroupDropOutcome,
   sectionDragId,
   sectionDropOutcome,
   sectionOfDragId,
@@ -131,5 +132,76 @@ describe("sectionDropOutcome", () => {
       "cg-1",
       null,
     ]);
+  });
+});
+
+describe("multiGroupDropOutcome", () => {
+  it.each<
+    [
+      string,
+      readonly string[],
+      readonly (string | null)[],
+      SidebarDropTarget | null,
+      ReturnType<typeof multiGroupDropOutcome>,
+    ]
+  >([
+    [
+      "rows at a group slot go before the next unselected head",
+      ["u1", "u2"],
+      [null, null],
+      slot("A", 1),
+      { type: "group", groupId: "A", before: "a2" },
+    ],
+    [
+      "a slot whose next head is selected skips past it",
+      ["a2", "u1"],
+      ["A", null],
+      slot("A", 1),
+      { type: "group", groupId: "A", before: null },
+    ],
+    [
+      "rows on a group header go to its top",
+      ["u1", "u2"],
+      [null, null],
+      zone(groupHeaderZoneId("B")),
+      { type: "group", groupId: "B", before: "b1" },
+    ],
+    [
+      "the Ungroup row ungroups when any row is grouped",
+      ["a1", "u1"],
+      ["A", null],
+      zone(UNGROUP_ZONE),
+      { type: "ungroup" },
+    ],
+    [
+      "the Ungrouped section is a no-op when nothing is grouped",
+      ["u1", "u2"],
+      [null, null],
+      zone(UNGROUPED_SECTION_ZONE),
+      null,
+    ],
+    [
+      "the Pinned list cannot take a multi-row drag",
+      ["u1", "u2"],
+      [null, null],
+      {
+        type: "slot",
+        listId: "pinned",
+        slot: 0,
+      },
+      null,
+    ],
+    [
+      "the pin drop row cannot take a multi-row drag",
+      ["u1", "u2"],
+      [null, null],
+      zone("pin-drop"),
+      null,
+    ],
+    ["no target", ["u1", "u2"], [null, null], null, null],
+  ])("%s", (_name, srcIds, srcGroupIds, target, expected) => {
+    expect(multiGroupDropOutcome({ srcIds, srcGroupIds, target, lists: LISTS })).toStrictEqual(
+      expected,
+    );
   });
 });
