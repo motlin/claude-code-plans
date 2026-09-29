@@ -46,6 +46,12 @@ import type {
   SessionStatusFilterSchema,
 } from "./session-groups";
 import type {
+  GhPrReviewDecisionSchema,
+  GhPrStateSchema,
+  GhPrStatusCacheStateSchema,
+} from "./pr-status";
+import type {
+  PullRequestStateSchema,
   SessionBucketReasonSchema,
   SessionBucketSchema,
   SessionStateKindSchema,
@@ -239,6 +245,36 @@ export const sessionStateKindLabels = {
   pr: "Pull request",
   idle: "Idle",
 } satisfies Record<z.infer<typeof SessionStateKindSchema>, string>;
+
+/** Normalized session PR states (src/lib/pr-status.ts); upstream glyph label suffixes. */
+const pullRequestStateLabels = {
+  open: "Open",
+  draft: "Draft",
+  merged: "Merged",
+  closed: "Closed",
+} satisfies Record<z.infer<typeof PullRequestStateSchema>, string>;
+
+/** `gh pr list|view --json state` values. */
+const ghPrStateChoices = {
+  OPEN: true,
+  CLOSED: true,
+  MERGED: true,
+} satisfies Record<z.infer<typeof GhPrStateSchema>, true>;
+
+/** `state` in ~/.claude/gh-pr-status-cache.json. */
+const ghPrStatusCacheStateChoices = {
+  OPEN: true,
+  DRAFT: true,
+  MERGED: true,
+  CLOSED: true,
+} satisfies Record<z.infer<typeof GhPrStatusCacheStateSchema>, true>;
+
+/** `review` in ~/.claude/gh-pr-status-cache.json. */
+const ghPrReviewDecisionChoices = {
+  APPROVED: true,
+  CHANGES_REQUESTED: true,
+  REVIEW_REQUIRED: true,
+} satisfies Record<z.infer<typeof GhPrReviewDecisionSchema>, true>;
 
 export const unifiedSearchTypeLabels = {
   all: "All",
@@ -848,6 +884,10 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   SessionBucketSchema: sessionBucketLabels,
   SessionBucketReasonSchema: sessionBucketReasonLabels,
   SessionStateKindSchema: sessionStateKindLabels,
+  PullRequestStateSchema: pullRequestStateLabels,
+  GhPrStateSchema: ghPrStateChoices,
+  GhPrStatusCacheStateSchema: ghPrStatusCacheStateChoices,
+  GhPrReviewDecisionSchema: ghPrReviewDecisionChoices,
   HomeAttentionKindSchema: homeAttentionKindLabels,
   "SessionListPrefsSchema.groupBy": sessionGroupByLabels,
   "SessionListPrefsSchema.sortBy": sessionSortByLabels,

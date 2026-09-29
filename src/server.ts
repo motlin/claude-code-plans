@@ -2,7 +2,7 @@ import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { withHeadBodyCancel } from "./lib/head-request";
-import { createWatcher, resolveIgnoredDirNames } from "./lib/watcher";
+import { createWatcher, rebroadcastProjectSessions, resolveIgnoredDirNames } from "./lib/watcher";
 import { getDb, initDb, runInitialScan } from "./lib/db";
 import { startSweep } from "./lib/active-session-store";
 import { startNotificationsSweep } from "./lib/notifications-store";
@@ -14,6 +14,7 @@ import { initPendingApprovalsCache } from "./lib/db/pending-approvals-cache";
 import { startHerdrEventBridge } from "./lib/herdr/subscribe";
 import { resolveFileSearchRoots } from "./lib/config";
 import type { RecursiveWatcher } from "./lib/recursive-watch";
+import { initPrStatusService } from "./lib/pr-status-service";
 
 const PLANS_DIR = join(homedir(), ".claude", "plans");
 const PROJECTS_DIR = join(homedir(), ".claude", "projects");
@@ -71,6 +72,7 @@ void (async () => {
     } satisfies SubagentStoppedPayload);
   });
   startHerdrEventBridge();
+  initPrStatusService(rebroadcastProjectSessions);
 })();
 
 export default createServerEntry({

@@ -1,9 +1,7 @@
 import { GitPullRequest } from "lucide-react";
 import { sessionStateKindLabels } from "../lib/schema-choices";
+import type { GitPrState } from "../lib/pr-status";
 import type { SessionStateKind } from "../lib/session-state";
-
-/** Upstream `--cds-text-git-*` states; each has a `--color-git-<state>` token in globals.css. */
-type GitPrState = "opened" | "draft" | "merged" | "closed" | "conflicting" | "queued";
 
 const GIT_PR_STATE_LABELS = {
   opened: "Open",

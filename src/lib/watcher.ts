@@ -165,6 +165,8 @@ function sessionSummariesEqual(a: SessionSummaryPayload, b: SessionSummaryPayloa
     a.messageCount === b.messageCount &&
     a.gitBranch === b.gitBranch &&
     a.pr?.url === b.pr?.url &&
+    a.prStatus?.number === b.prStatus?.number &&
+    a.prStatus?.state === b.prStatus?.state &&
     a.projectName === b.projectName &&
     a.archived === b.archived &&
     a.state === b.state &&
@@ -420,6 +422,11 @@ function safeDiffSessions(projectId: string): void {
   } catch {
     // transient DB error; next file event will retry
   }
+}
+
+/** Re-broadcast a project's session rows, e.g. after a PR status refresh. */
+export function rebroadcastProjectSessions(projectId: string): void {
+  safeDiffSessions(projectId);
 }
 
 /** Safely diff and broadcast tasks for a session's project; swallow indexing races. */

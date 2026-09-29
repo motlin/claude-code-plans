@@ -10,6 +10,7 @@ import { apiFetch } from "./client";
 import { JsonValueSchema } from "../schemas";
 import { SessionViewedStateSchema } from "./viewed-state";
 import { SessionBucketSchema } from "../session-state";
+import { PrStatusSchema } from "../pr-status";
 import type { SessionStatusFilter } from "../session-groups";
 
 export const SessionSummaryStateSchema = z.enum(["idle", "working", "waiting", "unknown", "ended"]);
@@ -31,6 +32,7 @@ const SessionListItemSchema = z.object({
   messageCount: z.number(),
   gitBranch: z.string().optional(),
   pr: SessionPrLinkSchema.optional(),
+  prStatus: PrStatusSchema.optional(),
   forkedFromSessionId: z.string().optional(),
   archived: z.boolean(),
   state: SessionSummaryStateSchema,

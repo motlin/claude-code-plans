@@ -65,7 +65,7 @@ function storedPrefs(): unknown {
   return raw === null ? null : JSON.parse(raw);
 }
 
-async function renderSidebarGroups() {
+async function renderSidebarGroups(fixture: readonly object[] = FIXTURE) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false },
@@ -74,7 +74,7 @@ async function renderSidebarGroups() {
   // Each Status value is its own server query (archived sessions are filtered server-side).
   for (const status of ["active", "archived", "all"] as const) {
     queryClient.setQueryData(recentSessionsInfiniteQueryOptions(undefined, status).queryKey, {
-      pages: [RecentSessionsResponse.parse({ sessions: FIXTURE, nextCursor: null })],
+      pages: [RecentSessionsResponse.parse({ sessions: fixture, nextCursor: null })],
       pageParams: [null],
     });
   }
@@ -282,6 +282,37 @@ describe("sidebar Filter & group menu", () => {
 
     expect(filterButton().getAttribute("aria-label")).toBe("Filter (active)");
     expect(storedPrefs()).toEqual({ ...DEFAULT_SESSION_LIST_PREFS, statusFilter: "all" });
+  });
+
+  it("shows Show PR status once a row has PR data, and persists turning it off", async () => {
+    const withPr = [
+      ...FIXTURE,
+      { ...session("p1", "PR one", "review", "alpha"), prStatus: { number: 6, state: "draft" } },
+    ];
+    const { container } = await renderSidebarGroups(withPr);
+    const glyph = () => container.querySelector('[role="img"][aria-label="#6 · Draft"]') !== null;
+    expect(glyph()).toBe(true);
+    const menu = await openFilterMenu();
+
+    expect(menuOutline(menu)).toEqual([
+      "StatusActive",
+      "Last activity7d",
+      "---",
+      "Group byState",
+      "Sort byLast activity",
+      "---",
+      "Show PR status",
+      "---",
+      "Clear filters",
+    ]);
+
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Show PR status" }));
+    await flush();
+
+    expect({ glyph: glyph(), stored: storedPrefs() }).toStrictEqual({
+      glyph: false,
+      stored: { ...DEFAULT_SESSION_LIST_PREFS, showPrStatus: false },
+    });
   });
 
   it("resets the filters with Clear filters", async () => {

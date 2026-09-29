@@ -24,6 +24,8 @@ export const SessionListPrefsSchema = z
     statusFilter: SessionStatusFilterSchema,
     activityDays: SessionActivityDaysSchema,
     showEmptyGroups: z.boolean(),
+    /** The PR glyph replaces the row dot on sessions with a pull request. */
+    showPrStatus: z.boolean(),
   })
   .strict();
 export type SessionListPrefs = z.infer<typeof SessionListPrefsSchema>;
@@ -34,6 +36,7 @@ export const DEFAULT_SESSION_LIST_PREFS: SessionListPrefs = {
   statusFilter: "active",
   activityDays: "7d",
   showEmptyGroups: false,
+  showPrStatus: true,
 };
 
 export interface SessionGroupRow {
@@ -363,8 +366,16 @@ export interface StoredSessionListPrefs {
 export function migrateSessionListPrefs(input: StoredSessionListPrefs): SessionListPrefs {
   if (input.stored !== null) {
     try {
-      const parsed = SessionListPrefsSchema.safeParse(JSON.parse(input.stored));
-      if (parsed.success) return parsed.data;
+      // Prefs saved before Show PR status existed lack the field; default it on.
+      const parsed = SessionListPrefsSchema.partial({ showPrStatus: true }).safeParse(
+        JSON.parse(input.stored),
+      );
+      if (parsed.success) {
+        return {
+          ...parsed.data,
+          showPrStatus: parsed.data.showPrStatus ?? DEFAULT_SESSION_LIST_PREFS.showPrStatus,
+        };
+      }
     } catch {
       // Unparseable JSON falls through to the legacy migration.
     }

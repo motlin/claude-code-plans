@@ -136,7 +136,8 @@ export const SessionBucketReasonSchema = z.enum([
 ]);
 export type SessionBucketReason = z.infer<typeof SessionBucketReasonSchema>;
 
-export type PullRequestState = "open" | "draft" | "merged" | "closed";
+export const PullRequestStateSchema = z.enum(["open", "draft", "merged", "closed"]);
+export type PullRequestState = z.infer<typeof PullRequestStateSchema>;
 
 export interface SessionBucketSignals {
   /** Main-thread state from hooks without `agent_id`; "ended" after SessionEnd or timeout. */
@@ -204,4 +205,35 @@ export function resolveSessionBucket(signals: SessionBucketSignals): SessionBuck
   }
   if (signals.unseen) return { bucket: "review", reason: "unseen" };
   return { bucket: "done", reason: "idle" };
+}
+
+export interface SessionRowIconInput {
+  bucket: SessionBucket;
+  /** The local unseen flag, which leads the server bucket after a manual toggle. */
+  unseen: boolean;
+  /** The server's durable unseen flag behind `bucket`. */
+  serverUnseen: boolean;
+  prStatus: { state: PullRequestState } | undefined;
+  showPrStatus: boolean;
+}
+
+/**
+ * Upstream claude.ai/code `rowStatus`: live states win, then a merged/closed PR, then the
+ * unread ready dot, then any PR glyph, else the idle ring. A review row the server did not flag
+ * unseen (an open PR) stays ready when the PR glyph is hidden.
+ */
+export function sessionRowIconKind({
+  bucket,
+  unseen,
+  serverUnseen,
+  prStatus,
+  showPrStatus,
+}: SessionRowIconInput): SessionStateKind {
+  if (bucket === "blocked") return "awaiting";
+  if (bucket === "working") return "running";
+  const pr = showPrStatus ? prStatus : undefined;
+  if (pr !== undefined && (pr.state === "merged" || pr.state === "closed")) return "pr";
+  if (unseen) return "ready";
+  if (pr !== undefined) return "pr";
+  return bucket === "review" && !serverUnseen ? "ready" : "idle";
 }

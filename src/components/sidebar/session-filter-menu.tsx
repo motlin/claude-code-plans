@@ -1,6 +1,8 @@
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { SlidersHorizontal } from "lucide-react";
 import type { z } from "zod";
 
+import { recentSessionsInfiniteQueryOptions } from "../../lib/api/sessions";
 import {
   sessionActivityDaysLabels,
   sessionGroupByLabels,
@@ -79,15 +81,17 @@ function RadioSubmenu<Schema extends z.ZodEnum>({
 }
 
 /**
- * claude.ai/code's Filter & group menu, minus Environment (cloud-only) and
- * Show PR status (no PR data yet).
+ * claude.ai/code's Filter & group menu, minus Environment (cloud-only). Show PR
+ * status stays hidden until some row has PR data.
  */
 function SessionFilterMenu({
   prefs,
   onChange,
+  hasPrData,
 }: {
   prefs: SessionListPrefs;
   onChange: (next: SessionListPrefs) => void;
+  hasPrData: boolean;
 }) {
   return (
     <Menu>
@@ -134,16 +138,24 @@ function SessionFilterMenu({
           prefs={prefs}
           onChange={onChange}
         />
+        {(hasPrData || prefs.groupBy === "project" || prefs.groupBy === "custom") && (
+          <MenuSeparator />
+        )}
         {(prefs.groupBy === "project" || prefs.groupBy === "custom") && (
-          <>
-            <MenuSeparator />
-            <MenuCheckboxItem
-              checked={prefs.showEmptyGroups}
-              onCheckedChange={(checked) => onChange({ ...prefs, showEmptyGroups: checked })}
-            >
-              Show empty groups
-            </MenuCheckboxItem>
-          </>
+          <MenuCheckboxItem
+            checked={prefs.showEmptyGroups}
+            onCheckedChange={(checked) => onChange({ ...prefs, showEmptyGroups: checked })}
+          >
+            Show empty groups
+          </MenuCheckboxItem>
+        )}
+        {hasPrData && (
+          <MenuCheckboxItem
+            checked={prefs.showPrStatus}
+            onCheckedChange={(checked) => onChange({ ...prefs, showPrStatus: checked })}
+          >
+            Show PR status
+          </MenuCheckboxItem>
         )}
         <MenuSeparator />
         <MenuItem onSelect={() => onChange(clearSessionFilters(prefs))}>Clear filters</MenuItem>
@@ -156,6 +168,13 @@ function SessionFilterMenu({
 export function SidebarSessionGroups({ activeItemId }: { activeItemId: string | null }) {
   const { settings, setSetting } = useSettings();
   const prefs = settings.sessionListPrefs;
+  // Shares the list's query cache, so this adds no request.
+  const { data } = useInfiniteQuery(
+    recentSessionsInfiniteQueryOptions(undefined, prefs.statusFilter),
+  );
+  const hasPrData =
+    data?.pages.some((page) => page.sessions.some((session) => session.prStatus !== undefined)) ??
+    false;
   return (
     <SessionGroups
       activeItemId={activeItemId}
@@ -164,6 +183,7 @@ export function SidebarSessionGroups({ activeItemId }: { activeItemId: string | 
         <SessionFilterMenu
           prefs={prefs}
           onChange={(next) => setSetting("sessionListPrefs", next)}
+          hasPrData={hasPrData}
         />
       }
     />

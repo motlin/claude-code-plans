@@ -32,6 +32,11 @@ import { NavSectionSchema } from "../src/lib/nav-sections";
 import { PaletteFilterSchema, PaletteTypeSchema } from "../src/lib/palette-tokens";
 import { PaneLayoutStateSchema } from "../src/lib/pane-layout";
 import { PinDropOutcomeSchema } from "../src/lib/pinned-sessions";
+import {
+  GhPrReviewDecisionSchema,
+  GhPrStateSchema,
+  GhPrStatusCacheStateSchema,
+} from "../src/lib/pr-status";
 import { RecentsHistorySchema } from "../src/lib/recents-history";
 import {
   RoutineKindSchema,
@@ -42,6 +47,7 @@ import {
 } from "../src/lib/routines";
 import { schemaChoiceRegistry } from "../src/lib/schema-choices";
 import {
+  PullRequestStateSchema,
   SessionBucketReasonSchema,
   SessionBucketSchema,
   SessionStateKindSchema,
@@ -94,6 +100,10 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["SessionBucketSchema", SessionBucketSchema],
   ["SessionBucketReasonSchema", SessionBucketReasonSchema],
   ["SessionStateKindSchema", SessionStateKindSchema],
+  ["PullRequestStateSchema", PullRequestStateSchema],
+  ["GhPrStateSchema", GhPrStateSchema],
+  ["GhPrStatusCacheStateSchema", GhPrStatusCacheStateSchema],
+  ["GhPrReviewDecisionSchema", GhPrReviewDecisionSchema],
   ["HomeAttentionKindSchema", HomeAttentionKindSchema],
   ["SessionListPrefsSchema", SessionListPrefsSchema],
   ["GroupIconSchema", GroupIconSchema],

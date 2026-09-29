@@ -3,6 +3,7 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 import { SessionStateIcon } from "../src/components/status-dot";
+import { prGlyph } from "../src/lib/pr-status";
 import { sessionStateKind } from "../src/lib/session-state";
 
 afterEach(cleanup);
@@ -71,6 +72,32 @@ describe("SessionStateIcon", () => {
       glyphStyle: "color: var(--color-git-draft);",
       glyphSize: ["14", "14"],
     });
+  });
+
+  it("maps a PR status to the git-coloured glyph with a `#N · State` label", () => {
+    const labels = (
+      [
+        { number: 6, state: "draft" },
+        { number: 7, state: "open" },
+        { number: 8, state: "merged" },
+        { number: 9, state: "closed" },
+      ] as const
+    ).map((pr) => {
+      const { container } = render(<SessionStateIcon kind="pr" pr={prGlyph(pr)} />);
+      const wrapper = container.firstElementChild;
+      const result = [
+        wrapper?.getAttribute("aria-label"),
+        wrapper?.firstElementChild?.getAttribute("style"),
+      ];
+      cleanup();
+      return result;
+    });
+    expect(labels).toStrictEqual([
+      ["#6 · Draft", "color: var(--color-git-draft);"],
+      ["#7 · Open", "color: var(--color-git-opened);"],
+      ["#8 · Merged", "color: var(--color-git-merged);"],
+      ["#9 · Closed", "color: var(--color-git-closed);"],
+    ]);
   });
 
   it("lets the caller override the accessible label", () => {

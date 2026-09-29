@@ -7,6 +7,8 @@ import { getSessionPrLink, isSessionArchived } from "./db/queries";
 import { isSessionUnseen } from "./db/viewed-state";
 import type { ActiveSessionPayload, SessionSummaryPayload } from "./hook-events";
 import { getLiveSubagentNodes } from "./live-subagent-store";
+import type { PrStatus } from "./pr-status";
+import { lookupSessionPrStatus } from "./pr-status-service";
 import { resolveSessionBucket } from "./session-state";
 import type { SessionEntry } from "./sessions";
 
@@ -33,6 +35,8 @@ interface SessionSummaryOptions {
   /** The app-side archive flag (see `getArchivedSessionIds`). */
   archived?: boolean;
   activeSession?: ActiveSessionEntry | null;
+  /** PR state for the row; defaults to the in-memory PR status service. */
+  prStatus?: PrStatus | null;
   now?: number;
 }
 
@@ -46,6 +50,7 @@ export function toSessionSummaryPayload(
     unseen = false,
     archived = false,
     activeSession = getActiveSessionEntry(entry.id),
+    prStatus = lookupSessionPrStatus(entry),
     now = Date.now(),
   }: SessionSummaryOptions = {},
 ): SessionSummaryPayload {
@@ -66,7 +71,7 @@ export function toSessionSummaryPayload(
     backgroundTasks: activeSession?.backgroundTasks ?? [],
     lastSubagentActivityAt: activeSession?.lastSubagentActivityAt ?? null,
     herdrStatus: null,
-    prState: null,
+    prState: prStatus?.state ?? null,
     unseen,
     fileMtime: entry.mtime.getTime(),
     now,
@@ -82,6 +87,7 @@ export function toSessionSummaryPayload(
     messageCount: entry.messageCount,
     gitBranch: entry.gitBranch,
     ...(entry.pr === undefined ? {} : { pr: entry.pr }),
+    ...(prStatus === null ? {} : { prStatus }),
     ...(entry.forkedFromSessionId === undefined
       ? {}
       : { forkedFromSessionId: entry.forkedFromSessionId }),
@@ -128,6 +134,7 @@ export function buildSessionSummaryPayloadFromDb(
       projectName,
       messageCount: row.messageCount,
       gitBranch: row.gitBranch ?? undefined,
+      cwd: row.cwd ?? undefined,
       isSidechain: row.isSidechain === 1,
       forkedFromSessionId: row.forkedFromSessionId ?? undefined,
       pr: getSessionPrLink(db, sessionId) ?? undefined,

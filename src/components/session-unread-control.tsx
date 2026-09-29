@@ -1,9 +1,11 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 import type { SessionListItem } from "../lib/api/sessions";
+import { prGlyph } from "../lib/pr-status";
 import { sessionMenuReadState } from "../lib/session-menu-items";
-import type { SessionStateKind } from "../lib/session-state";
+import { sessionRowIconKind } from "../lib/session-state";
 import { hasUnseenWork, subscribeUnseenWork, toggleUnseen } from "../lib/unread-store";
+import { useSettings } from "./settings-provider";
 import { SessionStateIcon } from "./status-dot";
 
 export function useHasUnseenWork(sessionId: string): boolean {
@@ -12,29 +14,21 @@ export function useHasUnseenWork(sessionId: string): boolean {
 }
 
 /**
- * The server bucket lags a manual toggle until the next summary arrives, so a finished row's
- * ready/idle icon follows the local unseen flag. A review row the server did not flag unseen
- * (an open PR) stays ready.
- */
-function rowIconKind(session: SessionListItem, unseen: boolean): SessionStateKind {
-  switch (session.bucket) {
-    case "blocked":
-      return "awaiting";
-    case "working":
-      return "running";
-    case "review":
-    case "done":
-      return unseen || (session.bucket === "review" && !session.unseen) ? "ready" : "idle";
-  }
-}
-
-/**
  * Upstream session row status dot. On a finished row it is also the read/unread toggle
  * ("Click to mark as read" / "Click to mark as unread"); working and waiting rows show a plain icon.
  */
 export function SessionRowStatusDot({ session }: { session: SessionListItem }) {
   const unseen = useHasUnseenWork(session.id);
-  const kind = rowIconKind(session, unseen);
+  const { settings } = useSettings();
+  // The server bucket lags a manual toggle until the next summary arrives, so a finished
+  // row's icon follows the local unseen flag.
+  const kind = sessionRowIconKind({
+    bucket: session.bucket,
+    unseen,
+    serverUnseen: session.unseen,
+    prStatus: session.prStatus,
+    showPrStatus: settings.sessionListPrefs.showPrStatus,
+  });
   const readState = sessionMenuReadState(session.bucket, unseen);
   if (readState === "working" || readState === "awaiting") return <SessionStateIcon kind={kind} />;
 
@@ -51,7 +45,12 @@ export function SessionRowStatusDot({ session }: { session: SessionListItem }) {
         toggleUnseen(session.id);
       }}
     >
-      <SessionStateIcon kind={kind} />
+      <SessionStateIcon
+        kind={kind}
+        {...(kind === "pr" && session.prStatus !== undefined
+          ? { pr: prGlyph(session.prStatus) }
+          : {})}
+      />
     </button>
   );
 }
