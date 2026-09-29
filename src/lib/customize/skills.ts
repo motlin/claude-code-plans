@@ -23,6 +23,7 @@ const SkillFrontmatterSchema = z.strictObject({
   "disable-model-invocation": BooleanStringSchema.optional(),
   metadata: z.record(z.string(), z.string()).optional(),
 });
+type SkillFrontmatter = z.infer<typeof SkillFrontmatterSchema>;
 
 const InstalledPluginsSchema = z.strictObject({
   version: z.number(),
@@ -282,6 +283,30 @@ export async function listSkills({
   return result;
 }
 
+async function readSkillFrontmatter(dir: string): Promise<SkillFrontmatter> {
+  let content = "";
+  try {
+    content = await readFile(join(dir, "SKILL.md"), "utf-8");
+  } catch {
+    // Listed a moment ago; treat a vanished SKILL.md as empty frontmatter.
+  }
+  const raw = parseSkillFrontmatter(content);
+  const parsed = raw === null ? undefined : SkillFrontmatterSchema.safeParse(raw);
+  return parsed?.success === true ? parsed.data : {};
+}
+
+/** Whether a user can `/invoke` the skill, and its `argument-hint` if any. */
+export async function readSkillInvocation(
+  dir: string,
+): Promise<{ userInvocable: boolean; argumentHint?: string }> {
+  const frontmatter = await readSkillFrontmatter(dir);
+  const argumentHint = frontmatter["argument-hint"];
+  return {
+    userInvocable: frontmatter["user-invocable"] !== "false",
+    ...(argumentHint === undefined ? {} : { argumentHint }),
+  };
+}
+
 /**
  * SKILL.md `allowed-tools` is either a YAML list or one string separated by
  * commas and/or spaces; spaces inside `Bash(git add:*)` belong to the rule.
@@ -311,15 +336,7 @@ export function splitAllowedTools(value: string | readonly string[] | undefined)
  * the skill directory tree (symlinks skipped, paths relative to the dir).
  */
 export async function readSkillDetail(skill: SkillSummary): Promise<SkillDetail> {
-  let content = "";
-  try {
-    content = await readFile(join(skill.dir, "SKILL.md"), "utf-8");
-  } catch {
-    // Listed a moment ago; treat a vanished SKILL.md as empty frontmatter.
-  }
-  const raw = parseSkillFrontmatter(content);
-  const parsed = raw === null ? undefined : SkillFrontmatterSchema.safeParse(raw);
-  const frontmatter = parsed?.success === true ? parsed.data : {};
+  const frontmatter = await readSkillFrontmatter(skill.dir);
   const tree = await scanPluginTree(skill.dir);
 
   const pluginPrefix = "plugin:";

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { CornerDownLeft, MessageSquare, Square, X } from "lucide-react";
 
 import { useComposerDraft } from "../hooks/use-composer-draft";
@@ -14,7 +14,14 @@ import {
   takeQueuedDiffComments,
   useDiffComments,
 } from "../lib/diff-comments";
+import {
+  filterSlashCommands,
+  type SlashCommand,
+  slashArgumentHint,
+  slashQuery,
+} from "../lib/slash-commands";
 import { ComposerChin } from "./composer-chin";
+import { SlashCommandMenu, slashCommandOptionId } from "./slash-command-menu";
 import { Tooltip } from "./ui/tooltip";
 
 type ComposerVariant = "session" | "home";
@@ -87,7 +94,11 @@ interface ComposerProps {
   deliveryHint?: string | undefined;
   /** Mode / model / effort / usage readouts; the chin stays empty without them. */
   chin?: ComposerState | undefined;
+  /** Entries for the "/" autocomplete popup (`GET /api/commands`). */
+  slashCommands?: readonly SlashCommand[] | undefined;
 }
+
+const NO_COMMANDS: readonly SlashCommand[] = [];
 
 /**
  * The claude.ai/code ChatComposer card: an auto-growing prompt editor with a
@@ -103,10 +114,12 @@ export function Composer({
   disabled = false,
   deliveryHint,
   chin,
+  slashCommands = NO_COMMANDS,
 }: ComposerProps) {
   const { text: prompt, setText: setPrompt, clear: clearDraft } = useComposerDraft(draftKey);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const hintId = useId();
+  const slashMenuId = useId();
   const { queued: queuedComments } = useDiffComments(draftKey);
   const canSend = (prompt.trim() !== "" || queuedComments.length > 0) && !isStreaming && !disabled;
 
@@ -127,6 +140,38 @@ export function Composer({
     [draftKey, setPrompt],
   );
 
+  const query = slashQuery(prompt);
+  const [dismissedPrompt, setDismissedPrompt] = useState<string | null>(null);
+  const [highlight, setHighlight] = useState({ query: "", index: 0 });
+  const matches =
+    query === null || dismissedPrompt === prompt ? [] : filterSlashCommands(slashCommands, query);
+  const slashOpen = query !== null && matches.length > 0;
+  const highlighted = highlight.query === query ? Math.min(highlight.index, matches.length - 1) : 0;
+  const argumentHint = slashArgumentHint(slashCommands, prompt);
+
+  function acceptSlashCommand(command: SlashCommand) {
+    setPrompt(`/${command.name} `);
+    textareaRef.current?.focus();
+  }
+
+  function handleSlashKey(e: React.KeyboardEvent): boolean {
+    if (!slashOpen || query === null) return false;
+    const move = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
+    if (move !== 0) {
+      setHighlight({ query, index: (highlighted + move + matches.length) % matches.length });
+    } else if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey) {
+      const command = matches[highlighted];
+      if (command !== undefined) acceptSlashCommand(command);
+    } else if (e.key === "Escape") {
+      setDismissedPrompt(prompt);
+      e.stopPropagation();
+    } else {
+      return false;
+    }
+    e.preventDefault();
+    return true;
+  }
+
   function handleSubmit() {
     if (!canSend) return;
     const trimmed = prompt.trim();
@@ -145,6 +190,7 @@ export function Composer({
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.nativeEvent.isComposing || handleSlashKey(e)) return;
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       handleSubmit();
@@ -162,6 +208,27 @@ export function Composer({
       )}
       <div className={CARD_CLASS} onClick={() => textareaRef.current?.focus()}>
         <div className="relative pr-[30px]">
+          {slashOpen && query !== null && (
+            <SlashCommandMenu
+              id={slashMenuId}
+              commands={matches}
+              query={query}
+              highlighted={highlighted}
+              onHighlight={(index) => setHighlight({ query, index })}
+              onAccept={acceptSlashCommand}
+            />
+          )}
+          {argumentHint !== null && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 right-[30px] left-0 overflow-hidden py-0.5 pl-1 font-sans text-[14px]/[20px] break-words whitespace-pre-wrap pointer-coarse:text-[16px]"
+            >
+              <span className="invisible">{prompt}</span>
+              <span data-testid="slash-argument-hint" className="text-[rgb(137,135,129)]">
+                {argumentHint}
+              </span>
+            </div>
+          )}
           <textarea
             ref={textareaRef}
             aria-label="Prompt"
@@ -169,6 +236,10 @@ export function Composer({
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={handleKeyDown}
+            aria-controls={slashOpen ? slashMenuId : undefined}
+            aria-activedescendant={
+              slashOpen ? slashCommandOptionId(slashMenuId, highlighted) : undefined
+            }
             placeholder={PLACEHOLDER[variant]}
             disabled={isStreaming || disabled}
             rows={1}

@@ -4,6 +4,7 @@ import { ChevronDown, Folder } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useActiveSessionsIfAvailable } from "../../hooks/use-claude-events";
+import { slashCommandsQueryOptions } from "../../lib/api/commands";
 import { composerDefaultsQueryOptions } from "../../lib/api/composer-defaults";
 import { launchHerdrSession } from "../../lib/api/herdr";
 import { projectsQueryOptions } from "../../lib/api/projects";
@@ -55,6 +56,9 @@ export function HomeComposer() {
     [projects, recents],
   );
   const project = startProjects.find((p) => p.id === chosenProjectId) ?? startProjects[0];
+  const { data: slashCommands } = useQuery(
+    slashCommandsQueryOptions(project?.projectPath ?? undefined),
+  );
 
   const chin = useMemo(
     () =>
@@ -145,6 +149,7 @@ export function HomeComposer() {
           pendingLaunch === null ? undefined : `Starting session in ${pendingLaunch.cwd}…`
         }
         chin={chin}
+        slashCommands={slashCommands}
       />
     </div>
   );

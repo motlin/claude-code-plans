@@ -45,6 +45,7 @@ import { handleBtwPrompt, SideChat, useSideChatShortcut } from "./side-chat";
 import { useToast } from "./toast";
 import { transcriptWidthStyle } from "../lib/transcript-width";
 import { useChatStream } from "../hooks/use-chat-stream";
+import { slashCommandsQueryOptions } from "../lib/api/commands";
 import { useShortcutKeys } from "../hooks/use-shortcut";
 import { canStopResponse, useStopResponse } from "../hooks/use-stop-response";
 import {
@@ -442,6 +443,10 @@ function SessionView({
       }),
     [hookContext?.permissionMode, transcript.records, composerServerState],
   );
+  const { data: slashCommands } = useQuery({
+    ...slashCommandsQueryOptions(data?.projectPath ?? undefined),
+    enabled: Boolean(data?.projectPath),
+  });
   const [generating, setGenerating] = useState(false);
   const summaryMutation = useRequestSummary(sessionId);
   const chromeHidden = settings.chromeHidden;
@@ -775,6 +780,7 @@ function SessionView({
                   disabled={promptBehavior.disabled || liveHerdrPrompt.state.isPending}
                   deliveryHint={promptBehavior.deliveryHint}
                   chin={composerChin}
+                  slashCommands={slashCommands}
                 />
               )}
             </SessionDock>
