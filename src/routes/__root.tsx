@@ -13,6 +13,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Agentation } from "agentation";
 import { ThemeProvider } from "../components/theme-provider";
 import { SettingsProvider } from "../components/settings-provider";
+import { ToastProvider } from "../components/toast";
 import { ModeToggle } from "../components/mode-toggle";
 import { Sidebar } from "../components/sidebar/index";
 import { AppShellFallback } from "../components/app-shell-fallback";
@@ -137,7 +138,9 @@ function RootApplication({ children }: Readonly<{ children: ReactNode }>) {
         <ThemeProvider>
           <SettingsProvider>
             <ClaudeEventsProvider>
-              <RootLayout>{children}</RootLayout>
+              <ToastProvider>
+                <RootLayout>{children}</RootLayout>
+              </ToastProvider>
             </ClaudeEventsProvider>
           </SettingsProvider>
         </ThemeProvider>
