@@ -78,6 +78,7 @@ describe("shortcut registry", () => {
       "toggle_terminal",
       "close_pane",
       "expand_collapse_pane",
+      "toggle_side_chat",
     ]);
   });
 

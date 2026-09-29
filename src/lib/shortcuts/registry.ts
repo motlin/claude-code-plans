@@ -253,7 +253,7 @@ export const SHORTCUTS = {
     group: "panes",
     bindings: cmdOrCtrl(";", [], "Semicolon"),
     ownerSlug: "panes-side-chat",
-    enabled: false,
+    enabled: true,
   },
   // Composer
   open_mode_menu: {

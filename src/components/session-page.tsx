@@ -45,6 +45,8 @@ import { Tooltip } from "./ui/tooltip";
 import { SessionPaneControls } from "./view-options-menu";
 import { ViewportPortal } from "./viewport-portal";
 import { SessionDock } from "./session-dock";
+import { handleBtwPrompt, SideChat, useSideChatShortcut } from "./side-chat";
+import { useToast } from "./toast";
 import { transcriptWidthStyle } from "../lib/transcript-width";
 import { useChatStream } from "../hooks/use-chat-stream";
 import { useShortcutKeys } from "../hooks/use-shortcut";
@@ -264,6 +266,7 @@ export function SessionPage({
   if (herdrQuery.isError) throw herdrQuery.error;
 
   const data = detailQuery.data;
+  useSideChatShortcut(sessionId, data !== null && data !== undefined);
   if (data === null) return <SessionNotFound />;
 
   const transcript = transcriptQuery.data;
@@ -469,6 +472,7 @@ function SessionView({
     [isActive, submitAnswer],
   );
   const chatStream = useChatStream();
+  const toast = useToast();
   const liveHerdrPrompt = useLiveHerdrPrompt(sessionId, endIndex);
   const promptBehavior = getSessionPromptBehavior(sessionId, isActive, herdr);
   const shellsEnabled =
@@ -665,6 +669,8 @@ function SessionView({
           />
         )}
 
+        <SideChat sessionId={sessionId} messageCount={data.messageCount} />
+
         <ViewportPortal>
           <JumpTargetProvider value={jumpTargetWindow}>
             {linksDrawerState.open && sessionLinks.totalCount > 0 && (
@@ -694,15 +700,24 @@ function SessionView({
                 <Composer
                   variant="session"
                   draftKey={sessionId}
-                  onSend={(prompt) =>
+                  onSend={(prompt) => {
+                    if (
+                      handleBtwPrompt(prompt, {
+                        sessionId,
+                        messageCount: data.messageCount,
+                        toast,
+                      })
+                    ) {
+                      return;
+                    }
                     routeSessionPrompt(
                       promptBehavior.usesHerdr,
                       sessionId,
                       prompt,
                       liveHerdrPrompt.send,
                       chatStream.send,
-                    )
-                  }
+                    );
+                  }}
                   onCancel={chatStream.cancel}
                   isStreaming={!promptBehavior.usesHerdr && chatStream.state.isStreaming}
                   disabled={promptBehavior.disabled || liveHerdrPrompt.state.isPending}

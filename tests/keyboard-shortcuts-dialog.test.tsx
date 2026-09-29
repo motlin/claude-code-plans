@@ -141,6 +141,7 @@ describe("KeyboardShortcutsDialog", () => {
         "Toggle terminal",
         "Close pane",
         "Expand or collapse pane",
+        "Toggle side chat",
       ],
     });
   });
