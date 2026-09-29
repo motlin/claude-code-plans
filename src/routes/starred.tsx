@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { z } from "zod";
 import { apiFetch } from "../lib/api/client";
 import { sessionQueryKeys, starredSessionsQueryOptions } from "../lib/api/sessions";
-import { SessionUnreadControl } from "../components/session-unread-control";
+import { SessionRowStatusDot } from "../components/session-unread-control";
 import { ListPageHeader } from "../components/list-page-header";
 import { formatCount } from "../lib/pluralize";
 
@@ -86,7 +86,7 @@ function StarredPage() {
                 )}
               </Link>
               <div className="absolute right-9 top-2.5">
-                <SessionUnreadControl sessionId={session.id} state={session.state} />
+                <SessionRowStatusDot session={session} />
               </div>
               <button
                 type="button"

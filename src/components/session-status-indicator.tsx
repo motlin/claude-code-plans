@@ -6,7 +6,7 @@ import {
 } from "../lib/session-state";
 import { SessionStateIcon } from "./status-dot";
 
-export const DISPLAY_STATE_STYLES: Record<DisplayState, string> = {
+const DISPLAY_STATE_STYLES: Record<DisplayState, string> = {
   waiting: "text-amber-500",
   review: "text-sky-500",
   working: "text-green-500",

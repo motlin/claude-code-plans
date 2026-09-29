@@ -140,7 +140,7 @@ export const SHORTCUTS = {
     group: "general",
     bindings: cmdOrCtrl("u", ["alt"], letterCode("u")),
     ownerSlug: "session-row-actions",
-    enabled: false,
+    enabled: true,
   },
   copy_session_link: {
     description: "Copy session link",

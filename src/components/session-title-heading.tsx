@@ -4,6 +4,7 @@ import { useShortcut } from "../hooks/use-shortcut";
 import { useSessionRename } from "../hooks/use-session-rename";
 import { copySessionLink, openPullRequest } from "../lib/session-open-in";
 import { useSessionRenameRequest } from "../lib/session-rename-request";
+import { toggleUnseen } from "../lib/unread-store";
 import { ArchivedBadge } from "./archived-badge";
 import { InlineRenameInput } from "./inline-rename-input";
 import { useToast } from "./toast";
@@ -11,7 +12,8 @@ import { useToast } from "./toast";
 /**
  * The session page title, which is also claude.ai/code's rename button:
  * clicking it (or ⌥⌘R anywhere on the page, or ⌘K's Rename command) swaps it for an inline input.
- * ⌥⌘A archives the session (or unarchives it when it already is); ⌥⌘L copies its link;
+ * ⌥⌘A archives the session (or unarchives it when it already is); ⌥⌘U marks it read/unread;
+ * ⌥⌘L copies its link;
  * ⌥⌘G opens its pull request when the transcript has a `pr-link` record; ⌥⌘O forks it.
  */
 export function SessionTitleHeading({
@@ -34,6 +36,7 @@ export function SessionTitleHeading({
   const fork = useSessionFork();
   useShortcut("rename_session", () => rename.startEditing());
   useShortcut("archive_session", () => setArchived(!archived));
+  useShortcut("toggle_read_session", () => toggleUnseen(sessionId));
   useShortcut("copy_session_link", () => void copySessionLink(sessionId, toast));
   useShortcut(
     "open_session_pr",

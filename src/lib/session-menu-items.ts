@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { sessionMenuItemLabels } from "./schema-choices";
+import type { SessionBucket } from "./session-state";
 
 /**
  * The claude.ai/code session actions menu as data. The sidebar row menu, the
@@ -51,6 +52,16 @@ export type SessionMenuSurface = "row" | "header" | "palette" | "palette-card";
 
 /** Waiting rows get "Mark as completed"; working rows get no read-state item. */
 export type SessionMenuReadState = "working" | "awaiting" | "unread" | "read";
+
+/** Blocked rows are awaiting input; finished rows are read or unread by the unseen flag. */
+export function sessionMenuReadState(
+  bucket: SessionBucket | undefined,
+  unseen: boolean,
+): SessionMenuReadState {
+  if (bucket === "working") return "working";
+  if (bucket === "blocked") return "awaiting";
+  return unseen ? "unread" : "read";
+}
 
 export interface SessionMenuSession {
   title: string;

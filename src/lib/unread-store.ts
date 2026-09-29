@@ -58,6 +58,11 @@ export function markSeen(sessionId: string): void {
   applyOptimistically(sessionId, false);
 }
 
+export function toggleUnseen(sessionId: string): void {
+  if (hasUnseenWork(sessionId)) markSeen(sessionId);
+  else markUnseen(sessionId);
+}
+
 export function clearAll(): void {
   for (const [sessionId, unseen] of unseenBySession) {
     if (unseen) markSeen(sessionId);

@@ -10,7 +10,7 @@ import {
   getSessionMenuItems,
   type SessionMenuCapability,
   type SessionMenuItemId,
-  type SessionMenuReadState,
+  sessionMenuReadState,
 } from "../lib/session-menu-items";
 import type { SessionBucket } from "../lib/session-state";
 import { markSeen, markUnseen } from "../lib/unread-store";
@@ -35,12 +35,6 @@ interface CardItem {
   label: string;
 }
 
-function readStateOf(bucket: SessionBucket | undefined, unseen: boolean): SessionMenuReadState {
-  if (bucket === "working") return "working";
-  if (bucket === "blocked") return "awaiting";
-  return unseen ? "unread" : "read";
-}
-
 /**
  * The claude.ai/code ⌘K row-actions card: a 280px menu beside the palette with
  * the session title, "Session · <bucket>" and items numbered 1…N. ← or Esc
@@ -63,14 +57,14 @@ export function PaletteRowActionsCard({
   const toast = useToast();
   const setArchived = useSessionArchive(session.id);
 
-  const capabilities = new Set<SessionMenuCapability>(["readState", "copyLink"]);
+  const capabilities = new Set<SessionMenuCapability>(["readState", "ackAwaiting", "copyLink"]);
   if (session.starred !== undefined) capabilities.add("pin");
   if (session.archived !== undefined) capabilities.add("archive");
   const sessionItems = getSessionMenuItems(
     {
       title: session.title,
       pinned: session.starred ?? false,
-      readState: readStateOf(session.bucket, unseen),
+      readState: sessionMenuReadState(session.bucket, unseen),
       archived: session.archived ?? false,
       prUrl: null,
       hasLivePane: false,
@@ -109,6 +103,7 @@ export function PaletteRowActionsCard({
         star.mutate(id === "pin");
         return;
       case "mark-read":
+      case "mark-completed":
         markSeen(session.id);
         return;
       case "mark-unread":
@@ -125,7 +120,6 @@ export function PaletteRowActionsCard({
       case "open-finder":
       case "open-claude-ai":
       case "open-pr":
-      case "mark-completed":
       case "rename":
       case "fork":
         return;

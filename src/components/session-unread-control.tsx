@@ -1,15 +1,9 @@
 import { useCallback, useSyncExternalStore } from "react";
 
-import {
-  displayState,
-  isLiveSessionState,
-  sessionStateKind,
-  type ActivityState,
-  type DisplayState,
-  type SessionSummaryState,
-} from "../lib/session-state";
-import { hasUnseenWork, markSeen, markUnseen, subscribeUnseenWork } from "../lib/unread-store";
-import { DISPLAY_STATE_STYLES } from "./session-status-indicator";
+import type { SessionListItem } from "../lib/api/sessions";
+import { sessionMenuReadState } from "../lib/session-menu-items";
+import type { SessionStateKind } from "../lib/session-state";
+import { hasUnseenWork, subscribeUnseenWork, toggleUnseen } from "../lib/unread-store";
 import { SessionStateIcon } from "./status-dot";
 
 export function useHasUnseenWork(sessionId: string): boolean {
@@ -17,72 +11,47 @@ export function useHasUnseenWork(sessionId: string): boolean {
   return useSyncExternalStore(subscribeUnseenWork, getSnapshot, () => false);
 }
 
-function useSessionDisplayState(sessionId: string, state: ActivityState): DisplayState {
-  return displayState(state, useHasUnseenWork(sessionId));
+/**
+ * The server bucket lags a manual toggle until the next summary arrives, so a finished row's
+ * ready/idle icon follows the local unseen flag. A review row the server did not flag unseen
+ * (an open PR) stays ready.
+ */
+function rowIconKind(session: SessionListItem, unseen: boolean): SessionStateKind {
+  switch (session.bucket) {
+    case "blocked":
+      return "awaiting";
+    case "working":
+      return "running";
+    case "review":
+    case "done":
+      return unseen || (session.bucket === "review" && !session.unseen) ? "ready" : "idle";
+  }
 }
 
 /**
- * Upstream row icon for a session the active-session feed reports as live. A list row whose
- * summary state has not caught up yet (still "ended") shows as running.
+ * Upstream session row status dot. On a finished row it is also the read/unread toggle
+ * ("Click to mark as read" / "Click to mark as unread"); working and waiting rows show a plain icon.
  */
-export function LiveSessionStateIcon({
-  sessionId,
-  state,
-}: {
-  sessionId: string;
-  state: SessionSummaryState;
-}) {
-  const unseen = useHasUnseenWork(sessionId);
-  const shown = isLiveSessionState(state) ? displayState(state, unseen) : "working";
-  return <SessionStateIcon kind={sessionStateKind(shown)} />;
-}
+export function SessionRowStatusDot({ session }: { session: SessionListItem }) {
+  const unseen = useHasUnseenWork(session.id);
+  const kind = rowIconKind(session, unseen);
+  const readState = sessionMenuReadState(session.bucket, unseen);
+  if (readState === "working" || readState === "awaiting") return <SessionStateIcon kind={kind} />;
 
-export function SessionUnreadControl({
-  sessionId,
-  state,
-}: {
-  sessionId: string;
-  state: SessionSummaryState;
-}) {
-  if (!isLiveSessionState(state)) return null;
-
-  return <LiveSessionUnreadControl sessionId={sessionId} state={state} />;
-}
-
-function LiveSessionUnreadControl({
-  sessionId,
-  state,
-}: {
-  sessionId: string;
-  state: ActivityState;
-}) {
-  const shownState = useSessionDisplayState(sessionId, state);
-
-  // Only idle/review rows get a manual control: the server marks a turn unseen when it stops, so
-  // clearing a working row would be undone a moment later and invites clearing unfinished work.
-  const canToggle = shownState === "idle" || shownState === "review";
-
+  const label = readState === "unread" ? "Click to mark as read" : "Click to mark as unread";
   return (
-    <div className="flex items-center gap-1.5 text-[10px]" data-session-state={shownState}>
-      <span className={DISPLAY_STATE_STYLES[shownState]}>
-        {shownState === "review" ? "needs review" : shownState}
-      </span>
-      {canToggle && (
-        <button
-          type="button"
-          className="cursor-pointer text-xs text-t6 transition-colors hover:text-primary"
-          title={shownState === "review" ? "Mark seen" : "Mark unseen"}
-          aria-label={shownState === "review" ? "Mark seen" : "Mark unseen"}
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            if (shownState === "review") markSeen(sessionId);
-            else markUnseen(sessionId);
-          }}
-        >
-          {shownState === "review" ? "○" : "●"}
-        </button>
-      )}
-    </div>
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      className="flex cursor-pointer items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleUnseen(session.id);
+      }}
+    >
+      <SessionStateIcon kind={kind} />
+    </button>
   );
 }

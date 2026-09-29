@@ -11,19 +11,11 @@ import {
   type SessionGroupRow,
   type SessionListPrefs,
 } from "../../lib/session-groups";
-import type { SessionBucket, SessionStateKind } from "../../lib/session-state";
 import { toggleSidebarGroup, useSidebarState } from "../../lib/sidebar-store";
 import { ArchivedBadge } from "../archived-badge";
 import { SessionActionsMenu, SessionRowTitle } from "../session-actions-menu";
-import { SessionStateIcon } from "../status-dot";
+import { SessionRowStatusDot } from "../session-unread-control";
 import { LoadingBars } from "./primitives/LoadingBars";
-
-const BUCKET_ICON_KINDS = {
-  blocked: "awaiting",
-  review: "ready",
-  working: "running",
-  done: "idle",
-} as const satisfies Record<SessionBucket, SessionStateKind>;
 
 interface SidebarSessionRow extends SessionGroupRow {
   session: SessionListItem;
@@ -190,7 +182,7 @@ function SessionRowLink({ row, selected }: { row: SidebarSessionRow; selected: b
         className={`${ROW_CLASS} text-secondary hover:bg-[var(--sb-hover)] focus-visible:bg-[var(--sb-hover)] data-[selected=focused]:bg-[var(--sb-selected)] data-[selected=focused]:text-primary`}
       >
         <span className="df-leading-slot text-secondary">
-          <SessionStateIcon kind={BUCKET_ICON_KINDS[row.bucket]} />
+          <SessionRowStatusDot session={row.session} />
         </span>
         <span data-row-label className="min-w-0 flex-1">
           <SessionRowTitle render={(title) => <FadeLabel text={title} />} />

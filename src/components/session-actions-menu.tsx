@@ -19,8 +19,8 @@ import {
   type SessionMenuCapability,
   type SessionMenuEntry,
   type SessionMenuItemId,
-  type SessionMenuReadState,
   type SessionMenuSession,
+  sessionMenuReadState,
 } from "../lib/session-menu-items";
 import {
   claudeAiSessionUrl,
@@ -58,6 +58,7 @@ const LOCAL_CAPABILITIES: ReadonlySet<SessionMenuCapability> = new Set<SessionMe
   "openPr",
   "pin",
   "readState",
+  "ackAwaiting",
   "rename",
   "copyLink",
   "fork",
@@ -92,12 +93,6 @@ export function SessionRowTitle({ render }: { render?: (title: string) => ReactN
   return render === undefined ? rename.title : render(rename.title);
 }
 
-function readStateOf(session: SessionListItem, unseen: boolean): SessionMenuReadState {
-  if (session.bucket === "working") return "working";
-  if (session.bucket === "blocked") return "awaiting";
-  return unseen ? "unread" : "read";
-}
-
 function useSessionMenu(session: SessionListItem) {
   const unseen = useHasUnseenWork(session.id);
   const { data: herdr } = useQuery(herdrPanesQueryOptions);
@@ -114,7 +109,7 @@ function useSessionMenu(session: SessionListItem) {
   const menuSession: SessionMenuSession = {
     title: session.title,
     pinned: session.starred,
-    readState: readStateOf(session, unseen),
+    readState: sessionMenuReadState(session.bucket, unseen),
     archived: session.archived,
     prUrl: session.pr?.url ?? null,
     hasLivePane: herdr?.panes.some((pane) => pane.sessionId === session.id) ?? false,
@@ -156,6 +151,7 @@ function useSessionMenu(session: SessionListItem) {
         star.mutate(id === "pin");
         return;
       case "mark-read":
+      case "mark-completed":
         markSeen(session.id);
         return;
       case "mark-unread":
@@ -175,7 +171,6 @@ function useSessionMenu(session: SessionListItem) {
         if (cwd !== null) fork({ sessionId: session.id, cwd });
         return;
       case "open-in":
-      case "mark-completed":
         return;
       default:
         assertNever(id);

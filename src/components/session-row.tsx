@@ -1,8 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import type { SessionListItem } from "../lib/api/sessions";
 import { formatCount } from "../lib/pluralize";
+import { isLiveSessionState } from "../lib/session-state";
 import { SessionActionsMenu, SessionRowTitle } from "./session-actions-menu";
-import { LiveSessionStateIcon, SessionUnreadControl } from "./session-unread-control";
+import { SessionRowStatusDot } from "./session-unread-control";
+import { SessionStateIcon } from "./status-dot";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -38,7 +40,13 @@ export function SessionRow({
             className="flex items-center gap-1.5 truncate"
             style={{ fontSize: "14px", fontWeight: 430 }}
           >
-            {isActive && <LiveSessionStateIcon sessionId={session.id} state={session.state} />}
+            {/* A row the active feed reports live whose summary still says "ended" shows as running. */}
+            {isActive &&
+              (isLiveSessionState(session.state) ? (
+                <SessionRowStatusDot session={session} />
+              ) : (
+                <SessionStateIcon kind="running" />
+              ))}
             <span className="flex min-w-0 flex-1 truncate">
               <SessionRowTitle />
             </span>
@@ -75,9 +83,6 @@ export function SessionRow({
             <div className="mt-0.5 truncate text-xs text-t6 italic">{session.summary}</div>
           )}
         </Link>
-        <div className="absolute right-9 top-2.5">
-          <SessionUnreadControl sessionId={session.id} state={session.state} />
-        </div>
       </SessionActionsMenu>
     </li>
   );

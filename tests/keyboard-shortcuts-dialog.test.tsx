@@ -127,6 +127,7 @@ describe("KeyboardShortcutsDialog", () => {
         "Settings",
         "Rename session",
         "Archive session",
+        "Mark session as read/unread",
         "Copy session link",
         "Open session PR",
         "Fork session",
