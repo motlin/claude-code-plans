@@ -16,7 +16,7 @@ import { Sidebar } from "../src/components/sidebar/Sidebar";
 import { useCommandPalette } from "../src/hooks/use-command-palette";
 import { applicationSettingsQueryOptions } from "../src/lib/api/application-settings";
 import { approvalsQueryOptions } from "../src/lib/api/approvals";
-import { localUserQueryOptions } from "../src/lib/api/local-user";
+import { localAccountQueryOptions } from "../src/lib/api/local-account";
 import { notificationsQueryOptions } from "../src/lib/api/notifications";
 import { activeSessionsQueryOptions } from "../src/lib/api/sessions";
 import { installLocalStorage } from "./fake-storage";
@@ -32,7 +32,7 @@ function PaletteProbe() {
   );
 }
 
-function seedQueryClient(username: string | null): QueryClient {
+function seedQueryClient(name: string | null): QueryClient {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false },
@@ -50,12 +50,20 @@ function seedQueryClient(username: string | null): QueryClient {
     visibleNavSections: NAV_SECTIONS.filter((section) => section !== "herdr" && section !== "tmux"),
     ignoredDirs: ["node_modules"],
   });
-  queryClient.setQueryData(localUserQueryOptions.queryKey, { username });
+  if (name !== null) {
+    queryClient.setQueryData(localAccountQueryOptions.queryKey, {
+      name,
+      firstName: name,
+      initial: name.charAt(0).toUpperCase(),
+      planLabel: "Max",
+      planDetail: "Max (20x)",
+    });
+  }
   return queryClient;
 }
 
-async function renderSidebar(username: string | null = "craig") {
-  const queryClient = seedQueryClient(username);
+async function renderSidebar(name: string | null = "craig") {
+  const queryClient = seedQueryClient(name);
   const rootRoute = createRootRoute({
     component: () => (
       <QueryClientProvider client={queryClient}>
@@ -90,7 +98,7 @@ beforeEach(() => {
 });
 
 describe("sidebar footer", () => {
-  it("renders the account button linking to settings and the Search icon button", async () => {
+  it("renders the account menu button and the Search icon button", async () => {
     await renderSidebar();
 
     const footer = await waitFor(() => screen.getByTestId("sidebar-footer"));
@@ -99,20 +107,20 @@ describe("sidebar footer", () => {
 
     expect({
       accountText: account.textContent,
-      accountHref: account.getAttribute("href"),
+      accountPopup: account.getAttribute("aria-haspopup"),
       buttonNames: within(footer)
         .getAllByRole("button")
         .map((button) => button.getAttribute("aria-label")),
       searchKeys: search.getAttribute("aria-keyshortcuts"),
     }).toStrictEqual({
-      accountText: "Ccraig",
-      accountHref: "/settings",
-      buttonNames: ["Search"],
+      accountText: "Ccraig·Max",
+      accountPopup: "menu",
+      buttonNames: [null, "Search"],
       searchKeys: "Control+Shift+k",
     });
   });
 
-  it("labels the account button Local when the OS username is unknown", async () => {
+  it("labels the account button Local until the account loads", async () => {
     await renderSidebar(null);
 
     const account = await waitFor(() => screen.getByTestId("user-menu-button"));

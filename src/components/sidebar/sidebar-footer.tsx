@@ -1,10 +1,8 @@
-import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { openCommandPalette } from "../../hooks/use-command-palette";
 import { useShortcutKeys } from "../../hooks/use-shortcut";
-import { localUserQueryOptions } from "../../lib/api/local-user";
 import { Tooltip } from "../ui/tooltip";
+import { AccountMenu } from "./account-menu";
 
 /**
  * Upstream's `.df-bottom-tray`: a hairline-topped row with the account button on the left and
@@ -16,34 +14,11 @@ export function SidebarFooter() {
       data-testid="sidebar-footer"
       className="flex h-12 shrink-0 items-center justify-between gap-2 border-t-[0.5px] border-border p-2"
     >
-      <AccountButton />
+      <AccountMenu />
       <div className="flex shrink-0 items-center">
         <SearchButton />
       </div>
     </div>
-  );
-}
-
-function AccountButton() {
-  const { data } = useQuery(localUserQueryOptions);
-  const name = data?.username ?? "Local";
-
-  return (
-    <Link
-      to="/settings"
-      data-testid="user-menu-button"
-      className="flex h-8 min-w-0 items-center gap-2 rounded-r6 pr-2 pl-0.5 text-[14px] text-secondary no-underline hover:bg-[var(--sb-hover)] focus-visible:bg-[var(--sb-hover)]"
-    >
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center">
-        <span
-          aria-hidden="true"
-          className="flex h-6 w-6 items-center justify-center rounded-full bg-fill-ghost-hover text-[12px] font-medium text-primary"
-        >
-          {name.charAt(0).toUpperCase()}
-        </span>
-      </span>
-      <span className="min-w-0 truncate">{name}</span>
-    </Link>
   );
 }
 

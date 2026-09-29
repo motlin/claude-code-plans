@@ -57,6 +57,17 @@ const SUB_TRIGGER_CLASS = `${ITEM_BASE_CLASS} ${ITEM_VARIANT_CLASS.default} just
 const LABEL_CLASS = "min-w-0 flex-1 truncate";
 const TRAILING_CLASS = "ml-3 flex shrink-0 items-center gap-1";
 const CHECK_SLOT_CLASS = "-mr-1 flex size-5 shrink-0 items-center justify-center";
+const ICON_SLOT_CLASS =
+  "mr-1 flex size-5 shrink-0 items-center justify-center [&_svg]:size-4 [&_svg]:shrink-0";
+
+function ItemIcon({ icon }: { icon: ReactNode }) {
+  if (icon === undefined) return null;
+  return (
+    <span aria-hidden="true" className={ICON_SLOT_CLASS}>
+      {icon}
+    </span>
+  );
+}
 
 export type MenuItemVariant = keyof typeof ITEM_VARIANT_CLASS;
 
@@ -188,6 +199,8 @@ export interface MenuItemProps extends Omit<
   "onSelect" | "className" | "children"
 > {
   children: ReactNode;
+  /** Leading 20px icon slot, as on upstream's icon rows. */
+  icon?: ReactNode;
   /** Single key that fires this item while the menu is open. */
   accelerator?: string;
   /** Keep the accelerator working but draw no keycap hint. */
@@ -200,6 +213,7 @@ export interface MenuItemProps extends Omit<
 
 export function MenuItem({
   children,
+  icon,
   accelerator,
   hideAccelerator = false,
   shortcut,
@@ -217,6 +231,7 @@ export function MenuItem({
       data-variant={variant}
       className={`${ITEM_BASE_CLASS} ${ITEM_VARIANT_CLASS[variant]}`}
     >
+      <ItemIcon icon={icon} />
       <span className={LABEL_CLASS}>{children}</span>
       <ItemTrailing
         {...(accelerator === undefined || hideAccelerator ? {} : { accelerator })}
@@ -320,6 +335,8 @@ export interface MenuSubTriggerProps extends Omit<
   "className" | "children" | "openOnHover"
 > {
   children: ReactNode;
+  /** Leading 20px icon slot, as on upstream's icon rows. */
+  icon?: ReactNode;
   /** Muted trailing value, e.g. the current radio choice. */
   value?: ReactNode;
   /** Render the trailing value in accent, for non-default choices. */
@@ -327,9 +344,16 @@ export interface MenuSubTriggerProps extends Omit<
 }
 
 /** Submenu trigger: opens on click or ArrowRight, never on hover alone. */
-export function MenuSubTrigger({ children, value, valueAccent, ...props }: MenuSubTriggerProps) {
+export function MenuSubTrigger({
+  children,
+  icon,
+  value,
+  valueAccent,
+  ...props
+}: MenuSubTriggerProps) {
   return (
     <BaseMenu.SubmenuTrigger {...props} openOnHover={false} className={SUB_TRIGGER_CLASS}>
+      <ItemIcon icon={icon} />
       <span className={LABEL_CLASS}>{children}</span>
       <span className={TRAILING_CLASS}>
         {value !== undefined && (
@@ -353,9 +377,21 @@ export function MenuSubTrigger({ children, value, valueAccent, ...props }: MenuS
   );
 }
 
-export function MenuSubContent({ children }: { children: ReactNode }) {
+export function MenuSubContent({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <MenuContent side="right" align="start" sideOffset={0} alignOffset={-4}>
+    <MenuContent
+      side="right"
+      align="start"
+      sideOffset={0}
+      alignOffset={-4}
+      {...(className === undefined ? {} : { className })}
+    >
       {children}
     </MenuContent>
   );
