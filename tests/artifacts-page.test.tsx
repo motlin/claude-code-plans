@@ -23,7 +23,7 @@ import { getArtifacts } from "../src/lib/db/artifact-queries";
 import { openTestDb, type AppDb } from "../src/lib/db/connection";
 import * as schema from "../src/lib/db/schema";
 import { Route as ArtifactsRoute } from "../src/routes/artifacts";
-import { fileViewerPath } from "../src/lib/api/file";
+import { artifactPreviewPath } from "../src/lib/artifact-source-paths";
 import { installLocalStorage } from "./fake-storage";
 
 const NOW = new Date(2026, 8, 29, 12, 0, 0);
@@ -79,6 +79,11 @@ const LADDER_URL = "https://claude.ai/code/artifact/546d3910-4e9a-4730-9e91-6274
 const CHART_URL = "https://claude.ai/code/artifact/17b8a2c1-4c41-46bf-b064-a272240be709";
 const DOCS_URL = "https://claude.ai/artifact/7Hq2vXbN4pLmKcR9sTwYzA";
 const LADDER_SOURCE = "/Users/alice/projects/ladder/.llm/mockups/ladder.html";
+const LADDER_MTIME = 1_790_000_000_000;
+
+function ladderMtime(path: string): number | null {
+  return path === LADDER_SOURCE ? LADDER_MTIME : null;
+}
 
 function seedArtifacts(db: AppDb): void {
   const base = {
@@ -138,14 +143,15 @@ describe("getArtifacts", () => {
     const db = openTestDb();
     seedArtifacts(db);
 
-    const artifacts = getArtifacts(db.index, {}, (path) => path === LADDER_SOURCE);
+    const artifacts = getArtifacts(db.index, {}, ladderMtime);
 
     expect(
-      artifacts.map(({ id, title, kind, sourceExists, sessionId }) => ({
+      artifacts.map(({ id, title, kind, sourceExists, sourceModifiedAt, sessionId }) => ({
         id,
         title,
         kind,
         sourceExists,
+        sourceModifiedAt,
         sessionId,
       })),
     ).toStrictEqual([
@@ -154,6 +160,7 @@ describe("getArtifacts", () => {
         title: "Asap Ladder Queue",
         kind: "html",
         sourceExists: true,
+        sourceModifiedAt: LADDER_MTIME,
         sessionId: "session-ladder",
       },
       {
@@ -161,6 +168,7 @@ describe("getArtifacts", () => {
         title: "household-cash.html",
         kind: "html",
         sourceExists: false,
+        sourceModifiedAt: null,
         sessionId: "session-chart",
       },
       {
@@ -168,6 +176,7 @@ describe("getArtifacts", () => {
         title: "Quarterly plan",
         kind: "docs",
         sourceExists: false,
+        sourceModifiedAt: null,
         sessionId: "session-docs",
       },
     ]);
@@ -177,7 +186,7 @@ describe("getArtifacts", () => {
     const db = openTestDb();
     seedArtifacts(db);
 
-    expect(getArtifacts(db.index, { q: "LADDER" }, () => false).map((a) => a.id)).toStrictEqual([
+    expect(getArtifacts(db.index, { q: "LADDER" }, () => null).map((a) => a.id)).toStrictEqual([
       "546d3910-4e9a-4730-9e91-62742a47c7c6",
     ]);
   });
@@ -185,7 +194,7 @@ describe("getArtifacts", () => {
   it("filters by type on the client", () => {
     const db = openTestDb();
     seedArtifacts(db);
-    const artifacts = getArtifacts(db.index, {}, () => false);
+    const artifacts = getArtifacts(db.index, {}, () => null);
 
     expect({
       docs: filterArtifacts(artifacts, { search: "", type: "docs" }).map((a) => a.id),
@@ -211,7 +220,7 @@ async function renderArtifactsPage(initialEntry: string, seed: boolean) {
   const db = openTestDb();
   if (seed) seedArtifacts(db);
   const data = ArtifactListResponse.parse(
-    JSON.parse(JSON.stringify(getArtifacts(db.index, {}, (path) => path === LADDER_SOURCE))),
+    JSON.parse(JSON.stringify(getArtifacts(db.index, {}, ladderMtime))),
   );
 
   const queryClient = new QueryClient({
@@ -281,7 +290,10 @@ describe("artifacts route", () => {
             rel: "noopener noreferrer",
             chips: [
               { name: "Session", href: "/session/session-ladder" },
-              { name: "Preview", href: fileViewerPath(LADDER_SOURCE) },
+              {
+                name: "Preview",
+                href: artifactPreviewPath("546d3910-4e9a-4730-9e91-62742a47c7c6"),
+              },
             ],
             private: true,
             meta: expect.stringMatching(/^Edited /),

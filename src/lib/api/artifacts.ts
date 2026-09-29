@@ -10,6 +10,7 @@ const ArtifactSummarySchema = z.strictObject({
   description: z.string().nullable(),
   sourcePath: z.string().nullable(),
   sourceExists: z.boolean(),
+  sourceModifiedAt: z.number().nullable(),
   audience: z.string().nullable(),
   firstSeenAt: z.number(),
   lastPublishedAt: z.number().nullable(),

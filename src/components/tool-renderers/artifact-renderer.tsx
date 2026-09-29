@@ -2,6 +2,7 @@ import type { KeyboardEvent } from "react";
 import { AppWindow, ChevronRight } from "lucide-react";
 import type { ParsedArtifact } from "../../lib/artifact-output";
 import type { ArtifactListEntry } from "../../lib/artifact-schemas";
+import { artifactPreviewPath, isPreviewableSourcePath } from "../../lib/artifact-source-paths";
 import { FallbackRenderer } from "./fallback-renderer";
 import { KeyValueCard } from "./shared";
 import { isArtifactCard, type ClientToolCall, type ToolRendererProps } from "./types";
@@ -18,11 +19,27 @@ function artifactLabel(artifact: ParsedArtifact, input: ClientToolCall["input"])
   return artifact.id || "Untitled artifact";
 }
 
+/** Whether the sandboxed source preview can show the local file a publish came from. */
+function previewableSource(artifact: ParsedArtifact, input: ClientToolCall["input"]): boolean {
+  const filePath = artifact.path ?? input["file_path"];
+  return typeof filePath === "string" && isPreviewableSourcePath(filePath);
+}
+
 /**
  * Upstream's "Open artifact" pill. The artifact only lives on claude.ai, so
  * it is a link out in a new tab; Space opens it too, as upstream's button does.
+ * A publish from a local HTML or Markdown file also gets a "Preview source"
+ * link to the sandboxed local preview.
  */
-function ArtifactCard({ url, label }: { url: string; label: string }) {
+function ArtifactCard({
+  url,
+  label,
+  previewHref,
+}: {
+  url: string;
+  label: string;
+  previewHref: string | undefined;
+}) {
   const onKeyDown = (event: KeyboardEvent<HTMLAnchorElement>) => {
     if (event.key !== " ") return;
     event.preventDefault();
@@ -51,6 +68,14 @@ function ArtifactCard({ url, label }: { url: string; label: string }) {
           className="shrink-0 self-center text-ink-muted"
         />
       </a>
+      {previewHref !== undefined && (
+        <a
+          href={previewHref}
+          className="mt-1 self-start rounded px-1 text-caption text-secondary hover:bg-fill-ghost-hover hover:text-primary"
+        >
+          Preview source
+        </a>
+      )}
     </div>
   );
 }
@@ -100,6 +125,11 @@ export function ArtifactRenderer({ toolCall }: ToolRendererProps) {
       <ArtifactCard
         url={toolCall.artifact.url}
         label={artifactLabel(toolCall.artifact, toolCall.input)}
+        previewHref={
+          previewableSource(toolCall.artifact, toolCall.input)
+            ? artifactPreviewPath(toolCall.artifact.id)
+            : undefined
+        }
       />
     );
   }

@@ -296,6 +296,28 @@ describe("ArtifactRenderer", () => {
     });
   });
 
+  it("offers a Preview source link when the publish came from a local HTML or Markdown file", () => {
+    const call = transcriptCall(PUBLISH.input, QUARTO_TEXT, PUBLISH.toolUseResult);
+    render(<ArtifactRenderer toolCall={call} />);
+
+    const link = screen.getByRole("link", { name: "Preview source" });
+    expect({ href: link.getAttribute("href"), target: link.getAttribute("target") }).toStrictEqual({
+      href: "/artifact/29d89ae8-e33b-4f55-bbbd-874d5d316169",
+      target: null,
+    });
+  });
+
+  it("offers no Preview source link without a previewable local file", () => {
+    const call = transcriptCall(
+      { action: "open", url: PIN_URL },
+      `Opened the Artifact at ${PIN_URL}`,
+      undefined,
+    );
+    render(<ArtifactRenderer toolCall={call} />);
+
+    expect(screen.queryByRole("link", { name: "Preview source" })).toBeNull();
+  });
+
   it("opens the artifact in a new tab on Space", () => {
     const open = vi.spyOn(window, "open").mockReturnValue(null);
     const call = transcriptCall(PUBLISH.input, QUARTO_TEXT, PUBLISH.toolUseResult);

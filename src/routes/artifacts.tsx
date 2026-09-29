@@ -3,7 +3,6 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { CodeXml, FileText, LayoutGrid, List, ListFilter, Lock, Search, X } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { artifactsQueryOptions, type ArtifactSummary } from "../lib/api/artifacts";
-import { fileViewerPath } from "../lib/api/file";
 import {
   artifactTimestamp,
   filterArtifacts,
@@ -294,10 +293,10 @@ function ArtifactChips({ artifact }: { artifact: ArtifactSummary }) {
       <Link to="/session/$id" params={{ id: artifact.sessionId }} className={chip}>
         Session
       </Link>
-      {artifact.sourceExists && artifact.sourcePath !== null && (
-        <a href={fileViewerPath(artifact.sourcePath)} className={chip}>
+      {artifact.sourceExists && (
+        <Link to="/artifact/$id" params={{ id: artifact.id }} className={chip}>
           Preview
-        </a>
+        </Link>
       )}
     </>
   );
