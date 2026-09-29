@@ -32,6 +32,7 @@ import type {
   SessionBucketSchema,
   SessionStateKindSchema,
 } from "./session-state";
+import type { SessionMenuItemIdSchema } from "./session-menu-items";
 import type { SettingsTab } from "./settings-hash";
 import type { MessageProcessedLine, ProcessedLine } from "./transcript";
 
@@ -487,6 +488,23 @@ export const settingsTabLabels = {
   setup: "Setup",
 } satisfies Record<SettingsTab, string>;
 
+/** Session actions menu labels (src/lib/session-menu-items.ts), copied from claude.ai/code. */
+export const sessionMenuItemLabels = {
+  "open-in": "Open in",
+  "open-live-terminal": "Live terminal",
+  "open-pr": "Open PR",
+  pin: "Pin",
+  unpin: "Unpin",
+  "mark-read": "Mark as read",
+  "mark-unread": "Mark as unread",
+  "mark-completed": "Mark as completed",
+  rename: "Rename",
+  "copy-link": "Copy link",
+  fork: "Fork",
+  archive: "Archive",
+  unarchive: "Unarchive",
+} satisfies Record<z.infer<typeof SessionMenuItemIdSchema>, string>;
+
 /** Sidebar sections toggleable in the Edit sidebar dialog, in nav order. */
 const navSectionLabels = {
   active: "Active",
@@ -555,4 +573,5 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   "PaneLayoutStateSchema.root.direction": paneStackDirectionLabels,
   SettingsTabSchema: settingsTabLabels,
   NavSectionSchema: navSectionLabels,
+  SessionMenuItemIdSchema: sessionMenuItemLabels,
 };

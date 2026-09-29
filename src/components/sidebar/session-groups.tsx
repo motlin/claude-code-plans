@@ -13,6 +13,7 @@ import {
 } from "../../lib/session-groups";
 import type { SessionBucket, SessionStateKind } from "../../lib/session-state";
 import { toggleSidebarGroup, useSidebarState } from "../../lib/sidebar-store";
+import { SessionActionsMenu } from "../session-actions-menu";
 import { SessionStateIcon } from "../status-dot";
 import { LoadingBars } from "./primitives/LoadingBars";
 
@@ -177,20 +178,22 @@ function GroupSection({
 
 function SessionRowLink({ row, selected }: { row: SidebarSessionRow; selected: boolean }) {
   return (
-    <Link
-      to="/session/$id"
-      params={{ id: row.sessionId }}
-      data-row-main-button
-      data-selected={selected ? "focused" : undefined}
-      className={`${ROW_CLASS} text-secondary hover:bg-[var(--sb-hover)] focus-visible:bg-[var(--sb-hover)] data-[selected=focused]:bg-[var(--sb-selected)] data-[selected=focused]:text-primary`}
-    >
-      <span className="df-leading-slot text-secondary">
-        <SessionStateIcon kind={BUCKET_ICON_KINDS[row.bucket]} />
-      </span>
-      <span data-row-label className="min-w-0 flex-1">
-        <FadeLabel text={row.title} />
-      </span>
-    </Link>
+    <SessionActionsMenu session={row.session}>
+      <Link
+        to="/session/$id"
+        params={{ id: row.sessionId }}
+        data-row-main-button
+        data-selected={selected ? "focused" : undefined}
+        className={`${ROW_CLASS} text-secondary hover:bg-[var(--sb-hover)] focus-visible:bg-[var(--sb-hover)] data-[selected=focused]:bg-[var(--sb-selected)] data-[selected=focused]:text-primary`}
+      >
+        <span className="df-leading-slot text-secondary">
+          <SessionStateIcon kind={BUCKET_ICON_KINDS[row.bucket]} />
+        </span>
+        <span data-row-label className="min-w-0 flex-1">
+          <FadeLabel text={row.title} />
+        </span>
+      </Link>
+    </SessionActionsMenu>
   );
 }
 

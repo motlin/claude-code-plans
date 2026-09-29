@@ -21,6 +21,7 @@ import {
   SessionStateKindSchema,
 } from "../src/lib/session-state";
 import { SessionListPrefsSchema } from "../src/lib/session-groups";
+import { SessionMenuItemIdSchema } from "../src/lib/session-menu-items";
 import { SettingsTabSchema } from "../src/lib/settings-hash";
 import {
   AttachmentPayloadSchema,
@@ -79,6 +80,7 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["PaneLayoutStateSchema", PaneLayoutStateSchema],
   ["SettingsTabSchema", SettingsTabSchema],
   ["NavSectionSchema", NavSectionSchema],
+  ["SessionMenuItemIdSchema", SessionMenuItemIdSchema],
   ["UnifiedSearchParamsSchema", UnifiedSearchParamsSchema],
   ["UnifiedSearchResponse", UnifiedSearchResponse],
 ];
