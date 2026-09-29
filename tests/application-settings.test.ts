@@ -72,7 +72,7 @@ describe("persisted application settings", () => {
       }).toStrictEqual({
         settings: {
           herdrWritesEnabled: false,
-          visibleNavSections: ["plans", "memories", "plugins"],
+          visibleNavSections: ["plans", "memories", "customize"],
           ignoredDirs: [...DEFAULT_IGNORED_DIR_NAMES],
         },
         herdrWritesEnabled: false,
@@ -94,8 +94,21 @@ describe("persisted application settings", () => {
       "tmux",
       "plans",
       "memories",
-      "plugins",
+      "customize",
     ]);
+  });
+
+  it("renames a saved Plugins nav section to Customize", async () => {
+    await writeFile(
+      configPath,
+      JSON.stringify({ herdr_writes_enabled: true, visible_nav_sections: ["plans", "plugins"] }),
+    );
+
+    expect(readApplicationSettings(configPath)).toStrictEqual({
+      herdrWritesEnabled: true,
+      visibleNavSections: ["plans", "customize"],
+      ignoredDirs: [...DEFAULT_IGNORED_DIR_NAMES],
+    });
   });
 
   it("prefers saved nav sections over the retired flags", async () => {

@@ -10,7 +10,7 @@ import { NavScroll } from "./nav-scroll";
 import { SidebarFooter } from "./sidebar-footer";
 import { SidebarToggleButton } from "./sidebar-toggle";
 import { SidebarSessionGroups } from "./session-filter-menu";
-import { MemoriesSubList, PlansSubList, ProjectsSubList, PluginsSubList } from "./sublists";
+import { MemoriesSubList, PlansSubList, ProjectsSubList } from "./sublists";
 import { approvalsQueryOptions } from "../../lib/api/approvals";
 import { notificationsQueryOptions, useMarkNotificationsRead } from "../../lib/api/notifications";
 import { activeSessionsQueryOptions } from "../../lib/api/sessions";
@@ -189,8 +189,6 @@ export function Sidebar({
                   onToggleGroup={toggleMemoryGroup}
                   onRevealGroup={revealMemoryGroup}
                 />
-              ) : item.section === "plugins" ? (
-                <PluginsSubList />
               ) : null;
             return subList && <div key={item.to}>{subList}</div>;
           })}

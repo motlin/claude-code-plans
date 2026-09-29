@@ -12,11 +12,11 @@ function labels(items: ReadonlyArray<{ label: string }>): string[] {
 }
 
 describe("getVisibleNavItems", () => {
-  it("pins Plans, Memories, Sessions and Plugins by default and overflows the rest", () => {
+  it("pins Plans, Memories, Sessions and Customize by default and overflows the rest", () => {
     const { pinned, overflow } = getVisibleNavItems(navItems, DEFAULT_VISIBLE_NAV_SECTIONS);
 
     expect({ pinned: labels(pinned), overflow: labels(overflow) }).toStrictEqual({
-      pinned: ["Plans", "Memories", "Sessions", "Plugins"],
+      pinned: ["Plans", "Memories", "Sessions", "Customize"],
       overflow: [
         "Active",
         "Herdr",
@@ -71,7 +71,7 @@ describe("visibleNavSections schema", () => {
 
 describe("migrateLegacyNavFlags", () => {
   it("uses the defaults when neither legacy flag was set", () => {
-    expect(migrateLegacyNavFlags({})).toStrictEqual(["plans", "memories", "plugins"]);
+    expect(migrateLegacyNavFlags({})).toStrictEqual(["plans", "memories", "customize"]);
   });
 
   it("keeps Herdr and Tmux pinned when the old flags showed them", () => {
@@ -80,13 +80,13 @@ describe("migrateLegacyNavFlags", () => {
       "tmux",
       "plans",
       "memories",
-      "plugins",
+      "customize",
     ]);
   });
 
   it("moves sections the old flags hid under More", () => {
     expect(
       migrateLegacyNavFlags({ showHerdrSection: false, showTmuxSection: false }),
-    ).toStrictEqual(["plans", "memories", "plugins"]);
+    ).toStrictEqual(["plans", "memories", "customize"]);
   });
 });

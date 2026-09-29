@@ -9,10 +9,10 @@ import {
   SquareTerminal,
   Inbox,
   Bell,
-  Blocks,
   Settings,
   ListTodo,
   SlidersHorizontal,
+  SlidersVertical,
   type LucideIcon,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -101,11 +101,11 @@ const navEntries = {
     icon: MessageSquare,
     description: "Browse Claude Code session files",
   },
-  plugins: {
-    to: "/plugins",
-    label: "Plugins",
-    icon: Blocks,
-    description: "Browse installed plugins, skills, agents, and commands",
+  customize: {
+    to: "/customize",
+    label: "Customize",
+    icon: SlidersVertical,
+    description: "Browse installed skills, connectors, and plugins",
   },
   settings: {
     to: "/settings",

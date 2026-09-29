@@ -60,7 +60,9 @@ function stubFetch() {
   );
 }
 
-async function renderSidebar(visibleNavSections: NavSection[] = ["plans", "memories", "plugins"]) {
+async function renderSidebar(
+  visibleNavSections: NavSection[] = ["plans", "memories", "customize"],
+) {
   const queryClient = seedQueryClient(visibleNavSections);
   const rootRoute = createRootRoute({
     component: () => (
@@ -123,7 +125,7 @@ describe("sidebar More menu", () => {
   it("shows only the pinned sections as sidebar rows", async () => {
     await renderSidebar();
 
-    expect(sidebarNavLabels()).toStrictEqual(["Plans", "Memories", "Sessions", "Plugins"]);
+    expect(sidebarNavLabels()).toStrictEqual(["Plans", "Memories", "Sessions", "Customize"]);
   });
 
   it("lists hidden sections, a separator, then Edit sidebar…", async () => {
@@ -186,7 +188,7 @@ describe("Edit sidebar dialog", () => {
       { label: "Projects", checked: "false" },
       { label: "Plans", checked: "true" },
       { label: "Memories", checked: "true" },
-      { label: "Plugins", checked: "true" },
+      { label: "Customize", checked: "true" },
       { label: "Settings", checked: "false" },
       { label: "Claude Config", checked: "false" },
       { label: "Setup", checked: "false" },
@@ -204,10 +206,10 @@ describe("Edit sidebar dialog", () => {
 
     expect({ puts, sidebar: sidebarNavLabels() }).toStrictEqual({
       puts: [
-        { ...BASE_SETTINGS, visibleNavSections: ["herdr", "plans", "memories", "plugins"] },
-        { ...BASE_SETTINGS, visibleNavSections: ["herdr", "plans", "plugins"] },
+        { ...BASE_SETTINGS, visibleNavSections: ["herdr", "plans", "memories", "customize"] },
+        { ...BASE_SETTINGS, visibleNavSections: ["herdr", "plans", "customize"] },
       ],
-      sidebar: ["Herdr", "Plans", "Sessions", "Plugins"],
+      sidebar: ["Herdr", "Plans", "Sessions", "Customize"],
     });
   });
 

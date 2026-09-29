@@ -7,7 +7,11 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { listFileSearchProjectPathsFromDb } from "./db/queries";
 import type * as schema from "./db/schema";
 import { isGitRepository } from "./git-tracked";
-import { migrateLegacyNavFlags, VisibleNavSectionsSchema } from "./nav-sections";
+import {
+  migrateLegacyNavFlags,
+  renameLegacyNavSections,
+  VisibleNavSectionsSchema,
+} from "./nav-sections";
 
 /**
  * Directory holding this application's own configuration. Follows the XDG
@@ -45,7 +49,9 @@ const AppConfigObjectSchema = z
     /** Permit ccp to send input and state updates to live Herdr panes. */
     herdr_writes_enabled: z.boolean().optional(),
     /** Sidebar sections pinned outside the More ▸ menu, in nav order. */
-    visible_nav_sections: VisibleNavSectionsSchema.optional(),
+    visible_nav_sections: z
+      .preprocess(renameLegacyNavSections, VisibleNavSectionsSchema)
+      .optional(),
     /** Retired by `visible_nav_sections`; read only to migrate, dropped on the next save. */
     show_herdr_section: z.boolean().optional(),
     /** Retired by `visible_nav_sections`; read only to migrate, dropped on the next save. */

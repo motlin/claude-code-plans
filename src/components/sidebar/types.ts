@@ -10,7 +10,7 @@ export type Section =
   | "plans"
   | "memories"
   | "sessions"
-  | "plugins"
+  | "customize"
   | "settings"
   | "config"
   | "setup";

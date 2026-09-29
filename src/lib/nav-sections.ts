@@ -15,7 +15,7 @@ export const NAV_SECTIONS = [
   "projects",
   "plans",
   "memories",
-  "plugins",
+  "customize",
   "settings",
   "config",
   "setup",
@@ -29,8 +29,18 @@ export const VisibleNavSectionsSchema = z
   .array(NavSectionSchema)
   .refine((sections) => new Set(sections).size === sections.length, "Duplicate nav section");
 
-/** Upstream pins New, Artifacts and Customize (Plugins here); Plans and Memories stay local. */
-export const DEFAULT_VISIBLE_NAV_SECTIONS: readonly NavSection[] = ["plans", "memories", "plugins"];
+/** Plugins became Customize; a saved `"plugins"` pin carries over instead of voiding the config. */
+export function renameLegacyNavSections(value: unknown): unknown {
+  if (!Array.isArray(value)) return value;
+  return value.map((section) => (section === "plugins" ? "customize" : section));
+}
+
+/** Upstream pins New, Artifacts and Customize; Plans and Memories stay local. */
+export const DEFAULT_VISIBLE_NAV_SECTIONS: readonly NavSection[] = [
+  "plans",
+  "memories",
+  "customize",
+];
 
 function inNavOrder(sections: ReadonlySet<NavSection>): NavSection[] {
   return NAV_SECTIONS.filter((section) => sections.has(section));

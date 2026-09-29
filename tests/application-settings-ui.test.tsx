@@ -14,7 +14,7 @@ describe("application settings controls", () => {
     const requests: Array<{ method: string; body: unknown }> = [];
     let settings = {
       herdrWritesEnabled: false,
-      visibleNavSections: ["herdr", "plans", "memories", "plugins"],
+      visibleNavSections: ["herdr", "plans", "memories", "customize"],
       ignoredDirs: ["node_modules", "dist"],
     };
     const fetcher = vi.fn<typeof fetch>(async (_input, init) => {
@@ -73,7 +73,7 @@ describe("application settings controls", () => {
         method: "PUT",
         body: {
           herdrWritesEnabled: true,
-          visibleNavSections: ["herdr", "plans", "memories", "plugins"],
+          visibleNavSections: ["herdr", "plans", "memories", "customize"],
           ignoredDirs: ["dist", "node_modules"],
         },
       },
@@ -81,7 +81,7 @@ describe("application settings controls", () => {
         method: "PUT",
         body: {
           herdrWritesEnabled: true,
-          visibleNavSections: ["herdr", "plans", "memories", "plugins"],
+          visibleNavSections: ["herdr", "plans", "memories", "customize"],
           ignoredDirs: ["custom-cache", "node_modules"],
         },
       },

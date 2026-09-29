@@ -552,7 +552,7 @@ const navSectionLabels = {
   projects: "Projects",
   plans: "Plans",
   memories: "Memories",
-  plugins: "Plugins",
+  customize: "Customize",
   settings: "Settings",
   config: "Claude Config",
   setup: "Setup",

@@ -21,6 +21,7 @@ import { notificationsQueryOptions } from "../src/lib/api/notifications";
 import { activeSessionsQueryOptions } from "../src/lib/api/sessions";
 import { installLocalStorage } from "./fake-storage";
 import { NAV_SECTIONS } from "../src/lib/nav-sections";
+import { redirectLegacyPlugins } from "../src/routes/plugins";
 
 function seedQueryClient(): QueryClient {
   const queryClient = new QueryClient({
@@ -96,11 +97,55 @@ describe("sidebar navigation", () => {
       { label: "Plans", to: "/plans" },
       { label: "Memories", to: "/memories" },
       { label: "Sessions", to: "/sessions" },
-      { label: "Plugins", to: "/plugins" },
+      { label: "Customize", to: "/customize" },
       { label: "Settings", to: "/settings" },
       { label: "Claude Config", to: "/settings/edit" },
       { label: "Setup", to: "/setup" },
     ]);
+  });
+
+  it("replaces the Plugins row with a Customize row", () => {
+    expect({
+      customize: navItems
+        .filter((item) => item.section === "customize")
+        .map(({ label, to }) => ({ label, to })),
+      plugins: navItems.filter((item) => item.label === "Plugins" || item.to === "/plugins"),
+    }).toStrictEqual({ customize: [{ label: "Customize", to: "/customize" }], plugins: [] });
+  });
+
+  it("activates the Customize section on Customize and legacy plugin routes", () => {
+    const sectionAt = (fullPath: string, params: Record<string, string> = {}) =>
+      useActiveSection([{ fullPath, params }] as unknown as Parameters<typeof useActiveSection>[0]);
+
+    expect([
+      sectionAt("/customize/skills"),
+      sectionAt("/customize/plugins/id/$pluginId", { pluginId: "tools@market" }),
+      sectionAt("/plugins"),
+      sectionAt("/command/$source/$filename"),
+    ]).toStrictEqual([
+      { section: "customize", activeItemId: null },
+      { section: "customize", activeItemId: null },
+      { section: "customize", activeItemId: null },
+      { section: "customize", activeItemId: null },
+    ]);
+  });
+
+  it("redirects the old Plugins nav link into Customize", async () => {
+    const rootRoute = createRootRoute({ component: Outlet });
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        createRoute({
+          getParentRoute: () => rootRoute,
+          path: "/plugins",
+          beforeLoad: redirectLegacyPlugins,
+        }),
+        createRoute({ getParentRoute: () => rootRoute, path: "/customize/plugins" }),
+      ]),
+      history: createMemoryHistory({ initialEntries: ["/plugins"] }),
+    });
+    await router.load();
+
+    expect(router.state.location.pathname).toBe("/customize/plugins");
   });
 
   it("activates the tmux section on the tmux route", () => {
