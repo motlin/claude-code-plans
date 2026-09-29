@@ -1,10 +1,9 @@
 [tools]
 just = "1.58.0"
 node = "26.5.0"
-pnpm = "11.15.0"
-"npm:vite-plus" = "0.2.7"
-"pipx:yamllint" = "1.38.0"
-pre-commit = "4.6.0"
+pnpm = "12.7.0"
+"npm:vite-plus" = "0.3.3"
+pre-commit = "4.6.2"
 
 [settings]
 # Required for [hooks] below; scoped to this repo only.
