@@ -75,6 +75,8 @@ export interface Settings {
 
   // The Files pane's ⋯ menu.
   filesHideIgnored: boolean;
+  /** A single click opens an italic preview tab; off pins every open, like upstream's setting. */
+  filesPreviewTabs: boolean;
   /** The Files pane's tree column width in pixels, clamped to 160–640 where it is used. */
   filesTreeWidth: number;
 }
@@ -124,6 +126,7 @@ export const DEFAULTS: Settings = {
   diffHideWhitespace: false,
 
   filesHideIgnored: false,
+  filesPreviewTabs: true,
   filesTreeWidth: 240,
 };
 
@@ -158,6 +161,7 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
   diffWordDiff: "ccp-diff-word-diff",
   diffHideWhitespace: "ccp-diff-hide-whitespace",
   filesHideIgnored: "ccp-files-hide-ignored",
+  filesPreviewTabs: "ccp-files-preview-tabs",
   filesTreeWidth: "ccp-files-tree-width",
 };
 

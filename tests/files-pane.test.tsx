@@ -328,6 +328,7 @@ describe("Files pane header", () => {
     }).toStrictEqual({
       before: [
         ["Show file tree⌃Control⇧ShiftY", "true"],
+        ["Preview tabs", "true"],
         ["Hide ignored files", "false"],
         ["Show files from", null],
       ],

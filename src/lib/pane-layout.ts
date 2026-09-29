@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { parseDiffScope } from "./api/session-diff";
+import { EMPTY_FILE_TABS, type FileTabsState, FileTabsStateSchema } from "./file-tabs";
 
 /**
  * Pure layout engine for the session tiling pane host, modelled on
@@ -95,9 +96,16 @@ export const PaneLayoutStateSchema = z.strictObject(PaneLayoutShape).superRefine
 /** The Changes pane scope, a formatted `SessionDiffScope` such as `branch` or `commit:<sha>`. */
 const ChangesScopeSchema = z.string().refine((value) => parseDiffScope(value) !== null);
 
-/** One session's stored entry: its layout plus the Changes pane scope. */
+/**
+ * One session's stored entry: its layout plus the Changes pane scope and the
+ * Files pane's open tabs (upstream's `fileTabsBySession`).
+ */
 const PaneLayoutEntrySchema = z
-  .strictObject({ ...PaneLayoutShape, changesScope: ChangesScopeSchema.optional() })
+  .strictObject({
+    ...PaneLayoutShape,
+    changesScope: ChangesScopeSchema.optional(),
+    fileTabs: FileTabsStateSchema.optional(),
+  })
   .superRefine(checkLayout);
 
 type PaneLayoutEntry = z.infer<typeof PaneLayoutEntrySchema>;
@@ -407,9 +415,13 @@ export function savePaneLayout(
 ): void {
   if (!storage) return;
   try {
-    writeEntry(sessionId, storage, (entry) =>
-      entry?.changesScope === undefined ? state : { ...state, changesScope: entry.changesScope },
-    );
+    writeEntry(sessionId, storage, (entry) => {
+      const next: PaneLayoutEntry = { ...state };
+      if (entry?.changesScope !== undefined) next.changesScope = entry.changesScope;
+      // Closing the Files pane discards the session's tabs, as upstream does.
+      if (entry?.fileTabs !== undefined && isOpen(state, "files")) next.fileTabs = entry.fileTabs;
+      return next;
+    });
   } catch {
     // localStorage can be denied even when window exists; layout persistence is best-effort.
   }
@@ -439,5 +451,32 @@ export function saveChangesScope(
     }));
   } catch {
     // localStorage can be denied even when window exists; scope persistence is best-effort.
+  }
+}
+
+export function loadFileTabs(
+  sessionId: string,
+  storage: Storage | null = browserStorage(),
+): FileTabsState {
+  try {
+    return (storage && readStore(storage)?.[sessionId]?.fileTabs) ?? EMPTY_FILE_TABS;
+  } catch {
+    return EMPTY_FILE_TABS;
+  }
+}
+
+export function saveFileTabs(
+  sessionId: string,
+  fileTabs: FileTabsState,
+  storage: Storage | null = browserStorage(),
+): void {
+  if (!storage) return;
+  try {
+    writeEntry(sessionId, storage, (entry) => ({
+      ...(entry ?? defaultPaneLayout()),
+      fileTabs,
+    }));
+  } catch {
+    // localStorage can be denied even when window exists; tab persistence is best-effort.
   }
 }

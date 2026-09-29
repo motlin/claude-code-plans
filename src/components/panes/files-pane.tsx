@@ -1,14 +1,22 @@
 import { useQuery } from "@tanstack/react-query";
 import { EllipsisVertical, Files as FilesIcon, Folder, PanelLeft, Search } from "lucide-react";
-import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from "react";
 
 import { useShortcut, useShortcutKeys } from "../../hooks/use-shortcut";
 import { sessionFilesQueryOptions } from "../../lib/api/session-files";
 import { sessionResourcesQueryOptions } from "../../lib/api/sessions";
+import {
+  EMPTY_FILE_TABS,
+  type FileTabsAction,
+  type FileTabsState,
+  fileTabsReducer,
+} from "../../lib/file-tabs";
+import { loadFileTabs, saveFileTabs } from "../../lib/pane-layout";
 import { formatResourceCount, resourceCoverageNote } from "../../lib/session-resources";
 import type { SessionFiles } from "../../lib/session-files";
 import { pillStyles } from "../detail-top-bar";
 import { FilePaneViewer } from "../files/file-pane-viewer";
+import { FileTabsStrip } from "../files/file-tabs-strip";
 import { FilesTree, FilesTreeColumn } from "../files/files-tree";
 import { JumpTargetProvider, type JumpTargetWindow } from "../jump-target-context";
 import { useSettings } from "../settings-provider";
@@ -28,6 +36,7 @@ import { type PaneChrome, registerPane } from "./pane-registry";
 import {
   FILE_SOURCE_OPTIONS,
   type FileSourceSelection,
+  sessionFileLabel,
   SessionFilesList,
   useFileSourceSelection,
 } from "./session-files-list";
@@ -126,6 +135,12 @@ function FilesSettingsMenu({
           Show file tree
         </MenuCheckboxItem>
         <MenuCheckboxItem
+          checked={settings.filesPreviewTabs}
+          onCheckedChange={(checked) => setSetting("filesPreviewTabs", checked)}
+        >
+          Preview tabs
+        </MenuCheckboxItem>
+        <MenuCheckboxItem
           checked={settings.filesHideIgnored}
           onCheckedChange={(checked) => setSetting("filesHideIgnored", checked)}
         >
@@ -212,6 +227,9 @@ interface WorkspaceOrSessionListProps {
   onQueryChange: (query: string) => void;
   filterRef: RefObject<HTMLInputElement | null>;
   sessionList: ReactNode;
+  onOpenFile: (relPath: string, options: { pin: boolean }) => void;
+  activeRelPath: string | null;
+  pinnedRelPaths: ReadonlySet<string>;
 }
 
 /**
@@ -227,6 +245,9 @@ function WorkspaceOrSessionList({
   onQueryChange,
   filterRef,
   sessionList,
+  onOpenFile,
+  activeRelPath,
+  pinnedRelPaths,
 }: WorkspaceOrSessionListProps) {
   const { settings } = useSettings();
   // Same key as the tree's root listing, so this shares its request.
@@ -250,11 +271,65 @@ function WorkspaceOrSessionList({
             filterRef={filterRef}
             query={query}
             onQueryChange={onQueryChange}
+            onOpenFile={onOpenFile}
+            activeRelPath={activeRelPath}
+            pinnedRelPaths={pinnedRelPaths}
           />
         )}
       </div>
     </>
   );
+}
+
+/**
+ * The pane's open tabs, persisted per session in the pane layout store once
+ * hydrated. The layout store drops them when the Files pane closes.
+ */
+function useFileTabs(
+  sessionId: string | undefined,
+): [FileTabsState, (action: FileTabsAction) => void] {
+  const { settings } = useSettings();
+  const previewTabs = settings.filesPreviewTabs;
+  const [entry, setEntry] = useState<{ key: string | null; tabs: FileTabsState }>({
+    key: null,
+    tabs: EMPTY_FILE_TABS,
+  });
+  const loadedRef = useRef<FileTabsState | null>(null);
+  const key = sessionId ?? "";
+
+  useEffect(() => {
+    const tabs = sessionId === undefined ? EMPTY_FILE_TABS : loadFileTabs(sessionId);
+    loadedRef.current = tabs;
+    setEntry({ key: sessionId ?? "", tabs });
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (sessionId === undefined || entry.key !== sessionId || entry.tabs === loadedRef.current) {
+      return;
+    }
+    saveFileTabs(sessionId, entry.tabs);
+  }, [entry, sessionId]);
+
+  const dispatch = useCallback(
+    (action: FileTabsAction) =>
+      setEntry((prev) => {
+        const tabs = fileTabsReducer(prev.tabs, action, { previewTabs });
+        return tabs === prev.tabs ? prev : { ...prev, tabs };
+      }),
+    [previewTabs],
+  );
+
+  return [entry.key === key ? entry.tabs : EMPTY_FILE_TABS, dispatch];
+}
+
+function absoluteFromCwd(cwd: string, relPath: string): string {
+  return `${cwd.replace(/\/+$/, "")}/${relPath}`;
+}
+
+/** A tab's path relative to the working directory, or null outside it. */
+function relativeToCwd(cwd: string | undefined, path: string): string | null {
+  const label = sessionFileLabel(path, cwd);
+  return label === path ? null : label;
 }
 
 interface FilesPaneViewProps {
@@ -289,7 +364,16 @@ export function FilesPaneView({
   const [focusRequest, setFocusRequest] = useState(0);
   const [mode, setMode] = useState<FilesListMode>("workspace");
   const [query, setQuery] = useState("");
-  const [openPath, setOpenPath] = useState<string | null>(null);
+  const [fileTabs, dispatchFileTabs] = useFileTabs(sessionId);
+  const openPath = fileTabs.active;
+  const pinnedRelPaths = new Set(
+    fileTabs.tabs.flatMap((tab) => {
+      const relPath = tab.preview ? null : relativeToCwd(cwd, tab.path);
+      return relPath === null ? [] : [relPath];
+    }),
+  );
+  const openFile = (path: string, options: { pin: boolean }): void =>
+    dispatchFileTabs({ type: "open", path, pin: options.pin });
   const filterRef = useRef<HTMLInputElement>(null);
   const { sourceSelection, setSourceSelected, unselectAllSources } = useFileSourceSelection();
   const sessionFilesList = (
@@ -302,7 +386,7 @@ export function FilesPaneView({
       onQueryChange={setQuery}
       filterRef={filterRef}
       openPath={openPath}
-      onOpenFile={setOpenPath}
+      onOpenFile={openFile}
     />
   );
 
@@ -339,9 +423,13 @@ export function FilesPaneView({
       >
         <div className="flex min-w-0 flex-1 items-center gap-1">
           <TreeToggle shown={treeShown} onToggle={() => setTreeShown((shown) => !shown)} />
-          <span data-pane-title className="truncate text-body text-secondary select-none">
-            Files
-          </span>
+          {fileTabs.tabs.length === 0 ? (
+            <span data-pane-title className="truncate text-body text-secondary select-none">
+              Files
+            </span>
+          ) : (
+            <FileTabsStrip state={fileTabs} dispatch={dispatchFileTabs} />
+          )}
           {chrome.moveHandle}
         </div>
         <div className="relative flex shrink-0 items-center gap-0.5">
@@ -382,13 +470,18 @@ export function FilesPaneView({
                 onQueryChange={setQuery}
                 filterRef={filterRef}
                 sessionList={sessionFilesList}
+                onOpenFile={(relPath, options) => {
+                  if (cwd !== undefined) openFile(absoluteFromCwd(cwd, relPath), options);
+                }}
+                activeRelPath={openPath === null ? null : relativeToCwd(cwd, openPath)}
+                pinnedRelPaths={pinnedRelPaths}
               />
             )}
           </FilesTreeColumn>
         )}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {openPath === null ? (
-            <FilesEmpty hasTree={treeShown} tabCount={0} />
+            <FilesEmpty hasTree={treeShown} tabCount={fileTabs.tabs.length} />
           ) : (
             <FilePaneViewer path={openPath} />
           )}

@@ -121,6 +121,10 @@ interface FilesTreeProps {
   sessionId: string;
   filterRef?: RefObject<HTMLInputElement | null>;
   onOpenFile?: (relPath: string, options: OpenFileOptions) => void;
+  /** The active tab's path relative to the root, marked `aria-current`. */
+  activeRelPath?: string | null;
+  /** Pinned tabs' paths relative to the root, marked `aria-selected`. */
+  pinnedRelPaths?: ReadonlySet<string>;
   /** Shown instead of the "No working directory" state when the session has no `cwd`. */
   noCwdFallback?: ReactNode;
   /** Controls the filter from outside, so the Files pane can keep it across modes. */
@@ -137,6 +141,8 @@ export function FilesTree({
   sessionId,
   filterRef,
   onOpenFile,
+  activeRelPath = null,
+  pinnedRelPaths,
   noCwdFallback,
   query: controlledQuery,
   onQueryChange,
@@ -376,7 +382,8 @@ export function FilesTree({
                   data-row-index={index}
                   role="treeitem"
                   aria-level={1}
-                  aria-selected={false}
+                  aria-selected={pinnedRelPaths?.has(entry.relPath) ?? false}
+                  aria-current={entry.relPath === activeRelPath ? "true" : undefined}
                   tabIndex={-1}
                   title={symlinkLabel(entry)}
                   onFocus={() => setActiveIndex(index)}

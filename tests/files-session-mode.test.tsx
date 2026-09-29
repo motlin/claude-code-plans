@@ -116,12 +116,15 @@ interface OpenOptions {
   sessionFiles?: SessionFiles;
   unscanned?: number;
   sessionId?: string;
+  /** Press ⇧⌘F after rendering; off when the stored layout already has the pane open. */
+  toggle?: boolean;
 }
 
 async function openPane({
   sessionFiles = SESSION_FILES,
   unscanned = 0,
   sessionId = SESSION_ID,
+  toggle = true,
 }: OpenOptions = {}): Promise<HTMLElement> {
   unregister = registerPane("files", {
     title: "Files",
@@ -146,6 +149,12 @@ async function openPane({
       </SettingsProvider>
     </QueryClientProvider>,
   );
+  if (toggle) pressFilesShortcut();
+  await flush();
+  return screen.getByRole("region", { name: "Files" });
+}
+
+function pressFilesShortcut(): void {
   act(() => {
     document.body.dispatchEvent(
       new KeyboardEvent("keydown", {
@@ -158,8 +167,6 @@ async function openPane({
       }),
     );
   });
-  await flush();
-  return screen.getByRole("region", { name: "Files" });
 }
 
 function filterInput(pane: HTMLElement): HTMLInputElement {
@@ -538,5 +545,178 @@ describe("Opening a session file", () => {
     expect(within(pane).getByText("/home/alice/notes/user.md", { selector: "p" }).tagName).toBe(
       "P",
     );
+  });
+});
+
+function tabStrip(
+  pane: HTMLElement,
+): Array<{ name: string; selected: string | null; italic: boolean }> {
+  const list = within(pane).queryByRole("tablist", { name: "Open files" });
+  if (list === null) return [];
+  return within(list)
+    .getAllByRole("tab")
+    .map((tab) => ({
+      name: tab.textContent ?? "",
+      selected: tab.getAttribute("aria-selected"),
+      italic: tab.className.split(/\s+/).includes("italic"),
+    }));
+}
+
+async function treeFile(pane: HTMLElement, name: string): Promise<HTMLElement> {
+  return waitFor(() => {
+    const row = [...pane.querySelectorAll<HTMLElement>("[data-tree-row]")].find(
+      (candidate) => candidate.querySelector("[data-tree-name]")?.textContent === name,
+    );
+    const button = row?.querySelector<HTMLElement>("[data-tree-primary]");
+    if (!button) throw new Error(`no tree row ${name}`);
+    return button;
+  });
+}
+
+describe("File tabs", () => {
+  beforeEach(() => {
+    fileContents.set("/home/alice/example/agent.ts", "export const agent = 1;\n");
+    fileContents.set("/home/alice/example/src/read-only.ts", "export const ro = 1;\n");
+  });
+
+  it("a tree click opens an italic preview tab that replaces the header title", async () => {
+    const pane = await openPane();
+    expect(within(pane).queryByText("Files", { selector: "[data-pane-title]" })).not.toBeNull();
+
+    fireEvent.click(await treeFile(pane, "agent.ts"));
+    await flush();
+
+    expect({
+      tabs: tabStrip(pane),
+      title: within(pane).queryByText("Files", { selector: "[data-pane-title]" }),
+      tabName: within(pane).getByRole("tab").getAttribute("aria-label"),
+    }).toStrictEqual({
+      tabs: [{ name: "agent.ts, preview", selected: "true", italic: true }],
+      title: null,
+      tabName: null,
+    });
+    await waitFor(() => expect(fileRequests).toStrictEqual(["/home/alice/example/agent.ts"]));
+  });
+
+  it("a double-click pins, and the next click opens a new preview tab beside it", async () => {
+    const pane = await openPane();
+    fireEvent.doubleClick(await treeFile(pane, "agent.ts"));
+    await flush();
+    await switchMode(pane, "Session");
+    fireEvent.click(within(pane).getByRole("button", { name: "src/read-only.ts" }));
+    await flush();
+    fireEvent.click(within(pane).getByRole("button", { name: "/home/alice/notes/user.md" }));
+    await flush();
+
+    expect(tabStrip(pane)).toStrictEqual([
+      { name: "agent.ts", selected: "false", italic: false },
+      { name: "user.md, preview", selected: "true", italic: true },
+    ]);
+  });
+
+  it("double-clicking a preview tab pins it", async () => {
+    const pane = await openPane();
+    fireEvent.click(await treeFile(pane, "agent.ts"));
+    await flush();
+    const row = (await treeFile(pane, "agent.ts")).closest("[data-tree-row]");
+    const previewRow = [row?.getAttribute("aria-current"), row?.getAttribute("aria-selected")];
+    fireEvent.doubleClick(within(pane).getByRole("tab"));
+    await flush();
+
+    expect({
+      tabs: tabStrip(pane),
+      previewRow,
+      pinnedRow: [row?.getAttribute("aria-current"), row?.getAttribute("aria-selected")],
+    }).toStrictEqual({
+      tabs: [{ name: "agent.ts", selected: "true", italic: false }],
+      previewRow: ["true", "false"],
+      pinnedRow: ["true", "true"],
+    });
+  });
+
+  it("Delete closes the focused tab and ⌃⇧→ moves it", async () => {
+    const pane = await openPane();
+    await switchMode(pane, "Session");
+    fireEvent.doubleClick(within(pane).getByRole("button", { name: "agent.ts" }));
+    await flush();
+    fireEvent.doubleClick(within(pane).getByRole("button", { name: "src/read-only.ts" }));
+    await flush();
+    fireEvent.doubleClick(within(pane).getByRole("button", { name: "/home/alice/notes/user.md" }));
+    await flush();
+
+    const [first] = within(pane).getAllByRole("tab");
+    if (!first) throw new Error("no tab");
+    fireEvent.keyDown(first, { key: "ArrowRight", ctrlKey: true, shiftKey: true });
+    await flush();
+    const moved = tabStrip(pane).map((tab) => tab.name);
+    const readOnly = within(pane).getByRole("tab", { name: "read-only.ts" });
+    fireEvent.keyDown(readOnly, { key: "Delete" });
+    await flush();
+
+    expect({ moved, closed: tabStrip(pane) }).toStrictEqual({
+      moved: ["read-only.ts", "agent.ts", "user.md"],
+      closed: [
+        { name: "agent.ts", selected: "false", italic: false },
+        { name: "user.md", selected: "true", italic: false },
+      ],
+    });
+  });
+
+  it("the close button closes a tab and the last close restores the title", async () => {
+    const pane = await openPane();
+    fireEvent.click(await treeFile(pane, "agent.ts"));
+    await flush();
+    fireEvent.click(within(pane).getByRole("button", { name: "Close agent.ts" }));
+    await flush();
+
+    expect({
+      tabs: tabStrip(pane),
+      title: within(pane).queryByText("Files", { selector: "[data-pane-title]" })?.textContent,
+      empty: within(pane).queryByText("Open files appear here")?.textContent,
+    }).toStrictEqual({ tabs: [], title: "Files", empty: "Open files appear here" });
+  });
+
+  it("with Preview tabs off, every open pins", async () => {
+    const pane = await openPane();
+    fireEvent.click(within(pane).getByRole("button", { name: "Files settings" }));
+    await flush();
+    const item = screen.getByRole("menuitemcheckbox", { name: "Preview tabs" });
+    const checkedByDefault = item.getAttribute("aria-checked");
+    fireEvent.click(item);
+    await flush();
+    fireEvent.click(await treeFile(pane, "agent.ts"));
+    await flush();
+    await switchMode(pane, "Session");
+    fireEvent.click(within(pane).getByRole("button", { name: "src/read-only.ts" }));
+    await flush();
+
+    expect({ checkedByDefault, tabs: tabStrip(pane) }).toStrictEqual({
+      checkedByDefault: "true",
+      tabs: [
+        { name: "agent.ts", selected: "false", italic: false },
+        { name: "read-only.ts", selected: "true", italic: false },
+      ],
+    });
+  });
+
+  it("persists tabs per session and discards them when the pane closes", async () => {
+    const pane = await openPane();
+    fireEvent.doubleClick(await treeFile(pane, "agent.ts"));
+    await flush();
+    cleanup();
+    unregister();
+
+    const reopened = await openPane({ toggle: false });
+    const restored = tabStrip(reopened);
+    pressFilesShortcut();
+    await flush();
+    cleanup();
+    unregister();
+
+    const afterClose = await openPane();
+    expect({ restored, afterClose: tabStrip(afterClose) }).toStrictEqual({
+      restored: [{ name: "agent.ts", selected: "true", italic: false }],
+      afterClose: [],
+    });
   });
 });

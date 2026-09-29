@@ -144,7 +144,7 @@ interface FileRowProps {
   label: string;
   open: boolean;
   copied: boolean;
-  onOpen: (absolutePath: string) => void;
+  onOpen: (absolutePath: string, options: { pin: boolean }) => void;
   onCopy: (absolutePath: string) => Promise<void>;
 }
 
@@ -158,7 +158,8 @@ function FileRow({ file, label, open, copied, onOpen, onCopy }: FileRowProps) {
           dir="rtl"
           title={file.absolutePath}
           aria-current={open ? "true" : undefined}
-          onClick={() => onOpen(file.absolutePath)}
+          onClick={() => onOpen(file.absolutePath, { pin: false })}
+          onDoubleClick={() => onOpen(file.absolutePath, { pin: true })}
           className="min-w-0 flex-1 cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap bg-transparent pl-2 text-left text-body text-primary outline-none aria-[current=true]:font-medium"
         >
           <bdi>{label}</bdi>
@@ -194,7 +195,8 @@ interface SessionFilesListProps {
   onQueryChange: (query: string) => void;
   filterRef: RefObject<HTMLInputElement | null>;
   openPath: string | null;
-  onOpenFile: (absolutePath: string) => void;
+  /** A single click opens a preview tab; a double-click pins it. */
+  onOpenFile: (absolutePath: string, options: { pin: boolean }) => void;
 }
 
 /**
