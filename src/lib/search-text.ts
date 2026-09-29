@@ -173,3 +173,26 @@ export function trimSnippet(text: string, matches: readonly TextMatch[]): Snippe
     matches: clipMatches(cleaned.matches, windowStart, windowEnd),
   });
 }
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * The palette's instant client-side title match: every whitespace-separated
+ * term must occur (case-insensitively); returns each occurrence, or `null`.
+ */
+export function titleMatches(title: string, query: string): TextMatch[] | null {
+  const terms = query
+    .trim()
+    .split(/\s+/u)
+    .filter((term) => term !== "");
+  if (terms.length === 0) return null;
+  const lower = title.toLowerCase();
+  if (!terms.every((term) => lower.includes(term.toLowerCase()))) return null;
+  const pattern = new RegExp(terms.map(escapeRegExp).join("|"), "giu");
+  return [...title.matchAll(pattern)].map((match) => ({
+    start: match.index,
+    end: match.index + match[0].length,
+  }));
+}

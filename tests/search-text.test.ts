@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { relativeBucket, trimSnippet } from "../src/lib/search-text";
+import { relativeBucket, titleMatches, trimSnippet } from "../src/lib/search-text";
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
@@ -144,5 +144,31 @@ describe("trimSnippet", () => {
       text: "some bold snippet",
       matches: [],
     });
+  });
+});
+
+describe("titleMatches", () => {
+  it.each([
+    ["a single term, case-insensitively", "Refactor Auth module", "auth", [{ start: 9, end: 13 }]],
+    [
+      "every occurrence of every term, in order",
+      "auth the auth module",
+      "module auth",
+      [
+        { start: 0, end: 4 },
+        { start: 9, end: 13 },
+        { start: 14, end: 20 },
+      ],
+    ],
+    ["regex metacharacters literally", "fix a.b (c)", "a.b", [{ start: 4, end: 7 }]],
+  ])("matches %s", (_label, title, query, expected) => {
+    expect(titleMatches(title, query)).toStrictEqual(expected);
+  });
+
+  it.each([
+    ["a missing term", "Refactor auth module", "auth parser"],
+    ["an empty query", "Refactor auth module", "   "],
+  ])("returns null for %s", (_label, title, query) => {
+    expect(titleMatches(title, query)).toBeNull();
   });
 });

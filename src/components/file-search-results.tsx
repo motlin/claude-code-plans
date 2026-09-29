@@ -15,6 +15,7 @@ import {
   fileSearchRootsQueryOptions,
   type FileSearchResult,
 } from "../lib/api/search";
+import { useDebouncedValue } from "../hooks/use-debounced-value";
 import { encodeFilePath } from "../lib/api/file";
 import { formatCount } from "../lib/pluralize";
 
@@ -22,17 +23,6 @@ const DEBOUNCE_MILLISECONDS = 200;
 const MINIMUM_QUERY_LENGTH = 2;
 const INITIAL_MATCH_COUNT = 5;
 const SERVER_MATCH_CAP = 50;
-
-function useDebouncedValue(value: string): string {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    const timeout = window.setTimeout(() => setDebouncedValue(value), DEBOUNCE_MILLISECONDS);
-    return () => window.clearTimeout(timeout);
-  }, [value]);
-
-  return debouncedValue;
-}
 
 function pathBasename(path: string): string {
   return path.slice(path.lastIndexOf("/") + 1);
@@ -126,7 +116,7 @@ export function FileSearchResults({
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultRefs = useRef(new Map<string, HTMLButtonElement>());
-  const debouncedQuery = useDebouncedValue(query.trim());
+  const debouncedQuery = useDebouncedValue(query.trim(), DEBOUNCE_MILLISECONDS);
   const rootsQuery = useQuery(fileSearchRootsQueryOptions);
 
   useEffect(() => setQuery(initialQuery), [initialQuery]);

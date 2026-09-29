@@ -1,5 +1,5 @@
 import { Dialog } from "@base-ui/react/dialog";
-import { Command } from "cmdk";
+import { Command, defaultFilter } from "cmdk";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   type KeyboardEvent,
@@ -27,14 +27,21 @@ import {
   ListChecks,
   Activity,
   Puzzle,
+  File,
+  LoaderCircle,
 } from "lucide-react";
 import type { PaletteMode } from "../hooks/use-command-palette";
+import { useDebouncedValue } from "../hooks/use-debounced-value";
+import { encodeFilePath } from "../lib/api/file";
+import { unifiedSearchQueryOptions, type UnifiedSearchItem } from "../lib/api/search";
 import { recentSessionsQueryOptions, type SessionListItem } from "../lib/api/sessions";
+import { relativeBucket, titleMatches, type Snippet, type TextMatch } from "../lib/search-text";
 import type { SessionBucket } from "../lib/session-state";
 import { SHORTCUTS, type ShortcutId } from "../lib/shortcuts/registry";
 import { toggleSidebarCollapsed } from "../lib/sidebar-store";
 import { type ShortcutKeys, useShortcutKeys } from "../hooks/use-shortcut";
 import { clearAll } from "../lib/unread-store";
+import { HighlightRuns } from "./highlight-runs";
 import { Shortcut } from "./ui/shortcut";
 import { useOpenSettings } from "./settings/settings-dialog";
 import { setKeyboardShortcutsOpen } from "./keyboard-shortcuts-dialog";
@@ -61,6 +68,70 @@ export const PALETTE_RECENT_LIMIT = 25;
 
 /** Upstream caps the default entrypoint's organic list (Needs attention + Recents) at 7. */
 const ORGANIC_LIMIT = 7;
+
+const SEARCH_DEBOUNCE_MS = 150;
+const SKELETON_ROWS = 3;
+
+type SearchKind = UnifiedSearchItem["kind"];
+
+const KIND_ICONS = {
+  session: <MessageSquare />,
+  plan: <FileText />,
+  memory: <Brain />,
+  file: <File />,
+} as const satisfies Record<SearchKind, ReactNode>;
+
+/** One typed-search row: an instant title match over recents, or a server hit. */
+interface SearchRow {
+  kind: SearchKind;
+  id: string;
+  title: string;
+  titleMatches: readonly TextMatch[];
+  snippet: Snippet | undefined;
+  mtime: string;
+  awaiting: boolean;
+  href: string | undefined;
+}
+
+function instantRows(sessions: readonly SessionListItem[], query: string): SearchRow[] {
+  const rows: SearchRow[] = [];
+  for (const session of sessions) {
+    const matches = titleMatches(session.title, query);
+    if (matches === null) continue;
+    rows.push({
+      kind: "session",
+      id: session.id,
+      title: session.title,
+      titleMatches: matches,
+      snippet: undefined,
+      mtime: session.mtime,
+      awaiting: session.bucket === "blocked",
+      href: undefined,
+    });
+  }
+  return rows;
+}
+
+function serverRow(item: UnifiedSearchItem): SearchRow {
+  return {
+    kind: item.kind,
+    id: item.id,
+    title: item.title,
+    titleMatches: item.titleMatches,
+    snippet: item.snippet,
+    mtime: item.mtime,
+    awaiting: item.state === "waiting",
+    href: item.href,
+  };
+}
+
+function rowKey(row: Pick<SearchRow, "kind" | "id">): string {
+  return `${row.kind}:${row.id}`;
+}
+
+function commandMatches(label: string, query: string, keywords: readonly string[] = []): boolean {
+  return defaultFilter(label, query, [...keywords]) > 0;
+}
 
 type AttentionBucket = Extract<SessionBucket, "blocked" | "review">;
 
@@ -186,8 +257,49 @@ function PalettePopup({
     [data, currentSessionId],
   );
 
+  const trimmedQuery = query.trim();
+  const debouncedQuery = useDebouncedValue(trimmedQuery, SEARCH_DEBOUNCE_MS);
+  const serverSearch = useQuery({
+    ...unifiedSearchQueryOptions(debouncedQuery),
+    enabled: debouncedQuery.length > 0,
+  });
+  const searching =
+    trimmedQuery !== "" && (debouncedQuery !== trimmedQuery || serverSearch.isFetching);
+
+  const instant = useMemo(
+    () =>
+      trimmedQuery === ""
+        ? []
+        : instantRows(
+            (data?.sessions ?? []).filter((session) => session.id !== currentSessionId),
+            trimmedQuery,
+          ),
+    [data, currentSessionId, trimmedQuery],
+  );
+
+  // Instant rows keep their position; server rows append, minus what is already shown.
+  const serverRows = useMemo(() => {
+    if (debouncedQuery !== trimmedQuery || serverSearch.data === undefined) return [];
+    const shown = new Set(instant.map(rowKey));
+    return serverSearch.data.items
+      .filter((item) => item.id !== currentSessionId || item.kind !== "session")
+      .map(serverRow)
+      .filter((row) => !shown.has(rowKey(row)));
+  }, [serverSearch.data, debouncedQuery, trimmedQuery, instant, currentSessionId]);
+
   function openSession(id: string) {
     void navigate({ to: "/session/$id", params: { id } });
+  }
+
+  function openRow(row: SearchRow) {
+    if (row.kind === "session") openSession(row.id);
+    else if (row.kind === "file") {
+      void navigate({ to: "/file/$", params: { _splat: encodeFilePath(row.id) } });
+    } else if (row.href !== undefined) void navigate({ href: row.href });
+  }
+
+  function seeAllResults() {
+    void navigate({ to: "/search", search: { q: trimmedQuery, mode: "titles", type: "all" } });
   }
 
   // Upstream's Actions minus the cloud-only ones; "New session…" joins once herdr launch exists.
@@ -243,6 +355,19 @@ function PalettePopup({
   }
 
   const compose = mode === "compose";
+  const now = Date.now();
+  const matchedActions =
+    trimmedQuery === ""
+      ? []
+      : actions.filter((action) => commandMatches(action.label, trimmedQuery));
+  const matchedCommands =
+    trimmedQuery === ""
+      ? []
+      : NAV_COMMANDS.filter((command) =>
+          commandMatches(command.label, trimmedQuery, command.keywords),
+        );
+  const resultCount =
+    instant.length + matchedActions.length + matchedCommands.length + serverRows.length;
   const label = MODE_LABELS[mode];
 
   return (
@@ -263,7 +388,13 @@ function PalettePopup({
         ref={cardRef}
         className={`overflow-hidden border-[0.5px] border-strong bg-surface-3 shadow-2xl ${PALETTE_RADIUS}`}
       >
-        <Command label={label} loop onKeyDown={handleKeyDown} className="flex flex-col">
+        <Command
+          label={label}
+          loop
+          shouldFilter={false}
+          onKeyDown={handleKeyDown}
+          className="flex flex-col"
+        >
           <div
             className={`relative flex items-center gap-2 pt-[1.1rem] pr-2.5 pl-6 ${
               compose ? "flex-wrap pb-3" : "pb-[0.9rem]"
@@ -286,6 +417,15 @@ function PalettePopup({
                 }`}
               />
             </Command.Input>
+            {!compose && searching && (
+              <span
+                role="img"
+                aria-label="Searching deeper..."
+                className="relative flex size-4 shrink-0 items-center justify-center text-ink-muted"
+              >
+                <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+              </span>
+            )}
             <Dialog.Close
               aria-label="Close"
               className="relative flex aspect-square h-7 w-7 shrink-0 items-center justify-center rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none"
@@ -296,20 +436,16 @@ function PalettePopup({
           <div className="h-[0.5px] w-full bg-border" />
 
           <Command.List className="max-h-[440px] overflow-y-auto p-2.5">
-            {!compose && (
+            {!compose && trimmedQuery === "" && (
               <>
-                <Command.Empty className="px-6 py-6 text-center text-secondary">
-                  No results for “{query}”
-                </Command.Empty>
-
                 {attention.length > 0 && (
                   <Command.Group heading="Needs attention" className={GROUP_CLASS}>
                     {attention.map((session) => (
                       <CommandItem
                         key={session.id}
                         icon={<AttentionIcon />}
+                        value={`session:${session.id}`}
                         onSelect={() => select(() => openSession(session.id))}
-                        keywords={[session.id]}
                       >
                         {session.title}
                         <span className="sr-only"> {ATTENTION_LABELS[session.bucket]}</span>
@@ -324,8 +460,8 @@ function PalettePopup({
                       <CommandItem
                         key={session.id}
                         icon={<MessageSquare />}
+                        value={`session:${session.id}`}
                         onSelect={() => select(() => openSession(session.id))}
-                        keywords={[session.id]}
                       >
                         {session.title}
                       </CommandItem>
@@ -338,6 +474,7 @@ function PalettePopup({
                     action.shortcut === undefined ? (
                       <CommandItem
                         key={action.label}
+                        value={`action:${action.label}`}
                         icon={action.icon}
                         onSelect={() => select(action.run)}
                       >
@@ -346,6 +483,7 @@ function PalettePopup({
                     ) : (
                       <ShortcutCommandItem
                         key={action.label}
+                        value={`action:${action.label}`}
                         id={action.shortcut}
                         icon={action.icon}
                         onSelect={() => select(action.run)}
@@ -355,24 +493,98 @@ function PalettePopup({
                     ),
                   )}
                 </Command.Group>
-
-                {query !== "" && (
-                  <Command.Group className={GROUP_CLASS}>
-                    {NAV_COMMANDS.map((command) => (
-                      <CommandItem
-                        key={command.to}
-                        icon={command.icon}
-                        onSelect={() => select(() => navigate({ to: command.to }))}
-                        keywords={command.keywords}
-                      >
-                        {command.label}
-                      </CommandItem>
-                    ))}
-                  </Command.Group>
-                )}
               </>
             )}
+
+            {!compose &&
+              trimmedQuery !== "" && (
+                // cmdk's Group forces role=presentation, so upstream's headingless group is a plain div.
+                <div
+                  role="group"
+                  aria-label="Search results"
+                  aria-busy={searching}
+                  className="flex flex-col gap-1"
+                >
+                  {instant.map((row) => (
+                    <SearchResultItem
+                      key={rowKey(row)}
+                      row={row}
+                      now={now}
+                      onSelect={() => select(() => openRow(row))}
+                    />
+                  ))}
+                  {matchedActions.map((action) =>
+                    action.shortcut === undefined ? (
+                      <CommandItem
+                        key={action.label}
+                        value={`action:${action.label}`}
+                        icon={action.icon}
+                        onSelect={() => select(action.run)}
+                      >
+                        {action.label}
+                      </CommandItem>
+                    ) : (
+                      <ShortcutCommandItem
+                        key={action.label}
+                        value={`action:${action.label}`}
+                        id={action.shortcut}
+                        icon={action.icon}
+                        onSelect={() => select(action.run)}
+                      >
+                        {action.label}
+                      </ShortcutCommandItem>
+                    ),
+                  )}
+                  {matchedCommands.map((command) => (
+                    <CommandItem
+                      key={command.to}
+                      value={`nav:${command.to}`}
+                      icon={command.icon}
+                      onSelect={() => select(() => navigate({ to: command.to }))}
+                    >
+                      {command.label}
+                    </CommandItem>
+                  ))}
+                  {serverRows.map((row) => (
+                    <SearchResultItem
+                      key={rowKey(row)}
+                      row={row}
+                      now={now}
+                      onSelect={() => select(() => openRow(row))}
+                    />
+                  ))}
+                  {searching &&
+                    Array.from({ length: SKELETON_ROWS }, (_, index) => (
+                      <div
+                        key={index}
+                        aria-hidden="true"
+                        data-palette-skeleton=""
+                        className="flex items-center gap-2 px-3 py-2"
+                      >
+                        <span className="size-5 shrink-0 rounded bg-fill-ghost-hover" />
+                        <span className="h-3 flex-1 rounded bg-fill-ghost-hover motion-safe:animate-pulse" />
+                      </div>
+                    ))}
+                  {!searching && resultCount === 0 && (
+                    <div className="px-3 py-2 text-sm text-secondary">
+                      No results for “{trimmedQuery}”
+                    </div>
+                  )}
+                  <CommandItem
+                    value="see-all-results"
+                    icon={<Search />}
+                    onSelect={() => select(seeAllResults)}
+                  >
+                    See all results for “{trimmedQuery}”
+                  </CommandItem>
+                </div>
+              )}
           </Command.List>
+          {!compose && trimmedQuery !== "" && !searching && (
+            <div aria-live="polite" className="sr-only">
+              {resultCount} results available
+            </div>
+          )}
 
           {!compose && query === "" && (
             <div
@@ -463,25 +675,83 @@ function ShortcutCommandItem({
   return <CommandItem {...props} shortcut={shortcut} />;
 }
 
+const ROW_CLASS =
+  "group flex w-full cursor-pointer items-center justify-between gap-3 truncate rounded-lg px-3 py-2 text-sm leading-5 text-secondary select-none data-[selected=true]:bg-fill-ghost-hover data-[selected=true]:text-primary";
+
+function ReturnGlyph() {
+  return (
+    <span className="hidden shrink-0 text-xs text-ink-muted group-data-[selected=true]:inline-flex pointer-coarse:!hidden">
+      <CornerDownLeft aria-hidden="true" className="size-4" />
+    </span>
+  );
+}
+
+/** Upstream's search row: kind icon, bold title runs, quoted snippet, bucket meta, ⏎ when selected. */
+function SearchResultItem({
+  row,
+  now,
+  onSelect,
+}: {
+  row: SearchRow;
+  now: number;
+  onSelect: () => void;
+}) {
+  return (
+    <Command.Item
+      value={rowKey(row)}
+      onSelect={onSelect}
+      data-item-type={row.kind}
+      className={ROW_CLASS}
+    >
+      <span className="flex min-w-0 flex-1 items-center gap-2">
+        <span className="flex size-5 shrink-0 items-center justify-center [&_svg]:size-[18px]">
+          {row.awaiting ? <AttentionIcon /> : KIND_ICONS[row.kind]}
+        </span>
+        <span className="flex min-w-0 flex-1 items-baseline gap-2">
+          <span data-palette-label="" className="truncate">
+            <HighlightRuns text={row.title} matches={row.titleMatches} />
+          </span>
+          {row.snippet !== undefined && row.snippet.text !== "" && (
+            <span
+              data-palette-snippet=""
+              className="text-xs text-ink-muted max-w-[60%] shrink-0 overflow-hidden whitespace-nowrap"
+            >
+              “<HighlightRuns text={row.snippet.text} matches={row.snippet.matches} />”
+            </span>
+          )}
+        </span>
+        {row.awaiting && <span className="sr-only"> Awaiting input</span>}
+      </span>
+      <span
+        data-palette-meta=""
+        className="shrink-0 text-xs text-ink-muted group-data-[selected=true]:hidden pointer-coarse:!inline"
+      >
+        {relativeBucket(Date.parse(row.mtime), now) ?? ""}
+      </span>
+      <ReturnGlyph />
+    </Command.Item>
+  );
+}
+
 function CommandItem({
   children,
+  value,
   icon,
   onSelect,
-  keywords,
   shortcut,
 }: {
   children: ReactNode;
+  value: string;
   icon: ReactNode;
   onSelect: () => void;
-  keywords?: readonly string[];
   shortcut?: ShortcutKeys;
 }) {
   return (
     <Command.Item
+      value={value}
       onSelect={onSelect}
-      {...(keywords ? { keywords: [...keywords] } : {})}
       {...(shortcut ? { "aria-keyshortcuts": shortcut.ariaKeyShortcuts } : {})}
-      className="group flex w-full cursor-pointer items-center justify-between gap-3 truncate rounded-lg px-3 py-2 text-sm leading-5 text-secondary select-none data-[selected=true]:bg-fill-ghost-hover data-[selected=true]:text-primary"
+      className={ROW_CLASS}
     >
       <span className="flex min-w-0 flex-1 items-center gap-2">
         <span className="flex size-5 shrink-0 items-center justify-center [&_svg]:size-[18px]">
@@ -499,9 +769,7 @@ function CommandItem({
           <Shortcut keys={shortcut.keys} />
         </span>
       )}
-      <span className="hidden shrink-0 text-xs text-ink-muted group-data-[selected=true]:inline-flex pointer-coarse:!hidden">
-        <CornerDownLeft aria-hidden="true" className="size-4" />
-      </span>
+      <ReturnGlyph />
     </Command.Item>
   );
 }

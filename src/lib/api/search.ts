@@ -98,6 +98,7 @@ export const fileSearchQueryOptions = (query: string, scopeRoot: string) =>
   });
 
 export const UnifiedSearchTypeSchema = z.enum(["all", "sessions", "plans", "memories", "files"]);
+export type UnifiedSearchType = z.infer<typeof UnifiedSearchTypeSchema>;
 
 export const UnifiedSearchDateSchema = z.enum(["today", "week", "month"]);
 export type UnifiedSearchDate = z.infer<typeof UnifiedSearchDateSchema>;
@@ -160,6 +161,17 @@ export const UnifiedSearchResponse = z
     items: z.array(UnifiedSearchItemSchema),
   })
   .strict();
+
+export const unifiedSearchQueryOptions = (query: string) =>
+  queryOptions({
+    queryKey: ["search", "unified", query] as const,
+    queryFn: ({ signal }) =>
+      apiFetch(`/api/search?query=${encodeURIComponent(query)}`, UnifiedSearchResponse, {
+        signal,
+      }),
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+  });
 
 export const fileSearchRootsQueryOptions = queryOptions({
   queryKey: ["search", "file-roots"] as const,

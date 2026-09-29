@@ -30,4 +30,14 @@ describe("search route mode parameter validation", () => {
       'Unknown search mode "bogus": expected titles, conversations, files, or messages',
     );
   });
+
+  it("keeps a valid type filter and drops an unknown one", () => {
+    expect({
+      plans: validateSearchParameters({ q: "hook", type: "plans" }),
+      bogus: validateSearchParameters({ q: "hook", type: "bogus" }),
+    }).toStrictEqual({
+      plans: { q: "hook", mode: "titles", type: "plans" },
+      bogus: { q: "hook", mode: "titles" },
+    });
+  });
 });

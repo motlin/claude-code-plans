@@ -6,6 +6,8 @@ import {
   sessionSearchQueryOptions,
   messageSearchQueryOptions,
   SearchModeSchema,
+  UnifiedSearchTypeSchema,
+  type UnifiedSearchType,
   type SearchMode,
   type SessionSearchItem,
   type MessageSearchItem,
@@ -93,6 +95,7 @@ export const Route = createFileRoute("/search")({
 export function validateSearchParameters(search: Record<string, unknown>): {
   q: string;
   mode: SearchMode;
+  type?: UnifiedSearchType;
 } {
   const raw = search["mode"] ?? "titles";
   // "messages" is an alias for "conversations" (the mode backed by /api/search/messages).
@@ -102,9 +105,11 @@ export function validateSearchParameters(search: Record<string, unknown>): {
       `Unknown search mode ${JSON.stringify(raw)}: expected ${SearchModeSchema.options.join(", ")}, or messages`,
     );
   }
+  const type = UnifiedSearchTypeSchema.safeParse(search["type"]);
   return {
     q: typeof search["q"] === "string" ? search["q"] : "",
     mode: parsed.data,
+    ...(type.success ? { type: type.data } : {}),
   };
 }
 
