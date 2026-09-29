@@ -3,6 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   PIN_DROP_OUTCOMES,
   dropOutcome,
+  placePin,
   slotFromPointer,
   splitPinned,
   type PinDropOutcome,
@@ -77,7 +78,10 @@ describe("splitPinned", () => {
     expect(
       splitPinned(
         sessions,
-        { pinnedIds: ["session-gone", "session-carol"], pinnedOrder: ["session-gone"] },
+        {
+          pinnedIds: ["session-gone", "session-carol"],
+          pinnedOrder: ["session-gone"],
+        },
         byMtimeDesc,
       ),
     ).toStrictEqual({
@@ -151,5 +155,32 @@ describe("dropOutcome", () => {
     ],
   ])("%s", (_label, input, expected) => {
     expect(dropOutcome(input)).toBe(expected);
+  });
+});
+
+describe("placePin", () => {
+  it("pins a new session at a displayed slot and makes the displayed order the user order", () => {
+    expect(placePin({ pinnedIds: ["a", "b"], pinnedOrder: [] }, ["a", "b"], "c", 1)).toStrictEqual({
+      pinnedIds: ["a", "b", "c"],
+      pinnedOrder: ["a", "c", "b"],
+    });
+  });
+
+  it("moves an already pinned session without duplicating it", () => {
+    expect(
+      placePin({ pinnedIds: ["a", "b", "c"], pinnedOrder: ["a", "b"] }, ["a", "b", "c"], "a", 2),
+    ).toStrictEqual({
+      pinnedIds: ["a", "b", "c"],
+      pinnedOrder: ["b", "c", "a"],
+    });
+  });
+
+  it("clamps the index and keeps ordered pins that are not displayed after the displayed ones", () => {
+    expect(
+      placePin({ pinnedIds: ["a", "x"], pinnedOrder: ["x", "a"] }, ["a"], "b", 9),
+    ).toStrictEqual({
+      pinnedIds: ["a", "x", "b"],
+      pinnedOrder: ["a", "b", "x"],
+    });
   });
 });

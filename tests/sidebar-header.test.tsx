@@ -20,6 +20,7 @@ import { notificationsQueryOptions } from "../src/lib/api/notifications";
 import { activeSessionsQueryOptions } from "../src/lib/api/sessions";
 import { installLocalStorage } from "./fake-storage";
 import { NAV_SECTIONS } from "../src/lib/nav-sections";
+import { ToastProvider } from "../src/components/toast";
 
 function seedQueryClient(): QueryClient {
   const queryClient = new QueryClient({
@@ -46,10 +47,12 @@ async function renderSidebar() {
   const rootRoute = createRootRoute({
     component: () => (
       <QueryClientProvider client={queryClient}>
-        <SettingsProvider>
-          <Sidebar collapsed={false} />
-          <Outlet />
-        </SettingsProvider>
+        <ToastProvider>
+          <SettingsProvider>
+            <Sidebar collapsed={false} />
+            <Outlet />
+          </SettingsProvider>
+        </ToastProvider>
       </QueryClientProvider>
     ),
   });

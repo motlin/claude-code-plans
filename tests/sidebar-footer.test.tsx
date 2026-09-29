@@ -21,6 +21,7 @@ import { notificationsQueryOptions } from "../src/lib/api/notifications";
 import { activeSessionsQueryOptions } from "../src/lib/api/sessions";
 import { installLocalStorage } from "./fake-storage";
 import { NAV_SECTIONS } from "../src/lib/nav-sections";
+import { ToastProvider } from "../src/components/toast";
 
 function PaletteProbe() {
   const palette = useCommandPalette();
@@ -57,11 +58,13 @@ async function renderSidebar(username: string | null = "craig") {
   const rootRoute = createRootRoute({
     component: () => (
       <QueryClientProvider client={queryClient}>
-        <SettingsProvider>
-          <Sidebar collapsed={false} />
-          <PaletteProbe />
-          <Outlet />
-        </SettingsProvider>
+        <ToastProvider>
+          <SettingsProvider>
+            <Sidebar collapsed={false} />
+            <PaletteProbe />
+            <Outlet />
+          </SettingsProvider>
+        </ToastProvider>
       </QueryClientProvider>
     ),
   });

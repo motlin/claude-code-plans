@@ -53,7 +53,8 @@ function notify(): void {
   for (const listener of listeners) listener();
 }
 
-function writePinState(state: PinState): void {
+/** Replace this browser's pins, e.g. with the result of a sidebar drag. */
+export function writePinState(state: PinState): void {
   try {
     localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(state));
   } catch {

@@ -21,6 +21,7 @@ import { projectsQueryOptions } from "../src/lib/api/projects";
 import { activeSessionsQueryOptions, groupedSessionsQueryOptions } from "../src/lib/api/sessions";
 import { installLocalStorage } from "./fake-storage";
 import { NAV_SECTIONS } from "../src/lib/nav-sections";
+import { ToastProvider } from "../src/components/toast";
 
 function project(id: string, name: string, lastActivity: string) {
   return {
@@ -91,10 +92,12 @@ async function renderSidebar() {
   const rootRoute = createRootRoute({
     component: () => (
       <QueryClientProvider client={queryClient}>
-        <SettingsProvider>
-          <Sidebar collapsed={false} onToggle={() => {}} />
-          <Outlet />
-        </SettingsProvider>
+        <ToastProvider>
+          <SettingsProvider>
+            <Sidebar collapsed={false} onToggle={() => {}} />
+            <Outlet />
+          </SettingsProvider>
+        </ToastProvider>
       </QueryClientProvider>
     ),
   });

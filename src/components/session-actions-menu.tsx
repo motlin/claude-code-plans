@@ -314,7 +314,11 @@ export function SessionActionsMenu({
           </MenuContent>
         </ContextMenu>
         <Menu onOpenChangeComplete={onOpenChangeComplete}>
-          <MenuTrigger aria-label={`More options for ${rename.title}`} className={KEBAB_CLASS}>
+          <MenuTrigger
+            aria-label={`More options for ${rename.title}`}
+            data-row-action=""
+            className={KEBAB_CLASS}
+          >
             <Ellipsis aria-hidden="true" className="size-4" />
           </MenuTrigger>
           <MenuContent align="end" finalFocus={finalFocus}>

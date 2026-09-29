@@ -18,6 +18,7 @@ import { approvalsQueryOptions } from "../src/lib/api/approvals";
 import { notificationsQueryOptions } from "../src/lib/api/notifications";
 import { activeSessionsQueryOptions } from "../src/lib/api/sessions";
 import type { NavSection } from "../src/lib/nav-sections";
+import { ToastProvider } from "../src/components/toast";
 import { installLocalStorage } from "./fake-storage";
 
 const BASE_SETTINGS = {
@@ -67,10 +68,12 @@ async function renderSidebar(
   const rootRoute = createRootRoute({
     component: () => (
       <QueryClientProvider client={queryClient}>
-        <SettingsProvider>
-          <Sidebar collapsed={false} />
-          <Outlet />
-        </SettingsProvider>
+        <ToastProvider>
+          <SettingsProvider>
+            <Sidebar collapsed={false} />
+            <Outlet />
+          </SettingsProvider>
+        </ToastProvider>
       </QueryClientProvider>
     ),
   });
@@ -90,8 +93,12 @@ async function renderSidebar(
 }
 
 function sidebarNavLabels(): string[] {
-  // An open modal dialog marks the sidebar aria-hidden, so query hidden elements too.
-  const sidebar = screen.getByRole("navigation", { name: "Sidebar", hidden: true });
+  // An open modal dialog marks the sidebar itself aria-hidden (the toast live region keeps
+  // its parent exposed), which also blanks its accessible name, so match the label directly.
+  const sidebar = screen
+    .getAllByRole("navigation", { hidden: true })
+    .find((nav) => nav.getAttribute("aria-label") === "Sidebar");
+  if (sidebar === undefined) throw new Error("no Sidebar navigation");
   const footer = screen.getByTestId("sidebar-footer");
   return within(sidebar)
     .getAllByRole("link", { hidden: true })

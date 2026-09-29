@@ -53,3 +53,24 @@ export function dropOutcome({ srcPinned, slot, belowPinnedBottom }: DropInput): 
   }
   return srcPinned ? "reorder" : "pin";
 }
+
+/**
+ * Pins after placing `id` at `index` of the displayed Pinned rows (a drag pin or
+ * reorder). The displayed order becomes the user order, like upstream's `pinnedOrder`
+ * merge; ordered pins that are not displayed keep their relative order after them.
+ */
+export function placePin(
+  state: PinState,
+  displayedIds: readonly string[],
+  id: string,
+  index: number,
+): PinState {
+  const displayed = displayedIds.filter((key) => key !== id);
+  const at = Math.max(0, Math.min(index, displayed.length));
+  const placed = [...displayed.slice(0, at), id, ...displayed.slice(at)];
+  const seen = new Set(placed);
+  return {
+    pinnedIds: state.pinnedIds.includes(id) ? state.pinnedIds : [...state.pinnedIds, id],
+    pinnedOrder: [...placed, ...state.pinnedOrder.filter((key) => !seen.has(key))],
+  };
+}

@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
+import type { SidebarDragRowProps } from "../../hooks/use-sidebar-drag";
 import type { SessionListItem } from "../../lib/api/sessions";
 import type { SessionGroup, SessionGroupRow } from "../../lib/session-groups";
 import { toggleSidebarGroup } from "../../lib/sidebar-store";
@@ -38,12 +39,15 @@ export function GroupSection({
   activeItemId,
   filterSlot,
   onShowMore,
+  dragRowProps,
 }: {
   group: SessionGroup<SidebarSessionRow>;
   expanded: boolean;
   activeItemId: string | null;
   filterSlot: ReactNode;
   onShowMore: () => void;
+  /** Makes each row a sidebar drag source (pin, reorder, unpin). */
+  dragRowProps?: (id: string) => SidebarDragRowProps;
 }) {
   return (
     <div data-group-key={group.key} className="group/section relative isolate flex flex-col gap-px">
@@ -76,11 +80,13 @@ export function GroupSection({
       {expanded && (
         <>
           {group.rows.map((row) => (
-            <SessionRowLink
+            <div
               key={row.sessionId}
-              row={row}
-              selected={row.sessionId === activeItemId}
-            />
+              {...dragRowProps?.(row.sessionId)}
+              className="df-drag-shiftable relative"
+            >
+              <SessionRowLink row={row} selected={row.sessionId === activeItemId} />
+            </div>
           ))}
           {group.hiddenCount > 0 && (
             <button

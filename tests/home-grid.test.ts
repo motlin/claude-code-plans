@@ -12,6 +12,7 @@ import { createElement } from "react";
 import { describe, expect, it, vi } from "vite-plus/test";
 import { Sidebar } from "../src/components/sidebar/Sidebar";
 import { navItems } from "../src/components/sidebar/navigation";
+import { ToastProvider } from "../src/components/toast";
 import { Route as HomeRoute } from "../src/routes/index";
 
 const DEFAULT_APPLICATION_SETTINGS = {
@@ -61,8 +62,12 @@ async function renderNavigation() {
       createElement(
         QueryClientProvider,
         { client: queryClient },
-        createElement(Sidebar, { collapsed: false, onToggle: () => undefined }),
-        createElement(Home),
+        createElement(
+          ToastProvider,
+          null,
+          createElement(Sidebar, { collapsed: false, onToggle: () => undefined }),
+          createElement(Home),
+        ),
       ),
   });
   const router = createRouter({

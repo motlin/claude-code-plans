@@ -19,6 +19,7 @@ import { activeSessionsQueryOptions } from "../src/lib/api/sessions";
 import { readSidebarState, useSidebarState, writeSidebarState } from "../src/lib/sidebar-store";
 import { installLocalStorage } from "./fake-storage";
 import { NAV_SECTIONS } from "../src/lib/nav-sections";
+import { ToastProvider } from "../src/components/toast";
 
 function seedQueryClient(): QueryClient {
   const queryClient = new QueryClient({
@@ -51,10 +52,12 @@ async function renderCollapsedSidebar() {
   const rootRoute = createRootRoute({
     component: () => (
       <QueryClientProvider client={queryClient}>
-        <SettingsProvider>
-          <PersistedSidebar />
-          <Outlet />
-        </SettingsProvider>
+        <ToastProvider>
+          <SettingsProvider>
+            <PersistedSidebar />
+            <Outlet />
+          </SettingsProvider>
+        </ToastProvider>
       </QueryClientProvider>
     ),
   });
