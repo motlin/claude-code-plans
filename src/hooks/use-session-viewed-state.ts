@@ -73,28 +73,31 @@ export function createVisibilityDwellController(dependencies: VisibilityDwellDep
   setVisible: (visible: boolean) => void;
   stop: () => void;
 } {
+  // Destructured so each dependency is called without a receiver: browser
+  // setTimeout/clearTimeout throw "Illegal invocation" on a non-window `this`.
+  const { cancel, onDwell, onVisibilityChange, schedule } = dependencies;
   let visible = false;
   let dwellTimer: ReturnType<typeof setTimeout> | null = null;
 
   const setVisible = (nextVisible: boolean): void => {
     if (visible === nextVisible) return;
     visible = nextVisible;
-    dependencies.onVisibilityChange(visible);
+    onVisibilityChange(visible);
     if (!visible) {
-      if (dwellTimer) dependencies.cancel(dwellTimer);
+      if (dwellTimer) cancel(dwellTimer);
       dwellTimer = null;
       return;
     }
-    dwellTimer = dependencies.schedule(() => {
+    dwellTimer = schedule(() => {
       dwellTimer = null;
-      if (visible) dependencies.onDwell();
+      if (visible) onDwell();
     }, VIEW_DWELL_MS);
   };
 
   const stop = (): void => {
-    if (dwellTimer) dependencies.cancel(dwellTimer);
+    if (dwellTimer) cancel(dwellTimer);
     dwellTimer = null;
-    if (visible) dependencies.onVisibilityChange(false);
+    if (visible) onVisibilityChange(false);
     visible = false;
   };
 

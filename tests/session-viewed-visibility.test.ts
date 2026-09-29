@@ -64,6 +64,37 @@ describe("session viewed visibility dwell", () => {
     });
   });
 
+  it("calls schedule and cancel without a receiver, like browser setTimeout requires", () => {
+    const calls: string[] = [];
+    // Browser window.setTimeout/clearTimeout throw "Illegal invocation" when
+    // called with a receiver other than window (e.g. the dependencies object).
+    function assertNoReceiver(this: unknown, name: string): void {
+      if (this !== undefined && this !== globalThis) {
+        throw new TypeError(`Illegal invocation: ${name}`);
+      }
+    }
+    const controller = createVisibilityDwellController({
+      cancel: function (this: unknown) {
+        assertNoReceiver.call(this, "cancel");
+        calls.push("cancel");
+      },
+      onDwell: () => {},
+      onVisibilityChange: () => {},
+      schedule: function (this: unknown) {
+        assertNoReceiver.call(this, "schedule");
+        calls.push("schedule");
+        return 1 as unknown as ReturnType<typeof setTimeout>;
+      },
+    });
+
+    controller.setVisible(true);
+    controller.setVisible(false);
+    controller.setVisible(true);
+    controller.stop();
+
+    expect(calls).toStrictEqual(["schedule", "cancel", "schedule", "cancel"]);
+  });
+
   it("expires server visibility leases when a browser stops heartbeating", () => {
     setSessionVisibility("client-test-100", "session-test-100", true, 1_000);
 
