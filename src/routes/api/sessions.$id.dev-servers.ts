@@ -3,7 +3,7 @@ import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { SessionDevServersResponse } from "../../lib/api/sessions";
 
 /**
- * Loopback dev servers for the Links drawer's "Open dev server" links: the
+ * Loopback dev servers for the Links pane's "Open dev server" links: the
  * project's `.claude/launch.json` plus URLs in the latest Bash results, each
  * probed with a loopback-only HEAD.
  */

@@ -455,7 +455,7 @@ export const sessionResourcesQueryOptions = (id: string, enabled: boolean) =>
   });
 
 /**
- * "Open dev server" links for the Links drawer, fetched only while it is open.
+ * "Open dev server" links for the Links pane, fetched only while it is open.
  * Liveness goes stale quickly, so each opening re-probes.
  */
 export const sessionDevServersQueryOptions = (id: string, enabled: boolean) =>

@@ -1,20 +1,34 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
-import { useState } from "react";
-import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
+
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { useState, type ReactNode } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {
   INCLUDE_TOOLS_AND_THINKING_STORAGE_KEY,
   LINK_ENRICHERS,
-  LinksDrawer,
-  LinksDrawerToggle,
-  OPEN_DRAWER_STORAGE_KEY,
+  LinksPaneView,
   useExtractedSessionLinks,
   useGroupedSessionLinks,
-  useLinksDrawerState,
+  useIncludeToolsAndThinking,
+  useRegisterLinksPane,
   useSessionLinkDisplay,
-} from "../src/components/links-drawer";
+} from "../src/components/panes/links-pane";
+import { usePaneDefinitions } from "../src/components/panes/pane-registry";
+import type { JumpTargetWindow } from "../src/components/jump-target-context";
+import { sessionQueryKeys } from "../src/lib/api/sessions";
 import { writeClipboardText } from "../src/lib/clipboard";
 import { jumpToMessage } from "../src/lib/jump-to-message";
 import type { SessionLinks } from "../src/lib/session-links";
@@ -30,7 +44,9 @@ vi.mock("../src/lib/jump-to-message", () => ({
 }));
 
 vi.mock("../src/components/settings-provider", () => ({
-  useSettings: () => ({ settings: { showThinking: true, showTools: true } }),
+  useSettings: () => ({
+    settings: { showThinking: true, showTools: true, linkCategoryRules: [] },
+  }),
 }));
 
 const SESSION_LINKS = {
@@ -78,7 +94,9 @@ const SESSION_LINKS = {
   totalCount: 4,
 } satisfies SessionLinks;
 
-function DrawerHarness({
+afterEach(cleanup);
+
+function PaneHarness({
   sessionLinks = SESSION_LINKS,
   unscannedRecordCount = 0,
 }: {
@@ -89,17 +107,16 @@ function DrawerHarness({
   const display = useSessionLinkDisplay(sessionLinks, includeToolsAndThinking);
 
   return (
-    <LinksDrawer
+    <LinksPaneView
       display={display}
       unscannedRecordCount={unscannedRecordCount}
       includeToolsAndThinking={includeToolsAndThinking}
       onIncludeToolsAndThinkingChange={setIncludeToolsAndThinking}
-      onClose={vi.fn()}
     />
   );
 }
 
-describe("LinksDrawer", () => {
+describe("LinksPaneView", () => {
   beforeEach(() => {
     installLocalStorage();
     vi.mocked(writeClipboardText).mockReset();
@@ -107,7 +124,7 @@ describe("LinksDrawer", () => {
   });
 
   it("derives visible counts and occurrence chips from one all-source extraction", () => {
-    render(<DrawerHarness />);
+    render(<PaneHarness />);
 
     expect({
       count: screen.getByLabelText("2 items").textContent,
@@ -135,7 +152,7 @@ describe("LinksDrawer", () => {
   it("lists loopback dev servers as new-tab Open dev server links with liveness", () => {
     const display = { groups: [], totalCount: 0, hiddenCount: 0 };
     render(
-      <LinksDrawer
+      <LinksPaneView
         display={display}
         devServers={[
           { url: "http://localhost:5173", name: "web", live: true },
@@ -143,7 +160,6 @@ describe("LinksDrawer", () => {
         ]}
         includeToolsAndThinking={false}
         onIncludeToolsAndThinkingChange={vi.fn()}
-        onClose={vi.fn()}
       />,
     );
 
@@ -176,7 +192,7 @@ describe("LinksDrawer", () => {
   });
 
   it("reports the link count as a floor when the transcript window hides earlier records", () => {
-    render(<DrawerHarness unscannedRecordCount={3200} />);
+    render(<PaneHarness unscannedRecordCount={3200} />);
 
     expect({
       count: screen.getByLabelText("2 items in the loaded messages").textContent,
@@ -199,7 +215,7 @@ describe("LinksDrawer", () => {
       totalCount: 1,
     } satisfies SessionLinks;
 
-    render(<DrawerHarness sessionLinks={toolOnlyLinks} />);
+    render(<PaneHarness sessionLinks={toolOnlyLinks} />);
 
     expect(screen.getByText(/No links in visible messages/).textContent).toBe(
       "No links in visible messages. Enable 'Include tools and thinking' to see 1 more.",
@@ -280,7 +296,7 @@ describe("LinksDrawer", () => {
   });
 
   it("filters case-insensitively by URL or compact label", () => {
-    render(<DrawerHarness />);
+    render(<PaneHarness />);
     fireEvent.click(screen.getByRole("checkbox", { name: "Include tools and thinking" }));
     const filter = screen.getByRole("searchbox", { name: "Filter links" });
 
@@ -296,7 +312,7 @@ describe("LinksDrawer", () => {
   });
 
   it("forces matching groups open during a query and restores remembered collapse state", () => {
-    render(<DrawerHarness />);
+    render(<PaneHarness />);
     const gitHubHeader = screen.getByRole("button", { name: /GitHub/ });
     const filter = screen.getByRole("searchbox", { name: "Filter links" });
 
@@ -321,7 +337,7 @@ describe("LinksDrawer", () => {
 
   it("opens links safely, copies only with success feedback, and jumps to occurrences", async () => {
     vi.mocked(writeClipboardText).mockResolvedValueOnce(false).mockResolvedValueOnce(true);
-    render(<DrawerHarness />);
+    render(<PaneHarness />);
     const externalLink = screen.getByRole("link", {
       name: "Open alice/project#100 in a new tab",
     });
@@ -362,70 +378,132 @@ describe("LinksDrawer", () => {
     });
   });
 
-  it("marks the Links pill as a floor while earlier records are unscanned", () => {
-    render(
-      <LinksDrawerToggle count={3} unscannedRecordCount={3200} isOpen={false} onToggle={vi.fn()} />,
-    );
-
-    const pill = screen.getByRole("button", { name: "Links 3+" });
-    expect(pill.getAttribute("title")).toBe(
-      "Counted from the loaded messages only — 3200 earlier records have not been scanned. Load earlier messages to include them.",
-    );
-  });
-
-  it("exports no credentialed enrichers and disables a zero-count pill", () => {
-    const onToggle = vi.fn();
-    render(<LinksDrawerToggle count={0} isOpen={false} onToggle={onToggle} />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Links 0" }));
-
-    expect({
-      enrichers: LINK_ENRICHERS,
-      disabled: (screen.getByRole("button", { name: "Links 0" }) as HTMLButtonElement).disabled,
-      toggleCalls: onToggle.mock.calls,
-    }).toStrictEqual({ enrichers: {}, disabled: true, toggleCalls: [] });
+  it("exports no credentialed enrichers", () => {
+    expect(LINK_ENRICHERS).toStrictEqual({});
   });
 });
 
-describe("links drawer persistence", () => {
+describe("links pane include toggle persistence", () => {
   beforeEach(() => {
     installLocalStorage();
   });
 
-  it("hydrates the open Links drawer, treats the retired Files value as closed, and persists", async () => {
-    localStorage.setItem(OPEN_DRAWER_STORAGE_KEY, "links");
+  it("hydrates Include tools and thinking from storage and persists changes", async () => {
     localStorage.setItem(INCLUDE_TOOLS_AND_THINKING_STORAGE_KEY, "true");
 
-    const { result } = renderHook(() => useLinksDrawerState());
-    await waitFor(() => {
-      expect({
-        open: result.current.open,
-        includeToolsAndThinking: result.current.includeToolsAndThinking,
-      }).toStrictEqual({ open: true, includeToolsAndThinking: true });
-    });
+    const { result } = renderHook(() => useIncludeToolsAndThinking());
+    await waitFor(() => expect(result.current[0]).toBe(true));
 
-    act(() => result.current.close());
+    act(() => result.current[1](false));
     await waitFor(() =>
       expect({
-        open: result.current.open,
-        storedDrawer: localStorage.getItem(OPEN_DRAWER_STORAGE_KEY),
-        storedInclude: localStorage.getItem(INCLUDE_TOOLS_AND_THINKING_STORAGE_KEY),
-      }).toStrictEqual({ open: false, storedDrawer: "none", storedInclude: "true" }),
+        include: result.current[0],
+        stored: localStorage.getItem(INCLUDE_TOOLS_AND_THINKING_STORAGE_KEY),
+      }).toStrictEqual({ include: false, stored: "false" }),
+    );
+  });
+});
+
+const JUMP_TARGET_WINDOW: JumpTargetWindow = {
+  windowStartIndex: 0,
+  requestMessageJump: () => {},
+};
+
+function RegisterLinksPane({ lines }: { lines: SessionLine[] }) {
+  useRegisterLinksPane({
+    sessionId: "session-test-100",
+    lines,
+    windowStartIndex: 0,
+    jumpTargetWindow: JUMP_TARGET_WINDOW,
+  });
+  const definition = usePaneDefinitions().get("links");
+  return definition === undefined ? null : (
+    <div data-testid="links-pane">
+      <h1>{definition.title}</h1>
+      {definition.render({ moveHandle: null, controls: null })}
+    </div>
+  );
+}
+
+function withQueryClient(queryClient: QueryClient, children: ReactNode) {
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+}
+
+describe("links pane registration", () => {
+  beforeEach(() => {
+    installLocalStorage();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
     );
   });
 
-  it("opens closed when the stored drawer is the retired Files drawer", async () => {
-    localStorage.setItem(OPEN_DRAWER_STORAGE_KEY, "files");
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
 
-    const { result } = renderHook(() => useLinksDrawerState());
-    await waitFor(() =>
-      expect({
-        open: result.current.open,
-        storedDrawer: localStorage.getItem(OPEN_DRAWER_STORAGE_KEY),
-      }).toStrictEqual({ open: false, storedDrawer: "none" }),
-    );
+  it("registers a Links pane that lists dev servers even when the session has no links", () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    queryClient.setQueryData(sessionQueryKeys.resources("session-test-100"), {
+      files: { entries: [], totalCount: 0 },
+      links: [],
+    });
+    queryClient.setQueryData(sessionQueryKeys.devServers("session-test-100"), {
+      servers: [{ url: "http://localhost:5173", live: true }],
+    });
 
-    act(() => result.current.toggleOpen());
-    await waitFor(() => expect(localStorage.getItem(OPEN_DRAWER_STORAGE_KEY)).toBe("links"));
+    render(withQueryClient(queryClient, <RegisterLinksPane lines={[]} />));
+
+    expect({
+      title: screen.getByRole("heading", { level: 1 }).textContent,
+      devServers: screen
+        .getAllByRole("link", { name: /^Open dev server/ })
+        .map((link) => link.getAttribute("href")),
+      empty: screen.getByText(/^No links/).textContent,
+    }).toStrictEqual({
+      title: "Links",
+      devServers: ["http://localhost:5173"],
+      empty: "No links in visible messages.",
+    });
+  });
+
+  it("falls back to the loaded window's links, as a floor, until the session scan lands", () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const lines = [
+      {
+        type: "user",
+        lineIndex: 100,
+        message: { role: "user", content: "Read https://example.com/guide" },
+      },
+    ] satisfies SessionLine[];
+
+    render(withQueryClient(queryClient, <RegisterLinksPane lines={lines} />));
+
+    expect(screen.getAllByTitle(/^https:/).map((element) => element.textContent)).toStrictEqual([
+      "example.com/guide",
+    ]);
+  });
+});
+
+describe("drawer shell removal", () => {
+  it("leaves no session-drawer module and no source importing one", () => {
+    const root = path.resolve(import.meta.dirname, "..");
+    const sourceFiles = (readdirSync(path.join(root, "src"), { recursive: true }) as string[])
+      .filter((file) => /\.tsx?$/.test(file))
+      .filter((file) =>
+        /session-drawer|links-drawer/.test(readFileSync(path.join(root, "src", file), "utf8")),
+      );
+
+    expect({
+      sessionDrawer: existsSync(path.join(root, "src/components/session-drawer.tsx")),
+      sessionDrawerStory: existsSync(path.join(root, "src/components/session-drawer.stories.tsx")),
+      linksDrawer: existsSync(path.join(root, "src/components/links-drawer.tsx")),
+      importers: sourceFiles,
+    }).toStrictEqual({
+      sessionDrawer: false,
+      sessionDrawerStory: false,
+      linksDrawer: false,
+      importers: [],
+    });
   });
 });

@@ -173,12 +173,12 @@ describe("fixed-position session UI and the contained transcript scroller", () =
     );
 
     const scroller = await renderSessionInScroller();
-    const linksToggle = await screen.findByRole("button", { name: /^Links/ });
+    fireEvent.click(await screen.findByRole("button", { name: "View options" }));
     await act(async () => {
-      fireEvent.click(linksToggle);
+      fireEvent.click(await screen.findByRole("menuitemcheckbox", { name: /^Links/ }));
     });
 
-    const drawer = screen.getByRole("complementary", { name: /links/i });
+    const linksPane = screen.getByRole("region", { name: "Links" });
     const scrollPill = screen.getByLabelText("Scroll to bottom", { selector: "button" });
     const containedElements = [...document.querySelectorAll("*")].filter((element) =>
       element.classList.contains("[contain:strict]"),
@@ -191,8 +191,9 @@ describe("fixed-position session UI and the contained transcript scroller", () =
 
     expect({
       containedElements,
-      drawerInsideScroller: scroller.contains(drawer),
-      drawerInsideContained: containedElements.some((element) => element.contains(drawer)),
+      // Side content is an in-flow tile now, not a fixed overlay drawer.
+      linksPaneKind: linksPane.dataset["paneKind"],
+      linksPaneFixed: linksPane.classList.contains("fixed"),
       fixedInsideContained,
       scrollPillPositioning: scrollPill.classList.contains("absolute"),
       transcriptWidth: scrollPill
@@ -200,8 +201,8 @@ describe("fixed-position session UI and the contained transcript scroller", () =
         ?.style.getPropertyValue("--max-content-width"),
     }).toStrictEqual({
       containedElements: [scroller],
-      drawerInsideScroller: false,
-      drawerInsideContained: false,
+      linksPaneKind: "links",
+      linksPaneFixed: false,
       fixedInsideContained: [],
       scrollPillPositioning: true,
       transcriptWidth: "768px",

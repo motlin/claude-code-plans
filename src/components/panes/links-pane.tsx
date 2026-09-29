@@ -1,9 +1,9 @@
+import { useQuery } from "@tanstack/react-query";
 import {
   ChevronDown,
   ChevronRight,
   Copy,
   ExternalLink,
-  Link as LinkIcon,
   Search,
   SquareTerminal,
 } from "lucide-react";
@@ -18,8 +18,12 @@ import {
   type ReactNode,
 } from "react";
 
-import { writeClipboardText } from "../lib/clipboard";
-import { formatResourceCount, resourceCoverageNote } from "../lib/session-resources";
+import {
+  sessionDevServersQueryOptions,
+  sessionResourcesQueryOptions,
+} from "../../lib/api/sessions";
+import { writeClipboardText } from "../../lib/clipboard";
+import { formatResourceCount, resourceCoverageNote } from "../../lib/session-resources";
 import {
   extractSessionLinks,
   groupSessionLinks,
@@ -27,11 +31,12 @@ import {
   type LinkEntry,
   type LinkGroup,
   type SessionLinks,
-} from "../lib/session-links";
-import type { SessionLine } from "../lib/transcript";
-import { pillStyles } from "./detail-top-bar";
-import { JumpChips } from "./jump-chips";
-import { SessionDrawer } from "./session-drawer";
+} from "../../lib/session-links";
+import type { SessionLine } from "../../lib/transcript";
+import { JumpChips } from "../jump-chips";
+import { JumpTargetProvider, type JumpTargetWindow } from "../jump-target-context";
+import { useSettings } from "../settings-provider";
+import { registerPane } from "./pane-registry";
 
 export interface LinkEnricher {
   extractId(url: string): string | null;
@@ -49,30 +54,22 @@ export interface SessionLinkDisplay {
   hiddenCount: number;
 }
 
-export const OPEN_DRAWER_STORAGE_KEY = "ccp-session-open-drawer";
-
-export function useLinksDrawerState() {
-  const [open, setOpen] = useState(false);
-  const [includeToolsAndThinking, setIncludeToolsAndThinking] = useState(false);
+/** The pane's Include tools and thinking checkbox, remembered across sessions. */
+export function useIncludeToolsAndThinking(): [boolean, (include: boolean) => void] {
+  const [include, setInclude] = useState(false);
   const [storageHydrated, setStorageHydrated] = useState(false);
 
   useEffect(() => {
-    setOpen(localStorage.getItem(OPEN_DRAWER_STORAGE_KEY) === "links");
-    const stored = localStorage.getItem(INCLUDE_TOOLS_AND_THINKING_STORAGE_KEY);
-    setIncludeToolsAndThinking(stored === "true");
+    setInclude(localStorage.getItem(INCLUDE_TOOLS_AND_THINKING_STORAGE_KEY) === "true");
     setStorageHydrated(true);
   }, []);
 
   useEffect(() => {
     if (!storageHydrated) return;
-    localStorage.setItem(OPEN_DRAWER_STORAGE_KEY, open ? "links" : "none");
-    localStorage.setItem(INCLUDE_TOOLS_AND_THINKING_STORAGE_KEY, String(includeToolsAndThinking));
-  }, [open, includeToolsAndThinking, storageHydrated]);
+    localStorage.setItem(INCLUDE_TOOLS_AND_THINKING_STORAGE_KEY, String(include));
+  }, [include, storageHydrated]);
 
-  const toggleOpen = useCallback(() => setOpen((current) => !current), []);
-  const close = useCallback(() => setOpen(false), []);
-
-  return { open, toggleOpen, close, includeToolsAndThinking, setIncludeToolsAndThinking };
+  return [include, setInclude];
 }
 
 export function useExtractedSessionLinks(
@@ -139,35 +136,6 @@ export function useSessionLinkDisplay(
       visibleCount,
       visibleGroups,
     ],
-  );
-}
-
-interface LinksDrawerToggleProps {
-  count: number;
-  /** JSONL records before the loaded window, which `count` never saw. */
-  unscannedRecordCount?: number;
-  isOpen: boolean;
-  onToggle: () => void;
-}
-
-export function LinksDrawerToggle({
-  count,
-  unscannedRecordCount = 0,
-  isOpen,
-  onToggle,
-}: LinksDrawerToggleProps) {
-  return (
-    <button
-      type="button"
-      disabled={count === 0}
-      aria-expanded={isOpen}
-      title={resourceCoverageNote(unscannedRecordCount)}
-      onClick={onToggle}
-      className={`${pillStyles.outline} disabled:cursor-not-allowed disabled:opacity-40 ${isOpen ? "bg-surface-0 text-primary" : ""}`}
-    >
-      <LinkIcon className="h-3.5 w-3.5" aria-hidden="true" />
-      Links {formatResourceCount(count, unscannedRecordCount)}
-    </button>
   );
 }
 
@@ -263,7 +231,7 @@ function DevServersSection({ servers }: { servers: readonly DevServerLink[] }) {
   );
 }
 
-interface LinksDrawerProps {
+interface LinksPaneViewProps {
   display: SessionLinkDisplay;
   /** Loopback dev servers the session declared or printed. */
   devServers?: readonly DevServerLink[];
@@ -271,17 +239,15 @@ interface LinksDrawerProps {
   unscannedRecordCount?: number;
   includeToolsAndThinking: boolean;
   onIncludeToolsAndThinkingChange: (include: boolean) => void;
-  onClose: () => void;
 }
 
-export function LinksDrawer({
+export function LinksPaneView({
   display,
   devServers = [],
   unscannedRecordCount = 0,
   includeToolsAndThinking,
   onIncludeToolsAndThinkingChange,
-  onClose,
-}: LinksDrawerProps) {
+}: LinksPaneViewProps) {
   const [filterText, setFilterText] = useState("");
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
@@ -346,81 +312,162 @@ export function LinksDrawer({
           ? "No links in this session."
           : "No links in visible messages.";
 
+  const coverageNote = resourceCoverageNote(unscannedRecordCount);
+
   return (
-    <SessionDrawer
-      title="Links"
-      count={display.totalCount}
-      unscannedRecordCount={unscannedRecordCount}
-      onClose={onClose}
-      headerContent={
-        <label className="flex shrink-0 items-center gap-1.5 text-[11px] text-secondary">
+    <div className="flex min-h-0 flex-1 flex-col text-primary">
+      <div className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-2">
+        <label className="flex min-w-0 flex-1 items-center gap-1.5 text-[11px] text-secondary">
           <input
             type="checkbox"
             checked={includeToolsAndThinking}
             onChange={(event) => onIncludeToolsAndThinkingChange(event.target.checked)}
             className="size-3.5 shrink-0 accent-accent-100"
           />
-          <span>Include tools and thinking</span>
+          <span className="truncate">Include tools and thinking</span>
         </label>
-      }
-    >
-      <div className="sticky top-0 z-20 border-b border-border bg-surface-0 p-3">
-        <label className="relative block">
-          <span className="sr-only">Filter links</span>
-          <Search
-            className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-t6"
-            aria-hidden="true"
-          />
-          <input
-            type="search"
-            value={filterText}
-            onChange={handleFilterChange}
-            placeholder="Filter links"
-            className="w-full rounded-md border border-strong bg-surface-1 py-2 pl-8 pr-3 text-xs text-primary outline-none placeholder:text-t6 focus:border-accent-100/60"
-          />
-        </label>
+        <span
+          aria-label={
+            coverageNote === undefined
+              ? `${display.totalCount} items`
+              : `${display.totalCount} items in the loaded messages`
+          }
+          className="rounded-full bg-fill-control px-2 py-0.5 text-xs font-medium text-secondary"
+        >
+          {formatResourceCount(display.totalCount, unscannedRecordCount)}
+        </span>
       </div>
-
-      {devServers.length > 0 && <DevServersSection servers={devServers} />}
-
-      {filteredGroups.length === 0 ? (
-        <p className="px-4 py-8 text-center text-xs text-t6">{emptyMessage}</p>
-      ) : (
-        filteredGroups.map((group) => {
-          const isCollapsed = query === "" && collapsed.has(group.categoryId);
-          return (
-            <section key={group.categoryId} aria-labelledby={`links-${group.categoryId}`}>
-              <button
-                type="button"
-                id={`links-${group.categoryId}`}
-                aria-expanded={!isCollapsed}
-                onClick={() => toggleCategory(group.categoryId)}
-                className="sticky top-[57px] z-10 flex w-full items-center gap-2 border-b border-border bg-surface-0 px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-secondary hover:bg-fill-ghost-hover"
-              >
-                {isCollapsed ? (
-                  <ChevronRight className="size-3.5" aria-hidden="true" />
-                ) : (
-                  <ChevronDown className="size-3.5" aria-hidden="true" />
-                )}
-                <span className="min-w-0 flex-1 truncate">{group.label}</span>
-                <span>{group.entries.length}</span>
-              </button>
-              {!isCollapsed && (
-                <ul>
-                  {group.entries.map((entry) => (
-                    <LinkRow
-                      key={entry.url}
-                      entry={entry}
-                      copied={copiedUrl === entry.url}
-                      onCopy={copyUrl}
-                    />
-                  ))}
-                </ul>
-              )}
-            </section>
-          );
-        })
+      {coverageNote !== undefined && (
+        <p
+          role="note"
+          className="shrink-0 border-b border-border bg-fill-ghost-hover px-4 py-2 text-[11px] text-t6"
+        >
+          {coverageNote}
+        </p>
       )}
-    </SessionDrawer>
+
+      <div role="region" aria-label="Links contents" className="min-h-0 flex-1 overflow-y-auto">
+        <div className="sticky top-0 z-20 border-b border-border bg-surface-2 p-3">
+          <label className="relative block">
+            <span className="sr-only">Filter links</span>
+            <Search
+              className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-t6"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              value={filterText}
+              onChange={handleFilterChange}
+              placeholder="Filter links"
+              className="w-full rounded-md border border-strong bg-surface-1 py-2 pl-8 pr-3 text-xs text-primary outline-none placeholder:text-t6 focus:border-accent-100/60"
+            />
+          </label>
+        </div>
+
+        {devServers.length > 0 && <DevServersSection servers={devServers} />}
+
+        {filteredGroups.length === 0 ? (
+          <p className="px-4 py-8 text-center text-xs text-t6">{emptyMessage}</p>
+        ) : (
+          filteredGroups.map((group) => {
+            const isCollapsed = query === "" && collapsed.has(group.categoryId);
+            return (
+              <section key={group.categoryId} aria-labelledby={`links-${group.categoryId}`}>
+                <button
+                  type="button"
+                  id={`links-${group.categoryId}`}
+                  aria-expanded={!isCollapsed}
+                  onClick={() => toggleCategory(group.categoryId)}
+                  className="sticky top-[57px] z-10 flex w-full items-center gap-2 border-b border-border bg-surface-2 px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-secondary hover:bg-fill-ghost-hover"
+                >
+                  {isCollapsed ? (
+                    <ChevronRight className="size-3.5" aria-hidden="true" />
+                  ) : (
+                    <ChevronDown className="size-3.5" aria-hidden="true" />
+                  )}
+                  <span className="min-w-0 flex-1 truncate">{group.label}</span>
+                  <span>{group.entries.length}</span>
+                </button>
+                {!isCollapsed && (
+                  <ul>
+                    {group.entries.map((entry) => (
+                      <LinkRow
+                        key={entry.url}
+                        entry={entry}
+                        copied={copiedUrl === entry.url}
+                        onCopy={copyUrl}
+                      />
+                    ))}
+                  </ul>
+                )}
+              </section>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface LinksPaneProps {
+  sessionId: string;
+  /** The loaded transcript window, whose links stand in until the full-session scan lands. */
+  lines: SessionLine[];
+  /** JSONL records before the loaded window. */
+  windowStartIndex: number;
+  jumpTargetWindow: JumpTargetWindow;
+}
+
+function LinksPane({ sessionId, lines, windowStartIndex, jumpTargetWindow }: LinksPaneProps) {
+  const { settings } = useSettings();
+  const [currentHost, setCurrentHost] = useState<string | undefined>(undefined);
+  useEffect(() => setCurrentHost(window.location.hostname), []);
+  const [includeToolsAndThinking, setIncludeToolsAndThinking] = useIncludeToolsAndThinking();
+  // A whole-session inventory costs a full pass over the JSONL, and each dev
+  // server fetch re-probes liveness, so only an open Links pane asks for them.
+  const resources = useQuery(sessionResourcesQueryOptions(sessionId, true)).data;
+  const devServers = useQuery(sessionDevServersQueryOptions(sessionId, true)).data?.servers;
+  const windowLinks = useExtractedSessionLinks(lines, currentHost, settings.linkCategoryRules);
+  const fullLinks = useGroupedSessionLinks(
+    resources?.links,
+    currentHost,
+    settings.linkCategoryRules,
+  );
+  const display = useSessionLinkDisplay(fullLinks ?? windowLinks, includeToolsAndThinking);
+
+  return (
+    <JumpTargetProvider value={jumpTargetWindow}>
+      <LinksPaneView
+        display={display}
+        devServers={devServers ?? []}
+        unscannedRecordCount={resources === undefined ? windowStartIndex : 0}
+        includeToolsAndThinking={includeToolsAndThinking}
+        onIncludeToolsAndThinkingChange={setIncludeToolsAndThinking}
+      />
+    </JumpTargetProvider>
+  );
+}
+
+/** Registers the local-only `links` pane kind (View options ▸ Links) while mounted. */
+export function useRegisterLinksPane({
+  sessionId,
+  lines,
+  windowStartIndex,
+  jumpTargetWindow,
+}: LinksPaneProps): void {
+  useEffect(
+    () =>
+      registerPane("links", {
+        title: "Links",
+        render: () => (
+          <LinksPane
+            sessionId={sessionId}
+            lines={lines}
+            windowStartIndex={windowStartIndex}
+            jumpTargetWindow={jumpTargetWindow}
+          />
+        ),
+      }),
+    [sessionId, lines, windowStartIndex, jumpTargetWindow],
   );
 }

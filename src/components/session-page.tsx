@@ -18,19 +18,12 @@ import {
   type AskUserQuestionContextValue,
 } from "./ask-user-question-context";
 import { SessionFileRefs } from "./file-refs";
-import { JumpTargetProvider, type JumpTargetWindow } from "./jump-target-context";
+import type { JumpTargetWindow } from "./jump-target-context";
 import { LegacyMessageLinkNotice } from "./legacy-message-link-notice";
-import {
-  LinksDrawer,
-  LinksDrawerToggle,
-  useExtractedSessionLinks,
-  useGroupedSessionLinks,
-  useLinksDrawerState,
-  useSessionLinkDisplay,
-} from "./links-drawer";
 import { TileHost } from "./panes/tile-host";
 import { useRegisterArtifactsPane, useSessionArtifacts } from "./panes/artifacts-pane";
 import { useRegisterBackgroundTasksPane } from "./panes/background-tasks-pane";
+import { useRegisterLinksPane } from "./panes/links-pane";
 import { useRegisterPlanPane } from "./panes/plan-pane";
 import { ChangesPaneShortcut, useRegisterChangesPane } from "./changes/changes-pane";
 import {
@@ -43,7 +36,6 @@ import { StatusFooter } from "./status-footer";
 import { TranscriptHistoryLoader, findScrollContainer } from "./transcript-history-loader";
 import { Tooltip } from "./ui/tooltip";
 import { SessionPaneControls } from "./view-options-menu";
-import { ViewportPortal } from "./viewport-portal";
 import { SessionDock } from "./session-dock";
 import { handleBtwPrompt, SideChat, useSideChatShortcut } from "./side-chat";
 import { useToast } from "./toast";
@@ -70,7 +62,6 @@ import type { HerdrPaneIndexData } from "../lib/api/herdr";
 import type { PaneKind } from "../lib/pane-layout";
 import {
   sessionDetailQueryOptions,
-  sessionDevServersQueryOptions,
   sessionResourcesQueryOptions,
   sessionSubagentsQueryOptions,
   transcriptEndIndex,
@@ -337,12 +328,6 @@ function SessionView({
   }, [detailUnseen, sessionId]);
   const unseen = useHasUnseenWork(sessionId);
   const { settings, setSetting } = useSettings();
-  const [currentHost, setCurrentHost] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    setCurrentHost(typeof window !== "undefined" ? window.location.hostname : undefined);
-  }, []);
-
   // Keyed off the window's startIndex so every line carries its session-absolute
   // JSONL record index, which locates a row whose record was collapsed into a
   // neighbour and resolves links copied before anchors moved to message uuids.
@@ -361,31 +346,14 @@ function SessionView({
     processed.uuidToLine,
   );
   useRegisterChangesPane(sessionId);
-  const linksDrawerState = useLinksDrawerState();
-  // A whole-session inventory costs a full pass over the JSONL, so it is only
-  // worth asking for once the Links drawer or the Files pane (which runs the
-  // same query) is open to look at one.
-  const resourcesQuery = useQuery(sessionResourcesQueryOptions(sessionId, linksDrawerState.open));
-  const resources = resourcesQuery.data;
-  const devServersQuery = useQuery(sessionDevServersQueryOptions(sessionId, linksDrawerState.open));
-  // Until that scan lands, both drawers fall back to extraction over the loaded
+  // A whole-session inventory costs a full pass over the JSONL, so only an open
+  // Files or Links pane asks for it; this read just shares whatever they fetched.
+  const resources = useQuery(sessionResourcesQueryOptions(sessionId, false)).data;
+  // Until that scan lands, the panes fall back to extraction over the loaded
   // window, whose counts are floors: every surface showing one also takes
   // `transcript.startIndex`, the records still on the server, and marks the
   // count `12+` rather than passing a partial tally off as the total.
   const windowFiles = useExtractedSessionFiles(processed.lines, data.homeRoot);
-  const windowLinks = useExtractedSessionLinks(
-    processed.lines,
-    currentHost,
-    settings.linkCategoryRules,
-  );
-  const fullLinks = useGroupedSessionLinks(
-    resources?.links,
-    currentHost,
-    settings.linkCategoryRules,
-  );
-  const sessionLinks = fullLinks ?? windowLinks;
-  const unscannedRecordCount = resources === undefined ? transcript.startIndex : 0;
-  const linkDisplay = useSessionLinkDisplay(sessionLinks, linksDrawerState.includeToolsAndThinking);
   const jumpTargetWindow = useMemo<JumpTargetWindow>(
     () => ({ windowStartIndex: transcript.startIndex, requestMessageJump }),
     [requestMessageJump, transcript.startIndex],
@@ -400,6 +368,12 @@ function SessionView({
   const sessionArtifacts = useSessionArtifacts(sessionId);
   useRegisterArtifactsPane(sessionArtifacts);
   useRegisterPlanPane(data.planFilename);
+  useRegisterLinksPane({
+    sessionId,
+    lines: processed.lines,
+    windowStartIndex: transcript.startIndex,
+    jumpTargetWindow,
+  });
   const { hookContexts, runningSubagents } = useClaudeEvents();
   const hookContext = hookContexts.get(sessionId);
   const transcriptActiveSubagents = useMemo(
@@ -572,25 +546,17 @@ function SessionView({
                     subagentCount: subagents.length,
                   }}
                   extras={
-                    <>
-                      <LinksDrawerToggle
-                        count={linkDisplay.totalCount}
-                        unscannedRecordCount={unscannedRecordCount}
-                        isOpen={linksDrawerState.open && sessionLinks.totalCount > 0}
-                        onToggle={linksDrawerState.toggleOpen}
-                      />
-                      <Tooltip content="Expand chat" shortcut={chromeShortcut.keys} side="bottom">
-                        <button
-                          type="button"
-                          onClick={() => setChromeHidden(true)}
-                          className={TITLEBAR_ICON_BUTTON_CLASS}
-                          aria-label="Expand chat"
-                          aria-keyshortcuts={chromeShortcut.ariaKeyShortcuts}
-                        >
-                          <Maximize2 aria-hidden="true" />
-                        </button>
-                      </Tooltip>
-                    </>
+                    <Tooltip content="Expand chat" shortcut={chromeShortcut.keys} side="bottom">
+                      <button
+                        type="button"
+                        onClick={() => setChromeHidden(true)}
+                        className={TITLEBAR_ICON_BUTTON_CLASS}
+                        aria-label="Expand chat"
+                        aria-keyshortcuts={chromeShortcut.ariaKeyShortcuts}
+                      >
+                        <Maximize2 aria-hidden="true" />
+                      </button>
+                    </Tooltip>
                   }
                 />
               }
@@ -670,21 +636,6 @@ function SessionView({
         )}
 
         <SideChat sessionId={sessionId} messageCount={data.messageCount} />
-
-        <ViewportPortal>
-          <JumpTargetProvider value={jumpTargetWindow}>
-            {linksDrawerState.open && sessionLinks.totalCount > 0 && (
-              <LinksDrawer
-                display={linkDisplay}
-                devServers={devServersQuery.data?.servers ?? []}
-                unscannedRecordCount={unscannedRecordCount}
-                includeToolsAndThinking={linksDrawerState.includeToolsAndThinking}
-                onIncludeToolsAndThinkingChange={linksDrawerState.setIncludeToolsAndThinking}
-                onClose={linksDrawerState.close}
-              />
-            )}
-          </JumpTargetProvider>
-        </ViewportPortal>
 
         {/* Sticky footer: the composer dock + status bar */}
         <div className="sticky bottom-0 z-10 -mx-4 -mb-8 sm:-mx-8">
