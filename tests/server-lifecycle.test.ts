@@ -1,8 +1,9 @@
 import { execFileSync, execSync, spawnSync } from "node:child_process";
 import { mkdtempSync } from "node:fs";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
-import { afterAll, describe, expect, it } from "vite-plus/test";
+import { basename, join, resolve } from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 
 // Regression test for the orphaned duplicate production server
 // (.llm/plans/2026-08-08-user-review-bug-sweep.md, step 3): starting the
@@ -12,18 +13,43 @@ const projectRoot = resolve(process.cwd());
 const script = join(projectRoot, "scripts", "server.sh");
 const fixture = join(projectRoot, "tests", "fixtures", "fake-server.mjs");
 
-const PORT = "7581";
-const MATCH = "fixtures/fake-server\\.mjs";
+// Concurrent runs (e.g. several worktrees testing at once) must not share a
+// port or see each other's fake servers, so each run gets a free port and a
+// unique instance marker on the fake server's command line.
+const runDir = mkdtempSync(join(tmpdir(), "server-lifecycle-"));
+const instance = basename(runDir);
+const MATCH = `fixtures/fake-server\\.mjs ${instance}`;
 
-const logDir = mkdtempSync(join(tmpdir(), "server-lifecycle-"));
+let PORT = "";
+let env: NodeJS.ProcessEnv = {};
 
-const env = {
-  ...process.env,
-  PORT,
-  SERVER_CMD: `node ${fixture}`,
-  SERVER_MATCH: MATCH,
-  LOG_FILE: join(logDir, "server.log"),
-};
+function freePort(): Promise<string> {
+  return new Promise((resolvePort, reject) => {
+    const probe = createServer();
+    probe.once("error", reject);
+    probe.listen(0, () => {
+      const address = probe.address();
+      if (address === null || typeof address === "string") {
+        reject(new Error(`Unexpected probe address: ${String(address)}`));
+        return;
+      }
+      probe.close(() => {
+        resolvePort(String(address.port));
+      });
+    });
+  });
+}
+
+beforeAll(async () => {
+  PORT = await freePort();
+  env = {
+    ...process.env,
+    PORT,
+    SERVER_CMD: `node ${fixture} ${instance}`,
+    SERVER_MATCH: MATCH,
+    LOG_FILE: join(runDir, "server.log"),
+  };
+});
 
 function run(command: string): string {
   return execFileSync("bash", [script, command], {
@@ -124,7 +150,7 @@ describe("scripts/server.sh", () => {
     expect(portOwners()).toStrictEqual(productionPids);
     expect(listenerAddresses()).toStrictEqual([`*:${PORT}`]);
 
-    const result = spawnSync("bash", [script, "dev", "node", fixture], {
+    const result = spawnSync("bash", [script, "dev", "node", fixture, instance], {
       cwd: projectRoot,
       encoding: "utf8",
       env,
