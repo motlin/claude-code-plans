@@ -46,6 +46,7 @@ import {
   TerminalOutput,
 } from "./tool-renderers/shared";
 import { SystemBanner, formatTokens } from "./system-banner";
+import { ArtifactLinkBanner, ArtifactWatchBanner } from "./artifact-banner";
 import { promptSourceLabels, turnOriginLabels } from "../lib/schema-choices";
 import { computeDiffData } from "../lib/diff-utils";
 import { TasksView } from "./tasks-view";
@@ -714,6 +715,8 @@ const BANNER_LINE_TYPES = new Set([
   "agent-color",
   "permission-mode",
   "pr-link",
+  "artifact-link",
+  "artifact-watch",
   "attachment",
   "system",
   "worktree",
@@ -1354,6 +1357,10 @@ function renderSessionMessage({
           </a>
         </Banner>
       );
+    case "artifact-link":
+      return <ArtifactLinkBanner line={line} />;
+    case "artifact-watch":
+      return <ArtifactWatchBanner line={line} />;
     case "attachment":
       return (
         <AttachmentBanner

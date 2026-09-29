@@ -180,6 +180,15 @@ function artifactLinkHtml(token: Token, env: MarkdownEnv, escape: (value: string
   const { id, host } = token.meta as { id: string; host: string };
   const href = token.attrGet("href") ?? "";
   const title = env.artifactTitles?.get(id) ?? token.content;
+  return artifactLinkCardHtml(href, host, title, escape);
+}
+
+function artifactLinkCardHtml(
+  href: string,
+  host: string,
+  title: string,
+  escape: (value: string) => string,
+): string {
   const label = escape(`Artifact: ${title}`);
   const attrs = [
     `href="${escape(href)}"`,
@@ -191,6 +200,17 @@ function artifactLinkHtml(token: Token, env: MarkdownEnv, escape: (value: string
     `title="${label}"`,
   ];
   return `<a ${attrs.join(" ")}><span class="artifact-link-card-title">${escape(title)}</span><span class="artifact-link-card-meta">Artifact · ${escape(host)}</span></a>`;
+}
+
+/** Upstream's artifact link card for `href`, as markdown links to artifacts render. */
+export function renderArtifactLinkCard(href: string, title: string): string {
+  let host = "";
+  try {
+    host = new URL(href).host;
+  } catch {
+    // An unparsable href still renders, captioned without a host.
+  }
+  return artifactLinkCardHtml(href, host, title, getPlainMarkdownIt().utils.escapeHtml);
 }
 
 /** The plugins and renderer overrides every cached instance shares. */

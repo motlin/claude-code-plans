@@ -1399,3 +1399,116 @@ describe("schema-rejected records", () => {
     expect(result.lines).toStrictEqual([]);
   });
 });
+
+describe("artifact records", () => {
+  const uuid = "29d89ae8-e33b-4f55-bbbd-874d5d316169";
+  const frameUrl = `https://claude.ai/code/artifact/${uuid}`;
+
+  it("emits a published-artifact line for a frame-link that names its artifact", () => {
+    const records = [
+      {
+        type: "frame-link",
+        sessionId: "s-1",
+        path: "/tmp/test/page.html",
+        frameUrl,
+        title: "Quarto Oracle",
+        artifactCount: 1,
+        timestamp: "2000-01-01T00:00:00.000Z",
+      },
+    ];
+    expect(processTranscript(records).lines).toStrictEqual([
+      {
+        type: "artifact-link",
+        frameUrl,
+        title: "Quarto Oracle",
+        path: "/tmp/test/page.html",
+        timestamp: "2000-01-01T00:00:00.000Z",
+        lineIndex: 0,
+      },
+    ]);
+  });
+
+  it("skips count-only frame-link heartbeats and unchanged republishes", () => {
+    const published = { type: "frame-link", frameUrl, title: "Quarto Oracle", artifactCount: 1 };
+    const records = [
+      published,
+      { type: "frame-link", artifactCount: 1, sessionId: "s-1" },
+      published,
+      { ...published, title: "Quarto Oracle v2" },
+    ];
+    expect(processTranscript(records).lines).toStrictEqual([
+      { type: "artifact-link", frameUrl, title: "Quarto Oracle", lineIndex: 0 },
+      { type: "artifact-link", frameUrl, title: "Quarto Oracle v2", lineIndex: 3 },
+    ]);
+  });
+
+  it("emits a watch line naming the artifacts the comment monitor watches", () => {
+    const records = [
+      {
+        type: "artifact-comment-monitor",
+        v: 1,
+        sessionId: "s-1",
+        artifacts: {
+          [uuid]: { state: "armed", writtenAtMs: 1, title: "Quarto Oracle" },
+          "https://claude.ai/artifact/some-slug": { state: "paused" },
+        },
+      },
+    ];
+    expect(processTranscript(records).lines).toStrictEqual([
+      {
+        type: "artifact-watch",
+        artifacts: [
+          { url: frameUrl, title: "Quarto Oracle", state: "armed" },
+          { url: "https://claude.ai/artifact/some-slug", state: "paused" },
+        ],
+        lineIndex: 0,
+      },
+    ]);
+  });
+
+  it("dedupes unchanged monitor state and folds in ledger comment threads", () => {
+    const monitor = {
+      type: "artifact-comment-monitor",
+      v: 1,
+      artifacts: { [uuid]: { state: "armed", writtenAtMs: 1, title: "Quarto Oracle" } },
+    };
+    const records = [
+      monitor,
+      {
+        ...monitor,
+        artifacts: { [uuid]: { state: "armed", writtenAtMs: 2, title: "Quarto Oracle" } },
+      },
+      {
+        type: "artifact-autoreact-ledger",
+        v: 1,
+        artifacts: {
+          [uuid]: { savedAt: 1, stampHighWater: null, threads: [], turnTimestamps: [] },
+        },
+      },
+      {
+        type: "artifact-autoreact-ledger",
+        v: 1,
+        artifacts: {
+          [uuid]: { savedAt: 2, stampHighWater: "x", threads: [{ id: "t1" }, { id: "t2" }] },
+        },
+      },
+    ];
+    expect(processTranscript(records).lines).toStrictEqual([
+      {
+        type: "artifact-watch",
+        artifacts: [{ url: frameUrl, title: "Quarto Oracle", state: "armed" }],
+        lineIndex: 0,
+      },
+      {
+        type: "artifact-watch",
+        artifacts: [{ url: frameUrl, title: "Quarto Oracle", state: "armed", commentThreads: 2 }],
+        lineIndex: 3,
+      },
+    ]);
+  });
+
+  it("emits nothing for an empty monitor", () => {
+    const records = [{ type: "artifact-comment-monitor", v: 1, artifacts: {} }];
+    expect(processTranscript(records).lines).toStrictEqual([]);
+  });
+});

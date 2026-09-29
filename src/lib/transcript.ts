@@ -11,7 +11,7 @@
 import { z } from "zod";
 import type { ToolResultInfo } from "./sessions";
 import { toolResultMetaFrom } from "./tool-labels";
-import { parseArtifactOutput } from "./artifact-output";
+import { normalizeArtifactUrl, parseArtifactOutput } from "./artifact-output";
 import { ArtifactToolResultSchema } from "./artifact-schemas";
 import {
   CompactMetadataSchema,
@@ -131,6 +131,34 @@ const PrLinkLineSchema = z.object({
   lineIndex: z.number(),
 });
 
+/** An artifact the session published, from a `frame-link` record that names one. */
+const ArtifactLinkLineSchema = z.object({
+  type: z.literal("artifact-link"),
+  frameUrl: z.string(),
+  title: z.string().optional(),
+  path: z.string().optional(),
+  timestamp: z.string().optional(),
+  lineIndex: z.number(),
+});
+
+/**
+ * The artifacts the session watches for comments, from the latest
+ * `artifact-comment-monitor` record, with thread counts from the latest
+ * `artifact-autoreact-ledger`.
+ */
+const ArtifactWatchLineSchema = z.object({
+  type: z.literal("artifact-watch"),
+  artifacts: z.array(
+    z.object({
+      url: z.string(),
+      title: z.string().optional(),
+      state: z.string().optional(),
+      commentThreads: z.number().optional(),
+    }),
+  ),
+  lineIndex: z.number(),
+});
+
 const AttachmentLineSchema = z.object({
   type: z.literal("attachment"),
   attachmentJson: z.string(),
@@ -215,6 +243,8 @@ export const RenderedLineSchema = z.discriminatedUnion("type", [
   AgentColorLineSchema,
   PermissionModeLineSchema,
   PrLinkLineSchema,
+  ArtifactLinkLineSchema,
+  ArtifactWatchLineSchema,
   AttachmentLineSchema,
   SystemLineSchema,
   WorktreeLineSchema,
@@ -440,6 +470,37 @@ function addArtifactDecoration(
   if (artifact !== undefined) info.artifact = artifact;
 }
 
+type ArtifactWatchEntry = z.infer<typeof ArtifactWatchLineSchema>["artifacts"][number];
+
+/**
+ * The page URL for an artifact-monitor key, which is an artifact id (a code
+ * artifact's uuid or a published slug) or, occasionally, the full URL.
+ */
+function artifactKeyUrl(key: string): string {
+  const direct = normalizeArtifactUrl(key);
+  if (direct !== undefined) return direct.url;
+  const fromId = normalizeArtifactUrl(`https://claude.ai/code/artifact/${key}`);
+  if (fromId === undefined) return key;
+  return fromId.kind === "slug" ? `https://claude.ai/artifact/${fromId.id}` : fromId.url;
+}
+
+/** Combines the latest monitor and ledger records into the watched-artifact list. */
+function artifactWatchEntries(
+  monitor: Extract<z.infer<typeof JsonlRecordSchema>, { type: "artifact-comment-monitor" }>,
+  ledger:
+    | Extract<z.infer<typeof JsonlRecordSchema>, { type: "artifact-autoreact-ledger" }>
+    | undefined,
+): ArtifactWatchEntry[] {
+  return Object.entries(monitor.artifacts ?? {}).map(([key, watched]) => {
+    const entry: ArtifactWatchEntry = { url: artifactKeyUrl(key) };
+    if (watched.title !== undefined) entry.title = watched.title;
+    if (watched.state !== undefined) entry.state = watched.state;
+    const threads = ledger?.artifacts?.[key]?.threads?.length ?? 0;
+    if (threads > 0) entry.commentThreads = threads;
+    return entry;
+  });
+}
+
 function processRecordBatch(
   records: unknown[],
   startLineIndex: number,
@@ -458,6 +519,14 @@ function processRecordBatch(
   let lastWorktreeKey: string | undefined;
   let lastAttributionKey: string | undefined;
   let customTitle: string | undefined;
+  const publishedArtifactKeys = new Set<string>();
+  let lastMonitor:
+    | Extract<z.infer<typeof JsonlRecordSchema>, { type: "artifact-comment-monitor" }>
+    | undefined;
+  let lastLedger:
+    | Extract<z.infer<typeof JsonlRecordSchema>, { type: "artifact-autoreact-ledger" }>
+    | undefined;
+  let lastArtifactWatchKey: string | undefined;
 
   for (let i = 0; i < records.length; i++) {
     const obj = records[i]!;
@@ -590,6 +659,39 @@ function processRecordBatch(
       };
       if (record.timestamp !== undefined) prLine.timestamp = record.timestamp;
       sessionLines.push(prLine);
+      continue;
+    }
+
+    if (record.type === "frame-link") {
+      // Most frame-link records are count-only heartbeats; a republish that
+      // changes nothing is not news either.
+      if (record.frameUrl === undefined) continue;
+      const publishedKey = JSON.stringify([record.frameUrl, record.title]);
+      if (publishedArtifactKeys.has(publishedKey)) continue;
+      publishedArtifactKeys.add(publishedKey);
+      const artifactLine: z.infer<typeof ArtifactLinkLineSchema> = {
+        type: "artifact-link",
+        frameUrl: record.frameUrl,
+        lineIndex,
+      };
+      if (record.title !== undefined) artifactLine.title = record.title;
+      if (record.path !== undefined) artifactLine.path = record.path;
+      if (record.timestamp !== undefined) artifactLine.timestamp = record.timestamp;
+      sessionLines.push(artifactLine);
+      continue;
+    }
+
+    if (record.type === "artifact-comment-monitor" || record.type === "artifact-autoreact-ledger") {
+      if (record.type === "artifact-comment-monitor") lastMonitor = record;
+      else lastLedger = record;
+      if (lastMonitor === undefined) continue;
+      const artifacts = artifactWatchEntries(lastMonitor, lastLedger);
+      // Both records are re-saved often; only a change in what is watched renders.
+      const watchKey = JSON.stringify(artifacts);
+      if (watchKey === lastArtifactWatchKey) continue;
+      lastArtifactWatchKey = watchKey;
+      if (artifacts.length === 0) continue;
+      sessionLines.push({ type: "artifact-watch", artifacts, lineIndex });
       continue;
     }
 

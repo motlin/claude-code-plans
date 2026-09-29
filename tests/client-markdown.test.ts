@@ -5,6 +5,7 @@ import {
   renderMarkdownToHtml,
   renderMarkdownWithHighlighting,
   looksLikeMarkdown,
+  renderArtifactLinkCard,
 } from "../src/lib/client-markdown";
 
 const { requestLanguageMock, requestThemeMock } = vi.hoisted(() => ({
@@ -415,6 +416,15 @@ describe("artifact link cards", () => {
   it("leaves other claude.ai links as plain links", () => {
     expect(renderMarkdownToHtml("[chat](https://claude.ai/chat/abc)")).toBe(
       '<p><a href="https://claude.ai/chat/abc">chat</a></p>\n',
+    );
+  });
+});
+
+describe("renderArtifactLinkCard", () => {
+  it("renders the same link card markdown links to artifacts get", () => {
+    const href = "https://claude.ai/code/artifact/29d89ae8-e33b-4f55-bbbd-874d5d316169";
+    expect(renderArtifactLinkCard(href, "A <b> page")).toBe(
+      `<a href="${href}" target="_blank" rel="noopener noreferrer" class="artifact-link-card" data-artifact-link="" aria-label="Artifact: A &lt;b&gt; page" title="Artifact: A &lt;b&gt; page"><span class="artifact-link-card-title">A &lt;b&gt; page</span><span class="artifact-link-card-meta">Artifact · claude.ai</span></a>`,
     );
   });
 });
