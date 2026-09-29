@@ -151,3 +151,29 @@ export function aggregateSessionEdits(
   }
   return output.sort((a, b) => a.path.localeCompare(b.path));
 }
+
+function isRealUserPrompt(record: JsonlRecord): boolean {
+  if (record.type !== "user" || record.toolUseResult !== undefined) return false;
+  if (record.isMeta === true || record.isCompactSummary === true) return false;
+  const { content } = record.message;
+  if (typeof content === "string") return true;
+  return !content.some((block) => block.type === "tool_result");
+}
+
+/** The uuids of the prompt-to-prompt turn that contains `uuid`, or null when no record has it. */
+export function findTurnUuids(records: readonly JsonlRecord[], uuid: string): Set<string> | null {
+  let current = new Set<string>();
+  let found = false;
+  for (const record of records) {
+    if (isRealUserPrompt(record)) {
+      if (found) break;
+      current = new Set();
+    }
+    const recordUuid = "uuid" in record ? record.uuid : undefined;
+    if (typeof recordUuid === "string") {
+      current.add(recordUuid);
+      if (recordUuid === uuid) found = true;
+    }
+  }
+  return found ? current : null;
+}

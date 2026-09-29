@@ -201,7 +201,7 @@ describe("SessionChat end-of-turn card", () => {
       text: card.textContent,
     }));
     expect(cards).toStrictEqual([
-      { entry: "5", text: "Edited 2 files+3-1cache.ts+2-1index.ts+1-0" },
+      { entry: "5", text: "Edited 2 files+3-1Undocache.ts+2-1index.ts+1-0" },
     ]);
   });
 });
@@ -319,5 +319,113 @@ describe("TurnChangesCard", () => {
   it("renders a static header outside a pane host", () => {
     render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} />);
     expect(screen.queryByRole("button", { name: /^Edited/ })).toBeNull();
+  });
+});
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+interface FetchCall {
+  url: string;
+  method: string;
+  body: unknown;
+}
+
+function stubFetch(responses: Response[]): FetchCall[] {
+  const calls: FetchCall[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({
+        url,
+        method: init?.method ?? "GET",
+        body: typeof init?.body === "string" ? JSON.parse(init.body) : null,
+      });
+      const next = responses.shift();
+      if (next === undefined) throw new Error(`Unexpected fetch ${url}`);
+      return next;
+    }),
+  );
+  return calls;
+}
+
+const READY_PREVIEW = {
+  files: [
+    { path: "/repo/src/file-1.ts", status: "modified", state: "ready" },
+    { path: "/repo/src/file-2.ts", status: "added", state: "ready" },
+  ],
+};
+
+describe("TurnChangesCard Undo", () => {
+  it("lists the files in a confirm dialog and reverts them on confirm", async () => {
+    const calls = stubFetch([
+      jsonResponse(READY_PREVIEW),
+      jsonResponse({ reverted: ["/repo/src/file-1.ts", "/repo/src/file-2.ts"] }),
+    ]);
+    render(<TurnChangesCard sessionId="s-1" changes={changesWith(2)} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    const dialog = await screen.findByRole("alertdialog");
+    const listed = within(dialog)
+      .getAllByRole("listitem")
+      .map((item) => item.textContent);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Undo changes" }));
+    const status = await screen.findByText("Reverted 2 files");
+
+    expect({ title: within(dialog).getByRole("heading").textContent, listed, calls }).toStrictEqual(
+      {
+        title: "Undo changes from this turn?",
+        listed: ["file-1.ts", "file-2.ts"],
+        calls: [
+          { url: "/api/sessions/s-1/turn-undo?turn=u-1", method: "GET", body: null },
+          {
+            url: "/api/sessions/s-1/turn-undo",
+            method: "POST",
+            body: { turn: "u-1", confirm: true },
+          },
+        ],
+      },
+    );
+    expect(status.textContent).toBe("Reverted 2 files");
+  });
+
+  it("writes nothing when the dialog is cancelled", async () => {
+    const calls = stubFetch([jsonResponse(READY_PREVIEW)]);
+    render(<TurnChangesCard sessionId="s-1" changes={changesWith(2)} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    const dialog = await screen.findByRole("alertdialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    expect(calls.map((call) => call.method)).toStrictEqual(["GET"]);
+  });
+
+  it("refuses without a dialog when files changed since the turn", async () => {
+    const calls = stubFetch([
+      jsonResponse({
+        files: [
+          { path: "/repo/src/file-1.ts", status: "modified", state: "conflict" },
+          { path: "/repo/src/file-2.ts", status: "added", state: "ready" },
+        ],
+      }),
+    ]);
+    render(<TurnChangesCard sessionId="s-1" changes={changesWith(2)} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    const alert = await screen.findByRole("alert");
+
+    expect({
+      alert: alert.textContent,
+      dialog: screen.queryByRole("alertdialog"),
+      methods: calls.map((call) => call.method),
+    }).toStrictEqual({
+      alert: "Can't undo: file-1.ts changed since this turn.",
+      dialog: null,
+      methods: ["GET"],
+    });
   });
 });

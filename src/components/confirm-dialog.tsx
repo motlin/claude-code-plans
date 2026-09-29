@@ -19,6 +19,7 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   body,
+  details,
   confirmLabel,
   cancelLabel = "Cancel",
   variant = "primary",
@@ -29,6 +30,8 @@ export function ConfirmDialog({
   onOpenChange: (open: boolean) => void;
   title: ReactNode;
   body?: ReactNode;
+  /** Block content below the body, such as a list of affected items. */
+  details?: ReactNode;
   confirmLabel: string;
   cancelLabel?: string;
   variant?: keyof typeof CONFIRM_VARIANT_CLASS;
@@ -53,6 +56,7 @@ export function ConfirmDialog({
               {body}
             </AlertDialog.Description>
           )}
+          {details !== undefined && <div className="mt-2 min-h-0 overflow-y-auto">{details}</div>}
           <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <AlertDialog.Close
               ref={cancelRef}

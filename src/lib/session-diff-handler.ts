@@ -26,7 +26,7 @@ import {
   type ScopeDiff,
   type ScopeDiffOptions,
 } from "./session-diff";
-import { aggregateSessionEdits } from "./session-edits-diff";
+import { aggregateSessionEdits, findTurnUuids } from "./session-edits-diff";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
@@ -66,7 +66,7 @@ async function resolveDirectory(cwd: string): Promise<string | null> {
   }
 }
 
-async function readRecords(filePath: string): Promise<JsonlRecord[]> {
+export async function readRecords(filePath: string): Promise<JsonlRecord[]> {
   let text: string;
   try {
     text = await readFile(filePath, "utf8");
@@ -76,11 +76,11 @@ async function readRecords(filePath: string): Promise<JsonlRecord[]> {
   return text.split("\n").flatMap((line) => parseJsonlRecord(line) ?? []);
 }
 
-function jsonResponse(body: unknown, status = 200): Response {
+export function jsonResponse(body: unknown, status = 200): Response {
   return Response.json(body, { status, headers: { "Cache-Control": PRIVATE_NO_CACHE } });
 }
 
-function errorResponse(error: string, status: number): Response {
+export function errorResponse(error: string, status: number): Response {
   return jsonResponse(SessionDiffErrorResponseSchema.parse({ error }), status);
 }
 
@@ -89,7 +89,7 @@ interface SessionLocation {
   filePath: string;
 }
 
-function findSession(
+export function findSession(
   index: IndexDb,
   sessionId: string,
 ): { location: SessionLocation } | { error: Response } {
@@ -101,32 +101,6 @@ function findSession(
   if (!session) return { error: errorResponse("Session not found", 404) };
   if (!session.cwd) return { error: errorResponse("Session has no working directory", 422) };
   return { location: { cwd: session.cwd, filePath: session.filePath } };
-}
-
-function isRealUserPrompt(record: JsonlRecord): boolean {
-  if (record.type !== "user" || record.toolUseResult !== undefined) return false;
-  if (record.isMeta === true || record.isCompactSummary === true) return false;
-  const { content } = record.message;
-  if (typeof content === "string") return true;
-  return !content.some((block) => block.type === "tool_result");
-}
-
-/** The uuids of the prompt-to-prompt turn that contains `uuid`, or null when no record has it. */
-function turnUuids(records: readonly JsonlRecord[], uuid: string): Set<string> | null {
-  let current = new Set<string>();
-  let found = false;
-  for (const record of records) {
-    if (isRealUserPrompt(record)) {
-      if (found) break;
-      current = new Set();
-    }
-    const recordUuid = "uuid" in record ? record.uuid : undefined;
-    if (typeof recordUuid === "string") {
-      current.add(recordUuid);
-      if (recordUuid === uuid) found = true;
-    }
-  }
-  return found ? current : null;
 }
 
 function displayPath(path: string, cwd: string): string {
@@ -168,7 +142,7 @@ async function sessionEditsDiff(
   const records = await dependencies.readRecords(location.filePath);
   let uuids: Set<string> | undefined;
   if (scope.kind === "turn") {
-    const found = turnUuids(records, scope.uuid);
+    const found = findTurnUuids(records, scope.uuid);
     if (found === null) return { kind: "error", response: errorResponse("Turn not found", 404) };
     uuids = found;
   }
