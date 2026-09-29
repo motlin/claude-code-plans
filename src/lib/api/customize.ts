@@ -2,7 +2,7 @@ import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query
 import { z } from "zod";
 import { SkillOverrideValueSchema } from "../schemas";
 import { ApiResponseError, apiFetch } from "./client";
-import { FileTreeNodeSchema } from "./plugins";
+import { FileTreeNodeSchema, PluginInfoSchema } from "./plugins";
 
 export const SkillSourceSchema = z.enum(["personal", "project", "plugin"]);
 export type SkillSource = z.infer<typeof SkillSourceSchema>;
@@ -75,6 +75,27 @@ export const McpServerDetailResponse = z.strictObject({
 });
 export type McpServerDetail = z.infer<typeof McpServerDetailResponse>;
 
+const PluginHookRowSchema = z.strictObject({
+  event: z.string(),
+  /** "" when the hook group has no matcher (it fires for every tool / event). */
+  matcher: z.string(),
+  /** Each handler's command line, or its URL for an http hook. */
+  handlers: z.array(z.string()),
+});
+export type PluginHookRow = z.infer<typeof PluginHookRowSchema>;
+
+export const PluginDetailResponse = z.strictObject({
+  plugin: PluginInfoSchema,
+  homepage: z.string().optional(),
+  /** The marketplace entry's category, then its tags. */
+  categories: z.array(z.string()),
+  /** Children of the plugin directory, paths relative to it. */
+  tree: z.array(FileTreeNodeSchema),
+  connectors: z.array(McpServerSummarySchema),
+  hooks: z.array(PluginHookRowSchema),
+});
+export type PluginDetail = z.infer<typeof PluginDetailResponse>;
+
 const ClaudeAiConnectorSchema = z.strictObject({
   key: z.string(),
   name: z.string(),
@@ -107,6 +128,26 @@ export const customizeSkillFileQueryOptions = (skillId: string, path: string) =>
     queryFn: () =>
       apiFetch(
         `/api/customize/file?${new URLSearchParams({ skill: skillId, path }).toString()}`,
+        CustomizeFileResponse,
+      ),
+    staleTime: 0,
+  });
+
+export const customizePluginDetailQueryOptions = (pluginId: string) =>
+  queryOptions({
+    queryKey: ["customize", "plugins", pluginId] as const,
+    queryFn: () =>
+      apiFetch(`/api/customize/plugins/${encodeURIComponent(pluginId)}`, PluginDetailResponse),
+    staleTime: CUSTOMIZE_STALE_TIME_MS,
+  });
+
+/** One file inside an installed plugin's directory, `path` relative to it. */
+export const customizePluginFileQueryOptions = (pluginId: string, path: string) =>
+  queryOptions({
+    queryKey: ["customize", "plugins", pluginId, "file", path] as const,
+    queryFn: () =>
+      apiFetch(
+        `/api/customize/file?${new URLSearchParams({ plugin: pluginId, path }).toString()}`,
         CustomizeFileResponse,
       ),
     staleTime: 0,

@@ -124,6 +124,9 @@ export function useActiveSection(matches: ReturnType<typeof useMatches>): {
   if (path.startsWith("/session") || path === "/sessions") {
     return { section: "sessions", activeItemId: params?.["id"] ?? null };
   }
+  if (path.startsWith("/customize/plugins")) {
+    return { section: "plugins", activeItemId: params?.["pluginId"] ?? null };
+  }
   if (path.startsWith("/plugin") || path === "/plugins" || path.startsWith("/command")) {
     return { section: "plugins", activeItemId: params?.["id"] ?? null };
   }

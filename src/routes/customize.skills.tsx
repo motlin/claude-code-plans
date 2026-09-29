@@ -6,13 +6,21 @@ import { CustomizeList, ShortDate } from "../components/customize/customize-list
 import { useSectionSort } from "../components/customize/persisted-sort";
 import { CUSTOMIZE_SECTIONS, resolveOption } from "../components/customize/sections";
 import { SkillRowActions } from "../components/customize/skill-row-actions";
-import { filterSkills, groupSkills, sortSkills } from "../components/customize/skills-view";
+import { ScopeBadge } from "../components/customize/connectors-table";
+import {
+  commandRows,
+  filterSkills,
+  groupSkills,
+  sortSkills,
+} from "../components/customize/skills-view";
 import { customizeSkillsQueryOptions } from "../lib/api/customize";
+import { userCommandsQueryOptions } from "../lib/api/plugins";
 
 export const Route = createFileRoute("/customize/skills")({
   component: CustomizeSkills,
   loader: ({ context: { queryClient } }) => {
     void queryClient.prefetchQuery(customizeSkillsQueryOptions);
+    void queryClient.prefetchQuery(userCommandsQueryOptions);
   },
   head: () => ({ meta: [{ title: "Skills · Customize" }] }),
 });
@@ -24,6 +32,7 @@ function CustomizeSkills() {
   const navigate = useNavigate();
   const sortValue = useSectionSort(SECTION.sortStorageKey, search.sort);
   const { data: skills, isPending } = useQuery(customizeSkillsQueryOptions);
+  const { data: commands } = useQuery(userCommandsQueryOptions);
 
   if (search.view === "discover") {
     return (
@@ -40,6 +49,17 @@ function CustomizeSkills() {
   const source = searching ? "all" : resolveOption(SECTION.filter.options, search.filter).value;
   const sort = resolveOption(SECTION.sort ?? [], sortValue).value;
   const groups = groupSkills(sortSkills(filterSkills(skills, source, search.q), sort));
+  const commandGroup = {
+    key: "commands",
+    title: "Custom commands",
+    items: commandRows(commands ?? [], source, search.q).map((row) => ({
+      key: row.key,
+      title: row.invocation,
+      source: `from ${row.sourceName}`,
+      subtitle: row.description,
+      meta: <ScopeBadge>Custom command</ScopeBadge>,
+    })),
+  };
   const showOnboarding =
     !searching &&
     (source === "all" || source === "personal") &&
@@ -59,23 +79,26 @@ function CustomizeSkills() {
         icon={Scroll}
         noun={SECTION.noun}
         searching={searching}
-        groups={groups.map((group) => ({
-          key: group.key,
-          title: group.title,
-          items: group.skills.map((skill) => ({
-            key: skill.id,
-            title: skill.name,
-            source: `from ${skill.sourceLabel}`,
-            subtitle: skill.description,
-            meta: <ShortDate ms={skill.mtime} />,
-            actions: <SkillRowActions skill={skill} />,
-            onView: () =>
-              void navigate({
-                to: "/customize/skills/id/$skillId",
-                params: { skillId: skill.id },
-              }),
+        groups={[
+          ...groups.map((group) => ({
+            key: group.key,
+            title: group.title,
+            items: group.skills.map((skill) => ({
+              key: skill.id,
+              title: skill.name,
+              source: `from ${skill.sourceLabel}`,
+              subtitle: skill.description,
+              meta: <ShortDate ms={skill.mtime} />,
+              actions: <SkillRowActions skill={skill} />,
+              onView: () =>
+                void navigate({
+                  to: "/customize/skills/id/$skillId",
+                  params: { skillId: skill.id },
+                }),
+            })),
           })),
-        }))}
+          commandGroup,
+        ]}
         empty={
           showOnboarding ? null : (
             <CustomizeNotice

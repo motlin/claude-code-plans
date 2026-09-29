@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "./client";
-import { toPluginFileSlug } from "../md-slug";
 
 export const PluginFileSchema = z.object({
   filename: z.string(),
@@ -20,7 +19,7 @@ const PluginSkillSchema = z.object({
   examples: z.array(PluginFileSchema),
 });
 
-const PluginInfoSchema = z.object({
+export const PluginInfoSchema = z.object({
   id: z.string(),
   name: z.string(),
   version: z.string(),
@@ -135,36 +134,3 @@ export const userCommandsQueryOptions = queryOptions({
   queryFn: () => apiFetch("/api/plugins/user-commands", UserCommandListResponse),
   staleTime: PLUGINS_STALE_TIME_MS,
 });
-
-export const pluginTreeQueryOptions = (pluginId: string) =>
-  queryOptions({
-    queryKey: ["plugins", pluginId, "tree"] as const,
-    queryFn: () =>
-      apiFetch(`/api/plugins/${encodeURIComponent(pluginId)}/tree`, PluginTreeResponse),
-    staleTime: PLUGINS_STALE_TIME_MS,
-  });
-
-export const pluginFileQueryOptions = (pluginId: string, pathSegments: ReadonlyArray<string>) =>
-  queryOptions({
-    queryKey: ["plugins", pluginId, "file", ...pathSegments] as const,
-    queryFn: () =>
-      apiFetch(
-        `/api/plugins/${encodeURIComponent(pluginId)}/files/${pathSegments.map(toPluginFileSlug).map(encodeURIComponent).join("/")}`,
-        PluginFileResponse,
-      ),
-    staleTime: PLUGINS_STALE_TIME_MS,
-  });
-
-// `slug` is the command basename without its `.md` extension. The API route
-// re-adds the extension before touching disk; see src/lib/md-slug.ts for why
-// the extension is kept out of the URL.
-export const userCommandFileQueryOptions = (source: string, slug: string) =>
-  queryOptions({
-    queryKey: ["plugins", "user-commands", source, slug] as const,
-    queryFn: () =>
-      apiFetch(
-        `/api/plugins/user-commands/${encodeURIComponent(source)}/${encodeURIComponent(slug)}`,
-        UserCommandFileResponse,
-      ),
-    staleTime: PLUGINS_STALE_TIME_MS,
-  });

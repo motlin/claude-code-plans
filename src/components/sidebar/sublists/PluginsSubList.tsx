@@ -9,7 +9,6 @@ import {
   type PluginMarketplaceGroup,
   type UserCommandGroupData,
 } from "../../../lib/api/plugins";
-import { toMdSlug } from "../../../lib/md-slug";
 import { LoadingBars } from "../primitives/LoadingBars";
 
 export function PluginsSubList() {
@@ -64,8 +63,8 @@ function MarketplaceSubListGroup({ group }: { group: PluginMarketplaceGroup }) {
         group.plugins.map((plugin) => (
           <Link
             key={plugin.id}
-            to="/plugins"
-            hash={plugin.id}
+            to="/customize/plugins/id/$pluginId"
+            params={{ pluginId: plugin.id }}
             className="mb-px block truncate rounded-r3 py-1 pl-5 pr-2 text-xs text-t6 no-underline transition-colors hover:bg-fill-ghost-hover hover:text-secondary"
           >
             {plugin.name}
@@ -90,8 +89,8 @@ function CommandSubListGroup({ group }: { group: UserCommandGroupData }) {
         group.commands.map((command) => (
           <Link
             key={command.filename}
-            to="/command/$source/$filename"
-            params={{ source: group.source, filename: toMdSlug(command.filename) }}
+            to="/customize/skills"
+            search={{ q: command.filename.replace(/\.md$/, "") }}
             className="mb-px block truncate rounded-r3 py-1 pl-5 pr-2 text-xs text-t6 no-underline transition-colors hover:bg-fill-ghost-hover hover:text-secondary"
           >
             {command.name}

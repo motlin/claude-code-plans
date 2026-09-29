@@ -7,6 +7,7 @@ import { FileViewer } from "../file-viewer";
 import { MarkdownView } from "../markdown-view";
 import { SegmentedControl } from "../settings/segmented-control";
 import {
+  containsFile,
   defaultContentsFile,
   isMarkdownPath,
   orderContentsTree,
@@ -29,6 +30,8 @@ interface ContentsViewerProps<TKey extends QueryKey> {
   /** Children of the root directory, paths relative to it. */
   tree: readonly FileTreeNodeData[];
   fileQuery: ContentsFileQuery<TKey>;
+  /** A path to select instead of the default file, when it is in the tree. */
+  initialFile?: string | undefined;
 }
 
 const FILE_LIST_DEFAULT_WIDTH = 244;
@@ -229,9 +232,14 @@ export function ContentsViewer<TKey extends QueryKey>({
   name,
   tree,
   fileQuery,
+  initialFile,
 }: ContentsViewerProps<TKey>) {
   const ordered = useMemo(() => orderContentsTree(tree), [tree]);
-  const [selected, setSelected] = useState<string | null>(() => defaultContentsFile(ordered));
+  const [selected, setSelected] = useState<string | null>(() =>
+    initialFile !== undefined && containsFile(ordered, initialFile)
+      ? initialFile
+      : defaultContentsFile(ordered),
+  );
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const [width, setWidth] = useState(FILE_LIST_DEFAULT_WIDTH);
   const separator = useResizableWidth({

@@ -173,13 +173,28 @@ export async function listMcpServers({
   }
 
   for (const plugin of await readInstalledPlugins(claudeDir)) {
-    const enabled = settings.enabledPlugins?.[plugin.id] === true;
-    for (const [name, entry] of sortedEntries(await readPluginServers(plugin.installPath))) {
-      result.push(summarize(name, entry, "plugin", `plugin:${plugin.id}:`, enabled));
-    }
+    result.push(...(await pluginServers(plugin, settings)));
   }
 
   return result;
+}
+
+async function pluginServers(
+  plugin: { id: string; installPath: string },
+  settings: ClaudeSettings,
+): Promise<McpServerSummary[]> {
+  const enabled = settings.enabledPlugins?.[plugin.id] === true;
+  return sortedEntries(await readPluginServers(plugin.installPath)).map(([name, entry]) =>
+    summarize(name, entry, "plugin", `plugin:${plugin.id}:`, enabled),
+  );
+}
+
+/** The servers one installed plugin's .mcp.json declares, as listed under Connectors. */
+export async function listPluginMcpServers(
+  plugin: { id: string; installPath: string },
+  claudeDir: string = join(homedir(), ".claude"),
+): Promise<McpServerSummary[]> {
+  return pluginServers(plugin, await readSettings(claudeDir));
 }
 
 export interface McpToolOptions extends ListMcpServersOptions {

@@ -1,17 +1,18 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { pluginsQueryOptions, userCommandsQueryOptions } from "../lib/api/plugins";
-import { PluginsPage } from "../components/plugins-page";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+
+/**
+ * Plugins moved under Customize. `/plugins#<id>` (the old sidebar deep link)
+ * lands on that plugin's detail page.
+ */
+export function redirectLegacyPlugins({ location }: { location: { hash: string } }): never {
+  if (location.hash === "") throw redirect({ to: "/customize/plugins", replace: true });
+  throw redirect({
+    to: "/customize/plugins/id/$pluginId",
+    params: { pluginId: location.hash },
+    replace: true,
+  });
+}
 
 export const Route = createFileRoute("/plugins")({
-  component: PluginsPage,
-  // Warm the caches without blocking render: the shell and skeleton must
-  // paint before the ~170 KB plugins payload arrives (the app is
-  // client-rendered, so a blocking loader means a blank white screen).
-  loader: ({ context: { queryClient } }) => {
-    void queryClient.prefetchQuery(pluginsQueryOptions);
-    void queryClient.prefetchQuery(userCommandsQueryOptions);
-  },
-  head: () => ({
-    meta: [{ title: "Claude Plugins" }],
-  }),
+  beforeLoad: redirectLegacyPlugins,
 });

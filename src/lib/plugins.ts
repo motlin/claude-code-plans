@@ -170,8 +170,10 @@ export function getPluginVersionKind(version: string): PluginInfo["versionKind"]
   return /^[0-9a-f]{7,40}$/i.test(version) ? "commit" : "release";
 }
 
-export async function listPlugins(): Promise<PluginInfo[]> {
-  const registryPath = join(homedir(), ".claude", "plugins", "installed_plugins.json");
+export async function listPlugins(
+  claudeDir: string = join(homedir(), ".claude"),
+): Promise<PluginInfo[]> {
+  const registryPath = join(claudeDir, "plugins", "installed_plugins.json");
   let registry: {
     plugins: Record<string, Array<{ installPath: string; version: string }>>;
   };

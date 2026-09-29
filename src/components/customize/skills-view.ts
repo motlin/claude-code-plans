@@ -1,4 +1,5 @@
 import type { SkillSummary } from "../../lib/api/customize";
+import type { UserCommandGroupData } from "../../lib/api/plugins";
 import { matchesQuery } from "./sections";
 
 export interface SkillGroup {
@@ -70,4 +71,35 @@ export function groupSkills(skills: readonly SkillSummary[]): SkillGroup[] {
 /** The slash command that runs the skill; plugin skills are namespaced by plugin. */
 export function skillInvocation(skill: SkillSummary): string {
   return skill.source === "plugin" ? `/${skill.sourceLabel}:${skill.name}` : `/${skill.name}`;
+}
+
+export interface CommandRow {
+  key: string;
+  invocation: string;
+  sourceName: string;
+  description: string;
+}
+
+/**
+ * Legacy `.claude/commands/*.md` files, listed among skills as claude.ai/code
+ * does ("Custom command"). They show under the All and Custom commands
+ * filters, A–Z by invocation.
+ */
+export function commandRows(
+  groups: readonly UserCommandGroupData[],
+  source: string,
+  q: string | undefined,
+): CommandRow[] {
+  if (source !== "all" && source !== "command") return [];
+  return groups
+    .flatMap((group) =>
+      group.commands.map((command) => ({
+        key: `${group.source}:${command.filename}`,
+        invocation: `/${command.filename.replace(/\.md$/, "")}`,
+        sourceName: group.sourceName,
+        description: command.description,
+      })),
+    )
+    .filter((row) => matchesQuery(q, row.invocation, row.description, row.sourceName))
+    .sort((a, b) => a.invocation.localeCompare(b.invocation) || a.key.localeCompare(b.key));
 }

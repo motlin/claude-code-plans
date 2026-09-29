@@ -1638,6 +1638,14 @@ const HookMatcherSchema = z
 
 const HooksSchema = z.record(z.string(), z.array(HookMatcherSchema));
 
+/** A plugin's hooks/hooks.json: the settings.json `hooks` map plus a description. */
+export const PluginHooksFileSchema = z
+  .object({
+    description: z.string().optional(),
+    hooks: HooksSchema,
+  })
+  .strict();
+
 const PermissionsSchema = z
   .object({
     allow: z.array(z.string()).optional(),

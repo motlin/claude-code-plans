@@ -46,6 +46,7 @@ export const CUSTOMIZE_SECTIONS: readonly CustomizeSectionConfig[] = [
         { value: "personal", label: "Personal" },
         { value: "project", label: "Project" },
         { value: "plugin", label: "Plugins" },
+        { value: "command", label: "Custom commands" },
       ],
     },
     sort: [

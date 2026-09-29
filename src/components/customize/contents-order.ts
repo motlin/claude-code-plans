@@ -44,6 +44,12 @@ export function defaultContentsFile(nodes: readonly FileTreeNodeData[]): string 
   return null;
 }
 
+export function containsFile(nodes: readonly FileTreeNodeData[], path: string): boolean {
+  return nodes.some((node) =>
+    node.children === undefined ? node.path === path : containsFile(node.children, path),
+  );
+}
+
 export function countContentsFiles(nodes: readonly FileTreeNodeData[]): number {
   return nodes.reduce(
     (total, node) => total + (node.children === undefined ? 1 : countContentsFiles(node.children)),
