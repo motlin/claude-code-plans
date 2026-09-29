@@ -11,19 +11,7 @@ export interface AppDb {
   close(): void;
 }
 
-export class DatabaseSchemaTooNewError extends Error {
-  constructor(
-    public readonly databaseSchemaVersion: number,
-    public readonly applicationSchemaVersion: number,
-  ) {
-    super(
-      `Database schema version ${databaseSchemaVersion} is newer than application schema version ${applicationSchemaVersion}`,
-    );
-    this.name = "DatabaseSchemaTooNewError";
-  }
-}
-
-const CREATE_DERIVED_TABLES_SQL = `
+const CREATE_TABLES_SQL = `
 CREATE TABLE IF NOT EXISTS metadata (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -218,17 +206,6 @@ CREATE TABLE IF NOT EXISTS plans (
 );
 CREATE INDEX IF NOT EXISTS plans_mtime_desc_idx ON plans(mtime_ms);
 
-`;
-
-interface DurableMigration {
-  schemaVersion: number;
-  statements: string;
-}
-
-const DURABLE_MIGRATIONS: readonly DurableMigration[] = [
-  {
-    schemaVersion: 12,
-    statements: `
 CREATE TABLE IF NOT EXISTS hook_schema_drift (
   hook_event_name TEXT NOT NULL,
   body_sha256 TEXT NOT NULL,
@@ -239,11 +216,8 @@ CREATE TABLE IF NOT EXISTS hook_schema_drift (
   last_seen_at INTEGER NOT NULL,
   PRIMARY KEY (hook_event_name, body_sha256)
 );
-CREATE INDEX IF NOT EXISTS hook_schema_drift_last_seen_idx ON hook_schema_drift(last_seen_at);`,
-  },
-  {
-    schemaVersion: 16,
-    statements: `
+CREATE INDEX IF NOT EXISTS hook_schema_drift_last_seen_idx ON hook_schema_drift(last_seen_at);
+
 CREATE TABLE IF NOT EXISTS session_view_states (
   session_id TEXT PRIMARY KEY,
   last_viewed_message_index INTEGER NOT NULL DEFAULT -1,
@@ -258,38 +232,23 @@ CREATE TABLE IF NOT EXISTS herdr_terminal_view_states (
   updated_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS herdr_terminal_view_states_session_idx
-  ON herdr_terminal_view_states(session_id);`,
-  },
-  {
-    schemaVersion: 18,
-    statements: `
+  ON herdr_terminal_view_states(session_id);
+
 CREATE TABLE IF NOT EXISTS reviews (
   review_id TEXT PRIMARY KEY,
   bundle TEXT NOT NULL
-);`,
-  },
-  {
-    schemaVersion: 31,
-    statements: `
+);
+
 CREATE TABLE IF NOT EXISTS archived_sessions (
   session_id TEXT PRIMARY KEY,
   archived_at INTEGER NOT NULL
-);`,
-  },
-  {
-    // Pins moved to per-browser storage (src/lib/pin-store.ts), like claude.ai/code.
-    schemaVersion: 34,
-    statements: `DROP TABLE IF EXISTS starred_sessions;`,
-  },
-  {
-    schemaVersion: 35,
-    statements: `
+);
+
 CREATE TABLE IF NOT EXISTS home_dismissals (
   session_id TEXT PRIMARY KEY,
   dismissed_at INTEGER NOT NULL
-);`,
-  },
-];
+);
+`;
 
 // FTS5 tables can only seek by rowid or MATCH, so a `DELETE ... WHERE path = ?`
 // on an FTS table scans every row of the (multi-GB) index. Each FTS table is
@@ -429,105 +388,56 @@ CREATE TABLE IF NOT EXISTS summaries (
 );
 `;
 
-const DERIVED_TABLE_NAMES = [
-  "sessions_fts",
-  "message_content_fts",
-  "file_content_fts",
-  "docs_fts",
-  "sessions_search",
-  "message_content",
-  "file_content",
-  "docs_content",
-  "tasks",
-  "todo_tasks",
-  "todo_files",
-  "memories",
-  "plans",
-  "session_messages",
-  "session_mcp_tools",
-  "artifact_events",
-  "artifacts",
-  "routines",
-  "usage_daily",
-  "subagents",
-  "plan_sessions",
-  "sessions",
-  "projects",
-  "indexed_files",
-  "metadata",
-] as const;
-
-function dropDerivedTables(sqlite: Database.Database): void {
-  for (const tableName of DERIVED_TABLE_NAMES) {
-    sqlite.exec(`DROP TABLE IF EXISTS ${tableName}`);
+// A schema version mismatch wipes the whole index database, user-state tables
+// included, and recreates it from CREATE_TABLES_SQL + CREATE_FTS_SQL. There is
+// no migration chain: bump SCHEMA_VERSION for any DDL or indexed-data change.
+function dropAllObjects(sqlite: Database.Database): void {
+  const objects = sqlite
+    .prepare(
+      `SELECT type, name, sql FROM sqlite_master
+       WHERE type IN ('table', 'view', 'trigger') AND name NOT LIKE 'sqlite_%'`,
+    )
+    .all() as { type: "table" | "view" | "trigger"; name: string; sql: string | null }[];
+  const isVirtual = (object: { sql: string | null }) =>
+    /^CREATE VIRTUAL TABLE/i.test(object.sql ?? "");
+  // Virtual tables first: dropping one also drops its FTS5 shadow tables.
+  const ordered = [
+    ...objects.filter((object) => object.type === "trigger"),
+    ...objects.filter((object) => object.type === "view"),
+    ...objects.filter((object) => object.type === "table" && isVirtual(object)),
+    ...objects.filter((object) => object.type === "table" && !isVirtual(object)),
+  ];
+  for (const { type, name } of ordered) {
+    sqlite.exec(`DROP ${type.toUpperCase()} IF EXISTS "${name.replaceAll('"', '""')}"`);
   }
 }
 
-function parseSchemaVersion(value: string, source: string): number {
-  if (!/^(0|[1-9]\d*)$/.test(value)) {
-    throw new Error(`Invalid ${source} schema version: ${value}`);
-  }
-  const schemaVersion = Number(value);
-  if (!Number.isSafeInteger(schemaVersion)) {
-    throw new Error(`Invalid ${source} schema version: ${value}`);
-  }
-  return schemaVersion;
-}
-
-function readSchemaVersion(sqlite: Database.Database): number {
+function readSchemaVersion(sqlite: Database.Database): string | null {
   const metadataExists = sqlite
     .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='metadata'")
     .get() as { name: string } | undefined;
-  if (!metadataExists) return 0;
+  if (!metadataExists) return null;
 
   const row = sqlite.prepare("SELECT value FROM metadata WHERE key = 'schema_version'").get() as
     | { value: string }
     | undefined;
-  if (!row) return 0;
-  return parseSchemaVersion(row.value, "database");
-}
-
-function migrateDurableTables(
-  sqlite: Database.Database,
-  previousSchemaVersion: number,
-  currentSchemaVersion: number,
-): void {
-  for (const migration of DURABLE_MIGRATIONS) {
-    if (
-      migration.schemaVersion > previousSchemaVersion &&
-      migration.schemaVersion <= currentSchemaVersion
-    ) {
-      sqlite.exec(migration.statements);
-    }
-  }
+  return row?.value ?? null;
 }
 
 function initIndexDb(sqlite: Database.Database): void {
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("foreign_keys = ON");
 
-  const previousSchemaVersion = readSchemaVersion(sqlite);
-  const currentSchemaVersion = parseSchemaVersion(schema.SCHEMA_VERSION, "application");
-  if (currentSchemaVersion < 1) {
-    throw new Error(`Invalid application schema version: ${schema.SCHEMA_VERSION}`);
-  }
-  if (previousSchemaVersion > currentSchemaVersion) {
-    throw new DatabaseSchemaTooNewError(previousSchemaVersion, currentSchemaVersion);
-  }
-  if (previousSchemaVersion !== currentSchemaVersion) {
-    sqlite.transaction(() => {
-      migrateDurableTables(sqlite, previousSchemaVersion, currentSchemaVersion);
-      dropDerivedTables(sqlite);
-    })();
+  if (readSchemaVersion(sqlite) !== schema.SCHEMA_VERSION) {
+    sqlite.transaction(() => dropAllObjects(sqlite))();
   }
 
-  sqlite.exec(CREATE_DERIVED_TABLES_SQL);
+  sqlite.exec(CREATE_TABLES_SQL);
   sqlite.exec(CREATE_FTS_SQL);
   sqlite
     .prepare("INSERT OR REPLACE INTO metadata (key, value) VALUES ('schema_version', ?)")
     .run(schema.SCHEMA_VERSION);
 }
-
 function initSummariesDb(sqlite: Database.Database): void {
   sqlite.pragma("journal_mode = WAL");
   sqlite.exec(CREATE_SUMMARIES_SQL);

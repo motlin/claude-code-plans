@@ -1,12 +1,10 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { eq, sql } from "drizzle-orm";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { openAppDb, openTestDb } from "../src/lib/db/connection";
 import { dismissHomeSession, getHomeDismissals } from "../src/lib/db/home-dismissals";
-import * as schema from "../src/lib/db/schema";
 
 const ALICE = "session-alice-100";
 const BOB = "session-bob-200";
@@ -28,37 +26,18 @@ describe("home dismissals", () => {
     expect(dismissals).toStrictEqual({ [ALICE]: 3_000, [BOB]: 2_000 });
   });
 
-  it("survives a derived-table rebuild and is created when upgrading from an older version", () => {
+  it("persists across a reopen at the same schema version", () => {
     const cacheDir = mkdtempSync(join(tmpdir(), "home-dismissals-test-"));
     tempDirs.push(cacheDir);
     const original = openAppDb({ cacheDir });
     dismissHomeSession(original.index, ALICE, 5_000);
-    original.index
-      .update(schema.metadata)
-      .set({ value: "34" })
-      .where(eq(schema.metadata.key, "schema_version"))
-      .run();
     original.close();
 
-    const rebuilt = openAppDb({ cacheDir });
-    const kept = getHomeDismissals(rebuilt.index);
-    rebuilt.index.run(sql`DROP TABLE home_dismissals`);
-    rebuilt.index
-      .update(schema.metadata)
-      .set({ value: "34" })
-      .where(eq(schema.metadata.key, "schema_version"))
-      .run();
-    rebuilt.close();
+    const reopened = openAppDb({ cacheDir });
+    const dismissals = getHomeDismissals(reopened.index);
+    reopened.close();
 
-    const upgraded = openAppDb({ cacheDir });
-    dismissHomeSession(upgraded.index, BOB, 6_000);
-    const created = getHomeDismissals(upgraded.index);
-    upgraded.close();
-
-    expect({ kept, created }).toStrictEqual({
-      kept: { [ALICE]: 5_000 },
-      created: { [BOB]: 6_000 },
-    });
+    expect(dismissals).toStrictEqual({ [ALICE]: 5_000 });
   });
 });
 

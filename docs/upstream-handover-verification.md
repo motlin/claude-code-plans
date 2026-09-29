@@ -8,9 +8,10 @@ to its implementation, and ran the repository gate.
 
 - Indexed plan tasks: **54 complete, 0 deferred, 0 skipped**.
 - Section totals: §8 **5/5**, §9 **18/18**, §10 **14/14**, §11 **17/17**.
-- Schema version: **19**. The completed work added or changed indexed data for anchored cwd
-  resolution, durable viewed state, file-content FTS, and review bundles; the version has been bumped
-  accordingly.
+- Schema version: the completed work added or changed indexed data for anchored cwd resolution,
+  durable viewed state, file-content FTS, and review bundles, and bumped the index schema version
+  accordingly. The version chain has since been squashed back to a single `SCHEMA_VERSION` "1";
+  any other version wipes and rebuilds the index database.
 - Final audit repair: the §11.4/§11.5 primitives existed, but the active-session UI had not consumed
   them. The active API now carries creation time, activity state, and approval age; the full-page and
   sidebar lists apply urgency or stable-creation ordering and pass warm/hot approval age to the status

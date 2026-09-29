@@ -9,7 +9,6 @@ import {
   type CapabilityRuntimeFactsById,
   type RuntimeUnavailabilityReason,
 } from "../../lib/capabilities";
-import { DatabaseSchemaTooNewError } from "../../lib/db/connection";
 import { rejectCrossSite } from "../../lib/same-origin-guard";
 
 async function pathExists(path: string): Promise<boolean> {
@@ -44,7 +43,7 @@ async function databaseAvailable(): Promise<boolean> {
 
 type DatabaseUnavailabilityReason = Extract<
   RuntimeUnavailabilityReason,
-  { type: "database-schema-too-new" | "database-unavailable" }
+  { type: "database-unavailable" }
 >;
 
 type DatabaseProbeResult =
@@ -64,16 +63,6 @@ async function probeDatabaseAvailability(
     };
   } catch (error) {
     console.error("Capability database probe failed:", error);
-    if (error instanceof DatabaseSchemaTooNewError) {
-      return {
-        available: false,
-        unavailabilityReason: {
-          type: "database-schema-too-new",
-          databaseSchemaVersion: error.databaseSchemaVersion,
-          applicationSchemaVersion: error.applicationSchemaVersion,
-        },
-      };
-    }
     return {
       available: false,
       unavailabilityReason: { type: "database-unavailable" },

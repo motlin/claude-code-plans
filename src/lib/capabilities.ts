@@ -68,13 +68,6 @@ export const DEFAULT_CAPABILITIES: PersistedCapabilities = {
 
 const RuntimeUnavailabilityReasonSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("claude-not-found") }).strict(),
-  z
-    .object({
-      type: z.literal("database-schema-too-new"),
-      databaseSchemaVersion: z.number().int().nonnegative(),
-      applicationSchemaVersion: z.number().int().nonnegative(),
-    })
-    .strict(),
   z.object({ type: z.literal("database-unavailable") }).strict(),
 ]);
 

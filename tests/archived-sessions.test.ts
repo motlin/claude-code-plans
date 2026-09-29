@@ -1,7 +1,6 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { ActiveSessionEntry } from "../src/lib/active-session-store";
 import { countSessionsNeedingAttention, shouldNotify } from "../src/lib/attention";
@@ -496,39 +495,14 @@ describe("attention", () => {
 });
 
 describe("durability", () => {
-  it("keeps archived sessions across a schema version rebuild", () => {
+  it("keeps archived sessions across a reopen at the same schema version", () => {
     const cacheDir = mkdtempSync(join(tmpdir(), "archived-sessions-test-"));
     tempDirs.push(cacheDir);
     const original = openAppDb({ cacheDir });
     setSessionArchived(original.index, BOB, true, 5_000);
-    original.index
-      .update(schema.metadata)
-      .set({ value: "30" })
-      .where(eq(schema.metadata.key, "schema_version"))
-      .run();
     original.close();
 
     const reopened = openAppDb({ cacheDir });
-    const rows = archivedRows(reopened);
-    reopened.close();
-
-    expect(rows).toStrictEqual([{ sessionId: BOB, archivedAt: 5_000 }]);
-  });
-
-  it("creates the archive table when upgrading from a version that predates it", () => {
-    const cacheDir = mkdtempSync(join(tmpdir(), "archived-sessions-test-"));
-    tempDirs.push(cacheDir);
-    const original = openAppDb({ cacheDir });
-    original.index.run(sql`DROP TABLE archived_sessions`);
-    original.index
-      .update(schema.metadata)
-      .set({ value: "30" })
-      .where(eq(schema.metadata.key, "schema_version"))
-      .run();
-    original.close();
-
-    const reopened = openAppDb({ cacheDir });
-    setSessionArchived(reopened.index, BOB, true, 5_000);
     const rows = archivedRows(reopened);
     reopened.close();
 

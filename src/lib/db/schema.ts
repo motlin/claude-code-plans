@@ -2,21 +2,9 @@ import { sqliteTable, text, integer, index, primaryKey } from "drizzle-orm/sqlit
 import type { ReviewBundle } from "../api/reviews";
 import type { RoutineKind } from "../routines";
 
-// 26: a session opened with a bare "yes" or an interrupt marker now takes its
-// title from the first message that names the work. Titles are stored at index
-// time and the sessions this corrects are finished, so nothing but a rebuild
-// revisits them.
-// 28: sessions gain ai_title, and title follows the `claude --resume` order
-// (custom > ai > summary > first prompt), so every stored title is recomputed.
-// 29: plans and memories are indexed in docs_fts, which only a rebuild backfills.
-// 30: session_mcp_tools records the mcp__ tool names each transcript used.
-// 31: archived_sessions (durable) hides sessions from lists without touching the JSONL.
-// 32: sessions gain pr_number/pr_url/pr_repository from the latest `pr-link` record.
-// 33: artifacts and artifact_events index every claude.ai Artifact tool call.
-// 35: home_dismissals (durable) hides home action-center rows until newer activity.
-// 36: sessions gain forked_from_session_id from the first `forkedFrom` record.
-// 37: routines index every CronCreate/ScheduleWakeup/RemoteTrigger(create) call.
-export const SCHEMA_VERSION = "38";
+// Bump for any DDL or indexed-data change. A database at any other version is
+// wiped (user-state tables included) and rebuilt; there are no migrations.
+export const SCHEMA_VERSION = "1";
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),

@@ -1,10 +1,11 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vite-plus/test";
-import { DatabaseSchemaTooNewError, openAppDb } from "../src/lib/db/connection";
+import { openAppDb } from "../src/lib/db/connection";
 import * as schema from "../src/lib/db/schema";
 
 describe("openAppDb", () => {
@@ -27,41 +28,28 @@ describe("openAppDb", () => {
     db.close();
   });
 
-  it("refuses a database created by a newer application schema", () => {
-    const cacheDir = mkdtempSync(join(tmpdir(), "open-app-db-test-"));
-    tempDirs.push(cacheDir);
-    const applicationSchemaVersion = Number(schema.SCHEMA_VERSION);
-    const databaseSchemaVersion = applicationSchemaVersion + 1;
-    const sqlite = new Database(join(cacheDir, "index.db"));
-    sqlite.exec("CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
-    sqlite
-      .prepare("INSERT INTO metadata (key, value) VALUES ('schema_version', ?)")
-      .run(String(databaseSchemaVersion));
-    sqlite.close();
-
-    let error: unknown;
-    try {
-      openAppDb({ cacheDir });
-    } catch (caught) {
-      error = caught;
-    }
-
-    expect(error).toStrictEqual(
-      new DatabaseSchemaTooNewError(databaseSchemaVersion, applicationSchemaVersion),
-    );
+  it("has a single squashed schema version", () => {
+    expect(schema.SCHEMA_VERSION).toBe("1");
   });
 
-  it("preserves durable user data while rebuilding derived tables", () => {
+  it("has no durable-table migration chain", () => {
+    const source = readFileSync(
+      fileURLToPath(new URL("../src/lib/db/connection.ts", import.meta.url)),
+      "utf8",
+    );
+    expect({
+      durableMigrations: source.includes("DURABLE_MIGRATIONS"),
+      migrateDurableTables: source.includes("migrateDurableTables"),
+    }).toStrictEqual({ durableMigrations: false, migrateDurableTables: false });
+  });
+
+  it("keeps every table, durable user state included, across a reopen at the same version", () => {
     const cacheDir = mkdtempSync(join(tmpdir(), "open-app-db-test-"));
     tempDirs.push(cacheDir);
     const original = openAppDb({ cacheDir });
     original.index
       .insert(schema.projects)
-      .values({
-        id: "project-test-100",
-        name: "Alice fixture project",
-        updatedAt: 1_000,
-      })
+      .values({ id: "project-test-100", name: "Alice fixture project", updatedAt: 1_000 })
       .run();
     original.index
       .insert(schema.sessionViewStates)
@@ -72,66 +60,24 @@ describe("openAppDb", () => {
         updatedAt: 2_000,
       })
       .run();
-    original.index
-      .insert(schema.herdrTerminalViewStates)
-      .values({
-        terminalId: "terminal-test-100",
-        sessionId: "session-test-100",
-        viewed: 1,
-        updatedAt: 3_000,
-      })
-      .run();
-    original.index
-      .insert(schema.reviews)
-      .values({
-        reviewId: "review-test-100",
-        bundle: {
-          reviewId: "review-test-100",
-          sessionId: "session-test-100",
-          cwd: "/fixture/alice-repository",
-          diff: "diff --git a/alice.txt b/alice.txt",
-          summary: null,
-          findings: [],
-          generatedAt: "2000-01-01T00:00:00.000Z",
-        },
-      })
-      .run();
-    original.index
-      .insert(schema.hookSchemaDrift)
-      .values({
-        hookEventName: "TestEvent",
-        bodySha256: "sha256-test-100",
-        rawBody: "{}",
-        issuesJson: "[]",
-        count: 1,
-        firstSeenAt: 4_000,
-        lastSeenAt: 5_000,
-      })
-      .run();
-    original.index
-      .update(schema.metadata)
-      .set({ value: "19" })
-      .where(eq(schema.metadata.key, "schema_version"))
-      .run();
     original.close();
 
     const reopened = openAppDb({ cacheDir });
     const state = {
       projects: reopened.index.select().from(schema.projects).all(),
       sessionViewStates: reopened.index.select().from(schema.sessionViewStates).all(),
-      terminalViewStates: reopened.index.select().from(schema.herdrTerminalViewStates).all(),
-      reviews: reopened.index.select().from(schema.reviews).all(),
-      hookSchemaDrift: reopened.index.select().from(schema.hookSchemaDrift).all(),
-      version: reopened.index
-        .select({ value: schema.metadata.value })
-        .from(schema.metadata)
-        .where(eq(schema.metadata.key, "schema_version"))
-        .get(),
     };
     reopened.close();
 
     expect(state).toStrictEqual({
-      projects: [],
+      projects: [
+        {
+          id: "project-test-100",
+          name: "Alice fixture project",
+          projectPath: null,
+          updatedAt: 1_000,
+        },
+      ],
       sessionViewStates: [
         {
           sessionId: "session-test-100",
@@ -140,65 +86,74 @@ describe("openAppDb", () => {
           updatedAt: 2_000,
         },
       ],
-      terminalViewStates: [
-        {
-          terminalId: "terminal-test-100",
-          sessionId: "session-test-100",
-          viewed: 1,
-          updatedAt: 3_000,
-        },
-      ],
-      reviews: [
-        {
-          reviewId: "review-test-100",
-          bundle: {
-            reviewId: "review-test-100",
-            sessionId: "session-test-100",
-            cwd: "/fixture/alice-repository",
-            diff: "diff --git a/alice.txt b/alice.txt",
-            summary: null,
-            findings: [],
-            generatedAt: "2000-01-01T00:00:00.000Z",
-          },
-        },
-      ],
-      hookSchemaDrift: [
-        {
-          hookEventName: "TestEvent",
-          bodySha256: "sha256-test-100",
-          rawBody: "{}",
-          issuesJson: "[]",
-          count: 1,
-          firstSeenAt: 4_000,
-          lastSeenAt: 5_000,
-        },
-      ],
-      version: { value: schema.SCHEMA_VERSION },
     });
   });
 
-  it("drops the retired starred_sessions table on upgrade; pins live in the browser", () => {
-    const cacheDir = mkdtempSync(join(tmpdir(), "open-app-db-test-"));
-    tempDirs.push(cacheDir);
-    const original = openAppDb({ cacheDir });
-    original.close();
-    const sqlite = new Database(join(cacheDir, "index.db"));
-    sqlite.exec(
-      "CREATE TABLE starred_sessions (session_id TEXT PRIMARY KEY, starred_at INTEGER NOT NULL)",
-    );
-    sqlite.exec("INSERT INTO starred_sessions VALUES ('session-test-100', 1000)");
-    sqlite.prepare("UPDATE metadata SET value = '33' WHERE key = 'schema_version'").run();
-    sqlite.close();
+  it.each(["38", "37", "2", "0"])(
+    "wipes a database at schema version %s, durable tables included, and recreates it at version 1",
+    (staleVersion) => {
+      const cacheDir = mkdtempSync(join(tmpdir(), "open-app-db-test-"));
+      tempDirs.push(cacheDir);
+      const original = openAppDb({ cacheDir });
+      original.index
+        .insert(schema.projects)
+        .values({ id: "project-test-100", name: "Alice fixture project", updatedAt: 1_000 })
+        .run();
+      original.index
+        .insert(schema.sessionViewStates)
+        .values({
+          sessionId: "session-test-100",
+          lastViewedMessageIndex: 10,
+          reviewTargetMessageIndex: 20,
+          updatedAt: 2_000,
+        })
+        .run();
+      original.index
+        .insert(schema.archivedSessions)
+        .values({ sessionId: "session-test-100", archivedAt: 3_000 })
+        .run();
+      original.index
+        .insert(schema.homeDismissals)
+        .values({ sessionId: "session-test-100", dismissedAt: 4_000 })
+        .run();
+      original.close();
+      const sqlite = new Database(join(cacheDir, "index.db"));
+      sqlite.exec(
+        "CREATE TABLE starred_sessions (session_id TEXT PRIMARY KEY, starred_at INTEGER NOT NULL)",
+      );
+      sqlite.exec("INSERT INTO starred_sessions VALUES ('session-test-100', 1000)");
+      sqlite
+        .prepare("UPDATE metadata SET value = ? WHERE key = 'schema_version'")
+        .run(staleVersion);
+      sqlite.close();
 
-    openAppDb({ cacheDir }).close();
-    const reopened = new Database(join(cacheDir, "index.db"));
-    const tables = reopened
-      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'starred_sessions'")
-      .all();
-    reopened.close();
+      const reopened = openAppDb({ cacheDir });
+      const state = {
+        projects: reopened.index.select().from(schema.projects).all(),
+        sessionViewStates: reopened.index.select().from(schema.sessionViewStates).all(),
+        archivedSessions: reopened.index.select().from(schema.archivedSessions).all(),
+        homeDismissals: reopened.index.select().from(schema.homeDismissals).all(),
+        starredSessionsTable: reopened.index.all(
+          sql`SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'starred_sessions'`,
+        ),
+        version: reopened.index
+          .select({ value: schema.metadata.value })
+          .from(schema.metadata)
+          .where(eq(schema.metadata.key, "schema_version"))
+          .get(),
+      };
+      reopened.close();
 
-    expect(tables).toStrictEqual([]);
-  });
+      expect(state).toStrictEqual({
+        projects: [],
+        sessionViewStates: [],
+        archivedSessions: [],
+        homeDismissals: [],
+        starredSessionsTable: [],
+        version: { value: "1" },
+      });
+    },
+  );
 
   it("never creates starred_sessions in a fresh database", () => {
     const cacheDir = mkdtempSync(join(tmpdir(), "open-app-db-test-"));

@@ -37,9 +37,6 @@ export function workingCopyReviewDegradedMessage(
   if (reason.type === "claude-not-found") {
     return "Working-copy review is enabled, but the Claude executable was not found. Install Claude Code or add claude to PATH, then restart just dev.";
   }
-  if (reason.type === "database-schema-too-new") {
-    return `Working-copy review is enabled, but database schema version ${reason.databaseSchemaVersion} is newer than application schema version ${reason.applicationSchemaVersion}. Check out a revision that supports schema version ${reason.databaseSchemaVersion}, then restart just dev.`;
-  }
   return "Working-copy review is enabled, but its database is unavailable. Check the server logs, then restart just dev.";
 }
 

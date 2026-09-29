@@ -7,7 +7,6 @@ import {
   type CapabilityRuntimeFactsById,
   type PersistedCapabilities,
 } from "../src/lib/capabilities";
-import { DatabaseSchemaTooNewError } from "../src/lib/db/connection";
 import { handleCapabilitiesRequest } from "../src/routes/api/capabilities";
 
 const RUNTIME_FACTS: CapabilityRuntimeFactsById = {
@@ -138,64 +137,6 @@ describe("capability resolution", () => {
         unavailabilityReason: null,
       },
     });
-  });
-
-  it("reports a newer database schema ahead of a missing Claude executable", async () => {
-    const databaseError = new DatabaseSchemaTooNewError(27, 26);
-    const errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const response = await handleCapabilitiesRequest(capabilitiesRequest(), {
-      pathExists: async () => true,
-      executableExists: async () => false,
-      databaseAvailable: async () => {
-        throw databaseError;
-      },
-      projectRoot: "/fixture/alice-repository",
-    });
-
-    expect({
-      body: await response.json(),
-      errorLog: errorLog.mock.calls,
-      status: response.status,
-    }).toStrictEqual({
-      body: {
-        readOnlyMcpServer: {
-          enabled: false,
-          config: { includePendingApprovals: true },
-          installed: true,
-          available: false,
-          unavailabilityReason: {
-            type: "database-schema-too-new",
-            databaseSchemaVersion: 27,
-            applicationSchemaVersion: 26,
-          },
-        },
-        workingCopyReview: {
-          enabled: true,
-          config: { offerMode: "offer" },
-          installed: true,
-          available: false,
-          unavailabilityReason: {
-            type: "database-schema-too-new",
-            databaseSchemaVersion: 27,
-            applicationSchemaVersion: 26,
-          },
-        },
-        sessionContextBrief: {
-          enabled: false,
-          config: { includeDecisions: true },
-          installed: true,
-          available: false,
-          unavailabilityReason: {
-            type: "database-schema-too-new",
-            databaseSchemaVersion: 27,
-            applicationSchemaVersion: 26,
-          },
-        },
-      },
-      errorLog: [["Capability database probe failed:", databaseError]],
-      status: 200,
-    });
-    errorLog.mockRestore();
   });
 
   it("reports a missing Claude executable when the database is available", async () => {
@@ -398,17 +339,6 @@ describe("capability resolution", () => {
         enabled: true,
         installed: true,
         available: false,
-        unavailabilityReason: {
-          type: "database-schema-too-new",
-          databaseSchemaVersion: 27,
-          applicationSchemaVersion: 26,
-        },
-      }),
-      workingCopyReviewDegradedMessage({
-        ...DEFAULT_CAPABILITIES.workingCopyReview,
-        enabled: true,
-        installed: true,
-        available: false,
         unavailabilityReason: { type: "database-unavailable" },
       }),
       workingCopyReviewDegradedMessage({
@@ -428,7 +358,6 @@ describe("capability resolution", () => {
     ]).toStrictEqual([
       "Working-copy review is enabled, but its review skill is not installed.",
       "Working-copy review is enabled, but the Claude executable was not found. Install Claude Code or add claude to PATH, then restart just dev.",
-      "Working-copy review is enabled, but database schema version 27 is newer than application schema version 26. Check out a revision that supports schema version 27, then restart just dev.",
       "Working-copy review is enabled, but its database is unavailable. Check the server logs, then restart just dev.",
       null,
       null,
