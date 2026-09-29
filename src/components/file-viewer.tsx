@@ -63,6 +63,8 @@ export interface FileViewerProps {
   endLine?: number | undefined;
   /** Read and write `#L<n>` in the page URL; off inside panes that share the page. */
   hashNavigation?: boolean;
+  /** Mount this line's chunk without selecting it, so find in file can reach it. */
+  revealLine?: number | undefined;
 }
 
 /**
@@ -114,6 +116,7 @@ export function FileViewer({
   line,
   endLine,
   hashNavigation = true,
+  revealLine,
 }: FileViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const lines = useMemo(() => file.content.split("\n"), [file.content]);
@@ -168,6 +171,10 @@ export function FileViewer({
     if (line !== undefined) select(line, endLine ?? line);
   }, [line, endLine, select]);
 
+  useEffect(() => {
+    if (revealLine !== undefined) mount(Math.floor((revealLine - 1) / CHUNK_LINES));
+  }, [revealLine, mount]);
+
   const selectLine = (lineNumber: number) => {
     if (hashNavigation) window.history.pushState(null, "", `#L${lineNumber}`);
     select(lineNumber, lineNumber);
@@ -190,6 +197,7 @@ export function FileViewer({
           href={`#${lineId}`}
           aria-current={isHighlighted && lineNumber === selection.start ? "location" : undefined}
           aria-label={`Go to line ${lineNumber}`}
+          data-find-ignore=""
           className="w-14 shrink-0 select-none border-r border-strong pr-3 text-right text-t6 hover:text-accent-100"
           onClick={(event) => {
             event.preventDefault();

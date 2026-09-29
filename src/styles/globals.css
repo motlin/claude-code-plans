@@ -751,3 +751,12 @@ html[data-motion="reduced"] .terminal-caret {
     display: none;
   }
 }
+
+/* Find in file matches, painted with the CSS Custom Highlight API. */
+::highlight(file-find) {
+  background-color: rgb(250 204 21 / 0.35);
+}
+
+::highlight(file-find-active) {
+  background-color: rgb(249 115 22 / 0.65);
+}

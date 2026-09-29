@@ -269,3 +269,129 @@ describe("source view", () => {
     );
   });
 });
+
+describe("find in file", () => {
+  const SOURCE = "/home/alice/project/agent.ts";
+  const README = "/home/alice/notes/README.md";
+
+  function viewer(): HTMLElement {
+    const element = document.querySelector<HTMLElement>("[data-file-viewer]");
+    if (element === null) throw new Error("no viewer");
+    return element;
+  }
+
+  function findInput(): HTMLInputElement {
+    return screen.getByRole<HTMLInputElement>("textbox", { name: "Find in file" });
+  }
+
+  function counter(): string | null | undefined {
+    return document.querySelector("[data-find-counter]")?.textContent;
+  }
+
+  it("opens on ⌘F inside the pane, counts source matches with smart-case and steps with Enter / ⇧Enter", async () => {
+    textFile(SOURCE, "const alice = 1;\nconst bob = alice;\nconst Alice = bob;");
+    renderView({ path: SOURCE });
+    await waitFor(() => expect(document.querySelector("#L3 code")).not.toBeNull());
+
+    const opened = fireEvent.keyDown(viewer(), { key: "f", ctrlKey: true });
+    fireEvent.change(findInput(), { target: { value: "alice" } });
+    const lowercase = counter();
+    fireEvent.keyDown(findInput(), { key: "Enter" });
+    const afterNext = counter();
+    fireEvent.keyDown(findInput(), { key: "Enter", shiftKey: true });
+    fireEvent.keyDown(findInput(), { key: "Enter", shiftKey: true });
+    const afterPreviousWrap = counter();
+    fireEvent.change(findInput(), { target: { value: "Alice" } });
+    const exactCase = counter();
+    fireEvent.change(findInput(), { target: { value: "carol" } });
+
+    expect({
+      defaultPrevented: !opened,
+      placeholder: findInput().placeholder,
+      focused: document.activeElement === findInput(),
+      lowercase,
+      afterNext,
+      afterPreviousWrap,
+      exactCase,
+      missing: counter(),
+    }).toStrictEqual({
+      defaultPrevented: true,
+      placeholder: "Find in file…",
+      focused: true,
+      lowercase: "1 of 3",
+      afterNext: "2 of 3",
+      afterPreviousWrap: "3 of 3",
+      exactCase: "1 of 1",
+      missing: "No results",
+    });
+  });
+
+  it("closes on Escape and with the Close find bar button", async () => {
+    textFile(SOURCE, "alice");
+    renderView({ path: SOURCE });
+    await waitFor(() => expect(document.querySelector("#L1 code")).not.toBeNull());
+
+    fireEvent.keyDown(viewer(), { key: "f", ctrlKey: true });
+    fireEvent.keyDown(findInput(), { key: "Escape" });
+    const afterEscape = screen.queryByRole("textbox", { name: "Find in file" });
+    fireEvent.keyDown(viewer(), { key: "f", ctrlKey: true });
+    fireEvent.click(screen.getByRole("button", { name: "Close find bar" }));
+
+    expect({
+      afterEscape,
+      afterClose: screen.queryByRole("textbox", { name: "Find in file" }),
+    }).toStrictEqual({ afterEscape: null, afterClose: null });
+  });
+
+  it("leaves ⌘F alone when focus is outside the pane", async () => {
+    textFile(SOURCE, "alice");
+    renderView({ path: SOURCE });
+    await waitFor(() => expect(document.querySelector("#L1 code")).not.toBeNull());
+
+    const notPrevented = fireEvent.keyDown(document.body, { key: "f", ctrlKey: true });
+
+    expect({
+      notPrevented,
+      bar: screen.queryByRole("textbox", { name: "Find in file" }),
+    }).toStrictEqual({ notPrevented: true, bar: null });
+  });
+
+  it("opens prefilled from the content search query with the match on the target line active", async () => {
+    textFile(SOURCE, "needle one\nhay\nneedle two\nneedle three");
+    renderView({ path: SOURCE, line: 3, findQuery: "needle" });
+
+    await waitFor(() => expect(counter()).toBe("2 of 3"));
+    expect(findInput().value).toBe("needle");
+  });
+
+  it("counts every match in a virtualized file, including unmounted lines", async () => {
+    textFile(
+      SOURCE,
+      Array.from({ length: 5000 }, (_, index) => (index % 1000 === 999 ? "needle" : "hay")).join(
+        "\n",
+      ),
+    );
+    renderView({ path: SOURCE });
+    await waitFor(() => expect(document.querySelector("#L1 code")).not.toBeNull());
+
+    fireEvent.keyDown(viewer(), { key: "f", ctrlKey: true });
+    fireEvent.change(findInput(), { target: { value: "needle" } });
+    fireEvent.keyDown(findInput(), { key: "Enter", shiftKey: true });
+
+    await waitFor(() => expect(document.querySelector("#L5000 code")?.textContent).toBe("needle"));
+    expect(counter()).toBe("5 of 5");
+  });
+
+  it("finds text in rendered markdown", async () => {
+    textFile(README, "# Alice notes\n\nAlice met **alice** and bob.");
+    renderView({ path: README });
+    await screen.findByRole("heading", { name: "Alice notes" });
+
+    fireEvent.keyDown(viewer(), { key: "f", ctrlKey: true });
+    fireEvent.change(findInput(), { target: { value: "alice" } });
+    const all = counter();
+    fireEvent.change(findInput(), { target: { value: "notes" } });
+
+    expect({ all, one: counter() }).toStrictEqual({ all: "1 of 3", one: "1 of 1" });
+  });
+});

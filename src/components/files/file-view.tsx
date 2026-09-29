@@ -1,6 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { Code, Eye, FileX } from "lucide-react";
-import { type MouseEvent, type ReactNode, useRef, useState } from "react";
+import {
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { useShortcut, useShortcutKeys } from "../../hooks/use-shortcut";
 
@@ -14,7 +23,14 @@ import {
   isMarkdownPath,
   normalizeFileTabSize,
 } from "../../lib/file-preview";
+import {
+  firstMatchFromLine,
+  lineMatchOffsets,
+  lineOfMatch,
+  stepMatch,
+} from "../../lib/find-in-file";
 import { fromMdSlug } from "../../lib/md-slug";
+import { isMacPlatform } from "../../lib/shortcuts/match";
 import { FileViewer, fileViewerLanguage } from "../file-viewer";
 import { MarkdownArticle } from "../markdown-article";
 import { useSettings } from "../settings-provider";
@@ -22,6 +38,12 @@ import { useToast } from "../toast";
 import { ContextMenu, ContextMenuTrigger, MenuContent } from "../ui/menu";
 import { Tooltip } from "../ui/tooltip";
 import { mentionPath, ViewerMenuItems } from "./file-context-menu";
+import {
+  clearFindHighlights,
+  collectFindBlocks,
+  FindBar,
+  paintFindHighlights,
+} from "./find-in-file";
 
 /**
  * Sibling `.md` links render under this prefix; a click handler resolves them
@@ -195,6 +217,157 @@ function errorTitle(error: unknown): string {
   return "Can’t read this file";
 }
 
+function isFindShortcut(event: KeyboardEvent): boolean {
+  const mod = isMacPlatform() ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
+  return mod && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "f";
+}
+
+/**
+ * Find in file: a ⌘F bar claimed only while focus is inside the pane. Source
+ * view counts matches from the file text, since virtualized rows may not be
+ * mounted, and numbers the mounted rows' ranges from each line's offset;
+ * rendered markdown counts what is in the DOM.
+ */
+function useFindInFile({
+  viewerRef,
+  content,
+  sourceMode,
+  line,
+  findQuery,
+}: {
+  viewerRef: RefObject<HTMLDivElement | null>;
+  content: string | undefined;
+  sourceMode: boolean;
+  line: number | undefined;
+  findQuery: string | undefined;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [activeState, setActiveState] = useState(0);
+  const [anchorLine, setAnchorLine] = useState<number | null>(null);
+  const [domTotal, setDomTotal] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [scrollRequest, setScrollRequest] = useState(0);
+  const scrolledRef = useRef(0);
+  const [focusRequest, setFocusRequest] = useState(0);
+
+  // A content search hit opens the bar prefilled, on the match at its line.
+  const [seenTarget, setSeenTarget] = useState<{ findQuery?: string; line?: number }>({});
+  if (seenTarget.findQuery !== findQuery || seenTarget.line !== line) {
+    setSeenTarget({
+      ...(findQuery === undefined ? {} : { findQuery }),
+      ...(line === undefined ? {} : { line }),
+    });
+    if (findQuery !== undefined && findQuery !== "") {
+      setOpen(true);
+      setQuery(findQuery);
+      setActiveState(0);
+      setAnchorLine(line ?? null);
+      setScrollRequest((request) => request + 1);
+    }
+  }
+
+  const sourceMatches = useMemo(
+    () => (open && sourceMode && content !== undefined ? lineMatchOffsets(content, query) : null),
+    [open, sourceMode, content, query],
+  );
+  const total = sourceMatches?.total ?? domTotal;
+  const anchored =
+    sourceMatches !== null && anchorLine !== null
+      ? firstMatchFromLine(sourceMatches, anchorLine)
+      : activeState;
+  const active = total === 0 ? 0 : Math.min(anchored, total - 1);
+  const revealLine =
+    sourceMatches !== null && total > 0 ? lineOfMatch(sourceMatches.offsets, active) : undefined;
+
+  useEffect(() => {
+    const root = viewerRef.current;
+    if (!open || root === null) return;
+    const apply = () => {
+      const blocks = collectFindBlocks(root, query);
+      const ranges: Range[] = [];
+      let activeRange: Range | null = null;
+      for (const { block, ranges: blockRanges } of blocks) {
+        const lineNumber = sourceMatches === null ? null : Number(block.id.slice(1));
+        const base =
+          lineNumber === null ? ranges.length : (sourceMatches?.offsets[lineNumber - 1] ?? -1);
+        blockRanges.forEach((range, index) => {
+          if (base + index === active) activeRange = range;
+          ranges.push(range);
+        });
+      }
+      if (sourceMatches === null) setDomTotal(ranges.length);
+      paintFindHighlights(ranges, activeRange);
+      if (scrolledRef.current !== scrollRequest && activeRange !== null) {
+        scrolledRef.current = scrollRequest;
+        (activeRange as Range).startContainer.parentElement?.scrollIntoView({
+          block: "center",
+          inline: "nearest",
+        });
+      }
+    };
+    apply();
+    const observer = new MutationObserver(apply);
+    observer.observe(root, { childList: true, subtree: true, characterData: true });
+    return () => {
+      observer.disconnect();
+      clearFindHighlights();
+    };
+  }, [viewerRef, open, query, active, sourceMatches, scrollRequest]);
+
+  useEffect(() => {
+    if (focusRequest === 0) return;
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, [focusRequest]);
+
+  const openBar = () => {
+    setOpen(true);
+    setFocusRequest((request) => request + 1);
+  };
+
+  const close = () => {
+    setOpen(false);
+    viewerRef.current?.focus({ preventScroll: true });
+  };
+
+  const changeQuery = (next: string) => {
+    setQuery(next);
+    setActiveState(0);
+    setAnchorLine(null);
+    setScrollRequest((request) => request + 1);
+  };
+
+  const step = (direction: 1 | -1) => {
+    setActiveState(stepMatch(active, total, direction));
+    setAnchorLine(null);
+    setScrollRequest((request) => request + 1);
+  };
+
+  const handlePaneKeyDown = (event: KeyboardEvent) => {
+    if (!isFindShortcut(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    openBar();
+  };
+
+  return {
+    handlePaneKeyDown,
+    revealLine: open ? revealLine : undefined,
+    bar: open ? (
+      <FindBar
+        inputRef={inputRef}
+        query={query}
+        active={active}
+        total={total}
+        onQueryChange={changeQuery}
+        onStep={step}
+        onClose={close}
+      />
+    ) : null,
+  };
+}
+
 /**
  * The one file viewer, used by the Files pane and the full-page `/file/$`
  * route: a Copy path breadcrumb, rendered markdown with a View source toggle,
@@ -221,6 +394,13 @@ export function FileView({
   const [menuSelection, setMenuSelection] = useState<string | null>(null);
   const attachKeys = useShortcutKeys("attach_selection");
   const content = file.data?.kind === "text" ? file.data.content : undefined;
+  const find = useFindInFile({
+    viewerRef,
+    content,
+    sourceMode: content !== undefined && content !== "" && (!markdown || showSource),
+    line,
+    findQuery,
+  });
 
   useShortcut(
     "attach_selection",
@@ -291,6 +471,7 @@ export function FileView({
           line={line}
           endLine={endLine}
           hashNavigation={hashNavigation}
+          revealLine={find.revealLine}
         />
       </div>
     );
@@ -298,7 +479,7 @@ export function FileView({
 
   const canToggleSource = markdown && file.data?.kind === "text";
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col" onKeyDown={find.handlePaneKeyDown}>
       <div className="flex h-8 shrink-0 items-center gap-1 px-3">
         <Breadcrumb path={displayPath(path, cwd)} />
         {canToggleSource && (
@@ -318,30 +499,34 @@ export function FileView({
           </Tooltip>
         )}
       </div>
-      <ContextMenu>
-        <ContextMenuTrigger
-          render={<div ref={viewerRef} />}
-          data-file-viewer="true"
-          data-find-query={findQuery}
-          className="min-h-0 flex-1 overflow-auto select-text"
-          onContextMenu={() =>
-            setMenuSelection(selectionSnippet(viewerRef.current, path, cwd, content))
-          }
-        >
-          {body()}
-        </ContextMenuTrigger>
-        <MenuContent>
-          <ViewerMenuItems
-            path={path}
-            cwd={cwd}
-            content={content}
-            line={line ?? 1}
-            attachSnippet={() => menuSelection ?? `@${mentionPath(path, cwd)}`}
-            onAttachContext={onAttachContext}
-            attachShortcut={attachKeys.keys}
-          />
-        </MenuContent>
-      </ContextMenu>
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        {find.bar}
+        <ContextMenu>
+          <ContextMenuTrigger
+            render={<div ref={viewerRef} />}
+            tabIndex={-1}
+            data-file-viewer="true"
+            data-find-query={findQuery}
+            className="min-h-0 flex-1 overflow-auto outline-none select-text"
+            onContextMenu={() =>
+              setMenuSelection(selectionSnippet(viewerRef.current, path, cwd, content))
+            }
+          >
+            {body()}
+          </ContextMenuTrigger>
+          <MenuContent>
+            <ViewerMenuItems
+              path={path}
+              cwd={cwd}
+              content={content}
+              line={line ?? 1}
+              attachSnippet={() => menuSelection ?? `@${mentionPath(path, cwd)}`}
+              onAttachContext={onAttachContext}
+              attachShortcut={attachKeys.keys}
+            />
+          </MenuContent>
+        </ContextMenu>
+      </div>
     </div>
   );
 }
