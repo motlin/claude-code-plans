@@ -1696,6 +1696,13 @@ const WorktreeSettingsSchema = z
   })
   .strict();
 
+/**
+ * `skillOverrides[name]` values documented at
+ * https://code.claude.com/docs/en/skills.md#override-skill-visibility-from-settings.
+ * An absent key means "on".
+ */
+export const SkillOverrideValueSchema = z.enum(["on", "name-only", "user-invocable-only", "off"]);
+
 export const ClaudeSettingsSchema = z
   .object({
     $schema: z.string().optional(),
@@ -1719,7 +1726,7 @@ export const ClaudeSettingsSchema = z
     preferredNotifChannel: z.string().optional(),
     outputStyle: z.string().optional(),
     spinnerTipsEnabled: z.boolean().optional(),
-    skillOverrides: z.record(z.string(), z.string()).optional(),
+    skillOverrides: z.record(z.string(), SkillOverrideValueSchema).optional(),
     effortLevel: z.string().optional(),
     env: z.record(z.string(), z.string()).optional(),
     permissions: PermissionsSchema.optional(),

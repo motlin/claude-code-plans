@@ -2,10 +2,10 @@ import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Scroll } from "lucide-react";
 import type { ReactNode } from "react";
 import type { SkillDetail } from "../../lib/api/customize";
-import { Switch } from "../settings/switch";
 import { countContentsFiles } from "./contents-order";
 import { ShortDate } from "./customize-list";
 import { IconTile } from "./icon-tile";
+import { SkillEnableSwitch } from "./skill-enable-switch";
 import { SkillRowActions } from "./skill-row-actions";
 import { skillInvocation } from "./skills-view";
 
@@ -15,7 +15,7 @@ const TAB_CLASS =
 /**
  * Upstream skill detail header: back link, 44px tile, H2 + "from <source> ·
  * updated <date>", the Enable switch, the kebab, then the underline
- * Overview · Contents · N tabs. The switch mirrors `skillOverrides` read-only.
+ * Overview · Contents · N tabs. The switch writes `skillOverrides`.
  */
 export function SkillDetailHeader({ detail }: { detail: SkillDetail }) {
   const { skill } = detail;
@@ -37,12 +37,7 @@ export function SkillDetailHeader({ detail }: { detail: SkillDetail }) {
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <Switch
-            aria-label="Enable skill"
-            checked={skill.enabled}
-            disabled
-            onCheckedChange={() => {}}
-          />
+          <SkillEnableSwitch skill={skill} />
           <SkillRowActions skill={skill} triggerLabel={`More options for ${skill.name}`} />
         </div>
       </div>

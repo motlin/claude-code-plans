@@ -19,6 +19,7 @@ import type {
   ClaudeSettingsSchema,
   ContentBlockSchema,
   JsonlRecordSchema,
+  SkillOverrideValueSchema,
   TaskStatusSchema,
   UserRecordSchema,
   WriteToolUseResultTypeSchema,
@@ -279,6 +280,13 @@ const claudeHookShellLabels = {
   bash: "Bash",
   powershell: "PowerShell",
 } satisfies Record<NonNullable<ClaudeCommandHook["shell"]>, string>;
+
+const skillOverrideLabels = {
+  on: "On",
+  "name-only": "Name only",
+  "user-invocable-only": "User-invocable only",
+  off: "Off",
+} satisfies Record<z.infer<typeof SkillOverrideValueSchema>, string>;
 
 const systemSubtypeLabels = {
   compact_boundary: "Compaction",
@@ -586,6 +594,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   "JsonlRecordSchema.<system>.compactMetadata.trigger": compactTriggerLabels,
   "ClaudeSettingsSchema.hooks{}[].hooks[]": claudeHookVariants,
   "ClaudeSettingsSchema.hooks{}[].hooks[].<command>.shell": claudeHookShellLabels,
+  "ClaudeSettingsSchema.skillOverrides{}": skillOverrideLabels,
   ToolUseUnion: toolNames,
   HookEventEnvelope: hookEventNames,
   "HookEventEnvelope.<SessionStart>.source": sessionStartSourceLabels,

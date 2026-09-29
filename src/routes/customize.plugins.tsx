@@ -3,7 +3,9 @@ import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { Puzzle } from "lucide-react";
 import { CustomizeNotice } from "../components/customize/customize-empty";
 import { CustomizeList } from "../components/customize/customize-list";
+import { PluginRowActions } from "../components/customize/plugin-row-actions";
 import { CUSTOMIZE_SECTIONS, matchesQuery, resolveOption } from "../components/customize/sections";
+import { customizeSettingsTogglesQueryOptions, isPluginEnabled } from "../lib/api/customize";
 import { groupPluginsByMarketplace, pluginsQueryOptions } from "../lib/api/plugins";
 
 export const Route = createFileRoute("/customize/plugins")({
@@ -19,6 +21,7 @@ const SECTION = CUSTOMIZE_SECTIONS[2]!;
 function CustomizePlugins() {
   const search = useSearch({ from: "/customize" });
   const { data: plugins, isPending } = useQuery(pluginsQueryOptions);
+  const { data: toggles } = useQuery(customizeSettingsTogglesQueryOptions);
 
   if (search.view === "discover") {
     return (
@@ -45,7 +48,11 @@ function CustomizePlugins() {
         title: plugin.name,
         source: `from ${group.marketplace.displayName}`,
         subtitle: plugin.description,
-        meta: plugin.version,
+        meta:
+          toggles === undefined || isPluginEnabled(toggles, plugin.id)
+            ? plugin.version
+            : `${plugin.version} · Disabled`,
+        actions: <PluginRowActions pluginId={plugin.id} name={plugin.name} />,
       }))
       .sort(byName),
   }));
