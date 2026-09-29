@@ -670,6 +670,7 @@ const AgentListingDeltaAttachmentPayload = z
     addedTypes: z.array(z.string()).optional(),
     addedLines: z.array(z.string()).optional(),
     removedTypes: z.array(z.string()).optional(),
+    builtInTypes: z.array(z.string()).optional(),
     isInitial: z.boolean().optional(),
     showConcurrencyNote: z.boolean().optional(),
   })
@@ -1259,6 +1260,8 @@ export const AttachmentPayloadSchema = z.discriminatedUnion("type", [
 
 const RenderedAttachmentContentSchema = z.object({ content: z.string() }).strict();
 
+export const RenderedRoleSchema = z.enum(["system", "user"]);
+
 /**
  * Attachment record: uses discriminated union on attachment.type
  * for all the different attachment payloads.
@@ -1271,6 +1274,8 @@ export const AttachmentRecordSchema = z
     // The system-reminder text each attachment rendered into the model context.
     rendered: z.array(RenderedAttachmentContentSchema).optional(),
     renderedInHumanTurn: z.array(RenderedAttachmentContentSchema).optional(),
+    // Which turn role the rendered text was injected as.
+    renderedRole: RenderedRoleSchema.optional(),
   })
   .strict();
 

@@ -34,6 +34,7 @@ import type {
   GitCommitKindSchema,
   GitPrActionSchema,
   JsonlRecordSchema,
+  RenderedRoleSchema,
   SkillOverrideValueSchema,
   TaskStatusSchema,
   UserRecordSchema,
@@ -253,6 +254,12 @@ const pullRequestStateLabels = {
   merged: "Merged",
   closed: "Closed",
 } satisfies Record<z.infer<typeof PullRequestStateSchema>, string>;
+
+/** `renderedRole` on attachment JSONL records. */
+const renderedRoleChoices = {
+  system: true,
+  user: true,
+} satisfies Record<z.infer<typeof RenderedRoleSchema>, true>;
 
 /** `gh pr list|view --json state` values. */
 const ghPrStateChoices = {
@@ -905,6 +912,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   "RenderedLineSchema.<assistant|user>.type": messageLineTypeLabels,
   "RenderedLineSchema.<system>.subtype": systemSubtypeLabels,
   "JsonlRecordSchema.<system>.compactMetadata.trigger": compactTriggerLabels,
+  "JsonlRecordSchema.<attachment>.renderedRole": renderedRoleChoices,
   "ClaudeSettingsSchema.hooks{}[].hooks[]": claudeHookVariants,
   "ClaudeSettingsSchema.hooks{}[].hooks[].<command>.shell": claudeHookShellLabels,
   "ClaudeSettingsSchema.skillOverrides{}": skillOverrideLabels,
