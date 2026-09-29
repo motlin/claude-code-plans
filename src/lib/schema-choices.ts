@@ -140,7 +140,7 @@ export const sessionBucketLabels = {
 } satisfies Record<z.infer<typeof SessionBucketSchema>, string>;
 
 /** Home "Sessions" action-center pills (src/lib/home-attention.ts). */
-const homeAttentionKindLabels = {
+export const homeAttentionKindLabels = {
   blocked: "Needs input",
   review: "Ready for review",
 } satisfies Record<z.infer<typeof HomeAttentionKindSchema>, string>;

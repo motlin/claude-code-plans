@@ -12,7 +12,8 @@ import type { ReviewBundle } from "../api/reviews";
 // 31: archived_sessions (durable) hides sessions from lists without touching the JSONL.
 // 32: sessions gain pr_number/pr_url/pr_repository from the latest `pr-link` record.
 // 33: artifacts and artifact_events index every claude.ai Artifact tool call.
-export const SCHEMA_VERSION = "34";
+// 35: home_dismissals (durable) hides home action-center rows until newer activity.
+export const SCHEMA_VERSION = "35";
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),
@@ -241,6 +242,12 @@ export const plans = sqliteTable(
 export const archivedSessions = sqliteTable("archived_sessions", {
   sessionId: text("session_id").primaryKey(),
   archivedAt: integer("archived_at").notNull(),
+});
+
+/** Home "Sessions" dismissals: a row stays hidden until the session has newer activity. */
+export const homeDismissals = sqliteTable("home_dismissals", {
+  sessionId: text("session_id").primaryKey(),
+  dismissedAt: integer("dismissed_at").notNull(),
 });
 
 export const summaries = sqliteTable("summaries", {

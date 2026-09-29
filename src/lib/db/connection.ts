@@ -244,6 +244,14 @@ CREATE TABLE IF NOT EXISTS archived_sessions (
     schemaVersion: 34,
     statements: `DROP TABLE IF EXISTS starred_sessions;`,
   },
+  {
+    schemaVersion: 35,
+    statements: `
+CREATE TABLE IF NOT EXISTS home_dismissals (
+  session_id TEXT PRIMARY KEY,
+  dismissed_at INTEGER NOT NULL
+);`,
+  },
 ];
 
 // FTS5 tables can only seek by rowid or MATCH, so a `DELETE ... WHERE path = ?`
