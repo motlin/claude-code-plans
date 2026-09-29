@@ -43,3 +43,42 @@ export function useSessionArchive(sessionId: string): (archived: boolean) => voi
     [qc, sessionId, toast],
   );
 }
+
+function archivedSessionsMessage(count: number): string {
+  return `Archived ${count} session${count === 1 ? "" : "s"}`;
+}
+
+/**
+ * Archive several sessions at once, like a group header's "Archive all": one
+ * toast "Archived N sessions" with [Undo] that unarchives them all.
+ */
+export function useArchiveSessions(): (sessionIds: readonly string[]) => void {
+  const qc = useQueryClient();
+  const toast = useToast();
+
+  return useCallback(
+    (sessionIds: readonly string[]) => {
+      if (sessionIds.length === 0) return;
+      void Promise.allSettled(sessionIds.map((id) => requestSessionArchived(qc, id, true))).then(
+        (results) => {
+          const archived = sessionIds.filter((_, index) => results[index]?.status === "fulfilled");
+          if (archived.length < sessionIds.length) {
+            toast({ kind: "error", message: ARCHIVE_FAILED_MESSAGE });
+          }
+          if (archived.length === 0) return;
+          const unarchive = () => {
+            Promise.all(archived.map((id) => requestSessionArchived(qc, id, false))).catch(() => {
+              toast({ kind: "error", message: UNARCHIVE_FAILED_MESSAGE });
+            });
+          };
+          toast({
+            kind: "success",
+            message: archivedSessionsMessage(archived.length),
+            action: { label: "Undo", onAction: unarchive },
+          });
+        },
+      );
+    },
+    [qc, toast],
+  );
+}

@@ -13,11 +13,13 @@ export function InlineRenameInput({
   onCommit,
   onCancel,
   className,
+  ariaLabel = "Rename",
 }: {
   value: string;
   onCommit: (value: string) => void;
   onCancel: () => void;
   className?: string;
+  ariaLabel?: string;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   const settled = useRef(false);
@@ -38,7 +40,7 @@ export function InlineRenameInput({
     <input
       ref={ref}
       type="text"
-      aria-label="Rename"
+      aria-label={ariaLabel}
       defaultValue={value}
       className={className ? `${INPUT_CLASS} ${className}` : INPUT_CLASS}
       onClick={(event) => {

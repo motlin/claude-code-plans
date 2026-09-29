@@ -178,6 +178,15 @@ export function moveGroup(id: string, toIndex: number): void {
   write({ ...state, groups: [...rest.slice(0, index), group, ...rest.slice(index)] });
 }
 
+/** Reorder every group section by name, A to Z. */
+export function sortGroupsByName(): void {
+  const state = readSessionGroupState();
+  const groups = [...state.groups].sort((first, second) =>
+    first.name.localeCompare(second.name, undefined, { sensitivity: "base" }),
+  );
+  write({ ...state, groups });
+}
+
 function onStorage(event: StorageEvent): void {
   if (event.key === null || event.key === SESSION_GROUP_STORAGE_KEY) notify();
 }

@@ -4,7 +4,11 @@ import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode 
 
 import type { SidebarDragRowProps } from "../../hooks/use-sidebar-drag";
 import type { SessionListItem } from "../../lib/api/sessions";
-import type { SessionGroup, SessionGroupRow } from "../../lib/session-groups";
+import {
+  customGroupIdOfKey,
+  type SessionGroup,
+  type SessionGroupRow,
+} from "../../lib/session-groups";
 import {
   familyKey,
   setFamiliesCollapsed,
@@ -16,6 +20,7 @@ import { ArchivedBadge } from "../archived-badge";
 import { SessionActionsMenu, SessionRowTitle } from "../session-actions-menu";
 import { SessionRowStatusDot } from "../session-unread-control";
 import { Tooltip } from "../ui/tooltip";
+import { CustomGroupHeader } from "./custom-group-header";
 
 export interface SidebarSessionRow extends SessionGroupRow {
   id: string;
@@ -35,6 +40,12 @@ export function toGroupRow(session: SessionListItem): SidebarSessionRow {
     lastActivityAt: Date.parse(session.mtime),
     forkedFromSessionId: session.forkedFromSessionId,
   };
+}
+
+/** The section's unarchived sessions, family members included, for Archive all. */
+function archivableIds(group: SessionGroup<SidebarSessionRow>): string[] {
+  const rows = group.rows.flatMap((row) => [row, ...(group.nested.get(row.sessionId) ?? [])]);
+  return rows.filter((row) => !row.archived).map((row) => row.sessionId);
 }
 
 export const ROW_CLASS =
@@ -63,32 +74,47 @@ export function GroupSection({
   /** Every family head in the list, for the Alt-click that hides or shows all nested sessions. */
   familyHeadIds?: readonly string[];
 }) {
+  const customGroupId = customGroupIdOfKey(group.key);
+  const toggle = (
+    <button
+      type="button"
+      data-group-toggle
+      aria-expanded={expanded}
+      onClick={() => toggleSidebarGroup(group.key)}
+      className="group/label -my-1 -ml-1 flex min-w-0 flex-1 items-center gap-1 rounded-[var(--sb-radius)] py-1 pl-1 text-left hover:text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
+    >
+      <span data-group-name className="min-w-0 truncate">
+        {group.label}
+      </span>
+      <ChevronRight
+        aria-hidden="true"
+        data-group-caret
+        className={`h-3 w-3 shrink-0 transition-transform duration-150 motion-reduce:transition-none ${
+          expanded
+            ? "rotate-90 opacity-0 group-hover/section:opacity-100 group-focus-visible/label:opacity-100"
+            : "opacity-100"
+        }`}
+      />
+    </button>
+  );
   return (
     <div data-group-key={group.key} className="group/section relative isolate flex flex-col gap-px">
       <div
         data-sidebar-group-label
         className="group/labelrow df-label-inset flex min-h-[calc(var(--sb-group-pt)+var(--sb-row-h)-4px)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[calc((var(--sb-row-h)-24px)/2)] pb-1 text-[length:var(--sb-group-font)] leading-4 text-ink-muted"
       >
-        <button
-          type="button"
-          data-group-toggle
-          aria-expanded={expanded}
-          onClick={() => toggleSidebarGroup(group.key)}
-          className="group/label -my-1 -ml-1 flex min-w-0 flex-1 items-center gap-1 rounded-[var(--sb-radius)] py-1 pl-1 text-left hover:text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
-        >
-          <span data-group-name className="min-w-0 truncate">
-            {group.label}
-          </span>
-          <ChevronRight
-            aria-hidden="true"
-            data-group-caret
-            className={`h-3 w-3 shrink-0 transition-transform duration-150 motion-reduce:transition-none ${
-              expanded
-                ? "rotate-90 opacity-0 group-hover/section:opacity-100 group-focus-visible/label:opacity-100"
-                : "opacity-100"
-            }`}
-          />
-        </button>
+        {customGroupId === null ? (
+          toggle
+        ) : (
+          <CustomGroupHeader
+            groupId={customGroupId}
+            groupKey={group.key}
+            label={group.label}
+            archivableIds={archivableIds(group)}
+          >
+            {toggle}
+          </CustomGroupHeader>
+        )}
         {filterSlot}
       </div>
       {expanded && (

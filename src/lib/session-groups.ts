@@ -70,6 +70,13 @@ export interface CustomGroups {
 const NO_CUSTOM_GROUPS: CustomGroups = { groups: [], assignments: {}, order: {} };
 
 const CUSTOM_UNGROUPED_KEY = "custom-ungrouped";
+const CUSTOM_GROUP_KEY_PREFIX = "custom-";
+
+/** The custom group behind a section key, or null for Ungrouped and every other mode. */
+export function customGroupIdOfKey(key: string): string | null {
+  if (key === CUSTOM_UNGROUPED_KEY || !key.startsWith(CUSTOM_GROUP_KEY_PREFIX)) return null;
+  return key.slice(CUSTOM_GROUP_KEY_PREFIX.length);
+}
 
 /** Completed, Older and Recents show this many rows before "Show N more". */
 const GROUP_ROW_CAP = 20;
@@ -263,7 +270,7 @@ function buildCustomGroups<Row extends SessionGroupRow>(
       (first, second) => rank(first) - rank(second),
     );
     if (groupRows.length === 0 && !showEmptyGroups) return [];
-    return [group(`custom-${entry.id}`, entry.name, groupRows, false, nested)];
+    return [group(`${CUSTOM_GROUP_KEY_PREFIX}${entry.id}`, entry.name, groupRows, false, nested)];
   });
   if (ungrouped.length > 0)
     sections.push(group(CUSTOM_UNGROUPED_KEY, "Ungrouped", ungrouped, false, nested));
