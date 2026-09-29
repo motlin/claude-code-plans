@@ -384,6 +384,35 @@ describe("processTranscript", () => {
     }
   });
 
+  it("carries rendered attachment context onto attachment lines", () => {
+    const records = [
+      {
+        type: "attachment",
+        uuid: "att-2",
+        timestamp: "1999-12-31T00:00:00Z",
+        sessionId: "s-1",
+        attachment: { type: "silent_turn_reminder" },
+        rendered: [{ content: "<system-reminder>quiet</system-reminder>" }],
+        renderedInHumanTurn: [{ content: "quiet" }],
+        renderedRole: "user",
+      },
+    ];
+    const result = processTranscript(records);
+    expect(result.lines).toStrictEqual([
+      {
+        type: "attachment",
+        attachmentJson: JSON.stringify({ type: "silent_turn_reminder" }),
+        rendered: ["<system-reminder>quiet</system-reminder>"],
+        renderedInHumanTurn: ["quiet"],
+        renderedRole: "user",
+        uuid: "att-2",
+        timestamp: "1999-12-31T00:00:00Z",
+        sessionId: "s-1",
+        lineIndex: 0,
+      },
+    ]);
+  });
+
   it("preserves parentUuid on message lines", () => {
     const records = [
       assistantRecord([{ type: "text", text: "response" }], {

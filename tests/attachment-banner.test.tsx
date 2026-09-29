@@ -263,4 +263,145 @@ describe("AttachmentBanner", () => {
     expect(html).toContain("/Users/craig/.claude/teams/webapp/config.json");
     expect(html).toContain('title="/Users/craig/.claude/tasks/webapp/tasks.json"');
   });
+
+  describe("expandable context details", () => {
+    function detailSections(
+      payload: AttachmentPayload,
+      extra: {
+        rendered?: string[];
+        renderedInHumanTurn?: string[];
+        renderedRole?: "system" | "user";
+      } = {},
+    ): [string, string][] {
+      const view = render(<AttachmentBanner attachmentJson={JSON.stringify(payload)} {...extra} />);
+      const sections = [...view.container.querySelectorAll("[data-attachment-detail]")].map(
+        (el): [string, string] => [
+          el.getAttribute("data-attachment-detail") ?? "",
+          el.querySelector("[data-detail-body]")?.textContent ?? "",
+        ],
+      );
+      view.unmount();
+      return sections;
+    }
+
+    it("stays a plain row when there is nothing to expand", () => {
+      const html = renderBanner({ type: "silent_turn_reminder" });
+      expect(html).not.toContain("<details");
+    });
+
+    it("shows the exact system-reminder text the attachment rendered", () => {
+      expect(
+        detailSections(
+          { type: "silent_turn_reminder" },
+          { rendered: ["<system-reminder>Stay quiet</system-reminder>"] },
+        ),
+      ).toStrictEqual([["System reminder", "<system-reminder>Stay quiet</system-reminder>"]]);
+    });
+
+    it("labels text injected into the user turn and human-turn renderings", () => {
+      expect(
+        detailSections(
+          { type: "date", date: "2026-09-29" },
+          {
+            rendered: ["Today is 2026-09-29"],
+            renderedInHumanTurn: ["[date 2026-09-29]"],
+            renderedRole: "user",
+          },
+        ),
+      ).toStrictEqual([
+        ["Injected into user turn", "Today is 2026-09-29"],
+        ["Rendered in human turn", "[date 2026-09-29]"],
+      ]);
+    });
+
+    it("details the environment snapshot and changes", () => {
+      expect(
+        detailSections({
+          type: "environment",
+          snapshot: {
+            workingDirectory: "/work/repo",
+            isGitRepo: true,
+            platform: "darwin",
+            shell: "zsh",
+          },
+          changes: [
+            { field: "workingDirectory", from: "/work/old" },
+            { field: "additionalWorkingDirectories", added: ["/a"], removed: ["/b"] },
+          ],
+        }),
+      ).toStrictEqual([
+        [
+          "Environment snapshot",
+          "Working directory: /work/repo\nGit repository: yes\nPlatform: darwin\nShell: zsh",
+        ],
+        [
+          "Environment changes",
+          "workingDirectory (was /work/old)\nadditionalWorkingDirectories +/a -/b",
+        ],
+      ]);
+    });
+
+    it("lists instruction files with their contents", () => {
+      expect(
+        detailSections({
+          type: "instructions",
+          reason: "session_start",
+          files: [
+            { path: "/repo/CLAUDE.md", type: "Project", content: "Be terse." },
+            { path: "/home/.claude/CLAUDE.md" },
+          ],
+          removed: ["/old/CLAUDE.md"],
+        }),
+      ).toStrictEqual([
+        ["Reason", "session_start"],
+        ["Instruction files", "/repo/CLAUDE.md (Project)Be terse./home/.claude/CLAUDE.md"],
+        ["Removed", "/old/CLAUDE.md"],
+      ]);
+    });
+
+    it("shows the model identity", () => {
+      expect(
+        detailSections({
+          type: "model",
+          identity: {
+            modelId: "claude-opus-5-5",
+            marketingName: "Opus 5.5",
+            knowledgeCutoff: "June 2026",
+          },
+          text: "You are powered by Opus 5.5.",
+        }),
+      ).toStrictEqual([
+        [
+          "Model identity",
+          "Model ID: claude-opus-5-5\nName: Opus 5.5\nKnowledge cutoff: June 2026",
+        ],
+        ["Model text", "You are powered by Opus 5.5."],
+      ]);
+    });
+
+    it("lists prompt snapshot tools and system prompt blocks", () => {
+      expect(
+        detailSections({
+          type: "prompt_snapshot",
+          systemPrompt: ["You are Claude.", "Be helpful."],
+          tools: [{ name: "Bash" }, { name: "Read" }],
+        }),
+      ).toStrictEqual([
+        ["Tools (2)", "Bash, Read"],
+        ["System prompt (2 blocks)", "You are Claude.Be helpful."],
+      ]);
+    });
+
+    it("puts the type-specific details before the rendered reminder", () => {
+      expect(
+        detailSections(
+          { type: "fork_briefing", text: "You are a fork." },
+          { rendered: ["<system-reminder>fork</system-reminder>"] },
+        ),
+      ).toStrictEqual([
+        ["Briefing", "You are a fork."],
+        ["System reminder", "<system-reminder>fork</system-reminder>"],
+      ]);
+    });
+  });
 });

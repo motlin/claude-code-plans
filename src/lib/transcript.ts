@@ -19,6 +19,7 @@ import {
   JsonValueSchema,
   JsonlRecordSchema,
   PromptSourceSchema,
+  RenderedRoleSchema,
   TurnOriginSchema,
 } from "./schemas";
 import {
@@ -162,6 +163,10 @@ const ArtifactWatchLineSchema = z.object({
 const AttachmentLineSchema = z.object({
   type: z.literal("attachment"),
   attachmentJson: z.string(),
+  // The exact context text the attachment rendered into the model's turn.
+  rendered: z.array(z.string()).optional(),
+  renderedInHumanTurn: z.array(z.string()).optional(),
+  renderedRole: RenderedRoleSchema.optional(),
   uuid: z.string().optional(),
   timestamp: z.string().optional(),
   sessionId: z.string().optional(),
@@ -701,6 +706,13 @@ function processRecordBatch(
         attachmentJson: JSON.stringify(record.attachment),
         lineIndex,
       };
+      if (record.rendered !== undefined) {
+        attachmentLine.rendered = record.rendered.map((r) => r.content);
+      }
+      if (record.renderedInHumanTurn !== undefined) {
+        attachmentLine.renderedInHumanTurn = record.renderedInHumanTurn.map((r) => r.content);
+      }
+      if (record.renderedRole !== undefined) attachmentLine.renderedRole = record.renderedRole;
       if (uuid !== undefined) attachmentLine.uuid = uuid;
       if (record.timestamp !== undefined) attachmentLine.timestamp = record.timestamp;
       if (sessionId !== undefined) attachmentLine.sessionId = sessionId;

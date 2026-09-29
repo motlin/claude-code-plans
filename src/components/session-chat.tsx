@@ -1367,6 +1367,9 @@ function renderSessionMessage({
           attachmentJson={line.attachmentJson}
           sessionId={sourceSessionId}
           uuid={line.uuid}
+          rendered={line.rendered}
+          renderedInHumanTurn={line.renderedInHumanTurn}
+          renderedRole={line.renderedRole}
         />
       );
     case "system":

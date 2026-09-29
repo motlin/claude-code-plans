@@ -6,6 +6,7 @@ import {
   Bot,
   Brain,
   Calendar,
+  ChevronRight,
   CircleCheck,
   ClipboardList,
   FileText,
@@ -28,7 +29,12 @@ import {
   Zap,
 } from "lucide-react";
 import { assertNever } from "../lib/assert-never";
-import { AttachmentPayloadSchema, type AttachmentPayload } from "../lib/schemas";
+import type { z } from "zod";
+import {
+  AttachmentPayloadSchema,
+  type AttachmentPayload,
+  type RenderedRoleSchema,
+} from "../lib/schemas";
 import { formatTimestamp, formatRelativeTimestamp } from "../lib/timestamp-format";
 import { DebugLink } from "./debug-link";
 import { PlanLink } from "./plan-link";
@@ -42,10 +48,17 @@ export function AttachmentBanner({
   attachmentJson,
   sessionId,
   uuid,
+  rendered,
+  renderedInHumanTurn,
+  renderedRole,
 }: {
   attachmentJson: string;
   sessionId?: string | undefined;
   uuid?: string | undefined;
+  /** The exact context text (usually a system-reminder) the attachment rendered. */
+  rendered?: readonly string[] | undefined;
+  renderedInHumanTurn?: readonly string[] | undefined;
+  renderedRole?: RenderedRole | undefined;
 }) {
   const attachment = useMemo<AttachmentPayload | null>(() => {
     const parsed = AttachmentPayloadSchema.safeParse(JSON.parse(attachmentJson));
@@ -54,18 +67,200 @@ export function AttachmentBanner({
 
   if (!attachment) return null;
 
-  return <AttachmentContent attachment={attachment} sessionId={sessionId} uuid={uuid} />;
+  const sections = [
+    ...attachmentDetailSections(attachment),
+    ...renderedSections(rendered, renderedInHumanTurn, renderedRole),
+  ];
+  const details = sections.length > 0 ? <DetailSections sections={sections} /> : undefined;
+
+  return (
+    <AttachmentContent
+      attachment={attachment}
+      sessionId={sessionId}
+      uuid={uuid}
+      details={details}
+    />
+  );
+}
+
+type RenderedRole = z.infer<typeof RenderedRoleSchema>;
+
+interface DetailSection {
+  label: string;
+  body: React.ReactNode;
+}
+
+const RENDERED_ROLE_LABELS = {
+  system: "System reminder",
+  user: "Injected into user turn",
+} satisfies Record<RenderedRole, string>;
+
+function renderedSections(
+  rendered: readonly string[] | undefined,
+  renderedInHumanTurn: readonly string[] | undefined,
+  renderedRole: RenderedRole | undefined,
+): DetailSection[] {
+  const sections: DetailSection[] = [];
+  if (rendered && rendered.length > 0) {
+    sections.push({
+      label: RENDERED_ROLE_LABELS[renderedRole ?? "system"],
+      body: rendered.map((text, i) => <Pre key={i}>{text}</Pre>),
+    });
+  }
+  if (renderedInHumanTurn && renderedInHumanTurn.length > 0) {
+    sections.push({
+      label: "Rendered in human turn",
+      body: renderedInHumanTurn.map((text, i) => <Pre key={i}>{text}</Pre>),
+    });
+  }
+  return sections;
+}
+
+function linesSection(label: string, lines: (string | false | undefined)[]): DetailSection[] {
+  const present = lines.filter((line): line is string => typeof line === "string");
+  return present.length > 0 ? [{ label, body: <Pre>{present.join("\n")}</Pre> }] : [];
+}
+
+function textSection(label: string, text: string | undefined): DetailSection[] {
+  return text ? [{ label, body: <Pre>{text}</Pre> }] : [];
+}
+
+function yesNo(value: boolean | undefined): string | undefined {
+  return value === undefined ? undefined : value ? "yes" : "no";
+}
+
+function labeled(label: string, value: string | undefined): string | undefined {
+  return value === undefined ? undefined : `${label}: ${value}`;
+}
+
+/** Type-specific details for the context attachments injected into the model's turn. */
+function attachmentDetailSections(attachment: AttachmentPayload): DetailSection[] {
+  if (attachment.type === "environment") {
+    const snap = attachment.snapshot;
+    return [
+      ...linesSection("Environment snapshot", [
+        labeled("Working directory", snap?.workingDirectory),
+        labeled("Worktree", yesNo(snap?.isWorktree)),
+        labeled("Git repository", yesNo(snap?.isGitRepo)),
+        labeled("Additional directories", snap?.additionalWorkingDirectories?.join(", ")),
+        labeled("Platform", snap?.platform),
+        labeled("Shell", snap?.shell),
+        labeled("OS version", snap?.osVersion),
+        labeled("Scratchpad", snap?.scratchpadDirectory),
+      ]),
+      ...linesSection(
+        "Environment changes",
+        (attachment.changes ?? []).map((change) =>
+          [
+            change.field,
+            change.from !== undefined && `(was ${change.from})`,
+            change.added?.length && `+${change.added.join(", +")}`,
+            change.removed?.length && `-${change.removed.join(", -")}`,
+          ]
+            .filter((part): part is string => typeof part === "string")
+            .join(" "),
+        ),
+      ),
+    ];
+  }
+  if (attachment.type === "instructions") {
+    const files = attachment.files ?? [];
+    return [
+      ...textSection("Reason", attachment.reason),
+      ...(files.length > 0
+        ? [
+            {
+              label: "Instruction files",
+              body: files.map((file) => {
+                const title = `${file.path}${file.type ? ` (${file.type})` : ""}`;
+                return file.content ? (
+                  <details key={file.path} className="mt-1">
+                    <summary className="cursor-pointer font-mono text-[10px]">{title}</summary>
+                    <Pre>{file.content}</Pre>
+                  </details>
+                ) : (
+                  <div key={file.path} className="mt-1 font-mono text-[10px]">
+                    {title}
+                  </div>
+                );
+              }),
+            },
+          ]
+        : []),
+      ...linesSection("Removed", attachment.removed ?? []),
+    ];
+  }
+  if (attachment.type === "model") {
+    const id = attachment.identity;
+    return [
+      ...linesSection("Model identity", [
+        labeled("Model ID", id?.modelId),
+        labeled("Name", id?.marketingName),
+        labeled("Knowledge cutoff", id?.knowledgeCutoff),
+      ]),
+      ...textSection("Model text", attachment.text),
+    ];
+  }
+  if (attachment.type === "prompt_snapshot") {
+    const tools = attachment.tools ?? [];
+    const systemPrompt = attachment.systemPrompt ?? [];
+    return [
+      ...(tools.length > 0
+        ? [
+            {
+              label: `Tools (${tools.length})`,
+              body: <Pre>{tools.map((tool) => tool.name).join(", ")}</Pre>,
+            },
+          ]
+        : []),
+      ...(systemPrompt.length > 0
+        ? [
+            {
+              label: `System prompt (${systemPrompt.length} block${systemPrompt.length === 1 ? "" : "s"})`,
+              body: systemPrompt.map((block, i) => <Pre key={i}>{block}</Pre>),
+            },
+          ]
+        : []),
+      ...textSection("Host prompt", attachment.hostPrompt),
+    ];
+  }
+  if (attachment.type === "fork_briefing") return textSection("Briefing", attachment.text);
+  if (attachment.type === "output_style") {
+    return textSection("Turn reminder", attachment.turnReminder);
+  }
+  if (attachment.type === "output_style_instructions") {
+    return textSection("Style prompt", attachment.style?.prompt);
+  }
+  return [];
+}
+
+function DetailSections({ sections }: { sections: readonly DetailSection[] }) {
+  return (
+    <div className="flex flex-col gap-2">
+      {sections.map((section, i) => (
+        <section key={i} data-attachment-detail={section.label}>
+          <div className="text-[10px] font-medium uppercase tracking-wide text-t6">
+            {section.label}
+          </div>
+          <div data-detail-body="">{section.body}</div>
+        </section>
+      ))}
+    </div>
+  );
 }
 
 function AttachmentContent({
   attachment,
   sessionId,
   uuid,
+  details,
 }: {
   attachment: AttachmentPayload;
   sessionId?: string | undefined;
   uuid?: string | undefined;
+  details?: React.ReactNode;
 }) {
+  const shared = { sessionId, uuid, details };
   switch (attachment.type) {
     // -- Hook results --
     case "hook_success":
@@ -73,8 +268,7 @@ function AttachmentContent({
         <Banner
           icon={<CircleCheck className="h-3.5 w-3.5" />}
           label={`Hook passed: ${attachment.hookName}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         >
           {attachment.durationMs !== undefined && (
             <span className="text-t6">{attachment.durationMs}ms</span>
@@ -86,8 +280,7 @@ function AttachmentContent({
         <Banner
           icon={<AlertTriangle className="h-3.5 w-3.5" />}
           label={`Hook error (non-blocking): ${attachment.hookName}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         >
           {attachment.stderr && <Pre>{attachment.stderr}</Pre>}
         </Banner>
@@ -97,8 +290,7 @@ function AttachmentContent({
         <Banner
           icon={<Ban className="h-3.5 w-3.5" />}
           label={`Hook cancelled: ${attachment.hookName}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     case "hook_additional_context":
@@ -106,8 +298,7 @@ function AttachmentContent({
         <Banner
           icon={<Paperclip className="h-3.5 w-3.5" />}
           label={`Hook context: ${attachment.hookName}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         >
           {typeof attachment.content === "string" && attachment.content.length > 0 && (
             <Pre>{attachment.content}</Pre>
@@ -126,8 +317,7 @@ function AttachmentContent({
         <Banner
           icon={<OctagonX className="h-3.5 w-3.5" />}
           label={`Hook blocked: ${attachment.hookName}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         >
           {blockingMessage && <span className="text-t6">{blockingMessage}</span>}
         </Banner>
@@ -138,8 +328,7 @@ function AttachmentContent({
         <Banner
           icon={<MessageSquare className="h-3.5 w-3.5" />}
           label={`Hook message: ${attachment.hookName}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         >
           {typeof attachment.content === "string" && attachment.content.length > 0 && (
             <Pre>{attachment.content}</Pre>
@@ -151,8 +340,7 @@ function AttachmentContent({
         <Banner
           icon={<CircleCheck className="h-3.5 w-3.5" />}
           label={`Async hook completed: ${attachment.hookName}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         >
           {attachment.exitCode !== undefined && (
             <span className="text-t6">exit {attachment.exitCode}</span>
@@ -166,8 +354,7 @@ function AttachmentContent({
         <Banner
           icon={<FileText className="h-3.5 w-3.5" />}
           label={attachment.displayPath ?? attachment.filename}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     case "already_read_file":
@@ -175,8 +362,7 @@ function AttachmentContent({
         <Banner
           icon={<FileText className="h-3.5 w-3.5" />}
           label={`Already read: ${attachment.displayPath ?? attachment.filename}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     case "directory":
@@ -184,8 +370,7 @@ function AttachmentContent({
         <Banner
           icon={<Folder className="h-3.5 w-3.5" />}
           label={attachment.displayPath ?? attachment.path ?? "directory"}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     case "compact_file_reference":
@@ -193,8 +378,7 @@ function AttachmentContent({
         <Banner
           icon={<FileText className="h-3.5 w-3.5" />}
           label={attachment.displayPath ?? attachment.filename ?? "file reference"}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     case "read_truncation_notice":
@@ -202,8 +386,7 @@ function AttachmentContent({
         <Banner
           icon={<AlertTriangle className="h-3.5 w-3.5" />}
           label="Read output truncated"
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         >
           <Pre>{attachment.banner}</Pre>
         </Banner>
@@ -213,8 +396,7 @@ function AttachmentContent({
         <Banner
           icon={<Pencil className="h-3.5 w-3.5" />}
           label={`Edited: ${attachment.filename}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     case "selected_lines_in_ide": {
@@ -227,8 +409,7 @@ function AttachmentContent({
         <Banner
           icon={<Search className="h-3.5 w-3.5" />}
           label={`Selected in ${attachment.ideName ?? "IDE"}: ${filePart}${linePart}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     }
@@ -237,8 +418,7 @@ function AttachmentContent({
         <Banner
           icon={<FolderOpen className="h-3.5 w-3.5" />}
           label={`Opened in IDE: ${attachment.filename ?? "file"}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
 
@@ -248,8 +428,7 @@ function AttachmentContent({
         <Banner
           icon={<Calendar className="h-3.5 w-3.5" />}
           label={attachment.newDate}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     case "command_permissions":
@@ -257,8 +436,7 @@ function AttachmentContent({
         <Banner
           icon={<Key className="h-3.5 w-3.5" />}
           label={`Permissions${attachment.model ? ` (${attachment.model})` : ""}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         >
           {attachment.allowedTools && attachment.allowedTools.length > 0 && (
             <span className="text-t6">{attachment.allowedTools.length} tools allowed</span>
@@ -270,8 +448,7 @@ function AttachmentContent({
         <Banner
           icon={<PawPrint className="h-3.5 w-3.5" />}
           label={[attachment.name, attachment.species].filter(Boolean).join(" the ") || "Companion"}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     case "ultrathink_effort":
@@ -279,20 +456,14 @@ function AttachmentContent({
         <Banner
           icon={<Brain className="h-3.5 w-3.5" />}
           label={`Thinking effort: ${attachment.level ?? "unknown"}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
 
     // -- Plan/mode transitions --
     case "plan_mode": {
       return (
-        <Banner
-          icon={<ClipboardList className="h-3.5 w-3.5" />}
-          label="Plan mode"
-          sessionId={sessionId}
-          uuid={uuid}
-        >
+        <Banner icon={<ClipboardList className="h-3.5 w-3.5" />} label="Plan mode" {...shared}>
           {attachment.planFilePath && <PlanLink planFilePath={attachment.planFilePath} />}
         </Banner>
       );
@@ -302,8 +473,7 @@ function AttachmentContent({
         <Banner
           icon={<ClipboardList className="h-3.5 w-3.5" />}
           label="Exited plan mode"
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     case "plan_mode_reentry": {
@@ -311,8 +481,7 @@ function AttachmentContent({
         <Banner
           icon={<ClipboardList className="h-3.5 w-3.5" />}
           label="Re-entered plan mode"
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         >
           {attachment.planFilePath && <PlanLink planFilePath={attachment.planFilePath} />}
         </Banner>
@@ -320,12 +489,7 @@ function AttachmentContent({
     }
     case "plan_file_reference": {
       return (
-        <Banner
-          icon={<ClipboardList className="h-3.5 w-3.5" />}
-          label="Plan file"
-          sessionId={sessionId}
-          uuid={uuid}
-        >
+        <Banner icon={<ClipboardList className="h-3.5 w-3.5" />} label="Plan file" {...shared}>
           {attachment.planFilePath && <PlanLink planFilePath={attachment.planFilePath} />}
         </Banner>
       );
@@ -335,8 +499,7 @@ function AttachmentContent({
         <Banner
           icon={<FileText className="h-3.5 w-3.5" />}
           label={`Memory: ${attachment.displayPath ?? attachment.path ?? "nested"}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     case "auto_mode":
@@ -344,26 +507,17 @@ function AttachmentContent({
         <Banner
           icon={<Bot className="h-3.5 w-3.5" />}
           label={`Auto mode${attachment.reminderType ? `: ${attachment.reminderType}` : ""}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     case "auto_mode_exit":
-      return (
-        <Banner
-          icon={<Bot className="h-3.5 w-3.5" />}
-          label="Auto mode exited"
-          sessionId={sessionId}
-          uuid={uuid}
-        />
-      );
+      return <Banner icon={<Bot className="h-3.5 w-3.5" />} label="Auto mode exited" {...shared} />;
     case "max_turns_reached":
       return (
         <Banner
           icon={<AlertTriangle className="h-3.5 w-3.5" />}
           label={`Max turns reached${attachment.maxTurns !== undefined ? ` (${attachment.turnCount ?? "?"}/${attachment.maxTurns})` : ""}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     case "workflow_keyword_request":
@@ -371,8 +525,7 @@ function AttachmentContent({
         <Banner
           icon={<Workflow className="h-3.5 w-3.5" />}
           label="Workflow keyword request"
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     case "team_context":
@@ -380,8 +533,7 @@ function AttachmentContent({
         <Banner
           icon={<Users className="h-3.5 w-3.5" />}
           label={`Team: ${attachment.agentName ?? attachment.agentId ?? "member"}${attachment.teamName ? ` (${attachment.teamName})` : ""}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         >
           {attachment.taskListPath && (
             <Link
@@ -414,8 +566,7 @@ function AttachmentContent({
         <Banner
           icon={<Wrench className="h-3.5 w-3.5" />}
           label={`Deferred tools: ${parts.join(", ") || "updated"}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     }
@@ -427,8 +578,7 @@ function AttachmentContent({
         <Banner
           icon={<Bot className="h-3.5 w-3.5" />}
           label={`Agents${attachment.isInitial ? " — initial" : ""}: ${parts.join(", ") || "updated"}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     }
@@ -440,8 +590,7 @@ function AttachmentContent({
         <Banner
           icon={<Plug className="h-3.5 w-3.5" />}
           label={`MCP instructions: ${parts.join(", ") || "updated"}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     }
@@ -450,8 +599,7 @@ function AttachmentContent({
         <Banner
           icon={<Zap className="h-3.5 w-3.5" />}
           label={`Skills${attachment.skillCount !== undefined ? ` (${attachment.skillCount})` : ""}${attachment.isInitial ? " — initial" : ""}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     case "dynamic_skill":
@@ -459,8 +607,7 @@ function AttachmentContent({
         <Banner
           icon={<Zap className="h-3.5 w-3.5" />}
           label={`Dynamic skills${attachment.skillNames?.length ? ` (${attachment.skillNames.length})` : ""}: ${attachment.displayPath ?? attachment.skillDir ?? "loaded"}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     case "invoked_skills":
@@ -468,8 +615,7 @@ function AttachmentContent({
         <Banner
           icon={<Zap className="h-3.5 w-3.5" />}
           label={`Invoked ${attachment.skills?.length ?? 0} skill${(attachment.skills?.length ?? 0) === 1 ? "" : "s"}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
 
@@ -481,8 +627,7 @@ function AttachmentContent({
         <Banner
           icon={<Pin className="h-3.5 w-3.5" />}
           label={`${kind} reminder${attachment.itemCount !== undefined ? ` (${attachment.itemCount} items)` : ""}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     }
@@ -491,8 +636,7 @@ function AttachmentContent({
         <Banner
           icon={<Hourglass className="h-3.5 w-3.5" />}
           label="Token budget reminder"
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         >
           <Pre>{attachment.text}</Pre>
         </Banner>
@@ -509,8 +653,7 @@ function AttachmentContent({
             )
           }
           label={`Task ${attachment.status}${attachment.description ? `: ${attachment.description}` : ""}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         >
           <span className="text-t6">#{attachment.taskId}</span>
         </Banner>
@@ -522,12 +665,7 @@ function AttachmentContent({
       const queuedRelative = formatRelativeTimestamp(attachment.timestamp);
       const queuedAbsolute = formatTimestamp(attachment.timestamp);
       return (
-        <Banner
-          icon={<Hourglass className="h-3.5 w-3.5" />}
-          label="Queued command"
-          sessionId={sessionId}
-          uuid={uuid}
-        >
+        <Banner icon={<Hourglass className="h-3.5 w-3.5" />} label="Queued command" {...shared}>
           {typeof attachment.prompt === "string" && attachment.prompt.length > 0 && (
             <span className="text-t6 truncate max-w-sm" title={attachment.prompt}>
               {attachment.prompt.length > 80
@@ -550,8 +688,7 @@ function AttachmentContent({
         <Banner
           icon={<Microscope className="h-3.5 w-3.5" />}
           label={`Diagnostics${attachment.isNew ? " (new)" : ""}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         >
           {attachment.files && attachment.files.length > 0 && (
             <span className="text-t6">
@@ -567,8 +704,7 @@ function AttachmentContent({
         <Banner
           icon={<Calendar className="h-3.5 w-3.5" />}
           label={`${attachment.changed ? "Date changed" : "Date"}${attachment.date ? `: ${attachment.date}` : ""}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     case "environment":
@@ -576,8 +712,7 @@ function AttachmentContent({
         <Banner
           icon={<FolderOpen className="h-3.5 w-3.5" />}
           label={`Environment${attachment.snapshot?.workingDirectory ? `: ${attachment.snapshot.workingDirectory}` : attachment.changes?.length ? " update" : ""}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     case "instructions":
@@ -585,8 +720,7 @@ function AttachmentContent({
         <Banner
           icon={<FileText className="h-3.5 w-3.5" />}
           label={`Instructions${attachment.files ? ` (${attachment.files.length} file${attachment.files.length === 1 ? "" : "s"})` : ""}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     case "model":
@@ -594,8 +728,7 @@ function AttachmentContent({
         <Banner
           icon={<Bot className="h-3.5 w-3.5" />}
           label={`Model${attachment.identity?.marketingName ? `: ${attachment.identity.marketingName}` : ""}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     case "output_style":
@@ -606,8 +739,7 @@ function AttachmentContent({
         <Banner
           icon={<Pencil className="h-3.5 w-3.5" />}
           label={`Output style${style ? `: ${style}` : ""}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     }
@@ -619,8 +751,7 @@ function AttachmentContent({
         <Banner
           icon={<Paperclip className="h-3.5 w-3.5" />}
           label={CONTEXT_ATTACHMENT_LABELS[attachment.type]}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     case "prompt_snapshot":
@@ -633,8 +764,7 @@ function AttachmentContent({
               ? `Prompt snapshot${attachment.tools ? ` (${attachment.tools.length} tools)` : ""}`
               : `Deferred tools${attachment.entries ? ` (${attachment.entries.length})` : ""}`
           }
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     case "bash_output_audience_note":
@@ -644,8 +774,7 @@ function AttachmentContent({
         <Banner
           icon={<Pin className="h-3.5 w-3.5" />}
           label={CONTEXT_ATTACHMENT_LABELS[attachment.type]}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     case "hook_permission_decision":
@@ -653,8 +782,7 @@ function AttachmentContent({
         <Banner
           icon={<Key className="h-3.5 w-3.5" />}
           label={`Permission hook${attachment.decision ? `: ${attachment.decision}` : ""}`}
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     case "thinking_drop":
@@ -667,8 +795,7 @@ function AttachmentContent({
               ? `Thinking dropped${attachment.newlyDropped?.blockCount !== undefined ? ` (${attachment.newlyDropped.blockCount} blocks)` : ""}`
               : "Thinking stripped"
           }
-          sessionId={sessionId}
-          uuid={uuid}
+          {...shared}
         />
       );
     default:
@@ -700,6 +827,7 @@ export function Banner({
   sessionId,
   uuid,
   variant = "pill",
+  details,
 }: {
   icon?: React.ReactNode;
   label?: string;
@@ -707,6 +835,8 @@ export function Banner({
   sessionId?: string | undefined;
   uuid?: string | undefined;
   variant?: BannerVariant;
+  /** Expandable body; when present the pill becomes a disclosure. */
+  details?: React.ReactNode | undefined;
 }) {
   if (variant === "status") {
     return (
@@ -715,6 +845,20 @@ export function Banner({
         {children}
         {sessionId && <DebugLink sessionId={sessionId} uuid={uuid} className="ml-auto" />}
       </div>
+    );
+  }
+  if (details !== undefined) {
+    return (
+      <details className="group text-xs text-t6 bg-surface-1 rounded-md border border-subtle">
+        <summary className="flex flex-wrap items-center gap-2 py-1.5 px-3 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+          <ChevronRight className="h-3 w-3 shrink-0 transition-transform group-open:rotate-90" />
+          {icon && <span className="shrink-0">{icon}</span>}
+          {label && <span>{label}</span>}
+          {children}
+          {sessionId && <DebugLink sessionId={sessionId} uuid={uuid} className="ml-auto" />}
+        </summary>
+        <div className="px-3 pb-2">{details}</div>
+      </details>
     );
   }
   return (
