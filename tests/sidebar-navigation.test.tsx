@@ -93,6 +93,7 @@ describe("sidebar navigation", () => {
     expect(navItems.map(({ label, to }) => ({ label, to }))).toStrictEqual([
       { label: "Artifacts", to: "/artifacts" },
       { label: "Routines", to: "/routines" },
+      { label: "Background jobs", to: "/jobs" },
       { label: "Active", to: "/active" },
       { label: "Herdr", to: "/herdr" },
       { label: "Tmux Windows", to: "/tmux" },
@@ -140,6 +141,14 @@ describe("sidebar navigation", () => {
         typeof useActiveSection
       >[0]),
     ).toStrictEqual({ section: "routines", activeItemId: null });
+  });
+
+  it("activates the Background jobs section on the Background jobs page", () => {
+    expect(
+      useActiveSection([{ fullPath: "/jobs", params: {} }] as unknown as Parameters<
+        typeof useActiveSection
+      >[0]),
+    ).toStrictEqual({ section: "jobs", activeItemId: null });
   });
 
   it("activates the Customize section on Customize and legacy plugin routes", () => {

@@ -88,6 +88,9 @@ export function useActiveSection(matches: ReturnType<typeof useMatches>): {
   if (path.startsWith("/routines")) {
     return { section: "routines", activeItemId: null };
   }
+  if (path.startsWith("/jobs")) {
+    return { section: "jobs", activeItemId: null };
+  }
   if (path.startsWith("/active")) {
     return { section: "active", activeItemId: null };
   }

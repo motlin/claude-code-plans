@@ -1,6 +1,7 @@
 export type Section =
   | "artifacts"
   | "routines"
+  | "jobs"
   | "active"
   | "herdr"
   | "tmux"

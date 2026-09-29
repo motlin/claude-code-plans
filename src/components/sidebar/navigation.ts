@@ -1,4 +1,5 @@
 import {
+  Briefcase,
   Clock,
   Shapes,
   FileText,
@@ -41,6 +42,11 @@ const navEntries = {
     to: "/routines",
     label: "Routines",
     icon: Clock,
+  },
+  jobs: {
+    to: "/jobs",
+    label: "Background jobs",
+    icon: Briefcase,
   },
   active: {
     to: "/active",

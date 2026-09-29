@@ -27,6 +27,7 @@ const PROJECTS_DIR = join(homedir(), ".claude", "projects");
 const COMMANDS_DIR = join(homedir(), ".claude", "commands");
 const PLUGINS_DIR = join(homedir(), ".claude", "plugins", "cache");
 const TASKS_DIR = join(homedir(), ".claude", "tasks");
+const JOBS_DIR = join(homedir(), ".claude", "jobs");
 const STATUSLINE_DIR = join(getCacheDir(), "statusline");
 
 let stopHerdrEventBridge: (() => void) | null = null;
@@ -61,11 +62,12 @@ void (async () => {
   const ignoredDirNames = resolveIgnoredDirNames();
   try {
     watcher = await createWatcher(
-      [PLANS_DIR, PROJECTS_DIR, COMMANDS_DIR, PLUGINS_DIR, TASKS_DIR, STATUSLINE_DIR],
+      [PLANS_DIR, PROJECTS_DIR, COMMANDS_DIR, PLUGINS_DIR, TASKS_DIR, STATUSLINE_DIR, JOBS_DIR],
       PROJECTS_DIR,
       PLANS_DIR,
       STATUSLINE_DIR,
       fileContentRoots,
+      JOBS_DIR,
     );
   } catch (err) {
     console.error("Failed to create watcher:", err);

@@ -886,6 +886,7 @@ const DOMAIN_EVENT_TYPES = [
   DOMAIN_EVENTS.APPROVAL_RESOLVED,
   DOMAIN_EVENTS.HOOK_SCHEMA_DRIFT,
   DOMAIN_EVENTS.REVIEW_OFFERED,
+  DOMAIN_EVENTS.JOBS_CHANGED,
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -1347,6 +1348,10 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
           if (typeof sessionId === "string") {
             for (const listener of reviewOfferListenersRef.current) listener(sessionId);
           }
+          break;
+        }
+        case DOMAIN_EVENTS.JOBS_CHANGED: {
+          void queryClient.invalidateQueries({ queryKey: ["jobs"] });
           break;
         }
         default:

@@ -28,6 +28,15 @@ import { ChangedFileKindSchema } from "../src/lib/changed-file-kind";
 import { CodeThemeDarkSchema, CodeThemeLightSchema } from "../src/lib/code-themes";
 import { GroupColorSchema, GroupIconSchema } from "../src/lib/group-appearance";
 import { HomeAttentionKindSchema } from "../src/lib/home-attention";
+import {
+  JobChildKindSchema,
+  JobFanKindSchema,
+  JobNameSourceSchema,
+  JobStateFileSchema,
+  JobStateSchema,
+  JobTempoSchema,
+  JobTimelineEntrySchema,
+} from "../src/lib/jobs";
 import { NavSectionSchema } from "../src/lib/nav-sections";
 import { PaletteFilterSchema, PaletteTypeSchema } from "../src/lib/palette-tokens";
 import { PaneLayoutStateSchema } from "../src/lib/pane-layout";
@@ -148,6 +157,13 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["RoutineScheduleFilterSchema", RoutineScheduleFilterSchema],
   ["RoutineStatusFilterSchema", RoutineStatusFilterSchema],
   ["RoutineSortSchema", RoutineSortSchema],
+  ["JobStateSchema", JobStateSchema],
+  ["JobTempoSchema", JobTempoSchema],
+  ["JobNameSourceSchema", JobNameSourceSchema],
+  ["JobChildKindSchema", JobChildKindSchema],
+  ["JobFanKindSchema", JobFanKindSchema],
+  ["JobStateFileSchema", JobStateFileSchema],
+  ["JobTimelineEntrySchema", JobTimelineEntrySchema],
   ["SessionMenuItemIdSchema", SessionMenuItemIdSchema],
   ["ChangedFileKindSchema", ChangedFileKindSchema],
   ["RecentsHistorySchema", RecentsHistorySchema],

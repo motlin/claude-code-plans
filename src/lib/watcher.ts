@@ -74,6 +74,7 @@ let watcher: RecursiveWatcher | null = null;
 let projectsDir = "";
 let plansDir = "";
 let statuslineDir = "";
+let jobsDir = "";
 let fileContentRoots: string[] = [];
 let fileContentRootByGitIndexPath = new Map<string, string>();
 const trackedFileIndex = new TrackedFileIndex();
@@ -419,6 +420,23 @@ async function broadcastMemoryChanged(filePath: string, projectsDir: string): Pr
   });
 }
 
+const JOB_FILES = new Set(["state.json", "timeline.jsonl"]);
+
+/**
+ * Route a watcher event under `~/.claude/jobs`. Returns true when the path is
+ * inside the jobs directory, so other handlers never mistake a job's
+ * `timeline.jsonl` for a session transcript. Only a job's own `state.json` or
+ * `timeline.jsonl` broadcasts `jobs:changed`.
+ */
+function handleJobFileEvent(path: string, jobsRoot: string, broadcast: BroadcastFn): boolean {
+  if (!jobsRoot || !path.startsWith(`${jobsRoot}/`)) return false;
+  const [jobId, file, ...rest] = path.slice(jobsRoot.length + 1).split("/");
+  if (jobId && file && rest.length === 0 && JOB_FILES.has(file)) {
+    broadcast(DOMAIN_EVENTS.JOBS_CHANGED, { jobId });
+  }
+  return true;
+}
+
 /** Safely diff and broadcast sessions for a project; swallow indexing races. */
 function safeDiffSessions(projectId: string): void {
   if (!projectId) return;
@@ -509,6 +527,7 @@ async function refreshTrackedFileRoot(db: IndexDb, root: string): Promise<void> 
 }
 
 async function handleFileChange(path: string): Promise<void> {
+  if (handleJobFileEvent(path, jobsDir, broadcastTyped)) return;
   await awaitInitialScan();
   const normalizedPath = resolve(path);
   const gitIndexRoot = fileContentRootByGitIndexPath.get(normalizedPath);
@@ -632,6 +651,7 @@ async function handleFileChange(path: string): Promise<void> {
 }
 
 async function handleFileUnlink(path: string): Promise<void> {
+  if (handleJobFileEvent(path, jobsDir, broadcastTyped)) return;
   await awaitInitialScan();
   if (isPathInsideFileContentRoots(path, fileContentRoots)) {
     try {
@@ -684,6 +704,7 @@ export async function createWatcher(
   plDir?: string,
   slDir?: string,
   configuredFileContentRoots: string[] = [],
+  jbDir?: string,
 ): Promise<RecursiveWatcher> {
   if (projDir) {
     resolveProjectsDirectory(projDir);
@@ -691,6 +712,7 @@ export async function createWatcher(
   }
   if (plDir) plansDir = plDir;
   if (slDir) statuslineDir = slDir;
+  if (jbDir) jobsDir = resolve(jbDir);
   setFileContentRoots(configuredFileContentRoots);
 
   await Promise.all(
@@ -739,6 +761,7 @@ export const __testing = {
   handleFileContentChange,
   handleFileContentUnlink,
   handleFileChange,
+  handleJobFileEvent,
   readIgnoredDirsFromConfig,
   DEFAULT_IGNORED_DIR_NAMES,
   /** Override the resolved ignored-dir pattern so `shouldIgnoreWatch` is deterministic in tests. */

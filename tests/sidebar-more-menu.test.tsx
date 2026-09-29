@@ -154,6 +154,7 @@ describe("sidebar More menu", () => {
     }).toStrictEqual({
       items: [
         "Routines",
+        "Background jobs",
         "Active",
         "Herdr",
         "Tmux Windows",
@@ -191,6 +192,7 @@ describe("Edit sidebar dialog", () => {
     ).toStrictEqual([
       { label: "Artifacts", checked: "true" },
       { label: "Routines", checked: "false" },
+      { label: "Background jobs", checked: "false" },
       { label: "Active", checked: "false" },
       { label: "Herdr", checked: "false" },
       { label: "Tmux Windows", checked: "false" },

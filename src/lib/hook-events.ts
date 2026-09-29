@@ -77,6 +77,7 @@ export const DOMAIN_EVENTS = {
   APPROVAL_RESOLVED: "approval:resolved",
   HOOK_SCHEMA_DRIFT: "hook:schema-drift",
   REVIEW_OFFERED: "review:offered",
+  JOBS_CHANGED: "jobs:changed",
 } as const;
 
 export interface ReviewOfferedPayload {

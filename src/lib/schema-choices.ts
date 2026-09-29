@@ -22,6 +22,13 @@ import type { SourceFileResponse } from "./api/source";
 import type { GroupColorSchema, GroupIconSchema } from "./group-appearance";
 import type { HookEvent, ToolUseUnion } from "./hook-events";
 import type { HomeAttentionKindSchema } from "./home-attention";
+import type {
+  JobChildKindSchema,
+  JobFanKindSchema,
+  JobNameSourceSchema,
+  JobState,
+  JobTempoSchema,
+} from "./jobs";
 import type { NavSection } from "./nav-sections";
 import type { PinDropOutcome } from "./pinned-sessions";
 import type { PaletteFilter, PaletteType } from "./palette-tokens";
@@ -733,6 +740,7 @@ export const sessionMenuItemLabels = {
 const navSectionLabels = {
   artifacts: "Artifacts",
   routines: "Routines",
+  jobs: "Background jobs",
   active: "Active",
   herdr: "Herdr",
   tmux: "Tmux Windows",
@@ -775,6 +783,35 @@ export const routineSortLabels = {
   "next-run": "Next run",
   name: "Name",
 } satisfies Record<RoutineSort, string>;
+
+/** Background job state pill (`~/.claude/jobs/<short>/state.json`, src/lib/jobs.ts). */
+export const jobStateLabels = {
+  working: "Working",
+  running: "Running",
+  blocked: "Blocked",
+  done: "Done",
+  failed: "Failed",
+} satisfies Record<JobState, string>;
+
+const jobTempoLabels = {
+  idle: "Idle",
+  blocked: "Blocked",
+} satisfies Record<z.infer<typeof JobTempoSchema>, string>;
+
+const jobNameSourceLabels = {
+  auto: "Automatic",
+  user: "User",
+} satisfies Record<z.infer<typeof JobNameSourceSchema>, string>;
+
+/** What a background job produced: a published artifact frame or a pull request. */
+export const jobChildKindLabels = {
+  frame: "Artifact",
+  pr: "Pull request",
+} satisfies Record<z.infer<typeof JobChildKindSchema>, string>;
+
+const jobFanKindLabels = {
+  agent: "Agent",
+} satisfies Record<z.infer<typeof JobFanKindSchema>, string>;
 
 /** Page kinds recorded in the per-tab ⌃Q recents history (src/lib/recents-history.ts). */
 const recentKindLabels = {
@@ -947,6 +984,11 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   RoutineScheduleFilterSchema: routineScheduleFilterLabels,
   RoutineStatusFilterSchema: routineStatusFilterLabels,
   RoutineSortSchema: routineSortLabels,
+  JobStateSchema: jobStateLabels,
+  JobTempoSchema: jobTempoLabels,
+  JobNameSourceSchema: jobNameSourceLabels,
+  JobChildKindSchema: jobChildKindLabels,
+  JobFanKindSchema: jobFanKindLabels,
   SessionMenuItemIdSchema: sessionMenuItemLabels,
   ChangedFileKindSchema: changedFileKindLabels,
   "RecentsHistorySchema[].kind": recentKindLabels,
