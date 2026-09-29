@@ -4,14 +4,17 @@ import type { ReactNode } from "react";
 
 /**
  * A one-time tip popover, like claude.ai/code's accent CoachMark: an accent-filled
- * card with an arrow pointing at `anchor`, an icon, the message and a Dismiss X.
+ * card with an arrow pointing at `anchor`, an icon, the message and a Dismiss X,
+ * optionally headed by a `title` and followed by an `action` button.
  * Dismiss or Escape calls `onDismiss` (the tip is done); any other close, such as
  * an outside click, calls `onClose` so the owner can show it again later.
  */
 export function CoachMark({
   open,
   anchor,
+  title,
   message,
+  action,
   icon = <Hand aria-hidden="true" className="size-4 shrink-0" />,
   side = "right",
   onDismiss,
@@ -19,7 +22,9 @@ export function CoachMark({
 }: {
   open: boolean;
   anchor: Element | null;
+  title?: string;
   message: string;
+  action?: { label: string; onClick: () => void };
   icon?: ReactNode;
   side?: "top" | "right" | "bottom" | "left";
   onDismiss: () => void;
@@ -45,7 +50,7 @@ export function CoachMark({
           <Popover.Popup
             data-cds="CoachMark"
             data-variant="accent"
-            aria-label={message}
+            aria-label={title ?? message}
             aria-live="polite"
             initialFocus={false}
             finalFocus={false}
@@ -65,7 +70,14 @@ export function CoachMark({
             <div className="flex items-start gap-2">
               <div className="flex min-w-[13rem] flex-1 flex-row items-start gap-2">
                 {icon}
-                <p>{message}</p>
+                {title === undefined ? (
+                  <p>{message}</p>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    <p className="font-medium">{title}</p>
+                    <p className="text-white/85">{message}</p>
+                  </div>
+                )}
               </div>
               <Popover.Close
                 aria-label="Dismiss"
@@ -74,6 +86,17 @@ export function CoachMark({
                 <X aria-hidden="true" className="size-3.5" />
               </Popover.Close>
             </div>
+            {action && (
+              <div className="mt-3 flex justify-end">
+                <button
+                  type="button"
+                  onClick={action.onClick}
+                  className="h-7 rounded-md bg-white px-3 text-sm font-medium text-accent-100 hover:bg-white/90"
+                >
+                  {action.label}
+                </button>
+              </div>
+            )}
           </Popover.Popup>
         </Popover.Positioner>
       </Popover.Portal>

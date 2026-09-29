@@ -20,6 +20,7 @@ import {
 } from "../../lib/changes-scope-request";
 import { writeClipboardText } from "../../lib/clipboard";
 import { loadChangesScope, saveChangesScope } from "../../lib/pane-layout";
+import { CoachMark } from "../coach-mark";
 import { type PaneChrome, registerPane } from "../panes/pane-registry";
 import { type Settings, useSettings } from "../settings-provider";
 import { usePaneHost } from "../panes/tile-host";
@@ -52,6 +53,9 @@ export const LARGE_DIFF_MAX_LINES = 10_000;
 
 /** Upstream offers "Side by side" only when the pane is at least this wide. */
 const SIDE_BY_SIDE_MIN_WIDTH = 560;
+/** The file list's 160px minimum beside a 160px minimum diff body. */
+const FILE_LIST_FIT_MIN_WIDTH = 320;
+export const DIFF_FILE_LIST_COACH_MARK_KEY = "ccb.coachmark.diffFileList";
 
 const TOO_LARGE_TO_EXPAND = "This diff is too large to expand at once. Select a file to expand it.";
 
@@ -378,12 +382,50 @@ interface DiffViewOptions {
   wordDiff: boolean;
 }
 
-function ShowFilesToggle({ pressed, onToggle }: { pressed: boolean; onToggle: () => void }) {
+function readCoachMarkSeen(key: string): boolean {
+  try {
+    return localStorage.getItem(key) === "true";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * A one-time coach mark's seen flag, persisted in localStorage under `key`.
+ * `closed` hides it for this mount only (an outside click), without marking it seen.
+ */
+function useCoachMarkSeen(key: string) {
+  const [seen, setSeen] = useState(() => readCoachMarkSeen(key));
+  const [closed, setClosed] = useState(false);
+  return {
+    hidden: seen || closed,
+    markSeen: () => {
+      setSeen(true);
+      try {
+        localStorage.setItem(key, "true");
+      } catch {
+        // Storage unavailable: the tip stays dismissed for this mount.
+      }
+    },
+    close: () => setClosed(true),
+  };
+}
+
+function ShowFilesToggle({
+  ref,
+  pressed,
+  onToggle,
+}: {
+  ref?: (element: HTMLButtonElement | null) => void;
+  pressed: boolean;
+  onToggle: () => void;
+}) {
   const keys = useShortcutKeys("toggle_changes_file_list");
   const label = pressed ? "Hide files" : "Show files";
   return (
     <Tooltip content={label} shortcut={keys.keys}>
       <button
+        ref={ref}
         type="button"
         aria-pressed={pressed}
         aria-label={label}
@@ -579,11 +621,21 @@ export function ChangesPaneView({
   const hasFiles = files.length > 0;
   const large = isLargeDiff(files);
   const [collapsedOverrides, setCollapsedOverrides] = useState<Record<string, boolean>>({});
-  const { settings, setSetting } = useSettings();
+  const { settings, loaded, setSetting } = useSettings();
   const showFiles = settings.diffShowTree;
   useShortcut("toggle_changes_file_list", () => setSetting("diffShowTree", !showFiles));
   const headerRef = useRef<HTMLDivElement>(null);
-  const sideBySideAvailable = useElementWidth(headerRef) >= SIDE_BY_SIDE_MIN_WIDTH;
+  const paneWidth = useElementWidth(headerRef);
+  const sideBySideAvailable = paneWidth >= SIDE_BY_SIDE_MIN_WIDTH;
+  const [showFilesButton, setShowFilesButton] = useState<HTMLButtonElement | null>(null);
+  const fileListTip = useCoachMarkSeen(DIFF_FILE_LIST_COACH_MARK_KEY);
+  const fileListTipOpen =
+    loaded &&
+    !showFiles &&
+    paneWidth >= FILE_LIST_FIT_MIN_WIDTH &&
+    files.length >= 2 &&
+    !fileListTip.hidden &&
+    showFilesButton !== null;
   const view: DiffViewOptions = {
     diffStyle: sideBySideAvailable ? settings.diffStyle : "unified",
     wordWrap: settings.diffWordWrap,
@@ -683,10 +735,27 @@ export function ChangesPaneView({
         <div className="relative z-[1] flex min-w-0 items-center gap-1 pl-1">
           {hasFiles && (
             <ShowFilesToggle
+              ref={setShowFilesButton}
               pressed={showFiles}
               onToggle={() => setSetting("diffShowTree", !showFiles)}
             />
           )}
+          <CoachMark
+            open={fileListTipOpen}
+            anchor={showFilesButton}
+            side="bottom"
+            title={`Browse all ${files.length} changed files`}
+            message="Open the file list to see everything this diff touches and jump between files."
+            action={{
+              label: "Show files",
+              onClick: () => {
+                fileListTip.markSeen();
+                setSetting("diffShowTree", true);
+              },
+            }}
+            onDismiss={fileListTip.markSeen}
+            onClose={fileListTip.close}
+          />
           {scopeLabel && (
             <ScopeButton
               label={scopeLabel}
