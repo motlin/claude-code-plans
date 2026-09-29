@@ -354,6 +354,7 @@ export const UserRecordSchema = z
       .optional(),
     turnCompanion: z.boolean().optional(),
     queueSkipAttachments: z.boolean().optional(),
+    queueTranscriptOnly: z.boolean().optional(),
     scheduledTaskId: z.string().optional(),
     scheduledFireId: z.string().optional(),
     classifierMetaLines: z.string().optional(),

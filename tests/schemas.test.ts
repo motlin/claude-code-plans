@@ -936,6 +936,20 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
     expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
   });
 
+  it("parses user records carrying the queueTranscriptOnly flag", () => {
+    const record = {
+      type: "user",
+      ...baseFields,
+      message: { role: "user", content: "<task-notification>done</task-notification>" },
+      origin: { kind: "task-notification" },
+      promptSource: "system",
+      queueSkipAttachments: true,
+      queueTranscriptOnly: true,
+    };
+
+    expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+  });
+
   it("parses user records carrying turn origin, scheduled-task, and classifier context fields", () => {
     const record = {
       type: "user",
