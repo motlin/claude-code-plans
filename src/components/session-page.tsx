@@ -59,6 +59,7 @@ import {
 } from "../lib/composer-state";
 import { useSessionViewedState } from "../hooks/use-session-viewed-state";
 import { usePendingMessageJump } from "../hooks/use-pending-message-jump";
+import { applicationSettingsQueryOptions } from "../lib/api/application-settings";
 import { herdrPanesQueryOptions, sendHerdrPrompt } from "../lib/api/herdr";
 import type { HerdrPaneIndexData } from "../lib/api/herdr";
 import type { PaneKind } from "../lib/pane-layout";
@@ -474,11 +475,16 @@ function SessionView({
   const chatStream = useChatStream();
   const liveHerdrPrompt = useLiveHerdrPrompt(sessionId, endIndex);
   const promptBehavior = getSessionPromptBehavior(sessionId, isActive, herdr);
-  useRegisterTerminalPane(
-    sessionId,
-    promptBehavior.hasLivePane,
-    promptBehavior.hasLivePane && herdr.writesEnabled,
-  );
+  const shellsEnabled =
+    useQuery({
+      ...applicationSettingsQueryOptions,
+      select: (settings) => settings.shellPaneEnabled,
+    }).data ?? false;
+  useRegisterTerminalPane(sessionId, {
+    livePane: promptBehavior.hasLivePane,
+    interactive: promptBehavior.hasLivePane && herdr.writesEnabled,
+    shells: shellsEnabled,
+  });
   const prevSessionIdRef = useRef(sessionId);
 
   useEffect(() => {
@@ -534,7 +540,7 @@ function SessionView({
         requestedPane={requestedPane}
         onRequestedPaneHandled={onRequestedPaneHandled}
       >
-        <TerminalPaneShortcut available={promptBehavior.hasLivePane} />
+        <TerminalPaneShortcut available={promptBehavior.hasLivePane || shellsEnabled} />
         <FilesPaneShortcut />
         <ChangesPaneShortcut />
         {/* Sticky header: titlebar + hook context */}

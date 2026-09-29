@@ -92,6 +92,7 @@ function seedQueryClient(): QueryClient {
   );
   queryClient.setQueryData(applicationSettingsQueryOptions.queryKey, {
     herdrWritesEnabled: false,
+    shellPaneEnabled: true,
     visibleNavSections: NAV_SECTIONS.filter((section) => section !== "herdr" && section !== "tmux"),
     ignoredDirs: ["node_modules"],
   });

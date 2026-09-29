@@ -48,6 +48,8 @@ const AppConfigObjectSchema = z
       .optional(),
     /** Permit ccp to send input and state updates to live Herdr panes. */
     herdr_writes_enabled: z.boolean().optional(),
+    /** Offer Shell tabs (login `$SHELL` PTYs in the session folder) in the Terminal pane. */
+    shell_pane_enabled: z.boolean().optional(),
     /** Sidebar sections pinned outside the More ▸ menu, in nav order. */
     visible_nav_sections: z
       .preprocess(renameLegacyNavSections, VisibleNavSectionsSchema)
@@ -110,6 +112,7 @@ export function readConfig(configPath: string = getConfigPath()): AppConfig | nu
  */
 const DEFAULT_APPLICATION_POLICY = {
   herdrWritesEnabled: false,
+  shellPaneEnabled: true,
 } as const;
 
 export const DEFAULT_IGNORED_DIR_NAMES = [
@@ -132,6 +135,7 @@ export const DEFAULT_IGNORED_DIR_NAMES = [
 export const ApplicationSettingsSchema = z
   .object({
     herdrWritesEnabled: z.boolean(),
+    shellPaneEnabled: z.boolean(),
     visibleNavSections: VisibleNavSectionsSchema,
     ignoredDirs: z.array(z.string().trim().min(1)).min(1),
   })
@@ -144,6 +148,7 @@ export function readApplicationSettings(configPath: string = getConfigPath()): A
   return {
     herdrWritesEnabled:
       config?.herdr_writes_enabled ?? DEFAULT_APPLICATION_POLICY.herdrWritesEnabled,
+    shellPaneEnabled: config?.shell_pane_enabled ?? DEFAULT_APPLICATION_POLICY.shellPaneEnabled,
     visibleNavSections:
       config?.visible_nav_sections ??
       migrateLegacyNavFlags({
@@ -156,6 +161,10 @@ export function readApplicationSettings(configPath: string = getConfigPath()): A
 
 export function herdrWritesEnabled(configPath: string = getConfigPath()): boolean {
   return readApplicationSettings(configPath).herdrWritesEnabled;
+}
+
+export function shellPaneEnabled(configPath: string = getConfigPath()): boolean {
+  return readApplicationSettings(configPath).shellPaneEnabled;
 }
 
 /** Atomically replace a valid config while preserving all fields outside the patch. */
@@ -205,6 +214,7 @@ export async function updateApplicationSettings(
   await updateConfig(
     {
       herdr_writes_enabled: parsed.herdrWritesEnabled,
+      shell_pane_enabled: parsed.shellPaneEnabled,
       visible_nav_sections: parsed.visibleNavSections,
       show_herdr_section: undefined,
       show_tmux_section: undefined,

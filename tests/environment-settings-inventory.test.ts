@@ -13,6 +13,7 @@ const EXPECTED_ENVIRONMENT_READS = [
   "src/lib/db/connection.ts:VITEST",
   "src/lib/db/connection.ts:XDG_CACHE_HOME",
   "src/lib/reviews.ts:PORT",
+  "src/lib/shell-pty.ts:SHELL",
   "src/routes/api/capabilities.ts:PATH",
 ];
 

@@ -8,6 +8,7 @@ import {
   herdrWritesEnabled,
   readApplicationSettings,
   readConfig,
+  shellPaneEnabled,
   updateApplicationSettings,
 } from "../src/lib/config";
 import {
@@ -36,6 +37,7 @@ describe("persisted application settings", () => {
     expect([
       AppConfigSchema.safeParse({
         herdr_writes_enabled: true,
+        shell_pane_enabled: false,
         show_herdr_section: true,
         show_tmux_section: false,
         visible_nav_sections: ["herdr", "plans"],
@@ -44,13 +46,14 @@ describe("persisted application settings", () => {
       AppConfigSchema.safeParse({ visible_nav_sections: ["sessions"] }).success,
       AppConfigSchema.safeParse({ visible_nav_sections: ["plans", "plans"] }).success,
       AppConfigSchema.safeParse({ herdr_writes_enabled: "1" }).success,
+      AppConfigSchema.safeParse({ shell_pane_enabled: "on" }).success,
       AppConfigSchema.safeParse({ show_herdr_section: "true" }).success,
       AppConfigSchema.safeParse({ show_tmux_section: 1 }).success,
       AppConfigSchema.safeParse({ watcher_polling: 1 }).success,
       AppConfigSchema.safeParse({ ignored_dirs: [""] }).success,
       AppConfigSchema.safeParse({ ignored_dirs: [] }).success,
       AppConfigSchema.safeParse({ unknown_policy: true }).success,
-    ]).toStrictEqual([true, false, false, false, false, false, false, false, false, false]);
+    ]).toStrictEqual([true, false, false, false, false, false, false, false, false, false, false]);
   });
 
   it("strips the legacy watcher polling key while parsing persisted config", async () => {
@@ -69,13 +72,16 @@ describe("persisted application settings", () => {
       expect({
         settings: readApplicationSettings(configPath),
         herdrWritesEnabled: herdrWritesEnabled(configPath),
+        shellPaneEnabled: shellPaneEnabled(configPath),
       }).toStrictEqual({
         settings: {
           herdrWritesEnabled: false,
+          shellPaneEnabled: true,
           visibleNavSections: ["artifacts", "plans", "memories", "customize"],
           ignoredDirs: [...DEFAULT_IGNORED_DIR_NAMES],
         },
         herdrWritesEnabled: false,
+        shellPaneEnabled: true,
       });
     } finally {
       delete process.env["CCP_ENABLE_HERDR_WRITES"];
@@ -107,6 +113,7 @@ describe("persisted application settings", () => {
 
     expect(readApplicationSettings(configPath)).toStrictEqual({
       herdrWritesEnabled: true,
+      shellPaneEnabled: true,
       visibleNavSections: ["plans", "customize"],
       ignoredDirs: [...DEFAULT_IGNORED_DIR_NAMES],
     });
@@ -134,6 +141,7 @@ describe("persisted application settings", () => {
 
     expect(JSON.parse(await readFile(configPath, "utf8"))).toStrictEqual({
       herdr_writes_enabled: false,
+      shell_pane_enabled: true,
       ignored_dirs: [...DEFAULT_IGNORED_DIR_NAMES],
       visible_nav_sections: ["herdr", "plans"],
     });
@@ -152,6 +160,7 @@ describe("persisted application settings", () => {
     const saved = await updateApplicationSettings(
       {
         herdrWritesEnabled: true,
+        shellPaneEnabled: false,
         visibleNavSections: ["tmux", "plans"],
         ignoredDirs: ["vendor", "output"],
       },
@@ -165,6 +174,7 @@ describe("persisted application settings", () => {
     }).toStrictEqual({
       saved: {
         herdrWritesEnabled: true,
+        shellPaneEnabled: false,
         visibleNavSections: ["tmux", "plans"],
         ignoredDirs: ["output", "vendor"],
       },
@@ -173,6 +183,7 @@ describe("persisted application settings", () => {
         file_roots: ["/tmp/files"],
         ignored_dirs: ["output", "vendor"],
         herdr_writes_enabled: true,
+        shell_pane_enabled: false,
         visible_nav_sections: ["tmux", "plans"],
       },
       temporaryFiles: ["config.json"],
@@ -187,6 +198,7 @@ describe("persisted application settings", () => {
       updateApplicationSettings(
         {
           herdrWritesEnabled: true,
+          shellPaneEnabled: true,
           visibleNavSections: ["plans"],
           ignoredDirs: ["node_modules"],
         },
@@ -203,6 +215,7 @@ describe("persisted application settings", () => {
       headers: { "Content-Type": "application/json", Origin: "http://127.0.0.1:7526" },
       body: JSON.stringify({
         herdrWritesEnabled: true,
+        shellPaneEnabled: true,
         visibleNavSections: ["tmux", "plans"],
         ignoredDirs: ["node_modules", "build"],
       }),
@@ -221,12 +234,14 @@ describe("persisted application settings", () => {
       savedStatus: 200,
       saved: {
         herdrWritesEnabled: true,
+        shellPaneEnabled: true,
         visibleNavSections: ["tmux", "plans"],
         ignoredDirs: ["build", "node_modules"],
       },
       readStatus: 200,
       read: {
         herdrWritesEnabled: true,
+        shellPaneEnabled: true,
         visibleNavSections: ["tmux", "plans"],
         ignoredDirs: ["build", "node_modules"],
       },
@@ -234,6 +249,7 @@ describe("persisted application settings", () => {
         image_roots: ["/tmp/images"],
         ignored_dirs: ["build", "node_modules"],
         herdr_writes_enabled: true,
+        shell_pane_enabled: true,
         visible_nav_sections: ["tmux", "plans"],
       },
     });

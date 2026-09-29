@@ -115,7 +115,12 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   plugins: [
-    nitro({ features: { websocket: true }, serverDir: "./server" }),
+    nitro({
+      features: { websocket: true },
+      serverDir: "./server",
+      // node-pty loads its native addon and spawn-helper from prebuilds/ at runtime.
+      traceDeps: ["node-pty*"],
+    }),
     tailwindcss(),
     tanstackStart(),
     viteReact(),

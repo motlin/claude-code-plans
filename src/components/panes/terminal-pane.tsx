@@ -1,8 +1,19 @@
-import { useEffect, useRef, useState } from "react";
+import { Plus, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { z } from "zod";
 
 import { useShortcut } from "../../hooks/use-shortcut";
 import type { TileId } from "../../lib/pane-layout";
+import {
+  addShellTab,
+  CLAUDE_TAB_ID,
+  removeShellTab,
+  requestShellTabClose,
+  selectTerminalTab,
+  useShellTabs,
+} from "../../lib/shell-tabs";
 import { type ConnectionStatus, HerdrTerminal } from "../herdr-terminal";
+import { ShellTerminal } from "../shell-terminal";
 import { type PaneChrome, registerPane } from "./pane-registry";
 import { usePaneHost } from "./tile-host";
 
@@ -74,22 +85,81 @@ function StatusChip({ status }: { status: ConnectionStatus }) {
   );
 }
 
+const TAB_CLASS =
+  "flex h-6 cursor-pointer items-center rounded-r5 px-1.5 text-body outline-none focus-visible:ring-1 focus-visible:ring-accent-100 aria-selected:bg-fill-control aria-selected:text-primary text-secondary hover:text-primary";
+
+const GHOST_ICON_BUTTON =
+  "flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary disabled:cursor-default disabled:opacity-50";
+
+const ShellCreatedResponse = z.object({ ptyKey: z.string().min(1) }).strict();
+const ShellErrorResponse = z.object({ error: z.string().min(1) }).strict();
+
+async function startShell(sessionId: string): Promise<string> {
+  const response = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/shell`, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
+  });
+  const body: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    const failure = ShellErrorResponse.safeParse(body);
+    throw new Error(failure.success ? failure.data.error : "Failed to start shell");
+  }
+  return ShellCreatedResponse.parse(body).ptyKey;
+}
+
+export interface TerminalPaneAvailability {
+  /** herdr has a live pane running this session's TUI: show the Claude tab. */
+  livePane: boolean;
+  /** The Claude tab accepts input (herdr writes enabled). */
+  interactive: boolean;
+  /** Shell tabs are enabled in settings. */
+  shells: boolean;
+}
+
 /**
- * The session Terminal pane. Upstream's tabs are plain shells; locally the
- * first (and for now only) tab is **Claude**, the live herdr pane running this
- * session's TUI.
+ * The session Terminal pane. Upstream's tabs are plain shells, and so are
+ * the **Shell** tabs here. Locally the first tab is **Claude**, the live
+ * herdr pane running this session's TUI, whenever herdr has one.
  */
 function TerminalPane({
   sessionId,
-  interactive,
+  availability,
   chrome,
 }: {
   sessionId: string;
-  interactive: boolean;
+  availability: TerminalPaneAvailability;
   chrome: PaneChrome;
 }) {
+  const { livePane, interactive, shells } = availability;
   const focusRef = useRef<HTMLDivElement>(null);
-  const [status, setStatus] = useState<ConnectionStatus>("connecting");
+  const [claudeStatus, setClaudeStatus] = useState<ConnectionStatus>("connecting");
+  const [shellStatuses, setShellStatuses] = useState<Readonly<Record<string, ConnectionStatus>>>(
+    {},
+  );
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState("");
+  const shellTabs = useShellTabs(sessionId);
+  const autoStarted = useRef(false);
+
+  const tabIds = [...(livePane ? [CLAUDE_TAB_ID] : []), ...shellTabs.tabs.map((tab) => tab.id)];
+  const active =
+    shellTabs.active !== null && tabIds.includes(shellTabs.active)
+      ? shellTabs.active
+      : (tabIds[0] ?? null);
+
+  const newTerminal = useCallback(async () => {
+    setStarting(true);
+    setError("");
+    try {
+      addShellTab(sessionId, await startShell(sessionId));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setStarting(false);
+    }
+  }, [sessionId]);
 
   useEffect(() => {
     if (!pendingTerminalFocus) return;
@@ -97,68 +167,171 @@ function TerminalPane({
     focusRef.current?.focus();
   }, []);
 
+  useEffect(() => {
+    if (livePane || !shells || shellTabs.tabs.length > 0 || autoStarted.current) return;
+    autoStarted.current = true;
+    void newTerminal();
+  }, [livePane, shells, shellTabs.tabs.length, newTerminal]);
+
+  const shellStatusChange = useCallback(
+    (id: string) => (status: ConnectionStatus) =>
+      setShellStatuses((current) =>
+        current[id] === status ? current : { ...current, [id]: status },
+      ),
+    [],
+  );
+  const statusHandlers = useMemo(
+    () => new Map(shellTabs.tabs.map((tab) => [tab.id, shellStatusChange(tab.id)])),
+    [shellTabs.tabs, shellStatusChange],
+  );
+  const closeHandlers = useMemo(
+    () => new Map(shellTabs.tabs.map((tab) => [tab.id, () => removeShellTab(sessionId, tab.id)])),
+    [shellTabs.tabs, sessionId],
+  );
+
+  const activeStatus =
+    active === CLAUDE_TAB_ID
+      ? claudeStatus
+      : active === null
+        ? null
+        : (shellStatuses[active] ?? "connecting");
+
   return (
     <>
       <div className="relative flex h-8 shrink-0 items-center justify-between gap-2 px-1">
         <div className="flex min-w-0 items-center gap-1.5">
-          <div role="tablist" aria-label="Terminals" className="flex min-w-0 items-center">
+          <div role="tablist" aria-label="Terminals" className="flex min-w-0 items-center gap-0.5">
+            {livePane && (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={active === CLAUDE_TAB_ID}
+                aria-controls="terminal-pane-claude"
+                onClick={() => {
+                  selectTerminalTab(sessionId, CLAUDE_TAB_ID);
+                  focusRef.current?.focus();
+                }}
+                className={TAB_CLASS}
+              >
+                Claude
+              </button>
+            )}
+            {shellTabs.tabs.map((tab) => (
+              <span key={tab.id} className="flex items-center">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={active === tab.id}
+                  aria-controls={`terminal-pane-${tab.id}`}
+                  onClick={() => selectTerminalTab(sessionId, tab.id)}
+                  className={TAB_CLASS}
+                >
+                  {tab.title}
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Close ${tab.title}`}
+                  disabled={tab.closing}
+                  onClick={() => requestShellTabClose(sessionId, tab.id)}
+                  className={GHOST_ICON_BUTTON}
+                >
+                  <X aria-hidden="true" className="size-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+          {shells && (
             <button
               type="button"
-              role="tab"
-              aria-selected={true}
-              aria-controls="terminal-pane-claude"
-              onClick={() => focusRef.current?.focus()}
-              className="flex h-6 cursor-pointer items-center rounded-r5 bg-fill-control px-1.5 text-body text-primary outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
+              aria-label="New terminal"
+              title="New terminal"
+              disabled={starting}
+              onClick={() => void newTerminal()}
+              className={GHOST_ICON_BUTTON}
             >
-              Claude
+              <Plus aria-hidden="true" className="size-4" />
             </button>
-          </div>
-          <StatusChip status={status} />
+          )}
+          {activeStatus !== null && <StatusChip status={activeStatus} />}
         </div>
         {chrome.moveHandle}
         <div className="relative z-[1] flex shrink-0 items-center gap-0.5">{chrome.controls}</div>
       </div>
-      <div
-        ref={focusRef}
-        id="terminal-pane-claude"
-        role="tabpanel"
-        tabIndex={0}
-        aria-label="Claude terminal"
-        data-terminal-focus=""
-        className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[inherit] outline-none focus-visible:ring-1 focus-visible:ring-accent-100 focus-visible:ring-inset"
-      >
-        <HerdrTerminal
-          sessionId={sessionId}
-          variant="pane"
-          interactive={interactive}
-          onStatusChange={setStatus}
-        />
-      </div>
+      {error && (
+        <p role="alert" className="px-3 py-1 text-caption text-danger-000">
+          {error}
+        </p>
+      )}
+      {livePane && (
+        <div
+          ref={active === CLAUDE_TAB_ID ? focusRef : undefined}
+          id="terminal-pane-claude"
+          role="tabpanel"
+          hidden={active !== CLAUDE_TAB_ID}
+          tabIndex={0}
+          aria-label="Claude terminal"
+          data-terminal-focus={active === CLAUDE_TAB_ID ? "" : undefined}
+          className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[inherit] outline-none focus-visible:ring-1 focus-visible:ring-accent-100 focus-visible:ring-inset"
+        >
+          <HerdrTerminal
+            sessionId={sessionId}
+            variant="pane"
+            interactive={interactive}
+            onStatusChange={setClaudeStatus}
+          />
+        </div>
+      )}
+      {shellTabs.tabs.map((tab) => (
+        <div
+          key={tab.id}
+          ref={active === tab.id ? focusRef : undefined}
+          id={`terminal-pane-${tab.id}`}
+          role="tabpanel"
+          hidden={active !== tab.id}
+          tabIndex={0}
+          aria-label={`${tab.title} terminal`}
+          data-terminal-focus={active === tab.id ? "" : undefined}
+          className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[inherit] outline-none focus-visible:ring-1 focus-visible:ring-accent-100 focus-visible:ring-inset"
+        >
+          <ShellTerminal
+            ptyKey={tab.ptyKey}
+            closeRequested={tab.closing}
+            onClosed={closeHandlers.get(tab.id) ?? noop}
+            onStatusChange={statusHandlers.get(tab.id) ?? noop}
+          />
+        </div>
+      ))}
     </>
   );
 }
 
+function noop(): void {}
+
 /**
- * Registers the `terminal` pane kind while herdr has a live pane for this
- * session, mirroring upstream showing the toggle only when a transport exists.
- * `interactive` follows the herdr writes setting; without it the Claude tab
- * stays a read-only observer.
+ * Registers the `terminal` pane kind while it has something to show: a live
+ * herdr pane for this session (the Claude tab) or Shell tabs, mirroring
+ * upstream showing the toggle only when a transport exists. `interactive`
+ * follows the herdr writes setting; without it the Claude tab stays a
+ * read-only observer.
  */
 export function useRegisterTerminalPane(
   sessionId: string,
-  available: boolean,
-  interactive: boolean,
+  { livePane, interactive, shells }: TerminalPaneAvailability,
 ): void {
   useEffect(() => {
-    if (!available) return;
+    if (!livePane && !shells) return;
     return registerPane("terminal", {
       title: "Terminal",
       header: "custom",
       render: (chrome) => (
-        <TerminalPane sessionId={sessionId} interactive={interactive} chrome={chrome} />
+        <TerminalPane
+          sessionId={sessionId}
+          availability={{ livePane, interactive, shells }}
+          chrome={chrome}
+        />
       ),
     });
-  }, [sessionId, available, interactive]);
+  }, [sessionId, livePane, interactive, shells]);
 }
 
 /** Binds ⌃` to the Terminal pane state machine. */

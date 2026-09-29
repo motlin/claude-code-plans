@@ -23,6 +23,7 @@ import { installLocalStorage } from "./fake-storage";
 
 const BASE_SETTINGS = {
   herdrWritesEnabled: false,
+  shellPaneEnabled: true,
   ignoredDirs: ["node_modules"],
 };
 

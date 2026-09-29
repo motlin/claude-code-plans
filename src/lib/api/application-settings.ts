@@ -7,6 +7,7 @@ import { apiFetch } from "./client";
 const ApplicationSettingsResponse = z
   .object({
     herdrWritesEnabled: z.boolean(),
+    shellPaneEnabled: z.boolean(),
     visibleNavSections: VisibleNavSectionsSchema,
     ignoredDirs: z.array(z.string().trim().min(1)).min(1),
   })

@@ -468,6 +468,19 @@ export function ApplicationConfigurationSection() {
         }
       />
 
+      <ApplicationToggleRow
+        label="Shell tabs"
+        description="Open login shells in the session folder from the Terminal pane. Only served to this computer."
+        checked={settings.shellPaneEnabled}
+        disabled={saveSettings.isPending}
+        onToggle={() =>
+          save({
+            ...settings,
+            shellPaneEnabled: !settings.shellPaneEnabled,
+          })
+        }
+      />
+
       <IgnoredDirectoriesField
         savedIgnoredDirectories={savedIgnoredDirectories}
         disabled={saveSettings.isPending}

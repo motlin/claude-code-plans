@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { TileHost } from "../src/components/panes/tile-host";
@@ -10,6 +11,7 @@ import {
   useRegisterTerminalPane,
 } from "../src/components/panes/terminal-pane";
 import { SettingsProvider } from "../src/components/settings-provider";
+import { clearShellTabs } from "../src/lib/shell-tabs";
 import { SessionPaneControls } from "../src/components/view-options-menu";
 import { validateSessionSearch } from "../src/lib/session-search";
 import { installLocalStorage } from "./fake-storage";
@@ -20,6 +22,23 @@ vi.mock("../src/components/herdr-terminal", () => ({
       {sessionId}
     </p>
   ),
+}));
+
+vi.mock("../src/components/shell-terminal", () => ({
+  ShellTerminal: ({
+    ptyKey,
+    closeRequested,
+    onClosed,
+  }: {
+    ptyKey: string;
+    closeRequested: boolean;
+    onClosed: () => void;
+  }) => {
+    useEffect(() => {
+      if (closeRequested) onClosed();
+    }, [closeRequested, onClosed]);
+    return <p data-testid="shell-terminal">{ptyKey}</p>;
+  },
 }));
 
 class FakeObserver {
@@ -33,11 +52,19 @@ class FakeObserver {
 
 const SESSION_ID = "terminal-pane-session";
 
-function Harness({ available, interactive }: { available: boolean; interactive: boolean }) {
-  useRegisterTerminalPane(SESSION_ID, available, interactive);
+function Harness({
+  available,
+  interactive,
+  shells,
+}: {
+  available: boolean;
+  interactive: boolean;
+  shells: boolean;
+}) {
+  useRegisterTerminalPane(SESSION_ID, { livePane: available, interactive, shells });
   return (
     <>
-      <TerminalPaneShortcut available={available} />
+      <TerminalPaneShortcut available={available || shells} />
       <SessionPaneControls facts={{}} />
       <textarea aria-label="Composer" />
     </>
@@ -46,7 +73,12 @@ function Harness({ available, interactive }: { available: boolean; interactive: 
 
 function renderSession(
   available: boolean,
-  requested: { pane?: "terminal"; onHandled?: () => void; interactive?: boolean } = {},
+  requested: {
+    pane?: "terminal";
+    onHandled?: () => void;
+    interactive?: boolean;
+    shells?: boolean;
+  } = {},
 ) {
   return render(
     <SettingsProvider>
@@ -56,7 +88,11 @@ function renderSession(
         requestedPane={requested.pane}
         onRequestedPaneHandled={requested.onHandled}
       >
-        <Harness available={available} interactive={requested.interactive ?? false} />
+        <Harness
+          available={available}
+          interactive={requested.interactive ?? false}
+          shells={requested.shells ?? false}
+        />
       </TileHost>
     </SettingsProvider>,
   );
@@ -86,6 +122,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  clearShellTabs();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -197,6 +234,97 @@ describe("Terminal pane", () => {
     const event = pressOn(document.body, CTRL_BACKQUOTE);
 
     expect(event.defaultPrevented).toBe(false);
+  });
+});
+
+describe("Shell tabs", () => {
+  function stubShellApi(responses: Array<{ status: number; body: unknown }>) {
+    const fetcher = vi.fn<typeof fetch>(async () => {
+      const next = responses.shift();
+      if (!next) throw new Error("unexpected shell request");
+      return Response.json(next.body, { status: next.status });
+    });
+    vi.stubGlobal("fetch", fetcher);
+    return fetcher;
+  }
+
+  function tabs() {
+    return screen.getAllByRole("tab").map((tab) => ({
+      name: tab.textContent,
+      selected: tab.getAttribute("aria-selected"),
+    }));
+  }
+
+  it("offers the Terminal pane without a live herdr pane and starts a shell on open", async () => {
+    const fetcher = stubShellApi([{ status: 200, body: { ptyKey: "pty-alice-1" } }]);
+    renderSession(false, { shells: true });
+
+    act(() => screen.getByRole("button", { name: "Terminal" }).click());
+    await screen.findByTestId("shell-terminal");
+
+    expect({
+      requests: fetcher.mock.calls.map(([url, init]) => [url, init?.method]),
+      tabs: tabs(),
+      shell: screen.getByTestId("shell-terminal").textContent,
+      claude: screen.queryByTestId("herdr-terminal"),
+    }).toStrictEqual({
+      requests: [[`/api/sessions/${SESSION_ID}/shell`, "POST"]],
+      tabs: [{ name: "Shell", selected: "true" }],
+      shell: "pty-alice-1",
+      claude: null,
+    });
+  });
+
+  it("adds numbered Shell tabs after Claude with New terminal and closes them", async () => {
+    stubShellApi([
+      { status: 200, body: { ptyKey: "pty-alice-1" } },
+      { status: 200, body: { ptyKey: "pty-alice-2" } },
+    ]);
+    renderSession(true, { shells: true });
+    act(() => screen.getByRole("button", { name: "Terminal" }).click());
+
+    fireEvent.click(screen.getByRole("button", { name: "New terminal" }));
+    await waitFor(() => expect(screen.getAllByRole("tab")).toHaveLength(2));
+    fireEvent.click(screen.getByRole("button", { name: "New terminal" }));
+    await waitFor(() => expect(screen.getAllByRole("tab")).toHaveLength(3));
+    const afterAdd = tabs();
+    fireEvent.click(screen.getByRole("button", { name: "Close Shell 2" }));
+    await waitFor(() => expect(screen.getAllByRole("tab")).toHaveLength(2));
+
+    expect({ afterAdd, afterClose: tabs() }).toStrictEqual({
+      afterAdd: [
+        { name: "Claude", selected: "false" },
+        { name: "Shell", selected: "false" },
+        { name: "Shell 2", selected: "true" },
+      ],
+      afterClose: [
+        { name: "Claude", selected: "false" },
+        { name: "Shell", selected: "true" },
+      ],
+    });
+  });
+
+  it("reports a missing session folder instead of adding a tab", async () => {
+    stubShellApi([{ status: 409, body: { error: "Session folder not found" } }]);
+    renderSession(true, { shells: true });
+    act(() => screen.getByRole("button", { name: "Terminal" }).click());
+
+    fireEvent.click(screen.getByRole("button", { name: "New terminal" }));
+
+    expect({
+      alert: (await screen.findByRole("alert")).textContent,
+      tabs: tabs(),
+    }).toStrictEqual({
+      alert: "Session folder not found",
+      tabs: [{ name: "Claude", selected: "true" }],
+    });
+  });
+
+  it("hides New terminal when Shell tabs are turned off", () => {
+    renderSession(true, { shells: false });
+    act(() => screen.getByRole("button", { name: "Terminal" }).click());
+
+    expect(screen.queryByRole("button", { name: "New terminal" })).toBeNull();
   });
 });
 

@@ -17,6 +17,7 @@ import { Route as HomeRoute } from "../src/routes/index";
 
 const DEFAULT_APPLICATION_SETTINGS = {
   herdrWritesEnabled: false,
+  shellPaneEnabled: true,
   visibleNavSections: ["herdr", "plans", "memories", "customize"],
   ignoredDirs: ["node_modules"],
 };
