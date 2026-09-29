@@ -8,6 +8,8 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ToastProvider } from "../src/components/toast";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 import {
   SessionProjectGroups,
@@ -53,7 +55,13 @@ const groups = GroupedSessionsResponse.parse([
 
 async function renderGroups(activeIds: Set<string> = new Set(), rendered: typeof groups = groups) {
   const rootRoute = createRootRoute({
-    component: () => <SessionProjectGroups groups={rendered} activeIds={activeIds} />,
+    component: () => (
+      <QueryClientProvider client={new QueryClient()}>
+        <ToastProvider>
+          <SessionProjectGroups groups={rendered} activeIds={activeIds} />
+        </ToastProvider>
+      </QueryClientProvider>
+    ),
   });
   const sessionRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -100,7 +108,7 @@ describe("SessionProjectGroups", () => {
     await renderGroups(new Set(["g1"]));
 
     expect(
-      screen.getAllByRole("status").map((icon) => ({
+      screen.getAllByRole("status", { name: /.+/ }).map((icon) => ({
         label: icon.getAttribute("aria-label"),
         kind: icon.firstElementChild?.getAttribute("data-kind"),
       })),

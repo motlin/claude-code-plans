@@ -13,7 +13,7 @@ import {
 } from "../../lib/session-groups";
 import type { SessionBucket, SessionStateKind } from "../../lib/session-state";
 import { toggleSidebarGroup, useSidebarState } from "../../lib/sidebar-store";
-import { SessionActionsMenu } from "../session-actions-menu";
+import { SessionActionsMenu, SessionRowTitle } from "../session-actions-menu";
 import { SessionStateIcon } from "../status-dot";
 import { LoadingBars } from "./primitives/LoadingBars";
 
@@ -190,7 +190,7 @@ function SessionRowLink({ row, selected }: { row: SidebarSessionRow; selected: b
           <SessionStateIcon kind={BUCKET_ICON_KINDS[row.bucket]} />
         </span>
         <span data-row-label className="min-w-0 flex-1">
-          <FadeLabel text={row.title} />
+          <SessionRowTitle render={(title) => <FadeLabel text={title} />} />
         </span>
       </Link>
     </SessionActionsMenu>

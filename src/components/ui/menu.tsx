@@ -111,6 +111,8 @@ export interface MenuContentProps {
   sideOffset?: number;
   alignOffset?: number;
   className?: string;
+  /** Where focus goes when the menu closes; `false` leaves it where an action put it. */
+  finalFocus?: ComponentProps<typeof BaseMenu.Popup>["finalFocus"];
 }
 
 /** The popup surface. Inside a ContextMenu it opens at the pointer. */
@@ -121,6 +123,7 @@ export function MenuContent({
   sideOffset = 4,
   alignOffset = 0,
   className,
+  finalFocus,
 }: MenuContentProps) {
   const kind = useContext(MenuKindContext);
   return (
@@ -136,6 +139,7 @@ export function MenuContent({
           data-cds={kind}
           className={className ? `${POPUP_CLASS} ${className}` : POPUP_CLASS}
           onKeyDown={handleAcceleratorKey}
+          {...(finalFocus === undefined ? {} : { finalFocus })}
         >
           <div className={SCROLLER_CLASS}>{children}</div>
         </BaseMenu.Popup>

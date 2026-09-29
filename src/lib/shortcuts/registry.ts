@@ -121,7 +121,7 @@ export const SHORTCUTS = {
     group: "general",
     bindings: cmdOrCtrl("r", ["alt"], letterCode("r")),
     ownerSlug: "session-row-actions",
-    enabled: false,
+    enabled: true,
   },
   archive_session: {
     description: "Archive session",

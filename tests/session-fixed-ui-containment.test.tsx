@@ -18,6 +18,7 @@ import {
   type SessionDetailData,
 } from "../src/lib/api/sessions";
 import { SessionPage } from "../src/components/session-page";
+import { ToastProvider } from "../src/components/toast";
 
 // session-chat pulls in HMR-persisted module state that jsdom cannot evaluate.
 vi.mock("../src/components/session-chat", () => ({
@@ -135,9 +136,11 @@ async function renderSessionInScroller() {
     component: () => (
       <QueryClientProvider client={queryClient}>
         <ClaudeEventsProvider>
-          <main data-testid="app-scroller" style={{ overflowY: "auto" }}>
-            <SessionPage sessionId={SESSION_ID} />
-          </main>
+          <ToastProvider>
+            <main data-testid="app-scroller" style={{ overflowY: "auto" }}>
+              <SessionPage sessionId={SESSION_ID} />
+            </main>
+          </ToastProvider>
         </ClaudeEventsProvider>
       </QueryClientProvider>
     ),

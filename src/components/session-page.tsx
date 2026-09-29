@@ -22,6 +22,7 @@ import { SessionHookContext } from "./session-hook-context";
 import { DetailTopBar, pillStyles } from "./detail-top-bar";
 import { useSettings } from "./settings-provider";
 import { SessionReviewedToggle } from "./session-reviewed-toggle";
+import { SessionTitleHeading } from "./session-title-heading";
 import { LiveTerminalLink } from "./session-terminal-links";
 import { useHasUnseenWork } from "./session-unread-control";
 import { syncUnseenFromSummaries } from "../lib/unread-store";
@@ -692,7 +693,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
               <CopyButton title="Copy fork command" text={sessionCommands.fork} icon={GitFork} />
               <LiveTerminalLink
                 sessionId={sessionId}
-                sessionTitle={hookContext?.sessionTitle || data.title}
+                sessionTitle={data.title}
                 hasLivePane={promptBehavior.hasLivePane}
               />
               <SessionReviewedToggle
@@ -746,7 +747,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
                 </button>
               </Tooltip>
             </DetailTopBar>
-            <h1 className="text-lg font-semibold">{hookContext?.sessionTitle || data.title}</h1>
+            <SessionTitleHeading sessionId={sessionId} title={data.title} />
 
             {aiSummary ? (
               <p className="mt-1 text-sm text-t6 italic">{aiSummary}</p>

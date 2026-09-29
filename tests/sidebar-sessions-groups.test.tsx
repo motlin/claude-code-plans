@@ -10,6 +10,7 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { ToastProvider } from "../src/components/toast";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { DEFAULTS, SettingsProvider } from "../src/components/settings-provider";
 import { Sidebar } from "../src/components/sidebar/Sidebar";
@@ -84,8 +85,10 @@ async function renderSidebar(override?: (queryClient: QueryClient) => void) {
     component: () => (
       <QueryClientProvider client={queryClient}>
         <SettingsProvider>
-          <Sidebar collapsed={false} onToggle={() => {}} />
-          <Outlet />
+          <ToastProvider>
+            <Sidebar collapsed={false} onToggle={() => {}} />
+            <Outlet />
+          </ToastProvider>
         </SettingsProvider>
       </QueryClientProvider>
     ),

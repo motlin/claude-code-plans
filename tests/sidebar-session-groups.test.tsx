@@ -10,6 +10,7 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { ToastProvider } from "../src/components/toast";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { SessionGroups } from "../src/components/sidebar/session-groups";
@@ -71,8 +72,10 @@ async function renderGroups(
   const rootRoute = createRootRoute({
     component: () => (
       <QueryClientProvider client={queryClient}>
-        <SessionGroups activeItemId={null} filterSlot={options.filterSlot} />
-        <Outlet />
+        <ToastProvider>
+          <SessionGroups activeItemId={null} filterSlot={options.filterSlot} />
+          <Outlet />
+        </ToastProvider>
       </QueryClientProvider>
     ),
   });

@@ -485,6 +485,27 @@ export const RenameSessionBody = z.object({ title: z.string() }).strict();
 export const RenameSessionResponse = z
   .object({ customTitle: z.string().nullable(), title: z.string() })
   .strict();
+export const useRenameSessionMutation = (sessionId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (title: string) =>
+      apiFetch(`/api/sessions/${encodeURIComponent(sessionId)}/title`, RenameSessionResponse, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      }),
+    onSuccess: () => {
+      for (const queryKey of [
+        sessionQueryKeys.all(),
+        sessionQueryKeys.recentLists(),
+        sessionQueryKeys.groupedLists(),
+        sessionQueryKeys.activeLists(),
+      ]) {
+        void qc.invalidateQueries({ queryKey });
+      }
+    },
+  });
+};
 export const useToggleSessionStar = (sessionId: string) => {
   const qc = useQueryClient();
   return useMutation({

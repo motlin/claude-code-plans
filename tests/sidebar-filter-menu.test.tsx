@@ -10,6 +10,7 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { ToastProvider } from "../src/components/toast";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { SettingsProvider } from "../src/components/settings-provider";
@@ -78,8 +79,10 @@ async function renderSidebarGroups() {
     component: () => (
       <SettingsProvider>
         <QueryClientProvider client={queryClient}>
-          <SidebarSessionGroups activeItemId={null} />
-          <Outlet />
+          <ToastProvider>
+            <SidebarSessionGroups activeItemId={null} />
+            <Outlet />
+          </ToastProvider>
         </QueryClientProvider>
       </SettingsProvider>
     ),

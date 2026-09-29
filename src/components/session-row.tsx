@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { SessionListItem } from "../lib/api/sessions";
 import { formatCount } from "../lib/pluralize";
-import { SessionActionsMenu } from "./session-actions-menu";
+import { SessionActionsMenu, SessionRowTitle } from "./session-actions-menu";
 import { LiveSessionStateIcon, SessionUnreadControl } from "./session-unread-control";
 
 function formatDate(iso: string): string {
@@ -39,7 +39,9 @@ export function SessionRow({
             style={{ fontSize: "14px", fontWeight: 430 }}
           >
             {isActive && <LiveSessionStateIcon sessionId={session.id} state={session.state} />}
-            <span className="truncate">{session.title}</span>
+            <span className="flex min-w-0 flex-1 truncate">
+              <SessionRowTitle />
+            </span>
           </div>
           <div className="mt-0.5 flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-t6">
             {showProject && (

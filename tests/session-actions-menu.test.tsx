@@ -166,7 +166,12 @@ describe("SessionActionsMenu", () => {
     const menu = await rightClickRow();
 
     expect(menu.getAttribute("data-cds")).toBe("ContextMenu");
-    expect(outline(menu)).toEqual(["PinP [p]", "Mark as unreadU [u]", "Copy linkC [c]"]);
+    expect(outline(menu)).toEqual([
+      "PinP [p]",
+      "Mark as unreadU [u]",
+      "RenameR [r]",
+      "Copy linkC [c]",
+    ]);
   });
 
   it("opens the same items from the kebab", async () => {
@@ -178,7 +183,12 @@ describe("SessionActionsMenu", () => {
 
     const menu = screen.getByRole("menu");
     expect(menu.getAttribute("data-cds")).toBe("Menu");
-    expect(outline(menu)).toEqual(["UnpinP [p]", "Mark as readU [u]", "Copy linkC [c]"]);
+    expect(outline(menu)).toEqual([
+      "UnpinP [p]",
+      "Mark as readU [u]",
+      "RenameR [r]",
+      "Copy linkC [c]",
+    ]);
   });
 
   it("shows the live terminal under Open in when a herdr pane is live", async () => {
@@ -186,7 +196,13 @@ describe("SessionActionsMenu", () => {
 
     const menu = await rightClickRow();
 
-    expect(outline(menu)).toEqual(["Open in []", "---", "PinP [p]", "Copy linkC [c]"]);
+    expect(outline(menu)).toEqual([
+      "Open in []",
+      "---",
+      "PinP [p]",
+      "RenameR [r]",
+      "Copy linkC [c]",
+    ]);
   });
 
   it("copies the session link when c is pressed and closes", async () => {

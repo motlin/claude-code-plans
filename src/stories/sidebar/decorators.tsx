@@ -8,6 +8,8 @@ import {
 } from "@tanstack/react-router";
 import type { Decorator } from "@storybook/react-vite";
 
+import { ToastProvider } from "../../components/toast";
+
 export function createStoryRouter(initialPath = "/") {
   const rootRoute = createRootRoute();
   const catchAllRoute = createRoute({
@@ -53,7 +55,9 @@ export function StoryWrapper({
 
   return (
     <QueryClientProvider client={qc}>
-      <RouterProvider router={router} defaultComponent={() => <>{children}</>} />
+      <ToastProvider>
+        <RouterProvider router={router} defaultComponent={() => <>{children}</>} />
+      </ToastProvider>
     </QueryClientProvider>
   );
 }
@@ -69,7 +73,9 @@ export const withRouterAndQuery: Decorator = (Story) => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} defaultComponent={() => <Story />} />
+      <ToastProvider>
+        <RouterProvider router={router} defaultComponent={() => <Story />} />
+      </ToastProvider>
     </QueryClientProvider>
   );
 };

@@ -18,6 +18,7 @@ import {
   type SessionDetailData,
 } from "../src/lib/api/sessions";
 import { SessionPage } from "../src/components/session-page";
+import { ToastProvider } from "../src/components/toast";
 import { SettingsProvider } from "../src/components/settings-provider";
 
 // session-chat pulls in HMR-persisted module state that jsdom cannot evaluate.
@@ -137,7 +138,9 @@ async function renderSession() {
       <QueryClientProvider client={queryClient}>
         <SettingsProvider>
           <ClaudeEventsProvider>
-            <SessionPage sessionId={SESSION_ID} />
+            <ToastProvider>
+              <SessionPage sessionId={SESSION_ID} />
+            </ToastProvider>
           </ClaudeEventsProvider>
         </SettingsProvider>
       </QueryClientProvider>

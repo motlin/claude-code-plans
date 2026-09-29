@@ -123,6 +123,7 @@ describe("KeyboardShortcutsDialog", () => {
         "Toggle sidebar",
         "Keyboard shortcuts",
         "Settings",
+        "Rename session",
         "Close pane",
         "Expand or collapse pane",
       ],

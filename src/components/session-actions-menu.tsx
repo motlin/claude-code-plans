@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Ellipsis } from "lucide-react";
-import type { ReactNode } from "react";
+import { createContext, type ReactNode, useContext, useRef } from "react";
 
 import { herdrPanesQueryOptions } from "../lib/api/herdr";
 import { useToggleSessionStar, type SessionListItem } from "../lib/api/sessions";
 import { assertNever } from "../lib/assert-never";
 import { writeClipboardText } from "../lib/clipboard";
+import { type SessionRename, useSessionRename } from "../hooks/use-session-rename";
 import {
   getSessionMenuItems,
   type SessionMenuCapability,
@@ -16,6 +17,7 @@ import {
   type SessionMenuSession,
 } from "../lib/session-menu-items";
 import { markSeen, markUnseen } from "../lib/unread-store";
+import { InlineRenameInput } from "./inline-rename-input";
 import { useHasUnseenWork } from "./session-unread-control";
 import { useToast } from "./toast";
 import {
@@ -36,8 +38,37 @@ const LOCAL_CAPABILITIES: ReadonlySet<SessionMenuCapability> = new Set<SessionMe
   "openLiveTerminal",
   "pin",
   "readState",
+  "rename",
   "copyLink",
 ]);
+
+interface RowRename {
+  rename: SessionRename;
+  /** Opens the inline input once the menu has finished closing. */
+  requestRename: () => void;
+}
+
+const RowRenameContext = createContext<RowRename | null>(null);
+
+function useRowRename(): RowRename {
+  const row = useContext(RowRenameContext);
+  if (row === null) throw new Error("Session row titles must render inside SessionActionsMenu");
+  return row;
+}
+
+/**
+ * The row's title text, which the menu's Rename item swaps for an inline
+ * input. `render` styles the idle title, e.g. with an overflow fade.
+ */
+export function SessionRowTitle({ render }: { render?: (title: string) => ReactNode }) {
+  const { rename } = useRowRename();
+  if (rename.editing) {
+    return (
+      <InlineRenameInput value={rename.title} onCommit={rename.commit} onCancel={rename.cancel} />
+    );
+  }
+  return render === undefined ? rename.title : render(rename.title);
+}
 
 function readStateOf(session: SessionListItem, unseen: boolean): SessionMenuReadState {
   if (session.bucket === "working") return "working";
@@ -51,6 +82,7 @@ function useSessionMenu(session: SessionListItem) {
   const star = useToggleSessionStar(session.id);
   const toast = useToast();
   const navigate = useNavigate();
+  const { requestRename } = useRowRename();
 
   const menuSession: SessionMenuSession = {
     title: session.title,
@@ -90,10 +122,12 @@ function useSessionMenu(session: SessionListItem) {
       case "copy-link":
         void copyLink();
         return;
+      case "rename":
+        requestRename();
+        return;
       case "open-in":
       case "open-pr":
       case "mark-completed":
-      case "rename":
       case "fork":
       case "archive":
       case "unarchive":
@@ -165,22 +199,37 @@ export function SessionActionsMenu({
   children: ReactNode;
   className?: string;
 }) {
+  const rename = useSessionRename(session.id, session.title);
+  // The open menu holds focus, so the input may only mount (and take focus)
+  // once it has closed; the closing menu must not hand focus back either.
+  const renameAfterClose = useRef(false);
+  const requestRename = () => {
+    renameAfterClose.current = true;
+  };
+  const onOpenChangeComplete = (open: boolean) => {
+    if (open || !renameAfterClose.current) return;
+    renameAfterClose.current = false;
+    rename.startEditing();
+  };
+  const finalFocus = () => !renameAfterClose.current;
   return (
-    <div className={`group/session-row relative ${className ?? ""}`}>
-      <ContextMenu>
-        <ContextMenuTrigger>{children}</ContextMenuTrigger>
-        <MenuContent>
-          <SessionMenuBody session={session} />
-        </MenuContent>
-      </ContextMenu>
-      <Menu>
-        <MenuTrigger aria-label={`More options for ${session.title}`} className={KEBAB_CLASS}>
-          <Ellipsis aria-hidden="true" className="size-4" />
-        </MenuTrigger>
-        <MenuContent align="end">
-          <SessionMenuBody session={session} />
-        </MenuContent>
-      </Menu>
-    </div>
+    <RowRenameContext.Provider value={{ rename, requestRename }}>
+      <div className={`group/session-row relative ${className ?? ""}`}>
+        <ContextMenu onOpenChangeComplete={onOpenChangeComplete}>
+          <ContextMenuTrigger>{children}</ContextMenuTrigger>
+          <MenuContent finalFocus={finalFocus}>
+            <SessionMenuBody session={session} />
+          </MenuContent>
+        </ContextMenu>
+        <Menu onOpenChangeComplete={onOpenChangeComplete}>
+          <MenuTrigger aria-label={`More options for ${rename.title}`} className={KEBAB_CLASS}>
+            <Ellipsis aria-hidden="true" className="size-4" />
+          </MenuTrigger>
+          <MenuContent align="end" finalFocus={finalFocus}>
+            <SessionMenuBody session={session} />
+          </MenuContent>
+        </Menu>
+      </div>
+    </RowRenameContext.Provider>
   );
 }
