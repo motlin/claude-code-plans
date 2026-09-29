@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import type { ChangedFileKindSchema } from "./changed-file-kind";
 import type { McpScopeSchema, PermissionBehaviorSchema, SkillSourceSchema } from "./api/customize";
 import type { PluginFileSchema, PluginListResponse } from "./api/plugins";
 import type {
@@ -497,6 +498,14 @@ const paneLayoutNodeVariants = {
   stack: true,
 } satisfies Record<LayoutNode["kind"], true>;
 
+/** Changes pane file kinds (src/lib/changed-file-kind.ts); non-source labels are upstream's section headings. */
+export const changedFileKindLabels = {
+  source: "Source files",
+  test: "Test files",
+  build: "Build files",
+  generated: "Generated files",
+} satisfies Record<z.infer<typeof ChangedFileKindSchema>, string>;
+
 /** Settings dialog nav labels, in nav order. */
 export const settingsTabLabels = {
   general: "General",
@@ -600,4 +609,5 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   SettingsTabSchema: settingsTabLabels,
   NavSectionSchema: navSectionLabels,
   SessionMenuItemIdSchema: sessionMenuItemLabels,
+  ChangedFileKindSchema: changedFileKindLabels,
 };

@@ -8,10 +8,12 @@ import {
   type SessionDiffFile,
   type SessionDiffResponse,
   type SessionDiffScopesResponse,
+  formatDiffScope,
   sessionDiffFileQueryOptions,
   sessionDiffQueryOptions,
   sessionDiffScopesQueryOptions,
 } from "../../lib/api/session-diff";
+import { writeClipboardText } from "../../lib/clipboard";
 import { type PaneChrome, registerPane } from "../panes/pane-registry";
 import { usePaneHost } from "../panes/tile-host";
 import {
@@ -23,7 +25,9 @@ import {
   MenuSeparator,
   MenuTrigger,
 } from "../ui/menu";
+import { useToast } from "../toast";
 import { Tooltip } from "../ui/tooltip";
+import { ChangedFilesSidebar } from "./changes-file-tree";
 import { DiffFile, DiffFileHeader } from "./diff-file";
 
 /**
@@ -161,53 +165,6 @@ function ShowFilesToggle({ pressed, onToggle }: { pressed: boolean; onToggle: ()
   );
 }
 
-function splitPath(path: string): { name: string; dir: string } {
-  const slash = path.lastIndexOf("/");
-  return slash === -1
-    ? { name: path, dir: "" }
-    : { name: path.slice(slash + 1), dir: path.slice(0, slash) };
-}
-
-/** Flat list of changed files; the folder tree replaces it later. */
-function FileList({
-  files,
-  onSelect,
-}: {
-  files: readonly SessionDiffFile[];
-  onSelect: (path: string) => void;
-}) {
-  return (
-    <div className="w-60 shrink-0 overflow-y-auto border-r border-border px-1 py-1">
-      <div role="list" aria-label="Changed files" className="flex flex-col">
-        {files.map((file) => {
-          const { name, dir } = splitPath(file.path);
-          return (
-            <button
-              key={file.path}
-              type="button"
-              role="listitem"
-              title={file.path}
-              onClick={() => onSelect(file.path)}
-              className="flex h-6 w-full cursor-pointer items-center gap-1 rounded-r5 px-2 text-left text-body text-primary hover:bg-fill-ghost-hover"
-            >
-              <span className="flex min-w-0 flex-1 items-baseline gap-1">
-                <span className="shrink-0 truncate">{name}</span>
-                {dir && (
-                  <span className="min-w-0 truncate text-footnote text-ink-muted">{dir}</span>
-                )}
-              </span>
-              <span className="flex shrink-0 items-center gap-0.5 text-footnote tabular-nums">
-                <span className="text-extended-green">+{file.additions}</span>
-                <span className="text-extended-pink">−{file.deletions}</span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 export interface DiffFetchContext {
   sessionId: string;
   scope: string;
@@ -320,6 +277,21 @@ function CenteredMessage({ children, muted = false }: { children: ReactNode; mut
   );
 }
 
+/**
+ * The file whose header is pinned at (or last scrolled past) the top of the diff scroller —
+ * sticky headers of earlier files have scrolled away with their file.
+ */
+function fileInView(scroller: EventTarget): string | null {
+  if (!(scroller instanceof HTMLElement)) return null;
+  const top = scroller.getBoundingClientRect().top;
+  let inView: string | null = null;
+  for (const header of scroller.querySelectorAll<HTMLElement>("[data-diff-file-header]")) {
+    if (header.getBoundingClientRect().top > top + 1) break;
+    inView = header.dataset["diffFileHeader"] ?? inView;
+  }
+  return inView;
+}
+
 function isUnavailable(file: SessionDiffFile): boolean {
   return file.binary;
 }
@@ -338,6 +310,14 @@ export interface ChangesPaneViewProps {
   onOpenFile?: (path: string) => void;
   /** Enables lazy loading of files whose patch was too large to inline. */
   fetchContext?: DiffFetchContext;
+  /** Group the file list by folder (default) or list it flat. */
+  groupByFolder?: boolean;
+  /** Separate test, build, and generated files into trailing sections. */
+  groupByKind?: boolean;
+  /** The commit whose diff is shown, or null for All changes. */
+  selectedCommitSha?: string | null;
+  onSelectCommit?: (sha: string | null) => void;
+  onCopyCommitSha?: (sha: string) => void;
 }
 
 /**
@@ -356,12 +336,18 @@ export function ChangesPaneView({
   onRefresh,
   onOpenFile,
   fetchContext,
+  groupByFolder = true,
+  groupByKind = false,
+  selectedCommitSha = null,
+  onSelectCommit = () => {},
+  onCopyCommitSha = () => {},
 }: ChangesPaneViewProps) {
   const files = diff?.files ?? [];
   const hasFiles = files.length > 0;
   const large = isLargeDiff(files);
   const [collapsedOverrides, setCollapsedOverrides] = useState<Record<string, boolean>>({});
   const [showFiles, setShowFiles] = useState(false);
+  const [activePath, setActivePath] = useState<string | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const scopeLabel = scopeLabelOf(diff, scopes);
   const unavailableCount = files.filter(isUnavailable).length;
@@ -375,6 +361,7 @@ export function ChangesPaneView({
     setCollapsedOverrides(Object.fromEntries(files.map((file) => [file.path, collapsed])));
 
   function selectFile(path: string) {
+    setActivePath(path);
     setCollapsedOverrides((previous) => ({ ...previous, [path]: false }));
     const header = bodyRef.current?.querySelector(`[data-diff-file-header="${CSS.escape(path)}"]`);
     header?.scrollIntoView({ block: "start" });
@@ -388,8 +375,28 @@ export function ChangesPaneView({
   } else {
     body = (
       <div className="flex min-h-0 flex-1">
-        {showFiles && <FileList files={files} onSelect={selectFile} />}
-        <div ref={bodyRef} className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {showFiles && (
+          <ChangedFilesSidebar
+            files={files}
+            groupByFolder={groupByFolder}
+            groupByKind={groupByKind}
+            activePath={activePath}
+            onSelectFile={selectFile}
+            {...(onOpenFile ? { onOpenFile } : {})}
+            commits={scopes?.kind === "git" ? scopes.commits : []}
+            selectedCommitSha={selectedCommitSha}
+            onSelectCommit={onSelectCommit}
+            onCopyCommitSha={onCopyCommitSha}
+          />
+        )}
+        <div
+          ref={bodyRef}
+          onScrollCapture={(event) => {
+            const inView = fileInView(event.target);
+            if (inView !== null) setActivePath(inView);
+          }}
+          className="flex min-h-0 min-w-0 flex-1 flex-col"
+        >
           {large && (
             <p className="shrink-0 border-b border-border px-3 py-1.5 text-footnote text-ink-muted">
               Files are collapsed for large diffs. Select a file to expand it.
@@ -452,15 +459,39 @@ export function ChangesPaneView({
 
 const BRANCH_SCOPE = "branch";
 
-/** The Changes pane for one session, showing the branch scope (base → working tree). */
+/** The Changes pane for one session: the branch scope (base → working tree) or one branch commit. */
 function ChangesPane({ sessionId, chrome }: { sessionId: string; chrome: PaneChrome }) {
-  const diffQuery = useQuery(sessionDiffQueryOptions(sessionId, BRANCH_SCOPE));
+  const [selectedCommitSha, setSelectedCommitSha] = useState<string | null>(null);
+  const scope =
+    selectedCommitSha === null
+      ? BRANCH_SCOPE
+      : formatDiffScope({ kind: "commit", sha: selectedCommitSha });
+  const diffQuery = useQuery(sessionDiffQueryOptions(sessionId, scope));
   const scopesQuery = useQuery(sessionDiffScopesQueryOptions(sessionId));
+  const toast = useToast();
   const message = diffQuery.error ? `Couldn't load changes: ${diffQuery.error.message}` : undefined;
+  const scopes = scopesQuery.data;
+  const commitStillListed =
+    selectedCommitSha === null ||
+    (scopes?.kind === "git" && scopes.commits.some((commit) => commit.sha === selectedCommitSha));
+
+  useEffect(() => {
+    if (!commitStillListed && scopes !== undefined) setSelectedCommitSha(null);
+  }, [commitStillListed, scopes]);
+
+  async function copyCommitSha(sha: string): Promise<void> {
+    const copied = await writeClipboardText(sha);
+    toast(
+      copied
+        ? { kind: "success", message: "Commit SHA copied to clipboard." }
+        : { kind: "error", message: "Couldn’t copy the commit SHA. Try again." },
+    );
+  }
+
   return (
     <ChangesPaneView
       diff={diffQuery.data}
-      scopes={scopesQuery.data}
+      scopes={scopes}
       {...(message === undefined ? {} : { message })}
       controls={chrome.controls}
       moveHandle={chrome.moveHandle}
@@ -468,7 +499,10 @@ function ChangesPane({ sessionId, chrome }: { sessionId: string; chrome: PaneChr
         void diffQuery.refetch();
         void scopesQuery.refetch();
       }}
-      fetchContext={{ sessionId, scope: diffQuery.data?.scope ?? BRANCH_SCOPE }}
+      fetchContext={{ sessionId, scope: diffQuery.data?.scope ?? scope }}
+      selectedCommitSha={selectedCommitSha}
+      onSelectCommit={setSelectedCommitSha}
+      onCopyCommitSha={(sha) => void copyCommitSha(sha)}
     />
   );
 }

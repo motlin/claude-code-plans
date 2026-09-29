@@ -16,6 +16,7 @@ import {
 } from "../src/lib/api/search";
 import { SessionSummaryStateSchema } from "../src/lib/api/sessions";
 import { SourceFileResponse } from "../src/lib/api/source";
+import { ChangedFileKindSchema } from "../src/lib/changed-file-kind";
 import { NavSectionSchema } from "../src/lib/nav-sections";
 import { PaletteFilterSchema, PaletteTypeSchema } from "../src/lib/palette-tokens";
 import { PaneLayoutStateSchema } from "../src/lib/pane-layout";
@@ -89,6 +90,7 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["SettingsTabSchema", SettingsTabSchema],
   ["NavSectionSchema", NavSectionSchema],
   ["SessionMenuItemIdSchema", SessionMenuItemIdSchema],
+  ["ChangedFileKindSchema", ChangedFileKindSchema],
   ["UnifiedSearchParamsSchema", UnifiedSearchParamsSchema],
   ["UnifiedSearchResponse", UnifiedSearchResponse],
 ];

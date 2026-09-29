@@ -9,7 +9,7 @@ function getName(node: FileTreeNode) {
   return i === -1 ? node.path : node.path.slice(i + 1);
 }
 
-function getFileIcon(name: string) {
+export function getFileIcon(name: string) {
   const ext = name.split(".").pop()?.toLowerCase();
   switch (ext) {
     case "md":

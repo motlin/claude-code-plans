@@ -244,3 +244,48 @@ describe("ChangesPaneView", () => {
     expect(headerButton("src/greet.ts").getAttribute("aria-expanded")).toBe("true");
   });
 });
+
+describe("ChangesPaneView file list", () => {
+  const COMMIT = {
+    sha: "07bc05d1111111111111111111111111111111111",
+    shortSha: "07bc05d",
+    subject: "Fetch logs",
+    author: "Craig",
+    date: "2026-09-14T20:29:26.000Z",
+  };
+
+  it("shows the Changed files tree and commit list, marking the selected file active", () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    const onSelectCommit = vi.fn();
+    render(
+      <ChangesPaneView
+        diff={diffOf([GREET_FILE, LOGO_FILE])}
+        scopes={{ ...SCOPES, commits: [COMMIT], totalCommits: 1 }}
+        controls={null}
+        onRefresh={() => {}}
+        selectedCommitSha={null}
+        onSelectCommit={onSelectCommit}
+      />,
+    );
+    expect(screen.queryByRole("tree", { name: "Changed files" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Show files" }));
+    fireEvent.click(screen.getByRole("treeitem", { name: /^greet\.ts/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Fetch logs/ }));
+
+    expect({
+      rows: screen
+        .getAllByRole("treeitem")
+        .map((row) => [row.textContent, row.getAttribute("aria-current")]),
+      selectedCommits: onSelectCommit.mock.calls,
+    }).toEqual({
+      rows: [
+        ["assets", null],
+        ["logo.png+0−0", null],
+        ["src", null],
+        ["greet.ts+2−1", "true"],
+      ],
+      selectedCommits: [["07bc05d1111111111111111111111111111111111"]],
+    });
+  });
+});
