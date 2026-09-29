@@ -25,6 +25,11 @@ import {
 import { extractTitleFromContent } from "../markdown-utils.server";
 import { listTrackedFiles } from "../git-tracked";
 import * as schema from "./schema";
+import {
+  ArtifactEventCollector,
+  deleteArtifactEventsForSessions,
+  replaceArtifactEvents,
+} from "./artifact-index";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
@@ -537,6 +542,7 @@ export async function indexJsonlFile(
   let sessionGitBranch: string | null = null;
   const textChunks: string[] = [];
   const mcpToolNames = new Set<string>();
+  const artifactEvents = new ArtifactEventCollector();
   const indexedMessages: Array<{
     sessionId: string;
     messageIndex: number;
@@ -642,6 +648,7 @@ export async function indexJsonlFile(
           };
         };
         if (isCountableMessageRecord(obj)) messageCount++;
+        artifactEvents.add(obj);
         if (obj.type === "user" || obj.type === "assistant") {
           const content = obj.message?.content;
           const messageText: string[] = [];
@@ -791,6 +798,12 @@ export async function indexJsonlFile(
     }
   });
 
+  replaceArtifactEvents(
+    db,
+    { filePath, sessionId, projectId: project, isSubagent: false },
+    artifactEvents.events(),
+  );
+
   // Update message content FTS
   db.run(sql`DELETE FROM message_content WHERE session_id = ${sessionId}`);
   if (textChunks.length > 0) {
@@ -862,6 +875,7 @@ export async function indexSubagentFile(
   let resolvedModel: string | null = null;
   let startedAt: string | null = null;
   let finishedAt: string | null = null;
+  const artifactEvents = new ArtifactEventCollector();
   const rl = createInterface({
     input: createReadStream(filePath, { encoding: "utf-8" }),
     crlfDelay: Infinity,
@@ -888,6 +902,7 @@ export async function indexSubagentFile(
           if (!startedAt) startedAt = obj.timestamp;
           finishedAt = obj.timestamp;
         }
+        artifactEvents.add(obj);
       } catch {
         // skip
       }
@@ -927,6 +942,12 @@ export async function indexSubagentFile(
       },
     })
     .run();
+
+  replaceArtifactEvents(
+    db,
+    { filePath, sessionId, projectId: project, isSubagent: true },
+    artifactEvents.events(),
+  );
 
   db.insert(schema.indexedFiles)
     .values({
@@ -1579,6 +1600,7 @@ function pruneDeletedSessions(
       .delete(schema.sessionMcpTools)
       .where(eq(schema.sessionMcpTools.sessionId, session.id))
       .run();
+    deleteArtifactEventsForSessions(indexDb, [session.id]);
   }
 
   // Re-indexing a moved session updates sessions.filePath before pruning runs,

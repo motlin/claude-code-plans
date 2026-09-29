@@ -11,7 +11,8 @@ import type { ReviewBundle } from "../api/reviews";
 // 30: session_mcp_tools records the mcp__ tool names each transcript used.
 // 31: archived_sessions (durable) hides sessions from lists without touching the JSONL.
 // 32: sessions gain pr_number/pr_url/pr_repository from the latest `pr-link` record.
-export const SCHEMA_VERSION = "32";
+// 33: artifacts and artifact_events index every claude.ai Artifact tool call.
+export const SCHEMA_VERSION = "33";
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),
@@ -103,6 +104,58 @@ export const sessionMcpTools = sqliteTable(
     primaryKey({ columns: [table.sessionId, table.toolName] }),
     index("session_mcp_tools_tool_name_idx").on(table.toolName),
   ],
+);
+
+/**
+ * One row per successful `Artifact` tool call (publish, open, read, read_db,
+ * pin, unpin), keyed by tool_use id. `file_path` is the transcript that made
+ * the call, so a reindex replaces exactly that file's rows.
+ */
+export const artifactEvents = sqliteTable(
+  "artifact_events",
+  {
+    toolUseId: text("tool_use_id").primaryKey(),
+    sessionId: text("session_id").notNull(),
+    projectId: text("project_id").notNull(),
+    filePath: text("file_path").notNull(),
+    ts: integer("ts").notNull(),
+    action: text("action").notNull(),
+    url: text("url").notNull(),
+    isSubagent: integer("is_subagent").notNull().default(0),
+    title: text("title"),
+    favicon: text("favicon"),
+    description: text("description"),
+    sourcePath: text("source_path"),
+    version: text("version"),
+    audience: text("audience"),
+  },
+  (table) => [
+    index("artifact_events_session_idx").on(table.sessionId),
+    index("artifact_events_file_path_idx").on(table.filePath),
+    index("artifact_events_url_idx").on(table.url),
+  ],
+);
+
+/** One row per normalized artifact URL, derived from its `artifact_events`. */
+export const artifacts = sqliteTable(
+  "artifacts",
+  {
+    url: text("url").primaryKey(),
+    id: text("id").notNull(),
+    urlKind: text("url_kind").$type<"uuid" | "slug">().notNull(),
+    title: text("title"),
+    favicon: text("favicon"),
+    description: text("description"),
+    sourcePath: text("source_path"),
+    version: text("version"),
+    audience: text("audience"),
+    firstSeenAt: integer("first_seen_at").notNull(),
+    lastPublishedAt: integer("last_published_at"),
+    publishCount: integer("publish_count").notNull().default(0),
+    lastSessionId: text("last_session_id").notNull(),
+    projectId: text("project_id").notNull(),
+  },
+  (table) => [index("artifacts_last_published_idx").on(table.lastPublishedAt)],
 );
 
 export const planSessions = sqliteTable(

@@ -17,7 +17,7 @@ export interface ParsedArtifact {
   opened?: true;
 }
 
-interface ArtifactUrl {
+export interface ArtifactUrl {
   url: string;
   kind: ArtifactUrlKind;
   id: string;
@@ -39,7 +39,7 @@ const PUBLISHED_PATH_PATTERN = /^Published (.+) at $/;
 const VERSION_ID_PATTERN = /\((?:Version \d+, version id|version) ([^)\s,]+)\)/;
 
 /** Validates and normalizes an https claude.ai artifact URL; anything else is undefined. */
-function normalizeArtifactUrl(raw: string): ArtifactUrl | undefined {
+export function normalizeArtifactUrl(raw: string): ArtifactUrl | undefined {
   let parsed: URL;
   try {
     parsed = new URL(raw);

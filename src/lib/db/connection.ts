@@ -83,6 +83,44 @@ CREATE TABLE IF NOT EXISTS session_mcp_tools (
 );
 CREATE INDEX IF NOT EXISTS session_mcp_tools_tool_name_idx ON session_mcp_tools(tool_name);
 
+CREATE TABLE IF NOT EXISTS artifact_events (
+  tool_use_id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  project_id TEXT NOT NULL,
+  file_path TEXT NOT NULL,
+  ts INTEGER NOT NULL,
+  action TEXT NOT NULL,
+  url TEXT NOT NULL,
+  is_subagent INTEGER NOT NULL DEFAULT 0,
+  title TEXT,
+  favicon TEXT,
+  description TEXT,
+  source_path TEXT,
+  version TEXT,
+  audience TEXT
+);
+CREATE INDEX IF NOT EXISTS artifact_events_session_idx ON artifact_events(session_id);
+CREATE INDEX IF NOT EXISTS artifact_events_file_path_idx ON artifact_events(file_path);
+CREATE INDEX IF NOT EXISTS artifact_events_url_idx ON artifact_events(url);
+
+CREATE TABLE IF NOT EXISTS artifacts (
+  url TEXT PRIMARY KEY,
+  id TEXT NOT NULL,
+  url_kind TEXT NOT NULL,
+  title TEXT,
+  favicon TEXT,
+  description TEXT,
+  source_path TEXT,
+  version TEXT,
+  audience TEXT,
+  first_seen_at INTEGER NOT NULL,
+  last_published_at INTEGER,
+  publish_count INTEGER NOT NULL DEFAULT 0,
+  last_session_id TEXT NOT NULL,
+  project_id TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS artifacts_last_published_idx ON artifacts(last_published_at);
+
 CREATE TABLE IF NOT EXISTS plan_sessions (
   plan_filename TEXT NOT NULL,
   session_id TEXT NOT NULL,
@@ -365,6 +403,8 @@ const DERIVED_TABLE_NAMES = [
   "plans",
   "session_messages",
   "session_mcp_tools",
+  "artifact_events",
+  "artifacts",
   "subagents",
   "plan_sessions",
   "sessions",
