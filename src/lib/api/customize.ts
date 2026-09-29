@@ -1,4 +1,6 @@
+import { queryOptions } from "@tanstack/react-query";
 import { z } from "zod";
+import { apiFetch } from "./client";
 
 export const SkillSourceSchema = z.enum(["personal", "project", "plugin"]);
 export type SkillSource = z.infer<typeof SkillSourceSchema>;
@@ -34,3 +36,17 @@ const McpServerSummarySchema = z.strictObject({
 export type McpServerSummary = z.infer<typeof McpServerSummarySchema>;
 
 export const McpServerListResponse = z.array(McpServerSummarySchema);
+
+const CUSTOMIZE_STALE_TIME_MS = 30_000;
+
+export const customizeSkillsQueryOptions = queryOptions({
+  queryKey: ["customize", "skills"] as const,
+  queryFn: () => apiFetch("/api/customize/skills", SkillListResponse),
+  staleTime: CUSTOMIZE_STALE_TIME_MS,
+});
+
+export const customizeMcpServersQueryOptions = queryOptions({
+  queryKey: ["customize", "mcp-servers"] as const,
+  queryFn: () => apiFetch("/api/customize/mcp-servers", McpServerListResponse),
+  staleTime: CUSTOMIZE_STALE_TIME_MS,
+});
