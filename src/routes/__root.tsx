@@ -10,12 +10,11 @@ import {
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { useEffect, useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { Agentation } from "agentation";
 import { ThemeProvider } from "../components/theme-provider";
 import { SettingsProvider } from "../components/settings-provider";
 import { ToastProvider } from "../components/toast";
-import { Sidebar } from "../components/sidebar/index";
 import { AppFrame } from "../components/app-frame";
 import { AppShellFallback } from "../components/app-shell-fallback";
 import { CommandPalette } from "../components/command-palette";
@@ -48,7 +47,6 @@ import {
 } from "../lib/api/sessions";
 import appCss from "../styles/globals.css?url";
 import { THEME_INIT_SCRIPT } from "../lib/theme-init";
-import { usePhoneSheet } from "../lib/use-phone-sheet";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   ssr: false,
@@ -100,39 +98,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: RootErrorComponent,
 });
 
-function HamburgerIcon() {
-  return (
-    <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
-      <path
-        fillRule="evenodd"
-        d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 5A.75.75 0 012.75 9h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 9.75zm0 5a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75a.75.75 0 01-.75-.75z"
-        clipRule="evenodd"
-      />
-    </svg>
-  );
-}
-
-/** The 640–767px drawer; below 640px the phone sheet (AppFrame) replaces it. */
-function MobileSidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const router = useRouter();
-
-  // Close on route change
-  useEffect(() => {
-    if (!open) return;
-    return router.subscribe("onBeforeNavigate", onClose);
-  }, [open, onClose, router]);
-
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 md:hidden">
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: backdrop dismiss */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <Sidebar collapsed={false} onToggle={onClose} mobile />
-    </div>
-  );
-}
-
 function RootComponent() {
   return (
     <RootApplication>
@@ -167,8 +132,6 @@ function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   useSidebarToggleShortcut();
   useFocusRegionShortcuts();
   useRecentsRecorder();
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const phoneSheet = usePhoneSheet();
   const commandPalette = useCommandPalette();
   const capabilities = useCapabilities();
   const fullBleed = useMatches({
@@ -185,27 +148,13 @@ function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
         )}
         <DesktopNotificationBridge />
         <AttentionBadgeBridge />
-        <div
-          className={`flex min-h-9 items-center px-4 pt-3 sm:px-8 ${sidebarCollapsed ? "md:pl-12" : ""}`}
-        >
-          {!phoneSheet && (
-            <button
-              type="button"
-              onClick={() => setMobileOpen(true)}
-              className="flex h-8 w-8 items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover md:hidden"
-              title="Open menu"
-            >
-              <HamburgerIcon />
-            </button>
-          )}
-        </div>
+        <div className="min-h-9 px-4 pt-3 sm:px-8" />
         {fullBleed ? (
           <div className="min-h-0 flex-1">{children}</div>
         ) : (
           <div className="px-4 pb-24 sm:px-8 sm:pb-8">{children}</div>
         )}
       </AppFrame>
-      <MobileSidebar open={mobileOpen && !phoneSheet} onClose={() => setMobileOpen(false)} />
       <CommandPalette {...commandPalette} />
       <KeyboardShortcutsDialog />
       <RecentsSwitcher />

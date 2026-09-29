@@ -48,13 +48,3 @@ export const Collapsed: Story = {
     </StoryWrapper>
   ),
 };
-
-export const Mobile: Story = {
-  render: () => (
-    <StoryWrapper queryClient={createSeededQueryClient()}>
-      <div style={{ height: 600, display: "flex" }}>
-        <Sidebar collapsed={false} onToggle={() => {}} mobile />
-      </div>
-    </StoryWrapper>
-  ),
-};

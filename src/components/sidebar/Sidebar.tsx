@@ -1,7 +1,7 @@
 import { Link, useMatches } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { Section } from "./types";
 import { useActiveSection, useCollapsedGroups, useExpandedGroups } from "./hooks";
 import { MoreNavMenu, type NavBadge } from "./more-menu";
@@ -28,13 +28,14 @@ import { useSettings } from "../settings-provider";
 export function Sidebar({
   collapsed,
   onToggle,
-  mobile,
+  narrowViewport = false,
   onPhoneSheetClose,
 }: {
   collapsed: boolean;
-  /** Overrides the persisted toggle, e.g. to close the mobile drawer. */
+  /** Overrides the persisted toggle on the expanded sidebar's Hide button. */
   onToggle?: () => void;
-  mobile?: boolean;
+  /** 640–767px: collapse is forced, so the trigger opens the peek rather than toggling the pref. */
+  narrowViewport?: boolean;
   /** Renders the phone-sheet contents (Close + wordmark header) instead of a docked sidebar. */
   onPhoneSheetClose?: () => void;
 }) {
@@ -235,20 +236,16 @@ export function Sidebar({
     );
   }
 
-  if (collapsed && !mobile) {
-    return <CollapsedSidebar>{body}</CollapsedSidebar>;
+  if (collapsed) {
+    return <CollapsedSidebar narrowViewport={narrowViewport}>{body}</CollapsedSidebar>;
   }
 
   return (
     <nav
       aria-label="Sidebar"
       data-focus-region="navigation"
-      style={mobile ? undefined : ({ "--sidebar-width": `${width}px` } as CSSProperties)}
-      className={
-        mobile
-          ? "group/sidebar relative flex h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border bg-[var(--sb-bg)]"
-          : "group/sidebar relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[0.5px] border-border bg-[var(--sb-bg)] md:flex"
-      }
+      style={{ "--sidebar-width": `${width}px` } as CSSProperties}
+      className="group/sidebar relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[0.5px] border-border bg-[var(--sb-bg)] md:flex"
     >
       <div data-testid="sidebar-titlebar" className="flex h-11 shrink-0 items-center px-2">
         <div className="flex w-8 shrink-0 justify-center">
@@ -270,7 +267,7 @@ export function Sidebar({
       </div>
 
       {body}
-      {!mobile && <SidebarResizeHandle width={width} />}
+      <SidebarResizeHandle width={width} />
     </nav>
   );
 }
@@ -306,24 +303,49 @@ function SidebarResizeHandle({ width }: { width: number }) {
 /**
  * Collapsed desktop sidebar, like claude.ai/code: a 32x32 floating trigger at 8,8 whose
  * hover (or the invisible bridge beneath it) reveals the full sidebar body as a popover.
+ * In the forced-collapse regime (640–767px) the trigger has no tooltip and a click toggles
+ * the peek open instead of expanding the persisted preference.
  */
-function CollapsedSidebar({ children }: { children: ReactNode }) {
+function CollapsedSidebar({
+  narrowViewport,
+  children,
+}: {
+  narrowViewport: boolean;
+  children: ReactNode;
+}) {
   const [hovering, setHovering] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // A tapped-open peek has no pointerleave to close it, so an outside press dismisses it.
+  useEffect(() => {
+    if (!narrowViewport || !hovering) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.target instanceof Node && rootRef.current?.contains(event.target)) return;
+      setHovering(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [narrowViewport, hovering]);
 
   return (
     <div
+      ref={rootRef}
       data-testid="sidebar-collapsed"
       data-hovering={hovering ? "" : undefined}
       onPointerEnter={() => setHovering(true)}
       onPointerLeave={() => setHovering(false)}
-      className="group/peek absolute left-2 top-2 z-50 hidden md:flex"
+      className="group/peek absolute left-2 top-2 z-50 flex"
     >
       <div
         data-testid="sidebar-peek-bridge"
         aria-hidden="true"
         className="pointer-events-none absolute -left-2 top-0 h-10 w-[288px] group-data-[hovering]/peek:pointer-events-auto"
       />
-      <SidebarToggleButton className="relative flex h-8 w-8 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover" />
+      <SidebarToggleButton
+        collapsed
+        {...(narrowViewport ? { onClick: () => setHovering(true), tooltip: false } : {})}
+        className="relative flex h-8 w-8 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover"
+      />
       <nav
         data-testid="sidebar-peek"
         aria-label="Sidebar"

@@ -19,7 +19,13 @@ import { approvalsQueryOptions } from "../src/lib/api/approvals";
 import { notificationsQueryOptions } from "../src/lib/api/notifications";
 import { activeSessionsQueryOptions } from "../src/lib/api/sessions";
 import { NAV_SECTIONS } from "../src/lib/nav-sections";
-import { PHONE_SHEET_QUERY } from "../src/lib/use-phone-sheet";
+import {
+  readSidebarState,
+  SIDEBAR_STORAGE_KEY,
+  useSidebarState,
+  writeSidebarState,
+} from "../src/lib/sidebar-store";
+import { NARROW_VIEWPORT_QUERY, PHONE_SHEET_QUERY } from "../src/lib/use-phone-sheet";
 import { installLocalStorage } from "./fake-storage";
 
 function seedQueryClient(): QueryClient {
@@ -47,7 +53,12 @@ function mockViewport(width: number) {
   vi.stubGlobal(
     "matchMedia",
     vi.fn((query: string) => ({
-      matches: query === PHONE_SHEET_QUERY ? width < 640 : false,
+      matches:
+        query === PHONE_SHEET_QUERY
+          ? width < 640
+          : query === NARROW_VIEWPORT_QUERY
+            ? width < 768
+            : false,
       media: query,
       onchange: null,
       addEventListener: () => undefined,
@@ -59,6 +70,15 @@ function mockViewport(width: number) {
   );
 }
 
+function PersistedFrame() {
+  const { collapsed } = useSidebarState();
+  return (
+    <AppFrame collapsed={collapsed}>
+      <Outlet />
+    </AppFrame>
+  );
+}
+
 async function renderFrame() {
   const queryClient = seedQueryClient();
   const rootRoute = createRootRoute({
@@ -66,9 +86,7 @@ async function renderFrame() {
       <QueryClientProvider client={queryClient}>
         <ToastProvider>
           <SettingsProvider>
-            <AppFrame collapsed={false}>
-              <Outlet />
-            </AppFrame>
+            <PersistedFrame />
           </SettingsProvider>
         </ToastProvider>
       </QueryClientProvider>
@@ -222,5 +240,78 @@ describe("phone sheet sidebar", () => {
       phoneSheet: frameRoot(container).hasAttribute("data-phone-sheet"),
       sheet: document.getElementById("sidebar-sheet"),
     }).toStrictEqual({ phoneSheet: false, sheet: null });
+  });
+});
+
+describe("narrow viewport forced collapse", () => {
+  it("renders collapsed between 640 and 767px without touching the stored preference", async () => {
+    mockViewport(700);
+    writeSidebarState({ ...readSidebarState(), collapsed: false });
+    const storedBefore = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
+    const { container } = await renderFrame();
+
+    const trigger = screen.getByRole("button", { name: "Show sidebar" });
+    expect({
+      phoneSheet: frameRoot(container).hasAttribute("data-phone-sheet"),
+      collapsed: screen.queryByTestId("sidebar-collapsed") !== null,
+      hide: screen.queryByRole("button", { name: "Hide sidebar" }),
+      shortcut: trigger.getAttribute("aria-keyshortcuts"),
+      stored: window.localStorage.getItem(SIDEBAR_STORAGE_KEY),
+      storedCollapsed: readSidebarState().collapsed,
+    }).toStrictEqual({
+      phoneSheet: false,
+      collapsed: true,
+      hide: null,
+      shortcut: null,
+      stored: storedBefore,
+      storedCollapsed: false,
+    });
+  });
+
+  it("opens the peek from a trigger click instead of changing the stored preference", async () => {
+    mockViewport(700);
+    writeSidebarState({ ...readSidebarState(), collapsed: false });
+    const storedBefore = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
+    await renderFrame();
+
+    fireEvent.click(screen.getByRole("button", { name: "Show sidebar" }));
+
+    expect({
+      hovering: screen.getByTestId("sidebar-collapsed").hasAttribute("data-hovering"),
+      stored: window.localStorage.getItem(SIDEBAR_STORAGE_KEY),
+    }).toStrictEqual({ hovering: true, stored: storedBefore });
+  });
+
+  it("keeps the peek open after hover plus click and closes it on an outside press", async () => {
+    mockViewport(700);
+    const { container } = await renderFrame();
+    const trigger = screen.getByRole("button", { name: "Show sidebar" });
+    const root = screen.getByTestId("sidebar-collapsed");
+
+    act(() => {
+      fireEvent.pointerEnter(trigger);
+    });
+    fireEvent.click(trigger);
+    const afterClick = root.hasAttribute("data-hovering");
+
+    act(() => {
+      fireEvent.pointerDown(mainElement(container));
+    });
+
+    expect({ afterClick, afterOutside: root.hasAttribute("data-hovering") }).toStrictEqual({
+      afterClick: true,
+      afterOutside: false,
+    });
+  });
+
+  it("docks the expanded sidebar at 768px and wider", async () => {
+    mockViewport(768);
+    writeSidebarState({ ...readSidebarState(), collapsed: false });
+    await renderFrame();
+
+    expect({
+      collapsed: screen.queryByTestId("sidebar-collapsed"),
+      hide: screen.getByRole("button", { name: "Hide sidebar" }).tagName,
+    }).toStrictEqual({ collapsed: null, hide: "BUTTON" });
   });
 });
