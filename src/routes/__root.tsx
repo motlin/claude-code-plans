@@ -21,6 +21,7 @@ import { CommandPalette } from "../components/command-palette";
 import { SettingsDialog } from "../components/settings/settings-dialog";
 import { KeyboardShortcutsDialog } from "../components/keyboard-shortcuts-dialog";
 import { useCommandPalette } from "../hooks/use-command-palette";
+import { useSidebarState, useSidebarToggleShortcut } from "../lib/sidebar-store";
 import { IndexingBanner } from "../components/indexing-banner";
 import { HookSchemaDriftBanner } from "../components/hook-schema-drift-banner";
 import { ClaudeEventsProvider } from "../hooks/use-claude-events";
@@ -154,7 +155,8 @@ function RootApplication({ children }: Readonly<{ children: ReactNode }>) {
 }
 
 function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const { collapsed: sidebarCollapsed } = useSidebarState();
+  useSidebarToggleShortcut();
   const [mobileOpen, setMobileOpen] = useState(false);
   const commandPalette = useCommandPalette();
   const capabilities = useCapabilities();
@@ -162,7 +164,7 @@ function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <>
       <div className="flex h-screen">
-        <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((c) => !c)} />
+        <Sidebar collapsed={sidebarCollapsed} />
         <main data-scroll-restoration-id="main" className="flex-1 overflow-y-auto bg-surface-2">
           <IndexingBanner />
           <HookSchemaDriftBanner />

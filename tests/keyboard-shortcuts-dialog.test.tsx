@@ -119,6 +119,7 @@ describe("KeyboardShortcutsDialog", () => {
       sections: ["General", "Panes"],
       rows: [
         "Search or start a session",
+        "Toggle sidebar",
         "Keyboard shortcuts",
         "Settings",
         "Close pane",

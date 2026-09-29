@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import type { Section } from "./types";
 import { useActiveSection, useCollapsedGroups, useExpandedGroups } from "./hooks";
 import { useVisibleNavItems } from "./navigation";
-import { SidebarToggleIcon, SearchInput } from "./primitives";
+import { SearchInput } from "./primitives";
+import { SidebarToggleButton } from "./sidebar-toggle";
 import {
   ActiveSubList,
   MemoriesSubList,
@@ -25,7 +26,8 @@ export function Sidebar({
   mobile,
 }: {
   collapsed: boolean;
-  onToggle: () => void;
+  /** Overrides the persisted toggle, e.g. to close the mobile drawer. */
+  onToggle?: () => void;
   mobile?: boolean;
 }) {
   const matches = useMatches();
@@ -95,14 +97,9 @@ export function Sidebar({
 
   if (collapsed && !mobile) {
     return (
-      <button
-        type="button"
-        onClick={onToggle}
-        className="absolute left-2 top-2 z-10 hidden h-8 w-8 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover md:flex"
-        title="Open sidebar"
-      >
-        <SidebarToggleIcon />
-      </button>
+      <div className="absolute left-2 top-2 z-10 hidden md:block">
+        <SidebarToggleButton />
+      </div>
     );
   }
 
@@ -131,14 +128,11 @@ export function Sidebar({
           </span>
           Claude Code Browser
         </Link>
-        <button
-          type="button"
-          onClick={onToggle}
-          className="flex h-8 w-8 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover"
-          title="Close sidebar"
-        >
-          <SidebarToggleIcon />
-        </button>
+        {onToggle ? (
+          <SidebarToggleButton onClick={onToggle} collapsed={false} />
+        ) : (
+          <SidebarToggleButton />
+        )}
       </div>
 
       <SearchInput />

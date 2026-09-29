@@ -93,7 +93,7 @@ export const SHORTCUTS = {
     group: "general",
     bindings: cmdOrCtrl("b"),
     ownerSlug: "sidebar-shell",
-    enabled: false,
+    enabled: true,
   },
   shortcuts_modal: {
     description: "Keyboard shortcuts",
