@@ -392,6 +392,29 @@ describe("AttachmentBanner", () => {
       ]);
     });
 
+    it("lists added, removed, and built-in agent types for agent listing deltas", () => {
+      expect(
+        detailSections({
+          type: "agent_listing_delta",
+          addedTypes: ["reviewer"],
+          addedLines: ["- reviewer: Reviews code"],
+          removedTypes: ["old-agent"],
+          builtInTypes: ["general-purpose", "Explore", "Plan"],
+          isInitial: true,
+        }),
+      ).toStrictEqual([
+        ["Added agents", "- reviewer: Reviews code"],
+        ["Removed agents", "old-agent"],
+        ["Built-in agents (3)", "general-purpose, Explore, Plan"],
+      ]);
+    });
+
+    it("falls back to added agent type names when no listing lines are present", () => {
+      expect(detailSections({ type: "agent_listing_delta", addedTypes: ["a", "b"] })).toStrictEqual(
+        [["Added agents", "a\nb"]],
+      );
+    });
+
     it("puts the type-specific details before the rendered reminder", () => {
       expect(
         detailSections(

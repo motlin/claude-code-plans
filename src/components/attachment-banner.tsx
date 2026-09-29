@@ -224,6 +224,19 @@ function attachmentDetailSections(attachment: AttachmentPayload): DetailSection[
       ...textSection("Host prompt", attachment.hostPrompt),
     ];
   }
+  if (attachment.type === "agent_listing_delta") {
+    const builtIn = attachment.builtInTypes ?? [];
+    return [
+      ...linesSection(
+        "Added agents",
+        attachment.addedLines?.length ? attachment.addedLines : (attachment.addedTypes ?? []),
+      ),
+      ...linesSection("Removed agents", attachment.removedTypes ?? []),
+      ...(builtIn.length > 0
+        ? [{ label: `Built-in agents (${builtIn.length})`, body: <Pre>{builtIn.join(", ")}</Pre> }]
+        : []),
+    ];
+  }
   if (attachment.type === "fork_briefing") return textSection("Briefing", attachment.text);
   if (attachment.type === "output_style") {
     return textSection("Turn reminder", attachment.turnReminder);
