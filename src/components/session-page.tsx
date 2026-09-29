@@ -68,6 +68,7 @@ import type { HerdrPaneIndexData } from "../lib/api/herdr";
 import type { PaneKind } from "../lib/pane-layout";
 import {
   sessionDetailQueryOptions,
+  sessionDevServersQueryOptions,
   sessionResourcesQueryOptions,
   sessionSubagentsQueryOptions,
   transcriptEndIndex,
@@ -363,6 +364,7 @@ function SessionView({
   // same query) is open to look at one.
   const resourcesQuery = useQuery(sessionResourcesQueryOptions(sessionId, linksDrawerState.open));
   const resources = resourcesQuery.data;
+  const devServersQuery = useQuery(sessionDevServersQueryOptions(sessionId, linksDrawerState.open));
   // Until that scan lands, both drawers fall back to extraction over the loaded
   // window, whose counts are floors: every surface showing one also takes
   // `transcript.startIndex`, the records still on the server, and marks the
@@ -668,6 +670,7 @@ function SessionView({
             {linksDrawerState.open && sessionLinks.totalCount > 0 && (
               <LinksDrawer
                 display={linkDisplay}
+                devServers={devServersQuery.data?.servers ?? []}
                 unscannedRecordCount={unscannedRecordCount}
                 includeToolsAndThinking={linksDrawerState.includeToolsAndThinking}
                 onIncludeToolsAndThinkingChange={linksDrawerState.setIncludeToolsAndThinking}

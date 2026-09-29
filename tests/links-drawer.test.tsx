@@ -132,6 +132,49 @@ describe("LinksDrawer", () => {
     });
   });
 
+  it("lists loopback dev servers as new-tab Open dev server links with liveness", () => {
+    const display = { groups: [], totalCount: 0, hiddenCount: 0 };
+    render(
+      <LinksDrawer
+        display={display}
+        devServers={[
+          { url: "http://localhost:5173", name: "web", live: true },
+          { url: "http://127.0.0.1:3000", live: false },
+        ]}
+        includeToolsAndThinking={false}
+        onIncludeToolsAndThinkingChange={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getAllByRole("link", { name: /^Open dev server/ }).map((link) => ({
+        name: link.getAttribute("aria-label"),
+        href: link.getAttribute("href"),
+        target: link.getAttribute("target"),
+        rel: link.getAttribute("rel"),
+      })),
+    ).toStrictEqual([
+      {
+        name: "Open dev server localhost:5173 in a new tab",
+        href: "http://localhost:5173",
+        target: "_blank",
+        rel: "noopener noreferrer",
+      },
+      {
+        name: "Open dev server 127.0.0.1:3000 in a new tab",
+        href: "http://127.0.0.1:3000",
+        target: "_blank",
+        rel: "noopener noreferrer",
+      },
+    ]);
+    expect(screen.getAllByRole("img").map((dot) => dot.getAttribute("aria-label"))).toStrictEqual([
+      "Running",
+      "Not responding",
+    ]);
+    expect(screen.getByTitle("http://localhost:5173").textContent).toBe("web · localhost:5173");
+  });
+
   it("reports the link count as a floor when the transcript window hides earlier records", () => {
     render(<DrawerHarness unscannedRecordCount={3200} />);
 

@@ -236,6 +236,15 @@ export const SessionResourcesResponse = z.object({
   ),
 });
 
+/** Loopback dev servers the session declared or printed, with a liveness probe. */
+export const SessionDevServersResponse = z
+  .object({
+    servers: z.array(
+      z.object({ url: z.string(), name: z.string().optional(), live: z.boolean() }).strict(),
+    ),
+  })
+  .strict();
+
 const RawJsonlLineSchema = z.object({
   raw: z.string(),
   uuid: z.string().optional(),
@@ -299,6 +308,7 @@ export const sessionQueryKeys = {
   detail: (id: string) => [...SESSION_QUERY_ROOT, id] as const,
   transcript: (id: string) => [...SESSION_QUERY_ROOT, id, "transcript"] as const,
   resources: (id: string) => [...SESSION_QUERY_ROOT, id, "resources"] as const,
+  devServers: (id: string) => [...SESSION_QUERY_ROOT, id, "dev-servers"] as const,
   artifacts: (id: string) => [...SESSION_QUERY_ROOT, id, "artifacts"] as const,
   source: (sessionId: string, uuid: string, contextN: number) =>
     [...SESSION_QUERY_ROOT, sessionId, "source", uuid, contextN] as const,
@@ -440,6 +450,19 @@ export const sessionResourcesQueryOptions = (id: string, enabled: boolean) =>
     enabled,
     staleTime: Infinity,
     gcTime: Infinity,
+  });
+
+/**
+ * "Open dev server" links for the Links drawer, fetched only while it is open.
+ * Liveness goes stale quickly, so each opening re-probes.
+ */
+export const sessionDevServersQueryOptions = (id: string, enabled: boolean) =>
+  queryOptions({
+    queryKey: sessionQueryKeys.devServers(id),
+    queryFn: () =>
+      apiFetch(`/api/sessions/${encodeURIComponent(id)}/dev-servers`, SessionDevServersResponse),
+    enabled,
+    staleTime: 0,
   });
 
 /**

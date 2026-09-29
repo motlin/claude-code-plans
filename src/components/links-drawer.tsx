@@ -5,6 +5,7 @@ import {
   ExternalLink,
   Link as LinkIcon,
   Search,
+  SquareTerminal,
 } from "lucide-react";
 import {
   useCallback,
@@ -210,8 +211,62 @@ function LinkRow({ entry, copied, onCopy }: LinkRowProps) {
   );
 }
 
+interface DevServerLink {
+  url: string;
+  name?: string | undefined;
+  live: boolean;
+}
+
+function DevServersSection({ servers }: { servers: readonly DevServerLink[] }) {
+  return (
+    <section aria-labelledby="links-dev-servers">
+      <h3
+        id="links-dev-servers"
+        className="flex items-center gap-2 border-b border-border px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-secondary"
+      >
+        <SquareTerminal className="size-3.5" aria-hidden="true" />
+        <span className="min-w-0 flex-1 truncate">Dev servers</span>
+        <span>{servers.length}</span>
+      </h3>
+      <ul>
+        {servers.map((server) => {
+          const host = server.url.replace(/^https?:\/\//, "");
+          return (
+            <li
+              key={server.url}
+              className="flex items-center gap-2 border-b border-subtle px-4 py-2 last:border-b-0"
+            >
+              <span
+                role="img"
+                aria-label={server.live ? "Running" : "Not responding"}
+                title={server.live ? "Running" : "Not responding"}
+                className={`size-2 shrink-0 rounded-full ${server.live ? "bg-success-100" : "bg-alpha-3"}`}
+              />
+              <span title={server.url} className="min-w-0 flex-1 truncate text-xs text-secondary">
+                {server.name === undefined ? host : `${server.name} · ${host}`}
+              </span>
+              <a
+                href={server.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Open dev server ${host} in a new tab`}
+                className="flex shrink-0 items-center gap-1 rounded px-2 py-1 text-xs text-t6 transition-colors hover:bg-fill-control hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
+              >
+                Open dev server
+                <ExternalLink className="size-3.5" aria-hidden="true" />
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 interface LinksDrawerProps {
   display: SessionLinkDisplay;
+  /** Loopback dev servers the session declared or printed. */
+  devServers?: readonly DevServerLink[];
   /** JSONL records before the loaded window, which extraction never saw. */
   unscannedRecordCount?: number;
   includeToolsAndThinking: boolean;
@@ -221,6 +276,7 @@ interface LinksDrawerProps {
 
 export function LinksDrawer({
   display,
+  devServers = [],
   unscannedRecordCount = 0,
   includeToolsAndThinking,
   onIncludeToolsAndThinkingChange,
@@ -324,6 +380,8 @@ export function LinksDrawer({
           />
         </label>
       </div>
+
+      {devServers.length > 0 && <DevServersSection servers={devServers} />}
 
       {filteredGroups.length === 0 ? (
         <p className="px-4 py-8 text-center text-xs text-t6">{emptyMessage}</p>
