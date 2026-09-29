@@ -38,6 +38,7 @@ import { TranscriptHistoryLoader, findScrollContainer } from "./transcript-histo
 import { Tooltip } from "./ui/tooltip";
 import { SessionPaneControls } from "./view-options-menu";
 import { SessionDock } from "./session-dock";
+import { useWorkingMarkerState, WorkingMarker } from "./working-marker";
 import { handleBtwPrompt, SideChat, useSideChatShortcut } from "./side-chat";
 import { useToast } from "./toast";
 import { transcriptWidthStyle } from "../lib/transcript-width";
@@ -47,6 +48,7 @@ import {
   useClaudeEvents,
   useComposerServerState,
   useIsSessionActive,
+  useSessionSummaryState,
   useStatusline,
 } from "../hooks/use-claude-events";
 import {
@@ -375,7 +377,7 @@ function SessionView({
     windowStartIndex: transcript.startIndex,
     jumpTargetWindow,
   });
-  const { hookContexts, runningSubagents } = useClaudeEvents();
+  const { hookContexts, runningSubagents, pendingTools } = useClaudeEvents();
   const hookContext = hookContexts.get(sessionId);
   const transcriptActiveSubagents = useMemo(
     () => extractPendingSubagents(transcript.records),
@@ -392,6 +394,12 @@ function SessionView({
   }, [sessionId, runningSubagents, transcriptActiveSubagents]);
   const [aiSummary, setAiSummary] = useState<string | null>(data.summary ?? null);
   const isActive = useIsSessionActive(sessionId);
+  const workingMarkerState = useWorkingMarkerState({
+    records: transcript.records,
+    sessionState: useSessionSummaryState(sessionId),
+    isActive,
+    pendingToolName: pendingTools.get(sessionId)?.toolName,
+  });
   const backgroundTasks = useMemo(
     () =>
       extractBackgroundTasks(transcript.records, {
@@ -638,6 +646,8 @@ function SessionView({
             pendingLabel="Sent to live session — waiting for transcript..."
           />
         )}
+
+        <WorkingMarker state={workingMarkerState} />
 
         <SideChat sessionId={sessionId} messageCount={data.messageCount} />
 

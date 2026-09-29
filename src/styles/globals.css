@@ -575,6 +575,24 @@
   }
 }
 
+/* Upstream claude.ai/code working marker: the spark turns while the session works and the
+   "Stopping…" label shimmers. The component also drops data-animated under reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .spark[data-animated="true"] {
+    animation: spark-turn 2.4s linear infinite;
+  }
+
+  .working-marker-shimmer {
+    animation: dot-blink 1.2s ease-in-out infinite;
+  }
+}
+
+@keyframes spark-turn {
+  to {
+    rotate: 360deg;
+  }
+}
+
 /* Settings ▸ Claude Code ▸ Transcript text size. The settings provider sets the
    size and leading on <html>; every `text-body` inside the transcript follows. */
 .transcript-text {

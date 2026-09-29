@@ -7,6 +7,7 @@ import {
   useReducer,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
@@ -49,7 +50,11 @@ import { toMdSlug } from "../lib/md-slug";
 import { getSubagentLifecycleKey, toSubagentSessionId } from "../lib/subagents";
 import { syncUnseenFromSummaries } from "../lib/unread-store";
 import { syncUnseenFromQueryCache } from "../lib/unseen-query-sync";
-import { isLiveSessionState, type ActivityState } from "../lib/session-state";
+import {
+  isLiveSessionState,
+  type ActivityState,
+  type SessionSummaryState,
+} from "../lib/session-state";
 import type { Statusline } from "../lib/api/statusline";
 import type { ComposerServerState } from "../lib/composer-state";
 import type { Notification, NotificationsData } from "../lib/api/notifications";
@@ -570,6 +575,39 @@ export function useActiveSessionsIfAvailable(): ReadonlyMap<string, ActiveSessio
 export function useIsSessionActive(sessionId: string): boolean {
   const { activeSessions } = useClaudeEvents();
   return activeSessions.has(sessionId);
+}
+
+function cachedSessionSummaryState(
+  queryClient: QueryClient,
+  sessionId: string,
+): SessionSummaryState | null {
+  const recent = queryClient.getQueryData<{
+    pages: Array<{ sessions: SessionSummaryPayload[] }>;
+  }>(recentSessionsInfiniteQueryOptions().queryKey);
+  const grouped = queryClient.getQueryData<Array<{ sessions: SessionSummaryPayload[] }>>(
+    groupedSessionsQueryOptions().queryKey,
+  );
+  const summary =
+    recent?.pages.flatMap((page) => page.sessions).find((session) => session.id === sessionId) ??
+    grouped?.flatMap((group) => group.sessions).find((session) => session.id === sessionId);
+  return summary?.state ?? null;
+}
+
+/**
+ * The hook-derived state of a session from the SSE-patched session list
+ * caches, or null when no loaded list includes it.
+ */
+export function useSessionSummaryState(sessionId: string): SessionSummaryState | null {
+  const queryClient = useQueryClient();
+  const subscribe = useCallback(
+    (onChange: () => void) => queryClient.getQueryCache().subscribe(onChange),
+    [queryClient],
+  );
+  return useSyncExternalStore(
+    subscribe,
+    () => cachedSessionSummaryState(queryClient, sessionId),
+    () => null,
+  );
 }
 
 /**
