@@ -131,7 +131,7 @@ export function Sidebar({
                 <button
                   type="button"
                   onClick={() => toggleSection(item.section)}
-                  className="flex h-8 w-6 shrink-0 items-center justify-center text-t6 transition-colors hover:text-secondary"
+                  className="flex h-[var(--sb-row-h)] w-6 shrink-0 items-center justify-center text-t6 transition-colors hover:text-secondary"
                   title={isExpanded ? `Collapse ${item.label}` : `Expand ${item.label}`}
                 >
                   <ChevronRight
@@ -143,24 +143,21 @@ export function Sidebar({
                 </button>
                 <Link
                   to={item.to}
-                  className={`mb-0.5 flex h-8 flex-1 items-center gap-2 rounded-r5 px-2 py-1.5 text-xs no-underline transition-colors ${
-                    isActive
-                      ? "bg-fill-ghost-hover font-medium text-primary"
-                      : "text-secondary hover:bg-fill-ghost-hover"
-                  }`}
-                  style={{
-                    fontWeight: isActive ? 500 : 430,
-                    lineHeight: "16px",
-                  }}
+                  data-selected={isActive ? "focused" : undefined}
+                  className="group mb-[0.5px] flex h-[var(--sb-row-h)] min-w-0 flex-1 items-center gap-[var(--sb-row-gap)] rounded-[var(--sb-radius)] px-[var(--sb-row-px)] text-left text-[length:var(--sb-row-font)] leading-[1.5] text-secondary no-underline hover:bg-[var(--sb-hover)] focus-visible:bg-[var(--sb-hover)] data-[selected=focused]:bg-[var(--sb-selected)] data-[selected=focused]:text-primary [&_.df-leading-slot]:text-secondary"
                 >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span className="flex-1 truncate">{item.label}</span>
+                  <span className="df-leading-slot">
+                    <Icon aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
                   {badge && badge.count > 0 && (
-                    <span
-                      className="ml-auto inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-semibold text-white"
-                      title={badge.title}
-                    >
-                      {badge.count}
+                    <span className="df-tail-mark">
+                      <span
+                        className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] leading-none font-semibold text-white"
+                        title={badge.title}
+                      >
+                        {badge.count}
+                      </span>
                     </span>
                   )}
                 </Link>
@@ -218,8 +215,8 @@ export function Sidebar({
       style={mobile ? undefined : ({ "--sidebar-width": `${width}px` } as CSSProperties)}
       className={
         mobile
-          ? "group/sidebar relative flex h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border bg-surface-0"
-          : "group/sidebar relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[0.5px] border-border bg-surface-0 md:flex"
+          ? "group/sidebar relative flex h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border bg-[var(--sb-bg)]"
+          : "group/sidebar relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[0.5px] border-border bg-[var(--sb-bg)] md:flex"
       }
     >
       <div data-testid="sidebar-titlebar" className="flex h-11 shrink-0 items-center px-2">

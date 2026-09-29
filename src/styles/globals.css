@@ -245,9 +245,28 @@
   --pane-shadow: 0 0 0 1px rgb(11 11 11 / 0.06), 0 1px 3px rgba(0, 0, 0, 0.06);
   --menu-danger-fill: #d03b3b;
   --menu-on-danger: #fff;
+
+  /* Sidebar rows: upstream .dframe-sidebar[data-density="comfortable"] (web variant) */
+  --sb-row-h: 32px;
+  --sb-row-px: 2px;
+  --sb-row-gap: 8px;
+  --sb-row-font: 14px;
+  --sb-group-font: 13px;
+  --sb-icon: 20px;
+  --sb-leading-slot: 28px;
+  --sb-row-ctl: 24px;
+  --sb-radius: 8px;
+  --sb-hover: #f0efec;
+  --sb-selected: #edece8;
+  --sb-bg: color-mix(in srgb, var(--upstream-surface-0) 50%, var(--upstream-surface-1));
 }
 
 .dark {
+  /* Sidebar rows: upstream [data-mode="dark"] .dframe-sidebar overrides */
+  --sb-hover: hsl(0 0% 100% / 0.08);
+  --sb-selected: hsl(0 0% 100% / 0.12);
+  --sb-bg: color-mix(in srgb, var(--upstream-page) 80%, black);
+
   /* Upstream semantic palette */
   --upstream-page: hsl(60 3% 15%);
   --upstream-surface-0: hsl(30 3% 12%);
@@ -494,4 +513,34 @@
   .sidebar-peek-motion {
     transition: none;
   }
+}
+
+/* Upstream .df-leading-slot: a fixed box that centers the row's icon. */
+.df-leading-slot {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: var(--sb-leading-slot);
+  height: var(--sb-leading-slot);
+}
+
+.df-leading-slot svg {
+  flex-shrink: 0;
+  width: var(--sb-icon);
+  height: var(--sb-icon);
+}
+
+/* Upstream .df-tail-mark: a row-ctl box at the row's end for trailing marks. */
+.df-tail-mark {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: var(--sb-row-ctl);
+  height: var(--sb-row-ctl);
+  margin-right: calc(
+    (var(--sb-row-h) - var(--sb-row-ctl)) / 2 - var(--sb-row-px) -
+      (var(--sb-leading-slot) - var(--sb-icon)) / 2
+  );
 }
