@@ -105,6 +105,32 @@ export type ClaudeAiConnectorSummary = z.infer<typeof ClaudeAiConnectorSchema>;
 
 export const ClaudeAiConnectorListResponse = z.array(ClaudeAiConnectorSchema);
 
+/** One installable plugin in the local Discover catalog. */
+const DiscoverPluginSchema = z.strictObject({
+  /** `<name>@<marketplace>`, the `claude plugin install` argument. */
+  id: z.string(),
+  name: z.string(),
+  /** The marketplace `displayName`, else `name`. */
+  title: z.string(),
+  marketplace: z.string(),
+  description: z.string(),
+  author: z.string().nullable(),
+  category: z.string().nullable(),
+  /** `unique_installs` from the catalog cache; null outside the official catalog. */
+  installs: z.number().nullable(),
+  lastUpdated: z.string().nullable(),
+  skills: z.array(z.string()),
+  installed: z.boolean(),
+});
+export type DiscoverPlugin = z.infer<typeof DiscoverPluginSchema>;
+
+export const DiscoverCatalogResponse = z.strictObject({
+  /** When the CLI last fetched plugin-catalog-cache.json; null when absent. */
+  fetchedAt: z.string().nullable(),
+  plugins: z.array(DiscoverPluginSchema),
+});
+export type DiscoverCatalog = z.infer<typeof DiscoverCatalogResponse>;
+
 const CUSTOMIZE_STALE_TIME_MS = 30_000;
 
 export const customizeSkillsQueryOptions = queryOptions({
@@ -152,6 +178,12 @@ export const customizePluginFileQueryOptions = (pluginId: string, path: string) 
       ),
     staleTime: 0,
   });
+
+export const customizeDiscoverQueryOptions = queryOptions({
+  queryKey: ["customize", "discover"] as const,
+  queryFn: () => apiFetch("/api/customize/discover", DiscoverCatalogResponse),
+  staleTime: CUSTOMIZE_STALE_TIME_MS,
+});
 
 export const customizeMcpServersQueryOptions = queryOptions({
   queryKey: ["customize", "mcp-servers"] as const,

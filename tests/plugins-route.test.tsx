@@ -14,6 +14,6 @@ describe("blank-screen prevention on /customize/plugins", () => {
       result: loader({ context: { queryClient } }),
       prefetched: queryClient.prefetchQuery.mock.calls.length,
       awaited: queryClient.ensureQueryData.mock.calls.length,
-    }).toStrictEqual({ result: undefined, prefetched: 1, awaited: 0 });
+    }).toStrictEqual({ result: undefined, prefetched: 2, awaited: 0 });
   });
 });

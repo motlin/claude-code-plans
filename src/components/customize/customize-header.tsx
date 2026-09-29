@@ -40,6 +40,8 @@ interface CustomizeHeaderProps {
 export function CustomizeHeader({ section, search }: CustomizeHeaderProps) {
   const navigate = useNavigate();
   const searching = (search.q ?? "") !== "";
+  // Discover has its own sections, so the Yours Filter and Sort menus do not apply there.
+  const discover = section.hasDiscover && search.view === "discover";
   const sortOptions = section.sort;
   const sort = useSectionSort(section.sortStorageKey, search.sort);
 
@@ -115,16 +117,18 @@ export function CustomizeHeader({ section, search }: CustomizeHeaderProps) {
           value={search.q ?? ""}
           onChange={(q) => updateSearch({ q })}
         />
-        <OptionMenu
-          label="Filter"
-          groupLabel={section.filter.label}
-          icon={<SlidersHorizontal aria-hidden="true" className="size-5" />}
-          options={section.filter.options}
-          value={search.filter}
-          disabled={searching}
-          onChange={(filter) => updateSearch({ filter })}
-        />
-        {sortOptions !== null && (
+        {!discover && (
+          <OptionMenu
+            label="Filter"
+            groupLabel={section.filter.label}
+            icon={<SlidersHorizontal aria-hidden="true" className="size-5" />}
+            options={section.filter.options}
+            value={search.filter}
+            disabled={searching}
+            onChange={(filter) => updateSearch({ filter })}
+          />
+        )}
+        {sortOptions !== null && !discover && (
           <OptionMenu
             label={`Sort by ${resolveOption(sortOptions, sort).label}`}
             groupLabel="Sort by"

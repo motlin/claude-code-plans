@@ -1851,6 +1851,94 @@ export const ClaudeJsonProjectMcpSchema = z
   })
   .strict();
 
+// ---------------------------------------------------------------------------
+// Plugin catalog cache (~/.claude/plugins/plugin-catalog-cache.json)
+// ---------------------------------------------------------------------------
+
+export const PluginCatalogSourceKindSchema = z.enum(["url", "git-subdir"]);
+
+const PluginCatalogCharsSchema = z.strictObject({
+  always_on: z.number(),
+  on_invoke: z.number(),
+});
+
+const PluginCatalogComponentSchema = z.strictObject({
+  name: z.string(),
+  chars: PluginCatalogCharsSchema,
+});
+
+const PluginCatalogLspServerSchema = z.strictObject({
+  command: z.string(),
+  args: z.array(z.string()).optional(),
+  extensionToLanguage: z.record(z.string(), z.string()),
+  startupTimeout: z.number().optional(),
+});
+
+const PluginCatalogMarketplaceEntrySchema = z.strictObject({
+  name: z.string(),
+  displayName: z.string().optional(),
+  description: z.string(),
+  version: z.string().optional(),
+  author: z
+    .strictObject({
+      name: z.string(),
+      email: z.string().optional(),
+      url: z.string().optional(),
+    })
+    .optional(),
+  category: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  keywords: z.array(z.string()).optional(),
+  homepage: z.string().optional(),
+  strict: z.boolean().optional(),
+  skills: z.array(z.string()).optional(),
+  lspServers: z.record(z.string(), PluginCatalogLspServerSchema).optional(),
+  source: z.union([
+    z.string(),
+    z.strictObject({
+      source: PluginCatalogSourceKindSchema,
+      url: z.string(),
+      path: z.string().optional(),
+      ref: z.string().optional(),
+      sha: z.string().optional(),
+    }),
+  ]),
+});
+
+const PluginCatalogPluginSchema = z.strictObject({
+  plugin: z.string(),
+  tokens: z.record(z.string(), PluginCatalogCharsSchema),
+  components: z.strictObject({
+    commands: z.array(PluginCatalogComponentSchema),
+    agents: z.array(PluginCatalogComponentSchema),
+    skills: z.array(PluginCatalogComponentSchema),
+    hooks: z.array(z.string()),
+    mcpServers: z.array(z.string()),
+    lspServers: z.array(z.string()),
+  }),
+  unique_installs: z.number().optional(),
+  last_updated: z.string(),
+  marketplace_entry: PluginCatalogMarketplaceEntrySchema,
+  version: z.string().optional(),
+  source: z.string(),
+  /** Null for plugins that live inside the marketplace repo (a string `source`). */
+  sha: z.string().nullable(),
+  source_sha: z.string(),
+});
+
+/** The CLI's cached copy of the official plugin directory, keyed `<name>@<marketplace>`. */
+export const PluginCatalogCacheSchema = z.strictObject({
+  version: z.number(),
+  fetchedAt: z.string(),
+  catalog: z.strictObject({
+    generated_at: z.string(),
+    installs_generated_at: z.string(),
+    marketplace_sha: z.string(),
+    models: z.array(z.string()),
+    plugins: z.record(z.string(), PluginCatalogPluginSchema),
+  }),
+});
+
 // The identity keys picked out of ~/.claude.json `oauthAccount`. Plan fields stay
 // plain strings so an unfamiliar plan still yields a name and email.
 export const ClaudeJsonOauthAccountSchema = z

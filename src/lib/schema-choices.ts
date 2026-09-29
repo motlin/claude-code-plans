@@ -41,6 +41,7 @@ import type {
   GitCommitKindSchema,
   GitPrActionSchema,
   JsonlRecordSchema,
+  PluginCatalogSourceKindSchema,
   RenderedRoleSchema,
   SkillOverrideValueSchema,
   TaskStatusSchema,
@@ -914,6 +915,12 @@ export const exitWorktreeActionFailedLabels = {
   remove: "Failed to remove the worktree",
 } satisfies Record<z.infer<typeof ExitWorktreeActionSchema>, string>;
 
+/** `marketplace_entry.source.source` in plugin-catalog-cache.json (src/lib/customize/discover.ts). */
+const pluginCatalogSourceKindLabels = {
+  url: "Git repository",
+  "git-subdir": "Git subdirectory",
+} satisfies Record<z.infer<typeof PluginCatalogSourceKindSchema>, string>;
+
 const toolNamesWithMcp = { ...toolNames, "mcp__*": true } as const;
 
 /** Maps walker path keys (see tests/schema-choices.test.ts) to choice maps. */
@@ -1005,4 +1012,5 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   ReportFindingsVerdictSchema: reportFindingsVerdictLabels,
   RemoteTriggerActionSchema: remoteTriggerActionLabels,
   ExitWorktreeActionSchema: exitWorktreeActionFailedLabels,
+  PluginCatalogSourceKindSchema: pluginCatalogSourceKindLabels,
 };

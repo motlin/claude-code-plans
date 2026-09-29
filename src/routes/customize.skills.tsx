@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { Scroll } from "lucide-react";
+import { CustomizeDiscover } from "../components/customize/customize-discover";
 import { CustomizeNotice } from "../components/customize/customize-empty";
 import { CustomizeList, ShortDate } from "../components/customize/customize-list";
 import { useSectionSort } from "../components/customize/persisted-sort";
@@ -13,7 +14,7 @@ import {
   groupSkills,
   sortSkills,
 } from "../components/customize/skills-view";
-import { customizeSkillsQueryOptions } from "../lib/api/customize";
+import { customizeDiscoverQueryOptions, customizeSkillsQueryOptions } from "../lib/api/customize";
 import { userCommandsQueryOptions } from "../lib/api/plugins";
 
 export const Route = createFileRoute("/customize/skills")({
@@ -21,6 +22,7 @@ export const Route = createFileRoute("/customize/skills")({
   loader: ({ context: { queryClient } }) => {
     void queryClient.prefetchQuery(customizeSkillsQueryOptions);
     void queryClient.prefetchQuery(userCommandsQueryOptions);
+    void queryClient.prefetchQuery(customizeDiscoverQueryOptions);
   },
   head: () => ({ meta: [{ title: "Skills · Customize" }] }),
 });
@@ -36,9 +38,20 @@ function CustomizeSkills() {
 
   if (search.view === "discover") {
     return (
-      <CustomizeNotice
-        title="Discover"
-        body="Browsing the plugin catalog for new skills is not available yet."
+      <CustomizeDiscover
+        section="skills"
+        q={search.q}
+        yours={(skills ?? []).map((skill) => ({
+          key: skill.id,
+          title: skill.name,
+          source: `from ${skill.sourceLabel}`,
+          subtitle: skill.description,
+          onView: () =>
+            void navigate({
+              to: "/customize/skills/id/$skillId",
+              params: { skillId: skill.id },
+            }),
+        }))}
       />
     );
   }

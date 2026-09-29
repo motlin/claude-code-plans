@@ -1,18 +1,24 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { Puzzle } from "lucide-react";
+import { CustomizeDiscover } from "../components/customize/customize-discover";
 import { CustomizeNotice } from "../components/customize/customize-empty";
 import { CustomizeList } from "../components/customize/customize-list";
 import { PluginRowActions } from "../components/customize/plugin-row-actions";
 import { PluginVersion } from "../components/plugin-version";
 import { CUSTOMIZE_SECTIONS, matchesQuery, resolveOption } from "../components/customize/sections";
-import { customizeSettingsTogglesQueryOptions, isPluginEnabled } from "../lib/api/customize";
+import {
+  customizeDiscoverQueryOptions,
+  customizeSettingsTogglesQueryOptions,
+  isPluginEnabled,
+} from "../lib/api/customize";
 import { groupPluginsByMarketplace, pluginsQueryOptions } from "../lib/api/plugins";
 
 export const Route = createFileRoute("/customize/plugins")({
   component: CustomizePlugins,
   loader: ({ context: { queryClient } }) => {
     void queryClient.prefetchQuery(pluginsQueryOptions);
+    void queryClient.prefetchQuery(customizeDiscoverQueryOptions);
   },
   head: () => ({ meta: [{ title: "Plugins · Customize" }] }),
 });
@@ -27,7 +33,21 @@ function CustomizePlugins() {
 
   if (search.view === "discover") {
     return (
-      <CustomizeNotice title="Discover" body="Browsing the plugin catalog is not available yet." />
+      <CustomizeDiscover
+        section="plugins"
+        q={search.q}
+        yours={(plugins ?? []).map((plugin) => ({
+          key: plugin.id,
+          title: plugin.name,
+          source: `from ${plugin.marketplace}`,
+          subtitle: plugin.description,
+          onView: () =>
+            void navigate({
+              to: "/customize/plugins/id/$pluginId",
+              params: { pluginId: plugin.id },
+            }),
+        }))}
+      />
     );
   }
   if (isPending || plugins === undefined) {

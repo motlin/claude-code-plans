@@ -10,11 +10,13 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { ToastProvider } from "../src/components/toast";
 import {
+  customizeDiscoverQueryOptions,
   customizeMcpServersQueryOptions,
   customizeSkillsQueryOptions,
+  type DiscoverCatalog,
   type McpServerSummary,
   type SkillSummary,
 } from "../src/lib/api/customize";
@@ -93,9 +95,42 @@ function component<T>(value: T | undefined, name: string): T {
   return value;
 }
 
+const DISCOVER: DiscoverCatalog = {
+  fetchedAt: "2026-08-31T12:09:45.226Z",
+  plugins: [
+    {
+      id: "deploy@claude-plugins-official",
+      name: "deploy",
+      title: "Deploy",
+      marketplace: "claude-plugins-official",
+      description: "Ship safely.",
+      author: "Anthropic",
+      category: "deployment",
+      installs: 8_340_370,
+      lastUpdated: "2026-09-20T10:00:00Z",
+      skills: ["deploy-checklist"],
+      installed: false,
+    },
+    {
+      id: "tidy@community",
+      name: "tidy",
+      title: "tidy",
+      marketplace: "community",
+      description: "Tidy up the deploy scripts.",
+      author: null,
+      category: null,
+      installs: null,
+      lastUpdated: null,
+      skills: [],
+      installed: true,
+    },
+  ],
+};
+
 async function renderCustomize(initialEntry: string, skills: SkillSummary[] = SKILLS) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   queryClient.setQueryData(customizeSkillsQueryOptions.queryKey, skills);
+  queryClient.setQueryData(customizeDiscoverQueryOptions.queryKey, DISCOVER);
   queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, MCP_SERVERS);
   queryClient.setQueryData(pluginsQueryOptions.queryKey, []);
 
@@ -350,5 +385,67 @@ describe("customize shell", () => {
       stored: localStorage.getItem("ccb-customize-skills-sort"),
       label: screen.getByRole("button", { name: "Sort by Name" }).getAttribute("aria-label"),
     }).toStrictEqual({ stored: "name", label: "Sort by Name" });
+  });
+});
+
+describe("customize discover", () => {
+  function cardTexts() {
+    return screen.getAllByTestId("customize-discover-card").map((card) => card.textContent);
+  }
+
+  it("renders Most installed and Recently updated cards with install state", async () => {
+    await renderCustomize("/customize/plugins?view=discover");
+
+    expect({
+      headings: screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent),
+      cards: cardTexts(),
+      stale: screen.getByTestId("customize-discover-stale").textContent?.includes("Aug 31, 2026"),
+      filter: screen.queryByRole("button", { name: "Filter" }),
+    }).toStrictEqual({
+      headings: ["Most installed", "Recently updated", "Categories"],
+      cards: [
+        "DeployShip safely.by Anthropic·8.3M installs",
+        "DeployShip safely.by Anthropic·8.3M installs",
+      ],
+      stale: true,
+      filter: null,
+    });
+  });
+
+  it("copies the install command from the + button", async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    await renderCustomize("/customize/plugins?view=discover");
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getAllByRole("button", { name: "Copy install command for Deploy" })[0]!,
+      );
+    });
+
+    expect({
+      calls: writeText.mock.calls,
+      toast: screen.getByText(
+        "Command copied: claude plugin install deploy@claude-plugins-official",
+      ).textContent,
+    }).toStrictEqual({
+      calls: [["claude plugin install deploy@claude-plugins-official"]],
+      toast: "Command copied: claude plugin install deploy@claude-plugins-official",
+    });
+  });
+
+  it("groups search results into Yours and More you can add", async () => {
+    await renderCustomize("/customize/skills?view=discover&q=deploy");
+
+    const sections = screen.getAllByRole("region").map((region) => ({
+      heading: within(region).getByRole("heading", { level: 3 }).textContent,
+      rows: within(region)
+        .getAllByTestId("customize-list-row")
+        .map((row) => row.querySelector(".font-medium")?.textContent),
+    }));
+    expect(sections).toStrictEqual([
+      { heading: "Yours", rows: ["deploy-checklist"] },
+      { heading: "More you can add", rows: ["Deploy"] },
+    ]);
   });
 });
