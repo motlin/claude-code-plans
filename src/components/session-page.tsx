@@ -1,16 +1,7 @@
 import { Link, useElementScrollRestoration, useLocation } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ArrowUp,
-  ArrowDown,
-  Copy,
-  Terminal,
-  GitFork,
-  Download,
-  Maximize2,
-  Minimize2,
-} from "lucide-react";
+import { ArrowUp, ArrowDown, GitFork, Maximize2, Minimize2 } from "lucide-react";
 import { SessionChat } from "./session-chat";
 import { ChatInput } from "./chat-input";
 import { StreamingMessage } from "./streaming-message";
@@ -19,10 +10,8 @@ import { SessionHookContext } from "./session-hook-context";
 import { useSettings } from "./settings-provider";
 import { useTranscriptModeShortcut } from "../hooks/use-session-transcript-mode";
 import { sessionHasThinking } from "../lib/transcript-mode";
-import { SessionReviewedToggle } from "./session-reviewed-toggle";
 import { SessionTitlebar } from "./session-titlebar";
 import { TITLEBAR_ICON_BUTTON_CLASS } from "./titlebar-classes";
-import { LiveTerminalLink } from "./session-terminal-links";
 import { useHasUnseenWork } from "./session-unread-control";
 import { syncUnseenFromSummaries } from "../lib/unread-store";
 import {
@@ -67,8 +56,6 @@ import {
   useRequestSummary,
 } from "../lib/api/sessions";
 import type { SessionDetailData, SessionSubagentsData, TranscriptData } from "../lib/api/sessions";
-import { writeClipboardText } from "../lib/clipboard";
-import { SessionPinToggle } from "./session-pin-toggle";
 import { countMessageRecords } from "../lib/message-count";
 import {
   getSubagentLifecycleKey,
@@ -152,42 +139,6 @@ function FloatingScrollButtons({ anchorRef }: { anchorRef: React.RefObject<HTMLE
         </button>
       </div>
     </ViewportPortal>
-  );
-}
-
-export function CopyButton({
-  title,
-  text,
-  icon: Icon,
-}: {
-  title: string;
-  text: string;
-  icon: React.ComponentType<{ className?: string }>;
-}) {
-  const [copied, setCopied] = useState(false);
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        title={title}
-        onClick={async () => {
-          const copySucceeded = await writeClipboardText(text);
-          setCopied(copySucceeded);
-          if (copySucceeded) {
-            setTimeout(() => setCopied(false), 1500);
-          }
-        }}
-        className="text-t6 hover:text-primary transition-colors cursor-pointer"
-      >
-        <Icon className="h-3.5 w-3.5" />
-      </button>
-      <span
-        className={`absolute -bottom-6 left-1/2 -translate-x-1/2 rounded bg-surface-0 px-1.5 py-0.5 text-[10px] text-secondary shadow-sm transition-opacity whitespace-nowrap ${copied ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-      >
-        Copied!
-      </span>
-    </div>
   );
 }
 
@@ -478,7 +429,6 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
     return eventSubagents.length > 0 ? eventSubagents : transcriptActiveSubagents;
   }, [sessionId, runningSubagents, transcriptActiveSubagents]);
   const [aiSummary, setAiSummary] = useState<string | null>(data.summary ?? null);
-  const summaryLoaded = true;
   const isActive = useIsSessionActive(sessionId);
   const statusline = useStatusline(sessionId);
   const [generating, setGenerating] = useState(false);
@@ -590,39 +540,17 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
               sessionId={sessionId}
               data={data}
               isActive={isActive}
-              extras={
-                <div className="flex items-center gap-2 pr-1">
-                  <CopyButton title="Copy session ID" text={sessionId} icon={Copy} />
-                  <CopyButton
-                    title="Copy resume command"
-                    text={sessionCommands.resume}
-                    icon={Terminal}
-                  />
-                  <CopyButton
-                    title="Copy fork command"
-                    text={sessionCommands.fork}
-                    icon={GitFork}
-                  />
-                  <LiveTerminalLink
-                    sessionId={sessionId}
-                    sessionTitle={data.title}
-                    hasLivePane={promptBehavior.hasLivePane}
-                  />
-                  <SessionReviewedToggle
-                    reviewed={!unseen}
-                    onToggle={unseen ? viewedState.markReviewed : viewedState.markUnreviewed}
-                  />
-                  <a
-                    href={`/api/raw?sessionId=${sessionId}`}
-                    download
-                    className="text-t6 hover:text-primary transition-colors"
-                    title="Download raw JSONL"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                  </a>
-                  <SessionPinToggle sessionId={sessionId} />
-                </div>
-              }
+              local={{
+                resumeCommand: sessionCommands.resume,
+                forkCommand: sessionCommands.fork,
+                reviewed: !unseen,
+                onToggleReviewed: unseen ? viewedState.markReviewed : viewedState.markUnreviewed,
+                onGenerateSummary:
+                  aiSummary === null && settings.showSummaryButton
+                    ? () => void handleGenerateSummary()
+                    : undefined,
+                generatingSummary: generating,
+              }}
               paneToggles={
                 <>
                   <ChangesPaneToggle />
@@ -651,20 +579,8 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
               }
             />
 
-            {aiSummary ? (
+            {aiSummary !== null && aiSummary !== "" && (
               <p className="mt-1 text-sm text-t6 italic">{aiSummary}</p>
-            ) : (
-              summaryLoaded &&
-              settings.showSummaryButton && (
-                <button
-                  type="button"
-                  onClick={handleGenerateSummary}
-                  disabled={generating}
-                  className="mt-1 text-xs text-accent-100 hover:underline disabled:opacity-50 disabled:no-underline"
-                >
-                  {generating ? "Generating summary..." : "Generate AI summary"}
-                </button>
-              )
             )}
 
             {subagents.length > 0 && (

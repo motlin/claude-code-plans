@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   AppWindow,
   ArrowLeft,
@@ -22,7 +22,7 @@ import {
 } from "../lib/api/sessions";
 import { writeClipboardText } from "../lib/clipboard";
 import { formatModelName } from "../lib/model-name";
-import { usePins } from "../lib/pin-store";
+import { pin, unpin, usePins } from "../lib/pin-store";
 import { forkDisabledReason } from "../lib/session-fork";
 import { getSessionMenuItems, type SessionMenuSession } from "../lib/session-menu-items";
 import { ArchivedBadge } from "./archived-badge";
@@ -34,7 +34,7 @@ import {
 } from "./session-actions-menu";
 import { SessionTitleButton, useSessionTitleShortcuts } from "./session-title-heading";
 import { useToast } from "./toast";
-import { Menu, MenuContent, MenuItem, MenuTrigger } from "./ui/menu";
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "./ui/menu";
 import { Tooltip } from "./ui/tooltip";
 
 /** Below this titlebar width the origin pills collapse to icons, like upstream's `data-pills-compact`. */
@@ -57,6 +57,24 @@ function repositoryUrl(pr: SessionDetailData["pr"]): string | null {
   } catch {
     return null;
   }
+}
+
+type Toast = ReturnType<typeof useToast>;
+
+async function copyWithToast(toast: Toast, text: string, what: string): Promise<void> {
+  const copied = await writeClipboardText(text);
+  toast(
+    copied
+      ? { kind: "success", message: `${what} copied to clipboard.` }
+      : { kind: "error", message: `Couldn’t copy the ${what.toLowerCase()}. Try again.` },
+  );
+}
+
+function downloadUrl(href: string): void {
+  const anchor = document.createElement("a");
+  anchor.href = href;
+  anchor.download = "";
+  anchor.click();
 }
 
 function useCompactPills() {
@@ -130,14 +148,7 @@ function ProjectPill({
   const path = data.projectPath ?? data.cwd;
   const repository = repositoryUrl(data.pr);
 
-  const copy = async (text: string, what: string) => {
-    const copied = await writeClipboardText(text);
-    toast(
-      copied
-        ? { kind: "success", message: `${what} copied to clipboard.` }
-        : { kind: "error", message: `Couldn’t copy the ${what.toLowerCase()}. Try again.` },
-    );
-  };
+  const copy = (text: string, what: string) => copyWithToast(toast, text, what);
 
   return (
     <Menu>
@@ -176,6 +187,74 @@ function ProjectPill({
   );
 }
 
+/** Local-only session actions, offered in the header menu after upstream's items. */
+export interface SessionHeaderLocalActions {
+  resumeCommand: string;
+  forkCommand: string;
+  reviewed: boolean;
+  onToggleReviewed: () => Promise<unknown>;
+  /** Absent when there is nothing to generate: a summary exists or the setting hides it. */
+  onGenerateSummary?: (() => void) | undefined;
+  generatingSummary?: boolean;
+}
+
+function HeaderLocalSection({
+  sessionId,
+  pinned,
+  hasLivePane,
+  local,
+}: {
+  sessionId: string;
+  pinned: boolean;
+  hasLivePane: boolean;
+  local: SessionHeaderLocalActions;
+}) {
+  const toast = useToast();
+  const navigate = useNavigate();
+  const reviewLabel = local.reviewed ? "unreviewed" : "reviewed";
+  const toggleReviewed = () => {
+    local.onToggleReviewed().catch(() => {
+      toast({ kind: "error", message: `Couldn’t mark the session ${reviewLabel}. Try again.` });
+    });
+  };
+  return (
+    <>
+      <MenuSeparator />
+      <MenuItem onSelect={() => void copyWithToast(toast, sessionId, "Session ID")}>
+        Copy session ID
+      </MenuItem>
+      <MenuItem onSelect={() => void copyWithToast(toast, local.resumeCommand, "Resume command")}>
+        Copy resume command
+      </MenuItem>
+      <MenuItem onSelect={() => void copyWithToast(toast, local.forkCommand, "Fork command")}>
+        Copy fork command
+      </MenuItem>
+      <MenuItem onSelect={() => downloadUrl(`/api/raw?sessionId=${sessionId}`)}>
+        Download raw JSONL
+      </MenuItem>
+      <MenuItem onSelect={() => (pinned ? unpin(sessionId) : pin(sessionId))}>
+        {pinned ? "Unpin" : "Pin"}
+      </MenuItem>
+      <MenuItem onSelect={toggleReviewed}>{`Mark ${reviewLabel}`}</MenuItem>
+      {hasLivePane && (
+        <MenuItem
+          onSelect={() =>
+            void navigate({ to: "/herdr/terminal/$sessionId", params: { sessionId } })
+          }
+        >
+          Open live terminal
+        </MenuItem>
+      )}
+      {local.onGenerateSummary !== undefined &&
+        (local.generatingSummary === true ? (
+          <MenuItem disabled>Generating summary…</MenuItem>
+        ) : (
+          <MenuItem onSelect={local.onGenerateSummary}>Generate AI summary</MenuItem>
+        ))}
+    </>
+  );
+}
+
 /** Mounted only while the chevron menu is open, so a closed menu never queries. */
 function HeaderMenuBody({
   sessionId,
@@ -183,12 +262,14 @@ function HeaderMenuBody({
   title,
   isActive,
   requestRename,
+  local,
 }: {
   sessionId: string;
   data: SessionDetailData;
   title: string;
   isActive: boolean;
   requestRename: () => void;
+  local: SessionHeaderLocalActions | undefined;
 }) {
   const { data: herdr } = useQuery(herdrPanesQueryOptions);
   const { data: openIn } = useQuery(sessionOpenInQueryOptions(sessionId));
@@ -196,23 +277,35 @@ function HeaderMenuBody({
   const cwd = openIn?.cwd ?? data.cwd ?? data.projectPath;
   const bridgeSessionId = openIn?.bridgeSessionId ?? null;
   const prUrl = data.pr?.url ?? null;
+  const pinned = pins.isPinned(sessionId);
+  const hasLivePane = herdr?.panes.some((pane) => pane.sessionId === sessionId) ?? false;
   const menuSession: SessionMenuSession = {
     title,
-    pinned: pins.isPinned(sessionId),
+    pinned,
     readState: "read",
     archived: data.archived,
     prUrl,
-    hasLivePane: herdr?.panes.some((pane) => pane.sessionId === sessionId) ?? false,
+    hasLivePane,
     forkDisabledReason: forkDisabledReason({ working: isActive, cwd }),
     cwd,
     bridgeSessionId,
   };
   const run = useSessionMenuRunner({ sessionId, cwd, bridgeSessionId, prUrl, requestRename });
   return (
-    <MenuEntries
-      entries={getSessionMenuItems(menuSession, SESSION_MENU_CAPABILITIES, { surface: "header" })}
-      run={run}
-    />
+    <>
+      <MenuEntries
+        entries={getSessionMenuItems(menuSession, SESSION_MENU_CAPABILITIES, { surface: "header" })}
+        run={run}
+      />
+      {local !== undefined && (
+        <HeaderLocalSection
+          sessionId={sessionId}
+          pinned={pinned}
+          hasLivePane={hasLivePane}
+          local={local}
+        />
+      )}
+    </>
   );
 }
 
@@ -222,8 +315,8 @@ export interface SessionTitlebarProps {
   isActive: boolean;
   /** Main pane toggles, e.g. Changes. */
   paneToggles?: ReactNode;
-  /** Local session actions that have no upstream-shaped home yet. */
-  extras?: ReactNode;
+  /** Local-only actions for the header menu's trailing section. */
+  local?: SessionHeaderLocalActions;
   /** The trailing View options menu trigger. */
   viewOptions?: ReactNode;
 }
@@ -239,7 +332,7 @@ export function SessionTitlebar({
   data,
   isActive,
   paneToggles,
-  extras,
+  local,
   viewOptions,
 }: SessionTitlebarProps) {
   const rename = useSessionRename(sessionId, data.title);
@@ -295,6 +388,7 @@ export function SessionTitlebar({
                 title={rename.title}
                 isActive={isActive}
                 requestRename={menuRename.requestRename}
+                local={local}
               />
             </MenuContent>
           </Menu>
@@ -364,7 +458,6 @@ export function SessionTitlebar({
         data-titlebar-trail=""
         className="relative ml-auto flex shrink-0 items-center gap-1 pl-6 text-secondary"
       >
-        {extras}
         {paneToggles !== undefined && <div className="flex items-center gap-1">{paneToggles}</div>}
         {viewOptions}
       </div>

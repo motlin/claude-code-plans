@@ -12,7 +12,6 @@ import {
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
-import { LiveTerminalLink } from "../src/components/session-terminal-links";
 import { herdrWorkspacesQueryOptions } from "../src/lib/api/herdr-workspaces";
 import { sessionQueryKeys } from "../src/lib/api/sessions";
 import { terminalPlacementsQueryOptions } from "../src/lib/api/terminal-placements";
@@ -599,31 +598,6 @@ describe("session and live terminal two-way navigation", () => {
     }).toStrictEqual({
       href: "/session/session-test-100",
       title: "Open session transcript for session-test-100",
-    });
-  });
-
-  it("offers the terminal link only while the session has a live herdr pane", async () => {
-    await renderWithRouter(
-      <>
-        <LiveTerminalLink sessionId="session-test-100" sessionTitle="Alice" hasLivePane={true} />
-        <LiveTerminalLink sessionId="session-test-200" sessionTitle="Bob" hasLivePane={false} />
-      </>,
-      "/session/session-test-100",
-    );
-
-    const terminalLink = screen.getByRole("link", {
-      name: "Open live read-only terminal for Alice",
-    });
-    expect({
-      href: terminalLink.getAttribute("href"),
-      title: terminalLink.getAttribute("title"),
-      withoutLivePane: screen.queryByRole("link", {
-        name: "Open live read-only terminal for Bob",
-      }),
-    }).toStrictEqual({
-      href: "/herdr/terminal/session-test-100",
-      title: "Open live read-only terminal for Alice",
-      withoutLivePane: null,
     });
   });
 });
