@@ -29,6 +29,9 @@
   --color-surface-0: var(--upstream-surface-0);
   --color-surface-1: var(--upstream-surface-1);
   --color-surface-2: var(--upstream-surface-2);
+  --color-surface-3: var(--upstream-surface-3);
+  --color-alpha-1: var(--upstream-alpha-1);
+  --color-backdrop: var(--upstream-backdrop);
   --color-fill-control: var(--upstream-fill-control);
   --color-fill-ghost-hover: var(--upstream-fill-ghost-hover);
   --color-fill-primary: var(--upstream-fill-primary);
@@ -106,6 +109,8 @@
 
   /* Upstream claude.ai/code — side pane surface (shadow-panel-sm) */
   --shadow-panel-sm: var(--pane-shadow);
+  /* Upstream claude.ai/code — dialog surface (shadow-panel-lg) */
+  --shadow-panel-lg: var(--panel-lg-shadow);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -131,6 +136,12 @@
   --upstream-surface-0: hsl(60 14% 97%);
   --upstream-surface-1: hsl(60 14% 99%);
   --upstream-surface-2: hsl(0 0% 100%);
+  --upstream-surface-3: #fff;
+  --upstream-alpha-1: rgb(11 11 11 / 0.05);
+  --upstream-backdrop: rgb(0 0 0 / 0.4);
+  --panel-lg-shadow:
+    0 0 0 1px rgb(11 11 11 / 0.1), 0 4px 8px 0 rgb(11 11 11 / 0.08),
+    0 12px 28px -2px rgb(11 11 11 / 0.08);
   --upstream-fill-control: hsl(0 0% 4% / 0.1);
   --upstream-fill-ghost-hover: hsl(0 0% 4% / 0.05);
   --upstream-fill-primary: hsl(0 0% 4%);
@@ -236,6 +247,9 @@
   --upstream-surface-0: hsl(30 3% 12%);
   --upstream-surface-1: hsl(60 3% 15%);
   --upstream-surface-2: hsl(60 2% 18%);
+  --upstream-surface-3: #20201f;
+  --upstream-alpha-1: rgb(255 255 255 / 0.05);
+  --upstream-backdrop: rgb(0 0 0 / 0.5);
   --upstream-fill-control: hsl(0 0% 100% / 0.1);
   --upstream-fill-ghost-hover: hsl(0 0% 100% / 0.08);
   --upstream-fill-primary: hsl(53 12% 87%);

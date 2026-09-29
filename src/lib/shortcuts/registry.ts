@@ -100,7 +100,7 @@ export const SHORTCUTS = {
     group: "general",
     bindings: cmdOrCtrl("/", [], "Slash"),
     ownerSlug: "shortcuts-dialog",
-    enabled: false,
+    enabled: true,
   },
   settings: {
     description: "Settings",

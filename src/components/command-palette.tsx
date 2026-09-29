@@ -12,12 +12,14 @@ import {
   Home,
   SlidersHorizontal,
   CircleCheckBig,
+  Keyboard,
 } from "lucide-react";
 import { recentSessionsQueryOptions } from "../lib/api/sessions";
 import { clearAll, observeSessionState } from "../lib/unread-store";
 import { isLiveSessionState } from "../lib/session-state";
 import { Shortcut } from "./ui/shortcut";
 import { useOpenSettings } from "./settings/settings-dialog";
+import { setKeyboardShortcutsOpen } from "./keyboard-shortcuts-dialog";
 
 interface RecentSession {
   id: string;
@@ -187,6 +189,12 @@ export function CommandPalette({
             onSelect={() => select(() => openSettings("general"))}
           >
             Settings
+          </CommandItem>
+          <CommandItem
+            icon={<Keyboard className="h-4 w-4" />}
+            onSelect={() => select(() => setKeyboardShortcutsOpen(true))}
+          >
+            Keyboard shortcuts
           </CommandItem>
         </Command.Group>
       </Command.List>
