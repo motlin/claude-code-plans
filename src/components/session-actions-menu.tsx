@@ -132,7 +132,11 @@ export function useSessionMenuRunner({
   return (id: SessionMenuItemId): void => {
     switch (id) {
       case "open-live-terminal":
-        void navigate({ to: "/herdr/terminal/$sessionId", params: { sessionId } });
+        void navigate({
+          to: "/session/$id",
+          params: { id: sessionId },
+          search: { pane: "terminal" },
+        });
         return;
       case "open-terminal":
         if (cwd !== null) void copySessionResumeCommand(sessionId, cwd, toast);

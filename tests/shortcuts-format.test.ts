@@ -82,5 +82,6 @@ describe("toAriaKeyShortcuts", () => {
   it("maps named keys to KeyboardEvent.key names", () => {
     expect(toAriaKeyShortcuts("cmd+alt+enter", true)).toBe("Alt+Meta+Enter");
     expect(toAriaKeyShortcuts("esc", false)).toBe("Escape");
+    expect(toAriaKeyShortcuts("ctrl+`", true)).toBe("Control+Backquote");
   });
 });

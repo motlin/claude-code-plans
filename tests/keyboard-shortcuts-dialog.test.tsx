@@ -137,6 +137,7 @@ describe("KeyboardShortcutsDialog", () => {
         "Go to file in changes",
         "Toggle Files",
         "Attach selection as context",
+        "Toggle terminal",
         "Close pane",
         "Expand or collapse pane",
       ],

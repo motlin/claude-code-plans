@@ -118,13 +118,13 @@ async function renderRow(
     path: "/",
     component: () => null,
   });
-  const terminalRoute = createRoute({
+  const sessionRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: "/herdr/terminal/$sessionId",
-    component: () => <p>terminal page</p>,
+    path: "/session/$id",
+    component: () => <p>session page</p>,
   });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([homeRoute, terminalRoute]),
+    routeTree: rootRoute.addChildren([homeRoute, sessionRoute]),
     history: createMemoryHistory({ initialEntries: ["/"] }),
   });
   await router.load();

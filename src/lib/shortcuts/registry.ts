@@ -232,7 +232,7 @@ export const SHORTCUTS = {
     group: "panes",
     bindings: ctrlEverywhere("`", [], "Backquote"),
     ownerSlug: "panes-terminal",
-    enabled: false,
+    enabled: true,
   },
   close_pane: {
     description: "Close pane",

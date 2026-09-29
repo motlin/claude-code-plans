@@ -241,7 +241,11 @@ function HeaderLocalSection({
       {hasLivePane && (
         <MenuItem
           onSelect={() =>
-            void navigate({ to: "/herdr/terminal/$sessionId", params: { sessionId } })
+            void navigate({
+              to: "/session/$id",
+              params: { id: sessionId },
+              search: { pane: "terminal" },
+            })
           }
         >
           Open live terminal

@@ -300,14 +300,14 @@ describe("session header menu", () => {
       pinState,
       reviewedToggles: onToggleReviewed.mock.calls.length,
       summaryRequests: onGenerateSummary.mock.calls.length,
-      path: router.state.location.pathname,
+      href: router.state.location.href,
     }).toStrictEqual({
       clipboard: [[SESSION_ID], [RESUME_COMMAND], [FORK_COMMAND]],
       downloads: [{ href: `/api/raw?sessionId=${SESSION_ID}`, download: "" }],
       pinState: { pinnedIds: [SESSION_ID], pinnedOrder: [] },
       reviewedToggles: 1,
       summaryRequests: 1,
-      path: `/herdr/terminal/${SESSION_ID}`,
+      href: `/session/${SESSION_ID}?pane=terminal`,
     });
   });
 

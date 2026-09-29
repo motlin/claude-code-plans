@@ -1,9 +1,10 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { SessionPage } from "../components/session-page";
 import { herdrPanesQueryOptions } from "../lib/api/herdr";
+import { validateSessionSearch } from "../lib/session-search";
 import {
   sessionDetailQueryOptions,
   sessionSubagentsQueryOptions,
@@ -12,6 +13,7 @@ import {
 
 export const Route = createFileRoute("/session/$id")({
   component: SessionRouteComponent,
+  validateSearch: validateSessionSearch,
   // Warm the caches without awaiting them. With `ssr: false` nothing paints
   // until every matched loader resolves, and a long session's transcript runs
   // to megabytes of JSONL, so awaiting here means a blank white page. The
@@ -92,7 +94,20 @@ function useSessionHeadTitle(sessionId: string): void {
 
 function SessionRouteComponent() {
   const params = Route.useParams();
+  const { pane } = Route.useSearch();
+  const navigate = Route.useNavigate();
   useSessionHeadTitle(params.id);
+  // The deep link is a one-shot request: drop it once the pane opened so a
+  // reload or Back does not reopen a pane the user has since closed.
+  const clearRequestedPane = useCallback(() => {
+    void navigate({ search: {}, replace: true });
+  }, [navigate]);
 
-  return <SessionPage sessionId={params.id} />;
+  return (
+    <SessionPage
+      sessionId={params.id}
+      requestedPane={pane}
+      onRequestedPaneHandled={clearRequestedPane}
+    />
+  );
 }

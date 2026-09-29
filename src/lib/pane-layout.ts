@@ -22,7 +22,7 @@ const PANE_KINDS = [
   "subagents",
 ] as const;
 
-const PaneKindSchema = z.enum(PANE_KINDS);
+export const PaneKindSchema = z.enum(PANE_KINDS);
 const TileIdSchema = z.enum(["chat", ...PANE_KINDS]);
 const DirectionSchema = z.enum(["row", "column"]);
 

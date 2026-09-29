@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createTerminalFrameConsumer } from "../lib/herdr/terminal-protocol";
 import { getGhosttyAppearance, type GhosttyAppearance } from "../lib/server-fns";
 
-type ConnectionStatus = "connecting" | "live" | "reconnecting" | "closed" | "error";
+export type ConnectionStatus = "connecting" | "live" | "reconnecting" | "closed" | "error";
 
 function observerUrl(sessionId: string, columns: number, rows: number): string {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -13,7 +13,20 @@ function observerUrl(sessionId: string, columns: number, rows: number): string {
   return url.toString();
 }
 
-export function HerdrTerminal({ sessionId }: { sessionId: string }) {
+/**
+ * `page` is the standalone `/herdr/terminal` view with its prose header and a
+ * fixed-height box; `pane` fills its tile and reports status to the host, which
+ * shows it as a compact chip.
+ */
+export function HerdrTerminal({
+  sessionId,
+  variant = "page",
+  onStatusChange,
+}: {
+  sessionId: string;
+  variant?: "page" | "pane";
+  onStatusChange?: (status: ConnectionStatus) => void;
+}) {
   const container = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
   const [error, setError] = useState("");
@@ -159,6 +172,26 @@ export function HerdrTerminal({ sessionId }: { sessionId: string }) {
     };
   }, [sessionId]);
 
+  useEffect(() => {
+    onStatusChange?.(status);
+  }, [onStatusChange, status]);
+
+  const background = appearance ? { backgroundColor: appearance.theme.background } : undefined;
+
+  if (variant === "pane") {
+    return (
+      <div className="flex h-full min-h-0 flex-col">
+        {error && <p className="px-3 py-1 text-caption text-danger-000">{error}</p>}
+        <div
+          ref={container}
+          data-terminal=""
+          className="min-h-0 flex-1 overflow-hidden rounded-b-[inherit] p-2"
+          style={background}
+        />
+      </div>
+    );
+  }
+
   return (
     <section aria-label="Live read-only terminal" className="mt-4">
       <div className="mb-2 flex items-center gap-2 text-xs text-t6">
@@ -173,7 +206,7 @@ export function HerdrTerminal({ sessionId }: { sessionId: string }) {
         ref={container}
         data-terminal=""
         className="h-[min(70vh,48rem)] overflow-hidden rounded-md border border-strong p-2"
-        style={appearance ? { backgroundColor: appearance.theme.background } : undefined}
+        style={background}
       />
     </section>
   );

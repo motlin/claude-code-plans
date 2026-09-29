@@ -89,6 +89,7 @@ const NAMED_KEYS: Readonly<Record<string, NamedKey>> = {
   home: word("Home"),
   end: word("End"),
   insert: word("Insert"),
+  "`": word("`", "Backquote"),
 };
 
 interface ParsedKeys {

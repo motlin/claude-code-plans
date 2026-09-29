@@ -36,6 +36,7 @@ import {
   useExtractedSessionFiles,
   useRegisterFilesPane,
 } from "./panes/files-pane";
+import { TerminalPaneShortcut, useRegisterTerminalPane } from "./panes/terminal-pane";
 import { StatusFooter } from "./status-footer";
 import { TranscriptHistoryLoader, findScrollContainer } from "./transcript-history-loader";
 import { Tooltip } from "./ui/tooltip";
@@ -60,6 +61,7 @@ import { useSessionViewedState } from "../hooks/use-session-viewed-state";
 import { usePendingMessageJump } from "../hooks/use-pending-message-jump";
 import { herdrPanesQueryOptions, sendHerdrPrompt } from "../lib/api/herdr";
 import type { HerdrPaneIndexData } from "../lib/api/herdr";
+import type { PaneKind } from "../lib/pane-layout";
 import {
   sessionDetailQueryOptions,
   sessionResourcesQueryOptions,
@@ -232,7 +234,17 @@ function SessionNotFound() {
   );
 }
 
-export function SessionPage({ sessionId }: { sessionId: string }) {
+/** A pane to open on arrival (the `?pane=` deep link), reported back once handled. */
+interface RequestedPaneProps {
+  requestedPane?: PaneKind | undefined;
+  onRequestedPaneHandled?: (() => void) | undefined;
+}
+
+export function SessionPage({
+  sessionId,
+  requestedPane,
+  onRequestedPaneHandled,
+}: { sessionId: string } & RequestedPaneProps) {
   // Plain `useQuery` (not suspense) so the app shell stays painted and this
   // page can show its own skeleton while the transcript payload loads.
   const detailQuery = useQuery(sessionDetailQueryOptions(sessionId));
@@ -260,11 +272,13 @@ export function SessionPage({ sessionId }: { sessionId: string }) {
       transcript={transcript}
       subagents={subagents}
       herdr={herdr}
+      requestedPane={requestedPane}
+      onRequestedPaneHandled={onRequestedPaneHandled}
     />
   );
 }
 
-interface SessionViewProps {
+interface SessionViewProps extends RequestedPaneProps {
   sessionId: string;
   data: SessionDetailData;
   transcript: TranscriptData;
@@ -272,7 +286,15 @@ interface SessionViewProps {
   herdr: HerdrPaneIndexData;
 }
 
-function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionViewProps) {
+function SessionView({
+  sessionId,
+  data,
+  transcript,
+  subagents,
+  herdr,
+  requestedPane,
+  onRequestedPaneHandled,
+}: SessionViewProps) {
   const scrollAnchorRef = useRef<HTMLDivElement>(null);
   useTranscriptScrollContainment(scrollAnchorRef);
   const initialScrollKey = useLocation({
@@ -452,6 +474,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
   const chatStream = useChatStream();
   const liveHerdrPrompt = useLiveHerdrPrompt(sessionId, endIndex);
   const promptBehavior = getSessionPromptBehavior(sessionId, isActive, herdr);
+  useRegisterTerminalPane(sessionId, promptBehavior.hasLivePane);
   const prevSessionIdRef = useRef(sessionId);
 
   useEffect(() => {
@@ -501,7 +524,13 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
 
   return (
     <div ref={sessionViewRef} style={transcriptWidthStyle(settings.transcriptWidth)}>
-      <TileHost sessionId={sessionId} onExpandWithoutPane={toggleChromeHidden}>
+      <TileHost
+        sessionId={sessionId}
+        onExpandWithoutPane={toggleChromeHidden}
+        requestedPane={requestedPane}
+        onRequestedPaneHandled={onRequestedPaneHandled}
+      >
+        <TerminalPaneShortcut available={promptBehavior.hasLivePane} />
         <FilesPaneShortcut />
         <ChangesPaneShortcut />
         {/* Sticky header: titlebar + hook context */}

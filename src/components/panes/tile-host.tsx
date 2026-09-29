@@ -109,7 +109,7 @@ function nodeKey(node: LayoutNode): string {
 function usePersistedLayout(
   sessionId: string,
   definitions: ReadonlyMap<PaneKind, PaneDefinition>,
-): [PaneLayoutState, (fn: LayoutUpdate) => void] {
+): [PaneLayoutState, (fn: LayoutUpdate) => void, boolean] {
   const [entry, setEntry] = useState<{
     sessionId: string | null;
     layout: PaneLayoutState;
@@ -140,9 +140,10 @@ function usePersistedLayout(
     [sessionId, definitions],
   );
 
-  const current = entry.sessionId === sessionId ? entry.layout : defaultPaneLayout();
+  const loaded = entry.sessionId === sessionId;
+  const current = loaded ? entry.layout : defaultPaneLayout();
   const layout = useMemo(() => pruneUnregistered(current, definitions), [current, definitions]);
-  return [layout, update];
+  return [layout, update, loaded];
 }
 
 function useElementSize(ref: RefObject<HTMLElement | null>): {
@@ -552,19 +553,30 @@ function ChatTile({
  * Session tiling pane host modelled on claude.ai/code: the chat tile plus the
  * registered side panes laid out by the pure reducers in `lib/pane-layout`.
  * ⌘\ closes the focused pane; ⇧⌘\ expands or collapses it, falling back to
- * `onExpandWithoutPane` when no pane is open.
+ * `onExpandWithoutPane` when no pane is open. `requestedPane` (the `?pane=`
+ * deep link) opens once the saved layout loads, if that kind is registered.
  */
 export function TileHost({
   sessionId,
   onExpandWithoutPane,
+  requestedPane,
+  onRequestedPaneHandled,
   children,
 }: {
   sessionId: string;
   onExpandWithoutPane?: () => void;
+  requestedPane?: PaneKind | undefined;
+  onRequestedPaneHandled?: (() => void) | undefined;
   children: ReactNode;
 }) {
   const definitions = usePaneDefinitions();
-  const [layout, update] = usePersistedLayout(sessionId, definitions);
+  const [layout, update, loaded] = usePersistedLayout(sessionId, definitions);
+
+  useEffect(() => {
+    if (requestedPane === undefined || !loaded) return;
+    if (definitions.has(requestedPane)) update((state) => openPane(state, requestedPane));
+    onRequestedPaneHandled?.();
+  }, [requestedPane, loaded, definitions, update, onRequestedPaneHandled]);
   const openKinds = useMemo(() => tileIdsOf(layout.root).filter(isPaneKind), [layout.root]);
 
   const internal = useMemo<InternalHost>(
