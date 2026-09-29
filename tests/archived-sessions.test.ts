@@ -19,6 +19,16 @@ import { dispatchHookEvent } from "../src/lib/hook-dispatcher";
 import { DOMAIN_EVENTS } from "../src/lib/hook-events";
 import { buildSessionSummaryPayloadFromDb } from "../src/lib/session-summary";
 
+// The production herdr reporter reads the real config and talks to the real
+// herdr socket on a detached promise that can log after the test ends. Tests
+// must inject their own reporter; fail loudly if the real one is reached.
+vi.mock("../src/lib/herdr/report-state", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/lib/herdr/report-state")>()),
+  reportHookStateToHerdr: () => {
+    throw new Error("tests must inject reportHerdrState instead of reaching the real herdr");
+  },
+}));
+
 type Broadcast = { type: string; data: Record<string, unknown> };
 type ApiHandler = (context: {
   params: { id: string };
@@ -224,6 +234,7 @@ describe("auto-unarchive", () => {
       db: db.index,
       store: makeStore(),
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     const updates = broadcasts
@@ -252,6 +263,7 @@ describe("auto-unarchive", () => {
       db: db.index,
       store: makeStore(),
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     expect(broadcasts.filter((b) => b.type === DOMAIN_EVENTS.SESSION_UPDATED)).toStrictEqual([]);

@@ -41,7 +41,6 @@ import { isSessionArchived, setSessionArchived } from "./db/queries";
 import { resolveProjectName } from "./memory";
 import { recentlyBroadcast } from "./update-dedupe";
 import { toSubagentSessionId } from "./subagents";
-import { reportHookStateToHerdr } from "./herdr/report-state";
 import { stateForEvent, type ActivityState } from "./session-state";
 import { isSessionVisible as isSessionVisibleInBrowser } from "./session-visibility";
 import { getCurrentSessionMessageIndex, markSessionCompletionUnreviewed } from "./db/viewed-state";
@@ -112,7 +111,11 @@ interface DispatchHookEventArgs {
   broadcast: (type: string, data: Record<string, unknown>) => void;
   dirs?: HookDispatchDirs;
   state?: HookDispatchState;
-  reportHerdrState?: (event: HookEvent, entry: ActiveSessionEntry | null) => void;
+  /**
+   * Detached herdr state reporter. Required so no caller silently inherits the
+   * process-global reporter, which reads the user's config and herdr socket.
+   */
+  reportHerdrState: (event: HookEvent, entry: ActiveSessionEntry | null) => void;
   /** Whether a browser tab is showing the session right now (see session-visibility). */
   isSessionVisible?: (sessionId: string) => boolean;
 }
@@ -377,7 +380,7 @@ export async function dispatchHookEvent({
   broadcast,
   dirs,
   state,
-  reportHerdrState = reportHookStateToHerdr,
+  reportHerdrState,
   isSessionVisible = isSessionVisibleInBrowser,
 }: DispatchHookEventArgs): Promise<void> {
   const entryBeforeDispatch = store.getActiveSessionEntry(event.session_id);

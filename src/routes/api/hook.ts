@@ -12,6 +12,7 @@ import {
   type HookDispatchDirs,
   type HookDispatchState,
 } from "../../lib/hook-dispatcher";
+import { reportHookStateToHerdr } from "../../lib/herdr/report-state";
 import {
   getActiveSessionEntry,
   markSessionActive,
@@ -285,6 +286,7 @@ export const Route = createFileRoute("/api/hook")({
           broadcast: broadcastTyped,
           dirs: HOOK_DIRS,
           state: dispatcherState,
+          reportHerdrState: reportHookStateToHerdr,
         });
 
         return Response.json({ ok: true });

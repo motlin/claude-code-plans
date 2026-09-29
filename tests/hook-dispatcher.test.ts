@@ -22,6 +22,16 @@ import {
   initPendingApprovalsCache,
 } from "../src/lib/db/pending-approvals-cache";
 
+// The production herdr reporter reads the real config and talks to the real
+// herdr socket on a detached promise that can log after the test ends. Tests
+// must inject their own reporter; fail loudly if the real one is reached.
+vi.mock("../src/lib/herdr/report-state", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/lib/herdr/report-state")>()),
+  reportHookStateToHerdr: () => {
+    throw new Error("tests must inject reportHerdrState instead of reaching the real herdr");
+  },
+}));
+
 const testDir = join(tmpdir(), "claude-hook-dispatcher-test-" + process.pid);
 let db: AppDb;
 
@@ -145,6 +155,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     expect(activeCalls).toStrictEqual([
@@ -253,6 +264,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     const context = broadcasts.find(
@@ -315,6 +327,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     const added = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_ADDED);
@@ -373,6 +386,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     expect(touchedCalls).toStrictEqual(["abc-123"]);
@@ -452,6 +466,7 @@ describe("dispatchHookEvent", () => {
         store,
         broadcast: (type, data) => broadcasts.push({ type, data }),
         isSessionVisible: (candidate) => visible && candidate === sessionId,
+        reportHerdrState: () => {},
       });
 
       const updated = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_UPDATED)?.data[
@@ -496,6 +511,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     expect(broadcasts.map((broadcast) => broadcast.type)).toStrictEqual([
@@ -516,6 +532,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     expect(broadcasts).toStrictEqual([]);
@@ -568,6 +585,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     expect(endedCalls).toStrictEqual(["abc-123"]);
@@ -647,6 +665,7 @@ describe("dispatchHookEvent", () => {
         db: db.index,
         store,
         broadcast: () => {},
+        reportHerdrState: () => {},
       });
 
       expect(getPendingApprovals()).toStrictEqual([]);
@@ -851,6 +870,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     expect(touchedCalls).toStrictEqual(["abc-123"]);
@@ -888,6 +908,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     expect(touchCalls).toStrictEqual([
@@ -913,6 +934,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     expect({ stateCalls, touchCalls }).toStrictEqual({
@@ -944,6 +966,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: () => {},
+      reportHerdrState: () => {},
     });
 
     const stored = getNotifications();
@@ -973,6 +996,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: () => {},
+      reportHerdrState: () => {},
     });
 
     const stored = getNotifications();
@@ -998,6 +1022,7 @@ describe("dispatchHookEvent", () => {
         db: db.index,
         store,
         broadcast: () => {},
+        reportHerdrState: () => {},
       });
     }
     expect(getNotifications()).toHaveLength(2);
@@ -1014,6 +1039,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: () => {},
+      reportHerdrState: () => {},
     });
 
     const stored = getNotifications();
@@ -1036,6 +1062,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     const compacting = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_COMPACTING);
@@ -1061,6 +1088,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     expect(touchedCalls).toStrictEqual(["abc-123"]);
@@ -1086,6 +1114,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     const compacted = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_COMPACTED);
@@ -1139,6 +1168,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     expect(touchedCalls).toStrictEqual(["sub-456"]);
@@ -1175,6 +1205,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     expect(touchedCalls).toStrictEqual(["parent-789"]);
@@ -1204,6 +1235,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     expect(broadcasts.filter((b) => b.type === DOMAIN_EVENTS.SUBAGENT_STARTED)).toStrictEqual([]);
@@ -1229,6 +1261,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
     broadcasts.length = 0;
 
@@ -1243,6 +1276,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     expect(broadcasts).toStrictEqual([
@@ -1436,6 +1470,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     expect(activeCalls).toStrictEqual([
@@ -1472,6 +1507,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     expect(touchedCalls).toStrictEqual(["abc-123"]);
@@ -1502,6 +1538,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     const loaded = broadcasts.find((b) => b.type === DOMAIN_EVENTS.INSTRUCTIONS_LOADED);
@@ -1532,6 +1569,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     expect(touchedCalls).toStrictEqual(["abc-123"]);
@@ -1559,6 +1597,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     const changed = broadcasts.find((b) => b.type === DOMAIN_EVENTS.CONFIG_CHANGED);
@@ -1588,6 +1627,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     expect(touchedCalls).toStrictEqual(["abc-123"]);
@@ -1613,6 +1653,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     expect(touchedCalls).toStrictEqual(["abc-123"]);
@@ -1640,6 +1681,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     expect(touchedCalls).toStrictEqual(["abc-123"]);
@@ -1666,6 +1708,7 @@ describe("dispatchHookEvent", () => {
       db: db.index,
       store,
       broadcast: (type, data) => broadcasts.push({ type, data }),
+      reportHerdrState: () => {},
     });
 
     expect(touchedCalls).toStrictEqual(["abc-123"]);
@@ -1716,6 +1759,7 @@ describe("dispatchHookEvent", () => {
         store,
         broadcast: (type, data) => broadcasts.push({ type, data }),
         dirs,
+        reportHerdrState: () => {},
       });
 
       const planChanged = broadcasts.find((b) => b.type === DOMAIN_EVENTS.PLAN_CHANGED);
@@ -1765,6 +1809,7 @@ describe("dispatchHookEvent", () => {
         store,
         broadcast: (type, data) => broadcasts.push({ type, data }),
         dirs,
+        reportHerdrState: () => {},
       });
 
       expect(touchedCalls).toStrictEqual(["abc-123"]);
@@ -1807,6 +1852,7 @@ describe("dispatchHookEvent", () => {
         store,
         broadcast: (type, data) => broadcasts.push({ type, data }),
         dirs,
+        reportHerdrState: () => {},
       });
 
       expect(touchedCalls).toStrictEqual(["abc-123"]);
@@ -1835,6 +1881,7 @@ describe("dispatchHookEvent", () => {
         db: db.index,
         store,
         broadcast: (type, data) => broadcasts.push({ type, data }),
+        reportHerdrState: () => {},
       });
 
       expect(touchedCalls).toStrictEqual(["abc-123"]);
@@ -1864,6 +1911,7 @@ describe("dispatchHookEvent", () => {
         db: db.index,
         store,
         broadcast: (type, data) => broadcasts.push({ type, data }),
+        reportHerdrState: () => {},
       });
 
       expect(touchedCalls).toStrictEqual(["abc-123"]);
@@ -1908,6 +1956,7 @@ describe("dispatchHookEvent", () => {
         broadcast: (type, data) => broadcasts.push({ type, data }),
         dirs,
         state,
+        reportHerdrState: () => {},
       });
 
       const linesAppended = broadcasts.filter(
@@ -1933,6 +1982,7 @@ describe("dispatchHookEvent", () => {
         broadcast: (type, data) => broadcasts.push({ type, data }),
         dirs,
         state,
+        reportHerdrState: () => {},
       });
 
       expect(broadcasts.filter((b) => b.type === DOMAIN_EVENTS.SESSION_LINES_APPENDED).length).toBe(
@@ -1983,6 +2033,7 @@ describe("dispatchHookEvent", () => {
         store,
         broadcast,
         dirs,
+        reportHerdrState: () => {},
       });
 
       // 2. Simulate the chokidar trailing broadcast for the same file.
@@ -2043,10 +2094,24 @@ describe("dispatchHookEvent", () => {
         tool_input: { file_path: taskPath, content: "{}" },
       };
 
-      await dispatchHookEvent({ event, db: db.index, store, broadcast, dirs });
+      await dispatchHookEvent({
+        event,
+        db: db.index,
+        store,
+        broadcast,
+        dirs,
+        reportHerdrState: () => {},
+      });
       // Fire the same hook again -- simulates the watcher's trailing broadcast
       // for the same task file with the same status signal.
-      await dispatchHookEvent({ event, db: db.index, store, broadcast, dirs });
+      await dispatchHookEvent({
+        event,
+        db: db.index,
+        store,
+        broadcast,
+        dirs,
+        reportHerdrState: () => {},
+      });
 
       const taskChanged = broadcasts.filter((b) => b.type === DOMAIN_EVENTS.TASK_CHANGED);
       expect(taskChanged.length).toBe(1);
