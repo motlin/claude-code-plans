@@ -125,6 +125,32 @@ describe("SessionChat assistant action row", () => {
   });
 });
 
+describe("SessionChat turn metadata", () => {
+  it("shows per-turn effort and advisor on the assistant row and classifier branch on the user row", () => {
+    const container = renderRecords(
+      [
+        {
+          ...USER_TEXT,
+          serverClassifierContext: {
+            context: { git_state: { branch: "feature" }, live_cwd: "/repo", platform: "macos" },
+          },
+        },
+        { ...ASSISTANT_TEXT, perTurnEffort: "medium", advisorModel: "claude-opus-5-5" },
+      ],
+      true,
+    );
+    const rowText = (title: string) =>
+      Array.from(container.querySelectorAll(`button[aria-label="${title}"]`)).map(
+        (button) => button.parentElement?.parentElement?.textContent ?? "",
+      );
+
+    expect(rowText("Copy message")).toStrictEqual([
+      "Copied!feature",
+      "Copied!medium effortadvisor Opus 5.5",
+    ]);
+  });
+});
+
 describe("SessionChat user action row", () => {
   it("hangs the user footer off the column end with upstream's icon-only chrome", () => {
     const container = renderRecords([USER_TEXT], true);

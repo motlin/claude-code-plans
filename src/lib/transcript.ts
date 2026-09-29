@@ -47,6 +47,33 @@ const MessageLineSchema = z.object({
     .object({
       role: z.string().optional(),
       content: z.union([z.string(), z.array(ContentBlockSchema)]).optional(),
+      input_transformations: z
+        .array(
+          z.object({
+            type: z.string(),
+            path: z.string().optional(),
+            reason: z.string().optional(),
+          }),
+        )
+        .optional(),
+      safeguard_results: z
+        .array(
+          z.object({
+            type: z.string(),
+            status: z
+              .object({
+                type: z.string(),
+                tool_uses: z
+                  .record(
+                    z.string(),
+                    z.object({ type: z.string(), outcome: z.string().optional() }),
+                  )
+                  .optional(),
+              })
+              .optional(),
+          }),
+        )
+        .optional(),
     })
     .optional(),
   customTitle: z.string().optional(),
@@ -65,6 +92,16 @@ const MessageLineSchema = z.object({
   attributionPlugin: z.string().optional(),
   attributionMcpServer: z.string().optional(),
   attributionMcpTool: z.string().optional(),
+  perTurnEffort: z.string().optional(),
+  advisorModel: z.string().optional(),
+  /** What the server-side permission classifier saw for this user turn. */
+  classifierContext: z
+    .object({
+      liveCwd: z.string().optional(),
+      branch: z.string().optional(),
+      platform: z.string().optional(),
+    })
+    .optional(),
 });
 
 const AgentNameLineSchema = z.object({
@@ -111,6 +148,7 @@ const RenderedSystemSubtypeSchema = z.enum([
   "turn_duration",
   "scheduled_task_fire",
   "local_command",
+  "bridge_status",
 ]);
 
 const SystemLineSchema = z.object({
@@ -136,6 +174,7 @@ const SystemLineSchema = z.object({
   cronKind: z.string().optional(),
   noOpStreak: z.number().optional(),
   commandRun: z.object({ command: z.string(), args: z.string().optional() }).optional(),
+  url: z.string().optional(),
   uuid: z.string().optional(),
   timestamp: z.string().optional(),
   sessionId: z.string().optional(),
@@ -604,6 +643,7 @@ function processRecordBatch(
       if (record.cronKind !== undefined) systemLine.cronKind = record.cronKind;
       if (record.noOpStreak !== undefined) systemLine.noOpStreak = record.noOpStreak;
       if (record.commandRun !== undefined) systemLine.commandRun = record.commandRun;
+      if (record.url !== undefined) systemLine.url = record.url;
       if (uuid !== undefined) systemLine.uuid = uuid;
       if (record.timestamp !== undefined) systemLine.timestamp = record.timestamp;
       if (sessionId !== undefined) systemLine.sessionId = sessionId;
@@ -670,6 +710,15 @@ function processRecordBatch(
       if (record.scheduledTaskId !== undefined) {
         processedLine.scheduledTaskId = record.scheduledTaskId;
       }
+      const classifier = record.serverClassifierContext?.context;
+      if (classifier !== undefined) {
+        const context: NonNullable<MessageProcessedLine["classifierContext"]> = {};
+        if (classifier.live_cwd !== undefined) context.liveCwd = classifier.live_cwd;
+        const branch = classifier.git_state?.branch;
+        if (typeof branch === "string") context.branch = branch;
+        if (classifier.platform !== undefined) context.platform = classifier.platform;
+        processedLine.classifierContext = context;
+      }
     }
     if (record.type === "assistant") {
       if (record.isApiErrorMessage === true) processedLine.isApiErrorMessage = true;
@@ -677,6 +726,10 @@ function processRecordBatch(
       if (record.errorDetails !== undefined) processedLine.errorDetails = record.errorDetails;
       if (record.message.stop_reason === "max_tokens") processedLine.stopReason = "max_tokens";
       if (record.message.usage !== undefined) processedLine.usage = record.message.usage;
+      if (typeof record.perTurnEffort === "string") {
+        processedLine.perTurnEffort = record.perTurnEffort;
+      }
+      if (record.advisorModel !== undefined) processedLine.advisorModel = record.advisorModel;
       // Attribution repeats on every turn of a skill/MCP block; only carry it
       // onto the first line of each run so the UI shows one pill per block.
       const attributionKey = JSON.stringify([

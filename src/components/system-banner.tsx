@@ -1,4 +1,4 @@
-import { Clock, SquareTerminal, Webhook } from "lucide-react";
+import { Clock, Laptop, SquareTerminal, Webhook } from "lucide-react";
 import { assertNever } from "../lib/assert-never";
 import type { ProcessedLine } from "../lib/transcript";
 import { Banner, Pre } from "./attachment-banner";
@@ -56,7 +56,7 @@ function jsonText(value: unknown): string {
 
 /**
  * Renders a system JSONL record (compact_boundary, stop_hook_summary,
- * api_error, turn_duration, scheduled_task_fire, local_command) as a compact informational banner, mirroring
+ * api_error, turn_duration, scheduled_task_fire, local_command, bridge_status) as a compact informational banner, mirroring
  * the visual language of AttachmentBanner.
  */
 export function SystemBanner({
@@ -222,6 +222,29 @@ export function SystemBanner({
         </Banner>
       );
     }
+    case "bridge_status":
+      return (
+        <Banner
+          icon={<Laptop className="h-3.5 w-3.5" />}
+          label={
+            line.url !== undefined ? "Remote Control connected" : (line.content ?? "Remote Control")
+          }
+          sessionId={sessionId}
+          uuid={line.uuid}
+        >
+          {line.url !== undefined && (
+            <a
+              href={line.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent-500 hover:underline"
+              title={line.url}
+            >
+              Open in claude.ai
+            </a>
+          )}
+        </Banner>
+      );
     default:
       return assertNever(line.subtype);
   }

@@ -434,6 +434,7 @@ const systemSubtypeLabels = {
   turn_duration: "Turn duration",
   scheduled_task_fire: "Scheduled task fire",
   local_command: "Local command",
+  bridge_status: "Remote Control status",
 } satisfies Record<Extract<ProcessedLine, { type: "system" }>["subtype"], string>;
 
 const messageLineTypeLabels = {

@@ -1006,6 +1006,85 @@ describe("message metadata fields", () => {
     });
   });
 
+  it("carries per-turn effort, advisor model, input transformations, and safeguard results on assistant lines", () => {
+    const message = {
+      role: "assistant",
+      content: [{ type: "text", text: "Done." }],
+      input_transformations: [
+        {
+          type: "thinking_dropped",
+          path: "messages.2.content.0",
+          reason: "model_binding_mismatch",
+        },
+      ],
+      safeguard_results: [
+        {
+          type: "dangerous_tool_use",
+          status: {
+            type: "available",
+            tool_uses: { toolu_1: { type: "evaluated", outcome: "flagged" } },
+          },
+        },
+      ],
+    };
+    const records = [
+      assistantRecord([], { message, perTurnEffort: "high", advisorModel: "claude-opus-5-5" }),
+      assistantRecord([{ type: "text", text: "plain" }], { perTurnEffort: null }),
+    ];
+    expect(processTranscript(records).lines).toStrictEqual([
+      {
+        type: "assistant",
+        lineIndex: 0,
+        perTurnEffort: "high",
+        advisorModel: "claude-opus-5-5",
+        message,
+      },
+      {
+        type: "assistant",
+        lineIndex: 1,
+        message: { role: "assistant", content: [{ type: "text", text: "plain" }] },
+      },
+    ]);
+  });
+
+  it("carries the classifier's live cwd, git branch, and platform on user lines", () => {
+    const records = [
+      userRecord("hello", {
+        serverClassifierContext: {
+          request: "r1",
+          context: {
+            git_state: { cwd: "/repo", root: "/repo", branch: "feature", default_branch: "main" },
+            live_cwd: "/repo/sub",
+            platform: "macos",
+          },
+        },
+      }),
+      userRecord("pending", {
+        serverClassifierContext: {
+          request: "r2",
+          context: {
+            git_state: { cwd: "/tmp", root: null, branch: null, error: "pending" },
+            live_cwd: "/tmp",
+          },
+        },
+      }),
+    ];
+    expect(processTranscript(records).lines).toStrictEqual([
+      {
+        type: "user",
+        lineIndex: 0,
+        classifierContext: { liveCwd: "/repo/sub", branch: "feature", platform: "macos" },
+        message: { role: "user", content: "hello" },
+      },
+      {
+        type: "user",
+        lineIndex: 1,
+        classifierContext: { liveCwd: "/tmp" },
+        message: { role: "user", content: "pending" },
+      },
+    ]);
+  });
+
   it("dedupes consecutive identical attribution onto the first line only", () => {
     const records = [
       assistantRecord([{ type: "text", text: "a" }], { attributionSkill: "build:fix" }),
@@ -1096,6 +1175,28 @@ describe("system record lines", () => {
         noOpStreak: 2,
         uuid: "fire-1",
         timestamp: "2026-09-14T13:19:28.170Z",
+        lineIndex: 0,
+      },
+    ]);
+  });
+
+  it("emits bridge_status records with their Remote Control url", () => {
+    const records = [
+      {
+        type: "system",
+        subtype: "bridge_status",
+        content: "/remote-control is active. Code in CLI or at https://claude.ai/code/session_01",
+        url: "https://claude.ai/code/session_01",
+        uuid: "bridge-1",
+      },
+    ];
+    expect(processTranscript(records).lines).toStrictEqual([
+      {
+        type: "system",
+        subtype: "bridge_status",
+        content: "/remote-control is active. Code in CLI or at https://claude.ai/code/session_01",
+        url: "https://claude.ai/code/session_01",
+        uuid: "bridge-1",
         lineIndex: 0,
       },
     ]);

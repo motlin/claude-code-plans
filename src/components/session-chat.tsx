@@ -78,6 +78,7 @@ import type { SummarySegment } from "../lib/session-utils";
 import { failedDescriptionLabel, toolLabel } from "../lib/tool-labels";
 import { InlinePathImages, SESSION_IMAGE_CLASS_NAME } from "./inline-path-images";
 import { findScrollContainer } from "./transcript-history-loader";
+import { AssistantTurnMeta, UserTurnContext } from "./turn-metadata";
 import { usePromptJump } from "../hooks/use-prompt-jump";
 import { CHAT_COLUMN_CLASS } from "../lib/transcript-width";
 import {
@@ -208,6 +209,7 @@ function MessageToolbar({ line, timestamp }: { line: MessageSessionLine; timesta
           {usage.summary}
         </span>
       )}
+      <AssistantTurnMeta line={line} />
     </div>
   );
 }
@@ -278,6 +280,7 @@ function UserMessageActions({ line, timestamp }: { line: MessageSessionLine; tim
           {relativeTimestamp}
         </span>
       )}
+      <UserTurnContext line={line} />
     </div>
   );
 }

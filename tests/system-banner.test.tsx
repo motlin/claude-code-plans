@@ -166,6 +166,32 @@ describe("SystemBanner scheduled fires and local commands", () => {
     expect(text).toStrictEqual(["Scheduled task fired"]);
   });
 
+  it("renders bridge_status as a Remote Control link to the claude.ai session", () => {
+    const html = renderBanner({
+      type: "system",
+      subtype: "bridge_status",
+      content: "/remote-control is active. Code in CLI or at https://claude.ai/code/session_01",
+      url: "https://claude.ai/code/session_01",
+      lineIndex: 0,
+    });
+    expect(html).toContain("Remote Control connected");
+    expect(html).toContain(
+      '<a href="https://claude.ai/code/session_01" target="_blank" rel="noopener noreferrer"',
+    );
+    expect(html).toContain(">Open in claude.ai</a>");
+  });
+
+  it("renders bridge_status without a url as its content", () => {
+    const html = renderBanner({
+      type: "system",
+      subtype: "bridge_status",
+      content: "Remote Control disconnected",
+      lineIndex: 0,
+    });
+    expect(html).toContain("Remote Control disconnected");
+    expect(html).not.toContain("<a ");
+  });
+
   it("renders local_command with the slash command and its output", () => {
     const html = renderBanner({
       type: "system",
