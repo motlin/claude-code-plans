@@ -17,6 +17,7 @@ import {
 import { SessionSummaryStateSchema } from "../src/lib/api/sessions";
 import { SourceFileResponse } from "../src/lib/api/source";
 import { NavSectionSchema } from "../src/lib/nav-sections";
+import { PaletteFilterSchema, PaletteTypeSchema } from "../src/lib/palette-tokens";
 import { PaneLayoutStateSchema } from "../src/lib/pane-layout";
 import { schemaChoiceRegistry } from "../src/lib/schema-choices";
 import {
@@ -59,6 +60,8 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["UnifiedSearchTypeSchema", UnifiedSearchTypeSchema],
   ["UnifiedSearchDateSchema", UnifiedSearchDateSchema],
   ["UnifiedSearchKindSchema", UnifiedSearchKindSchema],
+  ["PaletteTypeSchema", PaletteTypeSchema],
+  ["PaletteFilterSchema", PaletteFilterSchema],
   ["SessionSummaryStateSchema", SessionSummaryStateSchema],
   ["SessionBucketSchema", SessionBucketSchema],
   ["SessionBucketReasonSchema", SessionBucketReasonSchema],

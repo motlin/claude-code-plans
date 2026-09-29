@@ -29,12 +29,29 @@ import {
   Puzzle,
   File,
   LoaderCircle,
+  ListFilter,
 } from "lucide-react";
 import type { PaletteMode } from "../hooks/use-command-palette";
 import { useDebouncedValue } from "../hooks/use-debounced-value";
 import { encodeFilePath } from "../lib/api/file";
+import { projectsQueryOptions } from "../lib/api/projects";
 import { unifiedSearchQueryOptions, type UnifiedSearchItem } from "../lib/api/search";
 import { recentSessionsQueryOptions, type SessionListItem } from "../lib/api/sessions";
+import {
+  PALETTE_FILTER_TOKENS,
+  PaletteTypeSchema,
+  paletteDateCutoff,
+  paletteFilterHints,
+  paletteProjectMatches,
+  paletteSearchParams,
+  parsePaletteTokens,
+  withoutTypeTokens,
+  type PaletteFilter,
+  type PaletteProject,
+  type PaletteTokens,
+  type PaletteType,
+} from "../lib/palette-tokens";
+import { paletteFilterLabels, paletteTypeLabels } from "../lib/schema-choices";
 import { relativeBucket, titleMatches, type Snippet, type TextMatch } from "../lib/search-text";
 import type { SessionBucket } from "../lib/session-state";
 import { SHORTCUTS, type ShortcutId } from "../lib/shortcuts/registry";
@@ -72,13 +89,15 @@ const ORGANIC_LIMIT = 7;
 const SEARCH_DEBOUNCE_MS = 150;
 const SKELETON_ROWS = 3;
 
-type SearchKind = UnifiedSearchItem["kind"];
+/** Server hit kinds plus projects, which the Projects tab lists client-side. */
+type SearchKind = UnifiedSearchItem["kind"] | "project";
 
 const KIND_ICONS = {
   session: <MessageSquare />,
   plan: <FileText />,
   memory: <Brain />,
   file: <File />,
+  project: <FolderOpen />,
 } as const satisfies Record<SearchKind, ReactNode>;
 
 /** One typed-search row: an instant title match over recents, or a server hit. */
@@ -93,23 +112,74 @@ interface SearchRow {
   href: string | undefined;
 }
 
+function sessionRow(session: SessionListItem, matches: readonly TextMatch[]): SearchRow {
+  return {
+    kind: "session",
+    id: session.id,
+    title: session.title,
+    titleMatches: matches,
+    snippet: undefined,
+    mtime: session.mtime,
+    awaiting: session.bucket === "blocked",
+    href: undefined,
+  };
+}
+
 function instantRows(sessions: readonly SessionListItem[], query: string): SearchRow[] {
   const rows: SearchRow[] = [];
   for (const session of sessions) {
     const matches = titleMatches(session.title, query);
+    if (matches !== null) rows.push(sessionRow(session, matches));
+  }
+  return rows;
+}
+
+/** Apply the `repo:`/`project:` and `date:` tokens to cached recents, like the server does to hits. */
+function filterSessions(
+  sessions: readonly SessionListItem[],
+  tokens: PaletteTokens,
+  projects: readonly PaletteProject[],
+  now: number,
+): SessionListItem[] {
+  const { project, date } = tokens;
+  const cutoff = date === undefined ? null : paletteDateCutoff(date, now);
+  const resolved =
+    project === undefined ? undefined : projects.find((p) => paletteProjectMatches(project, p));
+  return sessions.filter((session) => {
+    if (cutoff !== null && Date.parse(session.mtime) < cutoff) return false;
+    if (project === undefined) return true;
+    if (resolved !== undefined) {
+      return session.projectName === resolved.name || session.project === resolved.projectPath;
+    }
+    return paletteProjectMatches(project, {
+      id: "",
+      name: session.projectName,
+      projectPath: session.project,
+    });
+  });
+}
+
+function projectRows(projects: readonly PaletteProjectItem[], text: string): SearchRow[] {
+  const rows: SearchRow[] = [];
+  for (const project of projects) {
+    const matches = text === "" ? [] : titleMatches(project.name, text);
     if (matches === null) continue;
     rows.push({
-      kind: "session",
-      id: session.id,
-      title: session.title,
+      kind: "project",
+      id: project.id,
+      title: project.name,
       titleMatches: matches,
       snippet: undefined,
-      mtime: session.mtime,
-      awaiting: session.bucket === "blocked",
+      mtime: project.lastActivity,
+      awaiting: false,
       href: undefined,
     });
   }
   return rows;
+}
+
+interface PaletteProjectItem extends PaletteProject {
+  lastActivity: string;
 }
 
 function serverRow(item: UnifiedSearchItem): SearchRow {
@@ -123,6 +193,14 @@ function serverRow(item: UnifiedSearchItem): SearchRow {
     awaiting: item.state === "waiting",
     href: item.href,
   };
+}
+
+const NO_PROJECTS: readonly PaletteProjectItem[] = [];
+
+/** "/…" hint rows, or null to search normally (also when no hint matches). */
+function hintsFor(query: string): PaletteFilter[] | null {
+  const hints = paletteFilterHints(query);
+  return hints === null || hints.length === 0 ? null : hints;
 }
 
 function rowKey(row: Pick<SearchRow, "kind" | "id">): string {
@@ -248,6 +326,7 @@ function PalettePopup({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
+  const [tab, setTab] = useState<PaletteType>("all");
   const [settledHeight, setSettledHeight] = useState<number | null>(null);
   const { data } = useQuery(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT));
   const currentSessionId = useCurrentSessionId();
@@ -258,34 +337,73 @@ function PalettePopup({
   );
 
   const trimmedQuery = query.trim();
-  const debouncedQuery = useDebouncedValue(trimmedQuery, SEARCH_DEBOUNCE_MS);
-  const serverSearch = useQuery({
-    ...unifiedSearchQueryOptions(debouncedQuery),
-    enabled: debouncedQuery.length > 0,
+  const hints = hintsFor(trimmedQuery);
+  const tokens = useMemo(() => parsePaletteTokens(trimmedQuery), [trimmedQuery]);
+  const type = tokens.type ?? tab;
+  const filtered = type !== "all" || tokens.project !== undefined || tokens.date !== undefined;
+  const projectsQuery = useQuery({
+    ...projectsQueryOptions(),
+    enabled: type === "projects" || tokens.project !== undefined,
   });
-  const searching =
-    trimmedQuery !== "" && (debouncedQuery !== trimmedQuery || serverSearch.isFetching);
+  const projects = projectsQuery.data ?? NO_PROJECTS;
+  const searchesSessions = hints === null && (type === "all" || type === "sessions");
+
+  const debouncedQuery = useDebouncedValue(trimmedQuery, SEARCH_DEBOUNCE_MS);
+  const debouncedParams =
+    hintsFor(debouncedQuery) === null
+      ? paletteSearchParams(parsePaletteTokens(debouncedQuery), tab, projects)
+      : null;
+  const serverActive =
+    hints === null &&
+    tokens.text !== "" &&
+    type !== "projects" &&
+    (tokens.project === undefined || !projectsQuery.isPending);
+  const serverSearch = useQuery({
+    ...unifiedSearchQueryOptions(debouncedParams ?? { query: "" }),
+    enabled: serverActive && debouncedParams !== null && debouncedParams.query !== "",
+  });
+  const searching = serverActive && (debouncedQuery !== trimmedQuery || serverSearch.isFetching);
+
+  const visibleSessions = useMemo(
+    () =>
+      filterSessions(
+        (data?.sessions ?? []).filter((session) => session.id !== currentSessionId),
+        tokens,
+        projects,
+        Date.now(),
+      ),
+    [data, currentSessionId, tokens, projects],
+  );
+
+  // Sessions with no text lists recents; Projects is searched client-side.
+  const listing = useMemo((): SearchRow[] | null => {
+    if (hints !== null || (trimmedQuery === "" && tab === "all")) return null;
+    if (type === "projects") return projectRows(projects, tokens.text);
+    if (type === "sessions" && tokens.text === "") {
+      return visibleSessions
+        .slice(0, PALETTE_RECENT_LIMIT)
+        .map((session) => sessionRow(session, []));
+    }
+    return null;
+  }, [hints, trimmedQuery, tab, type, projects, tokens.text, visibleSessions]);
 
   const instant = useMemo(
     () =>
-      trimmedQuery === ""
-        ? []
-        : instantRows(
-            (data?.sessions ?? []).filter((session) => session.id !== currentSessionId),
-            trimmedQuery,
-          ),
-    [data, currentSessionId, trimmedQuery],
+      !searchesSessions || tokens.text === "" ? [] : instantRows(visibleSessions, tokens.text),
+    [searchesSessions, visibleSessions, tokens.text],
   );
 
   // Instant rows keep their position; server rows append, minus what is already shown.
   const serverRows = useMemo(() => {
-    if (debouncedQuery !== trimmedQuery || serverSearch.data === undefined) return [];
+    if (!serverActive || debouncedQuery !== trimmedQuery || serverSearch.data === undefined) {
+      return [];
+    }
     const shown = new Set(instant.map(rowKey));
     return serverSearch.data.items
       .filter((item) => item.id !== currentSessionId || item.kind !== "session")
       .map(serverRow)
       .filter((row) => !shown.has(rowKey(row)));
-  }, [serverSearch.data, debouncedQuery, trimmedQuery, instant, currentSessionId]);
+  }, [serverActive, serverSearch.data, debouncedQuery, trimmedQuery, instant, currentSessionId]);
 
   function openSession(id: string) {
     void navigate({ to: "/session/$id", params: { id } });
@@ -293,13 +411,29 @@ function PalettePopup({
 
   function openRow(row: SearchRow) {
     if (row.kind === "session") openSession(row.id);
+    else if (row.kind === "project") void navigate({ to: "/project/$id", params: { id: row.id } });
     else if (row.kind === "file") {
       void navigate({ to: "/file/$", params: { _splat: encodeFilePath(row.id) } });
     } else if (row.href !== undefined) void navigate({ href: row.href });
   }
 
-  function seeAllResults() {
-    void navigate({ to: "/search", search: { q: trimmedQuery, mode: "titles", type: "all" } });
+  function seeAllResults(apiType: Exclude<PaletteType, "projects">) {
+    void navigate({ to: "/search", search: { q: tokens.text, mode: "titles", type: apiType } });
+  }
+
+  function chooseTab(next: PaletteType) {
+    setTab(next);
+    inputRef.current?.focus();
+  }
+
+  function chooseFilter(filter: PaletteFilter) {
+    setQuery(PALETTE_FILTER_TOKENS[filter]);
+    inputRef.current?.focus();
+  }
+
+  function searchAll() {
+    setQuery(withoutTypeTokens(query));
+    chooseTab("all");
   }
 
   // Upstream's Actions minus the cloud-only ones; "New session…" joins once herdr launch exists.
@@ -356,18 +490,21 @@ function PalettePopup({
 
   const compose = mode === "compose";
   const now = Date.now();
-  const matchedActions =
-    trimmedQuery === ""
-      ? []
-      : actions.filter((action) => commandMatches(action.label, trimmedQuery));
-  const matchedCommands =
-    trimmedQuery === ""
-      ? []
-      : NAV_COMMANDS.filter((command) =>
-          commandMatches(command.label, trimmedQuery, command.keywords),
-        );
+  const matchesCommands = hints === null && !filtered && tokens.text !== "";
+  const matchedActions = matchesCommands
+    ? actions.filter((action) => commandMatches(action.label, tokens.text))
+    : [];
+  const matchedCommands = matchesCommands
+    ? NAV_COMMANDS.filter((command) => commandMatches(command.label, tokens.text, command.keywords))
+    : [];
   const resultCount =
-    instant.length + matchedActions.length + matchedCommands.length + serverRows.length;
+    (listing?.length ?? 0) +
+    instant.length +
+    matchedActions.length +
+    matchedCommands.length +
+    serverRows.length;
+  const showEmptyState = !compose && trimmedQuery === "" && tab === "all";
+  const showResults = !compose && hints === null && !showEmptyState;
   const label = MODE_LABELS[mode];
 
   return (
@@ -433,10 +570,29 @@ function PalettePopup({
               <X aria-hidden="true" className="h-5 w-5" />
             </Dialog.Close>
           </div>
+          {!compose && <TypeTabs value={tab} onChange={chooseTab} />}
           <div className="h-[0.5px] w-full bg-border" />
 
           <Command.List className="max-h-[440px] overflow-y-auto p-2.5">
-            {!compose && trimmedQuery === "" && (
+            {!compose && hints !== null && (
+              <div role="group" aria-label="Filters" className="flex flex-col gap-1">
+                {hints.map((filter) => (
+                  <CommandItem
+                    key={filter}
+                    value={`filter:${filter}`}
+                    icon={<ListFilter />}
+                    onSelect={() => chooseFilter(filter)}
+                  >
+                    Filter by{" "}
+                    <span className="ml-1 rounded bg-fill-ghost-hover px-1.5 py-px text-xs text-secondary">
+                      {paletteFilterLabels[filter]}
+                    </span>
+                  </CommandItem>
+                ))}
+              </div>
+            )}
+
+            {showEmptyState && (
               <>
                 {attention.length > 0 && (
                   <Command.Group heading="Needs attention" className={GROUP_CLASS}>
@@ -496,91 +652,114 @@ function PalettePopup({
               </>
             )}
 
-            {!compose &&
-              trimmedQuery !== "" && (
-                // cmdk's Group forces role=presentation, so upstream's headingless group is a plain div.
-                <div
-                  role="group"
-                  aria-label="Search results"
-                  aria-busy={searching}
-                  className="flex flex-col gap-1"
-                >
-                  {instant.map((row) => (
-                    <SearchResultItem
-                      key={rowKey(row)}
-                      row={row}
-                      now={now}
-                      onSelect={() => select(() => openRow(row))}
-                    />
-                  ))}
-                  {matchedActions.map((action) =>
-                    action.shortcut === undefined ? (
-                      <CommandItem
-                        key={action.label}
-                        value={`action:${action.label}`}
-                        icon={action.icon}
-                        onSelect={() => select(action.run)}
-                      >
-                        {action.label}
-                      </CommandItem>
-                    ) : (
-                      <ShortcutCommandItem
-                        key={action.label}
-                        value={`action:${action.label}`}
-                        id={action.shortcut}
-                        icon={action.icon}
-                        onSelect={() => select(action.run)}
-                      >
-                        {action.label}
-                      </ShortcutCommandItem>
-                    ),
-                  )}
-                  {matchedCommands.map((command) => (
+            {showResults && (
+              // cmdk's Group forces role=presentation, so upstream's headingless group is a plain div.
+              <div
+                role="group"
+                aria-label="Search results"
+                aria-busy={searching}
+                className="flex flex-col gap-1"
+              >
+                {listing?.map((row) => (
+                  <SearchResultItem
+                    key={rowKey(row)}
+                    row={row}
+                    now={now}
+                    onSelect={() => select(() => openRow(row))}
+                  />
+                ))}
+                {instant.map((row) => (
+                  <SearchResultItem
+                    key={rowKey(row)}
+                    row={row}
+                    now={now}
+                    onSelect={() => select(() => openRow(row))}
+                  />
+                ))}
+                {matchedActions.map((action) =>
+                  action.shortcut === undefined ? (
                     <CommandItem
-                      key={command.to}
-                      value={`nav:${command.to}`}
-                      icon={command.icon}
-                      onSelect={() => select(() => navigate({ to: command.to }))}
+                      key={action.label}
+                      value={`action:${action.label}`}
+                      icon={action.icon}
+                      onSelect={() => select(action.run)}
                     >
-                      {command.label}
+                      {action.label}
                     </CommandItem>
-                  ))}
-                  {serverRows.map((row) => (
-                    <SearchResultItem
-                      key={rowKey(row)}
-                      row={row}
-                      now={now}
-                      onSelect={() => select(() => openRow(row))}
-                    />
-                  ))}
-                  {searching &&
-                    Array.from({ length: SKELETON_ROWS }, (_, index) => (
-                      <div
-                        key={index}
-                        aria-hidden="true"
-                        data-palette-skeleton=""
-                        className="flex items-center gap-2 px-3 py-2"
-                      >
-                        <span className="size-5 shrink-0 rounded bg-fill-ghost-hover" />
-                        <span className="h-3 flex-1 rounded bg-fill-ghost-hover motion-safe:animate-pulse" />
-                      </div>
-                    ))}
-                  {!searching && resultCount === 0 && (
-                    <div className="px-3 py-2 text-sm text-secondary">
-                      No results for “{trimmedQuery}”
+                  ) : (
+                    <ShortcutCommandItem
+                      key={action.label}
+                      value={`action:${action.label}`}
+                      id={action.shortcut}
+                      icon={action.icon}
+                      onSelect={() => select(action.run)}
+                    >
+                      {action.label}
+                    </ShortcutCommandItem>
+                  ),
+                )}
+                {matchedCommands.map((command) => (
+                  <CommandItem
+                    key={command.to}
+                    value={`nav:${command.to}`}
+                    icon={command.icon}
+                    onSelect={() => select(() => navigate({ to: command.to }))}
+                  >
+                    {command.label}
+                  </CommandItem>
+                ))}
+                {serverRows.map((row) => (
+                  <SearchResultItem
+                    key={rowKey(row)}
+                    row={row}
+                    now={now}
+                    onSelect={() => select(() => openRow(row))}
+                  />
+                ))}
+                {searching &&
+                  Array.from({ length: SKELETON_ROWS }, (_, index) => (
+                    <div
+                      key={index}
+                      aria-hidden="true"
+                      data-palette-skeleton=""
+                      className="flex items-center gap-2 px-3 py-2"
+                    >
+                      <span className="size-5 shrink-0 rounded bg-fill-ghost-hover" />
+                      <span className="h-3 flex-1 rounded bg-fill-ghost-hover motion-safe:animate-pulse" />
                     </div>
-                  )}
+                  ))}
+                {!searching && resultCount === 0 && type === "all" && (
+                  <div className="px-3 py-2 text-sm text-secondary">
+                    No results for “{trimmedQuery}”
+                  </div>
+                )}
+                {!searching && resultCount === 0 && type !== "all" && (
+                  <div className="flex flex-col items-center gap-2 px-3 py-6 text-center text-sm text-secondary">
+                    <span>
+                      No results for “{tokens.text}” in {paletteTypeLabels[type]}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={searchAll}
+                      className="rounded-r6 px-2 py-1 text-xs text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none"
+                    >
+                      Search all
+                    </button>
+                  </div>
+                )}
+                {tokens.text !== "" && type !== "projects" && (
                   <CommandItem
                     value="see-all-results"
                     icon={<Search />}
-                    onSelect={() => select(seeAllResults)}
+                    onSelect={() => select(() => seeAllResults(type))}
                   >
-                    See all results for “{trimmedQuery}”
+                    See all results for “{tokens.text}”
                   </CommandItem>
-                </div>
-              )}
+                )}
+              </div>
+            )}
           </Command.List>
-          {!compose && trimmedQuery !== "" && !searching && (
+          {showResults && !searching && (
             <div aria-live="polite" className="sr-only">
               {resultCount} results available
             </div>
@@ -597,6 +776,10 @@ function PalettePopup({
                   <Shortcut keys="esc" />
                 </span>
                 <span className="flex items-center gap-2">
+                  <span>Filters</span>
+                  <Shortcut keys="/" />
+                </span>
+                <span className="flex items-center gap-2">
                   <span>Actions</span>
                   <Shortcut keys="right" />
                 </span>
@@ -606,6 +789,43 @@ function PalettePopup({
         </Command>
       </div>
     </Dialog.Popup>
+  );
+}
+
+/** Upstream's 28px type tablist under the input; cloud-only tabs are replaced by local types. */
+function TypeTabs({
+  value,
+  onChange,
+}: {
+  value: PaletteType;
+  onChange: (type: PaletteType) => void;
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label="Type"
+      className="flex items-center gap-1 overflow-x-auto px-6 pb-[0.9rem]"
+    >
+      {PaletteTypeSchema.options.map((type) => {
+        const selected = type === value;
+        return (
+          <button
+            key={type}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            tabIndex={-1}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => onChange(type)}
+            className={`h-7 shrink-0 rounded-r6 px-2 text-sm transition-colors hover:bg-fill-ghost-hover hover:text-primary ${
+              selected ? "bg-fill-ghost-hover font-medium text-primary" : "text-secondary"
+            }`}
+          >
+            {paletteTypeLabels[type]}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 

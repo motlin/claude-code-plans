@@ -166,7 +166,7 @@ describe("CommandPalette shell", () => {
   it("shows the footer only while the query is empty", async () => {
     const dialog = await openPalette();
 
-    expect(footer(dialog)?.textContent).toBe("CloseEscActions→Right");
+    expect(footer(dialog)?.textContent).toBe("CloseEscFilters/Actions→Right");
 
     fireEvent.change(within(dialog).getByRole("combobox"), { target: { value: "auth" } });
 

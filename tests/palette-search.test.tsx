@@ -342,3 +342,135 @@ describe("⌘K palette live search", () => {
     }).toStrictEqual({ pathname: "/search", q: "auth", type: "all" });
   });
 });
+
+describe("⌘K palette filters", () => {
+  beforeEach(() => {
+    pending = [];
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    Element.prototype.scrollIntoView = () => {};
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  function tabs(dialog: HTMLElement) {
+    return within(within(dialog).getByRole("tablist", { name: "Type" }))
+      .getAllByRole("tab")
+      .map((tab) => ({ name: tab.textContent, selected: tab.getAttribute("aria-selected") }));
+  }
+
+  function filterLabels(dialog: HTMLElement): string[] {
+    return [
+      ...within(dialog).getByRole("group", { name: "Filters" }).querySelectorAll("[cmdk-item]"),
+    ].map((item) => item.querySelector("[data-palette-label]")?.textContent ?? "");
+  }
+
+  it("renders local type tabs with All selected", async () => {
+    const { dialog } = await openPalette();
+
+    expect(tabs(dialog)).toStrictEqual([
+      { name: "All", selected: "true" },
+      { name: "Sessions", selected: "false" },
+      { name: "Plans", selected: "false" },
+      { name: "Memories", selected: "false" },
+      { name: "Files", selected: "false" },
+      { name: "Projects", selected: "false" },
+    ]);
+  });
+
+  it("lists the Filter by hints when / is the whole query", async () => {
+    const { dialog } = await openPalette();
+
+    type(dialog, "/");
+
+    expect(filterLabels(dialog)).toStrictEqual([
+      "Filter by Project",
+      "Filter by Date",
+      "Filter by Repo",
+      "Filter by Type",
+    ]);
+    expect(pending).toStrictEqual([]);
+  });
+
+  it("narrows the hints as you type", async () => {
+    const { dialog } = await openPalette();
+
+    type(dialog, "/re");
+
+    expect(filterLabels(dialog)).toStrictEqual(["Filter by Date", "Filter by Repo"]);
+  });
+
+  it("inserts the filter token when a hint is chosen", async () => {
+    const { dialog } = await openPalette();
+
+    type(dialog, "/re");
+    const repo = [
+      ...within(dialog).getByRole("group", { name: "Filters" }).querySelectorAll("[cmdk-item]"),
+    ].find((item) => item.textContent?.includes("Repo"));
+    if (repo === undefined) throw new Error("no Repo hint");
+    fireEvent.click(repo);
+
+    expect(within(dialog).getByRole("combobox")).toHaveProperty("value", "repo:");
+  });
+
+  it("lists recents with bucket meta on the Sessions tab with an empty query", async () => {
+    const { dialog } = await openPalette([
+      recentSession("sess-1", "Refactor auth module"),
+      recentSession("sess-2", "Fix login"),
+    ]);
+
+    fireEvent.click(within(dialog).getByRole("tab", { name: "Sessions" }));
+
+    expect({
+      labels: optionLabels(dialog),
+      meta: [...resultsGroup(dialog).querySelectorAll("[data-palette-meta]")].map(
+        (meta) => meta.textContent,
+      ),
+      headings: [...dialog.querySelectorAll("[cmdk-group-heading]")].map(
+        (heading) => heading.textContent,
+      ),
+    }).toStrictEqual({
+      labels: ["Refactor auth module", "Fix login"],
+      meta: ["Just now", "Just now"],
+      headings: [],
+    });
+  });
+
+  it("maps tokens onto the search request", async () => {
+    const { dialog } = await openPalette([]);
+
+    type(dialog, "date:week type:plans auth");
+
+    expect((await awaitRequest()).url).toBe("/api/search?query=auth&type=plans&date=week");
+  });
+
+  it("shows the filtered no-results copy and Search all resets the tab", async () => {
+    const { dialog } = await openPalette([]);
+
+    fireEvent.click(within(dialog).getByRole("tab", { name: "Sessions" }));
+    type(dialog, "zzqxvq");
+    const request = await awaitRequest();
+    expect(request.url).toBe("/api/search?query=zzqxvq&type=sessions");
+    request.resolve([]);
+
+    await within(dialog).findByText("No results for “zzqxvq” in Sessions");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Search all" }));
+
+    expect(tabs(dialog)[0]).toStrictEqual({ name: "All", selected: "true" });
+    await waitFor(() =>
+      expect(pending.map((search) => search.url)).toContain("/api/search?query=zzqxvq"),
+    );
+  });
+});

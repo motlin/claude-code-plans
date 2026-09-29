@@ -11,6 +11,7 @@ import type { SessionSummaryStateSchema } from "./api/sessions";
 import type { SourceFileResponse } from "./api/source";
 import type { HookEvent, ToolUseUnion } from "./hook-events";
 import type { NavSection } from "./nav-sections";
+import type { PaletteFilter, PaletteType } from "./palette-tokens";
 import type { Direction, LayoutNode, PaneKind, TileId } from "./pane-layout";
 import type {
   AttachmentPayloadSchema,
@@ -176,6 +177,22 @@ const unifiedSearchKindLabels = {
   memory: "Memory",
   file: "File",
 } satisfies Record<z.infer<typeof UnifiedSearchKindSchema>, string>;
+
+export const paletteTypeLabels = {
+  all: "All",
+  sessions: "Sessions",
+  plans: "Plans",
+  memories: "Memories",
+  files: "Files",
+  projects: "Projects",
+} satisfies Record<PaletteType, string>;
+
+export const paletteFilterLabels = {
+  project: "Project",
+  date: "Date",
+  repo: "Repo",
+  type: "Type",
+} satisfies Record<PaletteFilter, string>;
 
 const sessionStartSourceLabels = {
   startup: "Startup",
@@ -538,6 +555,8 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   UnifiedSearchTypeSchema: unifiedSearchTypeLabels,
   UnifiedSearchDateSchema: unifiedSearchDateLabels,
   UnifiedSearchKindSchema: unifiedSearchKindLabels,
+  PaletteTypeSchema: paletteTypeLabels,
+  PaletteFilterSchema: paletteFilterLabels,
   SessionSummaryStateSchema: sessionSummaryStateLabels,
   SessionBucketSchema: sessionBucketLabels,
   SessionBucketReasonSchema: sessionBucketReasonLabels,

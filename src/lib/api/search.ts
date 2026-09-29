@@ -162,13 +162,22 @@ export const UnifiedSearchResponse = z
   })
   .strict();
 
-export const unifiedSearchQueryOptions = (query: string) =>
+/** `GET /api/search` params the palette sends; `type` defaults to all and `limit` to 25. */
+export type UnifiedSearchRequest = Pick<UnifiedSearchParams, "query"> &
+  Partial<Pick<UnifiedSearchParams, "type" | "project" | "date">>;
+
+function unifiedSearchUrl({ query, type, project, date }: UnifiedSearchRequest): string {
+  const parameters = new URLSearchParams({ query });
+  if (type !== undefined && type !== "all") parameters.set("type", type);
+  if (project !== undefined) parameters.set("project", project);
+  if (date !== undefined) parameters.set("date", date);
+  return `/api/search?${parameters.toString()}`;
+}
+
+export const unifiedSearchQueryOptions = (request: UnifiedSearchRequest) =>
   queryOptions({
-    queryKey: ["search", "unified", query] as const,
-    queryFn: ({ signal }) =>
-      apiFetch(`/api/search?query=${encodeURIComponent(query)}`, UnifiedSearchResponse, {
-        signal,
-      }),
+    queryKey: ["search", "unified", unifiedSearchUrl(request)] as const,
+    queryFn: ({ signal }) => apiFetch(unifiedSearchUrl(request), UnifiedSearchResponse, { signal }),
     staleTime: 30_000,
     gcTime: 5 * 60_000,
   });
