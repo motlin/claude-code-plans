@@ -3,6 +3,7 @@ import { dispatchShortcutEvent } from "../hooks/use-shortcut";
 import { terminalHandlesKey } from "../lib/herdr/terminal-keys";
 import { createTerminalFrameConsumer } from "../lib/herdr/terminal-protocol";
 import { getGhosttyAppearance, type GhosttyAppearance } from "../lib/server-fns";
+import { TerminalPlaceholder } from "./terminal-placeholder";
 
 /**
  * Ghostty parses VT sequences in WebAssembly, so the module has to finish
@@ -221,7 +222,7 @@ export function HerdrTerminal({
 
   if (variant === "pane") {
     return (
-      <div className="flex h-full min-h-0 flex-col">
+      <div className="relative flex h-full min-h-0 flex-col">
         {error && <p className="px-3 py-1 text-caption text-danger-000">{error}</p>}
         <div
           ref={container}
@@ -229,6 +230,7 @@ export function HerdrTerminal({
           className="min-h-0 flex-1 overflow-hidden rounded-b-[inherit] p-2"
           style={background}
         />
+        {status === "connecting" && !error && <TerminalPlaceholder appearance={appearance} />}
       </div>
     );
   }

@@ -8,7 +8,17 @@ import {
   type ShellClientFrame,
 } from "../lib/herdr/terminal-protocol";
 import type { GhosttyAppearance } from "../lib/server-fns";
+import {
+  formatLinkMessage,
+  INITIAL_TERMINAL_LIFECYCLE,
+  reduceTerminalLifecycle,
+  type TerminalLifecycle,
+  type TerminalLifecycleEvent,
+  terminalOverlay,
+  terminalStatus,
+} from "../lib/terminal-lifecycle";
 import { type ConnectionStatus, loadGhostty } from "./herdr-terminal";
+import { TerminalPlaceholder } from "./terminal-placeholder";
 
 /** Socket closes that mean "stop", not "reconnect". */
 const FINAL_CLOSE_CODES = new Set([1000, 1008, 4001, 4404]);
@@ -18,10 +28,16 @@ function shellSocketUrl(ptyKey: string): string {
   return `${protocol}//${window.location.host}/api/shell/${encodeURIComponent(ptyKey)}`;
 }
 
+const OVERLAY_BUTTON_CLASS =
+  "h-7 cursor-pointer rounded-r6 border border-strong px-2.5 text-body text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none disabled:cursor-default disabled:opacity-50";
+
 /**
  * One Shell tab: a login `$SHELL` PTY on the server, attached over
  * `/api/shell/$ptyKey`. Reconnects replay the PTY's buffered output, so a
- * dropped socket or a re-mounted pane picks up where it left off.
+ * dropped socket or a re-mounted pane picks up where it left off, with dim
+ * in-band lines saying the connection went and came back. Once the shell
+ * exits or the socket fails for good, an overlay offers Restart shell (a new
+ * PTY for this tab via `onRestart`) and Reconnect (the same PTY).
  * `closeRequested` sends the close frame, which ends the PTY, then reports
  * `onClosed` so the tab can go. Without a live socket the idle timeout on the
  * server reaps the PTY instead.
@@ -30,19 +46,25 @@ export function ShellTerminal({
   ptyKey,
   closeRequested,
   onClosed,
+  onRestart,
   onStatusChange,
 }: {
   ptyKey: string;
   closeRequested: boolean;
   onClosed: () => void;
+  /** Start a new shell for this tab; rejects with the reason it could not. */
+  onRestart: () => Promise<void>;
   onStatusChange?: (status: ConnectionStatus) => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const sendRef = useRef<((frame: ShellClientFrame) => boolean) | null>(null);
+  const reconnectRef = useRef<(() => void) | null>(null);
+  const dispatchRef = useRef<(event: TerminalLifecycleEvent) => void>(() => {});
+  const restartingRef = useRef(false);
   const onClosedRef = useRef(onClosed);
   onClosedRef.current = onClosed;
-  const [status, setStatus] = useState<ConnectionStatus>("connecting");
-  const [message, setMessage] = useState("");
+  const [lifecycle, setLifecycle] = useState<TerminalLifecycle>(INITIAL_TERMINAL_LIFECYCLE);
+  const [restarting, setRestarting] = useState(false);
   const [appearance, setAppearance] = useState<GhosttyAppearance | null>(null);
 
   useEffect(() => {
@@ -51,6 +73,21 @@ export function ShellTerminal({
 
     let disposed = false;
     let teardown: (() => void) | null = null;
+    let terminalWrite: ((text: string) => void) | null = null;
+    let state = restartingRef.current
+      ? reduceTerminalLifecycle(INITIAL_TERMINAL_LIFECYCLE, { type: "restart" }).state
+      : INITIAL_TERMINAL_LIFECYCLE;
+    restartingRef.current = false;
+    setLifecycle(state);
+
+    const dispatch = (event: TerminalLifecycleEvent): void => {
+      if (disposed) return;
+      const step = reduceTerminalLifecycle(state, event);
+      state = step.state;
+      setLifecycle(state);
+      if (step.link !== null) terminalWrite?.(formatLinkMessage(step.link, window.location.host));
+    };
+    dispatchRef.current = dispatch;
 
     const start = (
       ghostty: typeof import("ghostty-web"),
@@ -67,6 +104,7 @@ export function ShellTerminal({
       const fitAddon = new ghostty.FitAddon();
       terminal.loadAddon(fitAddon);
       terminal.open(element);
+      terminalWrite = (text) => terminal.write(text);
       terminal.attachCustomKeyEventHandler((event) => {
         if (terminalHandlesKey(event)) return false;
         dispatchShortcutEvent(event);
@@ -104,8 +142,8 @@ export function ShellTerminal({
           try {
             frame = parseShellServerFrame(String(event.data));
           } catch {
-            setMessage("Shell disconnected: invalid shell frame");
-            setStatus("error");
+            stopped = true;
+            dispatch({ type: "error", message: "invalid shell frame" });
             nextSocket.close(4000, "invalid shell frame");
             return;
           }
@@ -113,21 +151,23 @@ export function ShellTerminal({
             case "opened":
               terminal.reset();
               terminal.write(decodeTerminalBytes(frame.buffered));
-              setMessage("");
-              setStatus("live");
+              dispatch({ type: "opened" });
               return;
             case "data":
               terminal.write(decodeTerminalBytes(frame.data));
               return;
             case "exit":
               stopped = true;
-              setMessage("Shell exited.");
-              setStatus("closed");
+              dispatch({ type: "exited" });
               return;
             case "error":
               stopped = true;
-              setMessage(frame.message);
-              setStatus("error");
+              // A missing PTY is a shell that is gone, not a broken connection.
+              dispatch(
+                frame.message === "Shell not found"
+                  ? { type: "exited" }
+                  : { type: "error", message: frame.message },
+              );
           }
         });
         nextSocket.addEventListener("close", (event) => {
@@ -135,16 +175,24 @@ export function ShellTerminal({
           socket = null;
           if (event.code === 4404) {
             stopped = true;
-            setMessage("Shell exited.");
-            setStatus("closed");
+            dispatch({ type: "exited" });
           }
           if (stopped || FINAL_CLOSE_CODES.has(event.code)) {
             stopped = true;
             return;
           }
-          setStatus("reconnecting");
+          dispatch({ type: "lost" });
           retry = setTimeout(connect, 750);
         });
+      };
+
+      reconnectRef.current = () => {
+        if (retry) clearTimeout(retry);
+        socket?.close(1000, "shell reconnecting");
+        socket = null;
+        stopped = false;
+        dispatch({ type: "reconnect" });
+        connect();
       };
 
       const resizeObserver = new ResizeObserver(() => {
@@ -158,6 +206,8 @@ export function ShellTerminal({
       return () => {
         stopped = true;
         sendRef.current = null;
+        reconnectRef.current = null;
+        terminalWrite = null;
         if (retry) clearTimeout(retry);
         if (resizeTimer) clearTimeout(resizeTimer);
         resizeObserver.disconnect();
@@ -171,13 +221,10 @@ export function ShellTerminal({
       .then(({ ghostty, appearance: ghosttyAppearance }) => {
         if (disposed) return;
         setAppearance(ghosttyAppearance);
+        dispatch({ type: "loaded" });
         teardown = start(ghostty, ghosttyAppearance);
       })
-      .catch(() => {
-        if (disposed) return;
-        setMessage("Couldn’t load the terminal. Reload the page to try again.");
-        setStatus("error");
-      });
+      .catch(() => dispatch({ type: "load-failed" }));
 
     return () => {
       disposed = true;
@@ -191,19 +238,73 @@ export function ShellTerminal({
     onClosedRef.current();
   }, [closeRequested]);
 
+  const status = terminalStatus(lifecycle);
   useEffect(() => {
     onStatusChange?.(status);
   }, [onStatusChange, status]);
 
+  const restart = (): void => {
+    setRestarting(true);
+    restartingRef.current = true;
+    onRestart()
+      .catch((cause: unknown) => {
+        restartingRef.current = false;
+        dispatchRef.current({
+          type: "start-failed",
+          message: cause instanceof Error ? cause.message : String(cause),
+        });
+      })
+      .finally(() => setRestarting(false));
+  };
+
+  const overlay = terminalOverlay(lifecycle);
+
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      {message && <p className="px-3 py-1 text-caption text-secondary">{message}</p>}
+    <div className="relative flex h-full min-h-0 flex-col">
       <div
         ref={container}
         data-terminal=""
         className="min-h-0 flex-1 overflow-hidden rounded-b-[inherit] p-2"
         style={appearance ? { backgroundColor: appearance.theme.background } : undefined}
       />
+      {overlay?.kind === "placeholder" && <TerminalPlaceholder appearance={appearance} />}
+      {overlay?.kind === "load-failed" && (
+        <p
+          role="alert"
+          className="absolute inset-x-0 bottom-0 bg-surface-1 px-3 py-2 text-caption text-danger-000"
+        >
+          {overlay.title}
+        </p>
+      )}
+      {overlay?.kind === "ended" && (
+        <div
+          role="alert"
+          className="absolute inset-x-0 bottom-0 flex flex-wrap items-center gap-2 border-t border-strong bg-surface-1 px-3 py-2"
+        >
+          <div className="min-w-0 flex-1">
+            <p className="text-body text-primary">{overlay.title}</p>
+            {overlay.detail !== null && (
+              <p className="text-caption text-secondary">{overlay.detail}</p>
+            )}
+          </div>
+          <button
+            type="button"
+            disabled={restarting}
+            onClick={restart}
+            className={OVERLAY_BUTTON_CLASS}
+          >
+            Restart shell
+          </button>
+          <button
+            type="button"
+            disabled={restarting}
+            onClick={() => reconnectRef.current?.()}
+            className={OVERLAY_BUTTON_CLASS}
+          >
+            Reconnect
+          </button>
+        </div>
+      )}
     </div>
   );
 }

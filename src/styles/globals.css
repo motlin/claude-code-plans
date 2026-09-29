@@ -623,8 +623,24 @@
   }
 }
 
+/* The terminal loading placeholder's caret, blinking like a terminal cursor. */
+.terminal-caret {
+  animation: caret-blink 1s steps(1, end) infinite;
+}
+
+@keyframes caret-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .status-dot[data-kind="running"] {
+  .status-dot[data-kind="running"],
+  .terminal-caret {
     animation: none;
   }
 }
@@ -639,7 +655,8 @@ html[data-motion="reduced"] *::after {
 
 html[data-motion="reduced"] .animate-pulse,
 html[data-motion="reduced"] .animate-ping,
-html[data-motion="reduced"] .status-dot[data-kind="running"] {
+html[data-motion="reduced"] .status-dot[data-kind="running"],
+html[data-motion="reduced"] .terminal-caret {
   animation: none !important;
 }
 

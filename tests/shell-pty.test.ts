@@ -14,6 +14,8 @@ import {
   authorizeShellSocket,
   createShellRegistry,
   handleCreateShellRequest,
+  handleShellBusyRequest,
+  isForegroundBusy,
   isLoopbackPeer,
   type PtyProcess,
   type ShellRegistryDependencies,
@@ -21,7 +23,7 @@ import {
 } from "../src/lib/shell-pty";
 
 class FakePty implements PtyProcess {
-  readonly pid = 4242;
+  constructor(readonly pid = 4242) {}
   readonly written: string[] = [];
   readonly resizes: Array<[number, number]> = [];
   readonly kills: Array<string | undefined> = [];
@@ -146,6 +148,7 @@ describe("shell pty registry", () => {
       shell: () => "/bin/zsh",
       environment: () => ({ HOME: "/Users/alice", HERDR_PANE_ID: "p-1", LANG: "en_US.UTF-8" }),
       idleTimeoutMs: 60_000,
+      foregroundBusy: () => false,
       ...overrides,
       spawn: vi.fn<SpawnPty>(() => pty),
     };
@@ -266,6 +269,26 @@ describe("shell pty registry", () => {
     });
   });
 
+  it("reports which live shells have a foreground command running", () => {
+    const idlePty = new FakePty(4242);
+    const busyPty = new FakePty(4343);
+    const ptys = [idlePty, busyPty];
+    const foregroundBusy = vi.fn((pid: number) => pid === 4343);
+    const registry = createShellRegistry({
+      ...dependencies(idlePty, { foregroundBusy }),
+      spawn: vi.fn<SpawnPty>(() => ptys.shift()!),
+    });
+    const idle = registry.create("alice-session", { cols: 80, rows: 24 });
+    const busy = registry.create("alice-session", { cols: 80, rows: 24 });
+    if (!idle.ok || !busy.ok) throw new Error("expected shells");
+
+    expect({
+      busy: registry.busy([idle.ptyKey, busy.ptyKey, "no-such-key"]),
+      checked: foregroundBusy.mock.calls,
+    }).toStrictEqual({ busy: [busy.ptyKey], checked: [[4242], [4343]] });
+    registry.shutdown();
+  });
+
   it("runs a real login shell in the session folder", async () => {
     const { spawn } = await import("node-pty");
     const registry = createShellRegistry({
@@ -274,11 +297,34 @@ describe("shell pty registry", () => {
       environment: () => ({ PATH: "/usr/bin:/bin", HOME: directory }),
       spawn: spawn as unknown as SpawnPty,
       idleTimeoutMs: 60_000,
+      foregroundBusy: isForegroundBusy,
     });
     const created = registry.create("alice-session", { cols: 80, rows: 24 });
     if (!created.ok) throw new Error(created.error);
     const socket = createSocket();
     const connection = registry.attach(created.ptyKey, socket);
+    const idleAtPrompt = await vi.waitFor(
+      () => {
+        expect(sentFrames(socket).length).toBeGreaterThan(1);
+        return registry.busy([created.ptyKey]);
+      },
+      { timeout: 10_000 },
+    );
+    connection?.input(JSON.stringify({ type: "data", data: encodeTerminalText("sleep 30\n") }));
+    await vi.waitFor(
+      () => {
+        expect(registry.busy([created.ptyKey])).toStrictEqual([created.ptyKey]);
+      },
+      { timeout: 10_000 },
+    );
+    connection?.input(JSON.stringify({ type: "data", data: encodeTerminalText("\u0003") }));
+    await vi.waitFor(
+      () => {
+        expect(registry.busy([created.ptyKey])).toStrictEqual([]);
+      },
+      { timeout: 10_000 },
+    );
+    expect(idleAtPrompt).toStrictEqual([]);
     connection?.input(JSON.stringify({ type: "data", data: encodeTerminalText("pwd; exit 7\n") }));
 
     await vi.waitFor(
@@ -383,6 +429,34 @@ describe("shell pty request gates", () => {
       peers: [false, false, false, true, true, true],
       created: 0,
     });
+  });
+
+  it("answers which shells are busy behind the same gates", async () => {
+    const aliceKey = "0f6c1c1e-8a52-4d7e-9a43-2b1f3c1d5e01";
+    const bobKey = "0f6c1c1e-8a52-4d7e-9a43-2b1f3c1d5e02";
+    const registry = {
+      busy: vi.fn((keys: readonly string[]) => keys.filter((key) => key === bobKey)),
+    };
+    const ask = async (request: Request, enabled = true) => {
+      const response = await handleShellBusyRequest(request, { registry, enabled: () => enabled });
+      return [response.status, await response.json()];
+    };
+
+    expect(
+      await Promise.all([
+        ask(createRequest({ ptyKeys: [aliceKey, bobKey] }, { Origin: LOOPBACK_ORIGIN })),
+        ask(createRequest({ ptyKeys: [aliceKey] }), false),
+        ask(createRequest({ ptyKeys: [aliceKey] }, {}, "192.168.1.20")),
+        ask(createRequest({ ptyKeys: ["not-a-key"] })),
+        ask(createRequest({ ptyKeys: [aliceKey], extra: true })),
+      ]),
+    ).toStrictEqual([
+      [200, { busy: [bobKey] }],
+      [403, { error: "Shell tabs are disabled" }],
+      [403, { error: "Shell tabs are only available from this computer" }],
+      [400, { error: "Invalid shell request" }],
+      [400, { error: "Invalid shell request" }],
+    ]);
   });
 
   it("maps registry refusals to their status", async () => {

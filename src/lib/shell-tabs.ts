@@ -1,75 +1,59 @@
 import { useSyncExternalStore } from "react";
 
-export interface ShellTab {
-  id: string;
-  ptyKey: string;
-  title: string;
-  /** A close frame has been requested; the tab goes once the socket confirms. */
-  closing: boolean;
-}
-
-export const CLAUDE_TAB_ID = "claude";
-
-export interface SessionShellTabs {
-  tabs: readonly ShellTab[];
-  /** The selected tab id, `CLAUDE_TAB_ID`, or null for the pane's default. */
-  active: string | null;
-  opened: number;
-}
-
-const EMPTY: SessionShellTabs = { tabs: [], active: null, opened: 0 };
+import {
+  EMPTY_TERMINAL_TABS,
+  reduceTerminalTabs,
+  restoreTerminalTabs,
+  serializeTerminalTabs,
+  type TerminalTabsAction,
+  type TerminalTabsState,
+  terminalTabsStorageKey,
+} from "./terminal-tabs";
 
 /**
  * Shell tabs outlive the Terminal pane's mount: hiding the pane detaches the
  * sockets, and reopening it reattaches to the same PTYs (the server replays
- * their buffered output). Closing a tab is what ends a shell.
+ * their buffered output). The tab list is also kept per session in
+ * localStorage, so a reload reattaches to shells the server still holds.
+ * Closing a tab is what ends a shell.
  */
-const sessions = new Map<string, SessionShellTabs>();
+const sessions = new Map<string, TerminalTabsState>();
 const listeners = new Set<() => void>();
 
-function update(sessionId: string, next: (state: SessionShellTabs) => SessionShellTabs): void {
-  sessions.set(sessionId, next(sessions.get(sessionId) ?? EMPTY));
+function readStored(sessionId: string): string | null {
+  try {
+    return localStorage.getItem(terminalTabsStorageKey(sessionId));
+  } catch {
+    return null;
+  }
+}
+
+function writeStored(sessionId: string, state: TerminalTabsState): void {
+  try {
+    localStorage.setItem(terminalTabsStorageKey(sessionId), serializeTerminalTabs(state));
+  } catch {
+    // Storage is a convenience; the in-memory list still works without it.
+  }
+}
+
+function current(sessionId: string): TerminalTabsState {
+  const known = sessions.get(sessionId);
+  if (known) return known;
+  const restored = restoreTerminalTabs(readStored(sessionId));
+  sessions.set(sessionId, restored);
+  return restored;
+}
+
+export function dispatchTerminalTabs(sessionId: string, action: TerminalTabsAction): void {
+  const before = current(sessionId);
+  const next = reduceTerminalTabs(before, action);
+  if (next === before) return;
+  sessions.set(sessionId, next);
+  writeStored(sessionId, next);
   for (const listener of listeners) listener();
 }
 
-export function addShellTab(sessionId: string, ptyKey: string): void {
-  update(sessionId, (state) => {
-    const opened = state.opened + 1;
-    const id = `shell-${ptyKey}`;
-    return {
-      tabs: [
-        ...state.tabs,
-        { id, ptyKey, title: opened === 1 ? "Shell" : `Shell ${opened}`, closing: false },
-      ],
-      active: id,
-      opened,
-    };
-  });
-}
-
-export function selectTerminalTab(sessionId: string, id: string): void {
-  update(sessionId, (state) => ({ ...state, active: id }));
-}
-
-export function requestShellTabClose(sessionId: string, id: string): void {
-  update(sessionId, (state) => ({
-    ...state,
-    tabs: state.tabs.map((tab) => (tab.id === id ? { ...tab, closing: true } : tab)),
-  }));
-}
-
-/** Drop a tab; if it was selected, select its left neighbour. */
-export function removeShellTab(sessionId: string, id: string): void {
-  update(sessionId, (state) => {
-    const index = state.tabs.findIndex((tab) => tab.id === id);
-    if (index === -1) return state;
-    const tabs = state.tabs.filter((tab) => tab.id !== id);
-    if (state.active !== id) return { ...state, tabs };
-    const neighbour = tabs[Math.max(0, index - 1)];
-    return { ...state, tabs, active: index > 0 && neighbour ? neighbour.id : null };
-  });
-}
-
+/** Forget the in-memory lists (tests); stored lists are reread on next use. */
 export function clearShellTabs(): void {
   sessions.clear();
   for (const listener of listeners) listener();
@@ -80,10 +64,10 @@ function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
-export function useShellTabs(sessionId: string): SessionShellTabs {
+export function useShellTabs(sessionId: string): TerminalTabsState {
   return useSyncExternalStore(
     subscribe,
-    () => sessions.get(sessionId) ?? EMPTY,
-    () => EMPTY,
+    () => current(sessionId),
+    () => EMPTY_TERMINAL_TABS,
   );
 }

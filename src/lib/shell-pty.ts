@@ -12,6 +12,7 @@
  * posix_spawnp fails); it must be traced into the Nitro build so the prod
  * output keeps spawn-helper.
  */
+import { execFileSync } from "node:child_process";
 import { statSync } from "node:fs";
 import { spawn as spawnNodePty } from "node-pty";
 import { z } from "zod";
@@ -56,6 +57,8 @@ export interface ShellRegistryDependencies {
   spawn: SpawnPty;
   /** How long a shell with no attached tab survives before it is killed. */
   idleTimeoutMs: number;
+  /** Whether the shell with this pid has handed its terminal to a foreground job. */
+  foregroundBusy: (pid: number) => boolean;
 }
 
 export type CreateShellResult =
@@ -72,6 +75,8 @@ export interface ShellConnection {
 export interface ShellRegistry {
   create: (sessionId: string, size: { cols: number; rows: number }) => CreateShellResult;
   attach: (ptyKey: string, socket: TerminalObserverSocket) => ShellConnection | null;
+  /** The given shells that are still running a foreground command. */
+  busy: (ptyKeys: readonly string[]) => string[];
   shutdown: () => void;
   size: () => number;
 }
@@ -215,12 +220,39 @@ export function createShellRegistry(dependencies: ShellRegistryDependencies): Sh
       };
     },
 
+    busy(ptyKeys) {
+      return ptyKeys.filter((ptyKey) => {
+        const entry = shells.get(ptyKey);
+        return entry !== undefined && dependencies.foregroundBusy(entry.pty.pid);
+      });
+    },
+
     shutdown() {
       for (const ptyKey of [...shells.keys()]) kill(ptyKey);
     },
 
     size: () => shells.size,
   };
+}
+
+/**
+ * A job-control shell leads its own process group and hands the terminal to
+ * each foreground job's group, so the shell is busy exactly when the
+ * terminal's foreground group (`tpgid`) is not the shell's own (`pgid`).
+ */
+export function isForegroundBusy(pid: number): boolean {
+  let output: string;
+  try {
+    output = execFileSync("ps", ["-o", "tpgid=,pgid=", "-p", String(pid)], {
+      encoding: "utf8",
+      timeout: 2000,
+    });
+  } catch {
+    return false;
+  }
+  const [foreground, own] = output.trim().split(/\s+/).map(Number);
+  if (foreground === undefined || own === undefined) return false;
+  return Number.isInteger(foreground) && foreground > 0 && foreground !== own;
 }
 
 const LOOPBACK_ADDRESS = /^(?:127(?:\.\d{1,3}){3}|::1|::ffff:127(?:\.\d{1,3}){3})$/i;
@@ -300,6 +332,24 @@ export async function handleCreateShellRequest(
   return Response.json({ ptyKey: result.ptyKey });
 }
 
+const ShellBusyBodySchema = z.object({ ptyKeys: z.array(z.uuid()).max(64) }).strict();
+
+/** `POST /api/shell-busy {ptyKeys}` → `{busy}`: which tabs would stop a command if closed. */
+export async function handleShellBusyRequest(
+  request: Request,
+  dependencies: {
+    registry: Pick<ShellRegistry, "busy">;
+    enabled: () => boolean;
+  } = { registry: getShellRegistry(), enabled: shellPaneEnabled },
+): Promise<Response> {
+  const rejection = authorizeShellRequest(request, dependencies.enabled, false);
+  if (rejection) return rejection;
+
+  const body = ShellBusyBodySchema.safeParse(await request.json().catch(() => null));
+  if (!body.success) return Response.json({ error: "Invalid shell request" }, { status: 400 });
+  return Response.json({ busy: dependencies.registry.busy(body.data.ptyKeys) });
+}
+
 const SHELL_IDLE_TIMEOUT_MS = 10 * 60 * 1000;
 const REGISTRY_KEY = Symbol.for("claude-code-browser.shell-registry");
 
@@ -315,6 +365,7 @@ export function getShellRegistry(): ShellRegistry {
     environment: () => process.env,
     spawn: spawnNodePty as SpawnPty,
     idleTimeoutMs: SHELL_IDLE_TIMEOUT_MS,
+    foregroundBusy: isForegroundBusy,
   });
   return holder[REGISTRY_KEY];
 }

@@ -2,6 +2,7 @@
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useEffect } from "react";
+import { z } from "zod";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { TileHost } from "../src/components/panes/tile-host";
@@ -12,6 +13,7 @@ import {
 } from "../src/components/panes/terminal-pane";
 import { SettingsProvider } from "../src/components/settings-provider";
 import { clearShellTabs } from "../src/lib/shell-tabs";
+import { terminalTabsStorageKey } from "../src/lib/terminal-tabs";
 import { SessionPaneControls } from "../src/components/view-options-menu";
 import { validateSessionSearch } from "../src/lib/session-search";
 import { installLocalStorage } from "./fake-storage";
@@ -71,16 +73,15 @@ function Harness({
   );
 }
 
-function renderSession(
-  available: boolean,
-  requested: {
-    pane?: "terminal";
-    onHandled?: () => void;
-    interactive?: boolean;
-    shells?: boolean;
-  } = {},
-) {
-  return render(
+interface SessionOptions {
+  pane?: "terminal";
+  onHandled?: () => void;
+  interactive?: boolean;
+  shells?: boolean;
+}
+
+function sessionTree(available: boolean, requested: SessionOptions) {
+  return (
     <SettingsProvider>
       <TileHost
         sessionId={SESSION_ID}
@@ -94,8 +95,16 @@ function renderSession(
           shells={requested.shells ?? false}
         />
       </TileHost>
-    </SettingsProvider>,
+    </SettingsProvider>
   );
+}
+
+function renderSession(available: boolean, requested: SessionOptions = {}) {
+  const result = render(sessionTree(available, requested));
+  return {
+    ...result,
+    setAvailable: (next: boolean) => result.rerender(sessionTree(next, requested)),
+  };
 }
 
 const CTRL_BACKQUOTE = { key: "`", code: "Backquote", ctrlKey: true };
@@ -108,8 +117,10 @@ function pressOn(target: Element, init: KeyboardEventInit): KeyboardEvent {
   return event;
 }
 
+let storage: ReturnType<typeof installLocalStorage>;
+
 beforeEach(() => {
-  installLocalStorage();
+  storage = installLocalStorage();
   vi.stubGlobal("ResizeObserver", FakeObserver);
   vi.stubGlobal("IntersectionObserver", FakeObserver);
   vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
@@ -238,14 +249,59 @@ describe("Terminal pane", () => {
 });
 
 describe("Shell tabs", () => {
-  function stubShellApi(responses: Array<{ status: number; body: unknown }>) {
-    const fetcher = vi.fn<typeof fetch>(async () => {
-      const next = responses.shift();
+  function stubShellApi(
+    created: Array<{ status: number; body: unknown }>,
+    busy: readonly string[] = [],
+  ) {
+    const fetcher = vi.fn<typeof fetch>(async (input, init) => {
+      if (input === "/api/shell-busy") {
+        const { ptyKeys } = z
+          .object({ ptyKeys: z.array(z.string()) })
+          .parse(JSON.parse(typeof init?.body === "string" ? init.body : "null"));
+        return Response.json({ busy: ptyKeys.filter((key) => busy.includes(key)) });
+      }
+      const next = created.shift();
       if (!next) throw new Error("unexpected shell request");
       return Response.json(next.body, { status: next.status });
     });
     vi.stubGlobal("fetch", fetcher);
     return fetcher;
+  }
+
+  async function flush() {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  }
+
+  async function openWithShells(ptyKeys: readonly string[], busy: readonly string[] = []) {
+    stubShellApi(
+      ptyKeys.map((ptyKey) => ({ status: 200, body: { ptyKey } })),
+      busy,
+    );
+    const view = renderSession(true, { shells: true });
+    act(() => screen.getByRole("button", { name: "Terminal" }).click());
+    for (const [index] of ptyKeys.entries()) {
+      fireEvent.click(screen.getByRole("button", { name: "New terminal" }));
+      await waitFor(() => expect(screen.getAllByRole("tab")).toHaveLength(index + 2));
+    }
+    return view;
+  }
+
+  async function openTabMenu(name: string): Promise<HTMLElement> {
+    fireEvent.contextMenu(screen.getByRole("tab", { name }), { clientX: 20, clientY: 20 });
+    await flush();
+    return await waitFor(() => screen.getByRole("menu"));
+  }
+
+  async function chooseFromTabMenu(name: string, label: string) {
+    const menu = await openTabMenu(name);
+    const item = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+      (node) => node.textContent === label,
+    );
+    if (item === undefined) throw new Error(`No menu item ${label}`);
+    fireEvent.click(item);
+    await flush();
   }
 
   function tabs() {
@@ -325,6 +381,227 @@ describe("Shell tabs", () => {
     act(() => screen.getByRole("button", { name: "Terminal" }).click());
 
     expect(screen.queryByRole("button", { name: "New terminal" })).toBeNull();
+  });
+
+  it("offers Rename, Close and Close other terminals per tab, and Close others alone on Claude", async () => {
+    await openWithShells(["pty-alice-1", "pty-alice-2"]);
+
+    const outline = (menu: HTMLElement) =>
+      [...menu.querySelectorAll('[role="menuitem"]')].map((node) => node.textContent);
+    const shellMenu = outline(await openTabMenu("Shell 2"));
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    const claudeMenu = outline(await openTabMenu("Claude"));
+
+    expect({ shellMenu, claudeMenu }).toStrictEqual({
+      shellMenu: ["Rename terminal", "Close terminal", "Close other terminals"],
+      claudeMenu: ["Close other terminals"],
+    });
+  });
+
+  it("renames a tab inline and remembers the name", async () => {
+    await openWithShells(["pty-alice-1"]);
+
+    await chooseFromTabMenu("Shell", "Rename terminal");
+    const input = await waitFor(() => screen.getByRole("textbox", { name: "Rename terminal" }));
+    fireEvent.change(input, { target: { value: "  dev server  " } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await flush();
+
+    expect({
+      tabs: tabs(),
+      stored: z
+        .object({ tabs: z.array(z.object({ title: z.string() }).passthrough()) })
+        .passthrough()
+        .parse(JSON.parse(storage.getItem(terminalTabsStorageKey(SESSION_ID)) ?? "null"))
+        .tabs.map((tab) => tab.title),
+    }).toStrictEqual({
+      tabs: [
+        { name: "Claude", selected: "false" },
+        { name: "dev server", selected: "true" },
+      ],
+      stored: ["dev server"],
+    });
+  });
+
+  it("closes the other terminals, keeping Claude and the chosen tab", async () => {
+    await openWithShells(["pty-alice-1", "pty-alice-2", "pty-alice-3"]);
+
+    await chooseFromTabMenu("Shell 2", "Close other terminals");
+    await waitFor(() => expect(screen.getAllByRole("tab")).toHaveLength(2));
+
+    expect(tabs()).toStrictEqual([
+      { name: "Claude", selected: "false" },
+      { name: "Shell 2", selected: "true" },
+    ]);
+  });
+
+  it("closes the focused tab with Delete or Backspace, but never Claude", async () => {
+    await openWithShells(["pty-alice-1", "pty-alice-2"]);
+
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Shell 2" }), { key: "Backspace" });
+    await waitFor(() => expect(screen.getAllByRole("tab")).toHaveLength(2));
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Shell" }), { key: "Delete" });
+    await waitFor(() => expect(screen.getAllByRole("tab")).toHaveLength(1));
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Claude" }), { key: "Delete" });
+    await flush();
+
+    expect({
+      tabs: tabs(),
+      closeClaude: screen.queryByRole("button", { name: "Close Claude" }),
+    }).toStrictEqual({ tabs: [{ name: "Claude", selected: "true" }], closeClaude: null });
+  });
+
+  it("reorders Shell tabs with Control+Shift+Arrow, never ahead of Claude", async () => {
+    await openWithShells(["pty-alice-1", "pty-alice-2"]);
+
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Shell 2" }), {
+      key: "ArrowLeft",
+      ctrlKey: true,
+      shiftKey: true,
+    });
+    const afterLeft = tabs().map((tab) => tab.name);
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Shell 2" }), {
+      key: "ArrowLeft",
+      ctrlKey: true,
+      shiftKey: true,
+    });
+    const atStart = tabs().map((tab) => tab.name);
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Shell 2" }), {
+      key: "ArrowRight",
+      ctrlKey: true,
+      shiftKey: true,
+    });
+
+    expect({ afterLeft, atStart, afterRight: tabs().map((tab) => tab.name) }).toStrictEqual({
+      afterLeft: ["Claude", "Shell 2", "Shell"],
+      atStart: ["Claude", "Shell 2", "Shell"],
+      afterRight: ["Claude", "Shell", "Shell 2"],
+    });
+  });
+
+  it("asks before closing a terminal that is still running a command", async () => {
+    await openWithShells(["pty-alice-1", "pty-alice-2"], ["pty-alice-2"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Close Shell 2" }));
+    const dialog = await waitFor(() => screen.getByRole("alertdialog"));
+    const asked = {
+      text: dialog.textContent,
+      tabs: screen.getAllByRole("tab", { hidden: true }).length,
+    };
+    fireEvent.click(screen.getByRole("button", { name: "Close terminal" }));
+    await waitFor(() => expect(screen.getAllByRole("tab")).toHaveLength(2));
+
+    expect(asked).toStrictEqual({
+      text: "Close terminal?A command is still running in Shell 2. Closing the terminal stops it.CancelClose terminal",
+      tabs: 3,
+    });
+  });
+
+  it("keeps a busy terminal open when the close is cancelled", async () => {
+    await openWithShells(["pty-alice-1"], ["pty-alice-1"]);
+
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Shell" }), { key: "Delete" });
+    await waitFor(() => screen.getByRole("alertdialog"));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+
+    expect(tabs()).toStrictEqual([
+      { name: "Claude", selected: "false" },
+      { name: "Shell", selected: "true" },
+    ]);
+  });
+
+  it("restores the session's tab list from localStorage without starting a new shell", async () => {
+    storage.setItem(
+      terminalTabsStorageKey(SESSION_ID),
+      JSON.stringify({
+        tabs: [
+          { id: "shell-1", ptyKey: "pty-alice-1", title: "logs" },
+          { id: "shell-4", ptyKey: "pty-alice-4", title: "Shell 4" },
+        ],
+        active: "shell-4",
+        opened: 4,
+      }),
+    );
+    const fetcher = stubShellApi([]);
+    renderSession(false, { shells: true });
+
+    act(() => screen.getByRole("button", { name: "Terminal" }).click());
+    await flush();
+
+    expect({
+      tabs: tabs(),
+      shells: screen.getAllByTestId("shell-terminal").map((node) => node.textContent),
+      requests: fetcher.mock.calls.length,
+    }).toStrictEqual({
+      tabs: [
+        { name: "logs", selected: "false" },
+        { name: "Shell 4", selected: "true" },
+      ],
+      shells: ["pty-alice-1", "pty-alice-4"],
+      requests: 0,
+    });
+  });
+
+  it("offers More terminals when the tabs overflow the strip", async () => {
+    vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(900);
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(300);
+    await openWithShells(["pty-alice-1", "pty-alice-2"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "More terminals" }));
+    await flush();
+    const menu = await waitFor(() => screen.getByRole("menu"));
+    const items = [...menu.querySelectorAll('[role="menuitem"]')].map((node) => node.textContent);
+    fireEvent.click(
+      [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+        (node) => node.textContent === "Claude",
+      )!,
+    );
+    await flush();
+
+    expect({ items, tabs: tabs() }).toStrictEqual({
+      items: ["Claude", "Shell", "Shell 2"],
+      tabs: [
+        { name: "Claude", selected: "true" },
+        { name: "Shell", selected: "false" },
+        { name: "Shell 2", selected: "false" },
+      ],
+    });
+  });
+});
+
+describe("Claude tab lifecycle", () => {
+  it("shows Session ended with a transcript link when the herdr pane closes", () => {
+    const view = renderSession(true);
+    act(() => screen.getByRole("button", { name: "Terminal" }).click());
+
+    view.setAvailable(false);
+    const panel = screen.getByRole("tabpanel", { name: "Claude terminal" });
+
+    expect({
+      tabs: screen.getAllByRole("tab").map((tab) => tab.textContent),
+      text: panel.textContent,
+      link: screen.getByRole("link", { name: "View transcript" }).getAttribute("href"),
+      terminal: screen.queryByTestId("herdr-terminal"),
+    }).toStrictEqual({
+      tabs: ["Claude"],
+      text: "Session endedView transcript",
+      link: `/session/${SESSION_ID}`,
+      terminal: null,
+    });
+  });
+
+  it("closes the pane from the transcript link", () => {
+    const view = renderSession(true);
+    act(() => screen.getByRole("button", { name: "Terminal" }).click());
+    view.setAvailable(false);
+
+    fireEvent.click(screen.getByRole("link", { name: "View transcript" }));
+
+    expect(screen.getByRole("button", { name: "Terminal" }).getAttribute("aria-pressed")).toBe(
+      "false",
+    );
   });
 });
 
