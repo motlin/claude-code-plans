@@ -798,7 +798,7 @@ describe("SessionChat sequential tool batches", () => {
       // Nested rows are not mounted until the summary is expanded.
       rowArguments: allToolRowLabelSpans(html).filter(([className]) => className === ARGUMENT),
     }).toStrictEqual({
-      labels: ["Read a.ts, edited b.ts +1 -1, searched for a pattern"],
+      labels: ["Read a.ts, edited b.ts, searched for a pattern"],
       rowArguments: [],
     });
   });
@@ -1474,13 +1474,13 @@ describe("SessionChat tool row hover treatment", () => {
     ]);
   });
 
-  it("colors the group summary from its wrapper so the whole label brightens on hover", () => {
+  it("colors the collapsed group summary muted from its wrapper so the whole label lifts on hover", () => {
     expect(rowHeaderSpanClasses(renderTranscript(groupedToolCallRecords()))).toStrictEqual([
-      "inline-flex items-center gap-g3 min-w-0 text-secondary group-hover/tool:text-primary",
+      "inline-flex items-center gap-g3 min-w-0 text-ink-muted group-hover/tool:text-secondary",
       "text-body truncate min-w-0",
       "text-body",
       "",
-      "shrink-0 text-secondary group-hover/tool:text-primary",
+      "shrink-0 text-ink-muted group-hover/tool:text-secondary",
     ]);
   });
 });

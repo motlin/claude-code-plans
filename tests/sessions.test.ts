@@ -293,7 +293,7 @@ describe("summarizeToolCalls", () => {
         input: { file_path: "/some/code.ts", content: "one\ntwo" },
       },
     ];
-    expect(summarizeToolCalls(calls)).toBe("edited a file +1 -1, created code.ts +2");
+    expect(summarizeToolCalls(calls)).toBe("edited a file, created code.ts +3 -1");
   });
 
   it("single Edit shows filename with diff stats", () => {
@@ -320,7 +320,7 @@ describe("summarizeToolCalls", () => {
         },
       },
     ];
-    expect(summarizeToolCalls(calls)).toBe("created new-file.ts +3");
+    expect(summarizeToolCalls(calls)).toBe("created new-file.ts +3 -0");
   });
 
   it("single Grep", () => {
@@ -490,7 +490,7 @@ describe("summarizeToolCalls", () => {
     ];
     // Edits: 9 files; per edit removed 3 added 5 -> totals +45 -27.
     expect(summarizeToolCalls(calls)).toBe(
-      "edited 9 files +45 -27, searched for 6 patterns, read 8 files, ran 4 commands, recalled a memory, wrote 4 memories, used CustomTool",
+      "edited 9 files, searched for 6 patterns, read 8 files, ran 4 commands, recalled a memory, wrote 4 memories, used CustomTool +45 -27",
     );
   });
 });
@@ -564,7 +564,7 @@ describe("summarizeToolCallsStructured", () => {
       { name: "Edit", input: { file_path: "/src/lib/cache.ts", old_string: "a", new_string: "b" } },
     ];
     expect(summarizeToolCallsStructured(calls)).toEqual([
-      { verb: "Read and edited", rest: "cache.ts +1 -1" },
+      { verb: "Read and edited", rest: "cache.ts" },
     ]);
   });
 
@@ -574,7 +574,7 @@ describe("summarizeToolCallsStructured", () => {
       { name: "Read", input: { file_path: "/src/lib/cache.ts" } },
     ];
     expect(summarizeToolCallsStructured(calls)).toEqual([
-      { verb: "Edited and read", rest: "cache.ts +1 -1" },
+      { verb: "Edited and read", rest: "cache.ts" },
     ]);
   });
 
@@ -585,7 +585,7 @@ describe("summarizeToolCallsStructured", () => {
     ];
     expect(summarizeToolCallsStructured(calls)).toEqual([
       { verb: "Read", rest: "cache.ts" },
-      { verb: "edited", rest: "index.ts +1 -1" },
+      { verb: "edited", rest: "index.ts" },
     ]);
   });
 
@@ -597,7 +597,7 @@ describe("summarizeToolCallsStructured", () => {
     ];
     expect(summarizeToolCallsStructured(calls)).toEqual([
       { verb: "Ran", rest: "a command" },
-      { verb: "read and created", rest: "cache.ts +2" },
+      { verb: "read and created", rest: "cache.ts" },
     ]);
   });
 
@@ -606,7 +606,7 @@ describe("summarizeToolCallsStructured", () => {
   // index.ts" (.llm/ui-sync/upstream/code-rich-normal.tree.json, class 41).
   it("gives a lone Write its own Created segment", () => {
     const calls = [{ name: "Write", input: { file_path: "/src/lib/cache.ts", content: "a\nb" } }];
-    expect(summarizeToolCallsStructured(calls)).toEqual([{ verb: "Created", rest: "cache.ts +2" }]);
+    expect(summarizeToolCallsStructured(calls)).toEqual([{ verb: "Created", rest: "cache.ts" }]);
   });
 
   it("keeps a Write and an Edit in separate segments with their own stats", () => {
@@ -615,8 +615,8 @@ describe("summarizeToolCallsStructured", () => {
       { name: "Edit", input: { file_path: "/src/lib/index.ts", old_string: "a", new_string: "b" } },
     ];
     expect(summarizeToolCallsStructured(calls)).toEqual([
-      { verb: "Created", rest: "cache.ts +2" },
-      { verb: "edited", rest: "index.ts +1 -1" },
+      { verb: "Created", rest: "cache.ts" },
+      { verb: "edited", rest: "index.ts" },
     ]);
   });
 
@@ -626,7 +626,7 @@ describe("summarizeToolCallsStructured", () => {
       { name: "Write", input: { file_path: "/src/lib/index.ts", content: "a\nb" } },
     ];
     expect(summarizeToolCallsStructured(calls)).toEqual([
-      { verb: "Read and created", rest: "index.ts +2" },
+      { verb: "Read and created", rest: "index.ts" },
     ]);
   });
 
@@ -636,7 +636,7 @@ describe("summarizeToolCallsStructured", () => {
       { name: "Read", input: { file_path: "/src/lib/index.ts" } },
     ];
     expect(summarizeToolCallsStructured(calls)).toEqual([
-      { verb: "Created and read", rest: "index.ts +2" },
+      { verb: "Created and read", rest: "index.ts" },
     ]);
   });
 
@@ -648,8 +648,8 @@ describe("summarizeToolCallsStructured", () => {
     ];
     expect(summarizeToolCallsStructured(calls)).toEqual([
       { verb: "Read", rest: "index.ts" },
-      { verb: "edited", rest: "index.ts +1 -1" },
-      { verb: "created", rest: "index.ts +2" },
+      { verb: "edited", rest: "index.ts" },
+      { verb: "created", rest: "index.ts" },
     ]);
   });
 

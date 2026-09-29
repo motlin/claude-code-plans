@@ -7,6 +7,7 @@ import { toolLabel } from "./tool-labels";
 export interface ToolCallLike {
   name: string;
   input: Record<string, unknown>;
+  isError?: boolean | undefined;
 }
 
 const COMMAND_MESSAGE_RE = /<command-message[^>]*>([\s\S]*?)<\/command-message>/;
@@ -433,6 +434,17 @@ export interface SummarySegment {
   rest: string;
 }
 
+/**
+ * A summary row's label segments plus the totals upstream renders beside them:
+ * the git-coloured `+added -removed` span and the " (N failed)" suffix.
+ */
+export interface ToolCallSummaryStats {
+  segments: SummarySegment[];
+  added: number;
+  removed: number;
+  failed: number;
+}
+
 function basenameFromPath(path: string): string {
   const lastSlash = path.lastIndexOf("/");
   if (lastSlash === -1) return path;
@@ -449,14 +461,6 @@ function filePathOf(call: ToolCallLike | undefined): string | null {
 function singleFileBasename(call: ToolCallLike | undefined): string | null {
   const filePath = filePathOf(call);
   return filePath === null ? null : basenameFromPath(filePath);
-}
-
-function appendDiffStats(rest: string, stats: { added: number; removed: number }): string {
-  const { added, removed } = stats;
-  if (added > 0 && removed > 0) return `${rest} +${added} -${removed}`;
-  if (added > 0) return `${rest} +${added}`;
-  if (removed > 0) return `${rest} -${removed}`;
-  return rest;
 }
 
 /**
@@ -506,18 +510,19 @@ function coalescedReadMutation(
   return null;
 }
 
-function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
+function buildSummarySegments(calls: ToolCallLike[]): ToolCallSummaryStats {
   // Insertion order carries the summary order: upstream Normal writes both
   // "Updated todos, read 3 files" and "Read index.ts, updated todos", so
   // segments follow the order each tool was first called.
   const counts = new Map<ToolCategory, number>();
   const firstCall = new Map<ToolCategory, ToolCallLike>();
-  const diffStats = new Map<MutationCategory, { added: number; removed: number }>();
   const unknownTools = new Map<string, number>();
-
-  const statsFor = (cat: MutationCategory) => diffStats.get(cat) ?? { added: 0, removed: 0 };
+  let added = 0;
+  let removed = 0;
+  let failed = 0;
 
   for (const call of calls) {
+    if (call.isError === true) failed++;
     const cat = categorize(call);
     if (cat === null) {
       const phrase = toolLabel(call).verb;
@@ -528,8 +533,8 @@ function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
       if (prev === 0) firstCall.set(cat, call);
       if (isMutation(cat)) {
         const s = diffStatsForCall(call);
-        const total = statsFor(cat);
-        diffStats.set(cat, { added: total.added + s.added, removed: total.removed + s.removed });
+        added += s.added;
+        removed += s.removed;
       }
     }
   }
@@ -539,12 +544,13 @@ function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
   const compound = coalescedReadMutation(counts, firstCall);
 
   const segments: SummarySegment[] = [];
+  let bashSegment: SummarySegment | null = null;
   for (const [cat, count] of counts) {
     if (compound !== null && (cat === "read" || cat === compound.mutation)) {
       if (cat === compound.emitter) {
         segments.push({
           verb: compound.verb,
-          rest: appendDiffStats(compound.basename, statsFor(compound.mutation)),
+          rest: compound.basename,
         });
       }
       continue;
@@ -553,11 +559,10 @@ function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
       case "edit":
       case "write": {
         const singleFilename = count === 1 ? singleFileBasename(firstCall.get(cat)) : null;
-        const rest = appendDiffStats(
-          singleFilename ?? pluralize(count, "a file", "{n} files"),
-          statsFor(cat),
-        );
-        segments.push({ verb: MUTATION_VERBS[cat], rest });
+        segments.push({
+          verb: MUTATION_VERBS[cat],
+          rest: singleFilename ?? pluralize(count, "a file", "{n} files"),
+        });
         break;
       }
       case "grep":
@@ -599,10 +604,8 @@ function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
         });
         break;
       case "bash":
-        segments.push({
-          verb: "Ran",
-          rest: pluralize(count, "a command", "{n} commands"),
-        });
+        bashSegment = { verb: "Ran", rest: pluralize(count, "a command", "{n} commands") };
+        segments.push(bashSegment);
         break;
       case "recall":
         segments.push({
@@ -665,18 +668,43 @@ function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
     segments.push({ verb: phrase, rest: count === 1 ? "" : `(${count} times)` });
   }
 
+  // Upstream reports failures on the command segment -- "Ran 3 commands (1
+  // failed)" -- falling back to the leading segment when no command ran.
+  if (failed > 0 && segments.length > 0) {
+    const bashIndex = segments.findIndex((segment) => segment === bashSegment);
+    const target = segments[bashIndex === -1 ? 0 : bashIndex]!;
+    target.rest = `${target.rest} (${failed} failed)`.trimStart();
+  }
+
   // Upstream capitalizes only the leading verb: "Ran 2 commands, read cache.ts".
-  return segments.map((segment, i) =>
-    i === 0 ? segment : { verb: lowercaseFirst(segment.verb), rest: segment.rest },
-  );
+  return {
+    segments: segments.map((segment, i) =>
+      i === 0 ? segment : { verb: lowercaseFirst(segment.verb), rest: segment.rest },
+    ),
+    added,
+    removed,
+    failed,
+  };
+}
+
+export function summarizeToolCallStats(calls: ToolCallLike[]): ToolCallSummaryStats {
+  return buildSummarySegments(calls);
 }
 
 export function summarizeToolCallsStructured(calls: ToolCallLike[]): SummarySegment[] {
   if (calls.length === 0) return [];
-  return buildSummarySegments(calls);
+  return buildSummarySegments(calls).segments;
+}
+
+/** Upstream shows both counts whenever either is non-zero: "+0 -28". */
+export function hasDiffStats(stats: { added: number; removed: number }): boolean {
+  return stats.added > 0 || stats.removed > 0;
 }
 
 export function summarizeToolCalls(calls: ToolCallLike[]): string {
-  const segments = buildSummarySegments(calls);
-  return segments.map((s) => `${lowercaseFirst(s.verb)} ${s.rest}`.trimEnd()).join(", ");
+  const summary = buildSummarySegments(calls);
+  const label = summary.segments
+    .map((s) => `${lowercaseFirst(s.verb)} ${s.rest}`.trimEnd())
+    .join(", ");
+  return hasDiffStats(summary) ? `${label} +${summary.added} -${summary.removed}` : label;
 }

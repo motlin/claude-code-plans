@@ -6,7 +6,7 @@ import { EditRenderer } from "../src/components/tool-renderers/edit-renderer";
 import type { ClientToolCall } from "../src/components/tool-renderers/types";
 import { SessionChat } from "../src/components/session-chat";
 import { processTranscript } from "../src/lib/transcript";
-import { summarizeToolCallsStructured } from "../src/lib/session-utils";
+import { summarizeToolCallStats } from "../src/lib/session-utils";
 
 vi.mock("@git-diff-view/react", () => ({
   DiffModeEnum: { Unified: 4 },
@@ -169,9 +169,14 @@ describe("MultiEdit diff stats", () => {
 
   it("aggregates MultiEdit stats into the collapsed turn summary", () => {
     expect(
-      summarizeToolCallsStructured([
+      summarizeToolCallStats([
         { name: "MultiEdit", input: { file_path: FILE_PATH, edits: EDITS } },
       ]),
-    ).toStrictEqual([{ verb: "Edited", rest: "cache.ts +4 -3" }]);
+    ).toStrictEqual({
+      segments: [{ verb: "Edited", rest: "cache.ts" }],
+      added: 4,
+      removed: 3,
+      failed: 0,
+    });
   });
 });

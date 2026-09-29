@@ -75,6 +75,9 @@
 
   /* Upstream claude.ai/code — session row icons (src/components/status-dot.tsx) */
   --color-ink-muted: var(--upstream-text-muted);
+  /* Upstream --cds-text-git-added / --cds-text-git-removed: summary row stats. */
+  --color-diff-added: var(--upstream-extended-green);
+  --color-diff-removed: var(--upstream-extended-pink);
   --color-git-opened: #1e9e3c;
   --color-git-draft: #737373;
   --color-git-merged: #8e6bd9;

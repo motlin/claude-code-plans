@@ -65,7 +65,8 @@ import {
   parseCommandBlock,
   parseBashInput,
   parseBashOutput,
-  summarizeToolCallsStructured,
+  hasDiffStats,
+  summarizeToolCallStats,
   editDiffEntries,
   isRequestInterrupted,
 } from "../lib/session-utils";
@@ -2522,7 +2523,10 @@ function ToolCallSummary({ calls, sessionId }: { calls: ClientToolCall[]; sessio
   const taskCalls = calls.filter((c) => TASK_TOOLS.has(c.name));
   const hasTasksView = taskCalls.length >= 3;
   const displayCalls = hasTasksView ? calls.filter((c) => !TASK_TOOLS.has(c.name)) : calls;
-  const segments = useMemo(() => summarizeToolCallsStructured(displayCalls), [displayCalls]);
+  const summary = useMemo(() => summarizeToolCallStats(displayCalls), [displayCalls]);
+  // Collapsed rows recede to muted ink and lift to secondary on hover; an open
+  // row stays secondary, as upstream does.
+  const ink = expanded ? "text-secondary" : "text-ink-muted group-hover/tool:text-secondary";
 
   return (
     <div className="flex flex-col w-full">
@@ -2540,12 +2544,18 @@ function ToolCallSummary({ calls, sessionId }: { calls: ClientToolCall[]; sessio
             onClick={toggleExpanded}
             className="relative group/tool flex self-start max-w-full items-center py-0 gap-g1 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3"
           >
-            <span className="inline-flex items-center gap-g3 min-w-0 text-secondary group-hover/tool:text-primary">
+            <span className={`inline-flex items-center gap-g3 min-w-0 ${ink}`}>
               <span className="text-body truncate min-w-0">
-                <SummarySpans segments={segments} />
+                <SummarySpans segments={summary.segments} />
               </span>
             </span>
-            <span className="shrink-0 text-secondary group-hover/tool:text-primary">
+            {hasDiffStats(summary) && (
+              <span className="flex gap-g1 tabular-nums shrink-0">
+                <span className="text-diff-added">+{summary.added}</span>
+                <span className="text-diff-removed">-{summary.removed}</span>
+              </span>
+            )}
+            <span className={`shrink-0 ${ink}`}>
               <ChevronIcon expanded={expanded} size={14} />
             </span>
           </button>
