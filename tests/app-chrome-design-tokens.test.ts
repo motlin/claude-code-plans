@@ -17,4 +17,24 @@ describe("app chrome design tokens", () => {
 
     expect(violations).toStrictEqual({});
   });
+
+  it("washes the user bubble and inline-code chip in the cds-era 5% alpha layer", () => {
+    const styles = readFileSync("src/styles/globals.css", "utf8");
+    const light = styles.slice(styles.indexOf(":root {"), styles.indexOf(".dark {"));
+    const dark = styles.slice(styles.indexOf(".dark {"));
+    const token = (block: string, name: string) =>
+      block.match(new RegExp(`${name}:\\s*([^;]+);`))?.[1] ?? null;
+
+    expect({
+      lightBubble: token(light, "--user-msg-bg"),
+      darkBubble: token(dark, "--user-msg-bg"),
+      lightAlpha: token(light, "--upstream-alpha-1"),
+      darkAlpha: token(dark, "--upstream-alpha-1"),
+    }).toStrictEqual({
+      lightBubble: "var(--upstream-alpha-1)",
+      darkBubble: "var(--upstream-alpha-1)",
+      lightAlpha: "rgb(11 11 11 / 0.05)",
+      darkAlpha: "rgb(255 255 255 / 0.05)",
+    });
+  });
 });

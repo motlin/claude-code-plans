@@ -82,6 +82,8 @@
 
   /* Upstream claude.ai/code — session row icons (src/components/status-dot.tsx) */
   --color-ink-muted: var(--upstream-text-muted);
+  /* Upstream cds-era inline code chip ink (prose `code`). */
+  --color-code-ink: var(--upstream-code-ink);
   /* Upstream --cds-text-git-added / --cds-text-git-removed: summary row stats. */
   --color-diff-added: var(--upstream-extended-green);
   --color-diff-removed: var(--upstream-extended-pink);
@@ -200,8 +202,8 @@
   --accent-100: hsl(210 70.9% 51.6%);
   --accent-900: hsl(211 72% 90%);
 
-  /* User message bubble — matches claude.ai/code: neutral t2 wash + body ink */
-  --user-msg-bg: var(--upstream-t2);
+  /* User message bubble — matches claude.ai/code: --cds-bg-user-message, the 5% alpha wash + body ink */
+  --user-msg-bg: var(--upstream-alpha-1);
   --user-msg-text: var(--upstream-text-primary);
 
   /* Jump-to-message flash — accent tint, so it reads against the neutral bubble */
@@ -262,6 +264,7 @@
 
   /* Upstream claude.ai/code — row status dots (--cds-text-muted / fill-warning|accent|danger) */
   --upstream-text-muted: #898781;
+  --upstream-code-ink: rgb(142 38 38);
   --status-dot-awaiting: #fab219;
   --status-dot-ready: #2a78d6;
   --status-dot-error: #d03b3b;
@@ -341,8 +344,8 @@
   --accent-100: hsl(210 70.9% 51.6%);
   --accent-900: hsl(210 55.9% 24.6%);
 
-  /* User message bubble — matches claude.ai/code: neutral t2 wash + body ink */
-  --user-msg-bg: var(--upstream-t2);
+  /* User message bubble — matches claude.ai/code: --cds-bg-user-message, the 5% alpha wash + body ink */
+  --user-msg-bg: var(--upstream-alpha-1);
   --user-msg-text: var(--upstream-text-primary);
 
   /* Jump-to-message flash — accent tint, so it reads against the neutral bubble */
@@ -383,6 +386,7 @@
   --menu-muted: #a5a49a;
 
   --upstream-text-muted: #a5a49a;
+  --upstream-code-ink: var(--danger-000);
 
   /* Upstream claude.ai/code — Settings controls */
   --settings-muted: #a5a49a;

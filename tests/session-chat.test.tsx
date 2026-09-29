@@ -187,9 +187,9 @@ describe("SessionChat user bubble chrome", () => {
       automatedCorners: cornerClasses(findClassName(renderShape("B"), "user-message-bubble")),
       streamingCorners: cornerClasses(findClassName(streamingHtml, "user-message-bubble")),
     }).toStrictEqual({
-      lightBg: "var(--upstream-t2)",
+      lightBg: "var(--upstream-alpha-1)",
       lightText: "var(--upstream-text-primary)",
-      darkBg: "var(--upstream-t2)",
+      darkBg: "var(--upstream-alpha-1)",
       darkText: "var(--upstream-text-primary)",
       userCorners: ["rounded-r7"],
       automatedCorners: ["rounded-r7"],
@@ -955,7 +955,7 @@ function failedToolCallRecords(
 }
 
 describe("SessionChat failed tool row label", () => {
-  it("recolors a failed tool row label extended-pink and leaves a successful one secondary", () => {
+  it("recolors a failed tool row label extended-pink and leaves a successful one muted", () => {
     const failedHtml = renderTranscript(failedToolCallRecords(true));
     const okHtml = renderTranscript(failedToolCallRecords(false));
 
@@ -964,17 +964,17 @@ describe("SessionChat failed tool row label", () => {
       failedParam: failedHtml.includes(
         '<span class="truncate min-w-0 text-body text-extended-pink">',
       ),
-      failedKeepsSecondaryLabel: failedHtml.includes(
-        '<span class="shrink-0 text-body text-secondary group-hover/tool:text-primary">',
+      failedKeepsMutedLabel: failedHtml.includes(
+        '<span class="shrink-0 text-body text-ink-muted group-hover/tool:text-secondary">',
       ),
       okVerb: okHtml.includes(
-        '<span class="shrink-0 text-body text-secondary group-hover/tool:text-primary">',
+        '<span class="shrink-0 text-body text-ink-muted group-hover/tool:text-secondary">',
       ),
       okPink: okHtml.includes("text-extended-pink"),
     }).toStrictEqual({
       failedVerb: true,
       failedParam: true,
-      failedKeepsSecondaryLabel: false,
+      failedKeepsMutedLabel: false,
       okVerb: true,
       okPink: false,
     });
@@ -1004,7 +1004,7 @@ describe("SessionChat failed tool row label text", () => {
         ["text-body text-primary truncate min-w-0", "cache.ts"],
       ],
       okEdit: [
-        ["shrink-0 text-body text-secondary group-hover/tool:text-primary", "Edited"],
+        ["shrink-0 text-body text-ink-muted group-hover/tool:text-secondary", "Edited"],
         ["text-body text-primary truncate min-w-0", "cache.ts"],
       ],
       failedGrep: [
@@ -1012,8 +1012,8 @@ describe("SessionChat failed tool row label text", () => {
         ["truncate min-w-0 text-body text-extended-pink", "alice"],
       ],
       okGrep: [
-        ["shrink-0 text-body text-secondary group-hover/tool:text-primary", "Searched"],
-        ["truncate min-w-0 text-body text-secondary group-hover/tool:text-primary", "alice"],
+        ["shrink-0 text-body text-ink-muted group-hover/tool:text-secondary", "Searched"],
+        ["truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary", "alice"],
       ],
     });
   });
@@ -1040,7 +1040,7 @@ describe("SessionChat failed tool row label text", () => {
       ],
       ok: [
         [
-          "truncate min-w-0 text-body text-secondary group-hover/tool:text-primary",
+          "truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary",
           "Installed dependencies and build",
         ],
       ],
@@ -1063,7 +1063,7 @@ describe("SessionChat failed tool row label text", () => {
 });
 
 describe("SessionChat file-param tool row argument", () => {
-  const VERB = "shrink-0 text-body text-secondary group-hover/tool:text-primary";
+  const VERB = "shrink-0 text-body text-ink-muted group-hover/tool:text-secondary";
 
   it("sets a file argument in the sans body face, matching upstream Read/Edit rows", () => {
     const html = renderTranscript(
@@ -1092,7 +1092,7 @@ describe("SessionChat file-param tool row argument", () => {
   // Upstream labels a partial read with the line range beside the filename
   // ("Read archive-completed.ts (220-239)"), in its own secondary span, so a
   // slice is distinguishable from a whole-file read.
-  const RANGE = "text-body text-secondary group-hover/tool:text-primary truncate min-w-0";
+  const RANGE = "text-body text-ink-muted group-hover/tool:text-secondary truncate min-w-0";
 
   function readRow(input: unknown): [string, string][] {
     return toolRowLabelSpans(
@@ -1160,7 +1160,7 @@ describe("SessionChat file-param tool row argument", () => {
 });
 
 describe("SessionChat Agent row label", () => {
-  const DESCRIPTION = "truncate min-w-0 text-body text-secondary group-hover/tool:text-primary";
+  const DESCRIPTION = "truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary";
   const MODEL = "shrink-0 text-body text-t6";
 
   const agentRecords = toolCallRecords([
@@ -1262,7 +1262,7 @@ describe("SessionChat Agent row label", () => {
 });
 
 describe("SessionChat Bash row label", () => {
-  const PHRASE = "truncate min-w-0 text-body text-secondary group-hover/tool:text-primary";
+  const PHRASE = "truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary";
 
   const bashLabel = (input: Record<string, unknown>) =>
     toolRowLabelSpans(renderTranscript(failedToolCallRecords(false, { name: "Bash", input })));
@@ -1334,8 +1334,9 @@ describe("SessionChat Bash row label", () => {
 });
 
 describe("SessionChat tool row verbs", () => {
-  const SECONDARY = "shrink-0 text-body text-secondary group-hover/tool:text-primary";
-  const SECONDARY_PARAM = "truncate min-w-0 text-body text-secondary group-hover/tool:text-primary";
+  const SECONDARY = "shrink-0 text-body text-ink-muted group-hover/tool:text-secondary";
+  const SECONDARY_PARAM =
+    "truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary";
 
   it("labels every row with an upstream verb phrase instead of the raw tool name", () => {
     const label = (call: { name: string; input: unknown }) =>
@@ -1398,8 +1399,9 @@ describe("SessionChat tool row verbs", () => {
 });
 
 describe("SessionChat tool rows labelled from the tool result", () => {
-  const SECONDARY = "shrink-0 text-body text-secondary group-hover/tool:text-primary";
-  const SECONDARY_PARAM = "truncate min-w-0 text-body text-secondary group-hover/tool:text-primary";
+  const SECONDARY = "shrink-0 text-body text-ink-muted group-hover/tool:text-secondary";
+  const SECONDARY_PARAM =
+    "truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary";
 
   const withToolUseResult = (call: { name: string; input: unknown }, toolUseResult: unknown) => {
     const records = toolResultRecords(call, "ok");
@@ -1513,11 +1515,11 @@ function groupedToolCallRecords(): unknown[] {
 }
 
 describe("SessionChat tool row hover treatment", () => {
-  it("brightens a successful row's verb, param and chevron on group hover", () => {
+  it("mutes a collapsed successful row and lifts its verb, param and chevron to secondary on group hover", () => {
     expect(rowHeaderSpanClasses(renderTranscript(failedToolCallRecords(false)))).toStrictEqual([
-      "shrink-0 text-body text-secondary group-hover/tool:text-primary",
-      "truncate min-w-0 text-body text-secondary group-hover/tool:text-primary",
-      "shrink-0 text-secondary group-hover/tool:text-primary",
+      "shrink-0 text-body text-ink-muted group-hover/tool:text-secondary",
+      "truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary",
+      "shrink-0 text-ink-muted group-hover/tool:text-secondary",
     ]);
   });
 
@@ -1525,7 +1527,7 @@ describe("SessionChat tool row hover treatment", () => {
     expect(rowHeaderSpanClasses(renderTranscript(failedToolCallRecords(true)))).toStrictEqual([
       "shrink-0 text-body text-extended-pink",
       "truncate min-w-0 text-body text-extended-pink",
-      "shrink-0 text-secondary group-hover/tool:text-primary",
+      "shrink-0 text-ink-muted group-hover/tool:text-secondary",
     ]);
   });
 

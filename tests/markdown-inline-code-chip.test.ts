@@ -2,24 +2,22 @@ import { describe, expect, it } from "vite-plus/test";
 import { markdownCss, ruleDeclarations } from "./markdown-css";
 
 describe("inline code chip", () => {
-  it("tints the chip neutrally like upstream epitaxy-code-chip instead of the red prose chip", () => {
+  it("inks the chip red at 0.9em/600 on a 5% tint like the cds-era upstream prose chip", () => {
     expect(ruleDeclarations(markdownCss, ".markdown code")).toStrictEqual({
       "font-family": "var(--font-mono)",
-      "font-size": "13px",
-      "font-weight": "430",
+      "font-size": "0.9em",
+      "font-weight": "600",
       "line-height": "18.2px",
-      background: "rgb(11 11 11 / 0.04)",
+      background: "var(--color-alpha-1)",
       border: "none",
-      color: "inherit",
-      "border-radius": "4px",
-      padding: "1px 2px",
+      color: "var(--color-code-ink)",
+      "border-radius": "var(--radius-r4)",
+      padding: "0.06em 0.25em",
     });
   });
 
-  it("inverts the chip tint in dark mode without reintroducing a color or border", () => {
-    expect(ruleDeclarations(markdownCss, ":global(.dark) .markdown code")).toStrictEqual({
-      background: "rgb(255 255 255 / 0.06)",
-    });
+  it("leaves dark mode to the themed tokens instead of a hard-coded override", () => {
+    expect(markdownCss.includes(":global(.dark) .markdown code")).toBe(false);
   });
 
   it("keeps fenced code at the 20px code line-height the tightened chip would otherwise steal", () => {

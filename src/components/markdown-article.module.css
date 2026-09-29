@@ -1,9 +1,10 @@
-/* Upstream's `epitaxy-markdown` root is a flex column whose 10px gap is the only
-   spacing between top-level blocks, so nothing here relies on collapsing margins. */
+/* Upstream's prose root spaces top-level blocks 7px apart (its p+p / ul
+   margin-top); the flex gap is the only such spacing, so nothing here relies on
+   collapsing margins. */
 .markdown {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 7px;
   font-family: var(--font-sans);
   font-size: 14px;
   font-weight: 400;
@@ -36,19 +37,20 @@
 .markdown ul {
   list-style-type: disc;
   list-style-position: outside;
-  margin-left: 1.5rem;
+  padding-left: 28px;
 }
 
 .markdown ol {
   list-style-type: decimal;
   list-style-position: outside;
-  margin-left: 1.5rem;
+  padding-left: 28px;
 }
 
 .markdown ul > li,
 .markdown ol > li {
   margin-top: 2px;
   margin-bottom: 2px;
+  padding-left: 7px;
 }
 
 /* Task list checkboxes */
@@ -159,22 +161,18 @@
   background: hsl(0 0% 100% / 0.08);
 }
 
-/* Upstream's `epitaxy-code-chip` is a borderless neutral tint that inherits the
-   prose color, not the red bordered chip claude.ai Home uses in its own prose. */
+/* Upstream's cds-era prose chip: red ink at 0.9em/600 on the 5% alpha wash.
+   Both tokens are themed, so dark mode needs no override here. */
 .markdown code {
   font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 430;
+  font-size: 0.9em;
+  font-weight: 600;
   line-height: 18.2px;
-  background: rgb(11 11 11 / 0.04);
+  background: var(--color-alpha-1);
   border: none;
-  color: inherit;
-  border-radius: 4px;
-  padding: 1px 2px;
-}
-
-:global(.dark) .markdown code {
-  background: rgb(255 255 255 / 0.06);
+  color: var(--color-code-ink);
+  border-radius: var(--radius-r4);
+  padding: 0.06em 0.25em;
 }
 
 /* Fences keep the 20px code line-height; only the inline chip is tightened. */

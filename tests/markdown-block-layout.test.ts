@@ -5,17 +5,41 @@ import { markdownCss, ruleDeclarations } from "./markdown-css";
 const TABLE_MARKDOWN = "| Tool | Calls |\n| --- | --- |\n| Read | 3 |\n";
 
 describe("markdown block layout", () => {
-  it("lays the article out as a gap-spaced column matching upstream epitaxy-markdown", () => {
+  it("lays the article out as a column spaced by upstream's 7px prose paragraph gap", () => {
     expect(ruleDeclarations(markdownCss, ".markdown")).toStrictEqual({
       display: "flex",
       "flex-direction": "column",
-      gap: "10px",
+      gap: "7px",
       "font-family": "var(--font-sans)",
       "font-size": "14px",
       "font-weight": "400",
       "line-height": "20px",
       color: "var(--color-primary)",
       "white-space": "normal",
+    });
+  });
+
+  it("indents lists 28px with 7px item padding like upstream prose", () => {
+    expect({
+      ul: ruleDeclarations(markdownCss, ".markdown ul"),
+      ol: ruleDeclarations(markdownCss, ".markdown ol"),
+      li: ruleDeclarations(markdownCss, ".markdown ul > li,\n.markdown ol > li"),
+    }).toStrictEqual({
+      ul: {
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "padding-left": "28px",
+      },
+      ol: {
+        "list-style-type": "decimal",
+        "list-style-position": "outside",
+        "padding-left": "28px",
+      },
+      li: {
+        "margin-top": "2px",
+        "margin-bottom": "2px",
+        "padding-left": "7px",
+      },
     });
   });
 

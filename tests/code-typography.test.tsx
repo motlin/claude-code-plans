@@ -49,6 +49,21 @@ describe("code typography", () => {
     });
   });
 
+  it("pins the upstream red inline-code ink in both themes", () => {
+    const styles = readFileSync("src/styles/globals.css", "utf8");
+    const dark = styles.slice(styles.indexOf(".dark {"));
+
+    expect({
+      theme: customProperty(styles, "--color-code-ink"),
+      light: customProperty(styles, "--upstream-code-ink"),
+      dark: customProperty(dark, "--upstream-code-ink"),
+    }).toStrictEqual({
+      theme: "var(--upstream-code-ink)",
+      light: "rgb(142 38 38)",
+      dark: "var(--danger-000)",
+    });
+  });
+
   it("renders write and edit diffs with the code type token", () => {
     render(
       <WriteRenderer

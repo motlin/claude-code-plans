@@ -2514,17 +2514,15 @@ function ToolCallRow({
     (nested && ROW_BODY_TOOLS.has(call.name)
       ? "group/body relative flex w-full pt-p3"
       : "group/body relative flex w-full flex-col pt-p3") + " empty:hidden";
+  // Collapsed rows recede to muted ink and lift to secondary on hover; an open
+  // row stays secondary, as upstream does.
+  const ink = expanded ? "text-secondary" : "text-ink-muted group-hover/tool:text-secondary";
   // Upstream recolors the whole label of a failed tool row, except a file path,
   // which stays primary.
-  const labelClass = call.isError
-    ? "text-extended-pink"
-    : "text-secondary group-hover/tool:text-primary";
+  const labelClass = call.isError ? "text-extended-pink" : ink;
   // A subagent row's chevron sits in the flat `t6` token upstream gives it,
-  // rather than the hover-reactive secondary every other tool row uses.
-  const chevronClass =
-    call.name === "Agent"
-      ? "shrink-0 self-center text-t6"
-      : "shrink-0 text-secondary group-hover/tool:text-primary";
+  // rather than the hover-reactive ink every other tool row uses.
+  const chevronClass = call.name === "Agent" ? "shrink-0 self-center text-t6" : `shrink-0 ${ink}`;
   // Upstream trails a subagent row with the model the agent ran on
   // ("Explore Drizzle ORM setup  Haiku 4.5"), in the same flat `t6` meta
   // treatment as the chevron beside it. It sits outside the description span so
