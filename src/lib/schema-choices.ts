@@ -18,6 +18,7 @@ import type {
 import type { SessionSummaryStateSchema } from "./api/sessions";
 import type { SourceFileResponse } from "./api/source";
 import type { HookEvent, ToolUseUnion } from "./hook-events";
+import type { HomeAttentionKindSchema } from "./home-attention";
 import type { NavSection } from "./nav-sections";
 import type { PinDropOutcome } from "./pinned-sessions";
 import type { PaletteFilter, PaletteType } from "./palette-tokens";
@@ -137,6 +138,12 @@ export const sessionBucketLabels = {
   working: "Working",
   done: "Completed",
 } satisfies Record<z.infer<typeof SessionBucketSchema>, string>;
+
+/** Home "Sessions" action-center pills (src/lib/home-attention.ts). */
+const homeAttentionKindLabels = {
+  blocked: "Needs input",
+  review: "Ready for review",
+} satisfies Record<z.infer<typeof HomeAttentionKindSchema>, string>;
 
 /** Filter & group menu options (src/lib/session-groups.ts); local "Project" is upstream "Folder". */
 export const sessionGroupByLabels = {
@@ -726,6 +733,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   SessionBucketSchema: sessionBucketLabels,
   SessionBucketReasonSchema: sessionBucketReasonLabels,
   SessionStateKindSchema: sessionStateKindLabels,
+  HomeAttentionKindSchema: homeAttentionKindLabels,
   "SessionListPrefsSchema.groupBy": sessionGroupByLabels,
   "SessionListPrefsSchema.sortBy": sessionSortByLabels,
   "SessionListPrefsSchema.statusFilter": sessionStatusFilterLabels,

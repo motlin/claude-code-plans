@@ -25,6 +25,7 @@ import {
   ArtifactToolResultSchema,
 } from "../src/lib/artifact-schemas";
 import { ChangedFileKindSchema } from "../src/lib/changed-file-kind";
+import { HomeAttentionKindSchema } from "../src/lib/home-attention";
 import { NavSectionSchema } from "../src/lib/nav-sections";
 import { PaletteFilterSchema, PaletteTypeSchema } from "../src/lib/palette-tokens";
 import { PaneLayoutStateSchema } from "../src/lib/pane-layout";
@@ -83,6 +84,7 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["SessionBucketSchema", SessionBucketSchema],
   ["SessionBucketReasonSchema", SessionBucketReasonSchema],
   ["SessionStateKindSchema", SessionStateKindSchema],
+  ["HomeAttentionKindSchema", HomeAttentionKindSchema],
   ["SessionListPrefsSchema", SessionListPrefsSchema],
   ["ContentBlockSchema", ContentBlockSchema],
   ["AttachmentPayloadSchema", AttachmentPayloadSchema],
