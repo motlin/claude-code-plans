@@ -100,7 +100,9 @@ async function renderGroups(
 }
 
 function groupNames(container: HTMLElement): string[] {
-  return [...container.querySelectorAll("[data-group-name]")].map((node) => node.textContent ?? "");
+  return [...container.querySelectorAll('[data-testid="sidebar-recents"] [data-group-name]')].map(
+    (node) => node.textContent ?? "",
+  );
 }
 
 function rowTitlesIn(container: HTMLElement, groupKey: string): string[] {
@@ -218,7 +220,9 @@ describe("sidebar SessionGroups", () => {
       { filterSlot: <button type="button">Filter</button> },
     );
 
-    const headers = [...container.querySelectorAll("[data-sidebar-group-label]")];
+    const headers = [
+      ...container.querySelectorAll('[data-testid="sidebar-recents"] [data-sidebar-group-label]'),
+    ];
     expect(
       headers.map((header) => within(header as HTMLElement).queryAllByText("Filter").length),
     ).toEqual([1, 0]);

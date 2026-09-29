@@ -112,7 +112,9 @@ async function renderSidebarGroups() {
 }
 
 function groupNames(container: HTMLElement): string[] {
-  return [...container.querySelectorAll("[data-group-name]")].map((node) => node.textContent ?? "");
+  return [...container.querySelectorAll('[data-testid="sidebar-recents"] [data-group-name]')].map(
+    (node) => node.textContent ?? "",
+  );
 }
 
 function filterButton(): HTMLElement {
@@ -150,7 +152,9 @@ describe("sidebar Filter & group menu", () => {
   it("sits on the first group header only, labelled Filter by default", async () => {
     const { container } = await renderSidebarGroups();
 
-    const headers = [...container.querySelectorAll("[data-sidebar-group-label]")];
+    const headers = [
+      ...container.querySelectorAll('[data-testid="sidebar-recents"] [data-sidebar-group-label]'),
+    ];
     expect(
       headers.map((header) => header.querySelectorAll('button[aria-haspopup="menu"]').length),
     ).toEqual([1, 0]);

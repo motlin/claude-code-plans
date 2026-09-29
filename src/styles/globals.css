@@ -530,6 +530,21 @@
   box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
 }
 
+/* Upstream .df-pin-section-reveal: the empty Pinned section (src/components/sidebar/sublists/PinnedSubList.tsx)
+   is a zero-height stub that animates open when a row drag starts. */
+.df-pin-section-reveal {
+  interpolate-size: allow-keywords;
+  transition:
+    height 0.2s,
+    opacity 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+  overflow-y: clip;
+}
+
+.df-pin-section-reveal[data-stub] {
+  opacity: 0;
+  height: 0;
+}
+
 /* Upstream claude.ai/code — collapsed sidebar peek fades and settles into place. */
 .sidebar-peek-motion {
   transition:

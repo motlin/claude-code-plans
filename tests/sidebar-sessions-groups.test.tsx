@@ -142,7 +142,9 @@ describe("sidebar session list", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Working" })).toBeTruthy());
 
     expect(
-      [...container.querySelectorAll("[data-group-name]")].map((node) => node.textContent),
+      [...container.querySelectorAll('[data-testid="sidebar-recents"] [data-group-name]')].map(
+        (node) => node.textContent,
+      ),
     ).toEqual(["Working", "Completed"]);
     expect(screen.getByRole("link", { name: /Gamma working$/ })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Gamma done$/ })).toBeTruthy();

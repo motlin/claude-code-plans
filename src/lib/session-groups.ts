@@ -82,6 +82,21 @@ const ROW_COMPARATORS = {
     second.lastActivityAt - first.lastActivityAt || first.sessionId.localeCompare(second.sessionId),
 } as const satisfies Record<SessionSortBy, RowComparator>;
 
+/** The row order a Sort by choice gives; Pinned uses it for pins without a user order. */
+export function sessionRowComparator(sortBy: SessionSortBy): RowComparator {
+  return ROW_COMPARATORS[sortBy];
+}
+
+export const PINNED_GROUP_KEY = "pinned";
+
+/** The sidebar Pinned section as a group: 20 rows, then "Show N more" unless uncapped. */
+export function pinnedGroup<Row extends SessionGroupRow>(
+  rows: Row[],
+  uncapped: ReadonlySet<string>,
+): SessionGroup<Row> {
+  return group(PINNED_GROUP_KEY, "Pinned", rows, !uncapped.has(PINNED_GROUP_KEY));
+}
+
 /** The filter button reads "Filter (active)" while any non-default filter applies. */
 export function filterLabel(prefs: SessionListPrefs): "Filter" | "Filter (active)" {
   const statusActive = prefs.statusFilter !== DEFAULT_SESSION_LIST_PREFS.statusFilter;
