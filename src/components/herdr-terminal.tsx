@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { dispatchShortcutEvent } from "../hooks/use-shortcut";
-import { terminalHandlesKey } from "../lib/herdr/terminal-keys";
 import { createTerminalFrameConsumer } from "../lib/herdr/terminal-protocol";
 import { getGhosttyAppearance, type GhosttyAppearance } from "../lib/server-fns";
 import { TerminalPlaceholder } from "./terminal-placeholder";
+import {
+  installTerminalInput,
+  TerminalSelectionStatus,
+  useTerminalSelectionActions,
+} from "./terminal-selection-status";
 
 /**
  * Ghostty parses VT sequences in WebAssembly, so the module has to finish
@@ -65,6 +68,7 @@ export function HerdrTerminal({
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
   const [error, setError] = useState("");
   const [appearance, setAppearance] = useState<GhosttyAppearance | null>(null);
+  const { actions: selectionActions, announcement } = useTerminalSelectionActions(sessionId);
 
   useEffect(() => {
     const element = container.current;
@@ -94,16 +98,7 @@ export function HerdrTerminal({
       const fitAddon = new ghostty.FitAddon();
       terminal.loadAddon(fitAddon);
       terminal.open(element);
-      /**
-       * Ghostty skips (and preventDefaults) keys this handler claims, which
-       * would hide them from the document shortcut listener, so app chords
-       * are dispatched to the app here instead.
-       */
-      terminal.attachCustomKeyEventHandler((event) => {
-        if (terminalHandlesKey(event)) return false;
-        dispatchShortcutEvent(event);
-        return true;
-      });
+      installTerminalInput(terminal, selectionActions);
 
       let socket: WebSocket | null = null;
       let retry: ReturnType<typeof setTimeout> | null = null;
@@ -212,7 +207,7 @@ export function HerdrTerminal({
       disposed = true;
       teardown?.();
     };
-  }, [sessionId, interactive]);
+  }, [sessionId, interactive, selectionActions]);
 
   useEffect(() => {
     onStatusChange?.(status);
@@ -231,6 +226,7 @@ export function HerdrTerminal({
           style={background}
         />
         {status === "connecting" && !error && <TerminalPlaceholder appearance={appearance} />}
+        <TerminalSelectionStatus announcement={announcement} />
       </div>
     );
   }
@@ -245,6 +241,7 @@ export function HerdrTerminal({
         <span>JSONL transcript remains authoritative for session content.</span>
       </div>
       {error && <p className="mb-2 text-xs text-danger-000">{error}</p>}
+      <TerminalSelectionStatus announcement={announcement} />
       <div
         ref={container}
         data-terminal=""

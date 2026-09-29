@@ -354,6 +354,7 @@ function TerminalPane({
           className={PANEL_CLASS}
         >
           <ShellTerminal
+            sessionId={sessionId}
             ptyKey={tab.ptyKey}
             closeRequested={tab.closing}
             onClosed={closedHandlers.get(tab.id) ?? noop}

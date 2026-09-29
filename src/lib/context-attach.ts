@@ -31,11 +31,16 @@ function fenceFor(text: string): string {
   return "`".repeat(Math.max(3, longestRun + 1));
 }
 
+/** `text` in a code fence that its own backticks cannot close. */
+export function formatFencedExcerpt(text: string, language?: string | null): string {
+  const fence = fenceFor(text);
+  return `${fence}${language ?? ""}\n${text}\n${fence}`;
+}
+
 export function formatAttachContext({ path, range, text, language }: AttachContextInput): string {
   const mention = `@${path}${lineSuffix(range)}`;
   if (text === undefined) return mention;
-  const fence = fenceFor(text);
-  return `${mention}\n${fence}${language ?? ""}\n${text}\n${fence}`;
+  return `${mention}\n${formatFencedExcerpt(text, language)}`;
 }
 
 /**

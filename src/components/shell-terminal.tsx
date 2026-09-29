@@ -1,6 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { dispatchShortcutEvent } from "../hooks/use-shortcut";
-import { terminalHandlesKey } from "../lib/herdr/terminal-keys";
 import {
   decodeTerminalBytes,
   encodeTerminalText,
@@ -19,6 +17,11 @@ import {
 } from "../lib/terminal-lifecycle";
 import { type ConnectionStatus, loadGhostty } from "./herdr-terminal";
 import { TerminalPlaceholder } from "./terminal-placeholder";
+import {
+  installTerminalInput,
+  TerminalSelectionStatus,
+  useTerminalSelectionActions,
+} from "./terminal-selection-status";
 
 /** Socket closes that mean "stop", not "reconnect". */
 const FINAL_CLOSE_CODES = new Set([1000, 1008, 4001, 4404]);
@@ -43,12 +46,15 @@ const OVERLAY_BUTTON_CLASS =
  * server reaps the PTY instead.
  */
 export function ShellTerminal({
+  sessionId,
   ptyKey,
   closeRequested,
   onClosed,
   onRestart,
   onStatusChange,
 }: {
+  /** The session whose composer ⇧⌘L attaches the selection to. */
+  sessionId: string;
   ptyKey: string;
   closeRequested: boolean;
   onClosed: () => void;
@@ -66,6 +72,7 @@ export function ShellTerminal({
   const [lifecycle, setLifecycle] = useState<TerminalLifecycle>(INITIAL_TERMINAL_LIFECYCLE);
   const [restarting, setRestarting] = useState(false);
   const [appearance, setAppearance] = useState<GhosttyAppearance | null>(null);
+  const { actions: selectionActions, announcement } = useTerminalSelectionActions(sessionId);
 
   useEffect(() => {
     const element = container.current;
@@ -105,11 +112,7 @@ export function ShellTerminal({
       terminal.loadAddon(fitAddon);
       terminal.open(element);
       terminalWrite = (text) => terminal.write(text);
-      terminal.attachCustomKeyEventHandler((event) => {
-        if (terminalHandlesKey(event)) return false;
-        dispatchShortcutEvent(event);
-        return true;
-      });
+      installTerminalInput(terminal, selectionActions);
 
       let socket: WebSocket | null = null;
       let retry: ReturnType<typeof setTimeout> | null = null;
@@ -230,7 +233,7 @@ export function ShellTerminal({
       disposed = true;
       teardown?.();
     };
-  }, [ptyKey]);
+  }, [ptyKey, selectionActions]);
 
   useEffect(() => {
     if (!closeRequested) return;
@@ -268,6 +271,7 @@ export function ShellTerminal({
         style={appearance ? { backgroundColor: appearance.theme.background } : undefined}
       />
       {overlay?.kind === "placeholder" && <TerminalPlaceholder appearance={appearance} />}
+      <TerminalSelectionStatus announcement={announcement} />
       {overlay?.kind === "load-failed" && (
         <p
           role="alert"
