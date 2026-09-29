@@ -14,6 +14,12 @@ import type { SessionStatusFilter } from "../session-groups";
 
 export const SessionSummaryStateSchema = z.enum(["idle", "working", "waiting", "unknown", "ended"]);
 
+const SessionPrLinkSchema = z.object({
+  number: z.number(),
+  url: z.string(),
+  repository: z.string(),
+});
+
 const SessionListItemSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -24,6 +30,7 @@ const SessionListItemSchema = z.object({
   projectName: z.string(),
   messageCount: z.number(),
   gitBranch: z.string().optional(),
+  pr: SessionPrLinkSchema.optional(),
   starred: z.boolean(),
   archived: z.boolean(),
   state: SessionSummaryStateSchema,
@@ -94,6 +101,7 @@ export const SessionDetailResponse = z
     sessionKind: z.string().optional(),
     teamNames: z.array(z.string()).optional(),
     forkedFromSessionId: z.string().optional(),
+    pr: SessionPrLinkSchema.optional(),
   })
   .nullable();
 

@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { SessionBucket, SessionSummaryState } from "./session-state";
 import { toolInputSchemas } from "./tool-input-schemas";
 import { JsonValueSchema } from "./schemas";
+import type { SessionPrLink } from "./sessions";
 
 // ---------------------------------------------------------------------------
 // SSE Event Types
@@ -114,6 +115,8 @@ export interface SessionSummaryPayload {
   projectName: string;
   messageCount: number;
   gitBranch: string | undefined;
+  /** Latest `pr-link` record; absent when the session never opened a PR. */
+  pr?: SessionPrLink;
   starred: boolean;
   /** App-side archive flag (`archived_sessions`); the JSONL is never touched. */
   archived: boolean;

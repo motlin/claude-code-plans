@@ -165,6 +165,7 @@ function sessionSummariesEqual(a: SessionSummaryPayload, b: SessionSummaryPayloa
     a.mtime === b.mtime &&
     a.messageCount === b.messageCount &&
     a.gitBranch === b.gitBranch &&
+    a.pr?.url === b.pr?.url &&
     a.projectName === b.projectName &&
     a.starred === b.starred &&
     a.archived === b.archived &&

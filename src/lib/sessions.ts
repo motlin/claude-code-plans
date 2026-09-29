@@ -15,6 +15,13 @@ import {
 import { isCountableMessageRecord } from "./message-count";
 import { isCaveatLine, isCommandLine, isStdoutLine } from "./transcript";
 
+/** The session's pull request, from its latest `pr-link` transcript record. */
+export interface SessionPrLink {
+  number: number;
+  url: string;
+  repository: string;
+}
+
 export interface SessionEntry {
   id: string;
   title: string;
@@ -34,6 +41,7 @@ export interface SessionEntry {
   sessionKind?: string | undefined;
   teamNames?: string[] | undefined;
   forkedFromSessionId?: string | undefined;
+  pr?: SessionPrLink | undefined;
 }
 
 export interface SessionProjectGroup {

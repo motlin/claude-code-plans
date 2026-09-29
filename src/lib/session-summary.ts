@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import * as schema from "./db/schema";
 import { getActiveSessionEntry, type ActiveSessionEntry } from "./active-session-store";
 import { getPendingApprovalsForProject } from "./db/pending-approvals-cache";
-import { isSessionArchived } from "./db/queries";
+import { getSessionPrLink, isSessionArchived } from "./db/queries";
 import { isSessionUnseen } from "./db/viewed-state";
 import type { ActiveSessionPayload, SessionSummaryPayload } from "./hook-events";
 import { getLiveSubagentNodes } from "./live-subagent-store";
@@ -82,6 +82,7 @@ export function toSessionSummaryPayload(
     projectName: entry.projectName,
     messageCount: entry.messageCount,
     gitBranch: entry.gitBranch,
+    ...(entry.pr === undefined ? {} : { pr: entry.pr }),
     starred,
     archived,
     state: activeSession === null ? "ended" : pendingInput ? "waiting" : activeSession.state,
@@ -133,6 +134,7 @@ export function buildSessionSummaryPayloadFromDb(
       messageCount: row.messageCount,
       gitBranch: row.gitBranch ?? undefined,
       isSidechain: row.isSidechain === 1,
+      pr: getSessionPrLink(db, sessionId) ?? undefined,
     },
     !!starredRow,
     {

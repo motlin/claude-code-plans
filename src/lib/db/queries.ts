@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { basename, dirname, relative, sep } from "node:path";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as schema from "./schema";
-import type { SessionEntry } from "../sessions";
+import type { SessionEntry, SessionPrLink } from "../sessions";
 import type { SessionStatusFilter } from "../session-groups";
 import { ORPHANED_TASKS_PROJECT_ID, ORPHANED_TASKS_PROJECT_NAME } from "../task-groups";
 
@@ -55,6 +55,26 @@ function getProjectNameMap(db: IndexDb): Map<string, string> {
 
 type SessionRow = typeof schema.sessions.$inferSelect;
 
+function sessionPrLink(
+  row: Pick<SessionRow, "prNumber" | "prUrl" | "prRepository">,
+): SessionPrLink | undefined {
+  if (row.prNumber === null || row.prUrl === null || row.prRepository === null) return undefined;
+  return { number: row.prNumber, url: row.prUrl, repository: row.prRepository };
+}
+
+export function getSessionPrLink(db: IndexDb, sessionId: string): SessionPrLink | null {
+  const row = db
+    .select({
+      prNumber: schema.sessions.prNumber,
+      prUrl: schema.sessions.prUrl,
+      prRepository: schema.sessions.prRepository,
+    })
+    .from(schema.sessions)
+    .where(eq(schema.sessions.id, sessionId))
+    .get();
+  return row === undefined ? null : (sessionPrLink(row) ?? null);
+}
+
 function rowToSessionEntry(row: SessionRow, projectNames: Map<string, string>): SessionEntry {
   return {
     id: row.id,
@@ -70,6 +90,7 @@ function rowToSessionEntry(row: SessionRow, projectNames: Map<string, string>): 
     gitBranch: row.gitBranch ?? undefined,
     cwd: row.cwd ?? undefined,
     isSidechain: row.isSidechain === 1,
+    pr: sessionPrLink(row),
   };
 }
 
@@ -331,6 +352,7 @@ export function listSessionsForProjectFromDb(
     gitBranch: row.gitBranch ?? undefined,
     cwd: row.cwd ?? undefined,
     isSidechain: false,
+    pr: sessionPrLink(row),
   }));
 }
 
@@ -407,6 +429,7 @@ export function listSessionsForBranch(
     gitBranch: row.gitBranch ?? undefined,
     cwd: row.cwd ?? undefined,
     isSidechain: false,
+    pr: sessionPrLink(row),
   }));
 }
 
@@ -1024,6 +1047,7 @@ export function getStarredSessions(
     gitBranch: row.session.gitBranch ?? undefined,
     cwd: row.session.cwd ?? undefined,
     isSidechain: row.session.isSidechain === 1,
+    pr: sessionPrLink(row.session),
   }));
 }
 

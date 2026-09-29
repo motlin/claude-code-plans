@@ -7,6 +7,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
   useContext,
+  useRef,
 } from "react";
 
 import { useIsMac } from "../../hooks/use-is-mac";
@@ -23,6 +24,17 @@ import { Shortcut } from "./shortcut";
 type MenuKind = "Menu" | "ContextMenu";
 
 const MenuKindContext = createContext<MenuKind>("Menu");
+
+type MenuActionsRef = NonNullable<ComponentProps<typeof BaseMenu.Root>["actionsRef"]>;
+
+/** Closes the enclosing menu; hidden hotkeys need it since they are not Base UI items. */
+const MenuCloseContext = createContext<() => void>(() => {});
+
+function useMenuActions(actionsRef: MenuActionsRef | undefined) {
+  const ownRef: MenuActionsRef = useRef(null);
+  const ref = actionsRef ?? ownRef;
+  return { ref, close: () => ref.current?.close() };
+}
 
 const POSITIONER_CLASS = "z-[130] outline-none";
 
@@ -84,20 +96,26 @@ function acceleratorProps(accelerator: string | undefined) {
   return { "aria-keyshortcuts": key, "data-accelerator": key };
 }
 
-export function Menu(props: ComponentProps<typeof BaseMenu.Root>) {
+export function Menu({ actionsRef, ...props }: ComponentProps<typeof BaseMenu.Root>) {
+  const actions = useMenuActions(actionsRef);
   return (
     <MenuKindContext.Provider value="Menu">
-      <BaseMenu.Root {...props} />
+      <MenuCloseContext.Provider value={actions.close}>
+        <BaseMenu.Root {...props} actionsRef={actions.ref} />
+      </MenuCloseContext.Provider>
     </MenuKindContext.Provider>
   );
 }
 
 export const MenuTrigger = BaseMenu.Trigger;
 
-export function ContextMenu(props: ComponentProps<typeof BaseContextMenu.Root>) {
+export function ContextMenu({ actionsRef, ...props }: ComponentProps<typeof BaseContextMenu.Root>) {
+  const actions = useMenuActions(actionsRef);
   return (
     <MenuKindContext.Provider value="ContextMenu">
-      <BaseContextMenu.Root {...props} />
+      <MenuCloseContext.Provider value={actions.close}>
+        <BaseContextMenu.Root {...props} actionsRef={actions.ref} />
+      </MenuCloseContext.Provider>
     </MenuKindContext.Provider>
   );
 }
@@ -172,6 +190,8 @@ export interface MenuItemProps extends Omit<
   children: ReactNode;
   /** Single key that fires this item while the menu is open. */
   accelerator?: string;
+  /** Keep the accelerator working but draw no keycap hint. */
+  hideAccelerator?: boolean;
   /** Global shortcut hint shown instead of the accelerator, e.g. "alt+cmd+r". */
   shortcut?: string;
   variant?: MenuItemVariant;
@@ -181,6 +201,7 @@ export interface MenuItemProps extends Omit<
 export function MenuItem({
   children,
   accelerator,
+  hideAccelerator = false,
   shortcut,
   variant = "default",
   onSelect,
@@ -198,10 +219,34 @@ export function MenuItem({
     >
       <span className={LABEL_CLASS}>{children}</span>
       <ItemTrailing
-        {...(accelerator === undefined ? {} : { accelerator })}
+        {...(accelerator === undefined || hideAccelerator ? {} : { accelerator })}
         {...(shortcut === undefined ? {} : { shortcut })}
       />
     </BaseMenu.Item>
+  );
+}
+
+/**
+ * A single-key action with no visible item: the accelerator handler clicks
+ * this hidden node, which runs `onSelect` and closes the menu.
+ */
+export function MenuHotkey({
+  accelerator,
+  onSelect,
+}: {
+  accelerator: string;
+  onSelect: () => void;
+}) {
+  const close = useContext(MenuCloseContext);
+  return (
+    <span
+      hidden
+      data-accelerator={accelerator.toLowerCase()}
+      onClick={() => {
+        onSelect();
+        close();
+      }}
+    />
   );
 }
 

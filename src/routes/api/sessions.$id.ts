@@ -8,6 +8,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
       GET: async ({ params }: { params: { id: string } }) => {
         const { getDb } = await import("../../lib/db");
         const {
+          getSessionPrLink,
           getSessionProjectPath,
           getSessionMeta,
           getTaskCountsForProject,
@@ -127,6 +128,9 @@ export const Route = createFileRoute("/api/sessions/$id")({
           pendingTaskCount,
           viewedState: getSessionViewedState(index, id, getCurrentSessionMessageIndex(index, id)),
         };
+
+        const pr = getSessionPrLink(index, id);
+        if (pr !== null) detail.pr = pr;
 
         const provenance = await readSession(PROJECTS_DIR, id);
         if (provenance) {

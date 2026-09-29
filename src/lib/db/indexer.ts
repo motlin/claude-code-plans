@@ -8,6 +8,7 @@ import {
   SessionsIndexSchema,
   FileHistorySnapshotSchema,
   AttachmentRecordSchema,
+  PrLinkRecordSchema,
   TaskFileSchema,
 } from "../schemas";
 import { encodeProjectPath, resolveProjectPath } from "../memory";
@@ -530,6 +531,7 @@ export async function indexJsonlFile(
 
   const planFilenames = new Set<string>();
   const titleRecords = new TitleRecordCollector();
+  let latestPrLink: { prNumber: number; prUrl: string; prRepository: string } | null = null;
   let lastSessionCwd: string | undefined;
   let anchoredSessionCwd: string | undefined;
   let sessionGitBranch: string | null = null;
@@ -608,6 +610,16 @@ export async function indexJsonlFile(
           if (typeof parsed.gitBranch === "string") {
             sessionGitBranch = normalizeGitBranch(parsed.gitBranch);
           }
+        } catch {
+          // skip
+        }
+      }
+
+      // Latest wins: a session that opened a second PR links to the newer one.
+      if (line.includes('"pr-link"')) {
+        try {
+          const result = PrLinkRecordSchema.safeParse(JSON.parse(line));
+          if (result.success) latestPrLink = result.data;
         } catch {
           // skip
         }
@@ -698,6 +710,9 @@ export async function indexJsonlFile(
     updates["firstPrompt"] = firstPrompt?.text ?? null;
     updates["customTitle"] = customTitle ?? null;
     updates["aiTitle"] = aiTitle ?? null;
+    updates["prNumber"] = latestPrLink?.prNumber ?? null;
+    updates["prUrl"] = latestPrLink?.prUrl ?? null;
+    updates["prRepository"] = latestPrLink?.prRepository ?? null;
     updates["title"] = resolveSessionTitle({
       customTitle,
       aiTitle,
@@ -729,6 +744,9 @@ export async function indexJsonlFile(
         summary: null,
         customTitle: customTitle ?? null,
         aiTitle: aiTitle ?? null,
+        prNumber: latestPrLink?.prNumber ?? null,
+        prUrl: latestPrLink?.prUrl ?? null,
+        prRepository: latestPrLink?.prRepository ?? null,
         messageCount,
         gitBranch: sessionGitBranch,
         cwd: sessionCwd ?? null,

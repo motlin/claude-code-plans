@@ -72,6 +72,8 @@ export interface SessionMenuItem {
   label: string;
   /** Single key that fires the item while the menu is open. */
   accelerator?: string;
+  /** The accelerator works but no keycap hint is drawn, like upstream's `g` for Open PR. */
+  hiddenAccelerator?: true;
   disabled?: true;
   disabledReason?: string;
   submenu?: SessionMenuItem[];
@@ -81,7 +83,14 @@ export interface SessionMenuSeparator {
   kind: "separator";
 }
 
-export type SessionMenuEntry = SessionMenuItem | SessionMenuSeparator;
+/** A key that fires an action while the menu is open, with no visible item. */
+export interface SessionMenuHotkey {
+  kind: "hotkey";
+  id: SessionMenuItemId;
+  accelerator: string;
+}
+
+export type SessionMenuEntry = SessionMenuItem | SessionMenuSeparator | SessionMenuHotkey;
 
 const ACCELERATORS = {
   "open-pr": "g",
@@ -141,6 +150,8 @@ export function getSessionMenuItems(
   );
 
   const navigation: SessionMenuItem[] = [];
+  const hotkeys: SessionMenuHotkey[] = [];
+  const offersPr = session.prUrl !== null && has("openPr");
   if (openIn.length > 0) {
     navigation.push({
       kind: "item",
@@ -148,8 +159,11 @@ export function getSessionMenuItems(
       label: sessionMenuItemLabels["open-in"],
       submenu: openIn.map((entry, index) => ({ ...entry, accelerator: String(index + 1) })),
     });
-  } else if (session.prUrl !== null && has("openPr")) {
-    navigation.push(item("open-pr"));
+    // Upstream keeps `g` live even when Open in takes the Open PR slot.
+    if (offersPr)
+      hotkeys.push({ kind: "hotkey", id: "open-pr", accelerator: ACCELERATORS["open-pr"] });
+  } else if (offersPr) {
+    navigation.push({ ...item("open-pr"), hiddenAccelerator: true });
   }
 
   const actions: SessionMenuItem[] = [];
@@ -203,7 +217,10 @@ export function getSessionMenuItems(
   }
 
   const sections = [navigation, actions, lifecycle].filter((section) => section.length > 0);
-  return sections.flatMap((section, index): SessionMenuEntry[] =>
-    index === 0 ? section : [{ kind: "separator" }, ...section],
-  );
+  return [
+    ...sections.flatMap((section, index): SessionMenuEntry[] =>
+      index === 0 ? section : [{ kind: "separator" }, ...section],
+    ),
+    ...hotkeys,
+  ];
 }

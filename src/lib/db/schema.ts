@@ -10,7 +10,8 @@ import type { ReviewBundle } from "../api/reviews";
 // 29: plans and memories are indexed in docs_fts, which only a rebuild backfills.
 // 30: session_mcp_tools records the mcp__ tool names each transcript used.
 // 31: archived_sessions (durable) hides sessions from lists without touching the JSONL.
-export const SCHEMA_VERSION = "31";
+// 32: sessions gain pr_number/pr_url/pr_repository from the latest `pr-link` record.
+export const SCHEMA_VERSION = "32";
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),
@@ -41,6 +42,9 @@ export const sessions = sqliteTable(
     summary: text("summary"),
     customTitle: text("custom_title"),
     aiTitle: text("ai_title"),
+    prNumber: integer("pr_number"),
+    prUrl: text("pr_url"),
+    prRepository: text("pr_repository"),
     messageCount: integer("message_count").notNull().default(0),
     gitBranch: text("git_branch"),
     cwd: text("cwd"),

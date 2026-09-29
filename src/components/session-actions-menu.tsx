@@ -25,6 +25,7 @@ import {
   claudeAiSessionUrl,
   copySessionLink,
   copySessionResumeCommand,
+  openPullRequest,
   vscodeFolderUrl,
 } from "../lib/session-open-in";
 import { markSeen, markUnseen } from "../lib/unread-store";
@@ -36,6 +37,7 @@ import {
   ContextMenuTrigger,
   Menu,
   MenuContent,
+  MenuHotkey,
   MenuItem,
   MenuSeparator,
   MenuSub,
@@ -51,6 +53,7 @@ const LOCAL_CAPABILITIES: ReadonlySet<SessionMenuCapability> = new Set<SessionMe
   "openVsCode",
   "openFinder",
   "openClaudeAi",
+  "openPr",
   "pin",
   "readState",
   "rename",
@@ -109,7 +112,7 @@ function useSessionMenu(session: SessionListItem) {
     pinned: session.starred,
     readState: readStateOf(session, unseen),
     archived: session.archived,
-    prUrl: null,
+    prUrl: session.pr?.url ?? null,
     hasLivePane: herdr?.panes.some((pane) => pane.sessionId === session.id) ?? false,
     forkDisabledReason: null,
     cwd,
@@ -141,6 +144,9 @@ function useSessionMenu(session: SessionListItem) {
           window.open(claudeAiSessionUrl(bridgeSessionId), "_blank", "noopener,noreferrer");
         }
         return;
+      case "open-pr":
+        if (session.pr !== undefined) openPullRequest(session.pr.url);
+        return;
       case "pin":
       case "unpin":
         star.mutate(id === "pin");
@@ -162,7 +168,6 @@ function useSessionMenu(session: SessionListItem) {
         setArchived(id === "archive");
         return;
       case "open-in":
-      case "open-pr":
       case "mark-completed":
       case "fork":
         return;
@@ -186,6 +191,15 @@ function MenuEntries({
 }) {
   return entries.map((entry, index) => {
     if (entry.kind === "separator") return <MenuSeparator key={`separator-${index}`} />;
+    if (entry.kind === "hotkey") {
+      return (
+        <MenuHotkey
+          key={`hotkey-${entry.id}`}
+          accelerator={entry.accelerator}
+          onSelect={() => run(entry.id)}
+        />
+      );
+    }
     if (entry.submenu !== undefined) {
       return (
         <MenuSub key={entry.id}>
@@ -200,6 +214,7 @@ function MenuEntries({
       <MenuItem
         key={entry.id}
         {...(entry.accelerator === undefined ? {} : { accelerator: entry.accelerator })}
+        {...(entry.hiddenAccelerator ? { hideAccelerator: true } : {})}
         {...(entry.disabled ? { disabled: true } : {})}
         {...(entry.disabledReason === undefined ? {} : { title: entry.disabledReason })}
         onSelect={() => run(entry.id)}

@@ -17,6 +17,11 @@ export function claudeAiSessionUrl(bridgeSessionId: string): string {
   return `https://claude.ai/code/${encodeURIComponent(bridgeSessionId)}`;
 }
 
+/** Open PR (menu `g`, ⌥⌘G): the `pr-link` URL in a new tab. */
+export function openPullRequest(prUrl: string): void {
+  window.open(prUrl, "_blank", "noopener,noreferrer");
+}
+
 export function sessionUrl(sessionId: string): string {
   return `${window.location.origin}/session/${encodeURIComponent(sessionId)}`;
 }

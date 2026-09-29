@@ -1450,7 +1450,7 @@ const WorktreeStateRecordSchema = z
   })
   .strict();
 
-const PrLinkRecordSchema = z
+export const PrLinkRecordSchema = z
   .object({
     type: z.literal("pr-link"),
     prUrl: z.string(),

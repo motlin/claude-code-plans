@@ -751,6 +751,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
               sessionId={sessionId}
               title={data.title}
               archived={data.archived}
+              prUrl={data.pr?.url}
             />
 
             {aiSummary ? (

@@ -154,7 +154,7 @@ export const SHORTCUTS = {
     group: "general",
     bindings: cmdOrCtrl("g", ["alt"], letterCode("g")),
     ownerSlug: "pr-status",
-    enabled: false,
+    enabled: true,
   },
   fork_session: {
     description: "Fork session",
