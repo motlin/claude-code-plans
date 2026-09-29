@@ -199,6 +199,22 @@ export const HerdrSessionSnapshotResultSchema = z
   })
   .loose();
 
+export const HerdrTabCreatedResultSchema = z
+  .object({
+    type: z.literal("tab_created"),
+    tab: HerdrTabInfoSchema,
+    root_pane: HerdrPaneInfoSchema,
+  })
+  .loose();
+
+export const HerdrAgentStartedResultSchema = z
+  .object({
+    type: z.literal("agent_started"),
+    agent: HerdrAgentInfoSchema,
+    argv: z.array(z.string()),
+  })
+  .loose();
+
 export const HerdrErrorBodySchema = z
   .object({
     code: z.string(),
