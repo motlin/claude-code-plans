@@ -38,6 +38,7 @@ import type { SessionMenuItemIdSchema } from "./session-menu-items";
 import type { SettingsTab } from "./settings-hash";
 import type { MessageProcessedLine, ProcessedLine } from "./transcript";
 import type { RecentKind } from "./recents-history";
+import type { TranscriptMode } from "./transcript-mode";
 
 /**
  * Registry of every enumerable "choice" in the Zod schemas (enum values,
@@ -568,6 +569,13 @@ const recentKindLabels = {
   command: "Command",
 } satisfies Record<RecentKind, string>;
 
+/** Per-session transcript views (src/lib/transcript-mode.ts), cycled by ⌃O. */
+const transcriptModeLabels = {
+  normal: "Normal",
+  thinking: "Thinking",
+  verbose: "Verbose",
+} satisfies Record<TranscriptMode, string>;
+
 const toolNamesWithMcp = { ...toolNames, "mcp__*": true } as const;
 
 /** Maps walker path keys (see tests/schema-choices.test.ts) to choice maps. */
@@ -624,4 +632,5 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   SessionMenuItemIdSchema: sessionMenuItemLabels,
   ChangedFileKindSchema: changedFileKindLabels,
   "RecentsHistorySchema[].kind": recentKindLabels,
+  TranscriptModeSchema: transcriptModeLabels,
 };

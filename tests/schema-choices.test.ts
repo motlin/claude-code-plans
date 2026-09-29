@@ -42,6 +42,7 @@ import {
   UserRecordSchema,
 } from "../src/lib/schemas";
 import { RenderedLineSchema } from "../src/lib/transcript";
+import { TranscriptModeSchema } from "../src/lib/transcript-mode";
 
 /**
  * Walks the Zod schema trees rooted below and records every "choice" node —
@@ -91,6 +92,7 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["SessionMenuItemIdSchema", SessionMenuItemIdSchema],
   ["ChangedFileKindSchema", ChangedFileKindSchema],
   ["RecentsHistorySchema", RecentsHistorySchema],
+  ["TranscriptModeSchema", TranscriptModeSchema],
   ["UnifiedSearchParamsSchema", UnifiedSearchParamsSchema],
   ["UnifiedSearchResponse", UnifiedSearchResponse],
 ];

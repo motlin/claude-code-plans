@@ -21,6 +21,8 @@ import { ActiveSubagents } from "./active-subagents";
 import { SessionHookContext } from "./session-hook-context";
 import { DetailTopBar, pillStyles } from "./detail-top-bar";
 import { useSettings } from "./settings-provider";
+import { useSessionTranscriptMode } from "../hooks/use-session-transcript-mode";
+import { sessionHasThinking } from "../lib/transcript-mode";
 import { SessionReviewedToggle } from "./session-reviewed-toggle";
 import { SessionTitleHeading } from "./session-title-heading";
 import { LiveTerminalLink } from "./session-terminal-links";
@@ -425,6 +427,8 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
     () => processTranscript(transcript.records, transcript.startIndex),
     [transcript.records, transcript.startIndex],
   );
+  const hasThinking = useMemo(() => sessionHasThinking(processed.lines), [processed.lines]);
+  const { flags: transcriptFlags } = useSessionTranscriptMode(sessionId, { hasThinking });
   // `uuidToLine` is the set of messages the window holds, which is how a jump
   // decides whether to scroll or to page history in first.
   const requestMessageJump = usePendingMessageJump(
@@ -803,14 +807,14 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
             toolResultMap={processed.toolResultMap}
             allowedImageRoots={data.imageRoots}
             subagents={subagents}
-            showThinking={settings.showThinking}
-            showTools={settings.showTools}
-            showPassedHooks={settings.showPassedHooks}
-            showHookWarnings={settings.showHookWarnings}
-            showHookErrors={settings.showHookErrors}
-            showSystemBanners={settings.showSystemBanners}
-            showCompactSummaries={settings.showCompactSummaries}
-            showTranscriptOnly={settings.showTranscriptOnly}
+            showThinking={transcriptFlags.showThinking}
+            showTools={transcriptFlags.showTools}
+            showPassedHooks={transcriptFlags.showPassedHooks}
+            showHookWarnings={transcriptFlags.showHookWarnings}
+            showHookErrors={transcriptFlags.showHookErrors}
+            showSystemBanners={transcriptFlags.showSystemBanners}
+            showCompactSummaries={transcriptFlags.showCompactSummaries}
+            showTranscriptOnly={transcriptFlags.showTranscriptOnly}
             initialScrollKey={initialScrollKey}
             shouldScrollToEnd={restoredScrollPosition === undefined && locationHash === ""}
           />
