@@ -60,7 +60,7 @@ describe("TodoWriteRenderer", () => {
 
     expect({
       list: classNames(container, ":scope > div"),
-      markers: [...container.querySelectorAll("div > div > span:first-child")].map(
+      markers: [...container.querySelectorAll(":scope > div > div > span:first-child")].map(
         (node) => node.textContent,
       ),
       rows: [...container.querySelectorAll(":scope > div > div")].map((node) => node.textContent),

@@ -196,7 +196,7 @@ describe("fixed-position session UI and the contained transcript scroller", () =
       fixedInsideContained,
       scrollPillPositioning: scrollPill.classList.contains("absolute"),
       transcriptWidth: scrollPill
-        .closest<HTMLElement>("[style]")
+        .closest<HTMLElement>('[style*="--max-content-width"]')
         ?.style.getPropertyValue("--max-content-width"),
     }).toStrictEqual({
       containedElements: [scroller],
