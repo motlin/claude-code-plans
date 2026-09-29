@@ -1220,26 +1220,15 @@ function PalettePopup({
             </div>
           )}
 
+          {compose && <PaletteFooter hints={[["Send", "enter"]]} />}
           {!compose && query === "" && (
-            <div
-              data-palette-footer=""
-              className="border-t-[0.5px] border-border bg-surface-3 py-2.5 pr-4 pl-5 pointer-coarse:hidden"
-            >
-              <div className="flex min-h-5 items-center gap-5 text-xs text-ink-muted">
-                <span className="flex items-center gap-2">
-                  <span>Close</span>
-                  <Shortcut keys="esc" />
-                </span>
-                <span className="flex items-center gap-2">
-                  <span>Filters</span>
-                  <Shortcut keys="/" />
-                </span>
-                <span className="flex items-center gap-2">
-                  <span>Actions</span>
-                  <Shortcut keys="right" />
-                </span>
-              </div>
-            </div>
+            <PaletteFooter
+              hints={[
+                ["Close", "esc"],
+                ["Filters", "/"],
+                ["Actions", "right"],
+              ]}
+            />
           )}
         </Command>
       </div>
@@ -1253,6 +1242,29 @@ function PalettePopup({
         />
       )}
     </Dialog.Popup>
+  );
+}
+
+/** Upstream's keyboard-hint footer: "Close Esc · Filters / · Actions →", or "Send ⏎" in Compose. */
+function PaletteFooter({
+  hints,
+}: {
+  hints: ReadonlyArray<readonly [label: string, keys: string]>;
+}) {
+  return (
+    <div
+      data-palette-footer=""
+      className="border-t-[0.5px] border-border bg-surface-3 py-2.5 pr-4 pl-5 pointer-coarse:hidden"
+    >
+      <div className="flex min-h-5 items-center gap-5 text-xs text-ink-muted">
+        {hints.map(([label, keys]) => (
+          <span key={label} className="flex items-center gap-2">
+            <span>{label}</span>
+            <Shortcut keys={keys} />
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 

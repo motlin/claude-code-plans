@@ -132,6 +132,7 @@ describe("CommandPalette shell", () => {
 
   afterEach(() => {
     cleanup();
+    localStorage.clear();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
@@ -305,6 +306,63 @@ describe("CommandPalette shell", () => {
     pressK(outside, { metaKey: true });
     const reopened = await screen.findByRole("dialog", { name: "Search" });
     await within(reopened).findByRole("combobox", { name: "Write a message…" });
+  });
+
+  it("remembers the tab in localStorage cmdk-mode and ⇧⌘K leaves it alone", async () => {
+    const dialog = await openPalette();
+    fireEvent.keyDown(within(dialog).getByRole("combobox"), { key: "Tab", code: "Tab" });
+    const composer = await within(dialog).findByRole("combobox", { name: "Write a message…" });
+    const afterTab = localStorage.getItem("cmdk-mode");
+
+    pressK(composer, { metaKey: true, shiftKey: true, key: "K" });
+    await within(dialog).findByRole("combobox", { name: "Search" });
+
+    expect({ afterTab, afterSearch: localStorage.getItem("cmdk-mode") }).toStrictEqual({
+      afterTab: "compose",
+      afterSearch: "compose",
+    });
+  });
+
+  it("opens in the stored Compose tab on a fresh load", async () => {
+    localStorage.setItem("cmdk-mode", "compose");
+
+    const dialog = await openPalette();
+
+    await within(dialog).findByRole("combobox", { name: "Write a message…" });
+  });
+
+  it("ignores an unknown stored cmdk-mode", async () => {
+    localStorage.setItem("cmdk-mode", "bogus");
+
+    const dialog = await openPalette();
+
+    await within(dialog).findByRole("combobox", { name: "Search" });
+  });
+
+  it("shows only the start rows and a Send footer in Compose", async () => {
+    const dialog = await openPalette([
+      recentSession("s-1", "Settings page refactor"),
+      recentSession("s-2", "Blocked one", "blocked"),
+    ]);
+    const input = within(dialog).getByRole("combobox");
+    fireEvent.keyDown(input, { key: "Tab", code: "Tab" });
+    const composer = await within(dialog).findByRole("combobox", { name: "Write a message…" });
+
+    fireEvent.change(composer, { target: { value: "Settings" } });
+
+    await waitFor(() =>
+      expect({
+        groups: groupLabels(dialog),
+        results: within(dialog).queryByRole("group", { name: "Search results" }),
+        tabs: within(dialog).queryByRole("tablist", { name: "Type" }),
+        footer: footer(dialog)?.textContent,
+      }).toStrictEqual({
+        groups: [["Quick actions", ["New session"]]],
+        results: null,
+        tabs: null,
+        footer: "Send⏎Enter",
+      }),
+    );
   });
 
   it("shows Needs attention, Recents and Actions in the empty state", async () => {
