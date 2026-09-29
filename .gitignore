@@ -40,3 +40,4 @@ skills/
 !/.claude/skills/review-working-copy/
 !/.claude/skills/review-working-copy/**
 .fallow/
+.playwright-mcp/
