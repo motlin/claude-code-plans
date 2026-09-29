@@ -208,4 +208,25 @@ describe("fixed-position session UI and the contained transcript scroller", () =
       transcriptWidth: "768px",
     });
   });
+
+  it("pads the sticky composer footer above the phone home-indicator inset", async () => {
+    vi.stubGlobal("EventSource", TestEventSource);
+    vi.stubGlobal("localStorage", new FakeStorage());
+    vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+
+    const scroller = await renderSessionInScroller();
+    const footers = [...scroller.querySelectorAll("[data-session-footer]")];
+
+    expect(
+      footers.map((footer) =>
+        [...footer.classList].filter(
+          (token) => token.startsWith("sticky") || token.startsWith("pb-"),
+        ),
+      ),
+    ).toStrictEqual([["sticky", "pb-[max(env(safe-area-inset-bottom),0.5rem)]"]]);
+  });
 });

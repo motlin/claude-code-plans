@@ -802,7 +802,10 @@ function SessionView({
         <SideChat sessionId={sessionId} messageCount={data.messageCount} />
 
         {/* Sticky footer: the composer dock + status bar */}
-        <div className="sticky bottom-0 z-10 -mx-4 -mb-8 sm:-mx-8">
+        <div
+          data-session-footer
+          className="sticky bottom-0 z-10 -mx-4 -mb-8 pb-[max(env(safe-area-inset-bottom),0.5rem)] sm:-mx-8"
+        >
           <div
             className={
               !chromeHidden && data.projectPath
