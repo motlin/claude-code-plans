@@ -15,6 +15,7 @@ export const PlanDetailResponse = z.object({
   mtime: z.string(),
   title: z.string(),
 });
+export type PlanDetail = z.infer<typeof PlanDetailResponse>;
 
 const PlanProjectRefSchema = z.object({
   projectId: z.string(),

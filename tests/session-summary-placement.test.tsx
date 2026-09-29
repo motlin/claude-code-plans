@@ -7,7 +7,7 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -16,6 +16,7 @@ import { SettingsProvider } from "../src/components/settings-provider";
 import { ToastProvider } from "../src/components/toast";
 import { ClaudeEventsProvider } from "../src/hooks/use-claude-events";
 import { herdrPanesQueryOptions } from "../src/lib/api/herdr";
+import { type PlanDetail, planQueryOptions } from "../src/lib/api/plans";
 import {
   sessionDetailQueryOptions,
   sessionOpenInQueryOptions,
@@ -141,8 +142,13 @@ async function renderInRouter(queryClient: QueryClient, content: ReactNode) {
   await flush();
 }
 
-async function renderSessionPage(data: SessionDetailData, subagents: Subagent[]) {
+async function renderSessionPage(
+  data: SessionDetailData,
+  subagents: Subagent[],
+  seed: (queryClient: QueryClient) => void = () => {},
+) {
   const queryClient = newQueryClient();
+  seed(queryClient);
   queryClient.setQueryData(sessionDetailQueryOptions(SESSION_ID).queryKey, data);
   queryClient.setQueryData(transcriptQueryOptions(SESSION_ID).queryKey, {
     records: [
@@ -256,6 +262,45 @@ describe("subagents placement", () => {
       href: `/session/${SESSION_ID}/subagents`,
       activeBox: null,
       links: 1,
+    });
+  });
+});
+
+describe("plan pane", () => {
+  async function openViewOptions() {
+    fireEvent.click(screen.getByRole("button", { name: "View options" }));
+    await flush();
+  }
+
+  it("offers no Plan item when the session has no plan", async () => {
+    await renderSessionPage(detail, []);
+    await openViewOptions();
+
+    expect(screen.queryByRole("menuitemcheckbox", { name: "Plan" })).toBeNull();
+  });
+
+  it("renders the linked plan beside the transcript with a link to the plan page", async () => {
+    const plan: PlanDetail = {
+      markdown: "# Fabricated sync plan\n\nRebase the fabricated fork onto upstream.",
+      mtime: "2026-09-28T10:00:00.000Z",
+      title: "Fabricated sync plan",
+    };
+    await renderSessionPage({ ...detail, planFilename: "fabricated-sync-plan.md" }, [], (qc) => {
+      qc.setQueryData(planQueryOptions("fabricated-sync-plan").queryKey, plan);
+    });
+    await openViewOptions();
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Plan" }));
+    await flush();
+    const pane = screen.getByTestId("session-plan-pane");
+
+    expect({
+      heading: within(pane).getByRole("heading").textContent,
+      body: within(pane).getByText("Rebase the fabricated fork onto upstream.").tagName,
+      link: within(pane).getByRole("link", { name: "Open plan" }).getAttribute("href"),
+    }).toStrictEqual({
+      heading: "Fabricated sync plan",
+      body: "P",
+      link: "/plan/fabricated-sync-plan",
     });
   });
 });

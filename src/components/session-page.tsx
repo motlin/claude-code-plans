@@ -31,6 +31,7 @@ import {
 import { TileHost } from "./panes/tile-host";
 import { useRegisterArtifactsPane, useSessionArtifacts } from "./panes/artifacts-pane";
 import { useRegisterBackgroundTasksPane } from "./panes/background-tasks-pane";
+import { useRegisterPlanPane } from "./panes/plan-pane";
 import { ChangesPaneShortcut, useRegisterChangesPane } from "./changes/changes-pane";
 import {
   FilesPaneShortcut,
@@ -393,6 +394,7 @@ function SessionView({
   });
   const sessionArtifacts = useSessionArtifacts(sessionId);
   useRegisterArtifactsPane(sessionArtifacts);
+  useRegisterPlanPane(data.planFilename);
   const { hookContexts, runningSubagents } = useClaudeEvents();
   const hookContext = hookContexts.get(sessionId);
   const transcriptActiveSubagents = useMemo(
@@ -580,6 +582,7 @@ function SessionView({
                 <SessionPaneControls
                   facts={{
                     artifactCount: sessionArtifacts.length,
+                    hasPlan: data.planFilename !== undefined,
                     backgroundTasks: backgroundTasksFacts(backgroundTasks, subagents.length),
                     subagentCount: subagents.length,
                   }}

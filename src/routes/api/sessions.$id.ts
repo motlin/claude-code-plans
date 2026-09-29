@@ -8,6 +8,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
       GET: async ({ params }: { params: { id: string } }) => {
         const { getDb } = await import("../../lib/db");
         const {
+          getPlanFilenameForSession,
           getSessionPrLink,
           getSessionProjectPath,
           getSessionMeta,
@@ -127,6 +128,9 @@ export const Route = createFileRoute("/api/sessions/$id")({
 
         const pr = getSessionPrLink(index, id);
         if (pr !== null) detail.pr = pr;
+
+        const planFilename = getPlanFilenameForSession(index, id);
+        if (planFilename !== null) detail.planFilename = planFilename;
 
         const provenance = await readSession(PROJECTS_DIR, id);
         if (provenance) {
