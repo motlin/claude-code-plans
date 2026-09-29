@@ -216,6 +216,7 @@ describe("sidebar row inline rename", () => {
     projectName: "alpha",
     messageCount: 4,
     starred: false,
+    archived: false,
     state: "ended",
     bucket: "done",
     liveAgentCount: 0,

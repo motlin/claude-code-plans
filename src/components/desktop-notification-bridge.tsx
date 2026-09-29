@@ -54,6 +54,7 @@ export function DesktopNotificationBridge(): null {
           Notification.permission,
           session.sessionId,
           viewedSessionId(router),
+          session.archived,
         )
       ) {
         return;

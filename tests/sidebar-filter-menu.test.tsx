@@ -37,6 +37,7 @@ function session(id: string, title: string, bucket: SessionBucket, projectName: 
     projectName,
     messageCount: 4,
     starred: false,
+    archived: false,
     state: bucket === "working" ? "working" : bucket === "blocked" ? "waiting" : "idle",
     bucket,
     liveAgentCount: 0,
@@ -71,10 +72,13 @@ async function renderSidebarGroups() {
       queries: { retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false },
     },
   });
-  queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-    pages: [RecentSessionsResponse.parse({ sessions: FIXTURE, nextCursor: null })],
-    pageParams: [null],
-  });
+  // Each Status value is its own server query (archived sessions are filtered server-side).
+  for (const status of ["active", "archived", "all"] as const) {
+    queryClient.setQueryData(recentSessionsInfiniteQueryOptions(undefined, status).queryKey, {
+      pages: [RecentSessionsResponse.parse({ sessions: FIXTURE, nextCursor: null })],
+      pageParams: [null],
+    });
+  }
   const rootRoute = createRootRoute({
     component: () => (
       <SettingsProvider>

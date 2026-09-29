@@ -1,17 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { ProjectSessionListResponse } from "../../lib/api/projects";
+import {
+  invalidSessionStatusResponse,
+  parseSessionStatusParam,
+} from "../../lib/api/session-status-param";
 
 export const Route = createFileRoute("/api/projects/$id/sessions")({
   server: {
     handlers: withMethodNotAllowed({
-      GET: async ({ params }: { params: { id: string } }) => {
+      GET: async ({ params, request }: { params: { id: string }; request: Request }) => {
+        const status = parseSessionStatusParam(new URL(request.url));
+        if (status === null) return invalidSessionStatusResponse();
         const { getDb } = await import("../../lib/db");
         const { listSessionsForProjectFromDb, getSubagentsForProject } =
           await import("../../lib/db/queries");
 
         const { index } = getDb();
-        const sessions = listSessionsForProjectFromDb(index, params.id);
+        const sessions = listSessionsForProjectFromDb(index, params.id, { status });
         const allSubagents = getSubagentsForProject(index, params.id);
 
         const subagentBySession = new Map<string, number>();

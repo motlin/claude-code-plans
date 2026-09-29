@@ -38,6 +38,7 @@ function listItem(
     projectName: "alpha",
     messageCount: 4,
     starred: false,
+    archived: false,
     state: "ended",
     bucket,
     liveAgentCount: 0,

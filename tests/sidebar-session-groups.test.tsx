@@ -35,6 +35,7 @@ function session(id: string, title: string, bucket: SessionBucket, minutesAgo: n
     projectName: `project-${id}`,
     messageCount: 4,
     starred: false,
+    archived: false,
     state: bucket === "working" ? "working" : bucket === "blocked" ? "waiting" : "idle",
     bucket,
     liveAgentCount: 0,

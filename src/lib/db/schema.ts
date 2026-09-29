@@ -9,7 +9,8 @@ import type { ReviewBundle } from "../api/reviews";
 // (custom > ai > summary > first prompt), so every stored title is recomputed.
 // 29: plans and memories are indexed in docs_fts, which only a rebuild backfills.
 // 30: session_mcp_tools records the mcp__ tool names each transcript used.
-export const SCHEMA_VERSION = "30";
+// 31: archived_sessions (durable) hides sessions from lists without touching the JSONL.
+export const SCHEMA_VERSION = "31";
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),
@@ -182,6 +183,12 @@ export const plans = sqliteTable(
 export const starredSessions = sqliteTable("starred_sessions", {
   sessionId: text("session_id").primaryKey(),
   starredAt: integer("starred_at").notNull(),
+});
+
+/** App-side archive flag: the session's JSONL is never touched. */
+export const archivedSessions = sqliteTable("archived_sessions", {
+  sessionId: text("session_id").primaryKey(),
+  archivedAt: integer("archived_at").notNull(),
 });
 
 export const summaries = sqliteTable("summaries", {

@@ -36,6 +36,7 @@ import {
   reconcileStoredLiveSubagents,
 } from "./live-subagent-store";
 import { indexFile, indexJsonlFile } from "./db/indexer";
+import { isSessionArchived, setSessionArchived } from "./db/queries";
 import { resolveProjectName } from "./memory";
 import { recentlyBroadcast } from "./update-dedupe";
 import { toSubagentSessionId } from "./subagents";
@@ -631,6 +632,14 @@ export async function dispatchHookEvent({
         prompt: event.prompt,
         ts: new Date().toISOString(),
       } satisfies SessionPromptSubmittedPayload);
+      // A new prompt brings an archived session back, matching claude.ai/code.
+      if (isSessionArchived(db, event.session_id)) {
+        setSessionArchived(db, event.session_id, false);
+        const summary = buildSessionSummaryPayloadFromDb(db, event.session_id, (sessionId) =>
+          store.getActiveSessionEntry(sessionId),
+        );
+        if (summary) broadcast(DOMAIN_EVENTS.SESSION_UPDATED, { session: summary });
+      }
       break;
     }
 

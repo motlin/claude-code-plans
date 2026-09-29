@@ -45,6 +45,7 @@ function makeSession(
     messageCount: 0,
     gitBranch: undefined,
     starred: false,
+    archived: false,
     state: "unknown",
     bucket: "done",
     liveAgentCount: 0,

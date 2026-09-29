@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -35,7 +35,7 @@ function toGroupRow(session: SessionListItem): SidebarSessionRow {
     title: session.title,
     bucket: session.bucket,
     project: session.projectName,
-    archived: false,
+    archived: session.archived,
     createdAt: Date.parse(session.created),
     lastActivityAt: Date.parse(session.mtime),
   };
@@ -59,9 +59,11 @@ export function SessionGroups({
   filterSlot?: ReactNode;
   prefs?: SessionListPrefs;
 }) {
-  const { data, hasNextPage, isFetchingNextPage, fetchNextPage } = useInfiniteQuery(
-    recentSessionsInfiniteQueryOptions(),
-  );
+  const { data, hasNextPage, isFetchingNextPage, fetchNextPage } = useInfiniteQuery({
+    ...recentSessionsInfiniteQueryOptions(undefined, prefs.statusFilter),
+    // Keep the current rows (and the filter button) up while a new Status loads.
+    placeholderData: keepPreviousData,
+  });
   const { collapsedGroups } = useSidebarState();
   const [uncapped, setUncapped] = useState<ReadonlySet<string>>(() => new Set());
 

@@ -7,11 +7,11 @@ const enabled: Settings = { ...DEFAULTS, desktopNotifications: true };
 const disabled: Settings = { ...DEFAULTS, desktopNotifications: false };
 
 const sessions = [
-  { sessionId: "session-test-waiting", displayState: "waiting" },
-  { sessionId: "session-test-review", displayState: "review" },
-  { sessionId: "session-test-working", displayState: "working" },
-  { sessionId: "session-test-idle", displayState: "idle" },
-  { sessionId: "session-test-unknown", displayState: "unknown" },
+  { sessionId: "session-test-waiting", displayState: "waiting", archived: false },
+  { sessionId: "session-test-review", displayState: "review", archived: false },
+  { sessionId: "session-test-working", displayState: "working", archived: false },
+  { sessionId: "session-test-idle", displayState: "idle", archived: false },
+  { sessionId: "session-test-unknown", displayState: "unknown", archived: false },
 ] as const;
 
 describe("countSessionsNeedingAttention", () => {

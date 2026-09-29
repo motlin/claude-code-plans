@@ -53,12 +53,13 @@ export function AttentionBadgeBridge(): null {
   useEffect(() => {
     if (typeof document === "undefined" || typeof navigator === "undefined") return;
 
-    const activityStates = new Map<string, ActivityState>();
+    const activityStates = new Map<string, { state: ActivityState; archived: boolean }>();
 
     const updateBadge = () => {
-      const sessions = Array.from(activityStates, ([sessionId, state]) => ({
+      const sessions = Array.from(activityStates, ([sessionId, { state, archived }]) => ({
         sessionId,
         displayState: displayState(state, hasUnseenWork(sessionId)),
+        archived,
       }));
       const count = countSessionsNeedingAttention(
         sessions,
@@ -73,7 +74,10 @@ export function AttentionBadgeBridge(): null {
 
     const unsubscribeUnseenWork = subscribeUnseenWork(updateBadge);
     const unsubscribeSessionStates = subscribeSessionStates((session) => {
-      activityStates.set(session.sessionId, session.state);
+      activityStates.set(session.sessionId, {
+        state: session.state,
+        archived: session.archived,
+      });
       updateBadge();
     });
     const unsubscribeRouter = router.subscribe("onResolved", updateBadge);

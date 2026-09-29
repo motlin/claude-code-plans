@@ -1,12 +1,23 @@
-import { eq, desc, asc, sql, and, inArray, isNotNull, like } from "drizzle-orm";
+import { eq, desc, asc, sql, and, inArray, isNotNull, like, type SQL } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { basename, dirname, relative, sep } from "node:path";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as schema from "./schema";
 import type { SessionEntry } from "../sessions";
+import type { SessionStatusFilter } from "../session-groups";
 import { ORPHANED_TASKS_PROJECT_ID, ORPHANED_TASKS_PROJECT_NAME } from "../task-groups";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
+
+/**
+ * Session list filter for the app-side archive flag: "active" (the default)
+ * hides archived sessions, "archived" shows only them, "all" shows both.
+ */
+function archiveCondition(status: SessionStatusFilter = "active"): SQL | undefined {
+  if (status === "all") return undefined;
+  const archived = sql`${schema.sessions.id} IN (SELECT ${schema.archivedSessions.sessionId} FROM ${schema.archivedSessions})`;
+  return status === "archived" ? archived : sql`NOT (${archived})`;
+}
 
 /** Distinct non-null project paths available as zero-config file-search roots. */
 export function listFileSearchProjectPathsFromDb(db: IndexDb): string[] {
@@ -153,15 +164,16 @@ export interface RecentSessionsPage {
  */
 export function listRecentSessionsFromDb(
   db: IndexDb,
-  opts: { limit: number; before?: SessionCursor },
+  opts: { limit: number; before?: SessionCursor; status?: SessionStatusFilter },
 ): RecentSessionsPage {
-  const { limit, before } = opts;
-  const condition = before
-    ? and(
-        eq(schema.sessions.isSidechain, 0),
-        sql`(${schema.sessions.mtimeMs} < ${before.mtimeMs} OR (${schema.sessions.mtimeMs} = ${before.mtimeMs} AND ${schema.sessions.id} < ${before.id}))`,
-      )
-    : eq(schema.sessions.isSidechain, 0);
+  const { limit, before, status } = opts;
+  const condition = and(
+    eq(schema.sessions.isSidechain, 0),
+    archiveCondition(status),
+    before
+      ? sql`(${schema.sessions.mtimeMs} < ${before.mtimeMs} OR (${schema.sessions.mtimeMs} = ${before.mtimeMs} AND ${schema.sessions.id} < ${before.id}))`
+      : undefined,
+  );
 
   const rows = db
     .select()
@@ -197,10 +209,11 @@ const DEFAULT_PER_PROJECT = 10;
  */
 export function listSessionGroupsFromDb(
   db: IndexDb,
-  opts: { perProject?: number } = {},
+  opts: { perProject?: number; status?: SessionStatusFilter } = {},
 ): SessionGroupSummary[] {
   const perProject = opts.perProject ?? DEFAULT_PER_PROJECT;
   const projectNames = getProjectNameMap(db);
+  const statusCondition = archiveCondition(opts.status);
 
   const stats = db
     .select({
@@ -209,7 +222,7 @@ export function listSessionGroupsFromDb(
       maxMtime: sql<number>`max(${schema.sessions.mtimeMs})`,
     })
     .from(schema.sessions)
-    .where(eq(schema.sessions.isSidechain, 0))
+    .where(and(eq(schema.sessions.isSidechain, 0), statusCondition))
     .groupBy(schema.sessions.projectId)
     .all();
   const statByProject = new Map(stats.map((s) => [s.projectId, s]));
@@ -221,7 +234,7 @@ export function listSessionGroupsFromDb(
           SELECT id, project_id,
                  row_number() OVER (PARTITION BY project_id ORDER BY mtime_ms DESC, id DESC) AS rn
           FROM sessions
-          WHERE is_sidechain = 0
+          WHERE is_sidechain = 0${statusCondition ? sql` AND ${statusCondition}` : sql``}
         ) WHERE rn <= ${perProject}
         ORDER BY project_id, rn`,
   ) as Array<{ id: string }>;
@@ -279,7 +292,11 @@ export function getIndexedSessionIds(db: IndexDb, ids: string[]): Set<string> {
   return new Set(rows.map((row) => row.id));
 }
 
-export function listSessionsForProjectFromDb(db: IndexDb, projectId: string): SessionEntry[] {
+export function listSessionsForProjectFromDb(
+  db: IndexDb,
+  projectId: string,
+  opts: { status?: SessionStatusFilter } = {},
+): SessionEntry[] {
   const projectRow = db
     .select()
     .from(schema.projects)
@@ -290,7 +307,13 @@ export function listSessionsForProjectFromDb(db: IndexDb, projectId: string): Se
   const rows = db
     .select()
     .from(schema.sessions)
-    .where(and(eq(schema.sessions.projectId, projectId), eq(schema.sessions.isSidechain, 0)))
+    .where(
+      and(
+        eq(schema.sessions.projectId, projectId),
+        eq(schema.sessions.isSidechain, 0),
+        archiveCondition(opts.status),
+      ),
+    )
     .orderBy(desc(schema.sessions.mtimeMs))
     .all();
 
@@ -970,7 +993,10 @@ export function getStarredSessionIds(db: IndexDb): Set<string> {
   return new Set(rows.map((r) => r.sessionId));
 }
 
-export function getStarredSessions(db: IndexDb): SessionEntry[] {
+export function getStarredSessions(
+  db: IndexDb,
+  opts: { status?: SessionStatusFilter } = {},
+): SessionEntry[] {
   const projectNames = getProjectNameMap(db);
 
   const rows = db
@@ -980,6 +1006,7 @@ export function getStarredSessions(db: IndexDb): SessionEntry[] {
     })
     .from(schema.starredSessions)
     .innerJoin(schema.sessions, eq(schema.sessions.id, schema.starredSessions.sessionId))
+    .where(archiveCondition(opts.status))
     .orderBy(desc(schema.starredSessions.starredAt))
     .all();
 
@@ -998,6 +1025,46 @@ export function getStarredSessions(db: IndexDb): SessionEntry[] {
     cwd: row.session.cwd ?? undefined,
     isSidechain: row.session.isSidechain === 1,
   }));
+}
+
+export function isSessionArchived(db: IndexDb, sessionId: string): boolean {
+  const row = db
+    .select()
+    .from(schema.archivedSessions)
+    .where(eq(schema.archivedSessions.sessionId, sessionId))
+    .get();
+  return !!row;
+}
+
+/**
+ * Set the app-side archive flag. Idempotent: re-archiving keeps the original
+ * `archived_at`. Returns the resulting archived state.
+ */
+export function setSessionArchived(
+  db: IndexDb,
+  sessionId: string,
+  archived: boolean,
+  now: number = Date.now(),
+): boolean {
+  if (archived) {
+    db.insert(schema.archivedSessions)
+      .values({ sessionId, archivedAt: now })
+      .onConflictDoNothing()
+      .run();
+  } else {
+    db.delete(schema.archivedSessions)
+      .where(eq(schema.archivedSessions.sessionId, sessionId))
+      .run();
+  }
+  return archived;
+}
+
+export function getArchivedSessionIds(db: IndexDb): Set<string> {
+  const rows = db
+    .select({ sessionId: schema.archivedSessions.sessionId })
+    .from(schema.archivedSessions)
+    .all();
+  return new Set(rows.map((r) => r.sessionId));
 }
 
 interface DbPlanProjectMapping {

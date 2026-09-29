@@ -265,6 +265,7 @@ describe("toSessionSummaryPayload", () => {
       messageCount: 3,
       gitBranch: undefined,
       starred: false,
+      archived: false,
       state: "ended",
       bucket: "done",
       liveAgentCount: 0,
@@ -328,6 +329,12 @@ describe("sessionSummariesEqual", () => {
   it("returns false when starred changes", () => {
     const a = toSessionSummaryPayload(makeSession(), false);
     const b = toSessionSummaryPayload(makeSession(), true);
+    expect(sessionSummariesEqual(a, b)).toBe(false);
+  });
+
+  it("returns false when archived changes", () => {
+    const a = toSessionSummaryPayload(makeSession(), false);
+    const b = toSessionSummaryPayload(makeSession(), false, { archived: true });
     expect(sessionSummariesEqual(a, b)).toBe(false);
   });
 

@@ -139,6 +139,14 @@ describe("buildGroups state mode", () => {
     ]);
   });
 
+  it("shows only archived rows when Status is Archived", () => {
+    const rows = [row("live"), row("archived", { archived: true, lastActivityAt: NOW - 2 * HOUR })];
+
+    expect(summarize(buildGroups(rows, prefs({ statusFilter: "archived" }), NOW))).toStrictEqual([
+      { key: "state-done", label: "Completed", rows: ["archived"], hiddenCount: 0 },
+    ]);
+  });
+
   it("hides archived rows unless Status is All", () => {
     const rows = [row("live"), row("archived", { archived: true, lastActivityAt: NOW - 2 * HOUR })];
 

@@ -507,6 +507,7 @@ interface SessionStateObservation {
   sessionId: string;
   label: string;
   state: ActivityState;
+  archived: boolean;
 }
 
 function toSessionStateObservation(summary: SessionSummaryPayload): SessionStateObservation | null {
@@ -515,6 +516,7 @@ function toSessionStateObservation(summary: SessionSummaryPayload): SessionState
     sessionId: summary.id,
     label: summary.title.trim() || summary.projectName,
     state: summary.state,
+    archived: summary.archived,
   };
 }
 
@@ -967,6 +969,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
             sessionId,
             label: existing?.label ?? sessionId,
             state,
+            archived: existing?.archived ?? false,
           };
       if (observation === null) return;
       sessionStateObservationsRef.current.set(sessionId, observation);

@@ -7,6 +7,8 @@ interface AttentionSettings {
 export interface AttentionBadgeSession {
   sessionId: string;
   displayState: DisplayState;
+  /** Archived sessions never ask for attention. */
+  archived: boolean;
 }
 
 /** Shared global and per-session gate for every surface that requests attention. */
@@ -25,9 +27,12 @@ export function shouldNotify(
   permission: NotificationPermission,
   sessionId: string,
   viewedSessionId: string | null,
+  archived: boolean,
 ): boolean {
   return (
-    permission === "granted" && sessionAlertsEnabled(settings, hidden, sessionId, viewedSessionId)
+    permission === "granted" &&
+    !archived &&
+    sessionAlertsEnabled(settings, hidden, sessionId, viewedSessionId)
   );
 }
 
@@ -50,6 +55,7 @@ export function countSessionsNeedingAttention(
 ): number {
   return sessions.filter(
     (session) =>
+      !session.archived &&
       (session.displayState === "waiting" || session.displayState === "review") &&
       sessionAlertsEnabled(settings, hidden, session.sessionId, viewedSessionId),
   ).length;

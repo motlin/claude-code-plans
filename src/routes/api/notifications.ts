@@ -2,6 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { NotificationsResponse } from "../../lib/api/notifications";
 import { rejectCrossSite } from "../../lib/same-origin-guard";
+import {
+  invalidSessionStatusResponse,
+  parseSessionStatusParam,
+} from "../../lib/api/session-status-param";
 
 export const Route = createFileRoute("/api/notifications")({
   server: {
@@ -9,13 +13,22 @@ export const Route = createFileRoute("/api/notifications")({
       GET: async ({ request }: { request: Request }) => {
         const { getNotifications, getNotificationsForProject, isNotificationUnread } =
           await import("../../lib/notifications-store");
+        const { getDb } = await import("../../lib/db");
+        const { getArchivedSessionIds } = await import("../../lib/db/queries");
         const url = new URL(request.url);
+        const status = parseSessionStatusParam(url);
+        if (status === null) return invalidSessionStatusResponse();
         const projectId = url.searchParams.get("projectId");
         const notifications = projectId
           ? getNotificationsForProject(projectId)
           : getNotifications();
+        const archivedIds = getArchivedSessionIds(getDb().index);
+        const visible = notifications.filter((notification) => {
+          const archived = archivedIds.has(notification.sessionId);
+          return status === "all" || (status === "archived") === archived;
+        });
         const response = {
-          notifications: notifications.map((notification) => ({
+          notifications: visible.map((notification) => ({
             ...notification,
             unread: isNotificationUnread(notification.id),
           })),

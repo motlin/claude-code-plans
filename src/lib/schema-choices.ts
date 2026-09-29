@@ -114,6 +114,7 @@ export const sessionSortByLabels = {
 
 export const sessionStatusFilterLabels = {
   active: "Active",
+  archived: "Archived",
   all: "All",
 } satisfies Record<z.infer<typeof SessionStatusFilterSchema>, string>;
 

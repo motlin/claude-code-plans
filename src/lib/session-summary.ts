@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import * as schema from "./db/schema";
 import { getActiveSessionEntry, type ActiveSessionEntry } from "./active-session-store";
 import { getPendingApprovalsForProject } from "./db/pending-approvals-cache";
+import { isSessionArchived } from "./db/queries";
 import { isSessionUnseen } from "./db/viewed-state";
 import type { ActiveSessionPayload, SessionSummaryPayload } from "./hook-events";
 import { getLiveSubagentNodes } from "./live-subagent-store";
@@ -29,6 +30,8 @@ export function toActiveSessionPayload(entry: ActiveSessionEntry): ActiveSession
 interface SessionSummaryOptions {
   /** The durable viewed-state `unseen` flag (see `getUnseenSessionIds`). */
   unseen?: boolean;
+  /** The app-side archive flag (see `getArchivedSessionIds`). */
+  archived?: boolean;
   activeSession?: ActiveSessionEntry | null;
   now?: number;
 }
@@ -42,6 +45,7 @@ export function toSessionSummaryPayload(
   starred: boolean,
   {
     unseen = false,
+    archived = false,
     activeSession = getActiveSessionEntry(entry.id),
     now = Date.now(),
   }: SessionSummaryOptions = {},
@@ -79,6 +83,7 @@ export function toSessionSummaryPayload(
     messageCount: entry.messageCount,
     gitBranch: entry.gitBranch,
     starred,
+    archived,
     state: activeSession === null ? "ended" : pendingInput ? "waiting" : activeSession.state,
     bucket,
     liveAgentCount,
@@ -130,6 +135,10 @@ export function buildSessionSummaryPayloadFromDb(
       isSidechain: row.isSidechain === 1,
     },
     !!starredRow,
-    { unseen: isSessionUnseen(db, sessionId), activeSession: activeSessionLookup(sessionId) },
+    {
+      unseen: isSessionUnseen(db, sessionId),
+      archived: isSessionArchived(db, sessionId),
+      activeSession: activeSessionLookup(sessionId),
+    },
   );
 }

@@ -37,6 +37,7 @@ function session(id: string, title: string, bucket: string, minutesAgo: number) 
     projectName: "Gamma",
     messageCount: 4,
     starred: false,
+    archived: false,
     state: bucket === "working" ? "working" : "idle",
     bucket,
     liveAgentCount: 0,

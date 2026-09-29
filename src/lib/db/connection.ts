@@ -198,6 +198,14 @@ CREATE TABLE IF NOT EXISTS reviews (
   bundle TEXT NOT NULL
 );`,
   },
+  {
+    schemaVersion: 31,
+    statements: `
+CREATE TABLE IF NOT EXISTS archived_sessions (
+  session_id TEXT PRIMARY KEY,
+  archived_at INTEGER NOT NULL
+);`,
+  },
 ];
 
 // FTS5 tables can only seek by rowid or MATCH, so a `DELETE ... WHERE path = ?`

@@ -88,7 +88,7 @@ function useSessionMenu(session: SessionListItem) {
     title: session.title,
     pinned: session.starred,
     readState: readStateOf(session, unseen),
-    archived: false,
+    archived: session.archived,
     prUrl: null,
     hasLivePane: herdr?.panes.some((pane) => pane.sessionId === session.id) ?? false,
     forkDisabledReason: null,

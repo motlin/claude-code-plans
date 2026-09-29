@@ -115,6 +115,8 @@ export interface SessionSummaryPayload {
   messageCount: number;
   gitBranch: string | undefined;
   starred: boolean;
+  /** App-side archive flag (`archived_sessions`); the JSONL is never touched. */
+  archived: boolean;
   state: SessionSummaryState;
   /** Display bucket from `resolveSessionBucket`. */
   bucket: SessionBucket;

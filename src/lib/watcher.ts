@@ -15,6 +15,7 @@ import {
 } from "./db/indexer";
 import {
   listSessionsForProjectFromDb,
+  getArchivedSessionIds,
   getSessionProjectId,
   getTasksForProject,
   getStarredSessionIds,
@@ -166,6 +167,7 @@ function sessionSummariesEqual(a: SessionSummaryPayload, b: SessionSummaryPayloa
     a.gitBranch === b.gitBranch &&
     a.projectName === b.projectName &&
     a.starred === b.starred &&
+    a.archived === b.archived &&
     a.state === b.state &&
     a.unseen === b.unseen &&
     a.blockedSince === b.blockedSince
@@ -205,14 +207,19 @@ function tasksEqual(a: TaskSummaryPayload, b: TaskSummaryPayload): boolean {
  */
 function diffAndBroadcastSessions(projectId: string): void {
   const { index } = getDb();
-  const rows = listSessionsForProjectFromDb(index, projectId);
+  // Archived sessions stay in the snapshot so archiving never reads as a removal.
+  const rows = listSessionsForProjectFromDb(index, projectId, { status: "all" });
   const starredIds = getStarredSessionIds(index);
   const unseenIds = getUnseenSessionIds(index);
+  const archivedIds = getArchivedSessionIds(index);
   const next = new Map<string, SessionSummaryPayload>();
   for (const row of rows) {
     next.set(
       row.id,
-      toSessionSummaryPayload(row, starredIds.has(row.id), { unseen: unseenIds.has(row.id) }),
+      toSessionSummaryPayload(row, starredIds.has(row.id), {
+        unseen: unseenIds.has(row.id),
+        archived: archivedIds.has(row.id),
+      }),
     );
   }
 

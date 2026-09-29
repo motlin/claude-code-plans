@@ -32,6 +32,7 @@ function recentSession(id: string, title: string, bucket: Bucket = "done") {
     messageCount: 1,
     gitBranch: undefined,
     starred: false,
+    archived: false,
     state: "unknown" as const,
     bucket,
     liveAgentCount: 0,

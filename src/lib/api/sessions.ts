@@ -10,6 +10,7 @@ import { apiFetch } from "./client";
 import { JsonValueSchema } from "../schemas";
 import { SessionViewedStateSchema } from "./viewed-state";
 import { SessionBucketSchema } from "../session-state";
+import type { SessionStatusFilter } from "../session-groups";
 
 export const SessionSummaryStateSchema = z.enum(["idle", "working", "waiting", "unknown", "ended"]);
 
@@ -24,6 +25,7 @@ const SessionListItemSchema = z.object({
   messageCount: z.number(),
   gitBranch: z.string().optional(),
   starred: z.boolean(),
+  archived: z.boolean(),
   state: SessionSummaryStateSchema,
   bucket: SessionBucketSchema,
   liveAgentCount: z.number(),
@@ -268,8 +270,10 @@ export const sessionQueryKeys = {
   all: () => SESSION_QUERY_ROOT,
   recentLists: () => RECENT_SESSIONS_QUERY_ROOT,
   recent: (limit: number) => [...RECENT_SESSIONS_QUERY_ROOT, limit] as const,
-  recentInfinite: (limit: number = DEFAULT_RECENT_PAGE_SIZE) =>
-    [...RECENT_SESSIONS_QUERY_ROOT, "infinite", limit] as const,
+  recentInfinite: (
+    limit: number = DEFAULT_RECENT_PAGE_SIZE,
+    status: SessionStatusFilter = "active",
+  ) => [...RECENT_SESSIONS_QUERY_ROOT, "infinite", limit, status] as const,
   groupedLists: () => GROUPED_SESSIONS_QUERY_ROOT,
   grouped: (perProject: number = SESSION_GROUP_PAGE_SIZE) =>
     [...GROUPED_SESSIONS_QUERY_ROOT, perProject] as const,
@@ -295,12 +299,19 @@ export const recentSessionsQueryOptions = (limit: number) =>
   });
 
 /** Infinite, cursor-paginated recent sessions — for the main sessions list. */
-export const recentSessionsInfiniteQueryOptions = (limit: number = DEFAULT_RECENT_PAGE_SIZE) =>
+export const recentSessionsInfiniteQueryOptions = (
+  limit: number = DEFAULT_RECENT_PAGE_SIZE,
+  status: SessionStatusFilter = "active",
+) =>
   infiniteQueryOptions({
-    queryKey: sessionQueryKeys.recentInfinite(limit),
+    queryKey: sessionQueryKeys.recentInfinite(limit, status),
     queryFn: ({ pageParam }) => {
       const cursor = pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : "";
-      return apiFetch(`/api/sessions/recent?limit=${limit}${cursor}`, RecentSessionsResponse);
+      const statusParam = status === "active" ? "" : `&status=${status}`;
+      return apiFetch(
+        `/api/sessions/recent?limit=${limit}${cursor}${statusParam}`,
+        RecentSessionsResponse,
+      );
     },
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
@@ -481,6 +492,7 @@ export const sessionSubagentsQueryOptions = (id: string) =>
   });
 
 export const StarredMutationResponse = z.object({ starred: z.boolean() });
+export const ArchivedMutationResponse = z.object({ archived: z.boolean() });
 export const RenameSessionBody = z.object({ title: z.string() }).strict();
 export const RenameSessionResponse = z
   .object({ customTitle: z.string().nullable(), title: z.string() })

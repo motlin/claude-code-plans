@@ -27,6 +27,7 @@ function session(id: string, title: string, project: string, mtime: string) {
     projectName: project,
     messageCount: 4,
     starred: false,
+    archived: false,
     state: "ended",
     bucket: "done",
     liveAgentCount: 0,

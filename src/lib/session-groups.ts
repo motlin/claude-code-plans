@@ -9,8 +9,9 @@ type SessionGroupBy = z.infer<typeof SessionGroupBySchema>;
 export const SessionSortBySchema = z.enum(["name", "created", "activity"]);
 type SessionSortBy = z.infer<typeof SessionSortBySchema>;
 
-/** Upstream also has "Archived"; add it once sessions can be archived. */
-export const SessionStatusFilterSchema = z.enum(["active", "all"]);
+/** "active" hides archived sessions, "archived" shows only them, "all" shows both. */
+export const SessionStatusFilterSchema = z.enum(["active", "archived", "all"]);
+export type SessionStatusFilter = z.infer<typeof SessionStatusFilterSchema>;
 
 export const SessionActivityDaysSchema = z.enum(["1d", "3d", "7d", "30d", "all"]);
 type SessionActivityDays = z.infer<typeof SessionActivityDaysSchema>;
@@ -100,6 +101,7 @@ export function clearSessionFilters(prefs: SessionListPrefs): SessionListPrefs {
 
 function isVisible(row: SessionGroupRow, prefs: SessionListPrefs, now: number): boolean {
   if (prefs.statusFilter === "active" && row.archived) return false;
+  if (prefs.statusFilter === "archived" && !row.archived) return false;
   const windowDays = ACTIVITY_WINDOW_DAYS[prefs.activityDays];
   if (prefs.groupBy !== "state" || windowDays === null || row.bucket === "working") return true;
   return now - row.lastActivityAt <= windowDays * DAY_MS;
