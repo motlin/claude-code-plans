@@ -1,11 +1,9 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
 import { formatCount } from "../lib/pluralize";
 
 // Tokyo Night–inspired segment colors from claude-powerline.json
 const SEGMENT_COLORS = {
-  directory: { bg: "#2a2a2a", fg: "#e0e0e0" },
-  git: { bg: "#3a3a3a", fg: "#d0d0d0" },
   version: { bg: "#7a7a7a", fg: "#f0f0f0" },
   metrics: { bg: "#565656", fg: "#e5e5e5" },
   context: { bg: "#6a6a6a", fg: "#ffffff" },
@@ -21,6 +19,7 @@ interface SegmentProps {
 function Segment({ label, color }: SegmentProps) {
   return (
     <span
+      data-status-segment=""
       className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap"
       style={{ backgroundColor: color.bg, color: color.fg }}
     >
@@ -60,50 +59,25 @@ function getNestedNumber(obj: Record<string, unknown>, ...keys: string[]): numbe
   return typeof current === "number" ? current : undefined;
 }
 
-function getNestedString(obj: Record<string, unknown>, ...keys: string[]): string | undefined {
-  let current: unknown = obj;
-  for (const key of keys) {
-    if (current === null || typeof current !== "object") return undefined;
-    current = (current as Record<string, unknown>)[key];
-  }
-  return typeof current === "string" ? current : undefined;
-}
-
 interface StatusFooterProps {
   data: Record<string, unknown>;
-  gitBranch: string | null;
-  gitSha: string | null;
-  gitClean: boolean | null;
   messageCount: number;
-  pendingTaskCount: number;
 }
 
-export function StatusFooter({
-  data,
-  gitBranch,
-  gitSha,
-  gitClean,
-  messageCount,
-  pendingTaskCount,
-}: StatusFooterProps) {
-  const [expanded, setExpanded] = useState(false);
+/**
+ * Statusline data with no upstream home — version, duration · msgs, context, rate limits and
+ * cost — behind a details toggle. Project, branch and line counts live in the branch strip,
+ * and the model in the composer chin.
+ */
+export function StatusFooter({ data, messageCount }: StatusFooterProps) {
+  const [open, setOpen] = useState(false);
+  const [rawExpanded, setRawExpanded] = useState(false);
 
   const segments: Array<{
     key: string;
     label: string;
     color: { bg: string; fg: string };
   }> = [];
-
-  // Directory (basename of cwd)
-  const cwd = (data["cwd"] as string) ?? getNestedString(data, "workspace", "current_dir");
-  if (cwd) {
-    const basename = cwd.split("/").pop() ?? cwd;
-    segments.push({
-      key: "dir",
-      label: basename,
-      color: SEGMENT_COLORS.directory,
-    });
-  }
 
   // Version
   const version = data["version"];
@@ -135,22 +109,6 @@ export function StatusFooter({
     });
   }
 
-  // Lines added/removed
-  const linesAdded = getNestedNumber(data, "cost", "total_lines_added");
-  const linesRemoved = getNestedNumber(data, "cost", "total_lines_removed");
-  if (linesAdded !== undefined || linesRemoved !== undefined) {
-    const parts: string[] = [];
-    if (linesAdded !== undefined && linesAdded > 0) parts.push(`+${linesAdded}`);
-    if (linesRemoved !== undefined && linesRemoved > 0) parts.push(`-${linesRemoved}`);
-    if (parts.length > 0) {
-      segments.push({
-        key: "lines",
-        label: parts.join(" "),
-        color: SEGMENT_COLORS.metrics,
-      });
-    }
-  }
-
   // Context window: tokens + percentage
   const contextPct = getNestedNumber(data, "context_window", "used_percentage");
   const totalInput = getNestedNumber(data, "context_window", "total_input_tokens") ?? 0;
@@ -161,35 +119,6 @@ export function StatusFooter({
     let label = `${formatTokens(totalTokens)} (${Math.round(contextPct)}%)`;
     if (windowSize) label += ` / ${formatTokens(windowSize)}`;
     segments.push({ key: "ctx", label, color: SEGMENT_COLORS.context });
-  }
-
-  // Git branch + SHA + working tree status
-  if (gitBranch) {
-    let gitLabel = `⎇ ${gitBranch}`;
-    if (gitSha) gitLabel += ` ${gitSha}`;
-    if (gitClean === true) gitLabel += " ✓";
-    else if (gitClean === false) gitLabel += " ✗";
-    segments.push({ key: "git", label: gitLabel, color: SEGMENT_COLORS.git });
-  }
-
-  // Task count
-  if (pendingTaskCount > 0) {
-    segments.push({
-      key: "tasks",
-      label: formatCount(pendingTaskCount, "task"),
-      color: SEGMENT_COLORS.metrics,
-    });
-  }
-
-  // Model
-  const modelName =
-    getNestedString(data, "model", "display_name") ?? getNestedString(data, "model", "id");
-  if (modelName) {
-    segments.push({
-      key: "model",
-      label: modelName,
-      color: SEGMENT_COLORS.version,
-    });
   }
 
   // Rate limits
@@ -220,24 +149,39 @@ export function StatusFooter({
 
   return (
     <div className="border-t border-border bg-surface-2">
-      <div className="flex flex-wrap items-center gap-1.5 px-4 py-2">
-        {segments.map((seg) => (
-          <Segment key={seg.key} label={seg.label} color={seg.color} />
-        ))}
-        <button
-          type="button"
-          onClick={() => setExpanded(!expanded)}
-          className="ml-auto shrink-0 p-1 text-t6 hover:text-primary transition-colors cursor-pointer"
-          title={expanded ? "Collapse raw JSON" : "Expand raw JSON"}
-        >
-          {expanded ? (
-            <ChevronDown className="h-3.5 w-3.5" />
-          ) : (
-            <ChevronUp className="h-3.5 w-3.5" />
-          )}
-        </button>
-      </div>
-      {expanded && (
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        className="flex w-full cursor-pointer items-center gap-1 px-4 py-1 text-caption text-t6 transition-colors hover:text-primary"
+      >
+        {open ? (
+          <ChevronDown aria-hidden className="h-3 w-3" />
+        ) : (
+          <ChevronRight aria-hidden className="h-3 w-3" />
+        )}
+        Session details
+      </button>
+      {open && (
+        <div data-status-segments="" className="flex flex-wrap items-center gap-1.5 px-4 py-2">
+          {segments.map((seg) => (
+            <Segment key={seg.key} label={seg.label} color={seg.color} />
+          ))}
+          <button
+            type="button"
+            onClick={() => setRawExpanded(!rawExpanded)}
+            className="ml-auto shrink-0 p-1 text-t6 hover:text-primary transition-colors cursor-pointer"
+            title={rawExpanded ? "Collapse raw JSON" : "Expand raw JSON"}
+          >
+            {rawExpanded ? (
+              <ChevronDown className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronUp className="h-3.5 w-3.5" />
+            )}
+          </button>
+        </div>
+      )}
+      {open && rawExpanded && (
         <div className="border-t border-border max-h-80 overflow-auto">
           <pre className="px-4 py-3 text-xs font-mono text-secondary leading-relaxed">
             {JSON.stringify(data, null, 2)}

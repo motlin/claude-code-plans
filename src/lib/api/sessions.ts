@@ -104,6 +104,8 @@ export const SessionDetailResponse = z
     teamNames: z.array(z.string()).optional(),
     forkedFromSessionId: z.string().optional(),
     pr: SessionPrLinkSchema.optional(),
+    /** The PR status service's best answer for this session, when it knows one. */
+    prStatus: PrStatusSchema.optional(),
     /** The plan file linked to this session through `plan_sessions`. */
     planFilename: z.string().optional(),
   })

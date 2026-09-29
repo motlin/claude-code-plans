@@ -138,6 +138,53 @@ function OriginPill({
   );
 }
 
+/** The session fields the project menu reads. */
+export type ProjectMenuSession = Pick<
+  SessionDetailData,
+  "projectPath" | "cwd" | "gitBranch" | "pr"
+>;
+
+/** The project menu's items, shared by the titlebar pill and the composer branch strip. */
+export function ProjectMenuItems({
+  sessionId,
+  session,
+}: {
+  sessionId: string;
+  session: ProjectMenuSession;
+}) {
+  const toast = useToast();
+  const path = session.projectPath ?? session.cwd;
+  const repository = repositoryUrl(session.pr);
+  const branch = session.gitBranch;
+
+  const copy = (text: string, what: string) => copyWithToast(toast, text, what);
+
+  return (
+    <>
+      {path !== null && (
+        <MenuItem
+          onSelect={() => {
+            openSessionInFinder(sessionId).catch(() => {
+              toast({ kind: "error", message: "Couldn’t open the folder in Finder." });
+            });
+          }}
+        >
+          Open in Finder
+        </MenuItem>
+      )}
+      {path !== null && <MenuItem onSelect={() => void copy(path, "Path")}>Copy path</MenuItem>}
+      {branch !== null && (
+        <MenuItem onSelect={() => void copy(branch, "Branch name")}>Copy branch name</MenuItem>
+      )}
+      {repository !== null && (
+        <MenuItem onSelect={() => window.open(repository, "_blank", "noopener,noreferrer")}>
+          Open repository on GitHub
+        </MenuItem>
+      )}
+    </>
+  );
+}
+
 function ProjectPill({
   sessionId,
   data,
@@ -147,12 +194,7 @@ function ProjectPill({
   data: SessionDetailData;
   compact: boolean;
 }) {
-  const toast = useToast();
   const path = data.projectPath ?? data.cwd;
-  const repository = repositoryUrl(data.pr);
-
-  const copy = (text: string, what: string) => copyWithToast(toast, text, what);
-
   return (
     <Menu>
       <MenuTrigger
@@ -163,28 +205,7 @@ function ProjectPill({
         <PillContent icon={FolderGit2} label={data.projectName} compact={compact} />
       </MenuTrigger>
       <MenuContent>
-        {path !== null && (
-          <MenuItem
-            onSelect={() => {
-              openSessionInFinder(sessionId).catch(() => {
-                toast({ kind: "error", message: "Couldn’t open the folder in Finder." });
-              });
-            }}
-          >
-            Open in Finder
-          </MenuItem>
-        )}
-        {path !== null && <MenuItem onSelect={() => void copy(path, "Path")}>Copy path</MenuItem>}
-        {data.gitBranch !== null && (
-          <MenuItem onSelect={() => void copy(data.gitBranch ?? "", "Branch name")}>
-            Copy branch name
-          </MenuItem>
-        )}
-        {repository !== null && (
-          <MenuItem onSelect={() => window.open(repository, "_blank", "noopener,noreferrer")}>
-            Open repository on GitHub
-          </MenuItem>
-        )}
+        <ProjectMenuItems sessionId={sessionId} session={data} />
       </MenuContent>
     </Menu>
   );

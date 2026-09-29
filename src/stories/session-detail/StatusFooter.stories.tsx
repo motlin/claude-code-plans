@@ -32,11 +32,7 @@ export const ActiveSession: Story = {
         seven_day: { used_percentage: 5 },
       },
     },
-    gitBranch: "feature/storybook",
-    gitSha: "a1b2c3d",
-    gitClean: false,
     messageCount: 24,
-    pendingTaskCount: 3,
   },
 };
 
@@ -51,11 +47,7 @@ export const CompletedSession: Story = {
       },
       model: { display_name: "Claude Haiku 3.5" },
     },
-    gitBranch: "main",
-    gitSha: "f4e5d6c",
-    gitClean: true,
     messageCount: 4,
-    pendingTaskCount: 0,
   },
 };
 
@@ -64,10 +56,6 @@ export const MinimalData: Story = {
     data: {
       cwd: "/tmp/scratch",
     },
-    gitBranch: null,
-    gitSha: null,
-    gitClean: null,
     messageCount: 1,
-    pendingTaskCount: 0,
   },
 };

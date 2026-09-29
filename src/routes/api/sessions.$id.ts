@@ -38,6 +38,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
             title: sessions.title,
             customTitle: sessions.customTitle,
             projectId: sessions.projectId,
+            mtimeMs: sessions.mtimeMs,
           })
           .from(sessions)
           .where(eq(sessions.id, id))
@@ -128,6 +129,16 @@ export const Route = createFileRoute("/api/sessions/$id")({
 
         const pr = getSessionPrLink(index, id);
         if (pr !== null) detail.pr = pr;
+
+        const { lookupPrStatus } = await import("../../lib/pr-status-service");
+        const prStatus = lookupPrStatus({
+          projectId: sessionRow.projectId,
+          prLink: pr ?? undefined,
+          cwd: sessionMeta?.cwd ?? undefined,
+          branch: sessionMeta?.gitBranch ?? undefined,
+          mtimeMs: sessionRow.mtimeMs,
+        });
+        if (prStatus !== null) detail.prStatus = prStatus;
 
         const planFilename = getPlanFilenameForSession(index, id);
         if (planFilename !== null) detail.planFilename = planFilename;

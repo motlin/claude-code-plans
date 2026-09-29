@@ -33,6 +33,7 @@ import {
 } from "./panes/files-pane";
 import { TerminalPaneShortcut, useRegisterTerminalPane } from "./panes/terminal-pane";
 import { StatusFooter } from "./status-footer";
+import { BranchStrip } from "./branch-strip";
 import { TranscriptHistoryLoader, findScrollContainer } from "./transcript-history-loader";
 import { Tooltip } from "./ui/tooltip";
 import { SessionPaneControls } from "./view-options-menu";
@@ -651,6 +652,9 @@ function SessionView({
           >
             <SessionDock anchorRef={scrollAnchorRef}>
               {!chromeHidden && data.projectPath && (
+                <BranchStrip sessionId={sessionId} session={data} statusline={statusline} />
+              )}
+              {!chromeHidden && data.projectPath && (
                 <Composer
                   variant="session"
                   draftKey={sessionId}
@@ -681,16 +685,7 @@ function SessionView({
               )}
             </SessionDock>
           </div>
-          {statusline && (
-            <StatusFooter
-              data={statusline}
-              gitBranch={data.gitBranch}
-              gitSha={data.gitSha}
-              gitClean={data.gitClean}
-              messageCount={data.messageCount}
-              pendingTaskCount={data.pendingTaskCount}
-            />
-          )}
+          {statusline && <StatusFooter data={statusline} messageCount={data.messageCount} />}
         </div>
       </TileHost>
     </div>

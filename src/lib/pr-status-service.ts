@@ -219,15 +219,18 @@ export function initPrStatusService(onChange: (projectId: string) => void): void
   });
 }
 
+/** A PR status from the running service, or null before `initPrStatusService` (tests). */
+export function lookupPrStatus(target: PrStatusTarget): PrStatus | null {
+  return service?.lookup(target) ?? null;
+}
+
 /** A session row's PR status, or null before `initPrStatusService` (tests) or without data. */
 export function lookupSessionPrStatus(entry: SessionEntry): PrStatus | null {
-  return (
-    service?.lookup({
-      projectId: entry.project,
-      prLink: entry.pr,
-      cwd: entry.cwd,
-      branch: entry.gitBranch,
-      mtimeMs: entry.mtime.getTime(),
-    }) ?? null
-  );
+  return lookupPrStatus({
+    projectId: entry.project,
+    prLink: entry.pr,
+    cwd: entry.cwd,
+    branch: entry.gitBranch,
+    mtimeMs: entry.mtime.getTime(),
+  });
 }
