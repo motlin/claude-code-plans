@@ -375,12 +375,12 @@ describe("file search results", () => {
       target: fileSearchViewerTarget("/tmp/test/alice.ts", 200),
     }).toStrictEqual({
       decodedPath: "/tmp/test/with space/alice#notes.ts",
-      invalidQuerySearch: { q: "", mode: "files" },
+      invalidQuerySearch: { q: "", type: "files" },
       navigation: {
         pathToken: "L3RtcC90ZXN0L3dpdGggc3BhY2UvYWxpY2Ujbm90ZXMudHM",
         hash: "L100",
       },
-      search: { q: "needle", mode: "files" },
+      search: { q: "needle", type: "files" },
       target: { absolutePath: "/tmp/test/alice.ts", lineNumber: 200 },
     });
   });

@@ -88,8 +88,8 @@ const TARGETS: ScreenshotTarget[] = [
   { filename: "tasks.png", path: "/tasks", heading: "Tasks" },
   {
     filename: "search.png",
-    path: "/search?q=fixture&mode=conversations",
-    heading: "Search Sessions",
+    path: "/search?q=fixture",
+    heading: "Search",
   },
   { filename: "plans.png", path: "/plans", heading: "Claude Plans" },
   { filename: "memories.png", path: "/memories", heading: "Claude Memories" },

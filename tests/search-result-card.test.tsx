@@ -3,80 +3,78 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vite-plus/test";
 import { SearchResultCard } from "../src/routes/search";
-import type { MessageSearchItem, SessionSearchItem } from "../src/lib/api/search";
+import type { UnifiedSearchItem } from "../src/lib/api/search";
 
-function makeSessionResult(overrides: Partial<SessionSearchItem> = {}): SessionSearchItem {
+const NOW = Date.parse("2026-08-10T12:00:00.000Z");
+const DAY_MS = 24 * 60 * 60_000;
+
+function makeItem(overrides: Partial<UnifiedSearchItem> = {}): UnifiedSearchItem {
   return {
-    sessionId: "sess-1",
+    kind: "session",
+    id: "sess-1",
     title: "Fix the login flow",
-    titleHtml: "Fix the login flow",
-    firstPrompt: "Fix the login flow before release",
-    summary: null,
-    snippet: "",
+    titleMatches: [{ start: 8, end: 13 }],
     projectId: "proj-a",
     projectName: "Alpha",
-    mtime: "2026-08-01T00:00:00.000Z",
-    messageCount: 5,
-    rank: -1,
+    mtime: new Date(NOW - 3 * DAY_MS).toISOString(),
     ...overrides,
   };
 }
 
-function makeMessageResult(overrides: Partial<MessageSearchItem> = {}): MessageSearchItem {
-  return {
-    sessionId: "sess-2",
-    title: "Fix the login flow",
-    snippet: "we adjusted the <mark>login</mark> redirect",
-    projectId: "proj-a",
-    projectName: "Alpha",
-    mtime: "2026-08-01T00:00:00.000Z",
-    messageCount: 5,
-    rank: -1,
-    ...overrides,
-  };
+function runs(element: Element): string[] {
+  return [...element.querySelectorAll(".font-semibold.text-primary")].map(
+    (run) => run.textContent ?? "",
+  );
+}
+
+function part(element: Element, name: string): string | null {
+  return element.querySelector(`[data-search-${name}]`)?.textContent ?? null;
 }
 
 describe("SearchResultCard", () => {
-  it("does not render the snippet line when it equals the title", () => {
-    const result = makeSessionResult({ snippet: "Fix the login flow" });
-    const view = render(<SearchResultCard result={result} />);
-    const occurrences = view.container.textContent?.split("Fix the login flow").length;
-    expect(occurrences).toBe(2); // title only: exactly one occurrence
+  it("renders the title as highlight runs, not <mark>", () => {
+    const view = render(<SearchResultCard item={makeItem()} now={NOW} />);
+    expect({
+      title: part(view.container, "label"),
+      runs: runs(view.container),
+      marks: view.container.querySelectorAll("mark").length,
+    }).toStrictEqual({ title: "Fix the login flow", runs: ["login"], marks: 0 });
   });
 
-  it("does not render the snippet line when it equals the title after unescaping", () => {
-    const result = makeSessionResult({
-      title: 'Fix the <a> & "b" login flow',
-      titleHtml: "Fix the &lt;a&gt; &amp; &quot;b&quot; login flow",
-      snippet: "Fix the &lt;a&gt; &amp; &quot;b&quot; login flow",
+  it("renders a quoted snippet with its own runs beside the title", () => {
+    const item = makeItem({
+      titleMatches: [],
+      snippet: { text: "adjusted the login redirect", matches: [{ start: 13, end: 18 }] },
     });
-    const view = render(<SearchResultCard result={result} />);
-    const occurrences = view.container.textContent?.split('Fix the <a> & "b" login flow').length;
-    expect(occurrences).toBe(2);
-  });
-
-  it("renders highlighted title marks", () => {
-    const result = makeSessionResult({
-      titleHtml: "Fix the <mark>login</mark> flow",
+    const view = render(<SearchResultCard item={item} now={NOW} />);
+    expect({ snippet: part(view.container, "snippet"), runs: runs(view.container) }).toStrictEqual({
+      snippet: "“adjusted the login redirect”",
+      runs: ["login"],
     });
-    const view = render(<SearchResultCard result={result} />);
-    const mark = view.container.querySelector("mark");
-    expect(mark?.textContent).toBe("login");
   });
 
-  it("renders a differentiated snippet with highlighting", () => {
-    const result = makeSessionResult({
-      snippet: "...before <mark>release</mark> next week",
-    });
-    const view = render(<SearchResultCard result={result} />);
-    const mark = view.container.querySelector("mark");
-    expect(mark?.textContent).toBe("release");
-    expect(view.container.textContent).toContain("...before release next week");
+  it("omits an empty snippet", () => {
+    const view = render(
+      <SearchResultCard item={makeItem({ snippet: { text: "", matches: [] } })} now={NOW} />,
+    );
+    expect(part(view.container, "snippet")).toBeNull();
   });
 
-  it("renders message results without titleHtml using the plain title", () => {
-    const view = render(<SearchResultCard result={makeMessageResult()} />);
-    expect(view.container.textContent).toContain("Fix the login flow");
-    expect(view.container.querySelector("mark")?.textContent).toBe("login");
+  it("shows the muted project name and the relative bucket as meta", () => {
+    const view = render(<SearchResultCard item={makeItem()} now={NOW} />);
+    expect(part(view.container, "meta")).toBe("Alpha · Past week");
+  });
+
+  it("shows only the project name when the bucket is empty (over a year old)", () => {
+    const item = makeItem({ mtime: new Date(NOW - 400 * DAY_MS).toISOString() });
+    const view = render(<SearchResultCard item={item} now={NOW} />);
+    expect(part(view.container, "meta")).toBe("Alpha");
+  });
+
+  it("marks the row with its kind", () => {
+    const view = render(<SearchResultCard item={makeItem({ kind: "plan" })} now={NOW} />);
+    expect(view.container.querySelector("[data-item-type]")?.getAttribute("data-item-type")).toBe(
+      "plan",
+    );
   });
 });

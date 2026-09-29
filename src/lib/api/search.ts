@@ -3,38 +3,6 @@ import { queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 import { SessionSummaryStateSchema } from "./sessions";
 
-export const SearchModeSchema = z.enum(["titles", "conversations", "files"]);
-export type SearchMode = z.infer<typeof SearchModeSchema>;
-
-const SessionSearchItemSchema = z.object({
-  sessionId: z.string(),
-  title: z.string(),
-  titleHtml: z.string(),
-  firstPrompt: z.string().nullable(),
-  summary: z.string().nullable(),
-  snippet: z.string(),
-  projectId: z.string(),
-  projectName: z.string(),
-  mtime: z.string(),
-  messageCount: z.number(),
-  rank: z.number(),
-});
-export type SessionSearchItem = z.infer<typeof SessionSearchItemSchema>;
-export const SessionSearchResponse = z.array(SessionSearchItemSchema);
-
-const MessageSearchItemSchema = z.object({
-  sessionId: z.string(),
-  title: z.string(),
-  snippet: z.string(),
-  projectId: z.string(),
-  projectName: z.string(),
-  mtime: z.string(),
-  messageCount: z.number(),
-  rank: z.number(),
-});
-export type MessageSearchItem = z.infer<typeof MessageSearchItemSchema>;
-export const MessageSearchResponse = z.array(MessageSearchItemSchema);
-
 const FileSearchMatchSchema = z
   .object({
     lineNumber: z.number().int().positive(),
@@ -67,24 +35,6 @@ export const FileSearchRootsResponse = z
     roots: z.array(z.string()),
   })
   .strict();
-
-export const sessionSearchQueryOptions = (query: string) =>
-  queryOptions({
-    queryKey: ["search", "sessions", query] as const,
-    queryFn: () =>
-      apiFetch(`/api/search/sessions?query=${encodeURIComponent(query)}`, SessionSearchResponse),
-    staleTime: Infinity,
-    gcTime: Infinity,
-  });
-
-export const messageSearchQueryOptions = (query: string) =>
-  queryOptions({
-    queryKey: ["search", "messages", query] as const,
-    queryFn: () =>
-      apiFetch(`/api/search/messages?query=${encodeURIComponent(query)}`, MessageSearchResponse),
-    staleTime: Infinity,
-    gcTime: Infinity,
-  });
 
 export const fileSearchQueryOptions = (query: string, scopeRoot: string) =>
   queryOptions({
@@ -162,15 +112,16 @@ export const UnifiedSearchResponse = z
   })
   .strict();
 
-/** `GET /api/search` params the palette sends; `type` defaults to all and `limit` to 25. */
+/** `GET /api/search` params the palette and page send; `type` defaults to all and `limit` to 25. */
 export type UnifiedSearchRequest = Pick<UnifiedSearchParams, "query"> &
-  Partial<Pick<UnifiedSearchParams, "type" | "project" | "date">>;
+  Partial<Pick<UnifiedSearchParams, "type" | "project" | "date" | "limit">>;
 
-function unifiedSearchUrl({ query, type, project, date }: UnifiedSearchRequest): string {
+function unifiedSearchUrl({ query, type, project, date, limit }: UnifiedSearchRequest): string {
   const parameters = new URLSearchParams({ query });
   if (type !== undefined && type !== "all") parameters.set("type", type);
   if (project !== undefined) parameters.set("project", project);
   if (date !== undefined) parameters.set("date", date);
+  if (limit !== undefined) parameters.set("limit", String(limit));
   return `/api/search?${parameters.toString()}`;
 }
 

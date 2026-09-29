@@ -3,7 +3,6 @@ import type { ChangedFileKindSchema } from "./changed-file-kind";
 import type { McpScopeSchema, PermissionBehaviorSchema, SkillSourceSchema } from "./api/customize";
 import type { PluginFileSchema, PluginListResponse } from "./api/plugins";
 import type {
-  SearchModeSchema,
   UnifiedSearchDateSchema,
   UnifiedSearchKindSchema,
   UnifiedSearchTypeSchema,
@@ -154,13 +153,7 @@ export const sessionStateKindLabels = {
   idle: "Idle",
 } satisfies Record<z.infer<typeof SessionStateKindSchema>, string>;
 
-export const searchModeLabels = {
-  titles: "Search titles",
-  conversations: "Search conversations",
-  files: "Search files",
-} satisfies Record<z.infer<typeof SearchModeSchema>, string>;
-
-const unifiedSearchTypeLabels = {
+export const unifiedSearchTypeLabels = {
   all: "All",
   sessions: "Sessions",
   plans: "Plans",
@@ -569,7 +562,6 @@ const toolNamesWithMcp = { ...toolNames, "mcp__*": true } as const;
 /** Maps walker path keys (see tests/schema-choices.test.ts) to choice maps. */
 export const schemaChoiceRegistry: Record<string, Record<string, string | true>> = {
   TaskStatusSchema: taskStatusLabels,
-  SearchModeSchema: searchModeLabels,
   UnifiedSearchTypeSchema: unifiedSearchTypeLabels,
   UnifiedSearchDateSchema: unifiedSearchDateLabels,
   UnifiedSearchKindSchema: unifiedSearchKindLabels,

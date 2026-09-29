@@ -1,87 +1,60 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { Brain, CornerDownLeft, File, FileText, MessageSquare } from "lucide-react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { FileSearchResults, fileSearchViewerNavigation } from "../components/file-search-results";
+import { HighlightRuns } from "../components/highlight-runs";
+import { useDebouncedValue } from "../hooks/use-debounced-value";
+import { encodeFilePath } from "../lib/api/file";
 import {
-  sessionSearchQueryOptions,
-  messageSearchQueryOptions,
-  SearchModeSchema,
+  unifiedSearchQueryOptions,
   UnifiedSearchTypeSchema,
+  type UnifiedSearchItem,
   type UnifiedSearchType,
-  type SearchMode,
-  type SessionSearchItem,
-  type MessageSearchItem,
 } from "../lib/api/search";
-import { searchModeLabels } from "../lib/schema-choices";
+import { assertNever } from "../lib/assert-never";
 import { formatCount } from "../lib/pluralize";
+import { unifiedSearchTypeLabels } from "../lib/schema-choices";
+import { relativeBucket } from "../lib/search-text";
 
-type SearchResult = SessionSearchItem | MessageSearchItem;
+/** The page lists more than the palette's 25 rows; 100 is the endpoint's cap. */
+const PAGE_LIMIT = 100;
+const QUERY_DEBOUNCE_MS = 150;
+const RESULTS_ID = "search-results";
 
-const MARK_CLASSES =
-  "[&_mark]:rounded-sm [&_mark]:bg-warning-100/30 [&_mark]:px-0.5 [&_mark]:text-primary";
+const KIND_ICONS = {
+  session: <MessageSquare />,
+  plan: <FileText />,
+  memory: <Brain />,
+  file: <File />,
+} as const satisfies Record<UnifiedSearchItem["kind"], ReactNode>;
 
-function unescapeHtml(value: string): string {
-  return value
-    .replaceAll("&lt;", "<")
-    .replaceAll("&gt;", ">")
-    .replaceAll("&quot;", '"')
-    .replaceAll("&#39;", "'")
-    .replaceAll("&amp;", "&");
-}
-
-function snippetRepeatsTitle(snippetHtml: string, title: string): boolean {
-  const text = unescapeHtml(snippetHtml.replaceAll("<mark>", "").replaceAll("</mark>", ""));
-  return text === title;
-}
-
-export function SearchResultCard({ result }: { result: SearchResult }) {
-  const titleHtml = "titleHtml" in result ? result.titleHtml : null;
-  const titleStyle = { fontSize: "14px", fontWeight: 430 } as const;
+/** The palette's search-row anatomy: kind icon, title runs, quoted snippet, then muted project and bucket meta. */
+export function SearchResultCard({ item, now }: { item: UnifiedSearchItem; now: number }) {
+  const bucket = relativeBucket(Date.parse(item.mtime), now);
   return (
-    <>
-      {titleHtml === null ? (
-        <div className="truncate" style={titleStyle}>
-          {result.title}
-        </div>
-      ) : (
-        <div
-          className={`truncate ${MARK_CLASSES}`}
-          style={titleStyle}
-          dangerouslySetInnerHTML={{ __html: titleHtml }}
-        />
-      )}
-      <div className="mt-0.5 flex items-center gap-2 text-xs text-t6">
-        <span>{result.projectName}</span>
-        {result.mtime && (
-          <>
-            <span>&middot;</span>
-            <span>{formatDate(result.mtime)}</span>
-          </>
+    <span data-item-type={item.kind} className="flex min-w-0 flex-1 items-center gap-2">
+      <span className="flex size-5 shrink-0 items-center justify-center [&_svg]:size-[18px]">
+        {KIND_ICONS[item.kind]}
+      </span>
+      <span className="flex min-w-0 flex-1 items-baseline gap-2">
+        <span data-search-label="" className="truncate">
+          <HighlightRuns text={item.title} matches={item.titleMatches} />
+        </span>
+        {item.snippet !== undefined && item.snippet.text !== "" && (
+          <span
+            data-search-snippet=""
+            className="max-w-[60%] shrink-0 overflow-hidden text-xs whitespace-nowrap text-ink-muted"
+          >
+            “<HighlightRuns text={item.snippet.text} matches={item.snippet.matches} />”
+          </span>
         )}
-        {result.messageCount > 0 && (
-          <>
-            <span>&middot;</span>
-            <span>{formatCount(result.messageCount, "msg")}</span>
-          </>
-        )}
-      </div>
-      {result.snippet && !snippetRepeatsTitle(result.snippet, result.title) && (
-        <div
-          className={`mt-0.5 truncate text-xs text-t6 ${MARK_CLASSES}`}
-          dangerouslySetInnerHTML={{ __html: result.snippet }}
-        />
-      )}
-    </>
+      </span>
+      <span data-search-meta="" className="shrink-0 text-xs text-ink-muted">
+        {bucket === null ? item.projectName : `${item.projectName} · ${bucket}`}
+      </span>
+    </span>
   );
-}
-
-function formatDate(iso: string): string {
-  if (!iso) return "";
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
 }
 
 export const Route = createFileRoute("/search")({
@@ -94,39 +67,47 @@ export const Route = createFileRoute("/search")({
 
 export function validateSearchParameters(search: Record<string, unknown>): {
   q: string;
-  mode: SearchMode;
-  type?: UnifiedSearchType;
+  type: UnifiedSearchType;
 } {
-  const raw = search["mode"] ?? "titles";
-  // "messages" is an alias for "conversations" (the mode backed by /api/search/messages).
-  const parsed = SearchModeSchema.safeParse(raw === "messages" ? "conversations" : raw);
-  if (!parsed.success) {
+  // Old links carried `mode=titles|conversations|files`; only files survives, as a type.
+  const raw = search["type"] ?? (search["mode"] === "files" ? "files" : "all");
+  const type = UnifiedSearchTypeSchema.safeParse(raw);
+  if (!type.success) {
     throw new Error(
-      `Unknown search mode ${JSON.stringify(raw)}: expected ${SearchModeSchema.options.join(", ")}, or messages`,
+      `Unknown search type ${JSON.stringify(raw)}: expected ${UnifiedSearchTypeSchema.options.join(", ")}`,
     );
   }
-  const type = UnifiedSearchTypeSchema.safeParse(search["type"]);
   return {
     q: typeof search["q"] === "string" ? search["q"] : "",
-    mode: parsed.data,
-    ...(type.success ? { type: type.data } : {}),
+    type: type.data,
   };
 }
 
 function SearchPage() {
-  const { q: submittedQuery, mode } = Route.useSearch();
+  const { q, type } = Route.useSearch();
+  return <SearchView q={q} type={type} />;
+}
+
+/** The "all results" page: the palette's rows and type tabs over `/api/search`, plus files mode. */
+export function SearchView({ q, type }: { q: string; type: UnifiedSearchType }) {
   const navigate = useNavigate();
 
-  if (mode === "files") {
-    return (
-      <div>
-        <h1 className="text-lg font-semibold">Search Files</h1>
+  return (
+    <div>
+      <h1 className="text-lg font-semibold">Search</h1>
+      <TypeTabs
+        value={type}
+        onChange={(next) => {
+          void navigate({ to: "/search", search: { q, type: next }, replace: true });
+        }}
+      />
+      {type === "files" ? (
         <FileSearchResults
-          initialQuery={submittedQuery}
+          initialQuery={q}
           onQueryChange={(nextQuery) => {
             void navigate({
               to: "/search",
-              search: { q: nextQuery, mode: "files" },
+              search: { q: nextQuery, type: "files" },
               replace: true,
             });
           }}
@@ -139,126 +120,173 @@ function SearchPage() {
             });
           }}
           onClose={() => {
-            void navigate({
-              to: "/search",
-              search: { q: submittedQuery, mode: "titles" },
-              replace: true,
-            });
+            void navigate({ to: "/search", search: { q, type: "all" }, replace: true });
           }}
         />
-      </div>
-    );
-  }
-
-  return <SessionSearch submittedQuery={submittedQuery} mode={mode} />;
+      ) : (
+        <UnifiedResults q={q} type={type} />
+      )}
+    </div>
+  );
 }
 
-function SessionSearch({
-  submittedQuery,
-  mode,
+function TypeTabs({
+  value,
+  onChange,
 }: {
-  submittedQuery: string;
-  mode: Exclude<SearchMode, "files">;
+  value: UnifiedSearchType;
+  onChange: (type: UnifiedSearchType) => void;
 }) {
+  return (
+    <div role="tablist" aria-label="Type" className="mt-3 flex items-center gap-1 overflow-x-auto">
+      {UnifiedSearchTypeSchema.options.map((type) => {
+        const selected = type === value;
+        return (
+          <button
+            key={type}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            onClick={() => onChange(type)}
+            className={`h-7 shrink-0 rounded-r6 px-2 text-sm transition-colors hover:bg-fill-ghost-hover hover:text-primary ${
+              selected ? "bg-fill-ghost-hover font-medium text-primary" : "text-secondary"
+            }`}
+          >
+            {unifiedSearchTypeLabels[type]}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function optionId(item: UnifiedSearchItem): string {
+  return `search-result-${item.kind}-${item.id}`;
+}
+
+function UnifiedResults({ q, type }: { q: string; type: Exclude<UnifiedSearchType, "files"> }) {
   const navigate = useNavigate();
-  const [query, setQuery] = useState(submittedQuery);
+  const [query, setQuery] = useState(q);
+  const debouncedQuery = useDebouncedValue(query.trim(), QUERY_DEBOUNCE_MS);
+  const lastDebouncedQuery = useRef(debouncedQuery);
 
-  const titlesQuery = useQuery({
-    ...sessionSearchQueryOptions(submittedQuery),
-    enabled: mode === "titles" && submittedQuery.length > 0,
+  // Only a settled edit writes the URL, so back/forward can change `q` without being overwritten.
+  useEffect(() => {
+    if (debouncedQuery === lastDebouncedQuery.current) return;
+    lastDebouncedQuery.current = debouncedQuery;
+    void navigate({ to: "/search", search: { q: debouncedQuery, type }, replace: true });
+  }, [debouncedQuery, navigate, type]);
+
+  const trimmedQ = q.trim();
+  const search = useQuery({
+    ...unifiedSearchQueryOptions({ query: trimmedQ, type, limit: PAGE_LIMIT }),
+    enabled: trimmedQ !== "",
   });
-  const conversationsQuery = useQuery({
-    ...messageSearchQueryOptions(submittedQuery),
-    enabled: mode === "conversations" && submittedQuery.length > 0,
+  const items = trimmedQ === "" ? undefined : search.data?.items;
+
+  // The selection belongs to one result list; a new list starts at its first row.
+  const [selection, setSelection] = useState<{ items: unknown; index: number }>({
+    items: undefined,
+    index: 0,
   });
+  const selectedIndex = selection.items === items ? selection.index : 0;
+  const selected = items?.[selectedIndex];
 
-  const activeQuery = mode === "conversations" ? conversationsQuery : titlesQuery;
-  const results: SearchResult[] = activeQuery.data ?? [];
-  const loading = activeQuery.isFetching;
-  const searched = submittedQuery.length > 0 && activeQuery.isFetched;
-
-  function handleSubmit() {
-    const next = query.trim();
-    if (!next) return;
-    void navigate({ to: "/search", search: { q: next, mode }, replace: true });
+  function select(index: number) {
+    if (items === undefined || items.length === 0) return;
+    const clamped = Math.min(Math.max(index, 0), items.length - 1);
+    setSelection({ items, index: clamped });
+    const target = items[clamped];
+    if (target !== undefined) {
+      document.getElementById(optionId(target))?.scrollIntoView({ block: "nearest" });
+    }
   }
+
+  function openItem(item: UnifiedSearchItem) {
+    switch (item.kind) {
+      case "session":
+        void navigate({ to: "/session/$id", params: { id: item.id } });
+        return;
+      case "file":
+        void navigate({ to: "/file/$", params: { _splat: encodeFilePath(item.id) } });
+        return;
+      case "plan":
+      case "memory":
+        if (item.href !== undefined) void navigate({ href: item.href });
+        return;
+      default:
+        assertNever(item.kind);
+    }
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      select(selectedIndex + 1);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      select(selectedIndex - 1);
+    } else if (event.key === "Enter" && selected !== undefined) {
+      event.preventDefault();
+      openItem(selected);
+    }
+  }
+
+  const now = Date.now();
 
   return (
     <div>
-      <h1 className="text-lg font-semibold">Search Sessions</h1>
+      <input
+        type="text"
+        role="combobox"
+        aria-label="Search"
+        aria-controls={RESULTS_ID}
+        aria-expanded={items !== undefined && items.length > 0}
+        {...(selected === undefined ? {} : { "aria-activedescendant": optionId(selected) })}
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder="Search sessions, plans and memories"
+        className="mt-4 w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent-100"
+        autoFocus
+      />
 
-      <form
-        className="mt-4 flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSubmit();
-        }}
+      {items !== undefined && items.length === 0 && (
+        <p className="mt-6 text-sm text-ink-muted">
+          No results for “{trimmedQ}”{type === "all" ? "" : ` in ${unifiedSearchTypeLabels[type]}`}
+        </p>
+      )}
+
+      {items !== undefined && items.length > 0 && (
+        <div className="mt-4 text-xs text-ink-muted">{formatCount(items.length, "result")}</div>
+      )}
+
+      <ul
+        id={RESULTS_ID}
+        role="listbox"
+        aria-label="Search results"
+        aria-busy={search.isFetching}
+        className="mt-2"
       >
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={
-            mode === "conversations" ? "Search conversations..." : "Search session titles..."
-          }
-          className="flex-1 rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent-100"
-          autoFocus
-        />
-        <button
-          type="submit"
-          disabled={loading || !query.trim()}
-          className="rounded-md bg-fill-primary px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-fill-primary-hover disabled:opacity-50"
-        >
-          {loading ? "Searching..." : "Search"}
-        </button>
-      </form>
-
-      <div className="mt-3 flex gap-1">
-        {SearchModeSchema.options.map((option) => (
-          <button
-            key={option}
-            type="button"
-            onClick={() => {
-              void navigate({
-                to: "/search",
-                search: { q: submittedQuery, mode: option },
-                replace: true,
-              });
+        {items?.map((item, index) => (
+          <li
+            key={`${item.kind}:${item.id}`}
+            id={optionId(item)}
+            role="option"
+            aria-selected={index === selectedIndex}
+            onMouseMove={() => {
+              if (index !== selectedIndex) setSelection({ items, index });
             }}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-              mode === option
-                ? "bg-fill-primary text-on-primary"
-                : "bg-surface-0 text-t6 hover:bg-surface-0/80"
-            }`}
+            onClick={() => openItem(item)}
+            className="group flex w-full cursor-pointer items-center justify-between gap-3 truncate rounded-lg px-3 py-2 text-sm leading-5 text-secondary select-none aria-selected:bg-fill-ghost-hover aria-selected:text-primary"
           >
-            {searchModeLabels[option]}
-          </button>
+            <SearchResultCard item={item} now={now} />
+            <span className="hidden shrink-0 text-xs text-ink-muted group-aria-selected:inline-flex">
+              <CornerDownLeft aria-hidden="true" className="size-4" />
+            </span>
+          </li>
         ))}
-      </div>
-
-      {searched && results.length === 0 && (
-        <p className="mt-6 text-sm text-t6">No results found for &ldquo;{submittedQuery}&rdquo;</p>
-      )}
-
-      {searched && results.length > 0 && (
-        <div className="mt-4 text-xs text-t6">{formatCount(results.length, "result")}</div>
-      )}
-
-      {results.length > 0 && (
-        <ul className="mt-2 space-y-1">
-          {results.map((result) => (
-            <li key={result.sessionId}>
-              <Link
-                to="/session/$id"
-                params={{ id: result.sessionId }}
-                className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-surface-0/50"
-              >
-                <SearchResultCard result={result} />
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      </ul>
     </div>
   );
 }

@@ -7,7 +7,6 @@ import {
 } from "../src/lib/api/customize";
 import { PluginFileSchema, PluginListResponse } from "../src/lib/api/plugins";
 import {
-  SearchModeSchema,
   UnifiedSearchDateSchema,
   UnifiedSearchKindSchema,
   UnifiedSearchParamsSchema,
@@ -57,7 +56,6 @@ import { RenderedLineSchema } from "../src/lib/transcript";
 // claimed under their own exported names (the walker visits each node once).
 const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["TaskStatusSchema", TaskStatusSchema],
-  ["SearchModeSchema", SearchModeSchema],
   ["UnifiedSearchTypeSchema", UnifiedSearchTypeSchema],
   ["UnifiedSearchDateSchema", UnifiedSearchDateSchema],
   ["UnifiedSearchKindSchema", UnifiedSearchKindSchema],

@@ -666,7 +666,7 @@ function PalettePopup({
   }, [pendingLaunch, activeSessions, onOpenChange, navigate]);
 
   function seeAllResults(apiType: Exclude<PaletteType, "projects">) {
-    void navigate({ to: "/search", search: { q: tokens.text, mode: "titles", type: apiType } });
+    void navigate({ to: "/search", search: { q: tokens.text, type: apiType } });
   }
 
   function chooseTab(next: PaletteType) {
@@ -690,7 +690,7 @@ function PalettePopup({
       {
         label: "Search sessions",
         icon: <Search />,
-        run: () => void navigate({ to: "/search", search: { q: "", mode: "titles" as const } }),
+        run: () => void navigate({ to: "/search", search: { q: "", type: "all" as const } }),
         shortcut: "search",
       },
       {
