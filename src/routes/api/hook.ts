@@ -19,6 +19,7 @@ import {
   setSessionState,
   touchSession,
   setBackgroundTasks,
+  setSessionCrons,
   touchSubagentActivity,
 } from "../../lib/active-session-store";
 import { getCacheDir } from "../../lib/db/connection";
@@ -278,6 +279,7 @@ export const Route = createFileRoute("/api/hook")({
             touchSession,
             touchSubagentActivity,
             setBackgroundTasks,
+            setSessionCrons,
             getActiveSessionEntry,
           },
           broadcast: broadcastTyped,

@@ -153,6 +153,7 @@ describe("sidebar More menu", () => {
       separators: within(menu).getAllByRole("separator").length,
     }).toStrictEqual({
       items: [
+        "Routines",
         "Active",
         "Herdr",
         "Tmux Windows",
@@ -189,6 +190,7 @@ describe("Edit sidebar dialog", () => {
         })),
     ).toStrictEqual([
       { label: "Artifacts", checked: "true" },
+      { label: "Routines", checked: "false" },
       { label: "Active", checked: "false" },
       { label: "Herdr", checked: "false" },
       { label: "Tmux Windows", checked: "false" },

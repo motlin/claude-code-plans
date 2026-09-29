@@ -9,6 +9,8 @@ import {
   isSessionActiveInStore,
   hasAnyActiveSessions,
   setBackgroundTasks,
+  setSessionCrons,
+  liveSessionRoutines,
   touchSubagentActivity,
 } from "../src/lib/active-session-store";
 import type { ActiveSessionEntry } from "../src/lib/active-session-store";
@@ -142,6 +144,21 @@ describe("active-session-store", () => {
         { id: "agent-test-100", type: "local_agent", status: "running", description: "Inspect" },
       ],
     });
+  });
+
+  it("reports each running session's latest Stop session_crons for the Routines page", () => {
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(TEST_TIMESTAMP);
+    markSessionActive("session-test-100", { cwd: "/tmp/test/project" });
+    markSessionActive("session-test-200", { cwd: "/tmp/test/project" });
+    nowSpy.mockReturnValue(TEST_TIMESTAMP + 1000);
+    const cron = { id: "cron-test-100", schedule: "*/5 * * * *", recurring: true, prompt: "Poll" };
+    setSessionCrons("session-test-100", [cron]);
+    setSessionCrons("session-test-unknown", [cron]);
+
+    expect([...liveSessionRoutines()]).toStrictEqual([
+      ["session-test-100", { sessionCrons: [cron], sessionCronsAt: TEST_TIMESTAMP + 1000 }],
+      ["session-test-200", { sessionCrons: null, sessionCronsAt: null }],
+    ]);
   });
 
   it("setting state on an unknown session is a no-op", () => {

@@ -1,6 +1,7 @@
 import { hmrPersist, hmrDispose } from "./hmr-persist";
 import type { ActivityState } from "./session-state";
-import type { HookBackgroundTaskPayload } from "./hook-events";
+import type { HookBackgroundTaskPayload, HookSessionCronPayload } from "./hook-events";
+import type { LiveSessionRoutines } from "./routines";
 import { touchStoredLiveSubagent } from "./live-subagent-store";
 
 export interface ActiveSessionEntry {
@@ -50,6 +51,8 @@ export interface ActiveSessionEntry {
   lastSubagentActivityAt: number | null;
   /** Background work the session's last `Stop` reported (empty before any Stop). */
   backgroundTasks: HookBackgroundTaskPayload[];
+  /** Scheduled prompts the session's latest `Stop` reported, and when (absent before any). */
+  sessionCrons?: { crons: HookSessionCronPayload[]; reportedAt: number };
 }
 
 /**
@@ -197,6 +200,24 @@ export function setBackgroundTasks(
 ): void {
   const entry = findSession(sessionId);
   if (entry) entry.backgroundTasks = backgroundTasks;
+}
+
+export function setSessionCrons(sessionId: string, crons: HookSessionCronPayload[]): void {
+  const entry = findSession(sessionId);
+  if (entry) entry.sessionCrons = { crons, reportedAt: Date.now() };
+}
+
+/** Each running session's latest Stop `session_crons`, keyed by session id. */
+export function liveSessionRoutines(): Map<string, LiveSessionRoutines> {
+  return new Map(
+    getActiveSessionEntries().map((entry) => [
+      entry.sessionId,
+      {
+        sessionCrons: entry.sessionCrons?.crons ?? null,
+        sessionCronsAt: entry.sessionCrons?.reportedAt ?? null,
+      },
+    ]),
+  );
 }
 
 export function getActiveSessionEntries(): ActiveSessionEntry[] {

@@ -31,6 +31,8 @@ import {
   deleteArtifactEventsForSessions,
   replaceArtifactEvents,
 } from "./artifact-index";
+import { deleteRoutinesForSessions, replaceRoutines } from "./routine-index";
+import { RoutineCollector } from "../routines";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
@@ -545,6 +547,7 @@ export async function indexJsonlFile(
   const textChunks: string[] = [];
   const mcpToolNames = new Set<string>();
   const artifactEvents = new ArtifactEventCollector();
+  const routines = new RoutineCollector();
   const indexedMessages: Array<{
     sessionId: string;
     messageIndex: number;
@@ -665,6 +668,7 @@ export async function indexJsonlFile(
         };
         if (isCountableMessageRecord(obj)) messageCount++;
         artifactEvents.add(obj);
+        routines.add(obj);
         if (obj.type === "user" || obj.type === "assistant") {
           const content = obj.message?.content;
           const messageText: string[] = [];
@@ -821,6 +825,7 @@ export async function indexJsonlFile(
     { filePath, sessionId, projectId: project, isSubagent: false },
     artifactEvents.events(),
   );
+  replaceRoutines(db, { filePath, sessionId, projectId: project }, routines.routines());
 
   // Update message content FTS
   db.run(sql`DELETE FROM message_content WHERE session_id = ${sessionId}`);
@@ -1615,6 +1620,7 @@ function pruneDeletedSessions(
       .where(eq(schema.sessionMcpTools.sessionId, session.id))
       .run();
     deleteArtifactEventsForSessions(indexDb, [session.id]);
+    deleteRoutinesForSessions(indexDb, [session.id]);
   }
 
   // Re-indexing a moved session updates sessions.filePath before pruning runs,

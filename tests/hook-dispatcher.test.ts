@@ -6,7 +6,11 @@ import { openTestDb, type AppDb } from "../src/lib/db/connection";
 import { indexSessionsIndex } from "../src/lib/db/indexer";
 import { dispatchHookEvent } from "../src/lib/hook-dispatcher";
 import { DOMAIN_EVENTS, SSE_EVENTS } from "../src/lib/hook-events";
-import type { HookBackgroundTaskPayload, HookEvent } from "../src/lib/hook-events";
+import type {
+  HookBackgroundTaskPayload,
+  HookEvent,
+  HookSessionCronPayload,
+} from "../src/lib/hook-events";
 import { getNotifications, clearAllNotifications } from "../src/lib/notifications-store";
 import { clearLiveSubagents } from "../src/lib/live-subagent-store";
 import * as schema from "../src/lib/db/schema";
@@ -47,6 +51,7 @@ function makeStore() {
     sessionId: string;
     backgroundTasks: HookBackgroundTaskPayload[];
   }> = [];
+  const sessionCronCalls: Array<{ sessionId: string; sessionCrons: HookSessionCronPayload[] }> = [];
   return {
     activeCalls,
     endedCalls,
@@ -55,7 +60,11 @@ function makeStore() {
     touchCalls,
     subagentActivityCalls,
     backgroundTaskCalls,
+    sessionCronCalls,
     store: {
+      setSessionCrons: (sessionId: string, sessionCrons: HookSessionCronPayload[]) => {
+        sessionCronCalls.push({ sessionId, sessionCrons });
+      },
       touchSubagentActivity: (sessionId: string, agentId: string) => {
         subagentActivityCalls.push({ sessionId, agentId });
       },
@@ -175,6 +184,40 @@ describe("dispatchHookEvent", () => {
       backgroundTasks: [],
       sessionCrons: [],
     });
+  });
+
+  it("Stop stores the session crons it reports, and a Stop without them leaves them alone", async () => {
+    const { store, sessionCronCalls } = makeStore();
+    const cron = {
+      id: "cron-test-100",
+      schedule: "*/5 * * * *",
+      recurring: true,
+      prompt: "Poll the example PR",
+    };
+    const stop = {
+      hook_event_name: "Stop" as const,
+      session_id: "session-test-100",
+      transcript_path: "/tmp/test/session-test-100.jsonl",
+      cwd: "/tmp/test/project",
+    };
+    await dispatchHookEvent({
+      event: { ...stop, session_crons: [cron] },
+      db: db.index,
+      store,
+      broadcast: () => {},
+      reportHerdrState: () => {},
+    });
+    await dispatchHookEvent({
+      event: stop,
+      db: db.index,
+      store,
+      broadcast: () => {},
+      reportHerdrState: () => {},
+    });
+
+    expect(sessionCronCalls).toStrictEqual([
+      { sessionId: "session-test-100", sessionCrons: [cron] },
+    ]);
   });
 
   it("Stop broadcasts the background work that keeps a session paused", async () => {
@@ -769,6 +812,7 @@ describe("dispatchHookEvent", () => {
         touchSession: () => {},
         touchSubagentActivity: () => {},
         setBackgroundTasks: () => {},
+        setSessionCrons: () => {},
         getActiveSessionEntry: () => currentEntry,
       },
       broadcast: () => {},

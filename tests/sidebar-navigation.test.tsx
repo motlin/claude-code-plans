@@ -92,6 +92,7 @@ describe("sidebar navigation", () => {
   it("links to each top-level section", () => {
     expect(navItems.map(({ label, to }) => ({ label, to }))).toStrictEqual([
       { label: "Artifacts", to: "/artifacts" },
+      { label: "Routines", to: "/routines" },
       { label: "Active", to: "/active" },
       { label: "Herdr", to: "/herdr" },
       { label: "Tmux Windows", to: "/tmux" },
@@ -131,6 +132,14 @@ describe("sidebar navigation", () => {
         typeof useActiveSection
       >[0]),
     ).toStrictEqual({ section: "artifacts", activeItemId: null });
+  });
+
+  it("activates the Routines section on the Routines page", () => {
+    expect(
+      useActiveSection([{ fullPath: "/routines", params: {} }] as unknown as Parameters<
+        typeof useActiveSection
+      >[0]),
+    ).toStrictEqual({ section: "routines", activeItemId: null });
   });
 
   it("activates the Customize section on Customize and legacy plugin routes", () => {

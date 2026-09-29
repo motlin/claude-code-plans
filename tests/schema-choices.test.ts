@@ -33,6 +33,13 @@ import { PaletteFilterSchema, PaletteTypeSchema } from "../src/lib/palette-token
 import { PaneLayoutStateSchema } from "../src/lib/pane-layout";
 import { PinDropOutcomeSchema } from "../src/lib/pinned-sessions";
 import { RecentsHistorySchema } from "../src/lib/recents-history";
+import {
+  RoutineKindSchema,
+  RoutineScheduleFilterSchema,
+  RoutineSortSchema,
+  RoutineStatusFilterSchema,
+  RoutineStatusSchema,
+} from "../src/lib/routines";
 import { schemaChoiceRegistry } from "../src/lib/schema-choices";
 import {
   SessionBucketReasonSchema,
@@ -126,6 +133,11 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["CodeThemeDarkSchema", CodeThemeDarkSchema],
   ["TerminalAppearanceSchema", TerminalAppearanceSchema],
   ["NavSectionSchema", NavSectionSchema],
+  ["RoutineKindSchema", RoutineKindSchema],
+  ["RoutineStatusSchema", RoutineStatusSchema],
+  ["RoutineScheduleFilterSchema", RoutineScheduleFilterSchema],
+  ["RoutineStatusFilterSchema", RoutineStatusFilterSchema],
+  ["RoutineSortSchema", RoutineSortSchema],
   ["SessionMenuItemIdSchema", SessionMenuItemIdSchema],
   ["ChangedFileKindSchema", ChangedFileKindSchema],
   ["RecentsHistorySchema", RecentsHistorySchema],

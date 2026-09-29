@@ -12,12 +12,13 @@ function labels(items: ReadonlyArray<{ label: string }>): string[] {
 }
 
 describe("getVisibleNavItems", () => {
-  it("pins Artifacts, Plans, Memories, Sessions and Customize by default and overflows the rest", () => {
+  it("pins Artifacts, Plans, Memories, Sessions and Customize by default and overflows the rest, Routines included", () => {
     const { pinned, overflow } = getVisibleNavItems(navItems, DEFAULT_VISIBLE_NAV_SECTIONS);
 
     expect({ pinned: labels(pinned), overflow: labels(overflow) }).toStrictEqual({
       pinned: ["Artifacts", "Plans", "Memories", "Sessions", "Customize"],
       overflow: [
+        "Routines",
         "Active",
         "Herdr",
         "Tmux Windows",
@@ -34,7 +35,7 @@ describe("getVisibleNavItems", () => {
 
     expect({ pinned: labels(pinned), overflowCount: overflow.length }).toStrictEqual({
       pinned: ["Active", "Tasks", "Sessions"],
-      overflowCount: 9,
+      overflowCount: 10,
     });
   });
 
@@ -43,7 +44,7 @@ describe("getVisibleNavItems", () => {
 
     expect({ pinned: labels(pinned), overflowCount: overflow.length }).toStrictEqual({
       pinned: ["Sessions"],
-      overflowCount: 11,
+      overflowCount: 12,
     });
   });
 });

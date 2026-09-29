@@ -1,4 +1,5 @@
 import {
+  Clock,
   Shapes,
   FileText,
   Brain,
@@ -35,6 +36,11 @@ const navEntries = {
     to: "/artifacts",
     label: "Artifacts",
     icon: Shapes,
+  },
+  routines: {
+    to: "/routines",
+    label: "Routines",
+    icon: Clock,
   },
   active: {
     to: "/active",

@@ -122,6 +122,28 @@ CREATE TABLE IF NOT EXISTS artifacts (
 );
 CREATE INDEX IF NOT EXISTS artifacts_last_published_idx ON artifacts(last_published_at);
 
+CREATE TABLE IF NOT EXISTS routines (
+  tool_use_id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  project_id TEXT NOT NULL,
+  file_path TEXT NOT NULL,
+  record_uuid TEXT,
+  kind TEXT NOT NULL,
+  routine_id TEXT,
+  name TEXT,
+  schedule TEXT,
+  human_schedule TEXT,
+  delay_seconds INTEGER,
+  run_once_at INTEGER,
+  recurring INTEGER NOT NULL,
+  durable INTEGER NOT NULL,
+  prompt TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS routines_session_idx ON routines(session_id);
+CREATE INDEX IF NOT EXISTS routines_file_path_idx ON routines(file_path);
+
 CREATE TABLE IF NOT EXISTS plan_sessions (
   plan_filename TEXT NOT NULL,
   session_id TEXT NOT NULL,
@@ -411,6 +433,7 @@ const DERIVED_TABLE_NAMES = [
   "session_mcp_tools",
   "artifact_events",
   "artifacts",
+  "routines",
   "subagents",
   "plan_sessions",
   "sessions",

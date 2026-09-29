@@ -205,6 +205,7 @@ describe("auto-unarchive", () => {
       touchSession: () => {},
       touchSubagentActivity: () => {},
       setBackgroundTasks: () => {},
+      setSessionCrons: () => {},
       getActiveSessionEntry: (): ActiveSessionEntry | null => null,
     };
   }

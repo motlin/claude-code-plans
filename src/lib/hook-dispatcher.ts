@@ -9,6 +9,7 @@ import {
   SSE_EVENTS,
   isSubagentScopedEvent,
   type HookBackgroundTaskPayload,
+  type HookSessionCronPayload,
   type HookEvent,
   type PlanSummaryPayload,
   type MemorySummaryPayload,
@@ -75,6 +76,7 @@ interface ActiveSessionStore {
   touchSession(sessionId: string, meta?: { claudeEnv?: Record<string, string> }): void;
   touchSubagentActivity(sessionId: string, agentId: string): void;
   setBackgroundTasks(sessionId: string, backgroundTasks: HookBackgroundTaskPayload[]): void;
+  setSessionCrons(sessionId: string, sessionCrons: HookSessionCronPayload[]): void;
   getActiveSessionEntry(sessionId: string): ActiveSessionEntry | null;
 }
 
@@ -470,6 +472,9 @@ export async function dispatchHookEvent({
         }),
       );
       store.setBackgroundTasks(event.session_id, backgroundTasks ?? []);
+      if (event.session_crons !== undefined) {
+        store.setSessionCrons(event.session_id, event.session_crons);
+      }
       const context: SessionHookContextPayload = {
         sessionId: event.session_id,
         ...(backgroundTasks !== undefined ? { backgroundTasks } : {}),

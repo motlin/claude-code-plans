@@ -54,6 +54,13 @@ import type { SessionMenuItemIdSchema } from "./session-menu-items";
 import type { SettingsTab } from "./settings-hash";
 import type { MessageProcessedLine, ProcessedLine } from "./transcript";
 import type { RecentKind } from "./recents-history";
+import type {
+  RoutineKind,
+  RoutineScheduleFilter,
+  RoutineSort,
+  RoutineStatus,
+  RoutineStatusFilter,
+} from "./routines";
 import type { TranscriptMode } from "./transcript-mode";
 import type {
   ExitWorktreeActionSchema,
@@ -682,6 +689,7 @@ export const sessionMenuItemLabels = {
 /** Sidebar sections toggleable in the Edit sidebar dialog, in nav order. */
 const navSectionLabels = {
   artifacts: "Artifacts",
+  routines: "Routines",
   active: "Active",
   herdr: "Herdr",
   tmux: "Tmux Windows",
@@ -693,6 +701,37 @@ const navSectionLabels = {
   memories: "Memories",
   customize: "Customize",
 } satisfies Record<NavSection, string>;
+
+/** Where a Routines page row runs (src/lib/routines.ts). */
+export const routineKindLabels = {
+  cron: "Scheduled prompt",
+  wakeup: "Wakeup",
+  cloud: "Cloud",
+} satisfies Record<RoutineKind, string>;
+
+const routineStatusLabels = {
+  active: "Active",
+  completed: "Completed",
+} satisfies Record<RoutineStatus, string>;
+
+/** Routines page Filter ▸ Schedule, as upstream. */
+export const routineScheduleFilterLabels = {
+  all: "All",
+  recurring: "Recurring",
+  "one-time": "One-time",
+} satisfies Record<RoutineScheduleFilter, string>;
+
+/** Routines page Filter ▸ Status (local routines are only active or completed). */
+export const routineStatusFilterLabels = {
+  all: "All",
+  active: "Active",
+  completed: "Completed",
+} satisfies Record<RoutineStatusFilter, string>;
+
+export const routineSortLabels = {
+  "next-run": "Next run",
+  name: "Name",
+} satisfies Record<RoutineSort, string>;
 
 /** Page kinds recorded in the per-tab ⌃Q recents history (src/lib/recents-history.ts). */
 const recentKindLabels = {
@@ -855,6 +894,11 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   CodeThemeDarkSchema: codeThemeDarkLabels,
   TerminalAppearanceSchema: terminalAppearanceLabels,
   NavSectionSchema: navSectionLabels,
+  RoutineKindSchema: routineKindLabels,
+  RoutineStatusSchema: routineStatusLabels,
+  RoutineScheduleFilterSchema: routineScheduleFilterLabels,
+  RoutineStatusFilterSchema: routineStatusFilterLabels,
+  RoutineSortSchema: routineSortLabels,
   SessionMenuItemIdSchema: sessionMenuItemLabels,
   ChangedFileKindSchema: changedFileKindLabels,
   "RecentsHistorySchema[].kind": recentKindLabels,

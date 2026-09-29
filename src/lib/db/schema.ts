@@ -1,5 +1,6 @@
 import { sqliteTable, text, integer, index, primaryKey } from "drizzle-orm/sqlite-core";
 import type { ReviewBundle } from "../api/reviews";
+import type { RoutineKind } from "../routines";
 
 // 26: a session opened with a bare "yes" or an interrupt marker now takes its
 // title from the first message that names the work. Titles are stored at index
@@ -14,7 +15,8 @@ import type { ReviewBundle } from "../api/reviews";
 // 33: artifacts and artifact_events index every claude.ai Artifact tool call.
 // 35: home_dismissals (durable) hides home action-center rows until newer activity.
 // 36: sessions gain forked_from_session_id from the first `forkedFrom` record.
-export const SCHEMA_VERSION = "36";
+// 37: routines index every CronCreate/ScheduleWakeup/RemoteTrigger(create) call.
+export const SCHEMA_VERSION = "37";
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),
@@ -159,6 +161,38 @@ export const artifacts = sqliteTable(
     projectId: text("project_id").notNull(),
   },
   (table) => [index("artifacts_last_published_idx").on(table.lastPublishedAt)],
+);
+
+/**
+ * One row per scheduling tool call (CronCreate, ScheduleWakeup, RemoteTrigger
+ * create) in a primary transcript, keyed by tool_use id. `file_path` is the
+ * transcript, so a reindex replaces exactly that file's rows.
+ */
+export const routines = sqliteTable(
+  "routines",
+  {
+    toolUseId: text("tool_use_id").primaryKey(),
+    sessionId: text("session_id").notNull(),
+    projectId: text("project_id").notNull(),
+    filePath: text("file_path").notNull(),
+    recordUuid: text("record_uuid"),
+    kind: text("kind").$type<RoutineKind>().notNull(),
+    routineId: text("routine_id"),
+    name: text("name"),
+    schedule: text("schedule"),
+    humanSchedule: text("human_schedule"),
+    delaySeconds: integer("delay_seconds"),
+    runOnceAt: integer("run_once_at"),
+    recurring: integer("recurring").notNull(),
+    durable: integer("durable").notNull(),
+    prompt: text("prompt").notNull(),
+    createdAt: integer("created_at").notNull(),
+    deletedAt: integer("deleted_at"),
+  },
+  (table) => [
+    index("routines_session_idx").on(table.sessionId),
+    index("routines_file_path_idx").on(table.filePath),
+  ],
 );
 
 export const planSessions = sqliteTable(

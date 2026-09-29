@@ -6,6 +6,7 @@ import { z } from "zod";
  */
 export const NAV_SECTIONS = [
   "artifacts",
+  "routines",
   "active",
   "herdr",
   "tmux",
