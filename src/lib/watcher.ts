@@ -1,11 +1,11 @@
 import type { Stats } from "node:fs";
 import { stat } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
-import { eq } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { awaitInitialScan, getDb } from "./db";
 import {
   deleteFileContent,
+  deleteMemoryFile,
   deletePlan,
   indexFile,
   indexFileContent,
@@ -24,7 +24,7 @@ import {
   updatePendingApprovalForSession,
   removePendingApprovalForSession,
 } from "./db/pending-approvals-cache";
-import * as dbSchema from "./db/schema";
+import type * as dbSchema from "./db/schema";
 import { extractTitle } from "./markdown-utils.server";
 import { resolveProjectName } from "./memory";
 import {
@@ -632,9 +632,7 @@ async function handleFileUnlink(path: string): Promise<void> {
     const project = relative.split("/")[0] ?? "";
     if (project) {
       try {
-        const { index } = getDb();
-        index.delete(dbSchema.memories).where(eq(dbSchema.memories.filePath, path)).run();
-        index.delete(dbSchema.indexedFiles).where(eq(dbSchema.indexedFiles.path, path)).run();
+        deleteMemoryFile(getDb().index, path);
       } catch {
         // transient DB error; broadcast still fires
       }

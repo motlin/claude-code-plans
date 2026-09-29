@@ -289,6 +289,37 @@ CREATE TRIGGER IF NOT EXISTS file_content_fts_delete AFTER DELETE ON file_conten
   INSERT INTO file_content_fts(file_content_fts, rowid, path, content)
   VALUES ('delete', OLD.id, OLD.path, OLD.content);
 END;
+
+CREATE TABLE IF NOT EXISTS docs_content (
+  id INTEGER PRIMARY KEY,
+  path TEXT NOT NULL UNIQUE,
+  kind TEXT NOT NULL CHECK (kind IN ('plan', 'memory')),
+  project_id TEXT NOT NULL,
+  mtime_ms INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS docs_content_project_idx ON docs_content(project_id);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS docs_fts USING fts5(
+  path UNINDEXED,
+  kind UNINDEXED,
+  title,
+  content,
+  content='docs_content',
+  content_rowid='id',
+  tokenize='porter unicode61'
+);
+
+CREATE TRIGGER IF NOT EXISTS docs_fts_insert AFTER INSERT ON docs_content BEGIN
+  INSERT INTO docs_fts(rowid, path, kind, title, content)
+  VALUES (NEW.id, NEW.path, NEW.kind, NEW.title, NEW.content);
+END;
+
+CREATE TRIGGER IF NOT EXISTS docs_fts_delete AFTER DELETE ON docs_content BEGIN
+  INSERT INTO docs_fts(docs_fts, rowid, path, kind, title, content)
+  VALUES ('delete', OLD.id, OLD.path, OLD.kind, OLD.title, OLD.content);
+END;
 `;
 
 const CREATE_SUMMARIES_SQL = `
@@ -304,9 +335,11 @@ const DERIVED_TABLE_NAMES = [
   "sessions_fts",
   "message_content_fts",
   "file_content_fts",
+  "docs_fts",
   "sessions_search",
   "message_content",
   "file_content",
+  "docs_content",
   "tasks",
   "todo_tasks",
   "todo_files",

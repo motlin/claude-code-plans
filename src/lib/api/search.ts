@@ -145,6 +145,8 @@ const UnifiedSearchItemSchema = z
       })
       .strict()
       .optional(),
+    /** App route for kinds that open a page by md-slug (plans and memories). */
+    href: z.string().optional(),
     projectId: z.string(),
     projectName: z.string(),
     mtime: z.string(),

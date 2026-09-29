@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { relative, sep } from "node:path";
+import { basename, relative, sep } from "node:path";
 import { sql, type SQL } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type { UnifiedSearchDate, UnifiedSearchItem, UnifiedSearchParams } from "../api/search";
+import { toMdSlug } from "../md-slug";
 import type { Snippet, TextMatch } from "../search-text";
 import { toFtsQuery, tokenizeFileSearchQuery } from "./queries";
 import type * as schema from "./schema";
@@ -38,6 +39,15 @@ interface MessageHitRow {
   mtime_ms: number;
   title: string;
   message_snippet: string;
+}
+
+interface DocHitRow {
+  path: string;
+  kind: "plan" | "memory";
+  project_id: string;
+  mtime_ms: number;
+  title_highlight: string;
+  content_snippet: string;
 }
 
 interface FileHitRow {
@@ -188,6 +198,59 @@ function searchSessions(
   return items;
 }
 
+function docHref(row: DocHitRow): string {
+  const slug = toMdSlug(basename(row.path));
+  return row.kind === "plan" ? `/plan/${slug}` : `/memory/${row.project_id}/${slug}`;
+}
+
+function searchDocs(
+  db: IndexDb,
+  ftsQuery: string,
+  kinds: ReadonlyArray<DocHitRow["kind"]>,
+  params: UnifiedSearchParams,
+  cutoff: number | null,
+  projectNames: Map<string, string>,
+  sentinels: Sentinels,
+): UnifiedSearchItem[] {
+  const { open, close } = sentinels;
+  const kindFilter = sql` AND d.kind IN (${sql.join(
+    kinds.map((kind) => sql`${kind}`),
+    sql`, `,
+  )})`;
+  const projectFilter =
+    params.project === undefined ? sql`` : sql` AND d.project_id = ${params.project}`;
+  const dateFilter = cutoff === null ? sql`` : sql` AND d.mtime_ms >= ${cutoff}`;
+
+  const rows = db.all(
+    sql`SELECT d.path, d.kind, d.project_id, d.mtime_ms,
+				highlight(docs_fts, 2, ${open}, ${close}) AS title_highlight,
+				snippet(docs_fts, 3, ${open}, ${close}, '...', ${SNIPPET_TOKENS}) AS content_snippet
+			FROM docs_fts
+			JOIN docs_content d ON d.id = docs_fts.rowid
+			WHERE docs_fts MATCH ${ftsQuery}${kindFilter}${projectFilter}${dateFilter}
+			ORDER BY bm25(docs_fts), d.mtime_ms DESC
+			LIMIT ${params.limit}`,
+  ) as DocHitRow[];
+
+  return rows.map((row) => {
+    const title = parseHighlighted(row.title_highlight, sentinels);
+    const item: UnifiedSearchItem = {
+      kind: row.kind,
+      id: row.path,
+      title: title.text,
+      titleMatches: title.matches,
+      href: docHref(row),
+      projectId: row.project_id,
+      projectName:
+        row.project_id === "" ? "" : (projectNames.get(row.project_id) ?? row.project_id),
+      mtime: new Date(row.mtime_ms).toISOString(),
+    };
+    const snippet = parseHighlighted(row.content_snippet, sentinels);
+    if (snippet.matches.length > 0) item.snippet = snippet;
+    return item;
+  });
+}
+
 function isWithin(path: string, root: string): boolean {
   return path === root || path.startsWith(root.endsWith(sep) ? root : `${root}${sep}`);
 }
@@ -254,8 +317,8 @@ function searchFiles(
 
 /**
  * Unified search over sessions (title FTS merged with transcript FTS, one item
- * per session with title hits first) and indexed files. Plans and memories are
- * not indexed yet, so those types return no items.
+ * per session with title hits first), plans and memories (`docs_fts`), and
+ * indexed files.
  */
 export function searchUnifiedDb(
   db: IndexDb,
@@ -278,6 +341,12 @@ export function searchUnifiedDb(
   const items: UnifiedSearchItem[] = [];
   if (params.type === "all" || params.type === "sessions") {
     items.push(...searchSessions(db, ftsQuery, params, cutoff, projectNames, sentinels));
+  }
+  const docKinds: Array<DocHitRow["kind"]> = [];
+  if (params.type === "all" || params.type === "plans") docKinds.push("plan");
+  if (params.type === "all" || params.type === "memories") docKinds.push("memory");
+  if (docKinds.length > 0) {
+    items.push(...searchDocs(db, ftsQuery, docKinds, params, cutoff, projectNames, sentinels));
   }
   if (params.type === "all" || params.type === "files") {
     items.push(...searchFiles(db, ftsQuery, terms, params, cutoff, projects, sentinels));

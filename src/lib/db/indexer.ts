@@ -21,7 +21,7 @@ import {
   resolveSessionTitle,
   TitleRecordCollector,
 } from "../sessions";
-import { extractTitle, extractTitleFromContent } from "../markdown-utils.server";
+import { extractTitleFromContent } from "../markdown-utils.server";
 import { listTrackedFiles } from "../git-tracked";
 import * as schema from "./schema";
 
@@ -1128,6 +1128,43 @@ export async function scanTasksDir(db: IndexDb, tasksDir: string): Promise<void>
   }
 }
 
+type DocKind = "plan" | "memory";
+
+interface DocContent {
+  path: string;
+  kind: DocKind;
+  projectId: string;
+  mtimeMs: number;
+  title: string;
+  content: string;
+}
+
+/**
+ * Replace the `docs_content` row (and, via triggers, the `docs_fts` row) for
+ * one plan or memory file. Deletes seek the unique `path` index, and the
+ * trigger removes the FTS row by rowid, so no statement scans `docs_fts`.
+ */
+function replaceDocContent(db: IndexDb, doc: DocContent): void {
+  db.transaction((transaction) => {
+    transaction.run(sql`DELETE FROM docs_content WHERE path = ${doc.path}`);
+    transaction.run(
+      sql`INSERT INTO docs_content(path, kind, project_id, mtime_ms, title, content)
+				VALUES (${doc.path}, ${doc.kind}, ${doc.projectId}, ${doc.mtimeMs}, ${doc.title}, ${doc.content})`,
+    );
+  });
+}
+
+function deleteDocContent(db: IndexDb, path: string): void {
+  db.run(sql`DELETE FROM docs_content WHERE path = ${path}`);
+}
+
+/** Remove every index row owned by one memory markdown file. Idempotent. */
+export function deleteMemoryFile(db: IndexDb, filePath: string): void {
+  db.delete(schema.memories).where(eq(schema.memories.filePath, filePath)).run();
+  db.delete(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).run();
+  deleteDocContent(db, filePath);
+}
+
 export async function indexMemoryFile(
   db: IndexDb,
   filePath: string,
@@ -1137,6 +1174,7 @@ export async function indexMemoryFile(
   try {
     fileStat = await stat(filePath);
   } catch {
+    deleteMemoryFile(db, filePath);
     return;
   }
 
@@ -1154,8 +1192,16 @@ export async function indexMemoryFile(
     if (memoryRow) return;
   }
 
+  let content: string;
+  try {
+    content = await readFile(filePath, "utf-8");
+  } catch {
+    deleteMemoryFile(db, filePath);
+    return;
+  }
+
   const filename = basename(filePath);
-  const title = await extractTitle(filePath, filename);
+  const title = extractTitleFromContent(content, filename);
 
   db.insert(schema.memories)
     .values({
@@ -1175,6 +1221,15 @@ export async function indexMemoryFile(
       },
     })
     .run();
+
+  replaceDocContent(db, {
+    path: filePath,
+    kind: "memory",
+    projectId,
+    mtimeMs: fileStat.mtimeMs,
+    title,
+    content,
+  });
 
   db.insert(schema.indexedFiles)
     .values({
@@ -1211,8 +1266,7 @@ export async function scanMemoriesForProject(
       .where(eq(schema.memories.projectId, projectId))
       .all();
     for (const row of stale) {
-      db.delete(schema.memories).where(eq(schema.memories.filePath, row.filePath)).run();
-      db.delete(schema.indexedFiles).where(eq(schema.indexedFiles.path, row.filePath)).run();
+      deleteMemoryFile(db, row.filePath);
     }
     return;
   }
@@ -1233,8 +1287,7 @@ export async function scanMemoriesForProject(
     .all();
   for (const row of existingRows) {
     if (!indexedPaths.has(row.filePath)) {
-      db.delete(schema.memories).where(eq(schema.memories.filePath, row.filePath)).run();
-      db.delete(schema.indexedFiles).where(eq(schema.indexedFiles.path, row.filePath)).run();
+      deleteMemoryFile(db, row.filePath);
     }
   }
 }
@@ -1273,10 +1326,10 @@ export async function pruneStalePlanLinks(db: IndexDb, plansDir: string): Promis
  * matching `indexed_files` cache entry. Idempotent — running twice is fine.
  */
 export function deletePlan(db: IndexDb, plansDir: string, filename: string): void {
+  const filePath = join(plansDir, filename);
   db.delete(schema.plans).where(eq(schema.plans.filename, filename)).run();
-  db.delete(schema.indexedFiles)
-    .where(eq(schema.indexedFiles.path, join(plansDir, filename)))
-    .run();
+  db.delete(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).run();
+  deleteDocContent(db, filePath);
 }
 
 /**
@@ -1327,6 +1380,15 @@ export async function indexPlanFile(
       set: { title, mtimeMs: fileStat.mtimeMs },
     })
     .run();
+
+  replaceDocContent(db, {
+    path: filePath,
+    kind: "plan",
+    projectId: "",
+    mtimeMs: fileStat.mtimeMs,
+    title,
+    content,
+  });
 
   db.insert(schema.indexedFiles)
     .values({

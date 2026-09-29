@@ -5,14 +5,20 @@ import Database from "better-sqlite3";
 import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { openTestDb, type AppDb } from "../src/lib/db/connection";
-import { deleteFileContent, fullScan, indexFileContent } from "../src/lib/db/indexer";
+import {
+  deleteFileContent,
+  deleteMemoryFile,
+  fullScan,
+  indexFile,
+  indexFileContent,
+} from "../src/lib/db/indexer";
 import {
   searchFileContentDb,
   searchMessageContentDb,
   searchSessionsFromDb,
 } from "../src/lib/db/queries";
 
-const FTS_TABLES = ["sessions_fts", "message_content_fts", "file_content_fts"] as const;
+const FTS_TABLES = ["sessions_fts", "message_content_fts", "file_content_fts", "docs_fts"] as const;
 
 function jsonl(...lines: Record<string, unknown>[]): string {
   return lines.map((line) => JSON.stringify(line)).join("\n") + "\n";
@@ -144,6 +150,28 @@ describe("FTS delete query plans", () => {
       utimesSync(filePath, 946_684_900, 946_684_900);
       await indexFileContent(db.index, filePath, [fileRoot]);
       deleteFileContent(db.index, filePath);
+
+      const plansDir = join(fixtureDirectory, "plans");
+      mkdirSync(plansDir, { recursive: true });
+      const planPath = join(plansDir, "alice.md");
+      writeFileSync(planPath, "# Alice plan\n\nFeed the platypus.\n");
+      await indexFile(db.index, planPath, projectsDir, plansDir);
+      writeFileSync(planPath, "# Alice plan\n\nFeed the wombat.\n");
+      utimesSync(planPath, 946_684_900, 946_684_900);
+      await indexFile(db.index, planPath, projectsDir, plansDir);
+      rmSync(planPath);
+      await indexFile(db.index, planPath, projectsDir, plansDir);
+
+      const memoryDir = join(projectsDir, "-tmp-alice-project", "memory");
+      mkdirSync(memoryDir, { recursive: true });
+      const memoryPath = join(memoryDir, "alice.md");
+      writeFileSync(memoryPath, "# Alice memory\n\nFeed the platypus.\n");
+      await indexFile(db.index, memoryPath, projectsDir, plansDir);
+      writeFileSync(memoryPath, "# Alice memory\n\nFeed the wombat.\n");
+      utimesSync(memoryPath, 946_684_900, 946_684_900);
+      await indexFile(db.index, memoryPath, projectsDir, plansDir);
+      rmSync(memoryPath);
+      deleteMemoryFile(db.index, memoryPath);
     });
 
     const client = rawClient(db);

@@ -7,7 +7,8 @@ import type { ReviewBundle } from "../api/reviews";
 // revisits them.
 // 28: sessions gain ai_title, and title follows the `claude --resume` order
 // (custom > ai > summary > first prompt), so every stored title is recomputed.
-export const SCHEMA_VERSION = "28";
+// 29: plans and memories are indexed in docs_fts, which only a rebuild backfills.
+export const SCHEMA_VERSION = "29";
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),
