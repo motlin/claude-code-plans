@@ -9,11 +9,13 @@ import {
   LARGE_DIFF_MAX_FILES,
   LARGE_DIFF_MAX_LINES,
 } from "../src/components/changes/changes-pane";
+import { SettingsProvider } from "../src/components/settings-provider";
 import type {
   SessionDiffFile,
   SessionDiffResponse,
   SessionDiffScopesResponse,
 } from "../src/lib/api/session-diff";
+import { installLocalStorage } from "./fake-storage";
 
 const GREET_PATCH = `diff --git a/src/greet.ts b/src/greet.ts
 index 1111111..2222222 100644
@@ -73,13 +75,15 @@ function diffOf(files: SessionDiffFile[]): SessionDiffResponse {
 
 function renderPane(files: SessionDiffFile[]) {
   return render(
-    <ChangesPaneView
-      diff={diffOf(files)}
-      scopes={SCOPES}
-      controls={<button type="button">Close</button>}
-      goToFile={<button type="button">Go to file</button>}
-      onRefresh={() => {}}
-    />,
+    <SettingsProvider>
+      <ChangesPaneView
+        diff={diffOf(files)}
+        scopes={SCOPES}
+        controls={<button type="button">Close</button>}
+        goToFile={<button type="button">Go to file</button>}
+        onRefresh={() => {}}
+      />
+    </SettingsProvider>,
   );
 }
 
@@ -93,6 +97,7 @@ class FakeObserver {
 }
 
 beforeEach(() => {
+  installLocalStorage();
   vi.stubGlobal("ResizeObserver", FakeObserver);
   vi.stubGlobal("IntersectionObserver", FakeObserver);
 });
@@ -258,14 +263,16 @@ describe("ChangesPaneView file list", () => {
     Element.prototype.scrollIntoView = vi.fn();
     const onSelectScope = vi.fn();
     render(
-      <ChangesPaneView
-        diff={diffOf([GREET_FILE, LOGO_FILE])}
-        scopes={{ ...SCOPES, commits: [COMMIT], totalCommits: 1 }}
-        controls={null}
-        onRefresh={() => {}}
-        scope="branch"
-        onSelectScope={onSelectScope}
-      />,
+      <SettingsProvider>
+        <ChangesPaneView
+          diff={diffOf([GREET_FILE, LOGO_FILE])}
+          scopes={{ ...SCOPES, commits: [COMMIT], totalCommits: 1 }}
+          controls={null}
+          onRefresh={() => {}}
+          scope="branch"
+          onSelectScope={onSelectScope}
+        />
+      </SettingsProvider>,
     );
     expect(screen.queryByRole("tree", { name: "Changed files" })).toBeNull();
 

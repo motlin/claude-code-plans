@@ -5,6 +5,7 @@ import type { FileDiffOptions } from "@pierre/diffs/react";
 import { ArrowUpRight, ChevronDown, ChevronRight, FileText } from "lucide-react";
 import { type CSSProperties, useMemo, useState } from "react";
 import { claudeLight } from "../../lib/claude-light-theme";
+import type { DiffStyle } from "../settings-provider";
 import { useResolvedTheme } from "../theme-provider";
 
 // Register our claude.ai code theme with the library's shared highlighter so
@@ -42,13 +43,15 @@ const DIFFS_STYLE_OVERRIDES = {
   "--diffs-scrollbar-gutter-override": "0px",
 } as CSSProperties;
 
-export type DiffStyle = "unified" | "split";
+export type { DiffStyle };
 
 export interface DiffFileProps {
   /** A single-file unified diff (`git diff` output for one path). */
   patch: string;
   diffStyle?: DiffStyle;
   wordWrap?: boolean;
+  /** Highlight the changed words within changed lines. */
+  wordDiff?: boolean;
   defaultCollapsed?: boolean;
   /** Controlled collapse state; pair with `onCollapsedChange`. */
   collapsed?: boolean;
@@ -160,6 +163,7 @@ export function DiffFile({
   patch,
   diffStyle = "unified",
   wordWrap = true,
+  wordDiff = true,
   defaultCollapsed = false,
   collapsed: controlledCollapsed,
   onCollapsedChange,
@@ -182,10 +186,11 @@ export function DiffFile({
       diffIndicators: "classic",
       overflow: wordWrap ? "wrap" : "scroll",
       hunkSeparators: "line-info",
+      lineDiffType: wordDiff ? "word-alt" : "none",
       stickyHeader: true,
       collapsed,
     }),
-    [resolvedTheme, diffStyle, wordWrap, collapsed],
+    [resolvedTheme, diffStyle, wordWrap, wordDiff, collapsed],
   );
 
   return (

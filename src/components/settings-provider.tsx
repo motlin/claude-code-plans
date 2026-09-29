@@ -14,6 +14,10 @@ import {
 } from "../lib/session-groups";
 
 type SubagentView = "tree" | "gantt" | "sequence";
+
+/** The Changes pane's diff layout: one column, or old and new side by side. */
+export const DiffStyleSchema = z.enum(["unified", "split"]);
+export type DiffStyle = z.infer<typeof DiffStyleSchema>;
 export type Verbosity = "normal" | "thinking" | "verbose";
 
 export interface LinkCategoryRule {
@@ -59,6 +63,15 @@ export interface Settings {
   verbosity: Verbosity;
 
   linkCategoryRules: LinkCategoryRule[];
+
+  // The Changes pane's ⋯ menu, defaulting like claude.ai/code.
+  diffShowTree: boolean;
+  diffGroupByFolder: boolean;
+  diffGroupByKind: boolean;
+  diffStyle: DiffStyle;
+  diffWordWrap: boolean;
+  diffWordDiff: boolean;
+  diffHideWhitespace: boolean;
 }
 
 export const DEFAULTS: Settings = {
@@ -96,6 +109,14 @@ export const DEFAULTS: Settings = {
   verbosity: "normal",
 
   linkCategoryRules: [],
+
+  diffShowTree: false,
+  diffGroupByFolder: true,
+  diffGroupByKind: false,
+  diffStyle: "unified",
+  diffWordWrap: true,
+  diffWordDiff: true,
+  diffHideWhitespace: false,
 };
 
 const STORAGE_KEYS: Record<keyof Settings, string> = {
@@ -121,6 +142,13 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
   desktopNotifications: "ccp-desktop-notifications",
   verbosity: "ccp-verbosity",
   linkCategoryRules: "ccp-link-category-rules",
+  diffShowTree: "ccp-diff-show-tree",
+  diffGroupByFolder: "ccp-diff-group-by-folder",
+  diffGroupByKind: "ccp-diff-group-by-kind",
+  diffStyle: "ccp-diff-style",
+  diffWordWrap: "ccp-diff-word-wrap",
+  diffWordDiff: "ccp-diff-word-diff",
+  diffHideWhitespace: "ccp-diff-hide-whitespace",
 };
 
 const LINK_CATEGORY_RULES_SCHEMA = z.array(
@@ -200,6 +228,10 @@ function readStoredValue<K extends keyof Settings>(key: K): Settings[K] | undefi
     } catch {
       return undefined;
     }
+  }
+  if (key === "diffStyle") {
+    const parsed = DiffStyleSchema.safeParse(stored);
+    return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
   }
   if (Array.isArray(defaultValue)) {
     try {

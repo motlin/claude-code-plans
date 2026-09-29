@@ -1,7 +1,7 @@
 import { Virtualizer } from "@pierre/diffs/react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, ChevronDown, EllipsisVertical, FileDiff, List } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from "react";
 
 import { useShortcutKeys } from "../../hooks/use-shortcut";
 import {
@@ -17,9 +17,11 @@ import {
 import { writeClipboardText } from "../../lib/clipboard";
 import { loadChangesScope, saveChangesScope } from "../../lib/pane-layout";
 import { type PaneChrome, registerPane } from "../panes/pane-registry";
+import { type Settings, useSettings } from "../settings-provider";
 import { usePaneHost } from "../panes/tile-host";
 import {
   Menu,
+  MenuCheckboxItem,
   MenuContent,
   MenuItem,
   MenuRadioGroup,
@@ -42,6 +44,9 @@ import { DiffFile, DiffFileHeader } from "./diff-file";
  */
 export const LARGE_DIFF_MAX_FILES = 100;
 export const LARGE_DIFF_MAX_LINES = 10_000;
+
+/** Upstream offers "Side by side" only when the pane is at least this wide. */
+const SIDE_BY_SIDE_MIN_WIDTH = 560;
 
 const TOO_LARGE_TO_EXPAND = "This diff is too large to expand at once. Select a file to expand it.";
 
@@ -246,19 +251,56 @@ function ScopeButton({
   );
 }
 
+type DiffPrefKey =
+  | "diffShowTree"
+  | "diffGroupByFolder"
+  | "diffGroupByKind"
+  | "diffWordWrap"
+  | "diffWordDiff"
+  | "diffHideWhitespace";
+
+function PrefCheckboxItem({
+  prefKey,
+  shortcut,
+  children,
+}: {
+  prefKey: DiffPrefKey;
+  shortcut?: string;
+  children: ReactNode;
+}) {
+  const { settings, setSetting } = useSettings();
+  return (
+    <MenuCheckboxItem
+      checked={settings[prefKey]}
+      onCheckedChange={(checked) => setSetting(prefKey, checked)}
+      {...(shortcut === undefined ? {} : { shortcut })}
+    >
+      {children}
+    </MenuCheckboxItem>
+  );
+}
+
+/**
+ * Upstream's Changes settings ⋯ menu. Checkbox items keep the menu open and
+ * persist through app settings; an empty diff offers only Refresh.
+ */
 function SettingsMenu({
   hasFiles,
   large,
+  sideBySideAvailable,
   onCollapseAll,
   onExpandAll,
   onRefresh,
 }: {
   hasFiles: boolean;
   large: boolean;
+  sideBySideAvailable: boolean;
   onCollapseAll: () => void;
   onExpandAll: () => void;
   onRefresh: () => void;
 }) {
+  const { settings, setSetting } = useSettings();
+  const showFilesKeys = useShortcutKeys("toggle_changes_file_list");
   return (
     <Menu>
       <MenuTrigger aria-label="Changes settings" className={GHOST_ICON_BUTTON}>
@@ -267,6 +309,14 @@ function SettingsMenu({
       <MenuContent align="end">
         {hasFiles && (
           <>
+            <PrefCheckboxItem prefKey="diffShowTree" shortcut={showFilesKeys.keys}>
+              Show files
+            </PrefCheckboxItem>
+            <PrefCheckboxItem prefKey="diffGroupByFolder">Group files by folder</PrefCheckboxItem>
+            <PrefCheckboxItem prefKey="diffGroupByKind">
+              Separate test, build, and generated files
+            </PrefCheckboxItem>
+            <MenuSeparator />
             <MenuItem onSelect={onCollapseAll}>Collapse all files</MenuItem>
             {large ? (
               <Tooltip content={TOO_LARGE_TO_EXPAND} className="w-full">
@@ -276,12 +326,51 @@ function SettingsMenu({
               <MenuItem onSelect={onExpandAll}>Expand all files</MenuItem>
             )}
             <MenuSeparator />
+            {sideBySideAvailable && (
+              <MenuCheckboxItem
+                checked={settings.diffStyle === "split"}
+                onCheckedChange={(checked) =>
+                  setSetting("diffStyle", checked ? "split" : "unified")
+                }
+              >
+                Side by side
+              </MenuCheckboxItem>
+            )}
+            <PrefCheckboxItem prefKey="diffWordWrap">Word wrap</PrefCheckboxItem>
+            <PrefCheckboxItem prefKey="diffWordDiff">Highlight changed words</PrefCheckboxItem>
+            <PrefCheckboxItem prefKey="diffHideWhitespace">
+              Hide whitespace changes
+            </PrefCheckboxItem>
+            <MenuSeparator />
           </>
         )}
         <MenuItem onSelect={onRefresh}>Refresh</MenuItem>
       </MenuContent>
     </Menu>
   );
+}
+
+/** The element's content width, tracked with a ResizeObserver (0 until first measured). */
+function useElementWidth(ref: RefObject<HTMLElement | null>): number {
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const element = ref.current;
+    if (element === null || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[entries.length - 1];
+      if (entry) setWidth(entry.contentRect.width);
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [ref]);
+  return width;
+}
+
+/** How each file of the diff renders, from the Changes settings menu. */
+interface DiffViewOptions {
+  diffStyle: Settings["diffStyle"];
+  wordWrap: boolean;
+  wordDiff: boolean;
 }
 
 function ShowFilesToggle({ pressed, onToggle }: { pressed: boolean; onToggle: () => void }) {
@@ -306,23 +395,28 @@ function ShowFilesToggle({ pressed, onToggle }: { pressed: boolean; onToggle: ()
 export interface DiffFetchContext {
   sessionId: string;
   scope: string;
+  hideWhitespace?: boolean;
 }
 
 function LazyDiffFile({
   file,
   fetchContext,
+  view,
   collapsed,
   onCollapsedChange,
   onOpenFile,
 }: {
   file: SessionDiffFile;
   fetchContext: DiffFetchContext;
+  view: DiffViewOptions;
   collapsed: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
   onOpenFile: (() => void) | undefined;
 }) {
   const query = useQuery({
-    ...sessionDiffFileQueryOptions(fetchContext.sessionId, fetchContext.scope, file.path),
+    ...sessionDiffFileQueryOptions(fetchContext.sessionId, fetchContext.scope, file.path, {
+      hideWhitespace: fetchContext.hideWhitespace === true,
+    }),
     enabled: !collapsed,
   });
   const patch = query.data?.file.patch;
@@ -330,6 +424,7 @@ function LazyDiffFile({
     return (
       <DiffFile
         patch={patch}
+        {...view}
         collapsed={collapsed}
         onCollapsedChange={onCollapsedChange}
         {...(onOpenFile ? { onOpenFile } : {})}
@@ -358,12 +453,14 @@ function LazyDiffFile({
 
 function ChangesFile({
   file,
+  view,
   collapsed,
   onCollapsedChange,
   onOpenFile,
   fetchContext,
 }: {
   file: SessionDiffFile;
+  view: DiffViewOptions;
   collapsed: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
   onOpenFile: (() => void) | undefined;
@@ -373,6 +470,7 @@ function ChangesFile({
     return (
       <DiffFile
         patch={file.patch}
+        {...view}
         collapsed={collapsed}
         onCollapsedChange={onCollapsedChange}
         {...(onOpenFile ? { onOpenFile } : {})}
@@ -384,6 +482,7 @@ function ChangesFile({
       <LazyDiffFile
         file={file}
         fetchContext={fetchContext}
+        view={view}
         collapsed={collapsed}
         onCollapsedChange={onCollapsedChange}
         onOpenFile={onOpenFile}
@@ -448,10 +547,6 @@ export interface ChangesPaneViewProps {
   onOpenFile?: (path: string) => void;
   /** Enables lazy loading of files whose patch was too large to inline. */
   fetchContext?: DiffFetchContext;
-  /** Group the file list by folder (default) or list it flat. */
-  groupByFolder?: boolean;
-  /** Separate test, build, and generated files into trailing sections. */
-  groupByKind?: boolean;
   /** The selected scope, a formatted `SessionDiffScope` (`branch`, `uncommitted`, `session`, `commit:<sha>`). */
   scope?: string;
   onSelectScope?: (scope: string) => void;
@@ -474,8 +569,6 @@ export function ChangesPaneView({
   onRefresh,
   onOpenFile,
   fetchContext,
-  groupByFolder = true,
-  groupByKind = false,
   scope = BRANCH_SCOPE,
   onSelectScope = () => {},
   onCopyCommitSha = () => {},
@@ -484,7 +577,15 @@ export function ChangesPaneView({
   const hasFiles = files.length > 0;
   const large = isLargeDiff(files);
   const [collapsedOverrides, setCollapsedOverrides] = useState<Record<string, boolean>>({});
-  const [showFiles, setShowFiles] = useState(false);
+  const { settings, setSetting } = useSettings();
+  const showFiles = settings.diffShowTree;
+  const headerRef = useRef<HTMLDivElement>(null);
+  const sideBySideAvailable = useElementWidth(headerRef) >= SIDE_BY_SIDE_MIN_WIDTH;
+  const view: DiffViewOptions = {
+    diffStyle: sideBySideAvailable ? settings.diffStyle : "unified",
+    wordWrap: settings.diffWordWrap,
+    wordDiff: settings.diffWordDiff,
+  };
   const [activePath, setActivePath] = useState<string | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const scopeLabel = scopeLabelOf(scope, diff, scopes);
@@ -517,8 +618,8 @@ export function ChangesPaneView({
         {showFiles && (
           <ChangedFilesSidebar
             files={files}
-            groupByFolder={groupByFolder}
-            groupByKind={groupByKind}
+            groupByFolder={settings.diffGroupByFolder}
+            groupByKind={settings.diffGroupByKind}
             activePath={activePath}
             onSelectFile={selectFile}
             {...(onOpenFile ? { onOpenFile } : {})}
@@ -549,6 +650,7 @@ export function ChangesPaneView({
               <ChangesFile
                 key={file.path}
                 file={file}
+                view={view}
                 collapsed={isCollapsed(file.path)}
                 onCollapsedChange={(collapsed) =>
                   setCollapsedOverrides((previous) => ({ ...previous, [file.path]: collapsed }))
@@ -571,10 +673,16 @@ export function ChangesPaneView({
 
   return (
     <>
-      <div className="relative flex h-8 shrink-0 items-center justify-between gap-2 px-1">
+      <div
+        ref={headerRef}
+        className="relative flex h-8 shrink-0 items-center justify-between gap-2 px-1"
+      >
         <div className="relative z-[1] flex min-w-0 items-center gap-1 pl-1">
           {hasFiles && (
-            <ShowFilesToggle pressed={showFiles} onToggle={() => setShowFiles((value) => !value)} />
+            <ShowFilesToggle
+              pressed={showFiles}
+              onToggle={() => setSetting("diffShowTree", !showFiles)}
+            />
           )}
           {scopeLabel && (
             <ScopeButton
@@ -591,6 +699,7 @@ export function ChangesPaneView({
           <SettingsMenu
             hasFiles={hasFiles}
             large={large}
+            sideBySideAvailable={sideBySideAvailable}
             onCollapseAll={() => setAllCollapsed(true)}
             onExpandAll={() => setAllCollapsed(false)}
             onRefresh={onRefresh}
@@ -619,7 +728,8 @@ function usePersistedScope(sessionId: string): [string, (scope: string) => void]
 /** The Changes pane for one session, showing the scope persisted for it (All changes by default). */
 export function ChangesPane({ sessionId, chrome }: { sessionId: string; chrome: PaneChrome }) {
   const [scope, setScope] = usePersistedScope(sessionId);
-  const diffQuery = useQuery(sessionDiffQueryOptions(sessionId, scope));
+  const hideWhitespace = useSettings().settings.diffHideWhitespace;
+  const diffQuery = useQuery(sessionDiffQueryOptions(sessionId, scope, { hideWhitespace }));
   const scopesQuery = useQuery(sessionDiffScopesQueryOptions(sessionId));
   const toast = useToast();
   const message = diffQuery.error ? `Couldn't load changes: ${diffQuery.error.message}` : undefined;
@@ -657,7 +767,7 @@ export function ChangesPane({ sessionId, chrome }: { sessionId: string; chrome: 
         void diffQuery.refetch();
         void scopesQuery.refetch();
       }}
-      fetchContext={{ sessionId, scope: diffQuery.data?.scope ?? scope }}
+      fetchContext={{ sessionId, scope: diffQuery.data?.scope ?? scope, hideWhitespace }}
       scope={scope}
       onSelectScope={setScope}
       onCopyCommitSha={(sha) => void copyCommitSha(sha)}

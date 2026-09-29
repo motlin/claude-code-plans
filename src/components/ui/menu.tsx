@@ -211,17 +211,27 @@ export interface MenuCheckboxItemProps extends Omit<
 > {
   children: ReactNode;
   accelerator?: string;
+  /** Global shortcut hint shown before the check, e.g. "ctrl+shift+y". */
+  shortcut?: string;
 }
 
-export function MenuCheckboxItem({ children, accelerator, ...props }: MenuCheckboxItemProps) {
+export function MenuCheckboxItem({
+  children,
+  accelerator,
+  shortcut,
+  ...props
+}: MenuCheckboxItemProps) {
+  const ariaKeyShortcuts = useAriaKeyShortcuts(accelerator, shortcut);
   return (
     <BaseMenu.CheckboxItem
       closeOnClick={false}
       {...props}
       {...acceleratorProps(accelerator)}
+      {...(ariaKeyShortcuts ? { "aria-keyshortcuts": ariaKeyShortcuts } : {})}
       className={`${ITEM_BASE_CLASS} ${ITEM_VARIANT_CLASS.default}`}
     >
       <span className={LABEL_CLASS}>{children}</span>
+      {shortcut !== undefined && <ItemTrailing shortcut={shortcut} />}
       <BaseMenu.CheckboxItemIndicator className={CHECK_SLOT_CLASS}>
         <Check aria-hidden="true" className="size-4" />
       </BaseMenu.CheckboxItemIndicator>

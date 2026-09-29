@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import { ClaudeSettingsSchema, McpConfigSchema, SessionsIndexSchema } from "../src/lib/schemas";
 import { DEFAULT_CAPABILITIES, PersistedCapabilitiesSchema } from "../src/lib/capabilities";
+import { DEFAULTS, DiffStyleSchema } from "../src/components/settings-provider";
 
 /**
  * Collect all project root directories under `~/projects`, scanning up to 2 levels deep.
@@ -300,6 +301,36 @@ describe("PersistedCapabilitiesSchema", () => {
         },
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("Changes diff preference settings", () => {
+  it("defaults the diff view preferences like claude.ai/code", () => {
+    expect({
+      diffShowTree: DEFAULTS.diffShowTree,
+      diffGroupByFolder: DEFAULTS.diffGroupByFolder,
+      diffGroupByKind: DEFAULTS.diffGroupByKind,
+      diffStyle: DEFAULTS.diffStyle,
+      diffWordWrap: DEFAULTS.diffWordWrap,
+      diffWordDiff: DEFAULTS.diffWordDiff,
+      diffHideWhitespace: DEFAULTS.diffHideWhitespace,
+    }).toStrictEqual({
+      diffShowTree: false,
+      diffGroupByFolder: true,
+      diffGroupByKind: false,
+      diffStyle: "unified",
+      diffWordWrap: true,
+      diffWordDiff: true,
+      diffHideWhitespace: false,
+    });
+  });
+
+  it("accepts only the unified and split diff styles", () => {
+    expect(
+      ["unified", "split", "side-by-side", ""].map(
+        (value) => DiffStyleSchema.safeParse(value).success,
+      ),
+    ).toStrictEqual([true, true, false, false]);
   });
 });
 
