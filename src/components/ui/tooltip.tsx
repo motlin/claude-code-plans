@@ -55,7 +55,11 @@ export function Tooltip({
       onBlur={hide}
       onClick={hide}
     >
-      {open ? cloneElement(children, { "aria-describedby": id }) : children}
+      {open
+        ? cloneElement(children, {
+            "aria-describedby": [children.props["aria-describedby"], id].filter(Boolean).join(" "),
+          })
+        : children}
       {open && (
         <span role="tooltip" id={id} className={`${TOOLTIP_CLASS} ${SIDE_CLASS[side]}`}>
           {content}

@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUp, ArrowDown, Maximize2, Minimize2 } from "lucide-react";
 import { SessionChat } from "./session-chat";
-import { ChatInput } from "./chat-input";
+import { Composer } from "./composer";
 import { StreamingMessage } from "./streaming-message";
 import { SessionHookContext } from "./session-hook-context";
 import { useSettings } from "./settings-provider";
@@ -148,7 +148,7 @@ function FloatingScrollButtons({ anchorRef }: { anchorRef: React.RefObject<HTMLE
 
 interface SessionPromptBehavior {
   disabled: boolean;
-  deliveryHint: string | undefined;
+  deliveryHint: string;
   hasLivePane: boolean;
   usesHerdr: boolean;
 }
@@ -163,7 +163,7 @@ export function getSessionPromptBehavior(
   if (!hasLivePane) {
     return {
       disabled: isActive,
-      deliveryHint: undefined,
+      deliveryHint: "Starts a forked session",
       hasLivePane,
       usesHerdr: false,
     };
@@ -171,14 +171,14 @@ export function getSessionPromptBehavior(
   if (!herdr.writesEnabled) {
     return {
       disabled: true,
-      deliveryHint: "- live herdr input is disabled",
+      deliveryHint: "Live terminal input is disabled",
       hasLivePane,
       usesHerdr: false,
     };
   }
   return {
     disabled: false,
-    deliveryHint: "- sends to live herdr session",
+    deliveryHint: "Sends to the live terminal",
     hasLivePane,
     usesHerdr: true,
   };
@@ -675,22 +675,26 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
         {((!chromeHidden && data.projectPath) || statusline) && (
           <div className="sticky bottom-0 z-10 -mx-4 -mb-8 sm:-mx-8">
             {!chromeHidden && data.projectPath && (
-              <ChatInput
-                onSend={(prompt) =>
-                  routeSessionPrompt(
-                    promptBehavior.usesHerdr,
-                    sessionId,
-                    prompt,
-                    liveHerdrPrompt.send,
-                    chatStream.send,
-                  )
-                }
-                onCancel={chatStream.cancel}
-                isStreaming={!promptBehavior.usesHerdr && chatStream.state.isStreaming}
-                disabled={promptBehavior.disabled || liveHerdrPrompt.state.isPending}
-                projectPath={data.projectPath}
-                deliveryHint={promptBehavior.deliveryHint}
-              />
+              <div className="bg-surface-2 px-4 pt-2 pb-3 sm:px-8">
+                <div className="mx-auto w-full max-w-[768px]">
+                  <Composer
+                    variant="session"
+                    onSend={(prompt) =>
+                      routeSessionPrompt(
+                        promptBehavior.usesHerdr,
+                        sessionId,
+                        prompt,
+                        liveHerdrPrompt.send,
+                        chatStream.send,
+                      )
+                    }
+                    onCancel={chatStream.cancel}
+                    isStreaming={!promptBehavior.usesHerdr && chatStream.state.isStreaming}
+                    disabled={promptBehavior.disabled || liveHerdrPrompt.state.isPending}
+                    deliveryHint={promptBehavior.deliveryHint}
+                  />
+                </div>
+              </div>
             )}
             {statusline && (
               <StatusFooter

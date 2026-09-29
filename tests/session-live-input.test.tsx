@@ -2,7 +2,7 @@
 
 import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vite-plus/test";
-import { ChatInput } from "../src/components/chat-input";
+import { Composer } from "../src/components/composer";
 import { useChatStream } from "../src/hooks/use-chat-stream";
 import {
   getSessionPromptBehavior,
@@ -26,18 +26,28 @@ describe("session live input", () => {
     ]).toStrictEqual([
       {
         disabled: false,
-        deliveryHint: "- sends to live herdr session",
+        deliveryHint: "Sends to the live terminal",
         hasLivePane: true,
         usesHerdr: true,
       },
       {
         disabled: true,
-        deliveryHint: "- live herdr input is disabled",
+        deliveryHint: "Live terminal input is disabled",
         hasLivePane: true,
         usesHerdr: false,
       },
-      { disabled: false, deliveryHint: undefined, hasLivePane: false, usesHerdr: false },
-      { disabled: true, deliveryHint: undefined, hasLivePane: false, usesHerdr: false },
+      {
+        disabled: false,
+        deliveryHint: "Starts a forked session",
+        hasLivePane: false,
+        usesHerdr: false,
+      },
+      {
+        disabled: true,
+        deliveryHint: "Starts a forked session",
+        hasLivePane: false,
+        usesHerdr: false,
+      },
     ]);
   });
 
@@ -71,34 +81,27 @@ describe("session live input", () => {
     });
   });
 
-  it("shows the live delivery hint without changing ChatInput's send contract", () => {
+  it("describes live delivery on Send without changing the composer's send contract", () => {
     const onSend = vi.fn<(prompt: string) => void>();
 
     render(
-      <ChatInput
-        onSend={onSend}
-        onCancel={() => {}}
-        isStreaming={false}
-        projectPath="/tmp/test/project"
-        deliveryHint="- sends to live herdr session"
-      />,
+      <Composer variant="session" onSend={onSend} deliveryHint="Sends to the live terminal" />,
     );
 
-    expect(screen.getByText("- sends to live herdr session").textContent).toBe(
-      "- sends to live herdr session",
+    const send = screen.getByRole("button", { name: "Send" });
+    expect(document.getElementById(send.getAttribute("aria-describedby") ?? "")?.textContent).toBe(
+      "Sends to the live terminal",
     );
-    fireEvent.change(screen.getByPlaceholderText("Send a follow-up message..."), {
+    fireEvent.change(screen.getByRole("textbox", { name: "Prompt" }), {
       target: { value: "Continue Alice's test" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    fireEvent.click(send);
     expect(onSend.mock.calls).toStrictEqual([["Continue Alice's test"]]);
   });
 
   it("does not synchronously measure or resize the transcript textarea while typing", () => {
-    render(<ChatInput onSend={() => {}} onCancel={() => {}} isStreaming={false} />);
-    const textarea = screen.getByPlaceholderText<HTMLTextAreaElement>(
-      "Send a follow-up message...",
-    );
+    render(<Composer variant="session" onSend={() => {}} />);
+    const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Prompt" });
     const readScrollHeight = vi.fn(() => 100);
     Object.defineProperty(textarea, "scrollHeight", {
       configurable: true,
