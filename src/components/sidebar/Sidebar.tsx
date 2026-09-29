@@ -9,6 +9,7 @@ import { useVisibleNavItems } from "./navigation";
 import { NavScroll } from "./nav-scroll";
 import { SidebarFooter } from "./sidebar-footer";
 import { SidebarToggleButton } from "./sidebar-toggle";
+import { SidebarToggleIcon } from "./primitives";
 import { SidebarSessionGroups } from "./session-filter-menu";
 import { MemoriesSubList, PlansSubList, ProjectsSubList } from "./sublists";
 import { approvalsQueryOptions } from "../../lib/api/approvals";
@@ -28,11 +29,14 @@ export function Sidebar({
   collapsed,
   onToggle,
   mobile,
+  onPhoneSheetClose,
 }: {
   collapsed: boolean;
   /** Overrides the persisted toggle, e.g. to close the mobile drawer. */
   onToggle?: () => void;
   mobile?: boolean;
+  /** Renders the phone-sheet contents (Close + wordmark header) instead of a docked sidebar. */
+  onPhoneSheetClose?: () => void;
 }) {
   const { width } = useSidebarState();
   const matches = useMatches();
@@ -198,6 +202,38 @@ export function Sidebar({
       <SidebarFooter />
     </>
   );
+
+  if (onPhoneSheetClose) {
+    return (
+      <nav
+        aria-label="Sidebar"
+        data-focus-region="navigation"
+        className="group/sidebar flex h-full min-h-0 flex-col"
+      >
+        <div
+          data-testid="phone-sheet-header"
+          className="flex h-11 shrink-0 items-center gap-2 px-2"
+        >
+          <button
+            type="button"
+            aria-label="Close sidebar"
+            data-phone-sheet-close=""
+            onClick={onPhoneSheetClose}
+            className="flex h-8 w-8 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover [&_svg]:h-5 [&_svg]:w-5"
+          >
+            <SidebarToggleIcon />
+          </button>
+          <Link
+            to="/"
+            className="ml-2 font-voice text-[20px] leading-none font-medium whitespace-nowrap text-primary no-underline"
+          >
+            Claude Code Browser
+          </Link>
+        </div>
+        {body}
+      </nav>
+    );
+  }
 
   if (collapsed && !mobile) {
     return <CollapsedSidebar>{body}</CollapsedSidebar>;

@@ -16,6 +16,7 @@ import { ThemeProvider } from "../components/theme-provider";
 import { SettingsProvider } from "../components/settings-provider";
 import { ToastProvider } from "../components/toast";
 import { Sidebar } from "../components/sidebar/index";
+import { AppFrame } from "../components/app-frame";
 import { AppShellFallback } from "../components/app-shell-fallback";
 import { CommandPalette } from "../components/command-palette";
 import { SettingsDialog } from "../components/settings/settings-dialog";
@@ -47,6 +48,7 @@ import {
 } from "../lib/api/sessions";
 import appCss from "../styles/globals.css?url";
 import { THEME_INIT_SCRIPT } from "../lib/theme-init";
+import { usePhoneSheet } from "../lib/use-phone-sheet";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   ssr: false,
@@ -110,6 +112,7 @@ function HamburgerIcon() {
   );
 }
 
+/** The 640–767px drawer; below 640px the phone sheet (AppFrame) replaces it. */
 function MobileSidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const router = useRouter();
 
@@ -165,6 +168,7 @@ function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   useFocusRegionShortcuts();
   useRecentsRecorder();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const phoneSheet = usePhoneSheet();
   const commandPalette = useCommandPalette();
   const capabilities = useCapabilities();
   const fullBleed = useMatches({
@@ -173,23 +177,18 @@ function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
 
   return (
     <>
-      <div className="flex h-screen">
-        <Sidebar collapsed={sidebarCollapsed} />
-        <main
-          data-scroll-restoration-id="main"
-          data-focus-region="main"
-          className={`flex-1 overflow-y-auto bg-surface-2 ${fullBleed ? "flex flex-col" : ""}`}
+      <AppFrame collapsed={sidebarCollapsed} className={fullBleed ? "flex flex-col" : ""}>
+        <IndexingBanner />
+        <HookSchemaDriftBanner />
+        {capabilities.showWorkingCopyReview && (
+          <WorkingCopyReviewBanner capability={capabilities.states.workingCopyReview} />
+        )}
+        <DesktopNotificationBridge />
+        <AttentionBadgeBridge />
+        <div
+          className={`flex min-h-9 items-center px-4 pt-3 sm:px-8 ${sidebarCollapsed ? "md:pl-12" : ""}`}
         >
-          <IndexingBanner />
-          <HookSchemaDriftBanner />
-          {capabilities.showWorkingCopyReview && (
-            <WorkingCopyReviewBanner capability={capabilities.states.workingCopyReview} />
-          )}
-          <DesktopNotificationBridge />
-          <AttentionBadgeBridge />
-          <div
-            className={`flex min-h-9 items-center px-4 pt-3 sm:px-8 ${sidebarCollapsed ? "md:pl-12" : ""}`}
-          >
+          {!phoneSheet && (
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
@@ -198,15 +197,15 @@ function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
             >
               <HamburgerIcon />
             </button>
-          </div>
-          {fullBleed ? (
-            <div className="min-h-0 flex-1">{children}</div>
-          ) : (
-            <div className="px-4 pb-24 sm:px-8 sm:pb-8">{children}</div>
           )}
-        </main>
-      </div>
-      <MobileSidebar open={mobileOpen} onClose={() => setMobileOpen(false)} />
+        </div>
+        {fullBleed ? (
+          <div className="min-h-0 flex-1">{children}</div>
+        ) : (
+          <div className="px-4 pb-24 sm:px-8 sm:pb-8">{children}</div>
+        )}
+      </AppFrame>
+      <MobileSidebar open={mobileOpen && !phoneSheet} onClose={() => setMobileOpen(false)} />
       <CommandPalette {...commandPalette} />
       <KeyboardShortcutsDialog />
       <RecentsSwitcher />

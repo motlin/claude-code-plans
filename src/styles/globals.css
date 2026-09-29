@@ -517,6 +517,57 @@
   }
 }
 
+/*
+ * Upstream claude.ai/code phone sheet (< 40rem): the sidebar becomes a full-screen dialog that
+ * slides in from the left, pads for safe areas, and grows rows to touch size (44px / 36px).
+ */
+.phone-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  max-height: 100dvh;
+  padding: env(safe-area-inset-top) max(8px, env(safe-area-inset-right))
+    max(env(safe-area-inset-bottom), 0.5rem) max(8px, env(safe-area-inset-left));
+  background: var(--sb-bg);
+  visibility: hidden;
+  overscroll-behavior: contain;
+  touch-action: pan-y pinch-zoom;
+  outline: none;
+  --sb-row-h: 44px;
+  --sb-row-ctl: 36px;
+  transform: translate(-100%);
+  transition:
+    transform 0.3s cubic-bezier(0.165, 0.84, 0.44, 1),
+    visibility 0s linear 0.3s;
+}
+
+.phone-sheet[data-open] {
+  visibility: visible;
+  transform: none;
+  transition:
+    transform 0.3s cubic-bezier(0.165, 0.84, 0.44, 1),
+    visibility 0s;
+}
+
+.phone-sheet[data-open][data-phone-sheet-dragging] {
+  transform: translateX(var(--df-phone-sheet-drag, 0px));
+  transition: none;
+}
+
+.phone-sheet .df-touch-reveal {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phone-sheet,
+  .phone-sheet[data-open] {
+    transition: none;
+  }
+}
+
 /* Upstream claude.ai/code session row icons: 6px dots keyed by data-kind. */
 .status-dot {
   position: relative;

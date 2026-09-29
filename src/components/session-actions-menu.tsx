@@ -567,7 +567,7 @@ export function useRenameAfterMenuClose(startEditing: () => void) {
 }
 
 const KEBAB_CLASS =
-  "absolute top-1/2 right-[calc((var(--sb-row-h,32px)-24px)/2)] flex size-6 -translate-y-1/2 items-center justify-center rounded-r6 text-ink-muted opacity-0 transition-opacity hover:bg-fill-ghost-hover hover:text-primary focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 group-hover/session-row:opacity-100 data-[popup-open]:opacity-100 data-[popup-open]:bg-fill-ghost-hover pointer-coarse:opacity-100";
+  "df-touch-reveal absolute top-1/2 right-[calc((var(--sb-row-h,32px)-var(--sb-row-ctl,24px))/2)] flex size-[var(--sb-row-ctl,24px)] -translate-y-1/2 items-center justify-center rounded-r6 text-ink-muted opacity-0 transition-opacity hover:bg-fill-ghost-hover hover:text-primary focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 group-hover/session-row:opacity-100 data-[popup-open]:opacity-100 data-[popup-open]:bg-fill-ghost-hover pointer-coarse:opacity-100";
 
 /**
  * claude.ai/code's session row actions: a 24px hover kebab ("More options for
