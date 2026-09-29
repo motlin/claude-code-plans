@@ -79,7 +79,7 @@ export const SHORTCUTS = {
     group: "general",
     bindings: cmdOrCtrl("k", ["shift"]),
     ownerSlug: "search",
-    enabled: false,
+    enabled: true,
   },
   switch_recents: {
     description: "Switch between recents",

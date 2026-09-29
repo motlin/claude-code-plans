@@ -233,7 +233,7 @@ describe("useCommandPalette", () => {
     const input = document.getElementById("palette-input")!;
     input.focus();
     const { result } = renderHook(() => useCommandPalette());
-    act(() => result.current.setOpen(true));
+    act(() => result.current.onOpenChange(true));
     press({ key: "k", metaKey: true }, input);
     expect(result.current.open).toBe(false);
   });

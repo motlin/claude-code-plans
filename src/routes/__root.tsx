@@ -192,7 +192,7 @@ function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
         </main>
       </div>
       <MobileSidebar open={mobileOpen} onClose={() => setMobileOpen(false)} />
-      <CommandPalette open={commandPalette.open} onOpenChange={commandPalette.setOpen} />
+      <CommandPalette {...commandPalette} />
       <KeyboardShortcutsDialog />
       <SettingsDialog />
     </>

@@ -57,6 +57,7 @@ describe("shortcut registry", () => {
   it("only enables the shortcuts wired today", () => {
     expect(SHORTCUT_IDS.filter((id) => SHORTCUTS[id].enabled)).toEqual([
       "search_or_start",
+      "search",
       "toggle_sidebar",
       "shortcuts_modal",
       "settings",

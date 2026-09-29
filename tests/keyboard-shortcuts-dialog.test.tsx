@@ -119,6 +119,7 @@ describe("KeyboardShortcutsDialog", () => {
       sections: ["General", "Panes"],
       rows: [
         "Search or start a session",
+        "Search",
         "Toggle sidebar",
         "Keyboard shortcuts",
         "Settings",
@@ -126,8 +127,6 @@ describe("KeyboardShortcutsDialog", () => {
         "Expand or collapse pane",
       ],
     });
-    expect(SHORTCUTS.search.enabled).toBe(false);
-    expect(within(region).queryByText("Search")).toBeNull();
   });
 
   it("renders each row's keys as keycaps for the current platform", async () => {
