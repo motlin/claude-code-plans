@@ -20,6 +20,8 @@ export interface PendingApproval {
   blockedSince: string;
   planFilename: string | null;
   questionPreview: string | null;
+  /** Option labels of the (first) pending AskUserQuestion question, for quick approval. */
+  questionOptions: string[];
 }
 
 interface PendingEntry {
@@ -29,6 +31,7 @@ interface PendingEntry {
   blockedSince: string;
   planFilename: string | null;
   questionPreview: string | null;
+  questionOptions: string[];
 }
 
 interface JsonlContentBlock {
@@ -77,6 +80,28 @@ function extractQuestionPreview(input: Record<string, unknown> | undefined): str
     if (typeof first === "string" && first.trim()) return first.trim();
   }
   return null;
+}
+
+function optionLabels(options: unknown): string[] {
+  if (!Array.isArray(options)) return [];
+  const labels: string[] = [];
+  for (const option of options) {
+    if (option && typeof option === "object") {
+      const label = (option as Record<string, unknown>)["label"];
+      if (typeof label === "string" && label.trim()) labels.push(label.trim());
+    }
+  }
+  return labels;
+}
+
+function extractQuestionOptions(input: Record<string, unknown> | undefined): string[] {
+  if (!input) return [];
+  if (typeof input["question"] === "string") return optionLabels(input["options"]);
+  const questions = input["questions"];
+  if (!Array.isArray(questions)) return [];
+  const first: unknown = questions[0];
+  if (!first || typeof first !== "object") return [];
+  return optionLabels((first as Record<string, unknown>)["options"]);
 }
 
 export async function scanPendingApproval(filePath: string): Promise<PendingApproval | null> {
@@ -131,6 +156,7 @@ export async function scanPendingApproval(filePath: string): Promise<PendingAppr
             planFilename: name === "ExitPlanMode" ? extractPlanFilename(block.input) : null,
             questionPreview:
               name === "AskUserQuestion" ? extractQuestionPreview(block.input) : null,
+            questionOptions: name === "AskUserQuestion" ? extractQuestionOptions(block.input) : [],
           });
         }
       } else {
@@ -165,6 +191,7 @@ export async function scanPendingApproval(filePath: string): Promise<PendingAppr
     blockedSince: latest.blockedSince,
     planFilename: latest.planFilename,
     questionPreview: latest.questionPreview,
+    questionOptions: latest.questionOptions,
   };
 }
 

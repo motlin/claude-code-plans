@@ -180,6 +180,7 @@ beforeEach(() => {
         blockedSince: "2000-01-01T00:03:00Z",
         planFilename: null,
         questionPreview: "Continue with the queue repair?",
+        questionOptions: [],
       },
     ],
   };

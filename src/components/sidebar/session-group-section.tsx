@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
@@ -22,6 +22,7 @@ import {
 } from "../../lib/sidebar-store";
 import { ArchivedBadge } from "../archived-badge";
 import { SessionActionsMenu, SessionRowTitle } from "../session-actions-menu";
+import { SessionHoverCard } from "../session-hover-card";
 import { SessionRowStatusDot } from "../session-unread-control";
 import { Tooltip } from "../ui/tooltip";
 import { CustomGroupHeader } from "./custom-group-header";
@@ -366,29 +367,39 @@ function SessionRowLink({
   /** Screen-reader note on a nested row, e.g. "Forked from {title}". */
   lineage?: string;
 }) {
+  const navigate = useNavigate();
   return (
-    <SessionActionsMenu session={row.session} {...(pinnedIds === undefined ? {} : { pinnedIds })}>
-      <Link
-        to="/session/$id"
-        params={{ id: row.sessionId }}
-        data-row-main-button
-        data-selected={selected ? "focused" : undefined}
-        className={`${ROW_CLASS} text-secondary hover:bg-[var(--sb-hover)] focus-visible:bg-[var(--sb-hover)] data-[selected=focused]:bg-[var(--sb-selected)] data-[selected=focused]:text-primary`}
-      >
-        <span className="df-leading-slot text-secondary">
-          <SessionRowStatusDot session={row.session} />
-        </span>
-        <span data-row-label className="min-w-0 flex-1">
-          <SessionRowTitle render={(title) => <FadeLabel text={title} />} />
-        </span>
-        {lineage !== undefined && (
-          <span data-family-lineage className="sr-only">
-            {lineage}
+    <SessionHoverCard
+      sessionId={row.sessionId}
+      title={row.title.trim() || "Untitled session"}
+      summary={row.session.summary ?? null}
+      blocked={row.bucket === "blocked"}
+      onOpen={(id) => void navigate({ to: "/session/$id", params: { id } })}
+      render={<div />}
+    >
+      <SessionActionsMenu session={row.session} {...(pinnedIds === undefined ? {} : { pinnedIds })}>
+        <Link
+          to="/session/$id"
+          params={{ id: row.sessionId }}
+          data-row-main-button
+          data-selected={selected ? "focused" : undefined}
+          className={`${ROW_CLASS} text-secondary hover:bg-[var(--sb-hover)] focus-visible:bg-[var(--sb-hover)] data-[selected=focused]:bg-[var(--sb-selected)] data-[selected=focused]:text-primary`}
+        >
+          <span className="df-leading-slot text-secondary">
+            <SessionRowStatusDot session={row.session} />
           </span>
-        )}
-        {row.archived && <ArchivedBadge />}
-      </Link>
-    </SessionActionsMenu>
+          <span data-row-label className="min-w-0 flex-1">
+            <SessionRowTitle render={(title) => <FadeLabel text={title} />} />
+          </span>
+          {lineage !== undefined && (
+            <span data-family-lineage className="sr-only">
+              {lineage}
+            </span>
+          )}
+          {row.archived && <ArchivedBadge />}
+        </Link>
+      </SessionActionsMenu>
+    </SessionHoverCard>
   );
 }
 

@@ -45,6 +45,7 @@ function row(sessionId: string, overrides: Partial<HomeAttentionRow> = {}): Home
     createdAt: NOW - 60 * MINUTE,
     lastActivityAt: NOW - MINUTE,
     pendingApproval: null,
+    summary: null,
     statusDetail: null,
     lastAssistantText: null,
     ...overrides,
@@ -398,6 +399,7 @@ describe("HomeSessionsSection", () => {
           blockedSince: new Date().toISOString(),
           planFilename: null,
           questionPreview: null,
+          questionOptions: [],
         },
       ],
     });
@@ -453,5 +455,49 @@ describe("HomeSessionsSection", () => {
         },
       ],
     });
+  });
+});
+
+describe("AttentionSection hover cards", () => {
+  it("previews a row with the blocked or summary card", async () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(approvalsQueryOptions().queryKey, { approvals: [] });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AttentionSection
+          items={items([
+            row("blocked", { title: "Blocked row" }),
+            row("review", { bucket: "review", title: "Review row", summary: "Parser split." }),
+          ])}
+          rowLimit={5}
+          now={NOW}
+          onOpen={() => undefined}
+          onDismiss={() => undefined}
+        />
+      </QueryClientProvider>,
+    );
+    const cards: Array<{ kind: string | null; summary: string | null | undefined }> = [];
+    for (const name of ["Open session Blocked row", "Open session Review row"]) {
+      const li = screen.getByRole("button", { name }).closest("li")!;
+      fireEvent.pointerEnter(li, { pointerType: "mouse" });
+      fireEvent.mouseEnter(li);
+      fireEvent.mouseMove(li);
+      const card = await waitFor(() => {
+        const found = document.querySelector("[data-session-hover-card]");
+        if (!(found instanceof HTMLElement)) throw new Error("no card");
+        return found;
+      });
+      cards.push({
+        kind: card.getAttribute("data-kind"),
+        summary: card.querySelector("[data-card-summary]")?.textContent,
+      });
+      fireEvent.pointerLeave(li, { pointerType: "mouse" });
+      fireEvent.mouseLeave(li);
+      await waitFor(() => expect(document.querySelector("[data-session-hover-card]")).toBeNull());
+    }
+    expect(cards).toStrictEqual([
+      { kind: "blocked", summary: "Waiting for your input." },
+      { kind: "other", summary: "Parser split." },
+    ]);
   });
 });

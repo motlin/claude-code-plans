@@ -215,6 +215,7 @@ describe("scanPendingApproval", () => {
     expect(result!.toolName).toBe("AskUserQuestion");
     expect(result!.toolUseId).toBe("toolu_q");
     expect(result!.questionPreview).toBe("Which database should we use?");
+    expect(result!.questionOptions).toStrictEqual(["SQLite", "Postgres"]);
     expect(result!.planFilename).toBeNull();
   });
 

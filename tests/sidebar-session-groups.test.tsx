@@ -238,3 +238,43 @@ describe("sidebar SessionGroups", () => {
     expect(screen.queryByRole("button", { name: "Load more sessions" })).toBeNull();
   });
 });
+
+describe("SessionGroups hover cards", () => {
+  async function hoverRow(container: HTMLElement, title: string) {
+    const link = [...container.querySelectorAll("a[data-row-main-button]")].find(
+      (node) => node.textContent === title,
+    );
+    const trigger = link?.closest("[data-hover-card-trigger]");
+    if (!(trigger instanceof HTMLElement)) throw new Error(`no row ${title}`);
+    fireEvent.pointerEnter(trigger, { pointerType: "mouse" });
+    fireEvent.mouseEnter(trigger);
+    fireEvent.mouseMove(trigger);
+    return waitFor(() => {
+      const card = document.querySelector("[data-session-hover-card]");
+      if (!(card instanceof HTMLElement)) throw new Error("no card");
+      return card;
+    });
+  }
+
+  it("previews a completed row's title and summary", async () => {
+    const { container } = await renderGroups([
+      { ...session("d1", "Completed newest", "done", 5), summary: "Shipped the parser." },
+    ]);
+    const card = await hoverRow(container, "Completed newest");
+    expect({
+      kind: card.getAttribute("data-kind"),
+      title: card.querySelector("[data-card-title]")?.textContent,
+      summary: card.querySelector("[data-card-summary]")?.textContent,
+    }).toStrictEqual({
+      kind: "other",
+      title: "Completed newest",
+      summary: "Shipped the parser.",
+    });
+  });
+
+  it("opens the blocked card on a Needs input row", async () => {
+    const { container } = await renderGroups([session("b1", "Blocked one", "blocked", 3)]);
+    const card = await hoverRow(container, "Blocked one");
+    expect(card.getAttribute("data-kind")).toBe("blocked");
+  });
+});

@@ -33,7 +33,9 @@ function approvalsEqual(a: PendingApproval, b: PendingApproval): boolean {
     a.toolUseId === b.toolUseId &&
     a.blockedSince === b.blockedSince &&
     a.planFilename === b.planFilename &&
-    a.questionPreview === b.questionPreview
+    a.questionPreview === b.questionPreview &&
+    a.questionOptions.length === b.questionOptions.length &&
+    a.questionOptions.every((option, index) => option === b.questionOptions[index])
   );
 }
 
@@ -126,6 +128,7 @@ export async function updatePendingApprovalForSession(
     blockedSince: scanned.blockedSince,
     planFilename,
     questionPreview: scanned.questionPreview,
+    questionOptions: scanned.questionOptions,
   };
 
   if (prior && approvalsEqual(prior.approval, approval)) {

@@ -22,6 +22,7 @@ function toAttentionRow(
   return {
     ...toGroupRow(session),
     pendingApproval: toolName === undefined ? null : { toolName },
+    summary: session.summary ?? null,
     statusDetail: null,
     lastAssistantText: null,
   };

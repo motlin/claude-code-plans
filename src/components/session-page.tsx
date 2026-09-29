@@ -61,6 +61,7 @@ import {
 } from "../lib/composer-state";
 import { useSessionViewedState } from "../hooks/use-session-viewed-state";
 import { usePendingMessageJump } from "../hooks/use-pending-message-jump";
+import { postAnswerQuestion } from "../lib/api/answer-question";
 import { applicationSettingsQueryOptions } from "../lib/api/application-settings";
 import { herdrPanesQueryOptions, sendHerdrPrompt } from "../lib/api/herdr";
 import type { HerdrPaneIndexData } from "../lib/api/herdr";
@@ -458,29 +459,7 @@ function SessionView({
       toolUseId: string;
       answers: Array<{ question: string; answer: string }>;
     }) => {
-      const res = await fetch("/api/answer-question", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, toolUseId, answers }),
-      });
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(body.error ?? `Request failed (${res.status})`);
-      }
-      // Drain the stream so the spawned `claude --resume` runs to
-      // completion in the background. The SSE watcher will refresh the
-      // session view once the new JSONL is written.
-      const reader = res.body?.getReader();
-      if (reader) {
-        try {
-          while (true) {
-            const { done } = await reader.read();
-            if (done) break;
-          }
-        } finally {
-          reader.releaseLock();
-        }
-      }
+      await postAnswerQuestion({ sessionId, toolUseId, answers });
     },
     [sessionId],
   );

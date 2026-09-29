@@ -8,6 +8,8 @@ export type HomeAttentionKind = z.infer<typeof HomeAttentionKindSchema>;
 export interface HomeAttentionRow extends SessionGroupRow {
   /** A pending approval (plan, question or permission prompt) from the session or its subagents. */
   pendingApproval: { toolName: string } | null;
+  /** The session's generated or indexed summary, for the hover preview card. */
+  summary: string | null;
   /** Hook or herdr status detail, e.g. the running task summary. */
   statusDetail: string | null;
   lastAssistantText: string | null;

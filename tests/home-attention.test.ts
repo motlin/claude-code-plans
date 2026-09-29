@@ -21,6 +21,7 @@ function row(sessionId: string, overrides: Partial<HomeAttentionRow> = {}): Home
     createdAt: NOW - 60 * MINUTE,
     lastActivityAt: NOW - MINUTE,
     pendingApproval: null,
+    summary: null,
     statusDetail: null,
     lastAssistantText: null,
     ...overrides,

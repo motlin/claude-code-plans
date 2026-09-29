@@ -145,6 +145,7 @@ export interface PendingApprovalPayload {
   blockedSince: string;
   planFilename: string | null;
   questionPreview: string | null;
+  questionOptions: string[];
 }
 
 /** Summary payload for a single plan, matching `/api/plans` output. */

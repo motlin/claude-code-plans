@@ -11,7 +11,10 @@ const PendingApprovalSchema = z.object({
   blockedSince: z.string(),
   planFilename: z.string().nullable(),
   questionPreview: z.string().nullable(),
+  questionOptions: z.array(z.string()),
 });
+
+export type PendingApprovalItem = z.infer<typeof PendingApprovalSchema>;
 
 export const ApprovalsResponse = z.object({
   approvals: z.array(PendingApprovalSchema),

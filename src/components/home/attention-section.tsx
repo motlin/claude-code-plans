@@ -8,6 +8,7 @@ import type {
 } from "../../lib/home-attention";
 import { formatNarrowRelativeTime } from "../../lib/relative-time";
 import { homeAttentionKindLabels } from "../../lib/schema-choices";
+import { SessionHoverCard } from "../session-hover-card";
 
 /** Upstream caps the Sessions section at five rows even on the tallest viewports. */
 const MAX_SESSION_ROWS = 5;
@@ -128,10 +129,21 @@ function AttentionRow<Row extends HomeAttentionRow>({
   const pill = PILL_CLASSES[kind];
 
   return (
-    <li
-      data-session-id={session.sessionId}
-      data-kind={kind}
-      className="group flex h-10 items-center gap-2 rounded-lg bg-alpha-1 px-[5px] py-2 hover:bg-alpha-2 focus-within:bg-alpha-2"
+    <SessionHoverCard
+      sessionId={session.sessionId}
+      title={title}
+      summary={session.summary}
+      blocked={kind === "blocked"}
+      onOpen={onOpen}
+      side="bottom"
+      align="end"
+      render={
+        <li
+          data-session-id={session.sessionId}
+          data-kind={kind}
+          className="group flex h-10 items-center gap-2 rounded-lg bg-alpha-1 px-[5px] py-2 hover:bg-alpha-2 focus-within:bg-alpha-2"
+        />
+      }
     >
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <button
@@ -203,6 +215,6 @@ function AttentionRow<Row extends HomeAttentionRow>({
       >
         <X aria-hidden="true" className="size-4" />
       </button>
-    </li>
+    </SessionHoverCard>
   );
 }
