@@ -30,13 +30,27 @@ import {
   File,
   LoaderCircle,
   ListFilter,
+  Link,
+  Pin,
+  PinOff,
+  Pencil,
+  Terminal,
+  GitFork,
 } from "lucide-react";
 import type { PaletteMode } from "../hooks/use-command-palette";
 import { useDebouncedValue } from "../hooks/use-debounced-value";
 import { encodeFilePath } from "../lib/api/file";
+import { assertNever } from "../lib/assert-never";
 import { projectsQueryOptions } from "../lib/api/projects";
 import { unifiedSearchQueryOptions, type UnifiedSearchItem } from "../lib/api/search";
-import { recentSessionsQueryOptions, type SessionListItem } from "../lib/api/sessions";
+import {
+  recentSessionsQueryOptions,
+  sessionDetailQueryOptions,
+  useToggleSessionStar,
+  type SessionDetailData,
+  type SessionListItem,
+} from "../lib/api/sessions";
+import { writeClipboardText } from "../lib/clipboard";
 import {
   PALETTE_FILTER_TOKENS,
   PaletteTypeSchema,
@@ -53,6 +67,9 @@ import {
 } from "../lib/palette-tokens";
 import { paletteFilterLabels, paletteTypeLabels } from "../lib/schema-choices";
 import { relativeBucket, titleMatches, type Snippet, type TextMatch } from "../lib/search-text";
+import { createSessionCommands } from "../lib/session-commands";
+import { getSessionMenuItems, type SessionMenuCapability } from "../lib/session-menu-items";
+import { requestSessionRename } from "../lib/session-rename-request";
 import type { SessionBucket } from "../lib/session-state";
 import { SHORTCUTS, type ShortcutId } from "../lib/shortcuts/registry";
 import { toggleSidebarCollapsed } from "../lib/sidebar-store";
@@ -60,10 +77,12 @@ import { type ShortcutKeys, useShortcutKeys } from "../hooks/use-shortcut";
 import { clearAll } from "../lib/unread-store";
 import { HighlightRuns } from "./highlight-runs";
 import {
+  copySessionLink,
   type PaletteCardSession,
   PaletteRowActionsButton,
   PaletteRowActionsCard,
 } from "./palette-row-actions";
+import { useToast } from "./toast";
 import { Shortcut } from "./ui/shortcut";
 import { useOpenSettings } from "./settings/settings-dialog";
 import { setKeyboardShortcutsOpen } from "./keyboard-shortcuts-dialog";
@@ -271,6 +290,72 @@ const NAV_COMMANDS = [
   { to: "/customize", label: "Customize", icon: <Puzzle />, keywords: ["skill", "plugin"] },
 ] as const;
 
+type SessionCommandId = "pin" | "unpin" | "rename" | "copy-link" | "copy-resume" | "copy-fork";
+
+interface SessionCommand {
+  id: SessionCommandId;
+  label: string;
+}
+
+const SESSION_COMMAND_ICONS = {
+  pin: <Pin />,
+  unpin: <PinOff />,
+  rename: <Pencil />,
+  "copy-link": <Link />,
+  "copy-resume": <Terminal />,
+  "copy-fork": <GitFork />,
+} as const satisfies Record<SessionCommandId, ReactNode>;
+
+/** Upstream's contextual commands surface for "session" plus each action's own verb. */
+const SESSION_COMMAND_KEYWORDS = {
+  pin: ["session", "pin", "star"],
+  unpin: ["session", "unpin", "pin", "star"],
+  rename: ["session", "rename", "title"],
+  "copy-link": ["session", "copy", "link", "url"],
+  "copy-resume": ["session", "copy", "resume", "command"],
+  "copy-fork": ["session", "copy", "fork", "command"],
+} as const satisfies Record<SessionCommandId, readonly string[]>;
+
+const SESSION_COMMAND_CAPABILITIES: ReadonlySet<SessionMenuCapability> = new Set([
+  "pin",
+  "rename",
+  "copyLink",
+]);
+
+/** The session on screen as ⌘K commands: the shared menu model's quoted titles, then the CLI copies. */
+function currentSessionCommands(detail: SessionDetailData): SessionCommand[] {
+  const menu = getSessionMenuItems(
+    {
+      title: detail.title,
+      pinned: detail.starred,
+      readState: "read",
+      archived: false,
+      prUrl: null,
+      hasLivePane: false,
+      forkDisabledReason: null,
+    },
+    SESSION_COMMAND_CAPABILITIES,
+    { surface: "palette" },
+  );
+  const commands = menu.flatMap((entry): SessionCommand[] => {
+    if (entry.kind !== "item") return [];
+    switch (entry.id) {
+      case "pin":
+      case "unpin":
+      case "rename":
+      case "copy-link":
+        return [{ id: entry.id, label: entry.label }];
+      default:
+        return [];
+    }
+  });
+  return [
+    ...commands,
+    { id: "copy-resume", label: "Copy resume command" },
+    { id: "copy-fork", label: "Copy fork command" },
+  ];
+}
+
 interface PaletteAction {
   label: string;
   icon: ReactNode;
@@ -339,6 +424,15 @@ function PalettePopup({
   const [settledHeight, setSettledHeight] = useState<number | null>(null);
   const { data } = useQuery(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT));
   const currentSessionId = useCurrentSessionId();
+  const detailQuery = useQuery({
+    ...sessionDetailQueryOptions(currentSessionId ?? ""),
+    enabled: currentSessionId !== undefined,
+  });
+  const currentDetail = currentSessionId === undefined ? null : (detailQuery.data ?? null);
+  const star = useToggleSessionStar(currentSessionId ?? "");
+  const toast = useToast();
+  // Rename hands focus to the page title, so closing must not pull it back to the old element.
+  const restoreFocusRef = useRef(true);
 
   const { attention, recents } = useMemo(
     () => paletteSessionGroups(data?.sessions ?? [], currentSessionId),
@@ -468,6 +562,41 @@ function PalettePopup({
     } else if (row.href !== undefined) void navigate({ href: row.href });
   }
 
+  async function copyCommand(command: string) {
+    const copied = await writeClipboardText(command);
+    toast(
+      copied
+        ? { kind: "success", message: "Command copied to clipboard." }
+        : { kind: "error", message: "Couldn’t copy the command. Try again." },
+    );
+  }
+
+  function runSessionCommand(id: SessionCommandId) {
+    if (currentSessionId === undefined || currentDetail === null) return;
+    const shell = createSessionCommands(currentSessionId, currentDetail.projectPath);
+    switch (id) {
+      case "pin":
+      case "unpin":
+        star.mutate(id === "pin");
+        return;
+      case "rename":
+        restoreFocusRef.current = false;
+        requestSessionRename(currentSessionId);
+        return;
+      case "copy-link":
+        void copySessionLink(currentSessionId, toast);
+        return;
+      case "copy-resume":
+        void copyCommand(shell.resume);
+        return;
+      case "copy-fork":
+        void copyCommand(shell.fork);
+        return;
+      default:
+        assertNever(id);
+    }
+  }
+
   function seeAllResults(apiType: Exclude<PaletteType, "projects">) {
     void navigate({ to: "/search", search: { q: tokens.text, mode: "titles", type: apiType } });
   }
@@ -564,6 +693,12 @@ function PalettePopup({
   const compose = mode === "compose";
   const now = Date.now();
   const matchesCommands = hints === null && !filtered && tokens.text !== "";
+  const matchedSessionCommands =
+    matchesCommands && currentDetail !== null
+      ? currentSessionCommands(currentDetail).filter((command) =>
+          commandMatches(command.label, tokens.text, SESSION_COMMAND_KEYWORDS[command.id]),
+        )
+      : [];
   const matchedActions = matchesCommands
     ? actions.filter((action) => commandMatches(action.label, tokens.text))
     : [];
@@ -573,6 +708,7 @@ function PalettePopup({
   const resultCount =
     (listing?.length ?? 0) +
     instant.length +
+    matchedSessionCommands.length +
     matchedActions.length +
     matchedCommands.length +
     serverRows.length;
@@ -585,6 +721,7 @@ function PalettePopup({
       ref={popupRef}
       data-command-palette=""
       initialFocus={inputRef}
+      finalFocus={() => restoreFocusRef.current}
       className={`fixed left-1/2 z-50 w-[calc(100vw-2rem)] max-w-2xl -translate-x-1/2 outline-none md:w-[calc(100vw-5rem)] ${PALETTE_RADIUS}`}
       style={{
         top: "max(1rem, min(25vh, calc((100vh - var(--cp-settled-h, 0px)) / 2)))",
@@ -764,6 +901,16 @@ function PalettePopup({
                     onSelect={() => select(() => openRow(row))}
                     onRowActions={() => openRowActions(row.id)}
                   />
+                ))}
+                {matchedSessionCommands.map((command) => (
+                  <CommandItem
+                    key={command.id}
+                    value={`session-command:${command.id}`}
+                    icon={SESSION_COMMAND_ICONS[command.id]}
+                    onSelect={() => select(() => runSessionCommand(command.id))}
+                  >
+                    {command.label}
+                  </CommandItem>
                 ))}
                 {matchedActions.map((action) =>
                   action.shortcut === undefined ? (

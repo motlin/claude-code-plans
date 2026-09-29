@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { createSessionCommands } from "../src/components/session-page";
+import { createSessionCommands } from "../src/lib/session-commands";
 
 describe("createSessionCommands", () => {
   it("starts resume and fork commands in the session project directory", () => {

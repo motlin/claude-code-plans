@@ -78,6 +78,7 @@ import {
   type ActiveSubagent,
 } from "../lib/subagents";
 import { processTranscript } from "../lib/transcript";
+import { createSessionCommands } from "../lib/session-commands";
 
 const TRANSCRIPT_SCROLL_CONTAINER_CLASSES =
   "h-full overflow-y-auto overflow-x-hidden [contain:strict] [overflow-anchor:none] [scrollbar-gutter:stable_both_edges]";
@@ -190,16 +191,6 @@ export function CopyButton({
       </span>
     </div>
   );
-}
-
-export function createSessionCommands(sessionId: string, projectPath: string | null) {
-  const directoryPrefix = projectPath === null ? "" : `cd '${projectPath}' && `;
-  const resumeCommand = `${directoryPrefix}claude -r ${sessionId}`;
-
-  return {
-    resume: resumeCommand,
-    fork: `${resumeCommand} --fork-session`,
-  };
 }
 
 interface SessionPromptBehavior {

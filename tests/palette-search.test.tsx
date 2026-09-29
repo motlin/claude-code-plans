@@ -12,6 +12,7 @@ import {
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { CommandPalette, PALETTE_RECENT_LIMIT } from "../src/components/command-palette";
+import { ToastProvider } from "../src/components/toast";
 import { useCommandPalette } from "../src/hooks/use-command-palette";
 import type { UnifiedSearchItem } from "../src/lib/api/search";
 import { recentSessionsQueryOptions } from "../src/lib/api/sessions";
@@ -91,8 +92,10 @@ async function openPalette(sessions = [recentSession("sess-1", "Refactor auth mo
   const rootRoute = createRootRoute({
     component: () => (
       <QueryClientProvider client={queryClient}>
-        <Harness />
-        <Outlet />
+        <ToastProvider>
+          <Harness />
+          <Outlet />
+        </ToastProvider>
       </QueryClientProvider>
     ),
   });

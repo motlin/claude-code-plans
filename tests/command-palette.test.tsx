@@ -12,6 +12,7 @@ import {
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { CommandPalette, PALETTE_RECENT_LIMIT } from "../src/components/command-palette";
+import { ToastProvider } from "../src/components/toast";
 import { useCommandPalette } from "../src/hooks/use-command-palette";
 import { recentSessionsQueryOptions } from "../src/lib/api/sessions";
 
@@ -61,8 +62,10 @@ async function renderPalette(
   const rootRoute = createRootRoute({
     component: () => (
       <QueryClientProvider client={queryClient}>
-        <Harness />
-        <Outlet />
+        <ToastProvider>
+          <Harness />
+          <Outlet />
+        </ToastProvider>
       </QueryClientProvider>
     ),
   });

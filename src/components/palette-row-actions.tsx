@@ -43,6 +43,18 @@ function sessionUrl(id: string): string {
   return `${window.location.origin}/session/${encodeURIComponent(id)}`;
 }
 
+export async function copySessionLink(
+  id: string,
+  toast: ReturnType<typeof useToast>,
+): Promise<void> {
+  const copied = await writeClipboardText(sessionUrl(id));
+  toast(
+    copied
+      ? { kind: "success", message: "Link copied to clipboard." }
+      : { kind: "error", message: "Couldn’t copy the link. Try again." },
+  );
+}
+
 /**
  * The claude.ai/code ⌘K row-actions card: a 280px menu beside the palette with
  * the session title, "Session · <bucket>" and items numbered 1…N. ← or Esc
@@ -89,15 +101,6 @@ export function PaletteRowActionsCard({
     menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
   }, []);
 
-  const copyLink = async () => {
-    const copied = await writeClipboardText(sessionUrl(session.id));
-    toast(
-      copied
-        ? { kind: "success", message: "Link copied to clipboard." }
-        : { kind: "error", message: "Couldn’t copy the link. Try again." },
-    );
-  };
-
   const run = (id: CardItemId): void => {
     if (id === "open") {
       onOpen(session.id);
@@ -109,7 +112,7 @@ export function PaletteRowActionsCard({
         window.open(sessionUrl(session.id), "_blank", "noopener,noreferrer");
         return;
       case "copy-link":
-        void copyLink();
+        void copySessionLink(session.id, toast);
         return;
       case "pin":
       case "unpin":

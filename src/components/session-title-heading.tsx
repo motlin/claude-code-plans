@@ -1,14 +1,16 @@
 import { useShortcut } from "../hooks/use-shortcut";
 import { useSessionRename } from "../hooks/use-session-rename";
+import { useSessionRenameRequest } from "../lib/session-rename-request";
 import { InlineRenameInput } from "./inline-rename-input";
 
 /**
  * The session page title, which is also claude.ai/code's rename button:
- * clicking it (or ⌥⌘R anywhere on the page) swaps it for an inline input.
+ * clicking it (or ⌥⌘R anywhere on the page, or ⌘K's Rename command) swaps it for an inline input.
  */
 export function SessionTitleHeading({ sessionId, title }: { sessionId: string; title: string }) {
   const rename = useSessionRename(sessionId, title);
   useShortcut("rename_session", () => rename.startEditing());
+  useSessionRenameRequest(sessionId, rename.startEditing);
 
   return (
     <h1 className="flex min-w-0 text-lg font-semibold">

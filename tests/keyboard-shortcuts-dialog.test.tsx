@@ -10,6 +10,7 @@ import {
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { CommandPalette } from "../src/components/command-palette";
+import { ToastProvider } from "../src/components/toast";
 import {
   KeyboardShortcutsDialog,
   setKeyboardShortcutsOpen,
@@ -221,8 +222,10 @@ describe("Command palette Keyboard shortcuts item", () => {
     const rootRoute = createRootRoute({
       component: () => (
         <QueryClientProvider client={queryClient}>
-          <CommandPalette open onOpenChange={() => {}} />
-          <KeyboardShortcutsDialog />
+          <ToastProvider>
+            <CommandPalette open onOpenChange={() => {}} />
+            <KeyboardShortcutsDialog />
+          </ToastProvider>
         </QueryClientProvider>
       ),
     });
