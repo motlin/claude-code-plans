@@ -115,6 +115,8 @@
   --text-code--line-height: var(--upstream-leading-code);
   --text-footnote: var(--upstream-text-footnote);
   --text-footnote--line-height: var(--upstream-leading-footnote);
+  --text-caption: 12px;
+  --text-caption--line-height: 17px;
 }
 
 :root {
@@ -196,6 +198,13 @@
      (Read/Edit/Write) additionally sit on the page color. */
   --card-outline: hsl(0 0% 4% / 0.1);
   --code-card-bg: hsl(60 14% 99%);
+
+  /* Upstream claude.ai/code — <Shortcut> keycaps and the always-dark <Tooltip> */
+  --shortcut-cap-ink: #6d6b67;
+  --shortcut-cap-line: color-mix(in srgb, currentColor 18%, transparent);
+  --tooltip-bg: #20201f;
+  --tooltip-fg: #f0efec;
+  --tooltip-shortcut-ink: #898781;
 }
 
 .dark {
@@ -258,6 +267,10 @@
   /* Upstream claude.ai/code — card surfaces (light-alpha ring, page color) */
   --card-outline: hsl(0 0% 100% / 0.12);
   --code-card-bg: hsl(60 2.7% 14.5%);
+
+  /* Upstream claude.ai/code — <Shortcut> keycaps */
+  --shortcut-cap-ink: #a5a49a;
+  --shortcut-cap-line: color-mix(in srgb, currentColor 22%, transparent);
 }
 
 @layer utilities {

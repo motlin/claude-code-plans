@@ -46,8 +46,10 @@ import {
 } from "./links-drawer";
 import { StatusFooter } from "./status-footer";
 import { TranscriptHistoryLoader, findScrollContainer } from "./transcript-history-loader";
+import { Tooltip } from "./ui/tooltip";
 import { ViewportPortal } from "./viewport-portal";
 import { useChatStream } from "../hooks/use-chat-stream";
+import { useShortcut, useShortcutKeys } from "../hooks/use-shortcut";
 import { useClaudeEvents, useIsSessionActive, useStatusline } from "../hooks/use-claude-events";
 import { useSessionViewedState } from "../hooks/use-session-viewed-state";
 import { usePendingMessageJump } from "../hooks/use-pending-message-jump";
@@ -512,19 +514,8 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
   const starMutation = useToggleSessionStar(sessionId);
   const chromeHidden = settings.chromeHidden;
   const setChromeHidden = useCallback((v: boolean) => setSetting("chromeHidden", v), [setSetting]);
-  const chromeHiddenRef = useRef(chromeHidden);
-  chromeHiddenRef.current = chromeHidden;
-
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "f") {
-        e.preventDefault();
-        setChromeHidden(!chromeHiddenRef.current);
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [setChromeHidden]);
+  const chromeShortcut = useShortcutKeys("expand_collapse_pane");
+  useShortcut("expand_collapse_pane", () => setChromeHidden(!chromeHidden));
 
   const submitAnswer = useCallback(
     async ({
@@ -751,14 +742,21 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
               </svg>
             </button>
-            <button
-              type="button"
-              onClick={() => setChromeHidden(true)}
-              className="ml-auto shrink-0 cursor-pointer text-t6 transition-colors hover:text-primary"
-              title="Expand chat (Ctrl+Shift+F)"
+            <Tooltip
+              content="Expand chat"
+              shortcut={chromeShortcut.keys}
+              className="ml-auto shrink-0"
             >
-              <Maximize2 className="h-3.5 w-3.5" />
-            </button>
+              <button
+                type="button"
+                onClick={() => setChromeHidden(true)}
+                className="cursor-pointer text-t6 transition-colors hover:text-primary"
+                aria-label="Expand chat"
+                aria-keyshortcuts={chromeShortcut.ariaKeyShortcuts}
+              >
+                <Maximize2 className="h-3.5 w-3.5" />
+              </button>
+            </Tooltip>
           </DetailTopBar>
           <h1 className="text-lg font-semibold">{hookContext?.sessionTitle || data.title}</h1>
 
@@ -796,15 +794,17 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
       {/* Floating restore button when chrome is hidden */}
       {chromeHidden && (
         <div className="sticky top-0 z-10 flex justify-end py-1">
-          <button
-            type="button"
-            onClick={() => setChromeHidden(false)}
-            className="rounded-md bg-surface-0 border border-border px-2 py-1 text-xs text-t6 hover:text-primary hover:bg-fill-control transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
-            title="Show header and footer (Ctrl+Shift+F)"
-          >
-            <Minimize2 className="h-3 w-3" />
-            Show chrome
-          </button>
+          <Tooltip content="Show header and footer" shortcut={chromeShortcut.keys}>
+            <button
+              type="button"
+              onClick={() => setChromeHidden(false)}
+              className="rounded-md bg-surface-0 border border-border px-2 py-1 text-xs text-t6 hover:text-primary hover:bg-fill-control transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
+              aria-keyshortcuts={chromeShortcut.ariaKeyShortcuts}
+            >
+              <Minimize2 className="h-3 w-3" />
+              Show chrome
+            </button>
+          </Tooltip>
         </div>
       )}
 

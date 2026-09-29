@@ -16,6 +16,7 @@ import {
 import { recentSessionsQueryOptions } from "../lib/api/sessions";
 import { clearAll, observeSessionState } from "../lib/unread-store";
 import { isLiveSessionState } from "../lib/session-state";
+import { Shortcut } from "./ui/shortcut";
 
 interface RecentSession {
   id: string;
@@ -190,22 +191,14 @@ export function CommandPalette({
 
       <div className="flex items-center gap-3 border-t border-border px-3 py-2">
         <span className="flex items-center gap-1 text-[11px] text-t6">
-          Select{" "}
-          <kbd className="rounded bg-fill-ghost-hover px-1.5 py-0.5 font-mono text-[10px] font-medium text-secondary">
-            &uarr;&darr;
-          </kbd>
+          Select <Shortcut keys="up" />
+          <Shortcut keys="down" />
         </span>
         <span className="flex items-center gap-1 text-[11px] text-t6">
-          Open{" "}
-          <kbd className="rounded bg-fill-ghost-hover px-1.5 py-0.5 font-mono text-[10px] font-medium text-secondary">
-            &crarr;
-          </kbd>
+          Open <Shortcut keys="enter" />
         </span>
         <span className="flex items-center gap-1 text-[11px] text-t6">
-          Close{" "}
-          <kbd className="rounded bg-fill-ghost-hover px-1.5 py-0.5 font-mono text-[10px] font-medium text-secondary">
-            Esc
-          </kbd>
+          Close <Shortcut keys="esc" />
         </span>
       </div>
     </Command.Dialog>
@@ -236,11 +229,7 @@ function CommandItem({
       <span className="flex h-5 w-5 shrink-0 items-center justify-center text-t6">{icon}</span>
       <span className="flex-1 truncate">{children}</span>
       {metadata && <span className="shrink-0 text-xs text-t6">{metadata}</span>}
-      {shortcut && (
-        <kbd className="shrink-0 rounded bg-fill-ghost-hover px-1.5 py-0.5 font-mono text-[10px] font-medium text-t6">
-          {shortcut}
-        </kbd>
-      )}
+      {shortcut && <Shortcut keys={shortcut} />}
     </Command.Item>
   );
 }

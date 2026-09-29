@@ -7,7 +7,9 @@ import {
   isMacPlatform,
   matchBinding,
 } from "../lib/shortcuts/match";
-import type { Binding, ShortcutId } from "../lib/shortcuts/registry";
+import { toAriaKeyShortcuts } from "../lib/shortcuts/format";
+import { type Binding, bindingToKeys, type ShortcutId } from "../lib/shortcuts/registry";
+import { useIsMac } from "./use-is-mac";
 
 /** Return `false` to decline the event and let the next handler claim it. */
 export type ShortcutHandler = (event: KeyboardEvent, binding: Binding) => boolean | void;
@@ -85,4 +87,19 @@ export function useShortcut(
   optionsRef.current = options;
 
   useEffect(() => register({ id, handler: handlerRef, options: optionsRef, seq: nextSeq++ }), [id]);
+}
+
+export interface ShortcutKeys {
+  /** First binding for this platform as a "shift+cmd+k" keys string, for `<Shortcut keys>`. */
+  keys: string;
+  ariaKeyShortcuts: string;
+}
+
+/** Display keys for a registry shortcut's first binding on the current platform. */
+export function useShortcutKeys(id: ShortcutId): ShortcutKeys {
+  const isMac = useIsMac();
+  const binding = bindingsFor(id, isMac)[0];
+  if (binding === undefined) throw new Error(`Shortcut ${id} has no binding for this platform`);
+  const keys = bindingToKeys(binding);
+  return { keys, ariaKeyShortcuts: toAriaKeyShortcuts(keys, isMac) };
 }

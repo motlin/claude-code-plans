@@ -241,7 +241,7 @@ export const SHORTCUTS = {
     group: "panes",
     bindings: cmdOrCtrl("\\", ["shift"], "Backslash"),
     ownerSlug: "panes-mgmt",
-    enabled: false,
+    enabled: true,
   },
   toggle_side_chat: {
     description: "Toggle side chat",

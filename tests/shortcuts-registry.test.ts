@@ -55,7 +55,10 @@ describe("shortcut registry", () => {
   });
 
   it("only enables the shortcuts wired today", () => {
-    expect(SHORTCUT_IDS.filter((id) => SHORTCUTS[id].enabled)).toEqual(["search_or_start"]);
+    expect(SHORTCUT_IDS.filter((id) => SHORTCUTS[id].enabled)).toEqual([
+      "search_or_start",
+      "expand_collapse_pane",
+    ]);
   });
 
   it("binds ⌘K strictly on mac and Ctrl+K elsewhere", () => {
