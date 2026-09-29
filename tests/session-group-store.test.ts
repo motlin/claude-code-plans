@@ -11,6 +11,7 @@ import {
   moveGroup,
   readSessionGroupState,
   renameGroup,
+  setGroupOrder,
   useSessionGroups,
 } from "../src/lib/session-group-store";
 import { installLocalStorage } from "./fake-storage";
@@ -157,6 +158,20 @@ describe("session group store", () => {
         },
         order: { [a.id]: ["session-bob", "session-carol", "session-alice", "session-dave"] },
       },
+    });
+  });
+
+  it("replaces a group's manual order, ignoring unknown groups", () => {
+    const a = createGroup("A");
+    assign("session-alice", a.id, { before: null });
+    setGroupOrder(a.id, ["session-bob", "session-alice"]);
+    const replaced = readSessionGroupState().order;
+    setGroupOrder("cg-missing", ["session-carol"]);
+    setGroupOrder(a.id, []);
+
+    expect({ replaced, final: readSessionGroupState() }).toStrictEqual({
+      replaced: { [a.id]: ["session-bob", "session-alice"] },
+      final: { groups: [a], assignments: { "session-alice": a.id }, order: {} },
     });
   });
 

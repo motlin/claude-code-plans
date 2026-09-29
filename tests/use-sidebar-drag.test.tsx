@@ -259,3 +259,54 @@ describe("useSidebarDrag", () => {
     });
   });
 });
+
+function NestedHarness({ onDrop }: { onDrop: (drop: SidebarDrop) => void }) {
+  const { drag, rowProps, listRef, zoneRef } = useSidebarDrag({ onDrop });
+  return (
+    <div ref={zoneRef("outer")} data-testid="outer">
+      <output data-testid="state">{JSON.stringify(drag)}</output>
+      <div ref={zoneRef("header")} data-testid="header" />
+      <div ref={listRef("group")} data-testid="group">
+        <div {...rowProps("g1")} data-testid="row-g1">
+          g1
+        </div>
+      </div>
+      <div {...rowProps("y")} data-testid="row-y">
+        y
+      </div>
+    </div>
+  );
+}
+
+describe("useSidebarDrag nested targets", () => {
+  function setupNested() {
+    const onDrop = vi.fn<(drop: SidebarDrop) => void>();
+    render(<NestedHarness onDrop={onDrop} />);
+    mockRect("outer", 0, 300);
+    mockRect("header", 0, 20);
+    mockRect("group", 21, 40);
+    mockRect("row-g1", 21, 20);
+    mockRect("row-y", 200, 20);
+    return { onDrop };
+  }
+
+  it("prefers the innermost zone or list over an enclosing zone", () => {
+    const { onDrop } = setupNested();
+
+    pointerDown("row-y", 210);
+    pointerMove(150);
+    const outer = snapshot().state;
+    pointerMove(10);
+    const header = snapshot().state;
+    pointerMove(50);
+    const list = snapshot().state;
+    pointerUp(50);
+
+    expect({ outer, header, list, drops: onDrop.mock.calls }).toStrictEqual({
+      outer: { srcId: "y", target: { type: "zone", zoneId: "outer" } },
+      header: { srcId: "y", target: { type: "zone", zoneId: "header" } },
+      list: { srcId: "y", target: { type: "slot", listId: "group", slot: 1 } },
+      drops: [[{ srcId: "y", target: { type: "slot", listId: "group", slot: 1 } }]],
+    });
+  });
+});

@@ -61,6 +61,11 @@ export function GroupSection({
   dragRowProps,
   pinnedIds,
   familyHeadIds = [],
+  headerDragProps,
+  headerRef,
+  rowsRef,
+  sectionRef,
+  dropHot = false,
 }: {
   group: SessionGroup<SidebarSessionRow>;
   expanded: boolean;
@@ -73,6 +78,16 @@ export function GroupSection({
   pinnedIds?: readonly string[];
   /** Every family head in the list, for the Alt-click that hides or shows all nested sessions. */
   familyHeadIds?: readonly string[];
+  /** Makes the label row a drag source (a custom group header reorders sections). */
+  headerDragProps?: SidebarDragRowProps;
+  /** Registers the label row as a drop zone. */
+  headerRef?: (element: HTMLElement | null) => void;
+  /** Registers the rows as a drag list whose slots are drop positions. */
+  rowsRef?: (element: HTMLElement | null) => void;
+  /** Registers the whole section as a drop zone. */
+  sectionRef?: (element: HTMLElement | null) => void;
+  /** A dragged row or header is over this section's header or rows. */
+  dropHot?: boolean;
 }) {
   const customGroupId = customGroupIdOfKey(group.key);
   const toggle = (
@@ -98,10 +113,17 @@ export function GroupSection({
     </button>
   );
   return (
-    <div data-group-key={group.key} className="group/section relative isolate flex flex-col gap-px">
+    <div
+      ref={sectionRef}
+      data-group-key={group.key}
+      className="group/section relative isolate flex flex-col gap-px"
+    >
       <div
+        {...headerDragProps}
+        ref={headerRef}
         data-sidebar-group-label
-        className="group/labelrow df-label-inset flex min-h-[calc(var(--sb-group-pt)+var(--sb-row-h)-4px)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[calc((var(--sb-row-h)-24px)/2)] pb-1 text-[length:var(--sb-group-font)] leading-4 text-ink-muted"
+        data-drop-hot={dropHot ? "" : undefined}
+        className="group/labelrow df-label-inset rounded-[var(--sb-radius)] data-[drop-hot]:bg-[var(--sb-hover)] flex min-h-[calc(var(--sb-group-pt)+var(--sb-row-h)-4px)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[calc((var(--sb-row-h)-24px)/2)] pb-1 text-[length:var(--sb-group-font)] leading-4 text-ink-muted"
       >
         {customGroupId === null ? (
           toggle
@@ -118,7 +140,7 @@ export function GroupSection({
         {filterSlot}
       </div>
       {expanded && (
-        <>
+        <div ref={rowsRef} data-group-rows className="flex flex-col gap-px">
           {group.rows.map((row) => {
             const nested = group.nested.get(row.sessionId);
             return (
@@ -154,7 +176,7 @@ export function GroupSection({
               Show {group.hiddenCount} more
             </button>
           )}
-        </>
+        </div>
       )}
     </div>
   );

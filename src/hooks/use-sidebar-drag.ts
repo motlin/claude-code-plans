@@ -58,7 +58,10 @@ export interface UseSidebarDrag {
   readonly rowProps: (id: string) => SidebarDragRowProps;
   /** Ref for a list container; its `[data-drag-id]` descendants are slot rows in DOM order. */
   readonly listRef: (listId: string) => (element: HTMLElement | null) => void;
-  /** Ref for a drop zone (a header or drop row); zones win over list slots. */
+  /**
+   * Ref for a drop zone (a header or drop row). A zone or list nested inside another
+   * target wins; otherwise zones win over list slots.
+   */
   readonly zoneRef: (zoneId: string) => (element: HTMLElement | null) => void;
 }
 
@@ -152,9 +155,10 @@ export function useSidebarDrag(options: UseSidebarDragOptions): UseSidebarDrag {
 
   const resolveTarget = useCallback((state: Active): SidebarDropTarget | null => {
     const { pointerX: x, pointerY: y } = state;
+    const candidates: { element: HTMLElement; resolve: () => SidebarDropTarget | null }[] = [];
     for (const [zoneId, zone] of zones.current) {
       if (contains(zone.getBoundingClientRect(), x, y)) {
-        return { type: "zone", zoneId };
+        candidates.push({ element: zone, resolve: () => ({ type: "zone", zoneId }) });
       }
     }
     for (const [listId, list] of lists.current) {
@@ -162,17 +166,30 @@ export function useSidebarDrag(options: UseSidebarDragOptions): UseSidebarDrag {
       if (!contains(listRect, x, y)) {
         continue;
       }
-      let measure = state.measures.get(list);
-      if (measure === undefined) {
-        measure = measureList(list);
-        state.measures.set(list, measure);
-      }
-      const srcIdx = measure.rows.indexOf(state.srcEl);
-      const midpoints = measure.offsets.map((offset) => listRect.top + offset);
-      const slot = slotFromPointer(midpoints, y, srcIdx === -1 ? null : srcIdx);
-      return slot === null ? null : { type: "slot", listId, slot };
+      candidates.push({
+        element: list,
+        resolve: () => {
+          let measure = state.measures.get(list);
+          if (measure === undefined) {
+            measure = measureList(list);
+            state.measures.set(list, measure);
+          }
+          const srcIdx = measure.rows.indexOf(state.srcEl);
+          const midpoints = measure.offsets.map((offset) => listRect.top + offset);
+          const slot = slotFromPointer(midpoints, y, srcIdx === -1 ? null : srcIdx);
+          return slot === null ? null : { type: "slot", listId, slot };
+        },
+      });
     }
-    return null;
+    // A target nested inside another wins (a group header inside the recents zone);
+    // otherwise zones come before lists, each in registration order.
+    let best = candidates[0];
+    for (const candidate of candidates.slice(1)) {
+      if (best !== undefined && best.element.contains(candidate.element)) {
+        best = candidate;
+      }
+    }
+    return best?.resolve() ?? null;
   }, []);
 
   const applyShifts = useCallback((state: Active) => {

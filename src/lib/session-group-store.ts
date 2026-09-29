@@ -168,6 +168,15 @@ export function assign(
   write({ groups: state.groups, assignments, order });
 }
 
+/** Replace a group's manual in-group order; an empty list clears it. Unknown groups are ignored. */
+export function setGroupOrder(groupId: string, sessionIds: readonly string[]): void {
+  const state = readSessionGroupState();
+  if (!state.groups.some((group) => group.id === groupId)) return;
+  const { [groupId]: _previous, ...order } = state.order;
+  if (sessionIds.length > 0) order[groupId] = [...sessionIds];
+  write({ ...state, order });
+}
+
 /** Move a group section to `toIndex`, clamped to the list. */
 export function moveGroup(id: string, toIndex: number): void {
   const state = readSessionGroupState();
