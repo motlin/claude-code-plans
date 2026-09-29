@@ -1,8 +1,12 @@
 import { Pin } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import type { SidebarDragRowProps } from "../../../hooks/use-sidebar-drag";
+import { closeDragPinHint, useDragPinHintRequested } from "../../../lib/drag-pin-hint";
 import { PINNED_GROUP_KEY, pinnedGroup } from "../../../lib/session-groups";
+import { useSidebarState } from "../../../lib/sidebar-store";
+import { CoachMark } from "../../coach-mark";
+import { useSettings } from "../../settings-provider";
 import { GroupSection, ROW_CLASS, type SidebarSessionRow } from "../session-group-section";
 
 /** Drop row states: idle (revealed without a drag), a drag in progress, or the pointer over it. */
@@ -18,6 +22,7 @@ const DROP_ROW_LABELS: Record<PinDropRowState, string> = {
  * The sidebar Pinned section above the session groups, like claude.ai/code. With no
  * pins and no drag in progress it collapses to an inert zero-height stub that
  * animates open (`df-pin-section-reveal`) once a drag starts, showing a drop row.
+ * After the first menu pin it also opens to anchor the one-time "drag to pin" tip.
  */
 export function PinnedSubList({
   rows,
@@ -44,13 +49,22 @@ export function PinnedSubList({
   dragRowProps?: (id: string) => SidebarDragRowProps;
 }) {
   const [uncapped, setUncapped] = useState<ReadonlySet<string>>(() => new Set());
+  const [section, setSection] = useState<HTMLElement | null>(null);
+  const sectionRef = useCallback(
+    (element: HTMLElement | null) => {
+      setSection(element);
+      listRef?.(element);
+    },
+    [listRef],
+  );
+  const hint = useDragPinHint();
   const empty = rows.length === 0;
-  const stub = empty && !dragging;
+  const stub = empty && !dragging && !hint.open;
   const pinnedIds = rows.map((row) => row.id);
 
   return (
     <div
-      ref={listRef}
+      ref={sectionRef}
       data-testid="sidebar-pinned"
       data-pinned-list=""
       data-stub={stub ? "" : undefined}
@@ -66,9 +80,34 @@ export function PinnedSubList({
         pinnedIds={pinnedIds}
         {...(dragRowProps === undefined ? {} : { dragRowProps })}
       />
-      {dragging && <PinDropRow ref={dropRowRef} state={dropRowHot ? "hot" : "dragging"} />}
+      {dragging ? (
+        <PinDropRow ref={dropRowRef} state={dropRowHot ? "hot" : "dragging"} />
+      ) : (
+        hint.open && <PinDropRow ref={dropRowRef} state="idle" />
+      )}
+      <CoachMark
+        open={hint.open && section !== null}
+        anchor={section?.querySelector("[data-sidebar-group-label]") ?? section}
+        message="Tip: you can drag sessions here to pin them"
+        onDismiss={hint.dismiss}
+        onClose={closeDragPinHint}
+      />
     </div>
   );
+}
+
+/** The drag-to-pin tip: requested by a menu pin, shown once while the sidebar is expanded. */
+function useDragPinHint() {
+  const requested = useDragPinHintRequested();
+  const { collapsed } = useSidebarState();
+  const { settings, loaded, setSetting } = useSettings();
+  return {
+    open: requested && loaded && !settings.seenDragPinHint && !collapsed,
+    dismiss: () => {
+      setSetting("seenDragPinHint", true);
+      closeDragPinHint();
+    },
+  };
 }
 
 function PinDropRow({

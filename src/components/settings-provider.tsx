@@ -122,6 +122,9 @@ export interface Settings {
   filesWordWrap: boolean;
   /** Source view tab width: 2, 4 or 8, normalized where it is used. */
   filesTabSize: number;
+
+  /** The sidebar's one-time "drag to pin" coach mark was dismissed or a drag pin happened. */
+  seenDragPinHint: boolean;
 }
 
 export const DEFAULTS: Settings = {
@@ -182,6 +185,8 @@ export const DEFAULTS: Settings = {
   filesTreeWidth: 240,
   filesWordWrap: true,
   filesTabSize: 4,
+
+  seenDragPinHint: false,
 };
 
 const STORAGE_KEYS: Record<keyof Settings, string> = {
@@ -228,6 +233,7 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
   filesTreeWidth: "ccp-files-tree-width",
   filesWordWrap: "ccp-files-word-wrap",
   filesTabSize: "ccp-files-tab-size",
+  seenDragPinHint: "ccp-seen-drag-pin-hint",
 };
 
 /** The localStorage key a setting persists under. */

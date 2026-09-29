@@ -5,6 +5,7 @@ import { Ungroup } from "lucide-react";
 
 import { type SidebarDrop, useSidebarDrag } from "../../hooks/use-sidebar-drag";
 import { recentSessionsInfiniteQueryOptions } from "../../lib/api/sessions";
+import { closeDragPinHint } from "../../lib/drag-pin-hint";
 import { readPinState, unpin, usePins, writePinState } from "../../lib/pin-store";
 import { dropOutcome, placePin, splitPinned, type SplitPinned } from "../../lib/pinned-sessions";
 import {
@@ -37,6 +38,7 @@ import {
 import { slotToIndex } from "../../lib/sidebar-drag";
 import { useSidebarState } from "../../lib/sidebar-store";
 import { assertNever } from "../../lib/assert-never";
+import { useSettings } from "../settings-provider";
 import { useToast } from "../toast";
 import { LoadingBars } from "./primitives/LoadingBars";
 import {
@@ -83,6 +85,12 @@ export function SessionGroups({
   }, [data, prefs.sortBy, pinnedIds, pinnedOrder]);
 
   const toast = useToast();
+  const { settings, setSetting } = useSettings();
+  // The first successful drag pin retires the one-time "drag to pin" tip.
+  const markDragPinHintSeen = () => {
+    closeDragPinHint();
+    if (!settings.seenDragPinHint) setSetting("seenDragPinHint", true);
+  };
   const latestSplit = useRef<SplitPinned<SidebarSessionRow> | undefined>(undefined);
   latestSplit.current = split;
   const latestGroups = useRef<SessionGroup<SidebarSessionRow>[] | undefined>(undefined);
@@ -96,7 +104,7 @@ export function SessionGroups({
         return;
       }
       if (custom && applyGroupDrop(drop, latestGroups.current ?? [], latestSplit.current)) return;
-      applyPinDrop(drop, () => latestSplit.current, toast);
+      applyPinDrop(drop, () => latestSplit.current, toast, markDragPinHintSeen);
     },
     getScrollContainer: () => recentsRef.current?.closest("[data-testid=nav-scroll]") ?? null,
   });
@@ -277,6 +285,7 @@ function applyPinDrop(
   { srcId, target }: SidebarDrop,
   getSplit: () => SplitPinned<SidebarSessionRow> | undefined,
   toast: ReturnType<typeof useToast>,
+  onPin: () => void,
 ): void {
   const split = getSplit();
   if (split === undefined) return;
@@ -299,6 +308,7 @@ function applyPinDrop(
       if (slot === null) return;
       const index = slotToIndex(slot, srcIdx === -1 ? null : srcIdx);
       writePinState(placePin(readPinState(), displayed, srcId, index));
+      if (outcome === "pin") onPin();
       return;
     }
     case "unpin": {

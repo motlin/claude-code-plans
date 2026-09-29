@@ -30,6 +30,7 @@ import {
   vscodeFolderUrl,
 } from "../lib/session-open-in";
 import { forkDisabledReason } from "../lib/session-fork";
+import { maybeShowDragPinHint } from "../lib/drag-pin-hint";
 import { pin, readPinState, unpin, usePins, writePinState } from "../lib/pin-store";
 import { assign, createGroup, useSessionGroups } from "../lib/session-group-store";
 import { placePin } from "../lib/pinned-sessions";
@@ -257,7 +258,14 @@ function useSessionMenu(session: SessionListItem, pinnedRow: PinnedRowContext | 
     prUrl: session.pr?.url ?? null,
     requestRename,
     requestNewGroup,
-    setPinned: (pinned) => (pinned ? pin(session.id) : unpin(session.id)),
+    setPinned: (pinned) => {
+      if (!pinned) {
+        unpin(session.id);
+        return;
+      }
+      pin(session.id);
+      maybeShowDragPinHint();
+    },
     movePinned: (delta) => {
       if (pinnedRow === undefined || pinIndex === -1) return;
       writePinState(placePin(readPinState(), pinnedRow.pinnedIds, session.id, pinIndex + delta));
