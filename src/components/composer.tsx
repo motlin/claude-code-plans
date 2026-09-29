@@ -1,11 +1,12 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { CornerDownLeft, MessageSquare, Square, X } from "lucide-react";
+import { CornerDownLeft, Ellipsis, MessageSquare, Square, X } from "lucide-react";
 
 import { useComposerDraft } from "../hooks/use-composer-draft";
 import { useFileMentionSuggestions } from "../hooks/use-file-mention-suggestions";
 import type { LiveLaunchControls } from "../hooks/use-live-launch-options";
 import { useShortcut } from "../hooks/use-shortcut";
 import type { ComposerState } from "../lib/composer-state";
+import { type QueuedPrompt, queuedStatusText } from "../lib/composer-queue";
 import {
   appendAttachment,
   onAttachContextRequest,
@@ -27,9 +28,11 @@ import {
   slashQuery,
 } from "../lib/slash-commands";
 import { ComposerChin } from "./composer-chin";
+import { ConfirmDialog } from "./confirm-dialog";
 import type { ChinMenu } from "./composer-launch-menus";
 import { FileMentionMenu, fileMentionOptionId } from "./file-mention-menu";
 import { SlashCommandMenu, slashCommandOptionId } from "./slash-command-menu";
+import { Menu, MenuContent, MenuItem, MenuTrigger } from "./ui/menu";
 import { Tooltip } from "./ui/tooltip";
 
 type ComposerVariant = "session" | "home";
@@ -89,6 +92,70 @@ function QueuedCommentChips({
   );
 }
 
+/** Prompts waiting for the live session to go idle, with their chip actions. */
+export interface ComposerQueueView {
+  items: readonly QueuedPrompt[];
+  sendNow: (id: string) => void;
+  remove: (id: string) => void;
+}
+
+/**
+ * claude.ai/code's queued message chips: right-aligned bubbles above the card,
+ * each with an actions menu, and an sr-only count for screen readers.
+ */
+function QueuedPromptChips({
+  items,
+  onEdit,
+  onSendNow,
+  onRemove,
+}: {
+  items: readonly QueuedPrompt[];
+  onEdit: (item: QueuedPrompt) => void;
+  onSendNow: (id: string) => void;
+  onRemove: (id: string) => void;
+}) {
+  return (
+    <>
+      <span role="status" className="sr-only">
+        {items.length > 0 ? queuedStatusText(items.length) : ""}
+      </span>
+      {items.length > 0 && (
+        <ul
+          aria-label="Queued messages"
+          className="mx-0 mb-1.5 flex max-h-[min(40vh,22rem)] list-none flex-col items-end gap-1 overflow-y-auto"
+        >
+          {items.map((item) => (
+            <li
+              key={item.id}
+              data-queued-text={item.text}
+              className="flex max-w-[85%] min-w-0 items-start gap-1 rounded-r7 bg-user-msg-bg py-1.5 ps-3 pe-1 text-body text-user-msg-text opacity-80"
+            >
+              <span className="line-clamp-2 min-w-0 break-words whitespace-pre-wrap">
+                {item.text}
+              </span>
+              <Menu>
+                <MenuTrigger
+                  aria-label="Queued message actions"
+                  className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-r5 text-secondary hover:bg-fill-ghost-hover hover:text-primary"
+                >
+                  <Ellipsis aria-hidden="true" className="size-3.5" />
+                </MenuTrigger>
+                <MenuContent align="end">
+                  <MenuItem onSelect={() => onEdit(item)}>Edit in composer</MenuItem>
+                  <MenuItem onSelect={() => onSendNow(item.id)}>Send now</MenuItem>
+                  <MenuItem variant="danger" onSelect={() => onRemove(item.id)}>
+                    Remove from queue
+                  </MenuItem>
+                </MenuContent>
+              </Menu>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
 interface ComposerProps {
   variant: ComposerVariant;
   /** Draft storage key: the session id, or `"home"` for the new-session composer. */
@@ -111,6 +178,10 @@ interface ComposerProps {
   live?: LiveLaunchControls | undefined;
   /** The session whose working directory feeds the "@" file mention popup. */
   mentionSessionId?: string | undefined;
+  /** Prompts queued while the live session works, shown as chips above the card. */
+  queue?: ComposerQueueView | undefined;
+  /** ⌘⏎ "Send now": interrupt the current response and send this prompt next. */
+  onSendNow?: ((prompt: string) => void) | undefined;
 }
 
 const NO_COMMANDS: readonly SlashCommand[] = [];
@@ -133,6 +204,8 @@ export function Composer({
   bypassPermissionsAllowed = false,
   live,
   mentionSessionId,
+  queue,
+  onSendNow,
 }: ComposerProps) {
   const { text: prompt, setText: setPrompt, clear: clearDraft } = useComposerDraft(draftKey);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -257,17 +330,27 @@ export function Composer({
     return true;
   }
 
-  function handleSubmit() {
+  function handleSubmit(sendNow?: (prompt: string) => void) {
     if (!canSend) return;
     const trimmed = prompt.trim();
     // Slash commands run as typed; queued comments wait for the next real prompt.
-    onSend(
-      trimmed.startsWith("/")
-        ? trimmed
-        : prependReviewComments(trimmed, takeQueuedDiffComments(draftKey)),
-      launchOptions,
-    );
+    const text = trimmed.startsWith("/")
+      ? trimmed
+      : prependReviewComments(trimmed, takeQueuedDiffComments(draftKey));
+    if (sendNow === undefined) onSend(text, launchOptions);
+    else sendNow(text);
     clearDraft();
+  }
+
+  const [discardId, setDiscardId] = useState<string | null>(null);
+
+  function editQueuedPrompt(item: QueuedPrompt) {
+    queue?.remove(item.id);
+    const next = prompt.trim() === "" ? item.text : `${item.text}\n\n${prompt}`;
+    pendingCaretRef.current = item.text.length;
+    setCaret(item.text.length);
+    setPrompt(next);
+    textareaRef.current?.focus();
   }
 
   function insertSlash() {
@@ -279,7 +362,8 @@ export function Composer({
     if (e.nativeEvent.isComposing || handleSlashKey(e) || handleMentionKey(e)) return;
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
-      handleSubmit();
+      const sendNowChord = (e.metaKey || e.ctrlKey) && !e.altKey;
+      handleSubmit(sendNowChord ? onSendNow : undefined);
     }
   }
 
@@ -289,6 +373,27 @@ export function Composer({
       data-focus-region="composer"
       className="flex w-full min-w-0 flex-col font-sans"
     >
+      {queue !== undefined && (
+        <QueuedPromptChips
+          items={queue.items}
+          onEdit={editQueuedPrompt}
+          onSendNow={queue.sendNow}
+          onRemove={setDiscardId}
+        />
+      )}
+      <ConfirmDialog
+        open={discardId !== null}
+        onOpenChange={(open) => {
+          if (!open) setDiscardId(null);
+        }}
+        title="Discard queued message?"
+        body="This message will be removed from the queue and won’t be sent."
+        confirmLabel="Discard"
+        variant="danger"
+        onConfirm={() => {
+          if (discardId !== null) queue?.remove(discardId);
+        }}
+      />
       {queuedComments.length > 0 && (
         <QueuedCommentChips sessionId={draftKey} comments={queuedComments} />
       )}
@@ -368,7 +473,7 @@ export function Composer({
                   type="button"
                   aria-label="Send"
                   aria-describedby={deliveryHint ? hintId : undefined}
-                  onClick={handleSubmit}
+                  onClick={() => handleSubmit()}
                   disabled={!canSend}
                   className={ICON_BUTTON_CLASS}
                 >

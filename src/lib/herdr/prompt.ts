@@ -84,6 +84,11 @@ function errorStatus(code: string): number {
   }
 }
 
+/** herdr's code rides along so the composer can queue an `agent_not_ready` prompt. */
+function herdrFailure(code: string, message: string): Response {
+  return Response.json({ error: message, code }, { status: errorStatus(code) });
+}
+
 const defaultDependencies: HerdrPromptDependencies = {
   rejectRequest: rejectCrossSite,
   writesEnabled: herdrWritesEnabled,
@@ -110,9 +115,7 @@ export async function handleHerdrPrompt(
   }
 
   const target = await dependencies.resolveTarget(parsed.data.sessionId);
-  if (!target.ok) {
-    return Response.json({ error: target.message }, { status: errorStatus(target.code) });
-  }
+  if (!target.ok) return herdrFailure(target.code, target.message);
 
   const response = await dependencies.request({
     id: dependencies.createRequestId(),
@@ -122,9 +125,7 @@ export async function handleHerdrPrompt(
       text: parsed.data.prompt,
     },
   });
-  if (!response.ok) {
-    return Response.json({ error: response.message }, { status: errorStatus(response.code) });
-  }
+  if (!response.ok) return herdrFailure(response.code, response.message);
 
   return Response.json({ ok: true });
 }

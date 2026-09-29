@@ -49,6 +49,7 @@ import { slashCommandsQueryOptions } from "../lib/api/commands";
 import { useShortcutKeys } from "../hooks/use-shortcut";
 import { useLiveLaunchOptions } from "../hooks/use-live-launch-options";
 import { canStopResponse, useStopResponse } from "../hooks/use-stop-response";
+import { type DeliveryResult, useComposerQueue } from "../hooks/use-composer-queue";
 import { canApplyLive, modeMenuItems } from "../lib/launch-options";
 import {
   useClaudeEvents,
@@ -69,6 +70,8 @@ import { findPendingAskUserQuestion } from "../lib/approval-dock";
 import { applicationSettingsQueryOptions } from "../lib/api/application-settings";
 import {
   herdrPanesQueryOptions,
+  isAgentNotReady,
+  sendHerdrInterrupt,
   sendHerdrPermissionDecision,
   sendHerdrPrompt,
 } from "../lib/api/herdr";
@@ -183,18 +186,24 @@ export function useLiveHerdrPrompt(
   }, [transcriptRecordCount]);
 
   const send = useCallback(
-    async (prompt: string) => {
+    async (prompt: string): Promise<DeliveryResult> => {
       pendingRecordCountRef.current = transcriptRecordCount;
       setState({ error: "", isPending: true, prompt });
       try {
         await postPrompt(sessionId, prompt);
+        return "sent";
       } catch (error) {
         pendingRecordCountRef.current = null;
+        if (isAgentNotReady(error)) {
+          setState(EMPTY_LIVE_HERDR_PROMPT_STATE);
+          return "not-ready";
+        }
         setState({
           error: error instanceof Error ? error.message : "Failed to send prompt",
           isPending: false,
           prompt,
         });
+        return "failed";
       }
     },
     [postPrompt, sessionId, transcriptRecordCount],
@@ -207,7 +216,7 @@ export function routeSessionPrompt(
   usesHerdr: boolean,
   sessionId: string,
   prompt: string,
-  sendLivePrompt: (prompt: string) => Promise<void>,
+  sendLivePrompt: (prompt: string) => Promise<unknown>,
   sendForkedPrompt: (sessionId: string, prompt: string) => Promise<void>,
 ): void {
   if (usesHerdr) {
@@ -547,6 +556,29 @@ function SessionView({
     onInterrupt,
     onError: onInterruptError,
   });
+  const queueBusy = workingMarkerState.status !== "idle" || liveHerdrPrompt.state.isPending;
+  const interruptForSendNow = useCallback(() => {
+    onInterrupt(Date.now());
+    sendHerdrInterrupt(sessionId, false).catch(onInterruptError);
+  }, [onInterrupt, onInterruptError, sessionId]);
+  const composerQueue = useComposerQueue({
+    sessionId,
+    busy: queueBusy,
+    deliver: liveHerdrPrompt.send,
+    interrupt: interruptForSendNow,
+  });
+  const { enqueue: enqueuePrompt, items: queuedPrompts } = composerQueue;
+  const sendLivePrompt = useCallback(
+    async (prompt: string) => {
+      // Enter while working queues; the queue flushes on the next idle.
+      if (queueBusy || queuedPrompts.length > 0) {
+        enqueuePrompt(prompt);
+        return;
+      }
+      if ((await liveHerdrPrompt.send(prompt)) === "not-ready") enqueuePrompt(prompt);
+    },
+    [enqueuePrompt, liveHerdrPrompt, queueBusy, queuedPrompts.length],
+  );
   const shellsEnabled =
     useQuery({
       ...applicationSettingsQueryOptions,
@@ -789,14 +821,19 @@ function SessionView({
                       promptBehavior.usesHerdr,
                       sessionId,
                       prompt,
-                      liveHerdrPrompt.send,
+                      sendLivePrompt,
                       (id, forkedPrompt) => chatStream.send(id, forkedPrompt, launchOptions),
                     );
                   }}
                   onCancel={chatStream.cancel}
                   isStreaming={!promptBehavior.usesHerdr && chatStream.state.isStreaming}
                   onStop={stopAvailable ? stopResponse : undefined}
-                  disabled={promptBehavior.disabled || liveHerdrPrompt.state.isPending}
+                  disabled={
+                    promptBehavior.disabled ||
+                    (!promptBehavior.usesHerdr && liveHerdrPrompt.state.isPending)
+                  }
+                  queue={promptBehavior.usesHerdr ? composerQueue : undefined}
+                  onSendNow={promptBehavior.usesHerdr ? composerQueue.sendNowText : undefined}
                   deliveryHint={promptBehavior.deliveryHint}
                   chin={composerChin}
                   slashCommands={slashCommands}

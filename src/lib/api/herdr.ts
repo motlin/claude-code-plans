@@ -41,7 +41,28 @@ export const HerdrPaneIndexResponse = z
 export type HerdrPaneIndexData = z.infer<typeof HerdrPaneIndexResponse>;
 
 const HerdrPromptSuccessResponse = z.object({ ok: z.literal(true) }).strict();
-const HerdrPromptErrorResponse = z.object({ error: z.string() }).strict();
+const HerdrPromptErrorResponse = z
+  .object({ error: z.string(), code: z.string().optional() })
+  .strict();
+
+/** A rejected herdr write, with the HTTP status and herdr's error code when it sent one. */
+export class HerdrRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code: string | undefined,
+  ) {
+    super(message);
+    this.name = "HerdrRequestError";
+  }
+}
+
+/** herdr refused the prompt because the agent is still working: queue it instead. */
+export function isAgentNotReady(error: unknown): boolean {
+  return (
+    error instanceof HerdrRequestError && error.status === 409 && error.code === "agent_not_ready"
+  );
+}
 
 export const herdrPanesQueryOptions = queryOptions({
   queryKey: ["herdr", "panes"] as const,
@@ -62,7 +83,8 @@ export async function sendHerdrPrompt(
   const json: unknown = await response.json();
 
   if (!response.ok) {
-    throw new Error(HerdrPromptErrorResponse.parse(json).error);
+    const { error, code } = HerdrPromptErrorResponse.parse(json);
+    throw new HerdrRequestError(error, response.status, code);
   }
 
   HerdrPromptSuccessResponse.parse(json);

@@ -263,7 +263,7 @@ describe("herdr prompt write handler", () => {
     );
 
     expect(await describeResponse(response)).toStrictEqual({
-      body: { error: `Fabricated ${code} reason` },
+      body: { error: `Fabricated ${code} reason`, code },
       status,
     });
   });
