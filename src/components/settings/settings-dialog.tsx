@@ -19,8 +19,8 @@ import {
   SessionsSettings,
   SetupSettings,
   TranscriptSettings,
-  UsageSettings,
 } from "./settings-sections";
+import { UsageSettings } from "./usage-settings";
 
 const TAB_PANELS = {
   general: GeneralSettings,

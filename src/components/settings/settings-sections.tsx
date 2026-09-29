@@ -735,14 +735,6 @@ export function GeneralSettings() {
   );
 }
 
-export function UsageSettings() {
-  return (
-    <p className="text-sm text-t6">
-      Rate-limit usage is shown per session in the status footer for now.
-    </p>
-  );
-}
-
 // Lazy so the Settings dialog, which the root mounts, keeps Shiki out of the entry bundle.
 const CodeThemePreview = lazy(() =>
   import("./code-theme-preview").then((module) => ({ default: module.CodeThemePreview })),
