@@ -338,7 +338,7 @@ export const SHORTCUTS = {
     group: "composer",
     bindings: cmdOrCtrl("enter", ["alt"], "Enter"),
     ownerSlug: "composer",
-    enabled: false,
+    enabled: true,
   },
 } as const satisfies Record<string, ShortcutDefinition>;
 

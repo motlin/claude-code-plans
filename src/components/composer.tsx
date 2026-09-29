@@ -4,7 +4,7 @@ import { CornerDownLeft, Ellipsis, MessageSquare, Square, X } from "lucide-react
 import { useComposerDraft } from "../hooks/use-composer-draft";
 import { useFileMentionSuggestions } from "../hooks/use-file-mention-suggestions";
 import type { LiveLaunchControls } from "../hooks/use-live-launch-options";
-import { useShortcut } from "../hooks/use-shortcut";
+import { useShortcut, useShortcutKeys } from "../hooks/use-shortcut";
 import type { ComposerState } from "../lib/composer-state";
 import { type QueuedPrompt, queuedStatusText } from "../lib/composer-queue";
 import {
@@ -182,6 +182,10 @@ interface ComposerProps {
   queue?: ComposerQueueView | undefined;
   /** ⌘⏎ "Send now": interrupt the current response and send this prompt next. */
   onSendNow?: ((prompt: string) => void) | undefined;
+  /** ⌥⌘⏎ "Fork with this prompt": send it to a new forked session instead of this one. */
+  onFork?: ((prompt: string, launchOptions: LaunchOptions) => void) | undefined;
+  /** The Send tooltip's fork row: "Fork with this prompt" or "Send in a forked session". */
+  forkLabel?: string | undefined;
 }
 
 const NO_COMMANDS: readonly SlashCommand[] = [];
@@ -206,6 +210,8 @@ export function Composer({
   mentionSessionId,
   queue,
   onSendNow,
+  onFork,
+  forkLabel = "Fork with this prompt",
 }: ComposerProps) {
   const { text: prompt, setText: setPrompt, clear: clearDraft } = useComposerDraft(draftKey);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -226,6 +232,8 @@ export function Composer({
   useShortcut("open_mode_menu", () => setOpenMenu("mode"), menuShortcutOptions);
   useShortcut("open_model_menu", () => setOpenMenu("model"), menuShortcutOptions);
   useShortcut("open_effort_selector", () => setOpenMenu("effort"), menuShortcutOptions);
+  const forkKeys = useShortcutKeys("fork_with_prompt").keys;
+  const chinLaunchOptions = live?.options ?? launchOptions;
 
   useEffect(() => {
     if (!isStreaming) textareaRef.current?.focus();
@@ -330,15 +338,16 @@ export function Composer({
     return true;
   }
 
-  function handleSubmit(sendNow?: (prompt: string) => void) {
+  function handleSubmit(
+    send: (prompt: string) => void = (text) => onSend(text, launchOptions),
+  ): void {
     if (!canSend) return;
     const trimmed = prompt.trim();
     // Slash commands run as typed; queued comments wait for the next real prompt.
     const text = trimmed.startsWith("/")
       ? trimmed
       : prependReviewComments(trimmed, takeQueuedDiffComments(draftKey));
-    if (sendNow === undefined) onSend(text, launchOptions);
-    else sendNow(text);
+    send(text);
     clearDraft();
   }
 
@@ -362,8 +371,14 @@ export function Composer({
     if (e.nativeEvent.isComposing || handleSlashKey(e) || handleMentionKey(e)) return;
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
-      const sendNowChord = (e.metaKey || e.ctrlKey) && !e.altKey;
-      handleSubmit(sendNowChord ? onSendNow : undefined);
+      const commandChord = e.metaKey || e.ctrlKey;
+      if (commandChord && e.altKey && onFork !== undefined) {
+        handleSubmit((text) => onFork(text, chinLaunchOptions));
+      } else if (commandChord && !e.altKey && onSendNow !== undefined) {
+        handleSubmit(onSendNow);
+      } else {
+        handleSubmit();
+      }
     }
   }
 
@@ -468,7 +483,13 @@ export function Composer({
                 </button>
               </Tooltip>
             ) : (
-              <Tooltip content="Send" shortcut="enter">
+              <Tooltip
+                content="Send"
+                shortcut="enter"
+                secondary={
+                  onFork === undefined ? undefined : { content: forkLabel, shortcut: forkKeys }
+                }
+              >
                 <button
                   type="button"
                   aria-label="Send"
@@ -498,7 +519,7 @@ export function Composer({
             state={chin}
             onInsertSlash={insertSlash}
             launch={{
-              launchOptions: live?.options ?? launchOptions,
+              launchOptions: chinLaunchOptions,
               onLaunchOptionsChange:
                 live === undefined
                   ? (options) => setLaunch({ draftKey, options })

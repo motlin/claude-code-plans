@@ -50,7 +50,15 @@ import { useShortcutKeys } from "../hooks/use-shortcut";
 import { useLiveLaunchOptions } from "../hooks/use-live-launch-options";
 import { canStopResponse, useStopResponse } from "../hooks/use-stop-response";
 import { type DeliveryResult, useComposerQueue } from "../hooks/use-composer-queue";
-import { canApplyLive, modeMenuItems } from "../lib/launch-options";
+import {
+  type ComposerPaneState,
+  type ComposerSubmit,
+  dispatchComposerSubmit,
+  forkSubmitLabel,
+  launchPromptFork,
+} from "../lib/composer-fork-routing";
+import { canApplyLive, type LaunchOptions, modeMenuItems } from "../lib/launch-options";
+import { setPendingFork } from "../lib/session-fork";
 import {
   useClaudeEvents,
   useComposerServerState,
@@ -71,6 +79,7 @@ import { applicationSettingsQueryOptions } from "../lib/api/application-settings
 import {
   herdrPanesQueryOptions,
   isAgentNotReady,
+  launchHerdrSession,
   sendHerdrInterrupt,
   sendHerdrPermissionDecision,
   sendHerdrPrompt,
@@ -210,20 +219,6 @@ export function useLiveHerdrPrompt(
   );
 
   return { send, state };
-}
-
-export function routeSessionPrompt(
-  usesHerdr: boolean,
-  sessionId: string,
-  prompt: string,
-  sendLivePrompt: (prompt: string) => Promise<unknown>,
-  sendForkedPrompt: (sessionId: string, prompt: string) => Promise<void>,
-): void {
-  if (usesHerdr) {
-    void sendLivePrompt(prompt);
-    return;
-  }
-  void sendForkedPrompt(sessionId, prompt);
 }
 
 function SessionChrome({ children }: { children: React.ReactNode }) {
@@ -579,6 +574,35 @@ function SessionView({
     },
     [enqueuePrompt, liveHerdrPrompt, queueBusy, queuedPrompts.length],
   );
+  const paneState: ComposerPaneState = !promptBehavior.hasLivePane
+    ? "none"
+    : workingMarkerState.status === "idle"
+      ? "idle"
+      : "working";
+  const submitComposer = (submit: ComposerSubmit, prompt: string, launchOptions: LaunchOptions) =>
+    dispatchComposerSubmit(
+      {
+        sessionId,
+        cwd: data.cwd ?? data.projectPath ?? "",
+        pane: paneState,
+        writesEnabled: herdr.writesEnabled,
+        submit,
+        prompt,
+        launchOptions,
+      },
+      {
+        sendLive: (livePrompt) => void sendLivePrompt(livePrompt),
+        sendForkStream: (forkedPrompt, options) =>
+          void chatStream.send(sessionId, forkedPrompt, options),
+        launchFork: (launch) =>
+          void launchPromptFork(launch, sessionId, {
+            launch: launchHerdrSession,
+            onLaunched: setPendingFork,
+            toast,
+            now: Date.now,
+          }),
+      },
+    );
   const shellsEnabled =
     useQuery({
       ...applicationSettingsQueryOptions,
@@ -817,14 +841,13 @@ function SessionView({
                     ) {
                       return;
                     }
-                    routeSessionPrompt(
-                      promptBehavior.usesHerdr,
-                      sessionId,
-                      prompt,
-                      sendLivePrompt,
-                      (id, forkedPrompt) => chatStream.send(id, forkedPrompt, launchOptions),
-                    );
+                    submitComposer("send", prompt, launchOptions);
                   }}
+                  onFork={(prompt, launchOptions) => submitComposer("fork", prompt, launchOptions)}
+                  forkLabel={forkSubmitLabel({
+                    pane: paneState,
+                    writesEnabled: herdr.writesEnabled,
+                  })}
                   onCancel={chatStream.cancel}
                   isStreaming={!promptBehavior.usesHerdr && chatStream.state.isStreaming}
                   onStop={stopAvailable ? stopResponse : undefined}

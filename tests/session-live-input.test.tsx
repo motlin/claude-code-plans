@@ -4,11 +4,7 @@ import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-li
 import { describe, expect, it, vi } from "vite-plus/test";
 import { Composer } from "../src/components/composer";
 import { useChatStream } from "../src/hooks/use-chat-stream";
-import {
-  getSessionPromptBehavior,
-  routeSessionPrompt,
-  useLiveHerdrPrompt,
-} from "../src/components/session-page";
+import { getSessionPromptBehavior, useLiveHerdrPrompt } from "../src/components/session-page";
 
 vi.mock("../src/components/session-chat", () => ({
   SessionChat: () => null,
@@ -49,36 +45,6 @@ describe("session live input", () => {
         usesHerdr: false,
       },
     ]);
-  });
-
-  it("keeps the no-pane fork call unchanged and bypasses it for live delivery", () => {
-    const sendLivePrompt = vi.fn<(prompt: string) => Promise<void>>().mockResolvedValue();
-    const sendForkedPrompt = vi
-      .fn<(sessionId: string, prompt: string) => Promise<void>>()
-      .mockResolvedValue();
-
-    routeSessionPrompt(
-      false,
-      "session-test-100",
-      "Continue Alice's test",
-      sendLivePrompt,
-      sendForkedPrompt,
-    );
-    routeSessionPrompt(
-      true,
-      "session-test-100",
-      "Continue Bob's test",
-      sendLivePrompt,
-      sendForkedPrompt,
-    );
-
-    expect({
-      liveCalls: sendLivePrompt.mock.calls,
-      forkCalls: sendForkedPrompt.mock.calls,
-    }).toStrictEqual({
-      liveCalls: [["Continue Bob's test"]],
-      forkCalls: [["session-test-100", "Continue Alice's test"]],
-    });
   });
 
   it("describes live delivery on Send without changing the composer's send contract", () => {

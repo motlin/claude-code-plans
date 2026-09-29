@@ -88,6 +88,7 @@ describe("shortcut registry", () => {
       "open_model_menu",
       "open_effort_selector",
       "select_menu_item",
+      "fork_with_prompt",
     ]);
   });
 

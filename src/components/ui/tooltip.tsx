@@ -21,12 +21,15 @@ const TOOLTIP_CLASS =
 export function Tooltip({
   content,
   shortcut,
+  secondary,
   side = "top",
   className,
   children,
 }: {
   content: string;
   shortcut?: string;
+  /** A second action on the same control, shown after a "·", e.g. Send ⏎ · Fork with this prompt ⌥⌘⏎. */
+  secondary?: { content: string; shortcut: string } | undefined;
   side?: keyof typeof SIDE_CLASS;
   className?: string;
   children: ReactElement<{ "aria-describedby"?: string }>;
@@ -64,15 +67,26 @@ export function Tooltip({
       {open && (
         <span role="tooltip" id={id} className={`${TOOLTIP_CLASS} ${SIDE_CLASS[side]}`}>
           {content}
-          {shortcut !== undefined && (
-            <Shortcut
-              keys={shortcut}
-              variant="text"
-              className="text-[12px] [--shortcut-cap-ink:var(--tooltip-shortcut-ink)]"
-            />
+          {shortcut !== undefined && <TooltipShortcut keys={shortcut} />}
+          {secondary !== undefined && (
+            <>
+              <span aria-hidden="true">·</span>
+              {secondary.content}
+              <TooltipShortcut keys={secondary.shortcut} />
+            </>
           )}
         </span>
       )}
     </span>
+  );
+}
+
+function TooltipShortcut({ keys }: { keys: string }) {
+  return (
+    <Shortcut
+      keys={keys}
+      variant="text"
+      className="text-[12px] [--shortcut-cap-ink:var(--tooltip-shortcut-ink)]"
+    />
   );
 }
