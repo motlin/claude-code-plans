@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import type { SkillSourceSchema } from "./api/customize";
 import type { PluginFileSchema, PluginListResponse } from "./api/plugins";
 import type { SearchModeSchema } from "./api/search";
 import type { SessionSummaryStateSchema } from "./api/sessions";
@@ -149,6 +150,12 @@ const pluginVersionKindLabels = {
   commit: "Commit",
   release: "Release",
 } satisfies Record<z.infer<typeof PluginListResponse>[number]["versionKind"], string>;
+
+const skillSourceLabels = {
+  personal: "Personal",
+  project: "Project",
+  plugin: "Plugin",
+} satisfies Record<z.infer<typeof SkillSourceSchema>, string>;
 
 const claudeHookVariants = {
   command: true,
@@ -426,6 +433,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   "SourceFileResponse.language": sourceLanguageLabels,
   "PluginFileSchema.type": pluginFileTypeLabels,
   "PluginListResponse[].versionKind": pluginVersionKindLabels,
+  "SkillListResponse[].source": skillSourceLabels,
   "PaneLayoutStateSchema.expanded": paneKindLabels,
   "PaneLayoutStateSchema.root.children[]": paneLayoutNodeVariants,
   "PaneLayoutStateSchema.root.children[].<tile>.tileId": tileIdLabels,

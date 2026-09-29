@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import { HookEventEnvelope, ToolUseUnion } from "../src/lib/hook-events";
+import { SkillListResponse } from "../src/lib/api/customize";
 import { PluginFileSchema, PluginListResponse } from "../src/lib/api/plugins";
 import { SearchModeSchema } from "../src/lib/api/search";
 import { SessionSummaryStateSchema } from "../src/lib/api/sessions";
@@ -53,6 +54,7 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["SourceFileResponse", SourceFileResponse],
   ["PluginFileSchema", PluginFileSchema],
   ["PluginListResponse", PluginListResponse],
+  ["SkillListResponse", SkillListResponse],
   ["PaneLayoutStateSchema", PaneLayoutStateSchema],
   ["SettingsTabSchema", SettingsTabSchema],
 ];
