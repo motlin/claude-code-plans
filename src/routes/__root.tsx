@@ -15,7 +15,6 @@ import { Agentation } from "agentation";
 import { ThemeProvider } from "../components/theme-provider";
 import { SettingsProvider } from "../components/settings-provider";
 import { ToastProvider } from "../components/toast";
-import { ModeToggle } from "../components/mode-toggle";
 import { Sidebar } from "../components/sidebar/index";
 import { AppShellFallback } from "../components/app-shell-fallback";
 import { CommandPalette } from "../components/command-palette";
@@ -196,9 +195,6 @@ function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
             >
               <HamburgerIcon />
             </button>
-            <div className="ml-auto flex items-center gap-1">
-              <ModeToggle />
-            </div>
           </div>
           {fullBleed ? (
             <div className="min-h-0 flex-1">{children}</div>

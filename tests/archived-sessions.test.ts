@@ -470,7 +470,7 @@ describe("GET /api/notifications", () => {
 });
 
 describe("attention", () => {
-  const enabled = { desktopNotifications: true };
+  const enabled = { notifyCompletions: true, notifyPermissionRequests: true };
 
   it("the attention badge skips archived sessions", () => {
     expect(
@@ -488,8 +488,8 @@ describe("attention", () => {
 
   it("desktop notifications skip archived sessions", () => {
     expect({
-      archived: shouldNotify(enabled, true, "granted", BOB, null, true),
-      active: shouldNotify(enabled, true, "granted", ALICE, null, false),
+      archived: shouldNotify(enabled, "review", true, "granted", BOB, null, true),
+      active: shouldNotify(enabled, "waiting", true, "granted", ALICE, null, false),
     }).toStrictEqual({ archived: false, active: true });
   });
 });

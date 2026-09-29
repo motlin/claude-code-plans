@@ -21,6 +21,10 @@ export const DiffStyleSchema = z.enum(["unified", "split"]);
 export type DiffStyle = z.infer<typeof DiffStyleSchema>;
 export type Verbosity = "normal" | "thinking" | "verbose";
 
+/** Upstream General ▸ Appearance ▸ Motion: follow the OS, or always reduce. */
+const MotionSchema = z.enum(["system", "reduced"]);
+export type Motion = z.infer<typeof MotionSchema>;
+
 export interface LinkCategoryRule {
   label: string;
   hostPattern: string;
@@ -44,6 +48,8 @@ export interface Settings {
 
   chromeHidden: boolean;
   statusFooterVisible: boolean;
+  /** "reduced" sets `html[data-motion=reduced]`, which stops pulses and transitions. */
+  motion: Motion;
   /** The transcript and composer column measure: 768, 960 or 1280px. */
   transcriptWidth: TranscriptWidth;
 
@@ -61,7 +67,10 @@ export interface Settings {
   /** The sidebar session list's Filter & group menu choices. */
   sessionListPrefs: SessionListPrefs;
 
-  desktopNotifications: boolean;
+  /** Desktop notification when a session finishes and needs review (upstream "Response completions"). */
+  notifyCompletions: boolean;
+  /** Desktop notification when a session waits on the user (upstream "Code permission requests"). */
+  notifyPermissionRequests: boolean;
 
   verbosity: Verbosity;
 
@@ -106,6 +115,7 @@ export const DEFAULTS: Settings = {
 
   chromeHidden: false,
   statusFooterVisible: true,
+  motion: "system",
   transcriptWidth: "narrow",
 
   showSummaryButton: true,
@@ -119,7 +129,8 @@ export const DEFAULTS: Settings = {
 
   sessionListPrefs: DEFAULT_SESSION_LIST_PREFS,
 
-  desktopNotifications: false,
+  notifyCompletions: true,
+  notifyPermissionRequests: false,
 
   verbosity: "normal",
 
@@ -154,6 +165,7 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
   defaultSubagentView: "ccp-subagent-view",
   chromeHidden: "ccp-chrome-hidden",
   statusFooterVisible: "ccp-status-footer",
+  motion: "ccp-motion",
   transcriptWidth: "ccp-transcript-width",
   showSummaryButton: "ccp-show-summary-button",
   capabilities: "ccp-capabilities",
@@ -161,7 +173,8 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
   sessionSort: "ccp-session-sort",
   sessionsGrouping: "ccp-sessions-grouping",
   sessionListPrefs: "ccp-session-list-prefs",
-  desktopNotifications: "ccp-desktop-notifications",
+  notifyCompletions: "ccp-notify-completions",
+  notifyPermissionRequests: "ccp-notify-permission-requests",
   verbosity: "ccp-verbosity",
   linkCategoryRules: "ccp-link-category-rules",
   diffShowTree: "ccp-diff-show-tree",
@@ -181,6 +194,24 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
 /** The localStorage key a setting persists under. */
 export function settingStorageKey(key: keyof Settings): string {
   return STORAGE_KEYS[key];
+}
+
+const LEGACY_DESKTOP_NOTIFICATIONS_KEY = "ccp-desktop-notifications";
+
+/**
+ * Splits the old single desktop-notifications toggle into the two upstream
+ * kinds: its stored value carries over to both, unless a new key already exists.
+ */
+export function migrateLegacyNotificationSetting(
+  storage: Pick<Storage, "getItem" | "setItem" | "removeItem">,
+): void {
+  const legacy = storage.getItem(LEGACY_DESKTOP_NOTIFICATIONS_KEY);
+  if (legacy === null) return;
+  const value = legacy === "true" ? "true" : "false";
+  for (const key of ["notifyCompletions", "notifyPermissionRequests"] as const) {
+    if (storage.getItem(STORAGE_KEYS[key]) === null) storage.setItem(STORAGE_KEYS[key], value);
+  }
+  storage.removeItem(LEGACY_DESKTOP_NOTIFICATIONS_KEY);
 }
 
 const LINK_CATEGORY_RULES_SCHEMA = z.array(
@@ -265,6 +296,10 @@ function readStoredValue<K extends keyof Settings>(key: K): Settings[K] | undefi
     const parsed = DiffStyleSchema.safeParse(stored);
     return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
   }
+  if (key === "motion") {
+    const parsed = MotionSchema.safeParse(stored);
+    return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
+  }
   if (key === "transcriptWidth") {
     const parsed = TranscriptWidthSchema.safeParse(stored);
     return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
@@ -315,6 +350,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    migrateLegacyNotificationSetting(localStorage);
     const loaded = { ...DEFAULTS };
     for (const key of Object.keys(DEFAULTS) as Array<keyof Settings>) {
       const stored = readStoredValue(key);
@@ -337,6 +373,12 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setSettings(loaded);
     setLoaded(true);
   }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (settings.motion === "reduced") root.dataset["motion"] = "reduced";
+    else delete root.dataset["motion"];
+  }, [settings.motion]);
 
   const setSetting = useCallback(<K extends keyof Settings>(key: K, value: Settings[K]) => {
     setSettings((previous) => {

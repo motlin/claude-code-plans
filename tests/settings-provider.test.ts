@@ -3,6 +3,8 @@ import {
   VERBOSITY_KEYS,
   VERBOSITY_PRESETS,
   detectVerbosity,
+  migrateLegacyNotificationSetting,
+  settingStorageKey,
   type Settings,
   type Verbosity,
 } from "../src/components/settings-provider";
@@ -266,6 +268,78 @@ describe("settings-provider", () => {
         showTranscriptOnly: true,
       };
       expect(detectVerbosity(settings)).not.toBe("thinking");
+    });
+  });
+
+  describe("migrateLegacyNotificationSetting", () => {
+    function storageWith(entries: Record<string, string>) {
+      const map = new Map(Object.entries(entries));
+      return {
+        map,
+        storage: {
+          getItem: (key: string) => map.get(key) ?? null,
+          setItem: (key: string, value: string) => {
+            map.set(key, value);
+          },
+          removeItem: (key: string) => {
+            map.delete(key);
+          },
+        },
+      };
+    }
+
+    it("turns both notification kinds on when the old toggle was on", () => {
+      const { map, storage } = storageWith({ "ccp-desktop-notifications": "true" });
+      migrateLegacyNotificationSetting(storage);
+      expect(Object.fromEntries(map)).toStrictEqual({
+        "ccp-notify-completions": "true",
+        "ccp-notify-permission-requests": "true",
+      });
+    });
+
+    it("keeps both notification kinds off when the old toggle was off", () => {
+      const { map, storage } = storageWith({ "ccp-desktop-notifications": "false" });
+      migrateLegacyNotificationSetting(storage);
+      expect(Object.fromEntries(map)).toStrictEqual({
+        "ccp-notify-completions": "false",
+        "ccp-notify-permission-requests": "false",
+      });
+    });
+
+    it("leaves storage alone when there is no old toggle", () => {
+      const { map, storage } = storageWith({ "ccp-notify-completions": "false" });
+      migrateLegacyNotificationSetting(storage);
+      expect(Object.fromEntries(map)).toStrictEqual({ "ccp-notify-completions": "false" });
+    });
+
+    it("never overwrites a new key that is already stored", () => {
+      const { map, storage } = storageWith({
+        "ccp-desktop-notifications": "true",
+        "ccp-notify-permission-requests": "false",
+      });
+      migrateLegacyNotificationSetting(storage);
+      expect(Object.fromEntries(map)).toStrictEqual({
+        "ccp-notify-completions": "true",
+        "ccp-notify-permission-requests": "false",
+      });
+    });
+  });
+
+  it("stores the new notification and motion settings under their own keys", () => {
+    expect({
+      notifyCompletions: settingStorageKey("notifyCompletions"),
+      notifyPermissionRequests: settingStorageKey("notifyPermissionRequests"),
+      motion: settingStorageKey("motion"),
+      defaults: {
+        notifyCompletions: DEFAULTS.notifyCompletions,
+        notifyPermissionRequests: DEFAULTS.notifyPermissionRequests,
+        motion: DEFAULTS.motion,
+      },
+    }).toStrictEqual({
+      notifyCompletions: "ccp-notify-completions",
+      notifyPermissionRequests: "ccp-notify-permission-requests",
+      motion: "ccp-motion",
+      defaults: { notifyCompletions: true, notifyPermissionRequests: false, motion: "system" },
     });
   });
 });

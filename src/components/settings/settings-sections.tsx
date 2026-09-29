@@ -1,8 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, Monitor, Moon, Plus, Sun, Trash2 } from "lucide-react";
-import { useSettings, type Settings, type Verbosity } from "../settings-provider";
+import { useSettings, type Motion, type Settings, type Verbosity } from "../settings-provider";
 import type { CapabilityId } from "../../lib/capabilities";
 import type { TranscriptWidth } from "../../lib/transcript-width";
 import { useTheme } from "../theme-provider";
@@ -114,9 +114,7 @@ function WorkingCopyReviewModeRow() {
   );
 }
 
-function DesktopNotificationsRow() {
-  const { settings, setSetting } = useSettings();
-  const checked = settings.desktopNotifications;
+function useNotificationPermission() {
   const [supported, setSupported] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>("default");
 
@@ -127,41 +125,88 @@ function DesktopNotificationsRow() {
     }
   }, []);
 
-  const handleToggle = async (next: boolean) => {
-    if (!supported) return;
-    if (next && Notification.permission !== "granted") {
-      const result = await Notification.requestPermission();
-      setPermission(result);
-      if (result !== "granted") return;
-    }
-    setSetting("desktopNotifications", next);
+  /** Asks the browser when needed; resolves whether notifications may be shown. */
+  const ensureGranted = async (): Promise<boolean> => {
+    if (Notification.permission === "granted") return true;
+    const result = await Notification.requestPermission();
+    setPermission(result);
+    return result === "granted";
   };
 
+  return { supported, permission, ensureGranted };
+}
+
+interface NotificationRowProps {
+  slug: string;
+  title: string;
+  description: string;
+  settingKey: "notifyCompletions" | "notifyPermissionRequests";
+  notificationPermission: ReturnType<typeof useNotificationPermission>;
+  footnote?: ReactNode;
+}
+
+function NotificationRow({
+  slug,
+  title,
+  description,
+  settingKey,
+  notificationPermission: { supported, permission, ensureGranted },
+  footnote,
+}: NotificationRowProps) {
+  const { settings, setSetting } = useSettings();
+  const granted = supported && permission === "granted";
   const blocked = supported && permission === "denied";
 
+  const handleToggle = async (next: boolean) => {
+    if (!supported) return;
+    if (next && !(await ensureGranted())) return;
+    setSetting(settingKey, next);
+  };
+
   return (
-    <SettingsRow
-      slug="desktop-notifications"
-      title="Desktop notifications"
-      description="Show native OS notifications when an agent needs input or finishes while this tab is in the background"
-      footnote={
-        !supported ? (
-          <div className="text-body text-amber-600">
-            This browser does not support desktop notifications.
-          </div>
-        ) : blocked ? (
-          <div className="text-body text-amber-600">
-            Notifications are blocked. Allow them for this site in your browser settings to enable.
-          </div>
-        ) : null
-      }
-    >
+    <SettingsRow slug={slug} title={title} description={description} footnote={footnote}>
       <Switch
-        checked={checked}
+        checked={granted && settings[settingKey]}
         disabled={!supported || blocked}
         onCheckedChange={(next) => void handleToggle(next)}
       />
     </SettingsRow>
+  );
+}
+
+function NotificationsSection() {
+  const notificationPermission = useNotificationPermission();
+  const { supported, permission } = notificationPermission;
+
+  return (
+    <SettingsSection title="Notifications">
+      <NotificationRow
+        slug="response-completions"
+        title="Response completions"
+        description="Get notified when Claude has finished a response. Useful for long-running tasks."
+        settingKey="notifyCompletions"
+        notificationPermission={notificationPermission}
+        footnote={
+          !supported ? (
+            <div className="text-body text-amber-600">
+              This browser does not support desktop notifications.
+            </div>
+          ) : permission === "denied" ? (
+            <div className="text-body text-amber-600">
+              Notifications are blocked. Allow them for this site in your browser settings to
+              enable.
+            </div>
+          ) : null
+        }
+      />
+      <NotificationRow
+        slug="code-permission-requests"
+        title="Code permission requests"
+        description="Get a desktop notification when Claude needs your approval to run a command in a Code session."
+        settingKey="notifyPermissionRequests"
+        notificationPermission={notificationPermission}
+      />
+    </SettingsSection>
   );
 }
 
@@ -296,6 +341,29 @@ const THEME_OPTIONS = [
   { value: "light", label: "Light", icon: <Sun aria-hidden="true" /> },
   { value: "dark", label: "Dark", icon: <Moon aria-hidden="true" /> },
 ] as const;
+
+const MOTION_OPTIONS: Array<{ value: Motion; label: string }> = [
+  { value: "system", label: "System" },
+  { value: "reduced", label: "Reduced" },
+];
+
+function MotionRow() {
+  const { settings, setSetting } = useSettings();
+
+  return (
+    <SettingsRow
+      slug="motion"
+      title="Motion"
+      description="Reduce animation in streaming responses and other interface elements."
+    >
+      <SegmentedControl
+        value={settings.motion}
+        options={MOTION_OPTIONS}
+        onValueChange={(next) => setSetting("motion", next)}
+      />
+    </SettingsRow>
+  );
+}
 
 function ThemeRow() {
   const { theme, setTheme } = useTheme();
@@ -611,6 +679,7 @@ export function GeneralSettings() {
     <>
       <SettingsSection title="Appearance">
         <ThemeRow />
+        <MotionRow />
         <TranscriptWidthRow />
         <ToggleRow
           label="Hide chrome"
@@ -623,6 +692,7 @@ export function GeneralSettings() {
           settingKey="statusFooterVisible"
         />
       </SettingsSection>
+      <NotificationsSection />
       <ResetAllSettings />
     </>
   );
@@ -738,14 +808,6 @@ export function SessionsSettings() {
         />
       </SettingsSection>
     </>
-  );
-}
-
-export function NotificationsSettings() {
-  return (
-    <SettingsSection title="Notifications">
-      <DesktopNotificationsRow />
-    </SettingsSection>
   );
 }
 

@@ -570,7 +570,6 @@ export const settingsTabLabels = {
   "claude-code": "Claude Code",
   transcript: "Transcript",
   sessions: "Sessions",
-  notifications: "Notifications",
   application: "Application",
   "ai-features": "AI features",
   "claude-config": "Claude Config",

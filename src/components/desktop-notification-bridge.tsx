@@ -50,6 +50,7 @@ export function DesktopNotificationBridge(): null {
       if (
         !shouldNotify(
           settings,
+          next,
           document.hidden,
           Notification.permission,
           session.sessionId,

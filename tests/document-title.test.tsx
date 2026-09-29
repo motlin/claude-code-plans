@@ -17,7 +17,7 @@ import type { ActivityState } from "../src/lib/session-state";
 
 const harness = vi.hoisted(() => ({
   emit: null as ((session: { sessionId: string; state: ActivityState }) => void) | null,
-  desktopNotifications: false,
+  alerts: false,
 }));
 
 vi.mock("../src/hooks/use-claude-events", () => ({
@@ -32,7 +32,11 @@ vi.mock("../src/hooks/use-claude-events", () => ({
 vi.mock("../src/components/settings-provider", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/components/settings-provider")>()),
   useSettings: () => ({
-    settings: { ...DEFAULTS, desktopNotifications: harness.desktopNotifications },
+    settings: {
+      ...DEFAULTS,
+      notifyCompletions: harness.alerts,
+      notifyPermissionRequests: harness.alerts,
+    },
     loaded: true,
     setSetting: () => undefined,
     setVerbosity: () => undefined,
@@ -75,7 +79,7 @@ function renderRoutedApp(initialPath: string) {
 afterEach(() => {
   cleanup();
   harness.emit = null;
-  harness.desktopNotifications = false;
+  harness.alerts = false;
   document.title = "";
 });
 
@@ -95,7 +99,7 @@ describe("AttentionBadgeBridge document title", () => {
   });
 
   it("prefixes the attention count onto the current route title", async () => {
-    harness.desktopNotifications = true;
+    harness.alerts = true;
     const router = renderRoutedApp("/alpha");
     await act(async () => {
       await router.load();

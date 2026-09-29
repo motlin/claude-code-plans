@@ -16,6 +16,7 @@ describe("parseSettingsHash", () => {
     ["#settings", null],
     ["#settings/", null],
     ["#settings/account", null],
+    ["#settings/notifications", null],
     ["#settings/General", null],
     ["#settings/general/Code Font", null],
     ["#settings/general/code-font/extra", null],

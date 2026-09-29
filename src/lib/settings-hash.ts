@@ -7,7 +7,6 @@ export const SettingsTabSchema = z.enum([
   "claude-code",
   "transcript",
   "sessions",
-  "notifications",
   "application",
   "ai-features",
   "claude-config",

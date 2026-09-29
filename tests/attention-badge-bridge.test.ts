@@ -3,8 +3,12 @@ import { describe, expect, it } from "vite-plus/test";
 import { DEFAULTS, type Settings } from "../src/components/settings-provider";
 import { countSessionsNeedingAttention } from "../src/lib/attention";
 
-const enabled: Settings = { ...DEFAULTS, desktopNotifications: true };
-const disabled: Settings = { ...DEFAULTS, desktopNotifications: false };
+const enabled: Settings = { ...DEFAULTS, notifyCompletions: true, notifyPermissionRequests: true };
+const disabled: Settings = {
+  ...DEFAULTS,
+  notifyCompletions: false,
+  notifyPermissionRequests: false,
+};
 
 const sessions = [
   { sessionId: "session-test-waiting", displayState: "waiting", archived: false },
@@ -17,6 +21,23 @@ const sessions = [
 describe("countSessionsNeedingAttention", () => {
   it("counts waiting and review sessions", () => {
     expect(countSessionsNeedingAttention([...sessions], enabled, true, null)).toBe(2);
+  });
+
+  it("counts each attention state only when its notification kind is on", () => {
+    expect({
+      completions: countSessionsNeedingAttention(
+        [...sessions],
+        { ...disabled, notifyCompletions: true },
+        true,
+        null,
+      ),
+      permissionRequests: countSessionsNeedingAttention(
+        [...sessions],
+        { ...disabled, notifyPermissionRequests: true },
+        true,
+        null,
+      ),
+    }).toStrictEqual({ completions: 1, permissionRequests: 1 });
   });
 
   it("applies the global alert opt-out", () => {

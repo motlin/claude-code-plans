@@ -624,6 +624,20 @@
   }
 }
 
+/* Settings ▸ General ▸ Motion: Reduced. The settings provider sets html[data-motion=reduced];
+   it stops pulsing and pinging indicators and every transition regardless of the OS preference. */
+html[data-motion="reduced"] *,
+html[data-motion="reduced"] *::before,
+html[data-motion="reduced"] *::after {
+  transition: none !important;
+}
+
+html[data-motion="reduced"] .animate-pulse,
+html[data-motion="reduced"] .animate-ping,
+html[data-motion="reduced"] .status-dot[data-kind="running"] {
+  animation: none !important;
+}
+
 /* Upstream .df-leading-slot: a fixed box that centers the row's icon. */
 .df-leading-slot {
   display: flex;

@@ -1,7 +1,8 @@
 import type { DisplayState } from "./session-state";
 
 interface AttentionSettings {
-  desktopNotifications: boolean;
+  notifyCompletions: boolean;
+  notifyPermissionRequests: boolean;
 }
 
 export interface AttentionBadgeSession {
@@ -11,18 +12,27 @@ export interface AttentionBadgeSession {
   archived: boolean;
 }
 
-/** Shared global and per-session gate for every surface that requests attention. */
+/** Waiting asks for a permission decision; review means a response completed. */
+function kindEnabled(settings: AttentionSettings, state: DisplayState): boolean {
+  if (state === "waiting") return settings.notifyPermissionRequests;
+  if (state === "review") return settings.notifyCompletions;
+  return false;
+}
+
+/** Shared kind and per-session gate for every surface that requests attention. */
 function sessionAlertsEnabled(
   settings: AttentionSettings,
+  state: DisplayState,
   hidden: boolean,
   sessionId: string,
   viewedSessionId: string | null,
 ): boolean {
-  return settings.desktopNotifications && (hidden || sessionId !== viewedSessionId);
+  return kindEnabled(settings, state) && (hidden || sessionId !== viewedSessionId);
 }
 
 export function shouldNotify(
   settings: AttentionSettings,
+  state: DisplayState,
   hidden: boolean,
   permission: NotificationPermission,
   sessionId: string,
@@ -32,7 +42,7 @@ export function shouldNotify(
   return (
     permission === "granted" &&
     !archived &&
-    sessionAlertsEnabled(settings, hidden, sessionId, viewedSessionId)
+    sessionAlertsEnabled(settings, state, hidden, sessionId, viewedSessionId)
   );
 }
 
@@ -56,8 +66,13 @@ export function countSessionsNeedingAttention(
   return sessions.filter(
     (session) =>
       !session.archived &&
-      (session.displayState === "waiting" || session.displayState === "review") &&
-      sessionAlertsEnabled(settings, hidden, session.sessionId, viewedSessionId),
+      sessionAlertsEnabled(
+        settings,
+        session.displayState,
+        hidden,
+        session.sessionId,
+        viewedSessionId,
+      ),
   ).length;
 }
 

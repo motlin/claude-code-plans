@@ -126,7 +126,6 @@ describe("SettingsDialog", () => {
       "Claude Code",
       "Transcript",
       "Sessions",
-      "Notifications",
       "Application",
       "AI features",
       "Claude Config",
