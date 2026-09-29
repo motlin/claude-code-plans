@@ -30,6 +30,8 @@ interface ComposerProps {
   onSend: (prompt: string) => void;
   onCancel?: () => void;
   isStreaming?: boolean;
+  /** While a live session is working, the send slot becomes Stop response. */
+  onStop?: (() => void) | undefined;
   disabled?: boolean;
   deliveryHint?: string | undefined;
   /** Mode / model / effort / usage readouts; the chin stays empty without them. */
@@ -46,6 +48,7 @@ export function Composer({
   onSend,
   onCancel,
   isStreaming = false,
+  onStop,
   disabled = false,
   deliveryHint,
   chin,
@@ -113,12 +116,12 @@ export function Composer({
             style={{ minHeight: "24px", maxHeight: "min(24rem, 40svh)" }}
           />
           <div className="absolute right-0 bottom-0 flex min-h-6 items-center pl-1.5">
-            {isStreaming ? (
-              <Tooltip content="Stop response">
+            {isStreaming || onStop !== undefined ? (
+              <Tooltip content="Stop response" {...(isStreaming ? {} : { shortcut: "escape" })}>
                 <button
                   type="button"
                   aria-label="Stop response"
-                  onClick={onCancel}
+                  onClick={isStreaming ? onCancel : onStop}
                   className={ICON_BUTTON_CLASS}
                 >
                   <Square className="size-3.5" fill="currentColor" aria-hidden="true" />

@@ -81,6 +81,8 @@ export interface WorkingMarkerSignals {
   isActive: boolean;
   /** The most recent `PreToolUse` still awaiting its result. */
   pendingToolName: string | undefined;
+  /** When this page last sent an interrupt; it marks only the turn it was sent in. */
+  interruptedAt?: number | null;
 }
 
 /**
@@ -93,9 +95,15 @@ export function useWorkingMarkerState({
   sessionState,
   isActive,
   pendingToolName,
+  interruptedAt = null,
 }: WorkingMarkerSignals): WorkingMarkerState {
   const events = useMemo(() => {
     const fromRecords = markerEventsFromRecords(records);
+    if (interruptedAt !== null) {
+      const after = fromRecords.findIndex((event) => event.at > interruptedAt);
+      const index = after === -1 ? fromRecords.length : after;
+      fromRecords.splice(index, 0, { kind: "interrupt", at: interruptedAt });
+    }
     const lastAt = fromRecords.at(-1)?.at ?? 0;
     const overlay: WorkingMarkerEvent[] = [];
     if (pendingToolName !== undefined) {
@@ -109,7 +117,7 @@ export function useWorkingMarkerState({
     const closed = hookKnown ? sessionState !== "working" : !isActive;
     if (closed) overlay.push({ kind: "stop", at: lastAt });
     return [...fromRecords, ...overlay];
-  }, [records, sessionState, isActive, pendingToolName]);
+  }, [records, sessionState, isActive, pendingToolName, interruptedAt]);
   const open = workingMarkerState(events, 0).status !== "idle";
   const now = useNow(open);
   return workingMarkerState(events, now);

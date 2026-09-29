@@ -44,6 +44,7 @@ import { useToast } from "./toast";
 import { transcriptWidthStyle } from "../lib/transcript-width";
 import { useChatStream } from "../hooks/use-chat-stream";
 import { useShortcutKeys } from "../hooks/use-shortcut";
+import { canStopResponse, useStopResponse } from "../hooks/use-stop-response";
 import {
   useClaudeEvents,
   useComposerServerState,
@@ -394,11 +395,15 @@ function SessionView({
   }, [sessionId, runningSubagents, transcriptActiveSubagents]);
   const [aiSummary, setAiSummary] = useState<string | null>(data.summary ?? null);
   const isActive = useIsSessionActive(sessionId);
+  const [lastInterrupt, setLastInterrupt] = useState<{ sessionId: string; at: number } | null>(
+    null,
+  );
   const workingMarkerState = useWorkingMarkerState({
     records: transcript.records,
     sessionState: useSessionSummaryState(sessionId),
     isActive,
     pendingToolName: pendingTools.get(sessionId)?.toolName,
+    interruptedAt: lastInterrupt?.sessionId === sessionId ? lastInterrupt.at : null,
   });
   const backgroundTasks = useMemo(
     () =>
@@ -458,6 +463,27 @@ function SessionView({
   const toast = useToast();
   const liveHerdrPrompt = useLiveHerdrPrompt(sessionId, endIndex);
   const promptBehavior = getSessionPromptBehavior(sessionId, isActive, herdr);
+  const stopAvailable = canStopResponse({
+    hasLivePane: promptBehavior.hasLivePane,
+    writesEnabled: herdr.writesEnabled,
+    working: workingMarkerState.status !== "idle",
+  });
+  const onInterrupt = useCallback((at: number) => setLastInterrupt({ sessionId, at }), [sessionId]);
+  const onInterruptError = useCallback(
+    (error: unknown) =>
+      toast({
+        kind: "error",
+        message: "Couldn't stop the response",
+        description: error instanceof Error ? error.message : String(error),
+      }),
+    [toast],
+  );
+  const stopResponse = useStopResponse({
+    sessionId,
+    enabled: stopAvailable,
+    onInterrupt,
+    onError: onInterruptError,
+  });
   const shellsEnabled =
     useQuery({
       ...applicationSettingsQueryOptions,
@@ -688,6 +714,7 @@ function SessionView({
                   }}
                   onCancel={chatStream.cancel}
                   isStreaming={!promptBehavior.usesHerdr && chatStream.state.isStreaming}
+                  onStop={stopAvailable ? stopResponse : undefined}
                   disabled={promptBehavior.disabled || liveHerdrPrompt.state.isPending}
                   deliveryHint={promptBehavior.deliveryHint}
                   chin={composerChin}

@@ -74,6 +74,7 @@ describe("shortcut registry", () => {
       "jump_next_prompt",
       "focus_next_region",
       "focus_previous_region",
+      "stop_response",
       "toggle_changes",
       "toggle_changes_file_list",
       "go_to_file_in_changes",

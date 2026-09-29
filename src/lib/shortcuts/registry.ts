@@ -212,7 +212,7 @@ export const SHORTCUTS = {
     group: "general",
     bindings: macAndNonMac("escape", [], []),
     ownerSlug: "stop-response",
-    enabled: false,
+    enabled: true,
   },
   // Panes
   toggle_changes: {

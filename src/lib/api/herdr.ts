@@ -97,3 +97,24 @@ export async function launchHerdrSession(
 
   return HerdrLaunchSuccessResponse.parse(json);
 }
+
+/** Interrupt the session's live herdr pane: Esc, or ctrl+c when `force`. */
+export async function sendHerdrInterrupt(
+  sessionId: string,
+  force: boolean,
+  fetcher: typeof fetch = fetch,
+): Promise<void> {
+  const response = await fetcher("/api/herdr/interrupt", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sessionId, force }),
+  });
+  const json: unknown = await response.json();
+
+  if (!response.ok) {
+    throw new Error(HerdrPromptErrorResponse.parse(json).error);
+  }
+
+  HerdrPromptSuccessResponse.parse(json);
+}
