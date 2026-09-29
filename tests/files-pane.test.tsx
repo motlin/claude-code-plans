@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import {
   FilesPaneShortcut,
-  FilesPaneToggle,
   FilesPaneView,
   filesEmptyState,
 } from "../src/components/panes/files-pane";
@@ -92,7 +91,6 @@ function renderSession(onExpandWithoutPane: () => void = () => {}) {
     <SettingsProvider>
       <TileHost sessionId="files-pane" onExpandWithoutPane={onExpandWithoutPane}>
         <FilesPaneShortcut />
-        <FilesPaneToggle count={SESSION_FILES.totalCount} />
       </TileHost>
     </SettingsProvider>,
   );
@@ -102,8 +100,8 @@ function filesPane(): HTMLElement {
   return screen.getByRole("region", { name: "Files" });
 }
 
-function filesPressed(): string | null {
-  return screen.getByRole("button", { name: /^Files \d/ }).getAttribute("aria-pressed");
+function filesOpen(): string | null {
+  return String(screen.queryByRole("region", { name: "Files" }) !== null);
 }
 
 beforeEach(() => {
@@ -175,9 +173,9 @@ describe("Files pane shortcut", () => {
     const onExpandWithoutPane = vi.fn();
     renderSession(onExpandWithoutPane);
 
-    const before = filesPressed();
+    const before = filesOpen();
     const opened = press(CMD_SHIFT_F);
-    const afterOpen = filesPressed();
+    const afterOpen = filesOpen();
     const focusedLabel = document.activeElement?.getAttribute("aria-label");
     const closed = press(CMD_SHIFT_F);
 
@@ -185,7 +183,7 @@ describe("Files pane shortcut", () => {
       before,
       afterOpen,
       focusedLabel,
-      afterClose: filesPressed(),
+      afterClose: filesOpen(),
       paneAfterClose: screen.queryByRole("region", { name: "Files" }),
       prevented: [opened.defaultPrevented, closed.defaultPrevented],
       chromeToggles: onExpandWithoutPane.mock.calls.length,
@@ -206,36 +204,9 @@ describe("Files pane shortcut", () => {
 
     const event = press(CTRL_SHIFT_F);
 
-    expect({ pressed: filesPressed(), prevented: event.defaultPrevented }).toStrictEqual({
+    expect({ pressed: filesOpen(), prevented: event.defaultPrevented }).toStrictEqual({
       pressed: "false",
       prevented: false,
-    });
-  });
-
-  it("the titlebar pill toggles the pane and shows a floor count while records are unscanned", () => {
-    registerFilesPane();
-    render(
-      <SettingsProvider>
-        <TileHost sessionId="files-pane" onExpandWithoutPane={() => {}}>
-          <FilesPaneToggle count={12} unscannedRecordCount={3200} />
-        </TileHost>
-      </SettingsProvider>,
-    );
-
-    const pill = screen.getByRole("button", { name: "Files 12+" });
-    fireEvent.click(pill);
-
-    expect({
-      title: pill.getAttribute("title"),
-      keyshortcuts: pill.getAttribute("aria-keyshortcuts"),
-      pressed: pill.getAttribute("aria-pressed"),
-      paneOpen: screen.queryByRole("region", { name: "Files" }) !== null,
-    }).toStrictEqual({
-      title:
-        "Counted from the loaded messages only — 3200 earlier records have not been scanned. Load earlier messages to include them.",
-      keyshortcuts: "Shift+Meta+f",
-      pressed: "true",
-      paneOpen: true,
     });
   });
 });

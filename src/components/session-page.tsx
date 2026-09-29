@@ -28,21 +28,17 @@ import {
   useSessionLinkDisplay,
 } from "./links-drawer";
 import { TileHost } from "./panes/tile-host";
-import {
-  ArtifactsPaneToggle,
-  useRegisterArtifactsPane,
-  useSessionArtifacts,
-} from "./panes/artifacts-pane";
-import { ChangesPaneToggle, useRegisterChangesPane } from "./changes/changes-pane";
+import { useRegisterArtifactsPane, useSessionArtifacts } from "./panes/artifacts-pane";
+import { ChangesPaneShortcut, useRegisterChangesPane } from "./changes/changes-pane";
 import {
   FilesPaneShortcut,
-  FilesPaneToggle,
   useExtractedSessionFiles,
   useRegisterFilesPane,
 } from "./panes/files-pane";
 import { StatusFooter } from "./status-footer";
 import { TranscriptHistoryLoader, findScrollContainer } from "./transcript-history-loader";
 import { Tooltip } from "./ui/tooltip";
+import { SessionPaneControls } from "./view-options-menu";
 import { ViewportPortal } from "./viewport-portal";
 import { useChatStream } from "../hooks/use-chat-stream";
 import { useShortcutKeys } from "../hooks/use-shortcut";
@@ -402,7 +398,6 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
     currentHost,
     settings.linkCategoryRules,
   );
-  const sessionFiles = resources?.files ?? windowFiles;
   const sessionLinks = fullLinks ?? windowLinks;
   const unscannedRecordCount = resources === undefined ? transcript.startIndex : 0;
   const linkDisplay = useSessionLinkDisplay(sessionLinks, linksDrawerState.includeToolsAndThinking);
@@ -539,6 +534,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
     <div ref={sessionViewRef}>
       <TileHost sessionId={sessionId} onExpandWithoutPane={toggleChromeHidden}>
         <FilesPaneShortcut />
+        <ChangesPaneShortcut />
         {/* Sticky header: titlebar + hook context */}
         {!chromeHidden && (
           <div className="sticky top-0 z-10 bg-surface-2 pb-1 -mx-4 px-4 sm:-mx-8 sm:px-8 border-b border-border">
@@ -560,31 +556,33 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
               summary={aiSummary}
               subagents={{ total: subagents.length, running: activeSubagents.length }}
               paneToggles={
-                <>
-                  <ChangesPaneToggle />
-                  <FilesPaneToggle
-                    count={sessionFiles.totalCount}
-                    unscannedRecordCount={unscannedRecordCount}
-                  />
-                  <ArtifactsPaneToggle count={sessionArtifacts.length} />
-                  <LinksDrawerToggle
-                    count={linkDisplay.totalCount}
-                    unscannedRecordCount={unscannedRecordCount}
-                    isOpen={linksDrawerState.open && sessionLinks.totalCount > 0}
-                    onToggle={linksDrawerState.toggleOpen}
-                  />
-                  <Tooltip content="Expand chat" shortcut={chromeShortcut.keys} side="bottom">
-                    <button
-                      type="button"
-                      onClick={() => setChromeHidden(true)}
-                      className={TITLEBAR_ICON_BUTTON_CLASS}
-                      aria-label="Expand chat"
-                      aria-keyshortcuts={chromeShortcut.ariaKeyShortcuts}
-                    >
-                      <Maximize2 aria-hidden="true" />
-                    </button>
-                  </Tooltip>
-                </>
+                <SessionPaneControls
+                  facts={{
+                    artifactCount: sessionArtifacts.length,
+                    subagentCount: subagents.length,
+                  }}
+                  extras={
+                    <>
+                      <LinksDrawerToggle
+                        count={linkDisplay.totalCount}
+                        unscannedRecordCount={unscannedRecordCount}
+                        isOpen={linksDrawerState.open && sessionLinks.totalCount > 0}
+                        onToggle={linksDrawerState.toggleOpen}
+                      />
+                      <Tooltip content="Expand chat" shortcut={chromeShortcut.keys} side="bottom">
+                        <button
+                          type="button"
+                          onClick={() => setChromeHidden(true)}
+                          className={TITLEBAR_ICON_BUTTON_CLASS}
+                          aria-label="Expand chat"
+                          aria-keyshortcuts={chromeShortcut.ariaKeyShortcuts}
+                        >
+                          <Maximize2 aria-hidden="true" />
+                        </button>
+                      </Tooltip>
+                    </>
+                  }
+                />
               }
             />
 

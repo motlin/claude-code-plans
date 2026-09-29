@@ -33,6 +33,7 @@ import {
   useSessionMenuRunner,
 } from "./session-actions-menu";
 import { SessionTitleButton, useSessionTitleShortcuts } from "./session-title-heading";
+import { TitlebarWidthContext } from "./titlebar-width";
 import { useToast } from "./toast";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "./ui/menu";
 import { Tooltip } from "./ui/tooltip";
@@ -77,20 +78,21 @@ function downloadUrl(href: string): void {
   anchor.click();
 }
 
-function useCompactPills() {
+/** The titlebar's width, which collapses the origin pills and folds the trail's pane toggles. */
+function useTitlebarMeasure() {
   const ref = useRef<HTMLDivElement>(null);
-  const [compact, setCompact] = useState(false);
+  const [width, setWidth] = useState<number | null>(null);
   useEffect(() => {
     const element = ref.current;
     if (element === null || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver((entries) => {
-      const width = entries[0]?.contentRect.width;
-      if (width !== undefined) setCompact(width < PILLS_COMPACT_BELOW_PX);
+      const measured = entries[0]?.contentRect.width;
+      if (measured !== undefined) setWidth(measured);
     });
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
-  return { ref, compact };
+  return { ref, width, compact: width !== null && width < PILLS_COMPACT_BELOW_PX };
 }
 
 type PillIcon = React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
@@ -378,7 +380,7 @@ export function SessionTitlebar({
     startEditing: rename.startEditing,
   });
   const menuRename = useRenameAfterMenuClose(rename.startEditing);
-  const { ref, compact } = useCompactPills();
+  const { ref, width, compact } = useTitlebarMeasure();
   const modelLabel = formatModelName(data.model);
 
   return (
@@ -499,8 +501,12 @@ export function SessionTitlebar({
         data-titlebar-trail=""
         className="relative ml-auto flex shrink-0 items-center gap-1 pl-6 text-secondary"
       >
-        {paneToggles !== undefined && <div className="flex items-center gap-1">{paneToggles}</div>}
-        {viewOptions}
+        <TitlebarWidthContext.Provider value={width}>
+          {paneToggles !== undefined && (
+            <div className="flex items-center gap-1">{paneToggles}</div>
+          )}
+          {viewOptions}
+        </TitlebarWidthContext.Provider>
       </div>
     </div>
   );

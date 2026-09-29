@@ -19,6 +19,7 @@ const PANE_KINDS = [
   "background-tasks",
   "plan",
   "artifacts",
+  "subagents",
 ] as const;
 
 const PaneKindSchema = z.enum(PANE_KINDS);

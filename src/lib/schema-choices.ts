@@ -528,6 +528,7 @@ const paneKindLabels = {
   "background-tasks": "Background tasks",
   plan: "Plan",
   artifacts: "Artifacts",
+  subagents: "Subagents",
 } satisfies Record<PaneKind, string>;
 
 const tileIdLabels = {

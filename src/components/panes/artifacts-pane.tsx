@@ -1,13 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { AppWindow } from "lucide-react";
 import { useEffect } from "react";
 
 import { type SessionArtifact, sessionArtifactsQueryOptions } from "../../lib/api/artifacts";
 import { artifactPreviewPath } from "../../lib/artifact-source-paths";
-import { pillStyles } from "../detail-top-bar";
 import { ArtifactCard } from "../tool-renderers/artifact-renderer";
 import { registerPane } from "./pane-registry";
-import { usePaneHost } from "./tile-host";
 
 const EMPTY_COPY = "Artifacts published in this session appear here.";
 
@@ -49,27 +46,5 @@ export function useRegisterArtifactsPane(artifacts: readonly SessionArtifact[]):
         render: () => <SessionArtifactsList artifacts={artifacts} />,
       }),
     [artifacts],
-  );
-}
-
-/**
- * Titlebar pill for the Artifacts pane, pressed while it is open. Like
- * upstream's View options item, it only shows once the session has artifacts
- * or while the pane is open.
- */
-export function ArtifactsPaneToggle({ count }: { count: number }) {
-  const host = usePaneHost();
-  const open = host.isOpen("artifacts");
-  if (count === 0 && !open) return null;
-  return (
-    <button
-      type="button"
-      aria-pressed={open}
-      onClick={() => host.togglePane("artifacts")}
-      className={`${pillStyles.outline} ${open ? "bg-surface-0 text-primary" : ""}`}
-    >
-      <AppWindow className="h-3.5 w-3.5" aria-hidden="true" />
-      Artifacts <span data-count="">{count}</span>
-    </button>
   );
 }

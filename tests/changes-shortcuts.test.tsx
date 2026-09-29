@@ -3,7 +3,7 @@
 import { act, cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { ChangesPaneToggle, ChangesPaneView } from "../src/components/changes/changes-pane";
+import { ChangesPaneShortcut, ChangesPaneView } from "../src/components/changes/changes-pane";
 import {
   KeyboardShortcutsDialog,
   setKeyboardShortcutsOpen,
@@ -11,6 +11,7 @@ import {
 import { registerPane } from "../src/components/panes/pane-registry";
 import { TileHost } from "../src/components/panes/tile-host";
 import { SettingsProvider } from "../src/components/settings-provider";
+import { SessionPaneControls } from "../src/components/view-options-menu";
 import type { SessionDiffFile, SessionDiffResponse } from "../src/lib/api/session-diff";
 import { installLocalStorage } from "./fake-storage";
 
@@ -51,7 +52,8 @@ function renderSession() {
   return render(
     <SettingsProvider>
       <TileHost sessionId="changes-shortcuts" onExpandWithoutPane={() => {}}>
-        <ChangesPaneToggle />
+        <ChangesPaneShortcut />
+        <SessionPaneControls facts={{}} />
       </TileHost>
     </SettingsProvider>,
   );

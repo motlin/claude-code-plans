@@ -1,6 +1,6 @@
 import { Virtualizer } from "@pierre/diffs/react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, ChevronDown, EllipsisVertical, FileDiff, List } from "lucide-react";
+import { ArrowRight, ChevronDown, EllipsisVertical, List } from "lucide-react";
 import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from "react";
 
 import { useShortcut, useShortcutKeys } from "../../hooks/use-shortcut";
@@ -36,7 +36,6 @@ import {
   MenuSubTrigger,
   MenuTrigger,
 } from "../ui/menu";
-import { TITLEBAR_ICON_BUTTON_CLASS } from "../titlebar-classes";
 import { useToast } from "../toast";
 import { Tooltip } from "../ui/tooltip";
 import { ChangedFilesSidebar } from "./changes-file-tree";
@@ -800,24 +799,9 @@ export function useRegisterChangesPane(sessionId: string): void {
   );
 }
 
-/** Titlebar toggle for the Changes pane: "Changes ⌃⇧D", pressed while the pane is open. */
-export function ChangesPaneToggle() {
+/** Binds ⌃⇧D: toggle the Changes pane, whether its titlebar toggle is shown or folded. */
+export function ChangesPaneShortcut() {
   const host = usePaneHost();
-  const keys = useShortcutKeys("toggle_changes");
-  const open = host.isOpen("changes");
   useShortcut("toggle_changes", () => host.togglePane("changes"));
-  return (
-    <Tooltip content="Changes" shortcut={keys.keys} side="bottom">
-      <button
-        type="button"
-        aria-label="Changes"
-        aria-pressed={open}
-        aria-keyshortcuts={keys.ariaKeyShortcuts}
-        onClick={() => host.togglePane("changes")}
-        className={TITLEBAR_ICON_BUTTON_CLASS}
-      >
-        <FileDiff aria-hidden="true" />
-      </button>
-    </Tooltip>
-  );
+  return null;
 }

@@ -4,9 +4,10 @@ import { act, cleanup, fireEvent, render, screen, within } from "@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { registerPane } from "../src/components/panes/pane-registry";
-import { ArtifactsPaneToggle, SessionArtifactsList } from "../src/components/panes/artifacts-pane";
+import { SessionArtifactsList } from "../src/components/panes/artifacts-pane";
 import { TileHost } from "../src/components/panes/tile-host";
 import { SettingsProvider } from "../src/components/settings-provider";
+import { SessionPaneControls } from "../src/components/view-options-menu";
 import { SessionArtifactListResponse, type SessionArtifact } from "../src/lib/api/artifacts";
 import { artifactPreviewPath } from "../src/lib/artifact-source-paths";
 import { getSessionArtifacts } from "../src/lib/db/artifact-queries";
@@ -251,7 +252,7 @@ class FakeObserver {
   }
 }
 
-describe("ArtifactsPaneToggle", () => {
+describe("View options ▸ Artifacts", () => {
   let unregister: () => void = () => {};
 
   beforeEach(() => {
@@ -273,40 +274,51 @@ describe("ArtifactsPaneToggle", () => {
     vi.restoreAllMocks();
   });
 
-  function renderToggle(count: number) {
+  function renderControls(artifactCount: number) {
     return render(
       <SettingsProvider>
         <TileHost sessionId="session-artifacts">
-          <ArtifactsPaneToggle count={count} />
+          <SessionPaneControls facts={{ artifactCount }} />
         </TileHost>
       </SettingsProvider>,
     );
   }
 
-  it("shows the artifact count and opens the Artifacts pane", () => {
-    renderToggle(2);
-    const toggle = screen.getByRole("button", { name: "Artifacts 2" });
-
-    expect(toggle.getAttribute("aria-pressed")).toBe("false");
-    expect(within(toggle).getByText("2").getAttribute("data-count")).toBe("");
-    expect(screen.queryByRole("region", { name: "Artifacts" })).toBeNull();
-
-    act(() => {
-      fireEvent.click(toggle);
+  async function settle() {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
+  }
 
-    expect(toggle.getAttribute("aria-pressed")).toBe("true");
-    const pane = screen.getByRole("region", { name: "Artifacts" });
+  it("opens the Artifacts pane from the View options menu", async () => {
+    renderControls(2);
+    fireEvent.click(screen.getByRole("button", { name: "View options" }));
+    await settle();
+
     expect(
-      within(pane)
+      screen.getByRole("menuitemcheckbox", { name: "Artifacts" }).getAttribute("aria-checked"),
+    ).toBe("false");
+
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Artifacts" }));
+    await settle();
+
+    const pane = screen.getByRole("region", { name: "Artifacts" });
+    expect({
+      checked: screen
+        .getByRole("menuitemcheckbox", { name: "Artifacts" })
+        .getAttribute("aria-checked"),
+      cards: within(pane)
         .getAllByRole("button", { name: /^Open artifact / })
         .map((card) => card.getAttribute("aria-label")),
-    ).toStrictEqual(["Open artifact Quarterly plan", "Open artifact Asap Ladder Queue"]);
+    }).toStrictEqual({
+      checked: "true",
+      cards: ["Open artifact Quarterly plan", "Open artifact Asap Ladder Queue"],
+    });
   });
 
-  it("is hidden while the session has no artifacts and the pane is closed", () => {
-    renderToggle(0);
+  it("offers no Artifacts item while the session has no artifacts and the pane is closed", () => {
+    renderControls(0);
 
-    expect(screen.queryByRole("button", { name: /^Artifacts/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "View options" })).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { EllipsisVertical, Files as FilesIcon, Folder, PanelLeft, Search } from "lucide-react";
+import { EllipsisVertical, Folder, PanelLeft, Search } from "lucide-react";
 import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from "react";
 
 import { useShortcut, useShortcutKeys } from "../../hooks/use-shortcut";
@@ -12,9 +12,7 @@ import {
   fileTabsReducer,
 } from "../../lib/file-tabs";
 import { loadFileTabs, saveFileTabs } from "../../lib/pane-layout";
-import { formatResourceCount, resourceCoverageNote } from "../../lib/session-resources";
 import type { SessionFiles } from "../../lib/session-files";
-import { pillStyles } from "../detail-top-bar";
 import { FILE_TAB_SIZES, normalizeFileTabSize } from "../../lib/file-preview";
 import { FileView } from "../files/file-view";
 import { FileTabsStrip } from "../files/file-tabs-strip";
@@ -597,33 +595,4 @@ export function FilesPaneShortcut() {
     host.togglePane("files");
   });
   return null;
-}
-
-interface FilesPaneToggleProps {
-  count: number;
-  /** JSONL records before the loaded window, which `count` never saw. */
-  unscannedRecordCount?: number;
-}
-
-/**
- * Titlebar pill for the Files pane, pressed while it is open. Upstream puts
- * "Files ⇧⌘F" in the View options menu, which does not exist locally yet.
- */
-export function FilesPaneToggle({ count, unscannedRecordCount = 0 }: FilesPaneToggleProps) {
-  const host = usePaneHost();
-  const keys = useShortcutKeys("toggle_files");
-  const open = host.isOpen("files");
-  return (
-    <button
-      type="button"
-      aria-pressed={open}
-      aria-keyshortcuts={keys.ariaKeyShortcuts}
-      title={resourceCoverageNote(unscannedRecordCount)}
-      onClick={() => host.togglePane("files")}
-      className={`${pillStyles.outline} ${open ? "bg-surface-0 text-primary" : ""}`}
-    >
-      <FilesIcon className="h-3.5 w-3.5" aria-hidden="true" />
-      Files {formatResourceCount(count, unscannedRecordCount)}
-    </button>
-  );
 }
