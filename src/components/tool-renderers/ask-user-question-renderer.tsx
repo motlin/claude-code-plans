@@ -1,5 +1,5 @@
 import { Fragment, useState, type ReactNode } from "react";
-import { Loader2 } from "lucide-react";
+import { ChevronDown, Loader2 } from "lucide-react";
 import type { ToolRendererProps } from "./types";
 import { useAskUserQuestionContext } from "../ask-user-question-context";
 import { MarkdownArticle } from "../markdown-article";
@@ -395,11 +395,52 @@ function AnswerForm({
   );
 }
 
+/**
+ * Upstream's inline stand-in for a question that is docked above the composer:
+ * a collapsed "Asking <header>" row that expands to the read-only question.
+ */
+function DockedSummary({ questions }: { questions: QuestionLike[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const header = questions[0]?.header ?? "a question";
+  return (
+    <div className="flex flex-col gap-g3">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((open) => !open)}
+        className="inline-flex w-fit cursor-pointer items-center gap-g3 text-body text-secondary hover:text-primary"
+      >
+        Asking {header}
+        <ChevronDown
+          aria-hidden="true"
+          className={`size-3.5 transition-transform ${expanded ? "rotate-180" : ""}`}
+        />
+      </button>
+      {expanded && (
+        <div className={CARD_SHELL}>
+          {questions.map((q, i) => (
+            <AnsweredQuestion
+              key={i}
+              question={q.question}
+              {...(q.header ? { header: q.header } : {})}
+              options={q.options}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AskUserQuestionRenderer({ toolCall }: ToolRendererProps) {
   const ctx = useAskUserQuestionContext();
   const questions = normalizeQuestions(toolCall.input);
   const { result } = toolCall;
   const isPending = result === undefined;
+
+  if (isPending && questions !== null && ctx?.dockedToolUseId === toolCall.id) {
+    return <DockedSummary questions={questions} />;
+  }
   const canAnswer = ctx?.isSessionActive === true && isPending && questions !== null;
 
   if (canAnswer) {

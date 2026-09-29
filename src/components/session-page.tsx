@@ -33,6 +33,7 @@ import {
 } from "./panes/files-pane";
 import { TerminalPaneShortcut, useRegisterTerminalPane } from "./panes/terminal-pane";
 import { StatusFooter } from "./status-footer";
+import { ApprovalDock } from "./approval-dock";
 import { BranchStrip } from "./branch-strip";
 import { TranscriptHistoryLoader, findScrollContainer } from "./transcript-history-loader";
 import { Tooltip } from "./ui/tooltip";
@@ -60,6 +61,7 @@ import {
 import { useSessionViewedState } from "../hooks/use-session-viewed-state";
 import { usePendingMessageJump } from "../hooks/use-pending-message-jump";
 import { postAnswerQuestion } from "../lib/api/answer-question";
+import { findPendingAskUserQuestion } from "../lib/approval-dock";
 import { applicationSettingsQueryOptions } from "../lib/api/application-settings";
 import { herdrPanesQueryOptions, sendHerdrPrompt } from "../lib/api/herdr";
 import type { HerdrPaneIndexData } from "../lib/api/herdr";
@@ -455,9 +457,19 @@ function SessionView({
     },
     [sessionId],
   );
+  const pendingQuestion = useMemo(
+    () => findPendingAskUserQuestion(transcript.records),
+    [transcript.records],
+  );
+  const [dismissedToolUseId, setDismissedToolUseId] = useState<string | null>(null);
+  const dockedQuestion =
+    isActive && pendingQuestion !== null && pendingQuestion.toolUseId !== dismissedToolUseId
+      ? pendingQuestion
+      : null;
+  const dockedToolUseId = dockedQuestion?.toolUseId ?? null;
   const askUserQuestionCtx: AskUserQuestionContextValue = useMemo(
-    () => ({ isSessionActive: isActive, submitAnswer }),
-    [isActive, submitAnswer],
+    () => ({ isSessionActive: isActive, submitAnswer, dockedToolUseId }),
+    [isActive, submitAnswer, dockedToolUseId],
   );
   const chatStream = useChatStream();
   const toast = useToast();
@@ -687,6 +699,15 @@ function SessionView({
             }
           >
             <SessionDock anchorRef={scrollAnchorRef}>
+              {dockedQuestion && (
+                <ApprovalDock
+                  key={dockedQuestion.toolUseId}
+                  toolUseId={dockedQuestion.toolUseId}
+                  questions={dockedQuestion.questions}
+                  onSubmit={submitAnswer}
+                  onDismiss={() => setDismissedToolUseId(dockedQuestion.toolUseId)}
+                />
+              )}
               {!chromeHidden && data.projectPath && (
                 <BranchStrip sessionId={sessionId} session={data} statusline={statusline} />
               )}
