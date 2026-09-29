@@ -54,6 +54,18 @@ function ShortcutProbe({ available }: { available: boolean }) {
   return null;
 }
 
+function renderShortcutProbe(available: boolean) {
+  return render(
+    <ToastProvider>
+      <ShortcutProbe available={available} />
+      <button type="button">Main chat</button>
+      <div data-pane-root="" data-pane-kind="terminal">
+        <button type="button">Pane control</button>
+      </div>
+    </ToastProvider>,
+  );
+}
+
 function pressToggle(): KeyboardEvent {
   const event = new KeyboardEvent("keydown", {
     key: ";",
@@ -166,6 +178,22 @@ describe("SideChat", () => {
     fireEvent.click(screen.getByRole("button", { name: "Clear side chat" }));
     expect(screen.queryByText("It parses the config.")).toBeNull();
     expect(input.getAttribute("placeholder")).toBe("Ask a quick question…");
+  });
+
+  it("renders answers as markdown", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ndjsonResponse([textDelta("Use **load()**:\n\n- reads `config.ts`")])),
+    );
+    renderSideChat();
+    act(() => openSideChat(SESSION_ID));
+
+    await act(() => askSideChat(SESSION_ID, "How?"));
+
+    expect([
+      within(aside()).getByText("load()").tagName,
+      within(aside()).getByText("config.ts").tagName,
+    ]).toEqual(["STRONG", "CODE"]);
   });
 
   it("sends earlier Q/A pairs with a follow-up", async () => {
@@ -303,7 +331,8 @@ describe("SideChat", () => {
 
 describe("useSideChatShortcut", () => {
   it("toggles the side chat on the session page", () => {
-    render(<ShortcutProbe available />);
+    renderShortcutProbe(true);
+    screen.getByRole("button", { name: "Main chat" }).focus();
     const event = pressToggle();
     expect([event.defaultPrevented, getSideChat(SESSION_ID).open]).toEqual([true, true]);
     pressToggle();
@@ -311,9 +340,24 @@ describe("useSideChatShortcut", () => {
   });
 
   it("declines the key when the session is not found", () => {
-    render(<ShortcutProbe available={false} />);
+    renderShortcutProbe(false);
     const event = pressToggle();
     expect([event.defaultPrevented, getSideChat(SESSION_ID).open]).toEqual([false, false]);
+  });
+
+  it("refuses with a toast when focus is in a secondary pane", async () => {
+    renderShortcutProbe(true);
+    screen.getByRole("button", { name: "Pane control" }).focus();
+
+    let event: KeyboardEvent | undefined;
+    act(() => {
+      event = pressToggle();
+    });
+
+    expect([event?.defaultPrevented, getSideChat(SESSION_ID).open]).toEqual([true, false]);
+    expect(
+      (await screen.findByText("Side chat is only available in the primary pane.")).textContent,
+    ).toBe("Side chat is only available in the primary pane.");
   });
 });
 

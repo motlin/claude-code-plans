@@ -10,6 +10,7 @@ import {
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { SessionPage } from "../src/components/session-page";
+import { ToastProvider } from "../src/components/toast";
 import { Route as SessionRoute, sessionHeadTitle } from "../src/routes/session.$id";
 
 // session-chat pulls in HMR-persisted module state that jsdom cannot evaluate; the
@@ -21,7 +22,11 @@ vi.mock("../src/components/session-chat", () => ({
 async function renderWithRouter(element: React.ReactNode) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const rootRoute = createRootRoute({
-    component: () => <QueryClientProvider client={queryClient}>{element}</QueryClientProvider>,
+    component: () => (
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>{element}</ToastProvider>
+      </QueryClientProvider>
+    ),
   });
   const router = createRouter({
     routeTree: rootRoute,

@@ -16,6 +16,7 @@ import {
   toggleSideChat,
   useSideChat,
 } from "../lib/side-chat-store";
+import { MarkdownArticle } from "./markdown-article";
 import { type ToastOptions, useToast } from "./toast";
 import { Shortcut } from "./ui/shortcut";
 import { Tooltip } from "./ui/tooltip";
@@ -30,13 +31,26 @@ const ICON_BUTTON_CLASS =
 const ANSWER_ACTION_CLASS =
   "flex items-center gap-1 rounded-r5 px-1.5 py-0.5 text-caption text-t6 transition-colors hover:bg-fill-ghost-hover hover:text-primary disabled:pointer-events-none disabled:opacity-40";
 
+const SECONDARY_PANE_MESSAGE = "Side chat is only available in the primary pane.";
+
+/** Whether keyboard focus sits inside a tile-host pane rather than the main chat. */
+function focusInSecondaryPane(): boolean {
+  return document.activeElement?.closest("[data-pane-root]") != null;
+}
+
 /**
  * ⌘; on a session page. Declines the key (so other handlers may claim it)
- * when the session is not found.
+ * when the session is not found, and refuses with a toast when focus is in a
+ * secondary pane, as upstream does.
  */
 export function useSideChatShortcut(sessionId: string, available: boolean): void {
+  const toast = useToast();
   useShortcut("toggle_side_chat", () => {
     if (!available) return false;
+    if (focusInSecondaryPane()) {
+      toast({ kind: "error", message: SECONDARY_PANE_MESSAGE });
+      return true;
+    }
     toggleSideChat(sessionId);
     return true;
   });
@@ -239,7 +253,9 @@ function SideChatItem({ sessionId, entry }: { sessionId: string; entry: SideChat
         {entry.question}
       </div>
       {entry.answer !== "" && (
-        <div className="text-body whitespace-pre-wrap break-words text-primary">{entry.answer}</div>
+        <div className="min-w-0 text-body break-words text-primary">
+          <MarkdownArticle markdown={entry.answer} typographer />
+        </div>
       )}
       {entry.status === "pending" && (
         <div className="flex items-center gap-2 text-caption text-t6">

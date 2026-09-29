@@ -15,6 +15,7 @@ import {
   FileText,
   Brain,
   MessageSquare,
+  MessagesSquare,
   FolderOpen,
   Search,
   Home,
@@ -83,6 +84,7 @@ import { loadRecents, routeToRecent, type RecentEntry } from "../lib/recents-his
 import { paletteFilterLabels, paletteTypeLabels } from "../lib/schema-choices";
 import { relativeBucket, titleMatches, type Snippet, type TextMatch } from "../lib/search-text";
 import { createSessionCommands } from "../lib/session-commands";
+import { openSideChat } from "../lib/side-chat-store";
 import { getSessionMenuItems, type SessionMenuCapability } from "../lib/session-menu-items";
 import { copySessionLink } from "../lib/session-open-in";
 import { requestSessionRename } from "../lib/session-rename-request";
@@ -799,6 +801,16 @@ function PalettePopup({
         shortcut: "settings",
       },
       { label: "Mark all sessions seen", icon: <CircleCheckBig />, run: clearAll },
+      ...(currentSessionId !== undefined && currentDetail !== null
+        ? [
+            {
+              label: "Show side chat",
+              icon: <MessagesSquare />,
+              run: () => openSideChat(currentSessionId),
+              shortcut: "toggle_side_chat",
+            } satisfies PaletteAction,
+          ]
+        : []),
     ] satisfies PaletteAction[]
   ).filter(
     (action: PaletteAction) => action.shortcut === undefined || SHORTCUTS[action.shortcut].enabled,

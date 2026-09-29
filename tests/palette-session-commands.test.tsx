@@ -22,6 +22,7 @@ import {
   type SessionDetailData,
 } from "../src/lib/api/sessions";
 import { pin, readPinState } from "../src/lib/pin-store";
+import { getSideChat, resetSideChatStore } from "../src/lib/side-chat-store";
 import { installLocalStorage } from "./fake-storage";
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
@@ -206,6 +207,28 @@ describe("palette contextual session commands", () => {
 
     await within(dialog).findByRole("option", { name: "Settings" });
     expect(optionLabels(dialog).filter((label) => label.includes("Copy"))).toStrictEqual([]);
+  });
+
+  it("offers Show side chat with its ⌘; keycaps on a session page and opens it", async () => {
+    resetSideChatStore();
+    const { dialog } = await openPalette("/session/sess-1");
+
+    const option = await within(dialog).findByRole("option", { name: /Show side chat/ });
+    expect([
+      option.querySelector("[data-palette-label]")?.textContent,
+      option.getAttribute("aria-keyshortcuts"),
+    ]).toStrictEqual(["Show side chat", "Meta+;"]);
+
+    fireEvent.click(option);
+
+    expect(getSideChat("sess-1").open).toBe(true);
+  });
+
+  it("does not offer Show side chat off a session page", async () => {
+    const { dialog } = await openPalette("/plans");
+
+    await within(dialog).findByRole("option", { name: "Settings" });
+    expect(optionLabels(dialog).filter((label) => label === "Show side chat")).toStrictEqual([]);
   });
 
   it("does not offer the commands on other routes", async () => {
