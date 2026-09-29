@@ -77,6 +77,32 @@ describe("buildGroups state mode", () => {
     ]);
   });
 
+  it("nests forks under their family head, bucketed by the family's most urgent member", () => {
+    const rows = [
+      row("head", { bucket: "done", lastActivityAt: NOW - 3 * HOUR }),
+      row("child", { bucket: "blocked", forkedFromSessionId: "head" }),
+      row("grandchild", { bucket: "done", forkedFromSessionId: "child" }),
+      row("solo", { bucket: "done", lastActivityAt: NOW - 2 * HOUR }),
+    ];
+
+    const groups = buildGroups(rows, prefs(), NOW);
+
+    expect(summarize(groups)).toStrictEqual([
+      { key: "state-blocked", label: "Needs input", rows: ["head"], hiddenCount: 0 },
+      { key: "state-done", label: "Completed", rows: ["solo"], hiddenCount: 0 },
+    ]);
+    expect(
+      groups.map((group) =>
+        Object.fromEntries(
+          [...group.nested].map(([headId, children]) => [
+            headId,
+            children.map((child) => child.sessionId),
+          ]),
+        ),
+      ),
+    ).toStrictEqual([{ head: ["child", "grandchild"] }, {}]);
+  });
+
   it("caps Completed at 20 rows and reports the hidden count, leaving other groups uncapped", () => {
     const rows = [
       ...Array.from({ length: 23 }, (_, index) =>

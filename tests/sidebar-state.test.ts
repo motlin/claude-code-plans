@@ -4,7 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import {
   DEFAULT_SIDEBAR_STATE,
   readSidebarState,
+  setFamiliesCollapsed,
   SIDEBAR_STORAGE_KEY,
+  toggleFamilyCollapsed,
   toggleSidebarCollapsed,
   writeSidebarState,
 } from "../src/lib/sidebar-store";
@@ -26,11 +28,13 @@ describe("sidebar-store", () => {
       collapsed: false,
       width: 288,
       collapsedGroups: [],
+      collapsedFamilies: [],
     });
     expect(DEFAULT_SIDEBAR_STATE).toStrictEqual({
       collapsed: false,
       width: 288,
       collapsedGroups: [],
+      collapsedFamilies: [],
     });
   });
 
@@ -41,11 +45,13 @@ describe("sidebar-store", () => {
       collapsed: true,
       width: 288,
       collapsedGroups: [],
+      collapsedFamilies: [],
     });
     expect(JSON.parse(storage.getItem(SIDEBAR_STORAGE_KEY) ?? "null")).toStrictEqual({
       collapsed: true,
       width: 288,
       collapsedGroups: [],
+      collapsedFamilies: [],
     });
 
     toggleSidebarCollapsed();
@@ -53,17 +59,53 @@ describe("sidebar-store", () => {
       collapsed: false,
       width: 288,
       collapsedGroups: [],
+      collapsedFamilies: [],
     });
   });
 
   it("round-trips width and collapsed groups", () => {
-    writeSidebarState({ collapsed: true, width: 320, collapsedGroups: ["Today", "Older"] });
+    writeSidebarState({
+      collapsed: true,
+      width: 320,
+      collapsedGroups: ["Today", "Older"],
+      collapsedFamilies: ["code:a"],
+    });
 
     expect(readSidebarState()).toStrictEqual({
       collapsed: true,
       width: 320,
       collapsedGroups: ["Today", "Older"],
+      collapsedFamilies: ["code:a"],
     });
+  });
+
+  it("reads state saved before collapsedFamilies existed with no collapsed families", () => {
+    storage.setItem(
+      SIDEBAR_STORAGE_KEY,
+      JSON.stringify({ collapsed: true, width: 300, collapsedGroups: ["pinned"] }),
+    );
+
+    expect(readSidebarState()).toStrictEqual({
+      collapsed: true,
+      width: 300,
+      collapsedGroups: ["pinned"],
+      collapsedFamilies: [],
+    });
+  });
+
+  it("toggles one family and sets many families collapsed at once", () => {
+    toggleFamilyCollapsed("a");
+    toggleFamilyCollapsed("b");
+    expect(readSidebarState().collapsedFamilies).toStrictEqual(["code:a", "code:b"]);
+
+    toggleFamilyCollapsed("a");
+    expect(readSidebarState().collapsedFamilies).toStrictEqual(["code:b"]);
+
+    setFamiliesCollapsed(["a", "b", "c"], true);
+    expect(readSidebarState().collapsedFamilies).toStrictEqual(["code:b", "code:a", "code:c"]);
+
+    setFamiliesCollapsed(["a", "c"], false);
+    expect(readSidebarState().collapsedFamilies).toStrictEqual(["code:b"]);
   });
 
   it("falls back to defaults on corrupt JSON", () => {

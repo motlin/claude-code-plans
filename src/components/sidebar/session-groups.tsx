@@ -90,6 +90,7 @@ export function SessionGroups({
   }
 
   const collapsed = new Set(collapsedGroups);
+  const familyHeadIds = groups.flatMap((group) => [...group.nested.keys()]);
 
   return (
     <>
@@ -120,6 +121,7 @@ export function SessionGroups({
             filterSlot={index === 0 ? filterSlot : undefined}
             onShowMore={() => setUncapped((previous) => new Set(previous).add(group.key))}
             dragRowProps={rowProps}
+            familyHeadIds={familyHeadIds}
           />
         ))}
         {hasNextPage && (

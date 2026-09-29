@@ -685,3 +685,40 @@ html[data-motion="reduced"] .status-dot[data-kind="running"] {
       (var(--sb-leading-slot) - var(--sb-icon)) / 2
   );
 }
+
+/*
+ * Upstream .df-family: a head session's nested sessions (forks), indented 20px under a
+ * 1.25px tree line aligned with the head's status dot. The line turns accent while the
+ * invisible handle over it is hovered.
+ */
+.df-family::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  bottom: 8px;
+  left: calc(var(--sb-row-px) + var(--sb-leading-slot) / 2 - 0.625px);
+  width: 1.25px;
+  border-radius: 1px;
+  background: var(--df-tree-ink, var(--upstream-border));
+  transition: background-color 150ms ease-out;
+}
+
+.df-family[data-branch-hot]::before {
+  --df-tree-ink: var(--accent-100);
+  transition-delay: 0.1s;
+}
+
+.df-family > .df-family-handle-slot {
+  position: absolute;
+  top: 0;
+  bottom: 4px;
+  left: 0;
+  z-index: 2;
+  width: 20px;
+}
+
+@media (hover: none) {
+  .df-family > .df-family-handle-slot {
+    display: none;
+  }
+}

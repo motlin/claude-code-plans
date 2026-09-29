@@ -1,14 +1,21 @@
 import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 import type { SidebarDragRowProps } from "../../hooks/use-sidebar-drag";
 import type { SessionListItem } from "../../lib/api/sessions";
 import type { SessionGroup, SessionGroupRow } from "../../lib/session-groups";
-import { toggleSidebarGroup } from "../../lib/sidebar-store";
+import {
+  familyKey,
+  setFamiliesCollapsed,
+  toggleFamilyCollapsed,
+  toggleSidebarGroup,
+  useSidebarState,
+} from "../../lib/sidebar-store";
 import { ArchivedBadge } from "../archived-badge";
 import { SessionActionsMenu, SessionRowTitle } from "../session-actions-menu";
 import { SessionRowStatusDot } from "../session-unread-control";
+import { Tooltip } from "../ui/tooltip";
 
 export interface SidebarSessionRow extends SessionGroupRow {
   id: string;
@@ -26,6 +33,7 @@ export function toGroupRow(session: SessionListItem): SidebarSessionRow {
     archived: session.archived,
     createdAt: Date.parse(session.created),
     lastActivityAt: Date.parse(session.mtime),
+    forkedFromSessionId: session.forkedFromSessionId,
   };
 }
 
@@ -41,6 +49,7 @@ export function GroupSection({
   onShowMore,
   dragRowProps,
   pinnedIds,
+  familyHeadIds = [],
 }: {
   group: SessionGroup<SidebarSessionRow>;
   expanded: boolean;
@@ -51,6 +60,8 @@ export function GroupSection({
   dragRowProps?: (id: string) => SidebarDragRowProps;
   /** Set for the Pinned section: its display order, which enables Move up / Move down. */
   pinnedIds?: readonly string[];
+  /** Every family head in the list, for the Alt-click that hides or shows all nested sessions. */
+  familyHeadIds?: readonly string[];
 }) {
   return (
     <div data-group-key={group.key} className="group/section relative isolate flex flex-col gap-px">
@@ -82,19 +93,29 @@ export function GroupSection({
       </div>
       {expanded && (
         <>
-          {group.rows.map((row) => (
-            <div
-              key={row.sessionId}
-              {...dragRowProps?.(row.sessionId)}
-              className="df-drag-shiftable relative"
-            >
-              <SessionRowLink
-                row={row}
-                selected={row.sessionId === activeItemId}
-                pinnedIds={pinnedIds}
-              />
-            </div>
-          ))}
+          {group.rows.map((row) => {
+            const nested = group.nested.get(row.sessionId);
+            return (
+              <Fragment key={row.sessionId}>
+                <div {...dragRowProps?.(row.sessionId)} className="df-drag-shiftable relative">
+                  <SessionRowLink
+                    row={row}
+                    selected={row.sessionId === activeItemId}
+                    pinnedIds={pinnedIds}
+                  />
+                </div>
+                {nested !== undefined && (
+                  <SessionFamily
+                    head={row}
+                    nested={nested}
+                    activeItemId={activeItemId}
+                    familyHeadIds={familyHeadIds}
+                    dragRowProps={dragRowProps}
+                  />
+                )}
+              </Fragment>
+            );
+          })}
           {group.hiddenCount > 0 && (
             <button
               type="button"
@@ -113,14 +134,162 @@ export function GroupSection({
   );
 }
 
+/**
+ * A family head's nested sessions (upstream `.df-family`): indented 20px under a tree
+ * line, with an invisible handle over the line that hides them behind a stub row.
+ * Alt-click on the handle hides or shows every family.
+ */
+function SessionFamily({
+  head,
+  nested,
+  activeItemId,
+  familyHeadIds,
+  dragRowProps,
+}: {
+  head: SidebarSessionRow;
+  nested: readonly SidebarSessionRow[];
+  activeItemId: string | null;
+  familyHeadIds: readonly string[];
+  dragRowProps: ((id: string) => SidebarDragRowProps) | undefined;
+}) {
+  const { collapsedFamilies } = useSidebarState();
+  const collapsed = collapsedFamilies.includes(familyKey(head.sessionId));
+  const [hot, setHot] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const focusFirstChild = useRef(false);
+
+  useEffect(() => {
+    if (collapsed || !focusFirstChild.current) return;
+    focusFirstChild.current = false;
+    ref.current?.querySelector<HTMLElement>("[data-family-child] a[data-row-main-button]")?.focus();
+  }, [collapsed]);
+
+  const titles = new Map([head, ...nested].map((row) => [row.sessionId, row.title]));
+  const label = collapsed ? "Show nested sessions" : "Hide nested sessions";
+
+  return (
+    <div
+      ref={ref}
+      data-family-head={head.sessionId}
+      data-branch-hot={hot ? "" : undefined}
+      className="df-family relative flex flex-col gap-px"
+    >
+      <Tooltip content={label} side="right" className="df-family-handle-slot">
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-expanded={!collapsed}
+          aria-label={label}
+          onPointerEnter={() => setHot(true)}
+          onPointerLeave={() => setHot(false)}
+          onClick={(event) => {
+            if (event.altKey) setFamiliesCollapsed(familyHeadIds, !collapsed);
+            else toggleFamilyCollapsed(head.sessionId);
+          }}
+          className="df-family-handle h-full w-full cursor-pointer rounded-r5"
+        />
+      </Tooltip>
+      {collapsed ? (
+        <div className="pl-5">
+          <FamilyStub
+            nested={nested}
+            onExpand={() => {
+              focusFirstChild.current = true;
+              toggleFamilyCollapsed(head.sessionId);
+            }}
+          />
+        </div>
+      ) : (
+        nested.map((child) => {
+          const parentTitle =
+            child.forkedFromSessionId === undefined
+              ? undefined
+              : titles.get(child.forkedFromSessionId);
+          return (
+            <div
+              key={child.sessionId}
+              data-family-child
+              {...dragRowProps?.(child.sessionId)}
+              className="df-drag-shiftable relative pl-5"
+            >
+              <SessionRowLink
+                row={child}
+                selected={child.sessionId === activeItemId}
+                pinnedIds={undefined}
+                lineage={
+                  parentTitle === undefined ? "Nested session" : `Forked from ${parentTitle}`
+                }
+              />
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
+function nestedSessions(count: number): string {
+  return `${count} nested session${count === 1 ? "" : "s"}`;
+}
+
+/** A collapsed family's "{n} nested sessions · ● {unread} · {working}" row. */
+function FamilyStub({
+  nested,
+  onExpand,
+}: {
+  nested: readonly SidebarSessionRow[];
+  onExpand: () => void;
+}) {
+  const unread = nested.filter((row) => row.session.unseen).length;
+  const working = nested.filter((row) => row.bucket === "working").length;
+  const blocked = nested.filter((row) => row.bucket === "blocked").length;
+  const ariaLabel =
+    blocked > 0
+      ? `${nestedSessions(blocked)} ${blocked === 1 ? "needs" : "need"} input`
+      : [
+          nestedSessions(nested.length),
+          ...(unread > 0 ? [`${unread} unread`] : []),
+          ...(working > 0 ? [`${working} working`] : []),
+        ].join(", ");
+
+  return (
+    <button
+      type="button"
+      data-row
+      aria-label={ariaLabel}
+      onClick={onExpand}
+      className={`${ROW_CLASS} df-family-stub text-[length:var(--sb-group-font)] text-secondary hover:bg-[var(--sb-hover)] hover:text-primary`}
+    >
+      <span className="df-leading-slot" />
+      <span className="min-w-0 truncate">
+        {nestedSessions(nested.length)}
+        {unread > 0 && (
+          <>
+            {" · "}
+            <span
+              aria-hidden="true"
+              className="mr-1 inline-block size-1.5 rounded-full bg-[var(--status-dot-ready)] align-middle"
+            />
+            {unread}
+          </>
+        )}
+        {working > 0 && ` · ${working}`}
+      </span>
+    </button>
+  );
+}
+
 function SessionRowLink({
   row,
   selected,
   pinnedIds,
+  lineage,
 }: {
   row: SidebarSessionRow;
   selected: boolean;
   pinnedIds: readonly string[] | undefined;
+  /** Screen-reader note on a nested row, e.g. "Forked from {title}". */
+  lineage?: string;
 }) {
   return (
     <SessionActionsMenu session={row.session} {...(pinnedIds === undefined ? {} : { pinnedIds })}>
@@ -137,6 +306,11 @@ function SessionRowLink({
         <span data-row-label className="min-w-0 flex-1">
           <SessionRowTitle render={(title) => <FadeLabel text={title} />} />
         </span>
+        {lineage !== undefined && (
+          <span data-family-lineage className="sr-only">
+            {lineage}
+          </span>
+        )}
         {row.archived && <ArchivedBadge />}
       </Link>
     </SessionActionsMenu>

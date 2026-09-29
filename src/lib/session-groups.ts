@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { sessionBucketLabels } from "./schema-choices";
+import { resolveFamilies } from "./session-families";
 import type { SessionBucket } from "./session-state";
 
 export const SessionGroupBySchema = z.enum(["date", "project", "state", "custom", "none"]);
@@ -43,6 +44,8 @@ export interface SessionGroupRow {
   archived: boolean;
   createdAt: number;
   lastActivityAt: number;
+  /** The session this one was forked from; forks nest under their family head. */
+  forkedFromSessionId?: string | undefined;
 }
 
 export interface SessionGroup<Row extends SessionGroupRow> {
@@ -51,6 +54,8 @@ export interface SessionGroup<Row extends SessionGroupRow> {
   rows: Row[];
   /** Rows past the cap, revealed by the "Show N more" row. */
   hiddenCount: number;
+  /** Family head sessionId → its nested sessions in spawn-tree order, for heads in `rows`. */
+  nested: ReadonlyMap<string, Row[]>;
 }
 
 /** The user's custom groups (src/lib/session-group-store.ts) as Custom groups mode needs them. */
@@ -135,19 +140,22 @@ function isVisible(row: SessionGroupRow, prefs: SessionListPrefs, now: number): 
   return now - row.lastActivityAt <= windowDays * DAY_MS;
 }
 
+const NO_NESTED: ReadonlyMap<string, never[]> = new Map();
+
 function group<Row extends SessionGroupRow>(
   key: string,
   label: string,
   rows: Row[],
   capped: boolean,
+  allNested: ReadonlyMap<string, Row[]> = NO_NESTED,
 ): SessionGroup<Row> {
-  if (!capped || rows.length <= GROUP_ROW_CAP) return { key, label, rows, hiddenCount: 0 };
-  return {
-    key,
-    label,
-    rows: rows.slice(0, GROUP_ROW_CAP),
-    hiddenCount: rows.length - GROUP_ROW_CAP,
-  };
+  const shown = !capped || rows.length <= GROUP_ROW_CAP ? rows : rows.slice(0, GROUP_ROW_CAP);
+  const nested = new Map<string, Row[]>();
+  for (const row of shown) {
+    const children = allNested.get(row.sessionId);
+    if (children !== undefined) nested.set(row.sessionId, children);
+  }
+  return { key, label, rows: shown, hiddenCount: rows.length - shown.length, nested };
 }
 
 function startOfLocalDay(time: number): number {
@@ -175,6 +183,7 @@ function buildDateGroups<Row extends SessionGroupRow>(
   rows: Row[],
   now: number,
   uncapped: ReadonlySet<string>,
+  nested: ReadonlyMap<string, Row[]>,
 ): SessionGroup<Row>[] {
   const todayStart = startOfLocalDay(now);
   const byDay = new Map<string, { label: string; dayStart: number; rows: Row[] }>();
@@ -188,7 +197,7 @@ function buildDateGroups<Row extends SessionGroupRow>(
   return [...byDay.entries()]
     .sort(([, first], [, second]) => second.dayStart - first.dayStart)
     .map(([key, entry]) =>
-      group(key, entry.label, entry.rows, key === "date-older" && !uncapped.has(key)),
+      group(key, entry.label, entry.rows, key === "date-older" && !uncapped.has(key), nested),
     );
 }
 
@@ -196,6 +205,7 @@ function buildProjectGroups<Row extends SessionGroupRow>(
   allRows: readonly Row[],
   visibleRows: Row[],
   showEmptyGroups: boolean,
+  nested: ReadonlyMap<string, Row[]>,
 ): SessionGroup<Row>[] {
   const projects = new Set<string>();
   let hasNoProject = false;
@@ -211,6 +221,7 @@ function buildProjectGroups<Row extends SessionGroupRow>(
         project,
         visibleRows.filter((row) => row.project === project),
         false,
+        nested,
       ),
     );
   if (hasNoProject) {
@@ -220,6 +231,7 @@ function buildProjectGroups<Row extends SessionGroupRow>(
         "Other",
         visibleRows.filter((row) => row.project === null),
         false,
+        nested,
       ),
     );
   }
@@ -230,6 +242,7 @@ function buildCustomGroups<Row extends SessionGroupRow>(
   visibleRows: Row[],
   custom: CustomGroups,
   showEmptyGroups: boolean,
+  nested: ReadonlyMap<string, Row[]>,
 ): SessionGroup<Row>[] {
   const byGroup = new Map<string, Row[]>(custom.groups.map((entry) => [entry.id, []]));
   const ungrouped: Row[] = [];
@@ -250,10 +263,10 @@ function buildCustomGroups<Row extends SessionGroupRow>(
       (first, second) => rank(first) - rank(second),
     );
     if (groupRows.length === 0 && !showEmptyGroups) return [];
-    return [group(`custom-${entry.id}`, entry.name, groupRows, false)];
+    return [group(`custom-${entry.id}`, entry.name, groupRows, false, nested)];
   });
   if (ungrouped.length > 0)
-    sections.push(group(CUSTOM_UNGROUPED_KEY, "Ungrouped", ungrouped, false));
+    sections.push(group(CUSTOM_UNGROUPED_KEY, "Ungrouped", ungrouped, false, nested));
   return sections;
 }
 
@@ -263,7 +276,8 @@ function buildCustomGroups<Row extends SessionGroupRow>(
  * Project and Custom groups modes with Show empty groups on. Groups keyed in
  * `uncapped` (their "Show N more" was clicked) show every row. Custom groups
  * mode lists `custom` groups in order, then Ungrouped; callers pass rows with
- * pinned sessions already split out.
+ * pinned sessions already split out. Forks nest under their family head, which
+ * is placed (in State mode) by the family's most urgent member.
  */
 export function buildGroups<Row extends SessionGroupRow>(
   rows: readonly Row[],
@@ -272,9 +286,16 @@ export function buildGroups<Row extends SessionGroupRow>(
   uncapped: ReadonlySet<string> = new Set(),
   custom: CustomGroups = NO_CUSTOM_GROUPS,
 ): SessionGroup<Row>[] {
-  const visible = rows
-    .filter((row) => isVisible(row, prefs, now))
-    .sort(ROW_COMPARATORS[prefs.sortBy]);
+  const families = resolveFamilies(
+    rows.filter((row) => isVisible(row, prefs, now)).sort(ROW_COMPARATORS[prefs.sortBy]),
+  );
+  const visible = families.map((family) => family.head);
+  const familyBucket = new Map(families.map((family) => [family.head.sessionId, family.bucket]));
+  const nested = new Map(
+    families
+      .filter((family) => family.children.length > 0)
+      .map((family) => [family.head.sessionId, family.children]),
+  );
 
   switch (prefs.groupBy) {
     case "state":
@@ -282,20 +303,21 @@ export function buildGroups<Row extends SessionGroupRow>(
         group(
           `state-${bucket}`,
           sessionBucketLabels[bucket],
-          visible.filter((row) => row.bucket === bucket),
+          visible.filter((row) => familyBucket.get(row.sessionId) === bucket),
           bucket === "done" && !uncapped.has(`state-${bucket}`),
+          nested,
         ),
       ).filter((stateGroup) => stateGroup.rows.length > 0);
     case "date":
-      return buildDateGroups(visible, now, uncapped);
+      return buildDateGroups(visible, now, uncapped, nested);
     case "project":
-      return buildProjectGroups(rows, visible, prefs.showEmptyGroups);
+      return buildProjectGroups(rows, visible, prefs.showEmptyGroups, nested);
     case "custom":
-      return buildCustomGroups(visible, custom, prefs.showEmptyGroups);
+      return buildCustomGroups(visible, custom, prefs.showEmptyGroups, nested);
     case "none":
       return visible.length === 0
         ? []
-        : [group("recents", "Recents", visible, !uncapped.has("recents"))];
+        : [group("recents", "Recents", visible, !uncapped.has("recents"), nested)];
   }
 }
 
