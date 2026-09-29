@@ -12,6 +12,7 @@ import {
 } from "../lib/api/sessions";
 import { assertNever } from "../lib/assert-never";
 import { useSessionArchive } from "../hooks/use-session-archive";
+import { useSessionFork } from "../hooks/use-session-fork";
 import { type SessionRename, useSessionRename } from "../hooks/use-session-rename";
 import {
   getSessionMenuItems,
@@ -28,6 +29,7 @@ import {
   openPullRequest,
   vscodeFolderUrl,
 } from "../lib/session-open-in";
+import { forkDisabledReason } from "../lib/session-fork";
 import { markSeen, markUnseen } from "../lib/unread-store";
 import { InlineRenameInput } from "./inline-rename-input";
 import { useHasUnseenWork } from "./session-unread-control";
@@ -58,6 +60,7 @@ const LOCAL_CAPABILITIES: ReadonlySet<SessionMenuCapability> = new Set<SessionMe
   "readState",
   "rename",
   "copyLink",
+  "fork",
   "archive",
 ]);
 
@@ -106,6 +109,7 @@ function useSessionMenu(session: SessionListItem) {
   const setArchived = useSessionArchive(session.id);
   const navigate = useNavigate();
   const { requestRename } = useRowRename();
+  const fork = useSessionFork();
 
   const menuSession: SessionMenuSession = {
     title: session.title,
@@ -114,7 +118,7 @@ function useSessionMenu(session: SessionListItem) {
     archived: session.archived,
     prUrl: session.pr?.url ?? null,
     hasLivePane: herdr?.panes.some((pane) => pane.sessionId === session.id) ?? false,
-    forkDisabledReason: null,
+    forkDisabledReason: forkDisabledReason({ working: session.bucket === "working", cwd }),
     cwd,
     bridgeSessionId,
   };
@@ -167,9 +171,11 @@ function useSessionMenu(session: SessionListItem) {
       case "unarchive":
         setArchived(id === "archive");
         return;
+      case "fork":
+        if (cwd !== null) fork({ sessionId: session.id, cwd });
+        return;
       case "open-in":
       case "mark-completed":
-      case "fork":
         return;
       default:
         assertNever(id);

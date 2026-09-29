@@ -161,7 +161,7 @@ export const SHORTCUTS = {
     group: "general",
     bindings: cmdOrCtrl("o", ["alt"], letterCode("o")),
     ownerSlug: "session-row-actions",
-    enabled: false,
+    enabled: true,
   },
   transcript_view: {
     description: "Transcript view",

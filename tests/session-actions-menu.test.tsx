@@ -15,7 +15,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { SessionActionsMenu } from "../src/components/session-actions-menu";
 import { ToastProvider } from "../src/components/toast";
 import { herdrPanesQueryOptions, type HerdrPaneIndexData } from "../src/lib/api/herdr";
-import type { SessionListItem } from "../src/lib/api/sessions";
+import { sessionOpenInQueryOptions, type SessionListItem } from "../src/lib/api/sessions";
+import { getPendingFork, setPendingFork } from "../src/lib/session-fork";
 import type { SessionBucket } from "../src/lib/session-state";
 import {
   __unreadStoreTesting,
@@ -54,7 +55,11 @@ async function flush() {
   });
 }
 
-async function renderRow(session: SessionListItem, livePaneSessionIds: string[] = []) {
+async function renderRow(
+  session: SessionListItem,
+  livePaneSessionIds: string[] = [],
+  { cwd, writesEnabled = false }: { cwd?: string; writesEnabled?: boolean } = {},
+) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false },
@@ -86,9 +91,15 @@ async function renderRow(session: SessionListItem, livePaneSessionIds: string[] 
         viewedAnywhere: true,
       },
     })),
-    writesEnabled: false,
+    writesEnabled,
   };
   queryClient.setQueryData(herdrPanesQueryOptions.queryKey, panes);
+  if (cwd !== undefined) {
+    queryClient.setQueryData(sessionOpenInQueryOptions(session.id).queryKey, {
+      cwd,
+      bridgeSessionId: null,
+    });
+  }
   const rootRoute = createRootRoute({
     component: () => (
       <QueryClientProvider client={queryClient}>
@@ -147,6 +158,8 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
+  setPendingFork(null);
   __unreadStoreTesting.reset();
 });
 
@@ -172,6 +185,7 @@ describe("SessionActionsMenu", () => {
       "Mark as unreadU [u]",
       "RenameR [r]",
       "Copy linkC [c]",
+      "ForkF [f]",
       "---",
       "ArchiveA [a]",
     ]);
@@ -191,6 +205,7 @@ describe("SessionActionsMenu", () => {
       "Mark as readU [u]",
       "RenameR [r]",
       "Copy linkC [c]",
+      "ForkF [f]",
       "---",
       "ArchiveA [a]",
     ]);
@@ -207,6 +222,7 @@ describe("SessionActionsMenu", () => {
       "PinP [p]",
       "RenameR [r]",
       "Copy linkC [c]",
+      "ForkF [f]",
       "---",
       "ArchiveA [a]",
     ]);
@@ -246,5 +262,69 @@ describe("SessionActionsMenu", () => {
     await flush();
 
     expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("disables Fork with a reason while the session is working", async () => {
+    await renderRow(listItem("working"), [], { cwd: "/Users/alice/alpha" });
+
+    const menu = await rightClickRow();
+    const fork = [...menu.querySelectorAll('[role="menuitem"]')].find(
+      (node) => node.textContent === "ForkF",
+    );
+
+    expect({
+      disabled: fork?.getAttribute("aria-disabled"),
+      title: fork?.getAttribute("title"),
+    }).toEqual({ disabled: "true", title: "Session file is still being written" });
+  });
+
+  it("launches the fork in herdr when f is pressed", async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    fetchMock.mockResolvedValue(
+      Response.json({ ok: true, tabId: "w1:t2", paneId: "w1:p3", sessionId: null }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await renderRow(listItem("done"), [], { cwd: "/Users/alice/alpha", writesEnabled: true });
+    const menu = await rightClickRow();
+
+    fireEvent.keyDown(menu, { key: "f" });
+    await flush();
+
+    expect(fetchMock.mock.calls.map(([input, init]) => [input, init?.body])).toEqual([
+      [
+        "/api/herdr/launch",
+        JSON.stringify({
+          cwd: "/Users/alice/alpha",
+          args: ["--resume", SESSION_ID, "--fork-session"],
+        }),
+      ],
+    ]);
+    await waitFor(() =>
+      expect(getPendingFork()).toEqual({
+        cwd: "/Users/alice/alpha",
+        since: expect.any(Number),
+        sessionId: null,
+        parentSessionId: SESSION_ID,
+      }),
+    );
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
+  it("copies the fork command when herdr writes are disabled", async () => {
+    await renderRow(listItem("done"), [], { cwd: "/Users/alice/alpha" });
+    const menu = await rightClickRow();
+
+    fireEvent.keyDown(menu, { key: "f" });
+    await flush();
+
+    expect(writeText.mock.calls).toEqual([
+      [`cd '/Users/alice/alpha' && claude --resume ${SESSION_ID} --fork-session`],
+    ]);
+    await waitFor(() =>
+      expect(document.querySelector("[data-toast-message]")?.textContent).toBe(
+        "Command copied. Paste it in a terminal to fork this session.",
+      ),
+    );
+    expect(getPendingFork()).toBeNull();
   });
 });
