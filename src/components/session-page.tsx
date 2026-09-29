@@ -47,7 +47,9 @@ import { transcriptWidthStyle } from "../lib/transcript-width";
 import { useChatStream } from "../hooks/use-chat-stream";
 import { slashCommandsQueryOptions } from "../lib/api/commands";
 import { useShortcutKeys } from "../hooks/use-shortcut";
+import { useLiveLaunchOptions } from "../hooks/use-live-launch-options";
 import { canStopResponse, useStopResponse } from "../hooks/use-stop-response";
+import { canApplyLive, modeMenuItems } from "../lib/launch-options";
 import {
   useClaudeEvents,
   useComposerServerState,
@@ -492,6 +494,23 @@ function SessionView({
     writesEnabled: herdr.writesEnabled,
     working: workingMarkerState.status !== "idle",
   });
+  const bypassPermissionsAllowed = composerServerState?.settingsBypassPermissionsAllowed ?? false;
+  const liveModes = useMemo(
+    () => modeMenuItems(bypassPermissionsAllowed).map((item) => item.id),
+    [bypassPermissionsAllowed],
+  );
+  const liveLaunch = useLiveLaunchOptions({
+    sessionId,
+    currentMode: composerChin.mode?.id ?? "default",
+    availableModes: liveModes,
+    hookContext,
+    toast,
+  });
+  const liveLaunchAvailable = canApplyLive({
+    hasLivePane: promptBehavior.hasLivePane,
+    writesEnabled: herdr.writesEnabled,
+    working: workingMarkerState.status !== "idle",
+  });
   const onInterrupt = useCallback((at: number) => setLastInterrupt({ sessionId, at }), [sessionId]);
   const onInterruptError = useCallback(
     (error: unknown) =>
@@ -781,9 +800,8 @@ function SessionView({
                   deliveryHint={promptBehavior.deliveryHint}
                   chin={composerChin}
                   slashCommands={slashCommands}
-                  bypassPermissionsAllowed={
-                    composerServerState?.settingsBypassPermissionsAllowed ?? false
-                  }
+                  bypassPermissionsAllowed={bypassPermissionsAllowed}
+                  live={liveLaunchAvailable ? liveLaunch : undefined}
                 />
               )}
             </SessionDock>

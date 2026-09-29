@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { CornerDownLeft, MessageSquare, Square, X } from "lucide-react";
 
 import { useComposerDraft } from "../hooks/use-composer-draft";
+import type { LiveLaunchControls } from "../hooks/use-live-launch-options";
 import { useShortcut } from "../hooks/use-shortcut";
 import type { ComposerState } from "../lib/composer-state";
 import {
@@ -102,6 +103,8 @@ interface ComposerProps {
   slashCommands?: readonly SlashCommand[] | undefined;
   /** Settings allow launching in Bypass permissions mode. */
   bypassPermissionsAllowed?: boolean | undefined;
+  /** An idle live pane: chin picks steer it instead of becoming launch flags. */
+  live?: LiveLaunchControls | undefined;
 }
 
 const NO_COMMANDS: readonly SlashCommand[] = [];
@@ -122,6 +125,7 @@ export function Composer({
   chin,
   slashCommands = NO_COMMANDS,
   bypassPermissionsAllowed = false,
+  live,
 }: ComposerProps) {
   const { text: prompt, setText: setPrompt, clear: clearDraft } = useComposerDraft(draftKey);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -308,8 +312,12 @@ export function Composer({
             state={chin}
             onInsertSlash={insertSlash}
             launch={{
-              launchOptions,
-              onLaunchOptionsChange: (options) => setLaunch({ draftKey, options }),
+              launchOptions: live?.options ?? launchOptions,
+              onLaunchOptionsChange:
+                live === undefined
+                  ? (options) => setLaunch({ draftKey, options })
+                  : (options) => void live.apply(options),
+              confirmEffortChange: live !== undefined,
               openMenu,
               onOpenMenuChange: setOpenMenu,
               bypassPermissionsAllowed,

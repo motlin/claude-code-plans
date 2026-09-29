@@ -28,7 +28,11 @@ import { ChangedFileKindSchema } from "../src/lib/changed-file-kind";
 import { CodeThemeDarkSchema, CodeThemeLightSchema } from "../src/lib/code-themes";
 import { GroupColorSchema, GroupIconSchema } from "../src/lib/group-appearance";
 import { HomeAttentionKindSchema } from "../src/lib/home-attention";
-import { EffortLevelSchema, LaunchPermissionModeSchema } from "../src/lib/launch-options";
+import {
+  EffortLevelSchema,
+  LaunchPermissionModeSchema,
+  LiveOptionChangeSchema,
+} from "../src/lib/launch-options";
 import {
   JobChildKindSchema,
   JobFanKindSchema,
@@ -175,6 +179,7 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["TranscriptModeSchema", TranscriptModeSchema],
   ["LaunchPermissionModeSchema", LaunchPermissionModeSchema],
   ["EffortLevelSchema", EffortLevelSchema],
+  ["LiveOptionChangeSchema", LiveOptionChangeSchema],
   ["PinDropOutcomeSchema", PinDropOutcomeSchema],
   ["UnifiedSearchParamsSchema", UnifiedSearchParamsSchema],
   ["UnifiedSearchResponse", UnifiedSearchResponse],

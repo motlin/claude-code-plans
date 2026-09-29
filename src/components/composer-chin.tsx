@@ -1,5 +1,6 @@
 import { Popover } from "@base-ui/react/popover";
 import { Plus } from "lucide-react";
+import { useState } from "react";
 
 import {
   type ComposerState,
@@ -14,7 +15,14 @@ import {
   usageRingDashoffset,
   WEEKLY_LABEL,
 } from "../lib/composer-state";
-import { type LaunchOptions, modeTriggerLabel, modelLabel } from "../lib/launch-options";
+import {
+  type EffortLevel,
+  EffortLevelSchema,
+  type LaunchOptions,
+  modeTriggerLabel,
+  modelLabel,
+} from "../lib/launch-options";
+import { effortLevelLabels } from "../lib/schema-choices";
 import {
   CHIN_BUTTON_CLASS,
   type ChinMenu,
@@ -22,6 +30,7 @@ import {
   ModeMenu,
   ModelMenu,
 } from "./composer-launch-menus";
+import { ConfirmDialog } from "./confirm-dialog";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "./ui/menu";
 
 const POPUP_CLASS =
@@ -132,12 +141,19 @@ export interface ChinLaunchControls {
   openMenu: ChinMenu | null;
   onOpenMenuChange: (menu: ChinMenu | null) => void;
   bypassPermissionsAllowed: boolean;
+  /** A live session is cached at its effort, so changing it asks first. */
+  confirmEffortChange?: boolean;
+}
+
+function effortText(effort: string): string {
+  const level = EffortLevelSchema.safeParse(effort);
+  return level.success ? effortLevelLabels[level.data] : effort;
 }
 
 /**
  * The claude.ai/code composer chin: `+` and the permission mode on the left;
  * model, effort and the 12px context-usage ring on the right. Mode, model and
- * effort open menus whose choices apply to the next fork or launch.
+ * effort open menus whose choices apply to the live pane or the next fork or launch.
  */
 export function ComposerChin({
   state,
@@ -149,6 +165,20 @@ export function ComposerChin({
   launch: ChinLaunchControls;
 }) {
   const { launchOptions, onLaunchOptionsChange, openMenu, onOpenMenuChange } = launch;
+  // Keeps the picked level while the confirm fades out, so its copy doesn't flicker.
+  const [effortConfirm, setEffortConfirm] = useState<{ effort: EffortLevel; open: boolean }>({
+    effort: "high",
+    open: false,
+  });
+  const currentEffort = launchOptions.effort ?? state.effort.id;
+  const selectEffort = (effort: EffortLevel) => {
+    if (launch.confirmEffortChange !== true) {
+      onLaunchOptionsChange({ ...launchOptions, effort });
+    } else if (effort !== currentEffort) {
+      onOpenMenuChange(null);
+      setEffortConfirm({ effort, open: true });
+    }
+  };
   const menuProps = (menu: ChinMenu) => ({
     open: openMenu === menu,
     onOpenChange: (open: boolean) => onOpenMenuChange(open ? menu : null),
@@ -187,13 +217,17 @@ export function ComposerChin({
           currentLabel={modelText}
           onSelect={(model) => onLaunchOptionsChange({ ...launchOptions, model })}
         />
-        <EffortSelector
-          {...menuProps("effort")}
-          current={launchOptions.effort ?? state.effort.id}
-          onSelect={(effort) => onLaunchOptionsChange({ ...launchOptions, effort })}
-        />
+        <EffortSelector {...menuProps("effort")} current={currentEffort} onSelect={selectEffort} />
         <UsageRing usage={state.usage} />
       </div>
+      <ConfirmDialog
+        open={effortConfirm.open}
+        onOpenChange={(open) => setEffortConfirm((prev) => ({ ...prev, open }))}
+        title="Change effort?"
+        body={`This session is cached with effort set to ${effortText(currentEffort)}. Changing it to ${effortText(effortConfirm.effort)} means Claude re-reads the whole session on your next message, which uses more of your limit.`}
+        confirmLabel="Change effort"
+        onConfirm={() => onLaunchOptionsChange({ ...launchOptions, effort: effortConfirm.effort })}
+      />
     </>
   );
 }

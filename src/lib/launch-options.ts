@@ -25,10 +25,11 @@ export const EFFORT_LEVELS = EffortLevelSchema.options;
 
 /** Same shape `validateClaudeLaunchArgs` accepts for `--model`. */
 const MODEL_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._[\]-]*$/;
+const ModelIdSchema = z.string().regex(MODEL_ID_PATTERN);
 
 export const LaunchOptionsSchema = z.strictObject({
   permissionMode: LaunchPermissionModeSchema.optional(),
-  model: z.string().regex(MODEL_ID_PATTERN).optional(),
+  model: ModelIdSchema.optional(),
   effort: EffortLevelSchema.optional(),
 });
 export type LaunchOptions = z.infer<typeof LaunchOptionsSchema>;
@@ -122,3 +123,56 @@ export function modelLabel(id: string): string {
     id
   );
 }
+
+/** The CLI's shift+tab permission-mode cycle; modes the session lacks are skipped. */
+const PERMISSION_MODE_CYCLE: readonly LaunchPermissionMode[] = [
+  "default",
+  "acceptEdits",
+  "plan",
+  "auto",
+  "bypassPermissions",
+];
+
+/**
+ * Shift+tab presses that step a live CLI from `current` to `target`, or null
+ * when either mode is outside the session's cycle.
+ */
+export function shiftTabCount(
+  current: string,
+  target: LaunchPermissionMode,
+  availableModes: readonly LaunchPermissionMode[],
+): number | null {
+  const cycle = PERMISSION_MODE_CYCLE.filter((mode) => availableModes.includes(mode));
+  const from = cycle.findIndex((mode) => mode === current);
+  const to = cycle.indexOf(target);
+  if (from === -1 || to === -1) return null;
+  return (to - from + cycle.length) % cycle.length;
+}
+
+/** Chin picks steer the live pane only while it is idle and accepts writes. */
+export function canApplyLive({
+  hasLivePane,
+  writesEnabled,
+  working,
+}: {
+  hasLivePane: boolean;
+  writesEnabled: boolean;
+  working: boolean;
+}): boolean {
+  return hasLivePane && writesEnabled && !working;
+}
+
+/** One chin pick applied to a live pane: a `/model` or `/effort` prompt, or shift+tab presses. */
+export const LiveOptionChangeSchema = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("model"), model: ModelIdSchema }),
+  z.strictObject({ kind: z.literal("effort"), effort: EffortLevelSchema }),
+  z.strictObject({
+    kind: z.literal("mode"),
+    presses: z
+      .number()
+      .int()
+      .min(1)
+      .max(PERMISSION_MODE_CYCLE.length - 1),
+  }),
+]);
+export type LiveOptionChange = z.infer<typeof LiveOptionChangeSchema>;

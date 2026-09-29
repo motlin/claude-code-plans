@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { Composer } from "../src/components/composer";
 import type { ComposerState } from "../src/lib/composer-state";
+import type { LiveLaunchControls } from "../src/hooks/use-live-launch-options";
 import type { LaunchOptions } from "../src/lib/launch-options";
 
 const MAC_UA =
@@ -18,7 +19,9 @@ const CHIN: ComposerState = {
 
 type OnSend = (prompt: string, launchOptions: LaunchOptions) => void;
 
-function renderComposer(extra: { bypassPermissionsAllowed?: boolean } = {}) {
+function renderComposer(
+  extra: { bypassPermissionsAllowed?: boolean; live?: LiveLaunchControls } = {},
+) {
   const onSend = vi.fn<OnSend>();
   render(
     <Composer variant="session" draftKey="session-alice" onSend={onSend} chin={CHIN} {...extra} />,
@@ -276,5 +279,74 @@ describe("Composer menu shortcuts", () => {
     const onSend = renderComposer();
     sendPrompt("Continue Grace's test");
     expect(onSend.mock.calls).toStrictEqual([["Continue Grace's test", {}]]);
+  });
+});
+
+describe("Composer on a live pane", () => {
+  function liveControls(options: LaunchOptions = {}) {
+    const apply = vi.fn<LiveLaunchControls["apply"]>(async () => {});
+    return { live: { options, apply }, apply };
+  }
+
+  it("applies a mode pick to the pane instead of storing a launch option", async () => {
+    const { live, apply } = liveControls();
+    const onSend = renderComposer({ live });
+
+    openModeMenu();
+    fireEvent.keyDown(await screen.findByRole("menu"), { key: "4", code: "Digit4" });
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    sendPrompt("Continue Heidi's test");
+
+    expect({ applied: apply.mock.calls, sends: onSend.mock.calls }).toStrictEqual({
+      applied: [[{ permissionMode: "plan" }]],
+      sends: [["Continue Heidi's test", {}]],
+    });
+  });
+
+  it("shows the live picks in the chin", () => {
+    const { live } = liveControls({ model: "fable", effort: "max", permissionMode: "plan" });
+    renderComposer({ live });
+
+    expect({
+      mode: document.querySelector("[data-chin-mode]")?.textContent,
+      model: screen.getByRole("button", { name: /^Model:/ }).getAttribute("aria-label"),
+      effort: screen.getByRole("button", { name: /^Effort:/ }).getAttribute("aria-label"),
+    }).toStrictEqual({ mode: "Plan", model: "Model: Fable", effort: "Effort: Max" });
+  });
+
+  it("asks Change effort? before sending an effort change", async () => {
+    const { live, apply } = liveControls();
+    renderComposer({ live });
+
+    openEffort();
+    fireEvent.keyDown(await screen.findByRole("dialog"), { key: "1", code: "Digit1" });
+    const confirm = await screen.findByRole("alertdialog");
+    const confirmText = confirm.textContent;
+    const appliedBeforeConfirm = apply.mock.calls.length;
+    fireEvent.click(within(confirm).getByRole("button", { name: "Change effort" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+
+    expect({ confirmText, appliedBeforeConfirm, applied: apply.mock.calls }).toStrictEqual({
+      confirmText:
+        "Change effort?This session is cached with effort set to High. Changing it to Low means Claude re-reads the whole session on your next message, which uses more of your limit.CancelChange effort",
+      appliedBeforeConfirm: 0,
+      applied: [[{ effort: "low" }]],
+    });
+  });
+
+  it("drops the effort change when the confirm is cancelled", async () => {
+    const { live, apply } = liveControls();
+    renderComposer({ live });
+
+    openEffort();
+    fireEvent.keyDown(await screen.findByRole("dialog"), { key: "5", code: "Digit5" });
+    const confirm = await screen.findByRole("alertdialog");
+    fireEvent.click(within(confirm).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+
+    expect({
+      applied: apply.mock.calls,
+      effort: screen.getByRole("button", { name: /^Effort:/ }).getAttribute("aria-label"),
+    }).toStrictEqual({ applied: [], effort: "Effort: High" });
   });
 });

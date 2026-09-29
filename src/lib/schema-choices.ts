@@ -20,7 +20,7 @@ import type {
 import type { SessionSummaryStateSchema } from "./api/sessions";
 import type { SourceFileResponse } from "./api/source";
 import type { GroupColorSchema, GroupIconSchema } from "./group-appearance";
-import type { EffortLevel, LaunchPermissionMode } from "./launch-options";
+import type { EffortLevel, LaunchPermissionMode, LiveOptionChange } from "./launch-options";
 import type { HookEvent, ToolUseUnion } from "./hook-events";
 import type { HomeAttentionKindSchema } from "./home-attention";
 import type {
@@ -864,6 +864,13 @@ export const effortLevelLabels = {
   max: "Max",
 } satisfies Record<EffortLevel, string>;
 
+/** Chin picks applied to a live herdr pane (src/lib/herdr/live-option.ts). */
+const liveOptionChangeVariants = {
+  model: true,
+  effort: true,
+  mode: true,
+} satisfies Record<LiveOptionChange["kind"], true>;
+
 /** Sidebar row drag release outcomes (src/lib/pinned-sessions.ts). */
 const pinDropOutcomeLabels = {
   pin: "Pin",
@@ -1036,6 +1043,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   TranscriptModeSchema: transcriptModeLabels,
   LaunchPermissionModeSchema: launchPermissionModeLabels,
   EffortLevelSchema: effortLevelLabels,
+  LiveOptionChangeSchema: liveOptionChangeVariants,
   GroupIconSchema: groupIconLabels,
   GroupColorSchema: groupColorLabels,
   PinDropOutcomeSchema: pinDropOutcomeLabels,
