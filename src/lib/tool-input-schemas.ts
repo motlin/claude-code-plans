@@ -398,10 +398,36 @@ const NotebookReadInputSchema = z
   })
   .strict();
 
-const ReportFindingsInputSchema = z
+/** How sure a reviewer is that a reported finding is real (upstream "Confirmed" / "Plausible"). */
+export const ReportFindingsVerdictSchema = z.enum(["CONFIRMED", "PLAUSIBLE"]);
+
+export const ReportedFindingSchema = z
   .object({
-    level: z.string(),
-    findings: z.array(JsonInputValueSchema),
+    file: z.string(),
+    line: z.number(),
+    category: z.string().optional(),
+    short_summary: z.string().optional(),
+    summary: z.string(),
+    failure_scenario: z.string(),
+    verdict: ReportFindingsVerdictSchema.optional(),
+  })
+  .strict();
+
+export const ReportFindingsInputSchema = z
+  .object({
+    level: z.string().optional(),
+    findings: z.array(ReportedFindingSchema),
+  })
+  .strict();
+
+const MonitorInputSchema = z
+  .object({
+    command: z.string().optional(),
+    ws: z.strictObject({ url: z.string() }).optional(),
+    description: z.string().optional(),
+    timeout_ms: z.number().optional(),
+    timeout: z.string().optional(),
+    persistent: z.boolean().optional(),
   })
   .strict();
 
@@ -491,6 +517,7 @@ export const toolInputSchemas = {
   SendMessage: SendMessageInputSchema,
   TaskStop: TaskStopInputSchema,
   TaskOutput: TaskOutputInputSchema,
+  Monitor: MonitorInputSchema,
   CronCreate: CronCreateInputSchema,
   CronDelete: CronDeleteInputSchema,
   CronList: CronListInputSchema,

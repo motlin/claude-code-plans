@@ -899,6 +899,7 @@ const TOOL_VARIANTS = {
   SendMessage: { input: toolInputSchemas.SendMessage, response: SendMessageToolResponseSchema },
   TaskStop: { input: toolInputSchemas.TaskStop, response: TaskStopToolResponseSchema },
   TaskOutput: { input: toolInputSchemas.TaskOutput, response: TaskOutputToolResponseSchema },
+  Monitor: { input: toolInputSchemas.Monitor, response: JsonValueSchema }, // no hook samples observed yet
   CronCreate: { input: toolInputSchemas.CronCreate, response: JsonValueSchema }, // no samples observed yet
   CronDelete: { input: toolInputSchemas.CronDelete, response: JsonValueSchema }, // no samples observed yet
   CronList: { input: toolInputSchemas.CronList, response: JsonValueSchema }, // no samples observed yet

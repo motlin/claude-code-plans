@@ -88,6 +88,11 @@ const ToolSearchRenderer = lazy(() =>
     default: m.ToolSearchRenderer,
   })),
 );
+const ReportFindingsRenderer = lazy(() =>
+  import("./report-findings-renderer").then((m) => ({
+    default: m.ReportFindingsRenderer,
+  })),
+);
 const FallbackRenderer = lazy(() =>
   import("./fallback-renderer").then((m) => ({ default: m.FallbackRenderer })),
 );
@@ -116,6 +121,7 @@ const registry: Record<string, ComponentType<ToolRendererProps>> = {
   Skill: SkillRenderer,
   WebFetch: WebFetchRenderer,
   ToolSearch: ToolSearchRenderer,
+  ReportFindings: ReportFindingsRenderer,
   __fallback__: FallbackRenderer,
 };
 

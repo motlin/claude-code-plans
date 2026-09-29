@@ -1,8 +1,8 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, CircleAlert, Info } from "lucide-react";
 import { reviewQueryOptions } from "../lib/api/reviews";
-import { findingsForDiffLine, parseReviewDiff, type ReviewFinding } from "../lib/review-diff";
+import { FindingCard } from "../components/finding-card";
+import { findingsForDiffLine, parseReviewDiff } from "../lib/review-diff";
 
 export const Route = createFileRoute("/review/$reviewId")({
   component: ReviewPage,
@@ -10,39 +10,6 @@ export const Route = createFileRoute("/review/$reviewId")({
     queryClient.ensureQueryData(reviewQueryOptions(params.reviewId)),
   head: () => ({ meta: [{ title: "Working-copy review" }] }),
 });
-
-const severityStyles: Record<ReviewFinding["severity"], string> = {
-  high: "border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300",
-  medium: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300",
-  low: "border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-300",
-  nit: "border-strong bg-surface-0 text-t6",
-};
-
-function FindingCard({ finding }: { finding: ReviewFinding }) {
-  const Icon =
-    finding.severity === "high"
-      ? CircleAlert
-      : finding.severity === "medium"
-        ? AlertTriangle
-        : Info;
-  return (
-    <div
-      id={`finding-${finding.id}`}
-      className={`m-1 rounded-md border px-3 py-2 text-xs ${severityStyles[finding.severity]}`}
-    >
-      <div className="flex items-center gap-1.5 font-semibold">
-        <Icon className="h-3.5 w-3.5" />
-        {finding.title}
-      </div>
-      <p className="mt-1 whitespace-pre-wrap">{finding.body}</p>
-      {finding.suggestion && (
-        <pre className="mt-2 overflow-x-auto rounded bg-surface-1/70 p-2 font-mono text-[11px]">
-          {finding.suggestion}
-        </pre>
-      )}
-    </div>
-  );
-}
 
 function ReviewPage() {
   const { reviewId } = Route.useParams();
@@ -104,7 +71,14 @@ function ReviewPage() {
                         </pre>
                         <div className="border-l border-subtle">
                           {findings.map((finding) => (
-                            <FindingCard key={finding.id} finding={finding} />
+                            <FindingCard
+                              key={finding.id}
+                              anchorId={`finding-${finding.id}`}
+                              severity={finding.severity}
+                              title={finding.title}
+                              body={finding.body}
+                              suggestion={finding.suggestion}
+                            />
                           ))}
                         </div>
                       </div>

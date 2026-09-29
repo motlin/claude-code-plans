@@ -50,6 +50,7 @@ import type { SettingsTab } from "./settings-hash";
 import type { MessageProcessedLine, ProcessedLine } from "./transcript";
 import type { RecentKind } from "./recents-history";
 import type { TranscriptMode } from "./transcript-mode";
+import type { ReportFindingsVerdictSchema } from "./tool-input-schemas";
 
 /**
  * Registry of every enumerable "choice" in the Zod schemas (enum values,
@@ -492,6 +493,7 @@ const toolNames = {
   SendMessage: true,
   TaskStop: true,
   TaskOutput: true,
+  Monitor: true,
   CronCreate: true,
   CronDelete: true,
   CronList: true,
@@ -659,6 +661,12 @@ const artifactLiveSubscriptionLabels = {
   flag_off: "Flag off",
 } satisfies Record<z.infer<typeof ArtifactLiveSubscriptionSchema>, string>;
 
+/** `ReportFindings` finding `verdict` (src/lib/tool-input-schemas.ts); labels match upstream. */
+export const reportFindingsVerdictLabels = {
+  CONFIRMED: "Confirmed",
+  PLAUSIBLE: "Plausible",
+} satisfies Record<z.infer<typeof ReportFindingsVerdictSchema>, string>;
+
 const toolNamesWithMcp = { ...toolNames, "mcp__*": true } as const;
 
 /** Maps walker path keys (see tests/schema-choices.test.ts) to choice maps. */
@@ -725,4 +733,5 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   ArtifactAutoOpenSchema: artifactAutoOpenLabels,
   ArtifactDbOpSchema: artifactDbOpLabels,
   ArtifactLiveSubscriptionSchema: artifactLiveSubscriptionLabels,
+  ReportFindingsVerdictSchema: reportFindingsVerdictLabels,
 };
