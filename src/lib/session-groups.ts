@@ -89,6 +89,15 @@ export function filterLabel(prefs: SessionListPrefs): "Filter" | "Filter (active
   return statusActive || activityActive ? "Filter (active)" : "Filter";
 }
 
+/** "Clear filters" resets Status and Last activity; grouping and sorting stay. */
+export function clearSessionFilters(prefs: SessionListPrefs): SessionListPrefs {
+  return {
+    ...prefs,
+    statusFilter: DEFAULT_SESSION_LIST_PREFS.statusFilter,
+    activityDays: DEFAULT_SESSION_LIST_PREFS.activityDays,
+  };
+}
+
 function isVisible(row: SessionGroupRow, prefs: SessionListPrefs, now: number): boolean {
   if (prefs.statusFilter === "active" && row.archived) return false;
   const windowDays = ACTIVITY_WINDOW_DAYS[prefs.activityDays];

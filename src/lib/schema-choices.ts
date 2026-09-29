@@ -96,25 +96,25 @@ export const sessionBucketLabels = {
 } satisfies Record<z.infer<typeof SessionBucketSchema>, string>;
 
 /** Filter & group menu options (src/lib/session-groups.ts); local "Project" is upstream "Folder". */
-const sessionGroupByLabels = {
+export const sessionGroupByLabels = {
   date: "Date",
   project: "Project",
   state: "State",
   none: "None",
 } satisfies Record<z.infer<typeof SessionGroupBySchema>, string>;
 
-const sessionSortByLabels = {
+export const sessionSortByLabels = {
   name: "Name",
   created: "Date created",
   activity: "Last activity",
 } satisfies Record<z.infer<typeof SessionSortBySchema>, string>;
 
-const sessionStatusFilterLabels = {
+export const sessionStatusFilterLabels = {
   active: "Active",
   all: "All",
 } satisfies Record<z.infer<typeof SessionStatusFilterSchema>, string>;
 
-const sessionActivityDaysLabels = {
+export const sessionActivityDaysLabels = {
   "1d": "1d",
   "3d": "3d",
   "7d": "7d",

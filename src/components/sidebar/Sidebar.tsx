@@ -9,7 +9,7 @@ import { useVisibleNavItems } from "./navigation";
 import { NavScroll } from "./nav-scroll";
 import { SidebarFooter } from "./sidebar-footer";
 import { SidebarToggleButton } from "./sidebar-toggle";
-import { SessionGroups } from "./session-groups";
+import { SidebarSessionGroups } from "./session-filter-menu";
 import { MemoriesSubList, PlansSubList, ProjectsSubList, PluginsSubList } from "./sublists";
 import { approvalsQueryOptions } from "../../lib/api/approvals";
 import { notificationsQueryOptions, useMarkNotificationsRead } from "../../lib/api/notifications";
@@ -194,7 +194,7 @@ export function Sidebar({
               ) : null;
             return subList && <div key={item.to}>{subList}</div>;
           })}
-          <SessionGroups activeItemId={activeItemId} />
+          <SidebarSessionGroups activeItemId={activeItemId} />
         </NavScroll>
       </div>
       <SidebarFooter />

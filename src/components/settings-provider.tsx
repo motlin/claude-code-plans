@@ -7,6 +7,11 @@ import {
   PersistedCapabilitiesSchema,
   type PersistedCapabilities,
 } from "../lib/capabilities";
+import {
+  DEFAULT_SESSION_LIST_PREFS,
+  migrateSessionListPrefs,
+  type SessionListPrefs,
+} from "../lib/session-groups";
 
 type SubagentView = "tree" | "gantt" | "sequence";
 export type Verbosity = "normal" | "thinking" | "verbose";
@@ -46,6 +51,9 @@ export interface Settings {
   /** How /sessions organizes its list. "project" matches the sidebar's tree. */
   sessionsGrouping: "project" | "time";
 
+  /** The sidebar session list's Filter & group menu choices. */
+  sessionListPrefs: SessionListPrefs;
+
   desktopNotifications: boolean;
 
   verbosity: Verbosity;
@@ -81,6 +89,8 @@ export const DEFAULTS: Settings = {
 
   sessionsGrouping: "project",
 
+  sessionListPrefs: DEFAULT_SESSION_LIST_PREFS,
+
   desktopNotifications: false,
 
   verbosity: "normal",
@@ -107,6 +117,7 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
   activeTimeoutSec: "ccp-active-timeout",
   sessionSort: "ccp-session-sort",
   sessionsGrouping: "ccp-sessions-grouping",
+  sessionListPrefs: "ccp-session-list-prefs",
   desktopNotifications: "ccp-desktop-notifications",
   verbosity: "ccp-verbosity",
   linkCategoryRules: "ccp-link-category-rules",
@@ -172,6 +183,13 @@ export function detectVerbosity(settings: Settings): Verbosity {
 function readStoredValue<K extends keyof Settings>(key: K): Settings[K] | undefined {
   const storageKey = STORAGE_KEYS[key];
   const stored = localStorage.getItem(storageKey);
+  if (key === "sessionListPrefs") {
+    return migrateSessionListPrefs({
+      stored,
+      sessionsGrouping: localStorage.getItem(STORAGE_KEYS.sessionsGrouping),
+      sessionSort: localStorage.getItem(STORAGE_KEYS.sessionSort),
+    }) as Settings[K];
+  }
   if (stored === null) return undefined;
 
   const defaultValue = DEFAULTS[key];
