@@ -7,7 +7,7 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { createElement } from "react";
 import { describe, expect, it, vi } from "vite-plus/test";
 import { Sidebar } from "../src/components/sidebar/Sidebar";
@@ -21,28 +21,6 @@ const DEFAULT_APPLICATION_SETTINGS = {
   visibleNavSections: ["herdr", "plans", "memories", "customize"],
   ignoredDirs: ["node_modules"],
 };
-
-function sectionVisibility() {
-  const sidebarLinks = within(screen.getByRole("navigation", { name: "Sidebar" })).getAllByRole(
-    "link",
-  );
-  const homeLinks = within(screen.getByRole("region", { name: "Home sections" })).getAllByRole(
-    "link",
-  );
-  const hasDestination = (links: HTMLElement[], destination: string) =>
-    links.some((link) => link.getAttribute("href") === destination);
-
-  return {
-    sidebar: {
-      herdr: hasDestination(sidebarLinks, "/herdr"),
-      tmux: hasDestination(sidebarLinks, "/tmux"),
-    },
-    home: {
-      herdr: hasDestination(homeLinks, "/herdr"),
-      tmux: hasDestination(homeLinks, "/tmux"),
-    },
-  };
-}
 
 async function renderNavigation() {
   const Home = HomeRoute.options.component;
@@ -86,40 +64,22 @@ async function renderNavigation() {
   return { queryClient, view };
 }
 
-describe("home grid", () => {
-  it("keeps the sidebar and home grid visibility synchronized", async () => {
+describe("home page", () => {
+  it("leaves top-level navigation to the sidebar: home renders no nav cards", async () => {
     const { queryClient, view } = await renderNavigation();
     try {
-      expect(sectionVisibility()).toStrictEqual({
-        sidebar: { herdr: true, tmux: false },
-        home: { herdr: true, tmux: false },
-      });
-
-      act(() => {
-        queryClient.setQueryData(["application-settings"], {
-          ...DEFAULT_APPLICATION_SETTINGS,
-          visibleNavSections: ["herdr", "tmux", "plans", "memories", "customize"],
-        });
-      });
-      await waitFor(() =>
-        expect(sectionVisibility()).toStrictEqual({
-          sidebar: { herdr: true, tmux: true },
-          home: { herdr: true, tmux: true },
-        }),
-      );
-
-      act(() => {
-        queryClient.setQueryData(["application-settings"], {
-          ...DEFAULT_APPLICATION_SETTINGS,
-          visibleNavSections: ["tmux", "plans", "memories", "customize"],
-        });
-      });
-      await waitFor(() =>
-        expect(sectionVisibility()).toStrictEqual({
-          sidebar: { herdr: false, tmux: true },
-          home: { herdr: false, tmux: true },
-        }),
-      );
+      const homeBody = document.querySelector("[data-home-body]");
+      if (!(homeBody instanceof HTMLElement)) throw new Error("Expected the home body");
+      const sidebarLinks = within(screen.getByRole("navigation", { name: "Sidebar" }))
+        .getAllByRole("link")
+        .map((link) => link.getAttribute("href"));
+      expect({
+        sidebarHasHerdr: sidebarLinks.includes("/herdr"),
+        homeSectionsRegion: screen.queryByRole("region", { name: "Home sections" }),
+        homeLinks: within(homeBody)
+          .queryAllByRole("link")
+          .map((link) => link.getAttribute("href")),
+      }).toStrictEqual({ sidebarHasHerdr: true, homeSectionsRegion: null, homeLinks: [] });
     } finally {
       view.unmount();
       queryClient.clear();
@@ -136,14 +96,10 @@ describe("home grid", () => {
         fullBleed: HomeRoute.options.staticData?.fullBleed,
         heading: heading.textContent,
         columnClass: column?.className,
-        cardsBelowGreeting:
-          screen.getByRole("region", { name: "Home sections" }).closest("[data-home-body]") !==
-          null,
       }).toStrictEqual({
         fullBleed: true,
         heading: "Welcome back, Ada",
         columnClass: "mx-auto flex w-full max-w-[840px] items-center gap-1.5 pt-3 pr-10 pb-6 pl-8",
-        cardsBelowGreeting: true,
       });
     } finally {
       view.unmount();
@@ -152,21 +108,9 @@ describe("home grid", () => {
     }
   });
 
-  it("gives every card a non-empty description", () => {
+  it("uses the Herdr name for the terminal fleet nav item", () => {
     expect(
-      navItems
-        .filter((card) => card.description.length === 0)
-        .map(({ label, to }) => ({ label, to })),
-    ).toStrictEqual([]);
-  });
-
-  it("uses the Herdr name for the terminal fleet card", () => {
-    expect(
-      navItems
-        .filter((card) => card.to === "/herdr")
-        .map(({ label, to, description }) => ({ label, to, description })),
-    ).toStrictEqual([
-      { label: "Herdr", to: "/herdr", description: "Live terminals managed by Herdr" },
-    ]);
+      navItems.filter((item) => item.to === "/herdr").map(({ label, to }) => ({ label, to })),
+    ).toStrictEqual([{ label: "Herdr", to: "/herdr" }]);
   });
 });

@@ -52,6 +52,8 @@ export interface Settings {
   motion: Motion;
   /** The transcript and composer column measure: 768, 960 or 1280px. */
   transcriptWidth: TranscriptWidth;
+  /** Local-only "Recent plans" and "Memories updated" home sections; off matches claude.ai/code. */
+  homeShowLocalSections: boolean;
 
   showSummaryButton: boolean;
   // ccp preferences are browser-local; /api/settings reflects Claude's own files and is read-only.
@@ -117,6 +119,7 @@ export const DEFAULTS: Settings = {
   statusFooterVisible: true,
   motion: "system",
   transcriptWidth: "narrow",
+  homeShowLocalSections: false,
 
   showSummaryButton: true,
   capabilities: DEFAULT_CAPABILITIES,
@@ -167,6 +170,7 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
   statusFooterVisible: "ccp-status-footer",
   motion: "ccp-motion",
   transcriptWidth: "ccp-transcript-width",
+  homeShowLocalSections: "ccp-home-show-local-sections",
   showSummaryButton: "ccp-show-summary-button",
   capabilities: "ccp-capabilities",
   activeTimeoutSec: "ccp-active-timeout",
