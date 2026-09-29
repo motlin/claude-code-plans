@@ -115,8 +115,11 @@ export interface ToolResultInfo {
   isError: boolean;
   resultUuid: string;
   duration?: number | undefined;
+  /** Label-relevant bits of the record's `toolUseResult`; see `toolResultMetaFrom`. */
+  resultMeta?: ToolResultMeta | undefined;
 }
 
+import type { ToolResultMeta } from "./tool-labels";
 import {
   stripCommandTags,
   parseBashInput,

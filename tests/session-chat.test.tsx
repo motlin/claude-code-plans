@@ -992,7 +992,7 @@ describe("SessionChat failed tool row label text", () => {
     });
   });
 
-  it('falls back to "Failed to use <tool>" for tools with no verb of their own', () => {
+  it('falls back to "Failed to use {Server: tool name}" for tools with no verb of their own', () => {
     const html = renderTranscript(
       failedToolCallRecords(true, {
         name: "mcp__sentry__search_issues",
@@ -1001,7 +1001,7 @@ describe("SessionChat failed tool row label text", () => {
     );
 
     expect(toolRowLabelSpans(html)).toStrictEqual([
-      ["shrink-0 text-body text-extended-pink", "Failed to use sentry"],
+      ["shrink-0 text-body text-extended-pink", "Failed to use Sentry: search issues"],
       ["truncate min-w-0 text-body text-extended-pink", "unhandled"],
     ]);
   });
@@ -1305,8 +1305,8 @@ describe("SessionChat tool row verbs", () => {
         [SECONDARY_PARAM, ".github/workflows/*.yml"],
       ],
       todoWrite: [[SECONDARY, "Updated todos"]],
-      enterPlanMode: [[SECONDARY, "Entered plan mode"]],
-      exitPlanMode: [[SECONDARY, "Presented plan"]],
+      enterPlanMode: [[SECONDARY, "Started planning"]],
+      exitPlanMode: [[SECONDARY, "Proposed plan"]],
       cronCreate: [
         [SECONDARY, "Scheduled"],
         [SECONDARY_PARAM, "0 9 * * 1"],
@@ -1334,11 +1334,88 @@ describe("SessionChat tool row verbs", () => {
     }).toStrictEqual({
       glob: ["Failed to search", "*.yml"],
       todoWrite: ["Failed to update todos"],
-      enterPlanMode: ["Failed to enter plan mode"],
-      exitPlanMode: ["Failed to present plan"],
+      enterPlanMode: ["Failed to start planning"],
+      exitPlanMode: ["Failed to propose plan"],
       cronCreate: ["Failed to schedule", "0 9 * * 1"],
       toolSearch: ["Failed to search tools", "select:Read"],
     });
+  });
+});
+
+describe("SessionChat tool rows labelled from the tool result", () => {
+  const SECONDARY = "shrink-0 text-body text-secondary group-hover/tool:text-primary";
+  const SECONDARY_PARAM = "truncate min-w-0 text-body text-secondary group-hover/tool:text-primary";
+
+  const withToolUseResult = (call: { name: string; input: unknown }, toolUseResult: unknown) => {
+    const records = toolResultRecords(call, "ok");
+    return [records[0], { ...(records[1] as Record<string, unknown>), toolUseResult }];
+  };
+
+  it("labels Write rows Created or Updated from toolUseResult.type", () => {
+    const write = (type: "create" | "update") =>
+      toolRowLabelSpans(
+        renderTranscript(
+          withToolUseResult(
+            { name: "Write", input: { file_path: "/repo/a.ts", content: "x" } },
+            { type, filePath: "/repo/a.ts", content: "x", structuredPatch: [], originalFile: null },
+          ),
+        ),
+      )[0];
+
+    expect({ create: write("create"), update: write("update") }).toStrictEqual({
+      create: [SECONDARY, "Created"],
+      update: [SECONDARY, "Updated"],
+    });
+  });
+
+  it("labels a git Bash row with the operation and links a PR", () => {
+    const html = renderTranscript(
+      withToolUseResult(
+        { name: "Bash", input: { command: "gh pr create", description: "Open the PR" } },
+        {
+          stdout: "https://github.com/o/r/pull/42",
+          stderr: "",
+          interrupted: false,
+          isImage: false,
+          gitOperation: {
+            pr: { number: 42, url: "https://github.com/o/r/pull/42", action: "created" },
+          },
+        },
+      ),
+    );
+
+    expect({
+      verb: toolRowLabelSpans(html)[0],
+      link: html.includes('href="https://github.com/o/r/pull/42"'),
+      meta: html.includes(">#42</a>"),
+    }).toStrictEqual({ verb: [SECONDARY, "Created PR"], link: true, meta: true });
+  });
+
+  it('labels a Skill row "Ran skill" with the /name in code', () => {
+    const html = renderTranscript(
+      failedToolCallRecords(false, { name: "Skill", input: { skill: "git:commit" } }),
+    );
+
+    expect({
+      verb: toolRowLabelSpans(html),
+      code: html.includes('<code class="font-mono">/git:commit</code>'),
+    }).toStrictEqual({ verb: [[SECONDARY, "Ran skill"]], code: true });
+  });
+
+  it("labels a TaskUpdate row by the status it set", () => {
+    expect(
+      toolRowLabelSpans(
+        renderTranscript(
+          failedToolCallRecords(false, {
+            name: "TaskUpdate",
+            input: { taskId: "3", status: "completed" },
+          }),
+        ),
+      ),
+    ).toStrictEqual([
+      [SECONDARY, "Completed task"],
+      [SECONDARY_PARAM, "#3"],
+    ]);
   });
 });
 
@@ -1455,7 +1532,7 @@ describe("SessionChat non-expanding tool rows", () => {
 
     expect({
       ...toolRowChrome(html),
-      label: html.includes(">Entered plan mode<"),
+      label: html.includes(">Started planning<"),
       instructions: html.includes("DO NOT write or edit any files yet"),
     }).toStrictEqual({
       bareHeaderClass:

@@ -345,7 +345,7 @@ describe("summarizeToolCalls", () => {
   });
 
   it("shows tool name for single unknown tool", () => {
-    expect(summarizeToolCalls([{ name: "CustomTool", input: {} }])).toBe("called CustomTool");
+    expect(summarizeToolCalls([{ name: "CustomTool", input: {} }])).toBe("used CustomTool");
   });
 
   it("shows tool name with count for repeated unknown tool", () => {
@@ -354,7 +354,7 @@ describe("summarizeToolCalls", () => {
       { name: "CustomRepeat", input: {} },
       { name: "CustomRepeat", input: {} },
     ];
-    expect(summarizeToolCalls(calls)).toBe("called CustomRepeat 3 times");
+    expect(summarizeToolCalls(calls)).toBe("used CustomRepeat (3 times)");
   });
 
   it("shows separate entries for distinct unknown tools", () => {
@@ -362,7 +362,7 @@ describe("summarizeToolCalls", () => {
       { name: "CustomTool", input: {} },
       { name: "AnotherTool", input: {} },
     ];
-    expect(summarizeToolCalls(calls)).toBe("called CustomTool, called AnotherTool");
+    expect(summarizeToolCalls(calls)).toBe("used CustomTool, used AnotherTool");
   });
 
   it("summarizes Skill tool calls with upstream verb", () => {
@@ -375,34 +375,24 @@ describe("summarizeToolCalls", () => {
     expect(summarizeToolCalls(calls)).toBe("used 3 skills");
   });
 
-  it("extracts server name from MCP tool and strips plugin_ prefix", () => {
+  it('labels MCP tools "Server: tool name", stripping the plugin_ prefix', () => {
     const calls = [
       { name: "mcp__plugin_github_github__list_issues", input: {} },
-      { name: "mcp__plugin_github_github__search_code", input: {} },
-      { name: "mcp__plugin_github_github__get_commit", input: {} },
-      { name: "mcp__plugin_github_github__list_pulls", input: {} },
-    ];
-    expect(summarizeToolCalls(calls)).toBe("called github 4 times");
-  });
-
-  it("extracts MCP server name without plugin_ prefix", () => {
-    const calls = [
-      { name: "mcp__chrome-devtools__click", input: {} },
-      { name: "mcp__chrome-devtools__hover", input: {} },
-    ];
-    expect(summarizeToolCalls(calls)).toBe("called chrome-devtools 2 times");
-  });
-
-  it("groups MCP tools by server with distinct non-MCP unknowns", () => {
-    const calls = [
       { name: "mcp__plugin_github_github__list_issues", input: {} },
       { name: "mcp__chrome-devtools__click", input: {} },
-      { name: "CustomTool", input: {} },
-      { name: "mcp__plugin_github_github__search_code", input: {} },
     ];
     expect(summarizeToolCalls(calls)).toBe(
-      "called github 2 times, called chrome-devtools, called CustomTool",
+      "used Github: list issues (2 times), used Chrome-devtools: click",
     );
+  });
+
+  it("counts repeats of one MCP tool alongside distinct non-MCP unknowns", () => {
+    const calls = [
+      { name: "mcp__plugin_github_github__list_issues", input: {} },
+      { name: "CustomTool", input: {} },
+      { name: "mcp__plugin_github_github__list_issues", input: {} },
+    ];
+    expect(summarizeToolCalls(calls)).toBe("used Github: list issues (2 times), used CustomTool");
   });
 
   it("Edit calls include +N -N diff stats summed across calls", () => {
@@ -500,7 +490,7 @@ describe("summarizeToolCalls", () => {
     ];
     // Edits: 9 files; per edit removed 3 added 5 -> totals +45 -27.
     expect(summarizeToolCalls(calls)).toBe(
-      "edited 9 files +45 -27, searched for 6 patterns, read 8 files, ran 4 commands, recalled a memory, wrote 4 memories, called CustomTool",
+      "edited 9 files +45 -27, searched for 6 patterns, read 8 files, ran 4 commands, recalled a memory, wrote 4 memories, used CustomTool",
     );
   });
 });
@@ -663,14 +653,23 @@ describe("summarizeToolCallsStructured", () => {
     ]);
   });
 
-  it("unknown tools produce Called segments", () => {
-    const calls = [
-      { name: "CustomTool", input: {} },
-      { name: "CustomTool", input: {} },
-    ];
-    expect(summarizeToolCallsStructured(calls)).toEqual([
-      { verb: "Called", rest: "CustomTool 2 times" },
-    ]);
+  it('unknown and MCP tools produce upstream "Used {label}" segments', () => {
+    expect({
+      repeated: summarizeToolCallsStructured([
+        { name: "CustomTool", input: {} },
+        { name: "CustomTool", input: {} },
+      ]),
+      mcp: summarizeToolCallsStructured([
+        { name: "Read", input: { file_path: "/a/b.ts" } },
+        { name: "mcp__sentry__search_issues", input: { query: "x" } },
+      ]),
+    }).toStrictEqual({
+      repeated: [{ verb: "Used CustomTool", rest: "(2 times)" }],
+      mcp: [
+        { verb: "Read", rest: "b.ts" },
+        { verb: "used Sentry: search issues", rest: "" },
+      ],
+    });
   });
 
   it("ToolSearch produces Loaded segment", () => {
@@ -705,8 +704,8 @@ describe("summarizeToolCallsStructured", () => {
       ]),
     }).toEqual({
       todoWrite: [{ verb: "Updated", rest: "todos (2 times)" }],
-      enterPlanMode: [{ verb: "Entered", rest: "plan mode" }],
-      exitPlanMode: [{ verb: "Presented", rest: "2 plans" }],
+      enterPlanMode: [{ verb: "Started", rest: "planning" }],
+      exitPlanMode: [{ verb: "Proposed", rest: "2 plans" }],
       cronCreate: [{ verb: "Scheduled", rest: "a job" }],
     });
   });

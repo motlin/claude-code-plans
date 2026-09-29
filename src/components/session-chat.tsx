@@ -65,12 +65,12 @@ import {
   parseCommandBlock,
   parseBashInput,
   parseBashOutput,
-  formatToolName,
   summarizeToolCallsStructured,
   editDiffEntries,
   isRequestInterrupted,
 } from "../lib/session-utils";
 import type { SummarySegment } from "../lib/session-utils";
+import { failedDescriptionLabel, toolLabel } from "../lib/tool-labels";
 import { InlinePathImages, SESSION_IMAGE_CLASS_NAME } from "./inline-path-images";
 import { findScrollContainer } from "./transcript-history-loader";
 import {
@@ -2156,109 +2156,6 @@ function ContentBlock({
 }
 
 /**
- * Row label per tool: `past` for a call that succeeded, `failed` for the
- * "Failed to ..." form upstream swaps in when the call errored. A tool with no
- * `past` labels its successful rows some other way -- Bash past-tenses the
- * call's own description instead of prefixing a verb, and Agent drops the verb
- * altogether, leaving the description to name the row on its own.
- */
-const TOOL_VERBS: Record<string, { past?: string; failed: string }> = {
-  Edit: { past: "Edited", failed: "Failed to edit" },
-  MultiEdit: { past: "Edited", failed: "Failed to edit" },
-  Write: { past: "Wrote", failed: "Failed to write" },
-  Bash: { failed: "Failed to run" },
-  Read: { past: "Read", failed: "Failed to read" },
-  Grep: { past: "Searched", failed: "Failed to search" },
-  Glob: { past: "Searched", failed: "Failed to search" },
-  Agent: { failed: "Failed to run agent" },
-  WebFetch: { past: "Fetched", failed: "Failed to fetch" },
-  WebSearch: { past: "Searched web", failed: "Failed to search web" },
-  ToolSearch: { past: "Searched tools", failed: "Failed to search tools" },
-  Skill: { past: "Loaded skill", failed: "Failed to load skill" },
-  TaskCreate: { past: "Created task", failed: "Failed to create task" },
-  TaskUpdate: { past: "Updated task", failed: "Failed to update task" },
-  TaskGet: { past: "Got task", failed: "Failed to get task" },
-  TaskList: { past: "Listed tasks", failed: "Failed to list tasks" },
-  TaskStop: { past: "Stopped task", failed: "Failed to stop task" },
-  TodoWrite: { past: "Updated todos", failed: "Failed to update todos" },
-  EnterPlanMode: { past: "Entered plan mode", failed: "Failed to enter plan mode" },
-  ExitPlanMode: { past: "Presented plan", failed: "Failed to present plan" },
-  CronCreate: { past: "Scheduled", failed: "Failed to schedule" },
-};
-
-function toolCallVerb(name: string): string {
-  const verbs = TOOL_VERBS[name];
-  if (verbs) return verbs.past ?? "";
-  if (name.startsWith("mcp__")) return formatToolName(name);
-  return name;
-}
-
-/**
- * Past-tense forms for verbs that don't take an -ed/-d suffix.
- */
-const IRREGULAR_PAST_TENSE: Record<string, string> = {
-  build: "built",
-  cut: "cut",
-  find: "found",
-  get: "got",
-  keep: "kept",
-  leave: "left",
-  make: "made",
-  put: "put",
-  read: "read",
-  rerun: "reran",
-  run: "ran",
-  see: "saw",
-  send: "sent",
-  set: "set",
-  show: "showed",
-  split: "split",
-  take: "took",
-  tell: "told",
-  write: "wrote",
-};
-
-function capitalizeFirst(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
-/**
- * Past-tense a description's leading verb, the way upstream labels a Bash row:
- * "Check git status" -> "Checked git status", "See what's new" -> "Saw what's
- * new". Text that doesn't start with a word, or that is already past tense, is
- * left verbatim.
- */
-function pastTense(description: string): string {
-  const match = /^([A-Za-z]+)([\s\S]*)$/.exec(description);
-  if (!match) return description;
-  const word = match[1]!;
-  const rest = match[2]!;
-  const lower = word.toLowerCase();
-  const irregular = IRREGULAR_PAST_TENSE[lower];
-  if (irregular) return capitalizeFirst(irregular) + rest;
-  if (lower.endsWith("ed")) return capitalizeFirst(lower) + rest;
-  if (lower.endsWith("e")) return capitalizeFirst(`${lower}d`) + rest;
-  if (/[^aeiou]y$/.test(lower)) return capitalizeFirst(`${lower.slice(0, -1)}ied`) + rest;
-  return capitalizeFirst(`${lower}ed`) + rest;
-}
-
-function toolCallFailedVerb(name: string): string {
-  const verbs = TOOL_VERBS[name];
-  if (verbs) return verbs.failed;
-  return `Failed to use ${toolCallVerb(name)}`;
-}
-
-/**
- * Upstream gives a Bash row a single label span holding the past-tensed
- * description ("Checked git status") rather than a "Ran" verb plus the
- * description; a call with no description falls back to its raw command.
- */
-function bashRowLabel(call: ClientToolCall): string {
-  const description = getToolDescription(call.name, call.input);
-  return description === null ? call.param : pastTense(description);
-}
-
-/**
  * A Read bound (`offset`/`limit`) as a positive integer. Claude Code has
  * written these as strings on disk (`"offset": "55, "`), so parse rather than
  * cast, and treat anything non-positive as absent.
@@ -2292,10 +2189,6 @@ function readRangeLabel(call: ClientToolCall): string | null {
   if (limit === null) return `(${start}–)`;
   const end = start + limit - 1;
   return end === start ? `(${start})` : `(${start}–${end})`;
-}
-
-function lowercaseFirst(text: string): string {
-  return text.charAt(0).toLowerCase() + text.slice(1);
 }
 
 /**
@@ -2445,7 +2338,7 @@ function ToolCallRow({
   const hasBody = !rendersEmptyBody(call);
   const expandable = hasBody && !NON_EXPANDING_TOOLS.has(call.name);
   const Renderer = getToolRenderer(call.name);
-  const verb = toolCallVerb(call.name);
+  const toolRowLabel = toolLabel(call);
   const isFileParam = FILE_PARAM_TOOLS.has(call.name);
   const diffStats = useEditDiffStats(call);
   const isCardStyle = CARD_STYLE_TOOLS.has(call.name) && !nested;
@@ -2476,22 +2369,25 @@ function ToolCallRow({
   // and the separate param span; every other failed row keeps both
   // ("Failed to edit" + "cache.ts").
   const failedDescription = call.isError ? getToolDescription(call.name, call.input) : null;
-  const bashLabel = call.name === "Bash" && !call.isError ? bashRowLabel(call) : null;
-  const label = call.isError
-    ? failedDescription === null
-      ? toolCallFailedVerb(call.name)
-      : `Failed to ${lowercaseFirst(failedDescription)}`
-    : (bashLabel ?? verb);
+  const phrase =
+    failedDescription !== null
+      ? failedDescriptionLabel(failedDescription)
+      : call.isError
+        ? null
+        : (toolRowLabel.doneLabel ?? null);
+  const label = phrase ?? (call.isError ? toolRowLabel.failedVerb : toolRowLabel.verb);
   // A label that is a whole phrase owns the row and truncates; a bare verb
   // keeps its width so the param beside it truncates instead.
-  const isPhraseLabel = failedDescription !== null || bashLabel !== null;
+  const isPhraseLabel = phrase !== null;
 
   const displayParam =
     RENDERER_HANDLES_PARAM.has(call.name) || isPhraseLabel
       ? ""
       : isFileParam
         ? (call.param.split("/").pop() ?? call.param)
-        : call.param;
+        : (toolRowLabel.meta ?? call.param);
+  const paramHref = displayParam === toolRowLabel.meta ? toolRowLabel.metaHref : undefined;
+  const paramIsCode = displayParam === toolRowLabel.meta && toolRowLabel.metaIsCode === true;
   const rangeLabel = displayParam ? readRangeLabel(call) : null;
 
   const rowLabel = (
@@ -2511,7 +2407,21 @@ function ToolCallRow({
               : `truncate min-w-0 text-body ${labelClass}`
           }
         >
-          {displayParam}
+          {paramHref ? (
+            <a
+              href={paramHref}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="hover:underline"
+            >
+              {displayParam}
+            </a>
+          ) : paramIsCode ? (
+            <code className="font-mono">{displayParam}</code>
+          ) : (
+            displayParam
+          )}
         </span>
       )}
       {rangeLabel && (
@@ -2599,7 +2509,7 @@ function SummarySpans({ segments }: { segments: SummarySegment[] }) {
         <React.Fragment key={i}>
           {i > 0 && <span>, </span>}
           <span className="text-body">{segment.verb}</span>
-          <span> {segment.rest}</span>
+          {segment.rest && <span> {segment.rest}</span>}
         </React.Fragment>
       ))}
     </>

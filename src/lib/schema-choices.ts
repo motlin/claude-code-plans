@@ -17,6 +17,9 @@ import type {
   AttachmentPayloadSchema,
   ClaudeSettingsSchema,
   ContentBlockSchema,
+  GitBranchActionSchema,
+  GitCommitKindSchema,
+  GitPrActionSchema,
   JsonlRecordSchema,
   SkillOverrideValueSchema,
   TaskStatusSchema,
@@ -83,6 +86,27 @@ const writeToolUseResultTypeLabels = {
   create: "Created",
   update: "Updated",
 } satisfies Record<z.infer<typeof WriteToolUseResultTypeSchema>, string>;
+
+/** Bash row verbs for `toolUseResult.gitOperation`, used by `toolLabel`. */
+export const gitCommitKindLabels = {
+  committed: "Committed",
+  amended: "Amended commit",
+  "cherry-picked": "Cherry-picked",
+} satisfies Record<z.infer<typeof GitCommitKindSchema>, string>;
+
+export const gitBranchActionLabels = {
+  rebased: "Rebased onto",
+  merged: "Merged",
+} satisfies Record<z.infer<typeof GitBranchActionSchema>, string>;
+
+export const gitPrActionLabels = {
+  created: "Created PR",
+  edited: "Edited PR",
+  commented: "Commented on PR",
+  ready: "Marked PR ready",
+  merged: "Merged PR",
+  closed: "Closed PR",
+} satisfies Record<z.infer<typeof GitPrActionSchema>, string>;
 
 const sessionSummaryStateLabels = {
   idle: "Idle",
@@ -603,6 +627,9 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   "UserRecordSchema.promptSource": promptSourceLabels,
   JsonlRecordSchema: jsonlRecordVariants,
   "FileEditToolUseResultSchema|0.type": writeToolUseResultTypeLabels,
+  "GitOperationSchema.commit.kind": gitCommitKindLabels,
+  "GitOperationSchema.branch.action": gitBranchActionLabels,
+  "GitOperationSchema.pr.action": gitPrActionLabels,
   RenderedLineSchema: renderedLineVariants,
   "RenderedLineSchema.<assistant|user>.type": messageLineTypeLabels,
   "RenderedLineSchema.<system>.subtype": systemSubtypeLabels,

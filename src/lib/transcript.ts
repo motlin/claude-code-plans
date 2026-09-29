@@ -10,6 +10,7 @@
 
 import { z } from "zod";
 import type { ToolResultInfo } from "./sessions";
+import { toolResultMetaFrom } from "./tool-labels";
 import {
   CompactMetadataSchema,
   ContentBlockSchema,
@@ -451,6 +452,8 @@ function processRecordBatch(
                 isError: block.is_error === true,
                 resultUuid: uuid ?? "",
               };
+              const resultMeta = toolResultMetaFrom(record.toolUseResult);
+              if (resultMeta !== undefined) info.resultMeta = resultMeta;
               const startTime = toolStartTimes.get(block.tool_use_id);
               if (startTime && timestamp) {
                 const resultTime = new Date(timestamp).getTime();

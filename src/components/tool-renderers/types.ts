@@ -1,5 +1,6 @@
 import type { ToolResultInfo } from "../../lib/sessions";
 import type { ToolUseBlock } from "../../lib/schemas";
+import type { ToolResultMeta } from "../../lib/tool-labels";
 import type { Subagent } from "../../lib/subagents";
 import { getAgentTypeOrNull, getTaskCreateDisplaySubject } from "../../lib/tool-utils";
 import { buildSubagentTree } from "../../lib/subagent-tree";
@@ -45,6 +46,7 @@ export interface ClientToolCall {
   sourceUuid: string;
   resultUuid?: string | undefined;
   subagentInfo?: SubagentInlineInfo | undefined;
+  resultMeta?: ToolResultMeta | undefined;
 }
 
 export interface ToolRendererProps {
@@ -212,6 +214,7 @@ export function buildClientToolCall(
     if (resultInfo.isError) call.isError = true;
     call.resultUuid = resultInfo.resultUuid;
     if (resultInfo.duration !== undefined) call.duration = resultInfo.duration;
+    if (resultInfo.resultMeta !== undefined) call.resultMeta = resultInfo.resultMeta;
   }
 
   // Live failure override: if SSE told us this tool_use_id failed but the

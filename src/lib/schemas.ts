@@ -218,6 +218,39 @@ export const FileEditToolUseResultSchema = z.union([
 ]);
 
 // ---------------------------------------------------------------------------
+// Bash tool results: `toolUseResult.gitOperation`, the git action Claude Code
+// detected in the command (commit, push, rebase/merge, PR).
+// ---------------------------------------------------------------------------
+
+export const GitCommitKindSchema = z.enum(["committed", "amended", "cherry-picked"]);
+export const GitBranchActionSchema = z.enum(["rebased", "merged"]);
+export const GitPrActionSchema = z.enum([
+  "created",
+  "edited",
+  "commented",
+  "ready",
+  "merged",
+  "closed",
+]);
+
+export const GitOperationSchema = z
+  .object({
+    commit: z
+      .object({ sha: z.string(), kind: GitCommitKindSchema, branch: z.string().optional() })
+      .strict()
+      .optional(),
+    push: z.object({ branch: z.string() }).strict().optional(),
+    branch: z.object({ ref: z.string(), action: GitBranchActionSchema }).strict().optional(),
+    pr: z
+      .object({ number: z.number(), url: z.string().optional(), action: GitPrActionSchema })
+      .strict()
+      .optional(),
+  })
+  .strict();
+
+export type GitOperation = z.infer<typeof GitOperationSchema>;
+
+// ---------------------------------------------------------------------------
 // JSONL Record Types
 // ---------------------------------------------------------------------------
 

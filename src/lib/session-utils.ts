@@ -1,3 +1,5 @@
+import { toolLabel } from "./tool-labels";
+
 /**
  * Minimal shape needed by summarizeToolCalls, categorize, and diffStatsForCall.
  * Satisfied by raw content blocks, readSession tool call objects, and test data alike.
@@ -367,6 +369,10 @@ export function formatToolName(toolName: string): string {
   return toolName;
 }
 
+function lowercaseFirst(text: string): string {
+  return text.charAt(0).toLowerCase() + text.slice(1);
+}
+
 function pluralize(count: number, singular: string, plural: string): string {
   if (count === 1) return singular;
   return plural.replace("{n}", String(count));
@@ -514,8 +520,8 @@ function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
   for (const call of calls) {
     const cat = categorize(call);
     if (cat === null) {
-      const displayName = formatToolName(call.name);
-      unknownTools.set(displayName, (unknownTools.get(displayName) ?? 0) + 1);
+      const phrase = toolLabel(call).verb;
+      unknownTools.set(phrase, (unknownTools.get(phrase) ?? 0) + 1);
     } else {
       const prev = counts.get(cat) ?? 0;
       counts.set(cat, prev + 1);
@@ -636,13 +642,13 @@ function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
         break;
       case "planenter":
         segments.push({
-          verb: "Entered",
-          rest: pluralize(count, "plan mode", "plan mode ({n} times)"),
+          verb: "Started",
+          rest: pluralize(count, "planning", "planning ({n} times)"),
         });
         break;
       case "planexit":
         segments.push({
-          verb: "Presented",
+          verb: "Proposed",
           rest: pluralize(count, "a plan", "{n} plans"),
         });
         break;
@@ -655,17 +661,13 @@ function buildSummarySegments(calls: ToolCallLike[]): SummarySegment[] {
     }
   }
 
-  for (const [displayName, count] of unknownTools) {
-    if (count === 1) {
-      segments.push({ verb: "Called", rest: displayName });
-    } else {
-      segments.push({ verb: "Called", rest: `${displayName} ${count} times` });
-    }
+  for (const [phrase, count] of unknownTools) {
+    segments.push({ verb: phrase, rest: count === 1 ? "" : `(${count} times)` });
   }
 
   // Upstream capitalizes only the leading verb: "Ran 2 commands, read cache.ts".
   return segments.map((segment, i) =>
-    i === 0 ? segment : { verb: segment.verb.toLowerCase(), rest: segment.rest },
+    i === 0 ? segment : { verb: lowercaseFirst(segment.verb), rest: segment.rest },
   );
 }
 
@@ -676,5 +678,5 @@ export function summarizeToolCallsStructured(calls: ToolCallLike[]): SummarySegm
 
 export function summarizeToolCalls(calls: ToolCallLike[]): string {
   const segments = buildSummarySegments(calls);
-  return segments.map((s) => `${s.verb.toLowerCase()} ${s.rest}`).join(", ");
+  return segments.map((s) => `${lowercaseFirst(s.verb)} ${s.rest}`.trimEnd()).join(", ");
 }
