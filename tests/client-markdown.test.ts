@@ -308,6 +308,8 @@ describe("renderMarkdownWithHighlighting", () => {
         [
           "const answer = 0;",
           {
+            tokenizeTimeLimit: 0,
+            tokenizeMaxLineLength: 20_000,
             lang: "typescript",
             themes: {
               light: "claude-light",

@@ -9,6 +9,7 @@ import {
   subscribeHighlighter,
 } from "../hooks/use-shiki";
 import { detectLanguage } from "./diff-utils";
+import { SHIKI_TOKENIZE_OPTIONS } from "./shiki-tokenize-options";
 
 let maximumHighlightedLines = 2000;
 const ignoredFiles: (string | RegExp)[] = [];
@@ -50,6 +51,7 @@ export const shikiDiffHighlighter = {
     const highlighter = getHighlighterSync();
     if (!highlighter) throw new Error("The Shiki highlighter is not ready.");
     return highlighter.codeToHast(raw, {
+      ...SHIKI_TOKENIZE_OPTIONS,
       lang: language,
       theme: theme === "dark" ? "github-dark" : "claude-light",
     });

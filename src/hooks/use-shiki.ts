@@ -12,6 +12,7 @@ import type {
 } from "@shikijs/core";
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { useResolvedTheme } from "../components/theme-provider";
+import { SHIKI_TOKENIZE_OPTIONS } from "../lib/shiki-tokenize-options";
 
 // ---------------------------------------------------------------------------
 // Singleton highlighter
@@ -270,6 +271,7 @@ export function useHighlightedLines(code: string, language: string | null): Them
       if (!loadedLanguages.includes(language)) return null;
 
       const result = highlighterInstance.codeToTokens(code, {
+        ...SHIKI_TOKENIZE_OPTIONS,
         lang: language,
         theme: themeName,
       });

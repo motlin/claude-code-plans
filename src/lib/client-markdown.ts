@@ -6,6 +6,7 @@ import footnote from "markdown-it-footnote";
 import { requestLanguage } from "../hooks/use-shiki";
 import { COPY_ICON_SVG } from "./icon-paths";
 import { mdFileHref, resolveRelativeMdHref } from "./md-links";
+import { SHIKI_TOKENIZE_OPTIONS } from "./shiki-tokenize-options";
 
 interface MarkdownRenderOptions {
   typographer?: boolean;
@@ -157,6 +158,7 @@ function getHighlightedMarkdownIt(
         let trimmed = code;
         if (trimmed.endsWith("\n")) trimmed = trimmed.slice(0, -1);
         return highlighter.codeToHtml(trimmed, {
+          ...SHIKI_TOKENIZE_OPTIONS,
           lang: language,
           themes: {
             light: "claude-light",

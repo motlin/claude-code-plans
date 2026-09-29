@@ -1,5 +1,5 @@
 import type { DiffAST } from "@git-diff-view/core";
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { isShikiLanguageSupported, requestLanguage } from "../src/hooks/use-shiki";
 import { EXTENSION_TO_LANGUAGE } from "../src/lib/diff-utils";
 import { resolveDiffLanguage, shikiDiffHighlighter } from "../src/lib/diff-highlighter";
@@ -90,5 +90,27 @@ describe("Shiki diff highlighter", () => {
         },
       ],
     });
+  });
+  it("tokenizes completely even when a busy CPU starves the tokenizer's wall clock", async () => {
+    await requestLanguage("typescript");
+    let now = 0;
+    const clock = vi.spyOn(Date, "now").mockImplementation(() => (now += 1000));
+    try {
+      const ast = shikiDiffHighlighter.getAST(
+        "const starved = answer;",
+        "/tmp/test/starved.ts",
+        "typescript",
+        "dark",
+      );
+      expect(summarizeStyles(ast)).toStrictEqual([
+        {
+          lineNumber: 1,
+          value: "const starved = answer;",
+          styles: ["color:#F97583", "color:#79B8FF", "color:#F97583", "color:#E1E4E8"],
+        },
+      ]);
+    } finally {
+      clock.mockRestore();
+    }
   });
 });
