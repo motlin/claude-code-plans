@@ -331,7 +331,7 @@ export const SHORTCUTS = {
     group: "composer",
     bindings: cmdOrCtrl("u"),
     ownerSlug: "composer",
-    enabled: false,
+    enabled: true,
   },
   fork_with_prompt: {
     description: "Fork with this prompt",

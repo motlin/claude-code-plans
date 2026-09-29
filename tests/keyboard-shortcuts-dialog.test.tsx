@@ -149,6 +149,7 @@ describe("KeyboardShortcutsDialog", () => {
         "Open model menu",
         "Open effort selector",
         "Select menu item",
+        "Add files or photos",
         "Fork with this prompt",
       ],
     });

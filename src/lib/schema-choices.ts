@@ -877,6 +877,8 @@ const contextAttachmentKindLabels = {
   file: "File",
   selection: "Selection",
   terminal: "Terminal output",
+  image: "Image",
+  "pasted-text": "Pasted text",
 } satisfies Record<z.infer<typeof ContextAttachmentKindSchema>, string>;
 
 /** Sidebar row drag release outcomes (src/lib/pinned-sessions.ts). */

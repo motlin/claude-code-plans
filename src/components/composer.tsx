@@ -1,8 +1,10 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import {
+  ClipboardPaste,
   CornerDownLeft,
   Ellipsis,
   FileText,
+  Image as ImageIcon,
   MessageSquare,
   Square,
   SquareTerminal,
@@ -16,12 +18,15 @@ import type { LiveLaunchControls } from "../hooks/use-live-launch-options";
 import { useShortcut, useShortcutKeys } from "../hooks/use-shortcut";
 import type { ComposerState } from "../lib/composer-state";
 import { type QueuedPrompt, queuedStatusText } from "../lib/composer-queue";
+import { uploadAttachment } from "../lib/api/attachments";
 import {
   appendAttachment,
+  attachContext,
   type ContextChip,
   composePrompt,
   contextChipLabel,
   formatContextAttachment,
+  isLongPaste,
   registerComposer,
   removeContextChip,
   takeContextChips,
@@ -81,11 +86,43 @@ const CONTEXT_CHIP_ICON = {
   file: FileText,
   selection: TextQuote,
   terminal: SquareTerminal,
+  image: ImageIcon,
+  "pasted-text": ClipboardPaste,
 } satisfies Record<ContextChip["kind"], unknown>;
 
+function removeChip(sessionId: string, chip: ContextChip): void {
+  if (chip.previewUrl !== undefined && typeof URL.revokeObjectURL === "function") {
+    URL.revokeObjectURL(chip.previewUrl);
+  }
+  removeContextChip(sessionId, chip.id);
+}
+
+/** An attached image as a thumbnail tile with its remove button in the corner. */
+function ImageChip({ sessionId, chip }: { sessionId: string; chip: ContextChip }) {
+  const label = contextChipLabel(chip);
+  return (
+    <li
+      data-chip-label={label}
+      title={chip.path}
+      className="relative size-12 shrink-0 overflow-hidden rounded-r6 border border-border bg-surface-3"
+    >
+      <img src={chip.previewUrl} alt={label} className="size-full object-cover" />
+      <button
+        type="button"
+        aria-label={`Remove ${label}`}
+        onClick={() => removeChip(sessionId, chip)}
+        className="absolute end-0.5 top-0.5 flex size-4 cursor-pointer items-center justify-center rounded-full bg-surface-3/90 text-secondary hover:text-primary"
+      >
+        <X aria-hidden="true" className="size-2.5" />
+      </button>
+    </li>
+  );
+}
+
 /**
- * The strip above the card: ⇧⌘L context chips in attach order, then Changes
- * pane comments, all waiting for the next prompt and each removable.
+ * The strip above the card: ⇧⌘L context chips, uploaded images and long
+ * pastes in attach order, then Changes pane comments, all waiting for the
+ * next prompt and each removable.
  */
 function AttachedContextChips({
   sessionId,
@@ -97,18 +134,26 @@ function AttachedContextChips({
   comments: readonly QueuedDiffComment[];
 }) {
   return (
-    <ul aria-label="Attached context" className="mb-1.5 flex flex-wrap gap-1">
+    <ul aria-label="Attached context" className="mb-1.5 flex flex-wrap items-end gap-1">
       {context.map((chip) => {
+        if (chip.kind === "image" && chip.previewUrl !== undefined) {
+          return <ImageChip key={chip.id} sessionId={sessionId} chip={chip} />;
+        }
         const label = contextChipLabel(chip);
         const Icon = CONTEXT_CHIP_ICON[chip.kind];
         return (
-          <li key={chip.id} title={formatContextAttachment(chip)} className={CHIP_CLASS}>
+          <li
+            key={chip.id}
+            data-chip-label={label}
+            title={formatContextAttachment(chip)}
+            className={CHIP_CLASS}
+          >
             <Icon aria-hidden="true" className="size-3 shrink-0" />
             <span className="min-w-0 truncate text-primary">{label}</span>
             <button
               type="button"
               aria-label={`Remove ${label}`}
-              onClick={() => removeContextChip(sessionId, chip.id)}
+              onClick={() => removeChip(sessionId, chip)}
               className={CHIP_REMOVE_CLASS}
             >
               <X aria-hidden="true" className="size-3" />
@@ -119,7 +164,7 @@ function AttachedContextChips({
       {comments.map((comment) => {
         const label = chipLabel(comment);
         return (
-          <li key={comment.id} title={comment.text} className={CHIP_CLASS}>
+          <li key={comment.id} data-chip-label={label} title={comment.text} className={CHIP_CLASS}>
             <MessageSquare aria-hidden="true" className="size-3 shrink-0" />
             <span className="shrink-0 text-primary">{label}</span>
             <span className="min-w-0 truncate">{comment.text}</span>
@@ -283,6 +328,11 @@ export function Composer({
   useShortcut("open_model_menu", () => setOpenMenu("model"), menuShortcutOptions);
   useShortcut("open_effort_selector", () => setOpenMenu("effort"), menuShortcutOptions);
   const forkKeys = useShortcutKeys("fork_with_prompt").keys;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachError, setAttachError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const openFilePicker = () => fileInputRef.current?.click();
+  useShortcut("add_files", openFilePicker, { disabled });
   const chinLaunchOptions = live?.options ?? launchOptions;
 
   useEffect(() => {
@@ -415,6 +465,47 @@ export function Composer({
     textareaRef.current?.focus();
   }
 
+  function attachFiles(files: readonly File[]) {
+    setAttachError(null);
+    for (const file of files) {
+      uploadAttachment(file).then(
+        (saved) => {
+          const image = saved.mediaType.startsWith("image/");
+          const previewUrl =
+            image && typeof URL.createObjectURL === "function"
+              ? URL.createObjectURL(file)
+              : undefined;
+          attachContext(draftKey, {
+            kind: image ? "image" : "file",
+            path: saved.path,
+            name: saved.name,
+            ...(previewUrl === undefined ? {} : { previewUrl }),
+          });
+        },
+        (error: unknown) => {
+          const reason = error instanceof Error ? error.message : String(error);
+          setAttachError(`Couldn’t attach ${file.name}: ${reason}`);
+        },
+      );
+    }
+  }
+
+  function handlePaste(e: React.ClipboardEvent) {
+    const files = Array.from(e.clipboardData.files);
+    if (files.length > 0) {
+      e.preventDefault();
+      attachFiles(files);
+      return;
+    }
+    const text = e.clipboardData.getData("text/plain");
+    if (isLongPaste(text)) {
+      e.preventDefault();
+      attachContext(draftKey, { kind: "pasted-text", text });
+    }
+  }
+
+  const hasFiles = (e: React.DragEvent) => Array.from(e.dataTransfer.types).includes("Files");
+
   function insertSlash() {
     setPrompt(prompt.startsWith("/") ? prompt : `/${prompt}`);
     textareaRef.current?.focus();
@@ -462,6 +553,11 @@ export function Composer({
           if (discardId !== null) queue?.remove(discardId);
         }}
       />
+      {attachError !== null && (
+        <p role="alert" className="mb-1.5 ps-1 text-footnote text-danger-000">
+          {attachError}
+        </p>
+      )}
       {(contextChips.length > 0 || queuedComments.length > 0) && (
         <AttachedContextChips
           sessionId={draftKey}
@@ -469,7 +565,43 @@ export function Composer({
           comments={queuedComments}
         />
       )}
-      <div className={CARD_CLASS} onClick={() => textareaRef.current?.focus()}>
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="image/*,text/*"
+        aria-label="Add files or photos"
+        tabIndex={-1}
+        className="hidden"
+        onChange={(e) => {
+          attachFiles(Array.from(e.target.files ?? []));
+          e.target.value = "";
+        }}
+      />
+      <div
+        data-composer-card
+        className={CARD_CLASS}
+        onClick={() => textareaRef.current?.focus()}
+        onDragOver={(e) => {
+          if (disabled || !hasFiles(e)) return;
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false);
+        }}
+        onDrop={(e) => {
+          if (disabled || !hasFiles(e)) return;
+          e.preventDefault();
+          setDragging(false);
+          attachFiles(Array.from(e.dataTransfer.files));
+        }}
+      >
+        {dragging && (
+          <div className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center rounded-card border border-dashed border-accent-100 bg-surface-3/90 text-footnote text-secondary">
+            Drop files here
+          </div>
+        )}
         <div className="relative pr-[30px]">
           {slashOpen && query !== null && (
             <SlashCommandMenu
@@ -512,6 +644,7 @@ export function Composer({
             }}
             onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             aria-controls={slashOpen ? slashMenuId : mentionOpen ? mentionMenuId : undefined}
             aria-activedescendant={
               slashOpen
@@ -575,6 +708,7 @@ export function Composer({
           <ComposerChin
             state={chin}
             onInsertSlash={insertSlash}
+            onAddFiles={openFilePicker}
             launch={{
               launchOptions: chinLaunchOptions,
               onLaunchOptionsChange:

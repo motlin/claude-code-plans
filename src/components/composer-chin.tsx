@@ -22,6 +22,7 @@ import {
   modeTriggerLabel,
   modelLabel,
 } from "../lib/launch-options";
+import { useShortcutKeys } from "../hooks/use-shortcut";
 import { effortLevelLabels } from "../lib/schema-choices";
 import {
   CHIN_BUTTON_CLASS,
@@ -158,13 +159,17 @@ function effortText(effort: string): string {
 export function ComposerChin({
   state,
   onInsertSlash,
+  onAddFiles,
   launch,
 }: {
   state: ComposerState;
   onInsertSlash: () => void;
+  /** ⌘U "Add files or photos": opens the composer's file picker. */
+  onAddFiles: () => void;
   launch: ChinLaunchControls;
 }) {
   const { launchOptions, onLaunchOptionsChange, openMenu, onOpenMenuChange } = launch;
+  const addFilesKeys = useShortcutKeys("add_files").keys;
   // Keeps the picked level while the confirm fades out, so its copy doesn't flicker.
   const [effortConfirm, setEffortConfirm] = useState<{ effort: EffortLevel; open: boolean }>({
     effort: "high",
@@ -199,6 +204,9 @@ export function ComposerChin({
             <Plus className="size-3.5" aria-hidden="true" />
           </MenuTrigger>
           <MenuContent side="top">
+            <MenuItem onSelect={onAddFiles} shortcut={addFilesKeys}>
+              Add files or photos
+            </MenuItem>
             <MenuItem onSelect={onInsertSlash}>Slash commands</MenuItem>
           </MenuContent>
         </Menu>
