@@ -6,6 +6,7 @@ import type { Section } from "./types";
 import { useActiveSection, useCollapsedGroups, useExpandedGroups } from "./hooks";
 import { useVisibleNavItems } from "./navigation";
 import { SearchInput } from "./primitives";
+import { NavScroll } from "./nav-scroll";
 import { SidebarToggleButton } from "./sidebar-toggle";
 import {
   ActiveSubList,
@@ -108,52 +109,50 @@ export function Sidebar({
       aria-label="Sidebar"
       className={
         mobile
-          ? "relative flex h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border bg-surface-0"
-          : "relative hidden h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border bg-surface-0 md:flex"
+          ? "group/sidebar relative flex h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border bg-surface-0"
+          : "group/sidebar relative hidden h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border bg-surface-0 md:flex"
       }
     >
-      <div className="flex items-center justify-between px-4 pt-3 pb-3">
-        <Link
-          to="/"
-          className="flex items-center gap-2.5 text-base font-bold text-primary no-underline"
-        >
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#C87B3A]">
-            <svg viewBox="0 0 32 32" className="h-4 w-4">
-              <path
-                d="M16 5L17.5 13.5L26 16L17.5 18.5L16 27L14.5 18.5L6 16L14.5 13.5Z"
-                fill="white"
-                opacity="0.95"
-              />
-            </svg>
-          </span>
-          Claude Code Browser
-        </Link>
-        {onToggle ? (
-          <SidebarToggleButton onClick={onToggle} collapsed={false} />
-        ) : (
-          <SidebarToggleButton />
-        )}
+      <div data-testid="sidebar-titlebar" className="flex h-11 shrink-0 items-center px-2">
+        <div className="flex w-8 shrink-0 justify-center">
+          <div className="flex opacity-70 transition-opacity duration-[120ms] ease-[cubic-bezier(.32,.72,0,1)] group-hover/sidebar:opacity-100 has-[:focus-visible]:opacity-100 pointer-coarse:opacity-100">
+            <SidebarToggleButton
+              {...(onToggle ? { onClick: onToggle, collapsed: false } : {})}
+              className="flex h-6 w-6 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover [&_svg]:h-4 [&_svg]:w-4"
+            />
+          </div>
+        </div>
+        <div className="ml-1.5 flex min-w-0 flex-col items-start">
+          <Link
+            to="/"
+            className="font-voice text-[20px] leading-none font-medium whitespace-nowrap text-primary no-underline"
+          >
+            Claude Code Browser
+          </Link>
+        </div>
       </div>
 
       <SearchInput />
 
-      <div className="flex-1 overflow-y-auto px-2">
-        {navigationItems.map((item) => {
-          const isActive =
-            item.to === "/settings" ? currentPath === "/settings" : currentPath.startsWith(item.to);
-          const Icon = item.icon;
-          const isExpanded = !collapsedSections.has(item.section);
-          const badge =
-            item.section === "active"
-              ? { count: activeCount, title: `${activeCount} active` }
-              : item.section === "approvals"
-                ? { count: approvalsCount, title: `${approvalsCount} awaiting approval` }
-                : item.section === "notifications"
-                  ? { count: unreadCount, title: `${unreadCount} unread` }
-                  : null;
-          return (
-            <div key={item.to}>
-              <div className="flex items-center">
+      <div className="flex min-h-0 flex-1 flex-col px-2">
+        <div className="shrink-0">
+          {navigationItems.map((item) => {
+            const isActive =
+              item.to === "/settings"
+                ? currentPath === "/settings"
+                : currentPath.startsWith(item.to);
+            const Icon = item.icon;
+            const isExpanded = !collapsedSections.has(item.section);
+            const badge =
+              item.section === "active"
+                ? { count: activeCount, title: `${activeCount} active` }
+                : item.section === "approvals"
+                  ? { count: approvalsCount, title: `${approvalsCount} awaiting approval` }
+                  : item.section === "notifications"
+                    ? { count: unreadCount, title: `${unreadCount} unread` }
+                    : null;
+            return (
+              <div key={item.to} className="flex items-center">
                 <button
                   type="button"
                   onClick={() => toggleSection(item.section)}
@@ -191,45 +190,45 @@ export function Sidebar({
                   )}
                 </Link>
               </div>
-              {isExpanded &&
-                item.section !== "starred" &&
-                item.section !== "herdr" &&
-                item.section !== "approvals" &&
-                item.section !== "notifications" &&
-                item.section !== "settings" &&
-                item.section !== "config" &&
-                item.section !== "setup" &&
-                (item.section === "active" ? (
-                  <ActiveSubList />
-                ) : item.section === "projects" ? (
-                  <ProjectsSubList
-                    activeItemId={activeItemId}
-                    expandedProjects={expandedProjects}
-                    onToggleProject={toggleProject}
-                    onExpandProject={expandProject}
-                  />
-                ) : item.section === "plans" ? (
-                  <PlansSubList activeItemId={activeItemId} />
-                ) : item.section === "memories" ? (
-                  <MemoriesSubList
-                    activeItemId={activeItemId}
-                    collapsedGroups={collapsedMemoryGroups}
-                    onToggleGroup={toggleMemoryGroup}
-                    onRevealGroup={revealMemoryGroup}
-                  />
-                ) : item.section === "plugins" ? (
-                  <PluginsSubList />
-                ) : item.section === "sessions" ? (
-                  <SessionsSubList
-                    activeItemId={activeItemId}
-                    collapsedGroups={collapsedSessionGroups}
-                    onToggleGroup={toggleSessionGroup}
-                    onRevealGroup={revealSessionGroup}
-                  />
-                ) : null)}
-            </div>
-          );
-        })}
+            );
+          })}
+          <div className="h-1 shrink-0" />
+        </div>
+        <NavScroll>
+          {navigationItems.map((item) => {
+            if (collapsedSections.has(item.section)) return null;
+            const subList =
+              item.section === "active" ? (
+                <ActiveSubList />
+              ) : item.section === "projects" ? (
+                <ProjectsSubList
+                  activeItemId={activeItemId}
+                  expandedProjects={expandedProjects}
+                  onToggleProject={toggleProject}
+                  onExpandProject={expandProject}
+                />
+              ) : item.section === "plans" ? (
+                <PlansSubList activeItemId={activeItemId} />
+              ) : item.section === "memories" ? (
+                <MemoriesSubList
+                  activeItemId={activeItemId}
+                  collapsedGroups={collapsedMemoryGroups}
+                  onToggleGroup={toggleMemoryGroup}
+                  onRevealGroup={revealMemoryGroup}
+                />
+              ) : item.section === "plugins" ? (
+                <PluginsSubList />
+              ) : item.section === "sessions" ? (
+                <SessionsSubList
+                  activeItemId={activeItemId}
+                  collapsedGroups={collapsedSessionGroups}
+                  onToggleGroup={toggleSessionGroup}
+                  onRevealGroup={revealSessionGroup}
+                />
+              ) : null;
+            return subList && <div key={item.to}>{subList}</div>;
+          })}
+        </NavScroll>
       </div>
     </nav>
   );

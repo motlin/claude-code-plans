@@ -1,0 +1,108 @@
+// @vitest-environment jsdom
+
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+  Outlet,
+  RouterProvider,
+} from "@tanstack/react-router";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { DEFAULTS, SettingsProvider } from "../src/components/settings-provider";
+import { NavScroll } from "../src/components/sidebar/nav-scroll";
+import { Sidebar } from "../src/components/sidebar/Sidebar";
+import { applicationSettingsQueryOptions } from "../src/lib/api/application-settings";
+import { approvalsQueryOptions } from "../src/lib/api/approvals";
+import { notificationsQueryOptions } from "../src/lib/api/notifications";
+import { activeSessionsQueryOptions } from "../src/lib/api/sessions";
+import { installLocalStorage } from "./fake-storage";
+
+function seedQueryClient(): QueryClient {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false },
+    },
+  });
+  queryClient.setQueryData(approvalsQueryOptions().queryKey, { approvals: [] });
+  queryClient.setQueryData(notificationsQueryOptions().queryKey, { notifications: [] });
+  queryClient.setQueryData(
+    activeSessionsQueryOptions(DEFAULTS.activeTimeoutSec * 1000).queryKey,
+    [],
+  );
+  queryClient.setQueryData(applicationSettingsQueryOptions.queryKey, {
+    herdrWritesEnabled: false,
+    showHerdrSection: false,
+    showTmuxSection: false,
+    ignoredDirs: ["node_modules"],
+  });
+  return queryClient;
+}
+
+async function renderSidebar() {
+  const queryClient = seedQueryClient();
+  const rootRoute = createRootRoute({
+    component: () => (
+      <QueryClientProvider client={queryClient}>
+        <SettingsProvider>
+          <Sidebar collapsed={false} />
+          <Outlet />
+        </SettingsProvider>
+      </QueryClientProvider>
+    ),
+  });
+  const router = createRouter({
+    routeTree: rootRoute,
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
+  await router.load();
+  render(<RouterProvider router={router} />);
+}
+
+afterEach(cleanup);
+
+beforeEach(() => {
+  installLocalStorage();
+});
+
+describe("sidebar header", () => {
+  it("puts the Hide sidebar toggle first, followed by the wordmark linking home", async () => {
+    await renderSidebar();
+
+    const toggle = await waitFor(() => screen.getByRole("button", { name: "Hide sidebar" }));
+    const header = screen.getByTestId("sidebar-titlebar");
+    const wordmark = screen.getByRole("link", { name: "Claude Code Browser" });
+
+    expect(header.firstElementChild?.contains(toggle)).toBe(true);
+    expect(header.children[1]?.contains(wordmark)).toBe(true);
+    expect({ text: wordmark.textContent, href: wordmark.getAttribute("href") }).toEqual({
+      text: "Claude Code Browser",
+      href: "/",
+    });
+  });
+});
+
+describe("nav scroll", () => {
+  it("sets data-scrolled only while scrolled away from the top", () => {
+    render(
+      <NavScroll>
+        <div>content</div>
+      </NavScroll>,
+    );
+    const scroller = screen.getByTestId("nav-scroll");
+    expect(scroller.hasAttribute("data-scrolled")).toBe(false);
+
+    act(() => {
+      scroller.scrollTop = 40;
+      fireEvent.scroll(scroller);
+    });
+    expect(scroller.hasAttribute("data-scrolled")).toBe(true);
+
+    act(() => {
+      scroller.scrollTop = 0;
+      fireEvent.scroll(scroller);
+    });
+    expect(scroller.hasAttribute("data-scrolled")).toBe(false);
+  });
+});
