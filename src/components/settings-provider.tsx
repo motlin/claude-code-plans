@@ -72,6 +72,9 @@ export interface Settings {
   diffWordWrap: boolean;
   diffWordDiff: boolean;
   diffHideWhitespace: boolean;
+
+  // The Files pane's ⋯ menu.
+  filesHideIgnored: boolean;
 }
 
 export const DEFAULTS: Settings = {
@@ -117,6 +120,8 @@ export const DEFAULTS: Settings = {
   diffWordWrap: true,
   diffWordDiff: true,
   diffHideWhitespace: false,
+
+  filesHideIgnored: false,
 };
 
 const STORAGE_KEYS: Record<keyof Settings, string> = {
@@ -149,6 +154,7 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
   diffWordWrap: "ccp-diff-word-wrap",
   diffWordDiff: "ccp-diff-word-diff",
   diffHideWhitespace: "ccp-diff-hide-whitespace",
+  filesHideIgnored: "ccp-files-hide-ignored",
 };
 
 const LINK_CATEGORY_RULES_SCHEMA = z.array(

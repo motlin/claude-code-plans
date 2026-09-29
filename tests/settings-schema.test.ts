@@ -325,6 +325,10 @@ describe("Changes diff preference settings", () => {
     });
   });
 
+  it("shows gitignored files in the Files pane by default like claude.ai/code", () => {
+    expect(DEFAULTS.filesHideIgnored).toBe(false);
+  });
+
   it("accepts only the unified and split diff styles", () => {
     expect(
       ["unified", "split", "side-by-side", ""].map(

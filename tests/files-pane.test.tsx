@@ -311,6 +311,36 @@ describe("Files pane header", () => {
     }).toStrictEqual({ prevented: true, toggle: "Show file tree" });
   });
 
+  it("Files settings offers Hide ignored files, off by default and persisted", async () => {
+    registerFilesPane();
+    renderSession();
+    press(CMD_SHIFT_F);
+
+    fireEvent.click(within(filesPane()).getByRole("button", { name: "Files settings" }));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    const before = [
+      ...screen.getByRole("menu").querySelectorAll<HTMLElement>("[role^=menuitem]"),
+    ].map((item) => [item.textContent ?? "", item.getAttribute("aria-checked")]);
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Hide ignored files" }));
+
+    expect({
+      before,
+      stored: localStorage.getItem("ccp-files-hide-ignored"),
+      checked: screen
+        .getByRole("menuitemcheckbox", { name: "Hide ignored files" })
+        .getAttribute("aria-checked"),
+    }).toStrictEqual({
+      before: [
+        ["Show file tree⌃Control⇧ShiftY", "true"],
+        ["Hide ignored files", "false"],
+      ],
+      stored: "true",
+      checked: "true",
+    });
+  });
+
   it("Search files reveals a hidden tree and focuses the filter", async () => {
     registerFilesPane();
     renderSession();

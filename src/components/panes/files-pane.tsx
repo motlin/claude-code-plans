@@ -8,6 +8,7 @@ import { formatResourceCount, resourceCoverageNote } from "../../lib/session-res
 import type { SessionFiles } from "../../lib/session-files";
 import { pillStyles } from "../detail-top-bar";
 import { JumpTargetProvider, type JumpTargetWindow } from "../jump-target-context";
+import { useSettings } from "../settings-provider";
 import { Menu, MenuCheckboxItem, MenuContent, MenuTrigger } from "../ui/menu";
 import { Tooltip } from "../ui/tooltip";
 import { type PaneChrome, registerPane } from "./pane-registry";
@@ -83,6 +84,7 @@ function FilesSettingsMenu({
   onTreeShownChange: (shown: boolean) => void;
 }) {
   const treeKeys = useShortcutKeys("toggle_changes_file_list");
+  const { settings, setSetting } = useSettings();
   return (
     <Menu>
       <MenuTrigger aria-label="Files settings" className={GHOST_ICON_BUTTON}>
@@ -95,6 +97,12 @@ function FilesSettingsMenu({
           shortcut={treeKeys.keys}
         >
           Show file tree
+        </MenuCheckboxItem>
+        <MenuCheckboxItem
+          checked={settings.filesHideIgnored}
+          onCheckedChange={(checked) => setSetting("filesHideIgnored", checked)}
+        >
+          Hide ignored files
         </MenuCheckboxItem>
       </MenuContent>
     </Menu>
