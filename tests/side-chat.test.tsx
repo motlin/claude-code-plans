@@ -373,7 +373,10 @@ describe("handleBtwPrompt", () => {
   it("opens the side chat for a bare /btw", () => {
     const toast = vi.fn();
     expect(handleBtwPrompt("/btw", { sessionId: SESSION_ID, messageCount: 3, toast })).toBe(true);
-    expect([getSideChat(SESSION_ID), toast.mock.calls]).toEqual([{ open: true, entries: [] }, []]);
+    expect([getSideChat(SESSION_ID), toast.mock.calls]).toEqual([
+      { open: true, mode: "floating", entries: [] },
+      [],
+    ]);
   });
 
   it("opens the side chat and asks the question", async () => {

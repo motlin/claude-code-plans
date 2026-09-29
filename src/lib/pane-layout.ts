@@ -20,6 +20,7 @@ const PANE_KINDS = [
   "plan",
   "artifacts",
   "subagents",
+  "side-chat",
 ] as const;
 
 export const PaneKindSchema = z.enum(PANE_KINDS);

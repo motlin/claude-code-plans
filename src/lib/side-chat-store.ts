@@ -18,14 +18,21 @@ export interface SideChatEntry {
   branching?: boolean;
 }
 
+/**
+ * Where an open side chat shows, like upstream: the floating card, a docked
+ * `side-chat` tile in the pane host, or its own browser window.
+ */
+export type SideChatMode = "floating" | "docked" | "popout";
+
 export interface SideChatSession {
   open: boolean;
+  mode: SideChatMode;
   entries: readonly SideChatEntry[];
 }
 
 const NO_ANSWER_MESSAGE = "No answer yet. Send a message in the main chat first, then ask again.";
 
-const EMPTY_SESSION: SideChatSession = { open: false, entries: [] };
+const EMPTY_SESSION: SideChatSession = { open: false, mode: "floating", entries: [] };
 
 /**
  * Per-session side chat threads, in memory only like upstream's
@@ -83,6 +90,11 @@ export function closeSideChat(sessionId: string): void {
 
 export function toggleSideChat(sessionId: string): void {
   update(sessionId, (session) => ({ ...session, open: !session.open }));
+}
+
+/** Moves the side chat between its floating, docked and pop-out variants, keeping its thread. */
+export function setSideChatMode(sessionId: string, mode: SideChatMode): void {
+  update(sessionId, (session) => (session.mode === mode ? session : { ...session, mode }));
 }
 
 export function clearSideChat(sessionId: string): void {

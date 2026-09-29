@@ -640,6 +640,7 @@ const paneKindLabels = {
   plan: "Plan",
   artifacts: "Artifacts",
   subagents: "Subagents",
+  "side-chat": "Side chat",
 } satisfies Record<PaneKind, string>;
 
 const tileIdLabels = {
