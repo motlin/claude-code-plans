@@ -256,15 +256,15 @@ describe("ChangesPaneView file list", () => {
 
   it("shows the Changed files tree and commit list, marking the selected file active", () => {
     Element.prototype.scrollIntoView = vi.fn();
-    const onSelectCommit = vi.fn();
+    const onSelectScope = vi.fn();
     render(
       <ChangesPaneView
         diff={diffOf([GREET_FILE, LOGO_FILE])}
         scopes={{ ...SCOPES, commits: [COMMIT], totalCommits: 1 }}
         controls={null}
         onRefresh={() => {}}
-        selectedCommitSha={null}
-        onSelectCommit={onSelectCommit}
+        scope="branch"
+        onSelectScope={onSelectScope}
       />,
     );
     expect(screen.queryByRole("tree", { name: "Changed files" })).toBeNull();
@@ -277,7 +277,7 @@ describe("ChangesPaneView file list", () => {
       rows: screen
         .getAllByRole("treeitem")
         .map((row) => [row.textContent, row.getAttribute("aria-current")]),
-      selectedCommits: onSelectCommit.mock.calls,
+      selectedScopes: onSelectScope.mock.calls,
     }).toEqual({
       rows: [
         ["assets", null],
@@ -285,7 +285,7 @@ describe("ChangesPaneView file list", () => {
         ["src", null],
         ["greet.ts+2−1", "true"],
       ],
-      selectedCommits: [["07bc05d1111111111111111111111111111111111"]],
+      selectedScopes: [["commit:07bc05d1111111111111111111111111111111111"]],
     });
   });
 });

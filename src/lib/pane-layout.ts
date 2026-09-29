@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { parseDiffScope } from "./api/session-diff";
+
 /**
  * Pure layout engine for the session tiling pane host, modelled on
  * claude.ai/code's tile tree. The root is always a row stack holding the chat
@@ -70,26 +72,39 @@ const StackNodeSchema: z.ZodType<StackNode> = z.strictObject({
 
 const LayoutNodeSchema: z.ZodType<LayoutNode> = z.union([TileNodeSchema, StackNodeSchema]);
 
-export const PaneLayoutStateSchema = z
-  .strictObject({
-    root: StackNodeSchema,
-    expanded: PaneKindSchema.nullable(),
-    focused: TileIdSchema,
-  })
-  .superRefine((state, ctx) => {
-    const ids = tileIds(state.root);
-    if (new Set(ids).size !== ids.length)
-      ctx.addIssue({ code: "custom", message: "duplicate tile" });
-    if (!ids.includes("chat")) ctx.addIssue({ code: "custom", message: "missing chat tile" });
-    if (state.expanded !== null && !ids.includes(state.expanded)) {
-      ctx.addIssue({ code: "custom", message: "expanded pane is not open" });
-    }
-    if (!ids.includes(state.focused)) {
-      ctx.addIssue({ code: "custom", message: "focused tile is not open" });
-    }
-  });
+const PaneLayoutShape = {
+  root: StackNodeSchema,
+  expanded: PaneKindSchema.nullable(),
+  focused: TileIdSchema,
+};
 
-const PaneLayoutStoreSchema = z.record(z.string(), PaneLayoutStateSchema);
+function checkLayout(state: PaneLayoutState, ctx: z.RefinementCtx): void {
+  const ids = tileIds(state.root);
+  if (new Set(ids).size !== ids.length) ctx.addIssue({ code: "custom", message: "duplicate tile" });
+  if (!ids.includes("chat")) ctx.addIssue({ code: "custom", message: "missing chat tile" });
+  if (state.expanded !== null && !ids.includes(state.expanded)) {
+    ctx.addIssue({ code: "custom", message: "expanded pane is not open" });
+  }
+  if (!ids.includes(state.focused)) {
+    ctx.addIssue({ code: "custom", message: "focused tile is not open" });
+  }
+}
+
+export const PaneLayoutStateSchema = z.strictObject(PaneLayoutShape).superRefine(checkLayout);
+
+/** The Changes pane scope, a formatted `SessionDiffScope` such as `branch` or `commit:<sha>`. */
+const ChangesScopeSchema = z.string().refine((value) => parseDiffScope(value) !== null);
+
+/** One session's stored entry: its layout plus the Changes pane scope. */
+const PaneLayoutEntrySchema = z
+  .strictObject({ ...PaneLayoutShape, changesScope: ChangesScopeSchema.optional() })
+  .superRefine(checkLayout);
+
+type PaneLayoutEntry = z.infer<typeof PaneLayoutEntrySchema>;
+
+const DEFAULT_CHANGES_SCOPE = "branch";
+
+const PaneLayoutStoreSchema = z.record(z.string(), PaneLayoutEntrySchema);
 
 export const PANE_LAYOUT_STORAGE_KEY = "ccb.paneLayout.v1";
 
@@ -348,7 +363,7 @@ function browserStorage(): Storage | null {
   }
 }
 
-function readStore(storage: Storage): Record<string, PaneLayoutState> | undefined {
+function readStore(storage: Storage): Record<string, PaneLayoutEntry> | undefined {
   const raw = storage.getItem(PANE_LAYOUT_STORAGE_KEY);
   if (raw === null) return {};
   try {
@@ -359,12 +374,26 @@ function readStore(storage: Storage): Record<string, PaneLayoutState> | undefine
   }
 }
 
+function writeEntry(
+  sessionId: string,
+  storage: Storage,
+  update: (entry: PaneLayoutEntry | undefined) => PaneLayoutEntry,
+): void {
+  const store = readStore(storage) ?? {};
+  storage.setItem(
+    PANE_LAYOUT_STORAGE_KEY,
+    JSON.stringify({ ...store, [sessionId]: update(store[sessionId]) }),
+  );
+}
+
 export function loadPaneLayout(
   sessionId: string,
   storage: Storage | null = browserStorage(),
 ): PaneLayoutState {
   try {
-    return (storage && readStore(storage)?.[sessionId]) ?? defaultPaneLayout();
+    const entry = storage ? readStore(storage)?.[sessionId] : undefined;
+    if (entry === undefined) return defaultPaneLayout();
+    return { root: entry.root, expanded: entry.expanded, focused: entry.focused };
   } catch {
     // localStorage can be denied even when window exists; layout persistence is best-effort.
     return defaultPaneLayout();
@@ -378,9 +407,37 @@ export function savePaneLayout(
 ): void {
   if (!storage) return;
   try {
-    const store = readStore(storage) ?? {};
-    storage.setItem(PANE_LAYOUT_STORAGE_KEY, JSON.stringify({ ...store, [sessionId]: state }));
+    writeEntry(sessionId, storage, (entry) =>
+      entry?.changesScope === undefined ? state : { ...state, changesScope: entry.changesScope },
+    );
   } catch {
     // localStorage can be denied even when window exists; layout persistence is best-effort.
+  }
+}
+
+export function loadChangesScope(
+  sessionId: string,
+  storage: Storage | null = browserStorage(),
+): string {
+  try {
+    return (storage && readStore(storage)?.[sessionId]?.changesScope) ?? DEFAULT_CHANGES_SCOPE;
+  } catch {
+    return DEFAULT_CHANGES_SCOPE;
+  }
+}
+
+export function saveChangesScope(
+  sessionId: string,
+  scope: string,
+  storage: Storage | null = browserStorage(),
+): void {
+  if (!storage) return;
+  try {
+    writeEntry(sessionId, storage, (entry) => ({
+      ...(entry ?? defaultPaneLayout()),
+      changesScope: scope,
+    }));
+  } catch {
+    // localStorage can be denied even when window exists; scope persistence is best-effort.
   }
 }

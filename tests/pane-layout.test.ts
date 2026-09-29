@@ -11,11 +11,13 @@ import {
   defaultPaneLayout,
   expandPane,
   focusPane,
+  loadChangesScope,
   loadPaneLayout,
   minTileSize,
   movePane,
   openPane,
   resizeDivider,
+  saveChangesScope,
   savePaneLayout,
 } from "../src/lib/pane-layout";
 
@@ -424,5 +426,56 @@ describe("persistence", () => {
   it("is a no-op without storage", () => {
     expect(loadPaneLayout("s", null)).toEqual(defaultPaneLayout());
     expect(() => savePaneLayout("s", ONE_PANE, null)).not.toThrow();
+  });
+});
+
+describe("changes scope persistence", () => {
+  it("keeps the Changes scope per session beside the layout, surviving layout saves", () => {
+    const storage = new MemoryStorage();
+    savePaneLayout("session-a", ONE_PANE, storage);
+    saveChangesScope("session-a", "commit:07bc05d", storage);
+    saveChangesScope("session-b", "uncommitted", storage);
+    savePaneLayout("session-a", TWO_PANES, storage);
+
+    expect({
+      scopes: [loadChangesScope("session-a", storage), loadChangesScope("session-b", storage)],
+      layouts: [loadPaneLayout("session-a", storage), loadPaneLayout("session-b", storage)],
+      stored: JSON.parse(storage.getItem(PANE_LAYOUT_STORAGE_KEY) ?? "null"),
+    }).toEqual({
+      scopes: ["commit:07bc05d", "uncommitted"],
+      layouts: [TWO_PANES, defaultPaneLayout()],
+      stored: {
+        "session-a": { ...TWO_PANES, changesScope: "commit:07bc05d" },
+        "session-b": { ...defaultPaneLayout(), changesScope: "uncommitted" },
+      },
+    });
+  });
+
+  it("defaults to the branch scope", () => {
+    const storage = new MemoryStorage();
+    savePaneLayout("s", ONE_PANE, storage);
+    expect([
+      loadChangesScope("s", storage),
+      loadChangesScope("missing", storage),
+      loadChangesScope("s", null),
+      loadChangesScope("s", new ThrowingStorage()),
+    ]).toEqual(["branch", "branch", "branch", "branch"]);
+  });
+
+  it("rejects a malformed stored scope", () => {
+    const storage = new MemoryStorage();
+    storage.setItem(
+      PANE_LAYOUT_STORAGE_KEY,
+      JSON.stringify({ s: { ...ONE_PANE, changesScope: "commit:not-a-sha" } }),
+    );
+    expect([loadChangesScope("s", storage), loadPaneLayout("s", storage)]).toEqual([
+      "branch",
+      defaultPaneLayout(),
+    ]);
+  });
+
+  it("is a no-op when storage throws or is missing", () => {
+    expect(() => saveChangesScope("s", "session", new ThrowingStorage())).not.toThrow();
+    expect(() => saveChangesScope("s", "session", null)).not.toThrow();
   });
 });

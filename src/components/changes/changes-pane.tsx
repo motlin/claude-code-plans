@@ -1,7 +1,7 @@
 import { Virtualizer } from "@pierre/diffs/react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, ChevronDown, EllipsisVertical, FileDiff, List } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 import { useShortcutKeys } from "../../hooks/use-shortcut";
 import {
@@ -9,11 +9,13 @@ import {
   type SessionDiffResponse,
   type SessionDiffScopesResponse,
   formatDiffScope,
+  parseDiffScope,
   sessionDiffFileQueryOptions,
   sessionDiffQueryOptions,
   sessionDiffScopesQueryOptions,
 } from "../../lib/api/session-diff";
 import { writeClipboardText } from "../../lib/clipboard";
+import { loadChangesScope, saveChangesScope } from "../../lib/pane-layout";
 import { type PaneChrome, registerPane } from "../panes/pane-registry";
 import { usePaneHost } from "../panes/tile-host";
 import {
@@ -23,6 +25,9 @@ import {
   MenuRadioGroup,
   MenuRadioItem,
   MenuSeparator,
+  MenuSub,
+  MenuSubContent,
+  MenuSubTrigger,
   MenuTrigger,
 } from "../ui/menu";
 import { useToast } from "../toast";
@@ -51,24 +56,135 @@ export function isLargeDiff(files: readonly SessionDiffFile[]): boolean {
 
 type ScopeLabel = { kind: "range"; base: string; head: string } | { kind: "text"; text: string };
 
+type SessionDiffCommit = Extract<SessionDiffScopesResponse, { kind: "git" }>["commits"][number];
+
+const BRANCH_SCOPE = "branch";
+const NO_MESSAGE = "(no message)";
+
+function commitShaOf(scope: string): string | null {
+  const parsed = parseDiffScope(scope);
+  return parsed?.kind === "commit" ? parsed.sha : null;
+}
+
+function commitScope(sha: string): string {
+  return formatDiffScope({ kind: "commit", sha });
+}
+
+function commitMatches(commit: SessionDiffCommit, sha: string): boolean {
+  return commit.sha.startsWith(sha) || sha.startsWith(commit.sha);
+}
+
 function scopeLabelOf(
+  scope: string,
   diff: SessionDiffResponse | undefined,
   scopes: SessionDiffScopesResponse | undefined,
 ): ScopeLabel | null {
-  if (diff?.source === "session-edits" || scopes?.kind === "no-git") {
+  if (diff?.source === "session-edits" || scopes?.kind === "no-git" || scope === "session") {
     return { kind: "text", text: "Session edits" };
   }
-  if (scopes?.kind === "git") {
-    return { kind: "range", base: scopes.base, head: scopes.head ?? "working tree" };
+  if (scopes?.kind !== "git") return null;
+  if (scope === "uncommitted") return { kind: "text", text: "Uncommitted changes" };
+  const sha = commitShaOf(scope);
+  if (sha !== null) {
+    const commit = scopes.commits.find((candidate) => commitMatches(candidate, sha));
+    return { kind: "text", text: commit ? commit.subject || commit.shortSha : sha.slice(0, 7) };
   }
-  return null;
+  return { kind: "range", base: scopes.base, head: scopes.head ?? "working tree" };
 }
 
 function scopeLabelText(label: ScopeLabel): string {
   return label.kind === "range" ? `${label.base} → ${label.head}` : label.text;
 }
 
-function ScopeButton({ label }: { label: ScopeLabel }) {
+function commitMatchesSearch(commit: SessionDiffCommit, search: string): boolean {
+  const needle = search.trim().toLowerCase();
+  if (needle === "") return true;
+  return commit.subject.toLowerCase().includes(needle) || commit.sha.startsWith(needle);
+}
+
+function CommitsSubmenu({
+  commits,
+  totalCommits,
+  selectedSha,
+  onSelectScope,
+}: {
+  commits: readonly SessionDiffCommit[];
+  totalCommits: number;
+  selectedSha: string | null;
+  onSelectScope: (scope: string) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const shown = commits.filter((commit) => commitMatchesSearch(commit, search));
+  const older = totalCommits - commits.length;
+  const selected = commits.find(
+    (commit) => selectedSha !== null && commitMatches(commit, selectedSha),
+  );
+  return (
+    <MenuSub>
+      <MenuSubTrigger value={<span className="tabular-nums">{totalCommits}</span>}>
+        Commits
+      </MenuSubTrigger>
+      <MenuSubContent>
+        <div className="px-1 pb-1">
+          <input
+            type="text"
+            aria-label="Search commits"
+            placeholder="Search commits"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Escape" && event.key !== "ArrowDown" && event.key !== "ArrowUp") {
+                event.stopPropagation();
+              }
+            }}
+            className="h-7 w-full min-w-[200px] rounded-r6 border border-border bg-transparent px-2 text-body text-primary outline-none placeholder:text-ink-muted focus:border-accent-100"
+          />
+        </div>
+        {shown.length === 0 ? (
+          <p className="px-2.5 py-1.5 text-body text-ink-muted">No commits match</p>
+        ) : (
+          <MenuRadioGroup
+            value={selected?.sha ?? ""}
+            onValueChange={(sha: unknown) => {
+              if (typeof sha === "string") onSelectScope(commitScope(sha));
+            }}
+          >
+            {shown.map((commit) => (
+              <MenuRadioItem key={commit.sha} value={commit.sha} closeOnClick>
+                <span className="flex min-w-0 items-center justify-between gap-3">
+                  <span className="min-w-0 truncate">{commit.subject || NO_MESSAGE}</span>
+                  <span className="shrink-0 font-mono text-footnote text-ink-muted">
+                    {commit.shortSha}
+                  </span>
+                </span>
+              </MenuRadioItem>
+            ))}
+          </MenuRadioGroup>
+        )}
+        {older > 0 && (
+          <MenuItem disabled>
+            {older === 1 ? "1 older commit not shown" : `${older} older commits not shown`}
+          </MenuItem>
+        )}
+      </MenuSubContent>
+    </MenuSub>
+  );
+}
+
+function ScopeButton({
+  label,
+  scope,
+  scopes,
+  onSelectScope,
+}: {
+  label: ScopeLabel;
+  scope: string;
+  scopes: SessionDiffScopesResponse | undefined;
+  onSelectScope: (scope: string) => void;
+}) {
+  const git = scopes?.kind === "git" ? scopes : null;
+  const commitSha = commitShaOf(scope);
+  const radioValue = commitSha === null ? scope : "commit";
   return (
     <Menu>
       <MenuTrigger
@@ -89,20 +205,42 @@ function ScopeButton({ label }: { label: ScopeLabel }) {
         </span>
       </MenuTrigger>
       <MenuContent>
-        <MenuRadioGroup value={label.kind === "range" ? "branch" : "session"}>
-          {label.kind === "range" ? (
-            <MenuRadioItem value="branch">
+        <MenuRadioGroup
+          value={git === null ? "session" : radioValue}
+          onValueChange={(value: unknown) => {
+            if (typeof value === "string") onSelectScope(value);
+          }}
+        >
+          {git && (
+            <MenuRadioItem value={BRANCH_SCOPE} closeOnClick>
               <span className="flex min-w-0 items-center justify-between gap-3">
                 <span>All changes</span>
                 <span className="max-w-[160px] shrink-0 truncate text-footnote text-ink-muted">
-                  vs {label.base}
+                  vs {git.base}
                 </span>
               </span>
             </MenuRadioItem>
-          ) : (
-            <MenuRadioItem value="session">Session edits</MenuRadioItem>
           )}
+          {git?.uncommittedAvailable && (
+            <MenuRadioItem value="uncommitted" closeOnClick>
+              Uncommitted changes
+            </MenuRadioItem>
+          )}
+          <MenuRadioItem value="session" closeOnClick>
+            Session edits
+          </MenuRadioItem>
         </MenuRadioGroup>
+        {git && git.commits.length > 0 && (
+          <>
+            <MenuSeparator />
+            <CommitsSubmenu
+              commits={git.commits}
+              totalCommits={git.totalCommits}
+              selectedSha={commitSha}
+              onSelectScope={onSelectScope}
+            />
+          </>
+        )}
       </MenuContent>
     </Menu>
   );
@@ -314,9 +452,9 @@ export interface ChangesPaneViewProps {
   groupByFolder?: boolean;
   /** Separate test, build, and generated files into trailing sections. */
   groupByKind?: boolean;
-  /** The commit whose diff is shown, or null for All changes. */
-  selectedCommitSha?: string | null;
-  onSelectCommit?: (sha: string | null) => void;
+  /** The selected scope, a formatted `SessionDiffScope` (`branch`, `uncommitted`, `session`, `commit:<sha>`). */
+  scope?: string;
+  onSelectScope?: (scope: string) => void;
   onCopyCommitSha?: (sha: string) => void;
 }
 
@@ -338,8 +476,8 @@ export function ChangesPaneView({
   fetchContext,
   groupByFolder = true,
   groupByKind = false,
-  selectedCommitSha = null,
-  onSelectCommit = () => {},
+  scope = BRANCH_SCOPE,
+  onSelectScope = () => {},
   onCopyCommitSha = () => {},
 }: ChangesPaneViewProps) {
   const files = diff?.files ?? [];
@@ -349,7 +487,8 @@ export function ChangesPaneView({
   const [showFiles, setShowFiles] = useState(false);
   const [activePath, setActivePath] = useState<string | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
-  const scopeLabel = scopeLabelOf(diff, scopes);
+  const scopeLabel = scopeLabelOf(scope, diff, scopes);
+  const selectedCommitSha = commitShaOf(scope);
   const unavailableCount = files.filter(isUnavailable).length;
 
   useEffect(() => {
@@ -385,7 +524,7 @@ export function ChangesPaneView({
             {...(onOpenFile ? { onOpenFile } : {})}
             commits={scopes?.kind === "git" ? scopes.commits : []}
             selectedCommitSha={selectedCommitSha}
-            onSelectCommit={onSelectCommit}
+            onSelectCommit={(sha) => onSelectScope(sha === null ? BRANCH_SCOPE : commitScope(sha))}
             onCopyCommitSha={onCopyCommitSha}
           />
         )}
@@ -437,7 +576,14 @@ export function ChangesPaneView({
           {hasFiles && (
             <ShowFilesToggle pressed={showFiles} onToggle={() => setShowFiles((value) => !value)} />
           )}
-          {scopeLabel && <ScopeButton label={scopeLabel} />}
+          {scopeLabel && (
+            <ScopeButton
+              label={scopeLabel}
+              scope={scope}
+              scopes={scopes}
+              onSelectScope={onSelectScope}
+            />
+          )}
         </div>
         {moveHandle}
         <div className="relative z-[1] flex shrink-0 items-center gap-0.5">
@@ -457,27 +603,39 @@ export function ChangesPaneView({
   );
 }
 
-const BRANCH_SCOPE = "branch";
+function usePersistedScope(sessionId: string): [string, (scope: string) => void] {
+  const [entry, setEntry] = useState(() => ({ sessionId, scope: loadChangesScope(sessionId) }));
+  const current = entry.sessionId === sessionId ? entry.scope : loadChangesScope(sessionId);
+  const setScope = useCallback(
+    (scope: string) => {
+      setEntry({ sessionId, scope });
+      saveChangesScope(sessionId, scope);
+    },
+    [sessionId],
+  );
+  return [current, setScope];
+}
 
-/** The Changes pane for one session: the branch scope (base → working tree) or one branch commit. */
-function ChangesPane({ sessionId, chrome }: { sessionId: string; chrome: PaneChrome }) {
-  const [selectedCommitSha, setSelectedCommitSha] = useState<string | null>(null);
-  const scope =
-    selectedCommitSha === null
-      ? BRANCH_SCOPE
-      : formatDiffScope({ kind: "commit", sha: selectedCommitSha });
+/** The Changes pane for one session, showing the scope persisted for it (All changes by default). */
+export function ChangesPane({ sessionId, chrome }: { sessionId: string; chrome: PaneChrome }) {
+  const [scope, setScope] = usePersistedScope(sessionId);
   const diffQuery = useQuery(sessionDiffQueryOptions(sessionId, scope));
   const scopesQuery = useQuery(sessionDiffScopesQueryOptions(sessionId));
   const toast = useToast();
   const message = diffQuery.error ? `Couldn't load changes: ${diffQuery.error.message}` : undefined;
   const scopes = scopesQuery.data;
-  const commitStillListed =
-    selectedCommitSha === null ||
-    (scopes?.kind === "git" && scopes.commits.some((commit) => commit.sha === selectedCommitSha));
+  const selectedCommitSha = commitShaOf(scope);
+  const commitVanished =
+    selectedCommitSha !== null &&
+    scopes !== undefined &&
+    !(
+      scopes.kind === "git" &&
+      scopes.commits.some((commit) => commitMatches(commit, selectedCommitSha))
+    );
 
   useEffect(() => {
-    if (!commitStillListed && scopes !== undefined) setSelectedCommitSha(null);
-  }, [commitStillListed, scopes]);
+    if (commitVanished) setScope(BRANCH_SCOPE);
+  }, [commitVanished, setScope]);
 
   async function copyCommitSha(sha: string): Promise<void> {
     const copied = await writeClipboardText(sha);
@@ -500,8 +658,8 @@ function ChangesPane({ sessionId, chrome }: { sessionId: string; chrome: PaneChr
         void scopesQuery.refetch();
       }}
       fetchContext={{ sessionId, scope: diffQuery.data?.scope ?? scope }}
-      selectedCommitSha={selectedCommitSha}
-      onSelectCommit={setSelectedCommitSha}
+      scope={scope}
+      onSelectScope={setScope}
       onCopyCommitSha={(sha) => void copyCommitSha(sha)}
     />
   );
