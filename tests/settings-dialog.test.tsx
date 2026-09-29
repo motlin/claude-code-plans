@@ -1,0 +1,203 @@
+// @vitest-environment jsdom
+
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+  RouterProvider,
+} from "@tanstack/react-router";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { SettingsDialog } from "../src/components/settings/settings-dialog";
+import { SettingsProvider } from "../src/components/settings-provider";
+import { ThemeProvider } from "../src/components/theme-provider";
+import { redirectToSettingsDialog } from "../src/routes/settings";
+import { installLocalStorage } from "./fake-storage";
+
+function stubBrowser() {
+  installLocalStorage();
+  vi.stubGlobal(
+    "matchMedia",
+    (query: string): MediaQueryList =>
+      ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }) satisfies MediaQueryList,
+  );
+}
+
+function buildRouter(initialEntry: string) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const rootRoute = createRootRoute({
+    component: () => (
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <SettingsProvider>
+            <Outlet />
+            <SettingsDialog />
+          </SettingsProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    ),
+  });
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: () => (
+      <div>
+        <button type="button">Page trigger</button>
+        <textarea aria-label="Page composer" />
+      </div>
+    ),
+  });
+  const settingsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/settings",
+    beforeLoad: redirectToSettingsDialog,
+  });
+  return createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, settingsRoute]),
+    history: createMemoryHistory({ initialEntries: [initialEntry] }),
+  });
+}
+
+async function renderAt(initialEntry: string) {
+  const router = buildRouter(initialEntry);
+  await router.load();
+  render(<RouterProvider router={router} />);
+  return router;
+}
+
+function location(router: ReturnType<typeof buildRouter>) {
+  return { pathname: router.state.location.pathname, hash: router.state.location.hash };
+}
+
+function currentTabs(): string[] {
+  const nav = screen.getByRole("navigation", { name: "Settings" });
+  return [...nav.querySelectorAll('[aria-current="page"]')].map((tab) => tab.textContent ?? "");
+}
+
+describe("SettingsDialog", () => {
+  beforeEach(() => {
+    stubBrowser();
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it("stays closed without a settings hash", async () => {
+    await renderAt("/");
+    await screen.findByRole("button", { name: "Page trigger" });
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("opens on the hash's tab with that tab marked current", async () => {
+    await renderAt("/#settings/sessions");
+
+    await screen.findByRole("dialog", { name: "Settings" });
+    expect({
+      current: currentTabs(),
+      heading: screen.getByRole("heading", { level: 2 }).textContent,
+    }).toStrictEqual({ current: ["Sessions"], heading: "Sessions" });
+  });
+
+  it("lists the local settings tabs in order", async () => {
+    await renderAt("/#settings/general");
+
+    await screen.findByRole("dialog", { name: "Settings" });
+    const nav = screen.getByRole("navigation", { name: "Settings" });
+    expect(
+      [...nav.querySelectorAll("button")].map((button) => button.textContent ?? ""),
+    ).toStrictEqual([
+      "General",
+      "Usage",
+      "Claude Code",
+      "Transcript",
+      "Sessions",
+      "Notifications",
+      "Application",
+      "AI features",
+      "Claude Config",
+      "Setup",
+    ]);
+  });
+
+  it("clears the hash on Escape", async () => {
+    const router = await renderAt("/#settings/general");
+    const dialog = await screen.findByRole("dialog", { name: "Settings" });
+
+    fireEvent.keyDown(dialog, { key: "Escape", code: "Escape" });
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(location(router)).toStrictEqual({ pathname: "/", hash: "" });
+  });
+
+  it("clears the hash on × and restores focus to the element focused before opening", async () => {
+    const router = await renderAt("/");
+    const trigger = await screen.findByRole("button", { name: "Page trigger" });
+    trigger.focus();
+
+    await act(() => router.navigate({ to: "/", hash: "settings/general" }));
+    await screen.findByRole("dialog", { name: "Settings" });
+    fireEvent.click(screen.getByRole("button", { name: "Close settings" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+    expect(location(router)).toStrictEqual({ pathname: "/", hash: "" });
+  });
+
+  it("switching tabs updates the hash and aria-current", async () => {
+    const router = await renderAt("/#settings/general");
+    await screen.findByRole("dialog", { name: "Settings" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Transcript" }));
+
+    await waitFor(() => expect(currentTabs()).toStrictEqual(["Transcript"]));
+    expect(location(router)).toStrictEqual({ pathname: "/", hash: "settings/transcript" });
+  });
+
+  it("opens General with ⇧⌘, while a textarea has focus", async () => {
+    const router = await renderAt("/");
+    const composer = await screen.findByRole("textbox", { name: "Page composer" });
+    composer.focus();
+
+    // jsdom's user agent is not a Mac, so the non-mac Ctrl+Shift+, binding applies.
+    fireEvent.keyDown(composer, { key: "<", code: "Comma", ctrlKey: true, shiftKey: true });
+
+    await screen.findByRole("dialog", { name: "Settings" });
+    expect({ location: location(router), current: currentTabs() }).toStrictEqual({
+      location: { pathname: "/", hash: "settings/general" },
+      current: ["General"],
+    });
+  });
+});
+
+describe("/settings route", () => {
+  beforeEach(() => {
+    stubBrowser();
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it("redirects to the home page with the General settings hash", async () => {
+    const router = await renderAt("/settings");
+
+    await screen.findByRole("dialog", { name: "Settings" });
+    expect(location(router)).toStrictEqual({ pathname: "/", hash: "settings/general" });
+  });
+});

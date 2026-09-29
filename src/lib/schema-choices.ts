@@ -14,6 +14,7 @@ import type {
   UserRecordSchema,
 } from "./schemas";
 import type { SessionBucketReasonSchema, SessionBucketSchema } from "./session-state";
+import type { SettingsTab } from "./settings-hash";
 import type { MessageProcessedLine, ProcessedLine } from "./transcript";
 
 /**
@@ -378,6 +379,20 @@ const paneLayoutNodeVariants = {
   stack: true,
 } satisfies Record<LayoutNode["kind"], true>;
 
+/** Settings dialog nav labels, in nav order. */
+export const settingsTabLabels = {
+  general: "General",
+  usage: "Usage",
+  "claude-code": "Claude Code",
+  transcript: "Transcript",
+  sessions: "Sessions",
+  notifications: "Notifications",
+  application: "Application",
+  "ai-features": "AI features",
+  "claude-config": "Claude Config",
+  setup: "Setup",
+} satisfies Record<SettingsTab, string>;
+
 const toolNamesWithMcp = { ...toolNames, "mcp__*": true } as const;
 
 /** Maps walker path keys (see tests/schema-choices.test.ts) to choice maps. */
@@ -415,4 +430,5 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   "PaneLayoutStateSchema.root.children[]": paneLayoutNodeVariants,
   "PaneLayoutStateSchema.root.children[].<tile>.tileId": tileIdLabels,
   "PaneLayoutStateSchema.root.direction": paneStackDirectionLabels,
+  SettingsTabSchema: settingsTabLabels,
 };

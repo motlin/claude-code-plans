@@ -4,7 +4,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { SettingsProvider } from "../src/components/settings-provider";
-import { LinkCategoryRulesSection } from "../src/routes/settings";
+import { LinkCategoryRulesSection } from "../src/components/settings/settings-sections";
 import { installLocalStorage } from "./fake-storage";
 
 function renderEditor() {

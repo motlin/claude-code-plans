@@ -107,7 +107,7 @@ export const SHORTCUTS = {
     group: "general",
     bindings: cmdOrCtrl(",", ["shift"], "Comma"),
     ownerSlug: "account-menu",
-    enabled: false,
+    enabled: true,
   },
   new_session: {
     description: "New session",

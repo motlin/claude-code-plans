@@ -7,6 +7,7 @@ import { SourceFileResponse } from "../src/lib/api/source";
 import { PaneLayoutStateSchema } from "../src/lib/pane-layout";
 import { schemaChoiceRegistry } from "../src/lib/schema-choices";
 import { SessionBucketReasonSchema, SessionBucketSchema } from "../src/lib/session-state";
+import { SettingsTabSchema } from "../src/lib/settings-hash";
 import {
   AttachmentPayloadSchema,
   ClaudeSettingsSchema,
@@ -53,6 +54,7 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["PluginFileSchema", PluginFileSchema],
   ["PluginListResponse", PluginListResponse],
   ["PaneLayoutStateSchema", PaneLayoutStateSchema],
+  ["SettingsTabSchema", SettingsTabSchema],
 ];
 
 interface DefLike {

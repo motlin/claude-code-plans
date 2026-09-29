@@ -17,6 +17,7 @@ import { recentSessionsQueryOptions } from "../lib/api/sessions";
 import { clearAll, observeSessionState } from "../lib/unread-store";
 import { isLiveSessionState } from "../lib/session-state";
 import { Shortcut } from "./ui/shortcut";
+import { useOpenSettings } from "./settings/settings-dialog";
 
 interface RecentSession {
   id: string;
@@ -46,6 +47,7 @@ export function CommandPalette({
   onOpenChange: (open: boolean) => void;
 }) {
   const navigate = useNavigate();
+  const openSettings = useOpenSettings();
   // `enabled: open` avoids fetching until the palette is opened. The server
   // already returns the most-recent sessions, ordered, so no client sort needed.
   const { data } = useQuery({ ...recentSessionsQueryOptions(8), enabled: open });
@@ -182,7 +184,7 @@ export function CommandPalette({
           </CommandItem>
           <CommandItem
             icon={<SlidersHorizontal className="h-4 w-4" />}
-            onSelect={() => select(() => navigate({ to: "/settings" }))}
+            onSelect={() => select(() => openSettings("general"))}
           >
             Settings
           </CommandItem>

@@ -18,6 +18,7 @@ import { ModeToggle } from "../components/mode-toggle";
 import { Sidebar } from "../components/sidebar/index";
 import { AppShellFallback } from "../components/app-shell-fallback";
 import { CommandPalette } from "../components/command-palette";
+import { SettingsDialog } from "../components/settings/settings-dialog";
 import { useCommandPalette } from "../hooks/use-command-palette";
 import { IndexingBanner } from "../components/indexing-banner";
 import { HookSchemaDriftBanner } from "../components/hook-schema-drift-banner";
@@ -187,6 +188,7 @@ function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
       </div>
       <MobileSidebar open={mobileOpen} onClose={() => setMobileOpen(false)} />
       <CommandPalette open={commandPalette.open} onOpenChange={commandPalette.setOpen} />
+      <SettingsDialog />
     </>
   );
 }

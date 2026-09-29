@@ -3,7 +3,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
-import { ApplicationConfigurationSection } from "../src/routes/settings";
+import { ApplicationConfigurationSection } from "../src/components/settings/settings-sections";
 
 describe("application settings controls", () => {
   afterEach(() => {
