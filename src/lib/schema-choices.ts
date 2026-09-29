@@ -1,7 +1,12 @@
 import type { z } from "zod";
 import type { McpScopeSchema, SkillSourceSchema } from "./api/customize";
 import type { PluginFileSchema, PluginListResponse } from "./api/plugins";
-import type { SearchModeSchema } from "./api/search";
+import type {
+  SearchModeSchema,
+  UnifiedSearchDateSchema,
+  UnifiedSearchKindSchema,
+  UnifiedSearchTypeSchema,
+} from "./api/search";
 import type { SessionSummaryStateSchema } from "./api/sessions";
 import type { SourceFileResponse } from "./api/source";
 import type { HookEvent, ToolUseUnion } from "./hook-events";
@@ -116,6 +121,27 @@ export const searchModeLabels = {
   conversations: "Search conversations",
   files: "Search files",
 } satisfies Record<z.infer<typeof SearchModeSchema>, string>;
+
+const unifiedSearchTypeLabels = {
+  all: "All",
+  sessions: "Sessions",
+  plans: "Plans",
+  memories: "Memories",
+  files: "Files",
+} satisfies Record<z.infer<typeof UnifiedSearchTypeSchema>, string>;
+
+const unifiedSearchDateLabels = {
+  today: "Today",
+  week: "Past week",
+  month: "Past month",
+} satisfies Record<z.infer<typeof UnifiedSearchDateSchema>, string>;
+
+const unifiedSearchKindLabels = {
+  session: "Session",
+  plan: "Plan",
+  memory: "Memory",
+  file: "File",
+} satisfies Record<z.infer<typeof UnifiedSearchKindSchema>, string>;
 
 const sessionStartSourceLabels = {
   startup: "Startup",
@@ -452,6 +478,9 @@ const toolNamesWithMcp = { ...toolNames, "mcp__*": true } as const;
 export const schemaChoiceRegistry: Record<string, Record<string, string | true>> = {
   TaskStatusSchema: taskStatusLabels,
   SearchModeSchema: searchModeLabels,
+  UnifiedSearchTypeSchema: unifiedSearchTypeLabels,
+  UnifiedSearchDateSchema: unifiedSearchDateLabels,
+  UnifiedSearchKindSchema: unifiedSearchKindLabels,
   SessionSummaryStateSchema: sessionSummaryStateLabels,
   SessionBucketSchema: sessionBucketLabels,
   SessionBucketReasonSchema: sessionBucketReasonLabels,

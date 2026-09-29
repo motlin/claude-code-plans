@@ -761,11 +761,11 @@ function sanitizeFtsSnippet(value: string): string {
     .replaceAll("&lt;/mark&gt;", "</mark>");
 }
 
-function tokenizeFileSearchQuery(query: string): string[] {
+export function tokenizeFileSearchQuery(query: string): string[] {
   return query.normalize("NFKC").match(/[\p{L}\p{N}_]+/gu) ?? [];
 }
 
-function toFtsQuery(terms: readonly string[]): string {
+export function toFtsQuery(terms: readonly string[]): string {
   return terms.map((term) => `"${term.replaceAll('"', '""')}"`).join(" AND ");
 }
 

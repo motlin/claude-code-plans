@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "./client";
+import { SessionSummaryStateSchema } from "./sessions";
 
 export const SearchModeSchema = z.enum(["titles", "conversations", "files"]);
 export type SearchMode = z.infer<typeof SearchModeSchema>;
@@ -95,6 +96,68 @@ export const fileSearchQueryOptions = (query: string, scopeRoot: string) =>
     staleTime: 30_000,
     gcTime: 5 * 60_000,
   });
+
+export const UnifiedSearchTypeSchema = z.enum(["all", "sessions", "plans", "memories", "files"]);
+
+export const UnifiedSearchDateSchema = z.enum(["today", "week", "month"]);
+export type UnifiedSearchDate = z.infer<typeof UnifiedSearchDateSchema>;
+
+export const UnifiedSearchKindSchema = z.enum(["session", "plan", "memory", "file"]);
+
+const UNIFIED_SEARCH_DEFAULT_LIMIT = 25;
+const UNIFIED_SEARCH_MAX_LIMIT = 100;
+
+/** Query-string parameters of `GET /api/search`. */
+export const UnifiedSearchParamsSchema = z
+  .object({
+    query: z.string().trim().default(""),
+    type: UnifiedSearchTypeSchema.default("all"),
+    project: z.string().trim().min(1).optional(),
+    date: UnifiedSearchDateSchema.optional(),
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(UNIFIED_SEARCH_MAX_LIMIT)
+      .default(UNIFIED_SEARCH_DEFAULT_LIMIT),
+  })
+  .strict();
+export type UnifiedSearchParams = z.infer<typeof UnifiedSearchParamsSchema>;
+
+/** A half-open `[start, end)` range of UTF-16 code units. */
+const TextMatchSchema = z
+  .object({
+    start: z.number().int().nonnegative(),
+    end: z.number().int().nonnegative(),
+  })
+  .strict();
+
+const UnifiedSearchItemSchema = z
+  .object({
+    kind: UnifiedSearchKindSchema,
+    id: z.string(),
+    title: z.string(),
+    titleMatches: z.array(TextMatchSchema),
+    snippet: z
+      .object({
+        text: z.string(),
+        matches: z.array(TextMatchSchema),
+      })
+      .strict()
+      .optional(),
+    projectId: z.string(),
+    projectName: z.string(),
+    mtime: z.string(),
+    state: SessionSummaryStateSchema.optional(),
+  })
+  .strict();
+export type UnifiedSearchItem = z.infer<typeof UnifiedSearchItemSchema>;
+
+export const UnifiedSearchResponse = z
+  .object({
+    items: z.array(UnifiedSearchItemSchema),
+  })
+  .strict();
 
 export const fileSearchRootsQueryOptions = queryOptions({
   queryKey: ["search", "file-roots"] as const,

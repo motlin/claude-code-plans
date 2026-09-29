@@ -2,7 +2,14 @@ import { describe, expect, it } from "vite-plus/test";
 import { HookEventEnvelope, ToolUseUnion } from "../src/lib/hook-events";
 import { McpServerListResponse, SkillListResponse } from "../src/lib/api/customize";
 import { PluginFileSchema, PluginListResponse } from "../src/lib/api/plugins";
-import { SearchModeSchema } from "../src/lib/api/search";
+import {
+  SearchModeSchema,
+  UnifiedSearchDateSchema,
+  UnifiedSearchKindSchema,
+  UnifiedSearchParamsSchema,
+  UnifiedSearchResponse,
+  UnifiedSearchTypeSchema,
+} from "../src/lib/api/search";
 import { SessionSummaryStateSchema } from "../src/lib/api/sessions";
 import { SourceFileResponse } from "../src/lib/api/source";
 import { NavSectionSchema } from "../src/lib/nav-sections";
@@ -43,6 +50,9 @@ import { RenderedLineSchema } from "../src/lib/transcript";
 const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["TaskStatusSchema", TaskStatusSchema],
   ["SearchModeSchema", SearchModeSchema],
+  ["UnifiedSearchTypeSchema", UnifiedSearchTypeSchema],
+  ["UnifiedSearchDateSchema", UnifiedSearchDateSchema],
+  ["UnifiedSearchKindSchema", UnifiedSearchKindSchema],
   ["SessionSummaryStateSchema", SessionSummaryStateSchema],
   ["SessionBucketSchema", SessionBucketSchema],
   ["SessionBucketReasonSchema", SessionBucketReasonSchema],
@@ -67,6 +77,8 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["PaneLayoutStateSchema", PaneLayoutStateSchema],
   ["SettingsTabSchema", SettingsTabSchema],
   ["NavSectionSchema", NavSectionSchema],
+  ["UnifiedSearchParamsSchema", UnifiedSearchParamsSchema],
+  ["UnifiedSearchResponse", UnifiedSearchResponse],
 ];
 
 interface DefLike {
