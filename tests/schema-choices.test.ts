@@ -4,6 +4,7 @@ import { PluginFileSchema, PluginListResponse } from "../src/lib/api/plugins";
 import { SearchModeSchema } from "../src/lib/api/search";
 import { SessionSummaryStateSchema } from "../src/lib/api/sessions";
 import { SourceFileResponse } from "../src/lib/api/source";
+import { PaneLayoutStateSchema } from "../src/lib/pane-layout";
 import { schemaChoiceRegistry } from "../src/lib/schema-choices";
 import { SessionBucketReasonSchema, SessionBucketSchema } from "../src/lib/session-state";
 import {
@@ -51,6 +52,7 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["SourceFileResponse", SourceFileResponse],
   ["PluginFileSchema", PluginFileSchema],
   ["PluginListResponse", PluginListResponse],
+  ["PaneLayoutStateSchema", PaneLayoutStateSchema],
 ];
 
 interface DefLike {

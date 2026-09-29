@@ -4,6 +4,7 @@ import type { SearchModeSchema } from "./api/search";
 import type { SessionSummaryStateSchema } from "./api/sessions";
 import type { SourceFileResponse } from "./api/source";
 import type { HookEvent, ToolUseUnion } from "./hook-events";
+import type { Direction, LayoutNode, PaneKind, TileId } from "./pane-layout";
 import type {
   AttachmentPayloadSchema,
   ClaudeSettingsSchema,
@@ -350,6 +351,33 @@ const toolNames = {
   LS: true,
 } satisfies Record<z.infer<typeof ToolUseUnion>["tool_name"], true>;
 
+/** Side-pane tile kinds of the session pane host (src/lib/pane-layout.ts); labels match upstream pane titles. */
+const paneKindLabels = {
+  files: "Files",
+  links: "Links",
+  changes: "Changes",
+  terminal: "Terminal",
+  "background-tasks": "Background tasks",
+  plan: "Plan",
+  artifacts: "Artifacts",
+} satisfies Record<PaneKind, string>;
+
+const tileIdLabels = {
+  chat: "Chat",
+  ...paneKindLabels,
+} satisfies Record<TileId, string>;
+
+const paneStackDirectionLabels = {
+  row: "Row",
+  column: "Column",
+} satisfies Record<Direction, string>;
+
+/** Consumed by the pane-layout reducers in src/lib/pane-layout.ts. */
+const paneLayoutNodeVariants = {
+  tile: true,
+  stack: true,
+} satisfies Record<LayoutNode["kind"], true>;
+
 const toolNamesWithMcp = { ...toolNames, "mcp__*": true } as const;
 
 /** Maps walker path keys (see tests/schema-choices.test.ts) to choice maps. */
@@ -383,4 +411,8 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   "SourceFileResponse.language": sourceLanguageLabels,
   "PluginFileSchema.type": pluginFileTypeLabels,
   "PluginListResponse[].versionKind": pluginVersionKindLabels,
+  "PaneLayoutStateSchema.expanded": paneKindLabels,
+  "PaneLayoutStateSchema.root.children[]": paneLayoutNodeVariants,
+  "PaneLayoutStateSchema.root.children[].<tile>.tileId": tileIdLabels,
+  "PaneLayoutStateSchema.root.direction": paneStackDirectionLabels,
 };
