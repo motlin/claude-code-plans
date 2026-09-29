@@ -7,6 +7,7 @@ import { sessionResourcesQueryOptions } from "../../lib/api/sessions";
 import { formatResourceCount, resourceCoverageNote } from "../../lib/session-resources";
 import type { SessionFiles } from "../../lib/session-files";
 import { pillStyles } from "../detail-top-bar";
+import { FilesTree, FilesTreeColumn } from "../files/files-tree";
 import { JumpTargetProvider, type JumpTargetWindow } from "../jump-target-context";
 import { useSettings } from "../settings-provider";
 import { Menu, MenuCheckboxItem, MenuContent, MenuTrigger } from "../ui/menu";
@@ -124,6 +125,12 @@ function FilesEmpty({ hasTree, tabCount }: { hasTree: boolean; tabCount: number 
 
 interface FilesPaneViewProps {
   chrome: PaneChrome;
+  /**
+   * Lists the session's working directory in the tree column. Without it, or
+   * when the session has no working directory, the column shows the files the
+   * session touched.
+   */
+  sessionId?: string;
   sessionFiles: SessionFiles;
   /** JSONL records before the loaded window, which extraction never saw. */
   unscannedRecordCount: number;
@@ -131,14 +138,26 @@ interface FilesPaneViewProps {
 
 /**
  * The Files pane surface, header included: tree toggle · "Files" · Move ·
- * Search files · Files settings · Expand · Close, over the tree column (for
- * now the local "Session files" list) and the viewer column.
+ * Search files · Files settings · Expand · Close, over the tree column (the
+ * workspace tree) and the viewer column.
  */
-export function FilesPaneView({ chrome, sessionFiles, unscannedRecordCount }: FilesPaneViewProps) {
+export function FilesPaneView({
+  chrome,
+  sessionId,
+  sessionFiles,
+  unscannedRecordCount,
+}: FilesPaneViewProps) {
   const host = usePaneHost();
   const [treeShown, setTreeShown] = useState(true);
   const [focusRequest, setFocusRequest] = useState(0);
   const filterRef = useRef<HTMLInputElement>(null);
+  const sessionFilesList = (
+    <SessionFilesList
+      sessionFiles={sessionFiles}
+      unscannedRecordCount={unscannedRecordCount}
+      filterRef={filterRef}
+    />
+  );
 
   useShortcut(
     "toggle_changes_file_list",
@@ -195,16 +214,17 @@ export function FilesPaneView({ chrome, sessionFiles, unscannedRecordCount }: Fi
       </div>
       <div className="flex min-h-0 flex-1 overflow-hidden rounded-b-[inherit]">
         {treeShown && (
-          <div
-            data-files-tree
-            className="flex min-h-0 w-60 min-w-40 max-w-[50%] shrink-0 flex-col border-r border-border"
-          >
-            <SessionFilesList
-              sessionFiles={sessionFiles}
-              unscannedRecordCount={unscannedRecordCount}
-              filterRef={filterRef}
-            />
-          </div>
+          <FilesTreeColumn>
+            {sessionId === undefined ? (
+              sessionFilesList
+            ) : (
+              <FilesTree
+                sessionId={sessionId}
+                filterRef={filterRef}
+                noCwdFallback={sessionFilesList}
+              />
+            )}
+          </FilesTreeColumn>
         )}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <FilesEmpty hasTree={treeShown} tabCount={0} />
@@ -238,6 +258,7 @@ function FilesPane({
     <JumpTargetProvider value={jumpTargetWindow}>
       <FilesPaneView
         chrome={chrome}
+        sessionId={sessionId}
         sessionFiles={resources?.files ?? windowFiles}
         unscannedRecordCount={resources === undefined ? windowStartIndex : 0}
       />

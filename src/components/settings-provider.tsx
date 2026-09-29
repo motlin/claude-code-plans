@@ -75,6 +75,8 @@ export interface Settings {
 
   // The Files pane's ⋯ menu.
   filesHideIgnored: boolean;
+  /** The Files pane's tree column width in pixels, clamped to 160–640 where it is used. */
+  filesTreeWidth: number;
 }
 
 export const DEFAULTS: Settings = {
@@ -122,6 +124,7 @@ export const DEFAULTS: Settings = {
   diffHideWhitespace: false,
 
   filesHideIgnored: false,
+  filesTreeWidth: 240,
 };
 
 const STORAGE_KEYS: Record<keyof Settings, string> = {
@@ -155,7 +158,13 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
   diffWordDiff: "ccp-diff-word-diff",
   diffHideWhitespace: "ccp-diff-hide-whitespace",
   filesHideIgnored: "ccp-files-hide-ignored",
+  filesTreeWidth: "ccp-files-tree-width",
 };
+
+/** The localStorage key a setting persists under. */
+export function settingStorageKey(key: keyof Settings): string {
+  return STORAGE_KEYS[key];
+}
 
 const LINK_CATEGORY_RULES_SCHEMA = z.array(
   z
