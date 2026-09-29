@@ -178,14 +178,14 @@ export const SHORTCUTS = {
     group: "panes",
     bindings: ctrlEverywhere("d", ["shift"]),
     ownerSlug: "panes-changes",
-    enabled: false,
+    enabled: true,
   },
   toggle_changes_file_list: {
     description: "Toggle file list in changes or files",
     group: "panes",
     bindings: ctrlEverywhere("y", ["shift"]),
     ownerSlug: "panes-changes",
-    enabled: false,
+    enabled: true,
   },
   go_to_file_in_changes: {
     description: "Go to file in changes",

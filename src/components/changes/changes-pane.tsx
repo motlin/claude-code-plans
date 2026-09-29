@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, ChevronDown, EllipsisVertical, FileDiff, List } from "lucide-react";
 import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from "react";
 
-import { useShortcutKeys } from "../../hooks/use-shortcut";
+import { useShortcut, useShortcutKeys } from "../../hooks/use-shortcut";
 import {
   type SessionDiffFile,
   type SessionDiffResponse,
@@ -577,6 +577,7 @@ export function ChangesPaneView({
   const [collapsedOverrides, setCollapsedOverrides] = useState<Record<string, boolean>>({});
   const { settings, setSetting } = useSettings();
   const showFiles = settings.diffShowTree;
+  useShortcut("toggle_changes_file_list", () => setSetting("diffShowTree", !showFiles));
   const headerRef = useRef<HTMLDivElement>(null);
   const sideBySideAvailable = useElementWidth(headerRef) >= SIDE_BY_SIDE_MIN_WIDTH;
   const view: DiffViewOptions = {
@@ -791,6 +792,7 @@ export function ChangesPaneToggle() {
   const host = usePaneHost();
   const keys = useShortcutKeys("toggle_changes");
   const open = host.isOpen("changes");
+  useShortcut("toggle_changes", () => host.togglePane("changes"));
   return (
     <Tooltip content="Changes" shortcut={keys.keys}>
       <button
