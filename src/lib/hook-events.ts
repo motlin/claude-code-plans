@@ -120,6 +120,8 @@ export interface SessionSummaryPayload {
   bucket: SessionBucket;
   /** Running subagent nodes (`endedAt === null`) rooted at this session. */
   liveAgentCount: number;
+  /** Durable viewed state: finished work nobody has looked at yet. */
+  unseen: boolean;
   blockedSince: string | null;
 }
 

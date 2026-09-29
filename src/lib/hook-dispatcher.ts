@@ -41,6 +41,8 @@ import { recentlyBroadcast } from "./update-dedupe";
 import { toSubagentSessionId } from "./subagents";
 import { reportHookStateToHerdr } from "./herdr/report-state";
 import { stateForEvent, type ActivityState } from "./session-state";
+import { isSessionVisible as isSessionVisibleInBrowser } from "./session-visibility";
+import { getCurrentSessionMessageIndex, markSessionCompletionUnreviewed } from "./db/viewed-state";
 import {
   expirePendingApprovalForSession,
   resumePendingApprovalsForSession,
@@ -108,6 +110,8 @@ interface DispatchHookEventArgs {
   dirs?: HookDispatchDirs;
   state?: HookDispatchState;
   reportHerdrState?: (event: HookEvent, entry: ActiveSessionEntry | null) => void;
+  /** Whether a browser tab is showing the session right now (see session-visibility). */
+  isSessionVisible?: (sessionId: string) => boolean;
 }
 
 function broadcastHookContext(
@@ -371,6 +375,7 @@ export async function dispatchHookEvent({
   dirs,
   state,
   reportHerdrState = reportHookStateToHerdr,
+  isSessionVisible = isSessionVisibleInBrowser,
 }: DispatchHookEventArgs): Promise<void> {
   const entryBeforeDispatch = store.getActiveSessionEntry(event.session_id);
   // Subagent hooks carry the root session_id plus agent_id. They describe the
@@ -484,11 +489,19 @@ export async function dispatchHookEvent({
           endedAt: node.endedAt!,
         } satisfies SubagentStoppedPayload);
       }
+      // The finished turn is unseen work unless a browser is already showing it.
+      if (!isSessionVisible(event.session_id)) {
+        markSessionCompletionUnreviewed(
+          db,
+          event.session_id,
+          getCurrentSessionMessageIndex(db, event.session_id),
+        );
+      }
       const summary = buildSessionSummaryPayloadFromDb(db, event.session_id, (sessionId) =>
         store.getActiveSessionEntry(sessionId),
       );
       if (summary) {
-        const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${summary.id}:${summary.mtime}`;
+        const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${summary.id}:${summary.mtime}:${summary.unseen}`;
         if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
           broadcast(DOMAIN_EVENTS.SESSION_UPDATED, { session: summary });
         }
@@ -561,7 +574,7 @@ export async function dispatchHookEvent({
         store.getActiveSessionEntry(sessionId),
       );
       if (summary) {
-        const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${summary.id}:${summary.mtime}`;
+        const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${summary.id}:${summary.mtime}:${summary.unseen}`;
         if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
           broadcast(DOMAIN_EVENTS.SESSION_UPDATED, { session: summary });
         }
@@ -596,7 +609,7 @@ export async function dispatchHookEvent({
         store.getActiveSessionEntry(sessionId),
       );
       if (summary) {
-        const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${summary.id}:${summary.mtime}`;
+        const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${summary.id}:${summary.mtime}:${summary.unseen}`;
         if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
           broadcast(DOMAIN_EVENTS.SESSION_UPDATED, { session: summary });
         }

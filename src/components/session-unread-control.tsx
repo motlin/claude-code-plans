@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 import {
   displayState,
@@ -8,13 +8,7 @@ import {
   type DisplayState,
   type SessionSummaryState,
 } from "../lib/session-state";
-import {
-  hasUnseenWork,
-  markSeen,
-  markUnseen,
-  observeSessionState,
-  subscribeUnseenWork,
-} from "../lib/unread-store";
+import { hasUnseenWork, markSeen, markUnseen, subscribeUnseenWork } from "../lib/unread-store";
 import { DISPLAY_STATE_STYLES } from "./session-status-indicator";
 import { SessionStateIcon } from "./status-dot";
 
@@ -24,11 +18,7 @@ export function useHasUnseenWork(sessionId: string): boolean {
 }
 
 function useSessionDisplayState(sessionId: string, state: ActivityState): DisplayState {
-  const unseen = useHasUnseenWork(sessionId);
-
-  useEffect(() => observeSessionState(sessionId, state), [sessionId, state]);
-
-  return displayState(state, unseen);
+  return displayState(state, useHasUnseenWork(sessionId));
 }
 
 /**
@@ -68,8 +58,8 @@ function LiveSessionUnreadControl({
 }) {
   const shownState = useSessionDisplayState(sessionId, state);
 
-  // Only idle/review rows get a manual control: working rows would re-raise the latch a second
-  // later, making a mark-seen action look broken and inviting users to clear unfinished work.
+  // Only idle/review rows get a manual control: the server marks a turn unseen when it stops, so
+  // clearing a working row would be undone a moment later and invites clearing unfinished work.
   const canToggle = shownState === "idle" || shownState === "review";
 
   return (

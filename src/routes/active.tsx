@@ -87,6 +87,7 @@ function ActivePage() {
       createdAt: info.startedAt,
       lastModified: info.lastActivity,
       state: "unknown",
+      unseen: false,
       blockedSince: null,
     });
   }

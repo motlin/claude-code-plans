@@ -1,6 +1,6 @@
 import { Command } from "cmdk";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   FileText,
@@ -15,8 +15,7 @@ import {
   Keyboard,
 } from "lucide-react";
 import { recentSessionsQueryOptions } from "../lib/api/sessions";
-import { clearAll, observeSessionState } from "../lib/unread-store";
-import { isLiveSessionState } from "../lib/session-state";
+import { clearAll } from "../lib/unread-store";
 import { Shortcut } from "./ui/shortcut";
 import { useOpenSettings } from "./settings/settings-dialog";
 import { setKeyboardShortcutsOpen } from "./keyboard-shortcuts-dialog";
@@ -58,12 +57,6 @@ export function CommandPalette({
     () => (data?.sessions ?? []).map((s) => ({ id: s.id, title: s.title, mtime: s.mtime })),
     [data],
   );
-
-  useEffect(() => {
-    for (const session of data?.sessions ?? []) {
-      if (isLiveSessionState(session.state)) observeSessionState(session.id, session.state);
-    }
-  }, [data]);
 
   function select(callback: () => void) {
     onOpenChange(false);

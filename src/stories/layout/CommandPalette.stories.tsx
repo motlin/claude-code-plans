@@ -23,6 +23,7 @@ const sampleRecent = {
       state: "unknown" as const,
       bucket: "done" as const,
       liveAgentCount: 0,
+      unseen: false,
       blockedSince: null,
     },
     {
@@ -39,6 +40,7 @@ const sampleRecent = {
       state: "unknown" as const,
       bucket: "done" as const,
       liveAgentCount: 0,
+      unseen: false,
       blockedSince: null,
     },
     {
@@ -55,6 +57,7 @@ const sampleRecent = {
       state: "unknown" as const,
       bucket: "done" as const,
       liveAgentCount: 0,
+      unseen: false,
       blockedSince: null,
     },
   ],

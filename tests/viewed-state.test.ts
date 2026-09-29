@@ -6,6 +6,7 @@ import { openAppDb, openTestDb } from "../src/lib/db/connection";
 import {
   getCurrentSessionMessageIndex,
   getSessionViewedState,
+  getUnseenSessionIds,
   linkHerdrTerminalToSession,
   markSessionCompletionUnreviewed,
   markSessionReviewed,
@@ -13,6 +14,29 @@ import {
   setHerdrTerminalViewed,
 } from "../src/lib/db/viewed-state";
 import * as schema from "../src/lib/db/schema";
+import type { ActiveSessionEntry } from "../src/lib/active-session-store";
+import { buildSessionSummaryPayloadFromDb } from "../src/lib/session-summary";
+import { applySessionViewedAction } from "../src/lib/session-viewed-action";
+import { DOMAIN_EVENTS } from "../src/lib/hook-events";
+
+function idleActiveSession(sessionId: string): ActiveSessionEntry {
+  return {
+    sessionId,
+    state: "idle",
+    cwd: "/tmp/test/project",
+    model: "claude-test-model",
+    startedAt: 1_000,
+    lastActivity: 2_000,
+    claudeEnv: {},
+    tmuxPane: "",
+    tmuxServerSocket: "",
+    herdrPane: "",
+    herdrWorkspace: "",
+    herdrSocketPath: "",
+    lastSubagentActivityAt: null,
+    backgroundTasks: [],
+  };
+}
 
 describe("durable session viewed state", () => {
   const temporaryDirectories: string[] = [];
@@ -120,6 +144,125 @@ describe("durable session viewed state", () => {
           viewedInHerdr: false,
           viewedAnywhere: false,
         },
+      });
+    } finally {
+      db.close();
+    }
+  });
+
+  it("lists exactly the sessions whose durable state is unseen", () => {
+    const db = openTestDb();
+    try {
+      markSessionReviewed(db.index, "session-test-seen", 3, 1_000);
+      markSessionCompletionUnreviewed(db.index, "session-test-unseen", 3, 1_000);
+      markSessionCompletionUnreviewed(db.index, "session-test-herdr", 3, 1_000);
+      setHerdrTerminalViewed(db.index, "terminal-test-100", "session-test-herdr", true, 2_000);
+
+      expect([...getUnseenSessionIds(db.index)]).toStrictEqual(["session-test-unseen"]);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("feeds unseen into the bucket: dwell viewing moves review to done and marking unseen moves it back", () => {
+    const db = openTestDb();
+    const sessionId = "session-test-300";
+    try {
+      db.index
+        .insert(schema.sessions)
+        .values({
+          id: sessionId,
+          projectId: "project-test-300",
+          title: "Test session",
+          messageCount: 4,
+          isSidechain: 0,
+          createdAt: 1_000,
+          mtimeMs: 2_000,
+          filePath: join("/nonexistent", `${sessionId}.jsonl`),
+        })
+        .run();
+      const observe = () => {
+        const payload = buildSessionSummaryPayloadFromDb(db.index, sessionId, () =>
+          idleActiveSession(sessionId),
+        );
+        return { unseen: payload?.unseen, bucket: payload?.bucket };
+      };
+
+      const initial = observe();
+      markSessionCompletionUnreviewed(db.index, sessionId, 3, 1_000);
+      const afterCompletion = observe();
+      markSessionReviewed(db.index, sessionId, 3, 2_000);
+      const afterDwell = observe();
+      markSessionUnreviewed(db.index, sessionId, 3, 3_000);
+      const afterMarkUnseen = observe();
+
+      expect({ initial, afterCompletion, afterDwell, afterMarkUnseen }).toStrictEqual({
+        initial: { unseen: false, bucket: "done" },
+        afterCompletion: { unseen: true, bucket: "review" },
+        afterDwell: { unseen: false, bucket: "done" },
+        afterMarkUnseen: { unseen: true, bucket: "review" },
+      });
+    } finally {
+      db.close();
+    }
+  });
+
+  it("broadcasts the server truth so every tab agrees after a viewed-state action", () => {
+    const db = openTestDb();
+    const sessionId = "session-test-400";
+    try {
+      db.index
+        .insert(schema.sessions)
+        .values({
+          id: sessionId,
+          projectId: "project-test-400",
+          title: "Test session",
+          messageCount: 4,
+          isSidechain: 0,
+          createdAt: 1_000,
+          mtimeMs: 2_000,
+          filePath: join("/nonexistent", `${sessionId}.jsonl`),
+        })
+        .run();
+      const broadcasts: Array<{ type: string; unseen: unknown; bucket: unknown }> = [];
+      const broadcast = (type: string, data: Record<string, unknown>) => {
+        const session = data["session"] as { unseen: unknown; bucket: unknown };
+        broadcasts.push({ type, unseen: session.unseen, bucket: session.bucket });
+      };
+      const activeSession = () => idleActiveSession(sessionId);
+
+      const unreviewed = applySessionViewedAction({
+        db: db.index,
+        sessionId,
+        action: "unreviewed",
+        broadcast,
+        activeSessionLookup: activeSession,
+      });
+      const reviewed = applySessionViewedAction({
+        db: db.index,
+        sessionId,
+        action: "reviewed",
+        broadcast,
+        activeSessionLookup: activeSession,
+      });
+
+      expect({
+        unreviewed: {
+          currentMessageIndex: unreviewed.currentMessageIndex,
+          viewedAnywhere: unreviewed.viewedAnywhere,
+        },
+        reviewed: {
+          currentMessageIndex: reviewed.currentMessageIndex,
+          viewedAnywhere: reviewed.viewedAnywhere,
+        },
+        broadcasts,
+      }).toStrictEqual({
+        unreviewed: { currentMessageIndex: 3, viewedAnywhere: false },
+        reviewed: { currentMessageIndex: 3, viewedAnywhere: true },
+        broadcasts: [
+          { type: DOMAIN_EVENTS.SESSION_UPDATED, unseen: true, bucket: "review" },
+          { type: DOMAIN_EVENTS.SESSION_UPDATED, unseen: false, bucket: "done" },
+        ],
       });
     } finally {
       db.close();

@@ -47,7 +47,8 @@ import {
 } from "../lib/api/sessions";
 import { toMdSlug } from "../lib/md-slug";
 import { getSubagentLifecycleKey, toSubagentSessionId } from "../lib/subagents";
-import { observeSessionState } from "../lib/unread-store";
+import { syncUnseenFromSummaries } from "../lib/unread-store";
+import { syncUnseenFromQueryCache } from "../lib/unseen-query-sync";
 import { isLiveSessionState, type ActivityState } from "../lib/session-state";
 import type { Statusline } from "../lib/api/statusline";
 import type { Notification, NotificationsData } from "../lib/api/notifications";
@@ -942,24 +943,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "DISMISS_DRIFT", hookEventName });
   }, []);
 
-  useEffect(() => {
-    const recent = queryClient.getQueryData<{
-      pages: Array<{ sessions: SessionSummaryPayload[] }>;
-    }>(recentSessionsInfiniteQueryOptions().queryKey);
-    const grouped = queryClient.getQueryData<Array<{ sessions: SessionSummaryPayload[] }>>(
-      groupedSessionsQueryOptions().queryKey,
-    );
-    for (const page of recent?.pages ?? []) {
-      for (const session of page.sessions) {
-        if (isLiveSessionState(session.state)) observeSessionState(session.id, session.state);
-      }
-    }
-    for (const group of grouped ?? []) {
-      for (const session of group.sessions) {
-        if (isLiveSessionState(session.state)) observeSessionState(session.id, session.state);
-      }
-    }
-  }, [queryClient]);
+  useEffect(() => syncUnseenFromQueryCache(queryClient), [queryClient]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -976,7 +960,6 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
       state: ActivityState,
       summary?: SessionSummaryPayload,
     ): void {
-      observeSessionState(sessionId, state);
       const existing = sessionStateObservationsRef.current.get(sessionId);
       const observation = summary
         ? toSessionStateObservation(summary)
@@ -1034,6 +1017,8 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
         case DOMAIN_EVENTS.SESSION_ADDED: {
           const session = data["session"] as SessionSummaryPayload | undefined;
           if (session) {
+            // Before publishing, so display-state listeners see the server's unseen flag.
+            syncUnseenFromSummaries([session]);
             if (isLiveSessionState(session.state)) {
               publishSessionState(session.id, session.state, session);
             }
@@ -1052,6 +1037,8 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
         case DOMAIN_EVENTS.SESSION_UPDATED: {
           const session = data["session"] as SessionSummaryPayload | undefined;
           if (session) {
+            // Before publishing, so display-state listeners see the server's unseen flag.
+            syncUnseenFromSummaries([session]);
             if (isLiveSessionState(session.state)) {
               publishSessionState(session.id, session.state, session);
             }

@@ -16,7 +16,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { DEFAULTS } from "../src/components/settings-provider";
 import { activeSessionsQueryOptions } from "../src/lib/api/sessions";
 import type { ActivityState } from "../src/lib/session-state";
-import { clearAll, markUnseen } from "../src/lib/unread-store";
+import {
+  __unreadStoreTesting as unreadTesting,
+  syncUnseenFromSummaries,
+} from "../src/lib/unread-store";
 import { Route as ActiveRoute } from "../src/routes/active";
 import { installLocalStorage } from "./fake-storage";
 
@@ -66,6 +69,7 @@ function activeSession({
     createdAt: now - 30 * MINUTE_MS,
     lastModified: now - minutesSinceModified * MINUTE_MS,
     state,
+    unseen: false,
     blockedSince,
   };
 }
@@ -101,9 +105,15 @@ function rowFor(title: string): Element {
 }
 
 describe("ActivePage rows", () => {
+  let persistCalls: Array<{ sessionId: string; action: "reviewed" | "unreviewed" }>;
+
   beforeEach(() => {
     installLocalStorage();
-    clearAll();
+    unreadTesting.reset();
+    persistCalls = [];
+    unreadTesting.setPersist(async (sessionId, action) => {
+      persistCalls.push({ sessionId, action });
+    });
   });
 
   it("gives every row the same fixed columns so only the title is variable-width", async () => {
@@ -204,7 +214,7 @@ describe("ActivePage rows", () => {
   });
 
   it("marks an unseen session reviewed from the row without leaving reviewed chrome behind", async () => {
-    markUnseen("session-test-100");
+    syncUnseenFromSummaries([{ id: "session-test-100", unseen: true }]);
     await renderActivePage([
       activeSession({ number: 100, state: "idle", title: "Finished while I was away" }),
       activeSession({ number: 200, state: "idle", title: "Already seen" }),
@@ -230,8 +240,12 @@ describe("ActivePage rows", () => {
       expect({
         marker: screen.queryByText(/Needs review/),
         action: screen.queryByRole("button", { name: "Mark reviewed" }),
-        storedUnseenWork: localStorage.getItem("ccp-unseen-work"),
-      }).toStrictEqual({ marker: null, action: null, storedUnseenWork: null }),
+        persistCalls,
+      }).toStrictEqual({
+        marker: null,
+        action: null,
+        persistCalls: [{ sessionId: "session-test-100", action: "reviewed" }],
+      }),
     );
   });
 

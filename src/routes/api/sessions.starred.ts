@@ -9,9 +9,13 @@ export const Route = createFileRoute("/api/sessions/starred")({
         const { getDb } = await import("../../lib/db");
         const { getStarredSessions } = await import("../../lib/db/queries");
         const { toSessionSummaryPayload } = await import("../../lib/session-summary");
+        const { getUnseenSessionIds } = await import("../../lib/db/viewed-state");
 
         const { index } = getDb();
-        const sessions = getStarredSessions(index).map((s) => toSessionSummaryPayload(s, true));
+        const unseenIds = getUnseenSessionIds(index);
+        const sessions = getStarredSessions(index).map((s) =>
+          toSessionSummaryPayload(s, true, { unseen: unseenIds.has(s.id) }),
+        );
 
         return Response.json(StarredSessionsResponse.parse(sessions), {
           headers: { "Cache-Control": "private, max-age=0, must-revalidate" },

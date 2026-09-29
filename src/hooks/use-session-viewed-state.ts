@@ -6,6 +6,7 @@ import {
   updateSessionVisibility,
   type SessionViewedState,
 } from "../lib/api/viewed-state";
+import { hasUnseenWork, syncUnseenFromSummaries } from "../lib/unread-store";
 
 const VIEW_DWELL_MS = 1_500;
 const VISIBILITY_HEARTBEAT_MS = 10_000;
@@ -120,6 +121,7 @@ export function useSessionViewedState(
         if (previous === null || typeof previous !== "object") return previous;
         return { ...previous, viewedState };
       });
+      syncUnseenFromSummaries([{ id: sessionId, unseen: !viewedState.viewedAnywhere }]);
       void queryClient.invalidateQueries({ queryKey: ["herdr", "panes"] });
       void queryClient.invalidateQueries({ queryKey: ["terminal", "placements"] });
       return viewedState;
@@ -127,17 +129,25 @@ export function useSessionViewedState(
     [queryClient, sessionId],
   );
 
-  const markReviewed = useCallback(async () => {
-    return applyViewedState(
-      await updateSessionViewedState(sessionId, "reviewed", currentMessageIndex),
-    );
-  }, [applyViewedState, currentMessageIndex, sessionId]);
+  const updateViewedState = useCallback(
+    async (action: "reviewed" | "unreviewed") => {
+      // Optimistic: the shared unseen flag moves now and settles from the server response.
+      const previousUnseen = hasUnseenWork(sessionId);
+      syncUnseenFromSummaries([{ id: sessionId, unseen: action === "unreviewed" }]);
+      try {
+        return applyViewedState(
+          await updateSessionViewedState(sessionId, action, currentMessageIndex),
+        );
+      } catch (error) {
+        syncUnseenFromSummaries([{ id: sessionId, unseen: previousUnseen }]);
+        throw error;
+      }
+    },
+    [applyViewedState, currentMessageIndex, sessionId],
+  );
 
-  const markUnreviewed = useCallback(async () => {
-    return applyViewedState(
-      await updateSessionViewedState(sessionId, "unreviewed", currentMessageIndex),
-    );
-  }, [applyViewedState, currentMessageIndex, sessionId]);
+  const markReviewed = useCallback(() => updateViewedState("reviewed"), [updateViewedState]);
+  const markUnreviewed = useCallback(() => updateViewedState("unreviewed"), [updateViewedState]);
 
   const markReviewedRef = useRef(markReviewed);
   markReviewedRef.current = markReviewed;

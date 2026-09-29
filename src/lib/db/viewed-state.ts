@@ -1,4 +1,4 @@
-import { and, eq, notInArray } from "drizzle-orm";
+import { and, eq, inArray, lt, notInArray } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as schema from "./schema";
 
@@ -196,4 +196,41 @@ export function getCurrentSessionMessageIndex(db: IndexDb, sessionId: string): n
     .get();
   if (!row) return -1;
   return row.messageCount - 1;
+}
+
+function viewedHerdrSessionIds(db: IndexDb) {
+  return db
+    .select({ sessionId: schema.herdrTerminalViewStates.sessionId })
+    .from(schema.herdrTerminalViewStates)
+    .where(eq(schema.herdrTerminalViewStates.viewed, 1));
+}
+
+/**
+ * Sessions whose durable viewed state is unseen: a review target past the last
+ * viewed message and no herdr terminal that has shown the work since. This is
+ * the single source of truth for the `unseen` flag on session summaries.
+ */
+export function getUnseenSessionIds(db: IndexDb, sessionIds?: readonly string[]): Set<string> {
+  const unseen = lt(
+    schema.sessionViewStates.lastViewedMessageIndex,
+    schema.sessionViewStates.reviewTargetMessageIndex,
+  );
+  const notViewedInHerdr = notInArray(
+    schema.sessionViewStates.sessionId,
+    viewedHerdrSessionIds(db),
+  );
+  const scope =
+    sessionIds === undefined
+      ? undefined
+      : inArray(schema.sessionViewStates.sessionId, [...sessionIds]);
+  const rows = db
+    .select({ sessionId: schema.sessionViewStates.sessionId })
+    .from(schema.sessionViewStates)
+    .where(and(unseen, notViewedInHerdr, scope))
+    .all();
+  return new Set(rows.map((row) => row.sessionId));
+}
+
+export function isSessionUnseen(db: IndexDb, sessionId: string): boolean {
+  return getUnseenSessionIds(db, [sessionId]).has(sessionId);
 }

@@ -39,6 +39,7 @@ function session(id: string, title: string, project: string, mtime: string) {
     state: "ended",
     bucket: "done",
     liveAgentCount: 0,
+    unseen: false,
     blockedSince: null,
   };
 }

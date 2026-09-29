@@ -24,6 +24,7 @@ import { useSettings } from "./settings-provider";
 import { SessionReviewedToggle } from "./session-reviewed-toggle";
 import { LiveTerminalLink } from "./session-terminal-links";
 import { useHasUnseenWork } from "./session-unread-control";
+import { syncUnseenFromSummaries } from "../lib/unread-store";
 import {
   AskUserQuestionProvider,
   type AskUserQuestionContextValue,
@@ -75,7 +76,6 @@ import {
   type ActiveSubagent,
 } from "../lib/subagents";
 import { processTranscript } from "../lib/transcript";
-import { markSeen } from "../lib/unread-store";
 
 const TRANSCRIPT_SCROLL_CONTAINER_CLASSES =
   "h-full overflow-y-auto overflow-x-hidden [contain:strict] [overflow-anchor:none] [scrollbar-gutter:stable_both_edges]";
@@ -413,37 +413,17 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
     },
     [visibilityRef],
   );
-  const hasUnseen = useHasUnseenWork(sessionId);
+  const detailUnseen = !data.viewedState.viewedAnywhere;
+  useEffect(() => {
+    syncUnseenFromSummaries([{ id: sessionId, unseen: detailUnseen }]);
+  }, [detailUnseen, sessionId]);
+  const unseen = useHasUnseenWork(sessionId);
   const { settings, setSetting } = useSettings();
   const [currentHost, setCurrentHost] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     setCurrentHost(typeof window !== "undefined" ? window.location.hostname : undefined);
   }, []);
-
-  useEffect(() => {
-    if (!hasUnseen) return;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const updateDwell = (): void => {
-      if (document.visibilityState !== "visible") {
-        if (timer) clearTimeout(timer);
-        timer = null;
-        return;
-      }
-      if (timer) return;
-      timer = setTimeout(() => {
-        timer = null;
-        markSeen(sessionId);
-      }, 2_000);
-    };
-
-    updateDwell();
-    document.addEventListener("visibilitychange", updateDwell);
-    return () => {
-      document.removeEventListener("visibilitychange", updateDwell);
-      if (timer) clearTimeout(timer);
-    };
-  }, [hasUnseen, sessionId]);
 
   // Keyed off the window's startIndex so every line carries its session-absolute
   // JSONL record index, which locates a row whose record was collapsed into a
@@ -713,12 +693,8 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
                 hasLivePane={promptBehavior.hasLivePane}
               />
               <SessionReviewedToggle
-                reviewed={data.viewedState.viewedAnywhere}
-                onToggle={
-                  data.viewedState.viewedAnywhere
-                    ? viewedState.markUnreviewed
-                    : viewedState.markReviewed
-                }
+                reviewed={!unseen}
+                onToggle={unseen ? viewedState.markReviewed : viewedState.markUnreviewed}
               />
               <a
                 href={`/api/raw?sessionId=${sessionId}`}

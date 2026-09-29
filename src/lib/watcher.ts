@@ -20,6 +20,7 @@ import {
   getStarredSessionIds,
 } from "./db/queries";
 import type { TaskRow } from "./db/queries";
+import { getUnseenSessionIds } from "./db/viewed-state";
 import {
   updatePendingApprovalForSession,
   removePendingApprovalForSession,
@@ -166,6 +167,7 @@ function sessionSummariesEqual(a: SessionSummaryPayload, b: SessionSummaryPayloa
     a.projectName === b.projectName &&
     a.starred === b.starred &&
     a.state === b.state &&
+    a.unseen === b.unseen &&
     a.blockedSince === b.blockedSince
   );
 }
@@ -205,9 +207,13 @@ function diffAndBroadcastSessions(projectId: string): void {
   const { index } = getDb();
   const rows = listSessionsForProjectFromDb(index, projectId);
   const starredIds = getStarredSessionIds(index);
+  const unseenIds = getUnseenSessionIds(index);
   const next = new Map<string, SessionSummaryPayload>();
   for (const row of rows) {
-    next.set(row.id, toSessionSummaryPayload(row, starredIds.has(row.id)));
+    next.set(
+      row.id,
+      toSessionSummaryPayload(row, starredIds.has(row.id), { unseen: unseenIds.has(row.id) }),
+    );
   }
 
   const previous = lastSessionsByProject.get(projectId) ?? new Map();
@@ -227,7 +233,7 @@ function diffAndBroadcastSessions(projectId: string): void {
     });
   }
   for (const session of updated) {
-    const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${session.id}:${session.mtime}`;
+    const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${session.id}:${session.mtime}:${session.unseen}`;
     if (recentlyBroadcast(key, DEDUPE_TTL_MS)) continue;
     broadcastTyped(DOMAIN_EVENTS.SESSION_UPDATED, { session });
   }

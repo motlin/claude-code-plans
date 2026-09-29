@@ -10,6 +10,7 @@ import type { HookBackgroundTaskPayload, HookEvent } from "../src/lib/hook-event
 import { getNotifications, clearAllNotifications } from "../src/lib/notifications-store";
 import { clearLiveSubagents } from "../src/lib/live-subagent-store";
 import * as schema from "../src/lib/db/schema";
+import { getSessionViewedState } from "../src/lib/db/viewed-state";
 import type { ActiveSessionEntry } from "../src/lib/active-session-store";
 import type { ActivityState } from "../src/lib/session-state";
 import {
@@ -292,6 +293,7 @@ describe("dispatchHookEvent", () => {
         state: "unknown",
         bucket: "done",
         liveAgentCount: 0,
+        unseen: false,
         blockedSince: null,
       },
     });
@@ -350,6 +352,7 @@ describe("dispatchHookEvent", () => {
         state: "ended",
         bucket: "done",
         liveAgentCount: 0,
+        unseen: true,
         blockedSince: null,
       },
     });
@@ -360,6 +363,64 @@ describe("dispatchHookEvent", () => {
       data: { sessionId: "abc-123" },
     });
   });
+
+  it.each([
+    {
+      visible: false,
+      sessionId: "session-test-150",
+      expected: { unseen: true, bucket: "review", viewedAnywhere: false },
+    },
+    {
+      visible: true,
+      sessionId: "session-test-151",
+      expected: { unseen: false, bucket: "done", viewedAnywhere: true },
+    },
+  ])(
+    "a main Stop durably marks the finished turn unseen unless a browser is viewing it (visible: $visible)",
+    async ({ visible, sessionId, expected }) => {
+      const projectDir = join(testDir, "-Users-alice-projects-unseen");
+      mkdirSync(projectDir, { recursive: true });
+      writeFileSync(
+        join(projectDir, "sessions-index.json"),
+        makeSessionsIndex([
+          {
+            sessionId,
+            fullPath: join(projectDir, `${sessionId}.jsonl`),
+            fileMtime: 946_598_400_000,
+            firstPrompt: "Example prompt",
+            messageCount: 1,
+            projectPath: "/Users/alice/projects/unseen",
+          },
+        ]),
+      );
+      await indexSessionsIndex(db.index, projectDir, "-Users-alice-projects-unseen");
+      const broadcasts: Broadcast[] = [];
+      const { store } = makeStore();
+      store.markSessionActive(sessionId, { cwd: "/Users/alice/projects/unseen" });
+
+      await dispatchHookEvent({
+        event: {
+          hook_event_name: "Stop",
+          session_id: sessionId,
+          transcript_path: join(projectDir, `${sessionId}.jsonl`),
+          cwd: "/Users/alice/projects/unseen",
+        },
+        db: db.index,
+        store,
+        broadcast: (type, data) => broadcasts.push({ type, data }),
+        isSessionVisible: (candidate) => visible && candidate === sessionId,
+      });
+
+      const updated = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_UPDATED)?.data[
+        "session"
+      ] as { unseen: boolean; bucket: string } | undefined;
+      expect({
+        unseen: updated?.unseen,
+        bucket: updated?.bucket,
+        viewedAnywhere: getSessionViewedState(db.index, sessionId, -1).viewedAnywhere,
+      }).toStrictEqual(expected);
+    },
+  );
 
   it("Stop from a spawned review fork does not recursively offer another review", async () => {
     const projectDir = join(testDir, "-Users-alice-projects-example");

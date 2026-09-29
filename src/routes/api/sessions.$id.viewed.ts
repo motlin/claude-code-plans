@@ -13,23 +13,22 @@ export const Route = createFileRoute("/api/sessions/$id/viewed")({
         const rejection = rejectCrossSite(request);
         if (rejection) return rejection;
 
-        const [{ getDb }, viewedState] = await Promise.all([
+        const [{ getDb }, { applySessionViewedAction }, { broadcastTyped }] = await Promise.all([
           import("../../lib/db"),
-          import("../../lib/db/viewed-state"),
+          import("../../lib/session-viewed-action"),
+          import("../../lib/sse-broadcast"),
         ]);
         const body = ViewedStateMutationBodySchema.parse(await request.json());
-        const { index } = getDb();
-        if (body.action === "reviewed") {
-          viewedState.markSessionReviewed(index, params.id, body.messageIndex);
-        } else {
-          viewedState.markSessionUnreviewed(index, params.id, body.messageIndex);
-        }
-        return Response.json(
-          SessionViewedStateSchema.parse(
-            viewedState.getSessionViewedState(index, params.id, body.messageIndex),
-          ),
-          { headers: { "Cache-Control": "private, max-age=0, must-revalidate" } },
-        );
+        const viewedState = applySessionViewedAction({
+          db: getDb().index,
+          sessionId: params.id,
+          action: body.action,
+          ...(body.messageIndex !== undefined ? { messageIndex: body.messageIndex } : {}),
+          broadcast: broadcastTyped,
+        });
+        return Response.json(SessionViewedStateSchema.parse(viewedState), {
+          headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
+        });
       },
     }),
   },

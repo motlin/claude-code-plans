@@ -48,6 +48,7 @@ function makeSession(
     state: "unknown",
     bucket: "done",
     liveAgentCount: 0,
+    unseen: false,
     blockedSince: null,
     ...rest,
   };

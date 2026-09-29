@@ -14,6 +14,7 @@ function createSeededQueryClient() {
       createdAt: Date.now() - 60_000,
       lastModified: Date.now(),
       state: "working",
+      unseen: false,
       blockedSince: null,
     },
   ]);

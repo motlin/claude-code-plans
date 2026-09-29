@@ -11,6 +11,11 @@ import {
 } from "../src/hooks/use-session-viewed-state";
 import { sessionQueryKeys } from "../src/lib/api/sessions";
 import {
+  __unreadStoreTesting as unreadTesting,
+  hasUnseenWork,
+  syncUnseenFromSummaries,
+} from "../src/lib/unread-store";
+import {
   __testing as visibilityTesting,
   isSessionVisible,
   setSessionVisibility,
@@ -114,6 +119,50 @@ describe("session viewed visibility dwell", () => {
       herdrPanesInvalidated: true,
       terminalPlacementsInvalidated: true,
     });
+  });
+
+  it("moves the shared unseen flag optimistically and settles it from the server response", async () => {
+    unreadTesting.reset();
+    syncUnseenFromSummaries([{ id: "session-test-100", unseen: true }]);
+    const responses = [
+      { viewedInCcp: true, viewedAnywhere: true, reviewTargetMessageIndex: 100 },
+      { viewedInCcp: false, viewedAnywhere: false, reviewTargetMessageIndex: 101 },
+    ];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          currentMessageIndex: 100,
+          lastViewedMessageIndex: 100,
+          newMessageCount: 0,
+          viewedInHerdr: false,
+          ...responses.shift(),
+        }),
+      ),
+    );
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const wrapper = ({ children }: PropsWithChildren) =>
+      createElement(QueryClientProvider, { client }, children);
+    const { result } = renderHook(() => useSessionViewedState("session-test-100", 100), {
+      wrapper,
+    });
+
+    let optimisticReviewed = true;
+    await act(async () => {
+      const pending = result.current.markReviewed();
+      optimisticReviewed = hasUnseenWork("session-test-100");
+      await pending;
+    });
+    const afterReviewed = hasUnseenWork("session-test-100");
+    await act(async () => {
+      await result.current.markUnreviewed();
+    });
+
+    expect({
+      optimisticReviewed,
+      afterReviewed,
+      afterUnreviewed: hasUnseenWork("session-test-100"),
+    }).toStrictEqual({ optimisticReviewed: false, afterReviewed: false, afterUnreviewed: true });
   });
 
   it("retries a failed dwell auto-mark on the visibility heartbeat", async () => {

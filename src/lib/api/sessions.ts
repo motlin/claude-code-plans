@@ -27,6 +27,7 @@ const SessionListItemSchema = z.object({
   state: SessionSummaryStateSchema,
   bucket: SessionBucketSchema,
   liveAgentCount: z.number(),
+  unseen: z.boolean(),
   blockedSince: z.string().nullable(),
 });
 export type SessionListItem = z.infer<typeof SessionListItemSchema>;
@@ -60,6 +61,7 @@ const ActiveSessionSchema = z.object({
   createdAt: z.number(),
   lastModified: z.number(),
   state: z.enum(["idle", "working", "waiting", "unknown"]),
+  unseen: z.boolean(),
   blockedSince: z.string().nullable(),
 });
 export const ActiveSessionListResponse = z.array(ActiveSessionSchema);

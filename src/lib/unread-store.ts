@@ -1,100 +1,71 @@
-import type { ActivityState, DisplayState } from "./session-state";
+import { updateSessionViewedState } from "./api/viewed-state";
 
-const STORAGE_KEY = "ccp-unseen-work";
+/**
+ * Client-side cache of the server's durable `unseen` flag (see
+ * `getUnseenSessionIds` in db/viewed-state.ts). The server is the source of
+ * truth: session summaries and SSE `session:updated` events seed this cache,
+ * and manual actions update it optimistically before persisting.
+ */
 
-type UnseenWorkMap = Record<string, true>;
+type ViewedAction = "reviewed" | "unreviewed";
+type Persist = (sessionId: string, action: ViewedAction) => Promise<unknown>;
 
 const listeners = new Set<() => void>();
-const previousDisplayStates = new Map<string, DisplayState>();
+const unseenBySession = new Map<string, boolean>();
 
-function storage(): Storage | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.localStorage;
-  } catch {
-    return null;
-  }
-}
-
-function readUnseenWork(): UnseenWorkMap {
-  try {
-    const stored = storage()?.getItem(STORAGE_KEY);
-    if (stored === null || stored === undefined) return {};
-    const parsed: unknown = JSON.parse(stored);
-    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return {};
-    if (!Object.values(parsed).every((value) => value === true)) return {};
-    return parsed as UnseenWorkMap;
-  } catch {
-    return {};
-  }
-}
-
-function writeUnseenWork(unseenWork: UnseenWorkMap): void {
-  try {
-    const localStorage = storage();
-    if (!localStorage) return;
-    if (Object.keys(unseenWork).length === 0) {
-      localStorage.removeItem(STORAGE_KEY);
-    } else {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(unseenWork));
-    }
-  } catch {
-    // localStorage can be denied even when window exists; the latch is best-effort client state.
-  }
-}
+let persist: Persist = (sessionId, action) => updateSessionViewedState(sessionId, action);
 
 function emitChange(): void {
   for (const listener of listeners) listener();
 }
 
-function persistUnseen(sessionId: string): void {
-  const unseenWork = readUnseenWork();
-  if (unseenWork[sessionId]) return;
-  writeUnseenWork({ ...unseenWork, [sessionId]: true });
-  emitChange();
+function setUnseen(sessionId: string, unseen: boolean): boolean {
+  if ((unseenBySession.get(sessionId) ?? false) === unseen) return false;
+  unseenBySession.set(sessionId, unseen);
+  return true;
 }
 
-/** Record a display-state observation and return the preceding observation. */
-function rememberDisplayState(
-  sessionId: string,
-  displayState: DisplayState,
-): DisplayState | undefined {
-  const previous = previousDisplayStates.get(sessionId);
-  previousDisplayStates.set(sessionId, displayState);
-  return previous;
+/** Adopt the server's flag for every summary; notifies subscribers once if anything changed. */
+export function syncUnseenFromSummaries(
+  summaries: Iterable<{ id: string; unseen: boolean }>,
+): void {
+  let changed = false;
+  for (const summary of summaries) {
+    if (setUnseen(summary.id, summary.unseen)) changed = true;
+  }
+  if (changed) emitChange();
+}
+
+function applyOptimistically(sessionId: string, unseen: boolean): void {
+  const previous = unseenBySession.get(sessionId) ?? false;
+  if (setUnseen(sessionId, unseen)) emitChange();
+  void Promise.resolve()
+    .then(() => persist(sessionId, unseen ? "unreviewed" : "reviewed"))
+    .catch((error: unknown) => {
+      console.warn("[unread-store] failed to persist unseen flag", error);
+      // Roll back only if nothing (such as an SSE summary) has replaced the optimistic value.
+      if (unseenBySession.get(sessionId) === unseen && setUnseen(sessionId, previous)) {
+        emitChange();
+      }
+    });
 }
 
 export function markUnseen(sessionId: string): void {
-  // Seed the notification transition baseline before a manual latch flip. Otherwise the user's
-  // own click appears to be a fresh transition into review and notifies them about their action.
-  rememberDisplayState(sessionId, "review");
-  persistUnseen(sessionId);
-}
-
-/** Raise the latch from observed work without suppressing the later transition into review. */
-export function observeSessionState(sessionId: string, state: ActivityState): void {
-  if (state === "working" || state === "waiting") persistUnseen(sessionId);
+  applyOptimistically(sessionId, true);
 }
 
 export function markSeen(sessionId: string): void {
-  const unseenWork = readUnseenWork();
-  if (!unseenWork[sessionId]) return;
-  delete unseenWork[sessionId];
-  writeUnseenWork(unseenWork);
-  emitChange();
+  applyOptimistically(sessionId, false);
 }
 
 export function clearAll(): void {
-  try {
-    storage()?.removeItem(STORAGE_KEY);
-  } catch {
-    // localStorage can be denied even when window exists; the latch is best-effort client state.
+  for (const [sessionId, unseen] of unseenBySession) {
+    if (unseen) markSeen(sessionId);
   }
-  emitChange();
 }
 
 export function hasUnseenWork(sessionId: string): boolean {
-  return readUnseenWork()[sessionId] === true;
+  return unseenBySession.get(sessionId) === true;
 }
 
 export function subscribeUnseenWork(listener: () => void): () => void {
@@ -102,11 +73,12 @@ export function subscribeUnseenWork(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
-export const __testing = {
-  previousDisplayState(sessionId: string): DisplayState | undefined {
-    return previousDisplayStates.get(sessionId);
+export const __unreadStoreTesting = {
+  setPersist(next: Persist): void {
+    persist = next;
   },
-  resetPreviousDisplayStates(): void {
-    previousDisplayStates.clear();
+  reset(): void {
+    unseenBySession.clear();
+    emitChange();
   },
 };

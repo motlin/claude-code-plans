@@ -17,6 +17,7 @@ export const Route = createFileRoute("/api/sessions/grouped")({
         const { listSessionGroupsFromDb, getStarredSessionIds } =
           await import("../../lib/db/queries");
         const { toSessionSummaryPayload } = await import("../../lib/session-summary");
+        const { getUnseenSessionIds } = await import("../../lib/db/viewed-state");
 
         const url = new URL(request.url);
         const perProject = clampPerProject(url.searchParams.get("perProject"));
@@ -24,11 +25,14 @@ export const Route = createFileRoute("/api/sessions/grouped")({
         const { index } = getDb();
         const groups = listSessionGroupsFromDb(index, perProject ? { perProject } : {});
         const starredIds = getStarredSessionIds(index);
+        const unseenIds = getUnseenSessionIds(index);
         const serialized = groups.map((g) => ({
           project: g.project,
           projectName: g.projectName,
           sessionCount: g.sessionCount,
-          sessions: g.sessions.map((s) => toSessionSummaryPayload(s, starredIds.has(s.id))),
+          sessions: g.sessions.map((s) =>
+            toSessionSummaryPayload(s, starredIds.has(s.id), { unseen: unseenIds.has(s.id) }),
+          ),
         }));
 
         return Response.json(GroupedSessionsResponse.parse(serialized), {

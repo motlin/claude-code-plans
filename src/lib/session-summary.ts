@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import * as schema from "./db/schema";
 import { getActiveSessionEntry, type ActiveSessionEntry } from "./active-session-store";
 import { getPendingApprovalsForProject } from "./db/pending-approvals-cache";
+import { isSessionUnseen } from "./db/viewed-state";
 import type { ActiveSessionPayload, SessionSummaryPayload } from "./hook-events";
 import { getLiveSubagentNodes } from "./live-subagent-store";
 import { resolveSessionBucket } from "./session-state";
@@ -25,6 +26,13 @@ export function toActiveSessionPayload(entry: ActiveSessionEntry): ActiveSession
   };
 }
 
+interface SessionSummaryOptions {
+  /** The durable viewed-state `unseen` flag (see `getUnseenSessionIds`). */
+  unseen?: boolean;
+  activeSession?: ActiveSessionEntry | null;
+  now?: number;
+}
+
 /**
  * Convert a raw DB SessionEntry into the serialized SessionSummaryPayload
  * shape used by `/api/sessions` and the session:added/updated/removed events.
@@ -32,8 +40,11 @@ export function toActiveSessionPayload(entry: ActiveSessionEntry): ActiveSession
 export function toSessionSummaryPayload(
   entry: SessionEntry,
   starred: boolean,
-  activeSession: ActiveSessionEntry | null = getActiveSessionEntry(entry.id),
-  now: number = Date.now(),
+  {
+    unseen = false,
+    activeSession = getActiveSessionEntry(entry.id),
+    now = Date.now(),
+  }: SessionSummaryOptions = {},
 ): SessionSummaryPayload {
   const pendingApproval = getPendingApprovalsForProject(entry.project).find(
     (approval) => approval.sessionId === entry.id,
@@ -53,7 +64,7 @@ export function toSessionSummaryPayload(
     lastSubagentActivityAt: activeSession?.lastSubagentActivityAt ?? null,
     herdrStatus: null,
     prState: null,
-    unseen: false,
+    unseen,
     fileMtime: entry.mtime.getTime(),
     now,
   });
@@ -71,6 +82,7 @@ export function toSessionSummaryPayload(
     state: activeSession === null ? "ended" : pendingInput ? "waiting" : activeSession.state,
     bucket,
     liveAgentCount,
+    unseen,
     blockedSince: activeSession === null ? null : (pendingApproval?.blockedSince ?? null),
   };
 }
@@ -118,6 +130,6 @@ export function buildSessionSummaryPayloadFromDb(
       isSidechain: row.isSidechain === 1,
     },
     !!starredRow,
-    activeSessionLookup(sessionId),
+    { unseen: isSessionUnseen(db, sessionId), activeSession: activeSessionLookup(sessionId) },
   );
 }

@@ -34,6 +34,7 @@ export const WithSessions: Story = {
         createdAt: Date.now() - 60_000,
         lastModified: Date.now(),
         state: "working",
+        unseen: false,
         blockedSince: null,
       },
       {
@@ -44,6 +45,7 @@ export const WithSessions: Story = {
         createdAt: Date.now() - 30_000,
         lastModified: Date.now(),
         state: "waiting",
+        unseen: false,
         blockedSince: new Date(Date.now() - 31 * 60_000).toISOString(),
       },
     ]);

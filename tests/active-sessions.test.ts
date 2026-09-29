@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openTestDb, type AppDb } from "../src/lib/db/connection";
 import * as schema from "../src/lib/db/schema";
+import { markSessionCompletionUnreviewed, markSessionReviewed } from "../src/lib/db/viewed-state";
 
 /**
  * Tests for `scanActiveSessions()` in `src/lib/active-sessions.ts`, which unions
@@ -117,6 +118,7 @@ describe("scanActiveSessions", () => {
         createdAt: statSync(file).birthtimeMs,
         lastModified: statSync(file).mtimeMs,
         state: "unknown",
+        unseen: false,
         blockedSince: null,
       },
     ]);
@@ -152,6 +154,7 @@ describe("scanActiveSessions", () => {
         createdAt: Math.min(entry.startedAt, statSync(file).birthtimeMs),
         lastModified: statSync(file).mtimeMs,
         state: "working",
+        unseen: false,
         blockedSince: null,
       },
     ]);
@@ -185,6 +188,23 @@ describe("scanActiveSessions", () => {
       state: "waiting",
       blockedSince: "2000-01-01T00:00:00.000Z",
     });
+  });
+
+  it("reports the durable unseen flag for each active session", async () => {
+    writeSessionFile("/Users/test/alpha", "unseen", new Date(Date.now() - 10_000));
+    writeSessionFile("/Users/test/alpha", "seen", new Date(Date.now() - 20_000));
+    const { scanMod, db } = await loadModules();
+    markSessionCompletionUnreviewed(db.index, "unseen", 0, 1_000);
+    markSessionReviewed(db.index, "seen", 0, 1_000);
+
+    const result = await scanMod.scanActiveSessions();
+
+    expect(new Map(result.map((r) => [r.sessionId, r.unseen]))).toStrictEqual(
+      new Map([
+        ["unseen", true],
+        ["seen", false],
+      ]),
+    );
   });
 
   it("attaches the indexed session title, falling back to the session id", async () => {

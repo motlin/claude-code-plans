@@ -1,40 +1,72 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { SessionUnreadControl } from "../src/components/session-unread-control";
-import { clearAll } from "../src/lib/unread-store";
-import { installLocalStorage } from "./fake-storage";
+import {
+  __unreadStoreTesting as __testing,
+  syncUnseenFromSummaries,
+} from "../src/lib/unread-store";
+
+type PersistCall = { sessionId: string; action: "reviewed" | "unreviewed" };
 
 describe("SessionUnreadControl", () => {
+  let calls: PersistCall[];
+
   beforeEach(() => {
-    installLocalStorage();
-    clearAll();
+    __testing.reset();
+    calls = [];
+    __testing.setPersist(async (sessionId, action) => {
+      calls.push({ sessionId, action });
+    });
   });
 
-  it("toggles an idle session between seen and needs review", () => {
+  it("toggles an idle session between seen and needs review through the server flag", async () => {
     render(<SessionUnreadControl sessionId="session-test-100" state="idle" />);
 
     expect(screen.getByRole("button", { name: "Mark unseen" }).textContent).toBe("●");
     fireEvent.click(screen.getByRole("button", { name: "Mark unseen" }));
-    expect({
+    const afterMarkUnseen = {
       label: screen.getByText("needs review").textContent,
       control: screen.getByRole("button", { name: "Mark seen" }).textContent,
-    }).toStrictEqual({ label: "needs review", control: "○" });
+    };
+    fireEvent.click(screen.getByRole("button", { name: "Mark seen" }));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect({
+      afterMarkUnseen,
+      control: screen.getByRole("button", { name: "Mark unseen" }).textContent,
+      calls,
+    }).toStrictEqual({
+      afterMarkUnseen: { label: "needs review", control: "○" },
+      control: "●",
+      calls: [
+        { sessionId: "session-test-100", action: "unreviewed" },
+        { sessionId: "session-test-100", action: "reviewed" },
+      ],
+    });
+  });
+
+  it("shows review when the server summary reports the session unseen", () => {
+    render(<SessionUnreadControl sessionId="session-test-100" state="idle" />);
+
+    act(() => syncUnseenFromSummaries([{ id: "session-test-100", unseen: true }]));
+
+    expect(screen.getByText("needs review").textContent).toBe("needs review");
   });
 
   it.each(["working", "waiting"] as const)(
-    "raises unseen work without offering a manual control for %s rows",
-    async (state) => {
+    "offers no manual control for %s rows and persists nothing",
+    (state) => {
       render(<SessionUnreadControl sessionId={`session-test-${state}`} state={state} />);
 
-      await waitFor(() =>
-        expect(localStorage.getItem("ccp-unseen-work")).toBe(
-          JSON.stringify({ [`session-test-${state}`]: true }),
-        ),
-      );
-      expect(screen.queryByRole("button")).toBe(null);
+      expect({ button: screen.queryByRole("button"), calls }).toStrictEqual({
+        button: null,
+        calls: [],
+      });
     },
   );
 
@@ -46,11 +78,9 @@ describe("SessionUnreadControl", () => {
     expect({
       childElementCount: container.childElementCount,
       textContent: container.textContent,
-      storedUnseenWork: localStorage.getItem("ccp-unseen-work"),
     }).toStrictEqual({
       childElementCount: 0,
       textContent: "",
-      storedUnseenWork: null,
     });
   });
 });

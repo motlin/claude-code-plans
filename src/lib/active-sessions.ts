@@ -7,6 +7,7 @@ import { ACTIVE_SESSION_WINDOW_MS } from "./active-session-window";
 import { getPendingApprovals, revalidatePendingApprovals } from "./db/pending-approvals-cache";
 import { getDb } from "./db";
 import { getSessionTitlesByIds } from "./db/queries";
+import { getUnseenSessionIds } from "./db/viewed-state";
 import type { ActivityState } from "./session-state";
 
 export interface ActiveSession {
@@ -18,11 +19,13 @@ export interface ActiveSession {
   createdAt: number;
   lastModified: number;
   state: ActivityState;
+  /** Durable viewed state: finished work nobody has looked at yet. */
+  unseen: boolean;
   blockedSince: string | null;
 }
 
-/** Scan result before the DB title lookup joins in. */
-type ActiveSessionCandidate = Omit<ActiveSession, "title">;
+/** Scan result before the DB title and viewed-state lookups join in. */
+type ActiveSessionCandidate = Omit<ActiveSession, "title" | "unseen">;
 
 export async function scanActiveSessions(
   activeTimeoutMs = ACTIVE_SESSION_WINDOW_MS,
@@ -72,13 +75,13 @@ export async function scanActiveSessions(
   }
 
   const candidates = [...bySessionId.values()].sort((a, b) => b.lastModified - a.lastModified);
-  const titles = getSessionTitlesByIds(
-    getDb().index,
-    candidates.map((candidate) => candidate.sessionId),
-  );
+  const candidateIds = candidates.map((candidate) => candidate.sessionId);
+  const titles = getSessionTitlesByIds(getDb().index, candidateIds);
+  const unseenIds = getUnseenSessionIds(getDb().index, candidateIds);
   return candidates.map((candidate) => ({
     ...candidate,
     title: titles[candidate.sessionId] ?? candidate.sessionId,
+    unseen: unseenIds.has(candidate.sessionId),
   }));
 }
 

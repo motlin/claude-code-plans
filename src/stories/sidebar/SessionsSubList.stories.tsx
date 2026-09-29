@@ -31,6 +31,7 @@ function session(id: string, title: string, projectName: string, mtime: string) 
     state: "unknown",
     bucket: "done",
     liveAgentCount: 0,
+    unseen: false,
     blockedSince: null,
   };
 }

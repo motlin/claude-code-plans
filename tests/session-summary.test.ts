@@ -120,6 +120,7 @@ describe("buildSessionSummaryPayloadFromDb", () => {
       state: "ended",
       bucket: "done",
       liveAgentCount: 0,
+      unseen: false,
       blockedSince: null,
     });
   });
@@ -147,6 +148,7 @@ describe("buildSessionSummaryPayloadFromDb", () => {
       state: "working",
       bucket: "working",
       liveAgentCount: 0,
+      unseen: false,
       blockedSince: null,
     });
   });
@@ -192,6 +194,7 @@ describe("buildSessionSummaryPayloadFromDb", () => {
       state: "waiting",
       bucket: "blocked",
       liveAgentCount: 0,
+      unseen: false,
       blockedSince: "2000-01-01T00:00:00.000Z",
     });
   });
@@ -223,6 +226,7 @@ describe("buildSessionSummaryPayloadFromDb", () => {
       state: "idle",
       bucket: "working",
       liveAgentCount: 1,
+      unseen: false,
       blockedSince: null,
     });
   });

@@ -26,6 +26,7 @@ export const Route = createFileRoute("/api/sessions/recent")({
         const { listRecentSessionsFromDb, getStarredSessionIds } =
           await import("../../lib/db/queries");
         const { toSessionSummaryPayload } = await import("../../lib/session-summary");
+        const { getUnseenSessionIds } = await import("../../lib/db/viewed-state");
 
         const url = new URL(request.url);
         const limit = clampLimit(url.searchParams.get("limit"));
@@ -34,7 +35,10 @@ export const Route = createFileRoute("/api/sessions/recent")({
         const { index } = getDb();
         const page = listRecentSessionsFromDb(index, before ? { limit, before } : { limit });
         const starredIds = getStarredSessionIds(index);
-        const sessions = page.sessions.map((s) => toSessionSummaryPayload(s, starredIds.has(s.id)));
+        const unseenIds = getUnseenSessionIds(index);
+        const sessions = page.sessions.map((s) =>
+          toSessionSummaryPayload(s, starredIds.has(s.id), { unseen: unseenIds.has(s.id) }),
+        );
         const nextCursor = page.nextCursor
           ? `${page.nextCursor.mtimeMs}:${page.nextCursor.id}`
           : null;
