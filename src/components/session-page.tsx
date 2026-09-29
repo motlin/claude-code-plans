@@ -46,6 +46,7 @@ import { useToast } from "./toast";
 import { transcriptWidthStyle } from "../lib/transcript-width";
 import { useChatStream } from "../hooks/use-chat-stream";
 import { slashCommandsQueryOptions } from "../lib/api/commands";
+import { promptHistoryQueryOptions } from "../lib/api/prompt-history";
 import { useShortcutKeys } from "../hooks/use-shortcut";
 import { useLiveLaunchOptions } from "../hooks/use-live-launch-options";
 import { canStopResponse, useStopResponse } from "../hooks/use-stop-response";
@@ -451,6 +452,10 @@ function SessionView({
   );
   const { data: slashCommands } = useQuery({
     ...slashCommandsQueryOptions(data?.projectPath ?? undefined),
+    enabled: Boolean(data?.projectPath),
+  });
+  const { data: promptHistory } = useQuery({
+    ...promptHistoryQueryOptions(sessionId),
     enabled: Boolean(data?.projectPath),
   });
   const [generating, setGenerating] = useState(false);
@@ -863,6 +868,7 @@ function SessionView({
                   bypassPermissionsAllowed={bypassPermissionsAllowed}
                   live={liveLaunchAvailable ? liveLaunch : undefined}
                   mentionSessionId={sessionId}
+                  promptHistory={promptHistory}
                 />
               )}
             </SessionDock>

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useActiveSessionsIfAvailable } from "../../hooks/use-claude-events";
 import { slashCommandsQueryOptions } from "../../lib/api/commands";
+import { promptHistoryQueryOptions } from "../../lib/api/prompt-history";
 import { composerDefaultsQueryOptions } from "../../lib/api/composer-defaults";
 import { launchHerdrSession } from "../../lib/api/herdr";
 import { projectsQueryOptions } from "../../lib/api/projects";
@@ -60,6 +61,7 @@ export function HomeComposer() {
   const { data: slashCommands } = useQuery(
     slashCommandsQueryOptions(project?.projectPath ?? undefined),
   );
+  const { data: promptHistory } = useQuery(promptHistoryQueryOptions(undefined));
 
   const chin = useMemo(
     () =>
@@ -152,6 +154,7 @@ export function HomeComposer() {
         }
         chin={chin}
         slashCommands={slashCommands}
+        promptHistory={promptHistory}
         bypassPermissionsAllowed={defaults?.bypassPermissionsAllowed ?? false}
       />
     </div>

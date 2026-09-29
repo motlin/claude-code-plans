@@ -18,6 +18,7 @@ import type { LiveLaunchControls } from "../hooks/use-live-launch-options";
 import { useShortcut, useShortcutKeys } from "../hooks/use-shortcut";
 import type { ComposerState } from "../lib/composer-state";
 import { type QueuedPrompt, queuedStatusText } from "../lib/composer-queue";
+import { type HistoryNavigator, historyKeyApplies, historyNavigator } from "../lib/prompt-history";
 import { uploadAttachment } from "../lib/api/attachments";
 import {
   appendAttachment,
@@ -277,9 +278,12 @@ interface ComposerProps {
   onFork?: ((prompt: string, launchOptions: LaunchOptions) => void) | undefined;
   /** The Send tooltip's fork row: "Fork with this prompt" or "Send in a forked session". */
   forkLabel?: string | undefined;
+  /** Prior prompts, newest first, that ↑/↓ walk like a shell history. */
+  promptHistory?: readonly string[] | undefined;
 }
 
 const NO_COMMANDS: readonly SlashCommand[] = [];
+const NO_HISTORY: readonly string[] = [];
 
 /**
  * The claude.ai/code ChatComposer card: an auto-growing prompt editor with a
@@ -303,6 +307,7 @@ export function Composer({
   onSendNow,
   onFork,
   forkLabel = "Fork with this prompt",
+  promptHistory = NO_HISTORY,
 }: ComposerProps) {
   const { text: prompt, setText: setPrompt, clear: clearDraft } = useComposerDraft(draftKey);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -455,6 +460,43 @@ export function Composer({
   }
 
   const [discardId, setDiscardId] = useState<string | null>(null);
+  const [historyWalk, setHistoryWalk] = useState<{
+    draftKey: string;
+    nav: HistoryNavigator;
+  } | null>(null);
+  const historyNav = historyWalk?.draftKey === draftKey ? historyWalk.nav : null;
+
+  function showPrompt(text: string, caretAt: number) {
+    pendingCaretRef.current = caretAt;
+    setCaret(caretAt);
+    setPrompt(text);
+  }
+
+  /** ↑/↓ walk prior prompts (caret on the first / last line); Esc restores the draft. */
+  function handleHistoryKey(e: React.KeyboardEvent<HTMLTextAreaElement>): boolean {
+    if (e.altKey || e.metaKey || e.ctrlKey || e.shiftKey) return false;
+    if (e.key === "Escape") {
+      if (historyNav === null) return false;
+      setHistoryWalk(null);
+      showPrompt(historyNav.draft, historyNav.draft.length);
+    } else {
+      const { selectionStart, selectionEnd } = e.currentTarget;
+      if (!historyKeyApplies(e.key, prompt, selectionStart, selectionEnd)) return false;
+      const lastQueued = queue?.items.at(-1);
+      if (e.key === "ArrowUp" && historyNav === null && prompt === "" && lastQueued) {
+        editQueuedPrompt(lastQueued);
+      } else {
+        const from = historyNav ?? historyNavigator(promptHistory, prompt);
+        const next = e.key === "ArrowUp" ? from.up() : from.down();
+        if (next === null) return false;
+        setHistoryWalk(next.active ? { draftKey, nav: next } : null);
+        showPrompt(next.text, e.key === "ArrowUp" ? 0 : next.text.length);
+      }
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    return true;
+  }
 
   function editQueuedPrompt(item: QueuedPrompt) {
     queue?.remove(item.id);
@@ -511,8 +553,15 @@ export function Composer({
     textareaRef.current?.focus();
   }
 
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.nativeEvent.isComposing || handleSlashKey(e) || handleMentionKey(e)) return;
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (
+      e.nativeEvent.isComposing ||
+      handleSlashKey(e) ||
+      handleMentionKey(e) ||
+      handleHistoryKey(e)
+    ) {
+      return;
+    }
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       const commandChord = e.metaKey || e.ctrlKey;
@@ -639,6 +688,7 @@ export function Composer({
             data-focus-region-entry
             value={prompt}
             onChange={(e) => {
+              setHistoryWalk(null);
               setCaret(e.target.selectionStart);
               setPrompt(e.target.value);
             }}

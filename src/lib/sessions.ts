@@ -290,6 +290,25 @@ export async function readFirstUserMessage(filePath: string): Promise<FirstUserP
   return fallback;
 }
 
+/** Every prompt the user typed into a session, oldest first; CLI-injected records are skipped. */
+export async function readSessionPrompts(filePath: string): Promise<string[]> {
+  const rl = createInterface({
+    input: createReadStream(filePath, { encoding: "utf-8" }),
+    crlfDelay: Infinity,
+  });
+  const prompts: string[] = [];
+  try {
+    for await (const line of rl) {
+      if (!line.trim()) continue;
+      const prompt = extractFirstUserText(line);
+      if (prompt !== null && !prompt.isMeta) prompts.push(prompt.text);
+    }
+  } finally {
+    rl.close();
+  }
+  return prompts;
+}
+
 async function readSessionMessageCount(filePath: string): Promise<number> {
   const rl = createInterface({
     input: createReadStream(filePath, { encoding: "utf-8" }),
