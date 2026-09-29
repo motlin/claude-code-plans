@@ -9,10 +9,13 @@ import {
   type HomeDismissals,
 } from "../../lib/api/home-dismissals";
 import { recentSessionsInfiniteQueryOptions, type SessionListItem } from "../../lib/api/sessions";
-import { selectHomeAttention, type HomeAttentionRow } from "../../lib/home-attention";
+import {
+  selectHomeAttention,
+  type HomeAttentionItem,
+  type HomeAttentionRow,
+} from "../../lib/home-attention";
 import { usePins } from "../../lib/pin-store";
 import { toGroupRow } from "../sidebar/session-group-section";
-import { AttentionSection } from "./attention-section";
 
 function toAttentionRow(
   session: SessionListItem,
@@ -28,8 +31,19 @@ function toAttentionRow(
   };
 }
 
-/** The home "Sessions" section fed by the sidebar's recent sessions, pins and dismissals. */
-export function HomeSessionsSection() {
+export interface HomeAttention {
+  items: HomeAttentionItem<HomeAttentionRow>[];
+  rowLimit: number;
+  now: number;
+  onOpen: (sessionId: string) => void;
+  onDismiss: (item: HomeAttentionItem<HomeAttentionRow>) => void;
+}
+
+/**
+ * The home action center's Sessions rows, fed by the sidebar's recent sessions, pins and
+ * dismissals; undefined until those have loaded.
+ */
+export function useHomeAttention(): HomeAttention | undefined {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const rowLimit = useViewportRowLimit();
@@ -48,7 +62,7 @@ export function HomeSessionsSection() {
     onSuccess: (data) => queryClient.setQueryData(homeDismissalsQueryOptions.queryKey, data),
   });
 
-  if (recent === undefined || dismissals === undefined) return null;
+  if (recent === undefined || dismissals === undefined) return undefined;
 
   const now = Date.now();
   const approvalTools = new Map(
@@ -63,13 +77,11 @@ export function HomeSessionsSection() {
     now,
   });
 
-  return (
-    <AttentionSection
-      items={items}
-      rowLimit={rowLimit}
-      now={now}
-      onOpen={(id) => void navigate({ to: "/session/$id", params: { id } })}
-      onDismiss={(item) => dismiss.mutate(item.session.sessionId)}
-    />
-  );
+  return {
+    items,
+    rowLimit,
+    now,
+    onOpen: (id) => void navigate({ to: "/session/$id", params: { id } }),
+    onDismiss: (item) => dismiss.mutate(item.session.sessionId),
+  };
 }

@@ -144,6 +144,20 @@ CREATE TABLE IF NOT EXISTS routines (
 CREATE INDEX IF NOT EXISTS routines_session_idx ON routines(session_id);
 CREATE INDEX IF NOT EXISTS routines_file_path_idx ON routines(file_path);
 
+CREATE TABLE IF NOT EXISTS usage_daily (
+  file_path TEXT NOT NULL,
+  session_id TEXT NOT NULL,
+  day TEXT NOT NULL,
+  model TEXT,
+  messages INTEGER NOT NULL,
+  input_tokens INTEGER NOT NULL,
+  output_tokens INTEGER NOT NULL,
+  cache_read_tokens INTEGER NOT NULL,
+  cache_creation_tokens INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS usage_daily_file_path_idx ON usage_daily(file_path);
+CREATE INDEX IF NOT EXISTS usage_daily_session_idx ON usage_daily(session_id);
+
 CREATE TABLE IF NOT EXISTS plan_sessions (
   plan_filename TEXT NOT NULL,
   session_id TEXT NOT NULL,
@@ -434,6 +448,7 @@ const DERIVED_TABLE_NAMES = [
   "artifact_events",
   "artifacts",
   "routines",
+  "usage_daily",
   "subagents",
   "plan_sessions",
   "sessions",

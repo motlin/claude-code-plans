@@ -24,9 +24,10 @@ import {
 } from "@tanstack/react-router";
 
 import { AttentionSection } from "../src/components/home/attention-section";
-import { HomeSessionsSection } from "../src/components/home/home-sessions-section";
+import { HomeLanding } from "../src/components/home/home-landing";
 import { approvalsQueryOptions } from "../src/lib/api/approvals";
 import { homeDismissalsQueryOptions } from "../src/lib/api/home-dismissals";
+import { localAccountQueryOptions } from "../src/lib/api/local-account";
 import { recentSessionsInfiniteQueryOptions, type SessionListItem } from "../src/lib/api/sessions";
 import { useViewportRowLimit } from "../src/hooks/use-viewport-row-limit";
 import type { HomeAttentionItem, HomeAttentionRow } from "../src/lib/home-attention";
@@ -345,7 +346,7 @@ describe("useViewportRowLimit", () => {
   });
 });
 
-describe("HomeSessionsSection", () => {
+describe("HomeLanding sessions", () => {
   function listItem(id: string, overrides: Partial<SessionListItem> = {}): SessionListItem {
     return {
       id,
@@ -404,6 +405,11 @@ describe("HomeSessionsSection", () => {
       ],
     });
     queryClient.setQueryData(homeDismissalsQueryOptions.queryKey, { dismissals: dismissedAt });
+    queryClient.setQueryData(localAccountQueryOptions.queryKey, {
+      name: "Craig Motlin",
+      firstName: "Craig",
+      initial: "C",
+    });
     const rootRoute = createRootRoute({
       component: () => (
         <QueryClientProvider client={queryClient}>
@@ -414,7 +420,7 @@ describe("HomeSessionsSection", () => {
     const homeRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: "/",
-      component: HomeSessionsSection,
+      component: () => <HomeLanding />,
     });
     const router = createRouter({
       routeTree: rootRoute.addChildren([homeRoute]),

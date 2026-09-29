@@ -33,6 +33,8 @@ import {
 } from "./artifact-index";
 import { deleteRoutinesForSessions, replaceRoutines } from "./routine-index";
 import { RoutineCollector } from "../routines";
+import { UsageCollector } from "../home-stats";
+import { deleteUsageDailyForSessions, replaceUsageDaily } from "./usage-index";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
@@ -548,6 +550,7 @@ export async function indexJsonlFile(
   const mcpToolNames = new Set<string>();
   const artifactEvents = new ArtifactEventCollector();
   const routines = new RoutineCollector();
+  const usage = new UsageCollector();
   const indexedMessages: Array<{
     sessionId: string;
     messageIndex: number;
@@ -669,6 +672,7 @@ export async function indexJsonlFile(
         if (isCountableMessageRecord(obj)) messageCount++;
         artifactEvents.add(obj);
         routines.add(obj);
+        usage.add(obj);
         if (obj.type === "user" || obj.type === "assistant") {
           const content = obj.message?.content;
           const messageText: string[] = [];
@@ -826,6 +830,7 @@ export async function indexJsonlFile(
     artifactEvents.events(),
   );
   replaceRoutines(db, { filePath, sessionId, projectId: project }, routines.routines());
+  replaceUsageDaily(db, { filePath, sessionId }, usage.rows());
 
   // Update message content FTS
   db.run(sql`DELETE FROM message_content WHERE session_id = ${sessionId}`);
@@ -1621,6 +1626,7 @@ function pruneDeletedSessions(
       .run();
     deleteArtifactEventsForSessions(indexDb, [session.id]);
     deleteRoutinesForSessions(indexDb, [session.id]);
+    deleteUsageDailyForSessions(indexDb, [session.id]);
   }
 
   // Re-indexing a moved session updates sessions.filePath before pruning runs,
@@ -1637,6 +1643,10 @@ function pruneDeletedSessions(
       indexDb
         .delete(schema.indexedFiles)
         .where(eq(schema.indexedFiles.path, indexedFile.path))
+        .run();
+      indexDb
+        .delete(schema.usageDaily)
+        .where(eq(schema.usageDaily.filePath, indexedFile.path))
         .run();
     }
   }

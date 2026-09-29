@@ -16,7 +16,7 @@ import type { RoutineKind } from "../routines";
 // 35: home_dismissals (durable) hides home action-center rows until newer activity.
 // 36: sessions gain forked_from_session_id from the first `forkedFrom` record.
 // 37: routines index every CronCreate/ScheduleWakeup/RemoteTrigger(create) call.
-export const SCHEMA_VERSION = "37";
+export const SCHEMA_VERSION = "38";
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),
@@ -192,6 +192,31 @@ export const routines = sqliteTable(
   (table) => [
     index("routines_session_idx").on(table.sessionId),
     index("routines_file_path_idx").on(table.filePath),
+  ],
+);
+
+/**
+ * Per-transcript usage for one local day and model: countable messages plus the
+ * API token usage of each distinct assistant response. `model` is null for
+ * messages no model produced. `file_path` is the transcript, so a reindex
+ * replaces exactly that file's rows.
+ */
+export const usageDaily = sqliteTable(
+  "usage_daily",
+  {
+    filePath: text("file_path").notNull(),
+    sessionId: text("session_id").notNull(),
+    day: text("day").notNull(),
+    model: text("model"),
+    messages: integer("messages").notNull(),
+    inputTokens: integer("input_tokens").notNull(),
+    outputTokens: integer("output_tokens").notNull(),
+    cacheReadTokens: integer("cache_read_tokens").notNull(),
+    cacheCreationTokens: integer("cache_creation_tokens").notNull(),
+  },
+  (table) => [
+    index("usage_daily_file_path_idx").on(table.filePath),
+    index("usage_daily_session_idx").on(table.sessionId),
   ],
 );
 
