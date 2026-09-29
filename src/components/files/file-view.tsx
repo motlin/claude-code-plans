@@ -37,6 +37,8 @@ export interface FileViewProps {
   cwd?: string | undefined;
   line?: number | undefined;
   endLine?: number | undefined;
+  /** The content search query that opened the file, handed to find in file. */
+  findQuery?: string | undefined;
   /** Follow `#L<n>` in the page URL; only the full-page `/file/$` route owns the hash. */
   hashNavigation?: boolean;
   /** Opens another file, such as a sibling `.md` link in rendered markdown. */
@@ -204,6 +206,7 @@ export function FileView({
   cwd,
   line,
   endLine,
+  findQuery,
   hashNavigation = false,
   onOpenFile,
   onAttachContext,
@@ -319,6 +322,7 @@ export function FileView({
         <ContextMenuTrigger
           render={<div ref={viewerRef} />}
           data-file-viewer="true"
+          data-find-query={findQuery}
           className="min-h-0 flex-1 overflow-auto select-text"
           onContextMenu={() =>
             setMenuSelection(selectionSnippet(viewerRef.current, path, cwd, content))

@@ -17,6 +17,7 @@ import type { FileRef } from "../../lib/file-refs";
 import { loadFileTabs, saveFileTabs } from "../../lib/pane-layout";
 import type { SessionFiles } from "../../lib/session-files";
 import { FILE_TAB_SIZES, normalizeFileTabSize } from "../../lib/file-preview";
+import type { ContentMatchOpenOptions } from "../files/content-search-results";
 import { FileView } from "../files/file-view";
 import { FileTabsStrip } from "../files/file-tabs-strip";
 import { FilesTree, FilesTreeColumn } from "../files/files-tree";
@@ -257,7 +258,7 @@ interface WorkspaceOrSessionListProps {
   onQueryChange: (query: string) => void;
   filterRef: RefObject<HTMLInputElement | null>;
   sessionList: ReactNode;
-  onOpenFile: (relPath: string, options: { pin: boolean }) => void;
+  onOpenFile: (relPath: string, options: ContentMatchOpenOptions) => void;
   activeRelPath: string | null;
   pinnedRelPaths: ReadonlySet<string>;
   cwd: string | undefined;
@@ -408,7 +409,7 @@ export function FilesPaneView({
       return relPath === null ? [] : [relPath];
     }),
   );
-  const [lineTarget, setLineTarget] = useState<FileRef | null>(null);
+  const [lineTarget, setLineTarget] = useState<(FileRef & { findQuery?: string }) | null>(null);
   const openFile = (path: string, options: { pin: boolean }): void =>
     dispatchFileTabs({ type: "open", path, pin: options.pin });
   const target = lineTarget !== null && lineTarget.path === openPath ? lineTarget : null;
@@ -544,8 +545,17 @@ export function FilesPaneView({
                 onQueryChange={setQuery}
                 filterRef={filterRef}
                 sessionList={sessionFilesList}
-                onOpenFile={(relPath, options) => {
-                  if (cwd !== undefined) openFile(absoluteFromCwd(cwd, relPath), options);
+                onOpenFile={(relPath, { pin, line, findQuery }) => {
+                  if (cwd === undefined) return;
+                  const path = absoluteFromCwd(cwd, relPath);
+                  openFile(path, { pin });
+                  if (line !== undefined) {
+                    setLineTarget({
+                      path,
+                      line,
+                      ...(findQuery === undefined ? {} : { findQuery }),
+                    });
+                  }
                 }}
                 activeRelPath={openPath === null ? null : relativeToCwd(cwd, openPath)}
                 pinnedRelPaths={pinnedRelPaths}
@@ -565,6 +575,7 @@ export function FilesPaneView({
               cwd={cwd}
               line={target?.line}
               endLine={target?.endLine}
+              findQuery={target?.findQuery}
               onOpenFile={(path) => openFile(path, { pin: false })}
               onAttachContext={attachContext}
             />

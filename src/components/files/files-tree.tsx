@@ -14,9 +14,11 @@ import {
 import { useDebouncedValue } from "../../hooks/use-debounced-value";
 import { useResizableWidth } from "../../hooks/use-resizable-width";
 import { type SessionFilesResponse, sessionFilesQueryOptions } from "../../lib/api/session-files";
+import { parseContentSearchQuery } from "../../lib/files-content-search";
 import { getFileIcon } from "../file-tree";
 import { settingStorageKey, useSettings } from "../settings-provider";
 import { ContextMenu, ContextMenuTrigger, MenuContent } from "../ui/menu";
+import { type ContentMatchOpenOptions, ContentSearchResults } from "./content-search-results";
 import { TreeRowMenuItems } from "./file-context-menu";
 
 const FILES_TREE_DEFAULT_WIDTH = 240;
@@ -114,10 +116,8 @@ export function FilesTreeColumn({ children }: { children: ReactNode }) {
   );
 }
 
-interface OpenFileOptions {
-  /** Double-click pins the tab; a single click or Enter opens a preview tab. */
-  pin: boolean;
-}
+/** Double-click pins the tab; a single click or Enter opens a preview tab. A content match adds its line and query. */
+type OpenFileOptions = ContentMatchOpenOptions;
 
 interface FilesTreeProps {
   sessionId: string;
@@ -168,6 +168,9 @@ export function FilesTree({
   const [focusRequest, setFocusRequest] = useState(0);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(FALLBACK_VIEWPORT_HEIGHT);
+  const focusFirstMatchRef = useRef<(() => boolean) | null>(null);
+  // "?" searches file contents under the working directory instead of paths.
+  const contentQuery = cwd === undefined ? null : parseContentSearchQuery(query);
 
   // A drill-in or "Go up" changes only the folder, so it skips the typing debounce.
   const requested = parseTreeQuery(parseTreeQuery(query).search === "" ? query : debouncedQuery);
@@ -179,6 +182,7 @@ export function FilesTree({
       hideIgnored: settings.filesHideIgnored,
     }),
     placeholderData: keepPreviousData,
+    enabled: contentQuery === null,
   });
   const data = filesQuery.data;
   const entries: readonly WorkspaceEntry[] =
@@ -236,7 +240,9 @@ export function FilesTree({
   }
 
   function handleInputKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
-    if (event.key === "ArrowDown" && entries.length > 0) {
+    if (event.key === "ArrowDown" && contentQuery !== null) {
+      if (focusFirstMatchRef.current?.() === true) event.preventDefault();
+    } else if (event.key === "ArrowDown" && entries.length > 0) {
       event.preventDefault();
       focusRow(0);
     } else if (event.key === "Escape" && query !== "") {
@@ -324,7 +330,7 @@ export function FilesTree({
             value={query}
             onChange={(event) => changeQuery(event.target.value)}
             onKeyDown={handleInputKeyDown}
-            placeholder="Search files…"
+            placeholder={cwd === undefined ? "Search files…" : "Filter files… (? for contents)"}
             className="h-6 w-full rounded-md border border-strong bg-surface-1 pl-7 pr-6 text-xs text-primary outline-none placeholder:text-t6 focus:border-accent-100/60"
             style={{ textOverflow: "ellipsis" }}
           />
@@ -347,107 +353,123 @@ export function FilesTree({
           result to return here.
         </p>
       </div>
-      {goUp !== null && (
-        <div className="shrink-0 px-2">
-          <button
-            type="button"
-            onClick={() => changeQuery(goUp.query)}
-            className="flex h-6 max-w-full cursor-pointer items-center gap-1 rounded-r5 px-1.5 text-body text-secondary hover:bg-fill-ghost-hover hover:text-primary"
-          >
-            <ArrowUp aria-hidden="true" className="size-3.5 shrink-0" />
-            <span className="truncate">{goUp.label}</span>
-          </button>
-        </div>
-      )}
-      <div
-        ref={treeRef}
-        id={treeId}
-        role="tree"
-        aria-label="Project files"
-        tabIndex={0}
-        onKeyDown={handleTreeKeyDown}
-        onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
-        onFocus={(event) => {
-          if (event.target === event.currentTarget && entries.length > 0) {
-            focusRow(Math.max(0, activeIndex));
-          }
-        }}
-        className="min-h-0 flex-1 overflow-y-auto px-1 py-1.25 outline-none [contain:strict]"
-      >
-        {emptyMessage !== null ? (
-          <p className="px-2 py-1.5 text-footnote text-ink-muted select-none">{emptyMessage}</p>
-        ) : (
-          <div role="none" style={{ height: entries.length * ROW_HEIGHT, position: "relative" }}>
-            {entries.slice(firstRow, lastRow).map((entry, offset) => {
-              const index = firstRow + offset;
-              const Icon = entry.isDirectory ? Folder : getFileIcon(entry.name);
-              const dirSuffix = isSearch ? parentDir(entry.relPath) : "";
-              return (
-                <ContextMenu key={entry.relPath} disabled={cwd === undefined}>
-                  <ContextMenuTrigger
-                    data-tree-row
-                    data-row-index={index}
-                    role="treeitem"
-                    aria-level={1}
-                    aria-selected={pinnedRelPaths?.has(entry.relPath) ?? false}
-                    aria-current={entry.relPath === activeRelPath ? "true" : undefined}
-                    tabIndex={-1}
-                    title={symlinkLabel(entry)}
-                    onFocus={() => setActiveIndex(index)}
-                    className="absolute left-0 flex h-6 w-full items-center rounded-r5 text-body text-primary outline-none select-none hover:bg-fill-ghost-hover focus-visible:bg-fill-ghost-hover"
-                    style={{ top: index * ROW_HEIGHT, paddingLeft: 8 }}
-                  >
-                    <button
-                      type="button"
-                      data-tree-primary
-                      tabIndex={-1}
-                      onClick={() => activate(entry, { pin: false })}
-                      onDoubleClick={() => {
-                        if (!entry.isDirectory) onOpenFile?.(entry.relPath, { pin: true });
-                      }}
-                      className="flex min-w-0 flex-1 cursor-pointer items-baseline gap-1 border-0 bg-transparent pr-2 text-left outline-none"
-                    >
-                      <Icon
-                        aria-hidden="true"
-                        className="size-3 shrink-0 self-center text-ink-muted"
-                      />
-                      <span data-tree-name className="truncate text-primary">
-                        {entry.name}
-                      </span>
-                      {dirSuffix !== "" && (
-                        <span
-                          data-tree-dir
-                          className="min-w-0 truncate text-footnote text-ink-muted"
-                        >
-                          {dirSuffix}
-                        </span>
-                      )}
-                    </button>
-                  </ContextMenuTrigger>
-                  {cwd !== undefined && (
-                    <MenuContent>
-                      <TreeRowMenuItems
-                        path={`${cwd.replace(/\/+$/, "")}/${entry.relPath}`}
-                        cwd={cwd}
-                        isDirectory={entry.isDirectory}
-                        onAttachContext={onAttachContext}
-                      />
-                    </MenuContent>
-                  )}
-                </ContextMenu>
-              );
-            })}
-          </div>
-        )}
-        {footer !== null && emptyMessage === null && (
+      {contentQuery !== null && cwd !== undefined ? (
+        <ContentSearchResults
+          query={contentQuery}
+          cwd={cwd}
+          inputRef={inputRef}
+          focusFirstRef={focusFirstMatchRef}
+          onOpenFile={onOpenFile}
+          onAsk={onAttachContext}
+        />
+      ) : (
+        <>
+          {goUp !== null && (
+            <div className="shrink-0 px-2">
+              <button
+                type="button"
+                onClick={() => changeQuery(goUp.query)}
+                className="flex h-6 max-w-full cursor-pointer items-center gap-1 rounded-r5 px-1.5 text-body text-secondary hover:bg-fill-ghost-hover hover:text-primary"
+              >
+                <ArrowUp aria-hidden="true" className="size-3.5 shrink-0" />
+                <span className="truncate">{goUp.label}</span>
+              </button>
+            </div>
+          )}
           <div
-            className="py-1.5 pr-2 text-footnote text-ink-muted select-none"
-            style={{ paddingLeft: 8 }}
+            ref={treeRef}
+            id={treeId}
+            role="tree"
+            aria-label="Project files"
+            tabIndex={0}
+            onKeyDown={handleTreeKeyDown}
+            onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
+            onFocus={(event) => {
+              if (event.target === event.currentTarget && entries.length > 0) {
+                focusRow(Math.max(0, activeIndex));
+              }
+            }}
+            className="min-h-0 flex-1 overflow-y-auto px-1 py-1.25 outline-none [contain:strict]"
           >
-            {footer}
+            {emptyMessage !== null ? (
+              <p className="px-2 py-1.5 text-footnote text-ink-muted select-none">{emptyMessage}</p>
+            ) : (
+              <div
+                role="none"
+                style={{ height: entries.length * ROW_HEIGHT, position: "relative" }}
+              >
+                {entries.slice(firstRow, lastRow).map((entry, offset) => {
+                  const index = firstRow + offset;
+                  const Icon = entry.isDirectory ? Folder : getFileIcon(entry.name);
+                  const dirSuffix = isSearch ? parentDir(entry.relPath) : "";
+                  return (
+                    <ContextMenu key={entry.relPath} disabled={cwd === undefined}>
+                      <ContextMenuTrigger
+                        data-tree-row
+                        data-row-index={index}
+                        role="treeitem"
+                        aria-level={1}
+                        aria-selected={pinnedRelPaths?.has(entry.relPath) ?? false}
+                        aria-current={entry.relPath === activeRelPath ? "true" : undefined}
+                        tabIndex={-1}
+                        title={symlinkLabel(entry)}
+                        onFocus={() => setActiveIndex(index)}
+                        className="absolute left-0 flex h-6 w-full items-center rounded-r5 text-body text-primary outline-none select-none hover:bg-fill-ghost-hover focus-visible:bg-fill-ghost-hover"
+                        style={{ top: index * ROW_HEIGHT, paddingLeft: 8 }}
+                      >
+                        <button
+                          type="button"
+                          data-tree-primary
+                          tabIndex={-1}
+                          onClick={() => activate(entry, { pin: false })}
+                          onDoubleClick={() => {
+                            if (!entry.isDirectory) onOpenFile?.(entry.relPath, { pin: true });
+                          }}
+                          className="flex min-w-0 flex-1 cursor-pointer items-baseline gap-1 border-0 bg-transparent pr-2 text-left outline-none"
+                        >
+                          <Icon
+                            aria-hidden="true"
+                            className="size-3 shrink-0 self-center text-ink-muted"
+                          />
+                          <span data-tree-name className="truncate text-primary">
+                            {entry.name}
+                          </span>
+                          {dirSuffix !== "" && (
+                            <span
+                              data-tree-dir
+                              className="min-w-0 truncate text-footnote text-ink-muted"
+                            >
+                              {dirSuffix}
+                            </span>
+                          )}
+                        </button>
+                      </ContextMenuTrigger>
+                      {cwd !== undefined && (
+                        <MenuContent>
+                          <TreeRowMenuItems
+                            path={`${cwd.replace(/\/+$/, "")}/${entry.relPath}`}
+                            cwd={cwd}
+                            isDirectory={entry.isDirectory}
+                            onAttachContext={onAttachContext}
+                          />
+                        </MenuContent>
+                      )}
+                    </ContextMenu>
+                  );
+                })}
+              </div>
+            )}
+            {footer !== null && emptyMessage === null && (
+              <div
+                className="py-1.5 pr-2 text-footnote text-ink-muted select-none"
+                style={{ paddingLeft: 8 }}
+              >
+                {footer}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
     </div>
   );
 }
