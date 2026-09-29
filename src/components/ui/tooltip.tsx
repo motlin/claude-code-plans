@@ -4,21 +4,29 @@ import { Shortcut } from "./shortcut";
 
 const OPEN_DELAY_MS = 300;
 
+const SIDE_CLASS = {
+  top: "bottom-full mb-1",
+  bottom: "top-full mt-1",
+} as const;
+
 const TOOLTIP_CLASS =
-  "pointer-events-none absolute bottom-full left-1/2 z-50 mb-1 inline-flex min-h-6 max-w-[240px] -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-sm";
+  "pointer-events-none absolute left-1/2 z-50 inline-flex min-h-6 max-w-[240px] -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-sm";
 
 /**
- * Minimal claude.ai/code tooltip: always dark, side top, offset 4, 300ms open
- * delay, with an optional text-variant shortcut after the label.
+ * Minimal claude.ai/code tooltip: always dark, side top (titlebar controls use
+ * bottom), offset 4, 300ms open delay, with an optional text-variant shortcut
+ * after the label.
  */
 export function Tooltip({
   content,
   shortcut,
+  side = "top",
   className,
   children,
 }: {
   content: string;
   shortcut?: string;
+  side?: keyof typeof SIDE_CLASS;
   className?: string;
   children: ReactElement<{ "aria-describedby"?: string }>;
 }) {
@@ -49,7 +57,7 @@ export function Tooltip({
     >
       {open ? cloneElement(children, { "aria-describedby": id }) : children}
       {open && (
-        <span role="tooltip" id={id} className={TOOLTIP_CLASS}>
+        <span role="tooltip" id={id} className={`${TOOLTIP_CLASS} ${SIDE_CLASS[side]}`}>
           {content}
           {shortcut !== undefined && (
             <Shortcut

@@ -2,29 +2,26 @@ import { Link, useElementScrollRestoration, useLocation } from "@tanstack/react-
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft,
   ArrowUp,
   ArrowDown,
-  Bot,
   Copy,
   Terminal,
   GitFork,
   Download,
   Maximize2,
   Minimize2,
-  Users,
 } from "lucide-react";
 import { SessionChat } from "./session-chat";
 import { ChatInput } from "./chat-input";
 import { StreamingMessage } from "./streaming-message";
 import { ActiveSubagents } from "./active-subagents";
 import { SessionHookContext } from "./session-hook-context";
-import { DetailTopBar, pillStyles } from "./detail-top-bar";
 import { useSettings } from "./settings-provider";
 import { useTranscriptModeShortcut } from "../hooks/use-session-transcript-mode";
 import { sessionHasThinking } from "../lib/transcript-mode";
 import { SessionReviewedToggle } from "./session-reviewed-toggle";
-import { SessionTitleHeading } from "./session-title-heading";
+import { SessionTitlebar } from "./session-titlebar";
+import { TITLEBAR_ICON_BUTTON_CLASS } from "./titlebar-classes";
 import { LiveTerminalLink } from "./session-terminal-links";
 import { useHasUnseenWork } from "./session-unread-control";
 import { syncUnseenFromSummaries } from "../lib/unread-store";
@@ -73,7 +70,6 @@ import {
 import type { SessionDetailData, SessionSubagentsData, TranscriptData } from "../lib/api/sessions";
 import { writeClipboardText } from "../lib/clipboard";
 import { countMessageRecords } from "../lib/message-count";
-import { formatModelName } from "../lib/model-name";
 import {
   getSubagentLifecycleKey,
   extractPendingSubagents,
@@ -301,23 +297,15 @@ export function routeSessionPrompt(
 }
 
 function SessionChrome({ children }: { children: React.ReactNode }) {
-  return (
-    <div>
-      <DetailTopBar>
-        <Link to="/sessions" className={pillStyles.primary}>
-          <ArrowLeft className="h-3.5 w-3.5" />
-          All Sessions
-        </Link>
-      </DetailTopBar>
-      {children}
-    </div>
-  );
+  return <div>{children}</div>;
 }
 
 function SessionSkeleton() {
   return (
     <SessionChrome>
-      <div className="mt-4 h-6 w-1/3 animate-pulse rounded bg-fill-ghost-hover" />
+      <div className="flex h-8 items-center">
+        <div className="h-5 w-1/3 animate-pulse rounded bg-fill-ghost-hover" />
+      </div>
       <div className="mt-6 space-y-4" data-testid="session-skeleton">
         {[0, 1, 2, 3, 4, 5].map((row) => (
           <div key={row} className="rounded-lg border border-border p-4">
@@ -334,7 +322,7 @@ function SessionSkeleton() {
 function SessionNotFound() {
   return (
     <SessionChrome>
-      <h1 className="mt-4 text-lg font-semibold">Session Not Found</h1>
+      <h1 className="flex h-8 items-center text-body font-medium">Session Not Found</h1>
       <p className="mt-2 text-t6">This session could not be found.</p>
     </SessionChrome>
   );
@@ -594,166 +582,98 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
     }
   }
 
-  const modelLabel = formatModelName(data.model);
-
   return (
     <div ref={sessionViewRef}>
       <TileHost sessionId={sessionId} onExpandWithoutPane={toggleChromeHidden}>
         <FilesPaneShortcut />
         {/* Sticky header: top bar + title + subagent link */}
         {!chromeHidden && (
-          <div className="sticky top-0 z-10 bg-surface-2 pb-2 -mx-4 px-4 sm:-mx-8 sm:px-8 border-b border-border">
-            <DetailTopBar>
-              {data.parentSessionId ? (
-                <Link
-                  to="/session/$id"
-                  params={{ id: data.parentSessionId }}
-                  className={pillStyles.primary}
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" />
-                  Parent Session
-                </Link>
-              ) : (
-                <Link to="/sessions" className={pillStyles.primary}>
-                  <ArrowLeft className="h-3.5 w-3.5" />
-                  All Sessions
-                </Link>
-              )}
-              <span className="text-xs text-t6" title={data.projectPath ?? undefined}>
-                {data.projectName}
-              </span>
-              {data.entrypoint && data.entrypoint !== "cli" && (
-                <span className="inline-flex items-center rounded-full bg-surface-0 px-2 py-0.5 text-xs font-medium text-t6">
-                  {data.entrypoint}
-                </span>
-              )}
-              {data.sessionKind && (
-                <span className="inline-flex items-center rounded-full bg-surface-0 px-2 py-0.5 text-xs font-medium text-t6">
-                  {data.sessionKind}
-                </span>
-              )}
-              {data.attributionAgent && (
-                <span
-                  className="inline-flex items-center gap-1 rounded-full bg-surface-0 px-2 py-0.5 font-mono text-xs font-medium text-t6"
-                  title="Transcript attribution agent"
-                >
-                  <Bot className="h-3 w-3" />
-                  {data.attributionAgent}
-                </span>
-              )}
-              {/* A subagent session names the model it ran on, which is its own
-                rather than the parent session's. */}
-              {modelLabel && (
-                <span className="inline-flex items-center rounded-full bg-surface-0 px-2 py-0.5 text-xs font-medium text-t6">
-                  {modelLabel}
-                </span>
-              )}
-              {data.teamNames?.map((team) => (
-                <span
-                  key={team}
-                  className="inline-flex items-center gap-1 rounded-full bg-surface-0 px-2 py-0.5 text-xs font-medium text-t6"
-                >
-                  <Users className="h-3 w-3" />
-                  {team}
-                </span>
-              ))}
-              {data.forkedFromSessionId && (
-                <Link
-                  to="/session/$id"
-                  params={{ id: data.forkedFromSessionId }}
-                  className="inline-flex items-center gap-1 rounded-full bg-surface-0 px-2 py-0.5 text-xs font-medium text-t6 no-underline transition-colors hover:bg-fill-control"
-                  title={`Forked from ${data.forkedFromSessionId}`}
-                >
-                  <GitFork className="h-3 w-3" />
-                  Forked from {data.forkedFromSessionId.slice(0, 8)}
-                </Link>
-              )}
-              {isActive && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-success-900 px-2 py-0.5 text-xs font-medium text-success-000">
-                  <span className="h-1.5 w-1.5 rounded-full bg-success-000 animate-pulse" />
-                  Active
-                </span>
-              )}
-              <ChangesPaneToggle />
-              <FilesPaneToggle
-                count={sessionFiles.totalCount}
-                unscannedRecordCount={unscannedRecordCount}
-              />
-              <LinksDrawerToggle
-                count={linkDisplay.totalCount}
-                unscannedRecordCount={unscannedRecordCount}
-                isOpen={linksDrawerState.open && sessionLinks.totalCount > 0}
-                onToggle={linksDrawerState.toggleOpen}
-              />
-              <CopyButton title="Copy session ID" text={sessionId} icon={Copy} />
-              <CopyButton
-                title="Copy resume command"
-                text={sessionCommands.resume}
-                icon={Terminal}
-              />
-              <CopyButton title="Copy fork command" text={sessionCommands.fork} icon={GitFork} />
-              <LiveTerminalLink
-                sessionId={sessionId}
-                sessionTitle={data.title}
-                hasLivePane={promptBehavior.hasLivePane}
-              />
-              <SessionReviewedToggle
-                reviewed={!unseen}
-                onToggle={unseen ? viewedState.markReviewed : viewedState.markUnreviewed}
-              />
-              <a
-                href={`/api/raw?sessionId=${sessionId}`}
-                download
-                className="text-t6 hover:text-primary transition-colors"
-                title="Download raw JSONL"
-              >
-                <Download className="h-3.5 w-3.5" />
-              </a>
-              <button
-                type="button"
-                onClick={async () => {
-                  const result = await starMutation.mutateAsync(!starred);
-                  setStarred(result.starred);
-                  void queryClient.invalidateQueries({
-                    queryKey: ["starred-sessions"],
-                  });
-                }}
-                className="shrink-0 cursor-pointer text-t6 transition-colors hover:text-warning-000"
-                title={starred ? "Unstar session" : "Star session"}
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-5 w-5"
-                  fill={starred ? "currentColor" : "none"}
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  style={{ color: starred ? "rgb(234, 179, 8)" : undefined }}
-                >
-                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                </svg>
-              </button>
-              <Tooltip
-                content="Expand chat"
-                shortcut={chromeShortcut.keys}
-                className="ml-auto shrink-0"
-              >
-                <button
-                  type="button"
-                  onClick={() => setChromeHidden(true)}
-                  className="cursor-pointer text-t6 transition-colors hover:text-primary"
-                  aria-label="Expand chat"
-                  aria-keyshortcuts={chromeShortcut.ariaKeyShortcuts}
-                >
-                  <Maximize2 className="h-3.5 w-3.5" />
-                </button>
-              </Tooltip>
-            </DetailTopBar>
-            <SessionTitleHeading
+          <div className="sticky top-0 z-10 bg-surface-2 pb-1 -mx-4 px-4 sm:-mx-8 sm:px-8 border-b border-border">
+            <SessionTitlebar
               sessionId={sessionId}
-              title={data.title}
-              archived={data.archived}
-              prUrl={data.pr?.url}
-              cwd={data.projectPath}
+              data={data}
+              isActive={isActive}
+              extras={
+                <div className="flex items-center gap-2 pr-1">
+                  <CopyButton title="Copy session ID" text={sessionId} icon={Copy} />
+                  <CopyButton
+                    title="Copy resume command"
+                    text={sessionCommands.resume}
+                    icon={Terminal}
+                  />
+                  <CopyButton
+                    title="Copy fork command"
+                    text={sessionCommands.fork}
+                    icon={GitFork}
+                  />
+                  <LiveTerminalLink
+                    sessionId={sessionId}
+                    sessionTitle={data.title}
+                    hasLivePane={promptBehavior.hasLivePane}
+                  />
+                  <SessionReviewedToggle
+                    reviewed={!unseen}
+                    onToggle={unseen ? viewedState.markReviewed : viewedState.markUnreviewed}
+                  />
+                  <a
+                    href={`/api/raw?sessionId=${sessionId}`}
+                    download
+                    className="text-t6 hover:text-primary transition-colors"
+                    title="Download raw JSONL"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </a>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const result = await starMutation.mutateAsync(!starred);
+                      setStarred(result.starred);
+                      void queryClient.invalidateQueries({
+                        queryKey: ["starred-sessions"],
+                      });
+                    }}
+                    className="shrink-0 cursor-pointer text-t6 transition-colors hover:text-warning-000"
+                    title={starred ? "Unstar session" : "Star session"}
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-4 w-4"
+                      fill={starred ? "currentColor" : "none"}
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      style={{ color: starred ? "rgb(234, 179, 8)" : undefined }}
+                    >
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                    </svg>
+                  </button>
+                </div>
+              }
+              paneToggles={
+                <>
+                  <ChangesPaneToggle />
+                  <FilesPaneToggle
+                    count={sessionFiles.totalCount}
+                    unscannedRecordCount={unscannedRecordCount}
+                  />
+                  <LinksDrawerToggle
+                    count={linkDisplay.totalCount}
+                    unscannedRecordCount={unscannedRecordCount}
+                    isOpen={linksDrawerState.open && sessionLinks.totalCount > 0}
+                    onToggle={linksDrawerState.toggleOpen}
+                  />
+                  <Tooltip content="Expand chat" shortcut={chromeShortcut.keys} side="bottom">
+                    <button
+                      type="button"
+                      onClick={() => setChromeHidden(true)}
+                      className={TITLEBAR_ICON_BUTTON_CLASS}
+                      aria-label="Expand chat"
+                      aria-keyshortcuts={chromeShortcut.ariaKeyShortcuts}
+                    >
+                      <Maximize2 aria-hidden="true" />
+                    </button>
+                  </Tooltip>
+                </>
+              }
             />
 
             {aiSummary ? (

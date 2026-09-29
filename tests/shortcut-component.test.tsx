@@ -123,7 +123,7 @@ describe("<Tooltip>", () => {
     }).toStrictEqual({
       beforeDelay: null,
       className:
-        "pointer-events-none absolute bottom-full left-1/2 z-50 mb-1 inline-flex min-h-6 max-w-[240px] -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-sm",
+        "pointer-events-none absolute left-1/2 z-50 inline-flex min-h-6 max-w-[240px] -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-sm bottom-full mb-1",
       text: "Expand chat⇧Shift⌘Command\\",
       shortcut: "text",
       describedBy: true,

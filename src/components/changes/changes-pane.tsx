@@ -36,6 +36,7 @@ import {
   MenuSubTrigger,
   MenuTrigger,
 } from "../ui/menu";
+import { TITLEBAR_ICON_BUTTON_CLASS } from "../titlebar-classes";
 import { useToast } from "../toast";
 import { Tooltip } from "../ui/tooltip";
 import { ChangedFilesSidebar } from "./changes-file-tree";
@@ -806,16 +807,16 @@ export function ChangesPaneToggle() {
   const open = host.isOpen("changes");
   useShortcut("toggle_changes", () => host.togglePane("changes"));
   return (
-    <Tooltip content="Changes" shortcut={keys.keys}>
+    <Tooltip content="Changes" shortcut={keys.keys} side="bottom">
       <button
         type="button"
         aria-label="Changes"
         aria-pressed={open}
         aria-keyshortcuts={keys.ariaKeyShortcuts}
         onClick={() => host.togglePane("changes")}
-        className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 text-t6 transition-colors hover:bg-fill-ghost-hover hover:text-primary aria-pressed:bg-accent-900 aria-pressed:text-accent-100"
+        className={TITLEBAR_ICON_BUTTON_CLASS}
       >
-        <FileDiff aria-hidden="true" className="h-3.5 w-3.5" />
+        <FileDiff aria-hidden="true" />
       </button>
     </Tooltip>
   );

@@ -49,21 +49,22 @@ import {
 } from "./ui/menu";
 
 /** Actions wired locally so far; the rest appear as their features land. */
-const LOCAL_CAPABILITIES: ReadonlySet<SessionMenuCapability> = new Set<SessionMenuCapability>([
-  "openLiveTerminal",
-  "openTerminal",
-  "openVsCode",
-  "openFinder",
-  "openClaudeAi",
-  "openPr",
-  "pin",
-  "readState",
-  "ackAwaiting",
-  "rename",
-  "copyLink",
-  "fork",
-  "archive",
-]);
+export const SESSION_MENU_CAPABILITIES: ReadonlySet<SessionMenuCapability> =
+  new Set<SessionMenuCapability>([
+    "openLiveTerminal",
+    "openTerminal",
+    "openVsCode",
+    "openFinder",
+    "openClaudeAi",
+    "openPr",
+    "pin",
+    "readState",
+    "ackAwaiting",
+    "rename",
+    "copyLink",
+    "fork",
+    "archive",
+  ]);
 
 interface RowRename {
   rename: SessionRename;
@@ -93,44 +94,44 @@ export function SessionRowTitle({ render }: { render?: (title: string) => ReactN
   return render === undefined ? rename.title : render(rename.title);
 }
 
-function useSessionMenu(session: SessionListItem) {
-  const unseen = useHasUnseenWork(session.id);
-  const { data: herdr } = useQuery(herdrPanesQueryOptions);
-  const { data: openIn } = useQuery(sessionOpenInQueryOptions(session.id));
-  const cwd = openIn?.cwd ?? null;
-  const bridgeSessionId = openIn?.bridgeSessionId ?? null;
-  const star = useToggleSessionStar(session.id);
+export interface SessionMenuRunnerOptions {
+  sessionId: string;
+  cwd: string | null;
+  bridgeSessionId: string | null;
+  prUrl: string | null;
+  /** Opens the inline rename input once the menu has finished closing. */
+  requestRename: () => void;
+  /** Pin/Unpin; surfaces without the pin item leave it out. */
+  setPinned?: (pinned: boolean) => void;
+}
+
+/** Runs one session menu item; shared by the row menu and the titlebar chevron menu. */
+export function useSessionMenuRunner({
+  sessionId,
+  cwd,
+  bridgeSessionId,
+  prUrl,
+  requestRename,
+  setPinned,
+}: SessionMenuRunnerOptions): (id: SessionMenuItemId) => void {
   const toast = useToast();
-  const setArchived = useSessionArchive(session.id);
+  const setArchived = useSessionArchive(sessionId);
   const navigate = useNavigate();
-  const { requestRename } = useRowRename();
   const fork = useSessionFork();
 
-  const menuSession: SessionMenuSession = {
-    title: session.title,
-    pinned: session.starred,
-    readState: sessionMenuReadState(session.bucket, unseen),
-    archived: session.archived,
-    prUrl: session.pr?.url ?? null,
-    hasLivePane: herdr?.panes.some((pane) => pane.sessionId === session.id) ?? false,
-    forkDisabledReason: forkDisabledReason({ working: session.bucket === "working", cwd }),
-    cwd,
-    bridgeSessionId,
-  };
-
   const revealInFinder = () => {
-    openSessionInFinder(session.id).catch(() => {
+    openSessionInFinder(sessionId).catch(() => {
       toast({ kind: "error", message: "Couldn’t open the folder in Finder." });
     });
   };
 
-  const run = (id: SessionMenuItemId): void => {
+  return (id: SessionMenuItemId): void => {
     switch (id) {
       case "open-live-terminal":
-        void navigate({ to: "/herdr/terminal/$sessionId", params: { sessionId: session.id } });
+        void navigate({ to: "/herdr/terminal/$sessionId", params: { sessionId } });
         return;
       case "open-terminal":
-        if (cwd !== null) void copySessionResumeCommand(session.id, cwd, toast);
+        if (cwd !== null) void copySessionResumeCommand(sessionId, cwd, toast);
         return;
       case "open-vscode":
         if (cwd !== null) window.open(vscodeFolderUrl(cwd), "_self");
@@ -144,21 +145,21 @@ function useSessionMenu(session: SessionListItem) {
         }
         return;
       case "open-pr":
-        if (session.pr !== undefined) openPullRequest(session.pr.url);
+        if (prUrl !== null) openPullRequest(prUrl);
         return;
       case "pin":
       case "unpin":
-        star.mutate(id === "pin");
+        setPinned?.(id === "pin");
         return;
       case "mark-read":
       case "mark-completed":
-        markSeen(session.id);
+        markSeen(sessionId);
         return;
       case "mark-unread":
-        markUnseen(session.id);
+        markUnseen(sessionId);
         return;
       case "copy-link":
-        void copySessionLink(session.id, toast);
+        void copySessionLink(sessionId, toast);
         return;
       case "rename":
         requestRename();
@@ -168,7 +169,7 @@ function useSessionMenu(session: SessionListItem) {
         setArchived(id === "archive");
         return;
       case "fork":
-        if (cwd !== null) fork({ sessionId: session.id, cwd });
+        if (cwd !== null) fork({ sessionId, cwd });
         return;
       case "open-in":
         return;
@@ -176,14 +177,45 @@ function useSessionMenu(session: SessionListItem) {
         assertNever(id);
     }
   };
+}
+
+function useSessionMenu(session: SessionListItem) {
+  const unseen = useHasUnseenWork(session.id);
+  const { data: herdr } = useQuery(herdrPanesQueryOptions);
+  const { data: openIn } = useQuery(sessionOpenInQueryOptions(session.id));
+  const cwd = openIn?.cwd ?? null;
+  const bridgeSessionId = openIn?.bridgeSessionId ?? null;
+  const star = useToggleSessionStar(session.id);
+  const { requestRename } = useRowRename();
+
+  const menuSession: SessionMenuSession = {
+    title: session.title,
+    pinned: session.starred,
+    readState: sessionMenuReadState(session.bucket, unseen),
+    archived: session.archived,
+    prUrl: session.pr?.url ?? null,
+    hasLivePane: herdr?.panes.some((pane) => pane.sessionId === session.id) ?? false,
+    forkDisabledReason: forkDisabledReason({ working: session.bucket === "working", cwd }),
+    cwd,
+    bridgeSessionId,
+  };
+
+  const run = useSessionMenuRunner({
+    sessionId: session.id,
+    cwd,
+    bridgeSessionId,
+    prUrl: session.pr?.url ?? null,
+    requestRename,
+    setPinned: (pinned) => star.mutate(pinned),
+  });
 
   return {
-    entries: getSessionMenuItems(menuSession, LOCAL_CAPABILITIES, { surface: "row" }),
+    entries: getSessionMenuItems(menuSession, SESSION_MENU_CAPABILITIES, { surface: "row" }),
     run,
   };
 }
 
-function MenuEntries({
+export function MenuEntries({
   entries,
   run,
 }: {
@@ -232,6 +264,25 @@ function SessionMenuBody({ session }: { session: SessionListItem }) {
   return <MenuEntries entries={entries} run={run} />;
 }
 
+/**
+ * The open menu holds focus, so the rename input may only mount (and take
+ * focus) once the menu has closed; the closing menu must not hand focus back.
+ */
+export function useRenameAfterMenuClose(startEditing: () => void) {
+  const renameAfterClose = useRef(false);
+  return {
+    requestRename: () => {
+      renameAfterClose.current = true;
+    },
+    onOpenChangeComplete: (open: boolean) => {
+      if (open || !renameAfterClose.current) return;
+      renameAfterClose.current = false;
+      startEditing();
+    },
+    finalFocus: () => !renameAfterClose.current,
+  };
+}
+
 const KEBAB_CLASS =
   "absolute top-1/2 right-[calc((var(--sb-row-h,32px)-24px)/2)] flex size-6 -translate-y-1/2 items-center justify-center rounded-r6 text-ink-muted opacity-0 transition-opacity hover:bg-fill-ghost-hover hover:text-primary focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 group-hover/session-row:opacity-100 data-[popup-open]:opacity-100 data-[popup-open]:bg-fill-ghost-hover pointer-coarse:opacity-100";
 
@@ -250,18 +301,9 @@ export function SessionActionsMenu({
   className?: string;
 }) {
   const rename = useSessionRename(session.id, session.title);
-  // The open menu holds focus, so the input may only mount (and take focus)
-  // once it has closed; the closing menu must not hand focus back either.
-  const renameAfterClose = useRef(false);
-  const requestRename = () => {
-    renameAfterClose.current = true;
-  };
-  const onOpenChangeComplete = (open: boolean) => {
-    if (open || !renameAfterClose.current) return;
-    renameAfterClose.current = false;
-    rename.startEditing();
-  };
-  const finalFocus = () => !renameAfterClose.current;
+  const { requestRename, onOpenChangeComplete, finalFocus } = useRenameAfterMenuClose(
+    rename.startEditing,
+  );
   return (
     <RowRenameContext.Provider value={{ rename, requestRename }}>
       <div className={`group/session-row relative ${className ?? ""}`}>
