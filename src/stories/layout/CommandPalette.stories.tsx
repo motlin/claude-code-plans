@@ -1,13 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
-import { CommandPalette } from "../../components/command-palette";
-import { recentSessionsQueryOptions } from "../../lib/api/sessions";
+import { recentSessionsQueryOptions, type SessionListItem } from "../../lib/api/sessions";
+import { CommandPalette, PALETTE_RECENT_LIMIT } from "../../components/command-palette";
 import { createStoryRouter } from "../sidebar/decorators";
 
 const now = Date.now();
 
-const sampleRecent = {
+const sampleRecent: { sessions: SessionListItem[]; nextCursor: null } = {
   sessions: [
     {
       id: "sess-1",
@@ -21,7 +21,7 @@ const sampleRecent = {
       gitBranch: "main" as string | undefined,
       starred: false,
       state: "unknown" as const,
-      bucket: "done" as const,
+      bucket: "done",
       liveAgentCount: 0,
       unseen: false,
       blockedSince: null,
@@ -38,7 +38,7 @@ const sampleRecent = {
       gitBranch: "fix/db" as string | undefined,
       starred: false,
       state: "unknown" as const,
-      bucket: "done" as const,
+      bucket: "blocked",
       liveAgentCount: 0,
       unseen: false,
       blockedSince: null,
@@ -55,7 +55,7 @@ const sampleRecent = {
       gitBranch: undefined,
       starred: false,
       state: "unknown" as const,
-      bucket: "done" as const,
+      bucket: "done",
       liveAgentCount: 0,
       unseen: false,
       blockedSince: null,
@@ -69,7 +69,7 @@ function createSeededQueryClient(data: typeof sampleRecent | undefined) {
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   });
   if (data) {
-    qc.setQueryData(recentSessionsQueryOptions(8).queryKey, data);
+    qc.setQueryData(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT).queryKey, data);
   }
   return qc;
 }

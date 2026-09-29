@@ -1,6 +1,6 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { Command } from "cmdk";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   type KeyboardEvent,
   type ReactNode,
@@ -23,9 +23,17 @@ import {
   Keyboard,
   CornerDownLeft,
   X,
+  PanelLeft,
+  ListChecks,
+  Activity,
+  Puzzle,
 } from "lucide-react";
 import type { PaletteMode } from "../hooks/use-command-palette";
-import { recentSessionsQueryOptions } from "../lib/api/sessions";
+import { recentSessionsQueryOptions, type SessionListItem } from "../lib/api/sessions";
+import type { SessionBucket } from "../lib/session-state";
+import { SHORTCUTS, type ShortcutId } from "../lib/shortcuts/registry";
+import { toggleSidebarCollapsed } from "../lib/sidebar-store";
+import { type ShortcutKeys, useShortcutKeys } from "../hooks/use-shortcut";
 import { clearAll } from "../lib/unread-store";
 import { Shortcut } from "./ui/shortcut";
 import { useOpenSettings } from "./settings/settings-dialog";
@@ -48,9 +56,83 @@ const PALETTE_RADIUS = "rounded-[calc(var(--radius-composer)+0.375rem)]";
 const GROUP_CLASS =
   "[&_[cmdk-group-heading]]:px-3.5 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:pb-2 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:text-ink-muted [&_[cmdk-group-items]]:flex [&_[cmdk-group-items]]:flex-col [&_[cmdk-group-items]]:gap-1";
 
-interface RecentSession {
+/** Fetched deep enough that sessions needing attention surface even when they are not the newest. */
+export const PALETTE_RECENT_LIMIT = 25;
+
+/** Upstream caps the default entrypoint's organic list (Needs attention + Recents) at 7. */
+const ORGANIC_LIMIT = 7;
+
+type AttentionBucket = Extract<SessionBucket, "blocked" | "review">;
+
+const ATTENTION_LABELS = {
+  blocked: "Awaiting input",
+  review: "Needs review",
+} as const satisfies Record<AttentionBucket, string>;
+
+interface PaletteSession {
   id: string;
   title: string;
+}
+
+interface AttentionSession extends PaletteSession {
+  bucket: AttentionBucket;
+}
+
+function isAttentionBucket(bucket: SessionBucket): bucket is AttentionBucket {
+  return bucket === "blocked" || bucket === "review";
+}
+
+/** Split the recent feed into upstream's empty-state groups, dropping the session on screen. */
+function paletteSessionGroups(
+  sessions: readonly SessionListItem[],
+  currentSessionId: string | undefined,
+): { attention: AttentionSession[]; recents: PaletteSession[] } {
+  const attention: AttentionSession[] = [];
+  const recents: PaletteSession[] = [];
+  for (const session of sessions) {
+    if (session.id === currentSessionId) continue;
+    if (isAttentionBucket(session.bucket)) {
+      attention.push({ id: session.id, title: session.title, bucket: session.bucket });
+    } else {
+      recents.push({ id: session.id, title: session.title });
+    }
+  }
+  const cappedAttention = attention.slice(0, ORGANIC_LIMIT);
+  return {
+    attention: cappedAttention,
+    recents: recents.slice(0, ORGANIC_LIMIT - cappedAttention.length),
+  };
+}
+
+/** Pages reachable by typing; upstream keeps navigation out of the empty state. */
+const NAV_COMMANDS = [
+  { to: "/", label: "Home", icon: <Home />, keywords: ["home", "start"] },
+  { to: "/sessions", label: "Sessions", icon: <MessageSquare />, keywords: ["session", "history"] },
+  { to: "/active", label: "Active", icon: <Activity />, keywords: ["active", "live", "running"] },
+  { to: "/starred", label: "Starred", icon: <Star />, keywords: ["star", "pin", "favorite"] },
+  { to: "/projects", label: "Projects", icon: <FolderOpen />, keywords: ["project", "repo"] },
+  { to: "/plans", label: "Plans", icon: <FileText />, keywords: ["plan", "markdown"] },
+  { to: "/memories", label: "Memories", icon: <Brain />, keywords: ["memory", "claude.md"] },
+  { to: "/tasks", label: "Tasks", icon: <ListChecks />, keywords: ["task", "todo"] },
+  { to: "/customize", label: "Customize", icon: <Puzzle />, keywords: ["skill", "plugin"] },
+] as const;
+
+interface PaletteAction {
+  label: string;
+  icon: ReactNode;
+  run: () => void;
+  shortcut?: ShortcutId;
+}
+
+function useCurrentSessionId(): string | undefined {
+  return useRouterState({
+    select: (state) => {
+      for (const match of state.matches) {
+        if (match.routeId === "/session/$id") return match.params.id;
+      }
+      return undefined;
+    },
+  });
 }
 
 interface CommandPaletteProps {
@@ -96,18 +178,56 @@ function PalettePopup({
   const cardRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   const [settledHeight, setSettledHeight] = useState<number | null>(null);
-  const { data } = useQuery(recentSessionsQueryOptions(8));
+  const { data } = useQuery(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT));
+  const currentSessionId = useCurrentSessionId();
 
-  const recentSessions = useMemo<RecentSession[]>(
-    () => (data?.sessions ?? []).map((s) => ({ id: s.id, title: s.title })),
-    [data],
+  const { attention, recents } = useMemo(
+    () => paletteSessionGroups(data?.sessions ?? [], currentSessionId),
+    [data, currentSessionId],
+  );
+
+  function openSession(id: string) {
+    void navigate({ to: "/session/$id", params: { id } });
+  }
+
+  // Upstream's Actions minus the cloud-only ones; "New session…" joins once herdr launch exists.
+  const actions = (
+    [
+      {
+        label: "Search sessions",
+        icon: <Search />,
+        run: () => void navigate({ to: "/search", search: { q: "", mode: "titles" as const } }),
+        shortcut: "search",
+      },
+      {
+        label: "Keyboard shortcuts",
+        icon: <Keyboard />,
+        run: () => setKeyboardShortcutsOpen(true),
+        shortcut: "shortcuts_modal",
+      },
+      {
+        label: "Toggle sidebar",
+        icon: <PanelLeft />,
+        run: toggleSidebarCollapsed,
+        shortcut: "toggle_sidebar",
+      },
+      {
+        label: "Settings",
+        icon: <SlidersHorizontal />,
+        run: () => openSettings("general"),
+        shortcut: "settings",
+      },
+      { label: "Mark all sessions seen", icon: <CircleCheckBig />, run: clearAll },
+    ] satisfies PaletteAction[]
+  ).filter(
+    (action: PaletteAction) => action.shortcut === undefined || SHORTCUTS[action.shortcut].enabled,
   );
 
   // Upstream centres the card on its first settled height so it does not jump while filtering.
   useLayoutEffect(() => {
     const height = cardRef.current?.offsetHeight ?? 0;
     if (settledHeight === null && height > 0) setSettledHeight(height);
-  }, [settledHeight, recentSessions.length]);
+  }, [settledHeight, attention.length, recents.length]);
 
   function select(callback: () => void) {
     onOpenChange(false);
@@ -182,20 +302,29 @@ function PalettePopup({
                   No results for “{query}”
                 </Command.Empty>
 
-                {recentSessions.length > 0 && (
+                {attention.length > 0 && (
+                  <Command.Group heading="Needs attention" className={GROUP_CLASS}>
+                    {attention.map((session) => (
+                      <CommandItem
+                        key={session.id}
+                        icon={<AttentionIcon />}
+                        onSelect={() => select(() => openSession(session.id))}
+                        keywords={[session.id]}
+                      >
+                        {session.title}
+                        <span className="sr-only"> {ATTENTION_LABELS[session.bucket]}</span>
+                      </CommandItem>
+                    ))}
+                  </Command.Group>
+                )}
+
+                {recents.length > 0 && (
                   <Command.Group heading="Recents" className={GROUP_CLASS}>
-                    {recentSessions.map((session) => (
+                    {recents.map((session) => (
                       <CommandItem
                         key={session.id}
                         icon={<MessageSquare />}
-                        onSelect={() =>
-                          select(() =>
-                            navigate({
-                              to: "/session/$id",
-                              params: { id: session.id },
-                            }),
-                          )
-                        }
+                        onSelect={() => select(() => openSession(session.id))}
                         keywords={[session.id]}
                       >
                         {session.title}
@@ -205,68 +334,42 @@ function PalettePopup({
                 )}
 
                 <Command.Group heading="Actions" className={GROUP_CLASS}>
-                  <CommandItem icon={<Home />} onSelect={() => select(() => navigate({ to: "/" }))}>
-                    Home
-                  </CommandItem>
-                  <CommandItem
-                    icon={<Search />}
-                    onSelect={() =>
-                      select(() =>
-                        navigate({
-                          to: "/search",
-                          search: { q: "", mode: "titles" as const },
-                        }),
-                      )
-                    }
-                  >
-                    Search
-                  </CommandItem>
-                  <CommandItem icon={<CircleCheckBig />} onSelect={() => select(clearAll)}>
-                    Mark all sessions seen
-                  </CommandItem>
-                  <CommandItem
-                    icon={<Star />}
-                    onSelect={() => select(() => navigate({ to: "/starred" }))}
-                  >
-                    Starred
-                  </CommandItem>
-                  <CommandItem
-                    icon={<FolderOpen />}
-                    onSelect={() => select(() => navigate({ to: "/projects" }))}
-                  >
-                    Projects
-                  </CommandItem>
-                  <CommandItem
-                    icon={<FileText />}
-                    onSelect={() => select(() => navigate({ to: "/plans" }))}
-                  >
-                    Plans
-                  </CommandItem>
-                  <CommandItem
-                    icon={<Brain />}
-                    onSelect={() => select(() => navigate({ to: "/memories" }))}
-                  >
-                    Memories
-                  </CommandItem>
-                  <CommandItem
-                    icon={<MessageSquare />}
-                    onSelect={() => select(() => navigate({ to: "/sessions" }))}
-                  >
-                    Sessions
-                  </CommandItem>
-                  <CommandItem
-                    icon={<SlidersHorizontal />}
-                    onSelect={() => select(() => openSettings("general"))}
-                  >
-                    Settings
-                  </CommandItem>
-                  <CommandItem
-                    icon={<Keyboard />}
-                    onSelect={() => select(() => setKeyboardShortcutsOpen(true))}
-                  >
-                    Keyboard shortcuts
-                  </CommandItem>
+                  {actions.map((action) =>
+                    action.shortcut === undefined ? (
+                      <CommandItem
+                        key={action.label}
+                        icon={action.icon}
+                        onSelect={() => select(action.run)}
+                      >
+                        {action.label}
+                      </CommandItem>
+                    ) : (
+                      <ShortcutCommandItem
+                        key={action.label}
+                        id={action.shortcut}
+                        icon={action.icon}
+                        onSelect={() => select(action.run)}
+                      >
+                        {action.label}
+                      </ShortcutCommandItem>
+                    ),
+                  )}
                 </Command.Group>
+
+                {query !== "" && (
+                  <Command.Group className={GROUP_CLASS}>
+                    {NAV_COMMANDS.map((command) => (
+                      <CommandItem
+                        key={command.to}
+                        icon={command.icon}
+                        onSelect={() => select(() => navigate({ to: command.to }))}
+                        keywords={command.keywords}
+                      >
+                        {command.label}
+                      </CommandItem>
+                    ))}
+                  </Command.Group>
+                )}
               </>
             )}
           </Command.List>
@@ -337,29 +440,65 @@ function ModeSwitch({
   );
 }
 
+/** Session icon with upstream's masked notch and 6px accent pulse dot at the top-right. */
+function AttentionIcon() {
+  return (
+    <span className="relative flex size-5 items-center justify-center">
+      <MessageSquare className="[mask-image:radial-gradient(circle_at_calc(100%-2px)_2px,transparent_5px,black_5.5px)]" />
+      <span
+        aria-hidden="true"
+        data-palette-attention-dot=""
+        className="absolute top-0 right-0 size-1.5 rounded-full bg-accent-100 motion-safe:animate-pulse"
+      />
+    </span>
+  );
+}
+
+/** A command row advertising its registry shortcut as keycaps and `aria-keyshortcuts`. */
+function ShortcutCommandItem({
+  id,
+  ...props
+}: { id: ShortcutId } & Omit<Parameters<typeof CommandItem>[0], "shortcut">) {
+  const shortcut = useShortcutKeys(id);
+  return <CommandItem {...props} shortcut={shortcut} />;
+}
+
 function CommandItem({
   children,
   icon,
   onSelect,
   keywords,
+  shortcut,
 }: {
   children: ReactNode;
   icon: ReactNode;
   onSelect: () => void;
-  keywords?: string[];
+  keywords?: readonly string[];
+  shortcut?: ShortcutKeys;
 }) {
   return (
     <Command.Item
       onSelect={onSelect}
-      {...(keywords ? { keywords } : {})}
+      {...(keywords ? { keywords: [...keywords] } : {})}
+      {...(shortcut ? { "aria-keyshortcuts": shortcut.ariaKeyShortcuts } : {})}
       className="group flex w-full cursor-pointer items-center justify-between gap-3 truncate rounded-lg px-3 py-2 text-sm leading-5 text-secondary select-none data-[selected=true]:bg-fill-ghost-hover data-[selected=true]:text-primary"
     >
       <span className="flex min-w-0 flex-1 items-center gap-2">
         <span className="flex size-5 shrink-0 items-center justify-center [&_svg]:size-[18px]">
           {icon}
         </span>
-        <span className="truncate">{children}</span>
+        <span data-palette-label="" className="truncate">
+          {children}
+        </span>
       </span>
+      {shortcut !== undefined && (
+        <span
+          aria-hidden="true"
+          className="shrink-0 text-ink-muted group-data-[selected=true]:hidden pointer-coarse:hidden"
+        >
+          <Shortcut keys={shortcut.keys} />
+        </span>
+      )}
       <span className="hidden shrink-0 text-xs text-ink-muted group-data-[selected=true]:inline-flex pointer-coarse:!hidden">
         <CornerDownLeft aria-hidden="true" className="size-4" />
       </span>

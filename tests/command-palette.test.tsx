@@ -4,18 +4,22 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   createMemoryHistory,
   createRootRoute,
+  createRoute,
   createRouter,
+  Outlet,
   RouterProvider,
 } from "@tanstack/react-router";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
-import { CommandPalette } from "../src/components/command-palette";
+import { CommandPalette, PALETTE_RECENT_LIMIT } from "../src/components/command-palette";
 import { useCommandPalette } from "../src/hooks/use-command-palette";
 import { recentSessionsQueryOptions } from "../src/lib/api/sessions";
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 
-function recentSession(id: string, title: string) {
+type Bucket = "blocked" | "review" | "working" | "done";
+
+function recentSession(id: string, title: string, bucket: Bucket = "done") {
   return {
     id,
     title,
@@ -28,7 +32,7 @@ function recentSession(id: string, title: string) {
     gitBranch: undefined,
     starred: false,
     state: "unknown" as const,
-    bucket: "done" as const,
+    bucket,
     liveAgentCount: 0,
     unseen: false,
     blockedSince: null,
@@ -45,22 +49,31 @@ function Harness() {
   );
 }
 
-async function renderPalette() {
+async function renderPalette(
+  sessions = [recentSession("sess-1", "Refactor auth module")],
+  initialPath = "/",
+) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  queryClient.setQueryData(recentSessionsQueryOptions(8).queryKey, {
-    sessions: [recentSession("sess-1", "Refactor auth module")],
+  queryClient.setQueryData(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT).queryKey, {
+    sessions,
     nextCursor: null,
   });
   const rootRoute = createRootRoute({
     component: () => (
       <QueryClientProvider client={queryClient}>
         <Harness />
+        <Outlet />
       </QueryClientProvider>
     ),
   });
+  const sessionRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "session/$id",
+    component: () => null,
+  });
   const router = createRouter({
-    routeTree: rootRoute,
-    history: createMemoryHistory({ initialEntries: ["/"] }),
+    routeTree: rootRoute.addChildren([sessionRoute]),
+    history: createMemoryHistory({ initialEntries: [initialPath] }),
   });
   await router.load();
   render(<RouterProvider router={router} />);
@@ -73,10 +86,22 @@ function pressK(target: Element, init: KeyboardEventInit) {
   fireEvent.keyDown(target, { key: "k", code: "KeyK", ...init });
 }
 
-async function openPalette() {
-  const composer = await renderPalette();
+async function openPalette(...args: Parameters<typeof renderPalette>) {
+  const composer = await renderPalette(...args);
   pressK(composer, { metaKey: true });
   return screen.findByRole("dialog", { name: "Search" });
+}
+
+/** Each group heading mapped to its option labels, in DOM order. */
+function groupLabels(dialog: HTMLElement): Array<[string, string[]]> {
+  return [...dialog.querySelectorAll("[cmdk-group]")]
+    .filter((group) => !group.hasAttribute("hidden"))
+    .map((group) => [
+      group.querySelector("[cmdk-group-heading]")?.textContent ?? "",
+      [...group.querySelectorAll("[cmdk-item]")].map(
+        (item) => item.querySelector("[data-palette-label]")?.textContent ?? "",
+      ),
+    ]);
 }
 
 function footer(dialog: HTMLElement): Element | null {
@@ -225,5 +250,67 @@ describe("CommandPalette shell", () => {
 
     const dialog = await screen.findByRole("dialog", { name: "Search" });
     within(dialog).getByRole("combobox", { name: "Search" });
+  });
+
+  it("shows Needs attention, Recents and Actions in the empty state", async () => {
+    const dialog = await openPalette(
+      [
+        recentSession("s-1", "Recent one"),
+        recentSession("s-blocked", "Blocked one", "blocked"),
+        recentSession("s-current", "Current page", "done"),
+        recentSession("s-2", "Recent two", "working"),
+        recentSession("s-review", "Review one", "review"),
+        recentSession("s-3", "Recent three"),
+        recentSession("s-4", "Recent four"),
+        recentSession("s-5", "Recent five"),
+        recentSession("s-6", "Recent six"),
+        recentSession("s-7", "Recent seven"),
+      ],
+      "/session/s-current",
+    );
+
+    await within(dialog).findByRole("option", { name: /Blocked one/ });
+    expect(groupLabels(dialog)).toStrictEqual([
+      ["Needs attention", ["Blocked one Awaiting input", "Review one Needs review"]],
+      ["Recents", ["Recent one", "Recent two", "Recent three", "Recent four", "Recent five"]],
+      [
+        "Actions",
+        [
+          "Search sessions",
+          "Keyboard shortcuts",
+          "Toggle sidebar",
+          "Settings",
+          "Mark all sessions seen",
+        ],
+      ],
+    ]);
+    expect(dialog.querySelectorAll("[data-palette-attention-dot]").length).toBe(2);
+  });
+
+  it("caps Needs attention at the organic total of 7", async () => {
+    const dialog = await openPalette(
+      Array.from({ length: 9 }, (_, index) =>
+        recentSession(`s-${index}`, `Waiting ${index}`, "blocked"),
+      ),
+    );
+
+    await within(dialog).findByRole("option", { name: /Waiting 0/ });
+    expect(groupLabels(dialog).map(([heading, labels]) => [heading, labels.length])).toStrictEqual([
+      ["Needs attention", 7],
+      ["Actions", 5],
+    ]);
+  });
+
+  it("hides navigation commands until typed", async () => {
+    const dialog = await openPalette();
+
+    await within(dialog).findByRole("option", { name: /Refactor auth module/ });
+    expect(within(dialog).queryByRole("option", { name: "Plans" })).toBeNull();
+
+    fireEvent.change(within(dialog).getByRole("combobox"), { target: { value: "plan" } });
+    await within(dialog).findByRole("option", { name: "Plans" });
+
+    fireEvent.change(within(dialog).getByRole("combobox"), { target: { value: "markdown" } });
+    await within(dialog).findByRole("option", { name: "Plans" });
   });
 });
