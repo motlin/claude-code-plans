@@ -1,7 +1,8 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { CornerDownLeft, MessageSquare, Square, X } from "lucide-react";
 
 import { useComposerDraft } from "../hooks/use-composer-draft";
+import { useFileMentionSuggestions } from "../hooks/use-file-mention-suggestions";
 import type { LiveLaunchControls } from "../hooks/use-live-launch-options";
 import { useShortcut } from "../hooks/use-shortcut";
 import type { ComposerState } from "../lib/composer-state";
@@ -16,6 +17,8 @@ import {
   takeQueuedDiffComments,
   useDiffComments,
 } from "../lib/diff-comments";
+import type { SessionFilesEntry } from "../lib/api/session-files";
+import { fileMentionTrigger, insertFileMention } from "../lib/file-mentions";
 import type { LaunchOptions } from "../lib/launch-options";
 import {
   filterSlashCommands,
@@ -25,6 +28,7 @@ import {
 } from "../lib/slash-commands";
 import { ComposerChin } from "./composer-chin";
 import type { ChinMenu } from "./composer-launch-menus";
+import { FileMentionMenu, fileMentionOptionId } from "./file-mention-menu";
 import { SlashCommandMenu, slashCommandOptionId } from "./slash-command-menu";
 import { Tooltip } from "./ui/tooltip";
 
@@ -105,6 +109,8 @@ interface ComposerProps {
   bypassPermissionsAllowed?: boolean | undefined;
   /** An idle live pane: chin picks steer it instead of becoming launch flags. */
   live?: LiveLaunchControls | undefined;
+  /** The session whose working directory feeds the "@" file mention popup. */
+  mentionSessionId?: string | undefined;
 }
 
 const NO_COMMANDS: readonly SlashCommand[] = [];
@@ -126,11 +132,15 @@ export function Composer({
   slashCommands = NO_COMMANDS,
   bypassPermissionsAllowed = false,
   live,
+  mentionSessionId,
 }: ComposerProps) {
   const { text: prompt, setText: setPrompt, clear: clearDraft } = useComposerDraft(draftKey);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const hintId = useId();
   const slashMenuId = useId();
+  const mentionMenuId = useId();
+  const [caret, setCaret] = useState(0);
+  const pendingCaretRef = useRef<number | null>(null);
   const { queued: queuedComments } = useDiffComments(draftKey);
   const canSend = (prompt.trim() !== "" || queuedComments.length > 0) && !isStreaming && !disabled;
   const [launch, setLaunch] = useState<{ draftKey: string; options: LaunchOptions }>({
@@ -169,6 +179,60 @@ export function Composer({
   const slashOpen = query !== null && matches.length > 0;
   const highlighted = highlight.query === query ? Math.min(highlight.index, matches.length - 1) : 0;
   const argumentHint = slashArgumentHint(slashCommands, prompt);
+
+  const trigger =
+    mentionSessionId === undefined || slashOpen ? null : fileMentionTrigger(prompt, caret);
+  const mentionKey = trigger === null ? null : `${trigger.start}\0${prompt}`;
+  const [dismissedMention, setDismissedMention] = useState<string | null>(null);
+  const mention = mentionKey === dismissedMention ? null : trigger;
+  const suggestions = useFileMentionSuggestions(mentionSessionId, mention?.query ?? null);
+  const mentionEntries = suggestions?.entries ?? [];
+  const mentionOpen = mention !== null && mentionEntries.length > 0;
+  const [mentionHighlight, setMentionHighlight] = useState<{
+    entries: readonly SessionFilesEntry[];
+    index: number;
+  }>({ entries: [], index: 0 });
+  const mentionHighlighted =
+    mentionHighlight.entries === mentionEntries
+      ? Math.min(mentionHighlight.index, mentionEntries.length - 1)
+      : 0;
+
+  useLayoutEffect(() => {
+    const next = pendingCaretRef.current;
+    if (next === null) return;
+    pendingCaretRef.current = null;
+    textareaRef.current?.setSelectionRange(next, next);
+  }, [prompt]);
+
+  function acceptFileMention(entry: SessionFilesEntry) {
+    if (mention === null) return;
+    const next = insertFileMention(prompt, mention, caret, entry.relPath);
+    pendingCaretRef.current = next.caret;
+    setCaret(next.caret);
+    setPrompt(next.text);
+    textareaRef.current?.focus();
+  }
+
+  function handleMentionKey(e: React.KeyboardEvent): boolean {
+    if (!mentionOpen) return false;
+    const move = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
+    if (move !== 0) {
+      setMentionHighlight({
+        entries: mentionEntries,
+        index: (mentionHighlighted + move + mentionEntries.length) % mentionEntries.length,
+      });
+    } else if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey) {
+      const entry = mentionEntries[mentionHighlighted];
+      if (entry !== undefined) acceptFileMention(entry);
+    } else if (e.key === "Escape") {
+      setDismissedMention(mentionKey);
+      e.stopPropagation();
+    } else {
+      return false;
+    }
+    e.preventDefault();
+    return true;
+  }
 
   function acceptSlashCommand(command: SlashCommand) {
     setPrompt(`/${command.name} `);
@@ -212,7 +276,7 @@ export function Composer({
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.nativeEvent.isComposing || handleSlashKey(e)) return;
+    if (e.nativeEvent.isComposing || handleSlashKey(e) || handleMentionKey(e)) return;
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       handleSubmit();
@@ -240,6 +304,15 @@ export function Composer({
               onAccept={acceptSlashCommand}
             />
           )}
+          {mentionOpen && (
+            <FileMentionMenu
+              id={mentionMenuId}
+              entries={mentionEntries}
+              highlighted={mentionHighlighted}
+              onHighlight={(index) => setMentionHighlight({ entries: mentionEntries, index })}
+              onAccept={acceptFileMention}
+            />
+          )}
           {argumentHint !== null && (
             <div
               aria-hidden="true"
@@ -256,11 +329,19 @@ export function Composer({
             aria-label="Prompt"
             data-focus-region-entry
             value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
+            onChange={(e) => {
+              setCaret(e.target.selectionStart);
+              setPrompt(e.target.value);
+            }}
+            onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
             onKeyDown={handleKeyDown}
-            aria-controls={slashOpen ? slashMenuId : undefined}
+            aria-controls={slashOpen ? slashMenuId : mentionOpen ? mentionMenuId : undefined}
             aria-activedescendant={
-              slashOpen ? slashCommandOptionId(slashMenuId, highlighted) : undefined
+              slashOpen
+                ? slashCommandOptionId(slashMenuId, highlighted)
+                : mentionOpen
+                  ? fileMentionOptionId(mentionMenuId, mentionHighlighted)
+                  : undefined
             }
             placeholder={PLACEHOLDER[variant]}
             disabled={isStreaming || disabled}

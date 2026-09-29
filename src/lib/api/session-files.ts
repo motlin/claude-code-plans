@@ -11,8 +11,12 @@ const WorkspaceEntrySchema = z
       .object({ target: z.string(), outside: z.boolean(), broken: z.boolean() })
       .strict()
       .optional(),
+    /** Git ignores this path; only reported when the request sets `markIgnored`. */
+    ignored: z.literal(true).optional(),
   })
   .strict();
+
+export type SessionFilesEntry = z.infer<typeof WorkspaceEntrySchema>;
 
 export const SessionFilesResponseSchema = z.discriminatedUnion("kind", [
   z
@@ -61,6 +65,17 @@ function sessionFilesUrl(
   if (hideIgnored) parameters.set("hideIgnored", "1");
   const search = parameters.toString();
   return `/api/sessions/${encodeURIComponent(sessionId)}/files${search === "" ? "" : `?${search}`}`;
+}
+
+/**
+ * The composer "@" feed: the top-level listing for an empty query, otherwise a
+ * fuzzy search of the whole tree, with gitignored entries marked rather than hidden.
+ */
+export function fileMentionsUrl(sessionId: string, query: string): string {
+  const parameters = new URLSearchParams();
+  if (query !== "") parameters.set("q", query);
+  parameters.set("markIgnored", "1");
+  return `/api/sessions/${encodeURIComponent(sessionId)}/files?${parameters.toString()}`;
 }
 
 /** The session's workspace listing (or fuzzy search), with paths in the query string. */

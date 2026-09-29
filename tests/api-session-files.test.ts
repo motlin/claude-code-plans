@@ -353,6 +353,42 @@ describe("GET /api/sessions/$id/files", () => {
     });
   });
 
+  it("marks gitignored entries when asked", async () => {
+    execFileSync("git", ["init", "--quiet"], { cwd: root });
+    execFileSync("git", ["config", "core.excludesFile", "/dev/null"], { cwd: root });
+    write(".gitignore", "docs/\nalpha.ts\n");
+    write("docs/guide.md");
+    insertSession(root);
+
+    const listing = await request({ markIgnored: "1" });
+    const ignored = (listing.body as { entries: { name: string; ignored?: boolean }[] }).entries
+      .filter((entry) => entry.ignored === true)
+      .map((entry) => entry.name);
+    const search = await request({ q: "guide", markIgnored: "1" });
+
+    expect({ ignored, search: search.body }).toStrictEqual({
+      ignored: ["docs", "alpha.ts"],
+      search: {
+        kind: "search",
+        dir: "",
+        query: "guide",
+        results: [
+          { name: "guide.md", relPath: "docs/guide.md", isDirectory: false, ignored: true },
+        ],
+        partial: false,
+        capped: false,
+      },
+    });
+  });
+
+  it("rejects an invalid markIgnored flag", async () => {
+    insertSession(root);
+    expect(await request({ markIgnored: "yes" })).toStrictEqual({
+      status: 400,
+      body: { error: "Invalid markIgnored flag" },
+    });
+  });
+
   it("rejects an invalid hideIgnored flag", async () => {
     insertSession(root);
     expect(await request({ hideIgnored: "yes" })).toStrictEqual({

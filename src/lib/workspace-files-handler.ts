@@ -17,6 +17,7 @@ import {
   walkWorkspace,
   WorkspacePathError,
   type IgnoreCheck,
+  type WorkspaceEntry,
 } from "./workspace-files";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
@@ -61,10 +62,26 @@ async function resolveDirectory(cwd: string): Promise<string | null> {
   }
 }
 
+async function markIgnored(
+  root: string,
+  entries: WorkspaceEntry[],
+  checkIgnored: IgnoreCheck,
+): Promise<(WorkspaceEntry & { ignored?: true })[]> {
+  if (entries.length === 0) return entries;
+  const ignoredPaths = await checkIgnored(
+    root,
+    entries.map((entry) => entry.relPath),
+  );
+  return entries.map((entry) =>
+    ignoredPaths.has(entry.relPath) ? { ...entry, ignored: true } : entry,
+  );
+}
+
 /**
- * `GET /api/sessions/$id/files?dir=<rel>&q=<query>&hideIgnored=1`: list one
- * directory of the session's working directory, or fuzzy-search every path
- * under `dir` when `q` is set.
+ * `GET /api/sessions/$id/files?dir=<rel>&q=<query>&hideIgnored=1&markIgnored=1`:
+ * list one directory of the session's working directory, or fuzzy-search every
+ * path under `dir` when `q` is set. `markIgnored` flags gitignored entries
+ * instead of hiding them.
  */
 export async function handleSessionFilesRequest(
   sessionId: string,
@@ -75,6 +92,10 @@ export async function handleSessionFilesRequest(
   const hideIgnoredFlag = parameters.get("hideIgnored") ?? "0";
   if (hideIgnoredFlag !== "0" && hideIgnoredFlag !== "1") {
     return errorResponse("Invalid hideIgnored flag", 400);
+  }
+  const markIgnoredFlag = parameters.get("markIgnored") ?? "0";
+  if (markIgnoredFlag !== "0" && markIgnoredFlag !== "1") {
+    return errorResponse("Invalid markIgnored flag", 400);
   }
   const dir = parameters.get("dir") ?? "";
   const query = (parameters.get("q") ?? "").trim();
@@ -96,10 +117,19 @@ export async function handleSessionFilesRequest(
   }
 
   const options = hideIgnoredFlag === "1" ? { ignored: resolvedDependencies.checkIgnored } : {};
+  const mark =
+    markIgnoredFlag === "1" && hideIgnoredFlag === "0"
+      ? (entries: WorkspaceEntry[]) => markIgnored(root, entries, resolvedDependencies.checkIgnored)
+      : async (entries: WorkspaceEntry[]) => entries;
   try {
     if (query === "") {
       const listing = await listDir(root, dir, options);
-      return filesResponse({ kind: "listing", dir, ...listing });
+      return filesResponse({
+        kind: "listing",
+        dir,
+        entries: await mark(listing.entries),
+        partial: listing.partial,
+      });
     }
     const walk = await walkWorkspace(root, dir, options);
     const byPath = new Map(
@@ -110,7 +140,7 @@ export async function handleSessionFilesRequest(
       kind: "search",
       dir,
       query,
-      results: matches.paths.flatMap((path) => byPath.get(path) ?? []),
+      results: await mark(matches.paths.flatMap((path) => byPath.get(path) ?? [])),
       partial: walk.partial,
       capped: matches.partial,
     });

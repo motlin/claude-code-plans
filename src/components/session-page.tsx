@@ -802,6 +802,7 @@ function SessionView({
                   slashCommands={slashCommands}
                   bypassPermissionsAllowed={bypassPermissionsAllowed}
                   live={liveLaunchAvailable ? liveLaunch : undefined}
+                  mentionSessionId={sessionId}
                 />
               )}
             </SessionDock>
