@@ -51,6 +51,7 @@ export function AttachmentBanner({
   rendered,
   renderedInHumanTurn,
   renderedRole,
+  absorbedMidTurn,
 }: {
   attachmentJson: string;
   sessionId?: string | undefined;
@@ -59,6 +60,8 @@ export function AttachmentBanner({
   rendered?: readonly string[] | undefined;
   renderedInHumanTurn?: readonly string[] | undefined;
   renderedRole?: RenderedRole | undefined;
+  /** A queued_command the CLI absorbed into the running turn instead of starting a new one. */
+  absorbedMidTurn?: boolean | undefined;
 }) {
   const attachment = useMemo<AttachmentPayload | null>(() => {
     const parsed = AttachmentPayloadSchema.safeParse(JSON.parse(attachmentJson));
@@ -79,6 +82,7 @@ export function AttachmentBanner({
       sessionId={sessionId}
       uuid={uuid}
       details={details}
+      absorbedMidTurn={absorbedMidTurn === true}
     />
   );
 }
@@ -267,11 +271,13 @@ function AttachmentContent({
   sessionId,
   uuid,
   details,
+  absorbedMidTurn,
 }: {
   attachment: AttachmentPayload;
   sessionId?: string | undefined;
   uuid?: string | undefined;
   details?: React.ReactNode;
+  absorbedMidTurn: boolean;
 }) {
   const shared = { sessionId, uuid, details };
   switch (attachment.type) {
@@ -678,7 +684,11 @@ function AttachmentContent({
       const queuedRelative = formatRelativeTimestamp(attachment.timestamp);
       const queuedAbsolute = formatTimestamp(attachment.timestamp);
       return (
-        <Banner icon={<Hourglass className="h-3.5 w-3.5" />} label="Queued command" {...shared}>
+        <Banner
+          icon={<Hourglass className="h-3.5 w-3.5" />}
+          label={absorbedMidTurn ? "Sent mid-turn" : "Queued command"}
+          {...shared}
+        >
           {typeof attachment.prompt === "string" && attachment.prompt.length > 0 && (
             <span className="text-t6 truncate max-w-sm" title={attachment.prompt}>
               {attachment.prompt.length > 80

@@ -167,6 +167,9 @@ const AttachmentLineSchema = z.object({
   rendered: z.array(z.string()).optional(),
   renderedInHumanTurn: z.array(z.string()).optional(),
   renderedRole: RenderedRoleSchema.optional(),
+  // A queued_command whose prompt was absorbed into the running turn, linked by
+  // a `queue-operation` removal's commandUuid matching the attachment's source_uuid.
+  absorbedMidTurn: z.literal(true).optional(),
   uuid: z.string().optional(),
   timestamp: z.string().optional(),
   sessionId: z.string().optional(),
@@ -532,6 +535,9 @@ function processRecordBatch(
     | Extract<z.infer<typeof JsonlRecordSchema>, { type: "artifact-autoreact-ledger" }>
     | undefined;
   let lastArtifactWatchKey: string | undefined;
+  // Absorbed removals and queued_command attachments can land in either order.
+  const absorbedCommandUuids = new Set<string>();
+  const queuedCommandLines = new Map<string, z.infer<typeof AttachmentLineSchema>>();
 
   for (let i = 0; i < records.length; i++) {
     const obj = records[i]!;
@@ -700,6 +706,15 @@ function processRecordBatch(
       continue;
     }
 
+    if (record.type === "queue-operation") {
+      if (record.reason === "absorbed_mid_turn" && record.commandUuid !== undefined) {
+        absorbedCommandUuids.add(record.commandUuid);
+        const queuedLine = queuedCommandLines.get(record.commandUuid);
+        if (queuedLine !== undefined) queuedLine.absorbedMidTurn = true;
+      }
+      continue;
+    }
+
     if (record.type === "attachment") {
       const attachmentLine: z.infer<typeof AttachmentLineSchema> = {
         type: "attachment",
@@ -713,6 +728,11 @@ function processRecordBatch(
         attachmentLine.renderedInHumanTurn = record.renderedInHumanTurn.map((r) => r.content);
       }
       if (record.renderedRole !== undefined) attachmentLine.renderedRole = record.renderedRole;
+      if (record.attachment.type === "queued_command" && record.attachment.source_uuid) {
+        const commandUuid = record.attachment.source_uuid;
+        if (absorbedCommandUuids.has(commandUuid)) attachmentLine.absorbedMidTurn = true;
+        else queuedCommandLines.set(commandUuid, attachmentLine);
+      }
       if (uuid !== undefined) attachmentLine.uuid = uuid;
       if (record.timestamp !== undefined) attachmentLine.timestamp = record.timestamp;
       if (sessionId !== undefined) attachmentLine.sessionId = sessionId;

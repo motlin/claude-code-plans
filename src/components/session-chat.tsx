@@ -1370,6 +1370,7 @@ function renderSessionMessage({
           rendered={line.rendered}
           renderedInHumanTurn={line.renderedInHumanTurn}
           renderedRole={line.renderedRole}
+          absorbedMidTurn={line.absorbedMidTurn}
         />
       );
     case "system":

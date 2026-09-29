@@ -413,6 +413,68 @@ describe("processTranscript", () => {
     ]);
   });
 
+  describe("queued commands absorbed mid-turn", () => {
+    const absorbedRemove = {
+      type: "queue-operation",
+      operation: "remove",
+      timestamp: "1999-12-31T00:00:01Z",
+      sessionId: "s-1",
+      content: "also check the tests",
+      reason: "absorbed_mid_turn",
+      commandUuid: "cmd-1",
+    };
+    const queuedAttachment = {
+      type: "attachment",
+      uuid: "att-q",
+      timestamp: "1999-12-31T00:00:02Z",
+      sessionId: "s-1",
+      attachment: {
+        type: "queued_command",
+        prompt: "also check the tests",
+        source_uuid: "cmd-1",
+      },
+    };
+    const expectedLine = (lineIndex: number) => ({
+      type: "attachment",
+      attachmentJson: JSON.stringify(queuedAttachment.attachment),
+      absorbedMidTurn: true,
+      uuid: "att-q",
+      timestamp: "1999-12-31T00:00:02Z",
+      sessionId: "s-1",
+      lineIndex,
+    });
+
+    it("marks the queued command an earlier absorbed removal points at", () => {
+      expect(processTranscript([absorbedRemove, queuedAttachment]).lines).toStrictEqual([
+        expectedLine(1),
+      ]);
+    });
+
+    it("marks the queued command when the absorbed removal is written after it", () => {
+      expect(processTranscript([queuedAttachment, absorbedRemove]).lines).toStrictEqual([
+        expectedLine(0),
+      ]);
+    });
+
+    it("leaves queued commands unmarked for other removals or other commands", () => {
+      const records = [
+        { ...absorbedRemove, reason: "cancelled" },
+        { ...absorbedRemove, commandUuid: "cmd-other" },
+        queuedAttachment,
+      ];
+      expect(processTranscript(records).lines).toStrictEqual([
+        {
+          type: "attachment",
+          attachmentJson: JSON.stringify(queuedAttachment.attachment),
+          uuid: "att-q",
+          timestamp: "1999-12-31T00:00:02Z",
+          sessionId: "s-1",
+          lineIndex: 2,
+        },
+      ]);
+    });
+  });
+
   it("preserves parentUuid on message lines", () => {
     const records = [
       assistantRecord([{ type: "text", text: "response" }], {

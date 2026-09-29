@@ -210,6 +210,23 @@ describe("AttachmentBanner", () => {
       expect(html).toContain("2020");
     });
 
+    it("labels a queued command absorbed into the running turn", () => {
+      const html = renderToStaticMarkup(
+        <AttachmentBanner
+          attachmentJson={JSON.stringify({ type: "queued_command", prompt: "do the thing" })}
+          absorbedMidTurn
+        />,
+      );
+      expect(html).toContain("<span>Sent mid-turn</span>");
+      expect(html).not.toContain("Queued command");
+    });
+
+    it("keeps the queued command label when it was not absorbed mid-turn", () => {
+      const html = renderBanner({ type: "queued_command", prompt: "do the thing" });
+      expect(html).toContain("<span>Queued command</span>");
+      expect(html).not.toContain("Sent mid-turn");
+    });
+
     it("omits the timestamp span when no timestamp is present", () => {
       const html = renderBanner({
         type: "queued_command",
