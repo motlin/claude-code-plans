@@ -304,6 +304,50 @@ function PaneSurface({
     host.update((state) => movePane(state, kind, direction));
   }
 
+  const moveHandle = isExpanded ? null : (
+    <button
+      type="button"
+      aria-label="Move"
+      aria-describedby={moveHintId}
+      onKeyDown={onMoveKeyDown}
+      className="group/move absolute top-0 left-1/2 flex h-4 w-11 -translate-x-1/2 cursor-move items-center justify-center outline-none"
+    >
+      <span className="h-[3px] w-8 rounded-full bg-fill-control opacity-0 transition-opacity group-hover/move:opacity-100 group-focus-visible/move:bg-accent-100 group-focus-visible/move:opacity-100" />
+      <span id={moveHintId} className="sr-only">
+        Arrow keys move the tile.
+      </span>
+    </button>
+  );
+
+  const controls = (
+    <>
+      <Tooltip content={isExpanded ? "Collapse" : "Expand"} shortcut={expandKeys.keys}>
+        <button
+          type="button"
+          aria-label={isExpanded ? "Collapse" : "Expand"}
+          aria-keyshortcuts={expandKeys.ariaKeyShortcuts}
+          onClick={() =>
+            host.update((state) => (isExpanded ? collapsePane(state) : expandPane(state, kind)))
+          }
+          className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary"
+        >
+          {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+        </button>
+      </Tooltip>
+      <Tooltip content="Close" shortcut={closeKeys.keys}>
+        <button
+          type="button"
+          aria-label="Close"
+          aria-keyshortcuts={closeKeys.ariaKeyShortcuts}
+          onClick={() => host.update((state) => closePane(state, kind))}
+          className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </Tooltip>
+    </>
+  );
+
   return (
     <section
       data-pane-root
@@ -311,56 +355,24 @@ function PaneSurface({
       aria-label={definition.title}
       className="relative isolate flex h-full min-w-0 flex-col rounded-card bg-surface-2 shadow-panel-sm"
     >
-      <div className="relative flex h-8 shrink-0 items-center justify-between gap-2 px-1">
-        <span data-pane-title className="truncate pl-1 text-body text-secondary select-none">
-          {definition.title}
-        </span>
-        {!isExpanded && (
-          <button
-            type="button"
-            aria-label="Move"
-            aria-describedby={moveHintId}
-            onKeyDown={onMoveKeyDown}
-            className="group/move absolute top-0 left-1/2 flex h-4 w-11 -translate-x-1/2 cursor-move items-center justify-center outline-none"
-          >
-            <span className="h-[3px] w-8 rounded-full bg-fill-control opacity-0 transition-opacity group-hover/move:opacity-100 group-focus-visible/move:bg-accent-100 group-focus-visible/move:opacity-100" />
-            <span id={moveHintId} className="sr-only">
-              Arrow keys move the tile.
+      {definition.header === "custom" ? (
+        definition.render({ moveHandle, controls })
+      ) : (
+        <>
+          <div className="relative flex h-8 shrink-0 items-center justify-between gap-2 px-1">
+            <span data-pane-title className="truncate pl-1 text-body text-secondary select-none">
+              {definition.title}
             </span>
-          </button>
-        )}
-        <div className="relative flex shrink-0 items-center gap-0.5">
-          <Tooltip content={isExpanded ? "Collapse" : "Expand"} shortcut={expandKeys.keys}>
-            <button
-              type="button"
-              aria-label={isExpanded ? "Collapse" : "Expand"}
-              aria-keyshortcuts={expandKeys.ariaKeyShortcuts}
-              onClick={() =>
-                host.update((state) => (isExpanded ? collapsePane(state) : expandPane(state, kind)))
-              }
-              className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary"
-            >
-              {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-            </button>
-          </Tooltip>
-          <Tooltip content="Close" shortcut={closeKeys.keys}>
-            <button
-              type="button"
-              aria-label="Close"
-              aria-keyshortcuts={closeKeys.ariaKeyShortcuts}
-              onClick={() => host.update((state) => closePane(state, kind))}
-              className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </Tooltip>
-        </div>
-      </div>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[inherit]">
-        <div className="h-full overflow-y-auto [scrollbar-gutter:stable_both-edges]">
-          {definition.render()}
-        </div>
-      </div>
+            {moveHandle}
+            <div className="relative flex shrink-0 items-center gap-0.5">{controls}</div>
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[inherit]">
+            <div className="h-full overflow-y-auto [scrollbar-gutter:stable_both-edges]">
+              {definition.render({ moveHandle, controls })}
+            </div>
+          </div>
+        </>
+      )}
     </section>
   );
 }

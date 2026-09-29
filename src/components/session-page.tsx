@@ -46,6 +46,7 @@ import {
   useSessionLinkDisplay,
 } from "./links-drawer";
 import { TileHost } from "./panes/tile-host";
+import { ChangesPaneToggle, useRegisterChangesPane } from "./changes/changes-pane";
 import { StatusFooter } from "./status-footer";
 import { TranscriptHistoryLoader, findScrollContainer } from "./transcript-history-loader";
 import { Tooltip } from "./ui/tooltip";
@@ -439,6 +440,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
     transcript.startIndex,
     processed.uuidToLine,
   );
+  useRegisterChangesPane(sessionId);
   const filesDrawerState = useFilesDrawerState();
   const linksDrawerState = useLinksDrawerState();
   // A whole-session inventory costs a full pass over the JSONL, so it is only
@@ -668,6 +670,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
                   Active
                 </span>
               )}
+              <ChangesPaneToggle />
               <FilesDrawerToggle
                 count={sessionFiles.totalCount}
                 unscannedRecordCount={unscannedRecordCount}

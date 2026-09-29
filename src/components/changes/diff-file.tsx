@@ -2,7 +2,7 @@ import { getSingularPatch, registerCustomTheme } from "@pierre/diffs";
 import type { FileDiffMetadata } from "@pierre/diffs";
 import { FileDiff } from "@pierre/diffs/react";
 import type { FileDiffOptions } from "@pierre/diffs/react";
-import { ChevronDown, ChevronRight, FileText } from "lucide-react";
+import { ArrowUpRight, ChevronDown, ChevronRight, FileText } from "lucide-react";
 import { type CSSProperties, useMemo, useState } from "react";
 import { claudeLight } from "../../lib/claude-light-theme";
 import { useResolvedTheme } from "../theme-provider";
@@ -50,6 +50,10 @@ export interface DiffFileProps {
   diffStyle?: DiffStyle;
   wordWrap?: boolean;
   defaultCollapsed?: boolean;
+  /** Controlled collapse state; pair with `onCollapsedChange`. */
+  collapsed?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
+  onOpenFile?: () => void;
 }
 
 function countChanges(fileDiff: FileDiffMetadata): { added: number; removed: number } {
@@ -68,25 +72,36 @@ function splitPath(path: string): { name: string; dir: string } {
   return { name: path.slice(slash + 1), dir: path.slice(0, slash) };
 }
 
-function DiffFileHeader({
-  fileDiff,
-  collapsed,
-  onToggle,
-}: {
-  fileDiff: FileDiffMetadata;
+export interface DiffFileHeaderProps {
+  path: string;
+  prevPath?: string | undefined;
+  additions: number;
+  deletions: number;
   collapsed: boolean;
   onToggle: () => void;
-}) {
-  const { name, dir } = splitPath(fileDiff.name);
-  const { added, removed } = countChanges(fileDiff);
+  /** Shows the hover-revealed "Open file" action when set. */
+  onOpenFile?: (() => void) | undefined;
+}
+
+/** Upstream's 32px Changes file header: chevron, name, dir, "Renamed from", +a −r, hover "Open file". */
+export function DiffFileHeader({
+  path,
+  prevPath,
+  additions,
+  deletions,
+  collapsed,
+  onToggle,
+  onOpenFile,
+}: DiffFileHeaderProps) {
+  const { name, dir } = splitPath(path);
   const Chevron = collapsed ? ChevronRight : ChevronDown;
   return (
-    <div data-diff-file-header={fileDiff.name} className="group/diff-file relative">
+    <div data-diff-file-header={path} className="group/diff-file relative">
       <button
         type="button"
         aria-expanded={!collapsed}
         onClick={onToggle}
-        className="flex h-8 w-full shrink-0 select-none items-center gap-[4px] bg-surface-2 px-3 text-left font-sans hover:bg-fill-ghost-hover"
+        className="flex h-8 w-full shrink-0 cursor-pointer select-none items-center gap-[4px] bg-surface-2 px-3 text-left font-sans hover:bg-fill-ghost-hover"
       >
         <span
           aria-hidden="true"
@@ -104,19 +119,32 @@ function DiffFileHeader({
             {dir && <span className="min-w-0 truncate text-footnote text-ink-muted">{dir}</span>}
           </span>
         </span>
-        {fileDiff.prevName && (
+        {prevPath && (
           <span className="flex min-w-0 shrink-[9999] items-baseline gap-1 overflow-hidden whitespace-nowrap text-body text-ink-muted">
             <span className="min-w-0 truncate">Renamed from </span>
-            <span className="min-w-0 truncate" title={fileDiff.prevName}>
-              {fileDiff.prevName}
+            <span className="min-w-0 truncate" title={prevPath}>
+              {prevPath}
             </span>
           </span>
         )}
         <span className="ml-auto flex shrink-0 items-center gap-0.5 text-body tabular-nums">
-          <span className="text-extended-green">+{added}</span>
-          <span className="text-extended-pink">−{removed}</span>
+          <span className="text-extended-green">+{additions}</span>
+          <span className="text-extended-pink">−{deletions}</span>
         </span>
+        {onOpenFile && <span aria-hidden="true" className="w-6 shrink-0" />}
       </button>
+      {onOpenFile && (
+        <span className="absolute inset-y-0 right-0 flex items-center pr-3 opacity-0 transition-opacity group-hover/diff-file:opacity-100 group-focus-within/diff-file:opacity-100 pointer-coarse:opacity-100">
+          <button
+            type="button"
+            aria-label="Open file"
+            onClick={onOpenFile}
+            className="flex size-5 cursor-pointer items-center justify-center rounded-r5 text-secondary hover:bg-fill-ghost-hover hover:text-primary"
+          >
+            <ArrowUpRight aria-hidden="true" className="size-3" />
+          </button>
+        </span>
+      )}
     </div>
   );
 }
@@ -133,9 +161,17 @@ export function DiffFile({
   diffStyle = "unified",
   wordWrap = true,
   defaultCollapsed = false,
+  collapsed: controlledCollapsed,
+  onCollapsedChange,
+  onOpenFile,
 }: DiffFileProps) {
   const fileDiff = useMemo(() => getSingularPatch(patch), [patch]);
-  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(defaultCollapsed);
+  const collapsed = controlledCollapsed ?? uncontrolledCollapsed;
+  const toggle = () => {
+    setUncontrolledCollapsed(!collapsed);
+    onCollapsedChange?.(!collapsed);
+  };
   const resolvedTheme = useResolvedTheme();
 
   const options = useMemo<FileDiffOptions<undefined, undefined>>(
@@ -146,6 +182,7 @@ export function DiffFile({
       diffIndicators: "classic",
       overflow: wordWrap ? "wrap" : "scroll",
       hunkSeparators: "line-info",
+      stickyHeader: true,
       collapsed,
     }),
     [resolvedTheme, diffStyle, wordWrap, collapsed],
@@ -157,13 +194,20 @@ export function DiffFile({
       options={options}
       style={DIFFS_STYLE_OVERRIDES}
       disableWorkerPool
-      renderCustomHeader={(file) => (
-        <DiffFileHeader
-          fileDiff={file}
-          collapsed={collapsed}
-          onToggle={() => setCollapsed((value) => !value)}
-        />
-      )}
+      renderCustomHeader={(file) => {
+        const { added, removed } = countChanges(file);
+        return (
+          <DiffFileHeader
+            path={file.name}
+            prevPath={file.prevName}
+            additions={added}
+            deletions={removed}
+            collapsed={collapsed}
+            onToggle={toggle}
+            onOpenFile={onOpenFile}
+          />
+        );
+      }}
     />
   );
 }

@@ -101,6 +101,8 @@ export const SessionDiffScopesResponseSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("no-git") }).strict(),
 ]);
 
+export type SessionDiffScopesResponse = z.infer<typeof SessionDiffScopesResponseSchema>;
+
 export const SessionDiffErrorResponseSchema = z.object({ error: z.string() }).strict();
 
 export interface SessionDiffQueryFlags {
