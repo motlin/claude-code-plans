@@ -1,8 +1,8 @@
 import { getSingularPatch, registerCustomTheme } from "@pierre/diffs";
-import type { FileDiffMetadata } from "@pierre/diffs";
+import type { FileDiffMetadata, GetHoveredLineResult } from "@pierre/diffs";
 import { FileDiff } from "@pierre/diffs/react";
 import type { FileDiffOptions } from "@pierre/diffs/react";
-import { ArrowUpRight, ChevronDown, ChevronRight, FileText } from "lucide-react";
+import { ArrowUpRight, ChevronDown, ChevronRight, FileText, Plus } from "lucide-react";
 import { type CSSProperties, type ReactNode, useMemo, useState } from "react";
 import { useCodeThemes } from "../../hooks/use-code-themes";
 import { claudeLight } from "../../lib/claude-light-theme";
@@ -64,6 +64,40 @@ export interface DiffFileProps {
   onCollapsedChange?: (collapsed: boolean) => void;
   onOpenFile?: () => void;
   annotations?: readonly DiffFileAnnotation[];
+  /** Enables the hovered line's gutter "+" that opens a comment card on that line. */
+  onRequestChanges?: (target: DiffLineRange) => void;
+}
+
+/** One diff line: its number on the old (`deletions`) or new (`additions`) side. */
+export interface DiffLineRange {
+  side: "additions" | "deletions";
+  line: number;
+}
+
+/** Upstream's 16px accent "+" in the hovered line's gutter. */
+function RequestChangesGutterButton({
+  getHoveredLine,
+  onRequestChanges,
+}: {
+  getHoveredLine: () => GetHoveredLineResult<"diff"> | undefined;
+  onRequestChanges: (target: DiffLineRange) => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label="Request changes on this line"
+      title="Request changes on this line"
+      onClick={() => {
+        const hovered = getHoveredLine();
+        if (hovered !== undefined) {
+          onRequestChanges({ side: hovered.side, line: hovered.lineNumber });
+        }
+      }}
+      className="flex size-4 cursor-pointer items-center justify-center rounded-r5 bg-accent-100 text-white"
+    >
+      <Plus aria-hidden="true" className="size-3" strokeWidth={2.5} />
+    </button>
+  );
 }
 
 function countChanges(fileDiff: FileDiffMetadata): { added: number; removed: number } {
@@ -176,6 +210,7 @@ export function DiffFile({
   onCollapsedChange,
   onOpenFile,
   annotations,
+  onRequestChanges,
 }: DiffFileProps) {
   const fileDiff = useMemo(() => getSingularPatch(patch), [patch]);
   const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(defaultCollapsed);
@@ -208,8 +243,9 @@ export function DiffFile({
       lineDiffType: wordDiff ? "word-alt" : "none",
       stickyHeader: true,
       collapsed,
+      enableGutterUtility: onRequestChanges !== undefined,
     }),
-    [codeThemes, resolvedTheme, diffStyle, wordWrap, wordDiff, collapsed],
+    [codeThemes, resolvedTheme, diffStyle, wordWrap, wordDiff, collapsed, onRequestChanges],
   );
 
   return (
@@ -221,6 +257,16 @@ export function DiffFile({
       {...(lineAnnotations === undefined
         ? {}
         : { lineAnnotations, renderAnnotation: (annotation) => annotation.metadata })}
+      {...(onRequestChanges === undefined
+        ? {}
+        : {
+            renderGutterUtility: (getHoveredLine) => (
+              <RequestChangesGutterButton
+                getHoveredLine={getHoveredLine}
+                onRequestChanges={onRequestChanges}
+              />
+            ),
+          })}
       renderCustomHeader={(file) => {
         const { added, removed } = countChanges(file);
         return (

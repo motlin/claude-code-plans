@@ -1,9 +1,19 @@
 import { useEffect, useId, useRef } from "react";
-import { CornerDownLeft, Square } from "lucide-react";
+import { CornerDownLeft, MessageSquare, Square, X } from "lucide-react";
 
 import { useComposerDraft } from "../hooks/use-composer-draft";
 import type { ComposerState } from "../lib/composer-state";
-import { appendAttachment, onAttachContextRequest } from "../lib/context-attach";
+import {
+  appendAttachment,
+  onAttachContextRequest,
+  prependReviewComments,
+} from "../lib/context-attach";
+import {
+  type QueuedDiffComment,
+  removeQueuedDiffComment,
+  takeQueuedDiffComments,
+  useDiffComments,
+} from "../lib/diff-comments";
 import { ComposerChin } from "./composer-chin";
 import { Tooltip } from "./ui/tooltip";
 
@@ -22,6 +32,47 @@ const EDITOR_CLASS =
 
 const ICON_BUTTON_CLASS =
   "flex aspect-square size-6 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40";
+
+function chipLabel({ path, line, endLine }: QueuedDiffComment): string {
+  const name = path.slice(path.lastIndexOf("/") + 1) || path;
+  return `${name}:${endLine === undefined || endLine === line ? line : `${line}-${endLine}`}`;
+}
+
+/** Changes pane comments waiting for the next prompt, as removable chips above the card. */
+function QueuedCommentChips({
+  sessionId,
+  comments,
+}: {
+  sessionId: string;
+  comments: readonly QueuedDiffComment[];
+}) {
+  return (
+    <ul aria-label="Queued comments" className="mb-1.5 flex flex-wrap gap-1">
+      {comments.map((comment) => {
+        const label = chipLabel(comment);
+        return (
+          <li
+            key={comment.id}
+            title={comment.text}
+            className="flex h-6 max-w-[16rem] min-w-0 items-center gap-1 rounded-r6 border border-border bg-surface-3 ps-1.5 pe-0.5 text-footnote text-secondary"
+          >
+            <MessageSquare aria-hidden="true" className="size-3 shrink-0" />
+            <span className="shrink-0 text-primary">{label}</span>
+            <span className="min-w-0 truncate">{comment.text}</span>
+            <button
+              type="button"
+              aria-label={`Remove comment on ${label}`}
+              onClick={() => removeQueuedDiffComment(sessionId, comment.id)}
+              className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-r5 hover:bg-fill-ghost-hover hover:text-primary"
+            >
+              <X aria-hidden="true" className="size-3" />
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 interface ComposerProps {
   variant: ComposerVariant;
@@ -56,7 +107,8 @@ export function Composer({
   const { text: prompt, setText: setPrompt, clear: clearDraft } = useComposerDraft(draftKey);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const hintId = useId();
-  const canSend = prompt.trim() !== "" && !isStreaming && !disabled;
+  const { queued: queuedComments } = useDiffComments(draftKey);
+  const canSend = (prompt.trim() !== "" || queuedComments.length > 0) && !isStreaming && !disabled;
 
   useEffect(() => {
     if (!isStreaming) textareaRef.current?.focus();
@@ -77,7 +129,13 @@ export function Composer({
 
   function handleSubmit() {
     if (!canSend) return;
-    onSend(prompt.trim());
+    const trimmed = prompt.trim();
+    // Slash commands run as typed; queued comments wait for the next real prompt.
+    onSend(
+      trimmed.startsWith("/")
+        ? trimmed
+        : prependReviewComments(trimmed, takeQueuedDiffComments(draftKey)),
+    );
     clearDraft();
   }
 
@@ -99,6 +157,9 @@ export function Composer({
       data-focus-region="composer"
       className="flex w-full min-w-0 flex-col font-sans"
     >
+      {queuedComments.length > 0 && (
+        <QueuedCommentChips sessionId={draftKey} comments={queuedComments} />
+      )}
       <div className={CARD_CLASS} onClick={() => textareaRef.current?.focus()}>
         <div className="relative pr-[30px]">
           <textarea

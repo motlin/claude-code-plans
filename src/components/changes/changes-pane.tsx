@@ -1,7 +1,15 @@
 import { Virtualizer } from "@pierre/diffs/react";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, ChevronDown, EllipsisVertical, List } from "lucide-react";
-import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { useShortcut, useShortcutKeys } from "../../hooks/use-shortcut";
 import { replaceReviewFindings, reviewQueryOptions } from "../../lib/api/reviews";
@@ -49,8 +57,11 @@ import {
 import { useToast } from "../toast";
 import { Tooltip } from "../ui/tooltip";
 import { ChangedFilesSidebar } from "./changes-file-tree";
-import { DiffFile, type DiffFileAnnotation, DiffFileHeader } from "./diff-file";
+import { openDiffCommentDraft, useDiffComments } from "../../lib/diff-comments";
+import { DiffContextMenu } from "./diff-context-menu";
+import { DiffFile, type DiffFileAnnotation, DiffFileHeader, type DiffLineRange } from "./diff-file";
 import { GoToFile } from "./go-to-file";
+import { commentAnnotations } from "./line-comment-card";
 import { findingAnnotations } from "./review-finding-annotation";
 
 /**
@@ -465,6 +476,7 @@ function LazyDiffFile({
   onCollapsedChange,
   onOpenFile,
   annotations,
+  onRequestChanges,
 }: {
   file: SessionDiffFile;
   fetchContext: DiffFetchContext;
@@ -473,6 +485,7 @@ function LazyDiffFile({
   onCollapsedChange: (collapsed: boolean) => void;
   onOpenFile: (() => void) | undefined;
   annotations: readonly DiffFileAnnotation[] | undefined;
+  onRequestChanges: ((target: DiffLineRange) => void) | undefined;
 }) {
   const query = useQuery({
     ...sessionDiffFileQueryOptions(fetchContext.sessionId, fetchContext.scope, file.path, {
@@ -490,6 +503,7 @@ function LazyDiffFile({
         onCollapsedChange={onCollapsedChange}
         {...(onOpenFile ? { onOpenFile } : {})}
         {...(annotations ? { annotations } : {})}
+        {...(onRequestChanges ? { onRequestChanges } : {})}
       />
     );
   }
@@ -521,6 +535,7 @@ function ChangesFile({
   onOpenFile,
   fetchContext,
   annotations,
+  onRequestChanges,
 }: {
   file: SessionDiffFile;
   view: DiffViewOptions;
@@ -529,6 +544,7 @@ function ChangesFile({
   onOpenFile: (() => void) | undefined;
   fetchContext: DiffFetchContext | undefined;
   annotations: readonly DiffFileAnnotation[] | undefined;
+  onRequestChanges: ((target: DiffLineRange) => void) | undefined;
 }) {
   if (file.patch !== null && !file.binary) {
     return (
@@ -539,6 +555,7 @@ function ChangesFile({
         onCollapsedChange={onCollapsedChange}
         {...(onOpenFile ? { onOpenFile } : {})}
         {...(annotations ? { annotations } : {})}
+        {...(onRequestChanges ? { onRequestChanges } : {})}
       />
     );
   }
@@ -552,6 +569,7 @@ function ChangesFile({
         onCollapsedChange={onCollapsedChange}
         onOpenFile={onOpenFile}
         annotations={annotations}
+        onRequestChanges={onRequestChanges}
       />
     );
   }
@@ -619,6 +637,8 @@ export interface ChangesPaneViewProps {
   findings?: readonly ReviewFinding[];
   onFixFinding?: (finding: ReviewFinding) => void;
   onDismissFinding?: (finding: ReviewFinding) => void;
+  /** Enables line comments and the right-click menu, which feed this session's composer. */
+  sessionId?: string;
 }
 
 /**
@@ -642,7 +662,9 @@ export function ChangesPaneView({
   findings = NO_FINDINGS,
   onFixFinding = () => {},
   onDismissFinding = () => {},
+  sessionId,
 }: ChangesPaneViewProps) {
+  const comments = useDiffComments(sessionId);
   const files = diff?.files ?? [];
   const hasFiles = files.length > 0;
   const large = isLargeDiff(files);
@@ -727,27 +749,42 @@ export function ChangesPaneView({
             className="min-h-0 flex-1 overflow-y-auto text-primary [overflow-anchor:none]"
             contentClassName="flex flex-col pb-2"
           >
-            {files.map((file) => (
-              <ChangesFile
-                key={file.path}
-                file={file}
-                view={view}
-                collapsed={isCollapsed(file.path)}
-                onCollapsedChange={(collapsed) =>
-                  setCollapsedOverrides((previous) => ({ ...previous, [file.path]: collapsed }))
-                }
-                onOpenFile={onOpenFile ? () => onOpenFile(file.path) : undefined}
-                fetchContext={fetchContext}
-                annotations={
-                  findings.length === 0
-                    ? undefined
-                    : findingAnnotations(findings, file.path, {
-                        onFix: onFixFinding,
-                        onDismiss: onDismissFinding,
-                      })
-                }
-              />
-            ))}
+            {files.map((file) => {
+              const annotations = [
+                ...findingAnnotations(findings, file.path, {
+                  onFix: onFixFinding,
+                  onDismiss: onDismissFinding,
+                }),
+                ...(sessionId === undefined
+                  ? []
+                  : commentAnnotations(sessionId, comments.drafts, comments.queued, file.path)),
+              ];
+              const changesFile = (
+                <ChangesFile
+                  file={file}
+                  view={view}
+                  collapsed={isCollapsed(file.path)}
+                  onCollapsedChange={(collapsed) =>
+                    setCollapsedOverrides((previous) => ({ ...previous, [file.path]: collapsed }))
+                  }
+                  onOpenFile={onOpenFile ? () => onOpenFile(file.path) : undefined}
+                  fetchContext={fetchContext}
+                  annotations={annotations.length === 0 ? undefined : annotations}
+                  onRequestChanges={
+                    sessionId === undefined
+                      ? undefined
+                      : (target) => openDiffCommentDraft(sessionId, { path: file.path, ...target })
+                  }
+                />
+              );
+              return sessionId === undefined ? (
+                <Fragment key={file.path}>{changesFile}</Fragment>
+              ) : (
+                <DiffContextMenu key={file.path} sessionId={sessionId} path={file.path}>
+                  {changesFile}
+                </DiffContextMenu>
+              );
+            })}
             {unavailableCount > 0 && (
               <p className="px-3 py-4 text-center text-body text-ink-muted">
                 Diff content unavailable for {unavailableCount}{" "}
@@ -943,6 +980,7 @@ export function ChangesPane({ sessionId, chrome }: { sessionId: string; chrome: 
       findings={review.findings}
       onFixFinding={review.fix}
       onDismissFinding={review.dismiss}
+      sessionId={sessionId}
     />
   );
 }

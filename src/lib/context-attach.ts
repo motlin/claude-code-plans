@@ -43,6 +43,31 @@ export function formatAttachContext({ path, range, text, language }: AttachConte
   return `${mention}\n${formatFencedExcerpt(text, language)}`;
 }
 
+/** A "Request changes" comment on a line, or a range of lines, of a diff. */
+export interface ReviewComment {
+  path: string;
+  line: number;
+  endLine?: number | undefined;
+  text: string;
+}
+
+/** `path:line — comment`, or `path:start-end — comment` for a range. */
+export function formatReviewComment({ path, line, endLine, text }: ReviewComment): string {
+  const lines = endLine === undefined || endLine === line ? `${line}` : `${line}-${endLine}`;
+  return `${path}:${lines} — ${text}`;
+}
+
+export function formatReviewComments(comments: readonly ReviewComment[]): string {
+  return comments.map(formatReviewComment).join("\n\n");
+}
+
+/** Queued review comments go ahead of the prompt they are sent with. */
+export function prependReviewComments(prompt: string, comments: readonly ReviewComment[]): string {
+  if (comments.length === 0) return prompt;
+  const blocks = formatReviewComments(comments);
+  return prompt === "" ? blocks : `${blocks}\n\n${prompt}`;
+}
+
 /**
  * Add a snippet to the end of a prompt: a one-line mention joins with a space,
  * a fenced excerpt starts on its own line, and either leaves the caret ready
