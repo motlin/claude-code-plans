@@ -181,7 +181,7 @@ async function scanSkillsDir(skillsDir: string): Promise<ParsedSkill[]> {
   return skills.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-async function readJson(path: string): Promise<unknown> {
+export async function readJson(path: string): Promise<unknown> {
   try {
     return JSON.parse(await readFile(path, "utf-8"));
   } catch {
@@ -194,7 +194,7 @@ async function readSkillOverrides(claudeDir: string): Promise<Record<string, str
   return parsed.success ? (parsed.data.skillOverrides ?? {}) : {};
 }
 
-async function readInstalledPlugins(
+export async function readInstalledPlugins(
   claudeDir: string,
 ): Promise<{ id: string; name: string; installPath: string }[]> {
   const parsed = InstalledPluginsSchema.safeParse(

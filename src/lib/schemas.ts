@@ -1687,12 +1687,33 @@ const McpServerEntrySchema = z
     cwd: z.string().optional(),
     url: z.string().optional(),
     headers: z.record(z.string(), z.string()).optional(),
+    timeout: z.number().optional(),
+    tool_timeout_sec: z.number().optional(),
   })
   .strict();
 
+export const McpServersSchema = z.record(z.string(), McpServerEntrySchema);
+
 export const McpConfigSchema = z
   .object({
-    mcpServers: z.record(z.string(), McpServerEntrySchema),
+    mcpServers: McpServersSchema,
+  })
+  .strict();
+
+// ~/.claude.json holds hundreds of unrelated, churning keys. Callers pick the
+// MCP-related keys out first, then parse that projection strictly.
+export const ClaudeJsonMcpSchema = z
+  .object({
+    mcpServers: McpServersSchema.optional(),
+  })
+  .strict();
+
+export const ClaudeJsonProjectMcpSchema = z
+  .object({
+    mcpServers: McpServersSchema.optional(),
+    disabledMcpServers: z.array(z.string()).optional(),
+    enabledMcpjsonServers: z.array(z.string()).optional(),
+    disabledMcpjsonServers: z.array(z.string()).optional(),
   })
   .strict();
 
