@@ -328,6 +328,25 @@ describe("SessionTitlebar pill collapse", () => {
       narrow: { compact: true, srOnlyLabels: [true, true] },
     });
   });
+
+  it("keeps the labels until the titlebar drops under 560px, upstream's tile-slot container query", async () => {
+    const titlebar = await renderTitlebar({
+      ...baseDetail,
+      model: "claude-haiku-4-5-20251001",
+    });
+    resizeTitlebar(600);
+    const at600 = compactState(titlebar);
+    resizeTitlebar(560);
+    const at560 = compactState(titlebar);
+    resizeTitlebar(559);
+    const at559 = compactState(titlebar);
+
+    expect({ at600, at560, at559 }).toStrictEqual({
+      at600: { compact: false, srOnlyLabels: [false, false] },
+      at560: { compact: false, srOnlyLabels: [false, false] },
+      at559: { compact: true, srOnlyLabels: [true, true] },
+    });
+  });
 });
 
 describe("SessionTitlebar cost pill", () => {

@@ -42,8 +42,8 @@ import { useToast } from "./toast";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "./ui/menu";
 import { Tooltip } from "./ui/tooltip";
 
-/** Below this titlebar width the origin pills collapse to icons, like upstream's `data-pills-compact`. */
-const PILLS_COMPACT_BELOW_PX = 640;
+/** Below this titlebar width the origin pills collapse to icons, like upstream's `data-pills-compact` (tile-slot ≤560px). */
+const PILLS_COMPACT_BELOW_PX = 560;
 
 const TITLE_CLASS =
   "h-[26px] min-w-0 cursor-text truncate rounded-r5 border-0 bg-transparent px-1.5 text-left text-body font-medium text-primary select-none hover:bg-fill-ghost-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100";

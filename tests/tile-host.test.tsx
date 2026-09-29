@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { registerPane } from "../src/components/panes/pane-registry";
 import { TileHost, usePaneHost } from "../src/components/panes/tile-host";
+import { PHONE_SHEET_QUERY } from "../src/lib/use-phone-sheet";
 
 class FakeStorage implements Storage {
   readonly values = new Map<string, string>();
@@ -209,6 +210,61 @@ describe("TileHost", () => {
     expect({ restored, otherSession }).toStrictEqual({
       restored: true,
       otherSession: false,
+    });
+  });
+});
+
+describe("TileHost on a phone", () => {
+  function mockViewport(width: number) {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn((query: string) => ({
+        matches: query === PHONE_SHEET_QUERY ? width < 640 : false,
+        media: query,
+        onchange: null,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        dispatchEvent: () => false,
+      })),
+    );
+  }
+
+  function paneSlotState() {
+    const slot = screen.getByText("Test pane body").closest("[data-tile-host]");
+    if (slot === null) throw new Error("pane slot missing");
+    return {
+      phone: slot.hasAttribute("data-pane-phone"),
+      fullWidth: ["fixed", "inset-0", "w-full"].every((name) => slot.classList.contains(name)),
+      sticky: slot.classList.contains("sticky"),
+      separators: screen.queryAllByRole("separator").length,
+    };
+  }
+
+  it("covers the viewport with the pane and hides the resize handle below 640px", () => {
+    mockViewport(390);
+    renderHost("session-phone");
+    openTestPane();
+
+    expect(paneSlotState()).toStrictEqual({
+      phone: true,
+      fullWidth: true,
+      sticky: false,
+      separators: 0,
+    });
+  });
+
+  it("keeps the side-by-side tile with its resize handle at 640px and up", () => {
+    mockViewport(640);
+    renderHost("session-wide");
+    openTestPane();
+
+    expect(paneSlotState()).toStrictEqual({
+      phone: false,
+      fullWidth: false,
+      sticky: true,
+      separators: 1,
     });
   });
 });

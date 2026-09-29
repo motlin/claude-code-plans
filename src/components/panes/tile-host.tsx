@@ -35,6 +35,7 @@ import {
   type StackNode,
   type TileId,
 } from "../../lib/pane-layout";
+import { usePhoneSheet } from "../../lib/use-phone-sheet";
 import { Tooltip } from "../ui/tooltip";
 import { type PaneDefinition, usePaneDefinitions } from "./pane-registry";
 
@@ -47,6 +48,8 @@ const RESIZE_STEP_LARGE_PX = 64;
  * `<main>`, not the chat tile), so they are sized to the viewport.
  */
 const SIDE_SLOT_CLASSES = "sticky top-2 self-start h-[var(--tile-host-height,calc(100dvh-16px))]";
+/** Below 640px a side pane covers the viewport instead of squeezing beside the chat. */
+const PHONE_SLOT_CLASSES = "fixed inset-0 z-40 w-full h-dvh";
 
 type LayoutUpdate = (state: PaneLayoutState) => PaneLayoutState;
 
@@ -75,6 +78,7 @@ interface InternalHost {
   definitions: ReadonlyMap<PaneKind, PaneDefinition>;
   update: (fn: LayoutUpdate) => void;
   expanded: PaneKind | null;
+  phone: boolean;
 }
 
 function tileIdsOf(node: LayoutNode): TileId[] {
@@ -413,15 +417,16 @@ function StackView({
         key="overlay"
         tileId={host.expanded}
         host={host}
-        className={`min-w-0 flex-1 ${SIDE_SLOT_CLASSES}`}
+        className={`min-w-0 flex-1 ${host.phone ? PHONE_SLOT_CLASSES : SIDE_SLOT_CLASSES}`}
         data-pane-overlay
+        phone={host.phone}
       >
         <PaneSurface kind={host.expanded} definition={expandedDefinition} host={host} />
       </TileSlot>,
     );
   } else {
     stack.children.forEach((child, index) => {
-      if (index > 0) {
+      if (index > 0 && !(isRoot && host.phone)) {
         items.push(
           <Divider
             key={`divider:${nodeKey(stack.children[index - 1] ?? child)}|${nodeKey(child)}`}
@@ -482,10 +487,17 @@ function NodeView({
   isRootChild: boolean;
 }) {
   const style = { flex: `${node.flex} 1 0` };
-  const slotClass = `min-h-0 min-w-0 ${isRootChild ? SIDE_SLOT_CLASSES : ""}`;
+  const phone = isRootChild && host.phone;
+  const slotClass = `min-h-0 min-w-0 ${
+    phone ? PHONE_SLOT_CLASSES : isRootChild ? SIDE_SLOT_CLASSES : ""
+  }`;
   if (node.kind === "stack") {
     return (
-      <div className={`flex ${slotClass}`} style={style}>
+      <div
+        className={`flex ${slotClass}`}
+        style={style}
+        {...(phone ? { "data-pane-phone": "" } : {})}
+      >
         <StackView stack={node} path={path} host={host} chat={chat} />
       </div>
     );
@@ -493,7 +505,7 @@ function NodeView({
   const definition = isPaneKind(node.tileId) ? host.definitions.get(node.tileId) : undefined;
   if (definition === undefined || !isPaneKind(node.tileId)) return null;
   return (
-    <TileSlot tileId={node.tileId} host={host} className={slotClass} style={style}>
+    <TileSlot tileId={node.tileId} host={host} className={slotClass} style={style} phone={phone}>
       <PaneSurface kind={node.tileId} definition={definition} host={host} />
     </TileSlot>
   );
@@ -505,6 +517,7 @@ function TileSlot({
   className,
   style,
   hidden,
+  phone = false,
   children,
   ...data
 }: {
@@ -513,6 +526,7 @@ function TileSlot({
   className?: string;
   style?: CSSProperties | undefined;
   hidden?: boolean;
+  phone?: boolean;
   children: ReactNode;
   "data-pane-overlay"?: boolean;
 }) {
@@ -525,6 +539,7 @@ function TileSlot({
       hidden={hidden}
       onPointerDownCapture={focus}
       onFocusCapture={focus}
+      {...(phone ? { "data-pane-phone": "" } : {})}
       {...data}
     >
       {children}
@@ -572,6 +587,7 @@ export function TileHost({
 }) {
   const definitions = usePaneDefinitions();
   const [layout, update, loaded] = usePersistedLayout(sessionId, definitions);
+  const phone = usePhoneSheet();
 
   useEffect(() => {
     if (requestedPane === undefined || !loaded) return;
@@ -581,8 +597,8 @@ export function TileHost({
   const openKinds = useMemo(() => tileIdsOf(layout.root).filter(isPaneKind), [layout.root]);
 
   const internal = useMemo<InternalHost>(
-    () => ({ definitions, update, expanded: layout.expanded }),
-    [definitions, update, layout.expanded],
+    () => ({ definitions, update, expanded: layout.expanded, phone }),
+    [definitions, update, layout.expanded, phone],
   );
 
   const api = useMemo<PaneHostApi>(
