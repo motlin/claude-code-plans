@@ -23,6 +23,12 @@ export function SidebarToggleButton({
       <button
         type="button"
         onClick={onClick}
+        onKeyDown={(event) => {
+          // Handle Enter directly (suppressing the native click) so it toggles exactly once.
+          if (event.key !== "Enter") return;
+          event.preventDefault();
+          onClick();
+        }}
         aria-label={label}
         aria-keyshortcuts={ariaKeyShortcuts}
         className={

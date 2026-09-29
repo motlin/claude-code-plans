@@ -31,6 +31,7 @@
   --color-surface-1: var(--upstream-surface-1);
   --color-surface-2: var(--upstream-surface-2);
   --color-surface-3: var(--upstream-surface-3);
+  --color-surface-popover: var(--upstream-surface-popover);
   --color-alpha-1: var(--upstream-alpha-1);
   --color-backdrop: var(--upstream-backdrop);
   --color-fill-control: var(--upstream-fill-control);
@@ -112,6 +113,8 @@
   --shadow-panel-sm: var(--pane-shadow);
   /* Upstream claude.ai/code — dialog surface (shadow-panel-lg) */
   --shadow-panel-lg: var(--panel-lg-shadow);
+  /* Upstream claude.ai/code — collapsed sidebar peek popover (--df-shadow-pop) */
+  --shadow-pop: var(--pop-shadow);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -138,6 +141,8 @@
   --upstream-surface-1: hsl(60 14% 99%);
   --upstream-surface-2: hsl(0 0% 100%);
   --upstream-surface-3: #fff;
+  --upstream-surface-popover: #fff;
+  --pop-shadow: 0 0 0 0.5px #0000000f, 0 4px 12px #0000000f, 0 16px 40px #00000014;
   --upstream-alpha-1: rgb(11 11 11 / 0.05);
   --upstream-backdrop: rgb(0 0 0 / 0.4);
   --panel-lg-shadow:
@@ -249,6 +254,9 @@
   --upstream-surface-1: hsl(60 3% 15%);
   --upstream-surface-2: hsl(60 2% 18%);
   --upstream-surface-3: #20201f;
+  --upstream-surface-popover: hsl(60 2% 18%);
+  --pop-shadow:
+    0 0 0 0.5px hsl(0 0% 100% / 0.12), 0 4px 12px rgb(0 0 0 / 0.3), 0 16px 40px rgb(0 0 0 / 0.4);
   --upstream-alpha-1: rgb(255 255 255 / 0.05);
   --upstream-backdrop: rgb(0 0 0 / 0.5);
   --upstream-fill-control: hsl(0 0% 100% / 0.1);
@@ -472,4 +480,18 @@
 [data-drag-ghost] {
   opacity: 0.9;
   box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
+}
+
+/* Upstream claude.ai/code — collapsed sidebar peek fades and settles into place. */
+.sidebar-peek-motion {
+  transition:
+    opacity 0.14s ease,
+    translate 0.18s cubic-bezier(0.32, 0.72, 0, 1),
+    scale 0.18s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-peek-motion {
+    transition: none;
+  }
 }

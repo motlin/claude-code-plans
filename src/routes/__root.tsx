@@ -173,7 +173,9 @@ function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
           )}
           <DesktopNotificationBridge />
           <AttentionBadgeBridge />
-          <div className="flex min-h-9 items-center px-4 pt-3 sm:px-8">
+          <div
+            className={`flex min-h-9 items-center px-4 pt-3 sm:px-8 ${sidebarCollapsed ? "md:pl-12" : ""}`}
+          >
             <button
               type="button"
               onClick={() => setMobileOpen(true)}

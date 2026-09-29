@@ -1,7 +1,7 @@
 import { Link, useMatches } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { Section } from "./types";
 import { useActiveSection, useCollapsedGroups, useExpandedGroups } from "./hooks";
 import { useVisibleNavItems } from "./navigation";
@@ -96,42 +96,8 @@ export function Sidebar({
     });
   }, [activeSection, activeItemId, navigationItems]);
 
-  if (collapsed && !mobile) {
-    return (
-      <div className="absolute left-2 top-2 z-10 hidden md:block">
-        <SidebarToggleButton />
-      </div>
-    );
-  }
-
-  return (
-    <nav
-      aria-label="Sidebar"
-      className={
-        mobile
-          ? "group/sidebar relative flex h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border bg-surface-0"
-          : "group/sidebar relative hidden h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border bg-surface-0 md:flex"
-      }
-    >
-      <div data-testid="sidebar-titlebar" className="flex h-11 shrink-0 items-center px-2">
-        <div className="flex w-8 shrink-0 justify-center">
-          <div className="flex opacity-70 transition-opacity duration-[120ms] ease-[cubic-bezier(.32,.72,0,1)] group-hover/sidebar:opacity-100 has-[:focus-visible]:opacity-100 pointer-coarse:opacity-100">
-            <SidebarToggleButton
-              {...(onToggle ? { onClick: onToggle, collapsed: false } : {})}
-              className="flex h-6 w-6 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover [&_svg]:h-4 [&_svg]:w-4"
-            />
-          </div>
-        </div>
-        <div className="ml-1.5 flex min-w-0 flex-col items-start">
-          <Link
-            to="/"
-            className="font-voice text-[20px] leading-none font-medium whitespace-nowrap text-primary no-underline"
-          >
-            Claude Code Browser
-          </Link>
-        </div>
-      </div>
-
+  const body = (
+    <>
       <SearchInput />
 
       <div className="flex min-h-0 flex-1 flex-col px-2">
@@ -230,6 +196,76 @@ export function Sidebar({
           })}
         </NavScroll>
       </div>
+    </>
+  );
+
+  if (collapsed && !mobile) {
+    return <CollapsedSidebar>{body}</CollapsedSidebar>;
+  }
+
+  return (
+    <nav
+      aria-label="Sidebar"
+      className={
+        mobile
+          ? "group/sidebar relative flex h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border bg-surface-0"
+          : "group/sidebar relative hidden h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border bg-surface-0 md:flex"
+      }
+    >
+      <div data-testid="sidebar-titlebar" className="flex h-11 shrink-0 items-center px-2">
+        <div className="flex w-8 shrink-0 justify-center">
+          <div className="flex opacity-70 transition-opacity duration-[120ms] ease-[cubic-bezier(.32,.72,0,1)] group-hover/sidebar:opacity-100 has-[:focus-visible]:opacity-100 pointer-coarse:opacity-100">
+            <SidebarToggleButton
+              {...(onToggle ? { onClick: onToggle, collapsed: false } : {})}
+              className="flex h-6 w-6 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover [&_svg]:h-4 [&_svg]:w-4"
+            />
+          </div>
+        </div>
+        <div className="ml-1.5 flex min-w-0 flex-col items-start">
+          <Link
+            to="/"
+            className="font-voice text-[20px] leading-none font-medium whitespace-nowrap text-primary no-underline"
+          >
+            Claude Code Browser
+          </Link>
+        </div>
+      </div>
+
+      {body}
     </nav>
+  );
+}
+
+/**
+ * Collapsed desktop sidebar, like claude.ai/code: a 32x32 floating trigger at 8,8 whose
+ * hover (or the invisible bridge beneath it) reveals the full sidebar body as a popover.
+ */
+function CollapsedSidebar({ children }: { children: ReactNode }) {
+  const [hovering, setHovering] = useState(false);
+
+  return (
+    <div
+      data-testid="sidebar-collapsed"
+      data-hovering={hovering ? "" : undefined}
+      onPointerEnter={() => setHovering(true)}
+      onPointerLeave={() => setHovering(false)}
+      className="group/peek absolute left-2 top-2 z-50 hidden md:flex"
+    >
+      <div
+        data-testid="sidebar-peek-bridge"
+        aria-hidden="true"
+        className="pointer-events-none absolute -left-2 top-0 h-10 w-[288px] group-data-[hovering]/peek:pointer-events-auto"
+      />
+      <SidebarToggleButton className="relative flex h-8 w-8 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover" />
+      <nav
+        data-testid="sidebar-peek"
+        aria-label="Sidebar"
+        aria-hidden={hovering ? undefined : true}
+        inert={!hovering}
+        className="pointer-events-none absolute top-[calc(100%+8px)] -left-0.5 flex max-h-[70vh] w-[288px] origin-top-left -translate-y-1.5 scale-[.98] flex-col overflow-hidden rounded-card bg-surface-popover pt-2 pb-3 opacity-0 shadow-pop sidebar-peek-motion group-data-[hovering]/peek:pointer-events-auto group-data-[hovering]/peek:translate-y-0 group-data-[hovering]/peek:scale-100 group-data-[hovering]/peek:opacity-100"
+      >
+        {children}
+      </nav>
+    </div>
   );
 }
