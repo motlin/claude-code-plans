@@ -5,8 +5,8 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import type { Section } from "./types";
 import { useActiveSection, useCollapsedGroups, useExpandedGroups } from "./hooks";
 import { useVisibleNavItems } from "./navigation";
-import { SearchInput } from "./primitives";
 import { NavScroll } from "./nav-scroll";
+import { SidebarFooter } from "./sidebar-footer";
 import { SidebarToggleButton } from "./sidebar-toggle";
 import {
   ActiveSubList,
@@ -107,8 +107,6 @@ export function Sidebar({
 
   const body = (
     <>
-      <SearchInput />
-
       <div className="flex min-h-0 flex-1 flex-col px-2">
         <div className="shrink-0">
           {navigationItems.map((item) => {
@@ -202,6 +200,7 @@ export function Sidebar({
           })}
         </NavScroll>
       </div>
+      <SidebarFooter />
     </>
   );
 

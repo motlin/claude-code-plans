@@ -125,9 +125,11 @@ describe("sidebar navigation", () => {
 
 describe("sidebar nav rows", () => {
   function navRows(): HTMLElement[] {
+    const footer = screen.getByTestId("sidebar-footer");
     return screen
       .getAllByRole("link")
-      .filter((link) => navItems.some((item) => item.to === link.getAttribute("href")));
+      .filter((link) => navItems.some((item) => item.to === link.getAttribute("href")))
+      .filter((link) => !footer.contains(link));
   }
 
   it("uses the upstream row recipe on every nav link", async () => {
