@@ -17,6 +17,7 @@ import {
   AskUserQuestionProvider,
   type AskUserQuestionContextValue,
 } from "./ask-user-question-context";
+import { SessionFileRefs } from "./file-refs";
 import { JumpTargetProvider, type JumpTargetWindow } from "./jump-target-context";
 import { LegacyMessageLinkNotice } from "./legacy-message-link-notice";
 import {
@@ -612,25 +613,31 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
         {/* Chat messages */}
         <AskUserQuestionProvider value={askUserQuestionCtx}>
           <TranscriptHistoryLoader sessionId={sessionId} startIndex={transcript.startIndex} />
-          <SessionChat
+          <SessionFileRefs
             sessionId={sessionId}
-            lines={processed.lines}
-            toolResultMap={processed.toolResultMap}
-            allowedImageRoots={data.imageRoots}
-            subagents={subagents}
-            showThinking={transcriptFlags.showThinking}
-            showTools={transcriptFlags.showTools}
-            showPassedHooks={transcriptFlags.showPassedHooks}
-            showHookWarnings={transcriptFlags.showHookWarnings}
-            showHookErrors={transcriptFlags.showHookErrors}
-            showSystemBanners={transcriptFlags.showSystemBanners}
-            showCompactSummaries={transcriptFlags.showCompactSummaries}
-            showTranscriptOnly={transcriptFlags.showTranscriptOnly}
-            transcriptMode={transcriptMode}
-            initialScrollKey={initialScrollKey}
-            shouldScrollToEnd={restoredScrollPosition === undefined && locationHash === ""}
-            summary={aiSummary}
-          />
+            cwd={data.projectPath ?? undefined}
+            sessionFiles={resources?.files ?? windowFiles}
+          >
+            <SessionChat
+              sessionId={sessionId}
+              lines={processed.lines}
+              toolResultMap={processed.toolResultMap}
+              allowedImageRoots={data.imageRoots}
+              subagents={subagents}
+              showThinking={transcriptFlags.showThinking}
+              showTools={transcriptFlags.showTools}
+              showPassedHooks={transcriptFlags.showPassedHooks}
+              showHookWarnings={transcriptFlags.showHookWarnings}
+              showHookErrors={transcriptFlags.showHookErrors}
+              showSystemBanners={transcriptFlags.showSystemBanners}
+              showCompactSummaries={transcriptFlags.showCompactSummaries}
+              showTranscriptOnly={transcriptFlags.showTranscriptOnly}
+              transcriptMode={transcriptMode}
+              initialScrollKey={initialScrollKey}
+              shouldScrollToEnd={restoredScrollPosition === undefined && locationHash === ""}
+              summary={aiSummary}
+            />
+          </SessionFileRefs>
         </AskUserQuestionProvider>
 
         {(chatStream.state.isStreaming || chatStream.state.isComplete) && (

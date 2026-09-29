@@ -11,6 +11,8 @@ import {
   type FileTabsState,
   fileTabsReducer,
 } from "../../lib/file-tabs";
+import { onFileOpenRequest, takePendingFileOpen } from "../../lib/file-open-requests";
+import type { FileRef } from "../../lib/file-refs";
 import { loadFileTabs, saveFileTabs } from "../../lib/pane-layout";
 import type { SessionFiles } from "../../lib/session-files";
 import { FILE_TAB_SIZES, normalizeFileTabSize } from "../../lib/file-preview";
@@ -399,8 +401,24 @@ export function FilesPaneView({
       return relPath === null ? [] : [relPath];
     }),
   );
+  const [lineTarget, setLineTarget] = useState<FileRef | null>(null);
   const openFile = (path: string, options: { pin: boolean }): void =>
     dispatchFileTabs({ type: "open", path, pin: options.pin });
+  const target = lineTarget !== null && lineTarget.path === openPath ? lineTarget : null;
+
+  // Transcript file refs open as a preview tab, including one clicked while
+  // the pane was closed. Declared after useFileTabs so a restored tab set
+  // lands before the requested open.
+  useEffect(() => {
+    if (sessionId === undefined) return undefined;
+    const openRef = (ref: FileRef): void => {
+      dispatchFileTabs({ type: "open", path: ref.path, pin: false });
+      setLineTarget(ref);
+    };
+    const pending = takePendingFileOpen(sessionId);
+    if (pending !== null) openRef(pending);
+    return onFileOpenRequest(sessionId, openRef);
+  }, [sessionId, dispatchFileTabs]);
   const filterRef = useRef<HTMLInputElement>(null);
   const { sourceSelection, setSourceSelected, unselectAllSources } = useFileSourceSelection();
   const sessionFilesList = (
@@ -514,6 +532,8 @@ export function FilesPaneView({
               key={openPath}
               path={openPath}
               cwd={cwd}
+              line={target?.line}
+              endLine={target?.endLine}
               onOpenFile={(path) => openFile(path, { pin: false })}
             />
           )}

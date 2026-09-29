@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { assertNever } from "../lib/assert-never";
 import { formatTimestamp, formatRelativeTimestamp } from "../lib/timestamp-format";
+import { ProseMarkdown } from "./file-refs";
 import { MarkdownArticle } from "./markdown-article";
 import { getToolRenderer } from "./tool-renderers";
 import {
@@ -2142,7 +2143,7 @@ function ContentBlock({
     if (!block.text.trim()) return null;
     return (
       <div className="relative min-w-0 text-body text-primary">
-        <MarkdownArticle markdown={block.text} />
+        <ProseMarkdown markdown={block.text} />
         <DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-0 right-0" />
       </div>
     );

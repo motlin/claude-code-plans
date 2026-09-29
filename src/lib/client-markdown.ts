@@ -4,6 +4,7 @@ import type StateInline from "markdown-it/lib/rules_inline/state_inline.mjs";
 import taskLists from "markdown-it-task-lists";
 import footnote from "markdown-it-footnote";
 import { requestLanguage } from "../hooks/use-shiki";
+import type { FileRef } from "./file-refs";
 import { COPY_ICON_SVG } from "./icon-paths";
 import { mdFileHref, resolveRelativeMdHref } from "./md-links";
 import { SHIKI_TOKENIZE_OPTIONS } from "./shiki-tokenize-options";
@@ -16,15 +17,53 @@ interface MarkdownRenderOptions {
    * `[[wiki-style]]` cross references inside the body into in-app links.
    */
   mdLinkBase?: string;
+  /**
+   * Inline code whose text is a key renders as a clickable file ref instead of
+   * a code chip; see {@link FILE_REF_ATTR}.
+   */
+  fileRefs?: ReadonlyMap<string, FileRef>;
 }
 
 /** Per-render state; the MarkdownIt instances themselves are cached and shared. */
 interface MarkdownEnv {
   mdLinkBase?: string;
+  fileRefs?: ReadonlyMap<string, FileRef>;
 }
 
 function toEnv(options?: MarkdownRenderOptions): MarkdownEnv {
-  return options?.mdLinkBase === undefined ? {} : { mdLinkBase: options.mdLinkBase };
+  const env: MarkdownEnv = {};
+  if (options?.mdLinkBase !== undefined) env.mdLinkBase = options.mdLinkBase;
+  if (options?.fileRefs !== undefined) env.fileRefs = options.fileRefs;
+  return env;
+}
+
+/** Marks a transcript file ref; its `data-file-*` attributes carry the target. */
+export const FILE_REF_ATTR = "data-file-ref";
+
+function fileRefHtml(text: string, ref: FileRef, escape: (value: string) => string): string {
+  const attrs = [
+    `role="button"`,
+    `tabindex="0"`,
+    `class="prose-link"`,
+    `${FILE_REF_ATTR}=""`,
+    `data-file-path="${escape(ref.path)}"`,
+    ...(ref.line === undefined ? [] : [`data-file-line="${ref.line}"`]),
+    ...(ref.endLine === undefined ? [] : [`data-file-end-line="${ref.endLine}"`]),
+    `title="${escape(text)}"`,
+  ];
+  return `<span ${attrs.join(" ")}><span data-inline-code="">${escape(text)}</span></span>`;
+}
+
+/** Read the ref a {@link FILE_REF_ATTR} element carries. */
+export function fileRefFromElement(element: Element): FileRef | null {
+  const path = element.getAttribute("data-file-path");
+  if (path === null) return null;
+  const ref: FileRef = { path };
+  const line = element.getAttribute("data-file-line");
+  const endLine = element.getAttribute("data-file-end-line");
+  if (line !== null) ref.line = Number(line);
+  if (endLine !== null) ref.endLine = Number(endLine);
+  return ref;
 }
 
 type MarkdownVariant = "default" | "typographer";
@@ -92,6 +131,15 @@ function applyPlugins(instance: MarkdownIt): void {
   // Links written inside a memory file keep their `.md` extension, but the
   // route that serves them is keyed by the extension-less slug, so an
   // unrewritten link is a hard 404 rather than a redirect.
+  const renderCodeInline = instance.renderer.rules["code_inline"]!;
+  instance.renderer.rules["code_inline"] = (tokens, idx, options, env, self) => {
+    const text = tokens[idx]!.content;
+    const ref = (env as MarkdownEnv | undefined)?.fileRefs?.get(text);
+    return ref === undefined
+      ? renderCodeInline(tokens, idx, options, env, self)
+      : fileRefHtml(text, ref, instance.utils.escapeHtml);
+  };
+
   instance.renderer.rules["link_open"] = (tokens, idx, options, env, self) => {
     const base = (env as MarkdownEnv | undefined)?.mdLinkBase;
     if (base !== undefined) {
@@ -191,6 +239,17 @@ export function renderInlineMarkdownToHtml(
 ): string {
   if (!markdown.trim()) return "";
   return getPlainMarkdownIt(options).renderInline(markdown, toEnv(options));
+}
+
+/** The text of every inline code span in `markdown`, in document order. */
+export function inlineCodeTexts(markdown: string): string[] {
+  const texts: string[] = [];
+  for (const token of getPlainMarkdownIt().parse(markdown, {})) {
+    for (const child of token.children ?? []) {
+      if (child.type === "code_inline") texts.push(child.content);
+    }
+  }
+  return texts;
 }
 
 /**

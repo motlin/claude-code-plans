@@ -79,11 +79,41 @@ export async function statAllowedFile(
   };
 }
 
+/**
+ * For each path, whether it names an allow-listed regular file. The roots are
+ * resolved once for the whole batch.
+ */
+export async function areAllowedFiles(
+  requestedPaths: readonly string[],
+  configPath?: string,
+  defaultRoots: readonly string[] = [],
+): Promise<boolean[]> {
+  const roots = await resolveConfiguredFileRoots(configPath, defaultRoots);
+  return Promise.all(
+    requestedPaths.map(async (requestedPath) => {
+      try {
+        await statRegularFile(await resolveUnderRoots(requestedPath, roots));
+        return true;
+      } catch (error) {
+        if (error instanceof FileServingError) return false;
+        throw error;
+      }
+    }),
+  );
+}
+
 async function resolveAllowedPath(
   requestedPath: string,
   configPath: string | undefined,
   defaultRoots: readonly string[],
 ): Promise<string> {
+  return resolveUnderRoots(
+    requestedPath,
+    await resolveConfiguredFileRoots(configPath, defaultRoots),
+  );
+}
+
+async function resolveUnderRoots(requestedPath: string, roots: readonly string[]): Promise<string> {
   if (!isAbsolute(requestedPath)) {
     throw new FileServingError("An absolute file path is required", 400);
   }
@@ -95,7 +125,6 @@ async function resolveAllowedPath(
     throw new FileServingError("File not found", 404);
   }
 
-  const roots = await resolveConfiguredFileRoots(configPath, defaultRoots);
   if (!roots.some((root) => isContainedPath(resolvedPath, root))) {
     throw new FileServingError("File path is not allowed", 403);
   }

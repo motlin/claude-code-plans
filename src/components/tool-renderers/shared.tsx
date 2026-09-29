@@ -7,6 +7,7 @@ import {
 } from "../../hooks/use-shiki";
 import { handleCodeCopyClick } from "../../lib/code-copy";
 import { CHECK_ICON_PATH, COPY_ICON_PATH } from "../../lib/icon-paths";
+import { FileRefTarget } from "../file-refs";
 import markdownStyles from "../markdown-article.module.css";
 
 // ANSI color code to CSS color mapping
@@ -237,9 +238,29 @@ export function AnsiText({ content }: { content: string }) {
   );
 }
 
+/** Link styling for a tool path that opens in the Files pane. */
+const FILE_REF_CLASSES = "cursor-pointer hover:text-accent-000 hover:underline";
+
+function withFileRefClasses(className: string, linked: boolean): string {
+  return linked ? `${className} ${FILE_REF_CLASSES}` : className;
+}
+
 export function FilePath({ path }: { path: string }) {
   return (
-    <code className="text-xs font-mono bg-surface-0 px-1.5 py-0.5 rounded truncate">{path}</code>
+    <FileRefTarget
+      path={path}
+      render={(refProps) => (
+        <code
+          className={withFileRefClasses(
+            "text-xs font-mono bg-surface-0 px-1.5 py-0.5 rounded truncate",
+            refProps !== null,
+          )}
+          {...refProps}
+        >
+          {path}
+        </code>
+      )}
+    />
   );
 }
 
@@ -279,13 +300,22 @@ export function TruncatedFilePathHeader({ filePath }: { filePath: string }) {
   const { prefix, suffix } = splitPath(filePath);
 
   return (
-    <span
-      className="flex flex-1 min-w-0 overflow-hidden whitespace-nowrap text-body text-secondary"
-      title={filePath}
-    >
-      <span className="min-w-0 truncate">{prefix}</span>
-      <span className="max-w-full shrink-0 truncate">{suffix}</span>
-    </span>
+    <FileRefTarget
+      path={filePath}
+      render={(refProps) => (
+        <span
+          className={withFileRefClasses(
+            "flex flex-1 min-w-0 overflow-hidden whitespace-nowrap text-body text-secondary",
+            refProps !== null,
+          )}
+          title={filePath}
+          {...refProps}
+        >
+          <span className="min-w-0 truncate">{prefix}</span>
+          <span className="max-w-full shrink-0 truncate">{suffix}</span>
+        </span>
+      )}
+    />
   );
 }
 

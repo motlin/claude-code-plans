@@ -419,6 +419,22 @@
   --focus-ring-color: var(--color-accent-100);
 }
 
+/* Upstream `prose-link`: a transcript file ref in link blue and the prose
+   font, without the inline-code chip. */
+.prose-link {
+  display: inline-block;
+  border-radius: 3px;
+  color: var(--color-accent-000);
+  cursor: pointer;
+}
+.prose-link:hover {
+  text-decoration: underline;
+}
+.prose-link:focus-visible {
+  outline: 2px solid var(--color-accent-100);
+  outline-offset: 1px;
+}
+
 [data-record-index] {
   transition: background-color 200ms ease-out;
 }
