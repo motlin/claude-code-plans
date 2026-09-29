@@ -125,6 +125,7 @@ describe("KeyboardShortcutsDialog", () => {
         "Toggle sidebar",
         "Keyboard shortcuts",
         "Settings",
+        "New session",
         "Rename session",
         "Archive session",
         "Mark session as read/unread",

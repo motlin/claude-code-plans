@@ -119,7 +119,7 @@ export const SHORTCUTS = {
     group: "general",
     bindings: cmdOrCtrl("o", ["shift"]),
     ownerSlug: "home-page",
-    enabled: false,
+    enabled: true,
   },
   rename_session: {
     description: "Rename session",

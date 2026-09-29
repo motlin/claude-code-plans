@@ -283,3 +283,34 @@ export async function getComposerState(
   ]);
   return { ...settings, ...statusline };
 }
+
+/** Launch defaults from `~/.claude/settings.json` for the home composer chin. */
+export interface ComposerDefaults {
+  model: string | null;
+  effortLevel: string | null;
+  defaultMode: string | null;
+}
+
+export const ComposerDefaultsResponse: z.ZodType<ComposerDefaults> = z.strictObject({
+  model: z.string().nullable(),
+  effortLevel: z.string().nullable(),
+  defaultMode: z.string().nullable(),
+});
+
+export async function getComposerDefaults(
+  readSettings: () => Promise<unknown>,
+): Promise<ComposerDefaults> {
+  try {
+    const parsed = ClaudeSettingsSchema.safeParse(await readSettings());
+    if (parsed.success) {
+      return {
+        model: parsed.data.model ?? null,
+        effortLevel: parsed.data.effortLevel ?? null,
+        defaultMode: parsed.data.permissions?.defaultMode ?? null,
+      };
+    }
+  } catch {
+    // Missing or unreadable settings.json leaves the defaults unset.
+  }
+  return { model: null, effortLevel: null, defaultMode: null };
+}

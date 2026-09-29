@@ -22,6 +22,7 @@ import { CommandPalette } from "../components/command-palette";
 import { SettingsDialog } from "../components/settings/settings-dialog";
 import { KeyboardShortcutsDialog } from "../components/keyboard-shortcuts-dialog";
 import { RecentsSwitcher } from "../components/recents-switcher";
+import { NewSessionShortcut } from "../components/new-session-shortcut";
 import { ForkNavigator } from "../components/fork-navigator";
 import { useCommandPalette } from "../hooks/use-command-palette";
 import { useRecentsRecorder } from "../hooks/use-recents-recorder";
@@ -210,6 +211,7 @@ function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
       <CommandPalette {...commandPalette} />
       <KeyboardShortcutsDialog />
       <RecentsSwitcher />
+      <NewSessionShortcut />
       <ForkNavigator />
       <SettingsDialog />
     </>

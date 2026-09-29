@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { HomeComposer } from "../components/home/home-composer";
 import { HomePage } from "../components/home/home-page";
 import { HomeSessionsSection } from "../components/home/home-sessions-section";
 import { useVisibleNavItems } from "../components/sidebar/navigation";
@@ -15,7 +16,7 @@ function Home() {
   const cards = useVisibleNavItems().pinned;
 
   return (
-    <HomePage>
+    <HomePage dock={<HomeComposer />}>
       <div data-home-action-center className="flex flex-col gap-10 pt-6 pb-14">
         <HomeSessionsSection />
         <div

@@ -62,6 +62,7 @@ describe("shortcut registry", () => {
       "toggle_sidebar",
       "shortcuts_modal",
       "settings",
+      "new_session",
       "rename_session",
       "archive_session",
       "toggle_read_session",
