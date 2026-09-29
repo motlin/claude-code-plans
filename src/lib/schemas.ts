@@ -1390,6 +1390,7 @@ export const QueueOperationRecordSchema = z
     sessionId: z.string().optional(),
     content: z.string().optional(),
     reason: z.string().optional(),
+    commandUuid: z.string().optional(),
   })
   .strict();
 

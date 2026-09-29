@@ -1076,6 +1076,20 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
     expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
   });
 
+  it("parses queue removals that link the absorbed prompt to its command", () => {
+    const record = {
+      type: "queue-operation",
+      operation: "remove",
+      timestamp: "2026-09-29T00:00:00.000Z",
+      sessionId: "s1",
+      content: "queued prompt",
+      reason: "absorbed_mid_turn",
+      commandUuid: "7ddf351d-8b7a-47c8-bb4c-897e39f19328",
+    };
+
+    expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+  });
+
   it("parses session bookkeeping records for bridges, costs, artifacts, and ATIS latches", () => {
     const records = [
       { type: "atis-latch", atis: "v1.f775a7368a120dff.MKr6", sessionId: "s1" },
