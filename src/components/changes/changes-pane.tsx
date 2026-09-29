@@ -1,9 +1,10 @@
 import { Virtualizer } from "@pierre/diffs/react";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, ChevronDown, EllipsisVertical, List } from "lucide-react";
 import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from "react";
 
 import { useShortcut, useShortcutKeys } from "../../hooks/use-shortcut";
+import { replaceReviewFindings, reviewQueryOptions } from "../../lib/api/reviews";
 import {
   type SessionDiffFile,
   type SessionDiffResponse,
@@ -15,11 +16,19 @@ import {
   sessionDiffScopesQueryOptions,
 } from "../../lib/api/session-diff";
 import {
+  CHANGES_REVIEW_REQUEST_EVENT,
+  type ChangesReviewRequest,
+  formatFixFindingPrompt,
+  loadChangesReview,
+} from "../../lib/changes-review";
+import {
   CHANGES_SCOPE_REQUEST_EVENT,
   type ChangesScopeRequest,
 } from "../../lib/changes-scope-request";
 import { writeClipboardText } from "../../lib/clipboard";
+import { requestAttachContext } from "../../lib/context-attach";
 import { loadChangesScope, saveChangesScope } from "../../lib/pane-layout";
+import type { ReviewFinding } from "../../lib/review-diff";
 import { CoachMark } from "../coach-mark";
 import { type PaneChrome, registerPane } from "../panes/pane-registry";
 import { type Settings, useSettings } from "../settings-provider";
@@ -40,8 +49,9 @@ import {
 import { useToast } from "../toast";
 import { Tooltip } from "../ui/tooltip";
 import { ChangedFilesSidebar } from "./changes-file-tree";
-import { DiffFile, DiffFileHeader } from "./diff-file";
+import { DiffFile, type DiffFileAnnotation, DiffFileHeader } from "./diff-file";
 import { GoToFile } from "./go-to-file";
+import { findingAnnotations } from "./review-finding-annotation";
 
 /**
  * Large-diff thresholds. Upstream collapses every file of a large diff but its
@@ -73,6 +83,8 @@ type ScopeLabel = { kind: "range"; base: string; head: string } | { kind: "text"
 type SessionDiffCommit = Extract<SessionDiffScopesResponse, { kind: "git" }>["commits"][number];
 
 const BRANCH_SCOPE = "branch";
+const UNCOMMITTED_SCOPE = "uncommitted";
+const NO_FINDINGS: readonly ReviewFinding[] = [];
 const NO_MESSAGE = "(no message)";
 
 function commitShaOf(scope: string): string | null {
@@ -452,6 +464,7 @@ function LazyDiffFile({
   collapsed,
   onCollapsedChange,
   onOpenFile,
+  annotations,
 }: {
   file: SessionDiffFile;
   fetchContext: DiffFetchContext;
@@ -459,6 +472,7 @@ function LazyDiffFile({
   collapsed: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
   onOpenFile: (() => void) | undefined;
+  annotations: readonly DiffFileAnnotation[] | undefined;
 }) {
   const query = useQuery({
     ...sessionDiffFileQueryOptions(fetchContext.sessionId, fetchContext.scope, file.path, {
@@ -475,6 +489,7 @@ function LazyDiffFile({
         collapsed={collapsed}
         onCollapsedChange={onCollapsedChange}
         {...(onOpenFile ? { onOpenFile } : {})}
+        {...(annotations ? { annotations } : {})}
       />
     );
   }
@@ -505,6 +520,7 @@ function ChangesFile({
   onCollapsedChange,
   onOpenFile,
   fetchContext,
+  annotations,
 }: {
   file: SessionDiffFile;
   view: DiffViewOptions;
@@ -512,6 +528,7 @@ function ChangesFile({
   onCollapsedChange: (collapsed: boolean) => void;
   onOpenFile: (() => void) | undefined;
   fetchContext: DiffFetchContext | undefined;
+  annotations: readonly DiffFileAnnotation[] | undefined;
 }) {
   if (file.patch !== null && !file.binary) {
     return (
@@ -521,6 +538,7 @@ function ChangesFile({
         collapsed={collapsed}
         onCollapsedChange={onCollapsedChange}
         {...(onOpenFile ? { onOpenFile } : {})}
+        {...(annotations ? { annotations } : {})}
       />
     );
   }
@@ -533,6 +551,7 @@ function ChangesFile({
         collapsed={collapsed}
         onCollapsedChange={onCollapsedChange}
         onOpenFile={onOpenFile}
+        annotations={annotations}
       />
     );
   }
@@ -596,6 +615,10 @@ export interface ChangesPaneViewProps {
   scope?: string;
   onSelectScope?: (scope: string) => void;
   onCopyCommitSha?: (sha: string) => void;
+  /** Working-copy review findings, rendered inline beneath their diff lines. */
+  findings?: readonly ReviewFinding[];
+  onFixFinding?: (finding: ReviewFinding) => void;
+  onDismissFinding?: (finding: ReviewFinding) => void;
 }
 
 /**
@@ -616,6 +639,9 @@ export function ChangesPaneView({
   scope = BRANCH_SCOPE,
   onSelectScope = () => {},
   onCopyCommitSha = () => {},
+  findings = NO_FINDINGS,
+  onFixFinding = () => {},
+  onDismissFinding = () => {},
 }: ChangesPaneViewProps) {
   const files = diff?.files ?? [];
   const hasFiles = files.length > 0;
@@ -712,6 +738,14 @@ export function ChangesPaneView({
                 }
                 onOpenFile={onOpenFile ? () => onOpenFile(file.path) : undefined}
                 fetchContext={fetchContext}
+                annotations={
+                  findings.length === 0
+                    ? undefined
+                    : findingAnnotations(findings, file.path, {
+                        onFix: onFixFinding,
+                        onDismiss: onDismissFinding,
+                      })
+                }
               />
             ))}
             {unavailableCount > 0 && (
@@ -805,6 +839,60 @@ function usePersistedScope(sessionId: string): [string, (scope: string) => void]
   return [current, setScope];
 }
 
+function usePersistedReview(sessionId: string): string | null {
+  const [entry, setEntry] = useState(() => ({ sessionId, reviewId: loadChangesReview(sessionId) }));
+  useEffect(() => {
+    setEntry({ sessionId, reviewId: loadChangesReview(sessionId) });
+    function onRequest(event: Event) {
+      const { detail } = event as CustomEvent<ChangesReviewRequest>;
+      if (detail.sessionId === sessionId) setEntry({ sessionId, reviewId: detail.reviewId });
+    }
+    window.addEventListener(CHANGES_REVIEW_REQUEST_EVENT, onRequest);
+    return () => window.removeEventListener(CHANGES_REVIEW_REQUEST_EVENT, onRequest);
+  }, [sessionId]);
+  return entry.sessionId === sessionId ? entry.reviewId : null;
+}
+
+/**
+ * The working-copy review findings shown on the Uncommitted scope, with
+ * "Fix this one" (sent to the chat input) and "Dismiss finding" (saved as resolved).
+ */
+function useReviewFindings(sessionId: string, scope: string) {
+  const reviewId = usePersistedReview(sessionId);
+  const active = reviewId !== null && scope === UNCOMMITTED_SCOPE;
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  // useQueries, not a disabled useQuery, so sessions without a review register no query.
+  const reviewQueryList: ReturnType<typeof reviewQueryOptions>[] = active
+    ? [reviewQueryOptions(reviewId)]
+    : [];
+  const reviewQueries = useQueries({ queries: reviewQueryList });
+  const review = reviewQueries[0];
+  const findings = review?.data?.findings ?? NO_FINDINGS;
+
+  function fix(finding: ReviewFinding): void {
+    if (!requestAttachContext(sessionId, formatFixFindingPrompt(finding))) {
+      toast({ kind: "error", message: "Open the chat input to send this fix." });
+    }
+  }
+
+  async function dismiss(finding: ReviewFinding): Promise<void> {
+    const bundle = review?.data;
+    if (reviewId === null || bundle === undefined) return;
+    const next = bundle.findings.map((candidate) =>
+      candidate.id === finding.id ? { ...candidate, resolved: true } : candidate,
+    );
+    try {
+      const updated = await replaceReviewFindings(reviewId, next);
+      queryClient.setQueryData(reviewQueryOptions(reviewId).queryKey, updated);
+    } catch {
+      toast({ kind: "error", message: "Couldn’t dismiss the finding. Try again." });
+    }
+  }
+
+  return { findings, fix, dismiss: (finding: ReviewFinding) => void dismiss(finding) };
+}
+
 /** The Changes pane for one session, showing the scope persisted for it (All changes by default). */
 export function ChangesPane({ sessionId, chrome }: { sessionId: string; chrome: PaneChrome }) {
   const [scope, setScope] = usePersistedScope(sessionId);
@@ -812,6 +900,7 @@ export function ChangesPane({ sessionId, chrome }: { sessionId: string; chrome: 
   const diffQuery = useQuery(sessionDiffQueryOptions(sessionId, scope, { hideWhitespace }));
   const scopesQuery = useQuery(sessionDiffScopesQueryOptions(sessionId));
   const toast = useToast();
+  const review = useReviewFindings(sessionId, scope);
   const message = diffQuery.error ? `Couldn't load changes: ${diffQuery.error.message}` : undefined;
   const scopes = scopesQuery.data;
   const selectedCommitSha = commitShaOf(scope);
@@ -851,6 +940,9 @@ export function ChangesPane({ sessionId, chrome }: { sessionId: string; chrome: 
       scope={scope}
       onSelectScope={setScope}
       onCopyCommitSha={(sha) => void copyCommitSha(sha)}
+      findings={review.findings}
+      onFixFinding={review.fix}
+      onDismissFinding={review.dismiss}
     />
   );
 }

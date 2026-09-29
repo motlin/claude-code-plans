@@ -5,6 +5,7 @@ import {
   createWorkingCopyReview,
   runWorkingCopyReview,
 } from "../lib/api/reviews";
+import { openReviewInChanges, reviewChangesHref } from "../lib/changes-review";
 import { useSubscribeReviewOffers } from "../hooks/use-claude-events";
 import { useSettings } from "./settings-provider";
 import type { Capabilities } from "../lib/capabilities";
@@ -170,7 +171,10 @@ export function WorkingCopyReviewBanner({
       )}
       {banner.status === "complete" && banner.reviewId && (
         <a
-          href={`/review/${encodeURIComponent(banner.reviewId)}`}
+          href={reviewChangesHref(banner.sessionId)}
+          onClick={() => {
+            if (banner.reviewId) openReviewInChanges(banner.sessionId, banner.reviewId);
+          }}
           className="rounded-md bg-accent-100 px-3 py-1.5 text-xs font-medium text-white no-underline hover:bg-accent-100/80"
         >
           View findings

@@ -2,6 +2,7 @@ import { FolderGit2, GitBranch, GitPullRequest, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { SessionDetailData } from "../lib/api/sessions";
+import { requestChangesScope } from "../lib/changes-scope-request";
 import { pluralize } from "../lib/pluralize";
 import { type GitPrState, prGlyph } from "../lib/pr-status";
 import { useOptionalPaneHost } from "./panes/tile-host";
@@ -100,7 +101,15 @@ function useContainerWidth() {
   return { ref, width };
 }
 
-function DiffStatButton({ additions, deletions }: { additions: number; deletions: number }) {
+function DiffStatButton({
+  sessionId,
+  additions,
+  deletions,
+}: {
+  sessionId: string;
+  additions: number;
+  deletions: number;
+}) {
   const host = useOptionalPaneHost();
   const added = additions.toLocaleString("en-US");
   const removed = deletions.toLocaleString("en-US");
@@ -109,7 +118,10 @@ function DiffStatButton({ additions, deletions }: { additions: number; deletions
       type="button"
       title="Show changes"
       className={`${GHOST_BUTTON} tabular-nums`}
-      onClick={() => host?.openPane("changes")}
+      onClick={() => {
+        requestChangesScope(sessionId, "branch");
+        host?.openPane("changes");
+      }}
     >
       <span aria-hidden="true">
         <span className="text-diff-added">+{added}</span>{" "}
@@ -200,7 +212,7 @@ export function BranchStrip({
               <span className="truncate">{middleTruncate(branch, BRANCH_MAX_CHARS)}</span>
             </span>
           )}
-          {counts !== null && <DiffStatButton {...counts} />}
+          {counts !== null && <DiffStatButton sessionId={sessionId} {...counts} />}
           <PrChip session={session} />
           <button
             type="button"

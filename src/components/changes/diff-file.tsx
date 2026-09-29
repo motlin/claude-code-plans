@@ -3,7 +3,7 @@ import type { FileDiffMetadata } from "@pierre/diffs";
 import { FileDiff } from "@pierre/diffs/react";
 import type { FileDiffOptions } from "@pierre/diffs/react";
 import { ArrowUpRight, ChevronDown, ChevronRight, FileText } from "lucide-react";
-import { type CSSProperties, useMemo, useState } from "react";
+import { type CSSProperties, type ReactNode, useMemo, useState } from "react";
 import { useCodeThemes } from "../../hooks/use-code-themes";
 import { claudeLight } from "../../lib/claude-light-theme";
 import type { DiffStyle } from "../settings-provider";
@@ -44,6 +44,13 @@ export const DIFFS_STYLE_OVERRIDES = {
 
 export type { DiffStyle };
 
+/** Content rendered inline beneath one diff line, such as a review finding. */
+export interface DiffFileAnnotation {
+  side: "additions" | "deletions";
+  lineNumber: number;
+  content: ReactNode;
+}
+
 export interface DiffFileProps {
   /** A single-file unified diff (`git diff` output for one path). */
   patch: string;
@@ -56,6 +63,7 @@ export interface DiffFileProps {
   collapsed?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
   onOpenFile?: () => void;
+  annotations?: readonly DiffFileAnnotation[];
 }
 
 function countChanges(fileDiff: FileDiffMetadata): { added: number; removed: number } {
@@ -167,6 +175,7 @@ export function DiffFile({
   collapsed: controlledCollapsed,
   onCollapsedChange,
   onOpenFile,
+  annotations,
 }: DiffFileProps) {
   const fileDiff = useMemo(() => getSingularPatch(patch), [patch]);
   const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(defaultCollapsed);
@@ -178,7 +187,17 @@ export function DiffFile({
   const resolvedTheme = useResolvedTheme();
   const codeThemes = useCodeThemes();
 
-  const options = useMemo<FileDiffOptions<undefined, undefined>>(
+  const lineAnnotations = useMemo(
+    () =>
+      annotations?.map(({ side, lineNumber, content }) => ({
+        side,
+        lineNumber,
+        metadata: content,
+      })),
+    [annotations],
+  );
+
+  const options = useMemo<FileDiffOptions<ReactNode, undefined>>(
     () => ({
       theme: codeThemes,
       themeType: resolvedTheme,
@@ -194,11 +213,14 @@ export function DiffFile({
   );
 
   return (
-    <FileDiff
+    <FileDiff<ReactNode, undefined>
       fileDiff={fileDiff}
       options={options}
       style={DIFFS_STYLE_OVERRIDES}
       disableWorkerPool
+      {...(lineAnnotations === undefined
+        ? {}
+        : { lineAnnotations, renderAnnotation: (annotation) => annotation.metadata })}
       renderCustomHeader={(file) => {
         const { added, removed } = countChanges(file);
         return (

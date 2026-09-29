@@ -82,3 +82,14 @@ export const reviewQueryOptions = (reviewId: string) =>
     staleTime: Infinity,
     gcTime: Infinity,
   });
+
+export async function replaceReviewFindings(
+  reviewId: string,
+  findings: readonly z.infer<typeof FindingSchema>[],
+): Promise<ReviewBundle> {
+  return apiFetch(`/api/reviews/${encodeURIComponent(reviewId)}/findings`, ReviewBundleSchema, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ findings }),
+  });
+}
