@@ -20,6 +20,7 @@ import {
   SessionBucketSchema,
   SessionStateKindSchema,
 } from "../src/lib/session-state";
+import { SessionListPrefsSchema } from "../src/lib/session-groups";
 import { SettingsTabSchema } from "../src/lib/settings-hash";
 import {
   AttachmentPayloadSchema,
@@ -57,6 +58,7 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["SessionBucketSchema", SessionBucketSchema],
   ["SessionBucketReasonSchema", SessionBucketReasonSchema],
   ["SessionStateKindSchema", SessionStateKindSchema],
+  ["SessionListPrefsSchema", SessionListPrefsSchema],
   ["ContentBlockSchema", ContentBlockSchema],
   ["AttachmentPayloadSchema", AttachmentPayloadSchema],
   ["UserRecordSchema", UserRecordSchema],

@@ -22,6 +22,12 @@ import type {
   WriteToolUseResultTypeSchema,
 } from "./schemas";
 import type {
+  SessionActivityDaysSchema,
+  SessionGroupBySchema,
+  SessionSortBySchema,
+  SessionStatusFilterSchema,
+} from "./session-groups";
+import type {
   SessionBucketReasonSchema,
   SessionBucketSchema,
   SessionStateKindSchema,
@@ -82,12 +88,39 @@ const sessionSummaryStateLabels = {
 } satisfies Record<z.infer<typeof SessionSummaryStateSchema>, string>;
 
 /** Upstream claude.ai/code sidebar group names. */
-const sessionBucketLabels = {
+export const sessionBucketLabels = {
   blocked: "Needs input",
   review: "Ready for review",
   working: "Working",
   done: "Completed",
 } satisfies Record<z.infer<typeof SessionBucketSchema>, string>;
+
+/** Filter & group menu options (src/lib/session-groups.ts); local "Project" is upstream "Folder". */
+const sessionGroupByLabels = {
+  date: "Date",
+  project: "Project",
+  state: "State",
+  none: "None",
+} satisfies Record<z.infer<typeof SessionGroupBySchema>, string>;
+
+const sessionSortByLabels = {
+  name: "Name",
+  created: "Date created",
+  activity: "Last activity",
+} satisfies Record<z.infer<typeof SessionSortBySchema>, string>;
+
+const sessionStatusFilterLabels = {
+  active: "Active",
+  all: "All",
+} satisfies Record<z.infer<typeof SessionStatusFilterSchema>, string>;
+
+const sessionActivityDaysLabels = {
+  "1d": "1d",
+  "3d": "3d",
+  "7d": "7d",
+  "30d": "30d",
+  all: "All",
+} satisfies Record<z.infer<typeof SessionActivityDaysSchema>, string>;
 
 const sessionBucketReasonLabels = {
   ended: "Session ended",
@@ -485,6 +518,10 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   SessionBucketSchema: sessionBucketLabels,
   SessionBucketReasonSchema: sessionBucketReasonLabels,
   SessionStateKindSchema: sessionStateKindLabels,
+  "SessionListPrefsSchema.groupBy": sessionGroupByLabels,
+  "SessionListPrefsSchema.sortBy": sessionSortByLabels,
+  "SessionListPrefsSchema.statusFilter": sessionStatusFilterLabels,
+  "SessionListPrefsSchema.activityDays": sessionActivityDaysLabels,
   ContentBlockSchema: contentBlockVariants,
   AttachmentPayloadSchema: attachmentVariants,
   "UserRecordSchema.promptSource": promptSourceLabels,
