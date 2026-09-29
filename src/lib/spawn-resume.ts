@@ -28,9 +28,11 @@ export function handleCancel(json: unknown): Response | null {
 export function spawnResumeStream({
   sessionId,
   prompt,
+  ephemeral = false,
 }: {
   sessionId: string;
   prompt: string;
+  ephemeral?: boolean;
 }): Response {
   const { index } = getDb();
   const projectPath = getSessionProjectPath(index, sessionId);
@@ -46,7 +48,18 @@ export function spawnResumeStream({
     prompt,
     projectDir: projectPath,
     environment: {},
+    ephemeral,
   });
+
+  const headers = {
+    "Content-Type": "application/x-ndjson",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+    "X-Process-Id": processId,
+  };
+
+  // An ephemeral fork writes no JSONL, so there is nothing to broadcast.
+  if (ephemeral) return new Response(stream, { headers });
 
   // Drain a copy of the stream so the spawned CLI runs to completion and we
   // fire the SSE broadcast once the new JSONL has been written. The other
@@ -54,14 +67,7 @@ export function spawnResumeStream({
   const [passthrough, monitor] = stream.tee();
   void drainAndBroadcast(monitor);
 
-  return new Response(passthrough, {
-    headers: {
-      "Content-Type": "application/x-ndjson",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-      "X-Process-Id": processId,
-    },
-  });
+  return new Response(passthrough, { headers });
 }
 
 async function drainAndBroadcast(stream: ReadableStream<Uint8Array>): Promise<void> {

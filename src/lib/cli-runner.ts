@@ -5,11 +5,19 @@ interface SpawnOptions {
   prompt: string;
   projectDir: string;
   environment: Record<string, string>;
+  /** Ask without persisting: the fork writes no session JSONL. */
+  ephemeral?: boolean;
 }
 
 const activeProcesses = new Map<string, ChildProcess>();
 
-export function spawnClaude({ sessionId, prompt, projectDir, environment }: SpawnOptions): {
+export function spawnClaude({
+  sessionId,
+  prompt,
+  projectDir,
+  environment,
+  ephemeral = false,
+}: SpawnOptions): {
   stream: ReadableStream<Uint8Array>;
   processId: string;
 } {
@@ -26,6 +34,7 @@ export function spawnClaude({ sessionId, prompt, projectDir, environment }: Spaw
     "--verbose",
     "--include-partial-messages",
   ];
+  if (ephemeral) args.push("--no-session-persistence");
 
   const child = spawn("claude", args, {
     cwd: projectDir,
