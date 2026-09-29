@@ -22,7 +22,6 @@ export default defineConfig({
       ".llm/**",
       ".output/**",
       ".remember/**",
-      ".vinxi/**",
       "src/routeTree.gen.ts",
     ],
     overrides: [

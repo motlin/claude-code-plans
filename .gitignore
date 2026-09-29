@@ -7,7 +7,6 @@
 # production
 /dist
 /.output
-/.vinxi
 
 # generated
 src/routeTree.gen.ts
