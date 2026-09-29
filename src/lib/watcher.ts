@@ -83,13 +83,18 @@ interface JsonlThrottleState {
 }
 const jsonlThrottleByPath = new Map<string, JsonlThrottleState>();
 
-hmrDispose(async () => {
-  if (watcher) await watcher.close();
+hmrDispose(closeWatcher);
+
+/** Stop watching and drop pending throttled JSONL updates. */
+export async function closeWatcher(): Promise<void> {
+  const current = watcher;
+  watcher = null;
   for (const state of jsonlThrottleByPath.values()) {
     if (state.timer !== undefined) clearTimeout(state.timer);
   }
   jsonlThrottleByPath.clear();
-});
+  if (current) await current.close();
+}
 
 const WATCHED_EXTENSIONS = new Set([".md", ".jsonl", ".json"]);
 const JSONL_THROTTLE_MS = 2000;

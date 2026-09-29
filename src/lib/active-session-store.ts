@@ -117,9 +117,7 @@ function findSession(sessionId: string): ActiveSessionEntry | undefined {
 
 let sweepTimer: ReturnType<typeof setInterval> | null = null;
 
-hmrDispose(() => {
-  if (sweepTimer) clearInterval(sweepTimer);
-});
+hmrDispose(stopSweep);
 
 const STALE_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
 export const SWEEP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
@@ -250,6 +248,11 @@ function sweep(): void {
 }
 
 export function startSweep(): void {
-  if (sweepTimer) clearInterval(sweepTimer);
+  stopSweep();
   sweepTimer = setInterval(sweep, SWEEP_INTERVAL_MS);
+}
+
+export function stopSweep(): void {
+  if (sweepTimer) clearInterval(sweepTimer);
+  sweepTimer = null;
 }

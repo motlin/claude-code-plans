@@ -49,9 +49,7 @@ const readIds = hmrPersist("notificationsReadIds", () => new Set<string>());
 
 let sweepTimer: ReturnType<typeof setInterval> | null = null;
 
-hmrDispose(() => {
-  if (sweepTimer) clearInterval(sweepTimer);
-});
+hmrDispose(stopNotificationsSweep);
 
 const MAX_ENTRIES = 200;
 const NOTIFICATION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -216,6 +214,11 @@ function sweep(): void {
 }
 
 export function startNotificationsSweep(): void {
-  if (sweepTimer) clearInterval(sweepTimer);
+  stopNotificationsSweep();
   sweepTimer = setInterval(sweep, NOTIFICATIONS_SWEEP_INTERVAL_MS);
+}
+
+export function stopNotificationsSweep(): void {
+  if (sweepTimer) clearInterval(sweepTimer);
+  sweepTimer = null;
 }

@@ -32,9 +32,7 @@ const LIVE_SUBAGENT_SWEEP_INTERVAL_MS = 60 * 1000;
 
 let sweepTimer: ReturnType<typeof setInterval> | null = null;
 
-hmrDispose(() => {
-  if (sweepTimer) clearInterval(sweepTimer);
-});
+hmrDispose(stopLiveSubagentSweep);
 
 function canonicalAgentId(agentId: string): string {
   return toSubagentSessionId(agentId);
@@ -256,11 +254,16 @@ function sweepStoredLiveSubagents(onStaleEnded: (node: LiveSubagentNode) => void
 
 /** `onStaleEnded` receives each running node the stale sweep ends. */
 export function startLiveSubagentSweep(onStaleEnded: (node: LiveSubagentNode) => void): void {
-  if (sweepTimer) clearInterval(sweepTimer);
+  stopLiveSubagentSweep();
   sweepTimer = setInterval(
     () => sweepStoredLiveSubagents(onStaleEnded),
     LIVE_SUBAGENT_SWEEP_INTERVAL_MS,
   );
+}
+
+export function stopLiveSubagentSweep(): void {
+  if (sweepTimer) clearInterval(sweepTimer);
+  sweepTimer = null;
 }
 
 /**
