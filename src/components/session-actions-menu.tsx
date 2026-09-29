@@ -29,7 +29,8 @@ import {
   vscodeFolderUrl,
 } from "../lib/session-open-in";
 import { forkDisabledReason } from "../lib/session-fork";
-import { pin, unpin, usePins } from "../lib/pin-store";
+import { pin, readPinState, unpin, usePins, writePinState } from "../lib/pin-store";
+import { placePin } from "../lib/pinned-sessions";
 import { markSeen, markUnseen } from "../lib/unread-store";
 import { InlineRenameInput } from "./inline-rename-input";
 import { useHasUnseenWork } from "./session-unread-control";
@@ -103,6 +104,8 @@ export interface SessionMenuRunnerOptions {
   requestRename: () => void;
   /** Pin/Unpin; surfaces without the pin item leave it out. */
   setPinned?: (pinned: boolean) => void;
+  /** Move up / Move down within the sidebar Pinned section. */
+  movePinned?: (delta: -1 | 1) => void;
 }
 
 /** Runs one session menu item; shared by the row menu and the titlebar chevron menu. */
@@ -113,6 +116,7 @@ export function useSessionMenuRunner({
   prUrl,
   requestRename,
   setPinned,
+  movePinned,
 }: SessionMenuRunnerOptions): (id: SessionMenuItemId) => void {
   const toast = useToast();
   const setArchived = useSessionArchive(sessionId);
@@ -147,6 +151,10 @@ export function useSessionMenuRunner({
       case "open-pr":
         if (prUrl !== null) openPullRequest(prUrl);
         return;
+      case "move-up":
+      case "move-down":
+        movePinned?.(id === "move-up" ? -1 : 1);
+        return;
       case "pin":
       case "unpin":
         setPinned?.(id === "pin");
@@ -179,7 +187,14 @@ export function useSessionMenuRunner({
   };
 }
 
-function useSessionMenu(session: SessionListItem) {
+/** The sidebar Pinned section's display order, for a row rendered inside it. */
+interface PinnedRowContext {
+  pinnedIds: readonly string[];
+  /** Called after a Move up / Move down so the row takes focus once the menu closes. */
+  onMoved: () => void;
+}
+
+function useSessionMenu(session: SessionListItem, pinnedRow: PinnedRowContext | undefined) {
   const unseen = useHasUnseenWork(session.id);
   const { data: herdr } = useQuery(herdrPanesQueryOptions);
   const { data: openIn } = useQuery(sessionOpenInQueryOptions(session.id));
@@ -187,6 +202,7 @@ function useSessionMenu(session: SessionListItem) {
   const bridgeSessionId = openIn?.bridgeSessionId ?? null;
   const pins = usePins();
   const { requestRename } = useRowRename();
+  const pinIndex = pinnedRow?.pinnedIds.indexOf(session.id) ?? -1;
 
   const menuSession: SessionMenuSession = {
     title: session.title,
@@ -199,6 +215,9 @@ function useSessionMenu(session: SessionListItem) {
     cwd,
     bridgeSessionId,
   };
+  if (pinnedRow !== undefined && pinIndex !== -1) {
+    menuSession.pinPosition = { index: pinIndex, count: pinnedRow.pinnedIds.length };
+  }
 
   const run = useSessionMenuRunner({
     sessionId: session.id,
@@ -207,6 +226,11 @@ function useSessionMenu(session: SessionListItem) {
     prUrl: session.pr?.url ?? null,
     requestRename,
     setPinned: (pinned) => (pinned ? pin(session.id) : unpin(session.id)),
+    movePinned: (delta) => {
+      if (pinnedRow === undefined || pinIndex === -1) return;
+      writePinState(placePin(readPinState(), pinnedRow.pinnedIds, session.id, pinIndex + delta));
+      pinnedRow.onMoved();
+    },
   });
 
   return {
@@ -259,8 +283,14 @@ export function MenuEntries({
 }
 
 /** Mounted only while a menu is open, so closed rows never query or subscribe. */
-function SessionMenuBody({ session }: { session: SessionListItem }) {
-  const { entries, run } = useSessionMenu(session);
+function SessionMenuBody({
+  session,
+  pinnedRow,
+}: {
+  session: SessionListItem;
+  pinnedRow: PinnedRowContext | undefined;
+}) {
+  const { entries, run } = useSessionMenu(session, pinnedRow);
   return <MenuEntries entries={entries} run={run} />;
 }
 
@@ -293,24 +323,45 @@ const KEBAB_CLASS =
  */
 export function SessionActionsMenu({
   session,
+  pinnedIds,
   children,
   className,
 }: {
   session: SessionListItem;
+  /** The sidebar Pinned section's display order, when this row is rendered inside it. */
+  pinnedIds?: readonly string[];
   children: ReactNode;
   className?: string;
 }) {
   const rename = useSessionRename(session.id, session.title);
-  const { requestRename, onOpenChangeComplete, finalFocus } = useRenameAfterMenuClose(
-    rename.startEditing,
-  );
+  const renameAfterClose = useRenameAfterMenuClose(rename.startEditing);
+  const { requestRename } = renameAfterClose;
+  const rowRef = useRef<HTMLDivElement>(null);
+  // After Move up / Move down the row itself takes focus, like upstream's movePinned.
+  const focusRowAfterClose = useRef(false);
+  const onOpenChangeComplete = (open: boolean) => {
+    renameAfterClose.onOpenChangeComplete(open);
+    if (open || !focusRowAfterClose.current) return;
+    focusRowAfterClose.current = false;
+    rowRef.current?.querySelector<HTMLElement>("[data-row-main-button]")?.focus();
+  };
+  const finalFocus = () => renameAfterClose.finalFocus() && !focusRowAfterClose.current;
+  const pinnedRow: PinnedRowContext | undefined =
+    pinnedIds === undefined
+      ? undefined
+      : {
+          pinnedIds,
+          onMoved: () => {
+            focusRowAfterClose.current = true;
+          },
+        };
   return (
     <RowRenameContext.Provider value={{ rename, requestRename }}>
-      <div className={`group/session-row relative ${className ?? ""}`}>
+      <div ref={rowRef} className={`group/session-row relative ${className ?? ""}`}>
         <ContextMenu onOpenChangeComplete={onOpenChangeComplete}>
           <ContextMenuTrigger>{children}</ContextMenuTrigger>
           <MenuContent finalFocus={finalFocus}>
-            <SessionMenuBody session={session} />
+            <SessionMenuBody session={session} pinnedRow={pinnedRow} />
           </MenuContent>
         </ContextMenu>
         <Menu onOpenChangeComplete={onOpenChangeComplete}>
@@ -322,7 +373,7 @@ export function SessionActionsMenu({
             <Ellipsis aria-hidden="true" className="size-4" />
           </MenuTrigger>
           <MenuContent align="end" finalFocus={finalFocus}>
-            <SessionMenuBody session={session} />
+            <SessionMenuBody session={session} pinnedRow={pinnedRow} />
           </MenuContent>
         </Menu>
       </div>

@@ -9,7 +9,7 @@ import {
   Outlet,
   RouterProvider,
 } from "@tanstack/react-router";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { SessionGroups } from "../src/components/sidebar/session-groups";
@@ -18,7 +18,7 @@ import {
   RecentSessionsResponse,
   recentSessionsInfiniteQueryOptions,
 } from "../src/lib/api/sessions";
-import { PIN_STORAGE_KEY } from "../src/lib/pin-store";
+import { PIN_STORAGE_KEY, readPinState } from "../src/lib/pin-store";
 import type { SessionBucket } from "../src/lib/session-state";
 import { readSidebarState } from "../src/lib/sidebar-store";
 import { installLocalStorage } from "./fake-storage";
@@ -115,6 +115,20 @@ function visibleGroupNames(container: HTMLElement): string[] {
   );
 }
 
+async function openRowMenu(title: string): Promise<HTMLElement> {
+  fireEvent.contextMenu(screen.getByText(title), { clientX: 40, clientY: 50 });
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  return screen.getByRole("menu");
+}
+
+function menuItemNames(menu: HTMLElement): string[] {
+  return [...menu.querySelectorAll('[role="menuitem"]')].map((item) =>
+    (item.firstChild?.textContent ?? "").trim(),
+  );
+}
+
 afterEach(cleanup);
 
 beforeEach(() => {
@@ -195,5 +209,61 @@ describe("sidebar Pinned section", () => {
     expect(rowTitles(pinnedSection(container))).toHaveLength(20);
     fireEvent.click(screen.getByRole("button", { name: "Show 3 more in Pinned" }));
     await waitFor(() => expect(rowTitles(pinnedSection(container))).toHaveLength(23));
+  });
+
+  it("offers Move up and Move down on pinned rows, omitted at the ends", async () => {
+    seedPins(["r1", "w1", "d2"], ["r1", "w1", "d2"]);
+    await renderGroups(FIXTURE);
+
+    const top = menuItemNames(await openRowMenu("Review one"));
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    const middle = menuItemNames(await openRowMenu("Working one"));
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    const bottom = menuItemNames(await openRowMenu("Completed older"));
+
+    expect({
+      top: top.slice(0, 2),
+      middle: middle.slice(0, 3),
+      bottom: bottom.slice(0, 2),
+    }).toEqual({
+      top: ["Move down", "Unpin"],
+      middle: ["Move up", "Move down", "Unpin"],
+      bottom: ["Move up", "Unpin"],
+    });
+  });
+
+  it("moves a pinned row up, writes the pin order and refocuses the row", async () => {
+    seedPins(["r1", "w1", "d2"]);
+    const { container } = await renderGroups(FIXTURE);
+    expect(rowTitles(pinnedSection(container))).toEqual([
+      "Working one",
+      "Review one",
+      "Completed older",
+    ]);
+
+    const menu = await openRowMenu("Completed older");
+    const moveUp = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+      (item) => item.textContent === "Move up",
+    );
+    if (moveUp === undefined) throw new Error("no Move up");
+    fireEvent.click(moveUp);
+
+    await waitFor(() =>
+      expect(rowTitles(pinnedSection(container))).toEqual([
+        "Working one",
+        "Completed older",
+        "Review one",
+      ]),
+    );
+    await waitFor(() => expect(document.activeElement?.textContent).toBe("Completed older"));
+    expect({
+      pins: readPinState(),
+      focusedRow: document.activeElement?.hasAttribute("data-row-main-button"),
+    }).toStrictEqual({
+      pins: { pinnedIds: ["r1", "w1", "d2"], pinnedOrder: ["w1", "d2", "r1"] },
+      focusedRow: true,
+    });
   });
 });

@@ -46,6 +46,7 @@ export function PinnedSubList({
   const [uncapped, setUncapped] = useState<ReadonlySet<string>>(() => new Set());
   const empty = rows.length === 0;
   const stub = empty && !dragging;
+  const pinnedIds = rows.map((row) => row.id);
 
   return (
     <div
@@ -62,6 +63,7 @@ export function PinnedSubList({
         activeItemId={activeItemId}
         filterSlot={null}
         onShowMore={() => setUncapped(new Set([PINNED_GROUP_KEY]))}
+        pinnedIds={pinnedIds}
         {...(dragRowProps === undefined ? {} : { dragRowProps })}
       />
       {dragging && <PinDropRow ref={dropRowRef} state={dropRowHot ? "hot" : "dragging"} />}

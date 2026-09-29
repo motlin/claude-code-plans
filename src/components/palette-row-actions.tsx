@@ -124,6 +124,8 @@ export function PaletteRowActionsCard({
       case "open-finder":
       case "open-claude-ai":
       case "open-pr":
+      case "move-up":
+      case "move-down":
       case "rename":
       case "fork":
         return;

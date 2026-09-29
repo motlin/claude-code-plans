@@ -40,6 +40,7 @@ export function GroupSection({
   filterSlot,
   onShowMore,
   dragRowProps,
+  pinnedIds,
 }: {
   group: SessionGroup<SidebarSessionRow>;
   expanded: boolean;
@@ -48,6 +49,8 @@ export function GroupSection({
   onShowMore: () => void;
   /** Makes each row a sidebar drag source (pin, reorder, unpin). */
   dragRowProps?: (id: string) => SidebarDragRowProps;
+  /** Set for the Pinned section: its display order, which enables Move up / Move down. */
+  pinnedIds?: readonly string[];
 }) {
   return (
     <div data-group-key={group.key} className="group/section relative isolate flex flex-col gap-px">
@@ -85,7 +88,11 @@ export function GroupSection({
               {...dragRowProps?.(row.sessionId)}
               className="df-drag-shiftable relative"
             >
-              <SessionRowLink row={row} selected={row.sessionId === activeItemId} />
+              <SessionRowLink
+                row={row}
+                selected={row.sessionId === activeItemId}
+                pinnedIds={pinnedIds}
+              />
             </div>
           ))}
           {group.hiddenCount > 0 && (
@@ -106,9 +113,17 @@ export function GroupSection({
   );
 }
 
-function SessionRowLink({ row, selected }: { row: SidebarSessionRow; selected: boolean }) {
+function SessionRowLink({
+  row,
+  selected,
+  pinnedIds,
+}: {
+  row: SidebarSessionRow;
+  selected: boolean;
+  pinnedIds: readonly string[] | undefined;
+}) {
   return (
-    <SessionActionsMenu session={row.session}>
+    <SessionActionsMenu session={row.session} {...(pinnedIds === undefined ? {} : { pinnedIds })}>
       <Link
         to="/session/$id"
         params={{ id: row.sessionId }}

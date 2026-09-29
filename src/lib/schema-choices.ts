@@ -578,6 +578,8 @@ export const sessionMenuItemLabels = {
   "open-finder": "Finder",
   "open-claude-ai": "claude.ai",
   "open-pr": "Open PR",
+  "move-up": "Move up",
+  "move-down": "Move down",
   pin: "Pin",
   unpin: "Unpin",
   "mark-read": "Mark as read",

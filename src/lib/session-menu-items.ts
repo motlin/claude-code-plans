@@ -18,6 +18,8 @@ export const SessionMenuItemIdSchema = z.enum([
   "open-finder",
   "open-claude-ai",
   "open-pr",
+  "move-up",
+  "move-down",
   "pin",
   "unpin",
   "mark-read",
@@ -75,6 +77,8 @@ export interface SessionMenuSession {
   cwd: string | null;
   /** claude.ai/code session the transcript's `bridge-session` record points at. */
   bridgeSessionId: string | null;
+  /** Where a pinned row sits in the sidebar Pinned section; enables Move up / Move down. */
+  pinPosition?: { index: number; count: number };
 }
 
 export interface SessionMenuItem {
@@ -177,6 +181,19 @@ export function getSessionMenuItems(
     navigation.push({ ...item("open-pr"), hiddenAccelerator: true });
   }
 
+  // Upstream's `pinReorder` block: omitted at the ends, so a single pin gets neither.
+  const pinReorder: SessionMenuItem[] = [];
+  const position = session.pinPosition;
+  if (surface === "row" && session.pinned && position !== undefined) {
+    const reorder = (id: "move-up" | "move-down"): SessionMenuItem => ({
+      kind: "item",
+      id,
+      label: sessionMenuItemLabels[id],
+    });
+    if (position.index > 0) pinReorder.push(reorder("move-up"));
+    if (position.index < position.count - 1) pinReorder.push(reorder("move-down"));
+  }
+
   const actions: SessionMenuItem[] = [];
   if (surface !== "header" && has("pin")) actions.push(item(session.pinned ? "unpin" : "pin"));
   const readState: SessionMenuItem[] = [];
@@ -227,7 +244,9 @@ export function getSessionMenuItems(
     });
   }
 
-  const sections = [navigation, actions, lifecycle].filter((section) => section.length > 0);
+  const sections = [navigation, pinReorder, actions, lifecycle].filter(
+    (section) => section.length > 0,
+  );
   return [
     ...sections.flatMap((section, index): SessionMenuEntry[] =>
       index === 0 ? section : [{ kind: "separator" }, ...section],

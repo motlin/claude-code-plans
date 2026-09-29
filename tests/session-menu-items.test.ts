@@ -194,6 +194,61 @@ describe("getSessionMenuItems", () => {
     ]);
   });
 
+  it("adds Move up and Move down in their own block for a pinned row mid-list", () => {
+    expect(
+      getSessionMenuItems(session({ pinned: true, pinPosition: { index: 1, count: 3 } }), LOCAL, {
+        surface: "row",
+      }),
+    ).toEqual([
+      { kind: "item", id: "move-up", label: "Move up" },
+      { kind: "item", id: "move-down", label: "Move down" },
+      SEPARATOR,
+      { kind: "item", id: "unpin", label: "Unpin", accelerator: "p" },
+      { kind: "item", id: "mark-unread", label: "Mark as unread", accelerator: "u" },
+      { kind: "item", id: "copy-link", label: "Copy link", accelerator: "c" },
+    ]);
+  });
+
+  it("omits Move up for the first pin and Move down for the last", () => {
+    const ids = (index: number) =>
+      getSessionMenuItems(session({ pinned: true, pinPosition: { index, count: 3 } }), LOCAL, {
+        surface: "row",
+      }).flatMap((entry) => (entry.kind === "item" ? [entry.id] : ["|"]));
+    expect({ first: ids(0), last: ids(2) }).toEqual({
+      first: ["move-down", "|", "unpin", "mark-unread", "copy-link"],
+      last: ["move-up", "|", "unpin", "mark-unread", "copy-link"],
+    });
+  });
+
+  it("offers no reordering for a single pin", () => {
+    expect(
+      getSessionMenuItems(session({ pinned: true, pinPosition: { index: 0, count: 1 } }), LOCAL, {
+        surface: "row",
+      }),
+    ).toEqual([
+      { kind: "item", id: "unpin", label: "Unpin", accelerator: "p" },
+      { kind: "item", id: "mark-unread", label: "Mark as unread", accelerator: "u" },
+      { kind: "item", id: "copy-link", label: "Copy link", accelerator: "c" },
+    ]);
+  });
+
+  it("keeps Move up and Move down out of the header and palette surfaces", () => {
+    const pinnedMid = session({ pinned: true, pinPosition: { index: 1, count: 3 } });
+    const ids = (surface: "header" | "palette" | "palette-card") =>
+      getSessionMenuItems(pinnedMid, LOCAL, { surface }).flatMap((entry) =>
+        entry.kind === "item" ? [entry.id] : ["|"],
+      );
+    expect({
+      header: ids("header"),
+      palette: ids("palette"),
+      card: ids("palette-card"),
+    }).toEqual({
+      header: ["copy-link"],
+      palette: ["unpin", "copy-link"],
+      card: ["copy-link", "unpin", "mark-unread"],
+    });
+  });
+
   it("lists the palette row-actions card items unnumbered in upstream card order", () => {
     expect(
       getSessionMenuItems(session({ hasLivePane: true }), ALL, { surface: "palette-card" }),
