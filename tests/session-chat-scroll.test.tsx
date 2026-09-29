@@ -8,7 +8,9 @@ import type { SessionLine } from "../src/lib/sessions";
 import { CHAT_COLUMN_CLASS } from "../src/lib/transcript-width";
 
 vi.mock("../src/components/settings-provider", () => ({
-  useSettings: () => ({ settings: { showDebug: false } }),
+  useSettings: () => ({
+    settings: { showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark" },
+  }),
 }));
 vi.mock("../src/lib/hmr-persist", () => ({
   hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),

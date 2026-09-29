@@ -41,6 +41,9 @@ importers:
       '@pierre/diffs':
         specifier: ^1.5.1
         version: 1.5.1(@shikijs/themes@4.4.3)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@pierre/theme':
+        specifier: ^2.0.0
+        version: 2.0.0
       '@tanstack/react-query':
         specifier: ^5.103.2
         version: 5.103.2(react@19.3.0)

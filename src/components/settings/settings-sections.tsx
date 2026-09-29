@@ -1,9 +1,16 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { type ReactNode, useEffect, useState } from "react";
+import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, Monitor, Moon, Plus, Sun, Trash2 } from "lucide-react";
 import { useSettings, type Motion, type Settings, type Verbosity } from "../settings-provider";
 import type { CapabilityId } from "../../lib/capabilities";
+import {
+  CodeThemeDarkSchema,
+  CodeThemeLightSchema,
+  type CodeThemeDark,
+  type CodeThemeLight,
+} from "../../lib/code-themes";
+import { codeThemeDarkLabels, codeThemeLightLabels } from "../../lib/schema-choices";
 import type { TranscriptWidth } from "../../lib/transcript-width";
 import { useTheme } from "../theme-provider";
 import { HookSetup } from "../hook-setup";
@@ -713,8 +720,72 @@ export function UsageSettings() {
   );
 }
 
+// Lazy so the Settings dialog, which the root mounts, keeps Shiki out of the entry bundle.
+const CodeThemePreview = lazy(() =>
+  import("./code-theme-preview").then((module) => ({ default: module.CodeThemePreview })),
+);
+
+const CODE_THEME_LIGHT_OPTIONS: Array<{ value: CodeThemeLight; label: string }> =
+  CodeThemeLightSchema.options.map((value) => ({ value, label: codeThemeLightLabels[value] }));
+const CODE_THEME_DARK_OPTIONS: Array<{ value: CodeThemeDark; label: string }> =
+  CodeThemeDarkSchema.options.map((value) => ({ value, label: codeThemeDarkLabels[value] }));
+
+function CodeAppearanceSection() {
+  const { settings, setSetting } = useSettings();
+
+  return (
+    <SettingsSection title="Code appearance">
+      <div data-settings-row="code-theme" className="grid grid-cols-1 gap-4 py-3 sm:grid-cols-2">
+        <div className="flex min-w-0 flex-col gap-2">
+          <ThemedCombobox
+            aria-label="Light code theme"
+            value={settings.codeThemeLight}
+            options={CODE_THEME_LIGHT_OPTIONS}
+            onValueChange={(next) => setSetting("codeThemeLight", next)}
+            className="w-full"
+          />
+          <Suspense>
+            <CodeThemePreview theme={settings.codeThemeLight} label="Light code theme preview" />
+          </Suspense>
+        </div>
+        <div className="flex min-w-0 flex-col gap-2">
+          <ThemedCombobox
+            aria-label="Dark code theme"
+            value={settings.codeThemeDark}
+            options={CODE_THEME_DARK_OPTIONS}
+            onValueChange={(next) => setSetting("codeThemeDark", next)}
+            className="w-full"
+          />
+          <Suspense>
+            <CodeThemePreview theme={settings.codeThemeDark} label="Dark code theme preview" />
+          </Suspense>
+        </div>
+      </div>
+      <SettingsRow
+        slug="code-font"
+        title="Code font"
+        description="Set a custom monospace font for code and terminal."
+      >
+        <input
+          type="text"
+          aria-label="Code font"
+          placeholder="e.g. JetBrains Mono"
+          value={settings.codeFont}
+          onChange={(event) => setSetting("codeFont", event.target.value)}
+          className="h-8 w-[220px] rounded-r6 border border-border bg-[var(--settings-field-bg)] px-3 text-body text-primary outline-none placeholder:text-[var(--settings-muted)] focus-visible:ring-2 focus-visible:ring-accent-100/40"
+        />
+      </SettingsRow>
+    </SettingsSection>
+  );
+}
+
 export function ClaudeCodeSettings() {
-  return <VerbositySection />;
+  return (
+    <>
+      <CodeAppearanceSection />
+      <VerbositySection />
+    </>
+  );
 }
 
 export function TranscriptSettings() {

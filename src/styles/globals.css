@@ -19,11 +19,16 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Not inline, so `font-mono` reads var(--font-mono) and Settings ▸ Code font can
+   override it on <html>. */
+@theme {
+  --font-mono:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, "Cascadia Code", monospace;
+}
+
 @theme inline {
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-voice: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-mono:
-    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, "Cascadia Code", monospace;
 
   /* Upstream claude.ai/code semantic surfaces and fills */
   --color-page: var(--upstream-page);

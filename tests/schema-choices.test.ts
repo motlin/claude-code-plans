@@ -25,6 +25,7 @@ import {
   ArtifactToolResultSchema,
 } from "../src/lib/artifact-schemas";
 import { ChangedFileKindSchema } from "../src/lib/changed-file-kind";
+import { CodeThemeDarkSchema, CodeThemeLightSchema } from "../src/lib/code-themes";
 import { HomeAttentionKindSchema } from "../src/lib/home-attention";
 import { NavSectionSchema } from "../src/lib/nav-sections";
 import { PaletteFilterSchema, PaletteTypeSchema } from "../src/lib/palette-tokens";
@@ -117,6 +118,8 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
   ["McpServerDetailResponse", McpServerDetailResponse],
   ["PaneLayoutStateSchema", PaneLayoutStateSchema],
   ["SettingsTabSchema", SettingsTabSchema],
+  ["CodeThemeLightSchema", CodeThemeLightSchema],
+  ["CodeThemeDarkSchema", CodeThemeDarkSchema],
   ["NavSectionSchema", NavSectionSchema],
   ["SessionMenuItemIdSchema", SessionMenuItemIdSchema],
   ["ChangedFileKindSchema", ChangedFileKindSchema],

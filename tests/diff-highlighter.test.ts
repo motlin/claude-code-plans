@@ -1,8 +1,12 @@
 import type { DiffAST } from "@git-diff-view/core";
 import { describe, expect, it, vi } from "vite-plus/test";
-import { isShikiLanguageSupported, requestLanguage } from "../src/hooks/use-shiki";
+import { isShikiLanguageSupported, requestLanguage, requestTheme } from "../src/hooks/use-shiki";
 import { EXTENSION_TO_LANGUAGE } from "../src/lib/diff-utils";
-import { resolveDiffLanguage, shikiDiffHighlighter } from "../src/lib/diff-highlighter";
+import {
+  createShikiDiffHighlighter,
+  resolveDiffLanguage,
+  shikiDiffHighlighter,
+} from "../src/lib/diff-highlighter";
 
 function summarizeStyles(ast: DiffAST) {
   const processed = shikiDiffHighlighter.processAST(ast);
@@ -68,7 +72,7 @@ describe("Shiki diff highlighter", () => {
       darkLines: summarizeStyles(darkAST),
     }).toStrictEqual({
       adapter: {
-        name: "shiki",
+        name: "shiki:claude-light:github-dark",
         type: "style",
         maximumHighlightedLines: 2000,
         ignoredFiles: [],
@@ -91,6 +95,27 @@ describe("Shiki diff highlighter", () => {
       ],
     });
   });
+  it("highlights with the chosen code theme pair and names the adapter after it", async () => {
+    await Promise.all([requestLanguage("typescript"), requestTheme("nord")]);
+    const themed = createShikiDiffHighlighter({ light: "claude-light", dark: "nord" });
+
+    expect({
+      name: themed.name,
+      darkLines: summarizeStyles(
+        themed.getAST("return answer;", "/tmp/test/example.ts", "typescript", "dark"),
+      ),
+    }).toStrictEqual({
+      name: "shiki:claude-light:nord",
+      darkLines: [
+        {
+          lineNumber: 1,
+          value: "return answer;",
+          styles: ["color:#81A1C1", "color:#D8DEE9", "color:#81A1C1"],
+        },
+      ],
+    });
+  });
+
   it("tokenizes completely even when a busy CPU starves the tokenizer's wall clock", async () => {
     await requestLanguage("typescript");
     let now = 0;

@@ -12,7 +12,14 @@ import type {
 } from "@shikijs/core";
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { useResolvedTheme } from "../components/theme-provider";
+import {
+  type CodeThemeId,
+  DEFAULT_CODE_THEMES,
+  loadCodeTheme,
+  loadedThemeOr,
+} from "../lib/code-themes";
 import { SHIKI_TOKENIZE_OPTIONS } from "../lib/shiki-tokenize-options";
+import { useCodeThemes } from "./use-code-themes";
 
 // ---------------------------------------------------------------------------
 // Singleton highlighter
@@ -21,6 +28,7 @@ import { SHIKI_TOKENIZE_OPTIONS } from "../lib/shiki-tokenize-options";
 let highlighterPromise: Promise<HighlighterCore> | null = null;
 let highlighterInstance: HighlighterCore | null = null;
 const languageLoadPromises = new Map<DynamicImportLanguageRegistration, Promise<void>>();
+const themeLoadPromises = new Map<CodeThemeId, Promise<void>>();
 
 const loadTypeScript = () => import("shiki/langs/typescript.mjs");
 const loadTsx = () => import("shiki/langs/tsx.mjs");
@@ -216,6 +224,40 @@ export function requestLanguage(language: string): Promise<void> {
   return languageLoad;
 }
 
+/** Load a code theme once and notify subscribers when it becomes available. */
+export function requestTheme(theme: CodeThemeId): Promise<void> {
+  if (highlighterInstance?.getLoadedThemes().includes(theme)) return Promise.resolve();
+
+  const pendingLoad = themeLoadPromises.get(theme);
+  if (pendingLoad) return pendingLoad;
+
+  const themeLoad = Promise.all([getHighlighterInstance(), loadCodeTheme(theme)])
+    .then(async ([highlighter, registration]) => {
+      if (highlighter.getLoadedThemes().includes(theme)) return;
+      await highlighter.loadTheme(registration);
+      notify();
+    })
+    .finally(() => {
+      themeLoadPromises.delete(theme);
+    });
+  themeLoadPromises.set(theme, themeLoad);
+  return themeLoad;
+}
+
+/**
+ * The chosen theme if the highlighter has it, else the mode's default while
+ * the chosen one loads (subscribers are notified when it arrives).
+ */
+export function themeOrRequest<T extends CodeThemeId>(
+  highlighter: HighlighterCore,
+  theme: T,
+  fallback: T,
+): T {
+  const usable = loadedThemeOr(highlighter, theme, fallback);
+  if (usable !== theme) void requestTheme(theme);
+  return usable;
+}
+
 // Kick off loading on first import so the highlighter is ready sooner.
 if (typeof window !== "undefined") {
   void getHighlighterInstance();
@@ -251,6 +293,7 @@ export function getHighlighterVersion(): number {
  */
 export function useHighlightedLines(code: string, language: string | null): ThemedToken[][] | null {
   const resolvedTheme = useResolvedTheme();
+  const codeThemes = useCodeThemes();
 
   // Subscribe to highlighter readiness via useSyncExternalStore.
   const highlighterVersion = useSyncExternalStore(subscribe, getVersion, () => 0);
@@ -264,7 +307,12 @@ export function useHighlightedLines(code: string, language: string | null): Them
     void highlighterVersion;
     if (!highlighterInstance || !language) return null;
 
-    const themeName = resolvedTheme === "dark" ? "github-dark" : "claude-light";
+    const mode = resolvedTheme === "dark" ? "dark" : "light";
+    const themeName = themeOrRequest(
+      highlighterInstance,
+      codeThemes[mode],
+      DEFAULT_CODE_THEMES[mode],
+    );
 
     try {
       const loadedLanguages = highlighterInstance.getLoadedLanguages();
@@ -279,5 +327,5 @@ export function useHighlightedLines(code: string, language: string | null): Them
     } catch {
       return null;
     }
-  }, [code, language, resolvedTheme, highlighterVersion]);
+  }, [code, language, resolvedTheme, codeThemes, highlighterVersion]);
 }

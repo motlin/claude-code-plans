@@ -8,6 +8,7 @@ import type {
   ArtifactLiveSubscriptionSchema,
 } from "./artifact-schemas";
 import type { ChangedFileKindSchema } from "./changed-file-kind";
+import type { CodeThemeDark, CodeThemeLight } from "./code-themes";
 import type { McpScopeSchema, PermissionBehaviorSchema, SkillSourceSchema } from "./api/customize";
 import type { PluginFileSchema, PluginListResponse } from "./api/plugins";
 import type {
@@ -576,6 +577,41 @@ export const settingsTabLabels = {
   setup: "Setup",
 } satisfies Record<SettingsTab, string>;
 
+/** Settings ▸ Code appearance light themes (src/lib/code-themes.ts), named as on claude.ai/code. */
+export const codeThemeLightLabels = {
+  "claude-light": "Claude Light",
+  "github-light": "GitHub Light",
+  "pierre-light": "Pierre Light",
+  "one-light": "One Light",
+  "catppuccin-latte": "Catppuccin Latte",
+  "solarized-light": "Solarized Light",
+  "vitesse-light": "Vitesse Light",
+  "min-light": "Min Light",
+  "rose-pine-dawn": "Rosé Pine Dawn",
+  "slack-ochin": "Slack Ochin",
+} satisfies Record<CodeThemeLight, string>;
+
+/** Settings ▸ Code appearance dark themes (src/lib/code-themes.ts), named as on claude.ai/code. */
+export const codeThemeDarkLabels = {
+  "github-dark": "GitHub Dark",
+  "github-dark-dimmed": "GitHub Dark Dimmed",
+  "pierre-dark": "Pierre Dark",
+  "one-dark-pro": "One Dark Pro",
+  dracula: "Dracula",
+  "dracula-soft": "Dracula Soft",
+  "catppuccin-mocha": "Catppuccin Mocha",
+  nord: "Nord",
+  "solarized-dark": "Solarized Dark",
+  "vitesse-dark": "Vitesse Dark",
+  "min-dark": "Min Dark",
+  monokai: "Monokai",
+  "tokyo-night": "Tokyo Night",
+  "night-owl": "Night Owl",
+  "rose-pine": "Rosé Pine",
+  "ayu-dark": "Ayu Dark",
+  "slack-dark": "Slack Dark",
+} satisfies Record<CodeThemeDark, string>;
+
 /** Session actions menu labels (src/lib/session-menu-items.ts), copied from claude.ai/code. */
 export const sessionMenuItemLabels = {
   "open-in": "Open in",
@@ -779,6 +815,8 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   "PaneLayoutStateSchema.root.children[].<tile>.tileId": tileIdLabels,
   "PaneLayoutStateSchema.root.direction": paneStackDirectionLabels,
   SettingsTabSchema: settingsTabLabels,
+  CodeThemeLightSchema: codeThemeLightLabels,
+  CodeThemeDarkSchema: codeThemeDarkLabels,
   NavSectionSchema: navSectionLabels,
   SessionMenuItemIdSchema: sessionMenuItemLabels,
   ChangedFileKindSchema: changedFileKindLabels,

@@ -10,6 +10,7 @@ import {
   getHighlighterVersion,
   subscribeHighlighter,
 } from "../hooks/use-shiki";
+import { useCodeThemes } from "../hooks/use-code-themes";
 import { handleCodeCopyClick } from "../lib/code-copy";
 import styles from "./markdown-article.module.css";
 
@@ -37,11 +38,14 @@ export function MarkdownArticle(props: MarkdownArticleProps) {
     () => 0,
   );
 
+  const codeThemes = useCodeThemes();
+
   const rendered = useMemo(() => {
     void highlighterVersion;
     if (props.html !== undefined) return props.html;
     return renderMarkdownWithHighlighting(props.markdown!, getHighlighterSync(), {
       typographer: props.typographer ?? false,
+      codeThemes,
       ...(props.mdLinkBase === undefined ? {} : { mdLinkBase: props.mdLinkBase }),
       ...(props.fileRefs === undefined ? {} : { fileRefs: props.fileRefs }),
     });
@@ -51,6 +55,7 @@ export function MarkdownArticle(props: MarkdownArticleProps) {
     props.typographer,
     props.mdLinkBase,
     props.fileRefs,
+    codeThemes,
     highlighterVersion,
   ]);
 

@@ -3,7 +3,8 @@ import MarkdownIt from "markdown-it";
 import type StateInline from "markdown-it/lib/rules_inline/state_inline.mjs";
 import taskLists from "markdown-it-task-lists";
 import footnote from "markdown-it-footnote";
-import { requestLanguage } from "../hooks/use-shiki";
+import { requestLanguage, themeOrRequest } from "../hooks/use-shiki";
+import { type CodeThemePair, DEFAULT_CODE_THEMES } from "./code-themes";
 import type { FileRef } from "./file-refs";
 import { COPY_ICON_SVG } from "./icon-paths";
 import { mdFileHref, resolveRelativeMdHref } from "./md-links";
@@ -22,6 +23,8 @@ interface MarkdownRenderOptions {
    * a code chip; see {@link FILE_REF_ATTR}.
    */
   fileRefs?: ReadonlyMap<string, FileRef>;
+  /** Settings ▸ Code appearance themes for fenced code; defaults when omitted. */
+  codeThemes?: CodeThemePair;
 }
 
 /** Per-render state; the MarkdownIt instances themselves are cached and shared. */
@@ -72,14 +75,9 @@ const plainInstances: Record<MarkdownVariant, MarkdownIt | null> = {
   default: null,
   typographer: null,
 };
-const highlightedInstances: Record<MarkdownVariant, MarkdownIt | null> = {
-  default: null,
-  typographer: null,
-};
-const boundHighlighters: Record<MarkdownVariant, HighlighterCore | null> = {
-  default: null,
-  typographer: null,
-};
+/** Highlighted instances keyed by variant and the code theme pair they render with. */
+const highlightedInstances = new Map<string, MarkdownIt>();
+const boundHighlighters = new Map<string, HighlighterCore>();
 
 function getMarkdownVariant(options?: MarkdownRenderOptions): MarkdownVariant {
   return options?.typographer ? "typographer" : "default";
@@ -186,10 +184,22 @@ function getHighlightedMarkdownIt(
   options?: MarkdownRenderOptions,
 ): MarkdownIt {
   const variant = getMarkdownVariant(options);
+  const chosen = options?.codeThemes ?? DEFAULT_CODE_THEMES;
+  const themes = {
+    light:
+      chosen.light === DEFAULT_CODE_THEMES.light
+        ? chosen.light
+        : themeOrRequest(highlighter, chosen.light, DEFAULT_CODE_THEMES.light),
+    dark:
+      chosen.dark === DEFAULT_CODE_THEMES.dark
+        ? chosen.dark
+        : themeOrRequest(highlighter, chosen.dark, DEFAULT_CODE_THEMES.dark),
+  };
+  const cacheKey = `${variant}:${themes.light}:${themes.dark}`;
 
   // Re-use the cached instance if the highlighter hasn't changed.
-  const cachedInstance = highlightedInstances[variant];
-  if (cachedInstance && boundHighlighters[variant] === highlighter) return cachedInstance;
+  const cachedInstance = highlightedInstances.get(cacheKey);
+  if (cachedInstance && boundHighlighters.get(cacheKey) === highlighter) return cachedInstance;
 
   const instance = MarkdownIt({
     html: false,
@@ -208,10 +218,7 @@ function getHighlightedMarkdownIt(
         return highlighter.codeToHtml(trimmed, {
           ...SHIKI_TOKENIZE_OPTIONS,
           lang: language,
-          themes: {
-            light: "claude-light",
-            dark: "github-dark",
-          },
+          themes,
           defaultColor: "light",
           cssVariablePrefix: "--shiki-",
         });
@@ -221,8 +228,8 @@ function getHighlightedMarkdownIt(
     },
   });
   applyPlugins(instance);
-  highlightedInstances[variant] = instance;
-  boundHighlighters[variant] = highlighter;
+  highlightedInstances.set(cacheKey, instance);
+  boundHighlighters.set(cacheKey, highlighter);
   return instance;
 }
 

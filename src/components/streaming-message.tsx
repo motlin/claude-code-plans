@@ -5,6 +5,7 @@ import {
   getHighlighterVersion,
   subscribeHighlighter,
 } from "../hooks/use-shiki";
+import { useCodeThemes } from "../hooks/use-code-themes";
 import { handleCodeCopyClick } from "../lib/code-copy";
 import { CHAT_COLUMN_CLASS } from "../lib/transcript-width";
 import styles from "./markdown-article.module.css";
@@ -42,10 +43,12 @@ export function StreamingMessage({
     () => 0,
   );
 
+  const codeThemes = useCodeThemes();
+
   const renderedHtml = useMemo(() => {
     void highlighterVersion;
-    return renderMarkdownWithHighlighting(text, getHighlighterSync());
-  }, [text, highlighterVersion]);
+    return renderMarkdownWithHighlighting(text, getHighlighterSync(), { codeThemes });
+  }, [text, codeThemes, highlighterVersion]);
 
   return (
     <div className={`${CHAT_COLUMN_CLASS} py-4`}>

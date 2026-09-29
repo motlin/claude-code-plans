@@ -12,7 +12,7 @@ import type { Subagent } from "../src/lib/subagents";
 
 vi.mock("../src/components/settings-provider", () => ({
   useSettings: () => ({
-    settings: { showDebug: true },
+    settings: { showDebug: true, codeThemeLight: "claude-light", codeThemeDark: "github-dark" },
   }),
 }));
 vi.mock("../src/lib/hmr-persist", () => ({

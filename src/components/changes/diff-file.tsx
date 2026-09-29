@@ -4,6 +4,7 @@ import { FileDiff } from "@pierre/diffs/react";
 import type { FileDiffOptions } from "@pierre/diffs/react";
 import { ArrowUpRight, ChevronDown, ChevronRight, FileText } from "lucide-react";
 import { type CSSProperties, useMemo, useState } from "react";
+import { useCodeThemes } from "../../hooks/use-code-themes";
 import { claudeLight } from "../../lib/claude-light-theme";
 import type { DiffStyle } from "../settings-provider";
 import { useResolvedTheme } from "../theme-provider";
@@ -11,8 +12,6 @@ import { useResolvedTheme } from "../theme-provider";
 // Register our claude.ai code theme with the library's shared highlighter so
 // the Changes pane highlights with the same Shiki themes as the transcript.
 registerCustomTheme("claude-light", () => Promise.resolve(claudeLight));
-
-const THEMES = { light: "claude-light", dark: "github-dark" } as const;
 
 /**
  * The `--diffs-*` variables upstream's Changes pane sets on its CodeView,
@@ -177,10 +176,11 @@ export function DiffFile({
     onCollapsedChange?.(!collapsed);
   };
   const resolvedTheme = useResolvedTheme();
+  const codeThemes = useCodeThemes();
 
   const options = useMemo<FileDiffOptions<undefined, undefined>>(
     () => ({
-      theme: THEMES,
+      theme: codeThemes,
       themeType: resolvedTheme,
       diffStyle,
       diffIndicators: "classic",
@@ -190,7 +190,7 @@ export function DiffFile({
       stickyHeader: true,
       collapsed,
     }),
-    [resolvedTheme, diffStyle, wordWrap, wordDiff, collapsed],
+    [codeThemes, resolvedTheme, diffStyle, wordWrap, wordDiff, collapsed],
   );
 
   return (

@@ -5,6 +5,7 @@ import {
   getHighlighterVersion,
   subscribeHighlighter,
 } from "../../hooks/use-shiki";
+import { useCodeThemes } from "../../hooks/use-code-themes";
 import { handleCodeCopyClick } from "../../lib/code-copy";
 import { CHECK_ICON_PATH, COPY_ICON_PATH } from "../../lib/icon-paths";
 import { FileRefTarget } from "../file-refs";
@@ -542,10 +543,11 @@ function InlineMarkdown({ text }: { text: string }) {
     getHighlighterVersion,
     () => 0,
   );
+  const codeThemes = useCodeThemes();
   const html = useMemo(() => {
     void highlighterVersion;
-    return renderMarkdownWithHighlighting(text, getHighlighterSync());
-  }, [text, highlighterVersion]);
+    return renderMarkdownWithHighlighting(text, getHighlighterSync(), { codeThemes });
+  }, [text, codeThemes, highlighterVersion]);
   return (
     <div
       className={markdownStyles["markdown"]}

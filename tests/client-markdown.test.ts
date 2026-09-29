@@ -7,16 +7,26 @@ import {
   looksLikeMarkdown,
 } from "../src/lib/client-markdown";
 
-const { requestLanguageMock } = vi.hoisted(() => ({
+const { requestLanguageMock, requestThemeMock } = vi.hoisted(() => ({
   requestLanguageMock: vi.fn(() => Promise.resolve()),
+  requestThemeMock: vi.fn((_theme: string) => Promise.resolve()),
 }));
 
-vi.mock("../src/hooks/use-shiki", () => ({
-  requestLanguage: requestLanguageMock,
-}));
+vi.mock("../src/hooks/use-shiki", async () => {
+  const { loadedThemeOr } = await import("../src/lib/code-themes");
+  return {
+    requestLanguage: requestLanguageMock,
+    themeOrRequest: (...args: Parameters<typeof loadedThemeOr>) => {
+      const usable = loadedThemeOr(...args);
+      if (usable !== args[1]) void requestThemeMock(args[1]);
+      return usable;
+    },
+  };
+});
 
 beforeEach(() => {
   requestLanguageMock.mockClear();
+  requestThemeMock.mockClear();
 });
 
 /** Drops the copy-button chrome the fence renderer wraps every code block in. */
@@ -320,6 +330,35 @@ describe("renderMarkdownWithHighlighting", () => {
           },
         ],
       ],
+    });
+  });
+
+  it("highlights with the chosen code themes once they are loaded, else the defaults", () => {
+    const loadedThemes = ["claude-light", "github-dark"];
+    const codeToHtml = vi.fn(() => '<pre class="shiki"><code>highlighted</code></pre>');
+    const highlighter = {
+      getLoadedLanguages: () => ["typescript"],
+      getLoadedThemes: () => loadedThemes,
+      codeToHtml,
+    } as unknown as HighlighterCore;
+    const markdown = "```typescript\nconst answer = 0;\n```";
+    const codeThemes = { light: "min-light", dark: "nord" } as const;
+
+    renderMarkdownWithHighlighting(markdown, highlighter, { codeThemes });
+    loadedThemes.push("min-light", "nord");
+    renderMarkdownWithHighlighting(markdown, highlighter, { codeThemes });
+
+    expect({
+      themes: codeToHtml.mock.calls.map(
+        (call) => (call as unknown as [string, { themes: unknown }])[1].themes,
+      ),
+      themeRequests: requestThemeMock.mock.calls,
+    }).toStrictEqual({
+      themes: [
+        { light: "claude-light", dark: "github-dark" },
+        { light: "min-light", dark: "nord" },
+      ],
+      themeRequests: [["min-light"], ["nord"]],
     });
   });
 

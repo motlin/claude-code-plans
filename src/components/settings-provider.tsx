@@ -12,6 +12,14 @@ import {
   migrateSessionListPrefs,
   type SessionListPrefs,
 } from "../lib/session-groups";
+import {
+  codeFontFamily,
+  CodeThemeDarkSchema,
+  CodeThemeLightSchema,
+  DEFAULT_CODE_THEMES,
+  type CodeThemeDark,
+  type CodeThemeLight,
+} from "../lib/code-themes";
 import { TranscriptWidthSchema, type TranscriptWidth } from "../lib/transcript-width";
 
 type SubagentView = "tree" | "gantt" | "sequence";
@@ -54,6 +62,12 @@ export interface Settings {
   transcriptWidth: TranscriptWidth;
   /** Local-only "Recent plans" and "Memories updated" home sections; off matches claude.ai/code. */
   homeShowLocalSections: boolean;
+  /** Shiki theme for code in light mode. */
+  codeThemeLight: CodeThemeLight;
+  /** Shiki theme for code in dark mode. */
+  codeThemeDark: CodeThemeDark;
+  /** Custom monospace font family for code and terminal; empty keeps the built-in stack. */
+  codeFont: string;
 
   showSummaryButton: boolean;
   // ccp preferences are browser-local; /api/settings reflects Claude's own files and is read-only.
@@ -120,6 +134,9 @@ export const DEFAULTS: Settings = {
   motion: "system",
   transcriptWidth: "narrow",
   homeShowLocalSections: false,
+  codeThemeLight: DEFAULT_CODE_THEMES.light,
+  codeThemeDark: DEFAULT_CODE_THEMES.dark,
+  codeFont: "",
 
   showSummaryButton: true,
   capabilities: DEFAULT_CAPABILITIES,
@@ -171,6 +188,9 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
   motion: "ccp-motion",
   transcriptWidth: "ccp-transcript-width",
   homeShowLocalSections: "ccp-home-show-local-sections",
+  codeThemeLight: "ccp-code-theme-light",
+  codeThemeDark: "ccp-code-theme-dark",
+  codeFont: "ccp-code-font",
   showSummaryButton: "ccp-show-summary-button",
   capabilities: "ccp-capabilities",
   activeTimeoutSec: "ccp-active-timeout",
@@ -304,6 +324,14 @@ function readStoredValue<K extends keyof Settings>(key: K): Settings[K] | undefi
     const parsed = MotionSchema.safeParse(stored);
     return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
   }
+  if (key === "codeThemeLight") {
+    const parsed = CodeThemeLightSchema.safeParse(stored);
+    return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
+  }
+  if (key === "codeThemeDark") {
+    const parsed = CodeThemeDarkSchema.safeParse(stored);
+    return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
+  }
   if (key === "transcriptWidth") {
     const parsed = TranscriptWidthSchema.safeParse(stored);
     return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
@@ -383,6 +411,13 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     if (settings.motion === "reduced") root.dataset["motion"] = "reduced";
     else delete root.dataset["motion"];
   }, [settings.motion]);
+
+  useEffect(() => {
+    const style = document.documentElement.style;
+    const family = codeFontFamily(settings.codeFont);
+    if (family === null) style.removeProperty("--font-mono");
+    else style.setProperty("--font-mono", family);
+  }, [settings.codeFont]);
 
   const setSetting = useCallback(<K extends keyof Settings>(key: K, value: Settings[K]) => {
     setSettings((previous) => {

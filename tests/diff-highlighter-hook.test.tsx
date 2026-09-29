@@ -19,7 +19,7 @@ describe("useShikiDiffHighlighter", () => {
       type: result.current.type,
       supportsTypeScript: result.current.hasRegisteredCurrentLang("typescript"),
     }).toStrictEqual({
-      name: "shiki",
+      name: "shiki:claude-light:github-dark",
       type: "style",
       supportsTypeScript: true,
     });
