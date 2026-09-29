@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, useContext, useId } from "react";
+import { createContext, type ReactNode, useContext, useEffect, useId, useRef } from "react";
 
 /*
  * Settings section and row anatomy copied from claude.ai/code: an h3 at
@@ -19,6 +19,13 @@ const SettingsRowContext = createContext<SettingsRowIds | null>(null);
 export function useSettingsRowIds(): SettingsRowIds | null {
   return useContext(SettingsRowContext);
 }
+
+/** A deep-linked row to scroll to and flash; a new object re-flashes the same row. */
+export interface SettingsFlash {
+  row: string;
+}
+
+export const SettingsFlashContext = createContext<SettingsFlash | null>(null);
 
 export function SettingsSection({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -50,6 +57,13 @@ export function SettingsRow({
   const baseId = useId();
   const titleId = `${baseId}-title`;
   const descriptionId = description === undefined ? undefined : `${baseId}-description`;
+  const flash = useContext(SettingsFlashContext);
+  const flashing = flash !== null && flash.row === slug;
+  const rowRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (flashing) rowRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [flash, flashing]);
 
   return (
     <SettingsRowContext.Provider value={{ titleId, descriptionId }}>
@@ -57,7 +71,9 @@ export function SettingsRow({
         role="group"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
+        ref={rowRef}
         data-settings-row={slug}
+        data-settings-flash={flashing ? "" : undefined}
         className={`flex items-center justify-between gap-6 py-3 ${className ?? ""}`}
       >
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">

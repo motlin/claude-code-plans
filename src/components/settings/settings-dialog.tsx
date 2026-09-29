@@ -1,7 +1,7 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { X } from "lucide-react";
-import { useCallback, useRef, type ComponentType } from "react";
+import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
 import { useShortcut } from "../../hooks/use-shortcut";
 import { settingsTabLabels } from "../../lib/schema-choices";
 import {
@@ -20,6 +20,8 @@ import {
   SetupSettings,
   TranscriptSettings,
 } from "./settings-sections";
+import { SettingsFlashContext, type SettingsFlash } from "./settings-row";
+import { SettingsSearch } from "./settings-search";
 import { UsageSettings } from "./usage-settings";
 
 const TAB_PANELS = {
@@ -51,6 +53,9 @@ export function useOpenSettings(): (tab: SettingsTab, row?: string) => void {
     [navigate],
   );
 }
+
+/** How long a deep-linked row stays flashed, as on claude.ai/code. */
+const FLASH_MS = 1500;
 
 /**
  * The upstream-shaped Settings modal. It is open exactly while the location hash
@@ -84,17 +89,20 @@ export function SettingsDialog() {
     });
   }, [navigate]);
 
-  const selectTab = (tab: SettingsTab) => {
-    void navigate({
-      to: ".",
-      search: true,
-      params: true,
-      hash: settingsHash(tab),
-      replace: true,
-      resetScroll: false,
-      hashScrollIntoView: false,
-    });
-  };
+  const selectTab = useCallback(
+    (tab: SettingsTab, row?: string) => {
+      void navigate({
+        to: ".",
+        search: true,
+        params: true,
+        hash: settingsHash(tab, row),
+        replace: true,
+        resetScroll: false,
+        hashScrollIntoView: false,
+      });
+    },
+    [navigate],
+  );
 
   const finalFocus = useCallback(() => {
     const target = returnFocusRef.current;
@@ -104,6 +112,23 @@ export function SettingsDialog() {
 
   const tab = current?.tab ?? "general";
   const Panel = TAB_PANELS[tab];
+
+  // A `#settings/<tab>/<row>` deep link flashes that row, then collapses to `#settings/<tab>`.
+  const [flash, setFlash] = useState<SettingsFlash | null>(null);
+  const deepLinkRow = current?.row ?? null;
+  const [seenDeepLinkRow, setSeenDeepLinkRow] = useState<string | null>(null);
+  if (deepLinkRow !== seenDeepLinkRow) {
+    setSeenDeepLinkRow(deepLinkRow);
+    if (deepLinkRow !== null) setFlash({ row: deepLinkRow });
+  }
+  useEffect(() => {
+    if (deepLinkRow !== null) selectTab(tab);
+  }, [selectTab, tab, deepLinkRow]);
+  useEffect(() => {
+    if (flash === null) return;
+    const timer = setTimeout(() => setFlash(null), FLASH_MS);
+    return () => clearTimeout(timer);
+  }, [flash]);
 
   return (
     <Dialog.Root
@@ -125,6 +150,7 @@ export function SettingsDialog() {
             aria-label="Settings"
             className="flex w-48 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-subtle bg-surface-1 p-2"
           >
+            <SettingsSearch onSelect={selectTab} />
             <div className="px-2.5 pt-2 pb-1 text-caption text-t6">Settings</div>
             {SettingsTabSchema.options.map((navTab) => {
               const selected = navTab === tab;
@@ -155,7 +181,9 @@ export function SettingsDialog() {
             <div className="flex-1 overflow-y-auto px-8 pt-6 pb-8">
               <h2 className="pr-10 text-lg font-semibold">{settingsTabLabels[tab]}</h2>
               <div className="mt-6 space-y-6">
-                <Panel />
+                <SettingsFlashContext.Provider value={flash}>
+                  <Panel />
+                </SettingsFlashContext.Provider>
               </div>
             </div>
           </div>

@@ -582,6 +582,27 @@
   --upstream-leading-body: var(--transcript-leading, 20px);
 }
 
+/* Settings search deep link (#settings/<tab>/<row>): upstream flashes the row with a warm tint
+   and underlines its title for 1.5s. */
+[data-settings-flash] {
+  animation: settings-row-flash 1.5s ease-out;
+}
+
+[data-settings-flash] .settings-row-title {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@keyframes settings-row-flash {
+  0%,
+  40% {
+    background-color: rgb(217 119 87 / 0.14);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
 /* Settings ▸ General ▸ Motion: Reduced. The settings provider sets html[data-motion=reduced];
    it stops pulsing and pinging indicators and every transition regardless of the OS preference. */
 html[data-motion="reduced"] *,
