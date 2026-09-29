@@ -12,6 +12,7 @@ import {
   migrateSessionListPrefs,
   type SessionListPrefs,
 } from "../lib/session-groups";
+import { TranscriptWidthSchema, type TranscriptWidth } from "../lib/transcript-width";
 
 type SubagentView = "tree" | "gantt" | "sequence";
 
@@ -43,6 +44,8 @@ export interface Settings {
 
   chromeHidden: boolean;
   statusFooterVisible: boolean;
+  /** The transcript and composer column measure: 768, 960 or 1280px. */
+  transcriptWidth: TranscriptWidth;
 
   showSummaryButton: boolean;
   // ccp preferences are browser-local; /api/settings reflects Claude's own files and is read-only.
@@ -103,6 +106,7 @@ export const DEFAULTS: Settings = {
 
   chromeHidden: false,
   statusFooterVisible: true,
+  transcriptWidth: "narrow",
 
   showSummaryButton: true,
   capabilities: DEFAULT_CAPABILITIES,
@@ -150,6 +154,7 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
   defaultSubagentView: "ccp-subagent-view",
   chromeHidden: "ccp-chrome-hidden",
   statusFooterVisible: "ccp-status-footer",
+  transcriptWidth: "ccp-transcript-width",
   showSummaryButton: "ccp-show-summary-button",
   capabilities: "ccp-capabilities",
   activeTimeoutSec: "ccp-active-timeout",
@@ -258,6 +263,10 @@ function readStoredValue<K extends keyof Settings>(key: K): Settings[K] | undefi
   }
   if (key === "diffStyle") {
     const parsed = DiffStyleSchema.safeParse(stored);
+    return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
+  }
+  if (key === "transcriptWidth") {
+    const parsed = TranscriptWidthSchema.safeParse(stored);
     return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
   }
   if (Array.isArray(defaultValue)) {

@@ -1,0 +1,72 @@
+import { ChevronDown } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { CHAT_COLUMN_CLASS } from "../lib/transcript-width";
+import { findScrollContainer } from "./transcript-history-loader";
+
+/** How far above the end the reader must be before the pill appears. */
+const AWAY_FROM_BOTTOM_PIXELS = 100;
+
+function useScrollToBottom(anchorRef: RefObject<HTMLElement | null>) {
+  const [awayFromBottom, setAwayFromBottom] = useState(false);
+  const scrollerRef = useRef<Element | null>(null);
+
+  useEffect(() => {
+    const scroller = findScrollContainer(anchorRef.current);
+    scrollerRef.current = scroller;
+    function check() {
+      const distance = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight;
+      setAwayFromBottom(distance > AWAY_FROM_BOTTOM_PIXELS);
+    }
+    check();
+    scroller.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("resize", check, { passive: true });
+    return () => {
+      scroller.removeEventListener("scroll", check);
+      window.removeEventListener("resize", check);
+      scrollerRef.current = null;
+    };
+  }, [anchorRef]);
+
+  const scrollToBottom = useCallback(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    scroller.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" });
+  }, []);
+
+  return { awayFromBottom, scrollToBottom };
+}
+
+/**
+ * The bottom of the chat tile, modelled on claude.ai/code's composer dock: one
+ * column on the transcript's measure holding the scroll-to-bottom pill and the
+ * composer. The pill sits 32px above the dock, centered, and fades in once the
+ * reader is away from the end of the transcript.
+ */
+export function SessionDock({
+  anchorRef,
+  children,
+}: {
+  anchorRef: RefObject<HTMLElement | null>;
+  children?: ReactNode;
+}) {
+  const { awayFromBottom, scrollToBottom } = useScrollToBottom(anchorRef);
+
+  return (
+    <div className={`${CHAT_COLUMN_CLASS} relative flex flex-col gap-1.5`}>
+      <button
+        type="button"
+        aria-label="Scroll to bottom"
+        aria-hidden={awayFromBottom ? undefined : true}
+        inert={!awayFromBottom}
+        tabIndex={awayFromBottom ? 0 : -1}
+        onClick={scrollToBottom}
+        className={`absolute -top-8 left-1/2 -translate-x-1/2 z-[1] inline-flex h-6 items-center gap-1 rounded px-1 bg-surface-popover text-secondary shadow-panel-sm hover:text-primary cursor-pointer transition-opacity duration-150 ${
+          awayFromBottom ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        <ChevronDown className="h-3 w-3" aria-hidden="true" />
+      </button>
+      {children}
+    </div>
+  );
+}

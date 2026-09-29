@@ -78,6 +78,7 @@ import type { SummarySegment } from "../lib/session-utils";
 import { failedDescriptionLabel, toolLabel } from "../lib/tool-labels";
 import { InlinePathImages, SESSION_IMAGE_CLASS_NAME } from "./inline-path-images";
 import { findScrollContainer } from "./transcript-history-loader";
+import { CHAT_COLUMN_CLASS } from "../lib/transcript-width";
 import {
   jumpToMessage,
   TRANSCRIPT_JUMP_REQUEST_EVENT,
@@ -358,7 +359,7 @@ export const SessionChat = React.memo(function SessionChat({
 
   return (
     <TranscriptModeContext.Provider value={transcriptMode}>
-      <div ref={containerRef} className="mx-auto w-full max-w-3xl px-8 pt-4 pb-4 text-body">
+      <div ref={containerRef} className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body`}>
         {summary !== null && summary !== "" && (
           <p
             data-testid="session-summary-row"

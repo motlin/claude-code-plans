@@ -1,7 +1,7 @@
 import { useElementScrollRestoration, useLocation } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUp, ArrowDown, Maximize2, Minimize2 } from "lucide-react";
+import { Maximize2, Minimize2 } from "lucide-react";
 import { SessionChat } from "./session-chat";
 import { Composer } from "./composer";
 import { StreamingMessage } from "./streaming-message";
@@ -41,6 +41,8 @@ import { TranscriptHistoryLoader, findScrollContainer } from "./transcript-histo
 import { Tooltip } from "./ui/tooltip";
 import { SessionPaneControls } from "./view-options-menu";
 import { ViewportPortal } from "./viewport-portal";
+import { SessionDock } from "./session-dock";
+import { transcriptWidthStyle } from "../lib/transcript-width";
 import { useChatStream } from "../hooks/use-chat-stream";
 import { useShortcutKeys } from "../hooks/use-shortcut";
 import {
@@ -79,78 +81,18 @@ import { createSessionCommands } from "../lib/session-commands";
 const TRANSCRIPT_SCROLL_CONTAINER_CLASSES =
   "h-full overflow-y-auto overflow-x-hidden [contain:strict] [overflow-anchor:none] [scrollbar-gutter:stable_both_edges]";
 
-function useScrollButtons(anchorRef: React.RefObject<HTMLElement | null>) {
-  const [showUp, setShowUp] = useState(false);
-  const [showDown, setShowDown] = useState(false);
-  const scrollerRef = useRef<Element | null>(null);
-
+/** Marks the element that scrolls the transcript as the contained, virtualized scroller. */
+function useTranscriptScrollContainment(anchorRef: React.RefObject<HTMLElement | null>) {
   useEffect(() => {
     const scroller = findScrollContainer(anchorRef.current);
-    scrollerRef.current = scroller;
     const addedClasses = TRANSCRIPT_SCROLL_CONTAINER_CLASSES.split(" ").filter(
       (className) => !scroller.classList.contains(className),
     );
     scroller.classList.add(...addedClasses);
-    function check() {
-      setShowUp(scroller.scrollTop > 300);
-      setShowDown(scroller.scrollTop + scroller.clientHeight < scroller.scrollHeight - 300);
-    }
-    check();
-    scroller.addEventListener("scroll", check, { passive: true });
-    window.addEventListener("resize", check, { passive: true });
     return () => {
-      scroller.removeEventListener("scroll", check);
-      window.removeEventListener("resize", check);
       scroller.classList.remove(...addedClasses);
-      scrollerRef.current = null;
     };
   }, [anchorRef]);
-
-  const scrollTo = useCallback((position: "start" | "end") => {
-    const scroller = scrollerRef.current;
-    if (!scroller) return;
-    scroller.scrollTo({
-      top: position === "start" ? 0 : scroller.scrollHeight,
-      behavior: "smooth",
-    });
-  }, []);
-
-  return { showUp, showDown, scrollTo };
-}
-
-function FloatingScrollButtons({ anchorRef }: { anchorRef: React.RefObject<HTMLElement | null> }) {
-  const { showUp, showDown, scrollTo } = useScrollButtons(anchorRef);
-
-  return (
-    <ViewportPortal>
-      <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-20">
-        <button
-          type="button"
-          onClick={() => scrollTo("start")}
-          className="h-9 w-9 rounded-full bg-surface-0 border border-border shadow-md flex items-center justify-center text-t6 hover:text-primary hover:bg-surface-0/80 transition-all cursor-pointer"
-          style={{
-            opacity: showUp ? 1 : 0,
-            pointerEvents: showUp ? "auto" : "none",
-          }}
-          title="Scroll to top"
-        >
-          <ArrowUp className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={() => scrollTo("end")}
-          className="h-9 w-9 rounded-full bg-surface-0 border border-border shadow-md flex items-center justify-center text-t6 hover:text-primary hover:bg-surface-0/80 transition-all cursor-pointer"
-          style={{
-            opacity: showDown ? 1 : 0,
-            pointerEvents: showDown ? "auto" : "none",
-          }}
-          title="Scroll to bottom"
-        >
-          <ArrowDown className="h-4 w-4" />
-        </button>
-      </div>
-    </ViewportPortal>
-  );
 }
 
 interface SessionPromptBehavior {
@@ -332,6 +274,7 @@ interface SessionViewProps {
 
 function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionViewProps) {
   const scrollAnchorRef = useRef<HTMLDivElement>(null);
+  useTranscriptScrollContainment(scrollAnchorRef);
   const initialScrollKey = useLocation({
     select: (location) => location.state.__TSR_key ?? location.href,
   });
@@ -557,7 +500,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
   }
 
   return (
-    <div ref={sessionViewRef}>
+    <div ref={sessionViewRef} style={transcriptWidthStyle(settings.transcriptWidth)}>
       <TileHost sessionId={sessionId} onExpandWithoutPane={toggleChromeHidden}>
         <FilesPaneShortcut />
         <ChangesPaneShortcut />
@@ -685,8 +628,6 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
           />
         )}
 
-        <FloatingScrollButtons anchorRef={scrollAnchorRef} />
-
         <ViewportPortal>
           <JumpTargetProvider value={jumpTargetWindow}>
             {linksDrawerState.open && sessionLinks.totalCount > 0 && (
@@ -701,45 +642,49 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
           </JumpTargetProvider>
         </ViewportPortal>
 
-        {/* Sticky footer: chat input + status bar */}
-        {((!chromeHidden && data.projectPath) || statusline) && (
-          <div className="sticky bottom-0 z-10 -mx-4 -mb-8 sm:-mx-8">
-            {!chromeHidden && data.projectPath && (
-              <div className="bg-surface-2 px-4 pt-2 pb-3 sm:px-8">
-                <div className="mx-auto w-full max-w-[768px]">
-                  <Composer
-                    variant="session"
-                    draftKey={sessionId}
-                    onSend={(prompt) =>
-                      routeSessionPrompt(
-                        promptBehavior.usesHerdr,
-                        sessionId,
-                        prompt,
-                        liveHerdrPrompt.send,
-                        chatStream.send,
-                      )
-                    }
-                    onCancel={chatStream.cancel}
-                    isStreaming={!promptBehavior.usesHerdr && chatStream.state.isStreaming}
-                    disabled={promptBehavior.disabled || liveHerdrPrompt.state.isPending}
-                    deliveryHint={promptBehavior.deliveryHint}
-                    chin={composerChin}
-                  />
-                </div>
-              </div>
-            )}
-            {statusline && (
-              <StatusFooter
-                data={statusline}
-                gitBranch={data.gitBranch}
-                gitSha={data.gitSha}
-                gitClean={data.gitClean}
-                messageCount={data.messageCount}
-                pendingTaskCount={data.pendingTaskCount}
-              />
-            )}
+        {/* Sticky footer: the composer dock + status bar */}
+        <div className="sticky bottom-0 z-10 -mx-4 -mb-8 sm:-mx-8">
+          <div
+            className={
+              !chromeHidden && data.projectPath
+                ? "bg-surface-2 px-4 pt-2 pb-3 sm:px-8"
+                : "px-4 sm:px-8"
+            }
+          >
+            <SessionDock anchorRef={scrollAnchorRef}>
+              {!chromeHidden && data.projectPath && (
+                <Composer
+                  variant="session"
+                  draftKey={sessionId}
+                  onSend={(prompt) =>
+                    routeSessionPrompt(
+                      promptBehavior.usesHerdr,
+                      sessionId,
+                      prompt,
+                      liveHerdrPrompt.send,
+                      chatStream.send,
+                    )
+                  }
+                  onCancel={chatStream.cancel}
+                  isStreaming={!promptBehavior.usesHerdr && chatStream.state.isStreaming}
+                  disabled={promptBehavior.disabled || liveHerdrPrompt.state.isPending}
+                  deliveryHint={promptBehavior.deliveryHint}
+                  chin={composerChin}
+                />
+              )}
+            </SessionDock>
           </div>
-        )}
+          {statusline && (
+            <StatusFooter
+              data={statusline}
+              gitBranch={data.gitBranch}
+              gitSha={data.gitSha}
+              gitClean={data.gitClean}
+              messageCount={data.messageCount}
+              pendingTaskCount={data.pendingTaskCount}
+            />
+          )}
+        </div>
       </TileHost>
     </div>
   );

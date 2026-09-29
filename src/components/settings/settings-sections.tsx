@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, Monitor, Moon, Plus, Sun, Trash2 } from "lucide-react";
 import { useSettings, type Settings, type Verbosity } from "../settings-provider";
 import type { CapabilityId } from "../../lib/capabilities";
+import type { TranscriptWidth } from "../../lib/transcript-width";
 import { useTheme } from "../theme-provider";
 import { HookSetup } from "../hook-setup";
 import { SegmentedControl } from "./segmented-control";
@@ -239,6 +240,30 @@ const VERBOSITY_PRESETS: ReadonlyArray<{
     description: "Show tools, thinking, hooks, and system content",
   },
 ];
+
+const TRANSCRIPT_WIDTH_OPTIONS: Array<{ value: TranscriptWidth; label: string }> = [
+  { value: "narrow", label: "Narrow" },
+  { value: "medium", label: "Medium" },
+  { value: "wide", label: "Wide" },
+];
+
+function TranscriptWidthRow() {
+  const { settings, setSetting } = useSettings();
+
+  return (
+    <SettingsRow
+      slug="transcript-width"
+      title="Transcript width"
+      description="Maximum width of the transcript and composer columns."
+    >
+      <SegmentedControl
+        value={settings.transcriptWidth}
+        options={TRANSCRIPT_WIDTH_OPTIONS}
+        onValueChange={(next) => setSetting("transcriptWidth", next)}
+      />
+    </SettingsRow>
+  );
+}
 
 function VerbositySection() {
   const { settings, setVerbosity } = useSettings();
@@ -554,6 +579,7 @@ export function GeneralSettings() {
     <>
       <SettingsSection title="Appearance">
         <ThemeRow />
+        <TranscriptWidthRow />
         <ToggleRow
           label="Hide chrome"
           description="Hide the sidebar and header for a focused view"

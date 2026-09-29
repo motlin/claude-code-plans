@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { fetchEarlierTranscript } from "../lib/api/sessions";
+import { CHAT_COLUMN_CLASS } from "../lib/transcript-width";
 
 /**
  * The element that actually scrolls above `node`. The app scrolls `<main>`, not
@@ -141,7 +142,7 @@ export function TranscriptHistoryLoader({ sessionId, startIndex }: TranscriptHis
     <div
       ref={sentinelRef}
       data-testid="transcript-history-loader"
-      className="mx-auto flex w-full max-w-3xl flex-col items-center gap-1 px-8 pt-4 text-xs text-t6"
+      className={`${CHAT_COLUMN_CLASS} flex flex-col items-center gap-1 pt-4 text-xs text-t6`}
     >
       <button
         type="button"

@@ -143,7 +143,7 @@ describe("SessionChat body typography", () => {
         extractBlock(styles, "@theme inline"),
         "--color-assistant-secondary",
       ),
-      sessionColumnClassName: findClassName(userHtml, "max-w-3xl"),
+      sessionColumnClassName: findClassName(userHtml, "pt-4 pb-4 text-body"),
       userBubbleClassName: findClassName(userHtml, "user-message-bubble"),
       assistantProseClassName: findClassName(assistantHtml, "relative min-w-0 text-body"),
       streamingBubbleClassName: findClassName(streamingHtml, "user-message-bubble"),
@@ -155,7 +155,8 @@ describe("SessionChat body typography", () => {
       secondaryTextColor: "var(--upstream-text-secondary)",
       legacyPrimaryTextColor: null,
       legacySecondaryTextColor: null,
-      sessionColumnClassName: "mx-auto w-full max-w-3xl px-8 pt-4 pb-4 text-body",
+      sessionColumnClassName:
+        "mx-auto w-full max-w-[calc(var(--max-content-width,768px)+64px)] px-8 pt-4 pb-4 text-body",
       userBubbleClassName:
         "user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text",
       assistantProseClassName: "relative min-w-0 text-body text-primary",

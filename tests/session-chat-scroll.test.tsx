@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { SessionChat } from "../src/components/session-chat";
 import { jumpToMessage } from "../src/lib/jump-to-message";
 import type { SessionLine } from "../src/lib/sessions";
+import { CHAT_COLUMN_CLASS } from "../src/lib/transcript-width";
 
 vi.mock("../src/components/settings-provider", () => ({
   useSettings: () => ({ settings: { showDebug: false } }),
@@ -119,6 +120,23 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
+});
+
+describe("SessionChat column measure", () => {
+  it("lays the transcript out on the chat column shared with the composer dock", () => {
+    const view = render(
+      <SessionChat
+        sessionId="session-50"
+        shouldScrollToEnd={false}
+        lines={messages(2)}
+        toolResultMap={new Map()}
+      />,
+    );
+
+    expect(view.container.firstElementChild?.className).toBe(
+      `${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body`,
+    );
+  });
 });
 
 describe("SessionChat initial scrolling", () => {

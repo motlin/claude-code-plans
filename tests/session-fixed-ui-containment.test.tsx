@@ -163,7 +163,7 @@ afterEach(() => {
 });
 
 describe("fixed-position session UI and the contained transcript scroller", () => {
-  it("renders the drawer and scroll buttons outside the [contain:strict] scroller", async () => {
+  it("keeps fixed UI outside the [contain:strict] scroller and docks the scroll pill in-flow", async () => {
     vi.stubGlobal("EventSource", TestEventSource);
     vi.stubGlobal("localStorage", new FakeStorage());
     vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
@@ -179,25 +179,32 @@ describe("fixed-position session UI and the contained transcript scroller", () =
     });
 
     const drawer = screen.getByRole("complementary", { name: /links/i });
-    const scrollToTop = screen.getByTitle("Scroll to top");
+    const scrollPill = screen.getByLabelText("Scroll to bottom", { selector: "button" });
     const containedElements = [...document.querySelectorAll("*")].filter((element) =>
       element.classList.contains("[contain:strict]"),
+    );
+    const fixedInsideContained = containedElements.flatMap((element) =>
+      [...element.querySelectorAll("*")].filter((descendant) =>
+        descendant.classList.contains("fixed"),
+      ),
     );
 
     expect({
       containedElements,
       drawerInsideScroller: scroller.contains(drawer),
-      scrollButtonsInsideScroller: scroller.contains(scrollToTop),
       drawerInsideContained: containedElements.some((element) => element.contains(drawer)),
-      scrollButtonsInsideContained: containedElements.some((element) =>
-        element.contains(scrollToTop),
-      ),
+      fixedInsideContained,
+      scrollPillPositioning: scrollPill.classList.contains("absolute"),
+      transcriptWidth: scrollPill
+        .closest<HTMLElement>("[style]")
+        ?.style.getPropertyValue("--max-content-width"),
     }).toStrictEqual({
       containedElements: [scroller],
       drawerInsideScroller: false,
-      scrollButtonsInsideScroller: false,
       drawerInsideContained: false,
-      scrollButtonsInsideContained: false,
+      fixedInsideContained: [],
+      scrollPillPositioning: true,
+      transcriptWidth: "768px",
     });
   });
 });
