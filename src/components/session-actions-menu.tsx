@@ -7,7 +7,6 @@ import { herdrPanesQueryOptions } from "../lib/api/herdr";
 import {
   openSessionInFinder,
   sessionOpenInQueryOptions,
-  useToggleSessionStar,
   type SessionListItem,
 } from "../lib/api/sessions";
 import { assertNever } from "../lib/assert-never";
@@ -30,6 +29,7 @@ import {
   vscodeFolderUrl,
 } from "../lib/session-open-in";
 import { forkDisabledReason } from "../lib/session-fork";
+import { pin, unpin, usePins } from "../lib/pin-store";
 import { markSeen, markUnseen } from "../lib/unread-store";
 import { InlineRenameInput } from "./inline-rename-input";
 import { useHasUnseenWork } from "./session-unread-control";
@@ -185,12 +185,12 @@ function useSessionMenu(session: SessionListItem) {
   const { data: openIn } = useQuery(sessionOpenInQueryOptions(session.id));
   const cwd = openIn?.cwd ?? null;
   const bridgeSessionId = openIn?.bridgeSessionId ?? null;
-  const star = useToggleSessionStar(session.id);
+  const pins = usePins();
   const { requestRename } = useRowRename();
 
   const menuSession: SessionMenuSession = {
     title: session.title,
-    pinned: session.starred,
+    pinned: pins.isPinned(session.id),
     readState: sessionMenuReadState(session.bucket, unseen),
     archived: session.archived,
     prUrl: session.pr?.url ?? null,
@@ -206,7 +206,7 @@ function useSessionMenu(session: SessionListItem) {
     bridgeSessionId,
     prUrl: session.pr?.url ?? null,
     requestRename,
-    setPinned: (pinned) => star.mutate(pinned),
+    setPinned: (pinned) => (pinned ? pin(session.id) : unpin(session.id)),
   });
 
   return {

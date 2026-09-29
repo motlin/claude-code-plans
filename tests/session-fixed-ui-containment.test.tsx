@@ -75,7 +75,6 @@ const detail: SessionDetailData = {
   projectId: "project-test-100",
   homeRoot: "/home/alice",
   imageRoots: [],
-  starred: false,
   archived: false,
   summary: null,
   projectPath: null,

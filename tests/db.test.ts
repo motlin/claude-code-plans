@@ -37,10 +37,7 @@ import {
   getSubagentsForProject,
   getPlanProjectMappings,
   getSessionProjectPath,
-  isSessionStarred,
-  toggleStar,
-  getStarredSessionIds,
-  getStarredSessions,
+  getSessionsByIds,
   searchMessageContentDb,
   getTasksForProject,
   getOpenTasksForProject,
@@ -1200,7 +1197,6 @@ describe("indexer", () => {
       jsonl({ type: "user", cwd: "/tmp/alice/old", message: { content: "Move Alice" } }),
     );
     await fullScan(db.index, db.summaries, testDir);
-    db.index.insert(schema.starredSessions).values({ sessionId, starredAt: 946_684_800_000 }).run();
     db.summaries
       .insert(schema.summaries)
       .values({
@@ -1222,16 +1218,14 @@ describe("indexer", () => {
       })
       .from(schema.sessions)
       .get();
-    const stars = db.index.select().from(schema.starredSessions).all();
     const summaries = db.summaries.select().from(schema.summaries).all();
     const transcriptPaths = db.index
       .select({ path: schema.indexedFiles.path })
       .from(schema.indexedFiles)
       .all()
       .filter((row) => row.path.endsWith(".jsonl"));
-    expect({ session, stars, summaries, transcriptPaths }).toStrictEqual({
+    expect({ session, summaries, transcriptPaths }).toStrictEqual({
       session: { id: sessionId, projectId: newProject, filePath: newPath },
-      stars: [{ sessionId, starredAt: 946_684_800_000 }],
       summaries: [
         {
           sessionId,
@@ -1272,7 +1266,6 @@ describe("indexer", () => {
       .insert(schema.planSessions)
       .values({ planFilename: "alice-plan.md", sessionId, projectId: project })
       .run();
-    db.index.insert(schema.starredSessions).values({ sessionId, starredAt: 946_684_800_000 }).run();
     db.summaries
       .insert(schema.summaries)
       .values({
@@ -1303,7 +1296,6 @@ describe("indexer", () => {
       planSessions: db.index.select().from(schema.planSessions).all(),
       sessions: db.index.select().from(schema.sessions).all(),
       sessionSearchRows,
-      stars: db.index.select().from(schema.starredSessions).all(),
       subagents: db.index.select().from(schema.subagents).all(),
       summaries: db.summaries.select().from(schema.summaries).all(),
     }).toStrictEqual({
@@ -1312,7 +1304,6 @@ describe("indexer", () => {
       planSessions: [],
       sessions: [],
       sessionSearchRows: [],
-      stars: [],
       subagents: [],
       summaries: [],
     });
@@ -2697,7 +2688,7 @@ describe("subagents", () => {
   });
 });
 
-describe("starred sessions", () => {
+describe("getSessionsByIds", () => {
   beforeEach(() => {
     db.index
       .insert(schema.projects)
@@ -2735,45 +2726,18 @@ describe("starred sessions", () => {
       .run();
   });
 
-  it("isSessionStarred returns false for unstarred session", () => {
-    expect(isSessionStarred(db.index, "sess-1")).toBe(false);
-  });
-
-  it("toggleStar stars and unstars a session", () => {
-    const starred = toggleStar(db.index, "sess-1");
-    expect(starred).toBe(true);
-    expect(isSessionStarred(db.index, "sess-1")).toBe(true);
-
-    const unstarred = toggleStar(db.index, "sess-1");
-    expect(unstarred).toBe(false);
-    expect(isSessionStarred(db.index, "sess-1")).toBe(false);
-  });
-
-  it("getStarredSessionIds returns set of starred IDs", () => {
-    toggleStar(db.index, "sess-1");
-    toggleStar(db.index, "sess-2");
-
-    const ids = getStarredSessionIds(db.index);
-    expect(ids.size).toBe(2);
-    expect(ids.has("sess-1")).toBe(true);
-    expect(ids.has("sess-2")).toBe(true);
-  });
-
-  it("getStarredSessions returns full session entries", () => {
-    toggleStar(db.index, "sess-1");
-
-    const sessions = getStarredSessions(db.index);
+  it("returns full entries for the requested ids, newest first, skipping unknown ids", () => {
+    const sessions = getSessionsByIds(db.index, ["sess-2", "sess-missing", "sess-1"]);
     expect(
-      sessions.map((s) => ({
-        id: s.id,
-        title: s.title,
-        projectName: s.projectName,
-      })),
-    ).toStrictEqual([{ id: "sess-1", title: "Fix login", projectName: "Alpha" }]);
+      sessions.map((s) => ({ id: s.id, title: s.title, projectName: s.projectName })),
+    ).toStrictEqual([
+      { id: "sess-1", title: "Fix login", projectName: "Alpha" },
+      { id: "sess-2", title: "Add tests", projectName: "Alpha" },
+    ]);
   });
 
-  it("getStarredSessions returns empty array when none starred", () => {
-    expect(getStarredSessions(db.index)).toStrictEqual([]);
+  it("returns an empty array for no ids", () => {
+    expect(getSessionsByIds(db.index, [])).toStrictEqual([]);
   });
 });
 

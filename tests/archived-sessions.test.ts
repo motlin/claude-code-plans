@@ -8,13 +8,12 @@ import { countSessionsNeedingAttention, shouldNotify } from "../src/lib/attentio
 import { openAppDb, openTestDb, type AppDb } from "../src/lib/db/connection";
 import {
   getArchivedSessionIds,
-  getStarredSessions,
+  getSessionsByIds,
   isSessionArchived,
   listRecentSessionsFromDb,
   listSessionGroupsFromDb,
   listSessionsForProjectFromDb,
   setSessionArchived,
-  setStar,
 } from "../src/lib/db/queries";
 import * as schema from "../src/lib/db/schema";
 import { dispatchHookEvent } from "../src/lib/hook-dispatcher";
@@ -177,11 +176,9 @@ describe("list queries", () => {
     });
   });
 
-  it("starred sessions exclude archived by default", () => {
-    setStar(db.index, ALICE, true);
-    setStar(db.index, BOB, true);
+  it("sessions looked up by id exclude archived by default", () => {
     const ids = (status?: "active" | "archived" | "all") =>
-      getStarredSessions(db.index, status ? { status } : {})
+      getSessionsByIds(db.index, [ALICE, BOB], status ? { status } : {})
         .map((s) => s.id)
         .sort();
 
@@ -412,6 +409,24 @@ describe("GET list routes", () => {
     expect({ default: await ids(""), all: await ids("?status=all") }).toStrictEqual({
       default: [ALICE, CAROL],
       all: [ALICE, BOB, CAROL],
+    });
+  });
+
+  it("session lookup returns the requested ids and honours the status query parameter", async () => {
+    const ids = async (query: string) =>
+      (
+        (await get(
+          "../src/routes/api/sessions.lookup",
+          `/api/sessions/lookup?ids=${[CAROL, BOB, "session-missing"].join(",")}${query}`,
+        )) as Array<{ id: string; archived: boolean }>
+      ).map((s) => [s.id, s.archived]);
+
+    expect({ default: await ids(""), all: await ids("&status=all") }).toStrictEqual({
+      default: [[CAROL, false]],
+      all: [
+        [BOB, true],
+        [CAROL, false],
+      ],
     });
   });
 });

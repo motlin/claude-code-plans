@@ -22,6 +22,7 @@ import {
 } from "../lib/api/sessions";
 import { writeClipboardText } from "../lib/clipboard";
 import { formatModelName } from "../lib/model-name";
+import { usePins } from "../lib/pin-store";
 import { forkDisabledReason } from "../lib/session-fork";
 import { getSessionMenuItems, type SessionMenuSession } from "../lib/session-menu-items";
 import { ArchivedBadge } from "./archived-badge";
@@ -191,12 +192,13 @@ function HeaderMenuBody({
 }) {
   const { data: herdr } = useQuery(herdrPanesQueryOptions);
   const { data: openIn } = useQuery(sessionOpenInQueryOptions(sessionId));
+  const pins = usePins();
   const cwd = openIn?.cwd ?? data.cwd ?? data.projectPath;
   const bridgeSessionId = openIn?.bridgeSessionId ?? null;
   const prUrl = data.pr?.url ?? null;
   const menuSession: SessionMenuSession = {
     title,
-    pinned: data.starred,
+    pinned: pins.isPinned(sessionId),
     readState: "read",
     archived: data.archived,
     prUrl,

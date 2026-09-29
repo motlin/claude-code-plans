@@ -49,7 +49,6 @@ function recentSession(id: string, title: string, project: string, projectName: 
     projectName,
     messageCount: 1,
     gitBranch: undefined,
-    starred: false,
     archived: false,
     state: "unknown" as const,
     bucket: "done" as const,

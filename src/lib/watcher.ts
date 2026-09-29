@@ -18,7 +18,6 @@ import {
   getArchivedSessionIds,
   getSessionProjectId,
   getTasksForProject,
-  getStarredSessionIds,
 } from "./db/queries";
 import type { TaskRow } from "./db/queries";
 import { getUnseenSessionIds } from "./db/viewed-state";
@@ -167,7 +166,6 @@ function sessionSummariesEqual(a: SessionSummaryPayload, b: SessionSummaryPayloa
     a.gitBranch === b.gitBranch &&
     a.pr?.url === b.pr?.url &&
     a.projectName === b.projectName &&
-    a.starred === b.starred &&
     a.archived === b.archived &&
     a.state === b.state &&
     a.unseen === b.unseen &&
@@ -210,14 +208,13 @@ function diffAndBroadcastSessions(projectId: string): void {
   const { index } = getDb();
   // Archived sessions stay in the snapshot so archiving never reads as a removal.
   const rows = listSessionsForProjectFromDb(index, projectId, { status: "all" });
-  const starredIds = getStarredSessionIds(index);
   const unseenIds = getUnseenSessionIds(index);
   const archivedIds = getArchivedSessionIds(index);
   const next = new Map<string, SessionSummaryPayload>();
   for (const row of rows) {
     next.set(
       row.id,
-      toSessionSummaryPayload(row, starredIds.has(row.id), {
+      toSessionSummaryPayload(row, {
         unseen: unseenIds.has(row.id),
         archived: archivedIds.has(row.id),
       }),

@@ -29,7 +29,6 @@ const baseDetail: SessionDetailData = {
   projectId: "-Users-alice-projects-avalonlogs",
   homeRoot: "/Users/alice",
   imageRoots: [],
-  starred: false,
   archived: false,
   summary: null,
   projectPath: PROJECT_PATH,

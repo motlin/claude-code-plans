@@ -1585,10 +1585,6 @@ function pruneDeletedSessions(
 
     indexDb.delete(schema.subagents).where(eq(schema.subagents.sessionId, session.id)).run();
     indexDb.delete(schema.planSessions).where(eq(schema.planSessions.sessionId, session.id)).run();
-    indexDb
-      .delete(schema.starredSessions)
-      .where(eq(schema.starredSessions.sessionId, session.id))
-      .run();
     summariesDb.delete(schema.summaries).where(eq(schema.summaries.sessionId, session.id)).run();
     indexDb.run(sql`DELETE FROM message_content WHERE session_id = ${session.id}`);
     indexDb.delete(schema.sessions).where(eq(schema.sessions.id, session.id)).run();

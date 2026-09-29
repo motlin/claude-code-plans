@@ -26,7 +26,6 @@ function session(id: string, title: string, project: string, mtime: string) {
     project,
     projectName: project,
     messageCount: 4,
-    starred: false,
     archived: false,
     state: "ended",
     bucket: "done",

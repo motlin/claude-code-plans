@@ -117,7 +117,6 @@ export interface SessionSummaryPayload {
   gitBranch: string | undefined;
   /** Latest `pr-link` record; absent when the session never opened a PR. */
   pr?: SessionPrLink;
-  starred: boolean;
   /** App-side archive flag (`archived_sessions`); the JSONL is never touched. */
   archived: boolean;
   state: SessionSummaryState;

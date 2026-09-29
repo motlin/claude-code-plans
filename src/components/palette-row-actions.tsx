@@ -2,8 +2,8 @@ import { Ellipsis } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef } from "react";
 
 import { useSessionArchive } from "../hooks/use-session-archive";
-import { useToggleSessionStar } from "../lib/api/sessions";
 import { assertNever } from "../lib/assert-never";
+import { pin, unpin, usePins } from "../lib/pin-store";
 import { relativeBucket } from "../lib/search-text";
 import { copySessionLink, sessionUrl } from "../lib/session-open-in";
 import {
@@ -18,12 +18,11 @@ import { useHasUnseenWork } from "./session-unread-control";
 import { useToast } from "./toast";
 import { Shortcut } from "./ui/shortcut";
 
-/** A session row the → card can act on; `starred`/`archived`/`bucket` are unknown for server-only hits. */
+/** A session row the → card can act on; `archived`/`bucket` are unknown for server-only hits. */
 export interface PaletteCardSession {
   id: string;
   title: string;
   mtime: string;
-  starred: boolean | undefined;
   archived: boolean | undefined;
   bucket: SessionBucket | undefined;
 }
@@ -53,17 +52,21 @@ export function PaletteRowActionsCard({
 }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const unseen = useHasUnseenWork(session.id);
-  const star = useToggleSessionStar(session.id);
+  const pins = usePins();
   const toast = useToast();
   const setArchived = useSessionArchive(session.id);
 
-  const capabilities = new Set<SessionMenuCapability>(["readState", "ackAwaiting", "copyLink"]);
-  if (session.starred !== undefined) capabilities.add("pin");
+  const capabilities = new Set<SessionMenuCapability>([
+    "pin",
+    "readState",
+    "ackAwaiting",
+    "copyLink",
+  ]);
   if (session.archived !== undefined) capabilities.add("archive");
   const sessionItems = getSessionMenuItems(
     {
       title: session.title,
-      pinned: session.starred ?? false,
+      pinned: pins.isPinned(session.id),
       readState: sessionMenuReadState(session.bucket, unseen),
       archived: session.archived ?? false,
       prUrl: null,
@@ -100,7 +103,8 @@ export function PaletteRowActionsCard({
         return;
       case "pin":
       case "unpin":
-        star.mutate(id === "pin");
+        if (id === "pin") pin(session.id);
+        else unpin(session.id);
         return;
       case "mark-read":
       case "mark-completed":

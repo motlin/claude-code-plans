@@ -31,7 +31,6 @@ const SessionListItemSchema = z.object({
   messageCount: z.number(),
   gitBranch: z.string().optional(),
   pr: SessionPrLinkSchema.optional(),
-  starred: z.boolean(),
   archived: z.boolean(),
   state: SessionSummaryStateSchema,
   bucket: SessionBucketSchema,
@@ -56,7 +55,8 @@ const SessionGroupSummarySchema = z.object({
 export type ProjectSessionGroup = z.infer<typeof SessionGroupSummarySchema>;
 export const GroupedSessionsResponse = z.array(SessionGroupSummarySchema);
 
-export const StarredSessionsResponse = z.array(SessionListItemSchema);
+/** Session rows looked up by id, e.g. this browser's pins; unknown ids are omitted. */
+export const SessionsByIdsResponse = z.array(SessionListItemSchema);
 
 export const SessionTitlesResponse = z.object({
   titles: z.record(z.string(), z.string()),
@@ -82,7 +82,6 @@ export const SessionDetailResponse = z
     projectId: z.string(),
     homeRoot: z.string(),
     imageRoots: z.array(z.string()),
-    starred: z.boolean(),
     archived: z.boolean(),
     summary: z.string().nullable(),
     projectPath: z.string().nullable(),
@@ -290,7 +289,7 @@ export const sessionQueryKeys = {
   groupedLists: () => GROUPED_SESSIONS_QUERY_ROOT,
   grouped: (perProject: number = SESSION_GROUP_PAGE_SIZE) =>
     [...GROUPED_SESSIONS_QUERY_ROOT, perProject] as const,
-  starred: () => [...SESSION_QUERY_ROOT, "starred"] as const,
+  byIds: (ids: readonly string[]) => [...SESSION_QUERY_ROOT, "by-ids", [...ids].sort()] as const,
   titles: (ids: string[]) => [...SESSION_QUERY_ROOT, "titles", [...ids].sort()] as const,
   activeLists: () => ACTIVE_SESSIONS_QUERY_ROOT,
   active: (activeTimeoutMs?: number) => [...ACTIVE_SESSIONS_QUERY_ROOT, activeTimeoutMs] as const,
@@ -342,12 +341,19 @@ export const groupedSessionsQueryOptions = (perProject: number = SESSION_GROUP_P
     gcTime: Infinity,
   });
 
-export const starredSessionsQueryOptions = queryOptions({
-  queryKey: sessionQueryKeys.starred(),
-  queryFn: () => apiFetch("/api/sessions/starred", StarredSessionsResponse),
-  staleTime: Infinity,
-  gcTime: Infinity,
-});
+export const sessionsByIdsQueryOptions = (ids: readonly string[]) =>
+  queryOptions({
+    queryKey: sessionQueryKeys.byIds(ids),
+    queryFn: () =>
+      ids.length === 0
+        ? Promise.resolve([])
+        : apiFetch(
+            `/api/sessions/lookup?ids=${encodeURIComponent([...ids].sort().join(","))}`,
+            SessionsByIdsResponse,
+          ),
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
 
 export const sessionTitlesQueryOptions = (ids: string[]) =>
   queryOptions({
@@ -521,7 +527,6 @@ export const sessionSubagentsQueryOptions = (id: string) =>
     gcTime: Infinity,
   });
 
-export const StarredMutationResponse = z.object({ starred: z.boolean() });
 export const ArchivedMutationResponse = z.object({ archived: z.boolean() });
 
 /** Set or clear the app-side archive flag, then refetch every list and the session's detail. */
@@ -568,21 +573,6 @@ export const useRenameSessionMutation = (sessionId: string) => {
       ]) {
         void qc.invalidateQueries({ queryKey });
       }
-    },
-  });
-};
-export const useToggleSessionStar = (sessionId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (starred: boolean) =>
-      apiFetch(`/api/sessions/${encodeURIComponent(sessionId)}/starred`, StarredMutationResponse, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ starred }),
-      }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: sessionQueryKeys.all() });
-      void qc.invalidateQueries({ queryKey: sessionQueryKeys.detail(sessionId) });
     },
   });
 };

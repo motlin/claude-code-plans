@@ -289,7 +289,6 @@ describe("dispatchHookEvent", () => {
         // no transcript was indexed, so the canonical count is 0.
         messageCount: 0,
         gitBranch: undefined,
-        starred: false,
         archived: false,
         state: "unknown",
         bucket: "done",
@@ -349,7 +348,6 @@ describe("dispatchHookEvent", () => {
         // no transcript was indexed, so the canonical count is 0.
         messageCount: 0,
         gitBranch: undefined,
-        starred: false,
         archived: false,
         state: "ended",
         bucket: "done",

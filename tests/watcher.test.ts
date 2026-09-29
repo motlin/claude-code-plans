@@ -252,7 +252,7 @@ describe("handleFileChange file content", () => {
 
 describe("toSessionSummaryPayload", () => {
   it("serializes dates as ISO strings and preserves core fields", () => {
-    const payload = toSessionSummaryPayload(makeSession(), false);
+    const payload = toSessionSummaryPayload(makeSession());
 
     expect(payload).toStrictEqual({
       id: "sess-1",
@@ -264,7 +264,6 @@ describe("toSessionSummaryPayload", () => {
       projectName: "Project 1",
       messageCount: 3,
       gitBranch: undefined,
-      starred: false,
       archived: false,
       state: "ended",
       bucket: "done",
@@ -278,10 +277,10 @@ describe("toSessionSummaryPayload", () => {
     markSessionActive("sess-1", { cwd: "/tmp/test/project-1" });
 
     try {
-      const unreportedState = toSessionSummaryPayload(makeSession(), false).state;
+      const unreportedState = toSessionSummaryPayload(makeSession()).state;
 
       setSessionState("sess-1", "working");
-      const reportedState = toSessionSummaryPayload(makeSession(), false).state;
+      const reportedState = toSessionSummaryPayload(makeSession()).state;
 
       expect({ unreportedState, reportedState }).toStrictEqual({
         unreportedState: "unknown",
@@ -291,55 +290,41 @@ describe("toSessionSummaryPayload", () => {
       markSessionEnded("sess-1");
     }
   });
-
-  it("reflects the starred flag from the caller", () => {
-    const payload = toSessionSummaryPayload(makeSession(), true);
-    expect(payload.starred).toBe(true);
-  });
 });
 
 describe("sessionSummariesEqual", () => {
   it("returns true for identical summaries", () => {
-    const a = toSessionSummaryPayload(makeSession(), false);
-    const b = toSessionSummaryPayload(makeSession(), false);
+    const a = toSessionSummaryPayload(makeSession());
+    const b = toSessionSummaryPayload(makeSession());
     expect(sessionSummariesEqual(a, b)).toBe(true);
   });
 
   it("returns false when the title changes", () => {
-    const a = toSessionSummaryPayload(makeSession(), false);
-    const b = toSessionSummaryPayload(makeSession({ title: "Different" }), false);
+    const a = toSessionSummaryPayload(makeSession());
+    const b = toSessionSummaryPayload(makeSession({ title: "Different" }));
     expect(sessionSummariesEqual(a, b)).toBe(false);
   });
 
   it("returns false when the mtime changes", () => {
-    const a = toSessionSummaryPayload(makeSession(), false);
-    const b = toSessionSummaryPayload(
-      makeSession({ mtime: new Date("2000-01-01T00:00:00.000Z") }),
-      false,
-    );
+    const a = toSessionSummaryPayload(makeSession());
+    const b = toSessionSummaryPayload(makeSession({ mtime: new Date("2000-01-01T00:00:00.000Z") }));
     expect(sessionSummariesEqual(a, b)).toBe(false);
   });
 
   it("returns false when messageCount changes (new message appended)", () => {
-    const a = toSessionSummaryPayload(makeSession(), false);
-    const b = toSessionSummaryPayload(makeSession({ messageCount: 4 }), false);
-    expect(sessionSummariesEqual(a, b)).toBe(false);
-  });
-
-  it("returns false when starred changes", () => {
-    const a = toSessionSummaryPayload(makeSession(), false);
-    const b = toSessionSummaryPayload(makeSession(), true);
+    const a = toSessionSummaryPayload(makeSession());
+    const b = toSessionSummaryPayload(makeSession({ messageCount: 4 }));
     expect(sessionSummariesEqual(a, b)).toBe(false);
   });
 
   it("returns false when archived changes", () => {
-    const a = toSessionSummaryPayload(makeSession(), false);
-    const b = toSessionSummaryPayload(makeSession(), false, { archived: true });
+    const a = toSessionSummaryPayload(makeSession());
+    const b = toSessionSummaryPayload(makeSession(), { archived: true });
     expect(sessionSummariesEqual(a, b)).toBe(false);
   });
 
   it("returns false when the fused activity state changes", () => {
-    const summary = toSessionSummaryPayload(makeSession(), false);
+    const summary = toSessionSummaryPayload(makeSession());
     const waitingSummary = {
       ...summary,
       state: "waiting" as const,

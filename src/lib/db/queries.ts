@@ -967,70 +967,20 @@ export function getSubagentsForProject(db: IndexDb, projectId: string): DbSubage
   return db.select().from(schema.subagents).where(eq(schema.subagents.projectId, projectId)).all();
 }
 
-export function isSessionStarred(db: IndexDb, sessionId: string): boolean {
-  const row = db
-    .select()
-    .from(schema.starredSessions)
-    .where(eq(schema.starredSessions.sessionId, sessionId))
-    .get();
-  return !!row;
-}
-
-export function toggleStar(db: IndexDb, sessionId: string): boolean {
-  const existing = db
-    .select()
-    .from(schema.starredSessions)
-    .where(eq(schema.starredSessions.sessionId, sessionId))
-    .get();
-  if (existing) {
-    db.delete(schema.starredSessions).where(eq(schema.starredSessions.sessionId, sessionId)).run();
-    return false;
-  }
-  db.insert(schema.starredSessions).values({ sessionId, starredAt: Date.now() }).run();
-  return true;
-}
-
-export function setStar(db: IndexDb, sessionId: string, starred: boolean): boolean {
-  const existing = db
-    .select()
-    .from(schema.starredSessions)
-    .where(eq(schema.starredSessions.sessionId, sessionId))
-    .get();
-  if (starred) {
-    if (!existing) {
-      db.insert(schema.starredSessions).values({ sessionId, starredAt: Date.now() }).run();
-    }
-    return true;
-  }
-  if (existing) {
-    db.delete(schema.starredSessions).where(eq(schema.starredSessions.sessionId, sessionId)).run();
-  }
-  return false;
-}
-
-export function getStarredSessionIds(db: IndexDb): Set<string> {
-  const rows = db
-    .select({ sessionId: schema.starredSessions.sessionId })
-    .from(schema.starredSessions)
-    .all();
-  return new Set(rows.map((r) => r.sessionId));
-}
-
-export function getStarredSessions(
+/** Full entries for `ids` (e.g. this browser's pins), newest first; unknown ids are skipped. */
+export function getSessionsByIds(
   db: IndexDb,
+  ids: readonly string[],
   opts: { status?: SessionStatusFilter } = {},
 ): SessionEntry[] {
+  if (ids.length === 0) return [];
   const projectNames = getProjectNameMap(db);
 
   const rows = db
-    .select({
-      session: schema.sessions,
-      starredAt: schema.starredSessions.starredAt,
-    })
-    .from(schema.starredSessions)
-    .innerJoin(schema.sessions, eq(schema.sessions.id, schema.starredSessions.sessionId))
-    .where(archiveCondition(opts.status))
-    .orderBy(desc(schema.starredSessions.starredAt))
+    .select({ session: schema.sessions })
+    .from(schema.sessions)
+    .where(and(inArray(schema.sessions.id, [...ids]), archiveCondition(opts.status)))
+    .orderBy(desc(schema.sessions.mtimeMs), asc(schema.sessions.id))
     .all();
 
   return rows.map((row) => ({

@@ -190,14 +190,6 @@ interface DurableMigration {
 
 const DURABLE_MIGRATIONS: readonly DurableMigration[] = [
   {
-    schemaVersion: 2,
-    statements: `
-CREATE TABLE IF NOT EXISTS starred_sessions (
-  session_id TEXT PRIMARY KEY,
-  starred_at INTEGER NOT NULL
-);`,
-  },
-  {
     schemaVersion: 12,
     statements: `
 CREATE TABLE IF NOT EXISTS hook_schema_drift (
@@ -246,6 +238,11 @@ CREATE TABLE IF NOT EXISTS archived_sessions (
   session_id TEXT PRIMARY KEY,
   archived_at INTEGER NOT NULL
 );`,
+  },
+  {
+    // Pins moved to per-browser storage (src/lib/pin-store.ts), like claude.ai/code.
+    schemaVersion: 34,
+    statements: `DROP TABLE IF EXISTS starred_sessions;`,
   },
 ];
 

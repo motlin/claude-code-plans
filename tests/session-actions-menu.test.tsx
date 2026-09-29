@@ -23,6 +23,8 @@ import {
   hasUnseenWork,
   syncUnseenFromSummaries,
 } from "../src/lib/unread-store";
+import { pin, readPinState } from "../src/lib/pin-store";
+import { installLocalStorage } from "./fake-storage";
 
 const SESSION_ID = "8f0c2c7e-1111-4222-8333-944445555666";
 
@@ -38,7 +40,6 @@ function listItem(
     project: "-projects-alpha",
     projectName: "alpha",
     messageCount: 4,
-    starred: false,
     archived: false,
     state: "ended",
     bucket,
@@ -149,6 +150,7 @@ function outline(menu: HTMLElement): string[] {
 const writeText = vi.fn<(text: string) => Promise<void>>();
 
 beforeEach(() => {
+  installLocalStorage();
   writeText.mockReset();
   writeText.mockResolvedValue(undefined);
   Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
@@ -191,9 +193,25 @@ describe("SessionActionsMenu", () => {
     ]);
   });
 
+  it("pins and unpins in this browser with p", async () => {
+    await renderRow(listItem("done"));
+
+    fireEvent.keyDown(await rightClickRow(), { key: "p", code: "KeyP" });
+    await flush();
+    const afterPin = readPinState();
+    fireEvent.keyDown(await rightClickRow(), { key: "p", code: "KeyP" });
+    await flush();
+
+    expect({ afterPin, afterUnpin: readPinState() }).toStrictEqual({
+      afterPin: { pinnedIds: [SESSION_ID], pinnedOrder: [] },
+      afterUnpin: { pinnedIds: [], pinnedOrder: [] },
+    });
+  });
+
   it("opens the same items from the kebab", async () => {
     syncUnseenFromSummaries([{ id: SESSION_ID, unseen: true }]);
-    await renderRow(listItem("review", { starred: true }));
+    pin(SESSION_ID);
+    await renderRow(listItem("review"));
 
     fireEvent.click(screen.getByRole("button", { name: "More options for Fix the flaky test" }));
     await flush();

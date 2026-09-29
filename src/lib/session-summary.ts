@@ -42,7 +42,6 @@ interface SessionSummaryOptions {
  */
 export function toSessionSummaryPayload(
   entry: SessionEntry,
-  starred: boolean,
   {
     unseen = false,
     archived = false,
@@ -83,7 +82,6 @@ export function toSessionSummaryPayload(
     messageCount: entry.messageCount,
     gitBranch: entry.gitBranch,
     ...(entry.pr === undefined ? {} : { pr: entry.pr }),
-    starred,
     archived,
     state: activeSession === null ? "ended" : pendingInput ? "waiting" : activeSession.state,
     bucket,
@@ -114,12 +112,6 @@ export function buildSessionSummaryPayloadFromDb(
     .get();
   const projectName = projectRow?.name ?? row.projectId;
 
-  const starredRow = db
-    .select()
-    .from(schema.starredSessions)
-    .where(eq(schema.starredSessions.sessionId, sessionId))
-    .get();
-
   return toSessionSummaryPayload(
     {
       id: row.id,
@@ -136,7 +128,6 @@ export function buildSessionSummaryPayloadFromDb(
       isSidechain: row.isSidechain === 1,
       pr: getSessionPrLink(db, sessionId) ?? undefined,
     },
-    !!starredRow,
     {
       unseen: isSessionUnseen(db, sessionId),
       archived: isSessionArchived(db, sessionId),

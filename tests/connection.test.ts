@@ -64,10 +64,6 @@ describe("openAppDb", () => {
       })
       .run();
     original.index
-      .insert(schema.starredSessions)
-      .values({ sessionId: "session-test-100", starredAt: 1_000 })
-      .run();
-    original.index
       .insert(schema.sessionViewStates)
       .values({
         sessionId: "session-test-100",
@@ -122,7 +118,6 @@ describe("openAppDb", () => {
     const reopened = openAppDb({ cacheDir });
     const state = {
       projects: reopened.index.select().from(schema.projects).all(),
-      starredSessions: reopened.index.select().from(schema.starredSessions).all(),
       sessionViewStates: reopened.index.select().from(schema.sessionViewStates).all(),
       terminalViewStates: reopened.index.select().from(schema.herdrTerminalViewStates).all(),
       reviews: reopened.index.select().from(schema.reviews).all(),
@@ -137,7 +132,6 @@ describe("openAppDb", () => {
 
     expect(state).toStrictEqual({
       projects: [],
-      starredSessions: [{ sessionId: "session-test-100", starredAt: 1_000 }],
       sessionViewStates: [
         {
           sessionId: "session-test-100",
@@ -181,5 +175,41 @@ describe("openAppDb", () => {
       ],
       version: { value: schema.SCHEMA_VERSION },
     });
+  });
+
+  it("drops the retired starred_sessions table on upgrade; pins live in the browser", () => {
+    const cacheDir = mkdtempSync(join(tmpdir(), "open-app-db-test-"));
+    tempDirs.push(cacheDir);
+    const original = openAppDb({ cacheDir });
+    original.close();
+    const sqlite = new Database(join(cacheDir, "index.db"));
+    sqlite.exec(
+      "CREATE TABLE starred_sessions (session_id TEXT PRIMARY KEY, starred_at INTEGER NOT NULL)",
+    );
+    sqlite.exec("INSERT INTO starred_sessions VALUES ('session-test-100', 1000)");
+    sqlite.prepare("UPDATE metadata SET value = '33' WHERE key = 'schema_version'").run();
+    sqlite.close();
+
+    openAppDb({ cacheDir }).close();
+    const reopened = new Database(join(cacheDir, "index.db"));
+    const tables = reopened
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'starred_sessions'")
+      .all();
+    reopened.close();
+
+    expect(tables).toStrictEqual([]);
+  });
+
+  it("never creates starred_sessions in a fresh database", () => {
+    const cacheDir = mkdtempSync(join(tmpdir(), "open-app-db-test-"));
+    tempDirs.push(cacheDir);
+    openAppDb({ cacheDir }).close();
+    const sqlite = new Database(join(cacheDir, "index.db"));
+    const tables = sqlite
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'starred_sessions'")
+      .all();
+    sqlite.close();
+
+    expect(tables).toStrictEqual([]);
   });
 });

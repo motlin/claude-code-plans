@@ -12,7 +12,7 @@ import type { ReviewBundle } from "../api/reviews";
 // 31: archived_sessions (durable) hides sessions from lists without touching the JSONL.
 // 32: sessions gain pr_number/pr_url/pr_repository from the latest `pr-link` record.
 // 33: artifacts and artifact_events index every claude.ai Artifact tool call.
-export const SCHEMA_VERSION = "33";
+export const SCHEMA_VERSION = "34";
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),
@@ -236,11 +236,6 @@ export const plans = sqliteTable(
   },
   (table) => [index("plans_mtime_desc_idx").on(table.mtimeMs)],
 );
-
-export const starredSessions = sqliteTable("starred_sessions", {
-  sessionId: text("session_id").primaryKey(),
-  starredAt: integer("starred_at").notNull(),
-});
 
 /** App-side archive flag: the session's JSONL is never touched. */
 export const archivedSessions = sqliteTable("archived_sessions", {

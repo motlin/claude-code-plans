@@ -24,7 +24,7 @@ function flagsFromList(value: unknown, idKey: "id" | "sessionId"): UnseenFlag[] 
 
 /**
  * Pull the server's `unseen` flags out of a session list query's data: the
- * recent feed (single page or infinite), the per-project groups, starred, and
+ * recent feed (single page or infinite), the per-project groups, id lookups (pins), and
  * the active list. Other queries carry no summary flags.
  */
 export function unseenFlagsFromSessionQuery(queryKey: QueryKey, data: unknown): UnseenFlag[] {
@@ -39,7 +39,7 @@ export function unseenFlagsFromSessionQuery(queryKey: QueryKey, data: unknown): 
       return Array.isArray(data)
         ? data.flatMap((group) => (isRecord(group) ? flagsFromList(group["sessions"], "id") : []))
         : [];
-    case "starred":
+    case "by-ids":
       return flagsFromList(data, "id");
     case "active":
       return flagsFromList(data, "sessionId");

@@ -37,7 +37,6 @@ function listItem(overrides: Partial<SessionListItem> = {}): SessionListItem {
     project: "-projects-alpha",
     projectName: "alpha",
     messageCount: 4,
-    starred: false,
     archived: false,
     state: "ended",
     bucket: "done",

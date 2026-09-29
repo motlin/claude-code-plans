@@ -53,7 +53,6 @@ import { unifiedSearchQueryOptions, type UnifiedSearchItem } from "../lib/api/se
 import {
   recentSessionsQueryOptions,
   sessionDetailQueryOptions,
-  useToggleSessionStar,
   type SessionDetailData,
   type SessionListItem,
 } from "../lib/api/sessions";
@@ -79,6 +78,7 @@ import {
   type PendingLaunch,
   type StartProject,
 } from "../lib/palette-start-session";
+import { pin, unpin, usePins } from "../lib/pin-store";
 import { paletteFilterLabels, paletteTypeLabels } from "../lib/schema-choices";
 import { relativeBucket, titleMatches, type Snippet, type TextMatch } from "../lib/search-text";
 import { createSessionCommands } from "../lib/session-commands";
@@ -350,11 +350,11 @@ const SESSION_COMMAND_CAPABILITIES: ReadonlySet<SessionMenuCapability> = new Set
 ]);
 
 /** The session on screen as ⌘K commands: the shared menu model's quoted titles, then the CLI copies. */
-function currentSessionCommands(detail: SessionDetailData): SessionCommand[] {
+function currentSessionCommands(detail: SessionDetailData, pinned: boolean): SessionCommand[] {
   const menu = getSessionMenuItems(
     {
       title: detail.title,
-      pinned: detail.starred,
+      pinned,
       readState: "read",
       archived: detail.archived,
       prUrl: null,
@@ -467,7 +467,7 @@ function PalettePopup({
     enabled: currentSessionId !== undefined,
   });
   const currentDetail = currentSessionId === undefined ? null : (detailQuery.data ?? null);
-  const star = useToggleSessionStar(currentSessionId ?? "");
+  const pins = usePins();
   const setArchived = useSessionArchive(currentSessionId ?? "");
   const toast = useToast();
   const activeSessions = useActiveSessionsIfAvailable();
@@ -553,7 +553,7 @@ function PalettePopup({
       .filter((row) => !shown.has(rowKey(row)));
   }, [serverActive, serverSearch.data, debouncedQuery, trimmedQuery, instant, currentSessionId]);
 
-  // Sessions the → card can act on: recents carry star/bucket state, server hits do not.
+  // Sessions the → card can act on: recents carry archive/bucket state, server hits do not.
   const cardSessions = useMemo(() => {
     const byId = new Map<string, PaletteCardSession>();
     for (const row of serverRows) {
@@ -562,7 +562,6 @@ function PalettePopup({
         id: row.id,
         title: row.title,
         mtime: row.mtime,
-        starred: undefined,
         archived: undefined,
         bucket: undefined,
       });
@@ -572,7 +571,6 @@ function PalettePopup({
         id: session.id,
         title: session.title,
         mtime: session.mtime,
-        starred: session.starred,
         archived: session.archived,
         bucket: session.bucket,
       });
@@ -624,7 +622,8 @@ function PalettePopup({
     switch (id) {
       case "pin":
       case "unpin":
-        star.mutate(id === "pin");
+        if (id === "pin") pin(currentSessionId);
+        else unpin(currentSessionId);
         return;
       case "rename":
         restoreFocusRef.current = false;
@@ -803,8 +802,9 @@ function PalettePopup({
   const matchesCommands = hints === null && !filtered && tokens.text !== "";
   const matchedSessionCommands =
     matchesCommands && currentDetail !== null
-      ? currentSessionCommands(currentDetail).filter((command) =>
-          commandMatches(command.label, tokens.text, SESSION_COMMAND_KEYWORDS[command.id]),
+      ? currentSessionCommands(currentDetail, pins.isPinned(currentSessionId ?? "")).filter(
+          (command) =>
+            commandMatches(command.label, tokens.text, SESSION_COMMAND_KEYWORDS[command.id]),
         )
       : [];
   const matchedActions = matchesCommands

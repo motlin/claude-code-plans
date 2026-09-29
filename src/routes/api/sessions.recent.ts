@@ -27,7 +27,7 @@ export const Route = createFileRoute("/api/sessions/recent")({
     handlers: withMethodNotAllowed({
       GET: async ({ request }: { request: Request }) => {
         const { getDb } = await import("../../lib/db");
-        const { listRecentSessionsFromDb, getStarredSessionIds, getArchivedSessionIds } =
+        const { listRecentSessionsFromDb, getArchivedSessionIds } =
           await import("../../lib/db/queries");
         const { toSessionSummaryPayload } = await import("../../lib/session-summary");
         const { getUnseenSessionIds } = await import("../../lib/db/viewed-state");
@@ -43,11 +43,10 @@ export const Route = createFileRoute("/api/sessions/recent")({
           index,
           before ? { limit, before, status } : { limit, status },
         );
-        const starredIds = getStarredSessionIds(index);
         const unseenIds = getUnseenSessionIds(index);
         const archivedIds = getArchivedSessionIds(index);
         const sessions = page.sessions.map((s) =>
-          toSessionSummaryPayload(s, starredIds.has(s.id), {
+          toSessionSummaryPayload(s, {
             unseen: unseenIds.has(s.id),
             archived: archivedIds.has(s.id),
           }),

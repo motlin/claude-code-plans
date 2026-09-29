@@ -44,7 +44,6 @@ function makeSession(
     projectName: `Project ${project}`,
     messageCount: 0,
     gitBranch: undefined,
-    starred: false,
     archived: false,
     state: "unknown",
     bucket: "done",

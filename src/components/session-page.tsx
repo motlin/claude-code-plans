@@ -1,5 +1,5 @@
 import { Link, useElementScrollRestoration, useLocation } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUp,
@@ -65,10 +65,10 @@ import {
   transcriptEndIndex,
   transcriptQueryOptions,
   useRequestSummary,
-  useToggleSessionStar,
 } from "../lib/api/sessions";
 import type { SessionDetailData, SessionSubagentsData, TranscriptData } from "../lib/api/sessions";
 import { writeClipboardText } from "../lib/clipboard";
+import { SessionPinToggle } from "./session-pin-toggle";
 import { countMessageRecords } from "../lib/message-count";
 import {
   getSubagentLifecycleKey,
@@ -369,7 +369,6 @@ interface SessionViewProps {
 }
 
 function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionViewProps) {
-  const queryClient = useQueryClient();
   const scrollAnchorRef = useRef<HTMLDivElement>(null);
   const initialScrollKey = useLocation({
     select: (location) => location.state.__TSR_key ?? location.href,
@@ -480,12 +479,10 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
   }, [sessionId, runningSubagents, transcriptActiveSubagents]);
   const [aiSummary, setAiSummary] = useState<string | null>(data.summary ?? null);
   const summaryLoaded = true;
-  const [starred, setStarred] = useState(data.starred ?? false);
   const isActive = useIsSessionActive(sessionId);
   const statusline = useStatusline(sessionId);
   const [generating, setGenerating] = useState(false);
   const summaryMutation = useRequestSummary(sessionId);
-  const starMutation = useToggleSessionStar(sessionId);
   const chromeHidden = settings.chromeHidden;
   const setChromeHidden = useCallback((v: boolean) => setSetting("chromeHidden", v), [setSetting]);
   const chromeShortcut = useShortcutKeys("expand_collapse_pane");
@@ -623,29 +620,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
                   >
                     <Download className="h-3.5 w-3.5" />
                   </a>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const result = await starMutation.mutateAsync(!starred);
-                      setStarred(result.starred);
-                      void queryClient.invalidateQueries({
-                        queryKey: ["starred-sessions"],
-                      });
-                    }}
-                    className="shrink-0 cursor-pointer text-t6 transition-colors hover:text-warning-000"
-                    title={starred ? "Unstar session" : "Star session"}
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      className="h-4 w-4"
-                      fill={starred ? "currentColor" : "none"}
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      style={{ color: starred ? "rgb(234, 179, 8)" : undefined }}
-                    >
-                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                    </svg>
-                  </button>
+                  <SessionPinToggle sessionId={sessionId} />
                 </div>
               }
               paneToggles={

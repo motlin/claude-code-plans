@@ -21,6 +21,8 @@ import {
   sessionDetailQueryOptions,
   type SessionDetailData,
 } from "../src/lib/api/sessions";
+import { pin, readPinState } from "../src/lib/pin-store";
+import { installLocalStorage } from "./fake-storage";
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 
@@ -34,7 +36,6 @@ function detail(overrides: Partial<SessionDetailData> = {}): SessionDetailData {
     projectId: "project-a",
     homeRoot: "/users/dev",
     imageRoots: [],
-    starred: false,
     archived: false,
     summary: null,
     projectPath: "/users/dev/project-a",
@@ -115,6 +116,7 @@ describe("palette contextual session commands", () => {
   const fetchMock = vi.fn((_url: string, _init?: RequestInit) => new Promise<Response>(() => {}));
 
   beforeEach(() => {
+    installLocalStorage();
     vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
     vi.stubGlobal("fetch", fetchMock);
     vi.stubGlobal(
@@ -168,8 +170,9 @@ describe("palette contextual session commands", () => {
     ]);
   });
 
-  it("offers Unpin for a starred session", async () => {
-    const { dialog, input } = await openPalette("/session/sess-1", detail({ starred: true }));
+  it("offers Unpin for a session pinned in this browser", async () => {
+    pin("sess-1");
+    const { dialog, input } = await openPalette("/session/sess-1");
 
     fireEvent.change(input, { target: { value: "pin" } });
 
@@ -253,19 +256,16 @@ describe("palette contextual session commands", () => {
     expect(await screen.findByText("Link copied to clipboard.")).toBeTruthy();
   });
 
-  it("pins the session", async () => {
+  it("pins the session in this browser without a server call", async () => {
     const { dialog, input } = await openPalette("/session/sess-1");
 
     fireEvent.change(input, { target: { value: "pin" } });
     fireEvent.click(await within(dialog).findByRole("option", { name: `Pin ${QUOTED}` }));
 
     await waitFor(() =>
-      expect(
-        fetchMock.mock.calls
-          .filter(([url]) => url.endsWith("/starred"))
-          .map(([url, init]) => [url, init?.method, init?.body]),
-      ).toStrictEqual([["/api/sessions/sess-1/starred", "PUT", JSON.stringify({ starred: true })]]),
+      expect(readPinState()).toStrictEqual({ pinnedIds: ["sess-1"], pinnedOrder: [] }),
     );
+    expect(fetchMock.mock.calls.filter(([url]) => url.includes("/starred"))).toStrictEqual([]);
   });
 
   it("starts renaming the session title", async () => {

@@ -14,7 +14,6 @@ export const Route = createFileRoute("/api/sessions/$id")({
           getTaskCountsForProject,
           getSubagentById,
           isSessionArchived,
-          isSessionStarred,
         } = await import("../../lib/db/queries");
         const { sessions } = await import("../../lib/db/schema");
         const { eq } = await import("drizzle-orm");
@@ -60,7 +59,6 @@ export const Route = createFileRoute("/api/sessions/$id")({
             projectId: subagent.projectId,
             homeRoot,
             imageRoots,
-            starred: false,
             archived: false,
             summary: null,
             projectPath: parentSessionProjectPath,
@@ -107,7 +105,6 @@ export const Route = createFileRoute("/api/sessions/$id")({
           }
         }
 
-        const starred = isSessionStarred(index, id);
         const summary = getSummary(summaries, id);
 
         const detail: NonNullable<ReturnType<typeof SessionDetailResponse.parse>> = {
@@ -116,7 +113,6 @@ export const Route = createFileRoute("/api/sessions/$id")({
           projectId: sessionRow.projectId,
           homeRoot,
           imageRoots,
-          starred,
           archived: isSessionArchived(index, id),
           summary,
           projectPath,

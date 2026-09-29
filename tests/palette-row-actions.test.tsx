@@ -16,7 +16,9 @@ import { CommandPalette, PALETTE_RECENT_LIMIT } from "../src/components/command-
 import { ToastProvider } from "../src/components/toast";
 import { useCommandPalette } from "../src/hooks/use-command-palette";
 import { recentSessionsQueryOptions } from "../src/lib/api/sessions";
+import { readPinState } from "../src/lib/pin-store";
 import { clearAll, hasUnseenWork } from "../src/lib/unread-store";
+import { installLocalStorage } from "./fake-storage";
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 
@@ -31,7 +33,6 @@ function recentSession(id: string, title: string) {
     projectName: "project-a",
     messageCount: 1,
     gitBranch: undefined,
-    starred: false,
     archived: false,
     state: "unknown" as const,
     bucket: "done" as const,
@@ -113,6 +114,7 @@ describe("palette row actions card", () => {
   const fetchMock = vi.fn(() => new Promise<Response>(() => {}));
 
   beforeEach(() => {
+    installLocalStorage();
     vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
     vi.stubGlobal("fetch", fetchMock);
     vi.stubGlobal(
@@ -207,16 +209,14 @@ describe("palette row actions card", () => {
     ]);
   });
 
-  it("stars the session from the card", async () => {
+  it("pins the session in this browser from the card", async () => {
     const { card } = await openCard();
 
     fireEvent.keyDown(card, { key: "4", code: "Digit4" });
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    expect(fetchMock.mock.calls.at(-1)).toStrictEqual([
-      "/api/sessions/sess-1/starred",
-      expect.objectContaining({ method: "PUT", body: JSON.stringify({ starred: true }) }),
-    ]);
+    await waitFor(() =>
+      expect(readPinState()).toStrictEqual({ pinnedIds: ["sess-1"], pinnedOrder: [] }),
+    );
   });
 
   it("opens in a new tab with 2", async () => {
