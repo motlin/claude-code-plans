@@ -1219,6 +1219,48 @@ describe("readSession", () => {
     expect(detail.forkedFromSessionId).toBe("parent-abc");
   });
 
+  it("surfaces the latest cost-state record", async () => {
+    const projDir = join(testDir, "-Users-craig-projects-app");
+    mkdirSync(projDir, { recursive: true });
+    writeFileSync(
+      join(projDir, "costed.jsonl"),
+      jsonl(
+        { type: "cost-state", totalCostUSD: 1, totalLinesAdded: 1 },
+        userMessage("Hello"),
+        { type: "cost-state", totalCostUSD: "malformed" },
+        {
+          type: "cost-state",
+          totalCostUSD: 2.5,
+          totalLinesAdded: 10,
+          totalLinesRemoved: 4,
+          modelUsage: { "claude-opus-5-5": { costUSD: 2.5, inputTokens: 100, outputTokens: 50 } },
+        },
+        assistantMessage([{ type: "text", text: "Hi" }]),
+      ),
+    );
+
+    const detail = await readSession(testDir, "costed");
+    expect({ costState: detail?.costState, messageCount: detail?.messageCount }).toStrictEqual({
+      costState: {
+        totalCostUSD: 2.5,
+        linesAdded: 10,
+        linesRemoved: 4,
+        hasUnknownModelCost: false,
+        models: [
+          {
+            model: "claude-opus-5-5",
+            costUSD: 2.5,
+            inputTokens: 100,
+            outputTokens: 50,
+            cacheReadInputTokens: 0,
+            cacheCreationInputTokens: 0,
+          },
+        ],
+      },
+      messageCount: 2,
+    });
+  });
+
   it("reads forkedFrom as a plain string", async () => {
     const projDir = join(testDir, "-Users-craig-projects-app");
     mkdirSync(projDir, { recursive: true });

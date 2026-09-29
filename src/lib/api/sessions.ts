@@ -11,6 +11,7 @@ import { JsonValueSchema } from "../schemas";
 import { SessionViewedStateSchema } from "./viewed-state";
 import { SessionBucketSchema } from "../session-state";
 import { PrStatusSchema } from "../pr-status";
+import { SessionCostStateSchema } from "../session-cost";
 import type { SessionStatusFilter } from "../session-groups";
 
 export const SessionSummaryStateSchema = z.enum(["idle", "working", "waiting", "unknown", "ended"]);
@@ -108,6 +109,7 @@ export const SessionDetailResponse = z
     prStatus: PrStatusSchema.optional(),
     /** The plan file linked to this session through `plan_sessions`. */
     planFilename: z.string().optional(),
+    costState: SessionCostStateSchema.optional(),
   })
   .nullable();
 

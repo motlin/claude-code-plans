@@ -151,6 +151,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
           if (provenance.teamNames !== undefined) detail.teamNames = provenance.teamNames;
           if (provenance.forkedFromSessionId !== undefined)
             detail.forkedFromSessionId = provenance.forkedFromSessionId;
+          if (provenance.costState !== undefined) detail.costState = provenance.costState;
         }
 
         return Response.json(SessionDetailResponse.parse(detail), {

@@ -1512,7 +1512,7 @@ const ModelCostUsageSchema = z
   })
   .strict();
 
-const CostStateRecordSchema = z
+export const CostStateRecordSchema = z
   .object({
     type: z.literal("cost-state"),
     sessionId: z.string().optional(),

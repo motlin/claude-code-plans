@@ -13,6 +13,7 @@ import {
   SessionsIndexSchema,
 } from "./schemas";
 import { isCountableMessageRecord } from "./message-count";
+import { costStateFromRecord, type SessionCostState } from "./session-cost";
 import { isCaveatLine, isCommandLine, isStdoutLine } from "./transcript";
 
 /** The session's pull request, from its latest `pr-link` transcript record. */
@@ -111,6 +112,7 @@ interface SessionDetail {
   sessionKind?: string | undefined;
   teamNames?: string[] | undefined;
   forkedFromSessionId?: string | undefined;
+  costState?: SessionCostState | undefined;
 }
 
 export type { SessionLine, MessageSessionLine, SessionContentBlock } from "./transcript";
@@ -803,6 +805,7 @@ export async function readSession(
   let entrypoint: string | undefined;
   let sessionKind: string | undefined;
   let forkedFromSessionId: string | undefined;
+  let costState: SessionCostState | undefined;
   const teamNameSet = new Set<string>();
   const toolCallMap = new Map<string, ToolCallInfo>();
   const toolStartTimes = new Map<string, number>();
@@ -852,6 +855,10 @@ export async function readSession(
 
       if (obj.type === "custom-title" || obj.type === "ai-title") {
         titleRecords.add(obj);
+        continue;
+      }
+      if (obj.type === "cost-state") {
+        costState = costStateFromRecord(obj) ?? costState;
         continue;
       }
 
@@ -1051,6 +1058,7 @@ export async function readSession(
   if (sessionKind !== undefined) detail.sessionKind = sessionKind;
   if (teamNameSet.size > 0) detail.teamNames = [...teamNameSet];
   if (forkedFromSessionId !== undefined) detail.forkedFromSessionId = forkedFromSessionId;
+  if (costState !== undefined) detail.costState = costState;
   return detail;
 }
 

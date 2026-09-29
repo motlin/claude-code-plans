@@ -329,3 +329,68 @@ describe("SessionTitlebar pill collapse", () => {
     });
   });
 });
+
+describe("SessionTitlebar cost pill", () => {
+  const costedDetail: SessionDetailData = {
+    ...baseDetail,
+    costState: {
+      totalCostUSD: 3.5,
+      linesAdded: 120,
+      linesRemoved: 30,
+      apiDurationMs: 90_000,
+      toolDurationMs: 12_000,
+      hasUnknownModelCost: true,
+      models: [
+        {
+          model: "claude-opus-5-5[1m]",
+          costUSD: 3,
+          inputTokens: 1_000,
+          outputTokens: 2_000,
+          cacheReadInputTokens: 30_000,
+          cacheCreationInputTokens: 4_000,
+        },
+        {
+          model: "claude-haiku-4-5-20251001",
+          costUSD: 0.5,
+          inputTokens: 10,
+          outputTokens: 5,
+          cacheReadInputTokens: 0,
+          cacheCreationInputTokens: 0,
+        },
+      ],
+    },
+  };
+
+  it("leaves the pill out when the transcript has no cost-state", async () => {
+    const titlebar = await renderTitlebar(baseDetail);
+
+    expect(titlebar.querySelector('[data-origin-pill="cost"]')).toBe(null);
+  });
+
+  it("shows the total and opens the cost, lines and per-model breakdown", async () => {
+    const titlebar = await renderTitlebar(costedDetail);
+    const pill = titlebar.querySelector('[data-origin-pill="cost"]');
+    fireEvent.click(screen.getByRole("button", { name: "Session cost: $3.50" }));
+    await flush();
+
+    expect({
+      pill: pill?.textContent,
+      rows: [...document.querySelectorAll("[data-cost-row]")].map((row) => [
+        row.getAttribute("data-cost-row"),
+        [...row.children].map((cell) => cell.textContent),
+      ]),
+      note: document.querySelector("[data-cost-unknown]")?.textContent,
+    }).toStrictEqual({
+      pill: "$3.50",
+      rows: [
+        ["total", ["Total cost", "$3.50"]],
+        ["lines", ["Lines changed", "+120 −30"]],
+        ["api", ["API time", "1m 30s"]],
+        ["tools", ["Tool time", "12.0s"]],
+        ["model", ["Opus 5.5", "$3.00", "1K in · 2K out · 30K cache read · 4K cache write"]],
+        ["model", ["Haiku 4.5", "$0.50", "10 in · 5 out"]],
+      ],
+      note: "Some models have no known price, so the total is a floor.",
+    });
+  });
+});

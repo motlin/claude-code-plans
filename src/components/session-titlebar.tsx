@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   Bot,
   ChevronDown,
+  CircleDollarSign,
   Cpu,
   FolderGit2,
   GitFork,
@@ -22,10 +23,12 @@ import {
 } from "../lib/api/sessions";
 import { writeClipboardText } from "../lib/clipboard";
 import { formatModelName } from "../lib/model-name";
+import { formatUsd } from "../lib/session-cost";
 import { pin, unpin, usePins } from "../lib/pin-store";
 import { forkDisabledReason } from "../lib/session-fork";
 import { getSessionMenuItems, type SessionMenuSession } from "../lib/session-menu-items";
 import { ArchivedBadge } from "./archived-badge";
+import { SessionCostPill } from "./session-cost-pill";
 import {
   MenuEntries,
   SESSION_MENU_CAPABILITIES,
@@ -457,6 +460,15 @@ export function SessionTitlebar({
           <ProjectPill sessionId={sessionId} data={data} compact={compact} />
           {modelLabel !== null && (
             <OriginPill kind="model" icon={Cpu} label={modelLabel} compact={compact} />
+          )}
+          {data.costState !== undefined && (
+            <SessionCostPill cost={data.costState} className={`${PILL_CLASS} cursor-pointer`}>
+              <PillContent
+                icon={CircleDollarSign}
+                label={formatUsd(data.costState.totalCostUSD)}
+                compact={compact}
+              />
+            </SessionCostPill>
           )}
           {data.entrypoint !== undefined && data.entrypoint !== "cli" && (
             <OriginPill
