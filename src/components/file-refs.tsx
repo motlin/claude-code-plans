@@ -1,4 +1,4 @@
-import { useQueries } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import {
   createContext,
   type KeyboardEvent,
@@ -9,8 +9,9 @@ import {
   useMemo,
 } from "react";
 
+import { type ArtifactSummary, artifactsQueryOptions } from "../lib/api/artifacts";
 import { fileExistsQueryOptions } from "../lib/api/file-refs";
-import { inlineCodeTexts } from "../lib/client-markdown";
+import { inlineCodeTexts, mentionsArtifactUrl } from "../lib/client-markdown";
 import { requestFileOpen } from "../lib/file-open-requests";
 import { type FileRef, fileRefStatCandidates, resolveFileRefs } from "../lib/file-refs";
 import type { SessionFiles } from "../lib/session-files";
@@ -146,6 +147,20 @@ export function FileRefTarget({ path, render }: { path: string; render: RenderFi
   );
 }
 
+function artifactTitlesById(artifacts: ArtifactSummary[]): ReadonlyMap<string, string> {
+  return new Map(artifacts.map((artifact) => [artifact.id, artifact.title]));
+}
+
+/** Indexed artifact titles, fetched only when the prose links to an artifact. */
+function useArtifactTitles(markdown: string): ReadonlyMap<string, string> | undefined {
+  const { data } = useQuery({
+    ...artifactsQueryOptions,
+    enabled: mentionsArtifactUrl(markdown),
+    select: artifactTitlesById,
+  });
+  return data;
+}
+
 function LinkedProseMarkdown({
   markdown,
   open,
@@ -155,11 +170,13 @@ function LinkedProseMarkdown({
 }) {
   const texts = useMemo(() => inlineCodeTexts(markdown), [markdown]);
   const refs = useFileRefs(texts);
+  const artifactTitles = useArtifactTitles(markdown);
   return (
     <MarkdownArticle
       markdown={markdown}
       fileRefs={refs.size === 0 ? undefined : refs}
       onFileRef={open}
+      artifactTitles={artifactTitles}
     />
   );
 }

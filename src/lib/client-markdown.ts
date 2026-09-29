@@ -1,11 +1,14 @@
 import type { HighlighterCore } from "@shikijs/core";
 import MarkdownIt from "markdown-it";
+import type StateCore from "markdown-it/lib/rules_core/state_core.mjs";
 import type StateInline from "markdown-it/lib/rules_inline/state_inline.mjs";
+import type Token from "markdown-it/lib/token.mjs";
 import taskLists from "markdown-it-task-lists";
 import footnote from "markdown-it-footnote";
 import { requestLanguage, themeOrRequest } from "../hooks/use-shiki";
 import { type CodeThemePair, DEFAULT_CODE_THEMES } from "./code-themes";
 import type { FileRef } from "./file-refs";
+import { normalizeArtifactUrl } from "./artifact-output";
 import { COPY_ICON_SVG } from "./icon-paths";
 import { mdFileHref, resolveRelativeMdHref } from "./md-links";
 import { SHIKI_TOKENIZE_OPTIONS } from "./shiki-tokenize-options";
@@ -23,6 +26,11 @@ interface MarkdownRenderOptions {
    * a code chip; see {@link FILE_REF_ATTR}.
    */
   fileRefs?: ReadonlyMap<string, FileRef>;
+  /**
+   * Titles from the artifacts index keyed by artifact id; a claude.ai artifact
+   * link whose id is here is labelled with the indexed title.
+   */
+  artifactTitles?: ReadonlyMap<string, string>;
   /** Settings ▸ Code appearance themes for fenced code; defaults when omitted. */
   codeThemes?: CodeThemePair;
 }
@@ -31,12 +39,14 @@ interface MarkdownRenderOptions {
 interface MarkdownEnv {
   mdLinkBase?: string;
   fileRefs?: ReadonlyMap<string, FileRef>;
+  artifactTitles?: ReadonlyMap<string, string>;
 }
 
 function toEnv(options?: MarkdownRenderOptions): MarkdownEnv {
   const env: MarkdownEnv = {};
   if (options?.mdLinkBase !== undefined) env.mdLinkBase = options.mdLinkBase;
   if (options?.fileRefs !== undefined) env.fileRefs = options.fileRefs;
+  if (options?.artifactTitles !== undefined) env.artifactTitles = options.artifactTitles;
   return env;
 }
 
@@ -120,11 +130,77 @@ function wikiLink(state: StateInline, silent: boolean): boolean {
   return true;
 }
 
+/** Marks a claude.ai artifact link rendered as upstream's link card. */
+const ARTIFACT_LINK_ATTR = "data-artifact-link";
+
+const ARTIFACT_LINK_TOKEN = "artifact_link";
+
+/** The plain text of the inline tokens between a link's open and close. */
+function linkText(tokens: readonly Token[]): string {
+  return tokens
+    .filter((token) => token.type === "text" || token.type === "code_inline")
+    .map((token) => token.content)
+    .join("");
+}
+
+/**
+ * Upstream renders a markdown link to a claude.ai artifact as a link card
+ * rather than inline text. Collapse each such link, whether written or
+ * linkified, into one token the renderer turns into that card.
+ */
+function artifactLinks(state: StateCore): void {
+  for (const block of state.tokens) {
+    const children = block.children;
+    if (block.type !== "inline" || children === null) continue;
+    const rewritten: Token[] = [];
+    for (let index = 0; index < children.length; index++) {
+      const token = children[index]!;
+      const href = token.type === "link_open" ? token.attrGet("href") : null;
+      const artifact = href === null ? undefined : normalizeArtifactUrl(href);
+      const close =
+        artifact === undefined
+          ? -1
+          : children.findIndex((child, at) => at > index && child.type === "link_close");
+      if (href === null || artifact === undefined || close === -1) {
+        rewritten.push(token);
+        continue;
+      }
+      const card = new state.Token(ARTIFACT_LINK_TOKEN, "a", 0);
+      card.attrs = [["href", href]];
+      card.meta = { id: artifact.id, host: new URL(href).host };
+      card.content = linkText(children.slice(index + 1, close));
+      rewritten.push(card);
+      index = close;
+    }
+    block.children = rewritten;
+  }
+}
+
+function artifactLinkHtml(token: Token, env: MarkdownEnv, escape: (value: string) => string) {
+  const { id, host } = token.meta as { id: string; host: string };
+  const href = token.attrGet("href") ?? "";
+  const title = env.artifactTitles?.get(id) ?? token.content;
+  const label = escape(`Artifact: ${title}`);
+  const attrs = [
+    `href="${escape(href)}"`,
+    `target="_blank"`,
+    `rel="noopener noreferrer"`,
+    `class="artifact-link-card"`,
+    `${ARTIFACT_LINK_ATTR}=""`,
+    `aria-label="${label}"`,
+    `title="${label}"`,
+  ];
+  return `<a ${attrs.join(" ")}><span class="artifact-link-card-title">${escape(title)}</span><span class="artifact-link-card-meta">Artifact · ${escape(host)}</span></a>`;
+}
+
 /** The plugins and renderer overrides every cached instance shares. */
 function applyPlugins(instance: MarkdownIt): void {
   instance.use(taskLists);
   instance.use(footnote);
   instance.inline.ruler.before("link", "wikilink", wikiLink);
+  instance.core.ruler.push(ARTIFACT_LINK_TOKEN, artifactLinks);
+  instance.renderer.rules[ARTIFACT_LINK_TOKEN] = (tokens, idx, _options, env) =>
+    artifactLinkHtml(tokens[idx]!, (env ?? {}) as MarkdownEnv, instance.utils.escapeHtml);
 
   // Links written inside a memory file keep their `.md` extension, but the
   // route that serves them is keyed by the extension-less slug, so an
@@ -246,6 +322,13 @@ export function renderInlineMarkdownToHtml(
 ): string {
   if (!markdown.trim()) return "";
   return getPlainMarkdownIt(options).renderInline(markdown, toEnv(options));
+}
+
+const ARTIFACT_URL_HINT = /claude\.ai\/(?:code\/)?artifact\//;
+
+/** Whether `markdown` may hold a claude.ai artifact link worth resolving titles for. */
+export function mentionsArtifactUrl(markdown: string): boolean {
+  return ARTIFACT_URL_HINT.test(markdown);
 }
 
 /** The text of every inline code span in `markdown`, in document order. */

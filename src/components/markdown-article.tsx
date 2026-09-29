@@ -18,6 +18,8 @@ interface FileRefProps {
   /** Inline code rendered as clickable file refs, keyed by the code's text. */
   fileRefs?: ReadonlyMap<string, FileRef> | undefined;
   onFileRef?: ((ref: FileRef) => void) | undefined;
+  /** Artifacts-index titles keyed by artifact id, for claude.ai artifact link cards. */
+  artifactTitles?: ReadonlyMap<string, string> | undefined;
 }
 
 type MarkdownArticleProps = FileRefProps &
@@ -48,6 +50,7 @@ export function MarkdownArticle(props: MarkdownArticleProps) {
       codeThemes,
       ...(props.mdLinkBase === undefined ? {} : { mdLinkBase: props.mdLinkBase }),
       ...(props.fileRefs === undefined ? {} : { fileRefs: props.fileRefs }),
+      ...(props.artifactTitles === undefined ? {} : { artifactTitles: props.artifactTitles }),
     });
   }, [
     props.html,
@@ -55,6 +58,7 @@ export function MarkdownArticle(props: MarkdownArticleProps) {
     props.typographer,
     props.mdLinkBase,
     props.fileRefs,
+    props.artifactTitles,
     codeThemes,
     highlighterVersion,
   ]);
