@@ -43,7 +43,17 @@ import { SessionPaneControls } from "./view-options-menu";
 import { ViewportPortal } from "./viewport-portal";
 import { useChatStream } from "../hooks/use-chat-stream";
 import { useShortcutKeys } from "../hooks/use-shortcut";
-import { useClaudeEvents, useIsSessionActive, useStatusline } from "../hooks/use-claude-events";
+import {
+  useClaudeEvents,
+  useComposerServerState,
+  useIsSessionActive,
+  useStatusline,
+} from "../hooks/use-claude-events";
+import {
+  lastAssistantModelFromRecords,
+  lastPermissionModeFromRecords,
+  resolveComposerState,
+} from "../lib/composer-state";
 import { useSessionViewedState } from "../hooks/use-session-viewed-state";
 import { usePendingMessageJump } from "../hooks/use-pending-message-jump";
 import { herdrPanesQueryOptions, sendHerdrPrompt } from "../lib/api/herdr";
@@ -433,6 +443,21 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
   const [aiSummary, setAiSummary] = useState<string | null>(data.summary ?? null);
   const isActive = useIsSessionActive(sessionId);
   const statusline = useStatusline(sessionId);
+  const composerServerState = useComposerServerState(sessionId);
+  const composerChin = useMemo(
+    () =>
+      resolveComposerState({
+        hookPermissionMode: hookContext?.permissionMode,
+        jsonlPermissionMode: lastPermissionModeFromRecords(transcript.records),
+        settingsDefaultMode: composerServerState?.settingsDefaultMode ?? null,
+        statuslineModel: composerServerState?.statusline?.model?.display_name ?? null,
+        lastAssistantModel: lastAssistantModelFromRecords(transcript.records),
+        settingsEffortLevel: composerServerState?.settingsEffortLevel ?? null,
+        statusline: composerServerState?.statusline ?? null,
+        statuslineUpdatedAt: composerServerState?.statuslineUpdatedAt ?? null,
+      }),
+    [hookContext?.permissionMode, transcript.records, composerServerState],
+  );
   const [generating, setGenerating] = useState(false);
   const summaryMutation = useRequestSummary(sessionId);
   const chromeHidden = settings.chromeHidden;
@@ -698,6 +723,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
                     isStreaming={!promptBehavior.usesHerdr && chatStream.state.isStreaming}
                     disabled={promptBehavior.disabled || liveHerdrPrompt.state.isPending}
                     deliveryHint={promptBehavior.deliveryHint}
+                    chin={composerChin}
                   />
                 </div>
               </div>

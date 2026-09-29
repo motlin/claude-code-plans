@@ -51,6 +51,7 @@ import { syncUnseenFromSummaries } from "../lib/unread-store";
 import { syncUnseenFromQueryCache } from "../lib/unseen-query-sync";
 import { isLiveSessionState, type ActivityState } from "../lib/session-state";
 import type { Statusline } from "../lib/api/statusline";
+import type { ComposerServerState } from "../lib/composer-state";
 import type { Notification, NotificationsData } from "../lib/api/notifications";
 
 // ---------------------------------------------------------------------------
@@ -1451,6 +1452,40 @@ export function useStatusline(sessionId: string): Statusline | null {
       }
     });
   }, [ctx, sessionId, fetchStatusline]);
+
+  return data;
+}
+
+/** Settings defaults + statusline snapshot for the composer chin, refreshed with the statusline. */
+export function useComposerServerState(sessionId: string): ComposerServerState | null {
+  const ctx = useContext(ClaudeEventsContext);
+  const [data, setData] = useState<ComposerServerState | null>(null);
+
+  const fetchState = useCallback(async () => {
+    try {
+      const { apiFetch } = await import("../lib/api/client");
+      const { ComposerServerStateResponse } = await import("../lib/composer-state");
+      setData(
+        await apiFetch(
+          `/api/sessions/${encodeURIComponent(sessionId)}/composer-state`,
+          ComposerServerStateResponse,
+        ),
+      );
+    } catch {
+      // chin readouts fall back to transcript and hook state
+    }
+  }, [sessionId]);
+
+  useEffect(() => {
+    void fetchState();
+  }, [fetchState]);
+
+  useEffect(() => {
+    if (!ctx) return;
+    return ctx.subscribeStatusline((updatedSessionId) => {
+      if (updatedSessionId === sessionId) void fetchState();
+    });
+  }, [ctx, sessionId, fetchState]);
 
   return data;
 }

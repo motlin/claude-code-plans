@@ -3,6 +3,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { Composer } from "../src/components/composer";
+import type { ComposerState } from "../src/lib/composer-state";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -165,5 +166,91 @@ describe("Composer", () => {
       cancels: onCancel.mock.calls.length,
       send: screen.queryByRole("button", { name: "Send" }),
     }).toStrictEqual({ cancels: 1, send: null });
+  });
+
+  describe("chin readouts", () => {
+    const NOW_MS = Date.UTC(2026, 8, 29, 12, 0, 0);
+    const CHIN: ComposerState = {
+      mode: { id: "acceptEdits", label: "Accept edits" },
+      model: "Opus 5.5",
+      effort: { id: "xhigh", label: "Extra-high" },
+      usage: {
+        contextTokens: 190_200,
+        contextWindowSize: 1_000_000,
+        contextPercent: 19,
+        fiveHour: { usedPercentage: 10, resetsAt: NOW_MS / 1000 + 4 * 3600 + 11 * 60 },
+        weekly: { usedPercentage: 65, resetsAt: NOW_MS / 1000 + 14 * 3600 + 31 * 60 },
+        updatedAt: new Date(NOW_MS - 3 * 3600 * 1000).toISOString(),
+      },
+    };
+
+    it("shows +, mode, then model, effort and the usage ring left to right", () => {
+      vi.useFakeTimers({ now: NOW_MS, toFake: ["Date"] });
+      render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />);
+      const chin = document.querySelector('[data-cds="ChatComposerChin"]');
+      const labels = Array.from(chin?.querySelectorAll("[aria-label], [data-chin-mode]") ?? []).map(
+        (element) => element.getAttribute("aria-label") ?? element.textContent,
+      );
+
+      expect(labels).toStrictEqual([
+        "Add",
+        "Accept edits",
+        "Model: Opus 5.5",
+        "Effort: Extra-high",
+        "Usage: Context 190.2k / 1M (19%), Weekly · all models: 65%, Resets in 14 hr 31 min",
+      ]);
+    });
+
+    it("draws the ring arc from the context percentage", () => {
+      render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />);
+      const arc = document.querySelector("[data-usage-ring-arc]");
+
+      expect({
+        dasharray: arc?.getAttribute("stroke-dasharray"),
+        dashoffset: Number(arc?.getAttribute("stroke-dashoffset")).toFixed(4),
+      }).toStrictEqual({ dasharray: "31.4159", dashoffset: (0.81 * 31.4159).toFixed(4) });
+    });
+
+    it("opens the usage popover with context, limits and the last update", async () => {
+      vi.useFakeTimers({ now: NOW_MS, toFake: ["Date"] });
+      render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />);
+
+      fireEvent.click(screen.getByRole("button", { name: /^Usage:/ }));
+      const dialog = await screen.findByRole("dialog");
+      const rows = Array.from(dialog.querySelectorAll("[data-usage-row]")).map((row) =>
+        Array.from(row.children, (cell) => cell.textContent).join(" | "),
+      );
+
+      expect({
+        context: dialog.querySelector("[data-usage-context]")?.textContent,
+        updated: dialog.querySelector("[data-usage-updated]")?.textContent,
+        rows,
+        bars: Array.from(dialog.querySelectorAll('[role="progressbar"]')).map((bar) =>
+          bar.getAttribute("aria-valuenow"),
+        ),
+      }).toStrictEqual({
+        context: "Context window190.2k / 1M (19%)",
+        updated: "Last updated 3 hours ago. Send a message to refresh.",
+        rows: [
+          "5-hour limit | Resets in 4 hr 11 min | 10%",
+          "Weekly · all models | Resets in 14 hr 31 min | 65%",
+        ],
+        bars: ["19", "10", "65"],
+      });
+    });
+
+    it("inserts a slash from the Add menu", async () => {
+      render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Add" }));
+      fireEvent.click(await screen.findByRole("menuitem", { name: "Slash commands" }));
+
+      expect(screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Prompt" }).value).toBe("/");
+    });
+
+    it("renders an empty chin without chin state", () => {
+      render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
+      expect(document.querySelector('[data-cds="ChatComposerChin"]')?.childElementCount).toBe(0);
+    });
   });
 });

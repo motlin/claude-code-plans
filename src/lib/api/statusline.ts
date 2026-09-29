@@ -2,10 +2,16 @@ import { z } from "zod";
 
 export const SESSION_ID_PATTERN = /^[a-z0-9-]+$/;
 
+const RateLimitWindowSchema = z.strictObject({
+  used_percentage: z.number(),
+  resets_at: z.number(),
+});
+
 export const StatuslineSchema = z
   .object({
     model: z
       .object({
+        id: z.string().optional(),
         display_name: z.string().optional(),
       })
       .loose()
@@ -18,9 +24,27 @@ export const StatuslineSchema = z
       .optional(),
     context_window: z
       .object({
+        total_input_tokens: z.number().optional(),
+        total_output_tokens: z.number().optional(),
+        context_window_size: z.number().optional(),
+        current_usage: z
+          .strictObject({
+            input_tokens: z.number(),
+            output_tokens: z.number(),
+            cache_creation_input_tokens: z.number(),
+            cache_read_input_tokens: z.number(),
+          })
+          .nullish(),
+        used_percentage: z.number().nullish(),
         remaining_percentage: z.number().nullish(),
       })
       .loose()
+      .optional(),
+    rate_limits: z
+      .strictObject({
+        five_hour: RateLimitWindowSchema.optional(),
+        seven_day: RateLimitWindowSchema.optional(),
+      })
       .optional(),
     cost: z
       .object({

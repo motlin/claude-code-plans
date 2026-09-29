@@ -2,6 +2,8 @@ import { useEffect, useId, useRef } from "react";
 import { CornerDownLeft, Square } from "lucide-react";
 
 import { useComposerDraft } from "../hooks/use-composer-draft";
+import type { ComposerState } from "../lib/composer-state";
+import { ComposerChin } from "./composer-chin";
 import { Tooltip } from "./ui/tooltip";
 
 type ComposerVariant = "session" | "home";
@@ -29,11 +31,13 @@ interface ComposerProps {
   isStreaming?: boolean;
   disabled?: boolean;
   deliveryHint?: string | undefined;
+  /** Mode / model / effort / usage readouts; the chin stays empty without them. */
+  chin?: ComposerState | undefined;
 }
 
 /**
  * The claude.ai/code ChatComposer card: an auto-growing prompt editor with a
- * trailing icon Send button and an (empty, for now) chin row beneath.
+ * trailing icon Send button and a chin row of readouts beneath.
  */
 export function Composer({
   variant,
@@ -43,6 +47,7 @@ export function Composer({
   isStreaming = false,
   disabled = false,
   deliveryHint,
+  chin,
 }: ComposerProps) {
   const { text: prompt, setText: setPrompt, clear: clearDraft } = useComposerDraft(draftKey);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -57,6 +62,11 @@ export function Composer({
     if (!canSend) return;
     onSend(prompt.trim());
     clearDraft();
+  }
+
+  function insertSlash() {
+    setPrompt(prompt.startsWith("/") ? prompt : `/${prompt}`);
+    textareaRef.current?.focus();
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -120,7 +130,9 @@ export function Composer({
       <div
         data-cds="ChatComposerChin"
         className="mt-1.5 flex min-h-5 items-center justify-between ps-[7px] pe-2.5 text-[12px]/[15px] text-secondary"
-      />
+      >
+        {chin && <ComposerChin state={chin} onInsertSlash={insertSlash} />}
+      </div>
     </div>
   );
 }
