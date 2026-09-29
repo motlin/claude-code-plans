@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import { useRouter } from "@tanstack/react-router";
 
 import { useSubscribeSessionStates } from "../hooks/use-claude-events";
-import { countSessionsNeedingAttention } from "../lib/attention";
+import { countSessionsNeedingAttention, stripAttentionCount } from "../lib/attention";
+import { resolvedRouteTitle } from "../lib/route-title";
 import { displayState, type ActivityState } from "../lib/session-state";
 import { hasUnseenWork, subscribeUnseenWork } from "../lib/unread-store";
 import { useSettings } from "./settings-provider";
@@ -16,24 +17,12 @@ function viewedSessionId(router: ReturnType<typeof useRouter>): string | null {
   return typeof id === "string" ? id : null;
 }
 
-const COUNT_PREFIX = /^\(\d+\) /;
-
 /**
- * Title the current route asks for, resolved innermost-first the way `HeadContent` does.
- * Snapshotting `document.title` instead would pin the badge to whichever route was hard
- * loaded and re-assert it over every later route's title.
+ * Title the current route asks for. Snapshotting `document.title` instead would pin the badge to
+ * whichever route was hard loaded and re-assert it over every later route's title.
  */
 function routeTitle(router: ReturnType<typeof useRouter>): string {
-  const { matches } = router.state;
-  for (let i = matches.length - 1; i >= 0; i--) {
-    const meta = matches[i]?.meta;
-    if (!meta) continue;
-    for (let j = meta.length - 1; j >= 0; j--) {
-      const title = meta[j]?.title;
-      if (title) return title;
-    }
-  }
-  return document.title.replace(COUNT_PREFIX, "");
+  return resolvedRouteTitle(router.state.matches) ?? stripAttentionCount(document.title);
 }
 
 function setAppBadge(count: number): void {

@@ -60,3 +60,10 @@ export function countSessionsNeedingAttention(
       sessionAlertsEnabled(settings, hidden, session.sessionId, viewedSessionId),
   ).length;
 }
+
+const ATTENTION_COUNT_PREFIX = /^\(\d+\) /;
+
+/** Drops the `(N) ` attention count that the badge bridge prefixes onto `document.title`. */
+export function stripAttentionCount(title: string): string {
+  return title.replace(ATTENTION_COUNT_PREFIX, "");
+}

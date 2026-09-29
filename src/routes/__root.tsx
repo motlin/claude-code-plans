@@ -21,6 +21,7 @@ import { CommandPalette } from "../components/command-palette";
 import { SettingsDialog } from "../components/settings/settings-dialog";
 import { KeyboardShortcutsDialog } from "../components/keyboard-shortcuts-dialog";
 import { useCommandPalette } from "../hooks/use-command-palette";
+import { useRecentsRecorder } from "../hooks/use-recents-recorder";
 import { useSidebarState, useSidebarToggleShortcut } from "../lib/sidebar-store";
 import { IndexingBanner } from "../components/indexing-banner";
 import { HookSchemaDriftBanner } from "../components/hook-schema-drift-banner";
@@ -157,6 +158,7 @@ function RootApplication({ children }: Readonly<{ children: ReactNode }>) {
 function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   const { collapsed: sidebarCollapsed } = useSidebarState();
   useSidebarToggleShortcut();
+  useRecentsRecorder();
   const [mobileOpen, setMobileOpen] = useState(false);
   const commandPalette = useCommandPalette();
   const capabilities = useCapabilities();

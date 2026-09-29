@@ -500,6 +500,7 @@ interface ClaudeEventsContextValue {
   subscribeStatusline: (listener: (sessionId: string) => void) => () => void;
   subscribeSessionStates: (listener: (session: SessionStateObservation) => void) => () => void;
   subscribeReviewOffers: (listener: (sessionId: string) => void) => () => void;
+  subscribeSessionRemovals: (listener: (sessionId: string) => void) => () => void;
   dismissHookSchemaDrift: (hookEventName: string) => void;
 }
 
@@ -544,6 +545,15 @@ export function useSubscribeReviewOffers(): ClaudeEventsContextValue["subscribeR
     throw new Error("useSubscribeReviewOffers must be used within a ClaudeEventsProvider");
   }
   return context.subscribeReviewOffers;
+}
+
+/** Notifies the listener with the id of every session the index drops (SSE `session-removed`). */
+export function useSubscribeSessionRemovals(): ClaudeEventsContextValue["subscribeSessionRemovals"] {
+  const context = useContext(ClaudeEventsContext);
+  if (!context) {
+    throw new Error("useSubscribeSessionRemovals must be used within a ClaudeEventsProvider");
+  }
+  return context.subscribeSessionRemovals;
 }
 
 const NO_ACTIVE_SESSIONS: ReadonlyMap<string, ActiveSessionInfo> = new Map();
@@ -898,6 +908,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const statuslineListenersRef = useRef(new Set<(sessionId: string) => void>());
   const reviewOfferListenersRef = useRef(new Set<(sessionId: string) => void>());
+  const sessionRemovalListenersRef = useRef(new Set<(sessionId: string) => void>());
   const sessionStateListenersRef = useRef(new Set<(session: SessionStateObservation) => void>());
   const sessionStateObservationsRef = useRef(new Map<string, SessionStateObservation>());
 
@@ -912,6 +923,13 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
     reviewOfferListenersRef.current.add(listener);
     return () => {
       reviewOfferListenersRef.current.delete(listener);
+    };
+  }, []);
+
+  const subscribeSessionRemovals = useCallback((listener: (sessionId: string) => void) => {
+    sessionRemovalListenersRef.current.add(listener);
+    return () => {
+      sessionRemovalListenersRef.current.delete(listener);
     };
   }, []);
 
@@ -1041,6 +1059,9 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
           const projectDir = data["projectDir"];
           if (typeof sessionId === "string" && typeof projectDir === "string") {
             applySessionRemoved(queryClient, sessionId, projectDir);
+          }
+          if (typeof sessionId === "string") {
+            for (const listener of sessionRemovalListenersRef.current) listener(sessionId);
           }
           break;
         }
@@ -1374,6 +1395,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
       subscribeStatusline,
       subscribeSessionStates,
       subscribeReviewOffers,
+      subscribeSessionRemovals,
       dismissHookSchemaDrift,
     }),
     [
@@ -1381,6 +1403,7 @@ export function ClaudeEventsProvider({ children }: { children: ReactNode }) {
       subscribeStatusline,
       subscribeSessionStates,
       subscribeReviewOffers,
+      subscribeSessionRemovals,
       dismissHookSchemaDrift,
     ],
   );

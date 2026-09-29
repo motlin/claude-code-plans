@@ -3,7 +3,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
-import { ClaudeEventsProvider } from "../src/hooks/use-claude-events";
+import { useEffect, type ReactNode } from "react";
+import { ClaudeEventsProvider, useSubscribeSessionRemovals } from "../src/hooks/use-claude-events";
 import { DOMAIN_EVENTS, HERDR_EVENTS } from "../src/lib/hook-events";
 
 class TestEventSource extends EventTarget {
@@ -22,7 +23,16 @@ class TestEventSource extends EventTarget {
   }
 }
 
-function renderProvider(): { client: QueryClient; eventSource: TestEventSource } {
+function RemovalProbe({ onRemoved }: { onRemoved: (sessionId: string) => void }): null {
+  const subscribe = useSubscribeSessionRemovals();
+  useEffect(() => subscribe(onRemoved), [subscribe, onRemoved]);
+  return null;
+}
+
+function renderProvider(children: ReactNode = <div />): {
+  client: QueryClient;
+  eventSource: TestEventSource;
+} {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   client.setQueryData(["terminal", "placements"], []);
   client.setQueryData(["tmux", "windows"], []);
@@ -31,9 +41,7 @@ function renderProvider(): { client: QueryClient; eventSource: TestEventSource }
 
   render(
     <QueryClientProvider client={client}>
-      <ClaudeEventsProvider>
-        <div />
-      </ClaudeEventsProvider>
+      <ClaudeEventsProvider>{children}</ClaudeEventsProvider>
     </QueryClientProvider>,
   );
 
@@ -110,5 +118,21 @@ describe("ClaudeEventsProvider terminal placement invalidation", () => {
       terminalPlacements: true,
       tmuxWindows: false,
     });
+  });
+
+  it("tells session-removal subscribers which session the index dropped", () => {
+    const removed: string[] = [];
+    const { eventSource } = renderProvider(
+      <RemovalProbe onRemoved={(sessionId) => removed.push(sessionId)} />,
+    );
+
+    act(() => {
+      eventSource.emit(DOMAIN_EVENTS.SESSION_REMOVED, {
+        sessionId: "session-test-100",
+        projectDir: "-Users-test-project",
+      });
+    });
+
+    expect(removed).toStrictEqual(["session-test-100"]);
   });
 });
