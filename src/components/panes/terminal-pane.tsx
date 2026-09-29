@@ -79,7 +79,15 @@ function StatusChip({ status }: { status: ConnectionStatus }) {
  * first (and for now only) tab is **Claude**, the live herdr pane running this
  * session's TUI.
  */
-function TerminalPane({ sessionId, chrome }: { sessionId: string; chrome: PaneChrome }) {
+function TerminalPane({
+  sessionId,
+  interactive,
+  chrome,
+}: {
+  sessionId: string;
+  interactive: boolean;
+  chrome: PaneChrome;
+}) {
   const focusRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
 
@@ -119,7 +127,12 @@ function TerminalPane({ sessionId, chrome }: { sessionId: string; chrome: PaneCh
         data-terminal-focus=""
         className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[inherit] outline-none focus-visible:ring-1 focus-visible:ring-accent-100 focus-visible:ring-inset"
       >
-        <HerdrTerminal sessionId={sessionId} variant="pane" onStatusChange={setStatus} />
+        <HerdrTerminal
+          sessionId={sessionId}
+          variant="pane"
+          interactive={interactive}
+          onStatusChange={setStatus}
+        />
       </div>
     </>
   );
@@ -128,16 +141,24 @@ function TerminalPane({ sessionId, chrome }: { sessionId: string; chrome: PaneCh
 /**
  * Registers the `terminal` pane kind while herdr has a live pane for this
  * session, mirroring upstream showing the toggle only when a transport exists.
+ * `interactive` follows the herdr writes setting; without it the Claude tab
+ * stays a read-only observer.
  */
-export function useRegisterTerminalPane(sessionId: string, available: boolean): void {
+export function useRegisterTerminalPane(
+  sessionId: string,
+  available: boolean,
+  interactive: boolean,
+): void {
   useEffect(() => {
     if (!available) return;
     return registerPane("terminal", {
       title: "Terminal",
       header: "custom",
-      render: (chrome) => <TerminalPane sessionId={sessionId} chrome={chrome} />,
+      render: (chrome) => (
+        <TerminalPane sessionId={sessionId} interactive={interactive} chrome={chrome} />
+      ),
     });
-  }, [sessionId, available]);
+  }, [sessionId, available, interactive]);
 }
 
 /** Binds ⌃` to the Terminal pane state machine. */

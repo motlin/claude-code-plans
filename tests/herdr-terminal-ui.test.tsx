@@ -29,8 +29,23 @@ const GHOSTTY_APPEARANCE: GhosttyAppearance = {
 const terminalState = vi.hoisted(() => ({
   constructorOptions: [] as unknown[],
   closeCalls: [] as unknown[][],
+  sentMessages: [] as string[],
   socketUrls: [] as string[],
   webSockets: [] as EventTarget[],
+  dataListeners: [] as Array<(data: string) => void>,
+  keyHandlers: [] as Array<(event: KeyboardEvent) => boolean>,
+  fitSize: null as { cols: number; rows: number } | null,
+  resizeCallbacks: [] as Array<() => void>,
+}));
+
+const shortcutState = vi.hoisted(() => ({
+  dispatched: [] as string[],
+}));
+
+vi.mock("../src/hooks/use-shortcut", () => ({
+  dispatchShortcutEvent: (event: KeyboardEvent) => {
+    shortcutState.dispatched.push(event.code);
+  },
 }));
 
 const appearanceState = vi.hoisted(() => ({
@@ -49,7 +64,16 @@ vi.mock("ghostty-web", () => ({
     constructor(options: unknown) {
       terminalState.constructorOptions.push(options);
     }
-    loadAddon() {}
+    onData(listener: (data: string) => void) {
+      terminalState.dataListeners.push(listener);
+      return { dispose() {} };
+    }
+    attachCustomKeyEventHandler(handler: (event: KeyboardEvent) => boolean) {
+      terminalState.keyHandlers.push(handler);
+    }
+    loadAddon(addon: { terminal?: unknown }) {
+      addon.terminal = this;
+    }
     open() {}
     reset() {}
     resize(columns: number, rows: number) {
@@ -60,16 +84,26 @@ vi.mock("ghostty-web", () => ({
     dispose() {}
   },
   FitAddon: class {
-    fit() {}
+    terminal: { resize: (columns: number, rows: number) => void } | undefined;
+    fit() {
+      if (terminalState.fitSize) {
+        this.terminal?.resize(terminalState.fitSize.cols, terminalState.fitSize.rows);
+      }
+    }
   },
 }));
 
 class FakeResizeObserver {
+  constructor(callback: () => void) {
+    terminalState.resizeCallbacks.push(callback);
+  }
   observe() {}
   disconnect() {}
 }
 
 class FakeWebSocket extends EventTarget {
+  static OPEN = 1;
+  readyState = 1;
   constructor(url: string | URL) {
     super();
     terminalState.webSockets.push(this);
@@ -77,6 +111,9 @@ class FakeWebSocket extends EventTarget {
   }
   close(...arguments_: unknown[]) {
     terminalState.closeCalls.push(arguments_);
+  }
+  send(message: string) {
+    terminalState.sentMessages.push(message);
   }
 }
 
@@ -108,8 +145,14 @@ describe("live herdr terminal UI", () => {
   beforeEach(() => {
     terminalState.constructorOptions = [];
     terminalState.closeCalls = [];
+    terminalState.sentMessages = [];
     terminalState.socketUrls = [];
     terminalState.webSockets = [];
+    terminalState.dataListeners = [];
+    terminalState.keyHandlers = [];
+    terminalState.fitSize = null;
+    terminalState.resizeCallbacks = [];
+    shortcutState.dispatched = [];
     appearanceState.appearance = DEFAULT_APPEARANCE;
     vi.stubGlobal("ResizeObserver", FakeResizeObserver);
     vi.stubGlobal("WebSocket", FakeWebSocket);
@@ -306,5 +349,78 @@ describe("live herdr terminal UI", () => {
       terminals: terminalState.constructorOptions.length,
       errors: screen.queryAllByText("Could not parse the font shorthand").length,
     }).toStrictEqual({ terminals: 1, errors: 0 });
+  });
+
+  it("streams keystrokes and resizes over the control socket when interactive", async () => {
+    render(<HerdrTerminal sessionId="session-test-100" variant="pane" interactive />);
+    releaseFonts();
+    await waitFor(() => expect(terminalState.socketUrls.length).toBe(1));
+
+    act(() => {
+      for (const listener of terminalState.dataListeners) listener("Alice types\r");
+    });
+    terminalState.fitSize = { cols: 100, rows: 30 };
+    act(() => {
+      for (const callback of terminalState.resizeCallbacks) callback();
+    });
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    expect({
+      disableStdin: (terminalState.constructorOptions[0] as { disableStdin: boolean }).disableStdin,
+      socketUrls: terminalState.socketUrls,
+      sentMessages: terminalState.sentMessages,
+      closeCalls: terminalState.closeCalls,
+    }).toStrictEqual({
+      disableStdin: false,
+      socketUrls: [
+        "ws://localhost:3000/api/herdr/control?sessionId=session-test-100&columns=80&rows=24",
+      ],
+      sentMessages: [
+        JSON.stringify({ type: "data", data: "Alice types\r" }),
+        JSON.stringify({ type: "resize", cols: 100, rows: 30 }),
+      ],
+      closeCalls: [],
+    });
+  });
+
+  it("never sends data frames from the read-only observer", async () => {
+    render(<HerdrTerminal sessionId="session-test-100" variant="pane" />);
+    releaseFonts();
+    await waitFor(() => expect(terminalState.socketUrls.length).toBe(1));
+
+    act(() => {
+      for (const listener of terminalState.dataListeners) listener("Alice types\r");
+    });
+
+    expect({
+      disableStdin: (terminalState.constructorOptions[0] as { disableStdin: boolean }).disableStdin,
+      socketUrls: terminalState.socketUrls,
+      sentMessages: terminalState.sentMessages,
+    }).toStrictEqual({
+      disableStdin: true,
+      socketUrls: [
+        "ws://localhost:3000/api/herdr/observe?sessionId=session-test-100&columns=80&rows=24",
+      ],
+      sentMessages: [],
+    });
+  });
+
+  it("hands app shortcuts back to the app instead of the terminal", async () => {
+    render(<HerdrTerminal sessionId="session-test-100" variant="pane" interactive />);
+    releaseFonts();
+    await waitFor(() => expect(terminalState.keyHandlers.length).toBe(1));
+    const handler = terminalState.keyHandlers[0]!;
+
+    const results = {
+      toggleTerminal: handler(
+        new KeyboardEvent("keydown", { key: "`", code: "Backquote", ctrlKey: true }),
+      ),
+      plainKey: handler(new KeyboardEvent("keydown", { key: "a", code: "KeyA" })),
+    };
+
+    expect({ results, dispatched: shortcutState.dispatched }).toStrictEqual({
+      results: { toggleTerminal: true, plainKey: false },
+      dispatched: ["Backquote"],
+    });
   });
 });

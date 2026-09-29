@@ -6,7 +6,7 @@ import { getHerdrPanes } from "./panes";
 import { HerdrTerminalRecordSchema, type HerdrTerminalRecord } from "./terminal-protocol";
 
 const MAXIMUM_LINE_BYTES = 5 * 1024 * 1024;
-const ViewportDimensionSchema = z.number().int().positive().max(500);
+export const ViewportDimensionSchema = z.number().int().positive().max(500);
 
 type ObserverChild = ChildProcessByStdio<null, Readable, Readable>;
 type SpawnObserver = (
@@ -20,13 +20,13 @@ export interface TerminalObserverSocket {
   close: (code?: number, reason?: string) => void;
 }
 
-interface ObserverOptions {
+export interface ObserverOptions {
   target: string;
   columns: number;
   rows: number;
 }
 
-interface TerminalObserver {
+export interface TerminalObserver {
   stop: () => void;
   shutdown: () => void;
 }
@@ -91,32 +91,60 @@ export function createTerminalRecordParser(
 
 const activeObservers = new Set<TerminalObserver>();
 
-export function startTerminalObserver(
+/** The stdout/stderr half shared by the observe and control streams. */
+export interface TerminalStreamChild {
+  stdout: Readable;
+  stderr: Readable;
+  exitCode: number | null;
+  signalCode: NodeJS.Signals | null;
+  kill: (signal?: NodeJS.Signals) => boolean;
+  on(event: "error", listener: (error: Error) => void): unknown;
+  on(
+    event: "exit",
+    listener: (code: number | null, signal: NodeJS.Signals | null) => void,
+  ): unknown;
+  off(event: "error", listener: (error: Error) => void): unknown;
+  off(
+    event: "exit",
+    listener: (code: number | null, signal: NodeJS.Signals | null) => void,
+  ): unknown;
+}
+
+export function parseViewport(columns: number, rows: number): { columns: number; rows: number } {
+  return {
+    columns: ViewportDimensionSchema.parse(columns),
+    rows: ViewportDimensionSchema.parse(rows),
+  };
+}
+
+export function sessionStreamArguments(
+  mode: "observe" | "control",
   options: ObserverOptions,
+): string[] {
+  return [
+    "terminal",
+    "session",
+    mode,
+    options.target,
+    "--cols",
+    String(options.columns),
+    "--rows",
+    String(options.rows),
+  ];
+}
+
+/**
+ * Forward herdr's NDJSON frame stream to the socket, enforcing a keyframe
+ * first and monotonic sequence numbers, until terminal.closed or failure.
+ */
+export function bridgeTerminalStream(
+  child: TerminalStreamChild,
   socket: TerminalObserverSocket,
-  spawnObserver: SpawnObserver = spawn,
 ): TerminalObserver {
-  const columns = ViewportDimensionSchema.parse(options.columns);
-  const rows = ViewportDimensionSchema.parse(options.rows);
   let stopped = false;
   let receivedClosed = false;
   let lastSequence: number | null = null;
   let standardError = "";
-
-  const child = spawnObserver(
-    "herdr",
-    [
-      "terminal",
-      "session",
-      "observe",
-      options.target,
-      "--cols",
-      String(columns),
-      "--rows",
-      String(rows),
-    ],
-    { stdio: ["ignore", "pipe", "pipe"] },
-  );
 
   const observer: TerminalObserver = {
     stop() {
@@ -188,12 +216,28 @@ export function startTerminalObserver(
   return observer;
 }
 
+export function startTerminalObserver(
+  options: ObserverOptions,
+  socket: TerminalObserverSocket,
+  spawnObserver: SpawnObserver = spawn,
+): TerminalObserver {
+  const viewport = parseViewport(options.columns, options.rows);
+  const child = spawnObserver(
+    "herdr",
+    sessionStreamArguments("observe", { target: options.target, ...viewport }),
+    { stdio: ["ignore", "pipe", "pipe"] },
+  );
+  return bridgeTerminalStream(child, socket);
+}
+
+export async function resolveSessionTerminal(sessionId: string): Promise<string> {
+  const pane = (await getHerdrPanes()).find((candidate) => candidate.sessionId === sessionId);
+  if (!pane) throw new Error("No live herdr pane is linked to this session");
+  return pane.terminalId;
+}
+
 const defaultDependencies: TerminalObserverDependencies = {
-  resolveTarget: async (sessionId) => {
-    const pane = (await getHerdrPanes()).find((candidate) => candidate.sessionId === sessionId);
-    if (!pane) throw new Error("No live herdr pane is linked to this session");
-    return pane.terminalId;
-  },
+  resolveTarget: resolveSessionTerminal,
   spawnObserver: spawn,
 };
 

@@ -39,6 +39,15 @@ function byPriority(a: Registration, b: Registration): number {
   return priorityDelta === 0 ? b.seq - a.seq : priorityDelta;
 }
 
+/**
+ * Run an event through the app shortcut handlers directly. For widgets such
+ * as the terminal that swallow keys (and call preventDefault) before the
+ * document listener would see them.
+ */
+export function dispatchShortcutEvent(event: KeyboardEvent): void {
+  dispatch(event);
+}
+
 function dispatch(event: KeyboardEvent): void {
   if (event.defaultPrevented) return;
   const isMac = isMacPlatform();

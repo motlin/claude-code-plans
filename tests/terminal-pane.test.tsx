@@ -15,8 +15,10 @@ import { validateSessionSearch } from "../src/lib/session-search";
 import { installLocalStorage } from "./fake-storage";
 
 vi.mock("../src/components/herdr-terminal", () => ({
-  HerdrTerminal: ({ sessionId }: { sessionId: string }) => (
-    <p data-testid="herdr-terminal">{sessionId}</p>
+  HerdrTerminal: ({ sessionId, interactive }: { sessionId: string; interactive?: boolean }) => (
+    <p data-testid="herdr-terminal" data-interactive={String(interactive ?? false)}>
+      {sessionId}
+    </p>
   ),
 }));
 
@@ -31,8 +33,8 @@ class FakeObserver {
 
 const SESSION_ID = "terminal-pane-session";
 
-function Harness({ available }: { available: boolean }) {
-  useRegisterTerminalPane(SESSION_ID, available);
+function Harness({ available, interactive }: { available: boolean; interactive: boolean }) {
+  useRegisterTerminalPane(SESSION_ID, available, interactive);
   return (
     <>
       <TerminalPaneShortcut available={available} />
@@ -44,7 +46,7 @@ function Harness({ available }: { available: boolean }) {
 
 function renderSession(
   available: boolean,
-  requested: { pane?: "terminal"; onHandled?: () => void } = {},
+  requested: { pane?: "terminal"; onHandled?: () => void; interactive?: boolean } = {},
 ) {
   return render(
     <SettingsProvider>
@@ -54,7 +56,7 @@ function renderSession(
         requestedPane={requested.pane}
         onRequestedPaneHandled={requested.onHandled}
       >
-        <Harness available={available} />
+        <Harness available={available} interactive={requested.interactive ?? false} />
       </TileHost>
     </SettingsProvider>,
   );
@@ -151,6 +153,20 @@ describe("Terminal pane", () => {
       terminal: SESSION_ID,
     });
   });
+
+  it.each([
+    [false, "false"],
+    [true, "true"],
+  ])(
+    "makes the Claude tab interactive only when herdr writes are enabled (%s)",
+    (writes, expected) => {
+      renderSession(true, { interactive: writes });
+
+      act(() => screen.getByRole("button", { name: "Terminal" }).click());
+
+      expect(screen.getByTestId("herdr-terminal").getAttribute("data-interactive")).toBe(expected);
+    },
+  );
 
   it("⌃` opens and focuses the pane, and pressing it again inside closes it", () => {
     renderSession(true);

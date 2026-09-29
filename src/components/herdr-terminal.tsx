@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from "react";
+import { dispatchShortcutEvent } from "../hooks/use-shortcut";
+import { terminalHandlesKey } from "../lib/herdr/terminal-keys";
 import { createTerminalFrameConsumer } from "../lib/herdr/terminal-protocol";
 import { getGhosttyAppearance, type GhosttyAppearance } from "../lib/server-fns";
 
 export type ConnectionStatus = "connecting" | "live" | "reconnecting" | "closed" | "error";
 
-function observerUrl(sessionId: string, columns: number, rows: number): string {
+function streamUrl(interactive: boolean, sessionId: string, columns: number, rows: number): string {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const url = new URL("/api/herdr/observe", `${protocol}//${window.location.host}`);
+  const path = interactive ? "/api/herdr/control" : "/api/herdr/observe";
+  const url = new URL(path, `${protocol}//${window.location.host}`);
   url.searchParams.set("sessionId", sessionId);
   url.searchParams.set("columns", String(columns));
   url.searchParams.set("rows", String(rows));
@@ -17,14 +20,20 @@ function observerUrl(sessionId: string, columns: number, rows: number): string {
  * `page` is the standalone `/herdr/terminal` view with its prose header and a
  * fixed-height box; `pane` fills its tile and reports status to the host, which
  * shows it as a compact chip.
+ *
+ * `interactive` (only when herdr writes are enabled) swaps the read-only
+ * observe socket for the control socket: keystrokes go out as `data` frames
+ * and resizes as `resize` frames instead of reconnecting.
  */
 export function HerdrTerminal({
   sessionId,
   variant = "page",
+  interactive = false,
   onStatusChange,
 }: {
   sessionId: string;
   variant?: "page" | "pane";
+  interactive?: boolean;
   onStatusChange?: (status: ConnectionStatus) => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
@@ -51,7 +60,7 @@ export function HerdrTerminal({
       const terminal = new ghostty.Terminal({
         convertEol: false,
         cursorBlink: false,
-        disableStdin: true,
+        disableStdin: !interactive,
         fontFamily: ghosttyAppearance.fontFamily,
         fontSize: ghosttyAppearance.fontSize,
         scrollback: 0,
@@ -60,12 +69,29 @@ export function HerdrTerminal({
       const fitAddon = new ghostty.FitAddon();
       terminal.loadAddon(fitAddon);
       terminal.open(element);
+      /**
+       * Ghostty skips (and preventDefaults) keys this handler claims, which
+       * would hide them from the document shortcut listener, so app chords
+       * are dispatched to the app here instead.
+       */
+      terminal.attachCustomKeyEventHandler((event) => {
+        if (terminalHandlesKey(event)) return false;
+        dispatchShortcutEvent(event);
+        return true;
+      });
 
       let socket: WebSocket | null = null;
       let retry: ReturnType<typeof setTimeout> | null = null;
       let reconnectForResize: ReturnType<typeof setTimeout> | null = null;
       let stopped = false;
       let viewport = { columns: 0, rows: 0 };
+
+      const sendFrame = (frame: Record<string, unknown>): void => {
+        if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(frame));
+      };
+      const dataSubscription = interactive
+        ? terminal.onData((data) => sendFrame({ type: "data", data }))
+        : null;
 
       const connect = (): void => {
         if (stopped) return;
@@ -75,7 +101,9 @@ export function HerdrTerminal({
         }
         fitAddon.fit();
         viewport = { columns: terminal.cols, rows: terminal.rows };
-        const nextSocket = new WebSocket(observerUrl(sessionId, viewport.columns, viewport.rows));
+        const nextSocket = new WebSocket(
+          streamUrl(interactive, sessionId, viewport.columns, viewport.rows),
+        );
         const consumer = createTerminalFrameConsumer({
           reset: () => terminal.reset(),
           resize: (columns, rows) => terminal.resize(columns, rows),
@@ -119,6 +147,11 @@ export function HerdrTerminal({
         reconnectForResize = setTimeout(() => {
           fitAddon.fit();
           if (terminal.cols === viewport.columns && terminal.rows === viewport.rows) return;
+          if (interactive) {
+            viewport = { columns: terminal.cols, rows: terminal.rows };
+            sendFrame({ type: "resize", cols: viewport.columns, rows: viewport.rows });
+            return;
+          }
           socket?.close(1000, "observer viewport resized");
           setStatus("reconnecting");
           connect();
@@ -133,6 +166,7 @@ export function HerdrTerminal({
         if (retry) clearTimeout(retry);
         if (reconnectForResize) clearTimeout(reconnectForResize);
         resizeObserver.disconnect();
+        dataSubscription?.dispose();
         socket?.close(1000, "terminal view closed");
         terminal.dispose();
       };
@@ -170,7 +204,7 @@ export function HerdrTerminal({
       disposed = true;
       teardown?.();
     };
-  }, [sessionId]);
+  }, [sessionId, interactive]);
 
   useEffect(() => {
     onStatusChange?.(status);

@@ -474,7 +474,11 @@ function SessionView({
   const chatStream = useChatStream();
   const liveHerdrPrompt = useLiveHerdrPrompt(sessionId, endIndex);
   const promptBehavior = getSessionPromptBehavior(sessionId, isActive, herdr);
-  useRegisterTerminalPane(sessionId, promptBehavior.hasLivePane);
+  useRegisterTerminalPane(
+    sessionId,
+    promptBehavior.hasLivePane,
+    promptBehavior.hasLivePane && herdr.writesEnabled,
+  );
   const prevSessionIdRef = useRef(sessionId);
 
   useEffect(() => {
