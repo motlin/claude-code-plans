@@ -11,7 +11,9 @@ import {
 } from "@tanstack/react-router";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
-import { StarredSessionsPage } from "../src/components/starred-sessions-page";
+import { PinnedSessionsPage } from "../src/components/pinned-sessions-page";
+import { Route as PinnedRoute } from "../src/routes/pinned";
+import { Route as StarredRoute } from "../src/routes/starred";
 import type { SessionListItem } from "../src/lib/api/sessions";
 import { movePin, pin, readPinState } from "../src/lib/pin-store";
 import { installLocalStorage } from "./fake-storage";
@@ -54,10 +56,10 @@ async function renderPage() {
       </QueryClientProvider>
     ),
   });
-  const starredRoute = createRoute({
+  const pinnedRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
-    component: StarredSessionsPage,
+    component: PinnedSessionsPage,
   });
   const sessionRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -65,7 +67,7 @@ async function renderPage() {
     component: () => null,
   });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([starredRoute, sessionRoute]),
+    routeTree: rootRoute.addChildren([pinnedRoute, sessionRoute]),
     history: createMemoryHistory({ initialEntries: ["/"] }),
   });
   await router.load();
@@ -78,7 +80,7 @@ function titles(): string[] {
     .map((item) => item.querySelector("a div")?.textContent ?? "");
 }
 
-describe("StarredSessionsPage", () => {
+describe("PinnedSessionsPage", () => {
   beforeEach(() => {
     installLocalStorage();
     vi.stubGlobal("fetch", fetchMock);
@@ -93,8 +95,13 @@ describe("StarredSessionsPage", () => {
   it("shows the empty state without asking the server when nothing is pinned", async () => {
     await renderPage();
 
-    await screen.findByText("No starred sessions yet. Star a session from its detail page.");
-    expect(fetchMock.mock.calls).toStrictEqual([]);
+    await screen.findByText(
+      "No pinned sessions. Drag a session to Pinned or use Pin (P) in its menu.",
+    );
+    expect({
+      heading: screen.getByRole("heading", { level: 1 }).textContent,
+      fetches: fetchMock.mock.calls,
+    }).toStrictEqual({ heading: "Pinned sessions", fetches: [] });
   });
 
   it("lists this browser's pins, user-ordered first, then newest first", async () => {
@@ -116,9 +123,9 @@ describe("StarredSessionsPage", () => {
     await renderPage();
     await waitFor(() => expect(titles()).toStrictEqual(["Alice session", "Bob session"]));
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Unstar" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Unpin" })[0]!);
     await waitFor(() => expect(titles()).toStrictEqual(["Bob session"]));
-    const afterUnstar = readPinState();
+    const afterUnpin = readPinState();
 
     const otherTab = JSON.stringify({
       pinnedIds: ["session-bob", "session-carol"],
@@ -130,6 +137,26 @@ describe("StarredSessionsPage", () => {
     });
 
     await waitFor(() => expect(titles()).toStrictEqual(["Bob session", "Carol session"]));
-    expect(afterUnstar).toStrictEqual({ pinnedIds: ["session-bob"], pinnedOrder: [] });
+    expect(afterUnpin).toStrictEqual({ pinnedIds: ["session-bob"], pinnedOrder: [] });
+  });
+});
+
+describe("pinned sessions routes", () => {
+  it("renders the same titled page at /pinned and the legacy /starred", () => {
+    const describeRoute = (route: typeof PinnedRoute | typeof StarredRoute) => ({
+      component: route.options.component,
+      head: route.options.head?.({} as never),
+    });
+
+    expect([describeRoute(PinnedRoute), describeRoute(StarredRoute)]).toStrictEqual([
+      {
+        component: PinnedSessionsPage,
+        head: { meta: [{ title: "Pinned sessions" }] },
+      },
+      {
+        component: PinnedSessionsPage,
+        head: { meta: [{ title: "Pinned sessions" }] },
+      },
+    ]);
   });
 });

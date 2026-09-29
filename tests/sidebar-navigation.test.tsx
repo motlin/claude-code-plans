@@ -96,7 +96,6 @@ describe("sidebar navigation", () => {
       { label: "Tmux Windows", to: "/tmux" },
       { label: "Approvals", to: "/approvals" },
       { label: "Notifications", to: "/notifications" },
-      { label: "Starred", to: "/starred" },
       { label: "Tasks", to: "/tasks" },
       { label: "Projects", to: "/projects" },
       { label: "Plans", to: "/plans" },
@@ -191,8 +190,8 @@ describe("sidebar nav rows", () => {
   }
 
   it("uses the upstream row recipe on every nav link", async () => {
-    await renderSidebarAt("/starred");
-    await waitFor(() => screen.getByRole("link", { name: "Starred" }));
+    await renderSidebarAt("/tasks");
+    await waitFor(() => screen.getByRole("link", { name: "Tasks" }));
 
     const rows = navRows();
     expect(rows.length).toBeGreaterThan(0);
@@ -214,8 +213,8 @@ describe("sidebar nav rows", () => {
   });
 
   it("marks only the active row as focused", async () => {
-    await renderSidebarAt("/starred");
-    await waitFor(() => screen.getByRole("link", { name: "Starred" }));
+    await renderSidebarAt("/tasks");
+    await waitFor(() => screen.getByRole("link", { name: "Tasks" }));
 
     expect(
       navRows()
@@ -224,11 +223,11 @@ describe("sidebar nav rows", () => {
           href: row.getAttribute("href"),
           selected: row.getAttribute("data-selected"),
         })),
-    ).toStrictEqual([{ href: "/starred", selected: "focused" }]);
+    ).toStrictEqual([{ href: "/tasks", selected: "focused" }]);
   });
 
   it("renders count badges inside the trailing slot", async () => {
-    await renderSidebarAt("/starred");
+    await renderSidebarAt("/tasks");
     const approvals = await waitFor(() => screen.getByRole("link", { name: /Approvals/ }));
 
     const tail = approvals.querySelector(":scope > .df-tail-mark");

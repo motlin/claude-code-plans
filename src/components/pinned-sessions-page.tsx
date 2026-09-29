@@ -1,5 +1,6 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { PinOff } from "lucide-react";
 import { useMemo } from "react";
 import { type SessionListItem, sessionsByIdsQueryOptions } from "../lib/api/sessions";
 import { orderedPins, unpin, usePins } from "../lib/pin-store";
@@ -20,8 +21,10 @@ function formatDate(iso: string): string {
 const newestFirst = (a: SessionListItem, b: SessionListItem): number =>
   new Date(b.mtime).getTime() - new Date(a.mtime).getTime();
 
+export const PINNED_SESSIONS_TITLE = "Pinned sessions";
+
 /** This browser's pinned sessions: user-ordered pins first, then newest first. */
-export function StarredSessionsPage() {
+export function PinnedSessionsPage() {
   const { pinnedIds, pinnedOrder } = usePins();
   const { data } = useQuery({
     ...sessionsByIdsQueryOptions(pinnedIds),
@@ -35,11 +38,11 @@ export function StarredSessionsPage() {
 
   return (
     <div>
-      <ListPageHeader title="Starred Sessions" count={sessions.length} itemLabel="session" />
+      <ListPageHeader title={PINNED_SESSIONS_TITLE} count={sessions.length} itemLabel="session" />
 
       {loading ? null : sessions.length === 0 ? (
         <p className="mt-4 text-sm text-t6">
-          No starred sessions yet. Star a session from its detail page.
+          No pinned sessions. Drag a session to Pinned or use Pin (P) in its menu.
         </p>
       ) : (
         <ul className="mt-4 space-y-1">
@@ -77,18 +80,11 @@ export function StarredSessionsPage() {
                   e.preventDefault();
                   unpin(session.id);
                 }}
-                className="absolute right-2 top-3 cursor-pointer text-warning-000 opacity-0 transition-opacity group-hover:opacity-100"
-                title="Unstar"
+                className="absolute right-2 top-3 cursor-pointer text-secondary opacity-0 transition-opacity hover:text-primary group-hover:opacity-100"
+                title="Unpin"
+                aria-label="Unpin"
               >
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-4 w-4"
-                  fill="currentColor"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                </svg>
+                <PinOff className="h-4 w-4" />
               </button>
             </li>
           ))}

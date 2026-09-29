@@ -36,7 +36,7 @@ This project indexes those files into SQLite and serves them through a TanStack 
 ![Search](screenshots/search.png)
 
 - **Plugins** -- Browse installed plugins, their commands, skills, hooks, and agents.
-- **Starred sessions** -- Star important sessions for quick access.
+- **Pinned sessions** -- Pin important sessions for quick access.
 - **Live updates** -- File watcher + SSE pushes changes to the browser as they happen.
 - **Dark/light/system theme** -- Responds to OS preference changes in real-time.
 

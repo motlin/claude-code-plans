@@ -119,6 +119,12 @@ describe("persisted application settings", () => {
     });
   });
 
+  it("drops a saved Starred nav section now that pins live in the sidebar", async () => {
+    await writeFile(configPath, JSON.stringify({ visible_nav_sections: ["starred", "plans"] }));
+
+    expect(readApplicationSettings(configPath).visibleNavSections).toStrictEqual(["plans"]);
+  });
+
   it("prefers saved nav sections over the retired flags", async () => {
     await writeFile(
       configPath,

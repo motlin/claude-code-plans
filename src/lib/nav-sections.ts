@@ -11,7 +11,6 @@ export const NAV_SECTIONS = [
   "tmux",
   "approvals",
   "notifications",
-  "starred",
   "tasks",
   "projects",
   "plans",
@@ -30,10 +29,15 @@ export const VisibleNavSectionsSchema = z
   .array(NavSectionSchema)
   .refine((sections) => new Set(sections).size === sections.length, "Duplicate nav section");
 
-/** Plugins became Customize; a saved `"plugins"` pin carries over instead of voiding the config. */
+/**
+ * Plugins became Customize, so a saved `"plugins"` pin carries over; Starred became the sidebar's
+ * Pinned group, so a saved `"starred"` is dropped. Either way the config stays valid.
+ */
 export function renameLegacyNavSections(value: unknown): unknown {
   if (!Array.isArray(value)) return value;
-  return value.map((section) => (section === "plugins" ? "customize" : section));
+  return value
+    .filter((section) => section !== "starred")
+    .map((section) => (section === "plugins" ? "customize" : section));
 }
 
 /** Upstream pins New, Artifacts and Customize; Plans and Memories stay local. */

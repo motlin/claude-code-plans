@@ -364,4 +364,16 @@ describe("CommandPalette shell", () => {
     fireEvent.change(within(dialog).getByRole("combobox"), { target: { value: "markdown" } });
     await within(dialog).findByRole("option", { name: "Plans" });
   });
+
+  it("names the pinned sessions page Pinned, still found by star", async () => {
+    const dialog = await openPalette();
+
+    fireEvent.change(within(dialog).getByRole("combobox"), { target: { value: "star" } });
+    const pinned = await within(dialog).findByRole("option", { name: "Pinned" });
+
+    expect({
+      starred: within(dialog).queryByRole("option", { name: "Starred" }),
+      pinned: pinned.textContent,
+    }).toStrictEqual({ starred: null, pinned: "Pinned" });
+  });
 });

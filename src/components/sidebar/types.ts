@@ -5,7 +5,6 @@ export type Section =
   | "tmux"
   | "approvals"
   | "notifications"
-  | "starred"
   | "tasks"
   | "projects"
   | "plans"

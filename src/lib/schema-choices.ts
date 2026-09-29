@@ -677,7 +677,6 @@ const navSectionLabels = {
   tmux: "Tmux Windows",
   approvals: "Approvals",
   notifications: "Notifications",
-  starred: "Starred",
   tasks: "Tasks",
   projects: "Projects",
   plans: "Plans",

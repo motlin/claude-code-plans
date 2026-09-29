@@ -23,7 +23,6 @@ describe("getVisibleNavItems", () => {
         "Tmux Windows",
         "Approvals",
         "Notifications",
-        "Starred",
         "Tasks",
         "Projects",
         "Settings",
@@ -38,7 +37,7 @@ describe("getVisibleNavItems", () => {
 
     expect({ pinned: labels(pinned), overflowCount: overflow.length }).toStrictEqual({
       pinned: ["Active", "Sessions", "Setup"],
-      overflowCount: 13,
+      overflowCount: 12,
     });
   });
 
@@ -47,7 +46,7 @@ describe("getVisibleNavItems", () => {
 
     expect({ pinned: labels(pinned), overflowCount: overflow.length }).toStrictEqual({
       pinned: ["Sessions"],
-      overflowCount: 15,
+      overflowCount: 14,
     });
   });
 });

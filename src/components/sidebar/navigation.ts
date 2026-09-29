@@ -5,7 +5,6 @@ import {
   Brain,
   MessageSquare,
   FolderOpen,
-  Star,
   Radio,
   SquareTerminal,
   Inbox,
@@ -64,11 +63,6 @@ const navEntries = {
     to: "/notifications",
     label: "Notifications",
     icon: Bell,
-  },
-  starred: {
-    to: "/starred",
-    label: "Starred",
-    icon: Star,
   },
   tasks: {
     to: "/tasks",

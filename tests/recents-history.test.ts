@@ -110,6 +110,7 @@ describe("routeToRecent", () => {
     "/settings",
     "/search",
     "/starred",
+    "/pinned",
     "/tasks",
     "/herdr",
     "/herdr/terminal/abc",
