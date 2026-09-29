@@ -73,6 +73,7 @@ describe("shortcut registry", () => {
       "toggle_changes_file_list",
       "go_to_file_in_changes",
       "toggle_files",
+      "attach_selection",
       "close_pane",
       "expand_collapse_pane",
     ]);

@@ -11,6 +11,7 @@ import {
   type FileTabsState,
   fileTabsReducer,
 } from "../../lib/file-tabs";
+import { requestAttachContext } from "../../lib/context-attach";
 import { onFileOpenRequest, takePendingFileOpen } from "../../lib/file-open-requests";
 import type { FileRef } from "../../lib/file-refs";
 import { loadFileTabs, saveFileTabs } from "../../lib/pane-layout";
@@ -259,6 +260,8 @@ interface WorkspaceOrSessionListProps {
   onOpenFile: (relPath: string, options: { pin: boolean }) => void;
   activeRelPath: string | null;
   pinnedRelPaths: ReadonlySet<string>;
+  cwd: string | undefined;
+  onAttachContext: ((snippet: string) => void) | undefined;
 }
 
 /**
@@ -277,6 +280,8 @@ function WorkspaceOrSessionList({
   onOpenFile,
   activeRelPath,
   pinnedRelPaths,
+  cwd,
+  onAttachContext,
 }: WorkspaceOrSessionListProps) {
   const { settings } = useSettings();
   // Same key as the tree's root listing, so this shares its request.
@@ -303,6 +308,8 @@ function WorkspaceOrSessionList({
             onOpenFile={onOpenFile}
             activeRelPath={activeRelPath}
             pinnedRelPaths={pinnedRelPaths}
+            cwd={cwd}
+            onAttachContext={onAttachContext}
           />
         )}
       </div>
@@ -455,6 +462,22 @@ export function FilesPaneView({
     filterRef.current?.select();
   }, [focusRequest]);
 
+  const attachContext =
+    sessionId === undefined
+      ? undefined
+      : (snippet: string) => {
+          requestAttachContext(sessionId, snippet);
+        };
+
+  function revealInTree(path: string): void {
+    const relPath = relativeToCwd(cwd, path);
+    if (relPath === null) return;
+    const lastSlash = relPath.lastIndexOf("/");
+    setTreeShown(true);
+    setMode("workspace");
+    setQuery(lastSlash === -1 ? "" : `${relPath.slice(0, lastSlash)}/`);
+  }
+
   function searchFiles(): void {
     setTreeShown(true);
     setFocusRequest((request) => request + 1);
@@ -473,7 +496,13 @@ export function FilesPaneView({
               Files
             </span>
           ) : (
-            <FileTabsStrip state={fileTabs} dispatch={dispatchFileTabs} />
+            <FileTabsStrip
+              state={fileTabs}
+              dispatch={dispatchFileTabs}
+              cwd={cwd}
+              onAttachContext={attachContext}
+              onRevealInTree={revealInTree}
+            />
           )}
           {chrome.moveHandle}
         </div>
@@ -520,6 +549,8 @@ export function FilesPaneView({
                 }}
                 activeRelPath={openPath === null ? null : relativeToCwd(cwd, openPath)}
                 pinnedRelPaths={pinnedRelPaths}
+                cwd={cwd}
+                onAttachContext={attachContext}
               />
             )}
           </FilesTreeColumn>
@@ -535,6 +566,7 @@ export function FilesPaneView({
               line={target?.line}
               endLine={target?.endLine}
               onOpenFile={(path) => openFile(path, { pin: false })}
+              onAttachContext={attachContext}
             />
           )}
         </div>

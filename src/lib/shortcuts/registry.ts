@@ -225,7 +225,7 @@ export const SHORTCUTS = {
     group: "panes",
     bindings: cmdOrCtrl("l", ["shift"]),
     ownerSlug: "composer",
-    enabled: false,
+    enabled: true,
   },
   toggle_terminal: {
     description: "Toggle terminal",

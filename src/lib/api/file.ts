@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { z } from "zod";
-import { ApiResponseError, resolveUrl } from "./client";
+import { ApiResponseError, apiFetch, resolveUrl } from "./client";
 
 export const FileViewerResponse = z
   .object({
@@ -61,6 +61,15 @@ export function fileContentUrl(
 ): string {
   const query = options.download ? "?download=1" : options.forceText ? "?force=text" : "";
   return `/api/file/${encodeFilePath(path)}${query}`;
+}
+
+/** Reveal one file in Finder; the server refuses paths outside the viewer's allowed roots. */
+export function revealFileInFinder(path: string): Promise<unknown> {
+  return apiFetch("/api/reveal-in-finder", z.strictObject({ ok: z.literal(true) }), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path }),
+  });
 }
 
 /** A file the viewer can show as text, or why it can't. */

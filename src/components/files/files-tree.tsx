@@ -16,6 +16,8 @@ import { useResizableWidth } from "../../hooks/use-resizable-width";
 import { type SessionFilesResponse, sessionFilesQueryOptions } from "../../lib/api/session-files";
 import { getFileIcon } from "../file-tree";
 import { settingStorageKey, useSettings } from "../settings-provider";
+import { ContextMenu, ContextMenuTrigger, MenuContent } from "../ui/menu";
+import { TreeRowMenuItems } from "./file-context-menu";
 
 const FILES_TREE_DEFAULT_WIDTH = 240;
 const FILES_TREE_MIN_WIDTH = 160;
@@ -130,6 +132,9 @@ interface FilesTreeProps {
   /** Controls the filter from outside, so the Files pane can keep it across modes. */
   query?: string;
   onQueryChange?: (query: string) => void;
+  /** The listed working directory; rows get a context menu once it is known. */
+  cwd?: string | undefined;
+  onAttachContext?: ((snippet: string) => void) | undefined;
 }
 
 /**
@@ -146,6 +151,8 @@ export function FilesTree({
   noCwdFallback,
   query: controlledQuery,
   onQueryChange,
+  cwd,
+  onAttachContext,
 }: FilesTreeProps) {
   const { settings } = useSettings();
   const [localQuery, setLocalQuery] = useState("");
@@ -376,44 +383,58 @@ export function FilesTree({
               const Icon = entry.isDirectory ? Folder : getFileIcon(entry.name);
               const dirSuffix = isSearch ? parentDir(entry.relPath) : "";
               return (
-                <div
-                  key={entry.relPath}
-                  data-tree-row
-                  data-row-index={index}
-                  role="treeitem"
-                  aria-level={1}
-                  aria-selected={pinnedRelPaths?.has(entry.relPath) ?? false}
-                  aria-current={entry.relPath === activeRelPath ? "true" : undefined}
-                  tabIndex={-1}
-                  title={symlinkLabel(entry)}
-                  onFocus={() => setActiveIndex(index)}
-                  className="absolute left-0 flex h-6 w-full items-center rounded-r5 text-body text-primary outline-none select-none hover:bg-fill-ghost-hover focus-visible:bg-fill-ghost-hover"
-                  style={{ top: index * ROW_HEIGHT, paddingLeft: 8 }}
-                >
-                  <button
-                    type="button"
-                    data-tree-primary
+                <ContextMenu key={entry.relPath} disabled={cwd === undefined}>
+                  <ContextMenuTrigger
+                    data-tree-row
+                    data-row-index={index}
+                    role="treeitem"
+                    aria-level={1}
+                    aria-selected={pinnedRelPaths?.has(entry.relPath) ?? false}
+                    aria-current={entry.relPath === activeRelPath ? "true" : undefined}
                     tabIndex={-1}
-                    onClick={() => activate(entry, { pin: false })}
-                    onDoubleClick={() => {
-                      if (!entry.isDirectory) onOpenFile?.(entry.relPath, { pin: true });
-                    }}
-                    className="flex min-w-0 flex-1 cursor-pointer items-baseline gap-1 border-0 bg-transparent pr-2 text-left outline-none"
+                    title={symlinkLabel(entry)}
+                    onFocus={() => setActiveIndex(index)}
+                    className="absolute left-0 flex h-6 w-full items-center rounded-r5 text-body text-primary outline-none select-none hover:bg-fill-ghost-hover focus-visible:bg-fill-ghost-hover"
+                    style={{ top: index * ROW_HEIGHT, paddingLeft: 8 }}
                   >
-                    <Icon
-                      aria-hidden="true"
-                      className="size-3 shrink-0 self-center text-ink-muted"
-                    />
-                    <span data-tree-name className="truncate text-primary">
-                      {entry.name}
-                    </span>
-                    {dirSuffix !== "" && (
-                      <span data-tree-dir className="min-w-0 truncate text-footnote text-ink-muted">
-                        {dirSuffix}
+                    <button
+                      type="button"
+                      data-tree-primary
+                      tabIndex={-1}
+                      onClick={() => activate(entry, { pin: false })}
+                      onDoubleClick={() => {
+                        if (!entry.isDirectory) onOpenFile?.(entry.relPath, { pin: true });
+                      }}
+                      className="flex min-w-0 flex-1 cursor-pointer items-baseline gap-1 border-0 bg-transparent pr-2 text-left outline-none"
+                    >
+                      <Icon
+                        aria-hidden="true"
+                        className="size-3 shrink-0 self-center text-ink-muted"
+                      />
+                      <span data-tree-name className="truncate text-primary">
+                        {entry.name}
                       </span>
-                    )}
-                  </button>
-                </div>
+                      {dirSuffix !== "" && (
+                        <span
+                          data-tree-dir
+                          className="min-w-0 truncate text-footnote text-ink-muted"
+                        >
+                          {dirSuffix}
+                        </span>
+                      )}
+                    </button>
+                  </ContextMenuTrigger>
+                  {cwd !== undefined && (
+                    <MenuContent>
+                      <TreeRowMenuItems
+                        path={`${cwd.replace(/\/+$/, "")}/${entry.relPath}`}
+                        cwd={cwd}
+                        isDirectory={entry.isDirectory}
+                        onAttachContext={onAttachContext}
+                      />
+                    </MenuContent>
+                  )}
+                </ContextMenu>
               );
             })}
           </div>

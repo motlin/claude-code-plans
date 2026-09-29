@@ -3,6 +3,7 @@ import { CornerDownLeft, Square } from "lucide-react";
 
 import { useComposerDraft } from "../hooks/use-composer-draft";
 import type { ComposerState } from "../lib/composer-state";
+import { appendAttachment, onAttachContextRequest } from "../lib/context-attach";
 import { ComposerChin } from "./composer-chin";
 import { Tooltip } from "./ui/tooltip";
 
@@ -57,6 +58,19 @@ export function Composer({
   useEffect(() => {
     if (!isStreaming) textareaRef.current?.focus();
   }, [isStreaming]);
+
+  const promptRef = useRef(prompt);
+  promptRef.current = prompt;
+  useEffect(
+    () =>
+      onAttachContextRequest(draftKey, (snippet) => {
+        const next = appendAttachment(promptRef.current, snippet);
+        promptRef.current = next;
+        setPrompt(next);
+        textareaRef.current?.focus();
+      }),
+    [draftKey, setPrompt],
+  );
 
   function handleSubmit() {
     if (!canSend) return;

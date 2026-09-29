@@ -1,10 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { Code, Eye, FileX } from "lucide-react";
-import { type MouseEvent, type ReactNode, useState } from "react";
+import { type MouseEvent, type ReactNode, useRef, useState } from "react";
+
+import { useShortcut, useShortcutKeys } from "../../hooks/use-shortcut";
 
 import { ApiResponseError } from "../../lib/api/client";
 import { fileContentUrl, fileViewQueryOptions } from "../../lib/api/file";
 import { writeClipboardText } from "../../lib/clipboard";
+import { formatAttachContext } from "../../lib/context-attach";
 import {
   formatFileSize,
   imageContentType,
@@ -12,11 +15,13 @@ import {
   normalizeFileTabSize,
 } from "../../lib/file-preview";
 import { fromMdSlug } from "../../lib/md-slug";
-import { FileViewer } from "../file-viewer";
+import { FileViewer, fileViewerLanguage } from "../file-viewer";
 import { MarkdownArticle } from "../markdown-article";
 import { useSettings } from "../settings-provider";
 import { useToast } from "../toast";
+import { ContextMenu, ContextMenuTrigger, MenuContent } from "../ui/menu";
 import { Tooltip } from "../ui/tooltip";
+import { mentionPath, ViewerMenuItems } from "./file-context-menu";
 
 /**
  * Sibling `.md` links render under this prefix; a click handler resolves them
@@ -36,6 +41,8 @@ export interface FileViewProps {
   hashNavigation?: boolean;
   /** Opens another file, such as a sibling `.md` link in rendered markdown. */
   onOpenFile?: ((path: string) => void) | undefined;
+  /** Sends an "Attach as context" snippet to the chat input; without it the viewer offers none. */
+  onAttachContext?: ((snippet: string) => void) | undefined;
 }
 
 function displayPath(path: string, cwd: string | undefined): string {
@@ -139,6 +146,48 @@ function ImageView({ path }: { path: string }) {
   );
 }
 
+function lineNumberOf(node: Node): number | null {
+  const element = node instanceof Element ? node : node.parentElement;
+  const row = element?.closest<HTMLElement>('[role="row"][id^="L"]');
+  if (row === null || row === undefined) return null;
+  const line = Number(row.id.slice(1));
+  return Number.isSafeInteger(line) && line > 0 ? line : null;
+}
+
+/**
+ * The attach snippet for the page selection when it lies inside `container`:
+ * whole source lines with their `#L` range, or the selected text of rendered
+ * markdown. Null without such a selection.
+ */
+function selectionSnippet(
+  container: HTMLElement | null,
+  path: string,
+  cwd: string | undefined,
+  content: string | undefined,
+): string | null {
+  const selection = window.getSelection();
+  if (container === null || selection === null || selection.rangeCount === 0) return null;
+  const range = selection.getRangeAt(0);
+  if (range.collapsed || !container.contains(range.commonAncestorContainer)) return null;
+  const mention = mentionPath(path, cwd);
+  const start = lineNumberOf(range.startContainer);
+  const end = lineNumberOf(range.endContainer);
+  if (start !== null && end !== null && content !== undefined) {
+    return formatAttachContext({
+      path: mention,
+      range: { start, end },
+      text: content
+        .split("\n")
+        .slice(start - 1, end)
+        .join("\n"),
+      language: fileViewerLanguage(path),
+    });
+  }
+  const text = selection.toString();
+  if (text.trim() === "") return null;
+  return formatAttachContext({ path: mention, text, language: null });
+}
+
 function errorTitle(error: unknown): string {
   if (error instanceof ApiResponseError && error.status === 404) return "Couldn’t find this file";
   return "Can’t read this file";
@@ -157,6 +206,7 @@ export function FileView({
   endLine,
   hashNavigation = false,
   onOpenFile,
+  onAttachContext,
 }: FileViewProps) {
   const { settings } = useSettings();
   const [forceText, setForceText] = useState(false);
@@ -164,6 +214,21 @@ export function FileView({
   const isImage = imageContentType(path) !== null;
   const markdown = isMarkdownPath(path);
   const file = useQuery({ ...fileViewQueryOptions(path, forceText), enabled: !isImage });
+  const viewerRef = useRef<HTMLDivElement>(null);
+  const [menuSelection, setMenuSelection] = useState<string | null>(null);
+  const attachKeys = useShortcutKeys("attach_selection");
+  const content = file.data?.kind === "text" ? file.data.content : undefined;
+
+  useShortcut(
+    "attach_selection",
+    () => {
+      const snippet = selectionSnippet(viewerRef.current, path, cwd, content);
+      if (snippet === null) return false;
+      onAttachContext?.(snippet);
+      return true;
+    },
+    { disabled: onAttachContext === undefined },
+  );
 
   const openSiblingLink = (event: MouseEvent<HTMLDivElement>) => {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) return;
@@ -250,9 +315,29 @@ export function FileView({
           </Tooltip>
         )}
       </div>
-      <div data-file-viewer="true" className="min-h-0 flex-1 overflow-auto select-text">
-        {body()}
-      </div>
+      <ContextMenu>
+        <ContextMenuTrigger
+          render={<div ref={viewerRef} />}
+          data-file-viewer="true"
+          className="min-h-0 flex-1 overflow-auto select-text"
+          onContextMenu={() =>
+            setMenuSelection(selectionSnippet(viewerRef.current, path, cwd, content))
+          }
+        >
+          {body()}
+        </ContextMenuTrigger>
+        <MenuContent>
+          <ViewerMenuItems
+            path={path}
+            cwd={cwd}
+            content={content}
+            line={line ?? 1}
+            attachSnippet={() => menuSelection ?? `@${mentionPath(path, cwd)}`}
+            onAttachContext={onAttachContext}
+            attachShortcut={attachKeys.keys}
+          />
+        </MenuContent>
+      </ContextMenu>
     </div>
   );
 }
