@@ -1,8 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { HomePage } from "../components/home/home-page";
 import { useVisibleNavItems } from "../components/sidebar/navigation";
 
 export const Route = createFileRoute("/")({
   component: Home,
+  staticData: { fullBleed: true },
   head: () => ({
     meta: [{ title: "Claude Code Browser" }],
   }),
@@ -12,12 +14,11 @@ function Home() {
   const cards = useVisibleNavItems().pinned;
 
   return (
-    <div>
-      <h1 className="text-lg font-semibold">Claude Code Browser</h1>
+    <HomePage>
       <div
         role="region"
         aria-label="Home sections"
-        className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        className="grid grid-cols-1 gap-4 pt-6 pb-14 sm:grid-cols-2 lg:grid-cols-3"
       >
         {cards.map((card) => {
           const Icon = card.icon;
@@ -36,6 +37,6 @@ function Home() {
           );
         })}
       </div>
-    </div>
+    </HomePage>
   );
 }

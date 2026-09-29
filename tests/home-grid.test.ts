@@ -52,6 +52,11 @@ async function renderNavigation() {
   queryClient.setQueryData(["approvals"], { approvals: [] });
   queryClient.setQueryData(["notifications"], { notifications: [] });
   queryClient.setQueryData(["sessions", "active", 60_000], []);
+  queryClient.setQueryData(["local-account"], {
+    name: "Ada Lovelace",
+    firstName: "Ada",
+    initial: "A",
+  });
   vi.stubGlobal(
     "fetch",
     vi.fn(() => new Promise<Response>(() => {})),
@@ -114,6 +119,31 @@ describe("home grid", () => {
           home: { herdr: false, tmux: true },
         }),
       );
+    } finally {
+      view.unmount();
+      queryClient.clear();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("renders the upstream shell: greeting in an 840px column, full-bleed route", async () => {
+    const { queryClient, view } = await renderNavigation();
+    try {
+      const heading = screen.getByRole("heading", { level: 1 });
+      const column = heading.closest("header");
+      expect({
+        fullBleed: HomeRoute.options.staticData?.fullBleed,
+        heading: heading.textContent,
+        columnClass: column?.className,
+        cardsBelowGreeting:
+          screen.getByRole("region", { name: "Home sections" }).closest("[data-home-body]") !==
+          null,
+      }).toStrictEqual({
+        fullBleed: true,
+        heading: "Welcome back, Ada",
+        columnClass: "mx-auto flex w-full max-w-[840px] items-center gap-1.5 pt-3 pr-10 pb-6 pl-8",
+        cardsBelowGreeting: true,
+      });
     } finally {
       view.unmount();
       queryClient.clear();

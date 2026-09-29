@@ -32,4 +32,8 @@ declare module "@tanstack/react-router" {
   interface Register {
     router: ReturnType<typeof getRouter>;
   }
+  interface StaticDataRouteOption {
+    /** Render the route edge to edge, without the root layout's horizontal padding. */
+    fullBleed?: boolean;
+  }
 }

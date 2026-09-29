@@ -4,6 +4,7 @@ import {
   createRootRouteWithContext,
   HeadContent,
   Scripts,
+  useMatches,
   useRouter,
 } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
@@ -164,12 +165,18 @@ function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const commandPalette = useCommandPalette();
   const capabilities = useCapabilities();
+  const fullBleed = useMatches({
+    select: (matches) => matches.some((match) => match.staticData.fullBleed === true),
+  });
 
   return (
     <>
       <div className="flex h-screen">
         <Sidebar collapsed={sidebarCollapsed} />
-        <main data-scroll-restoration-id="main" className="flex-1 overflow-y-auto bg-surface-2">
+        <main
+          data-scroll-restoration-id="main"
+          className={`flex-1 overflow-y-auto bg-surface-2 ${fullBleed ? "flex flex-col" : ""}`}
+        >
           <IndexingBanner />
           <HookSchemaDriftBanner />
           {capabilities.showWorkingCopyReview && (
@@ -192,7 +199,11 @@ function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
               <ModeToggle />
             </div>
           </div>
-          <div className="px-4 pb-24 sm:px-8 sm:pb-8">{children}</div>
+          {fullBleed ? (
+            <div className="min-h-0 flex-1">{children}</div>
+          ) : (
+            <div className="px-4 pb-24 sm:px-8 sm:pb-8">{children}</div>
+          )}
         </main>
       </div>
       <MobileSidebar open={mobileOpen} onClose={() => setMobileOpen(false)} />
