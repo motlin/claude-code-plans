@@ -160,9 +160,6 @@ describe("sidebar More menu", () => {
         "Notifications",
         "Tasks",
         "Projects",
-        "Settings",
-        "Claude Config",
-        "Setup",
         "Edit sidebar…",
       ],
       separators: 1,
@@ -202,9 +199,6 @@ describe("Edit sidebar dialog", () => {
       { label: "Plans", checked: "true" },
       { label: "Memories", checked: "true" },
       { label: "Customize", checked: "true" },
-      { label: "Settings", checked: "false" },
-      { label: "Claude Config", checked: "false" },
-      { label: "Setup", checked: "false" },
     ]);
   });
 

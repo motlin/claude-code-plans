@@ -880,6 +880,15 @@ export function SessionsSettings() {
             { value: "stable", label: "Stable" },
           ]}
         />
+        <SelectRow
+          label="Sessions page grouping"
+          description="Group the Sessions page by project or by time"
+          settingKey="sessionsGrouping"
+          options={[
+            { value: "project", label: "Project" },
+            { value: "time", label: "Time" },
+          ]}
+        />
         <NumberRow
           label="Active timeout (seconds)"
           description="Seconds of inactivity before a session is considered idle"

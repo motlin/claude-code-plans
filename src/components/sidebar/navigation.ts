@@ -1,5 +1,4 @@
 import {
-  FileJson,
   Shapes,
   FileText,
   Brain,
@@ -9,9 +8,7 @@ import {
   SquareTerminal,
   Inbox,
   Bell,
-  Settings,
   ListTodo,
-  SlidersHorizontal,
   SlidersVertical,
   type LucideIcon,
 } from "lucide-react";
@@ -93,21 +90,6 @@ const navEntries = {
     to: "/customize",
     label: "Customize",
     icon: SlidersVertical,
-  },
-  settings: {
-    to: "/settings",
-    label: "Settings",
-    icon: SlidersHorizontal,
-  },
-  config: {
-    to: "/settings/edit",
-    label: "Claude Config",
-    icon: FileJson,
-  },
-  setup: {
-    to: "/setup",
-    label: "Setup",
-    icon: Settings,
   },
 } satisfies Record<Section, NavEntry>;
 

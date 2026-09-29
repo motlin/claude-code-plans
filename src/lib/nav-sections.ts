@@ -16,9 +16,6 @@ export const NAV_SECTIONS = [
   "plans",
   "memories",
   "customize",
-  "settings",
-  "config",
-  "setup",
 ] as const;
 
 export const NavSectionSchema = z.enum(NAV_SECTIONS);
@@ -29,14 +26,22 @@ export const VisibleNavSectionsSchema = z
   .array(NavSectionSchema)
   .refine((sections) => new Set(sections).size === sections.length, "Duplicate nav section");
 
+/** Sections that left the nav: Starred became the Pinned group; the rest moved to the account menu. */
+const RETIRED_NAV_SECTIONS: ReadonlySet<unknown> = new Set([
+  "starred",
+  "settings",
+  "config",
+  "setup",
+]);
+
 /**
- * Plugins became Customize, so a saved `"plugins"` pin carries over; Starred became the sidebar's
- * Pinned group, so a saved `"starred"` is dropped. Either way the config stays valid.
+ * Plugins became Customize, so a saved `"plugins"` pin carries over; retired sections are dropped.
+ * Either way the config stays valid.
  */
 export function renameLegacyNavSections(value: unknown): unknown {
   if (!Array.isArray(value)) return value;
   return value
-    .filter((section) => section !== "starred")
+    .filter((section) => !RETIRED_NAV_SECTIONS.has(section))
     .map((section) => (section === "plugins" ? "customize" : section));
 }
 

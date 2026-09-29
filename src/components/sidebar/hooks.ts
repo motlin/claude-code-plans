@@ -127,14 +127,5 @@ export function useActiveSection(matches: ReturnType<typeof useMatches>): {
   if (path.startsWith("/customize") || path.startsWith("/plugin") || path.startsWith("/command")) {
     return { section: "customize", activeItemId: null };
   }
-  if (path.startsWith("/settings/edit")) {
-    return { section: "config", activeItemId: null };
-  }
-  if (path.startsWith("/settings")) {
-    return { section: "settings", activeItemId: null };
-  }
-  if (path.startsWith("/setup")) {
-    return { section: "setup", activeItemId: null };
-  }
   return { section: null, activeItemId: null };
 }

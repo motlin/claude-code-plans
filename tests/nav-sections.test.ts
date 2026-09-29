@@ -25,19 +25,16 @@ describe("getVisibleNavItems", () => {
         "Notifications",
         "Tasks",
         "Projects",
-        "Settings",
-        "Claude Config",
-        "Setup",
       ],
     });
   });
 
   it("keeps nav order regardless of the visible list's order", () => {
-    const { pinned, overflow } = getVisibleNavItems(navItems, ["setup", "active"]);
+    const { pinned, overflow } = getVisibleNavItems(navItems, ["tasks", "active"]);
 
     expect({ pinned: labels(pinned), overflowCount: overflow.length }).toStrictEqual({
-      pinned: ["Active", "Sessions", "Setup"],
-      overflowCount: 12,
+      pinned: ["Active", "Tasks", "Sessions"],
+      overflowCount: 9,
     });
   });
 
@@ -46,7 +43,7 @@ describe("getVisibleNavItems", () => {
 
     expect({ pinned: labels(pinned), overflowCount: overflow.length }).toStrictEqual({
       pinned: ["Sessions"],
-      overflowCount: 14,
+      overflowCount: 11,
     });
   });
 });

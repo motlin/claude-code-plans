@@ -128,10 +128,19 @@ describe("persisted application settings", () => {
   it("prefers saved nav sections over the retired flags", async () => {
     await writeFile(
       configPath,
-      JSON.stringify({ show_herdr_section: true, visible_nav_sections: ["setup"] }),
+      JSON.stringify({ show_herdr_section: true, visible_nav_sections: ["tasks"] }),
     );
 
-    expect(readApplicationSettings(configPath).visibleNavSections).toStrictEqual(["setup"]);
+    expect(readApplicationSettings(configPath).visibleNavSections).toStrictEqual(["tasks"]);
+  });
+
+  it("drops saved Settings, Claude Config and Setup nav sections now that they live in the account menu", async () => {
+    await writeFile(
+      configPath,
+      JSON.stringify({ visible_nav_sections: ["settings", "plans", "config", "setup"] }),
+    );
+
+    expect(readApplicationSettings(configPath).visibleNavSections).toStrictEqual(["plans"]);
   });
 
   it("drops the retired flags on the next save", async () => {

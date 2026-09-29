@@ -51,7 +51,7 @@ function Harness() {
   );
 }
 
-let currentRouter: { state: { location: { pathname: string } } } | null = null;
+let currentRouter: { state: { location: { pathname: string; hash: string } } } | null = null;
 
 async function renderPalette(
   sessions = [recentSession("sess-1", "Refactor auth module")],
@@ -379,6 +379,26 @@ describe("CommandPalette shell", () => {
       starred: within(dialog).queryByRole("option", { name: "Starred" }),
       pinned: pinned.textContent,
     }).toStrictEqual({ starred: null, pinned: "Pinned" });
+  });
+
+  it("opens General settings over the current page and offers no settings pages", async () => {
+    const dialog = await openPalette([], "/session/s-current");
+
+    fireEvent.change(within(dialog).getByRole("combobox"), { target: { value: "setup" } });
+    await waitFor(() => expect(within(dialog).queryByRole("option", { name: "Setup" })).toBeNull());
+    fireEvent.change(within(dialog).getByRole("combobox"), { target: { value: "config" } });
+    await waitFor(() =>
+      expect(within(dialog).queryByRole("option", { name: "Claude Config" })).toBeNull(),
+    );
+    fireEvent.change(within(dialog).getByRole("combobox"), { target: { value: "settings" } });
+    fireEvent.click(await within(dialog).findByRole("option", { name: /^Settings/ }));
+
+    await waitFor(() =>
+      expect({
+        pathname: currentRouter?.state.location.pathname,
+        hash: currentRouter?.state.location.hash,
+      }).toStrictEqual({ pathname: "/session/s-current", hash: "settings/general" }),
+    );
   });
 });
 

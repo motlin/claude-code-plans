@@ -10,10 +10,7 @@ export type Section =
   | "plans"
   | "memories"
   | "sessions"
-  | "customize"
-  | "settings"
-  | "config"
-  | "setup";
+  | "customize";
 
 export interface SidebarProjectDetail {
   sessions: Array<{

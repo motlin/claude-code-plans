@@ -682,9 +682,6 @@ const navSectionLabels = {
   plans: "Plans",
   memories: "Memories",
   customize: "Customize",
-  settings: "Settings",
-  config: "Claude Config",
-  setup: "Setup",
 } satisfies Record<NavSection, string>;
 
 /** Page kinds recorded in the per-tab ⌃Q recents history (src/lib/recents-history.ts). */

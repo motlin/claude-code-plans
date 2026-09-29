@@ -103,10 +103,17 @@ describe("sidebar navigation", () => {
       { label: "Memories", to: "/memories" },
       { label: "Sessions", to: "/sessions" },
       { label: "Customize", to: "/customize" },
-      { label: "Settings", to: "/settings" },
-      { label: "Claude Config", to: "/settings/edit" },
-      { label: "Setup", to: "/setup" },
     ]);
+  });
+
+  it("drops Settings, Claude Config and Setup, which live in the account menu", () => {
+    expect(
+      navItems.filter(
+        (item) =>
+          ["Settings", "Claude Config", "Setup"].includes(item.label) ||
+          ["/settings", "/settings/edit", "/setup"].includes(item.to),
+      ),
+    ).toStrictEqual([]);
   });
 
   it("replaces the Plugins row with a Customize row", () => {
@@ -159,6 +166,18 @@ describe("sidebar navigation", () => {
     await router.load();
 
     expect(router.state.location.pathname).toBe("/customize/plugins");
+  });
+
+  it("activates no nav section on the Claude Config editor or Setup pages", () => {
+    const sectionAt = (fullPath: string) =>
+      useActiveSection([{ fullPath, params: {} }] as unknown as Parameters<
+        typeof useActiveSection
+      >[0]);
+
+    expect([sectionAt("/settings/edit"), sectionAt("/setup")]).toStrictEqual([
+      { section: null, activeItemId: null },
+      { section: null, activeItemId: null },
+    ]);
   });
 
   it("activates the tmux section on the tmux route", () => {

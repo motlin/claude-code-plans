@@ -200,3 +200,96 @@ describe("/settings route", () => {
     expect(location(router)).toStrictEqual({ pathname: "/", hash: "settings/general" });
   });
 });
+
+describe("SettingsDialog local tabs", () => {
+  beforeEach(() => {
+    stubBrowser();
+    vi.stubGlobal("fetch", () => new Promise(() => {}));
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  /** Each h3 section in the open tab mapped to its row titles, in DOM order. */
+  function tabOutline(dialog: HTMLElement): Array<[string, string[]]> {
+    return [...dialog.querySelectorAll("section")].map((section) => [
+      section.querySelector("h3")?.textContent ?? "",
+      [...section.querySelectorAll<HTMLElement>("[data-settings-row]")].map((row) => {
+        const titleId = row.getAttribute("aria-labelledby") ?? "";
+        return row.querySelector(`[id="${titleId}"]`)?.textContent ?? "";
+      }),
+    ]);
+  }
+
+  it.each<[string, Array<[string, string[]]>]>([
+    [
+      "transcript",
+      [
+        ["Session Display", ["Thinking", "Tools", "Tool duration", "Debug"]],
+        ["Hooks", ["Passed hooks", "Hook warnings", "Hook errors"]],
+        [
+          "System Content",
+          [
+            "System banners",
+            "Show compact summaries inline",
+            "Show transcript-only system records",
+          ],
+        ],
+        ["Link categories", []],
+      ],
+    ],
+    [
+      "sessions",
+      [
+        [
+          "Active sessions",
+          ["Active session order", "Sessions page grouping", "Active timeout (seconds)"],
+        ],
+        ["Sub-agents", ["Default view"]],
+      ],
+    ],
+    ["application", [["Application", []]]],
+    [
+      "ai-features",
+      [
+        [
+          "AI Features",
+          [
+            "Summary button",
+            "Working-copy review",
+            "Review behavior",
+            "Session context brief",
+            "Read-only MCP server",
+          ],
+        ],
+      ],
+    ],
+    ["claude-config", [["Claude Config", ["Claude Code settings files"]]]],
+  ])("renders the moved sections on the %s tab", async (tab, outline) => {
+    await renderAt(`/#settings/${tab}`);
+    const dialog = await screen.findByRole("dialog", { name: "Settings" });
+
+    expect(tabOutline(dialog)).toStrictEqual(outline);
+  });
+
+  it("links the Claude Config tab to the settings editor", async () => {
+    await renderAt("/#settings/claude-config");
+    await screen.findByRole("dialog", { name: "Settings" });
+
+    expect(screen.getByRole("link", { name: "Open editor" }).getAttribute("href")).toBe(
+      "/settings/edit",
+    );
+  });
+
+  it("embeds the hook setup on the Setup tab", async () => {
+    await renderAt("/#settings/setup");
+    await screen.findByRole("dialog", { name: "Settings" });
+
+    expect(screen.getAllByRole("heading").map((heading) => heading.textContent)).toStrictEqual([
+      "Setup",
+      "Hook Configuration",
+    ]);
+  });
+});
