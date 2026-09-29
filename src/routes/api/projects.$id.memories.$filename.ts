@@ -97,14 +97,27 @@ export const Route = createFileRoute("/api/projects/$id/memories/$filename")({
         const { homedir } = await import("node:os");
         const { join } = await import("node:path");
         const { writeMemory } = await import("../../lib/memory");
+        const { resolveMarkdownFilePath } = await import("../../lib/markdown-file-path");
+        const { rejectStaleWrite, savedFileHeaders } = await import("../../lib/file-edit-server");
         const projectsDir = join(homedir(), ".claude", "projects");
+        const filename = fromMdSlug(params.filename);
+        const filePath =
+          params.id.includes("..") || params.id.includes("/")
+            ? null
+            : resolveMarkdownFilePath(join(projectsDir, params.id, "memory"), filename);
+        if (filePath === null) {
+          return new Response("Invalid path", { status: 400 });
+        }
+        const conflict = await rejectStaleWrite(request, filePath);
+        if (conflict) return conflict;
+
         const content = await request.text();
-        const ok = await writeMemory(projectsDir, params.id, fromMdSlug(params.filename), content);
+        const ok = await writeMemory(projectsDir, params.id, filename, content);
         if (!ok) {
           return new Response("Invalid path", { status: 400 });
         }
         return Response.json(MemorySaveResponse.parse({ ok }), {
-          headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
+          headers: await savedFileHeaders(filePath),
         });
       },
       DELETE: async ({

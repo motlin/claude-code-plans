@@ -12,11 +12,13 @@ import {
   fileTabsReducer,
 } from "../../lib/file-tabs";
 import { requestAttachContext } from "../../lib/context-attach";
+import { EMPTY_EDIT_GUARD, type EditGuardEvent, editGuardReducer } from "../../lib/file-edit";
 import { onFileOpenRequest, takePendingFileOpen } from "../../lib/file-open-requests";
 import type { FileRef } from "../../lib/file-refs";
 import { loadFileTabs, saveFileTabs } from "../../lib/pane-layout";
 import type { SessionFiles } from "../../lib/session-files";
 import { FILE_TAB_SIZES, normalizeFileTabSize } from "../../lib/file-preview";
+import { ConfirmDialog } from "../confirm-dialog";
 import type { ContentMatchOpenOptions } from "../files/content-search-results";
 import { FileView } from "../files/file-view";
 import { FileTabsStrip } from "../files/file-tabs-strip";
@@ -359,6 +361,61 @@ function useFileTabs(
   return [entry.key === key ? entry.tabs : EMPTY_FILE_TABS, dispatch];
 }
 
+/**
+ * Wraps the tab dispatch with the unsaved-changes guard: an action that would
+ * leave or close the tab being edited waits on "Discard unsaved changes?".
+ */
+function useEditGuard(
+  tabs: FileTabsState,
+  dispatchTabs: (action: FileTabsAction) => void,
+): {
+  dispatch: (action: FileTabsAction) => void;
+  reportDirty: (path: string, dirty: boolean) => void;
+  dialog: ReactNode;
+} {
+  const [guard, setGuard] = useState(EMPTY_EDIT_GUARD);
+  const guardRef = useRef(guard);
+  const tabsRef = useRef(tabs);
+  useEffect(() => {
+    tabsRef.current = tabs;
+  }, [tabs]);
+
+  const apply = useCallback(
+    (event: EditGuardEvent) => {
+      const { state, forward } = editGuardReducer(guardRef.current, event);
+      guardRef.current = state;
+      setGuard(state);
+      if (forward !== null) dispatchTabs(forward);
+    },
+    [dispatchTabs],
+  );
+  const dispatch = useCallback(
+    (action: FileTabsAction) => apply({ type: "request", action, tabs: tabsRef.current }),
+    [apply],
+  );
+  const reportDirty = useCallback(
+    (path: string, dirty: boolean) => apply({ type: "dirty", path, dirty }),
+    [apply],
+  );
+
+  const dirtyName = guard.dirtyPath?.slice(guard.dirtyPath.lastIndexOf("/") + 1) ?? "";
+  const dialog = (
+    <ConfirmDialog
+      open={guard.pending !== null}
+      onOpenChange={(open) => {
+        if (!open && guardRef.current.pending !== null) apply({ type: "keepEditing" });
+      }}
+      title="Discard unsaved changes?"
+      body={`Your edits to ${dirtyName} have not been saved. Leaving this tab discards them.`}
+      cancelLabel="Keep editing"
+      confirmLabel="Discard"
+      variant="danger"
+      onConfirm={() => apply({ type: "discard" })}
+    />
+  );
+  return { dispatch, reportDirty, dialog };
+}
+
 function absoluteFromCwd(cwd: string, relPath: string): string {
   return `${cwd.replace(/\/+$/, "")}/${relPath}`;
 }
@@ -401,7 +458,9 @@ export function FilesPaneView({
   const [focusRequest, setFocusRequest] = useState(0);
   const [mode, setMode] = useState<FilesListMode>("workspace");
   const [query, setQuery] = useState("");
-  const [fileTabs, dispatchFileTabs] = useFileTabs(sessionId);
+  const [fileTabs, dispatchTabs] = useFileTabs(sessionId);
+  const editGuard = useEditGuard(fileTabs, dispatchTabs);
+  const dispatchFileTabs = editGuard.dispatch;
   const openPath = fileTabs.active;
   const pinnedRelPaths = new Set(
     fileTabs.tabs.flatMap((tab) => {
@@ -578,10 +637,13 @@ export function FilesPaneView({
               findQuery={target?.findQuery}
               onOpenFile={(path) => openFile(path, { pin: false })}
               onAttachContext={attachContext}
+              onEditStart={() => dispatchTabs({ type: "pin", path: openPath })}
+              onDirtyChange={(dirty) => editGuard.reportDirty(openPath, dirty)}
             />
           )}
         </div>
       </div>
+      {editGuard.dialog}
     </>
   );
 }

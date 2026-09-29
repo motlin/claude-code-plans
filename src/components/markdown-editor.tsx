@@ -30,7 +30,9 @@ export function MarkdownEditor({ markdown, onChange }: Props) {
     <div className="mdx-editor-wrapper [&_.mdxeditor]:bg-surface-2 [&_.mdxeditor]:text-primary [&_.mdxeditor-toolbar]:bg-surface-0 [&_.mdxeditor-toolbar]:border-border">
       <MDXEditor
         markdown={markdown}
-        onChange={onChange}
+        onChange={(next, initialMarkdownNormalize) => {
+          if (!initialMarkdownNormalize) onChange(next);
+        }}
         plugins={[
           headingsPlugin(),
           listsPlugin(),

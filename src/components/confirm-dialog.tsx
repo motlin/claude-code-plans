@@ -20,16 +20,21 @@ export function ConfirmDialog({
   title,
   body,
   confirmLabel,
+  cancelLabel = "Cancel",
   variant = "primary",
   onConfirm,
+  onCancel,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: ReactNode;
   body?: ReactNode;
   confirmLabel: string;
+  cancelLabel?: string;
   variant?: keyof typeof CONFIRM_VARIANT_CLASS;
   onConfirm: () => void;
+  /** Runs only when the cancel button itself is clicked, not on Escape or a backdrop click. */
+  onCancel?: () => void;
 }) {
   const cancelRef = useRef<HTMLButtonElement>(null);
   return (
@@ -52,9 +57,10 @@ export function ConfirmDialog({
             <AlertDialog.Close
               ref={cancelRef}
               type="button"
+              onClick={onCancel}
               className={`${BUTTON_BASE_CLASS} border border-strong text-primary hover:bg-fill-ghost-hover`}
             >
-              Cancel
+              {cancelLabel}
             </AlertDialog.Close>
             <button
               type="button"

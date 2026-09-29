@@ -88,9 +88,18 @@ export const Route = createFileRoute("/api/plans/$filename")({
         const { join } = await import("node:path");
         const { writePlan } = await import("../../lib/plans");
         const { extractTitleFromContent } = await import("../../lib/markdown-utils");
+        const { resolveMarkdownFilePath } = await import("../../lib/markdown-file-path");
+        const { rejectStaleWrite, savedFileHeaders } = await import("../../lib/file-edit-server");
 
         const plansDir = join(homedir(), ".claude", "plans");
         const filename = fromMdSlug(params.filename);
+        const filePath = resolveMarkdownFilePath(plansDir, filename);
+        if (filePath === null) {
+          return new Response("Not Found", { status: 404 });
+        }
+        const conflict = await rejectStaleWrite(request, filePath);
+        if (conflict) return conflict;
+
         const markdown = await request.text();
         const ok = await writePlan(plansDir, filename, markdown);
         if (!ok) {
@@ -99,14 +108,7 @@ export const Route = createFileRoute("/api/plans/$filename")({
 
         const title = extractTitleFromContent(markdown, filename);
 
-        return Response.json(
-          {
-            title,
-          },
-          {
-            headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
-          },
-        );
+        return Response.json({ title }, { headers: await savedFileHeaders(filePath) });
       },
     }),
   },

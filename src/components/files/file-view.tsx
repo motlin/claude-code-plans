@@ -29,6 +29,7 @@ import {
   lineOfMatch,
   stepMatch,
 } from "../../lib/find-in-file";
+import { editableMarkdownTarget } from "../../lib/file-edit";
 import { fromMdSlug } from "../../lib/md-slug";
 import { isMacPlatform } from "../../lib/shortcuts/match";
 import { FileViewer, fileViewerLanguage } from "../file-viewer";
@@ -44,6 +45,7 @@ import {
   FindBar,
   paintFindHighlights,
 } from "./find-in-file";
+import { useMarkdownEdit } from "./markdown-edit";
 
 /**
  * Sibling `.md` links render under this prefix; a click handler resolves them
@@ -67,6 +69,10 @@ export interface FileViewProps {
   onOpenFile?: ((path: string) => void) | undefined;
   /** Sends an "Attach as context" snippet to the chat input; without it the viewer offers none. */
   onAttachContext?: ((snippet: string) => void) | undefined;
+  /** Starting an edit of a plan or memory; the Files pane pins the tab. */
+  onEditStart?: (() => void) | undefined;
+  /** Whether the file has unsaved edits, for the pane's leave-tab guard. */
+  onDirtyChange?: ((dirty: boolean) => void) | undefined;
 }
 
 function displayPath(path: string, cwd: string | undefined): string {
@@ -383,6 +389,8 @@ export function FileView({
   hashNavigation = false,
   onOpenFile,
   onAttachContext,
+  onEditStart,
+  onDirtyChange,
 }: FileViewProps) {
   const { settings } = useSettings();
   const [forceText, setForceText] = useState(false);
@@ -394,6 +402,12 @@ export function FileView({
   const [menuSelection, setMenuSelection] = useState<string | null>(null);
   const attachKeys = useShortcutKeys("attach_selection");
   const content = file.data?.kind === "text" ? file.data.content : undefined;
+  const edit = useMarkdownEdit({
+    path,
+    target: markdown && content !== undefined ? editableMarkdownTarget(path) : null,
+    onEditStart,
+    onDirtyChange,
+  });
   const find = useFindInFile({
     viewerRef,
     content,
@@ -424,6 +438,7 @@ export function FileView({
   };
 
   const body = (): ReactNode => {
+    if (edit.editor !== null) return edit.editor;
     if (isImage) return <ImageView path={path} />;
     if (file.isPending) return <ViewerMessage title="Loading file" />;
     if (file.isError) return <ViewerMessage title={errorTitle(file.error)} detail={path} />;
@@ -477,11 +492,19 @@ export function FileView({
     );
   };
 
-  const canToggleSource = markdown && file.data?.kind === "text";
+  const canToggleSource = markdown && file.data?.kind === "text" && !edit.editing;
   return (
-    <div className="flex min-h-0 flex-1 flex-col" onKeyDown={find.handlePaneKeyDown}>
+    <div
+      className="flex min-h-0 flex-1 flex-col"
+      onKeyDown={(event) => {
+        edit.handleKeyDown(event);
+        find.handlePaneKeyDown(event);
+      }}
+    >
       <div className="flex h-8 shrink-0 items-center gap-1 px-3">
         <Breadcrumb path={displayPath(path, cwd)} />
+        {edit.editButton}
+        {edit.toolbar}
         {canToggleSource && (
           <Tooltip content={showSource ? "Preview" : "View source"}>
             <button
@@ -527,6 +550,7 @@ export function FileView({
           </MenuContent>
         </ContextMenu>
       </div>
+      {edit.dialog}
     </div>
   );
 }
