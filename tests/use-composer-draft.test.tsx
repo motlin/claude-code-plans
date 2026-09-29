@@ -155,7 +155,7 @@ describe("Composer draft persistence", () => {
       stored: storedDrafts(),
     }).toStrictEqual({
       restored: "Continue Alice's test",
-      sends: [["Continue Alice's test"]],
+      sends: [["Continue Alice's test", {}]],
       value: "",
       stored: {},
     });

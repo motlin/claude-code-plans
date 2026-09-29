@@ -84,6 +84,10 @@ describe("shortcut registry", () => {
       "close_pane",
       "expand_collapse_pane",
       "toggle_side_chat",
+      "open_mode_menu",
+      "open_model_menu",
+      "open_effort_selector",
+      "select_menu_item",
     ]);
   });
 

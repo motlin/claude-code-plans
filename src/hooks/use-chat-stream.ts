@@ -1,5 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 
+import type { LaunchOptions } from "../lib/launch-options";
+
 interface ChatStreamState {
   isStreaming: boolean;
   text: string;
@@ -51,133 +53,140 @@ export function useChatStream() {
   const processIdRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const send = useCallback(async (sessionId: string, prompt: string) => {
-    setState({
-      isStreaming: true,
-      text: "",
-      isComplete: false,
-      sentPrompt: prompt,
-    });
-
-    const abortController = new AbortController();
-    abortRef.current = abortController;
-
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, prompt }),
-        signal: abortController.signal,
+  const send = useCallback(
+    async (sessionId: string, prompt: string, launchOptions: LaunchOptions = {}) => {
+      setState({
+        isStreaming: true,
+        text: "",
+        isComplete: false,
+        sentPrompt: prompt,
       });
 
-      if (!res.ok) {
-        const error = await readResponseError(res);
-        setState((s) => ({
-          ...s,
-          isStreaming: false,
-          isComplete: true,
-          error,
-        }));
-        return;
-      }
+      const abortController = new AbortController();
+      abortRef.current = abortController;
 
-      processIdRef.current = res.headers.get("X-Process-Id");
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            Object.keys(launchOptions).length === 0
+              ? { sessionId, prompt }
+              : { sessionId, prompt, launchOptions },
+          ),
+          signal: abortController.signal,
+        });
 
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let accumulatedText = "";
-      let forkedSessionId: string | undefined;
+        if (!res.ok) {
+          const error = await readResponseError(res);
+          setState((s) => ({
+            ...s,
+            isStreaming: false,
+            isComplete: true,
+            error,
+          }));
+          return;
+        }
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        processIdRef.current = res.headers.get("X-Process-Id");
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop()!;
+        const reader = res.body!.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let accumulatedText = "";
+        let forkedSessionId: string | undefined;
 
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed) continue;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-          let event: StreamEvent;
-          try {
-            event = JSON.parse(trimmed) as StreamEvent;
-          } catch {
-            continue;
-          }
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop()!;
 
-          if (event.type === "stream_event" && event.event) {
-            const ev = event.event;
-            if (
-              ev.type === "content_block_delta" &&
-              ev.delta?.type === "text_delta" &&
-              ev.delta.text
-            ) {
-              accumulatedText += ev.delta.text;
-              setState((s) => ({ ...s, text: accumulatedText }));
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+
+            let event: StreamEvent;
+            try {
+              event = JSON.parse(trimmed) as StreamEvent;
+            } catch {
+              continue;
             }
-          } else if (event.type === "system" && event.subtype === "init" && event.session_id) {
-            forkedSessionId = event.session_id;
-          } else if (event.type === "result") {
-            if (event.session_id) {
+
+            if (event.type === "stream_event" && event.event) {
+              const ev = event.event;
+              if (
+                ev.type === "content_block_delta" &&
+                ev.delta?.type === "text_delta" &&
+                ev.delta.text
+              ) {
+                accumulatedText += ev.delta.text;
+                setState((s) => ({ ...s, text: accumulatedText }));
+              }
+            } else if (event.type === "system" && event.subtype === "init" && event.session_id) {
               forkedSessionId = event.session_id;
-            }
-            if (event.is_error) {
-              setState((s) => {
-                const next: ChatStreamState = {
-                  ...s,
-                  isStreaming: false,
-                  isComplete: true,
-                  error: event.result ?? "Unknown error",
-                };
-                if (forkedSessionId !== undefined) {
-                  next.forkedSessionId = forkedSessionId;
-                }
-                return next;
-              });
+            } else if (event.type === "result") {
+              if (event.session_id) {
+                forkedSessionId = event.session_id;
+              }
+              if (event.is_error) {
+                setState((s) => {
+                  const next: ChatStreamState = {
+                    ...s,
+                    isStreaming: false,
+                    isComplete: true,
+                    error: event.result ?? "Unknown error",
+                  };
+                  if (forkedSessionId !== undefined) {
+                    next.forkedSessionId = forkedSessionId;
+                  }
+                  return next;
+                });
+                return;
+              }
+            } else if (event.type === "error") {
+              setState((s) => ({
+                ...s,
+                isStreaming: false,
+                isComplete: true,
+                error: (event as unknown as { message: string }).message,
+              }));
               return;
             }
-          } else if (event.type === "error") {
-            setState((s) => ({
-              ...s,
-              isStreaming: false,
-              isComplete: true,
-              error: (event as unknown as { message: string }).message,
-            }));
-            return;
           }
         }
-      }
 
-      setState((s) => {
-        const next: ChatStreamState = {
-          ...s,
-          isStreaming: false,
-          isComplete: true,
-        };
-        if (forkedSessionId !== undefined) {
-          next.forkedSessionId = forkedSessionId;
+        setState((s) => {
+          const next: ChatStreamState = {
+            ...s,
+            isStreaming: false,
+            isComplete: true,
+          };
+          if (forkedSessionId !== undefined) {
+            next.forkedSessionId = forkedSessionId;
+          }
+          return next;
+        });
+      } catch (err) {
+        if ((err as Error).name === "AbortError") {
+          setState((s) => ({ ...s, isStreaming: false, isComplete: true }));
+        } else {
+          setState((s) => ({
+            ...s,
+            isStreaming: false,
+            isComplete: true,
+            error: (err as Error).message,
+          }));
         }
-        return next;
-      });
-    } catch (err) {
-      if ((err as Error).name === "AbortError") {
-        setState((s) => ({ ...s, isStreaming: false, isComplete: true }));
-      } else {
-        setState((s) => ({
-          ...s,
-          isStreaming: false,
-          isComplete: true,
-          error: (err as Error).message,
-        }));
+      } finally {
+        abortRef.current = null;
+        processIdRef.current = null;
       }
-    } finally {
-      abortRef.current = null;
-      processIdRef.current = null;
-    }
-  }, []);
+    },
+    [],
+  );
 
   const cancel = useCallback(async () => {
     abortRef.current?.abort();

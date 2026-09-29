@@ -14,12 +14,15 @@ import {
   usageRingDashoffset,
   WEEKLY_LABEL,
 } from "../lib/composer-state";
+import { type LaunchOptions, modeTriggerLabel, modelLabel } from "../lib/launch-options";
+import {
+  CHIN_BUTTON_CLASS,
+  type ChinMenu,
+  EffortSelector,
+  ModeMenu,
+  ModelMenu,
+} from "./composer-launch-menus";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "./ui/menu";
-
-const CHIN_BUTTON_CLASS =
-  "flex h-5 min-w-0 items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none";
-
-const CHIN_READOUT_CLASS = "flex h-5 min-w-0 items-center truncate rounded-r5 px-1.5";
 
 const POPUP_CLASS =
   "flex w-[360px] max-w-[calc(100vw-16px)] flex-col gap-3 rounded-card bg-[var(--menu-bg)] p-3 text-[12px]/[16px] text-primary shadow-[var(--menu-shadow)] outline-none";
@@ -123,17 +126,41 @@ function UsageRing({ usage }: { usage: ComposerUsage | null }) {
   );
 }
 
+export interface ChinLaunchControls {
+  launchOptions: LaunchOptions;
+  onLaunchOptionsChange: (next: LaunchOptions) => void;
+  openMenu: ChinMenu | null;
+  onOpenMenuChange: (menu: ChinMenu | null) => void;
+  bypassPermissionsAllowed: boolean;
+}
+
 /**
  * The claude.ai/code composer chin: `+` and the permission mode on the left;
- * model, effort and the 12px context-usage ring on the right.
+ * model, effort and the 12px context-usage ring on the right. Mode, model and
+ * effort open menus whose choices apply to the next fork or launch.
  */
 export function ComposerChin({
   state,
   onInsertSlash,
+  launch,
 }: {
   state: ComposerState;
   onInsertSlash: () => void;
+  launch: ChinLaunchControls;
 }) {
+  const { launchOptions, onLaunchOptionsChange, openMenu, onOpenMenuChange } = launch;
+  const menuProps = (menu: ChinMenu) => ({
+    open: openMenu === menu,
+    onOpenChange: (open: boolean) => onOpenMenuChange(open ? menu : null),
+  });
+  const modeLabel =
+    launchOptions.permissionMode === undefined
+      ? (state.mode?.label ?? "Manual")
+      : modeTriggerLabel(launchOptions.permissionMode);
+  const modelText =
+    launchOptions.model === undefined
+      ? (state.model ?? "Default model")
+      : modelLabel(launchOptions.model);
   return (
     <>
       <div className="flex min-w-0 items-center self-start">
@@ -145,21 +172,26 @@ export function ComposerChin({
             <MenuItem onSelect={onInsertSlash}>Slash commands</MenuItem>
           </MenuContent>
         </Menu>
-        {state.mode && (
-          <span data-chin-mode className={CHIN_READOUT_CLASS}>
-            {state.mode.label}
-          </span>
-        )}
+        <ModeMenu
+          {...menuProps("mode")}
+          current={launchOptions.permissionMode ?? state.mode?.id ?? "default"}
+          currentLabel={modeLabel}
+          bypassPermissionsAllowed={launch.bypassPermissionsAllowed}
+          onSelect={(permissionMode) => onLaunchOptionsChange({ ...launchOptions, permissionMode })}
+        />
       </div>
       <div className="ms-auto flex min-w-0 items-center gap-1 ps-2">
-        {state.model && (
-          <span aria-label={`Model: ${state.model}`} className={CHIN_READOUT_CLASS}>
-            {state.model}
-          </span>
-        )}
-        <span aria-label={`Effort: ${state.effort.label}`} className={CHIN_READOUT_CLASS}>
-          {state.effort.label}
-        </span>
+        <ModelMenu
+          {...menuProps("model")}
+          current={launchOptions.model}
+          currentLabel={modelText}
+          onSelect={(model) => onLaunchOptionsChange({ ...launchOptions, model })}
+        />
+        <EffortSelector
+          {...menuProps("effort")}
+          current={launchOptions.effort ?? state.effort.id}
+          onSelect={(effort) => onLaunchOptionsChange({ ...launchOptions, effort })}
+        />
         <UsageRing usage={state.usage} />
       </div>
     </>

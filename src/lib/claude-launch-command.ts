@@ -3,6 +3,7 @@ const PERMISSION_MODES = new Set([
   "acceptEdits",
   "auto",
   "bypassPermissions",
+  "default",
   "manual",
   "dontAsk",
   "plan",

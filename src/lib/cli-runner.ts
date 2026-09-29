@@ -1,5 +1,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 
+import { buildLaunchFlags, type LaunchOptions } from "./launch-options";
+
 interface SpawnOptions {
   sessionId: string;
   prompt: string;
@@ -7,6 +9,8 @@ interface SpawnOptions {
   environment: Record<string, string>;
   /** Ask without persisting: the fork writes no session JSONL. */
   ephemeral?: boolean;
+  /** Composer mode / model / effort, appended as CLI flags. */
+  launchOptions?: LaunchOptions;
 }
 
 const activeProcesses = new Map<string, ChildProcess>();
@@ -17,6 +21,7 @@ export function spawnClaude({
   projectDir,
   environment,
   ephemeral = false,
+  launchOptions = {},
 }: SpawnOptions): {
   stream: ReadableStream<Uint8Array>;
   processId: string;
@@ -35,6 +40,7 @@ export function spawnClaude({
     "--include-partial-messages",
   ];
   if (ephemeral) args.push("--no-session-persistence");
+  args.push(...buildLaunchFlags(launchOptions));
 
   const child = spawn("claude", args, {
     cwd: projectDir,

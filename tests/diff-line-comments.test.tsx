@@ -176,7 +176,7 @@ describe("Changes pane line comments", () => {
         badge: "Lines 2–3QueuedExtract a helper",
         sendEnabled: true,
       },
-      sent: [["src/greet.ts:2-3 — Extract a helper\n\nPlease address these"]],
+      sent: [["src/greet.ts:2-3 — Extract a helper\n\nPlease address these", {}]],
       chipsAfter: null,
       comments: { drafts: [], queued: [] },
     });

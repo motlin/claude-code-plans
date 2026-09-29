@@ -171,7 +171,7 @@ describe("Composer slash commands", () => {
       reopened: rows(),
     }).toStrictEqual({
       afterEscape: null,
-      sent: [["/mo"]],
+      sent: [["/mo", {}]],
       reopened: [{ name: "plan", highlighted: true }],
     });
   });

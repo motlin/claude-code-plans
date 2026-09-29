@@ -12,6 +12,7 @@ import { recentSessionsQueryOptions } from "../../lib/api/sessions";
 import { buildClaudeCopyCommand } from "../../lib/claude-launch-command";
 import { writeClipboardText } from "../../lib/clipboard";
 import { resolveComposerState } from "../../lib/composer-state";
+import { buildLaunchFlags, type LaunchOptions } from "../../lib/launch-options";
 import { onHomeComposerFocusRequest } from "../../lib/home-composer-focus";
 import {
   findLaunchedSession,
@@ -94,12 +95,13 @@ export function HomeComposer() {
     void navigate({ to: "/session/$id", params: { id } });
   }, [pendingLaunch, activeSessions, navigate]);
 
-  async function launch(prompt: string) {
+  async function launch(prompt: string, launchOptions: LaunchOptions) {
     if (project === undefined) {
       toast({ kind: "error", message: "Choose a project to start a session in." });
       return;
     }
-    const request = { cwd: project.projectPath, prompt };
+    const args = buildLaunchFlags(launchOptions);
+    const request = { cwd: project.projectPath, prompt, ...(args.length > 0 ? { args } : {}) };
     const since = Date.now();
     setLaunching(true);
     try {
@@ -143,13 +145,14 @@ export function HomeComposer() {
       <Composer
         variant="home"
         draftKey="home"
-        onSend={(prompt) => void launch(prompt)}
+        onSend={(prompt, launchOptions) => void launch(prompt, launchOptions)}
         disabled={launching}
         deliveryHint={
           pendingLaunch === null ? undefined : `Starting session in ${pendingLaunch.cwd}…`
         }
         chin={chin}
         slashCommands={slashCommands}
+        bypassPermissionsAllowed={defaults?.bypassPermissionsAllowed ?? false}
       />
     </div>
   );

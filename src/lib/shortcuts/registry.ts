@@ -298,21 +298,21 @@ export const SHORTCUTS = {
     group: "composer",
     bindings: cmdOrCtrl("m", ["alt"], letterCode("m")),
     ownerSlug: "composer",
-    enabled: false,
+    enabled: true,
   },
   open_model_menu: {
     description: "Open model menu",
     group: "composer",
     bindings: cmdOrCtrl("i", ["shift"]),
     ownerSlug: "composer",
-    enabled: false,
+    enabled: true,
   },
   open_effort_selector: {
     description: "Open effort selector",
     group: "composer",
     bindings: cmdOrCtrl("e", ["shift"]),
     ownerSlug: "composer",
-    enabled: false,
+    enabled: true,
   },
   select_menu_item: {
     description: "Select menu item",
@@ -323,7 +323,7 @@ export const SHORTCUTS = {
       modifiers: [],
     })),
     ownerSlug: "composer",
-    enabled: false,
+    enabled: true,
     displayKeys: "1…9",
   },
   add_files: {

@@ -20,6 +20,7 @@ import type {
 import type { SessionSummaryStateSchema } from "./api/sessions";
 import type { SourceFileResponse } from "./api/source";
 import type { GroupColorSchema, GroupIconSchema } from "./group-appearance";
+import type { EffortLevel, LaunchPermissionMode } from "./launch-options";
 import type { HookEvent, ToolUseUnion } from "./hook-events";
 import type { HomeAttentionKindSchema } from "./home-attention";
 import type {
@@ -845,6 +846,24 @@ export const transcriptModeLabels = {
   verbose: "Verbose",
 } satisfies Record<TranscriptMode, string>;
 
+/** Composer mode menu labels (src/lib/launch-options.ts), in upstream wording. */
+export const launchPermissionModeLabels = {
+  auto: "Auto",
+  default: "Manual",
+  acceptEdits: "Accept edits",
+  plan: "Plan",
+  bypassPermissions: "Bypass permissions",
+} satisfies Record<LaunchPermissionMode, string>;
+
+/** Composer effort slider stops (src/lib/launch-options.ts). */
+export const effortLevelLabels = {
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+  xhigh: "Extra-high",
+  max: "Max",
+} satisfies Record<EffortLevel, string>;
+
 /** Sidebar row drag release outcomes (src/lib/pinned-sessions.ts). */
 const pinDropOutcomeLabels = {
   pin: "Pin",
@@ -1015,6 +1034,8 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
   ChangedFileKindSchema: changedFileKindLabels,
   "RecentsHistorySchema[].kind": recentKindLabels,
   TranscriptModeSchema: transcriptModeLabels,
+  LaunchPermissionModeSchema: launchPermissionModeLabels,
+  EffortLevelSchema: effortLevelLabels,
   GroupIconSchema: groupIconLabels,
   GroupColorSchema: groupColorLabels,
   PinDropOutcomeSchema: pinDropOutcomeLabels,

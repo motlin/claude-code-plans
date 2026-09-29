@@ -117,7 +117,7 @@ describe("KeyboardShortcutsDialog", () => {
     const dialog = await screen.findByRole("dialog", { name: "Keyboard shortcuts" });
     const region = within(dialog).getByRole("region", { name: "Keyboard shortcuts" });
     expect({ sections: sectionHeadings(region), rows: rowLabels(region) }).toStrictEqual({
-      sections: ["General", "Panes"],
+      sections: ["General", "Panes", "Composer"],
       rows: [
         "Search or start a session",
         "Search",
@@ -145,6 +145,10 @@ describe("KeyboardShortcutsDialog", () => {
         "Close pane",
         "Expand or collapse pane",
         "Toggle side chat",
+        "Open mode menu",
+        "Open model menu",
+        "Open effort selector",
+        "Select menu item",
       ],
     });
   });

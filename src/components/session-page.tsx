@@ -756,7 +756,7 @@ function SessionView({
                 <Composer
                   variant="session"
                   draftKey={sessionId}
-                  onSend={(prompt) => {
+                  onSend={(prompt, launchOptions) => {
                     if (
                       handleBtwPrompt(prompt, {
                         sessionId,
@@ -771,7 +771,7 @@ function SessionView({
                       sessionId,
                       prompt,
                       liveHerdrPrompt.send,
-                      chatStream.send,
+                      (id, forkedPrompt) => chatStream.send(id, forkedPrompt, launchOptions),
                     );
                   }}
                   onCancel={chatStream.cancel}
@@ -781,6 +781,9 @@ function SessionView({
                   deliveryHint={promptBehavior.deliveryHint}
                   chin={composerChin}
                   slashCommands={slashCommands}
+                  bypassPermissionsAllowed={
+                    composerServerState?.settingsBypassPermissionsAllowed ?? false
+                  }
                 />
               )}
             </SessionDock>

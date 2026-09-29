@@ -2,6 +2,7 @@ import { z } from "zod";
 import { getDb } from "./db";
 import { getSessionProjectPath } from "./db/queries";
 import { spawnClaude, killProcess } from "./cli-runner";
+import type { LaunchOptions } from "./launch-options";
 import { broadcast } from "./watcher";
 
 /**
@@ -29,10 +30,12 @@ export function spawnResumeStream({
   sessionId,
   prompt,
   ephemeral = false,
+  launchOptions,
 }: {
   sessionId: string;
   prompt: string;
   ephemeral?: boolean;
+  launchOptions?: LaunchOptions | undefined;
 }): Response {
   const { index } = getDb();
   const projectPath = getSessionProjectPath(index, sessionId);
@@ -49,6 +52,7 @@ export function spawnResumeStream({
     projectDir: projectPath,
     environment: {},
     ephemeral,
+    ...(launchOptions === undefined ? {} : { launchOptions }),
   });
 
   const headers = {

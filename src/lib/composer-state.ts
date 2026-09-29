@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { type Statusline, SESSION_ID_PATTERN, StatuslineSchema } from "./api/statusline";
+import { isBypassPermissionsAllowed } from "./launch-options";
 import { formatModelName, SYNTHETIC_MODEL } from "./model-name";
 import { ClaudeSettingsSchema } from "./schemas";
 
@@ -222,6 +223,8 @@ export function formatUpdatedAgo(iso: string, nowMs: number): string {
 export interface ComposerServerState {
   settingsDefaultMode: string | null;
   settingsEffortLevel: string | null;
+  /** Settings let a launch use Bypass permissions (see `isBypassPermissionsAllowed`). */
+  settingsBypassPermissionsAllowed: boolean;
   statusline: Statusline | null;
   statuslineUpdatedAt: string | null;
 }
@@ -229,6 +232,7 @@ export interface ComposerServerState {
 export const ComposerServerStateResponse: z.ZodType<ComposerServerState> = z.strictObject({
   settingsDefaultMode: z.string().nullable(),
   settingsEffortLevel: z.string().nullable(),
+  settingsBypassPermissionsAllowed: z.boolean(),
   statusline: StatuslineSchema.nullable(),
   statuslineUpdatedAt: z.string().nullable(),
 });
@@ -240,19 +244,32 @@ export interface ComposerStateDependencies {
 
 async function readSettingsDefaults(
   dependencies: ComposerStateDependencies,
-): Promise<Pick<ComposerServerState, "settingsDefaultMode" | "settingsEffortLevel">> {
+): Promise<
+  Pick<
+    ComposerServerState,
+    "settingsDefaultMode" | "settingsEffortLevel" | "settingsBypassPermissionsAllowed"
+  >
+> {
   try {
     const parsed = ClaudeSettingsSchema.safeParse(await dependencies.readSettings());
     if (parsed.success) {
       return {
         settingsDefaultMode: parsed.data.permissions?.defaultMode ?? null,
         settingsEffortLevel: parsed.data.effortLevel ?? null,
+        settingsBypassPermissionsAllowed: isBypassPermissionsAllowed({
+          defaultMode: parsed.data.permissions?.defaultMode,
+          skipDangerousModePermissionPrompt: parsed.data.skipDangerousModePermissionPrompt,
+        }),
       };
     }
   } catch {
     // Missing or unreadable settings.json leaves the defaults unset.
   }
-  return { settingsDefaultMode: null, settingsEffortLevel: null };
+  return {
+    settingsDefaultMode: null,
+    settingsEffortLevel: null,
+    settingsBypassPermissionsAllowed: false,
+  };
 }
 
 async function readStatuslineSnapshot(
@@ -289,12 +306,14 @@ export interface ComposerDefaults {
   model: string | null;
   effortLevel: string | null;
   defaultMode: string | null;
+  bypassPermissionsAllowed: boolean;
 }
 
 export const ComposerDefaultsResponse: z.ZodType<ComposerDefaults> = z.strictObject({
   model: z.string().nullable(),
   effortLevel: z.string().nullable(),
   defaultMode: z.string().nullable(),
+  bypassPermissionsAllowed: z.boolean(),
 });
 
 export async function getComposerDefaults(
@@ -307,10 +326,14 @@ export async function getComposerDefaults(
         model: parsed.data.model ?? null,
         effortLevel: parsed.data.effortLevel ?? null,
         defaultMode: parsed.data.permissions?.defaultMode ?? null,
+        bypassPermissionsAllowed: isBypassPermissionsAllowed({
+          defaultMode: parsed.data.permissions?.defaultMode,
+          skipDangerousModePermissionPrompt: parsed.data.skipDangerousModePermissionPrompt,
+        }),
       };
     }
   } catch {
     // Missing or unreadable settings.json leaves the defaults unset.
   }
-  return { model: null, effortLevel: null, defaultMode: null };
+  return { model: null, effortLevel: null, defaultMode: null, bypassPermissionsAllowed: false };
 }

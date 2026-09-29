@@ -109,6 +109,7 @@ async function renderApp(initialPath = "/") {
     model: "claude-opus-4-8[1m]",
     effortLevel: "medium",
     defaultMode: "plan",
+    bypassPermissionsAllowed: false,
   });
   const rootRoute = createRootRoute({
     component: () => (
@@ -228,6 +229,26 @@ describe("HomeComposer", () => {
     });
   });
 
+  it("passes the chin's mode, model and effort choices as launch flags", async () => {
+    await renderApp();
+    await typePrompt("fix the flaky test");
+
+    fireEvent.click(screen.getByRole("button", { name: "Model: Opus 4.8" }));
+    fireEvent.keyDown(await screen.findByRole("menu"), { key: "3", code: "Digit3" });
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    fireEvent.click(document.querySelector<HTMLElement>("[data-chin-mode]")!);
+    fireEvent.keyDown(await screen.findByRole("menu"), { key: "3", code: "Digit3" });
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() => expect(launchCalls.length).toBe(1));
+    expect(launchBody(launchCalls[0])).toStrictEqual({
+      cwd: "/users/dev/it's",
+      prompt: "fix the flaky test",
+      args: ["--permission-mode", "acceptEdits", "--model", "sonnet"],
+    });
+  });
+
   it("launches in the project chosen from the picker", async () => {
     await renderApp();
     fireEvent.click(screen.getByRole("button", { name: "Select project" }));
@@ -321,7 +342,12 @@ describe("getComposerDefaults", () => {
         effortLevel: "xhigh",
         permissions: { defaultMode: "acceptEdits" },
       })),
-    ).toStrictEqual({ model: "opus", effortLevel: "xhigh", defaultMode: "acceptEdits" });
+    ).toStrictEqual({
+      model: "opus",
+      effortLevel: "xhigh",
+      defaultMode: "acceptEdits",
+      bypassPermissionsAllowed: false,
+    });
   });
 
   it("returns nulls when settings.json is missing", async () => {
@@ -329,6 +355,11 @@ describe("getComposerDefaults", () => {
       await getComposerDefaults(async () => {
         throw new Error("ENOENT");
       }),
-    ).toStrictEqual({ model: null, effortLevel: null, defaultMode: null });
+    ).toStrictEqual({
+      model: null,
+      effortLevel: null,
+      defaultMode: null,
+      bypassPermissionsAllowed: false,
+    });
   });
 });

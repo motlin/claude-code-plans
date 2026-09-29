@@ -62,7 +62,7 @@ describe("Composer", () => {
       afterEnter: { calls: onSend.mock.calls, value: textarea.value },
     }).toStrictEqual({
       afterShiftEnter: { calls: [], value: "  Continue Bob's test  " },
-      afterEnter: { calls: [["Continue Bob's test"]], value: "" },
+      afterEnter: { calls: [["Continue Bob's test", {}]], value: "" },
     });
   });
 

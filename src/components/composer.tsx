@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { CornerDownLeft, MessageSquare, Square, X } from "lucide-react";
 
 import { useComposerDraft } from "../hooks/use-composer-draft";
+import { useShortcut } from "../hooks/use-shortcut";
 import type { ComposerState } from "../lib/composer-state";
 import {
   appendAttachment,
@@ -14,6 +15,7 @@ import {
   takeQueuedDiffComments,
   useDiffComments,
 } from "../lib/diff-comments";
+import type { LaunchOptions } from "../lib/launch-options";
 import {
   filterSlashCommands,
   type SlashCommand,
@@ -21,6 +23,7 @@ import {
   slashQuery,
 } from "../lib/slash-commands";
 import { ComposerChin } from "./composer-chin";
+import type { ChinMenu } from "./composer-launch-menus";
 import { SlashCommandMenu, slashCommandOptionId } from "./slash-command-menu";
 import { Tooltip } from "./ui/tooltip";
 
@@ -85,7 +88,8 @@ interface ComposerProps {
   variant: ComposerVariant;
   /** Draft storage key: the session id, or `"home"` for the new-session composer. */
   draftKey: string;
-  onSend: (prompt: string) => void;
+  /** `launchOptions` holds the chin's mode / model / effort picks for a fork or launch. */
+  onSend: (prompt: string, launchOptions: LaunchOptions) => void;
   onCancel?: () => void;
   isStreaming?: boolean;
   /** While a live session is working, the send slot becomes Stop response. */
@@ -96,6 +100,8 @@ interface ComposerProps {
   chin?: ComposerState | undefined;
   /** Entries for the "/" autocomplete popup (`GET /api/commands`). */
   slashCommands?: readonly SlashCommand[] | undefined;
+  /** Settings allow launching in Bypass permissions mode. */
+  bypassPermissionsAllowed?: boolean | undefined;
 }
 
 const NO_COMMANDS: readonly SlashCommand[] = [];
@@ -115,6 +121,7 @@ export function Composer({
   deliveryHint,
   chin,
   slashCommands = NO_COMMANDS,
+  bypassPermissionsAllowed = false,
 }: ComposerProps) {
   const { text: prompt, setText: setPrompt, clear: clearDraft } = useComposerDraft(draftKey);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -122,6 +129,16 @@ export function Composer({
   const slashMenuId = useId();
   const { queued: queuedComments } = useDiffComments(draftKey);
   const canSend = (prompt.trim() !== "" || queuedComments.length > 0) && !isStreaming && !disabled;
+  const [launch, setLaunch] = useState<{ draftKey: string; options: LaunchOptions }>({
+    draftKey,
+    options: {},
+  });
+  const launchOptions = launch.draftKey === draftKey ? launch.options : {};
+  const [openMenu, setOpenMenu] = useState<ChinMenu | null>(null);
+  const menuShortcutOptions = { disabled: chin === undefined };
+  useShortcut("open_mode_menu", () => setOpenMenu("mode"), menuShortcutOptions);
+  useShortcut("open_model_menu", () => setOpenMenu("model"), menuShortcutOptions);
+  useShortcut("open_effort_selector", () => setOpenMenu("effort"), menuShortcutOptions);
 
   useEffect(() => {
     if (!isStreaming) textareaRef.current?.focus();
@@ -180,6 +197,7 @@ export function Composer({
       trimmed.startsWith("/")
         ? trimmed
         : prependReviewComments(trimmed, takeQueuedDiffComments(draftKey)),
+      launchOptions,
     );
     clearDraft();
   }
@@ -285,7 +303,19 @@ export function Composer({
         data-cds="ChatComposerChin"
         className="mt-1.5 flex min-h-5 items-center justify-between ps-[7px] pe-2.5 text-[12px]/[15px] text-secondary"
       >
-        {chin && <ComposerChin state={chin} onInsertSlash={insertSlash} />}
+        {chin && (
+          <ComposerChin
+            state={chin}
+            onInsertSlash={insertSlash}
+            launch={{
+              launchOptions,
+              onLaunchOptionsChange: (options) => setLaunch({ draftKey, options }),
+              openMenu,
+              onOpenMenuChange: setOpenMenu,
+              bypassPermissionsAllowed,
+            }}
+          />
+        )}
       </div>
     </div>
   );

@@ -1,12 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
 import { z } from "zod";
+import { LaunchOptionsSchema } from "../../lib/launch-options";
 import { rejectCrossSite } from "../../lib/same-origin-guard";
 import { handleCancel, spawnResumeStream } from "../../lib/spawn-resume";
 
 const chatSchema = z.object({
   sessionId: z.string(),
   prompt: z.string(),
+  launchOptions: LaunchOptionsSchema.optional(),
 });
 
 export const Route = createFileRoute("/api/chat")({

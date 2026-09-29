@@ -101,7 +101,7 @@ describe("session live input", () => {
       target: { value: "Continue Alice's test" },
     });
     fireEvent.click(send);
-    expect(onSend.mock.calls).toStrictEqual([["Continue Alice's test"]]);
+    expect(onSend.mock.calls).toStrictEqual([["Continue Alice's test", {}]]);
   });
 
   it("does not synchronously measure or resize the transcript textarea while typing", () => {
@@ -161,6 +161,27 @@ describe("session live input", () => {
         sentPrompt: "Continue Alice's test",
         text: "",
       },
+    });
+    fetchMock.mockRestore();
+  });
+
+  it("posts the composer launch options with a forked prompt", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("Forbidden", { status: 403 }));
+    const { result } = renderHook(() => useChatStream());
+
+    await act(async () => {
+      await result.current.send("session-test-100", "Continue Alice's test", {
+        permissionMode: "plan",
+        effort: "max",
+      });
+    });
+
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toStrictEqual({
+      sessionId: "session-test-100",
+      prompt: "Continue Alice's test",
+      launchOptions: { permissionMode: "plan", effort: "max" },
     });
     fetchMock.mockRestore();
   });

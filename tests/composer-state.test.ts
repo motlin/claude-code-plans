@@ -244,6 +244,7 @@ describe("getComposerState", () => {
       {
         settingsDefaultMode: "auto",
         settingsEffortLevel: "xhigh",
+        settingsBypassPermissionsAllowed: false,
         statusline: ALICE_STATUSLINE,
         statuslineUpdatedAt: "2026-09-29T09:00:00.000Z",
       },
@@ -261,9 +262,28 @@ describe("getComposerState", () => {
     expect(result).toStrictEqual({
       settingsDefaultMode: null,
       settingsEffortLevel: null,
+      settingsBypassPermissionsAllowed: false,
       statusline: null,
       statuslineUpdatedAt: null,
     });
+  });
+
+  it("allows Bypass permissions when settings skip its warning or default to it", async () => {
+    const allowed = async (settings: unknown) =>
+      (
+        await getComposerState("carol-session", {
+          readStatusline: async () => {
+            throw new Error("ENOENT: fabricated");
+          },
+          readSettings: async () => settings,
+        })
+      ).settingsBypassPermissionsAllowed;
+
+    expect({
+      skip: await allowed({ skipDangerousModePermissionPrompt: true }),
+      defaultMode: await allowed({ permissions: { defaultMode: "bypassPermissions" } }),
+      neither: await allowed({ permissions: { defaultMode: "auto" } }),
+    }).toStrictEqual({ skip: true, defaultMode: true, neither: false });
   });
 
   it("never reads a statusline for a traversal session id", async () => {
@@ -280,6 +300,7 @@ describe("getComposerState", () => {
       body: {
         settingsDefaultMode: null,
         settingsEffortLevel: null,
+        settingsBypassPermissionsAllowed: false,
         statusline: null,
         statuslineUpdatedAt: null,
       },
