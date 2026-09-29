@@ -1,6 +1,8 @@
 import React, {
   Suspense,
+  createContext,
   useCallback,
+  useContext,
   useEffect,
   useId,
   useLayoutEffect,
@@ -47,6 +49,7 @@ import { computeDiffData } from "../lib/diff-utils";
 import { TasksView } from "./tasks-view";
 import { DebugLink } from "./debug-link";
 import { useSettings } from "./settings-provider";
+import type { TranscriptMode } from "../lib/transcript-mode";
 import { hmrPersist } from "../lib/hmr-persist";
 import { writeClipboardText } from "../lib/clipboard";
 import type {
@@ -99,8 +102,24 @@ export interface SessionChatProps {
   showSystemBanners?: boolean;
   showCompactSummaries?: boolean;
   showTranscriptOnly?: boolean;
+  /** This session's transcript view; Verbose pre-expands every tool group and row. */
+  transcriptMode?: TranscriptMode;
   initialScrollKey?: string;
   shouldScrollToEnd?: boolean;
+}
+
+const TranscriptModeContext = createContext<TranscriptMode>("normal");
+
+/**
+ * A disclosure that starts expanded in Verbose and collapsed otherwise, like upstream. A user
+ * toggle holds until the transcript mode changes, which resets it to the new mode's default.
+ */
+function useModeExpansion(): [boolean, () => void] {
+  const mode = useContext(TranscriptModeContext);
+  const [toggle, setToggle] = useState<{ mode: TranscriptMode; expanded: boolean } | null>(null);
+  const expanded = toggle !== null && toggle.mode === mode ? toggle.expanded : mode === "verbose";
+  const flip = useCallback(() => setToggle({ mode, expanded: !expanded }), [mode, expanded]);
+  return [expanded, flip];
 }
 
 const autoScrolledLocations = hmrPersist("autoScrolledLocations", () => new Set<string>());
@@ -268,6 +287,7 @@ export const SessionChat = React.memo(function SessionChat({
   showSystemBanners = false,
   showCompactSummaries = false,
   showTranscriptOnly = false,
+  transcriptMode = "normal",
   initialScrollKey = sessionId,
   shouldScrollToEnd = true,
 }: SessionChatProps) {
@@ -329,27 +349,29 @@ export const SessionChat = React.memo(function SessionChat({
   }, [initialScrollKey, shouldScrollToEnd]);
 
   return (
-    <div ref={containerRef} className="mx-auto w-full max-w-3xl px-8 pt-4 pb-4 text-body">
-      <SessionLineList
-        key={sessionId}
-        lines={lines}
-        sessionId={sessionId}
-        toolResultMap={toolResultMap}
-        allowedImageRoots={allowedImageRoots}
-        subagentLookup={subagentLookup}
-        isSubagentSession={isSubagentSession}
-        showThinking={showThinking}
-        showTools={showTools}
-        showPassedHooks={showPassedHooks}
-        showHookWarnings={showHookWarnings}
-        showHookErrors={showHookErrors}
-        showSystemBanners={showSystemBanners}
-        showCompactSummaries={showCompactSummaries}
-        showTranscriptOnly={showTranscriptOnly}
-        shouldScrollToEnd={shouldScrollToEnd}
-      />
-      <div ref={endRef} />
-    </div>
+    <TranscriptModeContext.Provider value={transcriptMode}>
+      <div ref={containerRef} className="mx-auto w-full max-w-3xl px-8 pt-4 pb-4 text-body">
+        <SessionLineList
+          key={sessionId}
+          lines={lines}
+          sessionId={sessionId}
+          toolResultMap={toolResultMap}
+          allowedImageRoots={allowedImageRoots}
+          subagentLookup={subagentLookup}
+          isSubagentSession={isSubagentSession}
+          showThinking={showThinking}
+          showTools={showTools}
+          showPassedHooks={showPassedHooks}
+          showHookWarnings={showHookWarnings}
+          showHookErrors={showHookErrors}
+          showSystemBanners={showSystemBanners}
+          showCompactSummaries={showCompactSummaries}
+          showTranscriptOnly={showTranscriptOnly}
+          shouldScrollToEnd={shouldScrollToEnd}
+        />
+        <div ref={endRef} />
+      </div>
+    </TranscriptModeContext.Provider>
   );
 });
 
@@ -2417,10 +2439,9 @@ function ToolCallRow({
   sessionId: string;
   nested?: boolean;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, toggleExpanded] = useModeExpansion();
   const bodyId = useId();
-  const { settings } = useSettings();
-  const verbose = settings.verbosity === "verbose";
+  const verbose = useContext(TranscriptModeContext) === "verbose";
   const hasBody = !rendersEmptyBody(call);
   const expandable = hasBody && !NON_EXPANDING_TOOLS.has(call.name);
   const Renderer = getToolRenderer(call.name);
@@ -2542,11 +2563,11 @@ function ToolCallRow({
         tabIndex={0}
         aria-expanded={expanded}
         aria-controls={bodyId}
-        onClick={() => setExpanded(!expanded)}
+        onClick={toggleExpanded}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            setExpanded(!expanded);
+            toggleExpanded();
           }
         }}
         className="relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3"
@@ -2586,7 +2607,7 @@ function SummarySpans({ segments }: { segments: SummarySegment[] }) {
 }
 
 function ToolCallSummary({ calls, sessionId }: { calls: ClientToolCall[]; sessionId: string }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, toggleExpanded] = useModeExpansion();
   const bodyId = useId();
   const taskCalls = calls.filter((c) => TASK_TOOLS.has(c.name));
   const hasTasksView = taskCalls.length >= 3;
@@ -2606,7 +2627,7 @@ function ToolCallSummary({ calls, sessionId }: { calls: ClientToolCall[]; sessio
             type="button"
             aria-expanded={expanded}
             aria-controls={bodyId}
-            onClick={() => setExpanded(!expanded)}
+            onClick={toggleExpanded}
             className="relative group/tool flex self-start max-w-full items-center py-0 gap-g1 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3"
           >
             <span className="inline-flex items-center gap-g3 min-w-0 text-secondary group-hover/tool:text-primary">

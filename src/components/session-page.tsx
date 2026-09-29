@@ -428,7 +428,9 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
     [transcript.records, transcript.startIndex],
   );
   const hasThinking = useMemo(() => sessionHasThinking(processed.lines), [processed.lines]);
-  const { flags: transcriptFlags } = useTranscriptModeShortcut(sessionId, { hasThinking });
+  const { mode: transcriptMode, flags: transcriptFlags } = useTranscriptModeShortcut(sessionId, {
+    hasThinking,
+  });
   // `uuidToLine` is the set of messages the window holds, which is how a jump
   // decides whether to scroll or to page history in first.
   const requestMessageJump = usePendingMessageJump(
@@ -815,6 +817,7 @@ function SessionView({ sessionId, data, transcript, subagents, herdr }: SessionV
             showSystemBanners={transcriptFlags.showSystemBanners}
             showCompactSummaries={transcriptFlags.showCompactSummaries}
             showTranscriptOnly={transcriptFlags.showTranscriptOnly}
+            transcriptMode={transcriptMode}
             initialScrollKey={initialScrollKey}
             shouldScrollToEnd={restoredScrollPosition === undefined && locationHash === ""}
           />
