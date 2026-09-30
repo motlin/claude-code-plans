@@ -92,11 +92,11 @@ const ASSISTANT_TEXT = {
 	},
 };
 
-const SLASH_COMMAND_BODY = {
+const STOP_HOOK_FEEDBACK = {
 	type: "user",
 	uuid: "user-meta-1",
 	isMeta: true,
-	message: {role: "user", content: "Fabricated slash command body"},
+	message: {role: "user", content: "Stop hook feedback: fabricated"},
 };
 
 const COMMAND_INVOCATION = {
@@ -169,11 +169,11 @@ describe("SessionChat user action row", () => {
 		fireEvent.click(compactContainer.querySelector("button")!);
 
 		expect({
-			slashCommandBody: userColumnClassName(renderRecords([SLASH_COMMAND_BODY], true)),
+			stopHookFeedback: userColumnClassName(renderRecords([STOP_HOOK_FEEDBACK], true)),
 			command: userColumnClassName(renderRecords([COMMAND_INVOCATION], true)),
 			compactSummary: userColumnClassName(compactContainer),
 		}).toStrictEqual({
-			slashCommandBody: "flex flex-col items-end gap-g6 max-w-[85%] min-w-0",
+			stopHookFeedback: "flex flex-col items-end gap-g6 max-w-[85%] min-w-0",
 			command: "flex flex-col items-end gap-g6 max-w-[78%] min-w-0",
 			compactSummary: "flex flex-col items-end gap-g6 max-w-[85%] min-w-0",
 		});
@@ -196,12 +196,12 @@ describe("SessionChat user turn alignment", () => {
 
 		expect({
 			user: userRowLayout(renderRecords([USER_TEXT], true)),
-			slashCommandBody: userRowLayout(renderRecords([SLASH_COMMAND_BODY], true)),
+			stopHookFeedback: userRowLayout(renderRecords([STOP_HOOK_FEEDBACK], true)),
 			command: userRowLayout(renderRecords([COMMAND_INVOCATION], true)),
 			compactSummary: userRowLayout(compactContainer),
 		}).toStrictEqual({
 			user: {rowClassName: "group/msg flex justify-end w-full", columnIsRightMost: true},
-			slashCommandBody: {rowClassName: "group/msg flex justify-end w-full", columnIsRightMost: true},
+			stopHookFeedback: {rowClassName: "group/msg flex justify-end w-full", columnIsRightMost: true},
 			command: {rowClassName: "group/msg flex justify-end w-full", columnIsRightMost: true},
 			compactSummary: {rowClassName: "flex justify-end pt-p6", columnIsRightMost: true},
 		});

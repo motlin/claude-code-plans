@@ -10,6 +10,7 @@ import {
 	mergeSlashCommands,
 	slashArgumentHint,
 	slashQuery,
+	splitLeadingSlashCommand,
 	type SlashCommand,
 } from "../src/lib/slash-commands";
 import {listSlashCommands} from "../src/lib/slash-commands.server";
@@ -213,5 +214,25 @@ describe("slashArgumentHint", () => {
 			slashArgumentHint(commands, "/plan "),
 			slashArgumentHint(commands, "/model"),
 		]).toStrictEqual(["[model]", null, null, null]);
+	});
+});
+
+describe("splitLeadingSlashCommand", () => {
+	it("splits a leading command token from the rest of the prompt", () => {
+		expect({
+			loop: splitLeadingSlashCommand("/loop Check PR 1954"),
+			pluginSkill: splitLeadingSlashCommand("/orchestration:finish"),
+			multiline: splitLeadingSlashCommand("/review\nthe diff"),
+			path: splitLeadingSlashCommand("/Users/fabricated/file.ts is broken"),
+			midText: splitLeadingSlashCommand("please /loop"),
+			bareSlash: splitLeadingSlashCommand("/ nothing"),
+		}).toStrictEqual({
+			loop: {name: "loop", rest: "Check PR 1954"},
+			pluginSkill: {name: "orchestration:finish", rest: ""},
+			multiline: {name: "review", rest: "the diff"},
+			path: null,
+			midText: null,
+			bareSlash: null,
+		});
 	});
 });

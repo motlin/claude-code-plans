@@ -86,8 +86,8 @@ function readToken(block: string, name: string): string | null {
 }
 
 // Labels that should never leak onto user-initiated bubbles (shapes A and F).
-// 'Automated' is the legacy badge from the bug; the other four are the labels
-// LabeledAutomatedEntry renders for the four labeled kinds.
+// 'Automated' is the legacy badge from the bug, 'Slash command body' the retired
+// label for isMeta skill bodies; the rest are LabeledAutomatedEntry's labels.
 const AUTOMATED_LABELS = [
 	"Automated",
 	"Request interrupted",
@@ -228,11 +228,14 @@ describe("SessionChat user-message shapes", () => {
 		expect(html).toContain(">Stop hook feedback<");
 	});
 
-	it('Shape E — Slash command body renders gray bubble with the "Slash command body" label', () => {
+	it("Shape E — slash command body renders nothing, like upstream", () => {
 		const html = renderShape("E");
 
-		expect(html).toContain("bg-auto-msg-bg");
-		expect(html).toContain(">Slash command body<");
+		expect({
+			hasAutomatedBubble: html.includes("bg-auto-msg-bg"),
+			hasLabel: html.includes(">Slash command body<"),
+			hasSkillBody: html.includes("Base directory for this skill"),
+		}).toStrictEqual({hasAutomatedBubble: false, hasLabel: false, hasSkillBody: false});
 	});
 
 	it("Shape C — compact summary collapses to a stub when showCompactSummaries=false", () => {

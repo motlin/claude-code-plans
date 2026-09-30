@@ -155,3 +155,15 @@ export function slashArgumentHint(commands: readonly SlashCommand[], prompt: str
 	if (match === null) return null;
 	return commands.find((command) => command.name === match[1])?.argumentHint ?? null;
 }
+
+const LEADING_SLASH_COMMAND_RE = /^\/([A-Za-z0-9][\w:.-]*)(?:[ \t]+|\n|$)/;
+
+/**
+ * Split a prompt that opens with a `/name` token into the command name and the text after it,
+ * as upstream renders a leading slash command as a chip. A path such as `/Users/…` is not a command.
+ */
+export function splitLeadingSlashCommand(text: string): {name: string; rest: string} | null {
+	const match = LEADING_SLASH_COMMAND_RE.exec(text);
+	if (match === null) return null;
+	return {name: match[1]!, rest: text.slice(match[0].length)};
+}

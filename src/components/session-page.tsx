@@ -744,6 +744,7 @@ function SessionView({
 							initialScrollKey={initialScrollKey}
 							shouldScrollToEnd={restoredScrollPosition === undefined && locationHash === ""}
 							summary={aiSummary}
+							{...(slashCommands === undefined ? {} : {slashCommands})}
 						/>
 					</SessionFileRefs>
 				</AskUserQuestionProvider>

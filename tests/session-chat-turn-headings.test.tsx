@@ -97,11 +97,11 @@ const TOOL_CALL = {
 	},
 };
 
-const SLASH_COMMAND_BODY = {
+const STOP_HOOK_FEEDBACK = {
 	type: "user",
 	uuid: "user-meta-1",
 	isMeta: true,
-	message: {role: "user", content: "Fabricated slash command body"},
+	message: {role: "user", content: "Stop hook feedback: fabricated"},
 };
 
 const COMMAND_INVOCATION = {
@@ -138,12 +138,12 @@ describe("SessionChat turn headings", () => {
 		fireEvent.click(expandedCompact.querySelector("button")!);
 
 		expect({
-			slashCommandBody: turnHeadings(renderRecords([SLASH_COMMAND_BODY])),
+			stopHookFeedback: turnHeadings(renderRecords([STOP_HOOK_FEEDBACK])),
 			command: turnHeadings(renderRecords([COMMAND_INVOCATION])),
 			collapsedCompactSummary: turnHeadings(collapsedCompact),
 			expandedCompactSummary: turnHeadings(expandedCompact),
 		}).toStrictEqual({
-			slashCommandBody: [USER_HEADING],
+			stopHookFeedback: [USER_HEADING],
 			command: [USER_HEADING],
 			collapsedCompactSummary: [USER_HEADING],
 			expandedCompactSummary: [USER_HEADING],

@@ -15,6 +15,8 @@ import {assertNever} from "../lib/assert-never";
 import {formatTimestamp, formatRelativeTimestamp} from "../lib/timestamp-format";
 import {ProseMarkdown} from "./file-refs";
 import {MarkdownArticle} from "./markdown-article";
+import {SlashCommandText, SlashCommandsContext} from "./slash-command-chip";
+import {splitLeadingSlashCommand, type SlashCommand} from "../lib/slash-commands";
 import {getToolRenderer} from "./tool-renderers";
 import {buildClientToolCall, buildSubagentLookup, getToolDescription, isArtifactCard} from "./tool-renderers/types";
 import type {ClientToolCall} from "./tool-renderers";
@@ -86,6 +88,8 @@ export interface SessionChatProps {
 	shouldScrollToEnd?: boolean;
 	/** The AI summary, shown once as a muted subtitle before the first message. */
 	summary?: string | null;
+	/** Commands known for this project, so a slash-command chip can show its description. */
+	slashCommands?: readonly SlashCommand[];
 }
 
 const TranscriptModeContext = createContext<TranscriptMode>("normal");
@@ -104,6 +108,7 @@ function useModeExpansion(): [boolean, () => void] {
 
 const autoScrolledLocations = hmrPersist("autoScrolledLocations", () => new Set<string>());
 const EMPTY_IMAGE_ROOTS: readonly string[] = [];
+const EMPTY_SLASH_COMMANDS: readonly SlashCommand[] = [];
 const END_FOLLOW_THRESHOLD_PIXELS = 32;
 
 function isDocumentScrollContainer(scroller: Element): boolean {
@@ -267,6 +272,7 @@ export const SessionChat = React.memo(function SessionChat({
 	initialScrollKey = sessionId,
 	shouldScrollToEnd = true,
 	summary = null,
+	slashCommands = EMPTY_SLASH_COMMANDS,
 }: SessionChatProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const endRef = useRef<HTMLDivElement>(null);
@@ -327,32 +333,34 @@ export const SessionChat = React.memo(function SessionChat({
 
 	return (
 		<TranscriptModeContext.Provider value={transcriptMode}>
-			<div ref={containerRef} className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}>
-				{summary !== null && summary !== "" && (
-					<p data-testid="session-summary-row" title={summary} className="mb-4 truncate text-sm text-t6">
-						{summary}
-					</p>
-				)}
-				<SessionLineList
-					key={sessionId}
-					lines={lines}
-					sessionId={sessionId}
-					toolResultMap={toolResultMap}
-					allowedImageRoots={allowedImageRoots}
-					subagentLookup={subagentLookup}
-					isSubagentSession={isSubagentSession}
-					showThinking={showThinking}
-					showTools={showTools}
-					showPassedHooks={showPassedHooks}
-					showHookWarnings={showHookWarnings}
-					showHookErrors={showHookErrors}
-					showSystemBanners={showSystemBanners}
-					showCompactSummaries={showCompactSummaries}
-					showTranscriptOnly={showTranscriptOnly}
-					shouldScrollToEnd={shouldScrollToEnd}
-				/>
-				<div ref={endRef} />
-			</div>
+			<SlashCommandsContext.Provider value={slashCommands}>
+				<div ref={containerRef} className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}>
+					{summary !== null && summary !== "" && (
+						<p data-testid="session-summary-row" title={summary} className="mb-4 truncate text-sm text-t6">
+							{summary}
+						</p>
+					)}
+					<SessionLineList
+						key={sessionId}
+						lines={lines}
+						sessionId={sessionId}
+						toolResultMap={toolResultMap}
+						allowedImageRoots={allowedImageRoots}
+						subagentLookup={subagentLookup}
+						isSubagentSession={isSubagentSession}
+						showThinking={showThinking}
+						showTools={showTools}
+						showPassedHooks={showPassedHooks}
+						showHookWarnings={showHookWarnings}
+						showHookErrors={showHookErrors}
+						showSystemBanners={showSystemBanners}
+						showCompactSummaries={showCompactSummaries}
+						showTranscriptOnly={showTranscriptOnly}
+						shouldScrollToEnd={shouldScrollToEnd}
+					/>
+					<div ref={endRef} />
+				</div>
+			</SlashCommandsContext.Provider>
 		</TranscriptModeContext.Provider>
 	);
 });
@@ -1494,7 +1502,8 @@ function UserEntry({
 		return <BashEntry line={line} outputLine={coalesceNext ? nextLine : undefined} sessionId={sessionId} />;
 	}
 
-	if (kind === "tool-result-only") {
+	// Upstream never shows the CLI-injected skill expansion or meta notes; the invoking prompt stands alone.
+	if (kind === "tool-result-only" || kind === "slash-command-body") {
 		return null;
 	}
 
@@ -1534,13 +1543,12 @@ function UserEntry({
 	);
 }
 
-type LabeledKind = "request-interrupted" | "compact-summary" | "stop-hook" | "slash-command-body";
+type LabeledKind = "request-interrupted" | "compact-summary" | "stop-hook";
 
 const LABEL_BY_KIND: Record<LabeledKind, string> = {
 	"request-interrupted": "Request interrupted",
 	"compact-summary": "Compact summary",
 	"stop-hook": "Stop hook feedback",
-	"slash-command-body": "Slash command body",
 };
 
 /**
@@ -1709,6 +1717,13 @@ interface UserContentBlocks {
 	mediaNodes: React.ReactNode[];
 }
 
+/** A prompt's text; the first block of a prompt opens with a slash-command chip when it starts with `/name`. */
+function UserPromptText({text, leading}: {text: string; leading: boolean}) {
+	const command = leading ? splitLeadingSlashCommand(text) : null;
+	if (command === null) return <MarkdownArticle markdown={text} />;
+	return <SlashCommandText name={command.name} rest={command.rest} />;
+}
+
 function renderUserContentBlocks(
 	line: MessageSessionLine,
 	sessionId: string,
@@ -1724,7 +1739,7 @@ function renderUserContentBlocks(
 			textNodes: [
 				<React.Fragment key={0}>
 					<TruncatedContent fadeColor="var(--color-surface-1)" variant="user">
-						<MarkdownArticle markdown={cleaned} />
+						<UserPromptText text={cleaned} leading={true} />
 					</TruncatedContent>
 					<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
 				</React.Fragment>,
@@ -1746,7 +1761,7 @@ function renderUserContentBlocks(
 			textNodes.push(
 				<React.Fragment key={`text-${i}`}>
 					<TruncatedContent fadeColor="var(--color-surface-1)" variant="user">
-						<MarkdownArticle markdown={cleaned} />
+						<UserPromptText text={cleaned} leading={textNodes.length === 0} />
 					</TruncatedContent>
 					<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
 				</React.Fragment>,
@@ -1842,8 +1857,7 @@ function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: s
 		}
 	}
 
-	const displayName = cmdName.startsWith("/") ? cmdName : `/${cmdName}`;
-	const commandText = cmdArgs ? `${displayName} ${cmdArgs}` : displayName;
+	const name = cmdName.replace(/^\//, "");
 
 	const timestamp = "timestamp" in line ? line.timestamp : undefined;
 	const actionsProps = {line, ...(timestamp ? {timestamp} : {})};
@@ -1854,7 +1868,7 @@ function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: s
 				<UserTurnMeta line={line} />
 				<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
 					<TruncatedContent fadeColor="var(--color-surface-1)" variant="user">
-						<MarkdownArticle markdown={commandText} />
+						<SlashCommandText name={name} rest={cmdArgs ?? ""} />
 					</TruncatedContent>
 					<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
 				</div>
