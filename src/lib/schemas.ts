@@ -361,6 +361,7 @@ export const UserRecordSchema = z
 		toolDenialKind: z.string().optional(),
 		sourceToolAssistantUUID: z.string().optional(),
 		sourceToolUseID: z.string().optional(),
+		toolEndsTurn: z.boolean().optional(),
 		promptId: z.string().optional(),
 		permissionMode: z.string().optional(),
 		promptSource: PromptSourceSchema.optional(),

@@ -354,6 +354,22 @@ describe("UserRecordSchema", () => {
 
 		expect(UserRecordSchema.parse(record)).toStrictEqual(record);
 	});
+
+	it("accepts the toolEndsTurn marker on turn-ending tool results", () => {
+		const record = {
+			type: "user",
+			...baseFields,
+			isSidechain: true,
+			message: {
+				role: "user",
+				content: [{type: "tool_result", tool_use_id: "toolu_1", content: "Report delivered to your caller."}],
+			},
+			sourceToolAssistantUUID: "assistant-uuid-1",
+			toolEndsTurn: true,
+		};
+
+		expect(UserRecordSchema.parse(record)).toStrictEqual(record);
+	});
 });
 
 describe("AssistantRecordSchema", () => {
