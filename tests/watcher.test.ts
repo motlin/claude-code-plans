@@ -155,7 +155,7 @@ describe("handleFileChange file content", () => {
 
 	beforeAll(() => {
 		db = openTestDb();
-		hmrPersist("appDb", () => db);
+		hmrPersist("appDbHolder", () => ({db}));
 	});
 
 	beforeEach(() => {

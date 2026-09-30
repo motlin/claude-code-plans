@@ -31,8 +31,12 @@ describe("db boot ordering", () => {
 		testDb = openTestDb();
 	});
 
-	function mockDbModule(opts: {fullScan?: ReturnType<typeof vi.fn>}): void {
+	function mockDbModule(opts: {
+		fullScan?: ReturnType<typeof vi.fn>;
+		scanFileContentRoots?: ReturnType<typeof vi.fn>;
+	}): void {
 		const fullScan = opts.fullScan ?? vi.fn(async () => {});
+		const scanFileContentRoots = opts.scanFileContentRoots ?? vi.fn(async () => {});
 
 		vi.doMock("../src/lib/db/connection", async () => {
 			const actual = await vi.importActual<typeof import("../src/lib/db/connection")>("../src/lib/db/connection");
@@ -47,6 +51,7 @@ describe("db boot ordering", () => {
 			return {
 				...actual,
 				fullScan,
+				scanFileContentRoots,
 			};
 		});
 	}
@@ -164,5 +169,80 @@ describe("db boot ordering", () => {
 			new Promise<void>((resolve) => setTimeout(resolve, 0)),
 		]);
 		expect(resolved).toBe(true);
+	});
+
+	function busyError(): Error {
+		return Object.assign(new Error("database is locked"), {code: "SQLITE_BUSY"});
+	}
+
+	it("retries both initial scans when another connection holds the write lock", async () => {
+		const fullScan = vi.fn().mockRejectedValueOnce(busyError()).mockResolvedValue(undefined);
+		// Drizzle wraps the SqliteError, so the busy code sits on the cause.
+		const scanFileContentRoots = vi
+			.fn()
+			.mockRejectedValueOnce(new Error("Failed to run the query", {cause: busyError()}))
+			.mockResolvedValue(undefined);
+		mockDbModule({fullScan, scanFileContentRoots});
+		const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		const {runInitialScan} = await import("../src/lib/db");
+		await runInitialScan(["/root"], new Set());
+
+		expect({
+			fullScanCalls: fullScan.mock.calls.length,
+			fileContentCalls: scanFileContentRoots.mock.calls.length,
+			errors: consoleError.mock.calls,
+		}).toStrictEqual({fullScanCalls: 2, fileContentCalls: 2, errors: []});
+		consoleError.mockRestore();
+	});
+
+	it("does not retry a scan that failed for a reason other than a busy lock", async () => {
+		const failure = new Error("disk I/O error");
+		const fullScan = vi.fn().mockRejectedValue(failure);
+		mockDbModule({fullScan});
+		const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		const {runInitialScan} = await import("../src/lib/db");
+		await runInitialScan();
+
+		expect({fullScanCalls: fullScan.mock.calls.length, errors: consoleError.mock.calls}).toStrictEqual({
+			fullScanCalls: 1,
+			errors: [["Initial database scan failed:", failure]],
+		});
+		consoleError.mockRestore();
+	});
+
+	it("shutdownDb() aborts the in-flight scan, waits for it, then closes the database", async () => {
+		const order: string[] = [];
+		const fullScan = vi.fn(async (...args: unknown[]) => {
+			const signal = args[6] as AbortSignal;
+			await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve()));
+			order.push("scan:aborted");
+			signal.throwIfAborted();
+		});
+		const scanFileContentRoots = vi.fn(async () => {});
+		mockDbModule({fullScan, scanFileContentRoots});
+		const close = vi.spyOn(testDb, "close").mockImplementation(() => {
+			order.push("db:closed");
+		});
+		const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		const {runInitialScan, shutdownDb} = await import("../src/lib/db");
+		const scan = runInitialScan();
+		await shutdownDb();
+		await scan;
+
+		expect({
+			order,
+			closeCalls: close.mock.calls.length,
+			fileContentCalls: scanFileContentRoots.mock.calls.length,
+			errors: consoleError.mock.calls,
+		}).toStrictEqual({
+			order: ["scan:aborted", "db:closed"],
+			closeCalls: 1,
+			fileContentCalls: 0,
+			errors: [],
+		});
+		consoleError.mockRestore();
 	});
 });

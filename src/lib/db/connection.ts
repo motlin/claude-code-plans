@@ -443,6 +443,33 @@ function initSummariesDb(sqlite: Database.Database): void {
 	sqlite.exec(CREATE_SUMMARIES_SQL);
 }
 
+/**
+ * How long a connection blocks waiting for another connection's write lock
+ * before failing with SQLITE_BUSY. A restarted dev server can briefly overlap
+ * the previous instance, whose scan still holds the lock.
+ */
+const BUSY_TIMEOUT_MS = 10_000;
+
+type SchemaDb = BetterSQLite3Database<typeof schema>;
+
+/**
+ * Wraps drizzle so every top-level transaction begins IMMEDIATE. A deferred
+ * transaction that reads before it writes must upgrade its read lock, and in
+ * WAL mode that upgrade fails with SQLITE_BUSY at once, skipping the busy
+ * timeout, whenever another connection holds the write lock. BEGIN IMMEDIATE
+ * takes the write lock up front, where the busy timeout applies.
+ */
+function openDrizzle(sqlite: Database.Database): SchemaDb {
+	const db = drizzle(sqlite, {schema});
+	const beginTransaction = db.transaction.bind(db);
+	db.transaction = (transaction, config) => beginTransaction(transaction, {behavior: "immediate", ...config});
+	return db;
+}
+
+function openSqlite(filename: string): Database.Database {
+	return new Database(filename, {timeout: BUSY_TIMEOUT_MS});
+}
+
 export function getCacheDir(): string {
 	const xdg = process.env["XDG_CACHE_HOME"];
 	const base = xdg || join(homedir(), ".cache");
@@ -460,15 +487,15 @@ export function openAppDb(opts?: {cacheDir?: string | undefined}): AppDb {
 	const cacheDir = opts?.cacheDir ?? getCacheDir();
 	mkdirSync(cacheDir, {recursive: true});
 
-	const indexSqlite = new Database(join(cacheDir, "index.db"));
+	const indexSqlite = openSqlite(join(cacheDir, "index.db"));
 	initIndexDb(indexSqlite);
 	instrumentDatabase(indexSqlite);
-	const indexDb = drizzle(indexSqlite, {schema});
+	const indexDb = openDrizzle(indexSqlite);
 
-	const summariesSqlite = new Database(join(cacheDir, "summaries.db"));
+	const summariesSqlite = openSqlite(join(cacheDir, "summaries.db"));
 	initSummariesDb(summariesSqlite);
 	instrumentDatabase(summariesSqlite);
-	const summariesDb = drizzle(summariesSqlite, {schema});
+	const summariesDb = openDrizzle(summariesSqlite);
 
 	return {
 		index: indexDb,
@@ -481,15 +508,15 @@ export function openAppDb(opts?: {cacheDir?: string | undefined}): AppDb {
 }
 
 export function openTestDb(): AppDb {
-	const indexSqlite = new Database(":memory:");
+	const indexSqlite = openSqlite(":memory:");
 	initIndexDb(indexSqlite);
 	instrumentDatabase(indexSqlite);
-	const indexDb = drizzle(indexSqlite, {schema});
+	const indexDb = openDrizzle(indexSqlite);
 
-	const summariesSqlite = new Database(":memory:");
+	const summariesSqlite = openSqlite(":memory:");
 	initSummariesDb(summariesSqlite);
 	instrumentDatabase(summariesSqlite);
-	const summariesDb = drizzle(summariesSqlite, {schema});
+	const summariesDb = openDrizzle(summariesSqlite);
 
 	return {
 		index: indexDb,

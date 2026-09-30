@@ -4,7 +4,7 @@ import {join} from "node:path";
 import {withHeadBodyCancel} from "./lib/head-request";
 import {withServerTiming} from "./lib/perf/server-timing";
 import {closeWatcher, createWatcher, rebroadcastProjectSessions, resolveIgnoredDirNames} from "./lib/watcher";
-import {getDb, initDb, runInitialScan} from "./lib/db";
+import {getDb, initDb, runInitialScan, shutdownDb} from "./lib/db";
 import {startSweep, stopSweep} from "./lib/active-session-store";
 import {startNotificationsSweep, stopNotificationsSweep} from "./lib/notifications-store";
 import {startLiveSubagentSweep, stopLiveSubagentSweep} from "./lib/live-subagent-store";
@@ -16,7 +16,7 @@ import {startHerdrEventBridge} from "./lib/herdr/subscribe";
 import {resolveFileSearchRoots} from "./lib/config";
 import type {RecursiveWatcher} from "./lib/recursive-watch";
 import {initPrStatusService} from "./lib/pr-status-service";
-import {onServerShutdown} from "./lib/server-shutdown";
+import {takeOverServerShutdown} from "./lib/server-shutdown";
 
 const PLANS_DIR = join(homedir(), ".claude", "plans");
 const PROJECTS_DIR = join(homedir(), ".claude", "projects");
@@ -28,18 +28,20 @@ const STATUSLINE_DIR = join(getCacheDir(), "statusline");
 
 let stopHerdrEventBridge: (() => void) | null = null;
 
-// Release every long-lived handle startup creates so the process can exit
-// once the HTTP server closes (server/plugins/shutdown.ts runs this).
-onServerShutdown(async () => {
-	stopSweep();
-	stopNotificationsSweep();
-	stopLiveSubagentSweep();
-	stopHerdrEventBridge?.();
-	stopHerdrEventBridge = null;
-	await closeWatcher();
-});
-
 void (async () => {
+	// Release every long-lived handle startup creates so the process can exit
+	// once the HTTP server closes (server/plugins/shutdown.ts runs this), and
+	// so a restarted dev server's scan never races this instance's.
+	await takeOverServerShutdown(async () => {
+		stopSweep();
+		stopNotificationsSweep();
+		stopLiveSubagentSweep();
+		stopHerdrEventBridge?.();
+		stopHerdrEventBridge = null;
+		await closeWatcher();
+		await shutdownDb();
+	});
+
 	try {
 		await initDb();
 	} catch (err) {

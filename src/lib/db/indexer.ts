@@ -304,6 +304,7 @@ export async function scanFileContentRoots(
 	db: IndexDb,
 	roots: readonly string[],
 	ignoredDirNames: ReadonlySet<string>,
+	signal?: AbortSignal,
 ): Promise<void> {
 	const discoveredPaths = new Set<string>();
 	let scanComplete = true;
@@ -329,6 +330,7 @@ export async function scanFileContentRoots(
 		}
 
 		for (const trackedPath of trackedPaths) {
+			signal?.throwIfAborted();
 			if (
 				pathContainsIgnoredDirectory(relative(root, trackedPath), ignoredDirNames) ||
 				!isFileContentIndexable(trackedPath)
@@ -360,6 +362,7 @@ export async function scanFileContentRoots(
 				(scanComplete && !discoveredPaths.has(indexedPath)),
 		);
 	for (let offset = 0; offset < stalePaths.length; offset += FILE_CONTENT_CLEANUP_BATCH_SIZE) {
+		signal?.throwIfAborted();
 		const batch = stalePaths.slice(offset, offset + FILE_CONTENT_CLEANUP_BATCH_SIZE);
 		db.transaction((transaction) => {
 			for (const stalePath of batch) {
@@ -1530,6 +1533,7 @@ export async function fullScan(
 	tasksDir?: string,
 	plansDir?: string,
 	readDirectory: ReadDirectory = readdir,
+	signal?: AbortSignal,
 ): Promise<void> {
 	indexingInProgress = true;
 	try {
@@ -1578,6 +1582,7 @@ export async function fullScan(
 		const onDiskPaths = new Set<string>();
 
 		for (const {project, projectPath} of projects) {
+			signal?.throwIfAborted();
 			// Index sessions-index.json
 			await indexSessionsIndex(indexDb, projectPath, project);
 
@@ -1610,6 +1615,7 @@ export async function fullScan(
 
 			// Index JSONL files with bounded concurrency.
 			await mapLimit(sessionFiles, SCAN_CONCURRENCY, async ({path}) => {
+				signal?.throwIfAborted();
 				await indexJsonlFile(indexDb, path, project);
 			});
 
