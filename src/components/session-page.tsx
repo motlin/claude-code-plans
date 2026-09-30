@@ -652,7 +652,7 @@ function SessionView({
 				{!chromeHidden && (
 					<div
 						data-transcript-sticky-header
-						className="sticky top-0 z-10 bg-surface-2 pb-1 -mx-4 px-4 sm:-mx-8 sm:px-8 border-b border-border"
+						className="sticky top-0 z-10 bg-surface-2 pt-[var(--top-left-clearance-top,0px)] pb-1 -mx-4 pe-4 ps-[max(1rem,var(--top-left-clearance-start,0px))] sm:-mx-8 sm:pe-8 sm:ps-[max(2rem,var(--top-left-clearance-start,0px))] border-b border-border"
 					>
 						<SessionTitlebar
 							sessionId={sessionId}

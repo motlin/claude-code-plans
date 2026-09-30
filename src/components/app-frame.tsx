@@ -1,4 +1,5 @@
 import {useCallback, useState, type ReactNode} from "react";
+import {topLeftClearanceStyle} from "../lib/top-left-clearance";
 import {useNarrowViewport, usePhoneSheet} from "../lib/use-phone-sheet";
 import {Sidebar} from "./sidebar/index";
 import {PhoneSheet, PhoneSheetTrigger} from "./sidebar/phone-sheet";
@@ -35,6 +36,7 @@ export function AppFrame({
 				data-scroll-restoration-id="main"
 				data-focus-region="main"
 				inert={mainInert}
+				style={topLeftClearanceStyle(!phoneSheet && (collapsed || narrowViewport))}
 				className={`flex-1 overflow-y-auto bg-surface-2 ${className ?? ""}`}
 			>
 				{children}

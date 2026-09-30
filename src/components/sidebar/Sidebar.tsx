@@ -150,11 +150,12 @@ export function Sidebar({
 			className="group/sidebar relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[0.5px] border-border bg-[var(--sb-bg)] md:flex"
 		>
 			<div data-testid="sidebar-titlebar" className="flex h-11 shrink-0 items-center px-2">
-				<div className="flex w-8 shrink-0 justify-center">
+				{/* Pinned to the collapsed trigger's 12,12 spot so the toggle never moves between states. */}
+				<div data-testid="sidebar-toggle-slot" className="flex w-8 shrink-0 justify-center self-start pt-3">
 					<div className="flex opacity-70 transition-opacity duration-[120ms] ease-[cubic-bezier(.32,.72,0,1)] group-hover/sidebar:opacity-100 has-[:focus-visible]:opacity-100 pointer-coarse:opacity-100">
 						<SidebarToggleButton
 							{...(onToggle ? {onClick: onToggle, collapsed: false} : {})}
-							className="flex h-6 w-6 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover [&_svg]:h-4 [&_svg]:w-4"
+							className="flex size-6 items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover [&_svg]:size-4"
 						/>
 					</div>
 				</div>
@@ -203,8 +204,9 @@ function SidebarResizeHandle({width}: {width: number}) {
 }
 
 /**
- * Collapsed desktop sidebar, like claude.ai/code: a 32x32 floating trigger at 8,8 whose
- * hover (or the invisible bridge beneath it) reveals the full sidebar body as a popover.
+ * Collapsed desktop sidebar, like claude.ai/code: a transparent 24x24 floating trigger at 12,12
+ * (the expanded Hide sidebar toggle's spot) whose hover (or the invisible bridge beneath it)
+ * reveals the full sidebar body as a popover.
  * In the forced-collapse regime (640–767px) the trigger has no tooltip and a click toggles
  * the peek open instead of expanding the persisted preference.
  */
@@ -230,17 +232,17 @@ function CollapsedSidebar({narrowViewport, children}: {narrowViewport: boolean; 
 			data-hovering={hovering ? "" : undefined}
 			onPointerEnter={() => setHovering(true)}
 			onPointerLeave={() => setHovering(false)}
-			className="group/peek absolute left-2 top-2 z-50 flex"
+			className="group/peek absolute left-3 top-3 z-50 flex"
 		>
 			<div
 				data-testid="sidebar-peek-bridge"
 				aria-hidden="true"
-				className="pointer-events-none absolute -left-2 top-0 h-10 w-[288px] group-data-[hovering]/peek:pointer-events-auto"
+				className="pointer-events-none absolute -left-3 top-0 h-10 w-[288px] group-data-[hovering]/peek:pointer-events-auto"
 			/>
 			<SidebarToggleButton
 				collapsed
 				{...(narrowViewport ? {onClick: () => setHovering(true), tooltip: false} : {})}
-				className="relative flex h-8 w-8 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover"
+				className="relative flex size-6 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover [&_svg]:size-4"
 			/>
 			<nav
 				data-testid="sidebar-peek"

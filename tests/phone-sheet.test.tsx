@@ -117,6 +117,14 @@ function mainElement(container: HTMLElement): HTMLElement {
 	return element;
 }
 
+function clearanceVars(container: HTMLElement): {start: string; top: string} {
+	const style = mainElement(container).style;
+	return {
+		start: style.getPropertyValue("--top-left-clearance-start"),
+		top: style.getPropertyValue("--top-left-clearance-top"),
+	};
+}
+
 async function openSheet() {
 	const trigger = screen.getByRole("button", {name: "Show sidebar"});
 	fireEvent.click(trigger);
@@ -149,7 +157,13 @@ describe("phone sheet sidebar", () => {
 			open: sheet().hasAttribute("data-open"),
 			inert: sheet().hasAttribute("inert"),
 		}).toStrictEqual({role: "dialog", modal: "true", open: false, inert: true});
-		expect(mainElement(container).hasAttribute("inert")).toBe(false);
+		expect({
+			inert: mainElement(container).hasAttribute("inert"),
+			clearance: clearanceVars(container),
+		}).toStrictEqual({
+			inert: false,
+			clearance: {start: "", top: ""},
+		});
 	});
 
 	it("opens from the trigger, focuses Close and makes main inert", async () => {
@@ -245,9 +259,11 @@ describe("narrow viewport forced collapse", () => {
 			shortcut: trigger.getAttribute("aria-keyshortcuts"),
 			stored: window.localStorage.getItem(SIDEBAR_STORAGE_KEY),
 			storedCollapsed: readSidebarState().collapsed,
+			clearance: clearanceVars(container),
 		}).toStrictEqual({
 			phoneSheet: false,
 			collapsed: true,
+			clearance: {start: "41px", top: "9px"},
 			hide: null,
 			shortcut: null,
 			stored: storedBefore,
@@ -294,11 +310,12 @@ describe("narrow viewport forced collapse", () => {
 	it("docks the expanded sidebar at 768px and wider", async () => {
 		mockViewport(768);
 		writeSidebarState({...readSidebarState(), collapsed: false});
-		await renderFrame();
+		const {container} = await renderFrame();
 
 		expect({
 			collapsed: screen.queryByTestId("sidebar-collapsed"),
 			hide: screen.getByRole("button", {name: "Hide sidebar"}).tagName,
-		}).toStrictEqual({collapsed: null, hide: "BUTTON"});
+			clearance: clearanceVars(container),
+		}).toStrictEqual({collapsed: null, hide: "BUTTON", clearance: {start: "", top: ""}});
 	});
 });

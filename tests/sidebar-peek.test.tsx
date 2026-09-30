@@ -33,6 +33,29 @@ function seedQueryClient(): QueryClient {
 	return queryClient;
 }
 
+async function renderExpandedSidebar() {
+	writeSidebarState({...readSidebarState(), collapsed: false});
+	const queryClient = seedQueryClient();
+	const rootRoute = createRootRoute({
+		component: () => (
+			<QueryClientProvider client={queryClient}>
+				<ToastProvider>
+					<SettingsProvider>
+						<PersistedSidebar />
+					</SettingsProvider>
+				</ToastProvider>
+			</QueryClientProvider>
+		),
+	});
+	const router = createRouter({
+		routeTree: rootRoute,
+		history: createMemoryHistory({initialEntries: ["/"]}),
+	});
+	await router.load();
+	render(<RouterProvider router={router} />);
+	return waitFor(() => screen.getByRole("button", {name: "Hide sidebar"}));
+}
+
 function PersistedSidebar() {
 	const {collapsed} = useSidebarState();
 	return <Sidebar collapsed={collapsed} />;
@@ -69,6 +92,41 @@ beforeEach(() => {
 });
 
 describe("collapsed sidebar peek", () => {
+	it("floats a transparent 24px trigger with a 16px icon at 12,12", async () => {
+		const trigger = await renderCollapsedSidebar();
+		const root = screen.getByTestId("sidebar-collapsed");
+
+		expect({
+			root: ["left-3", "top-3"].filter((token) => root.classList.contains(token)),
+			trigger: ["size-6", "[&_svg]:size-4", "text-primary"].filter((token) => trigger.classList.contains(token)),
+			restingBackground: [...trigger.classList].filter((token) => token.startsWith("bg-")),
+		}).toEqual({
+			root: ["left-3", "top-3"],
+			trigger: ["size-6", "[&_svg]:size-4", "text-primary"],
+			restingBackground: [],
+		});
+	});
+
+	it("puts the expanded Hide sidebar toggle at the same 12,12 spot in secondary ink", async () => {
+		const toggle = await renderExpandedSidebar();
+		const titlebar = screen.getByTestId("sidebar-titlebar");
+		const slot = screen.getByTestId("sidebar-toggle-slot");
+
+		expect({
+			inTitlebar: titlebar.contains(toggle),
+			titlebarPaddingX: titlebar.classList.contains("px-2"),
+			slot: ["w-8", "self-start", "pt-3"].filter((token) => slot.classList.contains(token)),
+			toggle: ["size-6", "text-secondary"].filter((token) => toggle.classList.contains(token)),
+			primaryInk: toggle.classList.contains("text-primary"),
+		}).toEqual({
+			inTitlebar: true,
+			titlebarPaddingX: true,
+			slot: ["w-8", "self-start", "pt-3"],
+			toggle: ["size-6", "text-secondary"],
+			primaryInk: false,
+		});
+	});
+
 	it("shows the popover while the trigger is hovered and hides it after leaving", async () => {
 		const trigger = await renderCollapsedSidebar();
 		const root = screen.getByTestId("sidebar-collapsed");
