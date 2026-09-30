@@ -95,6 +95,41 @@ describe("Menu", () => {
 		expect(screen.getAllByRole("separator")).toHaveLength(1);
 	});
 
+	it("matches upstream's compact density on the container, items and shortcut hint", async () => {
+		renderDropdown();
+		const menu = await openDropdown();
+		const item = screen.getByRole("menuitem", {name: /Copy link/});
+		const hint = item.querySelector('[data-cds="Shortcut"]')?.parentElement;
+
+		expect({
+			container: menu.className.split(" ").filter((c) => ["rounded-r7", "p-1"].includes(c)),
+			item: item.className
+				.split(" ")
+				.filter((c) =>
+					[
+						"h-6",
+						"rounded-r5",
+						"px-2",
+						"py-[2.5px]",
+						"text-[13px]/[19px]",
+						"[--shortcut-cap-ink:var(--menu-muted)]",
+					].includes(c),
+				),
+			hint: hint?.className.split(" ").filter((c) => c === "ml-auto"),
+		}).toEqual({
+			container: ["rounded-r7", "p-1"],
+			item: [
+				"h-6",
+				"rounded-r5",
+				"px-2",
+				"py-[2.5px]",
+				"text-[13px]/[19px]",
+				"[--shortcut-cap-ink:var(--menu-muted)]",
+			],
+			hint: ["ml-auto"],
+		});
+	});
+
 	it("sets aria-keyshortcuts from the accelerator letter", async () => {
 		renderDropdown();
 		await openDropdown();

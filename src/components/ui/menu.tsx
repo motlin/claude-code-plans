@@ -9,8 +9,9 @@ import {Shortcut} from "./shortcut";
 
 /*
  * One menu primitive copied from claude.ai/code (Base UI Menu / ContextMenu):
- * radius 12 surface with shadow-panel, p-1 scroller, 32px items with px 10 and
- * radius 8, submenus that open on click or ArrowRight only, trailing checks for
+ * radius 10 surface with shadow-panel and 4px padding, 24px items at 13px/19px
+ * with padding 2.5px 8px and radius 6, a right-aligned muted shortcut hint,
+ * submenus that open on click or ArrowRight only, trailing checks for
  * radio/checkbox items, and single-key accelerators that fire while open.
  */
 
@@ -32,12 +33,12 @@ function useMenuActions(actionsRef: MenuActionsRef | undefined) {
 const POSITIONER_CLASS = "z-[130] outline-none";
 
 const POPUP_CLASS =
-	"relative flex max-h-[var(--available-height)] min-w-[128px] max-w-[320px] flex-col rounded-card bg-[var(--menu-bg)] text-body font-normal text-primary shadow-[var(--menu-shadow)] outline-none select-none";
+	"relative flex max-h-[var(--available-height)] min-w-[128px] max-w-[320px] flex-col rounded-r7 bg-[var(--menu-bg)] p-1 text-[13px]/[19px] font-normal text-primary shadow-[var(--menu-shadow)] outline-none select-none";
 
-const SCROLLER_CLASS = "min-h-0 overflow-y-auto rounded-[inherit] p-1";
+const SCROLLER_CLASS = "min-h-0 overflow-y-auto";
 
 const ITEM_BASE_CLASS =
-	"flex w-full cursor-default items-center gap-1 rounded-r6 px-2.5 py-1.5 text-body font-normal outline-none select-none [--shortcut-cap-ink:var(--menu-muted)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50";
+	"flex w-full cursor-default h-6 items-center gap-1 rounded-r5 px-2 py-[2.5px] text-[13px]/[19px] font-normal outline-none select-none [--shortcut-cap-ink:var(--menu-muted)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50";
 
 const ITEM_VARIANT_CLASS = {
 	default: "text-primary data-[highlighted]:bg-fill-ghost-hover",
@@ -47,7 +48,7 @@ const ITEM_VARIANT_CLASS = {
 const SUB_TRIGGER_CLASS = `${ITEM_BASE_CLASS} ${ITEM_VARIANT_CLASS.default} justify-between data-[popup-open]:bg-fill-ghost-hover`;
 
 const LABEL_CLASS = "min-w-0 flex-1 truncate";
-const TRAILING_CLASS = "ml-3 flex shrink-0 items-center gap-1";
+const TRAILING_CLASS = "ml-auto flex shrink-0 items-center gap-1 pl-3";
 const CHECK_SLOT_CLASS = "-mr-1 flex size-5 shrink-0 items-center justify-center";
 const ICON_SLOT_CLASS = "mr-1 flex size-5 shrink-0 items-center justify-center [&_svg]:size-4 [&_svg]:shrink-0";
 
@@ -360,9 +361,9 @@ export function MenuSubContent({children, className}: {children: ReactNode; clas
 }
 
 export function MenuSeparator() {
-	return <BaseMenu.Separator className="mx-2.5 my-1 h-px bg-border" />;
+	return <BaseMenu.Separator className="mx-2 my-1 h-px bg-border" />;
 }
 
 export function MenuLabel({children}: {children: ReactNode}) {
-	return <div className="px-2.5 pt-1.5 pb-1 text-[12px]/[15px] text-[var(--menu-muted)]">{children}</div>;
+	return <div className="px-2 pt-1.5 pb-1 text-[12px]/[15px] text-[var(--menu-muted)]">{children}</div>;
 }
