@@ -157,7 +157,7 @@ describe("SessionChat user action row", () => {
 			actionRow: actionRowClassName(container, "Copy message"),
 			buttonLabels: actionButtonLabels(container),
 		}).toStrictEqual({
-			column: "flex flex-col items-end gap-g6 max-w-[75%] min-w-0",
+			column: "flex flex-col items-end gap-g6 max-w-[78%] min-w-0",
 			actionRow:
 				"flex items-center gap-g2 pt-[4px] -mt-[8px] text-[11px] text-t6 opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150",
 			buttonLabels: [""],
@@ -174,8 +174,36 @@ describe("SessionChat user action row", () => {
 			compactSummary: userColumnClassName(compactContainer),
 		}).toStrictEqual({
 			slashCommandBody: "flex flex-col items-end gap-g6 max-w-[85%] min-w-0",
-			command: "flex flex-col items-end gap-g6 max-w-[75%] min-w-0",
+			command: "flex flex-col items-end gap-g6 max-w-[78%] min-w-0",
 			compactSummary: "flex flex-col items-end gap-g6 max-w-[85%] min-w-0",
+		});
+	});
+});
+
+/** The row that lays a user-side column out, and whether that column is its right-most child. */
+function userRowLayout(container: HTMLElement): {rowClassName: string | null; columnIsRightMost: boolean} {
+	const column = Array.from(container.querySelectorAll("div")).find((element) =>
+		element.className.startsWith("flex flex-col items-"),
+	);
+	const row = column?.parentElement ?? null;
+	return {rowClassName: row?.className ?? null, columnIsRightMost: row?.lastElementChild === column};
+}
+
+describe("SessionChat user turn alignment", () => {
+	it("pushes every human bubble to the right edge of the transcript column like upstream", () => {
+		const compactContainer = renderRecords([COMPACT_SUMMARY], false);
+		fireEvent.click(compactContainer.querySelector("button")!);
+
+		expect({
+			user: userRowLayout(renderRecords([USER_TEXT], true)),
+			slashCommandBody: userRowLayout(renderRecords([SLASH_COMMAND_BODY], true)),
+			command: userRowLayout(renderRecords([COMMAND_INVOCATION], true)),
+			compactSummary: userRowLayout(compactContainer),
+		}).toStrictEqual({
+			user: {rowClassName: "group/msg flex justify-end w-full", columnIsRightMost: true},
+			slashCommandBody: {rowClassName: "group/msg flex justify-end w-full", columnIsRightMost: true},
+			command: {rowClassName: "group/msg flex justify-end w-full", columnIsRightMost: true},
+			compactSummary: {rowClassName: "flex justify-end pt-p6", columnIsRightMost: true},
 		});
 	});
 });
