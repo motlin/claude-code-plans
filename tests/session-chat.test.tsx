@@ -152,7 +152,7 @@ describe("SessionChat body typography", () => {
 				"user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text",
 			assistantProseClassName: "relative min-w-0 text-body text-primary",
 			streamingBubbleClassName:
-				"user-message-bubble flex flex-col gap-[5px] rounded-r7 px-3 py-2 break-words min-w-0 overflow-hidden bg-user-msg-bg text-user-msg-text max-w-[78%] text-body whitespace-pre-wrap select-text",
+				"user-message-bubble flex flex-col gap-[5px] rounded-r7 px-3 py-2 break-words min-w-0 overflow-hidden bg-user-msg-bg text-user-msg-text max-w-[85%] text-body leading-[1.2857] whitespace-pre-wrap [overflow-wrap:anywhere] select-text",
 			streamingPromptRowClassName: "flex flex-col items-end gap-1 mb-6",
 			streamingProseClassName: "min-w-0 text-body text-primary",
 		});

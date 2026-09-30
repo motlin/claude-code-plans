@@ -2,7 +2,7 @@ import {Popover} from "@base-ui/react/popover";
 import {createContext, useContext} from "react";
 
 import type {SlashCommand} from "../lib/slash-commands";
-import {MarkdownArticle} from "./markdown-article";
+import {UserPlainText} from "./user-plain-text";
 
 const EMPTY_SLASH_COMMANDS: readonly SlashCommand[] = [];
 
@@ -53,15 +53,5 @@ function SlashCommandChip({name}: {name: string}) {
  * on the same line, as upstream shows it.
  */
 export function SlashCommandText({name, rest}: {name: string; rest: string}) {
-	return (
-		<div className="[&>article]:inline [&>article>*:first-child]:inline">
-			<SlashCommandChip name={name} />
-			{rest !== "" && (
-				<>
-					{" "}
-					<MarkdownArticle markdown={rest} />
-				</>
-			)}
-		</div>
-	);
+	return <UserPlainText text={rest} prefix={<SlashCommandChip name={name} />} />;
 }

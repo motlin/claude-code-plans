@@ -16,6 +16,7 @@ import {formatTimestamp, formatRelativeTimestamp} from "../lib/timestamp-format"
 import {ProseMarkdown} from "./file-refs";
 import {MarkdownArticle} from "./markdown-article";
 import {SlashCommandText, SlashCommandsContext} from "./slash-command-chip";
+import {UserPlainText} from "./user-plain-text";
 import {splitLeadingSlashCommand, type SlashCommand} from "../lib/slash-commands";
 import {getToolRenderer} from "./tool-renderers";
 import {buildClientToolCall, buildSubagentLookup, getToolDescription, isArtifactCard} from "./tool-renderers/types";
@@ -1515,7 +1516,7 @@ function UserEntry({
 
 	return (
 		<UserTurn>
-			<div className="flex flex-col items-end gap-g6 max-w-[78%] min-w-0">
+			<div className="flex flex-col items-end gap-g6 max-w-[85%] min-w-0">
 				<UserTurnMeta line={line} />
 				{textNodes.length > 0 && (
 					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
@@ -1706,7 +1707,7 @@ interface UserContentBlocks {
 /** A prompt's text; the first block of a prompt opens with a slash-command chip when it starts with `/name`. */
 function UserPromptText({text, leading}: {text: string; leading: boolean}) {
 	const command = leading ? splitLeadingSlashCommand(text) : null;
-	if (command === null) return <MarkdownArticle markdown={text} />;
+	if (command === null) return <UserPlainText text={text} />;
 	return <SlashCommandText name={command.name} rest={command.rest} />;
 }
 
@@ -1850,7 +1851,7 @@ function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: s
 
 	return (
 		<UserTurn>
-			<div className="flex flex-col items-end gap-g6 max-w-[78%] min-w-0">
+			<div className="flex flex-col items-end gap-g6 max-w-[85%] min-w-0">
 				<UserTurnMeta line={line} />
 				<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
 					<TruncatedContent fadeColor="var(--color-surface-1)" variant="user">

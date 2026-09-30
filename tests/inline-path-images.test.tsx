@@ -198,6 +198,7 @@ describe("SessionChat integration", () => {
 
 		const images = screen.getAllByRole("img");
 		expect({
+			userText: Array.from(container.querySelectorAll(".user-message-bubble p"), (p) => p.textContent?.trim()),
 			articleText: Array.from(container.querySelectorAll("article"), (article) => article.textContent?.trim()),
 			images: images.map((image) => ({
 				alt: image.getAttribute("alt"),
@@ -205,7 +206,8 @@ describe("SessionChat integration", () => {
 				insideUserBubble: image.closest(".user-message-bubble") !== null,
 			})),
 		}).toStrictEqual({
-			articleText: [userText, assistantText],
+			userText: [userText],
+			articleText: [assistantText],
 			images: [
 				{
 					alt: "Session image",

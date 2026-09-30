@@ -157,7 +157,7 @@ describe("SessionChat user action row", () => {
 			actionRow: actionRowClassName(container, "Copy message"),
 			buttonLabels: actionButtonLabels(container),
 		}).toStrictEqual({
-			column: "flex flex-col items-end gap-g6 max-w-[78%] min-w-0",
+			column: "flex flex-col items-end gap-g6 max-w-[85%] min-w-0",
 			actionRow:
 				"flex items-center gap-g2 pt-[4px] -mt-[8px] text-[11px] text-t6 opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150",
 			buttonLabels: [""],
@@ -174,7 +174,7 @@ describe("SessionChat user action row", () => {
 			compactSummary: userColumnClassName(compactContainer),
 		}).toStrictEqual({
 			stopHookFeedback: "flex flex-col items-end gap-g6 max-w-[85%] min-w-0",
-			command: "flex flex-col items-end gap-g6 max-w-[78%] min-w-0",
+			command: "flex flex-col items-end gap-g6 max-w-[85%] min-w-0",
 			compactSummary: "flex flex-col items-end gap-g6 max-w-[85%] min-w-0",
 		});
 	});
