@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import {cleanup, render} from "@testing-library/react";
-import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {useWorkingMarkerState, WorkingMarker, type WorkingMarkerSignals} from "../src/components/working-marker";
 import {
@@ -33,6 +33,7 @@ function stubReducedMotion(reduce: boolean) {
 afterEach(() => {
 	cleanup();
 	vi.unstubAllGlobals();
+	vi.useRealTimers();
 });
 
 describe("workingMarkerState", () => {
@@ -347,10 +348,15 @@ describe("WorkingMarker", () => {
 });
 
 describe("useWorkingMarkerState", () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.setSystemTime(at(3));
+	});
+
 	const OPEN_TURN = [
 		{
 			type: "user",
-			timestamp: new Date(Date.now() - 3000).toISOString(),
+			timestamp: new Date(at(0)).toISOString(),
 			message: {role: "user", content: "go"},
 		},
 	];

@@ -21,9 +21,15 @@ vi.mock("../src/hooks/use-claude-events", () => ({
 	useClaudeEvents: () => ({activeSessions: pushedActiveSessions}),
 }));
 
+beforeEach(() => {
+	vi.useFakeTimers({toFake: ["Date"]});
+	vi.setSystemTime(Date.parse("2026-09-29T12:00:00.000Z"));
+});
+
 afterEach(() => {
 	cleanup();
 	pushedActiveSessions.clear();
+	vi.useRealTimers();
 });
 
 const ACTIVE_ROW_COLUMNS =

@@ -10,14 +10,14 @@ import {
 	RouterProvider,
 } from "@tanstack/react-router";
 import {cleanup, render, screen, within} from "@testing-library/react";
-import {afterEach, describe, expect, it} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {jobsQueryOptions} from "../src/lib/api/jobs";
 import type {Job} from "../src/lib/jobs";
 import {Route as JobsRoute} from "../src/routes/jobs";
 
 const HOUR = 60 * 60 * 1000;
-const now = Date.now();
+const now = Date.parse("2026-09-29T12:00:00.000Z");
 
 function job(overrides: Partial<Job>): Job {
 	return {
@@ -68,8 +68,14 @@ const JOBS: Job[] = [
 	}),
 ];
 
+beforeEach(() => {
+	vi.useFakeTimers({toFake: ["Date"]});
+	vi.setSystemTime(now);
+});
+
 afterEach(() => {
 	cleanup();
+	vi.useRealTimers();
 });
 
 async function renderJobsPage(jobs: Job[]) {
