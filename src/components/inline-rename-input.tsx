@@ -5,8 +5,8 @@ const INPUT_CLASS =
 
 /**
  * claude.ai/code's inline rename: an unbordered input in the title's own font
- * that opens with the whole text selected. Enter and blur commit, Escape
- * cancels; only the first of those counts.
+ * that opens with the whole text selected. Enter commits and Escape cancels;
+ * blur commits unless `blurCancels`. Only the first of those counts.
  */
 export function InlineRenameInput({
 	value,
@@ -14,12 +14,14 @@ export function InlineRenameInput({
 	onCancel,
 	className,
 	ariaLabel = "Rename",
+	blurCancels = false,
 }: {
 	value: string;
 	onCommit: (value: string) => void;
 	onCancel: () => void;
 	className?: string;
 	ariaLabel?: string;
+	blurCancels?: boolean;
 }) {
 	const ref = useRef<HTMLInputElement>(null);
 	const settled = useRef(false);
@@ -57,7 +59,7 @@ export function InlineRenameInput({
 					settle(false);
 				}
 			}}
-			onBlur={() => settle(true)}
+			onBlur={() => settle(!blurCancels)}
 		/>
 	);
 }
