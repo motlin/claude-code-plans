@@ -3,6 +3,7 @@ import {homedir} from "node:os";
 import {join} from "node:path";
 import {withHeadBodyCancel} from "./lib/head-request";
 import {withServerTiming} from "./lib/perf/server-timing";
+import {formatStall, startStallMonitor, withActivityTracking} from "./lib/perf/event-loop-stalls";
 import {closeWatcher, createWatcher, rebroadcastProjectSessions, resolveIgnoredDirNames} from "./lib/watcher";
 import {getDb, initDb, runInitialScan, shutdownDb} from "./lib/db";
 import {startSweep, stopSweep} from "./lib/active-session-store";
@@ -28,6 +29,12 @@ const STATUSLINE_DIR = join(getCacheDir(), "statusline");
 
 let stopHerdrEventBridge: (() => void) | null = null;
 
+// In dev, log every event-loop stall longer than this with the requests and scan steps that ran during it.
+const EVENT_LOOP_STALL_LOG_MS = 500;
+let stopStallMonitor: (() => void) | null = import.meta.env.DEV
+	? startStallMonitor({thresholdMs: EVENT_LOOP_STALL_LOG_MS, onStall: (stall) => console.warn(formatStall(stall))})
+	: null;
+
 void (async () => {
 	// Release every long-lived handle startup creates so the process can exit
 	// once the HTTP server closes (server/plugins/shutdown.ts runs this), and
@@ -38,6 +45,8 @@ void (async () => {
 		stopLiveSubagentSweep();
 		stopHerdrEventBridge?.();
 		stopHerdrEventBridge = null;
+		stopStallMonitor?.();
+		stopStallMonitor = null;
 		await closeWatcher();
 		await shutdownDb();
 	});
@@ -95,5 +104,5 @@ void (async () => {
 })();
 
 export default createServerEntry({
-	fetch: withHeadBodyCancel(withServerTiming((request) => handler.fetch(request))),
+	fetch: withHeadBodyCancel(withServerTiming(withActivityTracking((request) => handler.fetch(request)))),
 });

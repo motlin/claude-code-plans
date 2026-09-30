@@ -3,6 +3,8 @@ import {stat} from "node:fs/promises";
 import {basename, dirname, join, resolve} from "node:path";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import {awaitInitialScan, getDb} from "./db";
+import {retryWhileBusy} from "./db/busy";
+import {trackActivity} from "./perf/event-loop-stalls";
 import {
 	deleteFileContent,
 	deleteMemoryFile,
@@ -473,7 +475,9 @@ function sessionIdFromJsonlPath(path: string): string {
 async function indexSilently(path: string, projectsDir: string): Promise<{linkedPlans: string[]}> {
 	try {
 		const {index} = getDb();
-		return await indexFile(index, path, projectsDir, plansDir || undefined);
+		return await trackActivity(`index ${path}`, () =>
+			retryWhileBusy(() => indexFile(index, path, projectsDir, plansDir || undefined)),
+		);
 	} catch {
 		// indexing error — deltas below still reflect prior DB state
 		return {linkedPlans: []};
@@ -481,7 +485,7 @@ async function indexSilently(path: string, projectsDir: string): Promise<{linked
 }
 
 async function handleFileContentChange(db: IndexDb, path: string, roots: readonly string[]): Promise<void> {
-	await indexFileContent(db, path, roots);
+	await trackActivity(`file-content index ${path}`, () => retryWhileBusy(() => indexFileContent(db, path, roots)));
 }
 
 function handleFileContentUnlink(db: IndexDb, path: string): void {

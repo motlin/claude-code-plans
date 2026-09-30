@@ -6,7 +6,7 @@ import {join} from "node:path";
 import {openTestDb, type AppDb} from "../../src/lib/db/connection";
 import * as schema from "../../src/lib/db/schema";
 import {currentPerfCounters, withPerfScope} from "../../src/lib/perf/server-scope";
-import {trackedExecSync} from "../../src/lib/perf/tracked-process";
+import {trackedExecFile} from "../../src/lib/perf/tracked-process";
 
 type ApiHandler = (context: {params: {id: string}; request: Request}) => Response | Promise<Response>;
 
@@ -54,22 +54,31 @@ async function getSessionDetail(sessionId: string): Promise<Response> {
 	});
 }
 
-describe("trackedExecSync", () => {
-	it("counts one spawn per call inside a perf scope", () => {
-		const result = withPerfScope("test", () => {
-			const output = trackedExecSync("git rev-parse --short HEAD", {
-				cwd: repoDir,
-				encoding: "utf-8",
-				stdio: "pipe",
-			});
+describe("trackedExecFile", () => {
+	it("counts one spawn per call inside a perf scope", async () => {
+		const result = await withPerfScope("test", async () => {
+			const output = await trackedExecFile("git", ["rev-parse", "--short", "HEAD"], {cwd: repoDir});
 			return {output: output.trim().length > 0, spawned: currentPerfCounters()?.proc.spawned};
 		});
 		expect(result).toStrictEqual({output: true, spawned: 1});
 	});
 
-	it("runs without a perf scope", () => {
-		const output = trackedExecSync("git status --porcelain", {cwd: repoDir, encoding: "utf-8", stdio: "pipe"});
+	it("runs without a perf scope", async () => {
+		const output = await trackedExecFile("git", ["status", "--porcelain"], {cwd: repoDir});
 		expect(output).toBe("");
+	});
+
+	it("does not block the event loop while the command runs", async () => {
+		let ticks = 0;
+		const timer = setInterval(() => ticks++, 1);
+		await trackedExecFile(process.execPath, ["-e", "setTimeout(() => {}, 200)"], {cwd: repoDir});
+		clearInterval(timer);
+		expect(ticks > 10).toBe(true);
+	});
+
+	it("rejects when the command fails", async () => {
+		const error = await trackedExecFile("git", ["rev-parse", "HEAD"], {cwd: tempDir}).catch((err: unknown) => err);
+		expect(error instanceof Error).toBe(true);
 	});
 });
 

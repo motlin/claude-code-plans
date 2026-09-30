@@ -93,15 +93,14 @@ export const Route = createFileRoute("/api/sessions/$id")({
 				let gitClean: boolean | null = null;
 				if (projectPath) {
 					try {
-						const {trackedExecSync} = await import("../../lib/perf/tracked-process");
-						const execOpts = {
-							cwd: projectPath,
-							encoding: "utf-8" as const,
-							stdio: "pipe" as const,
-						};
-						gitSha = trackedExecSync("git rev-parse --short HEAD", execOpts).trim();
-						const status = trackedExecSync("git status --porcelain", execOpts).trim();
-						gitClean = status.length === 0;
+						// Asynchronous, so a slow `git status` in a large repo never blocks other requests.
+						const {trackedExecFile} = await import("../../lib/perf/tracked-process");
+						const [sha, status] = await Promise.all([
+							trackedExecFile("git", ["rev-parse", "--short", "HEAD"], {cwd: projectPath}),
+							trackedExecFile("git", ["status", "--porcelain"], {cwd: projectPath}),
+						]);
+						gitSha = sha.trim();
+						gitClean = status.trim().length === 0;
 					} catch {
 						// not a git repo or git not available
 					}

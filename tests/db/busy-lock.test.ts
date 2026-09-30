@@ -64,12 +64,12 @@ describe("index DB writes while another connection holds the write lock", () => 
 		expect({
 			index: db.index.get(sql`PRAGMA busy_timeout`),
 			summaries: db.summaries.get(sql`PRAGMA busy_timeout`),
-		}).toStrictEqual({index: {timeout: 10_000}, summaries: {timeout: 10_000}});
+		}).toStrictEqual({index: {timeout: 250}, summaries: {timeout: 250}});
 	});
 
 	it("replaceArtifactEvents waits for the lock instead of throwing SQLITE_BUSY", async () => {
 		const {db, dbPath} = openTempDb();
-		const child = await holdWriteLock(dbPath, 300);
+		const child = await holdWriteLock(dbPath, 100);
 
 		replaceArtifactEvents(
 			db.index,
@@ -86,7 +86,7 @@ describe("index DB writes while another connection holds the write lock", () => 
 	it("the file-content scan's stale-row cleanup waits for the lock instead of throwing SQLITE_BUSY", async () => {
 		const {db, dbPath} = openTempDb();
 		db.index.run(sql`INSERT INTO file_content(path, content) VALUES ('/gone/file.ts', 'stale')`);
-		const child = await holdWriteLock(dbPath, 300);
+		const child = await holdWriteLock(dbPath, 100);
 
 		await scanFileContentRoots(db.index, [], new Set());
 

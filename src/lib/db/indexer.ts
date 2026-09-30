@@ -21,6 +21,8 @@ import {SYNTHETIC_MODEL} from "../model-name";
 import {readFirstUserMessage, resolveFirstPrompt, resolveSessionTitle, TitleRecordCollector} from "../sessions";
 import {extractTitleFromContent} from "../markdown-utils.server";
 import {listTrackedFiles} from "../git-tracked";
+import {trackActivity} from "../perf/event-loop-stalls";
+import {retryWhileBusy} from "./busy";
 import * as schema from "./schema";
 import {ArtifactEventCollector, deleteArtifactEventsForSessions, replaceArtifactEvents} from "./artifact-index";
 import {deleteRoutinesForSessions, replaceRoutines} from "./routine-index";
@@ -349,7 +351,9 @@ export async function scanFileContentRoots(
 			} catch {
 				continue;
 			}
-			await indexFileContent(db, trackedPath, roots);
+			await trackActivity(`file-content scan ${trackedPath}`, () =>
+				retryWhileBusy(() => indexFileContent(db, trackedPath, roots), signal),
+			);
 		}
 	}
 
@@ -364,15 +368,19 @@ export async function scanFileContentRoots(
 	for (let offset = 0; offset < stalePaths.length; offset += FILE_CONTENT_CLEANUP_BATCH_SIZE) {
 		signal?.throwIfAborted();
 		const batch = stalePaths.slice(offset, offset + FILE_CONTENT_CLEANUP_BATCH_SIZE);
-		db.transaction((transaction) => {
-			for (const stalePath of batch) {
-				transaction.run(sql`DELETE FROM file_content WHERE path = ${stalePath}`);
-				transaction
-					.delete(schema.indexedFiles)
-					.where(eq(schema.indexedFiles.path, fileContentCachePath(stalePath)))
-					.run();
-			}
-		});
+		await retryWhileBusy(
+			() =>
+				db.transaction((transaction) => {
+					for (const stalePath of batch) {
+						transaction.run(sql`DELETE FROM file_content WHERE path = ${stalePath}`);
+						transaction
+							.delete(schema.indexedFiles)
+							.where(eq(schema.indexedFiles.path, fileContentCachePath(stalePath)))
+							.run();
+					}
+				}),
+			signal,
+		);
 		await new Promise<void>((resolveYield) => setImmediate(resolveYield));
 	}
 }
@@ -1535,9 +1543,15 @@ export async function fullScan(
 	readDirectory: ReadDirectory = readdir,
 	signal?: AbortSignal,
 ): Promise<void> {
+	// Each step is one unit of work that another connection's write lock can
+	// hold up. It retries after an asynchronous pause instead of sleeping the
+	// thread, and names itself for the dev event-loop stall monitor.
+	const step = <T>(label: string, run: () => T | Promise<T>): Promise<T> =>
+		trackActivity(`scan ${label}`, () => retryWhileBusy(run, signal));
+
 	indexingInProgress = true;
 	try {
-		repairProjectDisplayNames(indexDb);
+		await step("project names", () => repairProjectDisplayNames(indexDb));
 
 		let projectDirs: string[];
 		try {
@@ -1584,7 +1598,7 @@ export async function fullScan(
 		for (const {project, projectPath} of projects) {
 			signal?.throwIfAborted();
 			// Index sessions-index.json
-			await indexSessionsIndex(indexDb, projectPath, project);
+			await step(`sessions-index ${projectPath}`, () => indexSessionsIndex(indexDb, projectPath, project));
 
 			// Discover session JSONL files with their mtimes, newest first.
 			let files: string[];
@@ -1616,7 +1630,7 @@ export async function fullScan(
 			// Index JSONL files with bounded concurrency.
 			await mapLimit(sessionFiles, SCAN_CONCURRENCY, async ({path}) => {
 				signal?.throwIfAborted();
-				await indexJsonlFile(indexDb, path, project);
+				await step(`jsonl ${path}`, () => indexJsonlFile(indexDb, path, project));
 			});
 
 			// Index subagents and (re)link parent-child relationships. Linking
@@ -1643,41 +1657,47 @@ export async function fullScan(
 						continue;
 					}
 					if (knownMtimes.get(sfPath) !== sfMtime) changed = true;
-					await indexSubagentFile(indexDb, sfPath, sessionId, project);
+					await step(`subagent ${sfPath}`, () => indexSubagentFile(indexDb, sfPath, sessionId, project));
 					subagentJsonlPaths.push(sfPath);
 				}
 
 				if (changed && subagentJsonlPaths.length > 0) {
 					for (const saPath of subagentJsonlPaths) {
-						await linkSubagentParents(indexDb, saPath, basename(saPath, ".jsonl"));
+						await step(`subagent links ${saPath}`, () =>
+							linkSubagentParents(indexDb, saPath, basename(saPath, ".jsonl")),
+						);
 					}
-					await linkSubagentParents(indexDb, sessionJsonlPath, null);
+					await step(`subagent links ${sessionJsonlPath}`, () =>
+						linkSubagentParents(indexDb, sessionJsonlPath, null),
+					);
 				}
 			}
 
 			// Index memory markdown files for this project
-			await scanMemoriesForProject(indexDb, projectsDir, project);
+			await step(`memories ${projectPath}`, () => scanMemoriesForProject(indexDb, projectsDir, project));
 		}
 
 		// Pruning is only safe after every project directory was enumerated. A
 		// transient permission or mount failure must leave the existing index intact.
 		if (scanComplete) {
-			pruneDeletedSessions(indexDb, summariesDb, projectsDir, onDiskPaths);
+			await step("prune deleted sessions", () =>
+				pruneDeletedSessions(indexDb, summariesDb, projectsDir, onDiskPaths),
+			);
 		}
 
 		if (tasksDir) {
-			await scanTasksDir(indexDb, tasksDir);
+			await step(`tasks ${tasksDir}`, () => scanTasksDir(indexDb, tasksDir));
 		}
 
 		if (plansDir) {
-			await scanPlansDir(indexDb, plansDir);
-			await pruneStalePlanLinks(indexDb, plansDir);
+			await step(`plans ${plansDir}`, () => scanPlansDir(indexDb, plansDir));
+			await step("prune plan links", () => pruneStalePlanLinks(indexDb, plansDir));
 		}
 
 		// The scan visits projects in recency order, so a worktree can be
 		// persisted before the parent project it derives its display name from.
 		// A final pass renames it once every parent is present.
-		repairProjectDisplayNames(indexDb);
+		await step("project names", () => repairProjectDisplayNames(indexDb));
 	} finally {
 		indexingInProgress = false;
 	}

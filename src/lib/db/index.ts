@@ -1,4 +1,5 @@
 import {openAppDb, type AppDb} from "./connection";
+import {isBusyError} from "./busy";
 import {fullScan, scanFileContentRoots} from "./indexer";
 import {hmrPersist, hmrTake} from "../hmr-persist";
 import {homedir} from "node:os";
@@ -47,14 +48,6 @@ export async function initDb(): Promise<AppDb> {
 // Both scans skip files already indexed at their current mtime, so running
 // one again resumes it rather than redoing it.
 const BUSY_RETRY_DELAYS_MS = [250, 500, 1000, 2000, 4000];
-
-function isBusyError(err: unknown): boolean {
-	for (let current = err; current instanceof Error; current = current.cause) {
-		const code = (current as {code?: unknown}).code;
-		if (typeof code === "string" && code.startsWith("SQLITE_BUSY")) return true;
-	}
-	return false;
-}
 
 async function runScanWithRetry(label: string, signal: AbortSignal, scan: () => Promise<void>): Promise<void> {
 	for (let attempt = 0; ; attempt++) {

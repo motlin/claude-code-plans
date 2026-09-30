@@ -445,10 +445,12 @@ function initSummariesDb(sqlite: Database.Database): void {
 
 /**
  * How long a connection blocks waiting for another connection's write lock
- * before failing with SQLITE_BUSY. A restarted dev server can briefly overlap
- * the previous instance, whose scan still holds the lock.
+ * before failing with SQLITE_BUSY. better-sqlite3 waits by sleeping the
+ * thread, so while it waits the server answers nothing: in dev, nitro's proxy
+ * then fails every request with "connect ETIMEDOUT". Keep this short and
+ * retry longer waits asynchronously with retryWhileBusy.
  */
-const BUSY_TIMEOUT_MS = 10_000;
+const BUSY_TIMEOUT_MS = 250;
 
 type SchemaDb = BetterSQLite3Database<typeof schema>;
 
