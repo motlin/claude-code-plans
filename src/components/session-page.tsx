@@ -33,6 +33,7 @@ import {TranscriptHistoryLoader, findScrollContainer} from "./transcript-history
 import {Tooltip} from "./ui/tooltip";
 import {SessionPaneControls} from "./view-options-menu";
 import {SessionDock} from "./session-dock";
+import {UsagePaceBanner} from "./usage-pace-banner";
 import {useWorkingMarkerState, WorkingMarker} from "./working-marker";
 import {handleBtwPrompt, SideChat, useSideChatShortcut} from "./side-chat";
 import {useToast} from "./toast";
@@ -802,6 +803,7 @@ function SessionView({
 									onDecision={answerPermission}
 								/>
 							)}
+							{!chromeHidden && data.projectPath && <UsagePaceBanner />}
 							{!chromeHidden && data.projectPath && (
 								<BranchStrip sessionId={sessionId} session={data} statusline={statusline} />
 							)}

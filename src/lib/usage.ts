@@ -89,6 +89,39 @@ function elapsedFraction({window, lengthMs}: PacedWindow, nowMs: number): number
 	return Math.min(1, Math.max(0, 1 - remaining / lengthMs));
 }
 
+function isAheadOfPace(paced: PacedWindow, nowMs: number): boolean {
+	return paced.window.usedPct / 100 > elapsedFraction(paced, nowMs);
+}
+
+/** The weekly window is burning faster than the week elapses, but is not yet exhausted. */
+export function weeklyAheadOfPace(usage: UsageSummary, nowMs: number): boolean {
+	const {sevenDay} = usage;
+	if (sevenDay === null || sevenDay.usedPct >= 100) return false;
+	return isAheadOfPace({window: sevenDay, lengthMs: SEVEN_DAY_MS}, nowMs);
+}
+
+/**
+ * The composer's pace banner shows while the weekly window is ahead of pace, unless it was
+ * dismissed for a reset (epoch seconds) that has not happened yet.
+ */
+export function shouldShowPaceBanner(usage: UsageSummary, nowMs: number, dismissedUntil: number | null): boolean {
+	if (dismissedUntil !== null && nowMs < dismissedUntil * 1000) return false;
+	return weeklyAheadOfPace(usage, nowMs);
+}
+
+/** "Resets Tue, Oct 6, 4:00 AM". */
+export function formatPaceBannerReset(resetsAt: number, timeZone?: string): string {
+	const when = new Intl.DateTimeFormat("en-US", {
+		weekday: "short",
+		month: "short",
+		day: "numeric",
+		hour: "numeric",
+		minute: "2-digit",
+		...(timeZone === undefined ? {} : {timeZone}),
+	}).format(resetsAt * 1000);
+	return `Resets ${when}`;
+}
+
 /**
  * The pace line above the meters: used% against the elapsed fraction of each
  * window. The weekly window leads, since it is the one that outlasts a session.
@@ -107,7 +140,7 @@ export function paceHeadline(usage: UsageSummary, nowMs: number, timeZone?: stri
 		return `You’ve hit the limit. It resets ${resetDay(resetsAt, nowMs, timeZone)} at ${time}.`;
 	}
 
-	const ahead = windows.find((paced) => paced.window.usedPct / 100 > elapsedFraction(paced, nowMs));
+	const ahead = windows.find((paced) => isAheadOfPace(paced, nowMs));
 	if (ahead) {
 		return `You may hit the limit before ${resetDay(ahead.window.resetsAt, nowMs, timeZone)}’s reset.`;
 	}
