@@ -1,21 +1,21 @@
-import { formatDistanceToNow } from "date-fns";
+import {formatDistanceToNow} from "date-fns";
 
 const TIME_FORMAT: Intl.DateTimeFormatOptions = {
-  hour: "numeric",
-  minute: "2-digit",
-  hour12: true,
+	hour: "numeric",
+	minute: "2-digit",
+	hour12: true,
 };
 
 const DATE_FORMAT: Intl.DateTimeFormatOptions = {
-  month: "short",
-  day: "numeric",
-  year: "numeric",
+	month: "short",
+	day: "numeric",
+	year: "numeric",
 };
 
 function parseTimestamp(timestamp?: string): Date | null {
-  if (!timestamp) return null;
-  const date = new Date(timestamp);
-  return isNaN(date.getTime()) ? null : date;
+	if (!timestamp) return null;
+	const date = new Date(timestamp);
+	return isNaN(date.getTime()) ? null : date;
 }
 
 /**
@@ -24,14 +24,14 @@ function parseTimestamp(timestamp?: string): Date | null {
  * date. Returns null for missing or unparseable input.
  */
 export function formatTimestamp(timestamp?: string): string | null {
-  const date = parseTimestamp(timestamp);
-  if (!date) return null;
+	const date = parseTimestamp(timestamp);
+	if (!date) return null;
 
-  const time = date.toLocaleTimeString("en-US", TIME_FORMAT);
-  const isToday = date.toDateString() === new Date().toDateString();
-  if (isToday) return time;
+	const time = date.toLocaleTimeString("en-US", TIME_FORMAT);
+	const isToday = date.toDateString() === new Date().toDateString();
+	if (isToday) return time;
 
-  return `${date.toLocaleDateString("en-US", DATE_FORMAT)} ${time}`;
+	return `${date.toLocaleDateString("en-US", DATE_FORMAT)} ${time}`;
 }
 
 /**
@@ -39,7 +39,7 @@ export function formatTimestamp(timestamp?: string): string | null {
  * Returns null for missing or unparseable input.
  */
 export function formatRelativeTimestamp(timestamp?: string): string | null {
-  const date = parseTimestamp(timestamp);
-  if (!date) return null;
-  return formatDistanceToNow(date, { addSuffix: true });
+	const date = parseTimestamp(timestamp);
+	if (!date) return null;
+	return formatDistanceToNow(date, {addSuffix: true});
 }

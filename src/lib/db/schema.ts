@@ -1,102 +1,102 @@
-import { sqliteTable, text, integer, index, primaryKey } from "drizzle-orm/sqlite-core";
-import type { ReviewBundle } from "../api/reviews";
-import type { RoutineKind } from "../routines";
+import {sqliteTable, text, integer, index, primaryKey} from "drizzle-orm/sqlite-core";
+import type {ReviewBundle} from "../api/reviews";
+import type {RoutineKind} from "../routines";
 
 // Bump for any DDL or indexed-data change. A database at any other version is
 // wiped (user-state tables included) and rebuilt; there are no migrations.
 export const SCHEMA_VERSION = "1";
 
 export const metadata = sqliteTable("metadata", {
-  key: text("key").primaryKey(),
-  value: text("value").notNull(),
+	key: text("key").primaryKey(),
+	value: text("value").notNull(),
 });
 
 export const indexedFiles = sqliteTable("indexed_files", {
-  path: text("path").primaryKey(),
-  mtimeMs: integer("mtime_ms").notNull(),
-  sizeBytes: integer("size_bytes").notNull(),
-  indexedAt: integer("indexed_at").notNull(),
+	path: text("path").primaryKey(),
+	mtimeMs: integer("mtime_ms").notNull(),
+	sizeBytes: integer("size_bytes").notNull(),
+	indexedAt: integer("indexed_at").notNull(),
 });
 
 export const projects = sqliteTable("projects", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  projectPath: text("project_path"),
-  updatedAt: integer("updated_at").notNull(),
+	id: text("id").primaryKey(),
+	name: text("name").notNull(),
+	projectPath: text("project_path"),
+	updatedAt: integer("updated_at").notNull(),
 });
 
 export const sessions = sqliteTable(
-  "sessions",
-  {
-    id: text("id").primaryKey(),
-    projectId: text("project_id").notNull(),
-    title: text("title").notNull(),
-    firstPrompt: text("first_prompt"),
-    summary: text("summary"),
-    customTitle: text("custom_title"),
-    aiTitle: text("ai_title"),
-    prNumber: integer("pr_number"),
-    prUrl: text("pr_url"),
-    prRepository: text("pr_repository"),
-    forkedFromSessionId: text("forked_from_session_id"),
-    messageCount: integer("message_count").notNull().default(0),
-    gitBranch: text("git_branch"),
-    cwd: text("cwd"),
-    isSidechain: integer("is_sidechain").notNull().default(0),
-    createdAt: integer("created_at").notNull(),
-    mtimeMs: integer("mtime_ms").notNull(),
-    filePath: text("file_path").notNull(),
-  },
-  (table) => [
-    index("sessions_project_id_idx").on(table.projectId),
-    index("sessions_mtime_desc_idx").on(table.mtimeMs),
-    index("sessions_git_branch_idx").on(table.gitBranch),
-  ],
+	"sessions",
+	{
+		id: text("id").primaryKey(),
+		projectId: text("project_id").notNull(),
+		title: text("title").notNull(),
+		firstPrompt: text("first_prompt"),
+		summary: text("summary"),
+		customTitle: text("custom_title"),
+		aiTitle: text("ai_title"),
+		prNumber: integer("pr_number"),
+		prUrl: text("pr_url"),
+		prRepository: text("pr_repository"),
+		forkedFromSessionId: text("forked_from_session_id"),
+		messageCount: integer("message_count").notNull().default(0),
+		gitBranch: text("git_branch"),
+		cwd: text("cwd"),
+		isSidechain: integer("is_sidechain").notNull().default(0),
+		createdAt: integer("created_at").notNull(),
+		mtimeMs: integer("mtime_ms").notNull(),
+		filePath: text("file_path").notNull(),
+	},
+	(table) => [
+		index("sessions_project_id_idx").on(table.projectId),
+		index("sessions_mtime_desc_idx").on(table.mtimeMs),
+		index("sessions_git_branch_idx").on(table.gitBranch),
+	],
 );
 
 export const sessionMessages = sqliteTable(
-  "session_messages",
-  {
-    sessionId: text("session_id").notNull(),
-    messageIndex: integer("message_index").notNull(),
-    role: text("role").$type<"user" | "assistant">().notNull(),
-    text: text("text"),
-  },
-  (table) => [
-    primaryKey({ columns: [table.sessionId, table.messageIndex] }),
-    index("session_messages_latest_idx").on(table.sessionId, table.role, table.messageIndex),
-  ],
+	"session_messages",
+	{
+		sessionId: text("session_id").notNull(),
+		messageIndex: integer("message_index").notNull(),
+		role: text("role").$type<"user" | "assistant">().notNull(),
+		text: text("text"),
+	},
+	(table) => [
+		primaryKey({columns: [table.sessionId, table.messageIndex]}),
+		index("session_messages_latest_idx").on(table.sessionId, table.role, table.messageIndex),
+	],
 );
 
 export const sessionViewStates = sqliteTable("session_view_states", {
-  sessionId: text("session_id").primaryKey(),
-  lastViewedMessageIndex: integer("last_viewed_message_index").notNull().default(-1),
-  reviewTargetMessageIndex: integer("review_target_message_index").notNull().default(-1),
-  updatedAt: integer("updated_at").notNull(),
+	sessionId: text("session_id").primaryKey(),
+	lastViewedMessageIndex: integer("last_viewed_message_index").notNull().default(-1),
+	reviewTargetMessageIndex: integer("review_target_message_index").notNull().default(-1),
+	updatedAt: integer("updated_at").notNull(),
 });
 
 export const herdrTerminalViewStates = sqliteTable(
-  "herdr_terminal_view_states",
-  {
-    terminalId: text("terminal_id").primaryKey(),
-    sessionId: text("session_id").notNull(),
-    viewed: integer("viewed").notNull().default(0),
-    updatedAt: integer("updated_at").notNull(),
-  },
-  (table) => [index("herdr_terminal_view_states_session_idx").on(table.sessionId)],
+	"herdr_terminal_view_states",
+	{
+		terminalId: text("terminal_id").primaryKey(),
+		sessionId: text("session_id").notNull(),
+		viewed: integer("viewed").notNull().default(0),
+		updatedAt: integer("updated_at").notNull(),
+	},
+	(table) => [index("herdr_terminal_view_states_session_idx").on(table.sessionId)],
 );
 
 /** Distinct `mcp__<server>__<tool>` names each primary transcript called. */
 export const sessionMcpTools = sqliteTable(
-  "session_mcp_tools",
-  {
-    sessionId: text("session_id").notNull(),
-    toolName: text("tool_name").notNull(),
-  },
-  (table) => [
-    primaryKey({ columns: [table.sessionId, table.toolName] }),
-    index("session_mcp_tools_tool_name_idx").on(table.toolName),
-  ],
+	"session_mcp_tools",
+	{
+		sessionId: text("session_id").notNull(),
+		toolName: text("tool_name").notNull(),
+	},
+	(table) => [
+		primaryKey({columns: [table.sessionId, table.toolName]}),
+		index("session_mcp_tools_tool_name_idx").on(table.toolName),
+	],
 );
 
 /**
@@ -105,50 +105,50 @@ export const sessionMcpTools = sqliteTable(
  * the call, so a reindex replaces exactly that file's rows.
  */
 export const artifactEvents = sqliteTable(
-  "artifact_events",
-  {
-    toolUseId: text("tool_use_id").primaryKey(),
-    sessionId: text("session_id").notNull(),
-    projectId: text("project_id").notNull(),
-    filePath: text("file_path").notNull(),
-    ts: integer("ts").notNull(),
-    action: text("action").notNull(),
-    url: text("url").notNull(),
-    isSubagent: integer("is_subagent").notNull().default(0),
-    title: text("title"),
-    favicon: text("favicon"),
-    description: text("description"),
-    sourcePath: text("source_path"),
-    version: text("version"),
-    audience: text("audience"),
-  },
-  (table) => [
-    index("artifact_events_session_idx").on(table.sessionId),
-    index("artifact_events_file_path_idx").on(table.filePath),
-    index("artifact_events_url_idx").on(table.url),
-  ],
+	"artifact_events",
+	{
+		toolUseId: text("tool_use_id").primaryKey(),
+		sessionId: text("session_id").notNull(),
+		projectId: text("project_id").notNull(),
+		filePath: text("file_path").notNull(),
+		ts: integer("ts").notNull(),
+		action: text("action").notNull(),
+		url: text("url").notNull(),
+		isSubagent: integer("is_subagent").notNull().default(0),
+		title: text("title"),
+		favicon: text("favicon"),
+		description: text("description"),
+		sourcePath: text("source_path"),
+		version: text("version"),
+		audience: text("audience"),
+	},
+	(table) => [
+		index("artifact_events_session_idx").on(table.sessionId),
+		index("artifact_events_file_path_idx").on(table.filePath),
+		index("artifact_events_url_idx").on(table.url),
+	],
 );
 
 /** One row per normalized artifact URL, derived from its `artifact_events`. */
 export const artifacts = sqliteTable(
-  "artifacts",
-  {
-    url: text("url").primaryKey(),
-    id: text("id").notNull(),
-    urlKind: text("url_kind").$type<"uuid" | "slug">().notNull(),
-    title: text("title"),
-    favicon: text("favicon"),
-    description: text("description"),
-    sourcePath: text("source_path"),
-    version: text("version"),
-    audience: text("audience"),
-    firstSeenAt: integer("first_seen_at").notNull(),
-    lastPublishedAt: integer("last_published_at"),
-    publishCount: integer("publish_count").notNull().default(0),
-    lastSessionId: text("last_session_id").notNull(),
-    projectId: text("project_id").notNull(),
-  },
-  (table) => [index("artifacts_last_published_idx").on(table.lastPublishedAt)],
+	"artifacts",
+	{
+		url: text("url").primaryKey(),
+		id: text("id").notNull(),
+		urlKind: text("url_kind").$type<"uuid" | "slug">().notNull(),
+		title: text("title"),
+		favicon: text("favicon"),
+		description: text("description"),
+		sourcePath: text("source_path"),
+		version: text("version"),
+		audience: text("audience"),
+		firstSeenAt: integer("first_seen_at").notNull(),
+		lastPublishedAt: integer("last_published_at"),
+		publishCount: integer("publish_count").notNull().default(0),
+		lastSessionId: text("last_session_id").notNull(),
+		projectId: text("project_id").notNull(),
+	},
+	(table) => [index("artifacts_last_published_idx").on(table.lastPublishedAt)],
 );
 
 /**
@@ -157,30 +157,27 @@ export const artifacts = sqliteTable(
  * transcript, so a reindex replaces exactly that file's rows.
  */
 export const routines = sqliteTable(
-  "routines",
-  {
-    toolUseId: text("tool_use_id").primaryKey(),
-    sessionId: text("session_id").notNull(),
-    projectId: text("project_id").notNull(),
-    filePath: text("file_path").notNull(),
-    recordUuid: text("record_uuid"),
-    kind: text("kind").$type<RoutineKind>().notNull(),
-    routineId: text("routine_id"),
-    name: text("name"),
-    schedule: text("schedule"),
-    humanSchedule: text("human_schedule"),
-    delaySeconds: integer("delay_seconds"),
-    runOnceAt: integer("run_once_at"),
-    recurring: integer("recurring").notNull(),
-    durable: integer("durable").notNull(),
-    prompt: text("prompt").notNull(),
-    createdAt: integer("created_at").notNull(),
-    deletedAt: integer("deleted_at"),
-  },
-  (table) => [
-    index("routines_session_idx").on(table.sessionId),
-    index("routines_file_path_idx").on(table.filePath),
-  ],
+	"routines",
+	{
+		toolUseId: text("tool_use_id").primaryKey(),
+		sessionId: text("session_id").notNull(),
+		projectId: text("project_id").notNull(),
+		filePath: text("file_path").notNull(),
+		recordUuid: text("record_uuid"),
+		kind: text("kind").$type<RoutineKind>().notNull(),
+		routineId: text("routine_id"),
+		name: text("name"),
+		schedule: text("schedule"),
+		humanSchedule: text("human_schedule"),
+		delaySeconds: integer("delay_seconds"),
+		runOnceAt: integer("run_once_at"),
+		recurring: integer("recurring").notNull(),
+		durable: integer("durable").notNull(),
+		prompt: text("prompt").notNull(),
+		createdAt: integer("created_at").notNull(),
+		deletedAt: integer("deleted_at"),
+	},
+	(table) => [index("routines_session_idx").on(table.sessionId), index("routines_file_path_idx").on(table.filePath)],
 );
 
 /**
@@ -190,140 +187,140 @@ export const routines = sqliteTable(
  * replaces exactly that file's rows.
  */
 export const usageDaily = sqliteTable(
-  "usage_daily",
-  {
-    filePath: text("file_path").notNull(),
-    sessionId: text("session_id").notNull(),
-    day: text("day").notNull(),
-    model: text("model"),
-    messages: integer("messages").notNull(),
-    inputTokens: integer("input_tokens").notNull(),
-    outputTokens: integer("output_tokens").notNull(),
-    cacheReadTokens: integer("cache_read_tokens").notNull(),
-    cacheCreationTokens: integer("cache_creation_tokens").notNull(),
-  },
-  (table) => [
-    index("usage_daily_file_path_idx").on(table.filePath),
-    index("usage_daily_session_idx").on(table.sessionId),
-  ],
+	"usage_daily",
+	{
+		filePath: text("file_path").notNull(),
+		sessionId: text("session_id").notNull(),
+		day: text("day").notNull(),
+		model: text("model"),
+		messages: integer("messages").notNull(),
+		inputTokens: integer("input_tokens").notNull(),
+		outputTokens: integer("output_tokens").notNull(),
+		cacheReadTokens: integer("cache_read_tokens").notNull(),
+		cacheCreationTokens: integer("cache_creation_tokens").notNull(),
+	},
+	(table) => [
+		index("usage_daily_file_path_idx").on(table.filePath),
+		index("usage_daily_session_idx").on(table.sessionId),
+	],
 );
 
 export const planSessions = sqliteTable(
-  "plan_sessions",
-  {
-    planFilename: text("plan_filename").notNull(),
-    sessionId: text("session_id").notNull(),
-    projectId: text("project_id").notNull(),
-  },
-  (table) => [
-    primaryKey({ columns: [table.planFilename, table.sessionId] }),
-    index("plan_sessions_plan_idx").on(table.planFilename),
-    index("plan_sessions_session_idx").on(table.sessionId),
-  ],
+	"plan_sessions",
+	{
+		planFilename: text("plan_filename").notNull(),
+		sessionId: text("session_id").notNull(),
+		projectId: text("project_id").notNull(),
+	},
+	(table) => [
+		primaryKey({columns: [table.planFilename, table.sessionId]}),
+		index("plan_sessions_plan_idx").on(table.planFilename),
+		index("plan_sessions_session_idx").on(table.sessionId),
+	],
 );
 
 export const subagents = sqliteTable(
-  "subagents",
-  {
-    id: text("id").primaryKey(),
-    sessionId: text("session_id").notNull(),
-    projectId: text("project_id").notNull(),
-    parentAgentId: text("parent_agent_id"),
-    agentType: text("agent_type"),
-    attributionAgent: text("attribution_agent"),
-    slug: text("slug"),
-    description: text("description"),
-    model: text("model"),
-    startedAt: text("started_at"),
-    finishedAt: text("finished_at"),
-    filePath: text("file_path").notNull(),
-    mtimeMs: integer("mtime_ms").notNull(),
-  },
-  (table) => [index("subagents_session_idx").on(table.sessionId)],
+	"subagents",
+	{
+		id: text("id").primaryKey(),
+		sessionId: text("session_id").notNull(),
+		projectId: text("project_id").notNull(),
+		parentAgentId: text("parent_agent_id"),
+		agentType: text("agent_type"),
+		attributionAgent: text("attribution_agent"),
+		slug: text("slug"),
+		description: text("description"),
+		model: text("model"),
+		startedAt: text("started_at"),
+		finishedAt: text("finished_at"),
+		filePath: text("file_path").notNull(),
+		mtimeMs: integer("mtime_ms").notNull(),
+	},
+	(table) => [index("subagents_session_idx").on(table.sessionId)],
 );
 
 export const tasks = sqliteTable(
-  "tasks",
-  {
-    filePath: text("file_path").primaryKey(),
-    taskId: text("task_id").notNull(),
-    projectDir: text("project_dir").notNull(),
-    subject: text("subject").notNull(),
-    description: text("description").notNull(),
-    status: text("status").notNull(),
-    activeForm: text("active_form"),
-    owner: text("owner"),
-    blocksJson: text("blocks_json").notNull().default("[]"),
-    blockedByJson: text("blocked_by_json").notNull().default("[]"),
-    metadataJson: text("metadata_json").notNull().default("{}"),
-    mtimeMs: integer("mtime_ms").notNull(),
-  },
-  (table) => [
-    index("tasks_project_dir_idx").on(table.projectDir),
-    index("tasks_status_idx").on(table.status),
-    index("tasks_owner_idx").on(table.owner),
-  ],
+	"tasks",
+	{
+		filePath: text("file_path").primaryKey(),
+		taskId: text("task_id").notNull(),
+		projectDir: text("project_dir").notNull(),
+		subject: text("subject").notNull(),
+		description: text("description").notNull(),
+		status: text("status").notNull(),
+		activeForm: text("active_form"),
+		owner: text("owner"),
+		blocksJson: text("blocks_json").notNull().default("[]"),
+		blockedByJson: text("blocked_by_json").notNull().default("[]"),
+		metadataJson: text("metadata_json").notNull().default("{}"),
+		mtimeMs: integer("mtime_ms").notNull(),
+	},
+	(table) => [
+		index("tasks_project_dir_idx").on(table.projectDir),
+		index("tasks_status_idx").on(table.status),
+		index("tasks_owner_idx").on(table.owner),
+	],
 );
 
 export const memories = sqliteTable(
-  "memories",
-  {
-    filePath: text("file_path").primaryKey(),
-    projectId: text("project_id").notNull(),
-    filename: text("filename").notNull(),
-    title: text("title").notNull(),
-    mtimeMs: integer("mtime_ms").notNull(),
-  },
-  (table) => [index("memories_project_id_idx").on(table.projectId)],
+	"memories",
+	{
+		filePath: text("file_path").primaryKey(),
+		projectId: text("project_id").notNull(),
+		filename: text("filename").notNull(),
+		title: text("title").notNull(),
+		mtimeMs: integer("mtime_ms").notNull(),
+	},
+	(table) => [index("memories_project_id_idx").on(table.projectId)],
 );
 
 export const plans = sqliteTable(
-  "plans",
-  {
-    filename: text("filename").primaryKey(),
-    title: text("title").notNull(),
-    mtimeMs: integer("mtime_ms").notNull(),
-  },
-  (table) => [index("plans_mtime_desc_idx").on(table.mtimeMs)],
+	"plans",
+	{
+		filename: text("filename").primaryKey(),
+		title: text("title").notNull(),
+		mtimeMs: integer("mtime_ms").notNull(),
+	},
+	(table) => [index("plans_mtime_desc_idx").on(table.mtimeMs)],
 );
 
 /** App-side archive flag: the session's JSONL is never touched. */
 export const archivedSessions = sqliteTable("archived_sessions", {
-  sessionId: text("session_id").primaryKey(),
-  archivedAt: integer("archived_at").notNull(),
+	sessionId: text("session_id").primaryKey(),
+	archivedAt: integer("archived_at").notNull(),
 });
 
 /** Home "Sessions" dismissals: a row stays hidden until the session has newer activity. */
 export const homeDismissals = sqliteTable("home_dismissals", {
-  sessionId: text("session_id").primaryKey(),
-  dismissedAt: integer("dismissed_at").notNull(),
+	sessionId: text("session_id").primaryKey(),
+	dismissedAt: integer("dismissed_at").notNull(),
 });
 
 export const summaries = sqliteTable("summaries", {
-  sessionId: text("session_id").primaryKey(),
-  lastMessageId: text("last_message_id").notNull(),
-  summary: text("summary").notNull(),
-  generatedAt: integer("generated_at").notNull(),
+	sessionId: text("session_id").primaryKey(),
+	lastMessageId: text("last_message_id").notNull(),
+	summary: text("summary").notNull(),
+	generatedAt: integer("generated_at").notNull(),
 });
 
 export const reviews = sqliteTable("reviews", {
-  reviewId: text("review_id").primaryKey(),
-  bundle: text("bundle", { mode: "json" }).$type<ReviewBundle>().notNull(),
+	reviewId: text("review_id").primaryKey(),
+	bundle: text("bundle", {mode: "json"}).$type<ReviewBundle>().notNull(),
 });
 
 export const hookSchemaDrift = sqliteTable(
-  "hook_schema_drift",
-  {
-    hookEventName: text("hook_event_name").notNull(),
-    bodySha256: text("body_sha256").notNull(),
-    rawBody: text("raw_body").notNull(),
-    issuesJson: text("issues_json").notNull(),
-    count: integer("count").notNull().default(1),
-    firstSeenAt: integer("first_seen_at").notNull(),
-    lastSeenAt: integer("last_seen_at").notNull(),
-  },
-  (table) => [
-    primaryKey({ columns: [table.hookEventName, table.bodySha256] }),
-    index("hook_schema_drift_last_seen_idx").on(table.lastSeenAt),
-  ],
+	"hook_schema_drift",
+	{
+		hookEventName: text("hook_event_name").notNull(),
+		bodySha256: text("body_sha256").notNull(),
+		rawBody: text("raw_body").notNull(),
+		issuesJson: text("issues_json").notNull(),
+		count: integer("count").notNull().default(1),
+		firstSeenAt: integer("first_seen_at").notNull(),
+		lastSeenAt: integer("last_seen_at").notNull(),
+	},
+	(table) => [
+		primaryKey({columns: [table.hookEventName, table.bodySha256]}),
+		index("hook_schema_drift_last_seen_idx").on(table.lastSeenAt),
+	],
 );

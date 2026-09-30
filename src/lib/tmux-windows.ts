@@ -1,7 +1,7 @@
-import { execFile } from "node:child_process";
-import { basename } from "node:path";
-import { getActiveSessionEntries, type ActiveSessionEntry } from "./active-session-store";
-import type { TerminalPlacementBase, TerminalPlacementProvider } from "./terminal-placements";
+import {execFile} from "node:child_process";
+import {basename} from "node:path";
+import {getActiveSessionEntries, type ActiveSessionEntry} from "./active-session-store";
+import type {TerminalPlacementBase, TerminalPlacementProvider} from "./terminal-placements";
 
 /**
  * A live tmux window running a mapped Claude session. Window numbers/names come
@@ -9,24 +9,24 @@ import type { TerminalPlacementBase, TerminalPlacementProvider } from "./termina
  * user's real windows, even when there are gaps from renumbering.
  */
 export interface TmuxWindow {
-  sessionId: string;
-  projectName: string;
-  windowIndex: number;
-  windowName: string;
-  windowActive: boolean;
-  tmuxPane: string;
-  socket: string;
+	sessionId: string;
+	projectName: string;
+	windowIndex: number;
+	windowName: string;
+	windowActive: boolean;
+	tmuxPane: string;
+	socket: string;
 }
 
 export interface TmuxTerminalPlacement extends TerminalPlacementBase {
-  provider: "tmux";
-  tmuxWindow: TmuxWindow;
+	provider: "tmux";
+	tmuxWindow: TmuxWindow;
 }
 
 const TMUX_CAPABILITIES = {
-  supportsWrite: false,
-  supportsEvents: false,
-  supportsObserve: false,
+	supportsWrite: false,
+	supportsEvents: false,
+	supportsObserve: false,
 };
 
 /**
@@ -34,36 +34,35 @@ const TMUX_CAPABILITIES = {
  * survive the split. `list-panes -a` (not `list-windows`) is used so we match the
  * Claude process's exact pane even when it isn't the window's active pane.
  */
-const TMUX_FORMAT =
-  "#{pane_id}\t#{session_name}\t#{window_index}\t#{window_name}\t#{window_active}";
+const TMUX_FORMAT = "#{pane_id}\t#{session_name}\t#{window_index}\t#{window_name}\t#{window_active}";
 
 const TMUX_TIMEOUT_MS = 2000;
 
 interface TmuxPane {
-  paneId: string;
-  windowIndex: number;
-  windowName: string;
-  windowActive: boolean;
+	paneId: string;
+	windowIndex: number;
+	windowName: string;
+	windowActive: boolean;
 }
 
 /** Runs `tmux -S <socket> list-panes -a` and resolves its stdout. */
 export type TmuxRunner = (socket: string) => Promise<string>;
 
 function runTmuxListPanes(socket: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    execFile(
-      "tmux",
-      ["-S", socket, "list-panes", "-a", "-F", TMUX_FORMAT],
-      { timeout: TMUX_TIMEOUT_MS },
-      (error, stdout) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-        resolve(stdout);
-      },
-    );
-  });
+	return new Promise((resolve, reject) => {
+		execFile(
+			"tmux",
+			["-S", socket, "list-panes", "-a", "-F", TMUX_FORMAT],
+			{timeout: TMUX_TIMEOUT_MS},
+			(error, stdout) => {
+				if (error) {
+					reject(error);
+					return;
+				}
+				resolve(stdout);
+			},
+		);
+	});
 }
 
 /**
@@ -72,23 +71,23 @@ function runTmuxListPanes(socket: string): Promise<string> {
  * names; deduping by `pane_id` (first wins) collapses them to one window.
  */
 export function parseTmuxPanes(stdout: string): Map<string, TmuxPane> {
-  const byPaneId = new Map<string, TmuxPane>();
-  for (const line of stdout.split("\n")) {
-    if (!line.trim()) continue;
-    // Skips field 1 (session_name); see TMUX_FORMAT.
-    const [paneId, , windowIndexRaw, windowName, windowActiveRaw] = line.split("\t");
-    if (!paneId || windowIndexRaw === undefined) continue;
-    const windowIndex = Number.parseInt(windowIndexRaw, 10);
-    if (Number.isNaN(windowIndex)) continue;
-    if (byPaneId.has(paneId)) continue;
-    byPaneId.set(paneId, {
-      paneId,
-      windowIndex,
-      windowName: windowName ?? "",
-      windowActive: windowActiveRaw === "1",
-    });
-  }
-  return byPaneId;
+	const byPaneId = new Map<string, TmuxPane>();
+	for (const line of stdout.split("\n")) {
+		if (!line.trim()) continue;
+		// Skips field 1 (session_name); see TMUX_FORMAT.
+		const [paneId, , windowIndexRaw, windowName, windowActiveRaw] = line.split("\t");
+		if (!paneId || windowIndexRaw === undefined) continue;
+		const windowIndex = Number.parseInt(windowIndexRaw, 10);
+		if (Number.isNaN(windowIndex)) continue;
+		if (byPaneId.has(paneId)) continue;
+		byPaneId.set(paneId, {
+			paneId,
+			windowIndex,
+			windowName: windowName ?? "",
+			windowActive: windowActiveRaw === "1",
+		});
+	}
+	return byPaneId;
 }
 
 /**
@@ -102,75 +101,75 @@ export function parseTmuxPanes(stdout: string): Map<string, TmuxPane> {
  * store and a real `execFile`-backed runner.
  */
 export async function getTmuxWindows(
-  entries: ActiveSessionEntry[] = getActiveSessionEntries(),
-  runTmux: TmuxRunner = runTmuxListPanes,
+	entries: ActiveSessionEntry[] = getActiveSessionEntries(),
+	runTmux: TmuxRunner = runTmuxListPanes,
 ): Promise<TmuxWindow[]> {
-  const bySocket = new Map<string, ActiveSessionEntry[]>();
-  for (const entry of entries) {
-    if (!entry.tmuxPane || !entry.tmuxServerSocket) continue;
-    const list = bySocket.get(entry.tmuxServerSocket);
-    if (list) list.push(entry);
-    else bySocket.set(entry.tmuxServerSocket, [entry]);
-  }
+	const bySocket = new Map<string, ActiveSessionEntry[]>();
+	for (const entry of entries) {
+		if (!entry.tmuxPane || !entry.tmuxServerSocket) continue;
+		const list = bySocket.get(entry.tmuxServerSocket);
+		if (list) list.push(entry);
+		else bySocket.set(entry.tmuxServerSocket, [entry]);
+	}
 
-  const windows: TmuxWindow[] = [];
+	const windows: TmuxWindow[] = [];
 
-  for (const [socket, socketEntries] of bySocket) {
-    let panes: Map<string, TmuxPane>;
-    try {
-      panes = parseTmuxPanes(await runTmux(socket));
-    } catch {
-      continue;
-    }
+	for (const [socket, socketEntries] of bySocket) {
+		let panes: Map<string, TmuxPane>;
+		try {
+			panes = parseTmuxPanes(await runTmux(socket));
+		} catch {
+			continue;
+		}
 
-    const seenPanes = new Set<string>();
-    for (const entry of socketEntries) {
-      const pane = panes.get(entry.tmuxPane);
-      if (!pane) continue;
-      // One window per pane: multiple store entries can point at the same pane
-      // (grouped sessions, resume churn).
-      if (seenPanes.has(pane.paneId)) continue;
-      seenPanes.add(pane.paneId);
-      windows.push({
-        sessionId: entry.sessionId,
-        projectName: entry.cwd ? basename(entry.cwd) : "",
-        windowIndex: pane.windowIndex,
-        windowName: pane.windowName,
-        windowActive: pane.windowActive,
-        tmuxPane: pane.paneId,
-        socket,
-      });
-    }
-  }
+		const seenPanes = new Set<string>();
+		for (const entry of socketEntries) {
+			const pane = panes.get(entry.tmuxPane);
+			if (!pane) continue;
+			// One window per pane: multiple store entries can point at the same pane
+			// (grouped sessions, resume churn).
+			if (seenPanes.has(pane.paneId)) continue;
+			seenPanes.add(pane.paneId);
+			windows.push({
+				sessionId: entry.sessionId,
+				projectName: entry.cwd ? basename(entry.cwd) : "",
+				windowIndex: pane.windowIndex,
+				windowName: pane.windowName,
+				windowActive: pane.windowActive,
+				tmuxPane: pane.paneId,
+				socket,
+			});
+		}
+	}
 
-  windows.sort((a, b) => a.windowIndex - b.windowIndex);
-  return windows;
+	windows.sort((a, b) => a.windowIndex - b.windowIndex);
+	return windows;
 }
 
 async function getTmuxPlacements(
-  entries: ActiveSessionEntry[] = getActiveSessionEntries(),
-  runTmux: TmuxRunner = runTmuxListPanes,
+	entries: ActiveSessionEntry[] = getActiveSessionEntries(),
+	runTmux: TmuxRunner = runTmuxListPanes,
 ): Promise<TmuxTerminalPlacement[]> {
-  const windows = await getTmuxWindows(entries, runTmux);
-  return windows.map((window) => ({
-    provider: "tmux",
-    sessionId: window.sessionId,
-    displayName: window.windowName,
-    active: window.windowActive,
-    paneHandle: window.tmuxPane,
-    scopeHandle: window.socket,
-    capabilities: TMUX_CAPABILITIES,
-    tmuxWindow: window,
-  }));
+	const windows = await getTmuxWindows(entries, runTmux);
+	return windows.map((window) => ({
+		provider: "tmux",
+		sessionId: window.sessionId,
+		displayName: window.windowName,
+		active: window.windowActive,
+		paneHandle: window.tmuxPane,
+		scopeHandle: window.socket,
+		capabilities: TMUX_CAPABILITIES,
+		tmuxWindow: window,
+	}));
 }
 
 export function createTmuxPlacementProvider(
-  entries: ActiveSessionEntry[] = getActiveSessionEntries(),
-  runTmux: TmuxRunner = runTmuxListPanes,
+	entries: ActiveSessionEntry[] = getActiveSessionEntries(),
+	runTmux: TmuxRunner = runTmuxListPanes,
 ): TerminalPlacementProvider {
-  return {
-    id: "tmux",
-    capabilities: TMUX_CAPABILITIES,
-    getPlacements: () => getTmuxPlacements(entries, runTmux),
-  };
+	return {
+		id: "tmux",
+		capabilities: TMUX_CAPABILITIES,
+		getPlacements: () => getTmuxPlacements(entries, runTmux),
+	};
 }

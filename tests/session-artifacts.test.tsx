@@ -1,19 +1,19 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import { registerPane } from "../src/components/panes/pane-registry";
-import { SessionArtifactsList } from "../src/components/panes/artifacts-pane";
-import { TileHost } from "../src/components/panes/tile-host";
-import { SettingsProvider } from "../src/components/settings-provider";
-import { SessionPaneControls } from "../src/components/view-options-menu";
-import { SessionArtifactListResponse, type SessionArtifact } from "../src/lib/api/artifacts";
-import { artifactPreviewPath } from "../src/lib/artifact-source-paths";
-import { getSessionArtifacts } from "../src/lib/db/artifact-queries";
-import { openTestDb, type AppDb } from "../src/lib/db/connection";
+import {registerPane} from "../src/components/panes/pane-registry";
+import {SessionArtifactsList} from "../src/components/panes/artifacts-pane";
+import {TileHost} from "../src/components/panes/tile-host";
+import {SettingsProvider} from "../src/components/settings-provider";
+import {SessionPaneControls} from "../src/components/view-options-menu";
+import {SessionArtifactListResponse, type SessionArtifact} from "../src/lib/api/artifacts";
+import {artifactPreviewPath} from "../src/lib/artifact-source-paths";
+import {getSessionArtifacts} from "../src/lib/db/artifact-queries";
+import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import * as schema from "../src/lib/db/schema";
-import { installLocalStorage } from "./fake-storage";
+import {installLocalStorage} from "./fake-storage";
 
 const LADDER_URL = "https://claude.ai/code/artifact/546d3910-4e9a-4730-9e91-62742a47c7c6";
 const CHART_URL = "https://claude.ai/code/artifact/17b8a2c1-4c41-46bf-b064-a272240be709";
@@ -23,302 +23,298 @@ const LADDER_SOURCE = "/Users/alice/projects/ladder/.llm/mockups/ladder.html";
 const PROJECT = "-Users-alice-projects-ladder";
 
 function event(
-  overrides: Partial<typeof schema.artifactEvents.$inferInsert> &
-    Pick<typeof schema.artifactEvents.$inferInsert, "toolUseId" | "ts" | "action" | "url">,
+	overrides: Partial<typeof schema.artifactEvents.$inferInsert> &
+		Pick<typeof schema.artifactEvents.$inferInsert, "toolUseId" | "ts" | "action" | "url">,
 ): typeof schema.artifactEvents.$inferInsert {
-  return {
-    sessionId: "session-ladder",
-    projectId: PROJECT,
-    filePath: "/Users/alice/.claude/projects/ladder/session-ladder.jsonl",
-    isSubagent: 0,
-    title: null,
-    favicon: null,
-    description: null,
-    sourcePath: null,
-    version: null,
-    audience: null,
-    ...overrides,
-  };
+	return {
+		sessionId: "session-ladder",
+		projectId: PROJECT,
+		filePath: "/Users/alice/.claude/projects/ladder/session-ladder.jsonl",
+		isSubagent: 0,
+		title: null,
+		favicon: null,
+		description: null,
+		sourcePath: null,
+		version: null,
+		audience: null,
+		...overrides,
+	};
 }
 
 function seed(db: AppDb): void {
-  db.index
-    .insert(schema.artifacts)
-    .values([
-      {
-        url: LADDER_URL,
-        id: "546d3910-4e9a-4730-9e91-62742a47c7c6",
-        urlKind: "uuid",
-        title: "Asap Ladder Queue (latest anywhere)",
-        favicon: null,
-        description: null,
-        sourcePath: LADDER_SOURCE,
-        version: "3",
-        audience: "owner",
-        firstSeenAt: 1_000,
-        lastPublishedAt: 9_000,
-        publishCount: 3,
-        lastSessionId: "session-other",
-        projectId: PROJECT,
-      },
-      {
-        url: CHART_URL,
-        id: "17b8a2c1-4c41-46bf-b064-a272240be709",
-        urlKind: "uuid",
-        title: null,
-        favicon: null,
-        description: null,
-        sourcePath: "/private/tmp/scratchpad/household-cash.html",
-        version: "1",
-        audience: null,
-        firstSeenAt: 2_000,
-        lastPublishedAt: 2_000,
-        publishCount: 1,
-        lastSessionId: "session-ladder",
-        projectId: PROJECT,
-      },
-      {
-        url: DOCS_URL,
-        id: "7Hq2vXbN4pLmKcR9sTwYzA",
-        urlKind: "slug",
-        title: "Quarterly plan",
-        favicon: null,
-        description: null,
-        sourcePath: null,
-        version: "1",
-        audience: "owner",
-        firstSeenAt: 500,
-        lastPublishedAt: 500,
-        publishCount: 1,
-        lastSessionId: "session-docs",
-        projectId: PROJECT,
-      },
-    ])
-    .run();
-  db.index
-    .insert(schema.artifactEvents)
-    .values([
-      event({
-        toolUseId: "t1",
-        ts: 1_000,
-        action: "publish",
-        url: LADDER_URL,
-        title: "Asap Ladder Rebalance",
-        sourcePath: LADDER_SOURCE,
-      }),
-      event({
-        toolUseId: "t2",
-        ts: 2_000,
-        action: "publish",
-        url: CHART_URL,
-        sourcePath: "/private/tmp/scratchpad/household-cash.html",
-      }),
-      event({
-        toolUseId: "t3",
-        ts: 3_000,
-        action: "publish",
-        url: LADDER_URL,
-        title: "Asap Ladder Queue",
-        sourcePath: LADDER_SOURCE,
-      }),
-      event({ toolUseId: "t4", ts: 4_000, action: "open", url: DOCS_URL, isSubagent: 1 }),
-      event({ toolUseId: "t5", ts: 5_000, action: "read", url: CHART_URL }),
-      event({ toolUseId: "t6", ts: 6_000, action: "pin", url: CHART_URL }),
-      event({
-        toolUseId: "t7",
-        ts: 7_000,
-        action: "publish",
-        url: OTHER_URL,
-        sessionId: "session-other",
-      }),
-    ])
-    .run();
+	db.index
+		.insert(schema.artifacts)
+		.values([
+			{
+				url: LADDER_URL,
+				id: "546d3910-4e9a-4730-9e91-62742a47c7c6",
+				urlKind: "uuid",
+				title: "Asap Ladder Queue (latest anywhere)",
+				favicon: null,
+				description: null,
+				sourcePath: LADDER_SOURCE,
+				version: "3",
+				audience: "owner",
+				firstSeenAt: 1_000,
+				lastPublishedAt: 9_000,
+				publishCount: 3,
+				lastSessionId: "session-other",
+				projectId: PROJECT,
+			},
+			{
+				url: CHART_URL,
+				id: "17b8a2c1-4c41-46bf-b064-a272240be709",
+				urlKind: "uuid",
+				title: null,
+				favicon: null,
+				description: null,
+				sourcePath: "/private/tmp/scratchpad/household-cash.html",
+				version: "1",
+				audience: null,
+				firstSeenAt: 2_000,
+				lastPublishedAt: 2_000,
+				publishCount: 1,
+				lastSessionId: "session-ladder",
+				projectId: PROJECT,
+			},
+			{
+				url: DOCS_URL,
+				id: "7Hq2vXbN4pLmKcR9sTwYzA",
+				urlKind: "slug",
+				title: "Quarterly plan",
+				favicon: null,
+				description: null,
+				sourcePath: null,
+				version: "1",
+				audience: "owner",
+				firstSeenAt: 500,
+				lastPublishedAt: 500,
+				publishCount: 1,
+				lastSessionId: "session-docs",
+				projectId: PROJECT,
+			},
+		])
+		.run();
+	db.index
+		.insert(schema.artifactEvents)
+		.values([
+			event({
+				toolUseId: "t1",
+				ts: 1_000,
+				action: "publish",
+				url: LADDER_URL,
+				title: "Asap Ladder Rebalance",
+				sourcePath: LADDER_SOURCE,
+			}),
+			event({
+				toolUseId: "t2",
+				ts: 2_000,
+				action: "publish",
+				url: CHART_URL,
+				sourcePath: "/private/tmp/scratchpad/household-cash.html",
+			}),
+			event({
+				toolUseId: "t3",
+				ts: 3_000,
+				action: "publish",
+				url: LADDER_URL,
+				title: "Asap Ladder Queue",
+				sourcePath: LADDER_SOURCE,
+			}),
+			event({toolUseId: "t4", ts: 4_000, action: "open", url: DOCS_URL, isSubagent: 1}),
+			event({toolUseId: "t5", ts: 5_000, action: "read", url: CHART_URL}),
+			event({toolUseId: "t6", ts: 6_000, action: "pin", url: CHART_URL}),
+			event({
+				toolUseId: "t7",
+				ts: 7_000,
+				action: "publish",
+				url: OTHER_URL,
+				sessionId: "session-other",
+			}),
+		])
+		.run();
 }
 
 describe("getSessionArtifacts", () => {
-  it("lists the session's published and opened artifacts, most recent first, one row each", () => {
-    const db = openTestDb();
-    seed(db);
+	it("lists the session's published and opened artifacts, most recent first, one row each", () => {
+		const db = openTestDb();
+		seed(db);
 
-    expect(getSessionArtifacts(db.index, "session-ladder")).toStrictEqual([
-      {
-        url: DOCS_URL,
-        id: "7Hq2vXbN4pLmKcR9sTwYzA",
-        kind: "docs",
-        title: "Quarterly plan",
-        previewable: false,
-        lastEventAt: 4_000,
-      },
-      {
-        url: LADDER_URL,
-        id: "546d3910-4e9a-4730-9e91-62742a47c7c6",
-        kind: "html",
-        title: "Asap Ladder Queue",
-        previewable: true,
-        lastEventAt: 3_000,
-      },
-      {
-        url: CHART_URL,
-        id: "17b8a2c1-4c41-46bf-b064-a272240be709",
-        kind: "html",
-        title: "household-cash.html",
-        previewable: true,
-        lastEventAt: 2_000,
-      },
-    ]);
-  });
+		expect(getSessionArtifacts(db.index, "session-ladder")).toStrictEqual([
+			{
+				url: DOCS_URL,
+				id: "7Hq2vXbN4pLmKcR9sTwYzA",
+				kind: "docs",
+				title: "Quarterly plan",
+				previewable: false,
+				lastEventAt: 4_000,
+			},
+			{
+				url: LADDER_URL,
+				id: "546d3910-4e9a-4730-9e91-62742a47c7c6",
+				kind: "html",
+				title: "Asap Ladder Queue",
+				previewable: true,
+				lastEventAt: 3_000,
+			},
+			{
+				url: CHART_URL,
+				id: "17b8a2c1-4c41-46bf-b064-a272240be709",
+				kind: "html",
+				title: "household-cash.html",
+				previewable: true,
+				lastEventAt: 2_000,
+			},
+		]);
+	});
 
-  it("is empty for a session without artifacts", () => {
-    const db = openTestDb();
-    seed(db);
+	it("is empty for a session without artifacts", () => {
+		const db = openTestDb();
+		seed(db);
 
-    expect(getSessionArtifacts(db.index, "session-none")).toStrictEqual([]);
-  });
+		expect(getSessionArtifacts(db.index, "session-none")).toStrictEqual([]);
+	});
 
-  it("matches the API response schema", () => {
-    const db = openTestDb();
-    seed(db);
-    const artifacts = getSessionArtifacts(db.index, "session-ladder");
+	it("matches the API response schema", () => {
+		const db = openTestDb();
+		seed(db);
+		const artifacts = getSessionArtifacts(db.index, "session-ladder");
 
-    expect(SessionArtifactListResponse.parse(artifacts)).toStrictEqual(artifacts);
-  });
+		expect(SessionArtifactListResponse.parse(artifacts)).toStrictEqual(artifacts);
+	});
 });
 
 const ARTIFACTS: SessionArtifact[] = [
-  {
-    url: DOCS_URL,
-    id: "7Hq2vXbN4pLmKcR9sTwYzA",
-    kind: "docs",
-    title: "Quarterly plan",
-    previewable: false,
-    lastEventAt: 4_000,
-  },
-  {
-    url: LADDER_URL,
-    id: "546d3910-4e9a-4730-9e91-62742a47c7c6",
-    kind: "html",
-    title: "Asap Ladder Queue",
-    previewable: true,
-    lastEventAt: 3_000,
-  },
+	{
+		url: DOCS_URL,
+		id: "7Hq2vXbN4pLmKcR9sTwYzA",
+		kind: "docs",
+		title: "Quarterly plan",
+		previewable: false,
+		lastEventAt: 4_000,
+	},
+	{
+		url: LADDER_URL,
+		id: "546d3910-4e9a-4730-9e91-62742a47c7c6",
+		kind: "html",
+		title: "Asap Ladder Queue",
+		previewable: true,
+		lastEventAt: 3_000,
+	},
 ];
 
 describe("SessionArtifactsList", () => {
-  afterEach(cleanup);
+	afterEach(cleanup);
 
-  it("shows upstream's empty copy when the session has no artifacts", () => {
-    const { container } = render(<SessionArtifactsList artifacts={[]} />);
+	it("shows upstream's empty copy when the session has no artifacts", () => {
+		const {container} = render(<SessionArtifactsList artifacts={[]} />);
 
-    expect(container.textContent).toBe("Artifacts published in this session appear here.");
-  });
+		expect(container.textContent).toBe("Artifacts published in this session appear here.");
+	});
 
-  it("renders one upstream card per artifact, in order, linking out to claude.ai", () => {
-    render(<SessionArtifactsList artifacts={ARTIFACTS} />);
+	it("renders one upstream card per artifact, in order, linking out to claude.ai", () => {
+		render(<SessionArtifactsList artifacts={ARTIFACTS} />);
 
-    const cards = screen.getAllByRole("button", { name: /^Open artifact / });
-    expect(
-      cards.map((card) => ({
-        label: card.getAttribute("aria-label"),
-        href: card.getAttribute("href"),
-        target: card.getAttribute("target"),
-        rel: card.getAttribute("rel"),
-      })),
-    ).toStrictEqual([
-      {
-        label: "Open artifact Quarterly plan",
-        href: DOCS_URL,
-        target: "_blank",
-        rel: "noopener noreferrer",
-      },
-      {
-        label: "Open artifact Asap Ladder Queue",
-        href: LADDER_URL,
-        target: "_blank",
-        rel: "noopener noreferrer",
-      },
-    ]);
-    expect(
-      screen.getAllByRole("link", { name: "Preview source" }).map((a) => a.getAttribute("href")),
-    ).toStrictEqual([artifactPreviewPath("546d3910-4e9a-4730-9e91-62742a47c7c6")]);
-  });
+		const cards = screen.getAllByRole("button", {name: /^Open artifact /});
+		expect(
+			cards.map((card) => ({
+				label: card.getAttribute("aria-label"),
+				href: card.getAttribute("href"),
+				target: card.getAttribute("target"),
+				rel: card.getAttribute("rel"),
+			})),
+		).toStrictEqual([
+			{
+				label: "Open artifact Quarterly plan",
+				href: DOCS_URL,
+				target: "_blank",
+				rel: "noopener noreferrer",
+			},
+			{
+				label: "Open artifact Asap Ladder Queue",
+				href: LADDER_URL,
+				target: "_blank",
+				rel: "noopener noreferrer",
+			},
+		]);
+		expect(screen.getAllByRole("link", {name: "Preview source"}).map((a) => a.getAttribute("href"))).toStrictEqual([
+			artifactPreviewPath("546d3910-4e9a-4730-9e91-62742a47c7c6"),
+		]);
+	});
 });
 
 class FakeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-  takeRecords() {
-    return [];
-  }
+	observe() {}
+	unobserve() {}
+	disconnect() {}
+	takeRecords() {
+		return [];
+	}
 }
 
 describe("View options ▸ Artifacts", () => {
-  let unregister: () => void = () => {};
+	let unregister: () => void = () => {};
 
-  beforeEach(() => {
-    installLocalStorage();
-    vi.stubGlobal("ResizeObserver", FakeObserver);
-    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
-      DOMRect.fromRect({ x: 0, y: 0, width: 1200, height: 800 }),
-    );
-    unregister = registerPane("artifacts", {
-      title: "Artifacts",
-      render: () => <SessionArtifactsList artifacts={ARTIFACTS} />,
-    });
-  });
+	beforeEach(() => {
+		installLocalStorage();
+		vi.stubGlobal("ResizeObserver", FakeObserver);
+		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
+			DOMRect.fromRect({x: 0, y: 0, width: 1200, height: 800}),
+		);
+		unregister = registerPane("artifacts", {
+			title: "Artifacts",
+			render: () => <SessionArtifactsList artifacts={ARTIFACTS} />,
+		});
+	});
 
-  afterEach(() => {
-    unregister();
-    cleanup();
-    vi.unstubAllGlobals();
-    vi.restoreAllMocks();
-  });
+	afterEach(() => {
+		unregister();
+		cleanup();
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
 
-  function renderControls(artifactCount: number) {
-    return render(
-      <SettingsProvider>
-        <TileHost sessionId="session-artifacts">
-          <SessionPaneControls facts={{ artifactCount }} />
-        </TileHost>
-      </SettingsProvider>,
-    );
-  }
+	function renderControls(artifactCount: number) {
+		return render(
+			<SettingsProvider>
+				<TileHost sessionId="session-artifacts">
+					<SessionPaneControls facts={{artifactCount}} />
+				</TileHost>
+			</SettingsProvider>,
+		);
+	}
 
-  async function settle() {
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-  }
+	async function settle() {
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		});
+	}
 
-  it("opens the Artifacts pane from the View options menu", async () => {
-    renderControls(2);
-    fireEvent.click(screen.getByRole("button", { name: "View options" }));
-    await settle();
+	it("opens the Artifacts pane from the View options menu", async () => {
+		renderControls(2);
+		fireEvent.click(screen.getByRole("button", {name: "View options"}));
+		await settle();
 
-    expect(
-      screen.getByRole("menuitemcheckbox", { name: "Artifacts" }).getAttribute("aria-checked"),
-    ).toBe("false");
+		expect(screen.getByRole("menuitemcheckbox", {name: "Artifacts"}).getAttribute("aria-checked")).toBe("false");
 
-    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Artifacts" }));
-    await settle();
+		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: "Artifacts"}));
+		await settle();
 
-    const pane = screen.getByRole("region", { name: "Artifacts" });
-    expect({
-      checked: screen
-        .getByRole("menuitemcheckbox", { name: "Artifacts" })
-        .getAttribute("aria-checked"),
-      cards: within(pane)
-        .getAllByRole("button", { name: /^Open artifact / })
-        .map((card) => card.getAttribute("aria-label")),
-    }).toStrictEqual({
-      checked: "true",
-      cards: ["Open artifact Quarterly plan", "Open artifact Asap Ladder Queue"],
-    });
-  });
+		const pane = screen.getByRole("region", {name: "Artifacts"});
+		expect({
+			checked: screen.getByRole("menuitemcheckbox", {name: "Artifacts"}).getAttribute("aria-checked"),
+			cards: within(pane)
+				.getAllByRole("button", {name: /^Open artifact /})
+				.map((card) => card.getAttribute("aria-label")),
+		}).toStrictEqual({
+			checked: "true",
+			cards: ["Open artifact Quarterly plan", "Open artifact Asap Ladder Queue"],
+		});
+	});
 
-  it("offers no Artifacts item while the session has no artifacts and the pane is closed", () => {
-    renderControls(0);
+	it("offers no Artifacts item while the session has no artifacts and the pane is closed", () => {
+		renderControls(0);
 
-    expect(screen.queryByRole("button", { name: "View options" })).toBeNull();
-  });
+		expect(screen.queryByRole("button", {name: "View options"})).toBeNull();
+	});
 });

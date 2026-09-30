@@ -1,9 +1,9 @@
-export function TaskOwner({ owner }: { owner: string | null }) {
-  if (!owner) return null;
+export function TaskOwner({owner}: {owner: string | null}) {
+	if (!owner) return null;
 
-  return (
-    <span className="text-[10px] text-t6" title={`Owned by ${owner}`}>
-      Owner: {owner}
-    </span>
-  );
+	return (
+		<span className="text-[10px] text-t6" title={`Owned by ${owner}`}>
+			Owner: {owner}
+		</span>
+	);
 }

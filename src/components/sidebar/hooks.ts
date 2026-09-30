@@ -1,42 +1,42 @@
-import type { useMatches } from "@tanstack/react-router";
-import { useCallback, useState } from "react";
-import { fromMdSlug } from "../../lib/md-slug";
-import type { Section } from "./types";
+import type {useMatches} from "@tanstack/react-router";
+import {useCallback, useState} from "react";
+import {fromMdSlug} from "../../lib/md-slug";
+import type {Section} from "./types";
 
 function useGroupIdSet(): {
-  ids: ReadonlySet<string>;
-  toggle: (groupId: string) => void;
-  add: (groupId: string) => void;
-  remove: (groupId: string) => void;
+	ids: ReadonlySet<string>;
+	toggle: (groupId: string) => void;
+	add: (groupId: string) => void;
+	remove: (groupId: string) => void;
 } {
-  const [ids, setIds] = useState<ReadonlySet<string>>(() => new Set());
+	const [ids, setIds] = useState<ReadonlySet<string>>(() => new Set());
 
-  const toggle = useCallback((groupId: string) => {
-    setIds((previous) => {
-      const next = new Set(previous);
-      if (next.has(groupId)) {
-        next.delete(groupId);
-      } else {
-        next.add(groupId);
-      }
-      return next;
-    });
-  }, []);
+	const toggle = useCallback((groupId: string) => {
+		setIds((previous) => {
+			const next = new Set(previous);
+			if (next.has(groupId)) {
+				next.delete(groupId);
+			} else {
+				next.add(groupId);
+			}
+			return next;
+		});
+	}, []);
 
-  const add = useCallback((groupId: string) => {
-    setIds((previous) => (previous.has(groupId) ? previous : new Set(previous).add(groupId)));
-  }, []);
+	const add = useCallback((groupId: string) => {
+		setIds((previous) => (previous.has(groupId) ? previous : new Set(previous).add(groupId)));
+	}, []);
 
-  const remove = useCallback((groupId: string) => {
-    setIds((previous) => {
-      if (!previous.has(groupId)) return previous;
-      const next = new Set(previous);
-      next.delete(groupId);
-      return next;
-    });
-  }, []);
+	const remove = useCallback((groupId: string) => {
+		setIds((previous) => {
+			if (!previous.has(groupId)) return previous;
+			const next = new Set(previous);
+			next.delete(groupId);
+			return next;
+		});
+	}, []);
 
-  return { ids, toggle, add, remove };
+	return {ids, toggle, add, remove};
 }
 
 /**
@@ -50,13 +50,9 @@ function useGroupIdSet(): {
  * every render: a derived reveal would leave the chevron of the group you are
  * looking at inert, which reads as a broken control.
  */
-export function useCollapsedGroups(): [
-  ReadonlySet<string>,
-  (groupId: string) => void,
-  (groupId: string) => void,
-] {
-  const { ids, toggle, remove } = useGroupIdSet();
-  return [ids, toggle, remove];
+export function useCollapsedGroups(): [ReadonlySet<string>, (groupId: string) => void, (groupId: string) => void] {
+	const {ids, toggle, remove} = useGroupIdSet();
+	return [ids, toggle, remove];
 }
 
 /**
@@ -65,73 +61,69 @@ export function useCollapsedGroups(): [
  * same reason as useCollapsedGroups: state held inside a sublist would come back
  * collapse-all'd after every navigation.
  */
-export function useExpandedGroups(): [
-  ReadonlySet<string>,
-  (groupId: string) => void,
-  (groupId: string) => void,
-] {
-  const { ids, toggle, add } = useGroupIdSet();
-  return [ids, toggle, add];
+export function useExpandedGroups(): [ReadonlySet<string>, (groupId: string) => void, (groupId: string) => void] {
+	const {ids, toggle, add} = useGroupIdSet();
+	return [ids, toggle, add];
 }
 
 export function useActiveSection(matches: ReturnType<typeof useMatches>): {
-  section: Section | null;
-  activeItemId: string | null;
+	section: Section | null;
+	activeItemId: string | null;
 } {
-  const lastMatch = matches[matches.length - 1];
-  const path = lastMatch?.fullPath ?? "/";
-  const params = lastMatch?.params as Record<string, string> | undefined;
+	const lastMatch = matches[matches.length - 1];
+	const path = lastMatch?.fullPath ?? "/";
+	const params = lastMatch?.params as Record<string, string> | undefined;
 
-  if (path.startsWith("/artifacts")) {
-    return { section: "artifacts", activeItemId: null };
-  }
-  if (path.startsWith("/routines")) {
-    return { section: "routines", activeItemId: null };
-  }
-  if (path.startsWith("/jobs")) {
-    return { section: "jobs", activeItemId: null };
-  }
-  if (path.startsWith("/active")) {
-    return { section: "active", activeItemId: null };
-  }
-  if (path.startsWith("/herdr")) {
-    return { section: "herdr", activeItemId: params?.["sessionId"] ?? null };
-  }
-  if (path.startsWith("/tmux")) {
-    return { section: "tmux", activeItemId: null };
-  }
-  if (path.startsWith("/approvals")) {
-    return { section: "approvals", activeItemId: null };
-  }
-  if (path.startsWith("/tasks")) {
-    return { section: "tasks", activeItemId: null };
-  }
-  if (path.startsWith("/project") && !path.startsWith("/projects")) {
-    return { section: "projects", activeItemId: params?.["id"] ?? null };
-  }
-  if (path === "/projects") {
-    return { section: "projects", activeItemId: null };
-  }
-  if (path.startsWith("/plan") || path === "/plans") {
-    return {
-      section: "plans",
-      activeItemId: params?.["filename"] ? fromMdSlug(params["filename"]) : null,
-    };
-  }
-  if (path.startsWith("/memor") || path === "/memories") {
-    return {
-      section: "memories",
-      activeItemId:
-        params?.["project"] && params?.["filename"]
-          ? `${params["project"]}/${fromMdSlug(params["filename"])}`
-          : null,
-    };
-  }
-  if (path.startsWith("/session") || path === "/sessions") {
-    return { section: "sessions", activeItemId: params?.["id"] ?? null };
-  }
-  if (path.startsWith("/customize") || path.startsWith("/plugin") || path.startsWith("/command")) {
-    return { section: "customize", activeItemId: null };
-  }
-  return { section: null, activeItemId: null };
+	if (path.startsWith("/artifacts")) {
+		return {section: "artifacts", activeItemId: null};
+	}
+	if (path.startsWith("/routines")) {
+		return {section: "routines", activeItemId: null};
+	}
+	if (path.startsWith("/jobs")) {
+		return {section: "jobs", activeItemId: null};
+	}
+	if (path.startsWith("/active")) {
+		return {section: "active", activeItemId: null};
+	}
+	if (path.startsWith("/herdr")) {
+		return {section: "herdr", activeItemId: params?.["sessionId"] ?? null};
+	}
+	if (path.startsWith("/tmux")) {
+		return {section: "tmux", activeItemId: null};
+	}
+	if (path.startsWith("/approvals")) {
+		return {section: "approvals", activeItemId: null};
+	}
+	if (path.startsWith("/tasks")) {
+		return {section: "tasks", activeItemId: null};
+	}
+	if (path.startsWith("/project") && !path.startsWith("/projects")) {
+		return {section: "projects", activeItemId: params?.["id"] ?? null};
+	}
+	if (path === "/projects") {
+		return {section: "projects", activeItemId: null};
+	}
+	if (path.startsWith("/plan") || path === "/plans") {
+		return {
+			section: "plans",
+			activeItemId: params?.["filename"] ? fromMdSlug(params["filename"]) : null,
+		};
+	}
+	if (path.startsWith("/memor") || path === "/memories") {
+		return {
+			section: "memories",
+			activeItemId:
+				params?.["project"] && params?.["filename"]
+					? `${params["project"]}/${fromMdSlug(params["filename"])}`
+					: null,
+		};
+	}
+	if (path.startsWith("/session") || path === "/sessions") {
+		return {section: "sessions", activeItemId: params?.["id"] ?? null};
+	}
+	if (path.startsWith("/customize") || path.startsWith("/plugin") || path.startsWith("/command")) {
+		return {section: "customize", activeItemId: null};
+	}
+	return {section: null, activeItemId: null};
 }

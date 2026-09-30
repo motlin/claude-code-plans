@@ -1,4 +1,4 @@
-import { z } from "zod";
+import {z} from "zod";
 
 /**
  * Changed-file kinds for the Changes pane's "Separate test, build, and generated files" grouping,

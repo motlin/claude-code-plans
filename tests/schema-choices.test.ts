@@ -1,98 +1,86 @@
-import { describe, expect, it } from "vite-plus/test";
-import { HookEventEnvelope, ToolUseUnion } from "../src/lib/hook-events";
+import {describe, expect, it} from "vite-plus/test";
+import {HookEventEnvelope, ToolUseUnion} from "../src/lib/hook-events";
+import {McpServerDetailResponse, McpServerListResponse, SkillListResponse} from "../src/lib/api/customize";
+import {PluginFileSchema, PluginListResponse} from "../src/lib/api/plugins";
 import {
-  McpServerDetailResponse,
-  McpServerListResponse,
-  SkillListResponse,
-} from "../src/lib/api/customize";
-import { PluginFileSchema, PluginListResponse } from "../src/lib/api/plugins";
-import {
-  UnifiedSearchDateSchema,
-  UnifiedSearchKindSchema,
-  UnifiedSearchParamsSchema,
-  UnifiedSearchResponse,
-  UnifiedSearchTypeSchema,
+	UnifiedSearchDateSchema,
+	UnifiedSearchKindSchema,
+	UnifiedSearchParamsSchema,
+	UnifiedSearchResponse,
+	UnifiedSearchTypeSchema,
 } from "../src/lib/api/search";
-import { SessionSummaryStateSchema } from "../src/lib/api/sessions";
-import { SourceFileResponse } from "../src/lib/api/source";
+import {SessionSummaryStateSchema} from "../src/lib/api/sessions";
+import {SourceFileResponse} from "../src/lib/api/source";
 import {
-  ArtifactActionSchema,
-  ArtifactAutoOpenSchema,
-  ArtifactDbOpSchema,
-  ArtifactIntentSchema,
-  ArtifactListScopeSchema,
-  ArtifactLiveSubscriptionSchema,
-  ArtifactToolResultSchema,
+	ArtifactActionSchema,
+	ArtifactAutoOpenSchema,
+	ArtifactDbOpSchema,
+	ArtifactIntentSchema,
+	ArtifactListScopeSchema,
+	ArtifactLiveSubscriptionSchema,
+	ArtifactToolResultSchema,
 } from "../src/lib/artifact-schemas";
-import { ChangedFileKindSchema } from "../src/lib/changed-file-kind";
-import { CodeThemeDarkSchema, CodeThemeLightSchema } from "../src/lib/code-themes";
-import { GroupColorSchema, GroupIconSchema } from "../src/lib/group-appearance";
-import { HomeAttentionKindSchema } from "../src/lib/home-attention";
+import {ChangedFileKindSchema} from "../src/lib/changed-file-kind";
+import {CodeThemeDarkSchema, CodeThemeLightSchema} from "../src/lib/code-themes";
+import {GroupColorSchema, GroupIconSchema} from "../src/lib/group-appearance";
+import {HomeAttentionKindSchema} from "../src/lib/home-attention";
+import {EffortLevelSchema, LaunchPermissionModeSchema, LiveOptionChangeSchema} from "../src/lib/launch-options";
 import {
-  EffortLevelSchema,
-  LaunchPermissionModeSchema,
-  LiveOptionChangeSchema,
-} from "../src/lib/launch-options";
-import {
-  JobChildKindSchema,
-  JobFanKindSchema,
-  JobNameSourceSchema,
-  JobStateFileSchema,
-  JobStateSchema,
-  JobTempoSchema,
-  JobTimelineEntrySchema,
+	JobChildKindSchema,
+	JobFanKindSchema,
+	JobNameSourceSchema,
+	JobStateFileSchema,
+	JobStateSchema,
+	JobTempoSchema,
+	JobTimelineEntrySchema,
 } from "../src/lib/jobs";
-import { NavSectionSchema } from "../src/lib/nav-sections";
-import { PaletteFilterSchema, PaletteTypeSchema } from "../src/lib/palette-tokens";
-import { PaneLayoutStateSchema } from "../src/lib/pane-layout";
-import { PinDropOutcomeSchema } from "../src/lib/pinned-sessions";
-import { ContextAttachmentKindSchema } from "../src/lib/context-attach";
+import {NavSectionSchema} from "../src/lib/nav-sections";
+import {PaletteFilterSchema, PaletteTypeSchema} from "../src/lib/palette-tokens";
+import {PaneLayoutStateSchema} from "../src/lib/pane-layout";
+import {PinDropOutcomeSchema} from "../src/lib/pinned-sessions";
+import {ContextAttachmentKindSchema} from "../src/lib/context-attach";
+import {GhPrReviewDecisionSchema, GhPrStateSchema, GhPrStatusCacheStateSchema} from "../src/lib/pr-status";
+import {RecentsHistorySchema} from "../src/lib/recents-history";
 import {
-  GhPrReviewDecisionSchema,
-  GhPrStateSchema,
-  GhPrStatusCacheStateSchema,
-} from "../src/lib/pr-status";
-import { RecentsHistorySchema } from "../src/lib/recents-history";
-import {
-  RoutineKindSchema,
-  RoutineScheduleFilterSchema,
-  RoutineSortSchema,
-  RoutineStatusFilterSchema,
-  RoutineStatusSchema,
+	RoutineKindSchema,
+	RoutineScheduleFilterSchema,
+	RoutineSortSchema,
+	RoutineStatusFilterSchema,
+	RoutineStatusSchema,
 } from "../src/lib/routines";
-import { schemaChoiceRegistry } from "../src/lib/schema-choices";
+import {schemaChoiceRegistry} from "../src/lib/schema-choices";
 import {
-  PullRequestStateSchema,
-  SessionBucketReasonSchema,
-  SessionBucketSchema,
-  SessionStateKindSchema,
+	PullRequestStateSchema,
+	SessionBucketReasonSchema,
+	SessionBucketSchema,
+	SessionStateKindSchema,
 } from "../src/lib/session-state";
-import { SessionListPrefsSchema } from "../src/lib/session-groups";
-import { SessionMenuItemIdSchema } from "../src/lib/session-menu-items";
-import { SettingsTabSchema } from "../src/lib/settings-hash";
+import {SessionListPrefsSchema} from "../src/lib/session-groups";
+import {SessionMenuItemIdSchema} from "../src/lib/session-menu-items";
+import {SettingsTabSchema} from "../src/lib/settings-hash";
 import {
-  AttachmentPayloadSchema,
-  ClaudeSettingsSchema,
-  ContentBlockSchema,
-  FileEditToolUseResultSchema,
-  GitOperationSchema,
-  JsonlRecordSchema,
-  McpConfigSchema,
-  PluginCatalogCacheSchema,
-  PluginCatalogSourceKindSchema,
-  SessionsIndexSchema,
-  TaskFileSchema,
-  TaskStatusSchema,
-  UserRecordSchema,
+	AttachmentPayloadSchema,
+	ClaudeSettingsSchema,
+	ContentBlockSchema,
+	FileEditToolUseResultSchema,
+	GitOperationSchema,
+	JsonlRecordSchema,
+	McpConfigSchema,
+	PluginCatalogCacheSchema,
+	PluginCatalogSourceKindSchema,
+	SessionsIndexSchema,
+	TaskFileSchema,
+	TaskStatusSchema,
+	UserRecordSchema,
 } from "../src/lib/schemas";
 import {
-  ExitWorktreeActionSchema,
-  RemoteTriggerActionSchema,
-  ReportFindingsVerdictSchema,
+	ExitWorktreeActionSchema,
+	RemoteTriggerActionSchema,
+	ReportFindingsVerdictSchema,
 } from "../src/lib/tool-input-schemas";
-import { RenderedLineSchema } from "../src/lib/transcript";
-import { TerminalAppearanceSchema } from "../src/lib/terminal-theme";
-import { TranscriptModeSchema } from "../src/lib/transcript-mode";
+import {RenderedLineSchema} from "../src/lib/transcript";
+import {TerminalAppearanceSchema} from "../src/lib/terminal-theme";
+import {TranscriptModeSchema} from "../src/lib/transcript-mode";
 
 /**
  * Walks the Zod schema trees rooted below and records every "choice" node —
@@ -107,155 +95,154 @@ import { TranscriptModeSchema } from "../src/lib/transcript-mode";
 // Specific schemas are listed before their containers so shared subtrees get
 // claimed under their own exported names (the walker visits each node once).
 const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
-  ["TaskStatusSchema", TaskStatusSchema],
-  ["UnifiedSearchTypeSchema", UnifiedSearchTypeSchema],
-  ["UnifiedSearchDateSchema", UnifiedSearchDateSchema],
-  ["UnifiedSearchKindSchema", UnifiedSearchKindSchema],
-  ["PaletteTypeSchema", PaletteTypeSchema],
-  ["PaletteFilterSchema", PaletteFilterSchema],
-  ["SessionSummaryStateSchema", SessionSummaryStateSchema],
-  ["SessionBucketSchema", SessionBucketSchema],
-  ["SessionBucketReasonSchema", SessionBucketReasonSchema],
-  ["SessionStateKindSchema", SessionStateKindSchema],
-  ["PullRequestStateSchema", PullRequestStateSchema],
-  ["GhPrStateSchema", GhPrStateSchema],
-  ["GhPrStatusCacheStateSchema", GhPrStatusCacheStateSchema],
-  ["GhPrReviewDecisionSchema", GhPrReviewDecisionSchema],
-  ["HomeAttentionKindSchema", HomeAttentionKindSchema],
-  ["SessionListPrefsSchema", SessionListPrefsSchema],
-  ["GroupIconSchema", GroupIconSchema],
-  ["GroupColorSchema", GroupColorSchema],
-  ["ContentBlockSchema", ContentBlockSchema],
-  ["AttachmentPayloadSchema", AttachmentPayloadSchema],
-  ["UserRecordSchema", UserRecordSchema],
-  ["JsonlRecordSchema", JsonlRecordSchema],
-  ["FileEditToolUseResultSchema", FileEditToolUseResultSchema],
-  ["GitOperationSchema", GitOperationSchema],
-  ["TaskFileSchema", TaskFileSchema],
-  ["SessionsIndexSchema", SessionsIndexSchema],
-  ["ClaudeSettingsSchema", ClaudeSettingsSchema],
-  ["McpConfigSchema", McpConfigSchema],
-  ["PluginCatalogSourceKindSchema", PluginCatalogSourceKindSchema],
-  ["PluginCatalogCacheSchema", PluginCatalogCacheSchema],
-  ["RenderedLineSchema", RenderedLineSchema],
-  ["ArtifactActionSchema", ArtifactActionSchema],
-  ["ArtifactIntentSchema", ArtifactIntentSchema],
-  ["ArtifactListScopeSchema", ArtifactListScopeSchema],
-  ["ArtifactAutoOpenSchema", ArtifactAutoOpenSchema],
-  ["ArtifactDbOpSchema", ArtifactDbOpSchema],
-  ["ArtifactLiveSubscriptionSchema", ArtifactLiveSubscriptionSchema],
-  ["ArtifactToolResultSchema", ArtifactToolResultSchema],
-  ["ReportFindingsVerdictSchema", ReportFindingsVerdictSchema],
-  ["RemoteTriggerActionSchema", RemoteTriggerActionSchema],
-  ["ExitWorktreeActionSchema", ExitWorktreeActionSchema],
-  ["ToolUseUnion", ToolUseUnion],
-  ["HookEventEnvelope", HookEventEnvelope],
-  ["SourceFileResponse", SourceFileResponse],
-  ["PluginFileSchema", PluginFileSchema],
-  ["PluginListResponse", PluginListResponse],
-  ["SkillListResponse", SkillListResponse],
-  ["McpServerListResponse", McpServerListResponse],
-  ["McpServerDetailResponse", McpServerDetailResponse],
-  ["PaneLayoutStateSchema", PaneLayoutStateSchema],
-  ["SettingsTabSchema", SettingsTabSchema],
-  ["CodeThemeLightSchema", CodeThemeLightSchema],
-  ["CodeThemeDarkSchema", CodeThemeDarkSchema],
-  ["TerminalAppearanceSchema", TerminalAppearanceSchema],
-  ["NavSectionSchema", NavSectionSchema],
-  ["RoutineKindSchema", RoutineKindSchema],
-  ["RoutineStatusSchema", RoutineStatusSchema],
-  ["RoutineScheduleFilterSchema", RoutineScheduleFilterSchema],
-  ["RoutineStatusFilterSchema", RoutineStatusFilterSchema],
-  ["RoutineSortSchema", RoutineSortSchema],
-  ["JobStateSchema", JobStateSchema],
-  ["JobTempoSchema", JobTempoSchema],
-  ["JobNameSourceSchema", JobNameSourceSchema],
-  ["JobChildKindSchema", JobChildKindSchema],
-  ["JobFanKindSchema", JobFanKindSchema],
-  ["JobStateFileSchema", JobStateFileSchema],
-  ["JobTimelineEntrySchema", JobTimelineEntrySchema],
-  ["SessionMenuItemIdSchema", SessionMenuItemIdSchema],
-  ["ChangedFileKindSchema", ChangedFileKindSchema],
-  ["RecentsHistorySchema", RecentsHistorySchema],
-  ["TranscriptModeSchema", TranscriptModeSchema],
-  ["LaunchPermissionModeSchema", LaunchPermissionModeSchema],
-  ["EffortLevelSchema", EffortLevelSchema],
-  ["LiveOptionChangeSchema", LiveOptionChangeSchema],
-  ["PinDropOutcomeSchema", PinDropOutcomeSchema],
-  ["ContextAttachmentKindSchema", ContextAttachmentKindSchema],
-  ["UnifiedSearchParamsSchema", UnifiedSearchParamsSchema],
-  ["UnifiedSearchResponse", UnifiedSearchResponse],
+	["TaskStatusSchema", TaskStatusSchema],
+	["UnifiedSearchTypeSchema", UnifiedSearchTypeSchema],
+	["UnifiedSearchDateSchema", UnifiedSearchDateSchema],
+	["UnifiedSearchKindSchema", UnifiedSearchKindSchema],
+	["PaletteTypeSchema", PaletteTypeSchema],
+	["PaletteFilterSchema", PaletteFilterSchema],
+	["SessionSummaryStateSchema", SessionSummaryStateSchema],
+	["SessionBucketSchema", SessionBucketSchema],
+	["SessionBucketReasonSchema", SessionBucketReasonSchema],
+	["SessionStateKindSchema", SessionStateKindSchema],
+	["PullRequestStateSchema", PullRequestStateSchema],
+	["GhPrStateSchema", GhPrStateSchema],
+	["GhPrStatusCacheStateSchema", GhPrStatusCacheStateSchema],
+	["GhPrReviewDecisionSchema", GhPrReviewDecisionSchema],
+	["HomeAttentionKindSchema", HomeAttentionKindSchema],
+	["SessionListPrefsSchema", SessionListPrefsSchema],
+	["GroupIconSchema", GroupIconSchema],
+	["GroupColorSchema", GroupColorSchema],
+	["ContentBlockSchema", ContentBlockSchema],
+	["AttachmentPayloadSchema", AttachmentPayloadSchema],
+	["UserRecordSchema", UserRecordSchema],
+	["JsonlRecordSchema", JsonlRecordSchema],
+	["FileEditToolUseResultSchema", FileEditToolUseResultSchema],
+	["GitOperationSchema", GitOperationSchema],
+	["TaskFileSchema", TaskFileSchema],
+	["SessionsIndexSchema", SessionsIndexSchema],
+	["ClaudeSettingsSchema", ClaudeSettingsSchema],
+	["McpConfigSchema", McpConfigSchema],
+	["PluginCatalogSourceKindSchema", PluginCatalogSourceKindSchema],
+	["PluginCatalogCacheSchema", PluginCatalogCacheSchema],
+	["RenderedLineSchema", RenderedLineSchema],
+	["ArtifactActionSchema", ArtifactActionSchema],
+	["ArtifactIntentSchema", ArtifactIntentSchema],
+	["ArtifactListScopeSchema", ArtifactListScopeSchema],
+	["ArtifactAutoOpenSchema", ArtifactAutoOpenSchema],
+	["ArtifactDbOpSchema", ArtifactDbOpSchema],
+	["ArtifactLiveSubscriptionSchema", ArtifactLiveSubscriptionSchema],
+	["ArtifactToolResultSchema", ArtifactToolResultSchema],
+	["ReportFindingsVerdictSchema", ReportFindingsVerdictSchema],
+	["RemoteTriggerActionSchema", RemoteTriggerActionSchema],
+	["ExitWorktreeActionSchema", ExitWorktreeActionSchema],
+	["ToolUseUnion", ToolUseUnion],
+	["HookEventEnvelope", HookEventEnvelope],
+	["SourceFileResponse", SourceFileResponse],
+	["PluginFileSchema", PluginFileSchema],
+	["PluginListResponse", PluginListResponse],
+	["SkillListResponse", SkillListResponse],
+	["McpServerListResponse", McpServerListResponse],
+	["McpServerDetailResponse", McpServerDetailResponse],
+	["PaneLayoutStateSchema", PaneLayoutStateSchema],
+	["SettingsTabSchema", SettingsTabSchema],
+	["CodeThemeLightSchema", CodeThemeLightSchema],
+	["CodeThemeDarkSchema", CodeThemeDarkSchema],
+	["TerminalAppearanceSchema", TerminalAppearanceSchema],
+	["NavSectionSchema", NavSectionSchema],
+	["RoutineKindSchema", RoutineKindSchema],
+	["RoutineStatusSchema", RoutineStatusSchema],
+	["RoutineScheduleFilterSchema", RoutineScheduleFilterSchema],
+	["RoutineStatusFilterSchema", RoutineStatusFilterSchema],
+	["RoutineSortSchema", RoutineSortSchema],
+	["JobStateSchema", JobStateSchema],
+	["JobTempoSchema", JobTempoSchema],
+	["JobNameSourceSchema", JobNameSourceSchema],
+	["JobChildKindSchema", JobChildKindSchema],
+	["JobFanKindSchema", JobFanKindSchema],
+	["JobStateFileSchema", JobStateFileSchema],
+	["JobTimelineEntrySchema", JobTimelineEntrySchema],
+	["SessionMenuItemIdSchema", SessionMenuItemIdSchema],
+	["ChangedFileKindSchema", ChangedFileKindSchema],
+	["RecentsHistorySchema", RecentsHistorySchema],
+	["TranscriptModeSchema", TranscriptModeSchema],
+	["LaunchPermissionModeSchema", LaunchPermissionModeSchema],
+	["EffortLevelSchema", EffortLevelSchema],
+	["LiveOptionChangeSchema", LiveOptionChangeSchema],
+	["PinDropOutcomeSchema", PinDropOutcomeSchema],
+	["ContextAttachmentKindSchema", ContextAttachmentKindSchema],
+	["UnifiedSearchParamsSchema", UnifiedSearchParamsSchema],
+	["UnifiedSearchResponse", UnifiedSearchResponse],
 ];
 
 interface DefLike {
-  type: string;
-  innerType?: unknown;
-  discriminator?: unknown;
-  values?: unknown[];
-  checks?: Array<{
-    _zod?: { def?: { format?: string; prefix?: string } };
-  }>;
-  element?: unknown;
-  valueType?: unknown;
-  getter?: () => unknown;
-  items?: unknown[];
-  left?: unknown;
-  right?: unknown;
+	type: string;
+	innerType?: unknown;
+	discriminator?: unknown;
+	values?: unknown[];
+	checks?: Array<{
+		_zod?: {def?: {format?: string; prefix?: string}};
+	}>;
+	element?: unknown;
+	valueType?: unknown;
+	getter?: () => unknown;
+	items?: unknown[];
+	left?: unknown;
+	right?: unknown;
 }
 
 function defOf(schema: unknown): DefLike {
-  return (schema as { def: DefLike }).def;
+	return (schema as {def: DefLike}).def;
 }
 
 function shapeOf(schema: unknown): Record<string, unknown> {
-  return (schema as { shape: Record<string, unknown> }).shape;
+	return (schema as {shape: Record<string, unknown>}).shape;
 }
 
 function optionsOf(schema: unknown): unknown[] {
-  return (schema as { options: unknown[] }).options;
+	return (schema as {options: unknown[]}).options;
 }
 
 /** Strips optional/nullable/default wrappers. */
 function unwrap(schema: unknown): unknown {
-  let current = schema;
-  let def = defOf(current);
-  while (def.innerType !== undefined) {
-    current = def.innerType;
-    def = defOf(current);
-  }
-  return current;
+	let current = schema;
+	let def = defOf(current);
+	while (def.innerType !== undefined) {
+		current = def.innerType;
+		def = defOf(current);
+	}
+	return current;
 }
 
 /** Flattens nested unions into their object arms (unwrapping wrappers). */
 function flattenUnionArms(schema: unknown): unknown[] {
-  const arms: unknown[] = [];
-  for (const option of optionsOf(schema)) {
-    const inner = unwrap(option);
-    if (defOf(inner).type === "union") {
-      arms.push(...flattenUnionArms(inner));
-    } else {
-      arms.push(inner);
-    }
-  }
-  return arms;
+	const arms: unknown[] = [];
+	for (const option of optionsOf(schema)) {
+		const inner = unwrap(option);
+		if (defOf(inner).type === "union") {
+			arms.push(...flattenUnionArms(inner));
+		} else {
+			arms.push(inner);
+		}
+	}
+	return arms;
 }
 
 /** Literal or enum values of a variant's discriminator field. */
 function tagsOfVariant(variant: unknown, discriminator: string): string[] {
-  const field = unwrap(shapeOf(variant)[discriminator]);
-  const def = defOf(field);
-  if (def.type === "literal") {
-    return (def.values ?? []).map(String);
-  }
-  if (def.type === "enum") {
-    return optionsOf(field).map(String);
-  }
-  const startsWith = def.checks?.find((check) => check._zod?.def?.format === "starts_with")?._zod
-    ?.def?.prefix;
-  if (def.type === "string" && startsWith !== undefined) {
-    return [`${startsWith}*`];
-  }
-  throw new Error(`Discriminator "${discriminator}" is neither literal nor enum`);
+	const field = unwrap(shapeOf(variant)[discriminator]);
+	const def = defOf(field);
+	if (def.type === "literal") {
+		return (def.values ?? []).map(String);
+	}
+	if (def.type === "enum") {
+		return optionsOf(field).map(String);
+	}
+	const startsWith = def.checks?.find((check) => check._zod?.def?.format === "starts_with")?._zod?.def?.prefix;
+	if (def.type === "string" && startsWith !== undefined) {
+		return [`${startsWith}*`];
+	}
+	throw new Error(`Discriminator "${discriminator}" is neither literal nor enum`);
 }
 
 /**
@@ -267,142 +254,135 @@ function tagsOfVariant(variant: unknown, discriminator: string): string[] {
  * discriminator. Returns undefined when no common literal field exists.
  */
 function defactoDiscriminator(schema: unknown): string | undefined {
-  const arms = flattenUnionArms(schema);
-  if (arms.length === 0 || arms.some((arm) => defOf(arm).type !== "object")) {
-    return undefined;
-  }
-  let candidates: string[] | undefined;
-  for (const arm of arms) {
-    const literalKeys = Object.entries(shapeOf(arm))
-      .filter(([, field]) => {
-        const def = defOf(unwrap(field));
-        return (
-          def.type === "literal" ||
-          def.checks?.some((check) => check._zod?.def?.format === "starts_with")
-        );
-      })
-      .map(([key]) => key);
-    candidates =
-      candidates === undefined
-        ? literalKeys
-        : candidates.filter((key) => literalKeys.includes(key));
-  }
-  const distinctValues = (key: string): number =>
-    new Set(arms.flatMap((arm) => tagsOfVariant(arm, key))).size;
-  return candidates?.sort().sort((a, b) => distinctValues(b) - distinctValues(a))[0];
+	const arms = flattenUnionArms(schema);
+	if (arms.length === 0 || arms.some((arm) => defOf(arm).type !== "object")) {
+		return undefined;
+	}
+	let candidates: string[] | undefined;
+	for (const arm of arms) {
+		const literalKeys = Object.entries(shapeOf(arm))
+			.filter(([, field]) => {
+				const def = defOf(unwrap(field));
+				return def.type === "literal" || def.checks?.some((check) => check._zod?.def?.format === "starts_with");
+			})
+			.map(([key]) => key);
+		candidates = candidates === undefined ? literalKeys : candidates.filter((key) => literalKeys.includes(key));
+	}
+	const distinctValues = (key: string): number => new Set(arms.flatMap((arm) => tagsOfVariant(arm, key))).size;
+	return candidates?.sort().sort((a, b) => distinctValues(b) - distinctValues(a))[0];
 }
 
 function collectChoices(): Map<string, string[]> {
-  const found = new Map<string, string[]>();
-  const visited = new Set<unknown>();
+	const found = new Map<string, string[]>();
+	const visited = new Set<unknown>();
 
-  function record(path: string, values: string[]): void {
-    found.set(path, [...new Set(values)].sort());
-  }
+	function record(path: string, values: string[]): void {
+		found.set(path, [...new Set(values)].sort());
+	}
 
-  function walkUnion(schema: unknown, path: string, discriminator: string): void {
-    const tags: string[] = [];
-    for (const option of optionsOf(schema)) {
-      const inner = unwrap(option);
-      const innerDef = defOf(inner);
-      const optionTags =
-        innerDef.type === "union"
-          ? flattenUnionArms(inner).flatMap((arm) => tagsOfVariant(arm, discriminator))
-          : tagsOfVariant(inner, discriminator);
-      tags.push(...optionTags);
-      walk(inner, `${path}.<${[...new Set(optionTags)].sort().join("|")}>`);
-    }
-    record(path, tags);
-  }
+	function walkUnion(schema: unknown, path: string, discriminator: string): void {
+		const tags: string[] = [];
+		for (const option of optionsOf(schema)) {
+			const inner = unwrap(option);
+			const innerDef = defOf(inner);
+			const optionTags =
+				innerDef.type === "union"
+					? flattenUnionArms(inner).flatMap((arm) => tagsOfVariant(arm, discriminator))
+					: tagsOfVariant(inner, discriminator);
+			tags.push(...optionTags);
+			walk(inner, `${path}.<${[...new Set(optionTags)].sort().join("|")}>`);
+		}
+		record(path, tags);
+	}
 
-  function walk(schema: unknown, path: string): void {
-    if (visited.has(schema)) return;
-    visited.add(schema);
-    const def = defOf(schema);
-    switch (def.type) {
-      case "enum":
-        record(path, optionsOf(schema).map(String));
-        return;
-      case "union": {
-        const discriminator =
-          typeof def.discriminator === "string" ? def.discriminator : defactoDiscriminator(schema);
-        if (discriminator !== undefined) {
-          walkUnion(schema, path, discriminator);
-        } else {
-          for (const [index, option] of optionsOf(schema).entries()) {
-            walk(option, `${path}|${index}`);
-          }
-        }
-        return;
-      }
-      case "object":
-        for (const [key, field] of Object.entries(shapeOf(schema))) {
-          walk(field, `${path}.${key}`);
-        }
-        return;
-      case "optional":
-      case "nullable":
-      case "default":
-        walk(def.innerType, path);
-        return;
-      case "array":
-        walk(def.element, `${path}[]`);
-        return;
-      case "record":
-        walk(def.valueType, `${path}{}`);
-        return;
-      case "lazy":
-        walk(def.getter?.(), path);
-        return;
-      case "tuple":
-        for (const [index, item] of (def.items ?? []).entries()) {
-          walk(item, `${path}.${index}`);
-        }
-        return;
-      case "intersection":
-        walk(def.left, path);
-        walk(def.right, path);
-        return;
-      default:
-        // Scalars, literals, pipes — no enumerable choices beneath.
-        return;
-    }
-  }
+	function walk(schema: unknown, path: string): void {
+		if (visited.has(schema)) return;
+		visited.add(schema);
+		const def = defOf(schema);
+		switch (def.type) {
+			case "enum":
+				record(path, optionsOf(schema).map(String));
+				return;
+			case "union": {
+				const discriminator =
+					typeof def.discriminator === "string" ? def.discriminator : defactoDiscriminator(schema);
+				if (discriminator !== undefined) {
+					walkUnion(schema, path, discriminator);
+				} else {
+					for (const [index, option] of optionsOf(schema).entries()) {
+						walk(option, `${path}|${index}`);
+					}
+				}
+				return;
+			}
+			case "object":
+				for (const [key, field] of Object.entries(shapeOf(schema))) {
+					walk(field, `${path}.${key}`);
+				}
+				return;
+			case "optional":
+			case "nullable":
+			case "default":
+				walk(def.innerType, path);
+				return;
+			case "array":
+				walk(def.element, `${path}[]`);
+				return;
+			case "record":
+				walk(def.valueType, `${path}{}`);
+				return;
+			case "lazy":
+				walk(def.getter?.(), path);
+				return;
+			case "tuple":
+				for (const [index, item] of (def.items ?? []).entries()) {
+					walk(item, `${path}.${index}`);
+				}
+				return;
+			case "intersection":
+				walk(def.left, path);
+				walk(def.right, path);
+				return;
+			default:
+				// Scalars, literals, pipes — no enumerable choices beneath.
+				return;
+		}
+	}
 
-  for (const [name, schema] of ROOTS) {
-    walk(schema, name);
-  }
-  return found;
+	for (const [name, schema] of ROOTS) {
+		walk(schema, name);
+	}
+	return found;
 }
 
 describe("schema choice registry", () => {
-  const found = collectChoices();
+	const found = collectChoices();
 
-  it("discovers choice nodes in the schema trees", () => {
-    expect(found.size).toBeGreaterThan(0);
-  });
+	it("discovers choice nodes in the schema trees", () => {
+		expect(found.size).toBeGreaterThan(0);
+	});
 
-  it("registers every choice node found in the schemas", () => {
-    const problems: string[] = [];
-    const sortedEntries = [...found.entries()].sort(([a], [b]) => a.localeCompare(b));
-    for (const [path, values] of sortedEntries) {
-      const entry = schemaChoiceRegistry[path];
-      if (entry === undefined) {
-        problems.push(`UNREGISTERED ${path}: [${values.join(", ")}]`);
-        continue;
-      }
-      const registered = Object.keys(entry).sort();
-      if (JSON.stringify(registered) !== JSON.stringify(values)) {
-        problems.push(
-          `MISMATCH ${path}: schema has [${values.join(", ")}] but registry has [${registered.join(", ")}]`,
-        );
-      }
-    }
-    expect(problems, problems.join("\n")).toEqual([]);
-  });
+	it("registers every choice node found in the schemas", () => {
+		const problems: string[] = [];
+		const sortedEntries = [...found.entries()].sort(([a], [b]) => a.localeCompare(b));
+		for (const [path, values] of sortedEntries) {
+			const entry = schemaChoiceRegistry[path];
+			if (entry === undefined) {
+				problems.push(`UNREGISTERED ${path}: [${values.join(", ")}]`);
+				continue;
+			}
+			const registered = Object.keys(entry).sort();
+			if (JSON.stringify(registered) !== JSON.stringify(values)) {
+				problems.push(
+					`MISMATCH ${path}: schema has [${values.join(", ")}] but registry has [${registered.join(", ")}]`,
+				);
+			}
+		}
+		expect(problems, problems.join("\n")).toEqual([]);
+	});
 
-  it("has no stale registry entries for removed choice nodes", () => {
-    const stale = Object.keys(schemaChoiceRegistry).filter((path) => !found.has(path));
-    expect(stale, `Registry paths no longer found in any schema: ${stale.join(", ")}`).toEqual([]);
-  });
+	it("has no stale registry entries for removed choice nodes", () => {
+		const stale = Object.keys(schemaChoiceRegistry).filter((path) => !found.has(path));
+		expect(stale, `Registry paths no longer found in any schema: ${stale.join(", ")}`).toEqual([]);
+	});
 });

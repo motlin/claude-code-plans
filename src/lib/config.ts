@@ -1,17 +1,13 @@
-import { readFileSync } from "node:fs";
-import { mkdir, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
-import { homedir, tmpdir } from "node:os";
-import { isAbsolute, join, parse, relative, sep } from "node:path";
-import { z } from "zod";
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import { listFileSearchProjectPathsFromDb } from "./db/queries";
+import {readFileSync} from "node:fs";
+import {mkdir, realpath, rename, rm, stat, writeFile} from "node:fs/promises";
+import {homedir, tmpdir} from "node:os";
+import {isAbsolute, join, parse, relative, sep} from "node:path";
+import {z} from "zod";
+import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
+import {listFileSearchProjectPathsFromDb} from "./db/queries";
 import type * as schema from "./db/schema";
-import { isGitRepository } from "./git-tracked";
-import {
-  migrateLegacyNavFlags,
-  renameLegacyNavSections,
-  VisibleNavSectionsSchema,
-} from "./nav-sections";
+import {isGitRepository} from "./git-tracked";
+import {migrateLegacyNavFlags, renameLegacyNavSections, VisibleNavSectionsSchema} from "./nav-sections";
 
 /**
  * Directory holding this application's own configuration. Follows the XDG
@@ -21,14 +17,14 @@ import {
  * to or extended by this app.
  */
 function getConfigDir(): string {
-  const xdg = process.env["XDG_CONFIG_HOME"];
-  const base = xdg || join(homedir(), ".config");
-  return join(base, "claude-code-plans");
+	const xdg = process.env["XDG_CONFIG_HOME"];
+	const base = xdg || join(homedir(), ".config");
+	return join(base, "claude-code-plans");
 }
 
 /** Path to this application's config file. */
 export function getConfigPath(): string {
-  return join(getConfigDir(), "config.json");
+	return join(getConfigDir(), "config.json");
 }
 
 /**
@@ -37,42 +33,40 @@ export function getConfigPath(): string {
  * the whole file fails to validate. New settings must be added here.
  */
 const AppConfigObjectSchema = z
-  .object({
-    /** Directory basenames the file watcher never descends into. */
-    ignored_dirs: z.array(z.string().trim().min(1)).min(1).optional(),
-    /** Absolute directory paths whose image files may be served by the app. */
-    image_roots: z.array(z.string()).optional(),
-    /** Absolute directory paths whose text files are indexed for content search. */
-    file_roots: z
-      .array(z.string().trim().min(1).refine(isAbsolute, "File roots must be absolute paths"))
-      .optional(),
-    /** Permit ccp to send input and state updates to live Herdr panes. */
-    herdr_writes_enabled: z.boolean().optional(),
-    /** Offer Shell tabs (login `$SHELL` PTYs in the session folder) in the Terminal pane. */
-    shell_pane_enabled: z.boolean().optional(),
-    /** Sidebar sections pinned outside the More ▸ menu, in nav order. */
-    visible_nav_sections: z
-      .preprocess(renameLegacyNavSections, VisibleNavSectionsSchema)
-      .optional(),
-    /** Retired by `visible_nav_sections`; read only to migrate, dropped on the next save. */
-    show_herdr_section: z.boolean().optional(),
-    /** Retired by `visible_nav_sections`; read only to migrate, dropped on the next save. */
-    show_tmux_section: z.boolean().optional(),
-  })
-  .strict();
+	.object({
+		/** Directory basenames the file watcher never descends into. */
+		ignored_dirs: z.array(z.string().trim().min(1)).min(1).optional(),
+		/** Absolute directory paths whose image files may be served by the app. */
+		image_roots: z.array(z.string()).optional(),
+		/** Absolute directory paths whose text files are indexed for content search. */
+		file_roots: z
+			.array(z.string().trim().min(1).refine(isAbsolute, "File roots must be absolute paths"))
+			.optional(),
+		/** Permit ccp to send input and state updates to live Herdr panes. */
+		herdr_writes_enabled: z.boolean().optional(),
+		/** Offer Shell tabs (login `$SHELL` PTYs in the session folder) in the Terminal pane. */
+		shell_pane_enabled: z.boolean().optional(),
+		/** Sidebar sections pinned outside the More ▸ menu, in nav order. */
+		visible_nav_sections: z.preprocess(renameLegacyNavSections, VisibleNavSectionsSchema).optional(),
+		/** Retired by `visible_nav_sections`; read only to migrate, dropped on the next save. */
+		show_herdr_section: z.boolean().optional(),
+		/** Retired by `visible_nav_sections`; read only to migrate, dropped on the next save. */
+		show_tmux_section: z.boolean().optional(),
+	})
+	.strict();
 
 function stripLegacyWatcherPolling(value: unknown): unknown {
-  if (
-    typeof value !== "object" ||
-    value === null ||
-    Array.isArray(value) ||
-    !("watcher_polling" in value) ||
-    typeof value.watcher_polling !== "boolean"
-  ) {
-    return value;
-  }
+	if (
+		typeof value !== "object" ||
+		value === null ||
+		Array.isArray(value) ||
+		!("watcher_polling" in value) ||
+		typeof value.watcher_polling !== "boolean"
+	) {
+		return value;
+	}
 
-  return Object.fromEntries(Object.entries(value).filter(([key]) => key !== "watcher_polling"));
+	return Object.fromEntries(Object.entries(value).filter(([key]) => key !== "watcher_polling"));
 }
 
 export const AppConfigSchema = z.preprocess(stripLegacyWatcherPolling, AppConfigObjectSchema);
@@ -86,20 +80,20 @@ export type AppConfig = z.infer<typeof AppConfigSchema>;
  * callers treat every one of those cases as "no config, use defaults".
  */
 export function readConfig(configPath: string = getConfigPath()): AppConfig | null {
-  let raw: string;
-  try {
-    raw = readFileSync(configPath, "utf8");
-  } catch {
-    return null;
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-  const result = AppConfigSchema.safeParse(parsed);
-  return result.success ? result.data : null;
+	let raw: string;
+	try {
+		raw = readFileSync(configPath, "utf8");
+	} catch {
+		return null;
+	}
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(raw);
+	} catch {
+		return null;
+	}
+	const result = AppConfigSchema.safeParse(parsed);
+	return result.success ? result.data : null;
 }
 
 /**
@@ -111,233 +105,227 @@ export function readConfig(configPath: string = getConfigPath()): AppConfig | nu
  * server process environment.
  */
 const DEFAULT_APPLICATION_POLICY = {
-  herdrWritesEnabled: false,
-  shellPaneEnabled: true,
+	herdrWritesEnabled: false,
+	shellPaneEnabled: true,
 } as const;
 
 export const DEFAULT_IGNORED_DIR_NAMES = [
-  ".cache",
-  ".git",
-  ".in_use",
-  ".llm",
-  ".next",
-  ".turbo",
-  ".venv",
-  ".vite",
-  "build",
-  "coverage",
-  "dist",
-  "node_modules",
-  "out",
-  "target",
+	".cache",
+	".git",
+	".in_use",
+	".llm",
+	".next",
+	".turbo",
+	".venv",
+	".vite",
+	"build",
+	"coverage",
+	"dist",
+	"node_modules",
+	"out",
+	"target",
 ] as const;
 
 export const ApplicationSettingsSchema = z
-  .object({
-    herdrWritesEnabled: z.boolean(),
-    shellPaneEnabled: z.boolean(),
-    visibleNavSections: VisibleNavSectionsSchema,
-    ignoredDirs: z.array(z.string().trim().min(1)).min(1),
-  })
-  .strict();
+	.object({
+		herdrWritesEnabled: z.boolean(),
+		shellPaneEnabled: z.boolean(),
+		visibleNavSections: VisibleNavSectionsSchema,
+		ignoredDirs: z.array(z.string().trim().min(1)).min(1),
+	})
+	.strict();
 
 export type ApplicationSettings = z.infer<typeof ApplicationSettingsSchema>;
 
 export function readApplicationSettings(configPath: string = getConfigPath()): ApplicationSettings {
-  const config = readConfig(configPath);
-  return {
-    herdrWritesEnabled:
-      config?.herdr_writes_enabled ?? DEFAULT_APPLICATION_POLICY.herdrWritesEnabled,
-    shellPaneEnabled: config?.shell_pane_enabled ?? DEFAULT_APPLICATION_POLICY.shellPaneEnabled,
-    visibleNavSections:
-      config?.visible_nav_sections ??
-      migrateLegacyNavFlags({
-        showHerdrSection: config?.show_herdr_section,
-        showTmuxSection: config?.show_tmux_section,
-      }),
-    ignoredDirs: config?.ignored_dirs ?? [...DEFAULT_IGNORED_DIR_NAMES],
-  };
+	const config = readConfig(configPath);
+	return {
+		herdrWritesEnabled: config?.herdr_writes_enabled ?? DEFAULT_APPLICATION_POLICY.herdrWritesEnabled,
+		shellPaneEnabled: config?.shell_pane_enabled ?? DEFAULT_APPLICATION_POLICY.shellPaneEnabled,
+		visibleNavSections:
+			config?.visible_nav_sections ??
+			migrateLegacyNavFlags({
+				showHerdrSection: config?.show_herdr_section,
+				showTmuxSection: config?.show_tmux_section,
+			}),
+		ignoredDirs: config?.ignored_dirs ?? [...DEFAULT_IGNORED_DIR_NAMES],
+	};
 }
 
 export function herdrWritesEnabled(configPath: string = getConfigPath()): boolean {
-  return readApplicationSettings(configPath).herdrWritesEnabled;
+	return readApplicationSettings(configPath).herdrWritesEnabled;
 }
 
 export function shellPaneEnabled(configPath: string = getConfigPath()): boolean {
-  return readApplicationSettings(configPath).shellPaneEnabled;
+	return readApplicationSettings(configPath).shellPaneEnabled;
 }
 
 /** Atomically replace a valid config while preserving all fields outside the patch. */
-async function updateConfig(
-  patch: Partial<AppConfig>,
-  configPath: string = getConfigPath(),
-): Promise<AppConfig> {
-  const parsedPatch = AppConfigPatchSchema.parse(patch);
-  const current = readConfig(configPath);
-  if (current === null) {
-    let existing = false;
-    try {
-      await stat(configPath);
-      existing = true;
-    } catch {
-      // A missing config starts from an empty, valid document.
-    }
-    if (existing) {
-      throw new Error("Cannot update an invalid application config");
-    }
-  }
+async function updateConfig(patch: Partial<AppConfig>, configPath: string = getConfigPath()): Promise<AppConfig> {
+	const parsedPatch = AppConfigPatchSchema.parse(patch);
+	const current = readConfig(configPath);
+	if (current === null) {
+		let existing = false;
+		try {
+			await stat(configPath);
+			existing = true;
+		} catch {
+			// A missing config starts from an empty, valid document.
+		}
+		if (existing) {
+			throw new Error("Cannot update an invalid application config");
+		}
+	}
 
-  const next = AppConfigSchema.parse({ ...current, ...parsedPatch });
-  const directory = parse(configPath).dir;
-  const temporaryPath = join(directory, `.config-${crypto.randomUUID()}.tmp`);
-  await mkdir(directory, { recursive: true, mode: 0o700 });
-  try {
-    await writeFile(temporaryPath, `${JSON.stringify(next, null, 2)}\n`, {
-      encoding: "utf8",
-      mode: 0o600,
-      flag: "wx",
-    });
-    await rename(temporaryPath, configPath);
-  } catch (error) {
-    await rm(temporaryPath, { force: true });
-    throw error;
-  }
-  return next;
+	const next = AppConfigSchema.parse({...current, ...parsedPatch});
+	const directory = parse(configPath).dir;
+	const temporaryPath = join(directory, `.config-${crypto.randomUUID()}.tmp`);
+	await mkdir(directory, {recursive: true, mode: 0o700});
+	try {
+		await writeFile(temporaryPath, `${JSON.stringify(next, null, 2)}\n`, {
+			encoding: "utf8",
+			mode: 0o600,
+			flag: "wx",
+		});
+		await rename(temporaryPath, configPath);
+	} catch (error) {
+		await rm(temporaryPath, {force: true});
+		throw error;
+	}
+	return next;
 }
 
 export async function updateApplicationSettings(
-  settings: ApplicationSettings,
-  configPath: string = getConfigPath(),
+	settings: ApplicationSettings,
+	configPath: string = getConfigPath(),
 ): Promise<ApplicationSettings> {
-  const parsed = ApplicationSettingsSchema.parse(settings);
-  const ignoredDirs = [...parsed.ignoredDirs].sort();
-  await updateConfig(
-    {
-      herdr_writes_enabled: parsed.herdrWritesEnabled,
-      shell_pane_enabled: parsed.shellPaneEnabled,
-      visible_nav_sections: parsed.visibleNavSections,
-      show_herdr_section: undefined,
-      show_tmux_section: undefined,
-      ignored_dirs: ignoredDirs,
-    },
-    configPath,
-  );
-  return readApplicationSettings(configPath);
+	const parsed = ApplicationSettingsSchema.parse(settings);
+	const ignoredDirs = [...parsed.ignoredDirs].sort();
+	await updateConfig(
+		{
+			herdr_writes_enabled: parsed.herdrWritesEnabled,
+			shell_pane_enabled: parsed.shellPaneEnabled,
+			visible_nav_sections: parsed.visibleNavSections,
+			show_herdr_section: undefined,
+			show_tmux_section: undefined,
+			ignored_dirs: ignoredDirs,
+		},
+		configPath,
+	);
+	return readApplicationSettings(configPath);
 }
 
 function isContainedPath(path: string, root: string): boolean {
-  const relativePath = relative(root, path);
-  return (
-    relativePath === "" ||
-    (relativePath !== ".." && !relativePath.startsWith(`..${sep}`) && !isAbsolute(relativePath))
-  );
+	const relativePath = relative(root, path);
+	return (
+		relativePath === "" ||
+		(relativePath !== ".." && !relativePath.startsWith(`..${sep}`) && !isAbsolute(relativePath))
+	);
 }
 
 export async function resolveDirectoryRoots(
-  roots: readonly string[],
-  excludedResolvedRoots: ReadonlySet<string> = new Set(),
-  overlapPreference: "widest" | "narrowest" = "widest",
+	roots: readonly string[],
+	excludedResolvedRoots: ReadonlySet<string> = new Set(),
+	overlapPreference: "widest" | "narrowest" = "widest",
 ): Promise<string[]> {
-  const resolvedRoots: string[] = [];
+	const resolvedRoots: string[] = [];
 
-  for (const root of roots) {
-    let resolvedRoot: string;
-    try {
-      resolvedRoot = await realpath(root);
-      if (!(await stat(resolvedRoot)).isDirectory()) continue;
-    } catch {
-      continue;
-    }
-    if (excludedResolvedRoots.has(resolvedRoot)) continue;
-    if (
-      resolvedRoots.some((root) =>
-        overlapPreference === "widest"
-          ? isContainedPath(resolvedRoot, root)
-          : isContainedPath(root, resolvedRoot),
-      )
-    ) {
-      continue;
-    }
+	for (const root of roots) {
+		let resolvedRoot: string;
+		try {
+			resolvedRoot = await realpath(root);
+			if (!(await stat(resolvedRoot)).isDirectory()) continue;
+		} catch {
+			continue;
+		}
+		if (excludedResolvedRoots.has(resolvedRoot)) continue;
+		if (
+			resolvedRoots.some((root) =>
+				overlapPreference === "widest"
+					? isContainedPath(resolvedRoot, root)
+					: isContainedPath(root, resolvedRoot),
+			)
+		) {
+			continue;
+		}
 
-    // Keep roots non-overlapping so chokidar and the initial scan traverse
-    // each file only once.
-    for (let index = resolvedRoots.length - 1; index >= 0; index -= 1) {
-      const existingRoot = resolvedRoots[index]!;
-      const shouldReplace =
-        overlapPreference === "widest"
-          ? isContainedPath(existingRoot, resolvedRoot)
-          : isContainedPath(resolvedRoot, existingRoot);
-      if (shouldReplace) {
-        resolvedRoots.splice(index, 1);
-      }
-    }
-    resolvedRoots.push(resolvedRoot);
-  }
+		// Keep roots non-overlapping so chokidar and the initial scan traverse
+		// each file only once.
+		for (let index = resolvedRoots.length - 1; index >= 0; index -= 1) {
+			const existingRoot = resolvedRoots[index]!;
+			const shouldReplace =
+				overlapPreference === "widest"
+					? isContainedPath(existingRoot, resolvedRoot)
+					: isContainedPath(resolvedRoot, existingRoot);
+			if (shouldReplace) {
+				resolvedRoots.splice(index, 1);
+			}
+		}
+		resolvedRoots.push(resolvedRoot);
+	}
 
-  return resolvedRoots;
+	return resolvedRoots;
 }
 
 /** Resolve configured file roots to unique, existing, real directories. */
 export async function resolveConfiguredFileRoots(
-  configPath: string = getConfigPath(),
-  defaultRoots: readonly string[] = [],
+	configPath: string = getConfigPath(),
+	defaultRoots: readonly string[] = [],
 ): Promise<string[]> {
-  return resolveDirectoryRoots(readConfig(configPath)?.file_roots ?? defaultRoots);
+	return resolveDirectoryRoots(readConfig(configPath)?.file_roots ?? defaultRoots);
 }
 
 /** Resolve explicit file roots, or indexed project paths when the setting is absent. */
 export async function resolveFileSearchRoots(
-  indexDatabase: BetterSQLite3Database<typeof schema>,
-  configPath: string = getConfigPath(),
+	indexDatabase: BetterSQLite3Database<typeof schema>,
+	configPath: string = getConfigPath(),
 ): Promise<string[]> {
-  const configuredRoots = readConfig(configPath)?.file_roots;
-  if (configuredRoots !== undefined) {
-    return resolveDirectoryRoots(configuredRoots.filter(isGitRepository));
-  }
+	const configuredRoots = readConfig(configPath)?.file_roots;
+	if (configuredRoots !== undefined) {
+		return resolveDirectoryRoots(configuredRoots.filter(isGitRepository));
+	}
 
-  const resolvedHome = await realpath(homedir());
-  const filesystemRoot = parse(resolvedHome).root;
-  const broadRootCandidates = [
-    resolvedHome,
-    filesystemRoot,
-    tmpdir(),
-    join(filesystemRoot, "tmp"),
-    join(filesystemRoot, "var", "tmp"),
-  ];
-  const broadRoots = new Set<string>();
-  for (const candidate of broadRootCandidates) {
-    try {
-      broadRoots.add(await realpath(candidate));
-    } catch {
-      // A platform may not provide every conventional temporary directory.
-    }
-  }
-  return resolveDirectoryRoots(
-    listFileSearchProjectPathsFromDb(indexDatabase).filter(isGitRepository),
-    broadRoots,
-    "narrowest",
-  );
+	const resolvedHome = await realpath(homedir());
+	const filesystemRoot = parse(resolvedHome).root;
+	const broadRootCandidates = [
+		resolvedHome,
+		filesystemRoot,
+		tmpdir(),
+		join(filesystemRoot, "tmp"),
+		join(filesystemRoot, "var", "tmp"),
+	];
+	const broadRoots = new Set<string>();
+	for (const candidate of broadRootCandidates) {
+		try {
+			broadRoots.add(await realpath(candidate));
+		} catch {
+			// A platform may not provide every conventional temporary directory.
+		}
+	}
+	return resolveDirectoryRoots(
+		listFileSearchProjectPathsFromDb(indexDatabase).filter(isGitRepository),
+		broadRoots,
+		"narrowest",
+	);
 }
 
 /** Resolve a requested search directory and prove it remains inside a configured real root. */
 export async function resolveFileSearchScope(
-  scopeRoot: string,
-  configPath: string = getConfigPath(),
-  defaultRoots: readonly string[] = [],
+	scopeRoot: string,
+	configPath: string = getConfigPath(),
+	defaultRoots: readonly string[] = [],
 ): Promise<string | null> {
-  let resolvedScope: string;
-  try {
-    resolvedScope = await realpath(scopeRoot);
-    if (!(await stat(resolvedScope)).isDirectory()) return null;
-  } catch {
-    return null;
-  }
+	let resolvedScope: string;
+	try {
+		resolvedScope = await realpath(scopeRoot);
+		if (!(await stat(resolvedScope)).isDirectory()) return null;
+	} catch {
+		return null;
+	}
 
-  const explicitRoots = readConfig(configPath)?.file_roots;
-  const configuredRoots = await resolveDirectoryRoots(
-    explicitRoots === undefined ? defaultRoots : explicitRoots.filter(isGitRepository),
-  );
-  return configuredRoots.some((root) => isContainedPath(resolvedScope, root))
-    ? resolvedScope
-    : null;
+	const explicitRoots = readConfig(configPath)?.file_roots;
+	const configuredRoots = await resolveDirectoryRoots(
+		explicitRoots === undefined ? defaultRoots : explicitRoots.filter(isGitRepository),
+	);
+	return configuredRoots.some((root) => isContainedPath(resolvedScope, root)) ? resolvedScope : null;
 }

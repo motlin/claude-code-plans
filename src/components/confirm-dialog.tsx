@@ -1,12 +1,12 @@
-import { AlertDialog } from "@base-ui/react/alert-dialog";
-import { type ReactNode, useRef } from "react";
+import {AlertDialog} from "@base-ui/react/alert-dialog";
+import {type ReactNode, useRef} from "react";
 
 const BUTTON_BASE_CLASS =
-  "h-8 rounded-r6 px-3 text-body font-medium transition-colors focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none";
+	"h-8 rounded-r6 px-3 text-body font-medium transition-colors focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none";
 
 const CONFIRM_VARIANT_CLASS = {
-  primary: "bg-fill-primary text-on-primary hover:bg-fill-primary-hover",
-  danger: "bg-[var(--menu-danger-fill)] text-[var(--menu-on-danger)] hover:opacity-90",
+	primary: "bg-fill-primary text-on-primary hover:bg-fill-primary-hover",
+	danger: "bg-[var(--menu-danger-fill)] text-[var(--menu-on-danger)] hover:opacity-90",
 } as const;
 
 /**
@@ -15,70 +15,70 @@ const CONFIRM_VARIANT_CLASS = {
  * destructive actions.
  */
 export function ConfirmDialog({
-  open,
-  onOpenChange,
-  title,
-  body,
-  details,
-  confirmLabel,
-  cancelLabel = "Cancel",
-  variant = "primary",
-  onConfirm,
-  onCancel,
+	open,
+	onOpenChange,
+	title,
+	body,
+	details,
+	confirmLabel,
+	cancelLabel = "Cancel",
+	variant = "primary",
+	onConfirm,
+	onCancel,
 }: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  title: ReactNode;
-  body?: ReactNode;
-  /** Block content below the body, such as a list of affected items. */
-  details?: ReactNode;
-  confirmLabel: string;
-  cancelLabel?: string;
-  variant?: keyof typeof CONFIRM_VARIANT_CLASS;
-  onConfirm: () => void;
-  /** Runs only when the cancel button itself is clicked, not on Escape or a backdrop click. */
-  onCancel?: () => void;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	title: ReactNode;
+	body?: ReactNode;
+	/** Block content below the body, such as a list of affected items. */
+	details?: ReactNode;
+	confirmLabel: string;
+	cancelLabel?: string;
+	variant?: keyof typeof CONFIRM_VARIANT_CLASS;
+	onConfirm: () => void;
+	/** Runs only when the cancel button itself is clicked, not on Escape or a backdrop click. */
+	onCancel?: () => void;
 }) {
-  const cancelRef = useRef<HTMLButtonElement>(null);
-  return (
-    <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
-      <AlertDialog.Portal>
-        <AlertDialog.Backdrop className="fixed inset-0 z-50 bg-backdrop backdrop-blur-[2px] transition-opacity duration-200 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
-        <AlertDialog.Popup
-          initialFocus={cancelRef}
-          className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[400px] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card bg-surface-3 p-6 text-body text-primary shadow-panel-lg outline-none transition-[opacity,scale] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none"
-        >
-          <AlertDialog.Title className="text-[17px] leading-6 font-semibold break-words text-primary">
-            {title}
-          </AlertDialog.Title>
-          {body !== undefined && (
-            <AlertDialog.Description className="mt-2 text-body break-words text-secondary">
-              {body}
-            </AlertDialog.Description>
-          )}
-          {details !== undefined && <div className="mt-2 min-h-0 overflow-y-auto">{details}</div>}
-          <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <AlertDialog.Close
-              ref={cancelRef}
-              type="button"
-              onClick={onCancel}
-              className={`${BUTTON_BASE_CLASS} border border-strong text-primary hover:bg-fill-ghost-hover`}
-            >
-              {cancelLabel}
-            </AlertDialog.Close>
-            <button
-              type="button"
-              onClick={() => {
-                onConfirm();
-                onOpenChange(false);
-              }}
-              className={`${BUTTON_BASE_CLASS} ${CONFIRM_VARIANT_CLASS[variant]}`}
-            >
-              {confirmLabel}
-            </button>
-          </div>
-        </AlertDialog.Popup>
-      </AlertDialog.Portal>
-    </AlertDialog.Root>
-  );
+	const cancelRef = useRef<HTMLButtonElement>(null);
+	return (
+		<AlertDialog.Root open={open} onOpenChange={onOpenChange}>
+			<AlertDialog.Portal>
+				<AlertDialog.Backdrop className="fixed inset-0 z-50 bg-backdrop backdrop-blur-[2px] transition-opacity duration-200 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
+				<AlertDialog.Popup
+					initialFocus={cancelRef}
+					className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[400px] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card bg-surface-3 p-6 text-body text-primary shadow-panel-lg outline-none transition-[opacity,scale] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none"
+				>
+					<AlertDialog.Title className="text-[17px] leading-6 font-semibold break-words text-primary">
+						{title}
+					</AlertDialog.Title>
+					{body !== undefined && (
+						<AlertDialog.Description className="mt-2 text-body break-words text-secondary">
+							{body}
+						</AlertDialog.Description>
+					)}
+					{details !== undefined && <div className="mt-2 min-h-0 overflow-y-auto">{details}</div>}
+					<div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+						<AlertDialog.Close
+							ref={cancelRef}
+							type="button"
+							onClick={onCancel}
+							className={`${BUTTON_BASE_CLASS} border border-strong text-primary hover:bg-fill-ghost-hover`}
+						>
+							{cancelLabel}
+						</AlertDialog.Close>
+						<button
+							type="button"
+							onClick={() => {
+								onConfirm();
+								onOpenChange(false);
+							}}
+							className={`${BUTTON_BASE_CLASS} ${CONFIRM_VARIANT_CLASS[variant]}`}
+						>
+							{confirmLabel}
+						</button>
+					</div>
+				</AlertDialog.Popup>
+			</AlertDialog.Portal>
+		</AlertDialog.Root>
+	);
 }

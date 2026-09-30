@@ -1,248 +1,248 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
-import { ChevronRight, CheckCircle, Circle, Ban, List, GitBranch } from "lucide-react";
-import { tasksQueryOptions } from "../lib/api/tasks";
-import { TaskDependencyGraph } from "../components/task-dependency-graph";
-import { DebugLink } from "../components/debug-link";
-import { MarkdownInline, MarkdownView } from "../components/markdown-view";
-import { TaskMetadata } from "../components/task-metadata";
-import { TaskOwner } from "../components/task-owner";
-import { ListPageHeader } from "../components/list-page-header";
-import { filterTasks } from "../lib/task-search";
-import { ORPHANED_TASKS_DESCRIPTION, ORPHANED_TASKS_PROJECT_ID } from "../lib/task-groups";
+import {createFileRoute, Link} from "@tanstack/react-router";
+import {useSuspenseQuery} from "@tanstack/react-query";
+import {useMemo, useState} from "react";
+import {ChevronRight, CheckCircle, Circle, Ban, List, GitBranch} from "lucide-react";
+import {tasksQueryOptions} from "../lib/api/tasks";
+import {TaskDependencyGraph} from "../components/task-dependency-graph";
+import {DebugLink} from "../components/debug-link";
+import {MarkdownInline, MarkdownView} from "../components/markdown-view";
+import {TaskMetadata} from "../components/task-metadata";
+import {TaskOwner} from "../components/task-owner";
+import {ListPageHeader} from "../components/list-page-header";
+import {filterTasks} from "../lib/task-search";
+import {ORPHANED_TASKS_DESCRIPTION, ORPHANED_TASKS_PROJECT_ID} from "../lib/task-groups";
 
 export const Route = createFileRoute("/tasks")({
-  component: TasksPage,
-  loader: ({ context: { queryClient } }) => queryClient.ensureQueryData(tasksQueryOptions),
-  head: () => ({
-    meta: [{ title: "Tasks" }],
-  }),
+	component: TasksPage,
+	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(tasksQueryOptions),
+	head: () => ({
+		meta: [{title: "Tasks"}],
+	}),
 });
 
 const statusBadgeClasses: Record<string, string> = {
-  pending: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
-  in_progress: "bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400",
-  completed: "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400",
+	pending: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+	in_progress: "bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400",
+	completed: "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400",
 };
 
 const statusLabel: Record<string, string> = {
-  pending: "Pending",
-  in_progress: "In Progress",
-  completed: "Completed",
+	pending: "Pending",
+	in_progress: "In Progress",
+	completed: "Completed",
 };
 
 type View = "list" | "graph";
 
 function TasksPage() {
-  const { data: groups } = useSuspenseQuery(tasksQueryOptions);
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const [view, setView] = useState<View>("list");
-  const [searchQuery, setSearchQuery] = useState("");
-  const taskCount = groups.reduce((total, group) => total + group.tasks.length, 0);
-  const visibleGroups = useMemo(
-    () =>
-      groups
-        .map((group) => {
-          const tasks = filterTasks(group.tasks, searchQuery);
-          return {
-            ...group,
-            tasks,
-            totalPending: tasks.filter((task) => task.status === "pending").length,
-            totalInProgress: tasks.filter((task) => task.status === "in_progress").length,
-          };
-        })
-        .filter((group) => group.tasks.length > 0),
-    [groups, searchQuery],
-  );
-  const visibleProjects = useMemo(() => {
-    const projectMap = new Map<
-      string,
-      { projectId: string; projectName: string; sessions: typeof visibleGroups }
-    >();
-    for (const group of visibleGroups) {
-      let project = projectMap.get(group.projectId);
-      if (!project) {
-        project = {
-          projectId: group.projectId,
-          projectName: group.projectName,
-          sessions: [],
-        };
-        projectMap.set(group.projectId, project);
-      }
-      project.sessions.push(group);
-    }
-    return [...projectMap.values()];
-  }, [visibleGroups]);
+	const {data: groups} = useSuspenseQuery(tasksQueryOptions);
+	const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+	const [view, setView] = useState<View>("list");
+	const [searchQuery, setSearchQuery] = useState("");
+	const taskCount = groups.reduce((total, group) => total + group.tasks.length, 0);
+	const visibleGroups = useMemo(
+		() =>
+			groups
+				.map((group) => {
+					const tasks = filterTasks(group.tasks, searchQuery);
+					return {
+						...group,
+						tasks,
+						totalPending: tasks.filter((task) => task.status === "pending").length,
+						totalInProgress: tasks.filter((task) => task.status === "in_progress").length,
+					};
+				})
+				.filter((group) => group.tasks.length > 0),
+		[groups, searchQuery],
+	);
+	const visibleProjects = useMemo(() => {
+		const projectMap = new Map<string, {projectId: string; projectName: string; sessions: typeof visibleGroups}>();
+		for (const group of visibleGroups) {
+			let project = projectMap.get(group.projectId);
+			if (!project) {
+				project = {
+					projectId: group.projectId,
+					projectName: group.projectName,
+					sessions: [],
+				};
+				projectMap.set(group.projectId, project);
+			}
+			project.sessions.push(group);
+		}
+		return [...projectMap.values()];
+	}, [visibleGroups]);
 
-  function toggleGroup(projectDir: string) {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(projectDir)) {
-        next.delete(projectDir);
-      } else {
-        next.add(projectDir);
-      }
-      return next;
-    });
-  }
+	function toggleGroup(projectDir: string) {
+		setCollapsed((prev) => {
+			const next = new Set(prev);
+			if (next.has(projectDir)) {
+				next.delete(projectDir);
+			} else {
+				next.add(projectDir);
+			}
+			return next;
+		});
+	}
 
-  return (
-    <div>
-      <ListPageHeader
-        title="Tasks"
-        count={taskCount}
-        itemLabel="task"
-        actions={
-          <div className="flex items-center gap-1 rounded-md border border-strong p-0.5">
-            <button
-              type="button"
-              onClick={() => setView("list")}
-              className={`rounded px-2 py-1 text-xs transition-colors ${view === "list" ? "bg-surface-0 text-primary" : "text-t6 hover:text-secondary"}`}
-              title="List view"
-            >
-              <List className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setView("graph")}
-              className={`rounded px-2 py-1 text-xs transition-colors ${view === "graph" ? "bg-surface-0 text-primary" : "text-t6 hover:text-secondary"}`}
-              title="Dependency graph"
-            >
-              <GitBranch className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        }
-      />
+	return (
+		<div>
+			<ListPageHeader
+				title="Tasks"
+				count={taskCount}
+				itemLabel="task"
+				actions={
+					<div className="flex items-center gap-1 rounded-md border border-strong p-0.5">
+						<button
+							type="button"
+							onClick={() => setView("list")}
+							className={`rounded px-2 py-1 text-xs transition-colors ${view === "list" ? "bg-surface-0 text-primary" : "text-t6 hover:text-secondary"}`}
+							title="List view"
+						>
+							<List className="h-3.5 w-3.5" />
+						</button>
+						<button
+							type="button"
+							onClick={() => setView("graph")}
+							className={`rounded px-2 py-1 text-xs transition-colors ${view === "graph" ? "bg-surface-0 text-primary" : "text-t6 hover:text-secondary"}`}
+							title="Dependency graph"
+						>
+							<GitBranch className="h-3.5 w-3.5" />
+						</button>
+					</div>
+				}
+			/>
 
-      <input
-        type="search"
-        value={searchQuery}
-        onChange={(event) => setSearchQuery(event.target.value)}
-        placeholder="Search tasks by title, description, active form, or owner..."
-        aria-label="Search tasks"
-        className="mt-4 w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent-100"
-      />
+			<input
+				type="search"
+				value={searchQuery}
+				onChange={(event) => setSearchQuery(event.target.value)}
+				placeholder="Search tasks by title, description, active form, or owner..."
+				aria-label="Search tasks"
+				className="mt-4 w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent-100"
+			/>
 
-      {groups.length === 0 ? (
-        <p className="mt-4 text-t6">No incomplete tasks across any projects.</p>
-      ) : visibleGroups.length === 0 ? (
-        <p className="mt-4 text-t6">No tasks match &ldquo;{searchQuery.trim()}&rdquo;.</p>
-      ) : view === "graph" ? (
-        <TaskDependencyGraph groups={visibleGroups} />
-      ) : (
-        <div className="mt-6 space-y-6">
-          {visibleProjects.map((project) => (
-            <section key={project.projectId}>
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-t6">
-                {project.projectName}
-              </h2>
-              {project.projectId === ORPHANED_TASKS_PROJECT_ID && (
-                <p className="mt-1 text-xs text-t6">{ORPHANED_TASKS_DESCRIPTION}</p>
-              )}
-              <div className="mt-2 space-y-4">
-                {project.sessions.map((group) => {
-                  const isCollapsed = collapsed.has(group.projectDir);
-                  return (
-                    <div key={group.projectDir}>
-                      <div className="flex w-full items-center gap-2 border-b border-border pb-1">
-                        <button
-                          type="button"
-                          aria-expanded={!isCollapsed}
-                          aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${group.sessionTitle}`}
-                          onClick={() => toggleGroup(group.projectDir)}
-                          className="cursor-pointer"
-                        >
-                          <ChevronRight
-                            className="h-3 w-3 text-t6 transition-transform duration-200"
-                            style={{
-                              transform: isCollapsed ? "rotate(0deg)" : "rotate(90deg)",
-                            }}
-                          />
-                        </button>
-                        {group.sessionId !== null ? (
-                          <Link
-                            to="/session/$id"
-                            params={{ id: group.sessionId }}
-                            className="text-sm font-semibold text-primary no-underline hover:text-accent-100"
-                          >
-                            {group.sessionTitle}
-                          </Link>
-                        ) : (
-                          <span className="text-sm font-semibold text-primary">
-                            {group.sessionTitle}
-                          </span>
-                        )}
-                        <span className="flex items-center gap-2 text-xs text-t6">
-                          {group.totalPending > 0 && (
-                            <span className="flex items-center gap-1">
-                              <Circle className="h-3 w-3" /> {group.totalPending} pending
-                            </span>
-                          )}
-                          {group.totalInProgress > 0 && (
-                            <span className="flex items-center gap-1 text-blue-500">
-                              <Circle className="h-3 w-3" /> {group.totalInProgress} in progress
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                      {!isCollapsed && (
-                        <div className="mt-2 space-y-1">
-                          {group.tasks.map((task) => (
-                            <div
-                              key={task.taskId}
-                              className="flex items-start gap-2 rounded-md p-2"
-                            >
-                              {task.status === "completed" ? (
-                                <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
-                              ) : (
-                                <Circle
-                                  className={`mt-0.5 h-4 w-4 shrink-0 ${task.status === "in_progress" ? "text-blue-500" : "text-t6"}`}
-                                />
-                              )}
-                              <div className="min-w-0 flex-1">
-                                <div className="text-sm text-primary flex items-center gap-1.5">
-                                  <span>
-                                    #{task.taskId} <MarkdownInline markdown={task.subject} />
-                                  </span>
-                                  <DebugLink
-                                    kind="task"
-                                    relativePath={`${group.projectDir}/${task.taskId}.json`}
-                                  />
-                                </div>
-                                {task.description && task.description !== task.subject && (
-                                  <div className="mt-0.5 text-xs text-t6">
-                                    <MarkdownView markdown={task.description} />
-                                  </div>
-                                )}
-                                <div className="mt-0.5 flex items-center gap-2">
-                                  <span
-                                    className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${statusBadgeClasses[task.status] ?? ""}`}
-                                  >
-                                    {statusLabel[task.status] ?? task.status}
-                                  </span>
-                                  {task.blockedBy.length > 0 && (
-                                    <span className="flex items-center gap-1 text-[10px] text-orange-500">
-                                      <Ban className="h-3 w-3" />
-                                      blocked by #{task.blockedBy.join(", #")}
-                                    </span>
-                                  )}
-                                  <TaskOwner owner={task.owner} />
-                                </div>
-                                <TaskMetadata metadata={task.metadata} />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+			{groups.length === 0 ? (
+				<p className="mt-4 text-t6">No incomplete tasks across any projects.</p>
+			) : visibleGroups.length === 0 ? (
+				<p className="mt-4 text-t6">No tasks match &ldquo;{searchQuery.trim()}&rdquo;.</p>
+			) : view === "graph" ? (
+				<TaskDependencyGraph groups={visibleGroups} />
+			) : (
+				<div className="mt-6 space-y-6">
+					{visibleProjects.map((project) => (
+						<section key={project.projectId}>
+							<h2 className="text-xs font-semibold uppercase tracking-wider text-t6">
+								{project.projectName}
+							</h2>
+							{project.projectId === ORPHANED_TASKS_PROJECT_ID && (
+								<p className="mt-1 text-xs text-t6">{ORPHANED_TASKS_DESCRIPTION}</p>
+							)}
+							<div className="mt-2 space-y-4">
+								{project.sessions.map((group) => {
+									const isCollapsed = collapsed.has(group.projectDir);
+									return (
+										<div key={group.projectDir}>
+											<div className="flex w-full items-center gap-2 border-b border-border pb-1">
+												<button
+													type="button"
+													aria-expanded={!isCollapsed}
+													aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${group.sessionTitle}`}
+													onClick={() => toggleGroup(group.projectDir)}
+													className="cursor-pointer"
+												>
+													<ChevronRight
+														className="h-3 w-3 text-t6 transition-transform duration-200"
+														style={{
+															transform: isCollapsed ? "rotate(0deg)" : "rotate(90deg)",
+														}}
+													/>
+												</button>
+												{group.sessionId !== null ? (
+													<Link
+														to="/session/$id"
+														params={{id: group.sessionId}}
+														className="text-sm font-semibold text-primary no-underline hover:text-accent-100"
+													>
+														{group.sessionTitle}
+													</Link>
+												) : (
+													<span className="text-sm font-semibold text-primary">
+														{group.sessionTitle}
+													</span>
+												)}
+												<span className="flex items-center gap-2 text-xs text-t6">
+													{group.totalPending > 0 && (
+														<span className="flex items-center gap-1">
+															<Circle className="h-3 w-3" /> {group.totalPending} pending
+														</span>
+													)}
+													{group.totalInProgress > 0 && (
+														<span className="flex items-center gap-1 text-blue-500">
+															<Circle className="h-3 w-3" /> {group.totalInProgress} in
+															progress
+														</span>
+													)}
+												</span>
+											</div>
+											{!isCollapsed && (
+												<div className="mt-2 space-y-1">
+													{group.tasks.map((task) => (
+														<div
+															key={task.taskId}
+															className="flex items-start gap-2 rounded-md p-2"
+														>
+															{task.status === "completed" ? (
+																<CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
+															) : (
+																<Circle
+																	className={`mt-0.5 h-4 w-4 shrink-0 ${task.status === "in_progress" ? "text-blue-500" : "text-t6"}`}
+																/>
+															)}
+															<div className="min-w-0 flex-1">
+																<div className="text-sm text-primary flex items-center gap-1.5">
+																	<span>
+																		#{task.taskId}{" "}
+																		<MarkdownInline markdown={task.subject} />
+																	</span>
+																	<DebugLink
+																		kind="task"
+																		relativePath={`${group.projectDir}/${task.taskId}.json`}
+																	/>
+																</div>
+																{task.description &&
+																	task.description !== task.subject && (
+																		<div className="mt-0.5 text-xs text-t6">
+																			<MarkdownView markdown={task.description} />
+																		</div>
+																	)}
+																<div className="mt-0.5 flex items-center gap-2">
+																	<span
+																		className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${statusBadgeClasses[task.status] ?? ""}`}
+																	>
+																		{statusLabel[task.status] ?? task.status}
+																	</span>
+																	{task.blockedBy.length > 0 && (
+																		<span className="flex items-center gap-1 text-[10px] text-orange-500">
+																			<Ban className="h-3 w-3" />
+																			blocked by #{task.blockedBy.join(", #")}
+																		</span>
+																	)}
+																	<TaskOwner owner={task.owner} />
+																</div>
+																<TaskMetadata metadata={task.metadata} />
+															</div>
+														</div>
+													))}
+												</div>
+											)}
+										</div>
+									);
+								})}
+							</div>
+						</section>
+					))}
+				</div>
+			)}
+		</div>
+	);
 }

@@ -1,6 +1,6 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { DiffFile } from "../../components/changes/diff-file";
-import { withDarkTheme, withTheme } from "../layout/decorators";
+import type {Meta, StoryObj} from "@storybook/react-vite";
+import {DiffFile} from "../../components/changes/diff-file";
+import {withDarkTheme, withTheme} from "../layout/decorators";
 
 const MODIFIED = `diff --git a/src/lib/greet.ts b/src/lib/greet.ts
 index 1111111..2222222 100644
@@ -76,48 +76,48 @@ index 8888888..9999999 100644
 // Decorate per story: a meta-level light ThemeProvider would wrap the dark one
 // and its effect would run last, forcing the Dark story back to light.
 const meta = {
-  title: "Changes/DiffFile",
-  component: DiffFile,
-  args: { patch: MODIFIED },
+	title: "Changes/DiffFile",
+	component: DiffFile,
+	args: {patch: MODIFIED},
 } satisfies Meta<typeof DiffFile>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Modified: Story = {
-  decorators: [withTheme],
+	decorators: [withTheme],
 };
 
 export const SideBySide: Story = {
-  decorators: [withTheme],
-  args: { diffStyle: "split" },
+	decorators: [withTheme],
+	args: {diffStyle: "split"},
 };
 
 export const Rename: Story = {
-  decorators: [withTheme],
-  args: { patch: RENAME },
+	decorators: [withTheme],
+	args: {patch: RENAME},
 };
 
 export const Deletion: Story = {
-  decorators: [withTheme],
-  args: { patch: DELETION },
+	decorators: [withTheme],
+	args: {patch: DELETION},
 };
 
 export const NoNewlineAtEndOfFile: Story = {
-  decorators: [withTheme],
-  args: { patch: NO_NEWLINE },
+	decorators: [withTheme],
+	args: {patch: NO_NEWLINE},
 };
 
 export const ContextGap: Story = {
-  decorators: [withTheme],
-  args: { patch: CONTEXT_GAP },
+	decorators: [withTheme],
+	args: {patch: CONTEXT_GAP},
 };
 
 export const Collapsed: Story = {
-  decorators: [withTheme],
-  args: { defaultCollapsed: true },
+	decorators: [withTheme],
+	args: {defaultCollapsed: true},
 };
 
 export const Dark: Story = {
-  decorators: [withDarkTheme],
+	decorators: [withDarkTheme],
 };

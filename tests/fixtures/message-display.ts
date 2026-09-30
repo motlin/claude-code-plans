@@ -8,10 +8,10 @@
  * schema drift Claude Code ships.
  */
 export const messageDisplayFixture = {
-  session_id: "abc-123",
-  transcript_path: "/Users/u/.claude/projects/-Users-u-projects-app/abc-123.jsonl",
-  cwd: "/Users/u/projects/app",
-  hook_event_name: "MessageDisplay" as const,
-  message: "Here is the answer you asked for.",
-  message_id: "msg_018a7f9b2c3d4e5f",
+	session_id: "abc-123",
+	transcript_path: "/Users/u/.claude/projects/-Users-u-projects-app/abc-123.jsonl",
+	cwd: "/Users/u/projects/app",
+	hook_event_name: "MessageDisplay" as const,
+	message: "Here is the answer you asked for.",
+	message_id: "msg_018a7f9b2c3d4e5f",
 };

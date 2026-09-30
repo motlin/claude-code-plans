@@ -2,15 +2,15 @@
    margin-top); the flex gap is the only such spacing, so nothing here relies on
    collapsing margins. */
 .markdown {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  font-family: var(--font-sans);
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 20px;
-  color: var(--color-primary);
-  white-space: normal;
+	display: flex;
+	flex-direction: column;
+	gap: 7px;
+	font-family: var(--font-sans);
+	font-size: 14px;
+	font-weight: 400;
+	line-height: 20px;
+	color: var(--color-primary);
+	white-space: normal;
 }
 
 .markdown h1,
@@ -19,254 +19,254 @@
 .markdown h4,
 .markdown h5,
 .markdown h6 {
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 20px;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 20px;
 }
 
 .markdown h1 {
-  font-size: 18px;
-  line-height: 24px;
+	font-size: 18px;
+	line-height: 24px;
 }
 
 .markdown p {
-  margin: 4px 0;
-  white-space: pre-wrap;
+	margin: 4px 0;
+	white-space: pre-wrap;
 }
 
 .markdown ul {
-  list-style-type: disc;
-  list-style-position: outside;
-  padding-left: 28px;
+	list-style-type: disc;
+	list-style-position: outside;
+	padding-left: 28px;
 }
 
 .markdown ol {
-  list-style-type: decimal;
-  list-style-position: outside;
-  padding-left: 28px;
+	list-style-type: decimal;
+	list-style-position: outside;
+	padding-left: 28px;
 }
 
 .markdown ul > li,
 .markdown ol > li {
-  margin-top: 2px;
-  margin-bottom: 2px;
-  padding-left: 7px;
+	margin-top: 2px;
+	margin-bottom: 2px;
+	padding-left: 7px;
 }
 
 /* Task list checkboxes */
 .markdown :global(.contains-task-list) {
-  list-style-type: none;
-  margin-left: 0;
-  padding-left: 0;
+	list-style-type: none;
+	margin-left: 0;
+	padding-left: 0;
 }
 
 .markdown :global(.task-list-item) {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
+	display: flex;
+	align-items: baseline;
+	gap: 0.5rem;
 }
 
 .markdown :global(.task-list-item-checkbox) {
-  margin: 0;
-  accent-color: var(--accent-100);
+	margin: 0;
+	accent-color: var(--accent-100);
 }
 
 .markdown blockquote {
-  border-left: 4px solid var(--color-border);
-  padding-left: 1rem;
-  font-style: italic;
-  margin: 8px 0;
+	border-left: 4px solid var(--color-border);
+	padding-left: 1rem;
+	font-style: italic;
+	margin: 8px 0;
 }
 
 .markdown pre {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 400;
-  line-height: 20px;
-  background: rgba(250, 249, 245, 0.5);
-  border: 0.5px solid rgba(31, 30, 29, 0.15);
-  border-radius: 8px;
-  padding: 8px;
-  margin: 8px 0;
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
-  overflow-x: visible;
-  width: fit-content;
-  max-width: 100%;
+	font-family: var(--font-mono);
+	font-size: 13px;
+	font-weight: 400;
+	line-height: 20px;
+	background: rgba(250, 249, 245, 0.5);
+	border: 0.5px solid rgba(31, 30, 29, 0.15);
+	border-radius: 8px;
+	padding: 8px;
+	margin: 8px 0;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+	overflow-x: visible;
+	width: fit-content;
+	max-width: 100%;
 }
 
 :global(.dark) .markdown pre {
-  background: hsl(30 3.3% 11.8% / 0.5);
-  border-color: rgba(255, 255, 255, 0.1);
+	background: hsl(30 3.3% 11.8% / 0.5);
+	border-color: rgba(255, 255, 255, 0.1);
 }
 
 /* Upstream wraps every fence in a relative box (`epitaxy-codeblock relative
    max-w-full w-fit`) so an absolutely positioned control strip can sit over the
    card's top-right corner. */
 .markdown :global(.markdown-codeblock) {
-  position: relative;
-  width: fit-content;
-  max-width: 100%;
+	position: relative;
+	width: fit-content;
+	max-width: 100%;
 }
 
 /* The wrapper is now the flex child carrying the column gap, so the `pre` drops
    its own margin. Its right padding grows by upstream's 24px so a long line
    never runs under the copy button. */
 .markdown :global(.markdown-codeblock) > pre {
-  margin: 0;
-  padding-right: 32px;
+	margin: 0;
+	padding-right: 32px;
 }
 
 /* `absolute right-[calc(var(--p4)+var(--p1))] flex gap-[var(--p2)] top-[var(--p4)]` */
 .markdown :global(.markdown-code-copy) {
-  position: absolute;
-  top: 5px;
-  right: 7px;
-  display: flex;
-  gap: 3px;
-  opacity: 0;
-  transition: opacity 150ms cubic-bezier(0.215, 0.61, 0.355, 1);
+	position: absolute;
+	top: 5px;
+	right: 7px;
+	display: flex;
+	gap: 3px;
+	opacity: 0;
+	transition: opacity 150ms cubic-bezier(0.215, 0.61, 0.355, 1);
 }
 
 .markdown :global(.markdown-codeblock):hover :global(.markdown-code-copy),
 .markdown :global(.markdown-code-copy):focus-within {
-  opacity: 1;
+	opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .markdown :global(.markdown-code-copy) {
-    transition: none;
-  }
+	.markdown :global(.markdown-code-copy) {
+		transition: none;
+	}
 }
 
 .markdown :global(.markdown-code-copy) button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  aspect-ratio: 1;
-  padding: 4px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--color-t6);
-  cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	aspect-ratio: 1;
+	padding: 4px;
+	border: 0;
+	border-radius: 5px;
+	background: transparent;
+	color: var(--color-t6);
+	cursor: pointer;
 }
 
 .markdown :global(.markdown-code-copy) button:hover {
-  color: var(--color-primary);
-  background: hsl(0 0% 4.3137% / 0.06);
+	color: var(--color-primary);
+	background: hsl(0 0% 4.3137% / 0.06);
 }
 
 :global(.dark) .markdown :global(.markdown-code-copy) button:hover {
-  background: hsl(0 0% 100% / 0.08);
+	background: hsl(0 0% 100% / 0.08);
 }
 
 /* Upstream's cds-era prose chip: red ink at 0.9em/600 on the 5% alpha wash.
    Both tokens are themed, so dark mode needs no override here. */
 .markdown code {
-  font-family: var(--font-mono);
-  font-size: 0.9em;
-  font-weight: 600;
-  line-height: 18.2px;
-  background: var(--color-alpha-1);
-  border: none;
-  color: var(--color-code-ink);
-  border-radius: var(--radius-r4);
-  padding: 0.06em 0.25em;
+	font-family: var(--font-mono);
+	font-size: 0.9em;
+	font-weight: 600;
+	line-height: 18.2px;
+	background: var(--color-alpha-1);
+	border: none;
+	color: var(--color-code-ink);
+	border-radius: var(--radius-r4);
+	padding: 0.06em 0.25em;
 }
 
 /* Fences keep the 20px code line-height; only the inline chip is tightened. */
 .markdown pre code {
-  background: none;
-  border: none;
-  color: inherit;
-  padding: 0;
-  font-weight: 400;
-  line-height: 20px;
-  border-radius: 0;
+	background: none;
+	border: none;
+	color: inherit;
+	padding: 0;
+	font-weight: 400;
+	line-height: 20px;
+	border-radius: 0;
 }
 
 .markdown a {
-  color: inherit;
-  text-decoration: underline;
+	color: inherit;
+	text-decoration: underline;
 }
 
 .markdown a:hover {
-  opacity: 0.7;
+	opacity: 0.7;
 }
 
 /* A claude.ai artifact link reads as a compact card, like upstream's link card:
    the artifact's title over an "Artifact · host" caption. */
 .markdown a:global(.artifact-link-card) {
-  display: inline-flex;
-  flex-direction: column;
-  max-width: min(318px, 100%);
-  padding: 6px 10px;
-  border-radius: 6px;
-  box-shadow: inset 0 0 0 1px hsl(0 0% 4.3137% / 0.12);
-  text-decoration: none;
-  vertical-align: middle;
+	display: inline-flex;
+	flex-direction: column;
+	max-width: min(318px, 100%);
+	padding: 6px 10px;
+	border-radius: 6px;
+	box-shadow: inset 0 0 0 1px hsl(0 0% 4.3137% / 0.12);
+	text-decoration: none;
+	vertical-align: middle;
 }
 
 :global(.dark) .markdown a:global(.artifact-link-card) {
-  box-shadow: inset 0 0 0 1px hsl(0 0% 100% / 0.14);
+	box-shadow: inset 0 0 0 1px hsl(0 0% 100% / 0.14);
 }
 
 .markdown a:global(.artifact-link-card):hover {
-  opacity: 1;
-  background: hsl(0 0% 4.3137% / 0.06);
+	opacity: 1;
+	background: hsl(0 0% 4.3137% / 0.06);
 }
 
 :global(.dark) .markdown a:global(.artifact-link-card):hover {
-  background: hsl(0 0% 100% / 0.08);
+	background: hsl(0 0% 100% / 0.08);
 }
 
 .markdown :global(.artifact-link-card-title),
 .markdown :global(.artifact-link-card-meta) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .markdown :global(.artifact-link-card-meta) {
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--color-t6);
+	font-size: 12px;
+	line-height: 16px;
+	color: var(--color-t6);
 }
 
 /* Upstream sits every table in an `overflow-x-auto` div so a wide table scrolls
    on its own instead of stretching the transcript column. */
 .markdown :global(.markdown-table-wrapper) {
-  overflow-x: auto;
+	overflow-x: auto;
 }
 
 .markdown table {
-  border-collapse: collapse;
-  width: 100%;
-  font-size: 13px;
+	border-collapse: collapse;
+	width: 100%;
+	font-size: 13px;
 }
 
 .markdown th,
 .markdown td {
-  border: 1px solid var(--color-border);
-  padding: 6px 12px;
-  text-align: left;
+	border: 1px solid var(--color-border);
+	padding: 6px 12px;
+	text-align: left;
 }
 
 .markdown th {
-  font-weight: 600;
-  background: var(--color-surface-0);
+	font-weight: 600;
+	background: var(--color-surface-0);
 }
 
 .markdown hr {
-  border: none;
-  border-top: 1px solid var(--color-border);
-  margin: 16px 0;
+	border: none;
+	border-top: 1px solid var(--color-border);
+	margin: 16px 0;
 }
 
 .markdown img {
-  max-width: 100%;
-  border-radius: 0.5rem;
+	max-width: 100%;
+	border-radius: 0.5rem;
 }
 
 /* Top-level blocks are spaced by the flex gap, so their own block margins would
@@ -275,27 +275,27 @@
    scoped to direct children and declared after them. `hr` keeps its own wider
    spacing. */
 .markdown > :not(hr) {
-  margin-block: 0;
+	margin-block: 0;
 }
 
 /* User message bubble — the bubble is a neutral wash over the page background,
    so markdown inside it keeps the standard chrome. Only wrapping is constrained,
    because the bubble is a flex child that must not be widened by long tokens. */
 :global(.user-message-bubble) .markdown {
-  overflow-wrap: anywhere;
-  min-width: 0;
+	overflow-wrap: anywhere;
+	min-width: 0;
 }
 
 /* Shiki dual theme support:
    Light theme uses inline color/background-color directly.
    Dark theme uses --shiki-dark and --shiki-dark-bg CSS variables. */
 :global(.dark) .markdown :global(.shiki) {
-  color: var(--shiki-dark) !important;
-  background-color: hsl(30 3.3% 11.8% / 0.5) !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
+	color: var(--shiki-dark) !important;
+	background-color: hsl(30 3.3% 11.8% / 0.5) !important;
+	border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 :global(.dark) .markdown :global(.shiki) span {
-  color: var(--shiki-dark) !important;
-  background-color: transparent !important;
+	color: var(--shiki-dark) !important;
+	background-color: transparent !important;
 }

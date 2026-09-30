@@ -1,279 +1,266 @@
 // @vitest-environment jsdom
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {
-  createMemoryHistory,
-  createRootRoute,
-  createRoute,
-  createRouter,
-  Outlet,
-  RouterProvider,
+	createMemoryHistory,
+	createRootRoute,
+	createRoute,
+	createRouter,
+	Outlet,
+	RouterProvider,
 } from "@tanstack/react-router";
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
-import { DEFAULTS, SettingsProvider } from "../src/components/settings-provider";
-import { useActiveSection } from "../src/components/sidebar/hooks";
-import { navItems } from "../src/components/sidebar/navigation";
-import { Sidebar } from "../src/components/sidebar/Sidebar";
-import { applicationSettingsQueryOptions } from "../src/lib/api/application-settings";
-import { approvalsQueryOptions } from "../src/lib/api/approvals";
-import { notificationsQueryOptions } from "../src/lib/api/notifications";
-import { activeSessionsQueryOptions } from "../src/lib/api/sessions";
-import { installLocalStorage } from "./fake-storage";
-import { NAV_SECTIONS } from "../src/lib/nav-sections";
-import { redirectLegacyPlugins } from "../src/routes/plugins";
-import { ToastProvider } from "../src/components/toast";
+import {cleanup, render, screen, waitFor, within} from "@testing-library/react";
+import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
+import {DEFAULTS, SettingsProvider} from "../src/components/settings-provider";
+import {useActiveSection} from "../src/components/sidebar/hooks";
+import {navItems} from "../src/components/sidebar/navigation";
+import {Sidebar} from "../src/components/sidebar/Sidebar";
+import {applicationSettingsQueryOptions} from "../src/lib/api/application-settings";
+import {approvalsQueryOptions} from "../src/lib/api/approvals";
+import {notificationsQueryOptions} from "../src/lib/api/notifications";
+import {activeSessionsQueryOptions} from "../src/lib/api/sessions";
+import {installLocalStorage} from "./fake-storage";
+import {NAV_SECTIONS} from "../src/lib/nav-sections";
+import {redirectLegacyPlugins} from "../src/routes/plugins";
+import {ToastProvider} from "../src/components/toast";
 
 function seedQueryClient(): QueryClient {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false },
-    },
-  });
-  queryClient.setQueryData(approvalsQueryOptions().queryKey, {
-    approvals: [
-      {
-        sessionId: "session-test-200",
-        projectId: "project-test-200",
-        projectName: "project-test-200",
-        toolName: "ExitPlanMode",
-        toolUseId: "tool-use-test-200",
-        blockedSince: "2026-01-01T00:00:00.000Z",
-        planFilename: null,
-        questionPreview: null,
-        questionOptions: [],
-      },
-    ],
-  });
-  queryClient.setQueryData(notificationsQueryOptions().queryKey, { notifications: [] });
-  queryClient.setQueryData(
-    activeSessionsQueryOptions(DEFAULTS.activeTimeoutSec * 1000).queryKey,
-    [],
-  );
-  queryClient.setQueryData(applicationSettingsQueryOptions.queryKey, {
-    herdrWritesEnabled: false,
-    shellPaneEnabled: true,
-    visibleNavSections: NAV_SECTIONS.filter((section) => section !== "herdr" && section !== "tmux"),
-    ignoredDirs: ["node_modules"],
-  });
-  return queryClient;
+	const queryClient = new QueryClient({
+		defaultOptions: {
+			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
+		},
+	});
+	queryClient.setQueryData(approvalsQueryOptions().queryKey, {
+		approvals: [
+			{
+				sessionId: "session-test-200",
+				projectId: "project-test-200",
+				projectName: "project-test-200",
+				toolName: "ExitPlanMode",
+				toolUseId: "tool-use-test-200",
+				blockedSince: "2026-01-01T00:00:00.000Z",
+				planFilename: null,
+				questionPreview: null,
+				questionOptions: [],
+			},
+		],
+	});
+	queryClient.setQueryData(notificationsQueryOptions().queryKey, {notifications: []});
+	queryClient.setQueryData(activeSessionsQueryOptions(DEFAULTS.activeTimeoutSec * 1000).queryKey, []);
+	queryClient.setQueryData(applicationSettingsQueryOptions.queryKey, {
+		herdrWritesEnabled: false,
+		shellPaneEnabled: true,
+		visibleNavSections: NAV_SECTIONS.filter((section) => section !== "herdr" && section !== "tmux"),
+		ignoredDirs: ["node_modules"],
+	});
+	return queryClient;
 }
 
 async function renderSidebarAt(path: string) {
-  const queryClient = seedQueryClient();
-  const rootRoute = createRootRoute({
-    component: () => (
-      <QueryClientProvider client={queryClient}>
-        <ToastProvider>
-          <SettingsProvider>
-            <Sidebar collapsed={false} />
-            <Outlet />
-          </SettingsProvider>
-        </ToastProvider>
-      </QueryClientProvider>
-    ),
-  });
-  const pageRoute = createRoute({ getParentRoute: () => rootRoute, path });
-  const router = createRouter({
-    routeTree: rootRoute.addChildren([pageRoute]),
-    history: createMemoryHistory({ initialEntries: [path] }),
-  });
-  await router.load();
-  render(<RouterProvider router={router} />);
+	const queryClient = seedQueryClient();
+	const rootRoute = createRootRoute({
+		component: () => (
+			<QueryClientProvider client={queryClient}>
+				<ToastProvider>
+					<SettingsProvider>
+						<Sidebar collapsed={false} />
+						<Outlet />
+					</SettingsProvider>
+				</ToastProvider>
+			</QueryClientProvider>
+		),
+	});
+	const pageRoute = createRoute({getParentRoute: () => rootRoute, path});
+	const router = createRouter({
+		routeTree: rootRoute.addChildren([pageRoute]),
+		history: createMemoryHistory({initialEntries: [path]}),
+	});
+	await router.load();
+	render(<RouterProvider router={router} />);
 }
 
 afterEach(cleanup);
 
 beforeEach(() => {
-  installLocalStorage();
+	installLocalStorage();
 });
 
 describe("sidebar navigation", () => {
-  it("links to each top-level section", () => {
-    expect(navItems.map(({ label, to }) => ({ label, to }))).toStrictEqual([
-      { label: "Artifacts", to: "/artifacts" },
-      { label: "Routines", to: "/routines" },
-      { label: "Background jobs", to: "/jobs" },
-      { label: "Active", to: "/active" },
-      { label: "Herdr", to: "/herdr" },
-      { label: "Tmux Windows", to: "/tmux" },
-      { label: "Approvals", to: "/approvals" },
-      { label: "Notifications", to: "/notifications" },
-      { label: "Tasks", to: "/tasks" },
-      { label: "Projects", to: "/projects" },
-      { label: "Plans", to: "/plans" },
-      { label: "Memories", to: "/memories" },
-      { label: "Sessions", to: "/sessions" },
-      { label: "Customize", to: "/customize" },
-    ]);
-  });
+	it("links to each top-level section", () => {
+		expect(navItems.map(({label, to}) => ({label, to}))).toStrictEqual([
+			{label: "Artifacts", to: "/artifacts"},
+			{label: "Routines", to: "/routines"},
+			{label: "Background jobs", to: "/jobs"},
+			{label: "Active", to: "/active"},
+			{label: "Herdr", to: "/herdr"},
+			{label: "Tmux Windows", to: "/tmux"},
+			{label: "Approvals", to: "/approvals"},
+			{label: "Notifications", to: "/notifications"},
+			{label: "Tasks", to: "/tasks"},
+			{label: "Projects", to: "/projects"},
+			{label: "Plans", to: "/plans"},
+			{label: "Memories", to: "/memories"},
+			{label: "Sessions", to: "/sessions"},
+			{label: "Customize", to: "/customize"},
+		]);
+	});
 
-  it("drops Settings, Claude Config and Setup, which live in the account menu", () => {
-    expect(
-      navItems.filter(
-        (item) =>
-          ["Settings", "Claude Config", "Setup"].includes(item.label) ||
-          ["/settings", "/settings/edit", "/setup"].includes(item.to),
-      ),
-    ).toStrictEqual([]);
-  });
+	it("drops Settings, Claude Config and Setup, which live in the account menu", () => {
+		expect(
+			navItems.filter(
+				(item) =>
+					["Settings", "Claude Config", "Setup"].includes(item.label) ||
+					["/settings", "/settings/edit", "/setup"].includes(item.to),
+			),
+		).toStrictEqual([]);
+	});
 
-  it("replaces the Plugins row with a Customize row", () => {
-    expect({
-      customize: navItems
-        .filter((item) => item.section === "customize")
-        .map(({ label, to }) => ({ label, to })),
-      plugins: navItems.filter((item) => item.label === "Plugins" || item.to === "/plugins"),
-    }).toStrictEqual({ customize: [{ label: "Customize", to: "/customize" }], plugins: [] });
-  });
+	it("replaces the Plugins row with a Customize row", () => {
+		expect({
+			customize: navItems.filter((item) => item.section === "customize").map(({label, to}) => ({label, to})),
+			plugins: navItems.filter((item) => item.label === "Plugins" || item.to === "/plugins"),
+		}).toStrictEqual({customize: [{label: "Customize", to: "/customize"}], plugins: []});
+	});
 
-  it("activates the Artifacts section on the gallery", () => {
-    expect(
-      useActiveSection([{ fullPath: "/artifacts", params: {} }] as unknown as Parameters<
-        typeof useActiveSection
-      >[0]),
-    ).toStrictEqual({ section: "artifacts", activeItemId: null });
-  });
+	it("activates the Artifacts section on the gallery", () => {
+		expect(
+			useActiveSection([{fullPath: "/artifacts", params: {}}] as unknown as Parameters<
+				typeof useActiveSection
+			>[0]),
+		).toStrictEqual({section: "artifacts", activeItemId: null});
+	});
 
-  it("activates the Routines section on the Routines page", () => {
-    expect(
-      useActiveSection([{ fullPath: "/routines", params: {} }] as unknown as Parameters<
-        typeof useActiveSection
-      >[0]),
-    ).toStrictEqual({ section: "routines", activeItemId: null });
-  });
+	it("activates the Routines section on the Routines page", () => {
+		expect(
+			useActiveSection([{fullPath: "/routines", params: {}}] as unknown as Parameters<
+				typeof useActiveSection
+			>[0]),
+		).toStrictEqual({section: "routines", activeItemId: null});
+	});
 
-  it("activates the Background jobs section on the Background jobs page", () => {
-    expect(
-      useActiveSection([{ fullPath: "/jobs", params: {} }] as unknown as Parameters<
-        typeof useActiveSection
-      >[0]),
-    ).toStrictEqual({ section: "jobs", activeItemId: null });
-  });
+	it("activates the Background jobs section on the Background jobs page", () => {
+		expect(
+			useActiveSection([{fullPath: "/jobs", params: {}}] as unknown as Parameters<typeof useActiveSection>[0]),
+		).toStrictEqual({section: "jobs", activeItemId: null});
+	});
 
-  it("activates the Customize section on Customize and legacy plugin routes", () => {
-    const sectionAt = (fullPath: string, params: Record<string, string> = {}) =>
-      useActiveSection([{ fullPath, params }] as unknown as Parameters<typeof useActiveSection>[0]);
+	it("activates the Customize section on Customize and legacy plugin routes", () => {
+		const sectionAt = (fullPath: string, params: Record<string, string> = {}) =>
+			useActiveSection([{fullPath, params}] as unknown as Parameters<typeof useActiveSection>[0]);
 
-    expect([
-      sectionAt("/customize/skills"),
-      sectionAt("/customize/plugins/id/$pluginId", { pluginId: "tools@market" }),
-      sectionAt("/plugins"),
-      sectionAt("/command/$source/$filename"),
-    ]).toStrictEqual([
-      { section: "customize", activeItemId: null },
-      { section: "customize", activeItemId: null },
-      { section: "customize", activeItemId: null },
-      { section: "customize", activeItemId: null },
-    ]);
-  });
+		expect([
+			sectionAt("/customize/skills"),
+			sectionAt("/customize/plugins/id/$pluginId", {pluginId: "tools@market"}),
+			sectionAt("/plugins"),
+			sectionAt("/command/$source/$filename"),
+		]).toStrictEqual([
+			{section: "customize", activeItemId: null},
+			{section: "customize", activeItemId: null},
+			{section: "customize", activeItemId: null},
+			{section: "customize", activeItemId: null},
+		]);
+	});
 
-  it("redirects the old Plugins nav link into Customize", async () => {
-    const rootRoute = createRootRoute({ component: Outlet });
-    const router = createRouter({
-      routeTree: rootRoute.addChildren([
-        createRoute({
-          getParentRoute: () => rootRoute,
-          path: "/plugins",
-          beforeLoad: redirectLegacyPlugins,
-        }),
-        createRoute({ getParentRoute: () => rootRoute, path: "/customize/plugins" }),
-      ]),
-      history: createMemoryHistory({ initialEntries: ["/plugins"] }),
-    });
-    await router.load();
+	it("redirects the old Plugins nav link into Customize", async () => {
+		const rootRoute = createRootRoute({component: Outlet});
+		const router = createRouter({
+			routeTree: rootRoute.addChildren([
+				createRoute({
+					getParentRoute: () => rootRoute,
+					path: "/plugins",
+					beforeLoad: redirectLegacyPlugins,
+				}),
+				createRoute({getParentRoute: () => rootRoute, path: "/customize/plugins"}),
+			]),
+			history: createMemoryHistory({initialEntries: ["/plugins"]}),
+		});
+		await router.load();
 
-    expect(router.state.location.pathname).toBe("/customize/plugins");
-  });
+		expect(router.state.location.pathname).toBe("/customize/plugins");
+	});
 
-  it("activates no nav section on the Claude Config editor or Setup pages", () => {
-    const sectionAt = (fullPath: string) =>
-      useActiveSection([{ fullPath, params: {} }] as unknown as Parameters<
-        typeof useActiveSection
-      >[0]);
+	it("activates no nav section on the Claude Config editor or Setup pages", () => {
+		const sectionAt = (fullPath: string) =>
+			useActiveSection([{fullPath, params: {}}] as unknown as Parameters<typeof useActiveSection>[0]);
 
-    expect([sectionAt("/settings/edit"), sectionAt("/setup")]).toStrictEqual([
-      { section: null, activeItemId: null },
-      { section: null, activeItemId: null },
-    ]);
-  });
+		expect([sectionAt("/settings/edit"), sectionAt("/setup")]).toStrictEqual([
+			{section: null, activeItemId: null},
+			{section: null, activeItemId: null},
+		]);
+	});
 
-  it("activates the tmux section on the tmux route", () => {
-    const matches = [{ fullPath: "/tmux", params: {} }] as unknown as Parameters<
-      typeof useActiveSection
-    >[0];
+	it("activates the tmux section on the tmux route", () => {
+		const matches = [{fullPath: "/tmux", params: {}}] as unknown as Parameters<typeof useActiveSection>[0];
 
-    expect(useActiveSection(matches)).toStrictEqual({ section: "tmux", activeItemId: null });
-  });
+		expect(useActiveSection(matches)).toStrictEqual({section: "tmux", activeItemId: null});
+	});
 
-  it("activates the Herdr section and terminal on a live terminal route", () => {
-    const matches = [
-      { fullPath: "/herdr/terminal/$sessionId", params: { sessionId: "session-test-100" } },
-    ] as unknown as Parameters<typeof useActiveSection>[0];
+	it("activates the Herdr section and terminal on a live terminal route", () => {
+		const matches = [
+			{fullPath: "/herdr/terminal/$sessionId", params: {sessionId: "session-test-100"}},
+		] as unknown as Parameters<typeof useActiveSection>[0];
 
-    expect(useActiveSection(matches)).toStrictEqual({
-      section: "herdr",
-      activeItemId: "session-test-100",
-    });
-  });
+		expect(useActiveSection(matches)).toStrictEqual({
+			section: "herdr",
+			activeItemId: "session-test-100",
+		});
+	});
 });
 
 describe("sidebar nav rows", () => {
-  function navRows(): HTMLElement[] {
-    const footer = screen.getByTestId("sidebar-footer");
-    return screen
-      .getAllByRole("link")
-      .filter((link) => navItems.some((item) => item.to === link.getAttribute("href")))
-      .filter((link) => !footer.contains(link));
-  }
+	function navRows(): HTMLElement[] {
+		const footer = screen.getByTestId("sidebar-footer");
+		return screen
+			.getAllByRole("link")
+			.filter((link) => navItems.some((item) => item.to === link.getAttribute("href")))
+			.filter((link) => !footer.contains(link));
+	}
 
-  it("uses the upstream row recipe on every nav link", async () => {
-    await renderSidebarAt("/tasks");
-    await waitFor(() => screen.getByRole("link", { name: "Tasks" }));
+	it("uses the upstream row recipe on every nav link", async () => {
+		await renderSidebarAt("/tasks");
+		await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
 
-    const rows = navRows();
-    expect(rows.length).toBeGreaterThan(0);
-    expect(
-      rows.map((row) => ({
-        href: row.getAttribute("href"),
-        height: row.classList.contains("h-[var(--sb-row-h)]"),
-        radius: row.classList.contains("rounded-[var(--sb-radius)]"),
-        leadingSlot: row.querySelector(":scope > .df-leading-slot > svg") !== null,
-      })),
-    ).toStrictEqual(
-      rows.map((row) => ({
-        href: row.getAttribute("href"),
-        height: true,
-        radius: true,
-        leadingSlot: true,
-      })),
-    );
-  });
+		const rows = navRows();
+		expect(rows.length).toBeGreaterThan(0);
+		expect(
+			rows.map((row) => ({
+				href: row.getAttribute("href"),
+				height: row.classList.contains("h-[var(--sb-row-h)]"),
+				radius: row.classList.contains("rounded-[var(--sb-radius)]"),
+				leadingSlot: row.querySelector(":scope > .df-leading-slot > svg") !== null,
+			})),
+		).toStrictEqual(
+			rows.map((row) => ({
+				href: row.getAttribute("href"),
+				height: true,
+				radius: true,
+				leadingSlot: true,
+			})),
+		);
+	});
 
-  it("marks only the active row as focused", async () => {
-    await renderSidebarAt("/tasks");
-    await waitFor(() => screen.getByRole("link", { name: "Tasks" }));
+	it("marks only the active row as focused", async () => {
+		await renderSidebarAt("/tasks");
+		await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
 
-    expect(
-      navRows()
-        .filter((row) => row.hasAttribute("data-selected"))
-        .map((row) => ({
-          href: row.getAttribute("href"),
-          selected: row.getAttribute("data-selected"),
-        })),
-    ).toStrictEqual([{ href: "/tasks", selected: "focused" }]);
-  });
+		expect(
+			navRows()
+				.filter((row) => row.hasAttribute("data-selected"))
+				.map((row) => ({
+					href: row.getAttribute("href"),
+					selected: row.getAttribute("data-selected"),
+				})),
+		).toStrictEqual([{href: "/tasks", selected: "focused"}]);
+	});
 
-  it("renders count badges inside the trailing slot", async () => {
-    await renderSidebarAt("/tasks");
-    const approvals = await waitFor(() => screen.getByRole("link", { name: /Approvals/ }));
+	it("renders count badges inside the trailing slot", async () => {
+		await renderSidebarAt("/tasks");
+		const approvals = await waitFor(() => screen.getByRole("link", {name: /Approvals/}));
 
-    const tail = approvals.querySelector(":scope > .df-tail-mark");
-    expect({
-      text: tail?.textContent,
-      badgeTitle: tail
-        ? within(tail as HTMLElement).getByTitle("1 awaiting approval").textContent
-        : null,
-    }).toStrictEqual({ text: "1", badgeTitle: "1" });
-  });
+		const tail = approvals.querySelector(":scope > .df-tail-mark");
+		expect({
+			text: tail?.textContent,
+			badgeTitle: tail ? within(tail as HTMLElement).getByTitle("1 awaiting approval").textContent : null,
+		}).toStrictEqual({text: "1", badgeTitle: "1"});
+	});
 });

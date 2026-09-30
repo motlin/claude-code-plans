@@ -2,19 +2,19 @@
 @import "tw-animate-css";
 
 @font-face {
-  font-family: "MesloLGS NF Web";
-  src: url("/fonts/MesloLGSNerdFontMono-Regular.woff2") format("woff2");
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
+	font-family: "MesloLGS NF Web";
+	src: url("/fonts/MesloLGSNerdFontMono-Regular.woff2") format("woff2");
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
 }
 
 @font-face {
-  font-family: "MesloLGS NF Web";
-  src: url("/fonts/MesloLGSNerdFontMono-Bold.woff2") format("woff2");
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
+	font-family: "MesloLGS NF Web";
+	src: url("/fonts/MesloLGSNerdFontMono-Bold.woff2") format("woff2");
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
 }
 
 @custom-variant dark (&:is(.dark *));
@@ -22,392 +22,387 @@
 /* Not inline, so `font-mono` and `font-sans` read their variables and Settings ▸
    Code font / Interface font can override them on <html>. */
 @theme {
-  --font-mono:
-    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, "Cascadia Code", monospace;
-  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+	--font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, "Cascadia Code", monospace;
+	--font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 @theme inline {
-  --font-voice: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+	--font-voice: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
 
-  /* Upstream claude.ai/code semantic surfaces and fills */
-  --color-page: var(--upstream-page);
-  --color-surface-0: var(--upstream-surface-0);
-  --color-surface-1: var(--upstream-surface-1);
-  --color-surface-2: var(--upstream-surface-2);
-  --color-surface-3: var(--upstream-surface-3);
-  --color-surface-popover: var(--upstream-surface-popover);
-  --color-alpha-1: var(--upstream-alpha-1);
-  --color-alpha-2: var(--upstream-alpha-2);
-  --color-alpha-3: var(--upstream-alpha-3);
-  --color-backdrop: var(--upstream-backdrop);
-  --color-fill-control: var(--upstream-fill-control);
-  --color-fill-ghost-hover: var(--upstream-fill-ghost-hover);
-  --color-fill-primary: var(--upstream-fill-primary);
-  --color-fill-primary-hover: var(--upstream-fill-primary-hover);
+	/* Upstream claude.ai/code semantic surfaces and fills */
+	--color-page: var(--upstream-page);
+	--color-surface-0: var(--upstream-surface-0);
+	--color-surface-1: var(--upstream-surface-1);
+	--color-surface-2: var(--upstream-surface-2);
+	--color-surface-3: var(--upstream-surface-3);
+	--color-surface-popover: var(--upstream-surface-popover);
+	--color-alpha-1: var(--upstream-alpha-1);
+	--color-alpha-2: var(--upstream-alpha-2);
+	--color-alpha-3: var(--upstream-alpha-3);
+	--color-backdrop: var(--upstream-backdrop);
+	--color-fill-control: var(--upstream-fill-control);
+	--color-fill-ghost-hover: var(--upstream-fill-ghost-hover);
+	--color-fill-primary: var(--upstream-fill-primary);
+	--color-fill-primary-hover: var(--upstream-fill-primary-hover);
 
-  /* Upstream claude.ai/code semantic text and borders */
-  --color-primary: var(--upstream-text-primary);
-  --color-secondary: var(--upstream-text-secondary);
-  --color-on-primary: var(--upstream-on-primary);
-  --color-border: var(--upstream-border);
-  --color-subtle: var(--upstream-border-subtle);
-  --color-strong: var(--upstream-border-strong);
+	/* Upstream claude.ai/code semantic text and borders */
+	--color-primary: var(--upstream-text-primary);
+	--color-secondary: var(--upstream-text-secondary);
+	--color-on-primary: var(--upstream-on-primary);
+	--color-border: var(--upstream-border);
+	--color-subtle: var(--upstream-border-subtle);
+	--color-strong: var(--upstream-border-strong);
 
-  /* Semantic colors */
-  --color-danger-000: var(--danger-000);
-  --color-danger-100: var(--danger-100);
-  --color-danger-200: var(--danger-200);
-  --color-danger-900: var(--danger-900);
-  --color-success-000: var(--success-000);
-  --color-success-100: var(--success-100);
-  --color-success-900: var(--success-900);
-  --color-warning-000: var(--warning-000);
-  --color-warning-100: var(--warning-100);
-  --color-accent-000: var(--accent-000);
-  --color-accent-100: var(--accent-100);
-  --color-accent-900: var(--accent-900);
+	/* Semantic colors */
+	--color-danger-000: var(--danger-000);
+	--color-danger-100: var(--danger-100);
+	--color-danger-200: var(--danger-200);
+	--color-danger-900: var(--danger-900);
+	--color-success-000: var(--success-000);
+	--color-success-100: var(--success-100);
+	--color-success-900: var(--success-900);
+	--color-warning-000: var(--warning-000);
+	--color-warning-100: var(--warning-100);
+	--color-accent-000: var(--accent-000);
+	--color-accent-100: var(--accent-100);
+	--color-accent-900: var(--accent-900);
 
-  /* User message bubble */
-  --color-user-msg-bg: var(--user-msg-bg);
-  --color-user-msg-text: var(--user-msg-text);
+	/* User message bubble */
+	--color-user-msg-bg: var(--user-msg-bg);
+	--color-user-msg-text: var(--user-msg-text);
 
-  /* Automated (external) message bubble */
-  --color-auto-msg-bg: var(--auto-msg-bg);
-  --color-auto-msg-text: var(--auto-msg-text);
+	/* Automated (external) message bubble */
+	--color-auto-msg-bg: var(--auto-msg-bg);
+	--color-auto-msg-text: var(--auto-msg-text);
 
-  /* Upstream claude.ai/code — extended diff stat colors */
-  --color-extended-green: var(--upstream-extended-green);
-  --color-extended-pink: var(--upstream-extended-pink);
+	/* Upstream claude.ai/code — extended diff stat colors */
+	--color-extended-green: var(--upstream-extended-green);
+	--color-extended-pink: var(--upstream-extended-pink);
 
-  /* Upstream claude.ai/code — session row icons (src/components/status-dot.tsx) */
-  --color-ink-muted: var(--upstream-text-muted);
-  /* Upstream cds-era inline code chip ink (prose `code`). */
-  --color-code-ink: var(--upstream-code-ink);
-  /* Upstream --cds-text-git-added / --cds-text-git-removed: summary row stats. */
-  --color-diff-added: var(--upstream-extended-green);
-  --color-diff-removed: var(--upstream-extended-pink);
-  --color-git-opened: #1e9e3c;
-  --color-git-draft: #737373;
-  --color-git-merged: #8e6bd9;
-  --color-git-closed: #ff3a30;
-  --color-git-conflicting: #c5621b;
-  --color-git-queued: #98801f;
+	/* Upstream claude.ai/code — session row icons (src/components/status-dot.tsx) */
+	--color-ink-muted: var(--upstream-text-muted);
+	/* Upstream cds-era inline code chip ink (prose `code`). */
+	--color-code-ink: var(--upstream-code-ink);
+	/* Upstream --cds-text-git-added / --cds-text-git-removed: summary row stats. */
+	--color-diff-added: var(--upstream-extended-green);
+	--color-diff-removed: var(--upstream-extended-pink);
+	--color-git-opened: #1e9e3c;
+	--color-git-draft: #737373;
+	--color-git-merged: #8e6bd9;
+	--color-git-closed: #ff3a30;
+	--color-git-conflicting: #c5621b;
+	--color-git-queued: #98801f;
 
-  /* Upstream claude.ai/code — transparency layers (bg-t1, bg-t2, etc.) */
-  --color-t0: var(--upstream-t0);
-  --color-t1: var(--upstream-t1);
-  --color-t2: var(--upstream-t2);
-  --color-t3: var(--upstream-t3);
-  --color-t4: var(--upstream-t4);
-  --color-t5: var(--upstream-t5);
-  --color-t6: var(--upstream-t6);
-  --color-t7: var(--upstream-t7);
-  --color-t8: var(--upstream-t8);
-  --color-t9: var(--upstream-t9);
+	/* Upstream claude.ai/code — transparency layers (bg-t1, bg-t2, etc.) */
+	--color-t0: var(--upstream-t0);
+	--color-t1: var(--upstream-t1);
+	--color-t2: var(--upstream-t2);
+	--color-t3: var(--upstream-t3);
+	--color-t4: var(--upstream-t4);
+	--color-t5: var(--upstream-t5);
+	--color-t6: var(--upstream-t6);
+	--color-t7: var(--upstream-t7);
+	--color-t8: var(--upstream-t8);
+	--color-t9: var(--upstream-t9);
 
-  /* Upstream claude.ai/code — spacing scale (gap-g3, p-p6, etc.) */
-  --spacing-g1: 2px;
-  --spacing-g2: 3px;
-  --spacing-g3: 4px;
-  --spacing-g4: 5px;
-  --spacing-g5: 6px;
-  --spacing-g6: 8px;
-  --spacing-g7: 10px;
-  --spacing-g8: 12px;
-  --spacing-p3: 4px;
-  --spacing-p4: 5px;
-  --spacing-p5: 6px;
-  --spacing-p6: 8px;
-  --spacing-p7: 10px;
-  --spacing-p8: 12px;
+	/* Upstream claude.ai/code — spacing scale (gap-g3, p-p6, etc.) */
+	--spacing-g1: 2px;
+	--spacing-g2: 3px;
+	--spacing-g3: 4px;
+	--spacing-g4: 5px;
+	--spacing-g5: 6px;
+	--spacing-g6: 8px;
+	--spacing-g7: 10px;
+	--spacing-g8: 12px;
+	--spacing-p3: 4px;
+	--spacing-p4: 5px;
+	--spacing-p5: 6px;
+	--spacing-p6: 8px;
+	--spacing-p7: 10px;
+	--spacing-p8: 12px;
 
-  /* Upstream claude.ai/code — border radii (rounded-r3, rounded-r6, etc.) */
-  --radius-r3: 4px;
-  --radius-r4: 5px;
-  --radius-r5: 6px;
-  --radius-r6: 8px;
-  --radius-r7: 10px;
-  --radius-card: 12px;
-  /* Upstream claude.ai/code — composer field (--cds-radius-composer) */
-  --radius-composer: 14px;
+	/* Upstream claude.ai/code — border radii (rounded-r3, rounded-r6, etc.) */
+	--radius-r3: 4px;
+	--radius-r4: 5px;
+	--radius-r5: 6px;
+	--radius-r6: 8px;
+	--radius-r7: 10px;
+	--radius-card: 12px;
+	/* Upstream claude.ai/code — composer field (--cds-radius-composer) */
+	--radius-composer: 14px;
 
-  /* Upstream claude.ai/code — side pane surface (shadow-panel-sm) */
-  --shadow-panel-sm: var(--pane-shadow);
-  /* Upstream claude.ai/code — dialog surface (shadow-panel-lg) */
-  --shadow-panel-lg: var(--panel-lg-shadow);
-  /* Upstream claude.ai/code — collapsed sidebar peek popover (--df-shadow-pop) */
-  --shadow-pop: var(--pop-shadow);
+	/* Upstream claude.ai/code — side pane surface (shadow-panel-sm) */
+	--shadow-panel-sm: var(--pane-shadow);
+	/* Upstream claude.ai/code — dialog surface (shadow-panel-lg) */
+	--shadow-panel-lg: var(--panel-lg-shadow);
+	/* Upstream claude.ai/code — collapsed sidebar peek popover (--df-shadow-pop) */
+	--shadow-pop: var(--pop-shadow);
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+	--radius-sm: calc(var(--radius) - 4px);
+	--radius-md: calc(var(--radius) - 2px);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) + 4px);
 
-  /* Upstream claude.ai/code — typography scale */
-  --text-body: var(--upstream-text-body);
-  --text-body--line-height: var(--upstream-leading-body);
-  --text-code: var(--upstream-text-code);
-  --text-code--line-height: var(--upstream-leading-code);
-  --text-footnote: var(--upstream-text-footnote);
-  --text-footnote--line-height: var(--upstream-leading-footnote);
-  --text-caption: 12px;
-  --text-caption--line-height: 17px;
+	/* Upstream claude.ai/code — typography scale */
+	--text-body: var(--upstream-text-body);
+	--text-body--line-height: var(--upstream-leading-body);
+	--text-code: var(--upstream-text-code);
+	--text-code--line-height: var(--upstream-leading-code);
+	--text-footnote: var(--upstream-text-footnote);
+	--text-footnote--line-height: var(--upstream-leading-footnote);
+	--text-caption: 12px;
+	--text-caption--line-height: 17px;
 }
 
 :root {
-  --radius: 0.625rem;
+	--radius: 0.625rem;
 
-  /* Upstream semantic palette */
-  --upstream-page: hsl(60 14% 99%);
-  --upstream-surface-0: hsl(60 14% 97%);
-  --upstream-surface-1: hsl(60 14% 99%);
-  --upstream-surface-2: hsl(0 0% 100%);
-  --upstream-surface-3: #fff;
-  --upstream-surface-popover: #fff;
-  --pop-shadow: 0 0 0 0.5px #0000000f, 0 4px 12px #0000000f, 0 16px 40px #00000014;
-  /* Upstream claude.ai/code — ChatComposer card (shadow-composer, -hover, -focus) */
-  --composer-shadow: 0 4px 20px rgb(0 0 0 / 0.075), 0 0 0 1px rgb(11 11 11 / 0.2);
-  --composer-shadow-hover: 0 4px 20px rgb(0 0 0 / 0.09), 0 0 0 1px rgb(11 11 11 / 0.28);
-  --composer-shadow-focus: 0 4px 20px rgb(0 0 0 / 0.1), 0 0 0 1px rgb(11 11 11 / 0.35);
-  --upstream-alpha-1: rgb(11 11 11 / 0.05);
-  --upstream-alpha-2: rgb(11 11 11 / 0.08);
-  --upstream-alpha-3: rgb(11 11 11 / 0.12);
-  --upstream-backdrop: rgb(0 0 0 / 0.4);
-  --panel-lg-shadow:
-    0 0 0 1px rgb(11 11 11 / 0.1), 0 4px 8px 0 rgb(11 11 11 / 0.08),
-    0 12px 28px -2px rgb(11 11 11 / 0.08);
-  --upstream-fill-control: hsl(0 0% 4% / 0.1);
-  --upstream-fill-ghost-hover: hsl(0 0% 4% / 0.05);
-  --upstream-fill-primary: hsl(0 0% 4%);
-  --upstream-fill-primary-hover: hsl(60 2% 17%);
-  --upstream-text-primary: hsl(0 0% 4%);
-  --upstream-text-secondary: hsl(40 3% 31%);
-  --upstream-on-primary: hsl(0 0% 100%);
-  --upstream-border-subtle: hsl(0 0% 4% / 0.06);
-  --upstream-border: hsl(0 0% 4% / 0.1);
-  --upstream-border-strong: hsl(0 0% 4% / 0.2);
+	/* Upstream semantic palette */
+	--upstream-page: hsl(60 14% 99%);
+	--upstream-surface-0: hsl(60 14% 97%);
+	--upstream-surface-1: hsl(60 14% 99%);
+	--upstream-surface-2: hsl(0 0% 100%);
+	--upstream-surface-3: #fff;
+	--upstream-surface-popover: #fff;
+	--pop-shadow: 0 0 0 0.5px #0000000f, 0 4px 12px #0000000f, 0 16px 40px #00000014;
+	/* Upstream claude.ai/code — ChatComposer card (shadow-composer, -hover, -focus) */
+	--composer-shadow: 0 4px 20px rgb(0 0 0 / 0.075), 0 0 0 1px rgb(11 11 11 / 0.2);
+	--composer-shadow-hover: 0 4px 20px rgb(0 0 0 / 0.09), 0 0 0 1px rgb(11 11 11 / 0.28);
+	--composer-shadow-focus: 0 4px 20px rgb(0 0 0 / 0.1), 0 0 0 1px rgb(11 11 11 / 0.35);
+	--upstream-alpha-1: rgb(11 11 11 / 0.05);
+	--upstream-alpha-2: rgb(11 11 11 / 0.08);
+	--upstream-alpha-3: rgb(11 11 11 / 0.12);
+	--upstream-backdrop: rgb(0 0 0 / 0.4);
+	--panel-lg-shadow:
+		0 0 0 1px rgb(11 11 11 / 0.1), 0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(11 11 11 / 0.08);
+	--upstream-fill-control: hsl(0 0% 4% / 0.1);
+	--upstream-fill-ghost-hover: hsl(0 0% 4% / 0.05);
+	--upstream-fill-primary: hsl(0 0% 4%);
+	--upstream-fill-primary-hover: hsl(60 2% 17%);
+	--upstream-text-primary: hsl(0 0% 4%);
+	--upstream-text-secondary: hsl(40 3% 31%);
+	--upstream-on-primary: hsl(0 0% 100%);
+	--upstream-border-subtle: hsl(0 0% 4% / 0.06);
+	--upstream-border: hsl(0 0% 4% / 0.1);
+	--upstream-border-strong: hsl(0 0% 4% / 0.2);
 
-  /* Semantic colors */
-  --danger-000: hsl(0 58.6% 34.1%);
-  --danger-100: hsl(0 56.2% 45.4%);
-  --danger-200: hsl(0 56.2% 45.4%);
-  --danger-900: hsl(0 50% 95%);
-  --success-000: hsl(125 100% 18%);
-  --success-100: hsl(103 72.3% 26.9%);
-  --success-900: hsl(86 45.1% 90%);
-  --warning-000: hsl(45 91.8% 19%);
-  --warning-100: hsl(39 88.8% 28%);
-  --accent-000: hsl(210 73.7% 40.2%);
-  --accent-100: hsl(210 70.9% 51.6%);
-  --accent-900: hsl(211 72% 90%);
+	/* Semantic colors */
+	--danger-000: hsl(0 58.6% 34.1%);
+	--danger-100: hsl(0 56.2% 45.4%);
+	--danger-200: hsl(0 56.2% 45.4%);
+	--danger-900: hsl(0 50% 95%);
+	--success-000: hsl(125 100% 18%);
+	--success-100: hsl(103 72.3% 26.9%);
+	--success-900: hsl(86 45.1% 90%);
+	--warning-000: hsl(45 91.8% 19%);
+	--warning-100: hsl(39 88.8% 28%);
+	--accent-000: hsl(210 73.7% 40.2%);
+	--accent-100: hsl(210 70.9% 51.6%);
+	--accent-900: hsl(211 72% 90%);
 
-  /* User message bubble — matches claude.ai/code: --cds-bg-user-message, the 5% alpha wash + body ink */
-  --user-msg-bg: var(--upstream-alpha-1);
-  --user-msg-text: var(--upstream-text-primary);
+	/* User message bubble — matches claude.ai/code: --cds-bg-user-message, the 5% alpha wash + body ink */
+	--user-msg-bg: var(--upstream-alpha-1);
+	--user-msg-text: var(--upstream-text-primary);
 
-  /* Jump-to-message flash — accent tint, so it reads against the neutral bubble */
-  --message-highlight-bg: hsl(210 100% 45% / 0.07);
+	/* Jump-to-message flash — accent tint, so it reads against the neutral bubble */
+	--message-highlight-bg: hsl(210 100% 45% / 0.07);
 
-  /* Automated (external) message bubble — neutral gray tint */
-  --auto-msg-bg: hsl(0 0% 50% / 0.08);
-  --auto-msg-text: hsl(0 0% 35%);
+	/* Automated (external) message bubble — neutral gray tint */
+	--auto-msg-bg: hsl(0 0% 50% / 0.08);
+	--auto-msg-text: hsl(0 0% 35%);
 
-  /* Upstream claude.ai/code — extended diff stat colors */
-  --upstream-extended-green: hsl(134 68% 37%);
-  --upstream-extended-pink: hsl(342 73% 47%);
+	/* Upstream claude.ai/code — extended diff stat colors */
+	--upstream-extended-green: hsl(134 68% 37%);
+	--upstream-extended-pink: hsl(342 73% 47%);
 
-  /* Upstream claude.ai/code — transparency layers (gray-900 base) */
-  --upstream-t0: hsl(0 0% 4% / 0);
-  --upstream-t1: hsl(0 0% 4% / 0.04);
-  --upstream-t2: hsl(0 0% 4% / 0.06);
-  --upstream-t3: hsl(0 0% 4% / 0.1);
-  --upstream-t4: hsl(0 0% 4% / 0.16);
-  --upstream-t5: hsl(0 0% 4% / 0.25);
-  --upstream-t6: hsl(0 0% 4% / 0.5);
-  --upstream-t7: hsl(0 0% 4% / 0.8);
-  --upstream-t8: hsl(0 0% 4% / 0.9);
-  --upstream-t9: hsl(0 0% 4% / 1);
+	/* Upstream claude.ai/code — transparency layers (gray-900 base) */
+	--upstream-t0: hsl(0 0% 4% / 0);
+	--upstream-t1: hsl(0 0% 4% / 0.04);
+	--upstream-t2: hsl(0 0% 4% / 0.06);
+	--upstream-t3: hsl(0 0% 4% / 0.1);
+	--upstream-t4: hsl(0 0% 4% / 0.16);
+	--upstream-t5: hsl(0 0% 4% / 0.25);
+	--upstream-t6: hsl(0 0% 4% / 0.5);
+	--upstream-t7: hsl(0 0% 4% / 0.8);
+	--upstream-t8: hsl(0 0% 4% / 0.9);
+	--upstream-t9: hsl(0 0% 4% / 1);
 
-  /* Upstream claude.ai/code — typography */
-  --upstream-text-body: 14px;
-  --upstream-leading-body: 20px;
-  --upstream-text-code: 13px;
-  --upstream-leading-code: 20px;
-  /* Secondary label size (upstream --cds-font-size-footnote). */
-  --upstream-text-footnote: 13px;
-  --upstream-leading-footnote: 18px;
+	/* Upstream claude.ai/code — typography */
+	--upstream-text-body: 14px;
+	--upstream-leading-body: 20px;
+	--upstream-text-code: 13px;
+	--upstream-leading-code: 20px;
+	/* Secondary label size (upstream --cds-font-size-footnote). */
+	--upstream-text-footnote: 13px;
+	--upstream-leading-footnote: 18px;
 
-  /* Upstream claude.ai/code — transcript rhythm. Gap between turns, and
+	/* Upstream claude.ai/code — transcript rhythm. Gap between turns, and
      between the content blocks inside one turn (half the body line box). */
-  --chat-turn-gap: 15px;
-  --chat-item-gap: 10px;
+	--chat-turn-gap: 15px;
+	--chat-item-gap: 10px;
 
-  /* Upstream claude.ai/code — card surfaces. Tool cards are drawn as a
+	/* Upstream claude.ai/code — card surfaces. Tool cards are drawn as a
      hairline outline over the page rather than a filled wash; the code cards
      (Read/Edit/Write) additionally sit on the page color. */
-  --card-outline: hsl(0 0% 4% / 0.1);
-  --code-card-bg: hsl(60 14% 99%);
+	--card-outline: hsl(0 0% 4% / 0.1);
+	--code-card-bg: hsl(60 14% 99%);
 
-  /* Upstream claude.ai/code — <Shortcut> keycaps and the always-dark <Tooltip> */
-  --shortcut-cap-ink: #6d6b67;
-  --shortcut-cap-line: color-mix(in srgb, currentColor 18%, transparent);
-  --tooltip-bg: #20201f;
-  --tooltip-fg: #f0efec;
-  --tooltip-shortcut-ink: #898781;
+	/* Upstream claude.ai/code — <Shortcut> keycaps and the always-dark <Tooltip> */
+	--shortcut-cap-ink: #6d6b67;
+	--shortcut-cap-line: color-mix(in srgb, currentColor 18%, transparent);
+	--tooltip-bg: #20201f;
+	--tooltip-fg: #f0efec;
+	--tooltip-shortcut-ink: #898781;
 
-  /* Upstream claude.ai/code — Menu / ContextMenu popups (bg-surface-3, shadow-panel) */
-  --menu-bg: #fff;
-  --menu-shadow:
-    0 0 0 1px rgb(11 11 11 / 0.1), 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
-  --menu-muted: #898781;
+	/* Upstream claude.ai/code — Menu / ContextMenu popups (bg-surface-3, shadow-panel) */
+	--menu-bg: #fff;
+	--menu-shadow: 0 0 0 1px rgb(11 11 11 / 0.1), 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
+	--menu-muted: #898781;
 
-  /* Upstream claude.ai/code — row status dots (--cds-text-muted / fill-warning|accent|danger) */
-  --upstream-text-muted: #898781;
-  --upstream-code-ink: rgb(142 38 38);
-  --status-dot-awaiting: #fab219;
-  --status-dot-ready: #2a78d6;
-  --status-dot-error: #d03b3b;
+	/* Upstream claude.ai/code — row status dots (--cds-text-muted / fill-warning|accent|danger) */
+	--upstream-text-muted: #898781;
+	--upstream-code-ink: rgb(142 38 38);
+	--status-dot-awaiting: #fab219;
+	--status-dot-ready: #2a78d6;
+	--status-dot-error: #d03b3b;
 
-  /* Upstream claude.ai/code — Settings controls (Switch, SegmentedControl, text field) */
-  --settings-muted: #898781;
-  --settings-switch-track: rgb(11 11 11 / 0.15);
-  --settings-switch-track-hover: rgb(11 11 11 / 0.2);
-  --settings-segmented-track: rgb(11 11 11 / 0.05);
-  --settings-segmented-thumb: #fff;
-  --settings-field-bg: rgba(255, 255, 255, 0.5);
+	/* Upstream claude.ai/code — Settings controls (Switch, SegmentedControl, text field) */
+	--settings-muted: #898781;
+	--settings-switch-track: rgb(11 11 11 / 0.15);
+	--settings-switch-track-hover: rgb(11 11 11 / 0.2);
+	--settings-segmented-track: rgb(11 11 11 / 0.05);
+	--settings-segmented-thumb: #fff;
+	--settings-field-bg: rgba(255, 255, 255, 0.5);
 
-  /* Upstream claude.ai/code — side pane surface (light: shadow-panel-sm) */
-  --pane-shadow: 0 0 0 1px rgb(11 11 11 / 0.06), 0 1px 3px rgba(0, 0, 0, 0.06);
-  --menu-danger-fill: #d03b3b;
-  --menu-on-danger: #fff;
+	/* Upstream claude.ai/code — side pane surface (light: shadow-panel-sm) */
+	--pane-shadow: 0 0 0 1px rgb(11 11 11 / 0.06), 0 1px 3px rgba(0, 0, 0, 0.06);
+	--menu-danger-fill: #d03b3b;
+	--menu-on-danger: #fff;
 
-  /* Sidebar rows: upstream .dframe-sidebar[data-density="comfortable"] (web variant) */
-  --sb-row-h: 32px;
-  --sb-row-px: 2px;
-  --sb-row-gap: 8px;
-  --sb-row-font: 14px;
-  --sb-group-font: 13px;
-  --sb-group-pt: 16px;
-  --sb-icon: 20px;
-  --sb-leading-slot: 28px;
-  --sb-row-ctl: 24px;
-  --sb-radius: 8px;
-  --sb-hover: #f0efec;
-  --sb-selected: #edece8;
-  --sb-bg: color-mix(in srgb, var(--upstream-surface-0) 50%, var(--upstream-surface-1));
+	/* Sidebar rows: upstream .dframe-sidebar[data-density="comfortable"] (web variant) */
+	--sb-row-h: 32px;
+	--sb-row-px: 2px;
+	--sb-row-gap: 8px;
+	--sb-row-font: 14px;
+	--sb-group-font: 13px;
+	--sb-group-pt: 16px;
+	--sb-icon: 20px;
+	--sb-leading-slot: 28px;
+	--sb-row-ctl: 24px;
+	--sb-radius: 8px;
+	--sb-hover: #f0efec;
+	--sb-selected: #edece8;
+	--sb-bg: color-mix(in srgb, var(--upstream-surface-0) 50%, var(--upstream-surface-1));
 }
 
 .dark {
-  /* Sidebar rows: upstream [data-mode="dark"] .dframe-sidebar overrides */
-  --sb-hover: hsl(0 0% 100% / 0.08);
-  --sb-selected: hsl(0 0% 100% / 0.12);
-  --sb-bg: color-mix(in srgb, var(--upstream-page) 80%, black);
+	/* Sidebar rows: upstream [data-mode="dark"] .dframe-sidebar overrides */
+	--sb-hover: hsl(0 0% 100% / 0.08);
+	--sb-selected: hsl(0 0% 100% / 0.12);
+	--sb-bg: color-mix(in srgb, var(--upstream-page) 80%, black);
 
-  /* Upstream semantic palette */
-  --upstream-page: hsl(60 3% 15%);
-  --upstream-surface-0: hsl(30 3% 12%);
-  --upstream-surface-1: hsl(60 3% 15%);
-  --upstream-surface-2: hsl(60 2% 18%);
-  --upstream-surface-3: #20201f;
-  --upstream-surface-popover: hsl(60 2% 18%);
-  --pop-shadow:
-    0 0 0 0.5px hsl(0 0% 100% / 0.12), 0 4px 12px rgb(0 0 0 / 0.3), 0 16px 40px rgb(0 0 0 / 0.4);
-  --composer-shadow: 0 4px 20px rgb(0 0 0 / 0.3), 0 0 0 1px rgb(255 255 255 / 0.15);
-  --composer-shadow-hover: 0 4px 20px rgb(0 0 0 / 0.35), 0 0 0 1px rgb(255 255 255 / 0.22);
-  --composer-shadow-focus: 0 4px 20px rgb(0 0 0 / 0.4), 0 0 0 1px rgb(255 255 255 / 0.3);
-  --upstream-alpha-1: rgb(255 255 255 / 0.05);
-  --upstream-alpha-2: rgb(255 255 255 / 0.08);
-  --upstream-alpha-3: rgb(255 255 255 / 0.12);
-  --upstream-backdrop: rgb(0 0 0 / 0.5);
-  --upstream-fill-control: hsl(0 0% 100% / 0.1);
-  --upstream-fill-ghost-hover: hsl(0 0% 100% / 0.08);
-  --upstream-fill-primary: hsl(53 12% 87%);
-  --upstream-fill-primary-hover: hsl(50 9% 74%);
-  --upstream-text-primary: hsl(53 12% 87%);
-  --upstream-text-secondary: hsl(50 9% 74%);
-  --upstream-on-primary: hsl(60 3% 15%);
-  --upstream-border-subtle: hsl(0 0% 100% / 0.08);
-  --upstream-border: hsl(0 0% 100% / 0.12);
-  --upstream-border-strong: hsl(0 0% 100% / 0.2);
+	/* Upstream semantic palette */
+	--upstream-page: hsl(60 3% 15%);
+	--upstream-surface-0: hsl(30 3% 12%);
+	--upstream-surface-1: hsl(60 3% 15%);
+	--upstream-surface-2: hsl(60 2% 18%);
+	--upstream-surface-3: #20201f;
+	--upstream-surface-popover: hsl(60 2% 18%);
+	--pop-shadow: 0 0 0 0.5px hsl(0 0% 100% / 0.12), 0 4px 12px rgb(0 0 0 / 0.3), 0 16px 40px rgb(0 0 0 / 0.4);
+	--composer-shadow: 0 4px 20px rgb(0 0 0 / 0.3), 0 0 0 1px rgb(255 255 255 / 0.15);
+	--composer-shadow-hover: 0 4px 20px rgb(0 0 0 / 0.35), 0 0 0 1px rgb(255 255 255 / 0.22);
+	--composer-shadow-focus: 0 4px 20px rgb(0 0 0 / 0.4), 0 0 0 1px rgb(255 255 255 / 0.3);
+	--upstream-alpha-1: rgb(255 255 255 / 0.05);
+	--upstream-alpha-2: rgb(255 255 255 / 0.08);
+	--upstream-alpha-3: rgb(255 255 255 / 0.12);
+	--upstream-backdrop: rgb(0 0 0 / 0.5);
+	--upstream-fill-control: hsl(0 0% 100% / 0.1);
+	--upstream-fill-ghost-hover: hsl(0 0% 100% / 0.08);
+	--upstream-fill-primary: hsl(53 12% 87%);
+	--upstream-fill-primary-hover: hsl(50 9% 74%);
+	--upstream-text-primary: hsl(53 12% 87%);
+	--upstream-text-secondary: hsl(50 9% 74%);
+	--upstream-on-primary: hsl(60 3% 15%);
+	--upstream-border-subtle: hsl(0 0% 100% / 0.08);
+	--upstream-border: hsl(0 0% 100% / 0.12);
+	--upstream-border-strong: hsl(0 0% 100% / 0.2);
 
-  /* Semantic colors */
-  --danger-000: hsl(0 98.4% 75.1%);
-  --danger-100: hsl(0 67% 59.6%);
-  --danger-900: hsl(0 46.5% 27.8%);
-  --success-000: hsl(97 59.1% 46.1%);
-  --success-100: hsl(97 75% 32.9%);
-  --success-900: hsl(127 100% 13.9%);
-  --warning-000: hsl(40 71% 50%);
-  --warning-100: hsl(39 93.4% 35.9%);
-  --accent-000: hsl(210 65.5% 67.1%);
-  --accent-100: hsl(210 70.9% 51.6%);
-  --accent-900: hsl(210 55.9% 24.6%);
+	/* Semantic colors */
+	--danger-000: hsl(0 98.4% 75.1%);
+	--danger-100: hsl(0 67% 59.6%);
+	--danger-900: hsl(0 46.5% 27.8%);
+	--success-000: hsl(97 59.1% 46.1%);
+	--success-100: hsl(97 75% 32.9%);
+	--success-900: hsl(127 100% 13.9%);
+	--warning-000: hsl(40 71% 50%);
+	--warning-100: hsl(39 93.4% 35.9%);
+	--accent-000: hsl(210 65.5% 67.1%);
+	--accent-100: hsl(210 70.9% 51.6%);
+	--accent-900: hsl(210 55.9% 24.6%);
 
-  /* User message bubble — matches claude.ai/code: --cds-bg-user-message, the 5% alpha wash + body ink */
-  --user-msg-bg: var(--upstream-alpha-1);
-  --user-msg-text: var(--upstream-text-primary);
+	/* User message bubble — matches claude.ai/code: --cds-bg-user-message, the 5% alpha wash + body ink */
+	--user-msg-bg: var(--upstream-alpha-1);
+	--user-msg-text: var(--upstream-text-primary);
 
-  /* Jump-to-message flash — accent tint, so it reads against the neutral bubble */
-  --message-highlight-bg: hsl(210 100% 55% / 0.1);
+	/* Jump-to-message flash — accent tint, so it reads against the neutral bubble */
+	--message-highlight-bg: hsl(210 100% 55% / 0.1);
 
-  /* Automated (external) message bubble — neutral gray tint */
-  --auto-msg-bg: hsl(0 0% 100% / 0.08);
-  --auto-msg-text: hsl(0 0% 70%);
+	/* Automated (external) message bubble — neutral gray tint */
+	--auto-msg-bg: hsl(0 0% 100% / 0.08);
+	--auto-msg-text: hsl(0 0% 70%);
 
-  /* Upstream claude.ai/code — extended diff stat colors (dark mode) */
-  --upstream-extended-green: hsl(134 60% 52%);
-  --upstream-extended-pink: hsl(342 65% 62%);
+	/* Upstream claude.ai/code — extended diff stat colors (dark mode) */
+	--upstream-extended-green: hsl(134 60% 52%);
+	--upstream-extended-pink: hsl(342 65% 62%);
 
-  /* Upstream claude.ai/code — transparency layers (white base) */
-  --upstream-t0: hsl(0 0% 100% / 0);
-  --upstream-t1: hsl(0 0% 100% / 0.04);
-  --upstream-t2: hsl(0 0% 100% / 0.08);
-  --upstream-t3: hsl(0 0% 100% / 0.12);
-  --upstream-t4: hsl(0 0% 100% / 0.16);
-  --upstream-t5: hsl(0 0% 100% / 0.25);
-  --upstream-t6: hsl(0 0% 100% / 0.4);
-  --upstream-t7: hsl(0 0% 100% / 0.7);
-  --upstream-t8: hsl(0 0% 100% / 0.8);
-  --upstream-t9: hsl(0 0% 100% / 1);
+	/* Upstream claude.ai/code — transparency layers (white base) */
+	--upstream-t0: hsl(0 0% 100% / 0);
+	--upstream-t1: hsl(0 0% 100% / 0.04);
+	--upstream-t2: hsl(0 0% 100% / 0.08);
+	--upstream-t3: hsl(0 0% 100% / 0.12);
+	--upstream-t4: hsl(0 0% 100% / 0.16);
+	--upstream-t5: hsl(0 0% 100% / 0.25);
+	--upstream-t6: hsl(0 0% 100% / 0.4);
+	--upstream-t7: hsl(0 0% 100% / 0.7);
+	--upstream-t8: hsl(0 0% 100% / 0.8);
+	--upstream-t9: hsl(0 0% 100% / 1);
 
-  /* Upstream claude.ai/code — card surfaces (light-alpha ring, page color) */
-  --card-outline: hsl(0 0% 100% / 0.12);
-  --code-card-bg: hsl(60 2.7% 14.5%);
+	/* Upstream claude.ai/code — card surfaces (light-alpha ring, page color) */
+	--card-outline: hsl(0 0% 100% / 0.12);
+	--code-card-bg: hsl(60 2.7% 14.5%);
 
-  /* Upstream claude.ai/code — <Shortcut> keycaps */
-  --shortcut-cap-ink: #a5a49a;
-  --shortcut-cap-line: color-mix(in srgb, currentColor 22%, transparent);
+	/* Upstream claude.ai/code — <Shortcut> keycaps */
+	--shortcut-cap-ink: #a5a49a;
+	--shortcut-cap-line: color-mix(in srgb, currentColor 22%, transparent);
 
-  /* Upstream claude.ai/code — Menu / ContextMenu popups */
-  --menu-bg: hsl(60 2% 18%);
-  --menu-shadow:
-    0 0 0 1px hsl(0 0% 100% / 0.12), 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.3);
-  --menu-muted: #a5a49a;
+	/* Upstream claude.ai/code — Menu / ContextMenu popups */
+	--menu-bg: hsl(60 2% 18%);
+	--menu-shadow: 0 0 0 1px hsl(0 0% 100% / 0.12), 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.3);
+	--menu-muted: #a5a49a;
 
-  --upstream-text-muted: #a5a49a;
-  --upstream-code-ink: var(--danger-000);
+	--upstream-text-muted: #a5a49a;
+	--upstream-code-ink: var(--danger-000);
 
-  /* Upstream claude.ai/code — Settings controls */
-  --settings-muted: #a5a49a;
-  --settings-switch-track: hsl(0 0% 100% / 0.18);
-  --settings-switch-track-hover: hsl(0 0% 100% / 0.24);
-  --settings-segmented-track: hsl(0 0% 100% / 0.06);
-  --settings-segmented-thumb: hsl(60 2% 24%);
-  --settings-field-bg: hsl(0 0% 100% / 0.04);
+	/* Upstream claude.ai/code — Settings controls */
+	--settings-muted: #a5a49a;
+	--settings-switch-track: hsl(0 0% 100% / 0.18);
+	--settings-switch-track-hover: hsl(0 0% 100% / 0.24);
+	--settings-segmented-track: hsl(0 0% 100% / 0.06);
+	--settings-segmented-thumb: hsl(60 2% 24%);
+	--settings-field-bg: hsl(0 0% 100% / 0.04);
 
-  /* Upstream claude.ai/code — side pane surface (dark: shadow-sm + outline-alpha-2) */
-  --pane-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 0 1px hsl(0 0% 100% / 0.08);
+	/* Upstream claude.ai/code — side pane surface (dark: shadow-sm + outline-alpha-2) */
+	--pane-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 0 1px hsl(0 0% 100% / 0.08);
 }
 
 @layer utilities {
-  .card-outline {
-    background-color: transparent;
-    box-shadow: inset 0 0 0 1px var(--card-outline);
-  }
-  .code-card {
-    background-color: var(--code-card-bg);
-  }
+	.card-outline {
+		background-color: transparent;
+		box-shadow: inset 0 0 0 1px var(--card-outline);
+	}
+	.code-card {
+		background-color: var(--code-card-bg);
+	}
 }
 
 /* Upstream claude.ai/code focus ring utilities. Rows carry the trio
@@ -419,106 +414,106 @@
    Tailwind v4 uses --tw-outline-style to control outline-style globally,
    so we set that variable instead of fighting with the shorthand. */
 .hide-focus-ring {
-  --tw-outline-style: solid;
-  outline: 2px solid var(--focus-ring-color, transparent);
-  outline-offset: 2px;
+	--tw-outline-style: solid;
+	outline: 2px solid var(--focus-ring-color, transparent);
+	outline-offset: 2px;
 }
 
 @utility ring-focus {
-  --focus-ring-color: var(--color-accent-100);
+	--focus-ring-color: var(--color-accent-100);
 }
 
 /* Upstream `prose-link`: a transcript file ref in link blue and the prose
    font, without the inline-code chip. */
 .prose-link {
-  display: inline-block;
-  border-radius: 3px;
-  color: var(--color-accent-000);
-  cursor: pointer;
+	display: inline-block;
+	border-radius: 3px;
+	color: var(--color-accent-000);
+	cursor: pointer;
 }
 .prose-link:hover {
-  text-decoration: underline;
+	text-decoration: underline;
 }
 .prose-link:focus-visible {
-  outline: 2px solid var(--color-accent-100);
-  outline-offset: 1px;
+	outline: 2px solid var(--color-accent-100);
+	outline-offset: 1px;
 }
 
 [data-record-index] {
-  transition: background-color 200ms ease-out;
+	transition: background-color 200ms ease-out;
 }
 
 .message-highlight {
-  background-color: var(--message-highlight-bg);
+	background-color: var(--message-highlight-bg);
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-page text-primary font-sans;
-  }
+	* {
+		@apply border-border;
+	}
+	body {
+		@apply bg-page text-primary font-sans;
+	}
 }
 
 /* Toast entrance, applied via `motion-safe:` so reduced-motion users get none. */
 @keyframes toast-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 /* Sidebar pointer drag (src/hooks/use-sidebar-drag.ts). Rows only animate while a drag is in
    progress so the reset on drop snaps instead of sliding from the old slot. */
 [data-session-dragging],
 [data-session-dragging] * {
-  cursor: grabbing !important;
-  user-select: none;
+	cursor: grabbing !important;
+	user-select: none;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  [data-session-dragging] .df-drag-shiftable {
-    transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1);
-  }
+	[data-session-dragging] .df-drag-shiftable {
+		transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1);
+	}
 }
 
 [data-drag-ghost] {
-  opacity: 0.9;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
+	opacity: 0.9;
+	box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
 }
 
 /* Upstream .df-pin-section-reveal: the empty Pinned section (src/components/sidebar/sublists/PinnedSubList.tsx)
    is a zero-height stub that animates open when a row drag starts. */
 .df-pin-section-reveal {
-  interpolate-size: allow-keywords;
-  transition:
-    height 0.2s,
-    opacity 0.2s cubic-bezier(0.32, 0.72, 0, 1);
-  overflow-y: clip;
+	interpolate-size: allow-keywords;
+	transition:
+		height 0.2s,
+		opacity 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+	overflow-y: clip;
 }
 
 .df-pin-section-reveal[data-stub] {
-  opacity: 0;
-  height: 0;
+	opacity: 0;
+	height: 0;
 }
 
 /* Upstream claude.ai/code — collapsed sidebar peek fades and settles into place. */
 .sidebar-peek-motion {
-  transition:
-    opacity 0.14s ease,
-    translate 0.18s cubic-bezier(0.32, 0.72, 0, 1),
-    scale 0.18s cubic-bezier(0.32, 0.72, 0, 1);
+	transition:
+		opacity 0.14s ease,
+		translate 0.18s cubic-bezier(0.32, 0.72, 0, 1),
+		scale 0.18s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sidebar-peek-motion {
-    transition: none;
-  }
+	.sidebar-peek-motion {
+		transition: none;
+	}
 }
 
 /*
@@ -526,154 +521,154 @@
  * slides in from the left, pads for safe areas, and grows rows to touch size (44px / 36px).
  */
 .phone-sheet {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: flex;
-  flex-direction: column;
-  max-height: 100dvh;
-  padding: env(safe-area-inset-top) max(8px, env(safe-area-inset-right))
-    max(env(safe-area-inset-bottom), 0.5rem) max(8px, env(safe-area-inset-left));
-  background: var(--sb-bg);
-  visibility: hidden;
-  overscroll-behavior: contain;
-  touch-action: pan-y pinch-zoom;
-  outline: none;
-  --sb-row-h: 44px;
-  --sb-row-ctl: 36px;
-  transform: translate(-100%);
-  transition:
-    transform 0.3s cubic-bezier(0.165, 0.84, 0.44, 1),
-    visibility 0s linear 0.3s;
+	position: fixed;
+	inset: 0;
+	z-index: 50;
+	display: flex;
+	flex-direction: column;
+	max-height: 100dvh;
+	padding: env(safe-area-inset-top) max(8px, env(safe-area-inset-right)) max(env(safe-area-inset-bottom), 0.5rem)
+		max(8px, env(safe-area-inset-left));
+	background: var(--sb-bg);
+	visibility: hidden;
+	overscroll-behavior: contain;
+	touch-action: pan-y pinch-zoom;
+	outline: none;
+	--sb-row-h: 44px;
+	--sb-row-ctl: 36px;
+	transform: translate(-100%);
+	transition:
+		transform 0.3s cubic-bezier(0.165, 0.84, 0.44, 1),
+		visibility 0s linear 0.3s;
 }
 
 .phone-sheet[data-open] {
-  visibility: visible;
-  transform: none;
-  transition:
-    transform 0.3s cubic-bezier(0.165, 0.84, 0.44, 1),
-    visibility 0s;
+	visibility: visible;
+	transform: none;
+	transition:
+		transform 0.3s cubic-bezier(0.165, 0.84, 0.44, 1),
+		visibility 0s;
 }
 
 .phone-sheet[data-open][data-phone-sheet-dragging] {
-  transform: translateX(var(--df-phone-sheet-drag, 0px));
-  transition: none;
+	transform: translateX(var(--df-phone-sheet-drag, 0px));
+	transition: none;
 }
 
 .phone-sheet .df-touch-reveal {
-  opacity: 1;
-  pointer-events: auto;
+	opacity: 1;
+	pointer-events: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .phone-sheet,
-  .phone-sheet[data-open] {
-    transition: none;
-  }
+	.phone-sheet,
+	.phone-sheet[data-open] {
+		transition: none;
+	}
 }
 
 /* Upstream claude.ai/code session row icons: 6px dots keyed by data-kind. */
 .status-dot {
-  position: relative;
-  display: block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+	position: relative;
+	display: block;
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
 }
 
 .status-dot[data-kind="awaiting"] {
-  background: var(--status-dot-awaiting);
+	background: var(--status-dot-awaiting);
 }
 
 .status-dot[data-kind="running"] {
-  background: var(--color-ink-muted);
-  animation: dot-blink 1.2s ease-in-out infinite;
+	background: var(--color-ink-muted);
+	animation: dot-blink 1.2s ease-in-out infinite;
 }
 
 .status-dot[data-kind="ready"] {
-  background: var(--status-dot-ready);
+	background: var(--status-dot-ready);
 }
 
 .status-dot[data-kind="error"] {
-  background: var(--status-dot-error);
+	background: var(--status-dot-error);
 }
 
 @keyframes dot-blink {
-  0%,
-  100% {
-    opacity: 0.3;
-  }
-  50% {
-    opacity: 1;
-  }
+	0%,
+	100% {
+		opacity: 0.3;
+	}
+	50% {
+		opacity: 1;
+	}
 }
 
 /* The terminal loading placeholder's caret, blinking like a terminal cursor. */
 .terminal-caret {
-  animation: caret-blink 1s steps(1, end) infinite;
+	animation: caret-blink 1s steps(1, end) infinite;
 }
 
 @keyframes caret-blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0;
-  }
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0;
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .status-dot[data-kind="running"],
-  .terminal-caret {
-    animation: none;
-  }
+	.status-dot[data-kind="running"],
+	.terminal-caret {
+		animation: none;
+	}
 }
 
 /* Upstream claude.ai/code working marker: the spark turns while the session works and the
    "Stopping…" label shimmers. The component also drops data-animated under reduced motion. */
 @media (prefers-reduced-motion: no-preference) {
-  .spark[data-animated="true"] {
-    animation: spark-turn 2.4s linear infinite;
-  }
+	.spark[data-animated="true"] {
+		animation: spark-turn 2.4s linear infinite;
+	}
 
-  .working-marker-shimmer {
-    animation: dot-blink 1.2s ease-in-out infinite;
-  }
+	.working-marker-shimmer {
+		animation: dot-blink 1.2s ease-in-out infinite;
+	}
 }
 
 @keyframes spark-turn {
-  to {
-    rotate: 360deg;
-  }
+	to {
+		rotate: 360deg;
+	}
 }
 
 /* Settings ▸ Claude Code ▸ Transcript text size. The settings provider sets the
    size and leading on <html>; every `text-body` inside the transcript follows. */
 .transcript-text {
-  --upstream-text-body: var(--transcript-text-size, 14px);
-  --upstream-leading-body: var(--transcript-leading, 20px);
+	--upstream-text-body: var(--transcript-text-size, 14px);
+	--upstream-leading-body: var(--transcript-leading, 20px);
 }
 
 /* Settings search deep link (#settings/<tab>/<row>): upstream flashes the row with a warm tint
    and underlines its title for 1.5s. */
 [data-settings-flash] {
-  animation: settings-row-flash 1.5s ease-out;
+	animation: settings-row-flash 1.5s ease-out;
 }
 
 [data-settings-flash] .settings-row-title {
-  text-decoration: underline;
-  text-underline-offset: 3px;
+	text-decoration: underline;
+	text-underline-offset: 3px;
 }
 
 @keyframes settings-row-flash {
-  0%,
-  40% {
-    background-color: rgb(217 119 87 / 0.14);
-  }
-  100% {
-    background-color: transparent;
-  }
+	0%,
+	40% {
+		background-color: rgb(217 119 87 / 0.14);
+	}
+	100% {
+		background-color: transparent;
+	}
 }
 
 /* Settings ▸ General ▸ Motion: Reduced. The settings provider sets html[data-motion=reduced];
@@ -681,62 +676,61 @@
 html[data-motion="reduced"] *,
 html[data-motion="reduced"] *::before,
 html[data-motion="reduced"] *::after {
-  transition: none !important;
+	transition: none !important;
 }
 
 html[data-motion="reduced"] .animate-pulse,
 html[data-motion="reduced"] .animate-ping,
 html[data-motion="reduced"] .status-dot[data-kind="running"],
 html[data-motion="reduced"] .terminal-caret {
-  animation: none !important;
+	animation: none !important;
 }
 
 /* Upstream .df-leading-slot: a fixed box that centers the row's icon. */
 .df-leading-slot {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: var(--sb-leading-slot);
-  height: var(--sb-leading-slot);
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	justify-content: center;
+	width: var(--sb-leading-slot);
+	height: var(--sb-leading-slot);
 }
 
 .df-leading-slot svg {
-  flex-shrink: 0;
-  width: var(--sb-icon);
-  height: var(--sb-icon);
+	flex-shrink: 0;
+	width: var(--sb-icon);
+	height: var(--sb-icon);
 }
 
 /* Upstream .df-label-inset: group labels line up with the row icons (6px at comfortable density). */
 .df-label-inset {
-  padding-left: calc(var(--sb-row-px) + (var(--sb-leading-slot) - var(--sb-icon)) / 2);
+	padding-left: calc(var(--sb-row-px) + (var(--sb-leading-slot) - var(--sb-icon)) / 2);
 }
 
 /* Upstream .dframe-fade-label: an overflowing row title fades out instead of ending in an ellipsis. */
 .dframe-fade-label {
-  display: block;
-  width: 100%;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
+	display: block;
+	width: 100%;
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
 }
 
 .dframe-fade-label[data-overflowing] {
-  mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
+	mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
 }
 
 /* Upstream .df-tail-mark: a row-ctl box at the row's end for trailing marks. */
 .df-tail-mark {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: var(--sb-row-ctl);
-  height: var(--sb-row-ctl);
-  margin-right: calc(
-    (var(--sb-row-h) - var(--sb-row-ctl)) / 2 - var(--sb-row-px) -
-      (var(--sb-leading-slot) - var(--sb-icon)) / 2
-  );
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	justify-content: center;
+	width: var(--sb-row-ctl);
+	height: var(--sb-row-ctl);
+	margin-right: calc(
+		(var(--sb-row-h) - var(--sb-row-ctl)) / 2 - var(--sb-row-px) - (var(--sb-leading-slot) - var(--sb-icon)) / 2
+	);
 }
 
 /*
@@ -745,42 +739,42 @@ html[data-motion="reduced"] .terminal-caret {
  * invisible handle over it is hovered.
  */
 .df-family::before {
-  content: "";
-  position: absolute;
-  top: 4px;
-  bottom: 8px;
-  left: calc(var(--sb-row-px) + var(--sb-leading-slot) / 2 - 0.625px);
-  width: 1.25px;
-  border-radius: 1px;
-  background: var(--df-tree-ink, var(--upstream-border));
-  transition: background-color 150ms ease-out;
+	content: "";
+	position: absolute;
+	top: 4px;
+	bottom: 8px;
+	left: calc(var(--sb-row-px) + var(--sb-leading-slot) / 2 - 0.625px);
+	width: 1.25px;
+	border-radius: 1px;
+	background: var(--df-tree-ink, var(--upstream-border));
+	transition: background-color 150ms ease-out;
 }
 
 .df-family[data-branch-hot]::before {
-  --df-tree-ink: var(--accent-100);
-  transition-delay: 0.1s;
+	--df-tree-ink: var(--accent-100);
+	transition-delay: 0.1s;
 }
 
 .df-family > .df-family-handle-slot {
-  position: absolute;
-  top: 0;
-  bottom: 4px;
-  left: 0;
-  z-index: 2;
-  width: 20px;
+	position: absolute;
+	top: 0;
+	bottom: 4px;
+	left: 0;
+	z-index: 2;
+	width: 20px;
 }
 
 @media (hover: none) {
-  .df-family > .df-family-handle-slot {
-    display: none;
-  }
+	.df-family > .df-family-handle-slot {
+		display: none;
+	}
 }
 
 /* Find in file matches, painted with the CSS Custom Highlight API. */
 ::highlight(file-find) {
-  background-color: rgb(250 204 21 / 0.35);
+	background-color: rgb(250 204 21 / 0.35);
 }
 
 ::highlight(file-find-active) {
-  background-color: rgb(249 115 22 / 0.65);
+	background-color: rgb(249 115 22 / 0.65);
 }

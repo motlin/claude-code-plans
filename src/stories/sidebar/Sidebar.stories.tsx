@@ -1,50 +1,50 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Sidebar } from "../../components/sidebar/Sidebar";
-import { activeSessionsQueryOptions } from "../../lib/api/sessions";
-import { createStoryQueryClient, StoryWrapper } from "./decorators";
+import type {Meta, StoryObj} from "@storybook/react-vite";
+import {Sidebar} from "../../components/sidebar/Sidebar";
+import {activeSessionsQueryOptions} from "../../lib/api/sessions";
+import {createStoryQueryClient, StoryWrapper} from "./decorators";
 
 function createSeededQueryClient() {
-  const queryClient = createStoryQueryClient();
-  queryClient.setQueryData(activeSessionsQueryOptions().queryKey, [
-    {
-      sessionId: "sess-1",
-      projectDir: "/home/user/claude-code-plans",
-      projectName: "claude-code-plans",
-      title: "Fix the session indexer",
-      createdAt: Date.now() - 60_000,
-      lastModified: Date.now(),
-      state: "working",
-      unseen: false,
-      blockedSince: null,
-    },
-  ]);
-  return queryClient;
+	const queryClient = createStoryQueryClient();
+	queryClient.setQueryData(activeSessionsQueryOptions().queryKey, [
+		{
+			sessionId: "sess-1",
+			projectDir: "/home/user/claude-code-plans",
+			projectName: "claude-code-plans",
+			title: "Fix the session indexer",
+			createdAt: Date.now() - 60_000,
+			lastModified: Date.now(),
+			state: "working",
+			unseen: false,
+			blockedSince: null,
+		},
+	]);
+	return queryClient;
 }
 
 const meta = {
-  title: "Sidebar/Sidebar",
-  component: Sidebar,
+	title: "Sidebar/Sidebar",
+	component: Sidebar,
 } satisfies Meta<typeof Sidebar>;
 
 export default meta;
 type Story = StoryObj;
 
 export const Expanded: Story = {
-  render: () => (
-    <StoryWrapper queryClient={createSeededQueryClient()}>
-      <div style={{ height: 600, display: "flex" }}>
-        <Sidebar collapsed={false} onToggle={() => {}} />
-      </div>
-    </StoryWrapper>
-  ),
+	render: () => (
+		<StoryWrapper queryClient={createSeededQueryClient()}>
+			<div style={{height: 600, display: "flex"}}>
+				<Sidebar collapsed={false} onToggle={() => {}} />
+			</div>
+		</StoryWrapper>
+	),
 };
 
 export const Collapsed: Story = {
-  render: () => (
-    <StoryWrapper queryClient={createSeededQueryClient()}>
-      <div style={{ height: 600, position: "relative" }}>
-        <Sidebar collapsed={true} onToggle={() => {}} />
-      </div>
-    </StoryWrapper>
-  ),
+	render: () => (
+		<StoryWrapper queryClient={createSeededQueryClient()}>
+			<div style={{height: 600, position: "relative"}}>
+				<Sidebar collapsed={true} onToggle={() => {}} />
+			</div>
+		</StoryWrapper>
+	),
 };

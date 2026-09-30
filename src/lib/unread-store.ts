@@ -1,4 +1,4 @@
-import { updateSessionViewedState } from "./api/viewed-state";
+import {updateSessionViewedState} from "./api/viewed-state";
 
 /**
  * Client-side cache of the server's durable `unseen` flag (see
@@ -16,74 +16,72 @@ const unseenBySession = new Map<string, boolean>();
 let persist: Persist = (sessionId, action) => updateSessionViewedState(sessionId, action);
 
 function emitChange(): void {
-  for (const listener of listeners) listener();
+	for (const listener of listeners) listener();
 }
 
 function setUnseen(sessionId: string, unseen: boolean): boolean {
-  if ((unseenBySession.get(sessionId) ?? false) === unseen) return false;
-  unseenBySession.set(sessionId, unseen);
-  return true;
+	if ((unseenBySession.get(sessionId) ?? false) === unseen) return false;
+	unseenBySession.set(sessionId, unseen);
+	return true;
 }
 
 /** Adopt the server's flag for every summary; notifies subscribers once if anything changed. */
-export function syncUnseenFromSummaries(
-  summaries: Iterable<{ id: string; unseen: boolean }>,
-): void {
-  let changed = false;
-  for (const summary of summaries) {
-    if (setUnseen(summary.id, summary.unseen)) changed = true;
-  }
-  if (changed) emitChange();
+export function syncUnseenFromSummaries(summaries: Iterable<{id: string; unseen: boolean}>): void {
+	let changed = false;
+	for (const summary of summaries) {
+		if (setUnseen(summary.id, summary.unseen)) changed = true;
+	}
+	if (changed) emitChange();
 }
 
 function applyOptimistically(sessionId: string, unseen: boolean): void {
-  const previous = unseenBySession.get(sessionId) ?? false;
-  if (setUnseen(sessionId, unseen)) emitChange();
-  void Promise.resolve()
-    .then(() => persist(sessionId, unseen ? "unreviewed" : "reviewed"))
-    .catch((error: unknown) => {
-      console.warn("[unread-store] failed to persist unseen flag", error);
-      // Roll back only if nothing (such as an SSE summary) has replaced the optimistic value.
-      if (unseenBySession.get(sessionId) === unseen && setUnseen(sessionId, previous)) {
-        emitChange();
-      }
-    });
+	const previous = unseenBySession.get(sessionId) ?? false;
+	if (setUnseen(sessionId, unseen)) emitChange();
+	void Promise.resolve()
+		.then(() => persist(sessionId, unseen ? "unreviewed" : "reviewed"))
+		.catch((error: unknown) => {
+			console.warn("[unread-store] failed to persist unseen flag", error);
+			// Roll back only if nothing (such as an SSE summary) has replaced the optimistic value.
+			if (unseenBySession.get(sessionId) === unseen && setUnseen(sessionId, previous)) {
+				emitChange();
+			}
+		});
 }
 
 export function markUnseen(sessionId: string): void {
-  applyOptimistically(sessionId, true);
+	applyOptimistically(sessionId, true);
 }
 
 export function markSeen(sessionId: string): void {
-  applyOptimistically(sessionId, false);
+	applyOptimistically(sessionId, false);
 }
 
 export function toggleUnseen(sessionId: string): void {
-  if (hasUnseenWork(sessionId)) markSeen(sessionId);
-  else markUnseen(sessionId);
+	if (hasUnseenWork(sessionId)) markSeen(sessionId);
+	else markUnseen(sessionId);
 }
 
 export function clearAll(): void {
-  for (const [sessionId, unseen] of unseenBySession) {
-    if (unseen) markSeen(sessionId);
-  }
+	for (const [sessionId, unseen] of unseenBySession) {
+		if (unseen) markSeen(sessionId);
+	}
 }
 
 export function hasUnseenWork(sessionId: string): boolean {
-  return unseenBySession.get(sessionId) === true;
+	return unseenBySession.get(sessionId) === true;
 }
 
 export function subscribeUnseenWork(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
+	listeners.add(listener);
+	return () => listeners.delete(listener);
 }
 
 export const __unreadStoreTesting = {
-  setPersist(next: Persist): void {
-    persist = next;
-  },
-  reset(): void {
-    unseenBySession.clear();
-    emitChange();
-  },
+	setPersist(next: Persist): void {
+		persist = next;
+	},
+	reset(): void {
+		unseenBySession.clear();
+		emitChange();
+	},
 };

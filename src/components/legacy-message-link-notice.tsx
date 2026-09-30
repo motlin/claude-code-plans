@@ -7,7 +7,7 @@
 const LEGACY_MESSAGE_LINK = /^#?msg-[A-Za-z0-9_-]+$/;
 
 function isLegacyMessageLink(hash: string): boolean {
-  return LEGACY_MESSAGE_LINK.test(hash);
+	return LEGACY_MESSAGE_LINK.test(hash);
 }
 
 /**
@@ -17,16 +17,16 @@ function isLegacyMessageLink(hash: string): boolean {
  * the session's first message. Saying so is the difference between a link that
  * failed and a link that quietly showed the reader the wrong message.
  */
-export function LegacyMessageLinkNotice({ hash }: { hash: string }) {
-  if (!isLegacyMessageLink(hash)) return null;
+export function LegacyMessageLinkNotice({hash}: {hash: string}) {
+	if (!isLegacyMessageLink(hash)) return null;
 
-  return (
-    <div
-      role="status"
-      className="mb-3 rounded-r7 border border-strong bg-surface-0 px-3 py-2 text-[12px] text-secondary"
-    >
-      This link points at one message. Sessions are addressed as a whole now, so the link named no
-      message and the session opens from the top.
-    </div>
-  );
+	return (
+		<div
+			role="status"
+			className="mb-3 rounded-r7 border border-strong bg-surface-0 px-3 py-2 text-[12px] text-secondary"
+		>
+			This link points at one message. Sessions are addressed as a whole now, so the link named no message and the
+			session opens from the top.
+		</div>
+	);
 }

@@ -1,21 +1,21 @@
-import { useSessionArchive } from "../hooks/use-session-archive";
-import { useSessionFork } from "../hooks/use-session-fork";
-import { useShortcut } from "../hooks/use-shortcut";
-import { type SessionRename, useSessionRename } from "../hooks/use-session-rename";
-import { copySessionLink, openPullRequest } from "../lib/session-open-in";
-import { useSessionRenameRequest } from "../lib/session-rename-request";
-import { toggleUnseen } from "../lib/unread-store";
-import { ArchivedBadge } from "./archived-badge";
-import { InlineRenameInput } from "./inline-rename-input";
-import { useToast } from "./toast";
+import {useSessionArchive} from "../hooks/use-session-archive";
+import {useSessionFork} from "../hooks/use-session-fork";
+import {useShortcut} from "../hooks/use-shortcut";
+import {type SessionRename, useSessionRename} from "../hooks/use-session-rename";
+import {copySessionLink, openPullRequest} from "../lib/session-open-in";
+import {useSessionRenameRequest} from "../lib/session-rename-request";
+import {toggleUnseen} from "../lib/unread-store";
+import {ArchivedBadge} from "./archived-badge";
+import {InlineRenameInput} from "./inline-rename-input";
+import {useToast} from "./toast";
 
 export interface SessionTitleShortcutOptions {
-  sessionId: string;
-  archived: boolean;
-  prUrl?: string | undefined;
-  /** The session's directory; forking needs it. */
-  cwd?: string | null;
-  startEditing: () => void;
+	sessionId: string;
+	archived: boolean;
+	prUrl?: string | undefined;
+	/** The session's directory; forking needs it. */
+	cwd?: string | null;
+	startEditing: () => void;
 }
 
 /**
@@ -25,34 +25,34 @@ export interface SessionTitleShortcutOptions {
  * transcript has a `pr-link` record; ⌥⌘O forks it.
  */
 export function useSessionTitleShortcuts({
-  sessionId,
-  archived,
-  prUrl,
-  cwd = null,
-  startEditing,
+	sessionId,
+	archived,
+	prUrl,
+	cwd = null,
+	startEditing,
 }: SessionTitleShortcutOptions): void {
-  const setArchived = useSessionArchive(sessionId);
-  const toast = useToast();
-  const fork = useSessionFork();
-  useShortcut("rename_session", () => startEditing());
-  useShortcut("archive_session", () => setArchived(!archived));
-  useShortcut("toggle_read_session", () => toggleUnseen(sessionId));
-  useShortcut("copy_session_link", () => void copySessionLink(sessionId, toast));
-  useShortcut(
-    "open_session_pr",
-    () => {
-      if (prUrl !== undefined) openPullRequest(prUrl);
-    },
-    { disabled: prUrl === undefined },
-  );
-  useShortcut(
-    "fork_session",
-    () => {
-      if (cwd !== null) fork({ sessionId, cwd });
-    },
-    { disabled: cwd === null },
-  );
-  useSessionRenameRequest(sessionId, startEditing);
+	const setArchived = useSessionArchive(sessionId);
+	const toast = useToast();
+	const fork = useSessionFork();
+	useShortcut("rename_session", () => startEditing());
+	useShortcut("archive_session", () => setArchived(!archived));
+	useShortcut("toggle_read_session", () => toggleUnseen(sessionId));
+	useShortcut("copy_session_link", () => void copySessionLink(sessionId, toast));
+	useShortcut(
+		"open_session_pr",
+		() => {
+			if (prUrl !== undefined) openPullRequest(prUrl);
+		},
+		{disabled: prUrl === undefined},
+	);
+	useShortcut(
+		"fork_session",
+		() => {
+			if (cwd !== null) fork({sessionId, cwd});
+		},
+		{disabled: cwd === null},
+	);
+	useSessionRenameRequest(sessionId, startEditing);
 }
 
 /**
@@ -60,59 +60,57 @@ export function useSessionTitleShortcuts({
  * A session summary rides along as the button's description and in its tooltip.
  */
 export function SessionTitleButton({
-  rename,
-  className,
-  summary = null,
+	rename,
+	className,
+	summary = null,
 }: {
-  rename: SessionRename;
-  className: string;
-  summary?: string | null;
+	rename: SessionRename;
+	className: string;
+	summary?: string | null;
 }) {
-  const hasSummary = summary !== null && summary !== "";
-  if (rename.editing) {
-    return (
-      <InlineRenameInput value={rename.title} onCommit={rename.commit} onCancel={rename.cancel} />
-    );
-  }
-  return (
-    <button
-      type="button"
-      aria-label={`${rename.title}, rename session`}
-      title={hasSummary ? `Rename\n\n${summary}` : "Rename"}
-      {...(hasSummary ? { "aria-description": summary } : {})}
-      onClick={rename.startEditing}
-      className={className}
-    >
-      {rename.title}
-    </button>
-  );
+	const hasSummary = summary !== null && summary !== "";
+	if (rename.editing) {
+		return <InlineRenameInput value={rename.title} onCommit={rename.commit} onCancel={rename.cancel} />;
+	}
+	return (
+		<button
+			type="button"
+			aria-label={`${rename.title}, rename session`}
+			title={hasSummary ? `Rename\n\n${summary}` : "Rename"}
+			{...(hasSummary ? {"aria-description": summary} : {})}
+			onClick={rename.startEditing}
+			className={className}
+		>
+			{rename.title}
+		</button>
+	);
 }
 
 /** A standalone heading form of the session title with its shortcuts. */
 export function SessionTitleHeading({
-  sessionId,
-  title,
-  archived,
-  prUrl,
-  cwd = null,
+	sessionId,
+	title,
+	archived,
+	prUrl,
+	cwd = null,
 }: {
-  sessionId: string;
-  title: string;
-  archived: boolean;
-  prUrl?: string | undefined;
-  /** The session's directory; forking needs it. */
-  cwd?: string | null;
+	sessionId: string;
+	title: string;
+	archived: boolean;
+	prUrl?: string | undefined;
+	/** The session's directory; forking needs it. */
+	cwd?: string | null;
 }) {
-  const rename = useSessionRename(sessionId, title);
-  useSessionTitleShortcuts({ sessionId, archived, prUrl, cwd, startEditing: rename.startEditing });
+	const rename = useSessionRename(sessionId, title);
+	useSessionTitleShortcuts({sessionId, archived, prUrl, cwd, startEditing: rename.startEditing});
 
-  return (
-    <h1 className="flex min-w-0 items-center gap-2 text-lg font-semibold">
-      <SessionTitleButton
-        rename={rename}
-        className="min-w-0 cursor-text truncate rounded-r6 text-left hover:bg-fill-ghost-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
-      />
-      {archived && <ArchivedBadge />}
-    </h1>
-  );
+	return (
+		<h1 className="flex min-w-0 items-center gap-2 text-lg font-semibold">
+			<SessionTitleButton
+				rename={rename}
+				className="min-w-0 cursor-text truncate rounded-r6 text-left hover:bg-fill-ghost-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
+			/>
+			{archived && <ArchivedBadge />}
+		</h1>
+	);
 }

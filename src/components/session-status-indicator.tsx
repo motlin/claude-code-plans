@@ -1,22 +1,17 @@
-import {
-  sessionStateKind,
-  type ActivityState,
-  type DisplayState,
-  type WaitHeat,
-} from "../lib/session-state";
-import { SessionStateIcon } from "./status-dot";
+import {sessionStateKind, type ActivityState, type DisplayState, type WaitHeat} from "../lib/session-state";
+import {SessionStateIcon} from "./status-dot";
 
 const DISPLAY_STATE_STYLES: Record<DisplayState, string> = {
-  waiting: "text-amber-500",
-  review: "text-sky-500",
-  working: "text-green-500",
-  idle: "text-t6",
-  unknown: "text-t6",
+	waiting: "text-amber-500",
+	review: "text-sky-500",
+	working: "text-green-500",
+	idle: "text-t6",
+	unknown: "text-t6",
 };
 
 const WAIT_HEAT_STYLES: Record<Exclude<WaitHeat, "">, string> = {
-  warm: "text-amber-600",
-  hot: "text-red-500",
+	warm: "text-amber-600",
+	hot: "text-red-500",
 };
 
 /**
@@ -26,22 +21,22 @@ const WAIT_HEAT_STYLES: Record<Exclude<WaitHeat, "">, string> = {
  * itself, coloured by the wait heat (how long the session has been blocked).
  */
 export function SessionStatusIndicator({
-  displayState,
-  heat,
-  state,
+	displayState,
+	heat,
+	state,
 }: {
-  displayState: DisplayState;
-  heat: WaitHeat;
-  state: ActivityState;
+	displayState: DisplayState;
+	heat: WaitHeat;
+	state: ActivityState;
 }) {
-  const wordStyle = heat === "" ? DISPLAY_STATE_STYLES[state] : WAIT_HEAT_STYLES[heat];
-  return (
-    <span
-      className="grid grid-cols-[0.875rem_minmax(0,1fr)] items-center gap-1.5 text-xs"
-      aria-label={`Session status: ${state}`}
-    >
-      <SessionStateIcon kind={sessionStateKind(displayState)} />
-      <span className={`truncate ${wordStyle}`}>{state}</span>
-    </span>
-  );
+	const wordStyle = heat === "" ? DISPLAY_STATE_STYLES[state] : WAIT_HEAT_STYLES[heat];
+	return (
+		<span
+			className="grid grid-cols-[0.875rem_minmax(0,1fr)] items-center gap-1.5 text-xs"
+			aria-label={`Session status: ${state}`}
+		>
+			<SessionStateIcon kind={sessionStateKind(displayState)} />
+			<span className={`truncate ${wordStyle}`}>{state}</span>
+		</span>
+	);
 }

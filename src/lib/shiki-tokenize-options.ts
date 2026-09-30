@@ -6,6 +6,6 @@
  * output depends only on the input.
  */
 export const SHIKI_TOKENIZE_OPTIONS = {
-  tokenizeTimeLimit: 0,
-  tokenizeMaxLineLength: 20_000,
+	tokenizeTimeLimit: 0,
+	tokenizeMaxLineLength: 20_000,
 } as const;

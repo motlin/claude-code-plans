@@ -10,40 +10,40 @@ This command automates the loop.
 
 1. Run the disk-validation suite and capture output:
 
-   ```bash
-   vp run test:run -- -t "against disk" 2>&1
-   ```
+    ```bash
+    vp run test:run -- -t "against disk" 2>&1
+    ```
 
-   Tests covered by this filter:
-   - `JsonlRecordSchema against disk` — scans every line of every `~/.claude/projects/**/*.jsonl`
-   - `TaskFileSchema against disk` — scans `~/.claude/tasks/**/*.json`
-   - `SessionsIndexSchema against disk` — `sessions-index.json` files
-   - `ClaudeSettingsSchema against disk` — project-level settings
-   - `McpConfigSchema against disk` — `.mcp.json` files
+    Tests covered by this filter:
+    - `JsonlRecordSchema against disk` — scans every line of every `~/.claude/projects/**/*.jsonl`
+    - `TaskFileSchema against disk` — scans `~/.claude/tasks/**/*.json`
+    - `SessionsIndexSchema against disk` — `sessions-index.json` files
+    - `ClaudeSettingsSchema against disk` — project-level settings
+    - `McpConfigSchema against disk` — `.mcp.json` files
 
 2. If all pass, stop — nothing to sync.
 
 3. If any fail, parse the failure output. Each failure block looks like:
 
-   ```
-   <projectDir>/<file>:<line>
-     <path.to.field>: <issue message>
-   ```
+    ```
+    <projectDir>/<file>:<line>
+      <path.to.field>: <issue message>
+    ```
 
-   For `unrecognized_keys` issues, the issue message names the keys (e.g. `Unrecognized key(s) in object: 'interruptedMessageId'`).
+    For `unrecognized_keys` issues, the issue message names the keys (e.g. `Unrecognized key(s) in object: 'interruptedMessageId'`).
 
-   Group failures by **(schema, key path)** so you fix each missing field once even if it appears in 50 files.
+    Group failures by **(schema, key path)** so you fix each missing field once even if it appears in 50 files.
 
 4. For each unique unrecognized key:
-   - Find the right schema in `src/lib/schemas.ts`, `src/lib/tool-input-schemas.ts`, `src/lib/hook-events.ts`, or `src/lib/settings-schema.ts` based on the record `type` field shown in surrounding context. Read a few of the actual failing JSONL lines if the shape is ambiguous — `head -n <line> <file> | tail -1 | jq` is fine.
-   - Add the field as `.optional()` with the **strictest type the on-disk data supports**. Read the actual values from disk before choosing the type. Avoid `z.unknown()` or `z.record(z.string(), z.unknown())` fallbacks (see [[feedback_strict_schemas]]) — if you genuinely can't pin the shape, surface that as a question rather than weakening the schema.
-   - If the field is sometimes a string and sometimes an object (we have prior art for `origin`, `error`, `errorDetails`), use a `z.union([...])` not a permissive record.
-   - Keep the existing `.strict()` on the object — never downgrade it to `.passthrough()`.
+    - Find the right schema in `src/lib/schemas.ts`, `src/lib/tool-input-schemas.ts`, `src/lib/hook-events.ts`, or `src/lib/settings-schema.ts` based on the record `type` field shown in surrounding context. Read a few of the actual failing JSONL lines if the shape is ambiguous — `head -n <line> <file> | tail -1 | jq` is fine.
+    - Add the field as `.optional()` with the **strictest type the on-disk data supports**. Read the actual values from disk before choosing the type. Avoid `z.unknown()` or `z.record(z.string(), z.unknown())` fallbacks (see [[feedback_strict_schemas]]) — if you genuinely can't pin the shape, surface that as a question rather than weakening the schema.
+    - If the field is sometimes a string and sometimes an object (we have prior art for `origin`, `error`, `errorDetails`), use a `z.union([...])` not a permissive record.
+    - Keep the existing `.strict()` on the object — never downgrade it to `.passthrough()`.
 
 5. For non-`unrecognized_keys` issues (type mismatches, invalid enum values), the fix may be widening an existing field. Read the surrounding schema and the failing values, then decide:
-   - String that's now sometimes a number → `z.union([z.string(), z.number()])`
-   - Enum that has a new variant → add the variant to the enum
-   - Surface anything weirder as a question before editing.
+    - String that's now sometimes a number → `z.union([z.string(), z.number()])`
+    - Enum that has a new variant → add the variant to the enum
+    - Surface anything weirder as a question before editing.
 
 6. Re-run `vp run test:run -- -t "against disk"` to confirm green. If new failures appear (cascading), repeat.
 

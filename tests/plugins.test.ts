@@ -1,325 +1,313 @@
-import { writeFileSync, mkdirSync, rmSync, symlinkSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
+import {writeFileSync, mkdirSync, rmSync, symlinkSync} from "node:fs";
+import {join} from "node:path";
+import {tmpdir} from "node:os";
 import {
-  parseFrontmatter,
-  readPluginFileContent,
-  readUserCommandContent,
-  listUserCommands,
-  extractMarketplace,
-  formatMarketplaceName,
-  isOfficialMarketplace,
-  scanPluginTree,
+	parseFrontmatter,
+	readPluginFileContent,
+	readUserCommandContent,
+	listUserCommands,
+	extractMarketplace,
+	formatMarketplaceName,
+	isOfficialMarketplace,
+	scanPluginTree,
 } from "../src/lib/plugins.js";
 
 const testDir = join(tmpdir(), "claude-plugins-test-" + process.pid);
 
 beforeEach(() => {
-  mkdirSync(testDir, { recursive: true });
+	mkdirSync(testDir, {recursive: true});
 });
 
 afterEach(() => {
-  rmSync(testDir, { recursive: true, force: true });
+	rmSync(testDir, {recursive: true, force: true});
 });
 
 describe("parseFrontmatter", () => {
-  it("parses YAML frontmatter from content", () => {
-    const content =
-      "---\nname: test-agent\ndescription: A test agent\nmodel: sonnet\n---\n\n# Body";
-    const { frontmatter, body } = parseFrontmatter(content);
-    expect(frontmatter["name"]).toBe("test-agent");
-    expect(frontmatter["description"]).toBe("A test agent");
-    expect(frontmatter["model"]).toBe("sonnet");
-    expect(body).toBe("# Body");
-  });
+	it("parses YAML frontmatter from content", () => {
+		const content = "---\nname: test-agent\ndescription: A test agent\nmodel: sonnet\n---\n\n# Body";
+		const {frontmatter, body} = parseFrontmatter(content);
+		expect(frontmatter["name"]).toBe("test-agent");
+		expect(frontmatter["description"]).toBe("A test agent");
+		expect(frontmatter["model"]).toBe("sonnet");
+		expect(body).toBe("# Body");
+	});
 
-  it("returns empty frontmatter when no delimiters", () => {
-    const content = "# Just markdown\n\nNo frontmatter here.";
-    const { frontmatter, body } = parseFrontmatter(content);
-    expect(frontmatter).toStrictEqual({});
-    expect(body).toBe(content);
-  });
+	it("returns empty frontmatter when no delimiters", () => {
+		const content = "# Just markdown\n\nNo frontmatter here.";
+		const {frontmatter, body} = parseFrontmatter(content);
+		expect(frontmatter).toStrictEqual({});
+		expect(body).toBe(content);
+	});
 
-  it("returns empty frontmatter when no closing delimiter", () => {
-    const content = "---\nname: broken\nNo closing delimiter";
-    const { frontmatter, body } = parseFrontmatter(content);
-    expect(frontmatter).toStrictEqual({});
-    expect(body).toBe(content);
-  });
+	it("returns empty frontmatter when no closing delimiter", () => {
+		const content = "---\nname: broken\nNo closing delimiter";
+		const {frontmatter, body} = parseFrontmatter(content);
+		expect(frontmatter).toStrictEqual({});
+		expect(body).toBe(content);
+	});
 
-  it("handles empty frontmatter block", () => {
-    const content = "---\n---\n\n# Body";
-    const { frontmatter, body } = parseFrontmatter(content);
-    expect(frontmatter).toStrictEqual({});
-    expect(body).toBe("# Body");
-  });
+	it("handles empty frontmatter block", () => {
+		const content = "---\n---\n\n# Body";
+		const {frontmatter, body} = parseFrontmatter(content);
+		expect(frontmatter).toStrictEqual({});
+		expect(body).toBe("# Body");
+	});
 
-  it("handles values with colons", () => {
-    const content = "---\ndescription: Use this when: the user asks\n---\n\nBody";
-    const { frontmatter, body } = parseFrontmatter(content);
-    expect(frontmatter["description"]).toBe("Use this when: the user asks");
-    expect(body).toBe("Body");
-  });
+	it("handles values with colons", () => {
+		const content = "---\ndescription: Use this when: the user asks\n---\n\nBody";
+		const {frontmatter, body} = parseFrontmatter(content);
+		expect(frontmatter["description"]).toBe("Use this when: the user asks");
+		expect(body).toBe("Body");
+	});
 
-  it("skips lines without colons", () => {
-    const content = "---\nname: test\njust a line\nversion: 1.0\n---\n\nBody";
-    const { frontmatter } = parseFrontmatter(content);
-    expect(frontmatter["name"]).toBe("test");
-    expect(frontmatter["version"]).toBe("1.0");
-    expect(Object.keys(frontmatter).length).toBe(2);
-  });
+	it("skips lines without colons", () => {
+		const content = "---\nname: test\njust a line\nversion: 1.0\n---\n\nBody";
+		const {frontmatter} = parseFrontmatter(content);
+		expect(frontmatter["name"]).toBe("test");
+		expect(frontmatter["version"]).toBe("1.0");
+		expect(Object.keys(frontmatter).length).toBe(2);
+	});
 });
 
 describe("readPluginFileContent", () => {
-  it("reads a file from an install path", async () => {
-    const agentsDir = join(testDir, "agents");
-    mkdirSync(agentsDir, { recursive: true });
-    writeFileSync(join(agentsDir, "test.md"), "# Test Agent");
+	it("reads a file from an install path", async () => {
+		const agentsDir = join(testDir, "agents");
+		mkdirSync(agentsDir, {recursive: true});
+		writeFileSync(join(agentsDir, "test.md"), "# Test Agent");
 
-    const content = await readPluginFileContent(testDir, "agents", "test.md");
-    expect(content).toBe("# Test Agent");
-  });
+		const content = await readPluginFileContent(testDir, "agents", "test.md");
+		expect(content).toBe("# Test Agent");
+	});
 
-  it("returns null for non-existent file", async () => {
-    const content = await readPluginFileContent(testDir, "agents", "nope.md");
-    expect(content).toBe(null);
-  });
+	it("returns null for non-existent file", async () => {
+		const content = await readPluginFileContent(testDir, "agents", "nope.md");
+		expect(content).toBe(null);
+	});
 
-  it("rejects path traversal", async () => {
-    const content = await readPluginFileContent(testDir, "..", "etc", "passwd");
-    expect(content).toBe(null);
-  });
+	it("rejects path traversal", async () => {
+		const content = await readPluginFileContent(testDir, "..", "etc", "passwd");
+		expect(content).toBe(null);
+	});
 
-  it("reads nested skill files", async () => {
-    const skillDir = join(testDir, "skills", "my-skill", "references");
-    mkdirSync(skillDir, { recursive: true });
-    writeFileSync(join(skillDir, "ref.md"), "# Reference");
+	it("reads nested skill files", async () => {
+		const skillDir = join(testDir, "skills", "my-skill", "references");
+		mkdirSync(skillDir, {recursive: true});
+		writeFileSync(join(skillDir, "ref.md"), "# Reference");
 
-    const content = await readPluginFileContent(
-      testDir,
-      "skills",
-      "my-skill",
-      "references",
-      "ref.md",
-    );
-    expect(content).toBe("# Reference");
-  });
+		const content = await readPluginFileContent(testDir, "skills", "my-skill", "references", "ref.md");
+		expect(content).toBe("# Reference");
+	});
 });
 
 describe("readUserCommandContent", () => {
-  it("rejects path traversal in filename", async () => {
-    const content = await readUserCommandContent("global", "../evil.md");
-    expect(content).toBe(null);
-  });
+	it("rejects path traversal in filename", async () => {
+		const content = await readUserCommandContent("global", "../evil.md");
+		expect(content).toBe(null);
+	});
 
-  it("rejects filenames with slashes", async () => {
-    const content = await readUserCommandContent("global", "sub/file.md");
-    expect(content).toBe(null);
-  });
+	it("rejects filenames with slashes", async () => {
+		const content = await readUserCommandContent("global", "sub/file.md");
+		expect(content).toBe(null);
+	});
 
-  it("rejects non-md extension", async () => {
-    const content = await readUserCommandContent("global", "file.txt");
-    expect(content).toBe(null);
-  });
+	it("rejects non-md extension", async () => {
+		const content = await readUserCommandContent("global", "file.txt");
+		expect(content).toBe(null);
+	});
 
-  it("rejects path traversal in source", async () => {
-    const content = await readUserCommandContent("../evil", "test.md");
-    expect(content).toBe(null);
-  });
+	it("rejects path traversal in source", async () => {
+		const content = await readUserCommandContent("../evil", "test.md");
+		expect(content).toBe(null);
+	});
 });
 
 describe("extractMarketplace", () => {
-  it("extracts marketplace from plugin ID", () => {
-    expect(extractMarketplace("hookify@claude-code-plugins")).toBe("claude-code-plugins");
-  });
+	it("extracts marketplace from plugin ID", () => {
+		expect(extractMarketplace("hookify@claude-code-plugins")).toBe("claude-code-plugins");
+	});
 
-  it("returns unknown when no @ separator", () => {
-    expect(extractMarketplace("standalone-plugin")).toBe("unknown");
-  });
+	it("returns unknown when no @ separator", () => {
+		expect(extractMarketplace("standalone-plugin")).toBe("unknown");
+	});
 
-  it("handles IDs with multiple @ signs", () => {
-    expect(extractMarketplace("plugin@scope@marketplace")).toBe("scope@marketplace");
-  });
+	it("handles IDs with multiple @ signs", () => {
+		expect(extractMarketplace("plugin@scope@marketplace")).toBe("scope@marketplace");
+	});
 });
 
 describe("formatMarketplaceName", () => {
-  it("title-cases hyphenated names", () => {
-    expect(formatMarketplaceName("claude-code-plugins")).toBe("Claude Code Plugins");
-  });
+	it("title-cases hyphenated names", () => {
+		expect(formatMarketplaceName("claude-code-plugins")).toBe("Claude Code Plugins");
+	});
 
-  it("handles single word", () => {
-    expect(formatMarketplaceName("unknown")).toBe("Unknown");
-  });
+	it("handles single word", () => {
+		expect(formatMarketplaceName("unknown")).toBe("Unknown");
+	});
 
-  it("handles anthropic-agent-skills", () => {
-    expect(formatMarketplaceName("anthropic-agent-skills")).toBe("Anthropic Agent Skills");
-  });
+	it("handles anthropic-agent-skills", () => {
+		expect(formatMarketplaceName("anthropic-agent-skills")).toBe("Anthropic Agent Skills");
+	});
 });
 
 describe("isOfficialMarketplace", () => {
-  it("identifies claude-plugins-official", () => {
-    expect(isOfficialMarketplace("claude-plugins-official")).toBe(true);
-  });
+	it("identifies claude-plugins-official", () => {
+		expect(isOfficialMarketplace("claude-plugins-official")).toBe(true);
+	});
 
-  it("identifies anthropic-agent-skills", () => {
-    expect(isOfficialMarketplace("anthropic-agent-skills")).toBe(true);
-  });
+	it("identifies anthropic-agent-skills", () => {
+		expect(isOfficialMarketplace("anthropic-agent-skills")).toBe(true);
+	});
 
-  it("returns false for third-party", () => {
-    expect(isOfficialMarketplace("claude-code-plugins")).toBe(false);
-  });
+	it("returns false for third-party", () => {
+		expect(isOfficialMarketplace("claude-code-plugins")).toBe(false);
+	});
 });
 
 describe("scanPluginTree", () => {
-  it("returns a tree of files and directories", async () => {
-    mkdirSync(join(testDir, "agents"), { recursive: true });
-    mkdirSync(join(testDir, "commands"), { recursive: true });
-    writeFileSync(join(testDir, "README.md"), "# Hello");
-    writeFileSync(join(testDir, "agents", "bot.md"), "# Bot");
-    writeFileSync(join(testDir, "commands", "run.md"), "# Run");
+	it("returns a tree of files and directories", async () => {
+		mkdirSync(join(testDir, "agents"), {recursive: true});
+		mkdirSync(join(testDir, "commands"), {recursive: true});
+		writeFileSync(join(testDir, "README.md"), "# Hello");
+		writeFileSync(join(testDir, "agents", "bot.md"), "# Bot");
+		writeFileSync(join(testDir, "commands", "run.md"), "# Run");
 
-    const tree = await scanPluginTree(testDir);
-    expect(tree).not.toBe(null);
+		const tree = await scanPluginTree(testDir);
+		expect(tree).not.toBe(null);
 
-    const paths = tree!.children!.map((c) => c.path).sort();
-    expect(paths).toContain("README.md");
-    expect(paths).toContain("agents");
-    expect(paths).toContain("commands");
+		const paths = tree!.children!.map((c) => c.path).sort();
+		expect(paths).toContain("README.md");
+		expect(paths).toContain("agents");
+		expect(paths).toContain("commands");
 
-    const agentsNode = tree!.children!.find((c) => c.path === "agents");
-    if (!agentsNode?.children) throw new Error("Expected agentsNode to have children");
-    expect(agentsNode.children.map((c) => c.path)).toStrictEqual(["agents/bot.md"]);
-    expect(agentsNode?.children?.[0]?.children).toBeUndefined();
-  });
+		const agentsNode = tree!.children!.find((c) => c.path === "agents");
+		if (!agentsNode?.children) throw new Error("Expected agentsNode to have children");
+		expect(agentsNode.children.map((c) => c.path)).toStrictEqual(["agents/bot.md"]);
+		expect(agentsNode?.children?.[0]?.children).toBeUndefined();
+	});
 
-  it("returns null for non-existent directory", async () => {
-    const tree = await scanPluginTree(join(testDir, "nonexistent"));
-    expect(tree).toBe(null);
-  });
+	it("returns null for non-existent directory", async () => {
+		const tree = await scanPluginTree(join(testDir, "nonexistent"));
+		expect(tree).toBe(null);
+	});
 
-  it("excludes node_modules and .git directories", async () => {
-    mkdirSync(join(testDir, "node_modules", "dep"), { recursive: true });
-    mkdirSync(join(testDir, ".git", "objects"), { recursive: true });
-    mkdirSync(join(testDir, "src"), { recursive: true });
-    writeFileSync(join(testDir, "node_modules", "dep", "index.js"), "");
-    writeFileSync(join(testDir, ".git", "objects", "abc"), "");
-    writeFileSync(join(testDir, "src", "main.ts"), "");
+	it("excludes node_modules and .git directories", async () => {
+		mkdirSync(join(testDir, "node_modules", "dep"), {recursive: true});
+		mkdirSync(join(testDir, ".git", "objects"), {recursive: true});
+		mkdirSync(join(testDir, "src"), {recursive: true});
+		writeFileSync(join(testDir, "node_modules", "dep", "index.js"), "");
+		writeFileSync(join(testDir, ".git", "objects", "abc"), "");
+		writeFileSync(join(testDir, "src", "main.ts"), "");
 
-    const tree = await scanPluginTree(testDir);
-    const paths = tree!.children!.map((c) => c.path);
-    expect(paths).not.toContain("node_modules");
-    expect(paths).not.toContain(".git");
-    expect(paths).toContain("src");
-  });
+		const tree = await scanPluginTree(testDir);
+		const paths = tree!.children!.map((c) => c.path);
+		expect(paths).not.toContain("node_modules");
+		expect(paths).not.toContain(".git");
+		expect(paths).toContain("src");
+	});
 
-  it("sorts directories before files, then alphabetically", async () => {
-    mkdirSync(join(testDir, "beta"), { recursive: true });
-    mkdirSync(join(testDir, "alpha"), { recursive: true });
-    writeFileSync(join(testDir, "zebra.md"), "");
-    writeFileSync(join(testDir, "aardvark.md"), "");
+	it("sorts directories before files, then alphabetically", async () => {
+		mkdirSync(join(testDir, "beta"), {recursive: true});
+		mkdirSync(join(testDir, "alpha"), {recursive: true});
+		writeFileSync(join(testDir, "zebra.md"), "");
+		writeFileSync(join(testDir, "aardvark.md"), "");
 
-    const tree = await scanPluginTree(testDir);
-    const paths = tree!.children!.map((c) => c.path);
-    expect(paths).toStrictEqual(["alpha", "beta", "aardvark.md", "zebra.md"]);
-  });
+		const tree = await scanPluginTree(testDir);
+		const paths = tree!.children!.map((c) => c.path);
+		expect(paths).toStrictEqual(["alpha", "beta", "aardvark.md", "zebra.md"]);
+	});
 
-  it("includes relative path for each node", async () => {
-    mkdirSync(join(testDir, "skills", "my-skill"), { recursive: true });
-    writeFileSync(join(testDir, "skills", "my-skill", "SKILL.md"), "");
+	it("includes relative path for each node", async () => {
+		mkdirSync(join(testDir, "skills", "my-skill"), {recursive: true});
+		writeFileSync(join(testDir, "skills", "my-skill", "SKILL.md"), "");
 
-    const tree = await scanPluginTree(testDir);
-    const skillsNode = tree!.children!.find((c) => c.path === "skills");
-    const mySkillNode = skillsNode!.children!.find((c) => c.path === "skills/my-skill");
-    const skillMd = mySkillNode!.children!.find((c) => c.path === "skills/my-skill/SKILL.md");
+		const tree = await scanPluginTree(testDir);
+		const skillsNode = tree!.children!.find((c) => c.path === "skills");
+		const mySkillNode = skillsNode!.children!.find((c) => c.path === "skills/my-skill");
+		const skillMd = mySkillNode!.children!.find((c) => c.path === "skills/my-skill/SKILL.md");
 
-    expect(skillsNode!.path).toBe("skills");
-    expect(mySkillNode!.path).toBe("skills/my-skill");
-    expect(skillMd!.path).toBe("skills/my-skill/SKILL.md");
-  });
+		expect(skillsNode!.path).toBe("skills");
+		expect(mySkillNode!.path).toBe("skills/my-skill");
+		expect(skillMd!.path).toBe("skills/my-skill/SKILL.md");
+	});
 
-  it("does not follow directory symlinks that form cycles", async () => {
-    const sourceDirectory = join(testDir, "src");
-    mkdirSync(sourceDirectory, { recursive: true });
-    writeFileSync(join(sourceDirectory, "alice.ts"), "export const alice = true;\n");
-    symlinkSync(sourceDirectory, join(sourceDirectory, "cycle"), "dir");
+	it("does not follow directory symlinks that form cycles", async () => {
+		const sourceDirectory = join(testDir, "src");
+		mkdirSync(sourceDirectory, {recursive: true});
+		writeFileSync(join(sourceDirectory, "alice.ts"), "export const alice = true;\n");
+		symlinkSync(sourceDirectory, join(sourceDirectory, "cycle"), "dir");
 
-    expect(await scanPluginTree(testDir)).toStrictEqual({
-      path: "",
-      children: [
-        {
-          path: "src",
-          children: [{ path: "src/alice.ts" }],
-        },
-      ],
-    });
-  });
+		expect(await scanPluginTree(testDir)).toStrictEqual({
+			path: "",
+			children: [
+				{
+					path: "src",
+					children: [{path: "src/alice.ts"}],
+				},
+			],
+		});
+	});
 });
 
 describe("project slash commands", () => {
-  const homeDir = join(testDir, "home");
-  const projectDir = join(testDir, "work", "my-app");
-  const encoded = "-work-my-app";
+	const homeDir = join(testDir, "home");
+	const projectDir = join(testDir, "work", "my-app");
+	const encoded = "-work-my-app";
 
-  beforeEach(() => {
-    vi.stubEnv("HOME", homeDir);
-    mkdirSync(join(projectDir, ".claude", "commands"), { recursive: true });
-    writeFileSync(
-      join(projectDir, ".claude", "commands", "foo.md"),
-      "---\ndescription: Foo it\n---\n# Foo\n",
-    );
-    mkdirSync(join(homeDir, ".claude", "projects", encoded, "commands"), { recursive: true });
-    writeFileSync(join(homeDir, ".claude", "projects", encoded, "commands", "bar.md"), "# Bar\n");
-  });
+	beforeEach(() => {
+		vi.stubEnv("HOME", homeDir);
+		mkdirSync(join(projectDir, ".claude", "commands"), {recursive: true});
+		writeFileSync(join(projectDir, ".claude", "commands", "foo.md"), "---\ndescription: Foo it\n---\n# Foo\n");
+		mkdirSync(join(homeDir, ".claude", "projects", encoded, "commands"), {recursive: true});
+		writeFileSync(join(homeDir, ".claude", "projects", encoded, "commands", "bar.md"), "# Bar\n");
+	});
 
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
+	afterEach(() => {
+		vi.unstubAllEnvs();
+	});
 
-  it("lists commands from <cwd>/.claude/commands and ignores the transcript directory", async () => {
-    const groups = await listUserCommands([
-      { id: encoded, projectPath: projectDir },
-      { id: "-gone", projectPath: join(testDir, "gone") },
-      { id: "-no-path", projectPath: null },
-    ]);
-    expect(groups).toEqual([
-      {
-        source: encoded,
-        sourceName: "my-app",
-        commands: [
-          {
-            filename: "foo.md",
-            name: "Foo",
-            description: "Foo it",
-            type: "command",
-            frontmatter: { description: "Foo it" },
-          },
-        ],
-      },
-    ]);
-  });
+	it("lists commands from <cwd>/.claude/commands and ignores the transcript directory", async () => {
+		const groups = await listUserCommands([
+			{id: encoded, projectPath: projectDir},
+			{id: "-gone", projectPath: join(testDir, "gone")},
+			{id: "-no-path", projectPath: null},
+		]);
+		expect(groups).toEqual([
+			{
+				source: encoded,
+				sourceName: "my-app",
+				commands: [
+					{
+						filename: "foo.md",
+						name: "Foo",
+						description: "Foo it",
+						type: "command",
+						frontmatter: {description: "Foo it"},
+					},
+				],
+			},
+		]);
+	});
 
-  it("keeps listing global commands from ~/.claude/commands", async () => {
-    mkdirSync(join(homeDir, ".claude", "commands"), { recursive: true });
-    writeFileSync(join(homeDir, ".claude", "commands", "g.md"), "# Global\n");
-    const groups = await listUserCommands([]);
-    expect(groups).toEqual([
-      {
-        source: "global",
-        sourceName: "Global",
-        commands: [
-          { filename: "g.md", name: "Global", description: "", type: "command", frontmatter: {} },
-        ],
-      },
-    ]);
-  });
+	it("keeps listing global commands from ~/.claude/commands", async () => {
+		mkdirSync(join(homeDir, ".claude", "commands"), {recursive: true});
+		writeFileSync(join(homeDir, ".claude", "commands", "g.md"), "# Global\n");
+		const groups = await listUserCommands([]);
+		expect(groups).toEqual([
+			{
+				source: "global",
+				sourceName: "Global",
+				commands: [{filename: "g.md", name: "Global", description: "", type: "command", frontmatter: {}}],
+			},
+		]);
+	});
 
-  it("reads project command content from the project cwd", async () => {
-    const content = await readUserCommandContent(encoded, "foo.md", projectDir);
-    expect(content).toBe("---\ndescription: Foo it\n---\n# Foo\n");
-  });
+	it("reads project command content from the project cwd", async () => {
+		const content = await readUserCommandContent(encoded, "foo.md", projectDir);
+		expect(content).toBe("---\ndescription: Foo it\n---\n# Foo\n");
+	});
 
-  it("does not read from the transcript directory", async () => {
-    expect(await readUserCommandContent(encoded, "bar.md", projectDir)).toBe(null);
-    expect(await readUserCommandContent(encoded, "foo.md", null)).toBe(null);
-  });
+	it("does not read from the transcript directory", async () => {
+		expect(await readUserCommandContent(encoded, "bar.md", projectDir)).toBe(null);
+		expect(await readUserCommandContent(encoded, "foo.md", null)).toBe(null);
+	});
 });

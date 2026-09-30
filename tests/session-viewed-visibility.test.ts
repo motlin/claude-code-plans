@@ -1,343 +1,327 @@
 // @vitest-environment jsdom
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, renderHook } from "@testing-library/react";
-import { createElement, type PropsWithChildren } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
+import {act, cleanup, renderHook} from "@testing-library/react";
+import {createElement, type PropsWithChildren} from "react";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {
-  createRetryableSync,
-  createVisibilityDwellController,
-  useSessionViewedState,
+	createRetryableSync,
+	createVisibilityDwellController,
+	useSessionViewedState,
 } from "../src/hooks/use-session-viewed-state";
-import { sessionQueryKeys } from "../src/lib/api/sessions";
-import {
-  __unreadStoreTesting as unreadTesting,
-  hasUnseenWork,
-  syncUnseenFromSummaries,
-} from "../src/lib/unread-store";
-import {
-  __testing as visibilityTesting,
-  isSessionVisible,
-  setSessionVisibility,
-} from "../src/lib/session-visibility";
+import {sessionQueryKeys} from "../src/lib/api/sessions";
+import {__unreadStoreTesting as unreadTesting, hasUnseenWork, syncUnseenFromSummaries} from "../src/lib/unread-store";
+import {__testing as visibilityTesting, isSessionVisible, setSessionVisibility} from "../src/lib/session-visibility";
 
 vi.mock("../src/lib/hmr-persist", () => ({
-  hmrPersist: (_key: string, initialize: () => unknown) => initialize(),
+	hmrPersist: (_key: string, initialize: () => unknown) => initialize(),
 }));
 
 describe("session viewed visibility dwell", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(0);
-  });
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.setSystemTime(0);
+	});
 
-  afterEach(async () => {
-    cleanup();
-    await Promise.resolve();
-    visibilityTesting.clear();
-    vi.restoreAllMocks();
-    vi.unstubAllGlobals();
-    vi.useRealTimers();
-  });
+	afterEach(async () => {
+		cleanup();
+		await Promise.resolve();
+		visibilityTesting.clear();
+		vi.restoreAllMocks();
+		vi.unstubAllGlobals();
+		vi.useRealTimers();
+	});
 
-  it("requires 1.5 seconds of continuous visibility and cancels interrupted dwell", async () => {
-    const visibilityChanges: boolean[] = [];
-    const dwellTimes: number[] = [];
-    const controller = createVisibilityDwellController({
-      cancel: clearTimeout,
-      onDwell: () => dwellTimes.push(Date.now()),
-      onVisibilityChange: (visible) => visibilityChanges.push(visible),
-      schedule: setTimeout,
-    });
+	it("requires 1.5 seconds of continuous visibility and cancels interrupted dwell", async () => {
+		const visibilityChanges: boolean[] = [];
+		const dwellTimes: number[] = [];
+		const controller = createVisibilityDwellController({
+			cancel: clearTimeout,
+			onDwell: () => dwellTimes.push(Date.now()),
+			onVisibilityChange: (visible) => visibilityChanges.push(visible),
+			schedule: setTimeout,
+		});
 
-    controller.setVisible(true);
-    await vi.advanceTimersByTimeAsync(1_499);
-    controller.setVisible(false);
-    await vi.advanceTimersByTimeAsync(1);
-    controller.setVisible(true);
-    await vi.advanceTimersByTimeAsync(1_500);
-    controller.stop();
+		controller.setVisible(true);
+		await vi.advanceTimersByTimeAsync(1_499);
+		controller.setVisible(false);
+		await vi.advanceTimersByTimeAsync(1);
+		controller.setVisible(true);
+		await vi.advanceTimersByTimeAsync(1_500);
+		controller.stop();
 
-    expect({ visibilityChanges, dwellTimes }).toStrictEqual({
-      visibilityChanges: [true, false, true, false],
-      dwellTimes: [3_000],
-    });
-  });
+		expect({visibilityChanges, dwellTimes}).toStrictEqual({
+			visibilityChanges: [true, false, true, false],
+			dwellTimes: [3_000],
+		});
+	});
 
-  it("calls schedule and cancel without a receiver, like browser setTimeout requires", () => {
-    const calls: string[] = [];
-    // Browser window.setTimeout/clearTimeout throw "Illegal invocation" when
-    // called with a receiver other than window (e.g. the dependencies object).
-    function assertNoReceiver(this: unknown, name: string): void {
-      if (this !== undefined && this !== globalThis) {
-        throw new TypeError(`Illegal invocation: ${name}`);
-      }
-    }
-    const controller = createVisibilityDwellController({
-      cancel: function (this: unknown) {
-        assertNoReceiver.call(this, "cancel");
-        calls.push("cancel");
-      },
-      onDwell: () => {},
-      onVisibilityChange: () => {},
-      schedule: function (this: unknown) {
-        assertNoReceiver.call(this, "schedule");
-        calls.push("schedule");
-        return 1 as unknown as ReturnType<typeof setTimeout>;
-      },
-    });
+	it("calls schedule and cancel without a receiver, like browser setTimeout requires", () => {
+		const calls: string[] = [];
+		// Browser window.setTimeout/clearTimeout throw "Illegal invocation" when
+		// called with a receiver other than window (e.g. the dependencies object).
+		function assertNoReceiver(this: unknown, name: string): void {
+			if (this !== undefined && this !== globalThis) {
+				throw new TypeError(`Illegal invocation: ${name}`);
+			}
+		}
+		const controller = createVisibilityDwellController({
+			cancel: function (this: unknown) {
+				assertNoReceiver.call(this, "cancel");
+				calls.push("cancel");
+			},
+			onDwell: () => {},
+			onVisibilityChange: () => {},
+			schedule: function (this: unknown) {
+				assertNoReceiver.call(this, "schedule");
+				calls.push("schedule");
+				return 1 as unknown as ReturnType<typeof setTimeout>;
+			},
+		});
 
-    controller.setVisible(true);
-    controller.setVisible(false);
-    controller.setVisible(true);
-    controller.stop();
+		controller.setVisible(true);
+		controller.setVisible(false);
+		controller.setVisible(true);
+		controller.stop();
 
-    expect(calls).toStrictEqual(["schedule", "cancel", "schedule", "cancel"]);
-  });
+		expect(calls).toStrictEqual(["schedule", "cancel", "schedule", "cancel"]);
+	});
 
-  it("expires server visibility leases when a browser stops heartbeating", () => {
-    setSessionVisibility("client-test-100", "session-test-100", true, 1_000);
+	it("expires server visibility leases when a browser stops heartbeating", () => {
+		setSessionVisibility("client-test-100", "session-test-100", true, 1_000);
 
-    expect({
-      beforeExpiry: isSessionVisible("session-test-100", 30_999),
-      atExpiry: isSessionVisible("session-test-100", 31_000),
-      unrelatedSession: isSessionVisible("session-test-200", 31_000),
-    }).toStrictEqual({ beforeExpiry: true, atExpiry: false, unrelatedSession: false });
-  });
+		expect({
+			beforeExpiry: isSessionVisible("session-test-100", 30_999),
+			atExpiry: isSessionVisible("session-test-100", 31_000),
+			unrelatedSession: isSessionVisible("session-test-200", 31_000),
+		}).toStrictEqual({beforeExpiry: true, atExpiry: false, unrelatedSession: false});
+	});
 
-  it("updates session detail and invalidates placement queries after marking reviewed", async () => {
-    const viewedState = {
-      currentMessageIndex: 100,
-      lastViewedMessageIndex: 100,
-      reviewTargetMessageIndex: 100,
-      newMessageCount: 0,
-      viewedInCcp: true,
-      viewedInHerdr: false,
-      viewedAnywhere: true,
-    };
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => Response.json(viewedState)),
-    );
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    client.setQueryData(sessionQueryKeys.detail("session-test-100"), {
-      id: "session-test-100",
-      title: "Test session",
-    });
-    client.setQueryData(["herdr", "panes"], []);
-    client.setQueryData(["terminal", "placements"], []);
-    const wrapper = ({ children }: PropsWithChildren) =>
-      createElement(QueryClientProvider, { client }, children);
-    const { result } = renderHook(() => useSessionViewedState("session-test-100", 100), {
-      wrapper,
-    });
+	it("updates session detail and invalidates placement queries after marking reviewed", async () => {
+		const viewedState = {
+			currentMessageIndex: 100,
+			lastViewedMessageIndex: 100,
+			reviewTargetMessageIndex: 100,
+			newMessageCount: 0,
+			viewedInCcp: true,
+			viewedInHerdr: false,
+			viewedAnywhere: true,
+		};
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => Response.json(viewedState)),
+		);
+		const client = new QueryClient({defaultOptions: {queries: {retry: false}}});
+		client.setQueryData(sessionQueryKeys.detail("session-test-100"), {
+			id: "session-test-100",
+			title: "Test session",
+		});
+		client.setQueryData(["herdr", "panes"], []);
+		client.setQueryData(["terminal", "placements"], []);
+		const wrapper = ({children}: PropsWithChildren) => createElement(QueryClientProvider, {client}, children);
+		const {result} = renderHook(() => useSessionViewedState("session-test-100", 100), {
+			wrapper,
+		});
 
-    await act(async () => {
-      await result.current.markReviewed();
-    });
+		await act(async () => {
+			await result.current.markReviewed();
+		});
 
-    expect({
-      detail: client.getQueryData(sessionQueryKeys.detail("session-test-100")),
-      herdrPanesInvalidated: client.getQueryState(["herdr", "panes"])?.isInvalidated,
-      terminalPlacementsInvalidated: client.getQueryState(["terminal", "placements"])
-        ?.isInvalidated,
-    }).toStrictEqual({
-      detail: {
-        id: "session-test-100",
-        title: "Test session",
-        viewedState,
-      },
-      herdrPanesInvalidated: true,
-      terminalPlacementsInvalidated: true,
-    });
-  });
+		expect({
+			detail: client.getQueryData(sessionQueryKeys.detail("session-test-100")),
+			herdrPanesInvalidated: client.getQueryState(["herdr", "panes"])?.isInvalidated,
+			terminalPlacementsInvalidated: client.getQueryState(["terminal", "placements"])?.isInvalidated,
+		}).toStrictEqual({
+			detail: {
+				id: "session-test-100",
+				title: "Test session",
+				viewedState,
+			},
+			herdrPanesInvalidated: true,
+			terminalPlacementsInvalidated: true,
+		});
+	});
 
-  it("moves the shared unseen flag optimistically and settles it from the server response", async () => {
-    unreadTesting.reset();
-    syncUnseenFromSummaries([{ id: "session-test-100", unseen: true }]);
-    const responses = [
-      { viewedInCcp: true, viewedAnywhere: true, reviewTargetMessageIndex: 100 },
-      { viewedInCcp: false, viewedAnywhere: false, reviewTargetMessageIndex: 101 },
-    ];
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        Response.json({
-          currentMessageIndex: 100,
-          lastViewedMessageIndex: 100,
-          newMessageCount: 0,
-          viewedInHerdr: false,
-          ...responses.shift(),
-        }),
-      ),
-    );
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const wrapper = ({ children }: PropsWithChildren) =>
-      createElement(QueryClientProvider, { client }, children);
-    const { result } = renderHook(() => useSessionViewedState("session-test-100", 100), {
-      wrapper,
-    });
+	it("moves the shared unseen flag optimistically and settles it from the server response", async () => {
+		unreadTesting.reset();
+		syncUnseenFromSummaries([{id: "session-test-100", unseen: true}]);
+		const responses = [
+			{viewedInCcp: true, viewedAnywhere: true, reviewTargetMessageIndex: 100},
+			{viewedInCcp: false, viewedAnywhere: false, reviewTargetMessageIndex: 101},
+		];
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () =>
+				Response.json({
+					currentMessageIndex: 100,
+					lastViewedMessageIndex: 100,
+					newMessageCount: 0,
+					viewedInHerdr: false,
+					...responses.shift(),
+				}),
+			),
+		);
+		const client = new QueryClient({defaultOptions: {queries: {retry: false}}});
+		const wrapper = ({children}: PropsWithChildren) => createElement(QueryClientProvider, {client}, children);
+		const {result} = renderHook(() => useSessionViewedState("session-test-100", 100), {
+			wrapper,
+		});
 
-    let optimisticReviewed = true;
-    await act(async () => {
-      const pending = result.current.markReviewed();
-      optimisticReviewed = hasUnseenWork("session-test-100");
-      await pending;
-    });
-    const afterReviewed = hasUnseenWork("session-test-100");
-    await act(async () => {
-      await result.current.markUnreviewed();
-    });
+		let optimisticReviewed = true;
+		await act(async () => {
+			const pending = result.current.markReviewed();
+			optimisticReviewed = hasUnseenWork("session-test-100");
+			await pending;
+		});
+		const afterReviewed = hasUnseenWork("session-test-100");
+		await act(async () => {
+			await result.current.markUnreviewed();
+		});
 
-    expect({
-      optimisticReviewed,
-      afterReviewed,
-      afterUnreviewed: hasUnseenWork("session-test-100"),
-    }).toStrictEqual({ optimisticReviewed: false, afterReviewed: false, afterUnreviewed: true });
-  });
+		expect({
+			optimisticReviewed,
+			afterReviewed,
+			afterUnreviewed: hasUnseenWork("session-test-100"),
+		}).toStrictEqual({optimisticReviewed: false, afterReviewed: false, afterUnreviewed: true});
+	});
 
-  it("retries a failed dwell auto-mark on the visibility heartbeat", async () => {
-    vi.spyOn(console, "warn").mockImplementation(() => {});
-    vi.spyOn(Math, "random").mockReturnValue(0);
-    const requests: Array<{ body: unknown; path: string }> = [];
-    let viewedAttempts = 0;
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-        const path =
-          typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-        requests.push({
-          body: typeof init?.body === "string" ? JSON.parse(init.body) : null,
-          path,
-        });
-        if (path.endsWith("/viewed")) {
-          viewedAttempts += 1;
-          if (viewedAttempts === 1) {
-            return new Response("{}", {
-              status: 500,
-              headers: { "Content-Type": "application/json" },
-            });
-          }
-          return Response.json({
-            currentMessageIndex: 100,
-            lastViewedMessageIndex: 100,
-            reviewTargetMessageIndex: 100,
-            newMessageCount: 0,
-            viewedInCcp: true,
-            viewedInHerdr: false,
-            viewedAnywhere: true,
-          });
-        }
-        return new Response(null, { status: 204 });
-      }),
-    );
+	it("retries a failed dwell auto-mark on the visibility heartbeat", async () => {
+		vi.spyOn(console, "warn").mockImplementation(() => {});
+		vi.spyOn(Math, "random").mockReturnValue(0);
+		const requests: Array<{body: unknown; path: string}> = [];
+		let viewedAttempts = 0;
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+				const path = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+				requests.push({
+					body: typeof init?.body === "string" ? JSON.parse(init.body) : null,
+					path,
+				});
+				if (path.endsWith("/viewed")) {
+					viewedAttempts += 1;
+					if (viewedAttempts === 1) {
+						return new Response("{}", {
+							status: 500,
+							headers: {"Content-Type": "application/json"},
+						});
+					}
+					return Response.json({
+						currentMessageIndex: 100,
+						lastViewedMessageIndex: 100,
+						reviewTargetMessageIndex: 100,
+						newMessageCount: 0,
+						viewedInCcp: true,
+						viewedInHerdr: false,
+						viewedAnywhere: true,
+					});
+				}
+				return new Response(null, {status: 204});
+			}),
+		);
 
-    let intersectionCallback: IntersectionObserverCallback = () => {
-      throw new Error("Intersection observer callback was not installed");
-    };
-    class TestIntersectionObserver {
-      constructor(callback: IntersectionObserverCallback) {
-        intersectionCallback = callback;
-      }
+		let intersectionCallback: IntersectionObserverCallback = () => {
+			throw new Error("Intersection observer callback was not installed");
+		};
+		class TestIntersectionObserver {
+			constructor(callback: IntersectionObserverCallback) {
+				intersectionCallback = callback;
+			}
 
-      disconnect(): void {}
-      observe(): void {}
-    }
-    vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
+			disconnect(): void {}
+			observe(): void {}
+		}
+		vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
 
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const wrapper = ({ children }: PropsWithChildren) =>
-      createElement(QueryClientProvider, { client }, children);
-    const { result } = renderHook(() => useSessionViewedState("session-test-100", 100), {
-      wrapper,
-    });
+		const client = new QueryClient({defaultOptions: {queries: {retry: false}}});
+		const wrapper = ({children}: PropsWithChildren) => createElement(QueryClientProvider, {client}, children);
+		const {result} = renderHook(() => useSessionViewedState("session-test-100", 100), {
+			wrapper,
+		});
 
-    await act(async () => {
-      result.current.visibilityRef(document.createElement("div"));
-    });
-    await act(async () => {
-      intersectionCallback(
-        [{ isIntersecting: true } as IntersectionObserverEntry],
-        {} as IntersectionObserver,
-      );
-      await vi.advanceTimersByTimeAsync(10_000);
-    });
+		await act(async () => {
+			result.current.visibilityRef(document.createElement("div"));
+		});
+		await act(async () => {
+			intersectionCallback([{isIntersecting: true} as IntersectionObserverEntry], {} as IntersectionObserver);
+			await vi.advanceTimersByTimeAsync(10_000);
+		});
 
-    expect(requests).toStrictEqual([
-      {
-        body: { clientId: "0-0", visible: true },
-        path: "/api/sessions/session-test-100/visibility",
-      },
-      {
-        body: { action: "reviewed", messageIndex: 100 },
-        path: "/api/sessions/session-test-100/viewed",
-      },
-      {
-        body: { clientId: "0-0", visible: true },
-        path: "/api/sessions/session-test-100/visibility",
-      },
-      {
-        body: { action: "reviewed", messageIndex: 100 },
-        path: "/api/sessions/session-test-100/viewed",
-      },
-    ]);
-  });
+		expect(requests).toStrictEqual([
+			{
+				body: {clientId: "0-0", visible: true},
+				path: "/api/sessions/session-test-100/visibility",
+			},
+			{
+				body: {action: "reviewed", messageIndex: 100},
+				path: "/api/sessions/session-test-100/viewed",
+			},
+			{
+				body: {clientId: "0-0", visible: true},
+				path: "/api/sessions/session-test-100/visibility",
+			},
+			{
+				body: {action: "reviewed", messageIndex: 100},
+				path: "/api/sessions/session-test-100/viewed",
+			},
+		]);
+	});
 });
 
 describe("retryable session viewed sync", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
 
-  it("does not retry after a successful attempt", async () => {
-    vi.spyOn(console, "warn").mockImplementation(() => {});
-    const operations: string[] = [];
-    const sync = createRetryableSync(() => {
-      operations.push("call");
-      return Promise.resolve();
-    });
+	it("does not retry after a successful attempt", async () => {
+		vi.spyOn(console, "warn").mockImplementation(() => {});
+		const operations: string[] = [];
+		const sync = createRetryableSync(() => {
+			operations.push("call");
+			return Promise.resolve();
+		});
 
-    sync.attempt("mark-reviewed");
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    sync.retryIfFailed("mark-reviewed-retry");
-    await new Promise((resolve) => setTimeout(resolve, 10));
+		sync.attempt("mark-reviewed");
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		sync.retryIfFailed("mark-reviewed-retry");
+		await new Promise((resolve) => setTimeout(resolve, 10));
 
-    expect(operations).toStrictEqual(["call"]);
-  });
+		expect(operations).toStrictEqual(["call"]);
+	});
 
-  it("retries after a failed attempt", async () => {
-    vi.spyOn(console, "warn").mockImplementation(() => {});
-    const operations: string[] = [];
-    const failure = new Error("mark reviewed failed");
-    const sync = createRetryableSync(() => {
-      operations.push("call");
-      return operations.length === 1 ? Promise.reject(failure) : Promise.resolve();
-    });
+	it("retries after a failed attempt", async () => {
+		vi.spyOn(console, "warn").mockImplementation(() => {});
+		const operations: string[] = [];
+		const failure = new Error("mark reviewed failed");
+		const sync = createRetryableSync(() => {
+			operations.push("call");
+			return operations.length === 1 ? Promise.reject(failure) : Promise.resolve();
+		});
 
-    sync.attempt("mark-reviewed");
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    sync.retryIfFailed("mark-reviewed-retry");
-    await new Promise((resolve) => setTimeout(resolve, 10));
+		sync.attempt("mark-reviewed");
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		sync.retryIfFailed("mark-reviewed-retry");
+		await new Promise((resolve) => setTimeout(resolve, 10));
 
-    expect(operations).toStrictEqual(["call", "call"]);
-  });
+		expect(operations).toStrictEqual(["call", "call"]);
+	});
 
-  it("stops retrying after a retry succeeds", async () => {
-    vi.spyOn(console, "warn").mockImplementation(() => {});
-    const operations: string[] = [];
-    const failure = new Error("mark reviewed failed");
-    const sync = createRetryableSync(() => {
-      operations.push("call");
-      return operations.length === 1 ? Promise.reject(failure) : Promise.resolve();
-    });
+	it("stops retrying after a retry succeeds", async () => {
+		vi.spyOn(console, "warn").mockImplementation(() => {});
+		const operations: string[] = [];
+		const failure = new Error("mark reviewed failed");
+		const sync = createRetryableSync(() => {
+			operations.push("call");
+			return operations.length === 1 ? Promise.reject(failure) : Promise.resolve();
+		});
 
-    sync.attempt("mark-reviewed");
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    sync.retryIfFailed("mark-reviewed-retry");
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    sync.retryIfFailed("mark-reviewed-retry");
-    await new Promise((resolve) => setTimeout(resolve, 10));
+		sync.attempt("mark-reviewed");
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		sync.retryIfFailed("mark-reviewed-retry");
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		sync.retryIfFailed("mark-reviewed-retry");
+		await new Promise((resolve) => setTimeout(resolve, 10));
 
-    expect(operations).toStrictEqual(["call", "call"]);
-  });
+		expect(operations).toStrictEqual(["call", "call"]);
+	});
 });

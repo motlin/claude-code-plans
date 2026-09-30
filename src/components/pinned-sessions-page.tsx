@@ -1,95 +1,95 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import { PinOff } from "lucide-react";
-import { useMemo } from "react";
-import { type SessionListItem, sessionsByIdsQueryOptions } from "../lib/api/sessions";
-import { orderedPins, unpin, usePins } from "../lib/pin-store";
-import { formatCount } from "../lib/pluralize";
-import { ListPageHeader } from "./list-page-header";
-import { SessionRowStatusDot } from "./session-unread-control";
+import {keepPreviousData, useQuery} from "@tanstack/react-query";
+import {Link} from "@tanstack/react-router";
+import {PinOff} from "lucide-react";
+import {useMemo} from "react";
+import {type SessionListItem, sessionsByIdsQueryOptions} from "../lib/api/sessions";
+import {orderedPins, unpin, usePins} from "../lib/pin-store";
+import {formatCount} from "../lib/pluralize";
+import {ListPageHeader} from "./list-page-header";
+import {SessionRowStatusDot} from "./session-unread-control";
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+	return new Date(iso).toLocaleDateString("en-US", {
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+		hour: "2-digit",
+		minute: "2-digit",
+	});
 }
 
 const newestFirst = (a: SessionListItem, b: SessionListItem): number =>
-  new Date(b.mtime).getTime() - new Date(a.mtime).getTime();
+	new Date(b.mtime).getTime() - new Date(a.mtime).getTime();
 
 export const PINNED_SESSIONS_TITLE = "Pinned sessions";
 
 /** This browser's pinned sessions: user-ordered pins first, then newest first. */
 export function PinnedSessionsPage() {
-  const { pinnedIds, pinnedOrder } = usePins();
-  const { data } = useQuery({
-    ...sessionsByIdsQueryOptions(pinnedIds),
-    placeholderData: keepPreviousData,
-  });
-  const sessions = useMemo(
-    () => orderedPins(data ?? [], newestFirst, { pinnedIds, pinnedOrder }),
-    [data, pinnedIds, pinnedOrder],
-  );
-  const loading = pinnedIds.length > 0 && data === undefined;
+	const {pinnedIds, pinnedOrder} = usePins();
+	const {data} = useQuery({
+		...sessionsByIdsQueryOptions(pinnedIds),
+		placeholderData: keepPreviousData,
+	});
+	const sessions = useMemo(
+		() => orderedPins(data ?? [], newestFirst, {pinnedIds, pinnedOrder}),
+		[data, pinnedIds, pinnedOrder],
+	);
+	const loading = pinnedIds.length > 0 && data === undefined;
 
-  return (
-    <div>
-      <ListPageHeader title={PINNED_SESSIONS_TITLE} count={sessions.length} itemLabel="session" />
+	return (
+		<div>
+			<ListPageHeader title={PINNED_SESSIONS_TITLE} count={sessions.length} itemLabel="session" />
 
-      {loading ? null : sessions.length === 0 ? (
-        <p className="mt-4 text-sm text-t6">
-          No pinned sessions. Drag a session to Pinned or use Pin (P) in its menu.
-        </p>
-      ) : (
-        <ul className="mt-4 space-y-1">
-          {sessions.map((session) => (
-            <li key={session.id} className="group relative">
-              <Link
-                to="/session/$id"
-                params={{ id: session.id }}
-                className="block rounded-md p-2 pr-40 cursor-pointer transition-colors hover:bg-surface-0/50"
-              >
-                <div className="truncate pr-8" style={{ fontSize: "14px", fontWeight: 430 }}>
-                  {session.title}
-                </div>
-                <div className="mt-0.5 flex items-center gap-2 text-xs text-t6">
-                  <span>{session.projectName}</span>
-                  <span>&middot;</span>
-                  <span>{formatDate(session.mtime)}</span>
-                  {session.messageCount > 0 && (
-                    <>
-                      <span>&middot;</span>
-                      <span>{formatCount(session.messageCount, "msg")}</span>
-                    </>
-                  )}
-                </div>
-                {session.summary && session.summary !== session.title && (
-                  <div className="mt-0.5 truncate text-xs text-t6 italic">{session.summary}</div>
-                )}
-              </Link>
-              <div className="absolute right-9 top-2.5">
-                <SessionRowStatusDot session={session} />
-              </div>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  unpin(session.id);
-                }}
-                className="absolute right-2 top-3 cursor-pointer text-secondary opacity-0 transition-opacity hover:text-primary group-hover:opacity-100"
-                title="Unpin"
-                aria-label="Unpin"
-              >
-                <PinOff className="h-4 w-4" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
+			{loading ? null : sessions.length === 0 ? (
+				<p className="mt-4 text-sm text-t6">
+					No pinned sessions. Drag a session to Pinned or use Pin (P) in its menu.
+				</p>
+			) : (
+				<ul className="mt-4 space-y-1">
+					{sessions.map((session) => (
+						<li key={session.id} className="group relative">
+							<Link
+								to="/session/$id"
+								params={{id: session.id}}
+								className="block rounded-md p-2 pr-40 cursor-pointer transition-colors hover:bg-surface-0/50"
+							>
+								<div className="truncate pr-8" style={{fontSize: "14px", fontWeight: 430}}>
+									{session.title}
+								</div>
+								<div className="mt-0.5 flex items-center gap-2 text-xs text-t6">
+									<span>{session.projectName}</span>
+									<span>&middot;</span>
+									<span>{formatDate(session.mtime)}</span>
+									{session.messageCount > 0 && (
+										<>
+											<span>&middot;</span>
+											<span>{formatCount(session.messageCount, "msg")}</span>
+										</>
+									)}
+								</div>
+								{session.summary && session.summary !== session.title && (
+									<div className="mt-0.5 truncate text-xs text-t6 italic">{session.summary}</div>
+								)}
+							</Link>
+							<div className="absolute right-9 top-2.5">
+								<SessionRowStatusDot session={session} />
+							</div>
+							<button
+								type="button"
+								onClick={(e) => {
+									e.preventDefault();
+									unpin(session.id);
+								}}
+								className="absolute right-2 top-3 cursor-pointer text-secondary opacity-0 transition-opacity hover:text-primary group-hover:opacity-100"
+								title="Unpin"
+								aria-label="Unpin"
+							>
+								<PinOff className="h-4 w-4" />
+							</button>
+						</li>
+					))}
+				</ul>
+			)}
+		</div>
+	);
 }

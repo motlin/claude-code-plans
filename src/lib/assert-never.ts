@@ -5,5 +5,5 @@
  * `tsgo --noEmit` fails at the call site, forcing the handler to be extended.
  */
 export function assertNever(value: never): never {
-  throw new Error(`Unhandled case: ${JSON.stringify(value)}`);
+	throw new Error(`Unhandled case: ${JSON.stringify(value)}`);
 }

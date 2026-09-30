@@ -1,54 +1,54 @@
-import { createReadStream } from "node:fs";
-import { readdir, readFile, stat } from "node:fs/promises";
-import { basename, dirname, join } from "node:path";
-import { createInterface } from "node:readline";
-import { decodeProjectDir, resolveProjectName } from "./memory";
-import type { JsonValue } from "./hook-events";
-import { normalizeGitBranch } from "./git-branch";
+import {createReadStream} from "node:fs";
+import {readdir, readFile, stat} from "node:fs/promises";
+import {basename, dirname, join} from "node:path";
+import {createInterface} from "node:readline";
+import {decodeProjectDir, resolveProjectName} from "./memory";
+import type {JsonValue} from "./hook-events";
+import {normalizeGitBranch} from "./git-branch";
 import {
-  AiTitleRecordSchema,
-  BridgeSessionRecordSchema,
-  CustomTitleRecordSchema,
-  CustomTitleSidecarSchema,
-  SessionsIndexSchema,
+	AiTitleRecordSchema,
+	BridgeSessionRecordSchema,
+	CustomTitleRecordSchema,
+	CustomTitleSidecarSchema,
+	SessionsIndexSchema,
 } from "./schemas";
-import { isCountableMessageRecord } from "./message-count";
-import { costStateFromRecord, type SessionCostState } from "./session-cost";
-import { isCaveatLine, isCommandLine, isStdoutLine } from "./transcript";
+import {isCountableMessageRecord} from "./message-count";
+import {costStateFromRecord, type SessionCostState} from "./session-cost";
+import {isCaveatLine, isCommandLine, isStdoutLine} from "./transcript";
 
 /** The session's pull request, from its latest `pr-link` transcript record. */
 export interface SessionPrLink {
-  number: number;
-  url: string;
-  repository: string;
+	number: number;
+	url: string;
+	repository: string;
 }
 
 export interface SessionEntry {
-  id: string;
-  title: string;
-  firstPrompt?: string | undefined;
-  summary?: string | undefined;
-  customTitle?: string | undefined;
-  mtime: Date;
-  created: Date;
-  project: string;
-  projectName: string;
-  projectPath?: string | undefined;
-  messageCount: number;
-  gitBranch?: string | undefined;
-  cwd?: string | undefined;
-  isSidechain: boolean;
-  entrypoint?: string | undefined;
-  sessionKind?: string | undefined;
-  teamNames?: string[] | undefined;
-  forkedFromSessionId?: string | undefined;
-  pr?: SessionPrLink | undefined;
+	id: string;
+	title: string;
+	firstPrompt?: string | undefined;
+	summary?: string | undefined;
+	customTitle?: string | undefined;
+	mtime: Date;
+	created: Date;
+	project: string;
+	projectName: string;
+	projectPath?: string | undefined;
+	messageCount: number;
+	gitBranch?: string | undefined;
+	cwd?: string | undefined;
+	isSidechain: boolean;
+	entrypoint?: string | undefined;
+	sessionKind?: string | undefined;
+	teamNames?: string[] | undefined;
+	forkedFromSessionId?: string | undefined;
+	pr?: SessionPrLink | undefined;
 }
 
 export interface SessionProjectGroup {
-  project: string;
-  projectName: string;
-  sessions: SessionEntry[];
+	project: string;
+	projectName: string;
+	sessions: SessionEntry[];
 }
 
 /**
@@ -57,158 +57,150 @@ export interface SessionProjectGroup {
  * ToolCallLike from session-utils.ts instead.
  */
 interface ToolCallInfo {
-  id: string;
-  name: string;
-  input: Record<string, unknown>;
-  result?: string;
-  isError?: boolean;
-  startedAt?: string;
-  duration?: number;
-  sourceUuid: string;
-  resultUuid?: string;
+	id: string;
+	name: string;
+	input: Record<string, unknown>;
+	result?: string;
+	isError?: boolean;
+	startedAt?: string;
+	duration?: number;
+	sourceUuid: string;
+	resultUuid?: string;
 }
 
 type MessageContent =
-  | { type: "text"; text: string; sourceUuid: string }
-  | { type: "thinking"; thinking: string; sourceUuid: string }
-  | { type: "image"; mediaType: string; data: string; sourceUuid: string }
-  | { type: "document"; mediaType: string; data: string; sourceUuid: string }
-  | {
-      type: "tool_use";
-      id: string;
-      name: string;
-      input: Record<string, unknown>;
-      sourceUuid: string;
-    }
-  | {
-      type: "tool_result";
-      toolUseId: string;
-      content: string;
-      isError: boolean;
-      sourceUuid: string;
-    }
-  | { type: "command"; name: string; args?: string; sourceUuid: string }
-  | { type: "bash-input"; command: string; sourceUuid: string }
-  | { type: "bash-output"; stdout: string; stderr: string; sourceUuid: string };
+	| {type: "text"; text: string; sourceUuid: string}
+	| {type: "thinking"; thinking: string; sourceUuid: string}
+	| {type: "image"; mediaType: string; data: string; sourceUuid: string}
+	| {type: "document"; mediaType: string; data: string; sourceUuid: string}
+	| {
+			type: "tool_use";
+			id: string;
+			name: string;
+			input: Record<string, unknown>;
+			sourceUuid: string;
+	  }
+	| {
+			type: "tool_result";
+			toolUseId: string;
+			content: string;
+			isError: boolean;
+			sourceUuid: string;
+	  }
+	| {type: "command"; name: string; args?: string; sourceUuid: string}
+	| {type: "bash-input"; command: string; sourceUuid: string}
+	| {type: "bash-output"; stdout: string; stderr: string; sourceUuid: string};
 
 interface SessionMessage {
-  role: "user" | "assistant";
-  textBlocks: string[];
-  content: MessageContent[];
-  toolCalls: ToolCallInfo[];
-  timestamp: string;
-  isCommand?: boolean;
+	role: "user" | "assistant";
+	textBlocks: string[];
+	content: MessageContent[];
+	toolCalls: ToolCallInfo[];
+	timestamp: string;
+	isCommand?: boolean;
 }
 
 interface SessionDetail {
-  id: string;
-  title: string;
-  projectName: string;
-  projectId: string;
-  messages: SessionMessage[];
-  messageCount: number;
-  uuidToLine: Map<string, number>;
-  entrypoint?: string | undefined;
-  sessionKind?: string | undefined;
-  teamNames?: string[] | undefined;
-  forkedFromSessionId?: string | undefined;
-  costState?: SessionCostState | undefined;
+	id: string;
+	title: string;
+	projectName: string;
+	projectId: string;
+	messages: SessionMessage[];
+	messageCount: number;
+	uuidToLine: Map<string, number>;
+	entrypoint?: string | undefined;
+	sessionKind?: string | undefined;
+	teamNames?: string[] | undefined;
+	forkedFromSessionId?: string | undefined;
+	costState?: SessionCostState | undefined;
 }
 
-export type { SessionLine, MessageSessionLine, SessionContentBlock } from "./transcript";
+export type {SessionLine, MessageSessionLine, SessionContentBlock} from "./transcript";
 
 /**
  * Information about a tool_result paired with its tool_use.
  */
 export interface ToolResultInfo {
-  result: string;
-  isError: boolean;
-  resultUuid: string;
-  duration?: number | undefined;
-  /** Label-relevant bits of the record's `toolUseResult`; see `toolResultMetaFrom`. */
-  resultMeta?: ToolResultMeta | undefined;
-  /** The artifact an `Artifact` publish/open result points at; see `parseArtifactOutput`. */
-  artifact?: ParsedArtifact | undefined;
-  /** The artifacts an `Artifact` `list` call returned. */
-  artifactList?: ArtifactListEntry[] | undefined;
+	result: string;
+	isError: boolean;
+	resultUuid: string;
+	duration?: number | undefined;
+	/** Label-relevant bits of the record's `toolUseResult`; see `toolResultMetaFrom`. */
+	resultMeta?: ToolResultMeta | undefined;
+	/** The artifact an `Artifact` publish/open result points at; see `parseArtifactOutput`. */
+	artifact?: ParsedArtifact | undefined;
+	/** The artifacts an `Artifact` `list` call returned. */
+	artifactList?: ArtifactListEntry[] | undefined;
 }
 
-import type { ToolResultMeta } from "./tool-labels";
-import type { ParsedArtifact } from "./artifact-output";
-import type { ArtifactListEntry } from "./artifact-schemas";
+import type {ToolResultMeta} from "./tool-labels";
+import type {ParsedArtifact} from "./artifact-output";
+import type {ArtifactListEntry} from "./artifact-schemas";
 import {
-  stripCommandTags,
-  parseBashInput,
-  parseBashOutput,
-  parseCommandBlock,
-  extractSessionTitle,
-  isInformativePrompt,
-  isRequestInterrupted,
-  summarizeToolCalls,
-  summarizeToolCallsStructured,
-  formatToolName,
-  extractToolResultContent,
-  stripResultTags,
-  truncateResult,
+	stripCommandTags,
+	parseBashInput,
+	parseBashOutput,
+	parseCommandBlock,
+	extractSessionTitle,
+	isInformativePrompt,
+	isRequestInterrupted,
+	summarizeToolCalls,
+	summarizeToolCallsStructured,
+	formatToolName,
+	extractToolResultContent,
+	stripResultTags,
+	truncateResult,
 } from "./session-utils";
 
-export {
-  parseCommandBlock,
-  extractSessionTitle,
-  summarizeToolCalls,
-  summarizeToolCallsStructured,
-  formatToolName,
-};
+export {parseCommandBlock, extractSessionTitle, summarizeToolCalls, summarizeToolCallsStructured, formatToolName};
 
 interface RawContentBlock {
-  type: string;
-  text?: string;
-  thinking?: string;
-  name?: string;
-  id?: string;
-  input?: Record<string, unknown>;
-  tool_use_id?: string;
-  content?: unknown;
-  is_error?: boolean;
-  source?: { type: string; media_type: string; data: string };
+	type: string;
+	text?: string;
+	thinking?: string;
+	name?: string;
+	id?: string;
+	input?: Record<string, unknown>;
+	tool_use_id?: string;
+	content?: unknown;
+	is_error?: boolean;
+	source?: {type: string; media_type: string; data: string};
 }
 
 interface JsonlEntry {
-  type: string;
-  uuid?: string;
-  timestamp?: string;
-  customTitle?: string;
-  sessionId?: string;
-  entrypoint?: string;
-  sessionKind?: string;
-  teamName?: string;
-  forkedFrom?: string | Record<string, unknown>;
-  isMeta?: boolean;
-  message?: {
-    role?: string;
-    content?: string | RawContentBlock[];
-  };
+	type: string;
+	uuid?: string;
+	timestamp?: string;
+	customTitle?: string;
+	sessionId?: string;
+	entrypoint?: string;
+	sessionKind?: string;
+	teamName?: string;
+	forkedFrom?: string | Record<string, unknown>;
+	isMeta?: boolean;
+	message?: {
+		role?: string;
+		content?: string | RawContentBlock[];
+	};
 }
 
 const SHELL_COMPLETION_RE = /^(?:Already up to date|Done in \d+(?:\.\d+)?(?:ms|s)(?: using \S+)?)/;
 
 function isPastedShellOutput(text: string): boolean {
-  const lines = text
-    .trim()
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  return (
-    lines.length >= 3 &&
-    /^>\s+\S/.test(lines[0]!) &&
-    lines.slice(1).some((line) => SHELL_COMPLETION_RE.test(line))
-  );
+	const lines = text
+		.trim()
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.filter(Boolean);
+	return (
+		lines.length >= 3 && /^>\s+\S/.test(lines[0]!) && lines.slice(1).some((line) => SHELL_COMPLETION_RE.test(line))
+	);
 }
 
 function isSessionTitlePrompt(text: string): boolean {
-  if (!text.trim() || isPastedShellOutput(text) || isRequestInterrupted(text)) return false;
-  const line = { type: "user" as const, message: { content: text }, lineIndex: 0 };
-  return !isCaveatLine(line) && !isCommandLine(line) && !isStdoutLine(line);
+	if (!text.trim() || isPastedShellOutput(text) || isRequestInterrupted(text)) return false;
+	const line = {type: "user" as const, message: {content: text}, lineIndex: 0};
+	return !isCaveatLine(line) && !isCommandLine(line) && !isStdoutLine(line);
 }
 
 /**
@@ -217,39 +209,35 @@ function isSessionTitlePrompt(text: string): boolean {
  * and only those may have their template boilerplate stripped for the title.
  */
 export interface FirstUserPrompt {
-  text: string;
-  isMeta: boolean;
+	text: string;
+	isMeta: boolean;
 }
 
 function extractFirstUserText(line: string): FirstUserPrompt | null {
-  try {
-    const obj = JSON.parse(line) as JsonlEntry;
-    if (obj.type !== "user") return null;
+	try {
+		const obj = JSON.parse(line) as JsonlEntry;
+		if (obj.type !== "user") return null;
 
-    const content = obj.message?.content;
-    if (!content) return null;
+		const content = obj.message?.content;
+		if (!content) return null;
 
-    const isMeta = obj.isMeta === true;
+		const isMeta = obj.isMeta === true;
 
-    if (typeof content === "string") {
-      return isSessionTitlePrompt(content) ? { text: content, isMeta } : null;
-    }
+		if (typeof content === "string") {
+			return isSessionTitlePrompt(content) ? {text: content, isMeta} : null;
+		}
 
-    if (Array.isArray(content)) {
-      for (const block of content) {
-        if (
-          block.type === "text" &&
-          typeof block.text === "string" &&
-          isSessionTitlePrompt(block.text)
-        ) {
-          return { text: block.text, isMeta };
-        }
-      }
-    }
-  } catch {
-    // skip malformed lines
-  }
-  return null;
+		if (Array.isArray(content)) {
+			for (const block of content) {
+				if (block.type === "text" && typeof block.text === "string" && isSessionTitlePrompt(block.text)) {
+					return {text: block.text, isMeta};
+				}
+			}
+		}
+	} catch {
+		// skip malformed lines
+	}
+	return null;
 }
 
 /**
@@ -268,69 +256,69 @@ const MAX_TITLE_CANDIDATES = 20;
  * still beats titling the session with its id.
  */
 export async function readFirstUserMessage(filePath: string): Promise<FirstUserPrompt | null> {
-  const rl = createInterface({
-    input: createReadStream(filePath, { encoding: "utf-8" }),
-    crlfDelay: Infinity,
-  });
+	const rl = createInterface({
+		input: createReadStream(filePath, {encoding: "utf-8"}),
+		crlfDelay: Infinity,
+	});
 
-  let fallback: FirstUserPrompt | null = null;
-  let examined = 0;
-  try {
-    for await (const line of rl) {
-      if (!line.trim()) continue;
-      const prompt = extractFirstUserText(line);
-      if (prompt === null) continue;
-      if (isInformativePrompt(prompt.text, { isMeta: prompt.isMeta })) return prompt;
-      fallback ??= prompt;
-      if (++examined >= MAX_TITLE_CANDIDATES) break;
-    }
-  } finally {
-    rl.close();
-  }
-  return fallback;
+	let fallback: FirstUserPrompt | null = null;
+	let examined = 0;
+	try {
+		for await (const line of rl) {
+			if (!line.trim()) continue;
+			const prompt = extractFirstUserText(line);
+			if (prompt === null) continue;
+			if (isInformativePrompt(prompt.text, {isMeta: prompt.isMeta})) return prompt;
+			fallback ??= prompt;
+			if (++examined >= MAX_TITLE_CANDIDATES) break;
+		}
+	} finally {
+		rl.close();
+	}
+	return fallback;
 }
 
 /** Every prompt the user typed into a session, oldest first; CLI-injected records are skipped. */
 export async function readSessionPrompts(filePath: string): Promise<string[]> {
-  const rl = createInterface({
-    input: createReadStream(filePath, { encoding: "utf-8" }),
-    crlfDelay: Infinity,
-  });
-  const prompts: string[] = [];
-  try {
-    for await (const line of rl) {
-      if (!line.trim()) continue;
-      const prompt = extractFirstUserText(line);
-      if (prompt !== null && !prompt.isMeta) prompts.push(prompt.text);
-    }
-  } finally {
-    rl.close();
-  }
-  return prompts;
+	const rl = createInterface({
+		input: createReadStream(filePath, {encoding: "utf-8"}),
+		crlfDelay: Infinity,
+	});
+	const prompts: string[] = [];
+	try {
+		for await (const line of rl) {
+			if (!line.trim()) continue;
+			const prompt = extractFirstUserText(line);
+			if (prompt !== null && !prompt.isMeta) prompts.push(prompt.text);
+		}
+	} finally {
+		rl.close();
+	}
+	return prompts;
 }
 
 async function readSessionMessageCount(filePath: string): Promise<number> {
-  const rl = createInterface({
-    input: createReadStream(filePath, { encoding: "utf-8" }),
-    crlfDelay: Infinity,
-  });
-  let messageCount = 0;
+	const rl = createInterface({
+		input: createReadStream(filePath, {encoding: "utf-8"}),
+		crlfDelay: Infinity,
+	});
+	let messageCount = 0;
 
-  try {
-    for await (const line of rl) {
-      if (!line.trim()) continue;
-      try {
-        const entry: unknown = JSON.parse(line);
-        if (isCountableMessageRecord(entry)) messageCount++;
-      } catch {
-        // skip malformed lines
-      }
-    }
-  } finally {
-    rl.close();
-  }
+	try {
+		for await (const line of rl) {
+			if (!line.trim()) continue;
+			try {
+				const entry: unknown = JSON.parse(line);
+				if (isCountableMessageRecord(entry)) messageCount++;
+			} catch {
+				// skip malformed lines
+			}
+		}
+	} finally {
+		rl.close();
+	}
 
-  return messageCount;
+	return messageCount;
 }
 
 /**
@@ -339,31 +327,28 @@ async function readSessionMessageCount(filePath: string): Promise<number> {
  * own definition, which disagrees with ours (see message-count.ts).
  */
 async function resolveMessageCount(filePath: string): Promise<number> {
-  try {
-    return await readSessionMessageCount(filePath);
-  } catch {
-    return 0;
-  }
+	try {
+		return await readSessionMessageCount(filePath);
+	} catch {
+		return 0;
+	}
 }
 
 export async function resolveFirstPrompt(
-  indexedPrompt: string | undefined,
-  filePath: string,
+	indexedPrompt: string | undefined,
+	filePath: string,
 ): Promise<FirstUserPrompt | null> {
-  // sessions-index.json records the typed `/command` line, never the body the
-  // CLI expands it into, so an indexed prompt is never a meta record. It also
-  // records a bare "yes" as faithfully as a request, so an uninformative one
-  // sends us to the transcript for a message that names the work.
-  const indexed =
-    indexedPrompt && isSessionTitlePrompt(indexedPrompt)
-      ? { text: indexedPrompt, isMeta: false }
-      : null;
-  if (indexed !== null && isInformativePrompt(indexed.text)) return indexed;
-  try {
-    return (await readFirstUserMessage(filePath)) ?? indexed;
-  } catch {
-    return indexed;
-  }
+	// sessions-index.json records the typed `/command` line, never the body the
+	// CLI expands it into, so an indexed prompt is never a meta record. It also
+	// records a bare "yes" as faithfully as a request, so an uninformative one
+	// sends us to the transcript for a message that names the work.
+	const indexed = indexedPrompt && isSessionTitlePrompt(indexedPrompt) ? {text: indexedPrompt, isMeta: false} : null;
+	if (indexed !== null && isInformativePrompt(indexed.text)) return indexed;
+	try {
+		return (await readFirstUserMessage(filePath)) ?? indexed;
+	} catch {
+		return indexed;
+	}
 }
 
 /**
@@ -373,26 +358,26 @@ export async function resolveFirstPrompt(
  * (see indexSessionsIndex's coalesce).
  */
 export function resolveSessionTitle(entry: {
-  customTitle?: string | undefined;
-  aiTitle?: string | undefined;
-  summary?: string | undefined;
-  firstPrompt?: FirstUserPrompt | undefined;
-  sessionId: string;
+	customTitle?: string | undefined;
+	aiTitle?: string | undefined;
+	summary?: string | undefined;
+	firstPrompt?: FirstUserPrompt | undefined;
+	sessionId: string;
 }): string {
-  if (entry.customTitle) return entry.customTitle;
-  if (entry.aiTitle) return entry.aiTitle;
-  if (entry.summary) return entry.summary;
-  if (entry.firstPrompt) {
-    return extractSessionTitle(entry.firstPrompt.text, entry.sessionId, {
-      isMeta: entry.firstPrompt.isMeta,
-    });
-  }
-  return entry.sessionId;
+	if (entry.customTitle) return entry.customTitle;
+	if (entry.aiTitle) return entry.aiTitle;
+	if (entry.summary) return entry.summary;
+	if (entry.firstPrompt) {
+		return extractSessionTitle(entry.firstPrompt.text, entry.sessionId, {
+			isMeta: entry.firstPrompt.isMeta,
+		});
+	}
+	return entry.sessionId;
 }
 
 export interface SessionTitleSources {
-  customTitle: string | undefined;
-  aiTitle: string | undefined;
+	customTitle: string | undefined;
+	aiTitle: string | undefined;
 }
 
 /**
@@ -400,685 +385,668 @@ export interface SessionTitleSources {
  * transcript. Both are last-wins; an empty custom-title clears the name.
  */
 export class TitleRecordCollector {
-  private customTitle: string | undefined;
-  private sawCustomTitle = false;
-  private aiTitle: string | undefined;
+	private customTitle: string | undefined;
+	private sawCustomTitle = false;
+	private aiTitle: string | undefined;
 
-  add(record: unknown): void {
-    const custom = CustomTitleRecordSchema.safeParse(record);
-    if (custom.success) {
-      this.sawCustomTitle = true;
-      this.customTitle = custom.data.customTitle || undefined;
-      return;
-    }
-    const ai = AiTitleRecordSchema.safeParse(record);
-    if (ai.success) {
-      this.aiTitle = ai.data.aiTitle || undefined;
-    }
-  }
+	add(record: unknown): void {
+		const custom = CustomTitleRecordSchema.safeParse(record);
+		if (custom.success) {
+			this.sawCustomTitle = true;
+			this.customTitle = custom.data.customTitle || undefined;
+			return;
+		}
+		const ai = AiTitleRecordSchema.safeParse(record);
+		if (ai.success) {
+			this.aiTitle = ai.data.aiTitle || undefined;
+		}
+	}
 
-  /** The sidecar is consulted only when the transcript never named the session. */
-  async finish(transcriptPath: string): Promise<SessionTitleSources> {
-    const customTitle = this.sawCustomTitle
-      ? this.customTitle
-      : await readCustomTitleSidecar(transcriptPath);
-    return { customTitle, aiTitle: this.aiTitle };
-  }
+	/** The sidecar is consulted only when the transcript never named the session. */
+	async finish(transcriptPath: string): Promise<SessionTitleSources> {
+		const customTitle = this.sawCustomTitle ? this.customTitle : await readCustomTitleSidecar(transcriptPath);
+		return {customTitle, aiTitle: this.aiTitle};
+	}
 }
 
 async function readCustomTitleSidecar(transcriptPath: string): Promise<string | undefined> {
-  const sidecarPath = join(
-    dirname(transcriptPath),
-    basename(transcriptPath, ".jsonl"),
-    "custom-title.json",
-  );
-  let raw: string;
-  try {
-    raw = await readFile(sidecarPath, "utf-8");
-  } catch {
-    return undefined;
-  }
-  try {
-    const parsed = CustomTitleSidecarSchema.safeParse(JSON.parse(raw));
-    return parsed.success ? parsed.data.customTitle || undefined : undefined;
-  } catch {
-    return undefined;
-  }
+	const sidecarPath = join(dirname(transcriptPath), basename(transcriptPath, ".jsonl"), "custom-title.json");
+	let raw: string;
+	try {
+		raw = await readFile(sidecarPath, "utf-8");
+	} catch {
+		return undefined;
+	}
+	try {
+		const parsed = CustomTitleSidecarSchema.safeParse(JSON.parse(raw));
+		return parsed.success ? parsed.data.customTitle || undefined : undefined;
+	} catch {
+		return undefined;
+	}
 }
 
 export async function readSessionTitleSources(filePath: string): Promise<SessionTitleSources> {
-  const collector = new TitleRecordCollector();
-  const rl = createInterface({
-    input: createReadStream(filePath, { encoding: "utf-8" }),
-    crlfDelay: Infinity,
-  });
-  try {
-    for await (const line of rl) {
-      if (!line.includes('"custom-title"') && !line.includes('"ai-title"')) continue;
-      try {
-        collector.add(JSON.parse(line));
-      } catch {
-        // skip malformed lines
-      }
-    }
-  } catch {
-    // unreadable transcript: fall through to the sidecar
-  } finally {
-    rl.close();
-  }
-  return collector.finish(filePath);
+	const collector = new TitleRecordCollector();
+	const rl = createInterface({
+		input: createReadStream(filePath, {encoding: "utf-8"}),
+		crlfDelay: Infinity,
+	});
+	try {
+		for await (const line of rl) {
+			if (!line.includes('"custom-title"') && !line.includes('"ai-title"')) continue;
+			try {
+				collector.add(JSON.parse(line));
+			} catch {
+				// skip malformed lines
+			}
+		}
+	} catch {
+		// unreadable transcript: fall through to the sidecar
+	} finally {
+		rl.close();
+	}
+	return collector.finish(filePath);
 }
 
 /** The claude.ai/code session a transcript was bridged to (Remote Control), from its latest `bridge-session` record. */
 export async function readBridgeSessionId(filePath: string): Promise<string | null> {
-  let bridgeSessionId: string | null = null;
-  const rl = createInterface({
-    input: createReadStream(filePath, { encoding: "utf-8" }),
-    crlfDelay: Infinity,
-  });
-  try {
-    for await (const line of rl) {
-      if (!line.includes('"bridge-session"')) continue;
-      try {
-        const parsed = BridgeSessionRecordSchema.safeParse(JSON.parse(line));
-        if (parsed.success && parsed.data.bridgeSessionId !== undefined) {
-          bridgeSessionId = parsed.data.bridgeSessionId;
-        }
-      } catch {
-        // skip malformed lines
-      }
-    }
-  } catch {
-    return null;
-  } finally {
-    rl.close();
-  }
-  return bridgeSessionId;
+	let bridgeSessionId: string | null = null;
+	const rl = createInterface({
+		input: createReadStream(filePath, {encoding: "utf-8"}),
+		crlfDelay: Infinity,
+	});
+	try {
+		for await (const line of rl) {
+			if (!line.includes('"bridge-session"')) continue;
+			try {
+				const parsed = BridgeSessionRecordSchema.safeParse(JSON.parse(line));
+				if (parsed.success && parsed.data.bridgeSessionId !== undefined) {
+					bridgeSessionId = parsed.data.bridgeSessionId;
+				}
+			} catch {
+				// skip malformed lines
+			}
+		}
+	} catch {
+		return null;
+	} finally {
+		rl.close();
+	}
+	return bridgeSessionId;
 }
 
-async function listSessionsForProject(
-  projectsDir: string,
-  project: string,
-): Promise<SessionEntry[] | null> {
-  const projectDir = join(projectsDir, project);
-  const indexPath = join(projectDir, "sessions-index.json");
-  let raw: string;
-  try {
-    raw = await readFile(indexPath, "utf-8");
-  } catch {
-    return null;
-  }
+async function listSessionsForProject(projectsDir: string, project: string): Promise<SessionEntry[] | null> {
+	const projectDir = join(projectsDir, project);
+	const indexPath = join(projectDir, "sessions-index.json");
+	let raw: string;
+	try {
+		raw = await readFile(indexPath, "utf-8");
+	} catch {
+		return null;
+	}
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return null;
-  }
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(raw);
+	} catch {
+		return null;
+	}
 
-  const result = SessionsIndexSchema.safeParse(parsed);
-  if (!result.success) {
-    return null;
-  }
+	const result = SessionsIndexSchema.safeParse(parsed);
+	if (!result.success) {
+		return null;
+	}
 
-  const firstProjectPath = result.data.entries[0]?.projectPath;
-  const projectName = decodeProjectDir(project, firstProjectPath);
-  const sessions: SessionEntry[] = [];
-  const indexedIds = new Set<string>();
+	const firstProjectPath = result.data.entries[0]?.projectPath;
+	const projectName = decodeProjectDir(project, firstProjectPath);
+	const sessions: SessionEntry[] = [];
+	const indexedIds = new Set<string>();
 
-  for (const entry of result.data.entries) {
-    indexedIds.add(entry.sessionId);
-    if (entry.isSidechain) continue;
+	for (const entry of result.data.entries) {
+		indexedIds.add(entry.sessionId);
+		if (entry.isSidechain) continue;
 
-    const firstPrompt = await resolveFirstPrompt(entry.firstPrompt, entry.fullPath);
+		const firstPrompt = await resolveFirstPrompt(entry.firstPrompt, entry.fullPath);
 
-    const title = resolveSessionTitle({
-      ...(await readSessionTitleSources(entry.fullPath)),
-      summary: entry.summary,
-      firstPrompt: firstPrompt ?? undefined,
-      sessionId: entry.sessionId,
-    });
+		const title = resolveSessionTitle({
+			...(await readSessionTitleSources(entry.fullPath)),
+			summary: entry.summary,
+			firstPrompt: firstPrompt ?? undefined,
+			sessionId: entry.sessionId,
+		});
 
-    sessions.push({
-      id: entry.sessionId,
-      title,
-      firstPrompt: firstPrompt?.text,
-      summary: entry.summary,
-      mtime: new Date(entry.fileMtime),
-      created: entry.created ? new Date(entry.created) : new Date(entry.fileMtime),
-      project,
-      projectName,
-      projectPath: entry.projectPath,
-      messageCount: await resolveMessageCount(entry.fullPath),
-      gitBranch: normalizeGitBranch(entry.gitBranch) ?? undefined,
-      isSidechain: entry.isSidechain ?? false,
-    });
-  }
+		sessions.push({
+			id: entry.sessionId,
+			title,
+			firstPrompt: firstPrompt?.text,
+			summary: entry.summary,
+			mtime: new Date(entry.fileMtime),
+			created: entry.created ? new Date(entry.created) : new Date(entry.fileMtime),
+			project,
+			projectName,
+			projectPath: entry.projectPath,
+			messageCount: await resolveMessageCount(entry.fullPath),
+			gitBranch: normalizeGitBranch(entry.gitBranch) ?? undefined,
+			isSidechain: entry.isSidechain ?? false,
+		});
+	}
 
-  // Pick up JSONL files not in the index (created after index was last rebuilt)
-  let files: string[];
-  try {
-    files = await readdir(projectDir);
-  } catch {
-    return sessions;
-  }
+	// Pick up JSONL files not in the index (created after index was last rebuilt)
+	let files: string[];
+	try {
+		files = await readdir(projectDir);
+	} catch {
+		return sessions;
+	}
 
-  for (const file of files) {
-    if (!file.endsWith(".jsonl")) continue;
-    const id = file.replace(/\.jsonl$/, "");
-    if (indexedIds.has(id)) continue;
+	for (const file of files) {
+		if (!file.endsWith(".jsonl")) continue;
+		const id = file.replace(/\.jsonl$/, "");
+		if (indexedIds.has(id)) continue;
 
-    const filePath = join(projectDir, file);
-    try {
-      const fileStat = await stat(filePath);
-      const prompt = await readFirstUserMessage(filePath);
-      const title = resolveSessionTitle({
-        ...(await readSessionTitleSources(filePath)),
-        firstPrompt: prompt ?? undefined,
-        sessionId: id,
-      });
-      sessions.push({
-        id,
-        title,
-        firstPrompt: prompt?.text,
-        mtime: fileStat.mtime,
-        created: fileStat.birthtime,
-        project,
-        projectName,
-        projectPath: firstProjectPath,
-        messageCount: await readSessionMessageCount(filePath),
-        isSidechain: false,
-      });
-    } catch {
-      // skip
-    }
-  }
+		const filePath = join(projectDir, file);
+		try {
+			const fileStat = await stat(filePath);
+			const prompt = await readFirstUserMessage(filePath);
+			const title = resolveSessionTitle({
+				...(await readSessionTitleSources(filePath)),
+				firstPrompt: prompt ?? undefined,
+				sessionId: id,
+			});
+			sessions.push({
+				id,
+				title,
+				firstPrompt: prompt?.text,
+				mtime: fileStat.mtime,
+				created: fileStat.birthtime,
+				project,
+				projectName,
+				projectPath: firstProjectPath,
+				messageCount: await readSessionMessageCount(filePath),
+				isSidechain: false,
+			});
+		} catch {
+			// skip
+		}
+	}
 
-  return sessions;
+	return sessions;
 }
 
-async function listSessionsFromJsonl(
-  projectsDir: string,
-  project: string,
-): Promise<SessionEntry[]> {
-  const projectPath = join(projectsDir, project);
-  let files: string[];
-  try {
-    files = await readdir(projectPath);
-  } catch {
-    return [];
-  }
+async function listSessionsFromJsonl(projectsDir: string, project: string): Promise<SessionEntry[]> {
+	const projectPath = join(projectsDir, project);
+	let files: string[];
+	try {
+		files = await readdir(projectPath);
+	} catch {
+		return [];
+	}
 
-  const jsonlFiles = files.filter((f) => f.endsWith(".jsonl"));
-  if (jsonlFiles.length === 0) return [];
+	const jsonlFiles = files.filter((f) => f.endsWith(".jsonl"));
+	if (jsonlFiles.length === 0) return [];
 
-  const projectName = await resolveProjectName(project);
-  const sessions: SessionEntry[] = [];
+	const projectName = await resolveProjectName(project);
+	const sessions: SessionEntry[] = [];
 
-  for (const file of jsonlFiles) {
-    const filePath = join(projectPath, file);
-    try {
-      const fileStat = await stat(filePath);
-      const id = file.replace(/\.jsonl$/, "");
-      const prompt = await readFirstUserMessage(filePath);
-      const title = resolveSessionTitle({
-        ...(await readSessionTitleSources(filePath)),
-        firstPrompt: prompt ?? undefined,
-        sessionId: id,
-      });
-      sessions.push({
-        id,
-        title,
-        firstPrompt: prompt?.text,
-        mtime: fileStat.mtime,
-        created: fileStat.birthtime,
-        project,
-        projectName,
-        messageCount: await readSessionMessageCount(filePath),
-        isSidechain: false,
-      });
-    } catch {
-      // skip unreadable files
-    }
-  }
+	for (const file of jsonlFiles) {
+		const filePath = join(projectPath, file);
+		try {
+			const fileStat = await stat(filePath);
+			const id = file.replace(/\.jsonl$/, "");
+			const prompt = await readFirstUserMessage(filePath);
+			const title = resolveSessionTitle({
+				...(await readSessionTitleSources(filePath)),
+				firstPrompt: prompt ?? undefined,
+				sessionId: id,
+			});
+			sessions.push({
+				id,
+				title,
+				firstPrompt: prompt?.text,
+				mtime: fileStat.mtime,
+				created: fileStat.birthtime,
+				project,
+				projectName,
+				messageCount: await readSessionMessageCount(filePath),
+				isSidechain: false,
+			});
+		} catch {
+			// skip unreadable files
+		}
+	}
 
-  return sessions;
+	return sessions;
 }
 
 export async function listSessions(projectsDir: string): Promise<SessionProjectGroup[]> {
-  let projectDirs: string[];
-  try {
-    projectDirs = await readdir(projectsDir);
-  } catch {
-    return [];
-  }
+	let projectDirs: string[];
+	try {
+		projectDirs = await readdir(projectsDir);
+	} catch {
+		return [];
+	}
 
-  const groups: SessionProjectGroup[] = [];
+	const groups: SessionProjectGroup[] = [];
 
-  for (const project of projectDirs) {
-    const projectPath = join(projectsDir, project);
-    try {
-      const dirStat = await stat(projectPath);
-      if (!dirStat.isDirectory()) continue;
-    } catch {
-      continue;
-    }
+	for (const project of projectDirs) {
+		const projectPath = join(projectsDir, project);
+		try {
+			const dirStat = await stat(projectPath);
+			if (!dirStat.isDirectory()) continue;
+		} catch {
+			continue;
+		}
 
-    let sessions = await listSessionsForProject(projectsDir, project);
-    if (!sessions) {
-      sessions = await listSessionsFromJsonl(projectsDir, project);
-    }
+		let sessions = await listSessionsForProject(projectsDir, project);
+		if (!sessions) {
+			sessions = await listSessionsFromJsonl(projectsDir, project);
+		}
 
-    if (sessions.length === 0) continue;
-    sessions.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
-    const projectName = sessions[0]?.projectName ?? (await resolveProjectName(project));
-    groups.push({ project, projectName, sessions });
-  }
+		if (sessions.length === 0) continue;
+		sessions.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
+		const projectName = sessions[0]?.projectName ?? (await resolveProjectName(project));
+		groups.push({project, projectName, sessions});
+	}
 
-  const maxMtimes = new Map(
-    groups.map((g) => [g.project, Math.max(...g.sessions.map((s) => s.mtime.getTime()))]),
-  );
-  groups.sort((a, b) => maxMtimes.get(b.project)! - maxMtimes.get(a.project)!);
+	const maxMtimes = new Map(groups.map((g) => [g.project, Math.max(...g.sessions.map((s) => s.mtime.getTime()))]));
+	groups.sort((a, b) => maxMtimes.get(b.project)! - maxMtimes.get(a.project)!);
 
-  return groups;
+	return groups;
 }
 
 const SESSION_ID_RE = /^[a-z0-9-]+$/;
 
 export async function resolveSessionFilePath(
-  projectsDir: string,
-  sessionId: string,
-): Promise<{ filePath: string; project: string } | null> {
-  if (!SESSION_ID_RE.test(sessionId)) return null;
-  if (sessionId.includes("..")) return null;
+	projectsDir: string,
+	sessionId: string,
+): Promise<{filePath: string; project: string} | null> {
+	if (!SESSION_ID_RE.test(sessionId)) return null;
+	if (sessionId.includes("..")) return null;
 
-  let projectDirs: string[];
-  try {
-    projectDirs = await readdir(projectsDir);
-  } catch {
-    return null;
-  }
+	let projectDirs: string[];
+	try {
+		projectDirs = await readdir(projectsDir);
+	} catch {
+		return null;
+	}
 
-  const filename = `${sessionId}.jsonl`;
+	const filename = `${sessionId}.jsonl`;
 
-  for (const dir of projectDirs) {
-    const candidate = join(projectsDir, dir, filename);
-    try {
-      await stat(candidate);
-      return { filePath: candidate, project: dir };
-    } catch {
-      // not in this dir
-    }
-  }
+	for (const dir of projectDirs) {
+		const candidate = join(projectsDir, dir, filename);
+		try {
+			await stat(candidate);
+			return {filePath: candidate, project: dir};
+		} catch {
+			// not in this dir
+		}
+	}
 
-  if (sessionId.startsWith("agent-")) {
-    for (const dir of projectDirs) {
-      const subagentsDir = join(projectsDir, dir);
-      let sessionDirs: string[];
-      try {
-        sessionDirs = await readdir(subagentsDir);
-      } catch {
-        continue;
-      }
+	if (sessionId.startsWith("agent-")) {
+		for (const dir of projectDirs) {
+			const subagentsDir = join(projectsDir, dir);
+			let sessionDirs: string[];
+			try {
+				sessionDirs = await readdir(subagentsDir);
+			} catch {
+				continue;
+			}
 
-      for (const sessionDir of sessionDirs) {
-        const candidate = join(projectsDir, dir, sessionDir, "subagents", filename);
-        try {
-          await stat(candidate);
-          return { filePath: candidate, project: dir };
-        } catch {
-          // not in this subagent dir
-        }
-      }
-    }
-  }
+			for (const sessionDir of sessionDirs) {
+				const candidate = join(projectsDir, dir, sessionDir, "subagents", filename);
+				try {
+					await stat(candidate);
+					return {filePath: candidate, project: dir};
+				} catch {
+					// not in this subagent dir
+				}
+			}
+		}
+	}
 
-  return null;
+	return null;
 }
 
 export interface RawJsonlLine {
-  raw: string;
-  lineIndex: number;
-  uuid?: string;
-  parseError?: boolean;
+	raw: string;
+	lineIndex: number;
+	uuid?: string;
+	parseError?: boolean;
 }
 
 export interface RawWindow {
-  focal: RawJsonlLine;
-  before: RawJsonlLine[];
-  after: RawJsonlLine[];
+	focal: RawJsonlLine;
+	before: RawJsonlLine[];
+	after: RawJsonlLine[];
 }
 
 function parseRawLine(raw: string, lineIndex: number): RawJsonlLine {
-  try {
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    const uuid = typeof parsed["uuid"] === "string" ? parsed["uuid"] : undefined;
-    const result: RawJsonlLine = { raw, lineIndex };
-    if (uuid !== undefined) result.uuid = uuid;
-    return result;
-  } catch {
-    return { raw, lineIndex, parseError: true };
-  }
+	try {
+		const parsed = JSON.parse(raw) as Record<string, unknown>;
+		const uuid = typeof parsed["uuid"] === "string" ? parsed["uuid"] : undefined;
+		const result: RawJsonlLine = {raw, lineIndex};
+		if (uuid !== undefined) result.uuid = uuid;
+		return result;
+	} catch {
+		return {raw, lineIndex, parseError: true};
+	}
 }
 
 export async function readSessionRawWindow(
-  projectsDir: string,
-  sessionId: string,
-  focalUuid: string,
-  contextN = 5,
+	projectsDir: string,
+	sessionId: string,
+	focalUuid: string,
+	contextN = 5,
 ): Promise<RawWindow | null> {
-  const resolved = await resolveSessionFilePath(projectsDir, sessionId);
-  if (!resolved) return null;
+	const resolved = await resolveSessionFilePath(projectsDir, sessionId);
+	if (!resolved) return null;
 
-  const rl = createInterface({
-    input: createReadStream(resolved.filePath, { encoding: "utf-8" }),
-    crlfDelay: Infinity,
-  });
+	const rl = createInterface({
+		input: createReadStream(resolved.filePath, {encoding: "utf-8"}),
+		crlfDelay: Infinity,
+	});
 
-  const ringBuffer: RawJsonlLine[] = [];
-  let focal: RawJsonlLine | null = null;
-  const after: RawJsonlLine[] = [];
-  let lineIndex = -1;
+	const ringBuffer: RawJsonlLine[] = [];
+	let focal: RawJsonlLine | null = null;
+	const after: RawJsonlLine[] = [];
+	let lineIndex = -1;
 
-  try {
-    for await (const line of rl) {
-      lineIndex++;
-      if (!line.trim()) continue;
-      const entry = parseRawLine(line, lineIndex);
+	try {
+		for await (const line of rl) {
+			lineIndex++;
+			if (!line.trim()) continue;
+			const entry = parseRawLine(line, lineIndex);
 
-      if (focal === null) {
-        if (entry.uuid === focalUuid) {
-          focal = entry;
-        } else {
-          ringBuffer.push(entry);
-          if (ringBuffer.length > contextN) ringBuffer.shift();
-        }
-      } else {
-        after.push(entry);
-        if (after.length >= contextN) break;
-      }
-    }
-  } finally {
-    rl.close();
-  }
+			if (focal === null) {
+				if (entry.uuid === focalUuid) {
+					focal = entry;
+				} else {
+					ringBuffer.push(entry);
+					if (ringBuffer.length > contextN) ringBuffer.shift();
+				}
+			} else {
+				after.push(entry);
+				if (after.length >= contextN) break;
+			}
+		}
+	} finally {
+		rl.close();
+	}
 
-  if (!focal) return null;
+	if (!focal) return null;
 
-  return { focal, before: ringBuffer, after };
+	return {focal, before: ringBuffer, after};
 }
 
-export async function readSession(
-  projectsDir: string,
-  sessionId: string,
-): Promise<SessionDetail | null> {
-  const resolved = await resolveSessionFilePath(projectsDir, sessionId);
-  if (!resolved) return null;
-  const { filePath, project } = resolved;
+export async function readSession(projectsDir: string, sessionId: string): Promise<SessionDetail | null> {
+	const resolved = await resolveSessionFilePath(projectsDir, sessionId);
+	if (!resolved) return null;
+	const {filePath, project} = resolved;
 
-  const projectName = await resolveProjectName(project);
-  const messages: SessionMessage[] = [];
-  let messageCount = 0;
-  let title = sessionId;
-  let titleNamesWork = false;
-  const titleRecords = new TitleRecordCollector();
-  let entrypoint: string | undefined;
-  let sessionKind: string | undefined;
-  let forkedFromSessionId: string | undefined;
-  let costState: SessionCostState | undefined;
-  const teamNameSet = new Set<string>();
-  const toolCallMap = new Map<string, ToolCallInfo>();
-  const toolStartTimes = new Map<string, number>();
-  const uuidToLine = new Map<string, number>();
+	const projectName = await resolveProjectName(project);
+	const messages: SessionMessage[] = [];
+	let messageCount = 0;
+	let title = sessionId;
+	let titleNamesWork = false;
+	const titleRecords = new TitleRecordCollector();
+	let entrypoint: string | undefined;
+	let sessionKind: string | undefined;
+	let forkedFromSessionId: string | undefined;
+	let costState: SessionCostState | undefined;
+	const teamNameSet = new Set<string>();
+	const toolCallMap = new Map<string, ToolCallInfo>();
+	const toolStartTimes = new Map<string, number>();
+	const uuidToLine = new Map<string, number>();
 
-  const rl = createInterface({
-    input: createReadStream(filePath, { encoding: "utf-8" }),
-    crlfDelay: Infinity,
-  });
+	const rl = createInterface({
+		input: createReadStream(filePath, {encoding: "utf-8"}),
+		crlfDelay: Infinity,
+	});
 
-  let lineIndex = -1;
-  try {
-    for await (const line of rl) {
-      lineIndex++;
-      if (!line.trim()) continue;
+	let lineIndex = -1;
+	try {
+		for await (const line of rl) {
+			lineIndex++;
+			if (!line.trim()) continue;
 
-      let obj: JsonlEntry;
-      try {
-        obj = JSON.parse(line) as JsonlEntry;
-      } catch {
-        continue;
-      }
+			let obj: JsonlEntry;
+			try {
+				obj = JSON.parse(line) as JsonlEntry;
+			} catch {
+				continue;
+			}
 
-      const sourceUuid = typeof obj.uuid === "string" ? obj.uuid : "";
-      if (sourceUuid) uuidToLine.set(sourceUuid, lineIndex);
+			const sourceUuid = typeof obj.uuid === "string" ? obj.uuid : "";
+			if (sourceUuid) uuidToLine.set(sourceUuid, lineIndex);
 
-      if (entrypoint === undefined && typeof obj.entrypoint === "string") {
-        entrypoint = obj.entrypoint;
-      }
-      if (sessionKind === undefined && typeof obj.sessionKind === "string") {
-        sessionKind = obj.sessionKind;
-      }
-      if (typeof obj.teamName === "string") {
-        teamNameSet.add(obj.teamName);
-      }
-      if (forkedFromSessionId === undefined && obj.forkedFrom !== undefined) {
-        const forked = obj.forkedFrom;
-        if (typeof forked === "string") {
-          forkedFromSessionId = forked;
-        } else {
-          const forkedId = forked["sessionId"];
-          if (typeof forkedId === "string") {
-            forkedFromSessionId = forkedId;
-          }
-        }
-      }
+			if (entrypoint === undefined && typeof obj.entrypoint === "string") {
+				entrypoint = obj.entrypoint;
+			}
+			if (sessionKind === undefined && typeof obj.sessionKind === "string") {
+				sessionKind = obj.sessionKind;
+			}
+			if (typeof obj.teamName === "string") {
+				teamNameSet.add(obj.teamName);
+			}
+			if (forkedFromSessionId === undefined && obj.forkedFrom !== undefined) {
+				const forked = obj.forkedFrom;
+				if (typeof forked === "string") {
+					forkedFromSessionId = forked;
+				} else {
+					const forkedId = forked["sessionId"];
+					if (typeof forkedId === "string") {
+						forkedFromSessionId = forkedId;
+					}
+				}
+			}
 
-      if (obj.type === "custom-title" || obj.type === "ai-title") {
-        titleRecords.add(obj);
-        continue;
-      }
-      if (obj.type === "cost-state") {
-        costState = costStateFromRecord(obj) ?? costState;
-        continue;
-      }
+			if (obj.type === "custom-title" || obj.type === "ai-title") {
+				titleRecords.add(obj);
+				continue;
+			}
+			if (obj.type === "cost-state") {
+				costState = costStateFromRecord(obj) ?? costState;
+				continue;
+			}
 
-      const type = obj.type;
-      if (type !== "user" && type !== "assistant") continue;
-      if (isCountableMessageRecord(obj)) messageCount++;
+			const type = obj.type;
+			if (type !== "user" && type !== "assistant") continue;
+			if (isCountableMessageRecord(obj)) messageCount++;
 
-      const message = obj.message;
-      if (!message) continue;
+			const message = obj.message;
+			if (!message) continue;
 
-      const timestamp = obj.timestamp ?? "";
-      const textBlocks: string[] = [];
-      const contentBlocks: MessageContent[] = [];
-      const toolCalls: ToolCallInfo[] = [];
-      const content = message.content;
-      let isCommand = false;
+			const timestamp = obj.timestamp ?? "";
+			const textBlocks: string[] = [];
+			const contentBlocks: MessageContent[] = [];
+			const toolCalls: ToolCallInfo[] = [];
+			const content = message.content;
+			let isCommand = false;
 
-      if (type === "user") {
-        const processUserText = (text: string) => {
-          const cmd = parseCommandBlock(text);
-          if (cmd) {
-            isCommand = true;
-            const label = cmd.args ? `${cmd.name} ${cmd.args}` : cmd.name;
-            textBlocks.push(label);
-            const cmdContent = {
-              type: "command",
-              name: cmd.name,
-              sourceUuid,
-            } as MessageContent & {
-              type: "command";
-            };
-            if (cmd.args) cmdContent.args = cmd.args;
-            contentBlocks.push(cmdContent);
-            return;
-          }
-          const bashIn = parseBashInput(text);
-          if (bashIn) {
-            contentBlocks.push({
-              type: "bash-input",
-              command: bashIn.command,
-              sourceUuid,
-            });
-            return;
-          }
-          const bashOut = parseBashOutput(text);
-          if (bashOut) {
-            contentBlocks.push({
-              type: "bash-output",
-              stdout: bashOut.stdout,
-              stderr: bashOut.stderr,
-              sourceUuid,
-            });
-            return;
-          }
-          if (/<local-command-caveat>/.test(text)) return;
-          const cleaned = stripCommandTags(text);
-          if (cleaned) {
-            textBlocks.push(cleaned);
-            contentBlocks.push({ type: "text", text: cleaned, sourceUuid });
-          }
-        };
+			if (type === "user") {
+				const processUserText = (text: string) => {
+					const cmd = parseCommandBlock(text);
+					if (cmd) {
+						isCommand = true;
+						const label = cmd.args ? `${cmd.name} ${cmd.args}` : cmd.name;
+						textBlocks.push(label);
+						const cmdContent = {
+							type: "command",
+							name: cmd.name,
+							sourceUuid,
+						} as MessageContent & {
+							type: "command";
+						};
+						if (cmd.args) cmdContent.args = cmd.args;
+						contentBlocks.push(cmdContent);
+						return;
+					}
+					const bashIn = parseBashInput(text);
+					if (bashIn) {
+						contentBlocks.push({
+							type: "bash-input",
+							command: bashIn.command,
+							sourceUuid,
+						});
+						return;
+					}
+					const bashOut = parseBashOutput(text);
+					if (bashOut) {
+						contentBlocks.push({
+							type: "bash-output",
+							stdout: bashOut.stdout,
+							stderr: bashOut.stderr,
+							sourceUuid,
+						});
+						return;
+					}
+					if (/<local-command-caveat>/.test(text)) return;
+					const cleaned = stripCommandTags(text);
+					if (cleaned) {
+						textBlocks.push(cleaned);
+						contentBlocks.push({type: "text", text: cleaned, sourceUuid});
+					}
+				};
 
-        if (typeof content === "string") {
-          processUserText(content);
-        } else if (Array.isArray(content)) {
-          for (const block of content) {
-            if (block.type === "text" && typeof block.text === "string") {
-              processUserText(block.text);
-            } else if (block.type === "image" && block.source) {
-              contentBlocks.push({
-                type: "image",
-                mediaType: block.source.media_type,
-                data: block.source.data,
-                sourceUuid,
-              });
-            } else if (block.type === "document" && block.source) {
-              contentBlocks.push({
-                type: "document",
-                mediaType: block.source.media_type,
-                data: block.source.data,
-                sourceUuid,
-              });
-            } else if (block.type === "tool_result" && block.tool_use_id) {
-              const rawResult = extractToolResultContent(block.content);
-              const info = toolCallMap.get(block.tool_use_id);
-              if (info && rawResult !== undefined) {
-                const resultText = stripResultTags(rawResult);
-                info.result = truncateResult(resultText, 150);
-                if (block.is_error) info.isError = true;
-                if (sourceUuid) info.resultUuid = sourceUuid;
-                const startTime = toolStartTimes.get(block.tool_use_id);
-                if (startTime && timestamp) {
-                  const resultTime = new Date(timestamp).getTime();
-                  if (!isNaN(resultTime) && resultTime > startTime) {
-                    info.duration = resultTime - startTime;
-                  }
-                }
-              }
-            }
-          }
-        }
-      } else {
-        if (Array.isArray(content)) {
-          for (const block of content) {
-            if (block.type === "text" && typeof block.text === "string") {
-              textBlocks.push(block.text);
-              contentBlocks.push({
-                type: "text",
-                text: block.text,
-                sourceUuid,
-              });
-            } else if (block.type === "thinking" && typeof block.thinking === "string") {
-              contentBlocks.push({
-                type: "thinking",
-                thinking: block.thinking,
-                sourceUuid,
-              });
-            } else if (block.type === "tool_use") {
-              const tc: ToolCallInfo = {
-                id: block.id ?? "",
-                name: block.name as string,
-                input: block.input ?? {},
-                sourceUuid,
-              };
-              if (timestamp) tc.startedAt = timestamp;
-              toolCalls.push(tc);
-              if (tc.id) {
-                toolCallMap.set(tc.id, tc);
-                if (timestamp) {
-                  const t = new Date(timestamp).getTime();
-                  if (!isNaN(t)) toolStartTimes.set(tc.id, t);
-                }
-              }
-              contentBlocks.push({
-                type: "tool_use",
-                id: tc.id,
-                name: tc.name,
-                input: tc.input,
-                sourceUuid,
-              });
-            }
-          }
-        }
-      }
+				if (typeof content === "string") {
+					processUserText(content);
+				} else if (Array.isArray(content)) {
+					for (const block of content) {
+						if (block.type === "text" && typeof block.text === "string") {
+							processUserText(block.text);
+						} else if (block.type === "image" && block.source) {
+							contentBlocks.push({
+								type: "image",
+								mediaType: block.source.media_type,
+								data: block.source.data,
+								sourceUuid,
+							});
+						} else if (block.type === "document" && block.source) {
+							contentBlocks.push({
+								type: "document",
+								mediaType: block.source.media_type,
+								data: block.source.data,
+								sourceUuid,
+							});
+						} else if (block.type === "tool_result" && block.tool_use_id) {
+							const rawResult = extractToolResultContent(block.content);
+							const info = toolCallMap.get(block.tool_use_id);
+							if (info && rawResult !== undefined) {
+								const resultText = stripResultTags(rawResult);
+								info.result = truncateResult(resultText, 150);
+								if (block.is_error) info.isError = true;
+								if (sourceUuid) info.resultUuid = sourceUuid;
+								const startTime = toolStartTimes.get(block.tool_use_id);
+								if (startTime && timestamp) {
+									const resultTime = new Date(timestamp).getTime();
+									if (!isNaN(resultTime) && resultTime > startTime) {
+										info.duration = resultTime - startTime;
+									}
+								}
+							}
+						}
+					}
+				}
+			} else {
+				if (Array.isArray(content)) {
+					for (const block of content) {
+						if (block.type === "text" && typeof block.text === "string") {
+							textBlocks.push(block.text);
+							contentBlocks.push({
+								type: "text",
+								text: block.text,
+								sourceUuid,
+							});
+						} else if (block.type === "thinking" && typeof block.thinking === "string") {
+							contentBlocks.push({
+								type: "thinking",
+								thinking: block.thinking,
+								sourceUuid,
+							});
+						} else if (block.type === "tool_use") {
+							const tc: ToolCallInfo = {
+								id: block.id ?? "",
+								name: block.name as string,
+								input: block.input ?? {},
+								sourceUuid,
+							};
+							if (timestamp) tc.startedAt = timestamp;
+							toolCalls.push(tc);
+							if (tc.id) {
+								toolCallMap.set(tc.id, tc);
+								if (timestamp) {
+									const t = new Date(timestamp).getTime();
+									if (!isNaN(t)) toolStartTimes.set(tc.id, t);
+								}
+							}
+							contentBlocks.push({
+								type: "tool_use",
+								id: tc.id,
+								name: tc.name,
+								input: tc.input,
+								sourceUuid,
+							});
+						}
+					}
+				}
+			}
 
-      if (textBlocks.length === 0 && toolCalls.length === 0 && contentBlocks.length === 0) continue;
+			if (textBlocks.length === 0 && toolCalls.length === 0 && contentBlocks.length === 0) continue;
 
-      // A session resumed with a bare "yes" keeps looking for the message that
-      // names the work, and settles for the acknowledgement only if none does.
-      if (type === "user" && textBlocks.length > 0 && !titleNamesWork) {
-        const isMeta = obj.isMeta === true;
-        titleNamesWork = isInformativePrompt(textBlocks[0]!, { isMeta });
-        if (titleNamesWork || title === sessionId) {
-          title = extractSessionTitle(textBlocks[0]!, sessionId, { isMeta });
-        }
-      }
+			// A session resumed with a bare "yes" keeps looking for the message that
+			// names the work, and settles for the acknowledgement only if none does.
+			if (type === "user" && textBlocks.length > 0 && !titleNamesWork) {
+				const isMeta = obj.isMeta === true;
+				titleNamesWork = isInformativePrompt(textBlocks[0]!, {isMeta});
+				if (titleNamesWork || title === sessionId) {
+					title = extractSessionTitle(textBlocks[0]!, sessionId, {isMeta});
+				}
+			}
 
-      const last = messages[messages.length - 1];
-      if (last && last.role === type) {
-        if (last.isCommand) {
-          last.toolCalls.push(...toolCalls);
-          last.content.push(...contentBlocks);
-        } else {
-          last.textBlocks.push(...textBlocks);
-          last.toolCalls.push(...toolCalls);
-          last.content.push(...contentBlocks);
-        }
-      } else {
-        const msg: SessionMessage = {
-          role: type as "user" | "assistant",
-          textBlocks,
-          content: contentBlocks,
-          toolCalls,
-          timestamp,
-        };
-        if (isCommand) msg.isCommand = true;
-        messages.push(msg);
-      }
-    }
-  } finally {
-    rl.close();
-  }
+			const last = messages[messages.length - 1];
+			if (last && last.role === type) {
+				if (last.isCommand) {
+					last.toolCalls.push(...toolCalls);
+					last.content.push(...contentBlocks);
+				} else {
+					last.textBlocks.push(...textBlocks);
+					last.toolCalls.push(...toolCalls);
+					last.content.push(...contentBlocks);
+				}
+			} else {
+				const msg: SessionMessage = {
+					role: type as "user" | "assistant",
+					textBlocks,
+					content: contentBlocks,
+					toolCalls,
+					timestamp,
+				};
+				if (isCommand) msg.isCommand = true;
+				messages.push(msg);
+			}
+		}
+	} finally {
+		rl.close();
+	}
 
-  const { customTitle, aiTitle } = await titleRecords.finish(filePath);
-  title = customTitle ?? aiTitle ?? title;
+	const {customTitle, aiTitle} = await titleRecords.finish(filePath);
+	title = customTitle ?? aiTitle ?? title;
 
-  const detail: SessionDetail = {
-    id: sessionId,
-    title,
-    projectName,
-    projectId: project,
-    messages,
-    messageCount,
-    uuidToLine,
-  };
-  if (entrypoint !== undefined) detail.entrypoint = entrypoint;
-  if (sessionKind !== undefined) detail.sessionKind = sessionKind;
-  if (teamNameSet.size > 0) detail.teamNames = [...teamNameSet];
-  if (forkedFromSessionId !== undefined) detail.forkedFromSessionId = forkedFromSessionId;
-  if (costState !== undefined) detail.costState = costState;
-  return detail;
+	const detail: SessionDetail = {
+		id: sessionId,
+		title,
+		projectName,
+		projectId: project,
+		messages,
+		messageCount,
+		uuidToLine,
+	};
+	if (entrypoint !== undefined) detail.entrypoint = entrypoint;
+	if (sessionKind !== undefined) detail.sessionKind = sessionKind;
+	if (teamNameSet.size > 0) detail.teamNames = [...teamNameSet];
+	if (forkedFromSessionId !== undefined) detail.forkedFromSessionId = forkedFromSessionId;
+	if (costState !== undefined) detail.costState = costState;
+	return detail;
 }
 
 /**
@@ -1089,42 +1057,42 @@ export async function readSession(
  * the next call.
  */
 export async function readNewJsonlLines(
-  filePath: string,
-  fromByteOffset: number,
-): Promise<{ lines: Record<string, JsonValue>[]; nextByteOffset: number }> {
-  const lines: Record<string, JsonValue>[] = [];
-  let bytesConsumed = 0;
+	filePath: string,
+	fromByteOffset: number,
+): Promise<{lines: Record<string, JsonValue>[]; nextByteOffset: number}> {
+	const lines: Record<string, JsonValue>[] = [];
+	let bytesConsumed = 0;
 
-  const rl = createInterface({
-    input: createReadStream(filePath, {
-      encoding: "utf-8",
-      start: fromByteOffset,
-    }),
-    crlfDelay: Infinity,
-  });
+	const rl = createInterface({
+		input: createReadStream(filePath, {
+			encoding: "utf-8",
+			start: fromByteOffset,
+		}),
+		crlfDelay: Infinity,
+	});
 
-  try {
-    for await (const line of rl) {
-      // Each line in the stream has its newline stripped by readline.
-      // Account for the line content + 1 byte for the newline character.
-      const lineByteLength = Buffer.byteLength(line, "utf-8") + 1;
-      if (!line.trim()) {
-        bytesConsumed += lineByteLength;
-        continue;
-      }
-      try {
-        const parsed = JSON.parse(line) as Record<string, JsonValue>;
-        lines.push(parsed);
-        bytesConsumed += lineByteLength;
-      } catch {
-        // Partial/malformed line at the end of the file. Do not advance
-        // the byte offset past it so we re-read it on the next change.
-        break;
-      }
-    }
-  } finally {
-    rl.close();
-  }
+	try {
+		for await (const line of rl) {
+			// Each line in the stream has its newline stripped by readline.
+			// Account for the line content + 1 byte for the newline character.
+			const lineByteLength = Buffer.byteLength(line, "utf-8") + 1;
+			if (!line.trim()) {
+				bytesConsumed += lineByteLength;
+				continue;
+			}
+			try {
+				const parsed = JSON.parse(line) as Record<string, JsonValue>;
+				lines.push(parsed);
+				bytesConsumed += lineByteLength;
+			} catch {
+				// Partial/malformed line at the end of the file. Do not advance
+				// the byte offset past it so we re-read it on the next change.
+				break;
+			}
+		}
+	} finally {
+		rl.close();
+	}
 
-  return { lines, nextByteOffset: fromByteOffset + bytesConsumed };
+	return {lines, nextByteOffset: fromByteOffset + bytesConsumed};
 }

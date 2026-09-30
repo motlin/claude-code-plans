@@ -1,26 +1,22 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { sessionQueryKeys } from "../lib/api/sessions";
-import {
-  updateSessionViewedState,
-  updateSessionVisibility,
-  type SessionViewedState,
-} from "../lib/api/viewed-state";
-import { hasUnseenWork, syncUnseenFromSummaries } from "../lib/unread-store";
+import {useQueryClient} from "@tanstack/react-query";
+import {useCallback, useEffect, useRef, useState} from "react";
+import {sessionQueryKeys} from "../lib/api/sessions";
+import {updateSessionViewedState, updateSessionVisibility, type SessionViewedState} from "../lib/api/viewed-state";
+import {hasUnseenWork, syncUnseenFromSummaries} from "../lib/unread-store";
 
 const VIEW_DWELL_MS = 1_500;
 const VISIBILITY_HEARTBEAT_MS = 10_000;
 
 interface VisibilityDwellDependencies {
-  cancel: (timer: ReturnType<typeof setTimeout>) => void;
-  onDwell: () => void;
-  onVisibilityChange: (visible: boolean) => void;
-  schedule: (callback: () => void, delayMs: number) => ReturnType<typeof setTimeout>;
+	cancel: (timer: ReturnType<typeof setTimeout>) => void;
+	onDwell: () => void;
+	onVisibilityChange: (visible: boolean) => void;
+	schedule: (callback: () => void, delayMs: number) => ReturnType<typeof setTimeout>;
 }
 
 interface BackgroundSyncOptions {
-  level?: "debug" | "warn";
-  onError?: (error: unknown) => void;
+	level?: "debug" | "warn";
+	onError?: (error: unknown) => void;
 }
 
 /**
@@ -33,175 +29,169 @@ interface BackgroundSyncOptions {
  * still abort either request, so neither failure becomes an unhandled rejection.
  */
 export function runBackgroundSync(
-  operation: string,
-  call: () => Promise<unknown>,
-  { level = "debug", onError }: BackgroundSyncOptions = {},
+	operation: string,
+	call: () => Promise<unknown>,
+	{level = "debug", onError}: BackgroundSyncOptions = {},
 ): void {
-  // `.then(call)` also traps a synchronous throw from the factory itself.
-  void Promise.resolve()
-    .then(call)
-    .catch((error: unknown) => {
-      console[level](`[session-viewed-state] background ${operation} failed`, error);
-      onError?.(error);
-    });
+	// `.then(call)` also traps a synchronous throw from the factory itself.
+	void Promise.resolve()
+		.then(call)
+		.catch((error: unknown) => {
+			console[level](`[session-viewed-state] background ${operation} failed`, error);
+			onError?.(error);
+		});
 }
 
 export function createRetryableSync(
-  call: () => Promise<unknown>,
-  run: typeof runBackgroundSync = runBackgroundSync,
-): { attempt: (operation: string) => void; retryIfFailed: (operation: string) => void } {
-  let failed = false;
+	call: () => Promise<unknown>,
+	run: typeof runBackgroundSync = runBackgroundSync,
+): {attempt: (operation: string) => void; retryIfFailed: (operation: string) => void} {
+	let failed = false;
 
-  const attempt = (operation: string): void => {
-    failed = false;
-    run(operation, call, {
-      level: "warn",
-      onError: () => {
-        failed = true;
-      },
-    });
-  };
+	const attempt = (operation: string): void => {
+		failed = false;
+		run(operation, call, {
+			level: "warn",
+			onError: () => {
+				failed = true;
+			},
+		});
+	};
 
-  const retryIfFailed = (operation: string): void => {
-    if (failed) attempt(operation);
-  };
+	const retryIfFailed = (operation: string): void => {
+		if (failed) attempt(operation);
+	};
 
-  return { attempt, retryIfFailed };
+	return {attempt, retryIfFailed};
 }
 
 export function createVisibilityDwellController(dependencies: VisibilityDwellDependencies): {
-  setVisible: (visible: boolean) => void;
-  stop: () => void;
+	setVisible: (visible: boolean) => void;
+	stop: () => void;
 } {
-  // Destructured so each dependency is called without a receiver: browser
-  // setTimeout/clearTimeout throw "Illegal invocation" on a non-window `this`.
-  const { cancel, onDwell, onVisibilityChange, schedule } = dependencies;
-  let visible = false;
-  let dwellTimer: ReturnType<typeof setTimeout> | null = null;
+	// Destructured so each dependency is called without a receiver: browser
+	// setTimeout/clearTimeout throw "Illegal invocation" on a non-window `this`.
+	const {cancel, onDwell, onVisibilityChange, schedule} = dependencies;
+	let visible = false;
+	let dwellTimer: ReturnType<typeof setTimeout> | null = null;
 
-  const setVisible = (nextVisible: boolean): void => {
-    if (visible === nextVisible) return;
-    visible = nextVisible;
-    onVisibilityChange(visible);
-    if (!visible) {
-      if (dwellTimer) cancel(dwellTimer);
-      dwellTimer = null;
-      return;
-    }
-    dwellTimer = schedule(() => {
-      dwellTimer = null;
-      if (visible) onDwell();
-    }, VIEW_DWELL_MS);
-  };
+	const setVisible = (nextVisible: boolean): void => {
+		if (visible === nextVisible) return;
+		visible = nextVisible;
+		onVisibilityChange(visible);
+		if (!visible) {
+			if (dwellTimer) cancel(dwellTimer);
+			dwellTimer = null;
+			return;
+		}
+		dwellTimer = schedule(() => {
+			dwellTimer = null;
+			if (visible) onDwell();
+		}, VIEW_DWELL_MS);
+	};
 
-  const stop = (): void => {
-    if (dwellTimer) cancel(dwellTimer);
-    dwellTimer = null;
-    if (visible) onVisibilityChange(false);
-    visible = false;
-  };
+	const stop = (): void => {
+		if (dwellTimer) cancel(dwellTimer);
+		dwellTimer = null;
+		if (visible) onVisibilityChange(false);
+		visible = false;
+	};
 
-  return { setVisible, stop };
+	return {setVisible, stop};
 }
 
 export function useSessionViewedState(
-  sessionId: string,
-  currentMessageIndex: number,
+	sessionId: string,
+	currentMessageIndex: number,
 ): {
-  markReviewed: () => Promise<SessionViewedState>;
-  markUnreviewed: () => Promise<SessionViewedState>;
-  visibilityRef: (element: HTMLDivElement | null) => void;
+	markReviewed: () => Promise<SessionViewedState>;
+	markUnreviewed: () => Promise<SessionViewedState>;
+	visibilityRef: (element: HTMLDivElement | null) => void;
 } {
-  const queryClient = useQueryClient();
-  const [visibilityElement, setVisibilityElement] = useState<HTMLDivElement | null>(null);
-  const visibilityRef = useCallback((element: HTMLDivElement | null) => {
-    setVisibilityElement(element);
-  }, []);
+	const queryClient = useQueryClient();
+	const [visibilityElement, setVisibilityElement] = useState<HTMLDivElement | null>(null);
+	const visibilityRef = useCallback((element: HTMLDivElement | null) => {
+		setVisibilityElement(element);
+	}, []);
 
-  const applyViewedState = useCallback(
-    (viewedState: SessionViewedState): SessionViewedState => {
-      queryClient.setQueryData(sessionQueryKeys.detail(sessionId), (previous: unknown) => {
-        if (previous === null || typeof previous !== "object") return previous;
-        return { ...previous, viewedState };
-      });
-      syncUnseenFromSummaries([{ id: sessionId, unseen: !viewedState.viewedAnywhere }]);
-      void queryClient.invalidateQueries({ queryKey: ["herdr", "panes"] });
-      void queryClient.invalidateQueries({ queryKey: ["terminal", "placements"] });
-      return viewedState;
-    },
-    [queryClient, sessionId],
-  );
+	const applyViewedState = useCallback(
+		(viewedState: SessionViewedState): SessionViewedState => {
+			queryClient.setQueryData(sessionQueryKeys.detail(sessionId), (previous: unknown) => {
+				if (previous === null || typeof previous !== "object") return previous;
+				return {...previous, viewedState};
+			});
+			syncUnseenFromSummaries([{id: sessionId, unseen: !viewedState.viewedAnywhere}]);
+			void queryClient.invalidateQueries({queryKey: ["herdr", "panes"]});
+			void queryClient.invalidateQueries({queryKey: ["terminal", "placements"]});
+			return viewedState;
+		},
+		[queryClient, sessionId],
+	);
 
-  const updateViewedState = useCallback(
-    async (action: "reviewed" | "unreviewed") => {
-      // Optimistic: the shared unseen flag moves now and settles from the server response.
-      const previousUnseen = hasUnseenWork(sessionId);
-      syncUnseenFromSummaries([{ id: sessionId, unseen: action === "unreviewed" }]);
-      try {
-        return applyViewedState(
-          await updateSessionViewedState(sessionId, action, currentMessageIndex),
-        );
-      } catch (error) {
-        syncUnseenFromSummaries([{ id: sessionId, unseen: previousUnseen }]);
-        throw error;
-      }
-    },
-    [applyViewedState, currentMessageIndex, sessionId],
-  );
+	const updateViewedState = useCallback(
+		async (action: "reviewed" | "unreviewed") => {
+			// Optimistic: the shared unseen flag moves now and settles from the server response.
+			const previousUnseen = hasUnseenWork(sessionId);
+			syncUnseenFromSummaries([{id: sessionId, unseen: action === "unreviewed"}]);
+			try {
+				return applyViewedState(await updateSessionViewedState(sessionId, action, currentMessageIndex));
+			} catch (error) {
+				syncUnseenFromSummaries([{id: sessionId, unseen: previousUnseen}]);
+				throw error;
+			}
+		},
+		[applyViewedState, currentMessageIndex, sessionId],
+	);
 
-  const markReviewed = useCallback(() => updateViewedState("reviewed"), [updateViewedState]);
-  const markUnreviewed = useCallback(() => updateViewedState("unreviewed"), [updateViewedState]);
+	const markReviewed = useCallback(() => updateViewedState("reviewed"), [updateViewedState]);
+	const markUnreviewed = useCallback(() => updateViewedState("unreviewed"), [updateViewedState]);
 
-  const markReviewedRef = useRef(markReviewed);
-  markReviewedRef.current = markReviewed;
+	const markReviewedRef = useRef(markReviewed);
+	markReviewedRef.current = markReviewed;
 
-  useEffect(() => {
-    if (!visibilityElement) return;
-    const clientId = `${Date.now().toString(36)}-${Math.random().toString(36)}`;
-    let intersecting = false;
-    const { attempt, retryIfFailed } = createRetryableSync(() => markReviewedRef.current());
+	useEffect(() => {
+		if (!visibilityElement) return;
+		const clientId = `${Date.now().toString(36)}-${Math.random().toString(36)}`;
+		let intersecting = false;
+		const {attempt, retryIfFailed} = createRetryableSync(() => markReviewedRef.current());
 
-    const controller = createVisibilityDwellController({
-      cancel: clearTimeout,
-      onDwell: () => {
-        attempt("mark-reviewed");
-      },
-      onVisibilityChange: (visible) => {
-        runBackgroundSync(
-          "visibility-update",
-          () => updateSessionVisibility(sessionId, clientId, visible),
-          { level: "debug" },
-        );
-      },
-      schedule: setTimeout,
-    });
-    const updateVisibility = (): void => {
-      controller.setVisible(intersecting && document.visibilityState === "visible");
-    };
-    const observer = new IntersectionObserver(([entry]) => {
-      intersecting = entry?.isIntersecting === true;
-      updateVisibility();
-    });
-    observer.observe(visibilityElement);
-    document.addEventListener("visibilitychange", updateVisibility);
-    const heartbeat = setInterval(() => {
-      if (intersecting && document.visibilityState === "visible") {
-        runBackgroundSync(
-          "visibility-heartbeat",
-          () => updateSessionVisibility(sessionId, clientId, true),
-          { level: "debug" },
-        );
-        retryIfFailed("mark-reviewed-retry");
-      }
-    }, VISIBILITY_HEARTBEAT_MS);
+		const controller = createVisibilityDwellController({
+			cancel: clearTimeout,
+			onDwell: () => {
+				attempt("mark-reviewed");
+			},
+			onVisibilityChange: (visible) => {
+				runBackgroundSync("visibility-update", () => updateSessionVisibility(sessionId, clientId, visible), {
+					level: "debug",
+				});
+			},
+			schedule: setTimeout,
+		});
+		const updateVisibility = (): void => {
+			controller.setVisible(intersecting && document.visibilityState === "visible");
+		};
+		const observer = new IntersectionObserver(([entry]) => {
+			intersecting = entry?.isIntersecting === true;
+			updateVisibility();
+		});
+		observer.observe(visibilityElement);
+		document.addEventListener("visibilitychange", updateVisibility);
+		const heartbeat = setInterval(() => {
+			if (intersecting && document.visibilityState === "visible") {
+				runBackgroundSync("visibility-heartbeat", () => updateSessionVisibility(sessionId, clientId, true), {
+					level: "debug",
+				});
+				retryIfFailed("mark-reviewed-retry");
+			}
+		}, VISIBILITY_HEARTBEAT_MS);
 
-    return () => {
-      clearInterval(heartbeat);
-      document.removeEventListener("visibilitychange", updateVisibility);
-      observer.disconnect();
-      controller.stop();
-    };
-  }, [sessionId, visibilityElement]);
+		return () => {
+			clearInterval(heartbeat);
+			document.removeEventListener("visibilitychange", updateVisibility);
+			observer.disconnect();
+			controller.stop();
+		};
+	}, [sessionId, visibilityElement]);
 
-  return { markReviewed, markUnreviewed, visibilityRef };
+	return {markReviewed, markUnreviewed, visibilityRef};
 }

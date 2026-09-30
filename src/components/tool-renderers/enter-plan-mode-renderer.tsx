@@ -1,5 +1,5 @@
-import type { ToolRendererProps } from "./types";
-import { KeyValueCard } from "./shared";
+import type {ToolRendererProps} from "./types";
+import {KeyValueCard} from "./shared";
 
 /**
  * The tool "result" for a successful EnterPlanMode call is a ~600-character
@@ -14,11 +14,11 @@ const INSTRUCTION_RESULT_RE = /^Entered plan mode/;
  * call beyond the row's own "Entered plan mode" label. The renderer draws
  * nothing in that case; only a genuine failure gets a card.
  */
-export function EnterPlanModeRenderer({ toolCall }: ToolRendererProps) {
-  const { result } = toolCall;
+export function EnterPlanModeRenderer({toolCall}: ToolRendererProps) {
+	const {result} = toolCall;
 
-  const isBoilerplate = !result || result === "success" || INSTRUCTION_RESULT_RE.test(result);
-  if (!toolCall.isError && isBoilerplate) return null;
+	const isBoilerplate = !result || result === "success" || INSTRUCTION_RESULT_RE.test(result);
+	if (!toolCall.isError && isBoilerplate) return null;
 
-  return <KeyValueCard isError={toolCall.isError} params={[]} result={result} />;
+	return <KeyValueCard isError={toolCall.isError} params={[]} result={result} />;
 }

@@ -4,6 +4,6 @@
  * artifact, not a branch, so it is treated the same as no branch at all.
  */
 export function normalizeGitBranch(branch: string | null | undefined): string | null {
-  if (branch === undefined || branch === null || branch === "HEAD") return null;
-  return branch;
+	if (branch === undefined || branch === null || branch === "HEAD") return null;
+	return branch;
 }

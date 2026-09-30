@@ -19,7 +19,7 @@
  * HMR-safe: the underlying map is registered with `hmrPersist` so the watcher
  * and dispatcher continue to share state across dev hot-reloads.
  */
-import { hmrPersist } from "./hmr-persist";
+import {hmrPersist} from "./hmr-persist";
 
 const lastSeen = hmrPersist("updateDedupeLastSeen", () => new Map<string, number>());
 
@@ -31,14 +31,14 @@ const lastSeen = hmrPersist("updateDedupeLastSeen", () => new Map<string, number
  * this; skip" and a `false` return as "go ahead and broadcast".
  */
 export function recentlyBroadcast(key: string, ttlMs: number): boolean {
-  const now = Date.now();
-  const previous = lastSeen.get(key);
-  if (previous !== undefined && now - previous < ttlMs) {
-    return true;
-  }
-  lastSeen.set(key, now);
-  pruneExpired(now, ttlMs);
-  return false;
+	const now = Date.now();
+	const previous = lastSeen.get(key);
+	if (previous !== undefined && now - previous < ttlMs) {
+		return true;
+	}
+	lastSeen.set(key, now);
+	pruneExpired(now, ttlMs);
+	return false;
 }
 
 /**
@@ -48,13 +48,13 @@ export function recentlyBroadcast(key: string, ttlMs: number): boolean {
  * of distinct keys broadcast within the window — small in practice.
  */
 function pruneExpired(now: number, ttlMs: number): void {
-  for (const [key, ts] of lastSeen) {
-    if (now - ts >= ttlMs) lastSeen.delete(key);
-  }
+	for (const [key, ts] of lastSeen) {
+		if (now - ts >= ttlMs) lastSeen.delete(key);
+	}
 }
 
 export const __testing = {
-  clear: (): void => {
-    lastSeen.clear();
-  },
+	clear: (): void => {
+		lastSeen.clear();
+	},
 };

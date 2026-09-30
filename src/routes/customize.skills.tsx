@@ -1,126 +1,117 @@
-import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
-import { Scroll } from "lucide-react";
-import { CustomizeDiscover } from "../components/customize/customize-discover";
-import { CustomizeNotice } from "../components/customize/customize-empty";
-import { CustomizeList, ShortDate } from "../components/customize/customize-list";
-import { useSectionSort } from "../components/customize/persisted-sort";
-import { CUSTOMIZE_SECTIONS, resolveOption } from "../components/customize/sections";
-import { SkillRowActions } from "../components/customize/skill-row-actions";
-import { ScopeBadge } from "../components/customize/connectors-table";
-import {
-  commandRows,
-  filterSkills,
-  groupSkills,
-  sortSkills,
-} from "../components/customize/skills-view";
-import { customizeDiscoverQueryOptions, customizeSkillsQueryOptions } from "../lib/api/customize";
-import { userCommandsQueryOptions } from "../lib/api/plugins";
+import {useQuery} from "@tanstack/react-query";
+import {createFileRoute, useNavigate, useSearch} from "@tanstack/react-router";
+import {Scroll} from "lucide-react";
+import {CustomizeDiscover} from "../components/customize/customize-discover";
+import {CustomizeNotice} from "../components/customize/customize-empty";
+import {CustomizeList, ShortDate} from "../components/customize/customize-list";
+import {useSectionSort} from "../components/customize/persisted-sort";
+import {CUSTOMIZE_SECTIONS, resolveOption} from "../components/customize/sections";
+import {SkillRowActions} from "../components/customize/skill-row-actions";
+import {ScopeBadge} from "../components/customize/connectors-table";
+import {commandRows, filterSkills, groupSkills, sortSkills} from "../components/customize/skills-view";
+import {customizeDiscoverQueryOptions, customizeSkillsQueryOptions} from "../lib/api/customize";
+import {userCommandsQueryOptions} from "../lib/api/plugins";
 
 export const Route = createFileRoute("/customize/skills")({
-  component: CustomizeSkills,
-  loader: ({ context: { queryClient } }) => {
-    void queryClient.prefetchQuery(customizeSkillsQueryOptions);
-    void queryClient.prefetchQuery(userCommandsQueryOptions);
-    void queryClient.prefetchQuery(customizeDiscoverQueryOptions);
-  },
-  head: () => ({ meta: [{ title: "Skills · Customize" }] }),
+	component: CustomizeSkills,
+	loader: ({context: {queryClient}}) => {
+		void queryClient.prefetchQuery(customizeSkillsQueryOptions);
+		void queryClient.prefetchQuery(userCommandsQueryOptions);
+		void queryClient.prefetchQuery(customizeDiscoverQueryOptions);
+	},
+	head: () => ({meta: [{title: "Skills · Customize"}]}),
 });
 
 const SECTION = CUSTOMIZE_SECTIONS[0]!;
 
 function CustomizeSkills() {
-  const search = useSearch({ from: "/customize" });
-  const navigate = useNavigate();
-  const sortValue = useSectionSort(SECTION.sortStorageKey, search.sort);
-  const { data: skills, isPending } = useQuery(customizeSkillsQueryOptions);
-  const { data: commands } = useQuery(userCommandsQueryOptions);
+	const search = useSearch({from: "/customize"});
+	const navigate = useNavigate();
+	const sortValue = useSectionSort(SECTION.sortStorageKey, search.sort);
+	const {data: skills, isPending} = useQuery(customizeSkillsQueryOptions);
+	const {data: commands} = useQuery(userCommandsQueryOptions);
 
-  if (search.view === "discover") {
-    return (
-      <CustomizeDiscover
-        section="skills"
-        q={search.q}
-        yours={(skills ?? []).map((skill) => ({
-          key: skill.id,
-          title: skill.name,
-          source: `from ${skill.sourceLabel}`,
-          subtitle: skill.description,
-          onView: () =>
-            void navigate({
-              to: "/customize/skills/id/$skillId",
-              params: { skillId: skill.id },
-            }),
-        }))}
-      />
-    );
-  }
-  if (isPending || skills === undefined)
-    return <p className="text-body text-t6">Loading skills…</p>;
+	if (search.view === "discover") {
+		return (
+			<CustomizeDiscover
+				section="skills"
+				q={search.q}
+				yours={(skills ?? []).map((skill) => ({
+					key: skill.id,
+					title: skill.name,
+					source: `from ${skill.sourceLabel}`,
+					subtitle: skill.description,
+					onView: () =>
+						void navigate({
+							to: "/customize/skills/id/$skillId",
+							params: {skillId: skill.id},
+						}),
+				}))}
+			/>
+		);
+	}
+	if (isPending || skills === undefined) return <p className="text-body text-t6">Loading skills…</p>;
 
-  const searching = (search.q ?? "") !== "";
-  const source = searching ? "all" : resolveOption(SECTION.filter.options, search.filter).value;
-  const sort = resolveOption(SECTION.sort ?? [], sortValue).value;
-  const groups = groupSkills(sortSkills(filterSkills(skills, source, search.q), sort));
-  const commandGroup = {
-    key: "commands",
-    title: "Custom commands",
-    items: commandRows(commands ?? [], source, search.q).map((row) => ({
-      key: row.key,
-      title: row.invocation,
-      source: `from ${row.sourceName}`,
-      subtitle: row.description,
-      meta: <ScopeBadge>Custom command</ScopeBadge>,
-    })),
-  };
-  const showOnboarding =
-    !searching &&
-    (source === "all" || source === "personal") &&
-    !skills.some((skill) => skill.source === "personal");
+	const searching = (search.q ?? "") !== "";
+	const source = searching ? "all" : resolveOption(SECTION.filter.options, search.filter).value;
+	const sort = resolveOption(SECTION.sort ?? [], sortValue).value;
+	const groups = groupSkills(sortSkills(filterSkills(skills, source, search.q), sort));
+	const commandGroup = {
+		key: "commands",
+		title: "Custom commands",
+		items: commandRows(commands ?? [], source, search.q).map((row) => ({
+			key: row.key,
+			title: row.invocation,
+			source: `from ${row.sourceName}`,
+			subtitle: row.description,
+			meta: <ScopeBadge>Custom command</ScopeBadge>,
+		})),
+	};
+	const showOnboarding =
+		!searching &&
+		(source === "all" || source === "personal") &&
+		!skills.some((skill) => skill.source === "personal");
 
-  return (
-    <div className="flex flex-col gap-6">
-      {showOnboarding && (
-        <div data-testid="customize-skills-onboarding">
-          <CustomizeNotice
-            title="Add your first skills"
-            body="Personal skills live in ~/.claude/skills."
-          />
-        </div>
-      )}
-      <CustomizeList
-        icon={Scroll}
-        noun={SECTION.noun}
-        searching={searching}
-        groups={[
-          ...groups.map((group) => ({
-            key: group.key,
-            title: group.title,
-            items: group.skills.map((skill) => ({
-              key: skill.id,
-              title: skill.name,
-              source: `from ${skill.sourceLabel}`,
-              subtitle: skill.description,
-              meta: <ShortDate ms={skill.mtime} />,
-              actions: <SkillRowActions skill={skill} />,
-              onView: () =>
-                void navigate({
-                  to: "/customize/skills/id/$skillId",
-                  params: { skillId: skill.id },
-                }),
-            })),
-          })),
-          commandGroup,
-        ]}
-        empty={
-          showOnboarding ? null : (
-            <CustomizeNotice
-              title="No skills yet"
-              body="Personal skills live in ~/.claude/skills; project skills live in <project>/.claude/skills."
-            />
-          )
-        }
-      />
-    </div>
-  );
+	return (
+		<div className="flex flex-col gap-6">
+			{showOnboarding && (
+				<div data-testid="customize-skills-onboarding">
+					<CustomizeNotice title="Add your first skills" body="Personal skills live in ~/.claude/skills." />
+				</div>
+			)}
+			<CustomizeList
+				icon={Scroll}
+				noun={SECTION.noun}
+				searching={searching}
+				groups={[
+					...groups.map((group) => ({
+						key: group.key,
+						title: group.title,
+						items: group.skills.map((skill) => ({
+							key: skill.id,
+							title: skill.name,
+							source: `from ${skill.sourceLabel}`,
+							subtitle: skill.description,
+							meta: <ShortDate ms={skill.mtime} />,
+							actions: <SkillRowActions skill={skill} />,
+							onView: () =>
+								void navigate({
+									to: "/customize/skills/id/$skillId",
+									params: {skillId: skill.id},
+								}),
+						})),
+					})),
+					commandGroup,
+				]}
+				empty={
+					showOnboarding ? null : (
+						<CustomizeNotice
+							title="No skills yet"
+							body="Personal skills live in ~/.claude/skills; project skills live in <project>/.claude/skills."
+						/>
+					)
+				}
+			/>
+		</div>
+	);
 }

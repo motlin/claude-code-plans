@@ -1,27 +1,27 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
-import { SessionTitlesResponse } from "../../lib/api/sessions";
+import {createFileRoute} from "@tanstack/react-router";
+import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
+import {SessionTitlesResponse} from "../../lib/api/sessions";
 
 export const Route = createFileRoute("/api/sessions/titles")({
-  server: {
-    handlers: withMethodNotAllowed({
-      GET: async ({ request }: { request: Request }) => {
-        const { getDb } = await import("../../lib/db");
-        const { getSessionTitlesByIds } = await import("../../lib/db/queries");
+	server: {
+		handlers: withMethodNotAllowed({
+			GET: async ({request}: {request: Request}) => {
+				const {getDb} = await import("../../lib/db");
+				const {getSessionTitlesByIds} = await import("../../lib/db/queries");
 
-        const url = new URL(request.url);
-        const ids = (url.searchParams.get("ids") ?? "")
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean);
+				const url = new URL(request.url);
+				const ids = (url.searchParams.get("ids") ?? "")
+					.split(",")
+					.map((s) => s.trim())
+					.filter(Boolean);
 
-        const { index } = getDb();
-        const titles = getSessionTitlesByIds(index, ids);
+				const {index} = getDb();
+				const titles = getSessionTitlesByIds(index, ids);
 
-        return Response.json(SessionTitlesResponse.parse({ titles }), {
-          headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
-        });
-      },
-    }),
-  },
+				return Response.json(SessionTitlesResponse.parse({titles}), {
+					headers: {"Cache-Control": "private, max-age=0, must-revalidate"},
+				});
+			},
+		}),
+	},
 });

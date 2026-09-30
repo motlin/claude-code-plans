@@ -1,63 +1,55 @@
 const EFFORT_LEVELS = new Set(["low", "medium", "high", "xhigh", "max"]);
-const PERMISSION_MODES = new Set([
-  "acceptEdits",
-  "auto",
-  "bypassPermissions",
-  "default",
-  "manual",
-  "dontAsk",
-  "plan",
-]);
+const PERMISSION_MODES = new Set(["acceptEdits", "auto", "bypassPermissions", "default", "manual", "dontAsk", "plan"]);
 
 const VALUE_FLAGS: Record<string, (value: string) => boolean> = {
-  "--resume": (value) => /^[A-Za-z0-9][A-Za-z0-9-]*$/.test(value),
-  "--model": (value) => /^[A-Za-z0-9][A-Za-z0-9._[\]-]*$/.test(value),
-  "--effort": (value) => EFFORT_LEVELS.has(value),
-  "--permission-mode": (value) => PERMISSION_MODES.has(value),
+	"--resume": (value) => /^[A-Za-z0-9][A-Za-z0-9-]*$/.test(value),
+	"--model": (value) => /^[A-Za-z0-9][A-Za-z0-9._[\]-]*$/.test(value),
+	"--effort": (value) => EFFORT_LEVELS.has(value),
+	"--permission-mode": (value) => PERMISSION_MODES.has(value),
 };
 
 /** Returns an error message, or null when `args` only uses the supported launch flags. */
 export function validateClaudeLaunchArgs(args: readonly string[]): string | null {
-  const seen = new Set<string>();
-  for (let index = 0; index < args.length; index++) {
-    const flag = args[index] as string;
-    if (seen.has(flag)) return "duplicate claude argument";
-    seen.add(flag);
+	const seen = new Set<string>();
+	for (let index = 0; index < args.length; index++) {
+		const flag = args[index] as string;
+		if (seen.has(flag)) return "duplicate claude argument";
+		seen.add(flag);
 
-    if (flag === "--fork-session") continue;
+		if (flag === "--fork-session") continue;
 
-    const isValid = VALUE_FLAGS[flag];
-    if (!isValid) return "unsupported claude argument";
+		const isValid = VALUE_FLAGS[flag];
+		if (!isValid) return "unsupported claude argument";
 
-    index++;
-    const value = args[index];
-    if (value === undefined) return `${flag} requires a value`;
-    if (!isValid(value)) return `invalid value for ${flag}`;
-  }
+		index++;
+		const value = args[index];
+		if (value === undefined) return `${flag} requires a value`;
+		if (!isValid(value)) return `invalid value for ${flag}`;
+	}
 
-  if (seen.has("--fork-session") && !seen.has("--resume")) {
-    return "--fork-session requires --resume";
-  }
-  return null;
+	if (seen.has("--fork-session") && !seen.has("--resume")) {
+		return "--fork-session requires --resume";
+	}
+	return null;
 }
 
 function shellQuote(value: string): string {
-  return `'${value.replaceAll("'", `'\\''`)}'`;
+	return `'${value.replaceAll("'", `'\\''`)}'`;
 }
 
 function shellWord(value: string): string {
-  return /^[A-Za-z0-9_@%+=:,./-]+$/.test(value) ? value : shellQuote(value);
+	return /^[A-Za-z0-9_@%+=:,./-]+$/.test(value) ? value : shellQuote(value);
 }
 
 export interface ClaudeLaunchCommand {
-  cwd: string;
-  prompt?: string;
-  args?: readonly string[];
+	cwd: string;
+	prompt?: string;
+	args?: readonly string[];
 }
 
 /** POSIX shell command that starts the same session herdr would, for copy-to-clipboard fallback. */
-export function buildClaudeCopyCommand({ cwd, prompt, args = [] }: ClaudeLaunchCommand): string {
-  const words = ["claude", ...args.map(shellWord)];
-  if (prompt !== undefined) words.push(shellQuote(prompt));
-  return `cd ${shellQuote(cwd)} && ${words.join(" ")}`;
+export function buildClaudeCopyCommand({cwd, prompt, args = []}: ClaudeLaunchCommand): string {
+	const words = ["claude", ...args.map(shellWord)];
+	if (prompt !== undefined) words.push(shellQuote(prompt));
+	return `cd ${shellQuote(cwd)} && ${words.join(" ")}`;
 }

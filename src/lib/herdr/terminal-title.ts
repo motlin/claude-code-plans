@@ -1,6 +1,6 @@
 export type TerminalTitleParts = {
-  glyph: string | null;
-  title: string;
+	glyph: string | null;
+	title: string;
 };
 
 const LEADING_GLYPH = /^([^\p{L}\p{N}\s])\s+(.+)$/u;
@@ -12,9 +12,9 @@ const LEADING_GLYPH = /^([^\p{L}\p{N}\s])\s+(.+)$/u;
  * starts at the same x position.
  */
 export function splitTerminalTitleGlyph(displayName: string): TerminalTitleParts {
-  const match = LEADING_GLYPH.exec(displayName);
-  const glyph = match?.[1];
-  const title = match?.[2];
-  if (glyph === undefined || title === undefined) return { glyph: null, title: displayName };
-  return { glyph, title };
+	const match = LEADING_GLYPH.exec(displayName);
+	const glyph = match?.[1];
+	const title = match?.[2];
+	if (glyph === undefined || title === undefined) return {glyph: null, title: displayName};
+	return {glyph, title};
 }

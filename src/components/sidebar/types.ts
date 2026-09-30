@@ -1,31 +1,31 @@
 export type Section =
-  | "artifacts"
-  | "routines"
-  | "jobs"
-  | "active"
-  | "herdr"
-  | "tmux"
-  | "approvals"
-  | "notifications"
-  | "tasks"
-  | "projects"
-  | "plans"
-  | "memories"
-  | "sessions"
-  | "customize";
+	| "artifacts"
+	| "routines"
+	| "jobs"
+	| "active"
+	| "herdr"
+	| "tmux"
+	| "approvals"
+	| "notifications"
+	| "tasks"
+	| "projects"
+	| "plans"
+	| "memories"
+	| "sessions"
+	| "customize";
 
 export interface SidebarProjectDetail {
-  sessions: Array<{
-    id: string;
-    title: string;
-    gitBranch?: string | undefined;
-  }>;
-  plans: Array<{ filename: string; title: string }>;
-  memories: Array<{ filename: string; title: string; project: string }>;
-  todoCounts: {
-    total: number;
-    pending: number;
-    inProgress: number;
-    completed: number;
-  };
+	sessions: Array<{
+		id: string;
+		title: string;
+		gitBranch?: string | undefined;
+	}>;
+	plans: Array<{filename: string; title: string}>;
+	memories: Array<{filename: string; title: string; project: string}>;
+	todoCounts: {
+		total: number;
+		pending: number;
+		inProgress: number;
+		completed: number;
+	};
 }

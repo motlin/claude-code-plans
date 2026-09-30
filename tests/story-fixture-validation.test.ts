@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vite-plus/test";
-import { toolInputSchemas, isMcpTool } from "../src/lib/tool-input-schemas";
-import { ContentBlockSchema, AttachmentPayloadSchema } from "../src/lib/schemas";
+import {describe, it, expect} from "vite-plus/test";
+import {toolInputSchemas, isMcpTool} from "../src/lib/tool-input-schemas";
+import {ContentBlockSchema, AttachmentPayloadSchema} from "../src/lib/schemas";
 
 // ---------------------------------------------------------------------------
 // Tool renderer story files
@@ -49,36 +49,36 @@ import * as ClaudeInChromeStories from "../src/stories/session-detail/tool-rende
 // ---------------------------------------------------------------------------
 
 interface StoryWithToolCall {
-  args?: {
-    toolCall?: {
-      name?: string;
-      input?: Record<string, unknown>;
-    };
-  };
+	args?: {
+		toolCall?: {
+			name?: string;
+			input?: Record<string, unknown>;
+		};
+	};
 }
 
 function extractToolCallStories(storyModule: Record<string, unknown>): Array<{
-  storyName: string;
-  toolName: string;
-  input: Record<string, unknown>;
+	storyName: string;
+	toolName: string;
+	input: Record<string, unknown>;
 }> {
-  const results: Array<{
-    storyName: string;
-    toolName: string;
-    input: Record<string, unknown>;
-  }> = [];
-  for (const [key, value] of Object.entries(storyModule)) {
-    if (key === "default") continue;
-    const story = value as StoryWithToolCall;
-    const toolCall = story.args?.toolCall;
-    if (!toolCall?.name || !toolCall.input) continue;
-    results.push({
-      storyName: key,
-      toolName: toolCall.name,
-      input: toolCall.input,
-    });
-  }
-  return results;
+	const results: Array<{
+		storyName: string;
+		toolName: string;
+		input: Record<string, unknown>;
+	}> = [];
+	for (const [key, value] of Object.entries(storyModule)) {
+		if (key === "default") continue;
+		const story = value as StoryWithToolCall;
+		const toolCall = story.args?.toolCall;
+		if (!toolCall?.name || !toolCall.input) continue;
+		results.push({
+			storyName: key,
+			toolName: toolCall.name,
+			input: toolCall.input,
+		});
+	}
+	return results;
 }
 
 // ---------------------------------------------------------------------------
@@ -86,216 +86,212 @@ function extractToolCallStories(storyModule: Record<string, unknown>): Array<{
 // ---------------------------------------------------------------------------
 
 const allStoryModules: Array<{
-  moduleName: string;
-  module: Record<string, unknown>;
+	moduleName: string;
+	module: Record<string, unknown>;
 }> = [
-  {
-    moduleName: "BashRenderer",
-    module: BashStories as Record<string, unknown>,
-  },
-  {
-    moduleName: "GlobRenderer",
-    module: GlobStories as Record<string, unknown>,
-  },
-  {
-    moduleName: "GrepRenderer",
-    module: GrepStories as Record<string, unknown>,
-  },
-  {
-    moduleName: "WriteRenderer",
-    module: WriteStories as Record<string, unknown>,
-  },
-  {
-    moduleName: "EditRenderer",
-    module: EditStories as Record<string, unknown>,
-  },
-  {
-    moduleName: "ReadRenderer",
-    module: ReadStories as Record<string, unknown>,
-  },
-  {
-    moduleName: "AgentRenderer",
-    module: AgentStories as Record<string, unknown>,
-  },
-  {
-    moduleName: "WebFetchRenderer",
-    module: WebFetchStories as Record<string, unknown>,
-  },
-  {
-    moduleName: "SkillRenderer",
-    module: SkillStories as Record<string, unknown>,
-  },
-  {
-    moduleName: "AskUserQuestionRenderer",
-    module: AskUserQuestionStories as Record<string, unknown>,
-  },
-  {
-    moduleName: "ExitPlanModeRenderer",
-    module: ExitPlanModeStories as Record<string, unknown>,
-  },
-  {
-    moduleName: "TaskCreateRenderer",
-    module: TaskCreateStories as Record<string, unknown>,
-  },
-  {
-    moduleName: "TaskGetRenderer",
-    module: TaskGetStories as Record<string, unknown>,
-  },
-  {
-    moduleName: "TaskListRenderer",
-    module: TaskListStories as Record<string, unknown>,
-  },
-  {
-    moduleName: "TaskUpdateRenderer",
-    module: TaskUpdateStories as Record<string, unknown>,
-  },
-  {
-    moduleName: "EnterPlanModeRenderer",
-    module: EnterPlanModeStories as Record<string, unknown>,
-  },
-  {
-    moduleName: "TodoWriteRenderer",
-    module: TodoWriteStories as Record<string, unknown>,
-  },
-  {
-    moduleName: "WebSearchRenderer",
-    module: WebSearchStories as Record<string, unknown>,
-  },
-  {
-    moduleName: "SendMessageRenderer",
-    module: SendMessageStories as Record<string, unknown>,
-  },
-  {
-    moduleName: "TaskStopRenderer",
-    module: TaskStopStories as Record<string, unknown>,
-  },
-  {
-    moduleName: "CronCreateRenderer",
-    module: CronCreateStories as Record<string, unknown>,
-  },
-  { moduleName: "McpRenderer", module: McpStories as Record<string, unknown> },
-  {
-    moduleName: "GithubRenderer",
-    module: GithubStories as Record<string, unknown>,
-  },
-  {
-    moduleName: "PlaywrightRenderer",
-    module: PlaywrightStories as Record<string, unknown>,
-  },
-  {
-    moduleName: "Context7Renderer",
-    module: Context7Stories as Record<string, unknown>,
-  },
-  {
-    moduleName: "ChromeDevtoolsRenderer",
-    module: ChromeDevtoolsStories as Record<string, unknown>,
-  },
-  {
-    moduleName: "ClaudeInChromeRenderer",
-    module: ClaudeInChromeStories as Record<string, unknown>,
-  },
+	{
+		moduleName: "BashRenderer",
+		module: BashStories as Record<string, unknown>,
+	},
+	{
+		moduleName: "GlobRenderer",
+		module: GlobStories as Record<string, unknown>,
+	},
+	{
+		moduleName: "GrepRenderer",
+		module: GrepStories as Record<string, unknown>,
+	},
+	{
+		moduleName: "WriteRenderer",
+		module: WriteStories as Record<string, unknown>,
+	},
+	{
+		moduleName: "EditRenderer",
+		module: EditStories as Record<string, unknown>,
+	},
+	{
+		moduleName: "ReadRenderer",
+		module: ReadStories as Record<string, unknown>,
+	},
+	{
+		moduleName: "AgentRenderer",
+		module: AgentStories as Record<string, unknown>,
+	},
+	{
+		moduleName: "WebFetchRenderer",
+		module: WebFetchStories as Record<string, unknown>,
+	},
+	{
+		moduleName: "SkillRenderer",
+		module: SkillStories as Record<string, unknown>,
+	},
+	{
+		moduleName: "AskUserQuestionRenderer",
+		module: AskUserQuestionStories as Record<string, unknown>,
+	},
+	{
+		moduleName: "ExitPlanModeRenderer",
+		module: ExitPlanModeStories as Record<string, unknown>,
+	},
+	{
+		moduleName: "TaskCreateRenderer",
+		module: TaskCreateStories as Record<string, unknown>,
+	},
+	{
+		moduleName: "TaskGetRenderer",
+		module: TaskGetStories as Record<string, unknown>,
+	},
+	{
+		moduleName: "TaskListRenderer",
+		module: TaskListStories as Record<string, unknown>,
+	},
+	{
+		moduleName: "TaskUpdateRenderer",
+		module: TaskUpdateStories as Record<string, unknown>,
+	},
+	{
+		moduleName: "EnterPlanModeRenderer",
+		module: EnterPlanModeStories as Record<string, unknown>,
+	},
+	{
+		moduleName: "TodoWriteRenderer",
+		module: TodoWriteStories as Record<string, unknown>,
+	},
+	{
+		moduleName: "WebSearchRenderer",
+		module: WebSearchStories as Record<string, unknown>,
+	},
+	{
+		moduleName: "SendMessageRenderer",
+		module: SendMessageStories as Record<string, unknown>,
+	},
+	{
+		moduleName: "TaskStopRenderer",
+		module: TaskStopStories as Record<string, unknown>,
+	},
+	{
+		moduleName: "CronCreateRenderer",
+		module: CronCreateStories as Record<string, unknown>,
+	},
+	{moduleName: "McpRenderer", module: McpStories as Record<string, unknown>},
+	{
+		moduleName: "GithubRenderer",
+		module: GithubStories as Record<string, unknown>,
+	},
+	{
+		moduleName: "PlaywrightRenderer",
+		module: PlaywrightStories as Record<string, unknown>,
+	},
+	{
+		moduleName: "Context7Renderer",
+		module: Context7Stories as Record<string, unknown>,
+	},
+	{
+		moduleName: "ChromeDevtoolsRenderer",
+		module: ChromeDevtoolsStories as Record<string, unknown>,
+	},
+	{
+		moduleName: "ClaudeInChromeRenderer",
+		module: ClaudeInChromeStories as Record<string, unknown>,
+	},
 ];
 
 describe("Story fixture validation against strict Zod schemas", () => {
-  describe("tool renderer stories", () => {
-    for (const { moduleName, module } of allStoryModules) {
-      const stories = extractToolCallStories(module);
-      for (const { storyName, toolName, input } of stories) {
-        it(`${moduleName}/${storyName} — ${toolName} input passes schema`, () => {
-          if (isMcpTool(toolName)) {
-            return;
-          }
+	describe("tool renderer stories", () => {
+		for (const {moduleName, module} of allStoryModules) {
+			const stories = extractToolCallStories(module);
+			for (const {storyName, toolName, input} of stories) {
+				it(`${moduleName}/${storyName} — ${toolName} input passes schema`, () => {
+					if (isMcpTool(toolName)) {
+						return;
+					}
 
-          const schema = toolInputSchemas[toolName as keyof typeof toolInputSchemas];
-          if (!schema) throw new Error(`No schema registered for tool "${toolName}"`);
+					const schema = toolInputSchemas[toolName as keyof typeof toolInputSchemas];
+					if (!schema) throw new Error(`No schema registered for tool "${toolName}"`);
 
-          expect(schema.parse(input)).toStrictEqual(input);
-        });
-      }
-    }
-  });
+					expect(schema.parse(input)).toStrictEqual(input);
+				});
+			}
+		}
+	});
 
-  describe("TasksView stories — toolCalls arrays", () => {
-    interface StoryWithToolCalls {
-      args?: {
-        toolCalls?: Array<{
-          name?: string;
-          input?: Record<string, unknown>;
-        }>;
-      };
-    }
+	describe("TasksView stories — toolCalls arrays", () => {
+		interface StoryWithToolCalls {
+			args?: {
+				toolCalls?: Array<{
+					name?: string;
+					input?: Record<string, unknown>;
+				}>;
+			};
+		}
 
-    for (const [storyName, value] of Object.entries(TasksViewStories as Record<string, unknown>)) {
-      if (storyName === "default") continue;
-      const story = value as StoryWithToolCalls;
-      const toolCalls = story.args?.toolCalls ?? [];
-      for (let index = 0; index < toolCalls.length; index++) {
-        const tc = toolCalls[index];
-        if (!tc?.name || !tc.input) continue;
-        const toolName = tc.name;
-        const input = tc.input;
+		for (const [storyName, value] of Object.entries(TasksViewStories as Record<string, unknown>)) {
+			if (storyName === "default") continue;
+			const story = value as StoryWithToolCalls;
+			const toolCalls = story.args?.toolCalls ?? [];
+			for (let index = 0; index < toolCalls.length; index++) {
+				const tc = toolCalls[index];
+				if (!tc?.name || !tc.input) continue;
+				const toolName = tc.name;
+				const input = tc.input;
 
-        it(`TasksView/${storyName}[${index}] — ${toolName} input passes schema`, () => {
-          if (isMcpTool(toolName)) return;
+				it(`TasksView/${storyName}[${index}] — ${toolName} input passes schema`, () => {
+					if (isMcpTool(toolName)) return;
 
-          const schema = toolInputSchemas[toolName as keyof typeof toolInputSchemas];
-          if (!schema) throw new Error(`No schema registered for tool "${toolName}"`);
+					const schema = toolInputSchemas[toolName as keyof typeof toolInputSchemas];
+					if (!schema) throw new Error(`No schema registered for tool "${toolName}"`);
 
-          expect(schema.parse(input)).toStrictEqual(input);
-        });
-      }
-    }
-  });
+					expect(schema.parse(input)).toStrictEqual(input);
+				});
+			}
+		}
+	});
 
-  describe("AttachmentBanner stories — attachmentJson passes AttachmentPayloadSchema", () => {
-    interface AttachmentStory {
-      args?: {
-        attachmentJson?: string;
-      };
-    }
+	describe("AttachmentBanner stories — attachmentJson passes AttachmentPayloadSchema", () => {
+		interface AttachmentStory {
+			args?: {
+				attachmentJson?: string;
+			};
+		}
 
-    for (const [storyName, value] of Object.entries(
-      AttachmentBannerStories as Record<string, unknown>,
-    )) {
-      if (storyName === "default") continue;
-      const story = value as AttachmentStory;
-      const json = story.args?.attachmentJson;
-      if (!json) continue;
+		for (const [storyName, value] of Object.entries(AttachmentBannerStories as Record<string, unknown>)) {
+			if (storyName === "default") continue;
+			const story = value as AttachmentStory;
+			const json = story.args?.attachmentJson;
+			if (!json) continue;
 
-      it(`AttachmentBanner/${storyName} passes AttachmentPayloadSchema`, () => {
-        const input = JSON.parse(json);
-        expect(AttachmentPayloadSchema.parse(input)).toStrictEqual(input);
-      });
-    }
-  });
+			it(`AttachmentBanner/${storyName} passes AttachmentPayloadSchema`, () => {
+				const input = JSON.parse(json);
+				expect(AttachmentPayloadSchema.parse(input)).toStrictEqual(input);
+			});
+		}
+	});
 
-  describe("SessionChat stories — content blocks pass ContentBlockSchema", () => {
-    interface SessionChatStory {
-      args?: {
-        lines?: Array<{
-          message?: {
-            content?: string | Array<Record<string, unknown>>;
-          };
-        }>;
-      };
-    }
+	describe("SessionChat stories — content blocks pass ContentBlockSchema", () => {
+		interface SessionChatStory {
+			args?: {
+				lines?: Array<{
+					message?: {
+						content?: string | Array<Record<string, unknown>>;
+					};
+				}>;
+			};
+		}
 
-    for (const [storyName, value] of Object.entries(
-      SessionChatStories as Record<string, unknown>,
-    )) {
-      if (storyName === "default") continue;
-      const story = value as SessionChatStory;
-      const lines = story.args?.lines ?? [];
-      for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-        const content = lines[lineIndex]?.message?.content;
-        if (!Array.isArray(content)) continue;
-        for (let blockIndex = 0; blockIndex < content.length; blockIndex++) {
-          const block = content[blockIndex]!;
-          it(`SessionChat/${storyName} line[${lineIndex}] block[${blockIndex}] (${String(block["type"])}) passes ContentBlockSchema`, () => {
-            expect(ContentBlockSchema.parse(block)).toStrictEqual(block);
-          });
-        }
-      }
-    }
-  });
+		for (const [storyName, value] of Object.entries(SessionChatStories as Record<string, unknown>)) {
+			if (storyName === "default") continue;
+			const story = value as SessionChatStory;
+			const lines = story.args?.lines ?? [];
+			for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+				const content = lines[lineIndex]?.message?.content;
+				if (!Array.isArray(content)) continue;
+				for (let blockIndex = 0; blockIndex < content.length; blockIndex++) {
+					const block = content[blockIndex]!;
+					it(`SessionChat/${storyName} line[${lineIndex}] block[${blockIndex}] (${String(block["type"])}) passes ContentBlockSchema`, () => {
+						expect(ContentBlockSchema.parse(block)).toStrictEqual(block);
+					});
+				}
+			}
+		}
+	});
 });

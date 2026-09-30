@@ -18,7 +18,6 @@ export const fromMdSlug = (slug: string): string => `${slug}.md`;
  * development server while preserving the exact on-disk path.
  */
 export const toPluginFileSlug = (pathSegment: string): string =>
-  pathSegment.replaceAll("~", "~0").replaceAll(".", "~1");
+	pathSegment.replaceAll("~", "~0").replaceAll(".", "~1");
 
-export const fromPluginFileSlug = (slug: string): string =>
-  slug.replaceAll("~1", ".").replaceAll("~0", "~");
+export const fromPluginFileSlug = (slug: string): string => slug.replaceAll("~1", ".").replaceAll("~0", "~");

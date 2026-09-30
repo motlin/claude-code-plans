@@ -17,16 +17,16 @@ export const SYNTHETIC_MODEL = "<synthetic>";
  * names no model at all.
  */
 export function formatModelName(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  const trimmed = raw.trim();
-  if (!trimmed || trimmed === SYNTHETIC_MODEL) return null;
+	if (!raw) return null;
+	const trimmed = raw.trim();
+	if (!trimmed || trimmed === SYNTHETIC_MODEL) return null;
 
-  const withoutWindow = trimmed.replace(/\[[^\]]*\]$/, "");
-  const withoutVendor = withoutWindow.replace(/^claude-/, "");
-  const withoutDate = withoutVendor.replace(/-\d{8}$/, "");
+	const withoutWindow = trimmed.replace(/\[[^\]]*\]$/, "");
+	const withoutVendor = withoutWindow.replace(/^claude-/, "");
+	const withoutDate = withoutVendor.replace(/-\d{8}$/, "");
 
-  const [family, ...version] = withoutDate.split("-");
-  if (!family) return null;
-  const name = family.charAt(0).toUpperCase() + family.slice(1);
-  return version.length > 0 ? `${name} ${version.join(".")}` : name;
+	const [family, ...version] = withoutDate.split("-");
+	if (!family) return null;
+	const name = family.charAt(0).toUpperCase() + family.slice(1);
+	return version.length > 0 ? `${name} ${version.join(".")}` : name;
 }

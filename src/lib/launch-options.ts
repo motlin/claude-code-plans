@@ -1,7 +1,7 @@
-import { z } from "zod";
+import {z} from "zod";
 
-import { formatModelName } from "./model-name";
-import { launchPermissionModeLabels } from "./schema-choices";
+import {formatModelName} from "./model-name";
+import {launchPermissionModeLabels} from "./schema-choices";
 
 /**
  * The composer's mode / model / effort choices for the next fork or launch,
@@ -9,13 +9,7 @@ import { launchPermissionModeLabels } from "./schema-choices";
  */
 
 /** Upstream mode registry order for a local CLI session; `default` is the CLI's name for Manual. */
-export const LaunchPermissionModeSchema = z.enum([
-  "auto",
-  "default",
-  "acceptEdits",
-  "plan",
-  "bypassPermissions",
-]);
+export const LaunchPermissionModeSchema = z.enum(["auto", "default", "acceptEdits", "plan", "bypassPermissions"]);
 export type LaunchPermissionMode = z.infer<typeof LaunchPermissionModeSchema>;
 
 export const EffortLevelSchema = z.enum(["low", "medium", "high", "xhigh", "max"]);
@@ -28,51 +22,51 @@ const MODEL_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._[\]-]*$/;
 const ModelIdSchema = z.string().regex(MODEL_ID_PATTERN);
 
 export const LaunchOptionsSchema = z.strictObject({
-  permissionMode: LaunchPermissionModeSchema.optional(),
-  model: ModelIdSchema.optional(),
-  effort: EffortLevelSchema.optional(),
+	permissionMode: LaunchPermissionModeSchema.optional(),
+	model: ModelIdSchema.optional(),
+	effort: EffortLevelSchema.optional(),
 });
 export type LaunchOptions = z.infer<typeof LaunchOptionsSchema>;
 
 /** CLI flags for the chosen options, one argv entry per word; never joined into a shell string. */
-export function buildLaunchFlags({ permissionMode, model, effort }: LaunchOptions): string[] {
-  const flags: string[] = [];
-  if (permissionMode !== undefined) flags.push("--permission-mode", permissionMode);
-  if (model !== undefined) flags.push("--model", model);
-  if (effort !== undefined) flags.push("--effort", effort);
-  return flags;
+export function buildLaunchFlags({permissionMode, model, effort}: LaunchOptions): string[] {
+	const flags: string[] = [];
+	if (permissionMode !== undefined) flags.push("--permission-mode", permissionMode);
+	if (model !== undefined) flags.push("--model", model);
+	if (effort !== undefined) flags.push("--effort", effort);
+	return flags;
 }
 
 export interface ModeMenuItem {
-  id: LaunchPermissionMode;
-  label: string;
-  description: string;
-  warning: boolean;
+	id: LaunchPermissionMode;
+	label: string;
+	description: string;
+	warning: boolean;
 }
 
 const MODE_DESCRIPTIONS = {
-  auto: "Claude handles permission decisions",
-  default: "Always ask before making changes",
-  acceptEdits: "Automatically accept all file edits",
-  plan: "Create a plan before making changes",
-  bypassPermissions: "Accepts all permissions",
+	auto: "Claude handles permission decisions",
+	default: "Always ask before making changes",
+	acceptEdits: "Automatically accept all file edits",
+	plan: "Create a plan before making changes",
+	bypassPermissions: "Accepts all permissions",
 } satisfies Record<LaunchPermissionMode, string>;
 
 /** Chin trigger text; upstream shortens only Bypass permissions. */
 export function modeTriggerLabel(mode: LaunchPermissionMode): string {
-  return mode === "bypassPermissions" ? "Bypass" : launchPermissionModeLabels[mode];
+	return mode === "bypassPermissions" ? "Bypass" : launchPermissionModeLabels[mode];
 }
 
 /** Mode menu rows for a local session: Auto · Manual · Accept edits · Plan (+ Bypass when allowed). */
 export function modeMenuItems(bypassPermissionsAllowed: boolean): ModeMenuItem[] {
-  return LaunchPermissionModeSchema.options
-    .filter((id) => id !== "bypassPermissions" || bypassPermissionsAllowed)
-    .map((id) => ({
-      id,
-      label: launchPermissionModeLabels[id],
-      description: MODE_DESCRIPTIONS[id],
-      warning: id === "bypassPermissions",
-    }));
+	return LaunchPermissionModeSchema.options
+		.filter((id) => id !== "bypassPermissions" || bypassPermissionsAllowed)
+		.map((id) => ({
+			id,
+			label: launchPermissionModeLabels[id],
+			description: MODE_DESCRIPTIONS[id],
+			warning: id === "bypassPermissions",
+		}));
 }
 
 /**
@@ -80,57 +74,50 @@ export function modeMenuItems(bypassPermissionsAllowed: boolean): ModeMenuItem[]
  * settings already opt into it.
  */
 export function isBypassPermissionsAllowed(settings: {
-  defaultMode?: string | undefined;
-  skipDangerousModePermissionPrompt?: boolean | undefined;
+	defaultMode?: string | undefined;
+	skipDangerousModePermissionPrompt?: boolean | undefined;
 }): boolean {
-  return (
-    settings.defaultMode === "bypassPermissions" ||
-    settings.skipDangerousModePermissionPrompt === true
-  );
+	return settings.defaultMode === "bypassPermissions" || settings.skipDangerousModePermissionPrompt === true;
 }
 
 export interface ModelChoice {
-  id: string;
-  label: string;
+	id: string;
+	label: string;
 }
 
 /** The CLI's family aliases, in upstream's menu order. */
 export const PRIMARY_MODELS: readonly ModelChoice[] = [
-  { id: "opus", label: "Opus" },
-  { id: "fable", label: "Fable" },
-  { id: "sonnet", label: "Sonnet" },
-  { id: "haiku", label: "Haiku" },
+	{id: "opus", label: "Opus"},
+	{id: "fable", label: "Fable"},
+	{id: "sonnet", label: "Sonnet"},
+	{id: "haiku", label: "Haiku"},
 ];
 
 /** Full model ids seen in local transcripts, newest first, for the "More models" submenu. */
 export const MORE_MODELS: readonly ModelChoice[] = [
-  "claude-opus-5-5",
-  "claude-fable-5-1",
-  "claude-sonnet-5-5",
-  "claude-opus-5",
-  "claude-sonnet-5",
-  "claude-fable-5",
-  "claude-opus-4-8",
-  "claude-opus-4-7",
-  "claude-sonnet-4-6",
-  "claude-haiku-4-5-20251001",
-].map((id) => ({ id, label: formatModelName(id) ?? id }));
+	"claude-opus-5-5",
+	"claude-fable-5-1",
+	"claude-sonnet-5-5",
+	"claude-opus-5",
+	"claude-sonnet-5",
+	"claude-fable-5",
+	"claude-opus-4-8",
+	"claude-opus-4-7",
+	"claude-sonnet-4-6",
+	"claude-haiku-4-5-20251001",
+].map((id) => ({id, label: formatModelName(id) ?? id}));
 
 export function modelLabel(id: string): string {
-  return (
-    [...PRIMARY_MODELS, ...MORE_MODELS].find((model) => model.id === id)?.label ??
-    formatModelName(id) ??
-    id
-  );
+	return [...PRIMARY_MODELS, ...MORE_MODELS].find((model) => model.id === id)?.label ?? formatModelName(id) ?? id;
 }
 
 /** The CLI's shift+tab permission-mode cycle; modes the session lacks are skipped. */
 const PERMISSION_MODE_CYCLE: readonly LaunchPermissionMode[] = [
-  "default",
-  "acceptEdits",
-  "plan",
-  "auto",
-  "bypassPermissions",
+	"default",
+	"acceptEdits",
+	"plan",
+	"auto",
+	"bypassPermissions",
 ];
 
 /**
@@ -138,41 +125,41 @@ const PERMISSION_MODE_CYCLE: readonly LaunchPermissionMode[] = [
  * when either mode is outside the session's cycle.
  */
 export function shiftTabCount(
-  current: string,
-  target: LaunchPermissionMode,
-  availableModes: readonly LaunchPermissionMode[],
+	current: string,
+	target: LaunchPermissionMode,
+	availableModes: readonly LaunchPermissionMode[],
 ): number | null {
-  const cycle = PERMISSION_MODE_CYCLE.filter((mode) => availableModes.includes(mode));
-  const from = cycle.findIndex((mode) => mode === current);
-  const to = cycle.indexOf(target);
-  if (from === -1 || to === -1) return null;
-  return (to - from + cycle.length) % cycle.length;
+	const cycle = PERMISSION_MODE_CYCLE.filter((mode) => availableModes.includes(mode));
+	const from = cycle.findIndex((mode) => mode === current);
+	const to = cycle.indexOf(target);
+	if (from === -1 || to === -1) return null;
+	return (to - from + cycle.length) % cycle.length;
 }
 
 /** Chin picks steer the live pane only while it is idle and accepts writes. */
 export function canApplyLive({
-  hasLivePane,
-  writesEnabled,
-  working,
+	hasLivePane,
+	writesEnabled,
+	working,
 }: {
-  hasLivePane: boolean;
-  writesEnabled: boolean;
-  working: boolean;
+	hasLivePane: boolean;
+	writesEnabled: boolean;
+	working: boolean;
 }): boolean {
-  return hasLivePane && writesEnabled && !working;
+	return hasLivePane && writesEnabled && !working;
 }
 
 /** One chin pick applied to a live pane: a `/model` or `/effort` prompt, or shift+tab presses. */
 export const LiveOptionChangeSchema = z.discriminatedUnion("kind", [
-  z.strictObject({ kind: z.literal("model"), model: ModelIdSchema }),
-  z.strictObject({ kind: z.literal("effort"), effort: EffortLevelSchema }),
-  z.strictObject({
-    kind: z.literal("mode"),
-    presses: z
-      .number()
-      .int()
-      .min(1)
-      .max(PERMISSION_MODE_CYCLE.length - 1),
-  }),
+	z.strictObject({kind: z.literal("model"), model: ModelIdSchema}),
+	z.strictObject({kind: z.literal("effort"), effort: EffortLevelSchema}),
+	z.strictObject({
+		kind: z.literal("mode"),
+		presses: z
+			.number()
+			.int()
+			.min(1)
+			.max(PERMISSION_MODE_CYCLE.length - 1),
+	}),
 ]);
 export type LiveOptionChange = z.infer<typeof LiveOptionChangeSchema>;

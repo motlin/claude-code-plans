@@ -1,9 +1,9 @@
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import { eq } from "drizzle-orm";
-import { readFileSync, statSync } from "node:fs";
+import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
+import {eq} from "drizzle-orm";
+import {readFileSync, statSync} from "node:fs";
 import * as schema from "./db/schema";
-import { getSubagentById } from "./db/queries";
-import { isCountableMessageRecord, mightBeCountableMessageLine } from "./message-count";
+import {getSubagentById} from "./db/queries";
+import {isCountableMessageRecord, mightBeCountableMessageLine} from "./message-count";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
@@ -22,40 +22,40 @@ export const TRANSCRIPT_WINDOW_MAX_BYTES = 512 * 1024;
 export const TRANSCRIPT_WINDOW_MAX_RECORDS = 400;
 
 export interface StructuredTranscript {
-  records: Record<string, unknown>[];
-  byteOffset: number;
-  /** Index of `records[0]` within the session's full JSONL record list. */
-  startIndex: number;
-  /**
-   * Countable messages (see message-count.ts) in the records before
-   * `startIndex`. Message positions are shared with the viewed-state counter
-   * and the session list, so a windowed transcript still has to report where
-   * its first record sits in the session's message numbering.
-   */
-  precedingMessageCount: number;
+	records: Record<string, unknown>[];
+	byteOffset: number;
+	/** Index of `records[0]` within the session's full JSONL record list. */
+	startIndex: number;
+	/**
+	 * Countable messages (see message-count.ts) in the records before
+	 * `startIndex`. Message positions are shared with the viewed-state counter
+	 * and the session list, so a windowed transcript still has to report where
+	 * its first record sits in the session's message numbering.
+	 */
+	precedingMessageCount: number;
 }
 
 export interface TranscriptWindowOptions {
-  /** Exclusive upper bound: the window ends just before this record index. */
-  before?: number | undefined;
-  maxBytes?: number | undefined;
-  maxRecords?: number | undefined;
+	/** Exclusive upper bound: the window ends just before this record index. */
+	before?: number | undefined;
+	maxBytes?: number | undefined;
+	maxRecords?: number | undefined;
 }
 
 const EMPTY_TRANSCRIPT: StructuredTranscript = {
-  records: [],
-  byteOffset: 0,
-  startIndex: 0,
-  precedingMessageCount: 0,
+	records: [],
+	byteOffset: 0,
+	startIndex: 0,
+	precedingMessageCount: 0,
 };
 
 /** One JSONL line as a record, or undefined when the line is not valid JSON. */
 export function parseTranscriptLine(line: string): Record<string, unknown> | undefined {
-  try {
-    return JSON.parse(line) as Record<string, unknown>;
-  } catch {
-    return undefined;
-  }
+	try {
+		return JSON.parse(line) as Record<string, unknown>;
+	} catch {
+		return undefined;
+	}
 }
 
 /**
@@ -64,15 +64,15 @@ export function parseTranscriptLine(line: string): Record<string, unknown> | und
  * better than an empty transcript.
  */
 function findWindowStart(lines: string[], end: number, maxBytes: number, maxRecords: number) {
-  let start = end;
-  let bytes = 0;
-  while (start > 0) {
-    const size = Buffer.byteLength(lines[start - 1]!, "utf8") + 1;
-    if (start < end && (bytes + size > maxBytes || end - start >= maxRecords)) break;
-    bytes += size;
-    start -= 1;
-  }
-  return start;
+	let start = end;
+	let bytes = 0;
+	while (start > 0) {
+		const size = Buffer.byteLength(lines[start - 1]!, "utf8") + 1;
+		if (start < end && (bytes + size > maxBytes || end - start >= maxRecords)) break;
+		bytes += size;
+		start -= 1;
+	}
+	return start;
 }
 
 /**
@@ -81,48 +81,48 @@ function findWindowStart(lines: string[], end: number, maxBytes: number, maxReco
  * a transcript file resolves its path here.
  */
 export function transcriptFilePath(db: IndexDb, id: string): string | undefined {
-  const session = db
-    .select({ filePath: schema.sessions.filePath })
-    .from(schema.sessions)
-    .where(eq(schema.sessions.id, id))
-    .get();
-  return session?.filePath ?? getSubagentById(db, id)?.filePath;
+	const session = db
+		.select({filePath: schema.sessions.filePath})
+		.from(schema.sessions)
+		.where(eq(schema.sessions.id, id))
+		.get();
+	return session?.filePath ?? getSubagentById(db, id)?.filePath;
 }
 
 export function readStructuredTranscript(
-  db: IndexDb,
-  id: string,
-  options: TranscriptWindowOptions = {},
+	db: IndexDb,
+	id: string,
+	options: TranscriptWindowOptions = {},
 ): StructuredTranscript {
-  const filePath = transcriptFilePath(db, id);
-  if (!filePath) return EMPTY_TRANSCRIPT;
+	const filePath = transcriptFilePath(db, id);
+	if (!filePath) return EMPTY_TRANSCRIPT;
 
-  const maxBytes = options.maxBytes ?? TRANSCRIPT_WINDOW_MAX_BYTES;
-  const maxRecords = options.maxRecords ?? TRANSCRIPT_WINDOW_MAX_RECORDS;
+	const maxBytes = options.maxBytes ?? TRANSCRIPT_WINDOW_MAX_BYTES;
+	const maxRecords = options.maxRecords ?? TRANSCRIPT_WINDOW_MAX_RECORDS;
 
-  try {
-    const byteOffset = statSync(filePath).size;
-    const lines = readFileSync(filePath, "utf-8")
-      .split("\n")
-      .filter((line) => line.trim());
-    const end = Math.max(0, Math.min(options.before ?? lines.length, lines.length));
-    const startIndex = findWindowStart(lines, end, maxBytes, maxRecords);
+	try {
+		const byteOffset = statSync(filePath).size;
+		const lines = readFileSync(filePath, "utf-8")
+			.split("\n")
+			.filter((line) => line.trim());
+		const end = Math.max(0, Math.min(options.before ?? lines.length, lines.length));
+		const startIndex = findWindowStart(lines, end, maxBytes, maxRecords);
 
-    const records: Record<string, unknown>[] = [];
-    for (const line of lines.slice(startIndex, end)) {
-      const record = parseTranscriptLine(line);
-      if (record) records.push(record);
-    }
+		const records: Record<string, unknown>[] = [];
+		for (const line of lines.slice(startIndex, end)) {
+			const record = parseTranscriptLine(line);
+			if (record) records.push(record);
+		}
 
-    let precedingMessageCount = 0;
-    for (let i = 0; i < startIndex; i += 1) {
-      const line = lines[i]!;
-      if (!mightBeCountableMessageLine(line)) continue;
-      if (isCountableMessageRecord(parseTranscriptLine(line))) precedingMessageCount += 1;
-    }
+		let precedingMessageCount = 0;
+		for (let i = 0; i < startIndex; i += 1) {
+			const line = lines[i]!;
+			if (!mightBeCountableMessageLine(line)) continue;
+			if (isCountableMessageRecord(parseTranscriptLine(line))) precedingMessageCount += 1;
+		}
 
-    return { records, byteOffset, startIndex, precedingMessageCount };
-  } catch {
-    return EMPTY_TRANSCRIPT;
-  }
+		return {records, byteOffset, startIndex, precedingMessageCount};
+	} catch {
+		return EMPTY_TRANSCRIPT;
+	}
 }

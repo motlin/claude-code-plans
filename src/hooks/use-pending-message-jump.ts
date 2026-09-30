@@ -1,12 +1,12 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchEarlierTranscript } from "../lib/api/sessions";
-import { jumpToMessage } from "../lib/jump-to-message";
+import {useQueryClient} from "@tanstack/react-query";
+import {useCallback, useEffect, useRef, useState} from "react";
+import {fetchEarlierTranscript} from "../lib/api/sessions";
+import {jumpToMessage} from "../lib/jump-to-message";
 
 /** A request to reach one message, numbered so asking twice jumps twice. */
 interface PendingJump {
-  uuid: string;
-  requestId: number;
+	uuid: string;
+	requestId: number;
 }
 
 /**
@@ -28,45 +28,45 @@ interface PendingJump {
  * @returns Request a jump to the message carrying this uuid.
  */
 export function usePendingMessageJump(
-  sessionId: string,
-  windowStartIndex: number,
-  uuidToLine: ReadonlyMap<string, number>,
+	sessionId: string,
+	windowStartIndex: number,
+	uuidToLine: ReadonlyMap<string, number>,
 ): (uuid: string) => void {
-  const queryClient = useQueryClient();
-  const inFlightRef = useRef(false);
-  const jumpedRequestRef = useRef<number | undefined>(undefined);
-  const requestCountRef = useRef(0);
-  const [pending, setPending] = useState<PendingJump | undefined>(undefined);
+	const queryClient = useQueryClient();
+	const inFlightRef = useRef(false);
+	const jumpedRequestRef = useRef<number | undefined>(undefined);
+	const requestCountRef = useRef(0);
+	const [pending, setPending] = useState<PendingJump | undefined>(undefined);
 
-  useEffect(() => {
-    if (pending === undefined) return;
-    // Landing on the message is a one-shot. Reading on from there means
-    // scrolling up, which auto-loads the previous page and grows `uuidToLine`
-    // -- re-running this effect, which would otherwise snap the reader straight
-    // back to where they jumped in.
-    if (jumpedRequestRef.current === pending.requestId) return;
+	useEffect(() => {
+		if (pending === undefined) return;
+		// Landing on the message is a one-shot. Reading on from there means
+		// scrolling up, which auto-loads the previous page and grows `uuidToLine`
+		// -- re-running this effect, which would otherwise snap the reader straight
+		// back to where they jumped in.
+		if (jumpedRequestRef.current === pending.requestId) return;
 
-    const recordIndex = uuidToLine.get(pending.uuid);
-    if (recordIndex === undefined) {
-      // `windowStartIndex === 0` is the terminating case: the whole file is
-      // loaded, so the message simply does not belong to this session.
-      if (windowStartIndex === 0 || inFlightRef.current) return;
-      inFlightRef.current = true;
-      void fetchEarlierTranscript(queryClient, sessionId).finally(() => {
-        inFlightRef.current = false;
-      });
-      return;
-    }
+		const recordIndex = uuidToLine.get(pending.uuid);
+		if (recordIndex === undefined) {
+			// `windowStartIndex === 0` is the terminating case: the whole file is
+			// loaded, so the message simply does not belong to this session.
+			if (windowStartIndex === 0 || inFlightRef.current) return;
+			inFlightRef.current = true;
+			void fetchEarlierTranscript(queryClient, sessionId).finally(() => {
+				inFlightRef.current = false;
+			});
+			return;
+		}
 
-    jumpedRequestRef.current = pending.requestId;
-    // One frame late so the scroll measures the transcript React has just
-    // committed rather than the layout it is replacing.
-    const frame = requestAnimationFrame(() => jumpToMessage(recordIndex));
-    return () => cancelAnimationFrame(frame);
-  }, [pending, windowStartIndex, uuidToLine, sessionId, queryClient]);
+		jumpedRequestRef.current = pending.requestId;
+		// One frame late so the scroll measures the transcript React has just
+		// committed rather than the layout it is replacing.
+		const frame = requestAnimationFrame(() => jumpToMessage(recordIndex));
+		return () => cancelAnimationFrame(frame);
+	}, [pending, windowStartIndex, uuidToLine, sessionId, queryClient]);
 
-  return useCallback((uuid: string) => {
-    requestCountRef.current += 1;
-    setPending({ uuid, requestId: requestCountRef.current });
-  }, []);
+	return useCallback((uuid: string) => {
+		requestCountRef.current += 1;
+		setPending({uuid, requestId: requestCountRef.current});
+	}, []);
 }

@@ -16,28 +16,26 @@
  * Isomorphic: no Node-specific imports, usable in browser and server code.
  */
 export function isCountableMessageRecord(record: unknown): boolean {
-  if (typeof record !== "object" || record === null) return false;
-  const candidate = record as {
-    type?: unknown;
-    isSidechain?: unknown;
-    message?: unknown;
-  };
-  if (candidate.type !== "user" && candidate.type !== "assistant") return false;
-  if (candidate.isSidechain === true) return false;
+	if (typeof record !== "object" || record === null) return false;
+	const candidate = record as {
+		type?: unknown;
+		isSidechain?: unknown;
+		message?: unknown;
+	};
+	if (candidate.type !== "user" && candidate.type !== "assistant") return false;
+	if (candidate.isSidechain === true) return false;
 
-  const message = candidate.message;
-  if (typeof message !== "object" || message === null) return false;
-  const content = (message as { content?: unknown }).content;
-  if (typeof content === "string") return true;
-  if (Array.isArray(content)) {
-    return content.some(
-      (block) =>
-        typeof block === "object" &&
-        block !== null &&
-        (block as { type?: unknown }).type !== "tool_result",
-    );
-  }
-  return false;
+	const message = candidate.message;
+	if (typeof message !== "object" || message === null) return false;
+	const content = (message as {content?: unknown}).content;
+	if (typeof content === "string") return true;
+	if (Array.isArray(content)) {
+		return content.some(
+			(block) =>
+				typeof block === "object" && block !== null && (block as {type?: unknown}).type !== "tool_result",
+		);
+	}
+	return false;
 }
 
 /**
@@ -62,14 +60,14 @@ const COUNTABLE_TYPE_PATTERN = /"type"\s*:\s*"(?:user|assistant)"/;
  * countable records rejected.
  */
 export function mightBeCountableMessageLine(line: string): boolean {
-  return COUNTABLE_TYPE_PATTERN.test(line);
+	return COUNTABLE_TYPE_PATTERN.test(line);
 }
 
 /** Count the messages in a sequence of parsed JSONL transcript records. */
 export function countMessageRecords(records: Iterable<unknown>): number {
-  let count = 0;
-  for (const record of records) {
-    if (isCountableMessageRecord(record)) count += 1;
-  }
-  return count;
+	let count = 0;
+	for (const record of records) {
+		if (isCountableMessageRecord(record)) count += 1;
+	}
+	return count;
 }

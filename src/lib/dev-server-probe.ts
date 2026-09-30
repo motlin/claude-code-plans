@@ -1,4 +1,4 @@
-import { loopbackOrigin } from "./dev-server-links";
+import {loopbackOrigin} from "./dev-server-links";
 
 export type DevServerProbe = "live" | "down" | "refused";
 
@@ -11,21 +11,21 @@ const PROBE_TIMEOUT_MS = 1_500;
  * something is listening; redirects are not followed.
  */
 export async function probeDevServer(
-  url: string,
-  fetchImpl: typeof fetch = fetch,
-  timeoutMs = PROBE_TIMEOUT_MS,
+	url: string,
+	fetchImpl: typeof fetch = fetch,
+	timeoutMs = PROBE_TIMEOUT_MS,
 ): Promise<DevServerProbe> {
-  const origin = loopbackOrigin(url);
-  if (origin === undefined) return "refused";
-  try {
-    const response = await fetchImpl(`${origin}/`, {
-      method: "HEAD",
-      redirect: "manual",
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-    await response.body?.cancel();
-    return "live";
-  } catch {
-    return "down";
-  }
+	const origin = loopbackOrigin(url);
+	if (origin === undefined) return "refused";
+	try {
+		const response = await fetchImpl(`${origin}/`, {
+			method: "HEAD",
+			redirect: "manual",
+			signal: AbortSignal.timeout(timeoutMs),
+		});
+		await response.body?.cancel();
+		return "live";
+	} catch {
+		return "down";
+	}
 }

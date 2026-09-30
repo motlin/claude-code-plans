@@ -1,16 +1,16 @@
-import type { Terminal } from "ghostty-web";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { dispatchShortcutEvent } from "../hooks/use-shortcut";
-import { writeClipboardText } from "../lib/clipboard";
-import { terminalHandlesKey } from "../lib/herdr/terminal-keys";
+import type {Terminal} from "ghostty-web";
+import {useCallback, useEffect, useRef, useState} from "react";
+import {dispatchShortcutEvent} from "../hooks/use-shortcut";
+import {writeClipboardText} from "../lib/clipboard";
+import {terminalHandlesKey} from "../lib/herdr/terminal-keys";
 import {
-  attachTerminalSelection,
-  browserLinkOpener,
-  guardTerminalLinks,
-  handleTerminalSelectionKey,
-  openTerminalLink,
-  type SelectionActions,
-  TERMINAL_ATTACHED_MESSAGE,
+	attachTerminalSelection,
+	browserLinkOpener,
+	guardTerminalLinks,
+	handleTerminalSelectionKey,
+	openTerminalLink,
+	type SelectionActions,
+	TERMINAL_ATTACHED_MESSAGE,
 } from "../lib/terminal-selection";
 
 const ANNOUNCEMENT_MS = 3000;
@@ -20,42 +20,42 @@ const ANNOUNCEMENT_MS = 3000;
  * terminal's key handler can hold it; `announcement` feeds the sr-only status.
  */
 export function useTerminalSelectionActions(sessionId: string): {
-  actions: SelectionActions;
-  announcement: string;
+	actions: SelectionActions;
+	announcement: string;
 } {
-  const [announcement, setAnnouncement] = useState("");
-  const sessionRef = useRef(sessionId);
-  sessionRef.current = sessionId;
-  const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const [announcement, setAnnouncement] = useState("");
+	const sessionRef = useRef(sessionId);
+	sessionRef.current = sessionId;
+	const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(
-    () => () => {
-      if (clearTimer.current) clearTimeout(clearTimer.current);
-    },
-    [],
-  );
+	useEffect(
+		() => () => {
+			if (clearTimer.current) clearTimeout(clearTimer.current);
+		},
+		[],
+	);
 
-  const attach = useCallback((text: string) => {
-    if (!attachTerminalSelection(sessionRef.current, text)) return;
-    setAnnouncement(TERMINAL_ATTACHED_MESSAGE);
-    if (clearTimer.current) clearTimeout(clearTimer.current);
-    clearTimer.current = setTimeout(() => setAnnouncement(""), ANNOUNCEMENT_MS);
-  }, []);
+	const attach = useCallback((text: string) => {
+		if (!attachTerminalSelection(sessionRef.current, text)) return;
+		setAnnouncement(TERMINAL_ATTACHED_MESSAGE);
+		if (clearTimer.current) clearTimeout(clearTimer.current);
+		clearTimer.current = setTimeout(() => setAnnouncement(""), ANNOUNCEMENT_MS);
+	}, []);
 
-  const actions = useRef<SelectionActions>({
-    copy: (text) => void writeClipboardText(text),
-    attach,
-  }).current;
+	const actions = useRef<SelectionActions>({
+		copy: (text) => void writeClipboardText(text),
+		attach,
+	}).current;
 
-  return { actions, announcement };
+	return {actions, announcement};
 }
 
-export function TerminalSelectionStatus({ announcement }: { announcement: string }) {
-  return (
-    <p role="status" className="sr-only">
-      {announcement}
-    </p>
-  );
+export function TerminalSelectionStatus({announcement}: {announcement: string}) {
+	return (
+		<p role="status" className="sr-only">
+			{announcement}
+		</p>
+	);
 }
 
 /**
@@ -65,13 +65,13 @@ export function TerminalSelectionStatus({ announcement }: { announcement: string
  * dispatched to the app here. Links go through the "Open link?" confirm.
  */
 export function installTerminalInput(terminal: Terminal, actions: SelectionActions): void {
-  terminal.attachCustomKeyEventHandler((event) => {
-    if (handleTerminalSelectionKey(event, terminal, actions)) return true;
-    if (terminalHandlesKey(event)) return false;
-    dispatchShortcutEvent(event);
-    return true;
-  });
-  guardTerminalLinks(terminal, (href) => {
-    openTerminalLink(href, browserLinkOpener);
-  });
+	terminal.attachCustomKeyEventHandler((event) => {
+		if (handleTerminalSelectionKey(event, terminal, actions)) return true;
+		if (terminalHandlesKey(event)) return false;
+		dispatchShortcutEvent(event);
+		return true;
+	});
+	guardTerminalLinks(terminal, (href) => {
+		openTerminalLink(href, browserLinkOpener);
+	});
 }

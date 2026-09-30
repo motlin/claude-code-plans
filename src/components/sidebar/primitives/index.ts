@@ -1,1 +1,1 @@
-export { SidebarToggleIcon } from "./SidebarToggleIcon";
+export {SidebarToggleIcon} from "./SidebarToggleIcon";

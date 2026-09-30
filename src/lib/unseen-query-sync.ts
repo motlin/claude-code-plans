@@ -1,25 +1,25 @@
-import type { QueryClient, QueryKey } from "@tanstack/react-query";
-import { syncUnseenFromSummaries } from "./unread-store";
+import type {QueryClient, QueryKey} from "@tanstack/react-query";
+import {syncUnseenFromSummaries} from "./unread-store";
 
 interface UnseenFlag {
-  id: string;
-  unseen: boolean;
+	id: string;
+	unseen: boolean;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
+	return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function flagsFromList(value: unknown, idKey: "id" | "sessionId"): UnseenFlag[] {
-  if (!Array.isArray(value)) return [];
-  const flags: UnseenFlag[] = [];
-  for (const item of value) {
-    if (!isRecord(item)) continue;
-    const id = item[idKey];
-    const unseen = item["unseen"];
-    if (typeof id === "string" && typeof unseen === "boolean") flags.push({ id, unseen });
-  }
-  return flags;
+	if (!Array.isArray(value)) return [];
+	const flags: UnseenFlag[] = [];
+	for (const item of value) {
+		if (!isRecord(item)) continue;
+		const id = item[idKey];
+		const unseen = item["unseen"];
+		if (typeof id === "string" && typeof unseen === "boolean") flags.push({id, unseen});
+	}
+	return flags;
 }
 
 /**
@@ -28,24 +28,24 @@ function flagsFromList(value: unknown, idKey: "id" | "sessionId"): UnseenFlag[] 
  * the active list. Other queries carry no summary flags.
  */
 export function unseenFlagsFromSessionQuery(queryKey: QueryKey, data: unknown): UnseenFlag[] {
-  if (queryKey[0] !== "sessions") return [];
-  switch (queryKey[1]) {
-    case "recent": {
-      if (!isRecord(data)) return [];
-      const pages = Array.isArray(data["pages"]) ? data["pages"] : [data];
-      return pages.flatMap((page) => (isRecord(page) ? flagsFromList(page["sessions"], "id") : []));
-    }
-    case "grouped":
-      return Array.isArray(data)
-        ? data.flatMap((group) => (isRecord(group) ? flagsFromList(group["sessions"], "id") : []))
-        : [];
-    case "by-ids":
-      return flagsFromList(data, "id");
-    case "active":
-      return flagsFromList(data, "sessionId");
-    default:
-      return [];
-  }
+	if (queryKey[0] !== "sessions") return [];
+	switch (queryKey[1]) {
+		case "recent": {
+			if (!isRecord(data)) return [];
+			const pages = Array.isArray(data["pages"]) ? data["pages"] : [data];
+			return pages.flatMap((page) => (isRecord(page) ? flagsFromList(page["sessions"], "id") : []));
+		}
+		case "grouped":
+			return Array.isArray(data)
+				? data.flatMap((group) => (isRecord(group) ? flagsFromList(group["sessions"], "id") : []))
+				: [];
+		case "by-ids":
+			return flagsFromList(data, "id");
+		case "active":
+			return flagsFromList(data, "sessionId");
+		default:
+			return [];
+	}
 }
 
 /**
@@ -54,14 +54,14 @@ export function unseenFlagsFromSessionQuery(queryKey: QueryKey, data: unknown): 
  * patches are skipped: SSE handlers sync those summaries directly.
  */
 export function syncUnseenFromQueryCache(queryClient: QueryClient): () => void {
-  const cache = queryClient.getQueryCache();
-  for (const query of cache.getAll()) {
-    syncUnseenFromSummaries(unseenFlagsFromSessionQuery(query.queryKey, query.state.data));
-  }
-  return cache.subscribe((event) => {
-    if (event.type !== "updated" || event.action.type !== "success" || event.action.manual) {
-      return;
-    }
-    syncUnseenFromSummaries(unseenFlagsFromSessionQuery(event.query.queryKey, event.action.data));
-  });
+	const cache = queryClient.getQueryCache();
+	for (const query of cache.getAll()) {
+		syncUnseenFromSummaries(unseenFlagsFromSessionQuery(query.queryKey, query.state.data));
+	}
+	return cache.subscribe((event) => {
+		if (event.type !== "updated" || event.action.type !== "success" || event.action.manual) {
+			return;
+		}
+		syncUnseenFromSummaries(unseenFlagsFromSessionQuery(event.query.queryKey, event.action.data));
+	});
 }

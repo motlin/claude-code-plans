@@ -1,144 +1,122 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { withMethodNotAllowed } from "../../lib/api/method-not-allowed";
-import {
-  MemoryDeleteResponse,
-  MemoryDetailResponse,
-  MemorySaveResponse,
-} from "../../lib/api/memories";
-import { fromMdSlug } from "../../lib/md-slug";
-import { rejectCrossSite } from "../../lib/same-origin-guard";
+import {createFileRoute} from "@tanstack/react-router";
+import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
+import {MemoryDeleteResponse, MemoryDetailResponse, MemorySaveResponse} from "../../lib/api/memories";
+import {fromMdSlug} from "../../lib/md-slug";
+import {rejectCrossSite} from "../../lib/same-origin-guard";
 
 export const Route = createFileRoute("/api/projects/$id/memories/$filename")({
-  server: {
-    handlers: withMethodNotAllowed({
-      GET: async ({
-        params,
-        request,
-      }: {
-        params: { id: string; filename: string };
-        request: Request;
-      }) => {
-        const { homedir } = await import("node:os");
-        const { join } = await import("node:path");
-        const { stat } = await import("node:fs/promises");
-        const { resolveMarkdownFilePath } = await import("../../lib/markdown-file-path");
-        const { readMemory, decodeProjectDir } = await import("../../lib/memory");
+	server: {
+		handlers: withMethodNotAllowed({
+			GET: async ({params, request}: {params: {id: string; filename: string}; request: Request}) => {
+				const {homedir} = await import("node:os");
+				const {join} = await import("node:path");
+				const {stat} = await import("node:fs/promises");
+				const {resolveMarkdownFilePath} = await import("../../lib/markdown-file-path");
+				const {readMemory, decodeProjectDir} = await import("../../lib/memory");
 
-        const projectsDir = join(homedir(), ".claude", "projects");
-        const filename = fromMdSlug(params.filename);
-        if (params.id.includes("..") || params.id.includes("/")) {
-          return new Response("Not Found", { status: 404 });
-        }
-        const memoryDir = join(projectsDir, params.id, "memory");
-        const filePath = resolveMarkdownFilePath(memoryDir, filename);
-        if (filePath === null) {
-          return new Response("Not Found", { status: 404 });
-        }
+				const projectsDir = join(homedir(), ".claude", "projects");
+				const filename = fromMdSlug(params.filename);
+				if (params.id.includes("..") || params.id.includes("/")) {
+					return new Response("Not Found", {status: 404});
+				}
+				const memoryDir = join(projectsDir, params.id, "memory");
+				const filePath = resolveMarkdownFilePath(memoryDir, filename);
+				if (filePath === null) {
+					return new Response("Not Found", {status: 404});
+				}
 
-        let mtime: Date | null = null;
-        try {
-          const fileStat = await stat(filePath);
-          mtime = fileStat.mtime;
-        } catch {
-          // missing file — fall through to readMemory which returns null
-        }
+				let mtime: Date | null = null;
+				try {
+					const fileStat = await stat(filePath);
+					mtime = fileStat.mtime;
+				} catch {
+					// missing file — fall through to readMemory which returns null
+				}
 
-        if (mtime) {
-          const ifModifiedSince = request.headers.get("If-Modified-Since");
-          if (ifModifiedSince) {
-            const since = new Date(ifModifiedSince).getTime();
-            const mtimeFloor = Math.floor(mtime.getTime() / 1000) * 1000;
-            if (!Number.isNaN(since) && since >= mtimeFloor) {
-              return new Response(null, {
-                status: 304,
-                headers: {
-                  "Cache-Control": "private, max-age=0, must-revalidate",
-                  "Last-Modified": mtime.toUTCString(),
-                },
-              });
-            }
-          }
-        }
+				if (mtime) {
+					const ifModifiedSince = request.headers.get("If-Modified-Since");
+					if (ifModifiedSince) {
+						const since = new Date(ifModifiedSince).getTime();
+						const mtimeFloor = Math.floor(mtime.getTime() / 1000) * 1000;
+						if (!Number.isNaN(since) && since >= mtimeFloor) {
+							return new Response(null, {
+								status: 304,
+								headers: {
+									"Cache-Control": "private, max-age=0, must-revalidate",
+									"Last-Modified": mtime.toUTCString(),
+								},
+							});
+						}
+					}
+				}
 
-        const content = await readMemory(projectsDir, params.id, filename);
-        if (content === null) {
-          return Response.json(MemoryDetailResponse.parse(null), {
-            headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
-          });
-        }
+				const content = await readMemory(projectsDir, params.id, filename);
+				if (content === null) {
+					return Response.json(MemoryDetailResponse.parse(null), {
+						headers: {"Cache-Control": "private, max-age=0, must-revalidate"},
+					});
+				}
 
-        const projectName = decodeProjectDir(params.id);
-        const headers: Record<string, string> = {
-          "Cache-Control": "private, max-age=0, must-revalidate",
-        };
-        if (mtime) {
-          headers["Last-Modified"] = mtime.toUTCString();
-        }
+				const projectName = decodeProjectDir(params.id);
+				const headers: Record<string, string> = {
+					"Cache-Control": "private, max-age=0, must-revalidate",
+				};
+				if (mtime) {
+					headers["Last-Modified"] = mtime.toUTCString();
+				}
 
-        return Response.json(
-          MemoryDetailResponse.parse({
-            markdown: content,
-            mtime: mtime ? mtime.toISOString() : null,
-            projectName,
-          }),
-          { headers },
-        );
-      },
-      PUT: async ({
-        params,
-        request,
-      }: {
-        params: { id: string; filename: string };
-        request: Request;
-      }) => {
-        const rejection = rejectCrossSite(request);
-        if (rejection) return rejection;
+				return Response.json(
+					MemoryDetailResponse.parse({
+						markdown: content,
+						mtime: mtime ? mtime.toISOString() : null,
+						projectName,
+					}),
+					{headers},
+				);
+			},
+			PUT: async ({params, request}: {params: {id: string; filename: string}; request: Request}) => {
+				const rejection = rejectCrossSite(request);
+				if (rejection) return rejection;
 
-        const { homedir } = await import("node:os");
-        const { join } = await import("node:path");
-        const { writeMemory } = await import("../../lib/memory");
-        const { resolveMarkdownFilePath } = await import("../../lib/markdown-file-path");
-        const { rejectStaleWrite, savedFileHeaders } = await import("../../lib/file-edit-server");
-        const projectsDir = join(homedir(), ".claude", "projects");
-        const filename = fromMdSlug(params.filename);
-        const filePath =
-          params.id.includes("..") || params.id.includes("/")
-            ? null
-            : resolveMarkdownFilePath(join(projectsDir, params.id, "memory"), filename);
-        if (filePath === null) {
-          return new Response("Invalid path", { status: 400 });
-        }
-        const conflict = await rejectStaleWrite(request, filePath);
-        if (conflict) return conflict;
+				const {homedir} = await import("node:os");
+				const {join} = await import("node:path");
+				const {writeMemory} = await import("../../lib/memory");
+				const {resolveMarkdownFilePath} = await import("../../lib/markdown-file-path");
+				const {rejectStaleWrite, savedFileHeaders} = await import("../../lib/file-edit-server");
+				const projectsDir = join(homedir(), ".claude", "projects");
+				const filename = fromMdSlug(params.filename);
+				const filePath =
+					params.id.includes("..") || params.id.includes("/")
+						? null
+						: resolveMarkdownFilePath(join(projectsDir, params.id, "memory"), filename);
+				if (filePath === null) {
+					return new Response("Invalid path", {status: 400});
+				}
+				const conflict = await rejectStaleWrite(request, filePath);
+				if (conflict) return conflict;
 
-        const content = await request.text();
-        const ok = await writeMemory(projectsDir, params.id, filename, content);
-        if (!ok) {
-          return new Response("Invalid path", { status: 400 });
-        }
-        return Response.json(MemorySaveResponse.parse({ ok }), {
-          headers: await savedFileHeaders(filePath),
-        });
-      },
-      DELETE: async ({
-        params,
-        request,
-      }: {
-        params: { id: string; filename: string };
-        request: Request;
-      }) => {
-        const rejection = rejectCrossSite(request);
-        if (rejection) return rejection;
+				const content = await request.text();
+				const ok = await writeMemory(projectsDir, params.id, filename, content);
+				if (!ok) {
+					return new Response("Invalid path", {status: 400});
+				}
+				return Response.json(MemorySaveResponse.parse({ok}), {
+					headers: await savedFileHeaders(filePath),
+				});
+			},
+			DELETE: async ({params, request}: {params: {id: string; filename: string}; request: Request}) => {
+				const rejection = rejectCrossSite(request);
+				if (rejection) return rejection;
 
-        const { homedir } = await import("node:os");
-        const { join } = await import("node:path");
-        const { deleteMemory } = await import("../../lib/memory");
-        const projectsDir = join(homedir(), ".claude", "projects");
-        const ok = await deleteMemory(projectsDir, params.id, fromMdSlug(params.filename));
-        return Response.json(MemoryDeleteResponse.parse({ ok }), {
-          headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
-        });
-      },
-    }),
-  },
+				const {homedir} = await import("node:os");
+				const {join} = await import("node:path");
+				const {deleteMemory} = await import("../../lib/memory");
+				const projectsDir = join(homedir(), ".claude", "projects");
+				const ok = await deleteMemory(projectsDir, params.id, fromMdSlug(params.filename));
+				return Response.json(MemoryDeleteResponse.parse({ok}), {
+					headers: {"Cache-Control": "private, max-age=0, must-revalidate"},
+				});
+			},
+		}),
+	},
 });

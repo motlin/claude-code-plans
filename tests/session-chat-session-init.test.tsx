@@ -1,29 +1,29 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vite-plus/test";
-import { SessionChat } from "../src/components/session-chat";
-import { processTranscript } from "../src/lib/transcript";
+import {cleanup, fireEvent, render} from "@testing-library/react";
+import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {SessionChat} from "../src/components/session-chat";
+import {processTranscript} from "../src/lib/transcript";
 
 vi.mock("../src/components/settings-provider", () => ({
-  useSettings: () => ({
-    settings: { showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark" },
-  }),
+	useSettings: () => ({
+		settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"},
+	}),
 }));
 vi.mock("../src/lib/hmr-persist", () => ({
-  hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
+	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
 }));
 vi.mock("../src/hooks/use-claude-events", () => ({
-  useClaudeEvents: () => ({ failedTools: new Map() }),
+	useClaudeEvents: () => ({failedTools: new Map()}),
 }));
 
 class NoopResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-  takeRecords(): ResizeObserverEntry[] {
-    return [];
-  }
+	observe() {}
+	unobserve() {}
+	disconnect() {}
+	takeRecords(): ResizeObserverEntry[] {
+		return [];
+	}
 }
 
 globalThis.ResizeObserver = NoopResizeObserver;
@@ -32,280 +32,271 @@ afterEach(cleanup);
 
 const SESSION_ID = "session-alice-100";
 
-const AGENT_NAME = { type: "agent-name", agentName: "Alice", sessionId: SESSION_ID };
-const AGENT_COLOR = { type: "agent-color", agentColor: "blue", sessionId: SESSION_ID };
+const AGENT_NAME = {type: "agent-name", agentName: "Alice", sessionId: SESSION_ID};
+const AGENT_COLOR = {type: "agent-color", agentColor: "blue", sessionId: SESSION_ID};
 const PERMISSION_MODE = {
-  type: "permission-mode",
-  permissionMode: "acceptEdits",
-  sessionId: SESSION_ID,
+	type: "permission-mode",
+	permissionMode: "acceptEdits",
+	sessionId: SESSION_ID,
 };
 const WORKTREE_STATE = {
-  type: "worktree-state",
-  sessionId: SESSION_ID,
-  worktreeSession: {
-    originalCwd: "/tmp/test/alice-project",
-    worktreePath: "/tmp/test/alice-worktree",
-    worktreeName: "alice-worktree",
-    worktreeBranch: "test/alice-worktree",
-    sessionId: SESSION_ID,
-  },
+	type: "worktree-state",
+	sessionId: SESSION_ID,
+	worktreeSession: {
+		originalCwd: "/tmp/test/alice-project",
+		worktreePath: "/tmp/test/alice-worktree",
+		worktreeName: "alice-worktree",
+		worktreeBranch: "test/alice-worktree",
+		sessionId: SESSION_ID,
+	},
 };
 const USER_TEXT = {
-  type: "user",
-  uuid: "user-1",
-  message: { role: "user", content: "Fabricated user message" },
+	type: "user",
+	uuid: "user-1",
+	message: {role: "user", content: "Fabricated user message"},
 };
 
 function renderRecords(records: unknown[]): HTMLElement {
-  const { lines, toolResultMap } = processTranscript(records);
-  return render(
-    <SessionChat
-      sessionId={SESSION_ID}
-      lines={lines}
-      toolResultMap={toolResultMap}
-      showSystemBanners
-      shouldScrollToEnd={false}
-    />,
-  ).container;
+	const {lines, toolResultMap} = processTranscript(records);
+	return render(
+		<SessionChat
+			sessionId={SESSION_ID}
+			lines={lines}
+			toolResultMap={toolResultMap}
+			showSystemBanners
+			shouldScrollToEnd={false}
+		/>,
+	).container;
 }
 
 /** The single "Initialized session" disclosure control, or null when absent. */
 function initButton(container: HTMLElement): HTMLButtonElement | null {
-  const buttons = Array.from(container.querySelectorAll("button")).filter((button) =>
-    button.textContent?.includes("Initialized session"),
-  );
-  if (buttons.length > 1) throw new Error(`Expected one init row, found ${buttons.length}`);
-  return buttons[0] ?? null;
+	const buttons = Array.from(container.querySelectorAll("button")).filter((button) =>
+		button.textContent?.includes("Initialized session"),
+	);
+	if (buttons.length > 1) throw new Error(`Expected one init row, found ${buttons.length}`);
+	return buttons[0] ?? null;
 }
 
 /** The label span, chevron presence, aria state, and mounted body text of the init row. */
 function initRow(container: HTMLElement) {
-  const button = initButton(container);
-  if (!button) return null;
-  const bodyId = button.getAttribute("aria-controls");
-  const body = bodyId === null ? null : container.querySelector(`#${CSS.escape(bodyId)}`);
-  return {
-    labelClassName: button.querySelector("span")?.className ?? null,
-    ariaExpanded: button.getAttribute("aria-expanded"),
-    hasChevron: button.querySelector("svg") !== null,
-    bodyText: body?.textContent ?? null,
-  };
+	const button = initButton(container);
+	if (!button) return null;
+	const bodyId = button.getAttribute("aria-controls");
+	const body = bodyId === null ? null : container.querySelector(`#${CSS.escape(bodyId)}`);
+	return {
+		labelClassName: button.querySelector("span")?.className ?? null,
+		ariaExpanded: button.getAttribute("aria-expanded"),
+		hasChevron: button.querySelector("svg") !== null,
+		bodyText: body?.textContent ?? null,
+	};
 }
 
 describe("session init disclosure", () => {
-  it("folds leading session metadata into one collapsed disclosure row without mounting its body", () => {
-    const container = renderRecords([
-      AGENT_NAME,
-      AGENT_COLOR,
-      PERMISSION_MODE,
-      WORKTREE_STATE,
-      USER_TEXT,
-    ]);
+	it("folds leading session metadata into one collapsed disclosure row without mounting its body", () => {
+		const container = renderRecords([AGENT_NAME, AGENT_COLOR, PERMISSION_MODE, WORKTREE_STATE, USER_TEXT]);
 
-    const row = initRow(container);
-    expect({
-      labelClassName: row?.labelClassName,
-      ariaExpanded: row?.ariaExpanded,
-      hasChevron: row?.hasChevron,
-      bodyText: row?.bodyText,
-    }).toStrictEqual({
-      labelClassName: "text-body min-w-0 truncate text-primary",
-      ariaExpanded: "false",
-      hasChevron: true,
-      bodyText: null,
-    });
-  });
+		const row = initRow(container);
+		expect({
+			labelClassName: row?.labelClassName,
+			ariaExpanded: row?.ariaExpanded,
+			hasChevron: row?.hasChevron,
+			bodyText: row?.bodyText,
+		}).toStrictEqual({
+			labelClassName: "text-body min-w-0 truncate text-primary",
+			ariaExpanded: "false",
+			hasChevron: true,
+			bodyText: null,
+		});
+	});
 
-  it("expands the folded metadata when the disclosure row is clicked", () => {
-    const container = renderRecords([AGENT_NAME, USER_TEXT]);
-    const button = initButton(container);
-    if (!button) throw new Error("Expected an init disclosure row");
+	it("expands the folded metadata when the disclosure row is clicked", () => {
+		const container = renderRecords([AGENT_NAME, USER_TEXT]);
+		const button = initButton(container);
+		if (!button) throw new Error("Expected an init disclosure row");
 
-    const collapsed = initRow(container);
-    fireEvent.click(button);
+		const collapsed = initRow(container);
+		fireEvent.click(button);
 
-    expect({ collapsed, expanded: initRow(container) }).toStrictEqual({
-      collapsed: {
-        labelClassName: "text-body min-w-0 truncate text-primary",
-        ariaExpanded: "false",
-        hasChevron: true,
-        bodyText: null,
-      },
-      expanded: {
-        labelClassName: "text-body min-w-0 truncate text-primary",
-        ariaExpanded: "true",
-        hasChevron: true,
-        bodyText: "Alice",
-      },
-    });
-  });
+		expect({collapsed, expanded: initRow(container)}).toStrictEqual({
+			collapsed: {
+				labelClassName: "text-body min-w-0 truncate text-primary",
+				ariaExpanded: "false",
+				hasChevron: true,
+				bodyText: null,
+			},
+			expanded: {
+				labelClassName: "text-body min-w-0 truncate text-primary",
+				ariaExpanded: "true",
+				hasChevron: true,
+				bodyText: "Alice",
+			},
+		});
+	});
 
-  it("leaves metadata that follows a message unfolded", () => {
-    const container = renderRecords([USER_TEXT, WORKTREE_STATE]);
+	it("leaves metadata that follows a message unfolded", () => {
+		const container = renderRecords([USER_TEXT, WORKTREE_STATE]);
 
-    expect({
-      initRow: initButton(container),
-      showsWorktree: container.textContent?.includes("Worktree: alice-worktree"),
-    }).toStrictEqual({ initRow: null, showsWorktree: true });
-  });
+		expect({
+			initRow: initButton(container),
+			showsWorktree: container.textContent?.includes("Worktree: alice-worktree"),
+		}).toStrictEqual({initRow: null, showsWorktree: true});
+	});
 
-  it("renders no disclosure row for a transcript without session metadata", () => {
-    expect(initButton(renderRecords([USER_TEXT]))).toStrictEqual(null);
-  });
+	it("renders no disclosure row for a transcript without session metadata", () => {
+		expect(initButton(renderRecords([USER_TEXT]))).toStrictEqual(null);
+	});
 
-  it("renders no disclosure row when system banners are hidden", () => {
-    const { lines, toolResultMap } = processTranscript([AGENT_NAME, USER_TEXT]);
-    const container = render(
-      <SessionChat
-        sessionId={SESSION_ID}
-        lines={lines}
-        toolResultMap={toolResultMap}
-        shouldScrollToEnd={false}
-      />,
-    ).container;
+	it("renders no disclosure row when system banners are hidden", () => {
+		const {lines, toolResultMap} = processTranscript([AGENT_NAME, USER_TEXT]);
+		const container = render(
+			<SessionChat
+				sessionId={SESSION_ID}
+				lines={lines}
+				toolResultMap={toolResultMap}
+				shouldScrollToEnd={false}
+			/>,
+		).container;
 
-    expect(initButton(container)).toStrictEqual(null);
-  });
+		expect(initButton(container)).toStrictEqual(null);
+	});
 });
 
 describe("session init disclosure chrome", () => {
-  // Upstream claude.ai/code renders this row as a bare button -- no `group/tool`
-  // wrapper, no hover-coloured chevron, and the `outline-none hide-focus-ring
-  // focus:ring-focus` focus trio (.llm/ui-sync/upstream/code-rich-exemplars.dict.json).
-  it("matches upstream's init-row button and chevron classes", () => {
-    const container = renderRecords([AGENT_NAME, USER_TEXT]);
-    const button = initButton(container);
-    if (!button) throw new Error("Expected an init disclosure row");
+	// Upstream claude.ai/code renders this row as a bare button -- no `group/tool`
+	// wrapper, no hover-coloured chevron, and the `outline-none hide-focus-ring
+	// focus:ring-focus` focus trio (.llm/ui-sync/upstream/code-rich-exemplars.dict.json).
+	it("matches upstream's init-row button and chevron classes", () => {
+		const container = renderRecords([AGENT_NAME, USER_TEXT]);
+		const button = initButton(container);
+		if (!button) throw new Error("Expected an init disclosure row");
 
-    expect({
-      button: button.className,
-      chevron: button.querySelectorAll("span")[1]?.className,
-    }).toStrictEqual({
-      button:
-        "flex self-start max-w-full items-center gap-g2 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3",
-      chevron: "shrink-0 text-secondary",
-    });
-  });
+		expect({
+			button: button.className,
+			chevron: button.querySelectorAll("span")[1]?.className,
+		}).toStrictEqual({
+			button: "flex self-start max-w-full items-center gap-g2 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3",
+			chevron: "shrink-0 text-secondary",
+		});
+	});
 });
 
 describe("session head marker", () => {
-  it("labels the head marker 'Resumed session' when the leading records came from an earlier session", () => {
-    const priorSession = "session-bob-099";
-    const container = renderRecords([
-      { ...AGENT_NAME, sessionId: priorSession },
-      { ...USER_TEXT, sessionId: priorSession },
-    ]);
+	it("labels the head marker 'Resumed session' when the leading records came from an earlier session", () => {
+		const priorSession = "session-bob-099";
+		const container = renderRecords([
+			{...AGENT_NAME, sessionId: priorSession},
+			{...USER_TEXT, sessionId: priorSession},
+		]);
 
-    expect({
-      initialized: initButton(container),
-      resumed: markerButtons(container, "Resumed session").map((button) => ({
-        label: button.querySelector("span")?.textContent,
-        ariaExpanded: button.getAttribute("aria-expanded"),
-      })),
-    }).toStrictEqual({
-      initialized: null,
-      resumed: [{ label: "Resumed session", ariaExpanded: "false" }],
-    });
-  });
+		expect({
+			initialized: initButton(container),
+			resumed: markerButtons(container, "Resumed session").map((button) => ({
+				label: button.querySelector("span")?.textContent,
+				ariaExpanded: button.getAttribute("aria-expanded"),
+			})),
+		}).toStrictEqual({
+			initialized: null,
+			resumed: [{label: "Resumed session", ariaExpanded: "false"}],
+		});
+	});
 
-  it("keeps 'Initialized session' when every leading record belongs to this session", () => {
-    const container = renderRecords([AGENT_NAME, { ...USER_TEXT, sessionId: SESSION_ID }]);
+	it("keeps 'Initialized session' when every leading record belongs to this session", () => {
+		const container = renderRecords([AGENT_NAME, {...USER_TEXT, sessionId: SESSION_ID}]);
 
-    expect({
-      initialized: initButton(container)?.querySelector("span")?.textContent,
-      resumed: markerButtons(container, "Resumed session"),
-    }).toStrictEqual({ initialized: "Initialized session", resumed: [] });
-  });
+		expect({
+			initialized: initButton(container)?.querySelector("span")?.textContent,
+			resumed: markerButtons(container, "Resumed session"),
+		}).toStrictEqual({initialized: "Initialized session", resumed: []});
+	});
 });
 
 const COMPACT_BOUNDARY_BASE = {
-  type: "system",
-  subtype: "compact_boundary",
-  content: "Conversation compacted",
-  uuid: "system-compact-1",
-  timestamp: "1999-12-31T00:00:00Z",
+	type: "system",
+	subtype: "compact_boundary",
+	content: "Conversation compacted",
+	uuid: "system-compact-1",
+	timestamp: "1999-12-31T00:00:00Z",
 };
 
 const COMPACT_SUMMARY = {
-  type: "user",
-  uuid: "user-compact-1",
-  isCompactSummary: true,
-  message: { role: "user", content: "Fabricated compact summary" },
+	type: "user",
+	uuid: "user-compact-1",
+	isCompactSummary: true,
+	message: {role: "user", content: "Fabricated compact summary"},
 };
 
 /** Buttons whose text includes the given marker label. */
 function markerButtons(container: HTMLElement, label: string): HTMLButtonElement[] {
-  return Array.from(container.querySelectorAll("button")).filter((button) =>
-    button.textContent?.includes(label),
-  );
+	return Array.from(container.querySelectorAll("button")).filter((button) => button.textContent?.includes(label));
 }
 
 /** Text of every element that carries a compaction marker label. */
 function compactionLabels(container: HTMLElement): string[] {
-  return Array.from(container.querySelectorAll("span"))
-    .map((span) => span.textContent ?? "")
-    .filter((text) => text.startsWith("Compacted"));
+	return Array.from(container.querySelectorAll("span"))
+		.map((span) => span.textContent ?? "")
+		.filter((text) => text.startsWith("Compacted"));
 }
 
 describe("compaction markers", () => {
-  it("labels a boundary with before and after token counts as 'saved N tokens'", () => {
-    const container = renderRecords([
-      USER_TEXT,
-      {
-        ...COMPACT_BOUNDARY_BASE,
-        compactMetadata: { trigger: "auto", preTokens: 261187, postTokens: 10827 },
-      },
-    ]);
+	it("labels a boundary with before and after token counts as 'saved N tokens'", () => {
+		const container = renderRecords([
+			USER_TEXT,
+			{
+				...COMPACT_BOUNDARY_BASE,
+				compactMetadata: {trigger: "auto", preTokens: 261187, postTokens: 10827},
+			},
+		]);
 
-    expect(compactionLabels(container)).toStrictEqual(["Compacted session · saved 250.4k tokens"]);
-  });
+		expect(compactionLabels(container)).toStrictEqual(["Compacted session · saved 250.4k tokens"]);
+	});
 
-  it("labels a boundary with only a before count as 'from N tokens'", () => {
-    const container = renderRecords([
-      USER_TEXT,
-      { ...COMPACT_BOUNDARY_BASE, compactMetadata: { trigger: "manual", preTokens: 180000 } },
-    ]);
+	it("labels a boundary with only a before count as 'from N tokens'", () => {
+		const container = renderRecords([
+			USER_TEXT,
+			{...COMPACT_BOUNDARY_BASE, compactMetadata: {trigger: "manual", preTokens: 180000}},
+		]);
 
-    expect(compactionLabels(container)).toStrictEqual(["Compacted session · from 180.0k tokens"]);
-  });
+		expect(compactionLabels(container)).toStrictEqual(["Compacted session · from 180.0k tokens"]);
+	});
 
-  it("labels a boundary without metadata 'Compacted session'", () => {
-    const container = renderRecords([USER_TEXT, COMPACT_BOUNDARY_BASE]);
+	it("labels a boundary without metadata 'Compacted session'", () => {
+		const container = renderRecords([USER_TEXT, COMPACT_BOUNDARY_BASE]);
 
-    expect(compactionLabels(container)).toStrictEqual(["Compacted session"]);
-  });
+		expect(compactionLabels(container)).toStrictEqual(["Compacted session"]);
+	});
 
-  it("collapses the compact summary behind a 'Compacted conversation' marker that expands to the summary", () => {
-    const container = renderRecords([USER_TEXT, COMPACT_SUMMARY]);
-    const [button, ...rest] = markerButtons(container, "Compacted conversation");
-    if (!button || rest.length > 0) throw new Error("Expected one compacted-conversation marker");
+	it("collapses the compact summary behind a 'Compacted conversation' marker that expands to the summary", () => {
+		const container = renderRecords([USER_TEXT, COMPACT_SUMMARY]);
+		const [button, ...rest] = markerButtons(container, "Compacted conversation");
+		if (!button || rest.length > 0) throw new Error("Expected one compacted-conversation marker");
 
-    const collapsed = {
-      label: button.querySelector("span")?.textContent,
-      className: button.className,
-      ariaExpanded: button.getAttribute("aria-expanded"),
-      hasChevron: button.querySelector("svg") !== null,
-      showsSummary: container.textContent?.includes("Fabricated compact summary"),
-    };
-    fireEvent.click(button);
-    const expandedButton = markerButtons(container, "Compacted conversation")[0];
+		const collapsed = {
+			label: button.querySelector("span")?.textContent,
+			className: button.className,
+			ariaExpanded: button.getAttribute("aria-expanded"),
+			hasChevron: button.querySelector("svg") !== null,
+			showsSummary: container.textContent?.includes("Fabricated compact summary"),
+		};
+		fireEvent.click(button);
+		const expandedButton = markerButtons(container, "Compacted conversation")[0];
 
-    expect({
-      collapsed,
-      expanded: {
-        ariaExpanded: expandedButton?.getAttribute("aria-expanded"),
-        showsSummary: container.textContent?.includes("Fabricated compact summary"),
-      },
-    }).toStrictEqual({
-      collapsed: {
-        label: "Compacted conversation",
-        className:
-          "flex self-start max-w-full items-center gap-g2 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3",
-        ariaExpanded: "false",
-        hasChevron: true,
-        showsSummary: false,
-      },
-      expanded: { ariaExpanded: "true", showsSummary: true },
-    });
-  });
+		expect({
+			collapsed,
+			expanded: {
+				ariaExpanded: expandedButton?.getAttribute("aria-expanded"),
+				showsSummary: container.textContent?.includes("Fabricated compact summary"),
+			},
+		}).toStrictEqual({
+			collapsed: {
+				label: "Compacted conversation",
+				className:
+					"flex self-start max-w-full items-center gap-g2 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3",
+				ariaExpanded: "false",
+				hasChevron: true,
+				showsSummary: false,
+			},
+			expanded: {ariaExpanded: "true", showsSummary: true},
+		});
+	});
 });

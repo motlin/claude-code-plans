@@ -1,10 +1,10 @@
-import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:fs";
-import { get, type ClientRequest } from "node:http";
-import { createServer } from "node:net";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
+import {execFileSync} from "node:child_process";
+import {existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync} from "node:fs";
+import {get, type ClientRequest} from "node:http";
+import {createServer} from "node:net";
+import {tmpdir} from "node:os";
+import {join, resolve} from "node:path";
+import {afterAll, beforeAll, describe, expect, it} from "vite-plus/test";
 
 // `scripts/server.sh stop` must let the real production server exit on its
 // own after SIGTERM. Long-lived handles (file watcher, sweep timers, SSE
@@ -27,110 +27,110 @@ const runDir = realpathSync(mkdtempSync(join(tmpdir(), "server-graceful-stop-"))
 const appDir = join(runDir, "app");
 mkdirSync(appDir);
 if (existsSync(builtServer)) {
-  symlinkSync(join(projectRoot, ".output"), join(appDir, ".output"));
+	symlinkSync(join(projectRoot, ".output"), join(appDir, ".output"));
 }
 const home = join(runDir, "home");
 for (const directory of ["projects", "plans", "commands", join("plugins", "cache"), "tasks"]) {
-  mkdirSync(join(home, ".claude", directory), { recursive: true });
+	mkdirSync(join(home, ".claude", directory), {recursive: true});
 }
 
 let PORT = "";
 let env: NodeJS.ProcessEnv = {};
 
 function freePort(): Promise<string> {
-  return new Promise((resolvePort, reject) => {
-    const probe = createServer();
-    probe.once("error", reject);
-    probe.listen(0, () => {
-      const address = probe.address();
-      if (address === null || typeof address === "string") {
-        reject(new Error(`Unexpected probe address: ${String(address)}`));
-        return;
-      }
-      probe.close(() => {
-        resolvePort(String(address.port));
-      });
-    });
-  });
+	return new Promise((resolvePort, reject) => {
+		const probe = createServer();
+		probe.once("error", reject);
+		probe.listen(0, () => {
+			const address = probe.address();
+			if (address === null || typeof address === "string") {
+				reject(new Error(`Unexpected probe address: ${String(address)}`));
+				return;
+			}
+			probe.close(() => {
+				resolvePort(String(address.port));
+			});
+		});
+	});
 }
 
 function run(command: string): string {
-  return execFileSync("bash", [script, command], {
-    cwd: appDir,
-    encoding: "utf8",
-    env,
-  });
+	return execFileSync("bash", [script, command], {
+		cwd: appDir,
+		encoding: "utf8",
+		env,
+	});
 }
 
 function isAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
+	try {
+		process.kill(pid, 0);
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 function openEventStream(): Promise<ClientRequest> {
-  return new Promise((resolveStream, reject) => {
-    const request = get(`http://localhost:${PORT}/api/events`, (response) => {
-      response.once("data", () => {
-        resolveStream(request);
-      });
-      response.on("error", () => {});
-    });
-    request.once("error", reject);
-  });
+	return new Promise((resolveStream, reject) => {
+		const request = get(`http://localhost:${PORT}/api/events`, (response) => {
+			response.once("data", () => {
+				resolveStream(request);
+			});
+			response.on("error", () => {});
+		});
+		request.once("error", reject);
+	});
 }
 
 beforeAll(async () => {
-  PORT = await freePort();
-  // The server must behave as in production: vitest's VITEST/TEST/NODE_ENV
-  // would disable srvx's graceful shutdown and swap in test-only DB paths.
-  const { VITEST: _vitest, TEST: _test, NODE_ENV: _nodeEnv, ...baseEnv } = process.env;
-  env = {
-    ...baseEnv,
-    PORT,
-    HOME: home,
-    XDG_CACHE_HOME: join(runDir, "cache"),
-    XDG_CONFIG_HOME: join(runDir, "config"),
-    HERDR_SOCKET_PATH: join(runDir, "herdr.sock"),
-    PROJECT_DIR: appDir,
-    LOG_FILE: join(runDir, "server.log"),
-  };
+	PORT = await freePort();
+	// The server must behave as in production: vitest's VITEST/TEST/NODE_ENV
+	// would disable srvx's graceful shutdown and swap in test-only DB paths.
+	const {VITEST: _vitest, TEST: _test, NODE_ENV: _nodeEnv, ...baseEnv} = process.env;
+	env = {
+		...baseEnv,
+		PORT,
+		HOME: home,
+		XDG_CACHE_HOME: join(runDir, "cache"),
+		XDG_CONFIG_HOME: join(runDir, "config"),
+		HERDR_SOCKET_PATH: join(runDir, "herdr.sock"),
+		PROJECT_DIR: appDir,
+		LOG_FILE: join(runDir, "server.log"),
+	};
 });
 
 afterAll(() => {
-  run("stop");
-  rmSync(runDir, { recursive: true, force: true });
+	run("stop");
+	rmSync(runDir, {recursive: true, force: true});
 });
 
 describe.skipIf(!existsSync(builtServer))("scripts/server.sh with the built server", () => {
-  it("stop lets the server exit gracefully instead of force killing it", async () => {
-    // Guard: the effective match must not see any existing server (e.g. the
-    // user's production server in this checkout) before we start ours.
-    expect(appDir).not.toBe(projectRoot);
-    expect(run("status")).toBe(`No server running (port ${PORT})\n`);
+	it("stop lets the server exit gracefully instead of force killing it", async () => {
+		// Guard: the effective match must not see any existing server (e.g. the
+		// user's production server in this checkout) before we start ours.
+		expect(appDir).not.toBe(projectRoot);
+		expect(run("status")).toBe(`No server running (port ${PORT})\n`);
 
-    const started = run("start");
-    const pid = Number(/^Server pid (\d+) listening/m.exec(started)?.[1]);
-    expect(isAlive(pid)).toBe(true);
+		const started = run("start");
+		const pid = Number(/^Server pid (\d+) listening/m.exec(started)?.[1]);
+		expect(isAlive(pid)).toBe(true);
 
-    // A connected browser tab holds an SSE stream open; startup finishes its
-    // initial scan and starts the background sweeps in the meantime.
-    const stream = await openEventStream();
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, 1500));
+		// A connected browser tab holds an SSE stream open; startup finishes its
+		// initial scan and starts the background sweeps in the meantime.
+		const stream = await openEventStream();
+		await new Promise((resolveDelay) => setTimeout(resolveDelay, 1500));
 
-    try {
-      const startedAt = Date.now();
-      const stopped = run("stop");
-      const elapsed = Date.now() - startedAt;
+		try {
+			const startedAt = Date.now();
+			const stopped = run("stop");
+			const elapsed = Date.now() - startedAt;
 
-      expect(stopped).toBe(`Stopping server pid(s): ${pid}\n`);
-      expect(isAlive(pid)).toBe(false);
-      expect(elapsed).toBeLessThan(5000);
-    } finally {
-      stream.destroy();
-    }
-  }, 60_000);
+			expect(stopped).toBe(`Stopping server pid(s): ${pid}\n`);
+			expect(isAlive(pid)).toBe(false);
+			expect(elapsed).toBeLessThan(5000);
+		} finally {
+			stream.destroy();
+		}
+	}, 60_000);
 });

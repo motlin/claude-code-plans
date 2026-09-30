@@ -11,4 +11,4 @@ export const ORPHANED_TASKS_PROJECT_NAME = "Orphaned tasks";
 
 /** Explains the heading, which otherwise names no project the user knows. */
 export const ORPHANED_TASKS_DESCRIPTION =
-  "Task files under ~/.claude/tasks/ that name a session with no indexed transcript, so no project owns them and there is nothing to link to.";
+	"Task files under ~/.claude/tasks/ that name a session with no indexed transcript, so no project owns them and there is nothing to link to.";

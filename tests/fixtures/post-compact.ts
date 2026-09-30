@@ -7,10 +7,10 @@
  * reports for how much context the compaction freed.
  */
 export const postCompactFixture = {
-  session_id: "abc-123",
-  transcript_path: "/Users/u/.claude/projects/-Users-u-projects-app/abc-123.jsonl",
-  cwd: "/Users/u/projects/app",
-  hook_event_name: "PostCompact" as const,
-  reason: "auto" as const,
-  tokens_removed: 12345,
+	session_id: "abc-123",
+	transcript_path: "/Users/u/.claude/projects/-Users-u-projects-app/abc-123.jsonl",
+	cwd: "/Users/u/projects/app",
+	hook_event_name: "PostCompact" as const,
+	reason: "auto" as const,
+	tokens_removed: 12345,
 };

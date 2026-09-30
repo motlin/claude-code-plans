@@ -1,14 +1,14 @@
-import { drizzle, type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import {drizzle, type BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
-import { mkdirSync } from "node:fs";
-import { join } from "node:path";
-import { homedir } from "node:os";
+import {mkdirSync} from "node:fs";
+import {join} from "node:path";
+import {homedir} from "node:os";
 import * as schema from "./schema";
 
 export interface AppDb {
-  index: BetterSQLite3Database<typeof schema>;
-  summaries: BetterSQLite3Database<typeof schema>;
-  close(): void;
+	index: BetterSQLite3Database<typeof schema>;
+	summaries: BetterSQLite3Database<typeof schema>;
+	close(): void;
 }
 
 const CREATE_TABLES_SQL = `
@@ -392,109 +392,106 @@ CREATE TABLE IF NOT EXISTS summaries (
 // included, and recreates it from CREATE_TABLES_SQL + CREATE_FTS_SQL. There is
 // no migration chain: bump SCHEMA_VERSION for any DDL or indexed-data change.
 function dropAllObjects(sqlite: Database.Database): void {
-  const objects = sqlite
-    .prepare(
-      `SELECT type, name, sql FROM sqlite_master
+	const objects = sqlite
+		.prepare(
+			`SELECT type, name, sql FROM sqlite_master
        WHERE type IN ('table', 'view', 'trigger') AND name NOT LIKE 'sqlite_%'`,
-    )
-    .all() as { type: "table" | "view" | "trigger"; name: string; sql: string | null }[];
-  const isVirtual = (object: { sql: string | null }) =>
-    /^CREATE VIRTUAL TABLE/i.test(object.sql ?? "");
-  // Virtual tables first: dropping one also drops its FTS5 shadow tables.
-  const ordered = [
-    ...objects.filter((object) => object.type === "trigger"),
-    ...objects.filter((object) => object.type === "view"),
-    ...objects.filter((object) => object.type === "table" && isVirtual(object)),
-    ...objects.filter((object) => object.type === "table" && !isVirtual(object)),
-  ];
-  for (const { type, name } of ordered) {
-    sqlite.exec(`DROP ${type.toUpperCase()} IF EXISTS "${name.replaceAll('"', '""')}"`);
-  }
+		)
+		.all() as {type: "table" | "view" | "trigger"; name: string; sql: string | null}[];
+	const isVirtual = (object: {sql: string | null}) => /^CREATE VIRTUAL TABLE/i.test(object.sql ?? "");
+	// Virtual tables first: dropping one also drops its FTS5 shadow tables.
+	const ordered = [
+		...objects.filter((object) => object.type === "trigger"),
+		...objects.filter((object) => object.type === "view"),
+		...objects.filter((object) => object.type === "table" && isVirtual(object)),
+		...objects.filter((object) => object.type === "table" && !isVirtual(object)),
+	];
+	for (const {type, name} of ordered) {
+		sqlite.exec(`DROP ${type.toUpperCase()} IF EXISTS "${name.replaceAll('"', '""')}"`);
+	}
 }
 
 function readSchemaVersion(sqlite: Database.Database): string | null {
-  const metadataExists = sqlite
-    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='metadata'")
-    .get() as { name: string } | undefined;
-  if (!metadataExists) return null;
+	const metadataExists = sqlite
+		.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='metadata'")
+		.get() as {name: string} | undefined;
+	if (!metadataExists) return null;
 
-  const row = sqlite.prepare("SELECT value FROM metadata WHERE key = 'schema_version'").get() as
-    | { value: string }
-    | undefined;
-  return row?.value ?? null;
+	const row = sqlite.prepare("SELECT value FROM metadata WHERE key = 'schema_version'").get() as
+		| {value: string}
+		| undefined;
+	return row?.value ?? null;
 }
 
 function initIndexDb(sqlite: Database.Database): void {
-  sqlite.pragma("journal_mode = WAL");
-  sqlite.pragma("foreign_keys = ON");
+	sqlite.pragma("journal_mode = WAL");
+	sqlite.pragma("foreign_keys = ON");
 
-  if (readSchemaVersion(sqlite) !== schema.SCHEMA_VERSION) {
-    sqlite.transaction(() => dropAllObjects(sqlite))();
-  }
+	if (readSchemaVersion(sqlite) !== schema.SCHEMA_VERSION) {
+		sqlite.transaction(() => dropAllObjects(sqlite))();
+	}
 
-  sqlite.exec(CREATE_TABLES_SQL);
-  sqlite.exec(CREATE_FTS_SQL);
-  sqlite
-    .prepare("INSERT OR REPLACE INTO metadata (key, value) VALUES ('schema_version', ?)")
-    .run(schema.SCHEMA_VERSION);
+	sqlite.exec(CREATE_TABLES_SQL);
+	sqlite.exec(CREATE_FTS_SQL);
+	sqlite
+		.prepare("INSERT OR REPLACE INTO metadata (key, value) VALUES ('schema_version', ?)")
+		.run(schema.SCHEMA_VERSION);
 }
 function initSummariesDb(sqlite: Database.Database): void {
-  sqlite.pragma("journal_mode = WAL");
-  sqlite.exec(CREATE_SUMMARIES_SQL);
+	sqlite.pragma("journal_mode = WAL");
+	sqlite.exec(CREATE_SUMMARIES_SQL);
 }
 
 export function getCacheDir(): string {
-  const xdg = process.env["XDG_CACHE_HOME"];
-  const base = xdg || join(homedir(), ".cache");
-  return join(base, "claude-code-plans");
+	const xdg = process.env["XDG_CACHE_HOME"];
+	const base = xdg || join(homedir(), ".cache");
+	return join(base, "claude-code-plans");
 }
 
-export function openAppDb(opts?: { cacheDir?: string | undefined }): AppDb {
-  // Under vitest, refuse to fall back to the production cache dir. Doing so
-  // opens the real index.db and contends for its write lock with a running
-  // dev/prod server — a failure that only surfaces when the app happens to
-  // be running. Force tests to be explicit (openTestDb or a temp dir).
-  if (process.env["VITEST"] && !opts?.cacheDir) {
-    throw new Error(
-      "openAppDb: tests must pass an explicit cacheDir (use openTestDb or a temp dir)",
-    );
-  }
-  const cacheDir = opts?.cacheDir ?? getCacheDir();
-  mkdirSync(cacheDir, { recursive: true });
+export function openAppDb(opts?: {cacheDir?: string | undefined}): AppDb {
+	// Under vitest, refuse to fall back to the production cache dir. Doing so
+	// opens the real index.db and contends for its write lock with a running
+	// dev/prod server — a failure that only surfaces when the app happens to
+	// be running. Force tests to be explicit (openTestDb or a temp dir).
+	if (process.env["VITEST"] && !opts?.cacheDir) {
+		throw new Error("openAppDb: tests must pass an explicit cacheDir (use openTestDb or a temp dir)");
+	}
+	const cacheDir = opts?.cacheDir ?? getCacheDir();
+	mkdirSync(cacheDir, {recursive: true});
 
-  const indexSqlite = new Database(join(cacheDir, "index.db"));
-  initIndexDb(indexSqlite);
-  const indexDb = drizzle(indexSqlite, { schema });
+	const indexSqlite = new Database(join(cacheDir, "index.db"));
+	initIndexDb(indexSqlite);
+	const indexDb = drizzle(indexSqlite, {schema});
 
-  const summariesSqlite = new Database(join(cacheDir, "summaries.db"));
-  initSummariesDb(summariesSqlite);
-  const summariesDb = drizzle(summariesSqlite, { schema });
+	const summariesSqlite = new Database(join(cacheDir, "summaries.db"));
+	initSummariesDb(summariesSqlite);
+	const summariesDb = drizzle(summariesSqlite, {schema});
 
-  return {
-    index: indexDb,
-    summaries: summariesDb,
-    close() {
-      indexSqlite.close();
-      summariesSqlite.close();
-    },
-  };
+	return {
+		index: indexDb,
+		summaries: summariesDb,
+		close() {
+			indexSqlite.close();
+			summariesSqlite.close();
+		},
+	};
 }
 
 export function openTestDb(): AppDb {
-  const indexSqlite = new Database(":memory:");
-  initIndexDb(indexSqlite);
-  const indexDb = drizzle(indexSqlite, { schema });
+	const indexSqlite = new Database(":memory:");
+	initIndexDb(indexSqlite);
+	const indexDb = drizzle(indexSqlite, {schema});
 
-  const summariesSqlite = new Database(":memory:");
-  initSummariesDb(summariesSqlite);
-  const summariesDb = drizzle(summariesSqlite, { schema });
+	const summariesSqlite = new Database(":memory:");
+	initSummariesDb(summariesSqlite);
+	const summariesDb = drizzle(summariesSqlite, {schema});
 
-  return {
-    index: indexDb,
-    summaries: summariesDb,
-    close() {
-      indexSqlite.close();
-      summariesSqlite.close();
-    },
-  };
+	return {
+		index: indexDb,
+		summaries: summariesDb,
+		close() {
+			indexSqlite.close();
+			summariesSqlite.close();
+		},
+	};
 }

@@ -1,356 +1,343 @@
-import { readdir, readFile, lstat, stat } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
-import { homedir } from "node:os";
-import { extractTitle } from "./markdown-utils.server.js";
-import { resolveProjectName } from "./memory.js";
+import {readdir, readFile, lstat, stat} from "node:fs/promises";
+import {dirname, join, resolve} from "node:path";
+import {homedir} from "node:os";
+import {extractTitle} from "./markdown-utils.server.js";
+import {resolveProjectName} from "./memory.js";
 
 export interface FileTreeNode {
-  path: string;
-  children?: FileTreeNode[];
+	path: string;
+	children?: FileTreeNode[];
 }
 
 interface PluginFile {
-  filename: string;
-  name: string;
-  description: string;
-  type: "agent" | "command" | "skill" | "reference" | "example";
-  frontmatter: Record<string, string>;
+	filename: string;
+	name: string;
+	description: string;
+	type: "agent" | "command" | "skill" | "reference" | "example";
+	frontmatter: Record<string, string>;
 }
 
 interface PluginSkill {
-  dirname: string;
-  name: string;
-  description: string;
-  skillFile: PluginFile;
-  references: PluginFile[];
-  examples: PluginFile[];
+	dirname: string;
+	name: string;
+	description: string;
+	skillFile: PluginFile;
+	references: PluginFile[];
+	examples: PluginFile[];
 }
 
 export interface PluginInfo {
-  id: string;
-  name: string;
-  version: string;
-  versionKind: "commit" | "release";
-  description: string;
-  author: string;
-  marketplace: string;
-  installPath: string;
-  agents: PluginFile[];
-  commands: PluginFile[];
-  skills: PluginSkill[];
+	id: string;
+	name: string;
+	version: string;
+	versionKind: "commit" | "release";
+	description: string;
+	author: string;
+	marketplace: string;
+	installPath: string;
+	agents: PluginFile[];
+	commands: PluginFile[];
+	skills: PluginSkill[];
 }
 
 export interface UserCommandGroup {
-  source: string;
-  sourceName: string;
-  commands: PluginFile[];
+	source: string;
+	sourceName: string;
+	commands: PluginFile[];
 }
 
 export function parseFrontmatter(content: string): {
-  frontmatter: Record<string, string>;
-  body: string;
+	frontmatter: Record<string, string>;
+	body: string;
 } {
-  const frontmatter: Record<string, string> = {};
-  if (!content.startsWith("---")) return { frontmatter, body: content };
+	const frontmatter: Record<string, string> = {};
+	if (!content.startsWith("---")) return {frontmatter, body: content};
 
-  const endIdx = content.indexOf("\n---", 3);
-  if (endIdx === -1) return { frontmatter, body: content };
+	const endIdx = content.indexOf("\n---", 3);
+	if (endIdx === -1) return {frontmatter, body: content};
 
-  const fmBlock = content.slice(4, endIdx);
-  for (const line of fmBlock.split("\n")) {
-    const colonIdx = line.indexOf(":");
-    if (colonIdx === -1) continue;
-    const key = line.slice(0, colonIdx).trim();
-    const value = line.slice(colonIdx + 1).trim();
-    if (key) frontmatter[key] = value;
-  }
+	const fmBlock = content.slice(4, endIdx);
+	for (const line of fmBlock.split("\n")) {
+		const colonIdx = line.indexOf(":");
+		if (colonIdx === -1) continue;
+		const key = line.slice(0, colonIdx).trim();
+		const value = line.slice(colonIdx + 1).trim();
+		if (key) frontmatter[key] = value;
+	}
 
-  const body = content.slice(endIdx + 4).trimStart();
-  return { frontmatter, body };
+	const body = content.slice(endIdx + 4).trimStart();
+	return {frontmatter, body};
 }
 
 async function readMdFiles(dir: string, type: PluginFile["type"]): Promise<PluginFile[]> {
-  let entries: string[];
-  try {
-    entries = await readdir(dir);
-  } catch {
-    return [];
-  }
+	let entries: string[];
+	try {
+		entries = await readdir(dir);
+	} catch {
+		return [];
+	}
 
-  const mdFiles = entries.filter((f) => f.endsWith(".md"));
-  const files: PluginFile[] = [];
+	const mdFiles = entries.filter((f) => f.endsWith(".md"));
+	const files: PluginFile[] = [];
 
-  for (const filename of mdFiles) {
-    try {
-      const content = await readFile(join(dir, filename), "utf-8");
-      const { frontmatter } = parseFrontmatter(content);
-      const name = frontmatter["name"] || (await extractTitle(join(dir, filename), filename));
-      const description = frontmatter["description"] || "";
-      files.push({ filename, name, description, type, frontmatter });
-    } catch {
-      // skip unreadable files
-    }
-  }
+	for (const filename of mdFiles) {
+		try {
+			const content = await readFile(join(dir, filename), "utf-8");
+			const {frontmatter} = parseFrontmatter(content);
+			const name = frontmatter["name"] || (await extractTitle(join(dir, filename), filename));
+			const description = frontmatter["description"] || "";
+			files.push({filename, name, description, type, frontmatter});
+		} catch {
+			// skip unreadable files
+		}
+	}
 
-  return files;
+	return files;
 }
 
 async function scanSkills(skillsDir: string): Promise<PluginSkill[]> {
-  let dirs: string[];
-  try {
-    dirs = await readdir(skillsDir);
-  } catch {
-    return [];
-  }
+	let dirs: string[];
+	try {
+		dirs = await readdir(skillsDir);
+	} catch {
+		return [];
+	}
 
-  const skills: PluginSkill[] = [];
+	const skills: PluginSkill[] = [];
 
-  for (const dirname of dirs) {
-    const skillPath = join(skillsDir, dirname);
-    try {
-      const s = await stat(skillPath);
-      if (!s.isDirectory()) continue;
-    } catch {
-      continue;
-    }
+	for (const dirname of dirs) {
+		const skillPath = join(skillsDir, dirname);
+		try {
+			const s = await stat(skillPath);
+			if (!s.isDirectory()) continue;
+		} catch {
+			continue;
+		}
 
-    const skillMdPath = join(skillPath, "SKILL.md");
-    let content: string;
-    try {
-      content = await readFile(skillMdPath, "utf-8");
-    } catch {
-      continue;
-    }
+		const skillMdPath = join(skillPath, "SKILL.md");
+		let content: string;
+		try {
+			content = await readFile(skillMdPath, "utf-8");
+		} catch {
+			continue;
+		}
 
-    const { frontmatter } = parseFrontmatter(content);
-    const name = frontmatter["name"] || dirname;
-    const description = frontmatter["description"] || "";
-    const skillFile: PluginFile = {
-      filename: "SKILL.md",
-      name,
-      description,
-      type: "skill",
-      frontmatter,
-    };
+		const {frontmatter} = parseFrontmatter(content);
+		const name = frontmatter["name"] || dirname;
+		const description = frontmatter["description"] || "";
+		const skillFile: PluginFile = {
+			filename: "SKILL.md",
+			name,
+			description,
+			type: "skill",
+			frontmatter,
+		};
 
-    const references = await readMdFiles(join(skillPath, "references"), "reference");
-    const examples = await readMdFiles(join(skillPath, "examples"), "example");
+		const references = await readMdFiles(join(skillPath, "references"), "reference");
+		const examples = await readMdFiles(join(skillPath, "examples"), "example");
 
-    skills.push({
-      dirname,
-      name,
-      description,
-      skillFile,
-      references,
-      examples,
-    });
-  }
+		skills.push({
+			dirname,
+			name,
+			description,
+			skillFile,
+			references,
+			examples,
+		});
+	}
 
-  return skills;
+	return skills;
 }
 
 export function extractMarketplace(pluginId: string): string {
-  const atIdx = pluginId.indexOf("@");
-  if (atIdx === -1) return "unknown";
-  return pluginId.slice(atIdx + 1);
+	const atIdx = pluginId.indexOf("@");
+	if (atIdx === -1) return "unknown";
+	return pluginId.slice(atIdx + 1);
 }
 
 export function formatMarketplaceName(id: string): string {
-  return id
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+	return id
+		.split("-")
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+		.join(" ");
 }
 
 export function isOfficialMarketplace(marketplaceId: string): boolean {
-  return marketplaceId === "claude-plugins-official" || marketplaceId === "anthropic-agent-skills";
+	return marketplaceId === "claude-plugins-official" || marketplaceId === "anthropic-agent-skills";
 }
 
 export function getPluginVersionKind(version: string): PluginInfo["versionKind"] {
-  return /^[0-9a-f]{7,40}$/i.test(version) ? "commit" : "release";
+	return /^[0-9a-f]{7,40}$/i.test(version) ? "commit" : "release";
 }
 
-export async function listPlugins(
-  claudeDir: string = join(homedir(), ".claude"),
-): Promise<PluginInfo[]> {
-  const registryPath = join(claudeDir, "plugins", "installed_plugins.json");
-  let registry: {
-    plugins: Record<string, Array<{ installPath: string; version: string }>>;
-  };
-  try {
-    const raw = await readFile(registryPath, "utf-8");
-    registry = JSON.parse(raw);
-  } catch {
-    return [];
-  }
+export async function listPlugins(claudeDir: string = join(homedir(), ".claude")): Promise<PluginInfo[]> {
+	const registryPath = join(claudeDir, "plugins", "installed_plugins.json");
+	let registry: {
+		plugins: Record<string, Array<{installPath: string; version: string}>>;
+	};
+	try {
+		const raw = await readFile(registryPath, "utf-8");
+		registry = JSON.parse(raw);
+	} catch {
+		return [];
+	}
 
-  const plugins: PluginInfo[] = [];
+	const plugins: PluginInfo[] = [];
 
-  for (const [id, installs] of Object.entries(registry.plugins)) {
-    const install = installs[0];
-    if (!install) continue;
+	for (const [id, installs] of Object.entries(registry.plugins)) {
+		const install = installs[0];
+		if (!install) continue;
 
-    let pluginJson: {
-      name?: string;
-      version?: string;
-      description?: string;
-      author?: { name?: string };
-    } = {};
-    try {
-      const raw = await readFile(
-        join(install.installPath, ".claude-plugin", "plugin.json"),
-        "utf-8",
-      );
-      pluginJson = JSON.parse(raw);
-    } catch {
-      // no plugin.json
-    }
+		let pluginJson: {
+			name?: string;
+			version?: string;
+			description?: string;
+			author?: {name?: string};
+		} = {};
+		try {
+			const raw = await readFile(join(install.installPath, ".claude-plugin", "plugin.json"), "utf-8");
+			pluginJson = JSON.parse(raw);
+		} catch {
+			// no plugin.json
+		}
 
-    const agents = await readMdFiles(join(install.installPath, "agents"), "agent");
-    const commands = await readMdFiles(join(install.installPath, "commands"), "command");
-    const skills = await scanSkills(join(install.installPath, "skills"));
+		const agents = await readMdFiles(join(install.installPath, "agents"), "agent");
+		const commands = await readMdFiles(join(install.installPath, "commands"), "command");
+		const skills = await scanSkills(join(install.installPath, "skills"));
 
-    const version = pluginJson.version || install.version;
+		const version = pluginJson.version || install.version;
 
-    plugins.push({
-      id,
-      name: pluginJson.name || id.split("@")[0] || id,
-      version,
-      versionKind: getPluginVersionKind(version),
-      description: pluginJson.description || "",
-      author: pluginJson.author?.name || "",
-      marketplace: extractMarketplace(id),
-      installPath: install.installPath,
-      agents,
-      commands,
-      skills,
-    });
-  }
+		plugins.push({
+			id,
+			name: pluginJson.name || id.split("@")[0] || id,
+			version,
+			versionKind: getPluginVersionKind(version),
+			description: pluginJson.description || "",
+			author: pluginJson.author?.name || "",
+			marketplace: extractMarketplace(id),
+			installPath: install.installPath,
+			agents,
+			commands,
+			skills,
+		});
+	}
 
-  plugins.sort((a, b) => a.name.localeCompare(b.name));
-  return plugins;
+	plugins.sort((a, b) => a.name.localeCompare(b.name));
+	return plugins;
 }
 
 export interface ProjectCommandSource {
-  id: string;
-  projectPath: string | null;
+	id: string;
+	projectPath: string | null;
 }
 
 function projectCommandsDir(projectPath: string): string {
-  return join(projectPath, ".claude", "commands");
+	return join(projectPath, ".claude", "commands");
 }
 
-export async function listUserCommands(
-  projects: readonly ProjectCommandSource[],
-): Promise<UserCommandGroup[]> {
-  const globalDir = join(homedir(), ".claude", "commands");
-  const globalCmds = await readMdFiles(globalDir, "command");
+export async function listUserCommands(projects: readonly ProjectCommandSource[]): Promise<UserCommandGroup[]> {
+	const globalDir = join(homedir(), ".claude", "commands");
+	const globalCmds = await readMdFiles(globalDir, "command");
 
-  const groups: UserCommandGroup[] = [];
-  if (globalCmds.length > 0) {
-    groups.push({
-      source: "global",
-      sourceName: "Global",
-      commands: globalCmds,
-    });
-  }
+	const groups: UserCommandGroup[] = [];
+	if (globalCmds.length > 0) {
+		groups.push({
+			source: "global",
+			sourceName: "Global",
+			commands: globalCmds,
+		});
+	}
 
-  for (const project of projects) {
-    if (project.projectPath === null) continue;
-    const cmds = await readMdFiles(projectCommandsDir(project.projectPath), "command");
-    if (cmds.length > 0) {
-      const projectName = await resolveProjectName(project.id, project.projectPath);
-      groups.push({ source: project.id, sourceName: projectName, commands: cmds });
-    }
-  }
+	for (const project of projects) {
+		if (project.projectPath === null) continue;
+		const cmds = await readMdFiles(projectCommandsDir(project.projectPath), "command");
+		if (cmds.length > 0) {
+			const projectName = await resolveProjectName(project.id, project.projectPath);
+			groups.push({source: project.id, sourceName: projectName, commands: cmds});
+		}
+	}
 
-  return groups;
+	return groups;
 }
 
-export async function readPluginFileContent(
-  installPath: string,
-  ...pathSegments: string[]
-): Promise<string | null> {
-  for (const seg of pathSegments) {
-    if (seg.includes("..")) return null;
-  }
+export async function readPluginFileContent(installPath: string, ...pathSegments: string[]): Promise<string | null> {
+	for (const seg of pathSegments) {
+		if (seg.includes("..")) return null;
+	}
 
-  try {
-    const filePath = join(installPath, ...pathSegments);
-    return await readFile(filePath, "utf-8");
-  } catch {
-    return null;
-  }
+	try {
+		const filePath = join(installPath, ...pathSegments);
+		return await readFile(filePath, "utf-8");
+	} catch {
+		return null;
+	}
 }
 
 export async function readUserCommandContent(
-  source: string,
-  filename: string,
-  projectPath: string | null = null,
+	source: string,
+	filename: string,
+	projectPath: string | null = null,
 ): Promise<string | null> {
-  if (filename.includes("..") || filename.includes("/") || !filename.endsWith(".md")) return null;
+	if (filename.includes("..") || filename.includes("/") || !filename.endsWith(".md")) return null;
 
-  let dir: string;
-  if (source === "global") {
-    dir = join(homedir(), ".claude", "commands");
-  } else {
-    if (source.includes("..") || source.includes("/") || projectPath === null) return null;
-    dir = projectCommandsDir(projectPath);
-  }
+	let dir: string;
+	if (source === "global") {
+		dir = join(homedir(), ".claude", "commands");
+	} else {
+		if (source.includes("..") || source.includes("/") || projectPath === null) return null;
+		dir = projectCommandsDir(projectPath);
+	}
 
-  const filePath = resolve(dir, filename);
-  if (dirname(filePath) !== resolve(dir)) return null;
+	const filePath = resolve(dir, filename);
+	if (dirname(filePath) !== resolve(dir)) return null;
 
-  try {
-    return await readFile(filePath, "utf-8");
-  } catch {
-    return null;
-  }
+	try {
+		return await readFile(filePath, "utf-8");
+	} catch {
+		return null;
+	}
 }
 
 const EXCLUDED_DIRS = new Set(["node_modules", ".git", "__pycache__", ".venv"]);
 
-export async function scanPluginTree(
-  rootPath: string,
-  relativePath = "",
-): Promise<FileTreeNode | null> {
-  let entries: string[];
-  try {
-    entries = await readdir(rootPath);
-  } catch {
-    return null;
-  }
+export async function scanPluginTree(rootPath: string, relativePath = ""): Promise<FileTreeNode | null> {
+	let entries: string[];
+	try {
+		entries = await readdir(rootPath);
+	} catch {
+		return null;
+	}
 
-  const children: FileTreeNode[] = [];
+	const children: FileTreeNode[] = [];
 
-  for (const entry of entries) {
-    const entryPath = join(rootPath, entry);
-    const entryRelative = relativePath ? `${relativePath}/${entry}` : entry;
+	for (const entry of entries) {
+		const entryPath = join(rootPath, entry);
+		const entryRelative = relativePath ? `${relativePath}/${entry}` : entry;
 
-    try {
-      const s = await lstat(entryPath);
-      if (s.isSymbolicLink()) continue;
-      if (s.isDirectory()) {
-        if (EXCLUDED_DIRS.has(entry)) continue;
-        const subtree = await scanPluginTree(entryPath, entryRelative);
-        if (subtree) {
-          children.push(subtree);
-        }
-      } else {
-        children.push({ path: entryRelative });
-      }
-    } catch {
-      // skip unreadable entries
-    }
-  }
+		try {
+			const s = await lstat(entryPath);
+			if (s.isSymbolicLink()) continue;
+			if (s.isDirectory()) {
+				if (EXCLUDED_DIRS.has(entry)) continue;
+				const subtree = await scanPluginTree(entryPath, entryRelative);
+				if (subtree) {
+					children.push(subtree);
+				}
+			} else {
+				children.push({path: entryRelative});
+			}
+		} catch {
+			// skip unreadable entries
+		}
+	}
 
-  // Sort: directories first, then files, alphabetically within each group
-  children.sort((a, b) => {
-    const aDir = a.children !== undefined;
-    const bDir = b.children !== undefined;
-    if (aDir !== bDir) return aDir ? -1 : 1;
-    return a.path.localeCompare(b.path);
-  });
+	// Sort: directories first, then files, alphabetically within each group
+	children.sort((a, b) => {
+		const aDir = a.children !== undefined;
+		const bDir = b.children !== undefined;
+		if (aDir !== bDir) return aDir ? -1 : 1;
+		return a.path.localeCompare(b.path);
+	});
 
-  return { path: relativePath, children };
+	return {path: relativePath, children};
 }

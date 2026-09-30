@@ -1,39 +1,33 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  createMemoryHistory,
-  createRootRoute,
-  createRoute,
-  createRouter,
-  RouterProvider,
-} from "@tanstack/react-router";
-import type { Decorator } from "@storybook/react-vite";
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
+import {createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider} from "@tanstack/react-router";
+import type {Decorator} from "@storybook/react-vite";
 
-import { ToastProvider } from "../../components/toast";
+import {ToastProvider} from "../../components/toast";
 
 export function createStoryRouter(initialPath = "/") {
-  const rootRoute = createRootRoute();
-  const catchAllRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: "/$",
-    component: () => null,
-  });
-  rootRoute.addChildren([catchAllRoute]);
+	const rootRoute = createRootRoute();
+	const catchAllRoute = createRoute({
+		getParentRoute: () => rootRoute,
+		path: "/$",
+		component: () => null,
+	});
+	rootRoute.addChildren([catchAllRoute]);
 
-  return createRouter({
-    routeTree: rootRoute,
-    history: createMemoryHistory({ initialEntries: [initialPath] }),
-  });
+	return createRouter({
+		routeTree: rootRoute,
+		history: createMemoryHistory({initialEntries: [initialPath]}),
+	});
 }
 
-export function createStoryQueryClient(options?: { enabled: boolean }) {
-  const queries: Record<string, unknown> = {
-    retry: false,
-    staleTime: Infinity,
-  };
-  if (options) {
-    queries["enabled"] = options.enabled;
-  }
-  return new QueryClient({ defaultOptions: { queries } });
+export function createStoryQueryClient(options?: {enabled: boolean}) {
+	const queries: Record<string, unknown> = {
+		retry: false,
+		staleTime: Infinity,
+	};
+	if (options) {
+		queries["enabled"] = options.enabled;
+	}
+	return new QueryClient({defaultOptions: {queries}});
 }
 
 /**
@@ -42,24 +36,24 @@ export function createStoryQueryClient(options?: { enabled: boolean }) {
  * use withRouterAndQuery as a decorator for simpler cases.
  */
 export function StoryWrapper({
-  queryClient,
-  initialPath = "/",
-  children,
+	queryClient,
+	initialPath = "/",
+	children,
 }: {
-  queryClient?: QueryClient;
-  initialPath?: string;
-  children: React.ReactNode;
+	queryClient?: QueryClient;
+	initialPath?: string;
+	children: React.ReactNode;
 }) {
-  const router = createStoryRouter(initialPath);
-  const qc = queryClient ?? createStoryQueryClient();
+	const router = createStoryRouter(initialPath);
+	const qc = queryClient ?? createStoryQueryClient();
 
-  return (
-    <QueryClientProvider client={qc}>
-      <ToastProvider>
-        <RouterProvider router={router} defaultComponent={() => <>{children}</>} />
-      </ToastProvider>
-    </QueryClientProvider>
-  );
+	return (
+		<QueryClientProvider client={qc}>
+			<ToastProvider>
+				<RouterProvider router={router} defaultComponent={() => <>{children}</>} />
+			</ToastProvider>
+		</QueryClientProvider>
+	);
 }
 
 /**
@@ -68,14 +62,14 @@ export function StoryWrapper({
  * need this wrapper to render in Storybook.
  */
 export const withRouterAndQuery: Decorator = (Story) => {
-  const router = createStoryRouter();
-  const queryClient = createStoryQueryClient();
+	const router = createStoryRouter();
+	const queryClient = createStoryQueryClient();
 
-  return (
-    <QueryClientProvider client={queryClient}>
-      <ToastProvider>
-        <RouterProvider router={router} defaultComponent={() => <Story />} />
-      </ToastProvider>
-    </QueryClientProvider>
-  );
+	return (
+		<QueryClientProvider client={queryClient}>
+			<ToastProvider>
+				<RouterProvider router={router} defaultComponent={() => <Story />} />
+			</ToastProvider>
+		</QueryClientProvider>
+	);
 };

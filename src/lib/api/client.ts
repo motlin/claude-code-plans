@@ -1,13 +1,13 @@
-import type { z } from "zod";
+import type {z} from "zod";
 
 export class ApiResponseError extends Error {
-  readonly status: number;
+	readonly status: number;
 
-  constructor(url: string, response: Response) {
-    super(`${url} -> ${response.status} ${response.statusText}`);
-    this.name = "ApiResponseError";
-    this.status = response.status;
-  }
+	constructor(url: string, response: Response) {
+		super(`${url} -> ${response.status} ${response.statusText}`);
+		this.name = "ApiResponseError";
+		this.status = response.status;
+	}
 }
 
 /**
@@ -17,22 +17,18 @@ export class ApiResponseError extends Error {
  * environment variable, falling back to 7526 (the project's default).
  */
 export function resolveUrl(url: string): string {
-  if (typeof window !== "undefined") return url;
-  if (/^https?:\/\//.test(url)) return url;
-  const port = process.env["PORT"] ?? "7526";
-  return `http://127.0.0.1:${port}${url}`;
+	if (typeof window !== "undefined") return url;
+	if (/^https?:\/\//.test(url)) return url;
+	const port = process.env["PORT"] ?? "7526";
+	return `http://127.0.0.1:${port}${url}`;
 }
 
-async function parseOk<S extends z.ZodTypeAny>(
-  url: string,
-  schema: S,
-  res: Response,
-): Promise<z.infer<S>> {
-  if (!res.ok) {
-    throw new ApiResponseError(url, res);
-  }
-  const json: unknown = await res.json();
-  return schema.parse(json) as z.infer<S>;
+async function parseOk<S extends z.ZodTypeAny>(url: string, schema: S, res: Response): Promise<z.infer<S>> {
+	if (!res.ok) {
+		throw new ApiResponseError(url, res);
+	}
+	const json: unknown = await res.json();
+	return schema.parse(json) as z.infer<S>;
 }
 
 /**
@@ -44,12 +40,12 @@ async function parseOk<S extends z.ZodTypeAny>(
  * react-query treats them as query errors.
  */
 export async function apiFetch<S extends z.ZodTypeAny>(
-  url: string,
-  schema: S,
-  init?: RequestInit,
+	url: string,
+	schema: S,
+	init?: RequestInit,
 ): Promise<z.infer<S>> {
-  const res = await fetch(resolveUrl(url), { credentials: "same-origin", ...init });
-  return parseOk(url, schema, res);
+	const res = await fetch(resolveUrl(url), {credentials: "same-origin", ...init});
+	return parseOk(url, schema, res);
 }
 
 /**
@@ -60,13 +56,13 @@ export async function apiFetch<S extends z.ZodTypeAny>(
  * and schema-validation failures still throw.
  */
 export async function apiFetchOptional<S extends z.ZodTypeAny>(
-  url: string,
-  schema: S,
-  init?: RequestInit,
+	url: string,
+	schema: S,
+	init?: RequestInit,
 ): Promise<z.infer<S> | null> {
-  const res = await fetch(resolveUrl(url), { credentials: "same-origin", ...init });
-  if (res.status === 404) {
-    return null;
-  }
-  return parseOk(url, schema, res);
+	const res = await fetch(resolveUrl(url), {credentials: "same-origin", ...init});
+	if (res.status === 404) {
+		return null;
+	}
+	return parseOk(url, schema, res);
 }

@@ -1,8 +1,8 @@
-import { useSyncExternalStore, type ReactNode } from "react";
-import { createPortal } from "react-dom";
+import {useSyncExternalStore, type ReactNode} from "react";
+import {createPortal} from "react-dom";
 
 function subscribeNever(): () => void {
-  return () => {};
+	return () => {};
 }
 
 /**
@@ -13,12 +13,12 @@ function subscribeNever(): () => void {
  *
  * Renders nothing during SSR and hydration, then portals on the client.
  */
-export function ViewportPortal({ children }: { children: ReactNode }) {
-  const isClient = useSyncExternalStore(
-    subscribeNever,
-    () => true,
-    () => false,
-  );
-  if (!isClient) return null;
-  return createPortal(children, document.body);
+export function ViewportPortal({children}: {children: ReactNode}) {
+	const isClient = useSyncExternalStore(
+		subscribeNever,
+		() => true,
+		() => false,
+	);
+	if (!isClient) return null;
+	return createPortal(children, document.body);
 }

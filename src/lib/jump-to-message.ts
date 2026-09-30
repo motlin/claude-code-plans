@@ -4,14 +4,14 @@ const HIGHLIGHT_DURATION_MS = 2_000;
 export const TRANSCRIPT_JUMP_REQUEST_EVENT = "transcript-jump-request";
 
 export interface TranscriptJumpRequestEvent extends CustomEvent<number> {
-  type: typeof TRANSCRIPT_JUMP_REQUEST_EVENT;
+	type: typeof TRANSCRIPT_JUMP_REQUEST_EVENT;
 }
 
 function flash(element: Element): true {
-  element.scrollIntoView({ block: "center", behavior: "smooth" });
-  element.classList.add("message-highlight");
-  setTimeout(() => element.classList.remove("message-highlight"), HIGHLIGHT_DURATION_MS);
-  return true;
+	element.scrollIntoView({block: "center", behavior: "smooth"});
+	element.classList.add("message-highlight");
+	setTimeout(() => element.classList.remove("message-highlight"), HIGHLIGHT_DURATION_MS);
+	return true;
 }
 
 /**
@@ -28,17 +28,15 @@ function flash(element: Element): true {
  * caller must not treat false as "close enough".
  */
 export function jumpToMessage(recordIndex: number): boolean {
-  for (let offset = 0; offset <= MAX_PRECEDING_INDICES; offset += 1) {
-    const candidateIndex = recordIndex - offset;
-    if (candidateIndex < 0) break;
+	for (let offset = 0; offset <= MAX_PRECEDING_INDICES; offset += 1) {
+		const candidateIndex = recordIndex - offset;
+		if (candidateIndex < 0) break;
 
-    const element = document.querySelector(`[data-record-index="${candidateIndex}"]`);
-    if (element) return flash(element);
-  }
+		const element = document.querySelector(`[data-record-index="${candidateIndex}"]`);
+		if (element) return flash(element);
+	}
 
-  window.dispatchEvent(
-    new CustomEvent<number>(TRANSCRIPT_JUMP_REQUEST_EVENT, { detail: recordIndex }),
-  );
+	window.dispatchEvent(new CustomEvent<number>(TRANSCRIPT_JUMP_REQUEST_EVENT, {detail: recordIndex}));
 
-  return false;
+	return false;
 }

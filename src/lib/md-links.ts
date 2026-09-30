@@ -1,4 +1,4 @@
-import { toMdSlug } from "./md-slug";
+import {toMdSlug} from "./md-slug";
 
 /**
  * Build the in-app URL for a `.md` file that lives alongside the one currently
@@ -7,7 +7,7 @@ import { toMdSlug } from "./md-slug";
  * because those routes are keyed by slug, not by the on-disk name.
  */
 export function mdFileHref(basePath: string, filename: string): string {
-  return `${basePath}/${encodeURIComponent(toMdSlug(filename))}`;
+	return `${basePath}/${encodeURIComponent(toMdSlug(filename))}`;
 }
 
 /** Anything with a scheme (`https:`, `mailto:`) or a protocol-relative prefix. */
@@ -23,16 +23,16 @@ const ABSOLUTE_RE = /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i;
  * leaves external links, absolute paths, and bare fragments untouched.
  */
 export function resolveRelativeMdHref(href: string, basePath: string): string | null {
-  if (!href || href.startsWith("#") || href.startsWith("/") || ABSOLUTE_RE.test(href)) return null;
+	if (!href || href.startsWith("#") || href.startsWith("/") || ABSOLUTE_RE.test(href)) return null;
 
-  const hashIndex = href.indexOf("#");
-  const path = hashIndex === -1 ? href : href.slice(0, hashIndex);
-  const hash = hashIndex === -1 ? "" : href.slice(hashIndex);
+	const hashIndex = href.indexOf("#");
+	const path = hashIndex === -1 ? href : href.slice(0, hashIndex);
+	const hash = hashIndex === -1 ? "" : href.slice(hashIndex);
 
-  const relative = path.startsWith("./") ? path.slice(2) : path;
-  // Memory directories are flat, so a link that traverses into another
-  // directory has no in-app route to point at.
-  if (!relative.endsWith(".md") || relative.includes("/") || relative.includes("?")) return null;
+	const relative = path.startsWith("./") ? path.slice(2) : path;
+	// Memory directories are flat, so a link that traverses into another
+	// directory has no in-app route to point at.
+	if (!relative.endsWith(".md") || relative.includes("/") || relative.includes("?")) return null;
 
-  return `${mdFileHref(basePath, relative)}${hash}`;
+	return `${mdFileHref(basePath, relative)}${hash}`;
 }

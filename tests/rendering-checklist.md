@@ -6,13 +6,9 @@ Use this checklist when auditing a category of Claude Code rendering features. T
 
 - Use `claude.ai/code` as the primary parity reference, especially for transcripts and tool-call rendering.
 - Use `claude.ai/chat` as the secondary reference for Markdown rendering and message chrome.
-- Treat `claude.ai/cowork` as permanently out of scope for browser-rendering parity. The
-  `/cowork/agent` route exposes a desktop-app `Dispatch` frame but no transcript in a browser, while
-  `/cowork` redirects to the Cowork marketing page. The 2026-08-10 browser evidence is recorded in
-  `.llm/ui-sync/upstream/cowork-status.json`.
+- Treat `claude.ai/cowork` as permanently out of scope for browser-rendering parity. The `/cowork/agent` route exposes a desktop-app `Dispatch` frame but no transcript in a browser, while `/cowork` redirects to the Cowork marketing page. The 2026-08-10 browser evidence is recorded in `.llm/ui-sync/upstream/cowork-status.json`.
 
-Cowork parity would require automating the Claude macOS desktop app. Track that separately as a
-desktop-tooling task rather than as part of a browser-rendering audit.
+Cowork parity would require automating the Claude macOS desktop app. Track that separately as a desktop-tooling task rather than as part of a browser-rendering audit.
 
 ## Setup
 

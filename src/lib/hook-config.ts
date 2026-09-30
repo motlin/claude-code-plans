@@ -9,8 +9,8 @@
  * notifications, SSE broadcasts, and mapping sessions to terminal panes.
  */
 
-import { KNOWN_HOOK_EVENTS } from "./hook-events";
-import type { HookEventName } from "./hook-events";
+import {KNOWN_HOOK_EVENTS} from "./hook-events";
+import type {HookEventName} from "./hook-events";
 
 export const DEFAULT_HOOK_PORT = 7526;
 
@@ -23,17 +23,17 @@ export const DEFAULT_HOOK_PORT = 7526;
 export const HOOK_EVENT_NAMES = KNOWN_HOOK_EVENTS;
 
 interface HookEntry {
-  type: "command";
-  command: string;
+	type: "command";
+	command: string;
 }
 
 interface HookMatcher {
-  matcher?: string;
-  hooks: HookEntry[];
+	matcher?: string;
+	hooks: HookEntry[];
 }
 
 interface HooksConfig {
-  hooks: Record<string, HookMatcher[]>;
+	hooks: Record<string, HookMatcher[]>;
 }
 
 /**
@@ -51,66 +51,66 @@ interface HooksConfig {
  * `HookEventEnvelope`.
  */
 export const HOOK_PAYLOAD_JQ_FILTER =
-  '. + {claude_env: ($ENV | with_entries(select(.key | startswith("CLAUDE") or . == "TMUX" or . == "TMUX_PANE" or . == "HERDR_PANE_ID" or . == "HERDR_WORKSPACE_ID" or . == "HERDR_TAB_ID" or . == "HERDR_SOCKET_PATH" or . == "HERDR_ENV")))}';
+	'. + {claude_env: ($ENV | with_entries(select(.key | startswith("CLAUDE") or . == "TMUX" or . == "TMUX_PANE" or . == "HERDR_PANE_ID" or . == "HERDR_WORKSPACE_ID" or . == "HERDR_TAB_ID" or . == "HERDR_SOCKET_PATH" or . == "HERDR_ENV")))}';
 
 function curlPost(port: number): string {
-  // --connect-timeout 0.1 + `|| true` guarantee the hook never blocks Claude:
-  // if the viewer isn't running the curl returns immediately and the shell
-  // exits 0 regardless.
-  return `jq -c '${HOOK_PAYLOAD_JQ_FILTER}' | curl -sX POST --connect-timeout 0.1 http://localhost:${port}/api/hook -H 'Content-Type: application/json' --data-binary @- >/dev/null 2>&1 || true`;
+	// --connect-timeout 0.1 + `|| true` guarantee the hook never blocks Claude:
+	// if the viewer isn't running the curl returns immediately and the shell
+	// exits 0 regardless.
+	return `jq -c '${HOOK_PAYLOAD_JQ_FILTER}' | curl -sX POST --connect-timeout 0.1 http://localhost:${port}/api/hook -H 'Content-Type: application/json' --data-binary @- >/dev/null 2>&1 || true`;
 }
 
 function curlContextBrief(port: number): string {
-  // This response must reach hook stdout because Claude injects it as session
-  // context. URL encoding preserves cwd paths containing spaces or punctuation.
-  return `curl -s --get --connect-timeout 0.5 --data-urlencode "cwd=$(pwd)" "http://localhost:${port}/api/context-brief" 2>/dev/null || true`;
+	// This response must reach hook stdout because Claude injects it as session
+	// context. URL encoding preserves cwd paths containing spaces or punctuation.
+	return `curl -s --get --connect-timeout 0.5 --data-urlencode "cwd=$(pwd)" "http://localhost:${port}/api/context-brief" 2>/dev/null || true`;
 }
 
 interface GenerateOptions {
-  port?: number;
-  includeContextBrief?: boolean;
+	port?: number;
+	includeContextBrief?: boolean;
 }
 
 export function generateHooksConfig(options?: GenerateOptions): HooksConfig {
-  const port = options?.port ?? DEFAULT_HOOK_PORT;
-  const hooks: Record<string, HookMatcher[]> = {};
-  const command = curlPost(port);
+	const port = options?.port ?? DEFAULT_HOOK_PORT;
+	const hooks: Record<string, HookMatcher[]> = {};
+	const command = curlPost(port);
 
-  for (const eventName of HOOK_EVENT_NAMES) {
-    hooks[eventName] = [
-      {
-        hooks: [
-          {
-            type: "command",
-            command,
-          },
-        ],
-      },
-    ];
-  }
+	for (const eventName of HOOK_EVENT_NAMES) {
+		hooks[eventName] = [
+			{
+				hooks: [
+					{
+						type: "command",
+						command,
+					},
+				],
+			},
+		];
+	}
 
-  if (options?.includeContextBrief === true) {
-    const sessionStartHooks = hooks["SessionStart"];
-    if (!sessionStartHooks) {
-      throw new Error("SessionStart must be a known hook event");
-    }
-    sessionStartHooks.push({
-      matcher: "startup|resume",
-      hooks: [
-        {
-          type: "command",
-          command: curlContextBrief(port),
-        },
-      ],
-    });
-  }
+	if (options?.includeContextBrief === true) {
+		const sessionStartHooks = hooks["SessionStart"];
+		if (!sessionStartHooks) {
+			throw new Error("SessionStart must be a known hook event");
+		}
+		sessionStartHooks.push({
+			matcher: "startup|resume",
+			hooks: [
+				{
+					type: "command",
+					command: curlContextBrief(port),
+				},
+			],
+		});
+	}
 
-  return { hooks };
+	return {hooks};
 }
 
 /** A hook matcher as it appears in an already-written settings.json. */
 interface InstalledHookMatcher {
-  hooks?: Array<{ command?: string }>;
+	hooks?: Array<{command?: string}>;
 }
 
 /**
@@ -125,18 +125,18 @@ interface InstalledHookMatcher {
  * without `Notification`, and says so.
  */
 export function missingHookEvents(
-  installed: Record<string, unknown> | undefined,
-  options?: GenerateOptions,
+	installed: Record<string, unknown> | undefined,
+	options?: GenerateOptions,
 ): HookEventName[] {
-  const desired = generateHooksConfig(options);
-  return HOOK_EVENT_NAMES.filter((eventName) => {
-    const entries = installed?.[eventName];
-    if (!Array.isArray(entries)) return true;
-    const desiredCommand = desired.hooks[eventName]?.[0]?.hooks[0]?.command;
-    return !entries.some((entry) =>
-      (entry as InstalledHookMatcher).hooks?.some((hook) => hook.command === desiredCommand),
-    );
-  });
+	const desired = generateHooksConfig(options);
+	return HOOK_EVENT_NAMES.filter((eventName) => {
+		const entries = installed?.[eventName];
+		if (!Array.isArray(entries)) return true;
+		const desiredCommand = desired.hooks[eventName]?.[0]?.hooks[0]?.command;
+		return !entries.some((entry) =>
+			(entry as InstalledHookMatcher).hooks?.some((hook) => hook.command === desiredCommand),
+		);
+	});
 }
 
 /**
@@ -144,5 +144,5 @@ export function missingHookEvents(
  * suitable for copying into ~/.claude/settings.json.
  */
 export function generateHooksJson(options?: GenerateOptions): string {
-  return JSON.stringify(generateHooksConfig(options), null, 2);
+	return JSON.stringify(generateHooksConfig(options), null, 2);
 }

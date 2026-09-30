@@ -1,14 +1,14 @@
-import type { ToolRendererProps } from "./types";
-import { KeyValueCard } from "./shared";
+import type {ToolRendererProps} from "./types";
+import {KeyValueCard} from "./shared";
 
-export function ToolSearchRenderer({ toolCall }: ToolRendererProps) {
-  const query = (toolCall.input["query"] as string) ?? "";
-  const maxResults = toolCall.input["max_results"] as number | undefined;
-  const { result, isError } = toolCall;
+export function ToolSearchRenderer({toolCall}: ToolRendererProps) {
+	const query = (toolCall.input["query"] as string) ?? "";
+	const maxResults = toolCall.input["max_results"] as number | undefined;
+	const {result, isError} = toolCall;
 
-  const params: Array<{ key: string; value: string }> = [];
-  if (query) params.push({ key: "query", value: query });
-  if (maxResults !== undefined) params.push({ key: "max_results", value: String(maxResults) });
+	const params: Array<{key: string; value: string}> = [];
+	if (query) params.push({key: "query", value: query});
+	if (maxResults !== undefined) params.push({key: "max_results", value: String(maxResults)});
 
-  return <KeyValueCard isError={isError} params={params} result={result ?? undefined} />;
+	return <KeyValueCard isError={isError} params={params} result={result ?? undefined} />;
 }

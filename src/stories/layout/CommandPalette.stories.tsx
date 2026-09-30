@@ -1,113 +1,113 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { RouterProvider } from "@tanstack/react-router";
-import { recentSessionsQueryOptions, type SessionListItem } from "../../lib/api/sessions";
-import { CommandPalette, PALETTE_RECENT_LIMIT } from "../../components/command-palette";
-import { createStoryRouter } from "../sidebar/decorators";
+import type {Meta, StoryObj} from "@storybook/react-vite";
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
+import {RouterProvider} from "@tanstack/react-router";
+import {recentSessionsQueryOptions, type SessionListItem} from "../../lib/api/sessions";
+import {CommandPalette, PALETTE_RECENT_LIMIT} from "../../components/command-palette";
+import {createStoryRouter} from "../sidebar/decorators";
 
 const now = Date.now();
 
-const sampleRecent: { sessions: SessionListItem[]; nextCursor: null } = {
-  sessions: [
-    {
-      id: "sess-1",
-      title: "Refactor auth module",
-      summary: undefined,
-      mtime: new Date(now).toISOString(),
-      created: new Date(now - 7_200_000).toISOString(),
-      project: "/users/dev/project-a",
-      projectName: "project-a",
-      messageCount: 24,
-      gitBranch: "main" as string | undefined,
-      archived: false,
-      state: "unknown" as const,
-      bucket: "done",
-      liveAgentCount: 0,
-      unseen: false,
-      blockedSince: null,
-    },
-    {
-      id: "sess-2",
-      title: "Fix database migration",
-      summary: undefined,
-      mtime: new Date(now - 3_600_000).toISOString(),
-      created: new Date(now - 14_400_000).toISOString(),
-      project: "/users/dev/project-a",
-      projectName: "project-a",
-      messageCount: 12,
-      gitBranch: "fix/db" as string | undefined,
-      archived: false,
-      state: "unknown" as const,
-      bucket: "blocked",
-      liveAgentCount: 0,
-      unseen: false,
-      blockedSince: null,
-    },
-    {
-      id: "sess-3",
-      title: "Add unit tests for parser",
-      summary: undefined,
-      mtime: new Date(now - 86_400_000).toISOString(),
-      created: new Date(now - 172_800_000).toISOString(),
-      project: "/users/dev/project-b",
-      projectName: "project-b",
-      messageCount: 8,
-      gitBranch: undefined,
-      archived: false,
-      state: "unknown" as const,
-      bucket: "done",
-      liveAgentCount: 0,
-      unseen: false,
-      blockedSince: null,
-    },
-  ],
-  nextCursor: null,
+const sampleRecent: {sessions: SessionListItem[]; nextCursor: null} = {
+	sessions: [
+		{
+			id: "sess-1",
+			title: "Refactor auth module",
+			summary: undefined,
+			mtime: new Date(now).toISOString(),
+			created: new Date(now - 7_200_000).toISOString(),
+			project: "/users/dev/project-a",
+			projectName: "project-a",
+			messageCount: 24,
+			gitBranch: "main" as string | undefined,
+			archived: false,
+			state: "unknown" as const,
+			bucket: "done",
+			liveAgentCount: 0,
+			unseen: false,
+			blockedSince: null,
+		},
+		{
+			id: "sess-2",
+			title: "Fix database migration",
+			summary: undefined,
+			mtime: new Date(now - 3_600_000).toISOString(),
+			created: new Date(now - 14_400_000).toISOString(),
+			project: "/users/dev/project-a",
+			projectName: "project-a",
+			messageCount: 12,
+			gitBranch: "fix/db" as string | undefined,
+			archived: false,
+			state: "unknown" as const,
+			bucket: "blocked",
+			liveAgentCount: 0,
+			unseen: false,
+			blockedSince: null,
+		},
+		{
+			id: "sess-3",
+			title: "Add unit tests for parser",
+			summary: undefined,
+			mtime: new Date(now - 86_400_000).toISOString(),
+			created: new Date(now - 172_800_000).toISOString(),
+			project: "/users/dev/project-b",
+			projectName: "project-b",
+			messageCount: 8,
+			gitBranch: undefined,
+			archived: false,
+			state: "unknown" as const,
+			bucket: "done",
+			liveAgentCount: 0,
+			unseen: false,
+			blockedSince: null,
+		},
+	],
+	nextCursor: null,
 };
 
 function createSeededQueryClient(data: typeof sampleRecent | undefined) {
-  const qc = new QueryClient({
-    defaultOptions: { queries: { retry: false, staleTime: Infinity } },
-  });
-  if (data) {
-    qc.setQueryData(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT).queryKey, data);
-  }
-  return qc;
+	const qc = new QueryClient({
+		defaultOptions: {queries: {retry: false, staleTime: Infinity}},
+	});
+	if (data) {
+		qc.setQueryData(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT).queryKey, data);
+	}
+	return qc;
 }
 
 const meta = {
-  title: "Layout/CommandPalette",
-  component: CommandPalette,
+	title: "Layout/CommandPalette",
+	component: CommandPalette,
 } satisfies Meta<typeof CommandPalette>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const OpenWithItems: Story = {
-  args: { open: true, onOpenChange: () => {} },
-  decorators: [
-    (Story) => {
-      const router = createStoryRouter();
-      const qc = createSeededQueryClient(sampleRecent);
-      return (
-        <QueryClientProvider client={qc}>
-          <RouterProvider router={router} defaultComponent={() => <Story />} />
-        </QueryClientProvider>
-      );
-    },
-  ],
+	args: {open: true, onOpenChange: () => {}},
+	decorators: [
+		(Story) => {
+			const router = createStoryRouter();
+			const qc = createSeededQueryClient(sampleRecent);
+			return (
+				<QueryClientProvider client={qc}>
+					<RouterProvider router={router} defaultComponent={() => <Story />} />
+				</QueryClientProvider>
+			);
+		},
+	],
 };
 
 export const NoResults: Story = {
-  args: { open: true, onOpenChange: () => {} },
-  decorators: [
-    (Story) => {
-      const router = createStoryRouter();
-      const qc = createSeededQueryClient({ sessions: [], nextCursor: null });
-      return (
-        <QueryClientProvider client={qc}>
-          <RouterProvider router={router} defaultComponent={() => <Story />} />
-        </QueryClientProvider>
-      );
-    },
-  ],
+	args: {open: true, onOpenChange: () => {}},
+	decorators: [
+		(Story) => {
+			const router = createStoryRouter();
+			const qc = createSeededQueryClient({sessions: [], nextCursor: null});
+			return (
+				<QueryClientProvider client={qc}>
+					<RouterProvider router={router} defaultComponent={() => <Story />} />
+				</QueryClientProvider>
+			);
+		},
+	],
 };

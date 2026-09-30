@@ -1,7 +1,7 @@
-import { z } from "zod";
+import {z} from "zod";
 
-import { parseDiffScope } from "./api/session-diff";
-import { EMPTY_FILE_TABS, type FileTabsState, FileTabsStateSchema } from "./file-tabs";
+import {parseDiffScope} from "./api/session-diff";
+import {EMPTY_FILE_TABS, type FileTabsState, FileTabsStateSchema} from "./file-tabs";
 
 /**
  * Pure layout engine for the session tiling pane host, modelled on
@@ -12,15 +12,15 @@ import { EMPTY_FILE_TABS, type FileTabsState, FileTabsStateSchema } from "./file
  */
 
 const PANE_KINDS = [
-  "files",
-  "links",
-  "changes",
-  "terminal",
-  "background-tasks",
-  "plan",
-  "artifacts",
-  "subagents",
-  "side-chat",
+	"files",
+	"links",
+	"changes",
+	"terminal",
+	"background-tasks",
+	"plan",
+	"artifacts",
+	"subagents",
+	"side-chat",
 ] as const;
 
 export const PaneKindSchema = z.enum(PANE_KINDS);
@@ -33,64 +33,64 @@ export type Direction = z.infer<typeof DirectionSchema>;
 export type MoveDirection = "left" | "right" | "top" | "bottom";
 
 export interface TileNode {
-  kind: "tile";
-  tileId: TileId;
-  flex: number;
+	kind: "tile";
+	tileId: TileId;
+	flex: number;
 }
 
 export interface StackNode {
-  kind: "stack";
-  direction: Direction;
-  flex: number;
-  children: LayoutNode[];
+	kind: "stack";
+	direction: Direction;
+	flex: number;
+	children: LayoutNode[];
 }
 
 export type LayoutNode = TileNode | StackNode;
 
 export interface PaneLayoutState {
-  root: StackNode;
-  expanded: PaneKind | null;
-  focused: TileId;
+	root: StackNode;
+	expanded: PaneKind | null;
+	focused: TileId;
 }
 
 /** Gap between tiles (upstream `--tiles-gap`). */
 const TILE_GAP_PX = 12;
 /** Minimum tile sizes along either axis. */
-const MIN_TILE_SIZE_PX = { chat: 320, pane: 280 } as const;
+const MIN_TILE_SIZE_PX = {chat: 320, pane: 280} as const;
 
 const FlexSchema = z.number().positive().finite();
 
 const TileNodeSchema = z.strictObject({
-  kind: z.literal("tile"),
-  tileId: TileIdSchema,
-  flex: FlexSchema,
+	kind: z.literal("tile"),
+	tileId: TileIdSchema,
+	flex: FlexSchema,
 });
 
 const StackNodeSchema: z.ZodType<StackNode> = z.strictObject({
-  kind: z.literal("stack"),
-  direction: DirectionSchema,
-  flex: FlexSchema,
-  children: z.array(z.lazy(() => LayoutNodeSchema)).min(1),
+	kind: z.literal("stack"),
+	direction: DirectionSchema,
+	flex: FlexSchema,
+	children: z.array(z.lazy(() => LayoutNodeSchema)).min(1),
 });
 
 const LayoutNodeSchema: z.ZodType<LayoutNode> = z.union([TileNodeSchema, StackNodeSchema]);
 
 const PaneLayoutShape = {
-  root: StackNodeSchema,
-  expanded: PaneKindSchema.nullable(),
-  focused: TileIdSchema,
+	root: StackNodeSchema,
+	expanded: PaneKindSchema.nullable(),
+	focused: TileIdSchema,
 };
 
 function checkLayout(state: PaneLayoutState, ctx: z.RefinementCtx): void {
-  const ids = tileIds(state.root);
-  if (new Set(ids).size !== ids.length) ctx.addIssue({ code: "custom", message: "duplicate tile" });
-  if (!ids.includes("chat")) ctx.addIssue({ code: "custom", message: "missing chat tile" });
-  if (state.expanded !== null && !ids.includes(state.expanded)) {
-    ctx.addIssue({ code: "custom", message: "expanded pane is not open" });
-  }
-  if (!ids.includes(state.focused)) {
-    ctx.addIssue({ code: "custom", message: "focused tile is not open" });
-  }
+	const ids = tileIds(state.root);
+	if (new Set(ids).size !== ids.length) ctx.addIssue({code: "custom", message: "duplicate tile"});
+	if (!ids.includes("chat")) ctx.addIssue({code: "custom", message: "missing chat tile"});
+	if (state.expanded !== null && !ids.includes(state.expanded)) {
+		ctx.addIssue({code: "custom", message: "expanded pane is not open"});
+	}
+	if (!ids.includes(state.focused)) {
+		ctx.addIssue({code: "custom", message: "focused tile is not open"});
+	}
 }
 
 export const PaneLayoutStateSchema = z.strictObject(PaneLayoutShape).superRefine(checkLayout);
@@ -103,12 +103,12 @@ const ChangesScopeSchema = z.string().refine((value) => parseDiffScope(value) !=
  * Files pane's open tabs (upstream's `fileTabsBySession`).
  */
 const PaneLayoutEntrySchema = z
-  .strictObject({
-    ...PaneLayoutShape,
-    changesScope: ChangesScopeSchema.optional(),
-    fileTabs: FileTabsStateSchema.optional(),
-  })
-  .superRefine(checkLayout);
+	.strictObject({
+		...PaneLayoutShape,
+		changesScope: ChangesScopeSchema.optional(),
+		fileTabs: FileTabsStateSchema.optional(),
+	})
+	.superRefine(checkLayout);
 
 type PaneLayoutEntry = z.infer<typeof PaneLayoutEntrySchema>;
 
@@ -119,203 +119,192 @@ const PaneLayoutStoreSchema = z.record(z.string(), PaneLayoutEntrySchema);
 export const PANE_LAYOUT_STORAGE_KEY = "ccb.paneLayout.v1";
 
 export function defaultPaneLayout(): PaneLayoutState {
-  return {
-    root: { kind: "stack", direction: "row", flex: 1, children: [tile("chat", 1)] },
-    expanded: null,
-    focused: "chat",
-  };
+	return {
+		root: {kind: "stack", direction: "row", flex: 1, children: [tile("chat", 1)]},
+		expanded: null,
+		focused: "chat",
+	};
 }
 
 function tile(tileId: TileId, flex: number): TileNode {
-  return { kind: "tile", tileId, flex };
+	return {kind: "tile", tileId, flex};
 }
 
 function round(value: number): number {
-  return Math.round(value * 1e6) / 1e6;
+	return Math.round(value * 1e6) / 1e6;
 }
 
 function sumFlex(nodes: LayoutNode[]): number {
-  return nodes.reduce((total, node) => total + node.flex, 0);
+	return nodes.reduce((total, node) => total + node.flex, 0);
 }
 
 function tileIds(node: LayoutNode): TileId[] {
-  return node.kind === "tile" ? [node.tileId] : node.children.flatMap(tileIds);
+	return node.kind === "tile" ? [node.tileId] : node.children.flatMap(tileIds);
 }
 
 function isOpen(state: PaneLayoutState, tileId: TileId): boolean {
-  return tileIds(state.root).includes(tileId);
+	return tileIds(state.root).includes(tileId);
 }
 
 function isChat(node: LayoutNode): boolean {
-  return node.kind === "tile" && node.tileId === "chat";
+	return node.kind === "tile" && node.tileId === "chat";
 }
 
 /** Drops empty stacks, collapses single-child stacks and flattens same-direction nesting. */
 function normalizeChildren(stack: StackNode): LayoutNode[] {
-  const result: LayoutNode[] = [];
-  for (const child of stack.children) {
-    if (child.kind === "tile") {
-      result.push(child);
-      continue;
-    }
-    const inner = normalizeChildren(child);
-    const [only] = inner;
-    if (only === undefined) continue;
-    if (inner.length === 1) {
-      result.push({ ...only, flex: child.flex });
-    } else if (child.direction === stack.direction) {
-      const total = sumFlex(inner);
-      result.push(
-        ...inner.map((node) => ({ ...node, flex: round((node.flex / total) * child.flex) })),
-      );
-    } else {
-      result.push({ ...child, children: inner });
-    }
-  }
-  return result;
+	const result: LayoutNode[] = [];
+	for (const child of stack.children) {
+		if (child.kind === "tile") {
+			result.push(child);
+			continue;
+		}
+		const inner = normalizeChildren(child);
+		const [only] = inner;
+		if (only === undefined) continue;
+		if (inner.length === 1) {
+			result.push({...only, flex: child.flex});
+		} else if (child.direction === stack.direction) {
+			const total = sumFlex(inner);
+			result.push(...inner.map((node) => ({...node, flex: round((node.flex / total) * child.flex)})));
+		} else {
+			result.push({...child, children: inner});
+		}
+	}
+	return result;
 }
 
 function normalizeRoot(root: StackNode): StackNode {
-  const children = normalizeChildren(root);
-  const [only] = children;
-  if (children.length === 1 && only !== undefined) {
-    return { ...root, children: [{ ...only, flex: 1 }] };
-  }
-  return { ...root, children };
+	const children = normalizeChildren(root);
+	const [only] = children;
+	if (children.length === 1 && only !== undefined) {
+		return {...root, children: [{...only, flex: 1}]};
+	}
+	return {...root, children};
 }
 
 function withoutTile(stack: StackNode, tileId: TileId): StackNode {
-  return {
-    ...stack,
-    children: stack.children
-      .filter((child) => child.kind !== "tile" || child.tileId !== tileId)
-      .map((child) => (child.kind === "stack" ? withoutTile(child, tileId) : child)),
-  };
+	return {
+		...stack,
+		children: stack.children
+			.filter((child) => child.kind !== "tile" || child.tileId !== tileId)
+			.map((child) => (child.kind === "stack" ? withoutTile(child, tileId) : child)),
+	};
 }
 
 function nodeAt(root: StackNode, path: readonly number[]): LayoutNode | undefined {
-  let node: LayoutNode | undefined = root;
-  for (const index of path) {
-    if (node?.kind !== "stack") return undefined;
-    node = node.children[index];
-  }
-  return node;
+	let node: LayoutNode | undefined = root;
+	for (const index of path) {
+		if (node?.kind !== "stack") return undefined;
+		node = node.children[index];
+	}
+	return node;
 }
 
 function replaceAt(root: StackNode, path: readonly number[], replacement: StackNode): StackNode {
-  const [head, ...rest] = path;
-  if (head === undefined) return replacement;
-  return {
-    ...root,
-    children: root.children.map((child, index) =>
-      index === head && child.kind === "stack" ? replaceAt(child, rest, replacement) : child,
-    ),
-  };
+	const [head, ...rest] = path;
+	if (head === undefined) return replacement;
+	return {
+		...root,
+		children: root.children.map((child, index) =>
+			index === head && child.kind === "stack" ? replaceAt(child, rest, replacement) : child,
+		),
+	};
 }
 
 function pathTo(node: LayoutNode, tileId: TileId): number[] | undefined {
-  if (node.kind === "tile") return node.tileId === tileId ? [] : undefined;
-  for (const [index, child] of node.children.entries()) {
-    const rest = pathTo(child, tileId);
-    if (rest !== undefined) return [index, ...rest];
-  }
-  return undefined;
+	if (node.kind === "tile") return node.tileId === tileId ? [] : undefined;
+	for (const [index, child] of node.children.entries()) {
+		const rest = pathTo(child, tileId);
+		if (rest !== undefined) return [index, ...rest];
+	}
+	return undefined;
 }
 
 export function openPane(state: PaneLayoutState, kind: PaneKind): PaneLayoutState {
-  if (isOpen(state, kind)) return focusPane(state, kind);
-  const lastSide = state.root.children.reduce(
-    (last, child, index) => (isChat(child) ? last : index),
-    -1,
-  );
-  const lastNode = state.root.children[lastSide];
-  if (lastNode === undefined) {
-    const children = [
-      ...state.root.children.map((child) => ({ ...child, flex: 2 })),
-      tile(kind, 1),
-    ];
-    return { root: { ...state.root, children }, expanded: null, focused: kind };
-  }
-  const children = [...state.root.children];
-  if (lastNode.kind === "tile") {
-    children[lastSide] = {
-      kind: "stack",
-      direction: "column",
-      flex: lastNode.flex,
-      children: [{ ...lastNode, flex: 1 }, tile(kind, 1)],
-    };
-  } else {
-    children.splice(lastSide + 1, 0, tile(kind, 1));
-  }
-  return { root: normalizeRoot({ ...state.root, children }), expanded: null, focused: kind };
+	if (isOpen(state, kind)) return focusPane(state, kind);
+	const lastSide = state.root.children.reduce((last, child, index) => (isChat(child) ? last : index), -1);
+	const lastNode = state.root.children[lastSide];
+	if (lastNode === undefined) {
+		const children = [...state.root.children.map((child) => ({...child, flex: 2})), tile(kind, 1)];
+		return {root: {...state.root, children}, expanded: null, focused: kind};
+	}
+	const children = [...state.root.children];
+	if (lastNode.kind === "tile") {
+		children[lastSide] = {
+			kind: "stack",
+			direction: "column",
+			flex: lastNode.flex,
+			children: [{...lastNode, flex: 1}, tile(kind, 1)],
+		};
+	} else {
+		children.splice(lastSide + 1, 0, tile(kind, 1));
+	}
+	return {root: normalizeRoot({...state.root, children}), expanded: null, focused: kind};
 }
 
 export function closePane(state: PaneLayoutState, kind: PaneKind): PaneLayoutState {
-  if (!isOpen(state, kind)) return state;
-  return {
-    root: normalizeRoot(withoutTile(state.root, kind)),
-    expanded: state.expanded === kind ? null : state.expanded,
-    focused: state.focused === kind ? "chat" : state.focused,
-  };
+	if (!isOpen(state, kind)) return state;
+	return {
+		root: normalizeRoot(withoutTile(state.root, kind)),
+		expanded: state.expanded === kind ? null : state.expanded,
+		focused: state.focused === kind ? "chat" : state.focused,
+	};
 }
 
 export function focusPane(state: PaneLayoutState, tileId: TileId): PaneLayoutState {
-  if (state.focused === tileId || !isOpen(state, tileId)) return state;
-  return { ...state, focused: tileId };
+	if (state.focused === tileId || !isOpen(state, tileId)) return state;
+	return {...state, focused: tileId};
 }
 
 export function expandPane(state: PaneLayoutState, kind: PaneKind): PaneLayoutState {
-  if (!isOpen(state, kind)) return state;
-  return { ...state, expanded: kind, focused: kind };
+	if (!isOpen(state, kind)) return state;
+	return {...state, expanded: kind, focused: kind};
 }
 
 export function collapsePane(state: PaneLayoutState): PaneLayoutState {
-  return state.expanded === null ? state : { ...state, expanded: null };
+	return state.expanded === null ? state : {...state, expanded: null};
 }
 
 /** Minimum size of a node along `axis`: sums along a stack's own axis, maxes across it. */
 export function minTileSize(node: LayoutNode, axis: Direction): number {
-  if (node.kind === "tile") {
-    return node.tileId === "chat" ? MIN_TILE_SIZE_PX.chat : MIN_TILE_SIZE_PX.pane;
-  }
-  const sizes = node.children.map((child) => minTileSize(child, axis));
-  return node.direction === axis
-    ? sizes.reduce((total, size) => total + size, 0) + TILE_GAP_PX * (sizes.length - 1)
-    : Math.max(...sizes);
+	if (node.kind === "tile") {
+		return node.tileId === "chat" ? MIN_TILE_SIZE_PX.chat : MIN_TILE_SIZE_PX.pane;
+	}
+	const sizes = node.children.map((child) => minTileSize(child, axis));
+	return node.direction === axis
+		? sizes.reduce((total, size) => total + size, 0) + TILE_GAP_PX * (sizes.length - 1)
+		: Math.max(...sizes);
 }
 
 export interface ResizeRequest {
-  /** Child indices from the root to the stack that owns the divider. */
-  path: readonly number[];
-  /** The divider sits between `children[index]` and `children[index + 1]`. */
-  index: number;
-  deltaPx: number;
-  /** The stack's measured size along its direction, gaps included. */
-  sizePx: number;
+	/** Child indices from the root to the stack that owns the divider. */
+	path: readonly number[];
+	/** The divider sits between `children[index]` and `children[index + 1]`. */
+	index: number;
+	deltaPx: number;
+	/** The stack's measured size along its direction, gaps included. */
+	sizePx: number;
 }
 
 export function resizeDivider(state: PaneLayoutState, request: ResizeRequest): PaneLayoutState {
-  const stack = nodeAt(state.root, request.path);
-  if (stack?.kind !== "stack") return state;
-  const before = stack.children[request.index];
-  const after = stack.children[request.index + 1];
-  if (before === undefined || after === undefined) return state;
+	const stack = nodeAt(state.root, request.path);
+	if (stack?.kind !== "stack") return state;
+	const before = stack.children[request.index];
+	const after = stack.children[request.index + 1];
+	if (before === undefined || after === undefined) return state;
 
-  const available = request.sizePx - TILE_GAP_PX * (stack.children.length - 1);
-  const total = sumFlex(stack.children);
-  const pairPx = ((before.flex + after.flex) / total) * available;
-  const beforePx = (before.flex / total) * available;
-  const maxBefore = pairPx - minTileSize(after, stack.direction);
-  const nextBefore = Math.max(
-    minTileSize(before, stack.direction),
-    Math.min(beforePx + request.deltaPx, maxBefore),
-  );
-  const toFlex = (px: number): number => round((px / available) * total);
+	const available = request.sizePx - TILE_GAP_PX * (stack.children.length - 1);
+	const total = sumFlex(stack.children);
+	const pairPx = ((before.flex + after.flex) / total) * available;
+	const beforePx = (before.flex / total) * available;
+	const maxBefore = pairPx - minTileSize(after, stack.direction);
+	const nextBefore = Math.max(minTileSize(before, stack.direction), Math.min(beforePx + request.deltaPx, maxBefore));
+	const toFlex = (px: number): number => round((px / available) * total);
 
-  const children = [...stack.children];
-  children[request.index] = { ...before, flex: toFlex(nextBefore) };
-  children[request.index + 1] = { ...after, flex: toFlex(pairPx - nextBefore) };
-  return { ...state, root: replaceAt(state.root, request.path, { ...stack, children }) };
+	const children = [...stack.children];
+	children[request.index] = {...before, flex: toFlex(nextBefore)};
+	children[request.index + 1] = {...after, flex: toFlex(pairPx - nextBefore)};
+	return {...state, root: replaceAt(state.root, request.path, {...stack, children})};
 }
 
 /**
@@ -323,162 +312,142 @@ export function resizeDivider(state: PaneLayoutState, request: ResizeRequest): P
  * neighbour; across it, the pane pops out of its column into the nearest
  * ancestor on that axis, taking its share of the column's flex.
  */
-export function movePane(
-  state: PaneLayoutState,
-  kind: PaneKind,
-  direction: MoveDirection,
-): PaneLayoutState {
-  const path = pathTo(state.root, kind);
-  if (path === undefined) return state;
-  const axis: Direction = direction === "left" || direction === "right" ? "row" : "column";
-  const step = direction === "left" || direction === "top" ? -1 : 1;
+export function movePane(state: PaneLayoutState, kind: PaneKind, direction: MoveDirection): PaneLayoutState {
+	const path = pathTo(state.root, kind);
+	if (path === undefined) return state;
+	const axis: Direction = direction === "left" || direction === "right" ? "row" : "column";
+	const step = direction === "left" || direction === "top" ? -1 : 1;
 
-  const isAxisStack = (node: LayoutNode | undefined): node is StackNode =>
-    node?.kind === "stack" && node.direction === axis;
-  let depth = path.length - 1;
-  while (depth >= 0 && !isAxisStack(nodeAt(state.root, path.slice(0, depth)))) depth -= 1;
-  const ancestorPath = path.slice(0, depth);
-  const ancestor = nodeAt(state.root, ancestorPath);
-  const branchIndex = path[depth];
-  if (!isAxisStack(ancestor) || branchIndex === undefined) return state;
+	const isAxisStack = (node: LayoutNode | undefined): node is StackNode =>
+		node?.kind === "stack" && node.direction === axis;
+	let depth = path.length - 1;
+	while (depth >= 0 && !isAxisStack(nodeAt(state.root, path.slice(0, depth)))) depth -= 1;
+	const ancestorPath = path.slice(0, depth);
+	const ancestor = nodeAt(state.root, ancestorPath);
+	const branchIndex = path[depth];
+	if (!isAxisStack(ancestor) || branchIndex === undefined) return state;
 
-  const target = branchIndex + step;
-  if (target < 0 || target >= ancestor.children.length) return state;
-  const children = [...ancestor.children];
-  const branch = children[branchIndex];
-  const neighbour = children[target];
-  if (branch === undefined || neighbour === undefined) return state;
+	const target = branchIndex + step;
+	if (target < 0 || target >= ancestor.children.length) return state;
+	const children = [...ancestor.children];
+	const branch = children[branchIndex];
+	const neighbour = children[target];
+	if (branch === undefined || neighbour === undefined) return state;
 
-  if (branch.kind === "tile") {
-    children[branchIndex] = neighbour;
-    children[target] = branch;
-  } else {
-    const moved = branch.children.find((child) => child.kind === "tile" && child.tileId === kind);
-    if (moved === undefined) return state;
-    const share = round((branch.flex * moved.flex) / sumFlex(branch.children));
-    const remaining = withoutTile(branch, kind);
-    children[branchIndex] = { ...remaining, flex: round(branch.flex - share) };
-    children.splice(step < 0 ? branchIndex : branchIndex + 1, 0, { ...moved, flex: share });
-  }
-  const root = normalizeRoot(replaceAt(state.root, ancestorPath, { ...ancestor, children }));
-  return { ...state, root, focused: kind };
+	if (branch.kind === "tile") {
+		children[branchIndex] = neighbour;
+		children[target] = branch;
+	} else {
+		const moved = branch.children.find((child) => child.kind === "tile" && child.tileId === kind);
+		if (moved === undefined) return state;
+		const share = round((branch.flex * moved.flex) / sumFlex(branch.children));
+		const remaining = withoutTile(branch, kind);
+		children[branchIndex] = {...remaining, flex: round(branch.flex - share)};
+		children.splice(step < 0 ? branchIndex : branchIndex + 1, 0, {...moved, flex: share});
+	}
+	const root = normalizeRoot(replaceAt(state.root, ancestorPath, {...ancestor, children}));
+	return {...state, root, focused: kind};
 }
 
 function browserStorage(): Storage | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.localStorage;
-  } catch {
-    return null;
-  }
+	if (typeof window === "undefined") return null;
+	try {
+		return window.localStorage;
+	} catch {
+		return null;
+	}
 }
 
 function readStore(storage: Storage): Record<string, PaneLayoutEntry> | undefined {
-  const raw = storage.getItem(PANE_LAYOUT_STORAGE_KEY);
-  if (raw === null) return {};
-  try {
-    const parsed = PaneLayoutStoreSchema.safeParse(JSON.parse(raw));
-    return parsed.success ? parsed.data : undefined;
-  } catch {
-    return undefined;
-  }
+	const raw = storage.getItem(PANE_LAYOUT_STORAGE_KEY);
+	if (raw === null) return {};
+	try {
+		const parsed = PaneLayoutStoreSchema.safeParse(JSON.parse(raw));
+		return parsed.success ? parsed.data : undefined;
+	} catch {
+		return undefined;
+	}
 }
 
 function writeEntry(
-  sessionId: string,
-  storage: Storage,
-  update: (entry: PaneLayoutEntry | undefined) => PaneLayoutEntry,
+	sessionId: string,
+	storage: Storage,
+	update: (entry: PaneLayoutEntry | undefined) => PaneLayoutEntry,
 ): void {
-  const store = readStore(storage) ?? {};
-  storage.setItem(
-    PANE_LAYOUT_STORAGE_KEY,
-    JSON.stringify({ ...store, [sessionId]: update(store[sessionId]) }),
-  );
+	const store = readStore(storage) ?? {};
+	storage.setItem(PANE_LAYOUT_STORAGE_KEY, JSON.stringify({...store, [sessionId]: update(store[sessionId])}));
 }
 
-export function loadPaneLayout(
-  sessionId: string,
-  storage: Storage | null = browserStorage(),
-): PaneLayoutState {
-  try {
-    const entry = storage ? readStore(storage)?.[sessionId] : undefined;
-    if (entry === undefined) return defaultPaneLayout();
-    return { root: entry.root, expanded: entry.expanded, focused: entry.focused };
-  } catch {
-    // localStorage can be denied even when window exists; layout persistence is best-effort.
-    return defaultPaneLayout();
-  }
+export function loadPaneLayout(sessionId: string, storage: Storage | null = browserStorage()): PaneLayoutState {
+	try {
+		const entry = storage ? readStore(storage)?.[sessionId] : undefined;
+		if (entry === undefined) return defaultPaneLayout();
+		return {root: entry.root, expanded: entry.expanded, focused: entry.focused};
+	} catch {
+		// localStorage can be denied even when window exists; layout persistence is best-effort.
+		return defaultPaneLayout();
+	}
 }
 
 export function savePaneLayout(
-  sessionId: string,
-  state: PaneLayoutState,
-  storage: Storage | null = browserStorage(),
+	sessionId: string,
+	state: PaneLayoutState,
+	storage: Storage | null = browserStorage(),
 ): void {
-  if (!storage) return;
-  try {
-    writeEntry(sessionId, storage, (entry) => {
-      const next: PaneLayoutEntry = { ...state };
-      if (entry?.changesScope !== undefined) next.changesScope = entry.changesScope;
-      // Closing the Files pane discards the session's tabs, as upstream does.
-      if (entry?.fileTabs !== undefined && isOpen(state, "files")) next.fileTabs = entry.fileTabs;
-      return next;
-    });
-  } catch {
-    // localStorage can be denied even when window exists; layout persistence is best-effort.
-  }
+	if (!storage) return;
+	try {
+		writeEntry(sessionId, storage, (entry) => {
+			const next: PaneLayoutEntry = {...state};
+			if (entry?.changesScope !== undefined) next.changesScope = entry.changesScope;
+			// Closing the Files pane discards the session's tabs, as upstream does.
+			if (entry?.fileTabs !== undefined && isOpen(state, "files")) next.fileTabs = entry.fileTabs;
+			return next;
+		});
+	} catch {
+		// localStorage can be denied even when window exists; layout persistence is best-effort.
+	}
 }
 
-export function loadChangesScope(
-  sessionId: string,
-  storage: Storage | null = browserStorage(),
-): string {
-  try {
-    return (storage && readStore(storage)?.[sessionId]?.changesScope) ?? DEFAULT_CHANGES_SCOPE;
-  } catch {
-    return DEFAULT_CHANGES_SCOPE;
-  }
+export function loadChangesScope(sessionId: string, storage: Storage | null = browserStorage()): string {
+	try {
+		return (storage && readStore(storage)?.[sessionId]?.changesScope) ?? DEFAULT_CHANGES_SCOPE;
+	} catch {
+		return DEFAULT_CHANGES_SCOPE;
+	}
 }
 
-export function saveChangesScope(
-  sessionId: string,
-  scope: string,
-  storage: Storage | null = browserStorage(),
-): void {
-  if (!storage) return;
-  try {
-    writeEntry(sessionId, storage, (entry) => ({
-      ...(entry ?? defaultPaneLayout()),
-      changesScope: scope,
-    }));
-  } catch {
-    // localStorage can be denied even when window exists; scope persistence is best-effort.
-  }
+export function saveChangesScope(sessionId: string, scope: string, storage: Storage | null = browserStorage()): void {
+	if (!storage) return;
+	try {
+		writeEntry(sessionId, storage, (entry) => ({
+			...(entry ?? defaultPaneLayout()),
+			changesScope: scope,
+		}));
+	} catch {
+		// localStorage can be denied even when window exists; scope persistence is best-effort.
+	}
 }
 
-export function loadFileTabs(
-  sessionId: string,
-  storage: Storage | null = browserStorage(),
-): FileTabsState {
-  try {
-    return (storage && readStore(storage)?.[sessionId]?.fileTabs) ?? EMPTY_FILE_TABS;
-  } catch {
-    return EMPTY_FILE_TABS;
-  }
+export function loadFileTabs(sessionId: string, storage: Storage | null = browserStorage()): FileTabsState {
+	try {
+		return (storage && readStore(storage)?.[sessionId]?.fileTabs) ?? EMPTY_FILE_TABS;
+	} catch {
+		return EMPTY_FILE_TABS;
+	}
 }
 
 export function saveFileTabs(
-  sessionId: string,
-  fileTabs: FileTabsState,
-  storage: Storage | null = browserStorage(),
+	sessionId: string,
+	fileTabs: FileTabsState,
+	storage: Storage | null = browserStorage(),
 ): void {
-  if (!storage) return;
-  try {
-    writeEntry(sessionId, storage, (entry) => ({
-      ...(entry ?? defaultPaneLayout()),
-      fileTabs,
-    }));
-  } catch {
-    // localStorage can be denied even when window exists; tab persistence is best-effort.
-  }
+	if (!storage) return;
+	try {
+		writeEntry(sessionId, storage, (entry) => ({
+			...(entry ?? defaultPaneLayout()),
+			fileTabs,
+		}));
+	} catch {
+		// localStorage can be denied even when window exists; tab persistence is best-effort.
+	}
 }
