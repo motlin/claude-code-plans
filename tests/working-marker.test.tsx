@@ -413,4 +413,21 @@ describe("useWorkingMarkerState", () => {
 			}),
 		]).toStrictEqual(["Working… · 3s", "Running command · 3s", "", "", "", "Working… · 3s", ""]);
 	});
+
+	it("shows a still spark for a session waiting on a permission prompt, however long it has been inactive", () => {
+		stubReducedMotion(false);
+		const {container, getByRole} = render(
+			<Harness
+				records={OPEN_TURN}
+				sessionState="ended"
+				isActive={false}
+				pendingToolName={undefined}
+				awaitingPermission
+			/>,
+		);
+		expect({
+			text: getByRole("status").textContent,
+			animated: container.querySelector('[data-cds="Spark"]')?.getAttribute("data-animated"),
+		}).toStrictEqual({text: "", animated: "false"});
+	});
 });

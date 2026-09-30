@@ -18,6 +18,8 @@ export type WorkingMarkerEvent =
 export type WorkingMarkerState =
 	| {status: "idle"}
 	| {status: "stopping"}
+	/** Blocked on a tool permission prompt: a still spark with no status text. */
+	| {status: "waiting"}
 	| {status: "working"; label: string; turnStartedAt: number; elapsedSeconds: number}
 	| {
 			status: "retrying";
@@ -95,6 +97,7 @@ export function formatElapsed(totalSeconds: number): string {
 export function workingMarkerText(state: WorkingMarkerState): string {
 	switch (state.status) {
 		case "idle":
+		case "waiting":
 			return "";
 		case "stopping":
 			return "Stopping…";

@@ -7,6 +7,7 @@ import {getSessionPrLink, isSessionArchived} from "./db/queries";
 import {isSessionUnseen} from "./db/viewed-state";
 import type {ActiveSessionPayload, SessionSummaryPayload} from "./hook-events";
 import {getLiveSubagentNodes} from "./live-subagent-store";
+import {hasPermissionPromptForSession} from "./notifications-store";
 import type {PrStatus} from "./pr-status";
 import {lookupSessionPrStatus} from "./pr-status-service";
 import {resolveSessionBucket} from "./session-state";
@@ -63,9 +64,13 @@ export function toSessionSummaryPayload(
 	// Only active-store entries are live. A missing entry is an ended session,
 	// even if a transcript-derived approval has survived a server restart.
 	const pendingInput = activeSession !== null && pendingApproval !== undefined;
+	// A standing permission prompt outlives the active-session sweep: the CLI
+	// writes nothing while it waits, so the session goes quiet but is not done.
+	const awaitingPermission = hasPermissionPromptForSession(entry.id);
 	const {bucket} = resolveSessionBucket({
 		mainState: activeSession?.state ?? "ended",
 		pendingInput,
+		awaitingPermission,
 		unseenError: false,
 		liveAgentCount,
 		backgroundTasks: activeSession?.backgroundTasks ?? [],
@@ -90,7 +95,7 @@ export function toSessionSummaryPayload(
 		...(prStatus === null ? {} : {prStatus}),
 		...(entry.forkedFromSessionId === undefined ? {} : {forkedFromSessionId: entry.forkedFromSessionId}),
 		archived,
-		state: activeSession === null ? "ended" : pendingInput ? "waiting" : activeSession.state,
+		state: pendingInput || awaitingPermission ? "waiting" : (activeSession?.state ?? "ended"),
 		bucket,
 		liveAgentCount,
 		unseen,

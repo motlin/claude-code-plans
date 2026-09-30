@@ -7,11 +7,14 @@ import {
 	compareByStableCreation,
 	compareByUrgency,
 	displayState,
+	resolveSessionBucket,
 	stateForEvent,
 	waitHeat,
 	type ActivityState,
 	type DisplayState,
+	type SessionBucketResolution,
 } from "../src/lib/session-state";
+import {isAwaitingPermission} from "../src/lib/permission-card";
 
 const ACTIVITY_STATES = ["idle", "working", "waiting", "unknown"] satisfies ActivityState[];
 const DISPLAY_STATES = [...ACTIVITY_STATES, "review"] satisfies DisplayState[];
@@ -309,5 +312,52 @@ describe("waitHeat", () => {
 				waitHeat(state, "1999-12-31T00:00:00.000Z", now),
 			),
 		).toStrictEqual(["", "", "", ""]);
+	});
+});
+
+describe("resolveSessionBucket for a session blocked on a permission prompt", () => {
+	const NOW = 946_598_400_000;
+	const PERMISSION_NOTIFICATION = {
+		id: "notification-test-100",
+		sessionId: "session-test-100",
+		notificationType: "permission_prompt",
+		message: "Claude needs your permission to use Bash",
+	};
+	const PENDING_BASH = {
+		type: "assistant",
+		message: {content: [{type: "tool_use", id: "tool-test-100", name: "Bash", input: {command: "true"}}]},
+	};
+	const BASH_RESULT = {
+		type: "user",
+		message: {content: [{type: "tool_result", tool_use_id: "tool-test-100", content: "ok"}]},
+	};
+
+	function bucketFor(records: readonly unknown[]): SessionBucketResolution {
+		return resolveSessionBucket({
+			mainState: "ended",
+			pendingInput: false,
+			awaitingPermission: isAwaitingPermission({
+				sessionId: "session-test-100",
+				notifications: [PERMISSION_NOTIFICATION],
+				records,
+			}),
+			unseenError: false,
+			liveAgentCount: 0,
+			backgroundTasks: [],
+			lastSubagentActivityAt: null,
+			herdrStatus: null,
+			prState: null,
+			unseen: false,
+			fileMtime: NOW - 8 * 60 * 60 * 1000,
+			now: NOW,
+		});
+	}
+
+	it("needs input while the tool call waits on the prompt, however old the transcript is", () => {
+		expect(bucketFor([PENDING_BASH])).toStrictEqual({bucket: "blocked", reason: "pending-input"});
+	});
+
+	it("is completed once a tool_result follows", () => {
+		expect(bucketFor([PENDING_BASH, BASH_RESULT])).toStrictEqual({bucket: "done", reason: "ended"});
 	});
 });

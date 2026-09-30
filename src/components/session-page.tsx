@@ -79,7 +79,7 @@ import {
 	sendHerdrPrompt,
 } from "../lib/api/herdr";
 import {notificationsQueryOptions} from "../lib/api/notifications";
-import {findPendingPermission, type PermissionDecision} from "../lib/permission-card";
+import {findPendingPermission, isAwaitingPermission, type PermissionDecision} from "../lib/permission-card";
 import type {HerdrPaneIndexData} from "../lib/api/herdr";
 import type {PaneKind} from "../lib/pane-layout";
 import {
@@ -395,12 +395,21 @@ function SessionView({
 	const [aiSummary, setAiSummary] = useState<string | null>(data.summary ?? null);
 	const isActive = useIsSessionActive(sessionId);
 	const [lastInterrupt, setLastInterrupt] = useState<{sessionId: string; at: number} | null>(null);
+	const notifications = useQuery({
+		...notificationsQueryOptions(),
+		select: (data) => data.notifications,
+	}).data;
+	const awaitingPermission = useMemo(
+		() => isAwaitingPermission({sessionId, notifications: notifications ?? [], records: transcript.records}),
+		[sessionId, notifications, transcript.records],
+	);
 	const workingMarkerState = useWorkingMarkerState({
 		records: transcript.records,
 		sessionState: useSessionSummaryState(sessionId),
 		isActive,
 		pendingToolName: pendingTools.get(sessionId)?.toolName,
 		interruptedAt: lastInterrupt?.sessionId === sessionId ? lastInterrupt.at : null,
+		awaitingPermission,
 	});
 	const backgroundTasks = useMemo(
 		() =>
@@ -496,15 +505,12 @@ function SessionView({
 			}),
 		[toast],
 	);
-	const notifications = useQuery({
-		...notificationsQueryOptions(),
-		select: (data) => data.notifications,
-	}).data;
 	const pendingPermission = useMemo(
 		() =>
-			isActive && dockedQuestion === null
+			dockedQuestion === null
 				? findPendingPermission({
 						sessionId,
+						isActive,
 						notifications: notifications ?? [],
 						records: transcript.records,
 					})

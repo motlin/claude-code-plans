@@ -1,4 +1,5 @@
-import {findLastPendingToolUse} from "./approval-dock";
+import {findLastPendingToolUse, type PendingToolUse} from "./approval-dock";
+import {markerEventsFromRecords} from "./working-marker";
 
 /** The Notification hook's `notification_type` for a CLI tool-permission prompt. */
 export const PERMISSION_PROMPT_NOTIFICATION = "permission_prompt";
@@ -42,29 +43,56 @@ function primaryInput(input: Record<string, unknown>): string | null {
 	return null;
 }
 
-/**
- * The tool permission prompt to dock for this session: the hook state holds a
- * `permission_prompt` notification, described by the transcript's pending
- * tool call when there is one (a subagent's call is not in the main thread,
- * so it falls back to the notification text).
- */
-export function findPendingPermission({
-	sessionId,
-	notifications,
-	records,
-}: {
-	sessionId: string;
-	notifications: readonly PermissionNotification[];
-	records: readonly unknown[];
-}): PendingPermission | null {
-	const notification = notifications.find(
+function findPermissionNotification(
+	sessionId: string,
+	notifications: readonly PermissionNotification[],
+): PermissionNotification | undefined {
+	return notifications.find(
 		(candidate) =>
 			candidate.sessionId === sessionId && candidate.notificationType === PERMISSION_PROMPT_NOTIFICATION,
 	);
-	if (notification === undefined) return null;
+}
+
+/** The main thread's unanswered tool call, unless a later turn end (Stop or interrupt) closed it. */
+function findWaitingToolUse(records: readonly unknown[]): PendingToolUse | null {
 	const toolUse = findLastPendingToolUse(records);
+	if (toolUse === null || OWN_CARD_TOOLS.has(toolUse.name)) return null;
+	return markerEventsFromRecords(records).at(-1)?.kind === "stop" ? null : toolUse;
+}
+
+interface PermissionSignals {
+	sessionId: string;
+	notifications: readonly PermissionNotification[];
+	records: readonly unknown[];
+}
+
+/**
+ * The session is blocked on a tool permission prompt: its last tool call is
+ * unanswered and the hook state still holds a `permission_prompt`
+ * notification. Upstream treats this as live however old the transcript is.
+ */
+export function isAwaitingPermission({sessionId, notifications, records}: PermissionSignals): boolean {
+	return findPermissionNotification(sessionId, notifications) !== undefined && findWaitingToolUse(records) !== null;
+}
+
+/**
+ * The tool permission prompt to dock for this session: the hook state holds a
+ * `permission_prompt` notification, described by the transcript's pending
+ * tool call when there is one. A live session falls back to the notification
+ * text (a subagent's call is not in the main thread); an inactive one shows
+ * the card only while it is awaiting permission.
+ */
+export function findPendingPermission({
+	sessionId,
+	isActive,
+	notifications,
+	records,
+}: PermissionSignals & {isActive: boolean}): PendingPermission | null {
+	const notification = findPermissionNotification(sessionId, notifications);
+	if (notification === undefined) return null;
+	const toolUse = isActive ? findLastPendingToolUse(records) : findWaitingToolUse(records);
 	if (toolUse === null) {
-		return {notificationId: notification.id, title: notification.message, command: null};
+		return isActive ? {notificationId: notification.id, title: notification.message, command: null} : null;
 	}
 	if (OWN_CARD_TOOLS.has(toolUse.name)) return null;
 	if (toolUse.name === "Bash") {

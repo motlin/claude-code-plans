@@ -7,6 +7,7 @@ import {DOMAIN_EVENTS} from "./hook-events";
 import type {NotificationEntryPayload} from "./hook-events";
 import {broadcastTyped} from "./sse-broadcast";
 import {hmrPersist, hmrDispose} from "./hmr-persist";
+import {PERMISSION_PROMPT_NOTIFICATION} from "./permission-card";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
@@ -120,6 +121,25 @@ export function clearNotificationsForSession(sessionId: string): void {
 			broadcastTyped(DOMAIN_EVENTS.NOTIFICATION_CLEARED, {id});
 		}
 	}
+}
+
+/** Drop the session's tool permission prompt once its turn has ended (Stop or SessionEnd). */
+export function clearPermissionPromptsForSession(sessionId: string): void {
+	for (const [id, entry] of store) {
+		if (entry.sessionId === sessionId && entry.notificationType === PERMISSION_PROMPT_NOTIFICATION) {
+			store.delete(id);
+			readIds.delete(id);
+			broadcastTyped(DOMAIN_EVENTS.NOTIFICATION_CLEARED, {id});
+		}
+	}
+}
+
+/** The session's standing tool permission prompt, which no working or turn-end hook has cleared yet. */
+export function hasPermissionPromptForSession(sessionId: string): boolean {
+	for (const entry of store.values()) {
+		if (entry.sessionId === sessionId && entry.notificationType === PERMISSION_PROMPT_NOTIFICATION) return true;
+	}
+	return false;
 }
 
 export function addNotification(

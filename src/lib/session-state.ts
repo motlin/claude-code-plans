@@ -123,6 +123,8 @@ export interface SessionBucketSignals {
 	mainState: SessionSummaryState;
 	/** A pending approval / question / permission prompt from S or any of its subagents. */
 	pendingInput: boolean;
+	/** The main thread's tool call waits on a `permission_prompt`; live however stale the hook state or file is. */
+	awaitingPermission: boolean;
 	unseenError: boolean;
 	liveAgentCount: number;
 	/** Entries from the last Stop's `background_tasks`. */
@@ -156,8 +158,9 @@ export function isRunningBackgroundTask(task: {status: string}): boolean {
  */
 export function resolveSessionBucket(signals: SessionBucketSignals): SessionBucketResolution {
 	const {mainState, now} = signals;
-	if (mainState === "ended" && !signals.pendingInput) return {bucket: "done", reason: "ended"};
-	if (signals.pendingInput) return {bucket: "blocked", reason: "pending-input"};
+	const pendingInput = signals.pendingInput || signals.awaitingPermission;
+	if (mainState === "ended" && !pendingInput) return {bucket: "done", reason: "ended"};
+	if (pendingInput) return {bucket: "blocked", reason: "pending-input"};
 	if (mainState === "waiting") return {bucket: "blocked", reason: "waiting"};
 	if (signals.unseenError) return {bucket: "blocked", reason: "error"};
 

@@ -46,7 +46,10 @@ export function WorkingMarker({state}: Readonly<{state: WorkingMarkerState}>) {
 			>
 				{visible && (
 					<>
-						<Spark size={16} animated={state.status !== "stopping" && !reduceMotion} />
+						<Spark
+							size={16}
+							animated={state.status !== "stopping" && state.status !== "waiting" && !reduceMotion}
+						/>
 						<span
 							title={text}
 							className={`min-w-0 truncate whitespace-nowrap text-footnote text-secondary tabular-nums${
@@ -83,6 +86,8 @@ export interface WorkingMarkerSignals {
 	pendingToolName: string | undefined;
 	/** When this page last sent an interrupt; it marks only the turn it was sent in. */
 	interruptedAt?: number | null;
+	/** The turn is blocked on a tool permission prompt, which holds it open however stale the session is. */
+	awaitingPermission?: boolean;
 }
 
 /**
@@ -96,6 +101,7 @@ export function useWorkingMarkerState({
 	isActive,
 	pendingToolName,
 	interruptedAt = null,
+	awaitingPermission = false,
 }: WorkingMarkerSignals): WorkingMarkerState {
 	const events = useMemo(() => {
 		const fromRecords = markerEventsFromRecords(records);
@@ -118,7 +124,7 @@ export function useWorkingMarkerState({
 		if (closed) overlay.push({kind: "stop", at: lastAt});
 		return [...fromRecords, ...overlay];
 	}, [records, sessionState, isActive, pendingToolName, interruptedAt]);
-	const open = workingMarkerState(events, 0).status !== "idle";
+	const open = !awaitingPermission && workingMarkerState(events, 0).status !== "idle";
 	const now = useNow(open);
-	return workingMarkerState(events, now);
+	return awaitingPermission ? {status: "waiting"} : workingMarkerState(events, now);
 }

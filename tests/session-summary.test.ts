@@ -13,6 +13,7 @@ import {
 import {buildSessionSummaryPayloadFromDb, toActiveSessionPayload} from "../src/lib/session-summary";
 import {initPendingApprovalsCache} from "../src/lib/db/pending-approvals-cache";
 import {addLiveSubagent, clearLiveSubagents} from "../src/lib/live-subagent-store";
+import {addNotification, clearAllNotifications} from "../src/lib/notifications-store";
 
 const testDir = join(tmpdir(), "claude-session-summary-test-" + process.pid);
 const PROJECT_ID = "-tmp-test-alice-project";
@@ -194,6 +195,22 @@ describe("buildSessionSummaryPayloadFromDb", () => {
 			unseen: false,
 			blockedSince: "2000-01-01T00:00:00.000Z",
 		});
+	});
+
+	it("needs input for an ended session still blocked on a permission prompt", async () => {
+		await indexSession();
+		clearAllNotifications();
+		addNotification(db.index, {
+			sessionId: "session-test-100",
+			cwd: PROJECT_PATH,
+			message: "Claude needs your permission to use Bash",
+			notificationType: "permission_prompt",
+		});
+
+		const payload = buildSessionSummaryPayloadFromDb(db.index, "session-test-100");
+		clearAllNotifications();
+
+		expect({state: payload?.state, bucket: payload?.bucket}).toStrictEqual({state: "waiting", bucket: "blocked"});
 	});
 
 	it("keeps an idle session working while its subagents are live", async () => {

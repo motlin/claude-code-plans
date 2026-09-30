@@ -9,6 +9,7 @@ const MINUTE = 60 * SECOND;
 const BASE: SessionBucketSignals = {
 	mainState: "idle",
 	pendingInput: false,
+	awaitingPermission: false,
 	unseenError: false,
 	liveAgentCount: 0,
 	backgroundTasks: [],

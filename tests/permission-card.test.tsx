@@ -47,6 +47,7 @@ describe("findPendingPermission", () => {
 		expect(
 			findPendingPermission({
 				sessionId: "session-test-100",
+				isActive: true,
 				notifications: [permissionNotification()],
 				records: BASH_RECORDS,
 			}),
@@ -61,6 +62,7 @@ describe("findPendingPermission", () => {
 		expect(
 			findPendingPermission({
 				sessionId: "session-test-100",
+				isActive: true,
 				notifications: [permissionNotification()],
 				records: [assistantToolUse("t3", "Write", {file_path: "/repo/b.ts", content: "x"})],
 			}),
@@ -75,6 +77,7 @@ describe("findPendingPermission", () => {
 		expect(
 			findPendingPermission({
 				sessionId: "session-test-100",
+				isActive: true,
 				notifications: [permissionNotification()],
 				records: [...BASH_RECORDS, toolResult("t2")],
 			}),
@@ -99,8 +102,42 @@ describe("findPendingPermission", () => {
 		expect(
 			findPendingPermission({
 				sessionId: "session-test-100",
+				isActive: true,
 				notifications,
 				records: BASH_RECORDS,
+			}),
+		).toBeNull();
+	});
+
+	it("still shows the card when the session is idle and the tool call is waiting on the prompt", () => {
+		expect(
+			findPendingPermission({
+				sessionId: "session-test-100",
+				isActive: false,
+				notifications: [permissionNotification()],
+				records: BASH_RECORDS,
+			}),
+		).toStrictEqual({
+			notificationId: "notification-test-100",
+			title: "Allow Claude to run Remove the build output?",
+			command: "rm -rf dist",
+		});
+	});
+
+	it.each([
+		{name: "a tool_result answered the call", records: [...BASH_RECORDS, toolResult("t2")]},
+		{
+			name: "the turn stopped after the call",
+			records: [...BASH_RECORDS, {type: "system", subtype: "turn_duration", durationMs: 1000}],
+		},
+		{name: "no tool call is pending", records: []},
+	])("is hidden for an idle session when $name", ({records}) => {
+		expect(
+			findPendingPermission({
+				sessionId: "session-test-100",
+				isActive: false,
+				notifications: [permissionNotification()],
+				records,
 			}),
 		).toBeNull();
 	});
@@ -109,6 +146,7 @@ describe("findPendingPermission", () => {
 		expect(
 			findPendingPermission({
 				sessionId: "session-test-100",
+				isActive: true,
 				notifications: [permissionNotification()],
 				records: [assistantToolUse("t4", "AskUserQuestion", {questions: []})],
 			}),

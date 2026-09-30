@@ -1024,6 +1024,51 @@ describe("dispatchHookEvent", () => {
 		clearAllNotifications();
 	});
 
+	it.each(["Stop", "SessionEnd"] as const)(
+		"%s clears the session's permission prompt but keeps its other notifications",
+		async (hookEventName) => {
+			clearAllNotifications();
+			const {store} = makeStore();
+			const notify = async (sessionId: string, notificationType: string) =>
+				dispatchHookEvent({
+					event: {
+						hook_event_name: "Notification",
+						session_id: sessionId,
+						transcript_path: `/tmp/${sessionId}.jsonl`,
+						cwd: "/tmp/my-project",
+						message: "Claude needs your permission to use Bash",
+						notification_type: notificationType,
+					},
+					db: db.index,
+					store,
+					broadcast: () => {},
+					reportHerdrState: () => {},
+				});
+			await notify("abc-123", "permission_prompt");
+			await notify("other-456", "idle_prompt");
+
+			for (const sessionId of ["abc-123", "other-456"]) {
+				await dispatchHookEvent({
+					event: {
+						hook_event_name: hookEventName,
+						session_id: sessionId,
+						transcript_path: `/tmp/${sessionId}.jsonl`,
+						cwd: "/tmp/my-project",
+					},
+					db: db.index,
+					store,
+					broadcast: () => {},
+					reportHerdrState: () => {},
+				});
+			}
+
+			expect(
+				getNotifications().map(({sessionId, notificationType}) => ({sessionId, notificationType})),
+			).toStrictEqual([{sessionId: "other-456", notificationType: "idle_prompt"}]);
+			clearAllNotifications();
+		},
+	);
+
 	it("PreCompact broadcasts SESSION_COMPACTING with optional trigger", async () => {
 		const broadcasts: Broadcast[] = [];
 		const {store} = makeStore();

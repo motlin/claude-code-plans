@@ -30,7 +30,7 @@ import {
 	type ReviewOfferedPayload,
 } from "./hook-events";
 import {buildSessionSummaryPayloadFromDb, toActiveSessionPayload} from "./session-summary";
-import {addNotification, clearNotificationsForSession} from "./notifications-store";
+import {addNotification, clearNotificationsForSession, clearPermissionPromptsForSession} from "./notifications-store";
 import {addLiveSubagent, endLiveSubagent, reconcileStoredLiveSubagents} from "./live-subagent-store";
 import {indexFile, indexJsonlFile} from "./db/indexer";
 import {isSessionArchived, setSessionArchived} from "./db/queries";
@@ -382,6 +382,10 @@ export async function dispatchHookEvent({
 		// sessions that still want attention. No-op (no broadcast) when the
 		// session has no persisted notifications.
 		if (nextState === "working") clearNotificationsForSession(event.session_id);
+		// A turn that ended (Stop / SessionEnd) is no longer blocked on a tool permission prompt.
+		if (event.hook_event_name === "Stop" || event.hook_event_name === "SessionEnd") {
+			clearPermissionPromptsForSession(event.session_id);
+		}
 	}
 
 	switch (event.hook_event_name) {
