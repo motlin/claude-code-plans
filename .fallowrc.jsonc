@@ -131,6 +131,10 @@
 			"file": "src/lib/local-account.ts",
 			"exports": ["getLocalAccount"],
 		},
+		{
+			"file": "tests/perf/ratchet.ts",
+			"exports": ["ratchet"],
+		},
 	],
 	"duplicates": {
 		"minOccurrences": 3,
