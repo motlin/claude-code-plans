@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import {readFileSync} from "node:fs";
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
@@ -22,6 +23,33 @@ describe("Composer", () => {
 		expect({session, home}).toStrictEqual({
 			session: "Type / for commands",
 			home: "Describe a task or ask a question",
+		});
+	});
+
+	it("rings the card faintly while idle and darkens the ring only while focused", () => {
+		render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
+		const card = screen.getByRole("textbox", {name: "Prompt"}).closest("[data-composer-card]")!;
+		const shadowClasses = [...card.classList].filter((name) => name.includes("shadow-"));
+		const styles = readFileSync("src/styles/globals.css", "utf8");
+		const light = styles.slice(styles.indexOf(":root {"), styles.indexOf(".dark {"));
+		const dark = styles.slice(styles.indexOf(".dark {"));
+		const token = (block: string, name: string) => block.match(new RegExp(`${name}:\\s*([^;]+);`))?.[1] ?? null;
+
+		expect({
+			shadowClasses,
+			lightIdle: token(light, "--composer-shadow-idle"),
+			lightFocus: token(light, "--composer-shadow-focus"),
+			darkIdle: token(dark, "--composer-shadow-idle"),
+			darkFocus: token(dark, "--composer-shadow-focus"),
+		}).toStrictEqual({
+			shadowClasses: [
+				"shadow-[var(--composer-shadow-idle)]",
+				"focus-within:shadow-[var(--composer-shadow-focus)]",
+			],
+			lightIdle: "0 4px 20px rgb(0 0 0 / 0.035), 0 0 0 1px rgb(11 11 11 / 0.1)",
+			lightFocus: "0 4px 20px rgb(0 0 0 / 0.075), 0 0 0 1px rgb(11 11 11 / 0.2)",
+			darkIdle: "0 4px 20px rgb(0 0 0 / 0.15), 0 0 0 1px rgb(255 255 255 / 0.1)",
+			darkFocus: "0 4px 20px rgb(0 0 0 / 0.3), 0 0 0 1px rgb(255 255 255 / 0.2)",
 		});
 	});
 

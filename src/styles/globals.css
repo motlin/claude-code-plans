@@ -166,10 +166,9 @@
 	--upstream-surface-3: #fff;
 	--upstream-surface-popover: #fff;
 	--pop-shadow: 0 0 0 0.5px #0000000f, 0 4px 12px #0000000f, 0 16px 40px #00000014;
-	/* Upstream claude.ai/code — ChatComposer card (shadow-composer, -hover, -focus) */
-	--composer-shadow: 0 4px 20px rgb(0 0 0 / 0.075), 0 0 0 1px rgb(11 11 11 / 0.2);
-	--composer-shadow-hover: 0 4px 20px rgb(0 0 0 / 0.09), 0 0 0 1px rgb(11 11 11 / 0.28);
-	--composer-shadow-focus: 0 4px 20px rgb(0 0 0 / 0.1), 0 0 0 1px rgb(11 11 11 / 0.35);
+	/* Upstream claude.ai/code — ChatComposer card: faint ring while idle, stronger only on focus-within */
+	--composer-shadow-idle: 0 4px 20px rgb(0 0 0 / 0.035), 0 0 0 1px rgb(11 11 11 / 0.1);
+	--composer-shadow-focus: 0 4px 20px rgb(0 0 0 / 0.075), 0 0 0 1px rgb(11 11 11 / 0.2);
 	--upstream-alpha-1: rgb(11 11 11 / 0.05);
 	--upstream-alpha-2: rgb(11 11 11 / 0.08);
 	--upstream-alpha-3: rgb(11 11 11 / 0.12);
@@ -313,9 +312,8 @@
 	--upstream-surface-3: #20201f;
 	--upstream-surface-popover: hsl(60 2% 18%);
 	--pop-shadow: 0 0 0 0.5px hsl(0 0% 100% / 0.12), 0 4px 12px rgb(0 0 0 / 0.3), 0 16px 40px rgb(0 0 0 / 0.4);
-	--composer-shadow: 0 4px 20px rgb(0 0 0 / 0.3), 0 0 0 1px rgb(255 255 255 / 0.15);
-	--composer-shadow-hover: 0 4px 20px rgb(0 0 0 / 0.35), 0 0 0 1px rgb(255 255 255 / 0.22);
-	--composer-shadow-focus: 0 4px 20px rgb(0 0 0 / 0.4), 0 0 0 1px rgb(255 255 255 / 0.3);
+	--composer-shadow-idle: 0 4px 20px rgb(0 0 0 / 0.15), 0 0 0 1px rgb(255 255 255 / 0.1);
+	--composer-shadow-focus: 0 4px 20px rgb(0 0 0 / 0.3), 0 0 0 1px rgb(255 255 255 / 0.2);
 	--upstream-alpha-1: rgb(255 255 255 / 0.05);
 	--upstream-alpha-2: rgb(255 255 255 / 0.08);
 	--upstream-alpha-3: rgb(255 255 255 / 0.12);

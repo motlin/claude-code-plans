@@ -59,7 +59,7 @@ const PLACEHOLDER: Record<ComposerVariant, string> = {
 };
 
 const CARD_CLASS =
-	"relative z-[1] flex cursor-text flex-col gap-y-1.5 rounded-card bg-surface-3 p-2 shadow-[var(--composer-shadow)] transition-shadow hover:shadow-[var(--composer-shadow-hover)] focus-within:shadow-[var(--composer-shadow-focus)]";
+	"relative z-[1] flex cursor-text flex-col gap-y-1.5 rounded-card bg-surface-3 p-2 shadow-[var(--composer-shadow-idle)] transition-shadow focus-within:shadow-[var(--composer-shadow-focus)]";
 
 const EDITOR_CLASS =
 	"block w-full resize-none overflow-y-auto bg-transparent py-0.5 pl-1 font-sans text-[14px]/[20px] text-primary [field-sizing:content] placeholder:text-[rgb(137,135,129)] focus:outline-none disabled:opacity-50 pointer-coarse:text-[16px]";
