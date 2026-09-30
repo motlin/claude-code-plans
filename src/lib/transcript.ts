@@ -120,15 +120,6 @@ const PermissionModeLineSchema = z.object({
 	lineIndex: z.number(),
 });
 
-const PrLinkLineSchema = z.object({
-	type: z.literal("pr-link"),
-	prUrl: z.string(),
-	prNumber: z.number(),
-	prRepository: z.string(),
-	timestamp: z.string().optional(),
-	lineIndex: z.number(),
-});
-
 /** An artifact the session published, from a `frame-link` record that names one. */
 const ArtifactLinkLineSchema = z.object({
 	type: z.literal("artifact-link"),
@@ -247,7 +238,6 @@ export const RenderedLineSchema = z.discriminatedUnion("type", [
 	AgentNameLineSchema,
 	AgentColorLineSchema,
 	PermissionModeLineSchema,
-	PrLinkLineSchema,
 	ArtifactLinkLineSchema,
 	ArtifactWatchLineSchema,
 	AttachmentLineSchema,
@@ -643,18 +633,6 @@ function processRecordBatch(
 				permissionMode: record.permissionMode,
 				lineIndex,
 			});
-			continue;
-		}
-		if (record.type === "pr-link") {
-			const prLine: z.infer<typeof PrLinkLineSchema> = {
-				type: "pr-link",
-				prUrl: record.prUrl,
-				prNumber: record.prNumber,
-				prRepository: record.prRepository,
-				lineIndex,
-			};
-			if (record.timestamp !== undefined) prLine.timestamp = record.timestamp;
-			sessionLines.push(prLine);
 			continue;
 		}
 

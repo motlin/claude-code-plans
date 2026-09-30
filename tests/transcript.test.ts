@@ -332,7 +332,7 @@ describe("processTranscript", () => {
 		});
 	});
 
-	it("includes pr-link lines", () => {
+	it("skips pr-link records, which the index surfaces instead of the transcript", () => {
 		const records = [
 			{
 				type: "pr-link",
@@ -344,15 +344,7 @@ describe("processTranscript", () => {
 			},
 		];
 		const result = processTranscript(records);
-		expect(result.lines).toHaveLength(1);
-		expect(result.lines[0]).toStrictEqual({
-			type: "pr-link",
-			prUrl: "https://github.com/org/repo/pull/42",
-			prNumber: 42,
-			prRepository: "org/repo",
-			timestamp: "1999-12-31T00:00:00Z",
-			lineIndex: 0,
-		});
+		expect(result.lines).toStrictEqual([]);
 	});
 
 	it("includes attachment lines", () => {

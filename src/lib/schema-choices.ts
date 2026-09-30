@@ -528,7 +528,6 @@ const renderedLineVariants = {
 	"agent-name": true,
 	"agent-color": true,
 	"permission-mode": true,
-	"pr-link": true,
 	"artifact-link": true,
 	"artifact-watch": true,
 	attachment: true,

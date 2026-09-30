@@ -10,7 +10,7 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import {AlertTriangle, Bot, Copy, FileWarning, GitBranch, Link, Lock, Palette, Plug, Zap} from "lucide-react";
+import {AlertTriangle, Bot, Copy, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
 import {assertNever} from "../lib/assert-never";
 import {formatTimestamp, formatRelativeTimestamp} from "../lib/timestamp-format";
 import {ProseMarkdown} from "./file-refs";
@@ -669,7 +669,6 @@ const BANNER_LINE_TYPES = new Set([
 	"agent-name",
 	"agent-color",
 	"permission-mode",
-	"pr-link",
 	"artifact-link",
 	"artifact-watch",
 	"attachment",
@@ -1256,19 +1255,6 @@ function renderSessionMessage({
 			return <Banner icon={<Palette className="h-3.5 w-3.5" />} label={`Agent color: ${line.agentColor}`} />;
 		case "permission-mode":
 			return <Banner icon={<Lock className="h-3.5 w-3.5" />} label={`Permission mode: ${line.permissionMode}`} />;
-		case "pr-link":
-			return (
-				<Banner icon={<Link className="h-3.5 w-3.5" />}>
-					<a
-						href={line.prUrl}
-						target="_blank"
-						rel="noopener noreferrer"
-						className="text-accent-500 hover:underline"
-					>
-						{line.prRepository}#{line.prNumber}
-					</a>
-				</Banner>
-			);
 		case "artifact-link":
 			return <ArtifactLinkBanner line={line} />;
 		case "artifact-watch":
