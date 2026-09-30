@@ -34,7 +34,7 @@ beforeEach(() => {
 function withoutCopyChrome(html: string): string {
 	return html
 		.replaceAll('<div class="markdown-codeblock">', "")
-		.replaceAll(/<div class="markdown-code-copy">[\s\S]*?<\/div><\/div>/g, "");
+		.replaceAll(/<div class="markdown-code-copy-rail">[\s\S]*?<\/div><\/div><\/div>/g, "");
 }
 
 describe("renderInlineMarkdownToHtml", () => {

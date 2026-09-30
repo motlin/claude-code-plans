@@ -95,12 +95,14 @@ function getMarkdownVariant(options?: MarkdownRenderOptions): MarkdownVariant {
 
 /** Marks the wrapper `<div>` a fenced code block and its copy button share. */
 export const CODEBLOCK_CLASS = "markdown-codeblock";
-/** Marks the absolutely positioned control strip holding the copy button. */
+/** Marks the full-height rail the sticky control strip rides in. */
+const CODEBLOCK_COPY_RAIL_CLASS = "markdown-code-copy-rail";
+/** Marks the sticky control strip holding the copy button. */
 const CODEBLOCK_COPY_CLASS = "markdown-code-copy";
 /** Marks the copy button itself, so one delegated listener can find it. */
 export const CODEBLOCK_COPY_ATTR = "data-copy-code";
 
-const COPY_STRIP = `<div class="${CODEBLOCK_COPY_CLASS}"><button type="button" ${CODEBLOCK_COPY_ATTR} aria-label="Copy">${COPY_ICON_SVG}</button></div>`;
+const COPY_STRIP = `<div class="${CODEBLOCK_COPY_RAIL_CLASS}"><div class="${CODEBLOCK_COPY_CLASS}"><button type="button" ${CODEBLOCK_COPY_ATTR} aria-label="Copy code" data-tooltip="Copy code">${COPY_ICON_SVG}</button></div></div>`;
 
 /**
  * Memory files cross-reference each other with `[[name]]`, which plain markdown

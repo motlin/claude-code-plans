@@ -101,55 +101,74 @@
 }
 
 /* Upstream wraps every fence in a relative box (`epitaxy-codeblock relative
-   max-w-full w-fit`) so an absolutely positioned control strip can sit over the
-   card's top-right corner. */
+   max-w-full w-fit`, min-width min(100%,318px)) so the copy control can sit
+   over the card's top-right corner. */
 .markdown :global(.markdown-codeblock) {
 	position: relative;
 	width: fit-content;
+	min-width: min(100%, 318px);
 	max-width: 100%;
 }
 
-/* The wrapper is now the flex child carrying the column gap, so the `pre` drops
-   its own margin. Its right padding grows by upstream's 24px so a long line
-   never runs under the copy button. */
+/* Upstream's fence card: white surface, 12/17 mono, and 45.2px of right padding
+   so a long line never runs under the copy button. The wrapper carries the
+   column gap, so the `pre` drops its own margin and fills the wrapper. */
 .markdown :global(.markdown-codeblock) > pre {
 	margin: 0;
-	padding-right: 32px;
+	width: auto;
+	font-size: 12px;
+	line-height: 17px;
+	background: var(--color-surface-1);
+	border-radius: 8px;
+	padding: 8px 45.2px 8px 17.2px;
 }
 
-/* `absolute right-[calc(var(--p4)+var(--p1))] flex gap-[var(--p2)] top-[var(--p4)]` */
-.markdown :global(.markdown-code-copy) {
+:global(.dark) .markdown :global(.markdown-codeblock) > pre {
+	background: var(--color-surface-1);
+}
+
+.markdown :global(.markdown-codeblock) > pre code {
+	line-height: 17px;
+}
+
+/* A full-height rail inset 7px from the right edge, so the strip inside can
+   stick to the top of the scrollport for as long as the card is on screen. */
+.markdown :global(.markdown-code-copy-rail) {
 	position: absolute;
-	top: 5px;
+	top: 0;
 	right: 7px;
+	bottom: 0;
+	pointer-events: none;
+}
+
+/* Always visible, like upstream: `sticky top-[calc(max(fade)+5px)]`. */
+.markdown :global(.markdown-code-copy) {
+	position: sticky;
+	top: calc(max(var(--fade-top, 0px), 0px) + 5px);
+	margin-top: 5px;
 	display: flex;
 	gap: 3px;
-	opacity: 0;
-	transition: opacity 150ms cubic-bezier(0.215, 0.61, 0.355, 1);
-}
-
-.markdown :global(.markdown-codeblock):hover :global(.markdown-code-copy),
-.markdown :global(.markdown-code-copy):focus-within {
-	opacity: 1;
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.markdown :global(.markdown-code-copy) {
-		transition: none;
-	}
+	pointer-events: auto;
 }
 
 .markdown :global(.markdown-code-copy) button {
+	position: relative;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	aspect-ratio: 1;
-	padding: 4px;
+	width: 24px;
+	height: 24px;
+	padding: 0;
 	border: 0;
-	border-radius: 5px;
+	border-radius: 6px;
 	background: transparent;
 	color: var(--color-t6);
 	cursor: pointer;
+}
+
+.markdown :global(.markdown-code-copy) button svg {
+	width: 16px;
+	height: 16px;
 }
 
 .markdown :global(.markdown-code-copy) button:hover {
@@ -159,6 +178,37 @@
 
 :global(.dark) .markdown :global(.markdown-code-copy) button:hover {
 	background: hsl(0 0% 100% / 0.08);
+}
+
+/* The markdown is raw HTML, so the button cannot use ui/tooltip.tsx; this CSS
+   tooltip mirrors it: always dark, side top, offset 4, 300ms open delay. */
+.markdown :global(.markdown-code-copy) button[data-tooltip]::after {
+	content: attr(data-tooltip);
+	position: absolute;
+	bottom: calc(100% + 4px);
+	left: 50%;
+	translate: -50% 0;
+	z-index: 50;
+	display: inline-flex;
+	align-items: center;
+	min-height: 24px;
+	padding: 3px 8px;
+	border-radius: var(--radius-r5);
+	background: var(--tooltip-bg);
+	color: var(--tooltip-fg);
+	font-family: var(--font-sans);
+	font-size: 13px;
+	line-height: 18px;
+	white-space: nowrap;
+	box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+	pointer-events: none;
+	visibility: hidden;
+}
+
+.markdown :global(.markdown-code-copy) button[data-tooltip]:hover::after,
+.markdown :global(.markdown-code-copy) button[data-tooltip]:focus-visible::after {
+	visibility: visible;
+	transition-delay: 300ms;
 }
 
 /* Upstream's cds-era prose chip: red ink at 0.9em/600 on the 5% alpha wash.
