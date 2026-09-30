@@ -32,11 +32,11 @@ const ResultEntrySchema = z
 
 const ResultsSchema = z.record(z.string().min(1), ResultEntrySchema);
 
-type Results = z.infer<typeof ResultsSchema>;
+export type Results = z.infer<typeof ResultsSchema>;
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const CEILINGS_PATH = join(HERE, "ceilings.json");
-const DEFAULT_RESULTS_PATH = join(HERE, "..", "..", "node_modules", ".cache", "ccb-perf", "results.json");
+export const CEILINGS_PATH = join(HERE, "ceilings.json");
+export const DEFAULT_RESULTS_PATH = join(HERE, "..", "..", "node_modules", ".cache", "ccb-perf", "results.json");
 
 export function loadCeilings(json: string = readFileSync(CEILINGS_PATH, "utf8")): Ceilings {
 	const ceilings = CeilingsSchema.parse(JSON.parse(json));
@@ -47,7 +47,7 @@ export function loadCeilings(json: string = readFileSync(CEILINGS_PATH, "utf8"))
 	return ceilings;
 }
 
-function readResults(resultsPath: string): Results {
+export function readResults(resultsPath: string): Results {
 	let json: string;
 	try {
 		json = readFileSync(resultsPath, "utf8");

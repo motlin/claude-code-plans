@@ -76,6 +76,17 @@ _test *args:
 test *args: install
     just _test {{ args }}
 
+# Run the perf suite with the large fixture tier and print a table of the measured counts
+[group('perf')]
+perf *args: install
+    PERF_LARGE=1 vp exec vitest run tests/perf {{ args }}
+    vp exec tsx scripts/perf-ceilings.ts --table
+
+# Rewrite tests/perf/ceilings.json to lowered and new measured counts. Manual only: never run from CI, a bot or a schedule
+[group('perf')]
+perf-ceilings: install
+    vp exec tsx scripts/perf-ceilings.ts
+
 # Type-check the project
 typecheck: install
     vp run --cache typecheck

@@ -6,6 +6,7 @@
 		"server/plugins/**/*.ts",
 		"server/routes/**/*.ts",
 		"scripts/field-presence.ts",
+		"scripts/perf-ceilings.ts",
 		"tests/fixtures/fake-server.mjs",
 	],
 	"ignorePatterns": [".storybook/**", "src/routeTree.gen.ts"],
