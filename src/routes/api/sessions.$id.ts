@@ -93,14 +93,14 @@ export const Route = createFileRoute("/api/sessions/$id")({
 				let gitClean: boolean | null = null;
 				if (projectPath) {
 					try {
-						const {execSync} = await import("node:child_process");
+						const {trackedExecSync} = await import("../../lib/perf/tracked-process");
 						const execOpts = {
 							cwd: projectPath,
 							encoding: "utf-8" as const,
 							stdio: "pipe" as const,
 						};
-						gitSha = execSync("git rev-parse --short HEAD", execOpts).trim();
-						const status = execSync("git status --porcelain", execOpts).trim();
+						gitSha = trackedExecSync("git rev-parse --short HEAD", execOpts).trim();
+						const status = trackedExecSync("git status --porcelain", execOpts).trim();
 						gitClean = status.length === 0;
 					} catch {
 						// not a git repo or git not available
