@@ -40,7 +40,7 @@ describe("persisted application settings", () => {
 				visible_nav_sections: ["herdr", "plans"],
 				ignored_dirs: ["node_modules"],
 			}).success,
-			AppConfigSchema.safeParse({visible_nav_sections: ["sessions"]}).success,
+			AppConfigSchema.safeParse({visible_nav_sections: ["nope"]}).success,
 			AppConfigSchema.safeParse({visible_nav_sections: ["plans", "plans"]}).success,
 			AppConfigSchema.safeParse({herdr_writes_enabled: "1"}).success,
 			AppConfigSchema.safeParse({shell_pane_enabled: "on"}).success,

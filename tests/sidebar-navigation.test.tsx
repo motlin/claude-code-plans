@@ -9,8 +9,8 @@ import {
 	Outlet,
 	RouterProvider,
 } from "@tanstack/react-router";
-import {cleanup, render, screen, waitFor, within} from "@testing-library/react";
-import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
+import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {DEFAULTS, SettingsProvider} from "../src/components/settings-provider";
 import {useActiveSection} from "../src/components/sidebar/hooks";
 import {navItems} from "../src/components/sidebar/navigation";
@@ -23,6 +23,7 @@ import {installLocalStorage} from "./fake-storage";
 import {NAV_SECTIONS} from "../src/lib/nav-sections";
 import {redirectLegacyPlugins} from "../src/routes/plugins";
 import {ToastProvider} from "../src/components/toast";
+import {onHomeComposerFocusRequest} from "../src/lib/home-composer-focus";
 
 function seedQueryClient(): QueryClient {
 	const queryClient = new QueryClient({
@@ -71,15 +72,22 @@ async function renderSidebarAt(path: string) {
 		),
 	});
 	const pageRoute = createRoute({getParentRoute: () => rootRoute, path});
+	const homeRoute = createRoute({getParentRoute: () => rootRoute, path: "/"});
 	const router = createRouter({
-		routeTree: rootRoute.addChildren([pageRoute]),
+		routeTree: rootRoute.addChildren([pageRoute, homeRoute]),
 		history: createMemoryHistory({initialEntries: [path]}),
 	});
 	await router.load();
 	render(<RouterProvider router={router} />);
+	return router;
 }
 
-afterEach(cleanup);
+afterEach(() => {
+	cleanup();
+	vi.restoreAllMocks();
+});
+
+const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 
 beforeEach(() => {
 	installLocalStorage();
@@ -262,5 +270,66 @@ describe("sidebar nav rows", () => {
 			text: tail?.textContent,
 			badgeTitle: tail ? within(tail as HTMLElement).getByTitle("1 awaiting approval").textContent : null,
 		}).toStrictEqual({text: "1", badgeTitle: "1"});
+	});
+});
+
+describe("sidebar New row", () => {
+	function navLinks(): HTMLElement[] {
+		const titlebar = screen.getByTestId("sidebar-titlebar");
+		const footer = screen.getByTestId("sidebar-footer");
+		return screen.getAllByRole("link").filter((link) => !titlebar.contains(link) && !footer.contains(link));
+	}
+
+	it("is the first nav link, points home and reveals ⇧⌘O on hover", async () => {
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
+		await renderSidebarAt("/tasks");
+		await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
+
+		const first = navLinks()[0];
+		const shortcut = first?.querySelector('[data-cds="Shortcut"]');
+		expect({
+			name: first?.textContent,
+			href: first?.getAttribute("href"),
+			ariaKeyShortcuts: first?.getAttribute("aria-keyshortcuts"),
+			keycaps: [...(shortcut?.querySelectorAll('kbd > [aria-hidden="true"]') ?? [])].map(
+				(cap) => cap.textContent,
+			),
+			hiddenUntilHover: ["opacity-0", "group-hover:opacity-100"].every((name) =>
+				shortcut?.parentElement?.classList.contains(name),
+			),
+		}).toStrictEqual({
+			name: "New⇧Shift⌘CommandO",
+			href: "/",
+			ariaKeyShortcuts: "Shift+Meta+o",
+			keycaps: ["⇧", "⌘"],
+			hiddenUntilHover: true,
+		});
+	});
+
+	it("stays outside the scrolling list", async () => {
+		await renderSidebarAt("/tasks");
+		await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
+
+		const newRow = navLinks()[0];
+		expect({
+			text: newRow?.textContent?.startsWith("New"),
+			inScroll: screen.getByTestId("nav-scroll").contains(newRow ?? null),
+		}).toStrictEqual({text: true, inScroll: false});
+	});
+
+	it("navigates home and focuses the home composer, like ⇧⌘O", async () => {
+		const focusRequests: string[] = [];
+		const unsubscribe = onHomeComposerFocusRequest(() => focusRequests.push("focus"));
+		try {
+			const router = await renderSidebarAt("/tasks");
+			await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
+
+			fireEvent.click(navLinks()[0] as HTMLElement);
+
+			await waitFor(() => expect(focusRequests).toStrictEqual(["focus"]));
+			expect(router.state.location.pathname).toBe("/");
+		} finally {
+			unsubscribe();
+		}
 	});
 });

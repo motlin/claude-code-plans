@@ -7,6 +7,7 @@ import {useActiveSection, useCollapsedGroups, useExpandedGroups} from "./hooks";
 import {MoreNavMenu, type NavBadge} from "./more-menu";
 import {useVisibleNavItems} from "./navigation";
 import {NavScroll} from "./nav-scroll";
+import {NewSessionRow} from "./new-session-row";
 import {SidebarFooter} from "./sidebar-footer";
 import {SidebarToggleButton} from "./sidebar-toggle";
 import {SidebarToggleIcon} from "./primitives";
@@ -114,6 +115,7 @@ export function Sidebar({
 		<>
 			<div className="flex min-h-0 flex-1 flex-col px-2">
 				<div className="shrink-0">
+					<NewSessionRow />
 					{navigationItems.map((item) => {
 						const isActive =
 							item.to === "/settings" ? currentPath === "/settings" : currentPath.startsWith(item.to);

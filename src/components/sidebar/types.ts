@@ -1,18 +1,6 @@
-export type Section =
-	| "artifacts"
-	| "routines"
-	| "jobs"
-	| "active"
-	| "herdr"
-	| "tmux"
-	| "approvals"
-	| "notifications"
-	| "tasks"
-	| "projects"
-	| "plans"
-	| "memories"
-	| "sessions"
-	| "customize";
+import type {NavSection} from "../../lib/nav-sections";
+
+export type Section = NavSection;
 
 export interface SidebarProjectDetail {
 	sessions: Array<{

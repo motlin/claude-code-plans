@@ -12,11 +12,11 @@ function labels(items: ReadonlyArray<{label: string}>): string[] {
 }
 
 describe("getVisibleNavItems", () => {
-	it("pins Artifacts, Plans, Memories, Sessions and Customize by default and overflows the rest, Routines and Background jobs included", () => {
+	it("pins Artifacts, Plans, Memories and Customize by default and overflows the rest, Sessions included", () => {
 		const {pinned, overflow} = getVisibleNavItems(navItems, DEFAULT_VISIBLE_NAV_SECTIONS);
 
 		expect({pinned: labels(pinned), overflow: labels(overflow)}).toStrictEqual({
-			pinned: ["Artifacts", "Plans", "Memories", "Sessions", "Customize"],
+			pinned: ["Artifacts", "Plans", "Memories", "Customize"],
 			overflow: [
 				"Routines",
 				"Background jobs",
@@ -27,12 +27,13 @@ describe("getVisibleNavItems", () => {
 				"Notifications",
 				"Tasks",
 				"Projects",
+				"Sessions",
 			],
 		});
 	});
 
 	it("keeps nav order regardless of the visible list's order", () => {
-		const {pinned, overflow} = getVisibleNavItems(navItems, ["tasks", "active"]);
+		const {pinned, overflow} = getVisibleNavItems(navItems, ["sessions", "tasks", "active"]);
 
 		expect({pinned: labels(pinned), overflowCount: overflow.length}).toStrictEqual({
 			pinned: ["Active", "Tasks", "Sessions"],
@@ -40,21 +41,19 @@ describe("getVisibleNavItems", () => {
 		});
 	});
 
-	it("always pins the session list, which is not toggleable", () => {
+	it("moves every section, the session list included, under More when none is pinned", () => {
 		const {pinned, overflow} = getVisibleNavItems(navItems, []);
 
 		expect({pinned: labels(pinned), overflowCount: overflow.length}).toStrictEqual({
-			pinned: ["Sessions"],
-			overflowCount: 13,
+			pinned: [],
+			overflowCount: 14,
 		});
 	});
 });
 
 describe("visibleNavSections schema", () => {
-	it("lists every nav section except the session list", () => {
-		expect(NAV_SECTIONS).toStrictEqual(
-			navItems.map((item) => item.section).filter((section) => section !== "sessions"),
-		);
+	it("lists every nav section, the session list included, so Edit sidebar can pin it", () => {
+		expect(NAV_SECTIONS).toStrictEqual(navItems.map((item) => item.section));
 	});
 
 	it("rejects unknown and duplicate sections", () => {
@@ -63,7 +62,7 @@ describe("visibleNavSections schema", () => {
 			VisibleNavSectionsSchema.safeParse(["sessions"]).success,
 			VisibleNavSectionsSchema.safeParse(["plans", "plans"]).success,
 			VisibleNavSectionsSchema.safeParse(["nope"]).success,
-		]).toStrictEqual([true, false, false, false]);
+		]).toStrictEqual([true, true, false, false]);
 	});
 });
 

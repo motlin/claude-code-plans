@@ -112,10 +112,7 @@ export const navItems = (Object.keys(navEntries) as Section[]).map((section) => 
 
 export type NavItem = (typeof navItems)[number];
 
-/**
- * Split the nav into sidebar rows and the More ▸ overflow, both in nav order. The session list is
- * always pinned because it is not toggleable.
- */
+/** Split the nav into sidebar rows and the More ▸ overflow, both in nav order. */
 export function getVisibleNavItems<T extends {section: Section}>(
 	all: readonly T[],
 	visible: readonly NavSection[],
@@ -124,7 +121,7 @@ export function getVisibleNavItems<T extends {section: Section}>(
 	const pinned: T[] = [];
 	const overflow: T[] = [];
 	for (const item of all) {
-		if (item.section === "sessions" || visibleSet.has(item.section)) pinned.push(item);
+		if (visibleSet.has(item.section)) pinned.push(item);
 		else overflow.push(item);
 	}
 	return {pinned, overflow};

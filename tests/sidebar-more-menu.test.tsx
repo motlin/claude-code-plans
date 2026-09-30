@@ -128,7 +128,7 @@ describe("sidebar More menu", () => {
 	it("shows only the pinned sections as sidebar rows", async () => {
 		await renderSidebar();
 
-		expect(sidebarNavLabels()).toStrictEqual(["Artifacts", "Plans", "Memories", "Sessions", "Customize"]);
+		expect(sidebarNavLabels()).toStrictEqual(["Artifacts", "Plans", "Memories", "Customize"]);
 	});
 
 	it("lists hidden sections, a separator, then Edit sidebar…", async () => {
@@ -151,6 +151,7 @@ describe("sidebar More menu", () => {
 				"Notifications",
 				"Tasks",
 				"Projects",
+				"Sessions",
 				"Edit sidebar…",
 			],
 			separators: 1,
@@ -191,6 +192,7 @@ describe("Edit sidebar dialog", () => {
 			{label: "Projects", checked: "false"},
 			{label: "Plans", checked: "true"},
 			{label: "Memories", checked: "true"},
+			{label: "Sessions", checked: "false"},
 			{label: "Customize", checked: "true"},
 		]);
 	});
@@ -212,7 +214,20 @@ describe("Edit sidebar dialog", () => {
 				},
 				{...BASE_SETTINGS, visibleNavSections: ["artifacts", "herdr", "plans", "customize"]},
 			],
-			sidebar: ["Artifacts", "Herdr", "Plans", "Sessions", "Customize"],
+			sidebar: ["Artifacts", "Herdr", "Plans", "Customize"],
+		});
+	});
+
+	it("re-pins Sessions from More into the sidebar", async () => {
+		await renderSidebar();
+		const dialog = await openEditSidebar();
+
+		fireEvent.click(within(dialog).getByRole("checkbox", {name: "Sessions"}));
+		await waitFor(() => expect(puts).toHaveLength(1));
+
+		expect({puts, sidebar: sidebarNavLabels()}).toStrictEqual({
+			puts: [{...BASE_SETTINGS, visibleNavSections: ["artifacts", "plans", "memories", "sessions", "customize"]}],
+			sidebar: ["Artifacts", "Plans", "Memories", "Sessions", "Customize"],
 		});
 	});
 

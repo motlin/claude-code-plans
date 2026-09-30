@@ -741,6 +741,7 @@ const navSectionLabels = {
 	projects: "Projects",
 	plans: "Plans",
 	memories: "Memories",
+	sessions: "Sessions",
 	customize: "Customize",
 } satisfies Record<NavSection, string>;
 

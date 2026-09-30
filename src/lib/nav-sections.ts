@@ -1,9 +1,6 @@
 import {z} from "zod";
 
-/**
- * Sidebar sections the user can pin or move under More ▸, in nav order. The session list is
- * absent because, like upstream's session list, it cannot be toggled.
- */
+/** Sidebar sections the user can pin or move under More ▸, in nav order. */
 export const NAV_SECTIONS = [
 	"artifacts",
 	"routines",
@@ -17,6 +14,7 @@ export const NAV_SECTIONS = [
 	"projects",
 	"plans",
 	"memories",
+	"sessions",
 	"customize",
 ] as const;
 

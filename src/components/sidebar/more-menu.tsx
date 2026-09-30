@@ -4,7 +4,7 @@ import {useNavigate} from "@tanstack/react-router";
 import {Check, Ellipsis, X} from "lucide-react";
 import {useState} from "react";
 import {useSetNavSectionPinned} from "../../lib/api/application-settings";
-import {NAV_SECTIONS, type NavSection} from "../../lib/nav-sections";
+import type {NavSection} from "../../lib/nav-sections";
 import {Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "../ui/menu";
 import {navItems, type NavItem} from "./navigation";
 import type {Section} from "./types";
@@ -16,10 +16,6 @@ export interface NavBadge {
 
 const NAV_ROW_CLASS =
 	"group mb-[0.5px] flex h-[var(--sb-row-h)] min-w-0 flex-1 items-center gap-[var(--sb-row-gap)] rounded-[var(--sb-radius)] px-[var(--sb-row-px)] text-left text-[length:var(--sb-row-font)] leading-[1.5] text-secondary no-underline outline-none hover:bg-[var(--sb-hover)] focus-visible:bg-[var(--sb-hover)] data-[popup-open]:bg-[var(--sb-hover)] [&_.df-leading-slot]:text-secondary";
-
-const toggleableItems = navItems.filter((item): item is NavItem & {section: NavSection} =>
-	(NAV_SECTIONS as readonly Section[]).includes(item.section),
-);
 
 /**
  * Upstream's sidebar "More" row: a right-side popover listing the nav items that are not pinned,
@@ -117,7 +113,7 @@ function EditSidebarDialog({
 							</Dialog.Close>
 						</div>
 						<div className="mt-2 flex flex-col">
-							{toggleableItems.map((item) => {
+							{navItems.map((item) => {
 								const Icon = item.icon;
 								return (
 									<Checkbox.Root
