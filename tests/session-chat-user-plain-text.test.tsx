@@ -70,7 +70,7 @@ function bubble(container: HTMLElement): Element {
 
 describe("SessionChat user bubbles as plain text", () => {
 	it("keeps markdown syntax literal and styles only inline code", () => {
-		const el = bubble(renderRecords([prompt("**bold** and `code` see https://x.y/z")]));
+		const el = bubble(renderRecords([prompt("**bold** and `code` see x.y/z")]));
 
 		expect({
 			text: el.textContent,
@@ -81,7 +81,7 @@ describe("SessionChat user bubbles as plain text", () => {
 			})),
 			paragraphClass: el.querySelector("p")?.className ?? null,
 		}).toStrictEqual({
-			text: "**bold** and code see https://x.y/z",
+			text: "**bold** and code see x.y/z",
 			strong: 0,
 			code: [
 				{
@@ -121,5 +121,53 @@ describe("SessionChat user bubbles as plain text", () => {
 			code: Array.from(el.querySelectorAll("code")).map((code) => code.textContent),
 			text: (el.textContent ?? "").replace(/\s+/g, " ").trim(),
 		}).toStrictEqual({chips: 1, strong: 0, code: ["5m"], text: "/loop **every** 5m"});
+	});
+
+	it("autolinks bare URLs as accent links opening in a new tab", () => {
+		const el = bubble(
+			renderRecords([
+				prompt(
+					"review https://github.com/eclipse-collections/eclipse-collections/pull/1954. and http://x.y/z)",
+				),
+			]),
+		);
+
+		expect({
+			text: el.textContent,
+			links: Array.from(el.querySelectorAll("a")).map((a) => ({
+				href: a.getAttribute("href"),
+				text: a.textContent,
+				target: a.getAttribute("target"),
+				rel: a.getAttribute("rel"),
+				className: a.className,
+			})),
+		}).toStrictEqual({
+			text: "review https://github.com/eclipse-collections/eclipse-collections/pull/1954. and http://x.y/z)",
+			links: [
+				{
+					href: "https://github.com/eclipse-collections/eclipse-collections/pull/1954",
+					text: "https://github.com/eclipse-collections/eclipse-collections/pull/1954",
+					target: "_blank",
+					rel: "noopener noreferrer",
+					className: "text-link",
+				},
+				{
+					href: "http://x.y/z",
+					text: "http://x.y/z",
+					target: "_blank",
+					rel: "noopener noreferrer",
+					className: "text-link",
+				},
+			],
+		});
+	});
+
+	it("leaves URLs inside code spans unlinked", () => {
+		const el = bubble(renderRecords([prompt("run `curl https://x.y/z` now")]));
+
+		expect({
+			links: el.querySelectorAll("a").length,
+			code: Array.from(el.querySelectorAll("code")).map((code) => code.textContent),
+		}).toStrictEqual({links: 0, code: ["curl https://x.y/z"]});
 	});
 });
