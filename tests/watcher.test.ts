@@ -108,6 +108,27 @@ function createLinkedWorktree(
 	return {repositoryIndexPath, worktreeDirectory};
 }
 
+// Every getDb() caller in this file must see the in-memory test database, never the
+// real cache DB. Assign the holder instead of seeding it, because a handler that ran
+// before this hook would otherwise have created the holder with the real database.
+const sharedDb: AppDb = openTestDb();
+const dbHolder = hmrPersist<{db: AppDb | null}>("appDbHolder", () => ({db: null}));
+
+// A git hook or linked worktree exports GIT_DIR, GIT_INDEX_FILE and friends, which
+// would redirect the fixture repositories' git commands to the caller's repository.
+const inheritedGitEnvironment = Object.entries(process.env).filter(([name]) => name.startsWith("GIT_"));
+
+beforeAll(() => {
+	dbHolder.db = sharedDb;
+	for (const [name] of inheritedGitEnvironment) delete process.env[name];
+});
+
+afterAll(() => {
+	for (const [name, value] of inheritedGitEnvironment) process.env[name] = value;
+	dbHolder.db = null;
+	sharedDb.close();
+});
+
 describe("handleFileChange", () => {
 	const testDir = join(tmpdir(), "watcher-debounce-test-" + process.pid);
 
@@ -149,14 +170,8 @@ describe("handleFileChange", () => {
 });
 
 describe("handleFileChange file content", () => {
-	let db: AppDb;
 	let fixtureDirectory: string;
 	let repositoryDirectory: string;
-
-	beforeAll(() => {
-		db = openTestDb();
-		hmrPersist("appDbHolder", () => ({db}));
-	});
 
 	beforeEach(() => {
 		fixtureDirectory = realpathSync(mkdtempSync(join(tmpdir(), "watcher-file-content-test-")));
@@ -174,10 +189,6 @@ describe("handleFileChange file content", () => {
 		rmSync(fixtureDirectory, {recursive: true, force: true});
 	});
 
-	afterAll(() => {
-		db.close();
-	});
-
 	it("indexes an untracked file only after git add changes the repository index", async () => {
 		const filePath = join(repositoryDirectory, "alice.txt");
 		const gitIndexPath = join(repositoryDirectory, ".git", "index");
@@ -185,18 +196,18 @@ describe("handleFileChange file content", () => {
 
 		await __testing.handleFileChange(gitIndexPath);
 		await __testing.handleFileChange(filePath);
-		const rowsBeforeAdd = db.index.all(sql`SELECT path, content FROM file_content_fts ORDER BY path`);
+		const rowsBeforeAdd = sharedDb.index.all(sql`SELECT path, content FROM file_content_fts ORDER BY path`);
 
 		execFileSync("git", ["add", "alice.txt"], {cwd: repositoryDirectory, stdio: "pipe"});
 		await __testing.handleFileChange(gitIndexPath);
-		const rowsAfterAdd = db.index.all(sql`SELECT path, content FROM file_content_fts ORDER BY path`);
+		const rowsAfterAdd = sharedDb.index.all(sql`SELECT path, content FROM file_content_fts ORDER BY path`);
 
 		execFileSync("git", ["rm", "--cached", "alice.txt"], {
 			cwd: repositoryDirectory,
 			stdio: "pipe",
 		});
 		await __testing.handleFileChange(gitIndexPath);
-		const rowsAfterRemoval = db.index.all(sql`SELECT path, content FROM file_content_fts ORDER BY path`);
+		const rowsAfterRemoval = sharedDb.index.all(sql`SELECT path, content FROM file_content_fts ORDER BY path`);
 
 		expect({rowsAfterAdd, rowsAfterRemoval, rowsBeforeAdd}).toStrictEqual({
 			rowsAfterAdd: [{path: filePath, content: "Alice's searchable file content.\n"}],
@@ -213,7 +224,7 @@ describe("handleFileChange file content", () => {
 
 		execFileSync("git", ["add", "alice.txt"], {cwd: worktreeDirectory, stdio: "pipe"});
 		await __testing.handleFileChange(repositoryIndexPath);
-		const rows = db.index.all(sql`SELECT path, content FROM file_content_fts ORDER BY path`);
+		const rows = sharedDb.index.all(sql`SELECT path, content FROM file_content_fts ORDER BY path`);
 
 		expect({ignored: shouldIgnoreWatch(repositoryIndexPath), rows}).toStrictEqual({
 			ignored: false,
