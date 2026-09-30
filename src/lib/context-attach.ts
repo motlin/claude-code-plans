@@ -80,9 +80,10 @@ export function appendAttachment(prompt: string, snippet: string): string {
 /**
  * What the composer's chip strip holds: ⇧⌘L / "Attach as context" files,
  * folders, selections and terminal output, plus uploaded images and long
- * pastes (⌘U, drop, paste).
+ * pastes (⌘U, drop, paste), and transcript messages attached from their
+ * context menu, which send as a fenced excerpt like terminal output.
  */
-export const ContextAttachmentKindSchema = z.enum(["file", "selection", "terminal", "image", "pasted-text"]);
+export const ContextAttachmentKindSchema = z.enum(["file", "selection", "terminal", "image", "pasted-text", "message"]);
 export type ContextAttachmentKind = z.infer<typeof ContextAttachmentKindSchema>;
 
 export interface ContextAttachment {
@@ -138,6 +139,7 @@ export function contextChipLabel({kind, path, range, text, name: displayName}: C
 		return `Pasted text · ${lines} ${lines === 1 ? "line" : "lines"}`;
 	}
 	if (displayName !== undefined) return displayName;
+	if (kind === "message") return "Message";
 	if (kind === "terminal" || path === undefined) return "Terminal output";
 	const trimmed = path.endsWith("/") ? path.slice(0, -1) : path;
 	const name = `${trimmed.slice(trimmed.lastIndexOf("/") + 1) || trimmed}${path.endsWith("/") ? "/" : ""}`;

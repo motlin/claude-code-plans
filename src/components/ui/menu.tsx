@@ -48,6 +48,9 @@ const ITEM_VARIANT_CLASS = {
 const SUB_TRIGGER_CLASS = `${ITEM_BASE_CLASS} ${ITEM_VARIANT_CLASS.default} justify-between data-[popup-open]:bg-fill-ghost-hover`;
 
 const LABEL_CLASS = "min-w-0 flex-1 truncate";
+/** Upstream's two-line rows: 19px title plus a 2px gap and a 15px muted description, 41px in all. */
+const TWO_LINE_ITEM_CLASS = ITEM_BASE_CLASS.replace("h-6 items-center", "min-h-[41px] items-start");
+const DESCRIPTION_CLASS = "truncate pt-[2px] text-[12px]/[15px] text-[var(--menu-muted)]";
 const TRAILING_CLASS = "ml-auto flex shrink-0 items-center gap-1 pl-3";
 const CHECK_SLOT_CLASS = "-mr-1 flex size-5 shrink-0 items-center justify-center";
 const ICON_SLOT_CLASS = "mr-1 flex size-5 shrink-0 items-center justify-center [&_svg]:size-4 [&_svg]:shrink-0";
@@ -193,6 +196,8 @@ export interface MenuItemProps extends Omit<
 	children: ReactNode;
 	/** Leading 20px icon slot, as on upstream's icon rows. */
 	icon?: ReactNode;
+	/** Muted second line, making the item upstream's 41px two-line row. */
+	description?: ReactNode;
 	/** Single key that fires this item while the menu is open. */
 	accelerator?: string;
 	/** Keep the accelerator working but draw no keycap hint. */
@@ -206,6 +211,7 @@ export interface MenuItemProps extends Omit<
 export function MenuItem({
 	children,
 	icon,
+	description,
 	accelerator,
 	hideAccelerator = false,
 	shortcut,
@@ -221,10 +227,23 @@ export function MenuItem({
 			{...(ariaKeyShortcuts ? {"aria-keyshortcuts": ariaKeyShortcuts} : {})}
 			{...(accelerator ? {"data-accelerator": accelerator.toLowerCase()} : {})}
 			data-variant={variant}
-			className={`${ITEM_BASE_CLASS} ${ITEM_VARIANT_CLASS[variant]}`}
+			className={`${description === undefined ? ITEM_BASE_CLASS : TWO_LINE_ITEM_CLASS} ${ITEM_VARIANT_CLASS[variant]}`}
 		>
 			<ItemIcon icon={icon} />
-			<span className={LABEL_CLASS}>{children}</span>
+			{description === undefined ? (
+				<span data-menu-item-title="" className={LABEL_CLASS}>
+					{children}
+				</span>
+			) : (
+				<span className="flex min-w-0 flex-1 flex-col">
+					<span data-menu-item-title="" className="truncate">
+						{children}
+					</span>
+					<span data-menu-item-description="" className={DESCRIPTION_CLASS}>
+						{description}
+					</span>
+				</span>
+			)}
 			<ItemTrailing
 				{...(accelerator === undefined || hideAccelerator ? {} : {accelerator})}
 				{...(shortcut === undefined ? {} : {shortcut})}

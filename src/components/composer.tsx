@@ -6,6 +6,7 @@ import {
 	FileText,
 	Image as ImageIcon,
 	MessageSquare,
+	MessageSquareText,
 	Square,
 	SquareTerminal,
 	TextQuote,
@@ -84,6 +85,7 @@ const CONTEXT_CHIP_ICON = {
 	terminal: SquareTerminal,
 	image: ImageIcon,
 	"pasted-text": ClipboardPaste,
+	message: MessageSquareText,
 } satisfies Record<ContextChip["kind"], unknown>;
 
 function removeChip(sessionId: string, chip: ContextChip): void {

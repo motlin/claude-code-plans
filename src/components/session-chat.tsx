@@ -32,6 +32,7 @@ import {promptSourceLabels, turnOriginLabels} from "../lib/schema-choices";
 import {computeDiffData} from "../lib/diff-utils";
 import {TasksView} from "./tasks-view";
 import {DebugLink} from "./debug-link";
+import {TranscriptMessageMenu} from "./transcript-context-menu";
 import {TurnChangesCard} from "./turn-changes-card";
 import {collectTurnChanges, type TurnChanges} from "../lib/turn-changes";
 import {useSettings} from "./settings-provider";
@@ -458,18 +459,33 @@ function LineEntry({
 	]
 		.filter(Boolean)
 		.join(" ");
-	return (
+	const wrapper = (
 		<div
 			key={`line-${line.lineIndex}`}
 			data-record-index={line.lineIndex}
 			className={wrapperClassName}
 			title={line.type !== "user" ? (timestampTitle ?? undefined) : undefined}
-		>
+		/>
+	);
+	const children = (
+		<>
 			{isAssistant && <TurnHeading speaker="Claude" />}
 			{content}
 			{turnChanges && <TurnChangesCard sessionId={renderProps.sessionId} changes={turnChanges} />}
 			{isAssistant && <MessageToolbar line={line} {...(rawTimestamp ? {timestamp: rawTimestamp} : {})} />}
-		</div>
+		</>
+	);
+	if (line.type !== "assistant") return React.cloneElement(wrapper, undefined, children);
+	return (
+		<TranscriptMessageMenu
+			speaker="assistant"
+			sessionId={getSourceSessionId(line, renderProps.sessionId)}
+			uuid={line.uuid}
+			markdown={extractTextFromLine(line).join("\n\n")}
+			render={wrapper}
+		>
+			{children}
+		</TranscriptMessageMenu>
 	);
 }
 
@@ -511,7 +527,7 @@ function buildLineToolCalls(
 /** A run of tool calls sharing one source session, ready to summarize. */
 interface ToolCallBatch {
 	/** The run's first line: the row is anchored on it and carries its record index. */
-	head: SessionLine;
+	head: MessageSessionLine;
 	sourceSessionId: string;
 	calls: ClientToolCall[];
 }
@@ -566,13 +582,16 @@ function GroupedToolCallEntry({
 		<div className={`group/msg flex flex-col w-full gap-[var(--chat-item-gap)] ${TURN_GAP_CLASS}`}>
 			<TurnHeading speaker="Claude" />
 			{batches.map((batch) => (
-				<div
+				<TranscriptMessageMenu
 					key={batch.head.lineIndex}
-					data-record-index={batch.head.lineIndex}
-					className="flex flex-col w-full"
+					speaker="assistant"
+					sessionId={batch.sourceSessionId}
+					uuid={batch.head.uuid}
+					markdown=""
+					render={<div data-record-index={batch.head.lineIndex} className="flex flex-col w-full" />}
 				>
 					<ToolCallSection calls={batch.calls} sessionId={batch.sourceSessionId} />
-				</div>
+				</TranscriptMessageMenu>
 			))}
 		</div>
 	);
@@ -1516,7 +1535,13 @@ function UserEntry({
 
 	return (
 		<UserTurn>
-			<div className="flex flex-col items-end gap-g6 max-w-[85%] min-w-0">
+			<TranscriptMessageMenu
+				speaker="user"
+				sessionId={sessionId}
+				uuid={line.uuid}
+				markdown={extractTextFromLine(line).join("\n\n")}
+				render={<div className="flex flex-col items-end gap-g6 max-w-[85%] min-w-0" />}
+			>
 				<UserTurnMeta line={line} />
 				{textNodes.length > 0 && (
 					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
@@ -1525,7 +1550,7 @@ function UserEntry({
 				)}
 				{mediaNodes}
 				<UserMessageActions {...actionsProps} />
-			</div>
+			</TranscriptMessageMenu>
 		</UserTurn>
 	);
 }
@@ -2472,7 +2497,7 @@ function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; s
 
 	if (!expandable) {
 		return (
-			<div className="flex flex-col w-full">
+			<div data-tool-row="" className="flex flex-col w-full">
 				<div className="relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left">
 					{rowLabel}
 				</div>
@@ -2482,7 +2507,7 @@ function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; s
 	}
 
 	return (
-		<div className="flex flex-col w-full">
+		<div data-tool-row="" className="flex flex-col w-full">
 			<div
 				role="button"
 				tabIndex={0}
@@ -2543,7 +2568,7 @@ function ToolCallSummary({calls, sessionId}: {calls: ClientToolCall[]; sessionId
 	const ink = expanded ? "text-secondary" : "text-ink-muted group-hover/tool:text-secondary";
 
 	return (
-		<div className="flex flex-col w-full">
+		<div data-tool-row="" className="flex flex-col w-full">
 			{hasTasksView && (
 				<div className="mb-2">
 					<TasksView toolCalls={calls} />
