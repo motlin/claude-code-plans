@@ -1,6 +1,6 @@
 import {openAppDb, type AppDb} from "./connection";
 import {fullScan, scanFileContentRoots} from "./indexer";
-import {hmrPersist} from "../hmr-persist";
+import {hmrPersist, hmrTake} from "../hmr-persist";
 import {homedir} from "node:os";
 import {join} from "node:path";
 
@@ -20,8 +20,13 @@ const PLANS_DIR = join(homedir(), ".claude", "plans");
 type ScanHolder = {promise: Promise<void> | null; controller: AbortController};
 type DbHolder = {db: AppDb | null};
 
+// An instance that predates the abort controller left a holder without one in
+// the HMR state, and its scan cannot be aborted, so give the holder a fresh one.
 function getScanHolder(): ScanHolder {
-	return hmrPersist<ScanHolder>("appDbScanPromise", () => ({promise: null, controller: new AbortController()}));
+	const holder = hmrPersist<Partial<ScanHolder>>("appDbScanPromise", () => ({}));
+	holder.promise ??= null;
+	holder.controller ??= new AbortController();
+	return holder as ScanHolder;
 }
 
 function getDbHolder(): DbHolder {
@@ -105,4 +110,7 @@ export async function shutdownDb(): Promise<void> {
 	const db = dbHolder.db;
 	dbHolder.db = null;
 	db?.close();
+	// Instances that predate the holder kept their connection under `appDb`.
+	const legacyDb = hmrTake("appDb") as AppDb | undefined;
+	legacyDb?.close();
 }

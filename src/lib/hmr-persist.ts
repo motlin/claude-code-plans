@@ -20,6 +20,14 @@ export function hmrPersist<T>(key: string, init: () => T): T {
 	return (cache[key] ??= init()) as T;
 }
 
+/** Remove and return the value persisted under `key`, if any, without creating one. */
+export function hmrTake(key: string): unknown {
+	const store: Record<string, unknown> = import.meta.hot ? import.meta.hot.data : cache;
+	const value = store[key];
+	delete store[key];
+	return value;
+}
+
 export function hmrDispose(cleanup: () => void | Promise<void>): void {
 	import.meta.hot?.dispose(cleanup);
 }

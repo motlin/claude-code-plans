@@ -245,4 +245,73 @@ describe("db boot ordering", () => {
 		});
 		consoleError.mockRestore();
 	});
+
+	it("shutdownDb() before any DB or scan exists returns cleanly without opening a database", async () => {
+		const openAppDb = vi.fn(() => testDb);
+		mockDbModule({});
+		vi.doMock("../src/lib/db/connection", async () => {
+			const actual = await vi.importActual<typeof import("../src/lib/db/connection")>("../src/lib/db/connection");
+			return {...actual, openAppDb};
+		});
+
+		const {shutdownDb} = await import("../src/lib/db");
+		await shutdownDb();
+
+		expect(openAppDb.mock.calls.length).toBe(0);
+	});
+
+	it("shutdownDb() closes an open database whose scan has not started", async () => {
+		mockDbModule({});
+		const close = vi.spyOn(testDb, "close").mockImplementation(() => {});
+
+		const {initDb, shutdownDb} = await import("../src/lib/db");
+		await initDb();
+		await shutdownDb();
+
+		expect(close.mock.calls.length).toBe(1);
+	});
+
+	it("shutdownDb() tolerates a legacy scan holder without an abort controller", async () => {
+		const order: string[] = [];
+		let finishLegacyScan: () => void = () => {};
+		mockDbModule({});
+		const close = vi.spyOn(testDb, "close").mockImplementation(() => {
+			order.push("db:closed");
+		});
+
+		const {hmrPersist} = await import("../src/lib/hmr-persist");
+		hmrPersist("appDbScanPromise", () => ({
+			promise: new Promise<void>((resolve) => {
+				finishLegacyScan = () => {
+					order.push("legacy-scan:done");
+					resolve();
+				};
+			}),
+		}));
+		const {initDb, shutdownDb} = await import("../src/lib/db");
+		await initDb();
+		const shutdown = shutdownDb();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		finishLegacyScan();
+		await shutdown;
+
+		expect({order, closeCalls: close.mock.calls.length}).toStrictEqual({
+			order: ["legacy-scan:done", "db:closed"],
+			closeCalls: 1,
+		});
+	});
+
+	it("shutdownDb() closes a legacy appDb global left by an older instance", async () => {
+		const legacyDb = openTestDb();
+		const legacyClose = vi.spyOn(legacyDb, "close");
+		mockDbModule({});
+
+		const {hmrPersist} = await import("../src/lib/hmr-persist");
+		hmrPersist("appDb", () => legacyDb);
+		const {shutdownDb} = await import("../src/lib/db");
+		await shutdownDb();
+		await shutdownDb();
+
+		expect(legacyClose.mock.calls.length).toBe(1);
+	});
 });
