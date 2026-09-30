@@ -66,6 +66,7 @@
 	--color-accent-000: var(--accent-000);
 	--color-accent-100: var(--accent-100);
 	--color-accent-900: var(--accent-900);
+	--color-upstream-accent: var(--upstream-accent);
 
 	/* User message bubble */
 	--color-user-msg-bg: var(--user-msg-bg);
@@ -197,6 +198,9 @@
 	--warning-000: hsl(45 91.8% 19%);
 	--warning-100: hsl(39 88.8% 28%);
 	--accent-000: hsl(210 73.7% 40.2%);
+	/* Upstream claude.ai/code accent ink: transcript links, file refs, PR chips,
+	   and pressed toggles. */
+	--upstream-accent: rgb(24 79 149);
 	--accent-100: hsl(210 70.9% 51.6%);
 	--accent-900: hsl(211 72% 90%);
 
@@ -337,6 +341,7 @@
 	--warning-000: hsl(40 71% 50%);
 	--warning-100: hsl(39 93.4% 35.9%);
 	--accent-000: hsl(210 65.5% 67.1%);
+	--upstream-accent: rgb(128 178 235);
 	--accent-100: hsl(210 70.9% 51.6%);
 	--accent-900: hsl(210 55.9% 24.6%);
 
@@ -428,7 +433,7 @@
 .prose-link {
 	display: inline-block;
 	border-radius: 3px;
-	color: var(--color-accent-000);
+	color: var(--upstream-accent);
 	cursor: pointer;
 }
 .prose-link:hover {
@@ -437,6 +442,16 @@
 .prose-link:focus-visible {
 	outline: 2px solid var(--color-accent-100);
 	outline-offset: 1px;
+}
+
+/* Upstream `cds-text-link cds-text-link-underline`: an accent link underlined
+   3px below the text, with no hover change. `.markdown a` in
+   markdown-article.module.css draws prose links the same way. */
+.text-link {
+	color: var(--upstream-accent);
+	text-decoration-line: underline;
+	text-underline-offset: 3px;
+	border-radius: 2px;
 }
 
 [data-record-index] {

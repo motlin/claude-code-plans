@@ -111,7 +111,7 @@ describe("ProseMarkdown file refs", () => {
 					role: "button",
 					tabIndex: "0",
 					className: "prose-link",
-					title: ".mise/config.toml",
+					title: null,
 					hasCode: false,
 				},
 				{
@@ -119,7 +119,7 @@ describe("ProseMarkdown file refs", () => {
 					role: "button",
 					tabIndex: "0",
 					className: "prose-link",
-					title: "src/app.ts:12-20",
+					title: null,
 					hasCode: false,
 				},
 			],

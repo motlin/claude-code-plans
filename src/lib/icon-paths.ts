@@ -15,3 +15,6 @@ export const COPY_ICON_SVG = `<svg width="12" height="12" viewBox="0 0 12 12" fi
 
 /** The check glyph as an HTML string, swapped in after a successful copy. */
 export const CHECK_ICON_SVG = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="${CHECK_ICON_PATH}" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+/** A pull-request glyph (two branch nodes joined by a merge arrow) for GitHub PR chips. */
+export const PR_ICON_SVG = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="4" cy="3.5" r="1.75" stroke="currentColor" stroke-width="1.5"/><circle cx="4" cy="12.5" r="1.75" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12.5" r="1.75" stroke="currentColor" stroke-width="1.5"/><path d="M4 5.25v5.5M12 10.75V6.5a2 2 0 0 0-2-2H7.5M9 3 7.5 4.5 9 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;

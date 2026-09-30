@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import type {HighlighterCore} from "@shikijs/core";
 import {beforeEach, vi} from "vite-plus/test";
 import {
@@ -48,7 +50,7 @@ describe("renderInlineMarkdownToHtml", () => {
 
 	it("linkifies URLs", () => {
 		expect(renderInlineMarkdownToHtml("see https://example.com")).toBe(
-			'see <a href="https://example.com">https://example.com</a>',
+			'see <a href="https://example.com" target="_blank" rel="noreferrer">https://example.com</a>',
 		);
 	});
 });
@@ -184,7 +186,7 @@ describe("mdLinkBase rewriting", () => {
 			renderMarkdownToHtml("[spec](https://example.com/notes.md)", {
 				mdLinkBase: "/memory/proj",
 			}),
-		).toBe('<p><a href="https://example.com/notes.md">spec</a></p>\n');
+		).toBe('<p><a href="https://example.com/notes.md" target="_blank" rel="noreferrer">spec</a></p>\n');
 	});
 
 	it("leaves relative .md links alone when no base is supplied", () => {
@@ -404,7 +406,7 @@ describe("artifact link cards", () => {
 
 	it("leaves other claude.ai links as plain links", () => {
 		expect(renderMarkdownToHtml("[chat](https://claude.ai/chat/abc)")).toBe(
-			'<p><a href="https://claude.ai/chat/abc">chat</a></p>\n',
+			'<p><a href="https://claude.ai/chat/abc" target="_blank" rel="noreferrer">chat</a></p>\n',
 		);
 	});
 });
@@ -414,6 +416,62 @@ describe("renderArtifactLinkCard", () => {
 		const href = "https://claude.ai/code/artifact/29d89ae8-e33b-4f55-bbbd-874d5d316169";
 		expect(renderArtifactLinkCard(href, "A <b> page")).toBe(
 			`<a href="${href}" target="_blank" rel="noopener noreferrer" class="artifact-link-card" data-artifact-link="" aria-label="Artifact: A &lt;b&gt; page" title="Artifact: A &lt;b&gt; page"><span class="artifact-link-card-title">A &lt;b&gt; page</span><span class="artifact-link-card-meta">Artifact · claude.ai</span></a>`,
+		);
+	});
+});
+
+describe("external links", () => {
+	it("open a plain external link in a new tab without a referrer", () => {
+		expect(renderMarkdownToHtml("[docs](https://example.com/a)")).toBe(
+			'<p><a href="https://example.com/a" target="_blank" rel="noreferrer">docs</a></p>\n',
+		);
+	});
+
+	it("leave in-app links in the same tab", () => {
+		expect(renderMarkdownToHtml("[home](/sessions) and [top](#top)")).toBe(
+			'<p><a href="/sessions">home</a> and <a href="#top">top</a></p>\n',
+		);
+	});
+});
+
+describe("GitHub PR chips", () => {
+	const href = "https://github.com/motlin/claude-code-plans/pull/1954";
+
+	it("render a linkified PR URL as a pr-chip reading owner/repo#n", () => {
+		const html = renderMarkdownToHtml(`See ${href} for details`);
+		const container = document.createElement("div");
+		container.innerHTML = html;
+		const chips = [...container.querySelectorAll("a.pr-chip")];
+		expect(
+			chips.map((chip) => ({
+				href: chip.getAttribute("href"),
+				target: chip.getAttribute("target"),
+				rel: chip.getAttribute("rel"),
+				text: chip.textContent,
+				icon: chip.querySelector("svg")?.getAttribute("width"),
+			})),
+		).toStrictEqual([
+			{
+				href,
+				target: "_blank",
+				rel: "noreferrer",
+				text: "motlin/claude-code-plans#1954",
+				icon: "12",
+			},
+		]);
+	});
+
+	it("replace a written PR link's text with the chip label", () => {
+		const container = document.createElement("div");
+		container.innerHTML = renderMarkdownToHtml(`[PR #1954: OrderedHashMap](${href})`);
+		expect([...container.querySelectorAll("a")].map((a) => [a.className, a.textContent])).toStrictEqual([
+			["pr-chip", "motlin/claude-code-plans#1954"],
+		]);
+	});
+
+	it("leave other GitHub links as plain links", () => {
+		expect(renderMarkdownToHtml("[repo](https://github.com/motlin/claude-code-plans)")).toBe(
+			'<p><a href="https://github.com/motlin/claude-code-plans" target="_blank" rel="noreferrer">repo</a></p>\n',
 		);
 	});
 });

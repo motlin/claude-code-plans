@@ -9,7 +9,7 @@ import {requestLanguage, themeOrRequest} from "../hooks/use-shiki";
 import {type CodeThemePair, DEFAULT_CODE_THEMES} from "./code-themes";
 import type {FileRef} from "./file-refs";
 import {normalizeArtifactUrl} from "./artifact-output";
-import {COPY_ICON_SVG} from "./icon-paths";
+import {COPY_ICON_SVG, PR_ICON_SVG} from "./icon-paths";
 import {mdFileHref, resolveRelativeMdHref} from "./md-links";
 import {SHIKI_TOKENIZE_OPTIONS} from "./shiki-tokenize-options";
 
@@ -62,7 +62,6 @@ function fileRefHtml(text: string, ref: FileRef, escape: (value: string) => stri
 		`data-file-path="${escape(ref.path)}"`,
 		...(ref.line === undefined ? [] : [`data-file-line="${ref.line}"`]),
 		...(ref.endLine === undefined ? [] : [`data-file-end-line="${ref.endLine}"`]),
-		`title="${escape(text)}"`,
 	];
 	return `<span ${attrs.join(" ")}><span data-inline-code="">${escape(text)}</span></span>`;
 }
@@ -146,11 +145,11 @@ function linkText(tokens: readonly Token[]): string {
 }
 
 /**
- * Upstream renders a markdown link to a claude.ai artifact as a link card
- * rather than inline text. Collapse each such link, whether written or
- * linkified, into one token the renderer turns into that card.
+ * Collapse every link whose href `match` accepts, whether written or
+ * linkified, into one `type` token carrying the match as `meta`, the href, and
+ * the link's plain text as `content`, so a renderer rule can draw it whole.
  */
-function artifactLinks(state: StateCore): void {
+function collapseLinks<Meta>(state: StateCore, type: string, match: (href: string) => Meta | undefined): void {
 	for (const block of state.tokens) {
 		const children = block.children;
 		if (block.type !== "inline" || children === null) continue;
@@ -158,24 +157,65 @@ function artifactLinks(state: StateCore): void {
 		for (let index = 0; index < children.length; index++) {
 			const token = children[index]!;
 			const href = token.type === "link_open" ? token.attrGet("href") : null;
-			const artifact = href === null ? undefined : normalizeArtifactUrl(href);
+			const meta = href === null ? undefined : match(href);
 			const close =
-				artifact === undefined
-					? -1
-					: children.findIndex((child, at) => at > index && child.type === "link_close");
-			if (href === null || artifact === undefined || close === -1) {
+				meta === undefined ? -1 : children.findIndex((child, at) => at > index && child.type === "link_close");
+			if (href === null || meta === undefined || close === -1) {
 				rewritten.push(token);
 				continue;
 			}
-			const card = new state.Token(ARTIFACT_LINK_TOKEN, "a", 0);
-			card.attrs = [["href", href]];
-			card.meta = {id: artifact.id, host: new URL(href).host};
-			card.content = linkText(children.slice(index + 1, close));
-			rewritten.push(card);
+			const collapsed = new state.Token(type, "a", 0);
+			collapsed.attrs = [["href", href]];
+			collapsed.meta = meta;
+			collapsed.content = linkText(children.slice(index + 1, close));
+			rewritten.push(collapsed);
 			index = close;
 		}
 		block.children = rewritten;
 	}
+}
+
+/**
+ * Upstream renders a markdown link to a claude.ai artifact as a link card
+ * rather than inline text.
+ */
+function artifactLinks(state: StateCore): void {
+	collapseLinks(state, ARTIFACT_LINK_TOKEN, (href) => {
+		const artifact = normalizeArtifactUrl(href);
+		return artifact === undefined ? undefined : {id: artifact.id, host: new URL(href).host};
+	});
+}
+
+const PR_CHIP_TOKEN = "pr_chip";
+
+const GITHUB_PR_URL = /^https:\/\/github\.com\/([^/?#]+)\/([^/?#]+)\/pull\/(\d+)\/?(?:[?#].*)?$/;
+
+interface PullRequestRef {
+	owner: string;
+	repo: string;
+	number: string;
+}
+
+function parsePullRequestUrl(href: string): PullRequestRef | undefined {
+	const match = GITHUB_PR_URL.exec(href);
+	if (match === null) return undefined;
+	return {owner: match[1]!, repo: match[2]!, number: match[3]!};
+}
+
+/** Upstream renders a GitHub pull request link as a compact `owner/repo#n` chip. */
+function pullRequestChips(state: StateCore): void {
+	collapseLinks(state, PR_CHIP_TOKEN, parsePullRequestUrl);
+}
+
+function pullRequestChipHtml(token: Token, escape: (value: string) => string): string {
+	const {owner, repo, number} = token.meta as PullRequestRef;
+	const href = token.attrGet("href") ?? "";
+	return `<a href="${escape(href)}" target="_blank" rel="noreferrer" class="pr-chip">${PR_ICON_SVG}${escape(`${owner}/${repo}#${number}`)}</a>`;
+}
+
+/** Whether `href` leaves the app, so it opens in a new tab like upstream's links. */
+function isExternalHref(href: string): boolean {
+	return /^https?:\/\//i.test(href);
 }
 
 function artifactLinkHtml(token: Token, env: MarkdownEnv, escape: (value: string) => string) {
@@ -218,6 +258,9 @@ function applyPlugins(instance: MarkdownIt): void {
 	instance.core.ruler.push(ARTIFACT_LINK_TOKEN, artifactLinks);
 	instance.renderer.rules[ARTIFACT_LINK_TOKEN] = (tokens, idx, _options, env) =>
 		artifactLinkHtml(tokens[idx]!, (env ?? {}) as MarkdownEnv, instance.utils.escapeHtml);
+	instance.core.ruler.push(PR_CHIP_TOKEN, pullRequestChips);
+	instance.renderer.rules[PR_CHIP_TOKEN] = (tokens, idx) =>
+		pullRequestChipHtml(tokens[idx]!, instance.utils.escapeHtml);
 
 	// Links written inside a memory file keep their `.md` extension, but the
 	// route that serves them is keyed by the extension-less slug, so an
@@ -232,12 +275,16 @@ function applyPlugins(instance: MarkdownIt): void {
 	};
 
 	instance.renderer.rules["link_open"] = (tokens, idx, options, env, self) => {
+		const token = tokens[idx]!;
+		const href = token.attrGet("href");
 		const base = (env as MarkdownEnv | undefined)?.mdLinkBase;
 		if (base !== undefined) {
-			const token = tokens[idx]!;
-			const href = token.attrGet("href");
 			const resolved = href === null ? null : resolveRelativeMdHref(href, base);
 			if (resolved !== null) token.attrSet("href", resolved);
+		}
+		if (href !== null && isExternalHref(href)) {
+			token.attrSet("target", "_blank");
+			token.attrSet("rel", "noreferrer");
 		}
 		return self.renderToken(tokens, idx, options);
 	};
