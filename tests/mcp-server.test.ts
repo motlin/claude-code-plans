@@ -1,5 +1,6 @@
 import {createHash} from "node:crypto";
 import {mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {sql} from "drizzle-orm";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
@@ -39,7 +40,7 @@ function jsonl(...records: Record<string, unknown>[]): string {
 }
 
 beforeEach(() => {
-	fixtureDir = mkdtempSync(join(process.cwd(), ".llm/mcp-server-test-"));
+	fixtureDir = mkdtempSync(join(tmpdir(), "mcp-server-test-"));
 	const transcriptDir = join(fixtureDir, "fixtures");
 	mkdirSync(transcriptDir);
 	const aliceTranscript = join(transcriptDir, "alice-session.jsonl");

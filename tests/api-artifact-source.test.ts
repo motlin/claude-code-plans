@@ -1,4 +1,5 @@
 import {mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {ARTIFACT_SOURCE_CSP, handleArtifactSourceRequest, isPreviewableSourcePath} from "../src/lib/artifact-source";
@@ -44,8 +45,7 @@ async function describeResponse(response: Response) {
 }
 
 beforeEach(() => {
-	mkdirSync(join(process.cwd(), ".llm"), {recursive: true});
-	fixtureDirectory = realpathSync(mkdtempSync(join(process.cwd(), ".llm", "api-artifact-source-test-")));
+	fixtureDirectory = realpathSync(mkdtempSync(join(tmpdir(), "api-artifact-source-test-")));
 	db = openTestDb();
 });
 

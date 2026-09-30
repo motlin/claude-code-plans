@@ -139,7 +139,8 @@ export default defineConfig({
 		strictPort: true,
 		host: "127.0.0.1",
 		allowedHosts: ["plans.m4.notlin.com", ...(process.env["VITE_ALLOWED_HOSTS"]?.split(",").filter(Boolean) ?? [])],
-		watch: {ignored: ["**/routeTree.gen.ts"]},
+		// Scratch dirs (.llm fixtures, Playwright dumps) must never trigger a page reload.
+		watch: {ignored: ["**/routeTree.gen.ts", "**/.llm/**", "**/.playwright-mcp/**"]},
 		proxy: {
 			[AGENTATION_ENDPOINT]: {
 				target: AGENTATION_SERVER,

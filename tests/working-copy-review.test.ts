@@ -1,5 +1,6 @@
 import {execFileSync} from "node:child_process";
 import {mkdirSync, readFileSync, rmSync, writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {sql} from "drizzle-orm";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
@@ -17,7 +18,7 @@ import {
 import {buildWorkingCopyDiff} from "../src/lib/working-copy-diff";
 import {findingsForDiffLine, parseReviewDiff} from "../src/lib/review-diff";
 
-const TEST_ROOT = join(process.cwd(), ".llm", `working-copy-review-test-${process.pid}`);
+const TEST_ROOT = join(tmpdir(), `working-copy-review-test-${process.pid}`);
 const SESSION_ID = "session-test-100";
 let db: AppDb;
 

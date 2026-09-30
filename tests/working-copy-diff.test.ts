@@ -1,5 +1,6 @@
 import {execFileSync} from "node:child_process";
-import {mkdirSync, mkdtempSync, rmSync, writeFileSync} from "node:fs";
+import {mkdtempSync, rmSync, writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {buildWorkingCopyDiff} from "../src/lib/working-copy-diff";
@@ -12,9 +13,7 @@ describe("buildWorkingCopyDiff", () => {
 	}
 
 	beforeEach(() => {
-		const fixtureRoot = join(process.cwd(), ".llm");
-		mkdirSync(fixtureRoot, {recursive: true});
-		repositoryDirectory = mkdtempSync(join(fixtureRoot, "working-copy-diff-test-"));
+		repositoryDirectory = mkdtempSync(join(tmpdir(), "working-copy-diff-test-"));
 
 		git("init", "--initial-branch=main");
 		git("config", "user.email", "alice@example.com");

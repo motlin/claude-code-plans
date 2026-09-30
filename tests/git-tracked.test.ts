@@ -1,5 +1,6 @@
 import {execFileSync} from "node:child_process";
 import {mkdirSync, mkdtempSync, rmSync, writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
@@ -27,9 +28,7 @@ describe("git-tracked", () => {
 	}
 
 	beforeEach(() => {
-		const fixtureRoot = join(process.cwd(), ".llm");
-		mkdirSync(fixtureRoot, {recursive: true});
-		fixtureDirectory = mkdtempSync(join(fixtureRoot, "git-tracked-test-"));
+		fixtureDirectory = mkdtempSync(join(tmpdir(), "git-tracked-test-"));
 		repositoryDirectory = join(fixtureDirectory, "repository");
 		mkdirSync(repositoryDirectory);
 		git("init", "--quiet", "--initial-branch=main");

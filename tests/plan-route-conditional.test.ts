@@ -1,4 +1,5 @@
 import {mkdirSync, mkdtempSync, rmSync, writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {isPlanNotModified, Route as PlanDetailRoute} from "../src/routes/api/plans.$filename";
@@ -29,8 +30,7 @@ function getDetailRouteHandler(route: unknown): DetailRouteHandler {
 let fixtureDirectory: string;
 
 beforeEach(() => {
-	mkdirSync(join(process.cwd(), ".llm"), {recursive: true});
-	fixtureDirectory = mkdtempSync(join(process.cwd(), ".llm", "md-route-containment-test-"));
+	fixtureDirectory = mkdtempSync(join(tmpdir(), "md-route-containment-test-"));
 	mockedHome.path = fixtureDirectory;
 	mkdirSync(join(fixtureDirectory, ".claude", "plans"), {recursive: true});
 	mkdirSync(join(fixtureDirectory, ".claude", "projects", "alice-project", "memory"), {

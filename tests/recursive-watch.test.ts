@@ -1,6 +1,7 @@
 import {EventEmitter} from "node:events";
 import type {FSWatcher} from "node:fs";
-import {appendFile, mkdir, mkdtemp, readdir, rm, unlink, writeFile} from "node:fs/promises";
+import {appendFile, mkdir, mkdtemp, readdir, realpath, rm, unlink, writeFile} from "node:fs/promises";
+import {tmpdir} from "node:os";
 import {basename, dirname, join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
@@ -67,7 +68,7 @@ describe("createRecursiveWatcher", () => {
 	let watcher: RecursiveWatcher | undefined;
 
 	beforeEach(async () => {
-		fixtureDirectory = await mkdtemp(join(process.cwd(), ".llm/recursive-watch-test-"));
+		fixtureDirectory = await realpath(await mkdtemp(join(tmpdir(), "recursive-watch-test-")));
 		const actual = await vi.importActual<typeof import("node:fs")>("node:fs");
 		watchMock.mockReset();
 		watchMock.mockImplementation(actual.watch);

@@ -1,5 +1,6 @@
 import {execFileSync} from "node:child_process";
-import {mkdirSync, mkdtempSync, rmSync, writeFileSync} from "node:fs";
+import {mkdtempSync, rmSync, writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {
@@ -131,9 +132,7 @@ async function diffBody(response: Response) {
 }
 
 beforeEach(() => {
-	const fixtureRoot = join(process.cwd(), ".llm");
-	mkdirSync(fixtureRoot, {recursive: true});
-	repository = mkdtempSync(join(fixtureRoot, "api-session-diff-test-"));
+	repository = mkdtempSync(join(tmpdir(), "api-session-diff-test-"));
 	commitCounter = 0;
 	db = openTestDb();
 

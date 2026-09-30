@@ -1,6 +1,6 @@
 import {afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {execFileSync} from "node:child_process";
-import {appendFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync} from "node:fs";
+import {appendFileSync, writeFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync} from "node:fs";
 import {createServer, type Server} from "node:net";
 import {dirname, join} from "node:path";
 import {tmpdir} from "node:os";
@@ -159,9 +159,7 @@ describe("handleFileChange file content", () => {
 	});
 
 	beforeEach(() => {
-		const fixtureRoot = join(process.cwd(), ".llm");
-		mkdirSync(fixtureRoot, {recursive: true});
-		fixtureDirectory = mkdtempSync(join(fixtureRoot, "watcher-file-content-test-"));
+		fixtureDirectory = realpathSync(mkdtempSync(join(tmpdir(), "watcher-file-content-test-")));
 		repositoryDirectory = join(fixtureDirectory, "repository");
 		mkdirSync(repositoryDirectory);
 		execFileSync("git", ["init", "--quiet", "--initial-branch=main"], {
@@ -718,7 +716,7 @@ describe("shouldIgnoreWatch with configured ignored dirs", () => {
 	});
 
 	it("watches searchable file extensions only inside configured file roots", () => {
-		const fixtureDirectory = mkdtempSync(join(process.cwd(), "watcher-ignore-test-"));
+		const fixtureDirectory = mkdtempSync(join(tmpdir(), "watcher-ignore-test-"));
 		const fileContentRoot = join(fixtureDirectory, "allowed");
 		mkdirSync(join(fileContentRoot, ".git"), {recursive: true});
 		__testing.setFileContentRoots([fileContentRoot]);
@@ -789,9 +787,7 @@ describe("createWatcher integration", () => {
 	});
 
 	it("creates a recursive watcher with the existing filter and handlers", async () => {
-		const fixtureRoot = join(process.cwd(), ".llm");
-		mkdirSync(fixtureRoot, {recursive: true});
-		const fixtureDirectory = mkdtempSync(join(fixtureRoot, "watcher-integration-test-"));
+		const fixtureDirectory = mkdtempSync(join(tmpdir(), "watcher-integration-test-"));
 		const watchedDirectory = join(fixtureDirectory, "watched");
 		const fileContentRoot = join(fixtureDirectory, "file-content");
 		mkdirSync(watchedDirectory);
@@ -832,9 +828,7 @@ describe("createWatcher integration", () => {
 	});
 
 	it("watches the real index directory for a linked worktree", async () => {
-		const fixtureRoot = join(process.cwd(), ".llm");
-		mkdirSync(fixtureRoot, {recursive: true});
-		const fixtureDirectory = mkdtempSync(join(fixtureRoot, "watcher-worktree-test-"));
+		const fixtureDirectory = mkdtempSync(join(tmpdir(), "watcher-worktree-test-"));
 		const repositoryDirectory = join(fixtureDirectory, "repository");
 		const worktreeDirectory = join(fixtureDirectory, "worktree");
 		mkdirSync(repositoryDirectory);

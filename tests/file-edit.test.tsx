@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
 import {join} from "node:path";
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
@@ -160,8 +161,7 @@ describe("save API disk-conflict check", () => {
 	let memoryFile: string;
 
 	beforeEach(() => {
-		mkdirSync(join(process.cwd(), ".llm"), {recursive: true});
-		fixture = mkdtempSync(join(process.cwd(), ".llm", "file-edit-test-"));
+		fixture = mkdtempSync(join(tmpdir(), "file-edit-test-"));
 		mockedHome.path = fixture;
 		mkdirSync(join(fixture, ".claude", "plans"), {recursive: true});
 		mkdirSync(join(fixture, ".claude", "projects", "alice-project", "memory"), {

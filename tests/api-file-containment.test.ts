@@ -8,6 +8,7 @@ import {
 	truncateSync,
 	writeFileSync,
 } from "node:fs";
+import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {decodeFilePath, encodeFilePath, fileViewerPath, FileViewerResponse} from "../src/lib/api/file";
@@ -43,8 +44,7 @@ async function describeJsonResponse(response: Response): Promise<{
 }
 
 beforeEach(() => {
-	mkdirSync(join(process.cwd(), ".llm"), {recursive: true});
-	fixtureDirectory = mkdtempSync(join(process.cwd(), ".llm", "api-file-test-"));
+	fixtureDirectory = mkdtempSync(join(tmpdir(), "api-file-test-"));
 	allowedRoot = join(fixtureDirectory, "allowed");
 	outsideRoot = join(fixtureDirectory, "outside");
 	configPath = join(fixtureDirectory, "config.json");

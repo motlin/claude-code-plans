@@ -1,5 +1,5 @@
 import {execFileSync} from "node:child_process";
-import {mkdirSync, mkdtempSync, rmSync, writeFileSync} from "node:fs";
+import {mkdtempSync, rmSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
@@ -38,9 +38,7 @@ describe("session diff service over a real repository", () => {
 	}
 
 	beforeEach(() => {
-		const fixtureRoot = join(process.cwd(), ".llm");
-		mkdirSync(fixtureRoot, {recursive: true});
-		repositoryDirectory = mkdtempSync(join(fixtureRoot, "session-diff-test-"));
+		repositoryDirectory = mkdtempSync(join(tmpdir(), "session-diff-test-"));
 		commitCounter = 0;
 
 		git("init", "--initial-branch=main");
