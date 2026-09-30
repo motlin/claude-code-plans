@@ -4,6 +4,7 @@ import {mkdirSync} from "node:fs";
 import {join} from "node:path";
 import {homedir} from "node:os";
 import * as schema from "./schema";
+import {instrumentDatabase} from "../perf/server-scope";
 
 export interface AppDb {
 	index: BetterSQLite3Database<typeof schema>;
@@ -461,10 +462,12 @@ export function openAppDb(opts?: {cacheDir?: string | undefined}): AppDb {
 
 	const indexSqlite = new Database(join(cacheDir, "index.db"));
 	initIndexDb(indexSqlite);
+	instrumentDatabase(indexSqlite);
 	const indexDb = drizzle(indexSqlite, {schema});
 
 	const summariesSqlite = new Database(join(cacheDir, "summaries.db"));
 	initSummariesDb(summariesSqlite);
+	instrumentDatabase(summariesSqlite);
 	const summariesDb = drizzle(summariesSqlite, {schema});
 
 	return {
@@ -480,10 +483,12 @@ export function openAppDb(opts?: {cacheDir?: string | undefined}): AppDb {
 export function openTestDb(): AppDb {
 	const indexSqlite = new Database(":memory:");
 	initIndexDb(indexSqlite);
+	instrumentDatabase(indexSqlite);
 	const indexDb = drizzle(indexSqlite, {schema});
 
 	const summariesSqlite = new Database(":memory:");
 	initSummariesDb(summariesSqlite);
+	instrumentDatabase(summariesSqlite);
 	const summariesDb = drizzle(summariesSqlite, {schema});
 
 	return {
