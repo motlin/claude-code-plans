@@ -3,6 +3,7 @@ import {tanstackStart} from "@tanstack/react-start/plugin/vite";
 import {nitro} from "nitro/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import {AGENTATION_ENDPOINT, AGENTATION_SERVER} from "./src/lib/agentation-endpoint";
 
 // Names the dev process in ps; production uses SERVER_PROCESS_TITLE instead.
 process.title = "claude-code-browser";
@@ -139,6 +140,13 @@ export default defineConfig({
 		host: "127.0.0.1",
 		allowedHosts: ["plans.m4.notlin.com", ...(process.env["VITE_ALLOWED_HOSTS"]?.split(",").filter(Boolean) ?? [])],
 		watch: {ignored: ["**/routeTree.gen.ts"]},
+		proxy: {
+			[AGENTATION_ENDPOINT]: {
+				target: AGENTATION_SERVER,
+				changeOrigin: true,
+				rewrite: (path) => path.slice(AGENTATION_ENDPOINT.length),
+			},
+		},
 	},
 	resolve: {
 		tsconfigPaths: true,

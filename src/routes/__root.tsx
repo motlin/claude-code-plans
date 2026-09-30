@@ -12,6 +12,7 @@ import {QueryClientProvider, type QueryClient} from "@tanstack/react-query";
 import {ReactQueryDevtools} from "@tanstack/react-query-devtools";
 import {type ReactNode} from "react";
 import {Agentation} from "agentation";
+import {AGENTATION_ENDPOINT} from "../lib/agentation-endpoint";
 import {ThemeProvider} from "../components/theme-provider";
 import {SettingsProvider} from "../components/settings-provider";
 import {ToastProvider} from "../components/toast";
@@ -122,7 +123,7 @@ function RootApplication({children}: Readonly<{children: ReactNode}>) {
 				</ThemeProvider>
 				{import.meta.env.DEV ? <ReactQueryDevtools buttonPosition="bottom-left" /> : null}
 			</QueryClientProvider>
-			{import.meta.env.DEV && <Agentation endpoint="http://localhost:4747" />}
+			{import.meta.env.DEV && <Agentation endpoint={AGENTATION_ENDPOINT} />}
 		</>
 	);
 }
