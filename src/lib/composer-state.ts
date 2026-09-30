@@ -3,6 +3,7 @@ import {type Statusline, SESSION_ID_PATTERN, StatuslineSchema} from "./api/statu
 import {isBypassPermissionsAllowed} from "./launch-options";
 import {formatModelName, SYNTHETIC_MODEL} from "./model-name";
 import {ClaudeSettingsSchema} from "./schemas";
+import {formatWeeklyReset} from "./usage";
 
 /**
  * The composer chin's readouts (mode · model · effort · usage ring), resolved
@@ -162,18 +163,17 @@ function formatTokenCount(count: number): string {
 	return String(count);
 }
 
-/** `14 hr 31 min`, `2 days 3 hr`, `30 min`. */
-export function formatResetsIn(resetsAtSec: number, nowMs: number): string {
+/**
+ * Upstream's reset copy: a countdown inside the next day ("Resets in 14 hr 31 min"),
+ * otherwise the weekday and time of the reset ("Resets Tue 4:00 AM").
+ */
+export function formatResetLabel(resetsAtSec: number, nowMs: number, timeZone?: string): string {
 	const totalMinutes = Math.max(0, Math.floor((resetsAtSec * 1000 - nowMs) / 60_000));
-	const days = Math.floor(totalMinutes / 1440);
-	const hours = Math.floor((totalMinutes % 1440) / 60);
+	if (totalMinutes >= 1440) return formatWeeklyReset(resetsAtSec, timeZone);
+	const hours = Math.floor(totalMinutes / 60);
 	const minutes = totalMinutes % 60;
-	if (days > 0) {
-		const dayPart = `${days} ${days === 1 ? "day" : "days"}`;
-		return hours > 0 ? `${dayPart} ${hours} hr` : dayPart;
-	}
-	if (hours > 0) return minutes > 0 ? `${hours} hr ${minutes} min` : `${hours} hr`;
-	return `${minutes} min`;
+	if (hours === 0) return `Resets in ${minutes} min`;
+	return minutes > 0 ? `Resets in ${hours} hr ${minutes} min` : `Resets in ${hours} hr`;
 }
 
 /** `190.2k / 1M (19%)`, or `0` when the statusline has no context usage yet. */
@@ -187,7 +187,7 @@ export const FIVE_HOUR_LABEL = "5-hour limit";
 export const WEEKLY_LABEL = "Weekly · all models";
 
 /** "Usage: Context 190.2k / 1M (19%), Weekly · all models: 65%, Resets in 14 hr 31 min". */
-export function formatUsageAriaLabel(usage: ComposerUsage | null, nowMs: number): string {
+export function formatUsageAriaLabel(usage: ComposerUsage | null, nowMs: number, timeZone?: string): string {
 	const context = `Usage: Context ${formatContextSummary(usage)}`;
 	const limit = usage?.weekly
 		? {label: WEEKLY_LABEL, window: usage.weekly}
@@ -195,7 +195,7 @@ export function formatUsageAriaLabel(usage: ComposerUsage | null, nowMs: number)
 			? {label: FIVE_HOUR_LABEL, window: usage.fiveHour}
 			: null;
 	if (!limit) return context;
-	return `${context}, ${limit.label}: ${Math.round(limit.window.usedPercentage)}%, Resets in ${formatResetsIn(limit.window.resetsAt, nowMs)}`;
+	return `${context}, ${limit.label}: ${Math.round(limit.window.usedPercentage)}%, ${formatResetLabel(limit.window.resetsAt, nowMs, timeZone)}`;
 }
 
 const RELATIVE_UNITS: ReadonlyArray<[Intl.RelativeTimeFormatUnit, number]> = [

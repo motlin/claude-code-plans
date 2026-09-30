@@ -7,7 +7,7 @@ import {
 	type ComposerUsage,
 	FIVE_HOUR_LABEL,
 	formatContextSummary,
-	formatResetsIn,
+	formatResetLabel,
 	formatUpdatedAgo,
 	formatUsageAriaLabel,
 	type RateLimitWindow,
@@ -53,7 +53,7 @@ function LimitRow({label, window}: {label: string; window: RateLimitWindow}) {
 		<div className="flex flex-col gap-1">
 			<div data-usage-row className="flex items-baseline gap-2">
 				<span className="text-primary">{label}</span>
-				<span className="text-t6">Resets in {formatResetsIn(window.resetsAt, Date.now())}</span>
+				<span className="text-t6">{formatResetLabel(window.resetsAt, Date.now())}</span>
 				<span className="ms-auto tabular-nums text-secondary">{percent}%</span>
 			</div>
 			<Meter percent={window.usedPercentage} label={label} />

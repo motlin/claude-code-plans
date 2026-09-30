@@ -2,6 +2,7 @@ import {describe, expect, it, vi} from "vite-plus/test";
 import {StatuslineSchema, type Statusline} from "../src/lib/api/statusline";
 import {
 	type ComposerStateSources,
+	formatResetLabel,
 	formatUsageAriaLabel,
 	getComposerState,
 	lastAssistantModelFromRecords,
@@ -199,12 +200,26 @@ describe("usage ring", () => {
 					updatedAt: null,
 				},
 				NOW_MS,
+				"UTC",
 			),
 		}).toStrictEqual({
 			fiveHour: "Usage: Context 4k / 200k (2%), 5-hour limit: 7%, Resets in 30 min",
 			empty: "Usage: Context 0",
-			days: "Usage: Context 4k / 200k (2%), Weekly · all models: 11%, Resets in 2 days 3 hr",
+			days: "Usage: Context 4k / 200k (2%), Weekly · all models: 11%, Resets Thu 3:00 PM",
 		});
+	});
+});
+
+describe("formatResetLabel", () => {
+	it.each([
+		{name: "minutes away", resetsAt: NOW_SEC + 30 * 60, expected: "Resets in 30 min"},
+		{name: "hours away", resetsAt: NOW_SEC + 4 * 3600 + 11 * 60, expected: "Resets in 4 hr 11 min"},
+		{name: "just under a day", resetsAt: NOW_SEC + 23 * 3600 + 59 * 60, expected: "Resets in 23 hr 59 min"},
+		{name: "exactly a day", resetsAt: NOW_SEC + 86_400, expected: "Resets Wed 12:00 PM"},
+		{name: "days away", resetsAt: NOW_SEC + 5 * 86_400 + 16 * 3600, expected: "Resets Mon 4:00 AM"},
+		{name: "already passed", resetsAt: NOW_SEC - 60, expected: "Resets in 0 min"},
+	])("$name", ({resetsAt, expected}) => {
+		expect(formatResetLabel(resetsAt, NOW_MS, "UTC")).toBe(expected);
 	});
 });
 

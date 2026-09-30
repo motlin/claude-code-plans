@@ -1,5 +1,3 @@
-import {formatDistanceToNow} from "date-fns";
-
 const TIME_FORMAT: Intl.DateTimeFormatOptions = {
 	hour: "numeric",
 	minute: "2-digit",
@@ -34,12 +32,27 @@ export function formatTimestamp(timestamp?: string): string | null {
 	return `${date.toLocaleDateString("en-US", DATE_FORMAT)} ${time}`;
 }
 
+const RELATIVE_UNITS: ReadonlyArray<[Intl.RelativeTimeFormatUnit, number]> = [
+	["year", 365 * 86_400],
+	["month", 30 * 86_400],
+	["week", 7 * 86_400],
+	["day", 86_400],
+	["hour", 3_600],
+	["minute", 60],
+];
+
+const RELATIVE_FORMAT = new Intl.RelativeTimeFormat("en-US", {numeric: "auto"});
+
 /**
- * Formats an ISO timestamp as a relative time (e.g. "about 2 hours ago").
- * Returns null for missing or unparseable input.
+ * Formats an ISO timestamp the way claude.ai/code's hover `<time>` does: "10 hours ago",
+ * "yesterday", "now". Returns null for missing or unparseable input.
  */
-export function formatRelativeTimestamp(timestamp?: string): string | null {
+export function formatRelativeTimestamp(timestamp?: string, nowMs: number = Date.now()): string | null {
 	const date = parseTimestamp(timestamp);
 	if (!date) return null;
-	return formatDistanceToNow(date, {addSuffix: true});
+	const seconds = Math.max(0, Math.floor((nowMs - date.getTime()) / 1000));
+	for (const [unit, size] of RELATIVE_UNITS) {
+		if (seconds >= size) return RELATIVE_FORMAT.format(-Math.floor(seconds / size), unit);
+	}
+	return RELATIVE_FORMAT.format(-seconds, "second");
 }
