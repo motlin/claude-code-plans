@@ -12,6 +12,7 @@ const EXPECTED_ENVIRONMENT_READS = [
 	"src/lib/config.ts:XDG_CONFIG_HOME",
 	"src/lib/db/connection.ts:VITEST",
 	"src/lib/db/connection.ts:XDG_CACHE_HOME",
+	"src/lib/perf/server-timing.ts:CCB_PERF_LOG",
 	"src/lib/reviews.ts:PORT",
 	"src/lib/shell-pty.ts:SHELL",
 	"src/routes/api/capabilities.ts:PATH",

@@ -2,6 +2,7 @@ import handler, {createServerEntry} from "@tanstack/react-start/server-entry";
 import {homedir} from "node:os";
 import {join} from "node:path";
 import {withHeadBodyCancel} from "./lib/head-request";
+import {withServerTiming} from "./lib/perf/server-timing";
 import {closeWatcher, createWatcher, rebroadcastProjectSessions, resolveIgnoredDirNames} from "./lib/watcher";
 import {getDb, initDb, runInitialScan} from "./lib/db";
 import {startSweep, stopSweep} from "./lib/active-session-store";
@@ -92,5 +93,5 @@ void (async () => {
 })();
 
 export default createServerEntry({
-	fetch: withHeadBodyCancel((request) => handler.fetch(request)),
+	fetch: withHeadBodyCancel(withServerTiming((request) => handler.fetch(request))),
 });
