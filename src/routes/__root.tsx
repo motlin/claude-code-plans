@@ -55,7 +55,7 @@ export const Route = createRootRouteWithContext<{queryClient: QueryClient}>()({
 	// `ssr: false` nothing paints until every matched loader resolves, so a
 	// blocking root loader holds the whole app on a blank white screen until
 	// all nine payloads arrive. Every route's own loader ensures the data it
-	// actually renders; the sidebar sublists use non-suspending `useQuery`.
+	// actually renders; the sidebar session groups use non-suspending `useQuery`.
 	loader: ({context: {queryClient}}) => {
 		void queryClient.prefetchQuery(projectsQueryOptions());
 		void queryClient.prefetchQuery(plansQueryOptions());

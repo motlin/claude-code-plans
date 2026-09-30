@@ -24,6 +24,7 @@ import {NAV_SECTIONS} from "../src/lib/nav-sections";
 import {redirectLegacyPlugins} from "../src/routes/plugins";
 import {ToastProvider} from "../src/components/toast";
 import {onHomeComposerFocusRequest} from "../src/lib/home-composer-focus";
+import {plansQueryOptions} from "../src/lib/api/plans";
 
 function seedQueryClient(): QueryClient {
 	const queryClient = new QueryClient({
@@ -47,6 +48,20 @@ function seedQueryClient(): QueryClient {
 		],
 	});
 	queryClient.setQueryData(notificationsQueryOptions().queryKey, {notifications: []});
+	queryClient.setQueryData(plansQueryOptions().queryKey, [
+		{
+			filename: "plan-test-alpha.md",
+			title: "Plan test alpha",
+			mtime: "2026-01-01T00:00:00.000Z",
+			projects: [{projectId: "project-test-alpha", projectName: "project-test-alpha"}],
+		},
+		{
+			filename: "plan-test-beta.md",
+			title: "Plan test beta",
+			mtime: "2026-01-01T00:00:00.000Z",
+			projects: [{projectId: "project-test-beta", projectName: "project-test-beta"}],
+		},
+	]);
 	queryClient.setQueryData(activeSessionsQueryOptions(DEFAULTS.activeTimeoutSec * 1000).queryKey, []);
 	queryClient.setQueryData(applicationSettingsQueryOptions.queryKey, {
 		herdrWritesEnabled: false,
@@ -259,6 +274,51 @@ describe("sidebar nav rows", () => {
 					selected: row.getAttribute("data-selected"),
 				})),
 		).toStrictEqual([{href: "/tasks", selected: "focused"}]);
+	});
+
+	it("has no Expand or Collapse chevrons on nav rows", async () => {
+		await renderSidebarAt("/plans");
+		await waitFor(() => screen.getByRole("link", {name: "Plans"}));
+
+		expect(
+			screen
+				.queryAllByRole("button")
+				.map((button) => button.getAttribute("title") ?? button.textContent ?? "")
+				.filter((name) => /^(Expand|Collapse) /.test(name)),
+		).toStrictEqual([]);
+	});
+
+	it.each(["/plans", "/plans/some-plan", "/plan/$filename"])("selects the Plans row at %s", async (path) => {
+		await renderSidebarAt(path);
+		await waitFor(() => screen.getByRole("link", {name: "Plans"}));
+
+		expect(
+			navRows()
+				.filter((row) => row.hasAttribute("data-selected"))
+				.map((row) => ({href: row.getAttribute("href"), selected: row.getAttribute("data-selected")})),
+		).toStrictEqual([{href: "/plans", selected: "focused"}]);
+	});
+
+	it("selects the Memories row on a memory detail route", async () => {
+		await renderSidebarAt("/memory/$project/$filename");
+		await waitFor(() => screen.getByRole("link", {name: "Memories"}));
+
+		expect(
+			navRows()
+				.filter((row) => row.hasAttribute("data-selected"))
+				.map((row) => ({href: row.getAttribute("href"), selected: row.getAttribute("data-selected")})),
+		).toStrictEqual([{href: "/memories", selected: "focused"}]);
+	});
+
+	it("renders no plan groups or plan links in the sidebar", async () => {
+		await renderSidebarAt("/plans");
+		await waitFor(() => screen.getByRole("link", {name: "Plans"}));
+
+		const sidebar = screen.getByRole("navigation", {name: "Sidebar"});
+		expect({
+			groupToggles: within(sidebar).queryAllByRole("button", {name: /project-test-(alpha|beta)/}).length,
+			planLinks: within(sidebar).queryAllByRole("link", {name: /Plan test/}).length,
+		}).toStrictEqual({groupToggles: 0, planLinks: 0});
 	});
 
 	it("renders count badges inside the trailing slot", async () => {

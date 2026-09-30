@@ -68,14 +68,6 @@ const BranchItemSchema = z.object({
 });
 export const ProjectBranchListResponse = z.array(BranchItemSchema);
 
-export const projectBranchesQueryOptions = (id: string) =>
-	queryOptions({
-		queryKey: ["projects", id, "branches"] as const,
-		queryFn: () => apiFetch(`/api/projects/${encodeURIComponent(id)}/branches`, ProjectBranchListResponse),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
-
 const ProjectSubagentSchema = z.object({
 	id: z.string(),
 	sessionId: z.string(),

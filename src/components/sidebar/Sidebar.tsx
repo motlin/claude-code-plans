@@ -1,9 +1,8 @@
 import {Link, useMatches} from "@tanstack/react-router";
 import {useQuery} from "@tanstack/react-query";
-import {ChevronRight} from "lucide-react";
 import {useEffect, useRef, useState, type CSSProperties, type ReactNode} from "react";
 import type {Section} from "./types";
-import {useActiveSection, useCollapsedGroups, useExpandedGroups} from "./hooks";
+import {useActiveSection} from "./hooks";
 import {MoreNavMenu, type NavBadge} from "./more-menu";
 import {useVisibleNavItems} from "./navigation";
 import {NavScroll} from "./nav-scroll";
@@ -12,7 +11,6 @@ import {SidebarFooter} from "./sidebar-footer";
 import {SidebarToggleButton} from "./sidebar-toggle";
 import {SidebarToggleIcon} from "./primitives";
 import {SidebarSessionGroups} from "./session-filter-menu";
-import {MemoriesSubList, PlansSubList, ProjectsSubList} from "./sublists";
 import {approvalsQueryOptions} from "../../lib/api/approvals";
 import {notificationsQueryOptions, useMarkNotificationsRead} from "../../lib/api/notifications";
 import {activeSessionsQueryOptions} from "../../lib/api/sessions";
@@ -45,13 +43,6 @@ export function Sidebar({
 	const currentPath = matches[matches.length - 1]?.fullPath ?? "/";
 	const {section: activeSection, activeItemId} = useActiveSection(matches);
 	const {pinned: navigationItems, overflow: overflowItems, visibleNavSections} = useVisibleNavItems();
-	const [collapsedSections, setCollapsedSections] = useState<Set<Section>>(
-		() => new Set(navigationItems.map((item) => item.section)),
-	);
-	// Sublists unmount whenever their section collapses, so per-group collapse
-	// state has to be held here, in the sidebar that outlives every navigation.
-	const [collapsedMemoryGroups, toggleMemoryGroup, revealMemoryGroup] = useCollapsedGroups();
-	const [expandedProjects, toggleProject, expandProject] = useExpandedGroups();
 	const {data: approvalsData} = useQuery(approvalsQueryOptions());
 	const approvalsCount = approvalsData?.approvals.length ?? 0;
 	const {data: notificationsData} = useQuery(notificationsQueryOptions());
@@ -75,117 +66,42 @@ export function Sidebar({
 		markNotificationsRead();
 	}, [currentPath, unreadCount, markNotificationsRead]);
 
-	function toggleSection(section: Section) {
-		setCollapsedSections((prev) => {
-			const next = new Set(prev);
-			if (next.has(section)) {
-				next.delete(section);
-			} else {
-				next.add(section);
-			}
-			return next;
-		});
-	}
-
-	// Auto-expand the active section and auto-collapse irrelevant sections when navigation changes
-	useEffect(() => {
-		if (!activeSection) return;
-
-		setCollapsedSections((prev) => {
-			const next = new Set(prev);
-
-			// Expand the active section
-			next.delete(activeSection);
-
-			// Collapse sections that don't contain the current view when navigated to a
-			// specific item.
-			if (activeItemId) {
-				for (const item of navigationItems) {
-					if (item.section !== activeSection) {
-						next.add(item.section);
-					}
-				}
-			}
-
-			return next;
-		});
-	}, [activeSection, activeItemId, navigationItems]);
-
 	const body = (
 		<>
 			<div className="flex min-h-0 flex-1 flex-col px-2">
 				<div className="shrink-0">
 					<NewSessionRow />
 					{navigationItems.map((item) => {
-						const isActive =
-							item.to === "/settings" ? currentPath === "/settings" : currentPath.startsWith(item.to);
 						const Icon = item.icon;
-						const isExpanded = !collapsedSections.has(item.section);
 						const badge = badgeFor(item.section);
 						return (
-							<div key={item.to} className="flex items-center">
-								<button
-									type="button"
-									onClick={() => toggleSection(item.section)}
-									className="flex h-[var(--sb-row-h)] w-6 shrink-0 items-center justify-center text-t6 transition-colors hover:text-secondary"
-									title={isExpanded ? `Collapse ${item.label}` : `Expand ${item.label}`}
-								>
-									<ChevronRight
-										className="h-3 w-3 transition-transform duration-200"
-										style={{
-											transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
-										}}
-									/>
-								</button>
-								<Link
-									to={item.to}
-									data-selected={isActive ? "focused" : undefined}
-									className="group mb-[0.5px] flex h-[var(--sb-row-h)] min-w-0 flex-1 items-center gap-[var(--sb-row-gap)] rounded-[var(--sb-radius)] px-[var(--sb-row-px)] text-left text-[length:var(--sb-row-font)] leading-[1.5] text-secondary no-underline hover:bg-[var(--sb-hover)] focus-visible:bg-[var(--sb-hover)] data-[selected=focused]:bg-[var(--sb-selected)] data-[selected=focused]:text-primary [&_.df-leading-slot]:text-secondary"
-								>
-									<span className="df-leading-slot">
-										<Icon aria-hidden="true" />
-									</span>
-									<span className="min-w-0 flex-1 truncate">{item.label}</span>
-									{badge && badge.count > 0 && (
-										<span className="df-tail-mark">
-											<span
-												className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] leading-none font-semibold text-white"
-												title={badge.title}
-											>
-												{badge.count}
-											</span>
+							<Link
+								key={item.to}
+								to={item.to}
+								data-selected={item.section === activeSection ? "focused" : undefined}
+								className="group mb-[0.5px] flex h-[var(--sb-row-h)] min-w-0 items-center gap-[var(--sb-row-gap)] rounded-[var(--sb-radius)] px-[var(--sb-row-px)] text-left text-[length:var(--sb-row-font)] leading-[1.5] text-secondary no-underline hover:bg-[var(--sb-hover)] focus-visible:bg-[var(--sb-hover)] data-[selected=focused]:bg-[var(--sb-selected)] data-[selected=focused]:text-primary [&_.df-leading-slot]:text-secondary"
+							>
+								<span className="df-leading-slot">
+									<Icon aria-hidden="true" />
+								</span>
+								<span className="min-w-0 flex-1 truncate">{item.label}</span>
+								{badge && badge.count > 0 && (
+									<span className="df-tail-mark">
+										<span
+											className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] leading-none font-semibold text-white"
+											title={badge.title}
+										>
+											{badge.count}
 										</span>
-									)}
-								</Link>
-							</div>
+									</span>
+								)}
+							</Link>
 						);
 					})}
 					<MoreNavMenu overflow={overflowItems} visibleNavSections={visibleNavSections} badgeFor={badgeFor} />
 					<div className="h-1 shrink-0" />
 				</div>
 				<NavScroll>
-					{navigationItems.map((item) => {
-						if (collapsedSections.has(item.section)) return null;
-						const subList =
-							item.section === "projects" ? (
-								<ProjectsSubList
-									activeItemId={activeItemId}
-									expandedProjects={expandedProjects}
-									onToggleProject={toggleProject}
-									onExpandProject={expandProject}
-								/>
-							) : item.section === "plans" ? (
-								<PlansSubList activeItemId={activeItemId} />
-							) : item.section === "memories" ? (
-								<MemoriesSubList
-									activeItemId={activeItemId}
-									collapsedGroups={collapsedMemoryGroups}
-									onToggleGroup={toggleMemoryGroup}
-									onRevealGroup={revealMemoryGroup}
-								/>
-							) : null;
-						return subList && <div key={item.to}>{subList}</div>;
-					})}
 					<SidebarSessionGroups activeItemId={activeItemId} />
 				</NavScroll>
 			</div>
