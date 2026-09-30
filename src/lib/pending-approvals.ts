@@ -1,4 +1,5 @@
-import {createReadStream, statSync} from "node:fs";
+import {statSync} from "node:fs";
+import {trackedCreateReadStream} from "./perf/tracked-fs";
 import {basename} from "node:path";
 import {createInterface} from "node:readline";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
@@ -109,7 +110,7 @@ export async function scanPendingApproval(filePath: string): Promise<PendingAppr
 	let sessionId = "";
 
 	const rl = createInterface({
-		input: createReadStream(filePath, {encoding: "utf-8"}),
+		input: trackedCreateReadStream(filePath, {encoding: "utf-8"}),
 		crlfDelay: Infinity,
 	});
 

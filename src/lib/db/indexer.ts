@@ -1,5 +1,6 @@
 import {lstat, readdir, readFile, realpath, stat} from "node:fs/promises";
 import {createReadStream, realpathSync} from "node:fs";
+import {trackedCreateReadStream} from "../perf/tracked-fs";
 import {join, basename, extname, isAbsolute, relative, resolve, sep} from "node:path";
 import {createInterface} from "node:readline";
 import {eq, ne, notInArray, sql} from "drizzle-orm";
@@ -523,7 +524,7 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 
 	// Stream the file line-by-line to avoid loading entire JSONL into memory
 	const rl = createInterface({
-		input: createReadStream(filePath, {encoding: "utf-8"}),
+		input: trackedCreateReadStream(filePath, {encoding: "utf-8"}),
 		crlfDelay: Infinity,
 	});
 	try {

@@ -1,6 +1,7 @@
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import {eq} from "drizzle-orm";
-import {readFileSync, statSync} from "node:fs";
+import {statSync} from "node:fs";
+import {trackedReadFileSync} from "./perf/tracked-fs";
 import * as schema from "./db/schema";
 import {getSubagentById} from "./db/queries";
 import {isCountableMessageRecord, mightBeCountableMessageLine} from "./message-count";
@@ -102,7 +103,7 @@ export function readStructuredTranscript(
 
 	try {
 		const byteOffset = statSync(filePath).size;
-		const lines = readFileSync(filePath, "utf-8")
+		const lines = trackedReadFileSync(filePath)
 			.split("\n")
 			.filter((line) => line.trim());
 		const end = Math.max(0, Math.min(options.before ?? lines.length, lines.length));

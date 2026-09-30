@@ -1,4 +1,5 @@
 import {createReadStream} from "node:fs";
+import {trackedCreateReadStream} from "./perf/tracked-fs";
 import {readdir, readFile, stat} from "node:fs/promises";
 import {basename, dirname, join} from "node:path";
 import {createInterface} from "node:readline";
@@ -742,7 +743,7 @@ export async function readSessionRawWindow(
 	if (!resolved) return null;
 
 	const rl = createInterface({
-		input: createReadStream(resolved.filePath, {encoding: "utf-8"}),
+		input: trackedCreateReadStream(resolved.filePath, {encoding: "utf-8"}),
 		crlfDelay: Infinity,
 	});
 
@@ -799,7 +800,7 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 	const uuidToLine = new Map<string, number>();
 
 	const rl = createInterface({
-		input: createReadStream(filePath, {encoding: "utf-8"}),
+		input: trackedCreateReadStream(filePath, {encoding: "utf-8"}),
 		crlfDelay: Infinity,
 	});
 
@@ -1064,7 +1065,7 @@ export async function readNewJsonlLines(
 	let bytesConsumed = 0;
 
 	const rl = createInterface({
-		input: createReadStream(filePath, {
+		input: trackedCreateReadStream(filePath, {
 			encoding: "utf-8",
 			start: fromByteOffset,
 		}),
