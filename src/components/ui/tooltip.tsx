@@ -13,6 +13,12 @@ const SIDE_CLASS = {
 const TOOLTIP_CLASS =
 	"pointer-events-none absolute z-50 inline-flex min-h-6 max-w-[240px] items-center gap-2 whitespace-nowrap rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-sm";
 
+/** The wider, wrapping box that keeps the content's line breaks. */
+const MULTILINE_TOOLTIP_CLASS = TOOLTIP_CLASS.replace("max-w-[240px]", "w-max max-w-[320px]").replace(
+	"whitespace-nowrap",
+	"whitespace-pre-line",
+);
+
 /**
  * Minimal claude.ai/code tooltip: always dark, side top (titlebar controls use
  * bottom, sidebar family handles right), offset 4, 300ms open delay, with an optional text-variant shortcut
@@ -23,6 +29,7 @@ export function Tooltip({
 	shortcut,
 	secondary,
 	side = "top",
+	multiline = false,
 	className,
 	children,
 }: {
@@ -31,6 +38,8 @@ export function Tooltip({
 	/** A second action on the same control, shown after a "·", e.g. Send ⏎ · Fork with this prompt ⌥⌘⏎. */
 	secondary?: {content: string; shortcut: string} | undefined;
 	side?: keyof typeof SIDE_CLASS;
+	/** Wrap long content and break it at its newlines, e.g. a timestamp followed by per-turn details. */
+	multiline?: boolean;
 	className?: string;
 	children: ReactElement<{"aria-describedby"?: string}>;
 }) {
@@ -65,7 +74,11 @@ export function Tooltip({
 					})
 				: children}
 			{open && (
-				<span role="tooltip" id={id} className={`${TOOLTIP_CLASS} ${SIDE_CLASS[side]}`}>
+				<span
+					role="tooltip"
+					id={id}
+					className={`${multiline ? MULTILINE_TOOLTIP_CLASS : TOOLTIP_CLASS} ${SIDE_CLASS[side]}`}
+				>
 					{content}
 					{shortcut !== undefined && <TooltipShortcut keys={shortcut} />}
 					{secondary !== undefined && (

@@ -10,9 +10,9 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import {AlertTriangle, Bot, Copy, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
+import {AlertTriangle, Bot, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
 import {assertNever} from "../lib/assert-never";
-import {formatTimestamp, formatRelativeTimestamp} from "../lib/timestamp-format";
+import {formatTimestamp} from "../lib/timestamp-format";
 import {ProseMarkdown} from "./file-refs";
 import {MarkdownArticle} from "./markdown-article";
 import {SlashCommandText, SlashCommandsContext} from "./slash-command-chip";
@@ -26,19 +26,20 @@ import type {Subagent} from "../lib/subagents";
 import {formatModelName} from "../lib/model-name";
 import {useClaudeEvents} from "../hooks/use-claude-events";
 import {ChevronIcon, CollapsibleSection, CopyButton, DiffStats, TerminalOutput} from "./tool-renderers/shared";
-import {SystemBanner, formatTokens} from "./system-banner";
+import {SystemBanner} from "./system-banner";
 import {ArtifactLinkBanner, ArtifactWatchBanner} from "./artifact-banner";
-import {promptSourceLabels, turnOriginLabels} from "../lib/schema-choices";
 import {computeDiffData} from "../lib/diff-utils";
 import {TasksView} from "./tasks-view";
 import {DebugLink} from "./debug-link";
-import {TranscriptMessageMenu} from "./transcript-context-menu";
+import {type TranscriptMessageRef, TranscriptMessageMenu} from "./transcript-context-menu";
+import {AssistantMessageActions, UserMessageActions} from "./message-actions";
+import {messageText} from "../lib/transcript-action-targets";
+import {assistantTurnDetails, userTurnDetails} from "../lib/turn-metadata";
 import {TurnChangesCard} from "./turn-changes-card";
 import {collectTurnChanges, type TurnChanges} from "../lib/turn-changes";
 import {useSettings} from "./settings-provider";
 import type {TranscriptMode} from "../lib/transcript-mode";
 import {hmrPersist} from "../lib/hmr-persist";
-import {writeClipboardText} from "../lib/clipboard";
 import type {MessageSessionLine, SessionLine, SessionContentBlock, ToolResultInfo} from "../lib/sessions";
 import type {ToolUseBlock} from "../lib/schemas";
 import {AttachmentBanner, Banner, Pre} from "./attachment-banner";
@@ -56,7 +57,6 @@ import type {SummarySegment} from "../lib/session-utils";
 import {failedDescriptionLabel, toolLabel} from "../lib/tool-labels";
 import {InlinePathImages, SESSION_IMAGE_CLASS_NAME} from "./inline-path-images";
 import {findScrollContainer} from "./transcript-history-loader";
-import {AssistantTurnMeta, UserTurnContext} from "./turn-metadata";
 import {usePromptJump} from "../hooks/use-prompt-jump";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {jumpToMessage, TRANSCRIPT_JUMP_REQUEST_EVENT, type TranscriptJumpRequestEvent} from "../lib/jump-to-message";
@@ -132,127 +132,30 @@ function scrollMetrics(scroller: Element): {
 	return scroller;
 }
 
-function CopyToast({visible}: {visible: boolean}) {
+function messageRef(line: MessageSessionLine, fallbackSessionId: string): TranscriptMessageRef | undefined {
+	if (line.uuid === undefined) return undefined;
+	return {sessionId: getSourceSessionId(line, fallbackSessionId), uuid: line.uuid};
+}
+
+function AssistantTurnActions({line, sessionId}: {line: MessageSessionLine; sessionId: string}) {
 	return (
-		<span
-			className={`absolute -top-6 left-1/2 -translate-x-1/2 rounded bg-surface-0 px-1.5 py-0.5 text-[10px] text-secondary shadow-sm transition-opacity whitespace-nowrap pointer-events-none ${visible ? "opacity-100" : "opacity-0"}`}
-		>
-			Copied!
-		</span>
+		<AssistantMessageActions
+			message={messageRef(line, sessionId)}
+			text={messageText(line)}
+			timestamp={line.timestamp}
+			details={assistantTurnDetails(line)}
+		/>
 	);
 }
 
-function MessageToolbar({line, timestamp}: {line: MessageSessionLine; timestamp?: string}) {
-	const [copied, setCopied] = useState(false);
-	const usage = summarizeUsage(line.usage);
-	const relativeTimestamp = formatRelativeTimestamp(timestamp);
-	const absoluteTimestamp = formatTimestamp(timestamp);
-	const timestampTitle = absoluteTimestamp ?? undefined;
-
-	async function copyText() {
-		const texts = extractTextFromLine(line);
-		const ok = await writeClipboardText(texts.join("\n\n"));
-		if (ok) {
-			setCopied(true);
-			setTimeout(() => setCopied(false), 1500);
-		}
-	}
-
+function UserTurnActions({line, sessionId}: {line: MessageSessionLine; sessionId: string}) {
 	return (
-		<div className="flex items-center gap-g2 pt-[4px] opacity-0 pointer-events-none group-hover/msg:opacity-100 group-hover/msg:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-opacity duration-150">
-			<div className="relative">
-				<button
-					type="button"
-					aria-label="Copy message"
-					onClick={copyText}
-					className="p-1 text-t6 hover:text-primary cursor-pointer"
-				>
-					<Copy className="h-3 w-3" />
-				</button>
-				<CopyToast visible={copied} />
-			</div>
-			{relativeTimestamp && (
-				<span className="text-[11px] text-secondary tabular-nums pl-p1" title={timestampTitle}>
-					{relativeTimestamp}
-				</span>
-			)}
-			{line.stopReason === "max_tokens" && (
-				<span className="text-[10px] text-warning-100 rounded-full bg-surface-0 px-1.5">
-					truncated · max tokens
-				</span>
-			)}
-			{usage && (
-				<span className="text-[11px] text-secondary tabular-nums" title={usage.title}>
-					{usage.summary}
-				</span>
-			)}
-			<AssistantTurnMeta line={line} />
-		</div>
-	);
-}
-
-/** Compact token-usage summary from an assistant message's usage record. */
-function summarizeUsage(usage: Record<string, unknown> | undefined): {summary: string; title: string} | undefined {
-	if (!usage) return undefined;
-	const num = (key: string): number => (typeof usage[key] === "number" ? (usage[key] as number) : 0);
-	const input = num("input_tokens");
-	const output = num("output_tokens");
-	const cacheRead = num("cache_read_input_tokens");
-	const cacheCreate = num("cache_creation_input_tokens");
-	const totalIn = input + cacheRead + cacheCreate;
-	if (totalIn === 0 && output === 0) return undefined;
-	return {
-		summary: `${formatTokens(totalIn)} in / ${formatTokens(output)} out`,
-		title: `input ${input} · cache read ${cacheRead} · cache write ${cacheCreate} · output ${output}`,
-	};
-}
-
-function extractTextFromLine(line: MessageSessionLine): string[] {
-	const content = line.message?.content;
-	if (!content) return [];
-	if (typeof content === "string") return [stripCommandTags(content)].filter(Boolean);
-	return content
-		.filter((b): b is SessionContentBlock & {text: string} => b.type === "text" && typeof b.text === "string")
-		.map((b) => b.text);
-}
-
-function UserMessageActions({line, timestamp}: {line: MessageSessionLine; timestamp?: string}) {
-	const [copied, setCopied] = useState(false);
-
-	async function copyText() {
-		const texts = extractTextFromLine(line);
-		const ok = await writeClipboardText(texts.join("\n\n"));
-		if (ok) {
-			setCopied(true);
-			setTimeout(() => setCopied(false), 1500);
-		}
-	}
-
-	const absoluteTimestamp = formatTimestamp(timestamp);
-	const relativeTimestamp = formatRelativeTimestamp(timestamp);
-	const timestampTitle = absoluteTimestamp ?? undefined;
-
-	return (
-		<div className="flex items-center gap-g2 pt-[4px] -mt-[8px] text-[11px] text-t6 opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150">
-			<div className="relative">
-				<button
-					type="button"
-					title="Copy message"
-					aria-label="Copy message"
-					onClick={copyText}
-					className="flex items-center p-1 hover:text-primary cursor-pointer"
-				>
-					<Copy className="h-3 w-3" />
-				</button>
-				<CopyToast visible={copied} />
-			</div>
-			{relativeTimestamp && (
-				<span className="text-t6" title={timestampTitle}>
-					{relativeTimestamp}
-				</span>
-			)}
-			<UserTurnContext line={line} />
-		</div>
+		<UserMessageActions
+			message={messageRef(line, sessionId)}
+			text={messageText(line)}
+			timestamp={line.timestamp}
+			details={userTurnDetails(line)}
+		/>
 	);
 }
 
@@ -472,7 +375,7 @@ function LineEntry({
 			{isAssistant && <TurnHeading speaker="Claude" />}
 			{content}
 			{turnChanges && <TurnChangesCard sessionId={renderProps.sessionId} changes={turnChanges} />}
-			{isAssistant && <MessageToolbar line={line} {...(rawTimestamp ? {timestamp: rawTimestamp} : {})} />}
+			{isAssistant && <AssistantTurnActions line={line} sessionId={renderProps.sessionId} />}
 		</>
 	);
 	if (line.type !== "assistant") return React.cloneElement(wrapper, undefined, children);
@@ -481,7 +384,7 @@ function LineEntry({
 			speaker="assistant"
 			sessionId={getSourceSessionId(line, renderProps.sessionId)}
 			uuid={line.uuid}
-			markdown={extractTextFromLine(line).join("\n\n")}
+			markdown={messageText(line)}
 			render={wrapper}
 		>
 			{children}
@@ -1529,8 +1432,6 @@ function UserEntry({
 		);
 	}
 
-	const timestamp = "timestamp" in line ? line.timestamp : undefined;
-	const actionsProps = {line, ...(timestamp ? {timestamp} : {})};
 	const {textNodes, mediaNodes} = renderUserContentBlocks(line, sessionId, allowedImageRoots);
 
 	return (
@@ -1539,17 +1440,16 @@ function UserEntry({
 				speaker="user"
 				sessionId={sessionId}
 				uuid={line.uuid}
-				markdown={extractTextFromLine(line).join("\n\n")}
+				markdown={messageText(line)}
 				render={<div className="flex flex-col items-end gap-g6 max-w-[85%] min-w-0" />}
 			>
-				<UserTurnMeta line={line} />
 				{textNodes.length > 0 && (
 					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
 						{textNodes}
 					</div>
 				)}
 				{mediaNodes}
-				<UserMessageActions {...actionsProps} />
+				<UserTurnActions line={line} sessionId={sessionId} />
 			</TranscriptMessageMenu>
 		</UserTurn>
 	);
@@ -1612,8 +1512,6 @@ function CompactSummaryBody({
 	sessionId: string;
 	allowedImageRoots: readonly string[];
 }) {
-	const timestamp = "timestamp" in line ? line.timestamp : undefined;
-	const actionsProps = {line, ...(timestamp ? {timestamp} : {})};
 	const {textNodes, mediaNodes} = renderUserContentBlocks(line, sessionId, allowedImageRoots);
 
 	return (
@@ -1625,7 +1523,7 @@ function CompactSummaryBody({
 					</div>
 				)}
 				{mediaNodes}
-				<UserMessageActions {...actionsProps} />
+				<UserTurnActions line={line} sessionId={sessionId} />
 			</div>
 		</div>
 	);
@@ -1642,8 +1540,6 @@ function LabeledAutomatedEntry({
 	label: string;
 	allowedImageRoots: readonly string[];
 }) {
-	const timestamp = "timestamp" in line ? line.timestamp : undefined;
-	const actionsProps = {line, ...(timestamp ? {timestamp} : {})};
 	const {textNodes, mediaNodes} = renderUserContentBlocks(line, sessionId, allowedImageRoots);
 
 	if (textNodes.length === 0 && mediaNodes.length === 0) return null;
@@ -1662,7 +1558,7 @@ function LabeledAutomatedEntry({
 					</div>
 				)}
 				{mediaNodes}
-				<UserMessageActions {...actionsProps} />
+				<UserTurnActions line={line} sessionId={sessionId} />
 			</div>
 		</UserTurn>
 	);
@@ -1822,29 +1718,6 @@ function renderUserContentBlocks(
 	return {textNodes, mediaNodes};
 }
 
-/**
- * Small caption above a user bubble saying where the turn came from (a peer
- * session, a task notification, a scheduled task) and how the prompt was
- * submitted. Ordinary typed human turns get no caption.
- */
-function UserTurnMeta({line}: {line: MessageSessionLine}) {
-	const parts: string[] = [];
-	if (line.turnOrigin !== undefined && line.turnOrigin !== "human") {
-		const origin = turnOriginLabels[line.turnOrigin];
-		parts.push(
-			line.turnOrigin === "scheduled" && line.scheduledTaskId !== undefined
-				? `${origin} ${line.scheduledTaskId}`
-				: origin,
-		);
-	}
-	if (line.promptSource !== undefined) {
-		parts.push(`${promptSourceLabels[line.promptSource]} prompt`);
-	}
-	if (line.queuePriority === "later" && parts.length > 0) parts.push("queued for later");
-	if (parts.length === 0) return null;
-	return <span className="text-[11px] text-t6">{parts.join(" · ")}</span>;
-}
-
 function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: string}) {
 	const content = line.message?.content;
 	let cmdName = "";
@@ -1871,20 +1744,16 @@ function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: s
 
 	const name = cmdName.replace(/^\//, "");
 
-	const timestamp = "timestamp" in line ? line.timestamp : undefined;
-	const actionsProps = {line, ...(timestamp ? {timestamp} : {})};
-
 	return (
 		<UserTurn>
 			<div className="flex flex-col items-end gap-g6 max-w-[85%] min-w-0">
-				<UserTurnMeta line={line} />
 				<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
 					<TruncatedContent fadeColor="var(--color-surface-1)" variant="user">
 						<SlashCommandText name={name} rest={cmdArgs ?? ""} />
 					</TruncatedContent>
 					<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
 				</div>
-				<UserMessageActions {...actionsProps} />
+				<UserTurnActions line={line} sessionId={sessionId} />
 			</div>
 		</UserTurn>
 	);

@@ -18,6 +18,7 @@ const SESSION_ID = "8f0c2c7e-1111-4222-8333-944445555666";
 const FORK_ID = "1d2e3f40-5555-4666-8777-988889999000";
 const CWD = "/Users/alice/my project";
 const NOW = 1_780_000_000_000;
+const MESSAGE_UUID = "a1b2c3d4-0000-4111-8222-933344445555";
 
 function dependencies(overrides: Partial<ForkDependencies> = {}) {
 	const launch = vi.fn<ForkDependencies["launch"]>();
@@ -45,12 +46,27 @@ describe("sessionForkArgs", () => {
 		expect(args).toEqual(["--resume", SESSION_ID, "--fork-session"]);
 		expect(validateClaudeLaunchArgs(args)).toBeNull();
 	});
+
+	it("resumes the fork at a message when given one", () => {
+		const args = sessionForkArgs(SESSION_ID, MESSAGE_UUID);
+
+		expect({args, valid: validateClaudeLaunchArgs(args)}).toStrictEqual({
+			args: ["--resume", SESSION_ID, "--fork-session", "--resume-session-at", MESSAGE_UUID],
+			valid: null,
+		});
+	});
 });
 
 describe("sessionForkCommand", () => {
 	it("cds into the quoted session directory before forking", () => {
 		expect(sessionForkCommand(SESSION_ID, CWD)).toBe(
 			`cd '/Users/alice/my project' && claude --resume ${SESSION_ID} --fork-session`,
+		);
+	});
+
+	it("carries the message a fork resumes at", () => {
+		expect(sessionForkCommand(SESSION_ID, CWD, MESSAGE_UUID)).toBe(
+			`cd '/Users/alice/my project' && claude --resume ${SESSION_ID} --fork-session --resume-session-at ${MESSAGE_UUID}`,
 		);
 	});
 });
@@ -132,6 +148,26 @@ describe("forkSession", () => {
 				},
 			],
 		]);
+	});
+
+	it("forks from a message in herdr, falling back to that message's copied command", async () => {
+		const launched = dependencies();
+		const copied = dependencies();
+		copied.launch.mockRejectedValue(new Error("herdr is not running"));
+
+		await forkSession({sessionId: SESSION_ID, cwd: CWD, atMessage: MESSAGE_UUID}, launched.deps);
+		await forkSession({sessionId: SESSION_ID, cwd: CWD, atMessage: MESSAGE_UUID}, copied.deps);
+
+		expect({launch: launched.launch.mock.calls, copy: copied.copy.mock.calls}).toStrictEqual({
+			launch: [
+				[{cwd: CWD, args: ["--resume", SESSION_ID, "--fork-session", "--resume-session-at", MESSAGE_UUID]}],
+			],
+			copy: [
+				[
+					`cd '/Users/alice/my project' && claude --resume ${SESSION_ID} --fork-session --resume-session-at ${MESSAGE_UUID}`,
+				],
+			],
+		});
 	});
 
 	it("reports an error when the fallback copy fails too", async () => {

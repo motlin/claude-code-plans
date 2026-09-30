@@ -106,11 +106,12 @@ describe("thinking block", () => {
 		renderThinking();
 
 		const button = screen.getByLabelText("Copy as quote");
+		const rail = screen.getByText(THINKING, {collapseWhitespace: false}).parentElement?.parentElement;
 
 		expect({
 			tagName: button.tagName,
 			revealClass: button.parentElement?.className.includes("opacity-0 group-hover/body:opacity-100"),
-			plainCopyButtons: screen.queryAllByLabelText("Copy").length,
+			plainCopyButtons: rail?.querySelectorAll('button[aria-label="Copy"]').length,
 		}).toStrictEqual({tagName: "BUTTON", revealClass: true, plainCopyButtons: 0});
 	});
 

@@ -1,8 +1,11 @@
 const EFFORT_LEVELS = new Set(["low", "medium", "high", "xhigh", "max"]);
 const PERMISSION_MODES = new Set(["acceptEdits", "auto", "bypassPermissions", "default", "manual", "dontAsk", "plan"]);
 
+const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]*$/;
+
 const VALUE_FLAGS: Record<string, (value: string) => boolean> = {
-	"--resume": (value) => /^[A-Za-z0-9][A-Za-z0-9-]*$/.test(value),
+	"--resume": (value) => ID_PATTERN.test(value),
+	"--resume-session-at": (value) => ID_PATTERN.test(value),
 	"--model": (value) => /^[A-Za-z0-9][A-Za-z0-9._[\]-]*$/.test(value),
 	"--effort": (value) => EFFORT_LEVELS.has(value),
 	"--permission-mode": (value) => PERMISSION_MODES.has(value),
@@ -27,8 +30,8 @@ export function validateClaudeLaunchArgs(args: readonly string[]): string | null
 		if (!isValid(value)) return `invalid value for ${flag}`;
 	}
 
-	if (seen.has("--fork-session") && !seen.has("--resume")) {
-		return "--fork-session requires --resume";
+	for (const flag of ["--fork-session", "--resume-session-at"]) {
+		if (seen.has(flag) && !seen.has("--resume")) return `${flag} requires --resume`;
 	}
 	return null;
 }

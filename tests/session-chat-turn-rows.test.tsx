@@ -99,7 +99,7 @@ describe("SessionChat turn rows", () => {
 		expect({
 			messageAnchors: container.querySelectorAll("[id^='msg-']").length,
 			copyLinkButtons: container.querySelectorAll("button[aria-label='Copy link']").length,
-			copyMessageButtons: container.querySelectorAll("button[aria-label='Copy message']").length,
+			copyMessageButtons: container.querySelectorAll("[data-message-actions] button[aria-label='Copy']").length,
 		}).toStrictEqual({messageAnchors: 0, copyLinkButtons: 0, copyMessageButtons: 4});
 	});
 });

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render} from "@testing-library/react";
+import {act, cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
@@ -65,16 +65,23 @@ function userColumnClassName(container: HTMLElement): string | null {
 	return column?.className ?? null;
 }
 
-/** The class list of the action row holding the given copy button. */
-function actionRowClassName(container: HTMLElement, title: string): string | null {
-	const button = container.querySelector(`button[title="${title}"], button[aria-label="${title}"]`);
-	return button?.parentElement?.parentElement?.className ?? null;
+/** Each hover bar's controls in order: button aria-labels, with the `<time>` as "time". */
+function barControls(container: HTMLElement): string[][] {
+	return Array.from(container.querySelectorAll("[data-message-actions]")).map((bar) =>
+		Array.from(bar.querySelectorAll("button, time")).map((element) =>
+			element.tagName === "TIME" ? "time" : (element.getAttribute("aria-label") ?? ""),
+		),
+	);
 }
 
-function actionButtonLabels(container: HTMLElement): string[] {
-	return Array.from(container.querySelectorAll("button"))
-		.filter((button) => /^Copy message$/.test(button.title || button.ariaLabel || ""))
-		.map((button) => button.textContent ?? "");
+/** Focus a bar's time and return the tooltip it opens. */
+function timeTooltip(container: HTMLElement, barIndex: number): string | null {
+	const bar = container.querySelectorAll("[data-message-actions]")[barIndex]!;
+	fireEvent.focus(bar.querySelector("time")!);
+	act(() => {
+		vi.advanceTimersByTime(300);
+	});
+	return bar.querySelector('[role="tooltip"]')?.textContent ?? null;
 }
 
 const USER_TEXT = {
@@ -115,53 +122,69 @@ const COMPACT_SUMMARY = {
 	message: {role: "user", content: "Fabricated compact summary"},
 };
 
-describe("SessionChat assistant action row", () => {
-	it("centres the assistant footer under the turn instead of pulling it up over the content", () => {
-		const container = renderRecords([ASSISTANT_TEXT], true);
-
-		expect(actionRowClassName(container, "Copy message")).toBe(
-			"flex items-center gap-g2 pt-[4px] opacity-0 pointer-events-none group-hover/msg:opacity-100 group-hover/msg:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-opacity duration-150",
+describe("SessionChat hover toolbars", () => {
+	it("gives the assistant turn upstream's action bar and the user turn its mirrored bar", () => {
+		const container = renderRecords(
+			[
+				{...USER_TEXT, timestamp: "2026-09-30T08:00:00.000Z"},
+				{...ASSISTANT_TEXT, timestamp: "2026-09-30T08:01:00.000Z"},
+			],
+			true,
 		);
+
+		expect(barControls(container)).toStrictEqual([
+			["time", "Copy", "Rewind to here", "Fork from here"],
+			["Copy", "Fork from here", "Pin as chapter", "Read aloud", "time"],
+		]);
 	});
 });
 
 describe("SessionChat turn metadata", () => {
-	it("shows per-turn effort and advisor on the assistant row and classifier branch on the user row", () => {
+	it("moves effort, advisor, the classifier branch and the origin caption into the time tooltips", () => {
+		vi.useFakeTimers({toFake: ["setTimeout", "clearTimeout"]});
 		const container = renderRecords(
 			[
 				{
 					...USER_TEXT,
+					timestamp: "2026-09-30T08:00:00.000Z",
+					turnOrigin: "scheduled",
+					scheduledTaskId: "ecc5631f",
+					queuePriority: "later",
 					serverClassifierContext: {
 						context: {git_state: {branch: "feature"}, live_cwd: "/repo", platform: "macos"},
 					},
 				},
-				{...ASSISTANT_TEXT, perTurnEffort: "medium", advisorModel: "claude-opus-5-5"},
+				{
+					...ASSISTANT_TEXT,
+					timestamp: "2026-09-30T08:01:00.000Z",
+					perTurnEffort: "medium",
+					advisorModel: "claude-opus-5-5",
+				},
 			],
 			true,
 		);
-		const rowText = (title: string) =>
-			Array.from(container.querySelectorAll(`button[aria-label="${title}"]`)).map(
-				(button) => button.parentElement?.parentElement?.textContent ?? "",
-			);
+		const visible = container.textContent ?? "";
+		const userTooltip = timeTooltip(container, 0) ?? "";
+		const assistantTooltip = timeTooltip(container, 1) ?? "";
+		vi.useRealTimers();
 
-		expect(rowText("Copy message")).toStrictEqual(["Copied!feature", "Copied!medium effortadvisor Opus 5.5"]);
+		expect({
+			visible: ["Scheduled task", "queued for later", "feature", "medium effort", "advisor"].filter((text) =>
+				visible.includes(text),
+			),
+			user: ["Scheduled task ecc5631f · queued for later", "Branch feature"].every((text) =>
+				userTooltip.includes(text),
+			),
+			assistant: ["medium effort", "advisor Opus 5.5"].every((text) => assistantTooltip.includes(text)),
+		}).toStrictEqual({visible: [], user: true, assistant: true});
 	});
 });
 
 describe("SessionChat user action row", () => {
-	it("hangs the user footer off the column end with upstream's icon-only chrome", () => {
-		const container = renderRecords([USER_TEXT], true);
-
-		expect({
-			column: userColumnClassName(container),
-			actionRow: actionRowClassName(container, "Copy message"),
-			buttonLabels: actionButtonLabels(container),
-		}).toStrictEqual({
-			column: "flex flex-col items-end gap-g6 max-w-[85%] min-w-0",
-			actionRow:
-				"flex items-center gap-g2 pt-[4px] -mt-[8px] text-[11px] text-t6 opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150",
-			buttonLabels: [""],
-		});
+	it("keeps the user bubble column end-aligned", () => {
+		expect(userColumnClassName(renderRecords([USER_TEXT], true))).toBe(
+			"flex flex-col items-end gap-g6 max-w-[85%] min-w-0",
+		);
 	});
 
 	it("uses the same end-aligned column for every user-side entry variant", () => {

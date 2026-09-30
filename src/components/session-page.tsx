@@ -3,6 +3,9 @@ import {useQuery} from "@tanstack/react-query";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {Maximize2, Minimize2} from "lucide-react";
 import {SessionChat} from "./session-chat";
+import {ChapterChips} from "./chapter-chips";
+import {TranscriptActionsProvider} from "./transcript-actions-provider";
+import {useSessionFork} from "../hooks/use-session-fork";
 import {Composer} from "./composer";
 import {StreamingMessage} from "./streaming-message";
 import {SessionHookContext} from "./session-hook-context";
@@ -472,6 +475,12 @@ function SessionView({
 	);
 	const chatStream = useChatStream();
 	const toast = useToast();
+	const forkSession = useSessionFork();
+	const forkCwd = data.cwd ?? data.projectPath ?? null;
+	const forkFromMessage =
+		forkCwd === null
+			? undefined
+			: (target: {sessionId: string; atMessage: string}) => forkSession({...target, cwd: forkCwd});
 	const liveHerdrPrompt = useLiveHerdrPrompt(sessionId, endIndex);
 	const promptBehavior = getSessionPromptBehavior(sessionId, isActive, herdr);
 	const stopAvailable = canStopResponse({
@@ -697,6 +706,7 @@ function SessionView({
 						/>
 
 						{hookContext && <SessionHookContext context={hookContext} />}
+						<ChapterChips sessionId={sessionId} onJump={requestMessageJump} />
 					</div>
 				)}
 
@@ -727,26 +737,28 @@ function SessionView({
 						cwd={data.projectPath ?? undefined}
 						sessionFiles={resources?.files ?? windowFiles}
 					>
-						<SessionChat
-							sessionId={sessionId}
-							lines={processed.lines}
-							toolResultMap={processed.toolResultMap}
-							allowedImageRoots={data.imageRoots}
-							subagents={subagents}
-							showThinking={transcriptFlags.showThinking}
-							showTools={transcriptFlags.showTools}
-							showPassedHooks={transcriptFlags.showPassedHooks}
-							showHookWarnings={transcriptFlags.showHookWarnings}
-							showHookErrors={transcriptFlags.showHookErrors}
-							showSystemBanners={transcriptFlags.showSystemBanners}
-							showCompactSummaries={transcriptFlags.showCompactSummaries}
-							showTranscriptOnly={transcriptFlags.showTranscriptOnly}
-							transcriptMode={transcriptMode}
-							initialScrollKey={initialScrollKey}
-							shouldScrollToEnd={restoredScrollPosition === undefined && locationHash === ""}
-							summary={aiSummary}
-							{...(slashCommands === undefined ? {} : {slashCommands})}
-						/>
+						<TranscriptActionsProvider sessionId={sessionId} lines={processed.lines} fork={forkFromMessage}>
+							<SessionChat
+								sessionId={sessionId}
+								lines={processed.lines}
+								toolResultMap={processed.toolResultMap}
+								allowedImageRoots={data.imageRoots}
+								subagents={subagents}
+								showThinking={transcriptFlags.showThinking}
+								showTools={transcriptFlags.showTools}
+								showPassedHooks={transcriptFlags.showPassedHooks}
+								showHookWarnings={transcriptFlags.showHookWarnings}
+								showHookErrors={transcriptFlags.showHookErrors}
+								showSystemBanners={transcriptFlags.showSystemBanners}
+								showCompactSummaries={transcriptFlags.showCompactSummaries}
+								showTranscriptOnly={transcriptFlags.showTranscriptOnly}
+								transcriptMode={transcriptMode}
+								initialScrollKey={initialScrollKey}
+								shouldScrollToEnd={restoredScrollPosition === undefined && locationHash === ""}
+								summary={aiSummary}
+								{...(slashCommands === undefined ? {} : {slashCommands})}
+							/>
+						</TranscriptActionsProvider>
 					</SessionFileRefs>
 				</AskUserQuestionProvider>
 

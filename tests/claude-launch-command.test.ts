@@ -59,6 +59,12 @@ describe("validateClaudeLaunchArgs", () => {
 		{args: ["--permission-mode", "yolo"], expected: "invalid value for --permission-mode"},
 		{args: ["--resume", "$(id)"], expected: "invalid value for --resume"},
 		{args: ["--fork-session"], expected: "--fork-session requires --resume"},
+		{args: ["--resume", "session-test-100", "--resume-session-at", "message-test-7"], expected: null},
+		{
+			args: ["--resume", "session-test-100", "--resume-session-at", "$(id)"],
+			expected: "invalid value for --resume-session-at",
+		},
+		{args: ["--resume-session-at", "message-test-7"], expected: "--resume-session-at requires --resume"},
 		{args: ["--effort", "low", "--effort", "high"], expected: "duplicate claude argument"},
 	])("returns $expected for $args", ({args, expected}) => {
 		expect(validateClaudeLaunchArgs(args)).toBe(expected);

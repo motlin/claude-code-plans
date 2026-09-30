@@ -5,13 +5,15 @@ import {findLaunchedSession, type PendingLaunch} from "./palette-start-session";
 /** How long after a fork launch a SessionStart in its directory still counts as the fork. */
 export const FORK_NAVIGATION_WINDOW_MS = 60_000;
 
-export function sessionForkArgs(sessionId: string): string[] {
-	return ["--resume", sessionId, "--fork-session"];
+/** `--resume <id> --fork-session`, cut off after `atMessage` (any chain-entry uuid) when given. */
+export function sessionForkArgs(sessionId: string, atMessage?: string): string[] {
+	const args = ["--resume", sessionId, "--fork-session"];
+	return atMessage === undefined ? args : [...args, "--resume-session-at", atMessage];
 }
 
 /** The copy-to-clipboard stand-in for the herdr launch. */
-export function sessionForkCommand(sessionId: string, cwd: string): string {
-	return buildClaudeCopyCommand({cwd, args: sessionForkArgs(sessionId)});
+export function sessionForkCommand(sessionId: string, cwd: string, atMessage?: string): string {
+	return buildClaudeCopyCommand({cwd, args: sessionForkArgs(sessionId, atMessage)});
 }
 
 /** Why Fork is unavailable, shown as the disabled item's tooltip; null when it can run. */
@@ -35,17 +37,25 @@ export interface ForkDependencies {
 	now: () => number;
 }
 
+export interface ForkTarget {
+	sessionId: string;
+	cwd: string;
+	/** Fork from this message ("Fork from here") rather than the session's end. */
+	atMessage?: string | undefined;
+}
+
 export type ForkOutcome = "launched" | "copied" | "failed";
 
 /**
  * claude.ai/code's one-step Fork: `claude --resume <id> --fork-session` in a
  * new herdr tab, or the same command copied when herdr cannot launch it.
+ * "Fork from here" adds `--resume-session-at <uuid>`.
  */
 export async function forkSession(
-	{sessionId, cwd}: {sessionId: string; cwd: string},
+	{sessionId, cwd, atMessage}: ForkTarget,
 	{herdrWritable, launch, copy, toast, onLaunched, now}: ForkDependencies,
 ): Promise<ForkOutcome> {
-	const args = sessionForkArgs(sessionId);
+	const args = sessionForkArgs(sessionId, atMessage);
 	if (herdrWritable) {
 		const since = now();
 		try {
@@ -57,7 +67,7 @@ export async function forkSession(
 		}
 	}
 
-	if (await copy(sessionForkCommand(sessionId, cwd))) {
+	if (await copy(sessionForkCommand(sessionId, cwd, atMessage))) {
 		toast({
 			kind: "success",
 			message: "Command copied. Paste it in a terminal to fork this session.",

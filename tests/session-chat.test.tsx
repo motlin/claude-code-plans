@@ -273,85 +273,24 @@ describe("SessionChat user-message shapes", () => {
 	});
 });
 
-describe("SessionChat prompt metadata", () => {
-	it("identifies system prompts that Claude queued for later", () => {
+describe("SessionChat turn origin captions", () => {
+	it("keeps origin and prompt-source captions out of the visible transcript, like upstream", () => {
 		const html = renderRecord(
 			{
 				type: "user",
-				message: {
-					role: "user",
-					content: "Background agents were stopped by the user.",
-				},
+				message: {role: "user", content: "Background agents were stopped by the user."},
 				promptSource: "system",
 				queuePriority: "later",
-			},
-			{},
-			{
-				showCompactSummaries: true,
-				showTranscriptOnly: true,
-			},
-		);
-
-		const labels = Array.from(
-			html.matchAll(/<span class="text-\[11px\] text-t6">([^<]+)<\/span>/g),
-			([, label]) => label,
-		);
-		expect(labels).toStrictEqual(["System prompt · queued for later"]);
-	});
-});
-
-describe("SessionChat turn origin badges", () => {
-	function metaLabels(html: string): string[] {
-		return Array.from(
-			html.matchAll(/<span class="text-\[11px\] text-t6">([^<]+)<\/span>/g),
-			([, label]) => label ?? "",
-		);
-	}
-	const defaults = {showCompactSummaries: true, showTranscriptOnly: true};
-
-	it("badges a prompt relayed from a peer session", () => {
-		const html = renderRecord(
-			{
-				type: "user",
-				message: {role: "user", content: "Another Claude session sent a message"},
-				turnOrigin: "peer",
-			},
-			{},
-			defaults,
-		);
-		expect(metaLabels(html)).toStrictEqual(["From another session"]);
-	});
-
-	it("badges a scheduled slash command with its task id", () => {
-		const html = renderRecord(
-			{
-				type: "user",
-				message: {
-					role: "user",
-					content:
-						"<command-message>loop</command-message>\n<command-name>/loop</command-name>\n<command-args>check PR</command-args>",
-				},
 				turnOrigin: "scheduled",
 				scheduledTaskId: "e283ee16",
 			},
 			{},
-			defaults,
+			{showCompactSummaries: true, showTranscriptOnly: true},
 		);
-		expect(metaLabels(html)).toStrictEqual(["Scheduled task e283ee16"]);
-	});
 
-	it("combines origin with prompt source and leaves human turns unbadged", () => {
-		const html = renderRecord(
-			{
-				type: "user",
-				message: {role: "user", content: "accepted suggestion"},
-				turnOrigin: "human",
-				promptSource: "suggestion_accepted",
-			},
-			{},
-			defaults,
-		);
-		expect(metaLabels(html)).toStrictEqual(["Suggestion accepted prompt"]);
+		expect(
+			["System prompt", "queued for later", "Scheduled task"].filter((caption) => html.includes(caption)),
+		).toStrictEqual([]);
 	});
 });
 
