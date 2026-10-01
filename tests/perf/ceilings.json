@@ -1,4 +1,114 @@
 {
+	"server.coldLoad.approvals.resp.bytes": {
+		"ceiling": 16,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.coldLoad.approvals.sql.count": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.coldLoad.composerDefaults.resp.bytes": {
+		"ceiling": 85,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.coldLoad.composerDefaults.sql.count": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.coldLoad.homeStats.resp.bytes": {
+		"ceiling": 328,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.coldLoad.homeStats.sql.count": {
+		"ceiling": 2,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.coldLoad.notifications.resp.bytes": {
+		"ceiling": 20,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.coldLoad.notifications.sql.count": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.coldLoad.plans.resp.bytes": {
+		"ceiling": 2,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.coldLoad.plans.sql.count": {
+		"ceiling": 3,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.coldLoad.plugins.resp.bytes": {
+		"ceiling": 2,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.coldLoad.plugins.sql.count": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.coldLoad.projects.resp.bytes": {
+		"ceiling": 1051,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.coldLoad.projects.sql.count": {
+		"ceiling": 11,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.coldLoad.promptHistory.resp.bytes": {
+		"ceiling": 2,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.coldLoad.promptHistory.sql.count": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.coldLoad.sessionsActive.resp.bytes": {
+		"ceiling": 2,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.coldLoad.sessionsActive.sql.count": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.coldLoad.sessionsGrouped.resp.bytes": {
+		"ceiling": 12824,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.coldLoad.sessionsGrouped.sql.count": {
+		"ceiling": 6,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.coldLoad.sessionsRecent.resp.bytes": {
+		"ceiling": 12381,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.coldLoad.sessionsRecent.sql.count": {
+		"ceiling": 4,
+		"unit": "count",
+		"tolerance": 0
+	},
 	"server.liveAppend.large-long.1.jsonl.fullScans": {
 		"ceiling": 2,
 		"unit": "count",
@@ -157,6 +267,21 @@
 	"server.liveAppend.typical.20.sse.payloadBytes": {
 		"ceiling": 4641,
 		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.search.miss.sql.count": {
+		"ceiling": 5,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.search.phrase.sql.count": {
+		"ceiling": 5,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.search.word.sql.count": {
+		"ceiling": 5,
+		"unit": "count",
 		"tolerance": 0
 	},
 	"server.sessionOpen.large-long.detail.jsonl.bytesRead": {
