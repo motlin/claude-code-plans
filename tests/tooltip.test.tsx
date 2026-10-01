@@ -67,4 +67,34 @@ describe("<Tooltip> box", () => {
 				"inline-flex shrink-0 items-baseline gap-[0.3em] text-caption text-[12px] whitespace-nowrap [--shortcut-cap-ink:var(--tooltip-shortcut-ink)]",
 		});
 	});
+
+	it("stacks a secondary action on its own row with upstream's 6px 8px padding and 2px gap, unbounded width", () => {
+		vi.useFakeTimers();
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
+			"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+		);
+		render(
+			<Tooltip
+				content="Send"
+				shortcut="enter"
+				secondary={{content: "Fork with this prompt", shortcut: "cmd+alt+enter"}}
+			>
+				<button type="button">Send</button>
+			</Tooltip>,
+		);
+
+		const tooltip = openTooltip();
+
+		expect({
+			className: tooltip.className,
+			rows: [...tooltip.children].map((row) => ({className: row.className, text: row.textContent})),
+		}).toStrictEqual({
+			className:
+				"pointer-events-none absolute z-50 flex w-max flex-col items-start gap-0.5 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-1.5 text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] bottom-full left-1/2 mb-1 -translate-x-1/2",
+			rows: [
+				{className: "inline-flex items-center gap-2", text: "Send⏎Enter"},
+				{className: "inline-flex items-center gap-2", text: "Fork with this prompt⌥Option⌘Command⏎Enter"},
+			],
+		});
+	});
 });

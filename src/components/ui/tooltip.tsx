@@ -37,6 +37,17 @@ const STACKED_TOOLTIP_CLASS = TOOLTIP_CLASS.replace(
 ).replace("py-[3px]", "py-1.5");
 
 /**
+ * Upstream's Send tooltip with a second action on the control: one label + shortcut row per action, stacked with
+ * a 2px gap inside 6px 8px padding and no width cap.
+ */
+const ACTION_ROWS_TOOLTIP_CLASS = TOOLTIP_CLASS.replace(
+	"inline-flex min-h-6 w-max max-w-[240px] items-center gap-2",
+	"flex w-max flex-col items-start gap-0.5",
+).replace("py-[3px]", "py-1.5");
+
+const TOOLTIP_ROW_CLASS = "inline-flex items-center gap-2";
+
+/**
  * Minimal claude.ai/code tooltip: always dark, side top (titlebar controls use
  * bottom, sidebar family handles right), offset 4, 300ms open delay, with an optional text-variant shortcut
  * after the label. Once open it is measured and, when it would leave the viewport, flipped to the opposite side
@@ -54,7 +65,7 @@ export function Tooltip({
 }: {
 	content: string;
 	shortcut?: string;
-	/** A second action on the same control, shown after a "·", e.g. Send ⏎ · Fork with this prompt ⌥⌘⏎. */
+	/** A second action on the same control, stacked on its own row, e.g. Send ⏎ over Fork with this prompt ⌥⌘⏎. */
 	secondary?: {content: string; shortcut: string} | undefined;
 	/** A muted second line under the label row, e.g. Hide sidebar ⌘B / Drag to resize. */
 	description?: string | undefined;
@@ -91,7 +102,7 @@ export function Tooltip({
 				side,
 			),
 		);
-	}, [open, side, content, description]);
+	}, [open, side, content, description, secondary?.content, secondary?.shortcut]);
 
 	const placedSide = placement?.side ?? side;
 
@@ -109,15 +120,16 @@ export function Tooltip({
 		<>
 			{content}
 			{shortcut !== undefined && <TooltipShortcut keys={shortcut} />}
-			{secondary !== undefined && (
-				<>
-					<span aria-hidden="true">·</span>
-					{secondary.content}
-					<TooltipShortcut keys={secondary.shortcut} />
-				</>
-			)}
 		</>
 	);
+	const tooltipClass =
+		description !== undefined
+			? STACKED_TOOLTIP_CLASS
+			: secondary !== undefined
+				? ACTION_ROWS_TOOLTIP_CLASS
+				: multiline
+					? MULTILINE_TOOLTIP_CLASS
+					: TOOLTIP_CLASS;
 
 	return (
 		<span
@@ -139,18 +151,26 @@ export function Tooltip({
 					ref={tipRef}
 					role="tooltip"
 					id={id}
-					className={`${description !== undefined ? STACKED_TOOLTIP_CLASS : multiline ? MULTILINE_TOOLTIP_CLASS : TOOLTIP_CLASS} ${SIDE_CLASS[placedSide]}`}
+					className={`${tooltipClass} ${SIDE_CLASS[placedSide]}`}
 					style={shiftStyle(placement)}
 				>
-					{description !== undefined ? (
-						<>
-							<span className="inline-flex items-center gap-2">{label}</span>
-							<span className="text-[11px]/[14px] text-[var(--tooltip-description-ink)]">
-								{description}
-							</span>
-						</>
-					) : (
+					{description === undefined && secondary === undefined ? (
 						label
+					) : (
+						<>
+							<span className={TOOLTIP_ROW_CLASS}>{label}</span>
+							{secondary !== undefined && (
+								<span className={TOOLTIP_ROW_CLASS}>
+									{secondary.content}
+									<TooltipShortcut keys={secondary.shortcut} />
+								</span>
+							)}
+							{description !== undefined && (
+								<span className="text-[11px]/[14px] text-[var(--tooltip-description-ink)]">
+									{description}
+								</span>
+							)}
+						</>
 					)}
 				</span>
 			)}

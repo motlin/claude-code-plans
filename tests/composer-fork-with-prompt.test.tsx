@@ -82,7 +82,7 @@ describe("Fork with this prompt", () => {
 		expect(onFork.mock.calls).toStrictEqual([]);
 	});
 
-	it("shows the fork shortcut after Send in the tooltip", () => {
+	it("stacks the fork shortcut on its own row under Send in the tooltip", () => {
 		vi.useFakeTimers();
 		renderComposer({onFork: () => {}, forkLabel: "Fork with this prompt"});
 
@@ -91,7 +91,11 @@ describe("Fork with this prompt", () => {
 			vi.advanceTimersByTime(300);
 		});
 
-		expect(screen.getByRole("tooltip").textContent).toBe("Send⏎·Fork with this promptCtrl+Alt+⏎");
+		const tooltip = screen.getByRole("tooltip");
+		expect({
+			rows: [...tooltip.children].map((row) => row.textContent),
+			separators: [...tooltip.querySelectorAll("span")].filter((span) => span.textContent === "·").length,
+		}).toStrictEqual({rows: ["Send⏎", "Fork with this promptCtrl+Alt+⏎"], separators: 0});
 	});
 
 	it("labels the headless fork as Send in a forked session", () => {
@@ -103,6 +107,10 @@ describe("Fork with this prompt", () => {
 			vi.advanceTimersByTime(300);
 		});
 
-		expect(screen.getByRole("tooltip").textContent).toBe("Send⏎·Send in a forked sessionCtrl+Alt+⏎");
+		const tooltip = screen.getByRole("tooltip");
+		expect({
+			rows: [...tooltip.children].map((row) => row.textContent),
+			separators: [...tooltip.querySelectorAll("span")].filter((span) => span.textContent === "·").length,
+		}).toStrictEqual({rows: ["Send⏎", "Send in a forked sessionCtrl+Alt+⏎"], separators: 0});
 	});
 });
