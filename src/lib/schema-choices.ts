@@ -299,11 +299,13 @@ const unifiedSearchKindLabels = {
 
 export const paletteTypeLabels = {
 	all: "All",
+	artifacts: "Artifacts",
+	projects: "Projects",
 	sessions: "Sessions",
+	scheduled: "Scheduled",
 	plans: "Plans",
 	memories: "Memories",
 	files: "Files",
-	projects: "Projects",
 } satisfies Record<PaletteType, string>;
 
 export const paletteFilterLabels = {

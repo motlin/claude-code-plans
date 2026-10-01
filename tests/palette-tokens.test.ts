@@ -3,11 +3,27 @@ import {
 	paletteDateCutoff,
 	paletteFilterHints,
 	paletteSearchParams,
+	PaletteTypeSchema,
 	parsePaletteTokens,
 	resolvePaletteProject,
 	withoutTypeTokens,
 	type PaletteTokens,
 } from "../src/lib/palette-tokens";
+
+describe("PaletteTypeSchema", () => {
+	it("orders the tabs like claude.ai/code, with the local types last", () => {
+		expect(PaletteTypeSchema.options).toStrictEqual([
+			"all",
+			"artifacts",
+			"projects",
+			"sessions",
+			"scheduled",
+			"plans",
+			"memories",
+			"files",
+		]);
+	});
+});
 
 describe("parsePaletteTokens", () => {
 	const cases: ReadonlyArray<readonly [string, PaletteTokens]> = [
@@ -27,6 +43,10 @@ describe("parsePaletteTokens", () => {
 		["type:memory", {text: "", type: "memories"}],
 		["type:file", {text: "", type: "files"}],
 		["type:project", {text: "", type: "projects"}],
+		["type:artifact", {text: "", type: "artifacts"}],
+		["type:artifacts", {text: "", type: "artifacts"}],
+		["type:scheduled", {text: "", type: "scheduled"}],
+		["type:routine", {text: "", type: "scheduled"}],
 		["type:chat", {text: "type:chat"}],
 		["is:archived old", {text: "old", archived: true}],
 		["is:starred", {text: "is:starred"}],
@@ -81,6 +101,14 @@ describe("paletteSearchParams", () => {
 
 	it("has no server params for the Projects type", () => {
 		expect(paletteSearchParams({text: "fix"}, "projects", [])).toBeNull();
+	});
+
+	it("has no server params for the Artifacts and Scheduled types", () => {
+		expect([
+			paletteSearchParams({text: "fix"}, "artifacts", []),
+			paletteSearchParams({text: "fix"}, "scheduled", []),
+			paletteSearchParams({text: "fix", type: "artifacts"}, "all", []),
+		]).toStrictEqual([null, null, null]);
 	});
 });
 

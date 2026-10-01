@@ -375,11 +375,13 @@ describe("⌘K palette filters", () => {
 
 		expect(tabs(dialog)).toStrictEqual([
 			{name: "All", selected: "true"},
+			{name: "Artifacts", selected: "false"},
+			{name: "Projects", selected: "false"},
 			{name: "Sessions", selected: "false"},
+			{name: "Scheduled", selected: "false"},
 			{name: "Plans", selected: "false"},
 			{name: "Memories", selected: "false"},
 			{name: "Files", selected: "false"},
-			{name: "Projects", selected: "false"},
 		]);
 	});
 

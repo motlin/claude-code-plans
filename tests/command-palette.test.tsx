@@ -14,6 +14,8 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-palette";
 import {ToastProvider} from "../src/components/toast";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
+import {artifactsQueryOptions, type ArtifactSummary} from "../src/lib/api/artifacts";
+import {routinesQueryOptions, type Routine} from "../src/lib/api/routines";
 import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
 import {saveRecents, type RecentEntry} from "../src/lib/recents-history";
 
@@ -53,12 +55,17 @@ function Harness() {
 
 let currentRouter: {state: {location: {pathname: string; hash: string}}} | null = null;
 
-async function renderPalette(sessions = [recentSession("sess-1", "Refactor auth module")], initialPath = "/") {
+async function renderPalette(
+	sessions = [recentSession("sess-1", "Refactor auth module")],
+	initialPath = "/",
+	seed: (queryClient: QueryClient) => void = () => {},
+) {
 	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	queryClient.setQueryData(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT).queryKey, {
 		sessions,
 		nextCursor: null,
 	});
+	seed(queryClient);
 	const rootRoute = createRootRoute({
 		component: () => (
 			<QueryClientProvider client={queryClient}>
@@ -74,8 +81,18 @@ async function renderPalette(sessions = [recentSession("sess-1", "Refactor auth 
 		path: "session/$id",
 		component: () => null,
 	});
+	const artifactRoute = createRoute({
+		getParentRoute: () => rootRoute,
+		path: "artifact/$id",
+		component: () => null,
+	});
+	const routinesRoute = createRoute({
+		getParentRoute: () => rootRoute,
+		path: "routines",
+		component: () => null,
+	});
 	const router = createRouter({
-		routeTree: rootRoute.addChildren([sessionRoute]),
+		routeTree: rootRoute.addChildren([sessionRoute, artifactRoute, routinesRoute]),
 		history: createMemoryHistory({initialEntries: [initialPath]}),
 	});
 	await router.load();
@@ -217,7 +234,7 @@ describe("CommandPalette shell", () => {
 			afterRight,
 			afterWrap: selectedTab(),
 			card: within(dialog).queryByRole("menu", {name: "Actions"}),
-		}).toStrictEqual({afterRight: "Sessions", afterWrap: "Projects", card: null});
+		}).toStrictEqual({afterRight: "Artifacts", afterWrap: "Files", card: null});
 	});
 
 	it("leaves ← and → to the caret when it is inside the query", async () => {
@@ -632,5 +649,142 @@ describe("CommandPalette Recents from the per-tab visit MRU", () => {
 		fireEvent.click(await within(dialog).findByRole("option", {name: /Big plan/}));
 
 		await waitFor(() => expect(currentRouter?.state.location.pathname).toBe("/plan/big-plan"));
+	});
+});
+
+const HOUR_MS = 60 * 60_000;
+
+function artifact(id: string, title: string, publishedAgoMs: number): ArtifactSummary {
+	return {
+		url: `https://claude.ai/code/artifact/${id}`,
+		id,
+		kind: "html",
+		title,
+		description: null,
+		sourcePath: null,
+		sourceExists: false,
+		sourceModifiedAt: null,
+		audience: null,
+		firstSeenAt: Date.now() - publishedAgoMs,
+		lastPublishedAt: Date.now() - publishedAgoMs,
+		publishCount: 1,
+		sessionId: "sess-1",
+		projectId: "-users-dev-project-a",
+	};
+}
+
+function routine(toolUseId: string, overrides: Partial<Routine>): Routine {
+	return {
+		toolUseId,
+		recordUuid: null,
+		kind: "cron",
+		routineId: null,
+		name: null,
+		schedule: "0 9 * * *",
+		humanSchedule: "Every day at 9:00 AM",
+		delaySeconds: null,
+		runOnceAt: null,
+		recurring: true,
+		durable: true,
+		prompt: "Check the build",
+		createdAt: 0,
+		deletedAt: null,
+		sessionId: "sess-1",
+		projectId: "-users-dev-project-a",
+		sessionTitle: null,
+		status: "active",
+		nextRunAt: null,
+		...overrides,
+	};
+}
+
+describe("CommandPalette Artifacts and Scheduled tabs", () => {
+	beforeEach(() => {
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
+		vi.stubGlobal("fetch", () => new Promise(() => {}));
+		vi.stubGlobal(
+			"ResizeObserver",
+			class {
+				observe() {}
+				unobserve() {}
+				disconnect() {}
+			},
+		);
+		Element.prototype.scrollIntoView = () => {};
+	});
+
+	afterEach(() => {
+		cleanup();
+		localStorage.clear();
+		vi.restoreAllMocks();
+		vi.unstubAllGlobals();
+	});
+
+	function seedLocal(queryClient: QueryClient) {
+		queryClient.setQueryData(artifactsQueryOptions.queryKey, [
+			artifact("art-old", "Old dashboard", 240 * HOUR_MS),
+			artifact("art-new", "New report", 0),
+			artifact("art-mid", "Mid deck", HOUR_MS / 2),
+		]);
+		queryClient.setQueryData(routinesQueryOptions.queryKey, [
+			routine("r-sched", {name: "Nightly digest"}),
+			routine("r-done", {prompt: "Finished job", status: "completed"}),
+		]);
+	}
+
+	function resultRows(dialog: HTMLElement) {
+		return [...within(dialog).getByRole("group", {name: "Search results"}).querySelectorAll("[cmdk-item]")].map(
+			(item) => ({
+				label: item.querySelector("[data-palette-label]")?.textContent ?? "",
+				meta: item.querySelector("[data-palette-meta]")?.textContent ?? "",
+			}),
+		);
+	}
+
+	it("renders the type tabs in upstream order with the local ones last", async () => {
+		const dialog = await openPalette();
+
+		expect(
+			within(within(dialog).getByRole("tablist", {name: "Type"}))
+				.getAllByRole("tab")
+				.map((tab) => tab.textContent),
+		).toStrictEqual(["All", "Artifacts", "Projects", "Sessions", "Scheduled", "Plans", "Memories", "Files"]);
+	});
+
+	it("lists the artifacts newest first with a relative time on the Artifacts tab", async () => {
+		const dialog = await openPalette(undefined, "/", seedLocal);
+
+		fireEvent.click(within(dialog).getByRole("tab", {name: "Artifacts"}));
+
+		expect(resultRows(dialog)).toStrictEqual([
+			{label: "New report", meta: "Just now"},
+			{label: "Mid deck", meta: "Past hour"},
+			{label: "Old dashboard", meta: "Past month"},
+		]);
+	});
+
+	it("filters artifacts by the query text and opens the artifact page", async () => {
+		const dialog = await openPalette(undefined, "/", seedLocal);
+		fireEvent.click(within(dialog).getByRole("tab", {name: "Artifacts"}));
+
+		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value: "deck"}});
+		const rows = resultRows(dialog);
+		const row = dialog.querySelector('[cmdk-item][data-item-type="artifact"]');
+		if (row === null) throw new Error("no artifact row");
+		fireEvent.click(row);
+
+		expect(rows).toStrictEqual([{label: "Mid deck", meta: "Past hour"}]);
+		await waitFor(() => expect(currentRouter?.state.location.pathname).toBe("/artifact/art-mid"));
+	});
+
+	it("lists active routines with their schedule on the Scheduled tab and opens /routines", async () => {
+		const dialog = await openPalette(undefined, "/", seedLocal);
+
+		fireEvent.click(within(dialog).getByRole("tab", {name: "Scheduled"}));
+		const rows = resultRows(dialog);
+		fireEvent.click(within(dialog).getByRole("option", {name: /Nightly digest/}));
+
+		expect(rows).toStrictEqual([{label: "Nightly digest", meta: "Every day at 9:00 AM"}]);
+		await waitFor(() => expect(currentRouter?.state.location.pathname).toBe("/routines"));
 	});
 });

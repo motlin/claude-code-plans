@@ -3,13 +3,30 @@ import {UnifiedSearchDateSchema, type UnifiedSearchDate, type UnifiedSearchParam
 
 /**
  * The ⌘K palette's filter grammar, copied from claude.ai/code minus its cloud
- * facets (owner, chats, artifacts, tasks, scheduled). See
+ * facets (owner, chats, tasks). See
  * .llm/upstream-sync/features/search-or-start.md task 4.
  */
 
-/** The palette's type tabs; every value but `projects` is a `/api/search` type. */
-export const PaletteTypeSchema = z.enum(["all", "sessions", "plans", "memories", "files", "projects"]);
+/** The palette's type tabs in upstream's order, with the local-only types last. */
+export const PaletteTypeSchema = z.enum([
+	"all",
+	"artifacts",
+	"projects",
+	"sessions",
+	"scheduled",
+	"plans",
+	"memories",
+	"files",
+]);
 export type PaletteType = z.infer<typeof PaletteTypeSchema>;
+
+/** The types the palette lists and filters client-side instead of asking `/api/search`. */
+export type ClientPaletteType = Extract<PaletteType, "artifacts" | "projects" | "scheduled">;
+export type ServerPaletteType = Exclude<PaletteType, ClientPaletteType>;
+
+export function isClientPaletteType(type: PaletteType): type is ClientPaletteType {
+	return type === "artifacts" || type === "projects" || type === "scheduled";
+}
 
 /** The "Filter by …" hint rows shown when "/" is the whole query. Archived joins once sessions can be archived. */
 export const PaletteFilterSchema = z.enum(["project", "date", "repo", "type"]);
@@ -38,6 +55,12 @@ const TYPE_ALIASES: Readonly<Record<string, PaletteType>> = {
 	files: "files",
 	project: "projects",
 	projects: "projects",
+	artifact: "artifacts",
+	artifacts: "artifacts",
+	scheduled: "scheduled",
+	schedule: "scheduled",
+	routine: "scheduled",
+	routines: "scheduled",
 };
 
 /** Apply one `key:value` word to `tokens`; false leaves the word as search text. */
@@ -118,7 +141,7 @@ export function paletteSearchParams(
 	projects: readonly PaletteProject[],
 ): PaletteSearchParams | null {
 	const type = tokens.type ?? tab;
-	if (type === "projects") return null;
+	if (isClientPaletteType(type)) return null;
 	return {
 		query: tokens.text,
 		type,

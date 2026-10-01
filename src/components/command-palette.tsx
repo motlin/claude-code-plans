@@ -33,15 +33,20 @@ import {
 	Archive,
 	ArchiveRestore,
 	SquareSlash,
+	Shapes,
+	Clock,
 } from "lucide-react";
 import {useActiveSessionsIfAvailable} from "../hooks/use-claude-events";
 import type {PaletteMode} from "../hooks/use-command-palette";
 import {useDebouncedValue} from "../hooks/use-debounced-value";
 import {useSessionArchive} from "../hooks/use-session-archive";
+import {artifactsQueryOptions, type ArtifactSummary} from "../lib/api/artifacts";
 import {encodeFilePath} from "../lib/api/file";
 import {launchHerdrSession} from "../lib/api/herdr";
 import {assertNever} from "../lib/assert-never";
 import {projectsQueryOptions} from "../lib/api/projects";
+import {routinesQueryOptions, type Routine} from "../lib/api/routines";
+import {artifactTimestamp} from "../lib/artifact-gallery";
 import {unifiedSearchQueryOptions, type UnifiedSearchItem} from "../lib/api/search";
 import {
 	recentSessionsQueryOptions,
@@ -54,6 +59,7 @@ import {writeClipboardText} from "../lib/clipboard";
 import {
 	PALETTE_FILTER_TOKENS,
 	PaletteTypeSchema,
+	isClientPaletteType,
 	paletteDateCutoff,
 	paletteFilterHints,
 	paletteProjectMatches,
@@ -64,6 +70,7 @@ import {
 	type PaletteProject,
 	type PaletteTokens,
 	type PaletteType,
+	type ServerPaletteType,
 } from "../lib/palette-tokens";
 import {
 	findLaunchedSession,
@@ -73,6 +80,7 @@ import {
 } from "../lib/palette-start-session";
 import {pin, unpin, usePins} from "../lib/pin-store";
 import {loadRecents, routeToRecent, type RecentEntry} from "../lib/recents-history";
+import {filterRoutines, formatNextRun, routineTitle, sortRoutines} from "../lib/routines";
 import {paletteFilterLabels, paletteTypeLabels} from "../lib/schema-choices";
 import {relativeBucket, titleMatches, type Snippet, type TextMatch} from "../lib/search-text";
 import {createSessionCommands} from "../lib/session-commands";
@@ -119,8 +127,8 @@ const ORGANIC_LIMIT = 7;
 export const PALETTE_SEARCH_DEBOUNCE_MS = 150;
 const SKELETON_ROWS = 3;
 
-/** Server hit kinds plus projects, which the Projects tab lists client-side. */
-type SearchKind = UnifiedSearchItem["kind"] | "project";
+/** Server hit kinds plus the kinds the Projects, Artifacts and Scheduled tabs list client-side. */
+type SearchKind = UnifiedSearchItem["kind"] | "project" | "artifact" | "routine";
 
 const KIND_ICONS = {
 	session: <MessageSquare />,
@@ -128,6 +136,8 @@ const KIND_ICONS = {
 	memory: <Brain />,
 	file: <File />,
 	project: <FolderOpen />,
+	artifact: <Shapes />,
+	routine: <Clock />,
 } as const satisfies Record<SearchKind, ReactNode>;
 
 /** One typed-search row: an instant title match over recents, or a server hit. */
@@ -140,6 +150,8 @@ interface SearchRow {
 	mtime: string;
 	awaiting: boolean;
 	href: string | undefined;
+	/** Replaces the relative-time meta, e.g. a routine's next run. */
+	meta?: string;
 }
 
 function sessionRow(session: SessionListItem, matches: readonly TextMatch[]): SearchRow {
@@ -207,6 +219,56 @@ function projectRows(projects: readonly PaletteProjectItem[], text: string): Sea
 	return rows;
 }
 
+/** The Artifacts tab: newest first, narrowed by the query text. */
+function artifactRows(artifacts: readonly ArtifactSummary[], text: string): SearchRow[] {
+	const rows: SearchRow[] = [];
+	for (const artifact of [...artifacts].sort((a, b) => artifactTimestamp(b) - artifactTimestamp(a))) {
+		const matches = text === "" ? [] : titleMatches(artifact.title, text);
+		if (matches === null) continue;
+		rows.push({
+			kind: "artifact",
+			id: artifact.id,
+			title: artifact.title,
+			titleMatches: matches,
+			snippet: undefined,
+			mtime: new Date(artifactTimestamp(artifact)).toISOString(),
+			awaiting: false,
+			href: undefined,
+		});
+		if (rows.length === PALETTE_RECENT_LIMIT) break;
+	}
+	return rows;
+}
+
+/** The Scheduled tab: active routines by next run, narrowed like the /routines search. */
+function routineRows(routines: readonly Routine[], text: string, now: number): SearchRow[] {
+	const {visible} = filterRoutines(routines, {
+		search: text,
+		schedule: "all",
+		status: "all",
+		includeCompleted: false,
+	});
+	return sortRoutines(visible, "next-run")
+		.slice(0, PALETTE_RECENT_LIMIT)
+		.map((routine) => {
+			const title = routineTitle(routine);
+			return {
+				kind: "routine",
+				id: routine.toolUseId,
+				title,
+				titleMatches: text === "" ? [] : (titleMatches(title, text) ?? []),
+				snippet: undefined,
+				mtime: new Date(routine.createdAt).toISOString(),
+				awaiting: false,
+				href: undefined,
+				meta:
+					routine.nextRunAt === null
+						? (routine.humanSchedule ?? routine.schedule ?? "")
+						: formatNextRun(routine.nextRunAt, now),
+			};
+		});
+}
+
 interface PaletteProjectItem extends PaletteProject {
 	lastActivity: string;
 }
@@ -225,6 +287,8 @@ function serverRow(item: UnifiedSearchItem): SearchRow {
 }
 
 const NO_PROJECTS: readonly PaletteProjectItem[] = [];
+const NO_ARTIFACTS: readonly ArtifactSummary[] = [];
+const NO_ROUTINES: readonly Routine[] = [];
 
 /** "/…" hint rows, or null to search normally (also when no hint matches). */
 function hintsFor(query: string): PaletteFilter[] | null {
@@ -537,6 +601,10 @@ function PalettePopup({
 		enabled: type === "projects" || tokens.project !== undefined || startStep === "picker",
 	});
 	const projects = projectsQuery.data ?? NO_PROJECTS;
+	const artifactsQuery = useQuery({...artifactsQueryOptions, enabled: type === "artifacts"});
+	const artifacts = artifactsQuery.data ?? NO_ARTIFACTS;
+	const routinesQuery = useQuery({...routinesQueryOptions, enabled: type === "scheduled"});
+	const routines = routinesQuery.data ?? NO_ROUTINES;
 	const searchesSessions = hints === null && (type === "all" || type === "sessions");
 
 	const debouncedQuery = useDebouncedValue(trimmedQuery, PALETTE_SEARCH_DEBOUNCE_MS);
@@ -547,7 +615,7 @@ function PalettePopup({
 	const serverActive =
 		hints === null &&
 		tokens.text !== "" &&
-		type !== "projects" &&
+		!isClientPaletteType(type) &&
 		(tokens.project === undefined || !projectsQuery.isPending);
 	const serverSearch = useQuery({
 		...unifiedSearchQueryOptions(debouncedParams ?? {query: ""}),
@@ -566,15 +634,17 @@ function PalettePopup({
 		[data, currentSessionId, tokens, projects],
 	);
 
-	// Sessions with no text lists recents; Projects is searched client-side.
+	// Sessions with no text lists recents; Projects, Artifacts and Scheduled are searched client-side.
 	const listing = useMemo((): SearchRow[] | null => {
 		if (hints !== null || (trimmedQuery === "" && tab === "all")) return null;
 		if (type === "projects") return projectRows(projects, tokens.text);
+		if (type === "artifacts") return artifactRows(artifacts, tokens.text);
+		if (type === "scheduled") return routineRows(routines, tokens.text, Date.now());
 		if (type === "sessions" && tokens.text === "") {
 			return visibleSessions.slice(0, PALETTE_RECENT_LIMIT).map((session) => sessionRow(session, []));
 		}
 		return null;
-	}, [hints, trimmedQuery, tab, type, projects, tokens.text, visibleSessions]);
+	}, [hints, trimmedQuery, tab, type, projects, artifacts, routines, tokens.text, visibleSessions]);
 
 	const instant = useMemo(
 		() => (!searchesSessions || tokens.text === "" ? [] : instantRows(visibleSessions, tokens.text)),
@@ -641,6 +711,8 @@ function PalettePopup({
 	function openRow(row: SearchRow) {
 		if (row.kind === "session") openSession(row.id);
 		else if (row.kind === "project") void navigate({to: "/project/$id", params: {id: row.id}});
+		else if (row.kind === "artifact") void navigate({to: "/artifact/$id", params: {id: row.id}});
+		else if (row.kind === "routine") void navigate({to: "/routines"});
 		else if (row.kind === "file") {
 			void navigate({to: "/file/$", params: {_splat: encodeFilePath(row.id)}});
 		} else if (row.href !== undefined) void navigate({href: row.href});
@@ -730,7 +802,7 @@ function PalettePopup({
 		void navigate({to: "/session/$id", params: {id}});
 	}, [pendingLaunch, activeSessions, onOpenChange, navigate]);
 
-	function seeAllResults(apiType: Exclude<PaletteType, "projects">) {
+	function seeAllResults(apiType: ServerPaletteType) {
 		void navigate({to: "/search", search: {q: tokens.text, type: apiType}});
 	}
 
@@ -1210,7 +1282,7 @@ function PalettePopup({
 										</button>
 									</div>
 								)}
-								{tokens.text !== "" && type !== "projects" && (
+								{tokens.text !== "" && !isClientPaletteType(type) && (
 									<CommandItem
 										value="see-all-results"
 										icon={<Search />}
@@ -1435,7 +1507,7 @@ function SearchResultItem({
 				data-palette-meta=""
 				className="shrink-0 text-xs text-ink-muted group-data-[selected=true]:hidden pointer-coarse:!inline"
 			>
-				{relativeBucket(Date.parse(row.mtime), now) ?? ""}
+				{row.meta ?? relativeBucket(Date.parse(row.mtime), now) ?? ""}
 			</span>
 			<ReturnGlyph />
 		</Command.Item>
