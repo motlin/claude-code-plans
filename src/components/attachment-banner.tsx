@@ -29,6 +29,8 @@ import {
 	Zap,
 } from "lucide-react";
 import {assertNever} from "../lib/assert-never";
+import {parseAgentMessage} from "../lib/agent-message";
+import {AgentMessageRow} from "./agent-message-row";
 import type {z} from "zod";
 import {AttachmentPayloadSchema, type AttachmentPayload, type RenderedRoleSchema} from "../lib/schemas";
 import {formatTimestamp, formatRelativeTimestamp} from "../lib/timestamp-format";
@@ -635,6 +637,8 @@ function AttachmentContent({
 
 		// -- Commands --
 		case "queued_command": {
+			const agentMessage = typeof attachment.prompt === "string" ? parseAgentMessage(attachment.prompt) : null;
+			if (agentMessage !== null) return <AgentMessageRow message={agentMessage} />;
 			const queuedRelative = formatRelativeTimestamp(attachment.timestamp);
 			const queuedAbsolute = formatTimestamp(attachment.timestamp);
 			return (

@@ -15,6 +15,9 @@ import {assertNever} from "../lib/assert-never";
 import {formatTimestamp} from "../lib/timestamp-format";
 import {ProseMarkdown} from "./file-refs";
 import {MarkdownArticle} from "./markdown-article";
+import {TruncatedContent} from "./truncated-content";
+import {AgentMessageRow, AgentNameContext, type AgentNameResolver} from "./agent-message-row";
+import {parseAgentMessage} from "../lib/agent-message";
 import {SlashCommandText, SlashCommandsContext} from "./slash-command-chip";
 import {UserPlainText} from "./user-plain-text";
 import {splitLeadingSlashCommand, type SlashCommand} from "../lib/slash-commands";
@@ -199,6 +202,10 @@ export const SessionChat = React.memo(function SessionChat({
 	const endRef = useRef<HTMLDivElement>(null);
 	const isSubagentSession = sessionId.startsWith("agent-");
 	const subagentLookup = useMemo(() => buildSubagentLookup(subagents), [subagents]);
+	const resolveAgentName = useCallback<AgentNameResolver>(
+		(agentId) => subagentLookup.byBareId.get(agentId)?.description ?? null,
+		[subagentLookup],
+	);
 
 	useEffect(() => {
 		if (!shouldScrollToEnd || autoScrolledLocations.has(initialScrollKey)) return;
@@ -255,32 +262,38 @@ export const SessionChat = React.memo(function SessionChat({
 	return (
 		<TranscriptModeContext.Provider value={transcriptMode}>
 			<SlashCommandsContext.Provider value={slashCommands}>
-				<div ref={containerRef} className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}>
-					{summary !== null && summary !== "" && (
-						<p data-testid="session-summary-row" title={summary} className="mb-4 truncate text-sm text-t6">
-							{summary}
-						</p>
-					)}
-					<SessionLineList
-						key={sessionId}
-						lines={lines}
-						sessionId={sessionId}
-						toolResultMap={toolResultMap}
-						allowedImageRoots={allowedImageRoots}
-						subagentLookup={subagentLookup}
-						isSubagentSession={isSubagentSession}
-						showThinking={showThinking}
-						showTools={showTools}
-						showPassedHooks={showPassedHooks}
-						showHookWarnings={showHookWarnings}
-						showHookErrors={showHookErrors}
-						showSystemBanners={showSystemBanners}
-						showCompactSummaries={showCompactSummaries}
-						showTranscriptOnly={showTranscriptOnly}
-						shouldScrollToEnd={shouldScrollToEnd}
-					/>
-					<div ref={endRef} />
-				</div>
+				<AgentNameContext.Provider value={resolveAgentName}>
+					<div ref={containerRef} className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}>
+						{summary !== null && summary !== "" && (
+							<p
+								data-testid="session-summary-row"
+								title={summary}
+								className="mb-4 truncate text-sm text-t6"
+							>
+								{summary}
+							</p>
+						)}
+						<SessionLineList
+							key={sessionId}
+							lines={lines}
+							sessionId={sessionId}
+							toolResultMap={toolResultMap}
+							allowedImageRoots={allowedImageRoots}
+							subagentLookup={subagentLookup}
+							isSubagentSession={isSubagentSession}
+							showThinking={showThinking}
+							showTools={showTools}
+							showPassedHooks={showPassedHooks}
+							showHookWarnings={showHookWarnings}
+							showHookErrors={showHookErrors}
+							showSystemBanners={showSystemBanners}
+							showCompactSummaries={showCompactSummaries}
+							showTranscriptOnly={showTranscriptOnly}
+							shouldScrollToEnd={shouldScrollToEnd}
+						/>
+						<div ref={endRef} />
+					</div>
+				</AgentNameContext.Provider>
 			</SlashCommandsContext.Provider>
 		</TranscriptModeContext.Provider>
 	);
@@ -1249,38 +1262,6 @@ function renderSessionMessage({
 	}
 }
 
-/** Upstream clamps long bubbles at 16rem and fades their last 3rem with a mask, not an overlay. */
-const TRUNCATED_CLAMP_CLASSES =
-	"max-h-[16rem] overflow-hidden [mask-image:linear-gradient(to_bottom,#000_calc(100%-3rem),transparent)]";
-const TRUNCATE_THRESHOLD_PX = 256;
-
-function TruncatedContent({children}: {children: React.ReactNode}) {
-	const [isTruncated, setIsTruncated] = useState(false);
-	const [expanded, setExpanded] = useState(false);
-
-	const measureRef = useCallback((node: HTMLDivElement | null) => {
-		if (node) setIsTruncated(node.scrollHeight > TRUNCATE_THRESHOLD_PX);
-	}, []);
-
-	return (
-		<div className="flex flex-col items-start gap-1">
-			<div ref={measureRef} className={`w-full ${isTruncated && !expanded ? TRUNCATED_CLAMP_CLASSES : ""}`}>
-				{children}
-			</div>
-			{isTruncated && (
-				<button
-					type="button"
-					aria-expanded={expanded}
-					onClick={() => setExpanded((value) => !value)}
-					className="h-5 cursor-pointer rounded-r4 px-1.5 text-caption font-normal text-primary transition-colors hover:bg-alpha-1"
-				>
-					{expanded ? "Show less" : "Show more"}
-				</button>
-			)}
-		</div>
-	);
-}
-
 type UserContentKind =
 	| "command"
 	| "bash"
@@ -1289,7 +1270,8 @@ type UserContentKind =
 	| "request-interrupted"
 	| "compact-summary"
 	| "stop-hook"
-	| "slash-command-body";
+	| "slash-command-body"
+	| "agent-message";
 
 function getUserContentText(line: MessageSessionLine): string {
 	const content = line.message?.content;
@@ -1328,6 +1310,9 @@ function classifyUserContent(line: MessageSessionLine): UserContentKind {
 	if (text && isRequestInterrupted(text)) {
 		return "request-interrupted";
 	}
+
+	// The CLI injects agent hand-backs as meta user lines, so a user quoting the envelope stays text.
+	if (line.isMeta === true && parseAgentMessage(text) !== null) return "agent-message";
 
 	// Document attachments are always user-initiated, even when isMeta is set —
 	// otherwise an isMeta line is either stop-hook feedback or a slash-command body.
@@ -1406,6 +1391,15 @@ function UserEntry({
 	// Upstream never shows the CLI-injected skill expansion or meta notes; the invoking prompt stands alone.
 	if (kind === "tool-result-only" || kind === "slash-command-body") {
 		return null;
+	}
+
+	if (kind === "agent-message") {
+		const message = parseAgentMessage(getUserContentText(line));
+		return message === null ? null : (
+			<UserTurn>
+				<AgentMessageRow message={message} />
+			</UserTurn>
+		);
 	}
 
 	if (isSubagentSession) {
