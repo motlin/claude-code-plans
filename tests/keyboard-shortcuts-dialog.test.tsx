@@ -41,6 +41,15 @@ function rowLabels(region: HTMLElement): string[] {
 	);
 }
 
+function sectionRowLabels(region: HTMLElement, heading: string): string[] {
+	const section = [...region.querySelectorAll(":scope > div")].find(
+		(candidate) => candidate.querySelector(":scope > div:first-child")?.textContent === heading,
+	);
+	return [...(section?.querySelectorAll(":scope > div + div > span:first-child") ?? [])].map(
+		(label) => label.textContent ?? "",
+	);
+}
+
 describe("KeyboardShortcutsDialog", () => {
 	beforeEach(() => {
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
@@ -128,10 +137,10 @@ describe("KeyboardShortcutsDialog", () => {
 				"Transcript view",
 				"Jump to previous prompt",
 				"Jump to next prompt",
-				"Stop Claude's response",
+				"Stop Claude’s response",
 				"Toggle changes",
 				"Toggle file list in changes or files",
-				"Go to file in changes",
+				"Go to file in changes or files",
 				"Toggle Files",
 				"Attach selection as context",
 				"Toggle terminal",
@@ -146,6 +155,18 @@ describe("KeyboardShortcutsDialog", () => {
 				"Fork with this prompt",
 			],
 		});
+	});
+
+	it("uses the upstream wording for the go-to-file and stop-response rows", async () => {
+		const composer = renderWithComposer();
+		pressShortcutsKey(composer);
+
+		const dialog = await screen.findByRole("dialog", {name: "Keyboard shortcuts"});
+		const region = within(dialog).getByRole("region", {name: "Keyboard shortcuts"});
+		expect({
+			panes: sectionRowLabels(region, "Panes").includes("Go to file in changes or files"),
+			general: sectionRowLabels(region, "General").includes("Stop Claude’s response"),
+		}).toStrictEqual({panes: true, general: true});
 	});
 
 	it("renders each row's keys as keycaps for the current platform", async () => {

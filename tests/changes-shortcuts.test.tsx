@@ -178,7 +178,7 @@ describe("Changes pane shortcuts", () => {
 		expect(labels).toStrictEqual([
 			"Toggle changes",
 			"Toggle file list in changes or files",
-			"Go to file in changes",
+			"Go to file in changes or files",
 		]);
 	});
 });

@@ -212,7 +212,7 @@ export const SHORTCUTS = {
 		hiddenFromDialog: true,
 	},
 	stop_response: {
-		description: "Stop Claude's response",
+		description: "Stop Claude’s response",
 		group: "general",
 		bindings: macAndNonMac("escape", [], []),
 		ownerSlug: "stop-response",
@@ -234,7 +234,7 @@ export const SHORTCUTS = {
 		enabled: true,
 	},
 	go_to_file_in_changes: {
-		description: "Go to file in changes",
+		description: "Go to file in changes or files",
 		group: "panes",
 		bindings: cmdOrCtrl("p"),
 		ownerSlug: "panes-changes",
