@@ -190,6 +190,18 @@ describe("breadcrumb", () => {
 			segments: ["src", "agent.ts"],
 		});
 	});
+	it("titles each segment with its cumulative path", () => {
+		textFile("/home/alice/project/.llm/plan.md", "# Plan");
+		renderView({path: "/home/alice/project/.llm/plan.md", cwd: "/home/alice/project"});
+
+		const button = screen.getByRole("button", {name: "Copy path .llm/plan.md"});
+		expect({
+			titles: [...button.querySelectorAll("[data-breadcrumb-segment]")].map((segment) =>
+				segment.getAttribute("title"),
+			),
+			buttonTitle: button.getAttribute("title"),
+		}).toStrictEqual({titles: [".llm", ".llm/plan.md"], buttonTitle: null});
+	});
 });
 
 describe("images", () => {

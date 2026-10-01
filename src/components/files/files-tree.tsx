@@ -74,6 +74,12 @@ function parentDir(relPath: string): string {
 	return lastSlash === -1 ? "" : relPath.slice(0, lastSlash);
 }
 
+/** Whether the row's name is truncated, the only case its full-name tooltip opens. */
+function nameOverflows(anchor: HTMLElement): boolean {
+	const name = anchor.querySelector("[data-tree-name]");
+	return name !== null && name.scrollWidth > name.clientWidth;
+}
+
 function symlinkLabel(entry: WorkspaceEntry): string | undefined {
 	const {symlink} = entry;
 	if (symlink === undefined) return undefined;
@@ -424,33 +430,39 @@ export function FilesTree({
 												className="absolute left-0 flex h-[21.33px] w-full items-center rounded-r5 text-pane text-primary outline-none select-none hover:bg-fill-ghost-hover focus-visible:bg-fill-ghost-hover"
 												style={{top: index * ROW_HEIGHT, paddingLeft: 8}}
 											>
-												<button
-													type="button"
-													data-tree-primary
-													tabIndex={-1}
-													onClick={() => activate(entry, {pin: false})}
-													onDoubleClick={() => {
-														if (!entry.isDirectory)
-															onOpenFile?.(entry.relPath, {pin: true});
-													}}
-													className="flex min-w-0 flex-1 cursor-pointer items-baseline gap-1 border-0 bg-transparent pr-2 text-left outline-none"
+												<Tooltip
+													content={entry.name}
+													openWhen={nameOverflows}
+													className="min-w-0 flex-1"
 												>
-													<Icon
-														aria-hidden="true"
-														className="size-4 shrink-0 self-center text-ink-muted"
-													/>
-													<span data-tree-name className="truncate text-primary">
-														{entry.name}
-													</span>
-													{dirSuffix !== "" && (
-														<span
-															data-tree-dir
-															className="min-w-0 truncate text-footnote text-ink-muted"
-														>
-															{dirSuffix}
+													<button
+														type="button"
+														data-tree-primary
+														tabIndex={-1}
+														onClick={() => activate(entry, {pin: false})}
+														onDoubleClick={() => {
+															if (!entry.isDirectory)
+																onOpenFile?.(entry.relPath, {pin: true});
+														}}
+														className="flex min-w-0 flex-1 cursor-pointer items-baseline gap-1 border-0 bg-transparent pr-2 text-left outline-none"
+													>
+														<Icon
+															aria-hidden="true"
+															className="size-4 shrink-0 self-center text-ink-muted"
+														/>
+														<span data-tree-name className="truncate text-primary">
+															{entry.name}
 														</span>
-													)}
-												</button>
+														{dirSuffix !== "" && (
+															<span
+																data-tree-dir
+																className="min-w-0 truncate text-footnote text-ink-muted"
+															>
+																{dirSuffix}
+															</span>
+														)}
+													</button>
+												</Tooltip>
 											</ContextMenuTrigger>
 											{cwd !== undefined && (
 												<MenuContent>

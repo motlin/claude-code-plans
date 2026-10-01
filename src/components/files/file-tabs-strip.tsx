@@ -1,14 +1,21 @@
 import {X} from "lucide-react";
-import type {KeyboardEvent} from "react";
+import {type KeyboardEvent, useId} from "react";
 
 import type {AttachContextHandler} from "../../lib/context-attach";
 import type {FileTabsAction, FileTabsState} from "../../lib/file-tabs";
 import {getFileIcon} from "../file-tree";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "../ui/menu";
-import {TabMenuItems} from "./file-context-menu";
+import {Tooltip} from "../ui/tooltip";
+import {TabMenuItems, mentionPath} from "./file-context-menu";
 
 function baseName(path: string): string {
 	return path.slice(path.lastIndexOf("/") + 1) || path;
+}
+
+/** The tab's folder as the tooltip shows it: relative inside the working directory, empty at its root. */
+function folderOf(path: string, cwd: string | undefined): string {
+	const shown = mentionPath(path, cwd);
+	return shown.slice(0, Math.max(0, shown.lastIndexOf("/")));
 }
 
 interface FileTabsStripProps {
@@ -27,6 +34,7 @@ interface FileTabsStripProps {
  * Delete/Backspace closes the focused tab and ⌃⇧←/→ reorders it.
  */
 export function FileTabsStrip({state, dispatch, cwd, onAttachContext, onRevealInTree}: FileTabsStripProps) {
+	const hintId = useId();
 	function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>, path: string): void {
 		if (event.key === "Delete" || event.key === "Backspace") {
 			event.preventDefault();
@@ -47,28 +55,36 @@ export function FileTabsStrip({state, dispatch, cwd, onAttachContext, onRevealIn
 				const name = baseName(tab.path);
 				const active = tab.path === state.active;
 				const Icon = getFileIcon(name);
+				const folder = folderOf(tab.path, cwd);
 				return (
 					<ContextMenu key={tab.path}>
 						<ContextMenuTrigger
 							role="presentation"
 							className={`group/tab relative flex h-6 min-w-0 shrink basis-[192px] items-center ${active ? "text-primary" : "text-secondary"}`}
 						>
-							<button
-								type="button"
-								role="tab"
-								data-file-tab
-								aria-selected={active}
-								tabIndex={active ? 0 : -1}
-								title={tab.path}
-								onClick={() => dispatch({type: "reveal", path: tab.path})}
-								onDoubleClick={() => dispatch({type: "pin", path: tab.path})}
-								onKeyDown={(event) => handleKeyDown(event, tab.path)}
-								className={`flex h-5 min-w-0 flex-1 cursor-pointer items-center gap-1 rounded-r5 pr-[22px] pl-1.5 text-left text-pane outline-none transition-colors focus-visible:ring-1 focus-visible:ring-accent-100 ${active ? "bg-fill-control" : "bg-transparent hover:bg-fill-ghost-hover"} ${tab.preview ? "italic" : ""}`}
+							<Tooltip
+								content={name}
+								detail={folder === "" ? undefined : folder}
+								side="bottom"
+								className="min-w-0 flex-1"
 							>
-								<Icon aria-hidden="true" className="size-3 shrink-0 text-ink-muted" />
-								<span className="max-w-[140px] truncate">{name}</span>
-								{tab.preview && <span className="sr-only">, preview</span>}
-							</button>
+								<button
+									type="button"
+									role="tab"
+									data-file-tab
+									aria-selected={active}
+									tabIndex={active ? 0 : -1}
+									aria-describedby={`${hintId}-close ${hintId}-move`}
+									onClick={() => dispatch({type: "reveal", path: tab.path})}
+									onDoubleClick={() => dispatch({type: "pin", path: tab.path})}
+									onKeyDown={(event) => handleKeyDown(event, tab.path)}
+									className={`flex h-5 min-w-0 flex-1 cursor-pointer items-center gap-1 rounded-r5 pr-[22px] pl-1.5 text-left text-pane outline-none transition-colors focus-visible:ring-1 focus-visible:ring-accent-100 ${active ? "bg-fill-control" : "bg-transparent hover:bg-fill-ghost-hover"} ${tab.preview ? "italic" : ""}`}
+								>
+									<Icon aria-hidden="true" className="size-3 shrink-0 text-ink-muted" />
+									<span className="max-w-[140px] truncate">{name}</span>
+									{tab.preview && <span className="sr-only">, preview</span>}
+								</button>
+							</Tooltip>
 							<button
 								type="button"
 								tabIndex={-1}
@@ -92,6 +108,12 @@ export function FileTabsStrip({state, dispatch, cwd, onAttachContext, onRevealIn
 					</ContextMenu>
 				);
 			})}
+			<span id={`${hintId}-close`} hidden>
+				Press Delete or Backspace to close the file
+			</span>
+			<span id={`${hintId}-move`} hidden>
+				Press Control+Shift+Left Arrow or Right Arrow to move the file
+			</span>
 		</div>
 	);
 }

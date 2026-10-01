@@ -420,6 +420,33 @@ describe("FilesTree virtualization", () => {
 	});
 });
 
+describe("FilesTree name tooltips", () => {
+	it("shows the full name only on rows whose name overflows", async () => {
+		responses.set(key("", ""), {
+			kind: "listing",
+			dir: "",
+			entries: [file("a-very-long-file-name-that-truncates.ts"), file("short.ts")],
+			partial: false,
+		});
+		renderTree();
+		const long = await screen.findByText("a-very-long-file-name-that-truncates.ts");
+		Object.defineProperty(long, "scrollWidth", {configurable: true, value: 300});
+		Object.defineProperty(long, "clientWidth", {configurable: true, value: 120});
+
+		fireEvent.pointerEnter(screen.getByText("short.ts"));
+		await new Promise((resolve) => setTimeout(resolve, 400));
+		const shortTooltip = screen.queryByRole("tooltip");
+		fireEvent.pointerLeave(screen.getByText("short.ts"));
+		fireEvent.pointerEnter(long);
+		const longTooltip = await waitFor(() => screen.getByRole("tooltip"));
+
+		expect({short: shortTooltip, long: longTooltip.textContent}).toStrictEqual({
+			short: null,
+			long: "a-very-long-file-name-that-truncates.ts",
+		});
+	});
+});
+
 describe("FilesTreeColumn resize", () => {
 	function separator(): HTMLElement {
 		return screen.getByRole("separator", {name: "Resize file tree"});

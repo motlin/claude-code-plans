@@ -468,4 +468,34 @@ describe("Files pane tabs", () => {
 			closeRadius: true,
 		});
 	});
+	it("shows the name and its folder in a tooltip and describes the close and move keys, without a native title", async () => {
+		render(
+			<FileTabsStrip
+				state={{tabs: [{path: "/w/.llm/plan.md", preview: false}], active: "/w/.llm/plan.md"}}
+				dispatch={() => {}}
+				cwd="/w"
+			/>,
+		);
+		const tab = screen.getByRole("tab");
+		const descriptions = (tab.getAttribute("aria-describedby") ?? "")
+			.split(" ")
+			.map((id) => document.getElementById(id)?.textContent);
+		fireEvent.pointerEnter(tab);
+		const tooltip = await waitFor(() => screen.getByRole("tooltip"));
+
+		expect({
+			tooltip: tooltip.textContent,
+			folderMuted: tooltip.querySelector("[data-tooltip-detail]")?.textContent,
+			descriptions,
+			title: tab.getAttribute("title"),
+		}).toStrictEqual({
+			tooltip: "plan.md .llm",
+			folderMuted: ".llm",
+			descriptions: [
+				"Press Delete or Backspace to close the file",
+				"Press Control+Shift+Left Arrow or Right Arrow to move the file",
+			],
+			title: null,
+		});
+	});
 });

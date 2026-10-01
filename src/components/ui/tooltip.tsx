@@ -58,6 +58,8 @@ export function Tooltip({
 	shortcut,
 	secondary,
 	description,
+	detail,
+	openWhen,
 	side = "top",
 	multiline = false,
 	className,
@@ -69,6 +71,10 @@ export function Tooltip({
 	secondary?: {content: string; shortcut: string} | undefined;
 	/** A muted second line under the label row, e.g. Hide sidebar ⌘B / Drag to resize. */
 	description?: string | undefined;
+	/** Muted text after the label on the same row, e.g. a tab's folder after its file name. */
+	detail?: string | undefined;
+	/** Opens only when this holds for the anchor at hover time, e.g. only when a truncated name overflows. */
+	openWhen?: ((anchor: HTMLElement) => boolean) | undefined;
 	side?: keyof typeof SIDE_CLASS;
 	/** Wrap long content and break it at its newlines, e.g. a timestamp followed by per-turn details. */
 	multiline?: boolean;
@@ -108,6 +114,8 @@ export function Tooltip({
 
 	function show() {
 		clearTimeout(timer.current);
+		const anchor = anchorRef.current;
+		if (openWhen !== undefined && (anchor === null || !openWhen(anchor))) return;
 		timer.current = setTimeout(() => setOpen(true), OPEN_DELAY_MS);
 	}
 
@@ -119,6 +127,14 @@ export function Tooltip({
 	const label = (
 		<>
 			{content}
+			{detail !== undefined && (
+				<>
+					{" "}
+					<span data-tooltip-detail className="text-[var(--tooltip-description-ink)]">
+						{detail}
+					</span>
+				</>
+			)}
 			{shortcut !== undefined && <TooltipShortcut keys={shortcut} />}
 		</>
 	);

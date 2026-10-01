@@ -88,7 +88,6 @@ function Breadcrumb({path}: {path: string}) {
 	return (
 		<button
 			type="button"
-			title={path}
 			aria-label={`Copy path ${path}`}
 			onClick={() => void copy()}
 			className="-mx-0.75 flex min-w-0 flex-1 cursor-pointer rounded-r3 text-left text-pane text-secondary hover:bg-fill-ghost-hover"
@@ -102,6 +101,7 @@ function Breadcrumb({path}: {path: string}) {
 								{segment !== "" && (
 									<span
 										data-breadcrumb-segment=""
+										title={segments.slice(0, index + 1).join("/")}
 										className={`shrink-0 px-0.75 ${isName ? "" : "text-muted"}`}
 									>
 										{segment}
