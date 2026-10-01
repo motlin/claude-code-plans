@@ -16,6 +16,7 @@ import {
 import {useComposerDraft} from "../hooks/use-composer-draft";
 import {useFileMentionSuggestions} from "../hooks/use-file-mention-suggestions";
 import type {LiveLaunchControls} from "../hooks/use-live-launch-options";
+import {useIsMac} from "../hooks/use-is-mac";
 import {useShortcut, useShortcutKeys} from "../hooks/use-shortcut";
 import type {ComposerState} from "../lib/composer-state";
 import {type QueuedPrompt, queuedStatusText} from "../lib/composer-queue";
@@ -271,6 +272,8 @@ interface ComposerProps {
 	onSendNow?: ((prompt: string) => void) | undefined;
 	/** ⌥⌘⏎ "Fork with this prompt": send it to a new forked session instead of this one. */
 	onFork?: ((prompt: string, launchOptions: LaunchOptions) => void) | undefined;
+	/** ⌘⏎ "Send and stay here" on the home composer: launch the session without opening it. */
+	onSendAndStay?: ((prompt: string, launchOptions: LaunchOptions) => void) | undefined;
 	/** The Send tooltip's fork row: "Fork with this prompt" or "Send in a forked session". */
 	forkLabel?: string | undefined;
 	/** Prior prompts, newest first, that ↑/↓ walk like a shell history. */
@@ -290,6 +293,7 @@ const SendSlot = memo(function SendSlot({
 	deliveryHint,
 	hintId,
 	forkLabel,
+	sendAndStay,
 }: {
 	isStreaming: boolean;
 	onStop: (() => void) | undefined;
@@ -300,8 +304,17 @@ const SendSlot = memo(function SendSlot({
 	hintId: string;
 	/** The Send tooltip's fork row, when the composer can fork. */
 	forkLabel: string | undefined;
+	/** The Send tooltip's "Send and stay here" row, when the composer offers it. */
+	sendAndStay: boolean;
 }) {
 	const forkKeys = useShortcutKeys("fork_with_prompt").keys;
+	const sendAndStayKeys = useIsMac() ? "cmd+enter" : "ctrl+enter";
+	const secondary =
+		forkLabel !== undefined
+			? {content: forkLabel, shortcut: forkKeys}
+			: sendAndStay
+				? {content: "Send and stay here", shortcut: sendAndStayKeys}
+				: undefined;
 	return (
 		<div className="absolute right-0 bottom-0 flex min-h-6 items-center pl-1.5">
 			{isStreaming || onStop !== undefined ? (
@@ -316,11 +329,7 @@ const SendSlot = memo(function SendSlot({
 					</button>
 				</Tooltip>
 			) : (
-				<Tooltip
-					content="Send"
-					shortcut="enter"
-					secondary={forkLabel === undefined ? undefined : {content: forkLabel, shortcut: forkKeys}}
-				>
+				<Tooltip content="Send" shortcut="enter" secondary={secondary}>
 					<button
 						type="button"
 						aria-label="Send"
@@ -367,6 +376,7 @@ export function Composer({
 	queue,
 	onSendNow,
 	onFork,
+	onSendAndStay,
 	forkLabel = "Fork with this prompt",
 	promptHistory = NO_HISTORY,
 }: ComposerProps) {
@@ -641,6 +651,8 @@ export function Composer({
 				handleSubmit((text) => onFork(text, chinLaunchOptions));
 			} else if (commandChord && !e.altKey && onSendNow !== undefined) {
 				handleSubmit(onSendNow);
+			} else if (commandChord && !e.altKey && onSendAndStay !== undefined) {
+				handleSubmit((text) => onSendAndStay(text, chinLaunchOptions));
 			} else {
 				handleSubmit();
 			}
@@ -779,6 +791,7 @@ export function Composer({
 						deliveryHint={deliveryHint}
 						hintId={hintId}
 						forkLabel={onFork === undefined ? undefined : forkLabel}
+						sendAndStay={onSendAndStay !== undefined}
 					/>
 				</div>
 			</div>

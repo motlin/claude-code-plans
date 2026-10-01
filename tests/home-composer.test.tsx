@@ -299,6 +299,55 @@ describe("HomeComposer", () => {
 		await waitFor(() => expect(router.state.location.pathname).toBe("/session/new-session"));
 	});
 
+	it("navigates to the new session after a plain Enter send", async () => {
+		launchResponse = async () => Response.json({ok: true, tabId: "t1", paneId: "p1", sessionId: null});
+		const {router, eventSource} = await renderApp();
+		const textarea = await typePrompt("fix the flaky test");
+
+		fireEvent.keyDown(textarea, {key: "Enter", code: "Enter"});
+		await waitFor(() => expect(launchCalls.length).toBe(1));
+		act(() => {
+			eventSource.emit(SSE_EVENTS.SESSION_START, {sessionId: "new-session", cwd: "/users/dev/it's", model: ""});
+		});
+
+		await waitFor(() => expect(router.state.location.pathname).toBe("/session/new-session"));
+	});
+
+	it("sends with ⌘⏎ and stays home with a cleared prompt and a success toast", async () => {
+		launchResponse = async () => Response.json({ok: true, tabId: "t1", paneId: "p1", sessionId: "stay-session"});
+		const {router, eventSource} = await renderApp();
+		const textarea = await typePrompt("fix the flaky test");
+
+		fireEvent.keyDown(textarea, {key: "Enter", code: "Enter", metaKey: true});
+
+		await waitFor(() => expect(launchCalls.length).toBe(1));
+		expect(launchBody(launchCalls[0])).toStrictEqual({cwd: "/users/dev/it's", prompt: "fix the flaky test"});
+		expect((await screen.findByRole("status")).textContent).toContain("Started a session in it's");
+		act(() => {
+			eventSource.emit(SSE_EVENTS.SESSION_START, {sessionId: "stay-session", cwd: "/users/dev/it's", model: ""});
+		});
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 50));
+		});
+		expect({path: router.state.location.pathname, prompt: (textarea as HTMLTextAreaElement).value}).toStrictEqual({
+			path: "/",
+			prompt: "",
+		});
+	});
+
+	it("shows Send and stay here ⌘⏎ under Send in the tooltip", async () => {
+		await renderApp();
+		await typePrompt("hello");
+
+		fireEvent.pointerEnter(screen.getByRole("button", {name: "Send"}));
+		const tooltip = await screen.findByRole("tooltip");
+
+		expect([...tooltip.children].map((row) => row.textContent)).toStrictEqual([
+			"Send⏎Enter",
+			"Send and stay here⌘Command⏎Enter",
+		]);
+	});
+
 	it("copies the shell-escaped command with a toast when herdr is unavailable", async () => {
 		launchResponse = async () => Response.json({error: "herdr writes are disabled"}, {status: 403});
 		await renderApp();

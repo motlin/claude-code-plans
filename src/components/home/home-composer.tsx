@@ -94,7 +94,8 @@ export function HomeComposer() {
 		void navigate({to: "/session/$id", params: {id}});
 	}, [pendingLaunch, activeSessions, navigate]);
 
-	async function launch(prompt: string, launchOptions: LaunchOptions) {
+	/** `stay` (⌘⏎) launches without opening the session, leaving home ready for the next prompt. */
+	async function launch(prompt: string, launchOptions: LaunchOptions, stay = false) {
 		if (project === undefined) {
 			toast({kind: "error", message: "Choose a project to start a session in."});
 			return;
@@ -105,7 +106,11 @@ export function HomeComposer() {
 		setLaunching(true);
 		try {
 			const {sessionId} = await launchHerdrSession(request);
-			setPendingLaunch({cwd: request.cwd, since, sessionId});
+			if (stay) {
+				toast({kind: "success", message: `Started a session in ${project.name}`});
+			} else {
+				setPendingLaunch({cwd: request.cwd, since, sessionId});
+			}
 		} catch {
 			const copied = await writeClipboardText(buildClaudeCopyCommand(request));
 			toast(
@@ -145,6 +150,7 @@ export function HomeComposer() {
 				variant="home"
 				draftKey="home"
 				onSend={(prompt, launchOptions) => void launch(prompt, launchOptions)}
+				onSendAndStay={(prompt, launchOptions) => void launch(prompt, launchOptions, true)}
 				disabled={launching}
 				deliveryHint={pendingLaunch === null ? undefined : `Starting session in ${pendingLaunch.cwd}…`}
 				chin={chin}
