@@ -160,6 +160,9 @@
 	--text-footnote--line-height: var(--upstream-leading-footnote);
 	--text-caption: 12px;
 	--text-caption--line-height: 17px;
+	/* Side pane chrome: titles, the Files tree, tabs and breadcrumb (upstream 13px/19px). */
+	--text-pane: 13px;
+	--text-pane--line-height: 19px;
 }
 
 :root {

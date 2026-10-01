@@ -3,6 +3,7 @@
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
+import {FileTabsStrip} from "../src/components/files/file-tabs-strip";
 import {FilesPaneShortcut, FilesPaneView, filesEmptyState} from "../src/components/panes/files-pane";
 import {registerPane} from "../src/components/panes/pane-registry";
 import {TileHost} from "../src/components/panes/tile-host";
@@ -224,6 +225,15 @@ describe("Files pane header", () => {
 		});
 	});
 
+	it("sets the pane title in the 13px pane type", () => {
+		registerFilesPane();
+		renderSession();
+		press(CMD_SHIFT_F);
+
+		const title = filesPane().querySelector("[data-files-header] [data-pane-title]");
+		expect(title?.className.split(" ").includes("text-pane")).toBe(true);
+	});
+
 	it("paints the pressed tree toggle with accent ink on a transparent background", () => {
 		registerFilesPane();
 		renderSession();
@@ -422,5 +432,40 @@ describe("Files pane header", () => {
 				focused: document.activeElement?.getAttribute("aria-label"),
 			}).toStrictEqual({tree: true, focused: "Filter files"}),
 		);
+	});
+});
+
+describe("Files pane tabs", () => {
+	it("draws 13px tabs with 6px leading padding, the selected pill on the tab, and a 20x20 close button with a 4px radius", () => {
+		render(
+			<FileTabsStrip
+				state={{
+					tabs: [
+						{path: "/w/a.ts", preview: false},
+						{path: "/w/b.ts", preview: true},
+					],
+					active: "/w/a.ts",
+				}}
+				dispatch={() => {}}
+			/>,
+		);
+		const [selected, other] = screen.getAllByRole("tab");
+		const selectedClasses = selected?.className.split(" ") ?? [];
+		const closeClasses = screen.getByRole("button", {name: "Close a.ts"}).className.split(" ");
+		expect({
+			text: selectedClasses.includes("text-pane"),
+			paddingLeft: selectedClasses.includes("pl-1.5"),
+			selectedPill: selectedClasses.includes("bg-fill-control"),
+			otherPill: other?.className.split(" ").includes("bg-fill-control"),
+			closeSize: closeClasses.includes("size-5"),
+			closeRadius: closeClasses.includes("rounded-r3"),
+		}).toStrictEqual({
+			text: true,
+			paddingLeft: true,
+			selectedPill: true,
+			otherPill: false,
+			closeSize: true,
+			closeRadius: true,
+		});
 	});
 });

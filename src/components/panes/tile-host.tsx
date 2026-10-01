@@ -595,7 +595,7 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 			) : (
 				<>
 					<div className="relative flex h-8 shrink-0 items-center justify-between gap-2 px-1">
-						<span data-pane-title className="truncate pl-1 text-body text-secondary select-none">
+						<span data-pane-title className="truncate pl-1 text-pane text-secondary select-none">
 							{definition.title}
 						</span>
 						{moveHandle}

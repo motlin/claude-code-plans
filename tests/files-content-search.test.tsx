@@ -270,9 +270,14 @@ afterEach(() => {
 });
 
 describe("FilesTree content search", () => {
-	it("advertises content search in the placeholder", () => {
+	it("uses upstream's placeholder and describes ? content search in the hint", () => {
 		renderTree();
-		expect(filterInput().placeholder).toBe("Filter files… (? for contents)");
+		const input = filterInput();
+		const hint = document.getElementById(input.getAttribute("aria-describedby") ?? "");
+		expect({placeholder: input.placeholder, hint: hint?.textContent}).toStrictEqual({
+			placeholder: "Search files…",
+			hint: "Results update as you type. Start with ? to search file contents. Press Down Arrow to go to results, and Up Arrow on the first result to return here.",
+		});
 	});
 
 	it("prompts for a query after a bare ?", async () => {

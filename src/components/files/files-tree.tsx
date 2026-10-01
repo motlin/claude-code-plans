@@ -29,7 +29,7 @@ const FILES_TREE_MIN_WIDTH = 160;
 const FILES_TREE_MAX_WIDTH = 640;
 export const FILES_TREE_WIDTH_STORAGE_KEY = settingStorageKey("filesTreeWidth");
 
-const ROW_HEIGHT = 24;
+const ROW_HEIGHT = 21.33;
 const OVERSCAN_ROWS = 8;
 /** Assumed viewport height until the tree has been measured (and in jsdom, which never lays out). */
 const FALLBACK_VIEWPORT_HEIGHT = 480;
@@ -340,8 +340,8 @@ export function FilesTree({
 						value={query}
 						onChange={(event) => changeQuery(event.target.value)}
 						onKeyDown={handleInputKeyDown}
-						placeholder={cwd === undefined ? "Search files…" : "Filter files… (? for contents)"}
-						className="h-6 w-full rounded-md border border-strong bg-surface-1 pl-7 pr-6 text-xs text-primary outline-none placeholder:text-t6 focus:border-accent-100/60"
+						placeholder="Search files…"
+						className="h-6 w-full rounded-md border border-strong bg-surface-1 pl-7 pr-6 text-pane text-primary outline-none placeholder:text-t6 focus:shadow-[0_0_0_1px_rgb(42,120,214),0_0_6px_1px_rgb(205,226,251)]"
 						style={{textOverflow: "ellipsis"}}
 					/>
 					{query !== "" && (
@@ -352,15 +352,15 @@ export function FilesTree({
 								changeQuery("");
 								inputRef.current?.focus();
 							}}
-							className="absolute right-1 flex size-4 cursor-pointer items-center justify-center rounded-r5 text-t6 hover:text-primary"
+							className="absolute right-1 flex size-[18px] cursor-pointer items-center justify-center rounded-r5 text-t6 hover:text-primary"
 						>
 							<X aria-hidden="true" className="size-3" />
 						</button>
 					)}
 				</label>
 				<p id={hintId} className="sr-only">
-					Results update as you type. Press Down Arrow to go to results, and Up Arrow on the first result to
-					return here.
+					Results update as you type.{cwd === undefined ? "" : " Start with ? to search file contents."} Press
+					Down Arrow to go to results, and Up Arrow on the first result to return here.
 				</p>
 			</div>
 			{contentQuery !== null && cwd !== undefined ? (
@@ -375,13 +375,13 @@ export function FilesTree({
 			) : (
 				<>
 					{goUp !== null && (
-						<div className="shrink-0 px-2">
+						<div className="shrink-0 px-1 pt-1.25">
 							<button
 								type="button"
 								onClick={() => changeQuery(goUp.query)}
-								className="flex h-6 max-w-full cursor-pointer items-center gap-1 rounded-r5 px-1.5 text-body text-secondary hover:bg-fill-ghost-hover hover:text-primary"
+								className="flex h-[21.33px] w-full cursor-pointer items-center gap-1 rounded-r5 bg-fill-control px-2 text-pane text-primary hover:bg-fill-ghost-hover"
 							>
-								<ArrowUp aria-hidden="true" className="size-3.5 shrink-0" />
+								<ArrowUp aria-hidden="true" className="size-4 shrink-0 text-ink-muted" />
 								<span className="truncate">{goUp.label}</span>
 							</button>
 						</div>
@@ -421,7 +421,7 @@ export function FilesTree({
 												tabIndex={-1}
 												title={symlinkLabel(entry)}
 												onFocus={() => setActiveIndex(index)}
-												className="absolute left-0 flex h-6 w-full items-center rounded-r5 text-body text-primary outline-none select-none hover:bg-fill-ghost-hover focus-visible:bg-fill-ghost-hover"
+												className="absolute left-0 flex h-[21.33px] w-full items-center rounded-r5 text-pane text-primary outline-none select-none hover:bg-fill-ghost-hover focus-visible:bg-fill-ghost-hover"
 												style={{top: index * ROW_HEIGHT, paddingLeft: 8}}
 											>
 												<button
@@ -437,7 +437,7 @@ export function FilesTree({
 												>
 													<Icon
 														aria-hidden="true"
-														className="size-3 shrink-0 self-center text-ink-muted"
+														className="size-4 shrink-0 self-center text-ink-muted"
 													/>
 													<span data-tree-name className="truncate text-primary">
 														{entry.name}

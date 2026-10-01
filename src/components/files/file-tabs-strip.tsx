@@ -51,7 +51,7 @@ export function FileTabsStrip({state, dispatch, cwd, onAttachContext, onRevealIn
 					<ContextMenu key={tab.path}>
 						<ContextMenuTrigger
 							role="presentation"
-							className={`group/tab flex h-6 min-w-0 shrink basis-[192px] items-center rounded-r5 p-[2px] text-body transition-colors hover:bg-fill-ghost-hover ${active ? "bg-fill-control text-primary" : "text-secondary"}`}
+							className={`group/tab relative flex h-6 min-w-0 shrink basis-[192px] items-center ${active ? "text-primary" : "text-secondary"}`}
 						>
 							<button
 								type="button"
@@ -63,7 +63,7 @@ export function FileTabsStrip({state, dispatch, cwd, onAttachContext, onRevealIn
 								onClick={() => dispatch({type: "reveal", path: tab.path})}
 								onDoubleClick={() => dispatch({type: "pin", path: tab.path})}
 								onKeyDown={(event) => handleKeyDown(event, tab.path)}
-								className={`flex min-w-0 flex-1 cursor-pointer items-center gap-1 bg-transparent px-1 text-left outline-none focus-visible:ring-1 focus-visible:ring-accent-100 ${tab.preview ? "italic" : ""}`}
+								className={`flex h-5 min-w-0 flex-1 cursor-pointer items-center gap-1 rounded-r5 pr-[22px] pl-1.5 text-left text-pane outline-none transition-colors focus-visible:ring-1 focus-visible:ring-accent-100 ${active ? "bg-fill-control" : "bg-transparent hover:bg-fill-ghost-hover"} ${tab.preview ? "italic" : ""}`}
 							>
 								<Icon aria-hidden="true" className="size-3 shrink-0 text-ink-muted" />
 								<span className="max-w-[140px] truncate">{name}</span>
@@ -74,7 +74,7 @@ export function FileTabsStrip({state, dispatch, cwd, onAttachContext, onRevealIn
 								tabIndex={-1}
 								aria-label={`Close ${name}`}
 								onClick={() => dispatch({type: "close", path: tab.path})}
-								className={`flex size-4 shrink-0 cursor-pointer items-center justify-center rounded text-t6 transition-opacity group-hover/tab:opacity-100 hover:bg-fill-control hover:text-primary ${active ? "opacity-100" : "opacity-0"}`}
+								className={`absolute right-0 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-r3 transition-opacity group-hover/tab:opacity-100 hover:bg-fill-ghost-hover hover:text-primary ${active ? "text-primary opacity-100" : "text-t6 opacity-0"}`}
 							>
 								<X aria-hidden="true" className="size-3" />
 							</button>

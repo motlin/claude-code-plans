@@ -362,6 +362,50 @@ describe("FilesTree keyboard and pointer", () => {
 	});
 });
 
+describe("FilesTree density", () => {
+	it("draws 13px rows 21.33px tall with 16px icons, a full-width Go up row and upstream's filter", async () => {
+		responses.set(key("", ""), {kind: "listing", dir: "", entries: [folder("src")], partial: false});
+		responses.set(key("src", ""), {kind: "listing", dir: "src", entries: [file("src/main.ts")], partial: false});
+		renderTree();
+		fireEvent.click(await screen.findByText("src"));
+		await screen.findByText("main.ts");
+
+		const row = screen.getByRole("treeitem");
+		const rowClasses = row.className.split(" ");
+		const goUp = screen.getByRole("button", {name: "Go up to project files"});
+		const goUpClasses = goUp.className.split(" ");
+		const input = filterInput();
+		const inputClasses = input.className.split(" ");
+		expect({
+			rowText: rowClasses.includes("text-pane"),
+			rowHeight: rowClasses.includes("h-[21.33px]"),
+			icon: row.querySelector("svg")?.getAttribute("class")?.split(" ").includes("size-4"),
+			goUpFullWidth: goUpClasses.includes("w-full"),
+			goUpText: goUpClasses.includes("text-pane"),
+			goUpFill: goUpClasses.includes("bg-fill-control"),
+			goUpFirstChild: goUp.firstElementChild?.getAttribute("class")?.split(" ").includes("lucide-arrow-up"),
+			placeholder: input.placeholder,
+			inputText: inputClasses.includes("text-pane"),
+			inputFocusRing: inputClasses.includes(
+				"focus:shadow-[0_0_0_1px_rgb(42,120,214),0_0_6px_1px_rgb(205,226,251)]",
+			),
+			clearSize: screen.getByRole("button", {name: "Clear filter"}).className.split(" ").includes("size-[18px]"),
+		}).toStrictEqual({
+			rowText: true,
+			rowHeight: true,
+			icon: true,
+			goUpFullWidth: true,
+			goUpText: true,
+			goUpFill: true,
+			goUpFirstChild: true,
+			placeholder: "Search files…",
+			inputText: true,
+			inputFocusRing: true,
+			clearSize: true,
+		});
+	});
+});
+
 describe("FilesTree virtualization", () => {
 	it("renders only a window of a long listing", async () => {
 		const entries = Array.from({length: 500}, (_, index) => file(`f${index}.ts`));

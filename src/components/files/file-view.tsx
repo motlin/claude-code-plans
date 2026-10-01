@@ -89,7 +89,7 @@ function Breadcrumb({path}: {path: string}) {
 			title={path}
 			aria-label={`Copy path ${path}`}
 			onClick={() => void copy()}
-			className="-mx-0.75 flex min-w-0 flex-1 cursor-pointer rounded-r3 text-left text-body text-secondary hover:bg-fill-ghost-hover"
+			className="-mx-0.75 flex min-w-0 flex-1 cursor-pointer rounded-r3 text-left text-pane text-secondary hover:bg-fill-ghost-hover"
 		>
 			<span className="-mx-1 -my-1 flex min-w-0 overflow-x-auto px-1 py-1 whitespace-nowrap [direction:rtl] [scrollbar-width:none]">
 				<span dir="ltr" className="flex min-w-full shrink-0 items-baseline">

@@ -195,7 +195,7 @@ function FilesEmpty({hasTree, tabCount}: {hasTree: boolean; tabCount: number}) {
 		<div className="flex h-full flex-col items-center justify-center gap-3 px-4 py-4 text-center">
 			<Folder aria-hidden="true" className="size-7 text-t6" />
 			<div className="flex flex-col items-center gap-1">
-				<p className="max-w-[36ch] text-pretty break-words text-body text-primary">{copy.title}</p>
+				<p className="max-w-[36ch] text-pretty break-words text-pane text-secondary">{copy.title}</p>
 				<p className="max-w-[36ch] text-pretty break-words text-footnote text-t6">{copy.detail}</p>
 			</div>
 		</div>
@@ -540,7 +540,7 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 				<div className="flex min-w-0 flex-1 items-center gap-1">
 					<TreeToggle shown={treeShown} onToggle={() => setTreeShown((shown) => !shown)} />
 					{fileTabs.tabs.length === 0 ? (
-						<span data-pane-title className="truncate text-body text-secondary select-none">
+						<span data-pane-title className="truncate text-pane text-secondary select-none">
 							Files
 						</span>
 					) : (
