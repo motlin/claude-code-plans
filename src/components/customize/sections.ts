@@ -5,6 +5,9 @@ export const customizeSearchSchema = z.object({
 	view: z.literal("discover").optional(),
 	filter: z.string().optional(),
 	sort: z.string().optional(),
+	/** Discover's Filter and Sort, kept apart from the Yours `filter` and `sort`. */
+	category: z.string().optional(),
+	order: z.string().optional(),
 });
 export type CustomizeSearch = z.infer<typeof customizeSearchSchema>;
 

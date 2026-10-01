@@ -393,12 +393,41 @@ describe("customize discover", () => {
 			headings: screen.getAllByRole("heading", {level: 3}).map((h) => h.textContent),
 			cards: cardTexts(),
 			stale: screen.getByTestId("customize-discover-stale").textContent?.includes("Aug 31, 2026"),
-			filter: screen.queryByRole("button", {name: "Filter"}),
+			filter: screen.getByRole("button", {name: "Filter"}).tagName,
+			sort: screen.getByRole("button", {name: "Sort"}).tagName,
 		}).toStrictEqual({
-			headings: ["Most installed", "Recently updated", "Categories"],
+			headings: ["Most installed", "Recently updated"],
 			cards: ["DeployShip safely.by Anthropic·8.3M installs", "DeployShip safely.by Anthropic·8.3M installs"],
 			stale: true,
-			filter: null,
+			filter: "BUTTON",
+			sort: "BUTTON",
+		});
+	});
+
+	it("narrows Discover to one category grid through ?category=", async () => {
+		await renderCustomize("/customize/plugins?view=discover&category=deployment");
+
+		expect({
+			headings: screen.getAllByRole("heading", {level: 3}).map((h) => h.textContent),
+			cards: cardTexts(),
+		}).toStrictEqual({
+			headings: ["Deployment"],
+			cards: ["DeployShip safely.by Anthropic·8.3M installs"],
+		});
+	});
+
+	it("sorts Discover into one grid through ?order=", async () => {
+		await renderCustomize("/customize/plugins?view=discover&order=name");
+
+		expect({
+			headings: screen.getAllByRole("heading", {level: 3}).map((h) => h.textContent),
+			cards: cardTexts(),
+		}).toStrictEqual({
+			headings: ["All categories"],
+			cards: [
+				"DeployShip safely.by Anthropic·8.3M installs",
+				"tidyTidy up the deploy scripts.by communityInstalled",
+			],
 		});
 	});
 

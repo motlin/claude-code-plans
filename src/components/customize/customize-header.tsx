@@ -1,7 +1,10 @@
+import {useQuery} from "@tanstack/react-query";
 import {Link, useNavigate} from "@tanstack/react-router";
 import {ArrowDownUp, Search, SlidersHorizontal, X} from "lucide-react";
 import {type ReactNode, useEffect, useState} from "react";
+import {customizeDiscoverQueryOptions} from "../../lib/api/customize";
 import {Menu, MenuContent, MenuLabel, MenuRadioGroup, MenuRadioItem, MenuTrigger} from "../ui/menu";
+import {DISCOVER_SORT_OPTIONS, discoverCategoryOptions, discoverForSection} from "./discover-view";
 import {useSectionSort, writeStoredSort} from "./persisted-sort";
 import {
 	CUSTOMIZE_SECTIONS,
@@ -33,8 +36,9 @@ interface CustomizeHeaderProps {
 export function CustomizeHeader({section, search}: CustomizeHeaderProps) {
 	const navigate = useNavigate();
 	const searching = (search.q ?? "") !== "";
-	// Discover has its own sections, so the Yours Filter and Sort menus do not apply there.
+	// Discover swaps the Yours Filter and Sort for category and catalog-order menus.
 	const discover = section.hasDiscover && search.view === "discover";
+	const {data: catalog} = useQuery({...customizeDiscoverQueryOptions, enabled: discover});
 	const sortOptions = section.sort;
 	const sort = useSectionSort(section.sortStorageKey, search.sort);
 
@@ -105,6 +109,33 @@ export function CustomizeHeader({section, search}: CustomizeHeaderProps) {
 					value={search.q ?? ""}
 					onChange={(q) => updateSearch({q})}
 				/>
+				{discover && (
+					<>
+						<OptionMenu
+							label="Filter"
+							groupLabel="Category"
+							icon={<SlidersHorizontal aria-hidden="true" className="size-5" />}
+							options={discoverCategoryOptions(
+								discoverForSection(
+									catalog?.plugins ?? [],
+									section.id === "skills" ? "skills" : "plugins",
+								),
+							)}
+							value={search.category}
+							disabled={searching}
+							onChange={(category) => updateSearch({category})}
+						/>
+						<OptionMenu
+							label="Sort"
+							groupLabel="Sort by"
+							icon={<ArrowDownUp aria-hidden="true" className="size-5" />}
+							options={DISCOVER_SORT_OPTIONS}
+							value={search.order}
+							disabled={searching}
+							onChange={(order) => updateSearch({order})}
+						/>
+					</>
+				)}
 				{!discover && (
 					<OptionMenu
 						label="Filter"
@@ -144,6 +175,8 @@ function dropEmpty(search: CustomizeSearch): CustomizeSearch {
 	if (search.view !== undefined) result.view = search.view;
 	if (search.filter !== undefined) result.filter = search.filter;
 	if (search.sort !== undefined) result.sort = search.sort;
+	if (search.category !== undefined) result.category = search.category;
+	if (search.order !== undefined) result.order = search.order;
 	return result;
 }
 

@@ -36,6 +36,8 @@ function CustomizePlugins() {
 			<CustomizeDiscover
 				section="plugins"
 				q={search.q}
+				category={search.category}
+				order={search.order}
 				yours={(plugins ?? []).map((plugin) => ({
 					key: plugin.id,
 					title: plugin.name,

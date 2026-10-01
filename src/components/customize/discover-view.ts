@@ -1,5 +1,5 @@
 import type {DiscoverPlugin} from "../../lib/api/customize";
-import {matchesQuery} from "./sections";
+import {type MenuOption, matchesQuery} from "./sections";
 
 const compactFormat = new Intl.NumberFormat("en-US", {
 	notation: "compact",
@@ -68,11 +68,54 @@ export function categoryCounts(plugins: readonly DiscoverPlugin[]): CategoryCoun
 		.sort((a, b) => b.count - a.count || a.category.localeCompare(b.category));
 }
 
-/** Plugins in one category, most installed first. */
-export function pluginsInCategory(plugins: readonly DiscoverPlugin[], category: string): DiscoverPlugin[] {
-	return plugins
-		.filter((plugin) => plugin.category === category)
-		.sort((a, b) => (b.installs ?? -1) - (a.installs ?? -1) || a.name.localeCompare(b.name));
+export function categoryLabel(category: string): string {
+	return category.charAt(0).toUpperCase() + category.slice(1);
+}
+
+export const ALL_CATEGORIES = "all";
+
+/** Upstream Discover Filter: "All categories" first, then each category by plugin count. */
+export function discoverCategoryOptions(plugins: readonly DiscoverPlugin[]): MenuOption[] {
+	return [
+		{value: ALL_CATEGORIES, label: "All categories"},
+		...categoryCounts(plugins).map(({category}) => ({value: category, label: categoryLabel(category)})),
+	];
+}
+
+/** Upstream Discover Sort; the first option is the default. */
+export const DISCOVER_SORT_OPTIONS: readonly MenuOption[] = [
+	{value: "installs", label: "Most installed"},
+	{value: "recent", label: "Recently added"},
+	{value: "name", label: "Name"},
+];
+
+/** Plugins in `category` (case-insensitive); everything for "all" or no category. */
+export function filterDiscover(plugins: readonly DiscoverPlugin[], category: string | undefined): DiscoverPlugin[] {
+	if (category === undefined || category === ALL_CATEGORIES) return [...plugins];
+	const wanted = category.toLowerCase();
+	return plugins.filter((plugin) => plugin.category?.toLowerCase() === wanted);
+}
+
+/**
+ * The filtered grid's order: "recent" is newest `last_updated` first, "name"
+ * is by title, and anything else is most installed first. Plugins missing the
+ * sort key go last, by name.
+ */
+export function sortDiscover(plugins: readonly DiscoverPlugin[], sort: string | undefined): DiscoverPlugin[] {
+	const byName = (a: DiscoverPlugin, b: DiscoverPlugin) => a.title.localeCompare(b.title);
+	if (sort === "name") return [...plugins].sort(byName);
+	const key =
+		sort === "recent"
+			? (plugin: DiscoverPlugin) => {
+					const time = Date.parse(plugin.lastUpdated ?? "");
+					return Number.isNaN(time) ? -Infinity : time;
+				}
+			: (plugin: DiscoverPlugin) => plugin.installs ?? -Infinity;
+	return [...plugins].sort((a, b) => {
+		const ka = key(a);
+		const kb = key(b);
+		return ka === kb ? byName(a, b) : kb - ka;
+	});
 }
 
 /**

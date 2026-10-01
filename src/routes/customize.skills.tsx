@@ -36,6 +36,8 @@ function CustomizeSkills() {
 			<CustomizeDiscover
 				section="skills"
 				q={search.q}
+				category={search.category}
+				order={search.order}
 				yours={(skills ?? []).map((skill) => ({
 					key: skill.id,
 					title: skill.name,

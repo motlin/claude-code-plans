@@ -4,13 +4,16 @@ import {dirname, join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {
 	categoryCounts,
+	discoverCategoryOptions,
 	discoverForSection,
+	filterDiscover,
 	formatExactInstalls,
 	formatInstallCount,
 	groupDiscoverSearch,
 	isCatalogStale,
 	mostInstalled,
 	recentlyUpdated,
+	sortDiscover,
 } from "../src/components/customize/discover-view";
 import type {DiscoverPlugin} from "../src/lib/api/customize";
 import {readDiscoverCatalog} from "../src/lib/customize/discover";
@@ -308,6 +311,42 @@ describe("discover view", () => {
 		expect(categoryCounts(all)).toStrictEqual([
 			{category: "development", count: 2},
 			{category: "design", count: 1},
+		]);
+	});
+
+	it("sorts the filtered grid by installs, by update time, or by name", () => {
+		expect({
+			installs: sortDiscover(all, "installs").map((entry) => entry.name),
+			recent: sortDiscover(all, "recent").map((entry) => entry.name),
+			name: sortDiscover(all, "name").map((entry) => entry.name),
+			unknownValue: sortDiscover(all, "bogus").map((entry) => entry.name),
+		}).toStrictEqual({
+			installs: ["big", "mine", "fresh", "unknown"],
+			recent: ["fresh", "big", "mine", "unknown"],
+			name: ["big", "fresh", "mine", "unknown"],
+			unknownValue: ["big", "mine", "fresh", "unknown"],
+		});
+	});
+
+	it("filters to one category, case-insensitively, and keeps everything for All categories", () => {
+		expect({
+			development: filterDiscover(all, "Development").map((entry) => entry.name),
+			design: filterDiscover(all, "design").map((entry) => entry.name),
+			all: filterDiscover(all, "all").map((entry) => entry.name),
+			none: filterDiscover(all, undefined).map((entry) => entry.name),
+		}).toStrictEqual({
+			development: ["fresh", "big"],
+			design: ["unknown"],
+			all: ["unknown", "fresh", "mine", "big"],
+			none: ["unknown", "fresh", "mine", "big"],
+		});
+	});
+
+	it("lists All categories first, then categories by plugin count", () => {
+		expect(discoverCategoryOptions(all)).toStrictEqual([
+			{value: "all", label: "All categories"},
+			{value: "development", label: "Development"},
+			{value: "design", label: "Design"},
 		]);
 	});
 
