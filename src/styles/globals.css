@@ -532,12 +532,11 @@
 	height: 0;
 }
 
-/* Upstream claude.ai/code — collapsed sidebar peek fades and settles into place. */
+/* Upstream claude.ai/code — collapsed sidebar peek fades and slides in from the left edge. */
 .sidebar-peek-motion {
 	transition:
-		opacity 0.14s ease,
-		translate 0.18s cubic-bezier(0.32, 0.72, 0, 1),
-		scale 0.18s cubic-bezier(0.32, 0.72, 0, 1);
+		opacity 0.14s,
+		translate 0.18s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {

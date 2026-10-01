@@ -105,7 +105,8 @@ export function Sidebar({
 					<SidebarSessionGroups activeItemId={activeItemId} />
 				</NavScroll>
 			</div>
-			<SidebarFooter />
+			{/* Upstream's peek footer has no Search icon. */}
+			<SidebarFooter search={!collapsed || onPhoneSheetClose !== undefined} />
 		</>
 	);
 
@@ -126,12 +127,7 @@ export function Sidebar({
 					>
 						<SidebarToggleIcon />
 					</button>
-					<Link
-						to="/"
-						className="ml-2 font-voice text-[20px] leading-none font-medium whitespace-nowrap text-primary no-underline"
-					>
-						Claude Code Browser
-					</Link>
+					<SidebarWordmark className="ml-2" />
 				</div>
 				{body}
 			</nav>
@@ -160,18 +156,24 @@ export function Sidebar({
 					</div>
 				</div>
 				<div className="ml-1.5 flex min-w-0 flex-col items-start">
-					<Link
-						to="/"
-						className="font-voice text-[20px] leading-none font-medium whitespace-nowrap text-primary no-underline"
-					>
-						Claude Code Browser
-					</Link>
+					<SidebarWordmark />
 				</div>
 			</div>
 
 			{body}
 			<SidebarResizeHandle width={width} />
 		</nav>
+	);
+}
+
+function SidebarWordmark({className}: {className?: string}) {
+	return (
+		<Link
+			to="/"
+			className={`${className ? `${className} ` : ""}font-voice text-[20px] leading-none font-medium whitespace-nowrap text-primary no-underline`}
+		>
+			Claude Code Browser
+		</Link>
 	);
 }
 
@@ -203,12 +205,15 @@ function SidebarResizeHandle({width}: {width: number}) {
 	);
 }
 
+const PEEK_ID = "sidebar-peek-popover";
+
 /**
  * Collapsed desktop sidebar, like claude.ai/code: a transparent 24x24 floating trigger at 12,12
  * (the expanded Hide sidebar toggle's spot) whose hover (or the invisible bridge beneath it)
- * reveals the full sidebar body as a popover.
- * In the forced-collapse regime (640–767px) the trigger has no tooltip and a click toggles
- * the peek open instead of expanding the persisted preference.
+ * slides in upstream's `#frame-peek-popover`: a 288px full-height panel at the left edge whose
+ * 48px top padding leaves room for the still-visible trigger beside the wordmark.
+ * In the forced-collapse regime (640–767px) a click toggles the peek open instead of expanding
+ * the persisted preference.
  */
 function CollapsedSidebar({narrowViewport, children}: {narrowViewport: boolean; children: ReactNode}) {
 	const [hovering, setHovering] = useState(false);
@@ -241,17 +246,24 @@ function CollapsedSidebar({narrowViewport, children}: {narrowViewport: boolean; 
 			/>
 			<SidebarToggleButton
 				collapsed
-				{...(narrowViewport ? {onClick: () => setHovering(true), tooltip: false} : {})}
-				className="relative flex size-6 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover [&_svg]:size-4"
+				controls={{id: PEEK_ID, expanded: hovering}}
+				{...(narrowViewport ? {onClick: () => setHovering(true)} : {})}
+				className="relative z-10 flex size-6 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover [&_svg]:size-4"
 			/>
 			<nav
+				id={PEEK_ID}
 				data-testid="sidebar-peek"
 				aria-label="Sidebar"
 				data-focus-region="navigation"
 				aria-hidden={hovering ? undefined : true}
 				inert={!hovering}
-				className="pointer-events-none absolute top-[calc(100%+8px)] -left-0.5 flex max-h-[70vh] w-[288px] origin-top-left -translate-y-1.5 scale-[.98] flex-col overflow-hidden rounded-card bg-surface-popover pt-2 pb-3 opacity-0 shadow-pop sidebar-peek-motion group-data-[hovering]/peek:pointer-events-auto group-data-[hovering]/peek:translate-y-0 group-data-[hovering]/peek:scale-100 group-data-[hovering]/peek:opacity-100"
+				className="pointer-events-none fixed inset-y-0 left-0 flex h-dvh w-[288px] -translate-x-full flex-col overflow-hidden rounded-none border-r-[0.5px] border-border bg-surface-popover pt-12 pb-1.5 opacity-0 shadow-[0_0_0_.5px_rgba(0,0,0,.06),0_4px_12px_rgba(0,0,0,.06),0_16px_40px_rgba(0,0,0,.08)] sidebar-peek-motion group-data-[hovering]/peek:pointer-events-auto group-data-[hovering]/peek:translate-x-0 group-data-[hovering]/peek:opacity-100"
 			>
+				{/* The header row: the trigger stays put over the empty 32px slot, the wordmark sits beside it. */}
+				<div data-testid="sidebar-peek-header" className="absolute inset-x-0 top-0 flex h-11 items-center px-2">
+					<div className="w-8 shrink-0" />
+					<SidebarWordmark className="ml-1.5" />
+				</div>
 				{children}
 			</nav>
 		</div>

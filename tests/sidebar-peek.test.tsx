@@ -2,7 +2,7 @@
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {createMemoryHistory, createRootRoute, createRouter, Outlet, RouterProvider} from "@tanstack/react-router";
-import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {DEFAULTS, SettingsProvider} from "../src/components/settings-provider";
 import {Sidebar} from "../src/components/sidebar/Sidebar";
@@ -56,12 +56,12 @@ async function renderExpandedSidebar() {
 	return waitFor(() => screen.getByRole("button", {name: "Hide sidebar"}));
 }
 
-function PersistedSidebar() {
+function PersistedSidebar({narrowViewport = false}: {narrowViewport?: boolean}) {
 	const {collapsed} = useSidebarState();
-	return <Sidebar collapsed={collapsed} />;
+	return <Sidebar collapsed={collapsed || narrowViewport} narrowViewport={narrowViewport} />;
 }
 
-async function renderCollapsedSidebar() {
+async function renderCollapsedSidebar({narrowViewport = false}: {narrowViewport?: boolean} = {}) {
 	writeSidebarState({...readSidebarState(), collapsed: true});
 	const queryClient = seedQueryClient();
 	const rootRoute = createRootRoute({
@@ -69,7 +69,7 @@ async function renderCollapsedSidebar() {
 			<QueryClientProvider client={queryClient}>
 				<ToastProvider>
 					<SettingsProvider>
-						<PersistedSidebar />
+						<PersistedSidebar narrowViewport={narrowViewport} />
 						<Outlet />
 					</SettingsProvider>
 				</ToastProvider>
@@ -178,6 +178,79 @@ describe("collapsed sidebar peek", () => {
 
 		act(() => {
 			fireEvent.pointerLeave(peek);
+		});
+		expect(root.hasAttribute("data-hovering")).toBe(false);
+	});
+
+	it("renders the peek as a full-height panel holding the wordmark and no Search button", async () => {
+		await renderCollapsedSidebar();
+		const peek = screen.getByTestId("sidebar-peek");
+		const classes = [...peek.classList];
+
+		expect({
+			fullHeight: ["fixed", "inset-y-0", "left-0", "h-dvh", "w-[288px]", "rounded-none", "pt-12"].filter(
+				(token) => classes.includes(token),
+			),
+			card: classes.filter((token) => token === "max-h-[70vh]" || token === "rounded-card"),
+			wordmark: within(peek).getByRole("link", {name: "Claude Code Browser", hidden: true}).getAttribute("href"),
+			search: within(peek).queryByRole("button", {name: "Search", hidden: true}),
+		}).toEqual({
+			fullHeight: ["fixed", "inset-y-0", "left-0", "h-dvh", "w-[288px]", "rounded-none", "pt-12"],
+			card: [],
+			wordmark: "/",
+			search: null,
+		});
+	});
+
+	it("points the trigger at the peek with aria-controls and flips aria-expanded on hover", async () => {
+		const trigger = await renderCollapsedSidebar();
+		const peek = screen.getByTestId("sidebar-peek");
+
+		expect({
+			controls: trigger.getAttribute("aria-controls"),
+			expanded: trigger.getAttribute("aria-expanded"),
+		}).toEqual({controls: peek.id, expanded: "false"});
+		expect(peek.id).not.toBe("");
+
+		act(() => {
+			fireEvent.pointerEnter(trigger);
+		});
+		expect(trigger.getAttribute("aria-expanded")).toBe("true");
+
+		act(() => {
+			fireEvent.pointerLeave(trigger);
+		});
+		expect(trigger.getAttribute("aria-expanded")).toBe("false");
+	});
+
+	it("shows the Show sidebar tooltip on the forced-collapse trigger", async () => {
+		const trigger = await renderCollapsedSidebar({narrowViewport: true});
+
+		act(() => {
+			trigger.focus();
+		});
+
+		const tooltip = await screen.findByRole("tooltip");
+		expect({
+			text: tooltip.textContent?.startsWith("Show sidebar"),
+			describedBy: trigger.getAttribute("aria-describedby"),
+		}).toEqual({text: true, describedBy: tooltip.id});
+	});
+
+	it("keeps the forced-collapse peek open on tap until an outside press", async () => {
+		const trigger = await renderCollapsedSidebar({narrowViewport: true});
+		const root = screen.getByTestId("sidebar-collapsed");
+
+		act(() => {
+			fireEvent.click(trigger);
+		});
+		expect({hovering: root.hasAttribute("data-hovering"), collapsed: readSidebarState().collapsed}).toEqual({
+			hovering: true,
+			collapsed: true,
+		});
+
+		act(() => {
+			fireEvent.pointerDown(document.body);
 		});
 		expect(root.hasAttribute("data-hovering")).toBe(false);
 	});

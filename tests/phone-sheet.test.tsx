@@ -275,7 +275,7 @@ describe("narrow viewport forced collapse", () => {
 			collapsed: true,
 			clearance: {start: "41px", top: "9px"},
 			hide: null,
-			shortcut: null,
+			shortcut: "Control+b",
 			stored: storedBefore,
 			storedCollapsed: false,
 		});

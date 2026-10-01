@@ -7,17 +7,20 @@ import {AccountMenu} from "./account-menu";
 /**
  * Upstream's `.df-bottom-tray`: a hairline-topped row with the account button on the left and
  * the ghost Search icon on the right. The cloud-only "Send feedback" button is omitted.
+ * Upstream's collapsed peek drops the Search icon, so `search={false}` leaves only the account button.
  */
-export function SidebarFooter() {
+export function SidebarFooter({search = true}: {search?: boolean}) {
 	return (
 		<div
 			data-testid="sidebar-footer"
 			className="flex h-12 shrink-0 items-center justify-between gap-2 border-t-[0.5px] border-border p-2"
 		>
 			<AccountMenu />
-			<div className="flex shrink-0 items-center">
-				<SearchButton />
-			</div>
+			{search && (
+				<div className="flex shrink-0 items-center">
+					<SearchButton />
+				</div>
+			)}
 		</div>
 	);
 }
