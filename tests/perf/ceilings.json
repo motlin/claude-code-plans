@@ -197,6 +197,21 @@
 		"unit": "count",
 		"tolerance": 0
 	},
+	"client.liveAppendMulti.appendOffScreen.commits": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.liveAppendMulti.appendOffScreen.fetches": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.liveAppendMulti.appendOffScreen.hiddenReloads": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
 	"client.liveEvent.appendOpen.commits": {
 		"ceiling": 3,
 		"unit": "count",
@@ -804,6 +819,21 @@
 	},
 	"server.liveAppend.typical.20.sse.payloadBytes": {
 		"ceiling": 4641,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.liveAppendMulti.jsonl.bytesRead": {
+		"ceiling": 2512800,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.liveAppendMulti.jsonl.fullScans": {
+		"ceiling": 5,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.liveAppendMulti.sse.deliveredBytes": {
+		"ceiling": 18882,
 		"unit": "bytes",
 		"tolerance": 0
 	},

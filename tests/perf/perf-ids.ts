@@ -14,6 +14,12 @@ export const LIVE_APPEND_SIZES = [1, 20] as const;
 const LIVE_APPEND_METRICS = ["readAmplification", "jsonl.fullScans", "sql.count", "sse.payloadBytes"] as const;
 export type LiveAppendMetric = (typeof LIVE_APPEND_METRICS)[number];
 
+const LIVE_APPEND_MULTI_METRICS = ["jsonl.bytesRead", "jsonl.fullScans", "sse.deliveredBytes"] as const;
+export type LiveAppendMultiMetric = (typeof LIVE_APPEND_MULTI_METRICS)[number];
+
+/** Interleaved appends to five small sessions within one throttle window (plan §7 decision 5). */
+export const LIVE_APPEND_MULTI_PREFIX = "server.liveAppendMulti";
+
 /** Pure hot paths measured per fixture shape by V8 call counts (plan §2.4 L5). */
 export const HOT_PATH_SHAPED_FNS = ["mergeTranscriptData", "processTranscript", "readStructuredTranscript"] as const;
 export type HotPathShapedFn = (typeof HOT_PATH_SHAPED_FNS)[number];

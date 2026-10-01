@@ -81,6 +81,8 @@ vi.mock(import("../../src/components/session-chat"), async (importOriginal) => {
 /** The open session is the typical transcript; the small one is another session the tab is not showing. */
 const OPEN_SHAPE = "typical";
 const OTHER_SHAPE = "small";
+/** Seeds of the further small sessions that, with the other one, make four agents writing off screen. */
+const MULTI_SEEDS = [2, 3, 4] as const;
 
 const PROJECT = "-repo";
 const FIXED_NOW = Date.parse("2026-09-30T12:00:00.000Z");
@@ -128,8 +130,11 @@ const STATIC_FIXTURES: Record<string, unknown> = {
 let root: string;
 let db: AppDb;
 let fixtures: Record<string, unknown>;
+/** The same responses with the further off-screen sessions indexed too, for the multi-writer case. */
+let multiFixtures: Record<string, unknown>;
 let openSessionId: string;
 let otherSessionId: string;
+let offScreenSessionIds: string[];
 /** The last chained record of each transcript, which an appended line continues. */
 const lastRecords = new Map<string, Record<string, unknown>>();
 
@@ -173,18 +178,36 @@ beforeAll(async () => {
 	}
 	[openSessionId, otherSessionId] = (await seedFixtureDb(db, files)) as [string, string];
 
+	fixtures = await serveFixtures();
+
+	const multiFiles: string[] = [];
+	for (const seed of MULTI_SEEDS) {
+		const cached = await generateTranscript(PERF_SHAPES[OTHER_SHAPE], seed);
+		const file = join(projectDir, basename(cached));
+		copyFileSync(cached, file);
+		utimesSync(file, FIXTURE_MTIME, FIXTURE_MTIME);
+		multiFiles.push(file);
+		lastRecords.set(basename(cached, ".jsonl"), lastChainedRecord(file));
+	}
+	offScreenSessionIds = [otherSessionId, ...(await seedFixtureDb(db, multiFiles))];
+	multiFixtures = await serveFixtures();
+}, 600_000);
+
+/** What the frame and the open session fetch, as the real GET handlers answer it from the current DB. */
+async function serveFixtures(): Promise<Record<string, unknown>> {
 	const endpoints = [
 		...FRAME_ENDPOINTS.map((endpoint) => ({...endpoint, params: {}})),
 		...sessionEndpoints(openSessionId),
 	];
-	fixtures = {...STATIC_FIXTURES};
+	const served: Record<string, unknown> = {...STATIC_FIXTURES};
 	for (const {path, module, params} of endpoints) {
 		const handler = await handlerFor(module);
 		const response = await handler({params, request: new Request(`http://localhost${path}`)});
 		// Responses carry the temp HOME; drop it so the served bytes are the same on every machine.
-		fixtures[path] = JSON.parse((await response.text()).replaceAll(root, "/fixture"));
+		served[path] = JSON.parse((await response.text()).replaceAll(root, "/fixture"));
 	}
-}, 600_000);
+	return served;
+}
 
 afterAll(() => {
 	db.close();
@@ -307,6 +330,7 @@ function openSessionSummary(): unknown {
 
 async function measureEvent(
 	deliver: (eventSource: FakeEventSource) => void,
+	served: Record<string, unknown> = fixtures,
 ): Promise<{measurement: InteractionMeasurement; queryClient: QueryClient}> {
 	installBrowserStubs();
 	const queryClient = new QueryClient({defaultOptions: {queries: {refetchOnWindowFocus: false}}});
@@ -316,7 +340,7 @@ async function measureEvent(
 		() => {
 			deliver(FakeEventSource.last());
 		},
-		{fixtures, queryClient},
+		{fixtures: served, queryClient},
 	);
 	return {measurement, queryClient};
 }
@@ -327,6 +351,7 @@ function openTranscriptHasAppendedLine(queryClient: QueryClient): boolean {
 }
 
 type LiveEventMetric = "commits" | "mutations" | "fetches" | "hiddenReloads";
+type LiveAppendMultiMetric = "commits" | "fetches" | "hiddenReloads";
 
 /** Checks every count before failing, so one run records all of them in results.json for `just perf-ceilings`. */
 function ratchetAll(values: Record<string, number>): void {
@@ -407,4 +432,29 @@ describe("client lab: live SSE events with a session open", () => {
 			);
 		});
 	}
+});
+
+describe("client lab: four agents appending off screen with a session open", () => {
+	it("appendOffScreen", async () => {
+		const {measurement, queryClient} = await measureEvent((eventSource) => {
+			for (const sessionId of offScreenSessionIds) {
+				eventSource.emit(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {sessionId, lines: [appendedLine(sessionId)]});
+			}
+		}, multiFixtures);
+
+		expect({
+			offScreen: offScreenSessionIds.length,
+			appendedToOpen: openTranscriptHasAppendedLine(queryClient),
+		}).toStrictEqual({
+			offScreen: 4,
+			appendedToOpen: false,
+		});
+		ratchetAll(
+			metricIds<LiveAppendMultiMetric>("client.liveAppendMulti.appendOffScreen", {
+				commits: measurement.commits,
+				fetches: measurement.fetches.count,
+				hiddenReloads: measurement.hiddenReloads,
+			}),
+		);
+	});
 });
