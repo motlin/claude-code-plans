@@ -15,6 +15,10 @@ import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-pa
 import {ToastProvider} from "../src/components/toast";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
 import {artifactsQueryOptions, type ArtifactSummary} from "../src/lib/api/artifacts";
+import type {z} from "zod";
+import {MemoryListResponse, projectMemoriesQueryOptions} from "../src/lib/api/memories";
+import {plansQueryOptions} from "../src/lib/api/plans";
+import {projectsQueryOptions} from "../src/lib/api/projects";
 import {routinesQueryOptions, type Routine} from "../src/lib/api/routines";
 import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
 import {saveRecents, type RecentEntry} from "../src/lib/recents-history";
@@ -786,6 +790,124 @@ describe("CommandPalette Artifacts and Scheduled tabs", () => {
 
 		expect(rows).toStrictEqual([{label: "Nightly digest", meta: "Every day at 9:00 AM"}]);
 		await waitFor(() => expect(currentRouter?.state.location.pathname).toBe("/routines"));
+	});
+});
+
+describe("CommandPalette Plans, Memories and Files tabs with an empty query", () => {
+	beforeEach(() => {
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
+		vi.stubGlobal("fetch", () => new Promise(() => {}));
+		vi.stubGlobal(
+			"ResizeObserver",
+			class {
+				observe() {}
+				unobserve() {}
+				disconnect() {}
+			},
+		);
+		Element.prototype.scrollIntoView = () => {};
+	});
+
+	afterEach(() => {
+		cleanup();
+		localStorage.clear();
+		vi.restoreAllMocks();
+		vi.unstubAllGlobals();
+	});
+
+	const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
+
+	function memoryList(
+		project: string,
+		filename: string,
+		title: string,
+		agoMs: number,
+	): z.infer<typeof MemoryListResponse> {
+		return {
+			project: {id: project, name: project, projectPath: null},
+			memories: [{filename, title, mtime: ago(agoMs), project}],
+		};
+	}
+
+	function seedDocs(queryClient: QueryClient) {
+		queryClient.setQueryData(plansQueryOptions().queryKey, [
+			{filename: "old-plan.md", title: "Old plan", mtime: ago(240 * HOUR_MS), projects: []},
+			{filename: "new-plan.md", title: "New plan", mtime: ago(0), projects: []},
+			{filename: "mid-plan.md", title: "Mid plan", mtime: ago(HOUR_MS / 2), projects: []},
+		]);
+		const project = (id: string, memoryCount: number) => ({
+			id,
+			name: id,
+			projectPath: null,
+			sessionCount: 1,
+			memoryCount,
+			planCount: 0,
+			taskCount: 0,
+			activeCount: 0,
+			lastActivity: ago(0),
+		});
+		queryClient.setQueryData(projectsQueryOptions().queryKey, [
+			project("proj-a", 1),
+			project("proj-b", 1),
+			project("proj-none", 0),
+		]);
+		queryClient.setQueryData(
+			projectMemoriesQueryOptions("proj-a").queryKey,
+			memoryList("proj-a", "old.md", "Old memory", 240 * HOUR_MS),
+		);
+		queryClient.setQueryData(
+			projectMemoriesQueryOptions("proj-b").queryKey,
+			memoryList("proj-b", "new.md", "New memory", 0),
+		);
+	}
+
+	function resultRows(dialog: HTMLElement) {
+		return [...within(dialog).getByRole("group", {name: "Search results"}).querySelectorAll("[cmdk-item]")].map(
+			(item) => ({
+				label: item.querySelector("[data-palette-label]")?.textContent ?? "",
+				meta: item.querySelector("[data-palette-meta]")?.textContent ?? "",
+			}),
+		);
+	}
+
+	it("lists the recent plans newest first on the Plans tab", async () => {
+		const dialog = await openPalette(undefined, "/", seedDocs);
+
+		fireEvent.click(within(dialog).getByRole("tab", {name: "Plans"}));
+
+		expect(resultRows(dialog)).toStrictEqual([
+			{label: "New plan", meta: "Just now"},
+			{label: "Mid plan", meta: "Past hour"},
+			{label: "Old plan", meta: "Past month"},
+		]);
+	});
+
+	it("lists the recent memories across projects newest first on the Memories tab", async () => {
+		const dialog = await openPalette(undefined, "/", seedDocs);
+
+		fireEvent.click(within(dialog).getByRole("tab", {name: "Memories"}));
+
+		expect(resultRows(dialog)).toStrictEqual([
+			{label: "New memory", meta: "Just now"},
+			{label: "Old memory", meta: "Past month"},
+		]);
+	});
+
+	it("shows upstream's empty state with Search all on the Files tab", async () => {
+		const dialog = await openPalette(undefined, "/", seedDocs);
+
+		fireEvent.click(within(dialog).getByRole("tab", {name: "Files"}));
+		const results = within(dialog).getByRole("group", {name: "Search results"});
+
+		expect({
+			rows: resultRows(dialog),
+			empty: within(results).getByText("No results in Files").className,
+			button: within(results).getByRole("button", {name: "Search all"}).textContent,
+		}).toStrictEqual({
+			rows: [],
+			empty: "text-base leading-6 text-secondary",
+			button: "Search all",
+		});
 	});
 });
 

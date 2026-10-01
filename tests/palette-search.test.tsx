@@ -458,7 +458,7 @@ describe("⌘K palette filters", () => {
 		expect(request.url).toBe("/api/search?query=zzqxvq&type=sessions");
 		request.resolve([]);
 
-		await within(dialog).findByText("No results for “zzqxvq” in Sessions");
+		await within(dialog).findByText("No results in Sessions");
 		fireEvent.click(within(dialog).getByRole("button", {name: "Search all"}));
 
 		expect(tabs(dialog)[0]).toStrictEqual({name: "All", selected: "true"});

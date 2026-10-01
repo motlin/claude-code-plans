@@ -2,7 +2,7 @@ import {Dialog} from "@base-ui/react/dialog";
 import {Command, defaultFilter} from "cmdk";
 import {useNavigate, useRouterState} from "@tanstack/react-router";
 import {type KeyboardEvent, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState} from "react";
-import {useQuery} from "@tanstack/react-query";
+import {useQueries, useQuery} from "@tanstack/react-query";
 import {
 	FileText,
 	Brain,
@@ -43,6 +43,8 @@ import {useSessionArchive} from "../hooks/use-session-archive";
 import {artifactsQueryOptions, type ArtifactSummary} from "../lib/api/artifacts";
 import {encodeFilePath} from "../lib/api/file";
 import {launchHerdrSession} from "../lib/api/herdr";
+import {projectMemoriesQueryOptions} from "../lib/api/memories";
+import {plansQueryOptions, type PlanListItem} from "../lib/api/plans";
 import {assertNever} from "../lib/assert-never";
 import {projectsQueryOptions} from "../lib/api/projects";
 import {routinesQueryOptions, type Routine} from "../lib/api/routines";
@@ -80,6 +82,7 @@ import {
 	type StartProject,
 } from "../lib/palette-start-session";
 import {pin, unpin, usePins} from "../lib/pin-store";
+import {toMdSlug} from "../lib/md-slug";
 import {loadRecents, routeToRecent, type RecentEntry} from "../lib/recents-history";
 import {filterRoutines, formatNextRun, routineTitle, sortRoutines} from "../lib/routines";
 import {paletteFilterLabels, paletteTypeLabels} from "../lib/schema-choices";
@@ -272,6 +275,60 @@ function routineRows(routines: readonly Routine[], text: string, now: number): S
 
 interface PaletteProjectItem extends PaletteProject {
 	lastActivity: string;
+	memoryCount: number;
+}
+
+/** A plan or memory the Plans and Memories tabs list with an empty query. */
+interface PaletteDoc {
+	kind: "plan" | "memory";
+	id: string;
+	title: string;
+	mtime: string;
+	href: string;
+	projectIds: readonly string[];
+}
+
+function planDocs(plans: readonly PlanListItem[]): PaletteDoc[] {
+	return plans.map((plan) => {
+		const slug = toMdSlug(plan.filename);
+		return {
+			kind: "plan",
+			id: slug,
+			title: plan.title,
+			mtime: plan.mtime,
+			href: `/plan/${encodeURIComponent(slug)}`,
+			projectIds: plan.projects.map((project) => project.projectId),
+		};
+	});
+}
+
+/** Upstream lists a type's 25 most recent items when the query has no text; `repo:` and `date:` still narrow. */
+function recentDocRows(
+	docs: readonly PaletteDoc[],
+	tokens: PaletteTokens,
+	projects: readonly PaletteProject[],
+	now: number,
+): SearchRow[] {
+	const {project, date} = tokens;
+	const cutoff = date === undefined ? null : paletteDateCutoff(date, now);
+	const resolved = project === undefined ? undefined : projects.find((p) => paletteProjectMatches(project, p));
+	return docs
+		.filter((doc) => {
+			if (cutoff !== null && Date.parse(doc.mtime) < cutoff) return false;
+			return project === undefined || (resolved !== undefined && doc.projectIds.includes(resolved.id));
+		})
+		.sort((a, b) => Date.parse(b.mtime) - Date.parse(a.mtime))
+		.slice(0, PALETTE_RECENT_LIMIT)
+		.map((doc) => ({
+			kind: doc.kind,
+			id: doc.id,
+			title: doc.title,
+			titleMatches: [],
+			snippet: undefined,
+			mtime: doc.mtime,
+			awaiting: false,
+			href: doc.href,
+		}));
 }
 
 function serverRow(item: UnifiedSearchItem): SearchRow {
@@ -291,6 +348,12 @@ const NO_SESSIONS: readonly SessionListItem[] = [];
 const NO_PROJECTS: readonly PaletteProjectItem[] = [];
 const NO_ARTIFACTS: readonly ArtifactSummary[] = [];
 const NO_ROUTINES: readonly Routine[] = [];
+const NO_PLANS: readonly PlanListItem[] = [];
+
+/** Module-level so useQueries memoizes the combined lists across renders. */
+function memoryListData<T>(results: ReadonlyArray<{data: T}>): T[] {
+	return results.map((result) => result.data);
+}
 
 /** "/…" hint rows, or null to search normally (also when no hint matches). */
 function hintsFor(query: string): PaletteFilter[] | null {
@@ -614,13 +677,42 @@ function PalettePopup({
 	const searchedSessions = (tokens.archived === true ? withArchivedQuery.data : data)?.sessions ?? NO_SESSIONS;
 	const projectsQuery = useQuery({
 		...projectsQueryOptions(),
-		enabled: type === "projects" || tokens.project !== undefined || startStep === "picker",
+		enabled: type === "projects" || type === "memories" || tokens.project !== undefined || startStep === "picker",
 	});
 	const projects = projectsQuery.data ?? NO_PROJECTS;
 	const artifactsQuery = useQuery({...artifactsQueryOptions, enabled: type === "artifacts"});
 	const artifacts = artifactsQuery.data ?? NO_ARTIFACTS;
 	const routinesQuery = useQuery({...routinesQueryOptions, enabled: type === "scheduled"});
 	const routines = routinesQuery.data ?? NO_ROUTINES;
+	const listsRecentDocs = searchable && tokens.text === "";
+	const plansQuery = useQuery({...plansQueryOptions(), enabled: listsRecentDocs && type === "plans"});
+	const plans = plansQuery.data ?? NO_PLANS;
+	const memoryLists = useQueries({
+		queries: projects
+			.filter((project) => project.memoryCount > 0)
+			.map((project) => ({
+				...projectMemoriesQueryOptions(project.id),
+				enabled: listsRecentDocs && type === "memories",
+			})),
+		combine: memoryListData,
+	});
+	const memoryDocs = useMemo(
+		(): PaletteDoc[] =>
+			memoryLists.flatMap((list) =>
+				(list?.memories ?? []).map((memory) => {
+					const slug = toMdSlug(memory.filename);
+					return {
+						kind: "memory" as const,
+						id: `${memory.project}/${slug}`,
+						title: memory.title,
+						mtime: memory.mtime,
+						href: `/memory/${encodeURIComponent(memory.project)}/${encodeURIComponent(slug)}`,
+						projectIds: [memory.project],
+					};
+				}),
+			),
+		[memoryLists],
+	);
 	const searchesSessions = searchable && (type === "all" || type === "sessions");
 
 	const debouncedQuery = useDebouncedValue(trimmedQuery, PALETTE_SEARCH_DEBOUNCE_MS);
@@ -656,11 +748,25 @@ function PalettePopup({
 		if (type === "projects") return projectRows(projects, tokens.text);
 		if (type === "artifacts") return artifactRows(artifacts, tokens.text);
 		if (type === "scheduled") return routineRows(routines, tokens.text, Date.now());
+		if (type === "plans" && tokens.text === "") return recentDocRows(planDocs(plans), tokens, projects, Date.now());
+		if (type === "memories" && tokens.text === "") return recentDocRows(memoryDocs, tokens, projects, Date.now());
 		if ((type === "sessions" || type === "all") && tokens.text === "") {
 			return visibleSessions.slice(0, PALETTE_RECENT_LIMIT).map((session) => sessionRow(session, []));
 		}
 		return null;
-	}, [searchable, trimmedQuery, tab, type, projects, artifacts, routines, tokens.text, visibleSessions]);
+	}, [
+		searchable,
+		trimmedQuery,
+		tab,
+		type,
+		projects,
+		artifacts,
+		routines,
+		plans,
+		memoryDocs,
+		tokens,
+		visibleSessions,
+	]);
 
 	const instant = useMemo(
 		() => (!searchesSessions || tokens.text === "" ? [] : instantRows(visibleSessions, tokens.text)),
@@ -1312,14 +1418,14 @@ function PalettePopup({
 									</div>
 								)}
 								{!searching && resultCount === 0 && type !== "all" && (
-									<div className="flex flex-col items-center gap-2 px-3 py-6 text-center text-sm text-secondary">
-										<span>
-											No results for “{tokens.text}” in {paletteTypeLabels[type]}
+									<div className="flex flex-col items-center gap-2 px-3 py-6 text-center">
+										<span className="text-base leading-6 text-secondary">
+											No results in {paletteTypeLabels[type]}
 										</span>
 										<button
 											type="button"
 											onClick={searchAll}
-											className="rounded-r6 px-2 py-1 text-xs text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none"
+											className="h-7 rounded-r7 px-2.5 text-sm text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none"
 										>
 											Search all
 										</button>
