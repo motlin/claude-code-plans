@@ -57,6 +57,8 @@ export interface SessionGroup<Row extends SessionGroupRow> {
 	rows: Row[];
 	/** Rows past the cap, revealed by the "Show N more" row. */
 	hiddenCount: number;
+	/** The group was expanded past its cap, so a "Show less" row folds it back. */
+	canShowLess: boolean;
 	/** Family head sessionId → its nested sessions in spawn-tree order, for heads in `rows`. */
 	nested: ReadonlyMap<string, Row[]>;
 }
@@ -126,7 +128,7 @@ export function pinnedGroup<Row extends SessionGroupRow>(
 	rows: Row[],
 	uncapped: ReadonlySet<string>,
 ): SessionGroup<Row> {
-	return group(PINNED_GROUP_KEY, "Pinned", rows, !uncapped.has(PINNED_GROUP_KEY));
+	return group(PINNED_GROUP_KEY, "Pinned", rows, groupCap(true, PINNED_GROUP_KEY, uncapped));
 }
 
 /** The filter button reads "Filter (active)" while any non-default filter applies. */
@@ -153,22 +155,56 @@ function isVisible(row: SessionGroupRow, prefs: SessionListPrefs, now: number): 
 	return now - row.lastActivityAt <= windowDays * DAY_MS;
 }
 
+/**
+ * Whether the next feed page could add rows the list would show: no group still hides
+ * rows behind "Show N more", and the oldest loaded session (the feed runs newest first)
+ * is still inside the Last activity window.
+ */
+export function shouldLoadNextPage(
+	groups: readonly SessionGroup<SessionGroupRow>[],
+	loadedRows: readonly SessionGroupRow[],
+	prefs: SessionListPrefs,
+	now: number,
+): boolean {
+	if (groups.some((sessionGroup) => sessionGroup.hiddenCount > 0)) return false;
+	const windowDays = ACTIVITY_WINDOW_DAYS[prefs.activityDays];
+	if (windowDays === null || loadedRows.length === 0) return true;
+	const oldest = loadedRows.reduce((min, row) => Math.min(min, row.lastActivityAt), Infinity);
+	return now - oldest <= windowDays * DAY_MS;
+}
+
 const NO_NESTED: ReadonlyMap<string, never[]> = new Map();
+
+/** "none": the group never caps; "capped": it stops at the cap; "uncapped": its Show N more was clicked. */
+type GroupCap = "none" | "capped" | "uncapped";
+
+function groupCap(cappable: boolean, key: string, uncapped: ReadonlySet<string>): GroupCap {
+	if (!cappable) return "none";
+	return uncapped.has(key) ? "uncapped" : "capped";
+}
 
 function group<Row extends SessionGroupRow>(
 	key: string,
 	label: string,
 	rows: Row[],
-	capped: boolean,
+	cap: GroupCap,
 	allNested: ReadonlyMap<string, Row[]> = NO_NESTED,
 ): SessionGroup<Row> {
-	const shown = !capped || rows.length <= GROUP_ROW_CAP ? rows : rows.slice(0, GROUP_ROW_CAP);
+	const overflows = rows.length > GROUP_ROW_CAP;
+	const shown = cap === "capped" && overflows ? rows.slice(0, GROUP_ROW_CAP) : rows;
 	const nested = new Map<string, Row[]>();
 	for (const row of shown) {
 		const children = allNested.get(row.sessionId);
 		if (children !== undefined) nested.set(row.sessionId, children);
 	}
-	return {key, label, rows: shown, hiddenCount: rows.length - shown.length, nested};
+	return {
+		key,
+		label,
+		rows: shown,
+		hiddenCount: rows.length - shown.length,
+		canShowLess: cap === "uncapped" && overflows,
+		nested,
+	};
 }
 
 function startOfLocalDay(time: number): number {
@@ -209,7 +245,9 @@ function buildDateGroups<Row extends SessionGroupRow>(
 	}
 	return [...byDay.entries()]
 		.sort(([, first], [, second]) => second.dayStart - first.dayStart)
-		.map(([key, entry]) => group(key, entry.label, entry.rows, key === "date-older" && !uncapped.has(key), nested));
+		.map(([key, entry]) =>
+			group(key, entry.label, entry.rows, groupCap(key === "date-older", key, uncapped), nested),
+		);
 }
 
 function buildProjectGroups<Row extends SessionGroupRow>(
@@ -231,7 +269,7 @@ function buildProjectGroups<Row extends SessionGroupRow>(
 				`project-${project}`,
 				project,
 				visibleRows.filter((row) => row.project === project),
-				false,
+				"none",
 				nested,
 			),
 		);
@@ -241,7 +279,7 @@ function buildProjectGroups<Row extends SessionGroupRow>(
 				NO_PROJECT_KEY,
 				"Other",
 				visibleRows.filter((row) => row.project === null),
-				false,
+				"none",
 				nested,
 			),
 		);
@@ -272,9 +310,9 @@ function buildCustomGroups<Row extends SessionGroupRow>(
 		// Array.sort is stable, so rows outside the manual order keep the Sort by order.
 		const groupRows = (byGroup.get(entry.id) ?? []).sort((first, second) => rank(first) - rank(second));
 		if (groupRows.length === 0 && !showEmptyGroups) return [];
-		return [group(`${CUSTOM_GROUP_KEY_PREFIX}${entry.id}`, entry.name, groupRows, false, nested)];
+		return [group(`${CUSTOM_GROUP_KEY_PREFIX}${entry.id}`, entry.name, groupRows, "none", nested)];
 	});
-	if (ungrouped.length > 0) sections.push(group(CUSTOM_UNGROUPED_KEY, "Ungrouped", ungrouped, false, nested));
+	if (ungrouped.length > 0) sections.push(group(CUSTOM_UNGROUPED_KEY, "Ungrouped", ungrouped, "none", nested));
 	return sections;
 }
 
@@ -312,7 +350,7 @@ export function buildGroups<Row extends SessionGroupRow>(
 					`state-${bucket}`,
 					sessionBucketLabels[bucket],
 					visible.filter((row) => familyBucket.get(row.sessionId) === bucket),
-					bucket === "done" && !uncapped.has(`state-${bucket}`),
+					groupCap(bucket === "done", `state-${bucket}`, uncapped),
 					nested,
 				),
 			).filter((stateGroup) => stateGroup.rows.length > 0);
@@ -323,7 +361,9 @@ export function buildGroups<Row extends SessionGroupRow>(
 		case "custom":
 			return buildCustomGroups(visible, custom, prefs.showEmptyGroups, nested);
 		case "none":
-			return visible.length === 0 ? [] : [group("recents", "Recents", visible, !uncapped.has("recents"), nested)];
+			return visible.length === 0
+				? []
+				: [group("recents", "Recents", visible, groupCap(true, "recents", uncapped), nested)];
 	}
 }
 

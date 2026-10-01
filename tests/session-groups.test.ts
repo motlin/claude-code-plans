@@ -6,6 +6,7 @@ import {
 	buildGroups,
 	filterLabel,
 	migrateSessionListPrefs,
+	shouldLoadNextPage,
 	type SessionGroup,
 	type SessionGroupRow,
 	type SessionListPrefs,
@@ -483,5 +484,56 @@ describe("migrateSessionListPrefs", () => {
 		expect(migrateSessionListPrefs({stored: "{not json", sessionsGrouping, sessionSort})).toStrictEqual(
 			prefs(expected),
 		);
+	});
+});
+
+describe("Show less", () => {
+	const done = Array.from({length: 23}, (_, index) =>
+		row(`done-${index}`, {bucket: "done", lastActivityAt: NOW - (index + 1) * 60_000}),
+	);
+
+	it("is offered only on a cappable group expanded past its cap", () => {
+		const states = (uncapped: ReadonlySet<string>, rows: SessionGroupRow[]) =>
+			buildGroups(rows, prefs(), NOW, uncapped).map((group) => [group.key, group.canShowLess]);
+
+		expect({
+			capped: states(new Set(), done),
+			expanded: states(new Set(["state-done"]), done),
+			underCap: states(new Set(["state-done"]), done.slice(0, 5)),
+			project: buildGroups(done, prefs({groupBy: "project"}), NOW, new Set(["project-alpha"])).map((group) => [
+				group.key,
+				group.canShowLess,
+			]),
+		}).toStrictEqual({
+			capped: [["state-done", false]],
+			expanded: [["state-done", true]],
+			underCap: [["state-done", false]],
+			project: [["project-alpha", false]],
+		});
+	});
+});
+
+describe("shouldLoadNextPage", () => {
+	const done = Array.from({length: 23}, (_, index) =>
+		row(`done-${index}`, {bucket: "done", lastActivityAt: NOW - (index + 1) * 60_000}),
+	);
+
+	it("waits while a group still hides rows behind Show N more", () => {
+		const groups = buildGroups(done, prefs(), NOW);
+		expect(shouldLoadNextPage(groups, done, prefs(), NOW)).toBe(false);
+	});
+
+	it("loads once every group shows all its rows", () => {
+		const groups = buildGroups(done, prefs(), NOW, new Set(["state-done"]));
+		expect(shouldLoadNextPage(groups, done, prefs(), NOW)).toBe(true);
+	});
+
+	it("stops once the oldest loaded session falls outside the Last activity window", () => {
+		const rows = [row("recent", {lastActivityAt: NOW - HOUR}), row("old", {lastActivityAt: NOW - 8 * DAY})];
+		const groups = buildGroups(rows, prefs(), NOW);
+		expect({
+			sevenDays: shouldLoadNextPage(groups, rows, prefs(), NOW),
+			all: shouldLoadNextPage(groups, rows, prefs({activityDays: "all"}), NOW),
+		}).toStrictEqual({sevenDays: false, all: true});
 	});
 });

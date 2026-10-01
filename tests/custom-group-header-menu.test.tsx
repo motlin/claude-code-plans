@@ -58,6 +58,7 @@ async function renderGroup(groupId: string, rows: SidebarSessionRow[] = []) {
 		label: name,
 		rows,
 		hiddenCount: 0,
+		canShowLess: false,
 		nested: new Map(),
 	};
 	const queryClient = new QueryClient({
@@ -70,7 +71,14 @@ async function renderGroup(groupId: string, rows: SidebarSessionRow[] = []) {
 		component: () => (
 			<QueryClientProvider client={queryClient}>
 				<ToastProvider>
-					<GroupSection group={group} expanded activeItemId={null} filterSlot={null} onShowMore={() => {}} />
+					<GroupSection
+						group={group}
+						expanded
+						activeItemId={null}
+						filterSlot={null}
+						onShowMore={() => {}}
+						onShowLess={() => {}}
+					/>
 				</ToastProvider>
 			</QueryClientProvider>
 		),

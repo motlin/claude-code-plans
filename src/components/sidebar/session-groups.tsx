@@ -28,6 +28,7 @@ import {
 	type SessionGroup,
 	sessionRowComparator,
 	type SessionListPrefs,
+	shouldLoadNextPage,
 } from "../../lib/session-groups";
 import {assign, moveGroup, readSessionGroupState, setGroupOrder, useSessionGroups} from "../../lib/session-group-store";
 import {slotToIndex} from "../../lib/sidebar-drag";
@@ -45,12 +46,14 @@ import {LoadingBars} from "./primitives/LoadingBars";
 import {GroupSection, ROW_CLASS, type SidebarSessionRow, toGroupRow} from "./session-group-section";
 import {SidebarSelectionContext, type SidebarSelectionApi} from "./selection-context";
 import {PinnedSubList} from "./sublists";
-import {ROVING_ITEM_PROPS, useRovingFocus} from "./use-roving-focus";
+import {useRovingFocus} from "./use-roving-focus";
 
 /**
  * The sidebar session list, grouped like claude.ai/code's recents: Needs input,
  * Ready for review, Working and Completed by default. Collapsed groups persist in
- * the sidebar store; "Show N more" uncaps a group in place until remount. Pinned
+ * the sidebar store; "Show N more" uncaps a group in place and "Show less" caps it again.
+ * Once no group hides rows, expanding the last one or scrolling to the list end fetches
+ * the next feed page while it can still hold sessions inside Last activity. Pinned
  * sessions move out of their group into the Pinned section above. Dragging any row
  * pins it at a Pinned slot, reorders a pinned row, or (dropped below Pinned) unpins it.
  * In Custom groups mode a row dropped on a group header or row slot joins that group
@@ -142,6 +145,24 @@ export function SessionGroups({
 	);
 	latestGroups.current = groups;
 
+	const loadedRows = useMemo(() => (split === undefined ? [] : [...split.pinned, ...split.rest]), [split]);
+	const canLoadNextPage = (visibleGroups: readonly SessionGroup<SidebarSessionRow>[]) =>
+		hasNextPage && !isFetchingNextPage && shouldLoadNextPage(visibleGroups, loadedRows, prefs, Date.now());
+	const loadOnScroll = groups !== undefined && canLoadNextPage(groups);
+	const listEndRef = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		const end = listEndRef.current;
+		if (!loadOnScroll || end === null || typeof IntersectionObserver === "undefined") return;
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries.some((entry) => entry.isIntersecting)) void fetchNextPage();
+			},
+			{root: end.closest("[data-testid=nav-scroll]"), rootMargin: "200px"},
+		);
+		observer.observe(end);
+		return () => observer.disconnect();
+	}, [loadOnScroll, fetchNextPage]);
+
 	if (split === undefined || groups === undefined) {
 		return (
 			<div className="px-2">
@@ -230,7 +251,19 @@ export function SessionGroups({
 								expanded={!collapsed.has(group.key)}
 								activeItemId={activeItemId}
 								filterSlot={index === 0 ? filterSlot : undefined}
-								onShowMore={() => setUncapped((previous) => new Set(previous).add(group.key))}
+								onShowMore={() => {
+									setUncapped((previous) => new Set(previous).add(group.key));
+									if (canLoadNextPage(groups.filter((other) => other.key !== group.key))) {
+										void fetchNextPage();
+									}
+								}}
+								onShowLess={() =>
+									setUncapped((previous) => {
+										const next = new Set(previous);
+										next.delete(group.key);
+										return next;
+									})
+								}
 								dragRowProps={rowProps}
 								familyHeadIds={familyHeadIds}
 								{...(groupId === null
@@ -247,18 +280,7 @@ export function SessionGroups({
 						return index === firstUngroupedIndex && ungroupRow !== null ? [ungroupRow, section] : section;
 					})}
 					{firstUngroupedIndex === -1 && ungroupRow}
-					{hasNextPage && (
-						<button
-							type="button"
-							{...ROVING_ITEM_PROPS}
-							aria-label="Load more sessions"
-							aria-disabled={isFetchingNextPage || undefined}
-							onClick={() => void fetchNextPage()}
-							className={`${ROW_CLASS} df-label-inset mt-[var(--sb-group-pt)] text-ink-muted hover:bg-[var(--sb-hover)] hover:text-secondary aria-disabled:pointer-events-none aria-disabled:opacity-70`}
-						>
-							Load more sessions
-						</button>
-					)}
+					<div ref={listEndRef} aria-hidden="true" data-sidebar-list-end />
 				</div>
 			</div>
 		</SidebarSelectionContext.Provider>

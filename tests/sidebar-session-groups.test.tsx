@@ -12,7 +12,7 @@ import {
 import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {ToastProvider} from "../src/components/toast";
 import type {ReactNode} from "react";
-import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionGroups} from "../src/components/sidebar/session-groups";
 import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";
 import type {SessionBucket} from "../src/lib/session-state";
@@ -105,7 +105,10 @@ function rowTitlesIn(container: HTMLElement, groupKey: string): string[] {
 	return [...section.querySelectorAll("a[data-row-main-button]")].map((link) => link.textContent ?? "");
 }
 
-afterEach(cleanup);
+afterEach(() => {
+	cleanup();
+	vi.unstubAllGlobals();
+});
 
 beforeEach(() => {
 	installLocalStorage();
@@ -183,7 +186,7 @@ describe("sidebar SessionGroups", () => {
 		expect(readSidebarState().collapsedGroups).toEqual([]);
 	});
 
-	it("caps Completed at 20 rows and expands the rest in place from Show N more", async () => {
+	it("caps Completed at 20 rows, expands the rest from Show N more, and folds them back with Show less", async () => {
 		const done = Array.from({length: 23}, (_, index) => session(`d${index}`, `Done ${index}`, "done", index + 1));
 		const {container} = await renderGroups(done);
 
@@ -195,6 +198,22 @@ describe("sidebar SessionGroups", () => {
 
 		expect(rowTitlesIn(container, "state-done")).toEqual(Array.from({length: 23}, (_, index) => `Done ${index}`));
 		expect(screen.queryByRole("button", {name: /^Show \d+ more/})).toBeNull();
+		const showLess = screen.getByRole("button", {name: "Show less in Completed"});
+		expect({text: showLess.textContent, roving: showLess.hasAttribute("data-roving-item")}).toStrictEqual({
+			text: "Show less",
+			roving: true,
+		});
+
+		fireEvent.click(showLess);
+
+		expect(rowTitlesIn(container, "state-done")).toHaveLength(20);
+		expect(screen.getByRole("button", {name: "Show 3 more in Completed"})).toBeTruthy();
+		expect(screen.queryByRole("button", {name: /^Show less/})).toBeNull();
+	});
+
+	it("offers no Show less on a group that fits under the cap", async () => {
+		await renderGroups(FIXTURE);
+		expect(screen.queryByRole("button", {name: /^Show less/})).toBeNull();
 	});
 
 	it("puts the filter slot on the first group header only", async () => {
@@ -208,13 +227,66 @@ describe("sidebar SessionGroups", () => {
 		expect(within(headers[0] as HTMLElement).getByRole("button", {name: "Working"})).toBeTruthy();
 	});
 
-	it("offers Load more sessions only while the feed has another page", async () => {
-		const withMore = await renderGroups(FIXTURE, {nextCursor: "cursor-2"});
-		expect(screen.getByRole("button", {name: "Load more sessions"})).toBeTruthy();
-		withMore.unmount();
-
-		await renderGroups(FIXTURE);
+	it("has no Load more sessions row, even while the feed has another page", async () => {
+		await renderGroups(FIXTURE, {nextCursor: "cursor-2"});
 		expect(screen.queryByRole("button", {name: "Load more sessions"})).toBeNull();
+	});
+
+	it("fetches the next page when the list end scrolls into view and no group is capped", async () => {
+		class VisibleIntersectionObserver {
+			constructor(private readonly callback: IntersectionObserverCallback) {}
+			observe(target: Element) {
+				this.callback(
+					[{isIntersecting: true, target} as IntersectionObserverEntry],
+					this as unknown as IntersectionObserver,
+				);
+			}
+			disconnect() {}
+			unobserve() {}
+			takeRecords(): IntersectionObserverEntry[] {
+				return [];
+			}
+		}
+		vi.stubGlobal("IntersectionObserver", VisibleIntersectionObserver);
+		const requests: string[] = [];
+		vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+			requests.push(String(input));
+			return new Response(
+				JSON.stringify({sessions: [session("d-old", "Completed next page", "done", 60)], nextCursor: null}),
+				{status: 200, headers: {"Content-Type": "application/json"}},
+			);
+		});
+		const {container} = await renderGroups(FIXTURE, {nextCursor: "cursor-2"});
+
+		await waitFor(() =>
+			expect(rowTitlesIn(container, "state-done")).toStrictEqual([
+				"Completed newest",
+				"Completed older",
+				"Completed next page",
+			]),
+		);
+		expect(requests).toStrictEqual(["/api/sessions/recent?limit=50&cursor=cursor-2"]);
+	});
+
+	it("fetches the next page when Show N more expands the last capped group", async () => {
+		const done = Array.from({length: 23}, (_, index) => session(`d${index}`, `Done ${index}`, "done", index + 1));
+		const older = session("d-old", "Done older page", "done", 60);
+		const requests: string[] = [];
+		vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+			requests.push(String(input));
+			return new Response(JSON.stringify({sessions: [older], nextCursor: null}), {
+				status: 200,
+				headers: {"Content-Type": "application/json"},
+			});
+		});
+		const {container} = await renderGroups(done, {nextCursor: "cursor-2"});
+
+		fireEvent.click(screen.getByRole("button", {name: "Show 3 more in Completed"}));
+
+		await waitFor(() => expect(rowTitlesIn(container, "state-done")).toHaveLength(24));
+		expect(rowTitlesIn(container, "state-done").at(-1)).toBe("Done older page");
+		expect(requests).toStrictEqual(["/api/sessions/recent?limit=50&cursor=cursor-2"]);
+		expect(screen.getByRole("button", {name: "Show less in Completed"})).toBeTruthy();
 	});
 });
 

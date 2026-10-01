@@ -55,13 +55,14 @@ function archivableIds(group: SessionGroup<SidebarSessionRow>): string[] {
 export const ROW_CLASS =
 	"flex h-[var(--sb-row-h)] w-full shrink-0 items-center gap-[var(--sb-row-gap)] rounded-[var(--sb-radius)] px-[var(--sb-row-px)] text-left text-[length:var(--sb-row-font)] no-underline";
 
-/** A collapsible sidebar group: label row (caret on hover), session rows, "Show N more". */
+/** A collapsible sidebar group: label row (caret on hover), session rows, "Show N more" / "Show less". */
 export function GroupSection({
 	group,
 	expanded,
 	activeItemId,
 	filterSlot,
 	onShowMore,
+	onShowLess,
 	dragRowProps,
 	pinnedIds,
 	familyHeadIds = [],
@@ -76,6 +77,7 @@ export function GroupSection({
 	activeItemId: string | null;
 	filterSlot: ReactNode;
 	onShowMore: () => void;
+	onShowLess: () => void;
 	/** Makes each row a sidebar drag source (pin, reorder, unpin). */
 	dragRowProps?: (id: string) => SidebarDragRowProps;
 	/** Set for the Pinned section: its display order, which enables Move up / Move down. */
@@ -179,21 +181,38 @@ export function GroupSection({
 						);
 					})}
 					{group.hiddenCount > 0 && (
-						<button
-							type="button"
-							{...ROVING_ITEM_PROPS}
-							data-row
-							aria-label={`Show ${group.hiddenCount} more in ${group.label}`}
+						<OverflowRow
+							ariaLabel={`Show ${group.hiddenCount} more in ${group.label}`}
 							onClick={onShowMore}
-							className={`${ROW_CLASS} text-ink-muted hover:bg-[var(--sb-hover)] hover:text-secondary`}
 						>
-							<span className="df-leading-slot" />
 							Show {group.hiddenCount} more
-						</button>
+						</OverflowRow>
+					)}
+					{group.canShowLess && (
+						<OverflowRow ariaLabel={`Show less in ${group.label}`} onClick={onShowLess}>
+							Show less
+						</OverflowRow>
 					)}
 				</div>
 			)}
 		</div>
+	);
+}
+
+/** A group's muted "Show N more" / "Show less" row. */
+function OverflowRow({ariaLabel, onClick, children}: {ariaLabel: string; onClick: () => void; children: ReactNode}) {
+	return (
+		<button
+			type="button"
+			{...ROVING_ITEM_PROPS}
+			data-row
+			aria-label={ariaLabel}
+			onClick={onClick}
+			className={`${ROW_CLASS} text-ink-muted hover:bg-[var(--sb-hover)] hover:text-secondary`}
+		>
+			<span className="df-leading-slot" />
+			{children}
+		</button>
 	);
 }
 

@@ -201,6 +201,9 @@ describe("sidebar Pinned section", () => {
 		expect(rowTitles(pinnedSection(container))).toHaveLength(20);
 		fireEvent.click(screen.getByRole("button", {name: "Show 3 more in Pinned"}));
 		await waitFor(() => expect(rowTitles(pinnedSection(container))).toHaveLength(23));
+		fireEvent.click(screen.getByRole("button", {name: "Show less in Pinned"}));
+		await waitFor(() => expect(rowTitles(pinnedSection(container))).toHaveLength(20));
+		expect(screen.getByRole("button", {name: "Show 3 more in Pinned"})).toBeTruthy();
 	});
 
 	it("offers Move up and Move down on pinned rows, omitted at the ends", async () => {
