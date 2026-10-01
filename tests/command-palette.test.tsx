@@ -788,3 +788,124 @@ describe("CommandPalette Artifacts and Scheduled tabs", () => {
 		await waitFor(() => expect(currentRouter?.state.location.pathname).toBe("/routines"));
 	});
 });
+
+describe("CommandPalette filter values", () => {
+	beforeEach(() => {
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
+		vi.stubGlobal("fetch", () => new Promise(() => {}));
+		vi.stubGlobal(
+			"ResizeObserver",
+			class {
+				observe() {}
+				unobserve() {}
+				disconnect() {}
+			},
+		);
+		Element.prototype.scrollIntoView = () => {};
+	});
+
+	afterEach(() => {
+		cleanup();
+		localStorage.clear();
+		vi.restoreAllMocks();
+		vi.unstubAllGlobals();
+	});
+
+	function typeQuery(dialog: HTMLElement, value: string) {
+		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value}});
+	}
+
+	function resultLabels(dialog: HTMLElement): string[] {
+		return [...within(dialog).getByRole("group", {name: "Search results"}).querySelectorAll("[cmdk-item]")].map(
+			(item) => item.querySelector("[data-palette-label]")?.textContent ?? "",
+		);
+	}
+
+	function sessionLabels(dialog: HTMLElement): string[] {
+		return [...dialog.querySelectorAll('[cmdk-item][data-item-type="session"]')].map(
+			(item) => item.querySelector("[data-palette-label]")?.textContent ?? "",
+		);
+	}
+
+	it("lists the Date values under a Date heading after date:", async () => {
+		const dialog = await openPalette();
+
+		typeQuery(dialog, "date:");
+
+		expect({
+			groups: groupLabels(dialog),
+			empty: within(dialog).queryByText(/No results/u),
+			results: within(dialog).queryByRole("group", {name: "Search results"}),
+		}).toStrictEqual({
+			groups: [["Date", ["Today", "Past week", "Past month"]]],
+			empty: null,
+			results: null,
+		});
+	});
+
+	it("completes the token when a value is chosen", async () => {
+		const dialog = await openPalette();
+		typeQuery(dialog, "fix date:");
+
+		fireEvent.click(within(dialog).getByRole("option", {name: /Past week/u}));
+
+		expect(within(dialog).getByRole("combobox")).toHaveProperty("value", "fix date:week ");
+	});
+
+	it("lists the recent repos under Repo after repo:", async () => {
+		const dialog = await openPalette([
+			{...recentSession("sess-1", "One"), project: "/users/dev/ccp", projectName: "claude-code-plans"},
+			{...recentSession("sess-2", "Two"), project: "/users/dev/avalon", projectName: "avalon"},
+			{...recentSession("sess-3", "Three"), project: "/users/dev/ccp", projectName: "claude-code-plans"},
+		]);
+
+		typeQuery(dialog, "repo:");
+
+		expect(groupLabels(dialog)).toStrictEqual([["Repo", ["ccp", "avalon"]]]);
+	});
+
+	it("offers one Archived row and one Actions row", async () => {
+		const dialog = await openPalette();
+
+		typeQuery(dialog, "archived:");
+		const archived = groupLabels(dialog);
+		typeQuery(dialog, "actions:");
+
+		expect({archived, actions: groupLabels(dialog)}).toStrictEqual({
+			archived: [["Archived", ["Archived"]]],
+			actions: [["Actions", ["Actions"]]],
+		});
+	});
+
+	it("searches archived sessions with archived:", async () => {
+		const archivedSession = {...recentSession("sess-old", "Old archived refactor"), archived: true};
+		const dialog = await openPalette([recentSession("sess-1", "Refactor auth module")], "/", (queryClient) => {
+			queryClient.setQueryData(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT, "all").queryKey, {
+				sessions: [recentSession("sess-1", "Refactor auth module"), archivedSession],
+				nextCursor: null,
+			});
+		});
+
+		typeQuery(dialog, "refactor");
+		const withoutToken = sessionLabels(dialog);
+		typeQuery(dialog, "archived:true refactor");
+
+		expect({withoutToken, withToken: sessionLabels(dialog)}).toStrictEqual({
+			withoutToken: ["Refactor auth module"],
+			withToken: ["Refactor auth module", "Old archived refactor"],
+		});
+	});
+
+	it("restricts the list to Actions with actions:", async () => {
+		const dialog = await openPalette([recentSession("sess-1", "Settings refactor")]);
+
+		typeQuery(dialog, "actions:true sett");
+		const narrowed = resultLabels(dialog);
+		typeQuery(dialog, "actions:true");
+
+		expect({narrowed, all: resultLabels(dialog)}).toStrictEqual({
+			narrowed: ["Settings"],
+			all: ["Search sessions", "Keyboard shortcuts", "Toggle sidebar", "Settings", "Mark all sessions seen"],
+		});
+	});
+});

@@ -4,6 +4,7 @@ import {
 	paletteFilterHints,
 	paletteSearchParams,
 	PaletteTypeSchema,
+	paletteValueSuggestions,
 	parsePaletteTokens,
 	resolvePaletteProject,
 	withoutTypeTokens,
@@ -50,6 +51,11 @@ describe("parsePaletteTokens", () => {
 		["type:chat", {text: "type:chat"}],
 		["is:archived old", {text: "old", archived: true}],
 		["is:starred", {text: "is:starred"}],
+		["archived:", {text: "", archived: true}],
+		["archived:true old", {text: "old", archived: true}],
+		["archived:nope", {text: "archived:nope"}],
+		["actions:", {text: "", actions: true}],
+		["Actions:TRUE sett", {text: "sett", actions: true}],
 		["repo: auth", {text: "auth"}],
 		["repo:a repo:b", {text: "", project: "b"}],
 		["http://localhost", {text: "http://localhost"}],
@@ -114,8 +120,9 @@ describe("paletteSearchParams", () => {
 
 describe("paletteFilterHints", () => {
 	it.each([
-		["/", ["project", "date", "repo", "type"]],
+		["/", ["project", "date", "repo", "type", "archived", "actions"]],
 		["/re", ["date", "repo"]],
+		["/a", ["date", "archived", "actions"]],
 		["/TY", ["type"]],
 		["/zz", []],
 	])("hints for %j", (query, expected) => {
@@ -127,6 +134,85 @@ describe("paletteFilterHints", () => {
 			plain: paletteFilterHints("re"),
 			spaced: paletteFilterHints("/re x"),
 		}).toStrictEqual({plain: null, spaced: null});
+	});
+});
+
+describe("paletteValueSuggestions", () => {
+	const sessions = [
+		{project: "/Users/dev/ccp", projectName: "claude-code-plans"},
+		{project: "/Users/dev/avalon", projectName: "avalon"},
+		{project: "/Users/dev/ccp", projectName: "claude-code-plans"},
+		{project: "/Users/dev/my notes", projectName: "my notes"},
+		...Array.from({length: 12}, (_, index) => ({project: `/Users/dev/r${index}`, projectName: `p${index}`})),
+	];
+
+	function labels(query: string): string[] | null {
+		return paletteValueSuggestions(query, sessions)?.values.map((value) => value.label) ?? null;
+	}
+
+	it("offers the Date values after a bare date: key", () => {
+		expect(paletteValueSuggestions("date:", sessions)).toStrictEqual({
+			filter: "date",
+			values: [
+				{label: "Today", query: "date:today "},
+				{label: "Past week", query: "date:week "},
+				{label: "Past month", query: "date:month "},
+			],
+		});
+	});
+
+	it("keeps the typed text and alias when completing", () => {
+		expect(paletteValueSuggestions("fix when:", sessions)?.values[0]).toStrictEqual({
+			label: "Today",
+			query: "fix when:today ",
+		});
+	});
+
+	it("lists the palette types after type:", () => {
+		expect(paletteValueSuggestions("type:", sessions)?.values).toStrictEqual([
+			{label: "Artifacts", query: "type:artifacts "},
+			{label: "Projects", query: "type:projects "},
+			{label: "Sessions", query: "type:sessions "},
+			{label: "Scheduled", query: "type:scheduled "},
+			{label: "Plans", query: "type:plans "},
+			{label: "Memories", query: "type:memories "},
+			{label: "Files", query: "type:files "},
+		]);
+	});
+
+	it("lists the ten most recent repos and projects, deduplicated, skipping values with spaces", () => {
+		expect({
+			repo: labels("repo:"),
+			project: paletteValueSuggestions("project:", sessions)?.values.slice(0, 3),
+		}).toStrictEqual({
+			repo: ["ccp", "avalon", "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7"],
+			project: [
+				{label: "claude-code-plans", query: "project:claude-code-plans "},
+				{label: "avalon", query: "project:avalon "},
+				{label: "p0", query: "project:p0 "},
+			],
+		});
+	});
+
+	it("offers a single row for Archived and Actions", () => {
+		expect({
+			archived: paletteValueSuggestions("archived:", sessions),
+			actions: paletteValueSuggestions("actions:", sessions),
+		}).toStrictEqual({
+			archived: {filter: "archived", values: [{label: "Archived", query: "archived:true "}]},
+			actions: {filter: "actions", values: [{label: "Actions", query: "actions:true "}]},
+		});
+	});
+
+	it("is null unless the query ends in a bare filter key", () => {
+		expect(["", "date", "date:t", "date: ", "http:", "/date:"].map(labels)).toStrictEqual([
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+		]);
 	});
 });
 

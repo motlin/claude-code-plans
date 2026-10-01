@@ -284,7 +284,7 @@ export const unifiedSearchTypeLabels = {
 	files: "Files",
 } satisfies Record<z.infer<typeof UnifiedSearchTypeSchema>, string>;
 
-const unifiedSearchDateLabels = {
+export const unifiedSearchDateLabels = {
 	today: "Today",
 	week: "Past week",
 	month: "Past month",
@@ -313,6 +313,8 @@ export const paletteFilterLabels = {
 	date: "Date",
 	repo: "Repo",
 	type: "Type",
+	archived: "Archived",
+	actions: "Actions",
 } satisfies Record<PaletteFilter, string>;
 
 const sessionStartSourceLabels = {

@@ -395,6 +395,8 @@ describe("⌘K palette filters", () => {
 			"Filter by Date",
 			"Filter by Repo",
 			"Filter by Type",
+			"Filter by Archived",
+			"Filter by Actions",
 		]);
 		expect(pending).toStrictEqual([]);
 	});

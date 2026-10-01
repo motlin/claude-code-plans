@@ -289,7 +289,10 @@ const ACTIVE_SESSIONS_QUERY_ROOT = [...SESSION_QUERY_ROOT, "active"] as const;
 export const sessionQueryKeys = {
 	all: () => SESSION_QUERY_ROOT,
 	recentLists: () => RECENT_SESSIONS_QUERY_ROOT,
-	recent: (limit: number) => [...RECENT_SESSIONS_QUERY_ROOT, limit] as const,
+	recent: (limit: number, status: SessionStatusFilter = "active") =>
+		status === "active"
+			? ([...RECENT_SESSIONS_QUERY_ROOT, limit] as const)
+			: ([...RECENT_SESSIONS_QUERY_ROOT, limit, status] as const),
 	recentInfinite: (limit: number = DEFAULT_RECENT_PAGE_SIZE, status: SessionStatusFilter = "active") =>
 		[...RECENT_SESSIONS_QUERY_ROOT, "infinite", limit, status] as const,
 	groupedLists: () => GROUPED_SESSIONS_QUERY_ROOT,
@@ -310,10 +313,14 @@ export const sessionQueryKeys = {
 };
 
 /** Single page of recent sessions (no pagination) — for compact previews. */
-export const recentSessionsQueryOptions = (limit: number) =>
+export const recentSessionsQueryOptions = (limit: number, status: SessionStatusFilter = "active") =>
 	queryOptions({
-		queryKey: sessionQueryKeys.recent(limit),
-		queryFn: () => apiFetch(`/api/sessions/recent?limit=${limit}`, RecentSessionsResponse),
+		queryKey: sessionQueryKeys.recent(limit, status),
+		queryFn: () =>
+			apiFetch(
+				`/api/sessions/recent?limit=${limit}${status === "active" ? "" : `&status=${status}`}`,
+				RecentSessionsResponse,
+			),
 		staleTime: Infinity,
 		gcTime: Infinity,
 	});

@@ -64,6 +64,7 @@ import {
 	paletteFilterHints,
 	paletteProjectMatches,
 	paletteSearchParams,
+	paletteValueSuggestions,
 	parsePaletteTokens,
 	withoutTypeTokens,
 	type PaletteFilter,
@@ -286,6 +287,7 @@ function serverRow(item: UnifiedSearchItem): SearchRow {
 	};
 }
 
+const NO_SESSIONS: readonly SessionListItem[] = [];
 const NO_PROJECTS: readonly PaletteProjectItem[] = [];
 const NO_ARTIFACTS: readonly ArtifactSummary[] = [];
 const NO_ROUTINES: readonly Routine[] = [];
@@ -593,9 +595,23 @@ function PalettePopup({
 	const trimmedQuery = query.trim();
 	const hints = hintsFor(trimmedQuery);
 	const tokens = useMemo(() => parsePaletteTokens(trimmedQuery), [trimmedQuery]);
+	// A trailing bare `key:` lists that filter's values instead of results.
+	const valueSuggestions = useMemo(
+		() => (hints === null ? paletteValueSuggestions(query, data?.sessions ?? []) : null),
+		[hints, query, data],
+	);
+	const actionsOnly = tokens.actions === true;
+	const searchable = hints === null && valueSuggestions === null && !actionsOnly;
 	const type = tokens.type ?? tab;
-	const filtered = type !== "all" || tokens.project !== undefined || tokens.date !== undefined;
-	const canStart = trimmedQuery !== "" && hints === null;
+	const filtered =
+		type !== "all" || tokens.project !== undefined || tokens.date !== undefined || tokens.archived === true;
+	const canStart = trimmedQuery !== "" && searchable;
+	// `archived:` searches recents that include archived sessions.
+	const withArchivedQuery = useQuery({
+		...recentSessionsQueryOptions(PALETTE_RECENT_LIMIT, "all"),
+		enabled: tokens.archived === true,
+	});
+	const searchedSessions = (tokens.archived === true ? withArchivedQuery.data : data)?.sessions ?? NO_SESSIONS;
 	const projectsQuery = useQuery({
 		...projectsQueryOptions(),
 		enabled: type === "projects" || tokens.project !== undefined || startStep === "picker",
@@ -605,7 +621,7 @@ function PalettePopup({
 	const artifacts = artifactsQuery.data ?? NO_ARTIFACTS;
 	const routinesQuery = useQuery({...routinesQueryOptions, enabled: type === "scheduled"});
 	const routines = routinesQuery.data ?? NO_ROUTINES;
-	const searchesSessions = hints === null && (type === "all" || type === "sessions");
+	const searchesSessions = searchable && (type === "all" || type === "sessions");
 
 	const debouncedQuery = useDebouncedValue(trimmedQuery, PALETTE_SEARCH_DEBOUNCE_MS);
 	const debouncedParams =
@@ -613,7 +629,7 @@ function PalettePopup({
 			? paletteSearchParams(parsePaletteTokens(debouncedQuery), tab, projects)
 			: null;
 	const serverActive =
-		hints === null &&
+		searchable &&
 		tokens.text !== "" &&
 		!isClientPaletteType(type) &&
 		(tokens.project === undefined || !projectsQuery.isPending);
@@ -626,25 +642,25 @@ function PalettePopup({
 	const visibleSessions = useMemo(
 		() =>
 			filterSessions(
-				(data?.sessions ?? []).filter((session) => session.id !== currentSessionId),
+				searchedSessions.filter((session) => session.id !== currentSessionId),
 				tokens,
 				projects,
 				Date.now(),
 			),
-		[data, currentSessionId, tokens, projects],
+		[searchedSessions, currentSessionId, tokens, projects],
 	);
 
-	// Sessions with no text lists recents; Projects, Artifacts and Scheduled are searched client-side.
+	// Sessions (or All with only filter tokens) and no text lists recents; Projects, Artifacts and Scheduled are searched client-side.
 	const listing = useMemo((): SearchRow[] | null => {
-		if (hints !== null || (trimmedQuery === "" && tab === "all")) return null;
+		if (!searchable || (trimmedQuery === "" && tab === "all")) return null;
 		if (type === "projects") return projectRows(projects, tokens.text);
 		if (type === "artifacts") return artifactRows(artifacts, tokens.text);
 		if (type === "scheduled") return routineRows(routines, tokens.text, Date.now());
-		if (type === "sessions" && tokens.text === "") {
+		if ((type === "sessions" || type === "all") && tokens.text === "") {
 			return visibleSessions.slice(0, PALETTE_RECENT_LIMIT).map((session) => sessionRow(session, []));
 		}
 		return null;
-	}, [hints, trimmedQuery, tab, type, projects, artifacts, routines, tokens.text, visibleSessions]);
+	}, [searchable, trimmedQuery, tab, type, projects, artifacts, routines, tokens.text, visibleSessions]);
 
 	const instant = useMemo(
 		() => (!searchesSessions || tokens.text === "" ? [] : instantRows(visibleSessions, tokens.text)),
@@ -676,7 +692,7 @@ function PalettePopup({
 				bucket: undefined,
 			});
 		}
-		for (const session of data?.sessions ?? []) {
+		for (const session of searchedSessions) {
 			byId.set(session.id, {
 				id: session.id,
 				title: session.title,
@@ -686,7 +702,7 @@ function PalettePopup({
 			});
 		}
 		return byId;
-	}, [data, serverRows]);
+	}, [searchedSessions, serverRows]);
 
 	function openRowActions(id: string) {
 		const session = cardSessions.get(id);
@@ -816,6 +832,11 @@ function PalettePopup({
 		inputRef.current?.focus();
 	}
 
+	function chooseFilterValue(next: string) {
+		setQuery(next);
+		inputRef.current?.focus();
+	}
+
 	function searchAll() {
 		setQuery(withoutTypeTokens(query));
 		chooseTab("all");
@@ -934,14 +955,19 @@ function PalettePopup({
 
 	const compose = mode === "compose";
 	const now = Date.now();
-	const matchesCommands = hints === null && !filtered && tokens.text !== "";
+	const matchesCommands = searchable && !filtered && tokens.text !== "";
 	const matchedSessionCommands =
 		matchesCommands && currentDetail !== null
 			? currentSessionCommands(currentDetail, pins.isPinned(currentSessionId ?? "")).filter((command) =>
 					commandMatches(command.label, tokens.text, SESSION_COMMAND_KEYWORDS[command.id]),
 				)
 			: [];
-	const matchedActions = matchesCommands ? actions.filter((action) => commandMatches(action.label, tokens.text)) : [];
+	const matchedActions =
+		actionsOnly && tokens.text === ""
+			? actions
+			: matchesCommands || actionsOnly
+				? actions.filter((action) => commandMatches(action.label, tokens.text))
+				: [];
 	const matchedCommands = matchesCommands
 		? NAV_COMMANDS.filter((command) => commandMatches(command.label, tokens.text, command.keywords))
 		: [];
@@ -954,7 +980,7 @@ function PalettePopup({
 		serverRows.length;
 	const idle = startStep === "idle";
 	const showEmptyState = idle && !compose && trimmedQuery === "" && tab === "all";
-	const showResults = idle && !compose && hints === null && !showEmptyState;
+	const showResults = idle && !compose && hints === null && valueSuggestions === null && !showEmptyState;
 	const label = MODE_LABELS[mode];
 
 	return (
@@ -1089,6 +1115,23 @@ function PalettePopup({
 									</CommandItem>
 								))}
 							</div>
+						)}
+
+						{idle && !compose && valueSuggestions !== null && (
+							<Command.Group
+								heading={paletteFilterLabels[valueSuggestions.filter]}
+								className={GROUP_CLASS}
+							>
+								{valueSuggestions.values.map((value) => (
+									<CommandItem
+										key={value.query}
+										value={`filter-value:${value.query}`}
+										onSelect={() => chooseFilterValue(value.query)}
+									>
+										{value.label}
+									</CommandItem>
+								))}
+							</Command.Group>
 						)}
 
 						{showEmptyState && (
@@ -1282,7 +1325,7 @@ function PalettePopup({
 										</button>
 									</div>
 								)}
-								{tokens.text !== "" && !isClientPaletteType(type) && (
+								{tokens.text !== "" && !actionsOnly && !isClientPaletteType(type) && (
 									<CommandItem
 										value="see-all-results"
 										icon={<Search />}
@@ -1561,7 +1604,7 @@ function CommandItem({
 }: {
 	children: ReactNode;
 	value: string;
-	icon: ReactNode;
+	icon?: ReactNode;
 	onSelect: () => void;
 	shortcut?: ShortcutKeys;
 	rowActions?: boolean;
@@ -1575,7 +1618,9 @@ function CommandItem({
 			className={ROW_CLASS}
 		>
 			<span className={`flex min-w-0 flex-1 items-center gap-2 ${rowActions ? ROW_ACTIONS_LABEL_CLASS : ""}`}>
-				<span className="flex size-5 shrink-0 items-center justify-center [&_svg]:size-[18px]">{icon}</span>
+				{icon !== undefined && (
+					<span className="flex size-5 shrink-0 items-center justify-center [&_svg]:size-[18px]">{icon}</span>
+				)}
 				<span data-palette-label="" className="truncate">
 					{children}
 				</span>
