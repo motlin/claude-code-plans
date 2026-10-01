@@ -239,6 +239,36 @@
 		"unit": "count",
 		"tolerance": 0
 	},
+	"client.palette.open.commits": {
+		"ceiling": 8,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.palette.open.fetches": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.palette.open.mutations": {
+		"ceiling": 47,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.palette.search.commitsPerKeystroke": {
+		"ceiling": 2.8333333333333335,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.palette.search.mutations": {
+		"ceiling": 111,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.palette.search.serverSearchFetches": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
 	"client.sessionOpen.small.commits": {
 		"ceiling": 12,
 		"unit": "count",

@@ -115,7 +115,7 @@ export const PALETTE_RECENT_LIMIT = 25;
 /** Upstream caps the default entrypoint's organic list (Needs attention + Recents) at 7. */
 const ORGANIC_LIMIT = 7;
 
-const SEARCH_DEBOUNCE_MS = 150;
+export const PALETTE_SEARCH_DEBOUNCE_MS = 150;
 const SKELETON_ROWS = 3;
 
 /** Server hit kinds plus projects, which the Projects tab lists client-side. */
@@ -538,7 +538,7 @@ function PalettePopup({
 	const projects = projectsQuery.data ?? NO_PROJECTS;
 	const searchesSessions = hints === null && (type === "all" || type === "sessions");
 
-	const debouncedQuery = useDebouncedValue(trimmedQuery, SEARCH_DEBOUNCE_MS);
+	const debouncedQuery = useDebouncedValue(trimmedQuery, PALETTE_SEARCH_DEBOUNCE_MS);
 	const debouncedParams =
 		hintsFor(debouncedQuery) === null
 			? paletteSearchParams(parsePaletteTokens(debouncedQuery), tab, projects)
