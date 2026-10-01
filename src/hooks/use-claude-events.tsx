@@ -818,6 +818,29 @@ export function applySessionLinesAppended(
 	void queryClient.invalidateQueries({queryKey: sessionQueryKeys.resources(sessionId)});
 }
 
+/**
+ * Catch up after the SSE stream reconnects. Only the read models that the
+ * missed live events would have refreshed are invalidated: session lists,
+ * active sessions, session metadata and transcripts, approvals and
+ * notifications. Everything else stays cached rather than refetching on
+ * every dropped connection. A transcript refetch serves the tail, which
+ * `transcriptQueryOptions` merges onto the cached window, so lines appended
+ * during the gap land without discarding pages already scrolled back through.
+ */
+function applyReconnected(queryClient: QueryClient): void {
+	invalidateSessionLists(queryClient);
+	invalidateActiveSessions(queryClient);
+	const [sessionRoot] = sessionQueryKeys.all();
+	void queryClient.invalidateQueries({
+		predicate: ({queryKey}) =>
+			queryKey[0] === sessionRoot &&
+			typeof queryKey[1] === "string" &&
+			(queryKey.length === 2 || (queryKey.length === 3 && queryKey[2] === "transcript")),
+	});
+	void queryClient.invalidateQueries({queryKey: ["approvals"]});
+	void queryClient.invalidateQueries({queryKey: ["notifications"]});
+}
+
 function invalidateActiveSessions(queryClient: QueryClient): void {
 	// The reducer owns activeSessions state; we only invalidate the query cache
 	// here so components using the active-sessions query pick up changes.
@@ -1355,8 +1378,8 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 
 		// SSE reconnection safety: with staleTime: Infinity, data is never
 		// "stale" so refetchOnReconnect won't refetch after a disconnect.
-		// Track errors and invalidate all queries on reconnect to catch up
-		// on events missed during the gap.
+		// Track errors and, on reconnect, catch up on the events missed
+		// during the gap.
 		let hadError = false;
 		es.onerror = () => {
 			hadError = true;
@@ -1364,7 +1387,7 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 		es.addEventListener("open", () => {
 			if (hadError) {
 				hadError = false;
-				void queryClient.invalidateQueries();
+				applyReconnected(queryClient);
 			}
 		});
 

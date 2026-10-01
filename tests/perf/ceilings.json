@@ -45,12 +45,12 @@
 		"tolerance": 0
 	},
 	"client.liveEvent.reconnect.fetches": {
-		"ceiling": 11,
+		"ceiling": 6,
 		"unit": "count",
 		"tolerance": 0
 	},
 	"client.liveEvent.reconnect.hiddenReloads": {
-		"ceiling": 11,
+		"ceiling": 6,
 		"unit": "count",
 		"tolerance": 0
 	},

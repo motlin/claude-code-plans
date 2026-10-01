@@ -381,7 +381,7 @@ const CASES: Array<{name: string; appendsToOpen: boolean; deliver: (eventSource:
 		},
 	},
 	{
-		// A reconnect is an error followed by `open`; today that invalidates every query with no filter.
+		// A reconnect is an error followed by `open`; it refetches only what missed events could have changed.
 		name: "reconnect",
 		appendsToOpen: false,
 		deliver: (eventSource) => {
