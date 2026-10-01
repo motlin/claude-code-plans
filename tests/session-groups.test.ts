@@ -164,6 +164,18 @@ describe("buildGroups state mode", () => {
 		]);
 	});
 
+	it("applies the Last activity window in every grouping mode", () => {
+		const rows = [
+			row("old-working", {bucket: "working", lastActivityAt: NOW - 10 * DAY}),
+			row("old-done", {bucket: "done", lastActivityAt: NOW - 8 * DAY}),
+			row("recent-done", {bucket: "done", lastActivityAt: NOW - 6 * DAY}),
+		];
+
+		expect(summarize(buildGroups(rows, prefs({groupBy: "none"}), NOW))).toStrictEqual([
+			{key: "recents", label: "Recents", rows: ["recent-done", "old-working"], hiddenCount: 0},
+		]);
+	});
+
 	it("shows only archived rows when Status is Archived", () => {
 		const rows = [row("live"), row("archived", {archived: true, lastActivityAt: NOW - 2 * HOUR})];
 
@@ -241,12 +253,12 @@ describe("buildGroups date mode", () => {
 		]);
 	});
 
-	it("caps Older at 20 rows and ignores the Last activity window", () => {
+	it("caps Older at 20 rows", () => {
 		const rows = Array.from({length: 25}, (_, index) =>
 			row(`old-${index}`, {lastActivityAt: NOW - (30 + index) * DAY}),
 		);
 
-		expect(summarize(buildGroups(rows, prefs({groupBy: "date"}), NOW))).toStrictEqual([
+		expect(summarize(buildGroups(rows, prefs({groupBy: "date", activityDays: "all"}), NOW))).toStrictEqual([
 			{
 				key: "date-older",
 				label: "Older",
@@ -412,7 +424,7 @@ describe("filterLabel", () => {
 		[{groupBy: "date", sortBy: "name", showEmptyGroups: true}, "Filter"],
 		[{statusFilter: "all"}, "Filter (active)"],
 		[{activityDays: "30d"}, "Filter (active)"],
-		[{groupBy: "project", activityDays: "30d"}, "Filter"],
+		[{groupBy: "project", activityDays: "30d"}, "Filter (active)"],
 	])("labels %j as %s", (overrides, expected) => {
 		expect(filterLabel(prefs(overrides))).toBe(expected);
 	});

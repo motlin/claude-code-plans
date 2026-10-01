@@ -132,7 +132,7 @@ export function pinnedGroup<Row extends SessionGroupRow>(
 /** The filter button reads "Filter (active)" while any non-default filter applies. */
 export function filterLabel(prefs: SessionListPrefs): "Filter" | "Filter (active)" {
 	const statusActive = prefs.statusFilter !== DEFAULT_SESSION_LIST_PREFS.statusFilter;
-	const activityActive = prefs.groupBy === "state" && prefs.activityDays !== DEFAULT_SESSION_LIST_PREFS.activityDays;
+	const activityActive = prefs.activityDays !== DEFAULT_SESSION_LIST_PREFS.activityDays;
 	return statusActive || activityActive ? "Filter (active)" : "Filter";
 }
 
@@ -149,7 +149,7 @@ function isVisible(row: SessionGroupRow, prefs: SessionListPrefs, now: number): 
 	if (prefs.statusFilter === "active" && row.archived) return false;
 	if (prefs.statusFilter === "archived" && !row.archived) return false;
 	const windowDays = ACTIVITY_WINDOW_DAYS[prefs.activityDays];
-	if (prefs.groupBy !== "state" || windowDays === null || row.bucket === "working") return true;
+	if (windowDays === null || row.bucket === "working") return true;
 	return now - row.lastActivityAt <= windowDays * DAY_MS;
 }
 

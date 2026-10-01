@@ -33,6 +33,7 @@ import {
 	MenuSubTrigger,
 	MenuTrigger,
 } from "../ui/menu";
+import {Tooltip} from "../ui/tooltip";
 import {SessionGroups} from "./session-groups";
 
 type RadioPref = "statusFilter" | "activityDays" | "groupBy" | "sortBy";
@@ -92,13 +93,15 @@ function SessionFilterMenu({
 }) {
 	return (
 		<Menu>
-			<MenuTrigger
-				aria-label={filterLabel(prefs)}
-				data-row-action=""
-				className="relative -my-1 flex size-6 shrink-0 items-center justify-center rounded-[var(--sb-radius)] text-ink-muted hover:bg-[var(--sb-hover)] hover:text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 data-[popup-open]:bg-[var(--sb-hover)]"
-			>
-				<SlidersHorizontal aria-hidden="true" className="size-4" />
-			</MenuTrigger>
+			<Tooltip content={filterLabel(prefs)} className="-my-1 shrink-0">
+				<MenuTrigger
+					aria-label={filterLabel(prefs)}
+					data-row-action=""
+					className="relative flex size-6 shrink-0 items-center justify-center rounded-[var(--sb-radius)] text-ink-muted hover:bg-[var(--sb-hover)] hover:text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 data-[popup-open]:bg-[var(--sb-hover)]"
+				>
+					<SlidersHorizontal aria-hidden="true" className="size-4" />
+				</MenuTrigger>
+			</Tooltip>
 			<MenuContent align="end" className="!min-w-[200px]">
 				<RadioSubmenu
 					label="Status"
@@ -108,16 +111,14 @@ function SessionFilterMenu({
 					prefs={prefs}
 					onChange={onChange}
 				/>
-				{prefs.groupBy === "state" && (
-					<RadioSubmenu
-						label="Last activity"
-						pref="activityDays"
-						schema={SessionActivityDaysSchema}
-						labels={sessionActivityDaysLabels}
-						prefs={prefs}
-						onChange={onChange}
-					/>
-				)}
+				<RadioSubmenu
+					label="Last activity"
+					pref="activityDays"
+					schema={SessionActivityDaysSchema}
+					labels={sessionActivityDaysLabels}
+					prefs={prefs}
+					onChange={onChange}
+				/>
 				<MenuSeparator />
 				<RadioSubmenu
 					label="Group by"

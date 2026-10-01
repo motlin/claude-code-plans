@@ -158,7 +158,7 @@ export const homeAttentionKindLabels = {
 /** Filter & group menu options (src/lib/session-groups.ts); local "Project" is upstream "Folder". */
 export const sessionGroupByLabels = {
 	date: "Date",
-	project: "Project",
+	project: "Folder",
 	state: "State",
 	custom: "Custom groups",
 	none: "None",

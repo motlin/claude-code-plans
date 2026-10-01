@@ -11,7 +11,7 @@ import {
 } from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {ToastProvider} from "../src/components/toast";
-import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {SettingsProvider} from "../src/components/settings-provider";
 import {SidebarSessionGroups} from "../src/components/sidebar/session-filter-menu";
@@ -164,15 +164,16 @@ describe("sidebar Filter & group menu", () => {
 		]);
 	});
 
-	it("hides Last activity and shows Show empty groups in Project mode", async () => {
+	it("keeps Last activity and shows Show empty groups in Folder mode", async () => {
 		storePrefs({groupBy: "project"});
 		await renderSidebarGroups();
 		const menu = await openFilterMenu();
 
 		expect(menuOutline(menu)).toEqual([
 			"StatusActive",
+			"Last activity7d",
 			"---",
-			"Group byProject",
+			"Group byFolder",
 			"Sort byLast activity",
 			"---",
 			"Show empty groups",
@@ -188,11 +189,28 @@ describe("sidebar Filter & group menu", () => {
 
 		expect(menuOutline(menu)).toEqual([
 			"StatusActive",
+			"Last activity7d",
 			"---",
 			"Group byCustom groups",
 			"Sort byLast activity",
 			"---",
 			"Show empty groups",
+			"---",
+			"Clear filters",
+		]);
+	});
+
+	it.each(["date", "none"] as const)("keeps Last activity in %s mode", async (groupBy) => {
+		storePrefs({groupBy});
+		await renderSidebarGroups();
+		const menu = await openFilterMenu();
+
+		expect(menuOutline(menu)).toEqual([
+			"StatusActive",
+			"Last activity7d",
+			"---",
+			`Group by${groupBy === "date" ? "Date" : "None"}`,
+			"Sort byLast activity",
 			"---",
 			"Clear filters",
 		]);
@@ -239,7 +257,7 @@ describe("sidebar Filter & group menu", () => {
 			screen.getAllByRole("menuitemradio").map((node) => [node.textContent, node.getAttribute("aria-checked")]),
 		).toEqual([
 			["Date", "false"],
-			["Project", "false"],
+			["Folder", "false"],
 			["State", "true"],
 			["Custom groups", "false"],
 			["None", "false"],
@@ -252,7 +270,7 @@ describe("sidebar Filter & group menu", () => {
 
 		await openFilterMenu();
 		await openSubmenu(/^Group by/);
-		fireEvent.click(screen.getByRole("menuitemradio", {name: "Project"}));
+		fireEvent.click(screen.getByRole("menuitemradio", {name: "Folder"}));
 		await flush();
 
 		expect(groupNames(container)).toEqual(["alpha", "beta"]);
@@ -268,6 +286,25 @@ describe("sidebar Filter & group menu", () => {
 
 		expect(filterButton().getAttribute("aria-label")).toBe("Filter (active)");
 		expect(storedPrefs()).toEqual({...DEFAULT_SESSION_LIST_PREFS, statusFilter: "all"});
+	});
+
+	it.each([
+		[{}, "Filter"],
+		[{groupBy: "none", activityDays: "30d"}, "Filter (active)"],
+	] as const)("shows the trigger's label %j in a tooltip on hover", async (prefs, label) => {
+		storePrefs(prefs);
+		await renderSidebarGroups();
+		vi.useFakeTimers({toFake: ["setTimeout", "clearTimeout"]});
+		try {
+			fireEvent.pointerEnter(filterButton());
+			act(() => {
+				vi.advanceTimersByTime(300);
+			});
+
+			expect(screen.getByRole("tooltip").textContent).toBe(label);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("shows Show PR status once a row has PR data, and persists turning it off", async () => {
