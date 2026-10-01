@@ -36,7 +36,7 @@ class FakeObserverHub {
 
 function fakeObserverClass(callbacks: Map<string, ((entries: PerformanceEntry[]) => void)[]>) {
 	return class {
-		constructor(private readonly callback: PerformanceObserverCallback) {}
+		constructor(readonly callback: PerformanceObserverCallback) {}
 
 		observe(options: {type: string}): void {
 			const list = callbacks.get(options.type) ?? [];

@@ -4,6 +4,10 @@ default:
     @just --list --unsorted
 
 ci := env("CI", "")
+
+# Every recipe runs the lockfile's vite-plus, not whichever global `vp` the caller's PATH has: a stale global CLI chunks the client build differently and moves the bundle byte ceilings
+export PATH := justfile_directory() / "node_modules" / ".bin" + ":" + env("PATH")
+
 port := "7526"
 preview_port := "7527"
 
@@ -82,7 +86,7 @@ perf *args: install
     PERF_LARGE=1 vp exec vitest run tests/perf {{ args }}
     vp exec tsx scripts/perf-ceilings.ts --table
 
-# Ratchet the cold-load JS bytes of `/` and `/session/$id` from the client build manifest. Run after `just build`
+# Ratchet the cold-load JS bytes of `/` and `/session/$id` from the client build manifest. Run after `just build`; `just verify` runs it
 [group('perf')]
 perf-bundle: install
     vp exec tsx scripts/perf-bundle.ts
@@ -133,7 +137,7 @@ audit-just-options:
 
 # Run all pre-commit checks
 [arg("quick", long, value="true", help="Skip tests")]
-verify quick="": check build fallow pre-commit
+verify quick="": check build perf-bundle fallow pre-commit
     {{ if quick != "true" { "just _test" } else { "true" } }}
     @echo "All pre-commit checks passed!"
 

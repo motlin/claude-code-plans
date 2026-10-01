@@ -1,23 +1,23 @@
 {
 	"bundle.home.gzip": {
-		"ceiling": 425846,
+		"ceiling": 386805,
 		"unit": "bytes",
-		"tolerance": 0
+		"tolerance": 0.01
 	},
 	"bundle.home.raw": {
-		"ceiling": 1279975,
+		"ceiling": 1218645,
 		"unit": "bytes",
-		"tolerance": 0
+		"tolerance": 0.01
 	},
 	"bundle.session.gzip": {
-		"ceiling": 750087,
+		"ceiling": 709866,
 		"unit": "bytes",
-		"tolerance": 0
+		"tolerance": 0.01
 	},
 	"bundle.session.raw": {
-		"ceiling": 2338267,
+		"ceiling": 2280672,
 		"unit": "bytes",
-		"tolerance": 0
+		"tolerance": 0.01
 	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 11,
