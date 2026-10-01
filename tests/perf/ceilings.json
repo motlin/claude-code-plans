@@ -1,1 +1,302 @@
-{}
+{
+	"server.sessionOpen.large-long.detail.jsonl.bytesRead": {
+		"ceiling": 20000000,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-long.detail.jsonl.fullScans": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-long.detail.proc.spawned": {
+		"ceiling": 2,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-long.detail.resp.bytes": {
+		"ceiling": 492,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-long.detail.sql.count": {
+		"ceiling": 12,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-long.subagents.jsonl.bytesRead": {
+		"ceiling": 0,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-long.subagents.jsonl.fullScans": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-long.subagents.proc.spawned": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-long.subagents.resp.bytes": {
+		"ceiling": 2,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-long.subagents.sql.count": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-long.transcript.jsonl.bytesRead": {
+		"ceiling": 20000000,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-long.transcript.jsonl.fullScans": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-long.transcript.proc.spawned": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-long.transcript.resp.bytes": {
+		"ceiling": 523332,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-long.transcript.sql.count": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-wide.detail.jsonl.bytesRead": {
+		"ceiling": 64000000,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-wide.detail.jsonl.fullScans": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-wide.detail.proc.spawned": {
+		"ceiling": 2,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-wide.detail.resp.bytes": {
+		"ceiling": 552,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-wide.detail.sql.count": {
+		"ceiling": 12,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-wide.subagents.jsonl.bytesRead": {
+		"ceiling": 0,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-wide.subagents.jsonl.fullScans": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-wide.subagents.proc.spawned": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-wide.subagents.resp.bytes": {
+		"ceiling": 2,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-wide.subagents.sql.count": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-wide.transcript.jsonl.bytesRead": {
+		"ceiling": 64000000,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-wide.transcript.jsonl.fullScans": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-wide.transcript.proc.spawned": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-wide.transcript.resp.bytes": {
+		"ceiling": 485043,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionOpen.large-wide.transcript.sql.count": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.small.detail.jsonl.bytesRead": {
+		"ceiling": 500000,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionOpen.small.detail.jsonl.fullScans": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.small.detail.proc.spawned": {
+		"ceiling": 2,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.small.detail.resp.bytes": {
+		"ceiling": 463,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionOpen.small.detail.sql.count": {
+		"ceiling": 12,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.small.subagents.jsonl.bytesRead": {
+		"ceiling": 0,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionOpen.small.subagents.jsonl.fullScans": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.small.subagents.proc.spawned": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.small.subagents.resp.bytes": {
+		"ceiling": 2,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionOpen.small.subagents.sql.count": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.small.transcript.jsonl.bytesRead": {
+		"ceiling": 500000,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionOpen.small.transcript.jsonl.fullScans": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.small.transcript.proc.spawned": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.small.transcript.resp.bytes": {
+		"ceiling": 500074,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionOpen.small.transcript.sql.count": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.typical.detail.jsonl.bytesRead": {
+		"ceiling": 4500000,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionOpen.typical.detail.jsonl.fullScans": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.typical.detail.proc.spawned": {
+		"ceiling": 2,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.typical.detail.resp.bytes": {
+		"ceiling": 457,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionOpen.typical.detail.sql.count": {
+		"ceiling": 12,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.typical.subagents.jsonl.bytesRead": {
+		"ceiling": 0,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionOpen.typical.subagents.jsonl.fullScans": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.typical.subagents.proc.spawned": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.typical.subagents.resp.bytes": {
+		"ceiling": 2,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionOpen.typical.subagents.sql.count": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.typical.transcript.jsonl.bytesRead": {
+		"ceiling": 4500000,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionOpen.typical.transcript.jsonl.fullScans": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.typical.transcript.proc.spawned": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionOpen.typical.transcript.resp.bytes": {
+		"ceiling": 495796,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionOpen.typical.transcript.sql.count": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	}
+}
