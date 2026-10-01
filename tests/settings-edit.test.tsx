@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
 import {renderToStaticMarkup} from "react-dom/server";
-import {MarketplacesEditor, ObjectFieldsEditor, StringListEditor} from "../src/routes/settings_.edit";
+import {MarketplacesEditor, ObjectFieldsEditor, StringListEditor} from "../src/components/settings/settings-editors";
 import {OBJECT_EDITORS} from "../src/lib/settings-fields";
 
 const noop = () => {};

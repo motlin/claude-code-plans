@@ -5,7 +5,7 @@ import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 
 import {FIELD_DEFINITIONS, OBJECT_EDITORS} from "../src/lib/settings-fields";
-import {FormEditor} from "../src/routes/settings_.edit";
+import {FormEditor} from "../src/components/settings/settings-editors";
 
 function scalarFixture(): Record<string, unknown> {
 	const result: Record<string, unknown> = {};
