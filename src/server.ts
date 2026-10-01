@@ -3,7 +3,7 @@ import {homedir} from "node:os";
 import {join} from "node:path";
 import {withHeadBodyCancel} from "./lib/head-request";
 import {withServerTiming} from "./lib/perf/server-timing";
-import {formatStall, startStallMonitor, withActivityTracking} from "./lib/perf/event-loop-stalls";
+import {formatStall, startStallMonitor, trackActivity, withActivityTracking} from "./lib/perf/event-loop-stalls";
 import {closeWatcher, createWatcher, rebroadcastProjectSessions, resolveIgnoredDirNames} from "./lib/watcher";
 import {getDb, getShutdownSignal, initDb, runInitialScan, shutdownDb} from "./lib/db";
 import {startSweep, stopSweep} from "./lib/active-session-store";
@@ -53,39 +53,48 @@ void (async () => {
 	});
 
 	try {
-		await initDb();
+		await trackActivity("startup open database", () => initDb());
 	} catch (err) {
 		console.error("Failed to initialize database:", err);
 		return;
 	}
 
 	try {
-		await initPendingApprovalsCache(getDb().index, getShutdownSignal());
+		await trackActivity("startup pending-approvals scan", () =>
+			initPendingApprovalsCache(getDb().index, getShutdownSignal()),
+		);
 	} catch (err) {
 		console.error("Failed to initialize pending approvals cache:", err);
 	}
 
 	let watcher: RecursiveWatcher;
-	const fileContentRoots = await resolveFileSearchRoots(getDb().index);
+	const fileContentRoots = await trackActivity("startup file search roots", () =>
+		resolveFileSearchRoots(getDb().index),
+	);
 	const ignoredDirNames = resolveIgnoredDirNames();
 	try {
-		watcher = await createWatcher(
-			[PLANS_DIR, PROJECTS_DIR, COMMANDS_DIR, PLUGINS_DIR, TASKS_DIR, STATUSLINE_DIR, JOBS_DIR],
-			PROJECTS_DIR,
-			PLANS_DIR,
-			STATUSLINE_DIR,
-			fileContentRoots,
-			JOBS_DIR,
+		watcher = await trackActivity("startup watcher", () =>
+			createWatcher(
+				[PLANS_DIR, PROJECTS_DIR, COMMANDS_DIR, PLUGINS_DIR, TASKS_DIR, STATUSLINE_DIR, JOBS_DIR],
+				PROJECTS_DIR,
+				PLANS_DIR,
+				STATUSLINE_DIR,
+				fileContentRoots,
+				JOBS_DIR,
+			),
 		);
 	} catch (err) {
 		console.error("Failed to create watcher:", err);
 		return;
 	}
 
-	await new Promise<void>((resolve) => watcher.once("ready", () => resolve()));
+	await trackActivity(
+		"startup watcher ready",
+		() => new Promise<void>((resolve) => watcher.once("ready", () => resolve())),
+	);
 
 	try {
-		await runInitialScan(fileContentRoots, ignoredDirNames);
+		await trackActivity("startup initial scan", () => runInitialScan(fileContentRoots, ignoredDirNames));
 	} catch (err) {
 		console.error("Initial scan failed:", err);
 	}

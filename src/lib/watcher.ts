@@ -4,7 +4,8 @@ import {basename, dirname, join, resolve} from "node:path";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import {awaitInitialScan, getDb} from "./db";
 import {retryWhileBusy} from "./db/busy";
-import {trackActivity} from "./perf/event-loop-stalls";
+import {trackActivity, trackActivitySync} from "./perf/event-loop-stalls";
+import {jsonlResumeOffset} from "./jsonl-resume-offset";
 import {
 	deleteFileContent,
 	deleteMemoryFile,
@@ -440,7 +441,9 @@ function handleJobFileEvent(path: string, jobsRoot: string, broadcast: Broadcast
 function safeDiffSessions(projectId: string, broadcast: BroadcastFn = broadcastTyped, db?: IndexDb): void {
 	if (!projectId) return;
 	try {
-		diffAndBroadcastSessions(db ?? getDb().index, projectId, broadcast);
+		trackActivitySync(`session diff ${projectId}`, () =>
+			diffAndBroadcastSessions(db ?? getDb().index, projectId, broadcast),
+		);
 	} catch {
 		// transient DB error; next file event will retry
 	}
@@ -457,7 +460,7 @@ function safeDiffTasks(sessionId: string): void {
 	try {
 		const {index} = getDb();
 		const projectId = getSessionProjectId(index, sessionId);
-		if (projectId) diffAndBroadcastTasks(projectId);
+		if (projectId) trackActivitySync(`task diff ${projectId}`, () => diffAndBroadcastTasks(projectId));
 	} catch {
 		// transient DB error; next file event will retry
 	}
@@ -556,8 +559,8 @@ export async function processJsonlAppend(
 	broadcast: BroadcastFn,
 	dirs: JsonlAppendDirs = {projectsDir, plansDir},
 ): Promise<void> {
-	const fromOffset = offsets.get(path) ?? 0;
 	try {
+		const fromOffset = offsets.get(path) ?? (await jsonlResumeOffset(db, path));
 		const {readNewJsonlLines} = await import("./sessions");
 		const {lines: newLines, nextByteOffset} = await readNewJsonlLines(path, fromOffset);
 		offsets.set(path, nextByteOffset);
@@ -608,7 +611,9 @@ async function handleFileChange(path: string): Promise<void> {
 	const gitIndexRoot = fileContentRootByGitIndexPath.get(normalizedPath);
 	if (gitIndexRoot) {
 		try {
-			await refreshTrackedFileRoot(getDb().index, gitIndexRoot);
+			await trackActivity(`git index refresh ${gitIndexRoot}`, () =>
+				refreshTrackedFileRoot(getDb().index, gitIndexRoot),
+			);
 		} catch {
 			// A later watcher event or startup scan retries transient indexing failures.
 		}
@@ -637,7 +642,9 @@ async function handleFileChange(path: string): Promise<void> {
 		const fire = async () => {
 			throttleState.lastFired = Date.now();
 			delete throttleState.timer;
-			await processJsonlAppend(getDb().index, path, jsonlOffsets, broadcastTyped);
+			await trackActivity(`jsonl append ${path}`, () =>
+				processJsonlAppend(getDb().index, path, jsonlOffsets, broadcastTyped),
+			);
 		};
 
 		if (throttleState.timer !== undefined) clearTimeout(throttleState.timer);

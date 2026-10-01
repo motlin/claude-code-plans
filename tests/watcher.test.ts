@@ -12,6 +12,7 @@ import {
 	processJsonlAppend,
 } from "../src/lib/watcher";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
+import {indexFile} from "../src/lib/db/indexer";
 import * as schema from "../src/lib/db/schema";
 import {hmrPersist} from "../src/lib/hmr-persist";
 import {DOMAIN_EVENTS} from "../src/lib/hook-events";
@@ -500,6 +501,40 @@ describe("processJsonlAppend", () => {
 			DOMAIN_EVENTS.SESSION_UPDATED,
 		]);
 		expect(broadcasts[0]!.data).toStrictEqual({sessionId: "sess-append", lines: [secondLine]});
+	});
+
+	it("after a restart, broadcasts only the lines appended since the transcript was indexed", async () => {
+		const projectsDir = testDir;
+		const projectDir = join(projectsDir, "-Users-alice-projects-restart");
+		mkdirSync(projectDir, {recursive: true});
+		const history = Array.from({length: 50}, (_, index) => ({
+			type: "user",
+			sessionId: "sess-restart",
+			uuid: `history-${index}`,
+			timestamp: "2000-01-01T00:00:00.000Z",
+			message: {role: "user", content: `Earlier turn ${index}`},
+		}));
+		const jsonlPath = join(projectDir, "sess-restart.jsonl");
+		writeFileSync(jsonlPath, jsonl(...history));
+		await indexFile(db.index, jsonlPath, projectsDir);
+
+		const appended = {
+			type: "user",
+			sessionId: "sess-restart",
+			uuid: "after-restart",
+			timestamp: "2000-01-01T00:05:00.000Z",
+			message: {role: "user", content: "First turn after the restart"},
+		};
+		appendFileSync(jsonlPath, jsonl(appended));
+		const broadcasts: CapturedBroadcast[] = [];
+		await processJsonlAppend(db.index, jsonlPath, new Map(), (type, data) => broadcasts.push({type, data}), {
+			projectsDir,
+			plansDir: "",
+		});
+
+		expect(broadcasts.filter((b) => b.type === DOMAIN_EVENTS.SESSION_LINES_APPENDED)).toStrictEqual([
+			{type: DOMAIN_EVENTS.SESSION_LINES_APPENDED, data: {sessionId: "sess-restart", lines: [appended]}},
+		]);
 	});
 });
 

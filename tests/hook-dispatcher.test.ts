@@ -1,9 +1,9 @@
-import {writeFileSync, mkdirSync, rmSync} from "node:fs";
+import {appendFileSync, writeFileSync, mkdirSync, rmSync} from "node:fs";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {vi} from "vite-plus/test";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
-import {indexSessionsIndex} from "../src/lib/db/indexer";
+import {indexFile, indexSessionsIndex} from "../src/lib/db/indexer";
 import {dispatchHookEvent} from "../src/lib/hook-dispatcher";
 import {DOMAIN_EVENTS, SSE_EVENTS} from "../src/lib/hook-events";
 import type {HookBackgroundTaskPayload, HookEvent, HookSessionCronPayload} from "../src/lib/hook-events";
@@ -2001,6 +2001,45 @@ describe("dispatchHookEvent", () => {
 			});
 
 			expect(broadcasts.filter((b) => b.type === DOMAIN_EVENTS.SESSION_LINES_APPENDED).length).toBe(0);
+		});
+
+		it("after a restart, PostToolUse broadcasts only the lines appended since the transcript was indexed", async () => {
+			const dirs = makeDirs();
+			const projectId = "-Users-craig-projects-app";
+			const projectDir = join(dirs.projectsDir, projectId);
+			mkdirSync(projectDir, {recursive: true});
+			const sessionId = "restart-123";
+			const transcriptPath = join(projectDir, `${sessionId}.jsonl`);
+			const history = Array.from({length: 50}, (_, index) =>
+				JSON.stringify({type: "user", uuid: `history-${index}`, message: `turn ${index}`}),
+			);
+			writeFileSync(transcriptPath, history.map((line) => line + "\n").join(""));
+			await indexFile(db.index, transcriptPath, dirs.projectsDir);
+			const appended = {type: "assistant", uuid: "after-restart", message: "fresh"};
+			appendFileSync(transcriptPath, JSON.stringify(appended) + "\n");
+
+			const broadcasts: Broadcast[] = [];
+			const {store} = makeStore();
+			await dispatchHookEvent({
+				event: {
+					hook_event_name: "PostToolUse",
+					session_id: sessionId,
+					transcript_path: transcriptPath,
+					cwd: "/tmp",
+					tool_name: "Bash",
+					tool_input: {command: "echo hi"},
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) => broadcasts.push({type, data}),
+				dirs,
+				state: {jsonlOffsets: new Map()},
+				reportHerdrState: () => {},
+			});
+
+			expect(broadcasts.filter((b) => b.type === DOMAIN_EVENTS.SESSION_LINES_APPENDED)).toStrictEqual([
+				{type: DOMAIN_EVENTS.SESSION_LINES_APPENDED, data: {sessionId, lines: [appended]}},
+			]);
 		});
 	});
 
