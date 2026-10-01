@@ -95,7 +95,7 @@ export type HerdrLaunchResponse = z.infer<typeof HerdrLaunchSuccessResponse>;
 
 /** Start `claude` (with `prompt` and/or `args`) in a new herdr tab rooted at `cwd`; throws when herdr cannot. */
 export async function launchHerdrSession(
-	launch: {cwd: string; prompt?: string; args?: string[]},
+	launch: {cwd?: string; prompt?: string; args?: string[]},
 	fetcher: typeof fetch = fetch,
 ): Promise<HerdrLaunchResponse> {
 	const response = await fetcher("/api/herdr/launch", {

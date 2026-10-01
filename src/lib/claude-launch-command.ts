@@ -45,7 +45,8 @@ function shellWord(value: string): string {
 }
 
 export interface ClaudeLaunchCommand {
-	cwd: string;
+	/** Omitted to run in the terminal's current directory. */
+	cwd?: string;
 	prompt?: string;
 	args?: readonly string[];
 }
@@ -54,5 +55,6 @@ export interface ClaudeLaunchCommand {
 export function buildClaudeCopyCommand({cwd, prompt, args = []}: ClaudeLaunchCommand): string {
 	const words = ["claude", ...args.map(shellWord)];
 	if (prompt !== undefined) words.push(shellQuote(prompt));
-	return `cd ${shellQuote(cwd)} && ${words.join(" ")}`;
+	const command = words.join(" ");
+	return cwd === undefined ? command : `cd ${shellQuote(cwd)} && ${command}`;
 }

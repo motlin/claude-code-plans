@@ -92,6 +92,7 @@ function dependencies(overrides: Partial<HerdrLaunchDependencies> = {}): HerdrLa
 		request: async () => ({ok: true, value: {type: "ok"}}),
 		createLaunchId: () => "test100",
 		wait: async () => {},
+		homeDir: () => "/Users/alice",
 		...overrides,
 	};
 }
@@ -143,7 +144,6 @@ describe("herdr launch write handler", () => {
 	});
 
 	it.each([
-		{name: "missing cwd", body: {}},
 		{name: "relative cwd", body: {cwd: "project"}},
 		{name: "empty prompt", body: {cwd: "/Users/alice/project", prompt: ""}},
 		{name: "unknown field", body: {cwd: "/Users/alice/project", shell: "zsh"}},
@@ -250,6 +250,27 @@ describe("herdr launch write handler", () => {
 			methods: herdr.requests.map(({request: sent}) => (sent as {method: string}).method),
 			startArgs: (herdr.requests[1]?.request as {params: {args: string[]}}).params.args,
 		}).toStrictEqual({status: 200, methods: ["tab.create", "agent.start"], startArgs: []});
+	});
+
+	it("opens the tab in the home directory when no cwd is given", async () => {
+		const herdr = fakeHerdr({
+			"tab.create": {ok: true, value: tabCreated},
+			"agent.start": {ok: true, value: agentStarted(["claude"])},
+		});
+
+		const response = await handleHerdrLaunch(request({}), dependencies({request: herdr.requester}));
+
+		expect({
+			status: response.status,
+			tabCreate: herdr.requests[0]?.request,
+		}).toStrictEqual({
+			status: 200,
+			tabCreate: {
+				id: "ccp:launch:test100:tab.create",
+				method: "tab.create",
+				params: {cwd: "/Users/alice", focus: false},
+			},
+		});
 	});
 
 	it("retries the prompt while herdr is still registering the new agent", async () => {

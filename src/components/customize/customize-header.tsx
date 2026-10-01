@@ -4,6 +4,7 @@ import {ArrowDownUp, Search, SlidersHorizontal, X} from "lucide-react";
 import {type ReactNode, useEffect, useState} from "react";
 import {customizeDiscoverQueryOptions} from "../../lib/api/customize";
 import {Menu, MenuContent, MenuLabel, MenuRadioGroup, MenuRadioItem, MenuTrigger} from "../ui/menu";
+import {CustomizeAddMenu} from "./customize-add-menu";
 import {DISCOVER_SORT_OPTIONS, discoverCategoryOptions, discoverForSection} from "./discover-view";
 import {useSectionSort, writeStoredSort} from "./persisted-sort";
 import {
@@ -30,8 +31,7 @@ interface CustomizeHeaderProps {
 
 /**
  * Upstream Customize `PageHeader`: serif H1, section tabs, the Yours | Discover
- * segmented control, and the right-hand search, Filter and Sort controls. The
- * cloud-only Add menu is omitted.
+ * segmented control, and the right-hand search, Filter, Sort and Add controls.
  */
 export function CustomizeHeader({section, search}: CustomizeHeaderProps) {
 	const navigate = useNavigate();
@@ -164,6 +164,7 @@ export function CustomizeHeader({section, search}: CustomizeHeaderProps) {
 						}}
 					/>
 				)}
+				<CustomizeAddMenu section={section.id} />
 			</div>
 		</header>
 	);

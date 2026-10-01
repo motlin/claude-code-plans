@@ -4,6 +4,11 @@ import {buildClaudeCopyCommand, validateClaudeLaunchArgs} from "../src/lib/claud
 describe("buildClaudeCopyCommand", () => {
 	it.each([
 		{
+			name: "no directory",
+			input: {prompt: "/skill-creator"},
+			expected: "claude '/skill-creator'",
+		},
+		{
 			name: "bare launch",
 			input: {cwd: "/Users/alice/project"},
 			expected: "cd '/Users/alice/project' && claude",

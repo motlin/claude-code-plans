@@ -1,3 +1,4 @@
+import {homedir} from "node:os";
 import {z} from "zod";
 import {validateClaudeLaunchArgs} from "../claude-launch-command";
 import {herdrWritesEnabled} from "../config";
@@ -14,7 +15,8 @@ const PROMPT_RETRY_DELAY_MS = 250;
 
 const HerdrLaunchRequestSchema = z
 	.object({
-		cwd: z.string().startsWith("/"),
+		/** Absent for launches tied to no project, which start in the home directory. */
+		cwd: z.string().startsWith("/").optional(),
 		prompt: z
 			.string()
 			.refine((prompt) => prompt.trim() !== "")
@@ -44,6 +46,7 @@ export interface HerdrLaunchDependencies {
 	/** Lowercase alphanumeric id shared by the request ids and the herdr agent name. */
 	createLaunchId: () => string;
 	wait: (ms: number) => Promise<void>;
+	homeDir: () => string;
 }
 
 const defaultDependencies: HerdrLaunchDependencies = {
@@ -52,6 +55,7 @@ const defaultDependencies: HerdrLaunchDependencies = {
 	request: herdrRequest,
 	createLaunchId: () => crypto.randomUUID().replaceAll("-", "").slice(0, 12),
 	wait: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+	homeDir: homedir,
 };
 
 function failure(code: string, message: string): HerdrResult<never> {
@@ -64,7 +68,7 @@ function failure(code: string, message: string): HerdrResult<never> {
  * herdr refuses to encode multi-line argv for the target shell.
  */
 async function launchClaudeInHerdr(
-	{cwd, prompt, args = []}: HerdrLaunchRequest,
+	{cwd, prompt, args = []}: HerdrLaunchRequest & {cwd: string},
 	{request, createLaunchId, wait}: Pick<HerdrLaunchDependencies, "request" | "createLaunchId" | "wait">,
 ): Promise<HerdrResult<HerdrLaunchResult>> {
 	const launchId = createLaunchId();
@@ -161,7 +165,10 @@ export async function handleHerdrLaunch(
 		return Response.json({error: z.prettifyError(parsed.error)}, {status: 400});
 	}
 
-	const result = await launchClaudeInHerdr(parsed.data, dependencies);
+	const result = await launchClaudeInHerdr(
+		{...parsed.data, cwd: parsed.data.cwd ?? dependencies.homeDir()},
+		dependencies,
+	);
 	if (!result.ok) {
 		return Response.json({error: result.message}, {status: errorStatus(result.code)});
 	}

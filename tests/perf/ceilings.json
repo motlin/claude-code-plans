@@ -14,9 +14,11 @@
 		"raisedAt": "2026-10-01"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 709866,
+		"ceiling": 717005,
 		"unit": "bytes",
-		"tolerance": 0.01
+		"tolerance": 0.01,
+		"reason": "Base f5c6dfd0 already measured 716874 (Customize Discover Filter/Sort and earlier landings), plus about 130 bytes for the optional-cwd launch command shared with the Customize Add menu",
+		"raisedAt": "2026-10-01"
 	},
 	"bundle.session.raw": {
 		"ceiling": 2280672,

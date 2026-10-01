@@ -25,10 +25,14 @@ import {Route as CustomizeLayoutRoute} from "../src/routes/customize";
 import {Route as CustomizeConnectorsRoute} from "../src/routes/customize.connectors";
 import {Route as CustomizePluginsRoute} from "../src/routes/customize.plugins";
 import {Route as CustomizeSkillsRoute} from "../src/routes/customize.skills";
+import {startClaudeSession} from "../src/lib/start-claude-session";
 import {installLocalStorage} from "./fake-storage";
+
+vi.mock("../src/lib/start-claude-session", () => ({startClaudeSession: vi.fn(async () => "launched")}));
 
 beforeEach(() => {
 	installLocalStorage();
+	vi.mocked(startClaudeSession).mockClear();
 });
 
 afterEach(() => {
@@ -462,5 +466,104 @@ describe("customize discover", () => {
 			{heading: "Yours", rows: ["deploy-checklist"]},
 			{heading: "More you can add", rows: ["Deploy"]},
 		]);
+	});
+});
+
+describe("customize add menu", () => {
+	function menuItems() {
+		return within(screen.getByRole("menu"))
+			.getAllByRole("menuitem")
+			.map((item) => item.textContent);
+	}
+
+	async function openAddMenu(name: string) {
+		await act(async () => {
+			fireEvent.click(screen.getByRole("button", {name}));
+		});
+		await flush();
+	}
+
+	it("starts a session with the skill-creator prompt from the Skills Add menu", async () => {
+		const skillCreator: SkillSummary = {
+			id: "plugin:skill-creator@anthropic:skill-creator",
+			name: "skill-creator",
+			description: "Create new skills.",
+			source: "plugin",
+			sourceLabel: "skill-creator",
+			dir: "/Users/test/.claude/plugins/cache/skill-creator/skills/skill-creator",
+			mtime: Date.parse("2026-09-12T12:00:00Z"),
+			enabled: true,
+		};
+		await renderCustomize("/customize/skills", [...SKILLS, skillCreator]);
+		await openAddMenu("Add skill");
+		const items = menuItems();
+
+		await act(async () => {
+			fireEvent.click(screen.getByRole("menuitem", {name: "Create with Claude"}));
+		});
+
+		expect({
+			items,
+			prompts: vi.mocked(startClaudeSession).mock.calls.map(([prompt]) => prompt),
+		}).toStrictEqual({items: ["Create with Claude"], prompts: ["/skill-creator"]});
+	});
+
+	it("falls back to a plain prompt when the skill-creator skill is absent", async () => {
+		await renderCustomize("/customize/skills");
+		await openAddMenu("Add skill");
+
+		await act(async () => {
+			fireEvent.click(screen.getByRole("menuitem", {name: "Create with Claude"}));
+		});
+
+		expect(vi.mocked(startClaudeSession).mock.calls.map(([prompt]) => prompt)).toStrictEqual([
+			"Create a new skill",
+		]);
+	});
+
+	it("offers Add marketplace and Create with Claude in the Plugins Add menu", async () => {
+		const writeText = vi.fn(() => Promise.resolve());
+		Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
+		await renderCustomize("/customize/plugins");
+		await openAddMenu("Add plugin");
+		const items = menuItems();
+
+		await act(async () => {
+			fireEvent.click(screen.getByRole("menuitem", {name: "Add marketplace"}));
+		});
+		await flush();
+
+		expect({
+			items,
+			calls: writeText.mock.calls,
+			toast: screen.getByText("Command copied: claude plugin marketplace add").textContent,
+		}).toStrictEqual({
+			items: ["Add marketplace", "Create with Claude"],
+			calls: [["claude plugin marketplace add "]],
+			toast: "Command copied: claude plugin marketplace add",
+		});
+	});
+
+	it("copies the claude mcp add command from the Connectors Add menu", async () => {
+		const writeText = vi.fn(() => Promise.resolve());
+		Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
+		await renderCustomize("/customize/connectors");
+		await openAddMenu("Add connector");
+		const items = menuItems();
+
+		await act(async () => {
+			fireEvent.click(screen.getByRole("menuitem", {name: "Add custom connector"}));
+		});
+		await flush();
+
+		expect({
+			items,
+			calls: writeText.mock.calls,
+			toast: screen.getByText("Command copied: claude mcp add").textContent,
+		}).toStrictEqual({
+			items: ["Add custom connector"],
+			calls: [["claude mcp add "]],
+			toast: "Command copied: claude mcp add",
+		});
 	});
 });
