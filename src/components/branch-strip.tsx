@@ -1,10 +1,9 @@
-import {FolderGit2, GitBranch, GitPullRequest, X} from "lucide-react";
+import {FolderGit2, GitBranch, X} from "lucide-react";
 import {useCallback, useEffect, useRef, useState} from "react";
 
 import type {SessionDetailData} from "../lib/api/sessions";
 import {requestChangesScope} from "../lib/changes-scope-request";
 import {pluralize} from "../lib/pluralize";
-import {type GitPrState, prGlyph} from "../lib/pr-status";
 import {useOptionalPaneHost} from "./panes/tile-host";
 import {ProjectMenuItems} from "./session-titlebar";
 import {Menu, MenuContent, MenuTrigger} from "./ui/menu";
@@ -19,15 +18,6 @@ const DISMISS_KEY_PREFIX = "branch-strip-dismissed:";
 
 const GHOST_BUTTON =
 	"inline-flex h-6 min-w-0 shrink-0 cursor-pointer items-center gap-1 rounded-r5 px-1.5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 data-[popup-open]:bg-fill-ghost-hover";
-
-const PR_STATE_CLASS = {
-	opened: "text-git-opened",
-	draft: "text-git-draft",
-	merged: "text-git-merged",
-	closed: "text-git-closed",
-	conflicting: "text-git-conflicting",
-	queued: "text-git-queued",
-} as const satisfies Record<GitPrState, string>;
 
 /** The session fields the strip reads. */
 export type BranchStripSession = Pick<
@@ -51,8 +41,13 @@ function numberAt(data: Record<string, unknown> | null, group: string, key: stri
 	return typeof leaf === "number" ? leaf : undefined;
 }
 
+interface LineCounts {
+	additions: number;
+	deletions: number;
+}
+
 /** `+N −M` from the statusline's `cost.total_lines_added/removed`, or null when nothing changed. */
-function lineCounts(statusline: Record<string, unknown> | null) {
+function lineCounts(statusline: Record<string, unknown> | null): LineCounts | null {
 	const additions = numberAt(statusline, "cost", "total_lines_added") ?? 0;
 	const deletions = numberAt(statusline, "cost", "total_lines_removed") ?? 0;
 	return additions > 0 || deletions > 0 ? {additions, deletions} : null;
@@ -125,38 +120,21 @@ function DiffStatButton({sessionId, additions, deletions}: {sessionId: string; a
 	);
 }
 
-function PrChip({session}: {session: BranchStripSession}) {
-	const number = session.prStatus?.number ?? session.pr?.number;
-	if (number === undefined) return null;
-	const url = session.prStatus?.url ?? session.pr?.url;
-	const state = session.prStatus === undefined ? undefined : prGlyph(session.prStatus).state;
-	const color = state === undefined ? "text-secondary" : PR_STATE_CLASS[state];
-	const title = session.prStatus?.title ?? `Pull request #${number}`;
-	const content = (
-		<>
-			<GitPullRequest aria-hidden className={`size-3.5 shrink-0 ${color}`} />
-			{`#${number}`}
-		</>
-	);
-	const common = {
-		"data-pr-chip": "",
-		...(state === undefined ? {} : {"data-pr-state": state}),
-		title,
-		className: `${GHOST_BUTTON} tabular-nums no-underline`,
-	};
-	return url === undefined ? (
-		<span {...common}>{content}</span>
-	) : (
-		<a {...common} href={url} target="_blank" rel="noopener noreferrer">
-			{content}
-		</a>
-	);
+/**
+ * Upstream shows the strip only on the way to a PR: a session with a repo branch or line counts
+ * and no PR yet gets the strip (with Create PR there). Once the session has a PR, upstream's dock
+ * is the composer alone (session 7e8c9305: open PR #1954, committed changes, no strip). The line
+ * counts stay reachable through the Changes pane and the PR through the header menu.
+ */
+export function branchStripVisible(session: BranchStripSession, counts: LineCounts | null): boolean {
+	if (session.pr !== undefined || session.prStatus !== undefined) return false;
+	return session.gitBranch !== null || counts !== null;
 }
 
 /**
- * Upstream's composer branch strip: project menu · branch · `+N −M` (opens Changes) · PR chip ·
- * Dismiss. Built from local data: the indexed branch and pr-link, the PR status service, and the
- * statusline's line counts. Create PR is cloud-only and has no local counterpart.
+ * Upstream's composer branch strip: project menu · branch · `+N −M` (opens Changes) · Dismiss.
+ * Built from the indexed branch and the statusline's line counts; shown per `branchStripVisible`.
+ * Create PR is cloud-only and has no local counterpart.
  */
 export function BranchStrip({
 	sessionId,
@@ -171,9 +149,8 @@ export function BranchStrip({
 	const {ref, width} = useContainerWidth();
 	const counts = lineCounts(statusline);
 	const branch = session.gitBranch;
-	const hasPr = session.pr !== undefined || session.prStatus !== undefined;
 
-	if (dismissed || (branch === null && counts === null && !hasPr)) return null;
+	if (dismissed || !branchStripVisible(session, counts)) return null;
 	const narrow = width !== null && width <= HIDDEN_AT_OR_BELOW_PX;
 	const path = session.projectPath ?? session.cwd;
 
@@ -204,7 +181,6 @@ export function BranchStrip({
 						</span>
 					)}
 					{counts !== null && <DiffStatButton sessionId={sessionId} {...counts} />}
-					<PrChip session={session} />
 					<button
 						type="button"
 						aria-label="Dismiss"

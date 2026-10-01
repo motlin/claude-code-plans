@@ -3,7 +3,7 @@
 import {act, cleanup, fireEvent, render, type RenderResult, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {BranchStrip, type BranchStripSession, middleTruncate} from "../src/components/branch-strip";
+import {BranchStrip, type BranchStripSession, branchStripVisible, middleTruncate} from "../src/components/branch-strip";
 import {ToastProvider} from "../src/components/toast";
 
 let stripWidth = 800;
@@ -77,32 +77,6 @@ describe("BranchStrip", () => {
 		}).toStrictEqual({project: "claude-code-plans", branch: "feature/branch-strip"});
 	});
 
-	it("omits the PR chip without a pr-link", () => {
-		const view = renderStrip();
-		expect(view.container.querySelector("[data-pr-chip]")).toBeNull();
-	});
-
-	it("links the PR chip to the pr-link url", () => {
-		const view = renderStrip({
-			...SESSION,
-			pr: {number: 42, url: "https://github.com/o/r/pull/42", repository: "o/r"},
-		});
-		const chip = view.container.querySelector("[data-pr-chip]");
-		expect({text: chip?.textContent, href: chip?.getAttribute("href")}).toStrictEqual({
-			text: "#42",
-			href: "https://github.com/o/r/pull/42",
-		});
-	});
-
-	it("colors the PR chip by the known PR state", () => {
-		const view = renderStrip({
-			...SESSION,
-			pr: {number: 42, url: "https://github.com/o/r/pull/42", repository: "o/r"},
-			prStatus: {number: 42, state: "merged", url: "https://github.com/o/r/pull/42"},
-		});
-		expect(view.container.querySelector("[data-pr-chip]")?.getAttribute("data-pr-state")).toBe("merged");
-	});
-
 	it("stays dismissed for that session only", () => {
 		const first = renderStrip();
 		fireEvent.click(first.getByRole("button", {name: "Dismiss"}));
@@ -124,9 +98,61 @@ describe("BranchStrip", () => {
 		expect(strip(renderStrip())).not.toBeNull();
 	});
 
-	it("renders nothing without a branch, line counts or PR", () => {
+	it("renders nothing without a branch or line counts", () => {
 		const view = renderStrip({...SESSION, gitBranch: null}, "session-1", null);
 		expect(strip(view)).toBeNull();
+	});
+
+	it("renders nothing once the session has an open PR, as upstream's dock does for session 7e8c9305", () => {
+		const view = renderStrip(
+			{
+				projectName: "eclipse-collections",
+				projectPath: "/work/eclipse-collections",
+				cwd: "/work/eclipse-collections",
+				gitBranch: "OrderedHashMap",
+				pr: {
+					number: 1954,
+					url: "https://github.com/eclipse-collections/eclipse-collections/pull/1954",
+					repository: "eclipse-collections/eclipse-collections",
+				},
+				prStatus: {
+					number: 1954,
+					state: "open",
+					url: "https://github.com/eclipse-collections/eclipse-collections/pull/1954",
+				},
+			},
+			"7e8c9305-b260-43d0-b551-61e69ac86890",
+			{cost: {total_lines_added: 178, total_lines_removed: 34}},
+		);
+		expect({strip: strip(view), dismiss: view.queryByRole("button", {name: "Dismiss"})}).toStrictEqual({
+			strip: null,
+			dismiss: null,
+		});
+	});
+});
+
+describe("branchStripVisible", () => {
+	const PR = {number: 1954, url: "https://github.com/o/r/pull/1954", repository: "o/r"};
+	const COMMITTED = {additions: 178, deletions: 34};
+	const status = (state: "open" | "draft" | "merged" | "closed") => ({number: 1954, state, url: PR.url});
+
+	it.each([
+		["no PR, uncommitted changes (upstream: strip with Create PR)", {gitBranch: "b"}, COMMITTED, true],
+		["no PR, branch only", {gitBranch: "b"}, null, true],
+		["no PR, line counts without a branch", {gitBranch: null}, COMMITTED, true],
+		["no PR, no branch, no line counts", {gitBranch: null}, null, false],
+		[
+			"open PR, committed changes (session 7e8c9305)",
+			{gitBranch: "b", pr: PR, prStatus: status("open")},
+			COMMITTED,
+			false,
+		],
+		["pr-link without a known state", {gitBranch: "b", pr: PR}, COMMITTED, false],
+		["draft PR", {gitBranch: "b", pr: PR, prStatus: status("draft")}, COMMITTED, false],
+		["merged PR", {gitBranch: "b", pr: PR, prStatus: status("merged")}, null, false],
+		["PR status from gh without a pr-link", {gitBranch: "b", prStatus: status("open")}, COMMITTED, false],
+	] as const)("%s", (_state, fields, counts, expected) => {
+		expect(branchStripVisible({...SESSION, ...fields}, counts)).toBe(expected);
 	});
 });
 
@@ -144,11 +170,6 @@ describe("BranchStrip project menu", () => {
 	const fetchMock = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
 	const writeText = vi.fn<(text: string) => Promise<void>>();
 	const openMock = vi.fn<typeof window.open>();
-	const withRepository: BranchStripSession = {
-		...SESSION,
-		pr: {number: 42, url: "https://github.com/o/r/pull/42", repository: "o/r"},
-	};
-
 	async function flush() {
 		await act(async () => {
 			await new Promise((resolve) => setTimeout(resolve, 0));
@@ -177,27 +198,22 @@ describe("BranchStrip project menu", () => {
 		vi.unstubAllGlobals();
 	});
 
-	it("offers Finder, path, branch and the GitHub repository when known", async () => {
-		renderStrip(withRepository);
+	it("offers Finder, path and branch", async () => {
+		renderStrip();
 
-		expect(await openProjectMenu()).toStrictEqual([
-			"Open in Finder",
-			"Copy path",
-			"Copy branch name",
-			"Open repository on GitHub",
-		]);
+		expect(await openProjectMenu()).toStrictEqual(["Open in Finder", "Copy path", "Copy branch name"]);
 	});
 
-	it("drops branch and repository items when the session has neither", async () => {
+	it("drops the branch item when the session has no branch", async () => {
 		renderStrip({...SESSION, gitBranch: null});
 
 		expect(await openProjectMenu()).toStrictEqual(["Open in Finder", "Copy path"]);
 	});
 
 	it("wires each item to its action", async () => {
-		renderStrip(withRepository);
+		renderStrip();
 
-		for (const item of ["Copy path", "Copy branch name", "Open repository on GitHub", "Open in Finder"]) {
+		for (const item of ["Copy path", "Copy branch name", "Open in Finder"]) {
 			await openProjectMenu();
 			fireEvent.click(screen.getByRole("menuitem", {name: item}));
 			await flush();
@@ -211,7 +227,7 @@ describe("BranchStrip project menu", () => {
 				.map(([input, init]) => [typeof input === "string" ? input : "", init?.body]),
 		}).toStrictEqual({
 			clipboard: [["/work/claude-code-plans"], ["feature/branch-strip"]],
-			opened: [["https://github.com/o/r", "_blank", "noopener,noreferrer"]],
+			opened: [],
 			posts: [["/api/open-in-finder", JSON.stringify({sessionId: "session-1"})]],
 		});
 	});

@@ -25,7 +25,16 @@ import {
 import {SessionTitleButton, useSessionTitleShortcuts} from "./session-title-heading";
 import {TitlebarWidthContext} from "./titlebar-width";
 import {useToast} from "./toast";
-import {Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "./ui/menu";
+import {
+	Menu,
+	MenuContent,
+	MenuItem,
+	MenuSeparator,
+	MenuSub,
+	MenuSubContent,
+	MenuSubTrigger,
+	MenuTrigger,
+} from "./ui/menu";
 import {Tooltip} from "./ui/tooltip";
 
 /** Below this titlebar width the origin pills collapse to icons, like upstream's `data-pills-compact` (tile-slot ≤560px). */
@@ -122,7 +131,10 @@ function OriginPill({
 /** The session fields the project menu reads. */
 export type ProjectMenuSession = Pick<SessionDetailData, "projectPath" | "cwd" | "gitBranch" | "pr">;
 
-/** The project menu's items, opened from the composer branch strip's project button. */
+/**
+ * The project menu's items: the composer branch strip's project button, and the header menu's
+ * Project submenu, which keeps them reachable while the strip is hidden.
+ */
 export function ProjectMenuItems({sessionId, session}: {sessionId: string; session: ProjectMenuSession}) {
 	const toast = useToast();
 	const path = session.projectPath ?? session.cwd;
@@ -168,11 +180,13 @@ export interface SessionHeaderLocalActions {
 
 function HeaderLocalSection({
 	sessionId,
+	project,
 	pinned,
 	hasLivePane,
 	local,
 }: {
 	sessionId: string;
+	project: ProjectMenuSession;
 	pinned: boolean;
 	hasLivePane: boolean;
 	local: SessionHeaderLocalActions;
@@ -188,6 +202,12 @@ function HeaderLocalSection({
 	return (
 		<>
 			<MenuSeparator />
+			<MenuSub>
+				<MenuSubTrigger>Project</MenuSubTrigger>
+				<MenuSubContent>
+					<ProjectMenuItems sessionId={sessionId} session={project} />
+				</MenuSubContent>
+			</MenuSub>
 			<MenuItem onSelect={() => void copyWithToast(toast, sessionId, "Session ID")}>Copy session ID</MenuItem>
 			<MenuItem onSelect={() => void copyWithToast(toast, local.resumeCommand, "Resume command")}>
 				Copy resume command
@@ -282,7 +302,13 @@ function HeaderMenuBody({
 				run={run}
 			/>
 			{local !== undefined && (
-				<HeaderLocalSection sessionId={sessionId} pinned={pinned} hasLivePane={hasLivePane} local={local} />
+				<HeaderLocalSection
+					sessionId={sessionId}
+					project={data}
+					pinned={pinned}
+					hasLivePane={hasLivePane}
+					local={local}
+				/>
 			)}
 		</>
 	);

@@ -117,7 +117,10 @@ function localActions(overrides: Partial<SessionHeaderLocalActions> = {}): Sessi
 	};
 }
 
-async function renderTitlebar(local: SessionHeaderLocalActions, {live = true} = {}) {
+async function renderTitlebar(
+	local: SessionHeaderLocalActions,
+	{live = true, data = detail}: {live?: boolean; data?: SessionDetailData} = {},
+) {
 	const queryClient = new QueryClient({
 		defaultOptions: {
 			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
@@ -132,7 +135,7 @@ async function renderTitlebar(local: SessionHeaderLocalActions, {live = true} = 
 		component: () => (
 			<QueryClientProvider client={queryClient}>
 				<ToastProvider>
-					<SessionTitlebar sessionId={SESSION_ID} data={detail} isActive={false} local={local} />
+					<SessionTitlebar sessionId={SESSION_ID} data={data} isActive={false} local={local} />
 				</ToastProvider>
 			</QueryClientProvider>
 		),
@@ -223,6 +226,7 @@ describe("session header menu", () => {
 		expect(menuShape(menu)).toStrictEqual([
 			...modelShape(model),
 			"---",
+			"Project",
 			"Copy session ID",
 			"Copy resume command",
 			"Copy fork command",
@@ -243,6 +247,7 @@ describe("session header menu", () => {
 		const shape = menuShape(menu);
 
 		expect(shape.slice(shape.lastIndexOf("---") + 1)).toStrictEqual([
+			"Project",
 			"Copy session ID",
 			"Copy resume command",
 			"Copy fork command",
@@ -250,6 +255,29 @@ describe("session header menu", () => {
 			"Unpin",
 			"Mark reviewed",
 		]);
+	});
+
+	it("keeps the project menu reachable in a Project submenu while the branch strip is hidden by a PR", async () => {
+		const openMock = vi.fn<typeof window.open>().mockReturnValue(null);
+		vi.stubGlobal("open", openMock);
+		await renderTitlebar(localActions(), {
+			data: {
+				...detail,
+				pr: {number: 7, url: "https://github.com/alice/avalonlogs/pull/7", repository: "alice/avalonlogs"},
+			},
+		});
+		await openHeaderMenu();
+		fireEvent.click(screen.getByRole("menuitem", {name: "Project"}));
+		await flush();
+		const submenu = screen.getAllByRole("menu").at(-1);
+		const items = [...(submenu?.querySelectorAll('[role="menuitem"]') ?? [])].map((item) => item.textContent);
+		fireEvent.click(screen.getByRole("menuitem", {name: "Open repository on GitHub"}));
+		await flush();
+
+		expect({items, opened: openMock.mock.calls}).toStrictEqual({
+			items: ["Open in Finder", "Copy path", "Copy branch name", "Open repository on GitHub"],
+			opened: [["https://github.com/alice/avalonlogs", "_blank", "noopener,noreferrer"]],
+		});
 	});
 
 	it("shows a pending summary as a disabled item", async () => {
@@ -390,6 +418,7 @@ describe("session page header", () => {
 			removedIcons: [],
 			summaryButton: null,
 			local: [
+				"Project",
 				"Copy session ID",
 				"Copy resume command",
 				"Copy fork command",
