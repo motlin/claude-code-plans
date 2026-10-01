@@ -1,4 +1,24 @@
 {
+	"bundle.home.gzip": {
+		"ceiling": 425846,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"bundle.home.raw": {
+		"ceiling": 1279975,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"bundle.session.gzip": {
+		"ceiling": 750087,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"bundle.session.raw": {
+		"ceiling": 2338267,
+		"unit": "bytes",
+		"tolerance": 0
+	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 11,
 		"unit": "count",

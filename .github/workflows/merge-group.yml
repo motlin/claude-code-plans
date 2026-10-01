@@ -65,6 +65,7 @@ jobs:
           path: ~/.local/share/pnpm/store
           key: pnpm-${{ hashFiles('pnpm-lock.yaml') }}
       - run: just build
+      - run: just perf-bundle
 
   build-storybook:
     runs-on: ubuntu-latest

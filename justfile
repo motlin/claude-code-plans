@@ -82,6 +82,11 @@ perf *args: install
     PERF_LARGE=1 vp exec vitest run tests/perf {{ args }}
     vp exec tsx scripts/perf-ceilings.ts --table
 
+# Ratchet the cold-load JS bytes of `/` and `/session/$id` from the client build manifest. Run after `just build`
+[group('perf')]
+perf-bundle: install
+    vp exec tsx scripts/perf-bundle.ts
+
 # Rewrite tests/perf/ceilings.json to lowered and new measured counts. Manual only: never run from CI, a bot or a schedule
 [group('perf')]
 perf-ceilings: install

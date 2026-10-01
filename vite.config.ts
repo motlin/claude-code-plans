@@ -166,6 +166,13 @@ export default defineConfig({
 	resolve: {
 		tsconfigPaths: true,
 	},
+	environments: {
+		client: {
+			build: {
+				manifest: true,
+			},
+		},
+	},
 	plugins: [
 		nitro({
 			features: {websocket: true},
