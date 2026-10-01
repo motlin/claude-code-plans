@@ -4,18 +4,22 @@
 // `just perf-report` splits p75 by. Samples from a tab that was ever hidden are dropped: hidden tabs throttle rAF and
 // timers, so their wall-clock numbers are meaningless.
 
-/** Anchor selectors for journey ends, kept here so the upstream per-type row values can replace them in one place. */
+/**
+ * Anchor selectors for journey ends. Transcript rows carry upstream's `[data-testid=transcript-row]` with a per-type
+ * `data-perf-row` (human, assistant_text, assistant_tool, assistant_thinking, assistant, marker); the "Initialized
+ * session" row is a `marker` too, so the working marker is the one outside the transcript rows.
+ */
 export const PERF_ANCHORS = {
 	main: '[data-perf-region="main"]',
 	header: '[data-perf-region="header"]',
 	sidebarRecents: '[data-perf-region="sidebar_recents"]',
 	sidebarPinned: '[data-perf-region="sidebar_pinned"]',
 	sidePane: '[data-perf-region="side_pane"]',
-	transcriptRow: '[data-perf-row="turn"]',
-	lastTranscriptRow: '[data-perf-row="turn"][data-perf-last]',
+	transcriptRow: '[data-testid="transcript-row"]',
+	lastTranscriptRow: '[data-testid="transcript-row"][data-perf-last]',
 	sidebarRecentsRow: '[data-perf-region="sidebar_recents"] [data-row-main-button]',
 	homeSections: "[data-home-action-center][data-perf-ready]",
-	workingMarker: '[data-perf-row="marker"]',
+	workingMarker: '[data-perf-row="marker"]:not([data-testid="transcript-row"])',
 	commandPalette: '[data-perf-overlay="command_palette"]',
 } as const;
 

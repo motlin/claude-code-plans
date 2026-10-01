@@ -103,12 +103,65 @@ describe("SessionChat turn rows", () => {
 		}).toStrictEqual({messageAnchors: 0, copyLinkButtons: 0, copyMessageButtons: 4});
 	});
 
-	it("marks every mounted transcript row with the upstream data-perf-row anchor", () => {
-		const container = renderWindow(RECORDS, 0);
+	it("marks each transcript row with upstream's per-type data-perf-row value", () => {
+		const records = [
+			{type: "agent-name", agentName: "Alice", sessionId: "test-session"},
+			{type: "user", uuid: "u-1", message: {role: "user", content: "Fabricated question"}},
+			{
+				type: "assistant",
+				uuid: "a-tool",
+				message: {
+					role: "assistant",
+					content: [{type: "tool_use", id: "toolu_fabricated", name: "Bash", input: {command: "ls"}}],
+				},
+			},
+			{
+				type: "user",
+				uuid: "u-result",
+				message: {
+					role: "user",
+					content: [{type: "tool_result", tool_use_id: "toolu_fabricated", content: "fabricated.txt"}],
+				},
+			},
+			{
+				type: "assistant",
+				uuid: "a-think",
+				message: {
+					role: "assistant",
+					content: [{type: "thinking", thinking: "Fabricated pondering", signature: ""}],
+				},
+			},
+			{
+				type: "assistant",
+				uuid: "a-text",
+				message: {role: "assistant", content: [{type: "text", text: "Fabricated answer"}]},
+			},
+		];
+		vi.stubGlobal("innerHeight", 4000);
+		const {lines, toolResultMap} = processTranscript(records, 0);
+		const {container} = render(
+			<SessionChat
+				sessionId="test-session"
+				lines={lines}
+				toolResultMap={toolResultMap}
+				showSystemBanners
+				showThinking
+				showTools
+				shouldScrollToEnd={false}
+			/>,
+		);
 
-		expect({
-			rows: container.querySelectorAll("[data-transcript-entry-index]").length,
-			anchoredRows: container.querySelectorAll('[data-transcript-entry-index][data-perf-row="turn"]').length,
-		}).toStrictEqual({rows: 4, anchoredRows: 4});
+		expect(
+			Array.from(container.querySelectorAll("[data-transcript-entry-index]")).map((row) => ({
+				testId: row.getAttribute("data-testid"),
+				perfRow: row.getAttribute("data-perf-row"),
+			})),
+		).toStrictEqual([
+			{testId: "transcript-row", perfRow: "marker"},
+			{testId: "transcript-row", perfRow: "human"},
+			{testId: "transcript-row", perfRow: "assistant_tool"},
+			{testId: "transcript-row", perfRow: "assistant_thinking"},
+			{testId: "transcript-row", perfRow: "assistant_text"},
+		]);
 	});
 });

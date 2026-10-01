@@ -25,7 +25,8 @@ function element(html: string): HTMLElement {
 function sessionView(sessionId: string, rows: number): HTMLElement {
 	const turns = Array.from(
 		{length: rows},
-		(_, index) => `<div data-perf-row="turn"${index === rows - 1 ? " data-perf-last" : ""}>turn ${index}</div>`,
+		(_, index) =>
+			`<div data-testid="transcript-row" data-perf-row="assistant_text"${index === rows - 1 ? " data-perf-last" : ""}>turn ${index}</div>`,
 	).join("");
 	return element(
 		`<div data-perf-session="${sessionId}"><div data-perf-region="header">Real title</div><div>${turns}</div></div>`,
@@ -104,8 +105,8 @@ describe("J2 deep-link session open", () => {
 		expect(queued(harness)).toStrictEqual([{journey: "F4", trigger: "navigation", start: 0, end: 70}]);
 
 		view.querySelector("[data-transcript]")!.append(
-			element('<div data-perf-row="turn">first</div>'),
-			element('<div data-perf-row="turn" data-perf-last>last</div>'),
+			element('<div data-testid="transcript-row" data-perf-row="assistant_text">first</div>'),
+			element('<div data-testid="transcript-row" data-perf-row="assistant_text" data-perf-last>last</div>'),
 		);
 		await paintAt(harness, 200);
 

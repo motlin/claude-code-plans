@@ -102,12 +102,13 @@ describe("journey tracker", () => {
 	it("prefers the Element Timing renderTime for the anchor", async () => {
 		const harness = makeHarness();
 		const row = document.createElement("div");
-		row.setAttribute("data-perf-row", "turn");
+		row.setAttribute("data-testid", "transcript-row");
+		row.setAttribute("data-perf-row", "assistant_text");
 		row.setAttribute("elementtiming", "turn");
 		row.textContent = "hello";
 
 		harness.tracker.startJourney("J3", {trigger: pointerDownAt(10)});
-		const done = harness.tracker.endJourneyWhenRendered("J3", '[data-perf-row="turn"]');
+		const done = harness.tracker.endJourneyWhenRendered("J3", PERF_ANCHORS.transcriptRow);
 		document.body.append(row);
 		await flushMicrotasks();
 		harness.observers.emit("element", [{element: row, renderTime: 80, loadTime: 0, startTime: 80}]);
@@ -351,7 +352,8 @@ describe("default browser tracker", () => {
 		const sendBeacon = vi.fn((_path: string, _body: string) => true);
 		vi.stubGlobal("navigator", {sendBeacon, hardwareConcurrency: 4});
 		const row = document.createElement("div");
-		row.setAttribute("data-perf-row", "turn");
+		row.setAttribute("data-testid", "transcript-row");
+		row.setAttribute("data-perf-row", "assistant_text");
 		row.textContent = "hello";
 		document.body.append(row);
 

@@ -679,12 +679,30 @@ function isToolResultOnlyUserLine(line: SessionLine): boolean {
 	return content.every((b) => b.type === "tool_result");
 }
 
+/** Upstream claude.ai/code's `data-perf-row` value on each `[data-testid=transcript-row]`. */
+type TranscriptRowKind = "human" | "assistant_text" | "assistant_tool" | "assistant_thinking" | "assistant" | "marker";
+
+/** The upstream row type for a single line drawn as its own transcript row. */
+function transcriptRowKind(line: SessionLine): TranscriptRowKind {
+	if (line.type === "user") return "human";
+	if (line.type !== "assistant") return "marker";
+	const content = line.message?.content;
+	if (!Array.isArray(content))
+		return typeof content === "string" && content.trim() !== "" ? "assistant_text" : "assistant";
+	if (content.some((b) => b.type === "text" && typeof b.text === "string" && b.text.trim() !== ""))
+		return "assistant_text";
+	if (content.some((b) => b.type === "tool_use")) return "assistant_tool";
+	if (content.some((b) => b.type === "thinking")) return "assistant_thinking";
+	return "assistant";
+}
+
 interface SessionListEntry {
 	key: string;
 	startRecordIndex: number;
 	endRecordIndex: number;
 	/** A user prompt, a stop for ⌥⌘↑ / ⌥⌘↓. */
 	isPrompt: boolean;
+	kind: TranscriptRowKind;
 	element: React.ReactNode;
 }
 
@@ -777,6 +795,7 @@ function buildSessionListEntries(
 			key: "session-init",
 			startRecordIndex: lines[initIndices[0]!]!.lineIndex,
 			isPrompt: false,
+			kind: "marker",
 			element: (
 				<SessionInitEntry
 					key="session-init"
@@ -824,6 +843,7 @@ function buildSessionListEntries(
 					key: `notice-${line.lineIndex}`,
 					startRecordIndex: line.lineIndex,
 					isPrompt: false,
+					kind: "assistant_tool",
 					element: <BackgroundNoticeRows notices={notices} />,
 				});
 			}
@@ -870,6 +890,7 @@ function buildSessionListEntries(
 					key: `line-${line.lineIndex}`,
 					startRecordIndex: line.lineIndex,
 					isPrompt: false,
+					kind: "assistant_tool",
 					element: (
 						<LineEntry
 							line={line}
@@ -888,6 +909,7 @@ function buildSessionListEntries(
 					key: `group-${line.lineIndex}`,
 					startRecordIndex,
 					isPrompt: false,
+					kind: "assistant_tool",
 					element: (
 						<>
 							<GroupedToolCallEntry entries={groupLines} notices={notices} {...renderProps} />
@@ -913,6 +935,7 @@ function buildSessionListEntries(
 			key: `line-${line.lineIndex}`,
 			startRecordIndex: line.lineIndex,
 			isPrompt: isPromptLine(line),
+			kind: transcriptRowKind(line),
 			element: (
 				<LineEntry
 					line={line}
@@ -1140,7 +1163,8 @@ function VirtualizedSessionEntries({
 						tabIndex={isLast ? 0 : -1}
 						onKeyDown={(event) => focusNeighbour(event, index)}
 						data-transcript-entry-index={index}
-						data-perf-row="turn"
+						data-testid="transcript-row"
+						data-perf-row={entry.kind}
 						data-perf-last={isLast ? "" : undefined}
 					>
 						{entry.element}
