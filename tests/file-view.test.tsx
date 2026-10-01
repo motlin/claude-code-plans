@@ -23,12 +23,17 @@ type FakeResponse = {status: number; body: unknown};
 
 let responses: Map<string, FakeResponse>;
 let requests: string[];
+let existingPaths: Set<string>;
 const scrollIntoView = vi.fn();
 
 function stubFetch(): void {
 	vi.stubGlobal(
 		"fetch",
-		vi.fn(async (input: string) => {
+		vi.fn(async (input: string, init?: RequestInit) => {
+			if (input === "/api/file-refs") {
+				const {paths} = JSON.parse(String(init?.body)) as {paths: string[]};
+				return Response.json({existing: paths.filter((path) => existingPaths.has(path))});
+			}
 			const url = new URL(input, "http://localhost");
 			const path = decodeFilePath(url.pathname.slice("/api/file/".length)) ?? "";
 			const key = `${path}${url.search}`;
@@ -61,6 +66,7 @@ function textFile(path: string, content: string): void {
 beforeEach(() => {
 	responses = new Map();
 	requests = [];
+	existingPaths = new Set();
 	stubFetch();
 	window.history.replaceState(null, "", "/session/alice");
 	Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
@@ -114,6 +120,53 @@ describe("markdown files", () => {
 			opened: [["/home/alice/notes/bob.md"], ["/home/alice/notes/carol.md"]],
 			url: "/session/alice",
 		});
+	});
+	it("puts a Copy code button on each fenced block that copies the block text", async () => {
+		textFile(README, "Run this:\n\n```sh\npnpm install\n```\n");
+		renderView({path: README});
+
+		// The highlighter can re-render the article, detaching an earlier button; click until one lands.
+		await waitFor(() => {
+			fireEvent.click(screen.getByRole("button", {name: "Copy code"}));
+			expect(vi.mocked(writeClipboardText).mock.calls).toHaveLength(1);
+		});
+
+		expect({
+			tooltip: screen.getByRole("button", {name: "Copy code"}).getAttribute("data-tooltip"),
+			copied: vi.mocked(writeClipboardText).mock.calls,
+		}).toStrictEqual({tooltip: "Copy code", copied: [["pnpm install\n"]]});
+	});
+
+	it("turns inline-code file paths into buttons that open the file, resolved against the file's directory, then the cwd", async () => {
+		textFile(README, "See `src/lib/foo.ts`, `bob.md:3` and `missing.ts`.");
+		existingPaths = new Set(["/home/alice/src/lib/foo.ts", "/home/alice/notes/bob.md", "/home/alice/bob.md"]);
+		const onOpenFile = vi.fn();
+		renderView({path: README, cwd: "/home/alice", onOpenFile});
+
+		// The highlighter can re-render the article, detaching earlier buttons; retry until both land.
+		await waitFor(() => {
+			onOpenFile.mockClear();
+			fireEvent.click(screen.getByRole("button", {name: "src/lib/foo.ts"}));
+			fireEvent.keyDown(screen.getByRole("button", {name: "bob.md:3"}), {key: "Enter"});
+			expect(onOpenFile.mock.calls).toHaveLength(2);
+		});
+
+		expect({
+			opened: onOpenFile.mock.calls,
+			missing: screen.queryByRole("button", {name: "missing.ts"}),
+		}).toStrictEqual({
+			opened: [["/home/alice/src/lib/foo.ts"], ["/home/alice/notes/bob.md"]],
+			missing: null,
+		});
+	});
+
+	it("leaves inline-code paths as plain code without onOpenFile", async () => {
+		textFile(README, "See `src/lib/foo.ts`.");
+		existingPaths = new Set(["/home/alice/src/lib/foo.ts"]);
+		renderView({path: README, cwd: "/home/alice"});
+
+		await screen.findByText("src/lib/foo.ts");
+		expect(screen.queryByRole("button", {name: "src/lib/foo.ts"})).toBeNull();
 	});
 });
 

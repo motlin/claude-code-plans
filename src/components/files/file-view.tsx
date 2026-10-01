@@ -21,8 +21,10 @@ import {formatFileSize, imageContentType, isMarkdownPath, normalizeFileTabSize} 
 import {firstMatchFromLine, lineMatchOffsets, lineOfMatch, stepMatch} from "../../lib/find-in-file";
 import {editableMarkdownTarget} from "../../lib/file-edit";
 import {registerFindInFile} from "../../lib/find-in-file-request";
+import {inlineCodeTexts} from "../../lib/client-markdown";
 import {fromMdSlug} from "../../lib/md-slug";
 import {isMacPlatform} from "../../lib/shortcuts/match";
+import {useResolvedFileRefs} from "../file-refs";
 import {FileViewer, fileViewerLanguage} from "../file-viewer";
 import {MarkdownArticle} from "../markdown-article";
 import {useSettings} from "../settings-provider";
@@ -112,6 +114,35 @@ function Breadcrumb({path}: {path: string}) {
 				</span>
 			</span>
 		</button>
+	);
+}
+
+const NO_SESSION_PATHS: readonly string[] = [];
+
+/**
+ * Rendered markdown whose inline-code paths that name existing files become
+ * buttons opening them, resolved against the file's directory, then the cwd.
+ */
+function LinkedMarkdown({
+	markdown,
+	path,
+	cwd,
+	onOpenFile,
+}: {
+	markdown: string;
+	path: string;
+	cwd: string | undefined;
+	onOpenFile: (path: string) => void;
+}) {
+	const texts = useMemo(() => inlineCodeTexts(markdown), [markdown]);
+	const refs = useResolvedFileRefs(texts, NO_SESSION_PATHS, [directoryOf(path), cwd]);
+	return (
+		<MarkdownArticle
+			markdown={markdown}
+			mdLinkBase={SIBLING_MD_BASE}
+			fileRefs={refs.size === 0 ? undefined : refs}
+			onFileRef={(ref) => onOpenFile(ref.path)}
+		/>
 	);
 }
 
@@ -456,10 +487,11 @@ export function FileView({
 			return (
 				<div className="p-4" onClick={openSiblingLink}>
 					<div className="mx-auto max-w-[860px]">
-						<MarkdownArticle
-							markdown={data.content}
-							mdLinkBase={onOpenFile === undefined ? undefined : SIBLING_MD_BASE}
-						/>
+						{onOpenFile === undefined ? (
+							<MarkdownArticle markdown={data.content} />
+						) : (
+							<LinkedMarkdown markdown={data.content} path={path} cwd={cwd} onOpenFile={onOpenFile} />
+						)}
 					</div>
 				</div>
 			);

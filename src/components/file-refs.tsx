@@ -63,24 +63,49 @@ export function SessionFileRefs({
 
 /**
  * Resolve inline-code texts to refs, linking only paths the server confirmed
- * exist inside the allowed file roots. Empty outside a {@link FileRefsProvider}.
+ * exist inside the allowed file roots. Relative paths try each base directory
+ * in order; the first that resolves wins.
  */
-function useFileRefs(texts: readonly string[]): ReadonlyMap<string, FileRef> {
-	const context = useContext(FileRefsContext);
-	const cwd = context?.cwd;
-	const sessionPaths = context?.sessionPaths;
-	const candidates = useMemo(
-		() => (sessionPaths === undefined ? [] : fileRefStatCandidates(texts, sessionPaths, cwd)),
-		[texts, sessionPaths, cwd],
-	);
+export function useResolvedFileRefs(
+	texts: readonly string[],
+	sessionPaths: readonly string[],
+	bases: readonly (string | undefined)[],
+): ReadonlyMap<string, FileRef> {
+	const basesKey = bases.map((base) => base ?? "").join("\0");
+	const candidates = useMemo(() => {
+		const all = new Set<string>();
+		for (const base of basesKey.split("\0")) {
+			for (const path of fileRefStatCandidates(texts, sessionPaths, base === "" ? undefined : base))
+				all.add(path);
+		}
+		return [...all];
+	}, [texts, sessionPaths, basesKey]);
 	const existingKey = useQueries({
 		queries: candidates.map((path) => fileExistsQueryOptions(path)),
 		combine: (results) => candidates.filter((_path, index) => results[index]?.data === true).join("\0"),
 	});
-	return useMemo(
-		() => (existingKey === "" ? EMPTY_REFS : resolveFileRefs(texts, existingKey.split("\0"), cwd)),
-		[texts, existingKey, cwd],
-	);
+	return useMemo(() => {
+		if (existingKey === "") return EMPTY_REFS;
+		const existing = existingKey.split("\0");
+		const refs = new Map<string, FileRef>();
+		for (const base of basesKey.split("\0")) {
+			for (const [text, ref] of resolveFileRefs(texts, existing, base === "" ? undefined : base)) {
+				if (!refs.has(text)) refs.set(text, ref);
+			}
+		}
+		return refs;
+	}, [texts, existingKey, basesKey]);
+}
+
+const NO_PATHS: readonly string[] = [];
+
+/** {@link useResolvedFileRefs} against the surrounding {@link FileRefsProvider}; empty outside one. */
+function useFileRefs(texts: readonly string[]): ReadonlyMap<string, FileRef> {
+	const context = useContext(FileRefsContext);
+	const refs = useResolvedFileRefs(context === null ? NO_PATHS : texts, context?.sessionPaths ?? NO_PATHS, [
+		context?.cwd,
+	]);
+	return context === null ? EMPTY_REFS : refs;
 }
 
 /** The open handler of the surrounding {@link FileRefsProvider}, if any. */
