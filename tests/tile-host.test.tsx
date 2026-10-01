@@ -244,6 +244,37 @@ describe("TileHost", () => {
 		});
 	});
 
+	it("maximises the expanded pane over the whole window with a 9px inset", () => {
+		renderHost("session-a");
+		openTestPane();
+
+		const expand = screen.getByRole("button", {name: "Expand"});
+		const haspopup = expand.getAttribute("aria-haspopup");
+		fireEvent.click(expand);
+		const overlayClasses =
+			screen
+				.getByText("Test pane body")
+				.closest("[data-pane-root]")
+				?.closest("[data-pane-overlay]")
+				?.className.split(" ") ?? [];
+
+		expect({
+			haspopup,
+			fixed: overlayClasses.includes("fixed"),
+			inset: overlayClasses.includes("inset-[9px]"),
+		}).toStrictEqual({haspopup: "dialog", fixed: true, inset: true});
+	});
+
+	it("returns focus to Expand after collapsing", () => {
+		renderHost("session-a");
+		openTestPane();
+
+		fireEvent.click(screen.getByRole("button", {name: "Expand"}));
+		fireEvent.click(screen.getByRole("button", {name: "Collapse"}));
+
+		expect(document.activeElement).toBe(screen.getByRole("button", {name: "Expand"}));
+	});
+
 	function paneMoveButton(): HTMLElement {
 		const pane = screen.getByText("Test pane body").closest<HTMLElement>("[data-pane-root]");
 		if (pane === null) throw new Error("pane missing");

@@ -58,6 +58,8 @@ const DRAG_THRESHOLD_PX = 4;
 const SIDE_SLOT_CLASSES = "sticky top-2 self-start h-[var(--tile-host-height,calc(100dvh-16px))]";
 /** Below 640px a side pane covers the viewport instead of squeezing beside the chat. */
 const PHONE_SLOT_CLASSES = "fixed inset-0 z-40 w-full h-dvh";
+/** Upstream's expanded pane: maximised over the sidebar and titlebar, 9px in from the window edge. */
+const EXPANDED_SLOT_CLASSES = "fixed inset-[9px] z-40";
 
 type LayoutUpdate = (state: PaneLayoutState) => PaneLayoutState;
 
@@ -107,6 +109,9 @@ interface InternalHost {
 	phone: boolean;
 	/** The root row, measured when a pane opens so Changes can be sized to its minimum. */
 	rootRef: RefObject<HTMLDivElement | null>;
+	/** The pane just collapsed, whose remounted Expand button takes focus back. */
+	collapsedRef: RefObject<PaneKind | null>;
+	collapse: () => void;
 }
 
 function tileIdsOf(node: LayoutNode): TileId[] {
@@ -536,6 +541,13 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 	const expandKeys = useShortcutKeys("expand_collapse_pane");
 	const closeKeys = useShortcutKeys("close_pane");
 	const isExpanded = host.expanded === kind;
+	const toggleRef = useRef<HTMLButtonElement>(null);
+
+	useEffect(() => {
+		if (isExpanded || host.collapsedRef.current !== kind) return;
+		host.collapsedRef.current = null;
+		toggleRef.current?.focus();
+	}, [isExpanded, kind, host.collapsedRef]);
 
 	const moveHandle = isExpanded ? null : <MoveHandle tileId={kind} host={host} />;
 
@@ -543,10 +555,12 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 		<>
 			<Tooltip content={isExpanded ? "Collapse" : "Expand"} shortcut={expandKeys.keys}>
 				<button
+					ref={toggleRef}
 					type="button"
 					aria-label={isExpanded ? "Collapse" : "Expand"}
 					aria-keyshortcuts={expandKeys.ariaKeyShortcuts}
-					onClick={() => host.update((state) => (isExpanded ? collapsePane(state) : expandPane(state, kind)))}
+					{...(isExpanded ? {} : {"aria-haspopup": "dialog" as const})}
+					onClick={() => (isExpanded ? host.collapse() : host.update((state) => expandPane(state, kind)))}
 					className={PANE_HEADER_ICON_BUTTON_CLASS}
 				>
 					{isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
@@ -640,7 +654,7 @@ function StackView({
 				key="overlay"
 				tileId={host.expanded}
 				host={host}
-				className={`min-w-0 flex-1 ${host.phone ? PHONE_SLOT_CLASSES : SIDE_SLOT_CLASSES}`}
+				className={`min-w-0 ${host.phone ? PHONE_SLOT_CLASSES : EXPANDED_SLOT_CLASSES}`}
 				data-pane-overlay
 				phone={host.phone}
 			>
@@ -820,6 +834,11 @@ export function TileHost({
 	const [layout, update, loaded] = usePersistedLayout(sessionId, definitions);
 	const phone = usePhoneSheet();
 	const rootRef = useRef<HTMLDivElement>(null);
+	const collapsedRef = useRef<PaneKind | null>(null);
+	const collapse = useCallback(() => {
+		collapsedRef.current = layout.expanded;
+		update(collapsePane);
+	}, [layout.expanded, update]);
 	const open = useCallback(
 		(state: PaneLayoutState, kind: PaneKind) => openPane(state, kind, sizeAlong(rootRef.current, "row")),
 		[],
@@ -852,8 +871,10 @@ export function TileHost({
 			expanded: layout.expanded,
 			phone,
 			rootRef,
+			collapsedRef,
+			collapse,
 		}),
-		[definitions, layout, update, pendingMove, preview, phone],
+		[definitions, layout, update, pendingMove, preview, phone, collapse],
 	);
 
 	const api = useMemo<PaneHostApi>(
@@ -877,7 +898,7 @@ export function TileHost({
 
 	useShortcut("expand_collapse_pane", () => {
 		if (layout.expanded !== null) {
-			update(collapsePane);
+			collapse();
 			return true;
 		}
 		const target = isPaneKind(layout.focused) ? layout.focused : openKinds.at(-1);
