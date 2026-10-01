@@ -656,9 +656,9 @@ interface VirtualRange {
 	endIndex: number;
 }
 
-const ESTIMATED_TURN_HEIGHT_PIXELS = 320;
-const TRANSCRIPT_OVERSCAN_PIXELS = 320;
-const INITIAL_MOUNTED_TURN_COUNT = 8;
+export const ESTIMATED_TURN_HEIGHT_PIXELS = 320;
+export const TRANSCRIPT_OVERSCAN_PIXELS = 320;
+export const INITIAL_MOUNTED_TURN_COUNT = 8;
 
 function entryIndexAtOffset(prefixHeights: readonly number[], offset: number): number {
 	let lower = 0;

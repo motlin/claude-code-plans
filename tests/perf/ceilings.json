@@ -1,4 +1,134 @@
 {
+	"client.sessionOpen.small.commits": {
+		"ceiling": 12,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionOpen.small.commits.SessionChat": {
+		"ceiling": 5,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionOpen.small.commits.SessionPage": {
+		"ceiling": 7,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionOpen.small.fetches": {
+		"ceiling": 9,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionOpen.small.mountedRows": {
+		"ceiling": 4,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionOpen.small.mutations": {
+		"ceiling": 29,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionOpen.typical.commits": {
+		"ceiling": 12,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionOpen.typical.commits.SessionChat": {
+		"ceiling": 5,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionOpen.typical.commits.SessionPage": {
+		"ceiling": 7,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionOpen.typical.fetches": {
+		"ceiling": 9,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionOpen.typical.mountedRows": {
+		"ceiling": 4,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionOpen.typical.mutations": {
+		"ceiling": 29,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionSwitch.small.commits": {
+		"ceiling": 10,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionSwitch.small.commits.SessionChat": {
+		"ceiling": 5,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionSwitch.small.commits.SessionPage": {
+		"ceiling": 6,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionSwitch.small.fetches": {
+		"ceiling": 8,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionSwitch.small.hoverPrefetch.fetches": {
+		"ceiling": 4,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionSwitch.small.mountedRows": {
+		"ceiling": 4,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionSwitch.small.mutations": {
+		"ceiling": 31,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionSwitch.typical.commits": {
+		"ceiling": 10,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionSwitch.typical.commits.SessionChat": {
+		"ceiling": 5,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionSwitch.typical.commits.SessionPage": {
+		"ceiling": 6,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionSwitch.typical.fetches": {
+		"ceiling": 8,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionSwitch.typical.hoverPrefetch.fetches": {
+		"ceiling": 4,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionSwitch.typical.mountedRows": {
+		"ceiling": 4,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.sessionSwitch.typical.mutations": {
+		"ceiling": 31,
+		"unit": "count",
+		"tolerance": 0
+	},
 	"hot.claudeEventsReducer.replay-200.calls": {
 		"ceiling": 300,
 		"unit": "calls",
