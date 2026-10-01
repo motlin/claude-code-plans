@@ -193,6 +193,34 @@ function extractSubagentSnapshot(
 	};
 }
 
+/**
+ * Map each finished `Agent` call's subagent session id (`agent-<id>`) to the
+ * prompt the parent gave it, matching the call to its result's `agentId:` line.
+ */
+export function extractAgentPrompts(records: TranscriptRecord[]): Map<string, string> {
+	const promptByToolUseId = new Map<string, string>();
+	const prompts = new Map<string, string>();
+	for (const record of records) {
+		const content = record.message?.content;
+		if (!Array.isArray(content)) continue;
+		for (const block of content) {
+			if (block.type === "tool_use") {
+				const toolUse = block as ToolUseBlock;
+				const prompt = toolUse.input?.["prompt"];
+				if (toolUse.name === "Agent" && typeof prompt === "string") promptByToolUseId.set(toolUse.id, prompt);
+				continue;
+			}
+			if (block.type !== "tool_result") continue;
+			const toolResult = block as ToolResultBlock;
+			if (typeof toolResult.tool_use_id !== "string") continue;
+			const prompt = promptByToolUseId.get(toolResult.tool_use_id);
+			const agentId = AGENT_ID_RE.exec(getResultText(toolResult))?.[1];
+			if (prompt !== undefined && agentId !== undefined) prompts.set(toSubagentSessionId(agentId), prompt);
+		}
+	}
+	return prompts;
+}
+
 export function extractPendingSubagents(records: TranscriptRecord[]): ActiveSubagent[] {
 	return extractSubagentSnapshot(records, "").activeSubagents;
 }

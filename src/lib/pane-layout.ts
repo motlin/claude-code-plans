@@ -99,14 +99,16 @@ export const PaneLayoutStateSchema = z.strictObject(PaneLayoutShape).superRefine
 const ChangesScopeSchema = z.string().refine((value) => parseDiffScope(value) !== null);
 
 /**
- * One session's stored entry: its layout plus the Changes pane scope and the
- * Files pane's open tabs (upstream's `fileTabsBySession`).
+ * One session's stored entry: its layout plus the Changes pane scope, the
+ * Files pane's open tabs (upstream's `fileTabsBySession`) and the agent the
+ * Subagent pane is focused on.
  */
 const PaneLayoutEntrySchema = z
 	.strictObject({
 		...PaneLayoutShape,
 		changesScope: ChangesScopeSchema.optional(),
 		fileTabs: FileTabsStateSchema.optional(),
+		subagentId: z.string().min(1).optional(),
 	})
 	.superRefine(checkLayout);
 
@@ -401,6 +403,7 @@ export function savePaneLayout(
 			if (entry?.changesScope !== undefined) next.changesScope = entry.changesScope;
 			// Closing the Files pane discards the session's tabs, as upstream does.
 			if (entry?.fileTabs !== undefined && isOpen(state, "files")) next.fileTabs = entry.fileTabs;
+			if (entry?.subagentId !== undefined && isOpen(state, "subagents")) next.subagentId = entry.subagentId;
 			return next;
 		});
 	} catch {
@@ -449,5 +452,32 @@ export function saveFileTabs(
 		}));
 	} catch {
 		// localStorage can be denied even when window exists; tab persistence is best-effort.
+	}
+}
+
+/** The agent the Subagent pane shows, or null for its subagents list. */
+export function loadSubagentPaneAgent(sessionId: string, storage: Storage | null = browserStorage()): string | null {
+	try {
+		return (storage && readStore(storage)?.[sessionId]?.subagentId) ?? null;
+	} catch {
+		return null;
+	}
+}
+
+export function saveSubagentPaneAgent(
+	sessionId: string,
+	agentId: string | null,
+	storage: Storage | null = browserStorage(),
+): void {
+	if (!storage) return;
+	try {
+		writeEntry(sessionId, storage, (entry) => {
+			const next: PaneLayoutEntry = {...(entry ?? defaultPaneLayout())};
+			if (agentId === null) delete next.subagentId;
+			else next.subagentId = agentId;
+			return next;
+		});
+	} catch {
+		// localStorage can be denied even when window exists; focus persistence is best-effort.
 	}
 }

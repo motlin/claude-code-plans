@@ -13,12 +13,14 @@ import {
 	focusPane,
 	loadChangesScope,
 	loadPaneLayout,
+	loadSubagentPaneAgent,
 	minTileSize,
 	movePane,
 	openPane,
 	resizeDivider,
 	saveChangesScope,
 	savePaneLayout,
+	saveSubagentPaneAgent,
 } from "../src/lib/pane-layout";
 
 function tile(tileId: TileId, flex: number): LayoutNode {
@@ -431,5 +433,51 @@ describe("changes scope persistence", () => {
 	it("is a no-op when storage throws or is missing", () => {
 		expect(() => saveChangesScope("s", "session", new ThrowingStorage())).not.toThrow();
 		expect(() => saveChangesScope("s", "session", null)).not.toThrow();
+	});
+});
+
+describe("subagent pane focus persistence", () => {
+	const SUBAGENT_PANE = layout([tile("chat", 2), tile("subagents", 1)], "subagents");
+
+	it("keeps the focused agent per session while the Subagent pane stays open", () => {
+		const storage = new MemoryStorage();
+		savePaneLayout("session-a", SUBAGENT_PANE, storage);
+		saveSubagentPaneAgent("session-a", "agent-a1", storage);
+		savePaneLayout("session-a", {...SUBAGENT_PANE, focused: "chat"}, storage);
+
+		expect({
+			focused: [loadSubagentPaneAgent("session-a", storage), loadSubagentPaneAgent("session-b", storage)],
+			stored: JSON.parse(storage.getItem(PANE_LAYOUT_STORAGE_KEY) ?? "null"),
+		}).toEqual({
+			focused: ["agent-a1", null],
+			stored: {"session-a": {...SUBAGENT_PANE, focused: "chat", subagentId: "agent-a1"}},
+		});
+	});
+
+	it("forgets the focused agent when the pane closes or Back clears it", () => {
+		const storage = new MemoryStorage();
+		savePaneLayout("closed", SUBAGENT_PANE, storage);
+		saveSubagentPaneAgent("closed", "agent-a1", storage);
+		savePaneLayout("closed", ONE_PANE, storage);
+		savePaneLayout("back", SUBAGENT_PANE, storage);
+		saveSubagentPaneAgent("back", "agent-a1", storage);
+		saveSubagentPaneAgent("back", null, storage);
+
+		expect(JSON.parse(storage.getItem(PANE_LAYOUT_STORAGE_KEY) ?? "null")).toEqual({
+			closed: ONE_PANE,
+			back: SUBAGENT_PANE,
+		});
+	});
+
+	it("is a no-op when storage throws or is missing", () => {
+		expect([
+			loadSubagentPaneAgent("s", new ThrowingStorage()),
+			loadSubagentPaneAgent("s", null),
+			(() => {
+				saveSubagentPaneAgent("s", "agent-a1", new ThrowingStorage());
+				saveSubagentPaneAgent("s", "agent-a1", null);
+				return "ok";
+			})(),
+		]).toEqual([null, null, "ok"]);
 	});
 });

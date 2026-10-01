@@ -24,6 +24,7 @@ import {TileHost} from "./panes/tile-host";
 import {useRegisterArtifactsPane, useSessionArtifacts} from "./panes/artifacts-pane";
 import {useRegisterBackgroundTasksPane} from "./panes/background-tasks-pane";
 import {useRegisterLinksPane} from "./panes/links-pane";
+import {useRegisterSubagentPane} from "./panes/subagent-pane";
 import {useRegisterPlanPane} from "./panes/plan-pane";
 import {ChangesPaneShortcut, useRegisterChangesPane} from "./changes/changes-pane";
 import {FilesPaneShortcut, useExtractedSessionFiles, useRegisterFilesPane} from "./panes/files-pane";
@@ -425,6 +426,7 @@ function SessionView({
 		[transcript.records, isActive, activeSubagents, hookContext?.backgroundTasks],
 	);
 	useRegisterBackgroundTasksPane(sessionId, backgroundTasks, subagents.length);
+	useRegisterSubagentPane({sessionId, subagents, records: transcript.records});
 	const statusline = useStatusline(sessionId);
 	const composerServerState = useComposerServerState(sessionId);
 	const composerChin = useMemo(
