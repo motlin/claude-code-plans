@@ -37,7 +37,7 @@ describe("BashRenderer nested body", () => {
 			output: container.textContent?.includes("nothing to commit"),
 		}).toStrictEqual({
 			header: [],
-			body: ["flex-1 min-w-0 flex flex-col gap-g8 text-code font-mono"],
+			body: ["flex-1 min-w-0 flex flex-col gap-g6 font-mono"],
 			childCount: 2,
 			copyButton: true,
 			command: true,
@@ -50,11 +50,11 @@ describe("BashRenderer nested body", () => {
 
 		expect({
 			header: classNames(container, ".px-p6.py-p5"),
-			body: classNames(container, ".gap-g8"),
+			body: classNames(container, ".gap-g6"),
 			copyButton: container.querySelector("button[aria-label='Copy']") !== null,
 		}).toStrictEqual({
 			header: ["flex items-center px-p6 py-p5"],
-			body: ["flex flex-col gap-g8 px-p6 pb-p8 text-code font-mono"],
+			body: ["flex flex-col gap-g6 px-p6 pb-p8 font-mono"],
 			copyButton: true,
 		});
 	});

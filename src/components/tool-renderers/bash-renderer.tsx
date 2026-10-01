@@ -77,12 +77,31 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps) {
 
 	const copyText = resultContent ? `${command}\n${resultContent}` : command;
 
+	// Upstream's two-layer card: the prompt and command sit in an inner white
+	// code card at 12/17 mono with the copy control in a rail over its top-right
+	// corner; the output follows at the same size. Nested in a grouped card the
+	// copy button already sits beside the body, so the card keeps even padding.
 	const body = (
 		<>
-			{command && <HighlightedCommand command={command} />}
+			{command && (
+				<div
+					data-bash-code-card=""
+					className={`relative rounded-r6 bg-surface-1 py-p3 pl-p6 ${nested ? "pr-p6" : "pr-[32px]"} text-[12px]/[17px]`}
+				>
+					<HighlightedCommand command={command} />
+					{!nested && (
+						<div className="pointer-events-none absolute inset-y-0 right-[3px]">
+							<div className="pointer-events-auto sticky top-0 pt-px">
+								<CopyButton text={copyText} />
+							</div>
+						</div>
+					)}
+				</div>
+			)}
 			{resultContent && (
 				<div
-					className={`max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all ${isError ? "text-extended-pink" : "text-secondary"}`}
+					data-bash-output=""
+					className={`max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all text-[12px]/[17px] ${isError ? "text-extended-pink" : "text-secondary"}`}
 				>
 					<AnsiText content={resultContent} />
 				</div>
@@ -95,7 +114,7 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps) {
 	if (nested) {
 		return (
 			<>
-				<div className="flex-1 min-w-0 flex flex-col gap-g8 text-code font-mono">{body}</div>
+				<div className="flex-1 min-w-0 flex flex-col gap-g6 font-mono">{body}</div>
 				<CopyButton text={copyText} />
 			</>
 		);
@@ -103,14 +122,13 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps) {
 
 	return (
 		<>
-			{/* Header: "Bash" label + hover copy button */}
+			{/* Header: "Bash" label; the copy button lives in the code card */}
 			<div className="flex items-center px-p6 py-p5">
 				<span className="flex-1 text-body text-secondary">Bash</span>
-				<CopyButton text={copyText} />
+				{!command && <CopyButton text={copyText} />}
 			</div>
 
-			{/* Body: command + output in mono text-code */}
-			<div className="flex flex-col gap-g8 px-p6 pb-p8 text-code font-mono">{body}</div>
+			<div className="flex flex-col gap-g6 px-p6 pb-p8 font-mono">{body}</div>
 		</>
 	);
 }

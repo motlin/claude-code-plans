@@ -89,7 +89,7 @@ describe("expanded tool bodies cap at 400px", () => {
 			classNames: cappedClassNames(container),
 			capsOutput: scrollers[0]?.textContent,
 		}).toStrictEqual({
-			classNames: [`${CAP} whitespace-pre-wrap break-all text-secondary`],
+			classNames: [`${CAP} whitespace-pre-wrap break-all text-[12px]/[17px] text-secondary`],
 			capsOutput: "alice.ts",
 		});
 	});
@@ -104,7 +104,9 @@ describe("expanded tool bodies cap at 400px", () => {
 			/>,
 		);
 
-		expect(cappedClassNames(container)).toStrictEqual([`${CAP} whitespace-pre-wrap break-all text-extended-pink`]);
+		expect(cappedClassNames(container)).toStrictEqual([
+			`${CAP} whitespace-pre-wrap break-all text-[12px]/[17px] text-extended-pink`,
+		]);
 	});
 
 	it("caps the Read body without hiding lines behind an expand button", () => {
