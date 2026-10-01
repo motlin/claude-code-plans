@@ -87,6 +87,8 @@
 	--color-ink-muted: var(--upstream-text-muted);
 	/* Upstream cds-era inline code chip ink (prose `code`). */
 	--color-code-ink: var(--upstream-code-ink);
+	/* Upstream danger text (failed tool rows and their output) shares the chip ink. */
+	--color-danger-ink: var(--upstream-code-ink);
 	/* Upstream --cds-text-git-added / --cds-text-git-removed: summary row stats. */
 	--color-diff-added: var(--upstream-extended-green);
 	--color-diff-removed: var(--upstream-extended-pink);

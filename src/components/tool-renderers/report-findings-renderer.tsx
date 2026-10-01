@@ -37,7 +37,7 @@ export function ReportFindingsRenderer({toolCall}: ToolRendererProps) {
 	return (
 		<div className="flex w-full flex-col gap-g4 text-body">
 			{toolCall.isError && toolCall.result && (
-				<div className="text-extended-pink whitespace-pre-wrap break-words">{toolCall.result}</div>
+				<div className="text-danger-ink whitespace-pre-wrap break-words">{toolCall.result}</div>
 			)}
 			{findings.length === 0 && !toolCall.isError && toolCall.result && (
 				<div className="text-secondary">{toolCall.result}</div>

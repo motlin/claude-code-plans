@@ -101,6 +101,6 @@ describe("custom MCP renderers expose the shared copy button", () => {
 
 		const copyWrapper = screen.getByLabelText("Copy").parentElement;
 
-		expect(copyWrapper?.closest(".text-extended-pink")).toBe(null);
+		expect(copyWrapper?.closest(".text-danger-ink")).toBe(null);
 	});
 });

@@ -336,17 +336,17 @@ export function DiffStats({added, removed}: {added: number; removed: number}) {
 
 /**
  * Upstream recolors a failed tool body instead of indenting it behind a rail:
- * the whole body renders in `text-extended-pink`, with no border or padding
+ * the whole body renders in `text-danger-ink` (upstream danger red), with no border or padding
  * shift anywhere.
  */
 export function ErrorBorder({isError, children}: {isError?: boolean | undefined; children: ReactNode}) {
 	if (!isError) return <>{children}</>;
-	return <div className="text-extended-pink">{children}</div>;
+	return <div className="text-danger-ink">{children}</div>;
 }
 
 /**
  * Output of a local `!command`. Upstream has no badge and no filled code slab:
- * failure reads as pink body text, so the exit code renders as one more line of
+ * failure reads as danger-red body text, so the exit code renders as one more line of
  * the same mono `text-code` type and the output takes the Bash card's body
  * treatment — wrapped, and capped at 400px with its own scroller.
  */
@@ -355,7 +355,7 @@ export function TerminalOutput({content}: {content: string}) {
 	const exitCodeMatch = content.match(/^Exit code (\d+)\n?/);
 	const exitCode = exitCodeMatch?.[1] ? parseInt(exitCodeMatch[1], 10) : null;
 	const contentWithoutExitCode = exitCodeMatch ? content.replace(/^Exit code \d+\n?/, "") : content;
-	const inkClass = exitCode !== null && exitCode !== 0 ? "text-extended-pink" : "text-secondary";
+	const inkClass = exitCode !== null && exitCode !== 0 ? "text-danger-ink" : "text-secondary";
 
 	return (
 		<div className="text-code font-mono">
@@ -561,7 +561,7 @@ export interface KeyValueParam {
  *     CopyButton (hover-visible, outside the scroller)
  *
  * A failed call drops the column's `text-secondary` and renders the
- * result as a pink error message above the params, matching upstream.
+ * result as a danger-red error message above the params, matching upstream.
  */
 export function KeyValueCard({
 	params,
@@ -576,7 +576,7 @@ export function KeyValueCard({
 	markdownResult?: boolean | undefined;
 	/** Overrides the default params + result copy payload. */
 	copyText?: string | undefined;
-	/** Renders the result as the failure message: pink, above the params. */
+	/** Renders the result as the failure message: danger red, above the params. */
 	isError?: boolean | undefined;
 	children?: ReactNode;
 }) {
@@ -590,7 +590,7 @@ export function KeyValueCard({
 				className={`flex-1 min-w-0 flex flex-col gap-g4 text-body${isError ? "" : " text-secondary"} whitespace-pre-wrap break-words`}
 			>
 				<div className="max-h-[400px] overflow-y-auto flex flex-col gap-g4">
-					{errorMessage && <div className="text-extended-pink">{errorMessage}</div>}
+					{errorMessage && <div className="text-danger-ink">{errorMessage}</div>}
 					{params.length > 0 && (
 						<div className="text-secondary flex flex-col gap-g2">
 							{params.map((p) => (

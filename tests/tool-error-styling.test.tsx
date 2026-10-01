@@ -15,8 +15,8 @@ vi.mock("../src/hooks/use-shiki", () => ({
 	subscribeHighlighter: () => () => {},
 }));
 
-/** Upstream paints failed tool bodies pink instead of drawing a danger rail. */
-const PINK = "text-extended-pink";
+/** Upstream paints failed tool bodies danger red instead of drawing a danger rail. */
+const DANGER = "text-danger-ink";
 const CAP = "max-h-[400px] overflow-y-auto";
 
 function failedCall(name: string, input: Record<string, unknown>, result: string): ClientToolCall {
@@ -56,7 +56,7 @@ describe("failed tool bodies", () => {
 			keepsChild: wrapper?.querySelector("[data-testid='body']") !== null,
 		}).toStrictEqual({
 			tag: "DIV",
-			className: PINK,
+			className: DANGER,
 			keepsChild: true,
 		});
 	});
@@ -71,7 +71,7 @@ describe("failed tool bodies", () => {
 		expect(container.innerHTML).toBe('<span data-testid="body">ok</span>');
 	});
 
-	it("puts the KeyValueCard error message above the params in pink", () => {
+	it("puts the KeyValueCard error message above the params in danger red", () => {
 		const {container} = render(
 			<KeyValueCard isError params={[{key: "pattern", value: "alice"}]} result="rg: unrecognized flag" />,
 		);
@@ -88,7 +88,7 @@ describe("failed tool bodies", () => {
 		}).toStrictEqual({
 			columnClass: "flex-1 min-w-0 flex flex-col gap-g4 text-body whitespace-pre-wrap break-words",
 			children: [
-				{className: PINK, text: "rg: unrecognized flag"},
+				{className: DANGER, text: "rg: unrecognized flag"},
 				{
 					className: "text-secondary flex flex-col gap-g2",
 					text: "pattern: alice",
@@ -112,7 +112,7 @@ describe("failed tool bodies", () => {
 		});
 	});
 
-	it("renders the failed Grep message in pink above its params", () => {
+	it("renders the failed Grep message in danger red above its params", () => {
 		const {container} = render(
 			<GrepRenderer toolCall={failedCall("Grep", {pattern: "alice"}, "rg exited with code 2")} />,
 		);
@@ -125,12 +125,12 @@ describe("failed tool bodies", () => {
 			},
 			rails: railCount(container),
 		}).toStrictEqual({
-			first: {className: PINK, text: "rg exited with code 2"},
+			first: {className: DANGER, text: "rg exited with code 2"},
 			rails: 0,
 		});
 	});
 
-	it("renders the failed Glob message in pink above its params", () => {
+	it("renders the failed Glob message in danger red above its params", () => {
 		const {container} = render(
 			<GlobRenderer toolCall={failedCall("Glob", {pattern: "**/*.ts"}, "EACCES: denied")} />,
 		);
@@ -143,12 +143,12 @@ describe("failed tool bodies", () => {
 			},
 			rails: railCount(container),
 		}).toStrictEqual({
-			first: {className: PINK, text: "EACCES: denied"},
+			first: {className: DANGER, text: "EACCES: denied"},
 			rails: 0,
 		});
 	});
 
-	it("swaps the Read code card for a plain pink body when the read failed", () => {
+	it("swaps the Read code card for a plain danger-red body when the read failed", () => {
 		const {container} = render(
 			<ReadRenderer toolCall={failedCall("Read", {file_path: "/test/alice.ts"}, "File does not exist.")} />,
 		);
@@ -160,7 +160,7 @@ describe("failed tool bodies", () => {
 			gutters: container.querySelectorAll("[data-gutter]").length,
 			rails: railCount(container),
 		}).toStrictEqual({
-			bodyClass: `${CAP} text-code font-mono whitespace-pre-wrap break-all ${PINK}`,
+			bodyClass: `${CAP} text-code font-mono whitespace-pre-wrap break-all ${DANGER}`,
 			text: "File does not exist.",
 			gutters: 0,
 			rails: 0,

@@ -2279,7 +2279,17 @@ function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; s
 	const ink = expanded ? "text-secondary" : "text-ink-muted group-hover/tool:text-secondary";
 	// Upstream recolors the whole label of a failed tool row, except a file path,
 	// which stays primary.
-	const labelClass = call.isError ? "text-extended-pink" : pending ? RUNNING_LABEL_CLASS : ink;
+	// A settled Skill row reads "Ran skill" in secondary ink beside a primary
+	// skill name, as upstream draws it.
+	const isSkill = call.name === "Skill" && !call.isError && !pending;
+	const labelClass = call.isError
+		? "text-danger-ink"
+		: pending
+			? RUNNING_LABEL_CLASS
+			: isSkill
+				? "text-secondary"
+				: ink;
+	const paramClass = isSkill ? "text-primary" : labelClass;
 	// A subagent row's chevron sits in the flat `t6` token upstream gives it,
 	// rather than the hover-reactive ink every other tool row uses.
 	const chevronClass = isAgent ? "shrink-0 self-center text-t6" : `shrink-0 ${ink}`;
@@ -2323,7 +2333,7 @@ function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; s
 					className={
 						isFileParam
 							? "text-body text-primary truncate min-w-0"
-							: `truncate min-w-0 text-body ${labelClass}`
+							: `truncate min-w-0 text-body ${paramClass}`
 					}
 				>
 					{paramHref ? (
@@ -2483,7 +2493,7 @@ function ToolCallSummary({calls, sessionId}: {calls: ClientToolCall[]; sessionId
 						aria-expanded={expanded}
 						aria-controls={bodyId}
 						onClick={toggleExpanded}
-						className="relative group/tool flex self-start max-w-full items-center py-0 gap-g1 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3"
+						className="relative group/tool flex self-start max-w-full items-center py-0 gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3"
 					>
 						<span className={`inline-flex items-center gap-g3 min-w-0 ${ink}`}>
 							{runningText === null ? (

@@ -105,7 +105,7 @@ describe("expanded tool bodies cap at 400px", () => {
 		);
 
 		expect(cappedClassNames(container)).toStrictEqual([
-			`${CAP} whitespace-pre-wrap break-all text-[12px]/[17px] text-extended-pink`,
+			`${CAP} whitespace-pre-wrap break-all text-[12px]/[17px] text-danger-ink`,
 		]);
 	});
 
@@ -150,7 +150,7 @@ describe("expanded tool bodies cap at 400px", () => {
 		);
 
 		expect(cappedClassNames(container)).toStrictEqual([
-			`${CAP} text-code font-mono whitespace-pre-wrap break-all text-extended-pink`,
+			`${CAP} text-code font-mono whitespace-pre-wrap break-all text-danger-ink`,
 		]);
 	});
 
@@ -179,7 +179,7 @@ describe("expanded tool bodies cap at 400px", () => {
 		);
 
 		expect(cappedClassNames(container)).toStrictEqual([
-			`${CAP} text-code font-mono whitespace-pre-wrap break-all text-extended-pink`,
+			`${CAP} text-code font-mono whitespace-pre-wrap break-all text-danger-ink`,
 		]);
 	});
 

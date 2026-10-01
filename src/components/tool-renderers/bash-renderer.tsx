@@ -101,7 +101,7 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps) {
 			{resultContent && (
 				<div
 					data-bash-output=""
-					className={`max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all text-[12px]/[17px] ${isError ? "text-extended-pink" : "text-secondary"}`}
+					className={`max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all text-[12px]/[17px] ${isError ? "text-danger-ink" : "text-secondary"}`}
 				>
 					<AnsiText content={resultContent} />
 				</div>

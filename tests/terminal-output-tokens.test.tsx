@@ -22,14 +22,14 @@ function layout(container: HTMLElement) {
 }
 
 describe("TerminalOutput", () => {
-	it("renders a failing exit code as inline pink text beside a pink Bash-style body", () => {
+	it("renders a failing exit code as inline danger-red text beside a danger-red Bash-style body", () => {
 		const {container} = render(<TerminalOutput content={"Exit code 1\nboom"} />);
 
 		expect(layout(container)).toStrictEqual({
 			rootClass: "text-code font-mono",
-			exitCodeClass: "text-extended-pink",
+			exitCodeClass: "text-danger-ink",
 			exitCodeText: "Exit code 1",
-			preClass: `${BODY_CLASS} text-extended-pink`,
+			preClass: `${BODY_CLASS} text-danger-ink`,
 			preText: "boom",
 		});
 	});

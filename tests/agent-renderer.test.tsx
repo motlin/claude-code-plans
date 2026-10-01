@@ -49,7 +49,7 @@ describe("AgentRenderer status chrome", () => {
 		expect(aboveCard(html)).toStrictEqual("");
 	});
 
-	it("draws no status pill for a failed agent, whose failure the pink body already carries", () => {
+	it("draws no status pill for a failed agent, whose failure the danger-red body already carries", () => {
 		const html = renderAgent({
 			isError: true,
 			result: "agentId: abc123\nBuild failed.",
@@ -58,8 +58,8 @@ describe("AgentRenderer status chrome", () => {
 
 		expect({
 			aboveCard: aboveCard(html),
-			pinkBody: html.includes("text-extended-pink"),
-		}).toStrictEqual({aboveCard: "", pinkBody: true});
+			dangerBody: html.includes("text-danger-ink"),
+		}).toStrictEqual({aboveCard: "", dangerBody: true});
 	});
 
 	it("keeps a still-running agent flagged, as plain body text rather than a pill", () => {

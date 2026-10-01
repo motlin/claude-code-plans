@@ -45,7 +45,7 @@ describe("EnterPlanModeRenderer", () => {
 
 		expect({
 			text: container.textContent,
-			errorClass: container.querySelector(".text-extended-pink")?.textContent,
+			errorClass: container.querySelector(".text-danger-ink")?.textContent,
 		}).toStrictEqual({
 			text: "You are already in plan mode.",
 			errorClass: "You are already in plan mode.",

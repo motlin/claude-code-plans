@@ -59,7 +59,7 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 	if (isError) {
 		return (
 			<div className="px-p6 py-p5">
-				<pre className="max-h-[400px] overflow-y-auto text-code font-mono whitespace-pre-wrap break-all text-extended-pink">
+				<pre className="max-h-[400px] overflow-y-auto text-code font-mono whitespace-pre-wrap break-all text-danger-ink">
 					{result}
 				</pre>
 			</div>

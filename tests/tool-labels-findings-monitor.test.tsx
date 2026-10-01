@@ -120,7 +120,7 @@ describe("ReportFindingsRenderer", () => {
 		);
 
 		expect({
-			error: container.querySelector(".text-extended-pink")?.textContent,
+			error: container.querySelector(".text-danger-ink")?.textContent,
 			cards: container.querySelectorAll("[data-finding-card]").length,
 		}).toStrictEqual({error: "Findings rejected", cards: 1});
 	});

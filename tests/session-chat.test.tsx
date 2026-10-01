@@ -880,25 +880,64 @@ function failedToolCallRecords(
 }
 
 describe("SessionChat failed tool row label", () => {
-	it("recolors a failed tool row label extended-pink and leaves a successful one muted", () => {
+	it("recolors a failed tool row label danger red and leaves a successful one muted", () => {
 		const failedHtml = renderTranscript(failedToolCallRecords(true));
 		const okHtml = renderTranscript(failedToolCallRecords(false));
 
 		expect({
-			failedVerb: failedHtml.includes('<span class="shrink-0 text-body text-extended-pink">'),
-			failedParam: failedHtml.includes('<span class="truncate min-w-0 text-body text-extended-pink">'),
+			failedVerb: failedHtml.includes('<span class="shrink-0 text-body text-danger-ink">'),
+			failedParam: failedHtml.includes('<span class="truncate min-w-0 text-body text-danger-ink">'),
 			failedKeepsMutedLabel: failedHtml.includes(
 				'<span class="shrink-0 text-body text-ink-muted group-hover/tool:text-secondary">',
 			),
 			okVerb: okHtml.includes('<span class="shrink-0 text-body text-ink-muted group-hover/tool:text-secondary">'),
-			okPink: okHtml.includes("text-extended-pink"),
+			okDanger: okHtml.includes("text-danger-ink"),
 		}).toStrictEqual({
 			failedVerb: true,
 			failedParam: true,
 			failedKeepsMutedLabel: false,
 			okVerb: true,
-			okPink: false,
+			okDanger: false,
 		});
+	});
+});
+
+describe("SessionChat Skill row label", () => {
+	it('draws "Ran skill" in secondary ink and the skill name in primary, as upstream does', () => {
+		const html = renderTranscript(toolResultRecords({name: "Skill", input: {skill: "loop"}}, "Launched", false));
+
+		expect({
+			spans: rowHeaderSpanClasses(html),
+			name: html.includes('<code class="font-mono">/loop</code>'),
+		}).toStrictEqual({
+			spans: [
+				"shrink-0 text-body text-secondary",
+				"truncate min-w-0 text-body text-primary",
+				"shrink-0 text-ink-muted group-hover/tool:text-secondary",
+			],
+			name: true,
+		});
+	});
+
+	it("keeps a failed Skill row in danger red", () => {
+		const html = renderTranscript(
+			toolResultRecords({name: "Skill", input: {skill: "loop"}}, "Unknown skill", true),
+		);
+
+		expect(rowHeaderSpanClasses(html)).toStrictEqual([
+			"shrink-0 text-body text-danger-ink",
+			"truncate min-w-0 text-body text-danger-ink",
+			"shrink-0 text-ink-muted group-hover/tool:text-secondary",
+		]);
+	});
+
+	it("defines the danger ink token from upstream's rgb(142, 38, 38)", () => {
+		const styles = readFileSync(GLOBAL_STYLES_PATH, "utf8");
+
+		expect({
+			token: styles.includes("--color-danger-ink: var(--upstream-code-ink);"),
+			light: styles.includes("--upstream-code-ink: rgb(142 38 38);"),
+		}).toStrictEqual({token: true, light: true});
 	});
 });
 
@@ -919,7 +958,7 @@ describe("SessionChat failed tool row label text", () => {
 			okGrep: toolRowLabelSpans(renderTranscript(failedToolCallRecords(false))),
 		}).toStrictEqual({
 			failedEdit: [
-				["shrink-0 text-body text-extended-pink", "Failed to edit"],
+				["shrink-0 text-body text-danger-ink", "Failed to edit"],
 				["text-body text-primary truncate min-w-0", "cache.ts"],
 			],
 			okEdit: [
@@ -927,8 +966,8 @@ describe("SessionChat failed tool row label text", () => {
 				["text-body text-primary truncate min-w-0", "cache.ts"],
 			],
 			failedGrep: [
-				["shrink-0 text-body text-extended-pink", "Failed to search"],
-				["truncate min-w-0 text-body text-extended-pink", "alice"],
+				["shrink-0 text-body text-danger-ink", "Failed to search"],
+				["truncate min-w-0 text-body text-danger-ink", "alice"],
 			],
 			okGrep: [
 				["shrink-0 text-body text-ink-muted group-hover/tool:text-secondary", "Searched"],
@@ -947,7 +986,7 @@ describe("SessionChat failed tool row label text", () => {
 			failed: toolRowLabelSpans(renderTranscript(failedToolCallRecords(true, {name: "Bash", input: bashInput}))),
 			ok: toolRowLabelSpans(renderTranscript(failedToolCallRecords(false, {name: "Bash", input: bashInput}))),
 		}).toStrictEqual({
-			failed: [["truncate min-w-0 text-body text-extended-pink", "Failed to install dependencies and build"]],
+			failed: [["truncate min-w-0 text-body text-danger-ink", "Failed to install dependencies and build"]],
 			ok: [
 				[
 					"truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary",
@@ -966,8 +1005,8 @@ describe("SessionChat failed tool row label text", () => {
 		);
 
 		expect(toolRowLabelSpans(html)).toStrictEqual([
-			["shrink-0 text-body text-extended-pink", "Failed to use Sentry: search issues"],
-			["truncate min-w-0 text-body text-extended-pink", "unhandled"],
+			["shrink-0 text-body text-danger-ink", "Failed to use Sentry: search issues"],
+			["truncate min-w-0 text-body text-danger-ink", "unhandled"],
 		]);
 	});
 });
@@ -1143,9 +1182,7 @@ describe("SessionChat Agent row label", () => {
 					}),
 				),
 			),
-		).toStrictEqual([
-			["truncate min-w-0 text-body text-extended-pink", "Failed to implement pending approvals fix"],
-		]);
+		).toStrictEqual([["truncate min-w-0 text-body text-danger-ink", "Failed to implement pending approvals fix"]]);
 	});
 });
 
@@ -1313,8 +1350,8 @@ describe("SessionChat Bash row label", () => {
 				renderTranscript(failedToolCallRecords(true, {name: "Bash", input: {command: "pnpm run build"}})),
 			),
 		).toStrictEqual([
-			["shrink-0 text-body text-extended-pink", "Failed to run"],
-			["truncate min-w-0 text-body text-extended-pink", "pnpm run build"],
+			["shrink-0 text-body text-danger-ink", "Failed to run"],
+			["truncate min-w-0 text-body text-danger-ink", "pnpm run build"],
 		]);
 	});
 });
@@ -1436,7 +1473,7 @@ describe("SessionChat tool rows labelled from the tool result", () => {
 		expect({
 			verb: toolRowLabelSpans(html),
 			code: html.includes('<code class="font-mono">/git:commit</code>'),
-		}).toStrictEqual({verb: [[SECONDARY, "Ran skill"]], code: true});
+		}).toStrictEqual({verb: [["shrink-0 text-body text-secondary", "Ran skill"]], code: true});
 	});
 
 	it("labels a TaskUpdate row by the status it set", () => {
@@ -1503,10 +1540,10 @@ describe("SessionChat tool row hover treatment", () => {
 		]);
 	});
 
-	it("keeps a failed row's label pink on hover while its chevron still brightens", () => {
+	it("keeps a failed row's label danger red on hover while its chevron still brightens", () => {
 		expect(rowHeaderSpanClasses(renderTranscript(failedToolCallRecords(true)))).toStrictEqual([
-			"shrink-0 text-body text-extended-pink",
-			"truncate min-w-0 text-body text-extended-pink",
+			"shrink-0 text-body text-danger-ink",
+			"truncate min-w-0 text-body text-danger-ink",
 			"shrink-0 text-ink-muted group-hover/tool:text-secondary",
 		]);
 	});
@@ -1661,7 +1698,7 @@ describe("SessionChat disclosure focus treatment", () => {
 		}).toStrictEqual({
 			row: "relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
 			summary:
-				"relative group/tool flex self-start max-w-full items-center py-0 gap-g1 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3",
+				"relative group/tool flex self-start max-w-full items-center py-0 gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
 		});
 	});
 
