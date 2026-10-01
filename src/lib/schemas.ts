@@ -1709,6 +1709,7 @@ const SandboxSchema = z
 	.object({
 		enabled: z.boolean().optional(),
 		autoAllowBashIfSandboxed: z.boolean().optional(),
+		excludedCommands: z.array(z.string()).optional(),
 	})
 	.strict();
 
