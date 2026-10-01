@@ -135,6 +135,8 @@ interface ComposerProps {
 	mentionSessionId?: string | undefined;
 	/** Prompts queued while the live session works, shown as chips above the card. */
 	queue?: ComposerQueueView | undefined;
+	/** The usage popover's "See detailed breakdown" (session composers only). */
+	onShowUsageBreakdown?: (() => void) | undefined;
 	/** ⌘⏎ "Send now": interrupt the current response and send this prompt next. */
 	onSendNow?: ((prompt: string) => void) | undefined;
 	/** ⌥⌘⏎ "Fork with this prompt": send it to a new forked session instead of this one. */
@@ -242,6 +244,7 @@ export function Composer({
 	mentionSessionId,
 	queue,
 	onSendNow,
+	onShowUsageBreakdown,
 	onFork,
 	onSendAndStay,
 	forkLabel = "Fork with this prompt",
@@ -654,6 +657,7 @@ export function Composer({
 						onInsertSlash={insertSlash}
 						onAddFiles={openFilePicker}
 						launch={launchControls}
+						onShowUsageBreakdown={variant === "session" ? onShowUsageBreakdown : undefined}
 					/>
 				)}
 			</div>

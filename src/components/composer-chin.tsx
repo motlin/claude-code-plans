@@ -7,11 +7,9 @@ import {
 	type ComposerUsage,
 	FIVE_HOUR_LABEL,
 	formatContextSummary,
-	formatResetLabel,
 	formatUpdatedAgo,
 	formatUsageAriaLabel,
 	formatUsageTooltipRows,
-	type RateLimitWindow,
 	USAGE_RING_CIRCUMFERENCE,
 	usageRingDashoffset,
 	WEEKLY_LABEL,
@@ -31,6 +29,7 @@ import {settingsHash} from "../lib/settings-hash";
 import {ConfirmDialog} from "./confirm-dialog";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "./ui/menu";
 import {Tooltip} from "./ui/tooltip";
+import {UsageLimitRow, UsageMeter} from "./usage-limit-row";
 
 // Keeps the Customize API schemas and router hooks out of the composer's cold load.
 const loadConnectorsMenu = () =>
@@ -41,37 +40,16 @@ const ComposerConnectorsMenu = lazy(loadConnectorsMenu);
 const POPUP_CLASS =
 	"flex max-h-[640px] w-[360px] max-w-[calc(100vw-16px)] flex-col gap-3 overflow-y-auto rounded-r7 bg-[var(--menu-bg)] p-3 text-[12px]/[16px] text-primary shadow-[var(--menu-shadow)] outline-none";
 
-function Meter({percent, label}: {percent: number; label: string}) {
-	const clamped = Math.min(100, Math.max(0, percent));
-	return (
-		<div
-			role="progressbar"
-			aria-label={label}
-			aria-valuemin={0}
-			aria-valuemax={100}
-			aria-valuenow={Math.round(clamped)}
-			className="h-1 w-full overflow-hidden rounded-r3 bg-alpha-1"
-		>
-			<div className="h-full rounded-r3 bg-accent-100" style={{width: `${clamped}%`}} />
-		</div>
-	);
-}
-
-function LimitRow({label, window}: {label: string; window: RateLimitWindow}) {
-	const percent = Math.round(window.usedPercentage);
-	return (
-		<div className="flex flex-col gap-1">
-			<div data-usage-row className="flex items-baseline gap-2">
-				<span className="text-primary">{label}</span>
-				<span className="text-t6">{formatResetLabel(window.resetsAt, Date.now())}</span>
-				<span className="ms-auto tabular-nums text-secondary">{percent}%</span>
-			</div>
-			<Meter percent={window.usedPercentage} label={label} />
-		</div>
-	);
-}
-
-function UsagePopoverBody({usage, onNavigate}: {usage: ComposerUsage | null; onNavigate: () => void}) {
+function UsagePopoverBody({
+	usage,
+	onNavigate,
+	onShowBreakdown,
+}: {
+	usage: ComposerUsage | null;
+	onNavigate: () => void;
+	/** Session composers only: upstream hides the button on new-session. */
+	onShowBreakdown: (() => void) | undefined;
+}) {
 	const limits = [
 		usage?.fiveHour ? {label: FIVE_HOUR_LABEL, window: usage.fiveHour} : null,
 		usage?.weekly ? {label: WEEKLY_LABEL, window: usage.weekly} : null,
@@ -84,7 +62,7 @@ function UsagePopoverBody({usage, onNavigate}: {usage: ComposerUsage | null; onN
 					<span className="font-medium">Context window</span>
 					<span className="tabular-nums text-secondary">{formatContextSummary(usage)}</span>
 				</div>
-				<Meter percent={usage?.contextPercent ?? 0} label="Context window" />
+				<UsageMeter percent={usage?.contextPercent ?? 0} label="Context window" />
 				{usage?.updatedAt && (
 					<p data-usage-updated className="text-t6">
 						Last updated {formatUpdatedAgo(usage.updatedAt, Date.now())}. Send a message to refresh.
@@ -107,16 +85,28 @@ function UsagePopoverBody({usage, onNavigate}: {usage: ComposerUsage | null; onN
 							</a>
 						</div>
 						{limits.map((limit) => (
-							<LimitRow key={limit.label} label={limit.label} window={limit.window} />
+							<UsageLimitRow key={limit.label} label={limit.label} window={limit.window} />
 						))}
 					</div>
+				</>
+			)}
+			{onShowBreakdown && (
+				<>
+					<div className="h-px bg-alpha-2" />
+					<button
+						type="button"
+						onClick={onShowBreakdown}
+						className="-mx-1 -my-1 flex h-6 items-center rounded-r4 px-1 text-start text-secondary outline-none hover:bg-alpha-1 hover:text-primary focus-visible:bg-alpha-1"
+					>
+						See detailed breakdown
+					</button>
 				</>
 			)}
 		</>
 	);
 }
 
-function UsageRing({usage}: {usage: ComposerUsage | null}) {
+function UsageRing({usage, onShowBreakdown}: {usage: ComposerUsage | null; onShowBreakdown: (() => void) | undefined}) {
 	const [open, setOpen] = useState(false);
 	const now = Date.now();
 	return (
@@ -146,7 +136,17 @@ function UsageRing({usage}: {usage: ComposerUsage | null}) {
 			<Popover.Portal>
 				<Popover.Positioner side="top" align="end" sideOffset={6} className="z-[130]">
 					<Popover.Popup className={POPUP_CLASS}>
-						<UsagePopoverBody usage={usage} onNavigate={() => setOpen(false)} />
+						<UsagePopoverBody
+							usage={usage}
+							onNavigate={() => setOpen(false)}
+							onShowBreakdown={
+								onShowBreakdown &&
+								(() => {
+									setOpen(false);
+									onShowBreakdown();
+								})
+							}
+						/>
 					</Popover.Popup>
 				</Popover.Positioner>
 			</Popover.Portal>
@@ -179,12 +179,15 @@ export const ComposerChin = memo(function ComposerChin({
 	onInsertSlash,
 	onAddFiles,
 	launch,
+	onShowUsageBreakdown,
 }: {
 	state: ComposerState;
 	onInsertSlash: () => void;
 	/** ⌘U "Add files or photos": opens the composer's file picker. */
 	onAddFiles: () => void;
 	launch: ChinLaunchControls;
+	/** "See detailed breakdown": insert the Usage card into the transcript. */
+	onShowUsageBreakdown?: (() => void) | undefined;
 }) {
 	const {launchOptions, onLaunchOptionsChange, openMenu, onOpenMenuChange} = launch;
 	const addFilesKeys = useShortcutKeys("add_files").keys;
@@ -248,7 +251,7 @@ export const ComposerChin = memo(function ComposerChin({
 					onSelect={(model) => onLaunchOptionsChange({...launchOptions, model})}
 				/>
 				<EffortSelector {...menuProps("effort")} current={currentEffort} onSelect={selectEffort} />
-				<UsageRing usage={state.usage} />
+				<UsageRing usage={state.usage} onShowBreakdown={onShowUsageBreakdown} />
 			</div>
 			<ConfirmDialog
 				open={effortConfirm.open}

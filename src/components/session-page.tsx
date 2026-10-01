@@ -1,6 +1,6 @@
 import {useElementScrollRestoration, useLocation} from "@tanstack/react-router";
 import {useQuery} from "@tanstack/react-query";
-import {useCallback, useEffect, useMemo, useRef, useState} from "react";
+import {lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {Minimize2} from "lucide-react";
 import {SessionChat} from "./session-chat";
 import {ChapterChips} from "./chapter-chips";
@@ -255,6 +255,11 @@ interface RequestedPaneProps {
 	onRequestedPaneHandled?: (() => void) | undefined;
 }
 
+// The usage breakdown card only loads once "See detailed breakdown" is clicked.
+const SessionUsageCard = lazy(() =>
+	import("./session-usage-card").then((module) => ({default: module.SessionUsageCard})),
+);
+
 export function SessionPage({
 	sessionId,
 	requestedPane,
@@ -469,6 +474,9 @@ function SessionView({
 	);
 	const pendingQuestion = useMemo(() => findPendingAskUserQuestion(transcript.records), [transcript.records]);
 	const [dismissedToolUseId, setDismissedToolUseId] = useState<string | null>(null);
+	// The ephemeral Usage card, keyed to the session it was opened in.
+	const [usageCardSessionId, setUsageCardSessionId] = useState<string | null>(null);
+	const showUsageBreakdown = useCallback(() => setUsageCardSessionId(sessionId), [sessionId]);
 	const dockedQuestion =
 		isActive && pendingQuestion !== null && pendingQuestion.toolUseId !== dismissedToolUseId
 			? pendingQuestion
@@ -779,6 +787,14 @@ function SessionView({
 						/>
 					)}
 
+					{usageCardSessionId === sessionId && (
+						<Suspense fallback={null}>
+							<div ref={(node) => node?.scrollIntoView?.({block: "nearest"})}>
+								<SessionUsageCard records={transcript.records} limits={composerChin.usage} />
+							</div>
+						</Suspense>
+					)}
+
 					<WorkingMarker state={workingMarkerState} />
 
 					<SideChat sessionId={sessionId} messageCount={data.messageCount} />
@@ -845,6 +861,7 @@ function SessionView({
 									onSendNow={promptBehavior.usesHerdr ? composerQueue.sendNowText : undefined}
 									deliveryHint={promptBehavior.deliveryHint}
 									chin={composerChin}
+									onShowUsageBreakdown={showUsageBreakdown}
 									slashCommands={slashCommands}
 									bypassPermissionsAllowed={bypassPermissionsAllowed}
 									live={liveLaunchAvailable ? liveLaunch : undefined}
