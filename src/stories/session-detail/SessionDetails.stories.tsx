@@ -1,10 +1,10 @@
 import type {Meta, StoryObj} from "@storybook/react-vite";
-import {StatusFooter} from "../../components/status-footer";
+import {SessionDetails} from "../../components/panes/session-details-pane";
 
 const meta = {
-	title: "Session Detail/StatusFooter",
-	component: StatusFooter,
-} satisfies Meta<typeof StatusFooter>;
+	title: "Session Detail/SessionDetails",
+	component: SessionDetails,
+} satisfies Meta<typeof SessionDetails>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

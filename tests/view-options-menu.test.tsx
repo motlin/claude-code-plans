@@ -59,6 +59,7 @@ describe("viewOptionsItems", () => {
 		"background-tasks",
 		"plan",
 		"subagents",
+		"session-details",
 	]);
 
 	function visible(
@@ -88,6 +89,7 @@ describe("viewOptionsItems", () => {
 			["background-tasks", 1],
 			["plan", null],
 			["subagents", null],
+			["session-details", null],
 		]);
 	});
 
@@ -95,6 +97,7 @@ describe("viewOptionsItems", () => {
 		expect(visible(ALL_KINDS, {})).toStrictEqual([
 			["files", null],
 			["links", null],
+			["session-details", null],
 		]);
 	});
 
@@ -104,6 +107,7 @@ describe("viewOptionsItems", () => {
 			["files", null],
 			["links", null],
 			["plan", null],
+			["session-details", null],
 		]);
 	});
 
@@ -200,6 +204,24 @@ describe("SessionPaneControls", () => {
 			pane: within(screen.getByRole("region", {name: "files"})).getByText("files pane body").tagName,
 			checked: screen.getByRole("menuitemcheckbox", {name: /^Files/}).getAttribute("aria-checked"),
 		}).toStrictEqual({pane: "P", checked: "true"});
+	});
+
+	it("lists Session details and opens it as a pane", async () => {
+		registerKinds("session-details");
+		renderControls(1000);
+		await openViewOptions();
+
+		expect(menuRows()).toStrictEqual([["menuitemcheckbox", "Session details", "false"]]);
+
+		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: "Session details"}));
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		});
+
+		expect(
+			within(screen.getByRole("region", {name: "session-details"})).getByText("session-details pane body")
+				.tagName,
+		).toBe("P");
 	});
 
 	it("shows main pane toggles in the trail when the titlebar is wide", () => {

@@ -24,13 +24,13 @@ import {TileHost} from "./panes/tile-host";
 import {useRegisterArtifactsPane, useSessionArtifacts} from "./panes/artifacts-pane";
 import {useRegisterBackgroundTasksPane} from "./panes/background-tasks-pane";
 import {useRegisterLinksPane} from "./panes/links-pane";
+import {useRegisterSessionDetailsPane} from "./panes/session-details-pane";
 import {useRegisterSubagentPane} from "./panes/subagent-pane";
 import {SessionSubagentOpener} from "./subagent-opener";
 import {useRegisterPlanPane} from "./panes/plan-pane";
 import {ChangesPaneShortcut, useRegisterChangesPane} from "./changes/changes-pane";
 import {FilesPaneShortcut, useExtractedSessionFiles, useRegisterFilesPane} from "./panes/files-pane";
 import {TerminalPaneShortcut, useRegisterTerminalPane} from "./panes/terminal-pane";
-import {StatusFooter} from "./status-footer";
 import {ApprovalDock} from "./approval-dock";
 import {PermissionCard} from "./permission-card";
 import {BranchStrip} from "./branch-strip";
@@ -430,6 +430,7 @@ function SessionView({
 	useRegisterBackgroundTasksPane(sessionId, backgroundTasks, subagents.length);
 	useRegisterSubagentPane({sessionId, subagents, records: transcript.records});
 	const statusline = useStatusline(sessionId);
+	useRegisterSessionDetailsPane(statusline, data.messageCount);
 	const composerServerState = useComposerServerState(sessionId);
 	const composerChin = useMemo(
 		() =>
@@ -799,16 +800,12 @@ function SessionView({
 
 				<SideChat sessionId={sessionId} messageCount={data.messageCount} />
 
-				{/* Sticky footer: the composer dock + status bar */}
+				{/* Sticky footer: the composer dock, opaque to the viewport bottom with a fade over the transcript */}
 				<div
 					data-session-footer
-					className="sticky bottom-0 z-10 -mx-4 -mb-8 pb-[max(env(safe-area-inset-bottom),0.5rem)] sm:-mx-8"
+					className="sticky bottom-0 z-10 -mx-4 -mb-8 pb-[max(env(safe-area-inset-bottom),0.5rem)] sm:-mx-8 bg-surface-2 before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-8 before:bg-linear-to-b before:from-transparent before:to-surface-2"
 				>
-					<div
-						className={
-							!chromeHidden && data.projectPath ? "bg-surface-2 px-4 pt-2 pb-3 sm:px-8" : "px-4 sm:px-8"
-						}
-					>
+					<div className={!chromeHidden && data.projectPath ? "px-4 pt-2 pb-3 sm:px-8" : "px-4 sm:px-8"}>
 						<SessionDock anchorRef={scrollAnchorRef}>
 							{dockedQuestion && (
 								<ApprovalDock
@@ -873,7 +870,6 @@ function SessionView({
 							)}
 						</SessionDock>
 					</div>
-					{statusline && <StatusFooter data={statusline} messageCount={data.messageCount} />}
 				</div>
 			</TileHost>
 		</div>

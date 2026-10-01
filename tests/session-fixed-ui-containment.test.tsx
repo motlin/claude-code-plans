@@ -220,4 +220,71 @@ describe("fixed-position session UI and the contained transcript scroller", () =
 			),
 		).toStrictEqual([["sticky", "pb-[max(env(safe-area-inset-bottom),0.5rem)]"]]);
 	});
+
+	it("has no status footer and opens Session details from View options", async () => {
+		vi.stubGlobal("EventSource", TestEventSource);
+		vi.stubGlobal("localStorage", new FakeStorage());
+		vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
+		vi.stubGlobal(
+			"fetch",
+			vi.fn((input: RequestInfo | URL) =>
+				String(input).endsWith("/statusline")
+					? Promise.resolve(
+							new Response(JSON.stringify({version: "1.0.23", cost: {total_cost_usd: 1.47}}), {
+								status: 200,
+								headers: {"content-type": "application/json"},
+							}),
+						)
+					: new Promise<Response>(() => {}),
+			),
+		);
+
+		const scroller = await renderSessionInScroller();
+		fireEvent.click(await screen.findByRole("button", {name: "View options"}));
+		const item = await screen.findByRole("menuitemcheckbox", {name: "Session details"});
+		const footer = scroller.querySelector<HTMLElement>("[data-session-footer]");
+		const footerContent = {
+			buttons: [...(footer?.querySelectorAll("button") ?? [])].map((button) => button.getAttribute("aria-label")),
+			segments: footer?.querySelectorAll("[data-status-segment]").length,
+		};
+		await act(async () => {
+			fireEvent.click(item);
+		});
+		const pane = screen.getByRole("region", {name: "Session details"});
+
+		expect({
+			footerContent,
+			segments: [...pane.querySelectorAll("[data-status-segment]")].map((segment) => segment.textContent),
+		}).toStrictEqual({
+			footerContent: {buttons: ["Scroll to bottom"], segments: 0},
+			segments: ["v1.0.23", "1 msg", "$1.47"],
+		});
+	});
+
+	it("paints the dock opaque to the viewport bottom with a top fade over the transcript", async () => {
+		vi.stubGlobal("EventSource", TestEventSource);
+		vi.stubGlobal("localStorage", new FakeStorage());
+		vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(() => new Promise<Response>(() => {})),
+		);
+
+		const scroller = await renderSessionInScroller();
+		const footer = scroller.querySelector("[data-session-footer]");
+
+		expect(
+			[...(footer?.classList ?? [])].filter((token) => token.startsWith("bg-") || token.startsWith("before:")),
+		).toStrictEqual([
+			"bg-surface-2",
+			"before:pointer-events-none",
+			"before:absolute",
+			"before:inset-x-0",
+			"before:bottom-full",
+			"before:h-8",
+			"before:bg-linear-to-b",
+			"before:from-transparent",
+			"before:to-surface-2",
+		]);
+	});
 });

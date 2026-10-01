@@ -101,6 +101,32 @@ describe("SessionDock scroll-to-bottom pill", () => {
 	});
 });
 
+describe("SessionDock scroll-to-bottom pill style", () => {
+	it("draws a bordered white 24px circle with a shadow", () => {
+		render(<DockInScroller />);
+		const pill = screen.getByLabelText("Scroll to bottom", {selector: "button"});
+		const shape = [
+			"size-6",
+			"rounded-full",
+			"border",
+			"border-border",
+			"bg-surface-0",
+			"shadow-panel-sm",
+			"rounded",
+		];
+
+		expect(shape.map((className) => [className, pill.classList.contains(className)])).toStrictEqual([
+			["size-6", true],
+			["rounded-full", true],
+			["border", true],
+			["border-border", true],
+			["bg-surface-0", true],
+			["shadow-panel-sm", true],
+			["rounded", false],
+		]);
+	});
+});
+
 describe("transcript width setting", () => {
 	it("maps narrow, medium and wide to the --max-content-width CSS variable", () => {
 		expect({

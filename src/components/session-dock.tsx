@@ -54,7 +54,7 @@ export function SessionDock({anchorRef, children}: {anchorRef: RefObject<HTMLEle
 				inert={!awayFromBottom}
 				tabIndex={awayFromBottom ? 0 : -1}
 				onClick={scrollToBottom}
-				className={`absolute -top-8 left-1/2 -translate-x-1/2 z-[1] inline-flex h-6 items-center gap-1 rounded px-1 bg-surface-popover text-secondary shadow-panel-sm hover:text-primary cursor-pointer transition-opacity duration-150 ${
+				className={`absolute -top-8 left-1/2 -translate-x-1/2 z-[1] inline-flex size-6 items-center justify-center rounded-full border border-border bg-surface-0 text-secondary shadow-panel-sm hover:text-primary cursor-pointer transition-opacity duration-150 ${
 					awayFromBottom ? "opacity-100" : "opacity-0 pointer-events-none"
 				}`}
 			>

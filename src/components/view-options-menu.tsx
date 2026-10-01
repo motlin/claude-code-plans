@@ -4,6 +4,7 @@ import {
 	FileDiff,
 	Files,
 	GitFork,
+	Info,
 	Link2,
 	ListChecks,
 	ListTodo,
@@ -82,6 +83,7 @@ function candidates(facts: ViewOptionsFacts): ViewOptionsCandidate[] {
 			icon: GitFork,
 			applies: (facts.subagentCount ?? 0) > 0,
 		},
+		{kind: "session-details", label: "Session details", icon: Info, applies: true},
 	];
 }
 

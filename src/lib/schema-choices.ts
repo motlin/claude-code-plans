@@ -617,6 +617,7 @@ const paneKindLabels = {
 	artifacts: "Artifacts",
 	subagents: "Subagents",
 	"side-chat": "Side chat",
+	"session-details": "Session details",
 } satisfies Record<PaneKind, string>;
 
 const tileIdLabels = {
