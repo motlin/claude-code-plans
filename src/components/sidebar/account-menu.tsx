@@ -70,7 +70,7 @@ export function AccountMenu() {
 						{initial}
 					</span>
 				</span>
-				<span className="flex min-w-0 items-baseline gap-1 overflow-hidden text-[14px]">
+				<span className="flex min-w-0 items-baseline gap-1 overflow-hidden text-[14px] leading-[21px]">
 					<span className="max-w-full shrink-0 truncate whitespace-nowrap text-secondary">{name}</span>
 					{data?.planLabel !== undefined && (
 						<>

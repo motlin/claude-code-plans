@@ -35,7 +35,7 @@ function SearchButton() {
 				aria-label="Search"
 				aria-keyshortcuts={ariaKeyShortcuts}
 				onClick={() => openCommandPalette("search")}
-				className="flex h-8 w-8 items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary"
+				className="flex h-8 w-8 items-center justify-center rounded-r6 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary"
 			>
 				<Search className="h-4 w-4" aria-hidden="true" />
 			</button>

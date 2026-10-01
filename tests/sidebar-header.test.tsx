@@ -102,6 +102,20 @@ describe("sidebar resize handle", () => {
 });
 
 describe("nav scroll", () => {
+	it("keeps a stable thin scrollbar gutter like upstream", () => {
+		render(
+			<NavScroll>
+				<div>content</div>
+			</NavScroll>,
+		);
+
+		const classes = screen.getByTestId("nav-scroll").className.split(" ");
+		expect(classes.filter((token) => token.startsWith("[scrollbar-"))).toStrictEqual([
+			"[scrollbar-gutter:stable]",
+			"[scrollbar-width:thin]",
+		]);
+	});
+
 	it("sets data-scrolled only while scrolled away from the top", () => {
 		render(
 			<NavScroll>

@@ -117,6 +117,18 @@ describe("sidebar footer", () => {
 		});
 	});
 
+	it("sizes the Search radius and account label like upstream", async () => {
+		await renderSidebar();
+
+		const footer = await waitFor(() => screen.getByTestId("sidebar-footer"));
+		const search = within(footer).getByRole("button", {name: "Search"}).className.split(" ");
+		const label = within(footer).getByText("craig").parentElement?.className.split(" ") ?? [];
+		expect({
+			searchRadius: search.filter((token) => token.startsWith("rounded")),
+			labelType: label.filter((token) => token.startsWith("text-[") || token.startsWith("leading-")),
+		}).toStrictEqual({searchRadius: ["rounded-r6"], labelType: ["text-[14px]", "leading-[21px]"]});
+	});
+
 	it("labels the account button Local until the account loads", async () => {
 		await renderSidebar(null);
 

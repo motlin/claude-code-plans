@@ -161,6 +161,17 @@ describe("sidebar SessionGroups", () => {
 		expect(screen.queryByText("project-b1")).toBeNull();
 	});
 
+	it("styles the row kebab like upstream: radius 6 (r5), ink, no hover background of its own", async () => {
+		await renderGroups(FIXTURE);
+
+		const classes = screen.getByRole("button", {name: "More options for Working one"}).className.split(" ");
+		expect({
+			radius: classes.filter((token) => token.startsWith("rounded")),
+			ink: classes.filter((token) => /^text-(primary|secondary|ink-muted|muted)$/.test(token)),
+			hoverBg: classes.filter((token) => token.startsWith("hover:bg")),
+		}).toStrictEqual({radius: ["rounded-r5"], ink: ["text-primary"], hoverBg: []});
+	});
+
 	it("collapses a group, persists it in the sidebar store, and restores it on remount", async () => {
 		const first = await renderGroups(FIXTURE);
 		const toggle = screen.getByRole("button", {name: "Working"});

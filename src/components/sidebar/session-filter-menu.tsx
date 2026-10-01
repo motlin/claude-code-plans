@@ -97,7 +97,7 @@ function SessionFilterMenu({
 				<MenuTrigger
 					aria-label={filterLabel(prefs)}
 					data-row-action=""
-					className="relative flex size-6 shrink-0 items-center justify-center rounded-[var(--sb-radius)] text-ink-muted hover:bg-[var(--sb-hover)] hover:text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 data-[popup-open]:bg-[var(--sb-hover)]"
+					className="relative flex size-6 shrink-0 items-center justify-center rounded-r5 text-secondary hover:bg-[var(--sb-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 data-[popup-open]:bg-[var(--sb-hover)]"
 				>
 					<SlidersHorizontal aria-hidden="true" className="size-4" />
 				</MenuTrigger>

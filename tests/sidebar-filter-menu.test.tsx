@@ -152,6 +152,16 @@ describe("sidebar Filter & group menu", () => {
 		expect(filterButton().getAttribute("aria-label")).toBe("Filter");
 	});
 
+	it("styles the Filter button like upstream: radius 6 (r5), secondary ink", async () => {
+		await renderSidebarGroups();
+
+		const classes = filterButton().className.split(" ");
+		expect({
+			radius: classes.filter((token) => token.startsWith("rounded")),
+			ink: classes.filter((token) => /^text-(primary|secondary|ink-muted|muted)$/.test(token)),
+		}).toStrictEqual({radius: ["rounded-r5"], ink: ["text-secondary"]});
+	});
+
 	it("lists State-mode items in upstream order", async () => {
 		await renderSidebarGroups();
 		const menu = await openFilterMenu();
