@@ -58,6 +58,24 @@ describe("sidebar toggle", () => {
 		expect(readSidebarState().collapsed).toBe(false);
 	});
 
+	it("shows its tooltip below the button, like upstream", () => {
+		vi.useFakeTimers();
+		try {
+			render(<Harness />);
+			fireEvent.pointerEnter(screen.getByRole("button", {name: "Hide sidebar"}).parentElement!);
+			act(() => {
+				vi.advanceTimersByTime(300);
+			});
+			const tooltip = screen.getByRole("tooltip");
+			expect({text: tooltip.textContent, below: tooltip.className.includes("top-full")}).toEqual({
+				text: "Hide sidebar⌘CommandB",
+				below: true,
+			});
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it("toggles when the button is clicked", () => {
 		render(<Harness />);
 

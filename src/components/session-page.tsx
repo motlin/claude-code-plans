@@ -706,7 +706,7 @@ function SessionView({
 				{/* Floating restore button when chrome is hidden */}
 				{chromeHidden && (
 					<div className="sticky top-0 z-10 flex justify-end py-1">
-						<Tooltip content="Show header and footer" shortcut={chromeShortcut.keys}>
+						<Tooltip content="Show header and footer" shortcut={chromeShortcut.keys} side="bottom">
 							<button
 								type="button"
 								onClick={() => setChromeHidden(false)}

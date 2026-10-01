@@ -1,6 +1,16 @@
-import {cloneElement, type ReactElement, useEffect, useId, useRef, useState} from "react";
+import {
+	cloneElement,
+	type CSSProperties,
+	type ReactElement,
+	useEffect,
+	useId,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 
 import {Shortcut} from "./shortcut";
+import {placeTooltip, type TooltipPlacement} from "./tooltip-placement";
 
 const OPEN_DELAY_MS = 300;
 
@@ -8,6 +18,7 @@ const SIDE_CLASS = {
 	top: "bottom-full left-1/2 mb-1 -translate-x-1/2",
 	bottom: "top-full left-1/2 mt-1 -translate-x-1/2",
 	right: "left-full top-1/2 ml-1 -translate-y-1/2",
+	left: "right-full top-1/2 mr-1 -translate-y-1/2",
 } as const;
 
 const TOOLTIP_CLASS =
@@ -33,7 +44,8 @@ const STACKED_TOOLTIP_CLASS = TOOLTIP_CLASS.replace(
 /**
  * Minimal claude.ai/code tooltip: always dark, side top (titlebar controls use
  * bottom, sidebar family handles right), offset 4, 300ms open delay, with an optional text-variant shortcut
- * after the label.
+ * after the label. Once open it is measured and, when it would leave the viewport, flipped to the opposite side
+ * and shifted to stay 8px inside the edges.
  */
 export function Tooltip({
 	content,
@@ -60,8 +72,33 @@ export function Tooltip({
 	const id = useId();
 	const [open, setOpen] = useState(false);
 	const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+	const anchorRef = useRef<HTMLSpanElement>(null);
+	const tipRef = useRef<HTMLSpanElement>(null);
+	const [placement, setPlacement] = useState<TooltipPlacement | undefined>(undefined);
 
 	useEffect(() => () => clearTimeout(timer.current), []);
+
+	useLayoutEffect(() => {
+		const anchor = anchorRef.current;
+		const tip = tipRef.current;
+		if (!open || anchor === null || tip === null) {
+			setPlacement(undefined);
+			return;
+		}
+		const size = {width: tip.offsetWidth, height: tip.offsetHeight};
+		// Unlaid-out tooltips (no layout engine) keep their requested side.
+		if (size.width === 0 && size.height === 0) return;
+		setPlacement(
+			placeTooltip(
+				anchor.getBoundingClientRect(),
+				size,
+				{width: document.documentElement.clientWidth, height: document.documentElement.clientHeight},
+				side,
+			),
+		);
+	}, [open, side, content, description]);
+
+	const placedSide = placement?.side ?? side;
 
 	function show() {
 		clearTimeout(timer.current);
@@ -89,6 +126,7 @@ export function Tooltip({
 
 	return (
 		<span
+			ref={anchorRef}
 			className={className ? `relative inline-flex ${className}` : "relative inline-flex"}
 			onPointerEnter={show}
 			onPointerLeave={hide}
@@ -103,9 +141,11 @@ export function Tooltip({
 				: children}
 			{open && (
 				<span
+					ref={tipRef}
 					role="tooltip"
 					id={id}
-					className={`${description !== undefined ? STACKED_TOOLTIP_CLASS : multiline ? MULTILINE_TOOLTIP_CLASS : TOOLTIP_CLASS} ${SIDE_CLASS[side]}`}
+					className={`${description !== undefined ? STACKED_TOOLTIP_CLASS : multiline ? MULTILINE_TOOLTIP_CLASS : TOOLTIP_CLASS} ${SIDE_CLASS[placedSide]}`}
+					style={shiftStyle(placement)}
 				>
 					{description !== undefined ? (
 						<>
@@ -121,6 +161,15 @@ export function Tooltip({
 			)}
 		</span>
 	);
+}
+
+/**
+ * Moves the tooltip by its placement shift with `transform`, which composes with the side classes' Tailwind 4
+ * `translate` property and leaves their margins (the 4px offset) intact.
+ */
+function shiftStyle(placement: TooltipPlacement | undefined): CSSProperties | undefined {
+	if (placement === undefined || (placement.shiftX === 0 && placement.shiftY === 0)) return undefined;
+	return {transform: `translate(${placement.shiftX}px, ${placement.shiftY}px)`};
 }
 
 function TooltipShortcut({keys}: {keys: string}) {

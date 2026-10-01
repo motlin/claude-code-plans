@@ -22,7 +22,7 @@ export function SidebarToggleButton({
 	const label = collapsed ? "Show sidebar" : "Hide sidebar";
 
 	return (
-		<Tooltip content={label} shortcut={keys}>
+		<Tooltip content={label} shortcut={keys} side="bottom">
 			<button
 				type="button"
 				onClick={onClick}
