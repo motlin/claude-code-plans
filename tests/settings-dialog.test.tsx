@@ -10,8 +10,8 @@ import {
 	RouterProvider,
 } from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
-import {SettingsDialog} from "../src/components/settings/settings-dialog";
+import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {preloadCustomizeDialogPanel, SettingsDialog} from "../src/components/settings/settings-dialog";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {ThemeProvider} from "../src/components/theme-provider";
 import {ToastProvider} from "../src/components/toast";
@@ -235,6 +235,12 @@ describe("/settings route", () => {
 });
 
 describe("SettingsDialog local tabs", () => {
+	// The Customize panel loads on first open. Without this, the first Skills/Plugins/Connectors test pays for
+	// importing its module graph plus React's 300ms Suspense reveal throttle inside findBy's 1s window.
+	beforeAll(async () => {
+		await preloadCustomizeDialogPanel();
+	});
+
 	beforeEach(() => {
 		stubBrowser();
 		vi.stubGlobal("fetch", () => new Promise(() => {}));

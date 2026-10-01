@@ -1,7 +1,7 @@
 import {Dialog} from "@base-ui/react/dialog";
 import {useLocation, useNavigate} from "@tanstack/react-router";
 import {X} from "lucide-react";
-import {lazy, Suspense, useCallback, useEffect, useRef, useState, type ComponentType} from "react";
+import {type ComponentProps, Suspense, use, useCallback, useEffect, useRef, useState, type ComponentType} from "react";
 import {useShortcut} from "../../hooks/use-shortcut";
 import {customizeSectionLabels, settingsTabLabels} from "../../lib/schema-choices";
 import {
@@ -41,8 +41,31 @@ const TAB_PANELS = {
 	setup: SetupSettings,
 } satisfies Record<SettingsTab, ComponentType>;
 
+type CustomizeDialogPanelModule = typeof import("../customize/customize-dialog-panel");
+type CustomizeDialogPanelProps = ComponentProps<CustomizeDialogPanelModule["default"]>;
+
 // Skills, Connectors and Plugins pull in the Customize lists and detail views, so they load on first open.
-const CustomizeDialogPanel = lazy(() => import("../customize/customize-dialog-panel"));
+let customizeDialogPanelModule: Promise<CustomizeDialogPanelModule> | undefined;
+let loadedCustomizeDialogPanel: CustomizeDialogPanelModule["default"] | undefined;
+
+/** Starts loading the Customize panel; the nav calls it on hover/focus so the first open needn't wait. */
+export function preloadCustomizeDialogPanel(): Promise<CustomizeDialogPanelModule> {
+	customizeDialogPanelModule ??= import("../customize/customize-dialog-panel").then((module) => {
+		loadedCustomizeDialogPanel = module.default;
+		return module;
+	});
+	return customizeDialogPanelModule;
+}
+
+/**
+ * Suspends only while the module is still loading. Unlike React.lazy, which suspends on its first render even
+ * when the module is already in hand and then holds the reveal for React's 300ms Suspense throttle, a preloaded
+ * panel renders in the same pass.
+ */
+function CustomizeDialogPanel(props: CustomizeDialogPanelProps) {
+	const Panel = loadedCustomizeDialogPanel ?? use(preloadCustomizeDialogPanel()).default;
+	return <Panel {...props} />;
+}
 
 type NavItem = {kind: "settings"; tab: SettingsTab} | {kind: "customize"; section: CustomizeSection};
 
@@ -201,6 +224,8 @@ export function SettingsDialog() {
 									key={item.kind === "settings" ? item.tab : `customize-${item.section}`}
 									type="button"
 									aria-current={selected ? "page" : undefined}
+									onPointerEnter={item.kind === "customize" ? preloadCustomizeDialogPanel : undefined}
+									onFocus={item.kind === "customize" ? preloadCustomizeDialogPanel : undefined}
 									onClick={() =>
 										item.kind === "settings"
 											? selectTab(item.tab)
