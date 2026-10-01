@@ -18,7 +18,7 @@ import {useHasUnseenWork} from "./session-unread-control";
 import {useToast} from "./toast";
 import {Shortcut} from "./ui/shortcut";
 
-/** A session row the → card can act on; `archived`/`bucket` are unknown for server-only hits. */
+/** A session row the ⌥⏎ card can act on; `archived`/`bucket` are unknown for server-only hits. */
 export interface PaletteCardSession {
 	id: string;
 	title: string;
@@ -239,7 +239,7 @@ export function PaletteRowActionsCard({
 	);
 }
 
-/** Upstream's hover "…" beside a session row; hidden from AT, which uses → instead. */
+/** Upstream's hover "…" beside a session row; hidden from AT, which uses ⌥⏎ instead. */
 export function PaletteRowActionsButton({onOpen}: {onOpen: () => void}) {
 	return (
 		<span

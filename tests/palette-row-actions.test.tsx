@@ -95,7 +95,7 @@ async function openPalette() {
 
 async function openCard() {
 	const opened = await openPalette();
-	fireEvent.keyDown(opened.input, {key: "ArrowRight", code: "ArrowRight"});
+	fireEvent.keyDown(opened.input, {key: "Enter", code: "Enter", altKey: true});
 	const card = await within(opened.dialog).findByRole("menu", {name: "Actions"});
 	return {...opened, card};
 }
@@ -135,7 +135,7 @@ describe("palette row actions card", () => {
 		fetchMock.mockClear();
 	});
 
-	it("→ opens the card for the selected session row with focus on Open", async () => {
+	it("⌥⏎ opens the card for the selected session row with focus on Open", async () => {
 		const {card, input} = await openCard();
 
 		await waitFor(() => expect(document.activeElement).toBe(within(card).getByRole("menuitem", {name: /^Open1/})));

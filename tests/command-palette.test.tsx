@@ -171,11 +171,65 @@ describe("CommandPalette shell", () => {
 	it("shows the footer only while the query is empty", async () => {
 		const dialog = await openPalette();
 
-		expect(footer(dialog)?.textContent).toBe("CloseEscFilters/Actions→Right");
+		expect(
+			[...(footer(dialog)?.children[0]?.children ?? [])].map((hint) => [
+				hint.firstElementChild?.textContent,
+				[...hint.querySelectorAll("kbd")].map((kbd) => kbd.textContent),
+			]),
+		).toStrictEqual([
+			["Close", ["Esc"]],
+			["Change type", ["←Left", "→Right"]],
+			["Filters", ["/"]],
+			["Actions", ["⌥Option", "⏎Enter"]],
+		]);
 
 		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value: "auth"}});
 
 		await waitFor(() => expect(footer(dialog)).toBeNull());
+	});
+
+	it("← and → step through the type tabs and wrap when the query is empty", async () => {
+		const dialog = await openPalette();
+		await within(dialog).findByRole("option", {name: /Refactor auth module/});
+		const input = within(dialog).getByRole("combobox");
+		const selectedTab = () => within(dialog).getByRole("tab", {selected: true}).textContent;
+
+		fireEvent.keyDown(input, {key: "ArrowRight", code: "ArrowRight"});
+		const afterRight = selectedTab();
+		fireEvent.keyDown(input, {key: "ArrowLeft", code: "ArrowLeft"});
+		fireEvent.keyDown(input, {key: "ArrowLeft", code: "ArrowLeft"});
+
+		expect({
+			afterRight,
+			afterWrap: selectedTab(),
+			card: within(dialog).queryByRole("menu", {name: "Actions"}),
+		}).toStrictEqual({afterRight: "Sessions", afterWrap: "Projects", card: null});
+	});
+
+	it("leaves ← and → to the caret when it is inside the query", async () => {
+		const dialog = await openPalette();
+		const input = within(dialog).getByRole("combobox") as HTMLTextAreaElement;
+		fireEvent.change(input, {target: {value: "auth"}});
+		input.setSelectionRange(2, 2);
+
+		fireEvent.keyDown(input, {key: "ArrowRight", code: "ArrowRight"});
+		fireEvent.keyDown(input, {key: "ArrowLeft", code: "ArrowLeft"});
+
+		expect(within(dialog).getByRole("tab", {selected: true}).textContent).toBe("All");
+	});
+
+	it("⌥⏎ opens the selected session row's actions card focused on Open", async () => {
+		const dialog = await openPalette();
+		const row = await within(dialog).findByRole("option", {name: /Refactor auth module/});
+
+		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Enter", code: "Enter", altKey: true});
+
+		const card = await within(dialog).findByRole("menu", {name: "Actions"});
+		await waitFor(() => expect(document.activeElement).toBe(within(card).getByRole("menuitem", {name: /^Open1/})));
+		expect({
+			keyShortcuts: row.getAttribute("aria-keyshortcuts"),
+			dialogOpen: screen.queryByRole("dialog", {name: "Search"}) === dialog,
+		}).toStrictEqual({keyShortcuts: "Alt+Enter", dialogOpen: true});
 	});
 
 	it("closes on Escape", async () => {

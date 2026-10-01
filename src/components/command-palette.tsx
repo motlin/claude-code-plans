@@ -814,8 +814,12 @@ function PalettePopup({
 			openStartPicker();
 			return;
 		}
-		if (event.key === "ArrowRight") {
+		if (event.key === "Enter" && event.altKey) {
 			openSelectedRowActions(event);
+			return;
+		}
+		if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+			stepTab(event);
 			return;
 		}
 		if (event.key !== "Tab" || event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) {
@@ -825,21 +829,33 @@ function PalettePopup({
 		onModeChange(mode === "search" ? "compose" : "search");
 	}
 
-	// → at the end of the input opens the row-actions card for the selected session row.
+	// ← / → at the matching edge of the input (or with no query) step through the type tabs, wrapping.
+	function stepTab(event: KeyboardEvent<HTMLDivElement>) {
+		const input = inputRef.current;
+		if (compose || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+		if (input === null || event.target !== input) return;
+		const forward = event.key === "ArrowRight";
+		const edge = forward ? input.value.length : 0;
+		if (input.value !== "" && (input.selectionStart !== edge || input.selectionEnd !== edge)) return;
+		event.preventDefault();
+		const types = PaletteTypeSchema.options;
+		const index = types.indexOf(tab);
+		chooseTab(types[(index + (forward ? 1 : types.length - 1)) % types.length] ?? "all");
+	}
+
+	// ⌥⏎ opens the row-actions card for the selected session row.
 	function openSelectedRowActions(event: KeyboardEvent<HTMLDivElement>) {
 		const input = inputRef.current;
-		if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+		if (event.metaKey || event.ctrlKey || event.shiftKey) return;
 		if (input === null || event.target !== input) return;
-		if (input.selectionStart !== input.value.length || input.selectionEnd !== input.value.length) {
-			return;
-		}
+		// Never fall through to cmdk's Enter, which would run a non-session row.
+		event.preventDefault();
 		const selected = cardRef.current?.querySelector<HTMLElement>('[cmdk-item][data-selected="true"]')?.dataset[
 			"value"
 		];
 		if (selected?.startsWith("session:") !== true) return;
 		const id = selected.slice("session:".length);
 		if (!cardSessions.has(id)) return;
-		event.preventDefault();
 		openRowActions(id);
 	}
 
@@ -1208,13 +1224,14 @@ function PalettePopup({
 						</div>
 					)}
 
-					{compose && <PaletteFooter hints={[["Send", "enter"]]} />}
+					{compose && <PaletteFooter hints={[["Send", ["enter"]]]} />}
 					{!compose && query === "" && (
 						<PaletteFooter
 							hints={[
-								["Close", "esc"],
-								["Filters", "/"],
-								["Actions", "right"],
+								["Close", ["esc"]],
+								["Change type", ["left", "right"]],
+								["Filters", ["/"]],
+								["Actions", ["alt+enter"]],
 							]}
 						/>
 					)}
@@ -1233,8 +1250,8 @@ function PalettePopup({
 	);
 }
 
-/** Upstream's keyboard-hint footer: "Close Esc · Filters / · Actions →", or "Send ⏎" in Compose. */
-function PaletteFooter({hints}: {hints: ReadonlyArray<readonly [label: string, keys: string]>}) {
+/** Upstream's keyboard-hint footer: "Close Esc · Change type ←→ · Filters / · Actions ⌥⏎", or "Send ⏎" in Compose. */
+function PaletteFooter({hints}: {hints: ReadonlyArray<readonly [label: string, keys: readonly string[]]>}) {
 	return (
 		<div
 			data-palette-footer=""
@@ -1244,7 +1261,11 @@ function PaletteFooter({hints}: {hints: ReadonlyArray<readonly [label: string, k
 				{hints.map(([label, keys]) => (
 					<span key={label} className="flex items-center gap-2">
 						<span>{label}</span>
-						<Shortcut keys={keys} />
+						<span className="flex items-center gap-[2px]">
+							{keys.map((key) => (
+								<Shortcut key={key} keys={key} />
+							))}
+						</span>
 					</span>
 				))}
 			</div>
@@ -1377,7 +1398,7 @@ function SearchResultItem({
 			value={rowKey(row)}
 			onSelect={onSelect}
 			data-item-type={row.kind}
-			{...(session ? {"aria-keyshortcuts": "ArrowRight"} : {})}
+			{...(session ? {"aria-keyshortcuts": "Alt+Enter"} : {})}
 			className={ROW_CLASS}
 		>
 			<span className={`flex min-w-0 flex-1 items-center gap-2 ${session ? ROW_ACTIONS_LABEL_CLASS : ""}`}>
@@ -1462,7 +1483,7 @@ function CommandItem({
 	shortcut?: ShortcutKeys;
 	rowActions?: boolean;
 }) {
-	const keyShortcuts = rowActions ? "ArrowRight" : shortcut?.ariaKeyShortcuts;
+	const keyShortcuts = rowActions ? "Alt+Enter" : shortcut?.ariaKeyShortcuts;
 	return (
 		<Command.Item
 			value={value}
