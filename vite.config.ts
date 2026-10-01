@@ -1,5 +1,5 @@
 import {execFileSync} from "node:child_process";
-import {defineConfig} from "vite-plus";
+import {defineConfig, rolldownVersion, version as viteVersion} from "vite-plus";
 import {tanstackStart} from "@tanstack/react-start/plugin/vite";
 import {nitro} from "nitro/vite";
 import viteReact from "@vitejs/plugin-react";
@@ -7,6 +7,7 @@ import tailwindcss from "@tailwindcss/vite";
 import {AGENTATION_ENDPOINT, AGENTATION_SERVER} from "./src/lib/agentation-endpoint";
 import {closeNitroRunnerOnServerClose} from "./src/lib/dev-env-runner-teardown";
 import {devWorkerProxy} from "./src/lib/dev-worker-proxy";
+import {lockfileToolchainGuard} from "./src/lib/lockfile-toolchain-guard";
 
 // Names the dev process in ps; production uses SERVER_PROCESS_TITLE instead.
 process.title = "claude-code-browser";
@@ -181,6 +182,7 @@ export default defineConfig({
 		},
 	},
 	plugins: [
+		lockfileToolchainGuard({viteVersion, rolldownVersion}),
 		nitro({
 			features: {websocket: true},
 			serverDir: "./server",
