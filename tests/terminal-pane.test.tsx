@@ -5,7 +5,7 @@ import {useEffect} from "react";
 import {z} from "zod";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {TileHost} from "../src/components/panes/tile-host";
+import {TileHost, usePaneHost} from "../src/components/panes/tile-host";
 import {
 	TerminalPaneShortcut,
 	terminalShortcutAction,
@@ -54,12 +54,26 @@ class FakeObserver {
 
 const SESSION_ID = "terminal-pane-session";
 
+/** Stand-in for View options ▸ Terminal, so tests can toggle the pane and read its state in one click. */
+function TestTerminalToggle() {
+	const host = usePaneHost();
+	return (
+		<button
+			type="button"
+			aria-label="Terminal"
+			aria-pressed={host.isOpen("terminal")}
+			onClick={() => host.togglePane("terminal")}
+		/>
+	);
+}
+
 function Harness({available, interactive, shells}: {available: boolean; interactive: boolean; shells: boolean}) {
 	useRegisterTerminalPane(SESSION_ID, {livePane: available, interactive, shells});
 	return (
 		<>
 			<TerminalPaneShortcut available={available || shells} />
 			<SessionPaneControls facts={{}} />
+			<TestTerminalToggle />
 			<textarea aria-label="Composer" />
 		</>
 	);
@@ -151,28 +165,24 @@ describe("terminalShortcutAction", () => {
 });
 
 describe("Terminal pane", () => {
-	it("hides the Terminal toggle when herdr has no pane for the session", () => {
+	it("leaves View options out when herdr has no pane for the session", () => {
 		renderSession(false);
 
-		expect(screen.queryByRole("button", {name: "Terminal"})).toBeNull();
+		expect(screen.queryByRole("button", {name: "View options"})).toBeNull();
 	});
 
-	it("shows the Terminal toggle first, pressed state and ⌃` shortcut included", () => {
+	it("lists Terminal in View options with its ⌃` shortcut, not as a trail toggle", async () => {
 		renderSession(true);
-
-		const toggles = screen
-			.getAllByRole("button")
-			.filter((button) => button.hasAttribute("aria-pressed"))
-			.map((button) => ({
-				label: button.getAttribute("aria-label"),
-				pressed: button.getAttribute("aria-pressed"),
-				keys: button.getAttribute("aria-keyshortcuts"),
-			}));
-		expect(toggles[0]).toStrictEqual({
-			label: "Terminal",
-			pressed: "false",
-			keys: "Control+Backquote",
+		fireEvent.click(screen.getByRole("button", {name: "View options"}));
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 0));
 		});
+		const item = screen.getByRole("menuitemcheckbox", {name: /^Terminal/});
+
+		expect({
+			checked: item.getAttribute("aria-checked"),
+			keys: item.getAttribute("aria-keyshortcuts"),
+		}).toStrictEqual({checked: "false", keys: "Control+Backquote"});
 	});
 
 	it("opens the Claude tab with the toggle", () => {

@@ -53,6 +53,7 @@ afterEach(() => {
 
 describe("viewOptionsItems", () => {
 	const ALL_KINDS: ReadonlySet<PaneKind> = new Set<PaneKind>([
+		"terminal",
 		"artifacts",
 		"files",
 		"links",
@@ -83,6 +84,7 @@ describe("viewOptionsItems", () => {
 				subagentCount: 4,
 			}),
 		).toStrictEqual([
+			["terminal", null],
 			["artifacts", null],
 			["files", null],
 			["links", null],
@@ -95,6 +97,7 @@ describe("viewOptionsItems", () => {
 
 	it("hides panes that do not apply to the session", () => {
 		expect(visible(ALL_KINDS, {})).toStrictEqual([
+			["terminal", null],
 			["files", null],
 			["links", null],
 			["session-details", null],
@@ -103,6 +106,7 @@ describe("viewOptionsItems", () => {
 
 	it("keeps a pane that no longer applies while it is open", () => {
 		expect(visible(ALL_KINDS, {}, ["artifacts", "plan"])).toStrictEqual([
+			["terminal", null],
 			["artifacts", null],
 			["files", null],
 			["links", null],
@@ -133,25 +137,22 @@ describe("viewOptionsItems", () => {
 
 describe("hiddenToggleCount", () => {
 	it.each([
-		{width: null, extras: 0, count: 2, hidden: 0},
-		{width: 1000, extras: 0, count: 2, hidden: 0},
-		{width: 325, extras: 0, count: 2, hidden: 1},
-		{width: 300, extras: 0, count: 2, hidden: 2},
-		{width: 1000, extras: 650, count: 2, hidden: 1},
-		{width: 100, extras: 0, count: 0, hidden: 0},
-	])("titlebar $width with extras $extras folds $hidden of $count", (row) => {
-		expect(hiddenToggleCount({titlebarWidth: row.width, extrasWidth: row.extras, count: row.count})).toBe(
-			row.hidden,
-		);
+		{width: null, count: 1, hidden: 0},
+		{width: 1000, count: 1, hidden: 0},
+		{width: 325, count: 1, hidden: 0},
+		{width: 300, count: 1, hidden: 1},
+		{width: 100, count: 0, hidden: 0},
+	])("titlebar $width folds $hidden of $count", (row) => {
+		expect(hiddenToggleCount({titlebarWidth: row.width, count: row.count})).toBe(row.hidden);
 	});
 });
 
-function renderControls(width: number | null, facts: ViewOptionsFacts = {}) {
+function renderControls(width: number | null, facts: ViewOptionsFacts = {}, onExpandChat?: () => void) {
 	return render(
 		<SettingsProvider>
 			<TileHost sessionId="view-options">
 				<TitlebarWidthContext.Provider value={width}>
-					<SessionPaneControls facts={facts} />
+					<SessionPaneControls facts={facts} {...(onExpandChat === undefined ? {} : {onExpandChat})} />
 				</TitlebarWidthContext.Provider>
 			</TileHost>
 		</SettingsProvider>,
@@ -224,31 +225,31 @@ describe("SessionPaneControls", () => {
 		).toBe("P");
 	});
 
-	it("shows main pane toggles in the trail when the titlebar is wide", () => {
-		registerKinds("terminal", "changes");
-		renderControls(1000);
-
-		expect({
-			toggles: toggleButtons(),
-			viewOptions: screen.queryByRole("button", {name: "View options"}),
-		}).toStrictEqual({toggles: ["Terminal", "Changes"], viewOptions: null});
-	});
-
-	it("folds the last toggle into the top of the menu when narrow", async () => {
+	it("shows upstream's trail, Changes then View options, with Terminal and Files in the menu", async () => {
 		registerKinds("terminal", "changes", "files");
-		renderControls(325);
+		renderControls(1000, {}, () => {});
 
-		expect(toggleButtons()).toStrictEqual(["Terminal", "View options"]);
+		expect(toggleButtons()).toStrictEqual(["Changes", "View options"]);
 
 		await openViewOptions();
 
 		expect(menuRows()).toStrictEqual([
-			["menuitemcheckbox", "Changes⌃Control⇧ShiftD", "false"],
+			["menuitemcheckbox", "Terminal⌃Control`", "false"],
 			["menuitemcheckbox", "Files⇧Shift⌘CommandF", "false"],
+			["menuitem", "Expand chat⇧Shift⌘Command\\", null],
 		]);
 	});
 
-	it("folds every toggle when there is no room, and a folded toggle still opens its pane", async () => {
+	it("expands the chat from View options", async () => {
+		const onExpandChat = vi.fn<() => void>();
+		renderControls(1000, {}, onExpandChat);
+		await openViewOptions();
+		fireEvent.click(screen.getByRole("menuitem", {name: /^Expand chat/}));
+
+		expect(onExpandChat).toHaveBeenCalledTimes(1);
+	});
+
+	it("folds Changes into the top of the menu when there is no room, and it still opens its pane", async () => {
 		registerKinds("terminal", "changes");
 		renderControls(300);
 
@@ -257,8 +258,8 @@ describe("SessionPaneControls", () => {
 		await openViewOptions();
 
 		expect(menuRows()).toStrictEqual([
-			["menuitemcheckbox", "Terminal⌃Control`", "false"],
 			["menuitemcheckbox", "Changes⌃Control⇧ShiftD", "false"],
+			["menuitemcheckbox", "Terminal⌃Control`", "false"],
 		]);
 
 		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: /^Changes/}));

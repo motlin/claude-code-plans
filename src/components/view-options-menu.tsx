@@ -11,7 +11,6 @@ import {
 	type LucideIcon,
 	SquareTerminal,
 } from "lucide-react";
-import {type ReactNode, useEffect, useRef, useState} from "react";
 
 import {useIsMac} from "../hooks/use-is-mac";
 import {useShortcutKeys} from "../hooks/use-shortcut";
@@ -22,7 +21,7 @@ import {usePaneDefinitions} from "./panes/pane-registry";
 import {usePaneHost} from "./panes/tile-host";
 import {TITLEBAR_ICON_BUTTON_CLASS} from "./titlebar-classes";
 import {useTitlebarWidth} from "./titlebar-width";
-import {Menu, MenuCheckboxItem, MenuContent, MenuTrigger} from "./ui/menu";
+import {Menu, MenuCheckboxItem, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "./ui/menu";
 import {Tooltip} from "./ui/tooltip";
 
 export interface PaneMenuEntry {
@@ -34,9 +33,8 @@ export interface PaneMenuEntry {
 
 type MainPaneEntry = PaneMenuEntry & {shortcut: ShortcutId};
 
-/** Upstream's main pane toggles, in trail order; each shows once its pane kind is registered. */
+/** Upstream's one trail pane toggle; it shows once its pane kind is registered. */
 const MAIN_PANE_TOGGLES: readonly MainPaneEntry[] = [
-	{kind: "terminal", label: "Terminal", icon: SquareTerminal, shortcut: "toggle_terminal"},
 	{kind: "changes", label: "Changes", icon: FileDiff, shortcut: "toggle_changes"},
 ];
 
@@ -61,6 +59,7 @@ interface ViewOptionsCandidate extends ViewOptionsItem {
 function candidates(facts: ViewOptionsFacts): ViewOptionsCandidate[] {
 	const running = facts.backgroundTasks?.running ?? 0;
 	return [
+		{kind: "terminal", label: "Terminal", icon: SquareTerminal, shortcut: "toggle_terminal", applies: true},
 		{
 			kind: "artifacts",
 			label: "Artifacts",
@@ -114,38 +113,13 @@ const GAP_PX = 4;
 
 /**
  * How many of the trailing main toggles fold into View options: whatever does
- * not fit beside the lead reserve, the other trail controls and the menu trigger.
+ * not fit beside the lead reserve and the menu trigger.
  */
-export function hiddenToggleCount({
-	titlebarWidth,
-	extrasWidth,
-	count,
-}: {
-	titlebarWidth: number | null;
-	extrasWidth: number;
-	count: number;
-}): number {
+export function hiddenToggleCount({titlebarWidth, count}: {titlebarWidth: number | null; count: number}): number {
 	if (titlebarWidth === null) return 0;
-	const extras = extrasWidth > 0 ? extrasWidth + GAP_PX : 0;
-	const room = titlebarWidth - LEAD_RESERVE_PX - TRAIL_PADDING_PX - extras - (CONTROL_PX + GAP_PX);
+	const room = titlebarWidth - LEAD_RESERVE_PX - TRAIL_PADDING_PX - (CONTROL_PX + GAP_PX);
 	const shown = Math.max(0, Math.floor(room / (CONTROL_PX + GAP_PX)));
 	return Math.max(0, count - shown);
-}
-
-function useElementWidth() {
-	const ref = useRef<HTMLDivElement>(null);
-	const [width, setWidth] = useState(0);
-	useEffect(() => {
-		const element = ref.current;
-		if (element === null || typeof ResizeObserver === "undefined") return;
-		const observer = new ResizeObserver((entries) => {
-			const measured = entries[0]?.contentRect.width;
-			if (measured !== undefined) setWidth(measured);
-		});
-		observer.observe(element);
-		return () => observer.disconnect();
-	}, []);
-	return {ref, width};
 }
 
 function MainPaneToggle({entry}: {entry: MainPaneEntry}) {
@@ -169,9 +143,16 @@ function MainPaneToggle({entry}: {entry: MainPaneEntry}) {
 	);
 }
 
-function ViewOptionsMenu({entries}: {entries: readonly ViewOptionsItem[]}) {
+function ViewOptionsMenu({
+	entries,
+	onExpandChat,
+}: {
+	entries: readonly ViewOptionsItem[];
+	onExpandChat: (() => void) | undefined;
+}) {
 	const host = usePaneHost();
 	const isMac = useIsMac();
+	const expandKeys = useShortcutKeys("expand_collapse_pane");
 	return (
 		<Menu>
 			<Tooltip content="View options" side="bottom">
@@ -205,35 +186,39 @@ function ViewOptionsMenu({entries}: {entries: readonly ViewOptionsItem[]}) {
 						</MenuCheckboxItem>
 					);
 				})}
+				{onExpandChat !== undefined && (
+					<>
+						{entries.length > 0 && <MenuSeparator />}
+						<MenuItem onSelect={onExpandChat} shortcut={expandKeys.keys}>
+							Expand chat
+						</MenuItem>
+					</>
+				)}
 			</MenuContent>
 		</Menu>
 	);
 }
 
 /**
- * The titlebar trail's pane controls: main pane toggles, local extras, then
- * upstream's View options ⋮. When the titlebar is too narrow the last toggles
- * fold into the top of the menu; the trigger shows only when the menu has items.
+ * The titlebar trail's pane controls, upstream's set: the Changes toggle, then
+ * View options ⋮ holding the other panes (Terminal, Files, …) and Expand chat.
+ * When the titlebar is too narrow Changes folds into the top of the menu; the
+ * trigger shows only when the menu has items.
  */
 export function SessionPaneControls({
 	facts,
-	extras,
+	onExpandChat,
 }: {
 	facts: ViewOptionsFacts;
-	/** Local-only trail controls kept out of the fold. */
-	extras?: ReactNode;
+	/** Hides the header and footer; offered as View options ▸ Expand chat. */
+	onExpandChat?: () => void;
 }) {
 	const host = usePaneHost();
 	const definitions = usePaneDefinitions();
 	const titlebarWidth = useTitlebarWidth();
-	const extrasBox = useElementWidth();
 	const registered = new Set(definitions.keys());
 	const toggles = MAIN_PANE_TOGGLES.filter((entry) => registered.has(entry.kind));
-	const hidden = hiddenToggleCount({
-		titlebarWidth,
-		extrasWidth: extrasBox.width,
-		count: toggles.length,
-	});
+	const hidden = hiddenToggleCount({titlebarWidth, count: toggles.length});
 	const shown = toggles.slice(0, toggles.length - hidden);
 	const menuEntries = [
 		...toggles.slice(toggles.length - hidden),
@@ -244,12 +229,9 @@ export function SessionPaneControls({
 			{shown.map((entry) => (
 				<MainPaneToggle key={entry.kind} entry={entry} />
 			))}
-			{extras !== undefined && (
-				<div ref={extrasBox.ref} className="flex items-center gap-1">
-					{extras}
-				</div>
+			{(menuEntries.length > 0 || onExpandChat !== undefined) && (
+				<ViewOptionsMenu entries={menuEntries} onExpandChat={onExpandChat} />
 			)}
-			{menuEntries.length > 0 && <ViewOptionsMenu entries={menuEntries} />}
 		</>
 	);
 }

@@ -14,6 +14,7 @@ import {forkDisabledReason} from "../lib/session-fork";
 import {getSessionMenuItems, type SessionMenuSession} from "../lib/session-menu-items";
 import {ArchivedBadge} from "./archived-badge";
 import {SessionCostPill} from "./session-cost-pill";
+import {SessionEnvironmentGlyph} from "./session-environment-glyph";
 import {
 	MenuEntries,
 	SESSION_MENU_CAPABILITIES,
@@ -296,7 +297,7 @@ export interface SessionTitlebarProps {
 	sessionId: string;
 	data: SessionDetailData;
 	isActive: boolean;
-	/** Main pane toggles, e.g. Changes. */
+	/** The trail's pane controls: Changes, then View options. */
 	paneToggles?: ReactNode;
 	/** Local-only actions for the header menu's trailing section. */
 	local?: SessionHeaderLocalActions;
@@ -309,10 +310,10 @@ export interface SessionTitlebarProps {
 }
 
 /**
- * claude.ai/code's 32px session titlebar. Lead: the parent-session back pill
+ * claude.ai/code's 32px session titlebar. Lead: the environment glyph, the parent-session back pill
  * (subagent transcripts only), the rename title button, the chevron header
  * menu and the origin pills (local badges), which collapse
- * to icons when narrow. Trail: pane toggles, then View options.
+ * to icons when narrow. Trail: the Changes toggle, then View options.
  */
 export function SessionTitlebar({
 	sessionId,
@@ -349,6 +350,7 @@ export function SessionTitlebar({
 				{...(compact ? {"data-pills-compact": ""} : {})}
 				className="flex min-w-0 items-center gap-1"
 			>
+				<SessionEnvironmentGlyph sessionId={sessionId} />
 				{data.parentSessionId !== undefined && (
 					<Link
 						to="/session/$id"

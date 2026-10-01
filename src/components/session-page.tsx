@@ -1,7 +1,7 @@
 import {useElementScrollRestoration, useLocation} from "@tanstack/react-router";
 import {useQuery} from "@tanstack/react-query";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
-import {Maximize2, Minimize2} from "lucide-react";
+import {Minimize2} from "lucide-react";
 import {SessionChat} from "./session-chat";
 import {ChapterChips} from "./chapter-chips";
 import {TranscriptActionsProvider} from "./transcript-actions-provider";
@@ -13,7 +13,7 @@ import {useSettings} from "./settings-provider";
 import {useTranscriptModeShortcut} from "../hooks/use-session-transcript-mode";
 import {sessionHasThinking} from "../lib/transcript-mode";
 import {SessionTitlebar} from "./session-titlebar";
-import {SESSION_STICKY_HEADER_CLASS, TITLEBAR_ICON_BUTTON_CLASS} from "./titlebar-classes";
+import {SESSION_STICKY_HEADER_CLASS} from "./titlebar-classes";
 import {useHasUnseenWork} from "./session-unread-control";
 import {syncUnseenFromSummaries} from "../lib/unread-store";
 import {AskUserQuestionProvider, type AskUserQuestionContextValue} from "./ask-user-question-context";
@@ -693,19 +693,7 @@ function SessionView({
 										backgroundTasks: backgroundTasksFacts(backgroundTasks, subagents.length),
 										subagentCount: subagents.length,
 									}}
-									extras={
-										<Tooltip content="Expand chat" shortcut={chromeShortcut.keys} side="bottom">
-											<button
-												type="button"
-												onClick={() => setChromeHidden(true)}
-												className={TITLEBAR_ICON_BUTTON_CLASS}
-												aria-label="Expand chat"
-												aria-keyshortcuts={chromeShortcut.ariaKeyShortcuts}
-											>
-												<Maximize2 aria-hidden="true" />
-											</button>
-										</Tooltip>
-									}
+									onExpandChat={() => setChromeHidden(true)}
 								/>
 							}
 						/>

@@ -149,7 +149,7 @@ async function renderSession() {
 	});
 	await router.load();
 	render(<RouterProvider router={router} />);
-	await screen.findByRole("button", {name: "Expand chat"});
+	await screen.findByTestId("session-titlebar");
 }
 
 function press(init: KeyboardEventInit): void {
@@ -160,7 +160,7 @@ function press(init: KeyboardEventInit): void {
 
 function chromeState() {
 	return {
-		expandButton: screen.queryByRole("button", {name: "Expand chat"}) !== null,
+		titlebar: screen.queryByTestId("session-titlebar") !== null,
 		showChromeButton: screen.queryByRole("button", {name: "Show chrome"}) !== null,
 	};
 }
@@ -198,10 +198,10 @@ describe("session page chrome toggle shortcut", () => {
 		const afterShow = chromeState();
 
 		expect({initial, afterCmdShiftF, afterHide, afterShow}).toStrictEqual({
-			initial: {expandButton: true, showChromeButton: false},
-			afterCmdShiftF: {expandButton: true, showChromeButton: false, filesPane: true},
-			afterHide: {expandButton: false, showChromeButton: true},
-			afterShow: {expandButton: true, showChromeButton: false},
+			initial: {titlebar: true, showChromeButton: false},
+			afterCmdShiftF: {titlebar: true, showChromeButton: false, filesPane: true},
+			afterHide: {titlebar: false, showChromeButton: true},
+			afterShow: {titlebar: true, showChromeButton: false},
 		});
 	});
 });
