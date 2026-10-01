@@ -1,6 +1,8 @@
 import {Popover} from "@base-ui/react/popover";
 import {type KeyboardEvent, useState} from "react";
 
+import {useShortcutKeys} from "../hooks/use-shortcut";
+
 import {
 	EFFORT_LEVELS,
 	type EffortLevel,
@@ -27,6 +29,7 @@ import {
 	MenuSubTrigger,
 	MenuTrigger,
 } from "./ui/menu";
+import {Tooltip} from "./ui/tooltip";
 
 /*
  * The claude.ai/code chin menus (⌥⌘M mode, ⇧⌘I model, ⇧⌘E effort). A choice
@@ -34,9 +37,12 @@ import {
  */
 
 export const CHIN_BUTTON_CLASS =
-	"flex h-5 min-w-0 items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none";
+	"flex h-5 min-w-0 items-center justify-center rounded-r4 leading-[17px] text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none";
 
 const CHIN_TRIGGER_CLASS = `${CHIN_BUTTON_CLASS} truncate px-1.5`;
+
+/** Upstream reads the model and effort in primary ink; +, mode and usage stay secondary. */
+const CHIN_PRIMARY_TRIGGER_CLASS = CHIN_TRIGGER_CLASS.replace("text-secondary", "text-primary");
 
 const EFFORT_POPUP_CLASS =
 	"flex w-[220px] max-w-[320px] flex-col gap-2 rounded-card bg-[var(--menu-bg)] p-3 text-[12px]/[16px] text-primary shadow-[var(--menu-shadow)] outline-none";
@@ -68,14 +74,19 @@ export function ModeMenu({
 	onSelect: (mode: LaunchPermissionMode) => void;
 }) {
 	const [confirmBypass, setConfirmBypass] = useState(false);
+	const modeKeys = useShortcutKeys("open_mode_menu").keys;
 	return (
 		<>
 			<Menu open={open} onOpenChange={onOpenChange}>
-				<MenuTrigger data-chin-mode="" className={CHIN_TRIGGER_CLASS}>
-					{currentLabel}
-				</MenuTrigger>
+				<Tooltip content="Mode" shortcut={modeKeys} side="top">
+					<MenuTrigger data-chin-mode="" className={CHIN_TRIGGER_CLASS}>
+						{currentLabel}
+					</MenuTrigger>
+				</Tooltip>
 				<MenuContent side="top" className="w-[280px]">
-					<MenuLabel>Mode</MenuLabel>
+					<MenuLabel className="px-2 py-1 text-[12px]/[15px] font-medium text-[var(--menu-muted)]">
+						Mode
+					</MenuLabel>
 					<MenuRadioGroup
 						value={current}
 						onValueChange={(value: string) => {
@@ -137,7 +148,11 @@ export function ModelMenu({
 }) {
 	return (
 		<Menu open={open} onOpenChange={onOpenChange}>
-			<MenuTrigger data-cds="ModelSelector" aria-label={`Model: ${currentLabel}`} className={CHIN_TRIGGER_CLASS}>
+			<MenuTrigger
+				data-cds="ModelSelector"
+				aria-label={`Model: ${currentLabel}`}
+				className={CHIN_PRIMARY_TRIGGER_CLASS}
+			>
 				{currentLabel}
 			</MenuTrigger>
 			<MenuContent side="top" align="end">
@@ -200,13 +215,15 @@ export function EffortSelector({
 
 	return (
 		<Popover.Root open={open} onOpenChange={onOpenChange}>
-			<Popover.Trigger
-				data-cds="ModelSelectorEffort"
-				aria-label={`Effort: ${label}`}
-				className={CHIN_TRIGGER_CLASS}
-			>
-				{label}
-			</Popover.Trigger>
+			<Tooltip content="Effort" side="top">
+				<Popover.Trigger
+					data-cds="ModelSelectorEffort"
+					aria-label={`Effort: ${label}`}
+					className={CHIN_PRIMARY_TRIGGER_CLASS}
+				>
+					{label}
+				</Popover.Trigger>
+			</Tooltip>
 			<Popover.Portal>
 				<Popover.Positioner side="top" align="end" sideOffset={6} className="z-[130]">
 					<Popover.Popup

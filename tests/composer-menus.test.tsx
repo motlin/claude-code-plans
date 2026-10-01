@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
 import type {ComposerState} from "../src/lib/composer-state";
@@ -368,5 +368,71 @@ describe("Composer on a live pane", () => {
 			applied: apply.mock.calls,
 			effort: screen.getByRole("button", {name: /^Effort:/}).getAttribute("aria-label"),
 		}).toStrictEqual({applied: [], effort: "Effort: High"});
+	});
+});
+
+describe("Composer chin tooltips and contrast", () => {
+	function hoverTooltip(trigger: Element): string | null {
+		const anchor = trigger.parentElement;
+		if (anchor === null) throw new Error("trigger has no parent");
+		fireEvent.pointerEnter(anchor);
+		act(() => vi.advanceTimersByTime(400));
+		const text = screen.queryByRole("tooltip")?.textContent ?? null;
+		fireEvent.pointerLeave(anchor);
+		return text;
+	}
+
+	it("shows upstream's Add, Mode ⌥⌘M and Effort tooltips, and none on the model trigger", () => {
+		vi.useFakeTimers();
+		try {
+			renderComposer();
+			const tooltips = {
+				add: hoverTooltip(screen.getByRole("button", {name: "Add"})),
+				mode: hoverTooltip(document.querySelector("[data-chin-mode]") ?? document.body),
+				model: hoverTooltip(screen.getByRole("button", {name: "Model: Opus 5.5"})),
+				effort: hoverTooltip(screen.getByRole("button", {name: "Effort: High"})),
+			};
+
+			expect(tooltips).toStrictEqual({add: "Add", mode: "Mode⌥Option⌘CommandM", model: null, effort: "Effort"});
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("reads the model and effort in primary ink, the rest in secondary, with r4 corners and a 16px +", () => {
+		renderComposer();
+		const classes = (element: Element | null) => element?.getAttribute("class")?.split(" ") ?? [];
+		const add = screen.getByRole("button", {name: "Add"});
+		const pick = (element: Element | null) => {
+			const list = classes(element);
+			return {
+				ink: list.filter((name) => name === "text-primary" || name === "text-secondary"),
+				radius: list.filter((name) => name.startsWith("rounded")),
+				lineHeight: list.filter((name) => name.startsWith("leading")),
+			};
+		};
+
+		expect({
+			add: pick(add),
+			plusIcon: classes(add.querySelector("svg")).filter((name) => name.startsWith("size-")),
+			mode: pick(document.querySelector("[data-chin-mode]")),
+			model: pick(screen.getByRole("button", {name: "Model: Opus 5.5"})),
+			effort: pick(screen.getByRole("button", {name: "Effort: High"})),
+		}).toStrictEqual({
+			add: {ink: ["text-secondary"], radius: ["rounded-r4"], lineHeight: ["leading-[17px]"]},
+			plusIcon: ["size-4"],
+			mode: {ink: ["text-secondary"], radius: ["rounded-r4"], lineHeight: ["leading-[17px]"]},
+			model: {ink: ["text-primary"], radius: ["rounded-r4"], lineHeight: ["leading-[17px]"]},
+			effort: {ink: ["text-primary"], radius: ["rounded-r4"], lineHeight: ["leading-[17px]"]},
+		});
+	});
+
+	it("heads the Mode menu with a 500-weight label padded 4px 8px", async () => {
+		renderComposer();
+		openModeMenu();
+		const menu = await screen.findByRole("menu");
+		const label = within(menu).getByText("Mode");
+
+		expect(label.getAttribute("class")).toBe("px-2 py-1 text-[12px]/[15px] font-medium text-[var(--menu-muted)]");
 	});
 });

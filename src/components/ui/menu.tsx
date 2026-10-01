@@ -389,6 +389,13 @@ export function MenuSeparator() {
 	return <BaseMenu.Separator className="mx-2 my-1 h-px bg-border" />;
 }
 
-export function MenuLabel({children}: {children: ReactNode}) {
-	return <div className="px-2 pt-1.5 pb-1 text-[12px]/[15px] text-[var(--menu-muted)]">{children}</div>;
+export function MenuLabel({
+	children,
+	className = "px-2 pt-1.5 pb-1 text-[12px]/[15px] text-[var(--menu-muted)]",
+}: {
+	children: ReactNode;
+	/** Replaces the default classes, e.g. upstream's 500-weight Mode header padded 4px 8px. */
+	className?: string;
+}) {
+	return <div className={className}>{children}</div>;
 }

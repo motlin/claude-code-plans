@@ -28,6 +28,7 @@ import {effortLevelLabels} from "../lib/schema-choices";
 import {CHIN_BUTTON_CLASS, type ChinMenu, EffortSelector, ModeMenu, ModelMenu} from "./composer-launch-menus";
 import {ConfirmDialog} from "./confirm-dialog";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "./ui/menu";
+import {Tooltip} from "./ui/tooltip";
 
 const POPUP_CLASS =
 	"flex w-[360px] max-w-[calc(100vw-16px)] flex-col gap-3 rounded-card bg-[var(--menu-bg)] p-3 text-[12px]/[16px] text-primary shadow-[var(--menu-shadow)] outline-none";
@@ -192,9 +193,11 @@ export const ComposerChin = memo(function ComposerChin({
 		<>
 			<div className="flex min-w-0 items-center self-start">
 				<Menu>
-					<MenuTrigger aria-label="Add" className={`${CHIN_BUTTON_CLASS} aspect-square`}>
-						<Plus className="size-3.5" aria-hidden="true" />
-					</MenuTrigger>
+					<Tooltip content="Add" side="top">
+						<MenuTrigger aria-label="Add" className={`${CHIN_BUTTON_CLASS} aspect-square`}>
+							<Plus className="size-4" aria-hidden="true" />
+						</MenuTrigger>
+					</Tooltip>
 					<MenuContent side="top">
 						<MenuItem onSelect={onAddFiles} shortcut={addFilesKeys}>
 							Add files or photos
