@@ -240,6 +240,12 @@ export const OBJECT_EDITORS: ObjectEditorDef[] = [
 				label: "Auto-allow Bash if sandboxed",
 				type: "boolean",
 			},
+			{
+				key: "excludedCommands",
+				label: "Excluded commands",
+				description: "Command patterns that run outside the sandbox",
+				type: "stringList",
+			},
 		],
 	},
 	{

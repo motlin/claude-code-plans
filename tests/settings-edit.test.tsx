@@ -21,6 +21,19 @@ describe("settings form editors", () => {
 		expect(html).toContain("Auto-allow Bash if sandboxed");
 	});
 
+	it("renders sandbox excludedCommands entries via ObjectFieldsEditor stringList sub-field", () => {
+		const html = renderToStaticMarkup(
+			<ObjectFieldsEditor
+				def={editorDef("sandbox")}
+				value={{enabled: true, excludedCommands: ["docker *", "git push"]}}
+				onChange={noop}
+			/>,
+		);
+		expect(html).toContain("Excluded commands");
+		expect(html).toContain('value="docker *"');
+		expect(html).toContain('value="git push"');
+	});
+
 	it("renders marketplace name and repo via MarketplacesEditor", () => {
 		const html = renderToStaticMarkup(
 			<MarketplacesEditor
