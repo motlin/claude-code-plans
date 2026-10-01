@@ -217,6 +217,26 @@ describe("sidebar multi-select", () => {
 	});
 });
 
+describe("sidebar group header Select all", () => {
+	it("selects every row in a state group from the header's context menu", async () => {
+		const {container} = await renderGroups({groupBy: "state"});
+
+		const header = screen.getByText("Completed").closest("[data-group-toggle]");
+		if (!(header instanceof HTMLElement)) throw new Error("no Completed header");
+		fireEvent.contextMenu(header, {clientX: 40, clientY: 50});
+		await flush();
+		const menu = await waitFor(() => screen.getByRole("menu"));
+		const outline = menuOutline(menu);
+		fireEvent.click(screen.getByRole("menuitem", {name: "Select all"}));
+		await flush();
+
+		expect({outline, selected: selectedTitles(container)}).toStrictEqual({
+			outline: ["Select all"],
+			selected: ["Alpha one", "Beta one", "Loose one", "Loose two", "Loose three"],
+		});
+	});
+});
+
 describe("sidebar bulk menu", () => {
 	it("offers only the bulk actions on a selected row, with no Delete", async () => {
 		await renderGroups();

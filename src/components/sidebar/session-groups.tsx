@@ -195,6 +195,7 @@ export function SessionGroups({
 			);
 			return true;
 		},
+		selectAll: (ids) => dispatchSelection({type: "add", ids, order: displayOrder}),
 		clear: () => dispatchSelection({type: "clear"}),
 	};
 	const sectionDrag = drag !== null && sectionOfDragId(drag.srcId) !== null;

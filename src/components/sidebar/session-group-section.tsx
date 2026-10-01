@@ -25,6 +25,7 @@ import {Tooltip} from "../ui/tooltip";
 import {CustomGroupHeader} from "./custom-group-header";
 import {GroupAppearanceMark} from "./group-appearance";
 import {ProjectGroupHeader} from "./project-group-header";
+import {SelectAllGroupHeader} from "./select-all-group-header";
 import {useSidebarSelection} from "./selection-context";
 import {ROVING_ITEM_PROPS} from "./use-roving-focus";
 
@@ -143,7 +144,7 @@ export function GroupSection({
 							{toggle}
 						</ProjectGroupHeader>
 					) : (
-						toggle
+						<SelectAllGroupHeader group={group}>{toggle}</SelectAllGroupHeader>
 					)
 				) : (
 					<CustomGroupHeader

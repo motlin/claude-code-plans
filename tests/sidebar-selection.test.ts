@@ -103,6 +103,17 @@ describe("sidebarSelectionReducer", () => {
 		).toStrictEqual(select(["b"], "b"));
 	});
 
+	it("add merges a group's rows into the selection in display order, anchoring on its last row", () => {
+		expect(
+			sidebarSelectionReducer(select(["e", "a"], "e"), {type: "add", ids: ["b", "c"], order: ORDER}),
+		).toStrictEqual(select(["a", "b", "c", "e"], "c"));
+	});
+
+	it("add with no rows returns the same state", () => {
+		const state = select(["a"], "a");
+		expect(sidebarSelectionReducer(state, {type: "add", ids: [], order: ORDER})).toBe(state);
+	});
+
 	it("clear empties the selection", () => {
 		expect(sidebarSelectionReducer(select(["a", "b"], "a"), {type: "clear"})).toStrictEqual(EMPTY_SELECTION);
 	});

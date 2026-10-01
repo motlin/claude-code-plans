@@ -13,6 +13,8 @@ export interface SidebarSelectionApi {
 	 * row, so the click must not open the session.
 	 */
 	readonly onRowClick: (id: string, modifiers: {metaKey: boolean; ctrlKey: boolean; shiftKey: boolean}) => boolean;
+	/** Adds rows to the selection, as a group header's Select all does. */
+	readonly selectAll: (ids: readonly string[]) => void;
 	readonly clear: () => void;
 }
 

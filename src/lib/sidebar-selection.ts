@@ -22,6 +22,8 @@ export type SidebarSelectionAction =
 			/** The open session, where a range starts when nothing is anchored yet. */
 			readonly focusedId: string | null;
 	  }
+	/** Select all on a group header: adds the group's shown rows to the selection. */
+	| {readonly type: "add"; readonly ids: readonly string[]; readonly order: readonly string[]}
 	| {readonly type: "clear"};
 
 export const EMPTY_SELECTION: SidebarSelection = {ids: [], anchor: null};
@@ -59,6 +61,11 @@ export function sidebarSelectionReducer(state: SidebarSelection, action: Sidebar
 			}
 			ids.add(action.id);
 			return {ids: inOrder(ids, action.order), anchor: action.id};
+		}
+		case "add": {
+			const last = action.ids.at(-1);
+			if (last === undefined) return state;
+			return {ids: inOrder(new Set([...state.ids, ...action.ids]), action.order), anchor: last};
 		}
 		case "extend": {
 			const anchor = state.anchor ?? action.focusedId;
