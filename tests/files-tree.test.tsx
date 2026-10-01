@@ -402,6 +402,53 @@ describe("FilesTreeColumn resize", () => {
 		});
 	});
 
+	it("explains itself on hover: Hide file tree ⌃⇧Y, then Drag to resize", async () => {
+		responses.set(key("", ""), {kind: "listing", dir: "", entries: [], partial: false});
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
+			"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+		);
+		renderTree();
+
+		fireEvent.pointerEnter(separator());
+		const tooltip = await waitFor(() => screen.getByRole("tooltip"));
+
+		expect({
+			lines: [...tooltip.children].map((line) => line.textContent),
+			describedBy: separator().getAttribute("aria-describedby") === tooltip.id,
+		}).toStrictEqual({lines: ["Hide file tree⌃Control⇧ShiftY", "Drag to resize"], describedBy: true});
+	});
+
+	it("hides the tree on a click that stays within the drag threshold, but not on a drag", () => {
+		responses.set(key("", ""), {kind: "listing", dir: "", entries: [], partial: false});
+		const onHide = vi.fn();
+		const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+		render(
+			<QueryClientProvider client={queryClient}>
+				<SettingsProvider>
+					<FilesTreeColumn onHide={onHide}>
+						<FilesTree sessionId={SESSION_ID} />
+					</FilesTreeColumn>
+				</SettingsProvider>
+			</QueryClientProvider>,
+		);
+		const handle = separator();
+		const captured = new Set<number>();
+		Object.assign(handle, {
+			setPointerCapture: vi.fn((pointerId: number) => captured.add(pointerId)),
+			releasePointerCapture: vi.fn((pointerId: number) => captured.delete(pointerId)),
+			hasPointerCapture: vi.fn((pointerId: number) => captured.has(pointerId)),
+		});
+
+		fireEvent.pointerDown(handle, {clientX: 240, pointerId: 1});
+		fireEvent.pointerMove(handle, {clientX: 280, pointerId: 1});
+		fireEvent.pointerUp(handle, {clientX: 280, pointerId: 1});
+		const afterDrag = onHide.mock.calls.length;
+		fireEvent.pointerDown(handle, {clientX: 280, pointerId: 2});
+		fireEvent.pointerUp(handle, {clientX: 281, pointerId: 2});
+
+		expect({afterDrag, afterClick: onHide.mock.calls.length}).toStrictEqual({afterDrag: 0, afterClick: 1});
+	});
+
 	it("restores a persisted width, clamped", async () => {
 		storage.setItem(FILES_TREE_WIDTH_STORAGE_KEY, "9000");
 		responses.set(key("", ""), {kind: "listing", dir: "", entries: [], partial: false});

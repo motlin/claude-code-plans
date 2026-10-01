@@ -130,17 +130,12 @@ function FilesSettingsMenu({
 				<MenuCheckboxItem checked={treeShown} onCheckedChange={onTreeShownChange} shortcut={treeKeys.keys}>
 					Show file tree
 				</MenuCheckboxItem>
+				<MenuSeparator />
 				<MenuCheckboxItem
 					checked={settings.filesPreviewTabs}
 					onCheckedChange={(checked) => setSetting("filesPreviewTabs", checked)}
 				>
 					Preview tabs
-				</MenuCheckboxItem>
-				<MenuCheckboxItem
-					checked={settings.filesHideIgnored}
-					onCheckedChange={(checked) => setSetting("filesHideIgnored", checked)}
-				>
-					Hide ignored files
 				</MenuCheckboxItem>
 				<MenuSeparator />
 				<MenuCheckboxItem
@@ -167,6 +162,12 @@ function FilesSettingsMenu({
 					</MenuSubContent>
 				</MenuSub>
 				<MenuSeparator />
+				<MenuCheckboxItem
+					checked={settings.filesHideIgnored}
+					onCheckedChange={(checked) => setSetting("filesHideIgnored", checked)}
+				>
+					Hide ignored files
+				</MenuCheckboxItem>
 				<MenuSub>
 					<MenuSubTrigger>Show files from</MenuSubTrigger>
 					<MenuSubContent>
@@ -422,7 +423,7 @@ interface FilesPaneViewProps {
 
 /**
  * The Files pane surface, header included: tree toggle · "Files" · Move ·
- * Search files · Files settings · Expand · Close, over the tree column (the
+ * Go to file or search · Files settings · Expand · Close, over the tree column (the
  * workspace tree) and the viewer column.
  */
 export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRecordCount}: FilesPaneViewProps) {
@@ -485,6 +486,17 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 		{priority: 1},
 	);
 
+	const goToFileKeys = useShortcutKeys("go_to_file_in_changes");
+	useShortcut(
+		"go_to_file_in_changes",
+		() => {
+			if (host.layout.focused !== "files") return false;
+			goToFileOrSearch();
+			return true;
+		},
+		{priority: 1},
+	);
+
 	useEffect(() => {
 		if (consumePendingFilterFocus()) filterRef.current?.focus();
 	}, []);
@@ -517,7 +529,7 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 		setQuery(lastSlash === -1 ? "" : `${relPath.slice(0, lastSlash)}/`);
 	}
 
-	function searchFiles(): void {
+	function goToFileOrSearch(): void {
 		setTreeShown(true);
 		setFocusRequest((request) => request + 1);
 	}
@@ -543,11 +555,12 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 					{chrome.moveHandle}
 				</div>
 				<div className="relative flex shrink-0 items-center gap-0.5">
-					<Tooltip content="Search files">
+					<Tooltip content="Go to file or search" shortcut={goToFileKeys.keys}>
 						<button
 							type="button"
-							aria-label="Search files"
-							onClick={searchFiles}
+							aria-label="Go to file or search"
+							aria-keyshortcuts={goToFileKeys.ariaKeyShortcuts}
+							onClick={goToFileOrSearch}
 							className={PANE_HEADER_ICON_BUTTON_CLASS}
 						>
 							<Search aria-hidden="true" className="size-4" />
@@ -568,7 +581,7 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 			</div>
 			<div className="flex min-h-0 flex-1 overflow-hidden rounded-b-[inherit]">
 				{treeShown && (
-					<FilesTreeColumn>
+					<FilesTreeColumn onHide={() => setTreeShown(false)}>
 						{sessionId === undefined ? (
 							sessionFilesList
 						) : (

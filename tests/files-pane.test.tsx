@@ -69,6 +69,7 @@ function press(init: KeyboardEventInit): KeyboardEvent {
 const CMD_SHIFT_F = {key: "f", code: "KeyF", metaKey: true, shiftKey: true};
 const CTRL_SHIFT_F = {key: "F", code: "KeyF", ctrlKey: true, shiftKey: true};
 const CTRL_SHIFT_Y = {key: "Y", code: "KeyY", ctrlKey: true, shiftKey: true};
+const CMD_P = {key: "p", code: "KeyP", metaKey: true};
 
 let unregister: () => void = () => {};
 
@@ -218,7 +219,7 @@ describe("Files pane header", () => {
 			labels: [...(header?.querySelectorAll("button") ?? [])].map((button) => button.getAttribute("aria-label")),
 			title: header?.querySelector("[data-pane-title]")?.textContent,
 		}).toStrictEqual({
-			labels: ["Hide file tree", "Move", "Search files", "Files settings", "Expand", "Close"],
+			labels: ["Hide file tree", "Move", "Go to file or search", "Files settings", "Expand", "Close"],
 			title: "Files",
 		});
 	});
@@ -303,9 +304,9 @@ describe("Files pane header", () => {
 			before: [
 				["Show file tree⌃Control⇧ShiftY", "true"],
 				["Preview tabs", "true"],
-				["Hide ignored files", "false"],
 				["Word wrap", "true"],
 				["Tab size4", null],
+				["Hide ignored files", "false"],
 				["Show files from", null],
 			],
 			stored: "true",
@@ -343,7 +344,69 @@ describe("Files pane header", () => {
 		});
 	});
 
-	it("Search files reveals a hidden tree and focuses the filter", async () => {
+	it("Files settings lists upstream's items first, then the local extras after a separator", async () => {
+		registerFilesPane();
+		renderSession();
+		press(CMD_SHIFT_F);
+
+		fireEvent.click(within(filesPane()).getByRole("button", {name: "Files settings"}));
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		});
+		const rows = [
+			...screen.getByRole("menu").querySelectorAll<HTMLElement>("[role^=menuitem], [role=separator]"),
+		].map((row) => (row.getAttribute("role") === "separator" ? "─" : (row.firstElementChild?.textContent ?? "")));
+
+		expect(rows).toStrictEqual([
+			"Show file tree",
+			"─",
+			"Preview tabs",
+			"─",
+			"Word wrap",
+			"Tab size",
+			"─",
+			"Hide ignored files",
+			"Show files from",
+		]);
+	});
+
+	it("Go to file or search shows its ⌘P keycap", async () => {
+		registerFilesPane();
+		renderSession();
+		press(CMD_SHIFT_F);
+
+		const button = within(filesPane()).getByRole("button", {name: "Go to file or search"});
+		fireEvent.pointerEnter(button);
+		const tooltip = await waitFor(() => screen.getByRole("tooltip"));
+
+		expect({
+			tooltip: tooltip.textContent,
+			keyshortcuts: button.getAttribute("aria-keyshortcuts"),
+		}).toStrictEqual({tooltip: "Go to file or search⌘CommandP", keyshortcuts: "Meta+p"});
+	});
+
+	it("⌘P inside the Files pane focuses the filter with its text selected", () => {
+		registerFilesPane();
+		renderSession();
+		press(CMD_SHIFT_F);
+		const input = within(filesPane()).getByRole("searchbox", {name: "Filter files"}) as HTMLInputElement;
+		fireEvent.change(input, {target: {value: "agent"}});
+		input.setSelectionRange(5, 5);
+		input.blur();
+		act(() => {
+			within(filesPane()).getByRole("button", {name: "Files settings"}).focus();
+		});
+
+		const event = press(CMD_P);
+
+		expect({
+			prevented: event.defaultPrevented,
+			focused: document.activeElement?.getAttribute("aria-label"),
+			selection: [input.selectionStart, input.selectionEnd],
+		}).toStrictEqual({prevented: true, focused: "Filter files", selection: [0, 5]});
+	});
+
+	it("Go to file or search reveals a hidden tree and focuses the filter", async () => {
 		registerFilesPane();
 		renderSession();
 		press(CMD_SHIFT_F);
@@ -351,7 +414,7 @@ describe("Files pane header", () => {
 		fireEvent.click(within(pane).getByRole("button", {name: "Hide file tree"}));
 		(document.activeElement as HTMLElement | null)?.blur();
 
-		fireEvent.click(within(pane).getByRole("button", {name: "Search files"}));
+		fireEvent.click(within(pane).getByRole("button", {name: "Go to file or search"}));
 
 		await waitFor(() =>
 			expect({

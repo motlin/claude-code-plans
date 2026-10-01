@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import {useDebouncedValue} from "../../hooks/use-debounced-value";
+import {useShortcutKeys} from "../../hooks/use-shortcut";
 import {useResizableWidth} from "../../hooks/use-resizable-width";
 import {type SessionFilesResponse, sessionFilesQueryOptions} from "../../lib/api/session-files";
 import type {AttachContextHandler} from "../../lib/context-attach";
@@ -19,6 +20,7 @@ import {parseContentSearchQuery} from "../../lib/files-content-search";
 import {getFileIcon} from "../file-tree";
 import {settingStorageKey, useSettings} from "../settings-provider";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "../ui/menu";
+import {Tooltip} from "../ui/tooltip";
 import {type ContentMatchOpenOptions, ContentSearchResults} from "./content-search-results";
 import {TreeRowMenuItems} from "./file-context-menu";
 
@@ -82,10 +84,12 @@ function symlinkLabel(entry: WorkspaceEntry): string | undefined {
 
 /**
  * The Files pane's tree column shell: 240px wide, resizable 160–640 with a
- * "Resize file tree" separator, and the width persisted across reloads.
+ * "Resize file tree" separator, and the width persisted across reloads. A
+ * click on the separator without a drag hides the tree, like upstream.
  */
-export function FilesTreeColumn({children}: {children: ReactNode}) {
+export function FilesTreeColumn({children, onHide}: {children: ReactNode; onHide?: () => void}) {
 	const {settings, setSetting} = useSettings();
+	const hideKeys = useShortcutKeys("toggle_changes_file_list");
 	const width = clampFilesTreeWidth(settings.filesTreeWidth);
 	const resizeHandleProps = useResizableWidth({
 		label: "Resize file tree",
@@ -95,6 +99,7 @@ export function FilesTreeColumn({children}: {children: ReactNode}) {
 		edge: "end",
 		value: width,
 		onChange: (next) => setSetting("filesTreeWidth", next),
+		...(onHide === undefined ? {} : {onClick: onHide}),
 	});
 	return (
 		<div
@@ -107,12 +112,20 @@ export function FilesTreeColumn({children}: {children: ReactNode}) {
 			}}
 		>
 			{children}
-			<div
-				{...resizeHandleProps}
-				className="group/resize absolute inset-y-0 -right-1.5 z-10 flex w-3 cursor-col-resize justify-center outline-none"
+			<Tooltip
+				content="Hide file tree"
+				shortcut={hideKeys.keys}
+				description="Drag to resize"
+				side="right"
+				className="absolute! inset-y-0 -right-1.5 z-10 w-3"
 			>
-				<div className="h-full max-h-12 w-[3px] self-center rounded-full bg-ink-muted opacity-0 transition-opacity delay-200 group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100" />
-			</div>
+				<div
+					{...resizeHandleProps}
+					className="group/resize flex size-full cursor-col-resize touch-none justify-center outline-none"
+				>
+					<div className="h-full max-h-12 w-[3px] self-center rounded-full bg-ink-muted opacity-0 transition-opacity delay-200 group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100" />
+				</div>
+			</Tooltip>
 		</div>
 	);
 }
