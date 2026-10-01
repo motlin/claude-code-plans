@@ -47,6 +47,7 @@ import {broadcastTyped, broadcast, addClient, removeClient} from "./sse-broadcas
 import {recentlyBroadcast} from "./update-dedupe";
 import {createRecursiveWatcher, type RecursiveWatcher} from "./recursive-watch";
 import {gitIndexPath, TrackedFileIndex} from "./git-tracked";
+import {CooperativeQueue} from "./cooperative-queue";
 import {samePrStatus} from "./pr-status";
 
 /**
@@ -75,6 +76,8 @@ let jobsDir = "";
 let fileContentRoots: string[] = [];
 let fileContentRootByGitIndexPath = new Map<string, string>();
 const trackedFileIndex = new TrackedFileIndex();
+// One queue per database, so a burst of change events indexes file by file instead of all at once.
+const fileContentQueues = new WeakMap<IndexDb, CooperativeQueue>();
 interface JsonlThrottleState {
 	timer?: ReturnType<typeof setTimeout>;
 	lastFired: number;
@@ -491,8 +494,21 @@ async function indexSilently(
 	}
 }
 
+function fileContentQueue(db: IndexDb): CooperativeQueue {
+	let queue = fileContentQueues.get(db);
+	if (!queue) {
+		queue = new CooperativeQueue();
+		fileContentQueues.set(db, queue);
+	}
+	return queue;
+}
+
 async function handleFileContentChange(db: IndexDb, path: string, roots: readonly string[]): Promise<void> {
-	await trackActivity(`file-content index ${path}`, () => retryWhileBusy(() => indexFileContent(db, path, roots)));
+	await fileContentQueue(db).enqueue(path, async () => {
+		await trackActivity(`file-content index ${path}`, () =>
+			retryWhileBusy(() => indexFileContent(db, path, roots)),
+		);
+	});
 }
 
 function handleFileContentUnlink(db: IndexDb, path: string): void {
