@@ -82,6 +82,7 @@ export function FileTabsStrip({state, dispatch, cwd, onAttachContext, onRevealIn
 						<MenuContent>
 							<TabMenuItems
 								path={tab.path}
+								preview={tab.preview}
 								cwd={cwd}
 								onAttachContext={onAttachContext}
 								onRevealInTree={onRevealInTree}

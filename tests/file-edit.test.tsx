@@ -99,13 +99,10 @@ describe("editGuardReducer", () => {
 			{type: "reveal", path: README_PATH},
 			{type: "open", path: "/home/alice/proj/other.ts", pin: false},
 			{type: "close", path: PLAN_PATH},
-			{type: "closeOthers", path: README_PATH},
-			{type: "closeAll"},
 			{type: "close", path: README_PATH},
 			{type: "pin", path: PLAN_PATH},
 			{type: "move", path: PLAN_PATH, delta: 1},
 			{type: "open", path: PLAN_PATH, pin: true},
-			{type: "closeOthers", path: PLAN_PATH},
 		] as const;
 		expect(
 			actions.map((action) => {
@@ -116,9 +113,6 @@ describe("editGuardReducer", () => {
 			{held: true, forwarded: false},
 			{held: true, forwarded: false},
 			{held: true, forwarded: false},
-			{held: true, forwarded: false},
-			{held: true, forwarded: false},
-			{held: false, forwarded: true},
 			{held: false, forwarded: true},
 			{held: false, forwarded: true},
 			{held: false, forwarded: true},

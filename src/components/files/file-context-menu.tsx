@@ -1,7 +1,10 @@
-import {fileContentUrl, revealFileInFinder} from "../../lib/api/file";
+import {useQuery, useQueryClient} from "@tanstack/react-query";
+
+import {fileContentUrl, fileViewQueryOptions, revealFileInFinder} from "../../lib/api/file";
 import {writeClipboardText} from "../../lib/clipboard";
 import type {AttachContextHandler, ContextAttachment} from "../../lib/context-attach";
 import type {FileTabsAction} from "../../lib/file-tabs";
+import {requestFindInFile} from "../../lib/find-in-file-request";
 import {vscodeFolderUrl} from "../../lib/session-open-in";
 import {useToast} from "../toast";
 import {MenuItem, MenuSeparator, MenuSub, MenuSubContent, MenuSubTrigger} from "../ui/menu";
@@ -55,10 +58,12 @@ interface SharedItemsProps {
 	onAttachContext: AttachContextHandler | undefined;
 	/** Show ⇧⌘L beside "Attach as context", where the shortcut applies. */
 	attachShortcut?: string | undefined;
+	/** Offer Absolute path under Copy ▸; file tabs, like claude.ai/code, don't. */
+	absolutePath?: boolean;
 }
 
-/** Attach as context · Copy ▸ {Absolute path, Relative path, Filename}. */
-function SharedItems({path, cwd, attachment, onAttachContext, attachShortcut}: SharedItemsProps) {
+/** Attach as context · Copy ▸ {Absolute path?, Relative path, Filename}. */
+function SharedItems({path, cwd, attachment, onAttachContext, attachShortcut, absolutePath = true}: SharedItemsProps) {
 	const copy = useCopyText();
 	const relPath = relativeToCwd(path, cwd);
 	return (
@@ -74,7 +79,7 @@ function SharedItems({path, cwd, attachment, onAttachContext, attachShortcut}: S
 			<MenuSub>
 				<MenuSubTrigger>Copy</MenuSubTrigger>
 				<MenuSubContent>
-					<MenuItem onSelect={() => copy(path, "Path")}>Absolute path</MenuItem>
+					{absolutePath && <MenuItem onSelect={() => copy(path, "Path")}>Absolute path</MenuItem>}
 					<MenuItem
 						disabled={relPath === null}
 						onSelect={() => {
@@ -109,15 +114,42 @@ export function TreeRowMenuItems({path, cwd, isDirectory, onAttachContext}: Tree
 	);
 }
 
+function CopyContentsItem({content}: {content: string | undefined}) {
+	const copy = useCopyText();
+	return (
+		<MenuItem
+			disabled={content === undefined}
+			onSelect={() => {
+				if (content !== undefined) copy(content, "File contents");
+			}}
+		>
+			Copy file contents
+		</MenuItem>
+	);
+}
+
+function DownloadItem({path}: {path: string}) {
+	return <MenuItem render={<a href={fileContentUrl(path, {download: true})} download />}>Download file</MenuItem>;
+}
+
 interface TabMenuItemsProps {
 	path: string;
+	/** A preview (italic) tab offers Keep open. */
+	preview: boolean;
 	cwd: string | undefined;
 	onAttachContext: AttachContextHandler | undefined;
 	onRevealInTree: ((path: string) => void) | undefined;
 	dispatch: (action: FileTabsAction) => void;
 }
 
-export function TabMenuItems({path, cwd, onAttachContext, onRevealInTree, dispatch}: TabMenuItemsProps) {
+/**
+ * claude.ai/code's file tab menu. Find, Copy file contents, Download and
+ * Reload appear only once the file's content has loaded.
+ */
+export function TabMenuItems({path, preview, cwd, onAttachContext, onRevealInTree, dispatch}: TabMenuItemsProps) {
+	const queryClient = useQueryClient();
+	const file = useQuery({...fileViewQueryOptions(path), enabled: false});
+	const data = file.data;
 	return (
 		<>
 			<SharedItems
@@ -125,6 +157,7 @@ export function TabMenuItems({path, cwd, onAttachContext, onRevealInTree, dispat
 				cwd={cwd}
 				attachment={() => ({kind: "file", path: mentionPath(path, cwd)})}
 				onAttachContext={onAttachContext}
+				absolutePath={false}
 			/>
 			<MenuSeparator />
 			<MenuItem
@@ -134,9 +167,26 @@ export function TabMenuItems({path, cwd, onAttachContext, onRevealInTree, dispat
 				Reveal in file tree
 			</MenuItem>
 			<MenuSeparator />
+			{data !== undefined && (
+				<>
+					<MenuItem
+						onSelect={() => {
+							dispatch({type: "reveal", path});
+							requestFindInFile(path);
+						}}
+					>
+						Find in file
+					</MenuItem>
+					<CopyContentsItem content={data.kind === "text" ? data.content : undefined} />
+					<DownloadItem path={path} />
+					<MenuItem onSelect={() => void queryClient.invalidateQueries({queryKey: ["file", path]})}>
+						Reload file
+					</MenuItem>
+					<MenuSeparator />
+				</>
+			)}
+			{preview && <MenuItem onSelect={() => dispatch({type: "pin", path})}>Keep open</MenuItem>}
 			<MenuItem onSelect={() => dispatch({type: "close", path})}>Close file</MenuItem>
-			<MenuItem onSelect={() => dispatch({type: "closeOthers", path})}>Close other files</MenuItem>
-			<MenuItem onSelect={() => dispatch({type: "closeAll"})}>Close all files</MenuItem>
 		</>
 	);
 }
@@ -162,7 +212,6 @@ export function ViewerMenuItems({
 	onAttachContext,
 	attachShortcut,
 }: ViewerMenuItemsProps) {
-	const copy = useCopyText();
 	const toast = useToast();
 	const revealInFinder = () => {
 		revealFileInFinder(path).catch(() => toast({kind: "error", message: "Couldn’t reveal the file in Finder."}));
@@ -176,15 +225,8 @@ export function ViewerMenuItems({
 				onAttachContext={onAttachContext}
 				attachShortcut={attachShortcut}
 			/>
-			<MenuItem
-				disabled={content === undefined}
-				onSelect={() => {
-					if (content !== undefined) copy(content, "File contents");
-				}}
-			>
-				Copy file contents
-			</MenuItem>
-			<MenuItem render={<a href={fileContentUrl(path, {download: true})} download />}>Download file</MenuItem>
+			<CopyContentsItem content={content} />
+			<DownloadItem path={path} />
 			<MenuSeparator />
 			<MenuSub>
 				<MenuSubTrigger>Open in</MenuSubTrigger>

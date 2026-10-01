@@ -20,6 +20,7 @@ import type {AttachContextHandler, ContextAttachment} from "../../lib/context-at
 import {formatFileSize, imageContentType, isMarkdownPath, normalizeFileTabSize} from "../../lib/file-preview";
 import {firstMatchFromLine, lineMatchOffsets, lineOfMatch, stepMatch} from "../../lib/find-in-file";
 import {editableMarkdownTarget} from "../../lib/file-edit";
+import {registerFindInFile} from "../../lib/find-in-file-request";
 import {fromMdSlug} from "../../lib/md-slug";
 import {isMacPlatform} from "../../lib/shortcuts/match";
 import {FileViewer, fileViewerLanguage} from "../file-viewer";
@@ -213,12 +214,14 @@ function isFindShortcut(event: KeyboardEvent): boolean {
  * rendered markdown counts what is in the DOM.
  */
 function useFindInFile({
+	path,
 	viewerRef,
 	content,
 	sourceMode,
 	line,
 	findQuery,
 }: {
+	path: string;
 	viewerRef: RefObject<HTMLDivElement | null>;
 	content: string | undefined;
 	sourceMode: boolean;
@@ -306,6 +309,15 @@ function useFindInFile({
 		setFocusRequest((request) => request + 1);
 	};
 
+	useEffect(
+		() =>
+			registerFindInFile(path, () => {
+				setOpen(true);
+				setFocusRequest((request) => request + 1);
+			}),
+		[path],
+	);
+
 	const close = () => {
 		setOpen(false);
 		viewerRef.current?.focus({preventScroll: true});
@@ -383,6 +395,7 @@ export function FileView({
 		onDirtyChange,
 	});
 	const find = useFindInFile({
+		path,
 		viewerRef,
 		content,
 		sourceMode: content !== undefined && content !== "" && (!markdown || showSource),

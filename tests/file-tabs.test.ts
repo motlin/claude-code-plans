@@ -71,12 +71,6 @@ describe("fileTabsReducer", () => {
 		],
 		["closing the only tab leaves none", [open("a"), {type: "close", path: "a"}], []],
 		[
-			"close others keeps and activates the target",
-			[open("a", true), open("b", true), open("c"), {type: "closeOthers", path: "b"}],
-			["[b]"],
-		],
-		["close all empties the strip", [open("a", true), open("b"), {type: "closeAll"}], []],
-		[
 			"move right swaps with the next tab",
 			[open("a", true), open("b", true), {type: "move", path: "a", delta: 1}],
 			["[b]", "a"],
@@ -102,7 +96,6 @@ describe("fileTabsReducer", () => {
 				open("a"),
 				{type: "pin", path: "x"},
 				{type: "close", path: "x"},
-				{type: "closeOthers", path: "x"},
 				{type: "move", path: "x", delta: 1},
 				{type: "reveal", path: "x"},
 			],

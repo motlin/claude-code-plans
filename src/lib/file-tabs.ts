@@ -22,8 +22,6 @@ export type FileTabsAction =
 	| {type: "open"; path: string; pin: boolean}
 	| {type: "pin"; path: string}
 	| {type: "close"; path: string}
-	| {type: "closeOthers"; path: string}
-	| {type: "closeAll"}
 	| {type: "move"; path: string; delta: -1 | 1}
 	| {type: "reveal"; path: string};
 
@@ -117,13 +115,6 @@ export function fileTabsReducer(state: FileTabsState, action: FileTabsAction, op
 		}
 		case "close":
 			return close(state, action.path);
-		case "closeOthers": {
-			const tab = state.tabs[indexOf(state, action.path)];
-			if (tab === undefined) return state;
-			return {tabs: [tab], active: tab.path};
-		}
-		case "closeAll":
-			return state.tabs.length === 0 ? state : EMPTY_FILE_TABS;
 		case "move":
 			return move(state, action.path, action.delta);
 		case "reveal":

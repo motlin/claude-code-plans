@@ -6,7 +6,7 @@ import {join} from "node:path";
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
-import type {ReactNode} from "react";
+import {type ReactNode, useReducer} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {Composer} from "../src/components/composer";
@@ -26,7 +26,7 @@ import {
 	requestComposerInsert,
 	takeContextChips,
 } from "../src/lib/context-attach";
-import type {FileTabsState} from "../src/lib/file-tabs";
+import {type FileTabsAction, type FileTabsState, fileTabsReducer} from "../src/lib/file-tabs";
 import {handleRevealInFinder} from "../src/lib/open-in-finder";
 import {installLocalStorage} from "./fake-storage";
 
@@ -243,60 +243,131 @@ describe("tree row context menu", () => {
 });
 
 describe("tab context menu", () => {
-	const state: FileTabsState = {
+	const README = `${CWD}/README.md`;
+	const initial: FileTabsState = {
 		tabs: [
-			{path: AGENT, preview: false},
-			{path: `${CWD}/README.md`, preview: true},
+			{path: AGENT, preview: true},
+			{path: README, preview: false},
 		],
 		active: AGENT,
 	};
 
-	it("adds Reveal in file tree and the Close actions", async () => {
-		const dispatch = vi.fn();
-		const onRevealInTree = vi.fn();
-		render(
-			wrap(
+	function Harness({onRevealInTree}: {onRevealInTree: (path: string) => void}) {
+		const [state, dispatch] = useReducer(
+			(current: FileTabsState, action: FileTabsAction) => fileTabsReducer(current, action, {previewTabs: true}),
+			initial,
+		);
+		return (
+			<>
 				<FileTabsStrip
 					state={state}
 					dispatch={dispatch}
 					cwd={CWD}
 					onAttachContext={() => {}}
 					onRevealInTree={onRevealInTree}
-				/>,
-			),
+				/>
+				<FileView path={AGENT} cwd={CWD} />
+				<FileView path={README} cwd={CWD} />
+			</>
 		);
+	}
 
-		fireEvent.contextMenu(screen.getByRole("tab", {name: /agent\.ts/}), {
-			clientX: 10,
-			clientY: 10,
+	async function renderLoaded(onRevealInTree: (path: string) => void = () => {}) {
+		render(wrap(<Harness onRevealInTree={onRevealInTree} />));
+		await waitFor(() => {
+			if (!document.querySelector("#L3")) throw new Error("not loaded");
 		});
-		const rows = await waitFor(() => menuRows());
-		clickItem("Close other files");
-		fireEvent.contextMenu(screen.getByRole("tab", {name: /agent\.ts/}), {
-			clientX: 10,
-			clientY: 10,
-		});
-		await waitFor(() => menuRows());
+		await screen.findByText("Couldn’t find this file");
+	}
+
+	async function openTabMenu(name: RegExp): Promise<string[]> {
+		fireEvent.contextMenu(screen.getByRole("tab", {name}), {clientX: 10, clientY: 10});
+		return waitFor(() => menuRows());
+	}
+
+	it("matches claude.ai/code for a loaded preview tab and an unreadable pinned tab", async () => {
+		const onRevealInTree = vi.fn();
+		await renderLoaded(onRevealInTree);
+
+		const loaded = await openTabMenu(/agent\.ts/);
+		const copyRows = openSubmenu("Copy");
+		clickItem("Filename");
+		await waitFor(() => expect(writeClipboardText).toHaveBeenCalled());
+		const unreadable = await openTabMenu(/README\.md/);
 		clickItem("Reveal in file tree");
 
 		expect({
-			rows,
-			dispatched: dispatch.mock.calls,
+			loaded,
+			copyRows,
+			unreadable,
+			copied: vi.mocked(writeClipboardText).mock.calls,
 			revealed: onRevealInTree.mock.calls,
 		}).toStrictEqual({
-			rows: [
+			loaded: [
 				"Attach as context",
 				"Copy",
 				"─",
 				"Reveal in file tree",
 				"─",
+				"Find in file",
+				"Copy file contents",
+				"Download file",
+				"Reload file",
+				"─",
+				"Keep open",
 				"Close file",
-				"Close other files",
-				"Close all files",
 			],
-			dispatched: [[{type: "closeOthers", path: AGENT}]],
-			revealed: [[AGENT]],
+			copyRows: ["Relative path", "Filename"],
+			unreadable: ["Attach as context", "Copy", "─", "Reveal in file tree", "─", "Close file"],
+			copied: [["agent.ts"]],
+			revealed: [[README]],
 		});
+	});
+
+	it("Keep open pins the preview tab", async () => {
+		await renderLoaded();
+		const tab = screen.getByRole("tab", {name: /agent\.ts/});
+		const before = tab.classList.contains("italic");
+
+		await openTabMenu(/agent\.ts/);
+		clickItem("Keep open");
+
+		expect({before, after: tab.classList.contains("italic")}).toStrictEqual({before: true, after: false});
+	});
+
+	it("Copy file contents copies the loaded text", async () => {
+		await renderLoaded();
+		await openTabMenu(/agent\.ts/);
+		clickItem("Copy file contents");
+		await waitFor(() => expect(writeClipboardText).toHaveBeenCalled());
+
+		expect(vi.mocked(writeClipboardText).mock.calls).toStrictEqual([[AGENT_SOURCE]]);
+	});
+
+	it("Reload file refetches the file", async () => {
+		await renderLoaded();
+		const agentFetches = () =>
+			fetchCalls.filter(
+				(call) => decodeFilePath(call.url.split("?")[0]?.slice("/api/file/".length) ?? "") === AGENT,
+			).length;
+		const before = agentFetches();
+
+		await openTabMenu(/agent\.ts/);
+		clickItem("Reload file");
+		await waitFor(() => expect(agentFetches()).toBe(2));
+
+		expect(before).toBe(1);
+	});
+
+	it("Find in file opens the find bar for the tab's file", async () => {
+		await renderLoaded();
+		const before = screen.queryByRole("textbox", {name: "Find in file"});
+
+		await openTabMenu(/agent\.ts/);
+		clickItem("Find in file");
+		const input = await screen.findByRole("textbox", {name: "Find in file"});
+
+		expect({before, focused: document.activeElement === input}).toStrictEqual({before: null, focused: true});
 	});
 });
 

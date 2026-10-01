@@ -55,17 +55,12 @@ export type EditGuardEvent =
 export const EMPTY_EDIT_GUARD: EditGuardState = {dirtyPath: null, pending: null};
 
 function leavesTab(tabs: FileTabsState, action: FileTabsAction, path: string): boolean {
-	const open = tabs.tabs.some((tab) => tab.path === path);
 	switch (action.type) {
 		case "open":
 		case "reveal":
 			return tabs.active === path && action.path !== path;
 		case "close":
 			return action.path === path;
-		case "closeOthers":
-			return open && action.path !== path;
-		case "closeAll":
-			return open;
 		case "pin":
 		case "move":
 			return false;
