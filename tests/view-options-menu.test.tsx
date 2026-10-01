@@ -207,6 +207,21 @@ describe("SessionPaneControls", () => {
 		}).toStrictEqual({pane: "P", checked: "true"});
 	});
 
+	it("draws item icons in full ink, as upstream does", async () => {
+		registerKinds("files");
+		renderControls(1000);
+		await openViewOptions();
+
+		const icon = screen.getByRole("menuitemcheckbox", {name: /^Files/}).querySelector("svg");
+
+		expect(
+			icon
+				?.getAttribute("class")
+				?.split(" ")
+				.filter((c) => c.startsWith("text-")),
+		).toEqual(["text-primary"]);
+	});
+
 	it("lists Session details and opens it as a pane", async () => {
 		registerKinds("session-details");
 		renderControls(1000);

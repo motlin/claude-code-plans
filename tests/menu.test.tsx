@@ -148,7 +148,7 @@ describe("Menu", () => {
 		expect(screen.getByRole("menuitem", {name: /Delete/}).getAttribute("data-variant")).toBe("danger");
 	});
 
-	it("does not open a submenu on hover alone", async () => {
+	it("opens a submenu on hover alone, without a click", async () => {
 		renderDropdown();
 		await openDropdown();
 		const trigger = screen.getByRole("menuitem", {name: /Status/});
@@ -161,8 +161,55 @@ describe("Menu", () => {
 			await new Promise((resolve) => setTimeout(resolve, 250));
 		});
 
-		expect(screen.getAllByRole("menu")).toHaveLength(1);
-		expect(trigger.getAttribute("aria-expanded")).toBe("false");
+		expect({
+			menus: screen.getAllByRole("menu").length,
+			expanded: trigger.getAttribute("aria-expanded"),
+		}).toEqual({menus: 2, expanded: "true"});
+	});
+
+	it("gives popups upstream's 128px minimum width", async () => {
+		renderDropdown();
+		const menu = await openDropdown();
+
+		expect(menu.className.split(" ").filter((c) => c.startsWith("min-w-"))).toEqual(["min-w-[128px]"]);
+	});
+
+	it("places a submenu level with its trigger and 2px right of the parent", async () => {
+		renderDropdown();
+		await openDropdown();
+		const trigger = screen.getByRole("menuitem", {name: /Status/});
+
+		act(() => trigger.focus());
+		fireEvent.keyDown(trigger, {key: "ArrowRight"});
+		await flush();
+		const positioner = screen.getAllByRole("menu")[1]?.parentElement;
+
+		expect({
+			side: positioner?.getAttribute("data-side-offset"),
+			align: positioner?.getAttribute("data-align-offset"),
+		}).toEqual({side: "2", align: "0"});
+	});
+
+	it("draws radio and checkbox checks in accent ink at stroke-width 3", async () => {
+		renderDropdown();
+		await openDropdown();
+		const trigger = screen.getByRole("menuitem", {name: /Status/});
+		act(() => trigger.focus());
+		fireEvent.keyDown(trigger, {key: "ArrowRight"});
+		await flush();
+
+		const checks = [
+			screen.getByRole("menuitemcheckbox", {name: "Show PR status"}),
+			screen.getByRole("menuitemradio", {name: "Active"}),
+		].map((item) => {
+			const svg = item.querySelector("svg");
+			return [svg?.getAttribute("class")?.includes("text-accent-100"), svg?.getAttribute("stroke-width")];
+		});
+
+		expect(checks).toEqual([
+			[true, "3"],
+			[true, "3"],
+		]);
 	});
 
 	it("opens a submenu with ArrowRight and shows radio items", async () => {

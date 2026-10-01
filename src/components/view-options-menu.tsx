@@ -172,7 +172,7 @@ function ViewOptionsMenu({
 							{...(binding === undefined ? {} : {shortcut: bindingToKeys(binding)})}
 						>
 							<span className="flex items-center gap-2">
-								<Icon aria-hidden="true" className="size-4 shrink-0 text-secondary" />
+								<Icon aria-hidden="true" className="size-4 shrink-0 text-primary" />
 								{entry.label}
 								{entry.badge !== undefined && (
 									<span

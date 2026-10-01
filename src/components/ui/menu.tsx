@@ -11,7 +11,7 @@ import {Shortcut} from "./shortcut";
  * One menu primitive copied from claude.ai/code (Base UI Menu / ContextMenu):
  * radius 10 surface with shadow-panel and 4px padding, 24px items at 13px/19px
  * with padding 2.5px 8px and radius 6, a right-aligned muted shortcut hint,
- * submenus that open on click or ArrowRight only, trailing checks for
+ * submenus that open on hover, click or ArrowRight, trailing accent checks for
  * radio/checkbox items, and single-key accelerators that fire while open.
  */
 
@@ -53,6 +53,10 @@ const TWO_LINE_ITEM_CLASS = ITEM_BASE_CLASS.replace("h-6 items-center", "min-h-[
 const DESCRIPTION_CLASS = "truncate pt-[2px] text-[12px]/[15px] text-[var(--menu-muted)]";
 const TRAILING_CLASS = "ml-auto flex shrink-0 items-center gap-1 pl-3";
 const CHECK_SLOT_CLASS = "-mr-1 flex size-5 shrink-0 items-center justify-center";
+/** Upstream's checked tick: 16px, bold, in accent ink. */
+const CHECK_ICON_CLASS = "size-4 text-accent-100";
+/** Hover dwell before a submenu opens. */
+const SUBMENU_HOVER_DELAY_MS = 100;
 const ICON_SLOT_CLASS = "mr-1 flex size-5 shrink-0 items-center justify-center [&_svg]:size-4 [&_svg]:shrink-0";
 
 function ItemIcon({icon}: {icon: ReactNode}) {
@@ -158,6 +162,8 @@ export function MenuContent({
 				align={align}
 				sideOffset={sideOffset}
 				alignOffset={alignOffset}
+				data-side-offset={sideOffset}
+				data-align-offset={alignOffset}
 			>
 				<BaseMenu.Popup
 					data-cds={kind}
@@ -293,7 +299,7 @@ export function MenuCheckboxItem({children, accelerator, shortcut, ...props}: Me
 			<span className={LABEL_CLASS}>{children}</span>
 			{shortcut !== undefined && <ItemTrailing shortcut={shortcut} />}
 			<BaseMenu.CheckboxItemIndicator className={CHECK_SLOT_CLASS}>
-				<Check aria-hidden="true" className="size-4" />
+				<Check aria-hidden="true" strokeWidth={3} className={CHECK_ICON_CLASS} />
 			</BaseMenu.CheckboxItemIndicator>
 		</BaseMenu.CheckboxItem>
 	);
@@ -317,7 +323,7 @@ export function MenuRadioItem({children, accelerator, ...props}: MenuRadioItemPr
 			<span className={LABEL_CLASS}>{children}</span>
 			{accelerator !== undefined && <ItemTrailing accelerator={accelerator} />}
 			<BaseMenu.RadioItemIndicator className={CHECK_SLOT_CLASS}>
-				<Check aria-hidden="true" className="size-4" />
+				<Check aria-hidden="true" strokeWidth={3} className={CHECK_ICON_CLASS} />
 			</BaseMenu.RadioItemIndicator>
 		</BaseMenu.RadioItem>
 	);
@@ -329,7 +335,7 @@ export function MenuSub(props: ComponentProps<typeof BaseMenu.SubmenuRoot>) {
 
 export interface MenuSubTriggerProps extends Omit<
 	ComponentProps<typeof BaseMenu.SubmenuTrigger>,
-	"className" | "children" | "openOnHover"
+	"className" | "children"
 > {
 	children: ReactNode;
 	/** Leading 20px icon slot, as on upstream's icon rows. */
@@ -340,10 +346,10 @@ export interface MenuSubTriggerProps extends Omit<
 	valueAccent?: boolean;
 }
 
-/** Submenu trigger: opens on click or ArrowRight, never on hover alone. */
+/** Submenu trigger: opens on hover, click, Enter or ArrowRight. */
 export function MenuSubTrigger({children, icon, value, valueAccent, ...props}: MenuSubTriggerProps) {
 	return (
-		<BaseMenu.SubmenuTrigger {...props} openOnHover={false} className={SUB_TRIGGER_CLASS}>
+		<BaseMenu.SubmenuTrigger openOnHover delay={SUBMENU_HOVER_DELAY_MS} {...props} className={SUB_TRIGGER_CLASS}>
 			<ItemIcon icon={icon} />
 			<span className={LABEL_CLASS}>{children}</span>
 			<span className={TRAILING_CLASS}>
@@ -370,8 +376,8 @@ export function MenuSubContent({children, className}: {children: ReactNode; clas
 		<MenuContent
 			side="right"
 			align="start"
-			sideOffset={0}
-			alignOffset={-4}
+			sideOffset={2}
+			alignOffset={0}
 			{...(className === undefined ? {} : {className})}
 		>
 			{children}
