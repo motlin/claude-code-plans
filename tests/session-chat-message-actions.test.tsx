@@ -230,3 +230,21 @@ describe("SessionChat user turn alignment", () => {
 		});
 	});
 });
+
+describe("SessionChat turn wrappers", () => {
+	it("puts no native title tooltip on any turn wrapper", () => {
+		const container = renderRecords(
+			[
+				{...USER_TEXT, timestamp: "2026-09-30T08:00:00.000Z"},
+				{...ASSISTANT_TEXT, timestamp: "2026-09-30T08:01:00.000Z"},
+			],
+			true,
+		);
+		const wrappers = Array.from(container.querySelectorAll("[data-record-index]"));
+
+		expect({
+			count: wrappers.length > 0,
+			titles: wrappers.map((wrapper) => wrapper.getAttribute("title")).filter((title) => title !== null),
+		}).toStrictEqual({count: true, titles: []});
+	});
+});

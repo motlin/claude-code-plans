@@ -33,7 +33,7 @@ function withActions(actions: TranscriptActions, children: ReactNode) {
 
 /** The bar's controls in document order: each button's aria-label, and the `<time>` as "time". */
 function controlOrder(container: HTMLElement): string[] {
-	return Array.from(container.querySelectorAll("button, time")).map((element) =>
+	return Array.from(bar(container).querySelectorAll("button, time")).map((element) =>
 		element.tagName === "TIME" ? "time" : (element.getAttribute("aria-label") ?? ""),
 	);
 }
@@ -44,6 +44,12 @@ function bar(container: HTMLElement): HTMLElement {
 
 function button(container: HTMLElement, label: string): HTMLButtonElement {
 	return container.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
+}
+
+function showActions(container: HTMLElement): HTMLButtonElement {
+	return Array.from(container.querySelectorAll("button")).find(
+		(element) => element.textContent === "Show message actions",
+	)!;
 }
 
 function tooltipText(container: HTMLElement): string | null {
@@ -269,5 +275,117 @@ describe("UserMessageActions", () => {
 			rewindTo: [[MESSAGE]],
 			forkFrom: [[MESSAGE]],
 		});
+	});
+});
+
+describe("message action toolbar sizing and reveal", () => {
+	it("wraps Copy in a Copy tooltip instead of a native title", () => {
+		const {container} = render(
+			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+		);
+		const copy = button(container, "Copy");
+		fireEvent.pointerEnter(copy.parentElement!);
+		act(() => {
+			vi.advanceTimersByTime(300);
+		});
+
+		expect({
+			title: copy.getAttribute("title"),
+			tooltip: copy.parentElement!.querySelector('[role="tooltip"]')?.textContent ?? null,
+		}).toStrictEqual({title: null, tooltip: "Copy"});
+	});
+
+	it("sizes buttons 24px with radius 6 and 16px icons, and the time 13px/19px with 8px inner padding", () => {
+		const assistant = render(
+			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+		).container;
+		const copy = button(assistant, "Copy");
+		const assistantTime = assistant.querySelector("time")!.className.split(" ");
+		cleanup();
+		const user = render(
+			<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />,
+		).container;
+		const userTime = user.querySelector("time")!.className.split(" ");
+
+		expect({
+			button: ["size-6", "rounded-r5"].every((c) => copy.className.split(" ").includes(c)),
+			icon: copy.querySelector("svg")!.getAttribute("class")!.split(" ").includes("size-4"),
+			assistantTime: ["text-[13px]/[19px]", "text-ink-muted", "pl-2"].every((c) => assistantTime.includes(c)),
+			userTime: ["text-[13px]/[19px]", "text-ink-muted", "pr-2"].every((c) => userTime.includes(c)),
+		}).toStrictEqual({button: true, icon: true, assistantTime: true, userTime: true});
+	});
+
+	it("fades and scales the bar in after a short delay, only when motion is allowed", () => {
+		const {container} = render(
+			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+		);
+		const classes = bar(container).className.split(" ");
+
+		expect(
+			[
+				"scale-[.98]",
+				"group-hover/msg:scale-100",
+				"motion-safe:transition-[opacity,scale]",
+				"motion-safe:duration-[120ms]",
+				"motion-safe:delay-100",
+				"motion-safe:ease-[cubic-bezier(.32,.72,0,1)]",
+			].filter((c) => !classes.includes(c)),
+		).toStrictEqual([]);
+	});
+
+	it("keeps hidden toolbar controls out of the tab order until Show message actions reveals them", () => {
+		const {container} = render(
+			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+		);
+		const tabIndexes = () =>
+			Array.from(bar(container).querySelectorAll<HTMLElement>("button, time")).map((element) => element.tabIndex);
+		const hidden = tabIndexes();
+		const show = showActions(container);
+		const showIsSrOnly = show.className.split(" ").includes("sr-only");
+		fireEvent.click(show);
+
+		expect({
+			hidden,
+			showIsSrOnly,
+			revealed: tabIndexes(),
+			barRevealed: bar(container).hasAttribute("data-revealed"),
+			focused: document.activeElement?.getAttribute("aria-label") ?? null,
+		}).toStrictEqual({
+			hidden: [-1, -1, -1, -1, -1],
+			showIsSrOnly: true,
+			revealed: [0, 0, 0, 0, 0],
+			barRevealed: true,
+			focused: "Copy",
+		});
+	});
+
+	it("hides the toolbar again once focus leaves it", () => {
+		const {container} = render(
+			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+		);
+		fireEvent.click(showActions(container));
+		fireEvent.blur(button(container, "Copy"), {relatedTarget: document.body});
+
+		expect({
+			revealed: bar(container).hasAttribute("data-revealed"),
+			copyTabIndex: button(container, "Copy").tabIndex,
+		}).toStrictEqual({revealed: false, copyTabIndex: -1});
+	});
+
+	it("announces a copy in an sr-only status region instead of a visible bubble", async () => {
+		const {container} = render(
+			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+		);
+		const status = () => container.querySelector('[role="status"]');
+		const before = status()?.textContent ?? null;
+		await act(async () => {
+			fireEvent.click(button(container, "Copy"));
+		});
+
+		expect({
+			before,
+			after: status()?.textContent ?? null,
+			srOnly: status()?.className.split(" ").includes("sr-only") ?? false,
+		}).toStrictEqual({before: "", after: "Copied", srOnly: true});
 	});
 });

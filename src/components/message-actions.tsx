@@ -1,5 +1,14 @@
 import {Check, Copy, GitFork, Pin, RotateCcw, Volume2} from "lucide-react";
-import {type ReactNode, useContext, useEffect, useRef, useState, useSyncExternalStore} from "react";
+import {
+	createContext,
+	type FocusEvent,
+	type ReactNode,
+	useContext,
+	useEffect,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from "react";
 
 import {useChapters} from "../lib/chapter-store";
 import {writeClipboardText} from "../lib/clipboard";
@@ -15,6 +24,10 @@ import {Tooltip} from "./ui/tooltip";
  * right-aligned. Fork, Pin and Rewind share their handlers with the right-click
  * menu through TranscriptActionsContext, and stay disabled without one. Per-turn
  * stats and origin captions live in the time's tooltip, never inline.
+ *
+ * The bar fades and scales in on hover or focus-within. While hidden its controls
+ * leave the tab order; a per-turn sr-only "Show message actions" button reveals
+ * the bar and focuses its first button, and the bar hides again once focus leaves.
  */
 
 export interface MessageActionsProps {
@@ -27,15 +40,28 @@ export interface MessageActionsProps {
 	details: readonly string[];
 }
 
-const BAR_CLASS =
-	"flex items-center gap-g1 pt-[4px] select-none opacity-0 pointer-events-none group-hover/msg:opacity-100 group-hover/msg:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-opacity duration-150";
+const BAR_CLASS = [
+	"flex items-center gap-g1 pt-[4px] select-none",
+	"opacity-0 scale-[.98] pointer-events-none",
+	"group-hover/msg:opacity-100 group-hover/msg:scale-100 group-hover/msg:pointer-events-auto",
+	"focus-within:opacity-100 focus-within:scale-100 focus-within:pointer-events-auto",
+	"data-revealed:opacity-100 data-revealed:scale-100 data-revealed:pointer-events-auto",
+	"motion-safe:transition-[opacity,scale] motion-safe:duration-[120ms] motion-safe:delay-100 motion-safe:ease-[cubic-bezier(.32,.72,0,1)]",
+].join(" ");
 
 const BUTTON_CLASS =
-	"flex size-6 cursor-pointer items-center justify-center rounded-r5 text-ink-muted transition-colors hover:bg-fill-ghost-hover hover:text-primary disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-ink-muted";
+	"flex size-6 cursor-pointer items-center justify-center rounded-r5 text-ink-muted outline-none focus-visible:bg-fill-ghost-hover transition-colors hover:bg-fill-ghost-hover hover:text-primary disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-ink-muted";
 
-const ICON_CLASS = "size-3.5";
+const ICON_CLASS = "size-4";
 
 const COPIED_MS = 1500;
+
+/** Whether the bar's controls are in the tab order: only once "Show message actions" revealed it. */
+const RevealedContext = createContext(false);
+
+function useTabIndex(): number {
+	return useContext(RevealedContext) ? 0 : -1;
+}
 
 function ActionButton({
 	label,
@@ -57,6 +83,7 @@ function ActionButton({
 				type="button"
 				aria-label={label}
 				{...(pressed === undefined ? {} : {"aria-pressed": pressed})}
+				tabIndex={useTabIndex()}
 				disabled={onClick === undefined}
 				onClick={onClick}
 				className={BUTTON_CLASS}
@@ -73,23 +100,28 @@ function CopyAction({text}: {text: string}) {
 	useEffect(() => () => clearTimeout(timer.current), []);
 
 	return (
-		<ActionButton
-			label="Copy"
-			onClick={() => {
-				void writeClipboardText(text).then((ok) => {
-					if (!ok) return;
-					setCopied(true);
-					clearTimeout(timer.current);
-					timer.current = setTimeout(() => setCopied(false), COPIED_MS);
-				});
-			}}
-		>
-			{copied ? (
-				<Check aria-hidden="true" className={ICON_CLASS} />
-			) : (
-				<Copy aria-hidden="true" className={ICON_CLASS} />
-			)}
-		</ActionButton>
+		<>
+			<ActionButton
+				label="Copy"
+				onClick={() => {
+					void writeClipboardText(text).then((ok) => {
+						if (!ok) return;
+						setCopied(true);
+						clearTimeout(timer.current);
+						timer.current = setTimeout(() => setCopied(false), COPIED_MS);
+					});
+				}}
+			>
+				{copied ? (
+					<Check aria-hidden="true" className={ICON_CLASS} />
+				) : (
+					<Copy aria-hidden="true" className={ICON_CLASS} />
+				)}
+			</ActionButton>
+			<span role="status" className="sr-only">
+				{copied ? "Copied" : ""}
+			</span>
+		</>
 	);
 }
 
@@ -186,7 +218,17 @@ function ReadAloudAction({text}: {text: string}) {
 }
 
 /** The relative time, with the absolute time and the turn's details in its tooltip. */
-function MessageTime({timestamp, details}: {timestamp: string | undefined; details: readonly string[]}) {
+function MessageTime({
+	timestamp,
+	details,
+	inner,
+}: {
+	timestamp: string | undefined;
+	details: readonly string[];
+	/** The side facing the buttons, which gets 8px of padding. */
+	inner: "left" | "right";
+}) {
+	const tabIndex = useTabIndex();
 	const relative = formatRelativeTimestamp(timestamp);
 	if (timestamp === undefined || relative === null) return null;
 	const absolute = formatTimestamp(timestamp);
@@ -195,8 +237,8 @@ function MessageTime({timestamp, details}: {timestamp: string | undefined; detai
 		<Tooltip content={tooltip} multiline>
 			<time
 				dateTime={timestamp}
-				tabIndex={0}
-				className="px-1 text-[12px] text-ink-muted tabular-nums outline-none"
+				tabIndex={tabIndex}
+				className={`${inner === "left" ? "pl-2" : "pr-2"} text-[13px]/[19px] text-ink-muted tabular-nums outline-none`}
 			>
 				{relative}
 			</time>
@@ -204,25 +246,68 @@ function MessageTime({timestamp, details}: {timestamp: string | undefined; detai
 	);
 }
 
+/** The sr-only reveal button and the bar it reveals. */
+function ActionBar({className, children}: {className: string; children: ReactNode}) {
+	const [revealed, setRevealed] = useState(false);
+	const barRef = useRef<HTMLDivElement>(null);
+	const focusPending = useRef(false);
+
+	useEffect(() => {
+		if (!revealed || !focusPending.current) return;
+		focusPending.current = false;
+		barRef.current?.querySelector<HTMLElement>("button:not(:disabled)")?.focus();
+	}, [revealed]);
+
+	function hideWhenFocusLeaves(event: FocusEvent<HTMLDivElement>) {
+		const next = event.relatedTarget;
+		if (next instanceof Node && event.currentTarget.contains(next)) return;
+		setRevealed(false);
+	}
+
+	return (
+		<>
+			<button
+				type="button"
+				className="sr-only"
+				onClick={() => {
+					focusPending.current = true;
+					setRevealed(true);
+				}}
+			>
+				Show message actions
+			</button>
+			<div
+				ref={barRef}
+				data-message-actions
+				{...(revealed ? {"data-revealed": ""} : {})}
+				className={className}
+				onBlur={hideWhenFocusLeaves}
+			>
+				<RevealedContext.Provider value={revealed}>{children}</RevealedContext.Provider>
+			</div>
+		</>
+	);
+}
+
 export function AssistantMessageActions({message, text, timestamp, details}: MessageActionsProps) {
 	return (
-		<div data-message-actions className={BAR_CLASS}>
+		<ActionBar className={BAR_CLASS}>
 			<CopyAction text={text} />
 			<ForkAction message={message} />
 			<PinAction message={message} />
 			<ReadAloudAction text={text} />
-			<MessageTime timestamp={timestamp} details={details} />
-		</div>
+			<MessageTime timestamp={timestamp} details={details} inner="left" />
+		</ActionBar>
 	);
 }
 
 export function UserMessageActions({message, text, timestamp, details}: MessageActionsProps) {
 	return (
-		<div data-message-actions className={`${BAR_CLASS} justify-end self-end`}>
-			<MessageTime timestamp={timestamp} details={details} />
+		<ActionBar className={`${BAR_CLASS} justify-end self-end`}>
+			<MessageTime timestamp={timestamp} details={details} inner="right" />
 			<CopyAction text={text} />
 			<RewindAction message={message} />
 			<ForkAction message={message} />
-		</div>
+		</ActionBar>
 	);
 }

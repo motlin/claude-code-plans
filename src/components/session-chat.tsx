@@ -12,7 +12,6 @@ import React, {
 } from "react";
 import {AlertTriangle, Bot, FileWarning, GitBranch, Lock, Palette, PanelRight, Plug, Zap} from "lucide-react";
 import {assertNever} from "../lib/assert-never";
-import {formatTimestamp} from "../lib/timestamp-format";
 import {ProseMarkdown} from "./file-refs";
 import {MarkdownArticle} from "./markdown-article";
 import {TruncatedContent} from "./truncated-content";
@@ -64,11 +63,6 @@ import {findScrollContainer} from "./transcript-history-loader";
 import {usePromptJump} from "../hooks/use-prompt-jump";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {jumpToMessage, TRANSCRIPT_JUMP_REQUEST_EVENT, type TranscriptJumpRequestEvent} from "../lib/jump-to-message";
-
-function getLineTimestamp(line: SessionLine): string | undefined {
-	if ("timestamp" in line) return line.timestamp;
-	return undefined;
-}
 
 function getSourceSessionId(line: SessionLine, fallbackSessionId: string): string {
 	return "sessionId" in line && line.sessionId !== undefined ? line.sessionId : fallbackSessionId;
@@ -383,9 +377,6 @@ function LineEntry({
 	if (!content) return null;
 
 	const isAssistant = line.type === "assistant";
-	const rawTimestamp = getLineTimestamp(line);
-	const absoluteTimestamp = formatTimestamp(rawTimestamp);
-	const timestampTitle = absoluteTimestamp;
 	const wrapperClassName = [
 		isAssistant ? "group/msg flex flex-col w-full" : "group relative",
 		TURN_GAP_CLASS,
@@ -394,12 +385,7 @@ function LineEntry({
 		.filter(Boolean)
 		.join(" ");
 	const wrapper = (
-		<div
-			key={`line-${line.lineIndex}`}
-			data-record-index={line.lineIndex}
-			className={wrapperClassName}
-			title={line.type !== "user" ? (timestampTitle ?? undefined) : undefined}
-		/>
+		<div key={`line-${line.lineIndex}`} data-record-index={line.lineIndex} className={wrapperClassName} />
 	);
 	const children = (
 		<>
