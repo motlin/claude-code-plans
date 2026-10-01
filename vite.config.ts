@@ -56,6 +56,12 @@ export default defineConfig({
 			check: {
 				command: "vp check",
 			},
+			// tsc 7 is a native Go binary whose file reads vp's auto input tracking never sees, so a cached
+			// run would replay an old success for a tree that no longer type-checks.
+			typecheck: {
+				command: "tsc --noEmit",
+				cache: false,
+			},
 			"test:run": {
 				command: "node node_modules/vitest/dist/cli.js run",
 				input: [{auto: true}, "!node_modules/.experimental-vitest-cache/**"],
