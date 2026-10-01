@@ -142,8 +142,8 @@ describe("transcript width setting", () => {
 		});
 	});
 
-	it("builds the shared chat column measure from the CSS variable plus 32px gutters", () => {
-		expect(CHAT_COLUMN_CLASS).toBe("mx-auto w-full max-w-[calc(var(--max-content-width,768px)+64px)] px-8");
+	it("builds the shared chat column measure from the CSS variable plus upstream's 32px gutters (16px on phones)", () => {
+		expect(CHAT_COLUMN_CLASS).toBe("mx-auto w-full max-w-[calc(var(--max-content-width,768px)+64px)] px-4 sm:px-8");
 	});
 
 	it("defaults to narrow, reads a stored width, and ignores an unknown stored value", () => {

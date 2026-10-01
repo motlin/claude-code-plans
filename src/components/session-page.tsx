@@ -41,7 +41,7 @@ import {UsagePaceBanner} from "./usage-pace-banner";
 import {useWorkingMarkerState, WorkingMarker} from "./working-marker";
 import {handleBtwPrompt, SideChat, useSideChatShortcut} from "./side-chat";
 import {useToast} from "./toast";
-import {transcriptWidthStyle} from "../lib/transcript-width";
+import {CHAT_COLUMN_BLEED_CLASS, transcriptWidthStyle} from "../lib/transcript-width";
 import {useChatStream} from "../hooks/use-chat-stream";
 import {slashCommandsQueryOptions} from "../lib/api/commands";
 import {promptHistoryQueryOptions} from "../lib/api/prompt-history";
@@ -717,75 +717,78 @@ function SessionView({
 
 				<LegacyMessageLinkNotice hash={locationHash} />
 
-				{/* Chat messages */}
-				<AskUserQuestionProvider value={askUserQuestionCtx}>
-					<TranscriptHistoryLoader sessionId={sessionId} startIndex={transcript.startIndex} />
-					<SessionFileRefs
-						sessionId={sessionId}
-						cwd={data.projectPath ?? undefined}
-						sessionFiles={resources?.files ?? windowFiles}
-					>
-						<SessionSubagentOpener sessionId={sessionId}>
-							<TranscriptActionsProvider
-								sessionId={sessionId}
-								lines={processed.lines}
-								fork={forkFromMessage}
-							>
-								<SessionChat
+				{/* The transcript spans the page padding; the chat column's own gutters inset it, as on upstream */}
+				<div className={CHAT_COLUMN_BLEED_CLASS}>
+					{/* Chat messages */}
+					<AskUserQuestionProvider value={askUserQuestionCtx}>
+						<TranscriptHistoryLoader sessionId={sessionId} startIndex={transcript.startIndex} />
+						<SessionFileRefs
+							sessionId={sessionId}
+							cwd={data.projectPath ?? undefined}
+							sessionFiles={resources?.files ?? windowFiles}
+						>
+							<SessionSubagentOpener sessionId={sessionId}>
+								<TranscriptActionsProvider
 									sessionId={sessionId}
 									lines={processed.lines}
-									toolResultMap={processed.toolResultMap}
-									allowedImageRoots={data.imageRoots}
-									subagents={subagents}
-									showThinking={transcriptFlags.showThinking}
-									showTools={transcriptFlags.showTools}
-									showPassedHooks={transcriptFlags.showPassedHooks}
-									showHookWarnings={transcriptFlags.showHookWarnings}
-									showHookErrors={transcriptFlags.showHookErrors}
-									showSystemBanners={transcriptFlags.showSystemBanners}
-									showCompactSummaries={transcriptFlags.showCompactSummaries}
-									showTranscriptOnly={transcriptFlags.showTranscriptOnly}
-									transcriptMode={transcriptMode}
-									initialScrollKey={initialScrollKey}
-									shouldScrollToEnd={restoredScrollPosition === undefined && locationHash === ""}
-									summary={aiSummary}
-									{...(slashCommands === undefined ? {} : {slashCommands})}
-								/>
-							</TranscriptActionsProvider>
-						</SessionSubagentOpener>
-					</SessionFileRefs>
-				</AskUserQuestionProvider>
+									fork={forkFromMessage}
+								>
+									<SessionChat
+										sessionId={sessionId}
+										lines={processed.lines}
+										toolResultMap={processed.toolResultMap}
+										allowedImageRoots={data.imageRoots}
+										subagents={subagents}
+										showThinking={transcriptFlags.showThinking}
+										showTools={transcriptFlags.showTools}
+										showPassedHooks={transcriptFlags.showPassedHooks}
+										showHookWarnings={transcriptFlags.showHookWarnings}
+										showHookErrors={transcriptFlags.showHookErrors}
+										showSystemBanners={transcriptFlags.showSystemBanners}
+										showCompactSummaries={transcriptFlags.showCompactSummaries}
+										showTranscriptOnly={transcriptFlags.showTranscriptOnly}
+										transcriptMode={transcriptMode}
+										initialScrollKey={initialScrollKey}
+										shouldScrollToEnd={restoredScrollPosition === undefined && locationHash === ""}
+										summary={aiSummary}
+										{...(slashCommands === undefined ? {} : {slashCommands})}
+									/>
+								</TranscriptActionsProvider>
+							</SessionSubagentOpener>
+						</SessionFileRefs>
+					</AskUserQuestionProvider>
 
-				{(chatStream.state.isStreaming || chatStream.state.isComplete) && (
-					<StreamingMessage
-						text={chatStream.state.text}
-						isComplete={chatStream.state.isComplete}
-						error={chatStream.state.error}
-						forkedSessionId={chatStream.state.forkedSessionId}
-						sentPrompt={chatStream.state.sentPrompt}
-					/>
-				)}
+					{(chatStream.state.isStreaming || chatStream.state.isComplete) && (
+						<StreamingMessage
+							text={chatStream.state.text}
+							isComplete={chatStream.state.isComplete}
+							error={chatStream.state.error}
+							forkedSessionId={chatStream.state.forkedSessionId}
+							sentPrompt={chatStream.state.sentPrompt}
+						/>
+					)}
 
-				{liveHerdrPrompt.state.prompt !== "" && (
-					<StreamingMessage
-						text=""
-						isComplete={!liveHerdrPrompt.state.isPending}
-						error={liveHerdrPrompt.state.error || undefined}
-						sentPrompt={liveHerdrPrompt.state.prompt}
-						pendingLabel="Sent to live session — waiting for transcript..."
-					/>
-				)}
+					{liveHerdrPrompt.state.prompt !== "" && (
+						<StreamingMessage
+							text=""
+							isComplete={!liveHerdrPrompt.state.isPending}
+							error={liveHerdrPrompt.state.error || undefined}
+							sentPrompt={liveHerdrPrompt.state.prompt}
+							pendingLabel="Sent to live session — waiting for transcript..."
+						/>
+					)}
 
-				<WorkingMarker state={workingMarkerState} />
+					<WorkingMarker state={workingMarkerState} />
 
-				<SideChat sessionId={sessionId} messageCount={data.messageCount} />
+					<SideChat sessionId={sessionId} messageCount={data.messageCount} />
+				</div>
 
 				{/* Sticky footer: the composer dock, opaque to the viewport bottom with a fade over the transcript */}
 				<div
 					data-session-footer
-					className="sticky bottom-0 z-10 -mx-4 -mb-8 pb-[max(env(safe-area-inset-bottom),0.5rem)] sm:-mx-8 bg-surface-2 before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-8 before:bg-linear-to-b before:from-transparent before:to-surface-2"
+					className="sticky bottom-0 z-10 -mx-4 -mb-8 pb-[max(env(safe-area-inset-bottom),9px)] sm:-mx-8 bg-surface-2 before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-8 before:bg-linear-to-b before:from-transparent before:to-surface-2"
 				>
-					<div className={!chromeHidden && data.projectPath ? "px-4 pt-2 pb-3 sm:px-8" : "px-4 sm:px-8"}>
+					<div className={!chromeHidden && data.projectPath ? "pt-2" : ""}>
 						<SessionDock anchorRef={scrollAnchorRef}>
 							{dockedQuestion && (
 								<ApprovalDock

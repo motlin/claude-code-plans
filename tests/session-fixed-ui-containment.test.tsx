@@ -218,7 +218,33 @@ describe("fixed-position session UI and the contained transcript scroller", () =
 			footers.map((footer) =>
 				[...footer.classList].filter((token) => token.startsWith("sticky") || token.startsWith("pb-")),
 			),
-		).toStrictEqual([["sticky", "pb-[max(env(safe-area-inset-bottom),0.5rem)]"]]);
+		).toStrictEqual([["sticky", "pb-[max(env(safe-area-inset-bottom),9px)]"]]);
+	});
+
+	it("lets the transcript and dock columns span the page padding so only upstream's column gutters inset them", async () => {
+		vi.stubGlobal("EventSource", TestEventSource);
+		vi.stubGlobal("localStorage", new FakeStorage());
+		vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(() => new Promise<Response>(() => {})),
+		);
+
+		await renderSessionInScroller();
+		const marker = document.querySelector('[data-perf-row="marker"]');
+		const dockColumn = screen.getByLabelText("Scroll to bottom", {selector: "button"}).parentElement;
+
+		expect({
+			transcriptBleed: marker?.parentElement?.className,
+			dockWrapper: dockColumn?.parentElement?.className,
+			footerBleed: [...(dockColumn?.parentElement?.parentElement?.classList ?? [])].filter((token) =>
+				/^(sm:)?-mx-/.test(token),
+			),
+		}).toStrictEqual({
+			transcriptBleed: "-mx-4 sm:-mx-8",
+			dockWrapper: "",
+			footerBleed: ["-mx-4", "sm:-mx-8"],
+		});
 	});
 
 	it("has no status footer and opens Session details from View options", async () => {
