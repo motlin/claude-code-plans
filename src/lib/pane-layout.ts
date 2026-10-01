@@ -344,16 +344,30 @@ export function resizeDivider(state: PaneLayoutState, request: ResizeRequest): P
 	return {...state, root: replaceAt(state.root, request.path, {...stack, children})};
 }
 
-/**
- * Moves a pane one step. Along its parent stack's axis it swaps with the
- * neighbour; across it, the pane pops out of its column into the nearest
- * ancestor on that axis, taking its share of the column's flex.
- */
-export function movePane(state: PaneLayoutState, kind: PaneKind, direction: MoveDirection): PaneLayoutState {
-	const path = pathTo(state.root, kind);
-	if (path === undefined) return state;
-	const axis: Direction = direction === "left" || direction === "right" ? "row" : "column";
-	const step = direction === "left" || direction === "top" ? -1 : 1;
+/** Where a split move will land: the half (`side`) of the node at `path` is outlined before Enter commits it. */
+export interface MovePreview {
+	path: number[];
+	side: MoveDirection;
+}
+
+type MovePlan =
+	| {kind: "swap"; ancestorPath: number[]; ancestor: StackNode; branchIndex: number; target: number}
+	| {kind: "pop"; ancestorPath: number[]; ancestor: StackNode; branchIndex: number}
+	| {kind: "split"; parentPath: number[]; parent: StackNode; index: number; neighbourIndex: number};
+
+function axisOf(direction: MoveDirection): Direction {
+	return direction === "left" || direction === "right" ? "row" : "column";
+}
+
+function stepOf(direction: MoveDirection): -1 | 1 {
+	return direction === "left" || direction === "top" ? -1 : 1;
+}
+
+function planMove(state: PaneLayoutState, tileId: TileId, direction: MoveDirection): MovePlan | null {
+	const path = pathTo(state.root, tileId);
+	if (path === undefined) return null;
+	const axis = axisOf(direction);
+	const step = stepOf(direction);
 
 	const isAxisStack = (node: LayoutNode | undefined): node is StackNode =>
 		node?.kind === "stack" && node.direction === axis;
@@ -362,28 +376,80 @@ export function movePane(state: PaneLayoutState, kind: PaneKind, direction: Move
 	const ancestorPath = path.slice(0, depth);
 	const ancestor = nodeAt(state.root, ancestorPath);
 	const branchIndex = path[depth];
-	if (!isAxisStack(ancestor) || branchIndex === undefined) return state;
+	if (isAxisStack(ancestor) && branchIndex !== undefined) {
+		if (ancestor.children[branchIndex]?.kind === "stack") return {kind: "pop", ancestorPath, ancestor, branchIndex};
+		const target = branchIndex + step;
+		if (target < 0 || target >= ancestor.children.length) return null;
+		return {kind: "swap", ancestorPath, ancestor, branchIndex, target};
+	}
 
-	const target = branchIndex + step;
-	if (target < 0 || target >= ancestor.children.length) return state;
-	const children = [...ancestor.children];
-	const branch = children[branchIndex];
-	const neighbour = children[target];
-	if (branch === undefined || neighbour === undefined) return state;
+	const parentPath = path.slice(0, -1);
+	const parent = nodeAt(state.root, parentPath);
+	const index = path.at(-1);
+	if (parent?.kind !== "stack" || index === undefined) return null;
+	const neighbourIndex = index > 0 ? index - 1 : index + 1;
+	if (parent.children[neighbourIndex] === undefined) return null;
+	return {kind: "split", parentPath, parent, index, neighbourIndex};
+}
 
-	if (branch.kind === "tile") {
-		children[branchIndex] = neighbour;
-		children[target] = branch;
+/**
+ * The outline to show before a move across the tile's stack, or null when the
+ * move goes straight through (a swap along the stack) or would do nothing.
+ */
+export function movePreview(state: PaneLayoutState, tileId: TileId, direction: MoveDirection): MovePreview | null {
+	const plan = planMove(state, tileId, direction);
+	if (plan === null || plan.kind === "swap") return null;
+	if (plan.kind === "pop") return {path: [...plan.ancestorPath, plan.branchIndex], side: direction};
+	return {path: [...plan.parentPath, plan.neighbourIndex], side: direction};
+}
+
+/**
+ * Moves a tile one step. Along its parent stack's axis it swaps with the
+ * neighbour; across it, the tile pops out of its column into the nearest
+ * ancestor on that axis, taking its share of the column's flex. With no such
+ * ancestor it splits its neighbour's slot in half along that axis.
+ */
+export function movePane(state: PaneLayoutState, tileId: TileId, direction: MoveDirection): PaneLayoutState {
+	const plan = planMove(state, tileId, direction);
+	if (plan === null) return state;
+	const step = stepOf(direction);
+
+	if (plan.kind === "split") {
+		const children = [...plan.parent.children];
+		const moved = children[plan.index];
+		const neighbour = children[plan.neighbourIndex];
+		if (moved === undefined || neighbour === undefined) return state;
+		const pair = step < 0 ? [moved, neighbour] : [neighbour, moved];
+		const split: StackNode = {
+			kind: "stack",
+			direction: axisOf(direction),
+			flex: round(moved.flex + neighbour.flex),
+			children: pair.map((node) => ({...node, flex: 1})),
+		};
+		children.splice(Math.min(plan.index, plan.neighbourIndex), 2, split);
+		const root = normalizeRoot(replaceAt(state.root, plan.parentPath, {...plan.parent, children}));
+		return {...state, root, focused: tileId};
+	}
+
+	const children = [...plan.ancestor.children];
+	const branch = children[plan.branchIndex];
+	if (branch === undefined) return state;
+	if (plan.kind === "swap") {
+		const neighbour = children[plan.target];
+		if (neighbour === undefined) return state;
+		children[plan.branchIndex] = neighbour;
+		children[plan.target] = branch;
 	} else {
-		const moved = branch.children.find((child) => child.kind === "tile" && child.tileId === kind);
+		if (branch.kind !== "stack") return state;
+		const moved = branch.children.find((child) => child.kind === "tile" && child.tileId === tileId);
 		if (moved === undefined) return state;
 		const share = round((branch.flex * moved.flex) / sumFlex(branch.children));
-		const remaining = withoutTile(branch, kind);
-		children[branchIndex] = {...remaining, flex: round(branch.flex - share)};
-		children.splice(step < 0 ? branchIndex : branchIndex + 1, 0, {...moved, flex: share});
+		const remaining = withoutTile(branch, tileId);
+		children[plan.branchIndex] = {...remaining, flex: round(branch.flex - share)};
+		children.splice(step < 0 ? plan.branchIndex : plan.branchIndex + 1, 0, {...moved, flex: share});
 	}
-	const root = normalizeRoot(replaceAt(state.root, ancestorPath, {...ancestor, children}));
-	return {...state, root, focused: kind};
+	const root = normalizeRoot(replaceAt(state.root, plan.ancestorPath, {...plan.ancestor, children}));
+	return {...state, root, focused: tileId};
 }
 
 function browserStorage(): Storage | null {

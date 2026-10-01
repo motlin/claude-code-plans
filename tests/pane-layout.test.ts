@@ -2,6 +2,7 @@ import {describe, expect, it} from "vite-plus/test";
 import {
 	PANE_LAYOUT_STORAGE_KEY,
 	type LayoutNode,
+	type MovePreview,
 	type PaneKind,
 	type PaneLayoutState,
 	type StackNode,
@@ -16,6 +17,7 @@ import {
 	loadSubagentPaneAgent,
 	minTileSize,
 	movePane,
+	movePreview,
 	openPane,
 	resizeDivider,
 	saveChangesScope,
@@ -295,7 +297,35 @@ describe("movePane", () => {
 				"background-tasks",
 			),
 		],
-	] satisfies Array<[string, PaneLayoutState, PaneKind, "left" | "right" | "top" | "bottom", PaneLayoutState]>)(
+		[
+			"swaps chat to the right of the side pane",
+			ONE_PANE,
+			"chat",
+			"right",
+			layout([tile("background-tasks", 1), tile("chat", 2)], "chat"),
+		],
+		[
+			"splits below its row neighbour when no column holds it",
+			ONE_PANE,
+			"background-tasks",
+			"bottom",
+			layout([stack("column", 1, [tile("chat", 1), tile("background-tasks", 1)])], "background-tasks"),
+		],
+		[
+			"splits chat above its only neighbour",
+			ONE_PANE,
+			"chat",
+			"top",
+			layout([stack("column", 1, [tile("chat", 1), tile("background-tasks", 1)])], "chat"),
+		],
+		[
+			"pops out past the edge of the row from a lone column",
+			layout([stack("column", 1, [tile("chat", 1), tile("background-tasks", 1)])], "chat"),
+			"background-tasks",
+			"right",
+			layout([tile("chat", 0.5), tile("background-tasks", 0.5)], "background-tasks"),
+		],
+	] satisfies Array<[string, PaneLayoutState, TileId, "left" | "right" | "top" | "bottom", PaneLayoutState]>)(
 		"%s",
 		(_name, state, kind, direction, expected) => {
 			expect(movePane(state, kind, direction)).toEqual(expected);
@@ -305,12 +335,26 @@ describe("movePane", () => {
 	it.each([
 		["at the edge of its column", TWO_PANES, "background-tasks", "top"],
 		["at the edge of the row", THREE_PANES, "files", "right"],
-		["perpendicular with no column to move within", ONE_PANE, "background-tasks", "bottom"],
 		["for a pane that is not open", ONE_PANE, "files", "left"],
-	] satisfies Array<[string, PaneLayoutState, PaneKind, "left" | "right" | "top" | "bottom"]>)(
+	] satisfies Array<[string, PaneLayoutState, TileId, "left" | "right" | "top" | "bottom"]>)(
 		"is a no-op %s",
 		(_name, state, kind, direction) => {
 			expect(movePane(state, kind, direction)).toBe(state);
+		},
+	);
+});
+
+describe("movePreview", () => {
+	it.each([
+		["nothing along the parent stack's axis", ONE_PANE, "background-tasks", "left", null],
+		["the neighbour's half for a split", ONE_PANE, "background-tasks", "bottom", {path: [0], side: "bottom"}],
+		["chat's neighbour's half for a chat split", ONE_PANE, "chat", "top", {path: [1], side: "top"}],
+		["the column's half when popping out", TWO_PANES, "changes", "left", {path: [1], side: "left"}],
+		["nothing for a no-op move", ONE_PANE, "files", "bottom", null],
+	] satisfies Array<[string, PaneLayoutState, TileId, "left" | "right" | "top" | "bottom", MovePreview | null]>)(
+		"shows %s",
+		(_name, state, tileId, direction, expected) => {
+			expect(movePreview(state, tileId, direction)).toStrictEqual(expected);
 		},
 	);
 });

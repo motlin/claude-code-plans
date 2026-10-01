@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {registerPane} from "../src/components/panes/pane-registry";
@@ -150,6 +150,7 @@ describe("TileHost", () => {
 		}).toStrictEqual({
 			title: "Test pane",
 			buttons: [
+				{name: "Move", keys: null},
 				{name: "Open test pane", keys: null},
 				{name: "Move", keys: null},
 				{name: "Expand", keys: "Shift+Meta+\\"},
@@ -229,6 +230,98 @@ describe("TileHost", () => {
 			collapsed: {chatHidden: false, overlay: false, toggle: false},
 			calls: 1,
 		});
+	});
+
+	function paneMoveButton(): HTMLElement {
+		const pane = screen.getByText("Test pane body").closest<HTMLElement>("[data-pane-root]");
+		if (pane === null) throw new Error("pane missing");
+		return within(pane).getByRole("button", {name: "Move"});
+	}
+
+	function layoutShape() {
+		return {
+			columns: document.querySelectorAll("[data-tile-stack=column]").length,
+			tiles: [...document.querySelectorAll("[data-tile-host]")].map((tile) =>
+				tile.getAttribute("data-tile-host"),
+			),
+			preview: [...document.querySelectorAll("[data-tile-move-preview]")].map((preview) => ({
+				tile: preview.closest("[data-tile-host]")?.getAttribute("data-tile-host") ?? null,
+				side: preview.getAttribute("data-tile-move-preview"),
+			})),
+		};
+	}
+
+	it("shows upstream's Move tooltip on the move grip", () => {
+		vi.useFakeTimers();
+		try {
+			renderHost("session-a");
+			openTestPane();
+			const anchor = paneMoveButton().parentElement;
+			if (anchor === null) throw new Error("Move has no tooltip anchor");
+
+			fireEvent.pointerEnter(anchor);
+			act(() => vi.advanceTimersByTime(400));
+
+			expect(screen.queryByRole("tooltip")?.textContent ?? null).toBe("Move");
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("gives the chat tile a Move grip once a side tile exists", () => {
+		renderHost("session-a");
+		const chatMoves = () =>
+			within(document.querySelector<HTMLElement>("[data-tile-host=chat]") ?? document.body).queryAllByRole(
+				"button",
+				{name: "Move"},
+			).length;
+		const before = chatMoves();
+		openTestPane();
+
+		expect({before, after: chatMoves()}).toStrictEqual({before: 0, after: 1});
+	});
+
+	it("describes the move keys with upstream's full hint", () => {
+		renderHost("session-a");
+		openTestPane();
+		const hintId = paneMoveButton().getAttribute("aria-describedby") ?? "";
+
+		expect(document.getElementById(hintId)?.textContent).toBe(
+			"Arrow keys move the tile. Perpendicular arrows preview a split; press Enter to commit or Escape to cancel.",
+		);
+	});
+
+	it("moves along the row immediately", () => {
+		renderHost("session-a");
+		openTestPane();
+
+		fireEvent.keyDown(paneMoveButton(), {key: "ArrowLeft"});
+
+		expect(layoutShape()).toStrictEqual({columns: 0, tiles: ["plan", "chat"], preview: []});
+	});
+
+	it("previews a perpendicular split and commits it with Enter", () => {
+		renderHost("session-a");
+		openTestPane();
+
+		fireEvent.keyDown(paneMoveButton(), {key: "ArrowDown"});
+		const previewing = layoutShape();
+		fireEvent.keyDown(paneMoveButton(), {key: "Enter"});
+
+		expect({previewing, committed: layoutShape()}).toStrictEqual({
+			previewing: {columns: 0, tiles: ["chat", "plan"], preview: [{tile: "chat", side: "bottom"}]},
+			committed: {columns: 1, tiles: ["chat", "plan"], preview: []},
+		});
+	});
+
+	it("cancels a split preview with Escape", () => {
+		renderHost("session-a");
+		openTestPane();
+
+		fireEvent.keyDown(paneMoveButton(), {key: "ArrowDown"});
+		fireEvent.keyDown(paneMoveButton(), {key: "Escape"});
+
+		expect(layoutShape()).toStrictEqual({columns: 0, tiles: ["chat", "plan"], preview: []});
 	});
 
 	it("persists the layout per session id across remounts", () => {

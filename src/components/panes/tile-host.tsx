@@ -24,12 +24,14 @@ import {
 	loadPaneLayout,
 	minTileSize,
 	movePane,
+	movePreview,
 	openPane,
 	resizeDivider,
 	savePaneLayout,
 	type Direction,
 	type LayoutNode,
 	type MoveDirection,
+	type MovePreview,
 	type PaneKind,
 	type PaneLayoutState,
 	type StackNode,
@@ -75,9 +77,19 @@ export function useOptionalPaneHost(): PaneHostApi | null {
 	return useContext(PaneHostContext);
 }
 
+interface PendingMove {
+	tileId: TileId;
+	direction: MoveDirection;
+}
+
 interface InternalHost {
 	definitions: ReadonlyMap<PaneKind, PaneDefinition>;
+	layout: PaneLayoutState;
 	update: (fn: LayoutUpdate) => void;
+	/** The perpendicular move waiting for Enter, and the outline it draws. */
+	pendingMove: PendingMove | null;
+	preview: MovePreview | null;
+	setPendingMove: (move: PendingMove | null) => void;
 	expanded: PaneKind | null;
 	phone: boolean;
 	/** The root row, measured when a pane opens so Changes can be sized to its minimum. */
@@ -292,33 +304,89 @@ const MOVE_KEYS: Readonly<Record<string, MoveDirection>> = {
 	ArrowDown: "bottom",
 };
 
+const MOVE_HINT =
+	"Arrow keys move the tile. Perpendicular arrows preview a split; press Enter to commit or Escape to cancel.";
+
+/**
+ * Upstream's Move grip. Arrows along the tile's stack move it straight away;
+ * perpendicular arrows outline the split first, Enter commits and Escape cancels.
+ */
+function MoveHandle({tileId, host}: {tileId: TileId; host: InternalHost}) {
+	const hintId = `pane-move-hint-${tileId}`;
+	const pending = host.pendingMove?.tileId === tileId ? host.pendingMove : null;
+
+	function onKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>) {
+		if (pending !== null && (event.key === "Enter" || event.key === "Escape")) {
+			event.preventDefault();
+			event.stopPropagation();
+			host.setPendingMove(null);
+			if (event.key === "Enter") host.update((state) => movePane(state, tileId, pending.direction));
+			return;
+		}
+		const direction = MOVE_KEYS[event.key];
+		if (direction === undefined) return;
+		event.preventDefault();
+		if (movePreview(host.layout, tileId, direction) !== null) {
+			host.setPendingMove({tileId, direction});
+			return;
+		}
+		host.setPendingMove(null);
+		host.update((state) => movePane(state, tileId, direction));
+	}
+
+	return (
+		<div className="absolute top-0 left-1/2 z-10 flex -translate-x-1/2">
+			<Tooltip content="Move" side="bottom">
+				<button
+					type="button"
+					aria-label="Move"
+					aria-describedby={hintId}
+					onKeyDown={onKeyDown}
+					onBlur={() => {
+						if (pending !== null) host.setPendingMove(null);
+					}}
+					className="group/move flex h-4 w-11 cursor-move items-center justify-center outline-none"
+				>
+					<span className="h-[3px] w-8 rounded-full bg-fill-grip opacity-0 transition-opacity group-hover/move:opacity-100 group-focus-visible/move:bg-accent-100 group-focus-visible/move:opacity-100" />
+					<span id={hintId} className="sr-only">
+						{MOVE_HINT}
+					</span>
+				</button>
+			</Tooltip>
+		</div>
+	);
+}
+
+const PREVIEW_SIDE_CLASSES: Readonly<Record<MoveDirection, string>> = {
+	left: "inset-y-0 left-0 w-1/2",
+	right: "inset-y-0 right-0 w-1/2",
+	top: "inset-x-0 top-0 h-1/2",
+	bottom: "inset-x-0 bottom-0 h-1/2",
+};
+
+function samePath(a: readonly number[], b: readonly number[]): boolean {
+	return a.length === b.length && a.every((value, index) => value === b[index]);
+}
+
+/** Outlines the half of the node at `path` that a pending split move will take. */
+function MovePreviewOutline({path, host}: {path: readonly number[]; host: InternalHost}) {
+	const preview = host.preview;
+	if (preview === null || !samePath(preview.path, path)) return null;
+	return (
+		<div
+			aria-hidden
+			data-tile-move-preview={preview.side}
+			className={`pointer-events-none absolute z-20 rounded-r7 border-2 border-accent-100 bg-accent-100/10 ${PREVIEW_SIDE_CLASSES[preview.side]}`}
+		/>
+	);
+}
+
 function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: PaneDefinition; host: InternalHost}) {
 	const expandKeys = useShortcutKeys("expand_collapse_pane");
 	const closeKeys = useShortcutKeys("close_pane");
 	const isExpanded = host.expanded === kind;
-	const moveHintId = `pane-move-hint-${kind}`;
 
-	function onMoveKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>) {
-		const direction = MOVE_KEYS[event.key];
-		if (direction === undefined) return;
-		event.preventDefault();
-		host.update((state) => movePane(state, kind, direction));
-	}
-
-	const moveHandle = isExpanded ? null : (
-		<button
-			type="button"
-			aria-label="Move"
-			aria-describedby={moveHintId}
-			onKeyDown={onMoveKeyDown}
-			className="group/move absolute top-0 left-1/2 flex h-4 w-11 -translate-x-1/2 cursor-move items-center justify-center outline-none"
-		>
-			<span className="h-[3px] w-8 rounded-full bg-fill-grip opacity-0 transition-opacity group-hover/move:opacity-100 group-focus-visible/move:bg-accent-100 group-focus-visible/move:opacity-100" />
-			<span id={moveHintId} className="sr-only">
-				Arrow keys move the tile.
-			</span>
-		</button>
-	);
+	const moveHandle = isExpanded ? null : <MoveHandle tileId={kind} host={host} />;
 
 	const controls = (
 		<>
@@ -433,7 +501,7 @@ function StackView({
 			}
 			items.push(
 				child.kind === "tile" && child.tileId === "chat" ? (
-					<ChatTile key="chat" style={{flex: `${child.flex} 1 0`}} host={host}>
+					<ChatTile key="chat" style={{flex: `${child.flex} 1 0`}} path={[...path, index]} host={host}>
 						{chat}
 					</ChatTile>
 				) : (
@@ -479,11 +547,12 @@ function NodeView({
 }) {
 	const style = {flex: `${node.flex} 1 0`};
 	const phone = isRootChild && host.phone;
-	const slotClass = `min-h-0 min-w-0 ${phone ? PHONE_SLOT_CLASSES : isRootChild ? SIDE_SLOT_CLASSES : ""}`;
+	const slotClass = `min-h-0 min-w-0 ${phone ? PHONE_SLOT_CLASSES : isRootChild ? SIDE_SLOT_CLASSES : "relative"}`;
 	if (node.kind === "stack") {
 		return (
 			<div className={`flex ${slotClass}`} style={style} {...(phone ? {"data-pane-phone": ""} : {})}>
 				<StackView stack={node} path={path} host={host} chat={chat} />
+				<MovePreviewOutline path={path} host={host} />
 			</div>
 		);
 	}
@@ -492,6 +561,7 @@ function NodeView({
 	return (
 		<TileSlot tileId={node.tileId} host={host} className={slotClass} style={style} phone={phone}>
 			<PaneSurface kind={node.tileId} definition={definition} host={host} />
+			<MovePreviewOutline path={path} host={host} />
 		</TileSlot>
 	);
 }
@@ -532,20 +602,31 @@ function TileSlot({
 	);
 }
 
+/** The chat tile; it gets a Move grip once a side tile shares the layout. */
 function ChatTile({
 	style,
 	hidden = false,
+	path,
 	host,
 	children,
 }: {
 	style?: CSSProperties;
 	hidden?: boolean;
+	path?: readonly number[];
 	host: InternalHost;
 	children: ReactNode;
 }) {
+	const movable = !hidden && tileIdsOf(host.layout.root).length > 1;
 	return (
-		<TileSlot tileId="chat" host={host} className="min-w-0" style={style} hidden={hidden}>
+		<TileSlot tileId="chat" host={host} className="relative min-w-0" style={style} hidden={hidden}>
+			{movable && (
+				// Pinned above the sticky titlebar (z-10) so the grip stays reachable while the transcript scrolls.
+				<div className="sticky top-0 z-20 h-0">
+					<MoveHandle tileId="chat" host={host} />
+				</div>
+			)}
 			{children}
+			{path !== undefined && <MovePreviewOutline path={path} host={host} />}
 		</TileSlot>
 	);
 }
@@ -586,9 +667,25 @@ export function TileHost({
 	}, [requestedPane, loaded, definitions, update, open, onRequestedPaneHandled]);
 	const openKinds = useMemo(() => tileIdsOf(layout.root).filter(isPaneKind), [layout.root]);
 
+	const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
+	const preview = useMemo(
+		() => (pendingMove === null ? null : movePreview(layout, pendingMove.tileId, pendingMove.direction)),
+		[layout, pendingMove],
+	);
+
 	const internal = useMemo<InternalHost>(
-		() => ({definitions, update, expanded: layout.expanded, phone, rootRef}),
-		[definitions, update, layout.expanded, phone],
+		() => ({
+			definitions,
+			layout,
+			update,
+			pendingMove,
+			preview,
+			setPendingMove,
+			expanded: layout.expanded,
+			phone,
+			rootRef,
+		}),
+		[definitions, layout, update, pendingMove, preview, phone],
 	);
 
 	const api = useMemo<PaneHostApi>(
