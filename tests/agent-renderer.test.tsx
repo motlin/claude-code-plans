@@ -91,3 +91,14 @@ describe("AgentRenderer status chrome", () => {
 		expect(aboveCard(html)).toStrictEqual(`${NOTE}running · parallel ×2</div>`);
 	});
 });
+
+describe("AgentRenderer subagent link", () => {
+	it("renders no View subagent session link, since the agent row opens the Subagent pane", () => {
+		const html = renderAgent({subagentInfo: makeSubagentInfo()});
+
+		expect({link: html.includes("<a "), text: html.includes("View subagent session")}).toStrictEqual({
+			link: false,
+			text: false,
+		});
+	});
+});

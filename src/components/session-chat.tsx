@@ -10,7 +10,7 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import {AlertTriangle, Bot, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
+import {AlertTriangle, Bot, FileWarning, GitBranch, Lock, Palette, PanelRight, Plug, Zap} from "lucide-react";
 import {assertNever} from "../lib/assert-never";
 import {formatTimestamp} from "../lib/timestamp-format";
 import {ProseMarkdown} from "./file-refs";
@@ -23,7 +23,7 @@ import {buildClientToolCall, buildSubagentLookup, getToolDescription, isArtifact
 import type {ClientToolCall} from "./tool-renderers";
 import type {LiveToolFailure, SubagentLookup} from "./tool-renderers/types";
 import type {Subagent} from "../lib/subagents";
-import {formatModelName} from "../lib/model-name";
+import {useSubagentOpener} from "./subagent-opener";
 import {useClaudeEvents} from "../hooks/use-claude-events";
 import {ChevronIcon, CollapsibleSection, CopyButton, DiffStats, TerminalOutput} from "./tool-renderers/shared";
 import {SystemBanner} from "./system-banner";
@@ -2252,6 +2252,11 @@ function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; s
 	const [expanded, toggleExpanded] = useModeExpansion();
 	const bodyId = useId();
 	const verbose = useContext(TranscriptModeContext) === "verbose";
+	const openSubagent = useSubagentOpener();
+	const isAgent = call.name === "Agent";
+	// An Agent row whose subagent resolves opens the Subagent pane on it rather
+	// than expanding inline, as upstream does.
+	const paneAgentId = isAgent && openSubagent !== null ? call.subagentInfo?.agentId : undefined;
 	const hasBody = !rendersEmptyBody(call);
 	// An artifact card is the row's whole body and stays visible, as upstream
 	// draws it under the "Published artifact" label.
@@ -2275,12 +2280,7 @@ function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; s
 	const labelClass = call.isError ? "text-extended-pink" : ink;
 	// A subagent row's chevron sits in the flat `t6` token upstream gives it,
 	// rather than the hover-reactive ink every other tool row uses.
-	const chevronClass = call.name === "Agent" ? "shrink-0 self-center text-t6" : `shrink-0 ${ink}`;
-	// Upstream trails a subagent row with the model the agent ran on
-	// ("Explore Drizzle ORM setup  Haiku 4.5"), in the same flat `t6` meta
-	// treatment as the chevron beside it. It sits outside the description span so
-	// a long description truncates without ever eating the model.
-	const modelLabel = call.name === "Agent" ? formatModelName(call.subagentInfo?.model) : null;
+	const chevronClass = isAgent ? "shrink-0 self-center text-t6" : `shrink-0 ${ink}`;
 	// A failed call whose param is its own description reads as one phrase
 	// ("Failed to install dependencies and build"), so upstream drops the verb
 	// and the separate param span; every other failed row keeps both
@@ -2289,7 +2289,7 @@ function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; s
 	const phrase =
 		failedDescription !== null
 			? failedDescriptionLabel(failedDescription)
-			: call.isError
+			: call.isError || (isAgent && nested)
 				? null
 				: (toolRowLabel.doneLabel ?? null);
 	const label = phrase ?? (call.isError ? toolRowLabel.failedVerb : toolRowLabel.verb);
@@ -2341,7 +2341,6 @@ function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; s
 			)}
 			{rangeLabel && <span className={`text-body ${labelClass} truncate min-w-0`}>{rangeLabel}</span>}
 			{diffStats && <DiffStats added={diffStats.added} removed={diffStats.removed} />}
-			{modelLabel && <span className="shrink-0 text-body text-t6">{modelLabel}</span>}
 		</>
 	);
 
@@ -2363,6 +2362,32 @@ function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; s
 			</Suspense>
 		</div>
 	);
+
+	if (paneAgentId !== undefined && openSubagent !== null) {
+		const open = () => openSubagent(paneAgentId);
+		return (
+			<div data-tool-row="" className="flex flex-col w-full">
+				<div
+					role="button"
+					tabIndex={0}
+					data-transcript-keeps-pin=""
+					onClick={open}
+					onKeyDown={(e) => {
+						if (e.key === "Enter" || e.key === " ") {
+							e.preventDefault();
+							open();
+						}
+					}}
+					className="relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3"
+				>
+					{rowLabel}
+					<span className="shrink-0 text-t6">
+						<PanelRight aria-hidden="true" className="size-4" />
+					</span>
+				</div>
+			</div>
+		);
+	}
 
 	if (!expandable) {
 		return (

@@ -5,6 +5,7 @@ import {useCallback, useEffect, useMemo, useState} from "react";
 import {transcriptQueryOptions} from "../../lib/api/sessions";
 import {formatModelName} from "../../lib/model-name";
 import {loadSubagentPaneAgent, saveSubagentPaneAgent} from "../../lib/pane-layout";
+import {onSubagentFocusRequest, takePendingSubagentFocus} from "../../lib/subagent-focus-requests";
 import {extractAgentPrompts, type Subagent} from "../../lib/subagents";
 import {processTranscript} from "../../lib/transcript";
 import {SessionChat} from "../session-chat";
@@ -84,7 +85,10 @@ interface SubagentPaneProps {
 }
 
 function SubagentPane({sessionId, subagents, prompts, chrome}: SubagentPaneProps) {
-	const [agentId, setAgentId] = useState<string | null>(() => loadSubagentPaneAgent(sessionId));
+	const [agentId, setAgentId] = useState<string | null>(
+		() => takePendingSubagentFocus(sessionId) ?? loadSubagentPaneAgent(sessionId),
+	);
+	useEffect(() => onSubagentFocusRequest(sessionId, setAgentId), [sessionId]);
 	const focus = useCallback(
 		(id: string | null) => {
 			setAgentId(id);

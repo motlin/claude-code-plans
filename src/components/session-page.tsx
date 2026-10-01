@@ -25,6 +25,7 @@ import {useRegisterArtifactsPane, useSessionArtifacts} from "./panes/artifacts-p
 import {useRegisterBackgroundTasksPane} from "./panes/background-tasks-pane";
 import {useRegisterLinksPane} from "./panes/links-pane";
 import {useRegisterSubagentPane} from "./panes/subagent-pane";
+import {SessionSubagentOpener} from "./subagent-opener";
 import {useRegisterPlanPane} from "./panes/plan-pane";
 import {ChangesPaneShortcut, useRegisterChangesPane} from "./changes/changes-pane";
 import {FilesPaneShortcut, useExtractedSessionFiles, useRegisterFilesPane} from "./panes/files-pane";
@@ -741,28 +742,34 @@ function SessionView({
 						cwd={data.projectPath ?? undefined}
 						sessionFiles={resources?.files ?? windowFiles}
 					>
-						<TranscriptActionsProvider sessionId={sessionId} lines={processed.lines} fork={forkFromMessage}>
-							<SessionChat
+						<SessionSubagentOpener sessionId={sessionId}>
+							<TranscriptActionsProvider
 								sessionId={sessionId}
 								lines={processed.lines}
-								toolResultMap={processed.toolResultMap}
-								allowedImageRoots={data.imageRoots}
-								subagents={subagents}
-								showThinking={transcriptFlags.showThinking}
-								showTools={transcriptFlags.showTools}
-								showPassedHooks={transcriptFlags.showPassedHooks}
-								showHookWarnings={transcriptFlags.showHookWarnings}
-								showHookErrors={transcriptFlags.showHookErrors}
-								showSystemBanners={transcriptFlags.showSystemBanners}
-								showCompactSummaries={transcriptFlags.showCompactSummaries}
-								showTranscriptOnly={transcriptFlags.showTranscriptOnly}
-								transcriptMode={transcriptMode}
-								initialScrollKey={initialScrollKey}
-								shouldScrollToEnd={restoredScrollPosition === undefined && locationHash === ""}
-								summary={aiSummary}
-								{...(slashCommands === undefined ? {} : {slashCommands})}
-							/>
-						</TranscriptActionsProvider>
+								fork={forkFromMessage}
+							>
+								<SessionChat
+									sessionId={sessionId}
+									lines={processed.lines}
+									toolResultMap={processed.toolResultMap}
+									allowedImageRoots={data.imageRoots}
+									subagents={subagents}
+									showThinking={transcriptFlags.showThinking}
+									showTools={transcriptFlags.showTools}
+									showPassedHooks={transcriptFlags.showPassedHooks}
+									showHookWarnings={transcriptFlags.showHookWarnings}
+									showHookErrors={transcriptFlags.showHookErrors}
+									showSystemBanners={transcriptFlags.showSystemBanners}
+									showCompactSummaries={transcriptFlags.showCompactSummaries}
+									showTranscriptOnly={transcriptFlags.showTranscriptOnly}
+									transcriptMode={transcriptMode}
+									initialScrollKey={initialScrollKey}
+									shouldScrollToEnd={restoredScrollPosition === undefined && locationHash === ""}
+									summary={aiSummary}
+									{...(slashCommands === undefined ? {} : {slashCommands})}
+								/>
+							</TranscriptActionsProvider>
+						</SessionSubagentOpener>
 					</SessionFileRefs>
 				</AskUserQuestionProvider>
 

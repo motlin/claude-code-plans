@@ -7,6 +7,7 @@ import {afterEach, describe, it, expect, vi} from "vite-plus/test";
 import {renderToStaticMarkup} from "react-dom/server";
 import {SessionChat} from "../src/components/session-chat";
 import {StreamingMessage} from "../src/components/streaming-message";
+import {SubagentOpenerProvider} from "../src/components/subagent-opener";
 import {processTranscript} from "../src/lib/transcript";
 import type {Subagent} from "../src/lib/subagents";
 
@@ -1053,7 +1054,6 @@ describe("SessionChat file-param tool row argument", () => {
 
 describe("SessionChat Agent row label", () => {
 	const DESCRIPTION = "truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary";
-	const MODEL = "shrink-0 text-body text-t6";
 
 	const agentRecords = toolCallRecords([
 		{
@@ -1113,24 +1113,10 @@ describe("SessionChat Agent row label", () => {
 		]);
 	});
 
-	it("trails the row with the model the subagent ran on, outside the truncating description", () => {
-		expect(toolRowLabelSpans(renderWithSubagents(spawnedAgent("claude-haiku-4-5-20251001")))).toStrictEqual([
-			[DESCRIPTION, "Implement pending approvals fix"],
-			[MODEL, "Haiku 4.5"],
-		]);
-	});
-
-	it("keeps the model between the description and the chevron", () => {
+	it("trails no model label, which upstream shows in the Subagent pane footnote instead", () => {
 		expect(rowHeaderSpanClasses(renderWithSubagents(spawnedAgent("claude-haiku-4-5-20251001")))).toStrictEqual([
 			DESCRIPTION,
-			MODEL,
 			"shrink-0 self-center text-t6",
-		]);
-	});
-
-	it("trails nothing when the resolved subagent names no model", () => {
-		expect(toolRowLabelSpans(renderWithSubagents(spawnedAgent(null)))).toStrictEqual([
-			[DESCRIPTION, "Implement pending approvals fix"],
 		]);
 	});
 
@@ -1147,6 +1133,108 @@ describe("SessionChat Agent row label", () => {
 		).toStrictEqual([
 			["truncate min-w-0 text-body text-extended-pink", "Failed to implement pending approvals fix"],
 		]);
+	});
+});
+
+describe("SessionChat Agent row opening the Subagent pane", () => {
+	const SUBAGENT: Subagent = {
+		id: "agent-abc123",
+		sessionId: "test-session",
+		projectId: "proj-1",
+		parentAgentId: null,
+		agentType: "Code",
+		attributionAgent: null,
+		slug: null,
+		description: "Commit lazy allocation fixup",
+		model: "claude-haiku-4-5-20251001",
+		startedAt: "2026-01-01T00:00:00.000Z",
+		finishedAt: "2026-01-01T00:00:05.000Z",
+	};
+	const AGENT_CALL = {
+		id: "t1",
+		name: "Agent",
+		input: {description: "Commit lazy allocation fixup", prompt: "Commit the fixup", subagent_type: "Code"},
+	};
+
+	function renderWithOpener(records: unknown[], open: (agentId: string) => void): HTMLElement {
+		const {lines, toolResultMap} = processTranscript(records);
+		return render(
+			<SubagentOpenerProvider value={open}>
+				<SessionChat
+					sessionId="test-session"
+					lines={lines}
+					toolResultMap={toolResultMap}
+					subagents={[SUBAGENT]}
+					showCompactSummaries
+					showTranscriptOnly
+					shouldScrollToEnd={false}
+				/>
+			</SubagentOpenerProvider>,
+		).container;
+	}
+
+	function agentRow(container: HTMLElement): HTMLElement {
+		const row = container.querySelector<HTMLElement>("[data-transcript-keeps-pin]");
+		if (row === null) throw new Error("no pane-opening agent row");
+		return row;
+	}
+
+	it("opens the pane on the agent from click, Enter and Space, and never expands a body inline", () => {
+		const opened: string[] = [];
+		const container = renderWithOpener(toolCallRecords([AGENT_CALL]), (agentId) => opened.push(agentId));
+		const row = agentRow(container);
+
+		fireEvent.click(row);
+		fireEvent.keyDown(row, {key: "Enter"});
+		fireEvent.keyDown(row, {key: " "});
+
+		expect({
+			opened,
+			role: row.getAttribute("role"),
+			tabIndex: row.getAttribute("tabindex"),
+			ariaExpanded: row.getAttribute("aria-expanded"),
+			spans: [...row.children].map((child) => [child.getAttribute("class"), child.textContent]),
+			glyph: row.querySelector("svg")?.getAttribute("class"),
+			body: container.textContent?.includes("Commit the fixup"),
+		}).toStrictEqual({
+			opened: ["agent-abc123", "agent-abc123", "agent-abc123"],
+			role: "button",
+			tabIndex: "0",
+			ariaExpanded: null,
+			spans: [
+				[
+					"truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary",
+					"Commit lazy allocation fixup",
+				],
+				["shrink-0 text-t6", ""],
+			],
+			glyph: "lucide lucide-panel-right size-4",
+			body: false,
+		});
+	});
+
+	it('reads "Ran agent" followed by the description inside a group', () => {
+		const container = renderWithOpener(
+			toolCallRecords([{id: "t0", name: "Bash", input: {command: "git status"}}, AGENT_CALL]),
+			() => {},
+		);
+		expandGroupSummary(container);
+
+		expect(
+			[...agentRow(container).querySelectorAll("span.text-body")].map((span) => span.textContent),
+		).toStrictEqual(["Ran agent", "Commit lazy allocation fixup"]);
+	});
+
+	it("keeps the inline disclosure when no subagent resolves for the call", () => {
+		const container = renderWithOpener(
+			toolCallRecords([{...AGENT_CALL, input: {...AGENT_CALL.input, description: "Unknown agent"}}]),
+			() => {},
+		);
+
+		expect({
+			pinned: container.querySelector("[data-transcript-keeps-pin]"),
+			ariaExpanded: container.querySelector('[role="button"]')?.getAttribute("aria-expanded"),
+		}).toStrictEqual({pinned: null, ariaExpanded: "false"});
 	});
 });
 

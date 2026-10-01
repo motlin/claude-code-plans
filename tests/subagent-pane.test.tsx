@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {cleanup, fireEvent, render, screen, within} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {useRegisterSubagentPane} from "../src/components/panes/subagent-pane";
@@ -15,6 +15,7 @@ import {
 	savePaneLayout,
 	saveSubagentPaneAgent,
 } from "../src/lib/pane-layout";
+import {requestSubagentFocus} from "../src/lib/subagent-focus-requests";
 import {extractAgentPrompts, type Subagent} from "../src/lib/subagents";
 import {installLocalStorage} from "./fake-storage";
 
@@ -208,5 +209,23 @@ describe("Subagent pane", () => {
 			title: "Plan the follow-up",
 			footnote: null,
 		});
+	});
+	it("focuses the agent an Agent row requests while the pane is already open", () => {
+		renderPane();
+		const before = within(header()).getByRole("heading").textContent;
+		act(() => requestSubagentFocus(SESSION_ID, "agent-b2"));
+
+		expect({
+			before,
+			after: within(header()).getByRole("heading").textContent,
+			saved: loadSubagentPaneAgent(SESSION_ID),
+		}).toEqual({before: "Subagents", after: "Plan the follow-up", saved: "agent-b2"});
+	});
+
+	it("opens on the requested agent when the request arrives before the pane mounts", () => {
+		requestSubagentFocus(SESSION_ID, "agent-a1");
+		renderPane();
+
+		expect(within(header()).getByRole("heading").textContent).toBe("Audit pane registrations");
 	});
 });
